@@ -5,7 +5,7 @@ Calls, Counseling sessions, Follow-ups, Conversions, Revenue, Conversion %, Coun
 `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-018 (depends on mgmt-003, merged). Open question Q-20.
 
 **Authority:** every CS answer below is a **recommended default, `UNVERIFIED`**, taken on the owner's standing instruction to proceed
-with recommended answers. CS4/CS6/CS8 answer Q-20. Registered as `DEC-SCOPE-202` (provisional numbering).
+with recommended answers. CS4/CS6/CS8 answer Q-20. Registered as `DEC-SCOPE-203` (provisional numbering).
 
 ## Decisions (CS1–CS12)
 

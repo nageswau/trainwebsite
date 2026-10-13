@@ -2071,7 +2071,19 @@ Counts only, no personal data; nothing else changes.
 - Company-wide counts per BDM type; no BDM, organization or student names. No audit row (no write). The bdm-023/024 manager routes
   and their team scope are unchanged.
 
-### 2.127 Counseling dashboard *(added 2026-10-13 — `DEC-SCOPE-202`, `mgmt-018`)*
+### 2.127 Telecalling dashboard, company-wide *(added 2026-10-13 — `DEC-SCOPE-202`, `mgmt-019`)*
+
+| Role | Read `GET /management/telecalling`, page `/management/telecalling` |
+|---|---|
+| `partner` | yes; "Leads & calls" (Sales) and "Telecallers" (People) entries |
+| `super_admin` | yes (operational tier, M13); keeps the super admin sidebar, reaches it from the Command Center |
+| `accountant` | `403` "Operational access required"; no entry |
+| every other role (incl. `telecaller`, `telecaller_manager`, division admins) | `403`; signed out `401` (the page redirects to `/admin/login?next=`) |
+
+- Company-wide counts per team and per telecaller (telecaller names only; no lead data). No audit row (no write). The tel-021/023/024
+  telecaller routes and their scopes are unchanged.
+
+### 2.128 Counseling dashboard *(added 2026-10-13 — `DEC-SCOPE-203`, `mgmt-018`)*
 
 | Role | Read `GET /management/counseling`, page `/management/counseling` |
 |---|---|

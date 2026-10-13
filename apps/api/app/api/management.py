@@ -35,6 +35,7 @@ from app.schemas import (
     RecruitmentRevenueOut,
     SalaryMonthIn,
     SalaryMonthOut,
+    TelecallingOut,
 )
 from app.services import (
     accounts,
@@ -48,7 +49,9 @@ from app.services import (
     management_it_revenue,
     management_metrics,
     management_recruitment_revenue,
+    management_telecalling,
     salaries,
+    telecaller_performance,
 )
 from app.services.bdm_activities import india_date
 from app.services.bdm_appointments import db_now
@@ -364,3 +367,12 @@ async def save_accounts_balances(
     await db.commit()
     salaries.log("finance_balances_saved", user, month=month, fields=changed)
     return await accounts.view(db, first)
+
+
+# --- mgmt-019: company-wide Telecalling dashboard (spec TC1-TC16). Operational tier (M13) ----------------------------------------------
+@router.get("/telecalling", response_model=TelecallingOut)
+async def telecalling(date_from: date | None = None, date_to: date | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """§14 per telecaller, per team and for the company over tel-023's period rules (TC2); the accountant and everyone else 403."""
+    _operational(user)
+    first, last = telecaller_performance.date_range(date_from, date_to, india_date(await db_now(db)))
+    return await management_telecalling.dashboard(db, first, last)

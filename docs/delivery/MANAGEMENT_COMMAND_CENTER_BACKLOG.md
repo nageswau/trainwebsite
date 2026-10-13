@@ -797,9 +797,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** low
 
 ### mgmt-018 — Counseling dashboard
-- **Status (2026-10-13):** **IN REVIEW** on `feature/mgmt-018`. `DEC-SCOPE-202` (CS1–CS12 recommended defaults, UNVERIFIED; CS4/CS6/CS8
+- **Status (2026-10-13):** **IN REVIEW** on `feature/mgmt-018`. `DEC-SCOPE-203` (CS1–CS12 recommended defaults, UNVERIFIED; CS4/CS6/CS8
   answer Q-20: calls not tracked, follow-ups = repeat sessions, revenue = ledger payments of converted leads' students, partner only).
-  No migration; API §12DP; RBAC §2.127. QA evidence `docs/quality/MGMT-018_EXPLORATORY_QA_2026-10-13.md`.
+  No migration; API §12DQ; RBAC §2.128. QA evidence `docs/quality/MGMT-018_EXPLORATORY_QA_2026-10-13.md`.
 - **Business requirement:** §13 (Leads → Counseling → Conversion; 8 KPIs).
 - **Existing behavior:** counselor data is spread across modules (appointments, applications, tel-017/018 handover).
 - **Expected behavior:** per counselor (overseas and IT) and in total: leads assigned (handed-over leads), calls (if logged), counseling
@@ -824,6 +824,8 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-019 — Telecalling dashboard (company-wide)
+- **Status (2026-10-13):** **IN REVIEW** on `feature/mgmt-019`. `DEC-SCOPE-202` (TC1–TC16 recommended defaults, UNVERIFIED; Interested and
+  Lost added beside tel-021's counts). No migration; API §12DP; RBAC §2.127. QA evidence `docs/quality/MGMT-019_EXPLORATORY_QA_2026-10-13.md`.
 - **Business requirement:** §14 (8 KPIs; Calls → Interested → Counseling → Registration).
 - **Existing behavior:** tel-021/023/024 for managers and admins.
 - **Expected behavior:** company-wide figures + per-team, reusing `telecaller_metrics.flow_counts_by_user` over all telecallers.
