@@ -52,11 +52,10 @@ describe("mgmt-006 ManagementAbroadRevenue", () => {
 
   it("summarises revenue, expenses and the gross contribution for the month and the year", () => {
     render_(revenue());
-    const summary = screen.getByRole("table", { name: /abroad education summary/i });
-    expect(within(summary).getAllByRole("rowheader").map((th) => th.textContent)).toEqual(["Abroad Education revenue", "Expenses", "Gross contribution"]);
-    const contribution = within(summary).getByRole("row", { name: /Gross contribution/ });
-    expect(contribution).toHaveTextContent("₹34,500.00");
-    expect(contribution).toHaveTextContent("₹2,50,000.00");
+    const summary = within(screen.getByRole("list", { name: /abroad education summary/i })).getAllByRole("listitem");
+    expect(summary.map((tile) => tile.querySelector("dt")?.textContent)).toEqual(["Abroad Education revenue (year to date)", "Expenses (year to date)", "Gross contribution (year to date)"]);
+    expect(summary[2].querySelector("dd")).toHaveTextContent("₹2,50,000.00");
+    expect(summary[2]).toHaveTextContent("This month: ₹34,500.00");
   });
 
   it("lists revenue by kind with the total, and agent-generated revenue as part of it", () => {
@@ -88,6 +87,12 @@ describe("mgmt-006 ManagementAbroadRevenue", () => {
     expect(within(expenses).getByRole("row", { name: /Agent commissions/ })).toHaveTextContent("₹12,000.00");
     expect(within(expenses).getByRole("row", { name: /Total expenses/ })).toHaveTextContent("₹15,000.00");
     expect(screen.getByText(/shared/i, { selector: "p" })).toHaveTextContent("₹1,20,000.00");
+  });
+
+  it("shows the summary as tiles and lets the expense table fit a phone without scrolling (browser QA-01)", () => {
+    render_(revenue());
+    expect(screen.queryByRole("table", { name: /abroad education summary/i })).toBeNull(); // tiles, which stack on a phone
+    expect(within(screen.getByRole("region", { name: "Abroad expenses" })).getByRole("table").style.minWidth).toBe("0");
   });
 
   it("tells the accountant the figures leave university commission out", () => {

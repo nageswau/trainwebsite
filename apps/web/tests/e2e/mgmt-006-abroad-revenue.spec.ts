@@ -41,8 +41,8 @@ test("a partner reads the Abroad revenue dashboard, whose breakdowns add up to r
     near(total, revenue);
   }
   // AC: contribution = revenue - expenses.
-  const summary = page.getByRole("table", { name: "Abroad Education summary" });
-  const [rev, spent, contribution] = (await summary.locator("tbody tr td:nth-child(3)").allTextContents()).map(rupees);
+  const summary = page.getByRole("list", { name: "Abroad Education summary" });
+  const [rev, spent, contribution] = (await summary.locator("dd.kpi-value").allTextContents()).map(rupees);
   near(rev, revenue);
   near(contribution, rev - spent);
   await expect(page.getByText(/shown to partners only/)).toHaveCount(0);

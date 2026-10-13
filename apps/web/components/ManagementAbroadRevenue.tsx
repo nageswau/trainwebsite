@@ -79,19 +79,18 @@ function Dashboard({ data }: { data: AbroadRevenue }) {
       {Number(data.revenue.year) === 0 && Number(data.expense_total.year) === 0 && (
         <p className="empty" role="status">No Abroad Education revenue or expenses are recorded in the financial year {data.year_label} up to {formatMonth(data.month)} yet.</p>
       )}
-      <div className="table-wrap" role="region" aria-label="Abroad Education summary" tabIndex={0} style={{ overflowX: "auto" }}>
-        <table className="table" style={{ minWidth: 420 }}>
-          <caption className="visually-hidden">Abroad Education summary</caption>
-          <thead>
-            <tr><th scope="col">Figure</th><th scope="col">Monthly</th><th scope="col">Annual</th></tr>
-          </thead>
-          <tbody>
-            <tr><th scope="row">Abroad Education revenue</th><Figures figure={data.revenue} /></tr>
-            <tr><th scope="row">Expenses</th><Figures figure={data.expense_total} /></tr>
-            <tr><th scope="row">Gross contribution</th><td><strong>{formatInr(data.contribution.month)}</strong></td><td><strong>{formatInr(data.contribution.year)}</strong></td></tr>
-          </tbody>
-        </table>
-      </div>
+      {/* Browser QA-01: the three headline figures are tiles (the ledger's totals idiom), which stack on a phone. */}
+      <ul aria-label="Abroad Education summary" className="kpi-grid" style={{ listStyle: "none", padding: 0 }}>
+        {([["Abroad Education revenue", data.revenue], ["Expenses", data.expense_total], ["Gross contribution", data.contribution]] as const).map(([label, figure]) => (
+          <li key={label} className="kpi-tile">
+            <dl style={{ margin: 0 }}>
+              <dt>{label} (year to date)</dt>
+              <dd className="kpi-value">{formatInr(figure.year)}</dd>
+              <dd className="kpi-note muted">This month: {formatInr(figure.month)}</dd>
+            </dl>
+          </li>
+        ))}
+      </ul>
 
       <Section id="abroad-kinds" title="Revenue by kind">
         <table className="table" style={{ minWidth: 560 }}>
@@ -128,7 +127,7 @@ function Dashboard({ data }: { data: AbroadRevenue }) {
       ))}
 
       <Section id="abroad-expenses" title="Abroad expenses">
-        <table className="table" style={{ minWidth: 420 }}>
+        <table className="table" style={{ minWidth: 0 }}>
           <caption className="visually-hidden">Abroad expenses</caption>
           <thead>
             <tr><th scope="col">Category</th><th scope="col">Monthly</th><th scope="col">Annual</th></tr>
