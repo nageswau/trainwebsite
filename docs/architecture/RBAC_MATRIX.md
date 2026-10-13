@@ -2035,6 +2035,18 @@ Counts only, no personal data; nothing else changes.
   sweep stays with mgmt-034.
 - Read-only aggregate: country, university, intake and agency names with rupee sums; no student names or ids. No audit row (no write).
 
+### 2.124 Applications funnel dashboard *(added 2026-10-13 — `DEC-SCOPE-199`, `mgmt-024`)*
+
+| Role | Read `GET /management/applications`, page `/management/applications` |
+|---|---|
+| `partner` | yes; "Applications" entry (Students pillar) |
+| `super_admin` | yes (operational tier, M13); keeps the super admin sidebar |
+| `accountant` | `403` "Operational access required"; no entry |
+| every other role (incl. `overseas_admin`, `counselor`) | `403`; signed out `401` (the page redirects to `/admin/login?next=`) |
+
+- Company-wide counts over all overseas applications; filter choices name agencies, counselors, staff, countries, universities and
+  courses. No student names or ids. No audit row (no write). The overseas admin's own AGN-023 list filters are unchanged.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

@@ -3026,6 +3026,16 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/revenue/abroad` *(new)* | Query `month` (`YYYY-MM`; default the current IST month). `422` as `GET /management/expenses` (12DI). `200` `{month, year_start, year_label, commission_visible, kinds[{key, label, month, year}] (service_fees, other_payments, university_commission — partner only — and manual, source order), revenue{month, year}, agent_generated{month, year}, breakdowns[{key (country/university/intake/agency), label, rows[{label, month, year}], unattributed{month, year}}], expenses[{label, month, year}], expense_total, shared_expenses, contribution, not_counted[{currency, kind, amount, count}]}`. Every figure is rupees from `ledger.lines()` (vertical `abroad`); each breakdown's rows + unattributed = revenue; contribution = revenue − expense_total. For the accountant university commission is absent from every figure and `commission_visible` is `false` (M3) |
 
+## 12DM. Applications funnel dashboard (`mgmt-024`) — addendum, 2026-10-13
+
+- **Basis:** `DEC-SCOPE-199` (MF1–MF18). Design spec `docs/superpowers/specs/2026-10-13-mgmt-024-applications-funnel-design.md`.
+  No migration. Operational tier only (partner, super_admin); accountant `403` "Operational access required"; other roles `403`
+  "Management access required"; signed out `401`. Read-only: no write, lock or audit row.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/applications` *(new)* | Query (all optional, AND-combined): `date_from`, `date_to` (created, India days), `agency` (org id or `none`), `counselor` (user id or `none`), `country`, `university`, `course`, `staff` (ids), `intake` (≤ 80), `status` (≤ 50). `422` malformed id/date, "Unknown filter value", "The end date must be on or after the start date". `200` `{filters{…applied, string or null}, stages[{key, label, tracked, value}] (11, source order; `value` null for under_review, accepted, cas_coe), withdrawn, options{agencies, counselors, countries, universities, courses, intakes, staff, statuses: [{value, label}]}}`. Counts only; an unknown well-formed id gives zeros |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

@@ -7819,3 +7819,40 @@ page `/management/revenue/abroad`, `lib/management.ts` ("Abroad Education revenu
 `managementAbroadRevenue.test.ts`, `ManagementAbroadRevenue.test.tsx`, `mgmt-006-abroad-revenue.spec.ts`. QA
 `docs/quality/MGMT-006_EXPLORATORY_QA_2026-10-13.md`.
 - **New Feature ID authorized:** `mgmt-006`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-006.
+
+### DEC-SCOPE-199 — Applications funnel dashboard: stage mapping, derived Documents Complete, Staff filter (`mgmt-024`)
+
+**Evidence:** `EVID-017` §20 "Applications dashboard" (the 11-step funnel and the 8 filters, lines 787–849 — `DERIVED_BLUEPRINT`).
+`DEC-SCOPE-186` M9 (map to existing data, "not tracked" otherwise, no workflow change) and M13 (operational tier) — `EXPLICIT_APPROVAL`.
+Backlog Appendix B "Funnels (§20)".
+
+**Status:** MF1–MF18 in review on `feature/mgmt-024` (2026-10-13). Every MF answer is a **recommended default, `UNVERIFIED`**, taken on
+the owner's instruction to proceed with recommended answers.
+
+**Numbering (provisional):** no migration; API §12DM; RBAC §2.124 (after mgmt-006's `DEC-SCOPE-198` / §12DL / §2.123).
+Spec `docs/superpowers/specs/2026-10-13-mgmt-024-applications-funnel-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| MF1 | Population | Every overseas application (student, school-bridged, agency), withdrawn included |
+| MF2 | Period | Optional created-date range in India calendar days; none = all applications; end before start → 422 |
+| MF3 | Cohort | Each stage counts the filtered applications meeting its definition today; stages are not forced monotonic |
+| MF4 | Documents Complete (derived) | ≥ 1 document linked to the application, all `verified`, and no `open` document request for its agency student. Appendix B's "all DocumentRequests for the application verified" cannot be applied literally (requests belong to an agency student and are fulfilled, not verified) |
+| MF5–MF9 | Computed stages | Submitted = `submitted_on` set; Offer = AGN-010's O5 rule; Deposit = deposit `paid` or `remitted` (refunded not counted); Visa = a visa case; Visa Approved = decision `approved`; Enrollment = status `enrolled` |
+| MF10 | Not tracked | Under Review, Accepted, CAS/COE: `null`, shown "Not tracked" |
+| MF11 | Withdrawn | A separate count |
+| MF12 | Filters | Agency (org id or `none`), Counselor (id or `none`), Country, University, Course, Intake, Staff, Status; AND-combined |
+| MF13 | Staff | The `super_admin` / `overseas_admin` / `counselor` who recorded a status change on the application (status history) |
+| MF14 | Values | Malformed → 422; unknown well-formed id → 0; choices only from values present on applications |
+| MF15 | Query | Stage counts in one `SELECT` |
+| MF16 | Access | Operational tier (partner, super_admin); accountant and others 403; signed out 401 |
+| MF17 | Privacy | Counts only; no student names or ids |
+| MF18 | Page | `/management/applications`, URL-held GET filters; "Applications" entry live |
+
+**Consequences:** `services/management_metrics.py` (`FUNNEL`, `applications()`, `application_options()`; reuses
+`application_filters.apply` and `agent_applications.OFFER_COUNTED_STATUSES`); `api/management.py` (`GET /management/applications`);
+`schemas.py` (`ApplicationFunnelOut`). Web `lib/managementApplications.ts`, `components/ManagementApplications.tsx`, page
+`/management/applications`, `lib/management.ts`, `globals.css` (`.funnel-filters`). Tests `test_mgmt_024_applications.py`,
+`managementApplications.test.ts`, `ManagementApplications.test.tsx`, `mgmt-024-applications.spec.ts`. QA
+`docs/quality/MGMT-024_EXPLORATORY_QA_2026-10-13.md`.
+- **New Feature ID authorized:** `mgmt-024`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-024.
