@@ -31,7 +31,7 @@ tier, sees revenue. The page is read-only and stores nothing.
 | RC8 | Revenue | Finance tier only (`can_view_finance`; on this page that is the partner): Σ counted `ledger.lines()` recruitment income over the period, the same total as mgmt-008. For the super admin `revenue_visible` is false, `revenue` is `null`, and the ledger is never queried |
 | RC9 | Company pipeline | Live companies (not archived, not lost), grouped by their current rec-005 stage. Lead = New Lead / Contacted / Interested; Meeting = Meeting Scheduled / Requirement Discussion; Requirement = Requirement Received / JD Received; Candidate = Candidates Sourcing / Profiles Shared; Interview, Selection and Joining = their own stages. Requirement Closed companies and lost companies are listed under the steps. All are counted now |
 | RC10 | Access | Operational tier (`partner`, `super_admin`). The accountant and every other role get `403` ("Operational access required" for the accountant, "Management access required" for the rest); a signed-out caller gets `401` |
-| RC11 | Navigation | Command Center: the Students "Recruitment" entry goes live (`/management/recruitment`), and People "Recruiters" links to `/management/recruitment#recruitment-kpis`. The super admin's sidebar gets "Management recruitment figures" |
+| RC11 | Navigation | Command Center: the Students "Recruitment" entry goes live (`/management/recruitment`), and People "Recruiters" links to `/management/recruitment#recruitment-kpis` and Partnerships "Companies" to `/management/recruitment#company-pipeline`. The super admin's sidebar gets "Management recruitment figures" |
 | RC12 | Data exposure | Counts only: no names, no per-recruiter rows. Revenue follows RC8 |
 
 ## 3. API
