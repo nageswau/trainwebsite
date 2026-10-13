@@ -1,0 +1,4107 @@
+[
+  {
+    "name": "APAC Institutions",
+    "country_iso2": "AU",
+    "city": "Sydney Campus",
+    "campuses": [
+      "Sydney Campus"
+    ],
+    "institution_type": "institute",
+    "website": null,
+    "overview": "APAC Institutions — direct tie-up partner in Sydney Campus, Australia.\nApplication portal: APAC: Australian Performing Arts Conservatory",
+    "fee_structure": "• India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total\n• APAC Regional Programs: $8,000 – $12,000 / year",
+    "deadlines": [
+      "Jan Intake: Late November",
+      "May Intake: Mid-April",
+      "Sep Intake: Mid-August"
+    ],
+    "scholarships": [
+      "APAC Leadership Bursaries (20% – 40% tuition waiver)",
+      "Merit-based academic performance discounts"
+    ],
+    "agent_commission": {
+      "percent": "16.00",
+      "note": "0.16"
+    },
+    "courses": [
+      {
+        "title": "BSc (Hons) Computer Science & AI",
+        "level": "UG",
+        "category": "Computing & IT",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total; APAC Regional Programs: $8,000 – $12,000 / year",
+        "tuition_amount": "3500000.00",
+        "tuition_currency": "INR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "Bachelor of Business & Enterprise",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total; APAC Regional Programs: $8,000 – $12,000 / year",
+        "tuition_amount": "3500000.00",
+        "tuition_currency": "INR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "Diploma in Information Technology",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total; APAC Regional Programs: $8,000 – $12,000 / year",
+        "tuition_amount": "3500000.00",
+        "tuition_currency": "INR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "International Foundation Programs",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total; APAC Regional Programs: $8,000 – $12,000 / year",
+        "tuition_amount": "3500000.00",
+        "tuition_currency": "INR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "Master of Business Administration (MBA)",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total; APAC Regional Programs: $8,000 – $12,000 / year",
+        "tuition_amount": "3500000.00",
+        "tuition_currency": "INR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Information Technology Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total; APAC Regional Programs: $8,000 – $12,000 / year",
+        "tuition_amount": "3500000.00",
+        "tuition_currency": "INR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Global Healthcare Leadership",
+        "level": "PG",
+        "category": "Health",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total; APAC Regional Programs: $8,000 – $12,000 / year",
+        "tuition_amount": "3500000.00",
+        "tuition_currency": "INR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "Post-Graduate Diplomas in Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total; APAC Regional Programs: $8,000 – $12,000 / year",
+        "tuition_amount": "3500000.00",
+        "tuition_currency": "INR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "link 'APAC: Australian Performing Arts Conservatory' is not a URL; kept in the overview as 'Application portal'",
+      "institution_type 'institute' inferred from the name",
+      "fee block has no UG/PG labels; applied to every course",
+      "category inferred from title keywords for 8 courses",
+      "category 'General' (no keyword) for: Diploma in Information Technology; International Foundation Programs",
+      "duration 'Not specified' for 8 of 8 courses",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A52",
+    "logo_url": null
+  },
+  {
+    "name": "Aston University Birmingham",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "university",
+    "website": null,
+    "overview": "Aston University Birmingham — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [],
+    "agent_commission": {
+      "percent": "16.00",
+      "note": "0.16"
+    },
+    "courses": [],
+    "flags": [
+      "city defaulted to the capital London (no campus named)",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "iu!A4",
+    "logo_url": null
+  },
+  {
+    "name": "Avila University - Arizona Campus",
+    "country_iso2": "US",
+    "city": "Washington",
+    "campuses": [],
+    "institution_type": "university",
+    "website": "https://arizona.avila.edu/",
+    "overview": "Avila University - Arizona Campus — direct tie-up partner in Washington, United States.",
+    "fee_structure": "• UG Tuition: ~$21,000 – $24,000 / year\n• PG Tuition: ~$14,000 – $18,000 total program\n• I-20 / CAS Deposit: $500 – $1,000",
+    "deadlines": [
+      "Spring Intake: Mid-October",
+      "Fall Intake: Mid-June",
+      "(Recommended 10-12 weeks prior for US Visa processing)"
+    ],
+    "scholarships": [
+      "International Student Merit Award: Up to $5,000 – $10,000/yr (UG)",
+      "PG Merit Bursary: Up to $2,000 – $4,000 tuition discount"
+    ],
+    "agent_commission": {
+      "percent": "16.00",
+      "note": "0.16"
+    },
+    "courses": [
+      {
+        "title": "BS in Business Administration",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "~$21,000 – $24,000 / year",
+        "tuition_amount": "21000.00",
+        "tuition_currency": "USD",
+        "intakes": [
+          "Jan",
+          "Aug"
+        ],
+        "intake_text": "Spring Intake (January); Fall Intake (August)",
+        "scholarships": []
+      },
+      {
+        "title": "BS in Computer Science",
+        "level": "UG",
+        "category": "Computing & IT",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "~$21,000 – $24,000 / year",
+        "tuition_amount": "21000.00",
+        "tuition_currency": "USD",
+        "intakes": [
+          "Jan",
+          "Aug"
+        ],
+        "intake_text": "Spring Intake (January); Fall Intake (August)",
+        "scholarships": []
+      },
+      {
+        "title": "BS in Software Engineering / Tech Mgmt",
+        "level": "UG",
+        "category": "Engineering",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "~$21,000 – $24,000 / year",
+        "tuition_amount": "21000.00",
+        "tuition_currency": "USD",
+        "intakes": [
+          "Jan",
+          "Aug"
+        ],
+        "intake_text": "Spring Intake (January); Fall Intake (August)",
+        "scholarships": []
+      },
+      {
+        "title": "BS in Psychology",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "~$21,000 – $24,000 / year",
+        "tuition_amount": "21000.00",
+        "tuition_currency": "USD",
+        "intakes": [
+          "Jan",
+          "Aug"
+        ],
+        "intake_text": "Spring Intake (January); Fall Intake (August)",
+        "scholarships": []
+      },
+      {
+        "title": "BA in Communication",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "~$21,000 – $24,000 / year",
+        "tuition_amount": "21000.00",
+        "tuition_currency": "USD",
+        "intakes": [
+          "Jan",
+          "Aug"
+        ],
+        "intake_text": "Spring Intake (January); Fall Intake (August)",
+        "scholarships": []
+      },
+      {
+        "title": "Master of Business Administration (MBA)",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "~$14,000 – $18,000 total program",
+        "tuition_amount": "14000.00",
+        "tuition_currency": "USD",
+        "intakes": [
+          "Jan",
+          "Aug"
+        ],
+        "intake_text": "Spring Intake (January); Fall Intake (August)",
+        "scholarships": []
+      },
+      {
+        "title": "MS in Organizational Leadership",
+        "level": "PG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "~$14,000 – $18,000 total program",
+        "tuition_amount": "14000.00",
+        "tuition_currency": "USD",
+        "intakes": [
+          "Jan",
+          "Aug"
+        ],
+        "intake_text": "Spring Intake (January); Fall Intake (August)",
+        "scholarships": []
+      },
+      {
+        "title": "MS in Computer Science / IT Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "~$14,000 – $18,000 total program",
+        "tuition_amount": "14000.00",
+        "tuition_currency": "USD",
+        "intakes": [
+          "Jan",
+          "Aug"
+        ],
+        "intake_text": "Spring Intake (January); Fall Intake (August)",
+        "scholarships": []
+      },
+      {
+        "title": "MS in Psychology / Counseling",
+        "level": "PG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "~$14,000 – $18,000 total program",
+        "tuition_amount": "14000.00",
+        "tuition_currency": "USD",
+        "intakes": [
+          "Jan",
+          "Aug"
+        ],
+        "intake_text": "Spring Intake (January); Fall Intake (August)",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "city defaulted to the capital Washington (no campus named)",
+      "category inferred from title keywords for 9 courses",
+      "category 'General' (no keyword) for: BS in Psychology; BA in Communication; MS in Organizational Leadership; MS in Psychology / Counseling",
+      "duration 'Not specified' for 9 of 9 courses",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A45",
+    "logo_url": null
+  },
+  {
+    "name": "Bangor University",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "university",
+    "website": null,
+    "overview": "Bangor University — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [],
+    "agent_commission": {
+      "percent": "13.00",
+      "note": "0.13"
+    },
+    "courses": [],
+    "flags": [
+      "city defaulted to the capital London (no campus named)",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "iu!A12",
+    "logo_url": null
+  },
+  {
+    "name": "Berlin School of Business and Innovation - BSBI",
+    "country_iso2": "DE",
+    "city": "Berlin",
+    "campuses": [],
+    "institution_type": "institute",
+    "website": "https://www.berlinsbi.com/",
+    "overview": "Berlin School of Business and Innovation - BSBI — direct tie-up partner in Berlin, Germany.",
+    "fee_structure": "• UG Tuition: €9,000 – €11,000 / year\n• PG Tuition (18 Months): €12,600 – €13,500 total\n• Deposit: Deposit payment for visa release",
+    "deadlines": [
+      "Jan Intake: Late November",
+      "May Intake: Late March",
+      "Oct Intake: End of July"
+    ],
+    "scholarships": [
+      "International Student Scholarship: 20% – 40% fee reduction",
+      "Early Bird Discount: Up to €2,000 off total tuition for early payments"
+    ],
+    "agent_commission": {
+      "percent": "16.00",
+      "note": "0.16"
+    },
+    "courses": [
+      {
+        "title": "BA (Hons) Business Management",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€9,000 – €11,000 / year",
+        "tuition_amount": "9000.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Oct"
+        ],
+        "intake_text": "Spring Intake (Jan/Feb); Summer Intake (May/Jun); Autumn Intake (October)",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Computer Science & Digital Tech",
+        "level": "UG",
+        "category": "Computing & IT",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€9,000 – €11,000 / year",
+        "tuition_amount": "9000.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Oct"
+        ],
+        "intake_text": "Spring Intake (Jan/Feb); Summer Intake (May/Jun); Autumn Intake (October)",
+        "scholarships": []
+      },
+      {
+        "title": "BA (Hons) Game Design",
+        "level": "UG",
+        "category": "Creative Arts",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€9,000 – €11,000 / year",
+        "tuition_amount": "9000.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Oct"
+        ],
+        "intake_text": "Spring Intake (Jan/Feb); Summer Intake (May/Jun); Autumn Intake (October)",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Psychology",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€9,000 – €11,000 / year",
+        "tuition_amount": "9000.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Oct"
+        ],
+        "intake_text": "Spring Intake (Jan/Feb); Summer Intake (May/Jun); Autumn Intake (October)",
+        "scholarships": []
+      },
+      {
+        "title": "Global MBA / Executive MBA",
+        "level": "PG",
+        "category": "Business",
+        "duration": "18 months",
+        "campus": null,
+        "fee_text": "€12,600 – €13,500 total",
+        "tuition_amount": "12600.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Oct"
+        ],
+        "intake_text": "Spring Intake (Jan/Feb); Summer Intake (May/Jun); Autumn Intake (October)",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Engineering Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "18 months",
+        "campus": null,
+        "fee_text": "€12,600 – €13,500 total",
+        "tuition_amount": "12600.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Oct"
+        ],
+        "intake_text": "Spring Intake (Jan/Feb); Summer Intake (May/Jun); Autumn Intake (October)",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Digital Marketing & AI",
+        "level": "PG",
+        "category": "Computing & IT",
+        "duration": "18 months",
+        "campus": null,
+        "fee_text": "€12,600 – €13,500 total",
+        "tuition_amount": "12600.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Oct"
+        ],
+        "intake_text": "Spring Intake (Jan/Feb); Summer Intake (May/Jun); Autumn Intake (October)",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Data Analytics",
+        "level": "PG",
+        "category": "Computing & IT",
+        "duration": "18 months",
+        "campus": null,
+        "fee_text": "€12,600 – €13,500 total",
+        "tuition_amount": "12600.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Oct"
+        ],
+        "intake_text": "Spring Intake (Jan/Feb); Summer Intake (May/Jun); Autumn Intake (October)",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Finance & Investment",
+        "level": "PG",
+        "category": "Finance",
+        "duration": "18 months",
+        "campus": null,
+        "fee_text": "€12,600 – €13,500 total",
+        "tuition_amount": "12600.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Oct"
+        ],
+        "intake_text": "Spring Intake (Jan/Feb); Summer Intake (May/Jun); Autumn Intake (October)",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "country DE inferred from the name (destination empty)",
+      "city defaulted to the capital Berlin (no campus named)",
+      "institution_type 'institute' inferred from the name",
+      "duration '18 months' for PG courses from the fee label 'PG Tuition (18 Months)'",
+      "category inferred from title keywords for 9 courses",
+      "category 'General' (no keyword) for: BSc (Hons) Psychology",
+      "duration 'Not specified' for 4 of 9 courses",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A46",
+    "logo_url": null
+  },
+  {
+    "name": "BIGS",
+    "country_iso2": "AE",
+    "city": "Dubai",
+    "campuses": [
+      "Dubai"
+    ],
+    "institution_type": "institute",
+    "website": "https://www.brookstone.ae/",
+    "overview": "BIGS — direct tie-up partner in Dubai, United Arab Emirates.",
+    "fee_structure": "AED 85,200",
+    "deadlines": [
+      "for Jan 2027 , deadline is till dec 3rd week"
+    ],
+    "scholarships": [
+      "25% tuition scholarship"
+    ],
+    "agent_commission": {
+      "amount": "150000.00",
+      "currency": "INR",
+      "note": "1,50,000 INR flat"
+    },
+    "courses": [
+      {
+        "title": "Global Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "AED 85,200",
+        "tuition_amount": null,
+        "tuition_currency": null,
+        "intakes": [
+          "Jan",
+          "Mar",
+          "May"
+        ],
+        "intake_text": "Jan 2027,March 2027,May 2027",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "commission '1,50,000 INR flat' read as 150000.00 INR",
+      "scholarship 0.25 read as '25% tuition scholarship'",
+      "institution_type 'institute' inferred from the name",
+      "fee block has no UG/PG labels; applied to every course",
+      "category inferred from title keywords for 1 courses",
+      "duration 'Not specified' for 1 of 1 courses",
+      "tuition amount not set (currency not in the course master list): AED 85,200",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A62",
+    "logo_url": null
+  },
+  {
+    "name": "BPP Australia",
+    "country_iso2": "AU",
+    "city": "Melbourne Campus",
+    "campuses": [
+      "Melbourne Campus"
+    ],
+    "institution_type": "university",
+    "website": "https://www.bppinstitute.com/",
+    "overview": "BPP Australia — direct tie-up partner in Melbourne Campus, Australia.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [
+      "10% to 20% off total tuition"
+    ],
+    "agent_commission": null,
+    "courses": [
+      {
+        "title": "Bachelor of Business (Accounting)",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "A$60,000 total",
+        "tuition_amount": "60000.00",
+        "tuition_currency": "AUD",
+        "intakes": [
+          "Mar",
+          "May",
+          "Aug",
+          "Oct"
+        ],
+        "intake_text": "March,May,August,October",
+        "scholarships": []
+      },
+      {
+        "title": "Master of Business Administration (MBA)",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": null,
+        "tuition_amount": null,
+        "tuition_currency": null,
+        "intakes": [
+          "Mar",
+          "May",
+          "Aug",
+          "Oct"
+        ],
+        "intake_text": "March,May,August,October",
+        "scholarships": []
+      },
+      {
+        "title": "Bachelor of Business (Management)",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "A$60,000 total",
+        "tuition_amount": "60000.00",
+        "tuition_currency": "AUD",
+        "intakes": [
+          "Mar",
+          "May",
+          "Aug",
+          "Oct"
+        ],
+        "intake_text": "March,May,August,October",
+        "scholarships": []
+      },
+      {
+        "title": "Master of Business",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": null,
+        "tuition_amount": null,
+        "tuition_currency": null,
+        "intakes": [
+          "Mar",
+          "May",
+          "Aug",
+          "Oct"
+        ],
+        "intake_text": "March,May,August,October",
+        "scholarships": []
+      },
+      {
+        "title": "Bachelor of Business (Marketing)",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "A$60,000 total",
+        "tuition_amount": "60000.00",
+        "tuition_currency": "AUD",
+        "intakes": [
+          "Mar",
+          "May",
+          "Aug",
+          "Oct"
+        ],
+        "intake_text": "March,May,August,October",
+        "scholarships": []
+      },
+      {
+        "title": "Master of Management Information Systems",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": null,
+        "tuition_amount": null,
+        "tuition_currency": null,
+        "intakes": [
+          "Mar",
+          "May",
+          "Aug",
+          "Oct"
+        ],
+        "intake_text": "March,May,August,October",
+        "scholarships": []
+      },
+      {
+        "title": "Graduate Diploma of Business",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": null,
+        "tuition_amount": null,
+        "tuition_currency": null,
+        "intakes": [
+          "Mar",
+          "May",
+          "Aug",
+          "Oct"
+        ],
+        "intake_text": "March,May,August,October",
+        "scholarships": []
+      },
+      {
+        "title": "Graduate Diploma of Management Information Systems",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": null,
+        "tuition_amount": null,
+        "tuition_currency": null,
+        "intakes": [
+          "Mar",
+          "May",
+          "Aug",
+          "Oct"
+        ],
+        "intake_text": "March,May,August,October",
+        "scholarships": []
+      },
+      {
+        "title": "Graduate Certificate of Business",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": null,
+        "tuition_amount": null,
+        "tuition_currency": null,
+        "intakes": [
+          "Mar",
+          "May",
+          "Aug",
+          "Oct"
+        ],
+        "intake_text": "March,May,August,October",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "institution_type 'university' by default (no keyword in the name)",
+      "category inferred from title keywords for 9 courses",
+      "duration 'Not specified' for 9 of 9 courses",
+      "no fee in the sheet for 6 of 9 courses",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A64",
+    "logo_url": null
+  },
+  {
+    "name": "BPP University",
+    "country_iso2": "GB",
+    "city": "London Campus",
+    "campuses": [
+      "London Campus",
+      "Birmingham",
+      "Bristol",
+      "Cambridge",
+      "Leeds",
+      "Manchester",
+      "Newcastle",
+      "Nottingham",
+      "Reading"
+    ],
+    "institution_type": "university",
+    "website": "https://www.bpp.com/",
+    "overview": "BPP University — direct tie-up partner in London Campus, United Kingdom.",
+    "fee_structure": "• UG: £11,000 – £13,366 / year\n• PG (12 Mo): £18,600 – £19,000 total\n• PG (18 Mo PDP): £22,000 – £23,000 total\n• Deposit: 60% of 1st year fee for CAS",
+    "deadlines": [
+      "Jan Intake: Mid-November",
+      "May Intake: Mid-March",
+      "Sep Intake: Mid-July",
+      "(Recommended 8–10 weeks prior to start date)"
+    ],
+    "scholarships": [
+      "International PG Bursary: £1,000 – £1,500 (Automatic evaluation for strong academics)",
+      "Dean's / Merit Scholarship: £2,000 – £3,000 (Based on profile & interview)"
+    ],
+    "agent_commission": null,
+    "courses": [
+      {
+        "title": "BSc (Hons) Accounting and Finance",
+        "level": "UG",
+        "category": "Finance",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£11,000 – £13,366 / year",
+        "tuition_amount": "11000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Applied Management",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£11,000 – £13,366 / year",
+        "tuition_amount": "11000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Transformational Leadership",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£11,000 – £13,366 / year",
+        "tuition_amount": "11000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Nursing (Adult / Mental Health)",
+        "level": "UG",
+        "category": "Health",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£11,000 – £13,366 / year",
+        "tuition_amount": "11000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "Master's in Business Administration (MBA)",
+        "level": "PG",
+        "category": "Business",
+        "duration": "12 months",
+        "campus": null,
+        "fee_text": "£18,600 – £19,000 total",
+        "tuition_amount": "18600.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Management with AI",
+        "level": "PG",
+        "category": "Business",
+        "duration": "12 months",
+        "campus": null,
+        "fee_text": "£18,600 – £19,000 total",
+        "tuition_amount": "18600.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Management with Digital Marketing & AI",
+        "level": "PG",
+        "category": "Business",
+        "duration": "12 months",
+        "campus": null,
+        "fee_text": "£18,600 – £19,000 total",
+        "tuition_amount": "18600.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Engineering Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "12 months",
+        "campus": null,
+        "fee_text": "£18,600 – £19,000 total",
+        "tuition_amount": "18600.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Technology Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "12 months",
+        "campus": null,
+        "fee_text": "£18,600 – £19,000 total",
+        "tuition_amount": "18600.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Healthcare Leadership & Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "12 months",
+        "campus": null,
+        "fee_text": "£18,600 – £19,000 total",
+        "tuition_amount": "18600.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Accounting and Finance",
+        "level": "PG",
+        "category": "Finance",
+        "duration": "12 months",
+        "campus": null,
+        "fee_text": "£18,600 – £19,000 total",
+        "tuition_amount": "18600.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "LLM / BTC / SQE Routes",
+        "level": "PG",
+        "category": "General",
+        "duration": "12 months",
+        "campus": null,
+        "fee_text": "£18,600 – £19,000 total",
+        "tuition_amount": "18600.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "fee block has 2 PG lines; the first (PG (12 Mo): …) applies to PG courses",
+      "duration '12 months' for PG courses from the fee label 'PG (12 Mo)'",
+      "category inferred from title keywords for 12 courses",
+      "category 'General' (no keyword) for: BSc (Hons) Transformational Leadership; LLM / BTC / SQE Routes",
+      "duration 'Not specified' for 4 of 12 courses",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A37",
+    "logo_url": null
+  },
+  {
+    "name": "Coventry University",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "university",
+    "website": null,
+    "overview": "Coventry University — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [],
+    "agent_commission": null,
+    "courses": [],
+    "flags": [
+      "country GB from the uc sheet (it has no destination column)",
+      "city defaulted to the capital London (no campus named)",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "uc!A1",
+    "logo_url": null
+  },
+  {
+    "name": "Ecole de Management Appliqué",
+    "country_iso2": "FR",
+    "city": "EMA Paris campus",
+    "campuses": [
+      "EMA Paris campus"
+    ],
+    "institution_type": "institute",
+    "website": "https://gedu.global/",
+    "overview": "Ecole de Management Appliqué — direct tie-up partner in EMA Paris campus, France.\nName in the sheet: Ecole de Management Appliqué (France)",
+    "fee_structure": "• UG: €7,500 – €9,000 / year\n• PG: €9,500 – €12,500 total program fee",
+    "deadlines": [
+      "Feb Intake: Mid-December",
+      "Sep Intake: End of July"
+    ],
+    "scholarships": [
+      "European Cultural & Merit Scholarship (€1,500 – €3,000)",
+      "Early Enrolment Waiver"
+    ],
+    "agent_commission": {
+      "percent": "16.00",
+      "note": "0.16"
+    },
+    "courses": [
+      {
+        "title": "Bachelor in International Business & Management",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€7,500 – €9,000 / year",
+        "tuition_amount": "7500.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "Bachelor in Digital Marketing & Luxury Brand Mgmt",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€7,500 – €9,000 / year",
+        "tuition_amount": "7500.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "Master in Management & Digital Transformation",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€9,500 – €12,500 total program fee",
+        "tuition_amount": "9500.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MBA Luxury Brand & Fashion Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€9,500 – €12,500 total program fee",
+        "tuition_amount": "9500.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MBA International Business",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€9,500 – €12,500 total program fee",
+        "tuition_amount": "9500.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "February; September / October",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "name: '(France)' on a second line moved to the overview",
+      "institution_type 'institute' inferred from the name",
+      "category inferred from title keywords for 5 courses",
+      "category 'General' (no keyword) for: Bachelor in Digital Marketing & Luxury Brand Mgmt",
+      "duration 'Not specified' for 5 of 5 courses",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A58",
+    "logo_url": null
+  },
+  {
+    "name": "GBS Dubai",
+    "country_iso2": "AE",
+    "city": "Dubai",
+    "campuses": [
+      "Dubai"
+    ],
+    "institution_type": "institute",
+    "website": "https://gedu.global/",
+    "overview": "GBS Dubai — direct tie-up partner in Dubai, United Arab Emirates.\nName in the sheet: GBS Dubai (UAE)",
+    "fee_structure": "• UG: AED 35,000 – AED 42,000 / year\n• PG: AED 40,000 – AED 52,000 total program fee",
+    "deadlines": [
+      "Rolling Admissions",
+      "Recommended 4–6 weeks prior to intake"
+    ],
+    "scholarships": [
+      "GEDU Dubai Entry Grants: AED 5,000 – AED 10,000",
+      "Early Registration & Merit Scholarships (Up to 25%)"
+    ],
+    "agent_commission": {
+      "percent": "16.00",
+      "note": "0.16"
+    },
+    "courses": [
+      {
+        "title": "BSc (Hons) Business Administration",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "AED 35,000 – AED 42,000 / year",
+        "tuition_amount": null,
+        "tuition_currency": null,
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Computer Science & AI",
+        "level": "UG",
+        "category": "Computing & IT",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "AED 35,000 – AED 42,000 / year",
+        "tuition_amount": null,
+        "tuition_currency": null,
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "Higher National Diplomas (HND)",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "AED 35,000 – AED 42,000 / year",
+        "tuition_amount": null,
+        "tuition_currency": null,
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc International Business",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "AED 40,000 – AED 52,000 total program fee",
+        "tuition_amount": null,
+        "tuition_currency": null,
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Project Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "AED 40,000 – AED 52,000 total program fee",
+        "tuition_amount": null,
+        "tuition_currency": null,
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "Global MBA",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "AED 40,000 – AED 52,000 total program fee",
+        "tuition_amount": null,
+        "tuition_currency": null,
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "name: '(UAE)' on a second line moved to the overview",
+      "institution_type 'institute' inferred from the name",
+      "category inferred from title keywords for 6 courses",
+      "category 'General' (no keyword) for: Higher National Diplomas (HND)",
+      "duration 'Not specified' for 6 of 6 courses",
+      "tuition amount not set (currency not in the course master list): AED 35,000 – AED 42,000 / year; AED 40,000 – AED 52,000 total program fee",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A55",
+    "logo_url": null
+  },
+  {
+    "name": "GBS Malta",
+    "country_iso2": "MT",
+    "city": "St. Julian's",
+    "campuses": [
+      "St. Julian's"
+    ],
+    "institution_type": "institute",
+    "website": "https://gedu.global/",
+    "overview": "GBS Malta — direct tie-up partner in St. Julian's, Malta.",
+    "fee_structure": "• UG: €6,000 – €7,500 / year\n• PG: €7,500 – €9,500 total program fee",
+    "deadlines": [
+      "Feb Intake: Mid-December",
+      "May Intake: Late March",
+      "Oct Intake: Mid-August"
+    ],
+    "scholarships": [
+      "Mediterranean Regional Bursary (€1,000 – €2,000 discount)",
+      "Early Payment Concessions"
+    ],
+    "agent_commission": {
+      "percent": "16.00",
+      "note": "0.16"
+    },
+    "courses": [
+      {
+        "title": "BA (Hons) Business & Management",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€6,000 – €7,500 / year",
+        "tuition_amount": "6000.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Feb",
+          "May",
+          "Oct"
+        ],
+        "intake_text": "February; May; October",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Information Technology",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€6,000 – €7,500 / year",
+        "tuition_amount": "6000.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Feb",
+          "May",
+          "Oct"
+        ],
+        "intake_text": "February; May; October",
+        "scholarships": []
+      },
+      {
+        "title": "Undergraduate Diplomas",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€6,000 – €7,500 / year",
+        "tuition_amount": "6000.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Feb",
+          "May",
+          "Oct"
+        ],
+        "intake_text": "February; May; October",
+        "scholarships": []
+      },
+      {
+        "title": "MA Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€7,500 – €9,500 total program fee",
+        "tuition_amount": "7500.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Feb",
+          "May",
+          "Oct"
+        ],
+        "intake_text": "February; May; October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Information Technology",
+        "level": "PG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€7,500 – €9,500 total program fee",
+        "tuition_amount": "7500.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Feb",
+          "May",
+          "Oct"
+        ],
+        "intake_text": "February; May; October",
+        "scholarships": []
+      },
+      {
+        "title": "Master of Business Administration (MBA)",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€7,500 – €9,500 total program fee",
+        "tuition_amount": "7500.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Feb",
+          "May",
+          "Oct"
+        ],
+        "intake_text": "February; May; October",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "institution_type 'institute' inferred from the name",
+      "category inferred from title keywords for 6 courses",
+      "category 'General' (no keyword) for: BSc (Hons) Information Technology; Undergraduate Diplomas; MSc Information Technology",
+      "duration 'Not specified' for 6 of 6 courses",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A56",
+    "logo_url": null
+  },
+  {
+    "name": "Global Banking School (GBS) UK",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [
+      "London",
+      "Birmingham",
+      "Manchester",
+      "Leeds campus"
+    ],
+    "institution_type": "institute",
+    "website": "https://gedu.global/",
+    "overview": "Global Banking School (GBS) UK — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": "• UG: £9,250 – £12,500 / year\n• PG: £11,500 – £14,000 total course fee",
+    "deadlines": [
+      "Jan Intake: Late November",
+      "May Intake: Late March",
+      "Sep Intake: Mid-July"
+    ],
+    "scholarships": [
+      "GEDU Regional Bursary: £1,000 – £2,500 fee waiver",
+      "Academic Merit Discounts"
+    ],
+    "agent_commission": {
+      "percent": "16.00",
+      "note": "0.16"
+    },
+    "courses": [
+      {
+        "title": "BSc (Hons) Business and Management",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£9,250 – £12,500 / year",
+        "tuition_amount": "9250.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Digital Banking & Finance",
+        "level": "UG",
+        "category": "Finance",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£9,250 – £12,500 / year",
+        "tuition_amount": "9250.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Computing & IT",
+        "level": "UG",
+        "category": "Computing & IT",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£9,250 – £12,500 / year",
+        "tuition_amount": "9250.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "BA (Hons) Global Healthcare Management",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£9,250 – £12,500 / year",
+        "tuition_amount": "9250.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc International Business",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£11,500 – £14,000 total course fee",
+        "tuition_amount": "11500.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Global Healthcare Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£11,500 – £14,000 total course fee",
+        "tuition_amount": "11500.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Financial Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£11,500 – £14,000 total course fee",
+        "tuition_amount": "11500.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MBA Leadership",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£11,500 – £14,000 total course fee",
+        "tuition_amount": "11500.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "May",
+          "Jun",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; May / June; September / October",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "institution_type 'institute' inferred from the name",
+      "category inferred from title keywords for 8 courses",
+      "duration 'Not specified' for 8 of 8 courses",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A54",
+    "logo_url": null
+  },
+  {
+    "name": "Health Sciences University (HSU)",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "university",
+    "website": null,
+    "overview": "Health Sciences University (HSU) — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": "• UG: £14,000 – £16,000 / year\n• PG: £15,000 – £18,500 total",
+    "deadlines": [
+      "Sep Intake: End of July"
+    ],
+    "scholarships": [
+      "Merit-based bursaries and clinical pathway grants available upon evaluation"
+    ],
+    "agent_commission": null,
+    "courses": [
+      {
+        "title": "BSc (Hons) Chiropractic",
+        "level": "UG",
+        "category": "Health",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£14,000 – £16,000 / year",
+        "tuition_amount": "14000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "September / October",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Sports & Exercise Science",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£14,000 – £16,000 / year",
+        "tuition_amount": "14000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "September / October",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Radiography",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£14,000 – £16,000 / year",
+        "tuition_amount": "14000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Chiropractic",
+        "level": "PG",
+        "category": "Health",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£15,000 – £18,500 total",
+        "tuition_amount": "15000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Physiotherapy (Pre-registration)",
+        "level": "PG",
+        "category": "Health",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£15,000 – £18,500 total",
+        "tuition_amount": "15000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Sports Rehabilitation",
+        "level": "PG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£15,000 – £18,500 total",
+        "tuition_amount": "15000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "September / October",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "city defaulted to the capital London (no campus named)",
+      "category inferred from title keywords for 6 courses",
+      "category 'General' (no keyword) for: BSc (Hons) Sports & Exercise Science; BSc (Hons) Radiography; MSc Sports Rehabilitation",
+      "duration 'Not specified' for 6 of 6 courses",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A40",
+    "logo_url": null
+  },
+  {
+    "name": "ICN Business School",
+    "country_iso2": "FR",
+    "city": "Paris",
+    "campuses": [
+      "Paris",
+      "Berlin",
+      "Nancy"
+    ],
+    "institution_type": "institute",
+    "website": null,
+    "overview": "ICN Business School — direct tie-up partner in Paris, France.\nApplication portal: Candidats - ICN",
+    "fee_structure": "• UG: €9,000 – €10,200 / year\n• PG: €14,500 – €15,000 total program fee",
+    "deadlines": [
+      "For jan 2027,UG deadline :13th october PG Deadline :13th Nov"
+    ],
+    "scholarships": [
+      "Global Talent Scholarship :up to 15% discount for Undergraduate programs and up to 20% for Master programs",
+      "Ambition Scholarship 10% fee reduction"
+    ],
+    "agent_commission": {
+      "percent": "16.00",
+      "note": "0.16"
+    },
+    "courses": [
+      {
+        "title": "Bachelor in Management (BBA)",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€9,000 – €10,200 / year",
+        "tuition_amount": "9000.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "Bachelor in Tech & Design Management",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€9,000 – €10,200 / year",
+        "tuition_amount": "9000.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "Undergraduate Double Degrees IBBA",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€9,000 – €10,200 / year",
+        "tuition_amount": "9000.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "Master in Management (MIM - Grande École)",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€14,500 – €15,000 total program fee",
+        "tuition_amount": "14500.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc International Business Development",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€14,500 – €15,000 total program fee",
+        "tuition_amount": "14500.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Luxury & Design Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€14,500 – €15,000 total program fee",
+        "tuition_amount": "14500.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Digital Finance & Fintech",
+        "level": "PG",
+        "category": "Finance",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "€14,500 – €15,000 total program fee",
+        "tuition_amount": "14500.00",
+        "tuition_currency": "EUR",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; September / October",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "link 'Candidats - ICN' is not a URL; kept in the overview as 'Application portal'",
+      "institution_type 'institute' inferred from the name",
+      "category inferred from title keywords for 7 courses",
+      "category 'General' (no keyword) for: Undergraduate Double Degrees IBBA",
+      "duration 'Not specified' for 7 of 7 courses",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A51",
+    "logo_url": null
+  },
+  {
+    "name": "Leads Trinity University",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "university",
+    "website": null,
+    "overview": "Leads Trinity University — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [],
+    "agent_commission": {
+      "percent": "14.00",
+      "note": "0.14"
+    },
+    "courses": [],
+    "flags": [
+      "city defaulted to the capital London (no campus named)",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "iu!A6",
+    "logo_url": null
+  },
+  {
+    "name": "MLA College",
+    "country_iso2": "GB",
+    "city": "Plymouth",
+    "campuses": [
+      "Plymouth"
+    ],
+    "institution_type": "institute",
+    "website": "https://gedu.global/",
+    "overview": "MLA College — direct tie-up partner in Plymouth, United Kingdom.\nName in the sheet: MLA College (UK / Online Maritime & Engineering)",
+    "fee_structure": "• UG: £6,500 – £8,500 / year\n• PG: £8,000 – £10,500 total program fee",
+    "deadlines": [
+      "Rolling admissions (up to 3 weeks before start date)"
+    ],
+    "scholarships": [
+      "Maritime Partner Sponsorships",
+      "GEDU Online Learning Grants (Up to 20%)"
+    ],
+    "agent_commission": {
+      "percent": "16.00",
+      "note": "0.16"
+    },
+    "courses": [
+      {
+        "title": "BSc (Hons) Sustainable Maritime Operations",
+        "level": "UG",
+        "category": "Engineering",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£6,500 – £8,500 / year",
+        "tuition_amount": "6500.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "May",
+          "Sep"
+        ],
+        "intake_text": "January; May; September",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Marine Engineering & Technology",
+        "level": "UG",
+        "category": "Engineering",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£6,500 – £8,500 / year",
+        "tuition_amount": "6500.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "May",
+          "Sep"
+        ],
+        "intake_text": "January; May; September",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Sustainable Maritime Operations",
+        "level": "PG",
+        "category": "Engineering",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£8,000 – £10,500 total program fee",
+        "tuition_amount": "8000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "May",
+          "Sep"
+        ],
+        "intake_text": "January; May; September",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Engineering for Marine Professionals",
+        "level": "PG",
+        "category": "Engineering",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£8,000 – £10,500 total program fee",
+        "tuition_amount": "8000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "May",
+          "Sep"
+        ],
+        "intake_text": "January; May; September",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Project Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£8,000 – £10,500 total program fee",
+        "tuition_amount": "8000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "May",
+          "Sep"
+        ],
+        "intake_text": "January; May; September",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "name: '(UK / Online Maritime & Engineering)' on a second line moved to the overview",
+      "institution_type 'institute' inferred from the name",
+      "category inferred from title keywords for 5 courses",
+      "duration 'Not specified' for 5 of 5 courses",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A57",
+    "logo_url": null
+  },
+  {
+    "name": "OIEG Pathway Programs (Oxford International)",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "institute",
+    "website": null,
+    "overview": "OIEG Pathway Programs (Oxford International) — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": "• Pathway Programs: £12,500 – £15,000 total depending on stream and location",
+    "deadlines": [
+      "Rolling admissions (30–45 days prior to intake start date)"
+    ],
+    "scholarships": [
+      "Progression Scholarships: £1,000 – £2,000 for high-performing pathway graduates"
+    ],
+    "agent_commission": null,
+    "courses": [
+      {
+        "title": "International Foundation Year",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "Pathway Programs: £12,500 – £15,000 total depending on stream and location",
+        "tuition_amount": "12500.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Jun",
+          "Sep"
+        ],
+        "intake_text": "January; June; September",
+        "scholarships": []
+      },
+      {
+        "title": "International Year One (UG entry)",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "Pathway Programs: £12,500 – £15,000 total depending on stream and location",
+        "tuition_amount": "12500.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Jun",
+          "Sep"
+        ],
+        "intake_text": "January; June; September",
+        "scholarships": []
+      },
+      {
+        "title": "Pre-Master's Programs (PG entry)",
+        "level": "PG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "Pathway Programs: £12,500 – £15,000 total depending on stream and location",
+        "tuition_amount": "12500.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Jun",
+          "Sep"
+        ],
+        "intake_text": "January; June; September",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "city defaulted to the capital London (no campus named)",
+      "institution_type 'institute' inferred from the name",
+      "fee block has no UG/PG labels; applied to every course",
+      "category inferred from title keywords for 3 courses",
+      "category 'General' (no keyword) for: International Foundation Year; International Year One (UG entry); Pre-Master's Programs (PG entry)",
+      "duration 'Not specified' for 3 of 3 courses",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A41",
+    "logo_url": null
+  },
+  {
+    "name": "Queens University Belfast",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "university",
+    "website": null,
+    "overview": "Queens University Belfast — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [],
+    "agent_commission": {
+      "percent": "12.00",
+      "note": "0.12"
+    },
+    "courses": [],
+    "flags": [
+      "city defaulted to the capital London (no campus named)",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "iu!A9",
+    "logo_url": null
+  },
+  {
+    "name": "Ravensbourne University London",
+    "country_iso2": "GB",
+    "city": "Greenwich Peninsula",
+    "campuses": [
+      "Greenwich Peninsula",
+      "East London (SE10)"
+    ],
+    "institution_type": "university",
+    "website": "https://www.ravensbourne.ac.uk/",
+    "overview": "Ravensbourne University London — direct tie-up partner in Greenwich Peninsula, United Kingdom.",
+    "fee_structure": "• UG: £15,000 – £16,500 / year\n• PG: £16,000 – £18,000 total\n• Deposit: £4,000",
+    "deadlines": [
+      "Jan Intake: Early December",
+      "Sep Intake: Early August"
+    ],
+    "scholarships": [
+      "International Scholarship: £1,000 – £2,000 merit-based tuition fee reduction"
+    ],
+    "agent_commission": null,
+    "courses": [
+      {
+        "title": "BA (Hons) Design & Digital Media",
+        "level": "UG",
+        "category": "Creative Arts",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£15,000 – £16,500 / year",
+        "tuition_amount": "15000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep"
+        ],
+        "intake_text": "January; September",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Cybersecurity",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£15,000 – £16,500 / year",
+        "tuition_amount": "15000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep"
+        ],
+        "intake_text": "January; September",
+        "scholarships": []
+      },
+      {
+        "title": "BA (Hons) Graphic Design",
+        "level": "UG",
+        "category": "Creative Arts",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£15,000 – £16,500 / year",
+        "tuition_amount": "15000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep"
+        ],
+        "intake_text": "January; September",
+        "scholarships": []
+      },
+      {
+        "title": "BA (Hons) Fashion & Architecture",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£15,000 – £16,500 / year",
+        "tuition_amount": "15000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep"
+        ],
+        "intake_text": "January; September",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Computer Science",
+        "level": "PG",
+        "category": "Computing & IT",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£16,000 – £18,000 total",
+        "tuition_amount": "16000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep"
+        ],
+        "intake_text": "January; September",
+        "scholarships": []
+      },
+      {
+        "title": "MA Design & Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£16,000 – £18,000 total",
+        "tuition_amount": "16000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep"
+        ],
+        "intake_text": "January; September",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Cyber Security",
+        "level": "PG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£16,000 – £18,000 total",
+        "tuition_amount": "16000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep"
+        ],
+        "intake_text": "January; September",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "category inferred from title keywords for 7 courses",
+      "category 'General' (no keyword) for: BSc (Hons) Cybersecurity; BA (Hons) Fashion & Architecture; MSc Cyber Security",
+      "duration 'Not specified' for 7 of 7 courses",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A39",
+    "logo_url": null
+  },
+  {
+    "name": "Schiller International University",
+    "country_iso2": "US",
+    "city": "Washington",
+    "campuses": [],
+    "institution_type": "university",
+    "website": "https://www.schiller.edu/",
+    "overview": "Schiller International University — direct tie-up partner in Washington, United States.\nAlso in: US, Spain, France, Germany",
+    "fee_structure": "• UG: $14,000 – $16,500 / year (€12,000 – €14,000 in EU)\n• PG: $16,000 – $20,000 total program fee",
+    "deadlines": [
+      "Rolling Admissions",
+      "6–8 weeks prior to intake for visa applicants"
+    ],
+    "scholarships": [
+      "Global Citizen Scholarship (Up to 50% waiver)",
+      "Academic Merit Awards (25% – 35% discount)",
+      "10% Early Payment Discount"
+    ],
+    "agent_commission": {
+      "percent": "16.00",
+      "note": "0.16"
+    },
+    "courses": [
+      {
+        "title": "BS in International Business",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "$14,000 – $16,500 / year (€12,000 – €14,000 in EU)",
+        "tuition_amount": "14000.00",
+        "tuition_currency": "USD",
+        "intakes": [
+          "Jan",
+          "May",
+          "Sep"
+        ],
+        "intake_text": "Monthly modular entry; Major Intakes: Jan, May, Sep",
+        "scholarships": []
+      },
+      {
+        "title": "BS in International Relations & Diplomacy",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "$14,000 – $16,500 / year (€12,000 – €14,000 in EU)",
+        "tuition_amount": "14000.00",
+        "tuition_currency": "USD",
+        "intakes": [
+          "Jan",
+          "May",
+          "Sep"
+        ],
+        "intake_text": "Monthly modular entry; Major Intakes: Jan, May, Sep",
+        "scholarships": []
+      },
+      {
+        "title": "BS in Computer Science",
+        "level": "UG",
+        "category": "Computing & IT",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "$14,000 – $16,500 / year (€12,000 – €14,000 in EU)",
+        "tuition_amount": "14000.00",
+        "tuition_currency": "USD",
+        "intakes": [
+          "Jan",
+          "May",
+          "Sep"
+        ],
+        "intake_text": "Monthly modular entry; Major Intakes: Jan, May, Sep",
+        "scholarships": []
+      },
+      {
+        "title": "BS in International Tourism & Hospitality",
+        "level": "UG",
+        "category": "Hospitality",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "$14,000 – $16,500 / year (€12,000 – €14,000 in EU)",
+        "tuition_amount": "14000.00",
+        "tuition_currency": "USD",
+        "intakes": [
+          "Jan",
+          "May",
+          "Sep"
+        ],
+        "intake_text": "Monthly modular entry; Major Intakes: Jan, May, Sep",
+        "scholarships": []
+      },
+      {
+        "title": "International MBA",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "$16,000 – $20,000 total program fee",
+        "tuition_amount": "16000.00",
+        "tuition_currency": "USD",
+        "intakes": [
+          "Jan",
+          "May",
+          "Sep"
+        ],
+        "intake_text": "Monthly modular entry; Major Intakes: Jan, May, Sep",
+        "scholarships": []
+      },
+      {
+        "title": "MS in Data Science & Big Data Analytics",
+        "level": "PG",
+        "category": "Computing & IT",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "$16,000 – $20,000 total program fee",
+        "tuition_amount": "16000.00",
+        "tuition_currency": "USD",
+        "intakes": [
+          "Jan",
+          "May",
+          "Sep"
+        ],
+        "intake_text": "Monthly modular entry; Major Intakes: Jan, May, Sep",
+        "scholarships": []
+      },
+      {
+        "title": "MS in Sustainability Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "$16,000 – $20,000 total program fee",
+        "tuition_amount": "16000.00",
+        "tuition_currency": "USD",
+        "intakes": [
+          "Jan",
+          "May",
+          "Sep"
+        ],
+        "intake_text": "Monthly modular entry; Major Intakes: Jan, May, Sep",
+        "scholarships": []
+      },
+      {
+        "title": "MS in International Business",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "$16,000 – $20,000 total program fee",
+        "tuition_amount": "16000.00",
+        "tuition_currency": "USD",
+        "intakes": [
+          "Jan",
+          "May",
+          "Sep"
+        ],
+        "intake_text": "Monthly modular entry; Major Intakes: Jan, May, Sep",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "name: '(US, Spain, France, Germany)' on a second line moved to the overview",
+      "country US inferred from the name (destination empty)",
+      "city defaulted to the capital Washington (no campus named)",
+      "category inferred from title keywords for 8 courses",
+      "category 'General' (no keyword) for: BS in International Relations & Diplomacy",
+      "duration 'Not specified' for 8 of 8 courses",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A53",
+    "logo_url": null
+  },
+  {
+    "name": "University of Derby",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "university",
+    "website": null,
+    "overview": "University of Derby — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [],
+    "agent_commission": {
+      "percent": "13.00",
+      "note": "0.13"
+    },
+    "courses": [],
+    "flags": [
+      "city defaulted to the capital London (no campus named)",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "iu!A7",
+    "logo_url": null
+  },
+  {
+    "name": "University of East Anglia",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "university",
+    "website": null,
+    "overview": "University of East Anglia — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [],
+    "agent_commission": {
+      "amount": "4000.00",
+      "currency": "GBP",
+      "note": "4000GBP flat"
+    },
+    "courses": [],
+    "flags": [
+      "city defaulted to the capital London (no campus named)",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "iu!A3",
+    "logo_url": null
+  },
+  {
+    "name": "University of East London",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "university",
+    "website": null,
+    "overview": "University of East London — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [],
+    "agent_commission": {
+      "percent": "20.00",
+      "note": "0.2"
+    },
+    "courses": [],
+    "flags": [
+      "city defaulted to the capital London (no campus named)",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "iu!A5",
+    "logo_url": null
+  },
+  {
+    "name": "University of Greenwich",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "university",
+    "website": null,
+    "overview": "University of Greenwich — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [],
+    "agent_commission": null,
+    "courses": [],
+    "flags": [
+      "country GB from the uc sheet (it has no destination column)",
+      "city defaulted to the capital London (no campus named)",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "uc!A2",
+    "logo_url": null
+  },
+  {
+    "name": "University of Hertfordshire",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "university",
+    "website": null,
+    "overview": "University of Hertfordshire — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [],
+    "agent_commission": {
+      "percent": "17.50",
+      "note": "0.175"
+    },
+    "courses": [],
+    "flags": [
+      "city defaulted to the capital London (no campus named)",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "iu!A13",
+    "logo_url": null
+  },
+  {
+    "name": "University of Hull",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "university",
+    "website": null,
+    "overview": "University of Hull — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [],
+    "agent_commission": {
+      "percent": "18.00",
+      "note": "0.18"
+    },
+    "courses": [],
+    "flags": [
+      "city defaulted to the capital London (no campus named)",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "iu!A11",
+    "logo_url": null
+  },
+  {
+    "name": "University of Reading",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "university",
+    "website": null,
+    "overview": "University of Reading — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [],
+    "agent_commission": {
+      "amount": "2500.00",
+      "currency": "GBP",
+      "note": "2500GBP flat"
+    },
+    "courses": [],
+    "flags": [
+      "city defaulted to the capital London (no campus named)",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "iu!A15",
+    "logo_url": null
+  },
+  {
+    "name": "University of Roehampton",
+    "country_iso2": "GB",
+    "city": "Southwest London",
+    "campuses": [
+      "Southwest London"
+    ],
+    "institution_type": "university",
+    "website": "https://www.roehampton.ac.uk/",
+    "overview": "University of Roehampton — direct tie-up partner in Southwest London, United Kingdom.",
+    "fee_structure": "• UG: £14,000 – £15,500 / year\n• PG: £15,500 – £17,500 total\n• Deposit: £3,000 – £5,000",
+    "deadlines": [
+      "Jan Intake: Late November",
+      "Sep Intake: Late July"
+    ],
+    "scholarships": [
+      "International Excellence Award: £1,000 – £2,500 / year",
+      "Early Bird Discount: £500 – £1,000 for early deposit payment"
+    ],
+    "agent_commission": null,
+    "courses": [
+      {
+        "title": "BSc Business Management",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£14,000 – £15,500 / year",
+        "tuition_amount": "14000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "BSc Computing",
+        "level": "UG",
+        "category": "Computing & IT",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£14,000 – £15,500 / year",
+        "tuition_amount": "14000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "LLB Law",
+        "level": "UG",
+        "category": "Law",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£14,000 – £15,500 / year",
+        "tuition_amount": "14000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "BSc Psychology",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£14,000 – £15,500 / year",
+        "tuition_amount": "14000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "BA Digital Media & Communications",
+        "level": "UG",
+        "category": "Creative Arts",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£14,000 – £15,500 / year",
+        "tuition_amount": "14000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Global Business Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£15,500 – £17,500 total",
+        "tuition_amount": "15500.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Project Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£15,500 – £17,500 total",
+        "tuition_amount": "15500.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Digital Marketing",
+        "level": "PG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£15,500 – £17,500 total",
+        "tuition_amount": "15500.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "Master of Public Health (MPH)",
+        "level": "PG",
+        "category": "Health",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£15,500 – £17,500 total",
+        "tuition_amount": "15500.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; September / October",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Data Science",
+        "level": "PG",
+        "category": "Computing & IT",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£15,500 – £17,500 total",
+        "tuition_amount": "15500.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Feb",
+          "Sep",
+          "Oct"
+        ],
+        "intake_text": "January / February; September / October",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "category inferred from title keywords for 10 courses",
+      "category 'General' (no keyword) for: BSc Psychology; MSc Digital Marketing",
+      "duration 'Not specified' for 10 of 10 courses",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A38",
+    "logo_url": null
+  },
+  {
+    "name": "University of Southwales",
+    "country_iso2": "GB",
+    "city": "Cardiff Campus",
+    "campuses": [
+      "Cardiff Campus",
+      "Newport Campus",
+      "Pontypridd Campus"
+    ],
+    "institution_type": "university",
+    "website": "https://www.southwales.ac.uk/",
+    "overview": "University of Southwales — direct tie-up partner in Cardiff Campus, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [
+      "£1,500-£2,500"
+    ],
+    "agent_commission": {
+      "percent": "13.00",
+      "note": "0.13"
+    },
+    "courses": [
+      {
+        "title": "BA (Hons) Business and Management",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "MBA Global",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Newport Campus",
+        "fee_text": "£18,970",
+        "tuition_amount": "18970.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep"
+        ],
+        "intake_text": "January / September",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "BA (Hons) International Business",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "MBA Global (Finance / Financial Services)",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Newport Campus",
+        "fee_text": "£18,970",
+        "tuition_amount": "18970.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep"
+        ],
+        "intake_text": "January / September",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "BA (Hons) Marketing Management",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "MBA Global (Human Resource Management)",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Newport Campus",
+        "fee_text": "£18,970",
+        "tuition_amount": "18970.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep"
+        ],
+        "intake_text": "January / September",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "BA (Hons) Human Resource Management",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "MBA Global (Marketing / Sales and Marketing)",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Newport Campus",
+        "fee_text": "£18,970",
+        "tuition_amount": "18970.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep"
+        ],
+        "intake_text": "January / September",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "BA (Hons) Film & TV Production",
+        "level": "UG",
+        "category": "Creative Arts",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "MBA Global (Operations and Supply Chain Management)",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Newport Campus",
+        "fee_text": "£18,970",
+        "tuition_amount": "18970.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep"
+        ],
+        "intake_text": "January / September",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "BA (Hons) Digital Storytelling & Media",
+        "level": "UG",
+        "category": "Creative Arts",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "MBA Global (Hospitality Management)",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Newport Campus",
+        "fee_text": "£18,970",
+        "tuition_amount": "18970.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep"
+        ],
+        "intake_text": "January / September",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "BA (Hons) Animation / Visual Effects (VFX)",
+        "level": "UG",
+        "category": "Creative Arts",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "MBA Global (Entrepreneurship).",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Newport Campus",
+        "fee_text": "£18,970",
+        "tuition_amount": "18970.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep"
+        ],
+        "intake_text": "January / September",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "BA (Hons) Music Business / Music Production",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Human Resource Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Newport Campus",
+        "fee_text": "£17,900",
+        "tuition_amount": "17900.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Sep"
+        ],
+        "intake_text": "September",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "BA (Hons) Acting / Drama",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "MBA Master of Business Administration (Traditional 1-year track)",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£17,900",
+        "tuition_amount": "17900.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Sep",
+          "Feb"
+        ],
+        "intake_text": "September / February",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "BA (Hons) Graphic Communication",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Leading Digital Transformation",
+        "level": "PG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£17,900",
+        "tuition_amount": "17900.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Sep",
+          "Feb"
+        ],
+        "intake_text": "September / February",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "BA (Hons) Fashion Design / Fashion Promotion",
+        "level": "UG",
+        "category": "Creative Arts",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£17,900",
+        "tuition_amount": "17900.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Sep",
+          "Feb"
+        ],
+        "intake_text": "September / February",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "BA (Hons) Interior Design",
+        "level": "UG",
+        "category": "Creative Arts",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Strategic and Digital Marketing",
+        "level": "PG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£17,900",
+        "tuition_amount": "17900.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Sep",
+          "Feb"
+        ],
+        "intake_text": "September / February",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "BSc (Hons) Cyber Security",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": "Newport Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "MSc International Logistics and Supply Chain Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£17,900",
+        "tuition_amount": "17900.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Sep",
+          "Feb"
+        ],
+        "intake_text": "September / February",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "BSc (Hons) Computer Science",
+        "level": "UG",
+        "category": "Computing & IT",
+        "duration": "Not specified",
+        "campus": "Newport Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Leadership and Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£17,900",
+        "tuition_amount": "17900.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Sep",
+          "Feb"
+        ],
+        "intake_text": "September / February",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "BSc (Hons) Applied Software Engineering",
+        "level": "UG",
+        "category": "Engineering",
+        "duration": "Not specified",
+        "campus": "Newport Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Leading Digital Transformation",
+        "level": "PG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": "Cardiff Campus",
+        "fee_text": "£17,900",
+        "tuition_amount": "17900.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Sep"
+        ],
+        "intake_text": "September",
+        "scholarships": [
+          "£1,500-£2,500"
+        ]
+      },
+      {
+        "title": "BA (Hons) Business Studies",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Newport Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "BA (Hons) Accounting and Finance",
+        "level": "UG",
+        "category": "Finance",
+        "duration": "Not specified",
+        "campus": "Newport Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "BEng / MEng Aeronautical / Aerospace Engineering",
+        "level": "UG",
+        "category": "Engineering",
+        "duration": "Not specified",
+        "campus": "Pontypridd Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "BEng / MEng Mechanical Engineering",
+        "level": "UG",
+        "category": "Engineering",
+        "duration": "Not specified",
+        "campus": "Pontypridd Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "BEng / MEng Civil Engineering",
+        "level": "UG",
+        "category": "Engineering",
+        "duration": "Not specified",
+        "campus": "Pontypridd Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Quantity Surveying & Commercial Management",
+        "level": "UG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": "Pontypridd Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Game Development / Game Art",
+        "level": "UG",
+        "category": "Creative Arts",
+        "duration": "Not specified",
+        "campus": "Pontypridd Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Computer Games Design",
+        "level": "UG",
+        "category": "Computing & IT",
+        "duration": "Not specified",
+        "campus": "Pontypridd Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Mathematics / Data Science",
+        "level": "UG",
+        "category": "Computing & IT",
+        "duration": "Not specified",
+        "campus": "Pontypridd Campus",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Adult Nursing",
+        "level": "UG",
+        "category": "Health",
+        "duration": "Not specified",
+        "campus": "Pontypridd Campus (Glyntaff Site)",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Child Nursing",
+        "level": "UG",
+        "category": "Health",
+        "duration": "Not specified",
+        "campus": "Pontypridd Campus (Glyntaff Site)",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Mental Health Nursing",
+        "level": "UG",
+        "category": "Health",
+        "duration": "Not specified",
+        "campus": "Pontypridd Campus (Glyntaff Site)",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Midwifery",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": "Pontypridd Campus (Glyntaff Site)",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Forensic Science",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": "Pontypridd Campus (Glyntaff Site)",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Medical Sciences / Human Biology",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": "Pontypridd Campus (Glyntaff Site)",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Pharmaceutical Science",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": "Pontypridd Campus (Glyntaff Site)",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Sports Performance and Coaching",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": "Pontypridd Campus (Glyntaff Site)",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Football Coaching and Development",
+        "level": "UG",
+        "category": "General",
+        "duration": "Not specified",
+        "campus": "Pontypridd Campus (Glyntaff Site)",
+        "fee_text": "£15,800 – £16,200 per year",
+        "tuition_amount": "15800.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan"
+        ],
+        "intake_text": "January 2027",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "category inferred from title keywords for 48 courses",
+      "category 'General' (no keyword) for: BA (Hons) Acting / Drama; BA (Hons) Graphic Communication; MSc Leading Digital Transformation; MSc Strategic and Digital Marketing; BSc (Hons) Cyber Security; MSc Leading Digital Transformation; BSc (Hons) Midwifery; BSc (Hons) Forensic Science; BSc (Hons) Medical Sciences / Human Biology; BSc (Hons) Pharmaceutical Science; BSc (Hons) Sports Performance and Coaching; BSc (Hons) Football Coaching and Development",
+      "duration 'Not specified' for 48 of 48 courses",
+      "duplicate course title in the sheet: PG MSc Leading Digital Transformation",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A2",
+    "logo_url": null
+  },
+  {
+    "name": "University of Staffordshire",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "university",
+    "website": null,
+    "overview": "University of Staffordshire — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [],
+    "agent_commission": {
+      "percent": "15.00",
+      "note": "0.15"
+    },
+    "courses": [],
+    "flags": [
+      "city defaulted to the capital London (no campus named)",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "iu!A10",
+    "logo_url": null
+  },
+  {
+    "name": "University of West London",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "university",
+    "website": null,
+    "overview": "University of West London — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [],
+    "agent_commission": {
+      "percent": "16.00",
+      "note": "0.16"
+    },
+    "courses": [],
+    "flags": [
+      "city defaulted to the capital London (no campus named)",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "iu!A2",
+    "logo_url": null
+  },
+  {
+    "name": "University of West of England Bristol",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "university",
+    "website": null,
+    "overview": "University of West of England Bristol — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [],
+    "agent_commission": {
+      "percent": "15.00",
+      "note": "0.15"
+    },
+    "courses": [],
+    "flags": [
+      "city defaulted to the capital London (no campus named)",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "iu!A8",
+    "logo_url": null
+  },
+  {
+    "name": "University of Wolverhampton",
+    "country_iso2": "GB",
+    "city": "London",
+    "campuses": [],
+    "institution_type": "university",
+    "website": null,
+    "overview": "University of Wolverhampton — direct tie-up partner in London, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [],
+    "scholarships": [],
+    "agent_commission": {
+      "percent": "16.00",
+      "note": "0.16"
+    },
+    "courses": [],
+    "flags": [
+      "city defaulted to the capital London (no campus named)",
+      "no website in the sheet",
+      "overview: generated default sentence"
+    ],
+    "source": "iu!A14",
+    "logo_url": null
+  },
+  {
+    "name": "Walbrook",
+    "country_iso2": "GB",
+    "city": "London campus",
+    "campuses": [
+      "London campus"
+    ],
+    "institution_type": "institute",
+    "website": "https://www.walbrook.ac.uk/",
+    "overview": "Walbrook — direct tie-up partner in London campus, United Kingdom.",
+    "fee_structure": null,
+    "deadlines": [
+      "Mid-November 2026 for Jan"
+    ],
+    "scholarships": [
+      "Early Enrolment Discounts:2000,4000 pounds"
+    ],
+    "agent_commission": null,
+    "courses": [
+      {
+        "title": "BSc (Hons) Banking and Digital Finance",
+        "level": "UG",
+        "category": "Finance",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£14,500 – £16,500 per year",
+        "tuition_amount": "14500.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep",
+          "Oct",
+          "Nov"
+        ],
+        "intake_text": "Jan,Sep,OCT,NOV",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Business and Management",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£16,000 – £18,500 per year",
+        "tuition_amount": "16000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep",
+          "Oct",
+          "Nov"
+        ],
+        "intake_text": "Jan,Sep,OCT,NOV",
+        "scholarships": []
+      },
+      {
+        "title": "BSc (Hons) Finance, Investment and Risk",
+        "level": "UG",
+        "category": "Finance",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£14,500 – £16,500 per year",
+        "tuition_amount": "14500.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep",
+          "Oct",
+          "Nov"
+        ],
+        "intake_text": "Jan,Sep,OCT,NOV",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Business and Management with Artificial Intelligence",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£16,000 – £18,500 per year",
+        "tuition_amount": "16000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep",
+          "Oct",
+          "Nov"
+        ],
+        "intake_text": "Jan,Sep,OCT,NOV",
+        "scholarships": []
+      },
+      {
+        "title": "MSc Business and Management with Banking and Finance",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£16,000 – £18,500 per year",
+        "tuition_amount": "16000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep",
+          "Oct",
+          "Nov"
+        ],
+        "intake_text": "Jan,Sep,OCT,NOV",
+        "scholarships": []
+      },
+      {
+        "title": "MBA",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£16,000 – £18,500 per year",
+        "tuition_amount": "16000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep",
+          "Oct",
+          "Nov"
+        ],
+        "intake_text": "Jan,Sep,OCT,NOV",
+        "scholarships": []
+      },
+      {
+        "title": "MBA Artificial Intelligence",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£16,000 – £18,500 per year",
+        "tuition_amount": "16000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep",
+          "Oct",
+          "Nov"
+        ],
+        "intake_text": "Jan,Sep,OCT,NOV",
+        "scholarships": []
+      },
+      {
+        "title": "MBA Banking and Finance",
+        "level": "PG",
+        "category": "Business",
+        "duration": "Not specified",
+        "campus": null,
+        "fee_text": "£16,000 – £18,500 per year",
+        "tuition_amount": "16000.00",
+        "tuition_currency": "GBP",
+        "intakes": [
+          "Jan",
+          "Sep",
+          "Oct",
+          "Nov"
+        ],
+        "intake_text": "Jan,Sep,OCT,NOV",
+        "scholarships": []
+      }
+    ],
+    "flags": [
+      "institution_type 'institute' inferred from the name",
+      "category inferred from title keywords for 8 courses",
+      "duration 'Not specified' for 8 of 8 courses",
+      "overview: generated default sentence"
+    ],
+    "source": "Direct Tie-up's!A73",
+    "logo_url": null
+  }
+]
