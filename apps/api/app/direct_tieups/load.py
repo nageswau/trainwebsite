@@ -9,17 +9,22 @@ import json
 from decimal import Decimal
 from pathlib import Path
 
+from fastapi import HTTPException
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.main  # noqa: F401  (loads the routers first: the services import each other in a cycle that only resolves in that order)
 from app.models import AuditLog, Country, OverseasCourse, Scholarship, University
+from app.schemas import CourseIn, UniversityCreate
+from app.seed import catalogue_country
 from app.services.partnership_universities import free_slug, name_key_of, next_code
-from app.services.university_courses import derive_texts, title_key
+from app.services.university_courses import check_rules, derive_texts, title_key
 
 DEFAULT_FILE = Path(__file__).resolve().parents[2] / "seed" / "direct_tieups.json"
 FILL_FIELDS = ("logo_url", "campuses", "fee_structure", "website", "overview", "deadlines", "scholarships")
-COUNT_KEYS = ("universities_created", "universities_updated", "courses_created", "courses_skipped", "scholarships_created", "conflicts", "hidden_country")
+COUNT_KEYS = ("universities_created", "universities_updated", "courses_created", "courses_skipped", "scholarships_created", "conflicts", "countries_published", "country_needs_content")
+COUNTRIES_FILE = Path(__file__).resolve().parents[2] / "seed" / "countries.json"
 
 
 def _empty(value) -> bool:
@@ -39,14 +44,15 @@ def _commission(entry: dict | None) -> dict:
 
 async def _scholarship_ids(db: AsyncSession, uni: University, country: Country, texts: list[str], cache: dict, counts: dict) -> list[str]:
     ids = []
-    for text in texts:
+    for raw in texts:
+        text = raw[:200]  # the title column length: look up by exactly what is inserted
         key = text.lower()
         if key not in cache:
             row = await db.scalar(
                 select(Scholarship).where(Scholarship.university_id == uni.id, func.lower(Scholarship.title) == key).order_by(Scholarship.created_at)
             )
             if row is None:
-                row = Scholarship(title=text[:200], university_id=uni.id, country_id=country.id, eligibility="See university", amount=text[:120], active=True)
+                row = Scholarship(title=text, university_id=uni.id, country_id=country.id, eligibility="See university", amount=text[:120], active=True)
                 db.add(row)
                 await db.flush()
                 counts["scholarships_created"] += 1
@@ -64,6 +70,77 @@ def _commission_tuple(values: dict) -> tuple:
     return values["agent_commission_percent"], values["agent_commission_amount"], values["agent_commission_currency"]
 
 
+def _reason(exc: Exception) -> str:
+    if isinstance(exc, ValidationError):
+        return "; ".join(f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in exc.errors())
+    return str(exc.detail) if isinstance(exc, HTTPException) else str(exc)
+
+
+def _validate(data: list[dict], countries: dict) -> None:
+    """Every university and course goes through the manual-add schemas and rules before anything is written; one bad row fails the run."""
+    for entry in data:
+        try:
+            UniversityCreate.model_validate(
+                {
+                    "name": entry["name"],
+                    "country_id": countries[entry["country_iso2"]].id,
+                    "city": entry.get("city") or "",
+                    "institution_type": entry.get("institution_type") or "university",
+                    "website": entry.get("website"),
+                    "overview": entry.get("overview") or "",
+                    "campuses": entry.get("campuses") or None,
+                    "fee_structure": entry.get("fee_structure"),
+                    "logo_url": entry.get("logo_url"),
+                }
+            )
+        except Exception as exc:
+            raise ValueError(f"{entry['name']}: invalid university: {_reason(exc)}") from exc
+        for item in entry.get("courses", []):
+            try:
+                body = CourseIn.model_validate(
+                    {
+                        "title": item["title"],
+                        "level": item["level"],
+                        "category": item["category"],
+                        "duration": item["duration"],
+                        "tuition_amount": item.get("tuition_amount") or None,
+                        "tuition_currency": item.get("tuition_currency") if item.get("tuition_amount") else None,
+                        "intakes": item.get("intakes") or [],
+                        "campus": item.get("campus"),
+                        "fee_text": item.get("fee_text"),
+                        "intake_text": item.get("intake_text"),
+                    }
+                )
+                check_rules(body.model_dump())
+            except Exception as exc:
+                raise ValueError(f"{entry['name']} / {item.get('title')}: invalid course: {_reason(exc)}") from exc
+
+
+async def _publish_countries(db: AsyncSession, data: list[dict], countries: dict, counts: dict, notes: list[str]) -> None:
+    """DT18: a hidden destination country with a seed/countries.json row is published through the seed's own function; one without
+    stays hidden and is reported."""
+    rows = {row[5]: row for row in json.loads(COUNTRIES_FILE.read_text(encoding="utf-8"))}
+    done: set[str] = set()
+    for code, country in sorted(countries.items()):
+        if country.catalogue_visible:
+            continue
+        row = rows.get(code)
+        if row is not None and row[0] == country.slug:
+            await catalogue_country(db, row, {})
+        if country.catalogue_visible:
+            counts["countries_published"] += 1
+            db.add(
+                AuditLog(user_id=None, action="country.direct_tieup_publish", entity_type="country", entity_id=str(country.id), metadata_json={"iso2": code})
+            )
+        elif code not in done:
+            done.add(code)
+            counts["country_needs_content"] += 1
+            for entry in data:
+                if entry["country_iso2"] == code:
+                    notes.append(f"{code}: {entry['name']} stays hidden until {country.name} has catalogue content")
+    await db.flush()
+
+
 async def load(db: AsyncSession, data: list[dict], commit: bool = True) -> dict[str, int]:
     counts = dict.fromkeys(COUNT_KEYS, 0)
     codes = {entry["country_iso2"] for entry in data}
@@ -71,8 +148,10 @@ async def load(db: AsyncSession, data: list[dict], commit: bool = True) -> dict[
     for code in sorted(codes):
         if code not in countries:
             raise ValueError(f"unknown country {code}")
-    hidden = []
+    _validate(data, countries)
+    hidden: list[str] = []
     try:
+        await _publish_countries(db, data, countries, counts, hidden)
         for entry in data:
             country = countries[entry["country_iso2"]]
             matches = (
@@ -96,6 +175,8 @@ async def load(db: AsyncSession, data: list[dict], commit: bool = True) -> dict[
                 if uni.agent_commission_percent is None and uni.agent_commission_amount is None:
                     if has_commission:
                         for key, value in commission.items():
+                            if key == "agent_commission_note" and not _empty(uni.agent_commission_note):
+                                continue  # a stored note is never overwritten
                             setattr(uni, key, value)
                         fields.append("agent_commission")
                 elif has_commission and _commission_tuple(commission) != (
@@ -135,9 +216,6 @@ async def load(db: AsyncSession, data: list[dict], commit: bool = True) -> dict[
                 await db.flush()
                 counts["universities_created"] += 1
                 fields = [f for f in FILL_FIELDS if not _empty(entry.get(f))] + (["agent_commission"] if has_commission else [])
-            if not country.catalogue_visible:
-                counts["hidden_country"] += 1
-                hidden.append(f"{entry['name']} ({country.iso2})")
 
             cache: dict[str, str] = {}
             await _scholarship_ids(db, uni, country, entry.get("scholarships") or [], cache, counts)
@@ -185,10 +263,8 @@ async def load(db: AsyncSession, data: list[dict], commit: bool = True) -> dict[
     except BaseException:
         await db.rollback()
         raise
-    if hidden:
-        print(f"WARNING: {len(hidden)} universities are not publicly visible because their country is not catalogue-visible:")
-        for item in hidden:
-            print(f"  - {item}")
+    for line in hidden:
+        print(line)
     if commit:
         await db.commit()
     else:
