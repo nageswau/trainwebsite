@@ -3088,6 +3088,16 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/recruitment` *(new)* | Query: `date_from`, `date_to` (IST dates; default the 1st of this month → today). `422` malformed date, "The start date must not be after the end date", "The range can't end in the future", "The range can't be longer than 366 days" (rec-033 wording). `200` `{date_from, date_to, revenue_visible, kpis{recruiters, employer_partners, new_companies, job_openings, internship_openings, candidates, interviews, selections, joining, placement_rate (% or null), revenue (decimal string; null unless revenue_visible — partner only)}, pipeline[{key, label, value}] (lead, meeting, requirement, candidate, interview, selection, joining), requirement_closed, lost}`. Counts only. `GET /recruiter/management` (§12CY) is unchanged |
 
+## 12DS. Company profitability — vertical P&L (`mgmt-009`) — addendum, 2026-10-13
+
+- **Basis:** `DEC-SCOPE-205` (PL1–PL12). Design spec `docs/superpowers/specs/2026-10-13-mgmt-009-company-profitability-design.md`.
+  No migration. Finance tier only (partner, accountant); `super_admin` `403` "Finance access required"; other roles `403` "Management
+  access required"; signed out `401`. Read-only: no write, lock or audit row.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/pnl` *(new)* | **Query:** `month` (`YYYY-MM`, IST, default this month; January 2000 to this month), `period` = `month` (default) \| `quarter` (the financial-year quarter — Apr, Jul, Oct, Jan — to the end of `month`) \| `year` (the financial year, 1 April, to the end of `month`).<br>**`200`:** `{month, period, start, end, label, commission_visible, rows[{key, label, revenue, expenses, contribution, margin}], total{revenue, expenses, contribution, margin}, not_counted[{currency, kind, amount, count}]}`.<br>• Six rows, always, in order: `abroad`, `it`, `recruitment`, `school`, `other`, `shared` ("Shared (company-wide, not allocated)", Q-04).<br>• Counted `ledger.lines()` only (approved manual entries, reversals negative, + rupee automatic lines). `total` = Σ rows; `contribution` = revenue − expenses (may be negative); `margin` = contribution ÷ revenue × 100 (1 dp), `null` when revenue ≤ 0.<br>• University commission only for partners (`commission_visible`); for the accountant it is excluded from every figure and from `not_counted`.<br>**`422`:** a malformed, pre-2000 or future month, or a bad period |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

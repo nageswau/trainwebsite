@@ -2107,6 +2107,17 @@ Counts only, no personal data; nothing else changes.
 - Company-wide counts only (no company, candidate or recruiter names). No audit row (no write). The rec-033/034/035 routes and their
   scopes are unchanged.
 
+### 2.130 Company profitability — vertical P&L *(added 2026-10-13 — `DEC-SCOPE-205`, `mgmt-009`)*
+
+| Role | Read `GET /management/pnl`, page `/management/pnl` |
+|---|---|
+| `partner` | yes, university commission included; "Profit & loss" entry (Finance) |
+| `accountant` | yes, **without university commission** (M3, `commission_visible: false`; the receipts are never fetched); "Profit & loss" entry |
+| `super_admin` | `403` "Finance access required" (M13); no entry |
+| every other role | `403` "Management access required"; signed out `401` (the page redirects to `/admin/login?next=`) |
+
+- Company-wide rupee totals per vertical only; no names or line items. No audit row (no write).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

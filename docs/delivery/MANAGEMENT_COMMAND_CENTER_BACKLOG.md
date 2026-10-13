@@ -523,6 +523,11 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-009 — Company profitability (vertical P&L)
+- **Status (2026-10-13):** **IN REVIEW** on `feature/mgmt-009`. `DEC-SCOPE-205` (PL1–PL12 recommended defaults, UNVERIFIED; PL4 answers
+  the Q-04 shared-cost half: not allocated, its own row). No migration; API §12DS; RBAC §2.130.
+  QA evidence `docs/quality/MGMT-009_EXPLORATORY_QA_2026-10-13.md`.
+  - **AC:** total row = Σ rows and contribution = revenue − expenses (pytest `assert_reconciles` on every read, e2e column sums);
+    a negative contribution is red (vitest, browser QA).
 - **Business requirement:** §7: revenue, expenses and contribution per vertical + total; "which business is actually making money".
 - **Existing behavior:** none.
 - **Expected behavior:** a P&L table for Abroad / IT / Recruitment (+ School/Other per §22) with shared costs per Q-04 (shown as a
