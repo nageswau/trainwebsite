@@ -31,7 +31,7 @@ export const MANAGEMENT_PILLARS: ManagementPillar[] = [
     entries: [
       { ...fin("Ledger", "mgmt-004"), href: "/management/ledger" }, { ...fin("Abroad Education revenue", "mgmt-006"), href: "/management/revenue/abroad" },
       { ...fin("IT Training revenue", "mgmt-007"), href: "/management/revenue/it" }, { ...fin("Recruitment revenue", "mgmt-008"), href: "/management/revenue/recruitment" },
-      { ...fin("Expenses & rent", "mgmt-010"), href: "/management/expenses" }, fin("Profit & loss", "mgmt-009"), { ...fin("Salaries", "mgmt-011"), href: "/management/salaries" },
+      { ...fin("Expenses & rent", "mgmt-010"), href: "/management/expenses" }, { ...fin("Profit & loss", "mgmt-009"), href: "/management/pnl" }, { ...fin("Salaries", "mgmt-011"), href: "/management/salaries" },
       { ...fin("Accounts", "mgmt-013"), href: "/management/accounts" },
       { ...own("Investments & ROI", "mgmt-014"), href: "/management/investments" }, own("Partner capital accounts", "mgmt-015"),
     ],

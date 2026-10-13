@@ -448,3 +448,6 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 /* mgmt-020 QA-01/QA-02: three short tabs wrap rather than scroll off a phone; "Not tracked" reads as words, not a figure. */
 .report-tablist.wrap { flex-wrap: wrap; overflow-x: visible; }
 .metric .metric-untracked { font-size: 18px; }
+/* mgmt-009 PL9: a negative contribution (a loss) in red; the minus sign stays, so colour is not the only cue. */
+.pnl-loss { color: var(--red); font-weight: 700; }
+.pnl-table tfoot th, .pnl-table tfoot td { font-weight: 800; }
