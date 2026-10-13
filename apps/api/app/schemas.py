@@ -11898,3 +11898,35 @@ class TelecallingOut(BaseModel):
     teams: list[TelecallingTeam]
     telecallers: list[TelecallingRow]
     chain: list[TelecallingStep]
+
+
+# mgmt-025 (spec RC1-RC12): the company-wide Recruitment dashboard -- the eleven §21 KPIs and the company pipeline. `revenue` is null
+# unless `revenue_visible` (the finance tier); `placement_rate` is null when nobody was sourced in the period.
+class RecruitmentDashboardKpis(BaseModel):
+    recruiters: int
+    employer_partners: int
+    new_companies: int
+    job_openings: int
+    internship_openings: int
+    candidates: int
+    interviews: int
+    selections: int
+    joining: int
+    placement_rate: float | None
+    revenue: Decimal | None
+
+
+class RecruitmentPipelineStep(BaseModel):
+    key: str
+    label: str
+    value: int
+
+
+class RecruitmentDashboardOut(BaseModel):
+    date_from: date
+    date_to: date
+    revenue_visible: bool
+    kpis: RecruitmentDashboardKpis
+    pipeline: list[RecruitmentPipelineStep]
+    requirement_closed: int
+    lost: int

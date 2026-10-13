@@ -22,7 +22,7 @@ INVOICES = ("recruiter_invoices", "Recruiter invoice payments")  # RR3: rec-031,
 FLOW = {"candidates": "candidates_sourced", "interviews": "interviews", "selections": "selected", "joining": "joined"}  # RR5: rec-033 P4/P6/P7/P8
 
 
-async def _revenue(db: AsyncSession, start: date, end: date) -> dict:
+async def revenue_by_kind(db: AsyncSession, start: date, end: date) -> dict:
     """RR2-RR4: the invoice row always, then each manual category with a non-zero sum, largest first; the total is their sum."""
     c = ledger.lines().c
     grouped = await db.execute(
@@ -60,7 +60,7 @@ async def dashboard(db: AsyncSession, user: User, month_start: date, period: str
     ).one()
     kpis = {**stock._asdict(), **{kpi: flow[key] for kpi, key in FLOW.items()}}
     kpis["placement_pct"] = round(kpis["joining"] * 100 / kpis["candidates"], 1) if kpis["candidates"] else None  # RR7
-    revenue = await _revenue(db, start, end) if can_view_finance(user) else None  # RR9: never queried for the super admin
+    revenue = await revenue_by_kind(db, start, end) if can_view_finance(user) else None  # RR9: never queried for the super admin
     kpis["revenue_per_placement"] = (revenue["total"] / kpis["joining"]).quantize(ledger.CENTS) if revenue and kpis["joining"] else None  # RR8
     return {
         "month": month_key(month_start),

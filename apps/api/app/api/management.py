@@ -32,6 +32,7 @@ from app.schemas import (
     ManagementCounselingOut,
     ManagementMeOut,
     ManagementSnapshotOut,
+    RecruitmentDashboardOut,
     RecruitmentRevenueOut,
     SalaryMonthIn,
     SalaryMonthOut,
@@ -48,6 +49,7 @@ from app.services import (
     management_expenses,
     management_it_revenue,
     management_metrics,
+    management_recruitment,
     management_recruitment_revenue,
     management_telecalling,
     salaries,
@@ -376,3 +378,11 @@ async def telecalling(date_from: date | None = None, date_to: date | None = None
     _operational(user)
     first, last = telecaller_performance.date_range(date_from, date_to, india_date(await db_now(db)))
     return await management_telecalling.dashboard(db, first, last)
+
+
+# --- mgmt-025: company-wide Recruitment dashboard (spec RC1-RC12). Operational tier (M13); revenue for the finance tier only -------------
+@router.get("/recruitment", response_model=RecruitmentDashboardOut)
+async def recruitment(date_from: date | None = None, date_to: date | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """§21's eleven KPIs over rec-033's period rules and the company pipeline now; the accountant and everyone else 403 (RC10)."""
+    _operational(user)
+    return await management_recruitment.dashboard(db, user, date_from, date_to, await db_now(db))
