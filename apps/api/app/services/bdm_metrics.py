@@ -173,7 +173,7 @@ def _count(model, *where):
 
 
 def _activities(bdm, start, end, channel: str, direction: str | None = None):
-    where = [BdmActivity.bdm_user_id == bdm, BdmActivity.occurred_at >= start, BdmActivity.occurred_at < end, BdmActivity.channel == channel]
+    where = [_owned(BdmActivity.bdm_user_id, bdm), BdmActivity.occurred_at >= start, BdmActivity.occurred_at < end, BdmActivity.channel == channel]
     if direction:
         where.append(BdmActivity.direction == direction)
     return _count(BdmActivity, *where)
@@ -255,7 +255,7 @@ def _new_orgs(org_type: str):
 
 
 def _linked_schools(bdm):
-    return select(BdmOrganization.school_id).where(BdmOrganization.assigned_bdm_user_id == bdm, BdmOrganization.school_id.is_not(None))
+    return select(BdmOrganization.school_id).where(_owned(BdmOrganization.assigned_bdm_user_id, bdm), BdmOrganization.school_id.is_not(None))
 
 
 def _students_generated(bdm, start, end):

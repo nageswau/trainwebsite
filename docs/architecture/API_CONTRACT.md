@@ -3048,6 +3048,16 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/applications` *(new)* | Query (all optional, AND-combined): `date_from`, `date_to` (created, India days), `agency` (org id or `none`), `counselor` (user id or `none`), `country`, `university`, `course`, `staff` (ids), `intake` (≤ 80), `status` (≤ 50). `422` malformed id/date, "Unknown filter value", "The end date must be on or after the start date". `200` `{filters{…applied, string or null}, stages[{key, label, tracked, value}] (11, source order; `value` null for under_review, accepted, cas_coe), withdrawn, options{agencies, counselors, countries, universities, courses, intakes, staff, statuses: [{value, label}]}}`. Counts only; an unknown well-formed id gives zeros |
 
+## 12DO. BDM dashboards (`mgmt-020`) — addendum, 2026-10-13
+
+- **Basis:** `DEC-SCOPE-201` (BD1–BD12). Design spec `docs/superpowers/specs/2026-10-13-mgmt-020-bdm-dashboards-design.md`.
+  No migration. Operational tier only (partner, super_admin); accountant `403` "Operational access required"; other roles `403`
+  "Management access required"; signed out `401`. Read-only: no write, lock or audit row.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/bdm` *(new)* | Query: `type` (`agent` default / `school` / `college`), `from`, `to` (inclusive IST dates, each defaulting to this IST month). `422` unknown type, malformed date, "The period must start on or before its end", "The period can be at most 366 days". `200` `{type, label, from, to, as_of, bdm_count, figures[{key, label, definition, basis: "period"\|"now", tracked, value}]}` — §16 order, 9 / 7 / 6 figures; `value` null when not tracked (College `internships`). Counts only |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
