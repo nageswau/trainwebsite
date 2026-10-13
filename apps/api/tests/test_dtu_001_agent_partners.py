@@ -60,3 +60,15 @@ async def test_suspended_or_pending_agency_master_is_refused(client, db_session,
     async with client_for(org["master"].email) as master:
         assert (await master.get(URL)).status_code == 403
         assert (await master.get(f"{URL}/{uni['id']}")).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_partner_universities_portal_section_is_a_header_for_master_and_staff(db_session):
+    org = await mk_active_org(db_session)
+    staff = await mk_staff(db_session, org["org"])
+    await db_session.commit()
+    for email in (org["master"].email, staff["user"].email):
+        async with client_for(email) as c:
+            r = await c.get("/api/v1/portal/overseas/agent/partner-universities")
+        assert r.status_code == 200, r.text
+        assert r.json()["title"] == "Partner Universities"
