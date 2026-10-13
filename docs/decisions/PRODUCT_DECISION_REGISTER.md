@@ -7968,3 +7968,38 @@ Web `lib/managementTelecalling.ts`, `components/ManagementTelecalling.tsx`, page
 `globals.css` (`.telecalling-people`, `.telecalling-section-title`). Tests `test_mgmt_019_telecalling.py`, `managementTelecalling.test.ts`,
 `ManagementTelecalling.test.tsx`, `mgmt-019-telecalling.spec.ts`. QA `docs/quality/MGMT-019_EXPLORATORY_QA_2026-10-13.md`.
 - **New Feature ID authorized:** `mgmt-019`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-019.
+
+### DEC-SCOPE-203 — Counseling dashboard: the §13 KPIs per counselor, Q-20 (`mgmt-018`)
+
+**Evidence:** `EVID-017` §13 "COUNSELING" (Leads → Counseling → Conversion; 8 KPIs, lines 513–535 — `DERIVED_BLUEPRINT`).
+`DEC-SCOPE-186` M1/M13 (operational tier) — `EXPLICIT_APPROVAL`. tel-018 `DEC-SCOPE-101` (handover, T5 conversion); tel-016
+`DEC-SCOPE-095` (appointment lifecycle); tel-021 `DEC-SCOPE-105` (D13); mgmt-005 `DEC-SCOPE-192` (ledger payment lines).
+
+**Status:** CS1–CS12 in review on `feature/mgmt-018` (2026-10-13). Every CS answer is a **recommended default, `UNVERIFIED`**, taken on
+the owner's instruction to proceed with recommended answers. CS4, CS6 and CS8 answer Q-20.
+
+**Numbering (provisional):** no migration; API §12DQ; RBAC §2.128 (after mgmt-019's `DEC-SCOPE-202` / §12DP / §2.127).
+Spec `docs/superpowers/specs/2026-10-13-mgmt-018-counseling-dashboard-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| CS1 | Counselors | Every `counselor` user, active or not, one row each; figures credited to the person (one division per account), so division totals and the grand total are sums of rows |
+| CS2 | Period | `from` / `to`, inclusive IST dates, default this IST month; start after end or > 366 days → 422 (bdm-024 P2) |
+| CS3 | Leads assigned | Distinct leads handed over to the counselor in the period (`lead.handover` audit rows) |
+| CS4 | Calls | **Not tracked** (`null`): tel-010 calls are logged by telecallers only |
+| CS5 | Counseling sessions | Completed appointments with the counselor as staff, scheduled in the period (lead and student appointments) |
+| CS6 | Follow-ups | CS5 sessions that are not the counselor's first completed session with that lead or student |
+| CS7 | Conversions (AC) | tel-021 D13 / T5: still Converted, first converted in the period (`telecaller_metrics.first_conversions`), credited to the lead's counselor (`owner_id`) |
+| CS8 | Revenue | Counted rupee payment lines of the management ledger dated in the period, paid by students linked to the counselor's converted leads; finance tier only (partner) — super_admin gets `null` |
+| CS9 | Conversion % | Of the leads handed over in the period, the share Converted now with that counselor, one decimal; `null` with none assigned |
+| CS10 | Shape | `figures` in §13 order; `total`; `divisions` (IT, Overseas, then any other); `counselors` |
+| CS11 | Access | Operational tier (partner, super_admin); accountant 403 "Operational access required"; others 403; signed out 401 |
+| CS12 | Nav | Command Center "Counseling" (Students) and "Counselors" (People, `#counselors`) live; super admin sidebar "Management counseling figures" |
+
+**Consequences:** `services/management_counseling.py` (`FIGURES`, `dashboard()`); `telecaller_metrics.first_conversions()` extracted
+(behaviour unchanged); `api/management.py` (`GET /management/counseling`); `schemas.py` (`ManagementCounselingOut`). Web
+`lib/managementCounseling.ts`, `components/ManagementCounseling.tsx`, page `/management/counseling`, `lib/management.ts`,
+`lib/navigation.ts`. Tests `test_mgmt_018_counseling.py`, `managementCounseling.test.ts`, `ManagementCounseling.test.tsx`,
+`mgmt-018-counseling.spec.ts`. QA `docs/quality/MGMT-018_EXPLORATORY_QA_2026-10-13.md`.
+- **New Feature ID authorized:** `mgmt-018`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-018.
+

@@ -3068,6 +3068,16 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/telecalling` *(new)* | Query: `date_from`, `date_to` (IST dates; default the 1st of this month → today). `422` malformed date, "The start date must not be after the end date", "The range can't end in the future", "The range can't be longer than 366 days" (tel-023 wording). `200` `{date_from, date_to, totals, teams[{team, label, telecallers, …}], telecallers[{user_id, full_name, team, active, …}], chain[{key, label, value, share}]}`; each figure set is `{leads, calls, connected, interested, follow_ups, appointments, converted, lost, counselling, conversion}` (`conversion` % or null); `share` = % of Calls, null for Calls. Counts and telecaller names only |
 
+## 12DQ. Counseling dashboard (`mgmt-018`) — addendum, 2026-10-13
+
+- **Basis:** `DEC-SCOPE-203` (CS1–CS12). Design spec `docs/superpowers/specs/2026-10-13-mgmt-018-counseling-dashboard-design.md`.
+  No migration. Operational tier only (partner, super_admin); accountant `403` "Operational access required"; other roles `403`
+  "Management access required"; signed out `401`. Read-only: no write, lock or audit row.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/counseling` *(new)* | Query: `from`, `to` (inclusive IST dates, each defaulting to this IST month). `422` malformed date, "The period must start on or before its end", "The period can be at most 366 days". `200` `{from, to, as_of, revenue_visible, figures[{key, label, definition, tracked}], total, divisions[], counselors[]}`; each total / division row `{division, label, counselor_count, …figures}`, each counselor `{id, full_name, division, active, …figures}`; figures `leads_assigned, calls (always null, not tracked), counseling_sessions, follow_ups, conversions, revenue (decimal string; null unless revenue_visible — partner only), conversion_pct (null when no leads assigned)` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

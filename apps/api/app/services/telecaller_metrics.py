@@ -116,13 +116,18 @@ def _group(rows) -> dict:
     return {key: count for key, count in rows}
 
 
-async def conversions_by_user(db: AsyncSession, user_ids: list[UUID], start: datetime, end: datetime) -> dict[UUID, int]:
-    """D13 (DB2) per telecaller: leads still converted whose conversion was first recorded in the range, credited to whoever owned the
-    lead at that instant. The owner is computed in an inner select so the outer query groups on a plain column."""
-    first = (
+def first_conversions():
+    """T5 / DB2: each lead's first recorded conversion (`lead_id`, `at`). mgmt-018 credits the same conversions to the counselor."""
+    return (
         select(LeadStageHistory.lead_id, func.min(LeadStageHistory.created_at).label("at"))
         .where(LeadStageHistory.to_stage == "converted").group_by(LeadStageHistory.lead_id).subquery()
     )
+
+
+async def conversions_by_user(db: AsyncSession, user_ids: list[UUID], start: datetime, end: datetime) -> dict[UUID, int]:
+    """D13 (DB2) per telecaller: leads still converted whose conversion was first recorded in the range, credited to whoever owned the
+    lead at that instant. The owner is computed in an inner select so the outer query groups on a plain column."""
+    first = first_conversions()
     owners = select(owner_at(first.c.at).label("owner")).select_from(Enquiry).join(first, first.c.lead_id == Enquiry.id).where(
         Enquiry.status == "converted", *_in(first.c.at, start, end)).subquery()
     return _group(await db.execute(select(owners.c.owner, func.count()).where(owners.c.owner.in_(user_ids)).group_by(owners.c.owner)))

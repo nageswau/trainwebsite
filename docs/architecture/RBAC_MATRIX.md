@@ -2083,6 +2083,18 @@ Counts only, no personal data; nothing else changes.
 - Company-wide counts per team and per telecaller (telecaller names only; no lead data). No audit row (no write). The tel-021/023/024
   telecaller routes and their scopes are unchanged.
 
+### 2.128 Counseling dashboard *(added 2026-10-13 — `DEC-SCOPE-203`, `mgmt-018`)*
+
+| Role | Read `GET /management/counseling`, page `/management/counseling` |
+|---|---|
+| `partner` | yes, with revenue; "Counseling" (Students) and "Counselors" (People) entries |
+| `super_admin` | yes (operational tier, M13) **without revenue** (`revenue: null`, finance tier only, CS8); keeps the super admin sidebar ("Management counseling figures") |
+| `accountant` | `403` "Operational access required"; no entry |
+| every other role (incl. `counselor`, `telecaller_manager`) | `403`; signed out `401` (the page redirects to `/admin/login?next=`) |
+
+- Counselor names and counts per counselor (staff performance, management only); no lead or student personal data. No audit row (no
+  write). The counselor and telecaller routes and their scopes are unchanged.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
