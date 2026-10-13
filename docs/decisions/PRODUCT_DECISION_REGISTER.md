@@ -8191,53 +8191,58 @@ Spec `docs/superpowers/specs/2026-10-13-mgmt-017-training-dashboard-design.md`.
 ### DEC-SCOPE-209 — Direct Tie-ups load + agent commission (`dtu-001`)
 
 **Evidence:** `Direct Tie-ups.xlsx` (owner's Downloads; 3 sheets `Direct Tie-up's`, `iu`, `uc`; not copied into `docs/sources/`) —
-`UNVERIFIED` data supplied by the owner. Owner answers DT1–DT18 (in-session 2026-10-13 and 2026-10-14) — `EXPLICIT_APPROVAL`
-(owner, in-session). The "Commission" column is **not** the university → EduSphere commission of U2 / upc-016 / upc-017.
+`UNVERIFIED` data supplied by the owner. DT1–DT14: owner answers given in-session on 2026-10-13, recorded in the design spec §2 table
+(spec §2, owner, in-session 2026-10-13) — `EXPLICIT_APPROVAL` (owner, in-session). DT15–DT18: owner answers given in-session on
+2026-10-14 — `EXPLICIT_APPROVAL` (owner, in-session). The owner also approved the parsed data (review CSV) as is on 2026-10-14. The
+Excel "Commission" is **not** the university → EduSphere commission of U2 / upc-016 / upc-017.
 
-**Status:** built on `feature/direct-tieups`; lite tests green except the pre-existing `main` failures listed in the QA note; the
-owner's e2e run and full backend suite pending. The owner approved the parsed data (review CSV) as is on 2026-10-14.
+**Status:** built on `feature/direct-tieups`; lite tests green except the pre-existing failures listed in
+`docs/quality/DTU-001_QA_2026-10-14.md`; the owner's e2e run, the loader run and the full backend suite are pending.
 
 **Numbering:** migration `0157_direct_tieups`; API §12DW; RBAC §2.134 (after mgmt-017's `DEC-SCOPE-208` / §12DV / §2.133, `main` @ `2d0e9a2d`).
 Spec `docs/superpowers/specs/2026-10-13-dtu-001-direct-tieups-design.md` (with its "Amendments (2026-10-14)").
 
-| # | Point | Answer |
+| # | Point | Owner answer |
 |---|---|---|
 | DT1 | Where the universities go | The shared catalogue (`universities` + `overseas_courses`), `catalogue_visible = true`, so the public site, counselor, partnership and agent portals show them |
 | DT2 | What the Excel "Commission" is | What EduSphere (Overseas admin) pays the **agent Master** for a student placed at that university — not the university → EduSphere commission (U2) |
-| DT3 | Where it is stored | University-level agent commission (`agent_commission_percent` / `_amount` + `_currency` / `_note`); the course `commission_*` fields are untouched |
-| DT4 | Who sees it | `super_admin`, `overseas_admin` (overseas division) and an agent **Master**; never agency staff, `it_admin`, partnership roles, `partner`, `accountant`, counselors, students, university reps or the public |
-| DT5 | Who edits it | `super_admin` and `overseas_admin` only |
-| DT6 | "admin" means | Narrowed by DT13 to `overseas_admin` (with `super_admin`) |
-| DT7 | Existing university-commission holders | Unchanged (U2 / M3); nothing is added to `partnership_access.COMMISSION_ROLES` |
-| DT8 | Missing data | Rule-based defaults, each listed in `direct_tieups_review.csv` (owner approved the data as is) |
-| DT9 | Load method | Idempotent, re-runnable `python -m app.direct_tieups.load [--dry-run]` over the committed `apps/api/seed/direct_tieups.json`; the owner runs it per environment |
-| DT10 | Images | Each university's logo from its official site, stored under `apps/web/public/universities/logos/`; 21 found, 14 show a monogram (403s, white-only artwork, > 200 KB, or none found — R11); an admin can set `logo_url` on the master form later |
-| DT11 | Every Excel column | Processed and available in the app (coverage check: 0 unmapped cells; 35 universities, 175 courses parsed) |
+| DT3 | Where it is stored | A university-level agent commission (one per university, matching the sheet); the course `commission_*` fields are untouched |
+| DT4 | Who sees it | `super_admin`, `overseas_admin` and an agent **Master**; never agency staff, `it_admin`, partnership roles, `partner`, `accountant`, counselors, students, university reps or the public |
+| DT5 | Who edits it | `super_admin` and `overseas_admin` |
+| DT6 | "admin" means | First "all admin roles"; narrowed by DT13 to `overseas_admin` (with `super_admin`) |
+| DT7 | Existing university-commission holders | Unchanged (U2 / M3) |
+| DT8 | Missing data | Rule-based defaults, every default listed in a review CSV the owner checks before loading |
+| DT9 | Load method | An idempotent, re-runnable script plus a committed data file; the owner runs it per environment |
+| DT10 | Images | Fetch each university's logo from its official website; store in the web app; show it in the catalogue |
+| DT11 | Every Excel column | Must be processed and available in the app |
 | DT12 | `iu` universities without courses | Loaded as universities with their agent commission; no placeholder courses |
-| DT13 | `it_admin` | Has no access to universities; removed from DT4; no screen added |
-| DT14 | Where admins see/edit | On the partnership university master (an "Agent commission" card), not a new page; the upc-033 sweep tolerates an `agent_commission*` key only for `ovs_admin` |
-| DT15 | City | Each university's real main city (flagged in the review CSV); a trailing "campus" word is dropped from `city`, kept in `campuses` (R8) |
-| DT16 | APAC fees | Both lines shown exactly as in the Excel, no numeric price (text only in `fee_text`); AED fees stay text-only (R10) |
+| DT13 | `it_admin` | "it_admin has no access to universities": removed from DT4; no university screen added for it |
+| DT14 | Where admins see/edit | On the university master (partnership university detail), not a separate page |
+| DT15 | City | Each university's real main city (flagged) |
+| DT16 | APAC fees | Show both lines exactly as in the Excel, no numeric price |
 | DT17 | BPP PG titles mentioning PDP / Professional Development | Get the 18-month line and duration "18 months" |
-| DT18 | Hidden destination countries | Made visible when they have their required content; a country missing content is reported and left hidden |
+| DT18 | Hidden destination countries | Make them visible when they have their required content; a country missing content is reported and left hidden |
 
-**Rulings recorded with this decision** (controller, 2026-10-14):
-- **R5 — clearing is `DELETE`.** `PUT …/agent-commission` requires a body and answers `422` for a missing or `null` body (an absent or
-  failed body must never wipe a rate); `DELETE …/agent-commission` clears all four columns. Supersedes the spec's "`null` clears".
-- **R6 — inactive is read-only.** `PUT` / `DELETE` on an inactive university answer `409` (UM10); reactivate first.
-- **R12 / R13 — the loader publishes hidden destination countries** (DT18): a hidden country that already has catalogue content is
-  made visible (`catalogue_visible = true`, no content change); one with a `seed/countries.json` row (DE, AU, US, FR, AE) is filled
-  through `app.seed.catalogue_country` (empty content only) and published; **Malta (MT) has no seed row, so it is reported
-  `country_needs_content: MT` and stays hidden** — GBS Malta is not public until an admin adds Malta content. Audit
-  `country.direct_tieup_publish` (ids only).
-- Other rulings (R1–R4, R7–R11, R14) are implementation detail kept in the build ledger: nullable `campuses` read as `[]`; every
-  `UniversityEnvelope` route sets `response_model_exclude_unset` (guarded by a structural test); the parser emits `logo_url: null`;
-  the Partner Universities commission column is shown to a Master only.
+**Implementation rulings** (controller, 2026-10-14; implementation rulings, **not** owner approvals; R1–R4, R7 are test/model details):
 
-**Consequences:** migration `0157_direct_tieups` (7 `universities` columns, 3 `overseas_courses` columns, CHECKs);
-`services/agent_commission_access.py`; `api/partnership_universities.py` (`PUT` / `DELETE …/agent-commission`);
+| Ruling | Behaviour | Rationale |
+|---|---|---|
+| R5 | `PUT …/agent-commission` needs a body (missing or `null` is `422`); clearing is `DELETE …/agent-commission` | An absent or failed body must never wipe a rate; supersedes the spec's "`null` clears" |
+| R6 | `PUT` / `DELETE` on an inactive university answer `409` | UM10: inactive is read-only; admins reactivate first |
+| R8 | `city` drops a trailing "campus" word ("Cardiff Campus" → "Cardiff"); `campuses` keep the full text | Follows DT15 and the spec's intent |
+| R9 | "information technology" (any case) counts as a Computing & IT keyword | Spec §4.3 intent |
+| R10 | The duplicate Southwales "MSc Leading Digital Transformation" (PG) is emitted once (flag kept); AED fees stay text-only | One course per duplicate key; consistent with DT16 |
+| R12 | The loader publishes a hidden country that has a `seed/countries.json` row (DE, AU, US, FR, AE) through `app.seed.catalogue_country` (empty content only); Malta (no row) is reported `country_needs_content: MT` and stays hidden; audit `country.direct_tieup_publish` | Implements DT18 without inventing country content |
+| R13 | A hidden country that already has catalogue content is published by setting `catalogue_visible = true` only | DT18 says "visible when they have their content"; such a country was mis-reported |
+| R14 | The Partner Universities commission column/field is shown only to `memberRole === "master"` and when the key is present | Defence in depth: staff never show it even if a payload carried the key |
+
+**Consequences (build outcomes, with their rulings):** migration `0157_direct_tieups` (7 `universities` columns, 3 `overseas_courses` columns,
+CHECKs); `services/agent_commission_access.py`; `api/partnership_universities.py` (`PUT` / `DELETE …/agent-commission`);
 `api/agent_shortlist.py` (`GET …/crm/partner-universities`, `/{id}`); portal section `partner-universities`;
 `app/direct_tieups/{parse,load}.py`, `seed/direct_tieups.json`, `seed/direct_tieups_review.csv`; web `UniversityLogo`,
-`AgentCommissionCard`, `AgentPartnerUniversitiesPanel`, agent nav **Partner Universities**. Tests `test_dtu_001_*.py`, upc-033 sweep
-and matrix extended, vitest components, `apps/web/tests/e2e/dtu-001-partner-universities.spec.ts`.
+`AgentCommissionCard`, `AgentPartnerUniversitiesPanel`, agent nav **Partner Universities**. Parsed: 35 universities, 175 courses, 0
+unmapped cells (DT11; review CSV defaults approved by the owner). Logos: 21 found, 14 show the monogram tile (403s, white-only
+artwork, > 200 KB, or none found; an admin can set `logo_url` later) (R11). Every `UniversityEnvelope` route sets
+`response_model_exclude_unset`, guarded by a structural test (R2, R7). Tests `test_dtu_001_*.py`, upc-033 sweep and matrix extended,
+vitest components, `apps/web/tests/e2e/dtu-001-partner-universities.spec.ts`.
 - **New Feature ID authorized:** `dtu-001`. **Status:** see `AGENT_CRM_BACKLOG.md` (status table, `dtu-001` row).

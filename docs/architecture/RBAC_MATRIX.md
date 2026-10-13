@@ -2167,7 +2167,7 @@ Counts only, no personal data; nothing else changes.
 | `partner`, `accountant`, `it_admin`, counselors, students, university reps, every other role | `403` | no access / key absent | `403` |
 | signed out | `401` | `401` | `401` |
 
-- `PUT` needs a body (`{percent}` or `{amount, currency}`, optional `note`); a missing or `null` body is `422`. `DELETE` clears.
+- `PUT` needs a body (`{percent}` or `{amount, currency}`, optional `note`); a missing or `null` body is `422`. `DELETE` clears. Body validation (`422`) runs before the role check, so a non-editor sending an invalid body gets `422`, not `403`; signed-out requests still get `401`.
   Unknown university `404`; **inactive university `409`** (UM10). Each real change writes `AuditLog` `university.agent_commission`
   with the old and new values (the only university audit that stores values); no change, no audit row.
 - Partner Universities lists only `active` + `catalogue_visible` universities; a hidden or inactive one is `404`. The key is absent
