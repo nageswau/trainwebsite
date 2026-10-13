@@ -40,7 +40,7 @@ test("a partner reads the P&L, its total adds up, and a chosen quarter survives 
   await page.getByLabel("Show").selectOption("quarter");
   await page.getByRole("button", { name: "Show" }).click();
   await expect(page).toHaveURL(/month=2025-05&period=quarter/);
-  await expect(page.getByText(/Q1 \(April–June\) of 2025-26 to date/)).toBeVisible();
+  await expect(page.getByText(/^Q1 \(April–June\) of 2025-26 to date: 01 Apr 2025 to 31 May 2025\./)).toBeVisible(); // the period line, not the empty-state status
   await page.reload();
   await expect(page.getByLabel("Month", { exact: true })).toHaveValue("2025-05");
   await expect(page.getByLabel("Show")).toHaveValue("quarter");
