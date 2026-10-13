@@ -33,6 +33,7 @@ from app.schemas import (
     ManagementCounselingOut,
     ManagementMeOut,
     ManagementSnapshotOut,
+    ManagementTrainingOut,
     MarketingBudgetsIn,
     MarketingOut,
     PnlOut,
@@ -59,6 +60,7 @@ from app.services import (
     management_recruitment,
     management_recruitment_revenue,
     management_telecalling,
+    management_training,
     salaries,
     telecaller_performance,
 )
@@ -186,6 +188,18 @@ async def counseling_dashboard(
     now = await db_now(db)
     start, end = period(from_, to, india_date(now))
     return await management_counseling.dashboard(db, user, start, end, now)
+
+
+@router.get("/training", response_model=ManagementTrainingOut)
+async def training_dashboard(
+    from_: date | None = Query(None, alias="from"), to: date | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """mgmt-017 (§12, spec TR1-TR16): the training KPIs and every trainer's figures for `from`..`to` (IST, default this month).
+    Operational tier (partner, super_admin)."""
+    _operational(user)
+    now = await db_now(db)
+    start, end = period(from_, to, india_date(now))
+    return await management_training.dashboard(db, start, end, now)
 
 
 @router.get("/expenses", response_model=ExpenseDashboardOut)
