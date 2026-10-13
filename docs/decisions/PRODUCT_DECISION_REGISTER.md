@@ -7930,3 +7930,41 @@ page `/management/bdm`, `lib/management.ts`, `lib/navigation.ts`, `globals.css` 
 `.report-tablist.wrap`). Tests `test_mgmt_020_bdm_dashboards.py`, `managementBdm.test.ts`, `ManagementBdm.test.tsx`,
 `mgmt-020-bdm-dashboards.spec.ts`. QA `docs/quality/MGMT-020_EXPLORATORY_QA_2026-10-13.md`.
 - **New Feature ID authorized:** `mgmt-020`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-020.
+
+### DEC-SCOPE-202 — Telecalling dashboard (company-wide): the §14 figures, conversion and chain (`mgmt-019`)
+
+**Evidence:** `EVID-017` §14 "TELECALLING" (8 figures, "Telecaller conversion", "Calls → Interested → Counseling → Registration", lines
+537–559 — `DERIVED_BLUEPRINT`). `DEC-SCOPE-186` M1/M13 (operational tier) — `EXPLICIT_APPROVAL`. tel-021 `DEC-SCOPE-105` (D2–D13),
+tel-023 `DEC-SCOPE-112` (P1–P6, PF4 period rules).
+
+**Status:** TC1–TC16 in review on `feature/mgmt-019` (2026-10-13). Every TC answer is a **recommended default, `UNVERIFIED`**, taken on
+the owner's instruction to proceed with recommended answers.
+
+**Numbering (provisional):** no migration; API §12DP; RBAC §2.127 (after mgmt-020's `DEC-SCOPE-201` / §12DO / §2.126).
+Spec `docs/superpowers/specs/2026-10-13-mgmt-019-telecalling-dashboard-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| TC1 | Population | Every `telecaller` with a telecaller profile, both teams, active and inactive (inactive marked) — tel-023's super_admin scope |
+| TC2 | Period | `date_from` / `date_to`, IST days, default 1st of this month → today; ≤ 366 days, never future (tel-023 PF4 wording) |
+| TC3 | Leads assigned | tel-023 P1 `leads_received` |
+| TC4 | Calls attempted / Connected | tel-021 D2 / D3 |
+| TC5 | Interested | Stage moves to Interested recorded by the telecaller in the period (as D11 Qualified) |
+| TC6 | Follow-up | Follow-ups completed by the telecaller in the period (D5) |
+| TC7 | Appointment | D7 new appointments (counselling bookings + BDM meeting requests) |
+| TC8 | Converted | D13 / T5 |
+| TC9 | Lost | Stage moves into any closed outcome (Not Interested, Not Eligible, Wrong Number, No Response, Lost) by the telecaller in the period |
+| TC10 | Telecaller conversion | Converted ÷ Leads assigned × 100, one decimal; null ("—") with no leads |
+| TC11 | Chain | Calls → Interested → Counseling (D8 counselling bookings) → Registration (Converted); activity, not a cohort; each later step as a share of Calls (QA19-03) |
+| TC12 | Breakdown | Company, per team (IT, Overseas, always both), per telecaller (by name); every total = the sum of its rows (AC1: = the tel-023 totals) |
+| TC13 | Access | Operational tier (partner, super_admin); accountant 403 "Operational access required"; others 403; signed out 401 |
+| TC14 | Privacy | Counts and telecaller names only; no lead data |
+| TC15 | Page | `/management/telecalling`; Sales "Leads & calls" and People "Telecallers" (`#telecallers`) entries live; super admin keeps `SUPER_ADMIN_NAV` (reaches it from the Command Center) |
+| TC16 | Query shape | `flow_counts_by_user` (fixed grouped queries), one grouped stage-history query, `leads_received` per telecaller (as tel-023) |
+
+**Consequences:** `services/management_telecalling.py` (`dashboard()`; reuses `telecaller_metrics.flow_counts_by_user/leads_received`
+and `telecaller_performance.date_range`, read-only); `api/management.py` (`GET /management/telecalling`); `schemas.py` (`TelecallingOut`).
+Web `lib/managementTelecalling.ts`, `components/ManagementTelecalling.tsx`, page `/management/telecalling`, `lib/management.ts`,
+`globals.css` (`.telecalling-people`, `.telecalling-section-title`). Tests `test_mgmt_019_telecalling.py`, `managementTelecalling.test.ts`,
+`ManagementTelecalling.test.tsx`, `mgmt-019-telecalling.spec.ts`. QA `docs/quality/MGMT-019_EXPLORATORY_QA_2026-10-13.md`.
+- **New Feature ID authorized:** `mgmt-019`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-019.

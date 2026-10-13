@@ -3058,6 +3058,16 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/bdm` *(new)* | Query: `type` (`agent` default / `school` / `college`), `from`, `to` (inclusive IST dates, each defaulting to this IST month). `422` unknown type, malformed date, "The period must start on or before its end", "The period can be at most 366 days". `200` `{type, label, from, to, as_of, bdm_count, figures[{key, label, definition, basis: "period"\|"now", tracked, value}]}` — §16 order, 9 / 7 / 6 figures; `value` null when not tracked (College `internships`). Counts only |
 
+## 12DP. Telecalling dashboard, company-wide (`mgmt-019`) — addendum, 2026-10-13
+
+- **Basis:** `DEC-SCOPE-202` (TC1–TC16). Design spec `docs/superpowers/specs/2026-10-13-mgmt-019-telecalling-dashboard-design.md`.
+  No migration. Operational tier only (partner, super_admin); accountant `403` "Operational access required"; other roles `403`
+  "Management access required"; signed out `401`. Read-only: no write, lock or audit row.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/telecalling` *(new)* | Query: `date_from`, `date_to` (IST dates; default the 1st of this month → today). `422` malformed date, "The start date must not be after the end date", "The range can't end in the future", "The range can't be longer than 366 days" (tel-023 wording). `200` `{date_from, date_to, totals, teams[{team, label, telecallers, …}], telecallers[{user_id, full_name, team, active, …}], chain[{key, label, value, share}]}`; each figure set is `{leads, calls, connected, interested, follow_ups, appointments, converted, lost, counselling, conversion}` (`conversion` % or null); `share` = % of Calls, null for Calls. Counts and telecaller names only |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

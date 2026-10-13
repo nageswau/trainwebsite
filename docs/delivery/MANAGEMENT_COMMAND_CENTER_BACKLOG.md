@@ -821,6 +821,8 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-019 — Telecalling dashboard (company-wide)
+- **Status (2026-10-13):** **IN REVIEW** on `feature/mgmt-019`. `DEC-SCOPE-202` (TC1–TC16 recommended defaults, UNVERIFIED; Interested and
+  Lost added beside tel-021's counts). No migration; API §12DP; RBAC §2.127. QA evidence `docs/quality/MGMT-019_EXPLORATORY_QA_2026-10-13.md`.
 - **Business requirement:** §14 (8 KPIs; Calls → Interested → Counseling → Registration).
 - **Existing behavior:** tel-021/023/024 for managers and admins.
 - **Expected behavior:** company-wide figures + per-team, reusing `telecaller_metrics.flow_counts_by_user` over all telecallers.
