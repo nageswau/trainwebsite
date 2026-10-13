@@ -17,7 +17,7 @@ const perms = {
   can_reopen: false, can_manage_agreements: false, can_approve_agreements: false, can_edit_timeline: false,
 };
 const row = (over: Partial<SearchRow> = {}): SearchRow => ({
-  id: "u1", university_code: "UNV-000001", slug: "abc", name: "ABC University", institution_type: "university",
+  id: "u1", university_code: "UNV-000001", slug: "abc", name: "ABC University", logo_url: null, institution_type: "university",
   country: { id: "c1", name: "United Kingdom", iso2: "GB", region: "UK", catalogue_visible: true }, city: "London", priority: "A",
   partnership_potential: "high", relationship_strength: null, primary_manager: { id: "m1", full_name: "Rahul", active: true }, backup_manager: null,
   catalogue_visible: false, active: true, stage: "meeting_completed", stage_label: "Meeting Completed", lost: false, permissions: perms,

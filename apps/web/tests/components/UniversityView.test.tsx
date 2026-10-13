@@ -10,6 +10,7 @@ const profile: UniversityView["university"] = {
   country: { name: "United Kingdom", iso2: "GB", region: "UK" }, state_region: "Greater London", city: "London", website: "https://abc.ac.uk",
   overview: "A research university.", eligibility: "", course_levels: ["UG", "PG"], popular_programs: ["Business"],
   rankings: [{ system: "QS", other_name: null, year: 2026, rank: "145" }],
+  logo_url: null, campuses: ["Cardiff", "Newport"], fee_structure: "Tuition varies by course.",
 };
 const counselor: UniversityView = {
   slice: "counselor",
@@ -20,6 +21,7 @@ const counselor: UniversityView = {
     id: "k1", title: "MSc Data Science", level: "PG", category: "Computing", duration: "1 year", tuition_fee: "GBP 20,000", tuition_amount: "20000.00",
     tuition_currency: "GBP", application_fee: null, application_fee_currency: null, intakes: ["Sep", "Jan"], intake: "Sep", entry_requirements: "A 2:1 degree",
     english_test: "IELTS", english_score: "6.5", scholarships: [], application_process: null, deadline: null,
+    campus: "Cardiff", fee_text: "GBP 20,000 per year", intake_text: "September and January",
   }],
   documents: [{ id: "d1", kind: "fee_structure", title: "Fees 2026", current_version: 2, updated_at: "2026-10-01T10:00:00Z" }],
   applications: [{ id: "a1", reference: "APP-1", student_name: "Ravi Kumar", intake: "Sep 2027", status: "offer", next_action: "Pay deposit", updated_at: "2026-10-02T10:00:00Z" }],
@@ -35,7 +37,10 @@ describe("UniversityView", () => {
     const courses = screen.getByRole("region", { name: "Courses" });
     expect(within(courses).getByText("IELTS 6.5")).toBeInTheDocument();
     expect(within(courses).getByText("A 2:1 degree")).toBeInTheDocument();
-    expect(within(courses).getByText("GBP 20000.00")).toBeInTheDocument();
+    expect(within(courses).getByText("GBP 20,000 per year")).toBeInTheDocument();
+    expect(within(courses).getByText("September and January")).toBeInTheDocument();
+    expect(within(courses).getByText("Cardiff")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Profile" })).toHaveTextContent("Tuition varies by course.");
     expect(screen.getByRole("region", { name: "Application contacts" })).toHaveTextContent("Asha Admissions");
     const download = screen.getByRole("link", { name: /Download Fees 2026/ });
     expect(download).toHaveAttribute("href", "/api/v1/universities/u1/view/documents/d1/file");

@@ -17,6 +17,7 @@ export type Course = {
   tuition_amount: string | null; tuition_currency: string | null; application_fee: string | null; application_fee_currency: string | null;
   intakes: string[]; entry_requirements: string | null; english_test: string | null; english_score: string | null;
   scholarships: { id: string; title: string; amount: string }[]; application_process: string | null; deadline: string | null; active: boolean;
+  campus: string | null; fee_text: string | null; intake_text: string | null; // dtu-001
   commission?: CourseCommission | null; // present for the commission roles only
   permissions: { can_edit: boolean };
 };

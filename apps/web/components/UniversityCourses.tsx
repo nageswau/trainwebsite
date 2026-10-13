@@ -16,8 +16,9 @@ function facts(c: Course): [string, string | null][] {
   return [
     ["Category", c.category],
     ["Duration", c.duration],
-    ["Intakes", c.intake || null],
-    ["Tuition fee", c.tuition_fee || null],
+    ["Campus", c.campus],
+    ["Intakes", c.intake_text ?? (c.intake || null)],
+    ["Tuition fee", c.fee_text ?? (c.tuition_fee || null)],
     ["Application fee", moneyText(c.application_fee, c.application_fee_currency)],
     ["English", englishText(c)],
     ["Entry requirements", c.entry_requirements],

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { safeWebsite } from "@/lib/bdmOrganizations";
 import LocalTime from "@/components/LocalTime";
+import UniversityLogo from "@/components/UniversityLogo";
 import { dateText } from "@/lib/universityAgreements";
 import { INSTITUTION_TYPES, label, OWNERSHIP_TYPES, rankingText } from "@/lib/universities";
 import { kindLabel } from "@/lib/universityDocuments";
@@ -40,7 +41,7 @@ export default function UniversityViewPanel({ view }: { view: UniversityView }) 
       <div className="portal-title">
         <div>
           <div className="eyebrow">University · {u.university_code}</div>
-          <h2>{u.name}</h2>
+          <h2 style={{ display: "flex", alignItems: "center", gap: 12 }}><UniversityLogo name={u.name} logoUrl={u.logo_url} decorative />{u.name}</h2>
           <p className="muted">
             {[u.city, u.country.name].filter(Boolean).join(", ")}
             {view.partnership && <> · <span className="badge">{view.partnership.stage_label}</span></>}
@@ -61,6 +62,8 @@ export default function UniversityViewPanel({ view }: { view: UniversityView }) 
               : u.website],
             ["Course levels", u.course_levels.join(", ")],
             ["Popular programmes", u.popular_programs.join(", ")],
+            ["Campuses", u.campuses?.join("\n")],
+            ["Fee structure", u.fee_structure],
             ["Rankings", u.rankings.map(rankingText).join("\n")],
             ["Overview", u.overview],
             ["Eligibility", u.eligibility],
@@ -101,9 +104,10 @@ export default function UniversityViewPanel({ view }: { view: UniversityView }) 
                     <Facts rows={[
                       ["Category", c.category],
                       ["Duration", c.duration],
-                      ["Tuition fee", money(c.tuition_amount, c.tuition_currency) ?? c.tuition_fee],
+                      ["Campus", c.campus],
+                      ["Tuition fee", c.fee_text ?? money(c.tuition_amount, c.tuition_currency) ?? c.tuition_fee],
                       ["Application fee", money(c.application_fee, c.application_fee_currency)],
-                      ["Intakes", c.intakes.length ? c.intakes.join(", ") : c.intake],
+                      ["Intakes", c.intake_text ?? (c.intakes.length ? c.intakes.join(", ") : c.intake)],
                       ["English requirement", englishText(c)],
                       ["Entry requirements", c.entry_requirements],
                       ["Scholarships", c.scholarships.map((s) => `${s.title} (${s.amount})`).join("\n")],

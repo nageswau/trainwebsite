@@ -6,6 +6,7 @@ import MeetingTable from "@/components/MeetingTable";
 import PartnershipFunnel from "@/components/PartnershipFunnel";
 import PartnershipHealth from "@/components/PartnershipHealth";
 import PartnershipTasksPanel from "@/components/PartnershipTasksPanel";
+import AgentCommissionCard from "@/components/AgentCommissionCard";
 import UniversityActivity from "@/components/UniversityActivity";
 import UniversityAgreements from "@/components/UniversityAgreements";
 import UniversityCourses from "@/components/UniversityCourses";
@@ -26,6 +27,7 @@ const ID = "3f2b6a8e-1c4d-4e5f-8a9b-0c1d2e3f4a5b";
 const university = {
   id: ID, university_code: "UNV-000001", name: "ABC", city: "London", country: { name: "United Kingdom", region: "UK" }, active: true,
   catalogue_visible: false, course_levels: [], popular_programs: [], rankings: [], application_count: 0, overview: "",
+  logo_url: null, campuses: ["Cardiff"], fee_structure: "Varies", // dtu-001
   relationship_strength: null, linked_bdm_organizations: [], // upc-006 / upc-004 fields
   permissions: { can_edit: true, can_assign: false, can_publish: false, can_deactivate: false, can_edit_contacts: false, can_manage_documents: true, can_move_stage: true, can_reopen: false, can_manage_agreements: true, can_approve_agreements: false, can_edit_timeline: true },
   pipeline: { stage: "interested", stage_label: "Interested", column: "interested", column_label: "Interested", changed_at: "2026-10-08T10:00:00Z", lost: null, stages: [] },
@@ -119,6 +121,27 @@ describe("upc-007 university detail page", () => {
     // upc-019 (U2): no commission ledger request and no section for a non-commission role
     expect(vi.mocked(serverApi).mock.calls.some(([p]) => String(p).includes("/commission"))).toBe(false);
     expect(tree.find((el) => el.type === CommissionLedger)).toBeUndefined();
+  });
+
+  it("shows the Agent commission card only when the API sent the key (dtu-001)", async () => {
+    const serve = (role: string, extra: object) => vi.mocked(serverApi).mockImplementation(async (p: string) => {
+      if (p === "/api/v1/auth/me") return { role, full_name: "X" } as never;
+      if (p.includes("/stage-history")) return history as never;
+      if (p.includes("/contacts")) return { items: [], total: 0, limit: 50, offset: 0 } as never;
+      if (p.includes("/documents")) return documents as never;
+      if (p.includes("/performance")) return performance as never;
+      if (p !== `/api/v1/partnership/universities/${ID}`) return { items: [], total: 0, limit: 50, offset: 0, can_edit: false } as never;
+      return { university: { ...university, permissions: { ...university.permissions, can_manage_agreements: false }, ...extra } } as never;
+    });
+    const commission = { percent: "16.00", amount: null, currency: null, note: null };
+    serve("overseas_admin", { agent_commission: commission });
+    let card = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) })).find((el) => el.type === AgentCommissionCard);
+    expect(card!.props).toEqual({ universityId: ID, value: commission, canEdit: true });
+    serve("super_admin", { agent_commission: null });
+    card = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) })).find((el) => el.type === AgentCommissionCard);
+    expect(card!.props).toEqual({ universityId: ID, value: null, canEdit: true });
+    serve("partnership_manager", {});
+    expect(elements(await UniversityPage({ params: Promise.resolve({ id: ID }) })).find((el) => el.type === AgentCommissionCard)).toBeUndefined();
   });
 
   it("shows the course master to every reader; the form options only for writers (upc-017)", async () => {
