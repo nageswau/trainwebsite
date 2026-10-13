@@ -3098,6 +3098,16 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/agents` *(new)* | Query: `from`, `to` (inclusive IST dates, each defaulting to this IST month). `422` malformed date, "The period must start on or before its end", "The period can be at most 366 days". `200` `{from, to, as_of, money_visible, figures[{key, label, definition}] (12, §17 order), totals{agents, new_agents, active_agents, inactive_agents, staff, students, applications, offers, visa, enrollments, commission, revenue}, chain[{key, label, value}] (agents, staff, students, applications, enrollments, revenue — the revenue step only when money_visible), agencies[{id, name, prefix, status (active/suspended), new, staff, students, applications, offers, visa, enrollments, commission, revenue}]}`; agencies ranked by enrollments, applications, students, name; money is a decimal string, `null` unless money_visible (partner only). The AGN-022 `/overseas-admin/agent-orgs*` routes are unchanged |
 
+## 12DT. Company profitability — vertical P&L (`mgmt-009`) — addendum, 2026-10-13
+
+- **Basis:** `DEC-SCOPE-206` (PL1–PL12). Design spec `docs/superpowers/specs/2026-10-13-mgmt-009-company-profitability-design.md`.
+  No migration. Finance tier only (partner, accountant); `super_admin` `403` "Finance access required"; other roles `403` "Management
+  access required"; signed out `401`. Read-only: no write, lock or audit row.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/pnl` *(new)* | **Query:** `month` (`YYYY-MM`, IST, default this month; January 2000 to this month), `period` = `month` (default) \| `quarter` (the financial-year quarter — Apr, Jul, Oct, Jan — to the end of `month`) \| `year` (the financial year, 1 April, to the end of `month`).<br>**`200`:** `{month, period, start, end, label, commission_visible, rows[{key, label, revenue, expenses, contribution, margin}], total{revenue, expenses, contribution, margin}, not_counted[{currency, kind, amount, count}]}`.<br>• Six rows, always, in order: `abroad`, `it`, `recruitment`, `school`, `other`, `shared` ("Shared (company-wide, not allocated)", Q-04).<br>• Counted `ledger.lines()` only (approved manual entries, reversals negative, + rupee automatic lines). `total` = Σ rows; `contribution` = revenue − expenses (may be negative); `margin` = contribution ÷ revenue × 100 (1 dp), `null` when revenue ≤ 0.<br>• University commission only for partners (`commission_visible`); for the accountant it is excluded from every figure and from `not_counted`.<br>**`422`:** a malformed, pre-2000 or future month, or a bad period |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

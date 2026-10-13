@@ -33,6 +33,7 @@ from app.schemas import (
     ManagementCounselingOut,
     ManagementMeOut,
     ManagementSnapshotOut,
+    PnlOut,
     RecruitmentDashboardOut,
     RecruitmentRevenueOut,
     SalaryMonthIn,
@@ -51,6 +52,7 @@ from app.services import (
     management_expenses,
     management_it_revenue,
     management_metrics,
+    management_pnl,
     management_recruitment,
     management_recruitment_revenue,
     management_telecalling,
@@ -247,6 +249,17 @@ async def recruitment_revenue(
     require_management(user)
     chosen = await _past_month(db, month)
     return await management_recruitment_revenue.dashboard(db, user, chosen, period, await db_now(db))
+
+
+@router.get("/pnl", response_model=PnlOut)
+async def profit_and_loss(
+    month: str | None = Query(None, pattern=MONTH), period: Literal["month", "quarter", "year"] = "month", user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """mgmt-009 (§7, spec PL1-PL12): revenue, expenses, contribution and margin per vertical, the unallocated shared costs and the total
+    for `month`, its financial-year quarter or its financial year to date. Finance tier only (partner, accountant); super_admin gets
+    "Finance access required" (M13). University commission is in the figures for partners only (M3)."""
+    ledger.require_finance(user)
+    return await management_pnl.dashboard(db, user, await _past_month(db, month), period)
 
 
 def _partner(user: User) -> User:

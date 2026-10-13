@@ -8077,3 +8077,38 @@ Spec `docs/superpowers/specs/2026-10-13-mgmt-021-agent-network-dashboard-design.
 `globals.css`. Tests `test_mgmt_021_agents.py`, `managementAgents.test.ts`, `ManagementAgents.test.tsx`, `mgmt-021-agents.spec.ts`. QA
 `docs/quality/MGMT-021_EXPLORATORY_QA_2026-10-13.md`.
 - **New Feature ID authorized:** `mgmt-021`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-021.
+
+### DEC-SCOPE-206 — Company profitability: vertical P&L, unallocated shared row, Q-04 second half (`mgmt-009`)
+
+**Evidence:** `EVID-017` §7 "COMPANY PROFITABILITY DASHBOARD" (lines 283–296, `DERIVED_BLUEPRINT`): Business Vertical P&L — Abroad
+Education / IT Training / Recruitment × Revenue / Expenses / Contribution + TOTAL; "which business is actually making money". Backlog
+§mgmt-009 (+ School/Other per §22; Q-04 shared costs; month, quarter or year). `DEC-SCOPE-186` M3/M13 (`EXPLICIT_APPROVAL`).
+`DEC-SCOPE-192` (`ledger.lines()`), `DEC-SCOPE-195` ME4/ME9, `DEC-SCOPE-198` MR6/MR7.
+
+**Status:** PL1–PL12 in review on `feature/mgmt-009` (2026-10-13). Every PL answer is a **recommended default, `UNVERIFIED`**, taken on
+the owner's instruction to proceed with recommended answers. PL4 answers the second half of Q-04 for now (no allocation).
+
+**Numbering (provisional):** no migration; API §12DT; RBAC §2.131 (after mgmt-021's `DEC-SCOPE-205` / §12DS / §2.130).
+Spec `docs/superpowers/specs/2026-10-13-mgmt-009-company-profitability-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| PL1 | Period | `month` (IST, default this month; ME9 validation) and `period` = `month`, `quarter` (financial-year quarter Apr–Jun / Jul–Sep / Oct–Dec / Jan–Mar, to the end of the month) or `year` (financial year to the end of the month) |
+| PL2 | Lines | Counted `ledger.lines()`: approved manual entries (reversals negative) + rupee automatic lines |
+| PL3 | Rows | Abroad Education, IT Training, Recruitment, School projects, Other — always listed — then the Shared row |
+| PL4 | Shared costs (Q-04) | Not allocated: the `shared` vertical (salaries, shared manual entries, shared trips) is its own row "Shared (company-wide, not allocated)". % or manual-split allocation stays open |
+| PL5 | Figures | Revenue, expenses, contribution = revenue − expenses, margin = contribution ÷ revenue × 100 (1 dp; none without revenue) |
+| PL6 | Total (AC) | Σ of the six rows; its contribution is the net profit read by mgmt-013/015/030/032 |
+| PL7 | Commission (M3, MR7) | Partners only; for the accountant excluded in SQL from every figure and from `not_counted` |
+| PL8 | Other currencies | Not counted; listed per currency and kind |
+| PL9 | Loss (AC edge case) | A negative contribution is red (`.pnl-loss`), minus sign kept |
+| PL10 | Access | Finance tier; `super_admin` 403 "Finance access required"; others 403 "Management access required"; signed out 401 |
+| PL11 | Navigation | Command Center Finance "Profit & loss" live at `/management/pnl` |
+| PL12 | Privacy | Totals only |
+
+**Consequences:** new `services/management_pnl.py`; `management_it_revenue.period_range` gains `quarter` (+ `quarter_start`; its own
+routes still accept month/year only); `api/management.py` (`GET /management/pnl`); `schemas.py` (`PnlFigures`, `PnlRow`, `PnlOut`).
+Web `lib/managementPnl.ts`, `components/ManagementPnl.tsx`, page `/management/pnl`, `lib/management.ts` (live entry), `globals.css`
+(`.pnl-loss`, phone sticky first column). Tests `test_mgmt_009_pnl.py`, `managementPnl.test.ts`, `ManagementPnl.test.tsx`,
+`mgmt-009-pnl.spec.ts`. QA `docs/quality/MGMT-009_EXPLORATORY_QA_2026-10-13.md`.
+- **New Feature ID authorized:** `mgmt-009`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-009.
