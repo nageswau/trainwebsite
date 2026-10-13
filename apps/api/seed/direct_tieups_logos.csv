@@ -1,0 +1,36 @@
+name,official_site,image_source_url,file,retrieved_on,status
+APAC Institutions,https://apac.edu.au/,https://apac.edu.au/media/dp3peojb/apac_web-graphic_logo-update_pm_1308_final_1.svg,apac-institutions.svg,2026-10-14,ok
+Aston University Birmingham,https://www.aston.ac.uk/,https://www.aston.ac.uk/themes/custom/aston_university/logo.svg,aston-university-birmingham.svg,2026-10-14,ok
+Avila University - Arizona Campus,https://arizona.avila.edu/,https://wpvip.guscancolleges.ca/avila/wp-content/uploads/sites/13/2024/11/AUA-logo.svg,avila-university-arizona-campus.svg,2026-10-14,ok
+Bangor University,https://www.bangor.ac.uk/,https://www.bangor.ac.uk/themes/custom/bangor/images/logo-black.svg,bangor-university.svg,2026-10-14,ok
+Berlin School of Business and Innovation - BSBI,https://www.berlinsbi.com/,,,2026-10-14,"none: header logo is inline SVG filled #F2F2F2 (white-on-transparent, invisible on light cards)"
+BIGS,https://www.brookstone.ae/,,,2026-10-14,none: official BIGS logo SVG exceeds 200 KB limit
+BPP Australia,https://www.bppinstitute.com/,https://www.bppinstitute.com/wp-content/uploads/2026/06/bppinstitute-logo.png,bpp-australia.png,2026-10-14,ok
+BPP University,https://www.bpp.com/,,,2026-10-14,none: only a reversed white logo is published (invisible on light backgrounds)
+Coventry University,https://www.coventry.ac.uk/,https://www.coventry.ac.uk/globalassets/media/logos/cov.svg,coventry-university.svg,2026-10-14,ok
+Ecole de Management Appliqué,https://gedu.global/,,,2026-10-14,none: gedu.global shows no logo naming this institution (only an unlabeled embedded raster)
+GBS Dubai,https://gedu.global/,https://gedu.global/media/jyujngfc/gbs-dubai_logo_rgb-1.svg,gbs-dubai.svg,2026-10-14,ok
+GBS Malta,https://gedu.global/,https://gedu.global/media/fcqp2stp/gbs-malta_logo_rgb-1.svg,gbs-malta.svg,2026-10-14,ok
+Global Banking School (GBS) UK,https://gedu.global/,https://gedu.global/media/swcbdvge/gbs_uk.svg,global-banking-school-gbs-uk.svg,2026-10-14,ok
+Health Sciences University (HSU),https://www.hsu.ac.uk/,,,2026-10-14,none: site returned 403 to automated fetch
+ICN Business School,https://gedu.global/,https://gedu.global/media/wcwbluv0/icn_logo_reduced-square_rgb_white-1-1.svg,icn-business-school.svg,2026-10-14,ok
+Leads Trinity University,,,,2026-10-14,none: no official domain found/resolvable (www.leadstrinity.com does not resolve)
+MLA College,https://gedu.global/,https://gedu.global/media/owyhextt/mla.svg,mla-college.svg,2026-10-14,ok
+OIEG Pathway Programs (Oxford International),https://www.oxfordinternational.com/,https://www.oxfordinternational.com/app/uploads/2025/08/oi-colour.svg,oieg-pathway-programs-oxford-international.svg,2026-10-14,ok
+Queens University Belfast,https://www.qub.ac.uk/,,,2026-10-14,none: site returned 403 to automated fetch
+Ravensbourne University London,https://www.ravensbourne.ac.uk/,inline SVG in site header (https://www.ravensbourne.ac.uk/),ravensbourne-university-london.svg,2026-10-14,ok
+Schiller International University,https://www.schiller.edu/,,,2026-10-14,none: no Schiller logo exposed as an image on the home page (only a 60-years badge and partner logos)
+University of Derby,https://www.derby.ac.uk/,,,2026-10-14,none: header logo is white-on-transparent only (invisible on light cards)
+University of East Anglia,https://www.uea.ac.uk/,inline SVG in site header (https://www.uea.ac.uk/),university-of-east-anglia.svg,2026-10-14,ok
+University of East London,https://www.uel.ac.uk/,,,2026-10-14,none: site returned 403 to automated fetch
+University of Greenwich,https://www.gre.ac.uk/,https://www.gre.ac.uk/__data/assets/image/0035/265688/logo_final_on_white.png,university-of-greenwich.png,2026-10-14,ok
+University of Hertfordshire,https://www.herts.ac.uk/,,,2026-10-14,none: site returned 403 to automated fetch
+University of Hull,https://www.hull.ac.uk/,,,2026-10-14,none: logo not exposed as an image/inline SVG on the home page
+University of Reading,https://www.reading.ac.uk/,https://www.reading.ac.uk/homepage/web/multimediafiles/legacy-uor-home.png,university-of-reading.png,2026-10-14,ok
+University of Roehampton,https://www.roehampton.ac.uk/,https://www.roehampton.ac.uk/Static/images/roehampton-logo-trans.svg,university-of-roehampton.svg,2026-10-14,ok
+University of Southwales,https://www.southwales.ac.uk/,,,2026-10-14,none: site returned 403 to automated fetch
+University of Staffordshire,https://www.staffs.ac.uk/,https://www.staffs.ac.uk/site/images/logo-uos.x887d037a.png,university-of-staffordshire.png,2026-10-14,ok
+University of West London,https://www.uwl.ac.uk/,https://www.uwl.ac.uk/themes/custom/rutherford/images/logo.svg,university-of-west-london.svg,2026-10-14,ok
+University of West of England Bristol,https://www.uwe.ac.uk/,https://www.uwe.ac.uk/assets/img/logo.svg,university-of-west-of-england-bristol.svg,2026-10-14,ok
+University of Wolverhampton,https://www.wlv.ac.uk/,,,2026-10-14,none: site returned empty HTTP 202 to automated fetch
+Walbrook,https://www.walbrook.ac.uk/,https://www.walbrook.ac.uk/hubfs/Walbrook-Institute-London_Logo_black_orange.svg,walbrook.svg,2026-10-14,ok

@@ -196,7 +196,7 @@
       "overview: generated default sentence"
     ],
     "source": "Direct Tie-up's!A52",
-    "logo_url": null
+    "logo_url": "/universities/logos/apac-institutions.svg"
   },
   {
     "name": "Aston University Birmingham",
@@ -220,7 +220,7 @@
       "overview: generated default sentence"
     ],
     "source": "iu!A4",
-    "logo_url": null
+    "logo_url": "/universities/logos/aston-university-birmingham.svg"
   },
   {
     "name": "Avila University - Arizona Campus",
@@ -398,7 +398,7 @@
       "overview: generated default sentence"
     ],
     "source": "Direct Tie-up's!A45",
-    "logo_url": null
+    "logo_url": "/universities/logos/avila-university-arizona-campus.svg"
   },
   {
     "name": "Bangor University",
@@ -422,7 +422,7 @@
       "overview: generated default sentence"
     ],
     "source": "iu!A12",
-    "logo_url": null
+    "logo_url": "/universities/logos/bangor-university.svg"
   },
   {
     "name": "Berlin School of Business and Innovation - BSBI",
@@ -874,7 +874,7 @@
       "overview: generated default sentence"
     ],
     "source": "Direct Tie-up's!A64",
-    "logo_url": null
+    "logo_url": "/universities/logos/bpp-australia.png"
   },
   {
     "name": "BPP University",
@@ -1179,7 +1179,7 @@
       "overview: generated default sentence"
     ],
     "source": "uc!A1",
-    "logo_url": null
+    "logo_url": "/universities/logos/coventry-university.svg"
   },
   {
     "name": "Ecole de Management Appliqué",
@@ -1457,7 +1457,7 @@
       "overview: generated default sentence"
     ],
     "source": "Direct Tie-up's!A55",
-    "logo_url": null
+    "logo_url": "/universities/logos/gbs-dubai.svg"
   },
   {
     "name": "GBS Malta",
@@ -1595,7 +1595,7 @@
       "overview: generated default sentence"
     ],
     "source": "Direct Tie-up's!A56",
-    "logo_url": null
+    "logo_url": "/universities/logos/gbs-malta.svg"
   },
   {
     "name": "Global Banking School (GBS) UK",
@@ -1793,7 +1793,7 @@
       "overview: generated default sentence"
     ],
     "source": "Direct Tie-up's!A54",
-    "logo_url": null
+    "logo_url": "/universities/logos/global-banking-school-gbs-uk.svg"
   },
   {
     "name": "Health Sciences University (HSU)",
@@ -2081,7 +2081,7 @@
       "overview: generated default sentence"
     ],
     "source": "Direct Tie-up's!A51",
-    "logo_url": null
+    "logo_url": "/universities/logos/icn-business-school.svg"
   },
   {
     "name": "Leads Trinity University",
@@ -2224,7 +2224,7 @@
       "overview: generated default sentence"
     ],
     "source": "Direct Tie-up's!A57",
-    "logo_url": null
+    "logo_url": "/universities/logos/mla-college.svg"
   },
   {
     "name": "OIEG Pathway Programs (Oxford International)",
@@ -2306,7 +2306,7 @@
       "overview: generated default sentence"
     ],
     "source": "Direct Tie-up's!A41",
-    "logo_url": null
+    "logo_url": "/universities/logos/oieg-pathway-programs-oxford-international.svg"
   },
   {
     "name": "Queens University Belfast",
@@ -2473,7 +2473,7 @@
       "overview: generated default sentence"
     ],
     "source": "Direct Tie-up's!A39",
-    "logo_url": null
+    "logo_url": "/universities/logos/ravensbourne-university-london.svg"
   },
   {
     "name": "Schiller International University",
@@ -2694,7 +2694,7 @@
       "overview: generated default sentence"
     ],
     "source": "iu!A3",
-    "logo_url": null
+    "logo_url": "/universities/logos/university-of-east-anglia.svg"
   },
   {
     "name": "University of East London",
@@ -2740,7 +2740,7 @@
       "overview: generated default sentence"
     ],
     "source": "uc!A2",
-    "logo_url": null
+    "logo_url": "/universities/logos/university-of-greenwich.png"
   },
   {
     "name": "University of Hertfordshire",
@@ -2813,7 +2813,7 @@
       "overview: generated default sentence"
     ],
     "source": "iu!A15",
-    "logo_url": null
+    "logo_url": "/universities/logos/university-of-reading.png"
   },
   {
     "name": "University of Roehampton",
@@ -3024,7 +3024,7 @@
       "overview: generated default sentence"
     ],
     "source": "Direct Tie-up's!A38",
-    "logo_url": null
+    "logo_url": "/universities/logos/university-of-roehampton.svg"
   },
   {
     "name": "University of Southwales",
@@ -3841,7 +3841,7 @@
       "overview: generated default sentence"
     ],
     "source": "iu!A10",
-    "logo_url": null
+    "logo_url": "/universities/logos/university-of-staffordshire.png"
   },
   {
     "name": "University of West London",
@@ -3865,7 +3865,7 @@
       "overview: generated default sentence"
     ],
     "source": "iu!A2",
-    "logo_url": null
+    "logo_url": "/universities/logos/university-of-west-london.svg"
   },
   {
     "name": "University of West of England Bristol",
@@ -3889,7 +3889,7 @@
       "overview: generated default sentence"
     ],
     "source": "iu!A8",
-    "logo_url": null
+    "logo_url": "/universities/logos/university-of-west-of-england-bristol.svg"
   },
   {
     "name": "University of Wolverhampton",
@@ -4086,6 +4086,6 @@
       "overview: generated default sentence"
     ],
     "source": "Direct Tie-up's!A73",
-    "logo_url": null
+    "logo_url": "/universities/logos/walbrook.svg"
   }
 ]
