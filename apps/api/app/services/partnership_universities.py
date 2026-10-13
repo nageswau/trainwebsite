@@ -34,6 +34,7 @@ from app.models import (
 )
 from app.partnership_stages import PROBABILITY, effective_probability, label_of
 from app.services import partnership_tasks
+from app.services.agent_commission_access import with_agent_commission
 from app.services.partnership import partnership_context
 from app.services.partnership_milestones import expected_out
 from app.services.partnership_pipeline import pipeline_out
@@ -273,7 +274,7 @@ async def detail_out(db: AsyncSession, user: User, uni: University, team: frozen
     country = await db.get_one(Country, uni.country_id)  # NOT NULL FK
     primary = await db.get(User, uni.primary_manager_user_id) if uni.primary_manager_user_id else None
     backup = await db.get(User, uni.backup_manager_user_id) if uni.backup_manager_user_id else None
-    return {
+    return with_agent_commission(user, uni, {
         **row_out(user, uni, country, primary, backup, team),
         **{
             k: getattr(uni, k)
@@ -298,7 +299,7 @@ async def detail_out(db: AsyncSession, user: User, uni: University, team: frozen
         "follow_up": await partnership_tasks.follow_up_out(db, uni.id),  # upc-020 TK14/TK15
         "expected": expected_out(uni),  # upc-008 §5
         "probability": probability_out(uni),  # upc-023 §24
-    }
+    })
 
 
 def probability_out(uni: University) -> dict:

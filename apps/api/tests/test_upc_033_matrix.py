@@ -99,6 +99,7 @@ MATRIX = [
     R("get", "/partnership/universities/manager-options", **_all(200, "head", "head_out", "super")),
     R("get", "/partnership/universities/{uni}", **_all(200, *READERS)),
     R("patch", "/partnership/universities/{uni}", {"city": "Manchester"}, **_all(200, *EDITORS)),
+    R("put", "/partnership/universities/{uni}/agent-commission", {"percent": "12"}, **_all(200, "super", "ovs_admin")),  # dtu-001 DT5
     R("post", "/partnership/universities/{uni}/assign", lambda w: {"primary_manager_user_id": w["pm2_id"], "backup_manager_user_id": None}, **_all(200, "head", "super")),
     R("post", "/partnership/universities/{internal}/publish", **_all(200, *CATALOGUE)),
     R("post", "/partnership/universities/{uni}/unpublish", **_all(200, *CATALOGUE)),

@@ -6,7 +6,7 @@ structured log. Lists are {items, total, limit, offset}, ordered by name then id
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +18,7 @@ from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
 from app.models import COUNTRY_REGIONS, Country, PartnershipProfile, University, UniversityAssignmentHistory, User
 from app.schemas import (
+    AgentCommissionIn,
     InstitutionType,
     PartnershipHeadPage,
     PartnershipMapPage,
@@ -36,6 +37,7 @@ from app.schemas import (
     UniversityUpdate,
 )
 from app.services import partnership_universities as svc
+from app.services.agent_commission_access import agent_commission_out, can_edit_agent_commission
 from app.services import university_search
 
 router = APIRouter(prefix="/partnership/universities", tags=["partnership-universities"])
@@ -109,7 +111,7 @@ async def partnership_map(query: Annotated[UniversityFilterQuery, Query()], user
     return await university_search.country_counts(db, user, query)
 
 
-@router.post("", status_code=201, response_model=UniversityEnvelope)
+@router.post("", status_code=201, response_model=UniversityEnvelope, response_model_exclude_unset=True)
 async def create_university(payload: UniversityCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """UM5/UM8: a head, overseas_admin or super_admin adds a university; it starts internal (not public). Any country, internal ISO rows
     included -- publishing is what needs a catalogue country (UM6)."""
@@ -167,7 +169,7 @@ async def manager_options(q: str | None = SEARCH, limit: int = Query(20, ge=1, l
     return await _paged(db, stmt, limit, 0, lambda id_, full_name, email: {"id": id_, "full_name": full_name, "email": email})
 
 
-@router.get("/{university_id}", response_model=UniversityEnvelope)
+@router.get("/{university_id}", response_model=UniversityEnvelope, response_model_exclude_unset=True)
 async def get_university(university_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     await svc.require_reader(db, user)
     return {"university": await svc.detail_out(db, user, await svc.load(db, university_id), refresh=False)}
@@ -181,7 +183,7 @@ async def _locked(db: AsyncSession, user: User, university_id: UUID, action: str
     return uni, team
 
 
-@router.patch("/{university_id}", response_model=UniversityEnvelope)
+@router.patch("/{university_id}", response_model=UniversityEnvelope, response_model_exclude_unset=True)
 async def update_university(university_id: UUID, payload: UniversityUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """AC1/AC4: only the fields sent; a value equal to the stored one is not a change (no audit). A published university stays
     publishable (UM6), so it cannot lose its overview or move to an internal country."""
@@ -212,7 +214,25 @@ async def update_university(university_id: UUID, payload: UniversityUpdate, user
     return {"university": await svc.detail_out(db, user, uni, team)}
 
 
-@router.post("/{university_id}/assign", response_model=UniversityEnvelope)
+@router.put("/{university_id}/agent-commission", response_model=UniversityEnvelope, response_model_exclude_unset=True)
+async def set_agent_commission(university_id: UUID, payload: AgentCommissionIn | None = Body(None), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """dtu-001 (DEC-SCOPE-209, DT5): super_admin / overseas_admin set or clear (null) the agent commission; audited old -> new."""
+    if not can_edit_agent_commission(user):
+        raise HTTPException(403, "Only a super admin or an overseas admin can change the agent commission")
+    uni = await svc.load(db, university_id, lock=True)
+    before = agent_commission_out(uni)
+    uni.agent_commission_percent = payload.percent if payload else None
+    uni.agent_commission_amount = payload.amount if payload else None
+    uni.agent_commission_currency = payload.currency if payload else None
+    uni.agent_commission_note = payload.note if payload else None
+    after = agent_commission_out(uni)
+    if before != after:
+        svc.audit(db, user, "agent_commission", uni.id, {"before": before, "after": after})
+    await db.commit()
+    return {"university": await svc.detail_out(db, user, uni)}
+
+
+@router.post("/{university_id}/assign", response_model=UniversityEnvelope, response_model_exclude_unset=True)
 async def assign_university(university_id: UUID, payload: UniversityAssign, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """§27 / UM3: the whole ownership (primary + optional backup). Lock order: university, then each new manager (FOR SHARE). One history
     row per slot that changed."""
@@ -248,18 +268,18 @@ async def _set_visible(university_id: UUID, user: User, db: AsyncSession, visibl
     return {"university": await svc.detail_out(db, user, uni, team)}
 
 
-@router.post("/{university_id}/publish", response_model=UniversityEnvelope)
+@router.post("/{university_id}/publish", response_model=UniversityEnvelope, response_model_exclude_unset=True)
 async def publish_university(university_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """UM5/UM6: shown in the public catalogue from now on."""
     return await _set_visible(university_id, user, db, True)
 
 
-@router.post("/{university_id}/unpublish", response_model=UniversityEnvelope)
+@router.post("/{university_id}/unpublish", response_model=UniversityEnvelope, response_model_exclude_unset=True)
 async def unpublish_university(university_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return await _set_visible(university_id, user, db, False)
 
 
-@router.post("/{university_id}/deactivate", response_model=UniversityEnvelope)
+@router.post("/{university_id}/deactivate", response_model=UniversityEnvelope, response_model_exclude_unset=True)
 async def deactivate_university(university_id: UUID, payload: UniversityDeactivate | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """UM10: inactive = hidden from the catalogue and read-only. Existing applications keep working, but the caller confirms first."""
     uni, team = await _locked(db, user, university_id, "can_deactivate", "deactivate")
@@ -275,7 +295,7 @@ async def deactivate_university(university_id: UUID, payload: UniversityDeactiva
     return {"university": await svc.detail_out(db, user, uni, team)}
 
 
-@router.post("/{university_id}/reactivate", response_model=UniversityEnvelope)
+@router.post("/{university_id}/reactivate", response_model=UniversityEnvelope, response_model_exclude_unset=True)
 async def reactivate_university(university_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Active again, but still internal: publishing is a separate decision."""
     uni, team = await _locked(db, user, university_id, "can_deactivate", "reactivate")

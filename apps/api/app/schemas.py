@@ -29,6 +29,7 @@ from pydantic import (
 from pydantic_core import PydanticCustomError
 
 from app.models import (
+    AGENT_COMMISSION_CURRENCIES,
     APPLICATION_STATUSES,
     APPOINTMENT_MODES,
     BDM_ACTIVITY_DIRECTIONAL,
@@ -7076,6 +7077,31 @@ class UniversityPipelineOut(BaseModel):
     stages: list[UniversityStageRef]
 
 
+class AgentCommissionOut(BaseModel):
+    """dtu-001 (DEC-SCOPE-209): EduSphere -> agent Master, per university. Present only for its viewers (agent_commission_access)."""
+
+    percent: str | None
+    amount: str | None
+    currency: str | None
+    note: str | None
+
+
+class AgentCommissionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    percent: Decimal | None = Field(default=None, gt=0, le=100, max_digits=5, decimal_places=2)
+    amount: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=2)
+    currency: Literal[AGENT_COMMISSION_CURRENCIES] | None = None  # type: ignore[valid-type]
+    note: str | None = Field(default=None, max_length=300)
+
+    @model_validator(mode="after")
+    def _one_rate(self):
+        if (self.percent is None) == (self.amount is None):
+            raise ValueError("Give either a percent or a fixed amount")
+        if (self.amount is None) != (self.currency is None):
+            raise ValueError("A fixed amount needs its currency (and a percent has none)")
+        return self
+
+
 class UniversityDetail(UniversityRow):
     ownership_type: str | None
     state_region: str | None
@@ -7095,6 +7121,7 @@ class UniversityDetail(UniversityRow):
     follow_up: "UniversityFollowUpOut"  # upc-020 TK14/TK15
     expected: "UniversityExpectedOut"  # upc-008 §5
     probability: "UniversityProbabilityOut"  # upc-023 §24
+    agent_commission: AgentCommissionOut | None = None  # dtu-001: only for its viewers
 
 
 class LinkedBdmOrganization(BaseModel):
