@@ -11856,6 +11856,31 @@ class RecruitmentRevenueOut(BaseModel):
     kpis: RecruitmentKpis
 
 
+# mgmt-009 (spec PL1-PL12): the §7 company P&L -- one row per vertical + the unallocated shared costs, and their sum.
+class PnlFigures(BaseModel):
+    revenue: Decimal
+    expenses: Decimal
+    contribution: Decimal  # PL5: revenue - expenses; may be negative
+    margin: float | None  # PL5: contribution / revenue in per cent, one decimal; None without revenue
+
+
+class PnlRow(PnlFigures):
+    key: Literal["abroad", "it", "recruitment", "school", "other", "shared"]
+    label: str
+
+
+class PnlOut(BaseModel):
+    month: str
+    period: Literal["month", "quarter", "year"]
+    start: date
+    end: date
+    label: str
+    commission_visible: bool  # PL7: false for the accountant, whose figures leave university commission out
+    rows: list[PnlRow]
+    total: PnlFigures  # AC: the sum of the rows; its contribution is the net profit
+    not_counted: list[LedgerNotCounted]
+
+
 # mgmt-019 (spec TC1-TC16): the company-wide Telecalling dashboard -- the eight §14 figures + conversion per telecaller, per team and
 # for the company, and the Calls → Interested → Counseling → Registration chain. Counts and staff names only (TC14).
 class TelecallingFigures(BaseModel):

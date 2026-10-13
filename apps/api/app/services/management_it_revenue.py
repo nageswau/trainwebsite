@@ -27,9 +27,15 @@ NO_BATCH = "Choose a batch from the list"
 ONE_SCOPE = "Choose one course, one batch or the payments not linked to a course"
 
 
+def quarter_start(month_start: date) -> date:
+    """mgmt-009 PL1: the first day of `month_start`'s financial-year quarter (Apr, Jul, Oct, Jan)."""
+    return month_start.replace(month=month_start.month - (month_start.month - 1) % 3)
+
+
 def period_range(month_start: date, period: str) -> tuple[date, date]:
-    """IR1: [start, end) of the month, or of the Indian financial year to the end of the month."""
-    return (financial_year_start(month_start) if period == "year" else month_start), next_month(month_start)
+    """IR1: [start, end) of the month, or of the Indian financial year (mgmt-009: or its quarter) to the end of the month."""
+    start = {"year": financial_year_start, "quarter": quarter_start}.get(period)
+    return (start(month_start) if start else month_start), next_month(month_start)
 
 
 def _attributed(table):
