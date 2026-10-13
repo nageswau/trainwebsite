@@ -10824,7 +10824,7 @@ class FilterChoice(BaseModel):
     label: str
 
 
-class ApplicationFunnelFilters(BaseModel):
+class ApplicationFunnelFiltersOut(BaseModel):
     date_from: date | None
     date_to: date | None
     agency: str | None
@@ -10849,7 +10849,7 @@ class ApplicationFunnelOptions(BaseModel):
 
 
 class ApplicationFunnelOut(BaseModel):
-    filters: ApplicationFunnelFilters
+    filters: ApplicationFunnelFiltersOut
     stages: list[FunnelStage]
     withdrawn: int
     options: ApplicationFunnelOptions

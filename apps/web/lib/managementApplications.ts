@@ -23,11 +23,9 @@ export type ApplicationFunnel = {
 
 const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NONE_ALLOWED = new Set<FunnelFilterKey>(["agency", "counselor"]); // "none" = no agency / no counselor (MF12)
-const TEXT_LIMIT: Partial<Record<FunnelFilterKey, number>> = { intake: 80, status: 50 };
-
 function valid(key: FunnelFilterKey, value: string): boolean {
   if (key === "date_from" || key === "date_to") return isCalendarDate(value);
-  if (key === "intake" || key === "status") return value.trim() !== "" && value.length <= TEXT_LIMIT[key]!;
+  if (key === "intake" || key === "status") return value.trim() !== "" && value.length <= (key === "intake" ? 80 : 50); // the API's limits
   return UUID_SHAPE.test(value) || (NONE_ALLOWED.has(key) && value === "none");
 }
 
