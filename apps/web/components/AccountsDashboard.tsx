@@ -10,7 +10,7 @@ const notCountedText = (rows: NotCounted[]) =>
 function HeadTable({ section, title, totalLabel }: { section: AccountsSection; title: string; totalLabel: string }) {
   return (
     <div className="table-wrap">
-      <table className="table" aria-label={title}>
+      <table className="table accounts-heads" aria-label={title}>
         <thead>
           <tr>
             <th scope="col">Head</th>

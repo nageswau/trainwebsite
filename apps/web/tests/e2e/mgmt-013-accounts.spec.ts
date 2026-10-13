@@ -49,6 +49,25 @@ test("the accountant opens a month, enters its balances and sees them in the fin
   await expect(page.getByText(/Last saved by /)).toBeVisible();
 });
 
+// Browser QA-P1/P2: on a phone each position figure stays on one line, and every head's amount is in view without scrolling the table.
+for (const width of [360, 375]) {
+  test(`on a ${width}px phone the figures fit and the amounts are in view`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await signIn(page, "accountant@edusphere.local", "/management");
+    await page.goto("/management/accounts");
+    const figures = page.getByRole("list", { name: "Financial position" }).locator("li > strong");
+    await expect(figures).toHaveCount(6);
+    const lines = await figures.evaluateAll((els) =>
+      els.map((el) => { const r = document.createRange(); r.selectNodeContents(el); return `${el.textContent}: ${new Set([...r.getClientRects()].map((c) => Math.round(c.top))).size}`; }));
+    expect(lines.filter((l) => !l.endsWith(": 1"))).toEqual([]);
+    for (const name of [/^Income by head, /, /^Expenses by head, /]) {
+      const rights = await page.getByRole("table", { name }).locator("tbody td:nth-child(2)").evaluateAll((els) =>
+        els.map((el) => Math.round(el.getBoundingClientRect().right)));
+      expect(rights.filter((x) => x > width)).toEqual([]);
+    }
+  });
+}
+
 test("the super admin has no entry and is refused the page (M13)", async ({ page }) => {
   await signIn(page, "superadmin@edusphere.local", "/admin");
   await page.goto("/management");
