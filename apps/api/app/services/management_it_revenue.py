@@ -4,8 +4,11 @@ through the enrolment it references, a manual entry through its batch / course t
 docs/superpowers/specs/2026-10-13-mgmt-007-it-revenue-dashboard-design.md."""
 
 from collections import defaultdict
+from collections.abc import Sequence
 from datetime import date, timedelta
 from decimal import Decimal
+from typing import cast
+from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy import and_, case, func, select
@@ -56,14 +59,13 @@ async def dashboard(db: AsyncSession, month_start: date, period: str) -> dict:
     table = ledger.lines()
     c = table.c
     joined, batch_id, program_id, income_kind = _attributed(table)
-    rows = (
-        await db.execute(
-            select(c.kind, income_kind, c.category_label, program_id, batch_id, func.sum(c.signed_amount))
-            .select_from(joined)
-            .where(*_in_period(c, start, end), c.counted)
-            .group_by(c.kind, income_kind, c.category_label, program_id, batch_id)
-        )
-    ).all()
+    grouped = await db.execute(
+        select(c.kind, income_kind, c.category_label, program_id, batch_id, func.sum(c.signed_amount))
+        .select_from(joined)
+        .where(*_in_period(c, start, end), c.counted)
+        .group_by(c.kind, income_kind, c.category_label, program_id, batch_id)
+    )
+    rows = cast(Sequence[tuple[str, str, str, UUID | None, UUID | None, Decimal]], grouped.all())  # the union subquery's columns are untyped
     enrolled = (
         await db.execute(
             select(Batch.program_id, Enrollment.batch_id, func.count())
@@ -136,7 +138,7 @@ async def dashboard(db: AsyncSession, month_start: date, period: str) -> dict:
         "courses": course_rows,
         "unlinked": figures(unlinked),
         "placement": None,  # IR9: rec-031 invoices are per job, not per candidate -- not tracked
-        "not_counted": [{"currency": currency, "amount": Decimal(amount).quantize(q), "count": count} for currency, amount, count in other.all()],
+        "not_counted": [{"currency": currency, "amount": amount.quantize(q), "count": count} for currency, amount, count in cast(Sequence[tuple[str, Decimal, int]], other.all())],
     }
 
 
@@ -155,19 +157,24 @@ async def payments(db: AsyncSession, month_start: date, period: str, *, program_
     scope = Batch.program_id == program_id if program_id is not None else Enrollment.batch_id == batch_id if batch_id is not None else Enrollment.id.is_(None)
     where = [*_in_period(c, start, end), c.counted, c.source == "payment", scope]
     total = await db.scalar(select(func.count()).select_from(joined).where(*where))
-    rows = (
-        await db.execute(
-            select(c.id, c.entry_date, income_kind, c.amount, c.currency, Payment.installment_no, Receipt.receipt_no, Enrollment.enrollment_code, Program.title, Batch.name)
-            .select_from(joined.outerjoin(Receipt, Receipt.payment_id == Payment.id).outerjoin(Program, Program.id == Batch.program_id))
-            .where(*where)
-            .order_by(c.entry_date.desc(), c.created_at.desc(), c.id)
-            .limit(limit)
-            .offset(offset)
+    kind = case((income_kind == "enrolment_fees", "Enrolment fee"), else_="Other IT fee")
+    rows = await db.execute(
+        select(
+            c.id,
+            c.entry_date,
+            kind.label("kind"),
+            c.amount,
+            c.currency,
+            Payment.installment_no,
+            Receipt.receipt_no,
+            Enrollment.enrollment_code,
+            Program.title.label("course"),
+            Batch.name.label("batch"),
         )
-    ).all()
-    labels = {"enrolment_fees": "Enrolment fee", "other_fees": "Other IT fee"}
-    items = [
-        {"id": r[0], "entry_date": r[1], "kind": labels[r[2]], "amount": r[3], "currency": r[4], "installment_no": r[5], "receipt_no": r[6], "enrollment_code": r[7], "course": r[8], "batch": r[9]}
-        for r in rows
-    ]
-    return {"items": items, "total": total, "limit": limit, "offset": offset}
+        .select_from(joined.outerjoin(Receipt, Receipt.payment_id == Payment.id).outerjoin(Program, Program.id == Batch.program_id))
+        .where(*where)
+        .order_by(c.entry_date.desc(), c.created_at.desc(), c.id)
+        .limit(limit)
+        .offset(offset)
+    )
+    return {"items": [dict(row._mapping) for row in rows], "total": total, "limit": limit, "offset": offset}
