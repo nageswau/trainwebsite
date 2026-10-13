@@ -8040,7 +8040,45 @@ of scalar counts); `recruiter_metrics.management(..., roles=)` and `first_past_i
 `ManagementRecruitment.test.tsx`, `mgmt-025-recruitment.spec.ts`. QA `docs/quality/MGMT-025_EXPLORATORY_QA_2026-10-13.md`.
 - **New Feature ID authorized:** `mgmt-025`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-025.
 
-### DEC-SCOPE-205 — Company profitability: vertical P&L, unallocated shared row, Q-04 second half (`mgmt-009`)
+
+### DEC-SCOPE-205 — Agent network dashboard: the §17 figures and the agency ranking, Q-22 (`mgmt-021`)
+
+**Evidence:** `EVID-017` §17 "AGENT DASHBOARD" (12 figures; "Agent → Staff → Student → Application → Enrollment → Revenue", "so the
+partners can identify which agents are genuinely producing business", lines 649–681 — `DERIVED_BLUEPRINT`). `DEC-SCOPE-186` M1/M13
+(operational tier) — `EXPLICIT_APPROVAL`. AGN-001 `DEC-SCOPE-038` (agency status), AGN-022 `DEC-SCOPE-064` (network counts), mgmt-024
+`DEC-SCOPE-200` (funnel stages), mgmt-005 `DEC-SCOPE-192` (ledger lines), mgmt-006 MR5 (agency attribution).
+
+**Status:** AN1–AN14 in review on `feature/mgmt-021` (2026-10-13). Every AN answer is a **recommended default, `UNVERIFIED`**, taken on
+the owner's instruction to proceed with recommended answers. AN5–AN9 answer Q-22. Dependency mgmt-003 (#244) is merged.
+
+**Numbering (provisional):** no migration; API §12DS; RBAC §2.130 (after mgmt-025's `DEC-SCOPE-204` / §12DR / §2.129).
+Spec `docs/superpowers/specs/2026-10-13-mgmt-021-agent-network-dashboard-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| AN1 | Agent | An agency organisation. **Total agents** = status `active` or `suspended` (approved); pending and rejected applications are not agents |
+| AN2 | Active / inactive | Active = status `active`; Inactive = status `suspended` |
+| AN3 | New agents | Total agents whose organisation was created in the period |
+| AN4 | Agent staff | Active staff members right now (AGN-022 `staff_count`) |
+| AN5 | Students | Agency student records any member added in the period, any status |
+| AN6 | Applications / Offers / Visa / Enrollments | The agency's applications created in the period, counted with mgmt-024 `FUNNEL_COUNTS` (`created`, `offer`, `visa`, `enrollment`): an agency row equals the Applications funnel filtered by that agency |
+| AN7 | Commission (Q-22) | Paid agent commission: counted ledger `agent_commission` lines (rupees) dated in the period — a cost |
+| AN8 | Revenue (Q-22) | Counted Abroad ledger `payment` lines dated in the period, attributed to the agency as mgmt-006 MR5 (its Agency-wise row). University commission is received per university, so it cannot be attributed to an agency and is not included (said on the page) |
+| AN9 | Money tier | Commission and revenue for the finance tier only (partner); super_admin gets `null` and the ledger is never read for them |
+| AN10 | Ranking | Enrollments, applications, students (descending), then name — the same order for every role, so it never hints at money |
+| AN11 | Suspended agency | Stays in the table, marked "Suspended", its period activity counted |
+| AN12 | Totals | The sum of the agency rows (AC); agent users with no organisation (legacy) are outside the network |
+| AN13 | Period | `from` / `to`, inclusive IST dates, default this IST month; start after end or > 366 days → 422 (bdm-024 P2) |
+| AN14 | Access / nav | Operational tier (partner, super_admin); accountant 403 "Operational access required"; others 403; signed out 401. Command Center Partnerships "Agents" live; super admin sidebar "Management agent figures". No audit row (agency names and counts only) |
+
+**Consequences:** `services/management_agents.py` (`FIGURES`, `dashboard()`); `api/management.py` (`GET /management/agents`);
+`schemas.py` (`ManagementAgentsOut`). AGN-022 (`agent_network`, the overseas-admin routes) and the agency CRM routes are unchanged. Web
+`lib/managementAgents.ts`, `components/ManagementAgents.tsx`, page `/management/agents`, `lib/management.ts`, `lib/navigation.ts`,
+`globals.css`. Tests `test_mgmt_021_agents.py`, `managementAgents.test.ts`, `ManagementAgents.test.tsx`, `mgmt-021-agents.spec.ts`. QA
+`docs/quality/MGMT-021_EXPLORATORY_QA_2026-10-13.md`.
+- **New Feature ID authorized:** `mgmt-021`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-021.
+
+### DEC-SCOPE-206 — Company profitability: vertical P&L, unallocated shared row, Q-04 second half (`mgmt-009`)
 
 **Evidence:** `EVID-017` §7 "COMPANY PROFITABILITY DASHBOARD" (lines 283–296, `DERIVED_BLUEPRINT`): Business Vertical P&L — Abroad
 Education / IT Training / Recruitment × Revenue / Expenses / Contribution + TOTAL; "which business is actually making money". Backlog
@@ -8050,7 +8088,7 @@ Education / IT Training / Recruitment × Revenue / Expenses / Contribution + TOT
 **Status:** PL1–PL12 in review on `feature/mgmt-009` (2026-10-13). Every PL answer is a **recommended default, `UNVERIFIED`**, taken on
 the owner's instruction to proceed with recommended answers. PL4 answers the second half of Q-04 for now (no allocation).
 
-**Numbering (provisional):** no migration; API §12DS; RBAC §2.130 (after mgmt-025's `DEC-SCOPE-204` / §12DR / §2.129).
+**Numbering (provisional):** no migration; API §12DT; RBAC §2.131 (after mgmt-021's `DEC-SCOPE-205` / §12DS / §2.130).
 Spec `docs/superpowers/specs/2026-10-13-mgmt-009-company-profitability-design.md`.
 
 | # | Point | Answer |

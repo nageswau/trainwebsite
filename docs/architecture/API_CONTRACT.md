@@ -3088,9 +3088,19 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/recruitment` *(new)* | Query: `date_from`, `date_to` (IST dates; default the 1st of this month → today). `422` malformed date, "The start date must not be after the end date", "The range can't end in the future", "The range can't be longer than 366 days" (rec-033 wording). `200` `{date_from, date_to, revenue_visible, kpis{recruiters, employer_partners, new_companies, job_openings, internship_openings, candidates, interviews, selections, joining, placement_rate (% or null), revenue (decimal string; null unless revenue_visible — partner only)}, pipeline[{key, label, value}] (lead, meeting, requirement, candidate, interview, selection, joining), requirement_closed, lost}`. Counts only. `GET /recruiter/management` (§12CY) is unchanged |
 
-## 12DS. Company profitability — vertical P&L (`mgmt-009`) — addendum, 2026-10-13
+## 12DS. Agent network dashboard (`mgmt-021`) — addendum, 2026-10-13
 
-- **Basis:** `DEC-SCOPE-205` (PL1–PL12). Design spec `docs/superpowers/specs/2026-10-13-mgmt-009-company-profitability-design.md`.
+- **Basis:** `DEC-SCOPE-205` (AN1–AN14). Design spec `docs/superpowers/specs/2026-10-13-mgmt-021-agent-network-dashboard-design.md`.
+  No migration. Operational tier only (partner, super_admin); accountant `403` "Operational access required"; other roles `403`
+  "Management access required"; signed out `401`. Read-only: no write, lock or audit row.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/agents` *(new)* | Query: `from`, `to` (inclusive IST dates, each defaulting to this IST month). `422` malformed date, "The period must start on or before its end", "The period can be at most 366 days". `200` `{from, to, as_of, money_visible, figures[{key, label, definition}] (12, §17 order), totals{agents, new_agents, active_agents, inactive_agents, staff, students, applications, offers, visa, enrollments, commission, revenue}, chain[{key, label, value}] (agents, staff, students, applications, enrollments, revenue — the revenue step only when money_visible), agencies[{id, name, prefix, status (active/suspended), new, staff, students, applications, offers, visa, enrollments, commission, revenue}]}`; agencies ranked by enrollments, applications, students, name; money is a decimal string, `null` unless money_visible (partner only). The AGN-022 `/overseas-admin/agent-orgs*` routes are unchanged |
+
+## 12DT. Company profitability — vertical P&L (`mgmt-009`) — addendum, 2026-10-13
+
+- **Basis:** `DEC-SCOPE-206` (PL1–PL12). Design spec `docs/superpowers/specs/2026-10-13-mgmt-009-company-profitability-design.md`.
   No migration. Finance tier only (partner, accountant); `super_admin` `403` "Finance access required"; other roles `403` "Management
   access required"; signed out `401`. Read-only: no write, lock or audit row.
 

@@ -1,7 +1,7 @@
 # mgmt-009 — Company profitability (vertical P&L) — design
 
 **Status:** design for `feature/mgmt-009` (2026-10-13). Every PL answer below is a **recommended default, `UNVERIFIED`**, taken on the
-owner's standing instruction to proceed with recommended answers. Registered as `DEC-SCOPE-205` (provisional numbering).
+owner's standing instruction to proceed with recommended answers. Registered as `DEC-SCOPE-206` (provisional numbering).
 
 ## Evidence
 
