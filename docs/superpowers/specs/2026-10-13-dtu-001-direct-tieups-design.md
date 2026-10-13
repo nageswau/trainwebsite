@@ -202,3 +202,25 @@ entry for `dtu-001`; this spec.
 1. Owner reviews `direct_tieups_review.csv`.
 2. `alembic upgrade head`, then `python -m app.direct_tieups.load --dry-run`, then without `--dry-run`, per environment.
 3. Logos ship with the web build.
+
+## 11. Amendments (2026-10-14)
+
+Made after the owner's later answers and the controller's rulings during the build; where they differ from §§1–10 these win.
+
+- **DT15 — city.** Each university's real main city (flagged in the review CSV); a trailing "campus" word is stripped from `city` (the
+  full text stays in `campuses`). Supersedes the §4.3 "country's capital" fallback.
+- **DT16 — APAC fees.** Both fee lines are shown exactly as in the Excel (`fee_text`), no numeric price; AED fees are text-only.
+- **DT17 — BPP PG courses** whose title mentions PDP / Professional Development get the 18-month line and duration "18 months".
+- **DT18 — hidden destination countries.** The loader makes them visible when they have their required content: a country with
+  existing catalogue content is set `catalogue_visible = true`; one with a `seed/countries.json` row (DE, AU, US, FR, AE) is filled
+  through `app.seed.catalogue_country` and published; one without content (Malta) is reported `country_needs_content: MT` and left
+  hidden. Audit `country.direct_tieup_publish`. (The loader counts gain `countries_published` and `country_needs_content`.)
+- **R5 — clearing (§6).** `PUT …/agent-commission` requires a body (`{percent}` or `{amount, currency}`, optional `note`); a missing
+  or `null` body is `422`. Clearing is the new `DELETE …/agent-commission` (same roles, returns the envelope). The "`null` clears"
+  wording in §6 is withdrawn.
+- **R6.** `PUT` / `DELETE` on an inactive university answer `409` (UM10 read-only).
+- **R7 / R2.** Every route with `response_model=UniversityEnvelope` sets `response_model_exclude_unset=True`; a structural test guards it.
+- **R14.** The Partner Universities commission column and field are shown only when `memberRole === "master"` and the key is present.
+- **Portal.** The agent portal gains the section `partner-universities` (nav entry **Partner Universities**).
+- **Logos (R11).** 21 of 35 universities have a logo file; 14 show the monogram tile (403s, white-only artwork, > 200 KB, or none found).
+- **Numbering.** Confirmed free on `origin/main` @ `2d0e9a2d`: `DEC-SCOPE-209`, RBAC §2.134, API §12DW, migration `0157`.

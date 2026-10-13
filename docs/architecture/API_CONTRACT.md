@@ -3129,6 +3129,31 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/training?from&to` | `200` `{from, to, as_of, kpis: [{key, label, definition, value}] (11, §12 order: total_courses, active_batches, students, trainers, attendance_pct, completion_pct, dropouts, assessments, certifications, placement_ready, placements), trainer_figures: [{key, label, definition}] (7), trainers: [{id, full_name, active, batches, students_trained, attendance_pct, completion_pct, feedback_avg, feedback_count, assessment_pass_pct, batch_performance, placements}]}`. Counts are integers; shares/averages one decimal or `null` when there is nothing to divide. `from`/`to` inclusive IST dates, default this IST month; start after end or > 366 days → `422` |
 
+## 12DW. Direct Tie-ups & agent commission (dtu-001) — addendum, 2026-10-13
+
+- **Basis:** `DEC-SCOPE-209` (DT1–DT18). Design spec `docs/superpowers/specs/2026-10-13-dtu-001-direct-tieups-design.md`.
+  Migration `0157_direct_tieups` (nullable columns only). Loader: `python -m app.direct_tieups.load [--dry-run]` (one transaction;
+  `--dry-run` rolls back and prints counts; a second run changes nothing). Parser (dev machine with openpyxl):
+  `python -m app.direct_tieups.parse <xlsx> <out_dir>` writes `seed/direct_tieups.json` and `seed/direct_tieups_review.csv`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `PUT /partnership/universities/{id}/agent-commission` *(new)* | **Body (required):** `{percent}` (> 0, ≤ 100, 2 dp) **or** `{amount, currency}` (INR, USD, GBP, EUR, CAD, AUD, NZD, AED), plus optional `note` (≤ 300). **`200`:** the university envelope with `agent_commission {percent, amount, currency, note}`. One `university.agent_commission` audit row with `before` / `after` values when the rate changed.<br>**`403`:** not `super_admin` / `overseas_admin` (overseas division). **`401`** signed out. **`404`** unknown. **`409`** the university is inactive (UM10). **`422`** missing or `null` body, both or neither of percent / amount, an amount without a currency |
+| `DELETE /partnership/universities/{id}/agent-commission` *(new)* | Clears all four columns; **`200`** envelope with `agent_commission: null`. Same roles, `401` / `403` / `404` / `409`; audit row only when a rate existed. Replaces the spec's "`null` clears" (R5) |
+| `GET /workflows/overseas/agent/crm/partner-universities` *(new)* | Agent **Master** and **staff** of an active agency. **Query:** `q`, `country` (uuid), `limit` ≤ 100 (default 20), `offset`. **`200`** `{items: [{id, slug, name, logo_url, city, campuses, country {id, name, iso2}, course_count}], total}` ordered by name (`q` matches name or city) — only `active` + `catalogue_visible`; `agent_commission` on each item **only for a Master**.<br>**`403`:** pending / suspended agency, non-agents. **`401`** signed out |
+| `GET /workflows/overseas/agent/crm/partner-universities/{id}` *(new)* | **`200`** `{university: {…the row fields, website, overview, fee_structure, deadlines, scholarships, courses: [{id, title, level, category, duration, campus, fee_text, intake_text, tuition_fee, intake}]}}` (active courses); `agent_commission` only for a Master. **`404`** unknown, hidden or inactive. Same `401` / `403` |
+| Portal section `partner-universities` | `GET /portal/overseas/agent/partner-universities` (generic `/{division}/{role}/{section}`) returns the header-only section payload (title "Partner Universities"); the page then reads the endpoints above |
+
+- **Response field changes:** university master detail / list rows, public universities (`UniversityOut`), the counselor 360 view and
+  course outputs gain `logo_url`, `campuses` (list, `[]` when none) and `fee_structure`; course outputs (master `course_out`, public
+  detail and `/overseas-courses`, 360 view) gain `campus`, `fee_text`, `intake_text`. `UniversityCreate` / `UniversityUpdate` accept
+  `logo_url`, `campuses`, `fee_structure`; `CourseIn` / `CourseUpdate` accept `campus`, `fee_text`, `intake_text`.
+- **`agent_commission` key:** present on the master detail only for `super_admin` / `overseas_admin`, and on the two agent endpoints only
+  for a Master; **absent** (not `null`) everywhere else. All `UniversityEnvelope` routes set `response_model_exclude_unset`.
+- **Loader counts** (`universities_created`, `universities_updated`, `courses_created`, `courses_skipped`, `scholarships_created`,
+  `conflicts`, `countries_published`, `country_needs_content`); hidden destination countries with content are published (DT18 / R12 / R13),
+  Malta is reported `country_needs_content: MT` and stays hidden.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
