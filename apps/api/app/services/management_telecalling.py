@@ -85,8 +85,5 @@ async def dashboard(db: AsyncSession, first: date, last: date) -> dict:
         teams.append({"team": team, "label": TEAM_LABEL[team], "telecallers": len(members), **_sum(members)})
     # TC11 (QA19-03): each later step's share of the calls the chain starts from. The steps are activity in the period, not a cohort
     # (counselling bookings are not a subset of Interested moves), so a share of the step before could read over 100%.
-    chain = [
-        {"key": key, "label": label, "value": totals[figure], "share": None if index == 0 else _share(totals[figure], totals["calls"])}
-        for index, (key, label, figure) in enumerate(CHAIN)
-    ]
+    chain = [{"key": key, "label": label, "value": totals[figure], "share": None if index == 0 else _share(totals[figure], totals["calls"])} for index, (key, label, figure) in enumerate(CHAIN)]
     return {"date_from": first, "date_to": last, "totals": totals, "teams": teams, "telecallers": rows, "chain": chain}
