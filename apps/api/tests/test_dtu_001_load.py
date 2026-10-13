@@ -106,6 +106,22 @@ async def test_hidden_country_with_a_seed_row_is_published_and_audited(db_sessio
 
 
 @pytest.mark.asyncio
+async def test_hidden_country_with_content_and_no_row_is_published_unchanged(db_session, monkeypatch, tmp_path):
+    c = await _hidden_country(db_session, "ZQ", "dtu-test-land")
+    c.overview = "Existing overview."
+    await db_session.commit()
+    rows = tmp_path / "countries.json"
+    rows.write_text("[]", encoding="utf-8")
+    monkeypatch.setattr(loader, "COUNTRIES_FILE", rows)
+    report = await load(db_session, _in(_data(f"Dtu Content University {uuid.uuid4().hex[:8]}"), "ZQ"))
+    await db_session.refresh(c)
+    assert report["countries_published"] == 1 and report["country_needs_content"] == 0 and c.catalogue_visible and c.overview == "Existing overview."
+    assert await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == str(c.id), AuditLog.action == "country.direct_tieup_publish"))
+    c.catalogue_visible, c.overview = False, ""
+    await db_session.commit()
+
+
+@pytest.mark.asyncio
 async def test_hidden_country_without_a_row_stays_hidden(db_session, monkeypatch, tmp_path, capsys):
     c = await _hidden_country(db_session, "ZQ", "dtu-test-land")
     rows = tmp_path / "countries.json"

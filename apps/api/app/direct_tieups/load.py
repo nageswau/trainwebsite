@@ -125,7 +125,9 @@ async def _publish_countries(db: AsyncSession, data: list[dict], countries: dict
         if country.catalogue_visible:
             continue
         row = rows.get(code)
-        if row is not None and row[0] == country.slug:
+        if (country.overview or "").strip():
+            country.catalogue_visible = True  # R13: it already has its content; only the flag changes
+        elif row is not None and row[0] == country.slug:
             await catalogue_country(db, row, {})
         if country.catalogue_visible:
             counts["countries_published"] += 1
