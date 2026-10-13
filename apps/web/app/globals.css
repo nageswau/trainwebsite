@@ -373,6 +373,11 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 /* mgmt-007: a course's batch rows sit indented under it; income and costs by kind side by side, stacked on a phone. */
 .table th.it-revenue-batch { padding-left: 32px; font-weight: 500; }
 .it-revenue-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 24px; }
+/* Browser QA-01: names keep a readable column on a phone (the table scrolls sideways). QA-02: a Payments link lands with the list's
+   heading below the sticky top bar. QA-03: dates and enrolment codes stay on one line. */
+.it-revenue-courses th[scope="row"] { min-width: 170px; }
+.it-revenue-payments { scroll-margin-top: 84px; }
+.it-revenue-nowrap td { white-space: nowrap; }
 /* tel-021: the ten §1 dashboard tiles -- five across on a wide screen, then three, then two on tablets and phones; a hint under each
    figure. The daily activity table reuses .tel-targets (short columns, row headers as labels). */
 .metric-grid.tel-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); list-style: none; padding: 0; margin: 0 0 24px; }

@@ -76,7 +76,7 @@ export default function ManagementItRevenue({
             <>
               <h3 id="it-revenue-courses">Revenue per course</h3>
               <div className="table-wrap" role="region" aria-labelledby="it-revenue-courses" tabIndex={0} style={{ overflowX: "auto" }}>
-                <table className="table" style={{ minWidth: 640 }}>
+                <table className="table it-revenue-courses" style={{ minWidth: 640 }}>
                   <caption className="visually-hidden">Revenue per course</caption>
                   <thead>
                     <tr><th scope="col">Course / batch</th><th scope="col">New enrolments</th><th scope="col">Revenue</th><th scope="col">Costs</th><th scope="col">Contribution</th><th scope="col"><span className="visually-hidden">Payments</span></th></tr>
@@ -162,14 +162,14 @@ export default function ManagementItRevenue({
         </>
       )}
       {query.scope && (
-        <section id="payments" aria-labelledby="it-revenue-payments">
+        <section id="payments" className="it-revenue-payments" aria-labelledby="it-revenue-payments">
           <h3 id="it-revenue-payments">Payments: {scopeName(data, query.scope)}</h3>
           {paymentsError && <p className="form-error" role="alert">{paymentsError}</p>}
           {payments && payments.items.length === 0 && <p className="empty" role="status">No counted payments in this period.</p>}
           {payments && payments.items.length > 0 && (
             <>
               <div className="table-wrap" role="region" aria-label="Payment list" tabIndex={0} style={{ overflowX: "auto" }}>
-                <table className="table" style={{ minWidth: 720 }}>
+                <table className="table it-revenue-nowrap" style={{ minWidth: 720 }}>
                   <caption className="visually-hidden">Payments</caption>
                   <thead>
                     <tr><th scope="col">Date</th><th scope="col">Enrolment</th><th scope="col">Course</th><th scope="col">Batch</th><th scope="col">Kind</th><th scope="col">Receipt</th><th scope="col">Amount</th></tr>
