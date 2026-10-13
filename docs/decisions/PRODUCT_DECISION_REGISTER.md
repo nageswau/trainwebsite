@@ -7739,3 +7739,40 @@ page `/management/expenses`, `lib/management.ts` ("Expenses & rent" live), `glob
   - e2e: `mgmt-013-accounts.spec.ts`.
 - **QA:** `docs/quality/MGMT-013_EXPLORATORY_QA_2026-10-12.md`.
 - **New Feature ID authorized:** `mgmt-013`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-013.
+
+### DEC-SCOPE-198 — Abroad Education revenue dashboard: kinds, attributed breakdowns, contribution (`mgmt-006`)
+
+**Evidence:** `EVID-017` §4 "Revenue must be separated" / "A. Abroad Education Revenue" (student service fees, application-related
+revenue, university commission, agent-generated revenue; country / university / intake / agent-wise revenue; revenue, expenses, gross
+contribution — `DERIVED_BLUEPRINT`). `DEC-SCOPE-186` M3/M4/M13 and MG11 (`EXPLICIT_APPROVAL`). `DEC-SCOPE-192` MA1–MA12.
+`DEC-SCOPE-195` ME3/ME4/ME9 (period and validation idiom).
+
+**Status:** MR1–MR12 in review on `feature/mgmt-006` (2026-10-13). Every MR answer is a **recommended default, `UNVERIFIED`**, taken on
+the owner's instruction to proceed with recommended answers. They answer Q-09 and Q-10, and the Q-04 shared-cost point for this page only.
+
+**Numbering (provisional):** no migration; API §12DL; RBAC §2.123 (after mgmt-007's provisional `DEC-SCOPE-197` / §12DK / §2.122).
+Spec `docs/superpowers/specs/2026-10-13-mgmt-006-abroad-revenue-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| MR1 | Period | Selected month (IST, default this month) and the Indian financial year to date, as ME3/ME4 |
+| MR2 | Revenue | Counted `ledger.lines()` income with vertical `abroad`: approved manual Abroad income (reversals negative), INR overseas payments (agent deposits never), INR university commission receipts (partner only) |
+| MR3 | Kinds (Q-09) | Student service fees ← `reference_type = service_fee`; Application-related & other student payments ← every other overseas payment type; University commission ← upc-019 receipts; Recorded in the ledger ← manual entries. They partition revenue |
+| MR4 | Agent-generated (Q-09) | A figure, the revenue attributed to an agency (a subset, never added) |
+| MR5 | Breakdowns (Q-10) | Country, University, Intake, Agency, each + Unattributed (sums to revenue). A payment is attributed when `reference_id` is an overseas application's id; agency = the application's (or its agent student's) agent → `AgentOrg`, "Direct (no agency)" when none. A receipt → its university and country only. Manual entries are unattributed |
+| MR6 | Expenses | Counted Abroad expense lines by label (paid agent commissions, agent-BDM trips, manual). Shared costs not allocated (Q-04 allocation stays with mgmt-009); their total is a note |
+| MR7 | Commission (M3, U2 amended, MG11) | Partner only, via `management_access.can_view_university_commission`; for the accountant the receipts are never fetched. `partnership_access.COMMISSION_ROLES` unchanged (MG2) |
+| MR8 | Contribution | Revenue − expenses, month and year; may be negative |
+| MR9 | Other currencies | Not counted; per currency and kind in `not_counted` |
+| MR10 | Validation | As ME9 |
+| MR11 | Access | Finance tier (partner, accountant); `super_admin` `403` "Finance access required"; others `403`; signed out `401` |
+| MR12 | Privacy (Q-32 interim) | No student names or ids |
+
+**Consequences:** new `services/management_abroad_revenue.py`; `services/management_access.py` (`can_view_university_commission`);
+`api/management.py` (`GET /management/revenue/abroad`; the month check shared with mgmt-010's route as `_past_month`); `schemas.py`
+(`AbroadRevenueOut` and rows). `services/ledger.py` unchanged. Web `lib/managementAbroadRevenue.ts`, `components/ManagementAbroadRevenue.tsx`,
+page `/management/revenue/abroad`, `lib/management.ts` ("Abroad Education revenue" live). Tests `test_mgmt_006_abroad_revenue.py` (and
+`test_mgmt_005_auto_lines.py`'s non-include check made before/after, as the shared DB keeps far-past entries),
+`managementAbroadRevenue.test.ts`, `ManagementAbroadRevenue.test.tsx`, `mgmt-006-abroad-revenue.spec.ts`. QA
+`docs/quality/MGMT-006_EXPLORATORY_QA_2026-10-13.md`.
+- **New Feature ID authorized:** `mgmt-006`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-006.

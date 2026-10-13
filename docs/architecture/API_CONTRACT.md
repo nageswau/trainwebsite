@@ -3000,6 +3000,16 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /management/accounts` *(new)* | **Query:** `month` (default: the current IST month).<br>**`200`:** `{month, current_month, as_of, income, expenses, profit, not_counted[], receivables, pending_invoices, balances}`.<br>• `income`/`expenses` = `{heads[{key, label, amount, parts[{label, amount}]}], total}`. There are 5 income heads (`abroad`, `it`, `recruitment`, `school`, `other`) and 8 expense heads (`salaries`, `rent`, `marketing`, `travel`, `trainers`, `commissions`, `operations`, `technology`), all from the month's counted ledger lines.<br>• `profit` = income − expenses (R4).<br>• `not_counted[]` = `{currency, kind, amount, count}`.<br>• `receivables` = `{total, overdue, fees, recruitment, university, not_counted[]}`, as of `as_of` (today, IST).<br>• `pending_invoices` = `{count, amount}`.<br>• `balances` = `{cash_bank, payables, tax_liabilities, updated_at, updated_by}`, where null means not entered.<br>**`422`:** a malformed month, or a month after the current one |
 | `PUT /management/accounts/balances?month=YYYY-MM` *(new)* | **Body:** `{cash_bank, payables, tax_liabilities}`. Each is a decimal string or null; `cash_bank` may be negative; `payables`/`tax_liabilities` must be ≥ 0. At most 2 decimals, magnitude below 10¹², extra fields refused.<br>**Effect:** saves the month's row, and all null removes it. A transaction-scoped advisory lock serialises saves of one month.<br>**`200`:** the month as GET shows it.<br>**`422`:** on the field, or a future or missing month.<br>**Audit:** one `mgmt.balance.create`/`update` (changed field names, no amounts) when something changed |
 
+## 12DL. Abroad Education revenue dashboard (`mgmt-006`) — addendum, 2026-10-13
+
+- **Basis:** `DEC-SCOPE-198` (MR1–MR12). Design spec `docs/superpowers/specs/2026-10-13-mgmt-006-abroad-revenue-design.md`.
+  No migration. Finance tier only (partner, accountant); `super_admin` `403` "Finance access required"; other roles `403` "Management
+  access required"; signed out `401`. Read-only: no write, lock or audit row.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/revenue/abroad` *(new)* | Query `month` (`YYYY-MM`; default the current IST month). `422` as `GET /management/expenses` (12DI). `200` `{month, year_start, year_label, commission_visible, kinds[{key, label, month, year}] (service_fees, other_payments, university_commission — partner only — and manual, source order), revenue{month, year}, agent_generated{month, year}, breakdowns[{key (country/university/intake/agency), label, rows[{label, month, year}], unattributed{month, year}}], expenses[{label, month, year}], expense_total, shared_expenses, contribution, not_counted[{currency, kind, amount, count}]}`. Every figure is rupees from `ledger.lines()` (vertical `abroad`); each breakdown's rows + unattributed = revenue; contribution = revenue − expense_total. For the accountant university commission is absent from every figure and `commission_visible` is `false` (M3) |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

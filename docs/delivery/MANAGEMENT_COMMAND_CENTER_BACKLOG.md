@@ -426,6 +426,8 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** high (figures must reconcile)
 
 ### mgmt-006 — Abroad Education revenue dashboard
+- **Status (2026-10-13):** **IN REVIEW** on `feature/mgmt-006`. `DEC-SCOPE-198` (MR1–MR12 recommended defaults, UNVERIFIED; answers
+  Q-09, Q-10, and Q-04 for this page). No migration; API §12DL; RBAC §2.123. QA evidence `docs/quality/MGMT-006_EXPLORATORY_QA_2026-10-13.md`.
 - **Business requirement:** §4: student service fees, application-related revenue, university commission, agent-generated revenue,
   country/university/intake/agent-wise revenue; Revenue / Expenses / Gross Contribution.
 - **Existing behavior:** none (overseas reporting is revenue-agnostic).
