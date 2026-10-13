@@ -2119,6 +2119,17 @@ Counts only, no personal data; nothing else changes.
 - Agency names, prefixes and counts only (no member, student or contact data). No audit row (no write). Agency isolation (AGT-002) is not
   weakened: the agency CRM routes still refuse `super_admin`, and AGN-022's overseas-admin routes and scopes are unchanged.
 
+### 2.131 Company profitability — vertical P&L *(added 2026-10-13 — `DEC-SCOPE-206`, `mgmt-009`)*
+
+| Role | Read `GET /management/pnl`, page `/management/pnl` |
+|---|---|
+| `partner` | yes, university commission included; "Profit & loss" entry (Finance) |
+| `accountant` | yes, **without university commission** (M3, `commission_visible: false`; the receipts are never fetched); "Profit & loss" entry |
+| `super_admin` | `403` "Finance access required" (M13); no entry |
+| every other role | `403` "Management access required"; signed out `401` (the page redirects to `/admin/login?next=`) |
+
+- Company-wide rupee totals per vertical only; no names or line items. No audit row (no write).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

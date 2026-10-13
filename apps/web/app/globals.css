@@ -453,3 +453,13 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 /* mgmt-020 QA-01/QA-02: three short tabs wrap rather than scroll off a phone; "Not tracked" reads as words, not a figure. */
 .report-tablist.wrap { flex-wrap: wrap; overflow-x: visible; }
 .metric .metric-untracked { font-size: 18px; }
+/* mgmt-009 PL9: a negative contribution (a loss) in red; the minus sign stays, so colour is not the only cue. */
+.pnl-loss { color: var(--red); font-weight: 700; }
+.pnl-table tfoot th, .pnl-table tfoot td { font-weight: 800; }
+/* mgmt-009 QA-02: on a phone the vertical names stay in view while the table scrolls to Contribution and Margin. */
+.table.pnl-table { min-width: 560px; }
+@media (max-width: 640px) {
+  .table.pnl-table { min-width: 0; }
+  .pnl-table th, .pnl-table td { padding: 10px; white-space: nowrap; }
+  .pnl-table th:first-child { position: sticky; left: 0; z-index: 1; width: 112px; min-width: 112px; max-width: 112px; white-space: normal; overflow-wrap: anywhere; box-shadow: 1px 0 0 #edf1f6; }
+}
