@@ -10875,6 +10875,48 @@ class ManagementBdmOut(BaseModel):
     figures: list[ManagementBdmFigure]
 
 
+# mgmt-018 (spec CS1-CS12): the counseling dashboard. `calls` is not tracked (always null); `revenue` is null unless `revenue_visible`.
+class ManagementCounselingFigure(BaseModel):
+    key: str
+    label: str
+    definition: str
+    tracked: bool
+
+
+class ManagementCounselingFigures(BaseModel):
+    leads_assigned: int
+    calls: int | None
+    counseling_sessions: int
+    follow_ups: int
+    conversions: int
+    revenue: Decimal | None
+    conversion_pct: float | None
+
+
+class ManagementCounselorRow(ManagementCounselingFigures):
+    id: UUID
+    full_name: str
+    division: str
+    active: bool
+
+
+class ManagementCounselingGroup(ManagementCounselingFigures):
+    division: str | None
+    label: str
+    counselor_count: int
+
+
+class ManagementCounselingOut(BaseModel):
+    from_: date = Field(serialization_alias="from")
+    to: date
+    as_of: datetime
+    revenue_visible: bool
+    figures: list[ManagementCounselingFigure]
+    total: ManagementCounselingGroup
+    divisions: list[ManagementCounselingGroup]
+    counselors: list[ManagementCounselorRow]
+
+
 # mgmt-004 (spec ML1-ML16): the management ledger. Simple field rules live here so a 422 names its field; rules that need the database
 # (category, batch, channel on an existing entry) are raised by `services/ledger.py` in the same field-located shape.
 LEDGER_MAX_AMOUNT = Decimal("999999999999.99")  # Numeric(14, 2)

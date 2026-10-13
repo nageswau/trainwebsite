@@ -29,6 +29,7 @@ from app.schemas import (
     ItRevenuePaymentPage,
     ManagementActivityOut,
     ManagementBdmOut,
+    ManagementCounselingOut,
     ManagementMeOut,
     ManagementSnapshotOut,
     RecruitmentRevenueOut,
@@ -42,6 +43,7 @@ from app.services import (
     management_abroad_revenue,
     management_audit,
     management_bdm,
+    management_counseling,
     management_expenses,
     management_it_revenue,
     management_metrics,
@@ -160,6 +162,18 @@ async def bdm_dashboard(
     now = await db_now(db)
     start, end = period(from_, to, india_date(now))
     return await management_bdm.dashboard(db, type, start, end, now)
+
+
+@router.get("/counseling", response_model=ManagementCounselingOut)
+async def counseling_dashboard(
+    from_: date | None = Query(None, alias="from"), to: date | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """mgmt-018 (§13, spec CS1-CS12): every counselor's figures and the totals for `from`..`to` (IST, default this month). Operational
+    tier; only the finance tier among it (partner) gets revenue."""
+    _operational(user)
+    now = await db_now(db)
+    start, end = period(from_, to, india_date(now))
+    return await management_counseling.dashboard(db, user, start, end, now)
 
 
 @router.get("/expenses", response_model=ExpenseDashboardOut)
