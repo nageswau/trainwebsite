@@ -8,6 +8,7 @@ import { ApiError, serverApi } from "@/lib/api";
 import type { ManagementMe } from "@/lib/management";
 import { EMPTY_FUNNEL_FILTERS, type ApplicationFunnel } from "@/lib/managementApplications";
 import { SUPER_ADMIN_NAV } from "@/lib/navigation";
+import { redirect } from "next/navigation";
 import { elements } from "@/tests/helpers/elementTree";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), refresh: vi.fn(), push: vi.fn() }), redirect: vi.fn(), usePathname: () => "/management/applications" }));
@@ -59,6 +60,15 @@ describe("mgmt-024 applications page", () => {
     expect(screen.getByRole("link", { name: "Command Center" }).getAttribute("href")).toBe("/management");
   });
 
+  it("QA24-01: a submitted form's empty fields are dropped from the address by one redirect", async () => {
+    answer(partner);
+    await page({ date_from: "", agency: "", status: "offer", intake: "" });
+    expect(redirect).toHaveBeenCalledWith("/management/applications?status=offer");
+    vi.mocked(redirect).mockClear();
+    await page({ status: "offer" });
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
   it("keeps the super admin's own sidebar", async () => {
     answer(superAdmin);
     const shell = elements(await page()).find((el) => el.type === PortalShell)!;
@@ -96,7 +106,19 @@ describe("mgmt-024 ManagementApplications", () => {
       expect(within(rows[index]).getByText("Not tracked")).toBeTruthy();
       expect(rows[index].querySelector(".funnel-track")).toBeNull();
     }
-    expect(screen.getByText(/25 of these applications are withdrawn/)).toBeTruthy();
+    expect(screen.getByText(/25 of these applications are withdrawn/).className).toContain("funnel-note"); // QA24-04: spaced from the bars
+  });
+
+  it("QA24-03: a small non-zero stage reads less than 1%, never 0%", () => {
+    const small = { ...funnel, stages: funnel.stages.map((s) => (s.key === "submitted" ? { ...s, value: 2 } : s)) };
+    render(<ManagementApplications data={small} error="" filters={EMPTY_FUNNEL_FILTERS} />);
+    const rows = within(screen.getByRole("list", { name: "Application funnel" })).getAllByRole("listitem");
+    expect(within(rows[2]).getByText("Less than 1% of applications created")).toBeTruthy();
+  });
+
+  it("QA24-02: lays the filters out on the even filter grid", () => {
+    render(<ManagementApplications data={funnel} error="" filters={EMPTY_FUNNEL_FILTERS} />);
+    expect(screen.getByRole("form", { name: "Application filters" }).className).toBe("funnel-filters");
   });
 
   it("offers the eight filters and the created dates, each labelled, with the applied values selected", () => {

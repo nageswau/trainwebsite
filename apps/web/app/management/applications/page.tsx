@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import ManagementApplications from "@/components/ManagementApplications";
 import PortalShell from "@/components/PortalShell";
 import { ApiError, serverApi } from "@/lib/api";
 import { MANAGEMENT_HOME, MANAGEMENT_ROLE_LABEL, managementNavFor, type ManagementMe } from "@/lib/management";
-import { applicationsUrl, funnelFilters, type ApplicationFunnel } from "@/lib/managementApplications";
+import { applicationsHref, applicationsUrl, funnelFilters, type ApplicationFunnel } from "@/lib/managementApplications";
 import { SUPER_ADMIN_NAV } from "@/lib/navigation";
 
 const UNAVAILABLE = "The applications funnel is unavailable right now. Please try again.";
@@ -13,7 +14,10 @@ const UNAVAILABLE = "The applications funnel is unavailable right now. Please tr
 // mgmt-024 (EVID-017 §20, spec MF18): the application funnel for the operational tier (partner, super_admin). The API refuses everyone
 // else (the accountant's 403 included), and that refusal is shown as the access card. A 422 (the date order) shows the API's words.
 export default async function ManagementApplicationsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const filters = funnelFilters(await searchParams);
+  const search = await searchParams;
+  const filters = funnelFilters(search);
+  // QA24-01: the GET form sends every field; one redirect drops the empty ones so the address is short and shareable.
+  if (Object.values(search).some((value) => value === "")) redirect(applicationsHref(filters));
   let me: ManagementMe;
   try {
     me = await serverApi<ManagementMe>("/api/v1/management/me");

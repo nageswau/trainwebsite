@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { APPLICATIONS_HOME, hasFilters, stageShare, type ApplicationFunnel, type FunnelFilterKey, type FunnelFilters, type FunnelOptionKey } from "@/lib/managementApplications";
+import { APPLICATIONS_HOME, hasFilters, shareText, stageShare, type ApplicationFunnel, type FunnelFilterKey, type FunnelFilters, type FunnelOptionKey } from "@/lib/managementApplications";
 
 // The source's eight filters (§20) in its order: the query key, the source's word, the choices list and the "none" choice where one exists.
 const SELECTS: { key: FunnelFilterKey; label: string; options: FunnelOptionKey; none?: string }[] = [
@@ -22,17 +22,17 @@ export default function ManagementApplications({ data, error, filters }: { data:
   return (
     <>
       {error && <p className="form-error" role="alert">{error}</p>}
-      <form method="get" action={APPLICATIONS_HOME} aria-label="Application filters" className="analytics-form" autoComplete="off">
-        <div className="field" style={{ margin: 0 }}>
+      <form method="get" action={APPLICATIONS_HOME} aria-label="Application filters" className="funnel-filters" autoComplete="off">
+        <div className="field">
           <label htmlFor="funnel-date-from">Created from</label>
           <input id="funnel-date-from" name="date_from" type="date" defaultValue={filters.date_from} />
         </div>
-        <div className="field" style={{ margin: 0 }}>
+        <div className="field">
           <label htmlFor="funnel-date-to">Created to</label>
           <input id="funnel-date-to" name="date_to" type="date" defaultValue={filters.date_to} />
         </div>
         {SELECTS.map((select) => (
-          <div className="field" style={{ margin: 0 }} key={select.key}>
+          <div className="field" key={select.key}>
             <label htmlFor={`funnel-${select.key}`}>{select.label}</label>
             <select id={`funnel-${select.key}`} name={select.key} defaultValue={filters[select.key]}>
               <option value="">All</option>
@@ -43,8 +43,10 @@ export default function ManagementApplications({ data, error, filters }: { data:
             </select>
           </div>
         ))}
-        <button className="btn" type="submit">Apply</button>
-        {hasFilters(filters) && <Link href={APPLICATIONS_HOME}>Clear filters</Link>}
+        <div className="funnel-filter-actions">
+          <button className="btn" type="submit">Apply</button>
+          {hasFilters(filters) && <Link href={APPLICATIONS_HOME}>Clear filters</Link>}
+        </div>
       </form>
       {data && (
         <section className="card" aria-labelledby="funnel-heading">
@@ -63,7 +65,7 @@ export default function ManagementApplications({ data, error, filters }: { data:
                 ) : (
                   <>
                     <span className="funnel-count">{stage.value.toLocaleString("en-IN")}</span>
-                    {stage.key !== "created" && <span className="funnel-percent muted">{stageShare(stage.value, created)}% of applications created</span>}
+                    {stage.key !== "created" && <span className="funnel-percent muted">{shareText(stage.value, created)}</span>}
                     <span className="funnel-track" aria-hidden="true">
                       {stage.value > 0 && <span className="funnel-fill" style={{ width: `${Math.max(2, stageShare(stage.value, created))}%` }} />}
                     </span>
@@ -73,7 +75,7 @@ export default function ManagementApplications({ data, error, filters }: { data:
             ))}
           </ol>
           {data.withdrawn > 0 && (
-            <p className="muted">
+            <p className="muted funnel-note">
               {data.withdrawn.toLocaleString("en-IN")} of these applications are withdrawn; they are counted in Applications Created and in each
               stage they reached.
             </p>

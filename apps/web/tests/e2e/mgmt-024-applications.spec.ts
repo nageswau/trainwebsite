@@ -35,7 +35,7 @@ test("a partner opens the funnel from the Command Center and narrows it by statu
   const form = page.getByRole("form", { name: "Application filters" });
   await form.getByLabel("Status").selectOption("enquiry");
   await form.getByRole("button", { name: "Apply" }).click();
-  await page.waitForURL(/status=enquiry/);
+  await page.waitForURL(/\/management\/applications\?status=enquiry$/); // QA24-01: the empty fields are dropped
   expect(await created(page)).toBeLessThanOrEqual(all);
   await expect(form.getByLabel("Status")).toHaveValue("enquiry");
 
@@ -63,7 +63,7 @@ test("the accountant has no entry, and a direct visit is refused", async ({ page
 test("an end date before the start date shows the API's message", async ({ page }) => {
   await signIn(page, "partner.one@edusphere.local", "/management");
   await page.goto("/management/applications?date_from=2026-05-01&date_to=2026-04-01");
-  await expect(page.getByRole("alert")).toHaveText("The end date must be on or after the start date");
+  await expect(page.locator(".form-error[role=alert]")).toHaveText("The end date must be on or after the start date"); // not Next's route announcer
 });
 
 test("signed out, the funnel sends you to the admin sign-in", async ({ page }) => {

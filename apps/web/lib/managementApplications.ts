@@ -46,14 +46,24 @@ export function hasFilters(filters: FunnelFilters): boolean {
   return FUNNEL_FILTER_KEYS.some((key) => filters[key] !== "");
 }
 
-export function applicationsUrl(filters: FunnelFilters): string {
+function withQuery(path: string, filters: FunnelFilters): string {
   const query = new URLSearchParams();
   for (const key of FUNNEL_FILTER_KEYS) if (filters[key]) query.set(key, filters[key]);
   const text = query.toString();
-  return text ? `${APPLICATIONS_API}?${text}` : APPLICATIONS_API;
+  return text ? `${path}?${text}` : path;
 }
+
+export const applicationsUrl = (filters: FunnelFilters) => withQuery(APPLICATIONS_API, filters);
+/** QA24-01: the page's own address for these filters -- only the set ones, so a link is short and shareable. */
+export const applicationsHref = (filters: FunnelFilters) => withQuery(APPLICATIONS_HOME, filters);
 
 /** A stage's whole-number percentage of the applications created (0 when none were). */
 export function stageShare(value: number, created: number): number {
   return created > 0 ? Math.round((value * 100) / created) : 0;
+}
+
+/** QA24-03: the share in words; a non-zero stage that rounds to 0% reads "Less than 1%". */
+export function shareText(value: number, created: number): string {
+  const share = stageShare(value, created);
+  return `${value > 0 && share === 0 ? "Less than 1" : share}% of applications created`;
 }

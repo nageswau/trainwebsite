@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { applicationsUrl, EMPTY_FUNNEL_FILTERS, funnelFilters, hasFilters, stageShare } from "@/lib/managementApplications";
+import { applicationsHref, applicationsUrl, EMPTY_FUNNEL_FILTERS, funnelFilters, hasFilters, shareText, stageShare } from "@/lib/managementApplications";
 
 const ID = "0b9c3f1e-6a52-4e43-9d7a-2b8f8f2f3c11";
 
@@ -43,5 +43,18 @@ describe("mgmt-024 hasFilters / stageShare", () => {
     expect(stageShare(2, 3)).toBe(67);
     expect(stageShare(5, 0)).toBe(0);
     expect(stageShare(4, 4)).toBe(100);
+  });
+
+  it("QA24-03: words the share, never 0% for a non-zero stage", () => {
+    expect(shareText(2, 616)).toBe("Less than 1% of applications created");
+    expect(shareText(0, 616)).toBe("0% of applications created");
+    expect(shareText(71, 616)).toBe("12% of applications created");
+  });
+});
+
+describe("mgmt-024 applicationsHref (QA24-01)", () => {
+  it("is the page path with only the set filters", () => {
+    expect(applicationsHref(EMPTY_FUNNEL_FILTERS)).toBe("/management/applications");
+    expect(applicationsHref({ ...EMPTY_FUNNEL_FILTERS, status: "offer" })).toBe("/management/applications?status=offer");
   });
 });
