@@ -128,7 +128,7 @@ describe("mgmt-025 ManagementRecruitment", () => {
     expect(steps.map((step) => step.querySelector(".funnel-label")?.textContent)).toEqual(["Lead", "Meeting", "Requirement", "Candidate", "Interview", "Selection", "Joining"]);
     expect(within(steps[0]).getByText("80")).toBeTruthy();
     expect(document.getElementById("company-pipeline")?.contains(steps[0])).toBe(true);
-    expect(screen.getByText(/Requirement closed: 3/)).toBeTruthy();
+    expect(screen.getByText(/Requirement closed: 3/).className).toBe("muted funnel-note"); // QA25-01: spaced from the last step
     expect(screen.getByText(/Lost: 7/)).toBeTruthy();
   });
 

@@ -2095,6 +2095,18 @@ Counts only, no personal data; nothing else changes.
 - Counselor names and counts per counselor (staff performance, management only); no lead or student personal data. No audit row (no
   write). The counselor and telecaller routes and their scopes are unchanged.
 
+### 2.129 Recruitment dashboard *(added 2026-10-13 — `DEC-SCOPE-204`, `mgmt-025`)*
+
+| Role | Read `GET /management/recruitment`, page `/management/recruitment` |
+|---|---|
+| `partner` | yes, with revenue; "Recruitment" (Students), "Recruiters" (People) and "Companies" (Partnerships) entries |
+| `super_admin` | yes (operational tier, M13) **without revenue** (`revenue: null`, finance tier only, RC8); keeps the super admin sidebar ("Management recruitment figures") |
+| `accountant` | `403` "Operational access required"; no entry (Recruitment revenue, mgmt-008, stays theirs) |
+| every other role (incl. `placement_team`, `placement_manager`, `it_admin`) | `403`; signed out `401` (the page redirects to `/admin/login?next=`) |
+
+- Company-wide counts only (no company, candidate or recruiter names). No audit row (no write). The rec-033/034/035 routes and their
+  scopes are unchanged.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

@@ -68,7 +68,7 @@ export default function ManagementRecruitment({ data, error, filters }: { data: 
                 </li>
               ))}
             </ol>
-            <p className="muted">
+            <p className="muted funnel-note">
               Requirement closed: {data.requirement_closed.toLocaleString("en-IN")} · Lost: {data.lost.toLocaleString("en-IN")}
             </p>
           </section>

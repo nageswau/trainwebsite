@@ -981,6 +981,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-025 — Recruitment dashboard
+- **Status (2026-10-13):** **IN REVIEW** on `feature/mgmt-025`. `DEC-SCOPE-204` (RC1–RC12 recommended defaults, UNVERIFIED; dependencies
+  merged, so "not available yet" never applies). No migration; API §12DR; RBAC §2.129. QA evidence `docs/quality/MGMT-025_EXPLORATORY_QA_2026-10-13.md`.
+  - **AC:** the KPIs equal rec-035's totals for the same period (pytest `test_the_kpis_equal_rec_035_totals_for_the_same_period`, e2e).
 - **Business requirement:** §21: 11 KPIs; company pipeline Lead → Meeting → Requirement → Candidate → Interview → Selection → Joining.
 - **Existing behavior:** none (Recruiter not built).
 - **Expected behavior:** a read-through of `recruiter_metrics` (rec-033/035) and the rec-005 pipeline groupings. Revenue goes to

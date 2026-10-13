@@ -8003,3 +8003,40 @@ Spec `docs/superpowers/specs/2026-10-13-mgmt-018-counseling-dashboard-design.md`
 `mgmt-018-counseling.spec.ts`. QA `docs/quality/MGMT-018_EXPLORATORY_QA_2026-10-13.md`.
 - **New Feature ID authorized:** `mgmt-018`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-018.
 
+### DEC-SCOPE-204 — Recruitment dashboard: the §21 Recruiter KPIs and the company pipeline (`mgmt-025`)
+
+**Evidence:** `EVID-017` §21 "RECRUITMENT DASHBOARD" (11 Recruiter KPIs; "Lead → Meeting → Requirement → Candidate → Interview →
+Selection → Joining", lines 851–879 — `DERIVED_BLUEPRINT`). `DEC-SCOPE-186` M1/M13 (operational tier) — `EXPLICIT_APPROVAL`. rec-035
+`DEC-SCOPE-184` (M1–M9), rec-033 `DEC-SCOPE-182` (P4, PF3 period rules), rec-034 (B4), rec-005 `DEC-SCOPE-127` (stages), mgmt-003
+`DEC-SCOPE-188` (S15), mgmt-008 `DEC-SCOPE-199` (RR2, RR7).
+
+**Status:** RC1–RC12 in review on `feature/mgmt-025` (2026-10-13). Every RC answer is a **recommended default, `UNVERIFIED`**, taken on
+the owner's instruction to proceed with recommended answers. Dependencies mgmt-003 (#244), rec-033 (#239), rec-035 (#241) are merged,
+so the backlog's "not available yet" state never applies.
+
+**Numbering (provisional):** no migration; API §12DR; RBAC §2.129 (after mgmt-018's `DEC-SCOPE-203` / §12DQ / §2.128).
+Spec `docs/superpowers/specs/2026-10-13-mgmt-025-recruitment-dashboard-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| RC1 | Period | `date_from` / `date_to`, IST days, default 1st of this month → today; ≤ 366 days, never future (rec-033 PF3 = tel-023 wording) |
+| RC2 | Scope | Company-wide, as rec-035 reads for an administrator (every recruiter + Unassigned); `recruiter_metrics.management` takes the allowed roles as a keyword (default MG1's) |
+| RC3 | From rec-035 (AC) | Employer partners = M1; Candidates = M4 (in the pipeline now); Interviews = M5; Selections = M6; Joining = M7 |
+| RC4 | Recruiters | S15 (active `placement_team` with a recruiter profile), as the snapshot and mgmt-008 |
+| RC5 | New companies | Companies whose first move past "Interested" fell in the period (rec-034 B4, any actor; the sub-query is shared) |
+| RC6 | Job / Internship openings | rec-035 M3 split by `employment_type`: `internship` → Internship openings; any other or none → Job openings; they sum to M3 |
+| RC7 | Placement rate | Joining ÷ rec-033 P4 candidates sourced × 100, one decimal (mgmt-008 RR7); null ("—") when none sourced |
+| RC8 | Revenue | Finance tier only (here the partner): Σ counted `ledger.lines()` recruitment income for the period (= mgmt-008's total); super admin `revenue_visible: false`, `revenue: null`, ledger never queried |
+| RC9 | Company pipeline | Live companies (not archived, not lost) by current rec-005 stage: Lead = New Lead/Contacted/Interested; Meeting = Meeting Scheduled/Requirement Discussion; Requirement = Requirement Received/JD Received; Candidate = Candidates Sourcing/Profiles Shared; Interview; Selection; Joining. Requirement Closed and Lost listed beneath; counted now |
+| RC10 | Access | Operational tier (partner, super_admin); accountant 403 "Operational access required"; others 403 "Management access required"; signed out 401 |
+| RC11 | Nav | Command Center Students "Recruitment", People "Recruiters" (`#recruitment-kpis`), Partnerships "Companies" (`#company-pipeline`) live; super admin sidebar "Management recruitment figures" |
+| RC12 | Privacy | Counts and one money total only; no names or per-recruiter rows |
+
+**Consequences:** `services/management_recruitment.py` (`dashboard()`; reads `recruiter_metrics.management/performance`, one statement
+of scalar counts); `recruiter_metrics.management(..., roles=)` and `first_past_interested()` extracted (behaviour unchanged);
+`management_recruitment_revenue.revenue_by_kind()` made public (was `_revenue`); `api/management.py` (`GET /management/recruitment`);
+`schemas.py` (`RecruitmentDashboardOut`). Web `lib/managementRecruitment.ts`, `components/ManagementRecruitment.tsx`, page
+`/management/recruitment`, `lib/management.ts`, `lib/navigation.ts`. Tests `test_mgmt_025_recruitment.py`, `managementRecruitment.test.ts`,
+`ManagementRecruitment.test.tsx`, `mgmt-025-recruitment.spec.ts`. QA `docs/quality/MGMT-025_EXPLORATORY_QA_2026-10-13.md`.
+- **New Feature ID authorized:** `mgmt-025`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-025.
+
