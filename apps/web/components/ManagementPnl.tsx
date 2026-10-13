@@ -6,8 +6,8 @@ import { PNL_HOME, formatMargin, isLoss, type Pnl, type PnlFigures, type PnlQuer
 const TITLE = "Profit and loss by business vertical";
 
 /** PL9: a negative contribution in red; the minus sign stays, so colour is never the only cue. */
-function Contribution({ amount }: { amount: string }) {
-  return <span className={isLoss(amount) ? "pnl-loss" : undefined}>{formatInr(amount)}</span>;
+function lossClass(amount: string): string | undefined {
+  return isLoss(amount) ? "pnl-loss" : undefined;
 }
 
 function Cells({ figures }: { figures: PnlFigures }) {
@@ -15,7 +15,7 @@ function Cells({ figures }: { figures: PnlFigures }) {
     <>
       <td>{formatInr(figures.revenue)}</td>
       <td>{formatInr(figures.expenses)}</td>
-      <td><Contribution amount={figures.contribution} /></td>
+      <td><span className={lossClass(figures.contribution)}>{formatInr(figures.contribution)}</span></td>
       <td>{formatMargin(figures.margin)}</td>
     </>
   );
@@ -61,7 +61,7 @@ export default function ManagementPnl({ data, error, query, maxMonth }: { data: 
           <ul className="metric-grid snapshot-tiles money-tiles accounts-tiles" aria-label="Company figures">
             <li className="metric"><span>Revenue</span><strong>{formatInr(data.total.revenue)}</strong></li>
             <li className="metric"><span>Expenses</span><strong>{formatInr(data.total.expenses)}</strong></li>
-            <li className="metric"><span>Net profit</span><strong><Contribution amount={data.total.contribution} /></strong></li>
+            <li className="metric"><span>Net profit</span><strong className={lossClass(data.total.contribution)}>{formatInr(data.total.contribution)}</strong></li>
             <li className="metric"><span>Margin</span><strong>{formatMargin(data.total.margin)}</strong></li>
           </ul>
           {empty && (
@@ -69,7 +69,7 @@ export default function ManagementPnl({ data, error, query, maxMonth }: { data: 
           )}
           <h3 id="pnl-verticals">Business vertical P&amp;L</h3>
           <div className="table-wrap" role="region" aria-labelledby="pnl-verticals" tabIndex={0} style={{ overflowX: "auto" }}>
-            <table className="table pnl-table" style={{ minWidth: 560 }}>
+            <table className="table pnl-table">
               <caption className="visually-hidden">{TITLE}</caption>
               <thead>
                 <tr><th scope="col">Vertical</th><th scope="col">Revenue</th><th scope="col">Expenses</th><th scope="col">Contribution</th><th scope="col">Margin</th></tr>

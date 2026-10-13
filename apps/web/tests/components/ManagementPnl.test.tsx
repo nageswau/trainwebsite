@@ -65,6 +65,13 @@ describe("mgmt-009 ManagementPnl", () => {
     expect(within(screen.getByRole("list", { name: "Company figures" })).getByText("₹2,00,000.00")).not.toHaveClass("pnl-loss");
   });
 
+  it("QA-01: shows the net profit as the tile's own figure, red when it is a loss", () => {
+    view({ data: pnl({ total: { revenue: "100.00", expenses: "250.00", contribution: "-150.00", margin: -150 } }) });
+    const figure = within(screen.getByRole("list", { name: "Company figures" })).getByText("-₹150.00");
+    expect(figure.tagName).toBe("STRONG"); // a <span> inside the tile would take `.metric span`'s small caption style
+    expect(figure).toHaveClass("pnl-loss");
+  });
+
   it("keeps the month and period in a GET form with the quarter choice", () => {
     view({ data: pnl({ period: "quarter", label: "Q1 (April–June) of 2026-27 to date", start: "2026-04-01" }), query: { month: "2026-05", period: "quarter" } });
     const form = screen.getByRole("form", { name: "Choose a period" });
