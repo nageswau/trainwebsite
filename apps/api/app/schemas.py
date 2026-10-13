@@ -11812,3 +11812,47 @@ class RecruitmentRevenueOut(BaseModel):
     revenue_visible: bool
     revenue: RecruitmentRevenue | None  # RR9: None for the super admin
     kpis: RecruitmentKpis
+
+
+# mgmt-019 (spec TC1-TC16): the company-wide Telecalling dashboard -- the eight §14 figures + conversion per telecaller, per team and
+# for the company, and the Calls → Interested → Counseling → Registration chain. Counts and staff names only (TC14).
+class TelecallingFigures(BaseModel):
+    leads: int
+    calls: int
+    connected: int
+    interested: int
+    follow_ups: int
+    appointments: int
+    converted: int
+    lost: int
+    counselling: int
+    conversion: float | None  # TC10: converted ÷ leads assigned × 100; None when no lead was assigned
+
+
+class TelecallingTeam(TelecallingFigures):
+    team: str
+    label: str
+    telecallers: int
+
+
+class TelecallingRow(TelecallingFigures):
+    user_id: UUID
+    full_name: str
+    team: str
+    active: bool
+
+
+class TelecallingStep(BaseModel):
+    key: str
+    label: str
+    value: int
+    share: float | None  # TC11 (QA19-03): % of the chain's calls; None for Calls itself or when there were no calls
+
+
+class TelecallingOut(BaseModel):
+    date_from: date
+    date_to: date
+    totals: TelecallingFigures
+    teams: list[TelecallingTeam]
+    telecallers: list[TelecallingRow]
+    chain: list[TelecallingStep]
