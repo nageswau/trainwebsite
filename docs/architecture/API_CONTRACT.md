@@ -3058,6 +3058,16 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/bdm` *(new)* | Query: `type` (`agent` default / `school` / `college`), `from`, `to` (inclusive IST dates, each defaulting to this IST month). `422` unknown type, malformed date, "The period must start on or before its end", "The period can be at most 366 days". `200` `{type, label, from, to, as_of, bdm_count, figures[{key, label, definition, basis: "period"\|"now", tracked, value}]}` — §16 order, 9 / 7 / 6 figures; `value` null when not tracked (College `internships`). Counts only |
 
+## 12DP. Counseling dashboard (`mgmt-018`) — addendum, 2026-10-13
+
+- **Basis:** `DEC-SCOPE-202` (CS1–CS12). Design spec `docs/superpowers/specs/2026-10-13-mgmt-018-counseling-dashboard-design.md`.
+  No migration. Operational tier only (partner, super_admin); accountant `403` "Operational access required"; other roles `403`
+  "Management access required"; signed out `401`. Read-only: no write, lock or audit row.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/counseling` *(new)* | Query: `from`, `to` (inclusive IST dates, each defaulting to this IST month). `422` malformed date, "The period must start on or before its end", "The period can be at most 366 days". `200` `{from, to, as_of, revenue_visible, figures[{key, label, definition, tracked}], total, divisions[], counselors[]}`; each total / division row `{division, label, counselor_count, …figures}`, each counselor `{id, full_name, division, active, …figures}`; figures `leads_assigned, calls (always null, not tracked), counseling_sessions, follow_ups, conversions, revenue (decimal string; null unless revenue_visible — partner only), conversion_pct (null when no leads assigned)` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

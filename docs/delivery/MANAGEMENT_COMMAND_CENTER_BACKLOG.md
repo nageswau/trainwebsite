@@ -797,6 +797,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** low
 
 ### mgmt-018 — Counseling dashboard
+- **Status (2026-10-13):** **IN REVIEW** on `feature/mgmt-018`. `DEC-SCOPE-202` (CS1–CS12 recommended defaults, UNVERIFIED; CS4/CS6/CS8
+  answer Q-20: calls not tracked, follow-ups = repeat sessions, revenue = ledger payments of converted leads' students, partner only).
+  No migration; API §12DP; RBAC §2.127. QA evidence `docs/quality/MGMT-018_EXPLORATORY_QA_2026-10-13.md`.
 - **Business requirement:** §13 (Leads → Counseling → Conversion; 8 KPIs).
 - **Existing behavior:** counselor data is spread across modules (appointments, applications, tel-017/018 handover).
 - **Expected behavior:** per counselor (overseas and IT) and in total: leads assigned (handed-over leads), calls (if logged), counseling
