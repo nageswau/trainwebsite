@@ -8112,3 +8112,40 @@ Web `lib/managementPnl.ts`, `components/ManagementPnl.tsx`, page `/management/pn
 (`.pnl-loss`, phone sticky first column). Tests `test_mgmt_009_pnl.py`, `managementPnl.test.ts`, `ManagementPnl.test.tsx`,
 `mgmt-009-pnl.spec.ts`. QA `docs/quality/MGMT-009_EXPLORATORY_QA_2026-10-13.md`.
 - **New Feature ID authorized:** `mgmt-009`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-009.
+
+### DEC-SCOPE-207 — Marketing budget, spend, ROI and the marketing dashboard, Q-14 (`mgmt-012`)
+
+**Evidence:** `EVID-017` §10 "MARKETING BUDGET & ROI" (lines 388–407, `DERIVED_BLUEPRINT`): Budget → Spend → Leads → Conversions →
+Revenue → ROI per channel (Instagram ₹1L / ₹85K / 500 / 35 / ₹5L …); §15 "MARKETING" (lines 561–593): 15 figures. Backlog §mgmt-012,
+Appendix B K1–K7. `DEC-SCOPE-186` M7/M13 (`EXPLICIT_APPROVAL`). `DEC-SCOPE-189` ML6 (expense channel tag), ML10/ML11;
+`DEC-SCOPE-192` (`ledger.lines()`); tel-024 `DEC-SCOPE-109` (source-report rule); mgmt-019 `DEC-SCOPE-202` (first conversion).
+
+**Status:** MK1–MK14 in review on `feature/mgmt-012` (2026-10-13). Every MK answer is a **recommended default, `UNVERIFIED`**, taken on
+the owner's instruction to proceed with recommended answers. MK1/MK2/MK8 answer Q-14 for now.
+
+**Numbering (provisional):** migration `0156_marketing_budgets`; API §12DU; RBAC §2.132 (after mgmt-009's `DEC-SCOPE-206` / §12DT /
+§2.131). Spec `docs/superpowers/specs/2026-10-13-mgmt-012-marketing-roi-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| MK1 | Channels (Q-14) | The 13 lead sources (`TEL_SOURCES`) = the ledger's channel tags; none added |
+| MK2 | §15 groups | Website, School, College, Agent, Events (`exhibition_event`) = their source; Social media = Instagram + Facebook + WhatsApp; **Influencer: not tracked** |
+| MK3 | Budget | `marketing_budgets` (month, channel, rupees ≥ 0); no row = "Not set", ₹0 is a budget |
+| MK4 | Write | `PUT /management/marketing/budgets?month` replaces the month; unknown or duplicate channel, bad amount, future month → 422 |
+| MK5 | Spend (K2, AC2) | Approved manual expenses tagged with the channel in the month, reversals negative; automatic lines have no channel → counted once |
+| MK6 | Leads, qualified (K3, K4) | Enquiries created in the month by source; qualified = reached Qualified or later (tel-024 rule) |
+| MK7 | Customers (K5) | Still-converted leads whose first conversion is in the month; conversion = customers ÷ leads × 100 (1 dp) |
+| MK8 | Revenue (K6, Q-14) | Counted ledger payment lines in the month paid by the student of a still-converted lead of the channel, on or after the link day; no upper window |
+| MK9 | ROI (K7, AC1) | (revenue − spend) ÷ spend × 100 (1 dp, half-up); "—" when spend is 0. Instagram example → 488.2% |
+| MK10 | Campaigns | Campaigns that ran in the month or brought leads/customers; lead figures only (no per-campaign spend) |
+| MK11 | Access | GET: partner/accountant every figure; `super_admin` lead figures only (money null, never queried); others 403. PUT: finance tier only |
+| MK12 | Audit | `mgmt.marketing_budget` (finance kind): month + changed channel names, no amounts; no row when nothing changed |
+| MK13 | Concurrency | Advisory transaction lock per month; UNIQUE(month, channel) backstop |
+| MK14 | Page / nav | `/management/marketing?month`; Sales "Marketing budget & ROI" (finance) and "Marketing leads" (operational, `#marketing-leads`) |
+
+**Consequences:** new `services/management_marketing.py`; `models.py` (`MarketingBudget`, `MARKETING_BUDGET_CHECKS`); migration
+`0156_marketing_budgets`; `schemas.py` (`MarketingBudgetsIn`, `MarketingOut` …); `api/management.py` (two routes);
+`management_audit.KINDS`. Web `lib/marketing.ts`, `components/MarketingDashboard.tsx`, `components/MarketingBudgetForm.tsx`, page
+`/management/marketing`, `lib/management.ts`. Tests `test_mgmt_012_marketing.py`, `test_mgmt_012_migration.py`, `marketing.test.ts`,
+`Marketing.test.tsx`, `mgmt-012-marketing.spec.ts`. QA `docs/quality/MGMT-012_EXPLORATORY_QA_2026-10-13.md`.
+- **New Feature ID authorized:** `mgmt-012`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-012.

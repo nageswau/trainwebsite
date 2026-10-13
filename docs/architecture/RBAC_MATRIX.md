@@ -2130,6 +2130,18 @@ Counts only, no personal data; nothing else changes.
 
 - Company-wide rupee totals per vertical only; no names or line items. No audit row (no write).
 
+### 2.132 Marketing budget, spend & ROI *(added 2026-10-13 — `DEC-SCOPE-207`, `mgmt-012`)*
+
+| Role | Read `GET /management/marketing`, page `/management/marketing` | Write `PUT /management/marketing/budgets` |
+|---|---|---|
+| `partner` | yes, every figure; "Marketing budget & ROI" and "Marketing leads" entries (Sales) | yes |
+| `accountant` | yes, every figure; "Marketing budget & ROI" entry | yes |
+| `super_admin` | **lead figures only** (M13): leads, qualified, customers, conversion, groups, campaigns; budget, spend, revenue and ROI are `null` and never queried; no budget form; "Marketing leads" entry | `403` "Finance access required" |
+| every other role | `403` "Management access required"; signed out `401` (the page redirects to `/admin/login?next=`) | `403` |
+
+- Aggregates only; no lead names or contact details. Budget saves audit as `mgmt.marketing_budget` (finance tier: left out of the
+  super admin's activity list and `/admin/audit`), channel names only, no amounts.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

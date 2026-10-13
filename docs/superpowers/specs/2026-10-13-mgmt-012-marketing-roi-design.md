@@ -14,7 +14,7 @@
   - super_admin sees lead counts only.
 
   Appendix B defines K1–K7.
-- **Decision:** `DEC-SCOPE-206` (provisional number). MK1–MK14 below are **recommended defaults, `UNVERIFIED`**. I took them on the
+- **Decision:** `DEC-SCOPE-207` (provisional number). MK1–MK14 below are **recommended defaults, `UNVERIFIED`**. I took them on the
   owner's instruction to proceed with recommended answers. They answer Q-14 (the channel list and the attribution window) as an interim
   default.
 

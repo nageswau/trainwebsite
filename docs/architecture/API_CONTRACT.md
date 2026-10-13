@@ -3108,6 +3108,17 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/pnl` *(new)* | **Query:** `month` (`YYYY-MM`, IST, default this month; January 2000 to this month), `period` = `month` (default) \| `quarter` (the financial-year quarter — Apr, Jul, Oct, Jan — to the end of `month`) \| `year` (the financial year, 1 April, to the end of `month`).<br>**`200`:** `{month, period, start, end, label, commission_visible, rows[{key, label, revenue, expenses, contribution, margin}], total{revenue, expenses, contribution, margin}, not_counted[{currency, kind, amount, count}]}`.<br>• Six rows, always, in order: `abroad`, `it`, `recruitment`, `school`, `other`, `shared` ("Shared (company-wide, not allocated)", Q-04).<br>• Counted `ledger.lines()` only (approved manual entries, reversals negative, + rupee automatic lines). `total` = Σ rows; `contribution` = revenue − expenses (may be negative); `margin` = contribution ÷ revenue × 100 (1 dp), `null` when revenue ≤ 0.<br>• University commission only for partners (`commission_visible`); for the accountant it is excluded from every figure and from `not_counted`.<br>**`422`:** a malformed, pre-2000 or future month, or a bad period |
 
+## 12DU. Marketing budget, spend & ROI (`mgmt-012`) — addendum, 2026-10-13
+
+- **Basis:** `DEC-SCOPE-207` (MK1–MK14). Design spec `docs/superpowers/specs/2026-10-13-mgmt-012-marketing-roi-design.md`. Migration
+  `0156_marketing_budgets`. Signed out `401`. The backlog's `GET …/budgets` is folded into `GET /management/marketing` (each channel
+  carries its `budget`).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/marketing` *(new)* | **Query:** `month` (`YYYY-MM`, IST, default this month).<br>**`200`:** `{month, current_month, money_visible, channels[{channel, label, budget, spend, leads, qualified, customers, conversion, revenue, roi}], totals{…same without channel/label}, groups{social, website, school, college, agent, influencer: null, events}, campaigns[{id, name, channel, label, active, leads, qualified, customers}], budgets_updated_at, budgets_updated_by{id, full_name}}`.<br>• 13 channel rows, always, in `TEL_SOURCES` order. `budget` `null` = not set. `roi`/`conversion` `null` when spend/leads are 0.<br>• `super_admin`: `money_visible: false`; `budget`, `spend`, `revenue`, `roi` and `budgets_updated_*` are `null`.<br>**`403`:** not a management role.<br>**`422`:** a malformed or future month |
+| `PUT /management/marketing/budgets` *(new)* | **Query:** `month` (required). **Body:** `{budgets: [{channel, amount}]}` (≤ 13) — replaces the month; channels left out lose their budget; `[]` clears it.<br>**`200`:** the month as `GET` returns it. One `mgmt.marketing_budget` audit row naming the changed channels (none when nothing changed).<br>**`403`:** "Finance access required" (`super_admin`) / "Management access required".<br>**`422`:** an unknown channel (`loc: body.budgets.i.channel`), a negative, >2-decimal or too large amount (`…amount`), a channel twice (`body.budgets`), a future month |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

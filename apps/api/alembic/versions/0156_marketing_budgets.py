@@ -3,7 +3,7 @@
 Revision ID: 0156_marketing_budgets
 Revises: 0155_finance_balances
 
-docs/superpowers/specs/2026-10-13-mgmt-012-marketing-roi-design.md §3 (DEC-SCOPE-206). One new table; nothing existing changes. 0001
+docs/superpowers/specs/2026-10-13-mgmt-012-marketing-roi-design.md §3 (DEC-SCOPE-207). One new table; nothing existing changes. 0001
 builds a fresh database from the current models, which already carry the table, so the step is guarded. CHECKS repeats app.models
 with a frozen copy of the 13 lead sources (test_mgmt_012_migration). downgrade() refuses while any row exists: it would drop budgets.
 """

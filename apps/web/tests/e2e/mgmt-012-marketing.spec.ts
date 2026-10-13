@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// mgmt-012 (EVID-017 §10, §15, DEC-SCOPE-206): marketing budget & ROI. The accountant opens a month, sees the ROI table per channel and
+// mgmt-012 (EVID-017 §10, §15, DEC-SCOPE-207): marketing budget & ROI. The accountant opens a month, sees the ROI table per channel and
 // the §15 figures, sees a 422 on its channel, saves a budget and sees it in the table; the super admin sees the lead figures with no
 // money and no budget form (M13). Each run uses its own far-past month, since the stack DB is shared and never emptied.
 
