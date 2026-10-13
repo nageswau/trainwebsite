@@ -120,6 +120,7 @@ async def create_university(payload: UniversityCreate, user: User = Depends(get_
     overridden = await svc.check_duplicates(db, user, payload.name, payload.country_id, payload.duplicate_reason)  # upc-004 UD2
     code = await svc.next_code(db)
     values = payload.model_dump(exclude={"rankings", "duplicate_reason"})
+    values["campuses"] = values.get("campuses") or []
     uni = University(university_code=code, slug=await svc.free_slug(db, payload.name, code), catalogue_visible=False, requirements=[], deadlines=[], scholarships=[], **values)
     db.add(uni)
     try:
@@ -189,6 +190,8 @@ async def update_university(university_id: UUID, payload: UniversityUpdate, user
     publishable (UM6), so it cannot lose its overview or move to an internal country."""
     uni, team = await _locked(db, user, university_id, "can_edit", "update")
     changes = payload.model_dump(exclude_unset=True, exclude={"rankings", "duplicate_reason"})
+    if "campuses" in changes:
+        changes["campuses"] = changes["campuses"] or []  # dtu-001: the column reads as a list
     changed = sorted(k for k, v in changes.items() if getattr(uni, k) != v)
     country = await svc.country_or_422(db, changes["country_id"]) if "country_id" in changed else None
     overridden = 0

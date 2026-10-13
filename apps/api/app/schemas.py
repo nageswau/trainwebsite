@@ -1579,6 +1579,9 @@ class UniversityOut(BaseModel):
     requirements: list
     deadlines: list
     scholarships: list
+    logo_url: str | None = None
+    campuses: list | None = None
+    fee_structure: str | None = None
     model_config = {"from_attributes": True}
 
 
@@ -6884,6 +6887,10 @@ UniversityCity = _university_str(120, required=True)
 UniversityShort = _university_str(120)
 UniversityWebsite = Annotated[_university_str(300), BeforeValidator(_bdm_website_prefix)]
 UniversityOffice = _university_str(1000, multiline=True)
+# dtu-001: a stored logo path (the upload route) or an https URL; nothing else, so no script/data URL reaches an <img src>.
+LogoUrl = Annotated[str | None, Field(max_length=500, pattern=r"^(/universities/logos/[a-z0-9-]+\.(png|svg|jpg|jpeg|webp)|https://\S+)$")]
+UniversityCampuses = Annotated[list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]] | None, Field(max_length=20)]
+UniversityFeeStructure = Annotated[str | None, Field(max_length=4000)]
 UniversityBody = Annotated[str, BeforeValidator(_bdm_newlines), StringConstraints(strip_whitespace=True, max_length=5000), AfterValidator(_university_body)]
 InstitutionType = Literal[INSTITUTION_TYPES]
 UniversityOwnership = Literal[UNIVERSITY_OWNERSHIP_TYPES]
@@ -6955,6 +6962,9 @@ class UniversityCreate(BaseModel):
     overview: UniversityBody = ""
     eligibility: UniversityBody = ""
     rankings: UniversityRankings = []
+    logo_url: LogoUrl = None
+    campuses: UniversityCampuses = None
+    fee_structure: UniversityFeeStructure = None
     duplicate_reason: DuplicateReason = None
 
 
@@ -6980,6 +6990,9 @@ class UniversityUpdate(BaseModel):
     overview: UniversityBody = None
     eligibility: UniversityBody = None
     rankings: UniversityRankings = None
+    logo_url: LogoUrl = None
+    campuses: UniversityCampuses = None
+    fee_structure: UniversityFeeStructure = None
     duplicate_reason: DuplicateReason = None
 
 
@@ -7041,6 +7054,7 @@ class UniversityRow(BaseModel):
     institution_type: str
     country: UniversityCountryRef
     city: str
+    logo_url: str | None
     priority: str | None
     partnership_potential: str | None
     relationship_strength: str | None
@@ -7110,6 +7124,8 @@ class UniversityDetail(UniversityRow):
     popular_programs: list[str]
     international_office: str | None
     existing_relationship: str | None
+    campuses: list[str]
+    fee_structure: str | None
     overview: str
     eligibility: str
     rankings: list[UniversityRankingOut]
@@ -9804,6 +9820,9 @@ class CourseIn(BaseModel):
     scholarship_ids: CourseScholarships = []
     application_process: CourseText = None
     deadline: date | None = None
+    campus: _university_str(200) = None
+    fee_text: _university_str(300) = None
+    intake_text: _university_str(200) = None
     active: bool = True
     commission: CourseCommissionIn | None = None
 
@@ -9827,6 +9846,9 @@ class CourseUpdate(BaseModel):
     scholarship_ids: CourseScholarships = None
     application_process: CourseText = None
     deadline: date | None = None
+    campus: _university_str(200) = None
+    fee_text: _university_str(300) = None
+    intake_text: _university_str(200) = None
     active: bool | None = None
     commission: CourseCommissionIn | None = None
 

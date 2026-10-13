@@ -12,7 +12,7 @@ from app.services import university_courses as svc
 
 COLUMNS = (
     "title", "level", "category", "duration", "intakes", "tuition_amount", "tuition_currency", "application_fee", "application_fee_currency",
-    "english_test", "english_score", "entry_requirements", "application_process", "deadline", "active",
+    "english_test", "english_score", "entry_requirements", "application_process", "deadline", "campus", "fee_text", "intake_text", "active",
 )  # fmt: skip
 REQUIRED = ("title", "level", "category", "duration")
 MAX_ROWS = 1000
