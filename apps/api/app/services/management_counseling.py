@@ -90,13 +90,17 @@ def _pct(converted: int, assigned: int) -> float | None:
     return round(100 * converted / assigned, 1) if assigned else None
 
 
-def _figures(rows: list[dict], money: bool) -> dict:
-    """A group's figures: the sum of its rows (CS1), its conversion % from the summed parts (CS9)."""
-    out: dict = {key: sum(r[key] for r in rows) for key in COUNTS}
-    out["calls"] = None
-    out["revenue"] = sum((r["revenue"] for r in rows), Decimal(0)).quantize(ledger.CENTS) if money else None
-    out["conversion_pct"] = _pct(sum(r["_converted"] for r in rows), out["leads_assigned"])
-    return out
+def _group(division: str | None, label: str, rows: list[dict], money: bool) -> dict:
+    """A total row: the sum of its counselors' figures (CS1), its conversion % from the summed parts (CS9)."""
+    return {
+        "division": division,
+        "label": label,
+        "counselor_count": len(rows),
+        **{key: sum(r[key] for r in rows) for key in COUNTS},
+        "calls": None,
+        "revenue": sum((r["revenue"] for r in rows), Decimal(0)).quantize(ledger.CENTS) if money else None,
+        "conversion_pct": _pct(sum(r["_converted"] for r in rows), sum(r["leads_assigned"] for r in rows)),
+    }
 
 
 async def dashboard(db: AsyncSession, user: User, start: date, end: date, now: datetime) -> dict:
@@ -128,11 +132,7 @@ async def dashboard(db: AsyncSession, user: User, start: date, end: date, now: d
         "as_of": now,
         "revenue_visible": money,
         "figures": [{"key": key, "label": label, "definition": text, "tracked": tracked} for key, label, text, tracked in FIGURES],
-        "total": {"division": None, "label": "All counselors", "counselor_count": len(rows), **_figures(rows, money)},
-        "divisions": [
-            {"division": d, "label": DIVISIONS.get(d, d.capitalize()), "counselor_count": len(group), **_figures(group, money)}
-            for d in divisions
-            for group in [[r for r in rows if r["division"] == d]]
-        ],
+        "total": _group(None, "All counselors", rows, money),
+        "divisions": [_group(d, DIVISIONS.get(d, d.capitalize()), [r for r in rows if r["division"] == d], money) for d in divisions],
         "counselors": rows,
     }
