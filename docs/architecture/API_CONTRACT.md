@@ -3026,9 +3026,21 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/revenue/abroad` *(new)* | Query `month` (`YYYY-MM`; default the current IST month). `422` as `GET /management/expenses` (12DI). `200` `{month, year_start, year_label, commission_visible, kinds[{key, label, month, year}] (service_fees, other_payments, university_commission — partner only — and manual, source order), revenue{month, year}, agent_generated{month, year}, breakdowns[{key (country/university/intake/agency), label, rows[{label, month, year}], unattributed{month, year}}], expenses[{label, month, year}], expense_total, shared_expenses, contribution, not_counted[{currency, kind, amount, count}]}`. Every figure is rupees from `ledger.lines()` (vertical `abroad`); each breakdown's rows + unattributed = revenue; contribution = revenue − expense_total. For the accountant university commission is absent from every figure and `commission_visible` is `false` (M3) |
 
-## 12DM. Applications funnel dashboard (`mgmt-024`) — addendum, 2026-10-13
+## 12DM. Recruitment & Placement revenue dashboard (`mgmt-008`) — addendum, 2026-10-13
 
-- **Basis:** `DEC-SCOPE-199` (MF1–MF18). Design spec `docs/superpowers/specs/2026-10-13-mgmt-024-applications-funnel-design.md`.
+- **Basis:** `DEC-SCOPE-199` (RR1–RR12). Design spec `docs/superpowers/specs/2026-10-13-mgmt-008-recruitment-revenue-design.md`.
+  No migration. Read-only: no write, lock or audit row.
+- **Access:** management roles (`require_management`). partner and accountant get money; `super_admin` gets the KPIs with
+  `revenue_visible: false`, `revenue: null` and `revenue_per_placement: null`; other roles `403` "Management access required"; signed
+  out `401`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/revenue/recruitment` *(new)* | **Query:** `month`, `period` (as §12DK).<br>**`200`:** `{month, period, start, end, label, kpi_end, revenue_visible, revenue{total, kinds[{key, label, amount}]} \| null, kpis{recruiters, partner_companies, open_positions, candidates, interviews, selections, joining, placement_pct, revenue_per_placement}}`.<br>• Kind keys `recruiter_invoices` (always first), then `ledger:<category>`; `total` = Σ kinds.<br>• `candidates`/`interviews`/`selections`/`joining` = `GET /recruiter/performance?from=start&to=kpi_end` Total (P4/P6/P7/P8); `kpi_end` = min(end, today).<br>• `placement_pct` = joining ÷ candidates × 100 (1 dp), `revenue_per_placement` = total ÷ joining; `null` on a zero denominator.<br>**`422`:** a malformed, pre-2000 or future month, or a bad period |
+
+## 12DN. Applications funnel dashboard (`mgmt-024`) — addendum, 2026-10-13
+
+- **Basis:** `DEC-SCOPE-200` (MF1–MF18). Design spec `docs/superpowers/specs/2026-10-13-mgmt-024-applications-funnel-design.md`.
   No migration. Operational tier only (partner, super_admin); accountant `403` "Operational access required"; other roles `403`
   "Management access required"; signed out `401`. Read-only: no write, lock or audit row.
 

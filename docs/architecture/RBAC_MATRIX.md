@@ -2035,7 +2035,19 @@ Counts only, no personal data; nothing else changes.
   sweep stays with mgmt-034.
 - Read-only aggregate: country, university, intake and agency names with rupee sums; no student names or ids. No audit row (no write).
 
-### 2.124 Applications funnel dashboard *(added 2026-10-13 — `DEC-SCOPE-199`, `mgmt-024`)*
+### 2.124 Recruitment & Placement revenue dashboard *(added 2026-10-13 — `DEC-SCOPE-199`, `mgmt-008`)*
+
+| Role | `GET /management/revenue/recruitment`, page `/management/revenue/recruitment` | Entry |
+|---|---|---|
+| `partner` | Revenue by kind + nine KPIs | "Recruitment revenue" (Finance) |
+| `accountant` | Revenue by kind + nine KPIs | "Recruitment revenue" |
+| `super_admin` | Eight KPIs only: no revenue, no revenue per placement (M13; the ledger is never queried) | "Recruitment KPIs" in the super admin's own sidebar |
+| every other role | `403` "Management access required"; signed out `401` (the page redirects to `/admin/login?next=`) | None |
+
+- `recruiter_metrics.performance` keeps PF1's roles for `/recruiter/performance`; only this read passes the management roles (RR10).
+- Read-only aggregate counts and rupee sums; no names. No audit row (no write).
+
+### 2.125 Applications funnel dashboard *(added 2026-10-13 — `DEC-SCOPE-200`, `mgmt-024`)*
 
 | Role | Read `GET /management/applications`, page `/management/applications` |
 |---|---|

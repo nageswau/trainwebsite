@@ -11761,3 +11761,34 @@ class ItRevenuePaymentPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class RecruitmentRevenue(BaseModel):
+    total: Decimal
+    kinds: list[ItRevenueLine]  # RR3: `recruiter_invoices`, then `ledger:<category>`
+
+
+class RecruitmentKpis(BaseModel):
+    """mgmt-008 RR5-RR8, in EVID-017 §6 order; `None` is "—" (nothing to divide by, or money the caller may not see)."""
+
+    recruiters: int
+    partner_companies: int
+    open_positions: int
+    candidates: int
+    interviews: int
+    selections: int
+    joining: int
+    placement_pct: float | None
+    revenue_per_placement: Decimal | None
+
+
+class RecruitmentRevenueOut(BaseModel):
+    month: str
+    period: Literal["month", "year"]
+    start: date
+    end: date
+    label: str
+    kpi_end: date  # RR5: the flow KPIs count to here (today, when the period runs past it)
+    revenue_visible: bool
+    revenue: RecruitmentRevenue | None  # RR9: None for the super admin
+    kpis: RecruitmentKpis

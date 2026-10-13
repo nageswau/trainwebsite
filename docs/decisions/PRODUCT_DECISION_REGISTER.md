@@ -7820,7 +7820,46 @@ page `/management/revenue/abroad`, `lib/management.ts` ("Abroad Education revenu
 `docs/quality/MGMT-006_EXPLORATORY_QA_2026-10-13.md`.
 - **New Feature ID authorized:** `mgmt-006`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-006.
 
-### DEC-SCOPE-199 — Applications funnel dashboard: stage mapping, derived Documents Complete, Staff filter (`mgmt-024`)
+### DEC-SCOPE-199 — Recruitment & Placement revenue dashboard: kinds, nine KPIs, KPI-only super admin (`mgmt-008`)
+
+**Evidence:** `EVID-017` §6 "Recruitment & Placement Revenue" (lines 245–281, `DERIVED_BLUEPRINT`): six revenue kinds (recruitment fees,
+placement fees, employer payments, internship programs, corporate training, other employer revenue) and nine KPIs. `DEC-SCOPE-186`
+M4/M13 (`EXPLICIT_APPROVAL`). `DEC-SCOPE-192` MA1–MA12 (the `recruiter_payment` ledger source). `DEC-SCOPE-176` (rec-031),
+`DEC-SCOPE-182` PF1–PF9 (rec-033), `DEC-SCOPE-184` M3 (rec-035), `DEC-SCOPE-188` MS10/MS15. Backlog Appendix B R1, R11; Q-12.
+
+**Status:** RR1–RR12 in review on `feature/mgmt-008` (2026-10-13). Every RR answer is a **recommended default, `UNVERIFIED`**, taken on
+the owner's instruction to proceed with recommended answers. RR3 answers Q-12.
+
+**Numbering (provisional):** no migration; API §12DM; RBAC §2.124 (after mgmt-006's `DEC-SCOPE-198` / §12DL / §2.123).
+Spec `docs/superpowers/specs/2026-10-13-mgmt-008-recruitment-revenue-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| RR1 | Period | `month` (`YYYY-MM`, IST, default this month; January 2000 to this month) and `period` = `month` or `year` (Indian financial year to the end of `month`) |
+| RR2 | Lines | Counted `ledger.lines()` income of the `recruitment` vertical: rec-031 payments + approved manual income (reversals negative) |
+| RR3 | Revenue kinds (Q-12) | "Recruiter invoice payments" (rec-031) + one row per manual Recruitment income category; internship programs, corporate training and other employer revenue are manual income in categories a partner creates. No category is seeded |
+| RR4 | Revenue | Σ the kind rows; the invoice row is always listed, a category netting to zero is not |
+| RR5 | Flow KPIs (AC2) | Candidates / Interviews / Selections / Joining = rec-033 P4 / P6 / P7 / P8 Total for the same range, all recruiters + Unassigned; the range ends today when the period runs past it |
+| RR6 | Stock KPIs | Recruiters = S15; Partner companies = S10; Open positions = requirements in an open status (rec-035 M3's status rule, every requirement). Counted now |
+| RR7 | Placement % | Joining ÷ Candidates × 100, one decimal; "—" with no candidates |
+| RR8 | Revenue per placement (R11, AC1) | Revenue ÷ Joining for the period; "—" when nobody joined |
+| RR9 | Access | Management roles. Partner and accountant: revenue + nine KPIs. super_admin: eight KPIs, no money (`revenue: null`, the ledger never queried). Others `403` "Management access required"; signed out `401` |
+| RR10 | rec-033 reuse | `recruiter_metrics.performance(..., roles=)` defaults to PF1's roles; only this read passes the management roles |
+| RR11 | Navigation | The Finance entry "Recruitment revenue" is live; the super admin's own sidebar gains "Recruitment KPIs"; tier lists unchanged |
+| RR12 | Costs | No expenses or contribution here (§6 lists none); mgmt-009 owns the vertical P&L |
+
+**Consequences:**
+- **Data:** none (read-only, no migration).
+- **Backend:** new `services/management_recruitment_revenue.py`; `schemas.py`; `api/management.py` (one route);
+  `management_metrics.partner_companies()` / `recruiters()` (S10/S15 shared, snapshot unchanged); `recruiter_metrics.performance`
+  `roles` keyword.
+- **Web:** `lib/managementRecruitmentRevenue.ts`, `components/ManagementRecruitmentRevenue.tsx`, `app/management/revenue/recruitment/page.tsx`,
+  `lib/management.ts` (live entry), `lib/navigation.ts` (super-admin link).
+- **Tests:** `test_mgmt_008_recruitment_revenue.py`; `managementRecruitmentRevenue.test.ts`, `ManagementRecruitmentRevenue.test.tsx`;
+  e2e `mgmt-008-recruitment-revenue.spec.ts`. QA `docs/quality/MGMT-008_EXPLORATORY_QA_2026-10-13.md`.
+- **New Feature ID authorized:** `mgmt-008`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-008.
+
+### DEC-SCOPE-200 — Applications funnel dashboard: stage mapping, derived Documents Complete, Staff filter (`mgmt-024`)
 
 **Evidence:** `EVID-017` §20 "Applications dashboard" (the 11-step funnel and the 8 filters, lines 787–849 — `DERIVED_BLUEPRINT`).
 `DEC-SCOPE-186` M9 (map to existing data, "not tracked" otherwise, no workflow change) and M13 (operational tier) — `EXPLICIT_APPROVAL`.
@@ -7829,7 +7868,7 @@ Backlog Appendix B "Funnels (§20)".
 **Status:** MF1–MF18 in review on `feature/mgmt-024` (2026-10-13). Every MF answer is a **recommended default, `UNVERIFIED`**, taken on
 the owner's instruction to proceed with recommended answers.
 
-**Numbering (provisional):** no migration; API §12DM; RBAC §2.124 (after mgmt-006's `DEC-SCOPE-198` / §12DL / §2.123).
+**Numbering (provisional):** no migration; API §12DN; RBAC §2.125 (after mgmt-008's `DEC-SCOPE-199` / §12DM / §2.124).
 Spec `docs/superpowers/specs/2026-10-13-mgmt-024-applications-funnel-design.md`.
 
 | # | Point | Answer |
