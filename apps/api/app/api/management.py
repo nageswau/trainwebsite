@@ -27,6 +27,7 @@ from app.schemas import (
     ItRevenueOut,
     ItRevenuePaymentPage,
     ManagementActivityOut,
+    ManagementBdmOut,
     ManagementMeOut,
     ManagementSnapshotOut,
     RecruitmentRevenueOut,
@@ -39,6 +40,7 @@ from app.services import (
     ledger,
     management_abroad_revenue,
     management_audit,
+    management_bdm,
     management_expenses,
     management_it_revenue,
     management_metrics,
@@ -47,6 +49,7 @@ from app.services import (
 )
 from app.services.bdm_activities import india_date
 from app.services.bdm_appointments import db_now
+from app.services.bdm_performance import period
 from app.services.management_access import can_view_operational, require_management, require_partner_only, tiers
 
 router = APIRouter(prefix="/management", tags=["management"])
@@ -84,12 +87,33 @@ async def management_activity(
 @router.get("/snapshot", response_model=ManagementSnapshotOut)
 async def management_snapshot(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """mgmt-003 (§3, spec MS1-MS19): S1-S15 for the operational tier (partner, super_admin); the accountant and everyone else 403."""
-    require_management(user)
-    if not can_view_operational(user):
-        raise HTTPException(403, "Operational access required")
+    _operational(user)
     today = india_date(await db_now(db))
     figures = await management_metrics.snapshot(db, today)
     return {"as_of": today, "kpis": [{"id": kpi_id, "key": key, "label": label, "value": figures[key]} for kpi_id, key, label in management_metrics.SNAPSHOT]}
+
+
+def _operational(user: User) -> User:
+    """M13: the operational tier (partner, super_admin); the accountant gets "Operational access required", anyone else 403 too."""
+    require_management(user)
+    if not can_view_operational(user):
+        raise HTTPException(403, "Operational access required")
+    return user
+
+
+@router.get("/bdm", response_model=ManagementBdmOut)
+async def bdm_dashboard(
+    type: Literal["agent", "school", "college"] = "agent",  # noqa: A002 -- the backlog's query parameter name
+    from_: date | None = Query(None, alias="from"),
+    to: date | None = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """mgmt-020 (§16, spec BD1-BD12): one BDM type's figures, company-wide, for `from`..`to` (IST, default this month; bdm-024 P2)."""
+    _operational(user)
+    now = await db_now(db)
+    start, end = period(from_, to, india_date(now))
+    return await management_bdm.dashboard(db, type, start, end, now)
 
 
 @router.get("/expenses", response_model=ExpenseDashboardOut)
