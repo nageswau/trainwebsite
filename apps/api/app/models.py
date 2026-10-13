@@ -5735,3 +5735,27 @@ class FinanceBalance(Base, TimestampMixin):
     tax_liabilities: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+# mgmt-012 (spec MK3): one month's marketing budget per channel (the 13 lead sources, MK1); migration 0156 keeps a frozen copy.
+MARKETING_BUDGET_CHECKS = {
+    "ck_marketing_budgets_month": "EXTRACT(DAY FROM month) = 1",
+    "ck_marketing_budgets_amount": "amount >= 0",
+    "ck_marketing_budgets_channel": f"channel IN ({', '.join(repr(s) for s in TEL_SOURCES)})",
+}
+
+
+class MarketingBudget(Base, TimestampMixin):
+    """MK3: a channel's budget for a month (`month` is its 1st day), in rupees. No row = no budget; 0 is a budget of nothing."""
+
+    __tablename__ = "marketing_budgets"
+    __table_args__ = (
+        UniqueConstraint("month", "channel", name="uq_marketing_budgets_month_channel"),
+        *(CheckConstraint(sql, name=name) for name, sql in MARKETING_BUDGET_CHECKS.items()),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    month: Mapped[date] = mapped_column(Date)
+    channel: Mapped[str] = mapped_column(String(30))
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))

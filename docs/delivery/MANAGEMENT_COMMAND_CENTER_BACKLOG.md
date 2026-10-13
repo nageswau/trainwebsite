@@ -615,6 +615,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** high
 
 ### mgmt-012 — Marketing budget, spend, ROI + marketing dashboard
+- **Status (2026-10-13):** **IN REVIEW** on `feature/mgmt-012`. `DEC-SCOPE-207` (MK1–MK14 recommended defaults, UNVERIFIED; Q-14
+  interim: the 13 lead sources, Influencer not tracked, revenue = fees paid after the link with no upper window). Migration
+  `0156_marketing_budgets`; API §12DU; RBAC §2.132. QA evidence `docs/quality/MGMT-012_EXPLORATORY_QA_2026-10-13.md`.
 - **Business requirement:** §10 (Budget → Spend → Leads → Conversions → Revenue → ROI per channel; "what is working?") and §15 (15
   figures) (M7).
 - **Existing behavior:** leads per source and campaign exist (telecaller reports). There is no budget or spend.

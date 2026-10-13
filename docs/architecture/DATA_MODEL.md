@@ -2049,3 +2049,23 @@ The migration seeds 10 departments when the table is empty.
     received;
   - pending invoices come from `invoices` and rec-031.
 - No existing table changes. `downgrade()` refuses while any row exists.
+
+## Marketing budgets (`mgmt-012`, `DEC-SCOPE-207`; migration `0156_marketing_budgets`, after mgmt-013's `0155_finance_balances`)
+
+**`marketing_budgets` columns:**
+- `id`
+- `month` date (CHECK day = 1)
+- `channel` varchar(30) (CHECK one of the 13 lead sources; the migration keeps a frozen copy)
+- `amount` numeric(14,2) (CHECK ≥ 0)
+- `created_by_user_id`, `updated_by_user_id` → `users` (FK RESTRICT)
+- timestamps
+- UNIQUE (`month`, `channel`) (`uq_marketing_budgets_month_channel`)
+
+**Design notes:**
+- A month's budget per channel, typed by a partner or the accountant (M7). No row means no budget; 0 is a budget of nothing.
+- Finance tier (M13). The audit (`mgmt.marketing_budget`) names the changed channels and stores no amounts.
+- Everything else on the page is computed on read, and nothing is copied:
+  - spend comes from approved `ledger_entries` tagged with the channel (reversals negative);
+  - leads, qualified leads and customers come from `enquiries` and `lead_stage_history`;
+  - revenue comes from `ledger.lines()` payment lines joined to the converted lead's student.
+- No existing table changes. `downgrade()` refuses while any row exists.
