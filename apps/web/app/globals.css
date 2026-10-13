@@ -395,6 +395,9 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 .telecalling-section-title { margin-top: 28px; } /* QA19-04: the tables sit clear of the chain card */
 /* mgmt-021: #agencies lands below the sticky top bar, and the ranking sits clear of the chain card. */
 .agents-ranking { scroll-margin-top: 84px; margin-top: 28px; }
+/* QA21-01: the agency name gets room to read on one line; its code and markers sit on a small line below. */
+.agents-agency { min-width: 160px; }
+.agents-agency-meta { display: block; font-size: 12px; font-weight: 400; }
 .it-revenue-nowrap td { white-space: nowrap; }
 /* tel-021: the ten §1 dashboard tiles -- five across on a wide screen, then three, then two on tablets and phones; a hint under each
    figure. The daily activity table reuses .tel-targets (short columns, row headers as labels). */

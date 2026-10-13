@@ -81,10 +81,9 @@ export default function ManagementAgents({ data, error, query }: { data: AgentsD
                     {data.agencies.map((a, index) => (
                       <tr key={a.id}>
                         <td>{index + 1}</td>
-                        <th scope="row">
-                          {a.name} <span className="muted">· {a.prefix}</span>
-                          {a.status === "suspended" && <span className="muted"> · Suspended</span>}
-                          {a.new && <span className="muted"> · New</span>}
+                        <th scope="row" className="agents-agency">
+                          {a.name}
+                          <span className="muted agents-agency-meta">{[a.prefix, a.status === "suspended" && "Suspended", a.new && "New"].filter(Boolean).join(" · ")}</span>
                         </th>
                         {columns.map((key) => <td key={key}>{value(key, a[key])}</td>)}
                       </tr>

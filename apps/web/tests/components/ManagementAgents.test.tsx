@@ -117,6 +117,13 @@ describe("mgmt-021 ManagementAgents", () => {
     expect(screen.getByRole("link", { name: "This month" })).toHaveAttribute("href", "/management/agents");
   });
 
+  it("QA21-01: gives the agency name room, with its code and markers on a line of their own", () => {
+    view();
+    const globe = within(table()).getByRole("rowheader", { name: /Globe Admissions/ });
+    expect(globe).toHaveClass("agents-agency");
+    expect(globe.querySelector(".agents-agency-meta")).toHaveTextContent("GLB · New");
+  });
+
   it("says one agency in the singular", () => {
     view({ data: dashboard({ totals: { ...dashboard().totals, agents: 1 } }) });
     expect(screen.getByText(/1 agency\./)).toBeInTheDocument();
