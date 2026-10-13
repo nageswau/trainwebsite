@@ -75,7 +75,7 @@ export default function ManagementRecruitmentRevenue({
                   </table>
                 </div>
               )}
-              <p className="muted">
+              <p className="muted" style={{ marginTop: 16 }}>
                 Recruiter invoice payments are the fees received against recruitment invoices. Internship programs, corporate training and other
                 employer revenue count once they are approved as Recruitment income in the <Link href="/management/ledger">ledger</Link>, each under its own category.
               </p>
