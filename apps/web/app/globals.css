@@ -390,6 +390,8 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
    heading below the sticky top bar. QA-03: dates and enrolment codes stay on one line. */
 .it-revenue-courses th[scope="row"] { min-width: 170px; }
 .it-revenue-payments { scroll-margin-top: 84px; }
+/* mgmt-019: the People pillar's "Telecallers" entry lands on #telecallers below the sticky top bar. */
+.telecalling-people { scroll-margin-top: 84px; }
 .it-revenue-nowrap td { white-space: nowrap; }
 /* tel-021: the ten §1 dashboard tiles -- five across on a wide screen, then three, then two on tablets and phones; a hint under each
    figure. The daily activity table reuses .tel-targets (short columns, row headers as labels). */
