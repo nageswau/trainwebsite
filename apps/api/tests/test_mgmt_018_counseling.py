@@ -92,7 +92,9 @@ async def test_the_operational_tier_reads_it(client, db_session, role):
     await as_role(client, db_session, role)
     body = await read(client)
     assert [f["key"] for f in body["figures"]] == KEYS
-    assert {f["key"]: f["tracked"] for f in body["figures"]}["calls"] is False
+    calls = next(f for f in body["figures"] if f["key"] == "calls")
+    assert calls["tracked"] is False
+    assert not calls["definition"].startswith("Not tracked")  # QA-01: the tile already says so; the note says why
     assert body["from"] == PERIOD["from"] and body["to"] == PERIOD["to"] and body["as_of"]
     assert body["revenue_visible"] is (role == "partner")
 

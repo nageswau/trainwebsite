@@ -112,6 +112,12 @@ describe("mgmt-018 ManagementCounseling", () => {
     expect(screen.getByRole("link", { name: "This month" })).toHaveAttribute("href", "/management/counseling");
   });
 
+  it("QA-02: keeps a total's counselor count on one line", () => {
+    view();
+    const footer = screen.getByRole("table", { name: "Counselor-wise performance" }).querySelector("tfoot")!;
+    for (const td of Array.from(footer.querySelectorAll("tr td:first-of-type"))) expect(td).toHaveClass("no-wrap");
+  });
+
   it("says one counselor in the singular", () => {
     view({ data: dashboard({ total: { ...dashboard().total, counselor_count: 1 } }) });
     expect(screen.getByText(/1 counselor\./)).toBeInTheDocument();

@@ -92,7 +92,7 @@ export default function ManagementCounseling({ data, error, query }: { data: Cou
                     {[...data.divisions.filter((g) => g.counselor_count > 0), data.total].map((g) => (
                       <tr key={g.division ?? "all"}>
                         <th scope="row">{g.division === null ? g.label : `${g.label} total`}</th>
-                        <td>{plural(g.counselor_count, "counselor")}</td>
+                        <td className="no-wrap">{plural(g.counselor_count, "counselor")}</td>
                         {columns.map((key) => <td key={key}><strong>{cell(key, g)}</strong></td>)}
                       </tr>
                     ))}

@@ -23,7 +23,7 @@ COUNTS = ("leads_assigned", "counseling_sessions", "follow_ups", "conversions")
 # CS3-CS9, in §13 order: (key, label, definition, tracked).
 FIGURES = (
     ("leads_assigned", "Leads assigned", "Leads handed over to the counselor in the period.", True),
-    ("calls", "Calls", "Not tracked: calls are logged by telecallers, not counselors.", False),
+    ("calls", "Calls", "Calls are logged by telecallers; counselors have no call log.", False),
     ("counseling_sessions", "Counseling sessions", "Appointments the counselor completed that were scheduled in the period.", True),
     ("follow_ups", "Follow-ups", "Counseling sessions with a lead or student the counselor had counseled before.", True),
     ("conversions", "Conversions", "The counselor's leads first converted in the period and still converted.", True),
