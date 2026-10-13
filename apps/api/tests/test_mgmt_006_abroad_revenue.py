@@ -108,7 +108,8 @@ async def overseas_payment(db, on: date, *, amount: str = "40000.00", reference_
 
 
 async def approved_entry(client, db, *, kind: str, vertical: str, on: date, amount: str, approve: bool = True) -> dict:
-    """An accountant's entry in a new category of `kind`, submitted and (unless `approve=False`) approved by a partner."""
+    """An accountant's entry in a new category of `kind`, submitted and (unless `approve=False`) approved by a partner. Leaves an
+    accountant signed in, so a dashboard read before and after it sees the same figures (a partner's also hold university commission)."""
     await as_user(client, db)
     cat = await category(client, kind)
     entry = await create(client, cat["id"], kind=kind, vertical=vertical, entry_date=on.isoformat(), amount=amount, description="Abroad test entry")
@@ -116,6 +117,7 @@ async def approved_entry(client, db, *, kind: str, vertical: str, on: date, amou
         assert (await post(client, entry["id"], "submit")).status_code == 200
         await as_user(client, db, "partner")
         assert (await post(client, entry["id"], "approve")).status_code == 200
+        await as_user(client, db)
     return entry
 
 
