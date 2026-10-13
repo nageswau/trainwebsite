@@ -76,6 +76,17 @@ describe("mgmt-001 pillars (§33, MG8/MG9)", () => {
   });
 });
 
+describe("mgmt-012 marketing entries (MK14)", () => {
+  it("links the finance tier to the ROI page and the super admin to its lead figures", () => {
+    const roi = { label: "Marketing budget & ROI", href: "/management/marketing" };
+    const leads = { label: "Marketing leads", href: "/management/marketing#marketing-leads" };
+    expect(managementNavFor(ACCOUNTANT)).toContainEqual(roi);
+    expect(managementNavFor(ACCOUNTANT)).not.toContainEqual(leads);
+    expect(managementNavFor(SUPER_ADMIN)).toContainEqual(leads);
+    expect(managementNavFor(SUPER_ADMIN)).not.toContainEqual(roi);
+  });
+});
+
 describe("mgmt-003 business snapshot entry (MS18)", () => {
   it("is the first Business Intelligence entry, live, operational tier", () => {
     const bi = MANAGEMENT_PILLARS.find((p) => p.title === "Business Intelligence")!;
