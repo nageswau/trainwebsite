@@ -435,3 +435,4 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 .map-filters > summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 8px; }
 .map-phone-hint { display: none; margin: 0 0 8px; font-size: 13px; }
 @media (max-width: 640px) { .map-phone-hint { display: block; } }
+.metric .metric-note { margin: 6px 0 0; font-size: 12px; color: var(--muted); line-height: 1.4; }

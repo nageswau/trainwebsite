@@ -25,7 +25,7 @@ const own = (label: string, item: string): ManagementEntry => ({ label, item, ti
 
 export const MANAGEMENT_PILLARS: ManagementPillar[] = [
   { title: "Students", entries: [op("Student funnel", "mgmt-016"), op("Training", "mgmt-017"), op("Counseling", "mgmt-018"), op("Applications", "mgmt-024"), op("Recruitment", "mgmt-025")] },
-  { title: "Sales", entries: [op("BDM", "mgmt-020"), op("Leads & calls", "mgmt-019"), fin("Marketing budget & ROI", "mgmt-012")] },
+  { title: "Sales", entries: [{ ...op("BDM", "mgmt-020"), href: "/management/bdm" }, op("Leads & calls", "mgmt-019"), fin("Marketing budget & ROI", "mgmt-012")] },
   {
     title: "Finance",
     entries: [
