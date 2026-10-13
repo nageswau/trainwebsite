@@ -44,7 +44,7 @@ def test_every_cell_is_mapped_and_universities_are_built():
     names = {u["name"] for u in unis}
     assert {"University of Southwales", "BPP University", "Walbrook", "University of East Anglia", "University of Hull", "Coventry University", "University of Greenwich"} <= names
     sw = next(u for u in unis if u["name"] == "University of Southwales")
-    assert sw["country_iso2"] == "GB" and sw["campuses"] == ["Cardiff Campus", "Newport Campus"] and sw["city"] == "Cardiff Campus"
+    assert sw["country_iso2"] == "GB" and sw["campuses"] == ["Cardiff Campus", "Newport Campus"] and sw["city"] == "Cardiff"  # R8: trailing "campus" stripped
     assert sw["agent_commission"] == {"percent": "13.00", "note": "0.13"}
     ug = next(c for c in sw["courses"] if c["title"] == "BA (Hons) Business and Management")
     assert (ug["level"], ug["campus"], ug["tuition_amount"], ug["tuition_currency"], ug["intakes"], ug["intake_text"]) == ("UG", "Cardiff Campus", "15800.00", "GBP", ["Jan"], "January 2027")
@@ -71,7 +71,7 @@ def test_contract_keys_logo_placeholder_and_institution_type():
     assert walbrook["institution_type"] == "institute" and walbrook["website"] == "https://www.walbrook.ac.uk/"
     assert [c["intakes"] for c in walbrook["courses"]] == [["Jan", "Sep", "Oct", "Nov"]] * 2  # layout C row intakes apply to every course
     hull = next(u for u in unis if u["name"] == "University of Hull")
-    assert hull["courses"] == [] and hull["city"] == "London" and any("capital" in f for f in hull["flags"])
+    assert hull["courses"] == [] and hull["city"] == "Hull" and "city from owner-approved main-city table (DT15)" in hull["flags"]
 
 
 def test_an_unknown_cell_is_reported():
@@ -130,3 +130,85 @@ def test_months_and_category():
     assert category_of("BSc (Hons) Computer Science & AI") == "Computing & IT"
     assert category_of("BSc (Hons) Chiropractic") == "Health"
     assert category_of("International Foundation Year") == "General"
+
+
+# ---- fix round 1 (owner DT15-DT17, rulings R8-R10)
+
+def _row_b(name, destination, ug, pg, fees):
+    return (name, destination, None, ug, None, pg, fees, None, "• January", None, "https://example.org/", None, None, None, None, None)
+
+
+def _parse_with(row38):
+    rows = _main()
+    rows[37] = row38  # row 38 is inside layout B (rows 37-62)
+    unis, unmapped = parse_workbook(_sheets(rows))
+    assert unmapped == []
+    return unis
+
+
+def test_unlabelled_fee_block_with_several_currencies_is_text_only():  # DT16
+    fees = "• India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total\n• APAC Regional Programs: $8,000 – $12,000 / year"
+    unis = _parse_with(_row_b("APAC Institutions\n", "Australia,Sydney Campus ", "• BSc (Hons) Computer Science & AI", None, fees))
+    apac = next(u for u in unis if u["name"] == "APAC Institutions")
+    course = apac["courses"][0]
+    assert (course["tuition_amount"], course["tuition_currency"]) == (None, None)
+    assert "₹3,500,000" in course["fee_text"] and "$8,000" in course["fee_text"]
+    assert any("several currencies" in f and "DT16" in f for f in apac["flags"])
+    assert apac["city"] == "Sydney"
+
+
+def test_unlabelled_single_currency_fee_block_still_sets_tuition():
+    unis = _parse_with(_row_b("OIEG Pathway Programs (Oxford International)", "UK", "• International Foundation Year", None,
+                              "• Pathway Programs: £12,500 – £15,000 total depending on stream and location"))
+    oieg = next(u for u in unis if u["name"] == "OIEG Pathway Programs (Oxford International)")
+    assert oieg["courses"][0]["tuition_amount"] == "12500.00" and oieg["city"] == "London"
+    assert "city from owner-approved main-city table (DT15)" in oieg["flags"]
+
+
+def test_city_strips_campus_word_and_institution_acronym():  # R8
+    unis = _parse_with(_row_b("Ecole de Management Appliqué \n(France)", "France__(EMA Paris campus)", "• Bachelor in Business", None, "• UG: €7,500"))
+    ema = next(u for u in unis if u["name"] == "Ecole de Management Appliqué")
+    assert ema["city"] == "Paris" and ema["campuses"] == ["EMA Paris campus"] and "partner in Paris, France" in ema["overview"]
+    walbrook = next(u for u in unis if u["name"] == "Walbrook")
+    assert walbrook["city"] == "London" and walbrook["campuses"] == ["London campus"]
+
+
+def test_main_city_table_for_universities_without_a_campus():  # DT15
+    unis, _ = parse_workbook(_sheets(_main()))
+    coventry = next(u for u in unis if u["name"] == "Coventry University")
+    assert coventry["city"] == "Coventry" and "city from owner-approved main-city table (DT15)" in coventry["flags"]
+    assert not any("capital" in f for f in coventry["flags"])
+
+
+def test_bpp_pdp_line_goes_to_pdp_titles():  # DT17
+    fees = "• UG: £11,000 – £13,366 / year\n• PG (12 Mo): £18,600 – £19,000 total\n• PG (18 Mo PDP): £22,000 – £23,000 total\n• Deposit: 60%"
+    pg = "• MSc Management with AI\n• MBA with Professional Development\n• MSc Finance (PDP)"
+    unis = _parse_with(_row_b("BPP Test University", "UK(London Campus)", None, pg, fees))
+    courses = {c["title"]: c for c in next(u for u in unis if u["name"] == "BPP Test University")["courses"]}
+    assert (courses["MSc Management with AI"]["duration"], courses["MSc Management with AI"]["tuition_amount"]) == ("12 months", "18600.00")
+    for title in ("MBA with Professional Development", "MSc Finance (PDP)"):
+        assert (courses[title]["duration"], courses[title]["tuition_amount"], courses[title]["fee_text"]) == ("18 months", "22000.00", "£22,000 – £23,000 total")
+
+
+def test_unmatched_pdp_line_is_flagged():
+    fees = "• PG (12 Mo): £18,600 – £19,000 total\n• PG (18 Mo PDP): £22,000 – £23,000 total"
+    unis = _parse_with(_row_b("BPP Test University", "UK(London Campus)", None, "• MSc Management with AI", fees))
+    bpp = next(u for u in unis if u["name"] == "BPP Test University")
+    assert bpp["courses"][0]["duration"] == "12 months"
+    assert any("PG (18 Mo PDP)" in f and "applies to no course" in f for f in bpp["flags"])
+
+
+def test_information_technology_category():  # R9
+    assert category_of("BSc (Hons) Information Technology") == "Computing & IT"
+    assert category_of("MSc Information Technology Management") == "Computing & IT"
+
+
+def test_duplicate_course_is_emitted_once():  # R10
+    rows = _main()
+    rows[2] = rows[2][:8] + ("MBA Global", "Cardiff Campus", "£18,970", None, None, "September", None, None)
+    unis, unmapped = parse_workbook(_sheets(rows))
+    assert unmapped == []
+    sw = next(u for u in unis if u["name"] == "University of Southwales")
+    assert [c["title"] for c in sw["courses"] if c["level"] == "PG"] == ["MBA Global"]
+    assert next(c for c in sw["courses"] if c["title"] == "MBA Global")["intakes"] == ["Jan", "Sep"]  # first row kept
+    assert any("duplicate course title" in f and "MBA Global" in f for f in sw["flags"])

@@ -51,8 +51,22 @@ NAME_COUNTRY = (("Schiller", "US"), ("Berlin School of Business", "DE"), ("GBS D
 CAPITALS = {"GB": "London", "US": "Washington", "AU": "Canberra", "FR": "Paris", "DE": "Berlin", "MT": "Valletta", "AE": "Dubai"}
 COUNTRY_NAMES = {"GB": "United Kingdom", "US": "United States", "AU": "Australia", "FR": "France", "DE": "Germany", "MT": "Malta",
                  "AE": "United Arab Emirates"}
+# DT15 owner-approved; well-known main campus city. Used only when the sheet names no campus; keys are cleaned names, lower-case.
+MAIN_CITY = {
+    "university of west london": "London", "university of east anglia": "Norwich", "aston university birmingham": "Birmingham",
+    "university of east london": "London", "leads trinity university": "Leeds", "university of derby": "Derby",
+    "university of west of england bristol": "Bristol", "queens university belfast": "Belfast",
+    "university of staffordshire": "Stoke-on-Trent", "university of hull": "Hull", "bangor university": "Bangor",
+    "university of hertfordshire": "Hatfield", "university of wolverhampton": "Wolverhampton", "university of reading": "Reading",
+    "coventry university": "Coventry", "university of greenwich": "London", "health sciences university (hsu)": "Bournemouth",
+    "oieg pathway programs (oxford international)": "London", "avila university - arizona campus": "Phoenix",
+    "schiller international university": "Tampa", "berlin school of business and innovation - bsbi": "Berlin",
+}
+MAIN_CITY_FLAG = "city from owner-approved main-city table (DT15)"
+PDP_TITLE_RE = re.compile(r"\bPDP\b|professional development", re.I)  # DT17: PG titles that take the "PG (… PDP)" fee line
 
 CATEGORY_RULES = (  # spec §4.3, first match wins
+    ("Computing & IT", re.compile(r"\binformation technology\b", re.I)),  # R9: checked before Business
     ("Business", re.compile(r"\b(business|management|mba)\b", re.I)),
     ("Computing & IT", re.compile(r"\b(?:computing|computers?|data)\b", re.I)),
     ("Computing & IT", re.compile(r"\b(?:IT|AI)\b")),
@@ -154,6 +168,22 @@ def parse_fee(text) -> tuple[str | None, str | None]:
         return None, None
     amount = Decimal(number[0].replace(",", ""))
     return (_money(amount), currency) if amount > 0 else (None, None)
+
+
+def currencies_in(text) -> set[str]:
+    """Distinct currencies named in a text (any currency, including ones the course master does not accept)."""
+    return {dict(_CURRENCY_TOKENS).get(t, t) for t in _CURRENCY_RE.findall(str(text or ""))}
+
+
+def city_of_campus(campus: str, name: str) -> str:
+    """R8: the city is the first campus without a trailing "campus" word; a leading institution acronym is dropped
+    ("EMA Paris campus" for "Ecole de Management Appliqué" -> "Paris")."""
+    city = re.sub(r"\s+campus$", "", campus.strip(), flags=re.I) or campus.strip()
+    initials = "".join(w[0] for w in name.split() if w[:1].isupper())
+    first, _, rest = city.partition(" ")
+    if rest and first.isupper() and len(first) > 1 and first == initials:
+        city = rest
+    return city
 
 
 def months(text) -> list[str]:
@@ -326,10 +356,14 @@ class _Uni:
             self.flags.append(f"country {override} from the name overrides destination {self.country}")
             self.country = override
         if self.campuses:
-            city = self.campuses[0]
+            city = city_of_campus(self.campuses[0], self.name)
+        elif (main_city := MAIN_CITY.get(clean(self.name).lower())) is not None:
+            city = main_city
+            self.flags.append(MAIN_CITY_FLAG)
         else:
             city = CAPITALS[self.country]
             self.flags.append(f"city defaulted to the capital {city} (no campus named)")
+        self._collapse_duplicate_courses()
         institution_type, type_flag = institution_type_of(self.name)
         assert institution_type in INSTITUTION_TYPES
         if type_flag:
@@ -357,11 +391,14 @@ class _Uni:
         labelled = [(m[1], m[2], m[3]) for m in map(_FEE_LABEL_RE.match, lines) if m]
         if not labelled:
             fee_text = "; ".join(lines)
-            amount, currency = parse_fee(fee_text)
+            mixed = len(currencies_in(fee_text)) > 1  # DT16: an unlabelled block with several currencies stays text only
+            amount, currency = (None, None) if mixed else parse_fee(fee_text)
             for course in self.courses:
                 course.update(fee_text=fee_text, tuition_amount=amount, tuition_currency=currency)
             if self.courses:
                 self.flags.append("fee block has no UG/PG labels; applied to every course")
+                if mixed:
+                    self.flags.append("fee block has no UG/PG labels and several currencies; fee text only, no tuition amount (DT16)")
             return
         for level in ("UG", "PG"):
             matches = [x for x in labelled if x[0] == level]
@@ -370,18 +407,26 @@ class _Uni:
                 if courses:
                     self.flags.append(f"fee block has no {level} line; {level} courses have no fee")
                 continue
-            _, label, fee_text = matches[0]
-            if len(matches) > 1:
-                self.flags.append(f"fee block has {len(matches)} {level} lines; the first ({level}{label}: …) applies to {level} courses")
-            amount, currency = parse_fee(fee_text)
-            found = _DURATION_RE.search(label)
-            duration = f"{found[1]} months" if found else None
-            for course in courses:
-                course.update(fee_text=fee_text, tuition_amount=amount, tuition_currency=currency)
-                if duration:
-                    course["duration"] = duration
-            if duration and courses:
-                self.flags.append(f"duration '{duration}' for {level} courses from the fee label '{level}{label}'")
+            # DT17: a "PDP" line applies to courses whose title says PDP / Professional Development; the others take the first non-PDP line.
+            pdp_lines = [x for x in matches if PDP_TITLE_RE.search(x[1])]
+            main_line = next((x for x in matches if x not in pdp_lines), matches[0])
+            pdp_courses = [c for c in courses if pdp_lines and PDP_TITLE_RE.search(c["title"])]
+            assignments = [(main_line, [c for c in courses if c not in pdp_courses])]
+            if pdp_lines:
+                assignments.append((pdp_lines[0], pdp_courses))
+            for (_, label, fee_text), targets in assignments:
+                amount, currency = parse_fee(fee_text)
+                found = _DURATION_RE.search(label)
+                duration = f"{found[1]} months" if found else None
+                for course in targets:
+                    course.update(fee_text=fee_text, tuition_amount=amount, tuition_currency=currency)
+                    if duration:
+                        course["duration"] = duration
+                if duration and targets:
+                    self.flags.append(f"duration '{duration}' for {len(targets)} {level} course(s) from the fee label '{level}{label}'")
+            unapplied = [x for x in matches if x is not main_line and not (pdp_lines and x is pdp_lines[0] and pdp_courses)]
+            for _, label, _ in unapplied:
+                self.flags.append(f"fee line '{level}{label}' applies to no course (kept in fee_structure)")
 
     def _course_flags(self):
         if not self.courses:
@@ -394,20 +439,27 @@ class _Uni:
         unspecified = sum(c["duration"] == DEFAULT_DURATION for c in self.courses)
         if unspecified:
             self.flags.append(f"duration '{DEFAULT_DURATION}' for {unspecified} of {n} courses")
-        unparsed = _dedupe(c["fee_text"] for c in self.courses if c["fee_text"] and c["tuition_amount"] is None)
+        unparsed = _dedupe(c["fee_text"] for c in self.courses
+                           if c["fee_text"] and c["tuition_amount"] is None and len(currencies_in(c["fee_text"])) <= 1)  # DT16 has its own flag
         if unparsed:
             self.flags.append("tuition amount not set (currency not in the course master list): " + "; ".join(unparsed))
         no_fee = sum(c["fee_text"] is None for c in self.courses)
         if no_fee:
             self.flags.append(f"no fee in the sheet for {no_fee} of {n} courses")
-        seen, dupes = set(), []
+
+    def _collapse_duplicate_courses(self):
+        """R10: a course listed twice (same level + title) is emitted once (the first row wins); the duplicate is flagged."""
+        seen, kept, dupes = set(), [], []
         for c in self.courses:
             key = (c["level"], c["title"].lower())
             if key in seen:
                 dupes.append(f"{c['level']} {c['title']}")
-            seen.add(key)
+            else:
+                seen.add(key)
+                kept.append(c)
+        self.courses = kept
         if dupes:
-            self.flags.append("duplicate course title in the sheet: " + "; ".join(_dedupe(dupes)))
+            self.flags.append("duplicate course title in the sheet, emitted once (first row kept): " + "; ".join(_dedupe(dupes)))
 
 
 # ---------------------------------------------------------------- row handlers

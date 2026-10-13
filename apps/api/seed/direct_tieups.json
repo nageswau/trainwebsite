@@ -2,13 +2,13 @@
   {
     "name": "APAC Institutions",
     "country_iso2": "AU",
-    "city": "Sydney Campus",
+    "city": "Sydney",
     "campuses": [
       "Sydney Campus"
     ],
     "institution_type": "institute",
     "website": null,
-    "overview": "APAC Institutions — direct tie-up partner in Sydney Campus, Australia.\nApplication portal: APAC: Australian Performing Arts Conservatory",
+    "overview": "APAC Institutions — direct tie-up partner in Sydney, Australia.\nApplication portal: APAC: Australian Performing Arts Conservatory",
     "fee_structure": "• India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total\n• APAC Regional Programs: $8,000 – $12,000 / year",
     "deadlines": [
       "Jan Intake: Late November",
@@ -31,8 +31,8 @@
         "duration": "Not specified",
         "campus": null,
         "fee_text": "India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total; APAC Regional Programs: $8,000 – $12,000 / year",
-        "tuition_amount": "3500000.00",
-        "tuition_currency": "INR",
+        "tuition_amount": null,
+        "tuition_currency": null,
         "intakes": [
           "Jan",
           "Feb",
@@ -51,8 +51,8 @@
         "duration": "Not specified",
         "campus": null,
         "fee_text": "India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total; APAC Regional Programs: $8,000 – $12,000 / year",
-        "tuition_amount": "3500000.00",
-        "tuition_currency": "INR",
+        "tuition_amount": null,
+        "tuition_currency": null,
         "intakes": [
           "Jan",
           "Feb",
@@ -67,12 +67,12 @@
       {
         "title": "Diploma in Information Technology",
         "level": "UG",
-        "category": "General",
+        "category": "Computing & IT",
         "duration": "Not specified",
         "campus": null,
         "fee_text": "India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total; APAC Regional Programs: $8,000 – $12,000 / year",
-        "tuition_amount": "3500000.00",
-        "tuition_currency": "INR",
+        "tuition_amount": null,
+        "tuition_currency": null,
         "intakes": [
           "Jan",
           "Feb",
@@ -91,8 +91,8 @@
         "duration": "Not specified",
         "campus": null,
         "fee_text": "India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total; APAC Regional Programs: $8,000 – $12,000 / year",
-        "tuition_amount": "3500000.00",
-        "tuition_currency": "INR",
+        "tuition_amount": null,
+        "tuition_currency": null,
         "intakes": [
           "Jan",
           "Feb",
@@ -111,8 +111,8 @@
         "duration": "Not specified",
         "campus": null,
         "fee_text": "India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total; APAC Regional Programs: $8,000 – $12,000 / year",
-        "tuition_amount": "3500000.00",
-        "tuition_currency": "INR",
+        "tuition_amount": null,
+        "tuition_currency": null,
         "intakes": [
           "Jan",
           "Feb",
@@ -127,12 +127,12 @@
       {
         "title": "MSc Information Technology Management",
         "level": "PG",
-        "category": "Business",
+        "category": "Computing & IT",
         "duration": "Not specified",
         "campus": null,
         "fee_text": "India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total; APAC Regional Programs: $8,000 – $12,000 / year",
-        "tuition_amount": "3500000.00",
-        "tuition_currency": "INR",
+        "tuition_amount": null,
+        "tuition_currency": null,
         "intakes": [
           "Jan",
           "Feb",
@@ -151,8 +151,8 @@
         "duration": "Not specified",
         "campus": null,
         "fee_text": "India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total; APAC Regional Programs: $8,000 – $12,000 / year",
-        "tuition_amount": "3500000.00",
-        "tuition_currency": "INR",
+        "tuition_amount": null,
+        "tuition_currency": null,
         "intakes": [
           "Jan",
           "Feb",
@@ -171,8 +171,8 @@
         "duration": "Not specified",
         "campus": null,
         "fee_text": "India/Asia Campuses: ₹3,500,000 – ₹6,000,000 total; APAC Regional Programs: $8,000 – $12,000 / year",
-        "tuition_amount": "3500000.00",
-        "tuition_currency": "INR",
+        "tuition_amount": null,
+        "tuition_currency": null,
         "intakes": [
           "Jan",
           "Feb",
@@ -189,8 +189,9 @@
       "link 'APAC: Australian Performing Arts Conservatory' is not a URL; kept in the overview as 'Application portal'",
       "institution_type 'institute' inferred from the name",
       "fee block has no UG/PG labels; applied to every course",
+      "fee block has no UG/PG labels and several currencies; fee text only, no tuition amount (DT16)",
       "category inferred from title keywords for 8 courses",
-      "category 'General' (no keyword) for: Diploma in Information Technology; International Foundation Programs",
+      "category 'General' (no keyword) for: International Foundation Programs",
       "duration 'Not specified' for 8 of 8 courses",
       "overview: generated default sentence"
     ],
@@ -200,11 +201,11 @@
   {
     "name": "Aston University Birmingham",
     "country_iso2": "GB",
-    "city": "London",
+    "city": "Birmingham",
     "campuses": [],
     "institution_type": "university",
     "website": null,
-    "overview": "Aston University Birmingham — direct tie-up partner in London, United Kingdom.",
+    "overview": "Aston University Birmingham — direct tie-up partner in Birmingham, United Kingdom.",
     "fee_structure": null,
     "deadlines": [],
     "scholarships": [],
@@ -214,7 +215,7 @@
     },
     "courses": [],
     "flags": [
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "no website in the sheet",
       "overview: generated default sentence"
     ],
@@ -224,11 +225,11 @@
   {
     "name": "Avila University - Arizona Campus",
     "country_iso2": "US",
-    "city": "Washington",
+    "city": "Phoenix",
     "campuses": [],
     "institution_type": "university",
     "website": "https://arizona.avila.edu/",
-    "overview": "Avila University - Arizona Campus — direct tie-up partner in Washington, United States.",
+    "overview": "Avila University - Arizona Campus — direct tie-up partner in Phoenix, United States.",
     "fee_structure": "• UG Tuition: ~$21,000 – $24,000 / year\n• PG Tuition: ~$14,000 – $18,000 total program\n• I-20 / CAS Deposit: $500 – $1,000",
     "deadlines": [
       "Spring Intake: Mid-October",
@@ -390,7 +391,7 @@
       }
     ],
     "flags": [
-      "city defaulted to the capital Washington (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "category inferred from title keywords for 9 courses",
       "category 'General' (no keyword) for: BS in Psychology; BA in Communication; MS in Organizational Leadership; MS in Psychology / Counseling",
       "duration 'Not specified' for 9 of 9 courses",
@@ -402,11 +403,11 @@
   {
     "name": "Bangor University",
     "country_iso2": "GB",
-    "city": "London",
+    "city": "Bangor",
     "campuses": [],
     "institution_type": "university",
     "website": null,
-    "overview": "Bangor University — direct tie-up partner in London, United Kingdom.",
+    "overview": "Bangor University — direct tie-up partner in Bangor, United Kingdom.",
     "fee_structure": null,
     "deadlines": [],
     "scholarships": [],
@@ -416,7 +417,7 @@
     },
     "courses": [],
     "flags": [
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "no website in the sheet",
       "overview: generated default sentence"
     ],
@@ -620,9 +621,9 @@
     ],
     "flags": [
       "country DE inferred from the name (destination empty)",
-      "city defaulted to the capital Berlin (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "institution_type 'institute' inferred from the name",
-      "duration '18 months' for PG courses from the fee label 'PG Tuition (18 Months)'",
+      "duration '18 months' for 5 PG course(s) from the fee label 'PG Tuition (18 Months)'",
       "category inferred from title keywords for 9 courses",
       "category 'General' (no keyword) for: BSc (Hons) Psychology",
       "duration 'Not specified' for 4 of 9 courses",
@@ -688,13 +689,13 @@
   {
     "name": "BPP Australia",
     "country_iso2": "AU",
-    "city": "Melbourne Campus",
+    "city": "Melbourne",
     "campuses": [
       "Melbourne Campus"
     ],
     "institution_type": "university",
     "website": "https://www.bppinstitute.com/",
-    "overview": "BPP Australia — direct tie-up partner in Melbourne Campus, Australia.",
+    "overview": "BPP Australia — direct tie-up partner in Melbourne, Australia.",
     "fee_structure": null,
     "deadlines": [],
     "scholarships": [
@@ -878,7 +879,7 @@
   {
     "name": "BPP University",
     "country_iso2": "GB",
-    "city": "London Campus",
+    "city": "London",
     "campuses": [
       "London Campus",
       "Birmingham",
@@ -892,7 +893,7 @@
     ],
     "institution_type": "university",
     "website": "https://www.bpp.com/",
-    "overview": "BPP University — direct tie-up partner in London Campus, United Kingdom.",
+    "overview": "BPP University — direct tie-up partner in London, United Kingdom.",
     "fee_structure": "• UG: £11,000 – £13,366 / year\n• PG (12 Mo): £18,600 – £19,000 total\n• PG (18 Mo PDP): £22,000 – £23,000 total\n• Deposit: 60% of 1st year fee for CAS",
     "deadlines": [
       "Jan Intake: Mid-November",
@@ -1148,8 +1149,8 @@
       }
     ],
     "flags": [
-      "fee block has 2 PG lines; the first (PG (12 Mo): …) applies to PG courses",
-      "duration '12 months' for PG courses from the fee label 'PG (12 Mo)'",
+      "duration '12 months' for 8 PG course(s) from the fee label 'PG (12 Mo)'",
+      "fee line 'PG (18 Mo PDP)' applies to no course (kept in fee_structure)",
       "category inferred from title keywords for 12 courses",
       "category 'General' (no keyword) for: BSc (Hons) Transformational Leadership; LLM / BTC / SQE Routes",
       "duration 'Not specified' for 4 of 12 courses",
@@ -1161,11 +1162,11 @@
   {
     "name": "Coventry University",
     "country_iso2": "GB",
-    "city": "London",
+    "city": "Coventry",
     "campuses": [],
     "institution_type": "university",
     "website": null,
-    "overview": "Coventry University — direct tie-up partner in London, United Kingdom.",
+    "overview": "Coventry University — direct tie-up partner in Coventry, United Kingdom.",
     "fee_structure": null,
     "deadlines": [],
     "scholarships": [],
@@ -1173,7 +1174,7 @@
     "courses": [],
     "flags": [
       "country GB from the uc sheet (it has no destination column)",
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "no website in the sheet",
       "overview: generated default sentence"
     ],
@@ -1183,13 +1184,13 @@
   {
     "name": "Ecole de Management Appliqué",
     "country_iso2": "FR",
-    "city": "EMA Paris campus",
+    "city": "Paris",
     "campuses": [
       "EMA Paris campus"
     ],
     "institution_type": "institute",
     "website": "https://gedu.global/",
-    "overview": "Ecole de Management Appliqué — direct tie-up partner in EMA Paris campus, France.\nName in the sheet: Ecole de Management Appliqué (France)",
+    "overview": "Ecole de Management Appliqué — direct tie-up partner in Paris, France.\nName in the sheet: Ecole de Management Appliqué (France)",
     "fee_structure": "• UG: €7,500 – €9,000 / year\n• PG: €9,500 – €12,500 total program fee",
     "deadlines": [
       "Feb Intake: Mid-December",
@@ -1503,7 +1504,7 @@
       {
         "title": "BSc (Hons) Information Technology",
         "level": "UG",
-        "category": "General",
+        "category": "Computing & IT",
         "duration": "Not specified",
         "campus": null,
         "fee_text": "€6,000 – €7,500 / year",
@@ -1554,7 +1555,7 @@
       {
         "title": "MSc Information Technology",
         "level": "PG",
-        "category": "General",
+        "category": "Computing & IT",
         "duration": "Not specified",
         "campus": null,
         "fee_text": "€7,500 – €9,500 total program fee",
@@ -1589,7 +1590,7 @@
     "flags": [
       "institution_type 'institute' inferred from the name",
       "category inferred from title keywords for 6 courses",
-      "category 'General' (no keyword) for: BSc (Hons) Information Technology; Undergraduate Diplomas; MSc Information Technology",
+      "category 'General' (no keyword) for: Undergraduate Diplomas",
       "duration 'Not specified' for 6 of 6 courses",
       "overview: generated default sentence"
     ],
@@ -1797,11 +1798,11 @@
   {
     "name": "Health Sciences University (HSU)",
     "country_iso2": "GB",
-    "city": "London",
+    "city": "Bournemouth",
     "campuses": [],
     "institution_type": "university",
     "website": null,
-    "overview": "Health Sciences University (HSU) — direct tie-up partner in London, United Kingdom.",
+    "overview": "Health Sciences University (HSU) — direct tie-up partner in Bournemouth, United Kingdom.",
     "fee_structure": "• UG: £14,000 – £16,000 / year\n• PG: £15,000 – £18,500 total",
     "deadlines": [
       "Sep Intake: End of July"
@@ -1909,7 +1910,7 @@
       }
     ],
     "flags": [
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "category inferred from title keywords for 6 courses",
       "category 'General' (no keyword) for: BSc (Hons) Sports & Exercise Science; BSc (Hons) Radiography; MSc Sports Rehabilitation",
       "duration 'Not specified' for 6 of 6 courses",
@@ -2085,11 +2086,11 @@
   {
     "name": "Leads Trinity University",
     "country_iso2": "GB",
-    "city": "London",
+    "city": "Leeds",
     "campuses": [],
     "institution_type": "university",
     "website": null,
-    "overview": "Leads Trinity University — direct tie-up partner in London, United Kingdom.",
+    "overview": "Leads Trinity University — direct tie-up partner in Leeds, United Kingdom.",
     "fee_structure": null,
     "deadlines": [],
     "scholarships": [],
@@ -2099,7 +2100,7 @@
     },
     "courses": [],
     "flags": [
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "no website in the sheet",
       "overview: generated default sentence"
     ],
@@ -2295,7 +2296,7 @@
       }
     ],
     "flags": [
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "institution_type 'institute' inferred from the name",
       "fee block has no UG/PG labels; applied to every course",
       "category inferred from title keywords for 3 courses",
@@ -2310,11 +2311,11 @@
   {
     "name": "Queens University Belfast",
     "country_iso2": "GB",
-    "city": "London",
+    "city": "Belfast",
     "campuses": [],
     "institution_type": "university",
     "website": null,
-    "overview": "Queens University Belfast — direct tie-up partner in London, United Kingdom.",
+    "overview": "Queens University Belfast — direct tie-up partner in Belfast, United Kingdom.",
     "fee_structure": null,
     "deadlines": [],
     "scholarships": [],
@@ -2324,7 +2325,7 @@
     },
     "courses": [],
     "flags": [
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "no website in the sheet",
       "overview: generated default sentence"
     ],
@@ -2477,11 +2478,11 @@
   {
     "name": "Schiller International University",
     "country_iso2": "US",
-    "city": "Washington",
+    "city": "Tampa",
     "campuses": [],
     "institution_type": "university",
     "website": "https://www.schiller.edu/",
-    "overview": "Schiller International University — direct tie-up partner in Washington, United States.\nAlso in: US, Spain, France, Germany",
+    "overview": "Schiller International University — direct tie-up partner in Tampa, United States.\nAlso in: US, Spain, France, Germany",
     "fee_structure": "• UG: $14,000 – $16,500 / year (€12,000 – €14,000 in EU)\n• PG: $16,000 – $20,000 total program fee",
     "deadlines": [
       "Rolling Admissions",
@@ -2637,7 +2638,7 @@
     "flags": [
       "name: '(US, Spain, France, Germany)' on a second line moved to the overview",
       "country US inferred from the name (destination empty)",
-      "city defaulted to the capital Washington (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "category inferred from title keywords for 8 courses",
       "category 'General' (no keyword) for: BS in International Relations & Diplomacy",
       "duration 'Not specified' for 8 of 8 courses",
@@ -2649,11 +2650,11 @@
   {
     "name": "University of Derby",
     "country_iso2": "GB",
-    "city": "London",
+    "city": "Derby",
     "campuses": [],
     "institution_type": "university",
     "website": null,
-    "overview": "University of Derby — direct tie-up partner in London, United Kingdom.",
+    "overview": "University of Derby — direct tie-up partner in Derby, United Kingdom.",
     "fee_structure": null,
     "deadlines": [],
     "scholarships": [],
@@ -2663,7 +2664,7 @@
     },
     "courses": [],
     "flags": [
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "no website in the sheet",
       "overview: generated default sentence"
     ],
@@ -2673,11 +2674,11 @@
   {
     "name": "University of East Anglia",
     "country_iso2": "GB",
-    "city": "London",
+    "city": "Norwich",
     "campuses": [],
     "institution_type": "university",
     "website": null,
-    "overview": "University of East Anglia — direct tie-up partner in London, United Kingdom.",
+    "overview": "University of East Anglia — direct tie-up partner in Norwich, United Kingdom.",
     "fee_structure": null,
     "deadlines": [],
     "scholarships": [],
@@ -2688,7 +2689,7 @@
     },
     "courses": [],
     "flags": [
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "no website in the sheet",
       "overview: generated default sentence"
     ],
@@ -2712,7 +2713,7 @@
     },
     "courses": [],
     "flags": [
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "no website in the sheet",
       "overview: generated default sentence"
     ],
@@ -2734,7 +2735,7 @@
     "courses": [],
     "flags": [
       "country GB from the uc sheet (it has no destination column)",
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "no website in the sheet",
       "overview: generated default sentence"
     ],
@@ -2744,11 +2745,11 @@
   {
     "name": "University of Hertfordshire",
     "country_iso2": "GB",
-    "city": "London",
+    "city": "Hatfield",
     "campuses": [],
     "institution_type": "university",
     "website": null,
-    "overview": "University of Hertfordshire — direct tie-up partner in London, United Kingdom.",
+    "overview": "University of Hertfordshire — direct tie-up partner in Hatfield, United Kingdom.",
     "fee_structure": null,
     "deadlines": [],
     "scholarships": [],
@@ -2758,7 +2759,7 @@
     },
     "courses": [],
     "flags": [
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "no website in the sheet",
       "overview: generated default sentence"
     ],
@@ -2768,11 +2769,11 @@
   {
     "name": "University of Hull",
     "country_iso2": "GB",
-    "city": "London",
+    "city": "Hull",
     "campuses": [],
     "institution_type": "university",
     "website": null,
-    "overview": "University of Hull — direct tie-up partner in London, United Kingdom.",
+    "overview": "University of Hull — direct tie-up partner in Hull, United Kingdom.",
     "fee_structure": null,
     "deadlines": [],
     "scholarships": [],
@@ -2782,7 +2783,7 @@
     },
     "courses": [],
     "flags": [
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "no website in the sheet",
       "overview: generated default sentence"
     ],
@@ -2792,11 +2793,11 @@
   {
     "name": "University of Reading",
     "country_iso2": "GB",
-    "city": "London",
+    "city": "Reading",
     "campuses": [],
     "institution_type": "university",
     "website": null,
-    "overview": "University of Reading — direct tie-up partner in London, United Kingdom.",
+    "overview": "University of Reading — direct tie-up partner in Reading, United Kingdom.",
     "fee_structure": null,
     "deadlines": [],
     "scholarships": [],
@@ -2807,7 +2808,7 @@
     },
     "courses": [],
     "flags": [
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "no website in the sheet",
       "overview: generated default sentence"
     ],
@@ -3028,7 +3029,7 @@
   {
     "name": "University of Southwales",
     "country_iso2": "GB",
-    "city": "Cardiff Campus",
+    "city": "Cardiff",
     "campuses": [
       "Cardiff Campus",
       "Newport Campus",
@@ -3036,7 +3037,7 @@
     ],
     "institution_type": "university",
     "website": "https://www.southwales.ac.uk/",
-    "overview": "University of Southwales — direct tie-up partner in Cardiff Campus, United Kingdom.",
+    "overview": "University of Southwales — direct tie-up partner in Cardiff, United Kingdom.",
     "fee_structure": null,
     "deadlines": [],
     "scholarships": [
@@ -3538,23 +3539,6 @@
         "scholarships": []
       },
       {
-        "title": "MSc Leading Digital Transformation",
-        "level": "PG",
-        "category": "General",
-        "duration": "Not specified",
-        "campus": "Cardiff Campus",
-        "fee_text": "£17,900",
-        "tuition_amount": "17900.00",
-        "tuition_currency": "GBP",
-        "intakes": [
-          "Sep"
-        ],
-        "intake_text": "September",
-        "scholarships": [
-          "£1,500-£2,500"
-        ]
-      },
-      {
         "title": "BA (Hons) Business Studies",
         "level": "UG",
         "category": "Business",
@@ -3826,10 +3810,10 @@
       }
     ],
     "flags": [
-      "category inferred from title keywords for 48 courses",
-      "category 'General' (no keyword) for: BA (Hons) Acting / Drama; BA (Hons) Graphic Communication; MSc Leading Digital Transformation; MSc Strategic and Digital Marketing; BSc (Hons) Cyber Security; MSc Leading Digital Transformation; BSc (Hons) Midwifery; BSc (Hons) Forensic Science; BSc (Hons) Medical Sciences / Human Biology; BSc (Hons) Pharmaceutical Science; BSc (Hons) Sports Performance and Coaching; BSc (Hons) Football Coaching and Development",
-      "duration 'Not specified' for 48 of 48 courses",
-      "duplicate course title in the sheet: PG MSc Leading Digital Transformation",
+      "duplicate course title in the sheet, emitted once (first row kept): PG MSc Leading Digital Transformation",
+      "category inferred from title keywords for 47 courses",
+      "category 'General' (no keyword) for: BA (Hons) Acting / Drama; BA (Hons) Graphic Communication; MSc Leading Digital Transformation; MSc Strategic and Digital Marketing; BSc (Hons) Cyber Security; BSc (Hons) Midwifery; BSc (Hons) Forensic Science; BSc (Hons) Medical Sciences / Human Biology; BSc (Hons) Pharmaceutical Science; BSc (Hons) Sports Performance and Coaching; BSc (Hons) Football Coaching and Development",
+      "duration 'Not specified' for 47 of 47 courses",
       "overview: generated default sentence"
     ],
     "source": "Direct Tie-up's!A2",
@@ -3838,11 +3822,11 @@
   {
     "name": "University of Staffordshire",
     "country_iso2": "GB",
-    "city": "London",
+    "city": "Stoke-on-Trent",
     "campuses": [],
     "institution_type": "university",
     "website": null,
-    "overview": "University of Staffordshire — direct tie-up partner in London, United Kingdom.",
+    "overview": "University of Staffordshire — direct tie-up partner in Stoke-on-Trent, United Kingdom.",
     "fee_structure": null,
     "deadlines": [],
     "scholarships": [],
@@ -3852,7 +3836,7 @@
     },
     "courses": [],
     "flags": [
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "no website in the sheet",
       "overview: generated default sentence"
     ],
@@ -3876,7 +3860,7 @@
     },
     "courses": [],
     "flags": [
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "no website in the sheet",
       "overview: generated default sentence"
     ],
@@ -3886,11 +3870,11 @@
   {
     "name": "University of West of England Bristol",
     "country_iso2": "GB",
-    "city": "London",
+    "city": "Bristol",
     "campuses": [],
     "institution_type": "university",
     "website": null,
-    "overview": "University of West of England Bristol — direct tie-up partner in London, United Kingdom.",
+    "overview": "University of West of England Bristol — direct tie-up partner in Bristol, United Kingdom.",
     "fee_structure": null,
     "deadlines": [],
     "scholarships": [],
@@ -3900,7 +3884,7 @@
     },
     "courses": [],
     "flags": [
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "no website in the sheet",
       "overview: generated default sentence"
     ],
@@ -3910,11 +3894,11 @@
   {
     "name": "University of Wolverhampton",
     "country_iso2": "GB",
-    "city": "London",
+    "city": "Wolverhampton",
     "campuses": [],
     "institution_type": "university",
     "website": null,
-    "overview": "University of Wolverhampton — direct tie-up partner in London, United Kingdom.",
+    "overview": "University of Wolverhampton — direct tie-up partner in Wolverhampton, United Kingdom.",
     "fee_structure": null,
     "deadlines": [],
     "scholarships": [],
@@ -3924,7 +3908,7 @@
     },
     "courses": [],
     "flags": [
-      "city defaulted to the capital London (no campus named)",
+      "city from owner-approved main-city table (DT15)",
       "no website in the sheet",
       "overview: generated default sentence"
     ],
@@ -3934,13 +3918,13 @@
   {
     "name": "Walbrook",
     "country_iso2": "GB",
-    "city": "London campus",
+    "city": "London",
     "campuses": [
       "London campus"
     ],
     "institution_type": "institute",
     "website": "https://www.walbrook.ac.uk/",
-    "overview": "Walbrook — direct tie-up partner in London campus, United Kingdom.",
+    "overview": "Walbrook — direct tie-up partner in London, United Kingdom.",
     "fee_structure": null,
     "deadlines": [
       "Mid-November 2026 for Jan"
