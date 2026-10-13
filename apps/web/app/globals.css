@@ -436,3 +436,6 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 .map-phone-hint { display: none; margin: 0 0 8px; font-size: 13px; }
 @media (max-width: 640px) { .map-phone-hint { display: block; } }
 .metric .metric-note { margin: 6px 0 0; font-size: 12px; color: var(--muted); line-height: 1.4; }
+/* mgmt-020 QA-01/QA-02: three short tabs wrap rather than scroll off a phone; "Not tracked" reads as words, not a figure. */
+.report-tablist.wrap { flex-wrap: wrap; overflow-x: visible; }
+.metric .metric-untracked { font-size: 18px; }

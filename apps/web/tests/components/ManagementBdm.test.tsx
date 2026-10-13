@@ -85,6 +85,21 @@ describe("mgmt-020 ManagementBdm", () => {
     expect(screen.getByRole("link", { name: "This month" })).toHaveAttribute("href", "/management/bdm?type=agent");
   });
 
+  it("QA-01: lets the three tabs wrap on a phone instead of hiding the current one off-screen", () => {
+    view({ query: { ...QUERY, type: "college" } });
+    expect(screen.getByRole("navigation", { name: "BDM types" })).toHaveClass("report-tablist", "wrap");
+  });
+
+  it("QA-02: sets Not tracked as words, not at the figure size", () => {
+    view({ data: agent({ figures: [{ key: "internships", label: "Internships", definition: "Not tracked.", basis: "period", tracked: false, value: null }] }) });
+    expect(screen.getByText("Not tracked")).toHaveClass("metric-untracked");
+  });
+
+  it("QA-03: says one active BDM in the singular", () => {
+    view({ data: agent({ bdm_count: 1 }) });
+    expect(screen.getByText(/active Agent BDM\./)).toHaveTextContent("1 active Agent BDM.");
+  });
+
   it("shows an error without figures", () => {
     view({ data: null, error: "The period must start on or before its end" });
     expect(screen.getByRole("alert")).toHaveTextContent("The period must start on or before its end");

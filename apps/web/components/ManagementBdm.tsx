@@ -12,7 +12,7 @@ function Tiles({ label, figures }: { label: string; figures: BdmDashboardFigure[
         {figures.map((f) => (
           <li key={f.key} className="metric">
             <span>{f.label}</span>
-            <strong>{f.value === null ? "Not tracked" : f.value.toLocaleString("en-IN")}</strong>
+            {f.value === null ? <strong className="metric-untracked">Not tracked</strong> : <strong>{f.value.toLocaleString("en-IN")}</strong>}
             <p className="metric-note">{f.definition}</p>
           </li>
         ))}
@@ -27,7 +27,7 @@ export default function ManagementBdm({ data, error, query }: { data: BdmDashboa
   const period = { from: data?.from ?? query.from, to: data?.to ?? query.to };
   return (
     <div className="action-card">
-      <nav aria-label="BDM types" className="report-tablist">
+      <nav aria-label="BDM types" className="report-tablist wrap">
         {BDM_DASHBOARD_TYPES.map(({ type, label }) => (
           <Link key={type} href={bdmDashboardHref(query, type)} className="s360-tab" aria-current={type === query.type ? "page" : undefined}>
             {label}
@@ -51,7 +51,7 @@ export default function ManagementBdm({ data, error, query }: { data: BdmDashboa
       {data && (
         <>
           <p className="muted">
-            {formatCalendarDate(data.from)} to {formatCalendarDate(data.to)}, India time (IST). {data.bdm_count} active {data.label}s. Every
+            {formatCalendarDate(data.from)} to {formatCalendarDate(data.to)}, India time (IST). {data.bdm_count} active {data.label}{data.bdm_count === 1 ? "" : "s"}. Every
             figure covers all BDM teams and is counted live from the EduSphere records.
           </p>
           <Tiles label="In the period" figures={data.figures.filter((f) => f.basis === "period")} />
