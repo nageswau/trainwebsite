@@ -34,13 +34,13 @@ with recommended answers. TR10/TR12/TR15 answer Q-19. Registered as `DEC-SCOPE-2
 | TR5 | Active batches | Batches with status `active`, now |
 | TR6 | Students | Distinct students with a counted enrolment in a batch in the period |
 | TR7 | Trainers | Active `trainer` users, now (= mgmt-003 S11) |
-| TR8 | Attendance | Attended ÷ marked attendance rows with a session date in the period, %, one decimal; `null` when nothing was marked (a missing row is "not marked", never absent) |
+| TR8 | Attendance | Attended ÷ marked attendance rows of the period's batches with a session date in the period, %, one decimal; `null` when nothing was marked (a missing row is "not marked", never absent) |
 | TR9 | Completion | Of the counted enrolments in the period's batches, the share at 100% progress (the certificate rule's completed course), %, one decimal; `null` with none |
 | TR10 | Dropouts | Enrolments in the period's batches whose status is `withdrawn` or `dropped` (set by an admin's enrolment edit; no other flow drops a student). A count |
 | TR11 | Assessments | Assessments (not `draft`) scheduled in the period |
 | TR12 | Certifications | Certificates issued in the period |
-| TR13 | Placement-ready | Students with a placement profile marked **available** and not withdrawn, now. `readiness_status` is free text, so it is not used |
-| TR14 | Placements | Distinct students with a counted enrolment (any batch, any time) whose job offer was **joined** with an actual joining date in the period |
+| TR13 | Placement-ready | Active users with a placement profile marked **available** and not withdrawn, now. `readiness_status` is free text, so it is not used |
+| TR14 | Placements | Distinct students with a counted enrolment (in any batch that was not cancelled, any time) whose job offer was **joined** with an actual joining date in the period |
 | TR15 | Trainer table | Every `trainer` user, active or not, one row each (name order). A batch is credited to its `Batch.trainer_id` only; a live session run by another trainer does not make the batch theirs (no double counting). Columns: Batches (in the period, context), Students trained (TR6 per trainer), Attendance (TR8 over their batches), Completion (TR9), Student feedback (average `CourseFeedback` rating of their period batches, one decimal, out of 5, with the response count; `null` with none), Assessment results (pass rate: of the student-assessment pairs with a graded attempt on their batches' assessments scheduled in the period, the share whose best graded % ≥ pass mark; `null` with none), Batch performance (average progress % of counted enrolments in their period batches — RPT-001's course figure, per trainer), Placement outcomes (TR14, students of any of their batches) |
 | TR16 | Access and shape | Operational tier (partner, super_admin); accountant 403 "Operational access required"; others 403 "Management access required"; signed out 401. Response: `from`, `to`, `as_of`, `kpis` (key, label, definition, value), `trainer_figures` (key, label, definition), `trainers` (rows). Command Center "Training" (Students) and "Trainers" (People, `#trainers`) go live; super admin sidebar "Management training figures". Read-only, no audit row; no money |
 
