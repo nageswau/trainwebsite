@@ -11980,3 +11980,74 @@ class RecruitmentDashboardOut(BaseModel):
     pipeline: list[RecruitmentPipelineStep]
     requirement_closed: int
     lost: int
+
+
+# mgmt-012 (spec MK1-MK14): marketing budget, spend and ROI. A channel is one of the 13 lead sources (an unknown one is 422 on its field);
+# money uses the salary rule. Money fields are null unless `money_visible` (the finance tier, MK11).
+class MarketingBudgetIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    channel: Literal[TEL_SOURCES]
+    amount: SalaryMoney
+
+
+class MarketingBudgetsIn(BaseModel):
+    """MK4: the whole month; channels left out have no budget."""
+
+    model_config = ConfigDict(extra="forbid")
+    budgets: list[MarketingBudgetIn] = Field(max_length=len(TEL_SOURCES))
+
+    @field_validator("budgets")
+    @classmethod
+    def _each_channel_once(cls, budgets: list[MarketingBudgetIn]) -> list[MarketingBudgetIn]:
+        if len({b.channel for b in budgets}) != len(budgets):
+            raise ValueError("Each channel can have only one budget in a month")
+        return budgets
+
+
+class MarketingFigures(BaseModel):
+    budget: Decimal | None
+    spend: Decimal | None
+    leads: int
+    qualified: int
+    customers: int
+    conversion: float | None
+    revenue: Decimal | None
+    roi: float | None
+
+
+class MarketingChannel(MarketingFigures):
+    channel: str
+    label: str
+
+
+class MarketingGroups(BaseModel):
+    social: int
+    website: int
+    school: int
+    college: int
+    agent: int
+    influencer: int | None  # MK2: not tracked
+    events: int
+
+
+class MarketingCampaign(BaseModel):
+    id: UUID
+    name: str
+    channel: str
+    label: str
+    active: bool
+    leads: int
+    qualified: int
+    customers: int
+
+
+class MarketingOut(BaseModel):
+    month: str
+    current_month: str
+    money_visible: bool
+    channels: list[MarketingChannel]
+    totals: MarketingFigures
+    groups: MarketingGroups
+    campaigns: list[MarketingCampaign]
+    budgets_updated_at: datetime | None
+    budgets_updated_by: LedgerPerson | None

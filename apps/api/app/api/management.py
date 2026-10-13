@@ -33,6 +33,8 @@ from app.schemas import (
     ManagementCounselingOut,
     ManagementMeOut,
     ManagementSnapshotOut,
+    MarketingBudgetsIn,
+    MarketingOut,
     RecruitmentDashboardOut,
     RecruitmentRevenueOut,
     SalaryMonthIn,
@@ -50,6 +52,7 @@ from app.services import (
     management_counseling,
     management_expenses,
     management_it_revenue,
+    management_marketing,
     management_metrics,
     management_recruitment,
     management_recruitment_revenue,
@@ -371,6 +374,28 @@ async def save_accounts_balances(
     await db.commit()
     salaries.log("finance_balances_saved", user, month=month, fields=changed)
     return await accounts.view(db, first)
+
+
+# --- mgmt-012: marketing budget & ROI (spec MK1-MK14). Every management role reads lead figures; money for the finance tier only -------
+@router.get("/marketing", response_model=MarketingOut)
+async def marketing(month: str | None = Query(None, pattern=MONTH), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """MK11: K1-K7 per channel, the §15 groups and the campaigns for `month` (YYYY-MM, default this IST month). super_admin reads the
+    lead counts; budget, spend, revenue and ROI are null and never queried."""
+    require_management(user)
+    return await management_marketing.dashboard(db, user, salaries.first_day(month, management_marketing.FUTURE))
+
+
+@router.put("/marketing/budgets", response_model=MarketingOut)
+async def save_marketing_budgets(
+    body: MarketingBudgetsIn, month: str = Query(..., pattern=MONTH), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """MK4: replaces the month's budgets with the ones sent; answers with the month as GET shows it. Partner and accountant only."""
+    ledger.require_finance(user)
+    first = salaries.first_day(month, management_marketing.FUTURE)
+    changed = await management_marketing.save_budgets(db, user, first, body.budgets)
+    await db.commit()
+    salaries.log("marketing_budgets_saved", user, month=month, channels=changed)
+    return await management_marketing.dashboard(db, user, first)
 
 
 # --- mgmt-019: company-wide Telecalling dashboard (spec TC1-TC16). Operational tier (M13) ----------------------------------------------
