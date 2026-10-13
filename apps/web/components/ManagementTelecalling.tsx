@@ -18,7 +18,7 @@ function FigureCells({ row }: { row: TelecallingFigures }) {
   return (
     <>
       {TELECALLING_FIGURES.map((figure) => (
-        <td key={figure.key}>{count(row[figure.key] as number)}</td>
+        <td key={figure.key}>{count(row[figure.key])}</td>
       ))}
       <td>{conversionText(row.conversion)}</td>
     </>
@@ -73,7 +73,7 @@ export default function ManagementTelecalling({ data, error, filters }: { data: 
             {TELECALLING_FIGURES.map((figure) => (
               <li key={figure.key} className="metric">
                 <span>{figure.label}</span>
-                <strong>{count(data.totals[figure.key] as number)}</strong>
+                <strong>{count(data.totals[figure.key])}</strong>
               </li>
             ))}
             <li className="metric">

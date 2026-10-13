@@ -18,7 +18,7 @@ export type Telecalling = {
 }; // prettier-ignore
 
 // The source's eight figures (§14), in its order and words.
-export const TELECALLING_FIGURES: { key: keyof TelecallingFigures; label: string }[] = [
+export const TELECALLING_FIGURES: { key: Exclude<keyof TelecallingFigures, "conversion">; label: string }[] = [
   { key: "leads", label: "Leads assigned" }, { key: "calls", label: "Calls attempted" }, { key: "connected", label: "Connected" },
   { key: "interested", label: "Interested" }, { key: "follow_ups", label: "Follow-up" }, { key: "appointments", label: "Appointment" },
   { key: "converted", label: "Converted" }, { key: "lost", label: "Lost" },
