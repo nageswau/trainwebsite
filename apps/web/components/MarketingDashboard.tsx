@@ -27,13 +27,15 @@ export default function MarketingDashboard({ data }: { data: MarketingMonth }) {
   const money = data.money_visible;
   const t = data.totals;
   const g = data.groups;
+  const spendTiles: [string, string][] = money ? [["Marketing budget", budgetText(t.budget)], ["Marketing spend", rupees(t.spend)]] : [];
+  const returnTiles: [string, string][] = money ? [["Revenue", rupees(t.revenue)], ["ROI", percentText(t.roi)]] : [];
   const tiles: [string, string][] = [
-    ...(money ? ([["Marketing budget", budgetText(t.budget)], ["Marketing spend", rupees(t.spend)]] as [string, string][]) : []),
+    ...spendTiles,
     ["Leads", count(t.leads)], ["Qualified leads", count(t.qualified)], ["Campaigns", count(data.campaigns.length)],
     ["Social media leads", count(g.social)], ["Website leads", count(g.website)], ["School leads", count(g.school)], ["College leads", count(g.college)],
     ["Agent leads", count(g.agent)], ["Influencer leads", g.influencer === null ? "Not tracked" : count(g.influencer)], ["Events leads", count(g.events)],
     ["Conversion", percentText(t.conversion)],
-    ...(money ? ([["Revenue", rupees(t.revenue)], ["ROI", percentText(t.roi)]] as [string, string][]) : []),
+    ...returnTiles,
   ];
   const headers = ["Channel", ...(money ? ["Budget", "Spent"] : []), "Leads", "Qualified", "Customers", "Conversion", ...(money ? ["Revenue", "ROI"] : [])];
   const tableTitle = money ? "Marketing ROI by channel" : "Leads by channel";

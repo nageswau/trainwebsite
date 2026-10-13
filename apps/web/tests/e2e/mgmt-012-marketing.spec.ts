@@ -73,6 +73,9 @@ test("the super admin sees the lead figures with no money and no budget form (M1
   await page.getByRole("link", { name: "Marketing leads", exact: true }).first().click();
   const table = page.getByRole("table", { name: /^Leads by channel, / });
   await expect(table).toBeVisible();
+  // Browser QA12-01: the title and lead-in promise only what this role sees.
+  await expect(page.getByRole("heading", { level: 2 })).toHaveText("Marketing leads");
+  await expect(page.locator(".portal-title p")).not.toContainText(/budget|spend|revenue|ROI/);
   await expect(table.getByRole("columnheader")).toHaveText(["Channel", "Leads", "Qualified", "Customers", "Conversion"]);
   await expect(page.getByRole("list", { name: /^Marketing figures, / })).not.toContainText("₹");
   await expect(page.getByRole("button", { name: /^Save .* budgets$/ })).toHaveCount(0);

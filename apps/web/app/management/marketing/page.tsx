@@ -37,8 +37,18 @@ export default async function ManagementMarketingPage({ searchParams }: { search
         <div className="portal-title">
           <div>
             <div className="eyebrow"><Link href={MANAGEMENT_HOME}>Command Center</Link></div>
-            <h2>Marketing budget &amp; ROI</h2>
-            <p className="muted">What each lead source costs and brings: budget, spend, leads, conversions, revenue and ROI. What is working, what should stop, where to invest more.</p>
+            {/* Browser QA12-01: without the finance tier there is no money on the page, so the title promises none. */}
+            {data?.money_visible === false ? (
+              <>
+                <h2>Marketing leads</h2>
+                <p className="muted">What each lead source brings: leads, qualified leads, conversions and campaigns.</p>
+              </>
+            ) : (
+              <>
+                <h2>Marketing budget &amp; ROI</h2>
+                <p className="muted">What each lead source costs and brings: budget, spend, leads, conversions, revenue and ROI. What is working, what should stop, where to invest more.</p>
+              </>
+            )}
           </div>
         </div>
         <form method="get" action={MARKETING_HOME} aria-label="Choose a month" className="analytics-form action-card" key={month} autoComplete="off">
