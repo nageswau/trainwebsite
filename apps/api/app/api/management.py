@@ -29,10 +29,22 @@ from app.schemas import (
     ManagementActivityOut,
     ManagementMeOut,
     ManagementSnapshotOut,
+    RecruitmentRevenueOut,
     SalaryMonthIn,
     SalaryMonthOut,
 )
-from app.services import accounts, investments, ledger, management_abroad_revenue, management_audit, management_expenses, management_it_revenue, management_metrics, salaries
+from app.services import (
+    accounts,
+    investments,
+    ledger,
+    management_abroad_revenue,
+    management_audit,
+    management_expenses,
+    management_it_revenue,
+    management_metrics,
+    management_recruitment_revenue,
+    salaries,
+)
 from app.services.bdm_activities import india_date
 from app.services.bdm_appointments import db_now
 from app.services.management_access import can_view_operational, require_management, require_partner_only, tiers
@@ -133,6 +145,17 @@ async def it_revenue_payments(
     ledger.require_finance(user)
     chosen = await _past_month(db, month)
     return await management_it_revenue.payments(db, chosen, period, program_id=program_id, batch_id=batch_id, unlinked=unlinked, limit=limit, offset=offset)
+
+
+@router.get("/revenue/recruitment", response_model=RecruitmentRevenueOut)
+async def recruitment_revenue(
+    month: str | None = Query(None, pattern=MONTH), period: Literal["month", "year"] = "month", user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """mgmt-008 (§6, spec RR1-RR12): Recruitment revenue by kind and the nine KPIs for `month` or its financial year to date. Every
+    management role reads the KPIs; only the finance tier (partner, accountant) gets money -- the super admin's read has none (RR9)."""
+    require_management(user)
+    chosen = await _past_month(db, month)
+    return await management_recruitment_revenue.dashboard(db, user, chosen, period, await db_now(db))
 
 
 def _partner(user: User) -> User:

@@ -82,6 +82,16 @@ def _active_students() -> ScalarSelect:
     return select(users + school + agency).scalar_subquery()
 
 
+def partner_companies() -> ScalarSelect:
+    """S10 (MS10); mgmt-008's Partner companies KPI too."""
+    return _count(Company.archived_at.is_(None), Company.lost_at.is_(None), Company.stage.in_(PARTNER_COMPANY_STAGES))
+
+
+def recruiters() -> ScalarSelect:
+    """S15 (MS15); mgmt-008's Recruiters KPI too."""
+    return _count(User.role == "placement_team", User.active.is_(True), RecruiterProfile.user_id == User.id, of=User.id)
+
+
 def _abroad_students() -> ScalarSelect:
     """MS4: one person per agency student, school student or user (in that order); a deactivated user's own applications drop out."""
     person = func.coalesce(OverseasApplication.agent_student_id, OverseasApplication.school_student_id, OverseasApplication.student_id)
@@ -105,12 +115,12 @@ async def snapshot(db: AsyncSession, today: date) -> dict[str, int]:
         "active_agents": _count(AgentOrg.status == "active"),
         "partner_schools": _count(School.tier.is_not(None), School.tier_valid_until >= today),
         "university_partners": _count(University.active.is_(True), University.lost_at.is_(None), University.stage.in_(UNIVERSITY_PARTNER_STAGES)),
-        "partner_companies": _count(Company.archived_at.is_(None), Company.lost_at.is_(None), Company.stage.in_(PARTNER_COMPANY_STAGES)),
+        "partner_companies": partner_companies(),
         "trainers": _staff("trainer"),
         "counselors": _staff("counselor"),
         "telecallers": _staff("telecaller"),
         "bdms": _staff("bdm"),
-        "recruiters": _count(User.role == "placement_team", User.active.is_(True), RecruiterProfile.user_id == User.id, of=User.id),
+        "recruiters": recruiters(),
     }
     row = (await db.execute(select(*(query.label(key) for key, query in figures.items())))).one()
     return {key: int(row._mapping[key]) for _, key, _ in SNAPSHOT}

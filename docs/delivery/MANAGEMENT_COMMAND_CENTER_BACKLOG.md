@@ -488,6 +488,11 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-008 — Recruitment & Placement revenue dashboard
+- **Status (2026-10-13):** **IN REVIEW** on `feature/mgmt-008`. `DEC-SCOPE-199` (RR1–RR12 recommended defaults, UNVERIFIED; RR3 answers
+  Q-12: rec-031 payments + manual Recruitment income per category). rec-031/033 are merged, so "not available yet" never applies. No
+  migration; API §12DM; RBAC §2.124. QA evidence `docs/quality/MGMT-008_EXPLORATORY_QA_2026-10-13.md`.
+  - **AC1:** revenue per placement = revenue ÷ joined, "—" when nobody joined (`test_mgmt_008_recruitment_revenue.py`, e2e).
+  - **AC2:** candidates / interviews / selections / joining = the `GET /recruiter/performance` Total for the same range (pytest).
 - **Business requirement:** §6: recruitment fees, placement fees, employer payments, internship programs, corporate training, other;
   9 KPIs.
 - **Existing behavior:** none (the Recruiter backlog is not built).

@@ -256,10 +256,13 @@ def _figures(sums: dict[str, int]) -> dict:
     return {**counts, **ratios, "avg_closure_days": round(sums["closure_days"] / closed, 1) if closed else None}
 
 
-async def performance(db: AsyncSession, user: User, recruiter_id: UUID | None, date_from: date | None, date_to: date | None, now: datetime) -> dict:
+async def performance(
+    db: AsyncSession, user: User, recruiter_id: UUID | None, date_from: date | None, date_to: date | None, now: datetime, *, roles: tuple[str, ...] = PERFORMANCE_ROLES
+) -> dict:
     """P1-P15 per recruiter (+ the Unassigned row unless drilled down) and a Total that is the sum of the rows (AC2). Each figure has one
-    owner (PF2): a company's assigned recruiter; a requirement's assigned recruiter, else its company's. One statement for every figure."""
-    people = await _people(db, user, recruiter_id)
+    owner (PF2): a company's assigned recruiter; a requirement's assigned recruiter, else its company's. One statement for every figure.
+    `roles` is PF1's unless a caller with its own gate reuses the figures (mgmt-008 RR10: the Command Center's management roles)."""
+    people = await _people(db, user, recruiter_id, roles)
     today = today_ist(now)
     first, last, start, end = _period(date_from, date_to, now)
     ids = [person.id for person in people]
