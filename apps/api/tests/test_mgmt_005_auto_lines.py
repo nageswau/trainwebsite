@@ -376,11 +376,13 @@ async def test_paging_is_newest_first_across_sources(client, db_session):
 @pytest.mark.asyncio
 async def test_without_include_the_mgmt_004_response_is_unchanged(client, db_session):
     year, month = a_month()
-    payment = await paid_payment(db_session, when=ist(year, month))
     await as_user(client, db_session)
+    # The shared stack DB keeps other tests' approved entries in far-past months, so the totals are compared before and after.
+    before = (await client.get(LEDGER, params={"month": month_param(year, month)})).json()
+    payment = await paid_payment(db_session, when=ist(year, month))
     page = (await client.get(LEDGER, params={"month": month_param(year, month)})).json()
     assert lines_of(page, payment.id) == []
-    assert page["totals"] == {"income": "0.00", "expense": "0.00", "net": "0.00"}
+    assert page["totals"] == before["totals"]
     cat = await category(client)
     entry = await create(client, cat["id"])
     listed = (await client.get(LEDGER, params={"category": cat["id"]})).json()["items"]

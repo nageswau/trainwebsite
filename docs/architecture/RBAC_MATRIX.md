@@ -2020,6 +2020,21 @@ Counts only, no personal data; nothing else changes.
 - Read-only: no writes, so no audit kind.
 - The payment drill-down shows enrolment codes, never student names or emails (Q-32 open; mgmt-005 MA7 precedent).
 
+### 2.123 Abroad Education revenue dashboard *(added 2026-10-13 — `DEC-SCOPE-198`, `mgmt-006`)*
+
+| Role | Read `GET /management/revenue/abroad`, page `/management/revenue/abroad` | University commission (M3) |
+|---|---|---|
+| `partner` | yes; "Abroad Education revenue" entry (Finance) | Shown (kind row, university/country rows, in revenue and contribution) |
+| `accountant` | yes; same entry | **Never fetched**: left out of every figure, `commission_visible: false`, a note on the page |
+| `super_admin` | `403` "Finance access required" (M13); no entry | — |
+| every other role | `403`; signed out `401` (the page redirects to `/admin/login?next=`) | — |
+
+- The commission rule is `management_access.can_view_university_commission` (partner only), applied in the query. MG11's partner
+  extension is this management-local helper: `partnership_access.COMMISSION_ROLES` is unchanged, so partners gain no partnership-module
+  commission route (MG2). mgmt-005's ledger list and mgmt-013's accounts dashboard still show commission lines to the accountant; that
+  sweep stays with mgmt-034.
+- Read-only aggregate: country, university, intake and agency names with rupee sums; no student names or ids. No audit row (no write).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
