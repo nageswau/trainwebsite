@@ -11,6 +11,7 @@ from sqlalchemy.engine import make_url
 from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
+from tests.test_upc_008_migration import _university
 
 _spec = importlib.util.spec_from_file_location("_dtu_001_migration_0157", VERSIONS / "0157_direct_tieups.py")
 _migration = importlib.util.module_from_spec(_spec)
@@ -79,9 +80,27 @@ def test_round_trip(isolated_db):
 
 def test_downgrade_refuses_while_an_agent_commission_exists(isolated_db):
     command.upgrade(isolated_db["cfg"], HEAD)
-    _sql(isolated_db["url"], "UPDATE universities SET agent_commission_percent = 10 WHERE id = (SELECT id FROM universities LIMIT 1)", autocommit=True)
-    count = _sql(isolated_db["url"], "SELECT count(*) FROM universities WHERE agent_commission_percent IS NOT NULL")[0][0]
-    if count == 0:
-        pytest.skip("fresh database has no university rows to mark")
+    uni = _university(isolated_db["url"])
+    _sql(isolated_db["url"], "UPDATE universities SET agent_commission_percent = 10 WHERE id = :u", {"u": uni})
     with pytest.raises(RuntimeError, match="agent commissions exist"):
         command.downgrade(isolated_db["cfg"], BASE)
+
+
+@pytest.mark.parametrize(
+    "assignment",
+    [
+        "agent_commission_percent = 10, agent_commission_amount = 5, agent_commission_currency = 'USD'",
+        "agent_commission_percent = 0",
+        "agent_commission_percent = 101",
+        "agent_commission_amount = 5",
+        "agent_commission_amount = 5, agent_commission_currency = 'XXX'",
+    ],
+)
+def test_check_constraints_reject_invalid_agent_commissions(isolated_db, assignment):
+    url = isolated_db["url"]
+    command.upgrade(isolated_db["cfg"], HEAD)
+    uni = _university(url)
+    with pytest.raises(Exception, match="ck_universities_agent_commission"):
+        _sql(url, f"UPDATE universities SET {assignment} WHERE id = :u", {"u": uni})
+    # valid shapes still pass
+    _sql(url, "UPDATE universities SET agent_commission_amount = 5, agent_commission_currency = 'AED' WHERE id = :u", {"u": uni})
