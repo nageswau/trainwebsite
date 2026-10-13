@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from uuid import UUID
 
-from sqlalchemy import ScalarSelect, and_, distinct, exists, func, or_, select, union
+from sqlalchemy import ColumnElement, ScalarSelect, and_, distinct, exists, func, or_, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
@@ -163,7 +163,7 @@ class ApplicationFunnelFilters:
     status: str | None = None
 
 
-def _of_application(model) -> bool:
+def _of_application(model) -> ColumnElement[bool]:
     return model.application_id == OverseasApplication.id
 
 
