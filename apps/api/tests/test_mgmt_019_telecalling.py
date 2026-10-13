@@ -113,7 +113,7 @@ async def test_totals_are_the_sums_of_the_rows_and_equal_the_tel_023_totals(clie
     assert totals["conversion"] == expected
 
 
-async def test_the_chain_is_calls_interested_counselling_registration_with_step_shares(client, db_session):
+async def test_the_chain_is_calls_interested_counselling_registration_with_shares_of_calls(client, db_session):
     await as_role(client, db_session, "partner", "global")
     body = await dashboard(client)
     chain, totals = body["chain"], body["totals"]
@@ -126,8 +126,9 @@ async def test_the_chain_is_calls_interested_counselling_registration_with_step_
     assert chain[0]["value"] == totals["calls"] and chain[1]["value"] == totals["interested"]
     assert chain[3]["value"] == totals["converted"]
     assert chain[0]["share"] is None
-    for previous, step in zip(chain, chain[1:], strict=False):
-        assert step["share"] == (round(step["value"] * 100 / previous["value"], 1) if previous["value"] else None)
+    calls = chain[0]["value"]
+    for step in chain[1:]:  # QA19-03: each step against the calls the chain starts from, never against the step before
+        assert step["share"] == (round(step["value"] * 100 / calls, 1) if calls else None)
 
 
 async def test_counselling_counts_only_counselling_bookings(client, db_session):

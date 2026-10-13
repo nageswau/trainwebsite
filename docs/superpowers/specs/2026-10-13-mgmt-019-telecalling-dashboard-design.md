@@ -42,7 +42,7 @@ Data: `lead_calls`, `lead_follow_ups`, `appointments`, `bdm_meeting_requests`, `
 | TC8 | Converted | tel-021 D13 / T5 `converted_leads` (credited to the owner at conversion, still converted now) |
 | TC9 | Lost | Stage moves into any closed outcome (Not Interested, Not Eligible, Wrong Number, No Response, Lost) recorded by the telecaller in the period |
 | TC10 | Telecaller conversion | Converted ÷ Leads assigned × 100, one decimal; `null` ("—") when no leads were assigned. Per telecaller, per team, company |
-| TC11 | Chain | Calls → Interested → Counseling (D8 counselling appointments booked) → Registration (Converted). Activity in the period, so each step shows its count and its share of the previous step (`null` when the previous is 0); not a cohort funnel |
+| TC11 | Chain | Calls → Interested → Counseling (D8 counselling appointments booked) → Registration (Converted). Activity in the period, not a cohort funnel, so each later step shows its count and its share of **Calls** (`null` when there were no calls). QA19-03 replaced "share of the previous step", which read e.g. 250% because bookings are not a subset of Interested moves |
 | TC12 | Breakdown | Company totals; per team (IT, Overseas; both always listed); per telecaller table ordered by name. Every total is the sum of its rows (AC1) |
 | TC13 | Access | Operational tier: partner, super_admin. Accountant 403 "Operational access required"; any other role 403 "Management access required"; signed out 401 |
 | TC14 | Privacy | Counts and staff names only; no lead names, phones or emails |

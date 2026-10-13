@@ -19,8 +19,8 @@ describe("mgmt-019 telecalling helpers", () => {
   it("words conversion and step shares, with a dash when there is nothing to divide by", () => {
     expect(conversionText(12.5)).toBe("12.5%");
     expect(conversionText(null)).toBe("—");
-    expect(stepShareText(40, "Calls")).toBe("40% of Calls");
-    expect(stepShareText(null, "Interested")).toBeNull();
+    expect(stepShareText(40)).toBe("40% of calls");
+    expect(stepShareText(null)).toBeNull();
   });
 
   it("makes both mgmt-019 Command Center entries live for the operational tier only", () => {

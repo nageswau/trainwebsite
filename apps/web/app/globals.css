@@ -392,6 +392,7 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 .it-revenue-payments { scroll-margin-top: 84px; }
 /* mgmt-019: the People pillar's "Telecallers" entry lands on #telecallers below the sticky top bar. */
 .telecalling-people { scroll-margin-top: 84px; }
+.telecalling-section-title { margin-top: 28px; } /* QA19-04: the tables sit clear of the chain card */
 .it-revenue-nowrap td { white-space: nowrap; }
 /* tel-021: the ten §1 dashboard tiles -- five across on a wide screen, then three, then two on tablets and phones; a hint under each
    figure. The daily activity table reuses .tel-targets (short columns, row headers as labels). */

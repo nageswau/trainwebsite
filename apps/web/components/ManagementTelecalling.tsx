@@ -6,6 +6,7 @@ import {
   TELECALLING_HOME,
   conversionText,
   stepShareText,
+  telecallingHref,
   type Telecalling,
   type TelecallingFigures,
   type TelecallingFilters,
@@ -46,14 +47,16 @@ export default function ManagementTelecalling({ data, error, filters }: { data: 
   return (
     <>
       {error && <p className="form-error" role="alert">{error}</p>}
-      <form method="get" action={TELECALLING_HOME} aria-label="Telecalling period" className="funnel-filters" autoComplete="off">
+      {/* QA19-02: keyed on the address, so a client navigation to another period (This month, Back) remounts the uncontrolled inputs.
+          QA19-01: with no dates in the address the inputs show the period on screen. */}
+      <form key={telecallingHref(filters)} method="get" action={TELECALLING_HOME} aria-label="Telecalling period" className="funnel-filters" autoComplete="off">
         <div className="field">
           <label htmlFor="telecalling-from">From</label>
-          <input id="telecalling-from" name="date_from" type="date" defaultValue={filters.date_from} />
+          <input id="telecalling-from" name="date_from" type="date" defaultValue={filters.date_from || data?.date_from} />
         </div>
         <div className="field">
           <label htmlFor="telecalling-to">To</label>
-          <input id="telecalling-to" name="date_to" type="date" defaultValue={filters.date_to} />
+          <input id="telecalling-to" name="date_to" type="date" defaultValue={filters.date_to || data?.date_to} />
         </div>
         <div className="funnel-filter-actions">
           <button className="btn" type="submit">Apply</button>
@@ -81,12 +84,12 @@ export default function ManagementTelecalling({ data, error, filters }: { data: 
           <section className="card" aria-labelledby="telecalling-chain">
             <h3 id="telecalling-chain">Calls → Interested → Counseling → Registration</h3>
             <p className="muted">
-              Counseling is counselling appointments booked by telecallers; Registration is leads converted. Each step shows its share of the step
-              before it.
+              Counseling is counselling appointments booked by telecallers; Registration is leads converted. Each step shows its share of the calls
+              made in the period.
             </p>
             <ol className="funnel" aria-label="Calls to registration">
-              {data.chain.map((step, index) => {
-                const share = index > 0 ? stepShareText(step.share, data.chain[index - 1].label) : null;
+              {data.chain.map((step) => {
+                const share = stepShareText(step.share);
                 return (
                   <li className="funnel-row" key={step.key}>
                     <span className="funnel-label">{step.label}</span>
@@ -97,7 +100,7 @@ export default function ManagementTelecalling({ data, error, filters }: { data: 
               })}
             </ol>
           </section>
-          <h3 id="telecalling-teams">By team</h3>
+          <h3 id="telecalling-teams" className="telecalling-section-title">By team</h3>
           <div className="table-wrap" role="region" aria-labelledby="telecalling-teams" tabIndex={0} style={{ overflowX: "auto" }}>
             <table className="table" style={{ minWidth: 820 }}>
               <caption className="visually-hidden">Telecalling by team</caption>
@@ -119,7 +122,7 @@ export default function ManagementTelecalling({ data, error, filters }: { data: 
             </table>
           </div>
           <section id="telecallers" className="telecalling-people" aria-labelledby="telecallers-title">
-            <h3 id="telecallers-title">By telecaller</h3>
+            <h3 id="telecallers-title" className="telecalling-section-title">By telecaller</h3>
             {data.telecallers.length === 0 ? (
               <p className="empty" role="status">There are no telecallers yet.</p>
             ) : (

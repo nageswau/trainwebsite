@@ -11826,7 +11826,7 @@ class TelecallingStep(BaseModel):
     key: str
     label: str
     value: int
-    share: float | None  # TC11: % of the step before it; None for the first step or after a zero
+    share: float | None  # TC11 (QA19-03): % of the chain's calls; None for Calls itself or when there were no calls
 
 
 class TelecallingOut(BaseModel):

@@ -35,8 +35,8 @@ const data: Telecalling = {
   chain: [
     { key: "calls", label: "Calls", value: 1200, share: null },
     { key: "interested", label: "Interested", value: 90, share: 7.5 },
-    { key: "counselling", label: "Counseling", value: 20, share: 22.2 },
-    { key: "registration", label: "Registration", value: 10, share: 50 },
+    { key: "counselling", label: "Counseling", value: 20, share: 1.7 },
+    { key: "registration", label: "Registration", value: 10, share: 0.8 },
   ],
 };
 const EMPTY = { date_from: "", date_to: "" };
@@ -116,13 +116,20 @@ describe("mgmt-019 ManagementTelecalling", () => {
     expect(screen.getByText(/01 Oct 2026 to 13 Oct 2026/)).toBeTruthy();
   });
 
-  it("shows the chain with each step's share of the step before it", () => {
+  it("QA19-03: shows the chain with each later step's share of calls", () => {
     render(<ManagementTelecalling data={data} error="" filters={EMPTY} />);
     const steps = within(screen.getByRole("list", { name: "Calls to registration" })).getAllByRole("listitem");
     expect(steps.map((step) => step.querySelector(".funnel-label")?.textContent)).toEqual(["Calls", "Interested", "Counseling", "Registration"]);
-    expect(within(steps[1]).getByText("7.5% of Calls")).toBeTruthy();
-    expect(within(steps[3]).getByText("50% of Counseling")).toBeTruthy();
+    expect(within(steps[1]).getByText("7.5% of calls")).toBeTruthy();
+    expect(within(steps[3]).getByText("0.8% of calls")).toBeTruthy();
     expect(steps[0].querySelector(".funnel-percent")).toBeNull();
+    expect(screen.getByText(/Each step shows its share of the calls/)).toBeTruthy();
+  });
+
+  it("QA19-04: spaces the tables from the chain card", () => {
+    render(<ManagementTelecalling data={data} error="" filters={EMPTY} />);
+    expect(screen.getByRole("heading", { name: "By team" }).className).toBe("telecalling-section-title");
+    expect(screen.getByRole("heading", { name: "By telecaller" }).className).toBe("telecalling-section-title");
   });
 
   it("lists both teams and every telecaller with conversion, inactive ones marked, under the #telecallers anchor", () => {
@@ -152,6 +159,20 @@ describe("mgmt-019 ManagementTelecalling", () => {
     cleanup();
     render(<ManagementTelecalling data={data} error="" filters={EMPTY} />);
     expect(screen.queryByRole("link", { name: "This month" })).toBeNull();
+  });
+
+  it("QA19-01: with no dates in the address the inputs show the period on screen (this month to date)", () => {
+    render(<ManagementTelecalling data={data} error="" filters={EMPTY} />);
+    const form = screen.getByRole("form", { name: "Telecalling period" });
+    expect((within(form).getByLabelText("From") as HTMLInputElement).value).toBe("2026-10-01");
+    expect((within(form).getByLabelText("To") as HTMLInputElement).value).toBe("2026-10-13");
+  });
+
+  it("QA19-02: a client navigation to another period (This month, Back) resets the inputs", () => {
+    const { rerender } = render(<ManagementTelecalling data={{ ...data, date_from: "2026-10-05" }} error="" filters={{ date_from: "2026-10-05", date_to: "" }} />);
+    expect((screen.getByLabelText("From") as HTMLInputElement).value).toBe("2026-10-05");
+    rerender(<ManagementTelecalling data={data} error="" filters={EMPTY} />);
+    expect((screen.getByLabelText("From") as HTMLInputElement).value).toBe("2026-10-01");
   });
 
   it("shows the error and the form only when the dashboard could not be read", () => {

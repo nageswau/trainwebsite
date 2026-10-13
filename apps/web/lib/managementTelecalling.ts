@@ -49,5 +49,5 @@ export const telecallingHref = (filters: TelecallingFilters) => withQuery(TELECA
 /** TC10: "12.5%", or a dash when no lead was assigned. */
 export const conversionText = (conversion: number | null) => (conversion === null ? "—" : `${conversion}%`);
 
-/** TC11: a chain step's share of the step before it, or null (first step, or the step before was 0). */
-export const stepShareText = (share: number | null, previous: string) => (share === null ? null : `${share}% of ${previous}`);
+/** TC11 (QA19-03): a later chain step's share of the calls, or null (Calls itself, or no calls in the period). */
+export const stepShareText = (share: number | null) => (share === null ? null : `${share}% of calls`);
