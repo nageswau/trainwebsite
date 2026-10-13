@@ -1071,6 +1071,19 @@ UNIVERSITY_PROBABILITY_CHECKS = {
     "ck_universities_probability_override": "probability_override IS NULL OR probability_override BETWEEN 0 AND 100",
     "ck_universities_probability_reason": "(probability_override IS NULL) = (probability_override_reason IS NULL)",
 }
+
+# dtu-001 (DEC-SCOPE-209, spec §3): what EduSphere pays an agent Master per university (DT2) -- NOT upc-016's university commission.
+# Exactly one of % or fixed amount; migration 0157 repeats these (test_dtu_001_migration). AED is this column's own addition:
+# COUNSELING_CURRENCIES drives other CHECKs and is deliberately not widened.
+AGENT_COMMISSION_CURRENCIES = ("INR", "USD", "GBP", "EUR", "CAD", "AUD", "NZD", "AED")
+UNIVERSITY_AGENT_COMMISSION_CHECKS = {
+    "ck_universities_agent_commission_one": "agent_commission_percent IS NULL OR agent_commission_amount IS NULL",
+    "ck_universities_agent_commission_percent": "agent_commission_percent IS NULL OR (agent_commission_percent > 0 AND agent_commission_percent <= 100)",
+    "ck_universities_agent_commission_amount": "(agent_commission_amount IS NULL) = (agent_commission_currency IS NULL) AND (agent_commission_amount IS NULL OR agent_commission_amount > 0)",
+    "ck_universities_agent_commission_currency": "agent_commission_currency IS NULL OR agent_commission_currency IN ("
+    + ", ".join(f"'{c}'" for c in AGENT_COMMISSION_CURRENCIES)
+    + ")",
+}
 UNIVERSITY_STAGE_HISTORY_CHECKS = {
     "ck_university_stage_history_kind": _one_of("kind", UNIVERSITY_STAGE_EVENT_KINDS, nullable=False),
     "ck_university_stage_history_note": "kind = 'move' OR note IS NOT NULL",
@@ -1094,6 +1107,7 @@ class University(Base, TimestampMixin):
         *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_CHECKS.items()),
         *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_PIPELINE_CHECKS.items()),
         *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_PROBABILITY_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in UNIVERSITY_AGENT_COMMISSION_CHECKS.items()),
         Index("ix_universities_stage", "stage"),
         CheckConstraint(UNIVERSITY_RELATIONSHIP_CHECK, name="ck_universities_relationship_strength"),
         Index("ix_universities_primary_manager", "primary_manager_user_id"),
@@ -1142,6 +1156,14 @@ class University(Base, TimestampMixin):
     # upc-023 (§24, EX2/EX3): replaces the stage probability until cleared; the stage probability is a constant (partnership_stages).
     probability_override: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     probability_override_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # dtu-001 (DEC-SCOPE-209): the catalogue's logo, campus list and fee block (public), and the agent commission (DT4: restricted).
+    logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    campuses: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list, server_default=text("'[]'"))
+    fee_structure: Mapped[str | None] = mapped_column(Text, nullable=True)
+    agent_commission_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    agent_commission_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    agent_commission_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    agent_commission_note: Mapped[str | None] = mapped_column(String(300), nullable=True)
     country = relationship("Country")
 
     @validates("name")
@@ -1728,6 +1750,10 @@ class OverseasCourse(Base, TimestampMixin):
     commission_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     commission_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     commission_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    # dtu-001: verbatim catalogue texts (the structured amount / months stay the source for tuition_fee / intake).
+    campus: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    fee_text: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    intake_text: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class CourseImportBatch(Base, TimestampMixin):
