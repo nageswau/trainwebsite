@@ -875,6 +875,8 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** low
 
 ### mgmt-021 — Agent network dashboard
+- **Status (2026-10-13):** **IN REVIEW** on `feature/mgmt-021`. `DEC-SCOPE-205` (AN1–AN14 recommended defaults, UNVERIFIED; answers
+  Q-22). API §12DS, RBAC §2.130. QA `docs/quality/MGMT-021_EXPLORATORY_QA_2026-10-13.md`.
 - **Business requirement:** §17: 12 figures; the Agent → Staff → Student → Application → Enrollment → Revenue chain; "which agents are
   genuinely producing business".
 - **Existing behavior:** agency CRM routes refuse `super_admin`. The cross-agency view is AGN-022 (`admin.py:1280-1406`, overseas admin).

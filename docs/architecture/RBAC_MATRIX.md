@@ -2107,6 +2107,18 @@ Counts only, no personal data; nothing else changes.
 - Company-wide counts only (no company, candidate or recruiter names). No audit row (no write). The rec-033/034/035 routes and their
   scopes are unchanged.
 
+### 2.130 Agent network dashboard *(added 2026-10-13 — `DEC-SCOPE-205`, `mgmt-021`)*
+
+| Role | Read `GET /management/agents`, page `/management/agents` |
+|---|---|
+| `partner` | yes, with commission and revenue; "Agents" (Partnerships) entry |
+| `super_admin` | yes (operational tier, M13) **without money** (`commission` / `revenue: null`, finance tier only, AN9); keeps the super admin sidebar ("Management agent figures") |
+| `accountant` | `403` "Operational access required"; no entry |
+| every other role (incl. `overseas_admin`, `agent`) | `403`; signed out `401` (the page redirects to `/admin/login?next=`) |
+
+- Agency names, prefixes and counts only (no member, student or contact data). No audit row (no write). Agency isolation (AGT-002) is not
+  weakened: the agency CRM routes still refuse `super_admin`, and AGN-022's overseas-admin routes and scopes are unchanged.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
