@@ -3000,6 +3000,22 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /management/accounts` *(new)* | **Query:** `month` (default: the current IST month).<br>**`200`:** `{month, current_month, as_of, income, expenses, profit, not_counted[], receivables, pending_invoices, balances}`.<br>• `income`/`expenses` = `{heads[{key, label, amount, parts[{label, amount}]}], total}`. There are 5 income heads (`abroad`, `it`, `recruitment`, `school`, `other`) and 8 expense heads (`salaries`, `rent`, `marketing`, `travel`, `trainers`, `commissions`, `operations`, `technology`), all from the month's counted ledger lines.<br>• `profit` = income − expenses (R4).<br>• `not_counted[]` = `{currency, kind, amount, count}`.<br>• `receivables` = `{total, overdue, fees, recruitment, university, not_counted[]}`, as of `as_of` (today, IST).<br>• `pending_invoices` = `{count, amount}`.<br>• `balances` = `{cash_bank, payables, tax_liabilities, updated_at, updated_by}`, where null means not entered.<br>**`422`:** a malformed month, or a month after the current one |
 | `PUT /management/accounts/balances?month=YYYY-MM` *(new)* | **Body:** `{cash_bank, payables, tax_liabilities}`. Each is a decimal string or null; `cash_bank` may be negative; `payables`/`tax_liabilities` must be ≥ 0. At most 2 decimals, magnitude below 10¹², extra fields refused.<br>**Effect:** saves the month's row, and all null removes it. A transaction-scoped advisory lock serialises saves of one month.<br>**`200`:** the month as GET shows it.<br>**`422`:** on the field, or a future or missing month.<br>**Audit:** one `mgmt.balance.create`/`update` (changed field names, no amounts) when something changed |
 
+## 12DK. IT Training revenue dashboard (`mgmt-007`) — addendum, 2026-10-13
+
+- **Basis:** `DEC-SCOPE-197` (IR1–IR12). Design spec `docs/superpowers/specs/2026-10-13-mgmt-007-it-revenue-dashboard-design.md`.
+- **Migration:** none (read-only).
+- **Access:** finance tier only (M13), through the ledger's `require_finance`, checked before any query:
+  - super_admin gets `403` "Finance access required";
+  - every other role gets `403` "Management access required";
+  - signed out gets `401`.
+- **Period:** `month` is `YYYY-MM` (default the current IST month; January 2000 to this month); `period` is `month` (default) or `year`
+  (the Indian financial year from 1 April to the end of `month`). **Money:** INR as decimal strings.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/revenue/it` *(new)* | **Query:** `month`, `period`.<br>**`200`:** `{month, period, start, end, label, totals{revenue, costs, contribution, enrolments}, income[{key, label, amount}], costs[{key, label, amount}], courses[{program_id, title, enrolments, revenue, costs, contribution, batches[{batch_id, name, enrolments, revenue, costs}], unbatched{revenue, costs}}], unlinked{revenue, costs}, placement: null, not_counted[{currency, amount, count}]}`.<br>• Income keys `enrolment_fees`, `other_fees`, `manual`; cost keys `trainer`, `marketing`, `operational`.<br>• A course = Σ its batches + `unbatched`; Σ courses + `unlinked` = `totals` (IR5).<br>**`422`:** a malformed month or period, or a month after the current one |
+| `GET /management/revenue/it/payments` *(new)* | **Query:** `month`, `period`, exactly one of `program_id`, `batch_id`, `unlinked=true`; `limit` 1–100 (default 25), `offset` ≥ 0.<br>**`200`:** `{items[{id, entry_date, kind, amount, currency, installment_no, receipt_no, enrollment_code, course, batch}], total, limit, offset}`: counted IT payment lines, newest first. **No student names or emails** (Q-32 open).<br>**`422`:** not exactly one scope; "Choose a course from the list" / "Choose a batch from the list" for an unknown id; a bad month, period or paging value |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

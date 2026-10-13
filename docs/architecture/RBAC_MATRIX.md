@@ -2008,6 +2008,18 @@ Counts only, no personal data; nothing else changes.
 - The audit kind `mgmt.balance` is finance tier. It is hidden from super_admin in Management activity and left out of `/admin/audit`
   (mgmt-002 MA8, unchanged).
 
+### 2.122 IT Training revenue dashboard *(net-new, added 2026-10-13 — `DEC-SCOPE-197`, `mgmt-007`)*
+
+| Role | `GET /management/revenue/it`, `GET /management/revenue/it/payments`, page `/management/revenue/it` | Command Center entry |
+|---|---|---|
+| `partner` | Full read | "IT Training revenue" (Finance) |
+| `accountant` | Full read | "IT Training revenue" |
+| `super_admin` | `403` "Finance access required"; page "Access unavailable" (M13: no finance figures) | None |
+| Every other role | `403` "Management access required"; signed out `401` (page → `/admin/login?next=`) | None |
+
+- Read-only: no writes, so no audit kind.
+- The payment drill-down shows enrolment codes, never student names or emails (Q-32 open; mgmt-005 MA7 precedent).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
