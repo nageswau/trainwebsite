@@ -10855,6 +10855,26 @@ class ApplicationFunnelOut(BaseModel):
     options: ApplicationFunnelOptions
 
 
+# mgmt-020 (spec BD1-BD12): GET /management/bdm -- one BDM type's §16 figures; `value` is null when the figure is not tracked.
+class ManagementBdmFigure(BaseModel):
+    key: str
+    label: str
+    definition: str
+    basis: Literal["period", "now"]
+    tracked: bool
+    value: int | None
+
+
+class ManagementBdmOut(BaseModel):
+    type: BdmTypeName
+    label: str
+    from_: date = Field(serialization_alias="from")
+    to: date
+    as_of: datetime
+    bdm_count: int
+    figures: list[ManagementBdmFigure]
+
+
 # mgmt-004 (spec ML1-ML16): the management ledger. Simple field rules live here so a 422 names its field; rules that need the database
 # (category, batch, channel on an existing entry) are raised by `services/ledger.py` in the same field-located shape.
 LEDGER_MAX_AMOUNT = Decimal("999999999999.99")  # Numeric(14, 2)

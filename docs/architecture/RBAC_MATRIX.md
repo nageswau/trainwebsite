@@ -2059,6 +2059,18 @@ Counts only, no personal data; nothing else changes.
 - Company-wide counts over all overseas applications; filter choices name agencies, counselors, staff, countries, universities and
   courses. No student names or ids. No audit row (no write). The overseas admin's own AGN-023 list filters are unchanged.
 
+### 2.126 BDM dashboards *(added 2026-10-13 — `DEC-SCOPE-201`, `mgmt-020`)*
+
+| Role | Read `GET /management/bdm`, page `/management/bdm` |
+|---|---|
+| `partner` | yes; "BDM" entry (Sales pillar) |
+| `super_admin` | yes (operational tier, M13); keeps the super admin sidebar ("Management BDM figures") |
+| `accountant` | `403` "Operational access required"; no entry |
+| every other role (incl. `bdm`, `bdm_manager`) | `403`; signed out `401` (the page redirects to `/admin/login?next=`) |
+
+- Company-wide counts per BDM type; no BDM, organization or student names. No audit row (no write). The bdm-023/024 manager routes
+  and their team scope are unchanged.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

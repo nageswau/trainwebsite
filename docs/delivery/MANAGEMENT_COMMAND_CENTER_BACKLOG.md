@@ -844,6 +844,8 @@ Common conventions for every item:
 - **Complexity:** small · **Risk:** low
 
 ### mgmt-020 — BDM dashboards (agent / school / college)
+- **Status (2026-10-13):** **IN REVIEW** on `feature/mgmt-020`. `DEC-SCOPE-201` (BD1–BD12 recommended defaults, UNVERIFIED; BD11 answers
+  Q-21: course promotions tracked, internships not). No migration; API §12DO; RBAC §2.126. QA evidence `docs/quality/MGMT-020_EXPLORATORY_QA_2026-10-13.md`.
 - **Business requirement:** §16: three figure sets (9 / 7 / 6).
 - **Existing behavior:** bdm-023/024 manager dashboards and hierarchy.
 - **Expected behavior:** per BDM type, company-wide, from `bdm_performance.figures` / `bdm_metrics`. Course promotions and internships

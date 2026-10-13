@@ -7895,3 +7895,38 @@ Spec `docs/superpowers/specs/2026-10-13-mgmt-024-applications-funnel-design.md`.
 `managementApplications.test.ts`, `ManagementApplications.test.tsx`, `mgmt-024-applications.spec.ts`. QA
 `docs/quality/MGMT-024_EXPLORATORY_QA_2026-10-13.md`.
 - **New Feature ID authorized:** `mgmt-024`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-024.
+
+### DEC-SCOPE-201 — BDM dashboards: the §16 figure sets per BDM type, Q-21 (`mgmt-020`)
+
+**Evidence:** `EVID-017` §16 "BDM DASHBOARD" (Agent 9 / School 7 / College 6 figures, lines 595–647 — `DERIVED_BLUEPRINT`).
+`DEC-SCOPE-186` M1/M13 (operational tier) — `EXPLICIT_APPROVAL`. bdm-024 `DEC-SCOPE-113` (P-01…P-08, master view V-A); bdm-015/016
+(`DAILY_METRICS`, `TARGET_METRICS`); bdm-019 (agent onboarding links).
+
+**Status:** BD1–BD12 in review on `feature/mgmt-020` (2026-10-13). Every BD answer is a **recommended default, `UNVERIFIED`**, taken on
+the owner's instruction to proceed with recommended answers. BD11 answers Q-21.
+
+**Numbering (provisional):** no migration; API §12DO; RBAC §2.126 (after mgmt-024's `DEC-SCOPE-200` / §12DN / §2.125).
+Spec `docs/superpowers/specs/2026-10-13-mgmt-020-bdm-dashboards-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| BD1 | Scope | Company-wide: every BDM of the type, active or not (bdm-024's "All BDM teams"); a figure belongs to the type of the BDM who owns the record |
+| BD2 | Period | `from` / `to`, inclusive IST dates, default this IST month; start after end or > 366 days → 422 (bdm-024 P2) |
+| BD3 | Type | `agent` (default) / `school` / `college`; else 422 |
+| BD4 | = bdm-024 (AC) | Prospects / School leads = P-04; Meetings = P-02; Agreements / MoUs = P-05; Agent students / Students / Student registrations = P-07, for the same period |
+| BD5 | = bdm-024 (AC) | Agent Applications / Enrollments = the master view's V-A type totals (all time, now) |
+| BD6 | Visits | Visit activities the type's BDMs logged in the period (bdm-015 rule) |
+| BD7 | Proposals | MoUs the School BDMs moved to Proposal Sent in the period (bdm-015/016 rule) |
+| BD8 | New agents | Agent organizations whose onboarding request was completed (linked to an agency) in the period |
+| BD9 | Active agents | Now: non-archived Agent organizations linked to an active agency |
+| BD10 | Active schools | Linked schools with a tier valid at the period's end, today while it runs (bdm-016 M-17) |
+| BD11 | Q-21 | Course promotions tracked (completed course promotion appointments, bdm-016); Internships **not tracked** (`null`, "Not tracked") |
+| BD12 | Access + nav | Operational tier (partner, super_admin); accountant 403 "Operational access required"; others 403; signed out 401. "BDM" Command Center entry live; super admin sidebar "Management BDM figures" |
+
+**Consequences:** `services/management_bdm.py` (`FIGURES`, `dashboard()`; reuses `bdm_performance.figures/total/hierarchy/team_members`
+and the bdm-015/016 builders); `bdm_metrics._activities` / `_linked_schools` accept a team sub-select (as `_owned` already does);
+`api/management.py` (`GET /management/bdm`); `schemas.py` (`ManagementBdmOut`). Web `lib/managementBdm.ts`, `components/ManagementBdm.tsx`,
+page `/management/bdm`, `lib/management.ts`, `lib/navigation.ts`, `globals.css` (`.metric-note`, `.metric-untracked`,
+`.report-tablist.wrap`). Tests `test_mgmt_020_bdm_dashboards.py`, `managementBdm.test.ts`, `ManagementBdm.test.tsx`,
+`mgmt-020-bdm-dashboards.spec.ts`. QA `docs/quality/MGMT-020_EXPLORATORY_QA_2026-10-13.md`.
+- **New Feature ID authorized:** `mgmt-020`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-020.
