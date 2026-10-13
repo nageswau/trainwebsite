@@ -32,3 +32,10 @@ from shared-database test rows.
 
 - QA-01: the Calls definition now reads "Calls are logged by telecallers; counselors have no call log." (API test + component test).
 - QA-02: the footer count cell is `no-wrap` (component test). Both re-verified in the browser — see the re-check below.
+
+## Re-check after the fixes
+
+Containers rebuilt from the fixed code; the same pass at the three widths: the Calls note reads "Calls are logged by telecallers;
+counselors have no call log.", every footer count stays on one line, the page never scrolls sideways, no console error or failed call
+for partner / super admin / accountant (table cells all compute to the same navy, so no stray colour). `mgmt-018-counseling.spec.ts`
+4/4; with the `mgmt-020` and `mgmt-001` specs, 10 passed.
