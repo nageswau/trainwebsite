@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user, get_db
 from app.models import INVESTMENT_STATUSES, INVESTMENT_VERTICALS, User
 from app.schemas import (
+    AbroadRevenueOut,
     AccountsOut,
     DepartmentCreate,
     DepartmentOut,
@@ -31,7 +32,7 @@ from app.schemas import (
     SalaryMonthIn,
     SalaryMonthOut,
 )
-from app.services import accounts, investments, ledger, management_audit, management_expenses, management_it_revenue, management_metrics, salaries
+from app.services import accounts, investments, ledger, management_abroad_revenue, management_audit, management_expenses, management_it_revenue, management_metrics, salaries
 from app.services.bdm_activities import india_date
 from app.services.bdm_appointments import db_now
 from app.services.management_access import can_view_operational, require_management, require_partner_only, tiers
@@ -87,8 +88,16 @@ async def expense_dashboard(month: str | None = Query(None, pattern=MONTH), user
     return await management_expenses.dashboard(db, await _past_month(db, month))
 
 
+@router.get("/revenue/abroad", response_model=AbroadRevenueOut)
+async def abroad_revenue(month: str | None = Query(None, pattern=MONTH), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """mgmt-006 (§4, spec MR1-MR12): Abroad Education revenue, its breakdowns, expenses and gross contribution for `month` and its
+    financial year to date. Finance tier only (M13); university commission is in the figures for partners only (M3)."""
+    ledger.require_finance(user)
+    return await management_abroad_revenue.dashboard(db, user, await _past_month(db, month))
+
+
 async def _past_month(db: AsyncSession, month: str | None) -> date:
-    """ME9: the first day of `month` (YYYY-MM), default this IST month; January 2000 up to this month, else 422."""
+    """ME9 (mgmt-006 MR10): the first day of `month` (YYYY-MM), default this IST month; January 2000 up to this month, else 422."""
     this_month = india_date(await db_now(db)).replace(day=1)
     chosen = date(int(month[:4]), int(month[5:]), 1) if month else this_month
     if chosen < EARLIEST_MONTH:

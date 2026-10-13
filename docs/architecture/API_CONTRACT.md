@@ -3016,6 +3016,16 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /management/revenue/it` *(new)* | **Query:** `month`, `period`.<br>**`200`:** `{month, period, start, end, label, totals{revenue, costs, contribution, enrolments}, income[{key, label, amount}], costs[{key, label, amount}], courses[{program_id, title, enrolments, revenue, costs, contribution, batches[{batch_id, name, enrolments, revenue, costs}], unbatched{revenue, costs}}], unlinked{revenue, costs}, placement: null, not_counted[{currency, amount, count}]}`.<br>• Income keys `enrolment_fees`, `other_fees`, `manual`; cost keys `trainer`, `marketing`, `operational`.<br>• A course = Σ its batches + `unbatched`; Σ courses + `unlinked` = `totals` (IR5).<br>**`422`:** a malformed month or period, or a month after the current one |
 | `GET /management/revenue/it/payments` *(new)* | **Query:** `month`, `period`, exactly one of `program_id`, `batch_id`, `unlinked=true`; `limit` 1–100 (default 25), `offset` ≥ 0.<br>**`200`:** `{items[{id, entry_date, kind, amount, currency, installment_no, receipt_no, enrollment_code, course, batch}], total, limit, offset}`: counted IT payment lines, newest first. **No student names or emails** (Q-32 open).<br>**`422`:** not exactly one scope; "Choose a course from the list" / "Choose a batch from the list" for an unknown id; a bad month, period or paging value |
 
+## 12DL. Abroad Education revenue dashboard (`mgmt-006`) — addendum, 2026-10-13
+
+- **Basis:** `DEC-SCOPE-198` (MR1–MR12). Design spec `docs/superpowers/specs/2026-10-13-mgmt-006-abroad-revenue-design.md`.
+  No migration. Finance tier only (partner, accountant); `super_admin` `403` "Finance access required"; other roles `403` "Management
+  access required"; signed out `401`. Read-only: no write, lock or audit row.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/revenue/abroad` *(new)* | Query `month` (`YYYY-MM`; default the current IST month). `422` as `GET /management/expenses` (12DI). `200` `{month, year_start, year_label, commission_visible, kinds[{key, label, month, year}] (service_fees, other_payments, university_commission — partner only — and manual, source order), revenue{month, year}, agent_generated{month, year}, breakdowns[{key (country/university/intake/agency), label, rows[{label, month, year}], unattributed{month, year}}], expenses[{label, month, year}], expense_total, shared_expenses, contribution, not_counted[{currency, kind, amount, count}]}`. Every figure is rupees from `ledger.lines()` (vertical `abroad`); each breakdown's rows + unattributed = revenue; contribution = revenue − expense_total. For the accountant university commission is absent from every figure and `commission_visible` is `false` (M3) |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
