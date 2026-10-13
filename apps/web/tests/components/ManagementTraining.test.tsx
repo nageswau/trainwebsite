@@ -93,7 +93,8 @@ describe("mgmt-017 ManagementTraining", () => {
 
   it("names the period and the trainers, in a GET period form", () => {
     view();
-    expect(screen.getByText(new RegExp(`^${formatCalendarDate("2026-05-01")} to ${formatCalendarDate("2026-05-31")}`))).toHaveTextContent("2 trainers");
+    // QA17-01: the note counts every trainer account and names the inactive ones, so it agrees with the Trainers tile (active only).
+    expect(screen.getByText(new RegExp(`^${formatCalendarDate("2026-05-01")} to ${formatCalendarDate("2026-05-31")}`))).toHaveTextContent("2 trainer accounts, 1 inactive.");
     const form = screen.getByRole("form", { name: "Choose a period" });
     expect(form).toHaveAttribute("method", "get");
     expect(within(form).getByLabelText("From")).toHaveValue("2026-05-01");
@@ -105,7 +106,7 @@ describe("mgmt-017 ManagementTraining", () => {
     view({ data: dashboard({ trainers: [] }) });
     expect(screen.getByRole("status")).toHaveTextContent("No trainer accounts yet");
     expect(screen.queryByRole("table")).toBeNull();
-    expect(screen.getByText(/0 trainers\./)).toBeInTheDocument();
+    expect(screen.getByText(/0 trainer accounts\./)).toBeInTheDocument();
   });
 
   it("shows an error without figures", () => {

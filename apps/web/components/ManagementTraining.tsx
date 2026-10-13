@@ -25,6 +25,7 @@ function cell(key: TrainerFigureKey, row: TrainerRow): string {
 // metrics. Server-rendered; a GET form, so refresh, back and shared links keep the period.
 export default function ManagementTraining({ data, error, query }: { data: TrainingDashboard | null; error: string; query: TrainingQuery }) {
   const period = { from: data?.from ?? query.from, to: data?.to ?? query.to };
+  const inactive = data?.trainers.filter((t) => !t.active).length ?? 0;
   return (
     <div className="action-card">
       {error && <p className="form-error" role="alert">{error}</p>}
@@ -43,8 +44,8 @@ export default function ManagementTraining({ data, error, query }: { data: Train
       {data && (
         <>
           <p className="muted">
-            {formatCalendarDate(data.from)} to {formatCalendarDate(data.to)}, India time (IST). {plural(data.trainers.length, "trainer")}. Every figure is counted
-            live from the EduSphere records.
+            {formatCalendarDate(data.from)} to {formatCalendarDate(data.to)}, India time (IST). {plural(data.trainers.length, "trainer account")}
+            {inactive > 0 && `, ${inactive} inactive`}. Every figure is counted live from the EduSphere records.
           </p>
           <section>
             <h3>Training KPIs</h3>
