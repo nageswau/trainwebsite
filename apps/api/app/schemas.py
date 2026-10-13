@@ -11610,3 +11610,42 @@ class MyTaskPage(BaseModel):
 
 class MyTaskStatusIn(BaseModel):
     status: Literal["open", "in_progress", "completed"]
+
+
+# mgmt-006 (spec MR1-MR12): the §4 Abroad Education revenue dashboard -- revenue by kind and by country / university / intake / agency
+# (each with its Unattributed figure), the Abroad expenses and the gross contribution, for a month and its financial year to date.
+# Rupees only; `ExpenseTotals` is the {month, year} pair and `LedgerNotCounted` the per-currency note.
+class AbroadRevenueKind(BaseModel):
+    key: str
+    label: str
+    month: Decimal
+    year: Decimal
+
+
+class AbroadRevenueRow(BaseModel):
+    label: str
+    month: Decimal
+    year: Decimal
+
+
+class AbroadRevenueBreakdown(BaseModel):
+    key: str
+    label: str
+    rows: list[AbroadRevenueRow]
+    unattributed: ExpenseTotals
+
+
+class AbroadRevenueOut(BaseModel):
+    month: str
+    year_start: date
+    year_label: str
+    commission_visible: bool  # MR7: false for the accountant, whose figures leave university commission out
+    kinds: list[AbroadRevenueKind]
+    revenue: ExpenseTotals
+    agent_generated: ExpenseTotals  # MR4: the part of revenue attributed to an agency
+    breakdowns: list[AbroadRevenueBreakdown]
+    expenses: list[AbroadRevenueRow]
+    expense_total: ExpenseTotals
+    shared_expenses: ExpenseTotals  # MR6: company-wide costs, not allocated to Abroad here
+    contribution: ExpenseTotals
+    not_counted: list[LedgerNotCounted]

@@ -36,6 +36,12 @@ def can_view_partner_only(user: User) -> bool:
     return user.role in PARTNER_ONLY_ROLES
 
 
+def can_view_university_commission(user: User) -> bool:
+    """mgmt-006 (M3, U2 as amended; MG11): on management pages university commission is the partners'; the accountant never sees it.
+    `partnership_access.COMMISSION_ROLES` stays as it is, so partners gain no partnership-module commission routes (MG2)."""
+    return user.role in PARTNER_ONLY_ROLES
+
+
 def tiers(user: User) -> dict[str, bool]:
     return {"operational": can_view_operational(user), "finance": can_view_finance(user), "partner_only": can_view_partner_only(user)}
 
