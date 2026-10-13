@@ -82,21 +82,22 @@ async def dashboard(db: AsyncSession, bdm_type: str, start: date, end: date, now
     """The type's figures for the inclusive IST dates `start`..`end`. Every BDM of the type, active or not (BD1)."""
     team = select(BdmProfile.user_id).where(BdmProfile.bdm_type == bdm_type)
     rows = FIGURES[bdm_type]
-    sources = [source for *_, source in rows]
     members = await team_members(db, team)
     performance = total((await figures(db, team, start, end)).values(), bdm_type)
     master: dict = {}
-    if any(isinstance(s, tuple) and s[0] == "master" for s in sources):
+    if any(isinstance(source, tuple) and source[0] == "master" for *_, source in rows):
         chain = next(t for t in await hierarchy(db, team) if t["type"] == bdm_type)
         master = {step["key"]: value for step, value in zip(chain["chain"], chain["totals"], strict=True)}
     lo, hi = _instants(start, end)
     built = {key: source(team, lo, hi) for key, *_, source in rows if callable(source)}
-    counted = dict(zip(built, (await db.execute(select(*built.values()))).one(), strict=True)) if built else {}
+    counted = dict(zip(built, (await db.execute(select(*built.values()))).one(), strict=True))  # every type has at least one
 
     def value(key: str, source):
+        if source is None:  # not tracked
+            return None
         if isinstance(source, tuple):
             return (performance if source[0] == "performance" else master)[source[1]]
-        return counted.get(key)
+        return counted[key]
 
     who = f"{bdm_type.capitalize()} BDMs"
     return {
