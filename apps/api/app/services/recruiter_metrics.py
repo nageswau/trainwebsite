@@ -362,6 +362,15 @@ def _first(entity, actor, at, *where, order):
     return select(ranked.c.entity, ranked.c.actor, ranked.c.at).where(ranked.c.rank == 1).subquery()
 
 
+def first_past_interested():
+    """B4: each company's first move past "Interested" with its actor and time (entity, actor, at); mgmt-025 RC5 counts it company-wide."""
+    return _first(
+        CompanyStageHistory.company_id, CompanyStageHistory.actor_user_id, CompanyStageHistory.created_at,
+        CompanyStageHistory.from_stage.not_in(PAST_INTERESTED), CompanyStageHistory.to_stage.in_(PAST_INTERESTED),
+        order=CompanyStageHistory.position,
+    )
+
+
 def _latest_actor(event_model, parent_id, *where):
     """The actor of a row's latest matching event (by `position`), correlated to the parent row."""
     return select(event_model.actor_user_id).where(parent_id, *where).order_by(event_model.position.desc()).limit(1).scalar_subquery()
@@ -390,11 +399,7 @@ async def by_recruiter(db: AsyncSession, user: User, recruiter_id: UUID | None, 
         select(RecruiterMessage.company_id, RecruiterMessage.sender_user_id).where(RecruiterMessage.company_id.is_not(None), *during(RecruiterMessage.sent_at)),
         select(RecruiterMeeting.company_id, RecruiterMeeting.completed_by_user_id).where(RecruiterMeeting.status == "completed", *during(RecruiterMeeting.completed_at)),
     ).subquery()
-    crossed = _first(
-        CompanyStageHistory.company_id, CompanyStageHistory.actor_user_id, CompanyStageHistory.created_at,
-        CompanyStageHistory.from_stage.not_in(PAST_INTERESTED), CompanyStageHistory.to_stage.in_(PAST_INTERESTED),
-        order=CompanyStageHistory.position,
-    )
+    crossed = first_past_interested()
     signed = _first(
         RecruiterContractEvent.contract_id, RecruiterContractEvent.actor_user_id, RecruiterContractEvent.created_at,
         RecruiterContractEvent.to_status.in_(RECRUITER_CONTRACT_EXPIRING), order=RecruiterContractEvent.position,
@@ -469,10 +474,13 @@ FINISHED_APPLICATIONS = ("joined", "rejected", "withdrawn")  # M4: a candidate i
 TOP = 10  # M8, M9
 
 
-async def management(db: AsyncSession, user: User, date_from: date | None, date_to: date | None, now: datetime) -> dict:
+async def management(
+    db: AsyncSession, user: User, date_from: date | None, date_to: date | None, now: datetime, *, roles: tuple[str, ...] = PERFORMANCE_ROLES
+) -> dict:
     """M1-M9: who and whose figures as rec-033 (MG1/MG2: PF1 roles, PF2 owners, Unassigned included). M1-M4 and M9 are now; M5-M8 count
-    the period (MG3). Three statements after the team lookup: the seven totals, the top companies, the top job categories."""
-    ids = [person.id for person in await _people(db, user, None)]
+    the period (MG3). Three statements after the team lookup: the seven totals, the top companies, the top job categories.
+    `roles` is MG1's unless a caller with its own gate reuses the figures (mgmt-025 RC2: the Command Center's operational tier)."""
+    ids = [person.id for person in await _people(db, user, None, roles)]
     first, last, start, end = _period(date_from, date_to, now)
 
     def in_scope(owner) -> ColumnElement[bool]:
