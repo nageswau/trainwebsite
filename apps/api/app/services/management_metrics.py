@@ -2,9 +2,11 @@
 copies. The business snapshot S1-S15 (spec MS1-MS17) is one SELECT of fifteen scalar subqueries, so the query count is fixed at one
 and every figure is read from the same moment."""
 
-from datetime import date
+from dataclasses import dataclass
+from datetime import date, datetime, time, timedelta
+from uuid import UUID
 
-from sqlalchemy import ScalarSelect, and_, distinct, exists, func, or_, select, union
+from sqlalchemy import ColumnElement, ScalarSelect, and_, distinct, exists, func, or_, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
@@ -12,20 +14,29 @@ from app.models import (
     AgentOrg,
     AgentOrgMember,
     AgentStudent,
+    ApplicationDeposit,
+    ApplicationStatusHistory,
     Batch,
     Candidate,
     Company,
+    Country,
+    DocumentRequest,
     Enrollment,
     OverseasApplication,
+    OverseasCourse,
     RecruiterProfile,
     School,
     SchoolStudent,
+    StudentDocument,
     University,
     User,
+    VisaCase,
 )
 from app.partnership_stages import GROUPS
 from app.recruiter_stages import ORDER as COMPANY_STAGES
-from app.services.agent_applications import WITHDRAWN
+from app.services import application_filters
+from app.services.agent_applications import OFFER_COUNTED_STATUSES, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, stage_label
+from app.services.bdm_appointments import IST
 
 # (Appendix B id, response key, the source's wording), in source order (EVID-017 §3).
 SNAPSHOT: tuple[tuple[str, str, str], ...] = (
@@ -124,3 +135,135 @@ async def snapshot(db: AsyncSession, today: date) -> dict[str, int]:
     }
     row = (await db.execute(select(*(query.label(key) for key, query in figures.items())))).one()
     return {key: int(row._mapping[key]) for _, key, _ in SNAPSHOT}
+
+
+# --- mgmt-024 (§20, Appendix B "Funnels", spec MF1-MF18): the application funnel --------------------------------------------------
+
+# (key, the source's wording, tracked), in source order (EVID-017 §20). M9: three stages have no data and say so, never 0.
+FUNNEL: tuple[tuple[str, str, bool], ...] = (
+    ("created", "Applications Created", True),
+    ("documents_complete", "Documents Complete", True),
+    ("submitted", "Submitted", True),
+    ("under_review", "Under Review", False),
+    ("offer", "Offer", True),
+    ("accepted", "Accepted", False),
+    ("deposit", "Deposit", True),
+    ("cas_coe", "CAS/COE", False),
+    ("visa", "Visa", True),
+    ("visa_approved", "Visa Approved", True),
+    ("enrollment", "Enrollment", True),
+)
+FUNNEL_STAFF_ROLES = ("super_admin", "overseas_admin", "counselor")  # MF13: the EduSphere staff who move an application on
+DEPOSIT_REACHED = ("paid", "remitted")  # MF7: Appendix B literally; a refunded deposit is not counted
+
+
+@dataclass(frozen=True)
+class ApplicationFunnelFilters:
+    """MF2/MF12: every filter is optional and they AND together. `agency` / `counselor` are an id or "none" (application_filters)."""
+
+    date_from: date | None = None
+    date_to: date | None = None
+    agency: UUID | str | None = None
+    counselor: UUID | str | None = None
+    country: UUID | None = None
+    university: UUID | None = None
+    course: UUID | None = None
+    intake: str | None = None
+    staff: UUID | None = None
+    status: str | None = None
+
+
+def _of_application(model) -> ColumnElement[bool]:
+    return model.application_id == OverseasApplication.id
+
+
+# MF4: the application's own documents are all verified (at least one), and its agency student has no open document request.
+_documents_complete = and_(
+    exists().where(_of_application(StudentDocument)),
+    ~exists().where(_of_application(StudentDocument), StudentDocument.verification_status != "verified"),
+    ~exists().where(DocumentRequest.agent_student_id == OverseasApplication.agent_student_id, DocumentRequest.status == "open"),
+)
+# The computed stages and the withdrawn count (MF11), each a predicate on one application; None = every application.
+FUNNEL_COUNTS = {
+    "created": None,
+    "documents_complete": _documents_complete,
+    "submitted": OverseasApplication.submitted_on.is_not(None),  # MF5
+    "offer": or_(OverseasApplication.status.in_(OFFER_COUNTED_STATUSES), OverseasApplication.offer_type.is_not(None)),  # MF6: O5
+    "deposit": exists().where(_of_application(ApplicationDeposit), ApplicationDeposit.status.in_(DEPOSIT_REACHED)),
+    "visa": exists().where(_of_application(VisaCase)),  # MF8
+    "visa_approved": exists().where(_of_application(VisaCase), VisaCase.decision == "approved"),
+    "enrollment": OverseasApplication.status == "enrolled",  # MF9
+    "withdrawn": OverseasApplication.status == WITHDRAWN,
+}
+
+
+def _ist_start(day: date) -> datetime:
+    return datetime.combine(day, time.min, IST)
+
+
+def _funnel_where(filters: ApplicationFunnelFilters) -> list:
+    where = []
+    if filters.date_from:
+        where.append(OverseasApplication.created_at >= _ist_start(filters.date_from))
+    if filters.date_to:
+        where.append(OverseasApplication.created_at < _ist_start(filters.date_to + timedelta(days=1)))
+    if filters.country:
+        where.append(OverseasApplication.university_id.in_(select(University.id).where(University.country_id == filters.country)))
+    if filters.university:
+        where.append(OverseasApplication.university_id == filters.university)
+    if filters.course:
+        where.append(OverseasApplication.course_id == filters.course)
+    if filters.intake:
+        where.append(OverseasApplication.intake == filters.intake)
+    if filters.staff:
+        where.append(exists().where(_of_application(ApplicationStatusHistory), ApplicationStatusHistory.changed_by_id == filters.staff))
+    if filters.status:
+        where.append(OverseasApplication.status == filters.status)
+    return where
+
+
+async def applications(db: AsyncSession, filters: ApplicationFunnelFilters) -> dict[str, int]:
+    """`{key: count}` of `FUNNEL_COUNTS` over the filtered applications -- one SELECT (MF15)."""
+    counts = [(func.count() if rule is None else func.count().filter(rule)).label(key) for key, rule in FUNNEL_COUNTS.items()]
+    stmt = select(*counts).select_from(OverseasApplication).where(*_funnel_where(filters))
+    stmt = application_filters.apply(stmt, application_filters.ApplicationFilters(filters.agency, filters.counselor))
+    row = (await db.execute(stmt)).one()
+    return {key: int(row._mapping[key]) for key in FUNNEL_COUNTS}
+
+
+def _choices(rows, *, inactive: bool = False) -> list[dict]:
+    """(id, label[, active]) rows as choices; with `inactive`, a deactivated person is labelled so (past work still names them)."""
+    return [{"value": str(row[0]), "label": row[1] if not inactive or row[2] else f"{row[1]} (inactive)"} for row in rows]
+
+
+def _status_order(status: str) -> tuple[int, str]:
+    """The stage sequence first, then withdrawn, then any legacy value alphabetically."""
+    if status in OVERSEAS_APPLICATION_STAGES:
+        return (OVERSEAS_APPLICATION_STAGES.index(status), "")
+    return (len(OVERSEAS_APPLICATION_STAGES) + (status != WITHDRAWN), status)
+
+
+async def application_options(db: AsyncSession) -> dict[str, list[dict]]:
+    """MF14: the dropdown choices -- only values present on applications (staff: those in the status history), sorted by label."""
+    applied_to = select(OverseasApplication.university_id)
+    queries = {
+        "agencies": select(AgentOrg.id, AgentOrg.name)
+        .join(AgentOrgMember, AgentOrgMember.org_id == AgentOrg.id)
+        .where(AgentOrgMember.user_id.in_(select(OverseasApplication.agent_id)))
+        .distinct()
+        .order_by(AgentOrg.name),
+        "counselors": select(User.id, User.full_name, User.active).where(User.id.in_(select(OverseasApplication.counselor_id))).order_by(User.full_name),
+        "countries": select(Country.id, Country.name).where(Country.id.in_(select(University.country_id).where(University.id.in_(applied_to)))).order_by(Country.name),
+        "universities": select(University.id, University.name).where(University.id.in_(applied_to)).order_by(University.name),
+        "courses": select(OverseasCourse.id, OverseasCourse.title + " — " + University.name)
+        .join(University, University.id == OverseasCourse.university_id)
+        .where(OverseasCourse.id.in_(select(OverseasApplication.course_id)))
+        .order_by(OverseasCourse.title, University.name),
+        "staff": select(User.id, User.full_name, User.active).where(User.role.in_(FUNNEL_STAFF_ROLES), User.id.in_(select(ApplicationStatusHistory.changed_by_id))).order_by(User.full_name),
+    }
+    options = {key: _choices((await db.execute(query)).all(), inactive=key in {"counselors", "staff"}) for key, query in queries.items()}
+    intakes = (await db.scalars(select(OverseasApplication.intake).distinct().order_by(OverseasApplication.intake))).all()
+    statuses = sorted((await db.scalars(select(OverseasApplication.status).distinct())).all(), key=_status_order)
+    options["intakes"] = [{"value": intake, "label": intake} for intake in intakes]
+    options["statuses"] = [{"value": status, "label": stage_label(status)} for status in statuses]
+    return options

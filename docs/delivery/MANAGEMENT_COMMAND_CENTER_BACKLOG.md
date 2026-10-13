@@ -948,6 +948,8 @@ Common conventions for every item:
 - **Complexity:** small · **Risk:** low
 
 ### mgmt-024 — Applications funnel dashboard
+- **Status (2026-10-13):** **IN REVIEW** on `feature/mgmt-024`. `DEC-SCOPE-200` (MF1–MF18 recommended defaults, UNVERIFIED; Documents
+  Complete derived per MF4, Staff per MF13). No migration; API §12DN; RBAC §2.125. QA evidence `docs/quality/MGMT-024_EXPLORATORY_QA_2026-10-13.md`.
 - **Business requirement:** §20: 11-step funnel; 8 filters (agent, counselor, country, university, course, intake, staff, status) (M9).
 - **Existing behavior:** application lists per role; agency reports.
 - **Expected behavior:** the funnel over all overseas applications (student, school and agency). The mapped stages are computed;
