@@ -778,6 +778,10 @@ Common conventions for every item:
 - **Complexity:** large · **Risk:** medium
 
 ### mgmt-017 — Training & trainer dashboard
+- **Status (2026-10-13):** **IN REVIEW** on `feature/mgmt-017`. `DEC-SCOPE-208` (TR1–TR16 recommended defaults, UNVERIFIED; TR10/TR12/TR15
+  answer Q-19: feedback = `CourseFeedback` average per trainer's batches; placements reach a trainer through any of their batches'
+  students; a batch is credited to `Batch.trainer_id` only). No migration; API §12DV; RBAC §2.133. QA evidence
+  `docs/quality/MGMT-017_EXPLORATORY_QA_2026-10-13.md`.
 - **Business requirement:** §12: 11 training KPIs + 7 trainer metrics.
 - **Existing behavior:** RPT-001 IT progress; batch data.
 - **Expected behavior:**

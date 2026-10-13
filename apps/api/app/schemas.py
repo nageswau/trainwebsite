@@ -10917,6 +10917,44 @@ class ManagementCounselingOut(BaseModel):
     counselors: list[ManagementCounselorRow]
 
 
+# mgmt-017 (spec TR1-TR16): the training dashboard. A share or average is null when there is nothing to divide (never a fabricated 0).
+class ManagementTrainingKpi(BaseModel):
+    key: str
+    label: str
+    definition: str
+    value: int | float | None
+
+
+class ManagementTrainingFigure(BaseModel):
+    key: str
+    label: str
+    definition: str
+
+
+class ManagementTrainerRow(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+    batches: int
+    students_trained: int
+    attendance_pct: float | None
+    completion_pct: float | None
+    feedback_avg: float | None
+    feedback_count: int
+    assessment_pass_pct: float | None
+    batch_performance: float | None
+    placements: int
+
+
+class ManagementTrainingOut(BaseModel):
+    from_: date = Field(serialization_alias="from")
+    to: date
+    as_of: datetime
+    kpis: list[ManagementTrainingKpi]
+    trainer_figures: list[ManagementTrainingFigure]
+    trainers: list[ManagementTrainerRow]
+
+
 # mgmt-021 (spec AN1-AN14): the agent network dashboard. Money is a decimal string, or null unless `money_visible` (the finance tier, AN9).
 class ManagementAgentFigure(BaseModel):
     key: str
