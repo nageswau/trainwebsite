@@ -7740,6 +7740,49 @@ page `/management/expenses`, `lib/management.ts` ("Expenses & rent" live), `glob
 - **QA:** `docs/quality/MGMT-013_EXPLORATORY_QA_2026-10-12.md`.
 - **New Feature ID authorized:** `mgmt-013`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-013.
 
+### DEC-SCOPE-197 — IT Training revenue dashboard: per course and batch, costs, payments drill-down (`mgmt-007`)
+
+**Evidence:**
+- `EVID-017` §5 (lines 201–243, `DERIVED_BLUEPRINT`): revenue per course (5 courses + other); course-wise, batch-wise and student-wise
+  payments; trainer, marketing and operational cost; placement revenue if applicable; a Course | Students | Revenue table.
+- `DEC-SCOPE-186` M4/M13 (`EXPLICIT_APPROVAL`): the ledger is the money source; the finance tier sees finance dashboards.
+- mgmt-004 ML6 (`program_id` / `batch_id` tags on manual entries), mgmt-005 MA1–MA11 (`ledger.lines()`), mgmt-010 ME1/ME4 (expense
+  heads, Indian financial year). Backlog Appendix B R1–R3, Q-11.
+
+**Status:** IR1–IR12 are in review on `feature/mgmt-007` (2026-10-13).
+- Every IR answer is a **recommended default, `UNVERIFIED`**, taken on the owner's instruction to proceed with recommended answers.
+- IR4/IR7 answer Q-11 as an interim default: costs per course or batch are ledger expenses tagged with the course or batch.
+- Q-32 (student PII in drill-downs) stays open, so the payment list carries no names.
+
+**Numbering (provisional):** no migration; API §12DK; RBAC §2.122. Spec
+`docs/superpowers/specs/2026-10-13-mgmt-007-it-revenue-dashboard-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| IR1 | Period | `month` (`YYYY-MM`, IST, default this month; January 2000 to this month) and `period` = `month` or `year` (the Indian financial year to the end of `month`) |
+| IR2 | Lines | Counted `ledger.lines()` rows of the IT vertical: approved manual entries (reversals negative) + rupee automatic lines. A line tagged with a course but booked to another vertical is not IT money |
+| IR3 | Revenue kinds | Enrolment fees (`enrollment_fee`, legacy `enrollment`); Other IT fees (every other IT payment); Manual income |
+| IR4 | Attribution (Q-11) | Payment → the enrolment it references → batch → course; manual entry → its batch, else its course; anything else is "Not linked to a course" |
+| IR5 | Reconciliation | Course = Σ its batches + its course-wide entries; courses + Not linked = the IT totals |
+| IR6 | Students | Enrolments made in the period (`enrolled_on`, any status), shown as "New enrolments" |
+| IR7 | Costs (Q-11) | IT expenses by the mgmt-010 heads: Trainer, Marketing, Operational (everything else) |
+| IR8 | Contribution | Revenue − IT costs; shared costs not allocated (Q-04, mgmt-009) |
+| IR9 | Placement revenue | Not tracked: rec-031 invoices are per job, not per candidate |
+| IR10 | Rows | A course or batch with revenue, costs or enrolments in the period; largest revenue first |
+| IR11 | Payments drill-down | `GET /management/revenue/it/payments` with exactly one of course, batch or unlinked; counted IT payments, newest first, paged; enrolment code, course, batch, kind, instalment, receipt no., amount; **no names** |
+| IR12 | Other currencies | Not counted; summed per currency in `not_counted` |
+
+**Consequences:**
+- **Data:** none (read-only, no migration).
+- **Backend:** new `services/management_it_revenue.py`; `schemas.py`; `api/management.py` (two routes; the expense route's month check
+  moves into the shared `_past_month`).
+- **Web:** `lib/managementItRevenue.ts`, `lib/management.ts` (the live entry); `components/ManagementItRevenue.tsx`;
+  `app/management/revenue/it/page.tsx`; `globals.css`.
+- **Tests:** backend `test_mgmt_007_it_revenue.py`; web `managementItRevenue.test.ts`, `ManagementItRevenue.test.tsx`; e2e
+  `mgmt-007-it-revenue.spec.ts`.
+- **QA:** `docs/quality/MGMT-007_EXPLORATORY_QA_2026-10-13.md`.
+- **New Feature ID authorized:** `mgmt-007`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-007.
+
 ### DEC-SCOPE-198 — Abroad Education revenue dashboard: kinds, attributed breakdowns, contribution (`mgmt-006`)
 
 **Evidence:** `EVID-017` §4 "Revenue must be separated" / "A. Abroad Education Revenue" (student service fees, application-related
@@ -7750,7 +7793,7 @@ contribution — `DERIVED_BLUEPRINT`). `DEC-SCOPE-186` M3/M4/M13 and MG11 (`EXPL
 **Status:** MR1–MR12 in review on `feature/mgmt-006` (2026-10-13). Every MR answer is a **recommended default, `UNVERIFIED`**, taken on
 the owner's instruction to proceed with recommended answers. They answer Q-09 and Q-10, and the Q-04 shared-cost point for this page only.
 
-**Numbering (provisional):** no migration; API §12DL; RBAC §2.123 (after mgmt-007's provisional `DEC-SCOPE-197` / §12DK / §2.122).
+**Numbering (provisional):** no migration; API §12DL; RBAC §2.123 (after mgmt-007's `DEC-SCOPE-197` / §12DK / §2.122).
 Spec `docs/superpowers/specs/2026-10-13-mgmt-006-abroad-revenue-design.md`.
 
 | # | Point | Answer |

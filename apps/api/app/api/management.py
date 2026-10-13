@@ -2,6 +2,7 @@
 `services/management_access` for its tier first (M13)."""
 
 from datetime import date
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -23,13 +24,15 @@ from app.schemas import (
     InvestmentOut,
     InvestmentPageOut,
     InvestmentUpdate,
+    ItRevenueOut,
+    ItRevenuePaymentPage,
     ManagementActivityOut,
     ManagementMeOut,
     ManagementSnapshotOut,
     SalaryMonthIn,
     SalaryMonthOut,
 )
-from app.services import accounts, investments, ledger, management_abroad_revenue, management_audit, management_expenses, management_metrics, salaries
+from app.services import accounts, investments, ledger, management_abroad_revenue, management_audit, management_expenses, management_it_revenue, management_metrics, salaries
 from app.services.bdm_activities import india_date
 from app.services.bdm_appointments import db_now
 from app.services.management_access import can_view_operational, require_management, require_partner_only, tiers
@@ -94,7 +97,7 @@ async def abroad_revenue(month: str | None = Query(None, pattern=MONTH), user: U
 
 
 async def _past_month(db: AsyncSession, month: str | None) -> date:
-    """mgmt-010 ME9 / mgmt-006 MR10: the first day of `month` (default this IST month), 2000-01 up to this month, else 422."""
+    """ME9 (mgmt-006 MR10): the first day of `month` (YYYY-MM), default this IST month; January 2000 up to this month, else 422."""
     this_month = india_date(await db_now(db)).replace(day=1)
     chosen = date(int(month[:4]), int(month[5:]), 1) if month else this_month
     if chosen < EARLIEST_MONTH:
@@ -102,6 +105,34 @@ async def _past_month(db: AsyncSession, month: str | None) -> date:
     if chosen > this_month:
         raise HTTPException(422, "Choose this month or an earlier one")
     return chosen
+
+
+@router.get("/revenue/it", response_model=ItRevenueOut)
+async def it_revenue(
+    month: str | None = Query(None, pattern=MONTH), period: Literal["month", "year"] = "month", user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """mgmt-007 (§5, spec IR1-IR12): IT Training revenue, costs and enrolments per course and batch for `month` or its financial year
+    to date. Finance tier only (partner, accountant); super_admin gets "Finance access required" (M13)."""
+    ledger.require_finance(user)
+    return await management_it_revenue.dashboard(db, await _past_month(db, month), period)
+
+
+@router.get("/revenue/it/payments", response_model=ItRevenuePaymentPage)
+async def it_revenue_payments(
+    month: str | None = Query(None, pattern=MONTH),
+    period: Literal["month", "year"] = "month",
+    program_id: UUID | None = None,
+    batch_id: UUID | None = None,
+    unlinked: bool = False,
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """mgmt-007 (IR11): the IT payments behind one course, one batch or the "Not linked to a course" row, newest first. No names (Q-32)."""
+    ledger.require_finance(user)
+    chosen = await _past_month(db, month)
+    return await management_it_revenue.payments(db, chosen, period, program_id=program_id, batch_id=batch_id, unlinked=unlinked, limit=limit, offset=offset)
 
 
 def _partner(user: User) -> User:

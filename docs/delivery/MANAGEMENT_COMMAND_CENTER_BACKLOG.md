@@ -457,6 +457,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-007 — IT Training revenue dashboard
+- **Status (2026-10-13):** **IN REVIEW** on `feature/mgmt-007`. `DEC-SCOPE-197` (IR1–IR12 recommended defaults, UNVERIFIED; answers
+  Q-11 as an interim default: costs are ledger expenses tagged with the course or batch; Q-32 open, so no names in the payment list).
+  No migration; API §12DK; RBAC §2.122. QA evidence `docs/quality/MGMT-007_EXPLORATORY_QA_2026-10-13.md`.
 - **Business requirement:** §5: revenue per course (example: 5 courses + other), course-wise, batch-wise, student-wise payments,
   trainer/marketing/operational cost, placement revenue if applicable; the example table course/students/revenue.
 - **Existing behavior:** RPT-001 shows the IT funnel and progress, with no revenue per course.

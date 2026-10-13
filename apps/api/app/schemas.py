@@ -11649,3 +11649,70 @@ class AbroadRevenueOut(BaseModel):
     shared_expenses: ExpenseTotals  # MR6: company-wide costs, not allocated to Abroad here
     contribution: ExpenseTotals
     not_counted: list[LedgerNotCounted]
+
+
+# --- mgmt-007: IT Training revenue dashboard (spec IR1-IR12) ------------------------------------------------------------------
+class ItRevenueMoney(BaseModel):
+    revenue: Decimal
+    costs: Decimal
+
+
+class ItRevenueBatch(ItRevenueMoney):
+    batch_id: UUID
+    name: str
+    enrolments: int
+
+
+class ItRevenueCourse(ItRevenueMoney):
+    program_id: UUID
+    title: str
+    enrolments: int
+    contribution: Decimal
+    batches: list[ItRevenueBatch]
+    unbatched: ItRevenueMoney  # IR5: entries tagged with the course but no batch
+
+
+class ItRevenueTotals(ItRevenueMoney):
+    contribution: Decimal
+    enrolments: int
+
+
+class ItRevenueLine(BaseModel):
+    key: str
+    label: str
+    amount: Decimal
+
+
+class ItRevenueOut(BaseModel):
+    month: str
+    period: Literal["month", "year"]
+    start: date
+    end: date
+    label: str
+    totals: ItRevenueTotals
+    income: list[ItRevenueLine]
+    costs: list[ItRevenueLine]
+    courses: list[ItRevenueCourse]
+    unlinked: ItRevenueMoney
+    placement: None  # IR9: not tracked
+    not_counted: list[ExpenseNotCounted]
+
+
+class ItRevenuePayment(BaseModel):
+    id: UUID
+    entry_date: date
+    kind: str
+    amount: Decimal
+    currency: str
+    installment_no: int | None
+    receipt_no: str | None
+    enrollment_code: str | None
+    course: str | None
+    batch: str | None
+
+
+class ItRevenuePaymentPage(BaseModel):
+    items: list[ItRevenuePayment]
+    total: int
+    limit: int
+    offset: int
