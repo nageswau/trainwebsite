@@ -2142,6 +2142,18 @@ Counts only, no personal data; nothing else changes.
 - Aggregates only; no lead names or contact details. Budget saves audit as `mgmt.marketing_budget` (finance tier: left out of the
   super admin's activity list and `/admin/audit`), channel names only, no amounts.
 
+### 2.133 Training & trainer dashboard *(added 2026-10-13 — `DEC-SCOPE-208`, `mgmt-017`)*
+
+| Role | Read `GET /management/training`, page `/management/training` |
+|---|---|
+| `partner` | yes; "Training" (Students) and "Trainers" (People, `#trainers`) entries |
+| `super_admin` | yes (operational tier, M13; no money in this dashboard); keeps the super admin sidebar ("Management training figures") |
+| `accountant` | `403` "Operational access required"; no entry |
+| every other role (incl. `trainer`, `it_admin`) | `403`; signed out `401` (the page redirects to `/admin/login?next=`) |
+
+- Trainer names and per-trainer counts/shares (staff performance, management only); no student personal data. No audit row (no write).
+  The trainer, IT admin and placement routes and their scopes are unchanged.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

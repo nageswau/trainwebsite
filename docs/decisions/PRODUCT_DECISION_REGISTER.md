@@ -8149,3 +8149,41 @@ the owner's instruction to proceed with recommended answers. MK1/MK2/MK8 answer 
 `/management/marketing`, `lib/management.ts`. Tests `test_mgmt_012_marketing.py`, `test_mgmt_012_migration.py`, `marketing.test.ts`,
 `Marketing.test.tsx`, `mgmt-012-marketing.spec.ts`. QA `docs/quality/MGMT-012_EXPLORATORY_QA_2026-10-13.md`.
 - **New Feature ID authorized:** `mgmt-012`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-012.
+
+### DEC-SCOPE-208 — Training & trainer dashboard: the §12 KPIs and trainer metrics, Q-19 (`mgmt-017`)
+
+**Evidence:** `EVID-017` §12 "TRAINING & TRAINERS" (11 Training KPIs, 7 Trainer-performance metrics, lines 469–511 —
+`DERIVED_BLUEPRINT`). `DEC-SCOPE-186` M1/M13 (operational tier) — `EXPLICIT_APPROVAL`. mgmt-003 `DEC-SCOPE-188` (S11 Trainers); the
+certificate rule in `api/workflows.py` (attended statuses, progress 100, best graded attempt ≥ pass mark); rec-023 (joined offer).
+
+**Status:** TR1–TR16 in review on `feature/mgmt-017` (2026-10-13). Every TR answer is a **recommended default, `UNVERIFIED`**, taken on
+the owner's instruction to proceed with recommended answers. TR10, TR12 and TR15 answer Q-19.
+
+**Numbering (provisional):** no migration; API §12DV; RBAC §2.133 (after mgmt-012's `DEC-SCOPE-207` / §12DU / §2.132).
+Spec `docs/superpowers/specs/2026-10-13-mgmt-017-training-dashboard-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| TR1 | Period | `from` / `to`, inclusive IST dates, default this IST month; start after end or > 366 days → 422 (bdm-024 P2) |
+| TR2 | Batches in the period | Not `cancelled`, run (`start_date`..`end_date`) overlapping the period |
+| TR3 | Counted enrolment | Status not `pending_consent`, `rejected`, `withdrawn` or `dropped` (mgmt-003 S3 unchanged) |
+| TR4 | Total courses | Active programs (`Program.active`), now |
+| TR5 | Active batches | Batches with status `active`, now |
+| TR6 | Students | Distinct students with a counted enrolment in a period batch |
+| TR7 | Trainers | Active `trainer` users, now (= S11) |
+| TR8 | Attendance | Present/late/excused ÷ marked rows of period batches dated in the period, one decimal; `null` when nothing was marked |
+| TR9 | Completion | Counted enrolments in period batches at 100% progress ÷ counted enrolments, one decimal; `null` with none |
+| TR10 | Dropouts | Enrolments in period batches with status `withdrawn` or `dropped` (an admin's enrolment edit is the only writer) |
+| TR11 | Assessments | Non-draft assessments scheduled in the period |
+| TR12 | Certifications | Certificates issued in the period |
+| TR13 | Placement-ready | Active users whose placement profile is **available** and not withdrawn, now (`readiness_status` is free text, not used) |
+| TR14 | Placements | Distinct students with a counted enrolment in a non-cancelled batch whose offer was **joined** in the period (rec-023 rule) |
+| TR15 | Trainer table | Every `trainer`, active or not; a batch is credited to `Batch.trainer_id` only (a LiveSession by another trainer does not split it). Students trained, attendance, completion, feedback (average `CourseFeedback` rating /5 + count), assessment results (pass rate of student-assessment pairs by best graded attempt), batch performance (average progress), placement outcomes (TR14 over any of their batches) |
+| TR16 | Access, shape, nav | Operational tier (partner, super_admin); accountant 403 "Operational access required"; others 403; signed out 401. `kpis`, `trainer_figures`, `trainers`. Command Center "Training" (Students) and "Trainers" (People, `#trainers`) live; super admin sidebar "Management training figures". Read-only; no money |
+
+**Consequences:** `services/management_training.py` (`KPIS`, `TRAINER_FIGURES`, `dashboard()`, one `ROLLUP(trainer_id)` query per figure);
+`api/management.py` (`GET /management/training`); `schemas.py` (`ManagementTrainingOut`). Web `lib/managementTraining.ts`,
+`components/ManagementTraining.tsx`, page `/management/training`, `lib/management.ts`, `lib/navigation.ts`. Tests
+`test_mgmt_017_training.py`, `managementTraining.test.ts`, `ManagementTraining.test.tsx`, `mgmt-017-training.spec.ts`. QA
+`docs/quality/MGMT-017_EXPLORATORY_QA_2026-10-13.md`.
+- **New Feature ID authorized:** `mgmt-017`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-017.

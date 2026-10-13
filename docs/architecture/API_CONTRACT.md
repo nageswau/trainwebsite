@@ -3119,6 +3119,16 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /management/marketing` *(new)* | **Query:** `month` (`YYYY-MM`, IST, default this month).<br>**`200`:** `{month, current_month, money_visible, channels[{channel, label, budget, spend, leads, qualified, customers, conversion, revenue, roi}], totals{…same without channel/label}, groups{social, website, school, college, agent, influencer: null, events}, campaigns[{id, name, channel, label, active, leads, qualified, customers}], budgets_updated_at, budgets_updated_by{id, full_name}}`.<br>• 13 channel rows, always, in `TEL_SOURCES` order. `budget` `null` = not set. `roi`/`conversion` `null` when spend/leads are 0.<br>• `super_admin`: `money_visible: false`; `budget`, `spend`, `revenue`, `roi` and `budgets_updated_*` are `null`.<br>**`403`:** not a management role.<br>**`422`:** a malformed or future month |
 | `PUT /management/marketing/budgets` *(new)* | **Query:** `month` (required). **Body:** `{budgets: [{channel, amount}]}` (≤ 13) — replaces the month; channels left out lose their budget; `[]` clears it.<br>**`200`:** the month as `GET` returns it. One `mgmt.marketing_budget` audit row naming the changed channels (none when nothing changed).<br>**`403`:** "Finance access required" (`super_admin`) / "Management access required".<br>**`422`:** an unknown channel (`loc: body.budgets.i.channel`), a negative, >2-decimal or too large amount (`…amount`), a channel twice (`body.budgets`), a future month |
 
+## 12DV. Training & trainer dashboard (`mgmt-017`) — addendum, 2026-10-13
+
+- **Basis:** `DEC-SCOPE-208` (TR1–TR16). Design spec `docs/superpowers/specs/2026-10-13-mgmt-017-training-dashboard-design.md`.
+  No migration. Operational tier only (partner, super_admin); accountant `403` "Operational access required"; other roles `403`
+  "Management access required"; signed out `401`. Read-only: no write, lock or audit row.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/training?from&to` | `200` `{from, to, as_of, kpis: [{key, label, definition, value}] (11, §12 order: total_courses, active_batches, students, trainers, attendance_pct, completion_pct, dropouts, assessments, certifications, placement_ready, placements), trainer_figures: [{key, label, definition}] (7), trainers: [{id, full_name, active, batches, students_trained, attendance_pct, completion_pct, feedback_avg, feedback_count, assessment_pass_pct, batch_performance, placements}]}`. Counts are integers; shares/averages one decimal or `null` when there is nothing to divide. `from`/`to` inclusive IST dates, default this IST month; start after end or > 366 days → `422` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
