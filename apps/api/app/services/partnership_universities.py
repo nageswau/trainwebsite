@@ -382,7 +382,8 @@ async def linked_bdm_organizations(db: AsyncSession, university_id: UUID) -> lis
 
 
 def audit(db: AsyncSession, user: User, action: str, university_id: UUID, metadata: dict | None = None) -> None:
-    """Same transaction as the write (fail closed); ids, codes and field names only."""
+    """Same transaction as the write (fail closed); ids, codes and field names only -- except `agent_commission`, which stores old/new
+    values (spec §6, DEC-SCOPE-209)."""
     db.add(AuditLog(user_id=user.id, action=f"university.{action}", entity_type="university", entity_id=str(university_id), metadata_json=metadata or {}))
 
 

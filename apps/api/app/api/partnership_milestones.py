@@ -42,7 +42,7 @@ async def update_milestone(university_id: UUID, kind: MilestoneKind, payload: Un
     return out
 
 
-@router.patch("/{university_id}/expected", response_model=UniversityEnvelope)
+@router.patch("/{university_id}/expected", response_model=UniversityEnvelope, response_model_exclude_unset=True)
 async def update_expected(university_id: UUID, payload: UniversityExpectedUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """§5: the target partnership date, expected intake, agreement date and recruitment start (month and quarter are derived)."""
     uni, team = await _locked(db, user, university_id, "can_edit_timeline", "expected")

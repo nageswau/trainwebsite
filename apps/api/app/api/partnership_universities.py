@@ -6,7 +6,7 @@ structured log. Lists are {items, total, limit, offset}, ordered by name then id
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -214,12 +214,16 @@ async def update_university(university_id: UUID, payload: UniversityUpdate, user
     return {"university": await svc.detail_out(db, user, uni, team)}
 
 
-@router.put("/{university_id}/agent-commission", response_model=UniversityEnvelope, response_model_exclude_unset=True)
-async def set_agent_commission(university_id: UUID, payload: AgentCommissionIn | None = Body(None), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """dtu-001 (DEC-SCOPE-209, DT5): super_admin / overseas_admin set or clear (null) the agent commission; audited old -> new."""
+async def _locked_for_agent_commission(db: AsyncSession, user: User, university_id: UUID) -> University:
     if not can_edit_agent_commission(user):
         raise HTTPException(403, "Only a super admin or an overseas admin can change the agent commission")
     uni = await svc.load(db, university_id, lock=True)
+    if not uni.active:  # UM10: inactive is read-only
+        raise HTTPException(409, "This university is inactive, so its agent commission cannot be changed")
+    return uni
+
+
+async def _store_agent_commission(db: AsyncSession, user: User, uni: University, payload: AgentCommissionIn | None) -> dict:
     before = agent_commission_out(uni)
     uni.agent_commission_percent = payload.percent if payload else None
     uni.agent_commission_amount = payload.amount if payload else None
@@ -227,9 +231,24 @@ async def set_agent_commission(university_id: UUID, payload: AgentCommissionIn |
     uni.agent_commission_note = payload.note if payload else None
     after = agent_commission_out(uni)
     if before != after:
+        # Spec §6 (DEC-SCOPE-209): unlike other audits (ids and field names only) this one stores the old and new values.
         svc.audit(db, user, "agent_commission", uni.id, {"before": before, "after": after})
     await db.commit()
+    if before != after:
+        svc.log("university_agent_commission_updated" if payload else "university_agent_commission_cleared", user, uni.id)
     return {"university": await svc.detail_out(db, user, uni)}
+
+
+@router.put("/{university_id}/agent-commission", response_model=UniversityEnvelope, response_model_exclude_unset=True)
+async def set_agent_commission(university_id: UUID, payload: AgentCommissionIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """dtu-001 (DEC-SCOPE-209, DT5): super_admin / overseas_admin set the agent commission; a body is required (clear with DELETE)."""
+    return await _store_agent_commission(db, user, await _locked_for_agent_commission(db, user, university_id), payload)
+
+
+@router.delete("/{university_id}/agent-commission", response_model=UniversityEnvelope, response_model_exclude_unset=True)
+async def clear_agent_commission(university_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """dtu-001 (DEC-SCOPE-209, DT5): clears the agent commission (all four columns)."""
+    return await _store_agent_commission(db, user, await _locked_for_agent_commission(db, user, university_id), None)
 
 
 @router.post("/{university_id}/assign", response_model=UniversityEnvelope, response_model_exclude_unset=True)
