@@ -24,7 +24,7 @@ const fin = (label: string, item: string): ManagementEntry => ({ label, item, ti
 const own = (label: string, item: string): ManagementEntry => ({ label, item, tier: "partner_only" });
 
 export const MANAGEMENT_PILLARS: ManagementPillar[] = [
-  { title: "Students", entries: [op("Student funnel", "mgmt-016"), op("Training", "mgmt-017"), { ...op("Counseling", "mgmt-018"), href: "/management/counseling" }, { ...op("Applications", "mgmt-024"), href: "/management/applications" }, op("Recruitment", "mgmt-025")] },
+  { title: "Students", entries: [op("Student funnel", "mgmt-016"), op("Training", "mgmt-017"), { ...op("Counseling", "mgmt-018"), href: "/management/counseling" }, { ...op("Applications", "mgmt-024"), href: "/management/applications" }, { ...op("Recruitment", "mgmt-025"), href: "/management/recruitment" }] },
   { title: "Sales", entries: [{ ...op("BDM", "mgmt-020"), href: "/management/bdm" }, { ...op("Leads & calls", "mgmt-019"), href: "/management/telecalling" }, fin("Marketing budget & ROI", "mgmt-012")] },
   {
     title: "Finance",
@@ -36,8 +36,8 @@ export const MANAGEMENT_PILLARS: ManagementPillar[] = [
       { ...own("Investments & ROI", "mgmt-014"), href: "/management/investments" }, own("Partner capital accounts", "mgmt-015"),
     ],
   },
-  { title: "People", entries: [op("Trainers", "mgmt-017"), { ...op("Counselors", "mgmt-018"), href: "/management/counseling#counselors" }, { ...op("Telecallers", "mgmt-019"), href: "/management/telecalling#telecallers" }, op("Recruiters", "mgmt-025"), { ...fin("Employee cost", "mgmt-011"), href: "/management/salaries#employee-cost" }] },
-  { title: "Partnerships", entries: [{ ...op("Agents", "mgmt-021"), href: "/management/agents" }, op("Schools", "mgmt-022"), op("Universities", "mgmt-023"), op("Companies", "mgmt-025")] },
+  { title: "People", entries: [op("Trainers", "mgmt-017"), { ...op("Counselors", "mgmt-018"), href: "/management/counseling#counselors" }, { ...op("Telecallers", "mgmt-019"), href: "/management/telecalling#telecallers" }, { ...op("Recruiters", "mgmt-025"), href: "/management/recruitment#recruitment-kpis" }, { ...fin("Employee cost", "mgmt-011"), href: "/management/salaries#employee-cost" }] },
+  { title: "Partnerships", entries: [{ ...op("Agents", "mgmt-021"), href: "/management/agents" }, op("Schools", "mgmt-022"), op("Universities", "mgmt-023"), { ...op("Companies", "mgmt-025"), href: "/management/recruitment#company-pipeline" }] },
   {
     title: "Business Intelligence",
     entries: [
