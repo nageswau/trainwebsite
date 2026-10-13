@@ -50,7 +50,7 @@ amounts (AGN-014 stays manual); multi-country universities as several rows (Schi
 | `fee_structure` | `Text` | Verbatim fee block from the sheet |
 | `agent_commission_percent` | `Numeric(5,2)` | |
 | `agent_commission_amount` | `Numeric(12,2)` | |
-| `agent_commission_currency` | `String(3)` | One of `COMMISSION_CURRENCIES` |
+| `agent_commission_currency` | `String(3)` | One of INR, USD, GBP, EUR, CAD, AUD, NZD, AED |
 | `agent_commission_note` | `String(300)` | Verbatim source text ("4000GBP flat", "0.13") |
 
 CHECKs (repeated in the migration, kept identical by the migration test, as upc-016):
