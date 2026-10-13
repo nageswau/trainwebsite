@@ -62,7 +62,7 @@ async def dashboard(db: AsyncSession, user: User, month_start: date, period: str
     sums = {(vertical, kind): Decimal(0) for vertical, _ in ROWS for kind in ("income", "expense")}
     grouped = await db.execute(select(c.vertical, c.kind, func.sum(c.signed_amount)).where(*where, c.counted).group_by(c.vertical, c.kind))
     for vertical, kind, amount in cast(Sequence[tuple[str, str, Decimal]], grouped.all()):  # the union subquery's columns are untyped
-        sums[(vertical, kind)] += amount
+        sums[(vertical, kind)] = amount
     other = await db.execute(
         select(c.currency, c.kind, func.sum(c.amount), func.count()).where(*where, c.source != "manual", c.counted.is_(False)).group_by(c.currency, c.kind).order_by(c.currency, c.kind)
     )

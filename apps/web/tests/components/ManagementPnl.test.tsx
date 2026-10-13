@@ -96,6 +96,13 @@ describe("mgmt-009 ManagementPnl", () => {
     expect(screen.getByRole("status")).toHaveTextContent("No revenue or expenses recorded in May 2026.");
     expect(screen.getByText(/in another currency are not counted: (US)?\$700.00 income \(1 line\)/)).toBeInTheDocument();
     cleanup();
+    const nothing = { rows: pnl().rows.map((r) => ({ ...r, ...ZERO })), total: ZERO };
+    view({ data: pnl({ ...nothing, period: "quarter", label: "Q1 (April–June) of 2026-27 to date" }) });
+    expect(screen.getByRole("status")).toHaveTextContent("No revenue or expenses recorded in Q1 (April–June) of 2026-27 to date.");
+    cleanup();
+    view({ data: pnl({ ...nothing, period: "year", label: "Financial year 2026-27 to date" }) });
+    expect(screen.getByRole("status")).toHaveTextContent("No revenue or expenses recorded in the financial year 2026-27 to date.");
+    cleanup();
     view({ data: null, error: "Choose this month or an earlier one" });
     expect(screen.getByRole("alert")).toHaveTextContent("Choose this month or an earlier one");
     expect(screen.getByRole("form", { name: "Choose a period" })).toBeInTheDocument();

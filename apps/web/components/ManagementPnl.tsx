@@ -65,7 +65,7 @@ export default function ManagementPnl({ data, error, query, maxMonth }: { data: 
             <li className="metric"><span>Margin</span><strong>{formatMargin(data.total.margin)}</strong></li>
           </ul>
           {empty && (
-            <p className="empty" role="status">No revenue or expenses recorded in {data.period === "month" ? formatMonth(data.month) : `the ${data.label.toLowerCase()}`}.</p>
+            <p className="empty" role="status">No revenue or expenses recorded in {{ month: formatMonth(data.month), quarter: data.label, year: `the ${data.label.toLowerCase()}` }[data.period]}.</p>
           )}
           <h3 id="pnl-verticals">Business vertical P&amp;L</h3>
           <div className="table-wrap" role="region" aria-labelledby="pnl-verticals" tabIndex={0} style={{ overflowX: "auto" }}>
