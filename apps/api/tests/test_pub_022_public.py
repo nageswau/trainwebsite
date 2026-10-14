@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import delete
 
 from app.models import Testimonial
-from tests.test_pub_022_cms import as_role, create, png_bytes
+from tests.test_pub_022_cms import as_role, create, leave_no_social_proof_behind, png_bytes  # noqa: F401 -- autouse cleanup
 
 STRIP_RANGE = -1000  # display_order at or below this belongs to strip tests only
 
@@ -99,10 +99,13 @@ async def test_photo_is_public_only_while_published(client, db_session):
     image = png_bytes()
     assert (await client.put(f"/api/v1/cms/testimonials/{tid}/photo", files={"file": ("me.png", image, "image/png")})).status_code == 200
     detail = (await client.get(f"/api/v1/public/testimonials/{tid}")).json()
-    assert detail["photo_url"] == f"/api/v1/public/testimonials/{tid}/photo"
+    assert detail["photo_url"].startswith(f"/api/v1/public/testimonials/{tid}/photo?v=")
     photo = await client.get(detail["photo_url"])
     assert photo.status_code == 200 and photo.headers["content-type"] == "image/png" and photo.content.startswith(b"\x89PNG")
-    assert photo.headers["x-content-type-options"] == "nosniff"
+    assert photo.headers["x-content-type-options"] == "nosniff" and photo.headers["cache-control"] == "no-cache"
+    # a replaced photo gets a new URL, so no cache can keep serving the old one
+    await client.put(f"/api/v1/cms/testimonials/{tid}/photo", files={"file": ("me.png", png_bytes(), "image/png")})
+    assert (await client.get(f"/api/v1/public/testimonials/{tid}")).json()["photo_url"] != detail["photo_url"]
 
 
 @pytest.mark.asyncio

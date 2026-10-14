@@ -126,7 +126,7 @@ async def testimonial_photo(testimonial_id: UUID, db: AsyncSession = Depends(get
     data = social_proof.read_photo_bytes(x.photo_key) if x is not None and x.published and x.photo_key else None
     if data is None:
         raise HTTPException(404, "Photo not found")
-    return Response(content=data, media_type=x.photo_content_type or "application/octet-stream", headers={"Cache-Control": "public, max-age=300", "X-Content-Type-Options": "nosniff"})
+    return Response(content=data, media_type=x.photo_content_type or "application/octet-stream", headers={"Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff"})
 
 
 @router.get("/social-proof", response_model=SocialProofOut)

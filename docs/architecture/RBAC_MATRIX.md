@@ -2189,7 +2189,7 @@ Counts only, no personal data; nothing else changes.
 - Publishing needs `consent_confirmed` (`422 "Record consent before publishing"`; also a DB CHECK). The consent user and time are set by
   the server; unticking consent unpublishes. Unpublished rows, their photos and an unpublished badge are `404` / absent publicly.
 - Photos: JPEG/PNG by magic bytes, ≤ 2 MB, metadata stripped, server-generated storage key (never returned); served only through
-  `GET /public/testimonials/{id}/photo` while the testimonial is published.
+  `GET /public/testimonials/{id}/photo` while the testimonial is published (`no-cache`, so an unpublish takes effect at once).
 - Delete is permanent (row + photo). Audit actions `cms.testimonial.create|update|delete|photo` and `cms.rating_badge.update` hold
   ids, division and changed field names only — never the person's name, headline or quote.
 

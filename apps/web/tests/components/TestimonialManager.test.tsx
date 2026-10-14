@@ -39,7 +39,7 @@ describe("TestimonialManager (PUB-022)", () => {
   it("keeps Published disabled until consent is ticked, and unticking consent clears it", async () => {
     await openRow();
     const consent = screen.getByRole("checkbox", { name: CONSENT_TEXT });
-    const publish = screen.getByRole("checkbox", { name: "Published" }) as HTMLInputElement;
+    const publish = screen.getByRole("checkbox", { name: "Publish testimonial" }) as HTMLInputElement;
     expect(publish.disabled).toBe(true);
     fireEvent.click(consent);
     expect(publish.disabled).toBe(false);
@@ -102,6 +102,25 @@ describe("TestimonialManager (PUB-022)", () => {
   });
 });
 
+describe("TestimonialManager busy and message handling (PUB-022 review)", () => {
+  it("locks Edit and Add while a save is in flight, and clears the old error on the next action", async () => {
+    await openRow();
+    fetchMock.mockResolvedValueOnce(json(422, { detail: "Record consent before publishing" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save testimonial" }));
+    await screen.findByRole("alert");
+    let release: (r: Response) => void = () => {};
+    fetchMock.mockReturnValueOnce(new Promise<Response>((r) => { release = r; }));
+    fireEvent.click(screen.getByRole("button", { name: "Save testimonial" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect((screen.getByRole("button", { name: /Edit Asha Rao/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getAllByRole("button", { name: "Add testimonial" })[0] as HTMLButtonElement).disabled).toBe(true);
+    fetchMock.mockResolvedValueOnce(json(200, [row]));
+    release(json(200, row));
+    await screen.findByText("Testimonial saved.");
+    expect((screen.getByRole("button", { name: /Edit Asha Rao/ }) as HTMLButtonElement).disabled).toBe(false);
+  });
+});
+
 describe("RatingBadgeForm (PUB-022)", () => {
   it("loads the badge and saves it with numeric values", async () => {
     fetchMock.mockResolvedValueOnce(json(200, { source_name: "Google", rating: 4.8, review_count: 120, review_url: null, as_of: "2026-10-01", published: false }));
@@ -109,7 +128,7 @@ describe("RatingBadgeForm (PUB-022)", () => {
     const rating = (await screen.findByLabelText("Rating (0.0 to 5.0)")) as HTMLInputElement;
     expect(rating.value).toBe("4.8");
     fireEvent.change(rating, { target: { value: "4.9" } });
-    fireEvent.click(screen.getByRole("checkbox", { name: "Published" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Publish rating badge" }));
     fetchMock.mockResolvedValueOnce(json(200, { source_name: "Google", rating: 4.9, review_count: 120, review_url: null, as_of: "2026-10-01", published: true }));
     fireEvent.click(screen.getByRole("button", { name: "Save rating badge" }));
     await screen.findByText("Rating badge saved.");

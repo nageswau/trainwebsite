@@ -63,6 +63,9 @@ def upgrade() -> None:
         bad = op.get_bind().execute(sa.text("SELECT id, division FROM testimonials WHERE division NOT IN ('it', 'overseas') LIMIT 1")).first()
         if bad:
             raise RuntimeError(f"Cannot upgrade to 0158_social_proof: testimonial {bad[0]} has division {bad[1]!r}; fix it to 'it' or 'overseas' first.")
+        bad = op.get_bind().execute(sa.text("SELECT id, rating FROM testimonials WHERE rating IS NULL OR rating NOT BETWEEN 1 AND 5 LIMIT 1")).first()
+        if bad:
+            raise RuntimeError(f"Cannot upgrade to 0158_social_proof: testimonial {bad[0]} has rating {bad[1]!r}; set it to 1-5 first.")
     checks = set() if inspector is None else {c["name"] for c in inspector.get_check_constraints("testimonials")}
     for name, sql in TESTIMONIAL_CHECKS.items():
         if name not in checks:

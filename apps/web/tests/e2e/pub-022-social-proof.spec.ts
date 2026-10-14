@@ -28,7 +28,7 @@ test("a consented, published, featured testimonial appears on / and /it (PUB-022
   await page.getByLabel("Course / university (optional)").fill("Python Full-Stack");
   await page.getByLabel("Homepage order (lower shows first)").fill("-99999");
   await page.getByLabel("Quote").fill("The mentors and mock interviews made the difference.");
-  const publish = page.getByRole("checkbox", { name: "Published" }).last();
+  const publish = page.getByRole("checkbox", { name: "Publish testimonial" });
   await expect(publish).toBeDisabled();
   await page.getByRole("checkbox", { name: /I confirm this person agreed/ }).check();
   await publish.check();
@@ -36,27 +36,33 @@ test("a consented, published, featured testimonial appears on / and /it (PUB-022
   await page.getByRole("button", { name: "Add testimonial" }).last().click();
   await expect(page.getByText("Testimonial added.")).toBeVisible();
 
-  // Public pages are revalidated every 60 s, so a fresh browser context reads them; poll until the new story is in.
-  const visitor = await browser.newContext();
-  const pub = await visitor.newPage();
-  await expect(async () => {
+  try {
+    // Public pages are revalidated every 60 s, so a fresh browser context reads them; poll until the new story is in.
+    const visitor = await browser.newContext();
+    const pub = await visitor.newPage();
+    await expect(async () => {
+      await pub.goto("/it");
+      await expect(pub.getByText(name)).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 90_000 });
+    await pub.goto("/");
+    await expect(pub.getByText(name)).toBeVisible();
+    await pub.goto("/overseas");
+    await expect(pub.getByText(name)).toHaveCount(0);
+
+    await pub.setViewportSize({ width: 375, height: 800 });
     await pub.goto("/it");
-    await expect(pub.getByText(name)).toBeVisible({ timeout: 2_000 });
-  }).toPass({ timeout: 90_000 });
-  await pub.goto("/");
-  await expect(pub.getByText(name)).toBeVisible();
-  await pub.goto("/overseas");
-  await expect(pub.getByText(name)).toHaveCount(0);
+    await expect(pub.getByText(name)).toBeVisible();
+    const overflow = await pub.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+    await visitor.close();
 
-  await pub.setViewportSize({ width: 375, height: 800 });
-  await pub.goto("/it");
-  await expect(pub.getByText(name)).toBeVisible();
-  const overflow = await pub.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(overflow).toBeLessThanOrEqual(0);
-  await visitor.close();
-
-  // Clean up: delete permanently (SP9) so the strip does not fill with e2e stories.
-  page.once("dialog", (d) => d.accept());
-  await page.getByRole("button", { name: "Delete permanently" }).click();
-  await expect(page.getByText("Testimonial deleted.")).toBeVisible();
+    // Delete permanently through the screen (SP9).
+    page.once("dialog", (d) => d.accept());
+    await page.getByRole("button", { name: "Delete permanently" }).click();
+    await expect(page.getByText("Testimonial deleted.")).toBeVisible();
+  } finally {
+    // Whatever failed above, never leave a published e2e story at the top of the live homepage strip.
+    const rows: { id: string; person_name: string }[] = await (await page.request.get("/api/v1/cms/manage/testimonials")).json().catch(() => []);
+    for (const r of rows.filter((x) => x.person_name === name)) await page.request.delete(`/api/v1/cms/testimonials/${r.id}`);
+  }
 });

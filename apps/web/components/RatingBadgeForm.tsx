@@ -29,9 +29,10 @@ export default function RatingBadgeForm() {
   async function save(event: FormEvent) {
     event.preventDefault();
     if (busy || !draft) return;
+    setError(null);
+    setNotice(null);
     if (!draft.source_name.trim() || draft.rating === "" || draft.review_count === "" || !draft.as_of) return setError("Enter the source, rating, review count and date.");
     setBusy(true);
-    setError(null);
     const outcome = await sendJson(BADGE_URL, "PUT", badgeBody(draft));
     setBusy(false);
     if (!outcome.ok) return setError(outcome.message);
@@ -71,7 +72,7 @@ export default function RatingBadgeForm() {
             </div>
             <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <input type="checkbox" checked={draft.published} onChange={(e) => set("published", e.target.checked)} />
-              <span>Published</span>
+              <span>Publish rating badge</span>
             </label>
             <div className="actions">
               <button className="btn small" type="submit">Save rating badge</button>

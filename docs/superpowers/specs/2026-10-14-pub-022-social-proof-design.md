@@ -210,3 +210,13 @@ Web:
   - **`display_order`** is limited to ±100000.
   - **Unchanged consent:** re-sending `consent_confirmed: true` leaves `consent_at` unchanged.
   - **The `/it/success-stories` e2e** (pub-001) now accepts the empty state, because seeded stories are unpublished (SP4).
+- **R5 (final review) — photo caching:** the photo route sends `Cache-Control: no-cache`, replacing the `public, max-age=300` in §4.1. `photo_url` carries `?v=<12-hex digest of the storage key>`, so caches revalidate every time. An unpublished or withdrawn photo is then 404 straight away, and a replaced photo gets a new URL.
+- **R6 (final review) — test data:**
+  - Backend tests delete every testimonial they create, and restore the badge, through the autouse fixture `leave_no_social_proof_behind`.
+  - The pub-001 testimonial test deletes its own row.
+  - The e2e spec cleans up in `finally`.
+
+  Nothing a test publishes outlives it.
+- **Known, accepted (final review):**
+  - In local-storage mode, the existing `/local-files` static mount can serve any stored file to someone who knows its key. Testimonial keys are random 128-bit values and are never sent to clients; S3 mode is unaffected. Moving uploads out of the mounted directory is a cross-feature change, so it is left for a separate item.
+  - Two simultaneous first-time `PUT /cms/rating-badge` calls can collide on `id = 1`, and one gets a 500. This is super_admin only, so it was accepted.

@@ -28,6 +28,7 @@ export default function TestimonialManager({ divisions }: { divisions: Division[
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [photo, setPhoto] = useState<File | null>(null);
+  const [uploads, setUploads] = useState(0); // re-keys the file input so it empties after each upload / row switch
 
   const load = useCallback(async () => {
     try {
@@ -45,12 +46,19 @@ export default function TestimonialManager({ divisions }: { divisions: Division[
     void load();
   }, [load]);
 
+  function begin() {
+    setError(null);
+    setNotice(null);
+  }
+
   function open(target: ManagedTestimonial | "new") {
+    if (busy) return;
     setEditing(target);
     setDraft(target === "new" ? emptyDraft(divisions[0]) : draftFrom(target));
     setError(null);
     setNotice(null);
     setPhoto(null);
+    setUploads((n) => n + 1);
   }
 
   function set<K extends keyof TestimonialDraft>(key: K, value: TestimonialDraft[K]) {
@@ -60,9 +68,9 @@ export default function TestimonialManager({ divisions }: { divisions: Division[
   async function save(event: FormEvent) {
     event.preventDefault();
     if (busy || editing === null) return;
+    begin();
     if (!draft.person_name.trim() || !draft.headline.trim() || !draft.quote.trim()) return setError("Enter the name, headline and quote.");
     setBusy(true);
-    setError(null);
     const creating = editing === "new";
     const outcome = await sendJson(creating ? TESTIMONIALS_URL : testimonialUrl(editing.id), creating ? "POST" : "PATCH", draftBody(draft, creating));
     setBusy(false);
@@ -78,19 +86,21 @@ export default function TestimonialManager({ divisions }: { divisions: Division[
     if (busy || !editing || editing === "new" || !photo) return;
     const form = new FormData();
     form.append("file", photo);
+    begin();
     setBusy(true);
-    setError(null);
     const outcome = await sendRequest(photoUrl(editing.id), { method: "PUT", body: form });
     setBusy(false);
     if (!outcome.ok) return setError(outcome.message);
     setNotice("Photo uploaded.");
     setPhoto(null);
+    setUploads((n) => n + 1);
     setEditing(outcome.data as unknown as ManagedTestimonial);
     await load();
   }
 
   async function removePhoto() {
     if (busy || !editing || editing === "new") return;
+    begin();
     setBusy(true);
     const outcome = await sendRequest(photoUrl(editing.id), { method: "DELETE" });
     setBusy(false);
@@ -103,6 +113,7 @@ export default function TestimonialManager({ divisions }: { divisions: Division[
   async function remove() {
     if (busy || !editing || editing === "new") return;
     if (!window.confirm(`Delete the testimonial from ${editing.person_name} permanently? Their name, words and photo are removed and cannot be restored.`)) return;
+    begin();
     setBusy(true);
     let ok = false;
     try {
@@ -122,7 +133,7 @@ export default function TestimonialManager({ divisions }: { divisions: Division[
     <section className="action-card" aria-labelledby="testimonials-title" style={{ gridColumn: "1 / -1" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
         <h3 id="testimonials-title">Testimonials</h3>
-        <button className="btn small" type="button" onClick={() => open("new")}>Add testimonial</button>
+        <button className="btn small" type="button" disabled={busy} onClick={() => open("new")}>Add testimonial</button>
       </div>
       {notice && <p role="status" className="form-message" style={{ margin: 0 }}>{notice}</p>}
       {loadError && <p role="alert" className="form-error" style={{ margin: 0 }}>{loadError}</p>}
@@ -143,7 +154,7 @@ export default function TestimonialManager({ divisions }: { divisions: Division[
                   <td>{t.published ? "Yes" : "No"}</td>
                   <td>{t.featured ? "Featured" : "-"}</td>
                   <td>{t.display_order}</td>
-                  <td><button className="btn ghost small" type="button" onClick={() => open(t)}>Edit<span className="visually-hidden"> {t.person_name}</span></button></td>
+                  <td><button className="btn ghost small" type="button" disabled={busy} onClick={() => open(t)}>Edit<span className="visually-hidden"> {t.person_name}</span></button></td>
                 </tr>
               ))}
             </tbody>
@@ -195,8 +206,8 @@ export default function TestimonialManager({ divisions }: { divisions: Division[
               <span>{CONSENT_TEXT}</span>
             </label>
             <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input type="checkbox" checked={draft.published} disabled={!draft.consent_confirmed} aria-describedby="t-publish-help" onChange={(e) => set("published", e.target.checked)} />
-              <span>Published</span>
+              <input type="checkbox" checked={draft.published} disabled={!draft.consent_confirmed} aria-describedby={draft.consent_confirmed ? undefined : "t-publish-help"} onChange={(e) => set("published", e.target.checked)} />
+              <span>Publish testimonial</span>
             </label>
             {!draft.consent_confirmed && <p id="t-publish-help" className="muted" style={{ margin: 0 }}>Record consent before publishing.</p>}
             <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -212,7 +223,7 @@ export default function TestimonialManager({ divisions }: { divisions: Division[
             {current && (
               <div className="field">
                 <label htmlFor="t-photo">Photo (JPEG or PNG, up to 2 MB){current.has_photo ? " — a photo is saved" : ""}</label>
-                <input id="t-photo" type="file" accept="image/jpeg,image/png" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
+                <input key={uploads} id="t-photo" type="file" accept="image/jpeg,image/png" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
                 <div className="actions">
                   <button className="btn secondary small" type="button" disabled={!photo} onClick={uploadPhoto}>Upload photo</button>
                   {current.has_photo && <button className="btn ghost small" type="button" onClick={removePhoto}>Remove photo</button>}

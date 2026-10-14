@@ -7,13 +7,38 @@ import uuid
 import zlib
 
 import pytest
-from sqlalchemy import select
+import pytest_asyncio
+from sqlalchemy import delete, func, select
 
 from app.core.security import hash_password
 from app.models import AuditLog, SiteRatingBadge, Testimonial, User
 from app.services.storage import storage
 
 PASSWORD = "Sup3r-Secret-Pass!"
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def leave_no_social_proof_behind(db_session):
+    """The test DB may back a demo stack: nothing a test publishes may outlive it (review finding 1). Testimonials created
+    during the test are deleted with their photos, and the rating badge is put back exactly as it was (or removed)."""
+    started = await db_session.scalar(select(func.now()))
+    before = await db_session.get(SiteRatingBadge, 1)
+    snapshot = None if before is None else {c.name: getattr(before, c.name) for c in SiteRatingBadge.__table__.columns}
+    yield
+    await db_session.rollback()
+    db_session.expunge_all()
+    rows = (await db_session.scalars(select(Testimonial).where(Testimonial.created_at >= started))).all()
+    for row in rows:
+        if row.photo_key:
+            try:
+                storage.delete(row.photo_key)
+            except Exception:
+                pass
+    await db_session.execute(delete(Testimonial).where(Testimonial.created_at >= started))
+    await db_session.execute(delete(SiteRatingBadge))
+    if snapshot is not None:
+        db_session.add(SiteRatingBadge(**snapshot))
+    await db_session.commit()
 ROLE_DIVISION = {"super_admin": "global", "it_admin": "it", "overseas_admin": "overseas", "it_student": "it", "counselor": "overseas"}
 
 
@@ -109,6 +134,26 @@ async def test_other_division_is_404(client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_overseas_admin_cannot_touch_it_rows(client, db_session):
+    await as_role(client, db_session, "super_admin")
+    it = await create(client, division="it")
+    await as_role(client, db_session, "overseas_admin")
+    assert (await client.patch(f"/api/v1/cms/testimonials/{it['id']}", json={"headline": "x"})).status_code == 404
+    assert (await client.delete(f"/api/v1/cms/testimonials/{it['id']}")).status_code == 404
+    assert (await client.post("/api/v1/cms/testimonials", json=body("it"))).status_code == 403
+    assert it["id"] not in {row["id"] for row in (await client.get("/api/v1/cms/manage/testimonials")).json()}
+
+
+@pytest.mark.asyncio
+async def test_empty_patch_writes_no_audit_row(client, db_session):
+    await as_role(client, db_session, "it_admin")
+    tid = (await create(client))["id"]
+    assert (await client.patch(f"/api/v1/cms/testimonials/{tid}", json={})).status_code == 200
+    actions = (await db_session.scalars(select(AuditLog.action).where(AuditLog.entity_id == tid))).all()
+    assert actions == ["cms.testimonial.create"]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("role", ["it_student", "counselor"])
 async def test_non_editors_are_403(client, db_session, role):
     await as_role(client, db_session, role)
@@ -155,6 +200,17 @@ async def test_consent_is_recorded_by_the_server_and_unticking_unpublishes(clien
     assert row.consent_by_user_id == admin.id
     updated = (await client.patch(f"/api/v1/cms/testimonials/{created['id']}", json={"consent_confirmed": False})).json()
     assert updated["consent_confirmed"] is False and updated["published"] is False and updated["consent_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_unticking_consent_while_publishing_is_422_and_changes_nothing(client, db_session):
+    await as_role(client, db_session, "it_admin")
+    created = await create(client, consent_confirmed=True, published=True)
+    response = await client.patch(f"/api/v1/cms/testimonials/{created['id']}", json={"consent_confirmed": False, "published": True})
+    assert response.status_code == 422
+    row = await db_session.get(Testimonial, uuid.UUID(created["id"]))
+    await db_session.refresh(row)
+    assert row.published is True and row.consent_confirmed is True
 
 
 @pytest.mark.asyncio

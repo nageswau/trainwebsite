@@ -7,6 +7,7 @@ One place for the rules the CMS and public routes share:
 - Photos are validated by their bytes and have their metadata stripped (ruling R1: JPEG/PNG only).
 """
 
+import hashlib
 import logging
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -32,7 +33,10 @@ EMPTY_PHOTO = "The photo file is empty"
 
 
 def photo_url(t: Testimonial) -> str | None:
-    return f"/api/v1/public/testimonials/{t.id}/photo" if t.photo_key else None
+    """Versioned by a digest of the storage key (never the key itself), so a replaced photo is a new URL for every cache."""
+    if not t.photo_key:
+        return None
+    return f"/api/v1/public/testimonials/{t.id}/photo?v={hashlib.sha256(t.photo_key.encode()).hexdigest()[:12]}"
 
 
 def public_out(t: Testimonial) -> dict:
@@ -136,4 +140,5 @@ def read_photo_bytes(key: str) -> bytes | None:
     try:
         return storage.read_bytes(key)
     except Exception:
+        logger.warning("testimonial_photo_read_failed")
         return None

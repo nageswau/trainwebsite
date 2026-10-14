@@ -3164,7 +3164,7 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /public/social-proof?division=it\|overseas\|all` *(new)* | No login. `{badge, testimonials}`: `badge` null unless published; up to 6 published + featured testimonials ordered by `display_order`, `created_at`. Bad division `422`. |
 | `GET /public/testimonials[?division=]`, `GET /public/testimonials/{id}` *(changed)* | Published rows only; an unpublished id is `404`. Rows gain `context`, `photo_url`. |
-| `GET /public/testimonials/{id}/photo` *(new)* | Streams the photo (`Cache-Control: public, max-age=300`, `nosniff`); `404` when unpublished, no photo or unknown. |
+| `GET /public/testimonials/{id}/photo` *(new)* | Streams the photo (`Cache-Control: no-cache`, `nosniff`; `photo_url` carries `?v=<digest>` that changes when the photo is replaced); `404` when unpublished, no photo or unknown. |
 | `GET /public/home` *(changed)* | `stats` key removed (SP3); `testimonials` published only. |
 | `GET /cms/manage/testimonials[?division=]` *(new)* | Editors (§2.135). Division admins always get their own division. |
 | `POST /cms/testimonials` *(new)* | `201`. Body (`extra` forbidden): `division`, `person_name` (≤160), `headline` (≤200), `quote` (≤2000), `rating` 1–5, `context` (≤160), `featured`, `display_order`, `consent_confirmed`, `published`. Publish without consent `422`; other division `403`. |

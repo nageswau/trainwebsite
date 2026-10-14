@@ -303,7 +303,8 @@ async def update_testimonial(testimonial_id: UUID, payload: TestimonialUpdate, u
         social_proof.apply_consent(t, changes["consent_confirmed"], user)
     if "published" in changes:
         social_proof.apply_publish(t, changes["published"])
-    _audit(db, user, "update", t, {"fields": sorted(changes)})
+    if changes:
+        _audit(db, user, "update", t, {"fields": sorted(changes)})
     await db.commit()
     await db.refresh(t)
     return social_proof.manage_out(t)
@@ -324,10 +325,14 @@ async def delete_testimonial(testimonial_id: UUID, user: User = Depends(get_curr
 async def upload_testimonial_photo(testimonial_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     t = await _editable_testimonial(db, user, testimonial_id)
     data, content_type = await social_proof.read_photo(file)
-    old_key = t.photo_key
-    t.photo_key, t.photo_content_type = social_proof.store_photo(data, content_type), content_type
+    old_key, new_key = t.photo_key, social_proof.store_photo(data, content_type)
+    t.photo_key, t.photo_content_type = new_key, content_type
     _audit(db, user, "photo", t, {"replaced": old_key is not None, "content_type": content_type})
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception:
+        social_proof.drop_photo(new_key)  # no row points at it
+        raise
     social_proof.drop_photo(old_key)
     await db.refresh(t)
     return social_proof.manage_out(t)
