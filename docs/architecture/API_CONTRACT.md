@@ -3215,6 +3215,15 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `DELETE /management/plans/{month}/items/{id}` | `204`; tasks made from it stay; closed `409` |
 | `POST /management/plans/{month}/items/{id}/tasks` | `{owner_user_id, priority?, deadline}` → `201` mgmt-028 task (`source: "plan"`); mgmt-028's owner/deadline `422`s; closed `409` |
 
+## 12EC. University partnership dashboard (mgmt-023) — addendum, 2026-10-14
+
+- **Basis:** `DEC-SCOPE-215` (UD1–UD14). Design spec `docs/superpowers/specs/2026-10-14-mgmt-023-university-partnership-dashboard-design.md`.
+  No migration. Access per RBAC §2.140. Read-only, a fixed number of statements; totals equal `GET /partnership/global-dashboard`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/universities?from=&to=` | `{today, from, to, kpis[{key, label, value}] (identified, contacted, meetings, negotiations, mous, signed, active, exclusive, countries, applications, enrollments), revenue?{expected[{currency, amount}], received[…]}, pipeline{steps[{key, label, count}], lost, total}, expected{windows[{key, label, first, last, count, weighted}], undated, next_month{total, items[upc-023 rows]}}}`. `revenue` present for partners only (absent, not null, otherwise). Bad date / start after end / over 366 days `422`; accountant and others `403`; signed out `401` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
