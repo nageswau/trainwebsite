@@ -91,7 +91,7 @@ export default function AgentPartnerUniversitiesPanel({ memberRole }: { memberRo
 
   if (selected) {
     const website = safeWebsite(detail?.website);
-    const showCommission = memberRole !== "staff" && !!detail && "agent_commission" in detail;
+    const showCommission = memberRole === "master" && !!detail && "agent_commission" in detail;
     return (
       <section aria-label="Partner university">
         <p><button type="button" className="btn" onClick={() => open(null)}>Back to partner universities</button></p>
@@ -109,9 +109,9 @@ export default function AgentPartnerUniversitiesPanel({ memberRole }: { memberRo
               {website ? <><dt>Website</dt><dd><a href={website} target="_blank" rel="noopener noreferrer" style={LINK_STYLE}>{website}</a></dd></> : null}
               {showCommission ? <><dt>Agent commission</dt><dd>{formatAgentCommission(detail.agent_commission)}</dd></> : null}
               {detail.overview ? <><dt>Overview</dt><dd>{detail.overview}</dd></> : null}
-              {detail.fee_structure ? <><dt>Fee structure</dt><dd>{detail.fee_structure}</dd></> : null}
-              {detail.deadlines ? <><dt>Deadlines</dt><dd>{detail.deadlines}</dd></> : null}
-              {detail.scholarships ? <><dt>Scholarships</dt><dd>{detail.scholarships}</dd></> : null}
+              {detail.fee_structure ? <><dt>Fee structure</dt><dd style={{ whiteSpace: "pre-line" }}>{detail.fee_structure}</dd></> : null}
+              {detail.deadlines?.length ? <><dt>Deadlines</dt><dd><ul>{detail.deadlines.map((d) => <li key={d}>{d}</li>)}</ul></dd></> : null}
+              {detail.scholarships?.length ? <><dt>Scholarships</dt><dd><ul>{detail.scholarships.map((d) => <li key={d}>{d}</li>)}</ul></dd></> : null}
             </dl>
             <h3>Courses ({detail.courses.length})</h3>
             {detail.courses.length === 0 ? (
@@ -138,13 +138,13 @@ export default function AgentPartnerUniversitiesPanel({ memberRole }: { memberRo
   }
 
   const items = page?.items ?? [];
-  const showCommission = memberRole !== "staff" && items.some((u) => "agent_commission" in u);
+  const showCommission = memberRole === "master" && items.some((u) => "agent_commission" in u);
   const total = page?.total ?? 0;
   return (
     <section aria-label="Partner universities">
       <div role="search">
         <label htmlFor="partner-universities-q">Search partner universities</label>{" "}
-        <input id="partner-universities-q" type="search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="University or country" />
+        <input id="partner-universities-q" type="search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="University or city" />
       </div>
       {alert}
       {loading && !error ? <p>Loading…</p> : null}

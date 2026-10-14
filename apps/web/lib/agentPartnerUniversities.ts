@@ -31,8 +31,8 @@ export type PartnerUniversityDetail = PartnerUniversity & {
   website: string | null;
   overview: string | null;
   fee_structure: string | null;
-  deadlines: string | null;
-  scholarships: string | null;
+  deadlines: string[];
+  scholarships: string[];
   courses: PartnerCourse[];
 };
 export type PartnerPage = { items: PartnerUniversity[]; total: number };

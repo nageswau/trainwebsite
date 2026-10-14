@@ -49,6 +49,7 @@ describe("agent commission", () => {
   it("Clear calls DELETE, not PUT", async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ university: {} })));
     vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("confirm", vi.fn(() => true));
     render(<AgentCommissionCard universityId="u1" value={{ percent: "13.00", amount: null, currency: null, note: null }} canEdit />);
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
@@ -57,6 +58,24 @@ describe("agent commission", () => {
     expect(init.method).toBe("DELETE");
     expect(init.body).toBeUndefined();
     await waitFor(() => expect(refresh).toHaveBeenCalled());
+  });
+  it("Clear does nothing when the confirmation is declined", () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal("confirm", confirm);
+    render(<AgentCommissionCard universityId="u1" value={{ percent: "13.00", amount: null, currency: null, note: null }} canEdit />);
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(confirm).toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+  it("a keyed remount shows the new server value, so a stale rate is not resubmitted", () => {
+    const keyed = (v: { percent: string; amount: null; currency: null; note: null }) => <AgentCommissionCard key={JSON.stringify(v)} universityId="u1" value={v} canEdit />;
+    const { rerender } = render(keyed({ percent: "13.00", amount: null, currency: null, note: null }));
+    expect((screen.getByLabelText("Percent") as HTMLInputElement).value).toBe("13.00");
+    rerender(keyed({ percent: "20.00", amount: null, currency: null, note: null }));
+    expect((screen.getByLabelText("Percent") as HTMLInputElement).value).toBe("20.00");
   });
   it("shows the API detail in an alert on failure", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ detail: "The university is inactive." }), { status: 409 })));

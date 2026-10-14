@@ -137,6 +137,7 @@ describe("upc-007 university detail page", () => {
     serve("overseas_admin", { agent_commission: commission });
     let card = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) })).find((el) => el.type === AgentCommissionCard);
     expect(card!.props).toEqual({ universityId: ID, value: commission, canEdit: true });
+    expect(card!.key).toBe(JSON.stringify(commission)); // remounts when the server value changes
     serve("super_admin", { agent_commission: null });
     card = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) })).find((el) => el.type === AgentCommissionCard);
     expect(card!.props).toEqual({ universityId: ID, value: null, canEdit: true });

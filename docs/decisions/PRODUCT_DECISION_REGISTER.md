@@ -8223,18 +8223,22 @@ Spec `docs/superpowers/specs/2026-10-13-dtu-001-direct-tieups-design.md` (with i
 | DT17 | BPP PG titles mentioning PDP / Professional Development | Get the 18-month line and duration "18 months" |
 | DT18 | Hidden destination countries | Make them visible when they have their required content; a country missing content is reported and left hidden |
 
-**Implementation rulings** (controller, 2026-10-14; implementation rulings, **not** owner approvals; R1–R4, R7 are test/model details):
+**Implementation rulings** (controller, 2026-10-14; implementation rulings, **not** owner approvals; R1, R3, R4 are test/model details and are not listed):
 
 | Ruling | Behaviour | Rationale |
 |---|---|---|
+| R2 | Every route with `response_model=UniversityEnvelope` sets `response_model_exclude_unset=True` (a structural test guards it) | The agent commission key must be absent, not `null`, for roles that may not see it |
 | R5 | `PUT …/agent-commission` needs a body (missing or `null` is `422`); clearing is `DELETE …/agent-commission` | An absent or failed body must never wipe a rate; supersedes the spec's "`null` clears" |
 | R6 | `PUT` / `DELETE` on an inactive university answer `409` | UM10: inactive is read-only; admins reactivate first |
+| R7 | Same as R2 (the spec §11 "R7 / R2" entry) | One ruling recorded under both numbers |
 | R8 | `city` drops a trailing "campus" word ("Cardiff Campus" → "Cardiff"); `campuses` keep the full text | Follows DT15 and the spec's intent |
 | R9 | "information technology" (any case) counts as a Computing & IT keyword | Spec §4.3 intent |
 | R10 | The duplicate Southwales "MSc Leading Digital Transformation" (PG) is emitted once (flag kept); AED fees stay text-only | One course per duplicate key; consistent with DT16 |
-| R12 | The loader publishes a hidden country that has a `seed/countries.json` row (DE, AU, US, FR, AE) through `app.seed.catalogue_country` (empty content only); Malta (no row) is reported `country_needs_content: MT` and stays hidden; audit `country.direct_tieup_publish` | Implements DT18 without inventing country content |
+| R11 | 21 of 35 universities have a logo file; 14 show the monogram tile (403s, white-only artwork, > 200 KB, or none found) | DT10 where no usable logo exists |
+| R12 | The loader publishes a hidden country that has a `seed/countries.json` row (DE, AU, US, FR, AE) through `app.seed.catalogue_country` (empty content only); Malta (no row) is reported `country_needs_content: MT` and stays hidden (GBS Malta is then created internal, R15); audit `country.direct_tieup_publish` | Implements DT18 without inventing country content |
 | R13 | A hidden country that already has catalogue content is published by setting `catalogue_visible = true` only | DT18 says "visible when they have their content"; such a country was mis-reported |
 | R14 | The Partner Universities commission column/field is shown only to `memberRole === "master"` and when the key is present | Defence in depth: staff never show it even if a payload carried the key |
+| R15 | A university whose country stays hidden is created internal (`catalogue_visible = false`): GBS Malta is not public and not in the agent catalogue until Malta has catalogue content; the report counts `universities_internal` and names each | A university must not be published through a country that is not |
 
 **Consequences (build outcomes, with their rulings):** migration `0157_direct_tieups` (7 `universities` columns, 3 `overseas_courses` columns,
 CHECKs); `services/agent_commission_access.py`; `api/partnership_universities.py` (`PUT` / `DELETE …/agent-commission`);

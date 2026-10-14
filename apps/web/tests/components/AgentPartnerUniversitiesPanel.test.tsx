@@ -46,6 +46,27 @@ describe("AgentPartnerUniversitiesPanel", () => {
     expect(screen.queryByText("Agent commission")).toBeNull();
     expect(screen.queryByRole("link")).toBeNull();
   });
+  it("renders deadlines and scholarships as separate list items, and nothing for empty lists", async () => {
+    vi.stubGlobal("fetch", route({ items: [item], total: 1 }, detail({ deadlines: ["Jan Intake: Late November", "May Intake: Mid-April"], scholarships: [], fee_structure: "Line 1" + String.fromCharCode(10) + "Line 2" })));
+    render(<AgentPartnerUniversitiesPanel memberRole="staff" />);
+    fireEvent.click(await screen.findByRole("button", { name: "University of South Wales" }));
+    expect(await screen.findByText("Jan Intake: Late November")).toBeTruthy();
+    expect(screen.getByText("May Intake: Mid-April").tagName).toBe("LI");
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    expect(screen.queryByText("Scholarships")).toBeNull();
+    expect((screen.getByText(/Line 1/) as HTMLElement).style.whiteSpace).toBe("pre-line");
+  });
+  it("hides the commission from staff even when the payload carries it", async () => {
+    vi.stubGlobal("fetch", route({ items: [{ ...item, agent_commission: commission }], total: 1 }, detail({ agent_commission: commission })));
+    render(<AgentPartnerUniversitiesPanel memberRole="staff" />);
+    await screen.findByText("University of South Wales");
+    expect(screen.queryByRole("columnheader", { name: "Agent commission" })).toBeNull();
+    expect(screen.queryByText("13.00%")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "University of South Wales" }));
+    expect(await screen.findByText("MSc Data Science")).toBeTruthy();
+    expect(screen.queryByText("Agent commission")).toBeNull();
+    expect(screen.queryByText("13.00%")).toBeNull();
+  });
   it("shows an alert when the list cannot be loaded", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => res({ detail: "boom" }, 500)));
     render(<AgentPartnerUniversitiesPanel memberRole="master" />);

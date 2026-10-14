@@ -46,7 +46,7 @@ async def test_creates_then_is_a_no_op(db_session):
     assert await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == str(uni.id), AuditLog.action == "university.direct_tieup_load"))
     second = await load(db_session, _data(name))
     assert second == {"universities_created": 0, "universities_updated": 0, "courses_created": 0, "courses_skipped": 1, "scholarships_created": 0, "conflicts": 0,
-                      "countries_published": 0, "country_needs_content": 0}
+                      "countries_published": 0, "country_needs_content": 0, "universities_internal": 0}
 
 
 @pytest.mark.asyncio
@@ -131,7 +131,33 @@ async def test_hidden_country_without_a_row_stays_hidden(db_session, monkeypatch
     report = await load(db_session, _in(_data(name), "ZQ"))
     await db_session.refresh(c)
     assert report["countries_published"] == 0 and report["country_needs_content"] == 1 and c.catalogue_visible is False
-    assert f"ZQ: {name} stays hidden until" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert f"ZQ: {name} stays hidden until" in out and f"ZQ: {name} created internal" in out
+    assert report["universities_internal"] == 1
+    uni = await db_session.scalar(select(University).where(University.name == name))
+    assert uni.catalogue_visible is False  # R15
+
+
+@pytest.mark.asyncio
+async def test_university_in_a_hidden_country_is_internal_and_absent_from_public_and_agent(client, db_session, monkeypatch, tmp_path):
+    from tests.agn001_helpers import client_for, mk_active_org
+
+    await _hidden_country(db_session, "ZQ", "dtu-test-land")
+    rows = tmp_path / "countries.json"
+    rows.write_text("[]", encoding="utf-8")
+    monkeypatch.setattr(loader, "COUNTRIES_FILE", rows)
+    name = f"Dtu Internal University {uuid.uuid4().hex[:8]}"
+    await load(db_session, _in(_data(name), "ZQ"))
+    uni = await db_session.scalar(select(University).where(University.name == name))
+    assert uni.catalogue_visible is False
+    org = await mk_active_org(db_session)
+    await db_session.commit()
+    client.cookies.clear()
+    pub = await client.get("/api/v1/public/universities", params={"q": name})
+    assert pub.status_code == 200 and name not in pub.text
+    async with client_for(org["master"].email) as master:
+        r = await master.get("/api/v1/workflows/overseas/agent/crm/partner-universities", params={"q": name})
+        assert r.status_code == 200 and r.json()["items"] == []
 
 
 @pytest.mark.asyncio

@@ -3152,7 +3152,7 @@ moves the application to Joined (AC3). Every change writes offer history.
   for a Master; **absent** (not `null`) everywhere else. All `UniversityEnvelope` routes set `response_model_exclude_unset`.
 - **Loader counts** (`universities_created`, `universities_updated`, `courses_created`, `courses_skipped`, `scholarships_created`,
   `conflicts`, `countries_published`, `country_needs_content`); hidden destination countries with content are published (DT18 / R12 / R13),
-  Malta is reported `country_needs_content: MT` and stays hidden.
+  Malta is reported `country_needs_content: MT` and stays hidden; GBS Malta is created internal (not public) until Malta has catalogue content (R15, `universities_internal`).
 
 ## 13. Traceability check
 

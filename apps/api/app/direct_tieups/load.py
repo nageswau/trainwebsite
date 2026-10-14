@@ -16,14 +16,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.main  # noqa: F401  (loads the routers first: the services import each other in a cycle that only resolves in that order)
 from app.models import AuditLog, Country, OverseasCourse, Scholarship, University
-from app.schemas import CourseIn, UniversityCreate
+from app.schemas import AgentCommissionIn, CourseIn, UniversityCreate
 from app.seed import catalogue_country
 from app.services.partnership_universities import free_slug, name_key_of, next_code
 from app.services.university_courses import check_rules, derive_texts, title_key
 
 DEFAULT_FILE = Path(__file__).resolve().parents[2] / "seed" / "direct_tieups.json"
 FILL_FIELDS = ("logo_url", "campuses", "fee_structure", "website", "overview", "deadlines", "scholarships")
-COUNT_KEYS = ("universities_created", "universities_updated", "courses_created", "courses_skipped", "scholarships_created", "conflicts", "countries_published", "country_needs_content")
+COUNT_KEYS = ("universities_created", "universities_updated", "courses_created", "courses_skipped", "scholarships_created", "conflicts", "countries_published", "country_needs_content", "universities_internal")
+UNI_KEYS = ("city", "institution_type", "website", "overview", "campuses", "fee_structure", "logo_url")
+COURSE_KEYS = ("title", "level", "category", "duration", "tuition_amount", "tuition_currency", "intakes", "campus", "fee_text", "intake_text")
 COUNTRIES_FILE = Path(__file__).resolve().parents[2] / "seed" / "countries.json"
 
 
@@ -76,11 +78,14 @@ def _reason(exc: Exception) -> str:
     return str(exc.detail) if isinstance(exc, HTTPException) else str(exc)
 
 
-def _validate(data: list[dict], countries: dict) -> None:
-    """Every university and course goes through the manual-add schemas and rules before anything is written; one bad row fails the run."""
+def _validate(data: list[dict], countries: dict) -> list[dict]:
+    """Every university and course goes through the manual-add schemas and rules before anything is written; one bad row fails the run. Returns each entry with the
+    validated (normalised) values in place of the raw ones."""
+    checked: list[dict] = []
     for entry in data:
+        out = dict(entry)
         try:
-            UniversityCreate.model_validate(
+            uni = UniversityCreate.model_validate(
                 {
                     "name": entry["name"],
                     "country_id": countries[entry["country_iso2"]].id,
@@ -92,9 +97,17 @@ def _validate(data: list[dict], countries: dict) -> None:
                     "fee_structure": entry.get("fee_structure"),
                     "logo_url": entry.get("logo_url"),
                 }
-            )
+            ).model_dump()
+            out.update({k: uni[k] for k in UNI_KEYS})
         except Exception as exc:
             raise ValueError(f"{entry['name']}: invalid university: {_reason(exc)}") from exc
+        raw_commission = entry.get("agent_commission")
+        if raw_commission:
+            try:
+                out["agent_commission"] = AgentCommissionIn.model_validate(raw_commission).model_dump()
+            except Exception as exc:
+                raise ValueError(f"{entry['name']}: invalid agent_commission: {_reason(exc)}") from exc
+        out["courses"] = []
         for item in entry.get("courses", []):
             try:
                 body = CourseIn.model_validate(
@@ -111,9 +124,13 @@ def _validate(data: list[dict], countries: dict) -> None:
                         "intake_text": item.get("intake_text"),
                     }
                 )
-                check_rules(body.model_dump())
+                dumped = body.model_dump()
+                check_rules(dumped)
+                out["courses"].append({**item, **{k: dumped[k] for k in COURSE_KEYS}})
             except Exception as exc:
                 raise ValueError(f"{entry['name']} / {item.get('title')}: invalid course: {_reason(exc)}") from exc
+        checked.append(out)
+    return checked
 
 
 async def _publish_countries(db: AsyncSession, data: list[dict], countries: dict, counts: dict, notes: list[str]) -> None:
@@ -150,8 +167,9 @@ async def load(db: AsyncSession, data: list[dict], commit: bool = True) -> dict[
     for code in sorted(codes):
         if code not in countries:
             raise ValueError(f"unknown country {code}")
-    _validate(data, countries)
+    data = _validate(data, countries)
     hidden: list[str] = []
+    internal: list[str] = []
     try:
         await _publish_countries(db, data, countries, counts, hidden)
         for entry in data:
@@ -199,7 +217,7 @@ async def load(db: AsyncSession, data: list[dict], commit: bool = True) -> dict[
                         name=entry["name"],
                         city=entry.get("city") or "",
                         institution_type=entry.get("institution_type") or "university",
-                        catalogue_visible=True,
+                        catalogue_visible=country.catalogue_visible,  # R15: internal while its country stays hidden
                         active=True,
                         requirements=[],
                         eligibility="",
@@ -217,6 +235,9 @@ async def load(db: AsyncSession, data: list[dict], commit: bool = True) -> dict[
                 db.add(uni)
                 await db.flush()
                 counts["universities_created"] += 1
+                if not country.catalogue_visible:
+                    counts["universities_internal"] += 1
+                    internal.append(f"{country.iso2}: {entry['name']} created internal (not public)")
                 fields = [f for f in FILL_FIELDS if not _empty(entry.get(f))] + (["agent_commission"] if has_commission else [])
 
             cache: dict[str, str] = {}
@@ -265,7 +286,7 @@ async def load(db: AsyncSession, data: list[dict], commit: bool = True) -> dict[
     except BaseException:
         await db.rollback()
         raise
-    for line in hidden:
+    for line in hidden + internal:
         print(line)
     if commit:
         await db.commit()

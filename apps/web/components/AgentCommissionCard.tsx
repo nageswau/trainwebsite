@@ -38,6 +38,7 @@ export default function AgentCommissionCard({ universityId, value, canEdit }: { 
 
   async function clear() {
     if (busy) return;
+    if (!window.confirm("Clear the agent commission for this university?")) return;
     setError(null);
     setBusy(true);
     await finish(await sendRequest(agentCommissionUrl(universityId), { method: "DELETE" }));

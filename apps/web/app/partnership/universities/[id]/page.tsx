@@ -184,7 +184,7 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
           {/* upc-028: an active partner's health score, carried by the same performance read */}
           {performance?.health && <PartnershipHealth health={performance.health} />}
           {ledger && <CommissionLedger ledger={ledger} today={istToday()} />}
-          {"agent_commission" in u && <AgentCommissionCard universityId={u.id} value={u.agent_commission ?? null} canEdit={AGENT_COMMISSION_EDITORS.has(user.role)} />}
+          {"agent_commission" in u && <AgentCommissionCard key={JSON.stringify(u.agent_commission ?? null)} universityId={u.id} value={u.agent_commission ?? null} canEdit={AGENT_COMMISSION_EDITORS.has(user.role)} />}
           {agreements && (
             <UniversityAgreements universityId={u.id} agreements={agreements.items} options={agreementOptions} canManage={u.permissions.can_manage_agreements} />
           )}
