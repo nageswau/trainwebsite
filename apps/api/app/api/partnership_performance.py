@@ -74,6 +74,11 @@ async def commission_by_university(db: AsyncSession, user: User, university_ids:
     """upc-019 CL13 (F10/F11) per university for the period -- computed only for the commission roles (U2); None for everyone else."""
     if not can_see_commission(user):
         return None
+    return await commission_sums(db, university_ids, first, last)
+
+
+async def commission_sums(db: AsyncSession, university_ids: list[UUID], first: date, last: date) -> dict[UUID, dict]:
+    """F10/F11 per university with no role check: the caller has already applied its own rule (U2 here; mgmt-023 M3 for partners)."""
     rows, received = await commission.expected_rows(db, university_ids), await commission.received_sums(db, university_ids, first, last)
     return {u: {"expected": commission.currency_sums(rows.get(u, []), first, last), "received": received.get(u, {})} for u in university_ids}
 

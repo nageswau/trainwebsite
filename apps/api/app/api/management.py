@@ -39,6 +39,7 @@ from app.schemas import (
     ManagementMeOut,
     ManagementSnapshotOut,
     ManagementTrainingOut,
+    ManagementUniversitiesOut,
     MarketingBudgetsIn,
     MarketingOut,
     PnlOut,
@@ -68,6 +69,7 @@ from app.services import (
     management_recruitment_revenue,
     management_telecalling,
     management_training,
+    management_universities,
     partner_capital,
     salaries,
     telecaller_performance,
@@ -76,6 +78,7 @@ from app.services.bdm_activities import india_date
 from app.services.bdm_appointments import db_now
 from app.services.bdm_performance import period
 from app.services.management_access import can_view_operational, require_management, require_partner_only, tiers
+from app.services.partnership_metrics import period as partnership_period
 
 router = APIRouter(prefix="/management", tags=["management"])
 MONTH = r"^\d{4}-(0[1-9]|1[0-2])$"  # the `month` query of the expense (mgmt-010), salary (mgmt-011) and accounts (mgmt-013) routes
@@ -510,3 +513,14 @@ async def student_funnel(
     now = await db_now(db)
     start, end = period(from_, to, india_date(now))
     return await management_funnel.dashboard(db, start, end, now, by)
+
+
+# --- mgmt-023: University partnership dashboard (spec UD1-UD14). Operational tier (M13); revenue for the partners only (UD10) ----------
+@router.get("/universities", response_model=ManagementUniversitiesOut, response_model_exclude_unset=True)
+async def universities_dashboard(from_: date | None = Query(None, alias="from"), to: date | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """§19 now, with Applications, Enrollments and Revenue for `from`..`to` (IST, default this month to date, as upc-029; UD3). The
+    accountant and everyone else 403."""
+    _operational(user)
+    today = india_date(await db_now(db))
+    first, last = partnership_period(from_ or today.replace(day=1), to or today)
+    return await management_universities.dashboard(db, user, first, last, today)
