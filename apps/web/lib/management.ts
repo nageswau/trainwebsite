@@ -32,12 +32,12 @@ export const MANAGEMENT_PILLARS: ManagementPillar[] = [
       { ...fin("Ledger", "mgmt-004"), href: "/management/ledger" }, { ...fin("Abroad Education revenue", "mgmt-006"), href: "/management/revenue/abroad" },
       { ...fin("IT Training revenue", "mgmt-007"), href: "/management/revenue/it" }, { ...fin("Recruitment revenue", "mgmt-008"), href: "/management/revenue/recruitment" },
       { ...fin("Expenses & rent", "mgmt-010"), href: "/management/expenses" }, { ...fin("Profit & loss", "mgmt-009"), href: "/management/pnl" }, { ...fin("Salaries", "mgmt-011"), href: "/management/salaries" },
-      { ...fin("Accounts", "mgmt-013"), href: "/management/accounts" },
+      { ...fin("Accounts", "mgmt-013"), href: "/management/accounts" }, { ...fin("School revenue & contracts", "mgmt-022"), href: "/management/schools#school-money" },
       { ...own("Investments & ROI", "mgmt-014"), href: "/management/investments" }, { ...own("Partner capital accounts", "mgmt-015"), href: "/management/capital" },
     ],
   },
   { title: "People", entries: [{ ...op("Trainers", "mgmt-017"), href: "/management/training#trainers" }, { ...op("Counselors", "mgmt-018"), href: "/management/counseling#counselors" }, { ...op("Telecallers", "mgmt-019"), href: "/management/telecalling#telecallers" }, { ...op("Recruiters", "mgmt-025"), href: "/management/recruitment#recruitment-kpis" }, { ...fin("Employee cost", "mgmt-011"), href: "/management/salaries#employee-cost" }] },
-  { title: "Partnerships", entries: [{ ...op("Agents", "mgmt-021"), href: "/management/agents" }, op("Schools", "mgmt-022"), op("Universities", "mgmt-023"), { ...op("Companies", "mgmt-025"), href: "/management/recruitment#company-pipeline" }] },
+  { title: "Partnerships", entries: [{ ...op("Agents", "mgmt-021"), href: "/management/agents" }, { ...op("Schools", "mgmt-022"), href: "/management/schools" }, op("Universities", "mgmt-023"), { ...op("Companies", "mgmt-025"), href: "/management/recruitment#company-pipeline" }] },
   {
     title: "Business Intelligence",
     entries: [

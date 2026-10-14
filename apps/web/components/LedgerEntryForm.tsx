@@ -8,17 +8,17 @@ import { fieldErrors } from "@/lib/bdmTravel";
 import { KIND_LABEL, LEDGER_API, LEDGER_HOME, type LedgerEntry, type LedgerKind, type LedgerOptions } from "@/lib/managementLedger";
 import { useHydrated } from "@/lib/useHydrated";
 
-type Values = { kind: LedgerKind; entry_date: string; category_id: string; amount: string; vertical: string; description: string; channel: string; program_id: string; batch_id: string };
+type Values = { kind: LedgerKind; entry_date: string; category_id: string; amount: string; vertical: string; description: string; channel: string; program_id: string; batch_id: string; school_id: string };
 type Field = keyof Values;
 
 const AMOUNT = /^\d+(\.\d{1,2})?$/;
 const RECEIPT_TYPES = ".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png";
 
 function initial(entry: LedgerEntry | undefined, today: string): Values {
-  if (!entry) return { kind: "expense", entry_date: today, category_id: "", amount: "", vertical: "", description: "", channel: "", program_id: "", batch_id: "" };
+  if (!entry) return { kind: "expense", entry_date: today, category_id: "", amount: "", vertical: "", description: "", channel: "", program_id: "", batch_id: "", school_id: "" };
   return {
     kind: entry.kind, entry_date: entry.entry_date, category_id: entry.category.id, amount: entry.amount, vertical: entry.vertical, description: entry.description,
-    channel: entry.channel ?? "", program_id: entry.program?.id ?? "", batch_id: entry.batch?.id ?? "",
+    channel: entry.channel ?? "", program_id: entry.program?.id ?? "", batch_id: entry.batch?.id ?? "", school_id: entry.school?.id ?? "",
   };
 }
 
@@ -56,6 +56,9 @@ export default function LedgerEntryForm({ options, today, entry }: { options: Le
   if (entry?.program && !programs.some((p) => p.value === entry.program!.id)) programs.push({ value: entry.program.id, label: entry.program.name });
   const batches = (options.programs.find((p) => p.id === values.program_id)?.batches ?? []).map((b) => ({ value: b.id, label: b.name }));
   if (entry?.batch && values.batch_id === entry.batch.id && !batches.some((b) => b.value === entry.batch!.id)) batches.push({ value: entry.batch.id, label: entry.batch.name });
+  // mgmt-022 (SD14): a school only on School projects income; any other kind or vertical sends none.
+  const schoolTagged = values.kind === "income" && values.vertical === "school";
+  const schools = (options.schools ?? []).map((s) => ({ value: s.id, label: s.name }));
 
   const fieldProps = (key: Field) => ({ id: `ledger-${key}`, "aria-invalid": errors[key] ? true : undefined, "aria-describedby": errors[key] ? `ledger-${key}-error` : undefined });
   const error = (key: Field) => errors[key] && <p className="form-error" id={`ledger-${key}-error`}>{errors[key]}</p>;
@@ -84,6 +87,7 @@ export default function LedgerEntryForm({ options, today, entry }: { options: Le
       ...(entry ? {} : { kind: values.kind }), entry_date: values.entry_date, category_id: values.category_id, amount: plainAmount(values.amount),
       vertical: values.vertical, description: values.description.trim(), channel: values.kind === "expense" && values.channel ? values.channel : null,
       program_id: values.program_id || null, batch_id: values.batch_id || null,
+      school_id: schoolTagged && values.school_id ? values.school_id : null,
     };
     const saved = entry ? await sendJson(`${LEDGER_API}/${entry.id}`, "PATCH", body) : await sendJson(LEDGER_API, "POST", body);
     if (!saved.ok) {
@@ -145,6 +149,7 @@ export default function LedgerEntryForm({ options, today, entry }: { options: Le
           {values.kind === "expense" && select("channel", "Marketing channel (optional)", options.channels, "None")}
           {select("program_id", "Course (optional)", programs, "None")}
           {values.program_id && select("batch_id", "Batch (optional)", batches, "None")}
+          {schoolTagged && select("school_id", "School (optional)", schools, "None")}
         </div>
         <div className="field">
           <label htmlFor="ledger-receipt">Receipt (optional)</label>

@@ -924,6 +924,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-022 — School dashboard + school revenue / contract / renewal value
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-022`. `DEC-SCOPE-214` (SD1–SD16 recommended defaults, UNVERIFIED; SD12–SD14
+  answer Q-23: ledger school tag for revenue, school columns for contract / renewal value). Migration `0162_school_values`; API §12EB;
+  RBAC §2.139. QA `docs/quality/MGMT-022_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** §18: 12 figures + "School-wise revenue / contract value / renewal value".
 - **Existing behavior:** cross-school analytics (ENH-016) and BDM school figures. **There is no school money data.**
 - **Expected behavior:**

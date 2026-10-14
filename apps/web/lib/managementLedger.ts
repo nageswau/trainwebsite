@@ -12,7 +12,7 @@ export type LedgerCategory = { id: string; kind: LedgerKind; nature: "fixed" | "
 export type LedgerEvent = { id: string; at: string; actor: LedgerPerson | null; event: string; from_status: string | null; to_status: string | null; fields: string[]; reason: string | null };
 export type LedgerEntry = {
   source?: "manual"; id: string; entry_date: string; kind: LedgerKind; category: { id: string; name: string; active: boolean }; amount: string; description: string;
-  vertical: string; channel: string | null; program: LedgerNamed | null; batch: LedgerNamed | null; status: LedgerStatus; reversal_of_id: string | null;
+  vertical: string; channel: string | null; program: LedgerNamed | null; batch: LedgerNamed | null; school?: LedgerNamed | null; status: LedgerStatus; reversal_of_id: string | null;
   reversed_by_id: string | null; receipt: { name: string | null; content_type: string } | null; created_by: LedgerPerson | null;
   updated_by: LedgerPerson | null; decided_by: LedgerPerson | null; submitted_at: string | null; decided_at: string | null;
   rejection_reason: string | null; created_at: string; updated_at: string; can: { edit: boolean; submit: boolean; decide: boolean; reverse: boolean };
@@ -32,7 +32,7 @@ export function isAutoLine(item: LedgerEntry | LedgerAutoLine): item is LedgerAu
   return item.source !== undefined && item.source !== "manual";
 }
 export type LedgerChoice = { value: string; label: string };
-export type LedgerOptions = { categories: LedgerCategory[]; channels: LedgerChoice[]; verticals: LedgerChoice[]; programs: (LedgerNamed & { batches: LedgerNamed[] })[] };
+export type LedgerOptions = { categories: LedgerCategory[]; channels: LedgerChoice[]; verticals: LedgerChoice[]; programs: (LedgerNamed & { batches: LedgerNamed[] })[]; schools?: LedgerNamed[] };
 export type LedgerFilters = { month: string; kind: string; category: string; vertical: string; status: string; include: string; offset: number };
 
 export const KIND_LABEL: Record<LedgerKind, string> = { income: "Income", expense: "Expense" };

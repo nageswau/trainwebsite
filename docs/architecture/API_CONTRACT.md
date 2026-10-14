@@ -3215,6 +3215,18 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `DELETE /management/plans/{month}/items/{id}` | `204`; tasks made from it stay; closed `409` |
 | `POST /management/plans/{month}/items/{id}/tasks` | `{owner_user_id, priority?, deadline}` → `201` mgmt-028 task (`source: "plan"`); mgmt-028's owner/deadline `422`s; closed `409` |
 
+## 12EB. School dashboard + school money (`mgmt-022`) — addendum, 2026-10-14
+
+- **Basis:** `DEC-SCOPE-214` (SD1–SD16, answers Q-23). Design spec `docs/superpowers/specs/2026-10-14-mgmt-022-school-dashboard-design.md`.
+  Migration `0162_school_values`. Every management role reads (partner, super_admin, accountant); other roles `403` "Management access
+  required"; signed out `401`. Money and the value write for the finance tier only (partner, accountant).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/schools` *(new)* | Query: `from`, `to` (inclusive IST dates, each defaulting to this IST month). `422` malformed date, "The period must start on or before its end", "The period can be at most 366 days". `200` `{from, to, as_of, money_visible, figures[{key, label, definition, basis (period/now)}] (13, §18 order), totals{schools_contacted, meetings, proposals, mous, active_schools, students, teachers, parents, career_guidance, psychometric_tests, academic_results, profile_completion (% or null), revenue, contract_value, renewal_value, contracts_not_entered}, untagged_revenue, schools[{id, name, tier, active, renewal_due, tier_valid_until, students, teachers, parents, career_guidance, psychometric_tests, academic_results, profile_completion, revenue, contract_value, renewal_value}]}`; schools ordered by name. Money is a decimal string, `null` unless money_visible (finance tier); `contract_value` / `renewal_value` `null` = not entered. Read-only |
+| `PATCH /management/schools/{school_id}` *(new)* | Body `{contract_value?, renewal_value?}` (decimal ≥ 0, 2 dp, ≤ 999,999,999,999.99; explicit `null` clears; other keys `422`). Finance tier only: super_admin `403` "Finance access required"; others `403` "Management access required". `404` "School not found". `200` `{id, contract_value, renewal_value}`. Row lock; one `mgmt.school_value` audit row (changed fields, before/after) in the same transaction; nothing written when unchanged |
+| `POST /management/ledger`, `PATCH /management/ledger/{id}` *(changed)* | New optional `school_id`: only on income entries of the `school` vertical (`422` on `school_id` "A school is only for School projects income" / "Choose a school from the list"); a reversal copies it. `LedgerEntryOut` gains `school {id, name} | null`; `GET /management/ledger/options` gains `schools[{id, name}]`. Existing callers that omit it are unchanged |
+
 ## 12ED. Management meetings + minutes chain (`mgmt-029`) — addendum, 2026-10-14
 
 - **Basis:** `DEC-SCOPE-216` (MM1–MM14). Design spec `docs/superpowers/specs/2026-10-14-mgmt-029-management-meetings-design.md`.

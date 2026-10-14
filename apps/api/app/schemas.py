@@ -11155,6 +11155,85 @@ class ManagementAgentsOut(BaseModel):
     agencies: list[ManagementAgencyRow]
 
 
+# mgmt-022 (spec SD1-SD16): the school dashboard. Money is a decimal string, or null unless `money_visible` (the finance tier, SD1).
+class ManagementSchoolFigure(BaseModel):
+    key: str
+    label: str
+    definition: str
+    basis: Literal["period", "now"]
+
+
+class ManagementSchoolCounts(BaseModel):
+    students: int
+    teachers: int
+    parents: int
+    career_guidance: int
+    psychometric_tests: int
+    academic_results: int
+    profile_completion: int | None
+    revenue: Decimal | None
+    contract_value: Decimal | None
+    renewal_value: Decimal | None
+
+
+class ManagementSchoolTotals(ManagementSchoolCounts):
+    schools_contacted: int
+    meetings: int
+    proposals: int
+    mous: int
+    active_schools: int
+    contracts_not_entered: int | None
+
+
+class ManagementSchoolRow(ManagementSchoolCounts):
+    id: UUID
+    name: str
+    tier: str | None
+    active: bool
+    renewal_due: bool
+    tier_valid_until: date | None
+
+
+class ManagementSchoolsOut(BaseModel):
+    from_: date = Field(serialization_alias="from")
+    to: date
+    as_of: datetime
+    money_visible: bool
+    figures: list[ManagementSchoolFigure]
+    totals: ManagementSchoolTotals
+    untagged_revenue: Decimal | None
+    schools: list[ManagementSchoolRow]
+
+
+def _school_value(value: Decimal | None) -> Decimal | None:
+    if value is None:
+        return None
+    if not value.is_finite() or value < 0:
+        raise ValueError("Enter an amount of 0 or more")
+    if value.as_tuple().exponent < -2:  # type: ignore[operator]
+        raise ValueError("Use at most 2 decimal places")
+    if value > LEDGER_MAX_AMOUNT:
+        raise ValueError("The amount is too large")
+    return value
+
+
+SchoolValue = Annotated[Decimal | None, AfterValidator(_school_value)]
+
+
+class ManagementSchoolValuesIn(BaseModel):
+    """SD13: a partial change; omitted = unchanged, an explicit null clears the value."""
+
+    model_config = ConfigDict(extra="forbid")
+    contract_value: SchoolValue = None
+    renewal_value: SchoolValue = None
+
+
+class ManagementSchoolValuesOut(BaseModel):
+    id: UUID
+    contract_value: Decimal | None
+    renewal_value: Decimal | None
+
+
 # mgmt-004 (spec ML1-ML16): the management ledger. Simple field rules live here so a 422 names its field; rules that need the database
 # (category, batch, channel on an existing entry) are raised by `services/ledger.py` in the same field-located shape.
 LEDGER_MAX_AMOUNT = Decimal("999999999999.99")  # Numeric(14, 2)
@@ -11212,6 +11291,7 @@ class LedgerEntryUpdate(BaseModel):
     channel: LedgerChannel | None = None
     program_id: UUID | None = None
     batch_id: UUID | None = None
+    school_id: UUID | None = None  # mgmt-022 SD14: School projects income only
 
     @field_validator(*_LEDGER_REQUIRED, mode="before")
     @classmethod
@@ -11319,6 +11399,7 @@ class LedgerEntryOut(BaseModel):
     channel: str | None
     program: LedgerNamed | None
     batch: LedgerNamed | None
+    school: LedgerNamed | None = None  # mgmt-022 SD14
     status: Literal[LEDGER_STATUSES]  # type: ignore[valid-type]
     reversal_of_id: UUID | None
     reversed_by_id: UUID | None
@@ -11440,6 +11521,7 @@ class LedgerOptions(BaseModel):
     channels: list[LedgerChoice]
     verticals: list[LedgerChoice]
     programs: list[LedgerProgramOption]
+    schools: list[LedgerNamed]  # mgmt-022 SD14
 
 
 # --- mgmt-014 (DEC-SCOPE-190 MI1-MI12): the investment register, partner-only -------------------------------------------------

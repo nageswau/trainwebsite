@@ -34,6 +34,7 @@ from app.models import (
     RecruiterInvoice,
     RecruiterPayment,
     SalaryMonthTotal,
+    School,
     University,
     UniversityCommissionReceipt,
     User,
@@ -51,7 +52,7 @@ EDITABLE = ("draft", "rejected")
 CENTS = Decimal("0.01")
 VERTICAL_LABELS = {"abroad": "Abroad Education", "it": "IT Training", "recruitment": "Recruitment", "school": "School projects", "other": "Other", "shared": "Shared (company-wide)"}
 # The fields an entry write may change, and the ones whose before/after values the audit keeps (MA3: finance kind, no PII).
-FIELDS = ("entry_date", "category_id", "amount", "description", "vertical", "channel", "program_id", "batch_id")
+FIELDS = ("entry_date", "category_id", "amount", "description", "vertical", "channel", "program_id", "batch_id", "school_id")
 VALUED = ("entry_date", "amount", "vertical", "status")
 
 FINANCE_ONLY = "Finance access required"
@@ -139,9 +140,15 @@ async def entry_category(db: AsyncSession, category_id, kind: str) -> LedgerCate
 
 
 async def resolve_tags(db: AsyncSession, kind: str, state: dict) -> None:
-    """ML6, in place: a channel only on expenses; a batch must belong to the chosen course, and a batch alone sets its course."""
+    """ML6, in place: a channel only on expenses; a batch must belong to the chosen course, and a batch alone sets its course.
+    mgmt-022 SD14: a school only on School projects income, and it must exist."""
     if state.get("channel") and kind != "expense":
         raise field_error("channel", "A marketing channel is only for expenses")
+    if state.get("school_id"):
+        if kind != "income" or state.get("vertical") != "school":
+            raise field_error("school_id", "A school is only for School projects income")
+        if await db.get(School, state["school_id"]) is None:
+            raise field_error("school_id", "Choose a school from the list")
     if state.get("program_id") and await db.get(Program, state["program_id"]) is None:
         raise field_error("program_id", "Choose a course from the list")
     if state.get("batch_id"):
@@ -195,6 +202,7 @@ async def entries_out(db: AsyncSession, user: User, rows: list[LedgerEntry]) -> 
     people: dict = {u.id: {"id": u.id, "full_name": u.full_name} for u in (await db.scalars(select(User).where(User.id.in_(people_ids)))).all()}
     programs: dict = {p.id: {"id": p.id, "name": p.title} for p in (await db.scalars(select(Program).where(Program.id.in_({r.program_id for r in rows if r.program_id})))).all()}
     batches: dict = {b.id: {"id": b.id, "name": b.name} for b in (await db.scalars(select(Batch).where(Batch.id.in_({r.batch_id for r in rows if r.batch_id})))).all()}
+    schools: dict = {s.id: {"id": s.id, "name": s.name} for s in (await db.execute(select(School.id, School.name).where(School.id.in_({r.school_id for r in rows if r.school_id})))).all()}
     reversals = dict((await db.execute(select(LedgerEntry.reversal_of_id, LedgerEntry.id).where(LedgerEntry.reversal_of_id.in_(ids), LedgerEntry.status != "rejected"))).all())
     out = []
     for r in rows:
@@ -212,6 +220,7 @@ async def entries_out(db: AsyncSession, user: User, rows: list[LedgerEntry]) -> 
                 "channel": r.channel,
                 "program": programs.get(r.program_id),
                 "batch": batches.get(r.batch_id),
+                "school": schools.get(r.school_id),
                 "status": r.status,
                 "reversal_of_id": r.reversal_of_id,
                 "reversed_by_id": reversals.get(r.id),
@@ -471,6 +480,7 @@ async def options(db: AsyncSession) -> dict:
         "channels": [{"value": k, "label": v} for k, v in SOURCE_LABELS.items()],
         "verticals": [{"value": k, "label": v} for k, v in VERTICAL_LABELS.items()],
         "programs": [{"id": p.id, "name": p.title, "batches": by_program.get(p.id, [])} for p in programs],
+        "schools": [{"id": s.id, "name": s.name} for s in (await db.execute(select(School.id, School.name).order_by(func.lower(School.name), School.id))).all()],
     }
 
 
