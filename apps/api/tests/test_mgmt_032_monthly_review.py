@@ -244,6 +244,18 @@ async def test_the_september_draft_is_created_on_1_october_once(db_session):
     assert await db_session.scalar(select(MonthlyReview.generated_at).where(MonthlyReview.month == september)) == first
 
 
+def test_the_beat_task_runs_in_a_fresh_worker_process():
+    """QA32-01: the worker imports nothing before the task body, so the task must load in a fresh interpreter (pytest's conftest has
+    already imported app.main, which hid a circular import). It drafts last month or finds it there -- idempotent either way."""
+    import subprocess
+    import sys
+
+    code = "from app.worker import draft_monthly_review_task as t; print(type(t.apply().get(propagate=True)).__name__)"
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=120, cwd="/app")
+    assert result.returncode == 0, result.stderr[-2000:]
+    assert result.stdout.strip().splitlines()[-1] == "bool"
+
+
 def test_the_beat_entry_runs_on_the_1st_at_06_00_ist():
     from app.worker import celery
 

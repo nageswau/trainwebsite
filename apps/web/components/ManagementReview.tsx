@@ -19,7 +19,7 @@ export function ReviewSection({ title, children }: { title: string; children: Re
 export function Figures({ caption, rows }: { caption: string; rows: [string, ReactNode][] }) {
   return (
     <div className="table-wrap">
-      <table className="table">
+      <table className="table compact figures">
         <caption className="visually-hidden">{caption}</caption>
         <tbody>
           {rows.map(([label, value], i) => (

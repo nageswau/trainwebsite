@@ -208,6 +208,7 @@ def sweep_stale_university_emails_task():
 def draft_monthly_review_task():
     """mgmt-032 (DEC-SCOPE-220 MR3): on the 1st at 06:00 IST via beat -- drafts the previous month's review. Idempotent per month (the
     unique month; an existing review is never overwritten), so a rerun or a second beat process creates nothing new."""
+    import app.main  # noqa: F401 -- QA32-01: the services the review reads (ledger -> telecaller_*) only import in the API's order
     from app.services.monthly_review import run_monthly_reviews
 
     return _run_with_fresh_pool(run_monthly_reviews)

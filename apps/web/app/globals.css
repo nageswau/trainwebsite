@@ -242,6 +242,8 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 .kpi-link { color: var(--blue); text-decoration: underline; text-underline-offset: 2px; font-size: 14px; font-weight: 600; }
 /* QA18-04: the shared .table min-width (650px) hid a two-column table's numbers on phones; compact tables size to their content. */
 .table.compact { min-width: 0; }
+/* QA32-03 (mgmt-032): a review's label/value figures read as rows, not as uppercase column headers. */
+.table.figures tbody th { background: none; text-transform: none; letter-spacing: 0; color: inherit; font-size: 13px; font-weight: 600; }
 /* QA18-04: the staff table has too many columns for a phone -- each member becomes a block, every number labelled. */
 @media (max-width: 640px) {
   .table.stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }

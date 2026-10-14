@@ -74,6 +74,15 @@ describe("mgmt-032 review list", () => {
     await waitFor(() => expect(router.push).toHaveBeenCalledWith("/management/reviews/2026-08"));
     expect(calls).toEqual([{ url: "/api/v1/management/reviews/2026-08/generate", method: "POST", body: undefined }]);
   });
+
+  it("re-reads the list when it is shown again, so Back after generating lists the new month (QA32-02)", () => {
+    const { rerender } = render(<ManagementReviewGenerate today="2026-10-14" reviewed={[]} />);
+    expect(router.refresh).toHaveBeenCalledTimes(1);
+    expect((screen.getByLabelText("Month", { selector: "select" }) as HTMLSelectElement).value).toBe("2026-09");
+    rerender(<ManagementReviewGenerate today="2026-10-14" reviewed={["2026-09"]} />); // the re-read lists September now
+    expect((screen.getByLabelText("Month", { selector: "select" }) as HTMLSelectElement).value).toBe("2026-08");
+    expect(router.refresh).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("mgmt-032 review sections", () => {
@@ -89,6 +98,11 @@ describe("mgmt-032 review sections", () => {
     expect(within(people).getByText("Not tracked")).toBeTruthy();
     expect(within(people).getByText("No department salaries entered for the month.")).toBeTruthy();
     expect(within(screen.getByRole("region", { name: "7. Marketing" })).getAllByText("—").length).toBeGreaterThan(0);
+  });
+
+  it("sizes the two-column figure tables to their content, so phones see the values (QA32-03)", () => {
+    render(<ManagementReview review={review()} />);
+    for (const table of within(screen.getByRole("region", { name: "1. Revenue" })).getAllByRole("table")) expect(table.className).toBe("table compact figures");
   });
 
   it("shows a final review's narrative read-only", () => {

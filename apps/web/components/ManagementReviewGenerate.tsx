@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { sendRequest } from "@/lib/apiErrors";
 import { monthLabel } from "@/lib/managementPlans";
@@ -14,10 +14,14 @@ export default function ManagementReviewGenerate({ today, reviewed }: { today: s
   const router = useRouter();
   const ready = useHydrated();
   const months = finishedMonths(today, reviewed);
-  const [month, setMonth] = useState(months[0] ?? "");
+  const [chosen, setMonth] = useState(months[0] ?? "");
+  const month = months.includes(chosen) ? chosen : (months[0] ?? ""); // a month reviewed meanwhile drops out of the choice
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const sending = useRef(false); // one generate per double click
+
+  // QA32-02: Back restores this list from Next's router cache, as it was before a month was generated; re-read it whenever it is shown.
+  useEffect(() => router.refresh(), [router]);
 
   if (months.length === 0) return <p className="muted">Every recent month already has a review.</p>;
 
