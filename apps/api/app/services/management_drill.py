@@ -44,6 +44,7 @@ from app.services.management_it_revenue import ENROLMENT_REFERENCES, period_rang
 NONE = "none"
 NOT_FOUND = "Nothing to show for this selection in this period"
 OUTCOME_STATUSES = ("selected", "joined")  # DD8/DD9: a job application at selection or joining
+HUMANISED = frozenset({"Application status", "Offer"})  # record details stored as codes ("offer_received", "conditional")
 
 
 @dataclass(frozen=True)
@@ -284,20 +285,18 @@ async def _record(db: AsyncSession, chain_key: str, table, shape: Shape, where: 
         "amount": _money(amount),
         "currency": currency,
         "description": description,
-        "details": [
-            {"label": label, "value": _label(value) if label in ("Application status", "Offer") else str(value)} for (label, _), value in zip(shape.details, values, strict=True) if value is not None
-        ],
+        "details": [{"label": label, "value": _label(value) if label in HUMANISED else str(value)} for (label, _), value in zip(shape.details, values, strict=True) if value is not None],
         "outcomes": None,
     }
     if chain_key == "it" and outcome_key is not None:  # DD9: the student's placement outcomes
         rows = await db.execute(
-            select(func.concat(Job.title, " · ", Company.name), JobApplication.status, JobApplication.stage_changed_at)
+            select(func.concat(Job.title, " · ", Company.name), JobApplication.status)
             .join(Job, Job.id == JobApplication.job_id)
             .join(Company, Company.id == Job.company_id)
             .where(JobApplication.student_id == outcome_key, JobApplication.status.in_(OUTCOME_STATUSES))
             .order_by(JobApplication.stage_changed_at.desc())
         )
-        record["outcomes"] = {"title": "Placement", "items": [{"name": name, "detail": None, "status": _label(status)} for name, status, _ in rows.all()]}
+        record["outcomes"] = {"title": "Placement", "items": [{"name": name, "detail": None, "status": _label(status)} for name, status in rows.all()]}
     elif chain_key == "recruitment" and outcome_key is not None:  # DD8: the requirement's selections and joinings
         rows = await db.execute(
             select(Candidate.name, Candidate.candidate_code, JobApplication.status)
