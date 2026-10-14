@@ -77,6 +77,8 @@ from app.models import (
     LEDGER_NATURES,
     LEDGER_STATUSES,
     LEDGER_VERTICALS,
+    MEETING_KINDS,
+    MEETING_STATUSES,
     PARTNERSHIP_POTENTIALS,
     PARTNERSHIP_TARGET_KPI_KEYS,
     PARTNERSHIP_TARGET_MAX,
@@ -11954,6 +11956,7 @@ class DiscussionOut(BaseModel):
     deadline: date | None
     status: str
     follow_up_date: date | None
+    meeting_id: UUID | None  # mgmt-029 (MM8): the meeting whose minutes produced it
     created_at: datetime
     updated_at: datetime
 
@@ -12220,6 +12223,174 @@ class PlanProgressOut(BaseModel):
     end: date
     rows: list[PlanProgressRow]
     free_text: PlanFreeText
+
+
+# mgmt-029 (spec MM1-MM14): management meetings + minutes chain. Field rules live here; the ones that need the database (active staff
+# participants), the clock (the 366-day window, minutes after the start) or the meeting's state are raised by
+# `services/management_meetings.py` in the same field-located shape, or as 409s.
+MgmtMeetingKind = Literal[MEETING_KINDS]  # type: ignore[valid-type]
+MgmtMeetingStatus = Literal[MEETING_STATUSES]  # type: ignore[valid-type]
+MgmtMeetingTitle = Annotated[str, AfterValidator(_ledger_text(2, 200, "The title"))]
+MgmtMeetingPeople = Annotated[list[UUID], Field(max_length=30)]
+_MEETING_REQUIRED = ("title", "kind", "starts_at", "mode", "participant_ids")
+
+
+def _mgmt_meeting_text(minimum: int, maximum: int, label: str):
+    """Agenda and minutes keep their line breaks; blank means none. No control characters but tab and newline."""
+
+    def check(value: str | None) -> str | None:
+        if value is None or not value.strip():
+            if minimum:
+                raise ValueError(f"{label} must be {minimum}-{maximum:,} characters")
+            return None
+        value = value.strip()
+        if _BDM_MULTILINE_CONTROL.search(value):
+            raise ValueError(f"{label} contains invalid characters")
+        if not minimum <= len(value) <= maximum:
+            raise ValueError(f"{label} must be {minimum}-{maximum:,} characters" if minimum else f"{label} must be at most {maximum:,} characters")
+        return value
+
+    return check
+
+
+class _MgmtMeetingFields(BaseModel):
+    """MM2: the fields a create and a change share. An explicit null clears an optional field (location, link, agenda), never a
+    required one. `participant_ids` replaces the whole set (MM5)."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: MgmtMeetingTitle | None = None
+    kind: MgmtMeetingKind | None = None
+    starts_at: BdmApptStart | None = None
+    mode: Literal[APPOINTMENT_MODES] | None = None  # type: ignore[valid-type]
+    location: _bdm_appt_optional(200) = None
+    meeting_url: LeadApptLink = None
+    agenda: Annotated[str | None, AfterValidator(_mgmt_meeting_text(0, 5_000, "The agenda"))] = None
+    participant_ids: MgmtMeetingPeople | None = None
+
+    @field_validator(*_MEETING_REQUIRED, mode="before")
+    @classmethod
+    def _required(cls, value, info: ValidationInfo):
+        if value is None:
+            raise ValueError(f"{(info.field_name or '').replace('_ids', 's').replace('_', ' ').capitalize()} is required")
+        return value
+
+
+class MgmtMeetingUpdate(_MgmtMeetingFields):
+    """MM4: `status` only cancels; minutes complete a meeting (MM6)."""
+
+    status: Literal["cancelled"] | None = None
+
+
+class MgmtMeetingCreate(_MgmtMeetingFields):
+    """A new meeting is always scheduled: no `status` (extra fields are refused)."""
+
+    title: MgmtMeetingTitle
+    kind: MgmtMeetingKind
+    starts_at: BdmApptStart
+    mode: Literal[APPOINTMENT_MODES] = "Online"  # type: ignore[valid-type]
+    participant_ids: MgmtMeetingPeople = Field(default_factory=list)
+
+
+class MgmtMeetingMinutesIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    minutes: Annotated[str, AfterValidator(_mgmt_meeting_text(2, 20_000, "The minutes"))]
+
+
+class MgmtMeetingDecisionIn(BaseModel):
+    """MM8: a mgmt-027 decision recorded from the minutes; the topic defaults to the meeting's title."""
+
+    model_config = ConfigDict(extra="forbid")
+    decision: DiscussionDecision
+    responsible_user_id: UUID | None = None
+    deadline: DiscussionLaterDate = None
+    topic: DiscussionTopic | None = None
+
+
+class MgmtMeetingTaskIn(BaseModel):
+    """MM9: a mgmt-028 task recorded from the minutes, under one of the meeting's decisions or the meeting itself."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: TaskTitle
+    owner_user_id: UUID
+    priority: TaskPriority = "medium"
+    deadline: date
+    decision_id: UUID | None = None
+
+
+class MgmtMeetingChainTask(BaseModel):
+    id: UUID
+    title: str
+    owner: DiscussionPerson
+    priority: str
+    deadline: date
+    status: str
+
+
+class MgmtMeetingChainDecision(BaseModel):
+    id: UUID
+    decision: str
+    responsible: DiscussionPerson | None
+    deadline: date | None
+    status: str
+    tasks: list[MgmtMeetingChainTask]
+
+
+class MgmtMeetingProgress(BaseModel):
+    done: int
+    total: int
+
+
+class MgmtMeetingOut(BaseModel):
+    """A calendar row: never the agenda, minutes or chain."""
+
+    id: UUID
+    title: str
+    kind: str
+    starts_at: datetime
+    mode: str
+    location: str | None
+    meeting_url: str | None
+    status: str
+    participant_count: int
+
+
+class MgmtMeetingDetail(MgmtMeetingOut):
+    agenda: str | None
+    minutes: str | None
+    minutes_recorded_at: datetime | None
+    participants: list[DiscussionPerson]
+    decisions: list[MgmtMeetingChainDecision]
+    tasks: list[MgmtMeetingChainTask]
+    progress: MgmtMeetingProgress
+    created_by: DiscussionPerson | None
+    updated_by: DiscussionPerson | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class MgmtMeetingPage(BaseModel):
+    items: list[MgmtMeetingOut]
+    date_from: date
+    date_to: date
+    today: date
+
+
+class MyMgmtMeetingOut(BaseModel):
+    """MM12: a participant's slice -- never the minutes, the chain or other people."""
+
+    id: UUID
+    title: str
+    kind: str
+    starts_at: datetime
+    mode: str
+    location: str | None
+    meeting_url: str | None
+    agenda: str | None
+    status: str
+
+
+class MyMgmtMeetingPage(BaseModel):
+    items: list[MyMgmtMeetingOut]
 
 
 # mgmt-006 (spec MR1-MR12): the §4 Abroad Education revenue dashboard -- revenue by kind and by country / university / intake / agency

@@ -1133,6 +1133,10 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-029 — Management meetings + minutes chain
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-029`. `DEC-SCOPE-216` (MM1–MM14 recommended defaults, UNVERIFIED; answers
+  Q-28: typed `http(s)` link; minutes = free text + the decisions and tasks list). Migration `0161_management_meetings`; API §12ED; RBAC
+  §2.141. Command Center "Meetings" live at `/management/meetings`; participants see their meetings in `/account/management-tasks#meetings`.
+  QA evidence `docs/quality/MGMT-029_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** §29 (Meeting Calendar with 7 kinds; Meeting → Minutes → Decision → Task → Deadline → Completion).
 - **Existing behavior:** none for management.
 - **Expected behavior:**

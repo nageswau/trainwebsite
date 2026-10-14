@@ -5769,6 +5769,8 @@ class ManagementDiscussion(Base, TimestampMixin):
     deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(String(12), default="open", server_default=text("'open'"))
     follow_up_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # mgmt-029 (MM8): the meeting whose minutes produced this decision; null for a discussion recorded on its own.
+    meeting_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("management_meetings.id", ondelete="RESTRICT"), nullable=True, index=True)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
@@ -5874,6 +5876,47 @@ class ManagementPlanItem(Base, TimestampMixin):
     position: Mapped[int] = mapped_column(Integer)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+# mgmt-029 (management meetings + minutes chain, spec MM1-MM14): EVID-017 §29. Rules live in `services/management_meetings.py`; the
+# decisions and tasks recorded from the minutes are mgmt-027 discussions (`meeting_id`) and mgmt-028 tasks (`source` meeting / decision).
+MEETING_KINDS = ("partner", "department", "school", "university", "agent", "recruiter", "marketing_review")
+MEETING_STATUSES = ("scheduled", "completed", "cancelled")
+
+
+class ManagementMeeting(Base, TimestampMixin):
+    """MM2: one meeting. Recording minutes completes it (MM6); `minutes_recorded_at` keeps the first time."""
+
+    __tablename__ = "management_meetings"
+    __table_args__ = (
+        CheckConstraint(_in_list("kind", MEETING_KINDS), name="ck_management_meetings_kind"),
+        CheckConstraint(_in_list("status", MEETING_STATUSES), name="ck_management_meetings_status"),
+        CheckConstraint(_in_list("mode", APPOINTMENT_MODES), name="ck_management_meetings_mode"),
+        Index("ix_management_meetings_starts_at", "starts_at"),
+        Index("ix_management_meetings_status_starts_at", "status", "starts_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    title: Mapped[str] = mapped_column(String(200))
+    kind: Mapped[str] = mapped_column(String(20))
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    mode: Mapped[str] = mapped_column(String(12))
+    location: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    meeting_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    agenda: Mapped[str | None] = mapped_column(Text, nullable=True)
+    minutes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    minutes_recorded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(12), default="scheduled", server_default=text("'scheduled'"))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class ManagementMeetingParticipant(Base):
+    """MM5: staff users only; replaced as a whole on edit."""
+
+    __tablename__ = "management_meeting_participants"
+    __table_args__ = (Index("ix_management_meeting_participants_user", "user_id"),)
+    meeting_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("management_meetings.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), primary_key=True)
 
 
 # mgmt-013 (accounts dashboard, spec AD1-AD14): EVID-017 §22's hand-entered month-end figures (R10, Q-15 interim). Each is nullable (not

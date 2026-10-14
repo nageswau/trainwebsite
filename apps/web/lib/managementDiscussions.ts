@@ -13,7 +13,7 @@ export type DiscussionPerson = { id: string; full_name: string; role: string };
 export type DiscussionAttachment = { id: string; name: string | null; content_type: string; shareable: boolean; created_at: string };
 export type Discussion = {
   id: string; topic: string; discussion_date: string; department: string | null; decision: string | null; responsible: DiscussionPerson | null;
-  deadline: string | null; status: DiscussionStatus; follow_up_date: string | null; created_at: string; updated_at: string;
+  deadline: string | null; status: DiscussionStatus; follow_up_date: string | null; meeting_id: string | null; created_at: string; updated_at: string;
 };
 export type DiscussionDetail = Discussion & {
   points: string | null; participants: DiscussionPerson[]; attachments: DiscussionAttachment[]; created_by: DiscussionPerson | null; updated_by: DiscussionPerson | null;
