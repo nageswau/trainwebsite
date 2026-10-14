@@ -8465,3 +8465,39 @@ as `0159`; mgmt-015 and mgmt-026 merged first. Spec `docs/superpowers/specs/2026
 Command Center's "Meetings" entry goes live; `/account/management-tasks` gains a Meetings section; a decision's page links back to its
 meeting. **New Feature ID authorized:** none (`mgmt-029` is in the backlog). **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md`
 §mgmt-029.
+
+### DEC-SCOPE-215 — University partnership dashboard, Q-24 (`mgmt-023`)
+
+**Evidence:** `EVID-017` §19 (L717–L785: twelve KPIs, the 8-step pipeline, Expected Partnership Date — "which universities are expected
+to be signed next month?"); scope authority `DEC-SCOPE-186` M3/M13 (`EXPLICIT_APPROVAL`); `UNIVERSITY_PARTNERSHIP_CRM_BACKLOG.md`
+Appendix B (Management §19 pipeline, Q-31) and `DEC-SCOPE-172` (upc-029). UD1–UD14 below answer backlog Q-24 ("Exclusive",
+"Countries", "Revenue") as **recommended defaults, `UNVERIFIED`**, taken on the owner's standing instruction to proceed with recommended
+answers.
+
+**Status:** built on `feature/mgmt-023`; focused tests green (QA evidence `docs/quality/MGMT-023_EXPLORATORY_QA_2026-10-14.md`); the
+full repository regression is deferred to its own session.
+
+**Numbering:** no migration; API §12EC; RBAC §2.140 (after mgmt-026's `DEC-SCOPE-213` / §12EA / §2.138 and mgmt-029's `DEC-SCOPE-216` / §12ED / §2.141 on main, and mgmt-022's claimed
+214 / §12EB / §2.139). Spec `docs/superpowers/specs/2026-10-14-mgmt-023-university-partnership-dashboard-design.md`.
+
+| # | Point | Recommended default (`UNVERIFIED`) |
+|---|---|---|
+| UD1 | Access | Operational tier (partner, super_admin); accountant and others `403`; signed out `401` |
+| UD2 | Scope | Every active university (both readers are global, so the figures equal upc-029's super_admin view) |
+| UD3 | Period | `from` / `to` IST days, default this IST month to date (as upc-029); start ≤ end and ≤ 366 days, else `422`. Drives Applications, Enrollments and Revenue only |
+| UD4 | Universities identified | upc-029 `pipeline.total` (= upc-022 D1), lost / closed included |
+| UD5 | Contacted · Meetings · Negotiations · MoUs · Signed | Not lost and currently at or past the §19 step (sums of upc-029 pipeline steps) (`NEEDS_CONFIRMATION`: "ever reached" would need stage history) |
+| UD6 | Active | upc-029 `active.count` (Appendix B G1) |
+| UD7 | Exclusive (Q-24) | Active, not-lost universities with an in-force exclusive agreement now (upc-025 MP8) |
+| UD8 | Countries (Q-24) | Countries with at least one active partner |
+| UD9 | Applications · Enrollments | upc-018 F5 / F9 totals for the period (= upc-029 funnel totals) |
+| UD10 | Revenue (Q-24) | upc-019 F11 commission received in the period per currency, F10 expected beside it; partners only (M3, `can_view_university_commission`); no `revenue` key for super_admin (M13). `partnership_access.COMMISSION_ROLES` unchanged (MG2) |
+| UD11 | Pipeline | upc-029 `pipeline` (Management §19, GD13) |
+| UD12 | Expected Partnership Date | upc-023 E1–E4 windows and the next-month list (EX12 order), first 25 rows + total |
+| UD13 | Links | None into `/partnership/*` (partners cannot open the UPC module) |
+| UD14 | Page / nav | `/management/universities`; Command Center Partnerships → Universities live (operational); super_admin nav "Management university figures" |
+
+**Consequences:** `services/management_universities.py`; `GET /management/universities`; `partnership_performance.commission_sums`
+extracted from `commission_by_university` (behaviour unchanged); page `/management/universities`. Read-only: nothing stored, logged or
+audited.
+- **Feature ID authorized:** `mgmt-023`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-023.

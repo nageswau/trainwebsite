@@ -954,6 +954,8 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-023 — University partnership dashboard
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-023`. `DEC-SCOPE-215` (UD1–UD14 recommended defaults, UNVERIFIED; answers
+  Q-24). No migration; API §12EC; RBAC §2.140. QA evidence `docs/quality/MGMT-023_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** §19: 12 KPIs, the 8-step pipeline, Expected Partnership Date ("expected to be signed next month?").
 - **Existing behavior:** none (UPC not built).
 - **Expected behavior:** a read-through of `partnership_metrics` (upc-018/022/023/029) using the UPC Appendix B Management mapping.

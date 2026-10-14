@@ -475,3 +475,7 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 .funnel-paths { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-top: 16px; }
 @media (max-width: 760px) { .funnel-paths { grid-template-columns: minmax(0, 1fr); } }
 .funnel-path .pipeline-stage .metric-note { grid-column: 1 / -1; margin: 0; }
+/* mgmt-023: the university partnership tiles -- a caption line under each figure, money that wraps on a phone */
+.university-tiles .metric small { display: block; margin-top: 4px; font-size: 12px; }
+.university-tiles .metric strong.metric-money { font-size: 22px; overflow-wrap: anywhere; }
+.universities-lost { margin-top: 12px; } /* QA23-02: the lost / closed note sits clear of the last pipeline step */

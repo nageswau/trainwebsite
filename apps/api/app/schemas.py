@@ -12828,3 +12828,33 @@ class StudentFunnelOut(BaseModel):
     stages: list[StudentFunnelStage]
     dimensions: list[StudentFunnelDimension]
     breakdown: StudentFunnelBreakdown | None
+
+
+# --- mgmt-023: University partnership dashboard (spec UD1-UD14) -----------------------------------------------------------------------
+class ManagementUniversityKpi(BaseModel):
+    key: str
+    label: str
+    value: int
+
+
+class ManagementExpectedList(BaseModel):
+    total: int
+    items: list[ExpectedUniversity]  # upc-023 rows, the first 25 (UD12)
+
+
+class ManagementExpected(BaseModel):
+    windows: list[ExpectedWindow]  # upc-023 E1-E4
+    next_month: ManagementExpectedList
+    undated: int
+
+
+class ManagementUniversitiesOut(BaseModel):
+    """The route excludes unset fields, so `revenue` (UD10, partners only) is absent for super_admin."""
+
+    today: date
+    from_: date = Field(serialization_alias="from")
+    to: date
+    kpis: list[ManagementUniversityKpi]  # §19 order, Revenue apart
+    revenue: PerformanceCommission | None = None
+    pipeline: GlobalPipeline  # = upc-029's
+    expected: ManagementExpected

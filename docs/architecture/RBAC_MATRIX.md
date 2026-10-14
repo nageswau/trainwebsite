@@ -2260,6 +2260,18 @@ Counts only, no personal data; nothing else changes.
   owner sees only their line.
 - Audit kind `mgmt.meeting` (operational, field names only — never titles, agenda or minutes); verbs `create`, `complete`, `update`.
 
+### 2.140 University partnership dashboard *(added 2026-10-14 — `DEC-SCOPE-215`, `mgmt-023`)*
+
+| Role | `GET /management/universities` | Revenue (university commission received / expected) |
+|---|---|---|
+| `partner` | yes | yes (M3) |
+| `super_admin` | yes | no — the `revenue` key is absent (M13) |
+| `accountant` | `403` "Operational access required" | — |
+| every other role (incl. `partnership_head` / `partnership_manager`, who use upc-022 / upc-029) | `403` "Management access required" | — |
+| signed out | `401` | — |
+
+- Read-only; not audited. Partners gain no `/partnership/*` commission route (`COMMISSION_ROLES` unchanged, MG2).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
