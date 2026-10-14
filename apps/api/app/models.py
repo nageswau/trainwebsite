@@ -2432,14 +2432,56 @@ class Event(Base, TimestampMixin):
     registration_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
+# PUB-022 (DEC-SCOPE-210 SP4/SP6): nothing is public until published, and nothing is published without recorded consent.
+# Migration 0158_social_proof repeats these exactly (test_pub_022_migration).
+TESTIMONIAL_CHECKS = {
+    "ck_testimonials_publish_needs_consent": "NOT published OR consent_confirmed",
+    "ck_testimonials_rating_range": "rating BETWEEN 1 AND 5",
+    "ck_testimonials_division": "division IN ('it', 'overseas')",
+}
+RATING_BADGE_CHECKS = {
+    "ck_site_rating_badge_single": "id = 1",
+    "ck_site_rating_badge_rating": "rating >= 0 AND rating <= 5",
+    "ck_site_rating_badge_count": "review_count >= 0",
+}
+
+
 class Testimonial(Base, TimestampMixin):
     __tablename__ = "testimonials"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in TESTIMONIAL_CHECKS.items()),
+        Index("ix_testimonials_strip", "division", "published", "featured", "display_order"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     division: Mapped[str] = mapped_column(String(30), index=True)
     person_name: Mapped[str] = mapped_column(String(160))
     headline: Mapped[str] = mapped_column(String(200))
     quote: Mapped[str] = mapped_column(Text)
     rating: Mapped[int] = mapped_column(Integer, default=5)
+    published: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    featured: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    display_order: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    context: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    consent_confirmed: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    consent_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    photo_key: Mapped[str | None] = mapped_column(String(300), nullable=True)  # a storage key; never sent to any client
+    photo_content_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+
+
+class SiteRatingBadge(Base, TimestampMixin):
+    """PUB-022 SP5: the one organisation-wide rating badge (e.g. "4.8 on Google"), entered by a Super Admin."""
+
+    __tablename__ = "site_rating_badge"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in RATING_BADGE_CHECKS.items())
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False, default=1)
+    source_name: Mapped[str] = mapped_column(String(60))
+    rating: Mapped[Decimal] = mapped_column(Numeric(2, 1))
+    review_count: Mapped[int] = mapped_column(Integer)
+    review_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    as_of: Mapped[date] = mapped_column(Date)
+    published: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
 
 class CareerPath(Base, TimestampMixin):
