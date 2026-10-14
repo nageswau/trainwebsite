@@ -3282,6 +3282,22 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/home` | `{as_of, month, label, scope ("business" \| "operational"), snapshot{students, applications, enrollments, revenue?, expenses?, profit?, cash?{amount, month}}, urgent[{key ("overdue_tasks" \| "overdue_decisions" \| "red_health" \| "overdue_receivables"), label, count, amount?}], pending_decisions (DiscussionPage, first 5), meetings{items[MgmtMeetingOut] (first 5 of today), total}, targets ({month, label, rows[PlanProgressRow] (first 5), row_total, free_text} \| null), financial_position?{receivables, receivables_overdue, pending_invoices{count, amount}, balance_month, cash_bank, payables, tax_liabilities}, growth{month, score, rag, factors[{key, label, change, rag}]}, my_tasks{items[TaskOut] (first 5), counts}, recent_discussions (DiscussionPage, first 5), next_plan{month, label, plan (PlanOut \| null)}}`. Each figure equals its page's endpoint (`/management/pnl`, `/accounts`, `/snapshot`, `/applications`, `/health`, `/discussions`, `/meetings`, `/tasks`, `/plans/{month}/progress`). The `?` keys are partners' only: for super_admin they are absent, not null. Accountant and others `403`; signed out `401` |
 
+## 12EH. Monthly Business Review (mgmt-032) — addendum, 2026-10-14
+
+- **Basis:** `DEC-SCOPE-220` (MR1–MR14). Design spec `docs/superpowers/specs/2026-10-14-mgmt-032-monthly-review-design.md`.
+  Migration `0163_monthly_reviews`. Access per RBAC §2.145: partner only; super_admin and the accountant `403` "Only partners can open
+  this"; others `403` "Management access required"; signed out `401`. `{month}` is `YYYY-MM` (else `422`).
+- **MonthlyReviewOut:** `{id, month, label, status ("draft" | "final"), snapshot{revenue{lines[{key, label, amount}], total}, expenses{lines, total}, profitability{revenue, expenses, net_profit, margin}, sales{leads, students, applications, enrollments, placements}, partnerships{agents, schools, universities, companies}, people{employees, departments[{name, headcount, total_cost}], attendance (null), attendance_note ("Not tracked"), productivity}, marketing{budget, spend, leads, customers, conversion, revenue, roi}, investments{new_count, new_amount, total, return, roi}, next_month{month, label, targets[{vertical, text, kpi, unit, target}], budget}}, narrative{went_wrong, delayed, intervention, initiatives, hiring, investments, partnerships}, generated_at, finalised_at, finalised_by, updated_at, updated_by}`. Money is an exact decimal string; the snapshot is frozen when drafted.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/reviews` | `{items[{month, label, status, generated_at, finalised_at}]}`, newest month first |
+| `GET /management/reviews/{month}` | `MonthlyReviewOut`; `404` "No review for this month yet" |
+| `POST /management/reviews/{month}/generate` | `201` drafted; `200` a draft's snapshot recomputed (narrative kept); `409` "This review is final and cannot change"; `422` "Only a finished month can be reviewed" (the current IST month or later) |
+| `PATCH /management/reviews/{month}` | `ReviewNarrativeIn` (any of the 7 keys, string ≤ 4,000, trimmed; null/absent = unchanged; other keys `422`); `404`; `409` when final |
+| `POST /management/reviews/{month}/finalise` | `200`; `422` "Answer every Problems question before finalising: …" (names the missing ones); `404`; `409` when final. Emails every active partner a link |
+| `GET /management/reviews/{month}/pdf` | `application/pdf` attachment `monthly-review-{month}.pdf`, `Cache-Control: no-store`, the stored review (a draft says "Draft"); `404` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

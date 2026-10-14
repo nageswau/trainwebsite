@@ -8615,3 +8615,44 @@ first (#277). Spec: `docs/superpowers/specs/2026-10-14-mgmt-031-partner-home-des
 
 **Consequences:** `services/management_home.py`; `GET /management/home`; the Command Center page `/management` renders it.
 - **Feature ID authorized:** `mgmt-031`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-031.
+
+### DEC-SCOPE-220 — Monthly Business Review, Q-31 (`mgmt-032`)
+
+**Evidence:**
+- `EVID-017` §32 (L1241–L1361): "At the end of every month, automatically generate: EDUSPHERE MONTHLY BUSINESS REVIEW" with 10
+  sections (Revenue, Expenses, Profitability, Sales, Partnerships, People, Marketing, Investments, Problems, Next Month).
+- Scope authority: `DEC-SCOPE-186` M12 (`EXPLICIT_APPROVAL`): beat job on the 1st (IST) drafts the previous month; computed sections
+  frozen as a snapshot; partners add the Problems and Next-Month narrative, then finalise; on screen + PDF; emailed to partners.
+- `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-032. Acceptance: the September draft is created on 1 October; figures are frozen after
+  finalise even if the ledger changes; the PDF matches the screen. Negative: finalising without Problems → 422.
+
+MR1–MR14 below answer backlog Q-31 (generation hour; regenerate before finalise; "Attendance" = staff attendance, not tracked) and
+the section definitions as **recommended defaults, `UNVERIFIED`**. They were taken on the owner's standing instruction to proceed
+with recommended answers.
+
+**Status:** built on `feature/mgmt-032`. Focused tests are green (QA evidence `docs/quality/MGMT-032_EXPLORATORY_QA_2026-10-14.md`).
+The full repository regression is deferred to its own session.
+
+**Numbering:** migration `0163_monthly_reviews`; API §12EH; RBAC §2.145. Spec:
+`docs/superpowers/specs/2026-10-14-mgmt-032-monthly-review-design.md`.
+
+| # | Point | Recommended default (`UNVERIFIED`) |
+|---|---|---|
+| MR1 | Access | Partner only (finance + investments, M2/M13). super_admin and the accountant `403` "Only partners can open this"; others `403`; signed out `401`; the PDF included |
+| MR2 | Storage | `monthly_reviews`: month (unique, the 1st), status draft/final, snapshot JSON, narrative JSON (7 answers), generated / finalised at + by, updated by (null while only the beat job wrote it) |
+| MR3 | Beat (Q-31 hour) | 06:00 IST on the 1st (`crontab(day_of_month=1, hour=0, minute=30)` UTC); drafts the previous IST month only if it has no review — never overwrites |
+| MR4 | Generate / regenerate (Q-31) | A partner can draft any finished month (201) or recompute a draft's figures keeping its answers (200); final → 409; the current month or later → 422 |
+| MR5 | §1 Revenue | mgmt-009 P&L for the month (partner view, university commission included): Abroad, IT, Recruitment, Other (= School projects + Other + Shared), total |
+| MR6 | §2 Expenses | mgmt-010 heads in §32 order; §32's "Operations" = the Technology head (internet, software), labelled "Operations (technology)" |
+| MR7 | §3 Profitability | mgmt-009 total: gross revenue, total expense, net profit (contribution), margin % |
+| MR8 | §4 Sales | Leads (mgmt-012 K3); Students = new IT students; Applications, Enrollments, Placements (mgmt-026 PN5 KPIs) |
+| MR9 | §5 Partnerships | New agents, New schools (MoUs signed), New universities, New companies (mgmt-026 PN5 KPIs) |
+| MR10 | §6 People (Q-31) | Employees = mgmt-011 headcount (none if not entered); departments' headcount and cost; **Attendance "Not tracked"**; productivity = revenue ÷ headcount |
+| MR11 | §7 Marketing | mgmt-012 K1–K7 totals for the month |
+| MR12 | §8 Investments | mgmt-014 (cancelled excluded): new in the month (count, amount); total, return, ROI to the month's end |
+| MR13 | §9/§10, finalise | 3 Problems + 4 Next-month answers (≤ 4,000 chars each; §10 also shows next month's mgmt-026 KPI targets and mgmt-012 marketing budget). Finalise needs the 3 Problems answers (422), freezes the stored snapshot, then every write is 409 |
+| MR14 | Email, PDF, audit, nav | On finalise every active partner: in-app + email with a link only (no figures, no attachment). PDF from the stored review, `no-store`. Audit kind `mgmt.review` (partner-only, field names only). BI entry "Monthly business review" live at `/management/reviews` (partner-only) |
+
+**Consequences:** `services/monthly_review.py`; `api/management_reviews.py`; `reporting/pdf.render_monthly_review`; beat entry
+`mgmt032-monthly-review`; web `/management/reviews` and `/management/reviews/{month}`.
+- **Feature ID authorized:** `mgmt-032`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-032.
