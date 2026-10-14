@@ -2070,7 +2070,7 @@ The migration seeds 10 departments when the table is empty.
   - revenue comes from `ledger.lines()` payment lines joined to the converted lead's student.
 - No existing table changes. `downgrade()` refuses while any row exists.
 
-## Partner capital accounts (`mgmt-015`, `DEC-SCOPE-211`; migration `0159_partner_capital`, after pub-022's `0158_social_proof`)
+## Partner capital accounts (`mgmt-015`, `DEC-SCOPE-212`; migration `0159_partner_capital`, after pub-022's `0158_social_proof`)
 
 **`partner_capital_entries` columns:** `id`; `partner_user_id` → `users` (FK RESTRICT); `entry_date` date; `kind` varchar(20) (CHECK:
 initial, additional, withdrawal, profit_distribution); `amount` numeric(12,2) (CHECK > 0); `note` varchar(500) nullable;

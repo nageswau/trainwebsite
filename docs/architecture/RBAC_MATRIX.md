@@ -2193,7 +2193,19 @@ Counts only, no personal data; nothing else changes.
 - Delete is permanent (row + photo). Audit actions `cms.testimonial.create|update|delete|photo` and `cms.rating_badge.update` hold
   ids, division and changed field names only — never the person's name, headline or quote.
 
-### 2.136 Partner capital accounts *(net-new, added 2026-10-14 — `DEC-SCOPE-211`, `mgmt-015`)*
+### 2.136 Student funnel dashboard *(added 2026-10-14 — `DEC-SCOPE-211`, `mgmt-016`)*
+
+| Role | Read `GET /management/funnel`, page `/management/funnel` |
+|---|---|
+| `partner` | yes; Command Center "Student funnel" (Students) entry |
+| `super_admin` | yes (operational tier, M13; no money in this dashboard); keeps the super admin sidebar ("Management student funnel") |
+| `accountant` | `403` "Operational access required"; no entry |
+| every other role (incl. `counselor`, `telecaller`, `bdm`) | `403`; signed out `401` (the page redirects to `/admin/login?next=`) |
+
+- Counts, and staff, organisation, country, course and intake names only; no student is named. No audit row (no write). The module
+  routes the funnel reads (telecaller, counseling, IT, overseas, recruitment) and their scopes are unchanged.
+
+### 2.137 Partner capital accounts *(net-new, added 2026-10-14 — `DEC-SCOPE-212`, `mgmt-015`)*
 
 | Role | `GET /management/capital`, `POST /management/capital/entries`, `PUT /management/capital/shares`, page `/management/capital` | Command Center entry |
 |---|---|---|

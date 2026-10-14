@@ -3174,11 +3174,21 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `DELETE /cms/testimonials/{id}/photo` *(new)* | Removes the photo; `200` with the row. |
 | `GET /cms/rating-badge`, `PUT /cms/rating-badge` *(new)* | `super_admin` only. Body: `source_name` (≤60), `rating` 0.0–5.0 (1 dp), `review_count` ≥ 0, `review_url` (https, ≤500, optional), `as_of`, `published`. |
 
-## 12DY. Partner capital accounts (`mgmt-015`) — addendum, 2026-10-14
+## 12DY. Student funnel dashboard (`mgmt-016`) — addendum, 2026-10-14
 
-- **Basis:** `DEC-SCOPE-211` (CP1–CP15). Spec `docs/superpowers/specs/2026-10-14-mgmt-015-partner-capital-accounts-design.md`. Migration
+- **Basis:** `DEC-SCOPE-211` (SF1–SF16). Design spec `docs/superpowers/specs/2026-10-14-mgmt-016-student-funnel-design.md`.
+  No migration. Operational tier only (partner, super_admin); accountant `403` "Operational access required"; other roles `403`
+  "Management access required"; signed out `401`. Read-only: no write, lock or audit row.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/funnel?from&to&by` | `200` `{from, to, as_of, paths: [{key, label}] (lead, it, abroad), stages: [{key, label, path, definition, value}] (14, §11 order: leads, telecalling, counseling, registration, training, it_application, certification, placement, joining, abroad_education, abroad_application, offer, visa, enrollment), dimensions: [{key, label, tracked, stages}] (9), breakdown: null \| {by, label, tracked, stages, rows: [{value, label, counts}], unknown}}`. Each stage counts what reached it in the period (not a cohort). With `by`, each applicable stage's rows + `unknown` equal its `value`; rows largest first, then by label; a label shared by two rows carries the value's first 8 characters. `by` ∈ country, course, agent, school, counselor, source, bdm, intake, branch (branch: `tracked: false`, no stages); anything else `422`. `from`/`to` inclusive IST dates, default this IST month; start after end or > 366 days → `422` |
+
+## 12DZ. Partner capital accounts (`mgmt-015`) — addendum, 2026-10-14
+
+- **Basis:** `DEC-SCOPE-212` (CP1–CP15). Spec `docs/superpowers/specs/2026-10-14-mgmt-015-partner-capital-accounts-design.md`. Migration
   `0159_partner_capital`. **Partner-only** on every route: `accountant` / `super_admin` `403` "Only partners can open this", any other
-  role `403` "Management access required", signed out `401` (RBAC §2.136).
+  role `403` "Management access required", signed out `401` (RBAC §2.137).
 
 | Method/Path | Notes / status codes |
 |---|---|

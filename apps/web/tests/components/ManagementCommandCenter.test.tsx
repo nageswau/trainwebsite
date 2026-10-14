@@ -77,7 +77,8 @@ describe("mgmt-001 ManagementPillars", () => {
     const live = MANAGEMENT_PILLARS.flatMap((p) => p.entries.flatMap((e) => (e.href ? [e.href] : [])));
     expect(screen.queryAllByRole("link").map((link) => link.getAttribute("href"))).toEqual(live);
     const students = screen.getByRole("region", { name: "Students" });
-    expect(within(students).getAllByText("Coming soon").length).toBe(MANAGEMENT_PILLARS[0].entries.filter((e) => !e.href).length); // mgmt-024: Applications is live
+    // mgmt-024: Applications is live; mgmt-016: so is the Student funnel, the pillar's last upcoming entry
+    expect(within(students).queryAllByText("Coming soon").length).toBe(MANAGEMENT_PILLARS[0].entries.filter((e) => !e.href).length);
   });
 
   it("links a live entry", () => {

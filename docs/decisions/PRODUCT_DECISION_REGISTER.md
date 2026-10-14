@@ -8283,7 +8283,44 @@ chat and asked for implementation ("go ahead and implement them").
 (`413` over 2 MB, `415` wrong type, `422` empty or unreadable); R4 `PUB-022` is recorded here and in RBAC / API rather than in the
 approval-gated `MASTER_FEATURE_CATALOG.md` / `RTM.md` (the dtu-001 / mgmt precedent).
 
-### DEC-SCOPE-211 — Partner capital accounts (`mgmt-015`)
+### DEC-SCOPE-211 — Student funnel dashboard: the §11 funnel and its breakdowns, Q-18 (`mgmt-016`)
+
+**Evidence:** `EVID-017` §11 "STUDENT DASHBOARD" (the Total Student Funnel and 9 breakdowns, lines 409–467 — `DERIVED_BLUEPRINT`).
+`DEC-SCOPE-186` M1/M13 (operational tier), M9, M10 (branch not tracked) — `EXPLICIT_APPROVAL`. tel-002 sources; mgmt-018/019
+conversions (T5); mgmt-024 MF5/O5 (submitted, first offer move); rec-023 (joined offer).
+
+**Status:** SF1–SF16 in review on `feature/mgmt-016` (2026-10-14). Every SF answer is a **recommended default, `UNVERIFIED`**, taken on
+the owner's instruction to proceed with recommended answers. SF2–SF15 answer Q-18.
+
+**Numbering (provisional):** no migration; API §12DY; RBAC §2.136 (after PUB-022's `DEC-SCOPE-210` / §12DX / §2.135).
+Spec `docs/superpowers/specs/2026-10-14-mgmt-016-student-funnel-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| SF1 | Period | `from` / `to`, inclusive IST dates, default this IST month; start after end or > 366 days → 422 |
+| SF2 | Funnel shape | **Activity in the period**, not a cohort (a lead and the IT/abroad records of its student are joined only through `converted_user_id`, and many records never had a lead): each stage counts what reached it in the period, so a later stage can be larger and no conversion % is shown. Three paths: the lead journey (Leads → Registration), then IT training and Abroad education side by side; each "X / Y" source stage is split (Training/Abroad, Certification/Offer, Placement/Visa, Joining/Enrollment) |
+| SF3 | Leads | Leads created in the period |
+| SF4 | Telecalling | Distinct leads with a telecaller call logged in the period |
+| SF5 | Counseling | Distinct leads with a completed counseling appointment scheduled in the period |
+| SF6 | Registration | Leads first converted in the period and still converted (T5) |
+| SF7 | Training | Enrolments dated in the period, not `pending_consent`/`rejected`, batch not cancelled (a later dropout still counts) |
+| SF8 | Application (IT) | Job applications of EduSphere students created in the period |
+| SF9 | Certification | Certificates issued in the period |
+| SF10 | Placement | Job offers to EduSphere students made in the period |
+| SF11 | Joining | Job offers to EduSphere students joined, by actual joining date in the period (rec-023) |
+| SF12 | Abroad Education | Overseas applications created in the period (students, schools, agencies; incl. later withdrawn) |
+| SF13 | Application (Abroad) | Overseas applications submitted in the period (MF5) |
+| SF14 | Offer | First move into an offer status recorded in the period (O5) |
+| SF15 | Visa / Enrollment | Visa case decided **approved** in the period; first move to `enrolled` recorded in the period |
+| SF16 | Breakdowns, access, shape | One dimension at a time; every record carries at most one value, so rows + Unknown = the stage total (AC2). Country/Course/Agent/School/Counselor/Marketing source/BDM/Intake map to the stages whose records carry them; Branch untracked (M10). A deactivated person is "(inactive)"; a label shared by two rows carries the value's short id (QA16-02). Operational tier (partner, super_admin); accountant 403 "Operational access required"; others 403; signed out 401; unknown `by` 422. Command Center "Student funnel" live; super admin sidebar "Management student funnel". Read-only; counts and staff/organisation names only |
+
+**Consequences:** `services/management_funnel.py` (`DIMENSIONS`, stage selects, `dashboard()`: one query per stage plus at most two
+label lookups); `api/management.py` (`GET /management/funnel`); `schemas.py` (`StudentFunnelOut`). Web `lib/managementFunnel.ts`,
+`components/ManagementFunnel.tsx`, page `/management/funnel`, `lib/management.ts`, `lib/navigation.ts`. Tests `test_mgmt_016_funnel.py`,
+`managementFunnel.test.ts`, `ManagementFunnel.test.tsx`, `mgmt-016-funnel.spec.ts`. QA `docs/quality/MGMT-016_EXPLORATORY_QA_2026-10-14.md`.
+- **New Feature ID authorized:** `mgmt-016`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-016.
+
+### DEC-SCOPE-212 — Partner capital accounts (`mgmt-015`)
 
 **Evidence:** `EVID-017` §24 (lines 971–995, `DERIVED_BLUEPRINT`): per partner — capital invested, additional investment, withdrawals,
 share %, profit share, returns, outstanding contribution, capital balance; "permission-controlled". `DEC-SCOPE-186` M8/M13
@@ -8294,7 +8331,7 @@ Backlog Q-17.
 owner's instruction to proceed with the recommended answers. Q-17 (commitment amounts, share % change history, how distributions are
 recorded) is answered by CP3, CP5 and CP2 as interim defaults.
 
-**Numbering (provisional):** migration `0159_partner_capital` (after dtu-001's `0157_direct_tieups`); API §12DY; RBAC §2.136. Spec
+**Numbering (provisional):** migration `0159_partner_capital` (after dtu-001's `0157_direct_tieups`); API §12DZ; RBAC §2.137. Spec
 `docs/superpowers/specs/2026-10-14-mgmt-015-partner-capital-accounts-design.md`.
 
 | # | Point | Answer |
