@@ -5608,6 +5608,55 @@ class Investment(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
+# mgmt-015 (spec CP1-CP15): EVID-017 §24's partner capital accounts. Partner-only (M13); every figure is computed, never stored. Migration
+# 0158 repeats the CHECKs (test_mgmt_015_migration keeps them identical).
+CAPITAL_ENTRY_KINDS = ("initial", "additional", "withdrawal", "profit_distribution")
+CAPITAL_ENTRY_CHECKS = {
+    "ck_partner_capital_entries_kind": _one_of("kind", CAPITAL_ENTRY_KINDS, nullable=False),
+    "ck_partner_capital_entries_amount": "amount > 0",
+}
+PARTNER_SHARE_CHECKS = {
+    "ck_partner_shares_month": "EXTRACT(DAY FROM effective_from) = 1",
+    "ck_partner_shares_share_pct": "share_pct >= 0 AND share_pct <= 100",
+    "ck_partner_shares_commitment": "commitment IS NULL OR commitment >= 0",
+}
+
+
+class PartnerCapitalEntry(Base):
+    """mgmt-015 (CP2-CP4): one capital movement of a partner. Never edited or deleted: a mistake gets an opposing entry with a note."""
+
+    __tablename__ = "partner_capital_entries"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CAPITAL_ENTRY_CHECKS.items()),
+        Index("ix_partner_capital_entries_partner_date", "partner_user_id", "entry_date"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    partner_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    entry_date: Mapped[date] = mapped_column(Date)
+    kind: Mapped[str] = mapped_column(String(20))
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PartnerShare(Base, TimestampMixin):
+    """mgmt-015 (CP5): a partner's profit share % and capital commitment from the first day of a month; the rows are the history."""
+
+    __tablename__ = "partner_shares"
+    __table_args__ = (
+        UniqueConstraint("partner_user_id", "effective_from", name="uq_partner_shares_partner_month"),
+        *(CheckConstraint(sql, name=name) for name, sql in PARTNER_SHARE_CHECKS.items()),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    partner_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    effective_from: Mapped[date] = mapped_column(Date)
+    share_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2))
+    commitment: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
 # mgmt-011 (salary management, spec SM1-SM14): EVID-017 §9 as department totals per month (M6), never per person. Finance tier only
 # (M13). Rules live in `services/salaries.py`; migration 0153 repeats the CHECKs (test_mgmt_011_migration keeps them identical).
 SALARY_MONEY = ("payable", "paid", "incentives", "commissions", "employer_cost")

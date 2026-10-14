@@ -907,6 +907,17 @@ async def main():
                 amount=Decimal("500000.00"), purpose="Marketing Campaign", vertical="shared", expected_return=Decimal("1500000.00"),
                 actual_return=Decimal("1800000.00"), status="completed", notes=demo_note, created_by_user_id=partner_two.id, updated_by_user_id=partner_two.id,
             ))
+        # mgmt-015 (CP15): 50% / 50% from April 2024 with a ₹10,00,000 commitment each, and ₹5,00,000 opening capital each, once.
+        demo_partners = (partner_one.id, partner_two.id)
+        if not await db.scalar(select(PartnerShare.id).where(PartnerShare.partner_user_id.in_(demo_partners)).limit(1)):
+            for partner_id in demo_partners:
+                db.add(PartnerShare(partner_user_id=partner_id, effective_from=date(2024, 4, 1), share_pct=Decimal("50.00"), commitment=Decimal("1000000.00"),
+                                    created_by_user_id=partner_one.id, updated_by_user_id=partner_one.id))
+        capital_note = "Demo: opening capital."
+        if not await db.scalar(select(PartnerCapitalEntry.id).where(PartnerCapitalEntry.note == capital_note).limit(1)):
+            for partner_id in demo_partners:
+                db.add(PartnerCapitalEntry(partner_user_id=partner_id, entry_date=date(2024, 4, 1), kind="initial", amount=Decimal("500000.00"),
+                                           note=capital_note, created_by_user_id=partner_one.id))
 
         await db.commit()
     print("Seed complete; demo password:", PASSWORD)

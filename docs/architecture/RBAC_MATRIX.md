@@ -2176,6 +2176,20 @@ Counts only, no personal data; nothing else changes.
   The loader (`python -m app.direct_tieups.load`) is a server-side operator command, not a role; it audits `university.direct_tieup_load`
   and `country.direct_tieup_publish` (ids and field names only).
 
+### 2.135 Partner capital accounts *(net-new, added 2026-10-14 — `DEC-SCOPE-210`, `mgmt-015`)*
+
+| Role | `GET /management/capital`, `POST /management/capital/entries`, `PUT /management/capital/shares`, page `/management/capital` | Command Center entry |
+|---|---|---|
+| `partner` | full read and write; every partner sees and records every partner's account (§2 shared company data, CP1) | "Partner capital accounts" (Finance pillar) |
+| `accountant` | `403` "Only partners can open this"; page "Access unavailable" | none |
+| `super_admin` | `403` "Only partners can open this"; page "Access unavailable" | none |
+| every other role | `403` "Management access required"; signed out `401` (page → `/admin/login?next=`) | none |
+
+- The refusal comes before any read, so no capital figure reaches a non-partner. Body validation (`422`) runs before the role check,
+  as on every management write. An entry or share row may name only an **active** `partner` user (`422` otherwise), so no other user can
+  be given a capital account. Audit rows (`mgmt.capital`, values kept) stay partner-only in Management activity and are left out of
+  `/admin/audit` (mgmt-002 MA8, unchanged).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

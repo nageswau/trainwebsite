@@ -47,6 +47,7 @@ from app.models import (
     CANDIDATE_SKILL_SOURCES,
     CANDIDATE_SKILL_STATUSES,
     CANDIDATE_STATUSES,
+    CAPITAL_ENTRY_KINDS,
     CONTACT_CHANNELS,
     COUNTRY_REGIONS,
     COURSE_CURRENCIES,
@@ -11350,8 +11351,9 @@ INVESTMENT_MONEY_FORMAT = "Enter the amount in rupees as a number with up to 2 d
 INVESTMENT_MONEY_MAX = Decimal("9999999999.99")  # Numeric(12, 2)
 
 
-def _investment_money(positive: bool):
-    """MI6: INR, at most 2 decimals, within Numeric(12, 2); the amount is more than 0, a return is 0 or more."""
+def _investment_money(positive: bool, negative: str = "A return can't be negative"):
+    """MI6: INR, at most 2 decimals, within Numeric(12, 2); the amount is more than 0, a return is 0 or more (mgmt-015 reuses it for
+    capital entries and commitments, naming its own field when negative)."""
     def parse(value):
         try:
             amount = Decimal(str(value).strip())
@@ -11363,7 +11365,7 @@ def _investment_money(positive: bool):
         if positive and amount <= 0:
             raise PydanticCustomError("investment_money", "The amount must be more than ₹0")
         if amount < 0:
-            raise PydanticCustomError("investment_money", "A return can't be negative")
+            raise PydanticCustomError("investment_money", negative)
         if amount > INVESTMENT_MONEY_MAX:
             raise PydanticCustomError("investment_money", "The amount is too large")
         return amount.quantize(Decimal("0.01"))  # "500000" reads back (and is audited) as "500000.00"
@@ -11459,6 +11461,141 @@ class InvestmentPageOut(BaseModel):
     offset: int
     totals: InvestmentTotals
     investors: list[InvestmentPerson]
+
+
+# --- mgmt-015 (spec CP1-CP15): partner capital accounts, partner-only. Rules that need the database or today (an active partner, a date
+# not in the future, the month range) are raised by `services/partner_capital.py` in the same shape.
+CapitalEntryKind = Literal[CAPITAL_ENTRY_KINDS]
+CAPITAL_EARLIEST = date(2000, 1, 1)
+CAPITAL_SHARE_FORMAT = "Enter the share as a percentage from 0 to 100 with up to 2 decimals"
+
+
+def _capital_date(value):
+    day = _trip_date("entry date")(value)
+    if day < CAPITAL_EARLIEST:
+        raise PydanticCustomError("capital_date", "The entry date can't be before 1 January 2000")
+    return day
+
+
+def _share_pct(value):
+    """CP5: 0-100 with at most 2 decimals."""
+    try:
+        pct = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        raise PydanticCustomError("capital_share", CAPITAL_SHARE_FORMAT) from None
+    exponent = pct.as_tuple().exponent
+    if not pct.is_finite() or (isinstance(exponent, int) and exponent < -2) or not 0 <= pct <= 100:
+        raise PydanticCustomError("capital_share", CAPITAL_SHARE_FORMAT)
+    return pct.quantize(Decimal("0.01"))
+
+
+CapitalAmount = Annotated[Decimal, BeforeValidator(_investment_money(True))]
+CapitalCommitment = Annotated[Decimal | None, BeforeValidator(lambda v: v if v is None else _investment_money(False, "The commitment can't be negative")(v))]
+CapitalNote = Annotated[Annotated[str, _trimmed(500)] | None, AfterValidator(_trip_text(_BDM_CONTROL, False, {"note": "Note"}))]
+
+
+class CapitalEntryCreate(BaseModel):
+    """CP3. Whether `partner_id` names an active partner and the date is not after today (IST) are checked in the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    partner_id: UUID
+    entry_date: Annotated[date, BeforeValidator(_capital_date)]
+    kind: CapitalEntryKind
+    amount: CapitalAmount
+    note: CapitalNote = None
+
+
+class CapitalShareRow(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    partner_id: UUID
+    share_pct: Annotated[Decimal, BeforeValidator(_share_pct)]
+    commitment: CapitalCommitment = None
+
+
+class CapitalSharesIn(BaseModel):
+    """CP6: the rows for the partners sent, from the first day of `effective_from` (YYYY-MM). The month range is checked in the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    effective_from: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
+    shares: list[CapitalShareRow] = Field(min_length=1, max_length=50)
+
+    @field_validator("shares")
+    @classmethod
+    def _once_each(cls, rows: list[CapitalShareRow]) -> list[CapitalShareRow]:
+        if len({row.partner_id for row in rows}) != len(rows):
+            raise PydanticCustomError("capital_share_repeat", "A partner can be listed only once")
+        return rows
+
+
+class CapitalPerson(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class CapitalPartner(CapitalPerson):
+    active: bool
+
+
+class CapitalFigures(BaseModel):
+    invested: Decimal
+    additional: Decimal
+    withdrawals: Decimal
+    balance: Decimal
+    returns: Decimal
+    share_pct: Decimal | None
+    commitment: Decimal | None
+    outstanding: Decimal | None
+    profit_share: Decimal | None
+
+
+class CapitalAccountOut(CapitalFigures):
+    partner: CapitalPartner
+
+
+class CapitalEntryOut(BaseModel):
+    id: UUID
+    partner: CapitalPerson
+    entry_date: date
+    kind: CapitalEntryKind
+    amount: Decimal
+    note: str | None
+    created_by: CapitalPerson
+    created_at: datetime
+
+
+class CapitalEntryPage(BaseModel):
+    items: list[CapitalEntryOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class CapitalShareOut(BaseModel):
+    id: UUID
+    partner: CapitalPerson
+    effective_from: date
+    share_pct: Decimal
+    commitment: Decimal | None
+    in_force: bool
+    updated_by: CapitalPerson
+    updated_at: datetime
+
+
+class CapitalSharesOut(BaseModel):
+    items: list[CapitalShareOut]
+
+
+class CapitalOut(BaseModel):
+    as_of: date
+    month: str
+    period: Literal["month", "quarter", "year"]
+    label: str
+    net_profit: Decimal
+    accounts: list[CapitalAccountOut]
+    totals: CapitalFigures
+    partners: list[CapitalPerson]
+    entries: CapitalEntryPage
+    shares: list[CapitalShareOut]
 
 
 # mgmt-011 (spec SM1-SM14): salary management. Field rules live here so a 422 names its field; rules that need the database (unknown or

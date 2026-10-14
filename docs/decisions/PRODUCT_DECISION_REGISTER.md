@@ -8250,3 +8250,43 @@ artwork, > 200 KB, or none found; an admin can set `logo_url` later) (R11). Ever
 `response_model_exclude_unset`, guarded by a structural test (R2, R7). Tests `test_dtu_001_*.py`, upc-033 sweep and matrix extended,
 vitest components, `apps/web/tests/e2e/dtu-001-partner-universities.spec.ts`.
 - **New Feature ID authorized:** `dtu-001`. **Status:** see `AGENT_CRM_BACKLOG.md` (status table, `dtu-001` row).
+
+### DEC-SCOPE-210 — Partner capital accounts (`mgmt-015`)
+
+**Evidence:** `EVID-017` §24 (lines 971–995, `DERIVED_BLUEPRINT`): per partner — capital invested, additional investment, withdrawals,
+share %, profit share, returns, outstanding contribution, capital balance; "permission-controlled". `DEC-SCOPE-186` M8/M13
+(`EXPLICIT_APPROVAL`): partners record capital transactions and share %; the profit share is indicative only; partner-only; audited.
+Backlog Q-17.
+
+**Status:** CP1–CP15 in review on `feature/mgmt-015` (2026-10-14). Every CP answer is a **recommended default, `UNVERIFIED`**, taken on the
+owner's instruction to proceed with the recommended answers. Q-17 (commitment amounts, share % change history, how distributions are
+recorded) is answered by CP3, CP5 and CP2 as interim defaults.
+
+**Numbering (provisional):** migration `0158_partner_capital` (after dtu-001's `0157_direct_tieups`); API §12DX; RBAC §2.135. Spec
+`docs/superpowers/specs/2026-10-14-mgmt-015-partner-capital-accounts-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| CP1 | Accounts | every active `partner` user plus any former partner with records; both partners see both accounts |
+| CP2 | Entry kinds | initial, additional, withdrawal, profit_distribution (a distribution is a "return"; it does not change the balance) |
+| CP3 | Entry fields | partner, date (1 Jan 2000 – today IST), kind, amount (INR > 0, 2 dp, `Numeric(12,2)`), note (single line ≤ 500) |
+| CP4 | Corrections | entries are never edited or deleted; an opposing entry with a note corrects a mistake (void of a distribution: `NEEDS_CONFIRMATION`) |
+| CP5 | Share % | `partner_shares` row per (partner, month): share 0–100 (2 dp), optional commitment ≥ 0; in force = latest month ≤ the day; rows are the history |
+| CP6 | Setting shares | `PUT` sets the sent active partners from the month (Jan 2000 – 12 months ahead); same month replaces its row; others keep theirs |
+| CP7 | AC1 | shares in force not totalling exactly 100% → warning, never a block |
+| CP8 | AC2 | balance = invested + additional − withdrawals; outstanding = max(commitment − invested − additional, 0) |
+| CP9 | AC3 | profit share = Σ month's net profit (mgmt-009 total contribution, partner view) × share in force on its 1st ÷ 100, half-up once; indicative only |
+| CP10 | Period | `month` (default this IST month) and `period` month / quarter / year, default financial year to date |
+| CP11 | Overdraw | a withdrawal over the balance is warned (second click) and accepted; a negative balance shows in red with words |
+| CP12 | Audit | `mgmt.capital` create (values) / update (changed fields, before → after) / nothing when unchanged; same transaction |
+| CP13 | Access | partner only; super_admin and accountant `403` "Only partners can open this"; others `403`; signed out `401` |
+| CP14 | Concurrency | the month's share rows locked `FOR UPDATE`; a lost unique race → `409` |
+| CP15 | Page + demo | `/management/capital`; Command Center entry live; `app.seed` adds 50/50 shares from April 2024 (₹10 L commitment) and ₹5 L opening capital each, once |
+
+**Consequences:** new tables `partner_capital_entries`, `partner_shares` (migration 0158); `models.py`; `schemas.py`
+(`_investment_money` takes its negative-amount wording); new `services/partner_capital.py`; `api/management.py` (three routes);
+`seed.py`; web `lib/partnerCapital.ts`, `lib/management.ts` (live entry), `components/PartnerCapital.tsx`, `CapitalEntryForm.tsx`,
+`CapitalSharesForm.tsx`, `app/management/capital/page.tsx`. Tests `test_mgmt_015_partner_capital.py`, `test_mgmt_015_migration.py`,
+`partnerCapital.test.ts`, `PartnerCapital.test.tsx`, `management.test.ts`, `mgmt-015-partner-capital.spec.ts`. QA
+`docs/quality/MGMT-015_EXPLORATORY_QA_2026-10-14.md`.
+- **New Feature ID authorized:** `mgmt-015`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-015.

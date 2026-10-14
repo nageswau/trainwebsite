@@ -15,6 +15,11 @@ from app.schemas import (
     AbroadRevenueOut,
     AccountsOut,
     ApplicationFunnelOut,
+    CapitalEntryCreate,
+    CapitalEntryOut,
+    CapitalOut,
+    CapitalSharesIn,
+    CapitalSharesOut,
     DepartmentCreate,
     DepartmentOut,
     DepartmentPage,
@@ -61,6 +66,7 @@ from app.services import (
     management_recruitment_revenue,
     management_telecalling,
     management_training,
+    partner_capital,
     salaries,
     telecaller_performance,
 )
@@ -324,6 +330,41 @@ async def update_investment(investment_id: UUID, body: InvestmentUpdate, user: U
     """mgmt-014 (MI10/MI11): changes only the fields sent; a change is audited with before and after values."""
     _partner(user)
     return await investments.one(db, await investments.update(db, user, investment_id, body))
+
+
+# --- mgmt-015: partner capital accounts (spec CP1-CP15). Partner-only (M13): super_admin, the accountant and every other role 403 -------
+@router.get("/capital", response_model=CapitalOut)
+async def capital_accounts(
+    month: str | None = Query(None, pattern=MONTH),
+    period: Literal["month", "quarter", "year"] = "year",
+    offset: int = Query(0, ge=0, le=10_000),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """§24 (CP8-CP10): each partner's figures as of today, the indicative profit share over `period` up to `month` (default this IST
+    month's financial year to date), 25 entries from `offset`, newest first, and the share history."""
+    _partner(user)
+    chosen = await _past_month(db, month)
+    return await partner_capital.view(db, user, chosen, period, offset, india_date(await db_now(db)))
+
+
+@router.post("/capital/entries", response_model=CapitalEntryOut, status_code=201)
+async def record_capital_entry(body: CapitalEntryCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """CP2-CP4, CP12: records one capital entry and its audit row together."""
+    _partner(user)
+    entry = await partner_capital.add_entry(db, user, body, india_date(await db_now(db)))
+    await db.refresh(entry)  # the server-set created_at
+    [out] = await partner_capital.entries_out(db, [entry])
+    return out
+
+
+@router.put("/capital/shares", response_model=CapitalSharesOut)
+async def set_capital_shares(body: CapitalSharesIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """CP5/CP6/CP12/CP14: sets the sent partners' share % and commitment from the month; answers with the whole share history."""
+    _partner(user)
+    today = india_date(await db_now(db))
+    await partner_capital.set_shares(db, user, body, today)
+    return {"items": await partner_capital.share_history(db, today)}
 
 
 # --- mgmt-011: salaries + departments (spec SM1-SM14). Finance tier only (M13): super_admin and every other role 403 --------------------
