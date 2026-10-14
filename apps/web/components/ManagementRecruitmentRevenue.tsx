@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { formatCalendarDate } from "@/lib/formatDate";
+import { drillHref } from "@/lib/managementDrill";
 import { formatMonth } from "@/lib/managementExpenses";
 import { formatInr } from "@/lib/managementLedger";
 import { RECRUITMENT_REVENUE_HOME, type RecruitmentKpis, type RecruitmentRevenue, type RecruitmentRevenueQuery } from "@/lib/managementRecruitmentRevenue";
@@ -75,6 +76,7 @@ export default function ManagementRecruitmentRevenue({
                   </table>
                 </div>
               )}
+              <p><Link className="kpi-link" href={drillHref("recruitment", range, [])}>Drill down into this revenue</Link></p>
               <p className="muted" style={{ marginTop: 16 }}>
                 Recruiter invoice payments are the fees received against recruitment invoices. Internship programs, corporate training and other
                 employer revenue count once they are approved as Recruitment income in the <Link href="/management/ledger">ledger</Link>, each under its own category.

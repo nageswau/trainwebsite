@@ -1258,6 +1258,9 @@ Common conventions for every item:
 - **Complexity:** large · **Risk:** medium
 
 ### mgmt-033 — Drill-down navigation (business → transaction)
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-033`. `DEC-SCOPE-218` (DD1–DD14 recommended defaults, UNVERIFIED; answers
+  Q-32: names only, reads of students and below audited). No migration; API §12EF; RBAC §2.143. QA evidence
+  `docs/quality/MGMT-033_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** the "key difference" note: Business → Department → Employee → Student/Application/Transaction, with three
   example chains (Abroad, IT, Recruitment). §1/§33 structure.
 - **Existing behavior:** none.

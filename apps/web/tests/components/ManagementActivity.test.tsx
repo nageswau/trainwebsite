@@ -58,6 +58,7 @@ describe("mgmt-002 activity helpers", () => {
     expect(describeActivity(approved)).toEqual({ title: "Ledger entry approved", detail: "status: pending → approved" });
     expect(describeActivity(imported)).toEqual({ title: "Ledger entry imported", detail: "42 records" });
     expect(describeActivity({ ...approved, kind_label: "Task", verb: "create", fields: ["title", "deadline"], values: null }).detail).toBe("title, deadline");
+    expect(describeActivity({ ...approved, kind_label: "Drill-down", verb: "view", fields: ["it", "student"], values: null }).title).toBe("Drill-down opened"); // mgmt-033
     // QA-01: a value set for the first time reads as the value, not "— → value".
     expect(describeActivity({ ...approved, fields: ["amount"], values: { amount: { before: null, after: "500000.00" } } }).detail).toBe("amount: 500000.00");
   });

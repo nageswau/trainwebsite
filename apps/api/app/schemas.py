@@ -12888,6 +12888,72 @@ class ManagementHealthOut(BaseModel):
     rag: HealthRag | None
     factors: list[ManagementHealthFactor]
 
+# --- mgmt-033: drill-down navigation (spec DD1-DD14) ---------------------------------------------------------------------------------
+class DrillLevel(BaseModel):
+    key: str
+    label: str
+
+
+class DrillCrumb(BaseModel):
+    level: str
+    level_label: str
+    key: str  # a UUID, or "none" for the unattributed row (DD7)
+    name: str
+
+
+class DrillRow(BaseModel):
+    key: str
+    name: str
+    amount: Decimal
+    count: int
+    latest: date
+
+
+class DrillDetail(BaseModel):
+    label: str
+    value: str
+
+
+class DrillOutcome(BaseModel):
+    name: str
+    detail: str | None
+    status: str
+
+
+class DrillOutcomes(BaseModel):
+    title: str
+    items: list[DrillOutcome]
+
+
+class DrillRecord(BaseModel):
+    source: str
+    id: UUID
+    entry_date: date
+    amount: Decimal
+    currency: str
+    description: str
+    details: list[DrillDetail]
+    outcomes: DrillOutcomes | None
+
+
+class DrillOut(BaseModel):
+    chain: str
+    chain_label: str
+    month: str
+    period: str
+    label: str
+    start: date
+    end: date
+    total: Decimal
+    count: int
+    breadcrumbs: list[DrillCrumb]
+    level: DrillLevel | None  # the level listed next; None once the record is reached
+    rows: list[DrillRow]
+    total_rows: int
+    limit: int
+    offset: int
+    record: DrillRecord | None
+
 
 # mgmt-031 (spec HM1-HM14): the §31 partner home. Money is optional: left out for super_admin (HM2), so the route excludes unset fields.
 class HomeCash(BaseModel):

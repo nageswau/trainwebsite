@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { formatCalendarDate } from "@/lib/formatDate";
 import { ABROAD_REVENUE_HOME, abroadLedgerHref, revenueShare, type AbroadRevenue, type AbroadRevenueRow, type MonthYear } from "@/lib/managementAbroadRevenue";
+import { drillHref } from "@/lib/managementDrill";
 import { formatMonth } from "@/lib/managementExpenses";
 import { formatInr, formatMoney } from "@/lib/managementLedger";
 
@@ -91,6 +92,12 @@ function Dashboard({ data }: { data: AbroadRevenue }) {
           </li>
         ))}
       </ul>
+      <p className="muted">
+        Drill down into the revenue (mgmt-033):{" "}
+        <Link className="kpi-link" href={drillHref("abroad", { month: data.month, period: "month" }, [])} aria-label={`Drill down: ${formatMonth(data.month)}`}>{formatMonth(data.month)}</Link>
+        {" · "}
+        <Link className="kpi-link" href={drillHref("abroad", { month: data.month, period: "year" }, [])} aria-label="Drill down: financial year to date">Financial year to date</Link>
+      </p>
 
       <Section id="abroad-kinds" title="Revenue by kind">
         <table className="table" style={{ minWidth: 560 }}>

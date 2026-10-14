@@ -8542,6 +8542,41 @@ mgmt-033, running in parallel, takes 218 / §12EF / §2.143 unless it merges fir
 stored, logged or audited.
 - **Feature ID authorized:** `mgmt-030`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-030.
 
+### DEC-SCOPE-218 — Drill-down navigation, Q-32 (`mgmt-033`)
+
+**Evidence:** `EVID-017` "The key difference" (L1439–L1480: Business → Department → Employee → Student/Application/Transaction; the
+Abroad, IT and Recruitment chains) and §1/§33 (`DERIVED_BLUEPRINT`); scope authority `DEC-SCOPE-186` M3/M4/M13 (`EXPLICIT_APPROVAL`);
+mgmt-005 MA1–MA11, mgmt-006 MR5/MR7, mgmt-007 IR4/IR9/IR11, mgmt-008 RR3/RR9. DD1–DD14 below answer backlog Q-32 (student PII in
+drill-downs; auditing drill-down reads) and the item's open points as **recommended defaults, `UNVERIFIED`**, taken on the owner's
+standing instruction to proceed with recommended answers.
+
+**Status:** built on `feature/mgmt-033`; focused tests green (QA evidence `docs/quality/MGMT-033_EXPLORATORY_QA_2026-10-14.md`); the
+full repository regression is deferred to its own session.
+
+**Numbering:** no migration; API §12EF; RBAC §2.143 (after mgmt-030's `DEC-SCOPE-217` / §12EE / §2.142, which merged first as agreed
+with that parallel session; before it mgmt-023's 215 / §12EC / §2.140 and mgmt-029's 216 / §12ED / §2.141). Spec
+`docs/superpowers/specs/2026-10-14-mgmt-033-drill-down-design.md`.
+
+| # | Point | Recommended default (`UNVERIFIED`) |
+|---|---|---|
+| DD1 | Chains | **abroad**: country → university → agency → staff → student → application → payment. **it**: course → batch → trainer → student → payment (placement on the record). **recruitment**: company → recruiter → requirement → payment (selections and joinings on the record) |
+| DD2 | Money | Counted `ledger.lines()` income of the chain's vertical in the period, so level 0 equals the parent dashboard's revenue (AC1) |
+| DD3 | Period | `month` (`YYYY-MM`, default this IST month; Jan 2000 to this month) + `period` = `month` / `year` (Indian FY to the end of `month`) |
+| DD4 | Access (AC3) | Finance tier only (partner, accountant). super_admin `403` "Finance access required"; others `403` "Management access required"; signed out `401` |
+| DD5 | University commission | Partners only (M3): the abroad chain never reads commission lines for anyone else |
+| DD6 | Attribution | Abroad via the payment's application (MR5) or the commission receipt's university; IT via enrolment → batch → course, or a manual entry's tags (IR4); recruitment via invoice → requirement → company. Agency = the agent's organisation; staff = the agency staff member, else the counselor; student = the payment's `user_id`; trainer = the batch trainer; recruiter = the requirement's, else the company's |
+| DD7 | Unattributed | One `none` row per level ("Unknown country", "No agency", "No course linked", …), drillable, so rows always add up |
+| DD8 | Candidate money | Not tracked per candidate (invoices are per requirement, IR9). The record lists the requirement's selected and joined candidates |
+| DD9 | Final level (AC2) | The payment record read-only in the drill page (date, amount, description, chain details, outcomes). Module record screens are not opened (their RBAC excludes the finance tier) |
+| DD10 | PII (Q-32) | Names only (student, staff, trainer, recruiter, candidate); no email, phone or documents |
+| DD11 | Audit (Q-32) | Every read listing individual students or anything below, and every record, writes `AuditLog` kind `mgmt.drill` (finance tier) verb `view`, fields `[chain, level]`; shown in Management activity |
+| DD12 | Path | `path` = level keys in order, comma-separated, each a UUID or `none`. Unknown chain `404`; malformed / too long / `none` payment `422`; a path matching no counted line in the period `404` |
+| DD13 | Paging | Largest amount first, then name; `limit` 25 (≤ 100), `offset` |
+| DD14 | Entry points | "Drill down" links on the Abroad (month and FY), IT and Recruitment (money visible) revenue dashboards; no new menu entry |
+
+**Consequences:** `services/management_drill.py`; `GET /management/drill/{chain}`; audit kind `mgmt.drill` + verb `view` in
+`management_audit`; page `/management/drill/[chain]` (`ManagementDrillDown`). Nothing stored besides the audit rows.
+- **Feature ID authorized:** `mgmt-033`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-033.
 
 ### DEC-SCOPE-219 — Partner home dashboard, Q-30 (`mgmt-031`)
 
@@ -8558,8 +8593,8 @@ taken on the owner's standing instruction to proceed with recommended answers.
 **Status:** built on `feature/mgmt-031`. Focused tests are green (QA evidence `docs/quality/MGMT-031_EXPLORATORY_QA_2026-10-14.md`).
 The full repository regression is deferred to its own session.
 
-**Numbering:** no migration; API §12EG; RBAC §2.144. These follow mgmt-033's `DEC-SCOPE-218` / §12EF / §2.143, which was built in
-parallel on a sibling worktree. Spec: `docs/superpowers/specs/2026-10-14-mgmt-031-partner-home-design.md`.
+**Numbering:** no migration; API §12EG; RBAC §2.144. These follow mgmt-033's `DEC-SCOPE-218` / §12EF / §2.143, which merged to main
+first (#277). Spec: `docs/superpowers/specs/2026-10-14-mgmt-031-partner-home-design.md`.
 
 | # | Point | Recommended default (`UNVERIFIED`) |
 |---|---|---|
