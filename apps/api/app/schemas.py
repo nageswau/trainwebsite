@@ -11965,7 +11965,7 @@ MgmtMeetingPeople = Annotated[list[UUID], Field(max_length=30)]
 _MEETING_REQUIRED = ("title", "kind", "starts_at", "mode", "participant_ids")
 
 
-def _meeting_text(minimum: int, maximum: int, label: str):
+def _mgmt_meeting_text(minimum: int, maximum: int, label: str):
     """Agenda and minutes keep their line breaks; blank means none. No control characters but tab and newline."""
 
     def check(value: str | None) -> str | None:
@@ -11994,7 +11994,7 @@ class MgmtMeetingUpdate(BaseModel):
     mode: Literal[APPOINTMENT_MODES] | None = None  # type: ignore[valid-type]
     location: _bdm_appt_optional(200) = None
     meeting_url: LeadApptLink = None
-    agenda: Annotated[str | None, AfterValidator(_meeting_text(0, 5_000, "The agenda"))] = None
+    agenda: Annotated[str | None, AfterValidator(_mgmt_meeting_text(0, 5_000, "The agenda"))] = None
     participant_ids: MgmtMeetingPeople | None = None
     status: Literal["cancelled"] | None = None
 
@@ -12022,7 +12022,7 @@ class MgmtMeetingCreate(MgmtMeetingUpdate):
 
 class MgmtMeetingMinutesIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    minutes: Annotated[str, AfterValidator(_meeting_text(2, 20_000, "The minutes"))]
+    minutes: Annotated[str, AfterValidator(_mgmt_meeting_text(2, 20_000, "The minutes"))]
 
 
 class MgmtMeetingDecisionIn(BaseModel):
