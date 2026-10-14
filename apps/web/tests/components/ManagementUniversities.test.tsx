@@ -57,7 +57,8 @@ describe("mgmt-023 ManagementUniversities", () => {
     expect(items.map((li) => li.querySelector("span")!.textContent)).toEqual([...LABELS, "Revenue"]);
     expect(items[0]).toHaveTextContent("1,200");
     expect(items[11]).toHaveTextContent("GBP 2,700.00");
-    expect(items[11]).toHaveTextContent("Expected GBP 5,400.00");
+    expect(items[11]).toHaveTextContent("Commission received in the period"); // QA23-01
+    expect(items[11]).toHaveTextContent("Expected: GBP 5,400.00");
   });
 
   it("has no Revenue tile when the API sends none (super_admin, M13)", () => {
@@ -72,13 +73,13 @@ describe("mgmt-023 ManagementUniversities", () => {
     const steps = within(screen.getByRole("list", { name: "Partnership pipeline" })).getAllByRole("listitem");
     expect(steps.map((li) => li.querySelector(".funnel-label")!.textContent)).toEqual(STEPS);
     expect(steps[7]).toHaveTextContent("8");
-    expect(screen.getByText(/2 lost \/ closed are not in a step; 38 universities in all/)).toBeInTheDocument();
+    expect(screen.getByText(/2 lost \/ closed are not in a step; 38 universities in all/)).toHaveClass("universities-lost"); // QA23-02: spaced from the last step
   });
 
   it("shows the expected windows and the universities expected to sign next month", () => {
     render(<ManagementUniversities data={dashboard()} error="" query={QUERY} />);
     const windows = within(screen.getByRole("list", { name: "Expected partnerships" })).getAllByRole("listitem");
-    expect(windows.map((li) => li.textContent)).toEqual(["This month3Weighted 1.2", "Next month1Weighted 0.4", "This quarter4Weighted 1.6"]);
+    expect(windows.map((li) => li.textContent)).toEqual(["This month3Weighted forecast 1.2", "Next month1Weighted forecast 0.4", "This quarter4Weighted forecast 1.6"]);
     const table = screen.getByRole("table", { name: "Universities expected to sign next month" });
     const cells = within(table).getAllByRole("row")[1];
     expect(cells).toHaveTextContent("Northbridge University");

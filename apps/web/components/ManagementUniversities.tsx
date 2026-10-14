@@ -50,7 +50,8 @@ export default function ManagementUniversities({ data, error, query }: { data: U
               <li className="metric">
                 <span>Revenue</span>
                 <strong className="metric-money">{amountsText(data.revenue.received)}</strong>
-                <small className="muted">Commission received · Expected {amountsText(data.revenue.expected)}</small>
+                <small className="muted">Commission received in the period</small>
+                <small className="muted">Expected: {amountsText(data.revenue.expected)}</small>
               </li>
             )}
           </ul>
@@ -66,7 +67,7 @@ export default function ManagementUniversities({ data, error, query }: { data: U
               ))}
             </ol>
             {data.pipeline.lost > 0 && (
-              <p className="muted">
+              <p className="muted universities-lost">
                 {count(data.pipeline.lost)} lost / closed are not in a step; {count(data.pipeline.total)} universities in all.
               </p>
             )}
@@ -78,7 +79,7 @@ export default function ManagementUniversities({ data, error, query }: { data: U
                 <li key={w.key} className="metric">
                   <span>{w.label}</span>
                   <strong>{count(w.count)}</strong>
-                  <small className="muted">Weighted {weightedText(w.weighted)}</small>
+                  <small className="muted">Weighted forecast {weightedText(w.weighted)}</small>
                 </li>
               ))}
             </ul>
