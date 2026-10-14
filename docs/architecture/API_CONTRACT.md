@@ -3215,6 +3215,25 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `DELETE /management/plans/{month}/items/{id}` | `204`; tasks made from it stay; closed `409` |
 | `POST /management/plans/{month}/items/{id}/tasks` | `{owner_user_id, priority?, deadline}` → `201` mgmt-028 task (`source: "plan"`); mgmt-028's owner/deadline `422`s; closed `409` |
 
+## 12EB. Management meetings + minutes chain (`mgmt-029`) — addendum, 2026-10-14
+
+- **Basis:** `DEC-SCOPE-214` (MM1–MM14). Design spec `docs/superpowers/specs/2026-10-14-mgmt-029-management-meetings-design.md`.
+  Migration `0161_management_meetings`: `management_meetings`, `management_meeting_participants`, nullable
+  `management_discussions.meeting_id`. Access per RBAC §2.139. Unknown meeting `404` "Meeting not found".
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/meetings` | `?date_from&date_to` (IST days, both or neither, ≤ 62 days, else `422`), `kind`, `status`. Without dates: today. `{items[{id, title, kind, starts_at, mode, location, meeting_url, status, participant_count}], date_from, date_to, today}` by start time |
+| `GET /management/meetings/options` | `{users}` — active staff (the same shape as discussions' options) |
+| `POST /management/meetings` | `{title, kind, starts_at, mode?, location?, meeting_url?, agenda?, participant_ids?}` → `201` detail; `status` is refused (`422`). Field `422`s: non-`http(s)` link, inactive / non-staff participant, start outside ±366 days |
+| `GET /management/meetings/{id}` | Detail: the row + `agenda, minutes, minutes_recorded_at, participants, decisions[{id, decision, responsible, deadline, status, tasks[]}], tasks[{id, title, owner, priority, deadline, status}], progress{done, total}, created_by, updated_by, created_at, updated_at` |
+| `PATCH /management/meetings/{id}` | Partial; `status` accepts only `cancelled`. Cancelled meeting `409`; a completed meeting's time change or cancel `409`; no change records nothing |
+| `POST /management/meetings/{id}/minutes` | `{minutes}` (2–20 000) → `200` detail; before the start or cancelled `409`; first record completes the meeting |
+| `POST /management/meetings/{id}/decisions` | `{decision, responsible_user_id?, deadline?, topic?}` → `201` detail; a mgmt-027 discussion with `meeting_id`. No minutes / cancelled `409`; mgmt-027's field `422`s |
+| `POST /management/meetings/{id}/tasks` | `{title, owner_user_id, priority?, deadline, decision_id?}` → `201` detail; a mgmt-028 task (`source` meeting, or decision). `decision_id` not of this meeting `422`; no minutes / cancelled `409`; mgmt-028's field `422`s |
+| `GET /me/management-meetings` | Any signed-in user: their own meetings from the last 7 IST days on, `{items[{id, title, kind, starts_at, mode, location, meeting_url, agenda, status}]}` — never minutes or people |
+| `GET /management/discussions*` (additive) | Every discussion row gains `meeting_id` (null unless recorded from a meeting's minutes) |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

@@ -8386,3 +8386,40 @@ full repository regression is deferred to its own session.
 | PN10 | Tasks from items | `POST …/items/{id}/tasks` creates a mgmt-028 task (`source=plan`, `source_id` = item id, title = item text) |
 | PN11 | Concurrency | Every write locks the plan row; a concurrent create of the same month `409` |
 | PN12–PN16 | Order, removal, UI, logs, numbering | Vertical order then append order; `DELETE` item `204` (its tasks stay); `/management/plans` + `/management/plans/{YYYY-MM}`; logs carry ids and field names only |
+
+### DEC-SCOPE-214 — Management meetings + minutes chain, Q-28 (`mgmt-029`)
+
+**Evidence:** `EVID-017` §29 "Management meetings" (Meeting Calendar; Partner / Department / School / University / Agent / Recruiter
+meetings and Marketing reviews; "Meeting → Minutes → Decision → Task → Deadline → Completion") and §31's "Today's Meetings" panel
+(`DERIVED_BLUEPRINT`); scope authority `DEC-SCOPE-186` M13/M14 (`EXPLICIT_APPROVAL`); builds on mgmt-027 (`DEC-SCOPE-191`) and mgmt-028
+(`DEC-SCOPE-193`, MT5's reserved `source = meeting`). MM1–MM14 answer backlog Q-28 as **recommended defaults, `UNVERIFIED`**, taken on
+the owner's standing instruction to proceed with recommended answers.
+
+**Status:** built on `feature/mgmt-029`; focused tests green (QA evidence `docs/quality/MGMT-029_EXPLORATORY_QA_2026-10-14.md`); the
+full repository regression is deferred to its own session.
+
+**Numbering:** migration `0161_management_meetings`; API §12EB; RBAC §2.139 (after mgmt-026's `DEC-SCOPE-213` / §12EA / §2.138). Drafted
+as `0159`; mgmt-015 and mgmt-026 merged first. Spec `docs/superpowers/specs/2026-10-14-mgmt-029-management-meetings-design.md`.
+
+| # | Point | Recommended default (`UNVERIFIED`) |
+|---|---|---|
+| MM1 | Kinds | The 7 §29 kinds in source order and wording |
+| MM2 | Fields | Title 2–200, kind, start (IST, minutes), mode Online / Phone / In person, location ≤ 200, link, agenda ≤ 5 000, participants, minutes, status; no duration |
+| MM3 | Link (Q-28) | **Typed, as elsewhere:** optional `http(s)` URL ≤ 500; any other scheme `422` |
+| MM4 | Status | scheduled → completed (minutes) or cancelled (final); a completed meeting can't be cancelled or moved (`409`) |
+| MM5 | Participants | Active staff users only (MD6), 0–30, replaced as a whole; one since deactivated stays |
+| MM6 | Minutes (Q-28) | **Free text + the decisions and tasks list.** Recorded once the meeting has started (`409` before); the first record completes it; later records replace the text |
+| MM7 | Time window | A start set or changed within 366 days of now, before or after (`422`) |
+| MM8 | Decisions from the minutes | A mgmt-027 discussion with `meeting_id`, dated the meeting's IST day, the meeting's active participants; mgmt-027's rules, notification and audit unchanged |
+| MM9 | Tasks from the minutes | A mgmt-028 task with `source=meeting` (or `source=decision` under one of the meeting's decisions); mgmt-028's rules, notification and audit unchanged |
+| MM10 | Roll-up (AC) | The meeting shows each decision with its tasks and the meeting's own tasks; "N of M completed" over every non-cancelled item |
+| MM11 | Calendar | Today's meetings + week / month list of IST days; range ≤ 62 days |
+| MM12 | Who | Operational tier (partner, super_admin); accountant and others `403`. Participants see their own meetings (last 7 days on) without minutes in Management tasks |
+| MM13 | Notification | In-app + email on invitation, reschedule and cancellation; never the actor; no link or minutes in the body |
+| MM14 | Audit, concurrency, recurrence | `mgmt.meeting` (field names only; `create` / `complete` / `update`); every write locks the meeting row; no recurrence |
+
+**Consequences:** `management_meetings`, `management_meeting_participants` and `management_discussions.meeting_id` (`0161`);
+`services/management_meetings.py`, `api/management_meetings.py`; pages `/management/meetings` (+ `new`, `[id]`, `[id]/edit`); the
+Command Center's "Meetings" entry goes live; `/account/management-tasks` gains a Meetings section; a decision's page links back to its
+meeting. **New Feature ID authorized:** none (`mgmt-029` is in the backlog). **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md`
+§mgmt-029.

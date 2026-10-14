@@ -3,7 +3,7 @@
 Spec: `docs/superpowers/specs/2026-10-14-mgmt-029-management-meetings-design.md` (MM1–MM14). TDD: each task starts with its failing test.
 
 1. **Data** — `models.py` (`MEETING_KINDS`, `MEETING_STATUSES`, `ManagementMeeting`, `ManagementMeetingParticipant`,
-   `ManagementDiscussion.meeting_id`), migration `0159_management_meetings`, audit kind `mgmt.meeting`.
+   `ManagementDiscussion.meeting_id`), migration `0161_management_meetings` (drafted as `0159`), audit kind `mgmt.meeting`.
    Test: `test_mgmt_029_migration.py` (chain, model ↔ migration, round trip, refusal).
 2. **Schemas** — `MeetingCreate/Update`, `MeetingMinutesIn`, `MeetingDecisionIn`, `MeetingTaskIn`, `MeetingOut/Detail/Page`,
    `MyMeetingOut/Page`; `DiscussionOut.meeting_id`.
