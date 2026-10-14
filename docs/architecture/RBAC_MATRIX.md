@@ -2219,6 +2219,19 @@ Counts only, no personal data; nothing else changes.
   be given a capital account. Audit rows (`mgmt.capital`, values kept) stay partner-only in Management activity and are left out of
   `/admin/audit` (mgmt-002 MA8, unchanged).
 
+### 2.138 School dashboard + school money *(added 2026-10-14 — `DEC-SCOPE-213`, `mgmt-022`)*
+
+| Role | Read `GET /management/schools`, page `/management/schools` | Set values `PATCH /management/schools/{id}` |
+|---|---|---|
+| `partner` | yes, with revenue, contract value and renewal value; "Schools" (Partnerships) and "School revenue & contracts" (Finance) entries | yes |
+| `accountant` | yes, with money (finance tier, SD1); "School revenue & contracts" entry | yes |
+| `super_admin` | yes **without money** (`revenue`, `contract_value`, `renewal_value`, `untagged_revenue: null`); keeps the super admin sidebar ("Management school figures") | `403` "Finance access required" |
+| every other role (incl. `overseas_admin`, school roles) | `403` "Management access required"; signed out `401` | `403` |
+
+- School names, counts and percentages only (no student, parent or teacher identity). The school value write is audited
+  (`mgmt.school_value`, finance kind, hidden from `GET /admin/audit`). The ledger's new `school_id` tag follows the ledger's own finance-tier
+  rules (§2.115). The school admin routes (`/overseas-admin/schools*`, `SchoolOut`) and ENH-016's analytics are unchanged.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
