@@ -41,6 +41,7 @@ from app.schemas import (
     RecruitmentRevenueOut,
     SalaryMonthIn,
     SalaryMonthOut,
+    StudentFunnelOut,
     TelecallingOut,
 )
 from app.services import (
@@ -53,6 +54,7 @@ from app.services import (
     management_bdm,
     management_counseling,
     management_expenses,
+    management_funnel,
     management_it_revenue,
     management_marketing,
     management_metrics,
@@ -450,3 +452,20 @@ async def agents_dashboard(from_: date | None = Query(None, alias="from"), to: d
     now = await db_now(db)
     start, end = period(from_, to, india_date(now))
     return await management_agents.dashboard(db, user, start, end, now)
+
+
+# --- mgmt-016: Student funnel (spec SF1-SF16). Operational tier (M13); counts only -------------------------------------------------------
+@router.get("/funnel", response_model=StudentFunnelOut)
+async def student_funnel(
+    from_: date | None = Query(None, alias="from"),
+    to: date | None = None,
+    by: Literal["country", "course", "agent", "school", "counselor", "source", "bdm", "intake", "branch"] | None = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """§11 for `from`..`to` (IST, default this month; SF1): the lead journey, then the IT and abroad paths, optionally broken down `by` one
+    dimension (SF16). The accountant and everyone else 403."""
+    _operational(user)
+    now = await db_now(db)
+    start, end = period(from_, to, india_date(now))
+    return await management_funnel.dashboard(db, start, end, now, by)

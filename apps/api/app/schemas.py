@@ -12259,3 +12259,49 @@ class MarketingOut(BaseModel):
     campaigns: list[MarketingCampaign]
     budgets_updated_at: datetime | None
     budgets_updated_by: LedgerPerson | None
+
+
+# mgmt-016 (spec SF1-SF16): the student funnel. Counts only; a breakdown's rows plus `unknown` equal each stage's value (AC2).
+class StudentFunnelPath(BaseModel):
+    key: str
+    label: str
+
+
+class StudentFunnelStage(BaseModel):
+    key: str
+    label: str
+    path: str
+    definition: str
+    value: int
+
+
+class StudentFunnelDimension(BaseModel):
+    key: str
+    label: str
+    tracked: bool
+    stages: list[str]
+
+
+class StudentFunnelRow(BaseModel):
+    value: str
+    label: str
+    counts: dict[str, int]
+
+
+class StudentFunnelBreakdown(BaseModel):
+    by: str
+    label: str
+    tracked: bool
+    stages: list[str]
+    rows: list[StudentFunnelRow]
+    unknown: dict[str, int]
+
+
+class StudentFunnelOut(BaseModel):
+    from_: date = Field(serialization_alias="from")
+    to: date
+    as_of: datetime
+    paths: list[StudentFunnelPath]
+    stages: list[StudentFunnelStage]
+    dimensions: list[StudentFunnelDimension]
+    breakdown: StudentFunnelBreakdown | None
