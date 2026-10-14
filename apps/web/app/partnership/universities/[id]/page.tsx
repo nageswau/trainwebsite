@@ -5,6 +5,7 @@ import { accessUnavailable } from "@/components/AccessUnavailable";
 import BdmStageHistory from "@/components/BdmStageHistory";
 import AgentCommissionCard from "@/components/AgentCommissionCard";
 import CommissionLedger from "@/components/CommissionLedger";
+import CountryFlag from "@/components/CountryFlag";
 import UniversityLogo from "@/components/UniversityLogo";
 import MeetingTable from "@/components/MeetingTable";
 import PartnershipFunnel from "@/components/PartnershipFunnel";
@@ -138,7 +139,7 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
               ["University ID", u.university_code],
               ["Institution type", label(INSTITUTION_TYPES, u.institution_type)],
               ["Public / private", label(OWNERSHIP_TYPES, u.ownership_type)],
-              ["Country", u.country.name],
+              ["Country", <><CountryFlag iso2={u.country.iso2} />{u.country.name}</>],
               ["World region", u.country.region],
               ["State / region", u.state_region],
               ["City", u.city],
