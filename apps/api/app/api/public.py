@@ -1,7 +1,8 @@
 from datetime import UTC, date, datetime
+from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,8 +28,8 @@ from app.models import (
     User,
     WebinarRegistration,
 )
-from app.schemas import CareerPathOut, CountryOut, EnquiryIn, ProgramOut, RealProjectOut, TestimonialOut, UniversityOut, WebinarRegistrationIn
-from app.services import lead_intake
+from app.schemas import CareerPathOut, CountryOut, EnquiryIn, ProgramOut, RealProjectOut, SocialProofOut, TestimonialOut, UniversityOut, WebinarRegistrationIn
+from app.services import lead_intake, social_proof
 from app.services.partnership_universities import public_visible
 from app.worker import sync_enquiry_to_crm_task
 
@@ -38,13 +39,13 @@ router = APIRouter(prefix="/public", tags=["public"])
 @router.get("/home")
 async def home(db: AsyncSession = Depends(get_db)):
     programs = (await db.scalars(select(Program).where(Program.active.is_(True)).limit(6))).all()
-    testimonials = (await db.scalars(select(Testimonial).limit(6))).all()
+    testimonials = (await db.scalars(social_proof.public_testimonials().order_by(Testimonial.display_order, Testimonial.created_at).limit(6))).all()
     events = (await db.scalars(select(Event).order_by(Event.starts_at).limit(6))).all()
     partners = (await db.scalars(select(Company).limit(12))).all()
     return {
         "hero": {"title": "Welcome to EduSphere", "tagline": "Empowering Careers. Building Global Opportunities."},
         "verticals": [{"key": "it", "title": "IT Training & Placement", "href": "/it"}, {"key": "overseas", "title": "Overseas Education", "href": "/overseas"}],
-        "stats": {"learners": 1250, "placements": 830, "university_partners": 75, "visa_success_rate": 96},
+        # PUB-022 SP3: the hard-coded stats were removed -- no unverified numbers on the public site.
         "programs": [ProgramOut.model_validate(x).model_dump() for x in programs],
         "testimonials": [{"name": x.person_name, "headline": x.headline, "quote": x.quote, "division": x.division} for x in testimonials],
         "events": [{"id": x.id, "title": x.title, "division": x.division, "starts_at": x.starts_at, "location": x.location} for x in events],
@@ -102,20 +103,39 @@ async def real_project(slug: str, db: AsyncSession = Depends(get_db)):
     return x
 
 
+# PUB-022 (spec §4.1): every public read is published-only (SP4); unpublished ids are 404 like unknown ones.
 @router.get("/testimonials", response_model=list[TestimonialOut])
 async def testimonials(division: str | None = None, db: AsyncSession = Depends(get_db)):
-    stmt = select(Testimonial)
+    stmt = social_proof.public_testimonials()
     if division:
         stmt = stmt.where(Testimonial.division == division)
-    return (await db.scalars(stmt.order_by(Testimonial.person_name))).all()
+    return [social_proof.public_out(t) for t in (await db.scalars(stmt.order_by(Testimonial.person_name))).all()]
 
 
 @router.get("/testimonials/{testimonial_id}", response_model=TestimonialOut)
 async def testimonial(testimonial_id: UUID, db: AsyncSession = Depends(get_db)):
     x = await db.get(Testimonial, testimonial_id)
-    if not x:
+    if not x or not x.published:
         raise HTTPException(404, "Success story not found")
-    return x
+    return social_proof.public_out(x)
+
+
+@router.get("/testimonials/{testimonial_id}/photo")
+async def testimonial_photo(testimonial_id: UUID, db: AsyncSession = Depends(get_db)):
+    x = await db.get(Testimonial, testimonial_id)
+    data = social_proof.read_photo_bytes(x.photo_key) if x is not None and x.published and x.photo_key else None
+    if data is None:
+        raise HTTPException(404, "Photo not found")
+    return Response(content=data, media_type=x.photo_content_type or "application/octet-stream", headers={"Cache-Control": "public, max-age=300", "X-Content-Type-Options": "nosniff"})
+
+
+@router.get("/social-proof", response_model=SocialProofOut)
+async def social_proof_strip(division: Literal["it", "overseas", "all"] = "all", db: AsyncSession = Depends(get_db)):
+    badge = await social_proof.published_badge(db)
+    return {
+        "badge": None if badge is None else social_proof.badge_out(badge),
+        "testimonials": [social_proof.public_out(t) for t in await social_proof.featured(db, division)],
+    }
 
 
 @router.get("/countries", response_model=list[CountryOut])

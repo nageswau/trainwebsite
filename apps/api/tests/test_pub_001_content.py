@@ -45,7 +45,12 @@ async def test_real_project_detail_404_for_unknown_slug(client):
 
 
 @pytest.mark.asyncio
-async def test_testimonials_list_and_detail(client):
+async def test_testimonials_list_and_detail(client, db_session):
+    # PUB-022 SP4: the seeded demo stories are unpublished, so this test publishes its own.
+    from app.models import Testimonial
+
+    db_session.add(Testimonial(division="it", person_name="PUB-001 Reader", headline="Story", quote="Words.", rating=5, consent_confirmed=True, published=True))
+    await db_session.commit()
     listing = await client.get("/api/v1/public/testimonials?division=it")
     assert listing.status_code == 200
     stories = listing.json()
