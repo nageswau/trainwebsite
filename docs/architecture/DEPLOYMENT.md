@@ -13,6 +13,12 @@ AWS-specific element below needs a DigitalOcean equivalent — the *shape* (web 
 managed Postgres, managed Redis, object storage, background worker) does not change; only the
 specific product does.
 
+> **Decided 2026-10-14 — `DEC-INFRA-002`:** production (`edusphere.org.uk`) launches on a new
+> Droplet running this repo's `docker compose` stack, with DigitalOcean Managed PostgreSQL and
+> uploads on a Block Storage Volume. That is a variant of Option C below plus a managed database,
+> not the App Platform recommendation. See `docs/decisions/PRODUCT_DECISION_REGISTER.md`. The
+> comparison below is kept as the original analysis.
+
 ## Option comparison (recommendation, not a decision)
 
 | Dimension | Option A — DigitalOcean App Platform | Option B — Droplets + DOKS (Kubernetes) | Option C — Plain Droplets (self-managed) |
