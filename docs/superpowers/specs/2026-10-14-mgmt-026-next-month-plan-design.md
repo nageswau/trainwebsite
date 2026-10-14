@@ -21,7 +21,7 @@ NO-ASSUMPTION MODE. 2026-10-14, `feature/mgmt-026`. Backlog item: `docs/delivery
   - Edge: editing targets after the month starts is audited ("who changed a target").
 - **Open questions answered here:** Q-25 (the KPI catalogue and the plan lock) and Q-35 (long-term strategy). The answers below are
   **recommended defaults, `UNVERIFIED`**, taken on the owner's standing instruction to proceed with recommended answers (registered as
-  `DEC-SCOPE-211`).
+  `DEC-SCOPE-213`).
 
 ## 2. Approaches considered
 
@@ -55,7 +55,7 @@ NO-ASSUMPTION MODE. 2026-10-14, `feature/mgmt-026`. Backlog item: `docs/delivery
 | PN13 | Remove an item | `DELETE` gets `204` and is audited. Tasks created from the item stay, with their title |
 | PN14 | UI | `/management/plans` lists the plans and has a "Plan a month" form. `/management/plans/[month]` shows Target vs actual (§26) first, then the plan by vertical (§25): add / edit / remove, done toggles, "Create task", status. The Command Center "Next month plan & targets" entry goes live |
 | PN15 | Logs | Ids and field names only, never item text |
-| PN16 | Numbering | Migration `0159_management_plans`; `DEC-SCOPE-211`; API §12DY; RBAC §2.136 |
+| PN16 | Numbering | Migration `0160_management_plans`; `DEC-SCOPE-213`; API §12EA; RBAC §2.138 |
 
 ## 4. KPI catalogue (PN5, all counts in the plan's IST month `[start, next start)`)
 
@@ -75,7 +75,7 @@ NO-ASSUMPTION MODE. 2026-10-14, `feature/mgmt-026`. Backlog item: `docs/delivery
 
 The count KPIs a plan uses are one SELECT of scalar subqueries. Revenue is the P&L read. Both are bounded by the catalogue.
 
-## 5. Data model (migration `0159_management_plans`)
+## 5. Data model (migration `0160_management_plans`)
 
 - `management_plans`:
   - `id`;

@@ -2069,3 +2069,17 @@ The migration seeds 10 departments when the table is empty.
   - leads, qualified leads and customers come from `enquiries` and `lead_stage_history`;
   - revenue comes from `ledger.lines()` payment lines joined to the converted lead's student.
 - No existing table changes. `downgrade()` refuses while any row exists.
+
+## Partner capital accounts (`mgmt-015`, `DEC-SCOPE-212`; migration `0159_partner_capital`, after pub-022's `0158_social_proof`)
+
+**`partner_capital_entries` columns:** `id`; `partner_user_id` → `users` (FK RESTRICT); `entry_date` date; `kind` varchar(20) (CHECK:
+initial, additional, withdrawal, profit_distribution); `amount` numeric(12,2) (CHECK > 0); `note` varchar(500) nullable;
+`created_by_user_id` → `users` (FK RESTRICT); `created_at`. Index `ix_partner_capital_entries_partner_date (partner_user_id, entry_date)`.
+
+**`partner_shares` columns:** `id`; `partner_user_id` → `users` (FK RESTRICT); `effective_from` date (CHECK: the 1st of a month);
+`share_pct` numeric(5,2) (CHECK 0–100); `commitment` numeric(12,2) nullable (CHECK ≥ 0); `created_by_user_id`, `updated_by_user_id` →
+`users` (FK RESTRICT); timestamps. Unique `uq_partner_shares_partner_month (partner_user_id, effective_from)`.
+
+**Design notes:**
+- Every §24 figure is computed on read, never stored. Entries are never updated or deleted; share rows are the share % history.
+- Additive: no existing row is read or written. `downgrade()` refuses while either table has rows.

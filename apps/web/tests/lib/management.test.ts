@@ -100,3 +100,13 @@ describe("mgmt-003 business snapshot entry (MS18)", () => {
     expect(labels(ACCOUNTANT)).not.toContain("Business snapshot");
   });
 });
+
+describe("mgmt-015 partner capital accounts entry (CP15)", () => {
+  it("is live in Finance, partner-only (M13)", () => {
+    const entry = MANAGEMENT_PILLARS.flatMap((p) => p.entries).find((e) => e.label === "Partner capital accounts");
+    expect(entry).toEqual({ label: "Partner capital accounts", item: "mgmt-015", tier: "partner_only", href: "/management/capital" });
+    const labels = (tiers: ManagementTiers) => pillarsFor(tiers).flatMap((p) => p.entries.map((e) => e.label));
+    expect(labels(PARTNER)).toContain("Partner capital accounts");
+    expect(labels(SUPER_ADMIN)).not.toContain("Partner capital accounts");
+  });
+});

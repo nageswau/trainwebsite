@@ -8283,7 +8283,84 @@ chat and asked for implementation ("go ahead and implement them").
 (`413` over 2 MB, `415` wrong type, `422` empty or unreadable); R4 `PUB-022` is recorded here and in RBAC / API rather than in the
 approval-gated `MASTER_FEATURE_CATALOG.md` / `RTM.md` (the dtu-001 / mgmt precedent).
 
-### DEC-SCOPE-211 — Next month plan + target vs actual (`mgmt-026`)
+### DEC-SCOPE-211 — Student funnel dashboard: the §11 funnel and its breakdowns, Q-18 (`mgmt-016`)
+
+**Evidence:** `EVID-017` §11 "STUDENT DASHBOARD" (the Total Student Funnel and 9 breakdowns, lines 409–467 — `DERIVED_BLUEPRINT`).
+`DEC-SCOPE-186` M1/M13 (operational tier), M9, M10 (branch not tracked) — `EXPLICIT_APPROVAL`. tel-002 sources; mgmt-018/019
+conversions (T5); mgmt-024 MF5/O5 (submitted, first offer move); rec-023 (joined offer).
+
+**Status:** SF1–SF16 in review on `feature/mgmt-016` (2026-10-14). Every SF answer is a **recommended default, `UNVERIFIED`**, taken on
+the owner's instruction to proceed with recommended answers. SF2–SF15 answer Q-18.
+
+**Numbering (provisional):** no migration; API §12DY; RBAC §2.136 (after PUB-022's `DEC-SCOPE-210` / §12DX / §2.135).
+Spec `docs/superpowers/specs/2026-10-14-mgmt-016-student-funnel-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| SF1 | Period | `from` / `to`, inclusive IST dates, default this IST month; start after end or > 366 days → 422 |
+| SF2 | Funnel shape | **Activity in the period**, not a cohort (a lead and the IT/abroad records of its student are joined only through `converted_user_id`, and many records never had a lead): each stage counts what reached it in the period, so a later stage can be larger and no conversion % is shown. Three paths: the lead journey (Leads → Registration), then IT training and Abroad education side by side; each "X / Y" source stage is split (Training/Abroad, Certification/Offer, Placement/Visa, Joining/Enrollment) |
+| SF3 | Leads | Leads created in the period |
+| SF4 | Telecalling | Distinct leads with a telecaller call logged in the period |
+| SF5 | Counseling | Distinct leads with a completed counseling appointment scheduled in the period |
+| SF6 | Registration | Leads first converted in the period and still converted (T5) |
+| SF7 | Training | Enrolments dated in the period, not `pending_consent`/`rejected`, batch not cancelled (a later dropout still counts) |
+| SF8 | Application (IT) | Job applications of EduSphere students created in the period |
+| SF9 | Certification | Certificates issued in the period |
+| SF10 | Placement | Job offers to EduSphere students made in the period |
+| SF11 | Joining | Job offers to EduSphere students joined, by actual joining date in the period (rec-023) |
+| SF12 | Abroad Education | Overseas applications created in the period (students, schools, agencies; incl. later withdrawn) |
+| SF13 | Application (Abroad) | Overseas applications submitted in the period (MF5) |
+| SF14 | Offer | First move into an offer status recorded in the period (O5) |
+| SF15 | Visa / Enrollment | Visa case decided **approved** in the period; first move to `enrolled` recorded in the period |
+| SF16 | Breakdowns, access, shape | One dimension at a time; every record carries at most one value, so rows + Unknown = the stage total (AC2). Country/Course/Agent/School/Counselor/Marketing source/BDM/Intake map to the stages whose records carry them; Branch untracked (M10). A deactivated person is "(inactive)"; a label shared by two rows carries the value's short id (QA16-02). Operational tier (partner, super_admin); accountant 403 "Operational access required"; others 403; signed out 401; unknown `by` 422. Command Center "Student funnel" live; super admin sidebar "Management student funnel". Read-only; counts and staff/organisation names only |
+
+**Consequences:** `services/management_funnel.py` (`DIMENSIONS`, stage selects, `dashboard()`: one query per stage plus at most two
+label lookups); `api/management.py` (`GET /management/funnel`); `schemas.py` (`StudentFunnelOut`). Web `lib/managementFunnel.ts`,
+`components/ManagementFunnel.tsx`, page `/management/funnel`, `lib/management.ts`, `lib/navigation.ts`. Tests `test_mgmt_016_funnel.py`,
+`managementFunnel.test.ts`, `ManagementFunnel.test.tsx`, `mgmt-016-funnel.spec.ts`. QA `docs/quality/MGMT-016_EXPLORATORY_QA_2026-10-14.md`.
+- **New Feature ID authorized:** `mgmt-016`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-016.
+
+### DEC-SCOPE-212 — Partner capital accounts (`mgmt-015`)
+
+**Evidence:** `EVID-017` §24 (lines 971–995, `DERIVED_BLUEPRINT`): per partner — capital invested, additional investment, withdrawals,
+share %, profit share, returns, outstanding contribution, capital balance; "permission-controlled". `DEC-SCOPE-186` M8/M13
+(`EXPLICIT_APPROVAL`): partners record capital transactions and share %; the profit share is indicative only; partner-only; audited.
+Backlog Q-17.
+
+**Status:** CP1–CP15 in review on `feature/mgmt-015` (2026-10-14). Every CP answer is a **recommended default, `UNVERIFIED`**, taken on the
+owner's instruction to proceed with the recommended answers. Q-17 (commitment amounts, share % change history, how distributions are
+recorded) is answered by CP3, CP5 and CP2 as interim defaults.
+
+**Numbering (provisional):** migration `0159_partner_capital` (after dtu-001's `0157_direct_tieups`); API §12DZ; RBAC §2.137. Spec
+`docs/superpowers/specs/2026-10-14-mgmt-015-partner-capital-accounts-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| CP1 | Accounts | every active `partner` user plus any former partner with records; both partners see both accounts |
+| CP2 | Entry kinds | initial, additional, withdrawal, profit_distribution (a distribution is a "return"; it does not change the balance) |
+| CP3 | Entry fields | partner, date (1 Jan 2000 – today IST), kind, amount (INR > 0, 2 dp, `Numeric(12,2)`), note (single line ≤ 500) |
+| CP4 | Corrections | entries are never edited or deleted; an opposing entry with a note corrects a mistake (void of a distribution: `NEEDS_CONFIRMATION`) |
+| CP5 | Share % | `partner_shares` row per (partner, month): share 0–100 (2 dp), optional commitment ≥ 0; in force = latest month ≤ the day; rows are the history |
+| CP6 | Setting shares | `PUT` sets the sent active partners from the month (Jan 2000 – 12 months ahead); same month replaces its row; others keep theirs |
+| CP7 | AC1 | shares in force not totalling exactly 100% → warning, never a block |
+| CP8 | AC2 | balance = invested + additional − withdrawals; outstanding = max(commitment − invested − additional, 0) |
+| CP9 | AC3 | profit share = Σ month's net profit (mgmt-009 total contribution, partner view) × share in force on its 1st ÷ 100, half-up once; indicative only |
+| CP10 | Period | `month` (default this IST month) and `period` month / quarter / year, default financial year to date |
+| CP11 | Overdraw | a withdrawal over the balance is warned (second click) and accepted; a negative balance shows in red with words |
+| CP12 | Audit | `mgmt.capital` create (values) / update (changed fields, before → after) / nothing when unchanged; same transaction |
+| CP13 | Access | partner only; super_admin and accountant `403` "Only partners can open this"; others `403`; signed out `401` |
+| CP14 | Concurrency | the month's share rows locked `FOR UPDATE`; a lost unique race → `409` |
+| CP15 | Page + demo | `/management/capital`; Command Center entry live; `app.seed` adds 50/50 shares from April 2024 (₹10 L commitment) and ₹5 L opening capital each, once |
+
+**Consequences:** new tables `partner_capital_entries`, `partner_shares` (migration 0158); `models.py`; `schemas.py`
+(`_investment_money` takes its negative-amount wording); new `services/partner_capital.py`; `api/management.py` (three routes);
+`seed.py`; web `lib/partnerCapital.ts`, `lib/management.ts` (live entry), `components/PartnerCapital.tsx`, `CapitalEntryForm.tsx`,
+`CapitalSharesForm.tsx`, `app/management/capital/page.tsx`. Tests `test_mgmt_015_partner_capital.py`, `test_mgmt_015_migration.py`,
+`partnerCapital.test.ts`, `PartnerCapital.test.tsx`, `management.test.ts`, `mgmt-015-partner-capital.spec.ts`. QA
+`docs/quality/MGMT-015_EXPLORATORY_QA_2026-10-14.md`.
+- **New Feature ID authorized:** `mgmt-015`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-015.
+
+### DEC-SCOPE-213 — Next month plan + target vs actual (`mgmt-026`)
 
 **Evidence:** `EVID-017` §25 "Next month plan", §26 "Target vs actual", §33 (`DERIVED_BLUEPRINT`); scope authority `DEC-SCOPE-186`
 M11/M13 (`EXPLICIT_APPROVAL`). PN1–PN16 below answer backlog Q-25 (KPI catalogue, plan lock) and Q-35 (long-term strategy) as
@@ -8292,7 +8369,7 @@ M11/M13 (`EXPLICIT_APPROVAL`). PN1–PN16 below answer backlog Q-25 (KPI catalog
 **Status:** built on `feature/mgmt-026`; focused tests green (QA evidence `docs/quality/MGMT-026_EXPLORATORY_QA_2026-10-14.md`); the
 full repository regression is deferred to its own session.
 
-**Numbering:** migration `0159_management_plans`; API §12DY; RBAC §2.136 (after PUB-022's `DEC-SCOPE-210` / §12DX / §2.135). Spec
+**Numbering:** migration `0160_management_plans`; API §12EA; RBAC §2.138 (after mgmt-015's `DEC-SCOPE-212` / §12DZ / §2.137). Spec
 `docs/superpowers/specs/2026-10-14-mgmt-026-next-month-plan-design.md`.
 
 | # | Point | Recommended default (`UNVERIFIED`) |

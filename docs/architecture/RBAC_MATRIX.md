@@ -2193,7 +2193,33 @@ Counts only, no personal data; nothing else changes.
 - Delete is permanent (row + photo). Audit actions `cms.testimonial.create|update|delete|photo` and `cms.rating_badge.update` hold
   ids, division and changed field names only — never the person's name, headline or quote.
 
-### 2.136 Next month plan & targets *(added 2026-10-14 — `DEC-SCOPE-211`, `mgmt-026`)*
+### 2.136 Student funnel dashboard *(added 2026-10-14 — `DEC-SCOPE-211`, `mgmt-016`)*
+
+| Role | Read `GET /management/funnel`, page `/management/funnel` |
+|---|---|
+| `partner` | yes; Command Center "Student funnel" (Students) entry |
+| `super_admin` | yes (operational tier, M13; no money in this dashboard); keeps the super admin sidebar ("Management student funnel") |
+| `accountant` | `403` "Operational access required"; no entry |
+| every other role (incl. `counselor`, `telecaller`, `bdm`) | `403`; signed out `401` (the page redirects to `/admin/login?next=`) |
+
+- Counts, and staff, organisation, country, course and intake names only; no student is named. No audit row (no write). The module
+  routes the funnel reads (telecaller, counseling, IT, overseas, recruitment) and their scopes are unchanged.
+
+### 2.137 Partner capital accounts *(net-new, added 2026-10-14 — `DEC-SCOPE-212`, `mgmt-015`)*
+
+| Role | `GET /management/capital`, `POST /management/capital/entries`, `PUT /management/capital/shares`, page `/management/capital` | Command Center entry |
+|---|---|---|
+| `partner` | full read and write; every partner sees and records every partner's account (§2 shared company data, CP1) | "Partner capital accounts" (Finance pillar) |
+| `accountant` | `403` "Only partners can open this"; page "Access unavailable" | none |
+| `super_admin` | `403` "Only partners can open this"; page "Access unavailable" | none |
+| every other role | `403` "Management access required"; signed out `401` (page → `/admin/login?next=`) | none |
+
+- The refusal comes before any read, so no capital figure reaches a non-partner. Body validation (`422`) runs before the role check,
+  as on every management write. An entry or share row may name only an **active** `partner` user (`422` otherwise), so no other user can
+  be given a capital account. Audit rows (`mgmt.capital`, values kept) stay partner-only in Management activity and are left out of
+  `/admin/audit` (mgmt-002 MA8, unchanged).
+
+### 2.138 Next month plan & targets *(added 2026-10-14 — `DEC-SCOPE-213`, `mgmt-026`)*
 
 | Role | `GET`/`POST /management/plans`, `GET …/options`, `GET`/`PATCH …/{month}`, `GET …/{month}/progress`, item `POST`/`PATCH`/`DELETE`, `POST …/items/{id}/tasks` | Revenue KPI items |
 |---|---|---|

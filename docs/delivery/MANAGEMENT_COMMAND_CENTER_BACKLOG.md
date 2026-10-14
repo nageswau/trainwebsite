@@ -716,6 +716,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** high
 
 ### mgmt-015 — Partner capital accounts
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-015`. `DEC-SCOPE-212` (CP1–CP15 recommended defaults, UNVERIFIED; Q-17 interim
+  answers CP2/CP3/CP5). Migration `0159_partner_capital`; API §12DZ; RBAC §2.137. QA evidence
+  `docs/quality/MGMT-015_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** §24 (8 figures per partner; "permission-controlled") (M8).
 - **Existing behavior:** none.
 - **Expected behavior:**
@@ -749,6 +752,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** high
 
 ### mgmt-016 — Student funnel dashboard
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-016`. `DEC-SCOPE-211` (SF1–SF16 recommended defaults, UNVERIFIED; SF2–SF15
+  answer Q-18: each stage counts activity in the period, not a cohort, and the source's "X / Y" stages are split across an IT path and
+  an abroad path). No migration; API §12DY; RBAC §2.136. QA evidence `docs/quality/MGMT-016_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** §11: Leads → Telecalling → Counseling → Registration → Training/Abroad → Application → Offer/Certification →
   Visa/Placement → Enrollment/Joining; 9 breakdowns (country, course, agent, school, counselor, marketing source, BDM, intake, branch).
 - **Existing behavior:** per-module funnels only.
@@ -1022,8 +1028,8 @@ Common conventions for every item:
 - **Complexity:** small · **Risk:** low
 
 ### mgmt-026 — Next month plan + target vs actual
-- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-026`. `DEC-SCOPE-211` (PN1–PN16 recommended defaults, UNVERIFIED; answers
-  Q-25 and Q-35). Migration `0159_management_plans`; API §12DY; RBAC §2.136. `/management/plans` and `/management/plans/{YYYY-MM}`;
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-026`. `DEC-SCOPE-213` (PN1–PN16 recommended defaults, UNVERIFIED; answers
+  Q-25 and Q-35). Migration `0160_management_plans`; API §12EA; RBAC §2.138. `/management/plans` and `/management/plans/{YYYY-MM}`;
   the Command Center "Next month plan & targets" entry is live, "Long-term strategy" stays coming soon. QA evidence
   `docs/quality/MGMT-026_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** §25 (a dedicated module; plans per vertical with the example items); §26 ("every plan should automatically

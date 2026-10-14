@@ -1,9 +1,9 @@
 """mgmt-026 -- the next month plan: management_plans + management_plan_items.
 
-Revision ID: 0159_management_plans
-Revises: 0158_social_proof
+Revision ID: 0160_management_plans
+Revises: 0159_partner_capital
 
-docs/superpowers/specs/2026-10-14-mgmt-026-next-month-plan-design.md §5 (DEC-SCOPE-211). New tables only; no existing row changes.
+docs/superpowers/specs/2026-10-14-mgmt-026-next-month-plan-design.md §5 (DEC-SCOPE-213). New tables only; no existing row changes.
 0001 builds a fresh database from the current models, which already carry these tables, so they are created only when missing (0122's
 idiom). downgrade() refuses while any plan exists: management plans are never dropped silently.
 """
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0159_management_plans"
-down_revision = "0158_social_proof"
+revision = "0160_management_plans"
+down_revision = "0159_partner_capital"
 branch_labels = None
 depends_on = None
 
@@ -77,6 +77,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text("SELECT 1 FROM management_plans LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0159_management_plans: plans exist. Clear them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0160_management_plans: plans exist. Clear them deliberately first.")
     op.drop_table("management_plan_items")
     op.drop_table("management_plans")

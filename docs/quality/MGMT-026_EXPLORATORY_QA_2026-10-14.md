@@ -1,6 +1,6 @@
 # mgmt-026 — Exploratory browser QA (2026-10-14)
 
-- **Build:** `feature/mgmt-026`, isolated Docker stack (`-p mgmt026`, web `http://localhost:13026`), migration `0159_management_plans`,
+- **Build:** `feature/mgmt-026`, isolated Docker stack (`-p mgmt026`, web `http://localhost:13026`), migration `0160_management_plans`,
   seeded demo accounts. Playwright (Chromium) script with console / page-error / HTTP ≥ 500 capture and full-page screenshots, plus
   `tests/e2e/mgmt-026-plans.spec.ts`.
 - **Roles:** partner (`partner.one`), super admin, accountant, trainer (IT portal), signed out.

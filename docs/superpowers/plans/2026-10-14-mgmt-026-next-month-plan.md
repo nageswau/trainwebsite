@@ -21,7 +21,7 @@ items toggle done; items can spawn mgmt-028 tasks.
 - IST calendar months. A month is written `YYYY-MM` on the wire and stored as its 1st day.
 - Operational tier only (partner, super_admin). The revenue KPI is partner only (PN7).
 - Audit kind `mgmt.plan`, field names only. Logs carry ids and field names, never item text.
-- Migration `0159_management_plans` after `0158_social_proof`; `DEC-SCOPE-211`, API §12DY, RBAC §2.136.
+- Migration `0160_management_plans` after `0159_partner_capital`; `DEC-SCOPE-213`, API §12EA, RBAC §2.138.
 - No new dependencies.
 
 ## Review Focus
@@ -40,14 +40,14 @@ items toggle done; items can spawn mgmt-028 tasks.
 ### Task 1: Model + migration
 **Files:**
 - Modify: `apps/api/app/models.py` (after `ManagementTask`).
-- Create: `apps/api/alembic/versions/0159_management_plans.py`, `apps/api/tests/test_mgmt_026_migration.py`.
+- Create: `apps/api/alembic/versions/0160_management_plans.py`, `apps/api/tests/test_mgmt_026_migration.py`.
 
 **Produces:**
 - `ManagementPlan`, `ManagementPlanItem`.
 - `PLAN_STATUSES = ("draft","active","closed")`, `PLAN_VERTICALS = ("abroad","it","school","recruitment","other")`, `PLAN_ITEM_CHECKS`.
 
 - [ ] Write the migration test, modelled on `test_mgmt_028_migration.py`:
-  - single head, chained after 0158;
+  - single head, chained after 0159_partner_capital;
   - the model columns match;
   - CHECKs reject a target without a KPI, and done on a KPI item;
   - the downgrade refuses while plans exist.
@@ -104,8 +104,8 @@ items toggle done; items can spawn mgmt-028 tasks.
 - Playwright `tests/e2e/mgmt-026-plans.spec.ts`: a partner plans a month, adds a KPI item and a free-text item, toggles done, sees Target vs
   actual.
 - Docs:
-  - `DEC-SCOPE-211` in `PRODUCT_DECISION_REGISTER.md`;
-  - API §12DY;
-  - RBAC §2.136;
+  - `DEC-SCOPE-213` in `PRODUCT_DECISION_REGISTER.md`;
+  - API §12EA;
+  - RBAC §2.138;
   - backlog status line;
   - a QA evidence file.
