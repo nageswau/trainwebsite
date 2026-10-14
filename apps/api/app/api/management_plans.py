@@ -33,21 +33,17 @@ router = APIRouter(prefix="/management/plans", tags=["management-plans"])
 Month = Path(pattern=PLAN_MONTH)
 
 
-def _operational(user: User) -> User:
-    return discussions.require_operational(user)
-
-
 @router.get("", response_model=PlanPage)
 async def list_plans(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Every plan, newest month first, with the counts of the items the caller may see."""
-    _operational(user)
+    discussions.require_operational(user)
     return await svc.plans(db, user)
 
 
 @router.get("/options", response_model=PlanOptions)
 async def plan_options(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """The catalogue (revenue for partners only, PN7), the verticals, the task owners (mgmt-028 MT6) and the planning window."""
-    _operational(user)
+    discussions.require_operational(user)
     first, last = svc.window()
     return {
         "kpis": svc.kpi_options(user),
@@ -60,7 +56,7 @@ async def plan_options(user: User = Depends(get_current_user), db: AsyncSession 
 
 @router.post("", status_code=201, response_model=PlanDetailOut)
 async def create_plan(payload: PlanCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _operational(user)
+    discussions.require_operational(user)
     month_start = svc.parse_month(payload.month)
     svc.check_window(month_start)
     plan = ManagementPlan(month=month_start, status=payload.status, created_by_user_id=user.id, updated_by_user_id=user.id)
@@ -78,14 +74,14 @@ async def create_plan(payload: PlanCreate, user: User = Depends(get_current_user
 
 @router.get("/{month}", response_model=PlanDetailOut)
 async def get_plan(month: str = Month, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _operational(user)
+    discussions.require_operational(user)
     return await svc.detail(db, user, svc.parse_month(month))
 
 
 @router.patch("/{month}", response_model=PlanDetailOut)
 async def change_plan(payload: PlanUpdate, month: str = Month, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """PN3: draft / active / closed in any direction; the same status again records nothing."""
-    _operational(user)
+    discussions.require_operational(user)
     month_start = svc.parse_month(month)
     plan = await svc.lock(db, month_start, writable=False)
     if plan.status != payload.status:
@@ -99,13 +95,13 @@ async def change_plan(payload: PlanUpdate, month: str = Month, user: User = Depe
 
 @router.get("/{month}/progress", response_model=PlanProgressOut)
 async def plan_progress(month: str = Month, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _operational(user)
+    discussions.require_operational(user)
     return await svc.progress(db, user, svc.parse_month(month))
 
 
 @router.post("/{month}/items", status_code=201, response_model=PlanItemOut)
 async def create_item(payload: PlanItemCreate, month: str = Month, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _operational(user)
+    discussions.require_operational(user)
     plan = await svc.lock(db, svc.parse_month(month))
     changes = payload.model_dump()
     state = svc.merged(None, changes)
@@ -122,7 +118,7 @@ async def create_item(payload: PlanItemCreate, month: str = Month, user: User = 
 @router.patch("/{month}/items/{item_id}", response_model=PlanItemOut)
 async def change_item(payload: PlanItemUpdate, item_id: UUID, month: str = Month, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """A partial change; nothing changed = nothing recorded. A changed target is audited by name ("who changed a target", PN9)."""
-    _operational(user)
+    discussions.require_operational(user)
     plan = await svc.lock(db, svc.parse_month(month))
     item = await svc.load_item(db, user, plan, item_id)
     changes = payload.model_dump(exclude_unset=True)
@@ -142,7 +138,7 @@ async def change_item(payload: PlanItemUpdate, item_id: UUID, month: str = Month
 @router.delete("/{month}/items/{item_id}", status_code=204)
 async def delete_item(item_id: UUID, month: str = Month, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """PN13: the item goes; tasks made from it stay, with their title."""
-    _operational(user)
+    discussions.require_operational(user)
     plan = await svc.lock(db, svc.parse_month(month))
     item = await svc.load_item(db, user, plan, item_id)
     await db.delete(item)
@@ -155,7 +151,7 @@ async def delete_item(item_id: UUID, month: str = Month, user: User = Depends(ge
 @router.post("/{month}/items/{item_id}/tasks", status_code=201, response_model=TaskOut)
 async def create_item_task(payload: PlanItemTaskIn, item_id: UUID, month: str = Month, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """PN10: a mgmt-028 task titled with the item's text, `source=plan`; mgmt-028's checks, notification and audit apply."""
-    _operational(user)
+    discussions.require_operational(user)
     plan = await svc.lock(db, svc.parse_month(month))
     item = await svc.load_item(db, user, plan, item_id)
     state = {"title": item.text, **payload.model_dump(), "status": "open"}
