@@ -8754,3 +8754,19 @@ The full repository regression is deferred to its own session.
 `AccountsOut.commission_visible`, `AccountsReceivables.university` nullable; web accounts dashboard and ledger explanation; tests
 `test_mgmt_034_matrix.py`, `test_mgmt_034_confidentiality.py`, `mgmt034_helpers.py`, e2e `mgmt-034-confidentiality.spec.ts`.
 - **Feature ID authorized:** `mgmt-034`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-034.
+
+### DEC-SCOPE-222 — Country flags, phase 1 (`PUB-023`)
+
+**Evidence:** owner request 2026-10-14 (in-session, after the production launch): "admin country with flag". Answers given directly by the owner in the same session (`EXPLICIT_APPROVAL`). Spec: `docs/superpowers/specs/2026-10-14-pub-023-country-flags-design.md` (approved 2026-10-14; its §3.1 amendment was approved with the plan).
+
+| # | Point | Owner answer |
+|---|---|---|
+| F1 | Where | All four areas (public, student/agent, admin/staff), in two phases; PUB-023 = phase 1, phase 2 = `psb-019` |
+| F2 | Image source | Bundled flag-icons 4:3 SVGs (MIT, 7.5.0) under `apps/web/public/flags/`; no emoji, no CDN |
+| F3 | No flag available | Show nothing (name only); public country cards keep 🌍 |
+| F4 | Accessibility | Decorative (`alt=""`, `aria-hidden`); the name is always beside it |
+| F5 | Exclusions | Native `<select>` dropdowns and free-text country fields |
+
+**Numbering:** no migration; API §12EJ; no RBAC change.
+**Consequences:** `CountryOut.iso2`, course rows' `country_iso2`, lookup items' `iso2`; `CountryFlag`, `flagSrc`, `PickOption.iso2`, `CountRow.iso2`; `scripts/check_flag_assets.py`; the pinned shape tests in `test_upc_002_country_master.py` and `test_upc_017_public.py` gained the new key.
+- **Feature ID authorized:** `PUB-023`. **Status:** see `PUBLIC_SITE_BACKLOG.md`.

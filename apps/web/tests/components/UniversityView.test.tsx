@@ -30,6 +30,18 @@ const counselor: UniversityView = {
 afterEach(cleanup);
 
 describe("UniversityView", () => {
+  it("shows the country's flag before its name in the profile (PUB-023)", () => {
+    const { container } = render(<UniversityViewPanel view={counselor} />);
+    const flag = container.querySelector('img.country-flag[src="/flags/gb.svg"]');
+    expect(flag).not.toBeNull();
+    expect(flag!.parentElement!.textContent).toContain("United Kingdom");
+  });
+  it("shows no flag for a country without a code (PUB-023 F3)", () => {
+    const view = { ...counselor, university: { ...profile, country: { name: "Testland", iso2: null, region: null } } };
+    const { container } = render(<UniversityViewPanel view={view} />);
+    expect(container.querySelector("img.country-flag")).toBeNull();
+    expect(container.textContent).toContain("Testland");
+  });
   it("shows the counselor every section, with IELTS requirements and a document download", () => {
     render(<UniversityViewPanel view={counselor} />);
     expect(screen.getByRole("heading", { level: 2, name: "ABC University" })).toBeInTheDocument();

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { safeWebsite } from "@/lib/bdmOrganizations";
 import LocalTime from "@/components/LocalTime";
+import CountryFlag from "@/components/CountryFlag";
 import UniversityLogo from "@/components/UniversityLogo";
 import { dateText } from "@/lib/universityAgreements";
 import { INSTITUTION_TYPES, label, OWNERSHIP_TYPES, rankingText } from "@/lib/universities";
@@ -54,7 +55,7 @@ export default function UniversityViewPanel({ view }: { view: UniversityView }) 
             ["University ID", u.university_code],
             ["Institution type", label(INSTITUTION_TYPES, u.institution_type)],
             ["Public / private", label(OWNERSHIP_TYPES, u.ownership_type)],
-            ["Country", u.country.name],
+            ["Country", <><CountryFlag iso2={u.country.iso2} />{u.country.name}</>],
             ["State / region", u.state_region],
             ["City", u.city],
             ["Website", website

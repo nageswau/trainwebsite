@@ -2,6 +2,7 @@
 
 import { type ChangeEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 
+import CountryFlag from "@/components/CountryFlag";
 import { type LookupPage, optionText, type PickOption } from "@/lib/lookups";
 
 // ENH-031 (DEC-SCOPE-039): an accessible searchable dropdown (WAI-ARIA 1.2 combobox) that only ever submits a picked value.
@@ -202,7 +203,7 @@ export default function SearchableSelect({ label, noun, id, name, required = fal
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => pick(option)}
           >
-            {optionText(option)}
+            <CountryFlag iso2={option.iso2} />{optionText(option)}
           </li>
         ))}
       </ul>

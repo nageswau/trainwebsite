@@ -1,3 +1,4 @@
+import CountryFlag from "@/components/CountryFlag";
 import Link from "next/link";
 
 import type { Page } from "@/lib/apiErrors";
@@ -35,7 +36,7 @@ export default function UniversityTable({ page, filters }: { page: Page<Universi
                 <td data-label="Name"><Link href={universityPath(u.id)}>{u.name}</Link></td>
                 <td data-label="Code">{u.university_code}</td>
                 <td data-label="Type">{label(INSTITUTION_TYPES, u.institution_type)}</td>
-                <td data-label="Country">{u.country.name}</td>
+                <td data-label="Country"><CountryFlag iso2={u.country.iso2} />{u.country.name}</td>
                 <td data-label="City">{u.city || "—"}</td>
                 <td data-label="Priority">{u.priority ?? "—"}</td>
                 <td data-label="Potential">{label(POTENTIALS, u.partnership_potential)}</td>

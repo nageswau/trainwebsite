@@ -31,7 +31,8 @@ async def test_public_list_shows_visible_countries_only(client, db_session):  # 
 async def test_public_list_contract_is_unchanged(client, db_session):
     shown = await _country(db_session, visible=True)
     match = next(c for c in (await client.get("/api/v1/public/countries")).json() if c["slug"] == shown.slug)
-    assert set(match) == {"id", "slug", "name", "overview", "tuition", "living_expenses", "visa_process", "work_opportunities", "post_study_work", "pr_opportunities", "faq"}
+    # PUB-023 (DEC-SCOPE-222) adds iso2 for the flag; nothing else changes
+    assert set(match) == {"id", "slug", "name", "iso2", "overview", "tuition", "living_expenses", "visa_process", "work_opportunities", "post_study_work", "pr_opportunities", "faq"}
 
 
 @pytest.mark.asyncio
@@ -53,7 +54,7 @@ async def test_lookup_finds_japan_by_name_or_code_for_an_overseas_admin(client, 
     japan = await db_session.scalar(select(Country).where(Country.iso2 == "JP"))
     admin = await mk_user(db_session, role="overseas_admin")
     await login(client, admin.email)
-    expected = {"id": str(japan.id), "label": japan.name, "detail": "JP · Asia"}
+    expected = {"id": str(japan.id), "label": japan.name, "detail": "JP · Asia", "iso2": "JP"}  # PUB-023 adds iso2
     by_name = await client.get(LOOKUP, params={"q": "japa"})
     by_code = await client.get(LOOKUP, params={"q": "jp"})
     assert by_name.status_code == 200 and expected in by_name.json()["items"]

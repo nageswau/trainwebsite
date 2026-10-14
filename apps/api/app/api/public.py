@@ -196,7 +196,7 @@ async def overseas_courses(category: str | None = None, level: str | None = None
         stmt = stmt.where(OverseasCourse.level == level)
     rows = (await db.execute(stmt.limit(100))).all()
     return [
-        {"id": c.id, "title": c.title, "level": c.level, "category": c.category, "duration": c.duration, "tuition_fee": c.tuition_fee, "intake": c.intake, "campus": c.campus, "fee_text": c.fee_text, "intake_text": c.intake_text, "university": u.name, "country": co.name}
+        {"id": c.id, "title": c.title, "level": c.level, "category": c.category, "duration": c.duration, "tuition_fee": c.tuition_fee, "intake": c.intake, "campus": c.campus, "fee_text": c.fee_text, "intake_text": c.intake_text, "university": u.name, "country": co.name, "country_iso2": co.iso2}
         for c, u, co in rows
     ]
 

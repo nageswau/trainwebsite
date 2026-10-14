@@ -11,7 +11,7 @@ from tests.test_upc_017_courses import add_course, courses_url
 from tests.upc003_helpers import create, login, make_user
 
 PUBLIC = "/api/v1/public"
-KEYS = {"id", "title", "level", "category", "duration", "tuition_fee", "intake"}
+KEYS = {"id", "title", "level", "category", "duration", "tuition_fee", "intake", "campus", "fee_text", "intake_text"}  # campus/fee_text/intake_text: dtu-001 (stale pin fixed in PUB-023)
 
 
 @pytest.mark.asyncio
@@ -31,7 +31,7 @@ async def test_only_active_courses_of_published_universities_and_never_commissio
     await db_session.commit()
     response = await listed()
     assert [c["id"] for c in response.json()] == [shown["id"]]  # the inactive course is not offered (CO11)
-    assert set(response.json()[0]) == KEYS | {"university", "country"} and response.json()[0]["tuition_fee"] == "GBP 18,000"
+    assert set(response.json()[0]) == KEYS | {"university", "country", "country_iso2"} and response.json()[0]["tuition_fee"] == "GBP 18,000"  # PUB-023 adds country_iso2
     assert "commission" not in response.text and "15.00" not in response.text
     detail = await client.get(f"{PUBLIC}/universities/{uni['slug']}")
     assert [c["id"] for c in detail.json()["courses"]] == [shown["id"]] and set(detail.json()["courses"][0]) == KEYS

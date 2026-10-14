@@ -3309,6 +3309,16 @@ moves the application to Joined (AC3). Every change writes offer history.
   - `GET` / `PUT /management/salaries`: `revenue` (and so `ratio`) leaves university commission out for the accountant.
 - Partners' responses are unchanged.
 
+## 12EJ. Country flags (PUB-023) — addendum, 2026-10-14
+
+`DEC-SCOPE-222`. Read-only, additive fields so the web can draw a country's flag from its ISO 3166-1 alpha-2 code. No route, auth or RBAC change; no migration.
+
+| Endpoint | Added field | Notes |
+|---|---|---|
+| `GET /api/v1/public/countries` and `GET /api/v1/public/countries/{slug}` (`country`) | `iso2: string \| null` | `CountryOut`; null for a country without a code |
+| `GET /api/v1/public/overseas-courses` | `country_iso2: string \| null` | beside the existing `country` name |
+| `GET /api/v1/lookups/countries` | `iso2: string \| null` on each item | `label` and `detail` unchanged; same roles as before |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
