@@ -8770,3 +8770,21 @@ The full repository regression is deferred to its own session.
 **Numbering:** no migration; API §12EJ; no RBAC change.
 **Consequences:** `CountryOut.iso2`, course rows' `country_iso2`, lookup items' `iso2`; `CountryFlag`, `flagSrc`, `PickOption.iso2`, `CountRow.iso2`; `scripts/check_flag_assets.py`; the pinned shape tests in `test_upc_002_country_master.py` and `test_upc_017_public.py` gained the new key.
 - **Feature ID authorized:** `PUB-023`. **Status:** see `PUBLIC_SITE_BACKLOG.md`.
+
+### DEC-SCOPE-223 — Office addresses on the contact pages (`PUB-024`)
+
+**Evidence:** owner message 2026-10-14 (in-session): "use this three addresses in portal", giving the Bangalore, Hyderabad and Tadepalligudem offices. The answers below were given directly by the owner in the same session (`EXPLICIT_APPROVAL`). The short design was approved in chat ("yes, go ahead"). It is a bounded change, so there is no spec file.
+
+| # | Point | Owner answer |
+|---|---|---|
+| O1 | Where | `/contact`, `/it/contact` and `/overseas/contact`. Not the footer |
+| O2 | Divisions | All three offices serve both IT Training and Overseas Education |
+| O3 | Text | Spelling, capitalisation and punctuation tidied only (e.g. "Banglore" → "Bengaluru", "Andhrapradesh" → "Andhra Pradesh", "W.G. district" → "West Godavari District"). "Allasandra Gate" is kept as given |
+| O4 | Extras | A "Get directions" Google Maps search link per office (new tab). No embed, no API key, no phone numbers |
+
+**Numbering:** no migration; no API or RBAC change.
+**Consequences:**
+- `lib/offices.ts` (`OFFICES`, `mapsUrl`) and `components/OfficeLocations.tsx`;
+- the IT contact page's "Location" placeholder is removed;
+- tests `OfficeLocations.test.tsx`, `ContactPagesOffices.test.tsx` and e2e `pub-024-offices.spec.ts`.
+- **Feature ID authorized:** `PUB-024`. **Status:** see `PUBLIC_SITE_BACKLOG.md`.

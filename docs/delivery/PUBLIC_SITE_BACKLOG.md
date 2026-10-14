@@ -16,6 +16,7 @@ Every item therefore needs its own clarifying questions, a Decision ID and the u
 |---|---|---|---|
 | `psb-001` → `PUB-022` | Homepage social proof: an admin-entered rating badge and consented, featured testimonials on `/`, `/it` and `/overseas` | `DEC-SCOPE-210` (migration `0158`, API 12DX, RBAC 2.135) | branch `feature/pub-022`, **PR #268** (built; final review fixed; e2e and full suite: owner) |
 | `PUB-023` | Country flags, phase 1: public country/course pages, agent partner universities, partnership admin lists, country picker options | `DEC-SCOPE-222` (no migration, API 12EJ) | branch `feature/pub-023` (built; e2e and full suite: owner) |
+| `PUB-024` | The three office addresses (Bengaluru, Hyderabad, Tadepalligudem) with Google Maps directions links on `/contact`, `/it/contact` and `/overseas/contact` | `DEC-SCOPE-223` (no migration, no API change) | branch `feature/pub-024` |
 | `psb-002` … `psb-019` | Below | — | Not started |
 
 ## Items
