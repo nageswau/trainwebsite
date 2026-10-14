@@ -191,3 +191,22 @@ Web:
 - An overseas success-stories page (#3).
 - Video testimonials.
 - Students submitting their own testimonials.
+
+## 10. Implementation rulings (2026-10-14)
+
+- **R1 — photo formats are JPEG and PNG only.** WebP is dropped. The existing magic-byte check and EXIF/GPS stripper (`app/services/image_metadata.py`) supports only those two formats, and a WebP photo would keep its location metadata.
+- **R2 — the admin screens are dedicated pages:** `/admin/testimonials` (with the badge form), `/it/admin/testimonials` and `/overseas/admin/testimonials`. The generic `[module]`/`[section]` table pages can't do upload, delete-confirm or a consent tick.
+- **R3 — photo errors follow the existing upload helper:**
+  - 413 when a photo is over 2 MB;
+  - 415 for a wrong type;
+  - 422 for an empty or unreadable file.
+
+  This replaces "422 for everything" in §4.2.
+- **R4 — PUB-022 is recorded in DEC-SCOPE-210, RBAC §2.135 and API §12DX,** not in the approval-gated `MASTER_FEATURE_CATALOG.md` / `RTM.md` (the dtu-001 / mgmt precedent). §8 is amended accordingly.
+- **Additions:**
+  - **`photo_content_type`** (varchar 40) on `testimonials`, so the photo route serves the stored type.
+  - **`consent_by_user_id` / `updated_by_user_id`** use `ON DELETE SET NULL`.
+  - **Text limits:** `quote` ≤ 2000 characters. Name, headline, quote and context reject control and bidirectional-override characters (the shared `clean_free_text` rule).
+  - **`display_order`** is limited to ±100000.
+  - **Unchanged consent:** re-sending `consent_confirmed: true` leaves `consent_at` unchanged.
+  - **The `/it/success-stories` e2e** (pub-001) now accepts the empty state, because seeded stories are unpublished (SP4).
