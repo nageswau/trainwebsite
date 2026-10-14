@@ -856,7 +856,7 @@ worked out in the Architecture phase.
 
 **Status:** CONFIRMED_CURRENT (DigitalOcean) — Approved by: user (in-session) — Approval date:
 2026-09-01, re-confirmed 2026-09-01 — DigitalOcean-specific service mapping for the existing
-Docker-based topology still open
+Docker-based topology still open *(mapping resolved 2026-10-14 by `DEC-INFRA-002` below)*
 
 ---
 
@@ -884,6 +884,66 @@ recording storage.
 off-cloud.
 
 **Status:** CONFIRMED_CURRENT — Approved by: user (in-session) — Approval date: 2026-09-01
+
+---
+
+### DEC-INFRA-002 — Production topology on DigitalOcean (edusphere.org.uk go-live)
+
+**Question:** `DEC-INFRA-001` confirmed DigitalOcean but left the service mapping open
+(`docs/architecture/DEPLOYMENT.md` compares App Platform, DOKS and plain Droplets and recommends App
+Platform without deciding). What runs production at `edusphere.org.uk`, given that the only
+running environment is one ~2 GB droplet serving `dev.edusphere.org.uk`?
+
+**Evidence:**
+- The user's in-session answers on 2026-10-14 (`EXPLICIT_APPROVAL`, selected options):
+  - **Prod vs dev:** a **new** droplet for production. The current droplet stays as dev/demo.
+  - **Topology:** "Droplet + managed DB". The droplet runs `docker compose` for web, api, Celery
+    worker, beat, Redis and Caddy. PostgreSQL moves to **DigitalOcean Managed PostgreSQL**.
+  - **Expected load at launch:** under 100 active users.
+  - **Deliverable:** a launch runbook only. No production config files were added to the repo.
+- The same day, the user asked about Postgres on a Volume versus a separate server. The
+  recommendation was Volume for dev and Managed PostgreSQL for real client data; the topology answer
+  above follows it.
+- Code facts that limit the options (as-built, checked against `main`):
+  - Every `boto3.client("s3", …)` call (`services/storage.py`, `services/billing_documents.py`,
+    `services/certificates.py`, `api/public.py`) passes no `endpoint_url`. Each upload also sends
+    `ServerSideEncryption="AES256"`, which has not been tested against Spaces.
+  - The `Caddyfile` serves only `WEB_DOMAIN` and `API_DOMAIN`. It has no `www` block.
+  - The prod web build needs the test exclusion from `fix/web-build-memory` (d3be8eb3) to fit in
+    memory.
+
+**Impact:** Production is isolated from dev deploys, and database backups and point-in-time
+restore become managed. The cost is a second droplet plus a managed cluster. The deploy flow stays
+the same: `scripts/deploy-copy-to-droplet.ps1` plus `docker compose`.
+
+**Dependencies affected:** DEC-INFRA-001 (resolves its open service mapping), DEC-ENV-001,
+`docs/architecture/DEPLOYMENT.md`, ADR-004 (Spaces is deferred, see ID4).
+
+**Resolution:** User confirmed (2026-10-14) the new prod droplet and the Droplet + Managed
+PostgreSQL topology. The supporting points ID1–ID9 below are **recommended defaults, `UNVERIFIED`**.
+The user has not confirmed them individually.
+
+| # | Point | Recommended default (`UNVERIFIED`) |
+|---|---|---|
+| ID1 | Prod droplet size | 4 GB / 2 vCPU, Ubuntu 24.04, plus 4 GB swap. Weekly droplet backups on. A Reserved IP carries the DNS records |
+| ID2 | Managed PostgreSQL | Version 16 (matches dev's `postgres:16-alpine`). 2 GB node, because a 1 GB node allows about 20 connections and the api + Celery engines use default SQLAlchemy pools. Same region and VPC as the droplet. Trusted sources: the prod droplet only. `DATABASE_URL=…?ssl=require` (asyncpg form) |
+| ID3 | Local `postgres` service | Not started in prod. `up` lists the services explicitly; `docker-compose.yml` is unchanged |
+| ID4 | Uploads | A DigitalOcean Volume bound to the `uploads` named volume (`/data/uploads`). Spaces is deferred until the S3 clients accept an endpoint and SSE behaviour on Spaces is tested. `caddy_data`/`caddy_config` go on the same Volume |
+| ID5 | Data at launch | Empty database (Alembic migrates on api start, `AUTO_CREATE_SCHEMA=false`). Admins come from `app.bootstrap_admin`. Neither dev data nor `app/seed.py` (published `Demo@123` password) ever touches prod |
+| ID6 | Domains | `edusphere.org.uk` → web, `api.edusphere.org.uk` → api. `www` is not served until a Caddyfile block is added |
+| ID7 | Production settings | `ENVIRONMENT=production` (hides the demo-accounts box), a fresh `SECRET_KEY`, `COOKIE_SECURE=true`, `FRONTEND_URL=https://edusphere.org.uk`, api/web ports bound to 127.0.0.1, live Razorpay keys, SMTP set |
+| ID8 | Network | DigitalOcean Cloud Firewall allows 22 from the owner's IP only, plus 80 and 443. SSH keys only, no root login, unattended-upgrades and fail2ban |
+| ID9 | Operations | DigitalOcean Uptime checks on web and `/health`, and resource alerts at 80%. A daily snapshot of the uploads Volume, because droplet backups exclude Volumes. One test restore of the managed database before launch |
+
+**Not decided here:** the region and data residency (still open from `DEPLOYMENT.md`), a CDN, a
+separate UAT environment, and moving uploads to Spaces (needs a Feature ID).
+
+**Consequences:** `DEPLOYMENT.md`'s App Platform recommendation is superseded for launch (it now
+carries a pointer to this entry). The owner runs the launch runbook themselves. By their choice it
+is kept outside the repo, and no prod compose or env files are added.
+
+**Status:** CONFIRMED_CURRENT (topology) — Approved by: user (in-session) — Approval date:
+2026-10-14. ID1–ID9 `UNVERIFIED`.
 
 ---
 
