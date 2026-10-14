@@ -50,6 +50,7 @@ export default async function LedgerEntryPage({ params, searchParams }: { params
     ["Vertical", VERTICAL_LABEL[entry.vertical] ?? entry.vertical],
     ["Marketing channel", entry.channel ? (SOURCE_LABEL[entry.channel] ?? entry.channel) : "—"],
     ["Course", entry.program?.name ?? "—"],
+    ...(entry.school ? [["School", entry.school.name] as [string, string]] : []),
     ["Batch", entry.batch?.name ?? "—"],
     ["Created by", `${entry.created_by?.full_name ?? "—"} · ${at(entry.created_at)}`],
     ["Last changed by", `${entry.updated_by?.full_name ?? "—"} · ${at(entry.updated_at)}`],

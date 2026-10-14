@@ -247,7 +247,7 @@ describe("mgmt-004 entry form", () => {
     await waitFor(() => expect(router.push).toHaveBeenCalledWith("/management/ledger/e9"));
     expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual(["POST /api/v1/management/ledger", "POST /api/v1/management/ledger/e9/submit"]);
     expect(calls[0].body).toEqual({ kind: "expense", entry_date: "2026-10-12", category_id: "c1", amount: "120000", vertical: "shared",
-      description: "Office rent for October", channel: null, program_id: "p1", batch_id: "b1" });
+      description: "Office rent for October", channel: null, program_id: "p1", batch_id: "b1", school_id: null });
   });
 
   it("puts the API's 422 on its field", async () => {
