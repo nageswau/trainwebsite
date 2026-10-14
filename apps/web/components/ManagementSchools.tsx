@@ -11,6 +11,7 @@ const MONEY: SchoolMoneyKey[] = ["revenue", "contract_value", "renewal_value"];
 const COLUMN: Record<string, string> = {
   students: "Students", teachers: "Teachers", parents: "Parents", career_guidance: "Career guidance", psychometric_tests: "Psychometric tests",
   academic_results: "Academic results", profile_completion: "Profile completion", revenue: "Revenue", contract_value: "Contract value", renewal_value: "Renewal value",
+  values: "Values",
 }; // prettier-ignore
 const percent = (value: number | null) => (value === null ? "No students" : `${value}%`);
 const rupees = (value: string | null) => (value === null ? "Not entered" : formatInr(value));
@@ -33,9 +34,10 @@ function schoolMeta(s: SchoolRow): string {
 export default function ManagementSchools({ data, error, query }: { data: SchoolsDashboard | null; error: string; query: SchoolsQuery }) {
   const period = { from: data?.from ?? query.from, to: data?.to ?? query.to };
   const money = Boolean(data?.money_visible);
-  const columns = [...COUNTS, "profile_completion", ...(money ? MONEY : [])];
+  // QA22-01: with money, the money and its editor come right after the school, so the finance tier sees them without scrolling sideways.
+  const columns = [...(money ? [...MONEY, "values"] : []), ...COUNTS, "profile_completion"];
   const cell = (key: string, s: { [k: string]: unknown }) =>
-    key === "profile_completion" ? percent(s[key] as number | null) : (MONEY as string[]).includes(key) ? rupees(s[key] as string | null) : formatCount(s[key] as number);
+    key === "values" ? "" : key === "profile_completion" ? percent(s[key] as number | null) : (MONEY as string[]).includes(key) ? rupees(s[key] as string | null) : formatCount(s[key] as number);
   return (
     <div className="action-card">
       {error && <p className="form-error" role="alert">{error}</p>}
@@ -81,7 +83,6 @@ export default function ManagementSchools({ data, error, query }: { data: School
                     <tr>
                       <th scope="col">School</th>
                       {columns.map((key) => <th key={key} scope="col">{COLUMN[key]}</th>)}
-                      {money && <th scope="col">Values</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -91,8 +92,7 @@ export default function ManagementSchools({ data, error, query }: { data: School
                           {s.name}
                           <span className="muted schools-meta">{schoolMeta(s)}</span>
                         </th>
-                        {columns.map((key) => <td key={key}>{cell(key, s)}</td>)}
-                        {money && <td><SchoolValuesEditor school={s} /></td>}
+                        {columns.map((key) => <td key={key}>{key === "values" ? <SchoolValuesEditor school={s} /> : cell(key, s)}</td>)}
                       </tr>
                     ))}
                   </tbody>
@@ -101,13 +101,11 @@ export default function ManagementSchools({ data, error, query }: { data: School
                       <tr>
                         <th scope="row">Not tagged to a school</th>
                         {columns.map((key) => <td key={key}>{key === "revenue" ? formatInr(data.untagged_revenue ?? "0") : ""}</td>)}
-                        <td />
                       </tr>
                     )}
                     <tr>
                       <th scope="row">All schools</th>
                       {columns.map((key) => <td key={key}><strong>{cell(key, data.totals)}</strong></td>)}
-                      {money && <td />}
                     </tr>
                   </tfoot>
                 </table>

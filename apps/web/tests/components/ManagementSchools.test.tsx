@@ -101,18 +101,20 @@ describe("mgmt-022 ManagementSchools", () => {
     expect(tile("MoUs")).toHaveTextContent("MoUs meaning.");
   });
 
-  it("lists every school with its figures, money and an editor, the untagged line and an All schools total", () => {
+  it("lists every school with its money and editor first (QA22-01), then its figures, the untagged line and an All schools total", () => {
     view();
     expect(within(table()).getAllByRole("columnheader").map((th) => th.textContent)).toEqual([
-      "School", "Students", "Teachers", "Parents", "Career guidance", "Psychometric tests", "Academic results", "Profile completion", "Revenue",
-      "Contract value", "Renewal value", "Values",
+      "School", "Revenue", "Contract value", "Renewal value", "Values", "Students", "Teachers", "Parents", "Career guidance", "Psychometric tests",
+      "Academic results", "Profile completion",
     ]); // prettier-ignore
     const green = within(table()).getByRole("rowheader", { name: /Green Valley School/ }).closest("tr")!;
     expect(green.querySelector(".schools-meta")).toHaveTextContent(`Gold · Active · valid until ${formatCalendarDate("2027-03-31")}`);
-    expect(cells(green).slice(0, 10)).toEqual(["1,200", "5", "28", "40", "25", "12", "48%", "₹1,50,000.00", "₹2,50,000.00", "₹2,75,000.50"]);
+    const greenCells = cells(green);
+    expect(greenCells.slice(0, 3)).toEqual(["₹1,50,000.00", "₹2,50,000.00", "₹2,75,000.50"]);
+    expect(greenCells.slice(4)).toEqual(["1,200", "5", "28", "40", "25", "12", "48%"]);
     const hill = within(table()).getByRole("rowheader", { name: /Hill Top Academy/ }).closest("tr")!;
     expect(hill.querySelector(".schools-meta")).toHaveTextContent("No tier · Not active · Renewal due");
-    expect(cells(hill).slice(6, 10)).toEqual(["No students", "₹0.00", "Not entered", "Not entered"]);
+    expect([...cells(hill).slice(0, 3), cells(hill).at(-1)]).toEqual(["₹0.00", "Not entered", "Not entered", "No students"]);
     const [untagged, total] = Array.from(table().querySelectorAll("tfoot tr"));
     expect(untagged).toHaveTextContent("Not tagged to a school");
     expect(untagged).toHaveTextContent("₹10,000.00");

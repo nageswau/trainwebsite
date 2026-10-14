@@ -66,7 +66,11 @@ test("the super admin reaches the page from their own sidebar, without money; th
   await expect(page.getByText("Edit values")).toHaveCount(0);
 
   await page.context().clearCookies();
-  await signIn(page, "overseasadmin@edusphere.local");
+  await page.goto("/overseas/login"); // the overseas admin signs in on the overseas portal
+  await page.fill("#login-email", "overseasadmin@edusphere.local");
+  await page.fill("#login-password", "Demo@123");
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL("**/overseas/admin/dashboard");
   await page.goto("/management/schools");
   await expect(page.getByRole("heading", { name: "Access unavailable" })).toBeVisible();
 });
