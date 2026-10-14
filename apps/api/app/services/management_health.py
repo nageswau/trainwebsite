@@ -116,10 +116,11 @@ async def _finance(db: AsyncSession, user: User, month: date, previous: date, en
     out["profit"] = _figure(_percent(margin), _percent(pnl_before["margin"]), score=margin_score(margin)) if margin is not None else _figure(note="No revenue in the month")
 
     cash = dict((await db.execute(select(FinanceBalance.month, FinanceBalance.cash_bank).where(FinanceBalance.month.in_((month, previous))))).all())
-    if cash.get(month) is None or cash.get(previous) is None:
-        out["cash_flow"] = _figure(cash.get(month), cash.get(previous), note="Cash/bank balance not entered for both months")
+    cash_now, cash_before = cash.get(month), cash.get(previous)
+    if cash_now is None or cash_before is None:
+        out["cash_flow"] = _figure(cash_now, cash_before, note="Cash/bank balance not entered for both months")
     else:
-        out["cash_flow"] = _growth(cash[month], cash[previous])
+        out["cash_flow"] = _growth(cash_now, cash_before)
 
     heads = dict((await db.execute(select(SalaryMonthTotal.month, func.sum(SalaryMonthTotal.headcount)).where(SalaryMonthTotal.month.in_((month, previous))).group_by(SalaryMonthTotal.month))).all())
     if not heads.get(month) or not heads.get(previous):

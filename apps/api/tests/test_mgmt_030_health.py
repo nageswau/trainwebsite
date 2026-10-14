@@ -81,7 +81,9 @@ async def test_signed_out_is_401(client):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(("role", "division", "detail"), [("accountant", "global", "Operational access required"), ("it_admin", "it", "Management access required"), ("counselor", "overseas", "Management access required")])
+@pytest.mark.parametrize(
+    ("role", "division", "detail"), [("accountant", "global", "Operational access required"), ("it_admin", "it", "Management access required"), ("counselor", "overseas", "Management access required")]
+)
 async def test_other_roles_are_refused(client, db_session, role, division, detail):
     await login(client, await make_user(db_session, role, division))
     response = await client.get(URL)

@@ -55,7 +55,14 @@ describe("mgmt-030 ManagementHealth", () => {
     const table = screen.getByRole("table", { name: /Business health breakdown/ });
     const rows = within(table).getAllByRole("row");
     expect(rows).toHaveLength(1 + 12 + 1);
-    expect(within(rows[1]).getAllByRole("cell").map((c) => c.textContent)).toEqual(["Green", "12 against 10 (+20.0%)", "100", "5", "7"]);
+    expect(within(rows[1]).getAllByRole("cell").map((c) => c.textContent)).toEqual(["12 against 10 (+20.0%)", "100 Green", "5", "7"]); // QA30-02: five columns, the band beside the score
+    expect(within(table).getAllByRole("columnheader").map((c) => c.textContent)).toEqual(["Factor", "Measure", "Score", "Weight", "Points"]);
+    // QA30-02: on a phone the shared `.table.stack` turns each factor into labelled lines, so nothing sits off-screen at any width.
+    expect(table.className).toContain("stack");
+    expect(within(rows[1]).getAllByRole("cell").map((c) => c.getAttribute("data-label"))).toEqual(["Measure", "Score", "Weight", "Points"]);
+    // QA30-04/05: the score and its band are one item (they stay together on a stacked phone row); the total carries no "Points" label.
+    expect(within(rows[1]).getAllByRole("cell")[1].children).toHaveLength(1);
+    expect(within(rows[13]).getAllByRole("cell").at(-1)!.hasAttribute("data-label")).toBe(false);
     expect(within(rows[13]).getByRole("rowheader").textContent).toBe("Overall score");
     expect(within(rows[13]).getAllByRole("cell").at(-1)!.textContent).toBe("84");
   });
@@ -64,7 +71,7 @@ describe("mgmt-030 ManagementHealth", () => {
     const factors = health().factors.map((f) => (f.label === "Cash flow" ? { ...f, score: null, rag: null, points: null, note: "Cash/bank balance not entered for both months" } : f));
     render(<ManagementHealth data={health({ factors })} error="" query={{ month: "" }} maxMonth="2026-10" />);
     const row = screen.getByRole("rowheader", { name: "Cash flow" }).closest("tr")!;
-    expect(within(row).getAllByRole("cell").map((c) => c.textContent)).toEqual(["Not available", "Cash/bank balance not entered for both months", "—", "5", "—"]);
+    expect(within(row).getAllByRole("cell").map((c) => c.textContent)).toEqual(["Cash/bank balance not entered for both months", "—", "5", "—"]);
     expect(screen.getByText(/A factor that is not available is left out/)).toBeTruthy();
   });
 
@@ -75,6 +82,14 @@ describe("mgmt-030 ManagementHealth", () => {
     expect(screen.getByText(/finance factors are shown to partners only/)).toBeTruthy();
     expect(within(screen.getByRole("list", { name: "Health by factor" })).getAllByRole("listitem")).toHaveLength(6);
     expect(screen.queryByText("Revenue")).toBeNull();
+    // QA30-01: the scoring note explains only the factors shown -- no margin, ROI or revenue wording for the operational scope.
+    const note = screen.getByText(/Each factor is scored 0–100/).textContent!;
+    expect(note).not.toMatch(/margin|ROI|revenue|Profit|Expenses/);
+  });
+
+  it("explains the finance scales to partners (QA30-01)", () => {
+    render(<ManagementHealth data={health()} error="" query={{ month: "" }} maxMonth="2026-10" />);
+    expect(screen.getByText(/Each factor is scored 0–100/).textContent).toMatch(/Profit is scored on the margin/);
   });
 
   it("says when there is not enough data, and when the month is still running", () => {

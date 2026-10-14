@@ -59,6 +59,7 @@ test("the super admin reaches the page from their own sidebar with the operation
     await expect(page.getByRole("rowheader", { name: finance, exact: true })).toHaveCount(0);
   }
   await expect(page.getByRole("main").getByText("₹")).toHaveCount(0);
+  await expect(page.getByRole("main")).not.toContainText(/margin|ROI|revenue/i); // QA30-01: no finance wording at all
   await expectPointsAddUp(page);
 
   await page.context().clearCookies();
