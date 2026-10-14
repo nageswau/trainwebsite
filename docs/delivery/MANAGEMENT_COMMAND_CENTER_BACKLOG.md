@@ -749,6 +749,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** high
 
 ### mgmt-016 — Student funnel dashboard
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-016`. `DEC-SCOPE-211` (SF1–SF16 recommended defaults, UNVERIFIED; SF2–SF15
+  answer Q-18: each stage counts activity in the period, not a cohort, and the source's "X / Y" stages are split across an IT path and
+  an abroad path). No migration; API §12DY; RBAC §2.136. QA evidence `docs/quality/MGMT-016_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** §11: Leads → Telecalling → Counseling → Registration → Training/Abroad → Application → Offer/Certification →
   Visa/Placement → Enrollment/Joining; 9 breakdowns (country, course, agent, school, counselor, marketing source, BDM, intake, branch).
 - **Existing behavior:** per-module funnels only.
