@@ -60,7 +60,7 @@ async def meeting_options(user: User = Depends(get_current_user), db: AsyncSessi
 @router.post("", status_code=201, response_model=MgmtMeetingDetail)
 async def create_meeting(payload: MgmtMeetingCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     discussions.require_operational(user)
-    state = payload.model_dump(exclude={"participant_ids", "status"})
+    state = payload.model_dump(exclude={"participant_ids"})
     await svc.check(db, {**state, "status": "scheduled"}, set(payload.participant_ids))
     meeting = ManagementMeeting(**state, status="scheduled", created_by_user_id=user.id, updated_by_user_id=user.id)
     db.add(meeting)

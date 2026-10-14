@@ -146,6 +146,9 @@ describe("ManagementMeetingChain (MM6-MM10, AC)", () => {
     expect(within(decision).getByText(/Send the draft MoU/)).toBeInTheDocument();
     expect(within(decision).getByText("Completed")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open decision Proceed with Japan agreement" })).toHaveAttribute("href", "/management/discussions/d1");
+    // QA29-01: the link never reads "Open" beside an Open status badge
+    expect(screen.getByRole("link", { name: "Open decision Proceed with Japan agreement" })).toHaveTextContent("View");
+    expect(screen.getByRole("link", { name: "Open task Book the next review" })).toHaveTextContent("View");
     expect(screen.getByText(/Book the next review/)).toBeInTheDocument();
   });
 

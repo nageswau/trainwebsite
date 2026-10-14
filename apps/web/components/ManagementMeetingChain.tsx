@@ -25,7 +25,7 @@ function TaskLine({ task }: { task: ChainTask }) {
       <span className="muted" style={{ fontSize: 14 }}>{task.owner.full_name} · Due {formatDay(task.deadline)}</span>
       <span className={priorityClass(task.priority)}>{PRIORITY_LABEL[task.priority]} priority</span>
       <span className={statusClass(task.status)}>{STATUS_LABEL[task.status]}</span>
-      <Link className="kpi-link" href={`${TASKS_HOME}/${task.id}/edit`} aria-label={`Open task ${task.title}`}>Open</Link>
+      <Link className="kpi-link" href={`${TASKS_HOME}/${task.id}/edit`} aria-label={`Open task ${task.title}`}>View</Link>
     </li>
   );
 }
@@ -222,7 +222,7 @@ export default function ManagementMeetingChain({ meeting, options, started }: Pr
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                   <strong>Decision: {d.decision}</strong>
                   <span className={statusClass(d.status)}>{STATUS_LABEL[d.status]}</span>
-                  <Link className="kpi-link" href={`${DISCUSSIONS_HOME}/${d.id}`} aria-label={`Open decision ${d.decision}`}>Open</Link>
+                  <Link className="kpi-link" href={`${DISCUSSIONS_HOME}/${d.id}`} aria-label={`Open decision ${d.decision}`}>View</Link>
                 </div>
                 <div className="muted" style={{ fontSize: 14 }}>{who(d.responsible)} · {d.deadline ? `Due ${formatDay(d.deadline)}` : "No deadline"}</div>
                 {d.tasks.length > 0 && <ul style={{ listStyle: "none", margin: "4px 0 0", paddingLeft: 16 }}>{d.tasks.map((t) => <TaskLine key={t.id} task={t} />)}</ul>}

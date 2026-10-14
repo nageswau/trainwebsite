@@ -11983,9 +11983,9 @@ def _mgmt_meeting_text(minimum: int, maximum: int, label: str):
     return check
 
 
-class MgmtMeetingUpdate(BaseModel):
-    """MM2/MM4: a partial change. An explicit null clears an optional field (location, link, agenda), never a required one.
-    `status` only cancels: minutes complete a meeting (MM6). `participant_ids` replaces the whole set (MM5)."""
+class _MgmtMeetingFields(BaseModel):
+    """MM2: the fields a create and a change share. An explicit null clears an optional field (location, link, agenda), never a
+    required one. `participant_ids` replaces the whole set (MM5)."""
 
     model_config = ConfigDict(extra="forbid")
     title: MgmtMeetingTitle | None = None
@@ -11996,9 +11996,8 @@ class MgmtMeetingUpdate(BaseModel):
     meeting_url: LeadApptLink = None
     agenda: Annotated[str | None, AfterValidator(_mgmt_meeting_text(0, 5_000, "The agenda"))] = None
     participant_ids: MgmtMeetingPeople | None = None
-    status: Literal["cancelled"] | None = None
 
-    @field_validator(*_MEETING_REQUIRED, "status", mode="before")
+    @field_validator(*_MEETING_REQUIRED, mode="before")
     @classmethod
     def _required(cls, value, info: ValidationInfo):
         if value is None:
@@ -12006,18 +12005,20 @@ class MgmtMeetingUpdate(BaseModel):
         return value
 
 
-class MgmtMeetingCreate(MgmtMeetingUpdate):
+class MgmtMeetingUpdate(_MgmtMeetingFields):
+    """MM4: `status` only cancels; minutes complete a meeting (MM6)."""
+
+    status: Literal["cancelled"] | None = None
+
+
+class MgmtMeetingCreate(_MgmtMeetingFields):
+    """A new meeting is always scheduled: no `status` (extra fields are refused)."""
+
     title: MgmtMeetingTitle
     kind: MgmtMeetingKind
     starts_at: BdmApptStart
     mode: Literal[APPOINTMENT_MODES] = "Online"  # type: ignore[valid-type]
     participant_ids: MgmtMeetingPeople = Field(default_factory=list)
-    status: None = Field(None, exclude=True)  # a new meeting is always scheduled
-
-    @field_validator("status", mode="before")
-    @classmethod
-    def _never(cls, value):
-        raise ValueError("A new meeting is always scheduled")
 
 
 class MgmtMeetingMinutesIn(BaseModel):
