@@ -166,6 +166,7 @@ def row_out(d: ManagementDiscussion, who: dict) -> dict:
         "deadline": d.deadline,
         "status": d.status,
         "follow_up_date": d.follow_up_date,
+        "meeting_id": d.meeting_id,
         "created_at": d.created_at,
         "updated_at": d.updated_at,
     }
