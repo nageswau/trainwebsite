@@ -23,7 +23,7 @@
 | 7 | Invalid inputs: a future month shows the API's "Choose this month or an earlier one"; a garbage `path` is dropped, so the page shows the top level; an unknown chain is a 404 page; a random UUID path shows "Nothing to show for this selection in this period" + "Start again from the top" | Pass |
 | 8 | Paging past the end (`page=999`) | **QA33-01**, fixed |
 | 9 | Unattributed row ("No course linked") listed and drillable | Pass |
-| 10 | Audit: Management activity (accountant) lists "Drill-down read" | Pass |
+| 10 | Audit: Management activity (accountant) lists the drill-down reads | **QA33-04**, fixed: now "Drill-down opened" |
 | 11 | super_admin → "Access unavailable · Finance access required"; bdm_manager → "Management access required" (AC3) | Pass |
 | 12 | Desktop 1280, tablet 820, phone 375: no horizontal page overflow | Pass after **QA33-02/03** |
 | 13 | Console errors, failed requests (excluding Next `_rsc` prefetches) and 5xx responses | None |
@@ -35,6 +35,12 @@
 | QA33-01 | Low–Medium | Any finance role, `/management/drill/it?period=year&page=999` | Open a page past the last row | Say the page is past the end, with a link back | "No counted IT Training revenue in the financial year…", while the tiles show ₹60,000 across 3 lines | Fixed: "This page is past the last of N rows. First page" (vitest) |
 | QA33-02 | Low | Phone 375 px, any level | Open a level | The money figure on one line | "₹27,000.0 / 0" broke across lines in a half-width tile | Fixed: tiles stack on a phone (`accounts-tiles`) |
 | QA33-03 | Low | Phone 375 px, a level table | Open a level | Amount visible without scrolling sideways | Four columns: Amount started off-screen | Fixed: three columns (Lines, or Date at the payment level, then Amount) with `min-width: 0` and the amount on one line |
+| QA33-04 | Low | Accountant / partner, `/management/activity` | Open a drill-down student or payment level, then the activity page | A readable entry | "Drill-down read view": the `view` verb had no label | Fixed: kind "Drill-down", verb `view` → "opened" ("Drill-down opened", vitest) |
+
+Found during Phase 8 with the neighbouring e2e run (`mgmt-002-activity.spec.ts`, AC2). That spec's kinds assertion (line 54: three
+kinds) is already stale on `main`, because mgmt-011/012/013/022 added finance kinds since. Its "Ledger entry changed on page 1" check
+also depends on the shared DB, where repeated drill-down QA and e2e runs as accountants now fill page 1 with audit rows. Neither is a
+mgmt-033 defect, so the spec is left unchanged.
 
 Re-verified after the fixes: the e2e spec passes 3/3, the QA script re-run shows 0 px overflow at 375/820, and the screenshots were
 checked.
