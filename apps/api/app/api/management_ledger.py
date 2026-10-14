@@ -84,7 +84,7 @@ async def change_category(category_id: UUID, payload: LedgerCategoryUpdate, user
 
 @router.get("/options", response_model=LedgerOptions)
 async def ledger_options(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """The entry form's choices: active categories, the 13 lead-source channels (M7), verticals, active courses with their batches."""
+    """The entry form's choices: active categories, the 13 lead-source channels (M7), verticals, active courses with their batches, schools."""
     svc.require_finance(user)
     return await svc.options(db)
 

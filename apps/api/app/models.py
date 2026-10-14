@@ -3877,12 +3877,21 @@ class PasswordResetToken(Base, TimestampMixin):
     superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+# mgmt-022 (SD13): migration 0160 repeats these (test_mgmt_022_migration).
+SCHOOL_VALUE_CHECKS = {
+    "ck_schools_contract_value": "contract_value IS NULL OR contract_value >= 0",
+    "ck_schools_renewal_value": "renewal_value IS NULL OR renewal_value >= 0",
+}
+LEDGER_SCHOOL_CHECK = "school_id IS NULL OR (kind = 'income' AND vertical = 'school')"  # mgmt-022 SD14
+
+
 class School(Base, TimestampMixin):
     """School partner record (SCH-003, DATA_MODEL.md §6.11; profile fields added ENH-009,
     DEC-SCOPE-025). `EVID-014`'s full field list is now confirmed in scope -- see the
     design doc for what's stored here vs. computed at read time in `SchoolOut`."""
 
     __tablename__ = "schools"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in SCHOOL_VALUE_CHECKS.items())  # mgmt-022 SD13
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(200))
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -3904,6 +3913,10 @@ class School(Base, TimestampMixin):
     edusphere_bdm: Mapped[str | None] = mapped_column(String(200), nullable=True)
     monthly_visit_schedule: Mapped[str | None] = mapped_column(String(200), nullable=True)
     vice_principal_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # mgmt-022 (SD13, Q-23): the agreement's value and its renewal's, in rupees. Finance tier only (M13): set on the management school
+    # dashboard, never part of the school admin forms or `SchoolOut`.
+    contract_value: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    renewal_value: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
 
 
 class AcademicYear(Base, TimestampMixin):
@@ -5566,6 +5579,8 @@ class LedgerEntry(Base, TimestampMixin):
         Index("ix_ledger_entries_vertical_date", "vertical", "entry_date"),
         Index("ix_ledger_entries_status", "status"),
         Index("uq_ledger_entries_live_reversal", "reversal_of_id", unique=True, postgresql_where=text("status <> 'rejected'")),
+        CheckConstraint(LEDGER_SCHOOL_CHECK, name="ck_ledger_entries_school"),
+        Index("ix_ledger_entries_school_date", "school_id", "entry_date", postgresql_where=text("school_id IS NOT NULL")),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     entry_date: Mapped[date] = mapped_column(Date)
@@ -5577,6 +5592,7 @@ class LedgerEntry(Base, TimestampMixin):
     channel: Mapped[str | None] = mapped_column(String(30), nullable=True)
     program_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("programs.id", ondelete="RESTRICT"), nullable=True)
     batch_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("batches.id", ondelete="RESTRICT"), nullable=True)
+    school_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("schools.id", ondelete="RESTRICT"), nullable=True)  # mgmt-022 SD14
     status: Mapped[str] = mapped_column(String(10), default="draft", server_default=text("'draft'"))
     reversal_of_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("ledger_entries.id", ondelete="RESTRICT"), nullable=True)
     receipt_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
