@@ -1225,6 +1225,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-032 — Monthly Business Review
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-032`. `DEC-SCOPE-220` (MR1–MR14 recommended defaults, UNVERIFIED; answers
+  Q-31: drafted 06:00 IST on the 1st, partners can regenerate a draft, "Attendance" = staff attendance, not tracked). Migration
+  `0163_monthly_reviews`; API §12EH; RBAC §2.145. QA evidence `docs/quality/MGMT-032_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** §32 (auto-generate at month end; 10 sections) (M12).
 - **Existing behavior:** none.
 - **Expected behavior:**

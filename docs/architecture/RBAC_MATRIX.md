@@ -2308,6 +2308,19 @@ Counts only, no personal data; nothing else changes.
 
 - Read-only; not audited. "My tasks" is the caller's own tasks; every other panel follows the tier rules of the page it summarises.
 
+### 2.145 Monthly Business Review *(added 2026-10-14 — `DEC-SCOPE-220`, `mgmt-032`)*
+
+| Role | `GET /management/reviews`, `GET …/{month}`, `GET …/{month}/pdf` | `POST …/{month}/generate`, `PATCH …/{month}`, `POST …/{month}/finalise` |
+|---|---|---|
+| `partner` | yes | yes (drafts only; a final review is `409`) |
+| `super_admin` | `403` "Only partners can open this" (finance + investments, M2/M13) | `403` |
+| `accountant` | `403` "Only partners can open this" | `403` |
+| every other role | `403` "Management access required" | `403` |
+| signed out | `401` | `401` |
+
+- Every partner write and every PDF download is audited (`mgmt.review`, partner-only kind; field names only). The beat job drafts
+  without an actor. On finalise every active partner gets an in-app notification + email with a link only (no figures, no attachment).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

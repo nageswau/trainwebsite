@@ -5894,6 +5894,32 @@ class ManagementPlanItem(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
+# mgmt-032 (Monthly Business Review, spec MR2): EVID-017 §32. Rules live in `services/monthly_review.py`.
+REVIEW_STATUSES = ("draft", "final")
+REVIEW_CHECKS = {
+    "ck_monthly_reviews_month": "EXTRACT(DAY FROM month) = 1",
+    "ck_monthly_reviews_status": "status IN ('draft', 'final')",
+    "ck_monthly_reviews_final": "(status = 'final') = (finalised_at IS NOT NULL)",
+}
+
+
+class MonthlyReview(Base, TimestampMixin):
+    """MR2: one review per IST month (`month` is its 1st). `snapshot` is frozen when drafted (or regenerated while a draft);
+    `narrative` holds the partners' §9/§10 answers. `updated_by_user_id` is null while only the beat job has written it."""
+
+    __tablename__ = "monthly_reviews"
+    __table_args__ = (UniqueConstraint("month", name="uq_monthly_reviews_month"), *(CheckConstraint(sql, name=name) for name, sql in REVIEW_CHECKS.items()))
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    month: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(8), default="draft", server_default=text("'draft'"))
+    snapshot: Mapped[dict] = mapped_column(JSON)
+    narrative: Mapped[dict] = mapped_column(JSON, default=dict, server_default=text("'{}'"))
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    finalised_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finalised_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
 # mgmt-029 (management meetings + minutes chain, spec MM1-MM14): EVID-017 §29. Rules live in `services/management_meetings.py`; the
 # decisions and tasks recorded from the minutes are mgmt-027 discussions (`meeting_id`) and mgmt-028 tasks (`source` meeting / decision).
 MEETING_KINDS = ("partner", "department", "school", "university", "agent", "recruiter", "marketing_review")

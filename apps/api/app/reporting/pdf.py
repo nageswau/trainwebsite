@@ -10,6 +10,7 @@ by `uharfbuzz` so vowel signs and conjuncts are correct (QA15-02). Other non-Lat
 import re
 from collections.abc import Iterable, Sequence
 from datetime import date, datetime
+from decimal import Decimal
 from functools import cache
 from io import BytesIO
 from pathlib import Path
@@ -232,3 +233,81 @@ def render_progress_report(overview: dict, as_of: date) -> bytes:
         block = skills.get(key) or {}
         story += _section(title, block.get("status"), block.get("enrollments") or [], ("batch_title", "topic", "status", "start_date", "end_date", "completed_at", "certified_at"))
     return _build(story, "Student Progress Report", "EduSphere · Student Progress Report · Confidential: contains student information")
+
+
+# --- mgmt-032 (spec MR14, AC3): the Monthly Business Review, laid out from the very dict the review page renders ------------------
+REVIEW_TITLE = "EduSphere Monthly Business Review"
+REVIEW_PROMPTS = (
+    ("9. Problems", (("went_wrong", "What went wrong?"), ("delayed", "What is delayed?"), ("intervention", "What needs management intervention?"))),
+    ("10. Next month", (("initiatives", "New initiatives"), ("hiring", "Hiring"), ("investments", "Investments"), ("partnerships", "Partnerships"))),
+)
+
+
+def _inr(value) -> str:
+    """Rupees with grouping commas (Helvetica has no ₹ sign, so "INR"); none stays a dash."""
+    return NONE if value is None else f"INR {Decimal(value):,.2f}"
+
+
+def _pct(value) -> str:
+    return NONE if value is None else f"{Decimal(str(value)):,.2f}".rstrip("0").rstrip(".") + "%"
+
+
+def _rows(rows: Sequence[tuple[str, object]], widths: tuple[float, float] = (110, 60)) -> Table:
+    table = Table([[_p(label, CELL), _p(value, CELL)] for label, value in rows], colWidths=[w * mm for w in widths])
+    table.setStyle(FIELDS)
+    return table
+
+
+def _grid(header: Sequence[str], rows: Sequence[Sequence[object]], widths: Sequence[float]) -> Table:
+    table = Table([[_p(h, CELL) for h in header], *[[_p(v, CELL) for v in row] for row in rows]], colWidths=[w * mm for w in widths], repeatRows=1)
+    table.setStyle(GRID)
+    return table
+
+
+def _block(title: str, *body: Flowable) -> list[Flowable]:
+    return [KeepTogether([_p(title, HEADING), *body]), Spacer(1, 2 * mm)]
+
+
+def render_monthly_review(review: dict) -> bytes:
+    s, narrative = review["snapshot"], review["narrative"]
+    if review["status"] == "final":
+        state = f"Final · finalised on {_text(review['finalised_at'])}" + (f" by {review['finalised_by']['full_name']}" if review.get("finalised_by") else "")
+    else:
+        state = "Draft · not finalised; figures can still be regenerated"
+    people, marketing, invest, nxt = s["people"], s["marketing"], s["investments"], s["next_month"]
+    story: list[Flowable] = [_p(REVIEW_TITLE, TITLE), _p(review["label"], HEADING), _p(state, STATUS), _p("Money is in Indian rupees; days are India time.", SMALL)]
+    story += _block("1. Revenue", _rows([*[(line["label"], _inr(line["amount"])) for line in s["revenue"]["lines"]], ("Total revenue", _inr(s["revenue"]["total"]))]))
+    story += _block("2. Expenses", _rows([*[(line["label"], _inr(line["amount"])) for line in s["expenses"]["lines"]], ("Total expenses", _inr(s["expenses"]["total"]))]))
+    p = s["profitability"]
+    story += _block(
+        "3. Profitability", _rows([("Gross revenue", _inr(p["revenue"])), ("Total expense", _inr(p["expenses"])), ("Net profit", _inr(p["net_profit"])), ("Profit margin", _pct(p["margin"]))])
+    )
+    sales = s["sales"]
+    story += _block("4. Sales", _rows([("Leads", sales["leads"]), ("Students (new IT students)", sales["students"]), ("Applications", sales["applications"]),
+                                       ("Enrollments", sales["enrollments"]), ("Placements", sales["placements"])]))  # fmt: skip
+    pa = s["partnerships"]
+    story += _block(
+        "5. Partnerships", _rows([("New agents", pa["agents"]), ("New schools (MoUs signed)", pa["schools"]), ("New universities", pa["universities"]), ("New companies", pa["companies"])])
+    )
+    departments: list[Flowable] = (
+        [_grid(("Department", "Headcount", "Total cost"), [(d["name"], d["headcount"], _inr(d["total_cost"])) for d in people["departments"]], (90, 30, 50))]
+        if people["departments"]
+        else [_p("No department salaries entered for the month.", SMALL)]
+    )
+    story += _block("6. People", _rows([("Employees", NONE if people["employees"] is None else people["employees"]), ("Attendance", people["attendance_note"]),
+                                        ("Productivity (revenue per employee)", _inr(people["productivity"]))]), Spacer(1, 2 * mm), _p("Department performance", STATUS), *departments)  # fmt: skip
+    story += _block("7. Marketing", _rows([("Budget", _inr(marketing["budget"])), ("Spend", _inr(marketing["spend"])), ("Leads", marketing["leads"]), ("Customers", marketing["customers"]),
+                                           ("Conversion", _pct(marketing["conversion"])), ("Revenue", _inr(marketing["revenue"])), ("ROI", _pct(marketing["roi"]))]))  # fmt: skip
+    story += _block("8. Investments", _rows([("New investments", f"{invest['new_count']} · {_inr(invest['new_amount'])}"), ("Total investment", _inr(invest["total"])),
+                                             ("Return", _inr(invest["return"])), ("ROI", _pct(invest["roi"]))]))  # fmt: skip
+    for title, prompts in REVIEW_PROMPTS:
+        body: list[Flowable] = []
+        if title.startswith("10."):
+            targets = [(t["vertical"], t["text"], t["kpi"], _inr(t["target"]) if t["unit"] == "inr" else f"{Decimal(t['target']):,.0f}") for t in nxt["targets"]]
+            body += [_p(f"Targets for {nxt['label']}", STATUS), _grid(("Vertical", "Item", "KPI", "Target"), targets, (30, 70, 40, 30)) if targets else _p("No KPI targets planned.", SMALL)]
+            body += [Spacer(1, 2 * mm), _rows([(f"Marketing budget for {nxt['label']}", _inr(nxt["budget"]))])]
+        story += _block(title, *body) if body else [_p(title, HEADING)]
+        # Paragraphs, not table cells: a 4,000-character answer is taller than a page and a table row cannot split across pages.
+        for key, label in prompts:
+            story += [KeepTogether([_p(label, STATUS), _p(narrative.get(key) or "Not answered yet")]), Spacer(1, 2 * mm)]
+    return _build(story, REVIEW_TITLE, f"EduSphere · Monthly Business Review · {review['label']} · Confidential: partners only")

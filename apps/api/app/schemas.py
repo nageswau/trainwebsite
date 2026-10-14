@@ -13046,3 +13046,51 @@ class ManagementHomeOut(BaseModel):
     my_tasks: HomeTasks
     recent_discussions: DiscussionPage
     next_plan: HomeNextPlan
+
+
+# --- mgmt-032: Monthly Business Review (spec MR1-MR14) ------------------------------------------------------------------------------
+ReviewAnswer = Annotated[StrictStr | None, Field(max_length=4000)]
+
+
+class ReviewNarrativeIn(BaseModel):
+    """MR13: the partners' §9 and §10 answers; a field left out (or null) is unchanged. Anything else is 422."""
+
+    model_config = ConfigDict(extra="forbid")
+    went_wrong: ReviewAnswer = None
+    delayed: ReviewAnswer = None
+    intervention: ReviewAnswer = None
+    initiatives: ReviewAnswer = None
+    hiring: ReviewAnswer = None
+    investments: ReviewAnswer = None
+    partnerships: ReviewAnswer = None
+
+
+class ReviewPerson(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class MonthlyReviewOut(BaseModel):
+    id: UUID
+    month: str
+    label: str
+    status: Literal["draft", "final"]
+    snapshot: dict[str, Any]  # MR2: stored as generated (money as exact decimal strings)
+    narrative: dict[str, str]
+    generated_at: datetime
+    finalised_at: datetime | None
+    finalised_by: ReviewPerson | None
+    updated_at: datetime
+    updated_by: ReviewPerson | None
+
+
+class MonthlyReviewSummary(BaseModel):
+    month: str
+    label: str
+    status: Literal["draft", "final"]
+    generated_at: datetime
+    finalised_at: datetime | None
+
+
+class MonthlyReviewPage(BaseModel):
+    items: list[MonthlyReviewSummary]
