@@ -2193,6 +2193,19 @@ Counts only, no personal data; nothing else changes.
 - Delete is permanent (row + photo). Audit actions `cms.testimonial.create|update|delete|photo` and `cms.rating_badge.update` hold
   ids, division and changed field names only — never the person's name, headline or quote.
 
+### 2.136 Next month plan & targets *(added 2026-10-14 — `DEC-SCOPE-211`, `mgmt-026`)*
+
+| Role | `GET`/`POST /management/plans`, `GET …/options`, `GET`/`PATCH …/{month}`, `GET …/{month}/progress`, item `POST`/`PATCH`/`DELETE`, `POST …/items/{id}/tasks` | Revenue KPI items |
+|---|---|---|
+| `partner` | yes | yes (set, read, actual = mgmt-009 P&L revenue) |
+| `super_admin` | yes | no — absent from every read and count; by id `404`; setting one `403` "Only partners can set a revenue target" |
+| `accountant` | `403` "Operational management access required" | — |
+| every other role | `403` "Management access required" | — |
+| signed out | `401` | — |
+
+- A closed plan refuses item writes and task creation (`409`) until its status is changed back.
+- Audit kind `mgmt.plan` (operational, field names only — never item text or targets); verbs `create`, `update`, `delete`.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

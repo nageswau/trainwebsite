@@ -106,6 +106,18 @@ describe("mgmt-026 plan editor", () => {
     expect(screen.queryByRole("checkbox", { name: "Done: Recruit 30 new agents" })).toBeNull(); // a KPI item is never "done"
   });
 
+  it("QA-01: shows the tick at once while saving, and takes it back if the save fails", async () => {
+    respond({ status: 409, body: { detail: "This plan is closed. Reopen it to change it." }, hold: true });
+    render(<ManagementPlanEditor plan={plan()} options={options} today="2026-10-14" />);
+    const box = screen.getByRole("checkbox", { name: "Done: Sign Korean universities" }) as HTMLInputElement;
+    fireEvent.click(box);
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(box.checked).toBe(true);
+    release();
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("This plan is closed. Reopen it to change it."));
+    expect(box.checked).toBe(false);
+  });
+
   it("edits an item sending only what changed; clearing the KPI clears its target", async () => {
     respond({ body: { id: "i2" } });
     render(<ManagementPlanEditor plan={plan()} options={options} today="2026-10-14" />);

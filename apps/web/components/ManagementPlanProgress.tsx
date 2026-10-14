@@ -21,7 +21,7 @@ export default function ManagementPlanProgress({ progress, error, verticals }: {
           {progress.rows.length === 0 ? (
             <p className="muted">No KPI items yet. Give an item a KPI and a target to track it here.</p>
           ) : (
-            <div className="table-wrap" role="region" aria-labelledby="progress-title" tabIndex={0} style={{ overflowX: "auto" }}>
+            <div className="table-wrap" role="region" aria-label="Target vs actual table" tabIndex={0} style={{ overflowX: "auto" }}>
               <table className="table">
                 <caption className="visually-hidden">Target vs actual for {progress.label}</caption>
                 <thead>
@@ -42,7 +42,7 @@ export default function ManagementPlanProgress({ progress, error, verticals }: {
               </table>
             </div>
           )}
-          {progress.free_text.total > 0 && <p style={{ marginBottom: 0 }}>Other plan items: {progress.free_text.done} of {progress.free_text.total} done.</p>}
+          {progress.free_text.total > 0 && <p style={{ margin: "12px 0 0" }}>Other plan items: {progress.free_text.done} of {progress.free_text.total} done.</p>}
         </>
       )}
     </section>

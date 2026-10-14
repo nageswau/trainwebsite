@@ -3174,6 +3174,25 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `DELETE /cms/testimonials/{id}/photo` *(new)* | Removes the photo; `200` with the row. |
 | `GET /cms/rating-badge`, `PUT /cms/rating-badge` *(new)* | `super_admin` only. Body: `source_name` (≤60), `rating` 0.0–5.0 (1 dp), `review_count` ≥ 0, `review_url` (https, ≤500, optional), `as_of`, `published`. |
 
+## 12DY. Next month plan + target vs actual (mgmt-026) — addendum, 2026-10-14
+
+- **Basis:** `DEC-SCOPE-211` (PN1–PN16). Design spec `docs/superpowers/specs/2026-10-14-mgmt-026-next-month-plan-design.md`. Migration
+  `0159_management_plans`: `management_plans` (unique `month`, status) and `management_plan_items` (CHECKs: KPI ⇔ target, target > 0,
+  no `done` on a KPI item). Access per RBAC §2.136. `month` is `YYYY-MM` (malformed `422`, unplanned `404` "Plan not found").
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/plans` | `{items[{id, month, status, label, item_count, kpi_count, done_count, created_by, updated_at}]}`, newest month first; counts over the items the caller may see |
+| `GET /management/plans/options` | `{kpis[{key, label, unit: count\|inr, definition}], verticals[{key, label}], users, current_month, max_month}`; `revenue` for partners only |
+| `POST /management/plans` | `{month, status?}` → `201` plan detail. Outside this month … +12: field `422` "Choose this month or one of the next 12"; duplicate `409` "This month already has a plan" |
+| `GET /management/plans/{month}` | Plan detail + `items[{id, vertical, text, kpi, target, done, task_count, updated_at}]` in vertical then append order |
+| `PATCH /management/plans/{month}` | `{status}` → `200`; same status records nothing |
+| `GET /management/plans/{month}/progress` | `{month, label, state, start, end, rows[{item_id, vertical, text, kpi, kpi_label, unit, target, actual, achievement}], free_text{total, done}}` |
+| `POST /management/plans/{month}/items` | `{vertical, text, kpi?, target?, done?}` → `201`. Unknown KPI / target without KPI / KPI without target / fractional count / done on a KPI item: field `422`; non-partner revenue `403`; closed `409` |
+| `PATCH /management/plans/{month}/items/{id}` | Partial; `kpi` and `target` cleared together; no change records nothing. Another month's or a hidden (revenue) item `404` "Plan item not found"; closed `409` |
+| `DELETE /management/plans/{month}/items/{id}` | `204`; tasks made from it stay; closed `409` |
+| `POST /management/plans/{month}/items/{id}/tasks` | `{owner_user_id, priority?, deadline}` → `201` mgmt-028 task (`source: "plan"`); mgmt-028's owner/deadline `422`s; closed `409` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

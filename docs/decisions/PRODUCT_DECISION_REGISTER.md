@@ -8282,3 +8282,30 @@ chat and asked for implementation ("go ahead and implement them").
 (`/admin/testimonials`, `/it/admin/testimonials`, `/overseas/admin/testimonials`); R3 photo errors follow the existing upload helper
 (`413` over 2 MB, `415` wrong type, `422` empty or unreadable); R4 `PUB-022` is recorded here and in RBAC / API rather than in the
 approval-gated `MASTER_FEATURE_CATALOG.md` / `RTM.md` (the dtu-001 / mgmt precedent).
+
+### DEC-SCOPE-211 — Next month plan + target vs actual (`mgmt-026`)
+
+**Evidence:** `EVID-017` §25 "Next month plan", §26 "Target vs actual", §33 (`DERIVED_BLUEPRINT`); scope authority `DEC-SCOPE-186`
+M11/M13 (`EXPLICIT_APPROVAL`). PN1–PN16 below answer backlog Q-25 (KPI catalogue, plan lock) and Q-35 (long-term strategy) as
+**recommended defaults, `UNVERIFIED`**, taken on the owner's standing instruction to proceed with recommended answers.
+
+**Status:** built on `feature/mgmt-026`; focused tests green (QA evidence `docs/quality/MGMT-026_EXPLORATORY_QA_2026-10-14.md`); the
+full repository regression is deferred to its own session.
+
+**Numbering:** migration `0159_management_plans`; API §12DY; RBAC §2.136 (after PUB-022's `DEC-SCOPE-210` / §12DX / §2.135). Spec
+`docs/superpowers/specs/2026-10-14-mgmt-026-next-month-plan-design.md`.
+
+| # | Point | Recommended default (`UNVERIFIED`) |
+|---|---|---|
+| PN1 | Horizon (Q-35) | Monthly plans only; "Long-term strategy" stays a coming-soon Command Center entry (`NEEDS_CONFIRMATION`) |
+| PN2 | Plan | One per IST month; status draft / active / closed; this month up to 12 ahead (`422` outside), a second plan for a month `409` |
+| PN3 | Status | Any change allowed and audited; a closed plan refuses item writes and tasks with `409` until reopened |
+| PN4 | Item | Vertical abroad / it / school / recruitment / other; text 2–200; optional KPI from the catalogue with a required target (count: whole 1–1,000,000; revenue: ₹ > 0, ≤ 2 dp); `done` for free-text items only |
+| PN5 | KPI catalogue (Q-25) | agents, applications, enrollments, universities, it_students, batches, school_mous, school_students, companies, placements, revenue — each counted over the plan's IST month |
+| PN6 | Actual | Computed live on every read; achievement = actual ÷ target × 100, rounded half-up; month state upcoming / running / ended |
+| PN7 | Revenue KPI | Partner only: hidden from everyone else (plan, progress, counts; by id `404`); setting it as a non-partner `403` |
+| PN8 | Access | Operational tier (partner, super_admin); accountant and others `403`; signed out `401` |
+| PN9 | Edits after the month starts (Q-25) | Allowed while not closed; every write a `mgmt.plan` audit row with field names only (new verb `delete`) |
+| PN10 | Tasks from items | `POST …/items/{id}/tasks` creates a mgmt-028 task (`source=plan`, `source_id` = item id, title = item text) |
+| PN11 | Concurrency | Every write locks the plan row; a concurrent create of the same month `409` |
+| PN12–PN16 | Order, removal, UI, logs, numbering | Vertical order then append order; `DELETE` item `204` (its tasks stay); `/management/plans` + `/management/plans/{YYYY-MM}`; logs carry ids and field names only |

@@ -1022,6 +1022,10 @@ Common conventions for every item:
 - **Complexity:** small · **Risk:** low
 
 ### mgmt-026 — Next month plan + target vs actual
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-026`. `DEC-SCOPE-211` (PN1–PN16 recommended defaults, UNVERIFIED; answers
+  Q-25 and Q-35). Migration `0159_management_plans`; API §12DY; RBAC §2.136. `/management/plans` and `/management/plans/{YYYY-MM}`;
+  the Command Center "Next month plan & targets" entry is live, "Long-term strategy" stays coming soon. QA evidence
+  `docs/quality/MGMT-026_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** §25 (a dedicated module; plans per vertical with the example items); §26 ("every plan should automatically
   become a target"; the example table with achievement %); §33 Next Month / Long-term (Q-35) (M11).
 - **Existing behavior:** module targets only (BDM, telecaller).

@@ -202,6 +202,9 @@ export default function ManagementPlanEditor({ plan, options, today }: { plan: P
   const [status, setStatus] = useState<PlanStatus>(plan.status);
   const [notice, setNotice] = useState("");
   const [problem, setProblem] = useState("");
+  // QA-01: a tick shows at once; it holds until the refreshed item arrives (a new `updated_at`) and is taken back if the save fails.
+  const [ticked, setTicked] = useState<Record<string, { done: boolean; since: string }>>({});
+  const isDone = (item: PlanItem) => (ticked[item.id]?.since === item.updated_at ? ticked[item.id].done : item.done);
   const closed = plan.status === "closed";
   const base = `${PLANS_API}/${plan.month}`;
   const kpiOf = (key: string | null) => options.kpis.find((k) => k.key === key);
@@ -219,11 +222,18 @@ export default function ManagementPlanEditor({ plan, options, today }: { plan: P
     return result;
   };
 
-  async function quick(key: string, url: string, method: "PATCH" | "DELETE", body: unknown, done: string) {
+  async function tick(item: PlanItem, done: boolean) {
+    setTicked((t) => ({ ...t, [item.id]: { done, since: item.updated_at } }));
+    const saved = await quick(`done-${item.id}`, `${base}/items/${item.id}`, "PATCH", { done }, `"${item.text}" marked ${done ? "done" : "not done"}.`);
+    if (!saved) setTicked((t) => ({ ...t, [item.id]: { done: item.done, since: item.updated_at } }));
+  }
+
+  async function quick(key: string, url: string, method: "PATCH" | "DELETE", body: unknown, done: string): Promise<boolean> {
     const result = await write(key)(url, method, body);
-    if (!result) return;
+    if (!result) return false;
     if (result.ok) setNotice(done);
     else setProblem(fieldErrors(result.detail).done ?? result.message);
+    return result.ok;
   }
 
   function remove(item: PlanItem) {
@@ -287,9 +297,9 @@ export default function ManagementPlanEditor({ plan, options, today }: { plan: P
                             <strong style={{ overflowWrap: "anywhere" }}>{item.text}</strong>
                           ) : (
                             <label style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 700, overflowWrap: "anywhere" }}>
-                              <input type="checkbox" checked={item.done} aria-label={`Done: ${item.text}`} disabled={!ready || closed || !!busy}
-                                onChange={(e) => void quick(`done-${item.id}`, `${base}/items/${item.id}`, "PATCH", { done: e.target.checked }, `"${item.text}" marked ${e.target.checked ? "done" : "not done"}.`)} />
-                              <span style={item.done ? { textDecoration: "line-through" } : undefined}>{item.text}</span>
+                              <input type="checkbox" checked={isDone(item)} aria-label={`Done: ${item.text}`} disabled={!ready || closed || !!busy}
+                                onChange={(e) => void tick(item, e.target.checked)} />
+                              <span style={isDone(item) ? { textDecoration: "line-through" } : undefined}>{item.text}</span>
                             </label>
                           )}
                           {!closed && (
@@ -300,10 +310,12 @@ export default function ManagementPlanEditor({ plan, options, today }: { plan: P
                             </div>
                           )}
                         </div>
-                        <div className="muted" style={{ fontSize: 14, display: "flex", flexWrap: "wrap", gap: 8 }}>
-                          {kpi && item.target !== null ? <span>{kpi.label} · Target {formatTarget(item.target, kpi.unit)}</span> : <span>Free-text item{item.done ? " · Done" : ""}</span>}
-                          {item.task_count > 0 && <span>· {item.task_count} {item.task_count === 1 ? "task" : "tasks"}</span>}
-                        </div>
+                        <p className="muted" style={{ fontSize: 14, margin: "6px 0 0" }}>
+                          {[
+                            kpi && item.target !== null ? `${kpi.label} · Target ${formatTarget(item.target, kpi.unit)}` : `Free-text item${item.done ? " · Done" : ""}`,
+                            item.task_count > 0 && `${item.task_count} ${item.task_count === 1 ? "task" : "tasks"}`,
+                          ].filter(Boolean).join(" · ")}
+                        </p>
                         {tasking && <TaskForm item={item} options={options} today={today} busy={busy === `task-${item.id}`} onSave={(body) => makeTask(item, body)} onCancel={() => setOpen(null)} />}
                       </>
                     )}
