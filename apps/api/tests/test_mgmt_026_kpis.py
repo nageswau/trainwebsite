@@ -8,7 +8,7 @@ from datetime import date, datetime, timedelta
 
 import pytest
 
-from app.models import AgentOrg, ApplicationStatusHistory, Batch, BdmMou, BdmMouEvent, CompanyStageHistory, Enrollment, OverseasApplication, UniversityStageHistory
+from app.models import AgentOrg, ApplicationStatusHistory, BdmMou, BdmMouEvent, CompanyStageHistory, Enrollment, OverseasApplication, UniversityStageHistory
 from app.partnership_stages import GROUPS
 from app.services import management_metrics as metrics
 from app.services.bdm_appointments import IST
@@ -46,6 +46,14 @@ def test_the_catalogue_has_the_eleven_kpis_with_revenue_in_rupees():
         "placements", "revenue",
     ]  # fmt: skip
     assert {key for key, (_, unit, _) in metrics.PLAN_KPIS.items() if unit == "inr"} == {metrics.REVENUE_KPI}
+
+
+def test_the_schema_accepts_exactly_the_catalogue():
+    from typing import get_args
+
+    from app.schemas import PlanKpi
+
+    assert get_args(PlanKpi) == tuple(metrics.PLAN_KPIS)
 
 
 @pytest.mark.asyncio
