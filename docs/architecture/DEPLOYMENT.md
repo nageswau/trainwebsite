@@ -17,7 +17,8 @@ specific product does.
 > Droplet running this repo's `docker compose` stack, with DigitalOcean Managed PostgreSQL and
 > uploads on a Block Storage Volume. That is a variant of Option C below plus a managed database,
 > not the App Platform recommendation. See `docs/decisions/PRODUCT_DECISION_REGISTER.md`. The
-> comparison below is kept as the original analysis.
+> step-by-step setup is in `docs/architecture/PROD_SETUP_DIGITALOCEAN.md`. The comparison below is
+> kept as the original analysis.
 
 ## Option comparison (recommendation, not a decision)
 
