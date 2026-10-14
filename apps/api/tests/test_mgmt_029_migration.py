@@ -1,4 +1,4 @@
-"""mgmt-029 -- migration 0159_management_meetings (spec §3). Round trip and the downgrade refusal run in a throwaway database built from
+"""mgmt-029 -- migration 0161_management_meetings (spec §3). Round trip and the downgrade refusal run in a throwaway database built from
 scratch (the upc-001 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,14 +13,14 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_mgmt_029_migration_0159", VERSIONS / "0159_management_meetings.py")
+_spec = importlib.util.spec_from_file_location("_mgmt_029_migration_0161", VERSIONS / "0161_management_meetings.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0158_social_proof", "0159_management_meetings"
+BASE, HEAD = "0160_management_plans", "0161_management_meetings"
 
 
-def test_migration_chains_after_0158_and_is_the_single_head():
+def test_migration_chains_after_0160_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -57,7 +57,7 @@ async def test_tables_and_indexes_exist_in_the_shared_database(db_session):
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0158."""
+    """A fresh database at 0160."""
     cfg = _config()
     original = settings.database_url
     name = f"mgmt029_migration_{uuid.uuid4().hex[:8]}"

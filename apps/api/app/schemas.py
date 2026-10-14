@@ -47,6 +47,7 @@ from app.models import (
     CANDIDATE_SKILL_SOURCES,
     CANDIDATE_SKILL_STATUSES,
     CANDIDATE_STATUSES,
+    CAPITAL_ENTRY_KINDS,
     CONTACT_CHANNELS,
     COUNTRY_REGIONS,
     COURSE_CURRENCIES,
@@ -81,6 +82,8 @@ from app.models import (
     PARTNERSHIP_POTENTIALS,
     PARTNERSHIP_TARGET_KPI_KEYS,
     PARTNERSHIP_TARGET_MAX,
+    PLAN_STATUSES,
+    PLAN_VERTICALS,
     QUAL_MODES,
     QUAL_PASSPORT,
     QUAL_SKILL_LEVELS,
@@ -11448,8 +11451,9 @@ INVESTMENT_MONEY_FORMAT = "Enter the amount in rupees as a number with up to 2 d
 INVESTMENT_MONEY_MAX = Decimal("9999999999.99")  # Numeric(12, 2)
 
 
-def _investment_money(positive: bool):
-    """MI6: INR, at most 2 decimals, within Numeric(12, 2); the amount is more than 0, a return is 0 or more."""
+def _investment_money(positive: bool, negative: str = "A return can't be negative"):
+    """MI6: INR, at most 2 decimals, within Numeric(12, 2); the amount is more than 0, a return is 0 or more (mgmt-015 reuses it for
+    capital entries and commitments, naming its own field when negative)."""
     def parse(value):
         try:
             amount = Decimal(str(value).strip())
@@ -11461,7 +11465,7 @@ def _investment_money(positive: bool):
         if positive and amount <= 0:
             raise PydanticCustomError("investment_money", "The amount must be more than ₹0")
         if amount < 0:
-            raise PydanticCustomError("investment_money", "A return can't be negative")
+            raise PydanticCustomError("investment_money", negative)
         if amount > INVESTMENT_MONEY_MAX:
             raise PydanticCustomError("investment_money", "The amount is too large")
         return amount.quantize(Decimal("0.01"))  # "500000" reads back (and is audited) as "500000.00"
@@ -11557,6 +11561,141 @@ class InvestmentPageOut(BaseModel):
     offset: int
     totals: InvestmentTotals
     investors: list[InvestmentPerson]
+
+
+# --- mgmt-015 (spec CP1-CP15): partner capital accounts, partner-only. Rules that need the database or today (an active partner, a date
+# not in the future, the month range) are raised by `services/partner_capital.py` in the same shape.
+CapitalEntryKind = Literal[CAPITAL_ENTRY_KINDS]
+CAPITAL_EARLIEST = date(2000, 1, 1)
+CAPITAL_SHARE_FORMAT = "Enter the share as a percentage from 0 to 100 with up to 2 decimals"
+
+
+def _capital_date(value):
+    day = _trip_date("entry date")(value)
+    if day < CAPITAL_EARLIEST:
+        raise PydanticCustomError("capital_date", "The entry date can't be before 1 January 2000")
+    return day
+
+
+def _share_pct(value):
+    """CP5: 0-100 with at most 2 decimals."""
+    try:
+        pct = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        raise PydanticCustomError("capital_share", CAPITAL_SHARE_FORMAT) from None
+    exponent = pct.as_tuple().exponent
+    if not pct.is_finite() or (isinstance(exponent, int) and exponent < -2) or not 0 <= pct <= 100:
+        raise PydanticCustomError("capital_share", CAPITAL_SHARE_FORMAT)
+    return pct.quantize(Decimal("0.01"))
+
+
+CapitalAmount = Annotated[Decimal, BeforeValidator(_investment_money(True))]
+CapitalCommitment = Annotated[Decimal | None, BeforeValidator(lambda v: v if v is None else _investment_money(False, "The commitment can't be negative")(v))]
+CapitalNote = Annotated[Annotated[str, _trimmed(500)] | None, AfterValidator(_trip_text(_BDM_CONTROL, False, {"note": "Note"}))]
+
+
+class CapitalEntryCreate(BaseModel):
+    """CP3. Whether `partner_id` names an active partner and the date is not after today (IST) are checked in the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    partner_id: UUID
+    entry_date: Annotated[date, BeforeValidator(_capital_date)]
+    kind: CapitalEntryKind
+    amount: CapitalAmount
+    note: CapitalNote = None
+
+
+class CapitalShareRow(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    partner_id: UUID
+    share_pct: Annotated[Decimal, BeforeValidator(_share_pct)]
+    commitment: CapitalCommitment = None
+
+
+class CapitalSharesIn(BaseModel):
+    """CP6: the rows for the partners sent, from the first day of `effective_from` (YYYY-MM). The month range is checked in the service."""
+
+    model_config = ConfigDict(extra="forbid")
+    effective_from: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
+    shares: list[CapitalShareRow] = Field(min_length=1, max_length=50)
+
+    @field_validator("shares")
+    @classmethod
+    def _once_each(cls, rows: list[CapitalShareRow]) -> list[CapitalShareRow]:
+        if len({row.partner_id for row in rows}) != len(rows):
+            raise PydanticCustomError("capital_share_repeat", "A partner can be listed only once")
+        return rows
+
+
+class CapitalPerson(BaseModel):
+    id: UUID
+    full_name: str
+
+
+class CapitalPartner(CapitalPerson):
+    active: bool
+
+
+class CapitalFigures(BaseModel):
+    invested: Decimal
+    additional: Decimal
+    withdrawals: Decimal
+    balance: Decimal
+    returns: Decimal
+    share_pct: Decimal | None
+    commitment: Decimal | None
+    outstanding: Decimal | None
+    profit_share: Decimal | None
+
+
+class CapitalAccountOut(CapitalFigures):
+    partner: CapitalPartner
+
+
+class CapitalEntryOut(BaseModel):
+    id: UUID
+    partner: CapitalPerson
+    entry_date: date
+    kind: CapitalEntryKind
+    amount: Decimal
+    note: str | None
+    created_by: CapitalPerson
+    created_at: datetime
+
+
+class CapitalEntryPage(BaseModel):
+    items: list[CapitalEntryOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class CapitalShareOut(BaseModel):
+    id: UUID
+    partner: CapitalPerson
+    effective_from: date
+    share_pct: Decimal
+    commitment: Decimal | None
+    in_force: bool
+    updated_by: CapitalPerson
+    updated_at: datetime
+
+
+class CapitalSharesOut(BaseModel):
+    items: list[CapitalShareOut]
+
+
+class CapitalOut(BaseModel):
+    as_of: date
+    month: str
+    period: Literal["month", "quarter", "year"]
+    label: str
+    net_profit: Decimal
+    accounts: list[CapitalAccountOut]
+    totals: CapitalFigures
+    partners: list[CapitalPerson]
+    entries: CapitalEntryPage
+    shares: list[CapitalShareOut]
 
 
 # mgmt-011 (spec SM1-SM14): salary management. Field rules live here so a 422 names its field; rules that need the database (unknown or
@@ -11953,6 +12092,137 @@ class MyTaskPage(BaseModel):
 
 class MyTaskStatusIn(BaseModel):
     status: Literal["open", "in_progress", "completed"]
+
+
+# mgmt-026 (spec PN2-PN10): the next month plan and its target vs actual. `month` is "YYYY-MM"; targets and actuals are decimal strings.
+# PlanKpi repeats management_metrics.PLAN_KPIS' keys (test_mgmt_026_kpis keeps them equal), so a key outside the catalogue is a 422.
+PLAN_MONTH = r"^\d{4}-(0[1-9]|1[0-2])$"
+PlanStatus = Literal[PLAN_STATUSES]  # type: ignore[valid-type]
+PlanVertical = Literal[PLAN_VERTICALS]  # type: ignore[valid-type]
+PlanKpi = Literal["agents", "applications", "enrollments", "school_mous", "school_students", "universities", "it_students", "batches", "companies", "placements", "revenue"]
+PlanText = Annotated[str, AfterValidator(_ledger_text(2, 200, "The item"))]
+
+
+class PlanCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    month: str = Field(pattern=PLAN_MONTH)
+    status: PlanStatus = "draft"
+
+
+class PlanUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: PlanStatus
+
+
+class PlanItemUpdate(BaseModel):
+    """PN4: a partial change. `kpi` and `target` may be cleared together (a free-text item); the rest cannot be cleared."""
+
+    model_config = ConfigDict(extra="forbid")
+    vertical: PlanVertical | None = None
+    text: PlanText | None = None
+    kpi: PlanKpi | None = None
+    target: Decimal | None = Field(None, gt=0, max_digits=16, decimal_places=2)
+    done: bool | None = None
+
+    @field_validator("vertical", "text", "done", mode="before")
+    @classmethod
+    def _required(cls, value, info: ValidationInfo):
+        if value is None:
+            raise ValueError(f"{(info.field_name or '').capitalize()} is required")
+        return value
+
+
+class PlanItemCreate(PlanItemUpdate):
+    vertical: PlanVertical
+    text: PlanText
+    done: bool = False
+
+
+class PlanItemTaskIn(BaseModel):
+    """PN10: the mgmt-028 task fields an item does not supply (its text is the title)."""
+
+    model_config = ConfigDict(extra="forbid")
+    owner_user_id: UUID
+    priority: TaskPriority = "medium"
+    deadline: date
+
+
+class PlanOut(BaseModel):
+    id: UUID
+    month: str
+    status: str
+    label: str
+    item_count: int
+    kpi_count: int
+    done_count: int
+    created_by: DiscussionPerson
+    updated_at: datetime
+
+
+class PlanItemOut(BaseModel):
+    id: UUID
+    vertical: str
+    text: str
+    kpi: str | None
+    target: Decimal | None
+    done: bool
+    task_count: int
+    updated_at: datetime
+
+
+class PlanDetailOut(PlanOut):
+    items: list[PlanItemOut]
+
+
+class PlanPage(BaseModel):
+    items: list[PlanOut]
+
+
+class PlanKpiOption(BaseModel):
+    key: str
+    label: str
+    unit: Literal["count", "inr"]
+    definition: str
+
+
+class PlanChoice(BaseModel):
+    key: str
+    label: str
+
+
+class PlanOptions(BaseModel):
+    kpis: list[PlanKpiOption]
+    verticals: list[PlanChoice]
+    users: list[DiscussionPerson]
+    current_month: str
+    max_month: str
+
+
+class PlanProgressRow(BaseModel):
+    item_id: UUID
+    vertical: str
+    text: str
+    kpi: str
+    kpi_label: str
+    unit: str
+    target: Decimal
+    actual: Decimal
+    achievement: int
+
+
+class PlanFreeText(BaseModel):
+    total: int
+    done: int
+
+
+class PlanProgressOut(BaseModel):
+    month: str
+    label: str
+    state: Literal["upcoming", "running", "ended"]
+    start: date
+    end: date
+    rows: list[PlanProgressRow]
+    free_text: PlanFreeText
 
 
 # mgmt-029 (spec MM1-MM14): management meetings + minutes chain. Field rules live here; the ones that need the database (active staff

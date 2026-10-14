@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
-from app.models import ManagementDiscussion, ManagementMeeting, ManagementTask, User
+from app.models import ManagementDiscussion, ManagementMeeting, User
 from app.schemas import (
     DiscussionOptions,
     MgmtMeetingCreate,
@@ -168,13 +168,7 @@ async def add_task(meeting_id: UUID, payload: MgmtMeetingTaskIn, user: User = De
         if found is None:
             raise field_error("decision_id", "Choose one of this meeting's decisions")
         source, source_id = "decision", found
-    state = payload.model_dump(exclude={"decision_id"})
-    await tasks.check(db, state)
-    task = ManagementTask(**state, status="open", source=source, source_id=source_id, created_by_user_id=user.id, updated_by_user_id=user.id)
-    db.add(task)
-    await db.flush()
-    management_audit.record(db, user, "mgmt.task", "create", str(task.id), fields=list(tasks.FIELDS))
-    await tasks.notify_after_write(db, user, task, list(tasks.FIELDS), None)
+    task = await tasks.create(db, user, {**payload.model_dump(exclude={"decision_id"}), "status": "open"}, source=source, source_id=source_id)
     await db.commit()
     svc.log("meeting_task_added", user, meeting.id, task_id=str(task.id))
     return await svc.detail(db, meeting)

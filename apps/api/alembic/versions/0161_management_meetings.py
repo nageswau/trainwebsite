@@ -1,8 +1,8 @@
 """mgmt-029 -- management meetings + minutes chain: management_meetings, management_meeting_participants and
 management_discussions.meeting_id.
 
-Revision ID: 0159_management_meetings
-Revises: 0158_social_proof
+Revision ID: 0161_management_meetings
+Revises: 0160_management_plans
 
 docs/superpowers/specs/2026-10-14-mgmt-029-management-meetings-design.md §3. Two new tables and one nullable column; no existing row
 changes (every discussion keeps meeting_id null). 0001 builds a fresh database from the current models, which already carry them, so
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0159_management_meetings"
-down_revision = "0158_social_proof"
+revision = "0161_management_meetings"
+down_revision = "0160_management_plans"
 branch_labels = None
 depends_on = None
 
@@ -77,7 +77,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text("SELECT 1 FROM management_meetings LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0159_management_meetings: meetings exist. Clear them deliberately first.")
+        raise RuntimeError("Cannot downgrade 0161_management_meetings: meetings exist. Clear them deliberately first.")
     op.drop_index("ix_management_discussions_meeting_id", table_name="management_discussions")
     op.drop_column("management_discussions", "meeting_id")
     op.drop_table("management_meeting_participants")

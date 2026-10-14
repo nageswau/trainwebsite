@@ -5650,6 +5650,55 @@ class Investment(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
+# mgmt-015 (spec CP1-CP15): EVID-017 §24's partner capital accounts. Partner-only (M13); every figure is computed, never stored. Migration
+# 0159 repeats the CHECKs (test_mgmt_015_migration keeps them identical).
+CAPITAL_ENTRY_KINDS = ("initial", "additional", "withdrawal", "profit_distribution")
+CAPITAL_ENTRY_CHECKS = {
+    "ck_partner_capital_entries_kind": _one_of("kind", CAPITAL_ENTRY_KINDS, nullable=False),
+    "ck_partner_capital_entries_amount": "amount > 0",
+}
+PARTNER_SHARE_CHECKS = {
+    "ck_partner_shares_month": "EXTRACT(DAY FROM effective_from) = 1",
+    "ck_partner_shares_share_pct": "share_pct >= 0 AND share_pct <= 100",
+    "ck_partner_shares_commitment": "commitment IS NULL OR commitment >= 0",
+}
+
+
+class PartnerCapitalEntry(Base):
+    """mgmt-015 (CP2-CP4): one capital movement of a partner. Never edited or deleted: a mistake gets an opposing entry with a note."""
+
+    __tablename__ = "partner_capital_entries"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CAPITAL_ENTRY_CHECKS.items()),
+        Index("ix_partner_capital_entries_partner_date", "partner_user_id", "entry_date"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    partner_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    entry_date: Mapped[date] = mapped_column(Date)
+    kind: Mapped[str] = mapped_column(String(20))
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PartnerShare(Base, TimestampMixin):
+    """mgmt-015 (CP5): a partner's profit share % and capital commitment from the first day of a month; the rows are the history."""
+
+    __tablename__ = "partner_shares"
+    __table_args__ = (
+        UniqueConstraint("partner_user_id", "effective_from", name="uq_partner_shares_partner_month"),
+        *(CheckConstraint(sql, name=name) for name, sql in PARTNER_SHARE_CHECKS.items()),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    partner_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    effective_from: Mapped[date] = mapped_column(Date)
+    share_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2))
+    commitment: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
 # mgmt-011 (salary management, spec SM1-SM14): EVID-017 §9 as department totals per month (M6), never per person. Finance tier only
 # (M13). Rules live in `services/salaries.py`; migration 0153 repeats the CHECKs (test_mgmt_011_migration keeps them identical).
 SALARY_MONEY = ("payable", "paid", "incentives", "commissions", "employer_cost")
@@ -5776,6 +5825,55 @@ class ManagementTask(Base, TimestampMixin):
     source: Mapped[str] = mapped_column(String(10), default="manual", server_default=text("'manual'"))
     source_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+# mgmt-026 (spec PN2-PN4): EVID-017 §25's monthly plan per vertical; §26's target vs actual is computed live, never stored (PN6). The
+# KPI key is checked by the schema against `management_metrics.PLAN_KPIS`, not here, so the catalogue can grow without a migration.
+# Migration 0159 repeats the CHECKs (test_mgmt_026_migration keeps them identical).
+PLAN_STATUSES = ("draft", "active", "closed")
+PLAN_VERTICALS = ("abroad", "it", "school", "recruitment", "other")
+PLAN_ITEM_CHECKS = {
+    "ck_management_plan_items_vertical": _in_list("vertical", PLAN_VERTICALS),
+    "ck_management_plan_items_kpi_target": "(kpi IS NULL) = (target IS NULL)",
+    "ck_management_plan_items_target": "target IS NULL OR target > 0",
+    "ck_management_plan_items_done": "kpi IS NULL OR NOT done",
+}
+
+
+class ManagementPlan(Base, TimestampMixin):
+    """PN2: one plan per IST month (`month` is its 1st day)."""
+
+    __tablename__ = "management_plans"
+    __table_args__ = (
+        UniqueConstraint("month", name="uq_management_plans_month"),
+        CheckConstraint("EXTRACT(DAY FROM month) = 1", name="ck_management_plans_month"),
+        CheckConstraint(_in_list("status", PLAN_STATUSES), name="ck_management_plans_status"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    month: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(8), default="draft", server_default=text("'draft'"))
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class ManagementPlanItem(Base, TimestampMixin):
+    """PN4: a KPI item (`kpi` + `target`, live actual) or a free-text item (`done`)."""
+
+    __tablename__ = "management_plan_items"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in PLAN_ITEM_CHECKS.items()),
+        Index("ix_management_plan_items_plan_order", "plan_id", "vertical", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    plan_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("management_plans.id", ondelete="CASCADE"))
+    vertical: Mapped[str] = mapped_column(String(12))
+    text: Mapped[str] = mapped_column(String(200))
+    kpi: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    target: Mapped[Decimal | None] = mapped_column(Numeric(16, 2), nullable=True)
+    done: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    position: Mapped[int] = mapped_column(Integer)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 

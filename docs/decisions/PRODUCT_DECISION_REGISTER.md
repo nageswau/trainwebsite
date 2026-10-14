@@ -8319,3 +8319,70 @@ label lookups); `api/management.py` (`GET /management/funnel`); `schemas.py` (`S
 `components/ManagementFunnel.tsx`, page `/management/funnel`, `lib/management.ts`, `lib/navigation.ts`. Tests `test_mgmt_016_funnel.py`,
 `managementFunnel.test.ts`, `ManagementFunnel.test.tsx`, `mgmt-016-funnel.spec.ts`. QA `docs/quality/MGMT-016_EXPLORATORY_QA_2026-10-14.md`.
 - **New Feature ID authorized:** `mgmt-016`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-016.
+
+### DEC-SCOPE-212 — Partner capital accounts (`mgmt-015`)
+
+**Evidence:** `EVID-017` §24 (lines 971–995, `DERIVED_BLUEPRINT`): per partner — capital invested, additional investment, withdrawals,
+share %, profit share, returns, outstanding contribution, capital balance; "permission-controlled". `DEC-SCOPE-186` M8/M13
+(`EXPLICIT_APPROVAL`): partners record capital transactions and share %; the profit share is indicative only; partner-only; audited.
+Backlog Q-17.
+
+**Status:** CP1–CP15 in review on `feature/mgmt-015` (2026-10-14). Every CP answer is a **recommended default, `UNVERIFIED`**, taken on the
+owner's instruction to proceed with the recommended answers. Q-17 (commitment amounts, share % change history, how distributions are
+recorded) is answered by CP3, CP5 and CP2 as interim defaults.
+
+**Numbering (provisional):** migration `0159_partner_capital` (after dtu-001's `0157_direct_tieups`); API §12DZ; RBAC §2.137. Spec
+`docs/superpowers/specs/2026-10-14-mgmt-015-partner-capital-accounts-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| CP1 | Accounts | every active `partner` user plus any former partner with records; both partners see both accounts |
+| CP2 | Entry kinds | initial, additional, withdrawal, profit_distribution (a distribution is a "return"; it does not change the balance) |
+| CP3 | Entry fields | partner, date (1 Jan 2000 – today IST), kind, amount (INR > 0, 2 dp, `Numeric(12,2)`), note (single line ≤ 500) |
+| CP4 | Corrections | entries are never edited or deleted; an opposing entry with a note corrects a mistake (void of a distribution: `NEEDS_CONFIRMATION`) |
+| CP5 | Share % | `partner_shares` row per (partner, month): share 0–100 (2 dp), optional commitment ≥ 0; in force = latest month ≤ the day; rows are the history |
+| CP6 | Setting shares | `PUT` sets the sent active partners from the month (Jan 2000 – 12 months ahead); same month replaces its row; others keep theirs |
+| CP7 | AC1 | shares in force not totalling exactly 100% → warning, never a block |
+| CP8 | AC2 | balance = invested + additional − withdrawals; outstanding = max(commitment − invested − additional, 0) |
+| CP9 | AC3 | profit share = Σ month's net profit (mgmt-009 total contribution, partner view) × share in force on its 1st ÷ 100, half-up once; indicative only |
+| CP10 | Period | `month` (default this IST month) and `period` month / quarter / year, default financial year to date |
+| CP11 | Overdraw | a withdrawal over the balance is warned (second click) and accepted; a negative balance shows in red with words |
+| CP12 | Audit | `mgmt.capital` create (values) / update (changed fields, before → after) / nothing when unchanged; same transaction |
+| CP13 | Access | partner only; super_admin and accountant `403` "Only partners can open this"; others `403`; signed out `401` |
+| CP14 | Concurrency | the month's share rows locked `FOR UPDATE`; a lost unique race → `409` |
+| CP15 | Page + demo | `/management/capital`; Command Center entry live; `app.seed` adds 50/50 shares from April 2024 (₹10 L commitment) and ₹5 L opening capital each, once |
+
+**Consequences:** new tables `partner_capital_entries`, `partner_shares` (migration 0158); `models.py`; `schemas.py`
+(`_investment_money` takes its negative-amount wording); new `services/partner_capital.py`; `api/management.py` (three routes);
+`seed.py`; web `lib/partnerCapital.ts`, `lib/management.ts` (live entry), `components/PartnerCapital.tsx`, `CapitalEntryForm.tsx`,
+`CapitalSharesForm.tsx`, `app/management/capital/page.tsx`. Tests `test_mgmt_015_partner_capital.py`, `test_mgmt_015_migration.py`,
+`partnerCapital.test.ts`, `PartnerCapital.test.tsx`, `management.test.ts`, `mgmt-015-partner-capital.spec.ts`. QA
+`docs/quality/MGMT-015_EXPLORATORY_QA_2026-10-14.md`.
+- **New Feature ID authorized:** `mgmt-015`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-015.
+
+### DEC-SCOPE-213 — Next month plan + target vs actual (`mgmt-026`)
+
+**Evidence:** `EVID-017` §25 "Next month plan", §26 "Target vs actual", §33 (`DERIVED_BLUEPRINT`); scope authority `DEC-SCOPE-186`
+M11/M13 (`EXPLICIT_APPROVAL`). PN1–PN16 below answer backlog Q-25 (KPI catalogue, plan lock) and Q-35 (long-term strategy) as
+**recommended defaults, `UNVERIFIED`**, taken on the owner's standing instruction to proceed with recommended answers.
+
+**Status:** built on `feature/mgmt-026`; focused tests green (QA evidence `docs/quality/MGMT-026_EXPLORATORY_QA_2026-10-14.md`); the
+full repository regression is deferred to its own session.
+
+**Numbering:** migration `0160_management_plans`; API §12EA; RBAC §2.138 (after mgmt-015's `DEC-SCOPE-212` / §12DZ / §2.137). Spec
+`docs/superpowers/specs/2026-10-14-mgmt-026-next-month-plan-design.md`.
+
+| # | Point | Recommended default (`UNVERIFIED`) |
+|---|---|---|
+| PN1 | Horizon (Q-35) | Monthly plans only; "Long-term strategy" stays a coming-soon Command Center entry (`NEEDS_CONFIRMATION`) |
+| PN2 | Plan | One per IST month; status draft / active / closed; this month up to 12 ahead (`422` outside), a second plan for a month `409` |
+| PN3 | Status | Any change allowed and audited; a closed plan refuses item writes and tasks with `409` until reopened |
+| PN4 | Item | Vertical abroad / it / school / recruitment / other; text 2–200; optional KPI from the catalogue with a required target (count: whole 1–1,000,000; revenue: ₹ > 0, ≤ 2 dp); `done` for free-text items only |
+| PN5 | KPI catalogue (Q-25) | agents, applications, enrollments, universities, it_students, batches, school_mous, school_students, companies, placements, revenue — each counted over the plan's IST month |
+| PN6 | Actual | Computed live on every read; achievement = actual ÷ target × 100, rounded half-up; month state upcoming / running / ended |
+| PN7 | Revenue KPI | Partner only: hidden from everyone else (plan, progress, counts; by id `404`); setting it as a non-partner `403` |
+| PN8 | Access | Operational tier (partner, super_admin); accountant and others `403`; signed out `401` |
+| PN9 | Edits after the month starts (Q-25) | Allowed while not closed; every write a `mgmt.plan` audit row with field names only (new verb `delete`) |
+| PN10 | Tasks from items | `POST …/items/{id}/tasks` creates a mgmt-028 task (`source=plan`, `source_id` = item id, title = item text) |
+| PN11 | Concurrency | Every write locks the plan row; a concurrent create of the same month `409` |
+| PN12–PN16 | Order, removal, UI, logs, numbering | Vertical order then append order; `DELETE` item `204` (its tasks stay); `/management/plans` + `/management/plans/{YYYY-MM}`; logs carry ids and field names only |

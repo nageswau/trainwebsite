@@ -33,7 +33,7 @@ export const MANAGEMENT_PILLARS: ManagementPillar[] = [
       { ...fin("IT Training revenue", "mgmt-007"), href: "/management/revenue/it" }, { ...fin("Recruitment revenue", "mgmt-008"), href: "/management/revenue/recruitment" },
       { ...fin("Expenses & rent", "mgmt-010"), href: "/management/expenses" }, { ...fin("Profit & loss", "mgmt-009"), href: "/management/pnl" }, { ...fin("Salaries", "mgmt-011"), href: "/management/salaries" },
       { ...fin("Accounts", "mgmt-013"), href: "/management/accounts" },
-      { ...own("Investments & ROI", "mgmt-014"), href: "/management/investments" }, own("Partner capital accounts", "mgmt-015"),
+      { ...own("Investments & ROI", "mgmt-014"), href: "/management/investments" }, { ...own("Partner capital accounts", "mgmt-015"), href: "/management/capital" },
     ],
   },
   { title: "People", entries: [{ ...op("Trainers", "mgmt-017"), href: "/management/training#trainers" }, { ...op("Counselors", "mgmt-018"), href: "/management/counseling#counselors" }, { ...op("Telecallers", "mgmt-019"), href: "/management/telecalling#telecallers" }, { ...op("Recruiters", "mgmt-025"), href: "/management/recruitment#recruitment-kpis" }, { ...fin("Employee cost", "mgmt-011"), href: "/management/salaries#employee-cost" }] },
@@ -42,7 +42,7 @@ export const MANAGEMENT_PILLARS: ManagementPillar[] = [
     title: "Business Intelligence",
     entries: [
       { ...op("Business snapshot", "mgmt-003"), href: "/management/snapshot" },
-      own("This month's performance", "mgmt-031"), op("Next month plan & targets", "mgmt-026"), op("Long-term strategy", "mgmt-026"),
+      own("This month's performance", "mgmt-031"), { ...op("Next month plan & targets", "mgmt-026"), href: "/management/plans" }, op("Long-term strategy", "mgmt-026"),
       { ...op("Discussions & decisions", "mgmt-027"), href: "/management/discussions" }, { ...op("To-do", "mgmt-028"), href: "/management/tasks" }, { ...op("Meetings", "mgmt-029"), href: "/management/meetings" }, own("Business health score", "mgmt-030"),
       own("Monthly business review", "mgmt-032"),
     ],
@@ -84,6 +84,7 @@ const FILTER_KEYS = ["actor", "kind", "date_from", "date_to"] as const;
 const VERB_LABEL: Record<string, string> = {
   create: "created", update: "changed", approve: "approved", complete: "completed", decide: "made", import: "imported",
   submit: "submitted", reject: "rejected", reverse: "reversed", download: "downloaded", // mgmt-004
+  delete: "removed", // mgmt-026 (a plan item)
 };
 
 const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

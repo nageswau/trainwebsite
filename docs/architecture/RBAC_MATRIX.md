@@ -2205,6 +2205,33 @@ Counts only, no personal data; nothing else changes.
 - Counts, and staff, organisation, country, course and intake names only; no student is named. No audit row (no write). The module
   routes the funnel reads (telecaller, counseling, IT, overseas, recruitment) and their scopes are unchanged.
 
+### 2.137 Partner capital accounts *(net-new, added 2026-10-14 — `DEC-SCOPE-212`, `mgmt-015`)*
+
+| Role | `GET /management/capital`, `POST /management/capital/entries`, `PUT /management/capital/shares`, page `/management/capital` | Command Center entry |
+|---|---|---|
+| `partner` | full read and write; every partner sees and records every partner's account (§2 shared company data, CP1) | "Partner capital accounts" (Finance pillar) |
+| `accountant` | `403` "Only partners can open this"; page "Access unavailable" | none |
+| `super_admin` | `403` "Only partners can open this"; page "Access unavailable" | none |
+| every other role | `403` "Management access required"; signed out `401` (page → `/admin/login?next=`) | none |
+
+- The refusal comes before any read, so no capital figure reaches a non-partner. Body validation (`422`) runs before the role check,
+  as on every management write. An entry or share row may name only an **active** `partner` user (`422` otherwise), so no other user can
+  be given a capital account. Audit rows (`mgmt.capital`, values kept) stay partner-only in Management activity and are left out of
+  `/admin/audit` (mgmt-002 MA8, unchanged).
+
+### 2.138 Next month plan & targets *(added 2026-10-14 — `DEC-SCOPE-213`, `mgmt-026`)*
+
+| Role | `GET`/`POST /management/plans`, `GET …/options`, `GET`/`PATCH …/{month}`, `GET …/{month}/progress`, item `POST`/`PATCH`/`DELETE`, `POST …/items/{id}/tasks` | Revenue KPI items |
+|---|---|---|
+| `partner` | yes | yes (set, read, actual = mgmt-009 P&L revenue) |
+| `super_admin` | yes | no — absent from every read and count; by id `404`; setting one `403` "Only partners can set a revenue target" |
+| `accountant` | `403` "Operational management access required" | — |
+| every other role | `403` "Management access required" | — |
+| signed out | `401` | — |
+
+- A closed plan refuses item writes and task creation (`409`) until its status is changed back.
+- Audit kind `mgmt.plan` (operational, field names only — never item text or targets); verbs `create`, `update`, `delete`.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
