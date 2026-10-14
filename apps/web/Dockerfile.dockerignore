@@ -1,0 +1,12 @@
+# Used instead of .dockerignore when building ./Dockerfile (BuildKit per-Dockerfile ignore).
+# Keeps the test suite out of the production build: type-checking it during `next build`
+# roughly doubles the memory needed (tsc: 1.35 GB with tests vs 0.71 GB without).
+# Dockerfile.ci still uses .dockerignore, so the web-test image keeps its tests.
+node_modules
+.next
+test-results
+playwright-report
+tests
+playwright.config.ts
+playwright.docs.config.ts
+vitest.config.ts
