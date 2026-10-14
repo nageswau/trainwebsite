@@ -108,14 +108,15 @@ def ratio(cost: Decimal, revenue: Decimal) -> Decimal | None:
     return (cost / revenue * 100).quantize(CENTS, ROUND_HALF_UP) if revenue > 0 else None
 
 
-async def revenue(db: AsyncSession, month: date) -> Decimal:
-    """SM7: the month's counted ledger income -- approved manual entries + rupee automatic lines, every vertical (mgmt-005)."""
+async def revenue(db: AsyncSession, month: date, commission: bool = True) -> Decimal:
+    """SM7: the month's counted ledger income -- approved manual entries + rupee automatic lines, every vertical (mgmt-005). Without
+    `commission` (the accountant, mgmt-034 CS1) university commission is left out."""
     table = ledger.lines()
-    where = ledger.list_filters(month=month_key(month), kind="income", category_id=None, vertical=None, table=table)
+    where = [*ledger.list_filters(month=month_key(month), kind="income", category_id=None, vertical=None, table=table), *ledger.commission_filter(table, commission)]
     return (await ledger.lines_totals(db, table, where))["income"]
 
 
-async def month_view(db: AsyncSession, month: date) -> dict:
+async def month_view(db: AsyncSession, month: date, commission: bool = True) -> dict:
     saved = {r.department_id: r for r in (await db.scalars(select(SalaryMonthTotal).where(SalaryMonthTotal.month == month))).all()}
     shown = (await db.scalars(select(Department).where(Department.active.is_(True) | Department.id.in_(list(saved))).order_by(func.lower(Department.name)))).all()
     rows: list[dict] = []
@@ -129,7 +130,7 @@ async def month_view(db: AsyncSession, month: date) -> dict:
         warnings = ["paid_exceeds_payable"] if row and row.paid > row.payable else []  # SM5
         rows.append({"department": department_out(d), "entered": row is not None, **figures, "total_cost": total_cost(figures) if row else None, "warnings": warnings})
     totals["total_cost"] = total_cost(totals)
-    income = await revenue(db, month)
+    income = await revenue(db, month, commission)
     latest = max(saved.values(), key=lambda r: r.updated_at, default=None)
     editor = await db.get(User, latest.updated_by_user_id) if latest else None
     return {

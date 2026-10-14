@@ -62,12 +62,15 @@ export default function AccountsDashboard({ data }: { data: AccountsMonth }) {
         <ul className="muted" aria-label="Receivables by source" style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
           <li>Student fees: {rupees(r.fees)}</li>
           <li>Recruitment invoices: {rupees(r.recruitment)}</li>
-          <li>University commission: {rupees(r.university)}</li>
+          {r.university !== null && <li>University commission: {rupees(r.university)}</li>}
         </ul>
+        {!data.commission_visible && <p className="muted" style={{ margin: 0, fontSize: 13 }}>University commission is not included: only partners see it.</p>}
         <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-          Receivables and pending invoices are what is owed today ({asOf}): unpaid student fees, open recruitment invoices and university
-          commission still expected. University commission has no invoices, so it is not in pending invoices. Payables, cash/bank and tax
-          liabilities are the month-end figures entered below; profit is {label}&apos;s income less expenses.
+          Receivables and pending invoices are what is owed today ({asOf}):{" "}
+          {data.commission_visible
+            ? "unpaid student fees, open recruitment invoices and university commission still expected. University commission has no invoices, so it is not in pending invoices."
+            : "unpaid student fees and open recruitment invoices."}{" "}
+          Payables, cash/bank and tax liabilities are the month-end figures entered below; profit is {label}&apos;s income less expenses.
           {r.not_counted.length > 0 && <> Not added (another currency): {notCountedText(r.not_counted)}.</>}
         </p>
       </section>

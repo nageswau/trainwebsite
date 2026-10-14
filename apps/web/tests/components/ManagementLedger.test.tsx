@@ -70,7 +70,7 @@ afterEach(() => {
 
 describe("mgmt-004 ledger list", () => {
   it("shows the approved totals and each entry with its status, amount and link", () => {
-    render(<ManagementLedger data={page()} error="" filters={filters} categories={[RENT, FEES]} />);
+    render(<ManagementLedger commissionVisible data={page()} error="" filters={filters} categories={[RENT, FEES]} />);
     const totals = screen.getByRole("list", { name: "Approved totals" });
     expect(within(totals).getAllByRole("listitem").map((tile) => tile.textContent)).toEqual([
       "Approved income₹50,000.00", "Approved expenses₹0.00", "Net (income − expenses)₹50,000.00",
@@ -84,7 +84,7 @@ describe("mgmt-004 ledger list", () => {
   });
 
   it("keeps the filters in a GET form and offers every category, inactive ones marked", () => {
-    render(<ManagementLedger data={page()} error="" filters={{ ...filters, category: "c4", status: "submitted" }} categories={[RENT, OLD]} />);
+    render(<ManagementLedger commissionVisible data={page()} error="" filters={{ ...filters, category: "c4", status: "submitted" }} categories={[RENT, OLD]} />);
     const form = screen.getByRole("form", { name: "Ledger filters" });
     expect(form.getAttribute("method")).toBe("get");
     const category = screen.getByRole("combobox", { name: "Category" }) as HTMLSelectElement;
@@ -94,10 +94,10 @@ describe("mgmt-004 ledger list", () => {
   });
 
   it("says when nothing matches, and pages through long lists", () => {
-    const { unmount } = render(<ManagementLedger data={page({ items: [], total: 0 })} error="" filters={filters} categories={[]} />);
+    const { unmount } = render(<ManagementLedger commissionVisible data={page({ items: [], total: 0 })} error="" filters={filters} categories={[]} />);
     expect(screen.getByRole("status").textContent).toBe("No ledger entries match these filters.");
     unmount();
-    render(<ManagementLedger data={page({ total: 60, offset: 25 })} error="" filters={{ ...filters, status: "approved", offset: 25 }} categories={[]} />);
+    render(<ManagementLedger commissionVisible data={page({ total: 60, offset: 25 })} error="" filters={{ ...filters, status: "approved", offset: 25 }} categories={[]} />);
     expect(screen.getByRole("link", { name: "Previous page" }).getAttribute("href")).toBe("/management/ledger?status=approved");
     expect(screen.getByRole("link", { name: "Next page" }).getAttribute("href")).toBe("/management/ledger?status=approved&offset=50");
   });
@@ -118,14 +118,14 @@ describe("mgmt-005 automatic lines in the list", () => {
   });
 
   it("offers manual-only or manual + automatic lines, keeping the choice", () => {
-    render(<ManagementLedger data={mixed} error="" filters={{ ...filters, include: "auto" }} categories={[]} />);
+    render(<ManagementLedger commissionVisible data={mixed} error="" filters={{ ...filters, include: "auto" }} categories={[]} />);
     const lines = screen.getByRole("combobox", { name: "Lines" }) as HTMLSelectElement;
     expect([...lines.options].map((o) => [o.value, o.textContent])).toEqual([["", "Manual entries only"], ["auto", "Manual + automatic"]]);
     expect(lines.value).toBe("auto");
   });
 
   it("shows an automatic line read-only with its source badge, label and money", () => {
-    render(<ManagementLedger data={mixed} error="" filters={{ ...filters, include: "auto" }} categories={[]} />);
+    render(<ManagementLedger commissionVisible data={mixed} error="" filters={{ ...filters, include: "auto" }} categories={[]} />);
     const rows = within(screen.getByRole("table")).getAllByRole("row").slice(1);
     expect(within(rows[1]).queryByRole("link")).toBeNull();
     expect(rows[1].textContent).toContain("Enrolment fee · receipt RCP-1");
@@ -140,12 +140,22 @@ describe("mgmt-005 automatic lines in the list", () => {
   });
 
   it("names the totals and lists what was not counted", () => {
-    render(<ManagementLedger data={mixed} error="" filters={{ ...filters, include: "auto" }} categories={[]} />);
+    render(<ManagementLedger commissionVisible data={mixed} error="" filters={{ ...filters, include: "auto" }} categories={[]} />);
     const totals = screen.getByRole("list", { name: "Totals" });
     expect(within(totals).getAllByRole("listitem").map((tile) => tile.textContent)).toEqual([
       "Income (approved + automatic)₹32,500.00", "Expenses (approved + automatic)₹0.00", "Net (income − expenses)₹32,500.00",
     ]);
     expect(screen.getByText(/Not counted \(not in rupees\)/).textContent).toBe("Not counted (not in rupees): £300.00 income (1 line).");
+  });
+
+  it("names university receipts among the automatic lines for a partner only (mgmt-034 QA34-01)", () => {
+    const { unmount } = render(<ManagementLedger commissionVisible data={mixed} error="" filters={{ ...filters, include: "auto" }} categories={[]} />);
+    expect(screen.getByText(/Automatic lines \(/).textContent).toContain("recruiter and university receipts");
+    unmount();
+    render(<ManagementLedger commissionVisible={false} data={mixed} error="" filters={{ ...filters, include: "auto" }} categories={[]} />);
+    const text = screen.getByText(/Automatic lines \(/).textContent ?? "";
+    expect(text).toContain("approved BDM trip expenses and recruiter receipts)");
+    expect(text).toContain("University commission is not included: only partners see it.");
   });
 });
 

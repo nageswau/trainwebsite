@@ -41,7 +41,7 @@ from app.models import (
 )
 from app.services import management_audit
 from app.services.agent_deposits import REFERENCE_TYPE as AGENT_DEPOSIT
-from app.services.management_access import can_view_finance, require_management
+from app.services.management_access import can_view_finance, can_view_university_commission, require_management
 from app.services.storage import storage
 from app.services.telecaller_reports import SOURCE_LABELS
 
@@ -284,6 +284,12 @@ def list_filters(*, month: str | None, kind: str | None, category_id, vertical: 
     return where
 
 
+def commission_filter(table, visible: bool) -> list:
+    """mgmt-034 CS1 (M3): the university commission lines of a `lines()` table, only for callers who may see them
+    (`management_access.can_view_university_commission`); for anyone else they are never read, so no row or total carries them."""
+    return [] if visible else [table.c.source != "university_commission"]
+
+
 async def totals(db: AsyncSession, where: list) -> dict:
     """ML10: approved entries only; a reversal counts as the negative of its amount."""
     signed = case((LedgerEntry.reversal_of_id.is_(None), LedgerEntry.amount), else_=-LedgerEntry.amount)
@@ -455,10 +461,10 @@ async def lines_totals(db: AsyncSession, table, where: list) -> dict:
 
 async def lines_page(db: AsyncSession, user: User, filters: dict, status: str | None, limit: int, offset: int) -> dict:
     """MA9-MA11: the mixed list, newest first. `category` and `status` are manual fields, so with either set the automatic lines (NULL
-    there) drop out through the same clauses (MA10). Manual rows keep mgmt-004's full shape."""
+    there) drop out through the same clauses (MA10). Manual rows keep mgmt-004's full shape. University commission only for its viewers (CS1)."""
     table = lines()
     c = table.c
-    where = list_filters(**filters, table=table)
+    where = [*list_filters(**filters, table=table), *commission_filter(table, can_view_university_commission(user))]
     rows_where = [*where, *([c.status == status] if status else [])]
     total = await db.scalar(select(func.count()).select_from(table).where(*rows_where))
     rows = (await db.execute(select(table).where(*rows_where).order_by(c.entry_date.desc(), c.created_at.desc(), c.id).limit(limit).offset(offset))).all()

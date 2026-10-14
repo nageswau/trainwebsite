@@ -8656,3 +8656,41 @@ The full repository regression is deferred to its own session.
 **Consequences:** `services/monthly_review.py`; `api/management_reviews.py`; `reporting/pdf.render_monthly_review`; beat entry
 `mgmt032-monthly-review`; web `/management/reviews` and `/management/reviews/{month}`.
 - **Feature ID authorized:** `mgmt-032`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-032.
+
+
+### DEC-SCOPE-221 — Confidentiality + permission sweep (`mgmt-034`)
+
+**Evidence:**
+- `EVID-017` §2 (two partners, "full management access") and §24 ("This should be permission-controlled because partner-level financial
+  information is sensitive").
+- Scope authority: `DEC-SCOPE-186` M2, M3, M13, M14 (`EXPLICIT_APPROVAL`): partner-only data hidden from `super_admin` and everyone
+  else; university commission visible to `super_admin` + the partnership roles + **partner** (U2 as amended); tiered visibility;
+  assignees see only their own item.
+- `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-034. Acceptance: every route is in the inventory; the sweep fails on any extra field or
+  extra role. RBAC §2.123 handed the accountant's remaining commission views (ledger list, accounts) to this item.
+
+CS1–CS10 below are **recommended defaults, `UNVERIFIED`**, taken on the owner's standing instruction to proceed with recommended
+answers.
+
+**Status:** built on `feature/mgmt-034`. Focused tests are green (QA evidence `docs/quality/MGMT-034_EXPLORATORY_QA_2026-10-14.md`).
+The full repository regression is deferred to its own session.
+
+**Numbering:** no migration; API §12EI; RBAC §2.146. Spec: `docs/superpowers/specs/2026-10-14-mgmt-034-confidentiality-sweep-design.md`.
+
+| # | Point | Recommended default (`UNVERIFIED`) |
+|---|---|---|
+| CS1 | University commission and the accountant | M3 names partner (not the accountant). Every management read the accountant opens leaves it out, never read: the ledger list (lines and totals), the accounts dashboard (income, profit, receivables: `university` null, `commission_visible: false`) and the salary employee-cost ratio's revenue. Supersedes mgmt-005 MA12's and mgmt-013 AD12's accountant reading; matches mgmt-006 MR7, mgmt-009 PL7, mgmt-033 DD5. The partner's figures are unchanged |
+| CS2 | Salaries: M2 "partner-only" vs M5/M13 | M5/M13 are the specific rules (the accountant enters and reads department salary totals, as mgmt-011 built). Kept; `NEEDS_CONFIRMATION` |
+| CS3 | Inventory | Every operation under `/management` and `/me/management-` from `app.openapi()` (97); a route without a row, or a row without a route, fails |
+| CS4 | Roles called | anon, two partners, accountant, super_admin, it_admin, overseas_admin, bdm_manager, telecaller_manager, partnership_head, counselor, trainer, a telecaller who owns the world's task / decision / meeting invitation, student, agent. Unlisted signed-in roles `403`, anonymous `401` |
+| CS5 | Expectations | The owning item's as-built rule (RBAC §2.112–§2.145), checked against code and docs; never adjusted to make a cell pass |
+| CS6 | Worlds | upc-033 PX5: refused and GET cells share a world per row; every non-GET 2xx cell gets a fresh world |
+| CS7 | "Extra field": delta sweep | Every inventoried GET is read as partner, accountant and super_admin; partner-only data (investment, capital entry, commission receipt) or finance data (approved income line, salary month) is planted directly; the reads are repeated and a tier that may not see the plant must get an identical body (only the `as_of` clock removed). A positive control proves each plant reachable |
+| CS8 | Assignee slices (M14) | The owner's own task / decision / meeting lines carry exactly their documented keys; nobody else's list holds them; another user's id is `404` |
+| CS9 | upc-033 for the partner (M3) | `partner` and `accountant` added to upc-033's non-commission roles (every partnership route `403`, no commission in any body; `COMMISSION_ROLES` unchanged, MG2). The PX8 source net maps the management emitters to the CS7 sweep |
+| CS10 | Gaps | Fixed inside mgmt-034 when local: CS1 (backend) and QA34-01 (the ledger explanation named university receipts to the accountant) |
+
+**Consequences:** `ledger.commission_filter`; `accounts.view/income_expense/receivables(commission)`; `salaries.month_view/revenue(commission)`;
+`AccountsOut.commission_visible`, `AccountsReceivables.university` nullable; web accounts dashboard and ledger explanation; tests
+`test_mgmt_034_matrix.py`, `test_mgmt_034_confidentiality.py`, `mgmt034_helpers.py`, e2e `mgmt-034-confidentiality.spec.ts`.
+- **Feature ID authorized:** `mgmt-034`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-034.

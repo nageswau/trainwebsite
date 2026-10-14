@@ -1297,6 +1297,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** high
 
 ### mgmt-034 — Confidentiality + permission sweep
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-034`. `DEC-SCOPE-221` (CS1–CS10 recommended defaults, UNVERIFIED; CS1 hides
+  university commission from the accountant on the ledger list, accounts and salary ratio, per M3). No migration; API §12EI; RBAC §2.146.
+  QA evidence `docs/quality/MGMT-034_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** M2, M3, M13, M14; §24 "permission-controlled".
 - **Existing behavior:** none.
 - **Expected behavior:**

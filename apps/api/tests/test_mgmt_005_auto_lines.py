@@ -222,8 +222,7 @@ async def test_ac4_totals_reconcile_with_the_source_tables(client, db_session):
     assert (await post(client, entry["id"], "submit")).status_code == 200
     partner = await make_user(db_session, "partner", "global")
     await login(client, partner)
-    assert (await post(client, entry["id"], "approve")).status_code == 200
-    await login(client, accountant)
+    assert (await post(client, entry["id"], "approve")).status_code == 200  # the partner stays signed in: they see every line (mgmt-034 CS1)
 
     def day(moment: datetime) -> date:
         return moment.astimezone(IST).date()
@@ -245,7 +244,8 @@ async def test_ac4_totals_reconcile_with_the_source_tables(client, db_session):
     universities = select(UniversityCommissionReceipt.amount).where(
         UniversityCommissionReceipt.currency == "INR", UniversityCommissionReceipt.received_on >= first, UniversityCommissionReceipt.received_on < after
     )
-    income += sum((await db_session.scalars(universities)).all(), Decimal(0))
+    commission = sum((await db_session.scalars(universities)).all(), Decimal(0))
+    income += commission
     for e in (await db_session.scalars(select(LedgerEntry).where(LedgerEntry.status == "approved", LedgerEntry.entry_date >= first, LedgerEntry.entry_date < after))).all():
         signed = -e.amount if e.reversal_of_id else e.amount
         income, expense = (income + signed, expense) if e.kind == "income" else (income, expense + signed)
@@ -255,6 +255,9 @@ async def test_ac4_totals_reconcile_with_the_source_tables(client, db_session):
     assert Decimal(totals["expense"]) == expense
     assert Decimal(totals["net"]) == income - expense
     assert {"currency": "USD", "kind": "income", "amount": "400.00", "count": 1} in totals["not_counted"]
+    await login(client, accountant)  # mgmt-034 CS1 (M3): the accountant's totals never hold university commission
+    theirs = (await ledger(client, month=month_param(year, month)))["totals"]
+    assert Decimal(theirs["income"]) == income - commission and Decimal(theirs["expense"]) == expense
 
 
 # --- recognition, verticals, sources (MA2-MA7) --------------------------------------------------------------------------------
@@ -319,6 +322,9 @@ async def test_recruiter_payment_and_university_receipt_are_income(client, db_se
     uni = await university_receipt(db_session, on=on)
     gbp = await university_receipt(db_session, on=on, amount="300.00", currency="GBP")
     await as_user(client, db_session)
+    hidden = await ledger(client, month=month_param(year, month))  # mgmt-034 CS1 (M3): the accountant never reads university commission
+    assert lines_of(hidden, uni.id) == lines_of(hidden, gbp.id) == [] and lines_of(hidden, rec.id)
+    await as_user(client, db_session, "partner")
     page = await ledger(client, month=month_param(year, month))
     r, u, g = (lines_of(page, x.id)[0] for x in (rec, uni, gbp))
     assert (r["source"], r["kind"], r["vertical"], r["category_label"], r["amount"]) == ("recruiter_payment", "income", "recruitment", "Recruitment", "50000.00")

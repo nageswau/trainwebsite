@@ -2004,7 +2004,7 @@ Counts only, no personal data; nothing else changes.
 
 - The refusal happens before any lookup.
 - University commission outstanding is one aggregate, with no university names. The finance tier already sees the receipts as ledger
-  lines (mgmt-005 MA12).
+  lines (mgmt-005 MA12). *Superseded 2026-10-14 by §2.146 CS1: the partner only; the accountant gets `null` and no commission lines.*
 - The audit kind `mgmt.balance` is finance tier. It is hidden from super_admin in Management activity and left out of `/admin/audit`
   (mgmt-002 MA8, unchanged).
 
@@ -2032,7 +2032,7 @@ Counts only, no personal data; nothing else changes.
 - The commission rule is `management_access.can_view_university_commission` (partner only), applied in the query. MG11's partner
   extension is this management-local helper: `partnership_access.COMMISSION_ROLES` is unchanged, so partners gain no partnership-module
   commission route (MG2). mgmt-005's ledger list and mgmt-013's accounts dashboard still show commission lines to the accountant; that
-  sweep stays with mgmt-034.
+  sweep stays with mgmt-034. *Done 2026-10-14: §2.146 CS1.*
 - Read-only aggregate: country, university, intake and agency names with rupee sums; no student names or ids. No audit row (no write).
 
 ### 2.124 Recruitment & Placement revenue dashboard *(added 2026-10-13 — `DEC-SCOPE-199`, `mgmt-008`)*
@@ -2320,6 +2320,29 @@ Counts only, no personal data; nothing else changes.
 
 - Every partner write and every PDF download is audited (`mgmt.review`, partner-only kind; field names only). The beat job drafts
   without an actor. On finalise every active partner gets an in-app notification + email with a link only (no figures, no attachment).
+
+### 2.146 Management confidentiality + permission sweep *(added 2026-10-14 — `DEC-SCOPE-221`, `mgmt-034`)*
+
+The consolidated view of §2.112–§2.145 and the safety net for M2/M3/M13/M14. `apps/api/tests/test_mgmt_034_matrix.py` calls all 97
+operations under `/management` and `/me/management-` as two partners, the accountant, `super_admin`, `it_admin`, `overseas_admin`,
+`bdm_manager`, `telecaller_manager`, `partnership_head`, a counselor, a trainer, a staff owner, a student, an agent and signed out; an
+inventory test fails on a route without a row. `test_mgmt_034_confidentiality.py` plants partner-only and finance data and requires every
+read of the tiers that may not see it to stay identical.
+
+| Group (owning items) | Partner | Accountant | `super_admin` | Owner / responsible / invitee (any staff) | Every other role |
+|---|---|---|---|---|---|
+| `/management/me`, activity (001/002) | ✅ | ✅ (finance kinds) | ✅ (operational kinds) | `403` | `403` |
+| Operational dashboards: snapshot, applications, BDM, counseling, training, telecalling, recruitment, agents, funnel, universities, health, home (003/016–025/030/031) | ✅ | `403` | ✅ (no money) | `403` | `403` |
+| Mixed: recruitment revenue, marketing, schools (008/012/022) | ✅ | ✅ | ✅ counts only | `403` | `403` |
+| Finance: ledger, expenses, revenue (abroad, IT), P&L, accounts, drill, salaries, departments, budgets, school values (004–007/009–011/013/033) | ✅ | ✅ **without university commission** (CS1) | `403` | `403` | `403` |
+| Partner-only: investments, capital, monthly review (014/015/032) | ✅ | `403` | `403` | `403` | `403` |
+| Discussions, to-do, plans, meetings (026–029) | ✅ | `403` | ✅ | `403` | `403` |
+| Own lines `/me/management-tasks`, `-decisions`, `-meetings` (027–029) | own | own | own | own only; status update | empty list; another's id `404` |
+
+- Ledger approval: a partner, never the entry's creator. Signed out: `401` everywhere.
+- **Gap found and fixed (CS1):** the ledger list, the accounts dashboard and the salary cost ratio showed university commission to the
+  accountant although M3 gives it to partners only (§2.123 note). They now never read it for the accountant.
+- **As built, `NEEDS_CONFIRMATION`:** salaries are finance tier (M5/M13), though M2 lists them as partner-only (CS2).
 
 ## 3. Support / admin audit controls
 

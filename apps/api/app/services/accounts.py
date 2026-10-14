@@ -60,11 +60,11 @@ def _section(heads: tuple[tuple[str, str], ...], parts: dict[str, dict[str, Deci
     return {"heads": out, "total": total}
 
 
-async def income_expense(db: AsyncSession, month: date) -> dict:
+async def income_expense(db: AsyncSession, month: date, commission: bool = True) -> dict:
     """AD2-AD4: the month's counted lines grouped into heads (one query), with the totals and not-counted list of `lines_totals`."""
     table = ledger.lines()
     c = table.c
-    where = ledger.list_filters(month=month_key(month), kind=None, category_id=None, vertical=None, table=table)
+    where = [*ledger.list_filters(month=month_key(month), kind=None, category_id=None, vertical=None, table=table), *ledger.commission_filter(table, commission)]
     rows = await db.execute(select(c.kind, c.vertical, c.category_label, func.sum(c.signed_amount)).where(*where, c.counted).group_by(c.kind, c.vertical, c.category_label))
     parts: dict[str, dict[str, dict[str, Decimal]]] = {"income": defaultdict(lambda: defaultdict(Decimal)), "expense": defaultdict(lambda: defaultdict(Decimal))}
     for kind, vertical, label, amount in rows.all():
@@ -91,8 +91,9 @@ def _recruiter_outstanding():
     )
 
 
-async def receivables(db: AsyncSession, today: date) -> dict:
-    """AD5 (R8): what is owed to EduSphere today -- unpaid fees, open recruitment invoices and university commission still expected."""
+async def receivables(db: AsyncSession, today: date, commission: bool = True) -> dict:
+    """AD5 (R8): what is owed to EduSphere today -- unpaid fees, open recruitment invoices and university commission still expected.
+    Without `commission` (mgmt-034 CS1, M3) the commission is never read: `university` is null and left out of the total."""
     owed = [Payment.status.in_(UNPAID), Payment.reference_type != AGENT_DEPOSIT]
     late = or_(Payment.status == "overdue", Payment.due_date < today)
     fees = await db.execute(
@@ -108,11 +109,11 @@ async def receivables(db: AsyncSession, today: date) -> dict:
     rec_total, rec_overdue = (
         await db.execute(select(func.sum(rec.c.outstanding), func.sum(case((rec.c.due_date < today, rec.c.outstanding), else_=0))).where(rec.c.outstanding > 0))
     ).one()
-    university, other = await university_outstanding(db)
+    university, other = await university_outstanding(db) if commission else (None, [])
     not_counted += other
     recruitment = _money(rec_total)
     return {
-        "total": fee_total + recruitment + university,
+        "total": fee_total + recruitment + (university or ZERO),
         "overdue": fee_overdue + _money(rec_overdue),
         "fees": fee_total,
         "recruitment": recruitment,
@@ -164,14 +165,16 @@ async def balances(db: AsyncSession, month: date) -> dict:
     }
 
 
-async def view(db: AsyncSession, month: date) -> dict:
+async def view(db: AsyncSession, month: date, commission: bool = True) -> dict:
+    """`commission` false (the accountant, mgmt-034 CS1) leaves university commission out of income, profit and receivables."""
     today = ledger.today()
     return {
         "month": month_key(month),
         "current_month": month_key(today),
         "as_of": today,
-        **await income_expense(db, month),
-        "receivables": await receivables(db, today),
+        "commission_visible": commission,
+        **await income_expense(db, month, commission),
+        "receivables": await receivables(db, today, commission),
         "pending_invoices": await pending_invoices(db),
         "balances": await balances(db, month),
     }

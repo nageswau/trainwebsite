@@ -112,7 +112,7 @@ async def entry(db, year: int, number: int, *, kind: str, category: str, amount:
 # --- AC1: receivables reconcile ----------------------------------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_ac1_receivables_move_by_exactly_the_unpaid_fees_and_outstanding_invoices(client, db_session):
-    await as_user(client, db_session)
+    await as_user(client, db_session, "partner")  # mgmt-034 CS1 (M3): the university receivable is the partners'; the accountant gets null
     before = await view(client)
     await fee(db_session, "10000", due=TODAY + timedelta(days=10))  # owed, not yet due
     await fee(db_session, "2500", due=TODAY - timedelta(days=1))  # past its due date
