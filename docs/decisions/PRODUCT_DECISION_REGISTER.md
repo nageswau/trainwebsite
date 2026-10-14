@@ -8501,3 +8501,43 @@ full repository regression is deferred to its own session.
 extracted from `commission_by_university` (behaviour unchanged); page `/management/universities`. Read-only: nothing stored, logged or
 audited.
 - **Feature ID authorized:** `mgmt-023`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-023.
+
+### DEC-SCOPE-217 — Business health score, Q-29 (`mgmt-030`)
+
+**Evidence:**
+- `EVID-017` §30 (L1157–L1203): an overall score out of 100 "calculated automatically" from twelve factors, with seven example
+  RAG lines — "This gives partners an instant understanding of the company".
+- Scope authority: `DEC-SCOPE-186` M13 (`EXPLICIT_APPROVAL`).
+- `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` Appendix B "Business health" (H1–H12; RAG green ≥ 70 / amber 40–69 / red < 40, proposed;
+  tier P/O per factor).
+
+BH1–BH14 below answer backlog Q-29 (weights and RAG thresholds) as **recommended defaults, `UNVERIFIED`**. They were taken on the
+owner's standing instruction to proceed with recommended answers.
+
+**Status:** built on `feature/mgmt-030`. Focused tests are green (QA evidence `docs/quality/MGMT-030_EXPLORATORY_QA_2026-10-14.md`).
+The full repository regression is deferred to its own session.
+
+**Numbering:** no migration; API §12EE; RBAC §2.142 (the next numbers after mgmt-029's `DEC-SCOPE-216` / §12ED / §2.141 on main).
+mgmt-033, running in parallel, takes 218 / §12EF / §2.143 unless it merges first. Spec:
+`docs/superpowers/specs/2026-10-14-mgmt-030-business-health-score-design.md`.
+
+| # | Point | Recommended default (`UNVERIFIED`) |
+|---|---|---|
+| BH1 | Access | Partner: all 12 factors. super_admin: the 6 operational factors (H4–H9), scored on their own as "Operational health"; finance factors never queried (M13). Accountant `403` "Operational access required"; others `403`; signed out `401` |
+| BH2 | Period | `month` YYYY-MM, January 2000 up to the current IST month, else `422`. Default: the last complete month. The current month is scored so far (`partial`) |
+| BH3 | Comparison | Month on month, except Profit (the month's margin) and Marketing ROI (the month's K7) |
+| BH4 | Factors | H1 P&L revenue (mgmt-009). H2 P&L margin. H3 entered cash/bank (mgmt-013). H4 new leads + applications. H5 new IT + school students (mgmt-026). H6 applications enrolled. H7 agencies activated. H8 school MoUs signed. H9 universities becoming partners (UPC G1). H10 revenue ÷ salary headcount (mgmt-011). H11 marketing ROI (mgmt-012). H12 expense growth − revenue growth (`NEEDS_CONFIRMATION`: stock-based growth would need history tables) |
+| BH5 | Scales (Q-29) | Growth: 50 + 5·g% (−10% → 0, +10% → 100). Margin: 2·(m + 20) (0% → 40, 15% → 70, 30% → 100). ROI: 50 + r/2. Expenses: 50 − 5·(gap in points). Clamped to 0–100 |
+| BH6 | Not available | Excluded, with its weight shared out (backlog edge case), and a stated reason. An earlier month of 0 with activity now scores 100 |
+| BH7 | Weights (Q-29) | 15 / 15 / 10 / 10 / 8 / 8 / 5 / 5 / 5 / 7 / 6 / 6 (Σ 100) |
+| BH8 | Overall | Weighted average, half-up. Whole points per factor by largest remainder, so Σ points = the score (upc-028 `health_score`, now taking a `factors` argument with unchanged behaviour). No available factor: null |
+| BH9 | RAG | Green ≥ 70, Amber 40–69, Red < 40 (Appendix B as proposed). The pill always carries its word |
+| BH10 | Tier per factor | P: H1–H3, H10–H12. O: H4–H9 |
+| BH11 | Values | `current`, `previous`, `change` and `unit` per factor. The page writes the measure |
+| BH12 | Writes / audit | None (read-only) |
+| BH13 | Page / nav | `/management/health`. The Command Center BI entry "Business health score" changes from a partner-only placeholder to live and operational. super_admin nav gets "Management business health" |
+| BH14 | Settings | Constants in `services/management_health.py` (Q-29 interim). A change is a code change |
+
+**Consequences:** `services/management_health.py`; `GET /management/health`; page `/management/health`. Read-only: nothing is
+stored, logged or audited.
+- **Feature ID authorized:** `mgmt-030`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-030.

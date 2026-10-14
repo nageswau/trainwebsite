@@ -3255,6 +3255,15 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/universities?from=&to=` | `{today, from, to, kpis[{key, label, value}] (identified, contacted, meetings, negotiations, mous, signed, active, exclusive, countries, applications, enrollments), revenue?{expected[{currency, amount}], received[…]}, pipeline{steps[{key, label, count}], lost, total}, expected{windows[{key, label, first, last, count, weighted}], undated, next_month{total, items[upc-023 rows]}}}`. `revenue` present for partners only (absent, not null, otherwise). Bad date / start after end / over 366 days `422`; accountant and others `403`; signed out `401` |
 
+## 12EE. Business health score (mgmt-030) — addendum, 2026-10-14
+
+- **Basis:** `DEC-SCOPE-217` (BH1–BH14). Design spec `docs/superpowers/specs/2026-10-14-mgmt-030-business-health-score-design.md`.
+  No migration. Access per RBAC §2.142. Read-only, a fixed number of statements; never queries a finance input for super_admin.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/health?month=YYYY-MM` | `{month, previous_month, partial, scope ("business" \| "operational"), score (0–100 \| null), rag ("green" \| "amber" \| "red" \| null), factors[{key, label, tier ("finance" \| "operational"), weight, unit ("inr" \| "count" \| "percent"), current, previous, change, score, rag, points, note}]}`. Partners get 12 factors in §30 order (revenue, profit, cash_flow, sales_pipeline, student_growth, enrollment, agent_growth, school_growth, universities, productivity, marketing_roi, expenses); super_admin gets the 6 operational ones, scored on their own. Σ `points` = `score`. A factor that is not available has `score`/`points`/`rag` null and a `note`. Default month = the last complete IST month. A malformed month, one before January 2000 or after this month `422`; accountant and others `403`; signed out `401` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
