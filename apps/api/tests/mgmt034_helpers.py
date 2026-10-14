@@ -9,6 +9,8 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
+from sqlalchemy import delete, select, update
+
 from app.models import (
     Department,
     Investment,
@@ -24,7 +26,7 @@ from tests.bdm005_helpers import PDF_BYTES
 from tests.tel026_helpers import headers
 from tests.test_mgmt_006_abroad_revenue import linked_application
 
-__all__ = ["MANAGEMENT", "PDF_BYTES", "ROLES", "headers", "plant_finance", "plant_partner_only", "today", "world"]
+__all__ = ["MANAGEMENT", "PDF_BYTES", "ROLES", "headers", "plant_finance", "plant_partner_only", "retire_departments", "today", "world"]
 
 API = "/api/v1"
 IST = ZoneInfo("Asia/Kolkata")
@@ -178,3 +180,12 @@ async def plant_finance(db, w: dict) -> None:
     await db.commit()
 
 
+
+
+async def retire_departments(db) -> None:
+    """Every world adds a department (and the CS7 plant a salary month); afterwards their salary rows are removed and the departments
+    deactivated, so the shared stack's salary grid and ledger stay the seeded ones."""
+    mine = select(Department.id).where(Department.name.like("M34 %"))
+    await db.execute(delete(SalaryMonthTotal).where(SalaryMonthTotal.department_id.in_(mine)))
+    await db.execute(update(Department).where(Department.id.in_(mine), Department.active.is_(True)).values(active=False))
+    await db.commit()

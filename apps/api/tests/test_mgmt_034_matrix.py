@@ -13,13 +13,20 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 
 import pytest
+import pytest_asyncio
 
 from app.main import app
-from tests.mgmt034_helpers import PDF_BYTES, ROLES, headers, today, world
+from tests.mgmt034_helpers import PDF_BYTES, ROLES, headers, retire_departments, today, world
 
 API = "/api/v1"
 OK = {200, 201, 204}
 PREFIXES = ("/management", "/me/management-")  # CS3
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _retire_departments(db_session):
+    yield
+    await retire_departments(db_session)
 
 
 @dataclass

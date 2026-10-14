@@ -10,12 +10,19 @@ CS8, the assignee slices (M14): the owner's own task, decision and meeting lines
 holds them."""
 
 import pytest
+import pytest_asyncio
 
-from tests.mgmt034_helpers import MANAGEMENT, headers, plant_finance, plant_partner_only, world
+from tests.mgmt034_helpers import MANAGEMENT, headers, plant_finance, plant_partner_only, retire_departments, world
 from tests.test_mgmt_034_matrix import API, MATRIX, _fill
 
 BINARY = ("/receipt", "/attachments/", "/pdf")  # files, not JSON figures
 READS = [row.path for row in MATRIX if row.method == "get" and not any(part in row.path for part in BINARY)]
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _retire_departments(db_session):
+    yield
+    await retire_departments(db_session)
 
 
 async def _read_all(client, w: dict, role: str) -> dict[str, tuple[int, object]]:
