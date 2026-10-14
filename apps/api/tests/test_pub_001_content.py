@@ -45,16 +45,26 @@ async def test_real_project_detail_404_for_unknown_slug(client):
 
 
 @pytest.mark.asyncio
-async def test_testimonials_list_and_detail(client):
-    listing = await client.get("/api/v1/public/testimonials?division=it")
-    assert listing.status_code == 200
-    stories = listing.json()
-    assert len(stories) > 0
-    first = stories[0]
+async def test_testimonials_list_and_detail(client, db_session):
+    # PUB-022 SP4: the seeded demo stories are unpublished, so this test publishes its own.
+    from app.models import Testimonial
 
-    detail = await client.get(f"/api/v1/public/testimonials/{first['id']}")
-    assert detail.status_code == 200
-    assert detail.json()["person_name"] == first["person_name"]
+    story = Testimonial(division="it", person_name="PUB-001 Reader", headline="Story", quote="Words.", rating=5, consent_confirmed=True, published=True)
+    db_session.add(story)
+    await db_session.commit()
+    try:
+        listing = await client.get("/api/v1/public/testimonials?division=it")
+        assert listing.status_code == 200
+        stories = listing.json()
+        assert len(stories) > 0
+        first = stories[0]
+
+        detail = await client.get(f"/api/v1/public/testimonials/{first['id']}")
+        assert detail.status_code == 200
+        assert detail.json()["person_name"] == first["person_name"]
+    finally:
+        await db_session.delete(story)  # nothing published may outlive the test (PUB-022 review)
+        await db_session.commit()
 
 
 @pytest.mark.asyncio

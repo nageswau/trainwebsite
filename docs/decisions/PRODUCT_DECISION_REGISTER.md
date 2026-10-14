@@ -8250,3 +8250,35 @@ artwork, > 200 KB, or none found; an admin can set `logo_url` later) (R11). Ever
 `response_model_exclude_unset`, guarded by a structural test (R2, R7). Tests `test_dtu_001_*.py`, upc-033 sweep and matrix extended,
 vitest components, `apps/web/tests/e2e/dtu-001-partner-universities.spec.ts`.
 - **New Feature ID authorized:** `dtu-001`. **Status:** see `AGENT_CRM_BACKLOG.md` (status table, `dtu-001` row).
+
+### DEC-SCOPE-210 — Homepage social proof: rating badge + consented testimonials (`PUB-022`)
+
+**Evidence:** item 1 of the owner-requested review of https://www.360digrii.com/ (2026-10-14), whose homepage shows a Google
+rating and reviews — `UX_REFERENCE` (a competitor site, not a requirement). SP1–SP9: owner answers given in-session on
+2026-10-14, recorded in the design spec §2 table — `EXPLICIT_APPROVAL` (owner, in-session). The owner approved the design in
+chat and asked for implementation ("go ahead and implement them").
+
+**Status:** built on `feature/pub-022`; lite tests green except pre-existing failures listed in
+`docs/quality/PUB-022_QA_2026-10-14.md`; the owner's e2e run and the full backend suite are pending.
+
+**Numbering:** migration `0158_social_proof`; API §12DX; RBAC §2.135 (after dtu-001's `DEC-SCOPE-209` / §12DW / §2.134, `main` @
+`2e96cac8`). Feature ID `PUB-022` (PUB-011…021 are requirement references in the draft test workbook, so 022 avoids them). Spec
+`docs/superpowers/specs/2026-10-14-pub-022-social-proof-design.md` (with §10 rulings).
+
+| # | Point | Owner answer |
+|---|---|---|
+| SP1 | Source of ratings/reviews | Admin-entered; no Google or other external review API |
+| SP2 | Who edits testimonials | `super_admin` (both divisions); `it_admin` / `overseas_admin` their own division only |
+| SP3 | Stat numbers | None in this feature; the hard-coded `stats` (1250 / 830 / 75 / 96) are removed from `GET /public/home` |
+| SP4 | Existing demo testimonials | Unpublished by the migration; the seed keeps creating them unpublished |
+| SP5 | Rating badge | One organisation-wide badge (source, rating 0.0–5.0, review count, optional https link, as-of date, published); `super_admin` only |
+| SP6 | Before publishing | Consent tick recorded by the server (who + when); optional photo |
+| SP7 | Where shown | `/` (both divisions), `/it` (IT), `/overseas` (Overseas) |
+| SP8 | Which testimonials | Published **and** featured, by display order, at most 6 |
+| SP9 | Consent withdrawn | Permanent delete (row + photo); audit keeps id/who/when only; unticking consent unpublishes |
+
+**Implementation rulings (2026-10-14):** R1 photos are JPEG/PNG only — the existing magic-byte check and EXIF/GPS stripper
+(`app/services/image_metadata.py`) cover only those, so WebP was dropped; R2 the admin screens are dedicated pages
+(`/admin/testimonials`, `/it/admin/testimonials`, `/overseas/admin/testimonials`); R3 photo errors follow the existing upload helper
+(`413` over 2 MB, `415` wrong type, `422` empty or unreadable); R4 `PUB-022` is recorded here and in RBAC / API rather than in the
+approval-gated `MASTER_FEATURE_CATALOG.md` / `RTM.md` (the dtu-001 / mgmt precedent).

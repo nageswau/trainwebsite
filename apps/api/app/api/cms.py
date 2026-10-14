@@ -1,12 +1,15 @@
+from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models import AuditLog, BlogPost, ContentPage, Event, GalleryItem, User
+from app.models import AuditLog, BlogPost, ContentPage, Event, GalleryItem, SiteRatingBadge, Testimonial, User
+from app.schemas import RatingBadgeIn, RatingBadgeManageOut, TestimonialIn, TestimonialManageOut, TestimonialUpdate
+from app.services import social_proof
 
 router = APIRouter(prefix="/cms", tags=["cms"])
 
@@ -225,3 +228,151 @@ async def update_gallery_item(item_id: UUID, payload: dict, user: User = Depends
     db.add(AuditLog(user_id=user.id, action="cms.gallery.update", entity_type="gallery_item", entity_id=str(item.id), metadata_json={"fields": list(payload)}))
     await db.commit()
     return {"id": item.id, "title": item.title}
+
+
+# PUB-022 (DEC-SCOPE-210, spec §4.2): testimonials and the site rating badge.
+# Editors follow require_editor (SP2): super_admin edits both divisions; a division admin sees another division's row as 404
+# (so ids do not reveal what exists), and creating in another division is 403. The badge is super_admin only (SP5).
+# Audit rows name the changed fields, never the person's name or words (SP9).
+CMS_EDITORS = {"super_admin", "it_admin", "overseas_admin"}
+
+
+def _require_cms_editor(user: User) -> None:
+    if user.role not in CMS_EDITORS:
+        raise HTTPException(403, "CMS editor permission required")
+
+
+async def _editable_testimonial(db: AsyncSession, user: User, testimonial_id: UUID) -> Testimonial:
+    _require_cms_editor(user)
+    t = await db.get(Testimonial, testimonial_id)
+    if t is None or (user.role != "super_admin" and t.division != user.division):
+        raise HTTPException(404, "Testimonial not found")
+    return t
+
+
+def _audit(db: AsyncSession, user: User, action: str, t: Testimonial, metadata: dict) -> None:
+    db.add(AuditLog(user_id=user.id, action=f"cms.testimonial.{action}", entity_type="testimonial", entity_id=str(t.id), metadata_json=metadata))
+
+
+@router.get("/manage/testimonials", response_model=list[TestimonialManageOut])
+async def manage_testimonials(division: Literal["it", "overseas"] | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _require_cms_editor(user)
+    if user.role != "super_admin":
+        division = user.division
+    stmt = select(Testimonial)
+    if division:
+        stmt = stmt.where(Testimonial.division == division)
+    rows = (await db.scalars(stmt.order_by(Testimonial.division, Testimonial.display_order, Testimonial.created_at.desc()).limit(500))).all()
+    return [social_proof.manage_out(t) for t in rows]
+
+
+@router.post("/testimonials", status_code=201, response_model=TestimonialManageOut)
+async def create_testimonial(payload: TestimonialIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _require_cms_editor(user)
+    require_editor(user, payload.division)
+    t = Testimonial(
+        division=payload.division,
+        person_name=payload.person_name,
+        headline=payload.headline,
+        quote=payload.quote,
+        rating=payload.rating,
+        context=payload.context,
+        featured=payload.featured,
+        display_order=payload.display_order,
+        published=False,
+        consent_confirmed=False,
+    )
+    social_proof.apply_consent(t, payload.consent_confirmed, user)
+    social_proof.apply_publish(t, payload.published)
+    db.add(t)
+    await db.flush()
+    _audit(db, user, "create", t, {"division": t.division, "published": t.published})
+    await db.commit()
+    await db.refresh(t)
+    return social_proof.manage_out(t)
+
+
+@router.patch("/testimonials/{testimonial_id}", response_model=TestimonialManageOut)
+async def update_testimonial(testimonial_id: UUID, payload: TestimonialUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    t = await _editable_testimonial(db, user, testimonial_id)
+    changes = payload.model_dump(exclude_unset=True)
+    for key in ("person_name", "headline", "quote", "rating", "context", "featured", "display_order"):
+        if key in changes:
+            setattr(t, key, changes[key])
+    if "consent_confirmed" in changes:
+        social_proof.apply_consent(t, changes["consent_confirmed"], user)
+    if "published" in changes:
+        social_proof.apply_publish(t, changes["published"])
+    if changes:
+        _audit(db, user, "update", t, {"fields": sorted(changes)})
+    await db.commit()
+    await db.refresh(t)
+    return social_proof.manage_out(t)
+
+
+@router.delete("/testimonials/{testimonial_id}", status_code=204)
+async def delete_testimonial(testimonial_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    t = await _editable_testimonial(db, user, testimonial_id)
+    key = t.photo_key
+    _audit(db, user, "delete", t, {"division": t.division})
+    await db.delete(t)
+    await db.commit()
+    social_proof.drop_photo(key)
+    return Response(status_code=204)
+
+
+@router.put("/testimonials/{testimonial_id}/photo", response_model=TestimonialManageOut)
+async def upload_testimonial_photo(testimonial_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    t = await _editable_testimonial(db, user, testimonial_id)
+    data, content_type = await social_proof.read_photo(file)
+    old_key, new_key = t.photo_key, social_proof.store_photo(data, content_type)
+    t.photo_key, t.photo_content_type = new_key, content_type
+    _audit(db, user, "photo", t, {"replaced": old_key is not None, "content_type": content_type})
+    try:
+        await db.commit()
+    except Exception:
+        social_proof.drop_photo(new_key)  # no row points at it
+        raise
+    social_proof.drop_photo(old_key)
+    await db.refresh(t)
+    return social_proof.manage_out(t)
+
+
+@router.delete("/testimonials/{testimonial_id}/photo", response_model=TestimonialManageOut)
+async def delete_testimonial_photo(testimonial_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    t = await _editable_testimonial(db, user, testimonial_id)
+    old_key = t.photo_key
+    t.photo_key, t.photo_content_type = None, None
+    _audit(db, user, "photo", t, {"removed": old_key is not None})
+    await db.commit()
+    social_proof.drop_photo(old_key)
+    await db.refresh(t)
+    return social_proof.manage_out(t)
+
+
+def _require_super_admin(user: User) -> None:
+    if user.role != "super_admin":
+        raise HTTPException(403, "Super Admin permission required")
+
+
+@router.get("/rating-badge", response_model=RatingBadgeManageOut | None)
+async def get_rating_badge(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _require_super_admin(user)
+    badge = await db.get(SiteRatingBadge, 1)
+    return None if badge is None else {**social_proof.badge_out(badge), "published": badge.published, "updated_at": badge.updated_at}
+
+
+@router.put("/rating-badge", response_model=RatingBadgeManageOut)
+async def put_rating_badge(payload: RatingBadgeIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _require_super_admin(user)
+    badge = await db.get(SiteRatingBadge, 1)
+    if badge is None:
+        badge = SiteRatingBadge(id=1)
+        db.add(badge)
+    for key, value in payload.model_dump().items():
+        setattr(badge, key, value)
+    badge.updated_by_user_id = user.id
+    db.add(AuditLog(user_id=user.id, action="cms.rating_badge.update", entity_type="site_rating_badge", entity_id="1", metadata_json={"published": payload.published}))
+    await db.commit()
+    await db.refresh(badge)
+    return {**social_proof.badge_out(badge), "published": badge.published, "updated_at": badge.updated_at}
