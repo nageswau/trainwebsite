@@ -1,4 +1,5 @@
 // PUB-022 (DEC-SCOPE-210): the public social-proof strip's data -- GET /api/v1/public/social-proof.
+import { formatDate } from "./formatDate";
 import type { Testimonial } from "./types";
 
 export type SocialProofDivision = "it" | "overseas" | "all";
@@ -11,10 +12,9 @@ export function starsLabel(rating: number): string {
   return `Rated ${rating} out of 5`;
 }
 
-// "1 Oct 2026" -- the date is a calendar date (no time zone), so it is formatted in UTC to avoid an off-by-one day.
+// "01 Oct 2026" -- a calendar date (no time), so it is formatted in UTC: the server and the browser then show the same day.
 export function asOfLabel(isoDate: string): string {
-  const d = new Date(`${isoDate}T00:00:00Z`);
-  return Number.isNaN(d.getTime()) ? isoDate : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  return /^\d{4}-\d{2}-\d{2}$/.test(isoDate) ? formatDate(`${isoDate}T00:00:00Z`, false, "UTC") : isoDate;
 }
 
 export function initials(name: string): string {

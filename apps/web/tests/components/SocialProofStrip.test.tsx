@@ -20,7 +20,7 @@ describe("SocialProofView (PUB-022)", () => {
 
   it("renders the badge on its own", () => {
     render(<SocialProofView data={{ badge, testimonials: [] }} />);
-    expect(screen.getByText(/on Google/).textContent).toMatch(/4\.8 on Google · 1,234 reviews · as of 1 Oct 2026/);
+    expect(screen.getByText(/on Google/).textContent).toMatch(/4\.8 on Google · 1,234 reviews · as of 01 Oct 2026/);
     expect(screen.getByRole("img", { name: "Rated 4.8 out of 5" })).toBeTruthy();
     const link = screen.getByRole("link", { name: /Read reviews/ });
     expect(link.getAttribute("href")).toBe("https://g.page/r/example");
@@ -52,7 +52,7 @@ describe("SocialProofView (PUB-022)", () => {
 
 describe("socialProof helpers", () => {
   it("formats dates and initials", () => {
-    expect(asOfLabel("2026-10-01")).toBe("1 Oct 2026");
+    expect(asOfLabel("2026-10-01")).toBe("01 Oct 2026");
     expect(asOfLabel("not-a-date")).toBe("not-a-date");
     expect(initials("  sneha   p kumar ")).toBe("SP");
     expect(socialProofPath("it")).toBe("/api/v1/public/social-proof?division=it");
