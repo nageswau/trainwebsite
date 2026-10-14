@@ -490,3 +490,13 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
   .table.stack.health-breakdown td::before { flex-shrink: 0; } /* QA30-03: the label never breaks beside a long measure */
   .table.stack.health-breakdown tfoot tr { display: flex; justify-content: space-between; }
 }
+
+/* mgmt-033: the drill-down path (breadcrumbs with a separator, wrapping on a phone) and the record's label / value list */
+.drill-path ol { display: flex; flex-wrap: wrap; gap: 4px 0; list-style: none; padding: 0; margin: 0 0 12px; font-size: 14px; }
+.drill-path li + li::before { content: "›"; margin: 0 8px; color: var(--muted); }
+.drill-path a { color: var(--blue); }
+.drill-path [aria-current="page"] { font-weight: 700; }
+.drill-record dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; margin: 0 0 16px; }
+.drill-record dt { font-weight: 600; color: var(--muted); }
+.drill-record dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 480px) { .drill-record dl { grid-template-columns: minmax(0, 1fr); gap: 2px; } .drill-record dd { margin-bottom: 8px; } }

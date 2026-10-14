@@ -59,6 +59,11 @@ describe("mgmt-007 ManagementItRevenue", () => {
     expect(screen.getByRole("link", { name: "Payments: Not linked to a course" })).toHaveAttribute("href", "/management/revenue/it?month=2026-05&period=month&unlinked=1#payments");
   });
 
+  it("links the revenue to its drill-down for the same period (mgmt-033)", () => {
+    view({ query: { ...QUERY, period: "year" }, data: revenue({ period: "year" }) });
+    expect(screen.getByRole("link", { name: "Drill down into this revenue" })).toHaveAttribute("href", "/management/drill/it?month=2026-05&period=year");
+  });
+
   it("splits income and costs by kind and says placement revenue is not tracked", () => {
     view();
     expect(within(screen.getByRole("table", { name: "Income by kind" })).getByRole("row", { name: /Other IT fees/ })).toHaveTextContent("₹2,500.00");

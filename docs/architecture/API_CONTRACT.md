@@ -3264,6 +3264,15 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/health?month=YYYY-MM` | `{month, previous_month, partial, scope ("business" \| "operational"), score (0–100 \| null), rag ("green" \| "amber" \| "red" \| null), factors[{key, label, tier ("finance" \| "operational"), weight, unit ("inr" \| "count" \| "percent"), current, previous, change, score, rag, points, note}]}`. Partners get 12 factors in §30 order (revenue, profit, cash_flow, sales_pipeline, student_growth, enrollment, agent_growth, school_growth, universities, productivity, marketing_roi, expenses); super_admin gets the 6 operational ones, scored on their own. Σ `points` = `score`. A factor that is not available has `score`/`points`/`rag` null and a `note`. Default month = the last complete IST month. A malformed month, one before January 2000 or after this month `422`; accountant and others `403`; signed out `401` |
 
+## 12EF. Drill-down navigation (mgmt-033) — addendum, 2026-10-14
+
+- **Basis:** `DEC-SCOPE-218` (DD1–DD14). Design spec `docs/superpowers/specs/2026-10-14-mgmt-033-drill-down-design.md`. No migration.
+  Access per RBAC §2.143. One grouped query per level; the rows of a level add up to its `total`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/drill/{chain}?month=&period=&path=&limit=&offset=` | `chain` ∈ `abroad`, `it`, `recruitment`. `{chain, chain_label, month, period, label, start, end, total, count, breadcrumbs[{level, level_label, key, name}], level{key, label}|null, rows[{key, name, amount, count, latest}], total_rows, limit, offset, record|null{source, id, entry_date, amount, currency, description, details[{label, value}], outcomes|null{title, items[{name, detail, status}]}}}`. `key` `none` = the unattributed row. Reads of students and below write an `AuditLog` (`mgmt.drill.view`). Unknown chain / no counted line on the path `404`; bad month, period, path, too long a path or `none` for a payment `422`; super_admin and others `403`; signed out `401` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

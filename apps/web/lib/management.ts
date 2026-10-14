@@ -85,6 +85,7 @@ const VERB_LABEL: Record<string, string> = {
   create: "created", update: "changed", approve: "approved", complete: "completed", decide: "made", import: "imported",
   submit: "submitted", reject: "rejected", reverse: "reversed", download: "downloaded", // mgmt-004
   delete: "removed", // mgmt-026 (a plan item)
+  view: "opened", // mgmt-033 (a drill-down read of students or payments)
 };
 
 const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

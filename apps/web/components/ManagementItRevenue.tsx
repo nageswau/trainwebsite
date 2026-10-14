@@ -5,6 +5,7 @@ import { formatMonth } from "@/lib/managementExpenses";
 import {
   IT_REVENUE_HOME, PAGE_SIZE, itRevenueHref, type ItRevenue, type ItRevenuePaymentPage, type ItRevenueQuery, type Money, type Scope,
 } from "@/lib/managementItRevenue"; // prettier-ignore
+import { drillHref } from "@/lib/managementDrill";
 import { formatInr, formatMoney } from "@/lib/managementLedger";
 
 const UNLINKED = "Not linked to a course";
@@ -70,6 +71,7 @@ export default function ManagementItRevenue({
             <li className="metric"><span>Contribution</span><strong>{formatInr(data.totals.contribution)}</strong></li>
             <li className="metric"><span>New enrolments</span><strong>{data.totals.enrolments}</strong></li>
           </ul>
+          <p><Link className="kpi-link" href={drillHref("it", range, [])}>Drill down into this revenue</Link></p>
           {empty ? (
             <p className="empty" role="status">No IT Training revenue, costs or enrolments in {data.period === "year" ? `the ${data.label.toLowerCase()}` : formatMonth(data.month)}.</p>
           ) : (

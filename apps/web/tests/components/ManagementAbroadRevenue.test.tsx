@@ -58,6 +58,12 @@ describe("mgmt-006 ManagementAbroadRevenue", () => {
     expect(summary[2]).toHaveTextContent("This month: ₹34,500.00");
   });
 
+  it("links the revenue to its drill-down for the month and the financial year (mgmt-033)", () => {
+    render_(revenue());
+    expect(screen.getByRole("link", { name: "Drill down: May 2026" })).toHaveAttribute("href", "/management/drill/abroad?month=2026-05&period=month");
+    expect(screen.getByRole("link", { name: "Drill down: financial year to date" })).toHaveAttribute("href", "/management/drill/abroad?month=2026-05&period=year");
+  });
+
   it("lists revenue by kind with the total, and agent-generated revenue as part of it", () => {
     render_(revenue());
     const kinds = screen.getByRole("table", { name: /revenue by kind/i });
