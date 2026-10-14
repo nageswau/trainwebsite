@@ -45,18 +45,24 @@ questions.
 | Public | Overseas home destination cards | `apps/web/app/overseas/page.tsx` | inline |
 | Public | Course cards (country line) | `apps/web/app/overseas/courses/page.tsx` | inline |
 | Agent | Partner universities panel (two places) | `apps/web/components/AgentPartnerUniversitiesPanel.tsx` | inline |
-| Agent | Shortlist cards: catalogue universities only. The country comes from `/public/countries` | `apps/web/components/AgentShortlistForm.tsx` → `AgentShortlistCard.tsx` | inline |
 | Admin | University table | `apps/web/components/UniversityTable.tsx` | inline |
-| Admin | University match list | `apps/web/components/UniversityMatchList.tsx` | inline |
 | Admin | Partnership search | `apps/web/app/partnership/search/page.tsx` | inline |
 | Admin | University detail | `apps/web/app/partnership/universities/[id]/page.tsx` | inline |
 | Admin | University view | `apps/web/components/UniversityView.tsx` | inline |
 | Admin | Partnership map: country table | `apps/web/app/partnership/map/page.tsx` | inline |
-| Admin | Global dashboard: country rows | `apps/web/app/partnership/head/global-dashboard/page.tsx` | inline |
-| Admin | Country picker: a custom `SearchableSelect`, so a flag can go on each option | `apps/web/components/UniversityForm.tsx` → `SearchableSelect.tsx` | inline |
+| Admin | Global dashboard: country rows, through `GlobalCounts` | `apps/web/app/partnership/head/global-dashboard/page.tsx`, `apps/web/components/GlobalCounts.tsx` | inline |
+| Admin | Country picker: a custom `SearchableSelect`, flag on each **list option** | `apps/web/components/UniversityForm.tsx` → `SearchableSelect.tsx` | inline |
 
 The implementation plan confirms the exact line in each file. Each screen only gains the flag; its
 text, order and layout are otherwise unchanged.
+
+**Amendment, 2026-10-14 (found while planning; the owner reviews it with the plan):**
+- **Agent shortlist cards move to phase 2.** The card shows `university.country`, a name string
+  from the shortlist API, not the `/public/countries` map. A flag there needs an API field.
+- **The university match list (`UniversityMatchList`) moves to phase 2.** `UniversityMatch.country`
+  is `{id, name}` with no `iso2`.
+- **The country picker gets flags on its list options only.** The picked value sits inside a text
+  `<input>`, which can't hold an image. That `<input>` stays text.
 
 ### 3.2 Not in scope (F5)
 - **Native `<select>` dropdowns.** Examples are the agent shortlist country filter and the
@@ -74,6 +80,8 @@ text, order and layout are otherwise unchanged.
 ### 3.3 Phase 2 (later, own Feature ID)
 These screens show a country **name** returned by their own API. Each API needs an `iso2` field
 first:
+- agent shortlist cards (catalogue entries) and the university match / duplicate list (moved here
+  by the §3.1 amendment);
 - management: `ManagementUniversities`, `ManagementApplications`, `ManagementAbroadRevenue`;
 - partnership: courses, opportunities, performance, expected revenue, pipeline board, and the
   global dashboard university rows;
@@ -141,17 +149,17 @@ All three are read-only and additive. They need no route, permission or migratio
 ### 6.2 Types
 - `lib/types.ts`: `Country` gains `iso2?: string | null`.
 - The public course row type gains `country_iso2?: string | null`.
-- `SearchableSelect`: the option type gains an optional `iso2`. When it is present, the option and
-  the selected value show `<CountryFlag size="inline">` before the label. Other lookups don't set
+- `PickOption` (`lib/lookups.ts`) gains an optional `iso2`. When it is present, each list option in
+  `SearchableSelect` shows `<CountryFlag size="inline">` before its text. Other lookups don't set
   it, so they are unchanged.
-- The country lookup mapping used by `UniversityForm` passes `iso2` through.
+- `countrySearch` returns the lookup rows as they are, so `iso2` arrives with no mapping change.
 
 ### 6.3 Screens
 - Each screen in §3.1 renders `<CountryFlag>` immediately before the existing country name.
 - Countries list cards: if the country has a valid `iso2`, the flag takes the `icon-circle`
   position; otherwise the existing 🌍 stays (F3).
-- Agent shortlist: the catalogue country map (`id → name`) becomes `id → {name, iso2}`, so that
-  catalogue-university cards can show the flag.
+- `GlobalCounts` rows gain an optional `iso2`. The global dashboard passes it for its country rows.
+  Every other `GlobalCounts` use is unchanged.
 
 ## 7. Testing
 
@@ -179,9 +187,15 @@ feature, and the full suite run by the owner.
   - **Asset sanity:** every file in `public/flags` is `<two lower-case letters>.svg`. The files
     for the six published destinations (`gb`, `au`, `us`, `ae`, `fr`, `de`) exist.
   - `SearchableSelect` shows a flag only for options with `iso2`.
-  - The countries page and a partner-universities panel render the flag next to the name.
-  - Existing mocks that build `Country` or course rows get `iso2` and `country_iso2` where needed,
-    for example `AgentShortlistForm.test.tsx`.
+  - The partner-universities panel, `UniversityView` and `GlobalCounts` render the flag next to
+    the name. The public pages are async server components, so Playwright covers them, not vitest.
+- **Existing tests that pin the old response shape are updated on purpose** (DEC-SCOPE-222 changes
+  the contract):
+  - `test_upc_002_country_master.py::test_public_list_contract_is_unchanged` (exact key set);
+  - `test_upc_002_country_master.py::test_lookup_finds_japan_by_name_or_code_for_an_overseas_admin`
+    (exact item dict);
+  - `test_upc_017_public.py` (the exact course key set).
+  Each one gains the new key and nothing else.
 - **Playwright** (extend `apps/web/tests/e2e/upc-002-country-master.spec.ts`):
   - `/overseas/countries` shows a flag `img` inside each visible country card;
   - `/overseas/countries/united-kingdom` shows `/flags/gb.svg` in the heading;
@@ -195,7 +209,8 @@ feature, and the full suite run by the owner.
   - a status row for `PUB-023` (phase 1);
   - a new backlog item for phase 2 listing §3.3.
 - `docs/quality/PUB-023_EXPLORATORY_QA_2026-10-14.md`: the QA run on the dev stack.
-- RTM row per the project's usual convention.
+- No RTM row. `docs/quality/RTM.md` is not kept up to date for recent features (none of the mgmt,
+  rec, DTU or PUB-022 items are in it).
 
 ## 9. Rollout
 
