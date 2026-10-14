@@ -212,3 +212,20 @@ describe("SearchableSelect initial value (bdm-001 QA-02, the BDM row editor)", (
     expect(input.validationMessage).toBe("Choose a manager from the list.");
   });
 });
+
+describe("SearchableSelect country flags (PUB-023)", () => {
+  it("shows a flag before options that carry iso2 (PUB-023)", () => {
+    const countries = [{ id: "c1", label: "Japan", detail: "JP · Asia", iso2: "JP" }, { id: "c2", label: "Testland", detail: null, iso2: null }];
+    const { input } = inForm(<SearchableSelect label="Country" noun="country" options={countries} />);
+    fireEvent.focus(input);
+    const options = screen.getAllByRole("option");
+    expect(options[0].querySelector('img.country-flag[src="/flags/jp.svg"]')).not.toBeNull();
+    expect(options[0].textContent).toBe("Japan — JP · Asia");
+    expect(options[1].querySelector("img")).toBeNull();
+  });
+  it("renders other lookups' options exactly as before (no iso2, no image)", () => {
+    const { input } = inForm(<SearchableSelect label="Student" noun="student" options={OPTIONS} />);
+    fireEvent.focus(input);
+    for (const option of screen.getAllByRole("option")) expect(option.querySelector("img")).toBeNull();
+  });
+});

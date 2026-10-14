@@ -1,6 +1,6 @@
 // ENH-031 (DEC-SCOPE-039): the client side of the role-scoped read-only lookups (GET /api/v1/lookups/*) behind
 // SearchableSelect. The server decides what each role may see; this only builds the request.
-export type PickOption = { id: string; label: string; detail?: string | null };
+export type PickOption = { id: string; label: string; detail?: string | null; iso2?: string | null };  // iso2: PUB-023 country flag
 export type LookupPage = { items: PickOption[]; truncated: boolean };
 export type LookupName = "overseas-students" | "overseas-applications" | "overseas-counselors" | "it-job-applications" | "schools" | "school-students";
 
