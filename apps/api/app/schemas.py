@@ -1658,6 +1658,7 @@ class CountryOut(BaseModel):
     id: UUID
     slug: str
     name: str
+    iso2: str | None = None  # PUB-023 (DEC-SCOPE-222): the web draws the flag from this; null = no flag
     overview: str
     tuition: str
     living_expenses: str

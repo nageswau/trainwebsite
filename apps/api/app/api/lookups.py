@@ -265,7 +265,7 @@ async def countries(
     stmt = stmt.order_by(Country.name, Country.id)
     return await _page(
         db, stmt, limit,
-        lambda row: {"id": row[0].id, "label": row[0].name, "detail": _join(row[0].iso2, row[0].region) or None},
+        lambda row: {"id": row[0].id, "label": row[0].name, "detail": _join(row[0].iso2, row[0].region) or None, "iso2": row[0].iso2},  # PUB-023: picker flag
         "countries", user,
     )
 
