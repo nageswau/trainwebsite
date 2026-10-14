@@ -55,8 +55,7 @@ export function firstName(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] || fullName;
 }
 
-/** HM10: "+12.5%" / "−4%" / "—" for a month-on-month change. */
-export function changeText(change: number | null): string {
-  if (change === null) return "—";
+/** HM10: "+12.5%" / "−4%" for a month-on-month change (the panel lists only factors that have one, QA31-02). */
+export function changeText(change: number): string {
   return `${change > 0 ? "+" : change < 0 ? "−" : ""}${Math.abs(change).toLocaleString("en-IN")}%`;
 }

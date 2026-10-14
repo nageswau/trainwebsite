@@ -146,7 +146,7 @@ export default function ManagementHome({ data, userName, now }: { data: Home; us
                 <ul className="home-list">
                   {changed.map((f) => (
                     <li key={f.key}>
-                      {f.label}: <span>{changeText(f.change)}</span> {f.rag && <span className={PILL[f.rag]}>{RAG_LABEL[f.rag]}</span>}
+                      {f.label}: <span>{changeText(f.change!)}</span> {f.rag && <span className={PILL[f.rag]}>{RAG_LABEL[f.rag]}</span>}
                     </li>
                   ))}
                 </ul>

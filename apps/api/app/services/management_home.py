@@ -83,6 +83,7 @@ async def home(db: AsyncSession, user: User, today: date) -> dict:
         money, position = await _money(db, user, this_month, today)
         snapshot |= money
         out["financial_position"] = position
+        # One issue when anything is overdue; the page shows its amount, not a count (receivables are a sum, not rows).
         urgent.append({"key": "overdue_receivables", "label": "Overdue receivables", "count": 1 if position["receivables_overdue"] > 0 else 0, "amount": position["receivables_overdue"]})
 
     next_plan = await management_plans._plans(db, user, ManagementPlan.month == following)

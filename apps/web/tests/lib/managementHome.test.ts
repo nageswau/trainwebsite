@@ -20,6 +20,5 @@ describe("mgmt-031 managementHome", () => {
     expect(changeText(12.5)).toBe("+12.5%");
     expect(changeText(-4)).toBe("−4%");
     expect(changeText(0)).toBe("0%");
-    expect(changeText(null)).toBe("—");
   });
 });
