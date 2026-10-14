@@ -3196,10 +3196,29 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `POST /management/capital/entries` *(new)* | **Body:** `{partner_id, entry_date, kind (initial / additional / withdrawal / profit_distribution), amount, note?}`. **`201`** the entry `{id, partner, entry_date, kind, amount, note, created_by, created_at}` + one `mgmt.capital.create` audit row with values. A withdrawal over the balance is accepted (CP11). **`422`** not an active partner ("Choose an active partner"), a future date or one before 2000, amount ≤ 0 / > 2 dp / too large, note > 500 or with a line break, unknown kind or field |
 | `PUT /management/capital/shares` *(new)* | **Body:** `{effective_from: "YYYY-MM", shares: [{partner_id, share_pct (0–100, 2 dp), commitment? (≥ 0)}]}` (1–50 rows, each partner once). Sets each sent partner's row for that month (insert, or replace that month's row); others unchanged. **`200`** `{items: [...the share history as on GET]}`. Audit `mgmt.capital.create` / `.update` (changed fields, before → after); nothing for an unchanged row. **`409`** lost a concurrent first save of the same month. **`422`** month outside January 2000 – 12 months ahead, an inactive or non-partner, a repeated partner, a bad share or commitment |
 
-## 12EA. School dashboard + school money (`mgmt-022`) — addendum, 2026-10-14
+## 12EA. Next month plan + target vs actual (mgmt-026) — addendum, 2026-10-14
 
-- **Basis:** `DEC-SCOPE-213` (SD1–SD16, answers Q-23). Design spec `docs/superpowers/specs/2026-10-14-mgmt-022-school-dashboard-design.md`.
-  Migration `0160_school_values`. Every management role reads (partner, super_admin, accountant); other roles `403` "Management access
+- **Basis:** `DEC-SCOPE-213` (PN1–PN16). Design spec `docs/superpowers/specs/2026-10-14-mgmt-026-next-month-plan-design.md`. Migration
+  `0160_management_plans`: `management_plans` (unique `month`, status) and `management_plan_items` (CHECKs: KPI ⇔ target, target > 0,
+  no `done` on a KPI item). Access per RBAC §2.138. `month` is `YYYY-MM` (malformed `422`, unplanned `404` "Plan not found").
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/plans` | `{items[{id, month, status, label, item_count, kpi_count, done_count, created_by, updated_at}]}`, newest month first; counts over the items the caller may see |
+| `GET /management/plans/options` | `{kpis[{key, label, unit: count\|inr, definition}], verticals[{key, label}], users, current_month, max_month}`; `revenue` for partners only |
+| `POST /management/plans` | `{month, status?}` → `201` plan detail. Outside this month … +12: field `422` "Choose this month or one of the next 12"; duplicate `409` "This month already has a plan" |
+| `GET /management/plans/{month}` | Plan detail + `items[{id, vertical, text, kpi, target, done, task_count, updated_at}]` in vertical then append order |
+| `PATCH /management/plans/{month}` | `{status}` → `200`; same status records nothing |
+| `GET /management/plans/{month}/progress` | `{month, label, state, start, end, rows[{item_id, vertical, text, kpi, kpi_label, unit, target, actual, achievement}], free_text{total, done}}` |
+| `POST /management/plans/{month}/items` | `{vertical, text, kpi?, target?, done?}` → `201`. Unknown KPI / target without KPI / KPI without target / fractional count / done on a KPI item: field `422`; non-partner revenue `403`; closed `409` |
+| `PATCH /management/plans/{month}/items/{id}` | Partial; `kpi` and `target` cleared together; no change records nothing. Another month's or a hidden (revenue) item `404` "Plan item not found"; closed `409` |
+| `DELETE /management/plans/{month}/items/{id}` | `204`; tasks made from it stay; closed `409` |
+| `POST /management/plans/{month}/items/{id}/tasks` | `{owner_user_id, priority?, deadline}` → `201` mgmt-028 task (`source: "plan"`); mgmt-028's owner/deadline `422`s; closed `409` |
+
+## 12EB. School dashboard + school money (`mgmt-022`) — addendum, 2026-10-14
+
+- **Basis:** `DEC-SCOPE-214` (SD1–SD16, answers Q-23). Design spec `docs/superpowers/specs/2026-10-14-mgmt-022-school-dashboard-design.md`.
+  Migration `0161_school_values`. Every management role reads (partner, super_admin, accountant); other roles `403` "Management access
   required"; signed out `401`. Money and the value write for the finance tier only (partner, accountant).
 
 | Method/Path | Notes / status codes |

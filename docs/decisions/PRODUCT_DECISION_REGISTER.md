@@ -8360,7 +8360,34 @@ recorded) is answered by CP3, CP5 and CP2 as interim defaults.
 `docs/quality/MGMT-015_EXPLORATORY_QA_2026-10-14.md`.
 - **New Feature ID authorized:** `mgmt-015`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-015.
 
-### DEC-SCOPE-213 — School dashboard + school revenue / contract / renewal value (`mgmt-022`)
+### DEC-SCOPE-213 — Next month plan + target vs actual (`mgmt-026`)
+
+**Evidence:** `EVID-017` §25 "Next month plan", §26 "Target vs actual", §33 (`DERIVED_BLUEPRINT`); scope authority `DEC-SCOPE-186`
+M11/M13 (`EXPLICIT_APPROVAL`). PN1–PN16 below answer backlog Q-25 (KPI catalogue, plan lock) and Q-35 (long-term strategy) as
+**recommended defaults, `UNVERIFIED`**, taken on the owner's standing instruction to proceed with recommended answers.
+
+**Status:** built on `feature/mgmt-026`; focused tests green (QA evidence `docs/quality/MGMT-026_EXPLORATORY_QA_2026-10-14.md`); the
+full repository regression is deferred to its own session.
+
+**Numbering:** migration `0160_management_plans`; API §12EA; RBAC §2.138 (after mgmt-015's `DEC-SCOPE-212` / §12DZ / §2.137). Spec
+`docs/superpowers/specs/2026-10-14-mgmt-026-next-month-plan-design.md`.
+
+| # | Point | Recommended default (`UNVERIFIED`) |
+|---|---|---|
+| PN1 | Horizon (Q-35) | Monthly plans only; "Long-term strategy" stays a coming-soon Command Center entry (`NEEDS_CONFIRMATION`) |
+| PN2 | Plan | One per IST month; status draft / active / closed; this month up to 12 ahead (`422` outside), a second plan for a month `409` |
+| PN3 | Status | Any change allowed and audited; a closed plan refuses item writes and tasks with `409` until reopened |
+| PN4 | Item | Vertical abroad / it / school / recruitment / other; text 2–200; optional KPI from the catalogue with a required target (count: whole 1–1,000,000; revenue: ₹ > 0, ≤ 2 dp); `done` for free-text items only |
+| PN5 | KPI catalogue (Q-25) | agents, applications, enrollments, universities, it_students, batches, school_mous, school_students, companies, placements, revenue — each counted over the plan's IST month |
+| PN6 | Actual | Computed live on every read; achievement = actual ÷ target × 100, rounded half-up; month state upcoming / running / ended |
+| PN7 | Revenue KPI | Partner only: hidden from everyone else (plan, progress, counts; by id `404`); setting it as a non-partner `403` |
+| PN8 | Access | Operational tier (partner, super_admin); accountant and others `403`; signed out `401` |
+| PN9 | Edits after the month starts (Q-25) | Allowed while not closed; every write a `mgmt.plan` audit row with field names only (new verb `delete`) |
+| PN10 | Tasks from items | `POST …/items/{id}/tasks` creates a mgmt-028 task (`source=plan`, `source_id` = item id, title = item text) |
+| PN11 | Concurrency | Every write locks the plan row; a concurrent create of the same month `409` |
+| PN12–PN16 | Order, removal, UI, logs, numbering | Vertical order then append order; `DELETE` item `204` (its tasks stay); `/management/plans` + `/management/plans/{YYYY-MM}`; logs carry ids and field names only |
+
+### DEC-SCOPE-214 — School dashboard + school revenue / contract / renewal value (`mgmt-022`)
 
 **Evidence:** `EVID-017` §18 (lines 683–715, `DERIVED_BLUEPRINT`): schools contacted, meetings, proposals, MoUs, active schools, students,
 teachers, parents, career guidance, psychometric tests, academic results, student profile completion, school revenue; "School-wise revenue /
@@ -8371,7 +8398,7 @@ ledger school tag), left open by mgmt-004 ML6.
 owner's instruction to proceed with the recommended answers. Q-23 is answered by SD12–SD14: **both** — revenue is ledger income tagged with
 the school, and contract / renewal value are fields on the school.
 
-**Numbering (provisional):** migration `0160_school_values`; API §12EA; RBAC §2.138. Spec
+**Numbering (provisional):** migration `0161_school_values`; API §12EB; RBAC §2.139. Spec
 `docs/superpowers/specs/2026-10-14-mgmt-022-school-dashboard-design.md`.
 
 | # | Point | Answer |
@@ -8393,7 +8420,7 @@ the school, and contract / renewal value are fields on the school.
 | SD15 | Table | every school by name: tier, active, renewal due, valid until, the student figures, completion; money columns for the finance tier |
 | SD16 | Data | counts, percentages, school names and rupees only |
 
-**Consequences:** migration `0160_school_values` (three nullable columns, CHECKs, partial index; downgrade refuses while data exists);
+**Consequences:** migration `0161_school_values` (three nullable columns, CHECKs, partial index; downgrade refuses while data exists);
 `models.py`; `schemas.py`; new `services/management_schools.py`; `services/ledger.py` (tag); `services/management_audit.py` (kind);
 `api/management.py` (two routes); web `lib/managementSchools.ts`, `lib/management.ts`, `lib/navigation.ts`, `lib/managementLedger.ts`,
 `components/ManagementSchools.tsx`, `SchoolValuesEditor.tsx`, `LedgerEntryForm.tsx`, `app/management/schools/page.tsx`,

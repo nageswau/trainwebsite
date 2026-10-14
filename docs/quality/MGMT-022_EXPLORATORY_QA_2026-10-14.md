@@ -1,7 +1,7 @@
 # mgmt-022 — Exploratory QA (School dashboard + school money), 2026-10-14
 
 Stack: isolated Docker Compose project `mgmt022` (web `http://localhost:13022`, api `127.0.0.1:18022`), `feature/mgmt-022` with migration
-`0160_school_values` at head, demo seed loaded. Browser: Playwright Chromium (headless), scripted exploratory pass; API checks with curl.
+`0161_school_values` at head, demo seed loaded. Browser: Playwright Chromium (headless), scripted exploratory pass; API checks with curl.
 The shared stack database also holds backend test rows (72 schools), so figures are checked for behaviour, not exact counts.
 
 ## Scenarios

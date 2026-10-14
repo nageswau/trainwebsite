@@ -924,9 +924,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-022 — School dashboard + school revenue / contract / renewal value
-- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-022`. `DEC-SCOPE-213` (SD1–SD16 recommended defaults, UNVERIFIED; SD12–SD14
-  answer Q-23: ledger school tag for revenue, school columns for contract / renewal value). Migration `0160_school_values`; API §12EA;
-  RBAC §2.138. QA `docs/quality/MGMT-022_EXPLORATORY_QA_2026-10-14.md`.
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-022`. `DEC-SCOPE-214` (SD1–SD16 recommended defaults, UNVERIFIED; SD12–SD14
+  answer Q-23: ledger school tag for revenue, school columns for contract / renewal value). Migration `0161_school_values`; API §12EB;
+  RBAC §2.139. QA `docs/quality/MGMT-022_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** §18: 12 figures + "School-wise revenue / contract value / renewal value".
 - **Existing behavior:** cross-school analytics (ENH-016) and BDM school figures. **There is no school money data.**
 - **Expected behavior:**
@@ -1031,6 +1031,10 @@ Common conventions for every item:
 - **Complexity:** small · **Risk:** low
 
 ### mgmt-026 — Next month plan + target vs actual
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-026`. `DEC-SCOPE-213` (PN1–PN16 recommended defaults, UNVERIFIED; answers
+  Q-25 and Q-35). Migration `0160_management_plans`; API §12EA; RBAC §2.138. `/management/plans` and `/management/plans/{YYYY-MM}`;
+  the Command Center "Next month plan & targets" entry is live, "Long-term strategy" stays coming soon. QA evidence
+  `docs/quality/MGMT-026_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** §25 (a dedicated module; plans per vertical with the example items); §26 ("every plan should automatically
   become a target"; the example table with achievement %); §33 Next Month / Long-term (Q-35) (M11).
 - **Existing behavior:** module targets only (BDM, telecaller).

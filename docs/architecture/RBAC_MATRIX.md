@@ -2219,7 +2219,20 @@ Counts only, no personal data; nothing else changes.
   be given a capital account. Audit rows (`mgmt.capital`, values kept) stay partner-only in Management activity and are left out of
   `/admin/audit` (mgmt-002 MA8, unchanged).
 
-### 2.138 School dashboard + school money *(added 2026-10-14 — `DEC-SCOPE-213`, `mgmt-022`)*
+### 2.138 Next month plan & targets *(added 2026-10-14 — `DEC-SCOPE-213`, `mgmt-026`)*
+
+| Role | `GET`/`POST /management/plans`, `GET …/options`, `GET`/`PATCH …/{month}`, `GET …/{month}/progress`, item `POST`/`PATCH`/`DELETE`, `POST …/items/{id}/tasks` | Revenue KPI items |
+|---|---|---|
+| `partner` | yes | yes (set, read, actual = mgmt-009 P&L revenue) |
+| `super_admin` | yes | no — absent from every read and count; by id `404`; setting one `403` "Only partners can set a revenue target" |
+| `accountant` | `403` "Operational management access required" | — |
+| every other role | `403` "Management access required" | — |
+| signed out | `401` | — |
+
+- A closed plan refuses item writes and task creation (`409`) until its status is changed back.
+- Audit kind `mgmt.plan` (operational, field names only — never item text or targets); verbs `create`, `update`, `delete`.
+
+### 2.139 School dashboard + school money *(added 2026-10-14 — `DEC-SCOPE-214`, `mgmt-022`)*
 
 | Role | Read `GET /management/schools`, page `/management/schools` | Set values `PATCH /management/schools/{id}` |
 |---|---|---|

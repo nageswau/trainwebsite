@@ -51,7 +51,7 @@ def test_record_refuses_unknown_kind_and_verb():
     with pytest.raises(ValueError):
         management_audit.record(None, None, "mgmt.unknown", "create", "x")
     with pytest.raises(ValueError):
-        management_audit.record(None, None, "mgmt.task", "delete", "x")
+        management_audit.record(None, None, "mgmt.task", "archive", "x")  # mgmt-026 registers "delete"
 
 
 def test_values_only_for_finance_and_partner_only_kinds_and_named_fields():

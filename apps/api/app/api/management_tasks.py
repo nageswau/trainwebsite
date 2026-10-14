@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user, get_db
 from app.models import ManagementTask, User
 from app.schemas import DiscussionOptions, MyTaskOut, MyTaskPage, MyTaskStatusIn, TaskBand, TaskCreate, TaskOut, TaskPage, TaskUpdate
-from app.services import management_audit
 from app.services import management_discussions as discussions
 from app.services import management_tasks as svc
 from app.services.bdm_travel import india_today
@@ -55,15 +54,7 @@ async def task_options(user: User = Depends(get_current_user), db: AsyncSession 
 @router.post("", status_code=201, response_model=TaskOut)
 async def create_task(payload: TaskCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     discussions.require_operational(user)
-    state = payload.model_dump()
-    await svc.check(db, state)
-    status = state.pop("status")
-    task = ManagementTask(**state, status="open", created_by_user_id=user.id, updated_by_user_id=user.id)
-    svc.set_status(task, status)  # a task recorded as already completed gets its completed_at
-    db.add(task)
-    await db.flush()
-    management_audit.record(db, user, "mgmt.task", "create", str(task.id), fields=list(svc.FIELDS))
-    await svc.notify_after_write(db, user, task, list(svc.FIELDS), None)
+    task = await svc.create(db, user, payload.model_dump())
     await db.commit()
     svc.log("task_created", user, task.id)
     return await svc.one(db, task.id)

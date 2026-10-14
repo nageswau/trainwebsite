@@ -202,6 +202,20 @@ async def mine(db: AsyncSession, user: User, limit: int = 200) -> dict:
 
 
 # --- writes --------------------------------------------------------------------------------------------------------------------
+async def create(db: AsyncSession, user: User, state: dict, *, source: str = "manual", source_id=None) -> ManagementTask:
+    """A checked new task, audited and its owner notified, in the caller's transaction (the caller commits). mgmt-026 passes
+    `source="plan"` and the plan item's id (MT5); the client never sets either."""
+    await check(db, state)
+    status = state.pop("status")
+    task = ManagementTask(**state, status="open", source=source, source_id=source_id, created_by_user_id=user.id, updated_by_user_id=user.id)
+    set_status(task, status)  # a task recorded as already completed gets its completed_at
+    db.add(task)
+    await db.flush()
+    management_audit.record(db, user, "mgmt.task", "create", str(task.id), fields=list(FIELDS))
+    await notify_after_write(db, user, task, list(FIELDS), None)
+    return task
+
+
 async def load(db: AsyncSession, task_id, *, owner: User | None = None) -> ManagementTask:
     """The task locked for a write; with `owner`, only that user's own task (MT9/MT13) -- another user's id is a 404, checked
     after the lock so a reassignment racing the owner's change wins."""
