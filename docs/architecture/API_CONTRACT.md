@@ -3184,6 +3184,18 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/funnel?from&to&by` | `200` `{from, to, as_of, paths: [{key, label}] (lead, it, abroad), stages: [{key, label, path, definition, value}] (14, §11 order: leads, telecalling, counseling, registration, training, it_application, certification, placement, joining, abroad_education, abroad_application, offer, visa, enrollment), dimensions: [{key, label, tracked, stages}] (9), breakdown: null \| {by, label, tracked, stages, rows: [{value, label, counts}], unknown}}`. Each stage counts what reached it in the period (not a cohort). With `by`, each applicable stage's rows + `unknown` equal its `value`; rows largest first, then by label; a label shared by two rows carries the value's first 8 characters. `by` ∈ country, course, agent, school, counselor, source, bdm, intake, branch (branch: `tracked: false`, no stages); anything else `422`. `from`/`to` inclusive IST dates, default this IST month; start after end or > 366 days → `422` |
 
+## 12DZ. Partner capital accounts (`mgmt-015`) — addendum, 2026-10-14
+
+- **Basis:** `DEC-SCOPE-212` (CP1–CP15). Spec `docs/superpowers/specs/2026-10-14-mgmt-015-partner-capital-accounts-design.md`. Migration
+  `0159_partner_capital`. **Partner-only** on every route: `accountant` / `super_admin` `403` "Only partners can open this", any other
+  role `403` "Management access required", signed out `401` (RBAC §2.137).
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/capital` *(new)* | **Query:** `month` (YYYY-MM, January 2000 – this IST month, default this month), `period` = `month` / `quarter` / `year` (default `year`, financial year to date), `offset` 0–10 000. **`200`** `{as_of, month, period, label, net_profit, accounts: [{partner {id, full_name, active}, invested, additional, withdrawals, balance, returns, share_pct, commitment, outstanding, profit_share}], totals {same figures; share_pct = the shares in force summed}, partners: [{id, full_name}] (active, the form choices), entries {items: [{id, partner, entry_date, kind, amount, note, created_by, created_at}], total, limit: 25, offset}, shares: [{id, partner, effective_from, share_pct, commitment, in_force, updated_by, updated_at}]}`. Figures as of `as_of`; `profit_share` over the period (CP9), `null` when no share was in force. **`422`** month out of range / malformed, unknown period |
+| `POST /management/capital/entries` *(new)* | **Body:** `{partner_id, entry_date, kind (initial / additional / withdrawal / profit_distribution), amount, note?}`. **`201`** the entry `{id, partner, entry_date, kind, amount, note, created_by, created_at}` + one `mgmt.capital.create` audit row with values. A withdrawal over the balance is accepted (CP11). **`422`** not an active partner ("Choose an active partner"), a future date or one before 2000, amount ≤ 0 / > 2 dp / too large, note > 500 or with a line break, unknown kind or field |
+| `PUT /management/capital/shares` *(new)* | **Body:** `{effective_from: "YYYY-MM", shares: [{partner_id, share_pct (0–100, 2 dp), commitment? (≥ 0)}]}` (1–50 rows, each partner once). Sets each sent partner's row for that month (insert, or replace that month's row); others unchanged. **`200`** `{items: [...the share history as on GET]}`. Audit `mgmt.capital.create` / `.update` (changed fields, before → after); nothing for an unchanged row. **`409`** lost a concurrent first save of the same month. **`422`** month outside January 2000 – 12 months ahead, an inactive or non-partner, a repeated partner, a bad share or commitment |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

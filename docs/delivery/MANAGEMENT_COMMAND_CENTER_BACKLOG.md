@@ -716,6 +716,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** high
 
 ### mgmt-015 — Partner capital accounts
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-015`. `DEC-SCOPE-212` (CP1–CP15 recommended defaults, UNVERIFIED; Q-17 interim
+  answers CP2/CP3/CP5). Migration `0159_partner_capital`; API §12DZ; RBAC §2.137. QA evidence
+  `docs/quality/MGMT-015_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** §24 (8 figures per partner; "permission-controlled") (M8).
 - **Existing behavior:** none.
 - **Expected behavior:**
