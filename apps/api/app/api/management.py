@@ -14,6 +14,7 @@ from app.models import INVESTMENT_STATUSES, INVESTMENT_VERTICALS, User
 from app.schemas import (
     AbroadRevenueOut,
     AccountsOut,
+    DrillOut,
     ApplicationFunnelOut,
     CapitalEntryCreate,
     CapitalEntryOut,
@@ -62,6 +63,7 @@ from app.services import (
     management_audit,
     management_bdm,
     management_counseling,
+    management_drill,
     management_expenses,
     management_funnel,
     management_it_revenue,
@@ -546,3 +548,21 @@ async def universities_dashboard(from_: date | None = Query(None, alias="from"),
     today = india_date(await db_now(db))
     first, last = partnership_period(from_ or today.replace(day=1), to or today)
     return await management_universities.dashboard(db, user, first, last, today)
+
+
+# --- mgmt-033: drill-down navigation (spec DD1-DD14). Finance tier only: every chain is money (AC3, M13) -------------------------------
+@router.get("/drill/{chain}", response_model=DrillOut)
+async def drill_down(
+    chain: str,
+    month: str | None = Query(None, pattern=MONTH),
+    period: Literal["month", "year"] = "month",
+    path: str | None = Query(None, max_length=400),
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0, le=100_000),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """One level of a revenue chain (abroad, it, recruitment) below the chosen `path` (comma-separated keys, `none` = unattributed) for
+    `month` or its financial year to date, or the record at the end. Reads of students and below are audited (DD11)."""
+    ledger.require_finance(user)
+    return await management_drill.drill(db, user, chain, await _past_month(db, month), period, path, limit=limit, offset=offset)
