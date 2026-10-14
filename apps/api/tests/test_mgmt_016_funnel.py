@@ -323,3 +323,19 @@ async def test_rows_are_labelled(client, db_session):
     assert labels(await read(client, year, "course"))[str(made["course"].id)] == f"{made['course'].title} — {made['uni'].name}"
     assert labels(await read(client, year, "course"))[str(made["program"].id)] == made["program"].title
     assert labels(await read(client, year, "intake"))["Sep 2027"] == "Sep 2027"
+
+
+async def test_rows_with_the_same_label_are_told_apart(client, db_session):
+    """QA16-02: two programs share a title (titles are not unique); each row keeps its own, distinguishable label."""
+    year = random.randint(1700, 1899)
+    await as_role(client, db_session, "partner")
+    title = f"Twin Course {tag()}"
+    progs = [await add(db_session, Program(slug=f"mgmt016-{tag()}", category="Software", title=title, summary="", duration="3 months", eligibility="",
+                                           fees=1000, certification="", curriculum=[], placement_assistance="", trainer_name="")) for _ in range(2)]  # fmt: skip
+    for prog in progs:
+        student = await make_user(db_session, "it_student", "it")
+        db_session.add(Certificate(student_id=student.id, program_id=prog.id, certificate_no=f"C-{tag()}", verification_code=f"V-{tag()}",
+                                   issued_on=date(year, 6, 10)))  # fmt: skip
+    await db_session.commit()
+    labels = {r["value"]: r["label"] for r in (await read(client, year, "course"))["breakdown"]["rows"]}
+    assert labels == {str(p.id): f"{title} ({str(p.id)[:8]})" for p in progs}

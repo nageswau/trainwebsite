@@ -62,7 +62,7 @@ function Breakdown({ breakdown: b, stages, name }: { breakdown: FunnelBreakdown;
           </tfoot>
         </table>
       </div>
-      {others.length > 0 && <p className="muted">Not broken down by {b.label}: {others.join(", ")}. Their records carry no {b.label.toLowerCase()}.</p>}
+      {others.length > 0 && <p className="muted">Not broken down by {b.label}: {others.join(", ")}. Their records carry no {b.label} value.</p>}
     </>
   );
 }

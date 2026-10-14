@@ -101,6 +101,12 @@ describe("mgmt-016 ManagementFunnel", () => {
     expect(screen.getByText(/Not broken down by Country:/)).toHaveTextContent("Leads, Telecalling, Counseling, Registration, Training, Application (IT training)");
   });
 
+  it("keeps the dimension's own spelling in the note on the other stages (QA16-01)", () => {
+    const leadStages = ["leads", "telecalling", "counseling", "registration"];
+    view({ data: dashboard({ by: "bdm", label: "BDM", tracked: true, stages: leadStages, rows: [], unknown: Object.fromEntries(leadStages.map((k) => [k, 0])) }) });
+    expect(screen.getByText(/Not broken down by BDM:/)).toHaveTextContent(/Their records carry no BDM value\.$/);
+  });
+
   it("says when nothing in the period carries the dimension", () => {
     view({ data: dashboard({ ...byCountry, rows: [], unknown: { abroad_education: 0, abroad_application: 0, offer: 0, visa: 0, enrollment: 0 } }) });
     expect(screen.getByRole("status")).toHaveTextContent("No Country recorded on anything in this period.");

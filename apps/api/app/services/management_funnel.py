@@ -4,6 +4,7 @@ activity, not a cohort, since a lead and the records of the student it became ar
 counted record with its dimension columns, so a stage costs one query with or without a breakdown, and the rows plus "Unknown" always add
 up to the stage total (AC2). Read-only; only counts and organisation or staff names leave."""
 
+from collections import Counter
 from collections.abc import Callable
 from datetime import date, datetime
 
@@ -168,6 +169,11 @@ async def dashboard(db: AsyncSession, start: date, end: date, now: datetime, by:
         values = sorted({v for stage in on for v in counts[stage] if v is not None}, key=str)
         names = await _labels(db, by, values) if values else {}
         rows = [{"value": str(v), "label": names.get(v, str(v)), "counts": {stage: counts[stage].get(v, 0) for stage in on}} for v in values]
+        # QA16-02: names are not unique (two programs or people can share one), so a repeated label carries its record's short id.
+        repeated = {label for label, n in Counter(r["label"] for r in rows).items() if n > 1}
+        for r in rows:
+            if r["label"] in repeated:
+                r["label"] = f"{r['label']} ({r['value'][:8]})"
         rows.sort(key=lambda r: (-sum(r["counts"].values()), r["label"].lower(), r["value"]))
         breakdown = {"by": by, "label": label, "tracked": tracked, "stages": on, "rows": rows, "unknown": {stage: counts[stage].get(None, 0) for stage in on}}
 
