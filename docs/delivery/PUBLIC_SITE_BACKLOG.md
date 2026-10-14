@@ -1,4 +1,4 @@
-# Public Website — Improvement Backlog (`psb-002` … `psb-018`)
+# Public Website — Improvement Backlog (`psb-002` … `psb-019`)
 
 NO-ASSUMPTION MODE. Prepared 2026-10-14 at the owner's request ("move the remaining items into backlog"). **No code was written or changed for these items.**
 
@@ -15,7 +15,8 @@ Every item therefore needs its own clarifying questions, a Decision ID and the u
 | Item | Covers | Decision | Delivery |
 |---|---|---|---|
 | `psb-001` → `PUB-022` | Homepage social proof: an admin-entered rating badge and consented, featured testimonials on `/`, `/it` and `/overseas` | `DEC-SCOPE-210` (migration `0158`, API 12DX, RBAC 2.135) | branch `feature/pub-022`, **PR #268** (built; final review fixed; e2e and full suite: owner) |
-| `psb-002` … `psb-018` | Below | — | Not started |
+| `PUB-023` | Country flags, phase 1: public country/course pages, agent partner universities, partnership admin lists, country picker options | `DEC-SCOPE-222` (no migration, API 12EJ) | branch `feature/pub-023` (built; e2e and full suite: owner) |
+| `psb-002` … `psb-019` | Below | — | Not started |
 
 ## Items
 
@@ -176,3 +177,14 @@ The priority is a suggestion only; the owner sets the order.
 - **Finding:** two simultaneous first-time `PUT /cms/rating-badge` calls can both insert `id = 1`, and one gets a 500.
 - **Risk:** negligible (super_admin only, one-off).
 - **Gap:** use an insert-or-update on `id = 1`.
+
+#### `psb-019` — Country flags, phase 2
+- **Why:** PUB-023 (DEC-SCOPE-222 F1) drew flags only where the web already has the country's `iso2`.
+- **Gap:** these screens show a country name from their own API, which needs an `iso2` field first:
+  - agent shortlist cards (catalogue entries) and the university match / duplicate list;
+  - management universities, applications and abroad revenue;
+  - partnership courses, opportunities, performance, expected revenue, the pipeline board and the global dashboard university rows;
+  - visits and meetings forms and tables; agreements and commission-term forms;
+  - BDM organisation detail; the generic `admin/[module]` country column;
+  - the agent dashboard, commission report and report filters; the visa checklist.
+- **Not in scope:** native `<select>` dropdowns and free-text country fields (F5).

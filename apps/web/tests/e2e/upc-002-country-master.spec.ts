@@ -53,3 +53,16 @@ test("the country lookup is closed to the public and to other roles", async ({ p
   await page.request.post("/api/v1/auth/login", { data: { email: "counselor@edusphere.local", password: "Demo@123", division: "overseas" } });
   expect((await page.request.get("/api/v1/lookups/countries")).status()).toBe(403);
 });
+
+// PUB-023 (DEC-SCOPE-222): each catalogue country card and the country heading show the bundled flag, and the SVG is served.
+test("destination cards and the country heading show the country's flag (PUB-023)", async ({ page, request }) => {
+  await page.goto("/overseas/countries");
+  const search = page.getByLabel("Search destinations");
+  await search.fill("United Kingdom");
+  const card = page.locator("article.card").filter({ has: page.getByRole("heading", { name: "United Kingdom", exact: true }) });
+  await expect(card.locator('img.country-flag[src="/flags/gb.svg"]')).toBeVisible();
+
+  await page.goto("/overseas/countries/united-kingdom");
+  await expect(page.locator('h1 img.country-flag[src="/flags/gb.svg"]')).toBeVisible();
+  expect((await request.get("/flags/gb.svg")).status()).toBe(200);
+});
