@@ -131,7 +131,7 @@ async def world(client, db) -> dict:
     w["meeting"] = (await _ok(await client.post(f"{API}/management/meetings", headers=p, json=meeting)))["id"]
     await _ok(await client.post(f"{API}/management/meetings/{w['meeting']}/minutes", headers=p, json={"minutes": "M34 minutes"}), 200)
 
-    # mgmt-026 plan: the next month inside the window, cleared first (one plan per month), with one free-text item
+    # mgmt-026 plans: two distinct months inside the window, cleared first (one plan per month): one planned with a free-text item, one free
     from tests.test_mgmt_026_plans import add_months, clear
 
     plan_month, free_month = (add_months(today().replace(day=1), ahead) for ahead in random.sample(range(1, 13), 2))
