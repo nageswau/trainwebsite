@@ -37,7 +37,7 @@ export const MANAGEMENT_PILLARS: ManagementPillar[] = [
     ],
   },
   { title: "People", entries: [{ ...op("Trainers", "mgmt-017"), href: "/management/training#trainers" }, { ...op("Counselors", "mgmt-018"), href: "/management/counseling#counselors" }, { ...op("Telecallers", "mgmt-019"), href: "/management/telecalling#telecallers" }, { ...op("Recruiters", "mgmt-025"), href: "/management/recruitment#recruitment-kpis" }, { ...fin("Employee cost", "mgmt-011"), href: "/management/salaries#employee-cost" }] },
-  { title: "Partnerships", entries: [{ ...op("Agents", "mgmt-021"), href: "/management/agents" }, op("Schools", "mgmt-022"), op("Universities", "mgmt-023"), { ...op("Companies", "mgmt-025"), href: "/management/recruitment#company-pipeline" }] },
+  { title: "Partnerships", entries: [{ ...op("Agents", "mgmt-021"), href: "/management/agents" }, op("Schools", "mgmt-022"), { ...op("Universities", "mgmt-023"), href: "/management/universities" }, { ...op("Companies", "mgmt-025"), href: "/management/recruitment#company-pipeline" }] },
   {
     title: "Business Intelligence",
     entries: [
