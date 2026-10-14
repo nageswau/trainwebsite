@@ -1,4 +1,4 @@
-"""mgmt-022 -- migration 0161_school_values (spec §4). Round trip and the downgrade refusal run in a throwaway database built from scratch
+"""mgmt-022 -- migration 0162_school_values (spec §4). Round trip and the downgrade refusal run in a throwaway database built from scratch
 (the upc-001 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -12,17 +12,17 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_mgmt_022_migration_0161", VERSIONS / "0161_school_values.py")
+_spec = importlib.util.spec_from_file_location("_mgmt_022_migration_0162", VERSIONS / "0162_school_values.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0160_management_plans", "0161_school_values"
+BASE, HEAD = "0161_management_meetings", "0162_school_values"
 COLUMNS = (
     "SELECT table_name, column_name FROM information_schema.columns WHERE (table_name, column_name) IN (('schools', 'contract_value'), ('schools', 'renewal_value'), ('ledger_entries', 'school_id'))"
 )
 
 
-def test_migration_chains_after_0160_and_is_the_single_head():
+def test_migration_chains_after_0161_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -38,7 +38,7 @@ def test_model_matches_the_migration():
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0160."""
+    """A fresh database at 0161."""
     cfg = _config()
     original = settings.database_url
     name = f"mgmt022_migration_{uuid.uuid4().hex[:8]}"

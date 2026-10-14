@@ -2245,6 +2245,21 @@ Counts only, no personal data; nothing else changes.
   (`mgmt.school_value`, finance kind, hidden from `GET /admin/audit`). The ledger's new `school_id` tag follows the ledger's own finance-tier
   rules (§2.115). The school admin routes (`/overseas-admin/schools*`, `SchoolOut`) and ENH-016's analytics are unchanged.
 
+### 2.141 Management meetings *(added 2026-10-14 — `DEC-SCOPE-216`, `mgmt-029`)*
+
+| Role | `GET`/`POST /management/meetings`, `GET …/options`, `GET`/`PATCH …/{id}`, `POST …/{id}/minutes`, `…/decisions`, `…/tasks` | `GET /me/management-meetings` |
+|---|---|---|
+| `partner` | yes | own invitations only |
+| `super_admin` | yes | own invitations only |
+| `accountant` | `403` "Operational management access required" | own invitations only |
+| every other role | `403` "Management access required" | own invitations only (staff can be invited; others see an empty list) |
+| signed out | `401` | `401` |
+
+- A participant's slice never carries the minutes, the decisions/tasks chain, the creator or the other participants (MM12).
+- Decisions and tasks recorded from the minutes keep mgmt-027 / mgmt-028's own access (§2.117 / §2.118): their responsible person or
+  owner sees only their line.
+- Audit kind `mgmt.meeting` (operational, field names only — never titles, agenda or minutes); verbs `create`, `complete`, `update`.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

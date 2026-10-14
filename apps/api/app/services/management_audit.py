@@ -21,6 +21,7 @@ KINDS: dict[str, tuple[str, str]] = {
     "mgmt.task": ("Task", "operational"),
     "mgmt.plan": ("Plan & target", "operational"),
     "mgmt.decision": ("Decision", "operational"),
+    "mgmt.meeting": ("Meeting", "operational"),  # mgmt-029
     "mgmt.ledger": ("Ledger entry", "finance"),
     "mgmt.ledger_category": ("Ledger category", "finance"),  # mgmt-004
     "mgmt.salary": ("Salary month", "finance"),  # mgmt-011

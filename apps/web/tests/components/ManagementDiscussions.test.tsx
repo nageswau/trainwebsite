@@ -17,7 +17,7 @@ const options: DiscussionOptions = { users: [PARTNER, BDM] };
 function discussion(overrides: Partial<Discussion> = {}): Discussion {
   return {
     id: "d1", topic: "Japan University Partnership", discussion_date: "2026-10-01", department: "Partnerships", decision: "Proceed with agreement",
-    responsible: BDM, deadline: "2026-10-10", status: "in_progress", follow_up_date: null, created_at: "2026-10-01T04:30:00Z", updated_at: "2026-10-01T04:30:00Z",
+    responsible: BDM, deadline: "2026-10-10", status: "in_progress", follow_up_date: null, meeting_id: null, created_at: "2026-10-01T04:30:00Z", updated_at: "2026-10-01T04:30:00Z",
     ...overrides,
   };
 }

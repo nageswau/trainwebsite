@@ -925,7 +925,7 @@ Common conventions for every item:
 
 ### mgmt-022 — School dashboard + school revenue / contract / renewal value
 - **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-022`. `DEC-SCOPE-214` (SD1–SD16 recommended defaults, UNVERIFIED; SD12–SD14
-  answer Q-23: ledger school tag for revenue, school columns for contract / renewal value). Migration `0161_school_values`; API §12EB;
+  answer Q-23: ledger school tag for revenue, school columns for contract / renewal value). Migration `0162_school_values`; API §12EB;
   RBAC §2.139. QA `docs/quality/MGMT-022_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** §18: 12 figures + "School-wise revenue / contract value / renewal value".
 - **Existing behavior:** cross-school analytics (ENH-016) and BDM school figures. **There is no school money data.**
@@ -1134,6 +1134,10 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-029 — Management meetings + minutes chain
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-029`. `DEC-SCOPE-216` (MM1–MM14 recommended defaults, UNVERIFIED; answers
+  Q-28: typed `http(s)` link; minutes = free text + the decisions and tasks list). Migration `0161_management_meetings`; API §12ED; RBAC
+  §2.141. Command Center "Meetings" live at `/management/meetings`; participants see their meetings in `/account/management-tasks#meetings`.
+  QA evidence `docs/quality/MGMT-029_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** §29 (Meeting Calendar with 7 kinds; Meeting → Minutes → Decision → Task → Deadline → Completion).
 - **Existing behavior:** none for management.
 - **Expected behavior:**

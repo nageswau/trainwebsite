@@ -1,7 +1,7 @@
 """mgmt-022 -- school money: `schools.contract_value` / `renewal_value` and the ledger's school tag `ledger_entries.school_id`.
 
-Revision ID: 0161_school_values
-Revises: 0160_management_plans
+Revision ID: 0162_school_values
+Revises: 0161_management_meetings
 
 docs/superpowers/specs/2026-10-14-mgmt-022-school-dashboard-design.md §4 (SD13, SD14). Three nullable columns; no existing row changes.
 0001 builds a fresh database from the current models, which already carry them, so each step is guarded. VALUE_CHECKS / SCHOOL_CHECK
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0161_school_values"
-down_revision = "0160_management_plans"
+revision = "0162_school_values"
+down_revision = "0161_management_meetings"
 branch_labels = None
 depends_on = None
 
@@ -49,7 +49,7 @@ def downgrade() -> None:
         tagged = bind.execute(sa.text("SELECT 1 FROM ledger_entries WHERE school_id IS NOT NULL LIMIT 1")).first()
         valued = bind.execute(sa.text("SELECT 1 FROM schools WHERE contract_value IS NOT NULL OR renewal_value IS NOT NULL LIMIT 1")).first()
         if tagged or valued:
-            raise RuntimeError("Cannot downgrade 0161_school_values: school values or school-tagged ledger entries exist. Remove them deliberately first.")
+            raise RuntimeError("Cannot downgrade 0162_school_values: school values or school-tagged ledger entries exist. Remove them deliberately first.")
     op.drop_index(INDEX, table_name="ledger_entries")
     op.drop_column("ledger_entries", "school_id")  # drops its FK and CHECK with it
     op.drop_column("schools", "renewal_value")

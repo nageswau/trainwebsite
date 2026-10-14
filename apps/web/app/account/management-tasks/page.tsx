@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import MyManagementDecisions from "@/components/MyManagementDecisions";
+import MyManagementMeetings from "@/components/MyManagementMeetings";
 import MyManagementTasks from "@/components/MyManagementTasks";
 import PublicShell from "@/components/PublicShell";
 import { ApiError, serverApi } from "@/lib/api";
 import { indiaToday } from "@/lib/bdmTravel";
 import { MY_DECISIONS_API, type MyDecision } from "@/lib/managementDiscussions";
+import { MY_MEETINGS_API, type MyMeeting } from "@/lib/managementMeetings";
 import { MY_TASKS_API, MY_TASKS_HOME, type MyTaskPage } from "@/lib/managementTasks";
 import { dashboardPathFor } from "@/lib/navigation";
 import type { User } from "@/lib/types";
@@ -14,6 +16,7 @@ import type { User } from "@/lib/types";
 // mgmt-028 (M14, MT9/MT10/MT14): any staff member's Management tasks -- the tasks management assigned them, in the §28 bands, then the
 // mgmt-027 decisions they are responsible for. One shared route (like /account/password) that every staff portal's sidebar links to.
 // It gates itself (/account/* is outside middleware.ts's matcher); the API returns only the caller's own tasks and decisions.
+// mgmt-029 (MM12): then the management meetings they are invited to (#meetings, the notifications' link).
 const NEXT = encodeURIComponent(MY_TASKS_HOME);
 
 export const metadata: Metadata = { title: "Management tasks" };
@@ -60,8 +63,13 @@ export default async function MyManagementTasksPage() {
   }
   let tasks: MyTaskPage;
   let decisions: MyDecision[];
+  let meetings: MyMeeting[] | null; // mgmt-029 (MM12): a failed read only blanks this section
   try {
-    [tasks, { items: decisions }] = await Promise.all([serverApi<MyTaskPage>(MY_TASKS_API), serverApi<{ items: MyDecision[] }>(MY_DECISIONS_API)]);
+    [tasks, { items: decisions }, meetings] = await Promise.all([
+      serverApi<MyTaskPage>(MY_TASKS_API),
+      serverApi<{ items: MyDecision[] }>(MY_DECISIONS_API),
+      serverApi<{ items: MyMeeting[] }>(MY_MEETINGS_API).then((page) => page.items, () => null),
+    ]);
   } catch {
     return <Unavailable what="Your management tasks can't be loaded right now." />;
   }
@@ -77,6 +85,9 @@ export default async function MyManagementTasksPage() {
           <h2 style={{ marginTop: 32 }}>Decisions</h2>
           <p className="muted">Management decisions you are responsible for.</p>
           <MyManagementDecisions items={decisions} today={indiaToday()} />
+          <h2 id="meetings" style={{ marginTop: 32 }}>Meetings</h2>
+          <p className="muted">Management meetings you are invited to, from the last week on.</p>
+          {meetings === null ? <p className="form-error" role="alert">Your meetings can&apos;t be loaded right now. Try again in a moment.</p> : <MyManagementMeetings items={meetings} />}
         </div>
       </div>
     </PublicShell>

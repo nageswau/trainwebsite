@@ -51,7 +51,7 @@ Not added: per-school payment collection (no school payer exists), GST (M4), con
 
 ## 4. Data
 
-Migration `0161_school_values`: `schools.contract_value`, `schools.renewal_value` `NUMERIC(14,2) NULL` with CHECK ≥ 0;
+Migration `0162_school_values`: `schools.contract_value`, `schools.renewal_value` `NUMERIC(14,2) NULL` with CHECK ≥ 0;
 `ledger_entries.school_id UUID NULL` FK RESTRICT, CHECK `school_id IS NULL OR (kind = 'income' AND vertical = 'school')`, partial index
 on `school_id`. Additive and nullable — no existing row changes. Downgrade refuses while any value or tag is set.
 

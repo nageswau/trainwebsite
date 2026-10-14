@@ -3218,7 +3218,7 @@ moves the application to Joined (AC3). Every change writes offer history.
 ## 12EB. School dashboard + school money (`mgmt-022`) — addendum, 2026-10-14
 
 - **Basis:** `DEC-SCOPE-214` (SD1–SD16, answers Q-23). Design spec `docs/superpowers/specs/2026-10-14-mgmt-022-school-dashboard-design.md`.
-  Migration `0161_school_values`. Every management role reads (partner, super_admin, accountant); other roles `403` "Management access
+  Migration `0162_school_values`. Every management role reads (partner, super_admin, accountant); other roles `403` "Management access
   required"; signed out `401`. Money and the value write for the finance tier only (partner, accountant).
 
 | Method/Path | Notes / status codes |
@@ -3226,6 +3226,25 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /management/schools` *(new)* | Query: `from`, `to` (inclusive IST dates, each defaulting to this IST month). `422` malformed date, "The period must start on or before its end", "The period can be at most 366 days". `200` `{from, to, as_of, money_visible, figures[{key, label, definition, basis (period/now)}] (13, §18 order), totals{schools_contacted, meetings, proposals, mous, active_schools, students, teachers, parents, career_guidance, psychometric_tests, academic_results, profile_completion (% or null), revenue, contract_value, renewal_value, contracts_not_entered}, untagged_revenue, schools[{id, name, tier, active, renewal_due, tier_valid_until, students, teachers, parents, career_guidance, psychometric_tests, academic_results, profile_completion, revenue, contract_value, renewal_value}]}`; schools ordered by name. Money is a decimal string, `null` unless money_visible (finance tier); `contract_value` / `renewal_value` `null` = not entered. Read-only |
 | `PATCH /management/schools/{school_id}` *(new)* | Body `{contract_value?, renewal_value?}` (decimal ≥ 0, 2 dp, ≤ 999,999,999,999.99; explicit `null` clears; other keys `422`). Finance tier only: super_admin `403` "Finance access required"; others `403` "Management access required". `404` "School not found". `200` `{id, contract_value, renewal_value}`. Row lock; one `mgmt.school_value` audit row (changed fields, before/after) in the same transaction; nothing written when unchanged |
 | `POST /management/ledger`, `PATCH /management/ledger/{id}` *(changed)* | New optional `school_id`: only on income entries of the `school` vertical (`422` on `school_id` "A school is only for School projects income" / "Choose a school from the list"); a reversal copies it. `LedgerEntryOut` gains `school {id, name} | null`; `GET /management/ledger/options` gains `schools[{id, name}]`. Existing callers that omit it are unchanged |
+
+## 12ED. Management meetings + minutes chain (`mgmt-029`) — addendum, 2026-10-14
+
+- **Basis:** `DEC-SCOPE-216` (MM1–MM14). Design spec `docs/superpowers/specs/2026-10-14-mgmt-029-management-meetings-design.md`.
+  Migration `0161_management_meetings`: `management_meetings`, `management_meeting_participants`, nullable
+  `management_discussions.meeting_id`. Access per RBAC §2.141. Unknown meeting `404` "Meeting not found".
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/meetings` | `?date_from&date_to` (IST days, both or neither, ≤ 62 days, else `422`), `kind`, `status`. Without dates: today. `{items[{id, title, kind, starts_at, mode, location, meeting_url, status, participant_count}], date_from, date_to, today}` by start time |
+| `GET /management/meetings/options` | `{users}` — active staff (the same shape as discussions' options) |
+| `POST /management/meetings` | `{title, kind, starts_at, mode?, location?, meeting_url?, agenda?, participant_ids?}` → `201` detail; `status` is refused (`422`). Field `422`s: non-`http(s)` link, inactive / non-staff participant, start outside ±366 days |
+| `GET /management/meetings/{id}` | Detail: the row + `agenda, minutes, minutes_recorded_at, participants, decisions[{id, decision, responsible, deadline, status, tasks[]}], tasks[{id, title, owner, priority, deadline, status}], progress{done, total}, created_by, updated_by, created_at, updated_at` |
+| `PATCH /management/meetings/{id}` | Partial; `status` accepts only `cancelled`. Cancelled meeting `409`; a completed meeting's time change or cancel `409`; no change records nothing |
+| `POST /management/meetings/{id}/minutes` | `{minutes}` (2–20 000) → `200` detail; before the start or cancelled `409`; first record completes the meeting |
+| `POST /management/meetings/{id}/decisions` | `{decision, responsible_user_id?, deadline?, topic?}` → `201` detail; a mgmt-027 discussion with `meeting_id`. No minutes / cancelled `409`; mgmt-027's field `422`s |
+| `POST /management/meetings/{id}/tasks` | `{title, owner_user_id, priority?, deadline, decision_id?}` → `201` detail; a mgmt-028 task (`source` meeting, or decision). `decision_id` not of this meeting `422`; no minutes / cancelled `409`; mgmt-028's field `422`s |
+| `GET /me/management-meetings` | Any signed-in user: their own meetings from the last 7 IST days on, `{items[{id, title, kind, starts_at, mode, location, meeting_url, agenda, status}]}` — never minutes or people |
+| `GET /management/discussions*` (additive) | Every discussion row gains `meeting_id` (null unless recorded from a meeting's minutes) |
 
 ## 13. Traceability check
 
