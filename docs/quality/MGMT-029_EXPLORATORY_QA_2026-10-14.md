@@ -3,7 +3,7 @@
 - **Build:** `feature/mgmt-029` after merging `origin/main` (mgmt-015, mgmt-026), Docker Compose project `mgmt029`
   (web `localhost:13029`, api `localhost:18029`), seeded demo accounts. Browser: Playwright Chromium (isolated; no shared Chrome).
 - **Roles exercised:** partner (`partner.one@edusphere.local`), super admin, accountant, a fresh partnership-head staff user, signed out.
-- **Spec:** `docs/superpowers/specs/2026-10-14-mgmt-029-management-meetings-design.md` (MM1–MM14), `DEC-SCOPE-214`.
+- **Spec:** `docs/superpowers/specs/2026-10-14-mgmt-029-management-meetings-design.md` (MM1–MM14), `DEC-SCOPE-216`.
 
 ## Scenarios (33 scripted checks + the e2e flow, all PASS on the final build)
 

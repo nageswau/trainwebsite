@@ -2232,7 +2232,7 @@ Counts only, no personal data; nothing else changes.
 - A closed plan refuses item writes and task creation (`409`) until its status is changed back.
 - Audit kind `mgmt.plan` (operational, field names only — never item text or targets); verbs `create`, `update`, `delete`.
 
-### 2.139 Management meetings *(added 2026-10-14 — `DEC-SCOPE-214`, `mgmt-029`)*
+### 2.141 Management meetings *(added 2026-10-14 — `DEC-SCOPE-216`, `mgmt-029`)*
 
 | Role | `GET`/`POST /management/meetings`, `GET …/options`, `GET`/`PATCH …/{id}`, `POST …/{id}/minutes`, `…/decisions`, `…/tasks` | `GET /me/management-meetings` |
 |---|---|---|

@@ -8387,7 +8387,7 @@ full repository regression is deferred to its own session.
 | PN11 | Concurrency | Every write locks the plan row; a concurrent create of the same month `409` |
 | PN12–PN16 | Order, removal, UI, logs, numbering | Vertical order then append order; `DELETE` item `204` (its tasks stay); `/management/plans` + `/management/plans/{YYYY-MM}`; logs carry ids and field names only |
 
-### DEC-SCOPE-214 — Management meetings + minutes chain, Q-28 (`mgmt-029`)
+### DEC-SCOPE-216 — Management meetings + minutes chain, Q-28 (`mgmt-029`)
 
 **Evidence:** `EVID-017` §29 "Management meetings" (Meeting Calendar; Partner / Department / School / University / Agent / Recruiter
 meetings and Marketing reviews; "Meeting → Minutes → Decision → Task → Deadline → Completion") and §31's "Today's Meetings" panel
@@ -8398,7 +8398,7 @@ the owner's standing instruction to proceed with recommended answers.
 **Status:** built on `feature/mgmt-029`; focused tests green (QA evidence `docs/quality/MGMT-029_EXPLORATORY_QA_2026-10-14.md`); the
 full repository regression is deferred to its own session.
 
-**Numbering:** migration `0161_management_meetings`; API §12EB; RBAC §2.139 (after mgmt-026's `DEC-SCOPE-213` / §12EA / §2.138). Drafted
+**Numbering:** migration `0161_management_meetings`; API §12ED; RBAC §2.141 (after mgmt-026's `DEC-SCOPE-213` / §12EA / §2.138; `DEC-SCOPE-214` / §12EB / §2.139 are claimed by mgmt-022 and `215` / §12EC / §2.140 by mgmt-023). Drafted
 as `0159`; mgmt-015 and mgmt-026 merged first. Spec `docs/superpowers/specs/2026-10-14-mgmt-029-management-meetings-design.md`.
 
 | # | Point | Recommended default (`UNVERIFIED`) |

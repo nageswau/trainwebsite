@@ -3215,11 +3215,11 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `DELETE /management/plans/{month}/items/{id}` | `204`; tasks made from it stay; closed `409` |
 | `POST /management/plans/{month}/items/{id}/tasks` | `{owner_user_id, priority?, deadline}` → `201` mgmt-028 task (`source: "plan"`); mgmt-028's owner/deadline `422`s; closed `409` |
 
-## 12EB. Management meetings + minutes chain (`mgmt-029`) — addendum, 2026-10-14
+## 12ED. Management meetings + minutes chain (`mgmt-029`) — addendum, 2026-10-14
 
-- **Basis:** `DEC-SCOPE-214` (MM1–MM14). Design spec `docs/superpowers/specs/2026-10-14-mgmt-029-management-meetings-design.md`.
+- **Basis:** `DEC-SCOPE-216` (MM1–MM14). Design spec `docs/superpowers/specs/2026-10-14-mgmt-029-management-meetings-design.md`.
   Migration `0161_management_meetings`: `management_meetings`, `management_meeting_participants`, nullable
-  `management_discussions.meeting_id`. Access per RBAC §2.139. Unknown meeting `404` "Meeting not found".
+  `management_discussions.meeting_id`. Access per RBAC §2.141. Unknown meeting `404` "Meeting not found".
 
 | Method/Path | Notes / status codes |
 |---|---|

@@ -1,7 +1,7 @@
 # mgmt-029 — Management meetings + minutes chain — design
 
 - **Feature:** `mgmt-029` (`MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-029). Depends on mgmt-027 (PR #248) and mgmt-028 (PR #250),
-  both merged on `main@8f66a2b6`. Re-chained after mgmt-015 (`0159`) and mgmt-026 (`0160`): `DEC-SCOPE-214`, API §12EB, RBAC §2.139.
+  both merged on `main@8f66a2b6`. Re-chained after mgmt-015 (`0159`) and mgmt-026 (`0160`): `DEC-SCOPE-216`, API §12ED, RBAC §2.141.
 - **Evidence:** `EVID-017` §29 (source lines 1133–1155: "Meeting Calendar"; Partner / Department / School / University / Agent /
   Recruiter meetings and Marketing reviews; "Every meeting should connect to: Meeting → Minutes → Decision → Task → Deadline →
   Completion"), §31's "📅 Today's Meetings" home panel (line 1227, built by mgmt-031 from this item), Management M13/M14
