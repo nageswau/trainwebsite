@@ -23,7 +23,7 @@ from app.services import partnership_universities as svc
 router = APIRouter(prefix="/partnership", tags=["partnership-pipeline"])
 
 
-@router.post("/universities/{university_id}/stage", response_model=UniversityEnvelope)
+@router.post("/universities/{university_id}/stage", response_model=UniversityEnvelope, response_model_exclude_unset=True)
 async def move_stage(university_id: UUID, payload: UniversityStageMove, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """PS4: any stage; backward needs a note; a stale `from_stage` is 409 `stage_changed` (logged as a conflict)."""
     uni, team = await _locked(db, user, university_id, "can_move_stage", "stage")
@@ -50,13 +50,13 @@ async def _set_lost(university_id: UUID, user: User, db: AsyncSession, reason: s
     return {"university": await svc.detail_out(db, user, uni, team)}
 
 
-@router.post("/universities/{university_id}/lost", response_model=UniversityEnvelope)
+@router.post("/universities/{university_id}/lost", response_model=UniversityEnvelope, response_model_exclude_unset=True)
 async def mark_lost(university_id: UUID, payload: UniversityStageReason, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """AC3: Lost/Closed needs a reason; the stage is kept."""
     return await _set_lost(university_id, user, db, payload.reason, lost=True)
 
 
-@router.post("/universities/{university_id}/reopen", response_model=UniversityEnvelope)
+@router.post("/universities/{university_id}/reopen", response_model=UniversityEnvelope, response_model_exclude_unset=True)
 async def reopen(university_id: UUID, payload: UniversityStageReason, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """PS6: the head (or super_admin) reopens; the university is back at the stage it was lost at."""
     return await _set_lost(university_id, user, db, payload.reason, lost=False)

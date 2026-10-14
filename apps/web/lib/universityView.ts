@@ -17,6 +17,9 @@ export type ViewProfile = {
   course_levels: string[];
   popular_programs: string[];
   rankings: Ranking[];
+  logo_url: string | null; // dtu-001
+  campuses: string[];
+  fee_structure: string | null;
 };
 export type ViewContact = {
   id: string;
@@ -50,6 +53,9 @@ export type ViewCourse = {
   scholarships: { id: string; title: string; amount: string }[];
   application_process: string | null;
   deadline: string | null;
+  campus: string | null; // dtu-001
+  fee_text: string | null;
+  intake_text: string | null;
 };
 export type ViewDocument = { id: string; kind: string; title: string; current_version: number; updated_at: string };
 export type ViewApplication = { id: string; reference: string | null; student_name: string | null; intake: string; status: string; next_action: string | null; updated_at: string };

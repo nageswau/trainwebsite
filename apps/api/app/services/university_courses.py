@@ -31,7 +31,7 @@ PAIRS = (("tuition_amount", "tuition_currency", "tuition fee"), ("application_fe
 COMMISSION_COLUMNS = ("commission_percent", "commission_amount", "commission_currency")
 FIELDS = (
     *REQUIRED, "tuition_amount", "tuition_currency", "application_fee", "application_fee_currency", "intakes", "entry_requirements", "english_test",
-    "english_score", "scholarship_ids", "application_process", "deadline", "active", *COMMISSION_COLUMNS,
+    "english_score", "scholarship_ids", "application_process", "deadline", "campus", "fee_text", "intake_text", "active", *COMMISSION_COLUMNS,
 )  # fmt: skip
 ORDER = (OverseasCourse.title, OverseasCourse.level, OverseasCourse.id)
 
@@ -135,7 +135,7 @@ def course_out(user: User, course: OverseasCourse, scholarships: dict, can_edit:
     payload = {
         "id": course.id,
         "university_id": course.university_id,
-        **{k: getattr(course, k) for k in ("title", "level", "category", "duration", "tuition_fee", "intake", "tuition_currency", "application_fee_currency")},
+        **{k: getattr(course, k) for k in ("title", "level", "category", "duration", "tuition_fee", "intake", "tuition_currency", "application_fee_currency", "campus", "fee_text", "intake_text")},
         "tuition_amount": _money(course.tuition_amount),
         "application_fee": _money(course.application_fee),
         "intakes": course.intakes,

@@ -16,6 +16,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import AgentStudent, AgentStudentShortlistEntry, AgentUniversity, AuditLog, User
 from app.schemas import AgentUniversityCreate, AgentUniversityUpdate, ShortlistEntryCreate, ShortlistEntryUpdate
+from app.services import agent_partner_universities as partners
 from app.services.agent_orgs import lock_active_org
 from app.services.agent_shortlist import (
     DUPLICATE_UNIVERSITY,
@@ -51,6 +52,26 @@ async def _commit(db: AsyncSession, conflict: str) -> None:
     except IntegrityError:
         await db.rollback()
         raise HTTPException(409, conflict) from None
+
+
+@router.get("/partner-universities")
+async def partner_universities(
+    q: str | None = Query(None, max_length=100),
+    country: UUID | None = None,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """dtu-001: the published catalogue for agents (Master and staff); the agent commission for a Master only (DT4)."""
+    _gate(user)
+    return await partners.page(db, user, q=q, country=country, limit=limit, offset=offset)
+
+
+@router.get("/partner-universities/{university_id}")
+async def partner_university(university_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _gate(user)
+    return await partners.detail(db, user, university_id)
 
 
 @router.get("/universities")

@@ -19,6 +19,7 @@ function startValues(c: Course | null) {
     tuition_amount: c?.tuition_amount ?? "", tuition_currency: c?.tuition_currency ?? "", application_fee: c?.application_fee ?? "",
     application_fee_currency: c?.application_fee_currency ?? "", english_test: c?.english_test ?? "", english_score: c?.english_score ?? "",
     entry_requirements: c?.entry_requirements ?? "", application_process: c?.application_process ?? "", deadline: c?.deadline ?? "",
+    campus: c?.campus ?? "", fee_text: c?.fee_text ?? "", intake_text: c?.intake_text ?? "", // dtu-001
   };
 }
 type Values = ReturnType<typeof startValues>;
@@ -136,6 +137,9 @@ export default function CourseForm({ universityId, options, course = null, canSe
             </select>
           ))}
           {field("category", "Category (required)", <input id={`${prefix}-category`} value={values.category} maxLength={80} onChange={set("category")} placeholder="Computer Science" />)}
+          {field("campus", "Campus", <input id={`${prefix}-campus`} value={values.campus} maxLength={200} onChange={set("campus")} placeholder="Cardiff" />)}
+          {field("fee_text", "Fee (as published)", <input id={`${prefix}-fee_text`} value={values.fee_text} maxLength={300} onChange={set("fee_text")} placeholder="GBP 15,000 per year" />)}
+          {field("intake_text", "Intake (as published)", <input id={`${prefix}-intake_text`} value={values.intake_text} maxLength={200} onChange={set("intake_text")} placeholder="Sep, Jan" />)}
           {field("duration", "Duration (required)", <input id={`${prefix}-duration`} value={values.duration} maxLength={80} onChange={set("duration")} placeholder="1 year" />)}
         </div>
         <fieldset style={{ ...plain, display: "grid", gap: 6 }}>

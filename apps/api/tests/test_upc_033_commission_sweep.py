@@ -59,11 +59,19 @@ def _keys(value) -> list[str]:
     return []
 
 
-def _leaks(response) -> list[str]:
+# dtu-001 (DEC-SCOPE-209 DT4): the agent commission (EduSphere -> agent Master) is a separate figure; overseas_admin may see it on the
+# university master. It stays a leak for every other caller, and U2's sentinels are untouched.
+AGENT_COMMISSION_VIEWERS = {"ovs_admin"}
+
+
+def _leaks(response, role: str | None = None) -> list[str]:
     body = response.text
     found = [f"sentinel {name}={value}" for name, value in SENTINELS.items() if value in body]
     if response.headers.get("content-type", "").startswith("application/json"):
-        found += [f"key {k}" for k in _keys(json.loads(body)) if "commission" in k.lower() or k == "factors"]
+        found += [
+            f"key {k}" for k in _keys(json.loads(body))
+            if (k == "factors" or "commission" in k.lower()) and not (k.startswith("agent_commission") and role in AGENT_COMMISSION_VIEWERS)
+        ]
     return found
 
 
@@ -75,7 +83,7 @@ async def test_no_commission_reaches_a_non_commission_role(client, db_session, p
     leaks = []
     for role in OTHER_ROLES:
         response = await client.get(API + _fill(path, w), headers=headers(None if role == "anon" else w["users"][role]))
-        leaks += [f"{role} ({response.status_code}): {leak}" for leak in _leaks(response)]
+        leaks += [f"{role} ({response.status_code}): {leak}" for leak in _leaks(response, role)]
     assert not leaks, " | ".join(leaks)
 
 

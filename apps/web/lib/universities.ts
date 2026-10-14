@@ -5,6 +5,7 @@ import type { UniversityProbability } from "@/lib/partnershipExpected";
 import type { UniversityExpected } from "@/lib/partnershipMilestones";
 import type { UniversityPipeline } from "@/lib/partnershipPipeline";
 import { PARTNERSHIP_HEAD_NAV, PARTNERSHIP_NAV, PORTAL_NAV, SUPER_ADMIN_NAV, type NavItem } from "@/lib/navigation";
+import type { AgentCommission } from "@/lib/agentCommission";
 import { ROLE_LABEL } from "@/lib/partnership";
 import type { ManagerOption, ManagerRef } from "@/lib/telecaller";
 
@@ -19,6 +20,7 @@ export type UniversityRow = {
   id: string; university_code: string; slug: string; name: string; institution_type: string; country: UniversityCountry; city: string;
   priority: string | null; partnership_potential: string | null; relationship_strength: string | null; primary_manager: ManagerRef | null; backup_manager: ManagerRef | null;
   catalogue_visible: boolean; active: boolean; stage: string; stage_label: string; lost: boolean; permissions: UniversityPermissions;
+  logo_url: string | null; // dtu-001
 };
 export type University = UniversityRow & {
   ownership_type: string | null; state_region: string | null; website: string | null; course_levels: string[]; popular_programs: string[];
@@ -27,6 +29,8 @@ export type University = UniversityRow & {
   follow_up: UniversityFollowUpData; // upc-020 TK14/TK15
   expected: UniversityExpected; // upc-008 §5
   probability: UniversityProbability; // upc-023 §24
+  campuses: string[]; fee_structure: string | null; // dtu-001
+  agent_commission?: AgentCommission | null; // dtu-001: the key is absent unless super_admin / overseas_admin
 };
 // upc-004: a BDM University organization linked to this master record (text only: partnership roles cannot open BDM records).
 export type LinkedBdmOrganization = { id: string; code: string; name: string; city: string; bdm_type: string; assigned_bdm_name: string; archived: boolean };

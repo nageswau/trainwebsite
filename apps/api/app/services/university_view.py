@@ -38,13 +38,13 @@ SECTIONS = {
 }
 PROFILE_FIELDS = (
     "id", "university_code", "name", "institution_type", "ownership_type", "state_region", "city", "website", "overview", "eligibility",
-    "course_levels", "popular_programs",
+    "course_levels", "popular_programs", "logo_url", "campuses", "fee_structure",
 )  # fmt: skip
 CONTACT_FIELDS = ("id", "name", "designation", "department", "email", "phone", "whatsapp", "linkedin", "preferred_channel", "is_primary")
 COURSE_FIELDS = (
     "id", "title", "level", "category", "duration", "tuition_fee", "tuition_amount", "tuition_currency", "application_fee",
     "application_fee_currency", "intakes", "intake", "entry_requirements", "english_test", "english_score", "scholarships",
-    "application_process", "deadline",
+    "application_process", "deadline", "campus", "fee_text", "intake_text",
 )  # fmt: skip
 MAX_CONTACTS = 50
 MAX_COURSES = 200

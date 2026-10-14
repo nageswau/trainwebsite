@@ -118,6 +118,7 @@ export default function UniversityForm({ university }: { university?: University
       institution_type: text(form, "institution_type"), ownership_type: optional(form, "ownership_type"), state_region: optional(form, "state_region"),
       website: optional(form, "website"), course_levels: form.getAll("course_levels").map(String),
       popular_programs: text(form, "popular_programs").split(",").map((p) => p.trim()).filter(Boolean),
+      logo_url: optional(form, "logo_url"), campuses: text(form, "campuses").split("\n").map((c) => c.trim()).filter(Boolean), fee_structure: optional(form, "fee_structure"), // dtu-001
       international_office: optional(form, "international_office"), existing_relationship: optional(form, "existing_relationship"),
       priority: optional(form, "priority"), partnership_potential: optional(form, "partnership_potential"),
       relationship_strength: optional(form, "relationship_strength"),
@@ -239,6 +240,16 @@ export default function UniversityForm({ university }: { university?: University
           <input id="uni-popular_programs" name="popular_programs" maxLength={1700} placeholder="IT, Business, Engineering, Healthcare"
             defaultValue={u?.popular_programs.join(", ") ?? ""} aria-describedby="uni-programs-hint" {...invalid("popular_programs")} />
           <small id="uni-programs-hint" className="muted">Separate areas with commas (up to 20).</small>
+        </Field>
+        <Field id="uni-logo_url" label="Logo URL" error={errors.logo_url}>
+          <input id="uni-logo_url" name="logo_url" maxLength={500} placeholder="/universities/logos/example.png or https://…" defaultValue={u?.logo_url ?? ""} {...invalid("logo_url")} />
+        </Field>
+        <Field id="uni-campuses" label="Campuses" error={errors.campuses}>
+          <textarea id="uni-campuses" name="campuses" rows={3} aria-describedby="uni-campuses-hint" defaultValue={u?.campuses?.join("\n") ?? ""} {...invalid("campuses")} />
+          <small id="uni-campuses-hint" className="muted">One campus per line (up to 20).</small>
+        </Field>
+        <Field id="uni-fee_structure" label="Fee structure" error={errors.fee_structure}>
+          <textarea id="uni-fee_structure" name="fee_structure" rows={3} maxLength={4000} defaultValue={u?.fee_structure ?? ""} {...invalid("fee_structure")} />
         </Field>
         <Field id="uni-international_office" label="International office contact" error={errors.international_office}>
           <textarea id="uni-international_office" name="international_office" rows={2} maxLength={1000} defaultValue={u?.international_office ?? ""} {...invalid("international_office")} />

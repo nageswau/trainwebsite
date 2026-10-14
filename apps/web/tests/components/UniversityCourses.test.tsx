@@ -14,7 +14,7 @@ const course = (over: Partial<Course> = {}): Course => ({
   id: "c1", university_id: "u1", title: "MSc Cyber Security", level: "PG", category: "Computer Science", duration: "1 year", tuition_fee: "GBP 18,000",
   intake: "Jan, Sep", tuition_amount: "18000.00", tuition_currency: "GBP", application_fee: "75.00", application_fee_currency: "GBP", intakes: ["Jan", "Sep"],
   entry_requirements: "2:1 honours degree", english_test: "IELTS", english_score: "6.5", scholarships: [{ id: "s1", title: "Global Award", amount: "£5,000" }],
-  application_process: "Apply online", deadline: "2027-06-30", active: true, permissions: { can_edit: true }, ...over,
+  application_process: "Apply online", deadline: "2027-06-30", active: true, campus: null, fee_text: null, intake_text: null, permissions: { can_edit: true }, ...over,
 });
 const page = (items: Course[], can_edit = true): CoursePage => ({ items, total: items.length, limit: 50, offset: 0, can_edit });
 const options = { scholarships: [{ id: "s1", title: "Global Award", amount: "£5,000" }] };

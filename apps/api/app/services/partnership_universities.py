@@ -34,6 +34,7 @@ from app.models import (
 )
 from app.partnership_stages import PROBABILITY, effective_probability, label_of
 from app.services import partnership_tasks
+from app.services.agent_commission_access import with_agent_commission
 from app.services.partnership import partnership_context
 from app.services.partnership_milestones import expected_out
 from app.services.partnership_pipeline import pipeline_out
@@ -251,6 +252,7 @@ def row_out(user: User, uni: University, country: Country, primary: User | None,
         "institution_type": uni.institution_type,
         "country": _country(country),
         "city": uni.city,
+        "logo_url": uni.logo_url,
         "priority": uni.priority,
         "partnership_potential": uni.partnership_potential,
         "relationship_strength": uni.relationship_strength,
@@ -273,7 +275,7 @@ async def detail_out(db: AsyncSession, user: User, uni: University, team: frozen
     country = await db.get_one(Country, uni.country_id)  # NOT NULL FK
     primary = await db.get(User, uni.primary_manager_user_id) if uni.primary_manager_user_id else None
     backup = await db.get(User, uni.backup_manager_user_id) if uni.backup_manager_user_id else None
-    return {
+    return with_agent_commission(user, uni, {
         **row_out(user, uni, country, primary, backup, team),
         **{
             k: getattr(uni, k)
@@ -285,12 +287,14 @@ async def detail_out(db: AsyncSession, user: User, uni: University, team: frozen
                 "popular_programs",
                 "international_office",
                 "existing_relationship",
+                "fee_structure",
                 "overview",
                 "eligibility",
                 "created_at",
                 "updated_at",
             )
         },
+        "campuses": uni.campuses or [],
         "rankings": [{"system": r.system, "other_name": r.other_name, "year": r.year, "rank": r.rank} for r in await rankings_of(db, uni.id)],
         "application_count": await application_count(db, uni.id),
         "pipeline": pipeline_out(uni),
@@ -298,7 +302,7 @@ async def detail_out(db: AsyncSession, user: User, uni: University, team: frozen
         "follow_up": await partnership_tasks.follow_up_out(db, uni.id),  # upc-020 TK14/TK15
         "expected": expected_out(uni),  # upc-008 §5
         "probability": probability_out(uni),  # upc-023 §24
-    }
+    })
 
 
 def probability_out(uni: University) -> dict:
@@ -381,7 +385,8 @@ async def linked_bdm_organizations(db: AsyncSession, university_id: UUID) -> lis
 
 
 def audit(db: AsyncSession, user: User, action: str, university_id: UUID, metadata: dict | None = None) -> None:
-    """Same transaction as the write (fail closed); ids, codes and field names only."""
+    """Same transaction as the write (fail closed); ids, codes and field names only -- except `agent_commission`, which stores old/new
+    values (spec §6, DEC-SCOPE-209)."""
     db.add(AuditLog(user_id=user.id, action=f"university.{action}", entity_type="university", entity_id=str(university_id), metadata_json=metadata or {}))
 
 

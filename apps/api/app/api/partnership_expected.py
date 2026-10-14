@@ -105,7 +105,7 @@ async def expected(
     }  # fmt: skip
 
 
-@router.put("/universities/{university_id}/probability", response_model=UniversityEnvelope)
+@router.put("/universities/{university_id}/probability", response_model=UniversityEnvelope, response_model_exclude_unset=True)
 async def set_probability(university_id: UUID, payload: UniversityProbabilityPut, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """EX2-EX4: set (0-100, with a reason) or clear (null) the manual override; the stage probability is unchanged."""
     uni, team = await _locked(db, user, university_id, "can_move_stage", "probability")

@@ -2154,6 +2154,28 @@ Counts only, no personal data; nothing else changes.
 - Trainer names and per-trainer counts/shares (staff performance, management only); no student personal data. No audit row (no write).
   The trainer, IT admin and placement routes and their scopes are unchanged.
 
+### 2.134 Agent commission & Partner Universities *(added 2026-10-13 — `DEC-SCOPE-209`, `dtu-001`)*
+
+| Role | `PUT` / `DELETE /partnership/universities/{id}/agent-commission` | `agent_commission` key on the university master detail (`GET/PATCH/POST /partnership/universities…`) | `GET /workflows/overseas/agent/crm/partner-universities[/{id}]` |
+|---|---|---|---|
+| `super_admin` | yes | present | `403` (not an agent) |
+| `overseas_admin` (overseas division) | yes | present | `403` |
+| agent **Master** (approved agency) | `403` | n/a (no master access) | yes; `agent_commission` present |
+| agent **staff** of an active agency | `403` | n/a | yes; the key is **absent** |
+| agent of a pending / suspended agency | `403` | n/a | `403` |
+| `partnership_manager`, `partnership_head` | `403` | key **absent** (envelope without it) | `403` |
+| `partner`, `accountant`, `it_admin`, counselors, students, university reps, every other role | `403` | no access / key absent | `403` |
+| signed out | `401` | `401` | `401` |
+
+- `PUT` needs a body (`{percent}` or `{amount, currency}`, optional `note`); a missing or `null` body is `422`. `DELETE` clears. Body validation (`422`) runs before the role check, so a non-editor sending an invalid body gets `422`, not `403`; signed-out requests still get `401`.
+  Unknown university `404`; **inactive university `409`** (UM10). Each real change writes `AuditLog` `university.agent_commission`
+  with the old and new values (the only university audit that stores values); no change, no audit row.
+- Partner Universities lists only `active` + `catalogue_visible` universities; a hidden or inactive one is `404`. The key is absent
+  (not `null`) for everyone who may not see it, including on every public, counselor, university-rep, BDM, list and 360-view response.
+- `it_admin` has no university access (DT13). `partnership_access.COMMISSION_ROLES` and `strip_commission` are unchanged (DT7).
+  The loader (`python -m app.direct_tieups.load`) is a server-side operator command, not a role; it audits `university.direct_tieup_load`
+  and `country.direct_tieup_publish` (ids and field names only).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

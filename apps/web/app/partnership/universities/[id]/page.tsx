@@ -3,7 +3,9 @@ import type { ReactNode } from "react";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import BdmStageHistory from "@/components/BdmStageHistory";
+import AgentCommissionCard from "@/components/AgentCommissionCard";
 import CommissionLedger from "@/components/CommissionLedger";
+import UniversityLogo from "@/components/UniversityLogo";
 import MeetingTable from "@/components/MeetingTable";
 import PartnershipFunnel from "@/components/PartnershipFunnel";
 import PartnershipHealth from "@/components/PartnershipHealth";
@@ -54,6 +56,7 @@ import type { ActivityRow } from "@/lib/universityActivity";
 import { type Agreement, AGREEMENT_READERS, type AgreementOptions, agreementOptionsUrl, agreementsUrl } from "@/lib/universityAgreements";
 import { documentsUrl, type UniversityDocument } from "@/lib/universityDocuments";
 import { MEETING_READERS, type MeetingPage, MEETINGS_PATH, MEETINGS_URL, newMeetingPath, SCHEDULER_ROLES } from "@/lib/meetings";
+import { AGENT_COMMISSION_EDITORS } from "@/lib/agentCommission";
 import { COMMISSION_ROLES, type CourseOptions, courseOptionsUrl, type CoursePage, coursesUrl } from "@/lib/courseMaster";
 import { newVisitPath, PLANNER_ROLES, VISIT_READERS, VISITS_PATH, VISITS_URL, type VisitRow } from "@/lib/visits";
 import { TASK_CREATORS, TASK_READERS, TASKS_PATH } from "@/lib/partnershipTasks";
@@ -122,7 +125,7 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
         <div className="portal-title">
           <div>
             <div className="eyebrow"><Link href={UNIVERSITIES_PATH}>University Master</Link> · {u.university_code}</div>
-            <h2>{u.name}</h2>
+            <h2 style={{ display: "flex", alignItems: "center", gap: 12 }}><UniversityLogo name={u.name} logoUrl={u.logo_url} decorative />{u.name}</h2>
             <p className="muted">{[u.city, u.country.name].filter(Boolean).join(", ")} · <span className="badge">{visibilityLabel(u)}</span>
               {u.relationship_strength && <> <span className="badge">Relationship: {label(RELATIONSHIP_STRENGTHS, u.relationship_strength)}</span></>}</p>
           </div>
@@ -142,6 +145,8 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
               ["Website", u.website && <a href={u.website} target="_blank" rel="noopener noreferrer">{u.website}</a>],
               ["Course levels", u.course_levels.join(", ")],
               ["Popular programmes", u.popular_programs.join(", ")],
+              ["Campuses", u.campuses.join("\n")],
+              ["Fee structure", u.fee_structure],
               ["International office", u.international_office],
               ["Existing relationship", label(RELATIONSHIPS, u.existing_relationship)],
               ["Priority", u.priority],
@@ -179,6 +184,7 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
           {/* upc-028: an active partner's health score, carried by the same performance read */}
           {performance?.health && <PartnershipHealth health={performance.health} />}
           {ledger && <CommissionLedger ledger={ledger} today={istToday()} />}
+          {"agent_commission" in u && <AgentCommissionCard key={JSON.stringify(u.agent_commission ?? null)} universityId={u.id} value={u.agent_commission ?? null} canEdit={AGENT_COMMISSION_EDITORS.has(user.role)} />}
           {agreements && (
             <UniversityAgreements universityId={u.id} agreements={agreements.items} options={agreementOptions} canManage={u.permissions.can_manage_agreements} />
           )}

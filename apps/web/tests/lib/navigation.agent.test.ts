@@ -11,6 +11,7 @@ describe("agentNavFor", () => {
       "/overseas/agent/dashboard",
       "/overseas/agent/students",
       "/overseas/agent/universities",
+      "/overseas/agent/partner-universities",
       "/overseas/agent/applications",
       "/overseas/agent/documents",
       "/overseas/agent/tasks",
@@ -21,6 +22,7 @@ describe("agentNavFor", () => {
       "/overseas/agent/dashboard",
       "/overseas/agent/students",
       "/overseas/agent/universities",
+      "/overseas/agent/partner-universities",
       "/overseas/agent/applications",
       "/overseas/agent/documents",
       "/overseas/agent/tasks",
@@ -39,6 +41,12 @@ describe("agentNavFor", () => {
   it("shows Universities to both roles (AGN-007)", () => {
     expect(nav.map((i) => i.href)).toContain("/overseas/agent/universities");
     expect(agentNavFor(nav, "staff").map((i) => i.href)).toContain("/overseas/agent/universities");
+  });
+
+  it("shows Partner Universities to both roles, after Universities (dtu-001)", () => {
+    expect(nav.find((i) => i.href === "/overseas/agent/partner-universities")?.label).toBe("Partner Universities");
+    expect(agentNavFor(nav, "master").map((i) => i.href)).toContain("/overseas/agent/partner-universities");
+    expect(agentNavFor(nav, "staff").map((i) => i.href)).toContain("/overseas/agent/partner-universities");
   });
 
   it("leaves a Master's nav unchanged", () => {

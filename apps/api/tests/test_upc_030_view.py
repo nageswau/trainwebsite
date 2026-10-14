@@ -17,13 +17,13 @@ from tests.upc003_helpers import as_role, catalogue_country, create, login, make
 
 PROFILE_KEYS = {
     "id", "university_code", "name", "institution_type", "ownership_type", "country", "state_region", "city", "website", "overview",
-    "eligibility", "course_levels", "popular_programs", "rankings",
+    "eligibility", "course_levels", "popular_programs", "logo_url", "campuses", "fee_structure", "rankings",
 }  # fmt: skip
 CONTACT_KEYS = {"id", "name", "designation", "department", "role", "email", "phone", "whatsapp", "linkedin", "preferred_channel", "is_primary"}
 COURSE_KEYS = {
     "id", "title", "level", "category", "duration", "tuition_fee", "tuition_amount", "tuition_currency", "application_fee",
     "application_fee_currency", "intakes", "intake", "entry_requirements", "english_test", "english_score", "scholarships",
-    "application_process", "deadline",
+    "application_process", "deadline", "campus", "fee_text", "intake_text",
 }  # fmt: skip
 DOCUMENT_KEYS = {"id", "kind", "title", "current_version", "updated_at"}
 APPLICATION_KEYS = {"id", "reference", "student_name", "intake", "status", "next_action", "updated_at"}
