@@ -44,6 +44,7 @@ function Level({ chain, data, page }: { chain: DrillChain; data: Drill; page: nu
   const range = { month: data.month, period: data.period };
   const path = data.breadcrumbs.map((crumb) => crumb.key);
   const audited = data.record !== null || (data.level !== null && AUDITED_LEVELS.has(data.level.key));
+  const payments = data.level?.key === "payment"; // one line per row: its date says more than a count of 1 (QA33-03, three columns fit a phone)
   return (
     <>
       <nav aria-label="Drill-down path" className="drill-path">
@@ -62,33 +63,36 @@ function Level({ chain, data, page }: { chain: DrillChain; data: Drill; page: nu
       <p className="muted">
         {data.label}: {formatCalendarDate(data.start)} to {formatCalendarDate(data.end)}. Counted income in rupees, the same lines as the {DRILL_LABEL[chain]} dashboard.
       </p>
-      <ul className="metric-grid snapshot-tiles money-tiles" aria-label="Drill-down figures">
+      <ul className="metric-grid snapshot-tiles money-tiles accounts-tiles" aria-label="Drill-down figures">
         <li className="metric"><span>{data.breadcrumbs.at(-1)?.name ?? data.chain_label}</span><strong>{formatInr(data.total)}</strong></li>
         <li className="metric"><span>Lines</span><strong>{data.count}</strong></li>
       </ul>
-      {data.record ? <Record record={data.record} /> : data.level && data.rows.length === 0 ? (
+      {data.record ? <Record record={data.record} /> : data.level && data.total_rows === 0 ? (
         <p className="empty" role="status">No counted {data.chain_label} in {data.period === "year" ? `the ${data.label.toLowerCase()}` : data.label}.</p>
+      ) : data.level && data.rows.length === 0 ? (
+        <p className="empty" role="status">
+          This page is past the last of {data.total_rows} {data.total_rows === 1 ? "row" : "rows"}.<Link className="kpi-link" href={drillHref(chain, range, path)}>First page</Link>
+        </p>
       ) : data.level && (
         <>
           <h3 id="drill-level">By {data.level.label.toLowerCase()}</h3>
           <div className="table-wrap" role="region" aria-labelledby="drill-level" tabIndex={0} style={{ overflowX: "auto" }}>
-            <table className="table" style={{ minWidth: 480 }}>
+            <table className="table" style={{ minWidth: 0 }}>
               <caption className="visually-hidden">By {data.level.label.toLowerCase()}</caption>
               <thead>
-                <tr><th scope="col">{data.level.label}</th><th scope="col">Lines</th><th scope="col">Latest</th><th scope="col">Amount</th></tr>
+                <tr><th scope="col">{data.level.label}</th><th scope="col">{payments ? "Date" : "Lines"}</th><th scope="col">Amount</th></tr>
               </thead>
               <tbody>
                 {data.rows.map((row) => (
                   <tr key={row.key}>
                     <th scope="row"><Link href={drillHref(chain, range, [...path, row.key])}>{row.name}</Link></th>
-                    <td>{row.count}</td>
-                    <td>{formatCalendarDate(row.latest)}</td>
-                    <td>{formatInr(row.amount)}</td>
+                    <td>{payments ? formatCalendarDate(row.latest) : row.count}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>{formatInr(row.amount)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr><th scope="row">Total</th><td>{data.count}</td><td /><td><strong>{formatInr(data.total)}</strong></td></tr>
+                <tr><th scope="row">Total</th><td>{payments ? "" : data.count}</td><td style={{ whiteSpace: "nowrap" }}><strong>{formatInr(data.total)}</strong></td></tr>
               </tfoot>
             </table>
           </div>

@@ -90,6 +90,26 @@ describe("mgmt-033 ManagementDrillDown", () => {
     expect(screen.queryByRole("table")).toBeNull();
   });
 
+  it("says a page past the last row is empty, not that nothing is recorded (QA33-01)", () => {
+    view({ data: drill({ rows: [], total_rows: 1, offset: 975 }), query: { ...QUERY, page: 40 } });
+    expect(screen.getByRole("status")).toHaveTextContent("This page is past the last of 1 row.");
+    expect(screen.queryByText(/No counted/)).toBeNull();
+    expect(screen.getByRole("link", { name: "First page" })).toHaveAttribute("href", `/management/drill/it?month=2026-05&period=month&path=${COURSE}`);
+  });
+
+  it("fits a phone: the figure tiles stack and the level table needs no sideways scroll (QA33-02, QA33-03)", () => {
+    view();
+    expect(screen.getByRole("list", { name: "Drill-down figures" })).toHaveClass("accounts-tiles");
+    const table = screen.getByRole("table", { name: "By batch" });
+    expect(table).toHaveStyle({ minWidth: "0" });
+    expect(within(table).getAllByRole("columnheader").map((th) => th.textContent)).toEqual(["Batch", "Lines", "Amount"]);
+    cleanup();
+    view({ data: drill({ level: { key: "payment", label: "Payment" }, rows: [{ key: "p9", name: "Enrolment fee · receipt RCP-1", amount: "30000.00", count: 1, latest: "2026-05-09" }], total_rows: 1 }) });
+    const payments = screen.getByRole("table", { name: "By payment" });
+    expect(within(payments).getAllByRole("columnheader").map((th) => th.textContent)).toEqual(["Payment", "Date", "Amount"]);
+    expect(within(payments).getByRole("row", { name: /RCP-1/ })).toHaveTextContent("09 May 2026");
+  });
+
   it("shows an error with a way back to the top of the chain", () => {
     view({ data: null, error: "Nothing to show for this selection in this period" });
     expect(screen.getByText("Nothing to show for this selection in this period")).toHaveClass("form-error");

@@ -29,8 +29,8 @@ test("the accountant drills IT Training revenue from the dashboard down to a pay
   for (const [depth, level] of levels.entries()) {
     const table = page.getByRole("table", { name: `By ${level}` });
     await expect(table).toBeVisible();
-    const amounts = await table.locator("tbody tr td:nth-child(4)").allTextContents();
-    const total = rupees(await table.locator("tfoot td:nth-child(4)").textContent());
+    const amounts = await table.locator("tbody tr td:nth-child(3)").allTextContents();
+    const total = rupees(await table.locator("tfoot td:nth-child(3)").textContent());
     if (!(await page.getByText(/^Showing /).isVisible())) expect(Math.abs(amounts.map(rupees).reduce((a, b) => a + b, 0) - total)).toBeLessThan(0.01); // AC1
     const first = table.locator("tbody tr").first().getByRole("link");
     const name = (await first.textContent()) ?? "";
