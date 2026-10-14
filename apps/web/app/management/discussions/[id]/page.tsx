@@ -8,6 +8,7 @@ import { ApiError, serverApi } from "@/lib/api";
 import { formatDateTimeIn, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 import type { ManagementMe } from "@/lib/management";
 import { DISCUSSIONS_API, DISCUSSIONS_HOME, formatDay, roleLabel, STATUS_LABEL, statusClass, type DiscussionDetail } from "@/lib/managementDiscussions";
+import { MEETINGS_HOME } from "@/lib/managementMeetings";
 
 // mgmt-027 (MD1-MD10): one discussion -- its 11 fields, attachments, and who recorded and last changed it.
 export default async function DiscussionPage({ params }: { params: Promise<{ id: string }> }) {
@@ -43,6 +44,7 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
     ["Deadline", day(discussion.deadline)],
     ["Status", <span key="s" className={statusClass(discussion.status)}>{STATUS_LABEL[discussion.status]}</span>],
     ["Follow-up date", day(discussion.follow_up_date)],
+    ...(discussion.meeting_id ? [["From meeting", <Link key="m" className="kpi-link" href={`${MEETINGS_HOME}/${discussion.meeting_id}`}>Open the meeting</Link>] as [string, ReactNode]] : []), // mgmt-029 (MM8)
     ["Recorded by", `${discussion.created_by?.full_name ?? "—"} · ${at(discussion.created_at)}`],
     ["Last changed by", `${discussion.updated_by?.full_name ?? "—"} · ${at(discussion.updated_at)}`],
   ];
