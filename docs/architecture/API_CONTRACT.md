@@ -3264,6 +3264,15 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/health?month=YYYY-MM` | `{month, previous_month, partial, scope ("business" \| "operational"), score (0–100 \| null), rag ("green" \| "amber" \| "red" \| null), factors[{key, label, tier ("finance" \| "operational"), weight, unit ("inr" \| "count" \| "percent"), current, previous, change, score, rag, points, note}]}`. Partners get 12 factors in §30 order (revenue, profit, cash_flow, sales_pipeline, student_growth, enrollment, agent_growth, school_growth, universities, productivity, marketing_roi, expenses); super_admin gets the 6 operational ones, scored on their own. Σ `points` = `score`. A factor that is not available has `score`/`points`/`rag` null and a `note`. Default month = the last complete IST month. A malformed month, one before January 2000 or after this month `422`; accountant and others `403`; signed out `401` |
 
+## 12EG. Partner home dashboard (mgmt-031) — addendum, 2026-10-14
+
+- **Basis:** `DEC-SCOPE-219` (HM1–HM14). Design spec `docs/superpowers/specs/2026-10-14-mgmt-031-partner-home-design.md`.
+  No migration. Access per RBAC §2.144. Read-only, a fixed number of statements; never queries a money figure for super_admin.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/home` | `{as_of, month, label, scope ("business" \| "operational"), snapshot{students, applications, enrollments, revenue?, expenses?, profit?, cash?{amount, month}}, urgent[{key ("overdue_tasks" \| "overdue_decisions" \| "red_health" \| "overdue_receivables"), label, count, amount?}], pending_decisions (DiscussionPage, first 5), meetings (MgmtMeetingPage, today), targets ({month, label, rows[PlanProgressRow] (first 5), row_total, free_text} \| null), financial_position?{receivables, receivables_overdue, pending_invoices{count, amount}, balance_month, cash_bank, payables, tax_liabilities}, growth{month, score, rag, factors[{key, label, change, rag}]}, my_tasks{items[TaskOut] (first 5), counts}, recent_discussions (DiscussionPage, first 5), next_plan{month, label, plan (PlanOut \| null)}}`. Each figure equals its page's endpoint (`/management/pnl`, `/accounts`, `/snapshot`, `/applications`, `/health`, `/discussions`, `/meetings`, `/tasks`, `/plans/{month}/progress`). The `?` keys are partners' only: for super_admin they are absent, not null. Accountant and others `403`; signed out `401` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

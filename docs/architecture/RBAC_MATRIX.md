@@ -2284,6 +2284,18 @@ Counts only, no personal data; nothing else changes.
 
 - Read-only; not audited. Weights and thresholds are code constants (Q-29 interim, BH14).
 
+### 2.144 Partner home dashboard *(added 2026-10-14 — `DEC-SCOPE-219`, `mgmt-031`)*
+
+| Role | `GET /management/home` | Money (revenue, expenses, profit, cash, financial position, overdue receivables) |
+|---|---|---|
+| `partner` | yes — the business home | yes |
+| `super_admin` | yes — the operational home (counts, lists, operational health) | no — never queried, keys absent from the response (M13) |
+| `accountant` | `403` "Operational access required"; their Command Center shows the pillars only | — |
+| every other role | `403` "Management access required" | — |
+| signed out | `401` | — |
+
+- Read-only; not audited. "My tasks" is the caller's own tasks; every other panel follows the tier rules of the page it summarises.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
