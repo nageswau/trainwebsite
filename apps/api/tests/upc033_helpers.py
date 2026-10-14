@@ -33,7 +33,9 @@ __all__ = ["COMMISSION_ROLES", "OTHER_ROLES", "ROLES", "SENTINELS", "headers", "
 API = "/api/v1"
 # Who calls (PX2). `pm_out` / `head_out` are the same role as `pm` / `head` on another partnership team.
 COMMISSION_ROLES = ("pm", "pm_out", "head", "head_out", "super")  # partnership_access.COMMISSION_ROLES
-OTHER_ROLES = ("anon", "ovs_admin", "it_admin", "bdm", "cns", "rep", "agent", "student")  # the sweep's non-commission callers (PX6)
+# mgmt-034 CS9 (M3, MG2): partners read university commission on the management pages only, so `partner` and `accountant` stay outside
+# every partnership route and see no commission in any body.
+OTHER_ROLES = ("anon", "ovs_admin", "it_admin", "bdm", "cns", "rep", "agent", "student", "partner", "accountant")  # the sweep's non-commission callers (PX6)
 ROLES = (*COMMISSION_ROLES, *OTHER_ROLES)
 
 MARK = "Zq033secret"  # in every planted commission text
@@ -101,6 +103,7 @@ async def world(client, db) -> dict:
         "ovs_admin": await _user(db, "overseas_admin", "overseas"), "it_admin": await _user(db, "it_admin", "it"), "bdm": bdm,
         "cns": await _user(db, "counselor", "overseas"), "agent": await _user(db, "agent", "overseas"),
         "student": await _user(db, "overseas_student", "overseas"), "pm2": pm2,
+        "partner": await _user(db, "partner", "global"), "accountant": await _user(db, "accountant", "global"),
     }  # fmt: skip
     await db.commit()
     super_ = users["super"]

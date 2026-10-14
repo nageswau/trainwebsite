@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh }
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const heads = (keys: [string, string, string][]) => keys.map(([key, label, amount]) => ({ key, label, amount, parts: amount === "0.00" ? [] : [{ label, amount }] }));
 const data = (over: Partial<AccountsMonth> = {}): AccountsMonth => ({
-  month: "2026-09", current_month: "2026-10", as_of: "2026-10-12",
+  month: "2026-09", current_month: "2026-10", as_of: "2026-10-12", commission_visible: true,
   income: {
     heads: heads([["abroad", "Abroad education", "500000.00"], ["it", "IT training", "300000.00"], ["recruitment", "Recruitment", "0.00"], ["school", "School projects", "0.00"], ["other", "Other", "0.00"]]),
     total: "800000.00",
@@ -71,6 +71,20 @@ describe("AccountsDashboard (mgmt-013 §22)", () => {
   it("says which money is not converted", () => {
     render(<AccountsDashboard data={data()} />);
     expect(screen.getByText(/USD 300\.00 income \(1 line\)/)).toBeTruthy();
+  });
+
+  it("lists university commission for a partner", () => {
+    render(<AccountsDashboard data={data()} />);
+    expect(screen.getByRole("list", { name: "Receivables by source" }).textContent).toContain("University commission: ₹45,000.00");
+  });
+
+  it("leaves university commission out for the accountant and says so (mgmt-034 CS1)", () => {
+    const receivables = { total: "73500.00", overdue: "43500.00", fees: "13500.00", recruitment: "60000.00", university: null, not_counted: [] };
+    render(<AccountsDashboard data={data({ commission_visible: false, receivables })} />);
+    const sources = screen.getByRole("list", { name: "Receivables by source" });
+    expect(within(sources).getAllByRole("listitem")).toHaveLength(2);
+    expect(sources.textContent).not.toContain("University commission");
+    expect(screen.getByText("University commission is not included: only partners see it.")).toBeTruthy();
   });
 });
 

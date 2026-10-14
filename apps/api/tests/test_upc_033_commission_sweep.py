@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.test_mgmt_034_confidentiality import READS as MANAGEMENT_READS
 from tests.test_upc_033_matrix import MATRIX, _fill
 from tests.upc033_helpers import OTHER_ROLES, SENTINELS, headers, world
 
@@ -124,15 +125,23 @@ SERIALIZERS = {
     "app/services/university_search.py": ["/partnership/universities/search", "/partnership/universities/map"],
     "app/services/university_view.py": ["/universities/{uni}/view"],
 }
+# mgmt-034 CS9 (M3 amends U2): the Command Center shows university commission to partners only. These emitters are swept by mgmt-034's
+# delta sweep (test_mgmt_034_confidentiality.READS, every management tier); the drill chain also by mgmt-033's DD5 tests.
+MANAGEMENT_EMITTERS = {
+    "app/services/ledger.py": ["/management/ledger?include=auto"],
+    "app/services/management_abroad_revenue.py": ["/management/revenue/abroad"],
+    "app/services/management_drill.py": ["/management/drill/{chain}"],
+}
 # Agent commission (EduSphere pays the agent, DEC-SCOPE-005/051/054) is another confidential figure with its own rules -- not U2's.
-AGENT_COMMISSION = {"app/services/agent_dashboard.py", "app/services/agent_network.py"}
+AGENT_COMMISSION = {"app/services/agent_dashboard.py", "app/services/agent_network.py", "app/services/management_agents.py"}
 APP = Path(__file__).resolve().parents[1]
 
 
 def test_every_commission_serializer_is_swept():
     """AC2 / PX8: the sweep covers every serializer that includes commission."""
     emitters = {p.relative_to(APP).as_posix() for d in ("app/api", "app/services") for p in (APP / d).rglob("*.py") if EMITS.search(p.read_text("utf-8"))}
-    assert emitters - AGENT_COMMISSION == set(SERIALIZERS), "a commission emitter without a sweep mapping (or a stale mapping)"
+    assert emitters - AGENT_COMMISSION == set(SERIALIZERS) | set(MANAGEMENT_EMITTERS), "a commission emitter without a sweep mapping (or a stale mapping)"
     swept = {path.split("?")[0] for path in SWEEP}
     unswept = {(f, e) for f, endpoints in SERIALIZERS.items() for e in endpoints if e not in swept}
+    unswept |= {(f, e) for f, endpoints in MANAGEMENT_EMITTERS.items() for e in endpoints if e not in MANAGEMENT_READS}
     assert not unswept, unswept

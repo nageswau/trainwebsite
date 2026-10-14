@@ -11,8 +11,8 @@ export type NotCounted = { currency: string; kind: string; amount: string; count
 export const BALANCE_FIELDS = ["cash_bank", "payables", "tax_liabilities"] as const;
 export type BalanceField = (typeof BALANCE_FIELDS)[number];
 export type AccountsMonth = {
-  month: string; current_month: string; as_of: string; income: AccountsSection; expenses: AccountsSection; profit: string; not_counted: NotCounted[];
-  receivables: { total: string; overdue: string; fees: string; recruitment: string; university: string; not_counted: NotCounted[] };
+  month: string; current_month: string; as_of: string; commission_visible: boolean; income: AccountsSection; expenses: AccountsSection; profit: string; not_counted: NotCounted[];
+  receivables: { total: string; overdue: string; fees: string; recruitment: string; university: string | null; not_counted: NotCounted[] }; // university: null for the accountant (mgmt-034 CS1)
   pending_invoices: { count: number; amount: string };
   balances: Record<BalanceField, string | null> & { updated_at: string | null; updated_by: { id: string; full_name: string } | null };
 };

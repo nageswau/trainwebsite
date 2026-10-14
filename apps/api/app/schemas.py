@@ -11923,7 +11923,7 @@ class AccountsReceivables(BaseModel):
     overdue: Decimal
     fees: Decimal
     recruitment: Decimal
-    university: Decimal
+    university: Decimal | None  # null for the accountant: university commission is the partners' (mgmt-034 CS1, M3)
     not_counted: list[AccountsNotCounted]  # receivables in another currency, never converted
 
 
@@ -11944,6 +11944,7 @@ class AccountsOut(BaseModel):
     month: str
     current_month: str
     as_of: date
+    commission_visible: bool  # mgmt-034 CS1: false for the accountant, whose figures leave university commission out
     income: AccountsSection
     expenses: AccountsSection
     profit: Decimal  # R4

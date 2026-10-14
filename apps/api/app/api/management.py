@@ -87,7 +87,7 @@ from app.services import (
 from app.services.bdm_activities import india_date
 from app.services.bdm_appointments import db_now
 from app.services.bdm_performance import period
-from app.services.management_access import can_view_operational, require_management, require_partner_only, tiers
+from app.services.management_access import can_view_operational, can_view_university_commission, require_management, require_partner_only, tiers
 from app.services.partnership_metrics import period as partnership_period
 
 router = APIRouter(prefix="/management", tags=["management"])
@@ -389,7 +389,7 @@ async def set_capital_shares(body: CapitalSharesIn, user: User = Depends(get_cur
 async def salary_month(month: str | None = Query(None, pattern=MONTH), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """SM14: the month's grid (active departments + any with a row), totals, R6, revenue and the Employee Cost Ratio (R7)."""
     ledger.require_finance(user)
-    return await salaries.month_view(db, salaries.first_day(month))
+    return await salaries.month_view(db, salaries.first_day(month), can_view_university_commission(user))
 
 
 @router.put("/salaries", response_model=SalaryMonthOut)
@@ -402,7 +402,7 @@ async def save_salary_month(
     changed = await salaries.save_month(db, user, first, body.rows)
     await db.commit()
     salaries.log("salary_month_saved", user, month=month, changed=changed)
-    return await salaries.month_view(db, first)
+    return await salaries.month_view(db, first, can_view_university_commission(user))
 
 
 @router.get("/departments", response_model=DepartmentPage)
@@ -443,7 +443,7 @@ async def change_department(department_id: UUID, body: DepartmentUpdate, user: U
 async def accounts_month(month: str | None = Query(None, pattern=MONTH), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """AD14: the month's income and expense heads, profit, today's receivables and pending invoices, and the entered balances."""
     ledger.require_finance(user)
-    return await accounts.view(db, salaries.first_day(month, accounts.FUTURE))
+    return await accounts.view(db, salaries.first_day(month, accounts.FUTURE), can_view_university_commission(user))
 
 
 @router.put("/accounts/balances", response_model=AccountsOut)
@@ -456,7 +456,7 @@ async def save_accounts_balances(
     changed = await accounts.save_balances(db, user, first, body)
     await db.commit()
     salaries.log("finance_balances_saved", user, month=month, fields=changed)
-    return await accounts.view(db, first)
+    return await accounts.view(db, first, can_view_university_commission(user))
 
 
 # --- mgmt-012: marketing budget & ROI (spec MK1-MK14). Every management role reads lead figures; money for the finance tier only -------
