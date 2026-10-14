@@ -1,7 +1,7 @@
 """mgmt-015 -- partner capital accounts: `partner_capital_entries` and `partner_shares`.
 
-Revision ID: 0158_partner_capital
-Revises: 0157_direct_tieups
+Revision ID: 0159_partner_capital
+Revises: 0158_social_proof
 
 docs/superpowers/specs/2026-10-14-mgmt-015-partner-capital-accounts-design.md §3. Two new tables; no existing row changes. 0001 builds a
 fresh database from the current models, which already carry them, so each step is guarded. ENTRY_CHECKS / SHARE_CHECKS repeat
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0158_partner_capital"
-down_revision = "0157_direct_tieups"
+revision = "0159_partner_capital"
+down_revision = "0158_social_proof"
 branch_labels = None
 depends_on = None
 
@@ -72,6 +72,6 @@ def downgrade() -> None:
     if not op.get_context().as_sql:
         bind = op.get_bind()
         if any(bind.execute(sa.text(f"SELECT 1 FROM {table} LIMIT 1")).first() for table in TABLES):  # noqa: S608 -- fixed names
-            raise RuntimeError("Cannot downgrade 0158_partner_capital: capital records exist. Remove them deliberately first.")
+            raise RuntimeError("Cannot downgrade 0159_partner_capital: capital records exist. Remove them deliberately first.")
     for table in reversed(TABLES):
         op.drop_table(table)

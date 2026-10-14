@@ -5,7 +5,7 @@ code (GREEN), then refactor. Focused tests only; full regression is deferred to 
 
 | # | Task | Test first | Files |
 |---|---|---|---|
-| 1 | `PartnerCapitalEntry`, `PartnerShare` models + CHECKs; migration `0158_partner_capital` (guarded; downgrade refuses with data) | `test_mgmt_015_migration.py` | `models.py`, `alembic/versions/0158_partner_capital.py` |
+| 1 | `PartnerCapitalEntry`, `PartnerShare` models + CHECKs; migration `0159_partner_capital` (guarded; downgrade refuses with data) | `test_mgmt_015_migration.py` | `models.py`, `alembic/versions/0159_partner_capital.py` |
 | 2 | Schemas: entry create (CP3), shares in (CP5/CP6), outputs | `test_entry_rejects_*`, `test_shares_reject_*` | `schemas.py` |
 | 3 | `POST /management/capital/entries`: active partner, date ≤ today, audit create (CP12) | `test_entry_*` | `services/partner_capital.py`, `api/management.py` |
 | 4 | `PUT /management/capital/shares`: upsert per month, lock, 409 race, audit create/update/no-op (CP6, CP12, CP14) | `test_shares_*` | same |

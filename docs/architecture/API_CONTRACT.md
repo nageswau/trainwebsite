@@ -3154,11 +3154,31 @@ moves the application to Joined (AC3). Every change writes offer history.
   `conflicts`, `countries_published`, `country_needs_content`); hidden destination countries with content are published (DT18 / R12 / R13),
   Malta is reported `country_needs_content: MT` and stays hidden; GBS Malta is created internal (not public) until Malta has catalogue content (R15, `universities_internal`).
 
-## 12DX. Partner capital accounts (`mgmt-015`) — addendum, 2026-10-14
+## 12DX. Homepage social proof (PUB-022) — addendum, 2026-10-14
 
-- **Basis:** `DEC-SCOPE-210` (CP1–CP15). Spec `docs/superpowers/specs/2026-10-14-mgmt-015-partner-capital-accounts-design.md`. Migration
-  `0158_partner_capital`. **Partner-only** on every route: `accountant` / `super_admin` `403` "Only partners can open this", any other
-  role `403` "Management access required", signed out `401` (RBAC §2.135).
+- **Basis:** `DEC-SCOPE-210` (SP1–SP9). Design spec `docs/superpowers/specs/2026-10-14-pub-022-social-proof-design.md`. Migration
+  `0158_social_proof`: `testimonials` gains `published`, `featured`, `display_order`, `context`, `consent_confirmed`,
+  `consent_by_user_id`, `consent_at`, `photo_key`, `photo_content_type` (existing rows unpublished); new single-row `site_rating_badge`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /public/social-proof?division=it\|overseas\|all` *(new)* | No login. `{badge, testimonials}`: `badge` null unless published; up to 6 published + featured testimonials ordered by `display_order`, `created_at`. Bad division `422`. |
+| `GET /public/testimonials[?division=]`, `GET /public/testimonials/{id}` *(changed)* | Published rows only; an unpublished id is `404`. Rows gain `context`, `photo_url`. |
+| `GET /public/testimonials/{id}/photo` *(new)* | Streams the photo (`Cache-Control: no-cache`, `nosniff`; `photo_url` carries `?v=<digest>` that changes when the photo is replaced); `404` when unpublished, no photo or unknown. |
+| `GET /public/home` *(changed)* | `stats` key removed (SP3); `testimonials` published only. |
+| `GET /cms/manage/testimonials[?division=]` *(new)* | Editors (§2.135). Division admins always get their own division. |
+| `POST /cms/testimonials` *(new)* | `201`. Body (`extra` forbidden): `division`, `person_name` (≤160), `headline` (≤200), `quote` (≤2000), `rating` 1–5, `context` (≤160), `featured`, `display_order`, `consent_confirmed`, `published`. Publish without consent `422`; other division `403`. |
+| `PATCH /cms/testimonials/{id}` *(new)* | Same fields except `division`; only `context` may be null. Other division `404`. |
+| `DELETE /cms/testimonials/{id}` *(new)* | `204`; removes the row and its photo (a missing file does not block). |
+| `PUT /cms/testimonials/{id}/photo` *(new)* | Multipart `file`; JPEG/PNG ≤ 2 MB; `413` too big, `415` wrong type, `422` empty/unreadable; replaces and deletes any old photo. |
+| `DELETE /cms/testimonials/{id}/photo` *(new)* | Removes the photo; `200` with the row. |
+| `GET /cms/rating-badge`, `PUT /cms/rating-badge` *(new)* | `super_admin` only. Body: `source_name` (≤60), `rating` 0.0–5.0 (1 dp), `review_count` ≥ 0, `review_url` (https, ≤500, optional), `as_of`, `published`. |
+
+## 12DY. Partner capital accounts (`mgmt-015`) — addendum, 2026-10-14
+
+- **Basis:** `DEC-SCOPE-211` (CP1–CP15). Spec `docs/superpowers/specs/2026-10-14-mgmt-015-partner-capital-accounts-design.md`. Migration
+  `0159_partner_capital`. **Partner-only** on every route: `accountant` / `super_admin` `403` "Only partners can open this", any other
+  role `403` "Management access required", signed out `401` (RBAC §2.136).
 
 | Method/Path | Notes / status codes |
 |---|---|

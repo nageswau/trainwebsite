@@ -1545,13 +1545,109 @@ class RealProjectOut(BaseModel):
 
 
 class TestimonialOut(BaseModel):
+    """Public shape. PUB-022: `photo_url` is the public streaming route, never the storage key."""
+
     id: UUID
     division: str
     person_name: str
     headline: str
     quote: str
     rating: int
-    model_config = {"from_attributes": True}
+    context: str | None = None
+    photo_url: str | None = None
+
+
+# --- PUB-022 social proof (DEC-SCOPE-210, spec §4) ---
+def _required_text(limit: int):
+    def check(value: str) -> str:
+        cleaned = clean_free_text(value, limit)
+        if cleaned is None:
+            raise ValueError("must not be blank")
+        return cleaned
+
+    return AfterValidator(check)
+
+
+TestimonialName = Annotated[str, _required_text(160)]
+TestimonialHeadline = Annotated[str, _required_text(200)]
+TestimonialQuote = Annotated[str, _required_text(2000)]
+TestimonialContext = Annotated[str | None, AfterValidator(lambda value: clean_free_text(value, 160))]
+TestimonialRating = Annotated[StrictInt, Field(ge=1, le=5)]
+DisplayOrder = Annotated[StrictInt, Field(ge=-100000, le=100000)]
+
+
+class TestimonialIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    division: Literal["it", "overseas"]
+    person_name: TestimonialName
+    headline: TestimonialHeadline
+    quote: TestimonialQuote
+    rating: TestimonialRating = 5
+    context: TestimonialContext = None
+    featured: StrictBool = False
+    display_order: DisplayOrder = 0
+    consent_confirmed: StrictBool = False
+    published: StrictBool = False
+
+
+class TestimonialUpdate(BaseModel):
+    """PATCH: only the fields sent change; `division` cannot move. Only `context` may be cleared with null."""
+
+    model_config = ConfigDict(extra="forbid")
+    person_name: TestimonialName | None = None
+    headline: TestimonialHeadline | None = None
+    quote: TestimonialQuote | None = None
+    rating: TestimonialRating | None = None
+    context: TestimonialContext = None
+    featured: StrictBool | None = None
+    display_order: DisplayOrder | None = None
+    consent_confirmed: StrictBool | None = None
+    published: StrictBool | None = None
+
+    @model_validator(mode="after")
+    def _no_null_for_required(self):
+        for name in self.model_fields_set - {"context"}:
+            if getattr(self, name) is None:
+                raise ValueError(f"{name} cannot be null")
+        return self
+
+
+class TestimonialManageOut(TestimonialOut):
+    published: bool
+    featured: bool
+    display_order: int
+    consent_confirmed: bool
+    consent_at: datetime | None = None
+    has_photo: bool
+    updated_at: datetime | None = None
+
+
+class RatingBadgeIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    source_name: Annotated[str, _required_text(60)]
+    rating: Annotated[Decimal, Field(ge=0, le=5, max_digits=2, decimal_places=1)]
+    review_count: Annotated[StrictInt, Field(ge=0, le=100_000_000)]
+    review_url: Annotated[str | None, Field(max_length=500, pattern=r"^https://[^\s]+$")] = None
+    as_of: date
+    published: StrictBool = False
+
+
+class RatingBadgeOut(BaseModel):
+    source_name: str
+    rating: float
+    review_count: int
+    review_url: str | None = None
+    as_of: date
+
+
+class RatingBadgeManageOut(RatingBadgeOut):
+    published: bool
+    updated_at: datetime | None = None
+
+
+class SocialProofOut(BaseModel):
+    badge: RatingBadgeOut | None
+    testimonials: list[TestimonialOut]
 
 
 class CountryOut(BaseModel):

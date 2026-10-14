@@ -456,9 +456,10 @@ async def main():
             db.add_all(
                 [
                     Testimonial(
-                        division="it", person_name="Rahul K", headline="Placed after Python training", quote="Project-based training and mock interviews helped me move into a backend role.", rating=5
+                        division="it", person_name="Rahul K", headline="Placed after Python training", quote="Project-based training and mock interviews helped me move into a backend role.", rating=5,
+                        published=False,  # PUB-022 SP4: demo data, never public
                     ),
-                    Testimonial(division="overseas", person_name="Sneha P", headline="Admission and visa support", quote="The counselor kept every document and deadline clear.", rating=5),
+                    Testimonial(division="overseas", person_name="Sneha P", headline="Admission and visa support", quote="The counselor kept every document and deadline clear.", rating=5, published=False),
                 ]
             )
         if not await db.scalar(select(CareerPath).limit(1)):

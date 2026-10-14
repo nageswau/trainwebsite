@@ -44,7 +44,7 @@ which is already registered as partner-only and already hidden from `/admin/audi
 - `models.py`: `CAPITAL_ENTRY_KINDS`, `PartnerCapitalEntry` (`partner_capital_entries`; CHECKs: kind, amount > 0; index on
   `(partner_user_id, entry_date)`), `PartnerShare` (`partner_shares`; CHECKs: 0 ≤ share_pct ≤ 100, commitment ≥ 0, effective_from is
   the 1st of a month; unique `(partner_user_id, effective_from)`).
-- Migration `0158_partner_capital` (after `0157_direct_tieups`), guarded like 0151; `downgrade()` refuses while either table has rows.
+- Migration `0159_partner_capital` (after `0158_social_proof`), guarded like 0151; `downgrade()` refuses while either table has rows.
 - `schemas.py`: `CapitalEntryCreate`, `CapitalSharesIn` (+ row), `CapitalEntryOut`, `CapitalShareOut`, `CapitalAccountOut`, `CapitalOut`.
 - `services/partner_capital.py`: `figures`, `profit_shares`, `view`, `add_entry`, `set_shares`. It reuses `management_pnl.dashboard`
   (unchanged), `management_audit.record` and the investments helpers for people.

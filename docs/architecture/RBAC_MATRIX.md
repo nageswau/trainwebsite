@@ -2176,7 +2176,24 @@ Counts only, no personal data; nothing else changes.
   The loader (`python -m app.direct_tieups.load`) is a server-side operator command, not a role; it audits `university.direct_tieup_load`
   and `country.direct_tieup_publish` (ids and field names only).
 
-### 2.135 Partner capital accounts *(net-new, added 2026-10-14 — `DEC-SCOPE-210`, `mgmt-015`)*
+### 2.135 Homepage testimonials & rating badge *(added 2026-10-14 — `DEC-SCOPE-210`, `PUB-022`)*
+
+| Role | `GET /cms/manage/testimonials`, `POST /cms/testimonials`, `PATCH`/`DELETE /cms/testimonials/{id}`, `PUT`/`DELETE …/{id}/photo` | `GET`/`PUT /cms/rating-badge` | Public reads (`/public/social-proof`, `/public/testimonials[/{id}[/photo]]`) |
+|---|---|---|---|
+| `super_admin` | yes, both divisions | yes | published rows only |
+| `it_admin` (it division) | own division only; another division's row is `404`; create in another division `403` | `403` | published rows only |
+| `overseas_admin` (overseas division) | own division only (same rules) | `403` | published rows only |
+| every other role | `403` | `403` | published rows only |
+| signed out | `401` | `401` | yes (no login) — published rows only |
+
+- Publishing needs `consent_confirmed` (`422 "Record consent before publishing"`; also a DB CHECK). The consent user and time are set by
+  the server; unticking consent unpublishes. Unpublished rows, their photos and an unpublished badge are `404` / absent publicly.
+- Photos: JPEG/PNG by magic bytes, ≤ 2 MB, metadata stripped, server-generated storage key (never returned); served only through
+  `GET /public/testimonials/{id}/photo` while the testimonial is published (`no-cache`, so an unpublish takes effect at once).
+- Delete is permanent (row + photo). Audit actions `cms.testimonial.create|update|delete|photo` and `cms.rating_badge.update` hold
+  ids, division and changed field names only — never the person's name, headline or quote.
+
+### 2.136 Partner capital accounts *(net-new, added 2026-10-14 — `DEC-SCOPE-211`, `mgmt-015`)*
 
 | Role | `GET /management/capital`, `POST /management/capital/entries`, `PUT /management/capital/shares`, page `/management/capital` | Command Center entry |
 |---|---|---|

@@ -1,4 +1,4 @@
-"""mgmt-015 -- migration 0158_partner_capital (spec §3). Round trip and the downgrade refusal run in a throwaway database built from
+"""mgmt-015 -- migration 0159_partner_capital (spec §3). Round trip and the downgrade refusal run in a throwaway database built from
 scratch (the upc-001 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -14,11 +14,11 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_mgmt_015_migration_0158", VERSIONS / "0158_partner_capital.py")
+_spec = importlib.util.spec_from_file_location("_mgmt_015_migration_0159", VERSIONS / "0159_partner_capital.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0157_direct_tieups", "0158_partner_capital"
+BASE, HEAD = "0158_social_proof", "0159_partner_capital"
 
 
 def test_migration_chains_after_0157_and_is_the_single_head():
