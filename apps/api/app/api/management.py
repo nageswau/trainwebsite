@@ -37,6 +37,7 @@ from app.schemas import (
     ManagementBdmOut,
     ManagementCounselingOut,
     ManagementHealthOut,
+    ManagementHomeOut,
     ManagementMeOut,
     ManagementSchoolsOut,
     ManagementSchoolValuesIn,
@@ -66,6 +67,7 @@ from app.services import (
     management_expenses,
     management_funnel,
     management_health,
+    management_home,
     management_it_revenue,
     management_marketing,
     management_metrics,
@@ -559,3 +561,12 @@ async def business_health(month: str | None = Query(None, pattern=MONTH), user: 
     this_month = india_date(await db_now(db)).replace(day=1)
     chosen = await _past_month(db, month) if month else (this_month - timedelta(days=1)).replace(day=1)
     return await management_health.health(db, user, chosen, this_month)
+
+
+# --- mgmt-031: Partner home dashboard (spec HM1-HM14). Operational tier (M13); the money for partners only ------------------------
+@router.get("/home", response_model=ManagementHomeOut, response_model_exclude_unset=True)
+async def management_home_dashboard(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """§31: today's snapshot and the nine panels, each the figure of the page it links to. Partners get the money; super_admin gets
+    no money key at all (HM2). The accountant and everyone else 403."""
+    _operational(user)
+    return await management_home.home(db, user, india_date(await db_now(db)))

@@ -12887,3 +12887,91 @@ class ManagementHealthOut(BaseModel):
     score: int | None
     rag: HealthRag | None
     factors: list[ManagementHealthFactor]
+
+
+# mgmt-031 (spec HM1-HM14): the §31 partner home. Money is optional: left out for super_admin (HM2), so the route excludes unset fields.
+class HomeCash(BaseModel):
+    amount: Decimal | None  # the latest entered cash/bank balance; null = never entered
+    month: str | None  # the month it was entered for
+
+
+class HomeSnapshot(BaseModel):
+    students: int
+    applications: int
+    enrollments: int
+    revenue: Decimal | None = None
+    expenses: Decimal | None = None
+    profit: Decimal | None = None
+    cash: HomeCash | None = None
+
+
+class HomeUrgent(BaseModel):
+    key: Literal["overdue_tasks", "overdue_decisions", "red_health", "overdue_receivables"]
+    label: str
+    count: int
+    amount: Decimal | None = None  # overdue_receivables only
+
+
+class HomePendingInvoices(BaseModel):
+    count: int
+    amount: Decimal
+
+
+class HomeFinancialPosition(BaseModel):
+    receivables: Decimal
+    receivables_overdue: Decimal
+    pending_invoices: HomePendingInvoices
+    balance_month: str | None
+    cash_bank: Decimal | None
+    payables: Decimal | None
+    tax_liabilities: Decimal | None
+
+
+class HomeTargets(BaseModel):
+    month: str
+    label: str
+    rows: list[PlanProgressRow]
+    row_total: int
+    free_text: PlanFreeText
+
+
+class HomeGrowthFactor(BaseModel):
+    key: str
+    label: str
+    change: float | None
+    rag: HealthRag | None
+
+
+class HomeGrowth(BaseModel):
+    month: str
+    score: int | None
+    rag: HealthRag | None
+    factors: list[HomeGrowthFactor]
+
+
+class HomeTasks(BaseModel):
+    items: list[TaskOut]
+    counts: TaskCounts
+
+
+class HomeNextPlan(BaseModel):
+    month: str
+    label: str
+    plan: PlanOut | None
+
+
+class ManagementHomeOut(BaseModel):
+    as_of: date
+    month: str
+    label: str
+    scope: Literal["business", "operational"]
+    snapshot: HomeSnapshot
+    urgent: list[HomeUrgent]
+    pending_decisions: DiscussionPage
+    meetings: MgmtMeetingPage
+    targets: HomeTargets | None
+    financial_position: HomeFinancialPosition | None = None
+    growth: HomeGrowth
+    my_tasks: HomeTasks
+    recent_discussions: DiscussionPage
+    next_plan: HomeNextPlan
