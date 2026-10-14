@@ -37,6 +37,9 @@ from app.schemas import (
     ManagementBdmOut,
     ManagementCounselingOut,
     ManagementMeOut,
+    ManagementSchoolsOut,
+    ManagementSchoolValuesIn,
+    ManagementSchoolValuesOut,
     ManagementSnapshotOut,
     ManagementTrainingOut,
     ManagementUniversitiesOut,
@@ -67,6 +70,7 @@ from app.services import (
     management_pnl,
     management_recruitment,
     management_recruitment_revenue,
+    management_schools,
     management_telecalling,
     management_training,
     management_universities,
@@ -496,6 +500,24 @@ async def agents_dashboard(from_: date | None = Query(None, alias="from"), to: d
     now = await db_now(db)
     start, end = period(from_, to, india_date(now))
     return await management_agents.dashboard(db, user, start, end, now)
+
+
+# --- mgmt-022: School dashboard (spec SD1-SD16). Every management role reads; money and the values for the finance tier only ------------
+@router.get("/schools", response_model=ManagementSchoolsOut)
+async def schools_dashboard(from_: date | None = Query(None, alias="from"), to: date | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """§18 for every school and in total, for `from`..`to` (IST, default this month; SD2). Anyone outside management 403 (SD1)."""
+    require_management(user)
+    now = await db_now(db)
+    today = india_date(now)
+    start, end = period(from_, to, today)
+    return await management_schools.dashboard(db, user, start, end, now, today)
+
+
+@router.patch("/schools/{school_id}", response_model=ManagementSchoolValuesOut)
+async def set_school_values(school_id: UUID, payload: ManagementSchoolValuesIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """SD13: a school's contract / renewal value. Finance tier only (partner, accountant); super_admin gets "Finance access required"."""
+    ledger.require_finance(user)
+    return await management_schools.set_values(db, user, school_id, payload.model_dump(exclude_unset=True))
 
 
 # --- mgmt-016: Student funnel (spec SF1-SF16). Operational tier (M13); counts only -------------------------------------------------------

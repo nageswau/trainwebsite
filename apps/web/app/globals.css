@@ -395,6 +395,12 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 .telecalling-section-title { margin-top: 28px; } /* QA19-04: the tables sit clear of the chain card */
 /* mgmt-021: #agencies lands below the sticky top bar, and the ranking sits clear of the chain card. */
 .agents-ranking { scroll-margin-top: 84px; margin-top: 28px; }
+/* mgmt-022: #school-money lands below the sticky top bar; a school's name reads on one line with its tier and status below; the values
+   editor opens inside its cell. */
+.schools-table { scroll-margin-top: 84px; margin-top: 28px; }
+.schools-table .schools-meta { display: block; font-weight: 400; font-size: 12px; white-space: nowrap; }
+.school-values summary { cursor: pointer; font-weight: 700; white-space: nowrap; }
+.school-values .form { min-width: 200px; margin-top: 8px; }
 /* QA21-01: the agency name gets room to read on one line; its code and markers sit on a small line below. */
 .agents-agency { min-width: 160px; }
 .agents-agency-meta { display: block; font-size: 12px; font-weight: 400; }

@@ -2232,6 +2232,19 @@ Counts only, no personal data; nothing else changes.
 - A closed plan refuses item writes and task creation (`409`) until its status is changed back.
 - Audit kind `mgmt.plan` (operational, field names only — never item text or targets); verbs `create`, `update`, `delete`.
 
+### 2.139 School dashboard + school money *(added 2026-10-14 — `DEC-SCOPE-214`, `mgmt-022`)*
+
+| Role | Read `GET /management/schools`, page `/management/schools` | Set values `PATCH /management/schools/{id}` |
+|---|---|---|
+| `partner` | yes, with revenue, contract value and renewal value; "Schools" (Partnerships) and "School revenue & contracts" (Finance) entries | yes |
+| `accountant` | yes, with money (finance tier, SD1); "School revenue & contracts" entry | yes |
+| `super_admin` | yes **without money** (`revenue`, `contract_value`, `renewal_value`, `untagged_revenue: null`); keeps the super admin sidebar ("Management school figures") | `403` "Finance access required" |
+| every other role (incl. `overseas_admin`, school roles) | `403` "Management access required"; signed out `401` | `403` |
+
+- School names, counts and percentages only (no student, parent or teacher identity). The school value write is audited
+  (`mgmt.school_value`, finance kind, hidden from `GET /admin/audit`). The ledger's new `school_id` tag follows the ledger's own finance-tier
+  rules (§2.115). The school admin routes (`/overseas-admin/schools*`, `SchoolOut`) and ENH-016's analytics are unchanged.
+
 ### 2.141 Management meetings *(added 2026-10-14 — `DEC-SCOPE-216`, `mgmt-029`)*
 
 | Role | `GET`/`POST /management/meetings`, `GET …/options`, `GET`/`PATCH …/{id}`, `POST …/{id}/minutes`, `…/decisions`, `…/tasks` | `GET /me/management-meetings` |

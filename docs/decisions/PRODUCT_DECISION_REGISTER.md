@@ -8387,6 +8387,48 @@ full repository regression is deferred to its own session.
 | PN11 | Concurrency | Every write locks the plan row; a concurrent create of the same month `409` |
 | PN12–PN16 | Order, removal, UI, logs, numbering | Vertical order then append order; `DELETE` item `204` (its tasks stay); `/management/plans` + `/management/plans/{YYYY-MM}`; logs carry ids and field names only |
 
+### DEC-SCOPE-214 — School dashboard + school revenue / contract / renewal value (`mgmt-022`)
+
+**Evidence:** `EVID-017` §18 (lines 683–715, `DERIVED_BLUEPRINT`): schools contacted, meetings, proposals, MoUs, active schools, students,
+teachers, parents, career guidance, psychometric tests, academic results, student profile completion, school revenue; "School-wise revenue /
+contract value / renewal value". `DEC-SCOPE-186` M13 (`EXPLICIT_APPROVAL`): money for the finance tier. Backlog Q-23 (school columns vs a
+ledger school tag), left open by mgmt-004 ML6.
+
+**Status:** SD1–SD16 in review on `feature/mgmt-022` (2026-10-14). Every SD answer is a **recommended default, `UNVERIFIED`**, taken on the
+owner's instruction to proceed with the recommended answers. Q-23 is answered by SD12–SD14: **both** — revenue is ledger income tagged with
+the school, and contract / renewal value are fields on the school.
+
+**Numbering (provisional):** migration `0162_school_values`; API §12EB; RBAC §2.139. Spec
+`docs/superpowers/specs/2026-10-14-mgmt-022-school-dashboard-design.md`.
+
+| # | Point | Answer |
+|---|---|---|
+| SD1 | Access | every management role reads; money for the finance tier only (partner, accountant); super_admin gets `null` money and the service never reads the ledger or the values for them |
+| SD2 | Period | `from` / `to` IST dates, default this month (shared `period`, same 422s as mgmt-020/021) |
+| SD3 | Contacted / meetings / proposals / MoUs | mgmt-020's School BDM figures for the period (equal by construction) |
+| SD4 | Active schools | ENH-016 / ENH-022 rule (tier set, not past its end), today |
+| SD5 | Students | every school student record now (= ENH-016 total) |
+| SD6 | Teachers, parents | ENH-008 membership, now; a parent of children at two schools is in both rows and counted once in the total |
+| SD7 | Career guidance | students with a completed guidance session (ENH-016) |
+| SD8 | Psychometric tests | students with a completed psychometric test (ENH-016) |
+| SD9 | Academic results | students with at least one published result |
+| SD10 | Profile completion | average ENH-012 portfolio completion %, whole number; none without students |
+| SD11 | School revenue | counted ledger income of the School projects vertical in the period (mgmt-005 lines) |
+| SD12 | School-wise revenue | approved manual income tagged with the school in the period (a reversal negative); the rest shown as "Not tagged to a school", so rows + untagged = SD11 |
+| SD13 | Contract / renewal value | nullable `schools.contract_value`, `renewal_value` (₹ ≥ 0, 2 dp), set by the finance tier on the dashboard; not period-bound; audited `mgmt.school_value` (before/after) |
+| SD14 | Ledger school tag | optional `ledger_entries.school_id`, School projects income only (422 + DB CHECK); reversal copies it; options list schools; form and entry page show it |
+| SD15 | Table | every school by name: tier, active, renewal due, valid until, the student figures, completion; money columns for the finance tier |
+| SD16 | Data | counts, percentages, school names and rupees only |
+
+**Consequences:** migration `0162_school_values` (three nullable columns, CHECKs, partial index; downgrade refuses while data exists);
+`models.py`; `schemas.py`; new `services/management_schools.py`; `services/ledger.py` (tag); `services/management_audit.py` (kind);
+`api/management.py` (two routes); web `lib/managementSchools.ts`, `lib/management.ts`, `lib/navigation.ts`, `lib/managementLedger.ts`,
+`components/ManagementSchools.tsx`, `SchoolValuesEditor.tsx`, `LedgerEntryForm.tsx`, `app/management/schools/page.tsx`,
+`app/management/ledger/[id]/page.tsx`. Tests `test_mgmt_022_schools.py`, `test_mgmt_022_migration.py`, `test_mgmt_002_activity.py` (kind
+list), `managementSchools.test.ts`, `ManagementSchools.test.tsx`, `ManagementLedger.test.tsx`, `mgmt-022-schools.spec.ts`. QA
+`docs/quality/MGMT-022_EXPLORATORY_QA_2026-10-14.md`.
+- **New Feature ID authorized:** `mgmt-022`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-022.
+
 ### DEC-SCOPE-216 — Management meetings + minutes chain, Q-28 (`mgmt-029`)
 
 **Evidence:** `EVID-017` §29 "Management meetings" (Meeting Calendar; Partner / Department / School / University / Agent / Recruiter
