@@ -1,3 +1,4 @@
+import CountryFlag from "@/components/CountryFlag";
 import Link from "next/link";
 import type { InputHTMLAttributes } from "react";
 
@@ -165,7 +166,7 @@ export default async function SearchUniversitiesPage({ searchParams }: { searchP
                         <tr key={u.id}>
                           {/* one wrapper per mixed cell -- on a phone each cell is a flex row (upc-026 QA-01) */}
                           <td data-label="University"><span><Link href={universityPath(u.id)}>{u.name}</Link> <span className="muted" style={{ whiteSpace: "nowrap" }}>{u.university_code}</span>{!u.active && <> <span className="badge">Inactive</span></>}</span></td>
-                          <td data-label="Country / city"><span>{u.country.name} <span className="muted">{u.city}</span></span></td>
+                          <td data-label="Country / city"><span><CountryFlag iso2={u.country.iso2} />{u.country.name} <span className="muted">{u.city}</span></span></td>
                           <td data-label="Type">{label(INSTITUTION_TYPES, u.institution_type)}{u.ownership_type && `, ${label(OWNERSHIP_TYPES, u.ownership_type)}`}</td>
                           <td data-label="Ranking">{u.ranking ?? "—"}</td>
                           <td data-label="Partner status"><span><span className="badge">{PARTNER_STATUSES[u.partner_status]}</span> <span className="muted">{u.stage_label}</span></span></td>

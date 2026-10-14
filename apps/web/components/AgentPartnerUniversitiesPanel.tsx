@@ -1,5 +1,6 @@
 "use client";
 
+import CountryFlag from "@/components/CountryFlag";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -104,7 +105,7 @@ export default function AgentPartnerUniversitiesPanel({ memberRole }: { memberRo
               {detail.name}
             </h2>
             <dl>
-              <dt>Country</dt><dd>{detail.country.name}</dd>
+              <dt>Country</dt><dd><CountryFlag iso2={detail.country.iso2} />{detail.country.name}</dd>
               <dt>Campuses</dt><dd>{detail.campuses.length ? detail.campuses.join(", ") : text(detail.city)}</dd>
               {website ? <><dt>Website</dt><dd><a href={website} target="_blank" rel="noopener noreferrer" style={LINK_STYLE}>{website}</a></dd></> : null}
               {showCommission ? <><dt>Agent commission</dt><dd>{formatAgentCommission(detail.agent_commission)}</dd></> : null}
@@ -163,7 +164,7 @@ export default function AgentPartnerUniversitiesPanel({ memberRole }: { memberRo
                 <tr key={u.id}>
                   <td><UniversityLogo name={u.name} logoUrl={u.logo_url} size={36} decorative /></td>
                   <td><button type="button" onClick={() => open(u.id)} style={{ ...LINK_STYLE, background: "none", border: 0, padding: 0, cursor: "pointer", font: "inherit" }}>{u.name}</button></td>
-                  <td>{u.country.name}</td>
+                  <td><CountryFlag iso2={u.country.iso2} />{u.country.name}</td>
                   <td>{u.campuses.length ? u.campuses.join(", ") : text(u.city)}</td>
                   <td>{u.course_count}</td>
                   {showCommission ? <td>{formatAgentCommission(u.agent_commission)}</td> : null}

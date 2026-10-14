@@ -31,7 +31,7 @@ type Search = { from?: string; to?: string };
 
 const dayText = (day: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${day}T00:00:00Z`));
 const countryRows = (countries: GlobalCountry[], status: "partner" | "target") =>
-  countries.map((c) => ({ key: c.iso2 ?? c.name, label: c.name, count: c.count, href: c.iso2 ? searchHref(status, { iso2: c.iso2 }) : undefined }));
+  countries.map((c) => ({ key: c.iso2 ?? c.name, label: c.name, count: c.count, href: c.iso2 ? searchHref(status, { iso2: c.iso2 }) : undefined, iso2: c.iso2 }));
 
 function Column({ id, icon, title, count, href, children }: { id: string; icon: string; title: string; count: number; href: string; children: ReactNode }) {
   return (

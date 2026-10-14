@@ -12,6 +12,14 @@ const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), 
 const route = (list: unknown, one: unknown) => vi.fn(async (url: string) => (url.includes("/u1") ? res(one) : res(list)));
 
 describe("AgentPartnerUniversitiesPanel", () => {
+  it("shows the country flag in the list (PUB-023)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => res({ items: [item], total: 1 })));
+    const { container } = render(<AgentPartnerUniversitiesPanel memberRole="staff" />);
+    await waitFor(() => expect(screen.getByText("University of South Wales")).toBeTruthy());
+    const flag = container.querySelector('td img.country-flag[src="/flags/gb.svg"]');
+    expect(flag).not.toBeNull();
+    expect(flag!.parentElement!.textContent).toBe("United Kingdom");
+  });
   it("shows the agent commission column for a Master", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => res({ items: [{ ...item, agent_commission: commission }], total: 1 })));
     render(<AgentPartnerUniversitiesPanel memberRole="master" />);

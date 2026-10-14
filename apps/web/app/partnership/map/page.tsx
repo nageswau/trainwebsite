@@ -1,3 +1,4 @@
+import CountryFlag from "@/components/CountryFlag";
 import Link from "next/link";
 import type { InputHTMLAttributes } from "react";
 
@@ -141,7 +142,7 @@ export default async function PartnershipMapPage({ searchParams }: { searchParam
                     <tbody>
                       {page.countries.map((c) => (
                         <tr key={`${c.iso2}-${c.name}`}>
-                          <td data-label="Country"><span><i className={`map-swatch map-${colourOf(c)}`} aria-hidden="true" /> {c.iso2 ? <Link href={countryHref(filters, c.iso2)}>{c.name}</Link> : c.name}</span></td>
+                          <td data-label="Country"><span><i className={`map-swatch map-${colourOf(c)}`} aria-hidden="true" /> <CountryFlag iso2={c.iso2} />{c.iso2 ? <Link href={countryHref(filters, c.iso2)}>{c.name}</Link> : c.name}</span></td>
                           <td data-label="Region">{c.region ?? "—"}</td>
                           <td data-label="Partner">{c.partner}</td>
                           <td data-label="In progress">{c.in_progress}</td>
