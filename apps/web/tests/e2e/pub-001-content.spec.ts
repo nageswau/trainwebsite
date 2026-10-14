@@ -28,9 +28,14 @@ test("real projects list shows seeded items with tech stack and a working detail
   await expect(page.getByText("Tech stack")).toBeVisible();
 });
 
-test("success stories list shows seeded testimonials with a working detail page", async ({ page }) => {
+test("success stories list shows published testimonials with a working detail page", async ({ page }) => {
+  // PUB-022 SP4: seeded demo stories are unpublished; a stack with no published story shows the empty state instead.
   await page.goto("/it/success-stories");
   const firstCard = page.locator(".card").filter({ has: page.getByRole("link", { name: "Read story" }) }).first();
+  if ((await firstCard.count()) === 0) {
+    await expect(page.locator(".collection-empty")).toBeVisible();
+    return;
+  }
   await expect(firstCard).toBeVisible();
   await firstCard.getByRole("link", { name: "Read story" }).click();
   await expect(page.getByText(/—/)).toBeVisible();

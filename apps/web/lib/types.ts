@@ -33,7 +33,7 @@ export function isNotificationPreferences(value: unknown): value is Notification
 
 export type CareerPath = {id:string; division:string; slug:string; title:string; summary:string; skills:string[]; related_program_slugs:string[]; outcomes:string};
 export type RealProject = {id:string; division:string; slug:string; title:string; summary:string; description:string; tech_stack:string[]};
-export type Testimonial = {id:string; division:string; person_name:string; headline:string; quote:string; rating:number};
+export type Testimonial = {id:string; division:string; person_name:string; headline:string; quote:string; rating:number; context?:string|null; photo_url?:string|null};
 export type ContentPage = {id:string; slug:string; title:string; body:string; seo:Record<string,unknown>};
 export type AvailableBatch = {id:string; name:string; program_id:string; program:string; schedule:string; timezone:string; capacity:number; available:number; start_date:string; end_date:string; mode:string};
 export type LiveSessionInfo = {id:string; batch:string; title:string; starts_at:string; ends_at:string; provider:string; meeting_url:string|null; host_url:string|null; recording_url:string|null; recording_status:string; sync_status:string; status:string};
