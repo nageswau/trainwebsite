@@ -2272,6 +2272,18 @@ Counts only, no personal data; nothing else changes.
 
 - Read-only; not audited. Partners gain no `/partnership/*` commission route (`COMMISSION_ROLES` unchanged, MG2).
 
+### 2.142 Drill-down navigation *(added 2026-10-14 — `DEC-SCOPE-217`, `mgmt-033`)*
+
+| Role | `GET /management/drill/{chain}` | University commission in the abroad chain |
+|---|---|---|
+| `partner` | yes, every chain | yes (M3) |
+| `accountant` | yes, every chain | no — commission lines are never read |
+| `super_admin` | `403` "Finance access required" (AC3: money chains) | — |
+| every other role | `403` "Management access required" | — |
+| signed out | `401` | — |
+
+- Names only (Q-32). A read of individual students, applications or payments is audited (`mgmt.drill` / `view`, finance tier in Management activity).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

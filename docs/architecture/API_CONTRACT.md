@@ -3255,6 +3255,15 @@ moves the application to Joined (AC3). Every change writes offer history.
 |---|---|
 | `GET /management/universities?from=&to=` | `{today, from, to, kpis[{key, label, value}] (identified, contacted, meetings, negotiations, mous, signed, active, exclusive, countries, applications, enrollments), revenue?{expected[{currency, amount}], received[…]}, pipeline{steps[{key, label, count}], lost, total}, expected{windows[{key, label, first, last, count, weighted}], undated, next_month{total, items[upc-023 rows]}}}`. `revenue` present for partners only (absent, not null, otherwise). Bad date / start after end / over 366 days `422`; accountant and others `403`; signed out `401` |
 
+## 12EE. Drill-down navigation (mgmt-033) — addendum, 2026-10-14
+
+- **Basis:** `DEC-SCOPE-217` (DD1–DD14). Design spec `docs/superpowers/specs/2026-10-14-mgmt-033-drill-down-design.md`. No migration.
+  Access per RBAC §2.142. One grouped query per level; the rows of a level add up to its `total`.
+
+| Method/Path | Notes / status codes |
+|---|---|
+| `GET /management/drill/{chain}?month=&period=&path=&limit=&offset=` | `chain` ∈ `abroad`, `it`, `recruitment`. `{chain, chain_label, month, period, label, start, end, total, count, breadcrumbs[{level, level_label, key, name}], level{key, label}|null, rows[{key, name, amount, count, latest}], total_rows, limit, offset, record|null{source, id, entry_date, amount, currency, description, details[{label, value}], outcomes|null{title, items[{name, detail, status}]}}}`. `key` `none` = the unattributed row. Reads of students and below write an `AuditLog` (`mgmt.drill.view`). Unknown chain / no counted line on the path `404`; bad month, period, path, too long a path or `none` for a payment `422`; super_admin and others `403`; signed out `401` |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
