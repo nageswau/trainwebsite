@@ -12858,3 +12858,32 @@ class ManagementUniversitiesOut(BaseModel):
     revenue: PerformanceCommission | None = None
     pipeline: GlobalPipeline  # = upc-029's
     expected: ManagementExpected
+
+
+# --- mgmt-030: Business health score (spec BH1-BH14) ------------------------------------------------------------------------------------
+HealthRag = Literal["green", "amber", "red"]
+
+
+class ManagementHealthFactor(BaseModel):
+    key: str
+    label: str
+    tier: Literal["finance", "operational"]
+    weight: int
+    unit: Literal["inr", "count", "percent"]
+    current: Decimal | None  # the month's figure (BH11); a percentage for profit and ROI
+    previous: Decimal | None  # the month before
+    change: float | None  # growth %; for expenses, expense growth − revenue growth in points
+    score: int | None  # 0-100; null when the factor is not available (BH6)
+    rag: HealthRag | None
+    points: int | None  # Σ points over the factors = the overall score (BH8)
+    note: str | None  # why the factor is not available
+
+
+class ManagementHealthOut(BaseModel):
+    month: str
+    previous_month: str
+    partial: bool  # the current month, so far
+    scope: Literal["business", "operational"]  # operational: super_admin's six factors only (BH1)
+    score: int | None
+    rag: HealthRag | None
+    factors: list[ManagementHealthFactor]

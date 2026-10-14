@@ -479,3 +479,14 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 .university-tiles .metric small { display: block; margin-top: 4px; font-size: 12px; }
 .university-tiles .metric strong.metric-money { font-size: 22px; overflow-wrap: anywhere; }
 .universities-lost { margin-top: 12px; } /* QA23-02: the lost / closed note sits clear of the last pipeline step */
+/* mgmt-030: the §30 RAG lines -- an even grid of "Factor: pill" lines (one column on a phone); the overall tile's pill sits under the score. */
+.health-lines { list-style: none; padding: 0; margin: 16px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 8px 16px; }
+.health-lines li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.health-overall .metric > :is(.status, .badge) { margin-top: 6px; align-self: flex-start; }
+/* QA30-02: the band sits beside its score; on a phone the breakdown is a .table.stack (labelled lines), each value kept to the right. */
+.table.health-breakdown td.health-score :is(.status, .badge) { margin-left: 4px; }
+@media (max-width: 640px) {
+  .table.stack.health-breakdown td { text-align: right; }
+  .table.stack.health-breakdown td::before { flex-shrink: 0; } /* QA30-03: the label never breaks beside a long measure */
+  .table.stack.health-breakdown tfoot tr { display: flex; justify-content: space-between; }
+}

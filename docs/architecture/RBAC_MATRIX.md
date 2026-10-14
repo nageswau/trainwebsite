@@ -2272,6 +2272,18 @@ Counts only, no personal data; nothing else changes.
 
 - Read-only; not audited. Partners gain no `/partnership/*` commission route (`COMMISSION_ROLES` unchanged, MG2).
 
+### 2.142 Business health score *(added 2026-10-14 — `DEC-SCOPE-217`, `mgmt-030`)*
+
+| Role | `GET /management/health` | Finance factors (revenue, profit, cash flow, productivity, marketing ROI, expenses) |
+|---|---|---|
+| `partner` | yes — all 12 factors, "Overall business health" | yes |
+| `super_admin` | yes — the 6 operational factors, scored on their own as "Operational health" | no — never queried, not in the response, not folded into the score (M13) |
+| `accountant` | `403` "Operational access required" | — |
+| every other role | `403` "Management access required" | — |
+| signed out | `401` | — |
+
+- Read-only; not audited. Weights and thresholds are code constants (Q-29 interim, BH14).
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
