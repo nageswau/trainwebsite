@@ -38,6 +38,7 @@ from app.schemas import (
     ManagementBdmOut,
     ManagementCounselingOut,
     ManagementHealthOut,
+    ManagementHomeOut,
     ManagementMeOut,
     ManagementSchoolsOut,
     ManagementSchoolValuesIn,
@@ -68,6 +69,7 @@ from app.services import (
     management_expenses,
     management_funnel,
     management_health,
+    management_home,
     management_it_revenue,
     management_marketing,
     management_metrics,
@@ -578,3 +580,12 @@ async def drill_down(
     `month` or its financial year to date, or the record at the end. Reads of students and below are audited (DD11)."""
     ledger.require_finance(user)
     return await management_drill.drill(db, user, chain, await _past_month(db, month), period, path, limit=limit, offset=offset)
+
+
+# --- mgmt-031: Partner home dashboard (spec HM1-HM14). Operational tier (M13); the money for partners only ------------------------
+@router.get("/home", response_model=ManagementHomeOut, response_model_exclude_unset=True)
+async def management_home_dashboard(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """§31: today's snapshot and the nine panels, each the figure of the page it links to. Partners get the money; super_admin gets
+    no money key at all (HM2). The accountant and everyone else 403."""
+    _operational(user)
+    return await management_home.home(db, user, india_date(await db_now(db)))

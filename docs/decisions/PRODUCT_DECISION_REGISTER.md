@@ -8577,3 +8577,41 @@ with that parallel session; before it mgmt-023's 215 / §12EC / §2.140 and mgmt
 **Consequences:** `services/management_drill.py`; `GET /management/drill/{chain}`; audit kind `mgmt.drill` + verb `view` in
 `management_audit`; page `/management/drill/[chain]` (`ManagementDrillDown`). Nothing stored besides the audit rows.
 - **Feature ID authorized:** `mgmt-033`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-033.
+
+### DEC-SCOPE-219 — Partner home dashboard, Q-30 (`mgmt-031`)
+
+**Evidence:**
+- `EVID-017` §31 (L1205–L1239): "When either partner logs in": the greeting, the month, "Today's Business Snapshot" (Revenue |
+  Expenses | Profit | Cash | Students | Applications | Enrollments), then nine panels. §2 (L59–L129) lists the partner dashboard's
+  15 items.
+- Scope authority: `DEC-SCOPE-186` M13 (`EXPLICIT_APPROVAL`).
+- `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-031. Acceptance: "every panel matches its page's figure; super_admin sees no money".
+
+HM1–HM14 below answer backlog Q-30 ("Urgent Issues") and the panel definitions as **recommended defaults, `UNVERIFIED`**. They were
+taken on the owner's standing instruction to proceed with recommended answers.
+
+**Status:** built on `feature/mgmt-031`. Focused tests are green (QA evidence `docs/quality/MGMT-031_EXPLORATORY_QA_2026-10-14.md`).
+The full repository regression is deferred to its own session.
+
+**Numbering:** no migration; API §12EG; RBAC §2.144. These follow mgmt-033's `DEC-SCOPE-218` / §12EF / §2.143, which merged to main
+first (#277). Spec: `docs/superpowers/specs/2026-10-14-mgmt-031-partner-home-design.md`.
+
+| # | Point | Recommended default (`UNVERIFIED`) |
+|---|---|---|
+| HM1 | Where | On `/management` (the Command Center home), above the pillars, for the operational tier. The accountant's page is unchanged |
+| HM2 | Access | `GET /management/home`. Partner: `scope: "business"`. super_admin: `scope: "operational"`, with every money figure and panel left out of the response (never queried). Accountant `403` "Operational access required"; others `403`; signed out `401` |
+| HM3 | Header | "Good morning / afternoon / evening, {first name}" by the IST hour (< 12, < 17, else), and the IST month |
+| HM4 | Snapshot | Revenue, Expenses, Profit: this month to date, from the mgmt-009 P&L total. Cash: the mgmt-013 cash/bank of the latest month entered up to this month, with that month named ("Not entered" if none). Students: S1 (mgmt-003). Applications: created this month (= mgmt-024 "Applications Created" for the 1st..today). Enrollments: reached Enrolled this month (mgmt-026 PN5 = the mgmt-030 Enrollment factor). super_admin: the last three only |
+| HM5 | Urgent issues (Q-30) | Overdue management tasks (everyone's), overdue pending decisions, health factors in Red (last complete month, tier-filtered), and, for partners only, overdue receivables. Only conditions above 0 are listed |
+| HM6 | Pending decisions | The first 5 of the MD12 pending list, with the total |
+| HM7 | Today's meetings | The first 5 of the mgmt-029 calendar for today (IST), with the day's total |
+| HM8 | Target vs actual | This month's mgmt-026 progress: the first 5 KPI rows, the row total and the free-text tally; no plan → empty state |
+| HM9 | Financial position (partner) | Receivables total and overdue (today), pending invoices, and the cash/bank, payables and tax liabilities of HM4's balance month |
+| HM10 | Business growth | The mgmt-030 score for the last complete month, with each factor's month-on-month change and RAG |
+| HM11 | My tasks | The caller's own tasks, as `/management/tasks` (view "mine"): the band counts and the first 5 |
+| HM12 | Recent discussions | The 5 newest discussions, with the total |
+| HM13 | Next month plan | Next month's plan summary (status, items, KPI items) or none |
+| HM14 | Nav / writes / performance | The BI entry "This month's performance" goes live (`/management#this-month`, operational). Read-only: nothing stored, logged or audited. A fixed number of statements (lists `LIMIT 5`). No migration |
+
+**Consequences:** `services/management_home.py`; `GET /management/home`; the Command Center page `/management` renders it.
+- **Feature ID authorized:** `mgmt-031`. **Status:** see `MANAGEMENT_COMMAND_CENTER_BACKLOG.md` §mgmt-031.

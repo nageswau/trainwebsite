@@ -1193,6 +1193,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-031 — Partner home dashboard
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-031`. `DEC-SCOPE-219` (HM1–HM14 recommended defaults, UNVERIFIED; answers
+  Q-30: overdue tasks, overdue decisions, red health factors, partner-only overdue receivables). No migration; API §12EG; RBAC §2.144.
+  QA evidence `docs/quality/MGMT-031_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** §31 (greeting, month, Today's Business Snapshot with 7 figures, 9 panels) and §2 partner dashboard (15
   items).
 - **Existing behavior:** none.

@@ -16,6 +16,11 @@ const partner: ManagementMe = { id: "p1", full_name: "Arjun Partner", role: "par
 const accountant: ManagementMe = { id: "a1", full_name: "Ravi Accountant", role: "accountant", tiers: { operational: false, finance: true, partner_only: false } };
 const superAdmin: ManagementMe = { id: "s1", full_name: "Root", role: "super_admin", tiers: { operational: true, finance: false, partner_only: false } };
 const shellOf = (tree: ReturnType<typeof elements>) => tree.find((el) => el.type === PortalShell)!;
+// mgmt-031: these tests are about the pillars, so the operational tier's home read fails and only the pillars render.
+const onlyMe = (me: ManagementMe) => async (path: string) => {
+  if (path === "/api/v1/management/me") return me as never;
+  throw new ApiError("Unavailable", 500);
+};
 
 beforeEach(() => {
   vi.mocked(serverApi).mockReset();
@@ -24,7 +29,7 @@ afterEach(() => cleanup());
 
 describe("mgmt-001 Command Center page", () => {
   it("reads /management/me and shows a partner every pillar in the management shell", async () => {
-    vi.mocked(serverApi).mockResolvedValue(partner as never);
+    vi.mocked(serverApi).mockImplementation(onlyMe(partner));
     const tree = elements(await ManagementPage());
     expect(serverApi).toHaveBeenCalledWith("/api/v1/management/me");
     const shell = shellOf(tree);
@@ -50,7 +55,7 @@ describe("mgmt-001 Command Center page", () => {
   });
 
   it("keeps the super admin's own sidebar and hides Finance", async () => {
-    vi.mocked(serverApi).mockResolvedValue(superAdmin as never);
+    vi.mocked(serverApi).mockImplementation(onlyMe(superAdmin));
     const shell = shellOf(elements(await ManagementPage()));
     expect(shell.props.nav).toBe(SUPER_ADMIN_NAV);
     expect(shell.props.roleLabel).toBe("Super Administrator");
