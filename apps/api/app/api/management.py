@@ -1,7 +1,7 @@
 """mgmt-001: the Management Command Center's own routes. Every later mgmt item adds its routes here or beside it, each asking
 `services/management_access` for its tier first (M13)."""
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Literal
 from uuid import UUID
 
@@ -37,6 +37,7 @@ from app.schemas import (
     ManagementAgentsOut,
     ManagementBdmOut,
     ManagementCounselingOut,
+    ManagementHealthOut,
     ManagementMeOut,
     ManagementSchoolsOut,
     ManagementSchoolValuesIn,
@@ -66,6 +67,7 @@ from app.services import (
     management_drill,
     management_expenses,
     management_funnel,
+    management_health,
     management_it_revenue,
     management_marketing,
     management_metrics,
@@ -549,6 +551,16 @@ async def universities_dashboard(from_: date | None = Query(None, alias="from"),
     first, last = partnership_period(from_ or today.replace(day=1), to or today)
     return await management_universities.dashboard(db, user, first, last, today)
 
+
+# --- mgmt-030: Business health score (spec BH1-BH14). Operational tier (M13); the finance factors for partners only -----------------
+@router.get("/health", response_model=ManagementHealthOut)
+async def business_health(month: str | None = Query(None, pattern=MONTH), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """§30 for `month` (YYYY-MM, default the last complete IST month; BH2) against the month before. Partners get all twelve factors,
+    super_admin the six operational ones scored on their own (BH1); the accountant and everyone else 403."""
+    _operational(user)
+    this_month = india_date(await db_now(db)).replace(day=1)
+    chosen = await _past_month(db, month) if month else (this_month - timedelta(days=1)).replace(day=1)
+    return await management_health.health(db, user, chosen, this_month)
 
 # --- mgmt-033: drill-down navigation (spec DD1-DD14). Finance tier only: every chain is money (AC3, M13) -------------------------------
 @router.get("/drill/{chain}", response_model=DrillOut)

@@ -1166,6 +1166,9 @@ Common conventions for every item:
 - **Complexity:** medium · **Risk:** medium
 
 ### mgmt-030 — Business health score
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-030`. `DEC-SCOPE-217` (BH1–BH14 recommended defaults, UNVERIFIED; answers
+  Q-29: weights 15/15/10/10/8/8/5/5/5/7/6/6, MoM growth scales, RAG 70/40). No migration; API §12EE; RBAC §2.142. QA evidence
+  `docs/quality/MGMT-030_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** §30 (12 factors; overall 0–100; 7 RAG example lines).
 - **Existing behavior:** none.
 - **Expected behavior:** H1–H12 (Appendix B) each scored 0–100 vs thresholds (Q-29). Overall = weighted average. RAG per factor.
@@ -1252,8 +1255,8 @@ Common conventions for every item:
 - **Complexity:** large · **Risk:** medium
 
 ### mgmt-033 — Drill-down navigation (business → transaction)
-- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-033`. `DEC-SCOPE-217` (DD1–DD14 recommended defaults, UNVERIFIED; answers
-  Q-32: names only, reads of students and below audited). No migration; API §12EE; RBAC §2.142. QA evidence
+- **Status (2026-10-14):** **IN REVIEW** on `feature/mgmt-033`. `DEC-SCOPE-218` (DD1–DD14 recommended defaults, UNVERIFIED; answers
+  Q-32: names only, reads of students and below audited). No migration; API §12EF; RBAC §2.143. QA evidence
   `docs/quality/MGMT-033_EXPLORATORY_QA_2026-10-14.md`.
 - **Business requirement:** the "key difference" note: Business → Department → Employee → Student/Application/Transaction, with three
   example chains (Abroad, IT, Recruitment). §1/§33 structure.

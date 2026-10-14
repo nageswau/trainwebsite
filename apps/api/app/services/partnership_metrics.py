@@ -381,9 +381,10 @@ def band(score: int) -> str:
     return "excellent" if score >= 80 else "good" if score >= 60 else "needs_attention"
 
 
-def health_score(values: dict[str, float | None]) -> tuple[int, dict[str, int | None]]:
-    """HS5/HS6: the 0-100 score and each factor's points (None when untracked or without data); Σ points = score."""
-    have = [f for f in HEALTH_FACTORS if f.tracked and values.get(f.key) is not None]
+def health_score(values: dict[str, float | None], factors: tuple[Factor, ...] = HEALTH_FACTORS) -> tuple[int, dict[str, int | None]]:
+    """HS5/HS6: the 0-100 score and each factor's points (None when untracked or without data); Σ points = score. mgmt-030 passes its
+    own `factors` (BH8)."""
+    have = [f for f in factors if f.tracked and values.get(f.key) is not None]
     weights = sum(f.weight for f in have)
     shares = {f.key: f.weight * min(max(cast(float, values[f.key]), 0.0), 1.0) * 100 / weights for f in have} if weights else {}
     score = floor(sum(shares.values()) + 0.5 + 1e-9)
@@ -391,7 +392,7 @@ def health_score(values: dict[str, float | None]) -> tuple[int, dict[str, int | 
     by_remainder = sorted(shares, key=lambda key: points[key] - shares[key])  # largest remainder first; stable in factor order
     for key in by_remainder[: score - sum(points.values())]:
         points[key] += 1
-    return score, {f.key: points.get(f.key) for f in HEALTH_FACTORS}
+    return score, {f.key: points.get(f.key) for f in factors}
 
 
 def _ratio(part: int, whole: int, noun: str) -> str:
