@@ -10,7 +10,10 @@ import {
 // the read failed; the form stays usable. Totals are the approved entries matching every filter but status.
 // mgmt-005 (MA8-MA11): "Manual + automatic" adds other modules' money lines, read-only with a source badge (no link until mgmt-033);
 // a line in another currency is listed but not counted, and the totals say so.
-export default function ManagementLedger({ data, error, filters, categories }: { data: LedgerPage | null; error: string; filters: LedgerFilters; categories: LedgerCategory[] }) {
+// mgmt-034 (CS1, M3): university receipts are listed to partners only; the accountant's automatic lines never include them.
+export default function ManagementLedger({ data, error, filters, categories, commissionVisible }: {
+  data: LedgerPage | null; error: string; filters: LedgerFilters; categories: LedgerCategory[]; commissionVisible: boolean;
+}) {
   const auto = filters.include === "auto";
   const select = (name: "kind" | "category" | "vertical" | "status" | "include", label: string, all: string, choices: { value: string; label: string }[]) => (
     <div className="field" style={{ margin: 0 }}>
@@ -57,7 +60,8 @@ export default function ManagementLedger({ data, error, filters, categories }: {
           </ul>
           <p className="muted" style={{ fontSize: 13 }}>
             Only approved entries count in the totals; drafts, entries awaiting approval and rejected entries are listed but not counted.
-            {auto && " Automatic lines (paid fees, paid agent commissions, approved BDM trip expenses, recruiter and university receipts) count on the day the money moved; agent deposits are pass-through and never shown."}
+            {auto && ` Automatic lines (paid fees, paid agent commissions, approved BDM trip expenses${commissionVisible ? ", recruiter and university receipts" : " and recruiter receipts"}) count on the day the money moved; agent deposits are pass-through and never shown.`}
+            {auto && !commissionVisible && " University commission is not included: only partners see it."}
           </p>
           {!!data.totals.not_counted?.length && (
             <p className="muted" style={{ fontSize: 13 }}>
