@@ -80,6 +80,8 @@ from app.models import (
     PARTNERSHIP_POTENTIALS,
     PARTNERSHIP_TARGET_KPI_KEYS,
     PARTNERSHIP_TARGET_MAX,
+    PLAN_STATUSES,
+    PLAN_VERTICALS,
     QUAL_MODES,
     QUAL_PASSPORT,
     QUAL_SKILL_LEVELS,
@@ -12087,6 +12089,137 @@ class MyTaskPage(BaseModel):
 
 class MyTaskStatusIn(BaseModel):
     status: Literal["open", "in_progress", "completed"]
+
+
+# mgmt-026 (spec PN2-PN10): the next month plan and its target vs actual. `month` is "YYYY-MM"; targets and actuals are decimal strings.
+# PlanKpi repeats management_metrics.PLAN_KPIS' keys (test_mgmt_026_kpis keeps them equal), so a key outside the catalogue is a 422.
+PLAN_MONTH = r"^\d{4}-(0[1-9]|1[0-2])$"
+PlanStatus = Literal[PLAN_STATUSES]  # type: ignore[valid-type]
+PlanVertical = Literal[PLAN_VERTICALS]  # type: ignore[valid-type]
+PlanKpi = Literal["agents", "applications", "enrollments", "school_mous", "school_students", "universities", "it_students", "batches", "companies", "placements", "revenue"]
+PlanText = Annotated[str, AfterValidator(_ledger_text(2, 200, "The item"))]
+
+
+class PlanCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    month: str = Field(pattern=PLAN_MONTH)
+    status: PlanStatus = "draft"
+
+
+class PlanUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: PlanStatus
+
+
+class PlanItemUpdate(BaseModel):
+    """PN4: a partial change. `kpi` and `target` may be cleared together (a free-text item); the rest cannot be cleared."""
+
+    model_config = ConfigDict(extra="forbid")
+    vertical: PlanVertical | None = None
+    text: PlanText | None = None
+    kpi: PlanKpi | None = None
+    target: Decimal | None = Field(None, gt=0, max_digits=16, decimal_places=2)
+    done: bool | None = None
+
+    @field_validator("vertical", "text", "done", mode="before")
+    @classmethod
+    def _required(cls, value, info: ValidationInfo):
+        if value is None:
+            raise ValueError(f"{(info.field_name or '').capitalize()} is required")
+        return value
+
+
+class PlanItemCreate(PlanItemUpdate):
+    vertical: PlanVertical
+    text: PlanText
+    done: bool = False
+
+
+class PlanItemTaskIn(BaseModel):
+    """PN10: the mgmt-028 task fields an item does not supply (its text is the title)."""
+
+    model_config = ConfigDict(extra="forbid")
+    owner_user_id: UUID
+    priority: TaskPriority = "medium"
+    deadline: date
+
+
+class PlanOut(BaseModel):
+    id: UUID
+    month: str
+    status: str
+    label: str
+    item_count: int
+    kpi_count: int
+    done_count: int
+    created_by: DiscussionPerson
+    updated_at: datetime
+
+
+class PlanItemOut(BaseModel):
+    id: UUID
+    vertical: str
+    text: str
+    kpi: str | None
+    target: Decimal | None
+    done: bool
+    task_count: int
+    updated_at: datetime
+
+
+class PlanDetailOut(PlanOut):
+    items: list[PlanItemOut]
+
+
+class PlanPage(BaseModel):
+    items: list[PlanOut]
+
+
+class PlanKpiOption(BaseModel):
+    key: str
+    label: str
+    unit: Literal["count", "inr"]
+    definition: str
+
+
+class PlanChoice(BaseModel):
+    key: str
+    label: str
+
+
+class PlanOptions(BaseModel):
+    kpis: list[PlanKpiOption]
+    verticals: list[PlanChoice]
+    users: list[DiscussionPerson]
+    current_month: str
+    max_month: str
+
+
+class PlanProgressRow(BaseModel):
+    item_id: UUID
+    vertical: str
+    text: str
+    kpi: str
+    kpi_label: str
+    unit: str
+    target: Decimal
+    actual: Decimal
+    achievement: int
+
+
+class PlanFreeText(BaseModel):
+    total: int
+    done: int
+
+
+class PlanProgressOut(BaseModel):
+    month: str
+    label: str
+    state: Literal["upcoming", "running", "ended"]
+    start: date
+    end: date
+    rows: list[PlanProgressRow]
+    free_text: PlanFreeText
 
 
 # mgmt-006 (spec MR1-MR12): the §4 Abroad Education revenue dashboard -- revenue by kind and by country / university / intake / agency
