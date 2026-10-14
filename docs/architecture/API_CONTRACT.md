@@ -3298,6 +3298,17 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `POST /management/reviews/{month}/finalise` | `200`; `422` "Answer every Problems question before finalising: …" (names the missing ones); `404`; `409` when final. Emails every active partner a link |
 | `GET /management/reviews/{month}/pdf` | `application/pdf` attachment `monthly-review-{month}.pdf`, `Cache-Control: no-store`, the stored review (a draft says "Draft"); `404` |
 
+## 12EI. Confidentiality + permission sweep (mgmt-034) — addendum, 2026-10-14
+
+- **Basis:** `DEC-SCOPE-221` (CS1–CS10). No new route. Access is unchanged (RBAC §2.146); the accountant's finance responses now leave
+  university commission out (CS1, M3):
+  - `GET /management/ledger` (`include=auto`): no `university_commission` line, and the totals and not-counted list never include one.
+  - `GET /management/accounts`, `PUT /management/accounts/balances`: new `commission_visible` (true for partners, false for the
+    accountant). For the accountant, income, profit and the not-counted list leave university commission out, `receivables.university`
+    is `null` and `receivables.total` = fees + recruitment.
+  - `GET` / `PUT /management/salaries`: `revenue` (and so `ratio`) leaves university commission out for the accountant.
+- Partners' responses are unchanged.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
