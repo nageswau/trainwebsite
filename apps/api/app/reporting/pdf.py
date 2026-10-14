@@ -271,9 +271,7 @@ def _block(title: str, *body: Flowable) -> list[Flowable]:
 def render_monthly_review(review: dict) -> bytes:
     s, narrative = review["snapshot"], review["narrative"]
     if review["status"] == "final":
-        finalised = review["finalised_at"]
-        when = finalised if isinstance(finalised, datetime) else datetime.fromisoformat(str(finalised))
-        state = f"Final · finalised on {_text(when)}" + (f" by {review['finalised_by']['full_name']}" if review.get("finalised_by") else "")
+        state = f"Final · finalised on {_text(review['finalised_at'])}" + (f" by {review['finalised_by']['full_name']}" if review.get("finalised_by") else "")
     else:
         state = "Draft · not finalised; figures can still be regenerated"
     people, marketing, invest, nxt = s["people"], s["marketing"], s["investments"], s["next_month"]

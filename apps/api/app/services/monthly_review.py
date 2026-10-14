@@ -109,13 +109,13 @@ async def compute(db: AsyncSession, month: date) -> dict:
 
 
 # --- reads ---------------------------------------------------------------------------------------------------------------------
-async def _locked(db: AsyncSession, month: date) -> MonthlyReview | None:
-    return await db.scalar(select(MonthlyReview).where(MonthlyReview.month == month).with_for_update().execution_options(populate_existing=True))
+async def _find(db: AsyncSession, month: date, *, lock: bool = False) -> MonthlyReview | None:
+    stmt = select(MonthlyReview).where(MonthlyReview.month == month).execution_options(populate_existing=True)
+    return await db.scalar(stmt.with_for_update() if lock else stmt)
 
 
 async def load(db: AsyncSession, month: date, *, lock: bool = False) -> MonthlyReview:
-    stmt = select(MonthlyReview).where(MonthlyReview.month == month).execution_options(populate_existing=True)
-    review = await db.scalar(stmt.with_for_update() if lock else stmt)
+    review = await _find(db, month, lock=lock)
     if review is None:
         raise HTTPException(404, NOT_FOUND)
     return review
@@ -152,14 +152,14 @@ async def generate(db: AsyncSession, month: date, actor: User | None, *, refresh
     """MR3/MR4: a draft for `month`, created (True) or, when `refresh`, its snapshot recomputed with the narrative kept (False).
     No commit: the caller commits once. A concurrent insert of the same month loses the unique constraint and refreshes instead."""
     snapshot = await compute(db, month)
-    review = await _locked(db, month)
+    review = await _find(db, month, lock=True)
     if review is None:
         review = MonthlyReview(month=month, status="draft", snapshot=snapshot, narrative={}, updated_by_user_id=actor.id if actor else None)
         try:
             async with db.begin_nested():
                 db.add(review)
         except IntegrityError:
-            review = await _locked(db, month)
+            review = await _find(db, month, lock=True)
             if review is None:
                 raise
         else:
