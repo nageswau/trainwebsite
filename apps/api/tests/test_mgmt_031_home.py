@@ -180,16 +180,19 @@ async def test_my_overdue_task_is_in_my_tasks_and_urgent(client, db_session):
 
 @pytest.mark.asyncio
 async def test_todays_meetings_match_the_meetings_page(client, db_session):
+    """HM7 / QA31-01: the calendar's first five of today, and today's total (the panel stays bounded on a busy day)."""
     await as_user(client, db_session)
+    before = await get(client)
     start = datetime.datetime.combine(TODAY, datetime.time(23, 30), datetime.timezone(timedelta(hours=5, minutes=30)))
-    created = await client.post(
-        "/api/v1/management/meetings", json={"title": "Partner sync", "kind": "partner", "starts_at": start.isoformat(), "mode": "Online", "meeting_url": "https://meet.example.com/x"}
-    )
-    assert created.status_code == 201, created.text
+    for _ in range(6):
+        created = await client.post(
+            "/api/v1/management/meetings", json={"title": "Partner sync", "kind": "partner", "starts_at": start.isoformat(), "mode": "Online", "meeting_url": "https://meet.example.com/x"}
+        )
+        assert created.status_code == 201, created.text
     body = await get(client)
     page = await get(client, "/api/v1/management/meetings")
-    assert [m["id"] for m in body["meetings"]["items"]] == [m["id"] for m in page["items"]]
-    assert created.json()["id"] in {m["id"] for m in body["meetings"]["items"]}
+    assert [m["id"] for m in body["meetings"]["items"]] == [m["id"] for m in page["items"][:5]]
+    assert body["meetings"]["total"] == len(page["items"]) == before["meetings"]["total"] + 6
 
 
 @pytest.mark.asyncio

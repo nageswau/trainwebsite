@@ -12954,6 +12954,11 @@ class HomeTasks(BaseModel):
     counts: TaskCounts
 
 
+class HomeMeetings(BaseModel):
+    items: list[MgmtMeetingOut]  # the calendar's first five today (QA31-01)
+    total: int
+
+
 class HomeNextPlan(BaseModel):
     month: str
     label: str
@@ -12968,7 +12973,7 @@ class ManagementHomeOut(BaseModel):
     snapshot: HomeSnapshot
     urgent: list[HomeUrgent]
     pending_decisions: DiscussionPage
-    meetings: MgmtMeetingPage
+    meetings: HomeMeetings
     targets: HomeTargets | None
     financial_position: HomeFinancialPosition | None = None
     growth: HomeGrowth

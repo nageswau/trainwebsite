@@ -86,11 +86,12 @@ async def home(db: AsyncSession, user: User, today: date) -> dict:
         urgent.append({"key": "overdue_receivables", "label": "Overdue receivables", "count": 1 if position["receivables_overdue"] > 0 else 0, "amount": position["receivables_overdue"]})
 
     next_plan = await management_plans._plans(db, user, ManagementPlan.month == following)
+    meetings = (await management_meetings.calendar(db, date_from=today, date_to=today, kind=None, status=None))["items"]  # bounded: one day
     return out | {
         "snapshot": snapshot,
         "urgent": [u for u in urgent if u["count"] > 0],
         "pending_decisions": await management_discussions.page(db, status=None, responsible=None, pending=True, limit=PANEL_ROWS, offset=0),
-        "meetings": await management_meetings.calendar(db, date_from=today, date_to=today, kind=None, status=None),
+        "meetings": {"items": meetings[:PANEL_ROWS], "total": len(meetings)},  # QA31-01: bounded like the other list panels
         "targets": await _targets(db, user, this_month),
         "growth": {"month": health["month"], "score": health["score"], "rag": health["rag"], "factors": [{k: f[k] for k in ("key", "label", "change", "rag")} for f in health["factors"]]},
         "my_tasks": {"items": tasks["items"], "counts": tasks["counts"]},

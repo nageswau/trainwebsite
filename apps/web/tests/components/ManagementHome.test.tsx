@@ -23,10 +23,10 @@ function business(over: Partial<Home> = {}): Home {
     snapshot: { students: 1240, applications: 37, enrollments: 6, revenue: "1250000.00", expenses: "400000.00", profit: "850000.00", cash: { amount: "900000.00", month: "2026-09" } },
     urgent: [{ key: "overdue_tasks", label: "Overdue tasks", count: 2 }, { key: "overdue_receivables", label: "Overdue receivables", count: 1, amount: "45000.00" }],
     pending_decisions: { items: [{ id: "d1", topic: "Renew office lease", discussion_date: "2026-10-01", decision: "Renew for two years", responsible: person, deadline: "2026-10-10", status: "open" }], total: 3 },
-    meetings: { items: [{ id: "m1", title: "Partner sync", kind: "partner", starts_at: "2026-10-14T05:30:00Z", status: "scheduled" }] },
+    meetings: { items: [{ id: "m1", title: "Partner sync", kind: "partner", starts_at: "2026-10-14T05:30:00Z", status: "scheduled" }], total: 7 },
     targets: { month: "2026-10", label: "October 2026", rows: [{ item_id: "i1", text: "100+ applicants", kpi_label: "Applications", unit: "count", target: "100", actual: "37", achievement: 37 }], row_total: 1, free_text: { total: 4, done: 1 } },
     financial_position: { receivables: "300000.00", receivables_overdue: "45000.00", pending_invoices: { count: 4, amount: "120000.00" }, balance_month: "2026-09", cash_bank: "900000.00", payables: "50000.00", tax_liabilities: null },
-    growth: { month: "2026-09", score: 64, rag: "amber", factors: [{ key: "revenue", label: "Revenue", change: 12.5, rag: "green" }, { key: "expenses", label: "Expenses", change: -4, rag: "red" }] },
+    growth: { month: "2026-09", score: 64, rag: "amber", factors: [{ key: "revenue", label: "Revenue", change: 12.5, rag: "green" }, { key: "profit", label: "Profit", change: null, rag: "amber" }, { key: "expenses", label: "Expenses", change: -4, rag: "red" }] },
     my_tasks: { items: [{ id: "t1", title: "Sign the lease", priority: "high", deadline: "2026-10-12", status: "open", band: "overdue" }], counts: { overdue: 1, today: 0, week: 2, later: 0, completed: 0 } },
     recent_discussions: { items: [{ id: "d2", topic: "Japan partnership", discussion_date: "2026-10-12", decision: null, responsible: null, deadline: null, status: "in_progress" }], total: 9 },
     next_plan: { month: "2026-11", label: "November 2026", plan: { status: "draft", item_count: 5, kpi_count: 3 } },
@@ -43,7 +43,7 @@ function operational(): Home {
 function empty(): Home {
   return business({
     snapshot: { students: 0, applications: 0, enrollments: 0, revenue: "0.00", expenses: "0.00", profit: "0.00", cash: { amount: null, month: null } },
-    urgent: [], pending_decisions: { items: [], total: 0 }, meetings: { items: [] }, targets: null,
+    urgent: [], pending_decisions: { items: [], total: 0 }, meetings: { items: [], total: 0 }, targets: null,
     financial_position: { receivables: "0.00", receivables_overdue: "0.00", pending_invoices: { count: 0, amount: "0.00" }, balance_month: null, cash_bank: null, payables: null, tax_liabilities: null },
     growth: { month: "2026-09", score: null, rag: null, factors: [] }, my_tasks: { items: [], counts: { overdue: 0, today: 0, week: 0, later: 0, completed: 0 } },
     recent_discussions: { items: [], total: 0 }, next_plan: { month: "2026-11", label: "November 2026", plan: null },
@@ -73,6 +73,7 @@ describe("mgmt-031 ManagementHome", () => {
     expect(href("Pending decisions", "All 3 pending decisions")).toBe("/management/discussions#pending-decisions");
     expect(href("Pending decisions", "Renew office lease")).toBe("/management/discussions/d1");
     expect(href("Today's meetings", "Partner sync")).toBe("/management/meetings/m1");
+    expect(href("Today's meetings", "All 7 meetings today")).toBe("/management/meetings"); // QA31-01: bounded, with the day's total
     expect(href("Target vs actual", "Open the October 2026 plan")).toBe("/management/plans/2026-10");
     expect(href("Financial position", "Open accounts")).toBe("/management/accounts?month=2026-09");
     expect(href("Business growth", "Open the health score")).toBe("/management/health");
@@ -89,6 +90,17 @@ describe("mgmt-031 ManagementHome", () => {
     expect(within(growth).getByText("64/100")).toBeTruthy();
     expect(within(growth).getByText("+12.5%")).toBeTruthy();
     expect(within(growth).getByText("−4%")).toBeTruthy();
+    // QA31-02: only the factors that changed are listed; the rest are counted, not shown as "—"
+    expect(within(growth).getAllByRole("listitem").map((li) => li.textContent?.split(":")[0])).toEqual(["Revenue", "Expenses"]);
+    expect(within(growth).getByText("1 factor has no month-on-month comparison yet.")).toBeTruthy();
+  });
+
+  it("speaks of money in the snapshot note only to the partner (QA31-03)", () => {
+    render(<ManagementHome data={business()} userName="Arjun Kumar" now={morning} />);
+    expect(screen.getByText("Money, applications and enrollments are for October 2026 to date (India time); cash is the latest balance entered.")).toBeTruthy();
+    cleanup();
+    render(<ManagementHome data={operational()} userName="Root Admin" now={morning} />);
+    expect(screen.getByText("Applications and enrollments are for October 2026 to date (India time).")).toBeTruthy();
   });
 
   it("gives the super admin the operational home: no money anywhere (AC)", () => {

@@ -25,7 +25,7 @@ export type ManagementHome = {
   };
   urgent: { key: HomeUrgentKey; label: string; count: number; amount?: string }[];
   pending_decisions: { items: HomeDiscussion[]; total: number };
-  meetings: { items: HomeMeeting[] };
+  meetings: { items: HomeMeeting[]; total: number }; // the first five of today (QA31-01)
   targets: { month: string; label: string; rows: HomeTargetRow[]; row_total: number; free_text: { total: number; done: number } } | null;
   financial_position?: {
     receivables: string; receivables_overdue: string; pending_invoices: { count: number; amount: string };

@@ -32,6 +32,8 @@ const Empty = ({ children }: { children: ReactNode }) => <p className="muted hom
 // whatever is absent is simply not drawn (no ₹ ever reaches their screen).
 export default function ManagementHome({ data, userName, now }: { data: Home; userName: string; now?: Date }) {
   const { snapshot: s, financial_position: position, targets, growth, next_plan: plan } = data;
+  const changed = growth.factors.filter((f) => f.change !== null);
+  const unchanged = growth.factors.length - changed.length;
   const tiles: { label: string; value: string; note?: string }[] = [
     ...(s.revenue !== undefined ? [{ label: "Revenue", value: formatInr(s.revenue) }, { label: "Expenses", value: formatInr(s.expenses!) }, { label: "Profit", value: formatInr(s.profit!) }] : []),
     ...(s.cash ? [{ label: "Cash", value: money(s.cash.amount), note: s.cash.month ? `as of ${formatMonth(s.cash.month)}` : undefined }] : []),
@@ -55,7 +57,10 @@ export default function ManagementHome({ data, userName, now }: { data: Home; us
         ))}
       </ul>
       <p className="muted" style={{ fontSize: 13 }}>
-        Money and applications are for {data.label} to date (India time){s.revenue !== undefined ? "; cash is the latest balance entered" : ""}.
+        {/* QA31-03: the operational home never speaks of money */}
+        {s.revenue !== undefined
+          ? `Money, applications and enrollments are for ${data.label} to date (India time); cash is the latest balance entered.`
+          : `Applications and enrollments are for ${data.label} to date (India time).`}
       </p>
 
       <div className="home-panels">
@@ -84,7 +89,8 @@ export default function ManagementHome({ data, userName, now }: { data: Home; us
           )}
         </Panel>
 
-        <Panel id="home-meetings" title="Today's meetings" more={<Link href="/management/meetings">Open the calendar</Link>}>
+        {/* QA31-01: the first five, with the day's total on the calendar link */}
+        <Panel id="home-meetings" title="Today's meetings" more={<Link href="/management/meetings">{data.meetings.total > data.meetings.items.length ? `All ${data.meetings.total} meetings today` : "Open the calendar"}</Link>}>
           {data.meetings.items.length === 0 ? <Empty>No meetings today.</Empty> : (
             <ul className="home-list">
               {data.meetings.items.map((m) => (
@@ -135,13 +141,17 @@ export default function ManagementHome({ data, userName, now }: { data: Home; us
               <p>
                 {formatMonth(growth.month)}: <strong>{growth.score}/100</strong> {growth.rag && <span className={PILL[growth.rag]}>{RAG_LABEL[growth.rag]}</span>}
               </p>
-              <ul className="home-list">
-                {growth.factors.map((f) => (
-                  <li key={f.key}>
-                    {f.label}: <span>{changeText(f.change)}</span> {f.rag && <span className={PILL[f.rag]}>{RAG_LABEL[f.rag]}</span>}
-                  </li>
-                ))}
-              </ul>
+              {/* QA31-02: only the factors with a month-on-month change; the others are counted, not listed as "—" */}
+              {changed.length > 0 && (
+                <ul className="home-list">
+                  {changed.map((f) => (
+                    <li key={f.key}>
+                      {f.label}: <span>{changeText(f.change)}</span> {f.rag && <span className={PILL[f.rag]}>{RAG_LABEL[f.rag]}</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {unchanged > 0 && <p className="muted">{unchanged === 1 ? "1 factor has" : `${unchanged} factors have`} no month-on-month comparison yet.</p>}
             </>
           )}
         </Panel>

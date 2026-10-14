@@ -8569,7 +8569,7 @@ parallel on a sibling worktree. Spec: `docs/superpowers/specs/2026-10-14-mgmt-03
 | HM4 | Snapshot | Revenue, Expenses, Profit: this month to date, from the mgmt-009 P&L total. Cash: the mgmt-013 cash/bank of the latest month entered up to this month, with that month named ("Not entered" if none). Students: S1 (mgmt-003). Applications: created this month (= mgmt-024 "Applications Created" for the 1st..today). Enrollments: reached Enrolled this month (mgmt-026 PN5 = the mgmt-030 Enrollment factor). super_admin: the last three only |
 | HM5 | Urgent issues (Q-30) | Overdue management tasks (everyone's), overdue pending decisions, health factors in Red (last complete month, tier-filtered), and, for partners only, overdue receivables. Only conditions above 0 are listed |
 | HM6 | Pending decisions | The first 5 of the MD12 pending list, with the total |
-| HM7 | Today's meetings | The mgmt-029 calendar for today (IST) |
+| HM7 | Today's meetings | The first 5 of the mgmt-029 calendar for today (IST), with the day's total |
 | HM8 | Target vs actual | This month's mgmt-026 progress: the first 5 KPI rows, the row total and the free-text tally; no plan → empty state |
 | HM9 | Financial position (partner) | Receivables total and overdue (today), pending invoices, and the cash/bank, payables and tax liabilities of HM4's balance month |
 | HM10 | Business growth | The mgmt-030 score for the last complete month, with each factor's month-on-month change and RAG |
