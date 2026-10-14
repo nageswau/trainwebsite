@@ -238,11 +238,13 @@ async def test_a_manual_entry_without_a_course_is_the_unattributed_row(client, d
     """DD7: one `none` row per level, and it can be drilled into like any other."""
     year, month = a_month()
     on = date(year, month, 3)
+    await as_user(client, db_session)
+    before = [r for r in (await drill(client, "it", month_param(year, month), limit=100))["rows"] if r["key"] == "none"]  # the shared DB may hold some
     await approved_income(client, db_session, on, "7000.00", "it")
     data = await drill(client, "it", month_param(year, month), limit=100)
     none = row(data, "none")
     assert none["name"] == "No course linked"
-    assert money(none["amount"]) == Decimal("7000.00")
+    assert money(none["amount"]) - (money(before[0]["amount"]) if before else Decimal(0)) == Decimal("7000.00")
     below = await drill(client, "it", month_param(year, month), ["none"])
     assert below["breadcrumbs"][0] == {"level": "course", "level_label": "Course", "key": "none", "name": "No course linked"}
     assert row(below, "none")["name"] == "No batch"

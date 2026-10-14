@@ -289,20 +289,20 @@ async def _record(db: AsyncSession, chain_key: str, table, shape: Shape, where: 
         "outcomes": None,
     }
     if chain_key == "it" and outcome_key is not None:  # DD9: the student's placement outcomes
-        rows = await db.execute(
+        placements = await db.execute(
             select(func.concat(Job.title, " · ", Company.name), JobApplication.status)
             .join(Job, Job.id == JobApplication.job_id)
             .join(Company, Company.id == Job.company_id)
             .where(JobApplication.student_id == outcome_key, JobApplication.status.in_(OUTCOME_STATUSES))
             .order_by(JobApplication.stage_changed_at.desc())
         )
-        record["outcomes"] = {"title": "Placement", "items": [{"name": name, "detail": None, "status": _label(status)} for name, status in rows.all()]}
+        record["outcomes"] = {"title": "Placement", "items": [{"name": name, "detail": None, "status": _label(status)} for name, status in placements.all()]}
     elif chain_key == "recruitment" and outcome_key is not None:  # DD8: the requirement's selections and joinings
-        rows = await db.execute(
+        candidates = await db.execute(
             select(Candidate.name, Candidate.candidate_code, JobApplication.status)
             .join(Candidate, Candidate.id == JobApplication.candidate_id)
             .where(JobApplication.job_id == outcome_key, JobApplication.status.in_(OUTCOME_STATUSES))
             .order_by(JobApplication.status, Candidate.name)
         )
-        record["outcomes"] = {"title": "Selections and joinings", "items": [{"name": name, "detail": code, "status": _label(status)} for name, code, status in rows.all()]}
+        record["outcomes"] = {"title": "Selections and joinings", "items": [{"name": name, "detail": code, "status": _label(status)} for name, code, status in candidates.all()]}
     return record
