@@ -17,11 +17,15 @@ from app.models import (
     ApplicationDeposit,
     ApplicationStatusHistory,
     Batch,
+    BdmMou,
+    BdmMouEvent,
+    BdmOrganization,
     Candidate,
     Company,
     Country,
     DocumentRequest,
     Enrollment,
+    JobOffer,
     OverseasApplication,
     OverseasCourse,
     RecruiterProfile,
@@ -29,14 +33,16 @@ from app.models import (
     SchoolStudent,
     StudentDocument,
     University,
+    UniversityStageHistory,
     User,
     VisaCase,
 )
 from app.partnership_stages import GROUPS
 from app.recruiter_stages import ORDER as COMPANY_STAGES
-from app.services import application_filters
+from app.services import application_filters, recruiter_metrics
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, stage_label
 from app.services.bdm_appointments import IST
+from app.services.management_training import NOT_TAKEN
 
 # (Appendix B id, response key, the source's wording), in source order (EVID-017 §3).
 SNAPSHOT: tuple[tuple[str, str, str], ...] = (
@@ -267,3 +273,58 @@ async def application_options(db: AsyncSession) -> dict[str, list[dict]]:
     options["intakes"] = [{"value": intake, "label": intake} for intake in intakes]
     options["statuses"] = [{"value": status, "label": stage_label(status)} for status in statuses]
     return options
+
+
+# --- mgmt-026 (§25/§26, spec PN5-PN7): the plan KPI catalogue ------------------------------------------------------------------
+
+# key -> (label, unit, definition), in §26's row order. Every count is over the plan's IST month; revenue is mgmt-009's figure and is
+# read by `management_plans` (partners only, PN7), so `plan_actuals` never computes it.
+PLAN_KPIS: dict[str, tuple[str, str, str]] = {
+    "agents": ("New agents", "count", "Agency organisations created in the month that are active now."),
+    "applications": ("Applications", "count", "Overseas applications created in the month."),
+    "enrollments": ("Enrollments", "count", "Applications moved to Enrolled in the month."),
+    "school_mous": ("School MoUs", "count", "School MoUs moved to Signed in the month."),
+    "school_students": ("School students onboarded", "count", "School students added in the month."),
+    "universities": ("University partners", "count", "Universities moved into a partner stage in the month."),
+    "it_students": ("New IT students", "count", "Students whose IT enrolment was created in the month and taken up."),
+    "batches": ("New batches", "count", "Batches starting in the month, except cancelled ones."),
+    "companies": ("New companies", "count", "Companies that first moved past Interested in the month."),
+    "placements": ("Placements", "count", "Offers joined with a joining date in the month."),
+    "revenue": ("Revenue", "inr", "The month's counted ledger income — the Profit & loss total revenue."),
+}
+REVENUE_KPI = "revenue"
+
+
+def _plan_counts(start: date, end: date) -> dict[str, ScalarSelect]:
+    """PN5: each count KPI over `[start, end)` -- IST instants for timestamps, the dates themselves for date columns."""
+    lo, hi = _ist_start(start), _ist_start(end)
+
+    def during(column) -> list:
+        return [column >= lo, column < hi]
+
+    crossed = recruiter_metrics.first_past_interested()
+    school_mous = select(BdmMou.id).where(BdmMou.organization_id.in_(select(BdmOrganization.id).where(BdmOrganization.org_type == "school")))
+    return {
+        "agents": _count(*during(AgentOrg.created_at), AgentOrg.status == "active"),
+        "applications": _count(*during(OverseasApplication.created_at)),
+        "enrollments": _count(*during(ApplicationStatusHistory.created_at), ApplicationStatusHistory.to_status == "enrolled",
+                              ApplicationStatusHistory.from_status.is_distinct_from("enrolled"), of=ApplicationStatusHistory.application_id),
+        "school_mous": _count(*during(BdmMouEvent.created_at), BdmMouEvent.to_status == "signed", BdmMouEvent.from_status.is_distinct_from("signed"),
+                              BdmMouEvent.mou_id.in_(school_mous), of=BdmMouEvent.mou_id),
+        "school_students": _count(*during(SchoolStudent.created_at)),
+        "universities": _count(*during(UniversityStageHistory.created_at), UniversityStageHistory.to_stage.in_(UNIVERSITY_PARTNER_STAGES),
+                               UniversityStageHistory.from_stage.not_in(UNIVERSITY_PARTNER_STAGES), of=UniversityStageHistory.university_id),
+        "it_students": _count(*during(Enrollment.created_at), Enrollment.status.not_in(NOT_TAKEN), of=Enrollment.student_id),
+        "batches": _count(Batch.start_date >= start, Batch.start_date < end, Batch.status != "cancelled"),
+        "companies": select(func.count()).select_from(crossed).where(crossed.c.at >= lo, crossed.c.at < hi).scalar_subquery(),
+        "placements": _count(JobOffer.joining_status == "joined", JobOffer.actual_joining_date >= start, JobOffer.actual_joining_date < end),
+    }  # fmt: skip
+
+
+async def plan_actuals(db: AsyncSession, keys: set[str], start: date, end: date) -> dict[str, int]:
+    """PN6: the live actual of each count KPI in `keys` -- one SELECT, bounded by the catalogue; no keys, no query."""
+    figures = {key: query for key, query in _plan_counts(start, end).items() if key in keys}
+    if not figures:
+        return {}
+    row = (await db.execute(select(*(query.label(key) for key, query in figures.items())))).one()
+    return {key: int(row._mapping[key]) for key in figures}
