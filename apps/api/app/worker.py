@@ -204,6 +204,15 @@ def sweep_stale_university_emails_task():
     return _run_with_fresh_pool(sweep_stale_university_emails)
 
 
+@celery.task
+def draft_monthly_review_task():
+    """mgmt-032 (DEC-SCOPE-220 MR3): on the 1st at 06:00 IST via beat -- drafts the previous month's review. Idempotent per month (the
+    unique month; an existing review is never overwritten), so a rerun or a second beat process creates nothing new."""
+    from app.services.monthly_review import run_monthly_reviews
+
+    return _run_with_fresh_pool(run_monthly_reviews)
+
+
 celery.conf.beat_schedule = {
     "enh014-sweep-stale-deliveries": {"task": "app.worker.sweep_stale_deliveries_task", "schedule": 300.0},
     "agn017-daily-reminders": {"task": "app.worker.send_daily_reminders_task", "schedule": crontab(hour=2, minute=30)},  # UTC = 08:00 IST
@@ -214,4 +223,5 @@ celery.conf.beat_schedule = {
     "rec026-sweep-stale-recruiter-emails": {"task": "app.worker.sweep_stale_recruiter_emails_task", "schedule": 300.0},
     "upc012-sweep-stale-university-emails": {"task": "app.worker.sweep_stale_university_emails_task", "schedule": 300.0},
     "upc015-alerts": {"task": "app.worker.send_partnership_alerts_task", "schedule": crontab(minute=30)},  # UTC :30 = every IST hour
+    "mgmt032-monthly-review": {"task": "app.worker.draft_monthly_review_task", "schedule": crontab(day_of_month=1, hour=0, minute=30)},  # UTC 00:30 = 06:00 IST
 }
