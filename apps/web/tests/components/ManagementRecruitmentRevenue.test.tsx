@@ -72,6 +72,12 @@ describe("mgmt-008 ManagementRecruitmentRevenue", () => {
     expect(screen.queryByText("Revenue per placement")).toBeNull();
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.queryByText(/₹/)).toBeNull();
+    expect(screen.queryByRole("link", { name: "Drill down into this revenue" })).toBeNull(); // mgmt-033: money chains are finance-only
+  });
+
+  it("links the revenue to its drill-down for the same period (mgmt-033)", () => {
+    view();
+    expect(screen.getByRole("link", { name: "Drill down into this revenue" })).toHaveAttribute("href", "/management/drill/recruitment?month=2026-05&period=month");
   });
 
   it("keeps the month and period in a GET form and names the period and the KPI range", () => {

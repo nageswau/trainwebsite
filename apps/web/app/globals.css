@@ -479,3 +479,12 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 .university-tiles .metric small { display: block; margin-top: 4px; font-size: 12px; }
 .university-tiles .metric strong.metric-money { font-size: 22px; overflow-wrap: anywhere; }
 .universities-lost { margin-top: 12px; } /* QA23-02: the lost / closed note sits clear of the last pipeline step */
+/* mgmt-033: the drill-down path (breadcrumbs with a separator, wrapping on a phone) and the record's label / value list */
+.drill-path ol { display: flex; flex-wrap: wrap; gap: 4px 0; list-style: none; padding: 0; margin: 0 0 12px; font-size: 14px; }
+.drill-path li + li::before { content: "›"; margin: 0 8px; color: var(--muted); }
+.drill-path a { color: var(--blue); }
+.drill-path [aria-current="page"] { font-weight: 700; }
+.drill-record dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; margin: 0 0 16px; }
+.drill-record dt { font-weight: 600; color: var(--muted); }
+.drill-record dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 480px) { .drill-record dl { grid-template-columns: minmax(0, 1fr); gap: 2px; } .drill-record dd { margin-bottom: 8px; } }
