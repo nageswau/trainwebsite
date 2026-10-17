@@ -6,9 +6,10 @@ its own documents and replaces rejected ones (K5); it deliberately skips `agent_
 """
 
 from datetime import UTC, datetime
+from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -99,3 +100,55 @@ async def reject_kyc_document(org_id: UUID, doc_id: UUID, payload: KycRejectRequ
     await db.commit()
     await db.refresh(doc)
     return kyc.admin_view(doc)
+
+
+async def _own_master_org(db: AsyncSession, user: User) -> UUID:
+    membership = user.agent_membership if user.role == "agent" else None
+    if membership is None or membership.role != "master" or membership.status != "active":
+        raise HTTPException(403, "Only a Master of the agency can manage its registration")
+    return membership.org_id
+
+
+@router.get("")
+async def my_registration(response: Response, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    org = await db.get(AgentOrg, await _own_master_org(db, user))
+    response.headers.update(NO_STORE)
+    return {"org": {"name": org.name, "status": org.status, "kyc_required": org.kyc_required}, "documents": [kyc.agent_view(d) for d in await kyc.documents(db, org.id)]}
+
+
+@router.put("/documents/{doc_type}/file")
+async def reupload_kyc_document(
+    doc_type: Literal["pan", "aadhaar", "business_license"],
+    file: UploadFile = File(...),
+    doc_number: str | None = Form(None),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.agent_documents import wait_seconds
+
+    org = await lock_org(db, await _own_master_org(db, user))  # serialises with the admin's review/approve
+    if org.status != "pending":
+        raise HTTPException(409, kyc.NOT_PENDING_UPLOAD)
+    doc = await db.scalar(select(AgentOrgKycDocument).where(AgentOrgKycDocument.org_id == org.id, AgentOrgKycDocument.doc_type == doc_type))
+    if doc is None:
+        raise HTTPException(404, "Document not found")
+    if doc.status != "rejected":
+        raise HTTPException(409, kyc.ONLY_REJECTED)
+    wait = await wait_seconds(db, user, ("agent_kyc.reupload",), kyc.REUPLOAD_LIMIT)
+    if wait:
+        raise HTTPException(429, kyc.REUPLOAD_THROTTLED, headers={"Retry-After": str(wait)})
+    number = kyc.clean_number(doc_type, doc_number) if (doc_number or "").strip() else doc.doc_number
+    data, content_type, name = await kyc.read_kyc_file(doc_type, file)
+    key, old_key = kyc.store(data, content_type), doc.file_key
+    try:
+        doc.doc_number, doc.file_key, doc.original_filename, doc.content_type, doc.file_size = number, key, name, content_type, len(data)
+        doc.status, doc.rejection_reason, doc.reviewed_by_user_id, doc.reviewed_at, doc.uploaded_by_user_id = "pending", None, None, None, user.id
+        _audit(db, user, "agent_kyc.reupload", doc, "pending")
+        await db.commit()
+    except BaseException:
+        await db.rollback()
+        kyc.discard(key)
+        raise
+    kyc.discard(old_key)
+    await db.refresh(doc)
+    return kyc.agent_view(doc)
