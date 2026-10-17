@@ -114,14 +114,16 @@ def clean_label(document_type: str, label: str | None) -> str | None:
     return None
 
 
-async def read_upload(file: UploadFile) -> tuple[bytes, str, str | None]:
+async def read_upload(file: UploadFile, max_bytes: int | None = None) -> tuple[bytes, str, str | None]:
     """G8: the type is decided by the bytes, never by the name or the client's Content-Type; image metadata (EXIF GPS on a passport
-    photo) is stripped. Returns (bytes, content type, display file name)."""
-    data = await file.read(settings.max_upload_bytes + 1)
+    photo) is stripped. Returns (bytes, content type, display file name). `max_bytes` (AGN-024: 5 MB KYC files) defaults to the
+    global upload limit."""
+    limit = max_bytes or settings.max_upload_bytes
+    data = await file.read(limit + 1)
     if not data:
         raise HTTPException(422, EMPTY_FILE)
-    if len(data) > settings.max_upload_bytes:
-        raise HTTPException(413, f"The file must be at most {max(1, settings.max_upload_bytes // (1024 * 1024))} MB")
+    if len(data) > limit:
+        raise HTTPException(413, f"The file must be at most {max(1, limit // (1024 * 1024))} MB")
     content_type = PDF if data.startswith(b"%PDF-") else detect_image_type(data)
     if content_type is None:
         raise HTTPException(415, WRONG_FILE)
