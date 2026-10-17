@@ -63,7 +63,7 @@ describe("RegisterForm KYC (AGN-024)", () => {
     fireEvent.change(screen.getByLabelText("Account type"), { target: { value: "agent" } });
     expect(screen.getByLabelText(/^PAN card/)).toHaveAttribute("accept", ".pdf,.jpg,.jpeg,.png");
     expect(screen.getByLabelText(/^PAN card/)).toBeRequired();
-    expect(screen.getByText("Only the last 4 digits are stored.")).toBeInTheDocument();
+    expect(screen.getByText("Only the last 4 digits of the number are stored.")).toBeInTheDocument();
   });
 
   it("sends an agent signup as multipart with the three files and numbers, then opens the status page", async () => {

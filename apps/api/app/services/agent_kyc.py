@@ -184,7 +184,10 @@ async def _notify(db: AsyncSession, org_id, title: str, body: str, action_url: s
 
 
 async def notify_rejected(db: AsyncSession, org_id, doc: AgentOrgKycDocument) -> None:
-    body = f"Your {LABELS[doc.doc_type]} was rejected: {doc.rejection_reason} Upload a corrected file from your registration status page."
+    reason = (doc.rejection_reason or "").strip()
+    if not reason.endswith((".", "!", "?")):
+        reason += "."  # a reason typed without final punctuation still ends its sentence
+    body = f"Your {LABELS[doc.doc_type]} was rejected. Reason: {reason} Upload a corrected file from your registration status page."
     await _notify(db, org_id, "Verification document rejected", body, STATUS_URL)
 
 

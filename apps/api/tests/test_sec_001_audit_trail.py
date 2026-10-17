@@ -30,7 +30,7 @@ from sqlalchemy import select
 import app.api.admin as admin_module
 from app.core.security import hash_password
 from app.models import AgentCommission, AuditLog, Country, OverseasApplication, University, User, UserRoleAssignment
-from tests.agn024_helpers import KYC_FIELDS, kyc_files, org_for, verify_all
+from tests.agn024_helpers import KYC_FIELDS, ip_headers, kyc_files, org_for, verify_all
 
 
 def _boom(*args, **kwargs):
@@ -46,7 +46,7 @@ async def _register_agent(client, **overrides) -> dict:
         "account_type": "agent",
     }
     payload.update(overrides)
-    response = await client.post("/api/v1/auth/register", data={**payload, **KYC_FIELDS}, files=kyc_files())
+    response = await client.post("/api/v1/auth/register", data={**payload, **KYC_FIELDS}, files=kyc_files(), headers=ip_headers())
     assert response.status_code == 201
     return response.json()
 

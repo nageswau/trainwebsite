@@ -1,6 +1,8 @@
 """AGN-024 test helpers: a self-registered agent with its three KYC documents, and direct-DB verification for tests whose subject is
 something else."""
 
+import ipaddress
+import secrets
 from datetime import UTC, datetime
 
 from sqlalchemy import select, update
@@ -11,6 +13,16 @@ from tests.agn009_helpers import PDF
 
 KYC_FIELDS = {"pan_number": "ABCDE1234F", "aadhaar_last4": "1234", "license_number": "LIC-2026/001"}
 REGISTER = "/api/v1/auth/register"
+
+
+def fresh_ip() -> str:
+    """A unique documentation-range address (2001:db8::/32): agent signups are throttled per client IP (K11, 5 per hour), so tests
+    that register agents must not share one."""
+    return str(ipaddress.IPv6Address((0x20010DB8 << 96) | secrets.randbits(96)))
+
+
+def ip_headers(**extra) -> dict:
+    return {"X-Forwarded-For": fresh_ip(), **extra}
 
 
 def kyc_files(pan: bytes = PDF, aadhaar: bytes = PDF, license: bytes = PDF) -> dict:
@@ -26,7 +38,7 @@ def agent_form(**overrides) -> dict:
 
 
 async def register_kyc_agent(client, files: dict | None = None, **overrides) -> dict:
-    response = await client.post(REGISTER, data=agent_form(**overrides), files=files or kyc_files())
+    response = await client.post(REGISTER, data=agent_form(**overrides), files=files or kyc_files(), headers=ip_headers())
     assert response.status_code == 201, response.text
     return response.json()
 

@@ -109,5 +109,11 @@ async def test_views_summaries_and_rejection_notice(db_session):
     await kyc.notify_rejected(db_session, ctx["org"].id, docs[1])
     await db_session.commit()
     note = await db_session.scalar(select(Notification).where(Notification.user_id == ctx["master"].id).order_by(Notification.created_at.desc()))
-    assert note.title == "Verification document rejected" and "Aadhaar card" in note.body and "Blurry" in note.body and "1234" not in note.body
+    assert note.title == "Verification document rejected" and "1234" not in note.body
+    assert note.body == "Your Aadhaar card was rejected. Reason: Blurry. Upload a corrected file from your registration status page."
+    docs[1].rejection_reason = "Wrong card. "  # already punctuated: no doubled full stop
+    await kyc.notify_rejected(db_session, ctx["org"].id, docs[1])
+    await db_session.commit()
+    bodies = (await db_session.scalars(select(Notification.body).where(Notification.user_id == ctx["master"].id))).all()
+    assert "Your Aadhaar card was rejected. Reason: Wrong card. Upload a corrected file from your registration status page." in bodies
     assert note.action_url == kyc.STATUS_URL
