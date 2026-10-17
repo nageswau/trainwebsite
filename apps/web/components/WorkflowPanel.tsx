@@ -436,7 +436,7 @@ export default function WorkflowPanel({ user, section }: { user: User; section: 
   const showCounselorDocumentReview = user.role === "counselor" && section === "documents";
   const showVisaChecklist = user.role === "overseas_student" && section === "visa-status";
   const showCounselorVisa = user.role === "counselor" && section === "visa";
-  const showAgentApproval = user.role === "overseas_admin" && section === "agents";
+  const showAgentApproval = ["overseas_admin", "super_admin"].includes(user.role) && section === "agents";
   const showBatchPicker = user.role === "it_student" && section === "course";
   const showLiveClasses = user.role === "it_student" && section === "course";
   const showAgreementConsent = user.role === "it_student" && section === "course";

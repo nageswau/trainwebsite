@@ -186,3 +186,25 @@ describe("AgentApprovalPanel (AGN-001)", () => {
     expect(await screen.findByText("Cannot approve an organisation that is active")).toBeInTheDocument();
   });
 });
+
+describe("AgentApprovalPanel KYC gate (AGN-024)", () => {
+  const kycOrg = (verified: number) => ({ ...org("k", "pending", "Kyc Agency"), kyc_required: true, kyc_summary: { verified, rejected: 0, pending: 3 - verified } });
+  const kycList = { kyc_required: true, org_status: "pending", items: [] };
+  const stub = (o: unknown) => vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(String(url).includes("/kyc-documents") ? ok(kycList) : page([o]))));
+
+  it("disables Approve until all 3 documents are verified", async () => {
+    stub(kycOrg(2));
+    render(<AgentApprovalPanel />);
+    const approve = await screen.findByRole("button", { name: "Approve Kyc Agency" });
+    expect(approve).toBeDisabled();
+    expect(screen.getByText("Verify all 3 documents first")).toBeInTheDocument();
+    expect(approve).toHaveAttribute("aria-describedby", "kyc-hint-k");
+    expect(await screen.findByRole("region", { name: "Verification documents for Kyc Agency" })).toBeInTheDocument();
+  });
+
+  it("enables Approve once all 3 are verified", async () => {
+    stub(kycOrg(3));
+    render(<AgentApprovalPanel />);
+    expect(await screen.findByRole("button", { name: "Approve Kyc Agency" })).toBeEnabled();
+  });
+});
