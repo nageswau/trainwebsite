@@ -120,7 +120,7 @@ def failure_text(exc: BaseException) -> str:
 
 
 def is_permanent(error: str | None) -> bool:
-    return bool(error) and error.startswith(PERMANENT_PREFIX)
+    return error is not None and error.startswith(PERMANENT_PREFIX)
 
 
 def _send_sync(msg: EmailMessage) -> None:
