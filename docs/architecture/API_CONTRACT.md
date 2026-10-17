@@ -3319,6 +3319,60 @@ moves the application to Joined (AC3). Every change writes offer history.
 | `GET /api/v1/public/overseas-courses` | `country_iso2: string \| null` | beside the existing `country` name |
 | `GET /api/v1/lookups/countries` | `iso2: string \| null` on each item | `label` and `detail` unchanged; same roles as before |
 
+## 12EK. Agent signup KYC documents (AGN-024) — addendum, 2026-10-17
+
+`DEC-SCOPE-224` (K1–K11), migration `0164_agent_org_kyc`. Document types: `pan`, `aadhaar`, `business_license`. Statuses: `pending | verified | rejected`.
+
+### `POST /api/v1/auth/register` (changed)
+
+- **JSON** (`application/json`): unchanged for students. A JSON agent signup returns `422` "PAN card, Aadhaar card and business licence are required" (agents now use multipart).
+- **Multipart** (`multipart/form-data`) or `application/x-www-form-urlencoded`: the same fields as the JSON body plus, for `account_type=agent`, all six of: `pan_number` + `pan_file`, `aadhaar_last4` + `aadhaar_file`, `license_number` + `license_file`.
+- Any other `Content-Type` (including none, `text/plain`, etc.) returns `415` "Unsupported content type" before the body is read. JSON means `application/json` or a `*/*+json` type.
+- Checks that run **before the body is parsed**: `403` "Cross-site registration is not allowed" when an `Origin` header (else `Referer`) is present and is not the origin of `settings.frontend_url`; `411` without a valid `Content-Length`; `413` above `MAX_REGISTRATION_BYTES` (3 × 5 MB + 1 MB).
+- Field rules: PAN `^[A-Z]{5}[0-9]{4}[A-Z]$` (upper-cased); Aadhaar last 4 `^[0-9]{4}$`; licence `^[A-Za-z0-9/\-. ]{3,64}$`. Files: PDF, JPG or PNG, at most 5 MB each, type from the bytes, image metadata stripped.
+- Errors: `422` for number/field errors and empty or unreadable files; `413` (too large), `415` (wrong type) and `422` for files, with the message prefixed by the document label (for example "Aadhaar card: the file must be at most 5 MB"); `409` duplicate email, including a concurrent signup that loses the race on commit (`IntegrityError`).
+- `422` bodies never echo the submitted input (password, PAN, licence number).
+- **Agent signup throttle (K11):** at most 5 agent signups per client IP per rolling hour; the 6th returns `429` "Too many registrations from this network -- try again later" with `Retry-After` (seconds). Checked after field and number validation and before any file is read or stored. Client IP = the leftmost valid `X-Forwarded-For` entry, else the socket peer. The `auth.register` audit row of an agent signup records `ip` (the IP only). Student signups are not throttled.
+- `aadhaar_last4` is the only Aadhaar number stored; the uploaded `aadhaar_file` is kept as uploaded and may show the full number (K9). It is reachable only through the admin streaming route.
+- Atomic: files are stored only after every check passes and are discarded if the commit fails. The user, org (`kyc_required=true`), Master, three `pending` document rows and the role assignment are created in one transaction. Audit `auth.register` gains `kyc_documents: 3`; document numbers are never written to audit metadata.
+- The response is unchanged. OpenAPI no longer shows a request body for this route (the body is read manually); this section is the contract.
+
+### Admin routes (`/overseas-admin`, roles `overseas_admin` and `super_admin`; the role gate runs before any lookup)
+
+| Route | Request | Response |
+|---|---|---|
+| `GET /overseas-admin/agent-orgs/{org_id}/kyc-documents` | none | `{kyc_required, org_status, items: [{id, doc_type, label, status, rejection_reason, original_filename, content_type, file_size, updated_at, doc_number, reviewed_at}]}`. Full numbers (admin only), `Cache-Control: no-store`. Not audited. `404` unknown org. |
+| `GET /overseas-admin/agent-orgs/{org_id}/kyc-documents/{doc_id}/file` | none | The file bytes, streamed through `storage.read_bytes`: `Content-Type` = stored type, `Content-Disposition: inline; filename="<doc_type>.<ext>"` (never the client file name), `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`. Audit `agent_kyc.view`. `404` if the document is not in that org. |
+| `POST /overseas-admin/agent-orgs/{org_id}/kyc-documents/{doc_id}/verify` | none | the admin item shape. Audit `agent_kyc.verify`. `409` if the org is not `pending`. |
+| `POST /overseas-admin/agent-orgs/{org_id}/kyc-documents/{doc_id}/reject` | `{reason}` (3–500 characters) | the admin item shape. Audit `agent_kyc.reject`; queues the rejection notice (below). `409` if the org is not `pending`; `422` without a valid reason. |
+
+Verify and reject lock the org row (serialising with approve/reject) and may change a decision (verified ↔ rejected) while the org is `pending`. Audit metadata is `{org_id, doc_type}` only. Other roles get `403`; anonymous `401`.
+
+### Agent routes (`/agent/registration`, a Master of the agency; these deliberately skip `agent_denial_reason`)
+
+| Route | Request | Response |
+|---|---|---|
+| `GET /agent/registration` | none | `{org: {name, status, kyc_required}, documents: [{id, doc_type, label, status, rejection_reason, original_filename, content_type, file_size, updated_at, doc_number_display}]}`. Works for `pending`, `rejected` and `active` orgs. `doc_number_display`: PAN `ABCDE****F`, Aadhaar `XXXX XXXX 1234`, licence in full. `no-store`. |
+| `PUT /agent/registration/documents/{doc_type}/file` | multipart: `file`, optional `doc_number` (corrected number) | the agent item shape. Replaces a **rejected** document of a **pending** org only (rejection of the org is final, K10: a rejected agency registers again with a new email); status returns to `pending`, reason and reviewer cleared, audit `agent_kyc.reupload`. `409` if the org is not `pending` or the document is not `rejected`; `404` if the agency has no such document; `413`/`415`/`422` file errors; `429` + `Retry-After` after 20 re-uploads per agency in a rolling 24 h (counted from audit rows, the AGN-009 pattern). The old file is deleted after the commit. |
+
+A user who is not a `master` of an active membership gets `403`.
+
+### Agent org list (additive)
+
+`GET /overseas-admin/agent-orgs` items gain `kyc_required: boolean` and `kyc_summary: {verified, rejected, pending}` (counts of documents).
+
+### Approve gate
+
+`POST /overseas-admin/agent-orgs/{org_id}/approve` and the legacy per-agent `POST /overseas-admin/agents/{agent_id}/approve` both reach `agent_orgs.set_org_status`. For an org with `kyc_required=true`, pending → active and rejected → active return `409` "All verification documents must be verified before approval" unless all three documents exist and are `verified`. Reinstating a suspended org is not gated, rejecting is never gated, and orgs with `kyc_required=false` approve as before.
+
+### Notices (K6)
+
+Rejection of a document, and approval of a `kyc_required` org, create a `Notification` and queue an email through `queue_deliveries` (the ENH-014 outbox) for the org's active Masters, in the same transaction as the action. Delivery happens after commit; a delivery failure never affects the action. Rejection carries the reason and a link to `/overseas/agent/registration-status`.
+
+### Generic file paths
+
+`/files/download` refuses any key starting `agent-kyc/` (`404`), and the `/local-files` static mount does the same. KYC files are served only by the admin streaming route above.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

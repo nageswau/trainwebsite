@@ -29,7 +29,8 @@ from sqlalchemy import select
 
 import app.api.admin as admin_module
 from app.core.security import hash_password
-from app.models import AgentCommission, AuditLog, OverseasApplication, University, Country, User, UserRoleAssignment
+from app.models import AgentCommission, AuditLog, Country, OverseasApplication, University, User, UserRoleAssignment
+from tests.agn024_helpers import KYC_FIELDS, ip_headers, kyc_files, org_for, verify_all
 
 
 def _boom(*args, **kwargs):
@@ -45,7 +46,7 @@ async def _register_agent(client, **overrides) -> dict:
         "account_type": "agent",
     }
     payload.update(overrides)
-    response = await client.post("/api/v1/auth/register", json=payload)
+    response = await client.post("/api/v1/auth/register", data={**payload, **KYC_FIELDS}, files=kyc_files(), headers=ip_headers())
     assert response.status_code == 201
     return response.json()
 
@@ -118,6 +119,7 @@ async def test_agent_approval_writes_an_audit_row_with_outcome_approved(db_sessi
     registration = await _register_agent(client)
     admin = await _create_overseas_admin(db_session)
     await _login(client, admin.email)
+    await verify_all(db_session, (await org_for(db_session, registration["user"]["id"])).id, admin)  # AGN-024: approve needs verified KYC
 
     response = await client.post(f"/api/v1/overseas-admin/agents/{registration['user']['id']}/approve")
     assert response.status_code == 200
@@ -169,6 +171,7 @@ async def test_agent_approval_fails_closed_if_the_audit_write_itself_fails(db_se
     registration = await _register_agent(client)
     admin = await _create_overseas_admin(db_session)
     await _login(client, admin.email)
+    await verify_all(db_session, (await org_for(db_session, registration["user"]["id"])).id, admin)  # AGN-024: approve needs verified KYC
 
     monkeypatch.setattr(admin_module, "AuditLog", _boom)
     # `client`'s ASGITransport propagates an unhandled route exception as a raised
@@ -226,6 +229,7 @@ async def test_admin_audit_endpoint_surfaces_the_outcome_field(db_session, clien
     registration = await _register_agent(client)
     admin = await _create_overseas_admin(db_session)
     await _login(client, admin.email)
+    await verify_all(db_session, (await org_for(db_session, registration["user"]["id"])).id, admin)  # AGN-024: approve needs verified KYC
     approve = await client.post(f"/api/v1/overseas-admin/agents/{registration['user']['id']}/approve")
     assert approve.status_code == 200
 

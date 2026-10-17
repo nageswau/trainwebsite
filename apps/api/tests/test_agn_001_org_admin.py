@@ -9,6 +9,7 @@ from app.core.database import SessionLocal
 from app.models import AgentOrg, AuditLog, User, UserRoleAssignment
 from app.services.agent_orgs import ensure_agent_org
 from tests.agn001_helpers import login, mk_active_org, mk_user, org_of, register_agent
+from tests.agn024_helpers import verify_all
 
 ORG_ACTION = "/api/v1/overseas-admin/agent-orgs/{oid}/{action}"
 
@@ -73,7 +74,8 @@ async def test_unknown_org_is_404_and_non_admin_is_403(client, db_session):
 async def test_approve_and_reject_write_through_to_master_assignments(client, db_session):  # E11
     body = await register_agent(client, agency_name="Write Through")
     org = await org_of(db_session, body["user"]["id"])
-    await _admin(client, db_session)
+    admin = await _admin(client, db_session)
+    await verify_all(db_session, org.id, admin)  # AGN-024: a self-registered agency needs its KYC documents verified first
     await client.post(ORG_ACTION.format(oid=org.id, action="approve"))
     assignment = await db_session.scalar(select(UserRoleAssignment).where(UserRoleAssignment.user_id == uuid.UUID(body["user"]["id"])).execution_options(populate_existing=True))
     assert assignment.approval_status == "approved"
@@ -138,7 +140,8 @@ async def test_out_of_range_paging_is_422(client, db_session, query):
 @pytest.mark.parametrize(("action", "end", "audit"), [("approve", "active", "agent.approve"), ("reject", "rejected", "agent.reject")])
 async def test_old_routes_keep_their_audit_and_set_the_org(client, db_session, action, end, audit):  # E4
     body = await register_agent(client, agency_name="Old Route")
-    await _admin(client, db_session)
+    admin = await _admin(client, db_session)
+    await verify_all(db_session, (await org_of(db_session, body["user"]["id"])).id, admin)  # AGN-024: approve needs verified KYC; reject never does
     response = await client.post(f"/api/v1/overseas-admin/agents/{body['user']['id']}/{action}")
     assert response.status_code == 200 and response.json()["approval_status"] == ("approved" if action == "approve" else "rejected")
     assert (await org_of(db_session, body["user"]["id"])).status == end
@@ -152,7 +155,8 @@ async def test_the_old_approve_route_takes_the_org_lock_before_the_assignment_lo
     # assignment row must still be free.
     body = await register_agent(client, agency_name="Lock Order")
     org = await org_of(db_session, body["user"]["id"])
-    await _admin(client, db_session)
+    admin = await _admin(client, db_session)
+    await verify_all(db_session, org.id, admin)  # AGN-024
     holder = SessionLocal()
     try:
         await holder.execute(select(AgentOrg).where(AgentOrg.id == org.id).with_for_update())

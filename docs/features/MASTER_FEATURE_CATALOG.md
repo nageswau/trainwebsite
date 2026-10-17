@@ -2110,6 +2110,15 @@ single-Counselor-role model with five specialized internal roles. `SCH-001`'s de
 - **Implementation status:** IMPLEMENTED (2026-10-06, `feature/agn-023`; no migration) · **Test status:** VERIFIED, full regression deferred (lite backend set and vitest green; e2e spec `agn-023-counselor-assignment.spec.ts` ran and passed)
 - **Acceptance Criteria:** AC01–AC21 in `docs/superpowers/specs/2026-10-06-agn-023-counselor-assignment-design.md`
 
+### `AGN-024` — Agent signup KYC documents (PAN, Aadhaar, business licence)
+- **Module:** Overseas / Agent CRM
+- **Description:** An Education agent registering on the overseas form must upload PAN card, Aadhaar card and business licence with their numbers (Aadhaar: last 4 digits typed). Overseas Admin or Super Admin views each streamed file and verifies or rejects it with a reason; Approve is refused until all three are verified (self-registered `kyc_required` agencies only). A pending agent sees a Registration status page and re-uploads rejected documents; emails on rejection and approval. Rejection of the agency is final. Agent signups are throttled to 5 per client IP per hour; non-JSON/non-form signup bodies are refused (415).
+- **Actors:** primary — Education agent (Master), Overseas Admin; secondary — Super Admin
+- **Traces to:** owner answers K1–K11 (`EXPLICIT_APPROVAL`, 2026-10-17) · Decision `DEC-SCOPE-224` · backlog `AGENT_CRM_BACKLOG.md` ang-024 · API `API_CONTRACT.md` §12EK · RBAC `RBAC_MATRIX.md` §2.147 · migration `0164_agent_org_kyc`
+- **Scope/Priority/MoSCoW/Release:** CURRENT
+- **Implementation status:** IMPLEMENTED (2026-10-17, `feature/agn-024`; not merged) · **Test status:** VERIFIED on lite evidence (`docs/quality/AGN_024_QA_EVIDENCE.md`); full backend suite: owner
+- **Acceptance Criteria:** AC01–AC10 in `docs/superpowers/specs/2026-10-17-agent-signup-kyc-design.md` §7 (map in `RTM.md`, AGN-024 addendum)
+
 ---
 
 **APPROVED** by user (in-session), 2026-09-01. GATE-05 satisfied for the 68 `CURRENT` features above. `BLOCKED` features are not authorized to build by this approval — see `FEATURE_QUESTIONS.md` and each feature's blocked reason above.

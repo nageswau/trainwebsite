@@ -3,25 +3,31 @@ import logging
 import math
 import secrets
 from datetime import UTC, datetime, timedelta
+from urllib.parse import urlsplit
 from uuid import UUID
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import check_session, get_current_user
+from app.core.client_ip import client_ip
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code
 from app.core.rbac import agent_permissions
 from app.core.security import create_token, decode_token, hash_password, verify_password
-from app.models import AuditLog, Notification, NotificationDelivery, PasswordResetToken, User, UserRoleAssignment
+from app.models import AgentOrg, AgentOrgKycDocument, AuditLog, Notification, NotificationDelivery, PasswordResetToken, User, UserRoleAssignment
 from app.schemas import ChangePasswordRequest, LoginRequest, LoginResponse, ProfileUpdate, RegistrationRequest, UserOut
+from app.services import agent_kyc as kyc
 from app.services.agent_orgs import ensure_agent_org
 from app.services.integrations import send_notification
-from app.services.telecaller import parse_self_update
 from app.services.provisioning import ADMIN_PORTAL_ROLES
+from app.services.telecaller import parse_self_update
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -113,33 +119,166 @@ async def login(payload: LoginRequest, response: Response, db: AsyncSession = De
     return LoginResponse(user=UserOut.model_validate(user), expires_in_minutes=settings.access_token_minutes)
 
 
+MAX_REGISTRATION_BYTES = 3 * kyc.MAX_BYTES + 1024 * 1024  # three KYC files plus form overhead
+
+
+def _origin_of(url: str) -> str:
+    parts = urlsplit(url.strip())
+    return f"{parts.scheme}://{parts.netloc}".lower() if parts.scheme and parts.netloc else ""
+
+
+def _check_form_origin(request: Request) -> None:
+    """Form bodies are CORS-simple requests (no preflight), so a cross-site page could post one: refuse a foreign Origin/Referer."""
+    source = request.headers.get("origin") or request.headers.get("referer")
+    if source and _origin_of(source) != _origin_of(settings.frontend_url):
+        raise HTTPException(403, "Cross-site registration is not allowed")
+
+
+def _check_form_size(request: Request) -> None:
+    """Refuse an oversize body before it is read (the form parser would spool it to disk)."""
+    raw = request.headers.get("content-length", "")
+    if not raw.isdigit():
+        raise HTTPException(411, "Content-Length required")
+    if int(raw) > MAX_REGISTRATION_BYTES:
+        raise HTTPException(413, "The registration upload is too large")
+
+
+def _safe_errors(errors) -> list[dict]:
+    """Validation errors without `input`/`ctx`: they would echo the submitted form (password, PAN, licence number)."""
+    return [{k: v for k, v in e.items() if k not in ("input", "ctx", "url")} for e in errors]
+
+
+def _media_type(request: Request) -> str:
+    return request.headers.get("content-type", "").split(";")[0].strip().lower()
+
+
+def _is_json(media_type: str) -> bool:
+    return media_type == "application/json" or (media_type.endswith("+json") and "/" in media_type)
+
+
+async def _registration_input(request: Request):
+    """AGN-024 (DEC-SCOPE-224): JSON as before, or multipart -- an agent's signup carries its three KYC files. Returns (fields, files,
+    form-to-close). Any other content type is refused before the body is read: a cross-site `<form enctype="text/plain">` can carry
+    a valid JSON object, and `request.json()` would parse it regardless of the declared type (login CSRF)."""
+    media_type = _media_type(request)
+    if media_type in ("multipart/form-data", "application/x-www-form-urlencoded"):
+        _check_form_origin(request)
+        _check_form_size(request)
+        form = await request.form(max_files=3, max_fields=20)
+        fields = {k: v for k, v in form.multi_items() if isinstance(v, str)}
+        files = {k: v for k, v in form.multi_items() if not isinstance(v, str)}
+        return fields, files, form
+    if not _is_json(media_type):
+        raise HTTPException(415, "Unsupported content type")
+    try:
+        body = await request.json()
+    except ValueError:
+        body = None
+    if not isinstance(body, dict):
+        raise RequestValidationError([{"type": "json_invalid", "loc": ("body",), "msg": "A JSON object or multipart form is required"}])
+    return body, {}, None
+
+
 @router.post("/register", status_code=201)
-async def register(payload: RegistrationRequest, response: Response, db: AsyncSession = Depends(get_db)):
+async def register(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
+    fields, files, form = await _registration_input(request)
+    try:
+        return await _register(fields, files, response, db, client_ip(request))
+    finally:
+        if form is not None:
+            await form.close()
+
+
+# AGN-024 K11 (DEC-SCOPE-224): at most 5 agent signups per client IP per rolling hour -- each one stores up to 15 MB of KYC files
+# from an anonymous caller. Counted from the `auth.register` audit rows, which carry the IP for agent signups (as the
+# change-password throttle counts its own audit rows), so it needs no table.
+AGENT_SIGNUP_MAX_PER_IP = 5
+AGENT_SIGNUP_WINDOW = timedelta(hours=1)
+AGENT_SIGNUP_THROTTLED = "Too many registrations from this network -- try again later"
+
+
+async def _agent_signup_wait_seconds(db: AsyncSession, ip: str) -> int:
+    """Seconds before this IP may register another agent; 0 means allowed. Blocked while the newest MAX signups are all inside the
+    window; the block lifts when the oldest of those leaves it."""
+    now = datetime.now(UTC)
+    newest = (
+        await db.scalars(
+            select(AuditLog.created_at)
+            .where(
+                AuditLog.action == "auth.register",
+                AuditLog.created_at > now - AGENT_SIGNUP_WINDOW,
+                AuditLog.metadata_json["role"].as_string() == "agent",
+                AuditLog.metadata_json["ip"].as_string() == ip,
+            )
+            .order_by(AuditLog.created_at.desc())
+            .limit(AGENT_SIGNUP_MAX_PER_IP)
+        )
+    ).all()
+    if len(newest) < AGENT_SIGNUP_MAX_PER_IP:
+        return 0
+    remaining = (newest[-1] + AGENT_SIGNUP_WINDOW - now).total_seconds()
+    return min(int(AGENT_SIGNUP_WINDOW.total_seconds()), max(1, math.ceil(remaining)))
+
+
+async def _register(fields: dict, files: dict, response: Response, db: AsyncSession, ip: str):
+    try:
+        payload = RegistrationRequest.model_validate(fields)
+    except ValidationError as exc:
+        raise RequestValidationError(_safe_errors(exc.errors(include_url=False))) from None
+    is_agent = payload.account_type == "agent"
+    # K1: numbers and file presence are checked before anything is looked up or stored.
+    numbers = kyc.clean_numbers(fields) if is_agent else {}
+    uploads = kyc.require_files(files) if is_agent else {}
+    if is_agent and (wait := await _agent_signup_wait_seconds(db, ip)):  # K11: before any file is read or stored
+        logger.warning("agent_signup_throttled", extra={"extra_fields": {"wait_seconds": wait}})
+        raise HTTPException(429, AGENT_SIGNUP_THROTTLED, headers={"Retry-After": str(wait)})
     email = payload.email.lower().strip()
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
-    role = "agent" if payload.account_type == "agent" else ("it_student" if payload.division == "it" else "overseas_student")
-    student_code = await unique_student_code(db, User.student_code) if role in ("it_student", "overseas_student") else None
-    user = User(
-        email=email,
-        password_hash=hash_password(payload.password),
-        full_name=payload.full_name.strip(),
-        role=role,
-        division=payload.division,
-        phone=payload.phone,
-        active=True,
-        email_verified=False,
-        student_code=student_code,
-        profile={"registration_source": "self_service"},
-    )
-    db.add(user)
-    await db.flush()
-    if role == "agent":
-        # AGN-001 (D2, E2): one pending organisation + Master M001, named from the optional agency name.
-        await ensure_agent_org(db, user, agency_name=payload.agency_name, status="pending")
-    await _sync_role_assignment(db, user)
-    db.add(AuditLog(user_id=user.id, action="auth.register", entity_type="user", entity_id=str(user.id), metadata_json={"division": user.division, "role": user.role}))
-    await db.commit()
+    contents = {t: await kyc.read_kyc_file(t, f) for t, f in uploads.items()}  # K8: every file passes before any is stored
+    stored: list[str] = []
+    try:
+        for _doc_type, (data, content_type, _name) in contents.items():
+            stored.append(kyc.store(data, content_type))
+        role = "agent" if is_agent else ("it_student" if payload.division == "it" else "overseas_student")
+        student_code = await unique_student_code(db, User.student_code) if role in ("it_student", "overseas_student") else None
+        user = User(
+            email=email,
+            password_hash=hash_password(payload.password),
+            full_name=payload.full_name.strip(),
+            role=role,
+            division=payload.division,
+            phone=payload.phone,
+            active=True,
+            email_verified=False,
+            student_code=student_code,
+            profile={"registration_source": "self_service"},
+        )
+        db.add(user)
+        await db.flush()
+        metadata = {"division": user.division, "role": user.role}
+        if role == "agent":
+            # AGN-001 (D2, E2): one pending organisation + Master M001, named from the optional agency name.
+            member = await ensure_agent_org(db, user, agency_name=payload.agency_name, status="pending")
+            org = await db.get(AgentOrg, member.org_id)
+            org.kyc_required = True  # AGN-024 K4: only self-registered agencies are gated
+            for (doc_type, (data, content_type, name)), key in zip(contents.items(), stored, strict=True):
+                db.add(AgentOrgKycDocument(org_id=org.id, doc_type=doc_type, doc_number=numbers[doc_type], file_key=key, original_filename=name,
+                                           content_type=content_type, file_size=len(data), status="pending", uploaded_by_user_id=user.id))  # fmt: skip
+            metadata["kyc_documents"] = len(stored)
+            metadata["ip"] = ip  # K11 throttle key; the IP only, never a document number
+        await _sync_role_assignment(db, user)
+        db.add(AuditLog(user_id=user.id, action="auth.register", entity_type="user", entity_id=str(user.id), metadata_json=metadata))
+        await db.commit()
+    except BaseException as exc:
+        try:
+            await db.rollback()
+        finally:
+            for key in stored:
+                kyc.discard(key)
+        if isinstance(exc, IntegrityError):  # a concurrent signup took the email between the check and the commit
+            raise HTTPException(409, "Email already exists") from None
+        raise
     loaded = await db.scalar(select(User).where(User.id == user.id).options(selectinload(User.role_assignments)))
     assert loaded is not None
     _set_auth_cookies(response, loaded)

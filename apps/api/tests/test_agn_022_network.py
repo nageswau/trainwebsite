@@ -37,7 +37,7 @@ async def test_the_list_adds_counts_that_match_the_fixture(client, db_session): 
     item = _item(body, w["org"].id)
     assert item["staff_count"] == NETWORK["staff_count"]
     assert item["counts"] == {k: NETWORK[k] for k in ("students", "applications", "enrollments")}
-    assert set(item) == {"id", "name", "prefix", "status", "created_at", "masters", "staff_count", "counts"}  # existing keys kept
+    assert set(item) == {"id", "name", "prefix", "status", "created_at", "masters", "staff_count", "counts", "kyc_required", "kyc_summary"}  # existing keys kept; AGN-024 adds the last two
 
 
 @pytest.mark.asyncio

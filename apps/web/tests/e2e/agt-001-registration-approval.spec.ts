@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+import { e2eIpHeaders, fillAgentKyc, kycMultipart, verifyAllKyc } from "./helpers/agency";
+
 // AGT-001 -- Agent self-registration and approval gate. Requires the stack running via
 // `docker compose up` with `python -m app.seed` already applied (seeds an
 // `overseas_admin` account). Registers its own throwaway Agent account per test.
@@ -10,9 +12,11 @@ test("a newly self-registered agent sees a pending-approval message, not their d
   await page.fill('input[name="full_name"]', "E2E Agent");
   await page.fill('input[name="email"]', `agt001-e2e-${unique}@example.local`);
   await page.selectOption('select[name="account_type"]', "agent");
+  await fillAgentKyc(page);
   await page.fill('input[name="password"]', "Sup3r-Secret-Pass!");
   await page.click('button:has-text("Create account")');
-  await page.waitForURL("**/overseas/agent/dashboard");
+  await page.waitForURL("**/overseas/agent/registration-status");
+  await page.goto("/overseas/agent/dashboard");
   await expect(page.getByRole("heading", { name: "Access unavailable" })).toBeVisible();
   await expect(page.getByText(/pending approval/)).toBeVisible();
 });
@@ -21,7 +25,8 @@ test("overseas admin approves a pending agent, who then reaches their dashboard 
   const unique = Date.now();
   const email = `agt001-e2e-${unique}@example.local`;
   const registered = await page.request.post("/api/v1/auth/register", {
-    data: { email, password: "Sup3r-Secret-Pass!", full_name: "E2E Agent", division: "overseas", account_type: "agent" },
+    multipart: kycMultipart({ email, password: "Sup3r-Secret-Pass!", full_name: "E2E Agent", division: "overseas", account_type: "agent" }),
+    headers: e2eIpHeaders(),
   });
   expect(registered.ok()).toBeTruthy();
 
@@ -31,6 +36,7 @@ test("overseas admin approves a pending agent, who then reaches their dashboard 
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/overseas/admin/dashboard");
 
+  await verifyAllKyc(page.request, "E2E Agent");
   await page.goto("/overseas/admin/agents");
   const card = page.locator(".action-card", { has: page.getByRole("heading", { name: "Agent Approvals" }) }).locator(".card", { hasText: "E2E Agent" }).filter({ hasText: email });
   await expect(card).toBeVisible();

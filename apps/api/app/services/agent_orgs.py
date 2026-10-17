@@ -138,7 +138,15 @@ async def lock_active_org(db: AsyncSession, org_id) -> AgentOrg:
 
 
 async def set_org_status(db: AsyncSession, org: AgentOrg, status: str, actor: User, *, write_through: bool) -> None:
-    """No commit. E11: approve/reject also set the Master assignments' approval_status; suspend/reinstate do not."""
+    """No commit. E11: approve/reject also set the Master assignments' approval_status; suspend/reinstate do not.
+    AGN-024 (DEC-SCOPE-224 K3/K6): becoming active from pending or rejected needs all KYC documents verified when the org is
+    kyc_required (every approve path -- org-level and the legacy per-agent route -- comes through here), and queues the approval email.
+    Reinstating a suspended org is neither re-gated nor re-announced."""
+    from app.services import agent_kyc  # local: agent_kyc imports agent_documents, which imports this module
+
+    approving = status == "active" and org.status in {"pending", "rejected"}
+    if approving:
+        await agent_kyc.assert_complete(db, org)
     now = datetime.now(UTC)
     org.status = status
     org.status_changed_by_user_id = actor.id
@@ -149,6 +157,8 @@ async def set_org_status(db: AsyncSession, org: AgentOrg, status: str, actor: Us
             .where(UserRoleAssignment.role == "agent", UserRoleAssignment.division == "overseas", UserRoleAssignment.user_id.in_(select(AgentOrgMember.user_id).where(AgentOrgMember.org_id == org.id)))
             .values(approval_status="approved" if status == "active" else "rejected", approved_by_user_id=actor.id, approved_at=now)
         )
+    if approving and org.kyc_required:
+        await agent_kyc.notify_approved(db, org)
 
 
 async def transition_org(db: AsyncSession, org_id, action: str, actor: User) -> AgentOrg:

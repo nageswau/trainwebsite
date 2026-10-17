@@ -1,4 +1,4 @@
-# Agent CRM — Engineering Enhancement Backlog (`ang-001` … `ang-022`)
+# Agent CRM — Engineering Enhancement Backlog (`ang-001` … `ang-024`)
 
 NO-ASSUMPTION MODE. Prepared 2026-09-28 at the user's request. **No code was written or changed.**
 
@@ -30,6 +30,7 @@ NO-ASSUMPTION MODE. Prepared 2026-09-28 at the user's request. **No code was wri
 > | `AGN-019` | ang-019 (per-staff counts with visa columns and the student funnel; Master-only page; student-creation date range; no branch filter — no branch data, deferred) | `DEC-SCOPE-066` (drafted as `063`; renumbered `065` on merging `main` @ `39c119b`, where `063` is bdm-010 and `064` is AGN-022, and `066` on merging `main` @ `cf356ca`, where `065` is bdm-003) | branch `feature/agn-019-staff-funnel` (implemented, lite-tested; Browser Use QA19-01/03 fixed and re-verified, QA19-02/04–07 Low open; full suites and Codex review pending) |
 > | `AGN-020` | ang-020 (seven agency reports + the AGN-014 commission report as tabs; filters; audited, throttled CSV; intake parsed to month + year — no structured intake column, superseding D16's assumption) | `DEC-SCOPE-067` | branch `feature/agn-020-reports` (implemented; browser QA + fix pass done, Codex review waived; full backend suite: owner) |
 > | `AGN-023` | PRD open item 84 (Overseas Admin assigns an EduSphere counselor to an overseas application; on agency applications the counselor supports the agency within the agency's rules; agency and counselor filters on the lists; AC01-AC21 in `docs/superpowers/specs/2026-10-06-agn-023-counselor-assignment-design.md`) | `DEC-SCOPE-090` (drafted as `089`; bdm-020 took `089` on `main` @ `4e5730ee`) | branch `feature/agn-023` (**VERIFIED, full regression deferred**; e2e spec `agn-023-counselor-assignment.spec.ts` ran and passed; full backend suite left to the owner) |
+> | `AGN-024` | ang-024 (agent signup KYC documents: PAN, Aadhaar last 4 + file, business licence; per-document verify/reject; approve gated on 3 verified; registration status page with re-upload; per-IP agent signup throttle) | `DEC-SCOPE-224` (migration `0164`, API 12EK, RBAC 2.147) | branch `feature/agn-024` (**built; lite tests, web unit tests and e2e green after the K11-throttle harness fix, 2026-10-17: agn-024 + agt-001 5/5 twice, 16 agent-registering specs 33/33**, see `docs/quality/AGN_024_QA_EVIDENCE.md`; full backend suite: owner) |
 > | `dtu-001` | Direct Tie-ups: 35 owner-supplied universities (175 courses) loaded into the shared catalogue with logos; university-level agent commission (EduSphere pays an agent Master), visible to super admin, Overseas admin and Masters only; agent Partner Universities page | `DEC-SCOPE-209` (migration `0157`, API 12DW, RBAC 2.134) | branch `feature/direct-tieups` (**built; lite tests green** except the 4 failures explained in `docs/quality/DTU-001_QA_2026-10-14.md`; Playwright spec `dtu-001-partner-universities.spec.ts` and the loader run on the owner's stack pending; full backend suite: owner) |
 >
 > Every ang item now has a Feature ID. ang-005 is covered only as far as `AGN-004` D4/G4 (Master assigns a
@@ -140,6 +141,7 @@ It is carried into ang-018 as a regression to fix deliberately.
 | ang-020 | Reports (8) + CSV export | M | Medium | No | 018 |
 | ang-021 | Staff activity view | S | Medium | No | 002 |
 | ang-022 | EduSphere Admin: agent network oversight | M | Medium | No | 001, 004, 008 |
+| ang-024 | Agent signup KYC documents (PAN, Aadhaar last 4, business licence) | L | High | Yes | 001, 009 (upload pattern) |
 
 \* ang-017 needs the first Celery `beat_schedule` (config, not schema).
 
@@ -771,6 +773,40 @@ table and column names are placeholders for the design spec, not decisions.
 - **Positive / Negative / Edge:** drill into an org / an agent user calling it → 403 / org with zero students.
 - **Regression risks:** `AgentApprovalPanel` E2E.
 - **Complexity:** medium · **Risk:** medium
+
+---
+
+### ang-024 — Agent signup KYC documents (AGN-024)
+
+- **Business requirement:** an Education agent registering on the overseas form must upload PAN, Aadhaar and business licence; an Overseas/Super Admin verifies each before the agency can be approved (owner answers K1–K11, `DEC-SCOPE-224`, `EXPLICIT_APPROVAL` 2026-10-17).
+- **Existing behavior:** agents register with JSON and an optional agency name; approval is one click; no KYC data exists.
+- **Expected behavior:** multipart signup with six required fields; per-document Verify/Reject (reason required); approve refused until all three are verified (new `kyc_required` orgs only); a pending agent sees a Registration status page and re-uploads rejected documents; emails on rejection and approval.
+- **User roles affected:** `agent` (Master), `overseas_admin`, `super_admin`.
+- **Frontend impact:** `RegisterForm` verification-documents group; `/overseas/agent/registration-status`; `AgentApprovalPanel` KYC rows; Super Admin "Agent Approvals".
+- **Backend impact:** `auth.register` multipart, `api/agent_kyc.py`, `services/agent_kyc.py`, `set_org_status` gate, `list_agent_orgs` additions.
+- **Database impact:** migration `0164_agent_org_kyc`: `agent_org_kyc_documents`, `agent_orgs.kyc_required`.
+- **API impact:** API_CONTRACT §12EK.
+- **Integration impact:** ENH-014 email outbox (no new mailer functions).
+- **Authentication impact:** none; the status routes skip `agent_denial_reason` on purpose.
+- **Authorization impact:** RBAC §2.147; the gate is in `set_org_status`.
+- **Security impact:** highly sensitive PII; the uploaded Aadhaar file may show the full number (K9, accepted) and, like every KYC file, is private, admin-only, streamed (never presigned or `/local-files`) and audited; `agent-kyc/` refused by generic download; numbers never logged or put in audit metadata; signup Origin/Referer and size checks; non-JSON/non-form bodies `415`; agent signups throttled to 5 per client IP per hour (K11).
+- **Performance impact:** up to about 16 MB per signup request (413 beyond).
+- **Reusable existing modules:** `services/agent_documents.py` (`read_upload`, `store`, `discard`, throttle), `agent_orgs.set_org_status`, `queue_deliveries`.
+- **Dependencies:** AGN-001 (ang-001), AGN-009 (ang-009, upload pattern).
+- **Migration / decision / contract:** migration 0164, `DEC-SCOPE-224`, API §12EK, RBAC §2.147.
+- **Acceptance criteria:**
+  - **AC01:** An agent signup without all three documents and numbers is refused, and nothing is created.
+  - **AC02:** Files are PDF, JPG or PNG up to 5 MB; the type comes from the bytes and image metadata is stripped.
+  - **AC03:** Only the last 4 digits of the typed Aadhaar number are stored (the uploaded file may show the full number; it is admin-only, streamed and audited, per K9). The PAN is validated and masked outside admin views.
+  - **AC04:** Overseas Admin and Super Admin can view, verify and reject each document; rejection needs a reason.
+  - **AC05:** Approve is refused (both in the API and the UI) until all three documents are verified, for `kyc_required` orgs only.
+  - **AC06:** Legacy orgs approve unchanged.
+  - **AC07:** A pending agent sees the status page and can re-upload rejected documents only. Rejection of the agency is final (K10): a rejected agency cannot re-upload and must register again with a new email.
+  - **AC08:** Emails go out on document rejection and on approval; a mail failure never blocks the action.
+  - **AC09:** No other role or agency can reach KYC files or data; every view and decision is audited.
+  - **AC10:** Super Admin sees the Agent Approvals screen.
+- **Complexity:** large · **Risk:** high
+- **Status:** Built — feature/agn-024 (lite backend set, web unit tests and the e2e spec; release evidence in `docs/quality/AGN_024_QA_EVIDENCE.md`; the owner's full suites still to run).
 
 ---
 

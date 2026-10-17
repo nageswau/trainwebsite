@@ -3,10 +3,11 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import AgentKycReview from "@/components/AgentKycReview";
 import { detailMessage } from "@/lib/apiErrors";
 
 type Master = { id: string; code: string; full_name: string; email: string; status: string };
-type Org = { id: string; name: string; prefix: string; status: string; created_at: string; masters: Master[] };
+type Org = { id: string; name: string; prefix: string; status: string; created_at: string; masters: Master[]; kyc_required?: boolean; kyc_summary?: { verified: number; rejected: number; pending: number } };
 type Page = { items: Org[]; total: number; limit: number; offset: number };
 type Status = "pending" | "active" | "suspended" | "rejected";
 type Action = "approve" | "reject" | "suspend" | "reinstate";
@@ -71,17 +72,18 @@ export default function AgentApprovalPanel() {
     window.history.replaceState(window.history.state, "", `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`);
   }, [ready, status, offset, query]);
 
-  const load = useCallback(() => {
+  // `silent` refreshes in place (no "Loading…"), so open review blocks stay mounted after a document decision.
+  const load = useCallback((silent = false) => {
     if (!ready) return;
     setLoadFailed(false);
-    setData(null);
+    if (!silent) setData(null);
     fetch(`${LIST_URL}?status=${status}&limit=${PAGE_SIZE}&offset=${offset}${query ? `&q=${encodeURIComponent(query)}` : ""}`)
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
       .then((body: Page) => setData(body))
       .catch(() => setLoadFailed(true));
   }, [ready, status, offset, query]);
 
-  useEffect(load, [load]);
+  useEffect(() => load(), [load]);
 
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -162,7 +164,7 @@ export default function AgentApprovalPanel() {
         {loadFailed ? (
           <>
             <p className="form-error" role="alert">Unable to load agent organisations.</p>
-            <button className="btn secondary small" onClick={load}>Retry</button>
+            <button className="btn secondary small" onClick={() => load()}>Retry</button>
           </>
         ) : data === null ? (
           <p className="muted">Loading agent organisations…</p>
@@ -182,6 +184,8 @@ export default function AgentApprovalPanel() {
                       </li>
                     ))}
                   </ul>
+                  {status === "pending" && org.kyc_required && <AgentKycReview orgId={org.id} orgName={org.name} onChanged={() => load(true)} />}
+                  {status === "pending" && org.kyc_required === false && <p className="muted" style={{ fontSize: 12 }}>No documents (registered before AGN-024).</p>}
                   {confirming === org.id ? (
                     <div role="group" aria-label="Confirm suspension">
                       <p style={{ fontSize: 13 }}>Suspend {org.name}? Every Master loses access on their next request.</p>
@@ -191,19 +195,25 @@ export default function AgentApprovalPanel() {
                       <button className="btn secondary small" disabled={busyId === org.id} onClick={() => cancelConfirm(org.id)}>Cancel</button>
                     </div>
                   ) : (
-                    tab.actions.map((action, i) => (
-                      <button
-                        key={action}
-                        id={action === "suspend" ? `agent-org-suspend-${org.id}` : undefined}
-                        aria-label={`${LABEL[action]} ${org.name}`}
-                        className={i === 0 ? "btn small" : "btn secondary small"}
-                        disabled={busyId === org.id}
-                        onClick={() => (action === "suspend" ? setConfirming(org.id) : act(org, action))}
-                        style={{ marginRight: 8 }}
-                      >
-                        {busyId === org.id ? "Working…" : LABEL[action]}
-                      </button>
-                    ))
+                    tab.actions.map((action, i) => {
+                      const kycBlocked = action === "approve" && org.kyc_required === true && (org.kyc_summary?.verified ?? 0) < 3;
+                      return (
+                        <span key={action}>
+                          <button
+                            id={action === "suspend" ? `agent-org-suspend-${org.id}` : undefined}
+                            aria-label={`${LABEL[action]} ${org.name}`}
+                            aria-describedby={kycBlocked ? `kyc-hint-${org.id}` : undefined}
+                            className={i === 0 ? "btn small" : "btn secondary small"}
+                            disabled={busyId === org.id || kycBlocked}
+                            onClick={() => (action === "suspend" ? setConfirming(org.id) : act(org, action))}
+                            style={{ marginRight: 8 }}
+                          >
+                            {busyId === org.id ? "Working…" : LABEL[action]}
+                          </button>
+                          {kycBlocked && <span className="muted" id={`kyc-hint-${org.id}`} style={{ fontSize: 12, marginRight: 8 }}>Verify all 3 documents first</span>}
+                        </span>
+                      );
+                    })
                   )}
                   {message?.id === org.id && (
                     <div className="form-error" role="status" aria-live="polite" style={{ marginTop: 8, fontSize: 13 }}>{message.text}</div>
