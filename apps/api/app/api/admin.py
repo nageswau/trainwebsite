@@ -72,6 +72,7 @@ from app.schemas import (
 from app.services import bdm as bdm_rules
 from app.services import bdm_leads as lead_rules
 from app.services import (
+    agent_kyc,
     bdm_lifecycle,
     course_skills,
     lead_handover,
@@ -1431,8 +1432,9 @@ async def list_agent_orgs(
         for member, member_user in (await db.execute(org_masters(*(o.id for o in orgs)))).all():  # AGN-002: Masters only, never staff
             masters.setdefault(member.org_id, []).append(_master_row(member, member_user))
     counts = await org_counts(db, [o.id for o in orgs])  # AGN-022: additive keys only (DEC-SCOPE-064 N5)
+    kyc_counts = await agent_kyc.summaries(db, [o.id for o in orgs])  # AGN-024: additive keys only
     items = [
-        {"id": o.id, "name": o.name, "prefix": o.prefix, "status": o.status, "created_at": o.created_at, "masters": masters.get(o.id, []), **_network_counts(counts[o.id])}
+        {"id": o.id, "name": o.name, "prefix": o.prefix, "status": o.status, "created_at": o.created_at, "masters": masters.get(o.id, []), **_network_counts(counts[o.id]), "kyc_required": o.kyc_required, "kyc_summary": kyc_counts[o.id]}
         for o in orgs
     ]
     return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
