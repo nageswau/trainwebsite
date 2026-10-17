@@ -105,6 +105,15 @@ describe("AccessUnavailable", () => {
     },
   );
 
+  it("links a pending agent to the registration status page, but not a suspended or deactivated one (AGN-024)", async () => {
+    me.mockResolvedValue({ role: "agent" });
+    render(await accessUnavailable(new ApiError("Agent registration is pending approval", 403)));
+    expect(screen.getByRole("link", { name: "View registration status" }).getAttribute("href")).toBe("/overseas/agent/registration-status");
+    cleanup();
+    render(await accessUnavailable(new ApiError("Your agency's account is suspended", 403)));
+    expect(screen.queryByRole("link", { name: "View registration status" })).toBeNull();
+  });
+
   it("shows a generic reason for something that is not an Error", async () => {
     me.mockResolvedValue({ role: "school_parent" });
     render(await accessUnavailable({ reason: "not an Error" }));

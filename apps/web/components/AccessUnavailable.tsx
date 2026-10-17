@@ -1,3 +1,4 @@
+import { REGISTRATION_STATUS_PATH } from "@/lib/agentKyc";
 import { ApiError, serverApi } from "@/lib/api";
 import { dashboardPathFor } from "@/lib/navigation";
 import type { User } from "@/lib/types";
@@ -27,6 +28,7 @@ function AccessUnavailableCard({ message, home, loginHref }: { message: string; 
         <p>{message}</p>
         {agentAccountState && <p className="muted">Contact EduSphere Overseas Admin if you think this is a mistake.</p>}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {message === "Agent registration is pending approval" && home && <a className="btn" href={REGISTRATION_STATUS_PATH}>View registration status</a>}
           {home ? !accountState && <a className="btn" href={home}>Go to your dashboard</a> : <ReturnToLoginLink loginHref={loginHref} />}
           {home && <SignOutButton redirectTo={loginHref} />}
         </div>
