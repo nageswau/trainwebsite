@@ -12,8 +12,9 @@ Lite runs only. The full backend suite is the owner's, on their own cadence. Sta
 | Web vitest (full) | **5182 / 5184** passed. The 2 failures are pre-existing and unrelated: the RecruiterCompanies archive test and `dateZoneSweep`. Neither flags an AGN-024 file. |
 | `tsc --noEmit` | clean |
 | eslint | 0 errors |
-| Playwright `agn-024-agent-kyc.spec.ts` | **3 / 3** passed (journey, Super Admin variant, 360 px form) |
-| Playwright `agt-001-registration-approval.spec.ts` (serial) | **2 / 2** passed |
+| Playwright `agn-024-agent-kyc.spec.ts` + `agt-001-registration-approval.spec.ts`, re-run 2026-10-17 after the K11 throttle fix (harness sends a unique `X-Forwarded-For` per agent signup, `e2eIpHeaders()`), twice back to back | **5 / 5** passed each run (no 429 on rerun) |
+| Playwright, all 16 spec files that register agents (agn-001, 002, 003, 004, 007, 008, 014, 016-022, dtu-001, agt-002), one `--workers=1` run, 2026-10-17 | **33 / 33** passed |
+| `tsc --noEmit` / eslint `tests/e2e` (same container) | clean / 0 errors (3 pre-existing warnings) |
 
 ## After the final-review fixes (I1 content type, K11 throttle, T2 rejection body, K9 hint)
 
@@ -42,6 +43,5 @@ default. Without Caddy (local dev) the header can be chosen by the caller.
 ## Not run
 
 - The full backend suite (owner).
-- Full web vitest and the full Playwright suite after the fixes (owner). Note: e2e specs that register agents through the browser
-  all reach the API from one address (the Docker gateway), so more than 5 agent signups in an hour from one stack hit the K11 429. See
-  the concern in the final fix report.
+- Full web vitest and the rest of the Playwright suite (owner). The agent-registering e2e specs are fixed for the K11 429 (harness sends a
+  unique `X-Forwarded-For`); `tests/doc-capture/*` is untouched (recorded follow-up).

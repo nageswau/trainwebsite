@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-import { kycMultipart, verifyAllKyc } from "./helpers/agency";
+import { e2eIpHeaders, kycMultipart, verifyAllKyc } from "./helpers/agency";
 
 // AGT-002 -- Referred-student roster and status. Uses the seeded demo agent
 // (agent@edusphere.local), who has one referred student with one application already
@@ -27,6 +27,7 @@ test("a second, freshly self-registered agent with no referrals sees an empty ro
   const email = `agt002-e2e-${unique}@example.local`;
   const registered = await page.request.post("/api/v1/auth/register", {
     multipart: kycMultipart({ email, password: "Sup3r-Secret-Pass!", full_name: "E2E Second Agent", division: "overseas", account_type: "agent" }),
+    headers: e2eIpHeaders(),
   });
   expect(registered.ok()).toBeTruthy();
 

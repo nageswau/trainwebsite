@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-import { fillAgentKyc, kycMultipart, verifyAllKyc } from "./helpers/agency";
+import { e2eIpHeaders, fillAgentKyc, kycMultipart, verifyAllKyc } from "./helpers/agency";
 
 // AGT-001 -- Agent self-registration and approval gate. Requires the stack running via
 // `docker compose up` with `python -m app.seed` already applied (seeds an
@@ -26,6 +26,7 @@ test("overseas admin approves a pending agent, who then reaches their dashboard 
   const email = `agt001-e2e-${unique}@example.local`;
   const registered = await page.request.post("/api/v1/auth/register", {
     multipart: kycMultipart({ email, password: "Sup3r-Secret-Pass!", full_name: "E2E Agent", division: "overseas", account_type: "agent" }),
+    headers: e2eIpHeaders(),
   });
   expect(registered.ok()).toBeTruthy();
 

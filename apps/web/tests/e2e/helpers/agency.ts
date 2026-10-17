@@ -47,7 +47,16 @@ export async function registerApprovedAgency(page: Page, unique: number, label =
 export const KYC_PDF = { name: "kyc.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n") };
 export const KYC_NUMBERS = { pan_number: "ABCDE1234F", aadhaar_last4: "1234", license_number: "LIC-2026/001" };
 
+// The API caps agent self-registrations at 5 per client IP per hour (leftmost X-Forwarded-For); every signup in a run shares one
+// real IP, so each one presents a unique documentation-range (2001:db8::/32) address.
+export function e2eIpHeaders(): Record<string, string> {
+  const group = () => Math.floor(Math.random() * 0x10000).toString(16);
+  const time = (Date.now() % 0x100000000).toString(16).padStart(8, "0");
+  return { "x-forwarded-for": `2001:db8:${time.slice(0, 4)}:${time.slice(4)}:${group()}:${group()}:${group()}:${group()}` };
+}
+
 export async function fillAgentKyc(page: Page) {
+  await page.context().setExtraHTTPHeaders(e2eIpHeaders());
   for (const [name, value] of Object.entries(KYC_NUMBERS)) await page.fill(`input[name="${name}"]`, value);
   for (const name of ["pan_file", "aadhaar_file", "license_file"]) await page.setInputFiles(`input[name="${name}"]`, KYC_PDF);
 }
