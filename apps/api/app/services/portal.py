@@ -1438,7 +1438,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 (("id", "reference"), ("name", "Name"), ("email", "Email"), ("role", "Role"), ("active", "Active"), ("setup", "Setup")),
                 ({"id": u.id, "name": u.full_name, "email": u.email, "role": u.role, "active": u.active, "setup": _SETUP_LABEL[setup.get(u.id, "active")]} for u in rows),
             )
-        if section == "agents" and division == "overseas":
+        if section == "agents" and (division == "overseas" or user.role == "super_admin"):
             # AGT-001: Overseas Admin's own approve/reject queue -- the generic
             # role_map listing below has no `approval_status` column to show at all.
             # AGN-001 (browser QA-01): one row per Master with the ORGANISATION's status -- the per-user assignment status
