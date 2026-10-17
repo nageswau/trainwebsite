@@ -46,4 +46,6 @@ async def local_upload(file: UploadFile = File(...), user: User = Depends(get_cu
 async def download(key: str, user: User = Depends(get_current_user)):
     if ".." in key or key.startswith(("/", "\\")):
         raise HTTPException(422, "Invalid object key")
+    if key.startswith("agent-kyc/"):  # AGN-024: KYC files are served only by the admin streaming route
+        raise HTTPException(404, "Not found")
     return {"url": storage.presign_download(key), "expires_in": 900 if settings.aws_s3_bucket else None}

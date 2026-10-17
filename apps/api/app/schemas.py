@@ -13096,3 +13096,14 @@ class MonthlyReviewSummary(BaseModel):
 
 class MonthlyReviewPage(BaseModel):
     items: list[MonthlyReviewSummary]
+
+
+class KycRejectRequest(BaseModel):
+    """AGN-024 (DEC-SCOPE-224 K3): the reason the agent is shown and emailed."""
+
+    reason: str = Field(min_length=3, max_length=500)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def strip_reason(cls, value):
+        return value.strip() if isinstance(value, str) else value
