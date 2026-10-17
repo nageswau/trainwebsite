@@ -2344,6 +2344,21 @@ read of the tiers that may not see it to stay identical.
   accountant although M3 gives it to partners only (§2.123 note). They now never read it for the accountant.
 - **As built, `NEEDS_CONFIRMATION`:** salaries are finance tier (M5/M13), though M2 lists them as partner-only (CS2).
 
+### 2.147 Agent signup KYC documents *(added 2026-10-17 — `DEC-SCOPE-224`, AGN-024)*
+
+Routes: the four admin routes under `/overseas-admin/agent-orgs/{org_id}/kyc-documents` (list, file view, verify, reject), `GET /agent/registration` and `PUT /agent/registration/documents/{doc_type}/file` (API §12EK). No route-inventory matrix covers these prefixes; the table is pinned by `test_agn_024_admin.py`, `test_agn_024_agent.py` and `test_agn_024_portal.py`.
+
+| Route | `overseas_admin` | `super_admin` | `agent` (Master of own org) | `agent` staff | Every other role | Anonymous |
+|---|---|---|---|---|---|---|
+| GET / verify / reject / view admin KYC routes | ✅ | ✅ | `403` | `403` | `403` | `401` |
+| `GET /agent/registration` | `403` | `403` | ✅ (pending, rejected or active org) | `403` | `403` | `401` |
+| `PUT /agent/registration/documents/{type}/file` | `403` | `403` | ✅ only org `pending` + document `rejected` (else `409`) | `403` | `403` | `401` |
+
+- The approval gate is in `agent_orgs.set_org_status`, so every approve path (org-level and legacy per-agent) is covered. Only `kyc_required` orgs are gated; reinstate and reject are not.
+- KYC storage keys (`agent-kyc/`) are never served by generic paths: `/files/download` and `/local-files` refuse them; only the audited admin streaming route reads them.
+- Document numbers are never logged or written to audit metadata. The admin list returns the full PAN; the agent view masks it. `NEEDS_CONFIRMATION`: only file views are audited, not the admin list.
+- A document in another organisation is `404` for both the admin routes (wrong `org_id`) and the agent routes.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

@@ -140,6 +140,7 @@ It is carried into ang-018 as a regression to fix deliberately.
 | ang-020 | Reports (8) + CSV export | M | Medium | No | 018 |
 | ang-021 | Staff activity view | S | Medium | No | 002 |
 | ang-022 | EduSphere Admin: agent network oversight | M | Medium | No | 001, 004, 008 |
+| ang-024 | Agent signup KYC documents (PAN, Aadhaar last 4, business licence) | L | High | Yes | 001, 009 (upload pattern) |
 
 \* ang-017 needs the first Celery `beat_schedule` (config, not schema).
 
@@ -771,6 +772,40 @@ table and column names are placeholders for the design spec, not decisions.
 - **Positive / Negative / Edge:** drill into an org / an agent user calling it → 403 / org with zero students.
 - **Regression risks:** `AgentApprovalPanel` E2E.
 - **Complexity:** medium · **Risk:** medium
+
+---
+
+### ang-024 — Agent signup KYC documents (AGN-024)
+
+- **Business requirement:** an Education agent registering on the overseas form must upload PAN, Aadhaar and business licence; an Overseas/Super Admin verifies each before the agency can be approved (owner answers K1–K8, `DEC-SCOPE-224`, `EXPLICIT_APPROVAL` 2026-10-17).
+- **Existing behavior:** agents register with JSON and an optional agency name; approval is one click; no KYC data exists.
+- **Expected behavior:** multipart signup with six required fields; per-document Verify/Reject (reason required); approve refused until all three are verified (new `kyc_required` orgs only); a pending agent sees a Registration status page and re-uploads rejected documents; emails on rejection and approval.
+- **User roles affected:** `agent` (Master), `overseas_admin`, `super_admin`.
+- **Frontend impact:** `RegisterForm` verification-documents group; `/overseas/agent/registration-status`; `AgentApprovalPanel` KYC rows; Super Admin "Agent Approvals".
+- **Backend impact:** `auth.register` multipart, `api/agent_kyc.py`, `services/agent_kyc.py`, `set_org_status` gate, `list_agent_orgs` additions.
+- **Database impact:** migration `0164_agent_org_kyc`: `agent_org_kyc_documents`, `agent_orgs.kyc_required`.
+- **API impact:** API_CONTRACT §12EK.
+- **Integration impact:** ENH-014 email outbox (no new mailer functions).
+- **Authentication impact:** none; the status routes skip `agent_denial_reason` on purpose.
+- **Authorization impact:** RBAC §2.147; the gate is in `set_org_status`.
+- **Security impact:** highly sensitive PII; files streamed (never presigned or `/local-files`), `agent-kyc/` refused by generic download, numbers never logged or put in audit metadata, signup Origin/Referer and size checks.
+- **Performance impact:** up to about 16 MB per signup request (413 beyond).
+- **Reusable existing modules:** `services/agent_documents.py` (`read_upload`, `store`, `discard`, throttle), `agent_orgs.set_org_status`, `queue_deliveries`.
+- **Dependencies:** AGN-001 (ang-001), AGN-009 (ang-009, upload pattern).
+- **Migration / decision / contract:** migration 0164, `DEC-SCOPE-224`, API §12EK, RBAC §2.147.
+- **Acceptance criteria:**
+  - **AC01:** An agent signup without all three documents and numbers is refused, and nothing is created.
+  - **AC02:** Files are PDF, JPG or PNG up to 5 MB; the type comes from the bytes and image metadata is stripped.
+  - **AC03:** Only the last 4 Aadhaar digits are stored. The PAN is validated and masked outside admin views.
+  - **AC04:** Overseas Admin and Super Admin can view, verify and reject each document; rejection needs a reason.
+  - **AC05:** Approve is refused (both in the API and the UI) until all three documents are verified, for `kyc_required` orgs only.
+  - **AC06:** Legacy orgs approve unchanged.
+  - **AC07:** A pending agent sees the status page and can re-upload rejected documents only.
+  - **AC08:** Emails go out on document rejection and on approval; a mail failure never blocks the action.
+  - **AC09:** No other role or agency can reach KYC files or data; every view and decision is audited.
+  - **AC10:** Super Admin sees the Agent Approvals screen.
+- **Complexity:** large · **Risk:** high
+- **Status:** Built — feature/agn-024 (lite backend set, web unit tests and the e2e spec; the owner's full suites still to run).
 
 ---
 

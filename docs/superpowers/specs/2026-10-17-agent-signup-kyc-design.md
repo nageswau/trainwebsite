@@ -3,7 +3,7 @@
 - **Feature ID:** AGN-024 (next free after AGN-023 on `origin/main` @ 4396b4eb)
 - **Decision:** DEC-SCOPE-224 · **Migration:** `0164_agent_org_kyc` · **API contract:** §12EK · **RBAC:** §2.147
 - **Branch / worktree:** `feature/agn-024` in `../agn-024`
-- **Status:** design approved in chat 2026-10-17; this written spec awaits owner review
+- **Status:** design approved in chat 2026-10-17; built on `feature/agn-024`. Sections marked **As built** record where the build differs from the first draft (reconciled in Task 11).
 - **Evidence:** owner request + owner answers K1–K8 given in a Claude Code session on 2026-10-17 (owner confirmation recorded here; DEC-SCOPE-224 will cite it)
 
 ## 1. Purpose
@@ -77,6 +77,13 @@ New table `agent_org_kyc_documents`:
   - If the commit fails, `discard` each stored key.
   - The audit row `auth.register` gains `kyc_documents: 3`. Document numbers are never written to audit metadata.
 - The response is unchanged. On the web side, an agent is sent to `/overseas/agent/registration-status` instead of the dashboard.
+- **As built (signup hardening):**
+  - Multipart **or urlencoded** forms are accepted. A JSON agent signup returns 422 REQUIRED.
+  - Before the body is parsed: **403** "Cross-site registration is not allowed" when `Origin` (else `Referer`) is present and is not the origin of `settings.frontend_url`; **411** without a valid `Content-Length`; **413** above `MAX_REGISTRATION_BYTES` (3 × 5 MB + 1 MB). A form post is a CORS-simple request, so the Origin check is the CSRF control.
+  - 422 validation errors never echo the submitted input (password, PAN, licence number).
+  - Number errors are 422; file errors are 413/415/422 with the document label as a prefix.
+  - A concurrent signup that loses the email race on commit (`IntegrityError`) returns **409**, and the stored files are discarded.
+  - OpenAPI no longer shows a request body for `/auth/register` (the body is read manually); the contract is in API §12EK.
 
 ### 4.3 Registration form — `RegisterForm.tsx`
 
@@ -95,8 +102,8 @@ New table `agent_org_kyc_documents`:
   - **409** for a pending or verified document, or when the org is not `pending`
   - **404** when the document does not belong to the caller's org
   - The status goes back to `pending`, the reason and reviewer fields are cleared, and audit `agent_kyc.reupload` is written.
-  - It is throttled to 10 re-uploads per org per hour using the same audit-window helper as AGN-009, returning 429 with Retry-After.
-- **Web:** a new page `/overseas/agent/registration-status` has three status cards (Pending review, Verified, Rejected with reason and a re-upload control) and an org status banner. The existing pending-agent message on the agent dashboard links to this page.
+  - **As built:** it is throttled to **20 re-uploads per agency per rolling 24 h** (`THROTTLE_WINDOW`, the AGN-009 audit-window pattern; first draft said 10 per hour), returning 429 with Retry-After.
+- **Web:** a new page `/overseas/agent/registration-status` has three status cards (Pending review, Verified, Rejected with reason and a re-upload control) and an org status banner. **As built:** the status page has no portal navigation. The access cards for **both pending and rejected** agents link to it (`agent_denial_reason` gives a rejected org the same "pending approval" message, so a rejected agent can still open the page and see the outcome).
   - An active org redirects to the dashboard.
   - A rejected org shows "Registration rejected" with no upload controls.
 
@@ -120,13 +127,15 @@ New table `agent_org_kyc_documents`:
   - **Approve** is disabled with the hint "Verify all 3 documents first" until all are verified. The server enforces the same rule.
   - Cards for legacy orgs (`kyc_required=false`) show "No documents (registered before AGN-024)".
 - **Super Admin access (K7):** `WorkflowPanel.tsx` `showAgentApproval` becomes `role in {overseas_admin, super_admin}`, and the Super Admin navigation gains an "Agent Approvals" link to the same route. Before building, check whether the route's section guard admits super_admin. If it doesn't, add it there.
+  - **As built:** the guard was fine, but `services/portal.py` built the `agents` section payload for `overseas_admin` only, so Super Admin got an empty screen (found by e2e). The `agents` branch now serves `super_admin` too.
 
 ### 4.6 Emails (K6)
 
-- Two new mailer functions follow the existing `send_*_email` pattern, with HTML and text versions and the logo:
-  - `send_agent_kyc_rejected_email(to, name, doc_label, reason, status_url)`
-  - `send_agent_approved_email(to, name, org_name, login_url)`
-- Both are sent to the org's active Masters after the commit. A failed send is logged and never fails the admin action. When SMTP is not configured (`smtp_configured()` is false), sending is skipped and logged.
+- **As built:** no new mailer functions. Both notices go through the existing `Notification` + `queue_deliveries` email outbox (ENH-014) for the org's active Masters:
+  - document rejected (reason and a link to the status page);
+  - agency approved (only for `kyc_required` orgs).
+- They are queued **in the same transaction** as the action, delivered after commit, and a delivery failure never affects the action. When SMTP is not configured, the outbox's own handling applies.
+- *First draft (superseded):* `send_agent_kyc_rejected_email` and `send_agent_approved_email` mailer functions called after commit.
 
 ### 4.7 Security, privacy, RBAC
 
@@ -134,7 +143,7 @@ New table `agent_org_kyc_documents`:
 - Full Aadhaar numbers are never collected. PAN numbers are masked everywhere except the admin views. Document numbers are never put in logs or audit metadata.
 - Storage keys are server-generated; the client filename is only for display. KYC files are never reachable via `/local-files`, a presigned URL or `/files/download`. The storage prefix `agent-kyc/` must be excluded from any generic download path. Tests will assert that `/files/download?key=agent-kyc/...` is refused.
 - Audit actions: `agent_kyc.view`, `agent_kyc.verify`, `agent_kyc.reject`, `agent_kyc.reupload`, plus the existing `auth.register` and org approve actions.
-- RBAC §2.147 adds the matrix rows. The route-inventory test gets a row per new route.
+- RBAC §2.147 adds the matrix rows. **As built:** no route-inventory matrix test covers the `/overseas-admin` or `/agent` prefixes, so there are no inventory rows to add. Access is pinned by `test_agn_024_admin.py`, `test_agn_024_agent.py` and `test_agn_024_portal.py`.
 
 ### 4.8 Out of scope / NEEDS_CONFIRMATION (not built in AGN-024)
 
@@ -145,6 +154,11 @@ New table `agent_org_kyc_documents`:
 - Virus/malware scanning: none exists in the platform. Type-from-bytes plus EXIF stripping is the current control.
 - Agent-added staff (non-Master) accounts do not upload KYC.
 - Agencies created by BDM onboarding (bdm-019) or admin tooling keep `kyc_required=false` unless a later decision says otherwise.
+- **As built, follow-ups and open points:**
+  - `tests/doc-capture/s2-account-access.capture.ts` (agent registration screenshots) needs the KYC migration/fields; follow-up.
+  - The admin KYC list returns the full PAN, but only file views are audited. `NEEDS_CONFIRMATION`: should the list be audited?
+  - Deploy note: production `FRONTEND_URL` must equal the exact public origin (www vs apex), or agent signup returns 403 (Origin check).
+  - Confirm the production reverse proxy's request-body limit admits about 16 MB (the signup body cap).
 
 ## 5. Testing
 
@@ -157,7 +171,7 @@ New table `agent_org_kyc_documents`:
 - File view streams bytes with `no-store`, writes audit, and is refused for non-admins. `/files/download?key=agent-kyc/...` is refused.
 - `/agent/registration` is reachable while pending. Re-upload works for a rejected document only (409 otherwise), and another org's document → 404. Re-upload resets the status. The throttle returns 429.
 - Masking: Aadhaar shows only the last 4, and the PAN is masked in the agent view.
-- Route-inventory and RBAC matrix tests have rows for the new routes. Migration upgrade and downgrade both work.
+- Access for the new routes is pinned by `test_agn_024_admin.py`, `test_agn_024_agent.py` and `test_agn_024_portal.py` (no route-inventory matrix covers these prefixes). Migration upgrade and downgrade both work.
 
 **Web:** unit tests for the RegisterForm agent branch (fields shown and `FormData` built) and the panel's Approve-disabled state.
 
