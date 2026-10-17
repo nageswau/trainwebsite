@@ -13,7 +13,7 @@ export type AdminKycDoc = KycDocBase & { doc_number: string; reviewed_at: string
 export const KYC_DOCS: readonly KycDocSpec[] = [
   { type: "pan", label: "PAN card", numberField: "pan_number", numberLabel: "PAN number", fileField: "pan_file", pattern: "[A-Za-z]{5}[0-9]{4}[A-Za-z]", maxLength: 10, hint: "Format: ABCDE1234F." },
   { type: "aadhaar", label: "Aadhaar card", numberField: "aadhaar_last4", numberLabel: "Aadhaar (last 4 digits)", fileField: "aadhaar_file", pattern: "[0-9]{4}", maxLength: 4, inputMode: "numeric", hint: "Only the last 4 digits are stored." },
-  { type: "business_license", label: "Business licence", numberField: "license_number", numberLabel: "Business licence number", fileField: "license_file", pattern: "[A-Za-z0-9/\-. ]{3,64}", maxLength: 64 },
+  { type: "business_license", label: "Business licence", numberField: "license_number", numberLabel: "Business licence number", fileField: "license_file", pattern: "[A-Za-z0-9\\/. \\-]{3,64}", maxLength: 64 },
 ];
 export const KYC_MAX_BYTES = 5 * 1024 * 1024;
 export const KYC_ACCEPT = ".pdf,.jpg,.jpeg,.png";
