@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -42,6 +43,14 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_from_email: str | None = None
     smtp_use_tls: bool = True
+    # ENH-032 / DEC-SCOPE-225: how School/lead/welcome emails are delivered. "smtp" (default) keeps today's
+    # behaviour; "zoho_api" sends through the Zoho Mail API instead (smtp_from_email is still the From address).
+    email_transport: Literal["smtp", "zoho_api"] = "smtp"
+    zoho_mail_client_id: str | None = None
+    zoho_mail_client_secret: str | None = None
+    zoho_mail_refresh_token: str | None = None
+    zoho_mail_account_id: str | None = None
+    zoho_mail_api_base: str = "https://mail.zoho.com"
     google_client_id: str | None = None
     google_client_secret: str | None = None
     google_refresh_token: str | None = None
