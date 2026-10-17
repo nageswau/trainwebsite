@@ -3,7 +3,7 @@
 - **Feature ID:** ENH-032 (next free after ENH-031 on `origin/main` @ b47e7a80) — *tentative, recheck `main` before building*
 - **Decision:** DEC-SCOPE-225 (tentative; `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` also names 225 as the next free number, so recheck) · extends DEC-NOT-001 (email channel) · **Migration:** none · **New routes:** none (no RBAC row) · **API contract:** `GET /admin/system-status` gains one row
 - **Branch / worktree:** `feature/enh-032` in `../enh-032`
-- **Status:** DRAFT design, written 2026-10-17 for owner review. Not approved; no code yet.
+- **Status:** Owner-approved 2026-10-17; built on feature/enh-032 (see As built)
 - **Evidence:** owner request and answers E1–E7 given in a Claude Code session on 2026-10-17 (below), plus connectivity tests run from the dev droplet the same day (§3.1).
 
 ## 1. Purpose
@@ -150,6 +150,12 @@ Callers:
 - **SMTP path: unchanged** (AC2). Today's retry behaviour stays as it is.
 
 Stored error text must never contain the token, client secret, refresh token or the `Authorization` header. Record only the exception type and Zoho's error code/message.
+
+### As built
+
+- Every HTTP 429 is permanent. Zoho documents no distinct daily-limit code, so a "non-limit 429" cannot be told apart from the limit response; never retrying (E10) is the safer reading.
+- An HTTP 504 response to the send POST is permanent (E9): the gateway may already have handed the message on, so the outcome is unknown. Other 5xx stay transient.
+- `fromAddress` is the bare `SMTP_FROM_EMAIL` address (no display name), pending the live check (§5.3).
 
 ### 4.6 Admin system status
 

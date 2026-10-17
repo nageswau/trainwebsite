@@ -3,6 +3,7 @@
 E4: the OAuth access token is cached in memory and refreshed under a lock (one refresh for concurrent senders).
 E9: the outcome is mapped to two errors only. EmailTransientError means the message was definitely NOT accepted (safe to retry);
     EmailPermanentError means do not retry -- including every case where the outcome is unknown (read timeout etc.), so no duplicate.
+E9 (ruling R1): an HTTP 504 response to the send is also permanent (the gateway may have accepted the message); other 5xx are transient.
 E10: HTTP 429 is permanent: Zoho's daily-limit response is not distinguishable from a rate limit in the docs, so it is never retried.
 Error messages never contain the URL query, headers, request body, tokens or secrets.
 """

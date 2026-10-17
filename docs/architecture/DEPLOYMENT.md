@@ -82,3 +82,20 @@ production option above is confirmed.
 - CDN provider/configuration in front of the App Platform (or equivalent).
 - Specific Managed Database/Redis tier (sizing) — cannot be sized without a concurrency/RPS target
   (`SCALING.md`).
+
+## Email delivery (`ENH-032`, `DEC-SCOPE-225`)
+
+DigitalOcean blocks outbound SMTP (ports 25/465/587) on the account, so the dev and prod droplets cannot use `EMAIL_TRANSPORT=smtp`. App email goes over HTTPS through the Zoho Mail REST API instead (contract: `INTEGRATION_CONTRACTS.md` §4, ENH-032 update). Owner setup:
+
+1. In `https://api-console.zoho.in`, create a **Server-based** client (separate from the Zoho Meeting client).
+2. Generate a refresh token for it with the scopes `ZohoMail.messages.CREATE,ZohoMail.accounts.READ`.
+3. Find the mailbox's account id with `GET https://mail.zoho.in/api/accounts` (header `Authorization: Zoho-oauthtoken <access token>`).
+4. Confirm `info@edusphere.org.uk` is that mailbox or one of its aliases (Zoho rejects a `fromAddress` that does not belong to the account).
+5. In the server `.env` set `EMAIL_TRANSPORT=zoho_api`, `SMTP_FROM_EMAIL=info@edusphere.org.uk`, `ZOHO_MAIL_CLIENT_ID`, `ZOHO_MAIL_CLIENT_SECRET`, `ZOHO_MAIL_REFRESH_TOKEN`, `ZOHO_MAIL_ACCOUNT_ID` and `ZOHO_MAIL_API_BASE=https://mail.zoho.in`. `ZOHO_ACCOUNTS_URL` must be the same data centre (`https://accounts.zoho.in`).
+6. Recreate the **api, worker and beat** containers so they read the new `.env` (prod: `docker compose up -d --no-deps api worker beat`).
+7. Inside the api container run `python -m app.send_test_email --to <your address>`. Exit 0 = sent, 1 = failed (the reason is printed), 2 = not configured. Check the message arrives from `info@edusphere.org.uk`, note the display name and logo, and reply to confirm the reply goes to `info@` (the live check, `ENH-032` AC8; record the result in the QA evidence).
+
+Notes:
+- Over the API there is no Reply-To (replies go to the From address) and the inline logo is omitted.
+- `NEEDS_CONFIRMATION`: Zoho Mail's daily sending limit for the mailbox depends on the plan; the owner checks it before large bulk sends (for example a school roster invite). A 429 is a permanent failure and is never retried.
+- Switching back is a `.env` change only (`EMAIL_TRANSPORT=smtp`), for example if DigitalOcean lifts the SMTP block.

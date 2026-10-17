@@ -524,3 +524,30 @@ async def test_reset_email_copy_and_not_configured(monkeypatch, outbox):
     monkeypatch.setattr(settings, "smtp_host", None)
     assert await mailer.send_password_reset_email(to_email="a@example.com", recipient_name="Ann", reset_url="u", expires_minutes=30) == ("not_configured", None)
     assert await mailer.send_generic_notification_email(to_email="a@example.com", recipient_name="Ann", title="t", body="b", action_url=None) == ("not_configured", None)
+
+
+# --- Task 5: the test-send command --------------------------------------------------------------------------------------------
+def test_send_test_email_reports_status_without_secrets(monkeypatch, capsys):
+    from app import send_test_email
+
+    _zoho_on(monkeypatch)
+    sent: list = []
+    monkeypatch.setattr(mailer, "_send_sync", lambda msg: sent.append(msg))
+    assert send_test_email.main(["--to", "owner@example.com"]) == 0
+    out = capsys.readouterr().out
+    assert "Zoho Mail API" in out and "sent" in out
+    assert len(sent) == 1 and sent[0]["To"] == "owner@example.com"
+    assert not any(f"{name}-value" in out for name in ZOHO_FIELDS)
+
+    def boom(msg):
+        raise mailer.zoho_mail.EmailPermanentError("zoho_mail HTTP 400")
+
+    monkeypatch.setattr(mailer, "_send_sync", boom)
+    assert send_test_email.main(["--to", "owner@example.com"]) == 1
+    assert "failed" in capsys.readouterr().out
+
+    monkeypatch.setattr(settings, "email_transport", "smtp")
+    monkeypatch.setattr(settings, "smtp_host", None)
+    assert send_test_email.main(["--to", "owner@example.com"]) == 2
+    out = capsys.readouterr().out
+    assert "not configured" in out and not any(f"{name}-value" in out for name in ZOHO_FIELDS)

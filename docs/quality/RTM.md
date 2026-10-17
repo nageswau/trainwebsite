@@ -646,6 +646,25 @@ role-specific navigation.
 
 End-to-end: `agn-024-agent-kyc.spec.ts` covers AC01–AC07 and AC10 in one journey (signup with three files → reject Aadhaar → re-upload → verify all → approve → dashboard), the Super Admin variant and the 360 px signup form.
 
+**Addendum, 2026-10-17 (`ENH-032`)** — one enhancement row and its acceptance-criteria map. Zoho Mail REST API email transport beside SMTP.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `ENH-032` | Requirement: owner's request and answers E1–E10 (in-session 2026-10-17, `EXPLICIT_APPROVAL`) → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-225` → design `docs/superpowers/specs/2026-10-17-enh-032-zoho-mail-api-design.md` (AC1–AC8, AC1a, AC4a) → plan `docs/superpowers/plans/2026-10-17-enh-032-zoho-mail-api.md` → `ENHANCEMENT_BACKLOG.md` ENH-032; `API_CONTRACT.md` §12EL; `INTEGRATION_CONTRACTS.md` §4 ENH-032 update; `DEPLOYMENT.md` "Email delivery" | **Not audited** (an enhancement) | **BUILT on `feature/enh-032`; AC8 (live send on dev) pending the owner's Zoho credentials.** Code: `app/services/zoho_mail.py`, `app/services/mailer.py` (`_send_sync`, `email_configured`, `send_password_reset_email`, `send_generic_notification_email`), `app/notifications/lead_email.py`, `app/notifications/delivery.py`, `app/api/auth.py` (forgot-password), `app/api/admin.py` (system-status row), `app/core/config.py`, `app/send_test_email.py`. No migration, no new route. Tests: `apps/api/tests/test_enh_032_zoho_mail.py`. `NEEDS_CONFIRMATION`: Zoho's daily sending limit for the mailbox plan. |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `ENH-032-AC1` | Every mailer email goes through the Zoho Mail API from `SMTP_FROM_EMAIL` | `apps/api/tests/test_enh_032_zoho_mail.py::test_payload_is_from_the_system_address_with_html_and_no_reply_to`, `::test_send_posts_to_the_account_messages_url_with_the_oauth_header`, `::test_send_sync_dispatches_by_transport` |
+| `ENH-032-AC1a` | Password reset and generic/inbound notifications are emailed; webhook fallback when not configured | `apps/api/tests/test_enh_032_zoho_mail.py::test_forgot_password_emails_the_portal_reset_link`, `::test_forgot_password_falls_back_to_the_webhook_when_email_is_not_configured`, `::test_generic_and_inbound_notifications_use_the_mailer_then_the_webhook`, `::test_the_reset_token_appears_only_in_the_link` |
+| `ENH-032-AC2` | SMTP default unchanged | `apps/api/tests/test_enh_032_zoho_mail.py::test_smtp_mode_needs_host_and_from`, `::test_smtp_failures_keep_todays_transient_behaviour`, `::test_send_sync_dispatches_by_transport` (existing mailer and lead-email tests unchanged) |
+| `ENH-032-AC3` | Missing credentials give `not_configured` | `apps/api/tests/test_enh_032_zoho_mail.py::test_zoho_mode_missing_any_value_is_not_configured`, `::test_reset_email_copy_and_not_configured`, `::test_send_test_email_reports_status_without_secrets` |
+| `ENH-032-AC4` | Transient retries, permanent fails | `apps/api/tests/test_enh_032_zoho_mail.py::test_error_classification`, `::test_lead_email_retries_transient_and_fails_permanent`, `::test_a_permanent_mailer_failure_is_not_a_transient_delivery`, `::test_failure_text_and_is_permanent` |
+| `ENH-032-AC4a` | Outcome-unknown timeouts, 504 and 429 never retried | `apps/api/tests/test_enh_032_zoho_mail.py::test_error_classification` (read timeout, dropped connection, 504 and 429 cases) |
+| `ENH-032-AC5` | Token cached, one refresh on 401, no secret leaks | `apps/api/tests/test_enh_032_zoho_mail.py::test_the_token_is_cached_across_sends`, `::test_concurrent_sends_refresh_once`, `::test_a_401_refreshes_once_and_retries`, `::test_a_refused_refresh_token_is_permanent_and_secret_free`, `::test_errors_never_carry_secrets`, `::test_send_test_email_reports_status_without_secrets` |
+| `ENH-032-AC6` | No broken logo image | `apps/api/tests/test_enh_032_zoho_mail.py::test_the_logo_image_is_stripped_from_html` |
+| `ENH-032-AC7` | System status shows the transport | `apps/api/tests/test_enh_032_zoho_mail.py::test_system_status_reports_the_email_transport` |
+| `ENH-032-AC8` | Live send on dev verified | **Pending** — owner credentials; steps in `DEPLOYMENT.md` "Email delivery" |
+
 ---
 
 **APPROVED** (user, in-session, 2026-09-01, approved as drafted) as part of GATE-08's test-strategy
