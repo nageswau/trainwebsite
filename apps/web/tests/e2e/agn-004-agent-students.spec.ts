@@ -1,6 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
 import { activateWithToken, E2E_PASSWORD } from "./helpers/welcome";
+import { fillAgentKyc, verifyAllKyc } from "./helpers/agency";
 
 // AGN-004 -- a Master's students with no login: create, duplicate warning, edit, archive, unarchive, assign; keyboard-only; 320 px.
 // Uses the seeded demo agent (a Master of an active agency); the assignment test registers its own agency and Staff member
@@ -142,10 +143,12 @@ test("a Master assigns a student to a Staff member, who then sees it (AGN-004-AC
   await page.fill('input[name="email"]', masterEmail);
   await page.selectOption('select[name="account_type"]', "agent");
   await page.fill('input[name="agency_name"]', agency);
+  await fillAgentKyc(page);
   await page.fill('input[name="password"]', "Sup3r-Secret-Pass!");
   await page.click('button:has-text("Create account")');
-  await page.waitForURL("**/overseas/agent/dashboard");
+  await page.waitForURL("**/overseas/agent/registration-status");
   await signIn(page, "overseasadmin@edusphere.local", "Demo@123", "/overseas/admin/dashboard");
+  await verifyAllKyc(page.request, agency);
   await page.goto("/overseas/admin/agents");
   await page.locator(".card", { hasText: agency }).getByRole("button", { name: "Approve" }).click();
   await expect(page.locator(".card", { hasText: agency }).getByText("Approved")).toBeVisible();

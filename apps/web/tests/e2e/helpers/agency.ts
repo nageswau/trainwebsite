@@ -31,12 +31,35 @@ export async function registerApprovedAgency(page: Page, unique: number, label =
   await page.fill('input[name="email"]', email);
   await page.selectOption('select[name="account_type"]', "agent");
   await page.fill('input[name="agency_name"]', agency);
+  await fillAgentKyc(page);
   await page.fill('input[name="password"]', "Sup3r-Secret-Pass!");
   await page.click('button:has-text("Create account")');
-  await page.waitForURL("**/overseas/agent/dashboard");
+  await page.waitForURL("**/overseas/agent/registration-status");
   await signIn(page, "overseasadmin@edusphere.local", "Demo@123", "/overseas/admin/dashboard");
+  await verifyAllKyc(page.request, agency);
   await page.goto("/overseas/admin/agents");
   await page.locator(".card", { hasText: agency }).getByRole("button", { name: "Approve" }).click();
   await expect(page.locator(".card", { hasText: agency }).getByText("Approved")).toBeVisible();
   return email;
+}
+
+// AGN-024 (DEC-SCOPE-224): an agent signup carries PAN, Aadhaar and licence; approval needs all three verified.
+export const KYC_PDF = { name: "kyc.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n") };
+export const KYC_NUMBERS = { pan_number: "ABCDE1234F", aadhaar_last4: "1234", license_number: "LIC-2026/001" };
+
+export async function fillAgentKyc(page: Page) {
+  for (const [name, value] of Object.entries(KYC_NUMBERS)) await page.fill(`input[name="${name}"]`, value);
+  for (const name of ["pan_file", "aadhaar_file", "license_file"]) await page.setInputFiles(`input[name="${name}"]`, KYC_PDF);
+}
+
+export function kycMultipart(fields: Record<string, string>) {
+  return { ...fields, ...KYC_NUMBERS, pan_file: KYC_PDF, aadhaar_file: KYC_PDF, license_file: KYC_PDF };
+}
+
+export async function verifyAllKyc(request: APIRequestContext, agency: string) {
+  const list = await (await request.get(`/api/v1/overseas-admin/agent-orgs?status=pending&q=${encodeURIComponent(agency)}`)).json();
+  const org = list.items.find((o: { name: string }) => o.name === agency);
+  expect(org, `pending org ${agency}`).toBeTruthy();
+  const docs = await (await request.get(`/api/v1/overseas-admin/agent-orgs/${org.id}/kyc-documents`)).json();
+  for (const doc of docs.items) expect((await request.post(`/api/v1/overseas-admin/agent-orgs/${org.id}/kyc-documents/${doc.id}/verify`)).ok()).toBeTruthy();
 }

@@ -1,5 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
+import { fillAgentKyc, verifyAllKyc } from "./helpers/agency";
+
 // AGN-001 -- agency registration -> approval -> Master invite -> suspend -> reinstate, through the real UI.
 // Requires the stack running with `python -m app.seed` applied (seeds the overseas admin).
 
@@ -13,6 +15,7 @@ async function signIn(page: Page, email: string, password: string, landing: stri
 
 async function adminAct(page: Page, agency: string, button: string) {
   await signIn(page, "overseasadmin@edusphere.local", "Demo@123", "/overseas/admin/dashboard");
+  if (button === "Approve") await verifyAllKyc(page.request, agency);
   await page.goto("/overseas/admin/agents");
   // The panel shows one status tab at a time (Pending first); open the tab the organisation is on.
   const tabs: Record<string, string> = { Suspend: "Approved", Reinstate: "Suspended" };
@@ -32,9 +35,11 @@ test("an agency registers, is approved, invites a second Master, and is suspende
   await page.fill('input[name="email"]', email);
   await page.selectOption('select[name="account_type"]', "agent");
   await page.fill('input[name="agency_name"]', agency);
+  await fillAgentKyc(page);
   await page.fill('input[name="password"]', "Sup3r-Secret-Pass!");
   await page.click('button:has-text("Create account")');
-  await page.waitForURL("**/overseas/agent/dashboard");
+  await page.waitForURL("**/overseas/agent/registration-status");
+  await page.goto("/overseas/agent/dashboard");
   await expect(page.getByText(/pending approval/)).toBeVisible();
 
   await adminAct(page, agency, "Approve");

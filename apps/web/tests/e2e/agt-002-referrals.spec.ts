@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+import { kycMultipart, verifyAllKyc } from "./helpers/agency";
+
 // AGT-002 -- Referred-student roster and status. Uses the seeded demo agent
 // (agent@edusphere.local), who has one referred student with one application already
 // seeded (see `app/seed.py`). Confirms the roster shows the referral AND the student's
@@ -24,7 +26,7 @@ test("a second, freshly self-registered agent with no referrals sees an empty ro
   const unique = Date.now();
   const email = `agt002-e2e-${unique}@example.local`;
   const registered = await page.request.post("/api/v1/auth/register", {
-    data: { email, password: "Sup3r-Secret-Pass!", full_name: "E2E Second Agent", division: "overseas", account_type: "agent" },
+    multipart: kycMultipart({ email, password: "Sup3r-Secret-Pass!", full_name: "E2E Second Agent", division: "overseas", account_type: "agent" }),
   });
   expect(registered.ok()).toBeTruthy();
 
@@ -33,6 +35,7 @@ test("a second, freshly self-registered agent with no referrals sees an empty ro
   await page.fill("#login-password", "Demo@123");
   await page.click("button:has-text('Sign in securely')");
   await page.waitForURL("**/overseas/admin/dashboard");
+  await verifyAllKyc(page.request, "E2E Second Agent");
   await page.goto("/overseas/admin/agents");
   const card = page.locator(".action-card", { has: page.getByRole("heading", { name: "Agent Approvals" }) }).locator(".card", { hasText: "E2E Second Agent" }).filter({ hasText: email });
   await card.getByRole("button", { name: "Approve" }).click();
