@@ -22,6 +22,8 @@ from html import escape
 from pathlib import Path
 
 from app.core.config import settings
+from app.services import zoho_mail
+from app.services.zoho_mail import EmailPermanentError, EmailTransientError  # noqa: F401 -- re-exported for the callers (ENH-032)
 
 ROLE_LABELS = {"school_principal": "Principal", "school_teacher": "Teacher", "school_parent": "Parent"}
 
@@ -106,7 +108,24 @@ def _school_invite_text(*, recipient_name: str, role_label: str, school_name: st
     )
 
 
+# ENH-032 / DEC-SCOPE-225: a permanent Zoho API failure is recorded with this prefix so delivery._send_email can tell it from a
+# transient one without a new column; SMTP failures never carry it and stay transient exactly as before.
+PERMANENT_PREFIX = "permanent: "
+
+
+def failure_text(exc: BaseException) -> str:
+    if isinstance(exc, EmailPermanentError):
+        return PERMANENT_PREFIX + str(exc)[:480]
+    return str(exc)[:500]
+
+
+def is_permanent(error: str | None) -> bool:
+    return bool(error) and error.startswith(PERMANENT_PREFIX)
+
+
 def _send_sync(msg: EmailMessage) -> None:
+    if settings.email_transport == "zoho_api":  # ENH-032 / DEC-SCOPE-225
+        return zoho_mail.send(msg)
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as smtp:
         if settings.smtp_use_tls:
             smtp.starttls()
@@ -140,7 +159,7 @@ async def send_school_invite_email(
         await asyncio.to_thread(_send_sync, msg)
         return "sent", None
     except Exception as exc:
-        return "failed", str(exc)[:500]
+        return "failed", failure_text(exc)
 
 
 # --- SCH-007: Parent Portal notifications -------------------------------------------------
@@ -217,7 +236,7 @@ async def send_parent_notification_email(*, to_email: str, recipient_name: str, 
         await asyncio.to_thread(_send_sync, msg)
         return "sent", None
     except Exception as exc:
-        return "failed", str(exc)[:500]
+        return "failed", failure_text(exc)
 
 
 # --- ENH-003 / DEC-SCOPE-019: first-time set-password link for admin-provisioned accounts -------
@@ -317,7 +336,7 @@ async def send_welcome_email(
         await asyncio.to_thread(_send_sync, msg)
         return "sent", None
     except Exception as exc:
-        return "failed", str(exc)[:500]
+        return "failed", failure_text(exc)
 
 
 # --- bdm-012 / DEC-SCOPE-102 R9: a BDM reminder (appointment, travel, MoU, follow-up) with its deep-link buttons ------------
@@ -383,7 +402,7 @@ async def send_bdm_reminder_email(*, to_email: str, recipient_name: str, title: 
         await asyncio.to_thread(_send_sync, msg)
         return "sent", None
     except Exception as exc:
-        return "failed", str(exc)[:500]
+        return "failed", failure_text(exc)
 
 
 # --- tel-014 / DEC-SCOPE-106: a telecaller's email to a lead ------------------------------------------------------------------

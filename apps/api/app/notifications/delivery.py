@@ -15,7 +15,7 @@ from app.notifications import twilio
 from app.notifications.dispatch import enqueue, publish_all
 from app.notifications.phone import normalise_phone
 from app.services.integrations import send_notification
-from app.services.mailer import send_bdm_reminder_email, send_parent_notification_email
+from app.services.mailer import is_permanent, send_bdm_reminder_email, send_parent_notification_email
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +115,7 @@ async def _send_email(s: _Snapshot, context: dict | None) -> twilio.SendResult:
         status, error = await send_notification("email", {"to": s.email, "title": s.title, "body": s.body, "action_url": s.action_url})
     else:
         status, error = await send_notification("email", {"to": s.email, "phone": s.phone, "title": s.title, "body": s.body, "action_url": s.action_url})
-    return twilio.SendResult(status, error=error, transient=status == "failed")
+    return twilio.SendResult(status, error=error, transient=status == "failed" and not is_permanent(error))  # ENH-032: a permanent Zoho API error is not retried
 
 
 STALE_QUEUED = timedelta(minutes=30)  # longer than the largest retry countdown (25 min)

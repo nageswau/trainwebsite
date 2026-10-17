@@ -66,6 +66,10 @@ async def _send(to_email: str | None, subject: str, body: str, sender_name: str,
     try:
         msg = mailer.lead_email_message(to_email=to_email, subject=subject, body=body, sender_name=sender_name, sender_email=sender_email)
         await asyncio.to_thread(mailer._send_sync, msg)
+    except mailer.EmailTransientError:  # ENH-032 / DEC-SCOPE-225: Zoho API 429/5xx/timeout/token refresh
+        return "retry", "EmailTransientError"
+    except mailer.EmailPermanentError:  # Zoho API 4xx / bad credentials / bad address
+        return "failed", "EmailPermanentError"
     except smtplib.SMTPRecipientsRefused as exc:
         return "failed", type(exc).__name__
     except smtplib.SMTPResponseException as exc:

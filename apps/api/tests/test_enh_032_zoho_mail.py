@@ -11,6 +11,7 @@ from app.core.config import Settings, settings
 from app.core.security import hash_password
 from app.models import User
 from app.services import mailer
+from tests.test_tel_014_delivery import outbox, smtp_on  # noqa: F401 -- fixtures reused for the lead-email retry tests
 
 ZOHO_FIELDS = ["smtp_from_email", "zoho_mail_client_id", "zoho_mail_client_secret", "zoho_mail_refresh_token", "zoho_mail_account_id"]
 
@@ -288,3 +289,106 @@ def test_errors_never_carry_secrets(outcome, kind):
     text = str(exc.value)
     assert "tok1" not in text and len(text) <= 200
     assert not any(v in text for v in SECRETS.values())
+
+
+# --- Task 3: dispatch in _send_sync and the retry mapping in the callers -----------------------------------------------------------
+def test_send_sync_dispatches_by_transport(monkeypatch):
+    import smtplib
+
+    from app.services import zoho_mail
+
+    calls: list[str] = []
+
+    class FakeSMTP:
+        def __init__(self, *a, **k):
+            calls.append("smtp")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def starttls(self): ...
+        def login(self, *a): ...
+        def send_message(self, msg): ...
+
+    monkeypatch.setattr(smtplib, "SMTP", FakeSMTP)
+    monkeypatch.setattr(zoho_mail, "send", lambda msg, **k: calls.append("zoho"))
+    msg = mailer.EmailMessage()
+    monkeypatch.setattr(settings, "email_transport", "zoho_api")
+    mailer._send_sync(msg)
+    assert calls == ["zoho"]
+    calls.clear()
+    monkeypatch.setattr(settings, "email_transport", "smtp")
+    mailer._send_sync(msg)
+    assert calls == ["smtp"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind,expected,enqueued", [("transient", "retrying", 1), ("permanent", "failed", 0)])
+async def test_lead_email_retries_transient_and_fails_permanent(db_session, smtp_on, outbox, lead_emails_enqueued, kind, expected, enqueued):
+    from app.notifications import lead_email
+    from tests.test_tel_014_delivery import queued
+
+    message, _, _ = await queued(db_session)
+    outbox.fail(_error_type(kind)("boom"))
+    assert await lead_email.deliver_lead_email(message.id) == expected
+    assert len(lead_emails_enqueued) == enqueued
+    if enqueued:
+        assert lead_emails_enqueued == [(str(message.id), 60)]
+
+
+def _snapshot():
+    from app.notifications.delivery import _Snapshot
+
+    return _Snapshot(title="T", body="B", action_url=None, email="a@example.com", full_name="A", phone=None, active=True, whatsapp_opt_in=False, sms_opt_in=False)
+
+
+@pytest.mark.asyncio
+async def test_a_permanent_mailer_failure_is_not_a_transient_delivery(monkeypatch):
+    from app.notifications import delivery
+    from app.services import zoho_mail
+
+    monkeypatch.setattr(settings, "smtp_host", "smtp.test.local")
+    monkeypatch.setattr(settings, "smtp_from_email", "noreply@edusphere.local")
+    monkeypatch.setattr(settings, "email_transport", "smtp")
+
+    def boom(exc):
+        def fail(msg):
+            raise exc
+
+        return fail
+
+    kwargs = dict(to_email="a@example.com", recipient_name="A", title="T", body="B", links=[])
+    monkeypatch.setattr(mailer, "_send_sync", boom(zoho_mail.EmailPermanentError("x")))
+    assert await mailer.send_bdm_reminder_email(**kwargs) == ("failed", "permanent: x")
+    result = await delivery._send_email(_snapshot(), {"kind": "bdm_reminder"})
+    assert result.transient is False
+    monkeypatch.setattr(mailer, "_send_sync", boom(zoho_mail.EmailTransientError("x")))
+    assert (await delivery._send_email(_snapshot(), {"kind": "bdm_reminder"})).transient is True
+
+
+@pytest.mark.asyncio
+async def test_smtp_failures_keep_todays_transient_behaviour(monkeypatch):
+    from app.notifications import delivery
+
+    monkeypatch.setattr(settings, "smtp_host", "smtp.test.local")
+    monkeypatch.setattr(settings, "smtp_from_email", "noreply@edusphere.local")
+    monkeypatch.setattr(settings, "email_transport", "smtp")
+
+    def fail(msg):
+        raise OSError("conn reset")
+
+    monkeypatch.setattr(mailer, "_send_sync", fail)
+    result = await delivery._send_email(_snapshot(), {"kind": "bdm_reminder"})
+    assert result.status == "failed" and result.transient is True
+
+
+def test_failure_text_and_is_permanent():
+    from app.services import zoho_mail
+
+    assert mailer.failure_text(zoho_mail.EmailPermanentError("x" * 600)) == "permanent: " + "x" * 480
+    assert mailer.failure_text(OSError("y" * 600)) == "y" * 500
+    assert mailer.is_permanent("permanent: x") and not mailer.is_permanent("x") and not mailer.is_permanent(None)
+    assert mailer.EmailTransientError is zoho_mail.EmailTransientError
