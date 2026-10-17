@@ -3655,6 +3655,9 @@ class AgentOrg(Base, TimestampMixin):
     staff_seq: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     status_changed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # AGN-024 (DEC-SCOPE-224 K4): set only by self-registration; when true the org cannot become active until its three KYC documents
+    # are verified (`services.agent_kyc.assert_complete`). Every org that existed before AGN-024 stays false.
+    kyc_required: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
 
 
 class AgentOrgMember(Base, TimestampMixin):
@@ -3685,6 +3688,39 @@ class AgentOrgMember(Base, TimestampMixin):
     can_verify_documents: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     can_view_reports: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     org: Mapped["AgentOrg"] = relationship(lazy="raise")
+
+
+KYC_DOC_TYPES = ("pan", "aadhaar", "business_license")
+KYC_CHECKS = {  # must equal alembic 0164_agent_org_kyc.CHECKS
+    "ck_agent_org_kyc_documents_type": "doc_type IN ('pan', 'aadhaar', 'business_license')",
+    "ck_agent_org_kyc_documents_status": "status IN ('pending', 'verified', 'rejected')",
+    "ck_agent_org_kyc_documents_reason": "(status = 'rejected') = (rejection_reason IS NOT NULL)",
+}
+
+
+class AgentOrgKycDocument(Base, TimestampMixin):
+    """AGN-024 / DEC-SCOPE-224: one current KYC document per agency per type (K1). `doc_number` is the full PAN, the licence number,
+    or only the LAST 4 Aadhaar digits (K2) -- never the full Aadhaar. `file_key` is server-generated under `agent-kyc/`; the file is
+    served only by the admin streaming route. A re-upload replaces the row's file in place; history is the audit log."""
+
+    __tablename__ = "agent_org_kyc_documents"
+    __table_args__ = (
+        UniqueConstraint("org_id", "doc_type", name="uq_agent_org_kyc_documents_org_type"),
+        *(CheckConstraint(sql, name=name) for name, sql in KYC_CHECKS.items()),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    org_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_orgs.id", ondelete="CASCADE"), index=True)
+    doc_type: Mapped[str] = mapped_column(String(32))
+    doc_number: Mapped[str] = mapped_column(String(64))
+    file_key: Mapped[str] = mapped_column(String(255))
+    original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    content_type: Mapped[str] = mapped_column(String(64))
+    file_size: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(16), default="pending", server_default=text("'pending'"))
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
 class AgentUniversity(Base, TimestampMixin):
