@@ -5,7 +5,9 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -16,8 +18,9 @@ from app.core.database import get_db
 from app.core.identifiers import unique_student_code
 from app.core.rbac import agent_permissions
 from app.core.security import create_token, decode_token, hash_password, verify_password
-from app.models import AuditLog, Notification, NotificationDelivery, PasswordResetToken, User, UserRoleAssignment
+from app.models import AgentOrg, AgentOrgKycDocument, AuditLog, Notification, NotificationDelivery, PasswordResetToken, User, UserRoleAssignment
 from app.schemas import ChangePasswordRequest, LoginRequest, LoginResponse, ProfileUpdate, RegistrationRequest, UserOut
+from app.services import agent_kyc as kyc
 from app.services.agent_orgs import ensure_agent_org
 from app.services.integrations import send_notification
 from app.services.telecaller import parse_self_update
@@ -113,33 +116,84 @@ async def login(payload: LoginRequest, response: Response, db: AsyncSession = De
     return LoginResponse(user=UserOut.model_validate(user), expires_in_minutes=settings.access_token_minutes)
 
 
+async def _registration_input(request: Request):
+    """AGN-024 (DEC-SCOPE-224): JSON as before, or multipart -- an agent's signup carries its three KYC files. Returns (fields, files,
+    form-to-close)."""
+    if request.headers.get("content-type", "").startswith(("multipart/form-data", "application/x-www-form-urlencoded")):
+        form = await request.form(max_files=3, max_fields=20)
+        fields = {k: v for k, v in form.multi_items() if isinstance(v, str)}
+        files = {k: v for k, v in form.multi_items() if not isinstance(v, str)}
+        return fields, files, form
+    try:
+        body = await request.json()
+    except ValueError:
+        body = None
+    if not isinstance(body, dict):
+        raise RequestValidationError([{"type": "json_invalid", "loc": ("body",), "msg": "A JSON object or multipart form is required", "input": None}])
+    return body, {}, None
+
+
 @router.post("/register", status_code=201)
-async def register(payload: RegistrationRequest, response: Response, db: AsyncSession = Depends(get_db)):
+async def register(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
+    fields, files, form = await _registration_input(request)
+    try:
+        return await _register(fields, files, response, db)
+    finally:
+        if form is not None:
+            await form.close()
+
+
+async def _register(fields: dict, files: dict, response: Response, db: AsyncSession):
+    try:
+        payload = RegistrationRequest.model_validate(fields)
+    except ValidationError as exc:
+        raise RequestValidationError(exc.errors(include_url=False)) from None
+    is_agent = payload.account_type == "agent"
+    # K1: numbers and file presence are checked before anything is looked up or stored.
+    numbers = kyc.clean_numbers(fields) if is_agent else {}
+    uploads = kyc.require_files(files) if is_agent else {}
     email = payload.email.lower().strip()
     if await db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Email already exists")
-    role = "agent" if payload.account_type == "agent" else ("it_student" if payload.division == "it" else "overseas_student")
-    student_code = await unique_student_code(db, User.student_code) if role in ("it_student", "overseas_student") else None
-    user = User(
-        email=email,
-        password_hash=hash_password(payload.password),
-        full_name=payload.full_name.strip(),
-        role=role,
-        division=payload.division,
-        phone=payload.phone,
-        active=True,
-        email_verified=False,
-        student_code=student_code,
-        profile={"registration_source": "self_service"},
-    )
-    db.add(user)
-    await db.flush()
-    if role == "agent":
-        # AGN-001 (D2, E2): one pending organisation + Master M001, named from the optional agency name.
-        await ensure_agent_org(db, user, agency_name=payload.agency_name, status="pending")
-    await _sync_role_assignment(db, user)
-    db.add(AuditLog(user_id=user.id, action="auth.register", entity_type="user", entity_id=str(user.id), metadata_json={"division": user.division, "role": user.role}))
-    await db.commit()
+    contents = {t: await kyc.read_kyc_file(t, f) for t, f in uploads.items()}  # K8: every file passes before any is stored
+    stored: list[str] = []
+    try:
+        for _doc_type, (data, content_type, _name) in contents.items():
+            stored.append(kyc.store(data, content_type))
+        role = "agent" if is_agent else ("it_student" if payload.division == "it" else "overseas_student")
+        student_code = await unique_student_code(db, User.student_code) if role in ("it_student", "overseas_student") else None
+        user = User(
+            email=email,
+            password_hash=hash_password(payload.password),
+            full_name=payload.full_name.strip(),
+            role=role,
+            division=payload.division,
+            phone=payload.phone,
+            active=True,
+            email_verified=False,
+            student_code=student_code,
+            profile={"registration_source": "self_service"},
+        )
+        db.add(user)
+        await db.flush()
+        metadata = {"division": user.division, "role": user.role}
+        if role == "agent":
+            # AGN-001 (D2, E2): one pending organisation + Master M001, named from the optional agency name.
+            member = await ensure_agent_org(db, user, agency_name=payload.agency_name, status="pending")
+            org = await db.get(AgentOrg, member.org_id)
+            org.kyc_required = True  # AGN-024 K4: only self-registered agencies are gated
+            for (doc_type, (data, content_type, name)), key in zip(contents.items(), stored, strict=True):
+                db.add(AgentOrgKycDocument(org_id=org.id, doc_type=doc_type, doc_number=numbers[doc_type], file_key=key, original_filename=name,
+                                           content_type=content_type, file_size=len(data), status="pending", uploaded_by_user_id=user.id))  # fmt: skip
+            metadata["kyc_documents"] = len(stored)
+        await _sync_role_assignment(db, user)
+        db.add(AuditLog(user_id=user.id, action="auth.register", entity_type="user", entity_id=str(user.id), metadata_json=metadata))
+        await db.commit()
+    except BaseException:
+        await db.rollback()
+        for key in stored:
+            kyc.discard(key)
+        raise
     loaded = await db.scalar(select(User).where(User.id == user.id).options(selectinload(User.role_assignments)))
     assert loaded is not None
     _set_auth_cookies(response, loaded)

@@ -29,6 +29,7 @@ from sqlalchemy import select
 
 import app.api.admin as admin_module
 from app.core.security import hash_password
+from tests.agn024_helpers import KYC_FIELDS, kyc_files
 from app.models import AgentCommission, AuditLog, OverseasApplication, University, Country, User, UserRoleAssignment
 
 
@@ -45,7 +46,7 @@ async def _register_agent(client, **overrides) -> dict:
         "account_type": "agent",
     }
     payload.update(overrides)
-    response = await client.post("/api/v1/auth/register", json=payload)
+    response = await client.post("/api/v1/auth/register", data={**payload, **KYC_FIELDS}, files=kyc_files())
     assert response.status_code == 201
     return response.json()
 

@@ -21,6 +21,7 @@ from sqlalchemy import select
 
 from app.core.security import hash_password
 from app.models import User, UserRoleAssignment
+from tests.agn024_helpers import KYC_FIELDS, kyc_files, org_for, verify_all
 
 
 async def _register_agent(client, **overrides) -> dict:
@@ -32,7 +33,7 @@ async def _register_agent(client, **overrides) -> dict:
         "account_type": "agent",
     }
     payload.update(overrides)
-    response = await client.post("/api/v1/auth/register", json=payload)
+    response = await client.post("/api/v1/auth/register", data={**payload, **KYC_FIELDS}, files=kyc_files())
     assert response.status_code == 201
     return response.json()
 
@@ -76,6 +77,7 @@ async def test_pending_agent_cannot_create_an_overseas_application(client, db_se
 async def test_overseas_admin_approves_and_the_agent_gains_access(client, db_session):
     registration = await _register_agent(client)
     admin = await _create_overseas_admin(db_session)
+    await verify_all(db_session, (await org_for(db_session, registration["user"]["id"])).id, admin)  # AGN-024: a self-registered agency is gated on verified KYC
 
     await _login(client, admin.email)
     response = await client.post(f"/api/v1/overseas-admin/agents/{registration['user']['id']}/approve")

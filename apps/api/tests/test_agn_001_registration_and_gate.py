@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 
 from app.main import app
 from app.models import AgentOrgMember, UserRoleAssignment
+from tests.agn024_helpers import KYC_FIELDS, kyc_files
 from tests.agn001_helpers import login, membership, mk_active_org, mk_user, org_of, register_agent, uniq
 
 
@@ -40,7 +41,7 @@ async def test_registration_response_shape_is_unchanged(client):  # E8
 
 @pytest.mark.asyncio
 async def test_an_agency_name_over_160_characters_is_422(client):
-    response = await client.post("/api/v1/auth/register", json={"email": f"{uniq('long')}@example.local", "password": "Sup3r-Secret-Pass!", "full_name": "Long Name", "division": "overseas", "account_type": "agent", "agency_name": "A" * 161})
+    response = await client.post("/api/v1/auth/register", data={"email": f"{uniq('long')}@example.local", "password": "Sup3r-Secret-Pass!", "full_name": "Long Name", "division": "overseas", "account_type": "agent", "agency_name": "A" * 161, **KYC_FIELDS}, files=kyc_files())
     assert response.status_code == 422
 
 

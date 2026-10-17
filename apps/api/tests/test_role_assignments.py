@@ -62,7 +62,9 @@ async def test_register_agent_creates_a_pending_assignment_not_approved(client):
         "division": "overseas",
         "account_type": "agent",
     }
-    response = await client.post("/api/v1/auth/register", json=payload)
+    from tests.agn024_helpers import KYC_FIELDS, kyc_files
+
+    response = await client.post("/api/v1/auth/register", data={**payload, **KYC_FIELDS}, files=kyc_files())
     assert response.status_code == 201
     assignment = response.json()["user"]["role_assignments"][0]
     assert assignment == {"division": "overseas", "role": "agent", "is_active": True, "approval_status": "pending"}

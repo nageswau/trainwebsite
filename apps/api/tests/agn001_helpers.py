@@ -29,8 +29,11 @@ async def login(client, email: str, division: str = "overseas") -> None:
 
 
 async def register_agent(client, **overrides) -> dict:
-    payload = {"email": f"{uniq('agn-reg')}@example.local", "password": PASSWORD, "full_name": "Test Agent", "division": "overseas", "account_type": "agent", **overrides}
-    response = await client.post("/api/v1/auth/register", json=payload)
+    """AGN-024: an agent signup now carries the three KYC documents (DEC-SCOPE-224 K1)."""
+    from tests.agn024_helpers import KYC_FIELDS, kyc_files
+
+    payload = {"email": f"{uniq('agn-reg')}@example.local", "password": PASSWORD, "full_name": "Test Agent", "division": "overseas", "account_type": "agent", **KYC_FIELDS, **overrides}
+    response = await client.post("/api/v1/auth/register", data={k: v for k, v in payload.items() if v is not None}, files=kyc_files())
     assert response.status_code == 201, response.text
     return response.json()
 
