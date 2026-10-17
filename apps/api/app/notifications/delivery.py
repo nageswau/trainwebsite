@@ -15,7 +15,7 @@ from app.notifications import twilio
 from app.notifications.dispatch import enqueue, publish_all
 from app.notifications.phone import normalise_phone
 from app.services.integrations import send_notification
-from app.services.mailer import is_permanent, send_bdm_reminder_email, send_parent_notification_email
+from app.services.mailer import is_permanent, send_bdm_reminder_email, send_generic_notification_email, send_parent_notification_email
 
 logger = logging.getLogger(__name__)
 
@@ -112,9 +112,14 @@ async def _send_email(s: _Snapshot, context: dict | None) -> twilio.SendResult:
     elif context and context.get("kind") in ("bdm_reminder", "tel_alert", "partnership_alert"):
         status, error = await send_bdm_reminder_email(to_email=s.email, recipient_name=s.full_name, title=s.title, body=s.body, links=context.get("links") or [])
     elif context and context.get("kind") == "inbound":  # inbound._notify_student never sent the phone
-        status, error = await send_notification("email", {"to": s.email, "title": s.title, "body": s.body, "action_url": s.action_url})
+        # ENH-032 / DEC-SCOPE-225 (E8): the mailer first, today's webhook payload when email is not configured
+        status, error = await send_generic_notification_email(to_email=s.email, recipient_name=s.full_name, title=s.title, body=s.body, action_url=s.action_url)
+        if status == "not_configured":
+            status, error = await send_notification("email", {"to": s.email, "title": s.title, "body": s.body, "action_url": s.action_url})
     else:
-        status, error = await send_notification("email", {"to": s.email, "phone": s.phone, "title": s.title, "body": s.body, "action_url": s.action_url})
+        status, error = await send_generic_notification_email(to_email=s.email, recipient_name=s.full_name, title=s.title, body=s.body, action_url=s.action_url)
+        if status == "not_configured":
+            status, error = await send_notification("email", {"to": s.email, "phone": s.phone, "title": s.title, "body": s.body, "action_url": s.action_url})
     return twilio.SendResult(status, error=error, transient=status == "failed" and not is_permanent(error))  # ENH-032: a permanent Zoho API error is not retried
 
 

@@ -392,3 +392,134 @@ def test_failure_text_and_is_permanent():
     assert mailer.failure_text(OSError("y" * 600)) == "y" * 500
     assert mailer.is_permanent("permanent: x") and not mailer.is_permanent("x") and not mailer.is_permanent(None)
     assert mailer.EmailTransientError is zoho_mail.EmailTransientError
+
+
+# --- E8: password-reset and generic/inbound notification emails --------------------------------------------------------------
+
+
+async def _forgot(client, db_session, role, division, monkeypatch, outbox_unused=None):
+    from tests.enh014_helpers import make_user
+
+    return await make_user(db_session, role=role, division=division)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("role", "division", "segment"), [("it_student", "overseas", "overseas"), ("bdm_manager", "global", "admin")])
+async def test_forgot_password_emails_the_portal_reset_link(client, db_session, outbox, monkeypatch, role, division, segment):
+    from sqlalchemy import select
+
+    from app.models import NotificationDelivery
+
+    user = await _forgot(client, db_session, role, division, monkeypatch)
+    response = await client.post("/api/v1/auth/forgot-password", json={"email": user.email})
+    assert response.status_code == 202
+    assert len(outbox) == 1
+    msg = outbox[0]
+    assert msg["To"] == user.email and msg["Subject"] == "Reset your EduSphere password"
+    assert f"{settings.frontend_url}/{segment}/reset-password?token=" in msg.get_body(("plain",)).get_content()
+    assert (await db_session.scalars(select(NotificationDelivery.status).order_by(NotificationDelivery.created_at.desc()))).first() == "sent"
+
+
+@pytest.mark.asyncio
+async def test_forgot_password_falls_back_to_the_webhook_when_email_is_not_configured(client, db_session, monkeypatch):
+    from app.api import auth
+
+    monkeypatch.setattr(settings, "email_transport", "smtp")
+    monkeypatch.setattr(settings, "smtp_host", None)
+    calls, sent = [], []
+    monkeypatch.setattr(mailer, "_send_sync", lambda msg: sent.append(msg))
+
+    async def fake(channel, payload):
+        calls.append((channel, payload))
+        return "sent", None
+
+    monkeypatch.setattr(auth, "send_notification", fake)
+    user = await _forgot(client, db_session, "it_student", "overseas", monkeypatch)
+    assert (await client.post("/api/v1/auth/forgot-password", json={"email": user.email})).status_code == 202
+    assert len(calls) == 1 and calls[0][1]["template"] == "password_reset" and calls[0][1]["to"] == user.email
+    assert sent == []
+
+
+@pytest.mark.asyncio
+async def test_forgot_password_for_an_unknown_email_sends_nothing(client, outbox, monkeypatch):
+    from app.api import auth
+
+    calls = []
+
+    async def fake(channel, payload):
+        calls.append(payload)
+        return "sent", None
+
+    monkeypatch.setattr(auth, "send_notification", fake)
+    response = await client.post("/api/v1/auth/forgot-password", json={"email": "nobody-here@example.local"})
+    assert response.status_code == 202
+    assert len(outbox) == 0 and calls == []
+
+
+@pytest.mark.asyncio
+async def test_the_reset_token_appears_only_in_the_link(client, db_session, outbox, monkeypatch):
+    from sqlalchemy import select
+
+    from app.models import NotificationDelivery
+    from app.services import zoho_mail
+
+    monkeypatch.setattr(settings, "environment", "development")
+    user = await _forgot(client, db_session, "it_student", "overseas", monkeypatch)
+    outbox.fail(zoho_mail.EmailPermanentError("rejected"))
+    response = await client.post("/api/v1/auth/forgot-password", json={"email": user.email})
+    raw = response.json()["development_reset_token"]
+    row = (await db_session.scalars(select(NotificationDelivery).order_by(NotificationDelivery.created_at.desc()))).first()
+    assert row.status == "failed" and row.error.startswith("permanent: ")
+    assert raw not in (row.error or "")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("context", [None, {"kind": "inbound"}])
+@pytest.mark.parametrize("configured", [True, False])
+async def test_generic_and_inbound_notifications_use_the_mailer_then_the_webhook(monkeypatch, outbox, context, configured):
+    from app.notifications import delivery
+
+    if not configured:
+        monkeypatch.setattr(settings, "email_transport", "smtp")
+        monkeypatch.setattr(settings, "smtp_host", None)
+    calls = []
+
+    async def fake(channel, payload):
+        calls.append((channel, payload))
+        return "sent", None
+
+    monkeypatch.setattr(delivery, "send_notification", fake)
+    import dataclasses
+
+    snap = dataclasses.replace(_snapshot(), phone="+441234567890")
+    result = await delivery._send_email(snap, context)
+    assert result.status == "sent"
+    if configured:
+        assert calls == [] and len(outbox) == 1 and outbox[0]["Subject"] == "T -- EduSphere"
+    else:
+        assert outbox == []
+        expected = {"to": "a@example.com", "title": "T", "body": "B", "action_url": None}
+        if context is None:
+            expected["phone"] = "+441234567890"
+        assert calls == [("email", expected)]
+
+
+@pytest.mark.asyncio
+async def test_new_emails_escape_html(outbox):
+    evil = "<script>alert(1)</script>"
+    assert await mailer.send_generic_notification_email(to_email="a@example.com", recipient_name=evil, title=evil, body=evil, action_url="https://x.example/?a=1&b=\"2") == ("sent", None)
+    assert await mailer.send_password_reset_email(to_email="a@example.com", recipient_name=evil, reset_url="https://x.example/?a=\"<b>", expires_minutes=30) == ("sent", None)
+    for msg in outbox:
+        html = msg.get_body(("html",)).get_content()
+        assert "<script>" not in html and "&lt;script&gt;" in html
+    assert "<b>" not in outbox[1].get_body(("html",)).get_content()
+
+
+@pytest.mark.asyncio
+async def test_reset_email_copy_and_not_configured(monkeypatch, outbox):
+    await mailer.send_password_reset_email(to_email="a@example.com", recipient_name="Ann", reset_url="https://x.example/r?token=t", expires_minutes=30)
+    assert outbox[0].get_body(("plain",)).get_content() == "Hi Ann,\n\nWe received a request to reset your EduSphere password. Use this link within 30 minutes:\nhttps://x.example/r?token=t\n\nIf you did not ask for this, ignore this email; your password stays the same.\n"
+    monkeypatch.setattr(settings, "email_transport", "smtp")
+    monkeypatch.setattr(settings, "smtp_host", None)
+    assert await mailer.send_password_reset_email(to_email="a@example.com", recipient_name="Ann", reset_url="u", expires_minutes=30) == ("not_configured", None)
+    assert await mailer.send_generic_notification_email(to_email="a@example.com", recipient_name="Ann", title="t", body="b", action_url=None) == ("not_configured", None)

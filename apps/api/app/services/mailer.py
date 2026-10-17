@@ -339,6 +339,117 @@ async def send_welcome_email(
         return "failed", failure_text(exc)
 
 
+# --- ENH-032 / DEC-SCOPE-225 (E8): password-reset and generic/inbound notification emails ----------------------------------------
+
+
+def _button(url: str, label: str) -> str:
+    return f"""<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
+                  <tr>
+                    <td style="border-radius:12px;background:#1554d8;">
+                      <a href="{escape(url, quote=True)}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;">{label}</a>
+                    </td>
+                  </tr>
+                </table>"""
+
+
+def _card_html(*, heading: str, paragraphs: list[str], button: str, footer: str) -> str:
+    """The shared card; every argument is already escaped by the caller."""
+    body = "\n                ".join(f'<p style="font-size:15px;line-height:1.6;margin:0 0 16px;">{p}</p>' for p in paragraphs)
+    return f"""<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#f4f7fb;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#0f2850;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fb;padding:32px 0;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(15,40,80,.08);">
+            <tr>
+              <td style="background:#ffffff;padding:24px 32px;border-bottom:1px solid #edf1f6;">
+                <img src="{LOGO_SRC}" alt="EduSphere" width="180" height="78" style="display:block;">
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <h1 style="font-size:20px;margin:0 0 16px;">{heading}</h1>
+                {body}
+                {button}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px;background:#f8fafc;border-top:1px solid #edf1f6;">
+                <p style="font-size:12px;color:#60738b;margin:0;">{footer}</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>"""
+
+
+async def send_password_reset_email(*, to_email: str, recipient_name: str, reset_url: str, expires_minutes: int) -> tuple[str, str | None]:
+    """ENH-032 E8: the forgot-password email. Same (status, error) contract as `send_welcome_email`; `not_configured` lets the
+    caller fall back to the webhook. The raw token lives only inside `reset_url`."""
+    if not email_configured():
+        return "not_configured", None
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = "Reset your EduSphere password"
+        msg["From"] = f"EduSphere <{settings.smtp_from_email}>"
+        msg["To"] = to_email
+        msg.set_content(
+            f"Hi {recipient_name},\n\nWe received a request to reset your EduSphere password. Use this link within {expires_minutes} minutes:\n{reset_url}\n\n"
+            "If you did not ask for this, ignore this email; your password stays the same.\n"
+        )
+        msg.add_alternative(
+            _card_html(
+                heading="Reset your password",
+                paragraphs=[
+                    f"Hi {escape(recipient_name)},",
+                    f"We received a request to reset your EduSphere password. Use this link within {int(expires_minutes)} minutes.",
+                    "If you did not ask for this, ignore this email; your password stays the same.",
+                ],
+                button=_button(reset_url, "Reset password"),
+                footer="Sent by EduSphere.",
+            ),
+            subtype="html",
+        )
+        _attach_logo(msg)
+        await asyncio.to_thread(_send_sync, msg)
+        return "sent", None
+    except Exception as exc:
+        return "failed", failure_text(exc)
+
+
+async def send_generic_notification_email(*, to_email: str, recipient_name: str, title: str, body: str, action_url: str | None) -> tuple[str, str | None]:
+    """ENH-032 E8: the email copy of a generic or inbound notification (like `send_parent_notification_email`, no school)."""
+    if not email_configured():
+        return "not_configured", None
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = f"{title} -- EduSphere"
+        msg["From"] = f"EduSphere <{settings.smtp_from_email}>"
+        msg["To"] = to_email
+        text = f"Hi {recipient_name},\n\n{title}\n\n{body}\n"
+        if action_url:
+            text += f"\nOpen in EduSphere: {action_url}\n"
+        msg.set_content(text)
+        msg.add_alternative(
+            _card_html(
+                heading=escape(title),
+                paragraphs=[f"Hi {escape(recipient_name)},", escape(body)],
+                button=_button(action_url, "Open in EduSphere") if action_url else "",
+                footer="Sent by EduSphere. You receive this because you have an EduSphere account.",
+            ),
+            subtype="html",
+        )
+        _attach_logo(msg)
+        await asyncio.to_thread(_send_sync, msg)
+        return "sent", None
+    except Exception as exc:
+        return "failed", failure_text(exc)
+
+
 # --- bdm-012 / DEC-SCOPE-102 R9: a BDM reminder (appointment, travel, MoU, follow-up) with its deep-link buttons ------------
 
 

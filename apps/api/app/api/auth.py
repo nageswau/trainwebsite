@@ -26,7 +26,8 @@ from app.schemas import ChangePasswordRequest, LoginRequest, LoginResponse, Prof
 from app.services import agent_kyc as kyc
 from app.services.agent_orgs import ensure_agent_org
 from app.services.integrations import send_notification
-from app.services.provisioning import ADMIN_PORTAL_ROLES
+from app.services.mailer import send_password_reset_email
+from app.services.provisioning import ADMIN_PORTAL_ROLES, portal_password_url
 from app.services.telecaller import parse_self_update
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -380,7 +381,11 @@ async def forgot_password(payload: dict, db: AsyncSession = Depends(get_db)):
         notification = Notification(user_id=user.id, title="Password reset requested", body="Use the link we emailed you to reset your password. It expires in 30 minutes.", read=False, action_url=None)
         db.add(notification)
         await db.flush()
-        status, error = await send_notification("email", {"to": user.email, "template": "password_reset", "reset_token": raw, "expires_minutes": 30})
+        # ENH-032 / DEC-SCOPE-225 (E8): a real email through the configured transport; the webhook stays the fallback. The raw token
+        # travels only inside the link -- failure_text never carries it into the stored error.
+        status, error = await send_password_reset_email(to_email=user.email, recipient_name=user.full_name, reset_url=portal_password_url(user, raw), expires_minutes=30)
+        if status == "not_configured":
+            status, error = await send_notification("email", {"to": user.email, "template": "password_reset", "reset_token": raw, "expires_minutes": 30})
         db.add(NotificationDelivery(notification_id=notification.id, channel="email", status=status, error=error, sent_at=datetime.now(UTC) if status == "sent" else None))
         await db.commit()
         # Development-only token exposure, disabled in production.

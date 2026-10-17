@@ -68,11 +68,14 @@ async def flush_unique_email(db: AsyncSession) -> None:
 ADMIN_PORTAL_ROLES = frozenset({"bdm_manager", "telecaller_manager", "placement_manager", "partnership_head", "partner", "accountant"})  # rec-001, upc-001, mgmt-001
 
 
-def _set_password_url(user: User, raw: str) -> str:
+def portal_password_url(user: User, raw: str) -> str:
     # Built from configuration, never from the request's Host header (no host-header poisoning).
     # super_admin logs in via /it. bdm-001 QA-05 (owner, 2026-10-02): a BDM manager's link opens the admin portal's own reset page.
     segment = "admin" if user.role in ADMIN_PORTAL_ROLES else ("overseas" if user.division == "overseas" else "it")
     return f"{settings.frontend_url}/{segment}/reset-password?token={raw}"
+
+
+_set_password_url = portal_password_url  # ENH-032 / DEC-SCOPE-225: public name for auth.forgot_password; the old name stays for existing callers
 
 
 def _redact(text: str | None) -> str | None:
