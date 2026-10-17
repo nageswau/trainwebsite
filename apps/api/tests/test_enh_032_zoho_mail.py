@@ -11,7 +11,32 @@ from app.core.config import Settings, settings
 from app.core.security import hash_password
 from app.models import User
 from app.services import mailer
-from tests.test_tel_014_delivery import outbox, smtp_on  # noqa: F401 -- fixtures reused for the lead-email retry tests
+
+
+@pytest.fixture
+def smtp_on(monkeypatch):
+    monkeypatch.setattr(settings, "smtp_host", "smtp.test.local")
+    monkeypatch.setattr(settings, "smtp_from_email", "noreply@edusphere.local")
+
+
+class Outbox(list):
+    fail = None
+
+
+@pytest.fixture
+def outbox(monkeypatch):
+    """Every message handed to SMTP; `outbox.fail` makes the next sends raise instead (ENH-032 / DEC-SCOPE-225)."""
+    sent = Outbox()
+    failures: list[Exception] = []
+
+    def fake_send(msg):
+        if failures:
+            raise failures.pop(0)
+        sent.append(msg)
+
+    monkeypatch.setattr(mailer, "_send_sync", fake_send)
+    sent.fail = failures.append
+    return sent
 
 ZOHO_FIELDS = ["smtp_from_email", "zoho_mail_client_id", "zoho_mail_client_secret", "zoho_mail_refresh_token", "zoho_mail_account_id"]
 

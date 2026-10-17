@@ -105,8 +105,9 @@ def _error_text(response: httpx.Response) -> str:
     try:
         body = response.json()
         if isinstance(body, dict):
-            status = body.get("status") if isinstance(body.get("status"), dict) else {}
-            data = body.get("data") if isinstance(body.get("data"), dict) else {}
+            raw_status, raw_data = body.get("status"), body.get("data")
+            status = raw_status if isinstance(raw_status, dict) else {}
+            data = raw_data if isinstance(raw_data, dict) else {}
             detail = str(status.get("description") or data.get("errorCode") or "")
     except ValueError:
         pass
