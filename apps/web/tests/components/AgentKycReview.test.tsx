@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AgentKycReview from "@/components/AgentKycReview";
@@ -13,7 +13,8 @@ describe("AgentKycReview (AGN-024)", () => {
   it("lists each document with number, status and a View link to the streamed file", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(LIST)));
     render(<AgentKycReview orgId="org-1" orgName="ABC" onChanged={vi.fn()} />);
-    expect(await screen.findAllByText("ABCDE1234F")).not.toHaveLength(0);
+    const panRow = (await screen.findByText("PAN card")).closest("li") as HTMLElement;
+    expect(within(panRow).getByText("ABCDE1234F")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View PAN card for ABC" })).toHaveAttribute("href", "/api/v1/overseas-admin/agent-orgs/org-1/kyc-documents/pan-id/file");
     expect(screen.getAllByText("Pending review")).toHaveLength(3);
   });
@@ -25,6 +26,7 @@ describe("AgentKycReview (AGN-024)", () => {
     render(<AgentKycReview orgId="org-1" orgName="ABC" onChanged={onChanged} />);
     fireEvent.click(await screen.findByRole("button", { name: "Verify PAN card for ABC" }));
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
+    expect(screen.getByText("PAN card verified.")).toBeInTheDocument();
     expect(mock.mock.calls.some(([u, i]) => String(u).endsWith("/pan-id/verify") && i?.method === "POST")).toBe(true);
   });
 

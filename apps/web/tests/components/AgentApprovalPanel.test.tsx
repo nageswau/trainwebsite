@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AgentApprovalPanel from "@/components/AgentApprovalPanel";
@@ -206,5 +206,30 @@ describe("AgentApprovalPanel KYC gate (AGN-024)", () => {
     stub(kycOrg(3));
     render(<AgentApprovalPanel />);
     expect(await screen.findByRole("button", { name: "Approve Kyc Agency" })).toBeEnabled();
+  });
+
+  it("keeps the list and the per-document note after a document decision (no Loading flash)", async () => {
+    const o = kycOrg(2);
+    const docs = { kyc_required: true, org_status: "pending", items: [{ id: "pan-id", doc_type: "pan", label: "PAN card", status: "pending", rejection_reason: null, original_filename: "p.pdf", content_type: "application/pdf", file_size: 1, updated_at: "2026-10-17T00:00:00Z", doc_number: "ABCDE1234F", reviewed_at: null }] };
+    const mock = vi.fn((url: string, init?: RequestInit) => {
+      if (String(url).includes("/verify")) return Promise.resolve(ok({ ...docs.items[0], status: "verified" }));
+      return Promise.resolve(String(url).includes("/kyc-documents") ? ok(docs) : page([o]));
+    });
+    vi.stubGlobal("fetch", mock);
+    render(<AgentApprovalPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Verify PAN card for Kyc Agency" }));
+    expect(await screen.findByText("PAN card verified.")).toBeInTheDocument();
+    await waitFor(() => expect(mock.mock.calls.filter(([u]) => String(u).includes("/agent-orgs?")).length).toBeGreaterThan(1));
+    expect(screen.queryByText("Loading agent organisations…")).not.toBeInTheDocument();
+    expect(screen.getByText("PAN card verified.")).toBeInTheDocument();
+  });
+
+  it("also gates Approve on the Rejected tab", async () => {
+    const mock = vi.fn().mockResolvedValueOnce(page([])).mockResolvedValueOnce(page([{ ...kycOrg(1), status: "rejected" }]));
+    vi.stubGlobal("fetch", mock);
+    render(<AgentApprovalPanel />);
+    await screen.findByText("No organisations awaiting approval.");
+    fireEvent.click(screen.getByRole("button", { name: "Rejected" }));
+    expect(await screen.findByRole("button", { name: "Approve Kyc Agency" })).toBeDisabled();
   });
 });
