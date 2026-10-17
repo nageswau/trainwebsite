@@ -2357,6 +2357,10 @@ Routes: the four admin routes under `/overseas-admin/agent-orgs/{org_id}/kyc-doc
 - The approval gate is in `agent_orgs.set_org_status`, so every approve path (org-level and legacy per-agent) is covered. Only `kyc_required` orgs are gated; reinstate and reject are not.
 - KYC storage keys (`agent-kyc/`) are never served by generic paths: `/files/download` and `/local-files` refuse them; only the audited admin streaming route reads them.
 - Document numbers are never logged or written to audit metadata. The admin list returns the full PAN; the agent view masks it. `NEEDS_CONFIRMATION`: only file views are audited, not the admin list.
+- Only the **typed** Aadhaar number is limited to the last 4 digits. The uploaded Aadhaar file may show the full 12-digit number (K9, accepted by the owner); it is private, readable only by `overseas_admin` / `super_admin` through the audited streaming route.
+- Rejection is final (K10): once an org is rejected, verify/reject and re-upload return `409`; the agency must register again with a new email address.
+- `POST /auth/register` (anonymous): agent signups are limited to 5 per client IP per rolling hour (`429` + `Retry-After`, K11); only JSON, multipart and urlencoded bodies are accepted (`415` otherwise).
+- `super_admin` also receives the agents payload on `/portal/it/admin/agents` (read-only; data the API already allows it).
 - A document in another organisation is `404` for both the admin routes (wrong `org_id`) and the agent routes.
 
 ## 3. Support / admin audit controls

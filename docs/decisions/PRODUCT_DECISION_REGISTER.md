@@ -8792,18 +8792,21 @@ The full repository regression is deferred to its own session.
 ### DEC-SCOPE-224 — Agent signup KYC documents (`AGN-024`)
 
 **Status:** CONFIRMED by owner 2026-10-17 (Claude Code session).
-**Evidence:** owner request + owner answers K1–K8 given in a Claude Code session on 2026-10-17 (`EXPLICIT_APPROVAL`); written down in `docs/superpowers/specs/2026-10-17-agent-signup-kyc-design.md`.
+**Evidence:** owner request + owner answers K1–K8 given in a Claude Code session on 2026-10-17 (`EXPLICIT_APPROVAL`), and K9–K11 given by the owner in a Claude Code session on 2026-10-17 after the final whole-branch review (`EXPLICIT_APPROVAL`); written down in `docs/superpowers/specs/2026-10-17-agent-signup-kyc-design.md`.
 
 | # | Question | Answer |
 |---|---|---|
 | K1 | Which documents are required at signup | All three (PAN, Aadhaar, business licence) are mandatory. Signup is refused without them. |
-| K2 | Document numbers | PAN number (format `ABCDE1234F`) and business licence number in full. **Aadhaar: last 4 digits only.** The full Aadhaar number is never stored. |
+| K2 | Document numbers | PAN number (format `ABCDE1234F`) and business licence number in full. **Aadhaar: last 4 digits only** of the typed number. *(Corrected by K9:* the uploaded Aadhaar file is kept as uploaded and may show the full 12-digit number.) |
 | K3 | Verification model | Each document is marked Verified or Rejected, and a rejection needs a reason. **Approve is blocked until all three are Verified.** |
 | K4 | Existing agencies | New signups only. Existing pending, active or rejected agencies are unaffected, and an existing pending one can still be approved as today. |
 | K5 | Re-upload after rejection | A pending agent can open one **Registration status** page that shows each document's status and reason, with a re-upload button for rejected documents. The rest of the portal stays blocked. |
 | K6 | Notifications | The agent is emailed when a document is rejected (with the reason and a link to the status page) and when the agency is approved. |
 | K7 | Super Admin UI | Super Admin gets the same Agent Approvals screen as Overseas Admin (the API already allows Super Admin). |
 | K8 | File rules | PDF, JPG or PNG, **at most 5 MB per file**. The type is decided from the file's bytes and image metadata is stripped (the same approach as AGN-009). |
+| K9 | Full Aadhaar in the uploaded file | **Accepted.** Only the *typed* number is limited to the last 4 digits. The uploaded file (and its original file name) may contain the full Aadhaar number; it is stored privately under `agent-kyc/`, admin-only (Overseas Admin / Super Admin), streamed through the audited route and never served by `/local-files`, a presigned URL or `/files/download`. No masked-Aadhaar requirement. The form hint reads "Only the last 4 digits of the number are stored." |
+| K10 | Rejected agency | **Rejection is final.** A rejected agency cannot have its documents reviewed or re-uploaded and must register again with a new email address (verify/reject/re-upload return 409 unless the org is `pending`). |
+| K11 | Signup abuse | Per-IP throttle now: at most **5 agent signups per client IP per rolling hour** → 429 "Too many registrations from this network -- try again later" with Retry-After, checked after field/number validation and before any file is read or stored. Client IP = leftmost valid `X-Forwarded-For` entry, else the socket peer. Counted from `auth.register` audit rows, which record `ip` (IP only) for agent signups. Student signups are not throttled. |
 
 **Numbering:** migration `0164_agent_org_kyc`; API §12EK; RBAC §2.147 (free on `origin/main`, whose latest are DEC-SCOPE-223 / §12EJ / §2.146 / 0163).
 **Consequences:**
@@ -8811,16 +8814,23 @@ The full repository regression is deferred to its own session.
 - `POST /auth/register` accepts multipart (and urlencoded) for agents; six new routes under `/overseas-admin/agent-orgs/{org_id}/kyc-documents` and `/agent/registration`;
 - the approve gate lives in `agent_orgs.set_org_status`; KYC keys (`agent-kyc/`) are refused by `/files/download` and `/local-files`;
 - rejection and approval emails go through the existing Notification + `queue_deliveries` outbox (ENH-014);
-- Super Admin gets the Agent Approvals screen (WorkflowPanel and the Super Admin nav).
+- Super Admin gets the Agent Approvals screen (WorkflowPanel and the Super Admin nav); super_admin also receives the agents payload on `/portal/it/admin/agents` (read-only, data the API already allows);
+- `/auth/register` accepts only JSON (`application/json` / `*/*+json`), multipart and urlencoded bodies; anything else (including a missing `Content-Type`) is 415 before the body is read (closes login CSRF through `<form enctype="text/plain">`);
+- agent signups are throttled per client IP (K11), via `app/core/client_ip.py`.
 
 **Out of scope, `NEEDS_CONFIRMATION` (not built in AGN-024):**
 - PAN uniqueness across agencies: not checked; two agencies may submit the same PAN.
 - Online verification against NSDL or UIDAI: not included; verification is manual.
 - Retention or deletion of KYC files for rejected agencies: not included; needs a retention decision.
-- Rate limiting of the public `/auth/register` endpoint: none exists. Only the Origin/Referer check and the body cap (3 × 5 MB + 1 MB) apply; a per-IP throttle or a Caddy `request_body` limit is a follow-up.
+- Rate limiting of student signups on `/auth/register`: none (K11 covers agent signups only).
 - Virus/malware scanning: none exists in the platform. Type-from-bytes plus EXIF stripping is the current control.
 - Agent-added staff (non-Master) accounts do not upload KYC.
 - Agencies created by BDM onboarding (bdm-019) or admin tooling keep `kyc_required=false` unless a later decision says otherwise.
 - Whether the admin KYC list (it returns the full PAN) should be audited: only file views are audited today.
-- Follow-ups: `tests/doc-capture/s2-account-access.capture.ts` needs the KYC migration/fields; production `FRONTEND_URL` must equal the exact public origin (www vs apex) or agent signup returns 403; confirm the production reverse-proxy request-body limit.
+- Follow-ups: `tests/doc-capture/s2-account-access.capture.ts` needs the KYC migration/fields.
+
+**Deploy notes (checklist before the production deploy):**
+- Production `FRONTEND_URL` must equal the exact public web origin (scheme + host, www vs apex); otherwise every agent signup returns 403 (Origin check).
+- Caddy must set `X-Forwarded-For` to the real client address. `reverse_proxy` does so by default (it replaces a value from an untrusted client); never set `trusted_proxies` to trust the public internet. The Next.js proxy forwards the header unchanged (verified on the agn024 stack, 2026-10-17), so the K11 throttle keys on the real client.
+- Recommended: `request_body { max_size 20MB }` on the Caddy web and API sites (the API's signup cap is 3 × 5 MB + 1 MB, about 16 MB).
 - **Feature ID authorized:** `AGN-024`. **Status:** built on `feature/agn-024`; see `AGENT_CRM_BACKLOG.md` (ang-024).
