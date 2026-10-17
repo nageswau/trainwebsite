@@ -103,3 +103,37 @@ async def test_multipart_student_signup_ignores_kyc(client, db_session):
     response = await client.post(REGISTER, data={"email": f"{uniq('mstu')}@example.local", "password": PASSWORD, "full_name": "Multipart Student", "division": "overseas", **KYC_FIELDS})
     assert response.status_code == 201 and response.json()["user"]["role"] == "overseas_student"
     assert await db_session.scalar(select(func.count()).select_from(AgentOrgKycDocument).where(AgentOrgKycDocument.uploaded_by_user_id == response.json()["user"]["id"])) == 0
+
+
+@pytest.mark.asyncio
+async def test_validation_errors_do_not_echo_the_submitted_form(client, db_session):
+    form = agent_form()
+    form.pop("full_name")
+    response = await client.post(REGISTER, data=form, files=kyc_files())
+    assert response.status_code == 422
+    for secret in (PASSWORD, "ABCDE1234F", "LIC-2026/001"):
+        assert secret not in response.text
+    js = await client.post(REGISTER, json={"email": f"{uniq('j')}@example.local", "password": PASSWORD, "division": "overseas"})
+    assert js.status_code == 422 and PASSWORD not in js.text
+
+
+@pytest.mark.asyncio
+async def test_cross_site_form_registration_is_refused(client, db_session):
+    from app.core.config import settings
+
+    form = agent_form()
+    evil = await client.post(REGISTER, data=form, files=kyc_files(), headers={"Origin": "https://evil.example"})
+    assert evil.status_code == 403 and await _users_with(db_session, form["email"]) == 0
+    referer = await client.post(REGISTER, data=form, files=kyc_files(), headers={"Referer": "https://evil.example/x"})
+    assert referer.status_code == 403 and await _users_with(db_session, form["email"]) == 0
+    ok = await client.post(REGISTER, data=form, files=kyc_files(), headers={"Origin": settings.frontend_url.rstrip("/") + "/"})
+    assert ok.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_oversize_registration_body_is_refused_before_it_is_read(client, db_session):
+    from app.api.auth import MAX_REGISTRATION_BYTES
+
+    form = agent_form()
+    big = await client.post(REGISTER, data=form, files=kyc_files(), headers={"Content-Length": str(MAX_REGISTRATION_BYTES + 1)})
+    assert big.status_code == 413 and await _users_with(db_session, form["email"]) == 0

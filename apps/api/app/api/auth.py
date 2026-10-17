@@ -3,12 +3,14 @@ import logging
 import math
 import secrets
 from datetime import UTC, datetime, timedelta
+from urllib.parse import urlsplit
 from uuid import UUID
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -23,8 +25,8 @@ from app.schemas import ChangePasswordRequest, LoginRequest, LoginResponse, Prof
 from app.services import agent_kyc as kyc
 from app.services.agent_orgs import ensure_agent_org
 from app.services.integrations import send_notification
-from app.services.telecaller import parse_self_update
 from app.services.provisioning import ADMIN_PORTAL_ROLES
+from app.services.telecaller import parse_self_update
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -116,10 +118,41 @@ async def login(payload: LoginRequest, response: Response, db: AsyncSession = De
     return LoginResponse(user=UserOut.model_validate(user), expires_in_minutes=settings.access_token_minutes)
 
 
+MAX_REGISTRATION_BYTES = 3 * kyc.MAX_BYTES + 1024 * 1024  # three KYC files plus form overhead
+
+
+def _origin_of(url: str) -> str:
+    parts = urlsplit(url.strip())
+    return f"{parts.scheme}://{parts.netloc}".lower() if parts.scheme and parts.netloc else ""
+
+
+def _check_form_origin(request: Request) -> None:
+    """Form bodies are CORS-simple requests (no preflight), so a cross-site page could post one: refuse a foreign Origin/Referer."""
+    source = request.headers.get("origin") or request.headers.get("referer")
+    if source and _origin_of(source) != _origin_of(settings.frontend_url):
+        raise HTTPException(403, "Cross-site registration is not allowed")
+
+
+def _check_form_size(request: Request) -> None:
+    """Refuse an oversize body before it is read (the form parser would spool it to disk)."""
+    raw = request.headers.get("content-length", "")
+    if not raw.isdigit():
+        raise HTTPException(411, "Content-Length required")
+    if int(raw) > MAX_REGISTRATION_BYTES:
+        raise HTTPException(413, "The registration upload is too large")
+
+
+def _safe_errors(errors) -> list[dict]:
+    """Validation errors without `input`/`ctx`: they would echo the submitted form (password, PAN, licence number)."""
+    return [{k: v for k, v in e.items() if k not in ("input", "ctx", "url")} for e in errors]
+
+
 async def _registration_input(request: Request):
     """AGN-024 (DEC-SCOPE-224): JSON as before, or multipart -- an agent's signup carries its three KYC files. Returns (fields, files,
     form-to-close)."""
-    if request.headers.get("content-type", "").startswith(("multipart/form-data", "application/x-www-form-urlencoded")):
+    if request.headers.get("content-type", "").lower().startswith(("multipart/form-data", "application/x-www-form-urlencoded")):
+        _check_form_origin(request)
+        _check_form_size(request)
         form = await request.form(max_files=3, max_fields=20)
         fields = {k: v for k, v in form.multi_items() if isinstance(v, str)}
         files = {k: v for k, v in form.multi_items() if not isinstance(v, str)}
@@ -129,7 +162,7 @@ async def _registration_input(request: Request):
     except ValueError:
         body = None
     if not isinstance(body, dict):
-        raise RequestValidationError([{"type": "json_invalid", "loc": ("body",), "msg": "A JSON object or multipart form is required", "input": None}])
+        raise RequestValidationError([{"type": "json_invalid", "loc": ("body",), "msg": "A JSON object or multipart form is required"}])
     return body, {}, None
 
 
@@ -147,7 +180,7 @@ async def _register(fields: dict, files: dict, response: Response, db: AsyncSess
     try:
         payload = RegistrationRequest.model_validate(fields)
     except ValidationError as exc:
-        raise RequestValidationError(exc.errors(include_url=False)) from None
+        raise RequestValidationError(_safe_errors(exc.errors(include_url=False))) from None
     is_agent = payload.account_type == "agent"
     # K1: numbers and file presence are checked before anything is looked up or stored.
     numbers = kyc.clean_numbers(fields) if is_agent else {}
@@ -189,10 +222,14 @@ async def _register(fields: dict, files: dict, response: Response, db: AsyncSess
         await _sync_role_assignment(db, user)
         db.add(AuditLog(user_id=user.id, action="auth.register", entity_type="user", entity_id=str(user.id), metadata_json=metadata))
         await db.commit()
-    except BaseException:
-        await db.rollback()
-        for key in stored:
-            kyc.discard(key)
+    except BaseException as exc:
+        try:
+            await db.rollback()
+        finally:
+            for key in stored:
+                kyc.discard(key)
+        if isinstance(exc, IntegrityError):  # a concurrent signup took the email between the check and the commit
+            raise HTTPException(409, "Email already exists") from None
         raise
     loaded = await db.scalar(select(User).where(User.id == user.id).options(selectinload(User.role_assignments)))
     assert loaded is not None

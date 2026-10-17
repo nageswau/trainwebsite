@@ -29,8 +29,8 @@ from sqlalchemy import select
 
 import app.api.admin as admin_module
 from app.core.security import hash_password
+from app.models import AgentCommission, AuditLog, Country, OverseasApplication, University, User, UserRoleAssignment
 from tests.agn024_helpers import KYC_FIELDS, kyc_files
-from app.models import AgentCommission, AuditLog, OverseasApplication, University, Country, User, UserRoleAssignment
 
 
 def _boom(*args, **kwargs):

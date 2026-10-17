@@ -8,8 +8,8 @@ from sqlalchemy import func, select
 
 from app.main import app
 from app.models import AgentOrgMember, UserRoleAssignment
-from tests.agn024_helpers import KYC_FIELDS, kyc_files
 from tests.agn001_helpers import login, membership, mk_active_org, mk_user, org_of, register_agent, uniq
+from tests.agn024_helpers import KYC_FIELDS, kyc_files
 
 
 @pytest.mark.asyncio
