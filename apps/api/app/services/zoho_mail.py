@@ -138,9 +138,9 @@ def send(msg: EmailMessage, *, client: httpx.Client | None = None) -> None:
         code = response.status_code
         if 200 <= code < 300:
             return
-        if code >= 500:
+        if code >= 500 and code != 504:  # 504: the gateway may have accepted the message -> outcome unknown (E9)
             raise EmailTransientError(_error_text(response))
-        raise EmailPermanentError(_error_text(response))  # incl. 401 twice, 429 (E10), other 4xx
+        raise EmailPermanentError(_error_text(response))  # incl. 504 (E9), 401 twice, 429 (E10), other 4xx
     finally:
         if owned:
             client.close()

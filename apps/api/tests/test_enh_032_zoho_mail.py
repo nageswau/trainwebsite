@@ -258,6 +258,7 @@ CASES = [
     (httpx.RemoteProtocolError("boom"), "permanent"),
     (httpx.Response(500, json={}), "transient"),
     (httpx.Response(503, json={}), "transient"),
+    (httpx.Response(504, json={}), "permanent"),  # E9: outcome unknown
     (httpx.Response(429, json={}), "permanent"),
     (httpx.Response(400, json={"data": {"errorCode": "INVALID_INPUT"}}), "permanent"),
     (httpx.Response(403, json={}), "permanent"),
