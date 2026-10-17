@@ -69,8 +69,6 @@ from app.schemas import (
     TelSource,
     TierChangeOut,
 )
-from app.services import bdm as bdm_rules
-from app.services import bdm_leads as lead_rules
 from app.services import (
     agent_kyc,
     bdm_lifecycle,
@@ -84,6 +82,8 @@ from app.services import (
     recruiter_lifecycle,
     telecaller_lifecycle,
 )
+from app.services import bdm as bdm_rules
+from app.services import bdm_leads as lead_rules
 from app.services import partnership as pm_rules
 from app.services import recruiter as rec_rules
 from app.services import telecaller as tel_rules
