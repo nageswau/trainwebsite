@@ -2,6 +2,9 @@
 // Chromium (HTML -> A4 PDF with page numbers). Usage (repo root):
 //   node docs/tooling/build-pdfs.mjs          -> Agent CRM, output docs/pdf/*.pdf
 //   node docs/tooling/build-pdfs.mjs school   -> School CRM, output docs/school-crm/pdf/*.pdf
+//   node docs/tooling/build-pdfs.mjs telecaller -> Telecaller CRM, output docs/telecaller-crm/pdf/*.pdf
+//   node docs/tooling/build-pdfs.mjs bdm      -> BDM CRM, output docs/bdm-crm/pdf/*.pdf
+// DOCS_WEB_DIR overrides where @playwright/test is resolved from (default apps/web; a fresh worktree has no node_modules).
 // Intermediate HTML goes to <output>/.build/ (git-ignored by <output>/.gitignore).
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -9,14 +12,16 @@ import { createRequire } from "node:module";
 import path from "node:path";
 
 const SCHOOL = process.argv[2] === "school";
-const ROOT = path.resolve(SCHOOL ? "docs/school-crm" : "docs");
+const TELECALLER = process.argv[2] === "telecaller";
+const BDM = process.argv[2] === "bdm";
+const ROOT = path.resolve(SCHOOL ? "docs/school-crm" : TELECALLER ? "docs/telecaller-crm" : BDM ? "docs/bdm-crm" : "docs");
 const OUT = path.join(ROOT, "pdf");
 const BUILD = path.join(OUT, ".build");
 mkdirSync(BUILD, { recursive: true });
 writeFileSync(path.join(OUT, ".gitignore"), ".build/\n");
 
 const md = (dir) => readdirSync(path.join(ROOT, dir)).filter((f) => /^[a-z0-9]+-\d{3}-.*\.md$/.test(f)).sort().map((f) => `${dir}/${f}`);
-const PREFIX = SCHOOL ? "EduSphere School CRM — " : "EduSphere Agent CRM — ";
+const PREFIX = SCHOOL ? "EduSphere School CRM — " : TELECALLER ? "EduSphere Overseas Telecaller CRM — " : BDM ? "EduSphere Overseas BDM CRM — " : "EduSphere Agent CRM — ";
 const UM = ["account-access", "dashboard", "students", "universities", "applications", "documents", "tasks", "notifications", "commissions", "reports", "team", "staff-performance"];
 const SCHOOL_UM = ["account-access", "dashboards", "students", "team", "transfers", "activities", "academic-team", "portfolio",
   "career-counselor", "psychometric-team", "student-360", "reports", "entitlements", "notifications", "parent"];
@@ -34,7 +39,13 @@ const AGENT_BOOKS = () => [
   { file: "EduSphere-Agent-CRM-Role-Guides", title: "EduSphere Agent CRM — Role Quick-Start Guides", subtitle: "Agency Master · Agency Staff · Overseas Admin · Super Admin", pages: ["role-guides/agency-master.md", "role-guides/agency-staff.md", "role-guides/overseas-admin-agencies.md", "role-guides/super-admin-agencies.md"] },
   { file: "EduSphere-Agent-CRM-FAQ-and-Troubleshooting", title: "EduSphere Agent CRM — FAQ and Troubleshooting", subtitle: "Answers and fixes based on verified behaviour", pages: ["faq.md", "troubleshooting.md"] },
 ];
-const BOOKS = SCHOOL ? SCHOOL_BOOKS() : AGENT_BOOKS();
+const TELECALLER_BOOKS = () => [
+  { file: "EduSphere-Telecaller-CRM-Documentation-Plan", title: "EduSphere Overseas Telecaller CRM — Documentation Analysis and Plan", subtitle: "Scope, features, roles, product findings and capture sessions (planning stage, not browser-verified)", pages: ["documentation-analysis.md", "documentation-plan.md"], tocDepth: 2, dateLabel: "Planned" },
+];
+const BDM_BOOKS = () => [
+  { file: "EduSphere-BDM-CRM-Documentation-Plan", title: "EduSphere Overseas BDM CRM — Documentation Analysis and Plan", subtitle: "Scope, features, roles, product findings and capture sessions (planning stage, not browser-verified)", pages: ["documentation-analysis.md", "documentation-plan.md"], tocDepth: 2, dateLabel: "Planned" },
+];
+const BOOKS = SCHOOL ? SCHOOL_BOOKS() : TELECALLER ? TELECALLER_BOOKS() : BDM ? BDM_BOOKS() : AGENT_BOOKS();
 const bookOf = (rel) => BOOKS.find((b) => b.pages.includes(rel));
 const anchor = (rel) => "p-" + rel.replace(/\.md$/, "").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
 
@@ -84,7 +95,7 @@ function transform(rel, book) {
   return text.replace(/^# (.+)$/m, (_, h) => `# ${h} {#${anchor(rel)}}`);
 }
 
-const require = createRequire(path.resolve("apps/web/package.json"));
+const require = createRequire(path.resolve(process.env.DOCS_WEB_DIR ?? "apps/web", "package.json"));
 const { chromium } = require("@playwright/test");
 const browser = await chromium.launch();
 writeFileSync(path.join(BUILD, "print.css"), CSS);
@@ -98,8 +109,8 @@ for (const book of BOOKS) {
   const htmlFile = path.join(BUILD, `${book.file}.html`);
   writeFileSync(mdFile, combined);
   execFileSync("pandoc", [mdFile, "--standalone", "--embed-resources",
-    "--resource-path", ROOT, "--css", path.join(BUILD, "print.css"), "--toc", "--toc-depth=1", "--metadata", "toc-title=Contents",
-    "--metadata", `title=${book.title}`, "--metadata", `subtitle=${book.subtitle}`, "--metadata", `date=Verified ${date}`,
+    "--resource-path", ROOT, "--css", path.join(BUILD, "print.css"), "--toc", `--toc-depth=${book.tocDepth ?? 1}`, "--metadata", "toc-title=Contents",
+    "--metadata", `title=${book.title}`, "--metadata", `subtitle=${book.subtitle}`, "--metadata", `date=${book.dateLabel ?? "Verified"} ${date}`,
     "--metadata", "lang=en", "-o", htmlFile], { cwd: ROOT, stdio: ["ignore", "inherit", "inherit"] });
   const page = await browser.newPage();
   await page.goto("file:///" + htmlFile.replace(/\\/g, "/"));
