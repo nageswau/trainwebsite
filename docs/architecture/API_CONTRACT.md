@@ -3373,6 +3373,14 @@ Rejection of a document, and approval of a `kyc_required` org, create a `Notific
 
 `/files/download` refuses any key starting `agent-kyc/` (`404`), and the `/local-files` static mount does the same. KYC files are served only by the admin streaming route above.
 
+## 12EL. Email delivery status (ENH-032) — addendum, 2026-10-17
+
+`DEC-SCOPE-225`. No new route, no migration, no RBAC row.
+
+| Method/Path | Auth | Roles | Change |
+|---|---|---|---|
+| `GET /api/v1/admin/system-status` | Authenticated | admin only (`ensure_admin`: `super_admin`, `it_admin`, `overseas_admin`; unchanged) | The integrations list gains one row: `{"service": "Email delivery", "status": "Zoho Mail API" \| "SMTP" \| "not configured"}`. `Zoho Mail API` when `EMAIL_TRANSPORT=zoho_api` and email is configured; `SMTP` when `smtp` and configured; otherwise `not configured`. Never exposes a setting value. |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

@@ -76,6 +76,7 @@ from app.services import (
     lead_handover,
     lead_pipeline,
     lead_timeline,
+    mailer,
     management_access,
     management_audit,
     partnership_lifecycle,
@@ -415,6 +416,8 @@ async def system_status(user: User = Depends(ensure_admin)):
         },
         {"service": "Razorpay", "status": "configured" if settings.razorpay_key_id and settings.razorpay_key_secret else "not configured"},
         {"service": "Inbound university email", "status": "configured" if settings.inbound_email_webhook_secret else "not configured"},
+        # ENH-032 / DEC-SCOPE-225: which transport is live (never the credentials themselves).
+        {"service": "Email delivery", "status": ("Zoho Mail API" if settings.email_transport == "zoho_api" else "SMTP") if mailer.email_configured() else "not configured"},
     ]
 
 

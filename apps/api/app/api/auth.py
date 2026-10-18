@@ -6,10 +6,10 @@ from datetime import UTC, datetime, timedelta
 from urllib.parse import urlsplit
 from uuid import UUID
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -17,7 +17,7 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import check_session, get_current_user
 from app.core.client_ip import client_ip
 from app.core.config import settings
-from app.core.database import get_db
+from app.core.database import SessionLocal, get_db
 from app.core.identifiers import unique_student_code
 from app.core.rbac import agent_permissions
 from app.core.security import create_token, decode_token, hash_password, verify_password
@@ -26,7 +26,8 @@ from app.schemas import ChangePasswordRequest, LoginRequest, LoginResponse, Prof
 from app.services import agent_kyc as kyc
 from app.services.agent_orgs import ensure_agent_org
 from app.services.integrations import send_notification
-from app.services.provisioning import ADMIN_PORTAL_ROLES
+from app.services.mailer import send_password_reset_email
+from app.services.provisioning import ADMIN_PORTAL_ROLES, portal_password_url
 from app.services.telecaller import parse_self_update
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -366,23 +367,51 @@ async def update_me(payload: ProfileUpdate, user: User = Depends(get_current_use
     return user
 
 
+# ENH-032 / DEC-SCOPE-225 (I1): at most RESET_EMAILS_PER_WINDOW password-reset emails per user per rolling RESET_WINDOW. A
+# reset token expires RESET_TOKEN_TTL after issue, so "issued within the window" is `expires_at > now + (TTL - window)`;
+# only purpose="reset" rows count (admin-provisioned welcome/set-password tokens are purpose="welcome", ENH-003). Over the cap
+# the request answers exactly as usual -- no 429, no enumeration signal -- and creates/sends nothing.
+RESET_EMAILS_PER_WINDOW = 3
+RESET_WINDOW = timedelta(minutes=15)
+RESET_TOKEN_TTL = timedelta(minutes=30)
+
+
+async def _deliver_password_reset(notification_id: UUID, to_email: str, recipient_name: str, reset_url: str, raw: str) -> None:
+    """ENH-032 E8 / I1: runs as a background task after the response, in its own session. The raw token travels only inside the
+    link / webhook payload -- failure_text never carries it into the stored error, and it is never logged."""
+    expires_minutes = int(RESET_TOKEN_TTL.total_seconds() // 60)
+    status, error = await send_password_reset_email(to_email=to_email, recipient_name=recipient_name, reset_url=reset_url, expires_minutes=expires_minutes)
+    if status == "not_configured":
+        status, error = await send_notification("email", {"to": to_email, "template": "password_reset", "reset_token": raw, "expires_minutes": expires_minutes})
+    async with SessionLocal() as db:
+        db.add(NotificationDelivery(notification_id=notification_id, channel="email", status=status, error=error, sent_at=datetime.now(UTC) if status == "sent" else None))
+        await db.commit()
+
+
 @router.post("/forgot-password", status_code=202)
-async def forgot_password(payload: dict, db: AsyncSession = Depends(get_db)):
+async def forgot_password(payload: dict, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     email = str(payload.get("email", "")).lower().strip()
     user = await db.scalar(select(User).where(User.email == email, User.active.is_(True)))
     # Always return the same shape to reduce account enumeration.
     if user:
+        now = datetime.now(UTC)
+        recent = await db.scalar(
+            select(func.count()).select_from(PasswordResetToken).where(
+                PasswordResetToken.user_id == user.id,
+                PasswordResetToken.purpose == "reset",
+                PasswordResetToken.expires_at > now + (RESET_TOKEN_TTL - RESET_WINDOW),
+            )
+        )
+        if (recent or 0) >= RESET_EMAILS_PER_WINDOW:
+            return {"accepted": True}
         raw = secrets.token_urlsafe(32)
         digest = hashlib.sha256(raw.encode()).hexdigest()
-        item = PasswordResetToken(user_id=user.id, token_hash=digest, expires_at=datetime.now(UTC) + timedelta(minutes=30))
-        db.add(item)
-        await db.commit()
+        db.add(PasswordResetToken(user_id=user.id, token_hash=digest, expires_at=now + RESET_TOKEN_TTL))
         notification = Notification(user_id=user.id, title="Password reset requested", body="Use the link we emailed you to reset your password. It expires in 30 minutes.", read=False, action_url=None)
         db.add(notification)
-        await db.flush()
-        status, error = await send_notification("email", {"to": user.email, "template": "password_reset", "reset_token": raw, "expires_minutes": 30})
-        db.add(NotificationDelivery(notification_id=notification.id, channel="email", status=status, error=error, sent_at=datetime.now(UTC) if status == "sent" else None))
         await db.commit()
+        # ENH-032 / DEC-SCOPE-225 (E8, I1): the email (configured transport, webhook fallback) is sent off the request path.
+        background_tasks.add_task(_deliver_password_reset, notification.id, user.email, user.full_name, portal_password_url(user, raw), raw)
         # Development-only token exposure, disabled in production.
         if settings.environment == "development":
             return {"accepted": True, "development_reset_token": raw}

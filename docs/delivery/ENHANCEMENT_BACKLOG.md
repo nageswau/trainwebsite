@@ -184,6 +184,7 @@ and cannot reach GATE-09 until it is reconciled with a new Decision ID.
 | AGN-001 | Multi-tenant Agent CRM — agent organisation as tenant, Master accounts (Rev. 6) | Large | High | Yes | AGT-001–004, SEC-001, RPT-002, ADM-001 (all change) |
 | AGN-003 | Agent staff permissions — §6 Master-vs-Staff matrix, per-staff Verify Documents / Reports toggles (Rev. 8) | Medium | High | Yes | AGN-002 (staff routes), AGT-002/OVS-005 (document verify), RPT-002 (agent reports) |
 | ENH-031 | Searchable reference pickers — student/application references picked from role-scoped searchable dropdowns | Medium | Medium | No | AGN-001 (agency scope) |
+| ENH-032 | Send app email through the Zoho Mail REST API (HTTPS) — SMTP is blocked on DigitalOcean; SMTP stays as the other transport | Medium | Medium | No | DEC-NOT-001 (email channel); notifications delivery, lead/recruiter/university email |
 | AGN-004 | Agent students — Master/Staff create, edit, view and (Master) archive students who never log in; staff assigned-only | Large | High | Yes | AGT-002, AGN-001, ENH-031 (scope change); AGN-002 (merge) |
 | AGN-021 | Agent staff activity — a Master views a staff member's student-journey activity (Rev. 9) | Small | Medium | Yes | AGN-001, AGN-002, AGN-003, AGN-004 |
 | AGN-005 | Close the §6 staff matrix gap for agency student records — tests and docs, plus four browser-QA fixes (Rev. 10) | Small | Low | No | AGN-003, AGN-004 |
@@ -3152,6 +3153,26 @@ data-request flow is keyed to the requester's own `users` account, and AGN-004 g
 **Requirement:** the owner, in-session 2026-09-29 (`EXPLICIT_APPROVAL`): every student and application reference is a searchable dropdown of valid values. **Decision:** `DEC-SCOPE-039` (D1–D5). **Spec:** `docs/superpowers/specs/2026-09-29-enh-031-searchable-reference-pickers-design.md` (AC01–AC10). **Plan:** `docs/superpowers/plans/2026-09-29-enh-031-searchable-reference-pickers.md`.
 
 **Status (2026-09-29):** implemented on `feature/agn-001-multi-tenant-agent-crm`; evidence in `docs/quality/RTM.md` (ENH-031 row).
+
+---
+
+## ENH-032 — Send App Email Through the Zoho Mail API
+
+**Requirement:** the owner, in-session 2026-10-17 (`EXPLICIT_APPROVAL`): dev and prod cannot send email because DigitalOcean blocks outbound SMTP; send it over HTTPS through the existing Zoho Mail mailbox. **Decision:** `DEC-SCOPE-225` (E1–E10). **Spec:** `docs/superpowers/specs/2026-10-17-enh-032-zoho-mail-api-design.md` (AC1–AC8, AC1a, AC4a). **Plan:** `docs/superpowers/plans/2026-10-17-enh-032-zoho-mail-api.md`.
+
+**Acceptance criteria:**
+- **ENH-032-AC1** With `EMAIL_TRANSPORT=zoho_api` and the credentials set, every mailer email goes through the Zoho Mail API over HTTPS, from `SMTP_FROM_EMAIL` (existing five types plus password reset and generic/inbound notifications).
+- **ENH-032-AC1a** Password reset and generic/inbound notifications send a real email whenever email is configured, on either transport; when it is not, they keep the webhook behaviour (E8).
+- **ENH-032-AC2** With `EMAIL_TRANSPORT=smtp` (default) behaviour is identical to before, including Reply-To headers.
+- **ENH-032-AC3** Missing API credentials give the existing `not_configured` outcome and never crash the triggering action.
+- **ENH-032-AC4** Transient API errors retry and permanent ones fail through the existing lead-email retry logic; the direct mailers record `failed`.
+- **ENH-032-AC4a** An outcome-unknown timeout (and an HTTP 504), and every 429, are never retried (E9, E10).
+- **ENH-032-AC5** The access token is cached and refreshed once on a 401; no secret appears in logs, stored errors or responses.
+- **ENH-032-AC6** No email sent through the API shows a broken logo image.
+- **ENH-032-AC7** `GET /admin/system-status` reports the email transport.
+- **ENH-032-AC8** A live send on dev is verified and recorded (`DEPLOYMENT.md` "Email delivery").
+
+**Status (2026-10-17):** built on `feature/enh-032`; AC8 awaits the owner's Zoho credentials. Evidence in `docs/quality/RTM.md` (ENH-032 row). `NEEDS_CONFIRMATION`: Zoho's daily sending limit for the mailbox plan.
 
 ---
 

@@ -22,6 +22,8 @@ from html import escape
 from pathlib import Path
 
 from app.core.config import settings
+from app.services import zoho_mail
+from app.services.zoho_mail import EmailPermanentError, EmailTransientError  # noqa: F401 -- re-exported for the callers (ENH-032)
 
 ROLE_LABELS = {"school_principal": "Principal", "school_teacher": "Teacher", "school_parent": "Parent"}
 
@@ -106,7 +108,24 @@ def _school_invite_text(*, recipient_name: str, role_label: str, school_name: st
     )
 
 
+# ENH-032 / DEC-SCOPE-225: a permanent Zoho API failure is recorded with this prefix so delivery._send_email can tell it from a
+# transient one without a new column; SMTP failures never carry it and stay transient exactly as before.
+PERMANENT_PREFIX = "permanent: "
+
+
+def failure_text(exc: BaseException) -> str:
+    if isinstance(exc, EmailPermanentError):
+        return PERMANENT_PREFIX + str(exc)[:480]
+    return str(exc)[:500]
+
+
+def is_permanent(error: str | None) -> bool:
+    return error is not None and error.startswith(PERMANENT_PREFIX)
+
+
 def _send_sync(msg: EmailMessage) -> None:
+    if settings.email_transport == "zoho_api":  # ENH-032 / DEC-SCOPE-225
+        return zoho_mail.send(msg)
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as smtp:
         if settings.smtp_use_tls:
             smtp.starttls()
@@ -119,7 +138,7 @@ async def send_school_invite_email(
     *, to_email: str, recipient_name: str, role: str, school_name: str, accept_url: str,
     coordinator_name: str, coordinator_email: str, expires_at: datetime,
 ) -> tuple[str, str | None]:
-    if not settings.smtp_host or not settings.smtp_from_email:
+    if not email_configured():
         return "not_configured", None
     role_label = ROLE_LABELS.get(role, role)
     msg = EmailMessage()
@@ -140,7 +159,7 @@ async def send_school_invite_email(
         await asyncio.to_thread(_send_sync, msg)
         return "sent", None
     except Exception as exc:
-        return "failed", str(exc)[:500]
+        return "failed", failure_text(exc)
 
 
 # --- SCH-007: Parent Portal notifications -------------------------------------------------
@@ -201,7 +220,7 @@ async def send_parent_notification_email(*, to_email: str, recipient_name: str, 
     first by the caller; this is the delivery channel on top of it, `NOT-001`). Same
     (status, error) contract and same not_configured/sent/failed semantics as the invite
     mailer above -- an unconfigured SMTP host never blocks the write that triggered it."""
-    if not settings.smtp_host or not settings.smtp_from_email:
+    if not email_configured():
         return "not_configured", None
     msg = EmailMessage()
     msg["Subject"] = f"{title} -- {school_name}"
@@ -217,7 +236,7 @@ async def send_parent_notification_email(*, to_email: str, recipient_name: str, 
         await asyncio.to_thread(_send_sync, msg)
         return "sent", None
     except Exception as exc:
-        return "failed", str(exc)[:500]
+        return "failed", failure_text(exc)
 
 
 # --- ENH-003 / DEC-SCOPE-019: first-time set-password link for admin-provisioned accounts -------
@@ -299,7 +318,7 @@ async def send_welcome_email(
     """ENH-003: the first-time set-password email for an admin-provisioned account. Same
     (status, error) contract as the invite mailer: `not_configured` is a normal, reportable
     state that never blocks the account creation that triggered it."""
-    if not settings.smtp_host or not settings.smtp_from_email:
+    if not email_configured():
         return "not_configured", None
     role_label = ROLE_LABELS.get(role, role.replace("_", " ").title())
     try:
@@ -317,7 +336,122 @@ async def send_welcome_email(
         await asyncio.to_thread(_send_sync, msg)
         return "sent", None
     except Exception as exc:
-        return "failed", str(exc)[:500]
+        return "failed", failure_text(exc)
+
+
+# --- ENH-032 / DEC-SCOPE-225 (E8): password-reset and generic/inbound notification emails ----------------------------------------
+
+
+def _button(url: str, label: str) -> str:
+    return f"""<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
+                  <tr>
+                    <td style="border-radius:12px;background:#1554d8;">
+                      <a href="{escape(url, quote=True)}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;">{label}</a>
+                    </td>
+                  </tr>
+                </table>"""
+
+
+def _card_html(*, heading: str, paragraphs: list[str], button: str, footer: str) -> str:
+    """The shared card; every argument is already escaped by the caller."""
+    body = "\n                ".join(f'<p style="font-size:15px;line-height:1.6;margin:0 0 16px;">{p}</p>' for p in paragraphs)
+    return f"""<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#f4f7fb;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#0f2850;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fb;padding:32px 0;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(15,40,80,.08);">
+            <tr>
+              <td style="background:#ffffff;padding:24px 32px;border-bottom:1px solid #edf1f6;">
+                <img src="{LOGO_SRC}" alt="EduSphere" width="180" height="78" style="display:block;">
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <h1 style="font-size:20px;margin:0 0 16px;">{heading}</h1>
+                {body}
+                {button}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px;background:#f8fafc;border-top:1px solid #edf1f6;">
+                <p style="font-size:12px;color:#60738b;margin:0;">{footer}</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>"""
+
+
+async def send_password_reset_email(*, to_email: str, recipient_name: str, reset_url: str, expires_minutes: int) -> tuple[str, str | None]:
+    """ENH-032 E8: the forgot-password email. Same (status, error) contract as `send_welcome_email`; `not_configured` lets the
+    caller fall back to the webhook. The raw token lives only inside `reset_url`."""
+    if not email_configured():
+        return "not_configured", None
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = "Reset your EduSphere password"
+        msg["From"] = f"EduSphere <{settings.smtp_from_email}>"
+        msg["To"] = to_email
+        msg.set_content(
+            f"Hi {recipient_name},\n\nWe received a request to reset your EduSphere password. Use this link within {expires_minutes} minutes:\n{reset_url}\n\n"
+            "If you did not ask for this, ignore this email; your password stays the same.\n"
+        )
+        msg.add_alternative(
+            _card_html(
+                heading="Reset your password",
+                paragraphs=[
+                    f"Hi {escape(recipient_name)},",
+                    f"We received a request to reset your EduSphere password. Use this link within {int(expires_minutes)} minutes.",
+                    "If you did not ask for this, ignore this email; your password stays the same.",
+                ],
+                button=_button(reset_url, "Reset password"),
+                footer="Sent by EduSphere.",
+            ),
+            subtype="html",
+        )
+        _attach_logo(msg)
+        await asyncio.to_thread(_send_sync, msg)
+        return "sent", None
+    except Exception as exc:
+        return "failed", failure_text(exc)
+
+
+async def send_generic_notification_email(*, to_email: str, recipient_name: str, title: str, body: str, action_url: str | None) -> tuple[str, str | None]:
+    """ENH-032 E8: the email copy of a generic or inbound notification (like `send_parent_notification_email`, no school)."""
+    if not email_configured():
+        return "not_configured", None
+    # ENH-032 / DEC-SCOPE-225 (I2): an app path ("/it/...") becomes FRONTEND_URL + path, as in send_bdm_reminder_email; an absolute
+    # URL is kept as-is.
+    if action_url and action_url.startswith("/"):
+        action_url = f"{settings.frontend_url.rstrip('/')}{action_url}"
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = f"{title} -- EduSphere"
+        msg["From"] = f"EduSphere <{settings.smtp_from_email}>"
+        msg["To"] = to_email
+        text = f"Hi {recipient_name},\n\n{title}\n\n{body}\n"
+        if action_url:
+            text += f"\nOpen in EduSphere: {action_url}\n"
+        msg.set_content(text)
+        msg.add_alternative(
+            _card_html(
+                heading=escape(title),
+                paragraphs=[f"Hi {escape(recipient_name)},", escape(body)],
+                button=_button(action_url, "Open in EduSphere") if action_url else "",
+                footer="Sent by EduSphere. You receive this because you have an EduSphere account.",
+            ),
+            subtype="html",
+        )
+        _attach_logo(msg)
+        await asyncio.to_thread(_send_sync, msg)
+        return "sent", None
+    except Exception as exc:
+        return "failed", failure_text(exc)
 
 
 # --- bdm-012 / DEC-SCOPE-102 R9: a BDM reminder (appointment, travel, MoU, follow-up) with its deep-link buttons ------------
@@ -368,7 +502,7 @@ def _bdm_reminder_html(*, recipient_name: str, title: str, body: str, links: lis
 async def send_bdm_reminder_email(*, to_email: str, recipient_name: str, title: str, body: str, links: list[dict]) -> tuple[str, str | None]:
     """`links` are `{label, path}` app paths; each becomes FRONTEND_URL + path. They carry no token: opening one needs a session and
     the page never acts on its own (D6). Same (status, error) contract as the mailers above; no webhook fallback (R9)."""
-    if not settings.smtp_host or not settings.smtp_from_email:
+    if not email_configured():
         return "not_configured", None
     base = settings.frontend_url.rstrip("/")
     absolute = [(str(link["label"]), f"{base}{link['path']}") for link in links]
@@ -383,14 +517,23 @@ async def send_bdm_reminder_email(*, to_email: str, recipient_name: str, title: 
         await asyncio.to_thread(_send_sync, msg)
         return "sent", None
     except Exception as exc:
-        return "failed", str(exc)[:500]
+        return "failed", failure_text(exc)
 
 
 # --- tel-014 / DEC-SCOPE-106: a telecaller's email to a lead ------------------------------------------------------------------
 
-def smtp_configured() -> bool:
-    """E3: a lead email needs both the host and the verified From address."""
-    return bool(settings.smtp_host and settings.smtp_from_email)
+def email_configured() -> bool:
+    """E3 / ENH-032 (DEC-SCOPE-225): an email needs the verified From address plus the chosen transport's settings
+    (SMTP host, or the four Zoho Mail API credentials)."""
+    if not settings.smtp_from_email:
+        return False
+    if settings.email_transport == "zoho_api":
+        return bool(settings.zoho_mail_client_id and settings.zoho_mail_client_secret
+                    and settings.zoho_mail_refresh_token and settings.zoho_mail_account_id)
+    return bool(settings.smtp_host)
+
+
+smtp_configured = email_configured  # kept so the existing callers stay correct untouched
 
 
 _LINK = re.compile(r"https?://[^\s<>\"']+")

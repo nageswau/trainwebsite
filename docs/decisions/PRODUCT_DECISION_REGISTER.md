@@ -8834,3 +8834,36 @@ The full repository regression is deferred to its own session.
 - Caddy must set `X-Forwarded-For` to the real client address. `reverse_proxy` does so by default (it replaces a value from an untrusted client); never set `trusted_proxies` to trust the public internet. The Next.js proxy forwards the header unchanged (verified on the agn024 stack, 2026-10-17), so the K11 throttle keys on the real client.
 - Recommended: `request_body { max_size 20MB }` on the Caddy web and API sites (the API's signup cap is 3 × 5 MB + 1 MB, about 16 MB).
 - **Feature ID authorized:** `AGN-024`. **Status:** built on `feature/agn-024`; see `AGENT_CRM_BACKLOG.md` (ang-024).
+
+### DEC-SCOPE-225 — Send app email through the Zoho Mail API (`ENH-032`)
+
+**Status:** CONFIRMED by owner 2026-10-17 (Claude Code session). Extends `DEC-NOT-001` (email channel).
+**Evidence:** owner request and answers E1–E10 given in a Claude Code session on 2026-10-17 (`EXPLICIT_APPROVAL`), written down in `docs/superpowers/specs/2026-10-17-enh-032-zoho-mail-api-design.md` §2; connectivity tests run from the dev droplet the same day (spec §3.1): TCP to ports 25/465/587 timed out for `smtppro.zoho.in`, `smtppro.zoho.com` and `smtp.gmail.com`, while TCP 443 to `www.google.com` and `mail.zoho.in` connected; ufw inactive and no DO Cloud Firewall on the dev droplet; `edusphere-prod-fw` allows all outbound. Conclusion: DigitalOcean's account-level SMTP block (prod is in the same account; assumed blocked, not tested there).
+
+| # | Question | Answer |
+|---|---|---|
+| E1 | Scope | Add an HTTPS email-API path; addresses are configurable in `.env`. SMTP stays. |
+| E2 | Provider | **Zoho Mail API** (the existing mailbox), not ZeptoMail. |
+| E3 | Sender | `info@edusphere.org.uk` is the no-reply sender for all app email, set in `.env` (`SMTP_FROM_EMAIL`, used by both transports). |
+| E4 | Reply-To | **Dropped.** No Reply-To setting and no reply hint in the body; replies go to the From address. |
+| E5 | School invites | Keep current behaviour (on SMTP they still carry the Coordinator Reply-To). |
+| E6 | Per-person replies over the API | The Zoho Mail send API documents no Reply-To field. Owner **accepted the loss**: over the API, school invites and staff-written emails no longer reply to the Coordinator / staff member. |
+| E7 | Staff-written emails (telecaller to lead, recruiter to candidate, partnership to university) | Keep current behaviour (same as E5/E6). |
+| E8 | Email that today goes only to the empty `EMAIL_WEBHOOK_URL` (password reset, generic and inbound notifications) | **Include it:** real password-reset and generic-notification emails through the mailer, with the webhook as the fallback when email is not configured. |
+| E9 | A Zoho request that times out after the email was handed over (outcome unknown) | **Don't retry; mark failed.** Retry only when the email certainly was not accepted. |
+| E10 | Zoho Mail's daily sending limit | **Stop retries at the limit:** a "limit reached" response is a permanent failure with no retry. Document the limit. No counters or pacing. |
+
+**Resolution:** `EMAIL_TRANSPORT` = `smtp` (default, behaviour unchanged) or `zoho_api`; one `mailer.email_configured()` check; one dispatcher `mailer._send_sync`; no automatic SMTP-to-API failover. Spec "My call" items (owner-approved with the spec): `SMTP_FROM_EMAIL` kept as the From setting for both transports; a separate `ZOHO_MAIL_*` client from the Zoho Meeting client; the OAuth host reuses `ZOHO_ACCOUNTS_URL`; the logo `<img>` is stripped on the API path; the parallel webhook copies in invite and welcome are unchanged; an "Email delivery" row on `GET /admin/system-status`.
+**As built (rulings during the build):** every HTTP 429 is permanent (Zoho documents no distinct daily-limit code, so E10 is applied to all 429s); an HTTP 504 response to the send is permanent (E9, outcome unknown); other 5xx are transient; `fromAddress` is the bare address pending the live check; forgot-password sends at most 3 reset emails per user per rolling 15 minutes (over the cap: same 202, nothing sent) and sends them in a background task; a relative `action_url` in a generic/inbound email becomes an absolute `FRONTEND_URL` link; a refused Zoho token refresh fails fast for 60 s.
+**Numbering:** no migration; `GET /admin/system-status` gains one row (`API_CONTRACT.md` §12EL); no new route, so no RBAC row.
+**Consequences:**
+- new `app/services/zoho_mail.py`; `mailer._send_sync` dispatches by transport; `mailer.send_password_reset_email` and `send_generic_notification_email`; `lead_email._send`, `delivery._send_email` and the forgot-password route map transient and permanent failures;
+- `app/send_test_email.py` (`python -m app.send_test_email --to <addr>`);
+- both `.env.example` files, `INTEGRATION_CONTRACTS.md` §4, `DEPLOYMENT.md`.
+
+**Out of scope, `NEEDS_CONFIRMATION` (not built in ENH-032):**
+- Zoho Mail's daily sending limit for the mailbox plan: not confirmed; the owner checks it. A bulk send (for example a school roster invite) could hit it and Zoho may throttle or suspend the mailbox, which also carries the owner's own `info@` mail.
+- Whether Zoho accepts a display name in `fromAddress` and whether an inline logo upload works: not tested (live check, AC8).
+- Reply-To in any form (E4), other providers (ZeptoMail, SES), attachments other than the logo, bounce/open tracking, inbound email, send counters and pacing.
+- The DigitalOcean SMTP-unblock ticket is still worth filing; if approved, `EMAIL_TRANSPORT=smtp` works again with no code change.
+- **Feature ID authorized:** `ENH-032`. **Status:** built on `feature/enh-032`; see `ENHANCEMENT_BACKLOG.md` (ENH-032).
