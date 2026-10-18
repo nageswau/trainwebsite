@@ -679,3 +679,44 @@ async def test_a_relative_action_url_becomes_an_absolute_link(outbox, monkeypatc
     assert 'href="https://app.example.test/it/student/x"' in first.get_body(("html",)).get_content()
     assert "Open in EduSphere: https://other.example/y" in second.get_body(("plain",)).get_content()
     assert 'href="https://other.example/y"' in second.get_body(("html",)).get_content()
+
+
+def test_a_refused_refresh_fails_fast_for_60_seconds(monkeypatch):
+    from app.services import zoho_mail
+
+    clock = [1000.0]
+    monkeypatch.setattr(zoho_mail.time, "monotonic", lambda: clock[0])
+    client, seen = _mock(token_response=httpx.Response(400, json={"error": "invalid_code"}))
+    for _ in range(2):
+        with pytest.raises(zoho_mail.EmailPermanentError) as exc:
+            zoho_mail.send(_lead_msg(), client=client)
+        assert "invalid_code" in str(exc.value) and SECRETS["refresh_token"] not in str(exc.value)
+    assert sum(r.url.path == "/oauth/v2/token" for r in seen) == 1
+    assert not any(r.url.path.endswith("/messages") for r in seen)
+    clock[0] += 61
+    with pytest.raises(zoho_mail.EmailPermanentError):
+        zoho_mail.send(_lead_msg(), client=client)
+    assert sum(r.url.path == "/oauth/v2/token" for r in seen) == 2
+    zoho_mail.reset_token_cache()  # clears the remembered failure too
+    with pytest.raises(zoho_mail.EmailPermanentError):
+        zoho_mail.send(_lead_msg(), client=client)
+    assert sum(r.url.path == "/oauth/v2/token" for r in seen) == 3
+
+
+def test_a_401_does_not_drop_a_token_another_sender_already_replaced(monkeypatch):
+    from app.services import zoho_mail
+
+    client, seen = _mock(send_responses=[httpx.Response(401, json={}), httpx.Response(200, json={})])
+    real_post = zoho_mail._post
+
+    def post(client_, payload, token):
+        response = real_post(client_, payload, token)
+        if response.status_code == 401:  # meanwhile a concurrent sender refreshed and cached a new token
+            zoho_mail._token = ("tok-new", time.monotonic() + 3600)
+        return response
+
+    monkeypatch.setattr(zoho_mail, "_post", post)
+    zoho_mail.send(_lead_msg(), client=client)
+    assert sum(r.url.path == "/oauth/v2/token" for r in seen) == 1
+    sends = [r for r in seen if r.url.path.endswith("/messages")]
+    assert [r.headers["authorization"] for r in sends] == ["Zoho-oauthtoken tok1", "Zoho-oauthtoken tok-new"]
