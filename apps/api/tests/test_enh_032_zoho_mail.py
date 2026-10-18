@@ -576,3 +576,94 @@ def test_send_test_email_reports_status_without_secrets(monkeypatch, capsys):
     assert send_test_email.main(["--to", "owner@example.com"]) == 2
     out = capsys.readouterr().out
     assert "not configured" in out and not any(f"{name}-value" in out for name in ZOHO_FIELDS)
+
+
+# --- Final fix wave: I1 reset cap + background send, I2 absolute links, M2 fail-fast / 401 compare ----------------------------
+
+
+async def _reset_tokens(db_session, user_id, purpose="reset"):
+    from sqlalchemy import select
+
+    from app.models import PasswordResetToken
+
+    db_session.expire_all()
+    return list(await db_session.scalars(select(PasswordResetToken).where(PasswordResetToken.user_id == user_id, PasswordResetToken.purpose == purpose)))
+
+
+@pytest.mark.asyncio
+async def test_a_fourth_reset_request_in_the_window_sends_nothing_and_answers_the_same(client, db_session, outbox, monkeypatch):
+    monkeypatch.setattr(settings, "environment", "test")
+    user = await _forgot(client, db_session, "it_student", "overseas", monkeypatch)
+    bodies = []
+    for _ in range(4):
+        response = await client.post("/api/v1/auth/forgot-password", json={"email": user.email})
+        assert response.status_code == 202
+        bodies.append(response.json())
+    assert bodies == [{"accepted": True}] * 4
+    assert len(outbox) == 3
+    assert len(await _reset_tokens(db_session, user.id)) == 3
+
+
+@pytest.mark.asyncio
+async def test_a_reset_request_after_the_window_sends_again(client, db_session, outbox, monkeypatch):
+    user = await _forgot(client, db_session, "it_student", "overseas", monkeypatch)
+    email, user_id = user.email, user.id  # _reset_tokens expires the session's objects
+    for _ in range(3):
+        await client.post("/api/v1/auth/forgot-password", json={"email": email})
+    for token in await _reset_tokens(db_session, user_id):  # as if issued 16 minutes ago (30-minute expiry)
+        token.expires_at = datetime.now(UTC) + timedelta(minutes=14)
+    await db_session.commit()
+    assert (await client.post("/api/v1/auth/forgot-password", json={"email": email})).status_code == 202
+    assert len(outbox) == 4
+    assert len(await _reset_tokens(db_session, user_id)) == 4
+
+
+@pytest.mark.asyncio
+async def test_welcome_tokens_do_not_count_toward_the_reset_cap(client, db_session, outbox, monkeypatch):
+    from app.models import PasswordResetToken
+
+    user = await _forgot(client, db_session, "it_student", "overseas", monkeypatch)
+    for _ in range(3):
+        db_session.add(PasswordResetToken(user_id=user.id, token_hash=uuid.uuid4().hex, expires_at=datetime.now(UTC) + timedelta(hours=72), purpose="welcome"))
+    await db_session.commit()
+    for _ in range(3):  # three welcome tokens in the window still leave the full cap of three reset emails
+        assert (await client.post("/api/v1/auth/forgot-password", json={"email": user.email})).status_code == 202
+    assert len(outbox) == 3
+
+
+@pytest.mark.asyncio
+async def test_forgot_password_sends_through_smtp_too(client, db_session, monkeypatch):
+    """AC1a: either transport -- the real SMTP path (smtplib faked), not the mailer stub."""
+    import smtplib
+
+    from sqlalchemy import select
+
+    from app.models import NotificationDelivery
+
+    sent: list = []
+
+    class FakeSMTP:
+        def __init__(self, host, port, timeout=None):
+            assert host == "smtp.test.local"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def starttls(self): ...
+        def login(self, *a): ...
+
+        def send_message(self, msg):
+            sent.append(msg)
+
+    monkeypatch.setattr(smtplib, "SMTP", FakeSMTP)
+    monkeypatch.setattr(settings, "email_transport", "smtp")
+    monkeypatch.setattr(settings, "smtp_host", "smtp.test.local")
+    user = await _forgot(client, db_session, "it_student", "overseas", monkeypatch)
+    assert (await client.post("/api/v1/auth/forgot-password", json={"email": user.email})).status_code == 202
+    assert len(sent) == 1 and sent[0]["To"] == user.email and sent[0]["Subject"] == "Reset your EduSphere password"
+    assert f"{settings.frontend_url}/overseas/reset-password?token=" in sent[0].get_body(("plain",)).get_content()
+    db_session.expire_all()
+    assert (await db_session.scalars(select(NotificationDelivery.status).order_by(NotificationDelivery.created_at.desc()))).first() == "sent"
