@@ -5,6 +5,8 @@ E9: the outcome is mapped to two errors only. EmailTransientError means the mess
     EmailPermanentError means do not retry -- including every case where the outcome is unknown (read timeout etc.), so no duplicate.
 E9 (ruling R1): an HTTP 504 response to the send is also permanent (the gateway may have accepted the message); other 5xx are transient.
 E10: HTTP 429 is permanent: Zoho's daily-limit response is not distinguishable from a rate limit in the docs, so it is never retried.
+E10 (live test): a 5xx whose data.moreInfo carries an SMTP 5.x.x refusal (Zoho's "550 5.4.6 Unusual sending activity") is permanent;
+    error text includes moreInfo (markup stripped) so the stored failure names the real reason.
 M2: a refused (permanent) token refresh is remembered for REFUSED_REFRESH_BACKOFF seconds; sends in that window fail at once with the
     same message, without calling the token endpoint again. On a 401 the cache is cleared only if it still holds the rejected token.
 Error messages never contain the URL query, headers, request body, tokens or secrets.
@@ -22,6 +24,8 @@ from app.core.config import settings
 _TIMEOUT = 15
 _IMG_CID = re.compile(r'<img\b[^>]*\bsrc="cid:[^"]*"[^>]*>', re.IGNORECASE)
 _MAX_ERROR = 200
+_TAG = re.compile(r"<[^>]*>")
+_SMTP_PERMANENT = re.compile(r"\b5\d\d[ -]5\.\d{1,3}\.\d{1,3}\b")  # an SMTP 5xx reply with a 5.x.x enhanced status code
 
 _lock = threading.Lock()
 _token: tuple[str, float] | None = None  # (access_token, expires_at on the monotonic clock)
@@ -120,18 +124,35 @@ def _access_token(client: httpx.Client) -> str:
         return _refresh(client)
 
 
-def _error_text(response: httpx.Response) -> str:
-    detail = ""
+def _zoho_body(response: httpx.Response) -> tuple[dict, dict]:
+    """Zoho's error envelope: {"status": {...}, "data": {...}}; anything else reads as empty."""
     try:
         body = response.json()
-        if isinstance(body, dict):
-            raw_status, raw_data = body.get("status"), body.get("data")
-            status = raw_status if isinstance(raw_status, dict) else {}
-            data = raw_data if isinstance(raw_data, dict) else {}
-            detail = str(status.get("description") or data.get("errorCode") or "")
     except ValueError:
-        pass
-    return _cap(f"zoho_mail HTTP {response.status_code}: {detail}")
+        return {}, {}
+    if not isinstance(body, dict):
+        return {}, {}
+    raw_status, raw_data = body.get("status"), body.get("data")
+    return (raw_status if isinstance(raw_status, dict) else {}), (raw_data if isinstance(raw_data, dict) else {})
+
+
+def _more_info(data: dict) -> str:
+    """data.moreInfo carries the real reason (e.g. the SMTP refusal behind a 500), sometimes with an HTML link; keep the text only."""
+    return " ".join(_TAG.sub("", str(data.get("moreInfo") or "")).split())
+
+
+def _error_text(response: httpx.Response) -> str:
+    status, data = _zoho_body(response)
+    detail = str(status.get("description") or data.get("errorCode") or "")
+    more = _more_info(data)
+    return _cap(f"zoho_mail HTTP {response.status_code}: {detail}" + (f" -- {more}" if more else ""))
+
+
+def _smtp_refused(response: httpx.Response) -> bool:
+    """ENH-032 live test (2026-10-18): Zoho wraps a permanent SMTP refusal (e.g. "550 5.4.6 Unusual sending activity detected")
+    in an HTTP 500. A 5.x.x reply means the message was refused and retrying only worsens a sending block (E10), so it is
+    permanent; a 4.x.x reply keeps the ordinary 5xx-is-transient rule."""
+    return bool(_SMTP_PERMANENT.search(_more_info(_zoho_body(response)[1])))
 
 
 def _post(client: httpx.Client, payload: dict, token: str) -> httpx.Response:
@@ -161,9 +182,10 @@ def send(msg: EmailMessage, *, client: httpx.Client | None = None) -> None:
         code = response.status_code
         if 200 <= code < 300:
             return
-        if code >= 500 and code != 504:  # 504: the gateway may have accepted the message -> outcome unknown (E9)
+        # 504: the gateway may have accepted the message -> outcome unknown (E9); a 5.x.x SMTP refusal inside a 5xx is final (E10)
+        if code >= 500 and code != 504 and not _smtp_refused(response):
             raise EmailTransientError(_error_text(response))
-        raise EmailPermanentError(_error_text(response))  # incl. 504 (E9), 401 twice, 429 (E10), other 4xx
+        raise EmailPermanentError(_error_text(response))  # incl. 504 (E9), 5xx + SMTP 5.x.x, 401 twice, 429 (E10), other 4xx
     finally:
         if owned:
             client.close()

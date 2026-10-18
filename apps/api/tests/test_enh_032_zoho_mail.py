@@ -289,6 +289,31 @@ CASES = [
     (httpx.Response(403, json={}), "permanent"),
 ]
 
+# The body Zoho returned on the first live send (2026-10-18): a 500 whose moreInfo carries the SMTP refusal.
+ZOHO_BLOCKED = {
+    "status": {"code": 500, "description": "Internal Error"},
+    "data": {"moreInfo": "Unable to send message;Reason:550 5.4.6 Unusual sending activity detected. Please try after sometime. "
+             "<a href=https://www.zoho.in/mail/help/usage-policy.html target=_blank>Learn more.</a>"},
+}
+CASES += [
+    (httpx.Response(500, json=ZOHO_BLOCKED), "permanent"),  # a 5.x.x SMTP refusal behind the 500: retrying makes a block worse
+    (httpx.Response(500, json={"status": {"code": 500, "description": "Internal Error"},
+                               "data": {"moreInfo": "Unable to send message;Reason:421 4.7.0 Try again later"}}), "transient"),
+]
+
+
+def test_the_error_carries_zohos_reason_without_markup():
+    from app.services import zoho_mail
+
+    client, _ = _mock(send_responses=[httpx.Response(500, json=ZOHO_BLOCKED)])
+    with pytest.raises(zoho_mail.EmailPermanentError) as exc:
+        zoho_mail.send(_lead_msg(), client=client)
+    text = str(exc.value)
+    assert text.startswith("zoho_mail HTTP 500: Internal Error")
+    assert "550 5.4.6 Unusual sending activity detected" in text
+    assert "<a" not in text and "href" not in text
+    assert len(text) <= 200
+
 
 def _error_type(kind: str):
     from app.services import zoho_mail
