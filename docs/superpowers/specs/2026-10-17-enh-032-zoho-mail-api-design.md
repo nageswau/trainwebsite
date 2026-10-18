@@ -156,6 +156,9 @@ Stored error text must never contain the token, client secret, refresh token or 
 - Every HTTP 429 is permanent. Zoho documents no distinct daily-limit code, so a "non-limit 429" cannot be told apart from the limit response; never retrying (E10) is the safer reading.
 - An HTTP 504 response to the send POST is permanent (E9): the gateway may already have handed the message on, so the outcome is unknown. Other 5xx stay transient.
 - `fromAddress` is the bare `SMTP_FROM_EMAIL` address (no display name), pending the live check (§5.3).
+- Forgot-password (final review I1): at most 3 password-reset emails per user per rolling 15 minutes (only `purpose="reset"` tokens count; welcome/set-password tokens do not). Over the cap no token is created, nothing is sent, and the response is the same 202 body (no 429, no enumeration signal). The email (and its webhook fallback and delivery row) is sent in a FastAPI background task with its own DB session, after the token and notification are committed.
+- Generic/inbound notification email (final review I2): an `action_url` starting with `/` becomes `FRONTEND_URL` + path in the text and the button; absolute URLs are unchanged. `send_parent_notification_email` is not changed (owner follow-up).
+- Zoho token (final review M2): a refused refresh is remembered for 60 s (sends fail permanently at once, no token call); a 401 clears the cached token only if it is still the rejected one.
 
 ### 4.6 Admin system status
 

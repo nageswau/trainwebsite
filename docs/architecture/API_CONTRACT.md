@@ -3379,7 +3379,7 @@ Rejection of a document, and approval of a `kyc_required` org, create a `Notific
 
 | Method/Path | Auth | Roles | Change |
 |---|---|---|---|
-| `GET /api/v1/admin/system-status` | Authenticated | as before (unchanged) | The integrations list gains one row: `{"service": "Email delivery", "status": "Zoho Mail API" \| "SMTP" \| "not configured"}`. `Zoho Mail API` when `EMAIL_TRANSPORT=zoho_api` and email is configured; `SMTP` when `smtp` and configured; otherwise `not configured`. Never exposes a setting value. |
+| `GET /api/v1/admin/system-status` | Authenticated | admin only (`ensure_admin`: `super_admin`, `it_admin`, `overseas_admin`; unchanged) | The integrations list gains one row: `{"service": "Email delivery", "status": "Zoho Mail API" \| "SMTP" \| "not configured"}`. `Zoho Mail API` when `EMAIL_TRANSPORT=zoho_api` and email is configured; `SMTP` when `smtp` and configured; otherwise `not configured`. Never exposes a setting value. |
 
 ## 13. Traceability check
 
