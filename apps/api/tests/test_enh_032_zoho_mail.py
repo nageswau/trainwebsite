@@ -667,3 +667,15 @@ async def test_forgot_password_sends_through_smtp_too(client, db_session, monkey
     assert f"{settings.frontend_url}/overseas/reset-password?token=" in sent[0].get_body(("plain",)).get_content()
     db_session.expire_all()
     assert (await db_session.scalars(select(NotificationDelivery.status).order_by(NotificationDelivery.created_at.desc()))).first() == "sent"
+
+
+@pytest.mark.asyncio
+async def test_a_relative_action_url_becomes_an_absolute_link(outbox, monkeypatch):
+    monkeypatch.setattr(settings, "frontend_url", "https://app.example.test/")
+    await mailer.send_generic_notification_email(to_email="a@example.com", recipient_name="Ann", title="T", body="B", action_url="/it/student/x")
+    await mailer.send_generic_notification_email(to_email="a@example.com", recipient_name="Ann", title="T", body="B", action_url="https://other.example/y")
+    first, second = outbox
+    assert "Open in EduSphere: https://app.example.test/it/student/x" in first.get_body(("plain",)).get_content()
+    assert 'href="https://app.example.test/it/student/x"' in first.get_body(("html",)).get_content()
+    assert "Open in EduSphere: https://other.example/y" in second.get_body(("plain",)).get_content()
+    assert 'href="https://other.example/y"' in second.get_body(("html",)).get_content()

@@ -425,6 +425,10 @@ async def send_generic_notification_email(*, to_email: str, recipient_name: str,
     """ENH-032 E8: the email copy of a generic or inbound notification (like `send_parent_notification_email`, no school)."""
     if not email_configured():
         return "not_configured", None
+    # ENH-032 / DEC-SCOPE-225 (I2): an app path ("/it/...") becomes FRONTEND_URL + path, as in send_bdm_reminder_email; an absolute
+    # URL is kept as-is.
+    if action_url and action_url.startswith("/"):
+        action_url = f"{settings.frontend_url.rstrip('/')}{action_url}"
     try:
         msg = EmailMessage()
         msg["Subject"] = f"{title} -- EduSphere"
