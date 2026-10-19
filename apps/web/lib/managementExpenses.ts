@@ -32,10 +32,13 @@ export function expensesLedgerHref(month: string): string {
 /** "2026-04" -> "April 2026". */
 export function formatMonth(month: string): string {
   const [year, number] = month.split("-").map(Number);
-  return new Date(Date.UTC(year, number - 1, 1)).toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" });
+  // Intl's format() throws on an invalid Date (toLocaleDateString said "Invalid Date"); like formatDate, show the raw value instead.
+  const date = new Date(Date.UTC(year, number - 1, 1));
+  if (Number.isNaN(date.getTime())) return month;
+  return new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "UTC" }).format(date);
 }
 
 /** The IST month of a moment ("YYYY-MM"), the latest month the month picker offers. */
 export function istMonth(now: Date = new Date()): string {
-  return now.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }).slice(0, 7);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(now).slice(0, 7);
 }

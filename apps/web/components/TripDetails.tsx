@@ -1,5 +1,6 @@
+import LocalTime from "@/components/LocalTime";
 import { APPROVAL_LABEL, MODE_LABEL, TRAVEL_LABEL, type Trip } from "@/lib/bdmTravel";
-import { formatCalendarDate, formatDate } from "@/lib/formatDate";
+import { formatCalendarDate } from "@/lib/formatDate";
 
 // bdm-010 (§12.2 F2): the trip's §3 fields as a definition list, shared by the BDM's and the manager's trip pages. Multi-line
 // text keeps its line breaks as text (pre-wrap), never as HTML (S6). Organization and appointment time arrive with bdm-011.
@@ -17,9 +18,9 @@ export default function TripDetails({ trip }: { trip: Trip }) {
     ["Approval status", APPROVAL_LABEL[trip.approval_status]],
     ["Travel status", TRAVEL_LABEL[trip.travel_status]],
   ];
-  if (trip.decided_by) rows.push([trip.approval_status === "rejected" ? "Rejected by" : "Approved by", `${trip.decided_by.full_name}, ${formatDate(trip.decided_at)}`]);
-  if (trip.completed_at) rows.push(["Completed", formatDate(trip.completed_at)]);
-  if (trip.cancelled_at) rows.push(["Cancelled", formatDate(trip.cancelled_at)]);
+  if (trip.decided_by) rows.push([trip.approval_status === "rejected" ? "Rejected by" : "Approved by", <>{trip.decided_by.full_name}, <LocalTime value={trip.decided_at} /></>]);
+  if (trip.completed_at) rows.push(["Completed", <LocalTime key="c" value={trip.completed_at} />]);
+  if (trip.cancelled_at) rows.push(["Cancelled", <LocalTime key="x" value={trip.cancelled_at} />]);
   return (
     <dl className="form-grid" style={{ margin: 0 }}>
       {rows.map(([label, value]) => (

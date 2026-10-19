@@ -7,7 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import type { Page } from "@/lib/apiErrors";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
-import { formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
 import { STAGES } from "@/lib/leadStages";
 import { pageOffset } from "@/lib/telecaller";
 import { activeCampaigns, activeProducts, getPage, type Campaign, type Product } from "@/lib/telecallerCatalogue";
@@ -146,7 +146,7 @@ export default function TelecallerLeadTable({ basePath, showTelecaller = false }
                     </td>
                     <td>{PRIORITY_LABEL[lead.priority] ?? lead.priority}</td>
                     {showTelecaller && <td>{lead.telecaller ? lead.telecaller.full_name : <span className="muted">Unassigned</span>}</td>}
-                    <td style={{ whiteSpace: "nowrap" }}>{formatDate(lead.created_at)}</td>
+                    <td style={{ whiteSpace: "nowrap" }}><LocalTime value={lead.created_at} /></td>
                   </tr>
                 ))}
               </tbody>

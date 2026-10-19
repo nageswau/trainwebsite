@@ -79,7 +79,7 @@ async def test_it_admin_sees_both_consented_and_not_yet_consented_students(clien
 
 @pytest.mark.asyncio
 async def test_pending_consent_enrollment_count_is_visible_per_student(client, db_session):
-    agreement = await _create_agreement(db_session)
+    await _create_agreement(db_session)
     student = await _create_user(db_session, "it_student")
     batch = await _create_batch(db_session)
     db_session.add(Enrollment(student_id=student.id, batch_id=batch.id, enrollment_code=f"EDU-TEST-{uuid.uuid4().hex[:6]}", status="pending_consent"))

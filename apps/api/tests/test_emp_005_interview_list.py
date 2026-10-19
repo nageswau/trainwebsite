@@ -18,7 +18,6 @@ import uuid
 from datetime import datetime
 
 import pytest
-from sqlalchemy import select
 
 from app.core.security import hash_password
 from app.models import Company, EmployerProfile, Interview, Job, User

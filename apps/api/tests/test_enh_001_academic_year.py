@@ -116,11 +116,11 @@ def test_migration_0030_backfills_preexisting_school_student_via_downgrade_upgra
     from pathlib import Path
 
     import sqlalchemy as sa
-    from alembic import command
     from alembic.config import Config
     from sqlalchemy.engine import make_url
     from sqlalchemy.ext.asyncio import create_async_engine
 
+    from alembic import command
     from app.core.config import settings
 
     api_root = Path(__file__).resolve().parents[1]
@@ -421,7 +421,7 @@ async def test_patch_academic_year_requires_admin(client, db_session):
 
 @pytest.mark.asyncio
 async def test_coordinator_reads_the_active_academic_year(client, db_session):
-    admin = await _create_admin_and_login(client, db_session)
+    await _create_admin_and_login(client, db_session)
     unique = uuid.uuid4().hex[:8]
 
     # Review finding fix (BLOCKER): this test used to close every OTHER active
@@ -488,7 +488,7 @@ async def test_active_academic_year_is_out_of_scope_for_unrelated_roles(client, 
 
 
 async def _create_school_with_coordinator(client, db_session, *, suffix: str | None = None) -> dict:
-    admin = await _create_admin_and_login(client, db_session)
+    await _create_admin_and_login(client, db_session)
     suffix = suffix or uuid.uuid4().hex[:8]
     response = await client.post(
         "/api/v1/overseas-admin/schools",
@@ -535,7 +535,7 @@ async def test_create_student_ignores_a_client_supplied_academic_year_id(client,
 
 @pytest.mark.asyncio
 async def test_update_student_can_set_grade_level(client, db_session):
-    school = await _create_school_with_coordinator(client, db_session)
+    await _create_school_with_coordinator(client, db_session)
     created = await client.post("/api/v1/school/students", json={"full_name": "Test Student"})
     student_id = created.json()["id"]
     response = await client.patch(f"/api/v1/school/students/{student_id}", json={"grade_level": 7})
@@ -584,7 +584,7 @@ async def test_dashboard_grade_level_counts_use_the_stored_column_not_regex_pars
     student with only that label would be silently dropped from the count entirely (not
     even miscounted into a wrong grade) under the old regex path. Reading `grade_level`
     directly must count both students correctly."""
-    school = await _create_school_with_coordinator(client, db_session)
+    await _create_school_with_coordinator(client, db_session)
     first = await client.post("/api/v1/school/students", json={"full_name": "A", "grade_or_class": "Std IX", "grade_level": 9})
     assert first.status_code == 201, first.text
     second = await client.post("/api/v1/school/students", json={"full_name": "B", "grade_or_class": "Grade 9", "grade_level": 9})

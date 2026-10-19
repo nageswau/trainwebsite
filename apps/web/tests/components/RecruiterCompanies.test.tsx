@@ -26,16 +26,18 @@ const company: Company = {
 };
 
 type Call = { url: string; init?: RequestInit };
+// A read can name its method (RecruiterCompanyContract sends { method: "GET" }), so only a non-GET method is a write.
+const isWrite = (init?: RequestInit) => Boolean(init?.method && init.method !== "GET");
 function serve(read: (url: string) => Response, onWrite: (call: Call) => Response = () => res({})) {
   const calls: Call[] = [];
   vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
     const call = { url: String(url), init };
     calls.push(call);
-    return Promise.resolve(init?.method ? onWrite(call) : read(String(url)));
+    return Promise.resolve(isWrite(init) ? onWrite(call) : read(String(url)));
   }));
   return calls;
 }
-const writes = (calls: Call[]) => calls.filter((c) => c.init?.method);
+const writes = (calls: Call[]) => calls.filter((c) => isWrite(c.init));
 const emptyPickers = (url: string) => (url.includes("/catalogue/") ? res(page([])) : res(page([row])));
 
 afterEach(() => {

@@ -3,7 +3,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { sendJson, type Page } from "@/lib/apiErrors";
-import { formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
 import { PAGE_SIZE, TEAM_LABEL, pageOffset, type TelecallerTeam, type TelecallerTeamRow } from "@/lib/telecaller";
 import { getPage } from "@/lib/telecallerCatalogue";
 import { ASSIGNED_URL, ASSIGN_URL, UNASSIGNED_URL, myReports, type QueueLead } from "@/lib/telecallerDistribution";
@@ -220,7 +220,7 @@ export default function TelecallerAssignmentPanel() {
                       <td data-label="Product">{x.product?.name ?? "—"}</td>
                       <td data-label="Stage">{x.status_label}</td>
                       {view === "assigned" && <td data-label="Telecaller">{x.telecaller?.full_name}{x.telecaller && !x.telecaller.active && <> <span className="badge">Inactive</span></>}</td>}
-                      <td data-label="Received">{formatDate(x.created_at, true)}</td>
+                      <td data-label="Received"><LocalTime value={x.created_at} time /></td>
                     </tr>
                   ))}
                 </tbody>

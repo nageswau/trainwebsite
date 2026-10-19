@@ -43,7 +43,7 @@ export default function AccountsDashboard({ data }: { data: AccountsMonth }) {
   const label = monthLabel(data.month);
   const r = data.receivables;
   const b = data.balances;
-  const asOf = new Date(`${data.as_of}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+  const asOf = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${data.as_of}T00:00:00Z`));
   return (
     <>
       <section className="action-card" aria-labelledby="accounts-position" style={{ display: "grid", gap: 12 }}>

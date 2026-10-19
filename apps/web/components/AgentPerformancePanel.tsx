@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import FormMessage from "@/components/FormMessage";
+import LocalTime from "@/components/LocalTime";
 import { TableRegion, headingId, n } from "@/components/AgentTableRegion";
 import { SESSION_EXPIRED, SIGN_IN_PATH } from "@/lib/activityFeedback";
 import { detailMessage } from "@/lib/apiErrors";
@@ -242,7 +243,7 @@ export default function AgentPerformancePanel() {
         <>
           <p className="muted">
             Students added {filtered ? "in this period" : "at any time"}. Figures as of{" "}
-            {new Date(data.as_of).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}.
+            <LocalTime value={data.as_of} time />.
           </p>
           {data.total.funnel.students === 0 ? (
             <p>{filtered ? "No students were added in this period." : "Your agency has no students yet."}</p>

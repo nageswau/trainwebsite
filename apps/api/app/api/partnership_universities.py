@@ -37,8 +37,8 @@ from app.schemas import (
     UniversityUpdate,
 )
 from app.services import partnership_universities as svc
-from app.services.agent_commission_access import agent_commission_out, can_edit_agent_commission
 from app.services import university_search
+from app.services.agent_commission_access import agent_commission_out, can_edit_agent_commission
 
 router = APIRouter(prefix="/partnership/universities", tags=["partnership-universities"])
 Primary, Backup = aliased(User), aliased(User)

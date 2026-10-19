@@ -15,8 +15,8 @@ import pytest
 from sqlalchemy import func, select
 
 from app.core.security import hash_password
-from app.models import AuditLog, Batch, Enrollment, Program, Submission, User
 from app.models import Assignment as AssignmentModel
+from app.models import AuditLog, Batch, Enrollment, Program, Submission, User
 
 
 async def _create_trainer(db_session) -> User:

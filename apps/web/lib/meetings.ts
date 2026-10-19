@@ -57,7 +57,7 @@ export const MEETING_READERS = new Set([...SCHEDULER_ROLES, "super_admin"]);
 
 /** An instant shown in IST, e.g. "18 Oct 2026, 10:00". */
 export const meetingWhen = (iso: string) =>
-  new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
+  new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" }).format(new Date(iso));
 
 export const contactText = (c: MeetingContact | null) => (c?.name ? `${c.name}${c.designation ? ` (${c.designation})` : ""}` : "—");
 

@@ -129,7 +129,7 @@ async def test_meeting_cell_falls_back_to_the_plain_meeting_url_when_no_host_url
 @pytest.mark.asyncio
 async def test_row_carries_ends_at_for_client_side_time_window_gating(client, db_session):
     trainer = await _create_trainer(db_session)
-    session = await _create_batch_with_session(db_session, trainer, meeting_url="https://meet.example.com/session")
+    await _create_batch_with_session(db_session, trainer, meeting_url="https://meet.example.com/session")
     await _login(client, trainer.email)
 
     response = await client.get("/api/v1/portal/it/trainer/live-sessions")

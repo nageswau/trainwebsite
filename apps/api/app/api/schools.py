@@ -2523,7 +2523,7 @@ async def create_academic_result(payload: dict, user: User = Depends(get_current
         max_marks = float(payload.get("max_marks"))
         marks_obtained = float(payload.get("marks_obtained"))
     except (TypeError, ValueError):
-        raise HTTPException(422, "max_marks and marks_obtained must be numbers")
+        raise HTTPException(422, "max_marks and marks_obtained must be numbers") from None
     subject = str(payload.get("subject", "")).strip()
     academic_year = str(payload.get("academic_year", "")).strip()
     term = str(payload.get("term", "")).strip()

@@ -18,7 +18,7 @@ type Props = { data: PartnershipCalendarData | null; view: CalendarView; date: s
 const ROW = { display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline", padding: "8px 0", borderTop: "1px solid var(--line, #e5e7eb)" } as const;
 const LINK = { ...LINK_STYLE, overflowWrap: "anywhere" } as const;
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: SCHOOL_TIME_ZONE });
+const time = (iso: string) => new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: SCHOOL_TIME_ZONE }).format(new Date(iso));
 
 function when(item: CalendarItem): string {
   if (item.starts_at) return `${time(item.starts_at)} IST`;

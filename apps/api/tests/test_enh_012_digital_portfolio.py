@@ -6,9 +6,10 @@ from datetime import date
 
 import pytest
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 
 from app.models import PortfolioEntry, PortfolioProfile
-from app.schemas import PortfolioEntryCreate, PORTFOLIO_SECTIONS
+from app.schemas import PORTFOLIO_SECTIONS, PortfolioEntryCreate
 from tests.enh005_helpers import mk_school
 
 
@@ -39,7 +40,7 @@ async def test_portfolio_profile_school_student_id_is_unique(db_session):
     db_session.add(PortfolioProfile(school_student_id=student.id, personal_statement="First."))
     await db_session.commit()
     db_session.add(PortfolioProfile(school_student_id=student.id, personal_statement="Second."))
-    with pytest.raises(Exception):
+    with pytest.raises(IntegrityError):
         await db_session.commit()
     await db_session.rollback()
 
@@ -501,7 +502,8 @@ async def test_coordinator_sets_the_personal_statement(client, db_session):
 
 @pytest.mark.asyncio
 async def test_setting_the_statement_twice_updates_the_same_row(client, db_session):
-    from sqlalchemy import func, select as sa_select
+    from sqlalchemy import func
+    from sqlalchemy import select as sa_select
 
     from app.models import PortfolioProfile
     from tests.enh005_helpers import login, mk_school

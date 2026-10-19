@@ -4,7 +4,7 @@ import { type FormEvent, useEffect, useId, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
 import { fieldErrors } from "@/lib/bdmTravel";
-import { formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
 import { BASIC_FIELDS, REQUIREMENT, qualificationUrl, type LeadQualification, type QualField, type QualKey } from "@/lib/telecallerLeads";
@@ -202,7 +202,7 @@ export default function LeadQualificationForm({ leadId, productId, readOnly, onS
         </div>
       ))}
       {q.updated_by && q.updated_at && (
-        <p className="muted" style={{ margin: 0, fontSize: 13 }}>Last updated by {q.updated_by.full_name} · {formatDate(q.updated_at, true)}</p>
+        <p className="muted" style={{ margin: 0, fontSize: 13 }}>Last updated by {q.updated_by.full_name} · <LocalTime value={q.updated_at} time /></p>
       )}
     </div>
   );

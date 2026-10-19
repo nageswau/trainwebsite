@@ -14,7 +14,6 @@ from app.models import INVESTMENT_STATUSES, INVESTMENT_VERTICALS, User
 from app.schemas import (
     AbroadRevenueOut,
     AccountsOut,
-    DrillOut,
     ApplicationFunnelOut,
     CapitalEntryCreate,
     CapitalEntryOut,
@@ -25,6 +24,7 @@ from app.schemas import (
     DepartmentOut,
     DepartmentPage,
     DepartmentUpdate,
+    DrillOut,
     ExpenseDashboardOut,
     FinanceBalancesIn,
     InvestmentCreate,

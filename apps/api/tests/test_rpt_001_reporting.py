@@ -26,12 +26,10 @@ import uuid
 from datetime import date
 
 import pytest
-from sqlalchemy import select
 
 from app.core.security import hash_password
 from app.models import (
     Batch,
-    Certificate,
     Company,
     Enquiry,
     Enrollment,

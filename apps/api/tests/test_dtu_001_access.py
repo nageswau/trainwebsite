@@ -10,8 +10,8 @@ from app.services.agent_commission_access import can_edit_agent_commission, can_
 from tests.agn001_helpers import mk_active_org
 from tests.agn004_helpers import mk_staff
 from tests.upc001_helpers import as_role, login
-from tests.upc007_helpers import owned_university
 from tests.upc003_helpers import BASE, catalogue_country, create
+from tests.upc007_helpers import owned_university
 
 RATE = {"percent": "16.00", "note": "0.16"}
 

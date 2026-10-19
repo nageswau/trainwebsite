@@ -9,10 +9,9 @@ equivalent exists in the base codebase.
 import uuid
 
 import pytest
-from sqlalchemy import select
 
 from app.core.security import hash_password
-from app.models import School, SchoolParentLink, SchoolStudent, User, UserRoleAssignment
+from app.models import School, SchoolStudent, User, UserRoleAssignment
 
 PASSWORD = "Sup3r-Secret-Pass!"
 

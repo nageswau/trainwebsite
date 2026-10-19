@@ -3594,6 +3594,7 @@ class AgentStudent(Base, TimestampMixin):
         Index("ix_agent_students_agent_status", "agent_id", "status"),
         Index("ix_agent_students_agent_phone_digits", "agent_id", "phone_digits"),
         Index("ix_agent_students_assigned_member", "assigned_member_id"),
+        Index("ix_agent_students_agent_email_lower", "agent_id", text("lower(email)")),  # created by migration 0049; declared so `alembic check` agrees
     )
 
 
@@ -3940,7 +3941,10 @@ class School(Base, TimestampMixin):
     design doc for what's stored here vs. computed at read time in `SchoolOut`."""
 
     __tablename__ = "schools"
-    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in SCHOOL_VALUE_CHECKS.items())  # mgmt-022 SD13
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in SCHOOL_VALUE_CHECKS.items()),  # mgmt-022 SD13
+        Index("ix_schools_school_code", "school_code", unique=True),  # created by migration 0035; declared so `alembic check` agrees
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(200))
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)

@@ -11,7 +11,6 @@ assumed duration, is another interview for the same candidate at the exact same 
 flagged with a 409, not silently double-booked.
 """
 
-import datetime
 import uuid
 
 import pytest

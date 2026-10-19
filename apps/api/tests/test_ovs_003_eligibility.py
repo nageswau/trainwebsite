@@ -16,7 +16,7 @@ import uuid
 import pytest
 
 from app.core.security import hash_password
-from app.models import ApplicationStatusHistory, Country, OverseasApplication, University, User
+from app.models import Country, OverseasApplication, University, User
 
 
 async def _create_user(db_session, role: str, **overrides) -> User:

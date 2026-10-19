@@ -49,11 +49,14 @@ export const statusText = (v: Pick<VisitRow, "status" | "approval_state">) =>
 export function dateText(value: string | null | undefined): string {
   if (!value) return "—";
   const [y, m, d] = value.slice(0, 10).split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  // Intl's format() throws on an invalid Date (toLocaleDateString said "Invalid Date"); like formatDate, show the raw value instead.
+  const date = new Date(Date.UTC(y, m - 1, d));
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(date);
 }
 
 /** Today in India (the API's "today", VS10) as YYYY-MM-DD, for date inputs' `min`. */
-export const indiaToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+export const indiaToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
 
 // The list's filters travel in the page URL; only these keys are passed on to the API.
 export const VISIT_FILTER_KEYS = ["status", "university_id", "mine"] as const;

@@ -10,7 +10,7 @@ import { DASHBOARD_READERS, DASHBOARD_URL, followupTiles, monthTiles, overviewTi
 import type { User } from "@/lib/types";
 import { shellFor } from "@/lib/universities";
 
-const monthName = (first: string) => new Date(`${first}T00:00:00Z`).toLocaleString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" });
+const monthName = (first: string) => new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${first}T00:00:00Z`));
 
 // upc-001 (AC3): the partnership manager's landing page; upc-022 (§22, §20; spec §4) fills in the dashboard: the follow-up bands, the
 // Global Partnership Overview (D1-D5) and This Month (D6-D14), each figure linked to its list. Heads (and super_admin) reach it from

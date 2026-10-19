@@ -18,7 +18,7 @@ import uuid
 import pytest
 
 from app.core.security import hash_password
-from app.models import ConsentRecord, Payment, User
+from app.models import Payment, User
 
 
 async def _create_user(db_session, *, role: str = "it_student", division: str = "it") -> User:

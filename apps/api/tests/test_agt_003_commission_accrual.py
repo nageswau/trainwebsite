@@ -24,7 +24,6 @@ from sqlalchemy import select
 from app.core.security import hash_password
 from app.models import (
     AgentCommission,
-    AgentStudent,
     Country,
     OverseasApplication,
     University,

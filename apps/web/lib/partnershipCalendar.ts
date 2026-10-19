@@ -97,7 +97,7 @@ export const overlapText = (o: Overlap): string => `${o.employee.full_name} is a
 
 /** "12 Oct 2026" or "12–14 Oct 2026" / "30 Oct – 2 Nov 2026" for a multi-day event. */
 export function datesText(startsOn: string, endsOn: string): string {
-  const fmt = (iso: string, o: Intl.DateTimeFormatOptions) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { timeZone: "UTC", ...o });
+  const fmt = (iso: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", ...o }).format(new Date(`${iso}T00:00:00Z`));
   const full = { day: "numeric", month: "short", year: "numeric" } as const;
   if (startsOn === endsOn) return fmt(startsOn, full);
   if (startsOn.slice(0, 7) === endsOn.slice(0, 7)) return `${Number(startsOn.slice(8))}–${fmt(endsOn, full)}`;

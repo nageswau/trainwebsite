@@ -15,7 +15,6 @@ this agent, no new query, no schema change per `DATA_MODEL.md` #6.8's "DB impact
 import uuid
 
 import pytest
-from sqlalchemy import select
 
 from app.core.security import hash_password
 from app.models import (

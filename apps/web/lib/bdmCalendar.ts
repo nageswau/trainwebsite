@@ -26,7 +26,7 @@ type DayItems = { trips: { trip: CalendarTrip; role: TripRole }[]; appointments:
 
 const DAY_MS = 86_400_000;
 const utc = (iso: string) => new Date(`${iso}T00:00:00Z`);
-const fmt = (iso: string, options: Intl.DateTimeFormatOptions) => utc(iso).toLocaleDateString("en-GB", { timeZone: "UTC", ...options });
+const fmt = (iso: string, options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", ...options }).format(utc(iso));
 
 export const parseView = (value: unknown): CalendarView => (VIEWS as readonly unknown[]).includes(value) ? (value as CalendarView) : "week";
 export const parseDate = (value: unknown, today: string): string => (typeof value === "string" && isCalendarDate(value) ? value : today);

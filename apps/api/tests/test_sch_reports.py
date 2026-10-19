@@ -187,7 +187,6 @@ async def test_parent_count_includes_a_parent_provisioned_via_roster_invite_acce
     and asserts parent_count on both /school/dashboard and /school/reports counts that parent.
     """
     ctx = await _create_school_with_roles(db_session)
-    school = ctx["school"]
     parent_email = f"sch-rpt-invited-parent-{uuid.uuid4().hex[:8]}@example.local"
 
     await _login(client, ctx["school_coordinator"].email)

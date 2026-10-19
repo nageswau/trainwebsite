@@ -110,7 +110,7 @@ async def test_accept_flow_links_every_student_with_the_same_pending_email(clien
     parent_id = uuid.UUID(accept.json()["id"])
 
     links = (await db_session.scalars(select(SchoolParentLink).where(SchoolParentLink.parent_user_id == parent_id))).all()
-    linked_student_ids = {str(l.school_student_id) for l in links}
+    linked_student_ids = {str(link.school_student_id) for link in links}
     assert linked_student_ids == {first_id, second_id}
 
     s1 = await db_session.get(SchoolStudent, uuid.UUID(first_id))

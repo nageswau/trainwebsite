@@ -23,7 +23,7 @@ function Facts({ rows }: { rows: [string, ReactNode][] }) {
   );
 }
 
-const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
+const when = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" }).format(new Date(iso));
 const requirement = (required: boolean, notes: string | null) => (required ? `Required${notes ? `\n${notes}` : ""}` : notes ? `Not required\n${notes}` : "Not required");
 
 export default async function VisitPage({ params }: { params: Promise<{ id: string }> }) {

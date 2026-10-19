@@ -1140,7 +1140,7 @@ async def discount_payment(payment_id: UUID, payload: dict, user: User = Depends
     try:
         new_amount = float(payload["amount"])
     except (KeyError, TypeError, ValueError):
-        raise HTTPException(422, "A valid amount is required")
+        raise HTTPException(422, "A valid amount is required") from None
     if not (0 <= new_amount < float(item.amount)):
         raise HTTPException(422, f"Discounted amount must be between 0 and the current amount ({item.amount})")
     original_amount = float(item.amount)
@@ -1829,7 +1829,7 @@ async def create_academic_year(payload: dict, user: User = Depends(get_current_u
         # field -- `date.fromisoformat` raises TypeError rather than ValueError for
         # those, and an uncaught TypeError would otherwise surface as a 500 instead of
         # the 422 malformed input deserves.
-        raise HTTPException(422, "start_date and end_date are required, in YYYY-MM-DD format")
+        raise HTTPException(422, "start_date and end_date are required, in YYYY-MM-DD format") from None
     if end_date <= start_date:
         raise HTTPException(422, "end_date must be after start_date")
     year = AcademicYear(label=label, start_date=start_date, end_date=end_date, status="draft")
@@ -1838,7 +1838,7 @@ async def create_academic_year(payload: dict, user: User = Depends(get_current_u
         await db.flush()
     except IntegrityError:
         await db.rollback()
-        raise HTTPException(409, f"an academic year with label '{label}' already exists")
+        raise HTTPException(409, f"an academic year with label '{label}' already exists") from None
     db.add(AuditLog(user_id=user.id, action="school.academic_year_create", entity_type="academic_year", entity_id=str(year.id), metadata_json={"label": year.label, "status": year.status}))
     await db.commit()
     return {"id": year.id, "label": year.label, "start_date": year.start_date, "end_date": year.end_date, "status": year.status}

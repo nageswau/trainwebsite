@@ -16,7 +16,7 @@ type TeamSettings = Record<Key, number> & { team: string; team_label: string; up
 
 const changedText = (row: TeamSettings) =>
   row.updated_by
-    ? `Last changed by ${row.updated_by.full_name} on ${new Date(row.updated_at).toLocaleString("en-GB", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })} IST.`
+    ? `Last changed by ${row.updated_by.full_name} on ${new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" }).format(new Date(row.updated_at))} IST.`
     : "Default thresholds (never changed).";
 
 function TeamCard({ initial }: { initial: TeamSettings }) {

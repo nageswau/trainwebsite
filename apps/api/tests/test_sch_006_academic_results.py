@@ -94,7 +94,7 @@ async def test_academic_team_uploads_a_result_as_draft(client, db_session):
 @pytest.mark.asyncio
 async def test_academic_team_outside_the_students_portfolio_cannot_upload(client, db_session):
     ctx = await _create_school_with_coordinator(db_session)
-    other_school = ctx["school"]  # will not be assigned to the member below
+    # ctx["school"] is deliberately not assigned to the member below
     unassigned_member = User(email=f"sch006-noaccess-{uuid.uuid4().hex[:8]}@example.local", password_hash=hash_password(PASSWORD), full_name="No Portfolio", role="academic_team", division="overseas", active=True, profile={})
     db_session.add(unassigned_member)
     await db_session.flush()

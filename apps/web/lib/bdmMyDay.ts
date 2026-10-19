@@ -24,7 +24,7 @@ export type MyDay = {
 
 /** "10:00 AM", in IST whatever the viewer's zone. */
 export const timeText = (iso: string): string =>
-  new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: SCHOOL_TIME_ZONE });
+  new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: SCHOOL_TIME_ZONE }).format(new Date(iso));
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 /** "18 Sep" for a "YYYY-MM-DD" calendar date: the source's wording (newer ICU writes "Sept" for en-GB), read in UTC so no zone shifts it. */

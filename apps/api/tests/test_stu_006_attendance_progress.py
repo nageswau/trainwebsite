@@ -93,7 +93,7 @@ async def test_attendance_view_reports_progress_and_outstanding_blockers(db_sess
     db_session.add(Enrollment(student_id=student.id, batch_id=batch.id, enrollment_code=f"EDU-TEST-{uuid.uuid4().hex[:6]}", status="active", progress_percent=40))
     db_session.add(Attendance(student_id=student.id, batch_id=batch.id, session_date=datetime.date.today() - datetime.timedelta(days=2), status="present"))
     db_session.add(Attendance(student_id=student.id, batch_id=batch.id, session_date=datetime.date.today() - datetime.timedelta(days=1), status="absent"))
-    due = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=3)
+    due = datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=3)
     unfinished = Assignment(batch_id=batch.id, title=f"Unfinished Assignment {uuid.uuid4().hex[:6]}", description="Do it", assignment_type="assignment", due_date=due, max_score=100, published=True)
     done = Assignment(batch_id=batch.id, title=f"Completed Assignment {uuid.uuid4().hex[:6]}", description="Do it", assignment_type="assignment", due_date=due, max_score=100, published=True)
     db_session.add_all([unfinished, done])

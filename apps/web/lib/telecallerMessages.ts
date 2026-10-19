@@ -36,8 +36,8 @@ export const waHref = (to: string, text: string) => `https://wa.me/${to}${text ?
 /** AC2 / EVID-019 L452: "WhatsApp sent – 13 Sept 2026 – 10:35 AM", in India time. */
 export function sentLabel(sentAt: string, what = "WhatsApp sent"): string {
   const at = new Date(sentAt);
-  const day = at.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: SCHOOL_TIME_ZONE });
-  const time = at.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: SCHOOL_TIME_ZONE });
+  const day = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: SCHOOL_TIME_ZONE }).format(at);
+  const time = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: SCHOOL_TIME_ZONE }).format(at);
   return `${what} – ${day} – ${time}`;
 }
 

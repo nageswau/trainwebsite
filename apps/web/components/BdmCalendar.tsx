@@ -16,7 +16,7 @@ const LINK = { ...LINK_STYLE, overflowWrap: "anywhere" } as const; // QA13-01: i
 const ROLE_TEXT: Record<TripRole, string> = { departs: "Departs", away: "Away", returns: "Return travel", "day trip": "Day trip" };
 const TRIP_STATUS: Record<string, string> = { draft: "Draft", submitted: "Submitted", in_progress: "In progress", completed: "Completed" };
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: SCHOOL_TIME_ZONE });
+const time = (iso: string) => new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: SCHOOL_TIME_ZONE }).format(new Date(iso));
 const tripStatus = (approval: string, travel: string) => (approval === "approved" ? TRIP_STATUS[travel] : TRIP_STATUS[approval]);
 
 function renderDay(data: CalendarData, day: string, managerOf: string | null) {

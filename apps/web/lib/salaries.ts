@@ -32,7 +32,10 @@ export const salariesUrl = (month: string) => (month ? `${SALARIES_API}?month=${
 
 export function monthLabel(month: string): string {
   const [year, number] = month.split("-").map(Number);
-  return new Date(Date.UTC(year, number - 1, 1)).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+  // Intl's format() throws on an invalid Date (toLocaleDateString said "Invalid Date"); like formatDate, show the raw value instead.
+  const date = new Date(Date.UTC(year, number - 1, 1));
+  if (Number.isNaN(date.getTime())) return month;
+  return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }).format(date);
 }
 
 /** R7 as "27.50%", or a dash when the month has no revenue (SM7). */

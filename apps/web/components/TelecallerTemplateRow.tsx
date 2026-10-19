@@ -6,7 +6,7 @@ import TelecallerTemplateFields, { templateBody } from "@/components/TelecallerT
 import { statusLabel } from "@/lib/telecaller";
 import type { Product } from "@/lib/telecallerCatalogue";
 import { CHANNEL_LABEL, KIND_LABEL, TEMPLATES_URL, type Asset, type Preview, type Template } from "@/lib/telecallerContent";
-import { formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
 
 type PreviewState = { status: "loading" } | { status: "failed" } | { status: "ready"; preview: Preview };
 
@@ -77,7 +77,7 @@ export default function TelecallerTemplateRow({ row, products, assets, onChanged
                   <p className="muted" style={{ fontSize: 13 }}>Sample values: Priya Sharma, the template&apos;s product (or Cyber Security), Mon 14 Sept 2026, 10:30 AM.</p>
                   {preview.preview.subject !== null && <p><strong>Subject:</strong> {preview.preview.subject}</p>}
                   <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{preview.preview.body}</p>
-                  {preview.preview.brochure_link && <p className="muted" style={{ fontSize: 13 }}>The brochure link works until {formatDate(preview.preview.brochure_link.expires_at, true)}.</p>}
+                  {preview.preview.brochure_link && <p className="muted" style={{ fontSize: 13 }}>The brochure link works until <LocalTime value={preview.preview.brochure_link.expires_at} time />.</p>}
                   {row.asset && !preview.preview.brochure_link && (
                     <p className="form-warning">{row.asset.name} is inactive, so {"{brochure_link}"} is left empty. Reactivate it or choose another brochure.</p>
                   )}

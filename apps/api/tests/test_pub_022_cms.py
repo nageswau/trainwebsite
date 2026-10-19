@@ -113,7 +113,7 @@ async def test_super_admin_manages_both_divisions(client, db_session):
 @pytest.mark.asyncio
 async def test_division_admin_is_limited_to_their_division(client, db_session):
     await as_role(client, db_session, "super_admin")
-    ovs = await create(client, division="overseas")
+    await create(client, division="overseas")
     await as_role(client, db_session, "it_admin")
     mine = await create(client, division="it")
     listed = (await client.get("/api/v1/cms/manage/testimonials?division=overseas")).json()
@@ -267,7 +267,7 @@ async def test_photo_upload_png_and_jpeg_strips_metadata(client, db_session):
     assert up.status_code == 200
     await db_session.refresh(row)
     assert row.photo_content_type == "image/jpeg" and b"GPS-SECRET" not in storage.read_bytes(row.photo_key)
-    with pytest.raises(Exception):
+    with pytest.raises(FileNotFoundError):
         storage.read_bytes(first_key)  # the replaced photo is gone
     removed = await client.delete(f"/api/v1/cms/testimonials/{tid}/photo")
     assert removed.status_code == 200 and removed.json()["has_photo"] is False
@@ -296,7 +296,7 @@ async def test_delete_removes_row_photo_and_keeps_no_personal_data_in_audit(clie
     db_session.expunge(row)
     assert (await client.delete(f"/api/v1/cms/testimonials/{tid}")).status_code == 204
     assert await db_session.get(Testimonial, uuid.UUID(tid)) is None
-    with pytest.raises(Exception):
+    with pytest.raises(FileNotFoundError):
         storage.read_bytes(key)
     audits = (await db_session.scalars(select(AuditLog).where(AuditLog.entity_type == "testimonial", AuditLog.entity_id == tid))).all()
     assert {a.action for a in audits} >= {"cms.testimonial.create", "cms.testimonial.delete"}

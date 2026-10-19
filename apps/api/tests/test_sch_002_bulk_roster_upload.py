@@ -6,7 +6,6 @@ that fails validation does not block the rest of the batch (SCH-002-AC04). Net-n
 equivalent exists in the base codebase.
 """
 
-import io
 import uuid
 
 import pytest

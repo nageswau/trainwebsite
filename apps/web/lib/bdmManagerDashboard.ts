@@ -44,7 +44,7 @@ export const alertListHref = (key: string, superAdmin: boolean): string =>
 
 /** "8 Oct" for an instant (its IST day) or a "YYYY-MM-DD" date. */
 const dayText = (at: string): string =>
-  tripDateText(at.length === 10 ? at : new Date(at).toLocaleDateString("en-CA", { timeZone: SCHOOL_TIME_ZONE }));
+  tripDateText(at.length === 10 ? at : new Intl.DateTimeFormat("en-CA", { timeZone: SCHOOL_TIME_ZONE }).format(new Date(at)));
 
 export function alertWhen(key: string, at: string): string {
   switch (key) {
