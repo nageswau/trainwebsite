@@ -1,6 +1,7 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 
 import { signIn } from "./helpers/agency";
+import { signInAsFreshCounselor } from "./helpers/counselor";
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
 // csc-003 (DEC-SCOPE-228) -- on a pending walk-in row the counselor resends the link (then hits the 60 s cooldown) and fixes a
@@ -13,8 +14,14 @@ async function adminActivateStudent(request: APIRequestContext, email: string) {
   expect(login.ok()).toBeTruthy();
   const users = await (await request.get("/api/v1/admin/users?role=overseas_student&provisioning_status=pending_setup")).json();
   const student = users.find((u: { email: string }) => u.email === email);
-  const resend = await (await request.post(`/api/v1/admin/users/${student.id}/welcome-links`)).json();
-  await activateWithToken(request, resend.development_welcome_token);
+  // The ENH-003 cooldown is per account and shared by every sender: right after the counselor's own links the admin Re-send is 429 too.
+  let response = await request.post(`/api/v1/admin/users/${student.id}/welcome-links`);
+  if (response.status() === 429) {
+    await new Promise((resolve) => setTimeout(resolve, (Number(response.headers()["retry-after"]) + 1) * 1000));
+    response = await request.post(`/api/v1/admin/users/${student.id}/welcome-links`);
+  }
+  expect(response.status()).toBe(201);
+  await activateWithToken(request, (await response.json()).development_welcome_token);
   await request.post("/api/v1/auth/logout");
 }
 
@@ -27,13 +34,14 @@ async function addWalkIn(page: Page, name: string, email: string) {
 }
 
 test("a counselor resends the link and fixes a mistyped email; the student activates under the new address (csc-003)", async ({ page, browser }) => {
+  test.setTimeout(150_000); // includes the 60 s per-account cooldown before the admin Re-send
   const consoleErrors: string[] = [];
   page.on("console", (message) => message.type() === "error" && !message.text().includes("status of 429") && consoleErrors.push(message.text()));
   const unique = Date.now();
   const name = `Typo E2E ${unique}`;
   const fixed = `csc003-${unique}@example.local`;
 
-  await signIn(page, "counselor@edusphere.local", "Demo@123", "/overseas/counselor/dashboard");
+  await signInAsFreshCounselor(page, "csc003");
   await page.goto("/overseas/counselor/students");
   await addWalkIn(page, name, `csc003-${unique}@exmaple.local`);
 
@@ -68,7 +76,7 @@ test("a counselor resends the link and fixes a mistyped email; the student activ
 test("an edit to an address that is taken keeps the entry and says why, on a phone screen (csc-003)", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   const name = `Taken E2E ${Date.now()}`;
-  await signIn(page, "counselor@edusphere.local", "Demo@123", "/overseas/counselor/dashboard");
+  await signInAsFreshCounselor(page, "csc003");
   await page.goto("/overseas/counselor/students");
   await addWalkIn(page, name, `taken-${Date.now()}@example.local`);
   await page.getByRole("button", { name: `Edit ${name}` }).click();
