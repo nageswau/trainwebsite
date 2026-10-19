@@ -171,7 +171,7 @@ async def test_anonymous_is_401(client):
 
 @pytest.mark.asyncio
 async def test_creations_are_throttled_per_counselor_and_rejections_count(client, db_session, monkeypatch):
-    monkeypatch.setattr(counselor_students, "CREATE_LIMIT", 2)
+    monkeypatch.setattr(counselor_students, "MAIL_LIMIT", 2)
     existing = await mk_user(db_session, role="overseas_student")
     counselor = await mk_user(db_session, role="counselor")
     other = await mk_user(db_session, role="counselor")

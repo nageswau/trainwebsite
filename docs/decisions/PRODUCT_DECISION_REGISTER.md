@@ -8901,3 +8901,19 @@ duplicates counted; C3 a Student ID at creation, as self-registration; C4 docume
 token is never returned to a counselor in any environment (AGN-001/002 S3) — this corrects the backlog line that said dev/test returns it.
 **Numbering:** no migration; API §12EM; RBAC §2.149.
 - **Feature ID authorized:** `csc-002`. **Status:** built on `feature/csc-002`.
+
+### DEC-SCOPE-228 — A counselor resends the link and fixes a pending walk-in account (`csc-003`)
+
+**Status:** CONFIRMED by owner 2026-10-19 (Claude Code session). Extends `DEC-SCOPE-227` (csc-002).
+**Evidence:** owner answer W6 (2026-10-19, `EXPLICIT_APPROVAL`): "Resend link + fix details" — the counselor resends the welcome link
+and corrects name/phone/email while the account is pending; deactivation and reassignment stay with Overseas Admin
+(`docs/delivery/COUNSELOR_WALKIN_BACKLOG.md` §1). The owner asked to proceed with recommended answers for the rest.
+**Decision:** `POST /counselor/students/{id}/welcome-links` and `PATCH /counselor/students/{id}` on the caller's own linked, pending,
+not-deactivated walk-in students. An email change revokes every open link and mails a new one to the new address.
+**Builder's calls:** C5 resends and email changes share csc-002's mail budget (20 per counselor per rolling 24 h; name/phone edits are
+not counted) — the constant is renamed `MAIL_LIMIT`; C6 Resend link needs no confirmation (it cannot touch a password; the ENH-003 60 s
+per-account cooldown applies); C7 an account an admin deactivated is refused (409), as the admin Re-send refuses it. Unlike AGN-002
+staff (email fixed after creation), W6 allows the email fix: the account has no password yet, so redirecting its link gives the counselor
+no more than creating it did.
+**Numbering:** no migration; API §12EN; RBAC §2.150.
+- **Feature ID authorized:** `csc-003`. **Status:** built on `feature/csc-003`.

@@ -1201,6 +1201,14 @@ class AgentTaskUpdate(BaseModel):
         return self
 
 
+def _walk_in_email(value: str | None) -> str:
+    """csc-002/003: trimmed and lower-cased (the users column is compared as stored); something@domain.tld, worded for people."""
+    value = (value or "").strip().lower()
+    if not _EMAIL_SHAPE.fullmatch(value):
+        raise PydanticCustomError("invalid_email", "Enter a valid email address, like name@example.com")
+    return value
+
+
 class CounselorStudentCreate(BaseModel):
     """csc-002 (DEC-SCOPE-227): an overseas counselor creating a walk-in student's login. Role, division and every account flag are
     server-set, so any other field is refused (422); the student sets their own password from the emailed link."""
@@ -1218,10 +1226,32 @@ class CounselorStudentCreate(BaseModel):
     @field_validator("email")
     @classmethod
     def email_looks_valid(cls, value: str) -> str:
-        value = value.strip().lower()
-        if not _EMAIL_SHAPE.fullmatch(value):
-            raise PydanticCustomError("invalid_email", "Enter a valid email address, like name@example.com")
-        return value
+        return _walk_in_email(value)
+
+    @field_validator("phone")
+    @classmethod
+    def blank_phone_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
+
+
+class CounselorStudentUpdate(BaseModel):
+    """csc-003 (DEC-SCOPE-228, W6): fixing a pending walk-in account. Omitted = unchanged; name and email cannot be cleared (null is 422);
+    phone null or blank clears it. Same rules as `CounselorStudentCreate`; nothing else can be supplied."""
+
+    model_config = {"extra": "forbid"}
+    full_name: str | None = Field(default=None, max_length=160)
+    email: str | None = Field(default=None, max_length=255)
+    phone: str | None = Field(default=None, max_length=40)
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_not_blank(cls, value: str | None) -> str:
+        return _required_full_name(value)
+
+    @field_validator("email")
+    @classmethod
+    def email_looks_valid(cls, value: str | None) -> str:
+        return _walk_in_email(value)
 
     @field_validator("phone")
     @classmethod

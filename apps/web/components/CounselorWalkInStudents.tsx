@@ -5,19 +5,18 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { staffFailure } from "@/lib/agentStaff";
 import { isPage, sendJson, type Page } from "@/lib/apiErrors";
 
-const URL = "/api/v1/counselor/students";
+import CounselorWalkInStudentRow, { WALK_IN_URL as URL, type WalkInStudent } from "./CounselorWalkInStudentRow";
+
 const PAGE_SIZE = 20;
-
-type WalkInStudent = { id: string; full_name: string; email: string; phone: string | null; student_code: string | null; setup: "pending_setup" | "link_expired" | null };
-
-const SETUP_LABEL = { pending_setup: "Set-up pending", link_expired: "Link expired" } as const;
 
 // csc-002 (DEC-SCOPE-227): a student who walks into the office gets a login from their counselor. The student sets their own password
 // from the emailed link (the counselor never sees it) and is in the counselor's caseload at once (csc-001), e.g. for Schedule appointment.
+// csc-003 (DEC-SCOPE-228): each pending row can resend the link or fix the details (CounselorWalkInStudentRow).
 export default function CounselorWalkInStudents() {
   const [data, setData] = useState<Page<WalkInStudent> | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [offset, setOffset] = useState(0);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback((at: number) => {
     setLoadFailed(false);
@@ -40,6 +39,8 @@ export default function CounselorWalkInStudents() {
     <div className="action-card">
       <h3>Walk-in students</h3>
       <p className="muted" style={{ fontSize: 13 }}>Create a login for a student who came to the office. They receive an email to set their password, and they are added to your students.</p>
+      {/* csc-003: row results (resend, edit) are announced here; always mounted, styled only while it has something to say. */}
+      <div className={notice ? "form-message" : undefined} role="status" aria-live="polite" style={notice ? { marginBottom: 8, overflowWrap: "anywhere" } : undefined}>{notice}</div>
       {loadFailed ? (
         <>
           <p className="form-error" role="alert">Unable to load your walk-in students.</p>
@@ -52,12 +53,14 @@ export default function CounselorWalkInStudents() {
       ) : (
         <ul style={{ paddingLeft: 0, listStyle: "none" }}>
           {data.items.map((s) => (
-            <li key={s.id} style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", padding: "8px 0", borderBottom: "1px solid var(--line, #e5e7eb)", overflowWrap: "anywhere" }}>
-              <strong>{s.full_name}</strong>
-              <span>{s.email}</span>
-              {s.student_code && <span className="muted">Student ID {s.student_code}</span>}
-              <span className="badge">{s.setup ? SETUP_LABEL[s.setup] : "Active"}</span>
-            </li>
+            <CounselorWalkInStudentRow
+              key={s.id}
+              student={s}
+              onChanged={(message) => {
+                setNotice(message);
+                reload();
+              }}
+            />
           ))}
         </ul>
       )}

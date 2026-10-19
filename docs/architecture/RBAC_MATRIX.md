@@ -2390,6 +2390,18 @@ plus students linked to the counselor" (`overseas_student_counselors`); every ot
 - Audit `counselor.student_create` / `counselor.student_create_rejected` carry ids and the student code only — never the email or phone.
 - Pinned by `test_csc_002_walk_in_students.py`.
 
+### 2.150 A counselor resends the link or fixes a pending walk-in account *(added 2026-10-19 — `DEC-SCOPE-228`, csc-003)*
+
+| Route | `counselor` (overseas), own linked student | same, anyone else's student | `counselor` (IT), every other role | Anonymous |
+|---|---|---|---|---|
+| `POST /counselor/students/{id}/welcome-links` | ✅ while pending and active-flag (`409` otherwise) | `404` | `403` | `401` |
+| `PATCH /counselor/students/{id}` | ✅ name / phone / email while pending (`409` otherwise) | `404` | `403` | `401` |
+
+- Once the student has set a password the counselor can change nothing (W6); deactivation and reassignment stay with Overseas Admin.
+- An email change revokes every open set-password link, so a link mailed to a mistyped address stops working.
+- Audit `counselor.student_resend`, `counselor.student_update` (changed field **names** only), `counselor.student_update_rejected`.
+- Pinned by `test_csc_003_walk_in_resend_edit.py`.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

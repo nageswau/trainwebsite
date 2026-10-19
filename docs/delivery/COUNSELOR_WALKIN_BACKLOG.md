@@ -132,6 +132,10 @@ to a counselor (AGN-001/002 S3). Spec `docs/superpowers/specs/2026-10-19-csc-002
 
 ### `csc-003` — Counselor resends the link and fixes details on a pending account
 
+**Status (2026-10-19): built on `feature/csc-003`** — `DEC-SCOPE-228`, API §12EN, RBAC §2.150, no migration. Builder's calls C5–C7
+(shared mail budget; no confirmation on Resend; deactivated accounts refused). Spec
+`docs/superpowers/specs/2026-10-19-csc-003-walk-in-resend-and-edit-design.md`.
+
 - **Business requirement:** the counselor can recover from a mistyped address or a lost email without an admin (W6).
 - **Existing behaviour:** resend is admin-only (`api/admin.py:757`); a counselor has no edit rights on a student account.
 - **Expected behaviour:**
