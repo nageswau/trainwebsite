@@ -731,3 +731,17 @@ half.
 | `csc-004-AC6` | New walk-in lead page: source Walk-in, no Division picker, Overseas/team-less products only; button for the overseas counselor only; the telecaller form unchanged | `apps/web/tests/components/NewLeadForm.walkIn.test.tsx` (2), `CounselorLeadsPanel.walkIn.test.tsx` (2), existing `NewLeadForm.test.tsx` (12); e2e csc-004 (+ phone screen) and tel-005 |
 | `csc-004-AC7` | The page renders from the server (QA-01: no function crosses the server/client boundary) | e2e csc-004 (heading visible); browser QA |
 
+**Addendum, 2026-10-19 (`csc-005`)** — one row and its acceptance-criteria map. The Overseas Admin reassigns a student's counselor.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `csc-005` | Requirement: owner answers W3, W6 (in-session 2026-10-19, `EXPLICIT_APPROVAL`) → `docs/delivery/COUNSELOR_WALKIN_BACKLOG.md` §3 → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-230` → design `docs/superpowers/specs/2026-10-19-csc-005-admin-reassign-student-counselor-design.md` → plan `docs/superpowers/plans/2026-10-19-csc-005-admin-reassign-student-counselor.md`; `API_CONTRACT.md` §12EP, `RBAC_MATRIX.md` §2.152 | none | Built on `feature/csc-005`; lite API set, vitest, e2e and browser QA green |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `csc-005-AC1` | The Overseas Admin moves a student's link; audit from/to; the new and previous counselor are notified; the new counselor's picker has the student, the old one's does not | `apps/api/tests/test_csc_005_reassign_student_counselor.py::test_the_overseas_admin_moves_a_student_to_another_counselor`; e2e `apps/web/tests/e2e/csc-005-reassign-student-counselor.spec.ts` |
+| `csc-005-AC2` | A student with no counselor yet is assigned; the same counselor changes nothing | `::test_a_student_with_no_counselor_yet_is_assigned`, `::test_the_same_counselor_changes_nothing` |
+| `csc-005-AC3` | Only an active overseas counselor (422); only an overseas student (404) | `::test_only_an_active_overseas_counselor_can_receive_the_student`, `::test_only_an_overseas_student_can_be_reassigned` |
+| `csc-005-AC4` | Overseas Admin only (super_admin, IT admin, counselor, student, agent → 403); anonymous 401 | `::test_everyone_but_the_overseas_admin_is_403` (5), `::test_anonymous_is_401` |
+| `csc-005-AC5` | The Overseas Admin's Users directory shows each student's counselor with the control (staff rows none); other sections/roles unchanged | `::test_the_overseas_admins_users_directory_shows_…`, `::test_other_user_sections_are_unchanged`; `apps/web/tests/components/AssignCounselorButton.student.test.tsx` (2); existing `AssignCounselorButton.test.tsx`, `DataTable.test.tsx`; e2e (csc-005, agn-023) |
+
