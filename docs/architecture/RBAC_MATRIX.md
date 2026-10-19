@@ -2415,6 +2415,16 @@ plus students linked to the counselor" (`overseas_student_counselors`); every ot
   counselor handover metrics count handovers only.
 - Pinned by `test_csc_004_walk_in_leads.py`.
 
+### 2.152 The Overseas Admin reassigns a student's counselor *(added 2026-10-19 — `DEC-SCOPE-230`, csc-005)*
+
+| Route | `overseas_admin` | `super_admin` | `it_admin`, `counselor`, students, agents, every other role | Anonymous |
+|---|---|---|---|---|
+| `PUT /admin/users/{id}/counselor` | ✅ overseas students only (`404` otherwise) | `403` (C13, as AGN-023 H2) | `403` | `401` |
+| Users directory counsellor column + control | ✅ | column absent | n/a | n/a |
+
+- W6: reassignment stays with the Overseas Admin; a counselor cannot move their own students.
+- Pinned by `test_csc_005_reassign_student_counselor.py`.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

@@ -37,6 +37,7 @@ from app.models import (
     LiveSession,
     Message,
     OverseasApplication,
+    OverseasStudentCounselor,
     Payment,
     PlacementProfile,
     Program,
@@ -1433,12 +1434,29 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 stmt = stmt.where(User.role == role_map[section])
             rows = (await db.scalars(stmt.order_by(User.created_at.desc()).limit(500))).all()
             setup = await provisioning_statuses(db, [u.id for u in rows])  # absent = has set a password
-            return _payload(
-                section.title(),
-                "Role-scoped user administration.",
-                (("id", "reference"), ("name", "Name"), ("email", "Email"), ("role", "Role"), ("active", "Active"), ("setup", "Setup")),
-                ({"id": u.id, "name": u.full_name, "email": u.email, "role": u.role, "active": u.active, "setup": _SETUP_LABEL[setup.get(u.id, "active")]} for u in rows),
-            )
+            columns = [("id", "reference"), ("name", "Name"), ("email", "Email"), ("role", "Role"), ("active", "Active"), ("setup", "Setup")]
+            table = [{"id": u.id, "name": u.full_name, "email": u.email, "role": u.role, "active": u.active, "setup": _SETUP_LABEL[setup.get(u.id, "active")]} for u in rows]
+            if section == "users" and division == "overseas" and user.role == "overseas_admin":
+                # csc-005 (DEC-SCOPE-230): each overseas student's counselor (csc-001 link) and AGN-023's assign/change control, Overseas
+                # Admin only. Here and not on Students, which lists applications (AGN-023 H11): a walk-in with none would be missing there.
+                linked = {
+                    student_id: (counselor_id, name)
+                    for student_id, counselor_id, name in (
+                        await db.execute(
+                            select(OverseasStudentCounselor.student_user_id, User.id, User.full_name)
+                            .join(User, User.id == OverseasStudentCounselor.counselor_user_id)
+                            .where(OverseasStudentCounselor.student_user_id.in_([u.id for u in rows]))
+                        )
+                    ).all()
+                }
+                columns += [("counselor", "EduSphere counsellor"), ("assign", "", "assign_student_counselor")]
+                for row in table:
+                    if row["role"] != "overseas_student":  # staff: no counsellor, no control
+                        row |= {"counselor": None, "counselor_id": None, "assign": None}
+                        continue
+                    counselor_id, name = linked.get(row["id"], (None, None))
+                    row |= {"counselor": name or "Not assigned", "counselor_id": str(counselor_id) if counselor_id else None, "assign": row["id"]}
+            return _payload(section.title(), "Role-scoped user administration.", columns, table)
         if section == "agents" and (division == "overseas" or user.role == "super_admin"):
             # AGT-001: Overseas Admin's own approve/reject queue -- the generic
             # role_map listing below has no `approval_status` column to show at all.

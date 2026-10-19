@@ -8932,3 +8932,17 @@ telecaller targets/dashboards unchanged; C11 the counselor may add an enquiry to
 C12 source preset to Walk-in but editable. C8–C10 keep existing behaviour (W2); changing them is a later decision.
 **Numbering:** no migration; API §12EO; RBAC §2.151.
 - **Feature ID authorized:** `csc-004`. **Status:** built on `feature/csc-004`.
+
+### DEC-SCOPE-230 — The Overseas Admin reassigns a student's counselor (`csc-005`)
+
+**Status:** CONFIRMED by owner 2026-10-19 (Claude Code session). Extends `DEC-SCOPE-226` (csc-001) and follows `DEC-SCOPE-090` (AGN-023).
+**Evidence:** owner answers W3 ("Overseas Admin can reassign") and W6 ("deactivation and reassignment stay with Overseas Admin"),
+2026-10-19 (`EXPLICIT_APPROVAL`; `docs/delivery/COUNSELOR_WALKIN_BACKLOG.md` §1). The owner asked to proceed with recommended answers.
+**Decision:** `PUT /admin/users/{id}/counselor` moves an overseas student's csc-001 link to another active overseas counselor, with
+AGN-023's rules (Overseas Admin only, swap only, same counselor is a no-op, audit, notifications). The Overseas Admin's Users directory
+shows each student's counselor with AGN-023's picker.
+**Builder's calls:** C13 Overseas Admin only, `super_admin` excluded (AGN-023 H2; the backlog §5 question); C14 a student with no link
+yet can be assigned (creates it), no "unassign"; C15 the Overseas Admin's appointment list stays application-based (noted in csc-001);
+the control is on Users, not Students (Students lists applications for the Overseas Admin).
+**Numbering:** no migration; API §12EP; RBAC §2.152.
+- **Feature ID authorized:** `csc-005`. **Status:** built on `feature/csc-005`.

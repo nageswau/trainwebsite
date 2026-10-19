@@ -7,7 +7,10 @@ gets the ENH-003 set-password link (delivered by the route after the commit). Fu
 duplicate's audit row.
 
 csc-003 (DEC-SCOPE-228, W6): while a walk-in account is pending (never activated), its counselor resends the link or fixes the name,
-phone or email; an email change revokes the open link and the route mails a new one to the new address."""
+phone or email; an email change revokes the open link and the route mails a new one to the new address.
+
+csc-005 (DEC-SCOPE-230, W3/W6): the Overseas Admin moves a student to another active overseas counselor -- AGN-023's rules (DEC-SCOPE-090)
+for the student-level link."""
 
 import logging
 from datetime import UTC, datetime, timedelta
@@ -19,7 +22,8 @@ from sqlalchemy import and_, exists, func, or_, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.identifiers import unique_student_code
-from app.models import AuditLog, OverseasApplication, OverseasStudentCounselor, User, UserRoleAssignment
+from app.models import AuditLog, Notification, OverseasApplication, OverseasStudentCounselor, User, UserRoleAssignment
+from app.notifications.dispatch import queue_deliveries
 from app.schemas import CounselorStudentCreate
 from app.services.agent_orgs import retry_after
 from app.services.provisioning import IssuedWelcome, flush_unique_email, issue_welcome_token, provisioning_statuses, resend_wait_seconds, unusable_password_hash
@@ -38,6 +42,9 @@ MAIL_WINDOW = timedelta(hours=24)
 CREATED, REJECTED = "counselor.student_create", "counselor.student_create_rejected"
 RESENT, UPDATED, UPDATE_REJECTED = "counselor.student_resend", "counselor.student_update", "counselor.student_update_rejected"
 EMAILED = "emailed"  # the outcome of an update that mailed a new link (an email change)
+ADMIN_ONLY = "Only the Overseas Admin can assign a counselor"  # csc-005: AGN-023's wording and rule
+CHOOSE_ACTIVE_COUNSELOR = "Choose an active overseas counselor"
+ASSIGNED = "overseas.student.counselor_assign"
 
 
 def visible_student_ids(counselor: User):
@@ -176,6 +183,43 @@ async def update_student(db: AsyncSession, counselor: User, student_id: UUID, ch
         setup = "pending_setup"
     db.add(AuditLog(user_id=counselor_id, action=UPDATED, entity_type="user", entity_id=str(student.id), outcome=EMAILED if issued else "updated", metadata_json={"fields": sorted(changes)}))
     return student, setup, issued
+
+
+async def _notify(db: AsyncSession, recipient: User, title: str, body: str) -> None:
+    """In-app row plus queued deliveries (ENH-014), sent after the commit -- as AGN-023's assignment notices."""
+    item = Notification(user_id=recipient.id, title=title, body=body, read=False, action_url="/overseas/counselor/students")
+    db.add(item)
+    await db.flush()
+    await queue_deliveries(db, item, recipient)
+
+
+async def assign_counselor(db: AsyncSession, admin: User, student_id: UUID, counselor_id: UUID) -> dict:
+    """No commit. AGN-023 (H2, H8): the Overseas Admin only; swap only (a counselor is required); the same counselor changes nothing. A
+    student with no link yet gets one (C14). The student row is locked so two reassignments serialise."""
+    if admin.role != "overseas_admin" or admin.division != "overseas":  # C13: not super_admin, as AGN-023
+        raise HTTPException(403, ADMIN_ONLY)
+    student = await db.scalar(select(User).where(User.id == student_id, User.role == "overseas_student").with_for_update())
+    if student is None:
+        raise HTTPException(404, STUDENT_NOT_FOUND)
+    counselor = await db.get(User, counselor_id)
+    if counselor is None or counselor.role != "counselor" or counselor.division != "overseas" or not counselor.active:
+        raise HTTPException(422, CHOOSE_ACTIVE_COUNSELOR)
+    result = {"id": student.id, "counselor_id": counselor.id, "counselor_name": counselor.full_name}
+    row = await db.scalar(select(OverseasStudentCounselor).where(OverseasStudentCounselor.student_user_id == student.id))
+    if row is not None and row.counselor_user_id == counselor.id:
+        return {**result, "changed": False}
+    previous_id = row.counselor_user_id if row else None
+    if row is None:
+        db.add(OverseasStudentCounselor(student_user_id=student.id, counselor_user_id=counselor.id, assigned_by_user_id=admin.id))
+    else:
+        row.counselor_user_id, row.assigned_by_user_id = counselor.id, admin.id
+    db.add(AuditLog(user_id=admin.id, action=ASSIGNED, entity_type="user", entity_id=str(student.id),
+                    metadata_json={"from_counselor_id": str(previous_id) if previous_id else None, "to_counselor_id": str(counselor.id)}))  # fmt: skip
+    await _notify(db, counselor, "Student assigned to you", f"{student.full_name} is now one of your students.")
+    previous = await db.get(User, previous_id) if previous_id else None
+    if previous is not None and previous.active:
+        await _notify(db, previous, "Student reassigned", "A student has moved to another counselor.")
+    return {**result, "changed": True}
 
 
 async def page(db: AsyncSession, counselor: User, limit: int, offset: int) -> dict:

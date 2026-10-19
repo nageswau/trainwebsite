@@ -204,6 +204,10 @@ as builder's calls C8–C10 (all unchanged); C11 add-enquiry from the duplicate 
 
 ### `csc-005` — Overseas Admin views and reassigns a student's counselor link
 
+**Status (2026-10-19): built on `feature/csc-005`** — `DEC-SCOPE-230`, API §12EP, RBAC §2.152, no migration. Builder's calls C13–C15
+(Overseas Admin only; assign creates a missing link; appointments list unchanged); the control is on the admin **Users** directory.
+Spec `docs/superpowers/specs/2026-10-19-csc-005-admin-reassign-student-counselor-design.md`.
+
 - **Business requirement:** a linked student is never stranded, for example when their counselor is deactivated (W3).
 - **Existing behaviour:** there is no student-level counselor link to view or change.
 - **Expected behaviour:** the admin user view shows the linked counselor, and Overseas Admin can reassign it to an active overseas

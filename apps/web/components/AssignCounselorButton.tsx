@@ -10,7 +10,8 @@ import { lookupSearch, type PickOption } from "@/lib/lookups";
 // AGN-023 (DEC-SCOPE-090 §3.1, §6): the Overseas Admin assigns or swaps an application's EduSphere counselor. Swap only (H8): there
 // is no "none" choice. The picker is a type-ahead over the active overseas counselors (lookups/overseas-counselors, so the 500-row
 // /admin/users cap cannot hide anyone); the server re-checks every rule.
-export default function AssignCounselorButton({ applicationId, currentId }: { applicationId: string; currentId: string | null }) {
+// csc-005 (DEC-SCOPE-230): `url` points the same picker at a student's counselor (PUT /admin/users/{id}/counselor); default: the application.
+export default function AssignCounselorButton({ applicationId, currentId, url }: { applicationId: string; currentId: string | null; url?: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<PickOption | null>(null);
@@ -60,7 +61,7 @@ export default function AssignCounselorButton({ applicationId, currentId }: { ap
     event.preventDefault();
     if (!picked) return;
     setBusy(true);
-    const result = await sendJson(`/api/v1/workflows/overseas/applications/${applicationId}/counselor`, "PUT", { counselor_id: picked.id });
+    const result = await sendJson(url ?? `/api/v1/workflows/overseas/applications/${applicationId}/counselor`, "PUT", { counselor_id: picked.id });
     setBusy(false);
     if (!result.ok) {
       setMessage({ text: result.message, failed: true });
