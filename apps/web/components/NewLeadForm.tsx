@@ -8,12 +8,13 @@ import ProductOptions from "@/components/TelecallerProductOptions";
 import { isRequestBody, sendJson } from "@/lib/apiErrors";
 import { formatDate } from "@/lib/formatDate";
 import { SOURCES, SOURCE_LABEL, activeCampaigns, activeProducts, type Campaign, type Product } from "@/lib/telecallerCatalogue";
-import { PRIORITIES, TELECALLER_LEAD_API, type DuplicateMatch, type LeadIntakeApi } from "@/lib/telecallerLeads";
+import { LEADS_URL, PRIORITIES, type DuplicateMatch } from "@/lib/telecallerLeads";
 
 // tel-005 (spec §4; I1, I2, I5, R2, R5, R6): a telecaller or manager enters a lead. The mobile is required, email optional; the API
 // decides the owner, the stage and every rule. A known person (same mobile or email, any lead) is shown in the §18 duplicate panel,
 // where the new enquiry can be added to that lead instead.
-// csc-004 (DEC-SCOPE-229): an overseas counselor's walk-in lead uses the same form with its own endpoints (`api`), preset values
+// csc-004 (DEC-SCOPE-229): an overseas counselor's walk-in lead uses the same form with its own intake prefix (`apiBase`: create,
+// /duplicate-check and /{id}/enquiries under it -- a string, so a server page can pass it, QA-01), preset values
 // (`initial`: source Walk-in) and a fixed team (`team`: no Division picker, other teams' products hidden).
 type Notice = { text: string; failed: boolean } | null;
 const TEXT_FIELDS = [
@@ -110,8 +111,8 @@ function DuplicatePanel({ matches, basePath, enquiry, enquiryUrl, focusRequest }
   );
 }
 
-export default function NewLeadForm({ basePath, api = TELECALLER_LEAD_API, initial, team }: {
-  basePath: string; api?: LeadIntakeApi; initial?: Record<string, string>; team?: "it" | "overseas";
+export default function NewLeadForm({ basePath, apiBase = LEADS_URL, initial, team }: {
+  basePath: string; apiBase?: string; initial?: Record<string, string>; team?: "it" | "overseas";
 }) {
   const router = useRouter();
   const start: Record<string, string> = { ...EMPTY, ...initial, ...(team ? { division: team } : {}) };
@@ -151,7 +152,7 @@ export default function NewLeadForm({ basePath, api = TELECALLER_LEAD_API, initi
   async function checkDuplicates() {
     const query = new URLSearchParams(Object.entries({ phone: values.phone.trim(), email: values.email.trim() }).filter(([, v]) => v));
     if (!query.size) return setMatches([]);
-    const response = await fetch(`${api.duplicateCheck}?${query}`).catch(() => null);
+    const response = await fetch(`${apiBase}/duplicate-check?${query}`).catch(() => null);
     const data = response?.ok ? await response.json().catch(() => null) : null;
     setMatches(Array.isArray(data?.matches) ? data.matches : []); // QA-03: a number that can't be checked keeps no stale match
   }
@@ -181,7 +182,7 @@ export default function NewLeadForm({ basePath, api = TELECALLER_LEAD_API, initi
       if (text && key !== "priority") payload[key] = key === "passing_year" ? Number(text) : text;
     }
     setBusy(true);
-    const outcome = await sendJson(api.create, "POST", payload);
+    const outcome = await sendJson(apiBase, "POST", payload);
     setBusy(false);
     sending.current = false;
     if (outcome.ok && isRequestBody(outcome.data)) {
@@ -205,7 +206,7 @@ export default function NewLeadForm({ basePath, api = TELECALLER_LEAD_API, initi
   return (
     <div style={{ display: "grid", gap: 16 }}>
       {/* QA-05: above the form, so the warning shows next to the mobile/email fields even on a phone */}
-      {matches.length > 0 && <DuplicatePanel matches={matches} basePath={basePath} enquiry={enquiryPayload} enquiryUrl={api.enquiry} focusRequest={focusRequest} />}
+      {matches.length > 0 && <DuplicatePanel matches={matches} basePath={basePath} enquiry={enquiryPayload} enquiryUrl={(id) => `${apiBase}/${encodeURIComponent(id)}/enquiries`} focusRequest={focusRequest} />}
       <form onSubmit={submit} noValidate className="action-card" style={{ display: "grid", gap: 12 }}>
         <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))" }}>
           {TEXT_FIELDS.map(({ key, label, type, max, required }) => (

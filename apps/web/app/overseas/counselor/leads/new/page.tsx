@@ -5,7 +5,7 @@ import { accessUnavailable } from "@/components/AccessUnavailable";
 import NewLeadForm from "@/components/NewLeadForm";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
-import { WALK_IN_LEAD_API } from "@/lib/leadHandover";
+import { WALK_IN_LEADS_URL } from "@/lib/leadHandover";
 import { PORTAL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
@@ -35,7 +35,7 @@ export default async function NewWalkInLeadPage() {
             </p>
           </div>
         </div>
-        <NewLeadForm basePath={LEADS} api={WALK_IN_LEAD_API} initial={{ source: "walk_in" }} team="overseas" />
+        <NewLeadForm basePath={LEADS} apiBase={WALK_IN_LEADS_URL} initial={{ source: "walk_in" }} team="overseas" />
       </div>
     </PortalShell>
   );

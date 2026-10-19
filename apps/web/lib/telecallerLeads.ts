@@ -25,10 +25,6 @@ export type DuplicateMatch = {
 export const LEADS_URL = "/api/v1/telecaller/leads";
 export const DUPLICATE_CHECK_URL = `${LEADS_URL}/duplicate-check`;
 export const leadUrl = (id: string, suffix = "") => `${LEADS_URL}/${encodeURIComponent(id)}${suffix}`;
-
-// csc-004: the three intake endpoints NewLeadForm calls -- the telecaller/manager ones by default, the counselor's for a walk-in lead.
-export type LeadIntakeApi = { create: string; duplicateCheck: string; enquiry: (id: string) => string };
-export const TELECALLER_LEAD_API: LeadIntakeApi = { create: LEADS_URL, duplicateCheck: DUPLICATE_CHECK_URL, enquiry: (id) => leadUrl(id, "/enquiries") };
 export const LEAD_LIST_FILTERS = ["status", "priority", "product_id", "campaign_id", "follow_up"] as const; // tel-011 F9: follow_up
 export type LeadListFilter = (typeof LEAD_LIST_FILTERS)[number];
 export const FOLLOW_UP_FILTERS = [{ key: "today", label: "Due today" }, { key: "overdue", label: "Overdue" }] as const;
