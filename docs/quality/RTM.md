@@ -683,3 +683,19 @@ half.
 | `csc-001-AC3` | Another counselor's linked student is never visible or bookable; an IT counselor is refused | `::test_another_counselors_linked_student_is_not_visible`, `::test_the_counselor_cannot_book_for_another_counselors_linked_student`, `::test_an_it_counselor_is_still_refused` |
 | `csc-001-AC4` | The counselor books an appointment for a linked student, and it shows in their Student appointments list (QA-01) | `::test_the_counselor_books_an_appointment_for_a_linked_student`, `::test_the_counselors_appointment_list_shows_a_linked_students_booking`; e2e (1280 px and 375 px) |
 | `csc-001-AC5` | Migration 0165 is additive, the single head, one counselor per student, and refuses to downgrade while links exist | `apps/api/tests/test_csc_001_migration.py` (5 tests) |
+
+**Addendum, 2026-10-19 (`csc-002`)** — one row and its acceptance-criteria map. A counselor creates a walk-in student's login.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `csc-002` | Requirement: owner request and answers W1–W3 (in-session 2026-10-19, `EXPLICIT_APPROVAL`) → `docs/delivery/COUNSELOR_WALKIN_BACKLOG.md` §3 → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-227` → design `docs/superpowers/specs/2026-10-19-csc-002-counselor-walk-in-student-design.md` → plan `docs/superpowers/plans/2026-10-19-csc-002-counselor-walk-in-student.md`; `API_CONTRACT.md` §12EM, `RBAC_MATRIX.md` §2.149 | none | Built on `feature/csc-002`; lite API set, vitest, e2e and browser QA green |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `csc-002-AC1` | The counselor creates an `overseas_student` with a Student ID, linked to them; the set-password email goes to the student; the student sets a password and signs in | `apps/api/tests/test_csc_002_walk_in_students.py::test_the_counselor_creates_a_linked_overseas_student_and_the_link_is_emailed`, `::test_the_welcome_email_goes_to_the_student_with_the_overseas_link_and_the_counselor_as_inviter`, `::test_a_counselor_created_student_is_in_the_counselors_picker`; e2e `apps/web/tests/e2e/csc-002-walk-in-student.spec.ts` |
+| `csc-002-AC2` | The counselor never receives the link token; role, division and flags cannot be supplied | `::test_the_counselor_creates_…` (no token), `::test_server_set_fields_cannot_be_supplied` (6 cases); e2e (response has no token) |
+| `csc-002-AC3` | Existing email → 409 (case-insensitive, audited without the address); concurrent duplicates make one account; invalid input → 422 | `::test_an_existing_email_is_409_…`, `::test_two_concurrent_creates_for_one_email_make_one_account`, `::test_invalid_input_is_422` (6 cases); e2e (phone screen) |
+| `csc-002-AC4` | Only an overseas counselor; anonymous 401; 20 per counselor per 24 h with refusals counted | `::test_other_roles_and_the_it_counselor_are_403` (5 cases), `::test_anonymous_is_401`, `::test_creations_are_throttled_per_counselor_and_rejections_count` |
+| `csc-002-AC5` | A failed or unconfigured send keeps the account and says so | `::test_a_failed_send_keeps_the_account_and_says_so`; `apps/web/tests/components/CounselorWalkInStudents.test.tsx` ("says so when the email was not delivered") |
+| `csc-002-AC6` | The counselor's Walk-in students list: own students only, newest first, set-up status, paging; loading / empty / error / double-submit states | `::test_the_list_is_the_counselors_own_…`, `::test_the_list_pages`; `CounselorWalkInStudents.test.tsx` (9), `WorkflowPanel.walkInStudents.test.tsx` (3) |
+
