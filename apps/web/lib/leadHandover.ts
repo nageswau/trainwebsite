@@ -1,6 +1,6 @@
 // tel-018 (DEC-SCOPE-101, API §12V): the counselor handover, the counselor's leads, the return and the student link. Labels are display
 // only; the API decides scope, `permissions` and every rule.
-import type { PersonRef, TelecallerLead } from "@/lib/telecallerLeads";
+import type { LeadIntakeApi, PersonRef, TelecallerLead } from "@/lib/telecallerLeads";
 
 export type MilestoneKind = "enrollment" | "application" | "visa";
 export type Milestone = { kind: MilestoneKind; label: string; status: string; reference: string | null; at: string };
@@ -14,6 +14,13 @@ export type CounselorLeadDetail = CounselorLead & {
 export type StudentSuggestion = { id: string; full_name: string; email: string; phone: string | null; linked_elsewhere: boolean };
 
 export const COUNSELOR_LEADS_URL = "/api/v1/counselor/leads";
+// csc-004 (DEC-SCOPE-229): an overseas counselor records a walk-in as a lead -- tel-005's intake under the counselor's own prefix.
+const WALK_IN_LEADS_URL = "/api/v1/counselor/walk-in-leads";
+export const WALK_IN_LEAD_API: LeadIntakeApi = {
+  create: WALK_IN_LEADS_URL,
+  duplicateCheck: `${WALK_IN_LEADS_URL}/duplicate-check`,
+  enquiry: (id) => `${WALK_IN_LEADS_URL}/${encodeURIComponent(id)}/enquiries`,
+};
 export const counselorLeadUrl = (id: string, suffix = "") => `${COUNSELOR_LEADS_URL}/${encodeURIComponent(id)}${suffix}`;
 export const handoverUrl = (id: string) => `/api/v1/telecaller/leads/${encodeURIComponent(id)}/handover`;
 export const counselorLeadHref = (division: string, id: string) => `/${division === "overseas" ? "overseas" : "it"}/counselor/leads/${encodeURIComponent(id)}`;

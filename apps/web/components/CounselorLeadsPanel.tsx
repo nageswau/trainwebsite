@@ -72,8 +72,13 @@ export default function CounselorLeadsPanel({ division }: { division: "it" | "ov
         <div>
           <div className="eyebrow">Leads</div>
           <h2 id={`${idp}-heading`}>My leads</h2>
-          <p className="muted">Leads telecallers handed to you. Open one to link the student account or return it to the telecaller.</p>
+          <p className="muted">
+            {division === "overseas" ? "Leads telecallers handed to you and walk-ins you recorded." : "Leads telecallers handed to you."} Open one to link the
+            student account or return it to the telecaller.
+          </p>
         </div>
+        {/* csc-004 (DEC-SCOPE-229, W1): only the overseas counselor records a walk-in as a lead. */}
+        {division === "overseas" && <Link className="btn" href="/overseas/counselor/leads/new">New walk-in lead</Link>}
       </div>
       {body}
     </section>

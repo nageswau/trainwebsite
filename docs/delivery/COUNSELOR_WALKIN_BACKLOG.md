@@ -164,6 +164,10 @@ to a counselor (AGN-001/002 S3). Spec `docs/superpowers/specs/2026-10-19-csc-002
 
 ### `csc-004` — Counselor creates a walk-in lead
 
+**Status (2026-10-19): built on `feature/csc-004`** — `DEC-SCOPE-229`, API §12EO, RBAC §2.151, no migration. The §5 metrics questions closed
+as builder's calls C8–C10 (all unchanged); C11 add-enquiry from the duplicate panel; C12 source preset to Walk-in. Spec
+`docs/superpowers/specs/2026-10-19-csc-004-counselor-walk-in-lead-design.md`.
+
 - **Business requirement:** a walk-in who is not ready for an account is captured as a lead by the counselor (W2, W4, W5).
 - **Existing behaviour:** leads are created by telecallers and managers (`lead_intake.create_lead`), or arrive from the website, BDM
   or import. A counselor cannot create one.

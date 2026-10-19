@@ -8917,3 +8917,18 @@ staff (email fixed after creation), W6 allows the email fix: the account has no 
 no more than creating it did.
 **Numbering:** no migration; API §12EN; RBAC §2.150.
 - **Feature ID authorized:** `csc-003`. **Status:** built on `feature/csc-003`.
+
+### DEC-SCOPE-229 — A counselor records a walk-in lead (`csc-004`)
+
+**Status:** CONFIRMED by owner 2026-10-19 (Claude Code session). Extends `DEC-SCOPE-088` (tel-005 intake), `DEC-SCOPE-087` (tel-007
+distribution) and `DEC-SCOPE-101` (tel-018 counselor leads).
+**Evidence:** owner answers W1, W2, W4, W5 (2026-10-19, `EXPLICIT_APPROVAL`; `docs/delivery/COUNSELOR_WALKIN_BACKLOG.md` §1): an Overseas
+counselor may record a walk-in as a lead; the counselor owns it and a telecaller is distributed too; the telecaller stays read-only
+(D1/T19 unchanged); existing functionality does not change. The owner asked to proceed with recommended answers for the open questions.
+**Decision:** `/counselor/walk-in-leads` (duplicate-check, create, add-enquiry) reuses tel-005's intake for an Overseas counselor. The lead
+is the counselor's (`owner_id`), in their division, distributed by tel-007, and appears in the counselor's My leads (tel-018).
+**Builder's calls:** C8 telecaller conversion credit unchanged; C9 counselor handover metrics unchanged (they count handovers); C10
+telecaller targets/dashboards unchanged; C11 the counselor may add an enquiry to an existing lead from the duplicate panel (tel-005 I5);
+C12 source preset to Walk-in but editable. C8–C10 keep existing behaviour (W2); changing them is a later decision.
+**Numbering:** no migration; API §12EO; RBAC §2.151.
+- **Feature ID authorized:** `csc-004`. **Status:** built on `feature/csc-004`.
