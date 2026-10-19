@@ -669,3 +669,17 @@ End-to-end: `agn-024-agent-kyc.spec.ts` covers AC01–AC07 and AC10 in one journ
 
 **APPROVED** (user, in-session, 2026-09-01, approved as drafted) as part of GATE-08's test-strategy
 half.
+
+**Addendum, 2026-10-19 (`csc-001`)** — one row and its acceptance-criteria map. A student → counselor link (walk-in caseload).
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `csc-001` | Requirement: owner request and answers W1, W3 (in-session 2026-10-19, `EXPLICIT_APPROVAL`) → `docs/delivery/COUNSELOR_WALKIN_BACKLOG.md` §3 → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-226` → design `docs/superpowers/specs/2026-10-19-csc-001-student-counselor-link-design.md` → plan `docs/superpowers/plans/2026-10-19-csc-001-student-counselor-link.md`; `DATA_MODEL.md` (student → counselor link), `RBAC_MATRIX.md` §2.148, `API_CONTRACT.md` lookups table | none | Built on `feature/csc-001`; lite API set, e2e and browser QA green |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `csc-001-AC1` | A linked student with no application is in the counselor's Student reference picker | `apps/api/tests/test_csc_001_counselor_students.py::test_a_linked_student_with_no_application_is_in_the_counselors_picker`, `::test_q_still_filters_linked_students`; e2e `apps/web/tests/e2e/csc-001-counselor-linked-student.spec.ts` |
+| `csc-001-AC2` | Linked and application students are listed once each; application-based behaviour unchanged | `::test_linked_and_application_students_are_listed_once_each`; existing `test_enh_031_lookups_students.py`, `test_cns_001_counselor_workspace.py` |
+| `csc-001-AC3` | Another counselor's linked student is never visible or bookable; an IT counselor is refused | `::test_another_counselors_linked_student_is_not_visible`, `::test_the_counselor_cannot_book_for_another_counselors_linked_student`, `::test_an_it_counselor_is_still_refused` |
+| `csc-001-AC4` | The counselor books an appointment for a linked student, and it shows in their Student appointments list (QA-01) | `::test_the_counselor_books_an_appointment_for_a_linked_student`, `::test_the_counselors_appointment_list_shows_a_linked_students_booking`; e2e (1280 px and 375 px) |
+| `csc-001-AC5` | Migration 0165 is additive, the single head, one counselor per student, and refuses to downgrade while links exist | `apps/api/tests/test_csc_001_migration.py` (5 tests) |

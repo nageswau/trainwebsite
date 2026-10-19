@@ -108,7 +108,7 @@ from app.schemas import (
     VisaCaseCreate,
 )
 from app.services import agent_notifications as agency_notices
-from app.services import applications, course_skills, interviews, offers
+from app.services import applications, counselor_students, course_skills, interviews, offers
 from app.services import recruiter_requirements as requirements
 from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, WITHDRAWN_REFUSED, owned, with_owner
 from app.services.agent_documents import add_event, in_scope
@@ -2480,11 +2480,10 @@ async def create_appointment(payload: AppointmentCreate, user: User = Depends(ge
         raise HTTPException(422, "Valid overseas student is required")
     # CNS-001-AC02: a Counselor cannot act on a student who is not assigned to them,
     # even via a direct record ID -- the same assignment check `add_document` (OVS-005)
-    # already has, previously missing here.
-    if user.role == "counselor":
-        assigned = await db.scalar(select(OverseasApplication.id).where(OverseasApplication.student_id == student_id, OverseasApplication.counselor_id == user.id))
-        if not assigned:
-            raise HTTPException(403, "Student is outside your assigned scope")
+    # already has, previously missing here. csc-001: a student linked to the counselor is assigned too -- the same scope the
+    # Student reference picker offers (ENH-031 §5).
+    if user.role == "counselor" and not await counselor_students.is_visible_student(db, user, student_id):
+        raise HTTPException(403, "Student is outside your assigned scope")
     staff_id = payload.staff_id or (user.id if user.role == "counselor" else None)
     if staff_id:
         staff = await db.get(User, staff_id)

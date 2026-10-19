@@ -1824,6 +1824,19 @@ class OverseasApplication(Base, TimestampMixin):
     )
 
 
+class OverseasStudentCounselor(Base, TimestampMixin):
+    """csc-001 (DEC-SCOPE-226, W3): the counselor an overseas student belongs to before (or beside) any application. One row per
+    student; written by the counselor's walk-in create (csc-002) and the Overseas Admin reassign (csc-005). A counselor's students
+    are their applications' students plus these (`services/counselor_students.py`); application scoping is unchanged."""
+
+    __tablename__ = "overseas_student_counselors"
+    __table_args__ = (UniqueConstraint("student_user_id", name="uq_overseas_student_counselors_student"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    student_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    counselor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
+    assigned_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
 class ApplicationStatusHistory(Base, TimestampMixin):
     __tablename__ = "application_status_history"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)

@@ -120,6 +120,10 @@ async def main():
             "english_test": "IELTS planned",
         }
         us["counselor"].profile = {"demo": True, "specialisms": ["UK", "Germany", "Ireland"]}
+        # csc-001 (DEC-SCOPE-226): a walk-in student who belongs to the demo counselor before any application.
+        walk_in = await user(db, "student.walkin@edusphere.local", "Vikram Walk-in", "overseas_student", "overseas")
+        if not await db.scalar(select(OverseasStudentCounselor.id).where(OverseasStudentCounselor.student_user_id == walk_in.id)):
+            db.add(OverseasStudentCounselor(student_user_id=walk_in.id, counselor_user_id=us["counselor"].id, assigned_by_user_id=us["counselor"].id))
         us["university_rep"].profile = {"demo": True, "university": "University Partner Demo"}
         us["agent"].profile = {"demo": True, "agency_name": "EduSphere Partner Agency", "registration_status": "approved"}
         # AGT-001's approval lives in the `UserRoleAssignment` table (AGN-001: kept in step

@@ -23,6 +23,7 @@ from app.models import AgentStudent, AuditLog, Company, Country, Job, JobApplica
 from app.services import applications as job_applications
 from app.services.agent_orgs import org_member_ids
 from app.services.agent_students import application_scope, visible_student_user_ids
+from app.services.counselor_students import visible_student_ids
 
 logger = logging.getLogger("app.lookups")
 router = APIRouter(prefix="/lookups", tags=["lookups"])
@@ -137,7 +138,7 @@ async def overseas_students(
     else:
         _allow(user, {"overseas_admin", "counselor", "agent"}, "overseas")
         if user.role == "counselor":
-            stmt = stmt.where(User.id.in_(select(OverseasApplication.student_id).where(OverseasApplication.counselor_id == user.id)))
+            stmt = stmt.where(User.id.in_(visible_student_ids(user)))  # csc-001: own applications' students + linked students
         elif user.role == "agent":
             stmt = stmt.where(User.id.in_(visible_student_user_ids(user)))  # AGN-004 (G4): staff see their assigned students only
         if pattern:
