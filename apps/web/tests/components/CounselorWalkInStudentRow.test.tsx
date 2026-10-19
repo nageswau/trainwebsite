@@ -46,6 +46,24 @@ describe("CounselorWalkInStudentRow (csc-003)", () => {
     expect(mock.mock.calls[0][1].method).toBe("POST");
   });
 
+  it("keeps Resend link focusable while sending (QA-01): busy, not disabled, and a second press sends nothing", async () => {
+    let finish: (value: Response) => void = () => {};
+    const mock = vi.fn().mockReturnValueOnce(new Promise<Response>((resolve) => (finish = resolve)));
+    vi.stubGlobal("fetch", mock);
+    const onChanged = renderRow();
+    const button = screen.getByRole("button", { name: "Resend link to Meena Walkin" });
+    button.focus();
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(button).toHaveTextContent("Sending…");
+    finish(res({ student: pending, email_status: "sent" }, 201));
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    expect(mock).toHaveBeenCalledTimes(1);
+    expect(button).toHaveFocus();
+  });
+
   it("shows a cooldown refusal in the row", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res({ detail: "A link was just sent; wait 42 seconds before re-sending" }, 429)));
     const onChanged = renderRow();

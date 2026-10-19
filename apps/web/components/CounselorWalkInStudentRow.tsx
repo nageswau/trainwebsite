@@ -48,8 +48,7 @@ export default function CounselorWalkInStudentRow({ student, onChanged }: { stud
       setError(staffFailure(outcome, keepsEntry));
       return;
     }
-    returnFocus.current = true;
-    setEditing(false);
+    if (editing) close();
     onChanged(message(outcome.data));
   }
 
@@ -98,7 +97,8 @@ export default function CounselorWalkInStudentRow({ student, onChanged }: { stud
       {pending && !editing && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
           <button id={editId} type="button" className="btn secondary small" aria-label={`Edit ${student.full_name}`} onClick={() => setEditing(true)}>Edit</button>
-          <button type="button" className="btn secondary small" aria-label={`Resend link to ${student.full_name}`} disabled={busy} onClick={resend}>{busy ? "Sending…" : "Resend link"}</button>
+          {/* QA-01: never disabled while sending -- a disabled button drops keyboard focus; the in-flight guard stops a second send. */}
+          <button type="button" className="btn secondary small" aria-label={`Resend link to ${student.full_name}`} aria-busy={busy} onClick={resend}>{busy ? "Sending…" : "Resend link"}</button>
         </div>
       )}
       {/* Always mounted so screen readers announce a refusal when it arrives; styled only while it has something to say. */}
