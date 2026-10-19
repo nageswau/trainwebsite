@@ -3,7 +3,9 @@ website enquiry that attaches to a person who is already a lead, and tel-006's C
 
 A person is their normalised mobile OR their lower-cased email, matched across every lead (closed ones too, R1). Each intake path takes
 the person's advisory locks before it matches (R7), so two intakes of one person serialise and the second sees the first. Functions only;
-nothing here commits -- the route owns the transaction. Logs and audit rows carry ids, never a name, email or phone."""
+nothing here commits -- the route owns the transaction. Logs and audit rows carry ids, never a name, email or phone.
+csc-004 (DEC-SCOPE-229, W4): an overseas counselor's walk-in lead is created here too -- owned by the counselor, in their division, and
+distributed like a manager's lead."""
 
 import logging
 from uuid import UUID
@@ -17,7 +19,7 @@ from app.lead_stages import label as stage_label
 from app.models import AuditLog, Enquiry, LeadEnquiry, TelCampaign, TelProduct, User
 from app.notifications.phone import normalise_phone
 from app.schemas import EnquiryIn, LeadEnquiryCreate, LeadImportRow, TelecallerLeadCreate
-from app.services import lead_distribution, lead_pipeline
+from app.services import lead_distribution, lead_handover, lead_pipeline
 from app.services.telecaller_catalogue import locked_active_product
 
 logger = logging.getLogger("app.leads")
@@ -58,7 +60,8 @@ async def panel(db: AsyncSession, user: User, leads: list[Enquiry], phone_key: s
     if not leads:
         return []
     ids = [lead.id for lead in leads]
-    _, filters = lead_pipeline.scope(user)
+    # csc-004: a counselor's "in scope" is their own leads (tel-018); everyone else's is the /telecaller pipeline scope.
+    filters = lead_handover.counselor_scope(user) if user.role == "counselor" else lead_pipeline.scope(user)[1]
     in_scope = set((await db.scalars(select(Enquiry.id).where(Enquiry.id.in_(ids), *filters))).all())
     people = {lead.telecaller_user_id for lead in leads} | {lead.owner_id for lead in leads}
     names = dict((await db.execute(select(User.id, User.full_name).where(User.id.in_(people - {None})))).all())
@@ -106,7 +109,10 @@ async def create_lead(db: AsyncSession, user: User, payload: TelecallerLeadCreat
     """I2 / R5 / R6: validate the catalogue choices, block a known person (409 with the panel), insert. A telecaller's lead is theirs
     (`assigned` event); a manager's goes through tel-007's distribution (I6), else waits in its team's unassigned queue."""
     product = await locked_active_product(db, payload.product_id)
-    division = lead_team(product, payload.division)
+    walk_in = user.role == "counselor"  # csc-004: the counselor's division, and the lead is theirs
+    division = lead_team(product, payload.division or (user.division if walk_in else None))
+    if walk_in and division != user.division:
+        raise HTTPException(422, f"Walk-in leads are for the {TEAM_LABEL[user.division]} team")
     if payload.campaign_id:
         campaign = await _campaign(db, payload.campaign_id)
         if campaign.product_id != product.id:
@@ -126,7 +132,7 @@ async def create_lead(db: AsyncSession, user: User, payload: TelecallerLeadCreat
                                          "institution", "product_id", "campaign_id", "source", "priority"})
     assigned = user.role == "telecaller"
     lead = Enquiry(**fields, division=division, subject=payload.subject or product.name, message=payload.message or "",
-                   telecaller_user_id=user.id if assigned else None)
+                   telecaller_user_id=user.id if assigned else None, owner_id=user.id if walk_in else None)
     db.add(lead)
     await db.flush()
     if assigned:
@@ -134,7 +140,7 @@ async def create_lead(db: AsyncSession, user: User, payload: TelecallerLeadCreat
     else:
         await lead_distribution.on_intake(db, lead)  # I6: a manager's lead is distributed like website and BDM leads (tel-007)
     db.add(AuditLog(user_id=user.id, action="lead.create", entity_type="enquiry", entity_id=str(lead.id),
-                    metadata_json={"source": lead.source, "product_id": str(product.id), "assigned": assigned}))
+                    metadata_json={"source": lead.source, "product_id": str(product.id), "assigned": assigned} | ({"walk_in": True} if walk_in else {})))
     logger.info("lead_created", extra={"extra_fields": {"actor_id": str(user.id), "lead_id": str(lead.id), "assigned": assigned}})
     return lead
 
