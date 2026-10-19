@@ -2377,6 +2377,19 @@ plus students linked to the counselor" (`overseas_student_counselors`); every ot
 - Pinned by `test_csc_001_counselor_students.py`; application-based behaviour by `test_enh_031_lookups_students.py` and `test_cns_001_counselor_workspace.py`.
 - Documents (add/verify/download), counselor chat and application lists keep application-based scope.
 
+### 2.149 A counselor creates walk-in student logins *(added 2026-10-19 — `DEC-SCOPE-227`, csc-002)*
+
+| Route | `counselor` (overseas) | `counselor` (IT) | `overseas_admin`, `super_admin`, every other role | Anonymous |
+|---|---|---|---|---|
+| `POST /counselor/students` | ✅ creates an `overseas_student` only (role, division and flags are server-set; extra fields `422`) | `403` | `403` | `401` |
+| `GET /counselor/students` | ✅ own linked students only | `403` | `403` | `401` |
+
+- The counselor never sees or sets the student's password: the set-password link goes only to the student's email; the raw token is
+  never in a response (AGN-001/002 S3).
+- Throttle: 20 creations + refused duplicates per counselor per rolling 24 h (`429` + `Retry-After`).
+- Audit `counselor.student_create` / `counselor.student_create_rejected` carry ids and the student code only — never the email or phone.
+- Pinned by `test_csc_002_walk_in_students.py`.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

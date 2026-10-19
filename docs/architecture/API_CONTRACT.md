@@ -3381,6 +3381,15 @@ Rejection of a document, and approval of a `kyc_required` org, create a `Notific
 |---|---|---|---|
 | `GET /api/v1/admin/system-status` | Authenticated | admin only (`ensure_admin`: `super_admin`, `it_admin`, `overseas_admin`; unchanged) | The integrations list gains one row: `{"service": "Email delivery", "status": "Zoho Mail API" \| "SMTP" \| "not configured"}`. `Zoho Mail API` when `EMAIL_TRANSPORT=zoho_api` and email is configured; `SMTP` when `smtp` and configured; otherwise `not configured`. Never exposes a setting value. |
 
+## 12EM. Counselor walk-in students (csc-002) — addendum, 2026-10-19
+
+`DEC-SCOPE-227`. No migration (csc-001's `overseas_student_counselors`). RBAC §2.149.
+
+| Method/Path | Auth | Roles | Behaviour |
+|---|---|---|---|
+| `POST /api/v1/counselor/students` | Authenticated | `counselor` in `overseas` only; everyone else `403 "Only an overseas counselor can add walk-in students"` | Body `{full_name (1–160, not blank), email (≤255, name@domain.tld, stored lower-case), phone? (≤40)}`, `extra="forbid"` (any other field → `422`). Creates an `overseas_student` (division `overseas`, unusable password, active, unverified, a `student_code`, `profile.registration_source="counselor_walk_in"`), its role assignment, the csc-001 link to the caller and an ENH-003 welcome token; commits; then emails the set-password link. `201 {"student": {id, full_name, email, phone, student_code, setup: "pending_setup"}, "email_status", "expires_at"}` — the raw token is **never** returned (any environment). Existing email (case-insensitive) → `409 "Email already exists"`, audited. More than 20 creations + refused duplicates per counselor per rolling 24 h → `429` + `Retry-After`. A failed/unconfigured send never rolls back the account (`email_status` says so). |
+| `GET /api/v1/counselor/students?limit=20&offset=0` | Authenticated | as above | The caller's linked students, newest link first: `{"items": [{id, full_name, email, phone, student_code, setup}], "total", "limit", "offset"}`; `setup` is `pending_setup`, `link_expired` or `null` (has a password). `limit` 1–50, `offset` ≥ 0 (else `422`). |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
