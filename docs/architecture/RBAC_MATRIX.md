@@ -2402,6 +2402,19 @@ plus students linked to the counselor" (`overseas_student_counselors`); every ot
 - Audit `counselor.student_resend`, `counselor.student_update` (changed field **names** only), `counselor.student_update_rejected`.
 - Pinned by `test_csc_003_walk_in_resend_edit.py`.
 
+### 2.151 A counselor records a walk-in lead *(added 2026-10-19 — `DEC-SCOPE-229`, csc-004)*
+
+| Route | `counselor` (overseas) | `counselor` (IT) | `telecaller`, `telecaller_manager`, admins, every other role | Anonymous |
+|---|---|---|---|---|
+| `GET /counselor/walk-in-leads/duplicate-check` | ✅ (`in_scope` = own leads) | `403` | `403` (they keep `/telecaller/leads/duplicate-check`) | `401` |
+| `POST /counselor/walk-in-leads` | ✅ own division only; the lead is theirs | `403` | `403` | `401` |
+| `POST /counselor/walk-in-leads/{id}/enquiries` | ✅ append-only, any lead | `403` | `403` | `401` |
+
+- The distributed telecaller reads the lead but cannot change it (D1/T19, unchanged); their manager still acts.
+- Metrics are unchanged (C8–C10): telecaller conversion credit, targets and dashboards count a walk-in lead like any assigned lead;
+  counselor handover metrics count handovers only.
+- Pinned by `test_csc_004_walk_in_leads.py`.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

@@ -715,3 +715,19 @@ half.
 | `csc-003-AC6` | Resends and email changes share the mail budget; name edits do not | `::test_resends_and_email_changes_count_toward_the_budget_but_name_edits_do_not`; csc-002's throttle test (renamed `MAIL_LIMIT`) |
 | `csc-003-AC7` | Row actions only while pending; inline edit with Escape/Cancel and focus return; Resend keeps focus while sending (QA-01) | `apps/web/tests/components/CounselorWalkInStudentRow.test.tsx` (10); e2e (focus back on Edit, Active row has no buttons) |
 
+**Addendum, 2026-10-19 (`csc-004`)** — one row and its acceptance-criteria map. A counselor records a walk-in lead.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `csc-004` | Requirement: owner answers W1, W2, W4, W5 (in-session 2026-10-19, `EXPLICIT_APPROVAL`) → `docs/delivery/COUNSELOR_WALKIN_BACKLOG.md` §3 → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-229` → design `docs/superpowers/specs/2026-10-19-csc-004-counselor-walk-in-lead-design.md` → plan `docs/superpowers/plans/2026-10-19-csc-004-counselor-walk-in-lead.md`; `API_CONTRACT.md` §12EO, `RBAC_MATRIX.md` §2.151 | none | Built on `feature/csc-004`; lite API set, vitest, e2e and browser QA green |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `csc-004-AC1` | The counselor's walk-in lead is theirs, in their division, distributed to a telecaller, in My leads; audited as a walk-in | `apps/api/tests/test_csc_004_walk_in_leads.py::test_the_counselor_creates_a_walk_in_lead_that_is_theirs_and_distributed`, `::test_a_distribution_failure_keeps_the_lead_with_the_counselor`; e2e `apps/web/tests/e2e/csc-004-walk-in-lead.spec.ts` |
+| `csc-004-AC2` | The distributed telecaller reads it but cannot change it (D1/T19 unchanged) | `::test_the_distributed_telecaller_can_read_but_not_change_it_and_their_manager_still_can` |
+| `csc-004-AC3` | A known person → 409 with the panel (`in_scope` only for the counselor's own lead, no PII); duplicate-check; add an enquiry to an existing lead | `::test_a_known_person_is_409_with_the_panel_…`, `::test_the_counselor_adds_the_enquiry_to_an_existing_lead`; e2e (duplicate panel, Open lead) |
+| `csc-004-AC4` | Other team's product / division → 422; ownership, telecaller and stage cannot be supplied | `::test_an_it_team_product_is_422_and_another_division_is_422`, `::test_ownership_and_stage_cannot_be_supplied` (3) |
+| `csc-004-AC5` | Overseas counselor only (IT counselor, telecaller, manager, admin, student → 403); anonymous 401 | `::test_everyone_but_the_overseas_counselor_is_403` (5), `::test_anonymous_is_401` |
+| `csc-004-AC6` | New walk-in lead page: source Walk-in, no Division picker, Overseas/team-less products only; button for the overseas counselor only; the telecaller form unchanged | `apps/web/tests/components/NewLeadForm.walkIn.test.tsx` (2), `CounselorLeadsPanel.walkIn.test.tsx` (2), existing `NewLeadForm.test.tsx` (12); e2e csc-004 (+ phone screen) and tel-005 |
+| `csc-004-AC7` | The page renders from the server (QA-01: no function crosses the server/client boundary) | e2e csc-004 (heading visible); browser QA |
+

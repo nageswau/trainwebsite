@@ -8,11 +8,14 @@ import ProductOptions from "@/components/TelecallerProductOptions";
 import { isRequestBody, sendJson } from "@/lib/apiErrors";
 import { formatDate } from "@/lib/formatDate";
 import { SOURCES, SOURCE_LABEL, activeCampaigns, activeProducts, type Campaign, type Product } from "@/lib/telecallerCatalogue";
-import { DUPLICATE_CHECK_URL, LEADS_URL, PRIORITIES, leadUrl, type DuplicateMatch } from "@/lib/telecallerLeads";
+import { LEADS_URL, PRIORITIES, type DuplicateMatch } from "@/lib/telecallerLeads";
 
 // tel-005 (spec §4; I1, I2, I5, R2, R5, R6): a telecaller or manager enters a lead. The mobile is required, email optional; the API
 // decides the owner, the stage and every rule. A known person (same mobile or email, any lead) is shown in the §18 duplicate panel,
 // where the new enquiry can be added to that lead instead.
+// csc-004 (DEC-SCOPE-229): an overseas counselor's walk-in lead uses the same form with its own intake prefix (`apiBase`: create,
+// /duplicate-check and /{id}/enquiries under it -- a string, so a server page can pass it, QA-01), preset values
+// (`initial`: source Walk-in) and a fixed team (`team`: no Division picker, other teams' products hidden).
 type Notice = { text: string; failed: boolean } | null;
 const TEXT_FIELDS = [
   { key: "name", label: "Student name", type: "text", max: 160, required: true },
@@ -39,8 +42,8 @@ function NoticeLine({ notice }: { notice: Notice }) {
 
 /** EVID-019 §18: who has the existing lead and where it stands, with "Add enquiry to this lead" (I5) and, when the caller may open it,
  *  a link to it. */
-function DuplicatePanel({ matches, basePath, enquiry, focusRequest }: {
-  matches: DuplicateMatch[]; basePath: string; enquiry: () => Record<string, string> | string; focusRequest: number;
+function DuplicatePanel({ matches, basePath, enquiry, enquiryUrl, focusRequest }: {
+  matches: DuplicateMatch[]; basePath: string; enquiry: () => Record<string, string> | string; enquiryUrl: (id: string) => string; focusRequest: number;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [added, setAdded] = useState<Set<string>>(new Set());
@@ -57,7 +60,7 @@ function DuplicatePanel({ matches, basePath, enquiry, focusRequest }: {
     if (sending.current) return;
     sending.current = true;
     setBusy(match.id);
-    const outcome = await sendJson(leadUrl(match.id, "/enquiries"), "POST", payload);
+    const outcome = await sendJson(enquiryUrl(match.id), "POST", payload);
     sending.current = false;
     setBusy(null);
     const ok = outcome.ok && isRequestBody(outcome.data);
@@ -108,9 +111,12 @@ function DuplicatePanel({ matches, basePath, enquiry, focusRequest }: {
   );
 }
 
-export default function NewLeadForm({ basePath }: { basePath: string }) {
+export default function NewLeadForm({ basePath, apiBase = LEADS_URL, initial, team }: {
+  basePath: string; apiBase?: string; initial?: Record<string, string>; team?: "it" | "overseas";
+}) {
   const router = useRouter();
-  const [values, setValues] = useState(EMPTY);
+  const start: Record<string, string> = { ...EMPTY, ...initial, ...(team ? { division: team } : {}) };
+  const [values, setValues] = useState(start);
   const [products, setProducts] = useState<Product[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [pickersFailed, setPickersFailed] = useState(false);
@@ -129,11 +135,12 @@ export default function NewLeadForm({ basePath }: { basePath: string }) {
   }, []);
 
   const product = products.find((p) => p.id === values.product_id) ?? null;
+  const offered = team ? products.filter((p) => !p.team || p.team === team) : products;
   const productCampaigns = campaigns.filter((c) => c.product.id === values.product_id);
   const set = (key: string, value: string) => setValues((v) => ({ ...v, [key]: value }));
 
   function chooseProduct(id: string) {
-    setValues((v) => ({ ...v, product_id: id, campaign_id: "", division: "" }));
+    setValues((v) => ({ ...v, product_id: id, campaign_id: "", division: team ?? "" }));
   }
 
   function chooseCampaign(id: string) {
@@ -145,7 +152,7 @@ export default function NewLeadForm({ basePath }: { basePath: string }) {
   async function checkDuplicates() {
     const query = new URLSearchParams(Object.entries({ phone: values.phone.trim(), email: values.email.trim() }).filter(([, v]) => v));
     if (!query.size) return setMatches([]);
-    const response = await fetch(`${DUPLICATE_CHECK_URL}?${query}`).catch(() => null);
+    const response = await fetch(`${apiBase}/duplicate-check?${query}`).catch(() => null);
     const data = response?.ok ? await response.json().catch(() => null) : null;
     setMatches(Array.isArray(data?.matches) ? data.matches : []); // QA-03: a number that can't be checked keeps no stale match
   }
@@ -175,14 +182,14 @@ export default function NewLeadForm({ basePath }: { basePath: string }) {
       if (text && key !== "priority") payload[key] = key === "passing_year" ? Number(text) : text;
     }
     setBusy(true);
-    const outcome = await sendJson(LEADS_URL, "POST", payload);
+    const outcome = await sendJson(apiBase, "POST", payload);
     setBusy(false);
     sending.current = false;
     if (outcome.ok && isRequestBody(outcome.data)) {
       const created = outcome.data as { id: string; lead_code?: string; in_scope?: boolean; telecaller?: { full_name: string } | null };
       if (created.in_scope !== false) return router.push(`${basePath}/${encodeURIComponent(created.id)}`);
       // QA-06: distribution gave it to someone outside the caller's leads, so opening it would only say "not found"
-      setValues(EMPTY);
+      setValues(start);
       setMatches([]);
       const to = created.telecaller ? ` and assigned to ${created.telecaller.full_name}` : "";
       return setNotice({ text: `Lead ${created.lead_code} created${to}.`, failed: false });
@@ -199,7 +206,7 @@ export default function NewLeadForm({ basePath }: { basePath: string }) {
   return (
     <div style={{ display: "grid", gap: 16 }}>
       {/* QA-05: above the form, so the warning shows next to the mobile/email fields even on a phone */}
-      {matches.length > 0 && <DuplicatePanel matches={matches} basePath={basePath} enquiry={enquiryPayload} focusRequest={focusRequest} />}
+      {matches.length > 0 && <DuplicatePanel matches={matches} basePath={basePath} enquiry={enquiryPayload} enquiryUrl={(id) => `${apiBase}/${encodeURIComponent(id)}/enquiries`} focusRequest={focusRequest} />}
       <form onSubmit={submit} noValidate className="action-card" style={{ display: "grid", gap: 12 }}>
         <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))" }}>
           {TEXT_FIELDS.map(({ key, label, type, max, required }) => (
@@ -214,10 +221,10 @@ export default function NewLeadForm({ basePath }: { basePath: string }) {
             <label htmlFor="new-product_id">Product interest *</label>
             <select id="new-product_id" aria-required value={values.product_id} disabled={busy} onChange={(e) => chooseProduct(e.target.value)}>
               <option value="">Choose a product</option>
-              <ProductOptions products={products} />
+              <ProductOptions products={offered} />
             </select>
           </div>
-          {product && !product.team && (
+          {product && !product.team && !team && (
             <div className="field">
               <label htmlFor="new-division">Division *</label>
               <select id="new-division" aria-required value={values.division} disabled={busy} onChange={(e) => set("division", e.target.value)}>

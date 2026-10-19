@@ -14,6 +14,9 @@ export type CounselorLeadDetail = CounselorLead & {
 export type StudentSuggestion = { id: string; full_name: string; email: string; phone: string | null; linked_elsewhere: boolean };
 
 export const COUNSELOR_LEADS_URL = "/api/v1/counselor/leads";
+// csc-004 (DEC-SCOPE-229): an overseas counselor records a walk-in as a lead -- tel-005's intake (create, /duplicate-check,
+// /{id}/enquiries) under the counselor's own prefix. A plain string: the server page hands it to the client NewLeadForm (QA-01).
+export const WALK_IN_LEADS_URL = "/api/v1/counselor/walk-in-leads";
 export const counselorLeadUrl = (id: string, suffix = "") => `${COUNSELOR_LEADS_URL}/${encodeURIComponent(id)}${suffix}`;
 export const handoverUrl = (id: string) => `/api/v1/telecaller/leads/${encodeURIComponent(id)}/handover`;
 export const counselorLeadHref = (division: string, id: string) => `/${division === "overseas" ? "overseas" : "it"}/counselor/leads/${encodeURIComponent(id)}`;

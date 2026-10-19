@@ -3404,6 +3404,17 @@ returned.
 | `POST /api/v1/counselor/students/{id}/welcome-links` | ENH-003 Re-send rules: the first resend after creation is always allowed, another within 60 s of the newest link → `429 "A link was just sent; wait N seconds before re-sending"` + `Retry-After`. Supersedes the open link, issues a new one, commits, emails it. `201 {"student": {…, "setup": "pending_setup"}, "email_status", "expires_at"}`. |
 | `PATCH /api/v1/counselor/students/{id}` | Body `{full_name?, email?, phone?}`, `extra="forbid"`; omitted = unchanged; `full_name`/`email` null → `422`; `phone` null or blank clears it; create's validation. Only changed fields are written (email compared lower-case). An email change: another account's address → `409 "Email already exists"` (audited, counted); otherwise every open link is revoked and a new one is emailed to the new address after the commit — the response adds `email_status`, `expires_at`. `200 {"student": {…}}`; an empty or no-op body is `200` with the student unchanged. |
 
+## 12EO. Counselor walk-in leads (csc-004) — addendum, 2026-10-19
+
+`DEC-SCOPE-229`. No migration. RBAC §2.151. Every route: `counselor` in `overseas` only, else `403 "Only an overseas counselor can record
+walk-in leads"`. tel-005's intake contract (§12L) under the counselor's own prefix; the `/telecaller/*` routes are unchanged.
+
+| Method/Path | Behaviour |
+|---|---|
+| `GET /api/v1/counselor/walk-in-leads/duplicate-check?phone=&email=` | tel-005 R2: `{"matches": [...]}` (the §18 panel, no phone/email/messages); `in_scope` is true only for the counselor's own leads (`owner_id`, own division). Unparseable mobile → `422`; neither key → `422`. |
+| `POST /api/v1/counselor/walk-in-leads` | Body `TelecallerLeadCreate` (`extra="forbid"`; no `owner_id`/`telecaller_user_id`/`status`). Lead `owner_id` = the counselor; division = the counselor's (`overseas`): an IT-team product or `division: "it"` → `422`. Distributed by tel-007 like a manager's lead (rule, else round robin, else the unassigned queue); the telecaller is read-only (D1/T19). A known person → `409 {"message": "Lead already exists.", "code": "duplicate_lead", "matches": [...]}`. `201` = the counselor's lead detail (as `GET /counselor/leads/{id}`) + `"in_scope": true`; audit `lead.create` with `"walk_in": true`; CRM sync queued after the commit. |
+| `POST /api/v1/counselor/walk-in-leads/{id}/enquiries` | tel-005 I5 from the duplicate panel: append an enquiry to any lead (no read access granted) → `201`; unknown lead → `404`. |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

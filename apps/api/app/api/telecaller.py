@@ -126,13 +126,7 @@ async def my_leads(
 async def duplicate_check(phone: str | None = None, email: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """tel-005 (T12, R2): the §18 panel for a mobile and/or email, before a lead is created -- across every lead, closed ones too."""
     lead_pipeline.scope(user)
-    phone_key, email_key = lead_intake.identity(phone, email)
-    if phone and not phone_key:
-        raise HTTPException(422, "Enter a valid mobile number")
-    if not phone_key and not email_key:
-        raise HTTPException(422, "Enter a mobile number or an email")
-    matches = await lead_intake.matching_leads(db, phone_key, email_key)
-    return {"matches": await lead_intake.panel(db, user, matches, phone_key, email_key)}
+    return {"matches": await lead_intake.duplicate_matches(db, user, phone, email)}
 
 
 @router.post("/leads", status_code=201)
