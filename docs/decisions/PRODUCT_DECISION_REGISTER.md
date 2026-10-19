@@ -8867,3 +8867,21 @@ The full repository regression is deferred to its own session.
 - Reply-To in any form (E4), other providers (ZeptoMail, SES), attachments other than the logo, bounce/open tracking, inbound email, send counters and pacing.
 - The DigitalOcean SMTP-unblock ticket is still worth filing; if approved, `EMAIL_TRANSPORT=smtp` works again with no code change.
 - **Feature ID authorized:** `ENH-032`. **Status:** built on `feature/enh-032`; see `ENHANCEMENT_BACKLOG.md` (ENH-032).
+
+### DEC-SCOPE-226 — A student belongs to the counselor who brought them in (`csc-001`)
+
+**Status:** CONFIRMED by owner 2026-10-19 (Claude Code session). Extends `DEC-ROLE-005` (Counselor) and ENH-031 (`DEC-SCOPE-039`, lookup scope).
+**Evidence:** owner request "counseller can add a student and email will trigger to him for login" and answers W1–W6 given through the
+clarifying-question prompt on 2026-10-19 (`EXPLICIT_APPROVAL`), recorded in `docs/delivery/COUNSELOR_WALKIN_BACKLOG.md` §1. This decision
+uses W1 (Overseas `counselor` only) and W3 (a new student→counselor link; application-based scoping unchanged).
+**Decision:** a new table `overseas_student_counselors` (one counselor per overseas student) records the counselor a student belongs to
+before or beside any application. A counselor's students are the students of the counselor's own applications **plus** the students linked
+to them (`services/counselor_students.py`). Two places use that scope: the counselor branch of `GET /lookups/overseas-students` and the
+counselor check of `POST /workflows/overseas/appointments` — the Student reference picker and the write it feeds (ENH-031 §5).
+**Builder's call (recorded):** the backlog said "the create-application picker"; a counselor has no create-application UI on main
+(`OverseasApplyPanel` is student-only), and the appointment form is the counselor's only student picker. Documents, chat and every
+application-level scope are unchanged; widening them is a csc-002 follow-up.
+**Numbering:** migration `0165_overseas_student_counselors`; no new route (API §12A notes); RBAC §2.148.
+**Consequences:** nothing writes the table yet — csc-002 (counselor walk-in create) and csc-005 (Overseas Admin reassign) do.
+`downgrade()` refuses while links exist.
+- **Feature ID authorized:** `csc-001`. **Status:** built on `feature/csc-001`.

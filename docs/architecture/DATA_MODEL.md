@@ -2083,3 +2083,18 @@ initial, additional, withdrawal, profit_distribution); `amount` numeric(12,2) (C
 **Design notes:**
 - Every §24 figure is computed on read, never stored. Entries are never updated or deleted; share rows are the share % history.
 - Additive: no existing row is read or written. `downgrade()` refuses while either table has rows.
+
+## Student → counselor link (`csc-001`, `DEC-SCOPE-226`; migration `0165_overseas_student_counselors`, after AGN-024's `0164_agent_org_kyc`)
+
+`overseas_student_counselors` (`OverseasStudentCounselor`): the counselor an overseas student belongs to before or beside any application.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `student_user_id` | uuid → `users.id` | **unique** (`uq_overseas_student_counselors_student`): one counselor per student |
+| `counselor_user_id` | uuid → `users.id` | indexed (`ix_overseas_student_counselors_counselor_user_id`) |
+| `assigned_by_user_id` | uuid → `users.id` | who created or last reassigned the link |
+| `created_at`, `updated_at` | timestamptz | |
+
+Additive; no existing row changes. Written by csc-002 (counselor walk-in create) and csc-005 (Overseas Admin reassign); csc-001 only reads it.
+`downgrade()` refuses while rows exist.

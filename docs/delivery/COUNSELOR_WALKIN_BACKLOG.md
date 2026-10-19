@@ -52,6 +52,10 @@ found on main (`git grep` over `docs/` and the `nehn-` backlog).
 
 ### `csc-001` — Link a student to their counselor
 
+**Status (2026-10-19): built on `feature/csc-001`** — `DEC-SCOPE-226`, migration `0165`, RBAC §2.148. Builder's call: the picker this
+widens is the counselor's *Schedule appointment* Student reference (no counselor create-application UI exists), and the appointment write
+widens with it (ENH-031 §5). Spec `docs/superpowers/specs/2026-10-19-csc-001-student-counselor-link-design.md`.
+
 - **Business requirement:** a student the counselor creates stays in that counselor's caseload before any application exists (W3).
 - **Existing behaviour:** a counselor sees a student only through `OverseasApplication.counselor_id`.
 - **Expected behaviour:** a new link records one active counselor per student. The counselor's visible students become the

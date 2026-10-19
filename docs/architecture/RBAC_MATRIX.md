@@ -2363,6 +2363,19 @@ Routes: the four admin routes under `/overseas-admin/agent-orgs/{org_id}/kyc-doc
 - `super_admin` also receives the agents payload on `/portal/it/admin/agents` (read-only; data the API already allows it).
 - A document in another organisation is `404` for both the admin routes (wrong `org_id`) and the agent routes.
 
+### 2.148 A counselor's linked students *(added 2026-10-19 — `DEC-SCOPE-226`, csc-001)*
+
+No new route. Two existing routes widen their **counselor** scope from "students of own applications" to "students of own applications
+plus students linked to the counselor" (`overseas_student_counselors`); every other role's behaviour is unchanged.
+
+| Route | `counselor` (overseas) | `counselor` (IT) | Every other role |
+|---|---|---|---|
+| `GET /lookups/overseas-students` | own applications' students ∪ own linked students | `403` (unchanged) | unchanged |
+| `POST /workflows/overseas/appointments` | `201` for either; another counselor's linked student → `403 "Student is outside your assigned scope"` | `403` (unchanged) | unchanged |
+
+- Pinned by `test_csc_001_counselor_students.py`; application-based behaviour by `test_enh_031_lookups_students.py` and `test_cns_001_counselor_workspace.py`.
+- Documents (add/verify/download), counselor chat and application lists keep application-based scope.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
