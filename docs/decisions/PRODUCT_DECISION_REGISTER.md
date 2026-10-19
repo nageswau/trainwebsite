@@ -8876,8 +8876,9 @@ clarifying-question prompt on 2026-10-19 (`EXPLICIT_APPROVAL`), recorded in `doc
 uses W1 (Overseas `counselor` only) and W3 (a new student→counselor link; application-based scoping unchanged).
 **Decision:** a new table `overseas_student_counselors` (one counselor per overseas student) records the counselor a student belongs to
 before or beside any application. A counselor's students are the students of the counselor's own applications **plus** the students linked
-to them (`services/counselor_students.py`). Two places use that scope: the counselor branch of `GET /lookups/overseas-students` and the
-counselor check of `POST /workflows/overseas/appointments` — the Student reference picker and the write it feeds (ENH-031 §5).
+to them (`services/counselor_students.py`). Three places use that scope: the counselor branch of `GET /lookups/overseas-students`, the
+counselor check of `POST /workflows/overseas/appointments` — the Student reference picker and the write it feeds (ENH-031 §5) — and the
+counselor's Student appointments list (`GET /portal/overseas/counselor/appointments`; QA-01: a booking must show where it was made).
 **Builder's call (recorded):** the backlog said "the create-application picker"; a counselor has no create-application UI on main
 (`OverseasApplyPanel` is student-only), and the appointment form is the counselor's only student picker. Documents, chat and every
 application-level scope are unchanged; widening them is a csc-002 follow-up.

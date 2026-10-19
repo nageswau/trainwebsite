@@ -15,10 +15,12 @@ counselor reaches a student only through `OverseasApplication.counselor_id`, so 
    `updated_at`. Additive; no existing row changes. Nothing writes it in csc-001 — csc-002 (create) and csc-005 (reassign) do.
 2. **One scope, `services/counselor_students.py`:** `visible_student_ids(counselor)` = students of the counselor's own applications
    **∪** students linked to the counselor; `is_visible_student(db, counselor, student_id)`.
-3. **The two places that use it:**
+3. **The three places that use it:**
    - `GET /lookups/overseas-students`, counselor branch (`api/lookups.py`) — the picker.
    - `POST /workflows/overseas/appointments`, counselor check (`api/workflows.py`) — the write that picker feeds. ENH-031 §5: a picker
      never offers a value its write would refuse, so both move together.
+   - The counselor's *Student appointments* list (`portal.py`, `appointments` section) — added after browser QA (QA-01): a booking made
+     for a linked student was invisible where it was made.
 
 Response shapes, status codes and error texts are unchanged.
 
@@ -58,3 +60,6 @@ Widening documents/chat to linked students is a follow-up for csc-002, not this 
 - `test_csc_001_counselor_students.py`: linked student in the lookup; listed once; another counselor's link not visible; `q` still
   filters; appointment for a linked student → 201; appointment for another counselor's linked student → 403; application-based
   behaviour unchanged (existing ENH-031 / CNS-001 tests rerun).
+- e2e `apps/web/tests/e2e/csc-001-counselor-linked-student.spec.ts`: picker → book → listed, at 1280 px and 375 px, no console errors.
+  The demo seed links "Vikram Walk-in" (`student.walkin@edusphere.local`) to the demo counselor, idempotently, so the spec has data
+  before csc-002 exists.

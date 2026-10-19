@@ -101,3 +101,21 @@ async def test_the_counselor_cannot_book_for_another_counselors_linked_student(c
     response = await client.post(APPOINTMENTS, json=booking(student))
     assert response.status_code == 403
     assert response.json()["detail"] == "Student is outside your assigned scope"
+
+
+@pytest.mark.asyncio
+async def test_the_counselors_appointment_list_shows_a_linked_students_booking(client, db_session):
+    """QA-01: the booking the counselor makes for a linked student shows in their Student appointments list."""
+    student = await mk_user(db_session, role="overseas_student")
+    theirs = await mk_user(db_session, role="overseas_student")
+    me = await mk_user(db_session, role="counselor")
+    other = await mk_user(db_session, role="counselor")
+    await link(db_session, student, me)
+    await link(db_session, theirs, other)
+    await login(client, other.email)
+    assert (await client.post(APPOINTMENTS, json=booking(theirs))).status_code == 201
+    await login(client, me.email)
+    assert (await client.post(APPOINTMENTS, json=booking(student))).status_code == 201
+    response = await client.get("/api/v1/portal/overseas/counselor/appointments")
+    assert response.status_code == 200, response.text
+    assert [row["student_id"] for row in response.json()["rows"]] == [str(student.id)]

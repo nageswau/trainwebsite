@@ -2372,6 +2372,7 @@ plus students linked to the counselor" (`overseas_student_counselors`); every ot
 |---|---|---|---|
 | `GET /lookups/overseas-students` | own applications' students ∪ own linked students | `403` (unchanged) | unchanged |
 | `POST /workflows/overseas/appointments` | `201` for either; another counselor's linked student → `403 "Student is outside your assigned scope"` | `403` (unchanged) | unchanged |
+| `GET /portal/overseas/counselor/appointments` (rows) | appointments of either set | n/a | unchanged (`overseas_admin`, `university_rep` keep application-based rows) |
 
 - Pinned by `test_csc_001_counselor_students.py`; application-based behaviour by `test_enh_031_lookups_students.py` and `test_cns_001_counselor_workspace.py`.
 - Documents (add/verify/download), counselor chat and application lists keep application-based scope.

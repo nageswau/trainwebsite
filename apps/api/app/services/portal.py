@@ -54,7 +54,7 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.services import application_filters
+from app.services import application_filters, counselor_students
 from app.services import applications as job_applications
 from app.services.agent_applications import WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
 from app.services.agent_dashboard import headline_counts
@@ -1099,6 +1099,8 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             )
         if section == "appointments":
             student_ids = [a.student_id for a, _, _ in applications if a.student_id]
+            if user.role == "counselor":  # csc-001 QA-01: the students the booking form offers -- own applications' plus linked students
+                student_ids = [i for i in (await db.scalars(counselor_students.visible_student_ids(user))).all() if i]
             rows = (await db.scalars(select(Appointment).where(Appointment.student_id.in_(student_ids)).order_by(Appointment.scheduled_at.desc()))).all() if student_ids else []
             return _payload(
                 "Appointments",
