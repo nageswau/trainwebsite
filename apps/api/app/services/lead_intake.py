@@ -88,6 +88,17 @@ async def panel(db: AsyncSession, user: User, leads: list[Enquiry], phone_key: s
     ]
 
 
+async def duplicate_matches(db: AsyncSession, user: User, phone: str | None, email: str | None) -> list[dict]:
+    """tel-005 (T12, R2): the §18 panel for a mobile and/or email before a lead is created -- across every lead, closed ones too. Shared by
+    the telecaller/manager check and the counselor's walk-in check (csc-004); the caller has already checked the role."""
+    phone_key, email_key = identity(phone, email)
+    if phone and not phone_key:
+        raise HTTPException(422, "Enter a valid mobile number")
+    if not phone_key and not email_key:
+        raise HTTPException(422, "Enter a mobile number or an email")
+    return await panel(db, user, await matching_leads(db, phone_key, email_key), phone_key, email_key)
+
+
 async def _campaign(db: AsyncSession, campaign_id: UUID) -> TelCampaign:
     campaign = await db.get(TelCampaign, campaign_id)
     if not campaign or not campaign.active:

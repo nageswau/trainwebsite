@@ -29,7 +29,9 @@ telecaller sees it read-only (D1/T19, `telecaller_leads.require_writable`); the 
 - `lead_intake.panel`: the in-scope filter is the counselor's scope for a counselor, the pipeline scope for everyone else (today it
   would 403 a counselor).
 - New `api/counselor_walk_in_leads.py`; `main.py` router list.
-- Web: `NewLeadForm` gains optional props — endpoints (telecaller defaults), initial values, a fixed division — used by a new
+- `lead_intake.duplicate_matches`: the duplicate-check body, shared by the telecaller and counselor routes (Phase 7: no copy).
+- Web: `NewLeadForm` gains optional props — `apiBase` (the intake prefix: create, `/duplicate-check`, `/{id}/enquiries`; a string so the
+  server page can pass it, QA-01), initial values, a fixed division — used by a new
   `/overseas/counselor/leads/new` page (source preset to Walk-in, division fixed to Overseas, IT-team products hidden). A **New
   walk-in lead** button on the overseas counselor's Leads panel.
 
