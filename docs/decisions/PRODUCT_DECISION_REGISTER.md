@@ -8886,3 +8886,18 @@ application-level scope are unchanged; widening them is a csc-002 follow-up.
 **Consequences:** nothing writes the table yet — csc-002 (counselor walk-in create) and csc-005 (Overseas Admin reassign) do.
 `downgrade()` refuses while links exist.
 - **Feature ID authorized:** `csc-001`. **Status:** built on `feature/csc-001`.
+
+### DEC-SCOPE-227 — A counselor creates a walk-in student's login (`csc-002`)
+
+**Status:** CONFIRMED by owner 2026-10-19 (Claude Code session). Extends `DEC-SCOPE-226` (csc-001) and `DEC-SCOPE-019` (ENH-003 provisioning).
+**Evidence:** owner request "counseller can add a student and email will trigger to him for login" and answers W1–W3 (2026-10-19,
+`EXPLICIT_APPROVAL`), `docs/delivery/COUNSELOR_WALKIN_BACKLOG.md` §1; the owner asked to proceed with recommended answers for the
+remaining open questions (recorded below as builder's calls).
+**Decision:** an Overseas counselor creates an `overseas_student` login (`POST /counselor/students`): server-set role, division and flags;
+a Student ID; the csc-001 link to the counselor; the ENH-003 72-hour set-password email. The counselor lists their walk-in students with
+set-up status (`GET /counselor/students`) on the counselor Students page.
+**Builder's calls:** C1 no telecaller-lead matching (tel-018 links leads to students); C2 throttle 20 per counselor per 24 h, refused
+duplicates counted; C3 a Student ID at creation, as self-registration; C4 documents, chat and application scopes unchanged. The raw link
+token is never returned to a counselor in any environment (AGN-001/002 S3) — this corrects the backlog line that said dev/test returns it.
+**Numbering:** no migration; API §12EM; RBAC §2.149.
+- **Feature ID authorized:** `csc-002`. **Status:** built on `feature/csc-002`.

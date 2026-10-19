@@ -85,6 +85,10 @@ widens with it (ENH-031 §5). Spec `docs/superpowers/specs/2026-10-19-csc-001-st
 
 ### `csc-002` — Counselor creates a walk-in student account; the welcome email is sent
 
+**Status (2026-10-19): built on `feature/csc-002`** — `DEC-SCOPE-227`, API §12EM, RBAC §2.149, no migration. Open questions closed as
+builder's calls C1–C4 (no lead matching; 20 per 24 h; Student ID; scopes unchanged). Correction: the dev/test token is **not** returned
+to a counselor (AGN-001/002 S3). Spec `docs/superpowers/specs/2026-10-19-csc-002-counselor-walk-in-student-design.md`.
+
 - **Business requirement:** the counselor creates the login for a walk-in student, and the student gets an email to set a password
   and log in (W1, W2).
 - **Existing behaviour:** only an admin can create an `overseas_student` account.

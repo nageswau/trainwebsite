@@ -1201,6 +1201,34 @@ class AgentTaskUpdate(BaseModel):
         return self
 
 
+class CounselorStudentCreate(BaseModel):
+    """csc-002 (DEC-SCOPE-227): an overseas counselor creating a walk-in student's login. Role, division and every account flag are
+    server-set, so any other field is refused (422); the student sets their own password from the emailed link."""
+
+    model_config = {"extra": "forbid"}
+    full_name: str = Field(min_length=1, max_length=160)
+    email: str = Field(max_length=255)
+    phone: str | None = Field(default=None, max_length=40)
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_not_blank(cls, value: str) -> str:
+        return _required_full_name(value)
+
+    @field_validator("email")
+    @classmethod
+    def email_looks_valid(cls, value: str) -> str:
+        value = value.strip().lower()
+        if not _EMAIL_SHAPE.fullmatch(value):
+            raise PydanticCustomError("invalid_email", "Enter a valid email address, like name@example.com")
+        return value
+
+    @field_validator("phone")
+    @classmethod
+    def blank_phone_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
+
+
 class AgentStaffCreate(AgentMasterInvite):
     """AGN-002 (DEC-SCOPE-040 S4): a Master adding a staff login -- the same fields and rules as a Master invite."""
 
