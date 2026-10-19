@@ -1,6 +1,7 @@
 """csc-002 (DEC-SCOPE-227) -- an overseas counselor's walk-in students: create a login (the student sets their own password from the
 emailed ENH-003 link) and list the students linked to the counselor (csc-001). API_CONTRACT.md §12EM; RBAC_MATRIX.md §2.149.
-csc-003 (DEC-SCOPE-228) -- while such an account is pending: resend the link, or fix name/phone/email. API §12EN; RBAC §2.150."""
+csc-003 (DEC-SCOPE-228) -- while such an account is pending: resend the link, or fix name/phone/email. API §12EN; RBAC §2.150.
+csc-005 (DEC-SCOPE-230) -- the Overseas Admin moves a student to another counselor. API §12EP; RBAC §2.152."""
 
 import logging
 from uuid import UUID
@@ -11,12 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import User
-from app.schemas import CounselorStudentCreate, CounselorStudentUpdate
+from app.schemas import CounselorStudentCreate, CounselorStudentUpdate, OverseasApplicationCounselorAssign
 from app.services import counselor_students
 from app.services.provisioning import IssuedWelcome, deliver_welcome_link
 
 logger = logging.getLogger("app.counselor_students")
 router = APIRouter(prefix="/counselor/students", tags=["counselor-students"])
+admin_router = APIRouter(prefix="/admin/users", tags=["counselor-students"])
 
 
 async def _deliver(student: User, issued: IssuedWelcome, counselor: User) -> dict:
@@ -62,3 +64,13 @@ async def update_student(student_id: UUID, payload: CounselorStudentUpdate, user
         return {"student": out}
     logger.info("counselor_student_email_changed", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student_id)}})
     return {"student": out, **await _deliver(student, issued, user)}
+
+
+@admin_router.put("/{user_id}/counselor")
+async def assign_student_counselor(user_id: UUID, payload: OverseasApplicationCounselorAssign, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """csc-005: AGN-023's assign body (swap only); the same counselor is `changed: false`."""
+    result = await counselor_students.assign_counselor(db, user, user_id, payload.counselor_id)
+    if result["changed"]:
+        await db.commit()
+        logger.info("student_counselor_assigned", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(user_id), "counselor_id": str(result["counselor_id"])}})
+    return result

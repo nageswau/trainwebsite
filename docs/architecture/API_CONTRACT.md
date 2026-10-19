@@ -3415,6 +3415,15 @@ walk-in leads"`. tel-005's intake contract (§12L) under the counselor's own pre
 | `POST /api/v1/counselor/walk-in-leads` | Body `TelecallerLeadCreate` (`extra="forbid"`; no `owner_id`/`telecaller_user_id`/`status`). Lead `owner_id` = the counselor; division = the counselor's (`overseas`): an IT-team product or `division: "it"` → `422`. Distributed by tel-007 like a manager's lead (rule, else round robin, else the unassigned queue); the telecaller is read-only (D1/T19). A known person → `409 {"message": "Lead already exists.", "code": "duplicate_lead", "matches": [...]}`. `201` = the counselor's lead detail (as `GET /counselor/leads/{id}`) + `"in_scope": true`; audit `lead.create` with `"walk_in": true`; CRM sync queued after the commit. |
 | `POST /api/v1/counselor/walk-in-leads/{id}/enquiries` | tel-005 I5 from the duplicate panel: append an enquiry to any lead (no read access granted) → `201`; unknown lead → `404`. |
 
+## 12EP. Overseas Admin reassigns a student's counselor (csc-005) — addendum, 2026-10-19
+
+`DEC-SCOPE-230`. No migration (csc-001's `overseas_student_counselors`). RBAC §2.152.
+
+| Method/Path | Auth | Roles | Behaviour |
+|---|---|---|---|
+| `PUT /api/v1/admin/users/{user_id}/counselor` | Authenticated | `overseas_admin` (overseas) only — `super_admin` and everyone else `403 "Only the Overseas Admin can assign a counselor"` | Body `{"counselor_id": uuid}` (AGN-023's assign body; missing → `422`). Target not an `overseas_student` → `404 "Student not found"`. Counselor not an active overseas `counselor` → `422 "Choose an active overseas counselor"`. No link yet → created; same counselor → `200 {…, "changed": false}`, nothing written; otherwise the link moves. Audit `overseas.student.counselor_assign` `{from_counselor_id, to_counselor_id}`; notifications "Student assigned to you" (new) / "Student reassigned" (previous, if active). `200 {"id", "counselor_id", "counselor_name", "changed"}`. Applications keep their own counselor (AGN-023). |
+| `GET /api/v1/portal/overseas/admin/users` (Overseas Admin) | Authenticated | `overseas_admin` | Adds `counselor` ("Not assigned" when none; null on staff rows), `counselor_id` and `assign` (the student id; null on staff rows) with an `assign_student_counselor` column. Other roles and sections unchanged. |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

@@ -20,6 +20,11 @@ function renderCell(column: Column, row: Row) {
     if (!row.assign) return null;
     return <AssignCounselorButton applicationId={String(row.id)} currentId={(row.counselor_id as string | null) ?? null} />;
   }
+  // csc-005 (DEC-SCOPE-230): the Overseas Admin's Users directory -- an overseas student's counselor (staff rows carry `assign: null`).
+  if (column.type === "assign_student_counselor") {
+    if (!row.assign) return null;
+    return <AssignCounselorButton applicationId={String(row.id)} currentId={(row.counselor_id as string | null) ?? null} url={`/api/v1/admin/users/${encodeURIComponent(String(row.id))}/counselor`} />;
+  }
   if (column.type === "join") {
     return (
       <JoinSessionButton
