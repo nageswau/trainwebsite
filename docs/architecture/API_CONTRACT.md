@@ -3390,6 +3390,20 @@ Rejection of a document, and approval of a `kyc_required` org, create a `Notific
 | `POST /api/v1/counselor/students` | Authenticated | `counselor` in `overseas` only; everyone else `403 "Only an overseas counselor can add walk-in students"` | Body `{full_name (1–160, not blank), email (≤255, name@domain.tld, stored lower-case), phone? (≤40)}`, `extra="forbid"` (any other field → `422`). Creates an `overseas_student` (division `overseas`, unusable password, active, unverified, a `student_code`, `profile.registration_source="counselor_walk_in"`), its role assignment, the csc-001 link to the caller and an ENH-003 welcome token; commits; then emails the set-password link. `201 {"student": {id, full_name, email, phone, student_code, setup: "pending_setup"}, "email_status", "expires_at"}` — the raw token is **never** returned (any environment). Existing email (case-insensitive) → `409 "Email already exists"`, audited. More than 20 creations + refused duplicates per counselor per rolling 24 h → `429` + `Retry-After`. A failed/unconfigured send never rolls back the account (`email_status` says so). |
 | `GET /api/v1/counselor/students?limit=20&offset=0` | Authenticated | as above | The caller's linked students, newest link first: `{"items": [{id, full_name, email, phone, student_code, setup}], "total", "limit", "offset"}`; `setup` is `pending_setup`, `link_expired` or `null` (has a password). `limit` 1–50, `offset` ≥ 0 (else `422`). |
 
+## 12EN. Counselor walk-in students: resend and fix details (csc-003) — addendum, 2026-10-19
+
+`DEC-SCOPE-228`. No migration. RBAC §2.150. Both routes: `counselor` in `overseas` only (else `403`); the target must be a student
+**linked to the caller** (else `404 "Student not found"` — another counselor's student, an unknown id and a non-student read the same);
+it must still be pending (`409 "This student has already set a password"`) and not deactivated (`409 "This account is deactivated"`).
+The counselor's mail budget (§12EM) now counts creations, refused duplicates, resends, email changes and refused email changes: 20 per
+rolling 24 h → `429` + `Retry-After` ("You have sent 20 account emails in the last 24 hours. Try again later."). The raw token is never
+returned.
+
+| Method/Path | Behaviour |
+|---|---|
+| `POST /api/v1/counselor/students/{id}/welcome-links` | ENH-003 Re-send rules: the first resend after creation is always allowed, another within 60 s of the newest link → `429 "A link was just sent; wait N seconds before re-sending"` + `Retry-After`. Supersedes the open link, issues a new one, commits, emails it. `201 {"student": {…, "setup": "pending_setup"}, "email_status", "expires_at"}`. |
+| `PATCH /api/v1/counselor/students/{id}` | Body `{full_name?, email?, phone?}`, `extra="forbid"`; omitted = unchanged; `full_name`/`email` null → `422`; `phone` null or blank clears it; create's validation. Only changed fields are written (email compared lower-case). An email change: another account's address → `409 "Email already exists"` (audited, counted); otherwise every open link is revoked and a new one is emailed to the new address after the commit — the response adds `email_status`, `expires_at`. `200 {"student": {…}}`; an empty or no-op body is `200` with the student unchanged. |
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

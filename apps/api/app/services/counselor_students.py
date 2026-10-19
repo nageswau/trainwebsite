@@ -4,7 +4,10 @@ the students linked to the counselor (`OverseasStudentCounselor`). The picker (`
 
 csc-002 (DEC-SCOPE-227, W1-W3): an overseas counselor creates a walk-in student's login; the student is linked to that counselor and
 gets the ENH-003 set-password link (delivered by the route after the commit). Functions only; nothing here commits except a refused
-duplicate's audit row."""
+duplicate's audit row.
+
+csc-003 (DEC-SCOPE-228, W6): while a walk-in account is pending (never activated), its counselor resends the link or fixes the name,
+phone or email; an email change revokes the open link and the route mails a new one to the new address."""
 
 import logging
 from datetime import UTC, datetime, timedelta
@@ -12,23 +15,29 @@ from typing import NoReturn
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import exists, func, select, union
+from sqlalchemy import and_, exists, func, or_, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.identifiers import unique_student_code
 from app.models import AuditLog, OverseasApplication, OverseasStudentCounselor, User, UserRoleAssignment
 from app.schemas import CounselorStudentCreate
 from app.services.agent_orgs import retry_after
-from app.services.provisioning import IssuedWelcome, flush_unique_email, issue_welcome_token, provisioning_statuses, unusable_password_hash
+from app.services.provisioning import IssuedWelcome, flush_unique_email, issue_welcome_token, provisioning_statuses, resend_wait_seconds, unusable_password_hash
 
 logger = logging.getLogger("app.counselor_students")
 
 OVERSEAS_COUNSELOR_ONLY = "Only an overseas counselor can add walk-in students"
-# C2: a counselor's creations per rolling day, refused duplicates included (AGN-002 QA-10), so the platform's mail cannot be used as a
-# relay and existing addresses cannot be probed in bulk. Counted from audit rows (no new table).
-CREATE_LIMIT = 20
-CREATE_WINDOW = timedelta(hours=24)
+STUDENT_NOT_FOUND = "Student not found"
+ALREADY_ACTIVE = "This student has already set a password"
+DEACTIVATED = "This account is deactivated"
+# C2 / C5: the account emails a counselor may cause per rolling day -- creations, resends and email changes, refused duplicates included
+# (AGN-002 QA-10) -- so the platform's mail cannot be used as a relay and existing addresses cannot be probed in bulk. Counted from audit
+# rows (no new table). A name/phone edit sends nothing and is not counted.
+MAIL_LIMIT = 20
+MAIL_WINDOW = timedelta(hours=24)
 CREATED, REJECTED = "counselor.student_create", "counselor.student_create_rejected"
+RESENT, UPDATED, UPDATE_REJECTED = "counselor.student_resend", "counselor.student_update", "counselor.student_update_rejected"
+EMAILED = "emailed"  # the outcome of an update that mailed a new link (an email change)
 
 
 def visible_student_ids(counselor: User):
@@ -57,31 +66,41 @@ async def _enforce_budget(db: AsyncSession, counselor_id: UUID) -> None:
     recent = (
         await db.scalars(
             select(AuditLog.created_at)
-            .where(AuditLog.user_id == counselor_id, AuditLog.action.in_((CREATED, REJECTED)), AuditLog.created_at > now - CREATE_WINDOW)
+            .where(
+                AuditLog.user_id == counselor_id,
+                or_(AuditLog.action.in_((CREATED, REJECTED, RESENT, UPDATE_REJECTED)), and_(AuditLog.action == UPDATED, AuditLog.outcome == EMAILED)),
+                AuditLog.created_at > now - MAIL_WINDOW,
+            )
             .order_by(AuditLog.created_at.desc())
-            .limit(CREATE_LIMIT)
+            .limit(MAIL_LIMIT)
         )
     ).all()
-    wait = retry_after(recent, CREATE_LIMIT, now, CREATE_WINDOW)
+    wait = retry_after(recent, MAIL_LIMIT, now, MAIL_WINDOW)
     if wait:
-        logger.warning("counselor_student_create_throttled", extra={"extra_fields": {"actor_id": str(counselor_id), "wait_seconds": wait}})
-        raise HTTPException(429, f"You have added {CREATE_LIMIT} students in the last 24 hours. Try again later.", headers={"Retry-After": str(wait)})
+        logger.warning("counselor_student_mail_throttled", extra={"extra_fields": {"actor_id": str(counselor_id), "wait_seconds": wait}})
+        raise HTTPException(429, f"You have sent {MAIL_LIMIT} account emails in the last 24 hours. Try again later.", headers={"Retry-After": str(wait)})
 
 
-async def _reject_existing_email(db: AsyncSession, counselor_id: UUID) -> NoReturn:
+async def _reject_existing_email(db: AsyncSession, counselor_id: UUID, action: str = REJECTED) -> NoReturn:
     """Audited and committed before the 409 (the raised request would roll it back), so it counts toward the budget. The address itself
     is never recorded."""
-    db.add(AuditLog(user_id=counselor_id, action=REJECTED, entity_type="user", entity_id=str(counselor_id), outcome="rejected", metadata_json={"reason": "email_exists"}))
+    db.add(AuditLog(user_id=counselor_id, action=action, entity_type="user", entity_id=str(counselor_id), outcome="rejected", metadata_json={"reason": "email_exists"}))
     await db.commit()
-    logger.info("counselor_student_create_rejected", extra={"extra_fields": {"actor_id": str(counselor_id), "reason": "email_exists"}})
+    logger.info("counselor_student_email_rejected", extra={"extra_fields": {"actor_id": str(counselor_id), "action": action, "reason": "email_exists"}})
     raise HTTPException(409, "Email already exists")
+
+
+async def _lock_counselor(db: AsyncSession, counselor_id: UUID) -> None:
+    """One counselor's account changes run one at a time, so the budget holds under concurrency (lock order: counselor -> student ->
+    tokens, as the ENH-003 Re-send)."""
+    await db.execute(select(User.id).where(User.id == counselor_id).with_for_update())
 
 
 async def create_student(db: AsyncSession, counselor: User, payload: CounselorStudentCreate) -> tuple[User, IssuedWelcome]:
     """No commit. The counselor's own row is locked first, so one counselor's creates run one at a time and the budget holds under
     concurrency (lock order: counselor -> new user -> tokens, as ENH-003 Re-send)."""
     counselor_id = counselor.id  # a plain value: a rollback below expires the ORM objects
-    await db.execute(select(User.id).where(User.id == counselor_id).with_for_update())
+    await _lock_counselor(db, counselor_id)
     await _enforce_budget(db, counselor_id)
     if await db.scalar(select(User.id).where(User.email == payload.email)):
         await _reject_existing_email(db, counselor_id)
@@ -100,6 +119,63 @@ async def create_student(db: AsyncSession, counselor: User, payload: CounselorSt
     issued = await issue_welcome_token(db, user=student, issued_by=counselor)
     db.add(AuditLog(user_id=counselor_id, action=CREATED, entity_type="user", entity_id=str(student.id), outcome="created", metadata_json={"student_code": student.student_code}))
     return student, issued
+
+
+async def _locked_pending_student(db: AsyncSession, counselor_id: UUID, student_id: UUID) -> tuple[User, str]:
+    """The caller's own linked student, row-locked, still pending (never activated) and not deactivated; with its set-up status.
+    Anything that is not the caller's linked student is the same 404 (no disclosure)."""
+    linked = await db.scalar(select(OverseasStudentCounselor.id).where(OverseasStudentCounselor.student_user_id == student_id, OverseasStudentCounselor.counselor_user_id == counselor_id))
+    student = await db.scalar(select(User).where(User.id == student_id).with_for_update().execution_options(populate_existing=True)) if linked else None
+    if student is None:
+        raise HTTPException(404, STUDENT_NOT_FOUND)
+    setup = (await provisioning_statuses(db, [student.id])).get(student.id)
+    if setup is None:
+        raise HTTPException(409, ALREADY_ACTIVE)
+    if not student.active:
+        raise HTTPException(409, DEACTIVATED)
+    return student, setup
+
+
+async def resend_link(db: AsyncSession, counselor: User, student_id: UUID) -> tuple[User, IssuedWelcome]:
+    """No commit. The ENH-003 Re-send rules (per-account cooldown; the open link is superseded) plus the counselor's mail budget."""
+    counselor_id = counselor.id
+    await _lock_counselor(db, counselor_id)
+    student, _ = await _locked_pending_student(db, counselor_id, student_id)
+    wait = await resend_wait_seconds(db, student.id)
+    if wait:
+        logger.warning("counselor_student_resend_throttled", extra={"extra_fields": {"actor_id": str(counselor_id), "student_id": str(student.id), "wait_seconds": wait}})
+        raise HTTPException(429, f"A link was just sent; wait {wait} seconds before re-sending", headers={"Retry-After": str(wait)})
+    await _enforce_budget(db, counselor_id)
+    issued = await issue_welcome_token(db, user=student, issued_by=counselor)
+    db.add(AuditLog(user_id=counselor_id, action=RESENT, entity_type="user", entity_id=str(student.id), outcome=EMAILED, metadata_json={"token_id": str(issued.token_id)}))
+    return student, issued
+
+
+async def update_student(db: AsyncSession, counselor: User, student_id: UUID, changes: dict) -> tuple[User, str, IssuedWelcome | None]:
+    """No commit. Only the fields that actually change are written; an email change revokes the open link and issues a new one (mailed
+    by the route after the commit). Returns the student, its set-up status and the new link, if any."""
+    counselor_id = counselor.id
+    await _lock_counselor(db, counselor_id)
+    student, setup = await _locked_pending_student(db, counselor_id, student_id)
+    changes = {field: value for field, value in changes.items() if getattr(student, field) != value}
+    if not changes:
+        return student, setup, None
+    if "email" in changes:
+        await _enforce_budget(db, counselor_id)
+        if await db.scalar(select(User.id).where(User.email == changes["email"])):
+            await _reject_existing_email(db, counselor_id, UPDATE_REJECTED)
+    for field, value in changes.items():
+        setattr(student, field, value)
+    issued = None
+    if "email" in changes:
+        try:
+            await flush_unique_email(db)  # another request took the address since the check: rolled back, then the same audited 409
+        except HTTPException:
+            await _reject_existing_email(db, counselor_id, UPDATE_REJECTED)
+        issued = await issue_welcome_token(db, user=student, issued_by=counselor)
+        setup = "pending_setup"
+    db.add(AuditLog(user_id=counselor_id, action=UPDATED, entity_type="user", entity_id=str(student.id), outcome=EMAILED if issued else "updated", metadata_json={"fields": sorted(changes)}))
+    return student, setup, issued
 
 
 async def page(db: AsyncSession, counselor: User, limit: int, offset: int) -> dict:

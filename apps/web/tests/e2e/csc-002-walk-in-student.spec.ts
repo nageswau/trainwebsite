@@ -1,6 +1,7 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 
 import { signIn } from "./helpers/agency";
+import { signInAsFreshCounselor } from "./helpers/counselor";
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
 // csc-002 (DEC-SCOPE-227) -- an overseas counselor creates a walk-in student's login on the Students page; the student sets a password
@@ -37,7 +38,7 @@ test("a counselor creates a walk-in student who sets a password, signs in and ca
   const name = `Walk-in E2E ${unique}`;
   const email = `csc002-${unique}@example.local`;
 
-  await signIn(page, "counselor@edusphere.local", "Demo@123", "/overseas/counselor/dashboard");
+  await signInAsFreshCounselor(page, "csc002");
   await page.goto("/overseas/counselor/students");
   await addWalkIn(page, name, email);
   await expect(page.getByText(`Account created for ${name}.`)).toBeVisible();
@@ -61,7 +62,7 @@ test("a counselor creates a walk-in student who sets a password, signs in and ca
 
 test("the walk-in form refuses an existing email and fits a phone screen (csc-002)", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await signIn(page, "counselor@edusphere.local", "Demo@123", "/overseas/counselor/dashboard");
+  await signInAsFreshCounselor(page, "csc002");
   await page.goto("/overseas/counselor/students");
   const form = page.getByRole("form", { name: "Add a walk-in student" });
   await form.getByLabel("Full name").fill("Already Here");

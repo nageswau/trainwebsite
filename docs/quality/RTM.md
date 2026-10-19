@@ -699,3 +699,19 @@ half.
 | `csc-002-AC5` | A failed or unconfigured send keeps the account and says so | `::test_a_failed_send_keeps_the_account_and_says_so`; `apps/web/tests/components/CounselorWalkInStudents.test.tsx` ("says so when the email was not delivered") |
 | `csc-002-AC6` | The counselor's Walk-in students list: own students only, newest first, set-up status, paging; loading / empty / error / double-submit states | `::test_the_list_is_the_counselors_own_…`, `::test_the_list_pages`; `CounselorWalkInStudents.test.tsx` (9), `WorkflowPanel.walkInStudents.test.tsx` (3) |
 
+**Addendum, 2026-10-19 (`csc-003`)** — one row and its acceptance-criteria map. A counselor resends the link or fixes a pending walk-in account.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `csc-003` | Requirement: owner answer W6 (in-session 2026-10-19, `EXPLICIT_APPROVAL`) → `docs/delivery/COUNSELOR_WALKIN_BACKLOG.md` §3 → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-228` → design `docs/superpowers/specs/2026-10-19-csc-003-walk-in-resend-and-edit-design.md` → plan `docs/superpowers/plans/2026-10-19-csc-003-walk-in-resend-and-edit.md`; `API_CONTRACT.md` §12EN, `RBAC_MATRIX.md` §2.150 | none | Built on `feature/csc-003`; lite API set, vitest, e2e and browser QA green |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `csc-003-AC1` | Resend mails a new link; the old one stops working; a second resend within 60 s → 429 | `apps/api/tests/test_csc_003_walk_in_resend_edit.py::test_resend_mails_a_new_link_and_the_old_one_stops_working`, `::test_a_second_resend_within_the_cooldown_is_429`; e2e `apps/web/tests/e2e/csc-003-walk-in-resend-edit.spec.ts` |
+| `csc-003-AC2` | An email change revokes the old link and mails a new one to the new address; the student activates under it; case-only changes are not changes | `::test_an_email_change_revokes_the_old_link_and_mails_a_new_one_to_the_new_address`, `::test_a_case_only_email_change_is_not_a_change`; e2e |
+| `csc-003-AC3` | Name/phone edits send no mail; audit carries field names only; empty edit is a no-op | `::test_name_and_phone_edits_send_no_mail_and_audit_field_names_only`, `::test_an_empty_edit_is_a_no_op` |
+| `csc-003-AC4` | Taken email → 409 (audited without it, nothing saved); active → 409; deactivated → 409; invalid → 422 | `::test_an_email_that_belongs_to_another_account_is_409_…`, `::test_resend_on_an_active_account_is_409`, `::test_edit_on_an_active_account_is_409`, `::test_resend_and_edit_on_a_deactivated_account_are_409`, `::test_invalid_edits_are_422` (7 cases); e2e (phone screen) |
+| `csc-003-AC5` | Only the caller's own linked student (others 404); overseas counselor only (403); anonymous 401 | `::test_another_counselors_or_an_unknown_or_a_non_student_is_404`, `::test_other_roles_and_the_it_counselor_are_403` (4 cases), `::test_anonymous_is_401` |
+| `csc-003-AC6` | Resends and email changes share the mail budget; name edits do not | `::test_resends_and_email_changes_count_toward_the_budget_but_name_edits_do_not`; csc-002's throttle test (renamed `MAIL_LIMIT`) |
+| `csc-003-AC7` | Row actions only while pending; inline edit with Escape/Cancel and focus return; Resend keeps focus while sending (QA-01) | `apps/web/tests/components/CounselorWalkInStudentRow.test.tsx` (10); e2e (focus back on Edit, Active row has no buttons) |
+
