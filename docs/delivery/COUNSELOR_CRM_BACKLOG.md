@@ -150,6 +150,7 @@ asked one at a time when the item is picked up).
 - **Regression:** timeline ordering and pagination.
 - **Complexity:** small. **Risk:** low.
 - **Open questions:** edit/delete window (nehn-014 left it open) — default: none, append-only.
+- **Status:** built on `worktree-ccrm-002` — `DEC-SCOPE-242`, migration `0167_lead_notes`, API §12EU, RBAC §2.157 (append-only, N1–N5).
 
 ### `ccrm-003` — Counselor lead actions: stage, next action, follow-ups *(supersedes nehn-014 part 2)*
 

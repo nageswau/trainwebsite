@@ -8975,3 +8975,19 @@ Display-only: no route is keyed by it. Shown as **"EduSphere ID"** (AC6 — "App
 tables and the application lookup, whose `q` also matches it (AC5). Student code unchanged (AC2; nehn-040).
 **Numbering:** migration `0166`; API §12EQ; RBAC §2.153 (no new permission).
 - **Feature ID authorized:** `ccrm-011`. **Status:** built on `feature/ccrm-011`.
+
+### DEC-SCOPE-242 — Lead notes (`ccrm-002`)
+
+**Status:** CONFIRMED by owner 2026-10-22 (Claude Code session; the owner pre-authorised the recommended defaults for this item's open
+questions). Supersedes nehn-014 part 1.
+**Evidence:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-002` (owner request 2026-10-22, CC1–CC10); design
+`docs/superpowers/specs/2026-10-22-ccrm-002-lead-notes-design.md`.
+**Decision:** append-only `lead_notes` (lead, author, body 1–4000 characters, created_at), read and written through the telecaller (T23
+scope), counselor (owner + division) and admin (own division; super_admin any) lead routes, and shown in the lead timeline as `kind: "note"`
+with an excerpt. Out of scope → 404.
+**Builder's calls:** N1 the lead's telecaller may add a note after the handover (a note changes no lead state); N2 no edit or delete
+(the backlog's default); N3 admins through `/admin/leads/{id}/notes` with the existing admin lead rule (so `it_admin` on IT leads);
+N4 body trimmed, plain text; N5 the admin lead History shows the notes panel.
+**Numbering:** migration `0167_lead_notes` (chained after ccrm-011's `0166_application_codes`); API §12EU; RBAC §2.157
+(239–241 / 12ER–12ET / 2.154–2.156 held by parallel ccrm sessions).
+- **Feature ID authorized:** `ccrm-002`. **Status:** built on `worktree-ccrm-002`.

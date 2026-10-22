@@ -36,7 +36,7 @@ beforeEach(() => {
     if (reply[`${method} ${tail}`]) return Promise.resolve(reply[`${method} ${tail}`]());
     if (tail === "/link-suggestions") return Promise.resolve(res({ items: [asha] }));
     if (tail.startsWith("/link-suggestions?q=")) return Promise.resolve(res({ items: [taken] }));
-    if (tail.startsWith("/timeline")) return Promise.resolve(res(pageOf([])));
+    if (tail.startsWith("/timeline") || tail.startsWith("/notes")) return Promise.resolve(res(pageOf([])));
     if (url.startsWith("/api/v1/counselor/leads?")) return Promise.resolve(res(pageOf([detail()])));
     return Promise.resolve(res({}, 404));
   });

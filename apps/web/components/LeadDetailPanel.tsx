@@ -10,6 +10,7 @@ import LeadHandoverForm from "@/components/LeadHandoverForm";
 import LeadMessages from "@/components/LeadMessages";
 import LeadMilestones from "@/components/LeadMilestones";
 import LeadQualificationForm from "@/components/LeadQualificationForm";
+import LeadNotes from "@/components/LeadNotes";
 import LeadTimeline from "@/components/LeadTimeline";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import { isRequestBody, sendJson, type Page } from "@/lib/apiErrors";
@@ -313,6 +314,12 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
         <h3 id="lead-enquiry-heading" style={{ margin: 0 }}>Enquiry</h3>
         <p style={{ margin: "6px 0 0" }}><strong>{lead.subject}</strong></p>
         <p style={{ margin: "4px 0 0", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{lead.message}</p>
+      </section>
+
+      {/* ccrm-002 N1: notes are history, so a read-only (handed-over) lead still takes them */}
+      <section aria-labelledby="lead-notes-heading">
+        <h3 id="lead-notes-heading" style={{ margin: 0 }}>Notes</h3>
+        <LeadNotes url={leadUrl(lead.id, "/notes")} onAdded={reloadActivity} />
       </section>
 
       <section aria-labelledby="lead-activity-heading">

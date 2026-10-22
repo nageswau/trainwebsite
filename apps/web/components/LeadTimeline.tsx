@@ -8,7 +8,7 @@ import { TIMELINE_LIMIT, actorName, timelineEntry, type TimelineEntry, type Time
 import { getPage } from "@/lib/telecallerCatalogue";
 
 /** What the list itself reads; each timeline brings its own row type and mappers (upc-013: the university history). */
-type Row = { id: string; kind: string; at: string; event?: string | null };
+type Row = { id: string; kind?: string; at: string; event?: string | null };
 type State<R> = { rows: R[]; total: number } | "loading" | "failed";
 
 const pageOf = <R,>(page: Page<R>): State<R> => ({ rows: page.items, total: page.total });
@@ -18,12 +18,13 @@ const keyOf = (row: Row) => `${row.kind}-${row.event ?? ""}-${row.id}`;
 /** tel-015 (DEC-SCOPE-114 D8): a lead's merged timeline, newest first, as the `.jtl` timeline -- shared by the telecaller / manager
  *  detail, the counselor's lead and the admin History. `initial` is the server-rendered first page (`null`: it failed; omitted: load
  *  here). A `version` change re-reads the first page (something on the page just changed); "Show older entries" appends the next one.
- *  upc-013: `entryOf` / `actorOf` map another timeline's rows (default: the lead's); only a client component can pass them. */
+ *  upc-013: `entryOf` / `actorOf` map another timeline's rows (default: the lead's); only a client component can pass them.
+ *  ccrm-002: `noun` names the list in its loading / failed / empty lines (the lead notes reuse this list). */
 export default function LeadTimeline<R extends Row = TimelineRow>({
-  url, initial, version, label = "Lead activity",
+  url, initial, version, label = "Lead activity", noun = "activity",
   entryOf = timelineEntry as unknown as (row: R) => TimelineEntry, actorOf = actorName as unknown as (row: R) => string,
 }: {
-  url: string; initial?: Page<R> | null; version: number; label?: string; entryOf?: (row: R) => TimelineEntry; actorOf?: (row: R) => string;
+  url: string; initial?: Page<R> | null; version: number; label?: string; noun?: string; entryOf?: (row: R) => TimelineEntry; actorOf?: (row: R) => string;
 }) {
   const [state, setState] = useState<State<R>>(initial === undefined ? "loading" : initial === null ? "failed" : pageOf(initial));
   const [older, setOlder] = useState<"idle" | "loading" | "failed">("idle");
@@ -68,16 +69,16 @@ export default function LeadTimeline<R extends Row = TimelineRow>({
     );
   }
 
-  if (state === "loading") return <p className="muted" role="status" style={{ fontSize: 13 }}>Loading the activity…</p>;
+  if (state === "loading") return <p className="muted" role="status" style={{ fontSize: 13 }}>Loading the {noun}…</p>;
   if (state === "failed") {
     return (
       <p className="form-error" role="alert" style={{ fontSize: 13, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-        Unable to load the activity.
+        Unable to load the {noun}.
         <button type="button" className="btn secondary small" onClick={retry}>Retry</button>
       </p>
     );
   }
-  if (state.rows.length === 0) return <p className="muted" style={{ fontSize: 13 }}>No activity yet.</p>;
+  if (state.rows.length === 0) return <p className="muted" style={{ fontSize: 13 }}>No {noun} yet.</p>;
 
   return (
     <>
@@ -89,10 +90,12 @@ export default function LeadTimeline<R extends Row = TimelineRow>({
             <li className="jtl-row" key={keyOf(row)}>
               <div className="jtl-rail" aria-hidden="true"><span className="jtl-node" style={tone} /></div>
               <div style={{ minWidth: 0 }}>
-                <p className="jtl-title" style={{ fontSize: 14, overflowWrap: "anywhere" }}>
-                  {entry.title}
-                  <span className="jtl-badge" style={tone}>{entry.badge}</span>
-                </p>
+                {entry.title && ( // ccrm-002 QA-01: a list of one kind (the notes) has no per-row title
+                  <p className="jtl-title" style={{ fontSize: 14, overflowWrap: "anywhere" }}>
+                    {entry.title}
+                    <span className="jtl-badge" style={tone}>{entry.badge}</span>
+                  </p>
+                )}
                 <p className="jtl-detail">{actorOf(row)} · <LocalTime value={row.at} time /></p>
                 {(entry.meta.length > 0 || entry.when) && (
                   <p className="jtl-detail" style={{ overflowWrap: "anywhere" }}>
