@@ -3,7 +3,7 @@
 Revision ID: 0166_application_codes
 Revises: 0165_overseas_student_counselors
 
-docs/superpowers/specs/2026-10-22-ccrm-011-application-codes-design.md (DEC-SCOPE-238). Additive: every existing row keeps its data and
+docs/superpowers/specs/2026-10-22-ccrm-011-application-codes-design.md (DEC-SCOPE-239). Additive: every existing row keeps its data and
 gets an `APP-` code in (created_at, id) order. 0001 builds a fresh database from the current models, which already carry the column, so
 each step is guarded (0105's idiom). CODE_DEFAULT repeats app.models.APPLICATION_CODE_DEFAULT (test_ccrm_011_migration). downgrade()
 drops the derived code (the UUID stays the key) but keeps the sequence, so a re-upgrade never reissues a code.

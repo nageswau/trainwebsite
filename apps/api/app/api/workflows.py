@@ -1901,7 +1901,7 @@ async def list_overseas_applications(user: User = Depends(get_current_user), db:
     return [
         {
             "id": a.id,
-            "application_code": a.application_code,  # ccrm-011 (DEC-SCOPE-238)
+            "application_code": a.application_code,  # ccrm-011 (DEC-SCOPE-239)
             "student_id": student.id,
             "student": student.full_name,
             "university_id": u.id,

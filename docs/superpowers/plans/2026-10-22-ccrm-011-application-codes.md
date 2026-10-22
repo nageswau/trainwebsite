@@ -10,5 +10,5 @@ Design: `docs/superpowers/specs/2026-10-22-ccrm-011-application-codes-design.md`
    rep table, student Applications section carry the code. Update `test_agn_023_filters.py` rep column list (intended change).
 4. **Lookup search (TDD).** Same file: counselor finds own application by code; another counselor's code returns nothing.
 5. **Frontend (TDD).** `AgentApplicationsPanel`, `AgentApplicationDetail`, `lib/agentApplications.ts` type; vitest updates.
-6. **Docs.** Decision register `DEC-SCOPE-238`, API contract `12EQ`, RBAC note `2.153` (no new permission), backlog status, RTM row.
+6. **Docs.** Decision register `DEC-SCOPE-239`, API contract `12EQ`, RBAC note `2.153` (no new permission), backlog status, RTM row.
 7. **E2E.** Playwright spec: counselor Applications page shows an `APP-` code.

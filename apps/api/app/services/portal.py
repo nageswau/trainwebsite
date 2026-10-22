@@ -1040,7 +1040,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 ),
             )
         if section in {"students", "applications", "admission-updates", "offer-letters"}:
-            # ccrm-011 (DEC-SCOPE-238): the APP- code beside the UUID reference; AGN-023's inserts below count it.
+            # ccrm-011 (DEC-SCOPE-239): the APP- code beside the UUID reference; AGN-023's inserts below count it.
             columns = [("id", "reference"), ("application_code", "EduSphere ID"), ("student", "Student"), ("university", "University"), ("reference", "Reference"), ("status", "Status"), ("next_action", "Next action")]
             rows = [{"id": a.id, "application_code": a.application_code, "student_id": s.id, "student": s.full_name, "university": u.name, "reference": a.application_reference, "status": a.status, "next_action": a.next_action} for a, u, s in applications]
             agn023 = user.role in {"overseas_admin", "counselor"} and section in application_filters.FILTER_SECTIONS  # AGN-023 (DEC-SCOPE-090 §3.3): students/applications only; university_rep and the other sections unchanged

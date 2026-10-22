@@ -1778,7 +1778,7 @@ class CourseImportBatch(Base, TimestampMixin):
     results_json: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
 
 
-# ccrm-011 (DEC-SCOPE-238): APP-000001 application IDs, the LD-/UNV- idiom -- on the metadata so 0001's create_all builds it on a fresh
+# ccrm-011 (DEC-SCOPE-239): APP-000001 application IDs, the LD-/UNV- idiom -- on the metadata so 0001's create_all builds it on a fresh
 # database; 0166 creates and backfills it on an upgraded one. One nextval per insert: never reissued, even after a withdrawal.
 APPLICATION_CODE_SEQ = Sequence("overseas_application_code_seq", metadata=Base.metadata)
 APPLICATION_CODE_DEFAULT = "'APP-' || translate(format('%6s', nextval('overseas_application_code_seq')), ' ', '0')"

@@ -326,6 +326,10 @@ asked one at a time when the item is picked up).
 - **Complexity:** small. **Risk:** low.
 - **Open questions:** format (`APP-000001` vs `APP-2027-00001` with yearly reset).
 
+**Status (2026-10-22): built on `feature/ccrm-011`** — `DEC-SCOPE-239`, migration `0166_application_codes`, API §12EQ, RBAC §2.153.
+Format `APP-000001`, no yearly reset (recommended default); labelled "EduSphere ID" (agency "Application ID" is the university
+reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-application-codes-design.md`.
+
 ### `ccrm-012` — Counselor quick search and list filters
 
 - **Source:** §12 quick search and filters.

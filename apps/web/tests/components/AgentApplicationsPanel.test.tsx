@@ -27,6 +27,7 @@ describe("AgentApplicationsPanel (AGN-008)", () => {
     expect(card).toHaveTextContent("Offer");
     expect(card).toHaveTextContent("no login");
     expect(card).toHaveTextContent("EduSphere ID APP-000042"); // ccrm-011
+    expect(within(card).getByText("APP-000042")).toHaveStyle({ whiteSpace: "nowrap" }); // QA-1: never split at the hyphen on a phone
   });
 
   it("requests the filter it is given", async () => {

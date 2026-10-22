@@ -112,7 +112,7 @@ export function todayIso(): string {
 
 export type AgentApplicationItem = {
   id: string;
-  application_code: string; // ccrm-011 (DEC-SCOPE-238): EduSphere's APP- code; `application_reference` is the university's (AGN-008)
+  application_code: string; // ccrm-011 (DEC-SCOPE-239): EduSphere's APP- code; `application_reference` is the university's (AGN-008)
   agent_student_id: string | null;
   student: string;
   has_login: boolean;

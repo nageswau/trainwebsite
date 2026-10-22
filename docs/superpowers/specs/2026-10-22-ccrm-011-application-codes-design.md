@@ -1,7 +1,7 @@
 # ccrm-011 — Business IDs for overseas applications (design)
 
 Backlog: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-011` (spec §6 Application ID, §14 unique IDs, §15 ID formats). Decision:
-`DEC-SCOPE-238`. Migration `0166_application_codes`. Evidence class of the source: `UNVERIFIED` PDF + owner request (backlog §1).
+`DEC-SCOPE-239`. Migration `0166_application_codes`. Evidence class of the source: `UNVERIFIED` PDF + owner request (backlog §1).
 
 ## Intent
 
@@ -37,7 +37,8 @@ listed and usable to find one.
 
 `0166_application_codes`: `CREATE SEQUENCE IF NOT EXISTS`, add the column nullable if missing, one ordered `UPDATE ... nextval` backfill
 of rows with no code, then NOT NULL + server default + unique constraint (each guarded, 0105's idiom). Additive; no row loses data.
-`downgrade()` drops the constraint, column and sequence (codes are derived; the UUID stays the key).
+`downgrade()` drops the constraint and column (codes are derived; the UUID stays the key) but keeps the sequence, so a re-upgrade
+never reissues a code.
 
 ## Non-goals
 
