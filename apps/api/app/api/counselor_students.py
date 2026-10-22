@@ -1,7 +1,8 @@
 """csc-002 (DEC-SCOPE-227) -- an overseas counselor's walk-in students: create a login (the student sets their own password from the
 emailed ENH-003 link) and list the students linked to the counselor (csc-001). API_CONTRACT.md §12EM; RBAC_MATRIX.md §2.149.
 csc-003 (DEC-SCOPE-228) -- while such an account is pending: resend the link, or fix name/phone/email. API §12EN; RBAC §2.150.
-csc-005 (DEC-SCOPE-230) -- the Overseas Admin moves a student to another counselor. API §12EP; RBAC §2.152."""
+csc-005 (DEC-SCOPE-230) -- the Overseas Admin moves a student to another counselor. API §12EP; RBAC §2.152.
+ccrm-010 (DEC-SCOPE-241) -- internal notes on a student (the counselling history), counselor and Overseas Admin. API §12ET; RBAC §2.156."""
 
 import logging
 from uuid import UUID
@@ -12,8 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import User
-from app.schemas import CounselorStudentCreate, CounselorStudentUpdate, OverseasApplicationCounselorAssign
-from app.services import counselor_students
+from app.schemas import CounselorStudentCreate, CounselorStudentUpdate, OverseasApplicationCounselorAssign, StudentNoteCreate
+from app.services import counselor_students, student_notes
 from app.services.provisioning import IssuedWelcome, deliver_welcome_link
 
 logger = logging.getLogger("app.counselor_students")
@@ -64,6 +65,18 @@ async def update_student(student_id: UUID, payload: CounselorStudentUpdate, user
         return {"student": out}
     logger.info("counselor_student_email_changed", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student_id)}})
     return {"student": out, **await _deliver(student, issued, user)}
+
+
+@router.get("/{student_id}/notes")
+async def list_notes(student_id: UUID, limit: int = Query(20, ge=1, le=50), offset: int = Query(0, ge=0), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await student_notes.page(db, user, student_id, limit, offset)
+
+
+@router.post("/{student_id}/notes", status_code=201)
+async def add_note(student_id: UUID, payload: StudentNoteCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    note = await student_notes.create(db, user, student_id, payload)
+    logger.info("student_note_created", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student_id), "note_id": str(note["id"])}})
+    return note
 
 
 @admin_router.put("/{user_id}/counselor")

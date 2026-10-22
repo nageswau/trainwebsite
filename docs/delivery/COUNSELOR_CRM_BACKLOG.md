@@ -304,6 +304,10 @@ asked one at a time when the item is picked up).
 
 ### `ccrm-010` — Student and application notes; counselling history *(supersedes nehn-037 part 5)*
 
+**Status (2026-10-22): built on `feature/ccrm-010`** — `DEC-SCOPE-241`, API §12ET, RBAC §2.156, migration
+`0166_overseas_student_notes`. Builder's calls N1–N5. Until ccrm-009 exists the notes live on their own page
+(`/overseas/{counselor|admin}/students/{id}/notes`). Spec `docs/superpowers/specs/2026-10-22-ccrm-010-student-notes-design.md`.
+
 - **Source:** §5 Activities; §6 "internal notes"; nehn-037 #5.
 - **Existing behaviour:** notes only as `ApplicationStatusHistory.notes`; counselor PATCH `notes` goes into history only.
 - **Expected behaviour:** append-only internal notes on a student and optionally an application (author, body, created_at); never

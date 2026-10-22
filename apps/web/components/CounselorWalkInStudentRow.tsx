@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { staffFailure } from "@/lib/agentStaff";
@@ -81,6 +82,8 @@ export default function CounselorWalkInStudentRow({ student, onChanged }: { stud
         <span>{student.email}</span>
         {student.student_code && <span className="muted">Student ID {student.student_code}</span>}
         <span className="badge">{student.setup ? SETUP_LABEL[student.setup] : "Active"}</span>
+        {/* ccrm-010 (DEC-SCOPE-241): the student's internal notes. */}
+        <Link href={`/overseas/counselor/students/${encodeURIComponent(student.id)}/notes`} aria-label={`Notes for ${student.full_name}`}>Notes</Link>
       </div>
       {editing && (
         <form className="form" onSubmit={save} onKeyDown={(e) => e.key === "Escape" && close()} aria-label={`Edit ${student.full_name}`} style={{ marginTop: 8 }}>

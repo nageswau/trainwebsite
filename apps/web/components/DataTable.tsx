@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {useMemo, useState} from "react";
 import AssignCounselorButton from "./AssignCounselorButton";
 import JoinSessionButton from "./JoinSessionButton";
@@ -24,6 +25,11 @@ function renderCell(column: Column, row: Row) {
   if (column.type === "assign_student_counselor") {
     if (!row.assign) return null;
     return <AssignCounselorButton applicationId={String(row.id)} currentId={(row.counselor_id as string | null) ?? null} url={`/api/v1/admin/users/${encodeURIComponent(String(row.id))}/counselor`} />;
+  }
+  // ccrm-010 (DEC-SCOPE-241): the student's internal notes page (the server sends the href; a student with no login gets null).
+  if (column.type === "student_notes") {
+    if (!row[column.key]) return null;
+    return <Link className="btn small secondary" href={String(row[column.key])} aria-label={`Notes for ${String(row.student ?? row.name ?? "student")}`}>Notes</Link>;
   }
   if (column.type === "join") {
     return (

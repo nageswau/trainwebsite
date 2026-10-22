@@ -1242,6 +1242,23 @@ class CounselorStudentUpdate(CounselorStudentCreate):
     email: str | None = Field(default=None, max_length=255)
 
 
+class StudentNoteCreate(BaseModel):
+    """ccrm-010 (DEC-SCOPE-241): an internal note on an overseas student, optionally on one of the student's applications. The author,
+    student and time are server-set, so any other field is refused (422)."""
+
+    model_config = {"extra": "forbid"}
+    body: str = Field(max_length=4000)
+    application_id: UUID | None = None
+
+    @field_validator("body")
+    @classmethod
+    def body_not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise PydanticCustomError("blank_note", "Write a note")
+        return value
+
+
 class AgentStaffCreate(AgentMasterInvite):
     """AGN-002 (DEC-SCOPE-040 S4): a Master adding a staff login -- the same fields and rules as a Master invite."""
 

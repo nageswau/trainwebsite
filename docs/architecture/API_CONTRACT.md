@@ -3424,6 +3424,19 @@ walk-in leads"`. tel-005's intake contract (§12L) under the counselor's own pre
 | `PUT /api/v1/admin/users/{user_id}/counselor` | Authenticated | `overseas_admin` (overseas) only — `super_admin` and everyone else `403 "Only the Overseas Admin can assign a counselor"` | Body `{"counselor_id": uuid}` (AGN-023's assign body; missing → `422`). Target not an `overseas_student` → `404 "Student not found"`. Counselor not an active overseas `counselor` → `422 "Choose an active overseas counselor"`. No link yet → created; same counselor → `200 {…, "changed": false}`, nothing written; otherwise the link moves. Audit `overseas.student.counselor_assign` `{from_counselor_id, to_counselor_id}`; notifications "Student assigned to you" (new) / "Student reassigned" (previous, if active). `200 {"id", "counselor_id", "counselor_name", "changed"}`. Applications keep their own counselor (AGN-023). |
 | `GET /api/v1/portal/overseas/admin/users` (Overseas Admin) | Authenticated | `overseas_admin` | Adds `counselor` ("Not assigned" when none; null on staff rows), `counselor_id` and `assign` (the student id; null on staff rows) with an `assign_student_counselor` column. Other roles and sections unchanged. |
 
+## 12ET. Internal notes on an overseas student (ccrm-010) — addendum, 2026-10-22
+
+`DEC-SCOPE-241`. Migration `0166_overseas_student_notes` (append-only `overseas_student_notes`). RBAC §2.156.
+
+| Method/Path | Auth | Roles | Behaviour |
+|---|---|---|---|
+| `GET /api/v1/counselor/students/{student_id}/notes?limit=20&offset=0` | Authenticated | overseas `counselor` (csc-001 scope: own applications' + linked students); `overseas_admin` (overseas) any `overseas_student`. Everyone else `403 "Only an overseas counselor or the Overseas Admin can see student notes"` | Out of scope / unknown / not an overseas student → `404 "Student not found"`. `limit` 1–50. `200 {"student": {id, full_name, student_code}, "applications": [{id, label}], "items": [note], "total", "limit", "offset"}`, newest first; every author's notes (the history survives a reassignment). `applications` = what the caller may attach: the counselor's own applications for this student, or all of them for the admin; `label` "University · reference". |
+| `POST /api/v1/counselor/students/{student_id}/notes` | Authenticated | as GET | Body `{"body": str (trimmed, 1–4000), "application_id": uuid \| null}`; any other field `422`; blank `422`. An application the caller may not attach → `422 "Choose one of this student's applications"`. `201 note` = `{id, body, author_name, author_role, application: {id, label} \| null, created_at}`. Append-only: no edit or delete route. |
+| `GET /api/v1/portal/overseas/{counselor\|admin}/students` | Authenticated | `counselor`, `overseas_admin` | Adds `notes` (the notes page href; null for a student with no login) with a `student_notes` column. Other sections unchanged. |
+| `GET /api/v1/portal/overseas/admin/users` (Overseas Admin) | Authenticated | `overseas_admin` | Adds `notes` on overseas student rows (null on staff rows) with a `student_notes` column. |
+
+No student-, agent- or university-facing route returns notes.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

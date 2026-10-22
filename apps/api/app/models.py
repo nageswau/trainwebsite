@@ -1837,6 +1837,20 @@ class OverseasStudentCounselor(Base, TimestampMixin):
     assigned_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+class OverseasStudentNote(Base, TimestampMixin):
+    """ccrm-010 (DEC-SCOPE-241): an internal note on an overseas student, optionally on one of the student's applications -- the
+    counselling history. Append-only (nothing updates or deletes a row); never shown to the student or the agent
+    (`services/student_notes.py`)."""
+
+    __tablename__ = "overseas_student_notes"
+    __table_args__ = (Index("ix_overseas_student_notes_student_created", "student_user_id", "created_at"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    student_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    application_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id"), nullable=True)
+    author_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    body: Mapped[str] = mapped_column(Text)
+
+
 class ApplicationStatusHistory(Base, TimestampMixin):
     __tablename__ = "application_status_history"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
