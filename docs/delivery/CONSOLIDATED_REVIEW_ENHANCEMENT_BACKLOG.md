@@ -662,6 +662,7 @@ Risk is the risk of regression or of a wrong outcome.
 - **Complexity:** medium · **Risk:** low
 
 #### `nehn-014` — Lead notes and counselor lead actions (status and follow-ups)
+**Status (2026-10-22): SUPERSEDED** by `ccrm-002` and `ccrm-003` (`docs/delivery/COUNSELOR_CRM_BACKLOG.md`, owner answer CC7). Kept for history.
 - **Source:** §16 "Maintain notes/comments" (L368); §19 "Manage assigned CRM leads", "Update lead/follow-up status", "Maintain relevant CRM notes/history" (L532-533, L542); audit finding (`admin.py:479`).
 - **Business requirement:** Counselors manage their assigned leads (status, follow-ups, notes), and notes are part of the lead history.
 - **Existing behavior:**
@@ -1529,6 +1530,7 @@ Risk is the risk of regression or of a wrong outcome.
 - **Complexity:** small · **Risk:** low
 
 #### `nehn-037` — Counselor overseas tools: document requests, admission checklist, scholarship update, interviews, notes
+**Status (2026-10-22): SUPERSEDED** for parts 1, 2, 3 and 5 by `ccrm-020`, `ccrm-018`/`ccrm-019`, `ccrm-013` and `ccrm-010` (`docs/delivery/COUNSELOR_CRM_BACKLOG.md`, CC7). Part 4 (admission interviews) remains open here.
 - **Source:** §19 L518-544 (request missing documents, update university progress, update scholarship, schedule/track interviews, CRM notes/history); §17 "View document checklist", "View interview/appointment information" (L463, L468).
 - **Business requirement:** Counselors run the student's application: they request missing documents, record scholarship and interview information, and keep notes. The student sees the results.
 - **Existing behavior:**
