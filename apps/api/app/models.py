@@ -2392,6 +2392,25 @@ class LeadCall(Base, TimestampMixin):
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+LEAD_NOTE_MAX = 4000  # migration 0167 repeats it (test_ccrm_002_migration asserts they stay identical)
+
+
+class LeadNote(Base):
+    """ccrm-002 (DEC-SCOPE-242): a free-text note on a lead. Append-only (N2: no edit or delete, so no `updated_at`); its scope is the
+    lead's, read through each lead route's own scope. Plain text, never logged."""
+
+    __tablename__ = "lead_notes"
+    __table_args__ = (
+        CheckConstraint(f"length(body) BETWEEN 1 AND {LEAD_NOTE_MAX}", name="ck_lead_notes_body"),
+        Index("ix_lead_notes_lead_created", "lead_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
+    author_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 # Migration 0095 repeats LEAD_MESSAGE_CHECKS (test_tel_013_migration asserts they stay identical).
 LEAD_MESSAGE_CHECKS = {
     "ck_lead_messages_channel": "channel IN ('whatsapp', 'email')",

@@ -150,6 +150,7 @@ asked one at a time when the item is picked up).
 - **Regression:** timeline ordering and pagination.
 - **Complexity:** small. **Risk:** low.
 - **Open questions:** edit/delete window (nehn-014 left it open) — default: none, append-only.
+- **Status:** built on `worktree-ccrm-002` — `DEC-SCOPE-242`, migration `0167_lead_notes`, API §12EU, RBAC §2.157 (append-only, N1–N5).
 
 ### `ccrm-003` — Counselor lead actions: stage, next action, follow-ups *(supersedes nehn-014 part 2)*
 
@@ -392,7 +393,7 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Complexity:** medium. **Risk:** high (shared state machine). Needs a `DEC-WF` amendment beside `DEC-WF-001`.
 - **Open questions:** the stage↔sub-status mapping table.
 - **Status (2026-10-22):** built on `feature/ccrm-014` — owner answers SS1–SS4 (backlog mapping; backfill only where certain; clear on
-  stage change, `enrolled` auto; roles as above), `DEC-SCOPE-240`, migration `0167_application_sub_status`, API §12ER, RBAC §2.154.
+  stage change, `enrolled` auto; roles as above), `DEC-SCOPE-240`, migration `0168_application_sub_status`, API §12ER, RBAC §2.154.
 
 ### `ccrm-015` — Application exception outcomes
 

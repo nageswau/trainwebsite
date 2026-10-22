@@ -3424,6 +3424,21 @@ walk-in leads"`. tel-005's intake contract (§12L) under the counselor's own pre
 | `PUT /api/v1/admin/users/{user_id}/counselor` | Authenticated | `overseas_admin` (overseas) only — `super_admin` and everyone else `403 "Only the Overseas Admin can assign a counselor"` | Body `{"counselor_id": uuid}` (AGN-023's assign body; missing → `422`). Target not an `overseas_student` → `404 "Student not found"`. Counselor not an active overseas `counselor` → `422 "Choose an active overseas counselor"`. No link yet → created; same counselor → `200 {…, "changed": false}`, nothing written; otherwise the link moves. Audit `overseas.student.counselor_assign` `{from_counselor_id, to_counselor_id}`; notifications "Student assigned to you" (new) / "Student reassigned" (previous, if active). `200 {"id", "counselor_id", "counselor_name", "changed"}`. Applications keep their own counselor (AGN-023). |
 | `GET /api/v1/portal/overseas/admin/users` (Overseas Admin) | Authenticated | `overseas_admin` | Adds `counselor` ("Not assigned" when none; null on staff rows), `counselor_id` and `assign` (the student id; null on staff rows) with an `assign_student_counselor` column. Other roles and sections unchanged. |
 
+## 12EU. Lead notes (ccrm-002) — addendum, 2026-10-22
+
+`DEC-SCOPE-242`. Migration `0167_lead_notes` (table `lead_notes`). RBAC §2.157. Additive: new routes and one new timeline `kind`.
+
+| Method/Path | Auth | Roles | Behaviour |
+|---|---|---|---|
+| `GET /api/v1/telecaller/leads/{id}/notes` · `POST` same | Authenticated | `telecaller`, `telecaller_manager`, `super_admin` (tel-004 T23 scope) | Lead outside the scope → `404 "Lead not found"`; other roles `403`. The lead's telecaller writes after the handover too (N1). |
+| `GET /api/v1/counselor/leads/{id}/notes` · `POST` same | Authenticated | `counselor` (owner + division) | Another counselor's lead or another division → `404`; other roles `403`. |
+| `GET /api/v1/admin/leads/{id}/notes` · `POST` same | Authenticated | `super_admin` (any), `overseas_admin` / `it_admin` (own division) | Unknown lead `404`; other division `403` (the admin timeline's answers); other roles `403`. |
+
+`POST` body `{"body": string}` — trimmed, 1–4000 characters, extra keys refused (`422`). `201 {"id", "at", "author": {"id", "full_name"},
+"body"}`. Append-only: no edit or delete (N2); a closed or returned lead takes notes. Audit `lead_note.create` (entity `enquiry`, metadata
+`{note_id}` — never the body). `GET` → `{items, total, limit, offset}`, newest first, `limit` ≤ 100. Every lead timeline route
+(`/telecaller|counselor|admin/leads/{id}/timeline`) gains `kind: "note"` (actor = author, `reason` = the first 200 characters).
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one
@@ -3477,7 +3492,7 @@ Deep-link targets for the travel reminder (bdm-012): `/bdm/travel/{id}#trip-appo
 
 ## 12ER. Application sub-status (ccrm-014) — addendum, 2026-10-22
 
-`DEC-SCOPE-240`. Migration `0167_application_sub_status`. RBAC §2.154. Codes: `app/application_sub_status.py` (SS1).
+`DEC-SCOPE-240`. Migration `0168_application_sub_status`. RBAC §2.154. Codes: `app/application_sub_status.py` (SS1).
 
 | Method/Path | Auth | Roles | Behaviour |
 |---|---|---|---|

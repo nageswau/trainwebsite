@@ -56,6 +56,9 @@ from app.schemas import (
     AgentNetworkStudentPage,
     AgentOrgDetailOut,
     BatchCreate,
+    LeadNoteIn,
+    LeadNoteOut,
+    LeadNotePage,
     LeadStageHistoryPage,
     LeadStageMove,
     LeadTimelinePage,
@@ -74,6 +77,7 @@ from app.services import (
     bdm_lifecycle,
     course_skills,
     lead_handover,
+    lead_notes,
     lead_pipeline,
     lead_timeline,
     mailer,
@@ -500,6 +504,20 @@ async def lead_timeline_admin(lead_id: UUID, limit: int = Query(50, ge=1, le=100
     """tel-015 TM1: the merged timeline, newest first, with the same 404 / 403 as stage-history."""
     await _admin_lead(db, user, lead_id)
     return await lead_timeline.page(db, lead_id, limit, offset)
+
+
+@router.get("/leads/{lead_id}/notes", response_model=LeadNotePage)
+async def lead_notes_admin(lead_id: UUID, limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0), user: User = Depends(ensure_admin),
+                           db: AsyncSession = Depends(get_db)):
+    """ccrm-002 (DEC-SCOPE-242 N3): a lead's notes, newest first, with the same 404 / 403 as the timeline."""
+    await _admin_lead(db, user, lead_id)
+    return await lead_notes.page(db, lead_id, limit, offset)
+
+
+@router.post("/leads/{lead_id}/notes", response_model=LeadNoteOut, status_code=201)
+async def lead_note_add_admin(lead_id: UUID, payload: LeadNoteIn, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+    await _admin_lead(db, user, lead_id)
+    return await lead_notes.add(db, user, lead_id, payload.body)
 
 
 async def _admin_lead(db: AsyncSession, user: User, lead_id: UUID) -> None:

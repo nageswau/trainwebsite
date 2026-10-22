@@ -68,4 +68,8 @@ describe("timelineEntry", () => {
     expect(timelineEntry(row({ kind: "stage", event: "converted" })).title).toBe("Converted");
     expect(timelineEntry(row({ kind: "priority", from_label: "Warm", to_label: "Hot" })).title).toBe("Priority: Warm → Hot");
   });
+
+  it("reads a note (ccrm-002) with its excerpt as the detail", () => {
+    expect(timelineEntry(row({ kind: "note", reason: "Father prefers Sunday" }))).toMatchObject({ badge: "Note", title: "Note added", detail: "Father prefers Sunday" });
+  });
 });

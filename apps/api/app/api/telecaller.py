@@ -20,6 +20,9 @@ from app.core.database import get_db
 from app.models import LEAD_PRIORITIES, AuditLog, Enquiry, TelecallerProfile, User
 from app.schemas import (
     LeadEnquiryCreate,
+    LeadNoteIn,
+    LeadNoteOut,
+    LeadNotePage,
     LeadQualificationIn,
     LeadStageHistoryPage,
     LeadStageMove,
@@ -32,7 +35,7 @@ from app.schemas import (
     TelecallerMeOut,
     TelecallerTeamPage,
 )
-from app.services import lead_follow_ups, lead_intake, lead_pipeline, lead_qualification, telecaller_leads
+from app.services import lead_follow_ups, lead_intake, lead_notes, lead_pipeline, lead_qualification, telecaller_leads
 from app.services.bdm_appointments import db_now
 from app.services.lead_timeline import page as timeline_page
 from app.services.telecaller import admin_team_filter, parse_self_update, person_ref, profile_out, require_manager, team_filter, telecaller_context
@@ -170,13 +173,31 @@ async def update_lead(lead_id: UUID, payload: TelecallerLeadUpdate, user: User =
     return await telecaller_leads.detail(db, user, lead_id, filters)
 
 
-@router.get("/leads/{lead_id}/timeline", response_model=LeadTimelinePage)
-async def lead_timeline(lead_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """tel-015: the merged timeline of a lead in scope, newest first (W1 + every event kind, `services/lead_timeline.py`)."""
+async def _lead_in_scope(db: AsyncSession, user: User, lead_id: UUID) -> None:
     _, filters = lead_pipeline.scope(user)
     if await db.scalar(select(Enquiry.id).where(Enquiry.id == lead_id, *filters)) is None:
         raise HTTPException(404, lead_pipeline.LEAD_NOT_FOUND)
+
+
+@router.get("/leads/{lead_id}/timeline", response_model=LeadTimelinePage)
+async def lead_timeline(lead_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """tel-015: the merged timeline of a lead in scope, newest first (W1 + every event kind, `services/lead_timeline.py`)."""
+    await _lead_in_scope(db, user, lead_id)
     return await timeline_page(db, lead_id, limit, offset)
+
+
+@router.get("/leads/{lead_id}/notes", response_model=LeadNotePage)
+async def lead_notes_list(lead_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-002 (DEC-SCOPE-242): a lead's notes in the T23 scope, newest first."""
+    await _lead_in_scope(db, user, lead_id)
+    return await lead_notes.page(db, lead_id, limit, offset)
+
+
+@router.post("/leads/{lead_id}/notes", response_model=LeadNoteOut, status_code=201)
+async def lead_note_add(lead_id: UUID, payload: LeadNoteIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-002 N1: the telecaller writes after the handover too (a note changes no lead state, so tel-008 D1 does not apply)."""
+    await _lead_in_scope(db, user, lead_id)
+    return await lead_notes.add(db, user, lead_id, payload.body)
 
 
 @router.get("/leads/{lead_id}/qualification")

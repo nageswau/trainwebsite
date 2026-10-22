@@ -1,4 +1,4 @@
-"""ccrm-014 -- migration 0167_application_sub_status (DEC-SCOPE-240): chain, columns, the SS2 backfill and the round trip, in a throwaway
+"""ccrm-014 -- migration 0168_application_sub_status (DEC-SCOPE-240): chain, columns, the SS2 backfill and the round trip, in a throwaway
 database (the csc-001 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,14 +13,14 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_ccrm_014_migration_0167", VERSIONS / "0167_application_sub_status.py")
+_spec = importlib.util.spec_from_file_location("_ccrm_014_migration_0168", VERSIONS / "0168_application_sub_status.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0166_application_codes", "0167_application_sub_status"
+BASE, HEAD = "0167_lead_notes", "0168_application_sub_status"
 
 
-def test_migration_chains_after_0166_and_is_the_single_head():
+def test_migration_chains_after_0167_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

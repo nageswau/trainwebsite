@@ -1,7 +1,7 @@
 """ccrm-014 -- application sub-status: overseas_applications.sub_status and the history pair.
 
-Revision ID: 0167_application_sub_status
-Revises: 0166_application_codes
+Revision ID: 0168_application_sub_status
+Revises: 0167_lead_notes
 
 docs/superpowers/specs/2026-10-22-ccrm-014-application-sub-status-design.md (DEC-SCOPE-240). Additive columns, NULL = not set. 0001
 builds a fresh database from the current models, which already carry the columns, so each is added only when missing (0164's idiom).
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0167_application_sub_status"
-down_revision = "0166_application_codes"
+revision = "0168_application_sub_status"
+down_revision = "0167_lead_notes"
 branch_labels = None
 depends_on = None
 

@@ -46,7 +46,7 @@ and who changed it (spec AC 6). A change on one application never touches anothe
     (A4). Returns the agency detail. The EduSphere counselor is notified (CC5).
 - **Reads:** `sub_status` (+ label) on the overseas application list, `/status` history, portal application tables (counselor, admin,
   student) and the agency list/detail/history.
-- **DB (0167, after ccrm-011's 0166):** `overseas_applications.sub_status VARCHAR(40) NULL`; `application_status_history.from_sub_status/to_sub_status
+- **DB (0168, after ccrm-002's 0167_lead_notes):** `overseas_applications.sub_status VARCHAR(40) NULL`; `application_status_history.from_sub_status/to_sub_status
   VARCHAR(40) NULL`; SS2 backfill. Additive; downgrade drops the columns.
 - **Web:** counselor Evaluate Applications card gets a sub-status badge and an "Update sub-status" form (grouped by stage); agency
   detail gets a badge, a sub-status form and sub-status in history; tables show a Sub-status column.

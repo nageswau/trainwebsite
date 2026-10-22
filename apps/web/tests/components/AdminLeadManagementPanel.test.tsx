@@ -269,13 +269,17 @@ describe("AdminLeadManagementPanel (ADM-002, bdm-017 spec §6, tel-003 spec §5)
     const tr = await tableRow("Lead w1");
     const row = (over: object) => ({ from_value: "", from_label: "", to_value: "", to_label: "", reason: null, event: null, subject: null, status: null,
       duration_seconds: null, scheduled_for: null, ...over });
-    fetchMock.mockImplementationOnce(() => Promise.resolve(res(pageOf([
+    const history = pageOf([
       row({ id: "h2", kind: "stage", at: "2026-10-06T06:00:00Z", from_value: "assigned", from_label: "Assigned", to_value: "lost", to_label: "Lost",
         event: "manual", actor: { id: "a1", full_name: "Ira Admin" }, reason: "Duplicate" }),
       row({ id: "c1", kind: "call", at: "2026-10-06T05:30:00Z", from_value: "outgoing", to_value: "busy", actor: { id: "t1", full_name: "Tara" }, duration_seconds: 20 }),
       row({ id: "h1", kind: "stage", at: "2026-10-06T05:00:00Z", from_value: "new", from_label: "New Lead", to_value: "assigned", to_label: "Assigned",
         event: "assigned", actor: null }),
-    ]))));
+    ]);
+    // ccrm-002: History also loads the lead's notes, so the timeline page is matched by URL, not by call order
+    const base = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((url: string, init?: RequestInit) =>
+      String(url).includes("/timeline") ? Promise.resolve(res(history)) : String(url).includes("/notes") ? Promise.resolve(res(pageOf([]))) : base(url, init));
     fireEvent.click(within(tr).getByRole("button", { name: "History for Lead w1" }));
     const list = await within(tr).findByRole("list", { name: "History for Lead w1" });
     const items = within(list).getAllByRole("listitem").map((li) => li.textContent);
@@ -285,7 +289,8 @@ describe("AdminLeadManagementPanel (ADM-002, bdm-017 spec §6, tel-003 spec §5)
     expect(items[1]).toContain("Outgoing call");
     expect(items[2]).toContain("Stage: New Lead → Assigned");
     expect(items[2]).toContain("System");
-    expect(String(fetchMock.mock.calls.at(-1)?.[0])).toBe("/api/v1/admin/leads/w1/timeline?limit=50&offset=0");
+    expect(fetchMock.mock.calls.map(([u]) => String(u))).toContain("/api/v1/admin/leads/w1/timeline?limit=50&offset=0");
+    expect(fetchMock.mock.calls.map(([u]) => String(u))).toContain("/api/v1/admin/leads/w1/notes?limit=50&offset=0");
     fireEvent.click(within(tr).getByRole("button", { name: "History for Lead w1" }));
     expect(within(tr).queryByRole("list", { name: "History for Lead w1" })).toBeNull();
   });
