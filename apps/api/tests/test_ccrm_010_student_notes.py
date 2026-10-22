@@ -136,7 +136,9 @@ async def test_history_survives_a_reassignment(client, db_session, world):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(("role", "division"), [("overseas_student", "overseas"), ("agent", "overseas"), ("university_rep", "overseas"), ("counselor", "it"), ("super_admin", "global"), ("it_admin", "it")])
+@pytest.mark.parametrize(
+    ("role", "division"), [("overseas_student", "overseas"), ("agent", "overseas"), ("university_rep", "overseas"), ("counselor", "it"), ("super_admin", "global"), ("it_admin", "it")]
+)
 async def test_other_roles_are_403(client, db_session, world, role, division):
     user = world["student"] if role == "overseas_student" else await mk_user(db_session, role=role, division=division)
     await login(client, user.email, division=division if division != "global" else "overseas")
