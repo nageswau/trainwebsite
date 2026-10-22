@@ -762,7 +762,7 @@ half.
 
 | Feature ID | Contract documents | Old workbook cases | Status |
 |---|---|---|---|
-| `ccrm-010` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-010` (owner request 2026-10-22; supersedes `nehn-037` part 5) → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-241` → design `docs/superpowers/specs/2026-10-22-ccrm-010-student-notes-design.md` → plan `docs/superpowers/plans/2026-10-22-ccrm-010-student-notes.md`; `API_CONTRACT.md` §12ET, `RBAC_MATRIX.md` §2.156; migration `0168_overseas_student_notes` | none | Built on `feature/ccrm-010`; lite API set, vitest, e2e and browser QA green |
+| `ccrm-010` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-010` (owner request 2026-10-22; supersedes `nehn-037` part 5) → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-241` → design `docs/superpowers/specs/2026-10-22-ccrm-010-student-notes-design.md` → plan `docs/superpowers/plans/2026-10-22-ccrm-010-student-notes.md`; `API_CONTRACT.md` §12ET, `RBAC_MATRIX.md` §2.156; migration `0169_overseas_student_notes` | none | Built on `feature/ccrm-010`; lite API set, vitest, e2e and browser QA green |
 
 | AC | Criterion | Tests |
 |---|---|---|

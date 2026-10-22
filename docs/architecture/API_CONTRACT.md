@@ -3426,7 +3426,7 @@ walk-in leads"`. tel-005's intake contract (§12L) under the counselor's own pre
 
 ## 12ET. Internal notes on an overseas student (ccrm-010) — addendum, 2026-10-22
 
-`DEC-SCOPE-241`. Migration `0168_overseas_student_notes` (append-only `overseas_student_notes`). RBAC §2.156.
+`DEC-SCOPE-241`. Migration `0169_overseas_student_notes` (append-only `overseas_student_notes`). RBAC §2.156.
 
 | Method/Path | Auth | Roles | Behaviour |
 |---|---|---|---|

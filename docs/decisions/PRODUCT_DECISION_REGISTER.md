@@ -8991,7 +8991,7 @@ linked from the Students section, the Overseas Admin's Users directory and the c
 write too (CC3); N3 a counselor attaches only to applications assigned to them, the admin to any of the student's; N4 every note on the
 student is visible to whoever has the student in scope (history survives a reassignment), no edit/delete; N5 ccrm-004's appointment
 outcome notes join this history when ccrm-004 is built.
-**Numbering:** migration `0168_overseas_student_notes` (after ccrm-002's `0167_lead_notes`); API §12ET; RBAC §2.156.
+**Numbering:** migration `0169_overseas_student_notes` (after ccrm-014's `0168_application_sub_status`); API §12ET; RBAC §2.156.
 - **Feature ID authorized:** `ccrm-010`. **Status:** built on `feature/ccrm-010`.
 
 ### DEC-SCOPE-242 — Lead notes (`ccrm-002`)
