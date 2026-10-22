@@ -758,6 +758,22 @@ half.
 | `ccrm-011-AC3` | Shown everywhere an application is listed | `::test_shared_applications_list_carries_the_code`, `::test_agency_list_and_detail_carry_the_code`, `::test_counselor_portal_tables_show_the_application_id` (5), `::test_student_portal_tables_show_the_application_id` (2), `::test_university_rep_offer_letters_show_the_application_id`, `::test_agent_dashboard_shows_the_application_id`; `apps/web/tests/components/AgentApplicationsPanel.test.tsx`, `AgentApplicationDetail.test.tsx`; e2e `ccrm-011-application-codes.spec.ts` |
 | `ccrm-011-AC4` | Searchable within scope | `::test_lookup_finds_an_application_by_code_only_inside_scope`, `test_enh_031_lookups_applications.py` |
 
+**Addendum, 2026-10-22 (`ccrm-010`)** — one row and its acceptance-criteria map. Internal notes on an overseas student.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `ccrm-010` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-010` (owner request 2026-10-22; supersedes `nehn-037` part 5) → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-241` → design `docs/superpowers/specs/2026-10-22-ccrm-010-student-notes-design.md` → plan `docs/superpowers/plans/2026-10-22-ccrm-010-student-notes.md`; `API_CONTRACT.md` §12ET, `RBAC_MATRIX.md` §2.156; migration `0169_overseas_student_notes` | none | Built on `feature/ccrm-010`; lite API set, vitest, e2e and browser QA green |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `ccrm-010-AC1` | The counselor adds and reads append-only notes on a student in scope (own application's student or linked walk-in), optionally on their own application | `apps/api/tests/test_ccrm_010_student_notes.py::test_counselor_adds_and_reads_a_note_on_their_student`, `::test_a_note_on_the_counselors_own_application`, `::test_a_linked_walk_in_student_is_in_scope`; e2e `apps/web/tests/e2e/ccrm-010-student-notes.spec.ts` |
+| `ccrm-010-AC2` | The Overseas Admin reads and writes notes on any overseas student and any of their applications | `::test_the_overseas_admin_reads_and_writes_any_student_and_application`; e2e |
+| `ccrm-010-AC3` | Student, agent and every other role never see notes (403); out of scope / unknown → 404; anonymous 401 | `::test_other_roles_are_403` (6), `::test_out_of_scope_unknown_and_non_student_are_404`, `::test_anonymous_is_401` |
+| `ccrm-010-AC4` | Another counselor's or another student's application cannot be attached (422); invalid bodies 422 | `::test_a_counselor_cannot_attach_another_application` (3), `::test_invalid_bodies_are_422` (6) |
+| `ccrm-010-AC5` | The history survives a reassignment; newest first, paged | `::test_history_survives_a_reassignment`, `::test_paging_newest_first` |
+| `ccrm-010-AC6` | Students section, Users directory and walk-in list link to the notes page | `::test_students_section_links_each_student_to_notes`, `::test_admin_users_directory_links_overseas_students_only`; `apps/web/tests/components/StudentNotesPanel.test.tsx` (9) |
+| `ccrm-010-AC7` | Migration additive; downgrade refuses while notes exist | `apps/api/tests/test_ccrm_010_migration.py` (5) |
+
 **Addendum, 2026-10-22 (`ccrm-002`)** — one row and its acceptance-criteria map. Append-only lead notes.
 
 | Feature ID | Contract documents | Old workbook cases | Status |

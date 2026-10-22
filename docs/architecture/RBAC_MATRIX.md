@@ -2425,6 +2425,16 @@ plus students linked to the counselor" (`overseas_student_counselors`); every ot
 - W6: reassignment stays with the Overseas Admin; a counselor cannot move their own students.
 - Pinned by `test_csc_005_reassign_student_counselor.py`.
 
+### 2.156 Internal notes on an overseas student *(added 2026-10-22 — `DEC-SCOPE-241`, ccrm-010)*
+
+| Route | overseas `counselor` | `overseas_admin` | `super_admin`, `it_admin`, IT counselor, students, agents, university reps, every other role | Anonymous |
+|---|---|---|---|---|
+| `GET/POST /counselor/students/{id}/notes` | ✅ students in csc-001 scope (`404` otherwise); attach only own applications (`422`) | ✅ any overseas student, any of their applications | `403` (N1) | `401` |
+| Students section / Users directory Notes link | ✅ Students | ✅ Students + Users | column absent | n/a |
+
+- Notes are internal: never returned to the student or the agent. Append-only (N4).
+- Pinned by `test_ccrm_010_student_notes.py`.
+
 ### 2.157 Lead notes *(added 2026-10-22 — `DEC-SCOPE-242`, ccrm-002)*
 
 | Route (`GET` + `POST …/notes`) | `telecaller` | `telecaller_manager` | `counselor` | `overseas_admin` / `it_admin` | `super_admin` | Every other role | Anonymous |

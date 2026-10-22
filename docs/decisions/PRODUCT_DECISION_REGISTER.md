@@ -8976,6 +8976,24 @@ tables and the application lookup, whose `q` also matches it (AC5). Student code
 **Numbering:** migration `0166`; API §12EQ; RBAC §2.153 (no new permission).
 - **Feature ID authorized:** `ccrm-011`. **Status:** built on `feature/ccrm-011`.
 
+### DEC-SCOPE-241 — Internal notes on an overseas student; counselling history (`ccrm-010`)
+
+**Status:** CONFIRMED by owner 2026-10-22 (Claude Code session; the owner asked to proceed with recommended answers). Supersedes
+`nehn-037` part 5. Builds on `DEC-SCOPE-226` (csc-001 scope) and `DEC-SCOPE-230` (csc-005 reassignment).
+**Evidence:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-010` (owner request "implement all this", 2026-10-22, against the
+`UNVERIFIED` Counselor CRM Specification PDF §5 Activities and §6 internal notes); owner answers CC2 (no new roles), CC3 (Overseas
+Admin is the escalation point), CC4 (the counselor works all applications incl. agency).
+**Decision:** append-only internal notes on an overseas student, optionally on one of the student's applications
+(`overseas_student_notes`); `GET/POST /counselor/students/{id}/notes`. The overseas counselor reads and writes for the students in
+csc-001 scope; the Overseas Admin for any overseas student. Never visible to the student or the agent. A notes page for each portal,
+linked from the Students section, the Overseas Admin's Users directory and the counselor's walk-in list.
+**Builder's calls:** N1 Overseas Admin is the only admin role (super_admin excluded, csc-005 C13 precedent); N2 the Overseas Admin may
+write too (CC3); N3 a counselor attaches only to applications assigned to them, the admin to any of the student's; N4 every note on the
+student is visible to whoever has the student in scope (history survives a reassignment), no edit/delete; N5 ccrm-004's appointment
+outcome notes join this history when ccrm-004 is built.
+**Numbering:** migration `0169_overseas_student_notes` (after ccrm-014's `0168_application_sub_status`); API §12ET; RBAC §2.156.
+- **Feature ID authorized:** `ccrm-010`. **Status:** built on `feature/ccrm-010`.
+
 ### DEC-SCOPE-242 — Lead notes (`ccrm-002`)
 
 **Status:** CONFIRMED by owner 2026-10-22 (Claude Code session; the owner pre-authorised the recommended defaults for this item's open
