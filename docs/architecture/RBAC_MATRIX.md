@@ -2435,6 +2435,17 @@ plus students linked to the counselor" (`overseas_student_counselors`); every ot
 - Notes are internal: never returned to the student or the agent. Append-only (N4).
 - Pinned by `test_ccrm_010_student_notes.py`.
 
+### 2.157 Lead notes *(added 2026-10-22 — `DEC-SCOPE-242`, ccrm-002)*
+
+| Route (`GET` + `POST …/notes`) | `telecaller` | `telecaller_manager` | `counselor` | `overseas_admin` / `it_admin` | `super_admin` | Every other role | Anonymous |
+|---|---|---|---|---|---|---|---|
+| `/telecaller/leads/{id}/notes` | ✅ own leads (also once handed over, N1); else `404` | ✅ T23 team scope; else `404` | `403` | `403` | ✅ all | `403` | `401` |
+| `/counselor/leads/{id}/notes` | `403` | `403` | ✅ leads handed to them, own division; else `404` | `403` | `403` | `403` | `401` |
+| `/admin/leads/{id}/notes` | `403` | `403` | `403` | ✅ own division; other `403`, unknown `404` | ✅ all | `403` | `401` |
+
+- Append-only (N2): no role edits or deletes a note. The body is never logged nor stored in the audit row.
+- Pinned by `test_ccrm_002_lead_notes.py`.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

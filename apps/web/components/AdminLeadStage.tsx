@@ -2,6 +2,7 @@
 
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 
+import LeadNotes from "@/components/LeadNotes";
 import LeadTimeline from "@/components/LeadTimeline";
 import { sendJson, type SendOutcome } from "@/lib/apiErrors";
 import { isClosed, needsReason, personTargets, stageLabel } from "@/lib/leadStages";
@@ -88,15 +89,22 @@ export function LeadStageControl({ lead, onChanged, onMessage, move = adminMove,
 }
 
 // tel-004 AC5, tel-015 TM1: the lead's merged timeline (stage changes and every other event), newest first; automatic changes are by
-// "System". Loaded when opened, not with the list.
+// "System". Loaded when opened, not with the list. ccrm-002 (N5): the lead's notes above it -- the admin writes there.
 export function LeadStageHistory({ lead }: { lead: Lead }) {
   const [open, setOpen] = useState(false);
+  const [version, setVersion] = useState(0);
   const label = `History for ${lead.name}`;
+  const url = `/api/v1/admin/leads/${encodeURIComponent(lead.id)}`;
 
   return (
     <div style={{ marginTop: 4, minWidth: "min(18rem, 70vw)" }}>
       <button type="button" className="btn secondary small" aria-label={label} aria-expanded={open} onClick={() => setOpen((o) => !o)}>History</button>
-      {open && <LeadTimeline url={`/api/v1/admin/leads/${encodeURIComponent(lead.id)}/timeline`} version={0} label={label} />}
+      {open && (
+        <div style={{ display: "grid", gap: 12, marginTop: 8 }}>
+          <LeadNotes url={`${url}/notes`} onAdded={() => setVersion((n) => n + 1)} />
+          <LeadTimeline url={`${url}/timeline`} version={version} label={label} />
+        </div>
+      )}
     </div>
   );
 }

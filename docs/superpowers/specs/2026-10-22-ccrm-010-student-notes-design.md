@@ -1,6 +1,6 @@
 # ccrm-010 — Internal notes on an overseas student (counselling history) (design)
 
-`DEC-SCOPE-241`, API `12ET`, RBAC `2.156`, migration `0167_overseas_student_notes` (chained after ccrm-011's
+`DEC-SCOPE-241`, API `12ET`, RBAC `2.156`, migration `0168_overseas_student_notes` (chained after ccrm-002's `0167_lead_notes`, itself after ccrm-011's
 `0166_application_codes`; 240 / 12ER–12ES / 2.154–2.155 left for the parallel ccrm-014). Backlog: `docs/delivery/COUNSELOR_CRM_BACKLOG.md`
 `ccrm-010` (supersedes `nehn-037` part 5). Dependencies: none (backlog). Source: UNVERIFIED spec PDF §5 Activities, §6 internal notes;
 owner instruction "implement all this" (2026-10-22).

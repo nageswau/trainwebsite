@@ -762,7 +762,7 @@ half.
 
 | Feature ID | Contract documents | Old workbook cases | Status |
 |---|---|---|---|
-| `ccrm-010` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-010` (owner request 2026-10-22; supersedes `nehn-037` part 5) → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-241` → design `docs/superpowers/specs/2026-10-22-ccrm-010-student-notes-design.md` → plan `docs/superpowers/plans/2026-10-22-ccrm-010-student-notes.md`; `API_CONTRACT.md` §12ET, `RBAC_MATRIX.md` §2.156; migration `0167_overseas_student_notes` | none | Built on `feature/ccrm-010`; lite API set, vitest, e2e and browser QA green |
+| `ccrm-010` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-010` (owner request 2026-10-22; supersedes `nehn-037` part 5) → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-241` → design `docs/superpowers/specs/2026-10-22-ccrm-010-student-notes-design.md` → plan `docs/superpowers/plans/2026-10-22-ccrm-010-student-notes.md`; `API_CONTRACT.md` §12ET, `RBAC_MATRIX.md` §2.156; migration `0168_overseas_student_notes` | none | Built on `feature/ccrm-010`; lite API set, vitest, e2e and browser QA green |
 
 | AC | Criterion | Tests |
 |---|---|---|
@@ -773,3 +773,18 @@ half.
 | `ccrm-010-AC5` | The history survives a reassignment; newest first, paged | `::test_history_survives_a_reassignment`, `::test_paging_newest_first` |
 | `ccrm-010-AC6` | Students section, Users directory and walk-in list link to the notes page | `::test_students_section_links_each_student_to_notes`, `::test_admin_users_directory_links_overseas_students_only`; `apps/web/tests/components/StudentNotesPanel.test.tsx` (9) |
 | `ccrm-010-AC7` | Migration additive; downgrade refuses while notes exist | `apps/api/tests/test_ccrm_010_migration.py` (5) |
+
+**Addendum, 2026-10-22 (`ccrm-002`)** — one row and its acceptance-criteria map. Append-only lead notes.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `ccrm-002` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-002` (owner CC1–CC10, 2026-10-22) → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-242` → design `docs/superpowers/specs/2026-10-22-ccrm-002-lead-notes-design.md`; `API_CONTRACT.md` §12EU, `RBAC_MATRIX.md` §2.157 | none | Built on `worktree-ccrm-002`; lite API set, vitest, e2e and browser QA |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `ccrm-002-AC1` | A counselor adds a note → the timeline shows it with author and time | `apps/api/tests/test_ccrm_002_lead_notes.py::test_counselor_adds_a_note_and_the_timeline_shows_it_with_author_and_time`; e2e `apps/web/tests/e2e/ccrm-002-lead-notes.spec.ts` |
+| `ccrm-002-AC2` | Another counselor's lead (or another division) → 404 | `::test_another_counselors_lead_is_404_for_read_and_write`, `::test_a_counselor_of_another_division_is_404` |
+| `ccrm-002-AC3` | Writers: the telecaller (also after handover), the manager in scope, super_admin, admins in division; others 403 / 404 | `::test_the_telecaller_writes_even_after_the_handover_and_the_manager_reads_it`, `::test_a_telecaller_outside_the_t23_scope_gets_404`, `::test_admins_write_in_their_division_and_get_403_outside_it`, `::test_other_roles_are_refused` |
+| `ccrm-002-AC4` | Body 1–4000 trimmed; closed lead allowed; a returned lead keeps its notes; audit never carries the body | `::test_an_empty_or_too_long_body_is_422`, `::test_4000_characters_are_kept_whole_and_the_timeline_shows_an_excerpt`, `::test_a_closed_lead_takes_notes`, `::test_a_returned_lead_keeps_its_notes`, `::test_the_audit_row_never_carries_the_body` |
+| `ccrm-002-AC5` | Notes page newest first with an exact total; migration round trip, downgrade refusal | `::test_notes_page_newest_first_with_an_exact_total`; `apps/api/tests/test_ccrm_002_migration.py` |
+| `ccrm-002-AC6` | Notes panel: list, add, empty / failure states, 4000 cap | `apps/web/tests/components/LeadNotes.test.tsx`; `apps/web/tests/lib/leadTimeline.test.ts` |

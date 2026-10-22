@@ -9,7 +9,7 @@ import type { PersonRef } from "@/lib/telecallerLeads";
 
 export type TimelineKind =
   | "created" | "enquiry" | "stage" | "priority" | "assignment" | "handover" | "student_link" | "call" | "message" | "follow_up" | "appointment"
-  | "milestone";
+  | "milestone" | "note";
 export type TimelineRow = {
   id: string; kind: TimelineKind; at: string; actor: PersonRef | null; from_value: string; from_label: string; to_value: string; to_label: string;
   reason: string | null; event?: string | null; subject?: string | null; status?: string | null; duration_seconds?: number | null;
@@ -105,6 +105,8 @@ export function timelineEntry(row: TimelineRow): TimelineEntry {
     case "milestone":
       return { ...base, badge: "Milestone", tone: TONE.contact, title: `${milestoneKind(row.event as MilestoneKind)}: ${row.to_label}`,
         meta: compact([row.status && statusText(row.status), row.subject]) };
+    case "note": // ccrm-002: an excerpt; the Notes section shows the whole text
+      return { ...base, badge: "Note", tone: TONE.owner, title: "Note added" };
     default:
       return { ...base, badge: "Activity", tone: TONE.stage, title: humanise(String((row as { kind: string }).kind)) };
   }

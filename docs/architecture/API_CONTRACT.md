@@ -3426,7 +3426,7 @@ walk-in leads"`. tel-005's intake contract (§12L) under the counselor's own pre
 
 ## 12ET. Internal notes on an overseas student (ccrm-010) — addendum, 2026-10-22
 
-`DEC-SCOPE-241`. Migration `0167_overseas_student_notes` (append-only `overseas_student_notes`). RBAC §2.156.
+`DEC-SCOPE-241`. Migration `0168_overseas_student_notes` (append-only `overseas_student_notes`). RBAC §2.156.
 
 | Method/Path | Auth | Roles | Behaviour |
 |---|---|---|---|
@@ -3436,6 +3436,21 @@ walk-in leads"`. tel-005's intake contract (§12L) under the counselor's own pre
 | `GET /api/v1/portal/overseas/admin/users` (Overseas Admin) | Authenticated | `overseas_admin` | Adds `notes` on overseas student rows (null on staff rows) with a `student_notes` column. |
 
 No student-, agent- or university-facing route returns notes.
+
+## 12EU. Lead notes (ccrm-002) — addendum, 2026-10-22
+
+`DEC-SCOPE-242`. Migration `0167_lead_notes` (table `lead_notes`). RBAC §2.157. Additive: new routes and one new timeline `kind`.
+
+| Method/Path | Auth | Roles | Behaviour |
+|---|---|---|---|
+| `GET /api/v1/telecaller/leads/{id}/notes` · `POST` same | Authenticated | `telecaller`, `telecaller_manager`, `super_admin` (tel-004 T23 scope) | Lead outside the scope → `404 "Lead not found"`; other roles `403`. The lead's telecaller writes after the handover too (N1). |
+| `GET /api/v1/counselor/leads/{id}/notes` · `POST` same | Authenticated | `counselor` (owner + division) | Another counselor's lead or another division → `404`; other roles `403`. |
+| `GET /api/v1/admin/leads/{id}/notes` · `POST` same | Authenticated | `super_admin` (any), `overseas_admin` / `it_admin` (own division) | Unknown lead `404`; other division `403` (the admin timeline's answers); other roles `403`. |
+
+`POST` body `{"body": string}` — trimmed, 1–4000 characters, extra keys refused (`422`). `201 {"id", "at", "author": {"id", "full_name"},
+"body"}`. Append-only: no edit or delete (N2); a closed or returned lead takes notes. Audit `lead_note.create` (entity `enquiry`, metadata
+`{note_id}` — never the body). `GET` → `{items, total, limit, offset}`, newest first, `limit` ≤ 100. Every lead timeline route
+(`/telecaller|counselor|admin/leads/{id}/timeline`) gains `kind: "note"` (actor = author, `reason` = the first 200 characters).
 
 ## 13. Traceability check
 

@@ -17,8 +17,8 @@ from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
 from app.models import Enquiry, User
-from app.schemas import LeadHandoverIn, LeadReturnIn, LeadStudentLinkIn, LeadTimelinePage
-from app.services import bdm_leads, lead_handover, lead_pipeline, telecaller_leads
+from app.schemas import LeadHandoverIn, LeadNoteIn, LeadNoteOut, LeadNotePage, LeadReturnIn, LeadStudentLinkIn, LeadTimelinePage
+from app.services import bdm_leads, lead_handover, lead_notes, lead_pipeline, telecaller_leads
 from app.services.lead_timeline import page as timeline_page
 
 telecaller_router = APIRouter(prefix="/telecaller/leads", tags=["lead-handover"])
@@ -46,12 +46,29 @@ async def lead_detail(lead_id: UUID, user: User = Depends(get_current_user), db:
     return await lead_handover.detail(db, lead_id, lead_handover.counselor_scope(user))
 
 
+async def _counselor_lead(db: AsyncSession, user: User, lead_id: UUID) -> None:
+    if await db.scalar(select(Enquiry.id).where(Enquiry.id == lead_id, *lead_handover.counselor_scope(user))) is None:
+        raise HTTPException(404, lead_pipeline.LEAD_NOT_FOUND)
+
+
 @counselor_router.get("/{lead_id}/timeline", response_model=LeadTimelinePage)
 async def lead_timeline(lead_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    filters = lead_handover.counselor_scope(user)
-    if await db.scalar(select(Enquiry.id).where(Enquiry.id == lead_id, *filters)) is None:
-        raise HTTPException(404, lead_pipeline.LEAD_NOT_FOUND)
+    await _counselor_lead(db, user, lead_id)
     return await timeline_page(db, lead_id, limit, offset)
+
+
+@counselor_router.get("/{lead_id}/notes", response_model=LeadNotePage)
+async def lead_notes_list(lead_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-002 (DEC-SCOPE-242): the notes of a lead handed to this counselor (owner + division), newest first."""
+    await _counselor_lead(db, user, lead_id)
+    return await lead_notes.page(db, lead_id, limit, offset)
+
+
+@counselor_router.post("/{lead_id}/notes", response_model=LeadNoteOut, status_code=201)
+async def lead_note_add(lead_id: UUID, payload: LeadNoteIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-002: a note on a closed lead is allowed (history); another counselor's lead is 404."""
+    await _counselor_lead(db, user, lead_id)
+    return await lead_notes.add(db, user, lead_id, payload.body)
 
 
 @counselor_router.post("/{lead_id}/return")

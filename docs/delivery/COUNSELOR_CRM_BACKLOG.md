@@ -150,6 +150,7 @@ asked one at a time when the item is picked up).
 - **Regression:** timeline ordering and pagination.
 - **Complexity:** small. **Risk:** low.
 - **Open questions:** edit/delete window (nehn-014 left it open) — default: none, append-only.
+- **Status:** built on `worktree-ccrm-002` — `DEC-SCOPE-242`, migration `0167_lead_notes`, API §12EU, RBAC §2.157 (append-only, N1–N5).
 
 ### `ccrm-003` — Counselor lead actions: stage, next action, follow-ups *(supersedes nehn-014 part 2)*
 
@@ -307,7 +308,7 @@ asked one at a time when the item is picked up).
 ### `ccrm-010` — Student and application notes; counselling history *(supersedes nehn-037 part 5)*
 
 **Status (2026-10-22): built on `feature/ccrm-010`** — `DEC-SCOPE-241`, API §12ET, RBAC §2.156, migration
-`0167_overseas_student_notes`. Builder's calls N1–N5. Until ccrm-009 exists the notes live on their own page
+`0168_overseas_student_notes`. Builder's calls N1–N5. Until ccrm-009 exists the notes live on their own page
 (`/overseas/{counselor|admin}/students/{id}/notes`). Spec `docs/superpowers/specs/2026-10-22-ccrm-010-student-notes-design.md`.
 
 - **Source:** §5 Activities; §6 "internal notes"; nehn-037 #5.
