@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application_sub_status import label as sub_status_label
 from app.core.identifiers import uuid_reference
 from app.core.rbac import PERMISSIONS, is_agent_staff
 from app.lead_stages import label as lead_stage_label
@@ -105,7 +106,7 @@ def _payload(title, subtitle, columns=(), rows=(), metrics=(), actions=(), panel
 
 
 async def _awaiting_documents(db: AsyncSession, applications: list[OverseasApplication]) -> int:
-    """ccrm-001 (DEC-SCOPE-238): open applications at `university_selection` with a document pending verification, or whose undecided
+    """ccrm-001 (DEC-SCOPE-240): open applications at `university_selection` with a document pending verification, or whose undecided
     visa case has a checklist item whose newest document of that type (on this application) is not verified. Until ccrm-019's
     checklist lands. Two queries over the dashboard's already-scoped applications."""
     open_apps = {a.id: a for a in applications if a.status not in {WITHDRAWN, "enrolled"}}
@@ -611,8 +612,29 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
         return _payload(
             "Applications",
             "Application stages and required next actions.",
-            (("id", "reference"), ("application_code", "EduSphere ID"), ("university", "University"), ("reference", "Reference"), ("intake", "Intake"), ("status", "Status"), ("next_action", "Next action")),
-            ({"id": a.id, "application_code": a.application_code, "university": u.name, "reference": a.application_reference, "intake": a.intake, "status": a.status, "next_action": a.next_action} for a, u in applications),
+            (
+                ("id", "reference"),
+                ("application_code", "EduSphere ID"),
+                ("university", "University"),
+                ("reference", "Reference"),
+                ("intake", "Intake"),
+                ("status", "Status"),
+                ("sub_status_label", "Sub-status"),
+                ("next_action", "Next action"),
+            ),
+            (
+                {
+                    "id": a.id,
+                    "application_code": a.application_code,
+                    "university": u.name,
+                    "reference": a.application_reference,
+                    "intake": a.intake,
+                    "status": a.status,
+                    "sub_status_label": sub_status_label(a.sub_status),
+                    "next_action": a.next_action,
+                }
+                for a, u in applications
+            ),
             panels=({"title": "University catalogue IDs", "items": [f"University reference {u.id}: {u.name}, {u.city}" for u in universities]},),
         )
     if section == "documents":
@@ -1038,7 +1060,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 ({"application_code": a.application_code, "student": s.full_name, "university": u.name, "status": a.status, "next_action": a.next_action} for a, u, s in applications),
                 (
                     {"label": "Applications", "value": len(applications)},
-                    # ccrm-001 (DEC-SCOPE-238): both tiles counted pre-stage statuses no application holds, so they read 0.
+                    # ccrm-001 (DEC-SCOPE-240): both tiles counted pre-stage statuses no application holds, so they read 0.
                     {"label": "Awaiting documents", "value": await _awaiting_documents(db, [a for a, _, _ in applications])},
                     {"label": "Offers", "value": sum(1 for a, _, _ in applications if a.status in OFFER_COUNTED_STATUSES)},
                     # ENH-003 / QA-006: an admin's time-sensitive to-do belongs in the first viewport, not only in the panel below.
@@ -1071,10 +1093,11 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             if agn023:
                 agencies, counselors = await application_filters.row_labels(db, [a for a, _, _ in applications])
                 for row, (a, _, _) in zip(rows, applications, strict=True):
-                    row |= {"is_agency": a.agent_id is not None, "agency": agencies.get(a.agent_id)}
+                    row |= {"is_agency": a.agent_id is not None, "agency": agencies.get(a.agent_id), "sub_status": a.sub_status, "sub_status_label": sub_status_label(a.sub_status)}
                     if user.role == "overseas_admin":
                         row |= _counselor_cells(a, counselors)
                 columns.insert(3, ("agency", "Agency"))
+                columns.insert(columns.index(("status", "Status")) + 1, ("sub_status_label", "Sub-status"))  # ccrm-014
                 if user.role == "overseas_admin":
                     columns.insert(5, ("counselor", "EduSphere counsellor"))
                     columns.append(("assign", "", "assign_counselor"))

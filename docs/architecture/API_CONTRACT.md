@@ -3489,3 +3489,15 @@ Deep-link targets for the travel reminder (bdm-012): `/bdm/travel/{id}#trip-appo
 | `GET /api/v1/workflows/overseas/agent/crm/applications` and `/{id}` | Each item / the detail adds `application_code`. |
 | `GET /api/v1/portal/overseas/{role}/{section}` | Application tables (counselor/admin/rep Application Tracking and dashboards, rep Offer Letters, student dashboard and Applications, agent dashboard) add an `application_code` column labelled "EduSphere ID". AGN-023's agency/counsellor columns keep their order after it. |
 | `GET /api/v1/lookups/overseas-applications` | `q` also matches `application_code` (case-insensitive); `detail` now starts with the code (`APP-000001 · University · Course · status`). Scope unchanged. |
+
+## 12ER. Application sub-status (ccrm-014) — addendum, 2026-10-22
+
+`DEC-SCOPE-240`. Migration `0168_application_sub_status`. RBAC §2.154. Codes: `app/application_sub_status.py` (SS1).
+
+| Method/Path | Auth | Roles | Behaviour |
+|---|---|---|---|
+| `POST /api/v1/workflows/overseas/applications/{id}/sub-status` | Authenticated | `counselor` (own applications, direct and agency), `overseas_admin` | Body `{"sub_status": code, "notes"?: text ≤2000}` (extra keys `422`). Unknown code → `422 "Choose a sub-status from the list"`; a code of an earlier stage → `422 "That sub-status belongs to an earlier stage -- an application only moves forward"`. A later stage's code advances the stage. Withdrawn → `409`; archived agency record → `409`; counselor to `enrolled` on an agency application → `403 "Only the agency's Master confirms enrollment"`. Same value → `200 {"changed": false}`, nothing written. Otherwise one history row (`from/to_status`, `from/to_sub_status`, notes, author), audit `overseas.application.sub_status`, student notified; a stage change runs the AGT-003 commission trigger and AGN-017's status notice, a sub-status-only change tells the agency ("Application sub-status changed"). `200 {"id", "status", "sub_status", "sub_status_label", "changed"}`. |
+| `POST /api/v1/workflows/overseas/agent/crm/applications/{id}/sub-status` | Authenticated | `agent` (agency gate; out of scope `404`) | Same body and rules; `enrolled` → `403` (A4). Archived/withdrawn → `409`. The EduSphere counselor is told (CC5). `200 {"application": detail}`. |
+| `GET /overseas/applications`, `GET …/{id}/status`, agency list/detail | Authenticated | unchanged | Add `sub_status` (agency also `sub_status_label`); history rows add `from_sub_status`/`to_sub_status`. |
+| `GET /api/v1/portal/overseas/{counselor,admin}/{students,applications}`, `…/student/applications` | Authenticated | unchanged | A `Sub-status` column (`sub_status_label`); counselor/admin rows also carry `sub_status`. Other sections unchanged. |
+

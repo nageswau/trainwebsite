@@ -772,3 +772,20 @@ half.
 | `ccrm-002-AC4` | Body 1–4000 trimmed; closed lead allowed; a returned lead keeps its notes; audit never carries the body | `::test_an_empty_or_too_long_body_is_422`, `::test_4000_characters_are_kept_whole_and_the_timeline_shows_an_excerpt`, `::test_a_closed_lead_takes_notes`, `::test_a_returned_lead_keeps_its_notes`, `::test_the_audit_row_never_carries_the_body` |
 | `ccrm-002-AC5` | Notes page newest first with an exact total; migration round trip, downgrade refusal | `::test_notes_page_newest_first_with_an_exact_total`; `apps/api/tests/test_ccrm_002_migration.py` |
 | `ccrm-002-AC6` | Notes panel: list, add, empty / failure states, 4000 cap | `apps/web/tests/components/LeadNotes.test.tsx`; `apps/web/tests/lib/leadTimeline.test.ts` |
+
+**Addendum, 2026-10-22 (`ccrm-014`)** — one row and its acceptance-criteria map. Application sub-status under the 7 stages.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `ccrm-014` | Requirement: CC1 + owner answers SS1–SS4 (in-session 2026-10-22, `EXPLICIT_APPROVAL`) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` §3 → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-240` → design `docs/superpowers/specs/2026-10-22-ccrm-014-application-sub-status-design.md` → plan `docs/superpowers/plans/2026-10-22-ccrm-014-application-sub-status.md`; `API_CONTRACT.md` §12ER, `RBAC_MATRIX.md` §2.154, `DATA_MODEL.md` (0168) | none | Built on `feature/ccrm-014`; lite API set, vitest, e2e and browser QA |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `ccrm-014-AC1` | The SS1 mapping and labels | `apps/api/tests/test_ccrm_014_sub_status.py::test_the_mapping_is_the_owner_list`; `apps/web/tests/components/ApplicationSubStatus.test.tsx` (subStatusChoices) |
+| `ccrm-014-AC2` | Free move inside a stage; history keeps old/new stage + sub-status, note and author (spec AC 6) | `::test_the_counselor_moves_within_the_stage_and_history_keeps_both_levels`; e2e `apps/web/tests/e2e/ccrm-014-application-sub-status.spec.ts` |
+| `ccrm-014-AC3` | A later stage's sub-status advances the stage; an earlier one and an unknown code are 422; the same value is a no-op | `::test_a_later_stage_sub_status_advances_the_stage_and_never_moves_back`, `::test_the_same_sub_status_twice_writes_nothing` |
+| `ccrm-014-AC4` | One application's change never touches another (spec AC 9) | `::test_one_application_change_never_touches_another` |
+| `ccrm-014-AC5` | SS4 roles: other counselor/student 403, withdrawn 409, counselor not Enrolled on agency, admin enrols + commission, agent up to Status tracking, other agency 404; the other side notified (CC5) | `::test_scope_withdrawn_and_role_refusals`, `::test_on_an_agency_application_the_counselor_cannot_enrol_and_the_agency_is_told`, `::test_the_admin_can_enrol_and_the_commission_trigger_runs`, `::test_the_agent_sets_sub_status_up_to_status_tracking_and_the_counselor_is_told`; `AgentApplicationDetail.test.tsx` (ccrm-014), `ApplicationSubStatus.test.tsx` |
+| `ccrm-014-AC6` | SS3: a stage change elsewhere clears a foreign sub-status; Enrolled sets it | `::test_a_stage_change_elsewhere_clears_a_foreign_sub_status_and_enrolled_sets_it` |
+| `ccrm-014-AC7` | Reads: list, status history, counselor/student portal tables | `::test_reads_carry_the_sub_status` |
+| `ccrm-014-AC8` | Migration 0168 chain, SS2 backfill, round trip | `apps/api/tests/test_ccrm_014_migration.py` (3) |
