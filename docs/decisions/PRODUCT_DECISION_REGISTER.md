@@ -8963,6 +8963,19 @@ university; B3 the tiles read the dashboard's existing scoped, 500-row window (u
 **Numbering:** no migration; no API or RBAC change.
 - **Feature ID authorized:** `ccrm-001`. **Status:** built on `feature/ccrm-001`.
 
+### DEC-SCOPE-239 — Business IDs for overseas applications (`ccrm-011`)
+
+**Status:** builder's recommended defaults, owner asked to proceed with recommended answers 2026-10-22 (`UNVERIFIED` until the owner
+reviews). Source: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-011` (Counselor CRM spec §6, §14, §15; the PDF is `UNVERIFIED`).
+**Decision:** every `overseas_applications` row has a permanent `application_code` `APP-000001` from the global sequence
+`overseas_application_code_seq` (AC1: no yearly reset; six-digit pad that never truncates). Existing rows backfilled in
+(created_at, id) order by migration `0166_application_codes`. Unique; a withdrawn application keeps its code and no value is reissued.
+Display-only: no route is keyed by it. Shown as **"EduSphere ID"** (AC6 — "Application ID" already means the university's
+`application_reference` on agency screens, AGN-008) in the shared applications list, the agency list/detail, the portal application
+tables and the application lookup, whose `q` also matches it (AC5). Student code unchanged (AC2; nehn-040).
+**Numbering:** migration `0166`; API §12EQ; RBAC §2.153 (no new permission).
+- **Feature ID authorized:** `ccrm-011`. **Status:** built on `feature/ccrm-011`.
+
 ### DEC-SCOPE-242 — Lead notes (`ccrm-002`)
 
 **Status:** CONFIRMED by owner 2026-10-22 (Claude Code session; the owner pre-authorised the recommended defaults for this item's open
@@ -8975,6 +8988,6 @@ with an excerpt. Out of scope → 404.
 **Builder's calls:** N1 the lead's telecaller may add a note after the handover (a note changes no lead state); N2 no edit or delete
 (the backlog's default); N3 admins through `/admin/leads/{id}/notes` with the existing admin lead rule (so `it_admin` on IT leads);
 N4 body trimmed, plain text; N5 the admin lead History shows the notes panel.
-**Numbering:** migration `0166_lead_notes` (re-chained after the parallel ccrm-010/011/014 `0166_*` at merge); API §12EU; RBAC §2.157
+**Numbering:** migration `0167_lead_notes` (chained after ccrm-011's `0166_application_codes`); API §12EU; RBAC §2.157
 (239–241 / 12ER–12ET / 2.154–2.156 held by parallel ccrm sessions).
 - **Feature ID authorized:** `ccrm-002`. **Status:** built on `worktree-ccrm-002`.

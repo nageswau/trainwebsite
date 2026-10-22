@@ -150,7 +150,7 @@ asked one at a time when the item is picked up).
 - **Regression:** timeline ordering and pagination.
 - **Complexity:** small. **Risk:** low.
 - **Open questions:** edit/delete window (nehn-014 left it open) — default: none, append-only.
-- **Status:** built on `worktree-ccrm-002` — `DEC-SCOPE-242`, migration `0166_lead_notes`, API §12EU, RBAC §2.157 (append-only, N1–N5).
+- **Status:** built on `worktree-ccrm-002` — `DEC-SCOPE-242`, migration `0167_lead_notes`, API §12EU, RBAC §2.157 (append-only, N1–N5).
 
 ### `ccrm-003` — Counselor lead actions: stage, next action, follow-ups *(supersedes nehn-014 part 2)*
 
@@ -328,6 +328,10 @@ asked one at a time when the item is picked up).
 - **Acceptance:** every application has a unique code; codes never reused after withdrawal.
 - **Complexity:** small. **Risk:** low.
 - **Open questions:** format (`APP-000001` vs `APP-2027-00001` with yearly reset).
+
+**Status (2026-10-22): built on `feature/ccrm-011`** — `DEC-SCOPE-239`, migration `0166_application_codes`, API §12EQ, RBAC §2.153.
+Format `APP-000001`, no yearly reset (recommended default); labelled "EduSphere ID" (agency "Application ID" is the university
+reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-application-codes-design.md`.
 
 ### `ccrm-012` — Counselor quick search and list filters
 

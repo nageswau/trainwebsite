@@ -1,8 +1,8 @@
 # ccrm-002 — Lead notes (design + plan)
 
 **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-002` (supersedes nehn-014 part 1; owner CC1–CC10, 2026-10-22).
-**Decision:** `DEC-SCOPE-242`. **API:** `API_CONTRACT.md` §12EU. **RBAC:** `RBAC_MATRIX.md` §2.157. **Migration:** `0166_lead_notes`
-(re-chained at merge after the parallel ccrm-010/011/014 `0166_*` files; the DEC/API/RBAC numbers skip those sessions' 239–241 / 12ER–12ET /
+**Decision:** `DEC-SCOPE-242`. **API:** `API_CONTRACT.md` §12EU. **RBAC:** `RBAC_MATRIX.md` §2.157. **Migration:** `0167_lead_notes`
+(chained after ccrm-011's `0166_application_codes`; the DEC/API/RBAC numbers skip those sessions' 239–241 / 12ER–12ET /
 2.154–2.156).
 
 ## Intent

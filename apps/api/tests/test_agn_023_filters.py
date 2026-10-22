@@ -126,7 +126,7 @@ async def test_other_sections_keep_their_original_payload(world, role, section, 
     async with client_for(world[email_key].email) as c:
         data, _ = await _ids(c, role, section)
     assert "filters" not in data
-    assert [col["key"] for col in data["columns"]] == ["id", "student", "university", "reference", "status", "next_action"]
+    assert [col["key"] for col in data["columns"]] == ["id", "application_code", "student", "university", "reference", "status", "next_action"]  # ccrm-011 added the code
     assert all(not {"agency", "counselor", "counselor_id", "is_agency", "assign"} & row.keys() for row in data["rows"])
 
 

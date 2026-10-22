@@ -745,6 +745,18 @@ half.
 | `csc-005-AC4` | Overseas Admin only (super_admin, IT admin, counselor, student, agent → 403); anonymous 401 | `::test_everyone_but_the_overseas_admin_is_403` (5), `::test_anonymous_is_401` |
 | `csc-005-AC5` | The Overseas Admin's Users directory shows each student's counselor with the control (staff rows none); other sections/roles unchanged | `::test_the_overseas_admins_users_directory_shows_…`, `::test_other_user_sections_are_unchanged`; `apps/web/tests/components/AssignCounselorButton.student.test.tsx` (2); existing `AssignCounselorButton.test.tsx`, `DataTable.test.tsx`; e2e (csc-005, agn-023) |
 
+**Addendum, 2026-10-22 (`ccrm-011`)** — one row and its acceptance-criteria map. Business IDs for overseas applications.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `ccrm-011` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-011` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-239` → design `docs/superpowers/specs/2026-10-22-ccrm-011-application-codes-design.md` → API §12EQ, RBAC §2.153 → migration `0166_application_codes` | none | Built on `feature/ccrm-011` |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `ccrm-011-AC1` | Every application has a unique `APP-` code; existing rows backfilled in created order | `apps/api/tests/test_ccrm_011_migration.py::test_upgrade_backfills_codes_in_created_order_and_round_trips`, `test_ccrm_011_application_codes.py::test_every_new_application_gets_a_distinct_code` |
+| `ccrm-011-AC2` | Codes never reused after withdrawal | `::test_a_withdrawn_application_keeps_its_code_and_it_is_never_reissued` |
+| `ccrm-011-AC3` | Shown everywhere an application is listed | `::test_shared_applications_list_carries_the_code`, `::test_agency_list_and_detail_carry_the_code`, `::test_counselor_portal_tables_show_the_application_id` (5), `::test_student_portal_tables_show_the_application_id` (2), `::test_university_rep_offer_letters_show_the_application_id`, `::test_agent_dashboard_shows_the_application_id`; `apps/web/tests/components/AgentApplicationsPanel.test.tsx`, `AgentApplicationDetail.test.tsx`; e2e `ccrm-011-application-codes.spec.ts` |
+| `ccrm-011-AC4` | Searchable within scope | `::test_lookup_finds_an_application_by_code_only_inside_scope`, `test_enh_031_lookups_applications.py` |
 
 **Addendum, 2026-10-22 (`ccrm-002`)** — one row and its acceptance-criteria map. Append-only lead notes.
 

@@ -1,10 +1,10 @@
 """ccrm-002 -- append-only lead notes: lead_notes.
 
-Revision ID: 0166_lead_notes
-Revises: 0165_overseas_student_counselors
+Revision ID: 0167_lead_notes
+Revises: 0166_application_codes
 
 docs/superpowers/specs/2026-10-22-ccrm-002-lead-notes-design.md (DEC-SCOPE-242). Additive: no existing row changes. 0001 builds a fresh
-database from the current models, which already carry the table, so it is created only when missing (0165's idiom). downgrade() refuses
+database from the current models, which already carry the table, so it is created only when missing (0166's idiom). downgrade() refuses
 while notes exist: lead history is not dropped silently.
 """
 
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0166_lead_notes"
-down_revision = "0165_overseas_student_counselors"
+revision = "0167_lead_notes"
+down_revision = "0166_application_codes"
 branch_labels = None
 depends_on = None
 
@@ -40,6 +40,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0166: lead notes exist (ccrm-002)")
+        raise RuntimeError("Cannot downgrade 0167: lead notes exist (ccrm-002)")
     op.drop_index("ix_lead_notes_lead_created", table_name=TABLE)
     op.drop_table(TABLE)
