@@ -182,7 +182,7 @@ asked one at a time when the item is picked up).
 - **Complexity:** medium. **Risk:** high (touches the shared stage engine).
 - **Open questions:** does "next action required" also apply to telecaller-owned leads (spec says "active leads")? Default: counselor
   leads only, telecaller unchanged.
-- **Status:** built on `feature/ccrm-003` — `DEC-SCOPE-243`, migration `0168_lead_next_action`, API §12EV, RBAC §2.158 (A1–A8). The
+- **Status:** built on `feature/ccrm-003` — `DEC-SCOPE-243`, migration `0169_lead_next_action`, API §12EV, RBAC §2.158 (A1–A8). The
   dashboard acceptance ("a follow-up the counselor creates shows in their dashboard") waits for ccrm-032; the follow-up shows on the
   counselor lead detail today.
 
@@ -395,6 +395,8 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Regression:** agent journey (`services/agent_journey.py`), management funnel, school global-education view.
 - **Complexity:** medium. **Risk:** high (shared state machine). Needs a `DEC-WF` amendment beside `DEC-WF-001`.
 - **Open questions:** the stage↔sub-status mapping table.
+- **Status (2026-10-22):** built on `feature/ccrm-014` — owner answers SS1–SS4 (backlog mapping; backfill only where certain; clear on
+  stage change, `enrolled` auto; roles as above), `DEC-SCOPE-240`, migration `0168_application_sub_status`, API §12ER, RBAC §2.154.
 
 ### `ccrm-015` — Application exception outcomes
 

@@ -1,8 +1,8 @@
 # ccrm-003 — Counselor lead actions: stage, next action, follow-ups (design + plan)
 
 **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-003` (supersedes nehn-014 part 2; owner CC1–CC10, CC8, 2026-10-22).
-**Decision:** `DEC-SCOPE-243`. **API:** `API_CONTRACT.md` §12EV. **RBAC:** `RBAC_MATRIX.md` §2.158. **Migration:** `0168_lead_next_action`
-(chained after ccrm-002's `0167_lead_notes`; ccrm-010 / ccrm-014 hold 240–241 / 12ER–12ET / 2.154–2.156 in parallel sessions and
+**Decision:** `DEC-SCOPE-243`. **API:** `API_CONTRACT.md` §12EV. **RBAC:** `RBAC_MATRIX.md` §2.158. **Migration:** `0169_lead_next_action`
+(chained after ccrm-014's `0168_application_sub_status`; ccrm-014 / ccrm-010 hold 240–241 / 12ER–12ET / 2.154–2.156 in parallel sessions and
 re-chain when they merge).
 
 ## Intent

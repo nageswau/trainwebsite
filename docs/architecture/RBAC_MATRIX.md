@@ -2567,3 +2567,13 @@ proceed.
 No new route or permission. `application_code` is returned only on rows the caller can already read; the lookup's code match runs
 inside the existing role scope (a counselor searching another counselor's code gets nothing). Pinned by
 `test_ccrm_011_application_codes.py::test_lookup_finds_an_application_by_code_only_inside_scope`.
+
+### 2.154 Application sub-status *(added 2026-10-22 — `DEC-SCOPE-240`, ccrm-014)*
+
+| Route | `counselor` | `overseas_admin` | `agent` | `overseas_student`, `university_rep`, others | Anonymous |
+|---|---|---|---|---|---|
+| `POST /workflows/overseas/applications/{id}/sub-status` | ✅ own applications (`403` otherwise); not `enrolled` on agency applications | ✅ any | `403` | `403` | `401` |
+| `POST /workflows/overseas/agent/crm/applications/{id}/sub-status` | `403` (agency gate) | `403` | ✅ own agency's applications (`404` otherwise), up to `status_tracking` | `403` | `401` |
+
+- SS4 (owner, 2026-10-22). Students read the sub-status only. Pinned by `test_ccrm_014_sub_status.py`.
+

@@ -1,7 +1,7 @@
 """ccrm-003 -- a lead's next action: enquiries.next_action, enquiries.next_action_due.
 
-Revision ID: 0168_lead_next_action
-Revises: 0167_lead_notes
+Revision ID: 0169_lead_next_action
+Revises: 0168_application_sub_status
 
 docs/superpowers/specs/2026-10-22-ccrm-003-counselor-lead-actions-design.md (DEC-SCOPE-243). Additive: both columns are nullable, no
 existing row changes (counselor leads are not back-filled, A2). 0001 builds a fresh database from the current models, which already carry
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0168_lead_next_action"
-down_revision = "0167_lead_notes"
+revision = "0169_lead_next_action"
+down_revision = "0168_application_sub_status"
 branch_labels = None
 depends_on = None
 

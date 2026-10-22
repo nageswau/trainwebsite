@@ -1,4 +1,4 @@
-"""ccrm-003 -- migration 0168_lead_next_action (DEC-SCOPE-243): `enquiries.next_action` / `next_action_due`. Round trip in a throwaway
+"""ccrm-003 -- migration 0169_lead_next_action (DEC-SCOPE-243): `enquiries.next_action` / `next_action_due`. Round trip in a throwaway
 database built from scratch (the csc-001 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py
 calls asyncio.run()."""
 
@@ -14,15 +14,15 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_ccrm_003_migration_0168", VERSIONS / "0168_lead_next_action.py")
+_spec = importlib.util.spec_from_file_location("_ccrm_003_migration_0169", VERSIONS / "0169_lead_next_action.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0167_lead_notes", "0168_lead_next_action"
+BASE, HEAD = "0168_application_sub_status", "0169_lead_next_action"
 COLUMNS = {"next_action", "next_action_due"}
 
 
-def test_migration_chains_after_0167_and_is_the_single_head():
+def test_migration_chains_after_0168_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -45,7 +45,7 @@ async def test_columns_exist_in_the_shared_database(db_session):
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0167_lead_notes."""
+    """A fresh database at 0168_application_sub_status."""
     cfg = _config()
     original = settings.database_url
     name = f"ccrm003_migration_{uuid.uuid4().hex[:8]}"

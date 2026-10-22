@@ -894,6 +894,19 @@ class AgentApplicationStatus(BaseModel):
         return clean_free_text(value, 2000)
 
 
+class ApplicationSubStatusChange(BaseModel):
+    """ccrm-014 (DEC-SCOPE-240): a sub-status code from app/application_sub_status.py; the route refuses an unknown one (422)."""
+
+    model_config = {"extra": "forbid"}
+    sub_status: str = Field(max_length=40)
+    notes: str | None = None
+
+    @field_validator("notes")
+    @classmethod
+    def _notes(cls, value):
+        return clean_free_text(value, 2000)
+
+
 class AgentApplicationEnrollment(BaseModel):
     """AGN-013 (DEC-SCOPE-054): confirm or correct an application's enrollment. `expected_status` is required: confirming is the
     commission-triggering act, so a stale screen gets a 409 instead of acting."""

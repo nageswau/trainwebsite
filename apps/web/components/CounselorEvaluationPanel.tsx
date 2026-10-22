@@ -2,8 +2,9 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import ApplicationSubStatusForm from "./ApplicationSubStatusForm";
 
-type ApplicationRow = { id: string; student: string; university: string; reference: string | null; status: string; next_action: string | null; is_agency?: boolean };
+type ApplicationRow = { id: string; student: string; university: string; reference: string | null; status: string; sub_status?: string | null; sub_status_label?: string | null; next_action: string | null; is_agency?: boolean };
 
 // DATA_MODEL.md #6.2's contract-fixed enum -- kept in this order so "later stages" can
 // be offered as the only valid `to_status` choices for a given row (OVS-003-AC02:
@@ -28,6 +29,7 @@ export default function CounselorEvaluationPanel() {
   const router = useRouter();
   const [rows, setRows] = useState<ApplicationRow[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [subStatusId, setSubStatusId] = useState<string | null>(null); // ccrm-014: the card whose sub-status form is open
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ id: string; text: string; failed: boolean } | null>(null);
 
@@ -90,7 +92,11 @@ export default function CounselorEvaluationPanel() {
           const nextStages = STAGES.slice(currentIndex + 1).filter((stage) => !(row.is_agency && stage === "enrolled"));
           return (
             <div className="card" key={row.id}>
-              <span className="badge">{label(row.status)}</span>
+              {/* QA-01: the two badges wrap together without an indent */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                <span className="badge">{label(row.status)}</span>
+                {row.sub_status_label && <span className="badge">{row.sub_status_label}</span>}
+              </div>
               <h4 style={{ marginTop: 10 }}>{row.student}</h4>
               <p className="muted" style={{ fontSize: 13 }}>{row.university}</p>
               {row.next_action && <p className="muted" style={{ fontSize: 13 }}>{row.next_action}</p>}
@@ -118,6 +124,29 @@ export default function CounselorEvaluationPanel() {
               ) : (
                 <button className="btn small" onClick={() => setOpenId(row.id)}>Advance stage</button>
               )}
+              {row.status !== "withdrawn" &&
+                (subStatusId === row.id ? (
+                  <ApplicationSubStatusForm
+                    id={row.id}
+                    url={`/api/v1/workflows/overseas/applications/${row.id}/sub-status`}
+                    stage={row.status}
+                    current={row.sub_status}
+                    // AGN-023 H12 / ccrm-014 SS4: the agency enrols its own applications
+                    maxStage={row.is_agency ? "status_tracking" : "enrolled"}
+                    onSaved={(_data, text) => {
+                      setMessage({ id: row.id, text: `${text} The student has been notified.`, failed: false });
+                      setSubStatusId(null);
+                      router.refresh();
+                      load();
+                    }}
+                    onFailed={(text) => setMessage({ id: row.id, text, failed: true })}
+                    onCancel={() => setSubStatusId(null)}
+                  />
+                ) : (
+                  <button className="btn ghost small" style={{ display: "block", marginTop: 8 }} onClick={() => (setSubStatusId(row.id), setMessage(null))}>
+                    Update sub-status
+                  </button>
+                ))}
               {message?.id === row.id && (
                 <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 8 }}>
                   {message.text}

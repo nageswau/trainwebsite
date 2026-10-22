@@ -29,6 +29,7 @@ from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column, relationship, validates
 from sqlalchemy.sql import func
 
+from app.application_sub_status import fit as fit_sub_status
 from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
 from app.core.identifiers import normalize_key
@@ -1801,6 +1802,8 @@ class OverseasApplication(Base, TimestampMixin):
     counselor_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     agent_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(50), default="enquiry")
+    # ccrm-014 (DEC-SCOPE-240): the detail under `status` (app/application_sub_status.py); NULL = not set.
+    sub_status: Mapped[str | None] = mapped_column(String(40), nullable=True)
     next_action: Mapped[str | None] = mapped_column(Text, nullable=True)
     intake: Mapped[str] = mapped_column(String(80))
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -1832,6 +1835,12 @@ class OverseasApplication(Base, TimestampMixin):
         Index("ix_overseas_applications_agent_offer_deadline", "offer_deadline", postgresql_where=text("agent_student_id IS NOT NULL")),
     )
 
+    @validates("status")
+    def _fit_sub_status(self, _key: str, status: str) -> str:
+        """ccrm-014 SS3: every stage write, on any route, keeps the sub-status inside the new stage."""
+        self.sub_status = fit_sub_status(status, self.sub_status)
+        return status
+
 
 class OverseasStudentCounselor(Base, TimestampMixin):
     """csc-001 (DEC-SCOPE-226, W3): the counselor an overseas student belongs to before (or beside) any application. One row per
@@ -1852,6 +1861,8 @@ class ApplicationStatusHistory(Base, TimestampMixin):
     application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id", ondelete="CASCADE"), index=True)
     from_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     to_status: Mapped[str] = mapped_column(String(50))
+    from_sub_status: Mapped[str | None] = mapped_column(String(40), nullable=True)  # ccrm-014: written by the sub-status routes
+    to_sub_status: Mapped[str | None] = mapped_column(String(40), nullable=True)
     next_action: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     changed_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
