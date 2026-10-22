@@ -122,7 +122,9 @@ asked one at a time when the item is picked up).
 - **Edge cases:** school-bridged rows keep today's exclusion.
 - **Regression:** the Overseas Admin dashboard uses the same tiles — check both.
 - **Complexity:** small. **Risk:** low.
-- **Open questions:** exact "Awaiting documents" definition before ccrm-019 lands.
+- **Open questions:** exact "Awaiting documents" definition before ccrm-019 lands. **Answered 2026-10-22:** the expected-behaviour
+  definition above (visa checklist or `university_selection` + pending document; withdrawn/enrolled never count).
+- **Status:** built on `feature/ccrm-001` — `DEC-SCOPE-238`, no migration/API/RBAC change.
 
 ---
 
