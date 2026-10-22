@@ -57,7 +57,7 @@ from app.models import (
 )
 from app.services import application_filters, counselor_students
 from app.services import applications as job_applications
-from app.services.agent_applications import WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
+from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
 from app.services.agent_dashboard import headline_counts
 from app.services.agent_orgs import org_masters, org_member_ids
 from app.services.agent_students import application_scope, student_scope
@@ -102,6 +102,29 @@ def _payload(title, subtitle, columns=(), rows=(), metrics=(), actions=(), panel
         "rows": list(rows),
         "panels": list(panels),
     }
+
+
+async def _awaiting_documents(db: AsyncSession, applications: list[OverseasApplication]) -> int:
+    """ccrm-001 (DEC-SCOPE-238): open applications at `university_selection` with a document pending verification, or whose undecided
+    visa case has a checklist item whose newest document of that type (on this application) is not verified. Until ccrm-019's
+    checklist lands. Two queries over the dashboard's already-scoped applications."""
+    open_apps = {a.id: a for a in applications if a.status not in {WITHDRAWN, "enrolled"}}
+    if not open_apps:
+        return 0
+    cases = (await db.execute(select(VisaCase.application_id, VisaCase.checklist).where(VisaCase.application_id.in_(open_apps), VisaCase.decision.is_(None)))).all()
+    docs = await db.execute(
+        select(StudentDocument.application_id, StudentDocument.document_type, StudentDocument.verification_status)
+        .where(StudentDocument.application_id.in_(open_apps))
+        .order_by(StudentDocument.created_at, StudentDocument.id)
+    )
+    latest: dict[tuple, str] = {}
+    pending: set = set()
+    for application_id, document_type, status in docs:
+        latest[application_id, document_type] = status  # ascending, so the newest wins (agent_visa.checklist_status)
+        if status == "pending" and open_apps[application_id].status == "university_selection":
+            pending.add(application_id)
+    unverified = {application_id for application_id, checklist in cases if any(latest.get((application_id, item)) != "verified" for item in checklist or [])}
+    return len(pending | unverified)
 
 
 def _counselor_cells(application, counselors: dict) -> dict:
@@ -1015,8 +1038,9 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 ({"student": s.full_name, "university": u.name, "status": a.status, "next_action": a.next_action} for a, u, s in applications),
                 (
                     {"label": "Applications", "value": len(applications)},
-                    {"label": "Awaiting documents", "value": sum(1 for a, _, _ in applications if a.status in {"profile_evaluation", "documents_pending"})},
-                    {"label": "Offers", "value": sum(1 for a, _, _ in applications if a.status in {"offer_received", "accepted"})},
+                    # ccrm-001 (DEC-SCOPE-238): both tiles counted pre-stage statuses no application holds, so they read 0.
+                    {"label": "Awaiting documents", "value": await _awaiting_documents(db, [a for a, _, _ in applications])},
+                    {"label": "Offers", "value": sum(1 for a, _, _ in applications if a.status in OFFER_COUNTED_STATUSES)},
                     # ENH-003 / QA-006: an admin's time-sensitive to-do belongs in the first viewport, not only in the panel below.
                     *(({"label": "Expired welcome links", "value": len(await user_ids_with_status(db, user, "link_expired"))},) if user.role == "overseas_admin" else ()),
                 ),
