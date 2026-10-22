@@ -13,6 +13,7 @@ import pytest
 
 from app.core.security import hash_password
 from app.models import Enquiry, User
+from tests.tel004_helpers import make_user
 
 
 async def _create_admin(db_session, *, division: str = "it") -> User:
@@ -83,14 +84,15 @@ async def test_a_failed_sync_enquiry_is_still_actionable(client, db_session):
 async def test_admin_can_route_an_enquiry_to_an_owner(client, db_session):
     admin = await _create_admin(db_session)
     enquiry = await _create_enquiry(db_session)
+    counselor = await make_user(db_session, "counselor", "it")  # ccrm-003 A7: the owner is an active counselor of the division
     await _login(client, admin.email)
 
-    response = await client.patch(f"/api/v1/admin/leads/{enquiry.id}", json={"status": "qualified", "owner_id": str(admin.id)})
+    response = await client.patch(f"/api/v1/admin/leads/{enquiry.id}", json={"status": "qualified", "owner_id": str(counselor.id)})
     assert response.status_code == 200
 
     await db_session.refresh(enquiry)
     assert enquiry.status == "qualified"
-    assert enquiry.owner_id == admin.id
+    assert enquiry.owner_id == counselor.id
 
 
 @pytest.mark.asyncio

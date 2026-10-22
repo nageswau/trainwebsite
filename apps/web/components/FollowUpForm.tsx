@@ -6,9 +6,8 @@ import { sendJson, type SendOutcome } from "@/lib/apiErrors";
 import { istInputToIso, isoToIstInput, nowIstInput } from "@/lib/bdmAppointments";
 import { SAVE_FAILED, SESSION_ENDED, writeFailure } from "@/lib/bdmTasks";
 import { fieldErrors } from "@/lib/bdmTravel";
-import { TELECALLER_SIGN_IN } from "@/lib/navigation";
 import {
-  ACTION_MAX, NOTES_MAX, REASONS, canMoveToFollowUp, createFollowUpUrl, followUpUrl, isFollowUp, type FollowUp,
+  ACTION_MAX, NOTES_MAX, REASONS, TELECALLER_FOLLOW_UP_API, canMoveToFollowUp, isFollowUp, type FollowUp, type FollowUpApi,
 } from "@/lib/telecallerFollowUps";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
 
@@ -16,8 +15,8 @@ type Values = { due: string; reason: string; next_action: string; notes: string 
 
 // tel-011 (spec §4; F5, F6): add a follow-up to a lead, or reschedule / edit an open one. Times are entered and shown in IST. The API
 // decides every rule (future time, closed lead, the cap); this form places its answers on the fields and never clears typed text.
-export default function FollowUpForm({ leadId, leadStage, followUp, onSaved, onCancel }: {
-  leadId: string; leadStage: string; followUp?: FollowUp; onSaved: (followUp: FollowUp) => void; onCancel: () => void;
+export default function FollowUpForm({ leadId, leadStage, followUp, api = TELECALLER_FOLLOW_UP_API, onSaved, onCancel }: {
+  leadId: string; leadStage: string; followUp?: FollowUp; api?: FollowUpApi; onSaved: (followUp: FollowUp) => void; onCancel: () => void;
 }) {
   const id = useId();
   const [start] = useState<Values>({
@@ -33,7 +32,7 @@ export default function FollowUpForm({ leadId, leadStage, followUp, onSaved, onC
   const [now] = useState(nowIstInput);
   const dirty = (Object.keys(start) as (keyof Values)[]).some((key) => v[key] !== start[key]);
   useLeaveGuard(!busy && dirty, "Discard this follow-up?");
-  const offerMove = !followUp && canMoveToFollowUp(leadStage);
+  const offerMove = api.offerMove && !followUp && canMoveToFollowUp(leadStage);
   const fid = (key: string) => `${id}-${key}`;
   const set = (key: keyof Values) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setV({ ...v, [key]: e.target.value });
   const invalid = (key: string) => ({ "aria-invalid": errors[key] ? true : undefined, "aria-describedby": errors[key] ? `${fid(key)}-error` : undefined });
@@ -41,13 +40,13 @@ export default function FollowUpForm({ leadId, leadStage, followUp, onSaved, onC
 
   function send(): Promise<SendOutcome> | null {
     const body = { due_at: istInputToIso(v.due), reason: v.reason, next_action: v.next_action.trim() || null, notes: v.notes.trim() || null };
-    if (!followUp) return sendJson(createFollowUpUrl(leadId), "POST", { ...body, move_to_follow_up: offerMove && move });
+    if (!followUp) return sendJson(api.create(leadId), "POST", { ...body, move_to_follow_up: offerMove && move });
     const changes: Record<string, string | null> = {};
     if (v.due !== start.due) changes.due_at = body.due_at;
     if (v.reason !== start.reason) changes.reason = body.reason;
     if (body.next_action !== (followUp.next_action ?? null)) changes.next_action = body.next_action;
     if (body.notes !== (followUp.notes ?? null)) changes.notes = body.notes;
-    return Object.keys(changes).length ? sendJson(followUpUrl(followUp.id), "PATCH", changes) : null;
+    return Object.keys(changes).length ? sendJson(api.item(followUp.id), "PATCH", changes) : null;
   }
 
   async function submit(event: FormEvent) {
@@ -111,7 +110,7 @@ export default function FollowUpForm({ leadId, leadStage, followUp, onSaved, onC
       {sessionEnded && (
         <div role="alert">
           <p className="form-error">{SESSION_ENDED}</p>
-          <ReturnToLoginLink loginHref={TELECALLER_SIGN_IN} />
+          <ReturnToLoginLink loginHref={api.signIn} />
         </div>
       )}
       <div className="actions">

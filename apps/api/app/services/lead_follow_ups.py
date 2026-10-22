@@ -57,7 +57,12 @@ def _person(user: User | None) -> dict | None:
 
 
 def can_change(user: User, lead: Enquiry, fu: LeadFollowUp) -> bool:
+    if user.role == "counselor":  # ccrm-003 A4: the lead's counselor, in their division
+        return lead.owner_id == user.id and lead.division == user.division and fu.status == "open"
     return user.role == "telecaller" and not telecaller_leads.read_only(user, lead) and fu.status == "open"
+
+
+TELECALLER_WORK = lead_pipeline.TELECALLER_FOLLOW_UP
 
 
 async def _last_calls(db: AsyncSession, lead_ids: set[UUID]) -> dict[UUID, dict]:
@@ -105,10 +110,10 @@ async def list_page(db: AsyncSession, user: User, scope: list, view: str, day: d
     """AC1 / AC2 / F1: `day` = the open follow-ups due in that IST day; `overdue` = every open one past its due time. Both oldest due
     first; the counts are the two views' totals, so the tabs agree with the lists."""
     chosen = in_day(day) if view == "day" else overdue(now)
-    out = await _page(db, user, now, [*scope, chosen], (LeadFollowUp.due_at, LeadFollowUp.id), limit, offset)
+    out = await _page(db, user, now, [*scope, TELECALLER_WORK, chosen], (LeadFollowUp.due_at, LeadFollowUp.id), limit, offset)
     counts = (await db.execute(
         select(func.count().filter(in_day(day)), func.count().filter(overdue(now)))
-        .select_from(LeadFollowUp).join(Enquiry, Enquiry.id == LeadFollowUp.lead_id).where(*scope)
+        .select_from(LeadFollowUp).join(Enquiry, Enquiry.id == LeadFollowUp.lead_id).where(*scope, TELECALLER_WORK)
     )).one()
     return {**out, "day": day, "counts": {"day": counts[0] or 0, "overdue": counts[1] or 0}}
 
@@ -130,7 +135,7 @@ async def one(db: AsyncSession, user: User, fu_id: UUID, now: datetime) -> dict:
 def due_filter(kind: str, now: datetime):
     """F9: My Leads' "Due follow-up" -- the lead has an open follow-up due in today's IST window, or one past its due time."""
     condition = in_day(today_ist(now)) if kind == "today" else overdue(now)
-    return exists().where(LeadFollowUp.lead_id == Enquiry.id, condition)
+    return exists().where(LeadFollowUp.lead_id == Enquiry.id, TELECALLER_WORK, condition)
 
 
 def require_telecaller(user: User) -> None:
@@ -154,7 +159,7 @@ async def create(db: AsyncSession, user: User, lead: Enquiry, payload: LeadFollo
     if (await db.scalar(select(func.count()).select_from(LeadFollowUp).where(LeadFollowUp.lead_id == lead.id, IS_OPEN)) or 0) >= OPEN_CAP:
         raise HTTPException(409, OPEN_CAP_REACHED)
     if payload.move_to_follow_up and lead.status != "follow_up":
-        await lead_pipeline.person_move(db, lead, user, "telecaller", "follow_up", None)
+        await lead_pipeline.person_move(db, lead, user, "counselor" if user.role == "counselor" else "telecaller", "follow_up", None)
     fu = LeadFollowUp(lead_id=lead.id, due_at=payload.due_at, reason=payload.reason, notes=payload.notes, next_action=payload.next_action,
                       created_by_user_id=user.id)
     db.add(fu)
@@ -165,13 +170,14 @@ async def create(db: AsyncSession, user: User, lead: Enquiry, payload: LeadFollo
 
 async def load_for_write(db: AsyncSession, user: User, fu_id: UUID, scope: list) -> LeadFollowUp:
     """In scope (404) -> lead lock (still in scope: a lead reassigned meanwhile is 404) -> telecaller (403) -> handover (403) ->
-    follow-up lock -> open (409)."""
+    follow-up lock -> open (409). ccrm-003 A4: the counselor's scope (owner + division) is already the writer check."""
     lead_id = await db.scalar(select(LeadFollowUp.lead_id).join(Enquiry, Enquiry.id == LeadFollowUp.lead_id).where(LeadFollowUp.id == fu_id, *scope))
     if lead_id is None:
         raise HTTPException(404, NOT_FOUND)
     lead = await lead_pipeline.locked_lead(db, lead_id, *scope)
-    require_telecaller(user)
-    telecaller_leads.require_writable(user, lead)
+    if user.role != "counselor":
+        require_telecaller(user)
+        telecaller_leads.require_writable(user, lead)
     fu = await db.scalar(select(LeadFollowUp).where(LeadFollowUp.id == fu_id).with_for_update().execution_options(populate_existing=True))
     if fu is None:  # never in practice (follow-ups are not deleted); narrows the type without an assert
         raise HTTPException(404, NOT_FOUND)

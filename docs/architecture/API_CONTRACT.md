@@ -3439,6 +3439,24 @@ walk-in leads"`. tel-005's intake contract (§12L) under the counselor's own pre
 `{note_id}` — never the body). `GET` → `{items, total, limit, offset}`, newest first, `limit` ≤ 100. Every lead timeline route
 (`/telecaller|counselor|admin/leads/{id}/timeline`) gains `kind: "note"` (actor = author, `reason` = the first 200 characters).
 
+## 12EV. Counselor lead actions (ccrm-003) — addendum, 2026-10-22
+
+`DEC-SCOPE-243`. Migration `0168_lead_next_action` (`enquiries.next_action`, `next_action_due`). RBAC §2.158. Additive routes; one behaviour
+change on `PATCH /admin/leads/{id}` (`owner_id` validated).
+
+| Method/Path | Auth | Roles | Behaviour |
+|---|---|---|---|
+| `POST /api/v1/counselor/leads/{id}/stage` | Authenticated | `counselor` (owner + division) | Body `{to_stage, reason?, next_action?, next_action_due?}`, extra keys `422`. Targets: `follow_up`, `counselling_scheduled`, `counselling_completed`, `qualified`, `not_interested`, `not_eligible`, `lost` — others `422` on `to_stage`; past Application/Enrollment `422`; closed lead `403` (no counselor reopen); closing needs `reason` (`422`) and cancels open follow-ups and appointments; an open target with no next action / due (sent or stored) → `422` on that field. `200 {id, status, status_label, stage_changed_at, next_action, next_action_due}`. |
+| `PUT /api/v1/counselor/leads/{id}/next-action` | Authenticated | `counselor` | Body `{next_action: 1–200 trimmed, next_action_due: date}` both required; a changed date before today (IST) `422`; closed lead `409`. `200` the counselor lead detail. Audit `lead.next_action` `{fields}`. |
+| `GET /api/v1/counselor/leads/{id}/follow-ups` · `POST` same | Authenticated | `counselor` | The tel-011 lead page and create (same bodies, `201`, rules: future due, 12 months, cap 20, closed `409`). `move_to_follow_up` applies the counselor stage rules. |
+| `PATCH /api/v1/counselor/follow-ups/{id}` · `POST …/complete` · `POST …/cancel` | Authenticated | `counselor` | The tel-011 reschedule / complete / cancel on a follow-up of the counselor's lead; another counselor's `404`; done / cancelled `409`. |
+| `PATCH /api/v1/admin/leads/{id}` | (unchanged) | (unchanged) | `owner_id` must be an active `counselor` of the lead's division, else `422` on `owner_id`; `null` un-assigns. |
+
+The counselor lead detail (`GET /counselor/leads/{id}`) adds `next_action`, `next_action_due`, `next_action_overdue` and
+`permissions.stage` / `permissions.follow_up`. Telecaller-side follow-up lists, the My Leads `follow_up` filter, tel-020 alerts and tel-021 /
+tel-024 / tel-025 counts leave out follow-ups created by a counselor; the telecaller's per-lead list shows them with `can_change: false`.
+The return (`POST /counselor/leads/{id}/return`) also cancels open follow-ups (`"Returned to telecaller"`) and clears the next action.
+
 ## 13. Traceability check
 
 Every `CURRENT` Feature ID with `API required: Y` in `MASTER_FEATURE_CATALOG.md` has at least one

@@ -30,6 +30,7 @@ from app.models import (
 from app.services.bdm_activities import day_range
 from app.services.bdm_appointments import today_ist
 from app.services.lead_calls import NOT_CONNECTED
+from app.services.lead_pipeline import TELECALLER_FOLLOW_UP
 from app.services.telecaller_leads import PRIORITY_CHANGE
 from app.services.telecaller_targets import effective_targets
 
@@ -98,7 +99,7 @@ async def _snapshot(db: AsyncSession, user_id: UUID, at: datetime, day_end: date
     )).one()
     pending = await db.scalar(
         select(func.count()).select_from(LeadFollowUp).join(Enquiry, Enquiry.id == LeadFollowUp.lead_id).where(
-            *_mine_at(user_id, at), LeadFollowUp.due_at < day_end, LeadFollowUp.created_at <= at,
+            *_mine_at(user_id, at), TELECALLER_FOLLOW_UP, LeadFollowUp.due_at < day_end, LeadFollowUp.created_at <= at,
             or_(LeadFollowUp.completed_at.is_(None), LeadFollowUp.completed_at > at),
             or_(LeadFollowUp.cancelled_at.is_(None), LeadFollowUp.cancelled_at > at),
         )
@@ -185,7 +186,7 @@ def _own_open(user_id: UUID) -> list:
 
 def _own_open_follow_ups(user_id: UUID):
     return select(func.count()).select_from(LeadFollowUp).join(Enquiry, Enquiry.id == LeadFollowUp.lead_id).where(
-        Enquiry.telecaller_user_id == user_id, LeadFollowUp.status == "open")
+        Enquiry.telecaller_user_id == user_id, LeadFollowUp.status == "open", TELECALLER_FOLLOW_UP)
 
 
 def _appointments_today(user_id: UUID, start: datetime, end: datetime):

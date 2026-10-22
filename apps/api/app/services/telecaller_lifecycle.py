@@ -16,6 +16,7 @@ from app.api.workflows import _notify_user
 from app.lead_stages import CLOSED
 from app.models import LEAD_APPOINTMENT_OPEN, Appointment, AuditLog, Enquiry, LeadFollowUp, TelDistributionRule, TelecallerProfile, User
 from app.services import lead_distribution
+from app.services.lead_pipeline import TELECALLER_FOLLOW_UP
 from app.services.provisioning import revoke_welcome_tokens
 from app.services.telecaller import TEAM_LABEL, locked_active_manager, require_creator_may
 
@@ -43,7 +44,7 @@ async def open_work(db: AsyncSession, user_id: UUID) -> dict[str, int]:
 
     return {
         "leads": await count(Enquiry, *open_leads(user_id)) or 0,
-        "follow_ups": await count(LeadFollowUp, LeadFollowUp.lead_id.in_(lead_ids), LeadFollowUp.status == "open") or 0,
+        "follow_ups": await count(LeadFollowUp, LeadFollowUp.lead_id.in_(lead_ids), LeadFollowUp.status == "open", TELECALLER_FOLLOW_UP) or 0,
         "appointments": await count(Appointment, Appointment.lead_id.in_(lead_ids), Appointment.status.in_(LEAD_APPOINTMENT_OPEN)) or 0,
     }
 

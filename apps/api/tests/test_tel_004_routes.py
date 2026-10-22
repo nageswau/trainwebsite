@@ -120,7 +120,8 @@ async def test_admin_patch_follows_the_stage_rules(client, db_session):
     assert (await client.patch(url, json={"status": 7})).status_code == 422
     assert (await client.patch(url, json={"status": "lost", "reason": "Duplicate enquiry"})).status_code == 200
     assert (await client.patch(url, json={"status": "follow_up", "reason": "Not a duplicate"})).status_code == 200  # admins reopen
-    assert (await client.patch(url, json={"status": "follow_up", "owner_id": str(admin.id)})).status_code == 200  # same stage: no-op
+    counselor = await make_user(db_session, "counselor", "it")  # ccrm-003 A7: the owner is an active counselor of the division
+    assert (await client.patch(url, json={"status": "follow_up", "owner_id": str(counselor.id)})).status_code == 200  # same stage: no-op
     assert await _status(db_session, row) == "follow_up"
     history = (await client.get(history_url(row.id, admin=True))).json()
     assert [(h["to_stage"], h["event"], h["actor"]["id"]) for h in history["items"]] == [("lost", "manual", str(admin.id)),

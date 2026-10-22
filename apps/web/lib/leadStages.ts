@@ -42,5 +42,16 @@ export function personTargets(current: string, canReopen: boolean): string[] {
   return [...(beforeCounselor ? MANUAL : []), ...CLOSED].filter((stage) => stage !== current);
 }
 
+// ccrm-003 (DEC-SCOPE-243, CC8 / A1): mirrors COUNSELOR_MANUAL / COUNSELOR_CLOSED in apps/api/app/lead_stages.py.
+const COUNSELOR_MANUAL = ["qualified", "follow_up", "counselling_scheduled", "counselling_completed"];
+const COUNSELOR_CLOSED = ["not_interested", "not_eligible", "lost"];
+
+/** The counselor's moves from `current`: the CC8 open stages until the student link, the three closed outcomes; never a reopen. */
+export function counselorTargets(current: string): string[] {
+  if (isClosed(current) || current === "converted") return [];
+  const beforeLink = ORDER.indexOf(current) < ORDER.indexOf("application_enrollment");
+  return [...(beforeLink ? COUNSELOR_MANUAL : []), ...COUNSELOR_CLOSED].filter((stage) => stage !== current);
+}
+
 /** Closed outcomes and reopening need a reason (D1). */
 export const needsReason = (current: string, target: string) => isClosed(target) || isClosed(current);

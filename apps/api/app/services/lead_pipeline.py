@@ -13,7 +13,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.lead_stages import CLOSED, EVENTS, MANUAL, MANUAL_BEFORE, ORDER, REOPEN_TO, STAGE_LABELS, label
+from app.lead_stages import CLOSED, COUNSELOR_CLOSED, COUNSELOR_MANUAL, EVENTS, MANUAL, MANUAL_BEFORE, ORDER, REOPEN_TO, STAGE_LABELS, label
 from app.models import LEAD_APPOINTMENT_OPEN, Appointment, AppointmentEvent, AuditLog, Enquiry, LeadFollowUp, LeadStageHistory, TelecallerProfile, User
 
 logger = logging.getLogger("app.leads")
@@ -28,13 +28,18 @@ CLOSED_REOPEN_ONLY = "A closed lead can only be reopened to Follow-up"
 REOPEN_FORBIDDEN = "Only a manager can reopen a closed lead"
 REASON_CLOSED = "Add a reason for closing the lead"
 REASON_REOPEN = "Add a reason for reopening the lead"
+NEXT_ACTION_REQUIRED = "Set a next action and its due date first"  # ccrm-003 A2
 FOLLOW_UPS_CLOSED = "Lead closed"  # tel-011 F4: the cancel reason on follow-ups a closing move cancelled
 APPOINTMENTS_CLOSED = FOLLOW_UPS_CLOSED  # tel-016 AP15: and on the counselling appointment it cancelled
 
-Kind = Literal["telecaller", "manager"]
+Kind = Literal["telecaller", "manager", "counselor"]
+
+# ccrm-003 A5: a counselor's follow-up is never the telecaller's work -- every telecaller-side follow-up list, count and alert filters on
+# this. Here (models-only imports) so the telecaller metrics and alerts can use it without an import cycle.
+TELECALLER_FOLLOW_UP = LeadFollowUp.created_by_user_id.not_in(select(User.id).where(User.role == "counselor"))
 
 
-def _invalid(field: str, msg: str, value) -> RequestValidationError:
+def invalid(field: str, msg: str, value) -> RequestValidationError:
     return RequestValidationError([{"type": "value_error", "loc": ("body", field), "msg": msg, "input": value}])
 
 
@@ -80,27 +85,33 @@ async def apply_event(db: AsyncSession, lead: Enquiry, event: str, actor: User |
 
 async def person_move(db: AsyncSession, lead: Enquiry, actor: User, kind: Kind, to_stage: str, reason: str | None) -> None:
     """T13 / D1-D3: a telecaller or manager (an admin acts as a manager) chooses Qualified, Interested, Follow-up or a closed outcome;
-    only a manager reopens a closed lead, to Follow-up. Nobody chooses a system stage (AC2, T5)."""
+    only a manager reopens a closed lead, to Follow-up. Nobody chooses a system stage (AC2, T5). ccrm-003 (CC8 / A1, A2): a counselor
+    chooses from their own list, and an open target needs the lead's next action and its due date (the route applies any sent first)."""
     current = lead.status
     if to_stage not in STAGE_LABELS:
-        raise _invalid("to_stage", STAGE_UNKNOWN, to_stage)
+        raise invalid("to_stage", STAGE_UNKNOWN, to_stage)
     if to_stage == current:
-        raise _invalid("to_stage", STAGE_SAME, to_stage)
+        raise invalid("to_stage", STAGE_SAME, to_stage)
     if current in CLOSED:
-        if kind == "telecaller":
+        if kind != "manager":
             raise HTTPException(403, REOPEN_FORBIDDEN)
         if to_stage != REOPEN_TO:
-            raise _invalid("to_stage", CLOSED_REOPEN_ONLY, to_stage)
+            raise invalid("to_stage", CLOSED_REOPEN_ONLY, to_stage)
         if reason is None:
-            raise _invalid("reason", REASON_REOPEN, reason)
+            raise invalid("reason", REASON_REOPEN, reason)
         await _record(db, lead, to_stage, "reopen", actor.id, reason)
         return
-    if to_stage not in MANUAL and to_stage not in CLOSED:
-        raise _invalid("to_stage", STAGE_SYSTEM, to_stage)
-    if current == "converted" or (to_stage in MANUAL and ORDER.index(current) >= MANUAL_BEFORE):
-        raise _invalid("to_stage", STAGE_PAST, to_stage)
+    manual, closed = (COUNSELOR_MANUAL, COUNSELOR_CLOSED) if kind == "counselor" else (MANUAL, CLOSED)
+    if to_stage not in manual and to_stage not in closed:
+        raise invalid("to_stage", STAGE_SYSTEM, to_stage)
+    if current == "converted" or (to_stage in manual and ORDER.index(current) >= MANUAL_BEFORE):
+        raise invalid("to_stage", STAGE_PAST, to_stage)
     if to_stage in CLOSED and reason is None:
-        raise _invalid("reason", REASON_CLOSED, reason)
+        raise invalid("reason", REASON_CLOSED, reason)
+    if kind == "counselor" and to_stage not in CLOSED:
+        for field in ("next_action", "next_action_due"):
+            if getattr(lead, field) is None:
+                raise invalid(field, NEXT_ACTION_REQUIRED, None)
     await _record(db, lead, to_stage, "manual", actor.id, reason)
     if to_stage in CLOSED:
         await cancel_open_follow_ups(db, lead, FOLLOW_UPS_CLOSED)

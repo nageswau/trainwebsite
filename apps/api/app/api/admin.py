@@ -76,6 +76,7 @@ from app.services import (
     agent_kyc,
     bdm_lifecycle,
     course_skills,
+    lead_appointments,
     lead_handover,
     lead_notes,
     lead_pipeline,
@@ -471,6 +472,20 @@ async def unconvert_lead(lead_id: UUID, user: User = Depends(ensure_admin), db: 
     return await lead_rules.admin_one(db, lead_id)
 
 
+LEAD_OWNER_INVALID = "Choose an active counselor of the lead's division"
+
+
+async def _lead_owner(db: AsyncSession, lead: Enquiry, value) -> User:
+    try:
+        owner_id = UUID(str(value))
+    except ValueError:
+        owner_id = None
+    counselor = None if owner_id is None else await db.scalar(lead_appointments.active_counselors(lead.division).where(User.id == owner_id))
+    if counselor is None:
+        raise lead_pipeline.invalid("owner_id", LEAD_OWNER_INVALID, str(value))
+    return counselor
+
+
 @router.patch("/leads/{lead_id}")
 async def update_lead(lead_id: UUID, payload: dict, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
     """tel-004 (T25): `status` is a stage move through the pipeline, as a manager (reason required for a closed outcome or a reopen); the
@@ -482,8 +497,8 @@ async def update_lead(lead_id: UUID, payload: dict, user: User = Depends(ensure_
         except ValidationError as exc:
             raise RequestValidationError(exc.errors()) from None
         await lead_pipeline.person_move(db, x, user, "manager", move.to_stage, move.reason)
-    if "owner_id" in payload:
-        x.owner_id = payload["owner_id"]
+    if "owner_id" in payload:  # ccrm-003 A7: an active counselor of the lead's division, or null to un-assign
+        x.owner_id = None if payload["owner_id"] is None else (await _lead_owner(db, x, payload["owner_id"])).id
     audited = {f: payload[f] for f in ("status", "owner_id") if f in payload}
     db.add(AuditLog(user_id=user.id, action="lead.update", entity_type="enquiry", entity_id=str(x.id), metadata_json=audited))
     await db.commit()

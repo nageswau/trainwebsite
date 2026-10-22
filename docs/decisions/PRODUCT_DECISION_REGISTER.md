@@ -8991,3 +8991,21 @@ N4 body trimmed, plain text; N5 the admin lead History shows the notes panel.
 **Numbering:** migration `0167_lead_notes` (chained after ccrm-011's `0166_application_codes`); API §12EU; RBAC §2.157
 (239–241 / 12ER–12ET / 2.154–2.156 held by parallel ccrm sessions).
 - **Feature ID authorized:** `ccrm-002`. **Status:** built on `worktree-ccrm-002`.
+
+### DEC-SCOPE-243 — Counselor lead actions: stage, next action, follow-ups (`ccrm-003`)
+
+**Status:** CONFIRMED by owner 2026-10-22 (Claude Code session; the owner pre-authorised the recommended defaults for this item's open
+questions). Supersedes nehn-014 part 2.
+**Evidence:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-003` (owner request 2026-10-22, CC8); design
+`docs/superpowers/specs/2026-10-22-ccrm-003-counselor-lead-actions-design.md`.
+**Decision:** the counselor moves a lead handed to them (owner + division) to Follow-up, Counselling Scheduled, Counselling Completed or
+Qualified, or closes it as Not Interested / Not Eligible / Lost with a reason (CC8), through the tel-004 stage engine; a move to an open
+stage needs `enquiries.next_action` + `next_action_due` (sent or stored). The counselor creates, reschedules, completes and cancels the
+lead's follow-ups through the tel-011 service. Admin `owner_id` must be an active counselor of the lead's division (or null).
+**Builder's calls:** A1 Wrong Number / No Response stay telecaller outcomes; no counselor reopen; A2 next action required on counselor
+leads only, no back-fill; A3 `PUT …/next-action`, a changed due date today or later; A4 the tel-011 rules unchanged; A5 a counselor's
+follow-up never counts as telecaller work (lists, alerts, dashboard, metrics, lifecycle); A6 the return cancels open follow-ups and clears
+the next action; A7 admin `owner_id` null stays allowed; A8 no reason / next-action text in logs or audit.
+**Numbering:** migration `0168_lead_next_action` (after ccrm-002's `0167_lead_notes`); API §12EV; RBAC §2.158 (240–241 / 12ER–12ET /
+2.154–2.156 held by parallel ccrm sessions).
+- **Feature ID authorized:** `ccrm-003`. **Status:** built on `feature/ccrm-003`.

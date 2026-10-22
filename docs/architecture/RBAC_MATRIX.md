@@ -2436,6 +2436,18 @@ plus students linked to the counselor" (`overseas_student_counselors`); every ot
 - Append-only (N2): no role edits or deletes a note. The body is never logged nor stored in the audit row.
 - Pinned by `test_ccrm_002_lead_notes.py`.
 
+### 2.158 Counselor lead actions *(added 2026-10-22 — `DEC-SCOPE-243`, ccrm-003)*
+
+| Route | `telecaller` | `telecaller_manager` | `counselor` | `overseas_admin` / `it_admin` | `super_admin` | Every other role | Anonymous |
+|---|---|---|---|---|---|---|---|
+| `POST /counselor/leads/{id}/stage`, `PUT …/next-action` | `403` | `403` | ✅ leads handed to them, own division; else `404` | `403` | `403` | `403` | `401` |
+| `GET`/`POST /counselor/leads/{id}/follow-ups`, `PATCH /counselor/follow-ups/{id}`, `POST …/complete` / `…/cancel` | `403` | `403` | ✅ same scope; else `404` | `403` | `403` | `403` | `401` |
+| A counselor's follow-up via `/telecaller/...` | read only (`can_change: false`), write `403` | read only | — | — | read only | — | — |
+
+- The counselor's stage targets are the CC8 list only; reopening a closed lead stays manager / admin. Reason and next-action text are
+  never logged nor stored in an audit row.
+- Pinned by `test_ccrm_003_counselor_lead_actions.py`.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

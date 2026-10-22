@@ -16,9 +16,10 @@ const adminMove = (id: string, target: string, reason: string) =>
 // tel-004 (spec §6, T25): an admin's stage move. Only the moves the API accepts are offered (lib/leadStages mirrors the rules); a
 // closed outcome or a reopen needs a reason, checked here first so the admin isn't sent a 422. The API stays the authority.
 // tel-008: the lead detail reuses it with the telecaller route (`move`); a telecaller can't reopen a closed lead (`canReopen`).
-export function LeadStageControl({ lead, onChanged, onMessage, move = adminMove, canReopen = true }: {
+export function LeadStageControl({ lead, onChanged, onMessage, move = adminMove, canReopen = true, targets: offered }: {
   lead: Lead; onChanged: (status: string) => void; onMessage: (m: Message) => void;
   move?: (id: string, target: string, reason: string) => Promise<SendOutcome>; canReopen?: boolean;
+  targets?: string[]; // ccrm-003: the counselor's CC8 list (lib/leadStages counselorTargets) instead of the telecaller / admin moves
 }) {
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState("");
@@ -35,7 +36,7 @@ export function LeadStageControl({ lead, onChanged, onMessage, move = adminMove,
       opener.current?.focus();
     }
   }, [open]);
-  const targets = personTargets(lead.status, canReopen);
+  const targets = offered ?? personTargets(lead.status, canReopen);
   if (targets.length === 0) return null;
 
   function close() {
