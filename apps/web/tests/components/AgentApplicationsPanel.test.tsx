@@ -5,7 +5,7 @@ import AgentApplicationsPanel from "@/components/AgentApplicationsPanel";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const item = (over: Record<string, unknown> = {}) => ({
-  id: "a1", agent_student_id: "r1", student: "Asha Rao", has_login: false, university: "Uni One", course: null, intake: "Fall 2027",
+  id: "a1", application_code: "APP-000042", agent_student_id: "r1", student: "Asha Rao", has_login: false, university: "Uni One", course: null, intake: "Fall 2027",
   status: "offer", application_reference: "UCAS-1", submitted_on: null, application_deadline: null, offer_deadline: null,
   nearest_deadline: null, next_action: "Send deposit", updated_at: "", ...over,
 });
@@ -26,6 +26,8 @@ describe("AgentApplicationsPanel (AGN-008)", () => {
     expect(card).toHaveTextContent("Asha Rao");
     expect(card).toHaveTextContent("Offer");
     expect(card).toHaveTextContent("no login");
+    expect(card).toHaveTextContent("EduSphere ID APP-000042"); // ccrm-011
+    expect(within(card).getByText("APP-000042")).toHaveStyle({ whiteSpace: "nowrap" }); // QA-1: never split at the hyphen on a phone
   });
 
   it("requests the filter it is given", async () => {

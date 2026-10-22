@@ -208,11 +208,11 @@ async def overseas_applications(
         stmt = stmt.where(OverseasApplication.student_id == student_id)
     pattern = _pattern(q)
     if pattern:
-        stmt = stmt.where(or_(_like(student_name, pattern), _like(University.name, pattern), _like(OverseasCourse.title, pattern), _like(OverseasApplication.application_reference, pattern)))
+        stmt = stmt.where(or_(_like(student_name, pattern), _like(University.name, pattern), _like(OverseasCourse.title, pattern), _like(OverseasApplication.application_reference, pattern), _like(OverseasApplication.application_code, pattern)))
     stmt = stmt.order_by(student_name, University.name, OverseasApplication.id)
     return await _page(
         db, stmt, limit,
-        lambda row: {"id": row[0].id, "label": row[1] or "Unnamed student", "detail": _join(row[2], row[3], row[0].status)},
+        lambda row: {"id": row[0].id, "label": row[1] or "Unnamed student", "detail": _join(row[0].application_code, row[2], row[3], row[0].status)},  # ccrm-011: the code is searchable and shown
         "overseas-applications", user,
     )
 

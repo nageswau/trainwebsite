@@ -5,7 +5,7 @@ import AgentApplicationDetail from "@/components/AgentApplicationDetail";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const detail = (over: Record<string, unknown> = {}) => ({
-  id: "a1", agent_student_id: "r1", student: "Asha Rao", has_login: false, university: "Uni One", university_id: "u1", university_slug: "u1",
+  id: "a1", application_code: "APP-000042", agent_student_id: "r1", student: "Asha Rao", has_login: false, university: "Uni One", university_id: "u1", university_slug: "u1",
   course: null, course_id: null, intake: "Fall 2027", status: "offer", application_reference: "UCAS-1", submitted_on: "2026-09-01",
   application_deadline: null, offer_deadline: "2027-01-15", nearest_deadline: { kind: "offer", date: "2027-01-15" }, next_action: "Send deposit",
   updated_at: "", created_at: "", read_only_reason: null, counselor_name: null,
@@ -25,6 +25,7 @@ describe("AgentApplicationDetail (AGN-008)", () => {
     const heading = await screen.findByRole("heading", { name: "Asha Rao — Uni One" });
     await waitFor(() => expect(heading).toHaveFocus());
     expect(screen.getByText("UCAS-1")).toBeInTheDocument();
+    expect(screen.getByText("EduSphere ID", { selector: "dt" }).nextElementSibling).toHaveTextContent("APP-000042"); // ccrm-011
     expect(within(screen.getByRole("list", { name: "Status history" })).getByText(/Enquiry/)).toBeInTheDocument();
   });
 

@@ -122,7 +122,9 @@ asked one at a time when the item is picked up).
 - **Edge cases:** school-bridged rows keep today's exclusion.
 - **Regression:** the Overseas Admin dashboard uses the same tiles — check both.
 - **Complexity:** small. **Risk:** low.
-- **Open questions:** exact "Awaiting documents" definition before ccrm-019 lands.
+- **Open questions:** exact "Awaiting documents" definition before ccrm-019 lands. **Answered 2026-10-22:** the expected-behaviour
+  definition above (visa checklist or `university_selection` + pending document; withdrawn/enrolled never count).
+- **Status:** built on `feature/ccrm-001` — `DEC-SCOPE-238`, no migration/API/RBAC change.
 
 ---
 
@@ -305,7 +307,7 @@ asked one at a time when the item is picked up).
 ### `ccrm-010` — Student and application notes; counselling history *(supersedes nehn-037 part 5)*
 
 **Status (2026-10-22): built on `feature/ccrm-010`** — `DEC-SCOPE-241`, API §12ET, RBAC §2.156, migration
-`0166_overseas_student_notes`. Builder's calls N1–N5. Until ccrm-009 exists the notes live on their own page
+`0167_overseas_student_notes`. Builder's calls N1–N5. Until ccrm-009 exists the notes live on their own page
 (`/overseas/{counselor|admin}/students/{id}/notes`). Spec `docs/superpowers/specs/2026-10-22-ccrm-010-student-notes-design.md`.
 
 - **Source:** §5 Activities; §6 "internal notes"; nehn-037 #5.
@@ -329,6 +331,10 @@ asked one at a time when the item is picked up).
 - **Acceptance:** every application has a unique code; codes never reused after withdrawal.
 - **Complexity:** small. **Risk:** low.
 - **Open questions:** format (`APP-000001` vs `APP-2027-00001` with yearly reset).
+
+**Status (2026-10-22): built on `feature/ccrm-011`** — `DEC-SCOPE-239`, migration `0166_application_codes`, API §12EQ, RBAC §2.153.
+Format `APP-000001`, no yearly reset (recommended default); labelled "EduSphere ID" (agency "Application ID" is the university
+reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-application-codes-design.md`.
 
 ### `ccrm-012` — Counselor quick search and list filters
 

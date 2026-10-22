@@ -4,7 +4,7 @@ Design: `docs/superpowers/specs/2026-10-22-ccrm-010-student-notes-design.md`. Br
 `.claude/worktrees/ccrm-010`), cut from `origin/main` @ `50254ccc`.
 
 1. **Migration + model (TDD).** `test_ccrm_010_migration.py` (chain, single head, model = table, round trip, downgrade refusal) → RED;
-   `OverseasStudentNote` in `models.py` + `0166_overseas_student_notes.py` → GREEN.
+   `OverseasStudentNote` in `models.py` + `0167_overseas_student_notes.py` → GREEN.
 2. **Service + routes (TDD).** `test_ccrm_010_student_notes.py` (scope, roles, validation, application link, paging, history after
    reassign) → RED; `services/student_notes.py`, `StudentNoteCreate` in `schemas.py`, `GET/POST /counselor/students/{id}/notes` in
    `api/counselor_students.py` → GREEN.
