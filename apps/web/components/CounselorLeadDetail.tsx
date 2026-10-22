@@ -6,6 +6,7 @@ import { type FormEvent, useCallback, useEffect, useId, useState } from "react";
 import BdmConfirm from "@/components/BdmConfirm";
 import LocalTime from "@/components/LocalTime";
 import LeadMilestones from "@/components/LeadMilestones";
+import LeadNotes from "@/components/LeadNotes";
 import LeadTimeline from "@/components/LeadTimeline";
 import { isRequestBody, sendJson, sendRequest, type SendOutcome } from "@/lib/apiErrors";
 import { counselorLeadUrl, type CounselorLeadDetail as Detail, type StudentSuggestion } from "@/lib/leadHandover";
@@ -230,6 +231,14 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
         <p style={{ margin: "8px 0 0" }}><strong>{lead.subject}</strong></p>
         {lead.message && <p style={{ margin: "4px 0 0", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{lead.message}</p>}
       </section>
+
+      {/* ccrm-002: a returned lead has left this counselor's scope (its notes stay on the lead for the telecaller) */}
+      {!returned && (
+        <section aria-labelledby="lead-notes-heading">
+          <h3 id="lead-notes-heading" style={{ margin: 0 }}>Notes</h3>
+          <LeadNotes url={counselorLeadUrl(lead.id, "/notes")} onAdded={() => setActivityVersion((n) => n + 1)} />
+        </section>
+      )}
 
       <section aria-labelledby="lead-activity-heading">
         <h3 id="lead-activity-heading" style={{ margin: 0 }}>Activity</h3>

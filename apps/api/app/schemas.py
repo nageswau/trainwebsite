@@ -6143,7 +6143,7 @@ class LeadTimelineRow(BaseModel):
 
     id: UUID
     kind: Literal["created", "enquiry", "stage", "priority", "assignment", "handover", "student_link", "call", "message", "follow_up",
-                  "appointment", "milestone"]
+                  "appointment", "milestone", "note"]
     at: datetime
     actor: LeadStageActor | None
     from_value: str
@@ -6160,6 +6160,27 @@ class LeadTimelineRow(BaseModel):
 
 class LeadTimelinePage(BaseModel):
     items: list[LeadTimelineRow]
+    total: int
+    limit: int
+    offset: int
+
+
+class LeadNoteIn(BaseModel):
+    """ccrm-002 (DEC-SCOPE-242 N4): trimmed plain text, 1-4000 characters (`LEAD_NOTE_MAX`)."""
+
+    model_config = ConfigDict(extra="forbid")
+    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4000)]
+
+
+class LeadNoteOut(BaseModel):
+    id: UUID
+    at: datetime
+    author: LeadStageActor
+    body: str
+
+
+class LeadNotePage(BaseModel):
+    items: list[LeadNoteOut]
     total: int
     limit: int
     offset: int
