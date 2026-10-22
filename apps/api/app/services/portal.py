@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application_sub_status import label as sub_status_label
 from app.core.identifiers import uuid_reference
 from app.core.rbac import PERMISSIONS, is_agent_staff
 from app.lead_stages import label as lead_stage_label
@@ -588,8 +589,27 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
         return _payload(
             "Applications",
             "Application stages and required next actions.",
-            (("id", "reference"), ("university", "University"), ("reference", "Reference"), ("intake", "Intake"), ("status", "Status"), ("next_action", "Next action")),
-            ({"id": a.id, "university": u.name, "reference": a.application_reference, "intake": a.intake, "status": a.status, "next_action": a.next_action} for a, u in applications),
+            (
+                ("id", "reference"),
+                ("university", "University"),
+                ("reference", "Reference"),
+                ("intake", "Intake"),
+                ("status", "Status"),
+                ("sub_status_label", "Sub-status"),
+                ("next_action", "Next action"),
+            ),
+            (
+                {
+                    "id": a.id,
+                    "university": u.name,
+                    "reference": a.application_reference,
+                    "intake": a.intake,
+                    "status": a.status,
+                    "sub_status_label": sub_status_label(a.sub_status),
+                    "next_action": a.next_action,
+                }
+                for a, u in applications
+            ),
             panels=({"title": "University catalogue IDs", "items": [f"University reference {u.id}: {u.name}, {u.city}" for u in universities]},),
         )
     if section == "documents":
@@ -1046,10 +1066,11 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             if agn023:
                 agencies, counselors = await application_filters.row_labels(db, [a for a, _, _ in applications])
                 for row, (a, _, _) in zip(rows, applications, strict=True):
-                    row |= {"is_agency": a.agent_id is not None, "agency": agencies.get(a.agent_id)}
+                    row |= {"is_agency": a.agent_id is not None, "agency": agencies.get(a.agent_id), "sub_status": a.sub_status, "sub_status_label": sub_status_label(a.sub_status)}
                     if user.role == "overseas_admin":
                         row |= _counselor_cells(a, counselors)
                 columns.insert(2, ("agency", "Agency"))
+                columns.insert(columns.index(("status", "Status")) + 1, ("sub_status_label", "Sub-status"))  # ccrm-014
                 if user.role == "overseas_admin":
                     columns.insert(4, ("counselor", "EduSphere counsellor"))
                     columns.append(("assign", "", "assign_counselor"))

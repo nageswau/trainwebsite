@@ -385,6 +385,8 @@ asked one at a time when the item is picked up).
 - **Regression:** agent journey (`services/agent_journey.py`), management funnel, school global-education view.
 - **Complexity:** medium. **Risk:** high (shared state machine). Needs a `DEC-WF` amendment beside `DEC-WF-001`.
 - **Open questions:** the stage↔sub-status mapping table.
+- **Status (2026-10-22):** built on `feature/ccrm-014` — owner answers SS1–SS4 (backlog mapping; backfill only where certain; clear on
+  stage change, `enrolled` auto; roles as above), `DEC-SCOPE-238`, migration `0166_application_sub_status`, API §12EQ, RBAC §2.153.
 
 ### `ccrm-015` — Application exception outcomes
 

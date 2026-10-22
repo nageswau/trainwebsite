@@ -7,9 +7,11 @@ import AgentApplicationEnrollment from "./AgentApplicationEnrollment";
 import AgentApplicationOffer from "./AgentApplicationOffer";
 import AgentApplicationStatusForm from "./AgentApplicationStatusForm";
 import AgentApplicationVisa from "./AgentApplicationVisa";
+import ApplicationSubStatusForm from "./ApplicationSubStatusForm";
 import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
-import { AgentApplicationDetail as Detail, APPLICATIONS_URL, deadlineText, READ_ONLY_TEXT, stageLabel, todayIso } from "@/lib/agentApplications";
+import { AGENT_MAX_STAGE, AgentApplicationDetail as Detail, APPLICATIONS_URL, deadlineText, READ_ONLY_TEXT, stageLabel, todayIso } from "@/lib/agentApplications";
+import { subStatusLabel } from "@/lib/applicationSubStatus";
 
 type Props = { id: string; isMaster?: boolean; onChanged: (d: Detail) => void; onClose: () => void };
 
@@ -107,6 +109,7 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
       </h4>
       <p>
         <span className={detail.status === "withdrawn" ? "status error" : "badge"}>{stageLabel(detail.status)}</span>
+        {detail.sub_status_label && <span className="badge"> {detail.sub_status_label}</span>}
         {deadline && <span className="muted"> · {deadline}</span>}
       </p>
       {notice && (
@@ -186,6 +189,21 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
             />
           )}
           {!detail.read_only_reason && !openForm && <AgentApplicationStatusForm detail={detail} onSaved={saved} onFailed={failed} />}
+          {!detail.read_only_reason && !openForm && (
+            <ApplicationSubStatusForm
+              id={detail.id}
+              url={`${APPLICATIONS_URL}/${detail.id}/sub-status`}
+              stage={detail.status}
+              current={detail.sub_status}
+              maxStage={AGENT_MAX_STAGE}
+              onSaved={(data, message) => {
+                const next = (data as { application?: Detail }).application;
+                if (next) saved(next, message);
+                else failed("The change could not be confirmed. Reload to see the current status.");
+              }}
+              onFailed={failed}
+            />
+          )}
         </Fragment>
       )}
       <h5>Status history</h5>
@@ -194,6 +212,7 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
           <li key={i}>
             {h.from_status ? `${stageLabel(h.from_status)} → ` : ""}
             {stageLabel(h.to_status)}
+            {h.to_sub_status && ` (${subStatusLabel(h.to_sub_status)})`}
             {h.changed_by && ` · ${h.changed_by}`} · {formatDateTimeIn(h.created_at, viewerTimeZone(), true)}
             {h.notes && <div className="muted history-note">{h.notes}</div>}
           </li>

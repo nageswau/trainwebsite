@@ -8946,3 +8946,21 @@ yet can be assigned (creates it), no "unassign"; C15 the Overseas Admin's appoin
 the control is on Users, not Students (Students lists applications for the Overseas Admin).
 **Numbering:** no migration; API §12EP; RBAC §2.152.
 - **Feature ID authorized:** `csc-005`. **Status:** built on `feature/csc-005`.
+
+### DEC-SCOPE-238 — Application sub-status under the 7 stages (`ccrm-014`)
+
+**Status:** CONFIRMED by owner 2026-10-22 (Claude Code session). Amends `DEC-WF-001` by adding a detail level under its 7 stages; the
+stages, their order and the forward-only rule are unchanged. Follows CC1 (`docs/delivery/COUNSELOR_CRM_BACKLOG.md` §1).
+**Evidence:** owner answers SS1–SS4 through the clarifying-question prompt, 2026-10-22 (`EXPLICIT_APPROVAL`); source PDF `UNVERIFIED`
+(backlog header).
+**Decision:** each overseas application has an optional `sub_status` from a fixed list keyed to its stage (SS1: University selection —
+Application created, Documents pending, Ready for submission, Submitted, Under review; Offer — Conditional offer, Unconditional offer,
+Offer accepted; Visa documentation — Visa preparation, Visa applied; Status tracking — Visa decision pending, Visa approved; Enrolled —
+Enrolled). It moves freely inside the stage; a later stage's sub-status advances the stage. History keeps old/new stage and sub-status
+with the author. SS2 backfill only where certain. SS3 any other stage change clears a foreign sub-status and enrolment sets Enrolled.
+SS4 counselor (own; agency applications not to Enrolled), agent (agency, up to Status tracking), Overseas Admin (any); student reads.
+**Builder's calls:** S1 the same value twice is a no-op (no history, safe retry); S2 last write wins under the row lock (CC5), the other
+side notified ("Application sub-status changed"); S3 automatic sub-statuses (Ready for submission, offers, visa) are left to
+ccrm-019/023/026.
+**Numbering:** migration `0166_application_sub_status`; API §12EQ; RBAC §2.153.
+- **Feature ID authorized:** `ccrm-014`. **Status:** built on `feature/ccrm-014`.

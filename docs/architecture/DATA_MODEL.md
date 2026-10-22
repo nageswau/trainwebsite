@@ -2098,3 +2098,13 @@ initial, additional, withdrawal, profit_distribution); `amount` numeric(12,2) (C
 
 Additive; no existing row changes. Written by csc-002 (counselor walk-in create) and csc-005 (Overseas Admin reassign); csc-001 only reads it.
 `downgrade()` refuses while rows exist.
+
+## Application sub-status (`ccrm-014`, `DEC-SCOPE-238`; migration `0166_application_sub_status`, after csc-001's `0165`)
+
+| Table.column | Type | Notes |
+|---|---|---|
+| `overseas_applications.sub_status` | varchar(40) NULL | a code from `app/application_sub_status.py`, keyed to `status` (SS1); NULL = not set. `OverseasApplication.@validates("status")` clears a code outside the new stage and sets `enrolled` on enrolment (SS3), on every write path. |
+| `application_status_history.from_sub_status`, `.to_sub_status` | varchar(40) NULL | written by the two sub-status routes; NULL on rows written by stage-only routes. |
+
+SS2 backfill: `enrolled` → `enrolled`; `offer` with `offer_type` → `conditional_offer`/`unconditional_offer`; `university_selection` with
+`submitted_on` → `submitted`; every other row NULL. `downgrade()` drops the three columns.

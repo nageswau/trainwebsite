@@ -745,3 +745,20 @@ half.
 | `csc-005-AC4` | Overseas Admin only (super_admin, IT admin, counselor, student, agent → 403); anonymous 401 | `::test_everyone_but_the_overseas_admin_is_403` (5), `::test_anonymous_is_401` |
 | `csc-005-AC5` | The Overseas Admin's Users directory shows each student's counselor with the control (staff rows none); other sections/roles unchanged | `::test_the_overseas_admins_users_directory_shows_…`, `::test_other_user_sections_are_unchanged`; `apps/web/tests/components/AssignCounselorButton.student.test.tsx` (2); existing `AssignCounselorButton.test.tsx`, `DataTable.test.tsx`; e2e (csc-005, agn-023) |
 
+
+**Addendum, 2026-10-22 (`ccrm-014`)** — one row and its acceptance-criteria map. Application sub-status under the 7 stages.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `ccrm-014` | Requirement: CC1 + owner answers SS1–SS4 (in-session 2026-10-22, `EXPLICIT_APPROVAL`) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` §3 → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-238` → design `docs/superpowers/specs/2026-10-22-ccrm-014-application-sub-status-design.md` → plan `docs/superpowers/plans/2026-10-22-ccrm-014-application-sub-status.md`; `API_CONTRACT.md` §12EQ, `RBAC_MATRIX.md` §2.153, `DATA_MODEL.md` (0166) | none | Built on `feature/ccrm-014`; lite API set, vitest, e2e and browser QA |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `ccrm-014-AC1` | The SS1 mapping and labels | `apps/api/tests/test_ccrm_014_sub_status.py::test_the_mapping_is_the_owner_list`; `apps/web/tests/components/ApplicationSubStatus.test.tsx` (subStatusChoices) |
+| `ccrm-014-AC2` | Free move inside a stage; history keeps old/new stage + sub-status, note and author (spec AC 6) | `::test_the_counselor_moves_within_the_stage_and_history_keeps_both_levels`; e2e `apps/web/tests/e2e/ccrm-014-application-sub-status.spec.ts` |
+| `ccrm-014-AC3` | A later stage's sub-status advances the stage; an earlier one and an unknown code are 422; the same value is a no-op | `::test_a_later_stage_sub_status_advances_the_stage_and_never_moves_back`, `::test_the_same_sub_status_twice_writes_nothing` |
+| `ccrm-014-AC4` | One application's change never touches another (spec AC 9) | `::test_one_application_change_never_touches_another` |
+| `ccrm-014-AC5` | SS4 roles: other counselor/student 403, withdrawn 409, counselor not Enrolled on agency, admin enrols + commission, agent up to Status tracking, other agency 404; the other side notified (CC5) | `::test_scope_withdrawn_and_role_refusals`, `::test_on_an_agency_application_the_counselor_cannot_enrol_and_the_agency_is_told`, `::test_the_admin_can_enrol_and_the_commission_trigger_runs`, `::test_the_agent_sets_sub_status_up_to_status_tracking_and_the_counselor_is_told`; `AgentApplicationDetail.test.tsx` (ccrm-014), `ApplicationSubStatus.test.tsx` |
+| `ccrm-014-AC6` | SS3: a stage change elsewhere clears a foreign sub-status; Enrolled sets it | `::test_a_stage_change_elsewhere_clears_a_foreign_sub_status_and_enrolled_sets_it` |
+| `ccrm-014-AC7` | Reads: list, status history, counselor/student portal tables | `::test_reads_carry_the_sub_status` |
+| `ccrm-014-AC8` | Migration 0166 chain, SS2 backfill, round trip | `apps/api/tests/test_ccrm_014_migration.py` (3) |

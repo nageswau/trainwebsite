@@ -257,4 +257,22 @@ describe("AgentApplicationDetail (AGN-008)", () => {
     resolvePost(json({ application: detail({ status: "visa_documentation" }) }));
     expect(await screen.findByRole("status")).toHaveTextContent("Status updated to Visa documentation.");
   });
+
+  it("ccrm-014: shows the sub-status, offers it up to status tracking and posts to the agency route", async () => {
+    const onChanged = vi.fn();
+    const saved = detail({ sub_status: "offer_accepted", sub_status_label: "Offer accepted" });
+    const fetchMock = vi.fn((_: string, init?: RequestInit) => Promise.resolve(json({ application: init?.method === "POST" ? saved : detail({ sub_status: "conditional_offer", sub_status_label: "Conditional offer" }) })));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentApplicationDetail id="a1" onChanged={onChanged} onClose={vi.fn()} />);
+    expect(await screen.findByText("Conditional offer")).toBeInTheDocument();
+    const select = screen.getByLabelText("Sub-status") as HTMLSelectElement;
+    const values = Array.from(select.options).map((o) => o.value);
+    expect(values).toEqual(["unconditional_offer", "offer_accepted", "visa_preparation", "visa_applied", "visa_decision_pending", "visa_approved"]);
+    fireEvent.change(select, { target: { value: "offer_accepted" } });
+    fireEvent.click(screen.getByRole("button", { name: "Update sub-status" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Sub-status updated to Offer accepted.");
+    const post = fetchMock.mock.calls.find(([, i]) => i?.method === "POST")!;
+    expect(post[0]).toBe("/api/v1/workflows/overseas/agent/crm/applications/a1/sub-status");
+    expect(onChanged).toHaveBeenCalledWith(expect.objectContaining({ sub_status: "offer_accepted" }));
+  });
 });

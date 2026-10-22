@@ -77,6 +77,8 @@ async def test_item_shape_is_an_allowlist(world):
         "course",
         "intake",
         "status",
+        "sub_status",  # ccrm-014
+        "sub_status_label",
         "application_reference",
         "submitted_on",
         "application_deadline",

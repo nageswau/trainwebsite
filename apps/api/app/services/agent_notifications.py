@@ -16,6 +16,7 @@ from sqlalchemy import Select, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application_sub_status import label as sub_status_label
 from app.models import AgentCommission, AgentOrg, AgentOrgMember, AgentStudent, AgentTask, Notification, OverseasApplication, StudentDocument, University, User
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import AgentDocumentType
@@ -143,6 +144,22 @@ async def status_changed(db: AsyncSession, application: OverseasApplication, old
     university = clean_text(await db.scalar(select(University.name).where(University.id == application.university_id)))
     body = f"{university}: {stage_label(old_status)} → {stage_label(application.status)}."
     await notify(db, users, "Application status changed", body, APPLICATIONS_URL)
+
+
+async def sub_status_changed(db: AsyncSession, application: OverseasApplication, actor: User) -> None:
+    """ccrm-014 (CC5): a sub-status change on an agency application tells the other side -- the EduSphere counselor when the agency
+    made it, the AGN-017 recipients when EduSphere did. A stage change by EduSphere is `status_changed`'s notice instead."""
+    if application.agent_student_id is None:
+        return
+    if actor.role == "agent":
+        counselor = await db.get(User, application.counselor_id) if application.counselor_id else None
+        users, url = ([counselor] if counselor is not None and counselor.active else []), "/overseas/counselor/applications"
+    else:
+        record = await db.get(AgentStudent, application.agent_student_id)
+        users, url = (await recipients(db, record, actor) if record else []), APPLICATIONS_URL
+    university = clean_text(await db.scalar(select(University.name).where(University.id == application.university_id)))
+    body = f"{university}: {stage_label(application.status)} — {sub_status_label(application.sub_status)}."
+    await notify(db, users, "Application sub-status changed", body, url)
 
 
 async def counselor_assigned(db: AsyncSession, application: OverseasApplication, actor: User, *, changed: bool) -> None:

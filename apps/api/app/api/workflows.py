@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.api.files import _allowed
 from app.api.school_bulk import _safe_cell
+from app.application_sub_status import label as sub_status_label
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
@@ -74,6 +75,7 @@ from app.notifications.dispatch import queue_deliveries
 from app.schemas import (
     AgentDocumentReview,
     AgentStudentCreate,
+    ApplicationSubStatusChange,
     AppointmentCreate,
     AssessmentCreate,
     AssessmentGradeIn,
@@ -108,9 +110,10 @@ from app.schemas import (
     VisaCaseCreate,
 )
 from app.services import agent_notifications as agency_notices
+from app.services import application_sub_status as sub_statuses
 from app.services import applications, counselor_students, course_skills, interviews, offers
 from app.services import recruiter_requirements as requirements
-from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, WITHDRAWN_REFUSED, owned, with_owner
+from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, WITHDRAWN_REFUSED, owned, stage_label, with_owner
 from app.services.agent_documents import add_event, in_scope
 from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
 from app.services.agent_students import application_scope, student_scope
@@ -1908,6 +1911,7 @@ async def list_overseas_applications(user: User = Depends(get_current_user), db:
             "course_id": a.course_id,
             "intake": a.intake,
             "status": a.status,
+            "sub_status": a.sub_status,
             "next_action": a.next_action,
             "application_reference": a.application_reference,
             "offer_letter_url": a.offer_letter_url,
@@ -2090,6 +2094,44 @@ async def advance_overseas_application(application_id: UUID, payload: OverseasAp
     return {"id": item.id, "status": item.status, "next_action": item.next_action}
 
 
+@router.post("/overseas/applications/{application_id}/sub-status")
+async def change_application_sub_status(application_id: UUID, payload: ApplicationSubStatusChange, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-014 (DEC-SCOPE-238, SS4): the counselor (their applications, direct and agency) or the Overseas Admin sets a sub-status;
+    one of a later stage advances the stage. `/advance`'s locks and agency rules apply; the agency enrols its own applications."""
+    _require(user, {"counselor", "overseas_admin"}, "overseas")
+    item = await _assigned_application(db, user, application_id)
+    await db.refresh(item, with_for_update=True)
+    _recheck_counselor_scope(user, item)
+    if item.status == WITHDRAWN:
+        raise HTTPException(409, "This application is withdrawn")
+    stage = sub_statuses.stage_of(payload.sub_status)
+    if item.agent_id is not None and await _agency_record_archived(db, item):
+        raise HTTPException(409, ARCHIVED)
+    if item.agent_id is not None and stage == "enrolled" and user.role == "counselor":
+        raise HTTPException(403, MASTER_ENROLLS)
+    before = sub_statuses.change(db, user, item, payload.sub_status, payload.notes)
+    if before is not None:
+        if before.status != item.status:
+            had_commission = await agency_notices.has_commission(db, item.id)
+            await _maybe_trigger_agent_commission(db, item, before.status, user)
+            await agency_notices.status_changed(db, item, before.status, user, had_commission=had_commission)
+        else:
+            await agency_notices.sub_status_changed(db, item, user)  # CC5
+        student = await db.get(User, item.student_id) if item.student_id else None
+        if student:
+            await _notify_user(db, student, "Application status updated", f"Status: {stage_label(item.status)} — {sub_status_label(item.sub_status)}.", "/overseas/student/applications")
+        await _audit(
+            db,
+            user,
+            "overseas.application.sub_status",
+            "overseas_application",
+            item.id,
+            {"from_status": before.status, "to_status": item.status, "from_sub_status": before.sub_status, "to_sub_status": item.sub_status},
+        )
+        await db.commit()
+    return {"id": item.id, "status": item.status, "sub_status": item.sub_status, "sub_status_label": sub_status_label(item.sub_status), "changed": before is not None}
+
+
 @router.get("/overseas/applications/{application_id}/status")
 async def get_application_status(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     # OVS-004: "Stage change triggers a notification and updates the Student's tracking
@@ -2104,8 +2146,12 @@ async def get_application_status(application_id: UUID, user: User = Depends(get_
     history = (await db.scalars(select(ApplicationStatusHistory).where(ApplicationStatusHistory.application_id == application_id).order_by(ApplicationStatusHistory.created_at))).all()
     return {
         "status": application.status,
+        "sub_status": application.sub_status,
         "next_action": application.next_action,
-        "history": [{"from_status": h.from_status, "to_status": h.to_status, "next_action": h.next_action, "changed_at": h.created_at} for h in history],
+        "history": [
+            {"from_status": h.from_status, "to_status": h.to_status, "from_sub_status": h.from_sub_status, "to_sub_status": h.to_sub_status, "next_action": h.next_action, "changed_at": h.created_at}
+            for h in history
+        ],
     }
 
 

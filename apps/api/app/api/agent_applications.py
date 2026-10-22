@@ -31,13 +31,16 @@ from app.schemas import (
     AgentApplicationUpdate,
     AgentVisaStart,
     AgentVisaUpdate,
+    ApplicationSubStatusChange,
 )
 from app.services import agent_notifications as notices
+from app.services import application_sub_status as sub_statuses
 from app.services.agent_applications import (
     ARCHIVED,
     DEFAULT_NEXT_ACTION,
     DUPLICATE,
     ENROLLABLE,
+    ENROLLED_REFUSED,
     MASTER_ONLY_ENROLLMENT,
     OFFER_NEEDED,
     OFFER_STAGES_ON,
@@ -203,6 +206,25 @@ async def change_status(application_id: UUID, payload: AgentApplicationStatus, u
     await notices.status_changed(db, item, old, user, had_commission=True)
     await db.commit()
     _log("agent_application_withdrawn" if withdrawn else "agent_application_advanced", membership, user, item.id, from_status=old, to_status=item.status)
+    return {"application": await detail(db, user, item, record=record)}
+
+
+@router.post("/{application_id}/sub-status")
+async def change_sub_status(application_id: UUID, payload: ApplicationSubStatusChange, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-014 (DEC-SCOPE-238, SS4): the agency sets a sub-status up to `status_tracking` (A4: enrolment stays with PUT .../enrollment);
+    one of a later stage advances the stage. The EduSphere counselor is told (CC5). Same value twice writes nothing."""
+    membership = _gate(user)
+    item = await _locked(db, user, membership, application_id)
+    record = await _refuse_closed(db, user, item)
+    if sub_statuses.stage_of(payload.sub_status) == "enrolled":
+        raise HTTPException(403, ENROLLED_REFUSED)
+    before = sub_statuses.change(db, user, item, payload.sub_status, payload.notes)
+    if before is not None:
+        _audit(db, user, "sub_status", item.id, {"from_status": before.status, "to_status": item.status, "from_sub_status": before.sub_status, "to_sub_status": item.sub_status})
+        await notices.status_changed(db, item, before.status, user, had_commission=True)  # a no-op unless the stage moved
+        await notices.sub_status_changed(db, item, user)
+        await db.commit()
+        _log("agent_application_sub_status", membership, user, item.id, from_status=before.status, to_status=item.status, to_sub_status=item.sub_status)
     return {"application": await detail(db, user, item, record=record)}
 
 

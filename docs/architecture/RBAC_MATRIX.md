@@ -2425,6 +2425,15 @@ plus students linked to the counselor" (`overseas_student_counselors`); every ot
 - W6: reassignment stays with the Overseas Admin; a counselor cannot move their own students.
 - Pinned by `test_csc_005_reassign_student_counselor.py`.
 
+### 2.153 Application sub-status *(added 2026-10-22 — `DEC-SCOPE-238`, ccrm-014)*
+
+| Route | `counselor` | `overseas_admin` | `agent` | `overseas_student`, `university_rep`, others | Anonymous |
+|---|---|---|---|---|---|
+| `POST /workflows/overseas/applications/{id}/sub-status` | ✅ own applications (`403` otherwise); not `enrolled` on agency applications | ✅ any | `403` | `403` | `401` |
+| `POST /workflows/overseas/agent/crm/applications/{id}/sub-status` | `403` (agency gate) | `403` | ✅ own agency's applications (`404` otherwise), up to `status_tracking` | `403` | `401` |
+
+- SS4 (owner, 2026-10-22). Students read the sub-status only. Pinned by `test_ccrm_014_sub_status.py`.
+
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |

@@ -7,7 +7,7 @@ import { DOCUMENT_TYPES, OTHER, statusLabel } from "@/lib/agentDocuments";
 export const APPLICATIONS_URL = "/api/v1/workflows/overseas/agent/crm/applications";
 
 const STAGES = ["enquiry", "eligibility_evaluation", "university_selection", "offer", "visa_documentation", "status_tracking", "enrolled"] as const;
-const AGENT_MAX_STAGE = "status_tracking";
+export const AGENT_MAX_STAGE = "status_tracking";
 
 // Every stage, `withdrawn` and a legacy value (QA8-11, e.g. "University review"): underscores to spaces, first letter capital.
 export function stageLabel(status: string): string {
@@ -119,6 +119,8 @@ export type AgentApplicationItem = {
   course: string | null;
   intake: string;
   status: string;
+  sub_status?: string | null; // ccrm-014; absent in fixtures written before it
+  sub_status_label?: string | null;
   application_reference: string | null;
   submitted_on: string | null;
   application_deadline: string | null;
@@ -127,7 +129,16 @@ export type AgentApplicationItem = {
   next_action: string | null;
   updated_at: string;
 };
-export type HistoryEntry = { from_status: string | null; to_status: string; next_action: string | null; notes: string | null; changed_by: string | null; created_at: string };
+export type HistoryEntry = {
+  from_status: string | null;
+  to_status: string;
+  from_sub_status?: string | null; // ccrm-014
+  to_sub_status?: string | null;
+  next_action: string | null;
+  notes: string | null;
+  changed_by: string | null;
+  created_at: string;
+};
 export type AgentApplicationDetail = AgentApplicationItem & {
   university_id: string;
   university_slug: string;
