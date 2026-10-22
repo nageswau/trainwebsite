@@ -16,7 +16,7 @@ type Props = {
   onCancel?: () => void; // QA-03: a form opened from a toggle can be closed without saving
 };
 
-// ccrm-014 (DEC-SCOPE-238): pick a sub-status of this stage or a later one (a later one advances the stage). The server is the
+// ccrm-014 (DEC-SCOPE-240): pick a sub-status of this stage or a later one (a later one advances the stage). The server is the
 // authority on the forward rule and each role's cap; this only keeps the choices to the ones it accepts.
 export default function ApplicationSubStatusForm({ id, url, stage, current, maxStage, onSaved, onFailed, onCancel }: Props) {
   const groups = subStatusChoices(stage, current, maxStage);

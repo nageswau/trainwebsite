@@ -1,4 +1,4 @@
-// ccrm-014 (DEC-SCOPE-238): mirrors apps/api/app/application_sub_status.py -- an application's sub-status under its stage.
+// ccrm-014 (DEC-SCOPE-240): mirrors apps/api/app/application_sub_status.py -- an application's sub-status under its stage.
 const STAGES = ["enquiry", "eligibility_evaluation", "university_selection", "offer", "visa_documentation", "status_tracking", "enrolled"];
 
 export const SUB_STATUSES: Record<string, string[]> = {

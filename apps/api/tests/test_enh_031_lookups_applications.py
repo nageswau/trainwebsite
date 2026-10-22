@@ -37,8 +37,8 @@ async def test_admin_sees_all_with_student_label_and_university_course_status_de
     admin = await mk_user(db_session, role="overseas_admin")
     await login(client, admin.email)
     items = {i["id"]: i for i in (await client.get(APPS, params={"q": tag})).json()["items"]}
-    assert items[str(with_course.id)] == {"id": str(with_course.id), "label": f"{tag} Alpha", "detail": f"{tag} Uni · MSc Data · offer"}
-    assert items[str(without.id)]["detail"] == f"{tag} Uni · enquiry"
+    assert items[str(with_course.id)] == {"id": str(with_course.id), "label": f"{tag} Alpha", "detail": f"{with_course.application_code} · {tag} Uni · MSc Data · offer"}  # ccrm-011: the code leads
+    assert items[str(without.id)]["detail"] == f"{without.application_code} · {tag} Uni · enquiry"
 
 
 @pytest.mark.asyncio

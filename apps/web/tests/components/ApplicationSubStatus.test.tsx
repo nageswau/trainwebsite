@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import CounselorEvaluationPanel from "@/components/CounselorEvaluationPanel";
 import { subStatusChoices, subStatusLabel } from "@/lib/applicationSubStatus";
 
-// ccrm-014 (DEC-SCOPE-238): the sub-status choices and the counselor's card form.
+// ccrm-014 (DEC-SCOPE-240): the sub-status choices and the counselor's card form.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 afterEach(() => {
   cleanup();

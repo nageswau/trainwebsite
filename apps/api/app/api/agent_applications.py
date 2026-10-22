@@ -211,7 +211,7 @@ async def change_status(application_id: UUID, payload: AgentApplicationStatus, u
 
 @router.post("/{application_id}/sub-status")
 async def change_sub_status(application_id: UUID, payload: ApplicationSubStatusChange, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """ccrm-014 (DEC-SCOPE-238, SS4): the agency sets a sub-status up to `status_tracking` (A4: enrolment stays with PUT .../enrollment);
+    """ccrm-014 (DEC-SCOPE-240, SS4): the agency sets a sub-status up to `status_tracking` (A4: enrolment stays with PUT .../enrollment);
     one of a later stage advances the stage. The EduSphere counselor is told (CC5). Same value twice writes nothing."""
     membership = _gate(user)
     item = await _locked(db, user, membership, application_id)

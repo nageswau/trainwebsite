@@ -1,4 +1,4 @@
-"""ccrm-014 (DEC-SCOPE-238, SS1-SS4) -- an application's sub-status under its stage: the mapping, the forward rule, history, scope,
+"""ccrm-014 (DEC-SCOPE-240, SS1-SS4) -- an application's sub-status under its stage: the mapping, the forward rule, history, scope,
 the stage-change sync (SS3) and the reads. Agency world: tests/agn023_helpers.py."""
 
 import pytest

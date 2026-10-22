@@ -1779,9 +1779,17 @@ class CourseImportBatch(Base, TimestampMixin):
     results_json: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
 
 
+# ccrm-011 (DEC-SCOPE-239): APP-000001 application IDs, the LD-/UNV- idiom -- on the metadata so 0001's create_all builds it on a fresh
+# database; 0166 creates and backfills it on an upgraded one. One nextval per insert: never reissued, even after a withdrawal.
+APPLICATION_CODE_SEQ = Sequence("overseas_application_code_seq", metadata=Base.metadata)
+APPLICATION_CODE_DEFAULT = "'APP-' || translate(format('%6s', nextval('overseas_application_code_seq')), ' ', '0')"
+
+
 class OverseasApplication(Base, TimestampMixin):
     __tablename__ = "overseas_applications"
+    __mapper_args__ = {"eager_defaults": True}  # INSERT ... RETURNING application_code: no lazy load on an async session
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    application_code: Mapped[str] = mapped_column(String(20), server_default=text(APPLICATION_CODE_DEFAULT))
     # Owner (DEC-SCOPE-018, AGN-008 DEC-SCOPE-050). Exactly one of `school_student_id` or the agent pair is set, enforced at every
     # write site (app-level, this table's style). A School-bridged row has `school_student_id` only. An agency's application has
     # `agent_student_id` (its record, AGN-004), plus `student_id` when that student has a login. Rows made before AGN-008 have
@@ -1794,7 +1802,7 @@ class OverseasApplication(Base, TimestampMixin):
     counselor_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     agent_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(50), default="enquiry")
-    # ccrm-014 (DEC-SCOPE-238): the detail under `status` (app/application_sub_status.py); NULL = not set.
+    # ccrm-014 (DEC-SCOPE-240): the detail under `status` (app/application_sub_status.py); NULL = not set.
     sub_status: Mapped[str | None] = mapped_column(String(40), nullable=True)
     next_action: Mapped[str | None] = mapped_column(Text, nullable=True)
     intake: Mapped[str] = mapped_column(String(80))
@@ -1819,6 +1827,7 @@ class OverseasApplication(Base, TimestampMixin):
     )
 
     __table_args__ = (
+        UniqueConstraint("application_code", name="uq_overseas_applications_code"),
         CheckConstraint("offer_type IS NULL OR offer_type IN ('conditional', 'unconditional')", name="ck_overseas_applications_offer_type"),
         CheckConstraint("(offer_type IS NULL) = (offer_date IS NULL)", name="ck_overseas_applications_offer_dated"),
         # AGN-017 (DEC-SCOPE-059): the daily reminder job reads agency deadlines through these partial indexes (migration 0065).

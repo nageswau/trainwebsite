@@ -130,6 +130,8 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
       ) : (
         <>
           <dl className="card-stack">
+            <dt>EduSphere ID</dt>
+            <dd>{detail.application_code}</dd>
             <dt>Application ID</dt>
             <dd>{detail.application_reference ?? "—"}</dd>
             <dt>Course</dt>

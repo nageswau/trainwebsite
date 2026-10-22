@@ -1,4 +1,4 @@
-"""ccrm-014 (DEC-SCOPE-238): the sub-status change shared by the counselor/admin route (api/workflows.py) and the agency route
+"""ccrm-014 (DEC-SCOPE-240): the sub-status change shared by the counselor/admin route (api/workflows.py) and the agency route
 (api/agent_applications.py). Nothing here commits: the caller scopes, locks, applies its role's cap, notifies, audits and commits."""
 
 from typing import NamedTuple

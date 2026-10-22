@@ -1,9 +1,9 @@
 """ccrm-014 -- application sub-status: overseas_applications.sub_status and the history pair.
 
-Revision ID: 0166_application_sub_status
-Revises: 0165_overseas_student_counselors
+Revision ID: 0167_application_sub_status
+Revises: 0166_application_codes
 
-docs/superpowers/specs/2026-10-22-ccrm-014-application-sub-status-design.md (DEC-SCOPE-238). Additive columns, NULL = not set. 0001
+docs/superpowers/specs/2026-10-22-ccrm-014-application-sub-status-design.md (DEC-SCOPE-240). Additive columns, NULL = not set. 0001
 builds a fresh database from the current models, which already carry the columns, so each is added only when missing (0164's idiom).
 SS2 backfills only what is certain from existing data; every other row stays NULL. downgrade() drops the columns.
 """
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0166_application_sub_status"
-down_revision = "0165_overseas_student_counselors"
+revision = "0167_application_sub_status"
+down_revision = "0166_application_codes"
 branch_labels = None
 depends_on = None
 

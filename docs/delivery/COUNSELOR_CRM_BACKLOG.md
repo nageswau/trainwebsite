@@ -122,7 +122,9 @@ asked one at a time when the item is picked up).
 - **Edge cases:** school-bridged rows keep today's exclusion.
 - **Regression:** the Overseas Admin dashboard uses the same tiles — check both.
 - **Complexity:** small. **Risk:** low.
-- **Open questions:** exact "Awaiting documents" definition before ccrm-019 lands.
+- **Open questions:** exact "Awaiting documents" definition before ccrm-019 lands. **Answered 2026-10-22:** the expected-behaviour
+  definition above (visa checklist or `university_selection` + pending document; withdrawn/enrolled never count).
+- **Status:** built on `feature/ccrm-001` — `DEC-SCOPE-238`, no migration/API/RBAC change.
 
 ---
 
@@ -326,6 +328,10 @@ asked one at a time when the item is picked up).
 - **Complexity:** small. **Risk:** low.
 - **Open questions:** format (`APP-000001` vs `APP-2027-00001` with yearly reset).
 
+**Status (2026-10-22): built on `feature/ccrm-011`** — `DEC-SCOPE-239`, migration `0166_application_codes`, API §12EQ, RBAC §2.153.
+Format `APP-000001`, no yearly reset (recommended default); labelled "EduSphere ID" (agency "Application ID" is the university
+reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-application-codes-design.md`.
+
 ### `ccrm-012` — Counselor quick search and list filters
 
 - **Source:** §12 quick search and filters.
@@ -386,7 +392,7 @@ asked one at a time when the item is picked up).
 - **Complexity:** medium. **Risk:** high (shared state machine). Needs a `DEC-WF` amendment beside `DEC-WF-001`.
 - **Open questions:** the stage↔sub-status mapping table.
 - **Status (2026-10-22):** built on `feature/ccrm-014` — owner answers SS1–SS4 (backlog mapping; backfill only where certain; clear on
-  stage change, `enrolled` auto; roles as above), `DEC-SCOPE-238`, migration `0166_application_sub_status`, API §12EQ, RBAC §2.153.
+  stage change, `enrolled` auto; roles as above), `DEC-SCOPE-240`, migration `0167_application_sub_status`, API §12ER, RBAC §2.154.
 
 ### `ccrm-015` — Application exception outcomes
 

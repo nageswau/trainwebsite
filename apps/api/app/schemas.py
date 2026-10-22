@@ -895,7 +895,7 @@ class AgentApplicationStatus(BaseModel):
 
 
 class ApplicationSubStatusChange(BaseModel):
-    """ccrm-014 (DEC-SCOPE-238): a sub-status code from app/application_sub_status.py; the route refuses an unknown one (422)."""
+    """ccrm-014 (DEC-SCOPE-240): a sub-status code from app/application_sub_status.py; the route refuses an unknown one (422)."""
 
     model_config = {"extra": "forbid"}
     sub_status: str = Field(max_length=40)

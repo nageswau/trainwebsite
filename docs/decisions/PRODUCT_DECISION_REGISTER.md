@@ -8947,7 +8947,36 @@ the control is on Users, not Students (Students lists applications for the Overs
 **Numbering:** no migration; API §12EP; RBAC §2.152.
 - **Feature ID authorized:** `csc-005`. **Status:** built on `feature/csc-005`.
 
-### DEC-SCOPE-238 — Application sub-status under the 7 stages (`ccrm-014`)
+### DEC-SCOPE-238 — Counselor dashboard tiles count real stages (`ccrm-001`)
+
+**Status:** CONFIRMED by owner 2026-10-22 (Claude Code session). Defect fix; follows `DEC-WF-001` (the 7 confirmed stages).
+**Evidence:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-001` (owner request 2026-10-22, CC1–CC10); owner answer to the item's open
+question, 2026-10-22 ("Backlog definition", `EXPLICIT_APPROVAL` through the clarifying-question prompt).
+**Decision:** on the counselor and Overseas Admin dashboards, "Offers" counts applications whose stage is in `OFFER_COUNTED_STATUSES`
+(`offer` or later, never `withdrawn`); "Awaiting documents" counts open applications (not `withdrawn`/`enrolled`) that are at
+`university_selection` with a document pending verification, or whose undecided visa case has a checklist item whose newest document of
+that type on the application is not verified (or not uploaded). Until `ccrm-019`'s checklist lands. Both tiles read 0 before because they
+counted pre-stage statuses no application holds.
+**Builder's calls:** B1 an application with `offer_type` set but a pre-offer stage does not count as an offer (the backlog says "at
+`offer` or later"); B2 the University Partner dashboard shares the same tiles and code path and gets the same fix, still scoped to its
+university; B3 the tiles read the dashboard's existing scoped, 500-row window (unchanged).
+**Numbering:** no migration; no API or RBAC change.
+- **Feature ID authorized:** `ccrm-001`. **Status:** built on `feature/ccrm-001`.
+
+### DEC-SCOPE-239 — Business IDs for overseas applications (`ccrm-011`)
+
+**Status:** builder's recommended defaults, owner asked to proceed with recommended answers 2026-10-22 (`UNVERIFIED` until the owner
+reviews). Source: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-011` (Counselor CRM spec §6, §14, §15; the PDF is `UNVERIFIED`).
+**Decision:** every `overseas_applications` row has a permanent `application_code` `APP-000001` from the global sequence
+`overseas_application_code_seq` (AC1: no yearly reset; six-digit pad that never truncates). Existing rows backfilled in
+(created_at, id) order by migration `0166_application_codes`. Unique; a withdrawn application keeps its code and no value is reissued.
+Display-only: no route is keyed by it. Shown as **"EduSphere ID"** (AC6 — "Application ID" already means the university's
+`application_reference` on agency screens, AGN-008) in the shared applications list, the agency list/detail, the portal application
+tables and the application lookup, whose `q` also matches it (AC5). Student code unchanged (AC2; nehn-040).
+**Numbering:** migration `0166`; API §12EQ; RBAC §2.153 (no new permission).
+- **Feature ID authorized:** `ccrm-011`. **Status:** built on `feature/ccrm-011`.
+
+### DEC-SCOPE-240 — Application sub-status under the 7 stages (`ccrm-014`)
 
 **Status:** CONFIRMED by owner 2026-10-22 (Claude Code session). Amends `DEC-WF-001` by adding a detail level under its 7 stages; the
 stages, their order and the forward-only rule are unchanged. Follows CC1 (`docs/delivery/COUNSELOR_CRM_BACKLOG.md` §1).
@@ -8962,5 +8991,5 @@ SS4 counselor (own; agency applications not to Enrolled), agent (agency, up to S
 **Builder's calls:** S1 the same value twice is a no-op (no history, safe retry); S2 last write wins under the row lock (CC5), the other
 side notified ("Application sub-status changed"); S3 automatic sub-statuses (Ready for submission, offers, visa) are left to
 ccrm-019/023/026.
-**Numbering:** migration `0166_application_sub_status`; API §12EQ; RBAC §2.153.
+**Numbering:** migration `0167_application_sub_status`; API §12ER; RBAC §2.154.
 - **Feature ID authorized:** `ccrm-014`. **Status:** built on `feature/ccrm-014`.

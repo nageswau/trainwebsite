@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 import { signInAsFreshCounselor } from "./helpers/counselor";
 
-// ccrm-014 (DEC-SCOPE-238) -- the counselor sets an application's sub-status from the Evaluate Applications card; a later stage's
+// ccrm-014 (DEC-SCOPE-240) -- the counselor sets an application's sub-status from the Evaluate Applications card; a later stage's
 // sub-status advances the stage, and both survive a reload. Requires the stack running with `python -m app.seed` applied. The spec
 // makes its own counselor, walk-in student and application, so no seeded record changes.
 

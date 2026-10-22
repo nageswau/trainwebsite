@@ -1,4 +1,4 @@
-"""ccrm-014 (DEC-SCOPE-238, SS1): an overseas application's sub-status, a detail level under its DEC-WF-001 stage. One definition; the
+"""ccrm-014 (DEC-SCOPE-240, SS1): an overseas application's sub-status, a detail level under its DEC-WF-001 stage. One definition; the
 web mirrors it in apps/web/lib/applicationSubStatus.ts. No model imports: `models.OverseasApplication` validates through `fit`."""
 
 SUB_STATUSES: dict[str, tuple[str, ...]] = {

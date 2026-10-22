@@ -2425,15 +2425,6 @@ plus students linked to the counselor" (`overseas_student_counselors`); every ot
 - W6: reassignment stays with the Overseas Admin; a counselor cannot move their own students.
 - Pinned by `test_csc_005_reassign_student_counselor.py`.
 
-### 2.153 Application sub-status *(added 2026-10-22 — `DEC-SCOPE-238`, ccrm-014)*
-
-| Route | `counselor` | `overseas_admin` | `agent` | `overseas_student`, `university_rep`, others | Anonymous |
-|---|---|---|---|---|---|
-| `POST /workflows/overseas/applications/{id}/sub-status` | ✅ own applications (`403` otherwise); not `enrolled` on agency applications | ✅ any | `403` | `403` | `401` |
-| `POST /workflows/overseas/agent/crm/applications/{id}/sub-status` | `403` (agency gate) | `403` | ✅ own agency's applications (`404` otherwise), up to `status_tracking` | `403` | `401` |
-
-- SS4 (owner, 2026-10-22). Students read the sub-status only. Pinned by `test_ccrm_014_sub_status.py`.
-
 ## 3. Support / admin audit controls
 
 | Control | Applies to | Requirement |
@@ -2547,3 +2538,19 @@ proceed.
 | `bdm` | `trip_id` on `POST /bdm/appointments`, `PATCH /bdm/appointments/{id}`; `GET /bdm/trips?linkable=true`; `GET /bdm/trips/{id}/report` | **Own appointments and own trips only**: the trip is loaded with `bdm_user_id` = caller, so another BDM's trip is `404`; another BDM's appointment stays `404` (bdm-006) | `bdm-011` |
 | `bdm_manager` | `GET /bdm/manager/trips/{id}` (itinerary + metrics), `GET /bdm/manager/trips/{id}/report` | **Team scope**, read-only; a manager never links (`PATCH` stays owner-only, `403`) | `bdm-011` |
 | `super_admin` | the manager routes above | Reads every trip; never links | `bdm-011` |
+
+### 2.153 Application business IDs *(added 2026-10-22 — `DEC-SCOPE-239`, ccrm-011)*
+
+No new route or permission. `application_code` is returned only on rows the caller can already read; the lookup's code match runs
+inside the existing role scope (a counselor searching another counselor's code gets nothing). Pinned by
+`test_ccrm_011_application_codes.py::test_lookup_finds_an_application_by_code_only_inside_scope`.
+
+### 2.154 Application sub-status *(added 2026-10-22 — `DEC-SCOPE-240`, ccrm-014)*
+
+| Route | `counselor` | `overseas_admin` | `agent` | `overseas_student`, `university_rep`, others | Anonymous |
+|---|---|---|---|---|---|
+| `POST /workflows/overseas/applications/{id}/sub-status` | ✅ own applications (`403` otherwise); not `enrolled` on agency applications | ✅ any | `403` | `403` | `401` |
+| `POST /workflows/overseas/agent/crm/applications/{id}/sub-status` | `403` (agency gate) | `403` | ✅ own agency's applications (`404` otherwise), up to `status_tracking` | `403` | `401` |
+
+- SS4 (owner, 2026-10-22). Students read the sub-status only. Pinned by `test_ccrm_014_sub_status.py`.
+

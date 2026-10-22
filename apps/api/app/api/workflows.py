@@ -1904,6 +1904,7 @@ async def list_overseas_applications(user: User = Depends(get_current_user), db:
     return [
         {
             "id": a.id,
+            "application_code": a.application_code,  # ccrm-011 (DEC-SCOPE-239)
             "student_id": student.id,
             "student": student.full_name,
             "university_id": u.id,
@@ -2096,7 +2097,7 @@ async def advance_overseas_application(application_id: UUID, payload: OverseasAp
 
 @router.post("/overseas/applications/{application_id}/sub-status")
 async def change_application_sub_status(application_id: UUID, payload: ApplicationSubStatusChange, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """ccrm-014 (DEC-SCOPE-238, SS4): the counselor (their applications, direct and agency) or the Overseas Admin sets a sub-status;
+    """ccrm-014 (DEC-SCOPE-240, SS4): the counselor (their applications, direct and agency) or the Overseas Admin sets a sub-status;
     one of a later stage advances the stage. `/advance`'s locks and agency rules apply; the agency enrols its own applications."""
     _require(user, {"counselor", "overseas_admin"}, "overseas")
     item = await _assigned_application(db, user, application_id)

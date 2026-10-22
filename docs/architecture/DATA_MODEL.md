@@ -2099,7 +2099,7 @@ initial, additional, withdrawal, profit_distribution); `amount` numeric(12,2) (C
 Additive; no existing row changes. Written by csc-002 (counselor walk-in create) and csc-005 (Overseas Admin reassign); csc-001 only reads it.
 `downgrade()` refuses while rows exist.
 
-## Application sub-status (`ccrm-014`, `DEC-SCOPE-238`; migration `0166_application_sub_status`, after csc-001's `0165`)
+## Application sub-status (`ccrm-014`, `DEC-SCOPE-240`; migration `0167_application_sub_status`, after ccrm-011's `0166_application_codes`)
 
 | Table.column | Type | Notes |
 |---|---|---|

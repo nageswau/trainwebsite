@@ -1,6 +1,6 @@
 # ccrm-014 — Application sub-status (CC1) — design
 
-Backlog: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-014`. Decision: `DEC-SCOPE-238` (amends `DEC-WF-001` by adding a detail
+Backlog: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-014`. Decision: `DEC-SCOPE-240` (amends `DEC-WF-001` by adding a detail
 level under the 7 stages; the stages themselves do not change). Owner answers SS1–SS4, 2026-10-22.
 
 ## Requirement
@@ -46,7 +46,7 @@ and who changed it (spec AC 6). A change on one application never touches anothe
     (A4). Returns the agency detail. The EduSphere counselor is notified (CC5).
 - **Reads:** `sub_status` (+ label) on the overseas application list, `/status` history, portal application tables (counselor, admin,
   student) and the agency list/detail/history.
-- **DB (0166):** `overseas_applications.sub_status VARCHAR(40) NULL`; `application_status_history.from_sub_status/to_sub_status
+- **DB (0167, after ccrm-011's 0166):** `overseas_applications.sub_status VARCHAR(40) NULL`; `application_status_history.from_sub_status/to_sub_status
   VARCHAR(40) NULL`; SS2 backfill. Additive; downgrade drops the columns.
 - **Web:** counselor Evaluate Applications card gets a sub-status badge and an "Update sub-status" form (grouped by stage); agency
   detail gets a badge, a sub-status form and sub-status in history; tables show a Sub-status column.
