@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.lead_stages import CLOSED, MANUAL_BEFORE, ORDER
 from app.models import AuditLog, Batch, Enquiry, Enrollment, OverseasApplication, University, User, VisaCase
 from app.services import bdm_leads, lead_appointments, lead_pipeline, telecaller_alerts
+from app.services.bdm_appointments import db_now, today_ist
 
 logger = logging.getLogger("app.leads")
 
@@ -26,7 +27,9 @@ SAME_COUNSELOR = "This lead is already with this counselor"
 RETURN_LINKED = "Unlink the student before returning the lead"
 UNLINK_CONVERTED = "Only an admin can unlink a converted lead"
 HANDED_OVER = "Handed over to counselor"  # the cancel reason on the follow-ups a handover cancelled
-RETURNED = "Returned to telecaller"  # and on the counselling appointment a return cancelled
+RETURNED = "Returned to telecaller"  # and on the counselling appointment and follow-ups a return cancelled (ccrm-003 A6)
+NEXT_ACTION_PAST = "Choose a due date from today onwards"
+NEXT_ACTION_CLOSED = "This lead is closed; it needs no next action"
 SWEEP_BATCH = 500
 MAX_SUGGESTIONS = 10
 
@@ -64,8 +67,12 @@ def counselor_scope(user: User) -> list:
 
 
 def permissions(lead: Enquiry) -> dict:
-    linked = lead.converted_user_id is not None
-    return {"return": not linked, "link": not linked and lead.status not in CLOSED, "unlink": linked and lead.status != "converted"}
+    linked, closed = lead.converted_user_id is not None, lead.status in CLOSED
+    return {
+        "return": not linked, "link": not linked and not closed, "unlink": linked and lead.status != "converted",
+        # ccrm-003: a stage move (CC8 list; a linked lead only closes, a converted one never) and new follow-ups / next action
+        "stage": not closed and lead.status != "converted", "follow_up": not closed,
+    }
 
 
 async def return_lead(db: AsyncSession, user: User, lead: Enquiry, reason: str) -> None:
@@ -75,6 +82,8 @@ async def return_lead(db: AsyncSession, user: User, lead: Enquiry, reason: str) 
         raise HTTPException(409, RETURN_LINKED)
     await lead_pipeline.apply_event(db, lead, "returned", user, reason)
     lead.owner_id = None
+    lead.next_action = lead.next_action_due = None  # ccrm-003 A6: the counselor's own plan; a later handover starts clean
+    await lead_pipeline.cancel_open_follow_ups(db, lead, RETURNED)
     await lead_pipeline.cancel_open_appointments(db, lead, user, RETURNED, "lead_returned")
     db.add(AuditLog(user_id=user.id, action="lead.return", entity_type="enquiry", entity_id=str(lead.id), metadata_json={"counselor_id": str(user.id)}))
     await telecaller_alerts.notify_returned(db, lead, user)
@@ -196,7 +205,28 @@ async def detail(db: AsyncSession, lead_id: UUID, filters: list) -> dict:
     if row is None:
         raise HTTPException(404, lead_pipeline.LEAD_NOT_FOUND)
     lead = row[0]
-    return {**bdm_leads.admin_out(row), "message": lead.message, "milestones": await milestones(db, lead), "permissions": permissions(lead)}
+    return {**bdm_leads.admin_out(row), "message": lead.message, **await next_action_out(db, lead), "milestones": await milestones(db, lead),
+            "permissions": permissions(lead)}
+
+
+async def next_action_out(db: AsyncSession, lead: Enquiry) -> dict:
+    """ccrm-003 A2/A3: overdue = an open lead whose due date is before today in IST."""
+    overdue = lead.next_action_due is not None and lead.status not in CLOSED and lead.next_action_due < today_ist(await db_now(db))
+    return {"next_action": lead.next_action, "next_action_due": lead.next_action_due, "next_action_overdue": overdue}
+
+
+async def set_next_action(db: AsyncSession, user: User, lead: Enquiry, action: str | None, due) -> None:
+    """ccrm-003 A2/A3, on a locked lead: each value sent replaces the stored one; a changed due date must be today (IST) or later, so an
+    overdue action's text can still be edited. Audit and log name the fields, never the text."""
+    sent = {"next_action": action, "next_action_due": due}
+    changed = [field for field, value in sent.items() if value is not None and getattr(lead, field) != value]
+    if "next_action_due" in changed and due < today_ist(await db_now(db)):
+        raise lead_pipeline.invalid("next_action_due", NEXT_ACTION_PAST, due.isoformat())
+    for field in changed:
+        setattr(lead, field, sent[field])
+    if changed:
+        db.add(AuditLog(user_id=user.id, action="lead.next_action", entity_type="enquiry", entity_id=str(lead.id), metadata_json={"fields": changed}))
+        _log("lead_next_action_set", user, lead.id, fields=changed)
 
 
 async def page(db: AsyncSession, filters: list, limit: int, offset: int) -> dict:

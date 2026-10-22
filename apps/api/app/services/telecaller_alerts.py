@@ -34,6 +34,7 @@ from app.models import (
 )
 from app.notifications.dispatch import queue_deliveries
 from app.services.bdm_reminders import INDIA, _chunks, clean
+from app.services.lead_pipeline import TELECALLER_FOLLOW_UP
 from app.services.telecaller import TEAMS
 from app.services.telecaller_metrics import FIRST_CALL
 
@@ -173,7 +174,7 @@ async def _each(db: AsyncSession, counts: dict, query: Select, id_column, build)
 def _follow_ups(start: datetime, end: datetime) -> Select:
     return _with_telecaller(
         select(LeadFollowUp, Enquiry).join(Enquiry, Enquiry.id == LeadFollowUp.lead_id).add_columns(User)
-        .where(LeadFollowUp.status == "open", LeadFollowUp.due_at > start, LeadFollowUp.due_at <= end)
+        .where(LeadFollowUp.status == "open", TELECALLER_FOLLOW_UP, LeadFollowUp.due_at > start, LeadFollowUp.due_at <= end)
     )
 
 

@@ -2,7 +2,8 @@
 
 - POST /telecaller/leads/{id}/handover: the lead's telecaller (tel-004 scope; 403 once handed over), their manager or super_admin.
 - /counselor/leads/...: the assigned counselor only -- the list, the detail (milestones, permissions), the timeline, the return, the
-  link suggestions and the student link / unlink.
+  link suggestions and the student link / unlink; ccrm-003 the stage move and the next action (its follow-ups are in
+  `api/telecaller_follow_ups.py`).
 
 Scope always comes from the session; an id outside it is 404, a role that may not act 403, a rule conflict 409, invalid input 422."""
 
@@ -16,8 +17,19 @@ from app.api.bdm import LIMIT, OFFSET
 from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
+from app.lead_stages import CLOSED
 from app.models import Enquiry, User
-from app.schemas import LeadHandoverIn, LeadNoteIn, LeadNoteOut, LeadNotePage, LeadReturnIn, LeadStudentLinkIn, LeadTimelinePage
+from app.schemas import (
+    CounselorLeadStageMove,
+    LeadHandoverIn,
+    LeadNextActionIn,
+    LeadNoteIn,
+    LeadNoteOut,
+    LeadNotePage,
+    LeadReturnIn,
+    LeadStudentLinkIn,
+    LeadTimelinePage,
+)
 from app.services import bdm_leads, lead_handover, lead_notes, lead_pipeline, telecaller_leads
 from app.services.lead_timeline import page as timeline_page
 
@@ -69,6 +81,30 @@ async def lead_note_add(lead_id: UUID, payload: LeadNoteIn, user: User = Depends
     """ccrm-002: a note on a closed lead is allowed (history); another counselor's lead is 404."""
     await _counselor_lead(db, user, lead_id)
     return await lead_notes.add(db, user, lead_id, payload.body)
+
+
+@counselor_router.post("/{lead_id}/stage")
+async def change_stage(lead_id: UUID, payload: CounselorLeadStageMove, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-003 (DEC-SCOPE-243, CC8 / A1, A2): the counselor's stage move on a lead handed to them. Any next action sent is applied first,
+    then tel-004's engine with the counselor's list; an open target with no next action stored is 422 and nothing is kept."""
+    lead = await lead_pipeline.locked_lead(db, lead_id, *lead_handover.counselor_scope(user))
+    await lead_handover.set_next_action(db, user, lead, payload.next_action, payload.next_action_due)
+    await lead_pipeline.person_move(db, lead, user, "counselor", payload.to_stage, payload.reason)
+    out = {**lead_pipeline.stage_out(lead), "next_action": lead.next_action, "next_action_due": lead.next_action_due}
+    await db.commit()
+    return out
+
+
+@counselor_router.put("/{lead_id}/next-action")
+async def set_next_action(lead_id: UUID, payload: LeadNextActionIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-003 A3: both fields; a closed lead needs none (409). The answer is the lead detail."""
+    filters = lead_handover.counselor_scope(user)
+    lead = await lead_pipeline.locked_lead(db, lead_id, *filters)
+    if lead.status in CLOSED:
+        raise HTTPException(409, lead_handover.NEXT_ACTION_CLOSED)
+    await lead_handover.set_next_action(db, user, lead, payload.next_action, payload.next_action_due)
+    await db.commit()
+    return await lead_handover.detail(db, lead_id, filters)
 
 
 @counselor_router.post("/{lead_id}/return")

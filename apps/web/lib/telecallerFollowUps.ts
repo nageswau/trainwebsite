@@ -1,7 +1,9 @@
 // tel-011 (DEC-SCOPE-094): follow-ups on a lead -- types, the EVID-019 §7 reason labels and the endpoints. The API decides scope, every
 // rule and `can_change` (only the lead's telecaller, on an open follow-up of a lead not handed over); the UI only offers what it allows.
 import { isPage, type Page } from "@/lib/apiErrors";
+import { counselorLeadUrl } from "@/lib/leadHandover";
 import { personTargets } from "@/lib/leadStages";
+import { TELECALLER_SIGN_IN } from "@/lib/navigation";
 import { leadUrl, type PersonRef, type Priority } from "@/lib/telecallerLeads";
 
 export const REASONS = [
@@ -38,6 +40,23 @@ export const LIST_LIMIT = 50;
 export const followUpUrl = (id: string, action?: "complete" | "cancel") => `${FOLLOW_UPS_URL}/${encodeURIComponent(id)}${action ? `/${action}` : ""}`;
 export const leadFollowUpsUrl = (leadId: string) => leadUrl(leadId, `/follow-ups?limit=${LIST_LIMIT}`);
 export const createFollowUpUrl = (leadId: string) => leadUrl(leadId, "/follow-ups");
+
+/** ccrm-003 (DEC-SCOPE-243, A4): the routes and sign-in a follow-up panel uses -- the telecaller's (default) or the counselor's, whose
+ *  stage moves have their own control (no "also move to Follow-up"). */
+export type FollowUpApi = {
+  list: (leadId: string) => string; create: (leadId: string) => string; item: (id: string, action?: "complete" | "cancel") => string;
+  signIn: string; offerMove: boolean;
+};
+export const TELECALLER_FOLLOW_UP_API: FollowUpApi = {
+  list: leadFollowUpsUrl, create: createFollowUpUrl, item: followUpUrl, signIn: TELECALLER_SIGN_IN, offerMove: true,
+};
+export function counselorFollowUpApi(division: string): FollowUpApi {
+  const item = (id: string, action?: "complete" | "cancel") => `/api/v1/counselor/follow-ups/${encodeURIComponent(id)}${action ? `/${action}` : ""}`;
+  return {
+    list: (leadId) => counselorLeadUrl(leadId, `/follow-ups?limit=${LIST_LIMIT}`), create: (leadId) => counselorLeadUrl(leadId, "/follow-ups"), item,
+    signIn: `/${division === "overseas" ? "overseas" : "it"}/login`, offerMove: false,
+  };
+}
 
 export function followUpsUrl(view: View, day: string | null, offset = 0): string {
   const query = new URLSearchParams({ view, limit: String(LIST_LIMIT), offset: String(offset) });

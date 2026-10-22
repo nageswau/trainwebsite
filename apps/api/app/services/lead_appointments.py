@@ -68,12 +68,12 @@ async def db_now(db: AsyncSession) -> datetime:
     return await db.scalar(select(func.now()))
 
 
-def _counselors(division: str):
+def active_counselors(division: str):
     return select(User).where(User.role == "counselor", User.division == division, User.active.is_(True))
 
 
 async def options(db: AsyncSession, lead: Enquiry) -> dict:
-    counselors = (await db.scalars(_counselors(lead.division).order_by(User.full_name, User.id))).all()
+    counselors = (await db.scalars(active_counselors(lead.division).order_by(User.full_name, User.id))).all()
     return {
         "types": [{"key": key, "label": LEAD_APPOINTMENT_TYPE_LABELS[key]} for key in types_for(lead.division)],
         "counselors": [{"id": c.id, "full_name": c.full_name} for c in counselors],
@@ -84,7 +84,7 @@ async def options(db: AsyncSession, lead: Enquiry) -> dict:
 
 async def lock_counselor(db: AsyncSession, counselor_id: UUID, division: str) -> User:
     """AP4 / AC4: an active counselor of the lead's division. The row lock serialises the clash check for this counselor."""
-    counselor = await db.scalar(_counselors(division).where(User.id == counselor_id).with_for_update().execution_options(populate_existing=True))
+    counselor = await db.scalar(active_counselors(division).where(User.id == counselor_id).with_for_update().execution_options(populate_existing=True))
     if counselor is None:
         raise invalid("counselor_id", "Choose an active counselor of the lead's division", str(counselor_id))
     return counselor

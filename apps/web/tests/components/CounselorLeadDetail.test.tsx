@@ -13,14 +13,23 @@ const detail = (over: Partial<Detail> = {}): Detail => ({
   state: null, qualification: null, passing_year: null, institution: null, division: "it", subject: "Python", status: "counselling_completed",
   status_label: "Counselling Completed", source: "website", priority: "warm", created_at: "2026-10-06T05:00:00Z", stage_changed_at: "2026-10-06T05:00:00Z",
   product: null, campaign: null, telecaller: { id: "t1", full_name: "Tara Caller" }, counselor: { id: "c1", full_name: "Cara Counselor" },
-  converted_user: null, message: "Hello", milestones: { student: null, items: [] }, permissions: { return: true, link: true, unlink: false }, ...over,
+  converted_user: null, message: "Hello", milestones: { student: null, items: [] }, next_action: null, next_action_due: null, next_action_overdue: false,
+  permissions: { return: true, link: true, unlink: false, stage: true, follow_up: true }, ...over,
 });
+const closedPermissions = { return: true, link: false, unlink: false, stage: false, follow_up: false };
 const asha = { id: "s1", full_name: "Asha Rao", email: "asha@example.com", phone: null, linked_elsewhere: false };
 const taken = { id: "s2", full_name: "Asha R", email: "asha.r@example.com", phone: null, linked_elsewhere: true };
 const linked = detail({
   status: "application_enrollment", status_label: "Application/Enrollment", converted_user: { id: "s1", full_name: "Asha Rao", email: "asha@example.com" },
-  milestones: { student: { id: "s1", full_name: "Asha Rao", email: "asha@example.com" }, items: [] }, permissions: { return: false, link: false, unlink: true },
+  milestones: { student: { id: "s1", full_name: "Asha Rao", email: "asha@example.com" }, items: [] },
+  permissions: { return: false, link: false, unlink: true, stage: true, follow_up: true },
 });
+const followUp = {
+  id: "F1", due_at: "2026-10-30T05:30:00Z", reason: "waiting_documents", notes: null, next_action: "Collect transcripts", status: "open", overdue: false,
+  lead: { id: "L1", lead_code: "LD-000042", name: "Asha Rao", priority: "warm", status: "counselling_completed", status_label: "Counselling Completed", product: null, telecaller: null },
+  created_by: { id: "c1", full_name: "Cara Counselor" }, created_at: "2026-10-22T05:00:00Z", completed_at: null, completed_by: null, cancelled_at: null,
+  cancel_reason: null, can_change: true,
+};
 
 let fetchMock: ReturnType<typeof vi.fn>;
 let reply: Record<string, () => Response>;
@@ -36,7 +45,7 @@ beforeEach(() => {
     if (reply[`${method} ${tail}`]) return Promise.resolve(reply[`${method} ${tail}`]());
     if (tail === "/link-suggestions") return Promise.resolve(res({ items: [asha] }));
     if (tail.startsWith("/link-suggestions?q=")) return Promise.resolve(res({ items: [taken] }));
-    if (tail.startsWith("/timeline") || tail.startsWith("/notes")) return Promise.resolve(res(pageOf([])));
+    if (tail.startsWith("/timeline") || tail.startsWith("/notes") || tail.startsWith("/follow-ups")) return Promise.resolve(res(pageOf([])));
     if (url.startsWith("/api/v1/counselor/leads?")) return Promise.resolve(res(pageOf([detail()])));
     return Promise.resolve(res({}, 404));
   });
@@ -99,8 +108,112 @@ describe("CounselorLeadDetail", () => {
     expect(await screen.findByText("This student is already linked to another lead")).toBeInTheDocument();
   });
 
+  // ccrm-003 (DEC-SCOPE-243): next action, stage moves and follow-ups on the counselor's lead
+  it("asks for a next action when none is set and saves one", async () => {
+    reply["PUT /next-action"] = () => res(detail({ next_action: "Send the shortlist", next_action_due: "2026-10-30" }));
+    render(<CounselorLeadDetail initial={detail()} />);
+    expect(screen.getByText("No next action set. Add one before moving the lead to an open stage.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Set next action" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save next action" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Add the next action and its due date.");
+    fireEvent.change(screen.getByLabelText("Action"), { target: { value: "  Send the shortlist " } });
+    fireEvent.change(screen.getByLabelText("Due date"), { target: { value: "2026-10-30" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save next action" }));
+    expect(await screen.findByText("Next action saved.")).toBeInTheDocument();
+    expect(body("PUT", "/next-action")).toEqual({ next_action: "Send the shortlist", next_action_due: "2026-10-30" });
+    expect(screen.getByText("Send the shortlist")).toBeInTheDocument();
+  });
+
+  it("marks an overdue next action", () => {
+    render(<CounselorLeadDetail initial={detail({ next_action: "Call the parents", next_action_due: "2026-10-01", next_action_overdue: true })} />);
+    expect(screen.getByText("Overdue")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit next action" })).toBeInTheDocument();
+  });
+
+  it("moves the stage through the counselor route with only the CC8 targets", async () => {
+    reply["POST /stage"] = () => res({ id: "L1", status: "qualified", status_label: "Qualified", stage_changed_at: "2026-10-22T06:00:00Z", next_action: "Call", next_action_due: "2026-10-30" });
+    render(<CounselorLeadDetail initial={detail({ status: "follow_up", status_label: "Follow-up", next_action: "Call", next_action_due: "2026-10-30" })} />);
+    fireEvent.click(screen.getByRole("button", { name: "Change stage for Asha Rao" }));
+    const options = Array.from(screen.getByLabelText("New stage for Asha Rao").querySelectorAll("option")).map((o) => o.textContent);
+    expect(options).toEqual(["Choose a stage", "Qualified", "Counselling Scheduled", "Counselling Completed", "Not Interested", "Not Eligible", "Lost"]);
+    fireEvent.change(screen.getByLabelText("New stage for Asha Rao"), { target: { value: "qualified" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Stage updated.")).toBeInTheDocument();
+    expect(body("POST", "/stage")).toEqual({ to_stage: "qualified" });
+    expect(screen.getByText(/Stage:/)).toHaveTextContent("Qualified");
+  });
+
+  it("shows the API's next-action refusal on a stage move", async () => {
+    reply["POST /stage"] = () => res({ detail: [{ loc: ["body", "next_action"], msg: "Value error, Set a next action and its due date first" }] }, 422);
+    render(<CounselorLeadDetail initial={detail({ status: "follow_up", status_label: "Follow-up" })} />);
+    fireEvent.click(screen.getByRole("button", { name: "Change stage for Asha Rao" }));
+    fireEvent.change(screen.getByLabelText("New stage for Asha Rao"), { target: { value: "qualified" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Set a next action and its due date first")).toBeInTheDocument();
+  });
+
+  it("lists the lead's follow-ups from the counselor route and adds one without the stage checkbox", async () => {
+    reply["GET /follow-ups?limit=50"] = () => res(pageOf([followUp]));
+    reply["POST /follow-ups"] = () => res({ ...followUp, id: "F2" }, 201);
+    render(<CounselorLeadDetail initial={detail()} />);
+    expect(await screen.findByText("Collect transcripts")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Done" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Add follow-up" }));
+    expect(screen.queryByLabelText("Also move the lead to Follow-up")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Due date and time (IST, required)"), { target: { value: "2030-01-01T10:00" } });
+    fireEvent.change(screen.getByLabelText("Reason (required)"), { target: { value: "fee_details" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Add follow-up" }).at(-1)!);
+    expect(await screen.findByText("Follow-up added.")).toBeInTheDocument();
+    expect(body("POST", "/follow-ups")).toMatchObject({ reason: "fee_details", move_to_follow_up: false });
+  });
+
+  it("completes a follow-up through the counselor route", async () => {
+    reply["GET /follow-ups?limit=50"] = () => res(pageOf([followUp]));
+    fetchMock.mockImplementation(((original) => (url: string, init?: RequestInit) =>
+      url === "/api/v1/counselor/follow-ups/F1/complete" ? Promise.resolve(res({ ...followUp, status: "done" })) : original(url, init))(fetchMock.getMockImplementation()!));
+    render(<CounselorLeadDetail initial={detail()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Done" }));
+    expect(await screen.findByText("Marked done.")).toBeInTheDocument();
+  });
+
+  it("a closed lead offers no stage move, next action or new follow-up", async () => {
+    render(<CounselorLeadDetail initial={detail({ status: "lost", status_label: "Lost", permissions: closedPermissions })} />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    for (const name of ["Change stage for Asha Rao", "Set next action", "Add follow-up"]) expect(screen.queryByRole("button", { name })).toBeNull();
+    expect(screen.getByText("No next action.")).toBeInTheDocument(); // QA-04: no prompt to act on a closed lead
+    expect(screen.queryByText(/Add one before moving/)).toBeNull();
+  });
+
+  it("confirms a closing move even though the stage control goes away (QA-03), replacing the last notice (QA-02)", async () => {
+    const closed = detail({ status: "lost", status_label: "Lost", next_action: "Call", next_action_due: "2026-10-30", permissions: closedPermissions });
+    reply["PUT /next-action"] = () => res(detail({ next_action: "Call", next_action_due: "2026-10-30" }));
+    reply["POST /stage"] = () => res({ id: "L1", status: "lost", status_label: "Lost", stage_changed_at: "2026-10-22T06:00:00Z", next_action: "Call", next_action_due: "2026-10-30" });
+    reply["GET "] = () => res(closed);
+    render(<CounselorLeadDetail initial={detail()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Set next action" }));
+    fireEvent.change(screen.getByLabelText("Action"), { target: { value: "Call" } });
+    fireEvent.change(screen.getByLabelText("Due date"), { target: { value: "2026-10-30" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save next action" }));
+    expect(await screen.findByText("Next action saved.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Change stage for Asha Rao" }));
+    fireEvent.change(screen.getByLabelText("New stage for Asha Rao"), { target: { value: "lost" } });
+    fireEvent.change(screen.getByLabelText("Reason (required)"), { target: { value: "Chose another agency" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Stage updated.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Change stage for Asha Rao" })).toBeNull());
+    expect(screen.getByText("Stage updated.")).toBeInTheDocument();
+    expect(screen.queryByText("Next action saved.")).toBeNull();
+  });
+
+  it("puts the counselor's actions before the student link (QA-01)", () => {
+    render(<CounselorLeadDetail initial={detail()} />);
+    const headings = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(headings.indexOf("Next action")).toBeLessThan(headings.indexOf("Student account"));
+    expect(headings.indexOf("Follow-ups")).toBeLessThan(headings.indexOf("Student account"));
+  });
+
   it("a converted lead offers neither return, link nor unlink", async () => {
-    render(<CounselorLeadDetail initial={{ ...linked, status: "converted", status_label: "Converted", permissions: { return: false, link: false, unlink: false } }} />);
+    render(<CounselorLeadDetail initial={{ ...linked, status: "converted", status_label: "Converted", permissions: { return: false, link: false, unlink: false, stage: false, follow_up: false } }} />);
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     for (const name of ["Return to telecaller", "Unlink student"]) expect(screen.queryByRole("button", { name })).toBeNull();
     expect(screen.getAllByText("Converted").length).toBeGreaterThan(0);

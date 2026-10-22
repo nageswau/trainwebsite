@@ -26,6 +26,9 @@ STAGES = tuple(STAGE_LABELS)
 ORDER = tuple(key for key, _ in OPEN_STAGES)
 CLOSED = frozenset(key for key, _ in CLOSED_STAGES)
 MANUAL = frozenset({"qualified", "interested", "follow_up"})  # T13: the telecaller's own moves (plus the closed outcomes)
+# ccrm-003 (DEC-SCOPE-243, CC8 / A1): the counselor's own moves -- these open stages and these closed outcomes only
+COUNSELOR_MANUAL = frozenset({"qualified", "follow_up", "counselling_scheduled", "counselling_completed"})
+COUNSELOR_CLOSED = frozenset({"not_interested", "not_eligible", "lost"})
 REOPEN_TO = "follow_up"  # T13: a manager reopens a closed lead here
 MANUAL_BEFORE = ORDER.index("application_enrollment")  # D2: manual moves stop once the counselor's link is in place
 

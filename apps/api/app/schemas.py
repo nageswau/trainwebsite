@@ -6356,6 +6356,27 @@ LEAD_FOLLOW_UP_LABELS = {"notes": "Notes", "next_action": "Next action"}
 LeadFollowUpReason = Literal[LEAD_FOLLOW_UP_REASONS]
 LeadFollowUpNotes = Annotated[Annotated[str, _trimmed(2000)] | None, AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, False, LEAD_FOLLOW_UP_LABELS))]
 LeadFollowUpAction = Annotated[Annotated[str, _trimmed(200)] | None, AfterValidator(_trip_text(_BDM_CONTROL, False, LEAD_FOLLOW_UP_LABELS))]
+# ccrm-003 (DEC-SCOPE-243, A2/A3): a lead's next action -- one line, trimmed, 1-200 (`LEAD_NEXT_ACTION_MAX`), and its due date
+LeadNextAction = Annotated[Annotated[str, _trimmed(200)], AfterValidator(_trip_text(_BDM_CONTROL, True, LEAD_FOLLOW_UP_LABELS))]
+LeadNextActionDue = Annotated[date, BeforeValidator(_trip_date("due date"))]
+
+
+class CounselorLeadStageMove(BaseModel):
+    """ccrm-003 A1/A2: tel-004's move plus the next action, applied before the stage rules check it (both optional when stored)."""
+
+    model_config = ConfigDict(extra="forbid")
+    to_stage: BdmStageKey
+    reason: BdmPipelineNote = None
+    next_action: LeadFollowUpAction = None
+    next_action_due: LeadNextActionDue | None = None
+
+
+class LeadNextActionIn(BaseModel):
+    """ccrm-003 A3: both required."""
+
+    model_config = ConfigDict(extra="forbid")
+    next_action: LeadNextAction
+    next_action_due: LeadNextActionDue
 
 
 class LeadFollowUpCreate(BaseModel):

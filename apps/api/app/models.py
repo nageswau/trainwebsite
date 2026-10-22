@@ -2153,6 +2153,7 @@ LEAD_CHECKS = {  # migration 0078 repeats these strings; test_tel_003_migration 
 }
 # tel-004 (DEC-SCOPE-081): `status` is a pipeline stage; migration 0081 repeats this string (test_tel_004_migration).
 LEAD_STATUS_CHECK = f"status IN ({', '.join(repr(s) for s in LEAD_STAGES)})"
+LEAD_NEXT_ACTION_MAX = 200  # ccrm-003; migration 0168 repeats it (test_ccrm_003_migration asserts they stay identical)
 
 
 class Enquiry(Base, TimestampMixin):
@@ -2170,6 +2171,7 @@ class Enquiry(Base, TimestampMixin):
         ),
         *(CheckConstraint(sql, name=name) for name, sql in LEAD_CHECKS.items()),
         CheckConstraint(LEAD_STATUS_CHECK, name="ck_enquiries_status"),
+        CheckConstraint(f"next_action IS NULL OR length(next_action) BETWEEN 1 AND {LEAD_NEXT_ACTION_MAX}", name="ck_enquiries_next_action_len"),
         UniqueConstraint("lead_code", name="uq_enquiries_lead_code"),
         Index("ix_enquiries_bdm_org_created", "bdm_organization_id", "created_at"),
         Index("uq_enquiries_converted_user", "converted_user_id", unique=True, postgresql_where=text("converted_user_id IS NOT NULL")),
@@ -2210,6 +2212,9 @@ class Enquiry(Base, TimestampMixin):
     telecaller_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     priority: Mapped[str] = mapped_column(String(10), default="warm", server_default=text("'warm'"))
     stage_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # ccrm-003 (DEC-SCOPE-243, A2): what the counselor does next and by when -- required on a counselor-owned open lead's stage move
+    next_action: Mapped[str | None] = mapped_column(String(LEAD_NEXT_ACTION_MAX), nullable=True)
+    next_action_due: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     @validates("phone")
     def _derive_phone_normalized(self, _key: str, phone: str | None) -> str | None:

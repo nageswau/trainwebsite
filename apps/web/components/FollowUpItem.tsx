@@ -9,9 +9,8 @@ import { sendJson } from "@/lib/apiErrors";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { SAVE_FAILED, SESSION_ENDED, writeFailure } from "@/lib/bdmTasks";
 import { formatSchoolDateTime } from "@/lib/formatDate";
-import { TELECALLER_SIGN_IN } from "@/lib/navigation";
 import { outcomeLabel } from "@/lib/telecallerCalls";
-import { followUpUrl, isFollowUp, reasonLabel, type FollowUp } from "@/lib/telecallerFollowUps";
+import { TELECALLER_FOLLOW_UP_API, isFollowUp, reasonLabel, type FollowUp, type FollowUpApi } from "@/lib/telecallerFollowUps";
 import { PRIORITY_LABEL } from "@/lib/telecallerLeads";
 
 const TEXT = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
@@ -19,8 +18,8 @@ const TEXT = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
 /** tel-011 (spec §4): one follow-up with its actions -- Done, Reschedule, Cancel (with a reason) -- offered only when the API says the
  *  caller may change it (`can_change`). `card` is the §7 "Today's follow-ups" card (student, interest, action + time, priority) for the
  *  lists; without it the item sits on its lead's page. A refusal (changed elsewhere: 403/404/409) is handed up so the list reloads. */
-export default function FollowUpItem({ followUp: fu, card, leadBasePath, showTelecaller = false, onChanged, onRefused }: {
-  followUp: FollowUp; card?: boolean; leadBasePath?: string; showTelecaller?: boolean; onChanged: (fu: FollowUp, notice: string) => void;
+export default function FollowUpItem({ followUp: fu, card, leadBasePath, showTelecaller = false, api = TELECALLER_FOLLOW_UP_API, onChanged, onRefused }: {
+  followUp: FollowUp; card?: boolean; leadBasePath?: string; showTelecaller?: boolean; api?: FollowUpApi; onChanged: (fu: FollowUp, notice: string) => void;
   onRefused: (message: string) => void;
 }) {
   const [mode, setMode] = useState<"view" | "edit" | "cancel">("view");
@@ -34,7 +33,7 @@ export default function FollowUpItem({ followUp: fu, card, leadBasePath, showTel
     setBusy(true);
     setFailure(null);
     setSessionEnded(false);
-    const result = await sendJson(followUpUrl(fu.id, action), "POST", body);
+    const result = await sendJson(api.item(fu.id, action), "POST", body);
     setBusy(false);
     if (result.ok) return isFollowUp(result.data) ? onChanged(result.data, notice) : setFailure(SAVE_FAILED);
     const kind = writeFailure(result.status);
@@ -81,7 +80,7 @@ export default function FollowUpItem({ followUp: fu, card, leadBasePath, showTel
       {fu.completed_at && <p className="muted" style={{ margin: 0 }}>Done {formatSchoolDateTime(fu.completed_at)}{fu.completed_by && ` by ${fu.completed_by.full_name}`}</p>}
       {fu.cancelled_at && <p className="muted" style={{ ...TEXT, margin: 0 }}>Cancelled {formatSchoolDateTime(fu.cancelled_at)}{fu.cancel_reason && ` — ${fu.cancel_reason}`}</p>}
       {mode === "edit" && (
-        <FollowUpForm leadId={fu.lead.id} leadStage={fu.lead.status} followUp={fu} onCancel={() => setMode("view")}
+        <FollowUpForm leadId={fu.lead.id} leadStage={fu.lead.status} followUp={fu} api={api} onCancel={() => setMode("view")}
           onSaved={(next) => { setMode("view"); onChanged(next, "Follow-up rescheduled."); }} />
       )}
       {mode === "cancel" && (
@@ -99,7 +98,7 @@ export default function FollowUpItem({ followUp: fu, card, leadBasePath, showTel
       {sessionEnded && (
         <div role="alert">
           <p className="form-error">{SESSION_ENDED}</p>
-          <ReturnToLoginLink loginHref={TELECALLER_SIGN_IN} />
+          <ReturnToLoginLink loginHref={api.signIn} />
         </div>
       )}
     </li>
