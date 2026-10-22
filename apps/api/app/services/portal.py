@@ -560,8 +560,8 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
         return _payload(
             "Overseas Student Dashboard",
             "Current application status and next required action.",
-            (("university", "University"), ("intake", "Intake"), ("status", "Status"), ("next_action", "Next action")),
-            ({"university": u.name, "intake": a.intake, "status": a.status, "next_action": a.next_action} for a, u in applications),
+            (("application_code", "EduSphere ID"), ("university", "University"), ("intake", "Intake"), ("status", "Status"), ("next_action", "Next action")),
+            ({"application_code": a.application_code, "university": u.name, "intake": a.intake, "status": a.status, "next_action": a.next_action} for a, u in applications),
             (
                 {"label": "Applications", "value": len(applications)},
                 {"label": "Verified documents", "value": sum(1 for d in documents if d.verification_status == "verified")},
@@ -588,8 +588,8 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
         return _payload(
             "Applications",
             "Application stages and required next actions.",
-            (("id", "reference"), ("university", "University"), ("reference", "Reference"), ("intake", "Intake"), ("status", "Status"), ("next_action", "Next action")),
-            ({"id": a.id, "university": u.name, "reference": a.application_reference, "intake": a.intake, "status": a.status, "next_action": a.next_action} for a, u in applications),
+            (("id", "reference"), ("application_code", "EduSphere ID"), ("university", "University"), ("reference", "Reference"), ("intake", "Intake"), ("status", "Status"), ("next_action", "Next action")),
+            ({"id": a.id, "application_code": a.application_code, "university": u.name, "reference": a.application_reference, "intake": a.intake, "status": a.status, "next_action": a.next_action} for a, u in applications),
             panels=({"title": "University catalogue IDs", "items": [f"University reference {u.id}: {u.name}, {u.city}" for u in universities]},),
         )
     if section == "documents":
@@ -750,8 +750,8 @@ async def _agent(db: AsyncSession, user: User, section: str):
             "Agent Dashboard",
             # AGN-002 browser QA-07: staff have no commissions page, so their pages never mention commissions.
             "Your agency's students, applications and next actions." if staff else "Your students, applications, next actions, and commissions.",
-            (("student", "Student"), ("university", "University"), ("status", "Status"), ("next_action", "Next action")),
-            ({"student": s.full_name, "university": u.name, "status": stage_label(a.status), "next_action": a.next_action} for a, u, s in open_applications),
+            (("application_code", "EduSphere ID"), ("student", "Student"), ("university", "University"), ("status", "Status"), ("next_action", "Next action")),
+            ({"application_code": a.application_code, "student": s.full_name, "university": u.name, "status": stage_label(a.status), "next_action": a.next_action} for a, u, s in open_applications),
             metrics,
         )
     if section == "team":
@@ -1011,8 +1011,8 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             return _payload(
                 "Counselor Dashboard" if user.role == "counselor" else "University Partner Dashboard" if user.role == "university_rep" else "Overseas Administration Dashboard",
                 "Application pipeline and next actions.",
-                (("student", "Student"), ("university", "University"), ("status", "Status"), ("next_action", "Next action")),
-                ({"student": s.full_name, "university": u.name, "status": a.status, "next_action": a.next_action} for a, u, s in applications),
+                (("application_code", "EduSphere ID"), ("student", "Student"), ("university", "University"), ("status", "Status"), ("next_action", "Next action")),
+                ({"application_code": a.application_code, "student": s.full_name, "university": u.name, "status": a.status, "next_action": a.next_action} for a, u, s in applications),
                 (
                     {"label": "Applications", "value": len(applications)},
                     {"label": "Awaiting documents", "value": sum(1 for a, _, _ in applications if a.status in {"profile_evaluation", "documents_pending"})},
@@ -1032,16 +1032,17 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             return _payload(
                 "Offer Letters",
                 "Conditional and unconditional offers for applications sent to your institution.",
-                (("student", "Student"), ("status", "Status"), ("offer", "Offer letter"), ("next_action", "Next action")),
+                (("application_code", "EduSphere ID"), ("student", "Student"), ("status", "Status"), ("offer", "Offer letter"), ("next_action", "Next action")),
                 (
-                    {"student": s.full_name, "status": a.status, "offer": a.offer_letter_url, "next_action": a.next_action}
+                    {"application_code": a.application_code, "student": s.full_name, "status": a.status, "offer": a.offer_letter_url, "next_action": a.next_action}
                     for a, u, s in applications
                     if a.offer_letter_url or a.status in {"offer_received", "accepted"}
                 ),
             )
         if section in {"students", "applications", "admission-updates", "offer-letters"}:
-            columns = [("id", "reference"), ("student", "Student"), ("university", "University"), ("reference", "Reference"), ("status", "Status"), ("next_action", "Next action")]
-            rows = [{"id": a.id, "student_id": s.id, "student": s.full_name, "university": u.name, "reference": a.application_reference, "status": a.status, "next_action": a.next_action} for a, u, s in applications]
+            # ccrm-011 (DEC-SCOPE-238): the APP- code beside the UUID reference; AGN-023's inserts below count it.
+            columns = [("id", "reference"), ("application_code", "EduSphere ID"), ("student", "Student"), ("university", "University"), ("reference", "Reference"), ("status", "Status"), ("next_action", "Next action")]
+            rows = [{"id": a.id, "application_code": a.application_code, "student_id": s.id, "student": s.full_name, "university": u.name, "reference": a.application_reference, "status": a.status, "next_action": a.next_action} for a, u, s in applications]
             agn023 = user.role in {"overseas_admin", "counselor"} and section in application_filters.FILTER_SECTIONS  # AGN-023 (DEC-SCOPE-090 §3.3): students/applications only; university_rep and the other sections unchanged
             if agn023:
                 agencies, counselors = await application_filters.row_labels(db, [a for a, _, _ in applications])
@@ -1049,9 +1050,9 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                     row |= {"is_agency": a.agent_id is not None, "agency": agencies.get(a.agent_id)}
                     if user.role == "overseas_admin":
                         row |= _counselor_cells(a, counselors)
-                columns.insert(2, ("agency", "Agency"))
+                columns.insert(3, ("agency", "Agency"))
                 if user.role == "overseas_admin":
-                    columns.insert(4, ("counselor", "EduSphere counsellor"))
+                    columns.insert(5, ("counselor", "EduSphere counsellor"))
                     columns.append(("assign", "", "assign_counselor"))
             payload = _payload("Application Tracking", "Assigned applications and next actions.", columns, rows)
             if agn023:

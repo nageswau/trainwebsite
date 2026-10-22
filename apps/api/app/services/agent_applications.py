@@ -112,6 +112,7 @@ def item(row: tuple, today: date) -> dict:
     app, university, _slug, course, owner = row
     return {
         "id": app.id,
+        "application_code": app.application_code,  # ccrm-011 (DEC-SCOPE-238)
         "agent_student_id": app.agent_student_id,
         "student": owner.full_name or "Unnamed student",
         "has_login": owner.id is not None,
