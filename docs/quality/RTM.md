@@ -772,3 +772,21 @@ half.
 | `ccrm-002-AC4` | Body 1–4000 trimmed; closed lead allowed; a returned lead keeps its notes; audit never carries the body | `::test_an_empty_or_too_long_body_is_422`, `::test_4000_characters_are_kept_whole_and_the_timeline_shows_an_excerpt`, `::test_a_closed_lead_takes_notes`, `::test_a_returned_lead_keeps_its_notes`, `::test_the_audit_row_never_carries_the_body` |
 | `ccrm-002-AC5` | Notes page newest first with an exact total; migration round trip, downgrade refusal | `::test_notes_page_newest_first_with_an_exact_total`; `apps/api/tests/test_ccrm_002_migration.py` |
 | `ccrm-002-AC6` | Notes panel: list, add, empty / failure states, 4000 cap | `apps/web/tests/components/LeadNotes.test.tsx`; `apps/web/tests/lib/leadTimeline.test.ts` |
+
+**Addendum, 2026-10-22 (`ccrm-003`)** — one row and its acceptance-criteria map. Counselor lead actions: stage, next action, follow-ups.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `ccrm-003` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-003` (owner CC8, 2026-10-22) → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-243` → design `docs/superpowers/specs/2026-10-22-ccrm-003-counselor-lead-actions-design.md`; `API_CONTRACT.md` §12EV, `RBAC_MATRIX.md` §2.158 | none | Built on `feature/ccrm-003`; lite API set, vitest, browser QA |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `ccrm-003-AC1` | A counselor moves their own lead to a CC8 stage; a disallowed stage → 422 | `apps/api/tests/test_ccrm_003_counselor_lead_actions.py::test_counselor_moves_their_lead_with_a_next_action`, `::test_stages_outside_the_cc8_list_are_422`; `apps/web/tests/lib/leadStages.test.ts` |
+| `ccrm-003-AC2` | An open move without a next action + due → 422; stored one suffices; PUT validates; audit without text | `::test_an_open_move_without_a_next_action_is_422_and_nothing_moves`, `::test_a_stored_next_action_is_enough_for_the_next_move`, `::test_next_action_is_set_validated_and_audited_without_its_text`, `::test_an_overdue_next_action_keeps_its_date_when_only_the_text_changes`, `::test_next_action_on_a_closed_lead_is_409` |
+| `ccrm-003-AC3` | Another counselor's lead / division → 404; telecaller on the counselor route → 403 | `::test_scope_another_counselor_and_division_404_telecaller_403`, `::test_another_counselor_gets_404_on_a_follow_up` |
+| `ccrm-003-AC4` | Closing needs a reason and cancels follow-ups and appointments; no counselor reopen; a linked lead does not move back | `::test_closing_needs_a_reason_and_cancels_follow_ups_and_appointments`, `::test_a_closed_lead_is_not_reopened_by_the_counselor`, `::test_a_linked_lead_does_not_move_back_by_hand` |
+| `ccrm-003-AC5` | Counselor creates / reschedules / completes / cancels follow-ups; telecaller reads them only | `::test_counselor_creates_reschedules_completes_and_cancels_follow_ups`, `::test_move_to_follow_up_from_a_counselor_needs_a_next_action`; `apps/web/tests/components/CounselorLeadDetail.test.tsx` |
+| `ccrm-003-AC6` | Counselor follow-ups stay out of telecaller lists / counts; the return cancels them and clears the next action | `::test_the_telecaller_day_list_and_dashboard_leave_out_counselor_follow_ups`, `::test_the_return_cancels_counselor_follow_ups_and_clears_the_next_action` |
+| `ccrm-003-AC7` | Admin PATCH `owner_id` to a non-counselor / other division / inactive → 422; counselor or null OK | `::test_admin_owner_must_be_an_active_counselor_of_the_division`; `test_adm_002_lead_management.py`, `test_tel_004_routes.py` |
+| `ccrm-003-AC8` | Migration round trip and length check | `apps/api/tests/test_ccrm_003_migration.py` |
+| `ccrm-003-AC9` | Dashboard shows the counselor's follow-up | Deferred to ccrm-032 (no counselor dashboard follow-up tile yet) |

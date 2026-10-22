@@ -2,7 +2,8 @@
 
 A follow-up belongs to its lead (F3): every read and write goes through the lead's scope (`lead_pipeline.scope`), so another
 telecaller's follow-up is the same 404 as a missing one and a reassigned lead's follow-ups move with it. Only the lead's telecaller
-writes (F2). Writes lock the lead, then the follow-up -- the order of a closing stage move, which cancels the open ones (F4). Functions
+writes (F2) -- and, ccrm-003 A4, the counselor the lead is handed to, through `counselor_scope`; their follow-ups are never telecaller
+work (`lead_pipeline.TELECALLER_FOLLOW_UP`, A5). Writes lock the lead, then the follow-up -- the order of a closing stage move, which cancels the open ones (F4). Functions
 only; nothing here commits. Logs and audit carry ids, the reason key and field names -- never notes, next action or cancel reasons."""
 
 import logging
@@ -62,9 +63,6 @@ def can_change(user: User, lead: Enquiry, fu: LeadFollowUp) -> bool:
     return user.role == "telecaller" and not telecaller_leads.read_only(user, lead) and fu.status == "open"
 
 
-TELECALLER_WORK = lead_pipeline.TELECALLER_FOLLOW_UP
-
-
 async def _last_calls(db: AsyncSession, lead_ids: set[UUID]) -> dict[UUID, dict]:
     """tel-010 D10 (tel-011 F8): each lead's newest call, for the §7 card's "Last Call" -- one query for the page."""
     if not lead_ids:
@@ -110,10 +108,10 @@ async def list_page(db: AsyncSession, user: User, scope: list, view: str, day: d
     """AC1 / AC2 / F1: `day` = the open follow-ups due in that IST day; `overdue` = every open one past its due time. Both oldest due
     first; the counts are the two views' totals, so the tabs agree with the lists."""
     chosen = in_day(day) if view == "day" else overdue(now)
-    out = await _page(db, user, now, [*scope, TELECALLER_WORK, chosen], (LeadFollowUp.due_at, LeadFollowUp.id), limit, offset)
+    out = await _page(db, user, now, [*scope, lead_pipeline.TELECALLER_FOLLOW_UP, chosen], (LeadFollowUp.due_at, LeadFollowUp.id), limit, offset)
     counts = (await db.execute(
         select(func.count().filter(in_day(day)), func.count().filter(overdue(now)))
-        .select_from(LeadFollowUp).join(Enquiry, Enquiry.id == LeadFollowUp.lead_id).where(*scope, TELECALLER_WORK)
+        .select_from(LeadFollowUp).join(Enquiry, Enquiry.id == LeadFollowUp.lead_id).where(*scope, lead_pipeline.TELECALLER_FOLLOW_UP)
     )).one()
     return {**out, "day": day, "counts": {"day": counts[0] or 0, "overdue": counts[1] or 0}}
 
@@ -135,7 +133,7 @@ async def one(db: AsyncSession, user: User, fu_id: UUID, now: datetime) -> dict:
 def due_filter(kind: str, now: datetime):
     """F9: My Leads' "Due follow-up" -- the lead has an open follow-up due in today's IST window, or one past its due time."""
     condition = in_day(today_ist(now)) if kind == "today" else overdue(now)
-    return exists().where(LeadFollowUp.lead_id == Enquiry.id, TELECALLER_WORK, condition)
+    return exists().where(LeadFollowUp.lead_id == Enquiry.id, lead_pipeline.TELECALLER_FOLLOW_UP, condition)
 
 
 def require_telecaller(user: User) -> None:

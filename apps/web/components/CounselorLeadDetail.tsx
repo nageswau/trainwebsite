@@ -83,8 +83,7 @@ function NextActionPanel({ lead, onSaved }: { lead: Detail; onSaved: (lead: Deta
     if (!outcome.ok) return setNotice({ text: outcome.message, failed: true });
     if (!isRequestBody(outcome.data)) return setNotice({ text: "Unable to save the next action.", failed: true });
     setEditing(false);
-    setNotice({ text: "Next action saved.", failed: false });
-    onSaved(outcome.data as unknown as Detail);
+    onSaved(outcome.data as unknown as Detail); // the page shows the result under the stage line
   }
 
   function open() {
@@ -102,8 +101,10 @@ function NextActionPanel({ lead, onSaved }: { lead: Detail; onSaved: (lead: Deta
           <strong>{lead.next_action}</strong> <span className="muted">· due {lead.next_action_due ? formatCalendarDate(lead.next_action_due) : "—"}</span>{" "}
           {lead.next_action_overdue && <span className="badge status error">Overdue</span>}
         </p>
-      ) : (
+      ) : lead.permissions.follow_up ? (
         <p className="muted" style={{ margin: "6px 0 0", fontSize: 13 }}>No next action set. Add one before moving the lead to an open stage.</p>
+      ) : (
+        <p className="muted" style={{ margin: "6px 0 0", fontSize: 13 }}>No next action.</p>  // QA-04: a closed lead has nothing to add
       )}
       {editing ? (
         <form onSubmit={submit} noValidate aria-label="Set the next action" style={{ display: "grid", gap: 8, maxWidth: "32rem", marginTop: 8 }}>
@@ -229,7 +230,7 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
   const [unlinking, setUnlinking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
-  const [stageNotice, setStageNotice] = useState<Notice>(null);
+  const [leadNotice, setLeadNotice] = useState<Notice>(null);
   const followUpApi = useMemo(() => counselorFollowUpApi(lead.division), [lead.division]);
   const listHref = `/${lead.division === "overseas" ? "overseas" : "it"}/counselor/leads`;
   const reloadActivity = () => setActivityVersion((n) => n + 1);
@@ -241,7 +242,6 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
     const data = response?.ok ? await response.json().catch(() => null) : null;
     if (isRequestBody(data)) setLead(data as unknown as Detail);
   }
-
 
   function applied(outcome: SendOutcome, text: string) {
     if (!outcome.ok || !isRequestBody(outcome.data)) return setNotice({ text: outcome.ok ? "Unable to update the lead." : outcome.message, failed: true });
@@ -271,7 +271,27 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
         <div className="eyebrow" style={{ marginTop: 8 }}>{lead.lead_code}</div>
         <h2 style={{ margin: "4px 0" }}>{lead.name}</h2>
         <p className="muted" style={{ margin: 0 }}>Stage: <strong>{lead.status_label}</strong></p>
+        {/* QA-02/QA-03: one line for the stage and next-action results -- stays visible when a closing move removes the stage control */}
+        <NoticeLine notice={leadNotice} />
       </div>
+
+      {/* ccrm-003 (QA-01): the counselor's daily actions come before the student link */}
+      {!returned && (
+        <>
+          <NextActionPanel lead={lead} onSaved={(next) => { setLead(next); setLeadNotice({ text: "Next action saved.", failed: false }); reloadActivity(); }} />
+          {lead.permissions.stage && (
+            <section aria-labelledby="lead-stage-heading">
+              <h3 id="lead-stage-heading" style={{ margin: 0 }}>Stage</h3>
+              <div style={{ marginTop: 6 }}>
+                <LeadStageControl lead={lead} targets={counselorTargets(lead.status)} move={counselorMoveStage}
+                  onMessage={(m) => setLeadNotice({ text: m.text, failed: m.failed })} onChanged={(status) => void stageChanged(status)} />
+              </div>
+            </section>
+          )}
+          <LeadFollowUps leadId={lead.id} leadStage={lead.status} canWrite={lead.permissions.follow_up} api={followUpApi}
+            onStageChanged={(status) => void stageChanged(status)} onChanged={reloadActivity} />
+        </>
+      )}
 
       {returned ? (
         <p className="form-message" role="status">Lead returned to the telecaller.</p>
@@ -300,24 +320,6 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
             )}
             <NoticeLine notice={notice} />
           </section>
-        </>
-      )}
-
-      {!returned && (
-        <>
-          <NextActionPanel lead={lead} onSaved={(next) => { setLead(next); reloadActivity(); }} />
-          {lead.permissions.stage && (
-            <section aria-labelledby="lead-stage-heading">
-              <h3 id="lead-stage-heading" style={{ margin: 0 }}>Stage</h3>
-              <div style={{ marginTop: 6 }}>
-                <LeadStageControl lead={lead} targets={counselorTargets(lead.status)} move={counselorMoveStage}
-                  onMessage={(m) => setStageNotice({ text: m.text, failed: m.failed })} onChanged={(status) => void stageChanged(status)} />
-              </div>
-              <NoticeLine notice={stageNotice} />
-            </section>
-          )}
-          <LeadFollowUps leadId={lead.id} leadStage={lead.status} canWrite={lead.permissions.follow_up} api={followUpApi}
-            onStageChanged={(status) => void stageChanged(status)} onChanged={reloadActivity} />
         </>
       )}
 

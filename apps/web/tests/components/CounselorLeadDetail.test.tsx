@@ -180,6 +180,36 @@ describe("CounselorLeadDetail", () => {
     render(<CounselorLeadDetail initial={detail({ status: "lost", status_label: "Lost", permissions: closedPermissions })} />);
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     for (const name of ["Change stage for Asha Rao", "Set next action", "Add follow-up"]) expect(screen.queryByRole("button", { name })).toBeNull();
+    expect(screen.getByText("No next action.")).toBeInTheDocument(); // QA-04: no prompt to act on a closed lead
+    expect(screen.queryByText(/Add one before moving/)).toBeNull();
+  });
+
+  it("confirms a closing move even though the stage control goes away (QA-03), replacing the last notice (QA-02)", async () => {
+    const closed = detail({ status: "lost", status_label: "Lost", next_action: "Call", next_action_due: "2026-10-30", permissions: closedPermissions });
+    reply["PUT /next-action"] = () => res(detail({ next_action: "Call", next_action_due: "2026-10-30" }));
+    reply["POST /stage"] = () => res({ id: "L1", status: "lost", status_label: "Lost", stage_changed_at: "2026-10-22T06:00:00Z", next_action: "Call", next_action_due: "2026-10-30" });
+    reply["GET "] = () => res(closed);
+    render(<CounselorLeadDetail initial={detail()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Set next action" }));
+    fireEvent.change(screen.getByLabelText("Action"), { target: { value: "Call" } });
+    fireEvent.change(screen.getByLabelText("Due date"), { target: { value: "2026-10-30" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save next action" }));
+    expect(await screen.findByText("Next action saved.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Change stage for Asha Rao" }));
+    fireEvent.change(screen.getByLabelText("New stage for Asha Rao"), { target: { value: "lost" } });
+    fireEvent.change(screen.getByLabelText("Reason (required)"), { target: { value: "Chose another agency" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Stage updated.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Change stage for Asha Rao" })).toBeNull());
+    expect(screen.getByText("Stage updated.")).toBeInTheDocument();
+    expect(screen.queryByText("Next action saved.")).toBeNull();
+  });
+
+  it("puts the counselor's actions before the student link (QA-01)", () => {
+    render(<CounselorLeadDetail initial={detail()} />);
+    const headings = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(headings.indexOf("Next action")).toBeLessThan(headings.indexOf("Student account"));
+    expect(headings.indexOf("Follow-ups")).toBeLessThan(headings.indexOf("Student account"));
   });
 
   it("a converted lead offers neither return, link nor unlink", async () => {

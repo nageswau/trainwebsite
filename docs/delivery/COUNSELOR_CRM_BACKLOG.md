@@ -182,6 +182,9 @@ asked one at a time when the item is picked up).
 - **Complexity:** medium. **Risk:** high (touches the shared stage engine).
 - **Open questions:** does "next action required" also apply to telecaller-owned leads (spec says "active leads")? Default: counselor
   leads only, telecaller unchanged.
+- **Status:** built on `feature/ccrm-003` — `DEC-SCOPE-243`, migration `0168_lead_next_action`, API §12EV, RBAC §2.158 (A1–A8). The
+  dashboard acceptance ("a follow-up the counselor creates shows in their dashboard") waits for ccrm-032; the follow-up shows on the
+  counselor lead detail today.
 
 ### `ccrm-004` — Counselor activity logging on leads: calls, WhatsApp, email, meetings
 

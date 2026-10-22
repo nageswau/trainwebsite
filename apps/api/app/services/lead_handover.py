@@ -218,11 +218,12 @@ async def next_action_out(db: AsyncSession, lead: Enquiry) -> dict:
 async def set_next_action(db: AsyncSession, user: User, lead: Enquiry, action: str | None, due) -> None:
     """ccrm-003 A2/A3, on a locked lead: each value sent replaces the stored one; a changed due date must be today (IST) or later, so an
     overdue action's text can still be edited. Audit and log name the fields, never the text."""
-    changed = [f for f, v in (("next_action", action), ("next_action_due", due)) if v is not None and getattr(lead, f) != v]
+    sent = {"next_action": action, "next_action_due": due}
+    changed = [field for field, value in sent.items() if value is not None and getattr(lead, field) != value]
     if "next_action_due" in changed and due < today_ist(await db_now(db)):
         raise lead_pipeline.invalid("next_action_due", NEXT_ACTION_PAST, due.isoformat())
     for field in changed:
-        setattr(lead, field, action if field == "next_action" else due)
+        setattr(lead, field, sent[field])
     if changed:
         db.add(AuditLog(user_id=user.id, action="lead.next_action", entity_type="enquiry", entity_id=str(lead.id), metadata_json={"fields": changed}))
         _log("lead_next_action_set", user, lead.id, fields=changed)
