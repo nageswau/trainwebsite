@@ -8962,3 +8962,16 @@ counted pre-stage statuses no application holds.
 university; B3 the tiles read the dashboard's existing scoped, 500-row window (unchanged).
 **Numbering:** no migration; no API or RBAC change.
 - **Feature ID authorized:** `ccrm-001`. **Status:** built on `feature/ccrm-001`.
+
+### DEC-SCOPE-239 — Business IDs for overseas applications (`ccrm-011`)
+
+**Status:** builder's recommended defaults, owner asked to proceed with recommended answers 2026-10-22 (`UNVERIFIED` until the owner
+reviews). Source: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-011` (Counselor CRM spec §6, §14, §15; the PDF is `UNVERIFIED`).
+**Decision:** every `overseas_applications` row has a permanent `application_code` `APP-000001` from the global sequence
+`overseas_application_code_seq` (AC1: no yearly reset; six-digit pad that never truncates). Existing rows backfilled in
+(created_at, id) order by migration `0166_application_codes`. Unique; a withdrawn application keeps its code and no value is reissued.
+Display-only: no route is keyed by it. Shown as **"EduSphere ID"** (AC6 — "Application ID" already means the university's
+`application_reference` on agency screens, AGN-008) in the shared applications list, the agency list/detail, the portal application
+tables and the application lookup, whose `q` also matches it (AC5). Student code unchanged (AC2; nehn-040).
+**Numbering:** migration `0166`; API §12EQ; RBAC §2.153 (no new permission).
+- **Feature ID authorized:** `ccrm-011`. **Status:** built on `feature/ccrm-011`.

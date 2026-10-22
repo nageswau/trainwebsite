@@ -81,6 +81,7 @@ export default function AgentApplicationsPanel({ group, reloadKey, isMaster = fa
                 {!a.has_login && <span className="badge" style={{ marginLeft: 8 }}>no login</span>}
                 <div>
                   <span className={a.status === "withdrawn" ? "status error" : "badge"}>{stageLabel(a.status)}</span>
+                  <span className="muted"> · EduSphere ID <span style={{ whiteSpace: "nowrap" }}>{a.application_code}</span></span>
                   {a.application_reference && <span className="muted"> · ID {a.application_reference}</span>}
                   {a.course && <span className="muted"> · {a.course}</span>}
                   <span className="muted"> · {a.intake}</span>

@@ -3463,3 +3463,14 @@ Every change is **additive**: new optional request fields, new response fields a
 | `POST /admin/bdms/{id}/deactivate`, `/handover` (bdm-025) | a moved appointment's `trip_id` is cleared (trips never move) | unchanged |
 
 Deep-link targets for the travel reminder (bdm-012): `/bdm/travel/{id}#trip-appointments`, `#trip-costs`, `#trip-remarks`.
+
+## 12EQ. Application business IDs (ccrm-011) — addendum, 2026-10-22
+
+`DEC-SCOPE-239`. Migration `0166_application_codes`. RBAC §2.153. Additive response fields only; no request changes.
+
+| Method/Path | Change |
+|---|---|
+| `GET /api/v1/workflows/overseas/applications` | Each row adds `application_code` (`APP-000001`). |
+| `GET /api/v1/workflows/overseas/agent/crm/applications` and `/{id}` | Each item / the detail adds `application_code`. |
+| `GET /api/v1/portal/overseas/{role}/{section}` | Application tables (counselor/admin/rep Application Tracking and dashboards, rep Offer Letters, student dashboard and Applications, agent dashboard) add an `application_code` column labelled "EduSphere ID". AGN-023's agency/counsellor columns keep their order after it. |
+| `GET /api/v1/lookups/overseas-applications` | `q` also matches `application_code` (case-insensitive); `detail` now starts with the code (`APP-000001 · University · Course · status`). Scope unchanged. |
