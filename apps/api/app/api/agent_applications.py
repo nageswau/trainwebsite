@@ -207,7 +207,12 @@ async def change_status(application_id: UUID, payload: AgentApplicationStatus, u
     item.status = payload.to_status
     if payload.next_action is not None:
         item.next_action = payload.next_action
-    db.add(ApplicationStatusHistory(application_id=item.id, from_status=old, to_status=item.status, next_action=item.next_action, notes=payload.notes, changed_by_id=user.id))
+    db.add(
+        ApplicationStatusHistory(
+            application_id=item.id, from_status=old, to_status=item.status, next_action=item.next_action, notes=payload.notes, changed_by_id=user.id,
+            outcome=WITHDRAWN if withdrawn else None, reason=payload.notes if withdrawn else None,  # ccrm-016 (H1): the note is the reason
+        )
+    )  # fmt: skip
     if withdrawn:  # ccrm-015 (O1): the outcome and who asked for it; the reason is the note
         outcomes.withdraw_event(db, user, item, requested_by=payload.requested_by or "agent", reason=payload.notes)
         await notices.outcome_changed(db, item, user, "Withdrawn")  # CC5: the EduSphere counselor

@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.application_outcome import TERMINAL as TERMINAL_OUTCOMES
+from app.application_outcome import label as outcome_label
 from app.application_sub_status import label as sub_status_label
 from app.models import AgentStudent, ApplicationStatusHistory, AuditLog, OverseasApplication, OverseasCourse, StudentDocument, University, User
 from app.services import agent_documents as documents
@@ -159,19 +160,38 @@ Changer = aliased(User)
 MISSING = object()  # `detail`'s "record not given" -- None is a real value (no agency record)
 
 
+async def status_history(db: AsyncSession, application_id: UUID, *, staff: bool) -> list[dict]:
+    """ccrm-016 (DEC-SCOPE-247): an application's status history, oldest first -- stage, sub-status, the outcome a row set, time; staff also
+    get the author's name, notes and reason (H2: the student's view is filtered here, not in the UI)."""
+    rows = (
+        await db.execute(
+            select(ApplicationStatusHistory, Changer.full_name)
+            .outerjoin(Changer, Changer.id == ApplicationStatusHistory.changed_by_id)
+            .where(ApplicationStatusHistory.application_id == application_id)
+            .order_by(ApplicationStatusHistory.created_at, ApplicationStatusHistory.id)
+        )
+    ).all()
+    return [
+        {
+            "from_status": h.from_status,
+            "to_status": h.to_status,
+            "from_sub_status": h.from_sub_status,
+            "to_sub_status": h.to_sub_status,
+            "outcome": h.outcome,
+            "outcome_label": outcome_label(h.outcome),
+            "next_action": h.next_action,
+            "created_at": h.created_at,
+            **({"notes": h.notes, "reason": h.reason, "changed_by": name} if staff else {}),
+        }
+        for h, name in rows
+    ]
+
+
 async def detail(db: AsyncSession, user: User, app: OverseasApplication, *, record: AgentStudent | None | object = MISSING) -> dict:
     """The detail shape. A write passes the owner `record` it already loaded (its archived status cannot change inside the request);
     otherwise it is looked up here."""
     row = owned([(await db.execute(_rows_stmt().where(OverseasApplication.id == app.id).execution_options(populate_existing=True))).one()])[0]
     found, _university, slug, _course, _owner = row
-    history = (
-        await db.execute(
-            select(ApplicationStatusHistory, Changer.full_name)
-            .outerjoin(Changer, Changer.id == ApplicationStatusHistory.changed_by_id)
-            .where(ApplicationStatusHistory.application_id == found.id)
-            .order_by(ApplicationStatusHistory.created_at, ApplicationStatusHistory.id)
-        )
-    ).all()
     if record is MISSING:
         record = await owner_record(db, user, found)
     from app.services import application_outcomes as outcomes  # noqa: PLC0415 -- it imports this module
@@ -196,19 +216,7 @@ async def detail(db: AsyncSession, user: User, app: OverseasApplication, *, reco
         # AGN-023 (DEC-SCOPE-090 H7): the EduSphere counselor's name only -- never their email or phone.
         "counselor_name": await db.scalar(select(User.full_name).where(User.id == found.counselor_id)) if found.counselor_id else None,
         "visa": await visa_block(db, found.id),  # AGN-012 (DEC-SCOPE-057): agency-only, single-application detail only
-        "history": [
-            {
-                "from_status": h.from_status,
-                "to_status": h.to_status,
-                "from_sub_status": h.from_sub_status,
-                "to_sub_status": h.to_sub_status,
-                "next_action": h.next_action,
-                "notes": h.notes,
-                "changed_by": name,
-                "created_at": h.created_at,
-            }
-            for h, name in history
-        ],
+        "history": await status_history(db, found.id, staff=True),
         **await _offer_parts(db, user, found),
         # AGN-011 (DEC-SCOPE-058): the deposit, and whether online payment can be opened at all (AC6).
         "deposit": await deposit_view(db, await deposit_for(db, found.id)),

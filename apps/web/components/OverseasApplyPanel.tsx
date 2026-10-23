@@ -3,11 +3,10 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { University } from "@/lib/types";
-import LocalTime from "@/components/LocalTime";
+import ApplicationStatusHistory from "@/components/ApplicationStatusHistory";
 
 type Course = { id: string; title: string; level: string; category: string; duration: string; tuition_fee: string; intake: string };
 type ApplicationRow = { id: string; university: string; reference: string | null; intake: string; status: string; next_action: string | null };
-type StatusHistoryEntry = { from_status: string | null; to_status: string; next_action: string | null; changed_at: string };
 
 function detailMessage(status: number, detail: unknown) {
   if (status === 409) return "You already have an application for this university/course.";
@@ -29,7 +28,6 @@ export default function OverseasApplyPanel() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
   const [openHistoryId, setOpenHistoryId] = useState<string | null>(null);
-  const [histories, setHistories] = useState<Record<string, StatusHistoryEntry[]>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -93,19 +91,6 @@ export default function OverseasApplyPanel() {
       .then((data) => setApplications(data.rows || []));
   }
 
-  function toggleHistory(applicationId: string) {
-    if (openHistoryId === applicationId) {
-      setOpenHistoryId(null);
-      return;
-    }
-    setOpenHistoryId(applicationId);
-    if (!histories[applicationId]) {
-      fetch(`/api/v1/workflows/overseas/applications/${applicationId}/status`)
-        .then((res) => (res.ok ? res.json() : { history: [] }))
-        .then((data) => setHistories((current) => ({ ...current, [applicationId]: data.history || [] })));
-    }
-  }
-
   if (universities === null || applications === null) {
     return (
       <div className="action-card">
@@ -163,24 +148,11 @@ export default function OverseasApplyPanel() {
               <h4 style={{ marginTop: 10 }}>{a.university}</h4>
               <p className="muted" style={{ fontSize: 13 }}>{a.intake}</p>
               {a.next_action && <p className="muted" style={{ fontSize: 13 }}>{a.next_action}</p>}
-              <button className="btn small" onClick={() => toggleHistory(a.id)}>
+              <button className="btn small" aria-expanded={openHistoryId === a.id} onClick={() => setOpenHistoryId(openHistoryId === a.id ? null : a.id)}>
                 {openHistoryId === a.id ? "Hide status history" : "View status history"}
               </button>
-              {openHistoryId === a.id && (
-                <ul className="list-clean" style={{ marginTop: 8 }}>
-                  {histories[a.id] === undefined ? (
-                    <li className="muted">Loading…</li>
-                  ) : histories[a.id].length === 0 ? (
-                    <li className="muted">No status changes recorded yet.</li>
-                  ) : (
-                    histories[a.id].map((entry, index) => (
-                      <li key={index}>
-                        <strong>{entry.to_status.replaceAll("_", " ")}</strong> — <span className="muted"><LocalTime value={entry.changed_at} /></span>
-                      </li>
-                    ))
-                  )}
-                </ul>
-              )}
+              {/* ccrm-016: stage, sub-status, outcome and time -- the server leaves out author, notes and reason for a student (H2) */}
+              {openHistoryId === a.id && <ApplicationStatusHistory applicationId={a.id} />}
             </div>
           ))}
         </div>

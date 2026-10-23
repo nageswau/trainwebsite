@@ -21,10 +21,10 @@ _spec.loader.exec_module(_migration)
 HEAD, BASE = "0171_application_offers", "0170_application_outcomes"
 
 
-def test_migration_chains_after_0170_and_is_the_single_head():
+def test_migration_chains_after_0170_and_stays_in_the_single_line():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
-    assert script.get_heads() == [HEAD]
+    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}  # ccrm-016 0172 follows
 
 
 def test_the_migration_repeats_the_model_constants():
