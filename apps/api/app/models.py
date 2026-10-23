@@ -36,6 +36,7 @@ from app.application_sub_status import fit as fit_sub_status
 from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
 from app.core.identifiers import normalize_key
+from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS
 from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
 from app.partnership_event_kinds import KINDS as PARTNERSHIP_EVENT_KINDS
@@ -2026,6 +2027,52 @@ class DocumentEvent(Base):
             name="ck_document_events_event",
         ),
     )
+
+
+class DocumentChecklistTemplate(Base, TimestampMixin):
+    """ccrm-018 (DEC-SCOPE-248): an Overseas Admin's document checklist for applications matching its scope -- a country, optionally
+    narrowed by university, course level and intake. One active template per (kind, scope); the most specific match applies
+    (services/document_checklists.resolve). `version` counts edits so ccrm-019 can freeze the version it copies; no hard delete."""
+
+    __tablename__ = "document_checklist_templates"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(120))
+    kind: Mapped[str] = mapped_column(String(20))
+    country_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("countries.id"))
+    university_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("universities.id"), nullable=True)
+    course_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    intake: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    gate_mode: Mapped[str] = mapped_column(String(10))
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    created_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    updated_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    __table_args__ = (
+        CheckConstraint("kind IN (" + ", ".join(f"'{k}'" for k in CHECKLIST_KINDS) + ")", name="ck_document_checklist_templates_kind"),
+        CheckConstraint("gate_mode IN (" + ", ".join(f"'{m}'" for m in CHECKLIST_GATE_MODES) + ")", name="ck_document_checklist_templates_gate_mode"),
+        CheckConstraint("course_level IS NULL OR course_level IN (" + ", ".join(f"'{lv}'" for lv in COURSE_LEVELS) + ")", name="ck_document_checklist_templates_course_level"),
+        Index(
+            "uq_document_checklist_templates_scope", "kind", "country_id", "university_id", "course_level", func.lower(text("intake")),
+            unique=True, postgresql_nulls_not_distinct=True, postgresql_where=text("active"),
+        ),
+    )
+
+
+class DocumentChecklistTemplateItem(Base):
+    """ccrm-018: one document a template asks for, in `position` order. `allowed_statuses` is a subset of
+    app/document_checklists.ITEM_STATUSES (never empty; the service fills the standard list)."""
+
+    __tablename__ = "document_checklist_template_items"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    template_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("document_checklist_templates.id", ondelete="CASCADE"))
+    position: Mapped[int] = mapped_column(Integer)
+    document_type: Mapped[str] = mapped_column(String(80))
+    label: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    required: Mapped[bool] = mapped_column(Boolean, default=True)
+    allowed_statuses: Mapped[list] = mapped_column(JSON, default=list)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    __table_args__ = (UniqueConstraint("template_id", "position", name="uq_document_checklist_template_items_position"),)
 
 
 class ProfileDocument(Base, TimestampMixin):
