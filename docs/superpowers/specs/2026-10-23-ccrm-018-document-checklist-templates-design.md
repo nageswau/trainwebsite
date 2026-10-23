@@ -58,6 +58,10 @@ course matches only level-less templates; intake case-insensitive). Score = 4·u
 The unique index makes ties impossible. So a UK/PG template applies to a UK PG application; a UK/University-X template overrides it
 (university outweighs level + intake together).
 
+Courses saved before the course master list carry free-text levels (the seed uses "Masters"). Matching maps the common spellings
+(Masters / Master's / Postgraduate → PG, Bachelors / Undergraduate → UG, Doctorate → PhD, …; `LEGACY_COURSE_LEVELS`); any other
+unknown level matches level-free templates only (my call, found in discovery).
+
 ## 5. API (router `app/api/document_checklists.py`, prefix `/overseas-admin/checklists`)
 
 Backlog said `/admin/overseas/checklists`; existing Overseas Admin routes all live under `/overseas-admin`, so it follows that
@@ -65,7 +69,7 @@ Backlog said `/admin/overseas/checklists`; existing Overseas Admin routes all li
 
 | method | path | roles | notes |
 |---|---|---|---|
-| GET | `` | overseas_admin, super_admin, counselor | filters `kind`, `country_id`, `active` (default true); newest first, items count |
+| GET | `` | overseas_admin, super_admin, counselor | filters `kind`, `country_id`, `status` (active default / inactive / all); by country, kind, least specific first; items count |
 | GET | `/{id}` | same | template + items (ordered) + country/university names |
 | POST | `` | overseas_admin, super_admin | 201; 409 scope taken; 422 validation |
 | PUT | `/{id}` | overseas_admin, super_admin | full replace incl. items and `active`; body carries `version` — stale → 409; row locked; version+1 |
@@ -83,4 +87,10 @@ applies only to matching applications.
 
 ## 7. Risks
 
-Low: new tables only, no change to existing behaviour. Parallel ccrm-016 owns 0172 → re-chain if needed at merge.
+Low: new tables only, no change to existing behaviour. Parallel ccrm-016 owns 0172 → re-chain if needed at merge. The revision id is
+`0173_checklist_templates` (alembic_version is varchar(32)).
+
+## 8. QA log (2026-10-23)
+
+QA-01 (minor, a11y): moving a document to the top/bottom sent focus to the now-disabled button (lost to `<body>`). Fixed: focus follows
+the moved document, taking its other move button at an edge (vitest "keeps focus on the moved document…", re-checked in the browser).

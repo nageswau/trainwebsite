@@ -61,12 +61,15 @@ export default function ChecklistTemplateEditor({ template, onSaved, onCancel }:
     setRows((current) => current.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   }
   function move(index: number, by: -1 | 1) {
+    const to = index + by;
     setRows((current) => {
       const next = [...current];
-      [next[index], next[index + by]] = [next[index + by], next[index]];
+      [next[index], next[to]] = [next[to], next[index]];
       return next;
     });
-    focusAfter(id(`item-${index + by}-${by < 0 ? "up" : "down"}`));
+    // QA-01: focus follows the moved document; at the top or bottom its button that way is disabled, so the other one takes it.
+    const atEdge = by < 0 ? to === 0 : to === rows.length - 1;
+    focusAfter(id(`item-${to}-${(by < 0) !== atEdge ? "up" : "down"}`));
   }
   function toggleStatus(row: Row, status: ItemStatus) {
     const on = row.allowed_statuses.includes(status);

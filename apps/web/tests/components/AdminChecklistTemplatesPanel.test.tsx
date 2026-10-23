@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AdminChecklistTemplatesPanel from "@/components/AdminChecklistTemplatesPanel";
 import ChecklistTemplateEditor from "@/components/ChecklistTemplateEditor";
-import { scopeText, STANDARD_STATUSES, usesStandardStatuses, type ChecklistTemplate } from "@/lib/documentChecklists";
+import { scopeText, STANDARD_STATUSES, type ChecklistTemplate } from "@/lib/documentChecklists";
 
 // ccrm-018 (DEC-SCOPE-248): the Overseas Admin's checklist templates -- list states, filters, opening the editor and saving.
 afterEach(() => {
@@ -29,10 +29,6 @@ const template = (over: Record<string, unknown> = {}) => ({
 describe("documentChecklists helpers", () => {
   it("describes a scope with the unset parts as 'any'", () => {
     expect(scopeText({ country_name: "United Kingdom", university_name: null, course_level: "PG", intake: null })).toBe("United Kingdom · Any university · PG · Any intake");
-  });
-  it("recognises the standard status list in any order", () => {
-    expect(usesStandardStatuses([...STANDARD_STATUSES].reverse())).toBe(true);
-    expect(usesStandardStatuses(["draft"])).toBe(false);
   });
 });
 
@@ -112,6 +108,12 @@ describe("ChecklistTemplateEditor", () => {
     expect(within(form).getAllByRole("listitem")).toHaveLength(2);
     fireEvent.change(within(first).getByLabelText("Document type"), { target: { value: "Other" } });
     expect(within(first).getByLabelText("Document name")).toBeRequired();
+  });
+
+  it("keeps focus on the moved document, even when it reaches the top (QA-01)", async () => {
+    render(<ChecklistTemplateEditor template={template() as ChecklistTemplate} onSaved={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Move document 2 up" }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Move document 1 down" })));
   });
 
   it("keeps the entry and shows the server's 409", async () => {

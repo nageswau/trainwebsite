@@ -465,6 +465,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Acceptance:** a UK/Masters template applies to a UK Masters application; a university-specific one overrides it.
 - **Complexity:** medium. **Risk:** low.
 - **Open questions:** whether templates also vary by visa category (§8 "visa documents … by visa category").
+- **Status (2026-10-23):** built on `worktree-ccrm-018` — `DEC-SCOPE-248` (CL1: no visa category for now), migration
+  `0173_checklist_templates`, API §12FA, RBAC §2.163; routes under `/overseas-admin/checklists`, page `/overseas/admin/checklists`.
+  Design `docs/superpowers/specs/2026-10-23-ccrm-018-document-checklist-templates-design.md`.
 
 ### `ccrm-019` — Application checklist, readiness summary, Ready-for-Submission gate
 

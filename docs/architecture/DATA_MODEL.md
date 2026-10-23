@@ -2127,3 +2127,13 @@ superseded / withdrawn_by_university / expired; a reason is required for the las
 backfilled rows), `closed_by_id`, `closed_at`, timestamps. Partial unique index: one `active` row per application. The active row is
 mirrored to `overseas_applications.offer_type/offer_date/offer_deadline/offer_conditions/offer_document_id`, whose
 `ck_overseas_applications_offer_type` widens to the four types. The backfill writes one active row per application with `offer_type` set.
+
+## Document checklist templates (`ccrm-018`, `DEC-SCOPE-248`; migration `0173_checklist_templates`, after `0171_application_offers`)
+
+`document_checklist_templates`: `id`, `name`, `kind` (CHECK admission / visa), `country_id` → countries, `university_id` → universities
+(nullable; must be in the country — app-level), `course_level` (nullable, CHECK the course master levels), `intake` (nullable text),
+`gate_mode` (CHECK block / warn, CC10), `notes`, `version` (int, +1 per edit; ccrm-019 freezes the version it copies), `active`,
+`created_by_id` / `updated_by_id` → users, timestamps. Unique index `uq_document_checklist_templates_scope` on
+`(kind, country_id, university_id, course_level, lower(intake)) NULLS NOT DISTINCT WHERE active` — one active template per scope. No hard
+delete. `document_checklist_template_items`: `id`, `template_id` (ON DELETE CASCADE), `position` (unique per template), `document_type`
+(the upload type list), `label`, `required`, `allowed_statuses` (JSON list, never empty), `notes`. Nothing is seeded (§8).

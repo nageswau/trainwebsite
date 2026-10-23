@@ -45,11 +45,6 @@ export function scopeText(t: Pick<Scope, "country_name" | "university_name" | "c
   return [t.country_name, t.university_name ?? "Any university", t.course_level ?? "Any level", t.intake ?? "Any intake"].filter(Boolean).join(" · ");
 }
 
-/** True when an item uses the standard statuses (the server's default for an item that names none). */
-export function usesStandardStatuses(statuses: readonly string[]): boolean {
-  return statuses.length === STANDARD_STATUSES.length && STANDARD_STATUSES.every((s) => statuses.includes(s));
-}
-
 /** The universities of one country, from the university master (Overseas Admin reads it, upc-003). */
 export function universitySearch(countryId: string) {
   return async (q: string, signal: AbortSignal): Promise<LookupPage> => {

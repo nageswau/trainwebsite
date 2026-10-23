@@ -875,3 +875,19 @@ half.
 | `ccrm-012-AC4` | Students / Applications filter by destination, university, intake, stage, sub-status, date range; in scope; options in scope; 422s | `apps/api/tests/test_ccrm_012_filters.py` (all); `apps/api/tests/test_agn_023_filters.py` (unchanged contract) |
 | `ccrm-012-AC5` | Leads filter by stage, priority, date range; 422s | `apps/api/tests/test_ccrm_012_lead_filters.py` |
 | `ccrm-012-AC6` | UI: filter bar, leads filters in URL, quick search on the dashboard | `apps/web/tests/components/ccrm012.searchFilters.test.tsx`; e2e `apps/web/tests/e2e/ccrm-012-counselor-search-filters.spec.ts` |
+
+**Addendum, 2026-10-23 (`ccrm-018`)** — one row and its acceptance-criteria map. Document checklist templates.
+
+| Feature | Trace | Open | Evidence |
+|---|---|---|---|
+| `ccrm-018` | Requirement: §8 + CC10 + owner answer CL1 (in-session 2026-10-23) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-018` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-248` → design `docs/superpowers/specs/2026-10-23-ccrm-018-document-checklist-templates-design.md`; `API_CONTRACT.md` §12FA, `RBAC_MATRIX.md` §2.163, `DATA_MODEL.md` (0173) | defaults `NEEDS_CONFIRMATION` | Built on `worktree-ccrm-018`; lite API set, vitest, e2e and browser QA |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `ccrm-018-AC1` | Backlog acceptance: a UK/PG ("Masters") template applies to a UK Masters application; a university-specific one overrides it; deactivating falls back | `apps/api/tests/test_ccrm_018_checklists.py::test_most_specific_template_applies`, `::test_an_application_without_a_course_matches_only_level_free_templates` |
+| `ccrm-018-AC2` | Admin create / read / list, items in order, empty statuses → standard nine, audit | `::test_admin_creates_reads_and_lists_a_template` |
+| `ccrm-018-AC3` | Validation: kind, gate, level, items 1–50, "Other" name, statuses, repeats, extra keys, country/university | `::test_validation` |
+| `ccrm-018-AC4` | One active template per scope (NULLs equal, intake case-insensitive); deactivate frees it; reactivation into a taken scope 409 | `::test_one_active_template_per_scope`; `apps/api/tests/test_ccrm_018_migration.py` |
+| `ccrm-018-AC5` | Edit = full replace, version + 1, stale version 409, audit | `::test_edit_bumps_version_replaces_items_and_refuses_a_stale_version` |
+| `ccrm-018-AC6` | Roles: counselor reads, cannot write; others 403; anonymous 401; resolve scoped | `::test_counselor_reads_but_cannot_write`, `::test_other_roles_and_signed_out_are_refused`, `::test_resolve_is_scoped_to_the_counselors_applications` |
+| `ccrm-018-AC7` | Admin editor UI: states, filters, create, 409 kept, edit/reorder/deactivate, focus (QA-01) | `apps/web/tests/components/AdminChecklistTemplatesPanel.test.tsx`; e2e `apps/web/tests/e2e/ccrm-018-checklist-templates.spec.ts` |
