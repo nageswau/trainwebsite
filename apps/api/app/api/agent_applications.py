@@ -34,6 +34,7 @@ from app.schemas import (
     ApplicationSubStatusChange,
 )
 from app.services import agent_notifications as notices
+from app.services import application_outcomes as outcomes
 from app.services import application_sub_status as sub_statuses
 from app.services.agent_applications import (
     ARCHIVED,
@@ -47,7 +48,6 @@ from app.services.agent_applications import (
     STALE,
     THROTTLED,
     WITHDRAWN,
-    WITHDRAWN_REFUSED,
     before_offer,
     check_course,
     check_offer_document,
@@ -156,8 +156,7 @@ async def _refuse_closed(db: AsyncSession, user: User, item) -> AgentStudent | N
     record = await owner_record(db, user, item)
     if record is not None and record.status == "archived":
         raise HTTPException(409, ARCHIVED)
-    if item.status == WITHDRAWN:
-        raise HTTPException(409, WITHDRAWN_REFUSED)
+    outcomes.refuse_closed(item)  # withdrawn (A1), or a ccrm-015 terminal outcome
     return record
 
 
@@ -195,12 +194,19 @@ async def change_status(application_id: UUID, payload: AgentApplicationStatus, u
     if payload.expected_status is not None and payload.expected_status != item.status:
         raise HTTPException(409, STALE)
     check_transition(item.status, payload.to_status)
+    withdrawn = payload.to_status == WITHDRAWN
+    if not withdrawn:
+        if payload.requested_by is not None:
+            raise HTTPException(422, "requested_by is only for a withdrawal")
+        outcomes.refuse_on_hold(item)  # ccrm-015 O2: on hold pauses stage moves; a withdrawal is still allowed
     old = item.status
     item.status = payload.to_status
     if payload.next_action is not None:
         item.next_action = payload.next_action
     db.add(ApplicationStatusHistory(application_id=item.id, from_status=old, to_status=item.status, next_action=item.next_action, notes=payload.notes, changed_by_id=user.id))
-    withdrawn = item.status == WITHDRAWN
+    if withdrawn:  # ccrm-015 (O1): the outcome and who asked for it; the reason is the note
+        outcomes.withdraw_event(db, user, item, requested_by=payload.requested_by or "agent", reason=payload.notes)
+        await notices.outcome_changed(db, item, user, "Withdrawn")  # CC5: the EduSphere counselor
     _audit(db, user, "withdraw" if withdrawn else "advance", item.id, {"from_status": old, "to_status": item.status})
     # AGN-017 (N3): this route never reaches `enrolled` (A4), so the commission trigger never ran here.
     await notices.status_changed(db, item, old, user, had_commission=True)
@@ -216,6 +222,7 @@ async def change_sub_status(application_id: UUID, payload: ApplicationSubStatusC
     membership = _gate(user)
     item = await _locked(db, user, membership, application_id)
     record = await _refuse_closed(db, user, item)
+    outcomes.refuse_on_hold(item)
     if sub_statuses.stage_of(payload.sub_status) == "enrolled":
         raise HTTPException(403, ENROLLED_REFUSED)
     before = sub_statuses.change(db, user, item, payload.sub_status, payload.notes)
@@ -241,6 +248,8 @@ async def save_enrollment(application_id: UUID, payload: AgentApplicationEnrollm
         raise HTTPException(409, STALE)
     old = item.status
     confirming = old != "enrolled"
+    if confirming:
+        outcomes.refuse_on_hold(item)
     if confirming and old not in ENROLLABLE:
         raise HTTPException(422, OFFER_NEEDED)
     fields = {"enrollment_date": payload.enrollment_date, "university_student_id": payload.university_student_id}
@@ -276,6 +285,8 @@ async def record_offer(application_id: UUID, payload: AgentApplicationOffer, use
     record = await _refuse_closed(db, user, item)
     if payload.expected_status is not None and payload.expected_status != item.status:
         raise HTTPException(409, STALE)
+    if before_offer(item.status):
+        outcomes.refuse_on_hold(item)  # ccrm-015: recording the offer would move the stage
     if payload.offer_document_id is not None:
         await check_offer_document(db, user, item, payload.offer_document_id)
     old = offer_values(item)

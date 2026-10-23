@@ -3,6 +3,7 @@
 import { FormEvent, KeyboardEvent, useRef, useState } from "react";
 import { sendJson } from "@/lib/apiErrors";
 import { AgentApplicationDetail, APPLICATIONS_URL, canWithdraw, nextStages, stageLabel } from "@/lib/agentApplications";
+import { outcomeLabel, REQUESTERS } from "@/lib/applicationOutcome";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 type Props = { detail: AgentApplicationDetail; onSaved: (d: AgentApplicationDetail, message: string) => void; onFailed: (message: string, status?: number) => void };
@@ -10,7 +11,9 @@ type Props = { detail: AgentApplicationDetail; onSaved: (d: AgentApplicationDeta
 // AGN-008 A4: forward to a later stage (up to status tracking) or withdraw; the displayed status travels as `expected_status`, so a
 // stale screen gets the server's 409 instead of acting on an application someone else just changed.
 export default function AgentApplicationStatusForm({ detail, onSaved, onFailed }: Props) {
-  const options = nextStages(detail.status);
+  // ccrm-015 (O2): on hold pauses forward moves (the server refuses them); a withdrawal is still possible.
+  const options = detail.outcome?.outcome === "on_hold" ? [] : nextStages(detail.status);
+  const [requestedBy, setRequestedBy] = useState("agent"); // ccrm-015: who asked for the withdrawal
   const [target, setTarget] = useState(options[0] ?? "");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
@@ -26,7 +29,7 @@ export default function AgentApplicationStatusForm({ detail, onSaved, onFailed }
     setBusy(true);
     let outcome: Awaited<ReturnType<typeof sendJson>>;
     try {
-      outcome = await sendJson(`${APPLICATIONS_URL}/${detail.id}/status`, "POST", { to_status: to, expected_status: detail.status, notes: notes.trim() || null });
+      outcome = await sendJson(`${APPLICATIONS_URL}/${detail.id}/status`, "POST", { to_status: to, expected_status: detail.status, notes: notes.trim() || null, ...(to === "withdrawn" ? { requested_by: requestedBy } : {}) });
     } finally {
       inFlight.current = false;
       setBusy(false);
@@ -73,7 +76,17 @@ export default function AgentApplicationStatusForm({ detail, onSaved, onFailed }
       {canWithdraw(detail.status) &&
         (confirming ? (
           <div role="group" aria-label="Confirm withdrawal" onKeyDown={(event: KeyboardEvent) => event.key === "Escape" && cancelConfirm()} style={{ marginTop: 12 }}>
-            <p>Withdraw this application? This cannot be undone.</p>
+            <p>Withdraw this application? Only the EduSphere Overseas Admin can reopen it.</p>
+            <div className="field">
+              <label htmlFor={`requested-by-${detail.id}`}>Requested by</label>
+              <select id={`requested-by-${detail.id}`} value={requestedBy} onChange={(event) => setRequestedBy(event.target.value)}>
+                {REQUESTERS.map((r) => (
+                  <option key={r} value={r}>
+                    {outcomeLabel(r)}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="actions">
               <button type="button" className="btn small" disabled={busy} onClick={() => send("withdrawn")} autoFocus>
                 Yes, withdraw

@@ -29,6 +29,9 @@ from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column, relationship, validates
 from sqlalchemy.sql import func
 
+from app.application_outcome import CLEARED as OUTCOME_CLEARED
+from app.application_outcome import OUTCOMES as APPLICATION_OUTCOMES
+from app.application_outcome import REQUESTERS as OUTCOME_REQUESTERS
 from app.application_sub_status import fit as fit_sub_status
 from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
@@ -1785,6 +1788,9 @@ APPLICATION_CODE_SEQ = Sequence("overseas_application_code_seq", metadata=Base.m
 APPLICATION_CODE_DEFAULT = "'APP-' || translate(format('%6s', nextval('overseas_application_code_seq')), ' ', '0')"
 
 
+OUTCOME_CHECK = _in("outcome", APPLICATION_OUTCOMES)  # ccrm-015; migration 0170 repeats it
+
+
 class OverseasApplication(Base, TimestampMixin):
     __tablename__ = "overseas_applications"
     __mapper_args__ = {"eager_defaults": True}  # INSERT ... RETURNING application_code: no lazy load on an async session
@@ -1804,6 +1810,9 @@ class OverseasApplication(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(50), default="enquiry")
     # ccrm-014 (DEC-SCOPE-240): the detail under `status` (app/application_sub_status.py); NULL = not set.
     sub_status: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # ccrm-015 (DEC-SCOPE-244): the exception outcome (app/application_outcome.py), independent of the stage; NULL = none. Detail and
+    # history are `ApplicationOutcome` rows. A withdrawn application also keeps status 'withdrawn' (O1).
+    outcome: Mapped[str | None] = mapped_column(String(20), nullable=True)
     next_action: Mapped[str | None] = mapped_column(Text, nullable=True)
     intake: Mapped[str] = mapped_column(String(80))
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -1830,6 +1839,7 @@ class OverseasApplication(Base, TimestampMixin):
         UniqueConstraint("application_code", name="uq_overseas_applications_code"),
         CheckConstraint("offer_type IS NULL OR offer_type IN ('conditional', 'unconditional')", name="ck_overseas_applications_offer_type"),
         CheckConstraint("(offer_type IS NULL) = (offer_date IS NULL)", name="ck_overseas_applications_offer_dated"),
+        CheckConstraint(OUTCOME_CHECK, name="ck_overseas_applications_outcome"),
         # AGN-017 (DEC-SCOPE-059): the daily reminder job reads agency deadlines through these partial indexes (migration 0065).
         Index("ix_overseas_applications_agent_application_deadline", "application_deadline", postgresql_where=text("agent_student_id IS NOT NULL")),
         Index("ix_overseas_applications_agent_offer_deadline", "offer_deadline", postgresql_where=text("agent_student_id IS NOT NULL")),
@@ -1880,6 +1890,32 @@ class ApplicationStatusHistory(Base, TimestampMixin):
     next_action: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     changed_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class ApplicationOutcome(Base, TimestampMixin):
+    """ccrm-015 (DEC-SCOPE-244): one outcome event on an application, append-only. `outcome` is the value set, or 'cleared' when it was
+    resumed / reopened; the application's current outcome detail is its latest row. Fields an outcome does not use stay NULL."""
+
+    __tablename__ = "application_outcomes"
+    __table_args__ = (
+        CheckConstraint(_in("outcome", (*APPLICATION_OUTCOMES, OUTCOME_CLEARED)), name="ck_application_outcomes_outcome"),
+        CheckConstraint(_in("requested_by", OUTCOME_REQUESTERS), name="ck_application_outcomes_requested_by"),
+        Index("ix_application_outcomes_application_created", "application_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id", ondelete="CASCADE"))
+    outcome: Mapped[str] = mapped_column(String(20))
+    outcome_date: Mapped[date] = mapped_column(Date)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    requested_by: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    next_steps: Mapped[str | None] = mapped_column(Text, nullable=True)
+    document_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL"), nullable=True)
+    previous_intake: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    new_intake: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    review_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    hold_owner_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    another_offer_preferred: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    created_by_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
 class StudentDocument(Base, TimestampMixin):

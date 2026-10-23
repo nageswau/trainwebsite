@@ -25,7 +25,8 @@ TABLE = "overseas_student_notes"
 def test_migration_chains_after_0168_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
-    assert script.get_heads() == [HEAD]
+    # ccrm-015's 0170 merges this head with ccrm-003's 0169: one head, and this revision on its chain.
+    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
 
 
 def test_model_matches_the_migration():

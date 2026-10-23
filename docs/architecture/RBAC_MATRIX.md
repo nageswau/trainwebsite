@@ -2587,3 +2587,13 @@ inside the existing role scope (a counselor searching another counselor's code g
 
 - SS4 (owner, 2026-10-22). Students read the sub-status only. Pinned by `test_ccrm_014_sub_status.py`.
 
+
+### 2.159 Application exception outcomes *(added 2026-10-23 — `DEC-SCOPE-244`, ccrm-015)*
+
+| Route | `counselor` | `overseas_admin` | `agent` | `overseas_student`, `university_rep`, others | Anonymous |
+|---|---|---|---|---|---|
+| `POST /workflows/overseas/applications/{id}/outcome` | ✅ own applications, agency too (`403` otherwise) | ✅ any | `403` | `403` | `401` |
+| `POST /workflows/overseas/applications/{id}/outcome/reopen` | ✅ own, on hold / deferred only (terminal `403`) | ✅ any | `403` | `403` | `401` |
+| `POST /workflows/overseas/agent/crm/applications/{id}/status` (withdraw) | `403` (agency gate) | `403` | ✅ own agency's applications (`404` otherwise) | `403` | `401` |
+
+- O1–O4 (owner, 2026-10-23). Students read a filtered outcome (no reason, owner or letter). Pinned by `test_ccrm_015_outcomes.py`.

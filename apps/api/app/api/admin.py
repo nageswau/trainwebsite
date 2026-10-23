@@ -93,7 +93,7 @@ from app.services import bdm_leads as lead_rules
 from app.services import partnership as pm_rules
 from app.services import recruiter as rec_rules
 from app.services import telecaller as tel_rules
-from app.services.agent_applications import owned, with_owner
+from app.services.agent_applications import open_clause, owned, with_owner
 from app.services.agent_network import APPLICATION_FILTERS, org_applications, org_counts, org_money, org_students
 from app.services.agent_orgs import ensure_agent_org, lock_org, org_masters, set_org_status, transition_org
 from app.services.provisioning import (
@@ -2044,7 +2044,7 @@ async def create_bridged_application(school_student_id: UUID, payload: dict, use
         raise HTTPException(422, "intake is required")
     duplicate = await db.scalar(
         select(OverseasApplication.id).where(
-            OverseasApplication.school_student_id == student.id, OverseasApplication.university_id == university.id, OverseasApplication.status != "withdrawn"
+            OverseasApplication.school_student_id == student.id, OverseasApplication.university_id == university.id, open_clause()  # ccrm-015 O3
         )
     )
     if duplicate:

@@ -421,6 +421,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Regression:** the duplicate-application check treats rejected like withdrawn (allows a new application) — `NEEDS_CONFIRMATION`.
 - **Complexity:** medium. **Risk:** high. Closes the PRD open item; needs a DEC.
 - **Open questions:** waitlisted (named in the code comment) in or out; may a rejected application be re-applied as a new application.
+- **Status (2026-10-23):** built on `worktree-ccrm-015` — owner answers O1–O4 (withdrawn keeps its status + outcome; rejected / withdrawn /
+  offer declined / visa refused terminal, on hold pauses, deferred continues; terminal frees the duplicate slot; no waitlist),
+  `DEC-SCOPE-244`, migration `0170_application_outcomes` (merges both 0169 heads), API §12EW, RBAC §2.159.
 
 ### `ccrm-016` — Status history with author and reason
 

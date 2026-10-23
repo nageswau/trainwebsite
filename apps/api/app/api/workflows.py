@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.api.files import _allowed
 from app.api.school_bulk import _safe_cell
+from app.application_outcome import label as outcome_label
 from app.application_sub_status import label as sub_status_label
 from app.core.config import settings
 from app.core.database import get_db
@@ -75,6 +76,8 @@ from app.notifications.dispatch import queue_deliveries
 from app.schemas import (
     AgentDocumentReview,
     AgentStudentCreate,
+    ApplicationOutcomeReopen,
+    ApplicationOutcomeSet,
     ApplicationSubStatusChange,
     AppointmentCreate,
     AssessmentCreate,
@@ -110,10 +113,11 @@ from app.schemas import (
     VisaCaseCreate,
 )
 from app.services import agent_notifications as agency_notices
+from app.services import application_outcomes as outcomes
 from app.services import application_sub_status as sub_statuses
 from app.services import applications, counselor_students, course_skills, interviews, offers
 from app.services import recruiter_requirements as requirements
-from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, WITHDRAWN, WITHDRAWN_REFUSED, owned, stage_label, with_owner
+from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, open_clause, owned, stage_label, with_owner
 from app.services.agent_documents import add_event, in_scope
 from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
 from app.services.agent_students import application_scope, student_scope
@@ -1819,13 +1823,13 @@ async def create_overseas_application(payload: OverseasApplicationCreate, user: 
     # OVS-002-AC02 / DATA_MODEL.md #6.2: submitting interest twice for the same
     # (student, university, course) must not create a duplicate row -- a withdrawn
     # application is explicitly excluded from this check (re-application is allowed),
-    # though nothing sets status="withdrawn" yet since no feature owns that action.
+    # and so is a rejected / offer-declined / visa-refused one (ccrm-015 O3).
     duplicate = await db.scalar(
         select(OverseasApplication.id).where(
             OverseasApplication.student_id == student_id,
             OverseasApplication.university_id == university.id,
             OverseasApplication.course_id == course_id,
-            OverseasApplication.status != "withdrawn",
+            open_clause(),
         )
     )
     if duplicate:
@@ -1938,9 +1942,11 @@ async def update_overseas_application(application_id: UUID, payload: OverseasApp
     # AGN-023 (DEC-SCOPE-090 H10): after creation only the Admin's assign route changes the counselor (audited, notified).
     if "counselor_id" in changes:
         raise HTTPException(422, COUNSELOR_REFUSED_ON_UPDATE)
-    # AGN-008 (A1): `withdrawn` is terminal -- no generic status write revives it (nothing set it before AGN-008).
-    if "status" in changes and item.status == WITHDRAWN:
-        raise HTTPException(409, "This application is withdrawn")
+    # AGN-008 (A1): `withdrawn` is terminal -- no generic status write revives it; ccrm-015 (O2): nor any terminal outcome, and on
+    # hold pauses stage moves. Other fields stay editable, as on a withdrawn application before.
+    if "status" in changes:
+        outcomes.refuse_closed(item)
+        outcomes.refuse_on_hold(item)
     channels = changes.pop("notify_channels", ["email"])
     notes = changes.pop("notes", None)
     if user.role == "university_rep":
@@ -1999,7 +2005,7 @@ async def assign_overseas_counselor(
     item = await db.get(OverseasApplication, application_id, with_for_update=True)
     if item is None:
         raise HTTPException(404, "Application not found")
-    if item.status in {WITHDRAWN, "enrolled"}:
+    if item.status == "enrolled" or outcomes.is_closed(item):
         raise HTTPException(409, APPLICATION_CLOSED)
     counselor = await db.get(User, payload.counselor_id)
     if counselor is None or counselor.role != "counselor" or counselor.division != "overseas" or not counselor.active:
@@ -2057,8 +2063,8 @@ async def advance_overseas_application(application_id: UUID, payload: OverseasAp
     item = await _assigned_application(db, user, application_id)
     await db.refresh(item, with_for_update=True)  # AGN-008 (final review): the guard must see a committed withdraw
     _recheck_counselor_scope(user, item)  # AGN-023 (final review I4): a swap committed after the scope read
-    if item.status == WITHDRAWN:  # AGN-008 (A1): otherwise index -1 would let any target revive it
-        raise HTTPException(409, "This application is withdrawn")
+    outcomes.refuse_closed(item)  # AGN-008 (A1): otherwise index -1 would let any target revive it; ccrm-015 terminal outcomes too
+    outcomes.refuse_on_hold(item)
     if item.agent_id is not None and await _agency_record_archived(db, item):  # AGN-023 (final review I1): the agency's A15 rule
         raise HTTPException(409, ARCHIVED)
     if item.agent_id is not None and payload.to_status == "enrolled":
@@ -2103,8 +2109,8 @@ async def change_application_sub_status(application_id: UUID, payload: Applicati
     item = await _assigned_application(db, user, application_id)
     await db.refresh(item, with_for_update=True)
     _recheck_counselor_scope(user, item)
-    if item.status == WITHDRAWN:
-        raise HTTPException(409, "This application is withdrawn")
+    outcomes.refuse_closed(item)
+    outcomes.refuse_on_hold(item)
     stage = sub_statuses.stage_of(payload.sub_status)
     if item.agent_id is not None and await _agency_record_archived(db, item):
         raise HTTPException(409, ARCHIVED)
@@ -2133,6 +2139,58 @@ async def change_application_sub_status(application_id: UUID, payload: Applicati
     return {"id": item.id, "status": item.status, "sub_status": item.sub_status, "sub_status_label": sub_status_label(item.sub_status), "changed": before is not None}
 
 
+async def _outcome_entry(db: AsyncSession, user: User, application_id: UUID) -> OverseasApplication:
+    """ccrm-015: the sub-status route's entry -- counselor (own applications, agency too: CC4) or Overseas Admin, scoped, row-locked."""
+    _require(user, {"counselor", "overseas_admin"}, "overseas")
+    item = await _assigned_application(db, user, application_id)
+    await db.refresh(item, with_for_update=True)
+    _recheck_counselor_scope(user, item)
+    if item.agent_id is not None and await _agency_record_archived(db, item):
+        raise HTTPException(409, ARCHIVED)
+    return item
+
+
+async def _outcome_response(db: AsyncSession, item: OverseasApplication) -> dict:
+    event = (await outcomes.latest(db, [item.id])).get(item.id)
+    return {"id": item.id, "status": item.status, "sub_status": item.sub_status, "outcome": item.outcome, "detail": outcomes.view(item, event, staff=True)}
+
+
+async def _tell_outcome(db: AsyncSession, user: User, item: OverseasApplication, text: str) -> None:
+    """CC5: the student (when they have a login) and, on an agency application, the agency."""
+    student = await db.get(User, item.student_id) if item.student_id else None
+    if student:
+        university = await db.scalar(select(University.name).where(University.id == item.university_id))
+        await _notify_user(db, student, "Application update", f"{university}: {text}.", "/overseas/student/applications")
+    await agency_notices.outcome_changed(db, item, user, text)
+
+
+@router.post("/overseas/applications/{application_id}/outcome")
+async def set_application_outcome(application_id: UUID, payload: ApplicationOutcomeSet, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-015 (DEC-SCOPE-244): record rejected / withdrawn / deferred / on hold / offer declined on ONE application (AC 9); the others
+    of the student are untouched. Terminal outcomes close it until the Overseas Admin reopens it (O2)."""
+    item = await _outcome_entry(db, user, application_id)
+    before = item.status
+    event = await outcomes.record(db, user, item, payload)
+    await db.flush()
+    await _tell_outcome(db, user, item, outcome_label(item.outcome))
+    await _audit(db, user, "overseas.application.outcome", "overseas_application", item.id, {"outcome": item.outcome, "event_id": str(event.id), "from_status": before, "to_status": item.status})
+    await db.commit()
+    return await _outcome_response(db, item)
+
+
+@router.post("/overseas/applications/{application_id}/outcome/reopen")
+async def reopen_application_outcome(application_id: UUID, payload: ApplicationOutcomeReopen, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-015 (DEC-SCOPE-244): clear the outcome -- resume on hold / deferred (counselor or Admin) or reopen a terminal one (Overseas
+    Admin only), with a reason. A withdrawn application returns to the stage it was withdrawn from."""
+    item = await _outcome_entry(db, user, application_id)
+    before = item.status
+    cleared = await outcomes.reopen(db, user, item, payload.reason)
+    await _tell_outcome(db, user, item, f"{outcome_label(cleared)} cleared -- the application continues")
+    await _audit(db, user, "overseas.application.outcome_reopen", "overseas_application", item.id, {"cleared": cleared, "from_status": before, "to_status": item.status})
+    await db.commit()
+    return await _outcome_response(db, item)
+
+
 @router.get("/overseas/applications/{application_id}/status")
 async def get_application_status(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     # OVS-004: "Stage change triggers a notification and updates the Student's tracking
@@ -2145,9 +2203,11 @@ async def get_application_status(application_id: UUID, user: User = Depends(get_
     _require(user, {"overseas_student", "counselor", "overseas_admin"}, "overseas")
     application = await _assigned_application(db, user, application_id)
     history = (await db.scalars(select(ApplicationStatusHistory).where(ApplicationStatusHistory.application_id == application_id).order_by(ApplicationStatusHistory.created_at))).all()
+    event = (await outcomes.latest(db, [application.id])).get(application.id) if application.outcome else None
     return {
         "status": application.status,
         "sub_status": application.sub_status,
+        "outcome": outcomes.view(application, event, staff=user.role != "overseas_student"),  # ccrm-015: the student's view is filtered
         "next_action": application.next_action,
         "history": [
             {"from_status": h.from_status, "to_status": h.to_status, "from_sub_status": h.from_sub_status, "to_sub_status": h.to_sub_status, "next_action": h.next_action, "changed_at": h.created_at}
@@ -2415,8 +2475,7 @@ async def _agency_record_archived(db: AsyncSession, application: OverseasApplica
 
 async def _refuse_closed_agency_application(db: AsyncSession, application: OverseasApplication) -> None:
     """AGN-023 (final review I1): the agency's own closed-application refusals, with its messages, for a counselor's agency visa write."""
-    if application.status == WITHDRAWN:
-        raise HTTPException(409, WITHDRAWN_REFUSED)
+    outcomes.refuse_closed(application)  # withdrawn, or a ccrm-015 terminal outcome
     if await _agency_record_archived(db, application):
         raise HTTPException(409, ARCHIVED)
 

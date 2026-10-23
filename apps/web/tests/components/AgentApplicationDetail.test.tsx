@@ -87,6 +87,24 @@ describe("AgentApplicationDetail (AGN-008)", () => {
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
   });
 
+  it("ccrm-015: the withdrawal says who asked, and a rejected application shows its outcome read-only", async () => {
+    const outcome = { outcome: "rejected", label: "Rejected", outcome_date: "2026-10-23", next_steps: null, new_intake: null, terminal: true, reason: "Course full" };
+    let posted: Record<string, unknown> | null = null;
+    const fetchMock = vi.fn((_: string, init?: RequestInit) => {
+      if (init?.method === "POST") posted = JSON.parse(String(init.body));
+      return Promise.resolve(json({ application: posted ? detail({ read_only_reason: "rejected", outcome }) : detail() }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AgentApplicationDetail id="a1" onChanged={vi.fn()} onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Withdraw application" }));
+    fireEvent.change(screen.getByLabelText("Requested by"), { target: { value: "student" } });
+    fireEvent.click(screen.getByRole("button", { name: "Yes, withdraw" }));
+    expect(await screen.findByText(/This application was rejected/)).toBeInTheDocument();
+    expect(posted).toMatchObject({ to_status: "withdrawn", requested_by: "student" });
+    expect(screen.getByRole("region", { name: "Application outcome" })).toHaveTextContent("Course full");
+    expect(screen.queryByRole("button", { name: "Withdraw application" })).toBeNull();
+  });
+
   it("edits, saving only changed fields, and Cancel returns focus to Edit", async () => {
     const fetchMock = vi.fn((url: string, init?: RequestInit) => {
       if (url.startsWith("/api/v1/public/universities/")) return Promise.resolve(json({ courses: [] }));
