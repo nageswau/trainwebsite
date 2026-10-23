@@ -2134,3 +2134,13 @@ mirrored to `overseas_applications.offer_type/offer_date/offer_deadline/offer_co
 resume / reopen) and `reason` Text NULL (the reason given for that row: outcome, resume / reopen, agency withdraw note, offer
 withdraw/expire). `notes` is unchanged. Backfill: rows matching an `application_outcomes` event of the same application with an identical
 `created_at` (same transaction) take its outcome and reason; remaining moves into `withdrawn` take `outcome = 'withdrawn'` and their note.
+
+## Document checklist templates (`ccrm-018`, `DEC-SCOPE-248`; migration `0173_checklist_templates`, after ccrm-016's `0172_status_history_reason`)
+
+`document_checklist_templates`: `id`, `name`, `kind` (CHECK admission / visa), `country_id` → countries, `university_id` → universities
+(nullable; must be in the country — app-level), `course_level` (nullable, CHECK the course master levels), `intake` (nullable text),
+`gate_mode` (CHECK block / warn, CC10), `notes`, `version` (int, +1 per edit; ccrm-019 freezes the version it copies), `active`,
+`created_by_id` / `updated_by_id` → users, timestamps. Unique index `uq_document_checklist_templates_scope` on
+`(kind, country_id, university_id, course_level, lower(intake)) NULLS NOT DISTINCT WHERE active` — one active template per scope. No hard
+delete. `document_checklist_template_items`: `id`, `template_id` (ON DELETE CASCADE), `position` (unique per template), `document_type`
+(the upload type list), `label`, `required`, `allowed_statuses` (JSON list, never empty), `notes`. Nothing is seeded (§8).

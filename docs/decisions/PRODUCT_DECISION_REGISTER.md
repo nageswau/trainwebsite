@@ -9129,3 +9129,20 @@ applications; the agency detail shows the outcome label; the student 360 History
 is a follow-up. Read scopes are unchanged.
 **Numbering:** migration `0172_status_history_reason`; API §12EZ; RBAC §2.162 (246 / 12EY / 2.161 held by ccrm-012).
 - **Feature ID authorized:** `ccrm-016`. **Status:** built on `worktree-ccrm-016`.
+
+### DEC-SCOPE-248 — Document checklist templates (`ccrm-018`)
+
+**Status:** PROPOSED — CL1 answered by the owner in session 2026-10-23 (`EXPLICIT_APPROVAL` for CL1 only); the remaining choices are
+recommended defaults taken under the owner's standing instruction ("proceed with recommended answers") and are `NEEDS_CONFIRMATION`.
+**Evidence:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-018` (source PDF §8, `UNVERIFIED`); CC10 (gate mode).
+**Decision:** CL1 templates do **not** vary by visa category for now (no visa-category field exists). Scope = country (required) +
+optional university (in that country), course level (course master list) and intake (case-insensitive text); kind admission / visa; gate
+mode block / warn per template. One active template per kind and scope (unique index, `409`); the most specific active match applies
+(university 4 > level 2 > intake 1). Items: upload document type ("Other" needs a name), required flag, allowed statuses from the
+ccrm-021 list plus Draft / Review / Approved (none = the standard nine), notes; 1–50, a document once. Every edit is a full replace with
+an optimistic `version` check and bumps `version` (ccrm-019 freezes it). No hard delete (deactivate). No seeded template (§8). Legacy
+free-text course levels ("Masters", "Bachelors", "Postgraduate"…) map to the master levels for matching. Writers: Overseas Admin (and
+Super Admin, as `_require` allows everywhere); readers add the counselor; resolve scoped to the counselor's own applications. Route prefix
+`/overseas-admin/checklists` (backlog said `/admin/overseas/checklists`).
+**Numbering:** migration `0173_checklist_templates` (after ccrm-016's 0172); API §12FA; RBAC §2.163 (247 / 12EZ / 2.162 held by ccrm-016).
+- **Feature ID authorized:** `ccrm-018`. **Status:** built on `worktree-ccrm-018`.

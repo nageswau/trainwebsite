@@ -2627,3 +2627,15 @@ inside the existing role scope (a counselor searching another counselor's code g
 
 - H2 (owner, 2026-10-23). Pinned by `test_ccrm_016_history.py::test_the_student_sees_stage_sub_status_outcome_and_time_only` and
   `::test_the_read_scope_is_unchanged`.
+
+### 2.163 Document checklist templates *(added 2026-10-23 — `DEC-SCOPE-248`, ccrm-018)*
+
+| Route | `overseas_admin` | `counselor` | `super_admin` | `overseas_student`, `agent`, `university_rep`, others | Anonymous |
+|---|---|---|---|---|---|
+| `GET /overseas-admin/checklists`, `GET …/{id}` | ✅ | ✅ read | ✅ | `403` | `401` |
+| `POST /overseas-admin/checklists`, `PUT …/{id}` | ✅ | `403` | ✅ | `403` | `401` |
+| `GET …/checklists/resolve` | ✅ any application | ✅ own applications (`403` otherwise) | ✅ | `403` | `401` |
+
+- Backlog roles: overseas_admin write, counselor read. Pinned by `test_ccrm_018_checklists.py::test_counselor_reads_but_cannot_write`,
+  `::test_other_roles_and_signed_out_are_refused`, `::test_resolve_is_scoped_to_the_counselors_applications`. Web page
+  `/overseas/admin/checklists` for Overseas and Super Admins (others see "Access unavailable").

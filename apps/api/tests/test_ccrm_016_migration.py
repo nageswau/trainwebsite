@@ -22,9 +22,10 @@ _spec.loader.exec_module(_migration)
 HEAD, BASE = "0172_status_history_reason", "0171_application_offers"
 
 
-def test_migration_chains_after_0171_and_is_the_single_head():
+def test_migration_chains_after_0171_and_stays_in_the_single_line():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
-    assert ScriptDirectory.from_config(_config()).get_heads() == [HEAD]
+    script = ScriptDirectory.from_config(_config())
+    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}  # ccrm-018 0173 follows
 
 
 def test_the_migration_repeats_the_outcome_values():

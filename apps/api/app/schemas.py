@@ -28,6 +28,9 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
+from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS
+from app.document_checklists import ITEM_STATUSES as CHECKLIST_ITEM_STATUSES
+from app.document_checklists import MAX_ITEMS as CHECKLIST_MAX_ITEMS
 from app.models import (
     AGENT_COMMISSION_CURRENCIES,
     APPLICATION_STATUSES,
@@ -1197,6 +1200,88 @@ class ApplicationOfferClose(BaseModel):
         if not cleaned:
             raise PydanticCustomError("reason_required", "Give the reason")
         return cleaned
+
+
+class ChecklistTemplateItemIn(BaseModel):
+    """ccrm-018: one document a checklist template asks for. The type list is the upload list (AGN-009/AGN-010); "Other" needs a label.
+    No statuses means the standard list (filled by the service)."""
+
+    model_config = {"extra": "forbid"}
+    document_type: AgentUploadDocumentType
+    label: str | None = None
+    required: bool = True
+    allowed_statuses: list[Literal[CHECKLIST_ITEM_STATUSES]] = Field(default_factory=list, max_length=len(CHECKLIST_ITEM_STATUSES))
+    notes: str | None = None
+
+    @field_validator("label")
+    @classmethod
+    def _label(cls, value):
+        return clean_free_text(value, 80)
+
+    @field_validator("notes")
+    @classmethod
+    def _notes(cls, value):
+        return clean_free_text(value, 1000)
+
+    @field_validator("allowed_statuses")
+    @classmethod
+    def _statuses(cls, value):
+        return _distinct(value)
+
+    @model_validator(mode="after")
+    def _other_needs_label(self):
+        if self.document_type == "Other" and not self.label:
+            raise PydanticCustomError("label_required", "Name the document for an \"Other\" item")
+        return self
+
+
+class ChecklistTemplateIn(BaseModel):
+    """ccrm-018 (DEC-SCOPE-248): a template's scope, gate mode and items. The service checks the country, the university's country and
+    the one-active-template-per-scope rule."""
+
+    model_config = {"extra": "forbid"}
+    name: str
+    kind: Literal[CHECKLIST_KINDS]
+    country_id: UUID
+    university_id: UUID | None = None
+    course_level: Literal[COURSE_LEVELS] | None = None
+    intake: str | None = None
+    gate_mode: Literal[CHECKLIST_GATE_MODES]
+    notes: str | None = None
+    items: list[ChecklistTemplateItemIn] = Field(min_length=1, max_length=CHECKLIST_MAX_ITEMS)
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, value):
+        cleaned = clean_free_text(value, 120)
+        if not cleaned:
+            raise PydanticCustomError("name_required", "Give the template a name")
+        return cleaned
+
+    @field_validator("intake")
+    @classmethod
+    def _intake(cls, value):
+        return clean_free_text(value, 80)
+
+    @field_validator("notes")
+    @classmethod
+    def _notes(cls, value):
+        return clean_free_text(value, 2000)
+
+    @field_validator("items")
+    @classmethod
+    def _items_once(cls, value):
+        keys = [(i.document_type, (i.label or "").casefold()) for i in value]
+        if len(set(keys)) != len(keys):
+            raise PydanticCustomError("item_repeated", "List each document once")
+        return value
+
+
+class ChecklistTemplateUpdate(ChecklistTemplateIn):
+    """A full replace. `version` is the one the editor loaded; a newer one on the server is a 409 (another admin saved first)."""
+
+    version: int = Field(ge=1)
+    active: bool
 
 
 # --- AGN-011: deposit collection (DEC-SCOPE-058; docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md §4) ---
