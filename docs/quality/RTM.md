@@ -875,3 +875,19 @@ half.
 | `ccrm-012-AC4` | Students / Applications filter by destination, university, intake, stage, sub-status, date range; in scope; options in scope; 422s | `apps/api/tests/test_ccrm_012_filters.py` (all); `apps/api/tests/test_agn_023_filters.py` (unchanged contract) |
 | `ccrm-012-AC5` | Leads filter by stage, priority, date range; 422s | `apps/api/tests/test_ccrm_012_lead_filters.py` |
 | `ccrm-012-AC6` | UI: filter bar, leads filters in URL, quick search on the dashboard | `apps/web/tests/components/ccrm012.searchFilters.test.tsx`; e2e `apps/web/tests/e2e/ccrm-012-counselor-search-filters.spec.ts` |
+
+**Addendum, 2026-10-23 (`ccrm-016`)** — one row and its acceptance-criteria map. Status history with author and reason.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `ccrm-016` | Requirement: backlog `ccrm-016` (source §14 / §5 / AC 6, `UNVERIFIED`) + owner answers H1–H3 → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-247` → design `docs/superpowers/specs/2026-10-23-ccrm-016-status-history-design.md`; `API_CONTRACT.md` §12EZ, `RBAC_MATRIX.md` §2.162, `DATA_MODEL.md` | none | Built on `worktree-ccrm-016`; lite API set, vitest, e2e and browser QA |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `ccrm-016-AC1` | History read returns author, notes, reason, sub-status and outcome per row (AC 6: who changed it and when) | `apps/api/tests/test_ccrm_016_history.py::test_the_counselor_reads_author_notes_reason_sub_status_and_outcome` |
+| `ccrm-016-AC2` | Student sees stage, sub-status, outcome and time only (H2) | `::test_the_student_sees_stage_sub_status_outcome_and_time_only` |
+| `ccrm-016-AC3` | Writers fill outcome / reason (outcome, resume, agency withdraw, offer close) | `::test_writers_fill_outcome_and_reason` |
+| `ccrm-016-AC4` | Agency detail rows carry outcome and reason; author shown as a name | `::test_the_agency_detail_carries_outcome_and_reason`; `apps/web/tests/components/AgentApplicationDetail.test.tsx` (ccrm-016 case) |
+| `ccrm-016-AC5` | Read scopes unchanged | `::test_the_read_scope_is_unchanged` |
+| `ccrm-016-AC6` | Migration 0172: chain, CHECK, backfill, round trip | `apps/api/tests/test_ccrm_016_migration.py` (3) |
+| `ccrm-016-AC7` | UI: history toggle on counselor cards, student panel; loading / empty / error + retry | `apps/web/tests/components/ApplicationStatusHistory.test.tsx`; e2e `apps/web/tests/e2e/ccrm-016-status-history.spec.ts` |

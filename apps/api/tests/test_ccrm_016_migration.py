@@ -89,8 +89,7 @@ def test_backfill_from_outcome_events_and_withdrawals_and_round_trip(isolated_db
     for outcome, reason, at in (("on_hold", "Awaiting funds", rows["hold"][3]), ("cleared", "Funds arrived", rows["resume"][3])):
         _sql(
             url,
-            "INSERT INTO application_outcomes (id, application_id, outcome, outcome_date, reason, created_by_id, created_at, updated_at) "
-            "VALUES (:id, :a, :o, '2026-01-01', :r, :s, :at, :at)",
+            "INSERT INTO application_outcomes (id, application_id, outcome, outcome_date, reason, created_by_id, created_at, updated_at) VALUES (:id, :a, :o, '2026-01-01', :r, :s, :at, :at)",
             {"id": uuid.uuid4(), "a": app_id, "o": outcome, "r": reason, "s": student, "at": at},
         )
     command.upgrade(cfg, HEAD)

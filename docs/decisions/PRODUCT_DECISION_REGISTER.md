@@ -9115,3 +9115,17 @@ Priority and Lead date from / to. QS8 the search box is on the overseas counselo
 enquiries phone / lower(email) indexes already exist; no pg_trgm).
 **Numbering:** no migration; API §12EY; RBAC §2.161 (245 / 12EX / 2.160 held by ccrm-023).
 - **Feature ID authorized:** `ccrm-012`. **Status:** built on `worktree-ccrm-012`.
+
+### DEC-SCOPE-247 — Status history with author and reason (`ccrm-016`)
+
+**Status:** CONFIRMED — owner answers H1–H3 given 2026-10-23 through the clarifying-question prompt (each was the recommended option).
+**Evidence:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-016` (source PDF §14 status history, §5 History tab, AC 6; `UNVERIFIED`).
+**Decision:** H1 `application_status_history` gains nullable `outcome` (the six outcomes + `cleared`, CHECK) and `reason`; the ccrm-015
+outcome record / resume / reopen, the agency withdraw (its note is the reason) and the ccrm-023 offer withdraw/expire fill them; the
+backfill takes them from the same-transaction `application_outcomes` event, else marks moves into `withdrawn` with their note as the
+reason; `notes` is unchanged. H2 the student's history read returns stage, sub-status, outcome label and time only — no author, notes or
+reason — filtered on the server. H3 the history shows on each counselor *Evaluate Applications* card (toggle) and in the student's
+applications; the agency detail shows the outcome label; the student 360 History tab waits for ccrm-009 and an admin-table History link
+is a follow-up. Read scopes are unchanged.
+**Numbering:** migration `0172_status_history_reason`; API §12EZ; RBAC §2.162 (246 / 12EY / 2.161 held by ccrm-012).
+- **Feature ID authorized:** `ccrm-016`. **Status:** built on `worktree-ccrm-016`.
