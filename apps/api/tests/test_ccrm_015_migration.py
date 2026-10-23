@@ -23,7 +23,8 @@ def test_migration_merges_both_0169_heads_and_is_the_single_head():
     assert _migration.revision == HEAD
     assert set(_migration.down_revision) == {"0169_lead_next_action", "0169_overseas_student_notes"}
     script = ScriptDirectory.from_config(_config())
-    assert script.get_heads() == [HEAD]
+    # ccrm-023's 0171 chains after this one: one head, and this revision on its chain.
+    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
 
 
 def test_models_carry_the_column_and_table():

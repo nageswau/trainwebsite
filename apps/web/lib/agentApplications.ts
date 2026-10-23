@@ -3,6 +3,7 @@
 
 import { SESSION_EXPIRED } from "@/lib/activityFeedback";
 import { DOCUMENT_TYPES, OTHER, statusLabel } from "@/lib/agentDocuments";
+import type { ApplicationOfferType } from "@/lib/applicationOffers";
 import type { OutcomeDetail } from "@/lib/applicationOutcome";
 
 export const APPLICATIONS_URL = "/api/v1/workflows/overseas/agent/crm/applications";
@@ -199,7 +200,8 @@ export const formatInr = (amount: string) => INR.format(Number(amount));
 export type OfferType = "conditional" | "unconditional";
 export const OFFER_TYPE_LABELS: Record<OfferType, string> = { conditional: "Conditional", unconditional: "Unconditional" };
 export type OfferLetterOption = { id: string; name: string; verification_status: string };
-export type AgentOffer = { type: OfferType; date: string; deadline: string | null; conditions: string | null; document: OfferLetterOption | null };
+// ccrm-023 (DEC-SCOPE-245): the counselor may also record a pathway or other offer; the agency form still offers these two.
+export type AgentOffer = { type: ApplicationOfferType; date: string; deadline: string | null; conditions: string | null; document: OfferLetterOption | null };
 export const offerUrl = (id: string) => `${APPLICATIONS_URL}/${id}/offer`;
 
 // ccrm-015 (DEC-SCOPE-244): a terminal outcome makes the application read-only like withdrawn.
