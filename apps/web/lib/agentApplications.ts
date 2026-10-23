@@ -4,6 +4,7 @@
 import { SESSION_EXPIRED } from "@/lib/activityFeedback";
 import { DOCUMENT_TYPES, OTHER, statusLabel } from "@/lib/agentDocuments";
 import type { ApplicationOfferType } from "@/lib/applicationOffers";
+import type { OutcomeDetail } from "@/lib/applicationOutcome";
 
 export const APPLICATIONS_URL = "/api/v1/workflows/overseas/agent/crm/applications";
 
@@ -146,7 +147,8 @@ export type AgentApplicationDetail = AgentApplicationItem & {
   university_slug: string;
   course_id: string | null;
   created_at: string;
-  read_only_reason: "withdrawn" | "archived" | null;
+  read_only_reason: ReadOnlyReason | null;
+  outcome?: OutcomeDetail | null; // ccrm-015: absent in fixtures written before it
   enrollment_date: string | null;
   university_student_id: string | null;
   enrollment_confirmed_at: string | null;
@@ -202,7 +204,12 @@ export type OfferLetterOption = { id: string; name: string; verification_status:
 export type AgentOffer = { type: ApplicationOfferType; date: string; deadline: string | null; conditions: string | null; document: OfferLetterOption | null };
 export const offerUrl = (id: string) => `${APPLICATIONS_URL}/${id}/offer`;
 
-export const READ_ONLY_TEXT: Record<"withdrawn" | "archived", string> = {
+// ccrm-015 (DEC-SCOPE-244): a terminal outcome makes the application read-only like withdrawn.
+export type ReadOnlyReason = "withdrawn" | "archived" | "rejected" | "offer_declined" | "visa_refused";
+export const READ_ONLY_TEXT: Record<ReadOnlyReason, string> = {
   withdrawn: "This application is withdrawn, so it can no longer be changed.",
+  rejected: "This application was rejected, so it can no longer be changed. EduSphere's Overseas Admin can reopen it.",
+  offer_declined: "The offer was declined, so this application can no longer be changed. EduSphere's Overseas Admin can reopen it.",
+  visa_refused: "The visa was refused, so this application can no longer be changed. EduSphere's Overseas Admin can reopen it.",
   archived: "This student is archived. Unarchive them on the Students page to change this application.",
 };

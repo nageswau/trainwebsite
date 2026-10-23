@@ -22,7 +22,8 @@ from app.schemas import ApplicationOfferClose, ApplicationOfferCreate
 from app.services import agent_documents as documents
 from app.services import agent_notifications as agency_notices
 from app.services import application_offers as offers
-from app.services.agent_applications import ARCHIVED, OFFER_DOCUMENT_MISMATCH, OFFER_LETTERS_SHOWN, WITHDRAWN
+from app.services import application_outcomes as outcomes
+from app.services.agent_applications import ARCHIVED, OFFER_DOCUMENT_MISMATCH, OFFER_LETTERS_SHOWN
 
 logger = logging.getLogger("app.application_offers")
 
@@ -34,13 +35,15 @@ NO_OWNER = "An offer letter can only be attached to a student's or an agency's a
 STUDENT_URL = "/overseas/student/applications"
 
 
-async def _writable(db: AsyncSession, user: User, application_id: UUID) -> OverseasApplication:
+async def _writable(db: AsyncSession, user: User, application_id: UUID, *, moves_stage: bool = True) -> OverseasApplication:
+    """ccrm-015: withdrawn or a terminal outcome is closed (409); on hold also refuses a write that moves the stage or sub-status."""
     _require(user, WRITERS, "overseas")
     item = await _assigned_application(db, user, application_id)
     await db.refresh(item, with_for_update=True)
     _recheck_counselor_scope(user, item)
-    if item.status == WITHDRAWN:
-        raise HTTPException(409, "This application is withdrawn")
+    outcomes.refuse_closed(item)
+    if moves_stage:
+        outcomes.refuse_on_hold(item)
     if item.agent_id is not None and await _agency_record_archived(db, item):
         raise HTTPException(409, ARCHIVED)
     return item
@@ -83,7 +86,7 @@ async def list_offers(application_id: UUID, user: User = Depends(get_current_use
 async def upload_offer_letter(application_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """An "Offer letter" document attached to the application, owned like it (the account and/or the agency record). The AGN-009
     upload rules apply: the type is sniffed from the bytes (PDF or image) and the storage key is server-generated."""
-    item = await _writable(db, user, application_id)
+    item = await _writable(db, user, application_id, moves_stage=False)
     if item.student_id is None and item.agent_student_id is None:
         raise HTTPException(422, NO_OWNER)
     data, content_type, filename = await documents.read_upload(file)

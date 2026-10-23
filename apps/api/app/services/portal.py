@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application_outcome import label as outcome_label
 from app.application_sub_status import label as sub_status_label
 from app.core.identifiers import uuid_reference
 from app.core.rbac import PERMISSIONS, is_agent_staff
@@ -57,6 +58,7 @@ from app.models import (
     VisaCase,
 )
 from app.services import application_filters, counselor_students
+from app.services import application_outcomes as outcomes
 from app.services import applications as job_applications
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
 from app.services.agent_dashboard import headline_counts
@@ -132,7 +134,7 @@ async def _awaiting_documents(db: AsyncSession, applications: list[OverseasAppli
 def _counselor_cells(application, counselors: dict) -> dict:
     """AGN-023 (DEC-SCOPE-090 §6): the Overseas Admin's counsellor cells. `assign` is null on a closed (withdrawn or enrolled) row --
     the assign route refuses those (409) -- so the table draws no control there (final review M1)."""
-    closed = application.status in {WITHDRAWN, "enrolled"}
+    closed = application.status == "enrolled" or outcomes.is_closed(application)  # ccrm-015: a terminal outcome too
     return {
         "counselor": counselors.get(application.counselor_id) or "Not assigned",
         "counselor_id": str(application.counselor_id) if application.counselor_id else None,
@@ -621,6 +623,7 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
                 ("intake", "Intake"),
                 ("status", "Status"),
                 ("sub_status_label", "Sub-status"),
+                ("outcome_label", "Outcome"),
                 ("next_action", "Next action"),
             ),
             (
@@ -632,6 +635,7 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
                     "intake": a.intake,
                     "status": a.status,
                     "sub_status_label": sub_status_label(a.sub_status),
+                    "outcome_label": outcome_label(a.outcome),  # ccrm-015: the label only (reason and owner are internal)
                     "next_action": a.next_action,
                 }
                 for a, u in applications
@@ -1100,15 +1104,20 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             agn023 = user.role in {"overseas_admin", "counselor"} and section in application_filters.FILTER_SECTIONS  # AGN-023 (DEC-SCOPE-090 §3.3): students/applications only; university_rep and the other sections unchanged
             if agn023:
                 agencies, counselors = await application_filters.row_labels(db, [a for a, _, _ in applications])
+                events = await outcomes.latest(db, [a.id for a, _, _ in applications if a.outcome])  # ccrm-015
                 for row, (a, _, _) in zip(rows, applications, strict=True):
                     row |= {"is_agency": a.agent_id is not None, "agency": agencies.get(a.agent_id), "sub_status": a.sub_status, "sub_status_label": sub_status_label(a.sub_status)}
+                    row |= {"outcome": a.outcome, "outcome_label": outcome_label(a.outcome), "outcome_summary": outcomes.summary(a, events.get(a.id))}
                     if user.role == "overseas_admin":
                         row |= _counselor_cells(a, counselors)
+                        row["reopen"] = a.id if outcomes.is_closed(a) else None  # ccrm-015 O2: the Admin reopens a closed application
                 columns.insert(3, ("agency", "Agency"))
                 columns.insert(columns.index(("status", "Status")) + 1, ("sub_status_label", "Sub-status"))  # ccrm-014
+                columns.insert(columns.index(("sub_status_label", "Sub-status")) + 1, ("outcome_summary", "Outcome"))  # ccrm-015
                 if user.role == "overseas_admin":
                     columns.insert(5, ("counselor", "EduSphere counsellor"))
                     columns.append(("assign", "", "assign_counselor"))
+                    columns.append(("reopen", "", "reopen_outcome"))
             if agn023 and section == "students":
                 # ccrm-010 (DEC-SCOPE-241): each student's internal notes page; a student with no login (an agency record) has none.
                 base = "/overseas/counselor" if user.role == "counselor" else "/overseas/admin"

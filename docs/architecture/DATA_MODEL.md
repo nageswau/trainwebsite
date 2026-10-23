@@ -2109,7 +2109,16 @@ Additive; no existing row changes. Written by csc-002 (counselor walk-in create)
 SS2 backfill: `enrolled` → `enrolled`; `offer` with `offer_type` → `conditional_offer`/`unconditional_offer`; `university_selection` with
 `submitted_on` → `submitted`; every other row NULL. `downgrade()` drops the three columns.
 
-## Application offers (`ccrm-023`, `DEC-SCOPE-245`; migration `0170_application_offers`, merging the two `0169` heads)
+## Application exception outcomes (`ccrm-015`, `DEC-SCOPE-244`; migration `0170_application_outcomes`, merging both `0169` heads)
+
+| Column | Type | Notes |
+|---|---|---|
+| `overseas_applications.outcome` | varchar(20) NULL, CHECK in rejected / withdrawn / deferred / on_hold / offer_declined / visa_refused | NULL = none. Independent of `status`; a withdrawn application has both `status` and `outcome` = withdrawn (O1). |
+| `application_outcomes` | table | One append-only event per outcome set or cleared (`outcome` also `cleared`): `outcome_date`, `reason`, `requested_by` (CHECK student/counselor/agent/university), `next_steps`, `document_id` (→ student_documents, SET NULL), `previous_intake`, `new_intake`, `review_date`, `hold_owner_id` (→ users), `another_offer_preferred`, `created_by_id`, timestamps; CASCADE with the application; index (`application_id`, `created_at`). The latest row is the current outcome's detail. |
+
+Backfill: `outcome = 'withdrawn'` where `status = 'withdrawn'`. `downgrade()` drops the table and the column.
+
+## Application offers (`ccrm-023`, `DEC-SCOPE-245`; migration `0171_application_offers`, after ccrm-015's `0170_application_outcomes`)
 
 `application_offers`: `id`, `application_id` → overseas_applications, `offer_type` (CHECK conditional/unconditional/pathway/other),
 `issue_date`, `offer_deadline`, `conditions`, `currency` (char 3, required iff an amount), `tuition_amount` / `scholarship_amount` /

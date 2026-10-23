@@ -5,7 +5,7 @@ watch it pass. Lite tests only; the full suite is run by the owner.
 
 | # | Task | Tests first |
 | --- | --- | --- |
-| 1 | Model `ApplicationOffer` + constants; widen `ck_overseas_applications_offer_type`; migration `0170_application_offers` (merge heads, create, backfill, downgrade) | `tests/test_ccrm_023_migration.py`: single head; backfill row; CHECK widened; constants repeated |
+| 1 | Model `ApplicationOffer` + constants; widen `ck_overseas_applications_offer_type`; migration `0171_application_offers` (after 0170, create, backfill, downgrade) | `tests/test_ccrm_023_migration.py`: single head; backfill row; CHECK widened; constants repeated |
 | 2 | Schemas `ApplicationOfferCreate`, `ApplicationOfferClose` | inside the API tests (422 cases) |
 | 3 | `services/application_offers.py` (record / apply_stage / close / views) + `agent_notifications.offer_changed` | exercised through the routes |
 | 4 | `api/application_offers.py`: GET, offer-letters upload, POST, withdraw; register the router | `tests/test_ccrm_023_offers.py`: AC1–AC7, AC9, authz matrix, idempotent retry, document mismatch, closed apps |

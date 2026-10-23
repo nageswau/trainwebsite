@@ -1,4 +1,4 @@
-"""ccrm-023 -- migration 0170_application_offers (DEC-SCOPE-245): merge of the two 0169 heads, the table, the widened offer-type CHECK,
+"""ccrm-023 -- migration 0171_application_offers (DEC-SCOPE-245): chain after ccrm-015's 0170, the table, the widened offer-type CHECK,
 the backfill (AC7) and the round trip, in a throwaway database (the ccrm-014 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -14,16 +14,15 @@ from app.core.config import settings
 from tests.test_ccrm_014_migration import _columns
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_ccrm_023_migration_0170", VERSIONS / "0170_application_offers.py")
+_spec = importlib.util.spec_from_file_location("_ccrm_023_migration_0171", VERSIONS / "0171_application_offers.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD = "0170_application_offers"
-BASES = ("0169_lead_next_action", "0169_overseas_student_notes")
+HEAD, BASE = "0171_application_offers", "0170_application_outcomes"
 
 
-def test_migration_merges_both_0169_heads_and_is_the_single_head():
-    assert _migration.revision == HEAD and set(_migration.down_revision) == set(BASES)
+def test_migration_chains_after_0170_and_is_the_single_head():
+    assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert script.get_heads() == [HEAD]
 
@@ -44,7 +43,7 @@ def isolated_db():
     try:
         settings.database_url = url
         command.upgrade(cfg, "head")
-        command.downgrade(cfg, BASES[0])  # one step back: 0170 off, both 0169 heads remain
+        command.downgrade(cfg, BASE)
         yield {"cfg": cfg, "url": url}
     finally:
         settings.database_url = original
@@ -94,6 +93,6 @@ def test_backfill_one_active_row_per_recorded_offer_and_round_trip(isolated_db):
     assert [tuple(r) for r in rows] == [(with_offer, "conditional", date(2026, 1, 1), date(2026, 2, 1), "IELTS", "active", None)]
     _sql(url, "UPDATE overseas_applications SET offer_type = 'pathway', offer_date = '2026-01-01' WHERE id = :id", {"id": without})  # widened CHECK
     _sql(url, "UPDATE overseas_applications SET offer_type = NULL, offer_date = NULL WHERE id = :id", {"id": without})
-    command.downgrade(cfg, BASES[0])
+    command.downgrade(cfg, BASE)
     assert "offer_type" in _columns(url, "overseas_applications")
     assert "application_offers" not in {r[0] for r in _sql(url, "SELECT tablename FROM pg_tables WHERE schemaname = 'public'")}

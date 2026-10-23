@@ -3,9 +3,12 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ApplicationOffersPanel from "./ApplicationOffersPanel";
+import ApplicationOutcomeForm from "./ApplicationOutcomeForm";
 import ApplicationSubStatusForm from "./ApplicationSubStatusForm";
+import ReopenOutcomeButton from "./ReopenOutcomeButton";
+import { isTerminal, outcomeChoices } from "@/lib/applicationOutcome";
 
-type ApplicationRow = { id: string; student: string; university: string; reference: string | null; status: string; sub_status?: string | null; sub_status_label?: string | null; next_action: string | null; is_agency?: boolean };
+type ApplicationRow = { id: string; student: string; university: string; reference: string | null; status: string; sub_status?: string | null; sub_status_label?: string | null; next_action: string | null; is_agency?: boolean; outcome?: string | null; outcome_label?: string | null; outcome_summary?: string | null };
 
 // DATA_MODEL.md #6.2's contract-fixed enum -- kept in this order so "later stages" can
 // be offered as the only valid `to_status` choices for a given row (OVS-003-AC02:
@@ -31,6 +34,7 @@ export default function CounselorEvaluationPanel() {
   const [rows, setRows] = useState<ApplicationRow[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [subStatusId, setSubStatusId] = useState<string | null>(null); // ccrm-014: the card whose sub-status form is open
+  const [outcomeId, setOutcomeId] = useState<string | null>(null); // ccrm-015: the card whose outcome form is open
   const [offersId, setOffersId] = useState<string | null>(null); // ccrm-023: the card whose offers are open
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ id: string; text: string; failed: boolean } | null>(null);
@@ -91,19 +95,32 @@ export default function CounselorEvaluationPanel() {
         {rows.map((row) => {
           const currentIndex = STAGES.indexOf(row.status);
           // AGN-023 (DEC-SCOPE-090 H12): an agency application is enrolled by the agency's Master only (DEC-SCOPE-054); not offered here.
-          const nextStages = STAGES.slice(currentIndex + 1).filter((stage) => !(row.is_agency && stage === "enrolled"));
+          // ccrm-015 (O2): a closed application takes no stage write; on hold pauses them until resumed.
+          const closed = row.status === "withdrawn" || isTerminal(row.outcome);
+          const paused = closed || row.outcome === "on_hold";
+          const nextStages = paused ? [] : STAGES.slice(currentIndex + 1).filter((stage) => !(row.is_agency && stage === "enrolled"));
+          const saved = (text: string) => {
+            setMessage({ id: row.id, text, failed: false });
+            setOutcomeId(null);
+            router.refresh();
+            load();
+          };
           return (
             <div className="card" key={row.id}>
               {/* QA-01: the two badges wrap together without an indent */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 <span className="badge">{label(row.status)}</span>
                 {row.sub_status_label && <span className="badge">{row.sub_status_label}</span>}
+                {row.outcome_label && <span className={closed ? "status error" : "status pending"}>{row.outcome_label}</span>}
               </div>
               <h4 style={{ marginTop: 10 }}>{row.student}</h4>
               <p className="muted" style={{ fontSize: 13 }}>{row.university}</p>
               {row.next_action && <p className="muted" style={{ fontSize: 13 }}>{row.next_action}</p>}
               {row.is_agency && <p className="muted" style={{ fontSize: 13 }}>Enrollment is confirmed by the agency.</p>}
-              {nextStages.length === 0 ? (
+              {row.outcome_summary && <p style={{ fontSize: 13 }}>{row.outcome_summary}</p>}
+              {paused ? (
+                <p className="muted" style={{ fontSize: 13 }}>{closed ? "This application is closed -- only the Overseas Admin can reopen it." : "On hold -- resume it to change its stage."}</p>
+              ) : nextStages.length === 0 ? (
                 <p className="muted" style={{ fontSize: 13 }}>No further stage to advance to.</p>
               ) : openId === row.id ? (
                 <form className="form" onSubmit={(event) => submit(event, row.id)}>
@@ -126,7 +143,7 @@ export default function CounselorEvaluationPanel() {
               ) : (
                 <button className="btn small" onClick={() => setOpenId(row.id)}>Advance stage</button>
               )}
-              {row.status !== "withdrawn" &&
+              {!paused &&
                 (subStatusId === row.id ? (
                   <ApplicationSubStatusForm
                     id={row.id}
@@ -149,7 +166,28 @@ export default function CounselorEvaluationPanel() {
                     Update sub-status
                   </button>
                 ))}
-              {row.status !== "withdrawn" && (
+              {(row.outcome === "on_hold" || row.outcome === "deferred") && (
+                <div style={{ marginTop: 8 }}>
+                  <ReopenOutcomeButton applicationId={row.id} action="Resume" onDone={saved} />
+                </div>
+              )}
+              {outcomeChoices(row.status, row.outcome).length > 0 &&
+                (outcomeId === row.id ? (
+                  <ApplicationOutcomeForm
+                    id={row.id}
+                    stage={row.status}
+                    outcome={row.outcome}
+                    onSaved={(_data, text) => saved(`${text} The student has been notified.`)}
+                    onFailed={(text) => setMessage({ id: row.id, text, failed: true })}
+                    onCancel={() => setOutcomeId(null)}
+                  />
+                ) : (
+                  <button className="btn ghost small" style={{ display: "block", marginTop: 8 }} onClick={() => (setOutcomeId(row.id), setMessage(null))}>
+                    Record outcome
+                  </button>
+                ))}
+              {/* ccrm-023: offers stay readable on hold (the server refuses a new one until resumed); a closed application has none to change */}
+              {!closed && (
                 <button
                   type="button"
                   className="btn ghost small"
@@ -160,16 +198,7 @@ export default function CounselorEvaluationPanel() {
                   {offersId === row.id ? "Hide offers" : "Offers"}
                 </button>
               )}
-              {offersId === row.id && (
-                <ApplicationOffersPanel
-                  applicationId={row.id}
-                  onChanged={(text) => {
-                    setMessage({ id: row.id, text, failed: false });
-                    router.refresh();
-                    load();
-                  }}
-                />
-              )}
+              {offersId === row.id && <ApplicationOffersPanel applicationId={row.id} onChanged={saved} />}
               {message?.id === row.id && (
                 <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 8 }}>
                   {message.text}

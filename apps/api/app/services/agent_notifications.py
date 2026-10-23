@@ -158,12 +158,21 @@ async def sub_status_changed(db: AsyncSession, application: OverseasApplication,
 
 
 async def _other_side(db: AsyncSession, application: OverseasApplication, actor: User) -> tuple[list[User], str]:
-    """CC5: the EduSphere counselor when the agency acted, else the AGN-017 recipients (an agency application only)."""
+    """CC5: the EduSphere counselor when the agency acted, else the AGN-017 recipients -- and the page each side opens."""
     if actor.role == "agent":
         counselor = await db.get(User, application.counselor_id) if application.counselor_id else None
         return ([counselor] if counselor is not None and counselor.active else []), "/overseas/counselor/applications"
     record = await db.get(AgentStudent, application.agent_student_id)
     return (await recipients(db, record, actor) if record else []), APPLICATIONS_URL
+
+
+async def outcome_changed(db: AsyncSession, application: OverseasApplication, actor: User, text: str) -> None:
+    """ccrm-015 (DEC-SCOPE-244, CC5): an outcome was set or cleared on an agency application -- the other side is told."""
+    if application.agent_student_id is None:
+        return
+    users, url = await _other_side(db, application, actor)
+    university = clean_text(await db.scalar(select(University.name).where(University.id == application.university_id)))
+    await notify(db, users, "Application outcome changed", f"{university}: {text}.", url)
 
 
 async def offer_changed(db: AsyncSession, application: OverseasApplication, actor: User, title: str) -> None:

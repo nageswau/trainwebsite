@@ -3533,9 +3533,22 @@ Deep-link targets for the travel reminder (bdm-012): `/bdm/travel/{id}#trip-appo
 | `GET /api/v1/portal/overseas/{counselor,admin}/{students,applications}`, `…/student/applications` | Authenticated | unchanged | A `Sub-status` column (`sub_status_label`); counselor/admin rows also carry `sub_status`. Other sections unchanged. |
 
 
+## 12EW. Application exception outcomes (ccrm-015) — addendum, 2026-10-23
+
+`DEC-SCOPE-244`. Migration `0170_application_outcomes`. RBAC §2.159. Values: `app/application_outcome.py`.
+
+| Method/Path | Auth | Roles | Behaviour |
+|---|---|---|---|
+| `POST /api/v1/workflows/overseas/applications/{id}/outcome` | Authenticated | `counselor` (own applications, direct and agency), `overseas_admin` | Body `{"outcome": rejected\|withdrawn\|deferred\|on_hold\|offer_declined, "outcome_date"?, "reason"?, "requested_by"?, "next_steps"?, "document_id"?, "new_intake"?, "application_deadline"?, "offer_deadline"?, "review_date"?, "hold_owner_id"?, "another_offer_preferred"?}` (extra keys `422`). Required: rejected → reason; withdrawn → reason + requested_by (student/counselor/agent/university); deferred → new_intake; on_hold → reason + review_date; offer_declined → reason; else `422`. Future `outcome_date`, past `review_date` → `422`; offer declined before an offer → `422`; letter not of this application → `422`; hold owner not an active overseas counselor/admin → `422`. Closed (terminal outcome or withdrawn) → `409`; enrolled → `409`; archived agency record → `409`. Writes one `application_outcomes` row, a history row (`Outcome: <label> -- <reason>`), audit `overseas.application.outcome`; withdrawn also sets `status='withdrawn'`; deferred updates `intake` and the given deadlines. Student and (agency application) agency notified. `200 {"id", "status", "sub_status", "outcome", "detail"}`. |
+| `POST /api/v1/workflows/overseas/applications/{id}/outcome/reopen` | Authenticated | `counselor` (own; on hold / deferred only), `overseas_admin` | Body `{"reason"}` (blank → `422`). No outcome → `409`; a terminal outcome by a counselor → `403`. Clears the outcome (a `cleared` event + history row); a withdrawn application returns to the stage and sub-status it was withdrawn from. Audit `overseas.application.outcome_reopen`. Same response. |
+| `POST /api/v1/workflows/overseas/agent/crm/applications/{id}/status` | unchanged | `agent` | Adds optional `requested_by` (only with `to_status: withdrawn`, else `422`; default `agent`). A withdraw also sets the outcome and tells the EduSphere counselor ("Application outcome changed"). On hold → forward moves `409`, withdraw allowed. |
+| `/advance`, `/sub-status`, `PATCH /overseas/applications/{id}` (status), counselor assign, agency sub-status / offer / enrollment | unchanged | unchanged | A terminal outcome → `409 "This application is <outcome> -- only the Overseas Admin can reopen it"` (withdrawn keeps `"This application is withdrawn"`); on hold → `409` on stage moves. |
+| `GET …/{id}/status`, agency detail | unchanged | unchanged | Add `outcome` (staff: reason, requested_by, review_date, hold_owner, document_id, another_offer_preferred; student: outcome, label, date, next steps, new intake). Agency `read_only_reason` adds rejected / offer_declined / visa_refused. |
+| `GET /api/v1/portal/overseas/{counselor,admin}/{students,applications}`, `…/student/applications` | unchanged | unchanged | An `Outcome` column (staff `outcome_summary`, student `outcome_label`); admin rows add `reopen` (`reopen_outcome` column) on closed rows. Create routes (direct, agency, school bridge) ignore terminal applications in the duplicate check (O3). |
+
 ## 12EX. Offer records with history (ccrm-023) — addendum, 2026-10-23
 
-`DEC-SCOPE-245`. Migration `0170_application_offers`. RBAC §2.160. Code: `app/services/application_offers.py`, `app/api/application_offers.py`.
+`DEC-SCOPE-245`. Migration `0171_application_offers`. RBAC §2.160. Code: `app/services/application_offers.py`, `app/api/application_offers.py`.
 
 | Method/Path | Auth | Roles | Behaviour |
 |---|---|---|---|

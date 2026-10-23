@@ -1,9 +1,9 @@
 """ccrm-023 -- offer records with history: application_offers, the widened offer-type CHECK, and the backfill.
 
-Revision ID: 0170_application_offers
-Revises: 0169_lead_next_action, 0169_overseas_student_notes
+Revision ID: 0171_application_offers
+Revises: 0170_application_outcomes
 
-docs/superpowers/specs/2026-10-23-ccrm-023-application-offers-design.md (DEC-SCOPE-245). Also merges main's two 0169 heads. 0001
+docs/superpowers/specs/2026-10-23-ccrm-023-application-offers-design.md (DEC-SCOPE-245), after ccrm-015's 0170_application_outcomes. 0001
 builds a fresh database from the current models, which already carry the table, so it is created only when missing (0166's idiom). The
 backfill turns each application offer recorded in the columns (AGN-010) into one active row, once (NOT EXISTS). TYPES and STATUSES
 repeat app.models.APPLICATION_OFFER_TYPES / _STATUSES (test_ccrm_023_migration). downgrade() drops the table and restores the
@@ -14,8 +14,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0170_application_offers"
-down_revision = ("0169_lead_next_action", "0169_overseas_student_notes")
+revision = "0171_application_offers"
+down_revision = "0170_application_outcomes"
 branch_labels = None
 depends_on = None
 

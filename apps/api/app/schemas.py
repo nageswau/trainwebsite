@@ -879,6 +879,9 @@ class AgentApplicationUpdate(_AgentApplicationFields):
         return self
 
 
+OutcomeRequester = Literal["student", "counselor", "agent", "university"]  # ccrm-015: app/application_outcome.py REQUESTERS
+
+
 class AgentApplicationStatus(BaseModel):
     """`expected_status`: the status the caller saw; a mismatch is a 409, so a stale screen cannot act on a changed application."""
 
@@ -887,11 +890,67 @@ class AgentApplicationStatus(BaseModel):
     expected_status: str | None = Field(default=None, max_length=50)
     notes: str | None = None
     next_action: ApplicationNextAction = None
+    requested_by: OutcomeRequester | None = None  # ccrm-015: who asked for a withdrawal (default agent); only with `withdrawn`
 
     @field_validator("notes")
     @classmethod
     def _notes(cls, value):
         return clean_free_text(value, 2000)
+
+
+class ApplicationOutcomeSet(BaseModel):
+    """ccrm-015 (DEC-SCOPE-244): set an exception outcome. Each outcome's required fields are a 422 here; the route checks what needs the
+    database or today's date (closed, enrolled, offer stage, the letter, the hold owner, a past review date)."""
+
+    model_config = {"extra": "forbid"}
+    outcome: Literal["rejected", "withdrawn", "deferred", "on_hold", "offer_declined"]
+    outcome_date: date | None = None
+    reason: str | None = None
+    requested_by: OutcomeRequester | None = None
+    next_steps: str | None = None
+    document_id: UUID | None = None
+    new_intake: str | None = Field(default=None, max_length=80)
+    application_deadline: date | None = None
+    offer_deadline: date | None = None
+    review_date: date | None = None
+    hold_owner_id: UUID | None = None
+    another_offer_preferred: bool | None = None
+
+    @field_validator("reason", "next_steps", "new_intake")
+    @classmethod
+    def _text(cls, value):
+        return clean_free_text(value, 2000)
+
+    @model_validator(mode="after")
+    def _required(self):
+        needed = {
+            "rejected": ("reason",),
+            "withdrawn": ("reason", "requested_by"),
+            "deferred": ("new_intake",),
+            "on_hold": ("reason", "review_date"),
+            "offer_declined": ("reason",),
+        }[self.outcome]
+        missing = [name for name in needed if getattr(self, name) is None]
+        if missing:
+            raise ValueError(f"{', '.join(missing)} required for {self.outcome.replace('_', ' ')}")
+        if self.outcome_date is not None and self.outcome_date > date.today():
+            raise ValueError("outcome_date cannot be in the future")
+        return self
+
+
+class ApplicationOutcomeReopen(BaseModel):
+    """ccrm-015: resume (on hold, deferred) or reopen (a terminal outcome, Overseas Admin only) -- always with a reason."""
+
+    model_config = {"extra": "forbid"}
+    reason: str
+
+    @field_validator("reason")
+    @classmethod
+    def _reason(cls, value):
+        cleaned = clean_free_text(value, 2000)
+        if cleaned is None:
+            raise ValueError("reason is required")
+        return cleaned
 
 
 class ApplicationSubStatusChange(BaseModel):

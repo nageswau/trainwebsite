@@ -290,6 +290,25 @@ async def test_a_withdrawn_application_is_409(db_session, world):
 
 
 @pytest.mark.asyncio
+async def test_ccrm_015_outcomes_on_hold_and_terminal_refuse_offer_writes(db_session, world):
+    """On hold refuses an offer write (it moves the stage / sub-status) but not a letter upload; a terminal outcome refuses both."""
+    app = await fresh(db_session, world["direct_app"])
+    app.outcome = "on_hold"
+    await db_session.commit()
+    async with client_for(world["counselor"].email) as c:
+        r = await c.post(OFFERS.format(app.id), json=body(world["direct_letter"]))
+        assert r.status_code == 409 and "on hold" in r.json()["detail"]
+        assert (await c.post(LETTERS.format(app.id), files={"file": ("offer.pdf", PDF, "application/pdf")})).status_code == 201
+    app = await fresh(db_session, app)
+    app.outcome = "rejected"
+    await db_session.commit()
+    async with client_for(world["counselor"].email) as c:
+        assert (await c.post(OFFERS.format(app.id), json=body(world["direct_letter"]))).status_code == 409
+        assert (await c.post(LETTERS.format(app.id), files={"file": ("offer.pdf", PDF, "application/pdf")})).status_code == 409
+    assert await _offers(db_session, app) == []
+
+
+@pytest.mark.asyncio
 async def test_the_counselor_uploads_an_offer_letter_then_records_with_it(db_session, world):
     app = world["app"]  # agency record: the document is owned like the application
     async with client_for(world["counselor"].email) as c:

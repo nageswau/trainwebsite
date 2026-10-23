@@ -8,6 +8,7 @@ import AgentApplicationOffer from "./AgentApplicationOffer";
 import AgentApplicationStatusForm from "./AgentApplicationStatusForm";
 import AgentApplicationVisa from "./AgentApplicationVisa";
 import ApplicationSubStatusForm from "./ApplicationSubStatusForm";
+import OutcomeSummary from "./OutcomeSummary";
 import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { AGENT_MAX_STAGE, AgentApplicationDetail as Detail, APPLICATIONS_URL, deadlineText, READ_ONLY_TEXT, stageLabel, todayIso } from "@/lib/agentApplications";
@@ -122,6 +123,7 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
           {READ_ONLY_TEXT[detail.read_only_reason]}
         </p>
       )}
+      {detail.outcome && <OutcomeSummary outcome={detail.outcome} />}
       {editing ? (
         <AgentApplicationEditForm detail={detail} onSaved={saved} onFailed={editFailed} onCancel={() => {
             focusAfter(editId);
@@ -191,7 +193,7 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
             />
           )}
           {!detail.read_only_reason && !openForm && <AgentApplicationStatusForm detail={detail} onSaved={saved} onFailed={failed} />}
-          {!detail.read_only_reason && !openForm && (
+          {!detail.read_only_reason && !openForm && detail.outcome?.outcome !== "on_hold" && (
             <ApplicationSubStatusForm
               id={detail.id}
               url={`${APPLICATIONS_URL}/${detail.id}/sub-status`}

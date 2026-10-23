@@ -2,7 +2,7 @@
 
 Date 2026-10-23. Backlog: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` § `ccrm-023` (source §9, §15; CC4, CC5). Folds in `nehn-001`
 (`docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md`). Decision `DEC-SCOPE-245` (amends `DEC-SCOPE-056`). Migration
-`0170_application_offers` (merges main's two `0169` heads). API §12EX. RBAC §2.160. Numbers are rechecked before the PR.
+`0171_application_offers` (after ccrm-015's `0170_application_outcomes`). API §12EX. RBAC §2.160. Numbers are rechecked before the PR.
 
 ## 1. Owner answers (2026-10-23, clarifying prompt)
 
@@ -51,7 +51,7 @@ Date 2026-10-23. Backlog: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` § `ccrm-023`
 A partial unique index `uq_application_offers_active (application_id) WHERE status = 'active'` makes "one current offer" a database
 rule. Writers also hold the application row lock, so concurrent saves queue up and the last one wins (CC5).
 
-Migration `0170`: create the table, widen `ck_overseas_applications_offer_type` to the four types, and backfill one `active` row per
+Migration `0171`: create the table, widen `ck_overseas_applications_offer_type` to the four types, and backfill one `active` row per
 application whose `offer_type` is set, from the columns. The steps are guarded (0001 builds from models). The downgrade drops the table
 and restores the 2-type CHECK; it fails loudly if a pathway/other value is present, which is the honest behaviour.
 

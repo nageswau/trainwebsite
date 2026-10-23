@@ -824,11 +824,31 @@ half.
 | `ccrm-003-AC8` | Migration round trip and length check | `apps/api/tests/test_ccrm_003_migration.py` |
 | `ccrm-003-AC9` | Dashboard shows the counselor's follow-up | Deferred to ccrm-032 (no counselor dashboard follow-up tile yet) |
 
+**Addendum, 2026-10-23 (`ccrm-015`)** — one row and its acceptance-criteria map. Application exception outcomes.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `ccrm-015` | Requirement: CC1/CC4/CC5 + owner answers O1–O4 (in-session 2026-10-23, `EXPLICIT_APPROVAL`) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` §3 → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-244` → design `docs/superpowers/specs/2026-10-23-ccrm-015-application-outcomes-design.md` → plan `docs/superpowers/plans/2026-10-23-ccrm-015-application-outcomes.md`; `API_CONTRACT.md` §12EW, `RBAC_MATRIX.md` §2.159, `DATA_MODEL.md` (0170) | none | Built on `worktree-ccrm-015`; lite API set, vitest, e2e and browser QA |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `ccrm-015-AC1` | O2/O4 values, terminal set, labels | `apps/api/tests/test_ccrm_015_outcomes.py::test_the_values_are_the_owner_list`; `apps/web/tests/components/ApplicationOutcome.test.tsx` (outcomeChoices) |
+| `ccrm-015-AC2` | Rejecting University C leaves A and B unchanged (AC 9, Appendix B) | `::test_rejecting_university_c_leaves_a_and_b_unchanged` |
+| `ccrm-015-AC3` | Per-outcome required fields; On Hold without review date → 422; no waitlist / visa refused via the route | `::test_each_outcome_requires_its_fields` |
+| `ccrm-015-AC4` | Terminal outcome blocks stage writes; Admin-only reopen with reason | `::test_a_terminal_outcome_closes_every_stage_write_until_the_admin_reopens` |
+| `ccrm-015-AC5` | On hold pauses moves; resume clears | `::test_on_hold_pauses_moves_and_the_counselor_resumes`, `::test_on_hold_blocks_the_agency_moves_but_not_its_withdraw` |
+| `ccrm-015-AC6` | Deferred moves intake/deadlines and continues | `::test_deferral_moves_the_intake_and_the_application_continues` |
+| `ccrm-015-AC7` | Withdrawn by counselor or agent with requester (O1); reopen restores the stage | `::test_counselor_withdrawal_sets_status_and_the_admin_reopen_restores_the_stage`, `::test_the_agency_withdraw_records_the_outcome_and_tells_the_counselor` |
+| `ccrm-015-AC8` | Offer declined needs an offer; enrolled refused; letter belongs to the application | `::test_an_offer_can_be_declined_and_enrolled_is_refused`, `::test_the_rejection_letter_must_belong_to_the_application` |
+| `ccrm-015-AC9` | Scope/roles; re-apply after rejection (O3); CC5 agency notice | `::test_scope_and_roles`, `::test_a_rejected_application_frees_the_slot_for_a_new_one`, `::test_counselor_outcome_on_an_agency_application_tells_the_agency` |
+| `ccrm-015-AC10` | Reads: portal columns, filtered student view, admin reopen control; UI forms | `::test_reads_carry_the_outcome_and_the_student_view_is_filtered`; `ApplicationOutcome.test.tsx`; `AgentApplicationDetail.test.tsx` (ccrm-015) |
+| `ccrm-015-AC11` | Migration 0170 merge, backfill, CHECK, round trip | `apps/api/tests/test_ccrm_015_migration.py` (3) |
+
 **Addendum, 2026-10-23 (`ccrm-023`)** — one row and its acceptance-criteria map. Offer records with history; nehn-001 folded in.
 
 | Feature ID | Contract documents | Old workbook cases | Status |
 |---|---|---|---|
-| `ccrm-023` | Requirement: CC4/CC5 + owner answers OF1–OF4 (in-session 2026-10-23, `EXPLICIT_APPROVAL`) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-023` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-245` → design `docs/superpowers/specs/2026-10-23-ccrm-023-application-offers-design.md` → plan `docs/superpowers/plans/2026-10-23-ccrm-023-application-offers.md`; `API_CONTRACT.md` §12EX, `RBAC_MATRIX.md` §2.160, `DATA_MODEL.md` (0170) | none | Built on `worktree-ccrm-023`; lite API set, vitest, e2e and browser QA |
+| `ccrm-023` | Requirement: CC4/CC5 + owner answers OF1–OF4 (in-session 2026-10-23, `EXPLICIT_APPROVAL`) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-023` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-245` → design `docs/superpowers/specs/2026-10-23-ccrm-023-application-offers-design.md` → plan `docs/superpowers/plans/2026-10-23-ccrm-023-application-offers.md`; `API_CONTRACT.md` §12EX, `RBAC_MATRIX.md` §2.160, `DATA_MODEL.md` (0171) | none | Built on `worktree-ccrm-023`; lite API set, vitest, e2e and browser QA |
 
 | AC | Criterion | Tests |
 |---|---|---|
@@ -838,5 +858,5 @@ half.
 | `ccrm-023-AC4` | Agency PUT/PATCH write rows + sub-status; CC5 notices both ways | `::test_the_agency_put_writes_a_row_sets_the_sub_status_and_tells_the_counselor`, `::test_the_agency_patch_of_the_offer_deadline_supersedes_the_active_row`, `::test_on_an_agency_application_the_counselor_records_and_the_agency_is_told` |
 | `ccrm-023-AC5` | Withdraw/expire: reason, mirror cleared, stage kept, sub-status cleared, 409/404 | `::test_withdraw_needs_a_reason_clears_the_mirror_keeps_the_stage_and_clears_the_sub_status`, `::test_an_offer_of_another_application_is_404` |
 | `ccrm-023-AC6` | Scope and roles; withdrawn 409; letter upload | `::test_scope_and_roles`, `::test_a_withdrawn_application_is_409`, `::test_the_counselor_uploads_an_offer_letter_then_records_with_it` |
-| `ccrm-023-AC7` | Migration 0170: merge, CHECK widened, backfill, round trip | `apps/api/tests/test_ccrm_023_migration.py` (3) |
+| `ccrm-023-AC7` | Migration 0171: chain after 0170, CHECK widened, backfill, round trip | `apps/api/tests/test_ccrm_023_migration.py` (3) |
 | `ccrm-023-AC8` | nehn-001 ACs 1–4 + student offer columns | `::test_nehn_001_an_offer_stage_application_counts_for_the_student`, `::test_nehn_001_the_student_offer_list_shows_the_recorded_type_and_deadline` |

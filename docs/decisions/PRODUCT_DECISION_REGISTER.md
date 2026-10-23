@@ -9046,6 +9046,25 @@ the next action; A7 admin `owner_id` null stays allowed; A8 no reason / next-act
 2.154–2.156 held by parallel ccrm sessions).
 - **Feature ID authorized:** `ccrm-003`. **Status:** built on `feature/ccrm-003`.
 
+### DEC-SCOPE-244 — Application exception outcomes (`ccrm-015`)
+
+**Status:** CONFIRMED by owner 2026-10-23 (Claude Code session). Amends `DEC-WF-001`: closes the PRD open item on rejection / deferral
+outcomes with an `outcome` beside the 7 stages (the stages, their order and the forward-only rule are unchanged). Follows CC1, CC4, CC5.
+**Evidence:** owner answers O1–O4 through the clarifying-question prompt, 2026-10-23 (`EXPLICIT_APPROVAL`); source PDF `UNVERIFIED`.
+**Decision:** each overseas application has an optional `outcome` — Rejected (reason, next steps, optional letter), Withdrawn (who
+requested, reason), Deferred (new intake, revised deadlines; continues), On Hold (reason, review date — required, owner), Offer Declined
+(reason, prefers another offer), Visa Refused (enum only, ccrm-026). Recorded on ONE application (AC 9). O1 withdrawn keeps
+`status='withdrawn'` and sets the outcome (backfilled); O2 rejected / withdrawn / offer declined / visa refused are terminal — every stage
+write is refused until the Overseas Admin reopens with a reason (a withdrawn application returns to its earlier stage); on hold pauses
+stage moves until resumed (counselor or Admin); O3 terminal applications free the duplicate slot; O4 no waitlist. Roles: counselor (own,
+agency too), Overseas Admin (any, reopen); agent keeps its withdraw (now with who requested); student reads a filtered view.
+**Builder's calls:** B1 rejection letter = optional `document_id` of this application, no picker yet (ccrm-019/021); B2 the student is
+told on every outcome; B3 agency withdraw reason stays optional (AGN-008 compatibility); B4 management and school analytics counts are
+unchanged; B5 other non-stage edits (reference, intake) stay allowed on a closed application, as on withdrawn before.
+**Numbering:** migration `0170_application_outcomes` (merges ccrm-003's `0169_lead_next_action` and ccrm-010's
+`0169_overseas_student_notes`); API §12EW; RBAC §2.159.
+- **Feature ID authorized:** `ccrm-015`. **Status:** built on `worktree-ccrm-015`.
+
 ### DEC-SCOPE-245 — Offer records with history; the counselor records offers on all applications (`ccrm-023`)
 
 **Status:** CONFIRMED by owner 2026-10-23 (Claude Code session). Amends `DEC-SCOPE-056` (AGN-010): the agency is no longer the only
@@ -9074,6 +9093,6 @@ Roles: counselor (own applications, direct and agency) and Overseas Admin write;
 - B4: the CC5 notice "Offer recorded / withdrawn / expired" goes to the other side; the agency PUT keeps its AGN-017 stage notice.
 - B5: no amounts or reasons in audit metadata or logs.
 
-**Numbering:** migration `0170_application_offers` (merges `0169_lead_next_action` and `0169_overseas_student_notes`); API §12EX;
+**Numbering:** migration `0171_application_offers` (after ccrm-015's `0170_application_outcomes`, which merged the two `0169` heads); API §12EX;
 RBAC §2.160 (244 / 12EW / 2.159 held by the parallel ccrm-015 session).
 - **Feature ID authorized:** `ccrm-023`. **Status:** built on `worktree-ccrm-023`.
