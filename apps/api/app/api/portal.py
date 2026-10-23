@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -12,7 +12,23 @@ router = APIRouter(prefix="/portal", tags=["portal"])
 
 
 @router.get("/{division}/{role}/{section}")
-async def portal(division: str, role: str, section: str, request: Request, agency: str | None = None, counselor: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def portal(
+    division: str,
+    role: str,
+    section: str,
+    request: Request,
+    agency: str | None = None,
+    counselor: str | None = None,
+    country: str | None = None,
+    university: str | None = None,
+    intake: str | None = None,
+    stage: str | None = None,
+    sub_status: str | None = None,
+    created_from: str | None = Query(None, alias="from"),
+    created_to: str | None = Query(None, alias="to"),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     route_role = {
         "student": "it_student" if division == "it" else "overseas_student",
         "trainer": "trainer",
@@ -40,8 +56,12 @@ async def portal(division: str, role: str, section: str, request: Request, agenc
         raise HTTPException(403, REPORTS_REFUSED)
     # AGN-023 (DEC-SCOPE-090 H11): optional list filters; a filter on the wrong section or role is a 422, never ignored.
     # A repeated filter key would otherwise keep only the last value silently (B7); parse refuses it once availability is settled.
-    repeated = frozenset(key for key in ("agency", "counselor") if len(request.query_params.getlist(key)) > 1)
-    filters = await application_filters.parse(db, user, section, agency, counselor, repeated)
+    # ccrm-012 (DEC-SCOPE-246 QS6): the country / university / intake / stage / sub-status / date filters follow the same rules.
+    repeated = frozenset(key for key in application_filters.FILTER_KEYS if len(request.query_params.getlist(key)) > 1)
+    filters = await application_filters.parse(
+        db, user, section, agency, counselor, repeated, country=country, university=university, intake=intake, stage=stage, sub_status=sub_status,
+        created_from=created_from, created_to=created_to,
+    )
     payload = await section_payload(db, user, section, filters=filters)
     if payload is None:
         raise HTTPException(404, "Workspace not found")

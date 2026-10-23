@@ -860,3 +860,18 @@ half.
 | `ccrm-023-AC6` | Scope and roles; withdrawn 409; letter upload | `::test_scope_and_roles`, `::test_a_withdrawn_application_is_409`, `::test_the_counselor_uploads_an_offer_letter_then_records_with_it` |
 | `ccrm-023-AC7` | Migration 0171: chain after 0170, CHECK widened, backfill, round trip | `apps/api/tests/test_ccrm_023_migration.py` (3) |
 | `ccrm-023-AC8` | nehn-001 ACs 1–4 + student offer columns | `::test_nehn_001_an_offer_stage_application_counts_for_the_student`, `::test_nehn_001_the_student_offer_list_shows_the_recorded_type_and_deadline` |
+
+**Addendum, 2026-10-23 (`ccrm-012`)** — one row and its acceptance-criteria map. Counselor quick search and list filters.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `ccrm-012` | Requirement: backlog `ccrm-012` (source §12, `UNVERIFIED`) + QS1–QS8 recommended defaults (`NEEDS_CONFIRMATION`) → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-246` → design `docs/superpowers/specs/2026-10-23-ccrm-012-counselor-search-filters-design.md` → plan `docs/superpowers/plans/2026-10-23-ccrm-012-counselor-search-filters.md`; `API_CONTRACT.md` §12EY, `RBAC_MATRIX.md` §2.161 | none | Built on `worktree-ccrm-012`; lite API set, vitest, e2e and browser QA |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `ccrm-012-AC1` | One search across own leads, students, applications by name, phone (normalized), email, student / application / lead code | `apps/api/tests/test_ccrm_012_search.py::test_finds_each_entity_by_name_email_phone_and_code`, `::test_items_carry_labels_and_links`, `::test_lead_items_link_to_the_lead`; `apps/web/tests/components/ccrm012.searchFilters.test.tsx` (CounselorQuickSearch) |
+| `ccrm-012-AC2` | Backlog acceptance: another counselor's student's phone returns nothing | `::test_another_counselors_student_phone_returns_nothing` |
+| `ccrm-012-AC3` | Min 3 chars, literal wildcards, overseas counselor only, 30/min throttle, audit without search text | `::test_query_length_is_enforced`, `::test_wildcards_are_literal`, `::test_only_an_overseas_counselor_may_search`, `::test_each_search_is_audited_without_the_text_and_throttled` |
+| `ccrm-012-AC4` | Students / Applications filter by destination, university, intake, stage, sub-status, date range; in scope; options in scope; 422s | `apps/api/tests/test_ccrm_012_filters.py` (all); `apps/api/tests/test_agn_023_filters.py` (unchanged contract) |
+| `ccrm-012-AC5` | Leads filter by stage, priority, date range; 422s | `apps/api/tests/test_ccrm_012_lead_filters.py` |
+| `ccrm-012-AC6` | UI: filter bar, leads filters in URL, quick search on the dashboard | `apps/web/tests/components/ccrm012.searchFilters.test.tsx`; e2e `apps/web/tests/e2e/ccrm-012-counselor-search-filters.spec.ts` |
