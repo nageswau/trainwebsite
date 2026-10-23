@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ApplicationOffersPanel from "./ApplicationOffersPanel";
 import ApplicationOutcomeForm from "./ApplicationOutcomeForm";
+import ApplicationStatusHistory from "./ApplicationStatusHistory";
 import ApplicationSubStatusForm from "./ApplicationSubStatusForm";
 import ReopenOutcomeButton from "./ReopenOutcomeButton";
 import { isTerminal, outcomeChoices } from "@/lib/applicationOutcome";
@@ -36,6 +37,7 @@ export default function CounselorEvaluationPanel() {
   const [subStatusId, setSubStatusId] = useState<string | null>(null); // ccrm-014: the card whose sub-status form is open
   const [outcomeId, setOutcomeId] = useState<string | null>(null); // ccrm-015: the card whose outcome form is open
   const [offersId, setOffersId] = useState<string | null>(null); // ccrm-023: the card whose offers are open
+  const [historyId, setHistoryId] = useState<string | null>(null); // ccrm-016: the card whose status history is open
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ id: string; text: string; failed: boolean } | null>(null);
 
@@ -199,6 +201,17 @@ export default function CounselorEvaluationPanel() {
                 </button>
               )}
               {offersId === row.id && <ApplicationOffersPanel applicationId={row.id} onChanged={saved} />}
+              {/* ccrm-016: who changed what and why, any state; the key reloads it after a write on this card changes the row */}
+              <button
+                type="button"
+                className="btn ghost small"
+                style={{ display: "block", marginTop: 8 }}
+                aria-expanded={historyId === row.id}
+                onClick={() => setHistoryId(historyId === row.id ? null : row.id)}
+              >
+                {historyId === row.id ? "Hide status history" : "Status history"}
+              </button>
+              {historyId === row.id && <ApplicationStatusHistory key={`${row.status}|${row.sub_status}|${row.outcome}`} applicationId={row.id} />}
               {message?.id === row.id && (
                 <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 8 }}>
                   {message.text}

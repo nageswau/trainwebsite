@@ -217,8 +217,9 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
             {h.from_status ? `${stageLabel(h.from_status)} → ` : ""}
             {stageLabel(h.to_status)}
             {h.to_sub_status && ` (${subStatusLabel(h.to_sub_status)})`}
+            {h.outcome_label && ` · ${h.outcome_label}`}
             {h.changed_by && ` · ${h.changed_by}`} · {formatDateTimeIn(h.created_at, viewerTimeZone(), true)}
-            {h.notes && <div className="muted history-note">{h.notes}</div>}
+            {(h.notes || h.reason) && <div className="muted history-note">{h.notes || `Reason: ${h.reason}`}</div>}
           </li>
         ))}
       </ol>

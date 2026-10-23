@@ -117,7 +117,7 @@ from app.services import application_outcomes as outcomes
 from app.services import application_sub_status as sub_statuses
 from app.services import applications, counselor_students, course_skills, interviews, offers
 from app.services import recruiter_requirements as requirements
-from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, open_clause, owned, stage_label, with_owner
+from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, open_clause, owned, stage_label, status_history, with_owner
 from app.services.agent_documents import add_event, in_scope
 from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
 from app.services.agent_students import application_scope, student_scope
@@ -2202,17 +2202,15 @@ async def get_application_status(application_id: UUID, user: User = Depends(get_
     # applications list.
     _require(user, {"overseas_student", "counselor", "overseas_admin"}, "overseas")
     application = await _assigned_application(db, user, application_id)
-    history = (await db.scalars(select(ApplicationStatusHistory).where(ApplicationStatusHistory.application_id == application_id).order_by(ApplicationStatusHistory.created_at))).all()
+    staff = user.role != "overseas_student"
     event = (await outcomes.latest(db, [application.id])).get(application.id) if application.outcome else None
     return {
         "status": application.status,
         "sub_status": application.sub_status,
-        "outcome": outcomes.view(application, event, staff=user.role != "overseas_student"),  # ccrm-015: the student's view is filtered
+        "outcome": outcomes.view(application, event, staff=staff),  # ccrm-015: the student's view is filtered
         "next_action": application.next_action,
-        "history": [
-            {"from_status": h.from_status, "to_status": h.to_status, "from_sub_status": h.from_sub_status, "to_sub_status": h.to_sub_status, "next_action": h.next_action, "changed_at": h.created_at}
-            for h in history
-        ],
+        # ccrm-016 (DEC-SCOPE-247): author, notes and reason for staff only (H2); `changed_at` stays beside `created_at`
+        "history": [{**h, "changed_at": h["created_at"]} for h in await status_history(db, application.id, staff=staff)],
     }
 
 

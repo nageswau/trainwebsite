@@ -137,9 +137,13 @@ export type HistoryEntry = {
   to_status: string;
   from_sub_status?: string | null; // ccrm-014
   to_sub_status?: string | null;
+  outcome?: string | null; // ccrm-016: the outcome this row set ("cleared" on resume / reopen)
+  outcome_label?: string | null;
   next_action: string | null;
-  notes: string | null;
-  changed_by: string | null;
+  // staff only -- the student's rows have no author, notes or reason (ccrm-016 H2)
+  notes?: string | null;
+  reason?: string | null;
+  changed_by?: string | null;
   created_at: string;
 };
 export type AgentApplicationDetail = AgentApplicationItem & {

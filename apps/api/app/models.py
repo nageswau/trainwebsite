@@ -1919,6 +1919,7 @@ class OverseasStudentNote(Base, TimestampMixin):
 
 class ApplicationStatusHistory(Base, TimestampMixin):
     __tablename__ = "application_status_history"
+    __table_args__ = (CheckConstraint(_in("outcome", (*APPLICATION_OUTCOMES, OUTCOME_CLEARED)), name="ck_application_status_history_outcome"),)
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id", ondelete="CASCADE"), index=True)
     from_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -1927,6 +1928,9 @@ class ApplicationStatusHistory(Base, TimestampMixin):
     to_sub_status: Mapped[str | None] = mapped_column(String(40), nullable=True)
     next_action: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # ccrm-016 (DEC-SCOPE-247, H1): the outcome this row set ('cleared' on resume / reopen) and its reason; migration 0172
+    outcome: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     changed_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
