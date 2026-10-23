@@ -2618,6 +2618,16 @@ inside the existing role scope (a counselor searching another counselor's code g
 - QS1/QS2 (`UNVERIFIED`). Pinned by `test_ccrm_012_search.py::test_only_an_overseas_counselor_may_search` and
   `::test_another_counselors_student_phone_returns_nothing`; `test_ccrm_012_filters.py::test_a_filter_never_widens_scope`.
 
+### 2.162 Status history with author and reason *(added 2026-10-23 — `DEC-SCOPE-247`, ccrm-016)*
+
+| Route | `counselor` | `overseas_admin` | `agent` | `overseas_student` | others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET /workflows/overseas/applications/{id}/status` | ✅ own applications, full rows (`403` otherwise) | ✅ any, full rows | `403` (reads its agency detail) | ✅ own, rows without author / notes / reason | `403` | `401` |
+| `GET /workflows/overseas/agent/crm/applications/{id}` | unchanged | unchanged | ✅ scope unchanged; rows add outcome and reason | `403` | `403` | `401` |
+
+- H2 (owner, 2026-10-23). Pinned by `test_ccrm_016_history.py::test_the_student_sees_stage_sub_status_outcome_and_time_only` and
+  `::test_the_read_scope_is_unchanged`.
+
 ### 2.163 Document checklist templates *(added 2026-10-23 — `DEC-SCOPE-248`, ccrm-018)*
 
 | Route | `overseas_admin` | `counselor` | `super_admin` | `overseas_student`, `agent`, `university_rep`, others | Anonymous |

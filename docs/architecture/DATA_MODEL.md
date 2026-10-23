@@ -2128,7 +2128,14 @@ backfilled rows), `closed_by_id`, `closed_at`, timestamps. Partial unique index:
 mirrored to `overseas_applications.offer_type/offer_date/offer_deadline/offer_conditions/offer_document_id`, whose
 `ck_overseas_applications_offer_type` widens to the four types. The backfill writes one active row per application with `offer_type` set.
 
-## Document checklist templates (`ccrm-018`, `DEC-SCOPE-248`; migration `0173_checklist_templates`, after `0171_application_offers`)
+## Status history outcome and reason (`ccrm-016`, `DEC-SCOPE-247`; migration `0172_status_history_reason`, after ccrm-023's `0171_application_offers`)
+
+`application_status_history` adds `outcome` String(20) NULL (CHECK the six outcomes or `cleared`: the outcome that row set, `cleared` on
+resume / reopen) and `reason` Text NULL (the reason given for that row: outcome, resume / reopen, agency withdraw note, offer
+withdraw/expire). `notes` is unchanged. Backfill: rows matching an `application_outcomes` event of the same application with an identical
+`created_at` (same transaction) take its outcome and reason; remaining moves into `withdrawn` take `outcome = 'withdrawn'` and their note.
+
+## Document checklist templates (`ccrm-018`, `DEC-SCOPE-248`; migration `0173_checklist_templates`, after ccrm-016's `0172_status_history_reason`)
 
 `document_checklist_templates`: `id`, `name`, `kind` (CHECK admission / visa), `country_id` → countries, `university_id` → universities
 (nullable; must be in the country — app-level), `course_level` (nullable, CHECK the course master levels), `intake` (nullable text),

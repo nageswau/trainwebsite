@@ -1,7 +1,7 @@
 """ccrm-018 -- document checklist templates and their items.
 
 Revision ID: 0173_checklist_templates
-Revises: 0171_application_offers
+Revises: 0172_status_history_reason
 
 docs/superpowers/specs/2026-10-23-ccrm-018-document-checklist-templates-design.md (DEC-SCOPE-248). New tables only; nothing is seeded
 (spec §8: templates must not look universal). 0001 builds a fresh database from the current models, which already carry the tables, so
@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0173_checklist_templates"
-down_revision = "0171_application_offers"
+down_revision = "0172_status_history_reason"
 branch_labels = None
 depends_on = None
 

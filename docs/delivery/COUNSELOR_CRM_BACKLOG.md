@@ -437,6 +437,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **DB:** none (or `reason` column). **API:** extend response. **Authz:** unchanged scopes; student sees a filtered version
   (`NEEDS_CONFIRMATION`).
 - **Dependencies:** ccrm-014. **Complexity:** small. **Risk:** low.
+- **Status (2026-10-23):** built on `worktree-ccrm-016` — owner answers H1–H3 (`outcome` + `reason` columns on the history with a
+  backfill; the student's read filtered on the server; UI on counselor cards and the student panel, student 360 tab with ccrm-009),
+  `DEC-SCOPE-247`, migration `0172_status_history_reason`, API §12EZ, RBAC §2.162.
 
 ### `ccrm-017` — Student journey stage for direct students
 

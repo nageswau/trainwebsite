@@ -18,10 +18,10 @@ _spec = importlib.util.spec_from_file_location("_ccrm_018_migration_0173", VERSI
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0173_checklist_templates", "0171_application_offers"
+HEAD, BASE = "0173_checklist_templates", "0172_status_history_reason"
 
 
-def test_migration_chains_after_0171_and_is_the_single_head():
+def test_migration_chains_after_0172_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

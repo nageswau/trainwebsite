@@ -45,11 +45,11 @@ def refuse_on_hold(app: OverseasApplication) -> None:
         raise HTTPException(409, ON_HOLD)
 
 
-def _history(db: AsyncSession, user: User, app: OverseasApplication, before: tuple[str, str | None], note: str) -> None:
+def _history(db: AsyncSession, user: User, app: OverseasApplication, before: tuple[str, str | None], note: str, *, outcome: str, reason: str | None) -> None:
     db.add(
         ApplicationStatusHistory(
             application_id=app.id, from_status=before[0], to_status=app.status, from_sub_status=before[1], to_sub_status=app.sub_status,
-            next_action=app.next_action, notes=note, changed_by_id=user.id,
+            next_action=app.next_action, notes=note, outcome=outcome, reason=reason, changed_by_id=user.id,
         )
     )  # fmt: skip
 
@@ -112,7 +112,7 @@ async def record(db: AsyncSession, user: User, app: OverseasApplication, body) -
     if kind == "withdrawn":
         app.status = WITHDRAWN
     db.add(event)
-    _history(db, user, app, before, _note(f"Outcome: {label(kind)}", body.reason))
+    _history(db, user, app, before, _note(f"Outcome: {label(kind)}", body.reason), outcome=kind, reason=body.reason)
     return event
 
 
@@ -137,7 +137,7 @@ async def reopen(db: AsyncSession, user: User, app: OverseasApplication, reason:
         app.sub_status = fit_sub_status(stage, last.from_sub_status if last is not None else None)
     app.outcome = None
     db.add(ApplicationOutcome(application_id=app.id, outcome=CLEARED, outcome_date=date.today(), reason=reason, created_by_id=user.id))
-    _history(db, user, app, before, _note(f"{'Reopened' if cleared in TERMINAL else 'Resumed'} ({label(cleared)})", reason))
+    _history(db, user, app, before, _note(f"{'Reopened' if cleared in TERMINAL else 'Resumed'} ({label(cleared)})", reason), outcome=CLEARED, reason=reason)
     return cleared
 
 

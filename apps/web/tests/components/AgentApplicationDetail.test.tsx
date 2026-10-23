@@ -29,6 +29,17 @@ describe("AgentApplicationDetail (AGN-008)", () => {
     expect(within(screen.getByRole("list", { name: "Status history" })).getByText(/Enquiry/)).toBeInTheDocument();
   });
 
+  it("shows the outcome a history row set and its reason when there is no note (ccrm-016)", async () => {
+    const history = [
+      { from_status: "offer", to_status: "offer", next_action: null, notes: null, reason: "Course full", outcome: "rejected", outcome_label: "Rejected", changed_by: "Asha Counsellor", created_at: "2026-09-02T10:00:00Z" },
+    ];
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(json({ application: detail({ history }) }))));
+    render(<AgentApplicationDetail id="a1" onChanged={vi.fn()} onClose={vi.fn()} />);
+    const item = within(await screen.findByRole("list", { name: "Status history" })).getByRole("listitem");
+    expect(item).toHaveTextContent("Offer → Offer · Rejected · Asha Counsellor");
+    expect(item).toHaveTextContent("Reason: Course full");
+  });
+
   it("shows the EduSphere counsellor, or that none is assigned yet", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(json({ application: detail({ counselor_name: "Asha Rao" }) }))));
     const first = render(<AgentApplicationDetail id="a1" onChanged={vi.fn()} onClose={vi.fn()} />);

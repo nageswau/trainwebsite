@@ -169,7 +169,7 @@ async def close_offer(application_id: UUID, offer_id: UUID, payload: Application
     db.add(
         ApplicationStatusHistory(
             application_id=item.id, from_status=item.status, to_status=item.status, from_sub_status=before, to_sub_status=item.sub_status,
-            next_action=item.next_action, notes=f"{title}: {payload.reason}", changed_by_id=user.id,
+            next_action=item.next_action, notes=f"{title}: {payload.reason}", reason=payload.reason, changed_by_id=user.id,
         )
     )  # fmt: skip
     short = "Offer withdrawn" if payload.status == "withdrawn_by_university" else "Offer expired"

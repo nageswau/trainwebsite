@@ -18,7 +18,7 @@ Non-goals: instantiating a checklist on an application and enforcing the gate (c
   cases). Both kinds match on the same scope fields.
 - CC10 (backlog): gate mode `block` or `warn` per template.
 
-## 3. Data model (migration `0173_checklist_templates`, down_revision = current head)
+## 3. Data model (migration `0173_checklist_templates`, after ccrm-016's `0172_status_history_reason`)
 
 `document_checklist_templates`
 
