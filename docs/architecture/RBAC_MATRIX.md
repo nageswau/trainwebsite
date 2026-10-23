@@ -2597,3 +2597,12 @@ inside the existing role scope (a counselor searching another counselor's code g
 | `POST /workflows/overseas/agent/crm/applications/{id}/status` (withdraw) | `403` (agency gate) | `403` | ✅ own agency's applications (`404` otherwise) | `403` | `401` |
 
 - O1–O4 (owner, 2026-10-23). Students read a filtered outcome (no reason, owner or letter). Pinned by `test_ccrm_015_outcomes.py`.
+
+### 2.160 Application offers *(added 2026-10-23 — `DEC-SCOPE-245`, ccrm-023)*
+
+| Route | `counselor` | `overseas_admin` | `agent` | `overseas_student` | `university_rep`, others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET /workflows/overseas/applications/{id}/offers` | ✅ own applications (`403` otherwise) | ✅ any | ✅ own agency's applications | ✅ own | `403` | `401` |
+| `POST …/{id}/offer-letters`, `POST …/{id}/offers`, `POST …/{id}/offers/{offer_id}/withdraw` | ✅ own applications, direct and agency (`403` otherwise) | ✅ any | `403` (the agency uses its own PUT) | `403` | `403` | `401` |
+
+- CC4/OF2 (owner, 2026-10-23). Pinned by `test_ccrm_023_offers.py::test_scope_and_roles`.

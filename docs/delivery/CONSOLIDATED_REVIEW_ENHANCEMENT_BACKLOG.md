@@ -162,6 +162,8 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** the agent-side tests for AGN-010; school global-education funnel counts if they share the predicate.
 - **Open questions:** should a withdrawn-after-offer application stay in the offer count?
 - **Complexity:** small · **Risk:** low
+- **Status (2026-10-23):** built inside `ccrm-023` (owner OF1, `DEC-SCOPE-245`) with AGN-010's `counts_as_offer`, so an application
+  withdrawn after a recorded offer still counts (the AGN-010 O5 answer).
 
 #### `nehn-002` — Trainer certificate override form: send the override reason
 - **Source:** §11 "controlled override" (L244); audit finding. Evidence: code defect.

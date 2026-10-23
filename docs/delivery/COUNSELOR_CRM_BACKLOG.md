@@ -534,6 +534,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Dependencies:** ccrm-014. **Regression:** AGN-010 offer route, nehn-001 offer predicate, management funnel offer counts.
 - **Acceptance:** Appendix B "University B issues a conditional offer" — offer, conditions and deadline recorded, counselor alerted.
 - **Complexity:** large. **Risk:** high (changes agency ownership rules; amend `DEC-SCOPE-056`).
+- **Status (2026-10-23):** built on `worktree-ccrm-023` — `DEC-SCOPE-245`, migration `0171_application_offers` (after ccrm-015's
+  `0170_application_outcomes`), API §12EX, RBAC §2.160; owner answers OF1–OF4 (nehn-001 folded in; letter required on the counselor route; 4 types; withdraw
+  clears the mirror). Design `docs/superpowers/specs/2026-10-23-ccrm-023-application-offers-design.md`.
 
 ### `ccrm-024` — Offer conditions
 

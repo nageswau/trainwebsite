@@ -19,7 +19,8 @@ type Props = {
 export default function AgentApplicationOfferForm({ detail, onSaved, onFailed, onCancel }: Props) {
   const current = detail.offer;
   const id = detail.id;
-  const [type, setType] = useState<OfferType | "">(current?.type ?? "");
+  // ccrm-023: a counselor's pathway/other offer is not one of the agency's two types, so the agency picks again.
+  const [type, setType] = useState<OfferType | "">(current?.type === "conditional" || current?.type === "unconditional" ? current.type : "");
   const [date, setDate] = useState(current?.date ?? "");
   const [deadline, setDeadline] = useState(detail.offer_deadline ?? "");
   const [conditions, setConditions] = useState(current?.conditions ?? "");

@@ -2117,3 +2117,13 @@ SS2 backfill: `enrolled` → `enrolled`; `offer` with `offer_type` → `conditio
 | `application_outcomes` | table | One append-only event per outcome set or cleared (`outcome` also `cleared`): `outcome_date`, `reason`, `requested_by` (CHECK student/counselor/agent/university), `next_steps`, `document_id` (→ student_documents, SET NULL), `previous_intake`, `new_intake`, `review_date`, `hold_owner_id` (→ users), `another_offer_preferred`, `created_by_id`, timestamps; CASCADE with the application; index (`application_id`, `created_at`). The latest row is the current outcome's detail. |
 
 Backfill: `outcome = 'withdrawn'` where `status = 'withdrawn'`. `downgrade()` drops the table and the column.
+
+## Application offers (`ccrm-023`, `DEC-SCOPE-245`; migration `0171_application_offers`, after ccrm-015's `0170_application_outcomes`)
+
+`application_offers`: `id`, `application_id` → overseas_applications, `offer_type` (CHECK conditional/unconditional/pathway/other),
+`issue_date`, `offer_deadline`, `conditions`, `currency` (char 3, required iff an amount), `tuition_amount` / `scholarship_amount` /
+`deposit_amount` (numeric 12,2, ≥ 0), `deposit_deadline`, `offer_document_id` → student_documents (SET NULL), `status` (CHECK active /
+superseded / withdrawn_by_university / expired; a reason is required for the last two), `status_reason`, `recorded_by_id` (NULL on
+backfilled rows), `closed_by_id`, `closed_at`, timestamps. Partial unique index: one `active` row per application. The active row is
+mirrored to `overseas_applications.offer_type/offer_date/offer_deadline/offer_conditions/offer_document_id`, whose
+`ck_overseas_applications_offer_type` widens to the four types. The backfill writes one active row per application with `offer_type` set.

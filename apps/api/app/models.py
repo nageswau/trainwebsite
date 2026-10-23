@@ -1789,6 +1789,9 @@ APPLICATION_CODE_DEFAULT = "'APP-' || translate(format('%6s', nextval('overseas_
 
 
 OUTCOME_CHECK = _in("outcome", APPLICATION_OUTCOMES)  # ccrm-015; migration 0170 repeats it
+# ccrm-023 (DEC-SCOPE-245, OF3/OF4): an application offer's types and statuses. Migration 0171 repeats them (test_ccrm_023_migration).
+APPLICATION_OFFER_TYPES = ("conditional", "unconditional", "pathway", "other")
+APPLICATION_OFFER_STATUSES = ("active", "superseded", "withdrawn_by_university", "expired")
 
 
 class OverseasApplication(Base, TimestampMixin):
@@ -1837,7 +1840,7 @@ class OverseasApplication(Base, TimestampMixin):
 
     __table_args__ = (
         UniqueConstraint("application_code", name="uq_overseas_applications_code"),
-        CheckConstraint("offer_type IS NULL OR offer_type IN ('conditional', 'unconditional')", name="ck_overseas_applications_offer_type"),
+        CheckConstraint("offer_type IS NULL OR offer_type IN (" + ", ".join(f"'{t}'" for t in APPLICATION_OFFER_TYPES) + ")", name="ck_overseas_applications_offer_type"),
         CheckConstraint("(offer_type IS NULL) = (offer_date IS NULL)", name="ck_overseas_applications_offer_dated"),
         CheckConstraint(OUTCOME_CHECK, name="ck_overseas_applications_outcome"),
         # AGN-017 (DEC-SCOPE-059): the daily reminder job reads agency deadlines through these partial indexes (migration 0065).
@@ -1850,6 +1853,41 @@ class OverseasApplication(Base, TimestampMixin):
         """ccrm-014 SS3: every stage write, on any route, keeps the sub-status inside the new stage."""
         self.sub_status = fit_sub_status(status, self.sub_status)
         return status
+
+
+class ApplicationOffer(Base, TimestampMixin):
+    """ccrm-023 (DEC-SCOPE-245): every offer an application received. A new offer supersedes the active one; nothing is overwritten.
+    The active row is mirrored to the application's offer columns, which agency routes and reports keep reading. Only
+    services/application_offers.py writes this table and the mirror. `recorded_by_id` is NULL on rows backfilled by migration 0170."""
+
+    __tablename__ = "application_offers"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id"))
+    offer_type: Mapped[str] = mapped_column(String(20))
+    issue_date: Mapped[date] = mapped_column(Date)
+    offer_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    tuition_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    scholarship_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    deposit_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    deposit_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    offer_document_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL"), nullable=True)
+    status: Mapped[str] = mapped_column(String(30), default="active", server_default=text("'active'"))
+    status_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    recorded_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    closed_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("offer_type IN (" + ", ".join(f"'{t}'" for t in APPLICATION_OFFER_TYPES) + ")", name="ck_application_offers_type"),
+        CheckConstraint("status IN (" + ", ".join(f"'{s}'" for s in APPLICATION_OFFER_STATUSES) + ")", name="ck_application_offers_status"),
+        CheckConstraint("status IN ('active', 'superseded') OR status_reason IS NOT NULL", name="ck_application_offers_reason"),
+        CheckConstraint("(currency IS NULL) = (tuition_amount IS NULL AND scholarship_amount IS NULL AND deposit_amount IS NULL)", name="ck_application_offers_currency"),
+        CheckConstraint("tuition_amount >= 0 AND scholarship_amount >= 0 AND deposit_amount >= 0", name="ck_application_offers_amounts"),
+        Index("uq_application_offers_active", "application_id", unique=True, postgresql_where=text("status = 'active'")),
+        Index("ix_application_offers_application", "application_id", "created_at"),
+    )
 
 
 class OverseasStudentCounselor(Base, TimestampMixin):

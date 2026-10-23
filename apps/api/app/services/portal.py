@@ -65,6 +65,7 @@ from app.services.agent_dashboard import headline_counts
 from app.services.agent_orgs import org_masters, org_member_ids
 from app.services.agent_students import application_scope, student_scope
 from app.services.application_filters import ApplicationFilters
+from app.services.application_offers import TYPE_LABELS as OFFER_TYPE_LABELS
 from app.services.offers import status_label as offer_status_label
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
 
@@ -591,7 +592,7 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
             (
                 {"label": "Applications", "value": len(applications)},
                 {"label": "Verified documents", "value": sum(1 for d in documents if d.verification_status == "verified")},
-                {"label": "Offers", "value": sum(1 for a, _ in applications if a.status in {"offer_received", "accepted"})},
+                {"label": "Offers", "value": sum(1 for a, _ in applications if counts_as_offer(a))},  # nehn-001 (ccrm-023 OF1)
                 {"label": "Visa cases", "value": len(visas)},
             ),
         )
@@ -660,11 +661,18 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
         return _payload(
             "Offer Letters",
             "Conditional and unconditional offers.",
-            (("university", "University"), ("status", "Status"), ("offer", "Offer letter"), ("next_action", "Next action")),
+            (("university", "University"), ("status", "Status"), ("offer_type", "Offer type"), ("offer_deadline", "Offer deadline"), ("offer", "Offer letter"), ("next_action", "Next action")),
             (
-                {"university": u.name, "status": a.status, "offer": a.offer_letter_url, "next_action": a.next_action}
+                {
+                    "university": u.name,
+                    "status": a.status,
+                    "offer_type": OFFER_TYPE_LABELS.get(a.offer_type),
+                    "offer_deadline": a.offer_deadline.isoformat() if a.offer_deadline else None,
+                    "offer": a.offer_letter_url,
+                    "next_action": a.next_action,
+                }
                 for a, u in applications
-                if a.offer_letter_url or a.status in {"offer_received", "accepted"}
+                if a.offer_letter_url or counts_as_offer(a)  # nehn-001 (ccrm-023 OF1)
             ),
         )
     if section == "visa-status":
@@ -1086,7 +1094,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 (
                     {"application_code": a.application_code, "student": s.full_name, "status": a.status, "offer": a.offer_letter_url, "next_action": a.next_action}
                     for a, u, s in applications
-                    if a.offer_letter_url or a.status in {"offer_received", "accepted"}
+                    if a.offer_letter_url or counts_as_offer(a)  # nehn-001 (ccrm-023 OF1)
                 ),
             )
         if section in {"students", "applications", "admission-updates", "offer-letters"}:
