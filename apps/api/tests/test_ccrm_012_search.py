@@ -67,7 +67,8 @@ async def test_items_carry_labels_and_links(world):
     assert student["href"] == f"/overseas/counselor/students/{world['s1'].id}/notes"
     app = data["applications"]["items"][0]
     assert app["code"] == world["app1"].application_code and app["label"] == world["s1"].full_name
-    assert world["uk"].name in app["detail"] and app["href"] == "/overseas/counselor/applications"
+    # QA-01: the link narrows the Applications list to this application's university and intake (ccrm-012's own filters)
+    assert world["uk"].name in app["detail"] and app["href"] == f"/overseas/counselor/applications?university={world['uk'].id}&intake=Sep+2027"
     assert data["students"]["more"] is False and data["q"] == f"Zara Quill {world['tag']}"
 
 

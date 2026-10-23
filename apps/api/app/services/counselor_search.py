@@ -10,6 +10,7 @@ import logging
 import math
 import re
 from datetime import UTC, datetime, timedelta
+from urllib.parse import urlencode
 
 from fastapi import HTTPException
 from sqlalchemy import func, or_, select
@@ -114,7 +115,9 @@ async def search(db: AsyncSession, user: User, text: str, pattern: str) -> dict:
         "leads": _group([{"id": e.id, "code": e.lead_code, "label": e.name, "detail": e.email or e.phone, "href": f"{base}/leads/{e.id}"} for e in leads]),
         "students": _group([{"id": s.id, "code": s.student_code, "label": s.full_name, "detail": s.email, "href": f"{base}/students/{s.id}/notes"} for s in students]),
         "applications": _group([
-            {"id": a.id, "code": a.application_code, "label": owner.full_name, "detail": f"{u.name} · {a.intake}", "href": f"{base}/applications"}
+            # QA-01: no counselor application page yet, so the list opens narrowed to this application's university and intake
+            {"id": a.id, "code": a.application_code, "label": owner.full_name, "detail": f"{u.name} · {a.intake}",
+             "href": f"{base}/applications?{urlencode({'university': a.university_id, 'intake': a.intake})}"}
             for a, u, owner in applications
         ]),
     }

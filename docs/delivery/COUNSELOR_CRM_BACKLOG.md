@@ -354,6 +354,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Acceptance:** searching another counselor's student's phone returns nothing.
 - **Relates:** nehn-041 (admin unified search) — share the search service.
 - **Complexity:** medium. **Risk:** medium (scope leakage).
+- **Status (2026-10-23):** built on `worktree-ccrm-012` — `DEC-SCOPE-246` (QS1–QS8 recommended defaults, `NEEDS_CONFIRMATION`), no
+  migration, API §12EY, RBAC §2.161; `GET /counselor/search` (overseas counselor, 30/min) and the Students / Applications / Leads filters.
+  Design `docs/superpowers/specs/2026-10-23-ccrm-012-counselor-search-filters-design.md`.
 
 ---
 

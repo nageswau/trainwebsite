@@ -9096,3 +9096,22 @@ Roles: counselor (own applications, direct and agency) and Overseas Admin write;
 **Numbering:** migration `0171_application_offers` (after ccrm-015's `0170_application_outcomes`, which merged the two `0169` heads); API §12EX;
 RBAC §2.160 (244 / 12EW / 2.159 held by the parallel ccrm-015 session).
 - **Feature ID authorized:** `ccrm-023`. **Status:** built on `worktree-ccrm-023`.
+
+### DEC-SCOPE-246 — Counselor quick search and list filters (`ccrm-012`)
+
+**Status:** PROPOSED — recommended defaults taken 2026-10-23 under the owner's standing session instruction ("proceed with recommended
+answers"); QS1–QS8 are `UNVERIFIED` / `NEEDS_CONFIRMATION`. Follows CC2 (no new roles) and CC3 (no teams).
+**Evidence:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-012` (source PDF §12, `UNVERIFIED`).
+**Decision:** QS1 only an overseas counselor searches (`GET /counselor/search`); everyone else, the IT counselor included, `403`. QS2 scope =
+the counselor's leads (owner + division, tel-018), visible students (csc-001: own applications' students + linked) and own applications
+(`with_owner`, School-bridged rows out). QS3 3–100 characters after trimming; name / email / code (LD-, student code, APP-) as a literal
+case-insensitive substring; a phone-shaped search (digits and `+ - ( ) .` / spaces, ≥3 digits) matches the phone's digits, its last ten
+past ten digits. QS4 at most 10 per group plus a `more` flag; each item links to its existing page. QS5 30 searches a rolling minute per
+counselor (`429` + `Retry-After`), counted from `AuditLog` `counselor.search` rows that hold result counts only, never the search text.
+QS6 the overseas Students / Applications lists add Destination (country), University, Intake, Stage (7 + withdrawn), Sub-status (must fit
+the stage) and Created from / to (inclusive, UTC days), SQL-side before the 500-row cap, a bad or repeated value `422` (AGN-023 rules);
+options come from the caller's own applications (counselor) or all (Overseas Admin, same bar). QS7 the counselor's leads list adds Stage,
+Priority and Lead date from / to. QS8 the search box is on the overseas counselor's dashboard; no migration (scope-first queries; the
+enquiries phone / lower(email) indexes already exist; no pg_trgm).
+**Numbering:** no migration; API §12EY; RBAC §2.161 (245 / 12EX / 2.160 held by ccrm-023).
+- **Feature ID authorized:** `ccrm-012`. **Status:** built on `worktree-ccrm-012`.
