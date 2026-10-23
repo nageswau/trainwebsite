@@ -16,6 +16,7 @@ from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.application_outcome import TERMINAL as TERMINAL_OUTCOMES
 from app.application_sub_status import label as sub_status_label
 from app.models import AgentStudent, ApplicationStatusHistory, AuditLog, OverseasApplication, OverseasCourse, StudentDocument, University, User
 from app.services import agent_documents as documents
@@ -173,8 +174,15 @@ async def detail(db: AsyncSession, user: User, app: OverseasApplication, *, reco
     ).all()
     if record is MISSING:
         record = await owner_record(db, user, found)
-    reason = WITHDRAWN if found.status == WITHDRAWN else "archived" if record is not None and record.status == "archived" else None
+    from app.services import application_outcomes as outcomes  # noqa: PLC0415 -- it imports this module
+
+    # ccrm-015 (O2): a terminal outcome makes the application read-only like withdrawn; the reason names it.
+    closed = WITHDRAWN if found.status == WITHDRAWN else found.outcome if found.outcome in TERMINAL_OUTCOMES else None
+    reason = closed or ("archived" if record is not None and record.status == "archived" else None)
+    event = (await outcomes.latest(db, [found.id])).get(found.id) if found.outcome else None
+    hold_owner = await db.scalar(select(User.full_name).where(User.id == event.hold_owner_id)) if event is not None and event.hold_owner_id else None
     return {
+        "outcome": outcomes.view(found, event, staff=True, hold_owner=hold_owner),
         **item(row, date.today()),
         "university_id": found.university_id,
         "university_slug": slug,
@@ -346,16 +354,22 @@ async def check_course(db: AsyncSession, university_id, course_id) -> None:
         raise HTTPException(422, "Course does not belong to selected university")
 
 
+def open_clause():
+    """ccrm-015 (DEC-SCOPE-244 O3): an application that still holds its (student, university, course) slot -- not withdrawn and no
+    terminal outcome (rejected, offer declined and visa refused free it, as withdrawn always did)."""
+    return and_(OverseasApplication.status != WITHDRAWN, or_(OverseasApplication.outcome.is_(None), OverseasApplication.outcome.not_in(TERMINAL_OUTCOMES)))
+
+
 async def duplicate_exists(db: AsyncSession, *, agent_student_id, student_id, university_id, course_id, exclude_id=None) -> bool:
-    """OVS-002's rule for an agency student: same student, university and course (both NULL counts as the same), not withdrawn. The
-    student is the agency record or -- when it has a login -- that account, so a row made before AGN-008 still counts."""
+    """OVS-002's rule for an agency student: same student, university and course (both NULL counts as the same), still open
+    (`open_clause`). The student is the agency record or -- when it has a login -- that account, so a row made before AGN-008 still counts."""
     owners = [OverseasApplication.agent_student_id == agent_student_id] if agent_student_id is not None else []
     if student_id is not None:
         owners.append(OverseasApplication.student_id == student_id)
     if not owners:
         return False
     course = OverseasApplication.course_id.is_(None) if course_id is None else OverseasApplication.course_id == course_id
-    clauses = [or_(*owners), OverseasApplication.university_id == university_id, course, OverseasApplication.status != WITHDRAWN]
+    clauses = [or_(*owners), OverseasApplication.university_id == university_id, course, open_clause()]
     if exclude_id is not None:
         clauses.append(OverseasApplication.id != exclude_id)
     return (await db.scalar(select(OverseasApplication.id).where(*clauses).limit(1))) is not None

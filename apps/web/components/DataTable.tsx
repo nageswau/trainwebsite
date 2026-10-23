@@ -4,6 +4,7 @@ import Link from "next/link";
 import {useMemo, useState} from "react";
 import AssignCounselorButton from "./AssignCounselorButton";
 import JoinSessionButton from "./JoinSessionButton";
+import ReopenOutcomeButton from "./ReopenOutcomeButton";
 
 type Column = {key: string; label: string; type?: string};
 type Row = Record<string, unknown>;
@@ -20,6 +21,11 @@ function renderCell(column: Column, row: Row) {
   if (column.type === "assign_counselor") {
     if (!row.assign) return null;
     return <AssignCounselorButton applicationId={String(row.id)} currentId={(row.counselor_id as string | null) ?? null} />;
+  }
+  // ccrm-015 (DEC-SCOPE-244): the Overseas Admin reopens a closed (rejected, withdrawn, declined, visa refused) application.
+  // It stays mounted once reopened (`closed` false) so its confirmation survives the refresh that clears `reopen`.
+  if (column.type === "reopen_outcome") {
+    return <ReopenOutcomeButton applicationId={String(row.id)} action="Reopen" closed={Boolean(row.reopen)} />;
   }
   // csc-005 (DEC-SCOPE-230): the Overseas Admin's Users directory -- an overseas student's counselor (staff rows carry `assign: null`).
   if (column.type === "assign_student_counselor") {
