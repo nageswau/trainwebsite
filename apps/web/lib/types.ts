@@ -3,7 +3,17 @@ export type Country = { id:string; slug:string; name:string; iso2?:string|null; 
 export type University = { id:string; country_id:string; slug:string; name:string; city:string; overview:string; eligibility:string; requirements:string[]; deadlines:string[]; scholarships:string[]; logo_url?:string|null; campuses?:string[]|null; fee_structure?:string|null };
 // AGN-023 (DEC-SCOPE-090 H11): the overseas Students/Applications list filters; `counselors` is the Overseas Admin's only.
 export type FilterOption = { value: string; label: string };
-export type ApplicationFilterState = { agency: string | null; counselor: string | null; agencies: FilterOption[]; counselors?: FilterOption[] };
+// ccrm-012 (DEC-SCOPE-246 QS6): country / university / intake / stage / sub-status / created-date filters; options from the caller's own
+// applications. The optional keys keep an older payload (and the AGN-023 tests) valid.
+export type ApplicationFilterState = {
+  agency: string | null; counselor: string | null; agencies: FilterOption[]; counselors?: FilterOption[];
+  country?: string | null; university?: string | null; intake?: string | null; stage?: string | null; sub_status?: string | null;
+  from?: string | null; to?: string | null;
+  countries?: FilterOption[]; universities?: FilterOption[]; intakes?: FilterOption[]; stages?: FilterOption[];
+  sub_statuses?: (FilterOption & { stage: string })[];
+};
+export const APPLICATION_FILTER_KEYS = ["agency", "counselor", "country", "university", "intake", "stage", "sub_status", "from", "to"] as const;
+export type ApplicationFilterKey = (typeof APPLICATION_FILTER_KEYS)[number];
 export type PortalPayload = {
   title:string; subtitle:string; metrics:{label:string;value:string|number}[];
   actions:{label:string;href:string}[]; columns:{key:string;label:string;type?:string}[];

@@ -2606,3 +2606,14 @@ inside the existing role scope (a counselor searching another counselor's code g
 | `POST …/{id}/offer-letters`, `POST …/{id}/offers`, `POST …/{id}/offers/{offer_id}/withdraw` | ✅ own applications, direct and agency (`403` otherwise) | ✅ any | `403` (the agency uses its own PUT) | `403` | `403` | `401` |
 
 - CC4/OF2 (owner, 2026-10-23). Pinned by `test_ccrm_023_offers.py::test_scope_and_roles`.
+
+### 2.161 Counselor quick search and list filters *(added 2026-10-23 — `DEC-SCOPE-246`, ccrm-012)*
+
+| Route | overseas `counselor` | IT `counselor` | `overseas_admin` | `agent`, students, others | Anonymous |
+|---|---|---|---|---|---|
+| `GET /counselor/search` | ✅ own leads, visible students, own applications only | `403` | `403` | `403` | `401` |
+| Portal Students / Applications filters (country, university, intake, stage, sub-status, from / to) | ✅ inside own applications; options from them | n/a | ✅ any | `422 "Filter not available"` | `401` |
+| `GET /counselor/leads` filters (stage, priority, from / to) | ✅ own leads | ✅ own leads | `403` (route unchanged) | `403` | `401` |
+
+- QS1/QS2 (`UNVERIFIED`). Pinned by `test_ccrm_012_search.py::test_only_an_overseas_counselor_may_search` and
+  `::test_another_counselors_student_phone_returns_nothing`; `test_ccrm_012_filters.py::test_a_filter_never_widens_scope`.

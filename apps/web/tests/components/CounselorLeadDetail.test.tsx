@@ -5,6 +5,9 @@ import CounselorLeadDetail from "@/components/CounselorLeadDetail";
 import CounselorLeadsPanel from "@/components/CounselorLeadsPanel";
 import type { CounselorLeadDetail as Detail } from "@/lib/leadHandover";
 
+// ccrm-012: the leads panel keeps its filters in the URL.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }), usePathname: () => "/overseas/counselor/leads", useSearchParams: () => new URLSearchParams() }));
+
 // tel-018 (spec §4; T19, T20; HO1, HO4): the counselor's lead -- return with a reason, link a suggested or searched student, unlink.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const pageOf = <T,>(items: T[]) => ({ items, total: items.length, limit: 20, offset: 0 });
@@ -225,7 +228,7 @@ describe("CounselorLeadsPanel", () => {
     render(<CounselorLeadsPanel division="overseas" />);
     const link = await screen.findByRole("link", { name: "LD-000042" });
     expect(link).toHaveAttribute("href", "/overseas/counselor/leads/L1");
-    expect(screen.getByText("Counselling Completed")).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Counselling Completed" })).toBeInTheDocument();  // ccrm-012: the Stage filter lists it too
   });
 
   it("offers a retry when the list fails", async () => {

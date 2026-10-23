@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import CounselorLeadsPanel from "@/components/CounselorLeadsPanel";
 
 // csc-004 (DEC-SCOPE-229): only the overseas counselor records walk-in leads (W1); the IT counselor's My leads is unchanged.
+// ccrm-012: the panel keeps its filters in the URL.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }), usePathname: () => "/overseas/counselor/leads", useSearchParams: () => new URLSearchParams() }));
 beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [], total: 0, limit: 20, offset: 0 }), { status: 200 })));
 });

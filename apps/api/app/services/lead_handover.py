@@ -13,9 +13,9 @@ from sqlalchemy import exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.lead_stages import CLOSED, MANUAL_BEFORE, ORDER
-from app.models import AuditLog, Batch, Enquiry, Enrollment, OverseasApplication, University, User, VisaCase
-from app.services import bdm_leads, lead_appointments, lead_pipeline, telecaller_alerts
+from app.lead_stages import CLOSED, MANUAL_BEFORE, ORDER, STAGES
+from app.models import LEAD_PRIORITIES, AuditLog, Batch, Enquiry, Enrollment, OverseasApplication, University, User, VisaCase
+from app.services import application_filters, bdm_leads, lead_appointments, lead_pipeline, telecaller_alerts
 from app.services.bdm_appointments import db_now, today_ist
 
 logger = logging.getLogger("app.leads")
@@ -64,6 +64,18 @@ def counselor_scope(user: User) -> list:
     if user.role != "counselor":
         raise HTTPException(403, COUNSELOR_REQUIRED)
     return [Enquiry.owner_id == user.id, Enquiry.division == user.division]
+
+
+def list_filters(stage: str | None, priority: str | None, created_from: str | None, created_to: str | None) -> list:
+    """ccrm-012 (DEC-SCOPE-246 QS7): the counselor's lead-list filters -- stage, priority and lead date (inclusive); a bad value is 422."""
+    if (stage is not None and stage not in STAGES) or (priority is not None and priority not in LEAD_PRIORITIES):
+        raise HTTPException(422, application_filters.UNKNOWN_VALUE)
+    clauses = application_filters.created_between(Enquiry.created_at, *application_filters.date_range(created_from, created_to))
+    if stage is not None:
+        clauses.append(Enquiry.status == stage)
+    if priority is not None:
+        clauses.append(Enquiry.priority == priority)
+    return clauses
 
 
 def permissions(lead: Enquiry) -> dict:
