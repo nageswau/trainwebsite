@@ -49,8 +49,19 @@ async def handover(lead_id: UUID, payload: LeadHandoverIn, user: User = Depends(
 
 
 @counselor_router.get("")
-async def my_leads(limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await lead_handover.page(db, lead_handover.counselor_scope(user), limit, offset)
+async def my_leads(
+    limit: int = LIMIT,
+    offset: int = OFFSET,
+    stage: str | None = None,
+    priority: str | None = None,
+    created_from: str | None = Query(None, alias="from"),
+    created_to: str | None = Query(None, alias="to"),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """ccrm-012 (DEC-SCOPE-246 QS7): optional stage / priority / lead-date filters, inside the counselor's scope."""
+    scope = lead_handover.counselor_scope(user)
+    return await lead_handover.page(db, [*scope, *lead_handover.list_filters(stage, priority, created_from, created_to)], limit, offset)
 
 
 @counselor_router.get("/{lead_id}")
