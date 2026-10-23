@@ -34,6 +34,7 @@ from app.schemas import (
     ApplicationSubStatusChange,
 )
 from app.services import agent_notifications as notices
+from app.services import application_offers as offer_records
 from app.services import application_sub_status as sub_statuses
 from app.services.agent_applications import (
     ARCHIVED,
@@ -48,7 +49,6 @@ from app.services.agent_applications import (
     THROTTLED,
     WITHDRAWN,
     WITHDRAWN_REFUSED,
-    before_offer,
     check_course,
     check_offer_document,
     check_transition,
@@ -177,6 +177,9 @@ async def update_application(application_id: UUID, payload: AgentApplicationUpda
             raise HTTPException(409, DUPLICATE)
     for key in changed:
         setattr(item, key, changes[key])
+    if "offer_deadline" in changed and (current := await offer_records.active_offer(db, item)) is not None:
+        # ccrm-023: the active offer's deadline moved -- a superseding row, so nothing is overwritten
+        await offer_records.record(db, user, item, offer_records.values_of(current) | {"offer_deadline": item.offer_deadline})
     if changed:
         if "next_action" in changed:  # the existing PATCH's rule: a next-action change is part of the status timeline
             db.add(ApplicationStatusHistory(application_id=item.id, from_status=item.status, to_status=item.status, next_action=item.next_action, changed_by_id=user.id))
@@ -289,17 +292,28 @@ async def record_offer(application_id: UUID, payload: AgentApplicationOffer, use
     notes = offer_change_notes(old, new)
     if notes is None:
         return {"application": await detail(db, user, item, record=record)}
-    old_status = item.status
-    if before_offer(item.status):
-        check_transition(item.status, "offer")
-        item.status = "offer"
-    for key, value in new.items():
-        setattr(item, key, value)
+    old_status, old_sub_status = item.status, item.sub_status
+    # ccrm-023 (DEC-SCOPE-245): the change is a new offer row superseding the previous one (mirrored to the columns), with OF3's sub-status.
+    values = {
+        "offer_type": new["offer_type"],
+        "issue_date": new["offer_date"],
+        "offer_deadline": new["offer_deadline"],
+        "conditions": new["offer_conditions"],
+        "offer_document_id": new["offer_document_id"],
+    }
+    await offer_records.record(db, user, item, values)
+    offer_records.apply_stage(item, item.offer_type)
     fields = sorted(k for k in new if old[k] != new[k])
-    db.add(ApplicationStatusHistory(application_id=item.id, from_status=old_status, to_status=item.status, next_action=item.next_action, notes=notes, changed_by_id=user.id))
+    db.add(
+        ApplicationStatusHistory(
+            application_id=item.id, from_status=old_status, to_status=item.status, from_sub_status=old_sub_status, to_sub_status=item.sub_status,
+            next_action=item.next_action, notes=notes, changed_by_id=user.id,
+        )
+    )  # fmt: skip
     _audit(db, user, "offer", item.id, {"fields": fields, "offer_type": item.offer_type, "from_status": old_status, "to_status": item.status})
     # AGN-017 (DEC-SCOPE-059 N3): a stage move to `offer` is a status change; `offer` is never `enrolled`, so no commission was created.
     await notices.status_changed(db, item, old_status, user, had_commission=True)
+    await notices.offer_changed(db, item, user, "Offer recorded")  # ccrm-023 CC5: the EduSphere counselor
     await db.commit()
     _log("agent_application_offer_recorded", membership, user, item.id, fields=fields, stage_moved=old_status != item.status)
     return {"application": await detail(db, user, item, record=record)}

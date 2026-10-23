@@ -151,15 +151,29 @@ async def sub_status_changed(db: AsyncSession, application: OverseasApplication,
     made it, the AGN-017 recipients when EduSphere did. A stage change by EduSphere is `status_changed`'s notice instead."""
     if application.agent_student_id is None:
         return
-    if actor.role == "agent":
-        counselor = await db.get(User, application.counselor_id) if application.counselor_id else None
-        users, url = ([counselor] if counselor is not None and counselor.active else []), "/overseas/counselor/applications"
-    else:
-        record = await db.get(AgentStudent, application.agent_student_id)
-        users, url = (await recipients(db, record, actor) if record else []), APPLICATIONS_URL
+    users, url = await _other_side(db, application, actor)
     university = clean_text(await db.scalar(select(University.name).where(University.id == application.university_id)))
     body = f"{university}: {stage_label(application.status)} — {sub_status_label(application.sub_status)}."
     await notify(db, users, "Application sub-status changed", body, url)
+
+
+async def _other_side(db: AsyncSession, application: OverseasApplication, actor: User) -> tuple[list[User], str]:
+    """CC5: the EduSphere counselor when the agency acted, else the AGN-017 recipients (an agency application only)."""
+    if actor.role == "agent":
+        counselor = await db.get(User, application.counselor_id) if application.counselor_id else None
+        return ([counselor] if counselor is not None and counselor.active else []), "/overseas/counselor/applications"
+    record = await db.get(AgentStudent, application.agent_student_id)
+    return (await recipients(db, record, actor) if record else []), APPLICATIONS_URL
+
+
+async def offer_changed(db: AsyncSession, application: OverseasApplication, actor: User, title: str) -> None:
+    """ccrm-023 (CC5): an offer recorded, withdrawn or expired on an agency application tells the other side. Replaces the stage-only
+    notice for that write, so nobody gets two notices for one change."""
+    if application.agent_student_id is None:
+        return
+    users, url = await _other_side(db, application, actor)
+    university = clean_text(await db.scalar(select(University.name).where(University.id == application.university_id)))
+    await notify(db, users, title, f"{university}: {stage_label(application.status)}.", url)
 
 
 async def counselor_assigned(db: AsyncSession, application: OverseasApplication, actor: User, *, changed: bool) -> None:

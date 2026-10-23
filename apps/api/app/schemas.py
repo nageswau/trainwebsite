@@ -1067,6 +1067,79 @@ class AgentApplicationOffer(BaseModel):
         return self
 
 
+# --- ccrm-023: offer records (DEC-SCOPE-245; docs/superpowers/specs/2026-10-23-ccrm-023-application-offers-design.md §3.4) ---
+
+OfferAmount = Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=2)]
+
+
+class ApplicationOfferCreate(BaseModel):
+    """A new offer from the counselor or the Overseas Admin; it supersedes the active one. The letter is required (OF2). The amounts
+    share one currency, required once any amount is given; the scholarship is recorded only when confirmed."""
+
+    model_config = {"extra": "forbid"}
+    offer_type: Literal["conditional", "unconditional", "pathway", "other"]
+    issue_date: date
+    offer_deadline: date | None = None
+    conditions: str | None = None
+    currency: str | None = Field(default=None, pattern=r"^[A-Za-z]{3}$")
+    tuition_amount: OfferAmount | None = None
+    scholarship_amount: OfferAmount | None = None
+    deposit_amount: OfferAmount | None = None
+    deposit_deadline: date | None = None
+    offer_document_id: UUID
+
+    @field_validator("issue_date")
+    @classmethod
+    def _issue_date(cls, value):
+        return _not_future(_application_date(value), "future_issue_date", "Issue date cannot be in the future")
+
+    @field_validator("offer_deadline", "deposit_deadline")
+    @classmethod
+    def _deadlines(cls, value):
+        return _application_date(value)
+
+    @field_validator("conditions")
+    @classmethod
+    def _conditions(cls, value):
+        return clean_free_text(value, 2000)
+
+    @field_validator("currency")
+    @classmethod
+    def _currency(cls, value):
+        return value.upper() if value else None
+
+    @model_validator(mode="after")
+    def _offer_rules(self):
+        for field, label in (("offer_deadline", "Offer"), ("deposit_deadline", "Deposit")):
+            value = getattr(self, field)
+            if value is not None and value < self.issue_date:
+                raise PydanticCustomError("deadline_before_issue", f"{label} deadline cannot be before the issue date")
+        if self.offer_type == "conditional" and not self.conditions:
+            raise PydanticCustomError("offer_conditions_required", "A conditional offer needs its conditions")
+        if self.offer_type == "unconditional" and self.conditions:
+            raise PydanticCustomError("offer_conditions_unconditional", "An unconditional offer has no conditions")
+        has_amount = any(v is not None for v in (self.tuition_amount, self.scholarship_amount, self.deposit_amount))
+        if has_amount != (self.currency is not None):
+            raise PydanticCustomError("offer_currency", "Choose the currency of the amounts" if has_amount else "A currency needs an amount")
+        return self
+
+
+class ApplicationOfferClose(BaseModel):
+    """OF4: the university withdrew the current offer, or it expired; the reason is kept on the offer and in history."""
+
+    model_config = {"extra": "forbid"}
+    status: Literal["withdrawn_by_university", "expired"]
+    reason: str = Field(max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def _reason(cls, value):
+        cleaned = clean_free_text(value, 500)
+        if not cleaned:
+            raise PydanticCustomError("reason_required", "Give the reason")
+        return cleaned
+
+
 # --- AGN-011: deposit collection (DEC-SCOPE-058; docs/superpowers/specs/2026-10-02-agn-011-deposit-collection-design.md §4) ---
 
 DEPOSIT_AMOUNT_FORMAT = "Enter an amount in rupees with up to 2 decimals, for example 50000.50"

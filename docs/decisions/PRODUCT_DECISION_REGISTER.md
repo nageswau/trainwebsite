@@ -9045,3 +9045,35 @@ the next action; A7 admin `owner_id` null stays allowed; A8 no reason / next-act
 **Numbering:** migration `0169_lead_next_action` (after ccrm-014's `0168_application_sub_status`); API §12EV; RBAC §2.158 (240–241 / 12ER–12ET /
 2.154–2.156 held by parallel ccrm sessions).
 - **Feature ID authorized:** `ccrm-003`. **Status:** built on `feature/ccrm-003`.
+
+### DEC-SCOPE-245 — Offer records with history; the counselor records offers on all applications (`ccrm-023`)
+
+**Status:** CONFIRMED by owner 2026-10-23 (Claude Code session). Amends `DEC-SCOPE-056` (AGN-010): the agency is no longer the only
+writer of an application's offer, and an offer change no longer overwrites the previous one. Follows CC4/CC5
+(`docs/delivery/COUNSELOR_CRM_BACKLOG.md` §1). Folds in `nehn-001`.
+**Evidence:** owner answers OF1–OF4 through the clarifying-question prompt, 2026-10-23 (`EXPLICIT_APPROVAL`); source PDF `UNVERIFIED`
+(backlog header).
+**Decision:** every offer is a row in `application_offers` — type (conditional, unconditional, pathway, other), issue date, offer
+deadline, conditions, one currency for tuition / confirmed scholarship / deposit amounts, deposit deadline, offer letter, and status
+(active, superseded, withdrawn_by_university, expired) with a reason. A new offer supersedes the active one. The active offer is
+mirrored to the application's offer columns, so the agency routes, dashboards, management counts and reminders read it unchanged.
+- OF1: `nehn-001` was not on main, so it is folded in. The student Offers tile and the student and university-rep Offer letters lists use
+  AGN-010's `counts_as_offer`.
+- OF2: the counselor route requires an offer letter; the agency PUT keeps it optional.
+- OF3: unconditional → sub-status Unconditional offer; conditional, pathway and other → Conditional offer, on the agency PUT too. A
+  stage after `offer` keeps its stage and sub-status.
+- OF4: withdrawn-by-university / expired need a reason, clear the mirror and an offer sub-status, and keep the stage. There is no
+  automatic expiry (ccrm-025).
+
+Roles: counselor (own applications, direct and agency) and Overseas Admin write; student (own) and agency (scope) read.
+**Builder's calls:**
+- B1: an identical request is a no-op (200, nothing written, safe retry).
+- B2: the counselor uploads the letter through a new application-scoped upload, owned like the application (an agency student with
+  no login included), with the AGN-009 byte-sniffing and server-generated keys.
+- B3: an agency PATCH of `offer_deadline` while an offer is active writes a superseding row.
+- B4: the CC5 notice "Offer recorded / withdrawn / expired" goes to the other side; the agency PUT keeps its AGN-017 stage notice.
+- B5: no amounts or reasons in audit metadata or logs.
+
+**Numbering:** migration `0170_application_offers` (merges `0169_lead_next_action` and `0169_overseas_student_notes`); API §12EX;
+RBAC §2.160 (244 / 12EW / 2.159 held by the parallel ccrm-015 session).
+- **Feature ID authorized:** `ccrm-023`. **Status:** built on `worktree-ccrm-023`.

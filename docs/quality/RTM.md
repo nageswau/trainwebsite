@@ -823,3 +823,20 @@ half.
 | `ccrm-003-AC7` | Admin PATCH `owner_id` to a non-counselor / other division / inactive → 422; counselor or null OK | `::test_admin_owner_must_be_an_active_counselor_of_the_division`; `test_adm_002_lead_management.py`, `test_tel_004_routes.py` |
 | `ccrm-003-AC8` | Migration round trip and length check | `apps/api/tests/test_ccrm_003_migration.py` |
 | `ccrm-003-AC9` | Dashboard shows the counselor's follow-up | Deferred to ccrm-032 (no counselor dashboard follow-up tile yet) |
+
+**Addendum, 2026-10-23 (`ccrm-023`)** — one row and its acceptance-criteria map. Offer records with history; nehn-001 folded in.
+
+| Feature ID | Contract documents | Old workbook cases | Status |
+|---|---|---|---|
+| `ccrm-023` | Requirement: CC4/CC5 + owner answers OF1–OF4 (in-session 2026-10-23, `EXPLICIT_APPROVAL`) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-023` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-245` → design `docs/superpowers/specs/2026-10-23-ccrm-023-application-offers-design.md` → plan `docs/superpowers/plans/2026-10-23-ccrm-023-application-offers.md`; `API_CONTRACT.md` §12EX, `RBAC_MATRIX.md` §2.160, `DATA_MODEL.md` (0170) | none | Built on `worktree-ccrm-023`; lite API set, vitest, e2e and browser QA |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `ccrm-023-AC1` | Counselor records: row, mirror, stage to offer, OF3 sub-status, history, audit, student notice | `apps/api/tests/test_ccrm_023_offers.py::test_the_counselor_records_an_offer_with_a_row_mirror_stage_sub_status_history_audit_and_notice`, `::test_each_type_sets_its_sub_status`, `::test_a_later_stage_keeps_its_stage_and_sub_status` |
+| `ccrm-023-AC2` | A new offer supersedes; both rows remain; identical retry is a no-op | `::test_a_new_offer_supersedes_the_previous_one_and_nothing_is_overwritten`, `::test_an_identical_retry_writes_nothing`; e2e `ccrm-023-application-offers.spec.ts` |
+| `ccrm-023-AC3` | Letter required and this application's; validation 422s | `::test_the_offer_letter_is_required_and_must_be_this_applications`, `::test_invalid_offers_are_422`, `::test_currency_is_optional_without_amounts_and_upper_cased`; `apps/web/tests/components/ApplicationOffersPanel.test.tsx` |
+| `ccrm-023-AC4` | Agency PUT/PATCH write rows + sub-status; CC5 notices both ways | `::test_the_agency_put_writes_a_row_sets_the_sub_status_and_tells_the_counselor`, `::test_the_agency_patch_of_the_offer_deadline_supersedes_the_active_row`, `::test_on_an_agency_application_the_counselor_records_and_the_agency_is_told` |
+| `ccrm-023-AC5` | Withdraw/expire: reason, mirror cleared, stage kept, sub-status cleared, 409/404 | `::test_withdraw_needs_a_reason_clears_the_mirror_keeps_the_stage_and_clears_the_sub_status`, `::test_an_offer_of_another_application_is_404` |
+| `ccrm-023-AC6` | Scope and roles; withdrawn 409; letter upload | `::test_scope_and_roles`, `::test_a_withdrawn_application_is_409`, `::test_the_counselor_uploads_an_offer_letter_then_records_with_it` |
+| `ccrm-023-AC7` | Migration 0170: merge, CHECK widened, backfill, round trip | `apps/api/tests/test_ccrm_023_migration.py` (3) |
+| `ccrm-023-AC8` | nehn-001 ACs 1–4 + student offer columns | `::test_nehn_001_an_offer_stage_application_counts_for_the_student`, `::test_nehn_001_the_student_offer_list_shows_the_recorded_type_and_deadline` |

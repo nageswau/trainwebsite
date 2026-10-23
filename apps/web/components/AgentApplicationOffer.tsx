@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import AgentApplicationOfferForm from "./AgentApplicationOfferForm";
-import { AgentApplicationDetail, OFFER_TYPE_LABELS } from "@/lib/agentApplications";
+import { AgentApplicationDetail } from "@/lib/agentApplications";
+import { APPLICATION_OFFER_TYPE_LABELS } from "@/lib/applicationOffers";
 import { openDocument, statusLabel } from "@/lib/agentDocuments";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
@@ -58,7 +59,7 @@ export default function AgentApplicationOffer({ detail, open, canOpen, onOpen, o
           {offer ? (
             <dl className="card-stack">
               <dt>Type</dt>
-              <dd>{OFFER_TYPE_LABELS[offer.type]}</dd>
+              <dd>{APPLICATION_OFFER_TYPE_LABELS[offer.type]}</dd>
               <dt>Offer date</dt>
               <dd>{offer.date}</dd>
               <dt>Deadline</dt>

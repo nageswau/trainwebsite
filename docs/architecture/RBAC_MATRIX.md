@@ -2587,3 +2587,12 @@ inside the existing role scope (a counselor searching another counselor's code g
 
 - SS4 (owner, 2026-10-22). Students read the sub-status only. Pinned by `test_ccrm_014_sub_status.py`.
 
+
+### 2.160 Application offers *(added 2026-10-23 — `DEC-SCOPE-245`, ccrm-023)*
+
+| Route | `counselor` | `overseas_admin` | `agent` | `overseas_student` | `university_rep`, others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET /workflows/overseas/applications/{id}/offers` | ✅ own applications (`403` otherwise) | ✅ any | ✅ own agency's applications | ✅ own | `403` | `401` |
+| `POST …/{id}/offer-letters`, `POST …/{id}/offers`, `POST …/{id}/offers/{offer_id}/withdraw` | ✅ own applications, direct and agency (`403` otherwise) | ✅ any | `403` (the agency uses its own PUT) | `403` | `403` | `401` |
+
+- CC4/OF2 (owner, 2026-10-23). Pinned by `test_ccrm_023_offers.py::test_scope_and_roles`.

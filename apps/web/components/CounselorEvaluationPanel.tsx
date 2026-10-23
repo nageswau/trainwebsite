@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import ApplicationOffersPanel from "./ApplicationOffersPanel";
 import ApplicationSubStatusForm from "./ApplicationSubStatusForm";
 
 type ApplicationRow = { id: string; student: string; university: string; reference: string | null; status: string; sub_status?: string | null; sub_status_label?: string | null; next_action: string | null; is_agency?: boolean };
@@ -30,6 +31,7 @@ export default function CounselorEvaluationPanel() {
   const [rows, setRows] = useState<ApplicationRow[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [subStatusId, setSubStatusId] = useState<string | null>(null); // ccrm-014: the card whose sub-status form is open
+  const [offersId, setOffersId] = useState<string | null>(null); // ccrm-023: the card whose offers are open
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ id: string; text: string; failed: boolean } | null>(null);
 
@@ -147,6 +149,27 @@ export default function CounselorEvaluationPanel() {
                     Update sub-status
                   </button>
                 ))}
+              {row.status !== "withdrawn" && (
+                <button
+                  type="button"
+                  className="btn ghost small"
+                  style={{ display: "block", marginTop: 8 }}
+                  aria-expanded={offersId === row.id}
+                  onClick={() => (setOffersId(offersId === row.id ? null : row.id), setMessage(null))}
+                >
+                  {offersId === row.id ? "Hide offers" : "Offers"}
+                </button>
+              )}
+              {offersId === row.id && (
+                <ApplicationOffersPanel
+                  applicationId={row.id}
+                  onChanged={(text) => {
+                    setMessage({ id: row.id, text, failed: false });
+                    router.refresh();
+                    load();
+                  }}
+                />
+              )}
               {message?.id === row.id && (
                 <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 8 }}>
                   {message.text}
