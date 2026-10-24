@@ -2,7 +2,7 @@
 
 **Backlog:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` § `ccrm-029`. **Source:** Counselor CRM spec §11, §15 "Task / Activity", §18 AC 7
 (UNVERIFIED); owner answers CC2 (no new roles), CC3 (Overseas Admin is the escalation point and team-wide view). **Decision:**
-DEC-SCOPE-250 (planned; recheck main before PR). **Blocks:** ccrm-030 (rules create tasks), ccrm-031 (escalation), ccrm-032, ccrm-036.
+DEC-SCOPE-250. **Blocks:** ccrm-030 (rules create tasks), ccrm-031 (escalation), ccrm-032, ccrm-036.
 
 ## 1. Intent
 
@@ -27,7 +27,7 @@ reports (ccrm-036), reminders/e-mails about due tasks (ccrm-030).
 | T7 | Overdue follow-ups (AC 7) | New `GET /counselor/follow-ups?view=day|overdue` — the counselor's own lead follow-ups (counselor_scope), reusing tel-011's list. Shown under "My tasks". |
 | T8 | Audit / logs | `AuditLog` rows `counselor_task.create` / `update` / `complete` / `reopen` / `cancel`, field names only. Logs carry ids and field names, never titles. |
 
-## 3. Data model (migration `0174_counselor_tasks`, after `0173_checklist_templates`)
+## 3. Data model (migration `0175_counselor_tasks`, after ccrm-007's `0174_student_profiles`)
 
 `counselor_tasks`: `id` uuid pk; `title` varchar(200); `counselor_user_id` fk users RESTRICT; `due_on` date; `priority` varchar(8)
 CHECK high/medium/low default medium; `status` varchar(10) CHECK open/done/cancelled default open; `source` varchar(10) CHECK
@@ -66,4 +66,4 @@ helpers and the task list component; Playwright `ccrm-029-counselor-tasks.spec.t
 ## 7. Regression risks
 
 tel-011 follow-up lists (`list_page` gains an optional "whose follow-ups" filter; the telecaller default is unchanged); sidebar
-navigation (two new links); migration chain (parallel ccrm-007/ccrm-021 also claim 0174 — re-chain at merge time).
+navigation (two new links); migration chain (re-chained to 0175 after ccrm-007 merged 0174).

@@ -1,7 +1,7 @@
 """ccrm-029 -- counselor tasks.
 
-Revision ID: 0174_counselor_tasks
-Revises: 0173_checklist_templates
+Revision ID: 0175_counselor_tasks
+Revises: 0174_student_profiles
 
 docs/superpowers/specs/2026-10-24-ccrm-029-counselor-tasks-design.md (DEC-SCOPE-250). A new table only; nothing is backfilled. 0001 builds
 a fresh database from the current models, which already carry the table, so it is created only when missing (0166's idiom). CHECKS
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0174_counselor_tasks"
-down_revision = "0173_checklist_templates"
+revision = "0175_counselor_tasks"
+down_revision = "0174_student_profiles"
 branch_labels = None
 depends_on = None
 

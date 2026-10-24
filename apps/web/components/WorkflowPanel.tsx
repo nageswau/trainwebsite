@@ -263,6 +263,11 @@ function liveSessionSpecs(): ActionSpec[] { return [
 ]; }
 
 function studentSpecs(user: User, section: string): ActionSpec[] {
+  // ccrm-007 (DEC-SCOPE-249): an overseas student's academic and study details live in the structured profile above this form, so here
+  // only the account name and phone (the old free-text profile keys are no longer read).
+  if (section === "profile" && user.role === "overseas_student") {
+    return [{ title: "Account details", endpoint: "/api/v1/auth/me", method: "PATCH", success: "Account details updated.", fields: [{ name: "full_name", label: "Full name", required: true, defaultValue: user.full_name }, { name: "phone", label: "Phone", defaultValue: user.phone || "" }], buildBody: values => ({ full_name: values.full_name, phone: values.phone }) }];
+  }
   if (section === "profile") {
     const profile = user.profile || {};
     return [{ title: "Update profile", endpoint: "/api/v1/auth/me", method: "PATCH", success: "Profile updated.", fields: [{ name: "full_name", label: "Full name", required: true, defaultValue: user.full_name }, { name: "phone", label: "Phone", defaultValue: user.phone || "" }, { name: "education", label: "Education", defaultValue: String(profile.education || "") }, { name: "skills", label: "Skills (comma separated)", parse: "list", defaultValue: Array.isArray(profile.skills) ? profile.skills.join(", ") : "" }, { name: "preferred_countries", label: "Preferred countries", parse: "list", defaultValue: Array.isArray(profile.preferred_countries) ? profile.preferred_countries.join(", ") : "" }, { name: "preferred_intake", label: "Preferred intake", defaultValue: String(profile.preferred_intake || "") }, { name: "resume_url", label: "Resume URL", defaultValue: String(profile.resume_url || "") }], buildBody: values => ({ full_name: values.full_name, phone: values.phone, profile: { ...profile, education: values.education, skills: values.skills || [], preferred_countries: values.preferred_countries || [], preferred_intake: values.preferred_intake, resume_url: values.resume_url } }) }];

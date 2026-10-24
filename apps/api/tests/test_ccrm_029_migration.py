@@ -1,4 +1,4 @@
-"""ccrm-029 -- migration 0174_counselor_tasks (DEC-SCOPE-250): the chain, the CHECKs it repeats, the table, the one-link rule and the
+"""ccrm-029 -- migration 0175_counselor_tasks (DEC-SCOPE-250): the chain, the CHECKs it repeats, the table, the one-link rule and the
 round trip, in a throwaway database (the ccrm-018 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,14 +13,14 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_ccrm_029_migration_0174", VERSIONS / "0174_counselor_tasks.py")
+_spec = importlib.util.spec_from_file_location("_ccrm_029_migration_0175", VERSIONS / "0175_counselor_tasks.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0174_counselor_tasks", "0173_checklist_templates"
+HEAD, BASE = "0175_counselor_tasks", "0174_student_profiles"
 
 
-def test_migration_chains_after_0173_and_is_the_single_head():
+def test_migration_chains_after_0174_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

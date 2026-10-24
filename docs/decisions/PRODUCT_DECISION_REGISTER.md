@@ -9146,3 +9146,37 @@ Super Admin, as `_require` allows everywhere); readers add the counselor; resolv
 `/overseas-admin/checklists` (backlog said `/admin/overseas/checklists`).
 **Numbering:** migration `0173_checklist_templates` (after ccrm-016's 0172); API §12FA; RBAC §2.163 (247 / 12EZ / 2.162 held by ccrm-016).
 - **Feature ID authorized:** `ccrm-018`. **Status:** built on `worktree-ccrm-018`.
+
+### DEC-SCOPE-249 — Structured overseas student profile (`ccrm-007`)
+
+**Status:** PROPOSED — P1 and P2 answered by the owner in session 2026-10-24 (`EXPLICIT_APPROVAL` for P1/P2 only); P3–P6 are recommended
+defaults taken under the owner's standing instruction ("proceed with recommended answers") and are `NEEDS_CONFIRMATION`.
+**Evidence:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-007` (source PDF §5 tabs, §15 Student record, `UNVERIFIED`); CC4, CC5.
+**Decision:** one `overseas_student_profiles` row per overseas student (personal, passport, work experience, study preferences) with child
+rows for qualifications (≤10) and English tests (≤5, the course master's test list). P1 the student edits **every** field of their own
+profile; the counselor (csc-001 scope) and the Overseas Admin (any overseas student) edit it too; last write wins (CC5); the page shows who
+saved last; each save is audited (`overseas_student_profile.update`, changed field names only, never values). P2 the profile is the single
+student record: editable as above even when an `AgentStudent` exists; the agency reads it read-only; `AgentStudent` fields stay the
+agency's own record, nothing is synced. P3 the agency read never includes the passport number/expiry (restricted until ccrm-022). P4 the
+old free-text `users.profile` keys are copied once by the migration and left in place; the student portal Profile section now reads the
+table and the generic account form keeps only name and phone for an overseas student. P5 a save replaces the whole profile and its rows
+(no version check). P6 limits 10 / 5 / 5 preferred countries (study destinations from the catalogue).
+**Numbering:** migration `0174_student_profiles`; API §12FB; RBAC §2.164.
+- **Feature ID authorized:** `ccrm-007`. **Status:** built on `worktree-ccrm-007`. Design `docs/superpowers/specs/2026-10-24-ccrm-007-structured-student-profile-design.md`.
+
+### DEC-SCOPE-250 — Counselor tasks (`ccrm-029`)
+
+**Status:** PROPOSED — T1–T8 are recommended defaults taken under the owner's standing instruction ("proceed with recommended answers")
+and are `NEEDS_CONFIRMATION`.
+**Evidence:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-029` (source PDF §11, §15 Task/Activity, §18 AC 7, `UNVERIFIED`); CC2, CC3.
+**Decision:** one `counselor_tasks` row per task for one overseas counselor: title, IST due date (T1, today to two years ahead when set or
+changed), priority, status `open`/`done`/`cancelled` (T2: done stamps `completed_at`, reopen clears it, cancelled is final — `409`), and at
+most one link to a lead, student or application in the **assignee's** scope (T4, `422` on `link` otherwise). T3 the counselor creates for
+themself only, moves the status of any own task, and edits the other fields only on tasks they created; the Overseas Admin (and Super Admin)
+creates for any active overseas counselor and changes anything, reassigning included (CC3). T5 a task someone else creates, reassigns or
+changes notifies the counselor in-app (+ opted-in channels); their own changes notify nobody. T6 "My tasks" bands Overdue / Today /
+Upcoming, then Done in the last 7 days; cancelled hidden. T7 the counselor's own day / overdue lead follow-ups (`GET /counselor/follow-ups`)
+are listed under the tasks (spec AC 7). T8 audit `counselor_task.create|update|complete|reopen|cancel` with field names only; logs carry
+ids only. `source`/`rule_key` are reserved for ccrm-030 (rules); every task built here is `manual`.
+**Numbering:** migration `0175_counselor_tasks` (after ccrm-007's `0174_student_profiles`); API §12FC; RBAC §2.165.
+- **Feature ID authorized:** `ccrm-029`. **Status:** built on `feature/ccrm-029`. Design `docs/superpowers/specs/2026-10-24-ccrm-029-counselor-tasks-design.md`.

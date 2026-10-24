@@ -58,6 +58,7 @@ from app.models import (
     COURSE_LEVELS,
     COURSE_MONTHS,
     DISCUSSION_STATUSES,
+    ENGLISH_TEST_STATUSES,
     ENGLISH_TESTS,
     FEEDBACK_DECISIONS,
     GENDERS,
@@ -92,6 +93,7 @@ from app.models import (
     QUAL_PASSPORT,
     QUAL_SKILL_LEVELS,
     QUAL_STUDY_LEVELS,
+    QUALIFICATION_LEVELS,
     RANKING_SYSTEMS,
     RECRUITER_CALL_DIRECTIONS,
     RECRUITER_CALL_MAX_SECONDS,
@@ -101,7 +103,9 @@ from app.models import (
     RECRUITER_FOLLOW_UP_REASONS,
     RECRUITER_MEETING_TYPES,
     RELATIONSHIP_STRENGTHS,
+    SCORE_TYPES,
     SCREENING_RESULTS,
+    STUDY_MODES,
     TASK_PRIORITIES,
     TASK_STATUSES,
     TEL_TARGET_KPIS,
@@ -1488,6 +1492,131 @@ class StudentNoteCreate(BaseModel):
         if not value:
             raise PydanticCustomError("blank_note", "Write a note")
         return value
+
+
+# ccrm-007 (DEC-SCOPE-249): the structured overseas student profile. A save replaces the whole profile and its rows (P5): an omitted
+# field is stored as null, an omitted list as empty. Server-owned fields (student, author, ids) are refused by `extra="forbid"`.
+PROFILE_TEXT_LIMITS = {
+    "nationality": 100, "city": 100, "state": 100, "work_experience_details": 1000, "preferred_course": 200, "preferred_intake": 40,
+    "qualification_name": 200, "institution": 200, "board_university": 200, "remarks": 200,
+}  # fmt: skip
+MAX_QUALIFICATIONS, MAX_ENGLISH_TESTS, MAX_PREFERRED_COUNTRIES = 10, 5, 5
+SCORE_RANGES = {"percentage": (0, 100), "cgpa": (0, 10)}
+ENGLISH_SCORE_RANGES = {"IELTS": (0, 9), "TOEFL": (0, 120), "PTE": (10, 90), "Duolingo": (10, 160), "Other": (0, 999)}
+
+
+def _profile_text(value, info):
+    return clean_free_text(value, PROFILE_TEXT_LIMITS[info.field_name])
+
+
+def _not_future(value: date | None, what: str) -> date | None:
+    if value is not None and value > date.today():
+        raise PydanticCustomError("future_date", "{what} cannot be in the future", {"what": what})
+    return value
+
+
+class StudentQualificationIn(BaseModel):
+    model_config = {"extra": "forbid"}
+    level: Literal[QUALIFICATION_LEVELS]
+    qualification_name: str | None = None
+    institution: str | None = None
+    board_university: str | None = None
+    year_completed: Annotated[int, Field(ge=1950)] | None = None
+    score_type: Literal[SCORE_TYPES] | None = None
+    score: Annotated[Decimal, Field(ge=0, max_digits=5, decimal_places=2)] | None = None
+    backlogs: Annotated[int, Field(ge=0, le=99)] | None = None
+
+    _text = field_validator("qualification_name", "institution", "board_university")(_profile_text)
+
+    @model_validator(mode="after")
+    def _score_and_year(self):
+        if self.score is not None:
+            if self.score_type is None:
+                raise PydanticCustomError("score_without_type", "Choose percentage or CGPA for the score")
+            low, high = SCORE_RANGES[self.score_type]
+            if not low <= self.score <= high:
+                raise PydanticCustomError("score_range", "A {kind} score must be between {low} and {high}", {"kind": self.score_type, "low": low, "high": high})
+        if self.year_completed is not None and self.year_completed > date.today().year + 6:
+            raise PydanticCustomError("year_range", "Enter a completion year no more than six years ahead")
+        return self
+
+
+class StudentEnglishTestIn(BaseModel):
+    model_config = {"extra": "forbid"}
+    test_type: Literal[ENGLISH_TESTS]
+    status: Literal[ENGLISH_TEST_STATUSES] | None = None
+    overall_score: Annotated[Decimal, Field(ge=0, max_digits=4, decimal_places=1)] | None = None
+    test_date: date | None = None
+    valid_until: date | None = None
+    remarks: str | None = None
+
+    _text = field_validator("remarks")(_profile_text)
+
+    @model_validator(mode="after")
+    def _score_and_dates(self):
+        if self.overall_score is not None:
+            low, high = ENGLISH_SCORE_RANGES[self.test_type]
+            if not low <= self.overall_score <= high:
+                raise PydanticCustomError("score_range", "A {test} score must be between {low} and {high}", {"test": self.test_type, "low": low, "high": high})
+        if self.status == "taken":
+            _not_future(self.test_date, "The date of a test already taken")
+        if self.test_date and self.valid_until and self.valid_until < self.test_date:
+            raise PydanticCustomError("validity_before_test", "The valid-until date cannot be before the test date")
+        return self
+
+
+class StudentProfileSave(BaseModel):
+    model_config = {"extra": "forbid"}
+    date_of_birth: date | None = None
+    nationality: str | None = None
+    city: str | None = None
+    state: str | None = None
+    passport_number: str | None = None
+    passport_expiry: date | None = None
+    work_experience_months: Annotated[int, Field(ge=0, le=600)] | None = None
+    work_experience_details: str | None = None
+    preferred_country_ids: Annotated[list[UUID], Field(max_length=MAX_PREFERRED_COUNTRIES)] = []
+    preferred_course: str | None = None
+    preferred_level: Literal[COURSE_LEVELS] | None = None
+    preferred_intake: str | None = None
+    study_mode: Literal[STUDY_MODES] | None = None
+    budget_min: Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=2)] | None = None
+    budget_max: Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=2)] | None = None
+    budget_currency: CounselingCurrency | None = None
+    qualifications: Annotated[list[StudentQualificationIn], Field(max_length=MAX_QUALIFICATIONS)] = []
+    english_tests: Annotated[list[StudentEnglishTestIn], Field(max_length=MAX_ENGLISH_TESTS)] = []
+
+    _text = field_validator("nationality", "city", "state", "work_experience_details", "preferred_course", "preferred_intake")(_profile_text)
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def _birth(cls, value):
+        if value is not None and value.year < 1900:
+            raise PydanticCustomError("birth_range", "Enter a date of birth after 1900")
+        return _not_future(value, "The date of birth")
+
+    @field_validator("passport_number")
+    @classmethod
+    def _passport(cls, value):
+        value = (value or "").strip().upper() or None
+        if value is not None and not re.fullmatch(r"[A-Z0-9]{5,20}", value):
+            raise PydanticCustomError("passport_format", "A passport number is 5-20 letters and digits, no spaces")
+        return value
+
+    @field_validator("preferred_country_ids")
+    @classmethod
+    def _distinct_countries(cls, value):
+        if len(set(value)) != len(value):
+            raise PydanticCustomError("duplicate_country", "Each preferred country can be chosen once")
+        return value
+
+    @model_validator(mode="after")
+    def _budget(self):
+        if (self.budget_min is not None or self.budget_max is not None) and self.budget_currency is None:
+            raise PydanticCustomError("budget_without_currency", "Choose the budget currency")
+        if self.budget_min is not None and self.budget_max is not None and self.budget_min > self.budget_max:
+            raise PydanticCustomError("budget_order", "The minimum budget cannot be more than the maximum")
+        return self
 
 
 class AgentStaffCreate(AgentMasterInvite):

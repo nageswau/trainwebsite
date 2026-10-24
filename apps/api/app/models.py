@@ -3815,6 +3815,89 @@ class AgentStudentCounseling(Base, TimestampMixin):
     )
 
 
+# ccrm-007 (DEC-SCOPE-249): the structured overseas student profile; its test types are the course master's ENGLISH_TESTS. Migration
+# 0174 repeats these (test_ccrm_007_migration).
+QUALIFICATION_LEVELS = ("class_10", "class_12", "diploma", "bachelor", "master", "phd", "other")
+SCORE_TYPES = ("percentage", "cgpa")
+STUDY_MODES = ("full_time", "part_time", "online")
+ENGLISH_TEST_STATUSES = ("not_taken", "booked", "taken")
+
+
+class OverseasStudentProfile(Base, TimestampMixin):
+    """ccrm-007 (DEC-SCOPE-249): one per overseas student user -- personal, passport, work experience and study preferences; the
+    qualifications and English tests are child rows. The counselor (csc-001 scope), the Overseas Admin and the student edit it (P1, last
+    write wins); the agency reads it without the passport (P2/P3). Replaced whole on every save (P5, `services/student_profiles.py`)."""
+
+    __tablename__ = "overseas_student_profiles"
+    student_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    nationality: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    passport_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    passport_expiry: Mapped[date | None] = mapped_column(Date, nullable=True)
+    work_experience_months: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    work_experience_details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    preferred_country_ids: Mapped[list] = mapped_column(JSON, default=list)
+    preferred_course: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    preferred_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    preferred_intake: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    study_mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    budget_min: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    budget_max: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    budget_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    __table_args__ = (
+        CheckConstraint(_in("preferred_level", COURSE_LEVELS), name="ck_overseas_student_profiles_level"),
+        CheckConstraint(_in("study_mode", STUDY_MODES), name="ck_overseas_student_profiles_study_mode"),
+        CheckConstraint(_in("budget_currency", COUNSELING_CURRENCIES), name="ck_overseas_student_profiles_currency"),
+        CheckConstraint("work_experience_months IS NULL OR work_experience_months BETWEEN 0 AND 600", name="ck_overseas_student_profiles_experience"),
+    )
+
+
+class OverseasStudentQualification(Base):
+    """ccrm-007: one qualification on a student profile, in the order entered (`position`)."""
+
+    __tablename__ = "overseas_student_qualifications"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    student_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_student_profiles.student_user_id", ondelete="CASCADE"))
+    position: Mapped[int] = mapped_column(SmallInteger)
+    level: Mapped[str] = mapped_column(String(20))
+    qualification_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    institution: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    board_university: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    year_completed: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    score_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    score: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    backlogs: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    __table_args__ = (
+        UniqueConstraint("student_user_id", "position", name="uq_overseas_student_qualifications_position"),
+        CheckConstraint(f"level IN ({', '.join(repr(v) for v in QUALIFICATION_LEVELS)})", name="ck_overseas_student_qualifications_level"),
+        CheckConstraint(_in("score_type", SCORE_TYPES), name="ck_overseas_student_qualifications_score_type"),
+    )
+
+
+class OverseasStudentEnglishTest(Base):
+    """ccrm-007: one English test on a student profile. `status` is nullable only for a test copied from the old free-text profile
+    (migration 0174, P4); a save always sends one or none."""
+
+    __tablename__ = "overseas_student_english_tests"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    student_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_student_profiles.student_user_id", ondelete="CASCADE"))
+    position: Mapped[int] = mapped_column(SmallInteger)
+    test_type: Mapped[str] = mapped_column(String(20))
+    status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    overall_score: Mapped[Decimal | None] = mapped_column(Numeric(4, 1), nullable=True)
+    test_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    remarks: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    __table_args__ = (
+        UniqueConstraint("student_user_id", "position", name="uq_overseas_student_english_tests_position"),
+        CheckConstraint(f"test_type IN ({', '.join(repr(v) for v in ENGLISH_TESTS)})", name="ck_overseas_student_english_tests_type"),
+        CheckConstraint(_in("status", ENGLISH_TEST_STATUSES), name="ck_overseas_student_english_tests_status"),
+    )
+
+
 class AgentCommission(Base, TimestampMixin):
     __tablename__ = "agent_commissions"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -6078,7 +6161,7 @@ class ManagementTask(Base, TimestampMixin):
 
 
 # ccrm-029 (DEC-SCOPE-250, T1-T4): an overseas counselor's to-do, due on an IST day, about at most one lead, student or application.
-# `source` / `rule_key` are ccrm-030's (rules create tasks); every task ccrm-029 creates is `manual`. Migration 0174 repeats the CHECKs.
+# `source` / `rule_key` are ccrm-030's (rules create tasks); every task ccrm-029 creates is `manual`. Migration 0175 repeats the CHECKs.
 COUNSELOR_TASK_STATUSES = ("open", "done", "cancelled")
 COUNSELOR_TASK_SOURCES = ("manual", "rule")
 COUNSELOR_TASK_CHECKS = {
