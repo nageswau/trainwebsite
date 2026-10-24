@@ -26,8 +26,10 @@ async def test_student_and_admin_responses_keep_their_keys(db_session):
     async with client_for(student.email) as c:
         checklist = (await c.get(f"{BASE}/applications/{app.id}/visa-checklist")).json()
         status = (await c.get(f"{BASE}/applications/{app.id}/visa-status")).json()
-    assert set(checklist) == {"exists", "id", "status", "appointment_date", "tracking_reference", "checklist", "locked_reason"}
-    assert set(status) == {"exists", "status", "appointment_date", "tracking_reference", "disclaimer"}
+    # ccrm-026 (DEC-SCOPE-252 D8) adds the student's lifecycle subset to both reads; every AGN-012 key is still there.
+    lifecycle = {"visa_status", "visa_status_label", "appointment_place", "submission_date", "expected_decision_date", "decision", "decision_date", "next_steps"}
+    assert set(checklist) == {"exists", "id", "status", "appointment_date", "tracking_reference", "checklist", "locked_reason"} | lifecycle
+    assert set(status) == {"exists", "status", "appointment_date", "tracking_reference", "disclaimer"} | lifecycle
     async with client_for(admin.email) as c:
         r = await c.patch(f"{BASE}/visa/{case.id}", json={"status": "checklist"})  # the old route still allows a backward move
         assert (r.status_code, set(r.json())) == (200, {"id", "status"})

@@ -567,6 +567,33 @@ class VisaCaseCreate(BaseModel):
     tracking_reference: str | None = Field(default=None, max_length=120)
 
 
+VisaStatus = Literal["not_started", "preparing", "appointment_booked", "submitted", "additional_info_requested", "decision_pending", "approved", "refused", "withdrawn"]
+
+
+class VisaLifecycleUpdate(BaseModel):
+    """ccrm-026 (DEC-SCOPE-252): a counselor's / Overseas Admin's partial change to a visa case (PATCH /overseas/visa/{id}/lifecycle).
+    An absent key is unchanged; an explicit null clears an optional field. `expected_visa_status` is the status the screen shows
+    (stale -> 409). `correction_reason` is the Overseas Admin's reason for changing a decided case (VC1)."""
+
+    model_config = {"extra": "forbid"}
+    expected_visa_status: VisaStatus
+    visa_status: VisaStatus | None = None
+    readiness_review_date: date | None = None
+    visa_category: Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] | None = None
+    checklist: list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]] | None = Field(default=None, max_length=50)
+    appointment_date: date | None = None
+    appointment_place: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
+    submission_date: date | None = None
+    tracking_reference: Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)] | None = None
+    interview_date: date | None = None
+    expected_decision_date: date | None = None
+    decision_date: date | None = None
+    outcome_document_id: UUID | None = None
+    refusal_reason: Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000)] | None = None
+    next_steps: Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000)] | None = None
+    correction_reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=500)] | None = None
+
+
 class SupportTicketCreate(BaseModel):
     subject: str = Field(min_length=2, max_length=180)
     description: str = Field(min_length=5, max_length=10000)

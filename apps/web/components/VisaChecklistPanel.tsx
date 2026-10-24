@@ -5,7 +5,17 @@ import { useEffect, useState } from "react";
 type ApplicationRow = { id: string; university: string; status: string };
 type ChecklistItem = { item: string; verification_status: string };
 type Checklist = { exists: boolean; status: string | null; checklist: ChecklistItem[]; appointment_date: string | null; tracking_reference: string | null };
-type VisaStatus = { exists: boolean; status: string | null; appointment_date: string | null; tracking_reference: string | null; disclaimer: string };
+type VisaStatus = {
+  exists: boolean;
+  status: string | null;
+  appointment_date: string | null;
+  tracking_reference: string | null;
+  disclaimer: string;
+  visa_status_label?: string | null; // ccrm-026 (D8)
+  appointment_place?: string | null;
+  expected_decision_date?: string | null;
+  next_steps?: string | null;
+};
 type InterviewPrep = { application_id: string; university: string; country: string; available: boolean; content: string | null };
 
 const DEFAULT_DISCLAIMER = "Visa decisions are made by the relevant government or immigration authority. EduSphere does not decide visa outcomes.";
@@ -101,9 +111,16 @@ export default function VisaChecklistPanel() {
                 <p className="muted" style={{ fontSize: 13 }}>No visa case has been started yet for this application.</p>
               ) : (
                 <>
-                  <span className="badge">{checklist.status?.replaceAll("_", " ")}</span>
+                  <span className="badge">{status?.visa_status_label || checklist.status?.replaceAll("_", " ")}</span>
                   {status?.tracking_reference && <p className="muted" style={{ fontSize: 13 }}>Tracking reference: {status.tracking_reference}</p>}
-                  {status?.appointment_date && <p className="muted" style={{ fontSize: 13 }}>Appointment: {status.appointment_date}</p>}
+                  {status?.appointment_date && (
+                    <p className="muted" style={{ fontSize: 13 }}>
+                      Appointment: {status.appointment_date}
+                      {status.appointment_place ? `, ${status.appointment_place}` : ""}
+                    </p>
+                  )}
+                  {status?.expected_decision_date && <p className="muted" style={{ fontSize: 13 }}>Expected decision: {status.expected_decision_date}</p>}
+                  {status?.next_steps && <p style={{ fontSize: 13 }}>Next steps: {status.next_steps}</p>}
                   <ul className="list-clean" style={{ marginTop: 10 }}>
                     {checklist.checklist.map((item) => (
                       <li key={item.item}>

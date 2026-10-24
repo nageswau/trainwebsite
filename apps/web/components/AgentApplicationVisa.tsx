@@ -174,14 +174,43 @@ export default function AgentApplicationVisa({ detail, onSaved, onFailed, onOpen
         <>
           <p>
             <span className="badge">{stageLabel(visa.stage)}</span>
+            {visa.visa_status_label && <span className="badge" style={{ marginLeft: 6 }}>{visa.visa_status_label}</span>}
           </p>
           <dl className="card-stack">
             <dt>Visa application date</dt>
             <dd>{visa.visa_application_date ?? "Not recorded"}</dd>
             <dt>Appointment</dt>
-            <dd>{visa.appointment_date ?? "Not recorded"}</dd>
+            <dd>
+              {visa.appointment_date ?? "Not recorded"}
+              {visa.appointment_place ? `, ${visa.appointment_place}` : ""}
+            </dd>
             <dt>Interview</dt>
             <dd>{visa.interview_date ?? "Not recorded"}</dd>
+            {/* ccrm-026 (VC2): recorded by the EduSphere counselor; read-only here. */}
+            {visa.visa_category && (
+              <>
+                <dt>Visa category</dt>
+                <dd>{visa.visa_category}</dd>
+              </>
+            )}
+            {visa.tracking_reference && (
+              <>
+                <dt>Visa application reference</dt>
+                <dd>{visa.tracking_reference}</dd>
+              </>
+            )}
+            {visa.expected_decision_date && (
+              <>
+                <dt>Expected decision</dt>
+                <dd>{visa.expected_decision_date}</dd>
+              </>
+            )}
+            {visa.next_steps && (
+              <>
+                <dt>Next steps</dt>
+                <dd>{visa.next_steps}</dd>
+              </>
+            )}
             {visa.decision && (
               <>
                 <dt>Decision</dt>

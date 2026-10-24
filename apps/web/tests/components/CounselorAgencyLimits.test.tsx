@@ -46,18 +46,19 @@ describe("counselor limits on agency applications (H12)", () => {
     render(<CounselorVisaPanel />);
     const card = (await screen.findByRole("heading", { name: "Priya" })).closest(".card") as HTMLElement;
     expect(await within(card).findByText(locked)).toBeInTheDocument();
-    expect(within(card).queryByRole("button", { name: /^Advance to/ })).toBeNull();
+    expect(within(card).queryByRole("form", { name: "Visa case" })).toBeNull();
   });
 
-  it("offers only later visa stages on an open agency case", async () => {  // AC21
+  // ccrm-026 (DEC-SCOPE-252): the stage buttons became the Appendix A "Next status" choice -- still forward only.
+  it("offers only later visa statuses on an open agency case", async () => {  // AC21
     vi.stubGlobal("fetch", vi.fn((url: string) => {
       if (url.includes("/counselor/applications")) return json({ rows: [ROWS[0]] });
-      if (url.includes("/visa-checklist")) return json({ exists: true, id: "v1", status: "interview_prep", checklist: [], locked_reason: null });
-      return json({ exists: true, status: "interview_prep", appointment_date: null, tracking_reference: null, disclaimer: "" });
+      if (url.includes("/visa-checklist")) return json({ exists: true, id: "v1", status: "tracking", visa_status: "decision_pending", checklist: [], locked_reason: null });
+      return json({ exists: true, status: "tracking", appointment_date: null, tracking_reference: null, disclaimer: "" });
     }));
     render(<CounselorVisaPanel />);
     const card = (await screen.findByRole("heading", { name: "Priya" })).closest(".card") as HTMLElement;
-    const buttons = await within(card).findAllByRole("button", { name: /^Advance to/ });
-    expect(buttons.map((b) => b.textContent)).toEqual(["Advance to Tracking", "Advance to Decision"]);
+    const select = (await within(card).findByLabelText("Next status")) as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.value)).toEqual(["", "additional_info_requested", "approved", "refused", "withdrawn"]);
   });
 });

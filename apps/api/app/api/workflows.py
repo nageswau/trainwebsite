@@ -115,21 +115,26 @@ from app.schemas import (
     SupportTicketCreate,
     SupportTicketUpdate,
     VisaCaseCreate,
+    VisaLifecycleUpdate,
 )
 from app.services import agent_documents as document_files
 from app.services import agent_notifications as agency_notices
 from app.services import application_outcomes as outcomes
 from app.services import application_sub_status as sub_statuses
-from app.services import applications, counselor_students, course_skills, interviews, offers
+from app.services import applications, counselor_students, course_skills, interviews, offers, visa_lifecycle
+from app.services import document_checklists as checklist_templates
 from app.services import recruiter_requirements as requirements
 from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, open_clause, owned, stage_label, status_history, with_owner
 from app.services.agent_documents import add_event, in_scope
 from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
 from app.services.agent_students import application_scope, student_scope
-from app.services.agent_visa import VISA_CASE_STAGES, VISA_DECIDED, VISA_DECISION_DISCLAIMER, VISA_ENROLLED, VISA_OFFER_NEEDED, update_case
+from app.services.agent_visa import VISA_CASE_STAGES, VISA_DECIDED, VISA_DECISION_DISCLAIMER, VISA_ENROLLED, VISA_OFFER_NEEDED, ChecklistGateRefused, sync_from_stage, update_case
 from app.services.bdm_appointments import db_now
 from app.services.certificates import generate_certificate_pdf
 from app.services.storage import storage
+from app.visa_status import DECISIONS as VISA_DECISIONS
+from app.visa_status import FIRST_OF_STAGE as VISA_FIRST_OF_STAGE
+from app.visa_status import label as visa_status_label
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
 logger = logging.getLogger("app.workflows")
@@ -2468,8 +2473,15 @@ async def get_visa_checklist(application_id: UUID, user: User = Depends(get_curr
         # No visa case has been started yet -- an honest empty state, not an error or a
         # fabricated one (the case is created by a Counselor once the application is far
         # enough along; not every application has reached that point).
-        return {"exists": False, "status": None, "checklist": [], "appointment_date": None, "tracking_reference": None, "locked_reason": locked_reason}
-    return {
+        # ccrm-026 (D5): the visa template that would fill an empty checklist, so the start form can show it.
+        empty = {"exists": False, "status": None, "checklist": [], "appointment_date": None, "tracking_reference": None, "locked_reason": locked_reason}
+        template = await checklist_templates.resolve(db, application, "visa") if user.role != "overseas_student" else None
+        if template is not None:
+            items = (await checklist_templates.view(db, template))["items"]
+            empty["template"] = {"name": template.name, "items": [i["document_type"] for i in items]}
+        return empty
+    staff = user.role != "overseas_student"
+    out = {
         "exists": True,
         "id": case.id,
         "status": case.status,
@@ -2477,7 +2489,20 @@ async def get_visa_checklist(application_id: UUID, user: User = Depends(get_curr
         "tracking_reference": case.tracking_reference,
         "locked_reason": locked_reason,
         "checklist": [{"item": item, "verification_status": status} for item, status in (await _checklist_verification(db, application.id, case.checklist)).items()],
-    }
+    } | visa_lifecycle.view(case, staff=staff)  # ccrm-026: the lifecycle fields; the refusal reason for staff only
+    if staff:  # the evidence picker (D3)
+        out["documents"] = await _visa_documents(db, application.id)
+    return out
+
+
+async def _visa_documents(db: AsyncSession, application_id: UUID) -> list[dict]:
+    rows = await db.scalars(
+        select(StudentDocument)
+        .where(StudentDocument.application_id == application_id, StudentDocument.archived_at.is_(None))
+        .order_by(StudentDocument.created_at.desc(), StudentDocument.id)
+        .limit(50)
+    )
+    return [{"id": d.id, "document_type": d.document_type, "original_filename": d.original_filename} for d in rows]
 
 
 @router.get("/overseas/visa/interview-prep")
@@ -2525,7 +2550,7 @@ async def get_visa_status(application_id: UUID, user: User = Depends(get_current
         "appointment_date": case.appointment_date,
         "tracking_reference": case.tracking_reference,
         "disclaimer": VISA_DECISION_DISCLAIMER,
-    }
+    } | visa_lifecycle.view(case, staff=False)  # ccrm-026 (D8): the student's subset, whoever reads it
 
 
 def _recheck_counselor_scope(user: User, application: OverseasApplication) -> None:
@@ -2584,11 +2609,14 @@ async def _update_agency_visa(db: AsyncSession, user: User, application: Oversea
         changes["checklist"] = body.checklist
     if "appointment_date" in sent:  # an explicit null clears the date, as on the agency route
         changes["appointment_date"] = body.appointment_date
+    before = case.visa_status
     outcome = await update_case(db, case, changes)  # refuses a decided case, so the reference below is only set on an open one
     reference_changed = "tracking_reference" in sent and body.tracking_reference != case.tracking_reference
     if reference_changed:
         case.tracking_reference = body.tracking_reference
     if outcome is not None or reference_changed:
+        await visa_lifecycle.apply_to_application(db, user, application, case, before)
+        await _visa_notices(db, user, application, case, status_changed=case.visa_status != before)
         await _audit(db, user, "visa.update", "visa_case", case.id, body.model_dump(mode="json", exclude_unset=True))
     await db.commit()
     return {"id": case.id, "status": case.status}
@@ -2614,14 +2642,68 @@ async def update_visa(visa_id: UUID, payload: dict, user: User = Depends(get_cur
             unverified = [doc_type for doc_type, status in verification.items() if status != "verified"]
             if unverified:
                 raise HTTPException(422, f"Cannot advance past the checklist stage -- not yet verified: {', '.join(unverified)}.")
+    before = item.visa_status
+    if before in VISA_DECISIONS:  # ccrm-026 (VC1): a recorded decision locks the case; the admin corrects it on /lifecycle
+        raise HTTPException(409, VISA_DECIDED)
     for k in ("status", "tracking_reference", "checklist"):
         if k in payload:
             setattr(item, k, payload[k])
     if payload.get("appointment_date"):
         item.appointment_date = date.fromisoformat(payload["appointment_date"])
+    sync_from_stage(item)
+    await visa_lifecycle.apply_to_application(db, user, application, item, before)
+    await _visa_notices(db, user, application, item, status_changed=item.visa_status != before)
     await _audit(db, user, "visa.update", "visa_case", item.id, payload)
     await db.commit()
     return {"id": item.id, "status": item.status}
+
+
+VISA_STUDENT_URL = "/overseas/student/visa-status"
+
+
+async def _visa_notices(db: AsyncSession, user: User, application: OverseasApplication, case: VisaCase, *, status_changed: bool) -> None:
+    """ccrm-026 (D6, CC5): the student hears of a status change; on an agency application the other side hears of every change.
+    Only the status label -- never the refusal reason."""
+    text = f"visa {visa_status_label(case.visa_status).lower()}" if status_changed else "visa details updated"
+    if status_changed and application.student_id and application.student_id != user.id:
+        student = await db.get(User, application.student_id)
+        if student:
+            await _notify_user(db, student, "Visa update", f"Your visa case is now: {visa_status_label(case.visa_status)}.", VISA_STUDENT_URL)
+    await agency_notices.visa_changed(db, application, user, text)
+
+
+@router.patch("/overseas/visa/{visa_id}/lifecycle")
+async def update_visa_lifecycle(visa_id: UUID, payload: VisaLifecycleUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-026 (DEC-SCOPE-252): the counselor (own applications, direct and agency, CC4) or the Overseas Admin records the Appendix A
+    lifecycle. Lock order: the application, then the case, as the agency route. A decided case is the admin's to correct (VC1)."""
+    _require(user, {"counselor", "overseas_admin"}, "overseas")
+    item = await db.get(VisaCase, visa_id)
+    if not item:
+        raise HTTPException(404, "Visa case not found")
+    application = await _assigned_application(db, user, item.application_id)
+    await _require_bridged_visa_entitlement(db, user, application, grandfathered_since=item.created_at)
+    await db.refresh(application, with_for_update=True)
+    _recheck_counselor_scope(user, application)
+    if not (user.role == "overseas_admin" and application.outcome == "visa_refused"):  # D7: the admin may still correct a refusal
+        outcomes.refuse_closed(application)
+    if application.agent_id is not None and await _agency_record_archived(db, application):
+        raise HTTPException(409, ARCHIVED)
+    if application.status == "enrolled":
+        raise HTTPException(409, VISA_ENROLLED)
+    await db.refresh(item, with_for_update=True)
+    before = item.visa_status
+    try:
+        changes = await visa_lifecycle.update(db, user, application, item, payload)
+    except ChecklistGateRefused as refused:
+        logger.warning("visa_gate_blocked", extra={"extra_fields": {"visa_case_id": str(item.id), "unverified_items": len(refused.unverified)}})
+        raise
+    if changes is not None:
+        await visa_lifecycle.apply_to_application(db, user, application, item, before)
+        await _visa_notices(db, user, application, item, status_changed=item.visa_status != before)
+        await _audit(db, user, "visa.lifecycle", "visa_case", item.id, changes)
+        await db.commit()
+        logger.info("visa_lifecycle_updated", extra={"extra_fields": {"visa_case_id": str(item.id), "actor_id": str(user.id), **{k: changes[k] for k in ("from_status", "to_status", "correction")}}})
+    return {"id": item.id, "status": item.status} | visa_lifecycle.view(item, staff=True)
 
 
 @router.post("/overseas/visa", status_code=201)
@@ -2644,7 +2726,14 @@ async def create_visa_case(payload: VisaCaseCreate, user: User = Depends(get_cur
     existing = await db.scalar(select(VisaCase).where(VisaCase.application_id == application.id))
     if existing:
         raise HTTPException(409, "A visa case already exists for this application")
-    item = VisaCase(application_id=application.id, status=payload.status, appointment_date=payload.appointment_date, checklist=payload.checklist, tracking_reference=payload.tracking_reference)
+    checklist = payload.checklist
+    if not checklist:  # ccrm-026 (D5): the resolved visa template's documents
+        template = await checklist_templates.resolve(db, application, "visa")
+        checklist = [i["document_type"] for i in (await checklist_templates.view(db, template))["items"]] if template else []
+    item = VisaCase(
+        application_id=application.id, status=payload.status, visa_status=VISA_FIRST_OF_STAGE[payload.status], appointment_date=payload.appointment_date,
+        checklist=checklist, tracking_reference=payload.tracking_reference,
+    )  # fmt: skip
     db.add(item)
     await db.flush()
     await _audit(db, user, "visa.create", "visa_case", item.id)

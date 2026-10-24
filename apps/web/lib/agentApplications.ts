@@ -73,6 +73,15 @@ export type Visa = {
   decision: VisaDecision | null;
   decided_at: string | null;
   disclaimer: string;
+  // ccrm-026 (VC2): the counselor's lifecycle fields, read-only for the agency (never the refusal reason).
+  visa_status?: string;
+  visa_status_label?: string | null;
+  visa_category?: string | null;
+  appointment_place?: string | null;
+  tracking_reference?: string | null;
+  expected_decision_date?: string | null;
+  decision_date?: string | null;
+  next_steps?: string | null;
 };
 
 // V5: a case starts from an offer onwards -- the stages enrollment uses.

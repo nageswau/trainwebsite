@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.agent_students import _gate, _require_master_action
 from app.api.deps import get_current_user
-from app.api.workflows import _maybe_trigger_agent_commission, _notify_user
+from app.api.workflows import _maybe_trigger_agent_commission, _notify_user, _visa_notices
 from app.core.database import get_db
 from app.models import AgentOrgMember, AgentStudent, ApplicationStatusHistory, AuditLog, OverseasApplication, University, User, VisaCase
 from app.schemas import (
@@ -37,6 +37,7 @@ from app.services import agent_notifications as notices
 from app.services import application_offers as offer_records
 from app.services import application_outcomes as outcomes
 from app.services import application_sub_status as sub_statuses
+from app.services import visa_lifecycle
 from app.services.agent_applications import (
     ARCHIVED,
     DEFAULT_NEXT_ACTION,
@@ -385,6 +386,7 @@ async def update_visa_case(application_id: UUID, payload: AgentVisaUpdate, user:
     case = await load_case(db, item.id)
     if case is None:  # the screen believed a case exists; a 404 would read as "the application is gone"
         raise HTTPException(409, VISA_STALE)
+    before = case.visa_status
     try:
         outcome = await update_case(db, case, payload.model_dump(exclude_unset=True))
     except ChecklistGateRefused as refused:
@@ -393,6 +395,9 @@ async def update_visa_case(application_id: UUID, payload: AgentVisaUpdate, user:
     if outcome is None:  # nothing changed: no write, no audit
         return {"application": await detail(db, user, item, record=record)}
     action, metadata = outcome
+    # ccrm-026 (VC4, CC5): the application follows the visa status; the student and the EduSphere counselor are told.
+    await visa_lifecycle.apply_to_application(db, user, item, case, before)
+    await _visa_notices(db, user, item, case, status_changed=case.visa_status != before)
     _audit(db, user, action, item.id, metadata)
     await db.commit()
     _log(_VISA_EVENTS[action], membership, user, item.id, **{k: v for k, v in metadata.items() if k != "decision"})  # never the outcome (§10.3)
