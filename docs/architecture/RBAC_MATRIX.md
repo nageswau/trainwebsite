@@ -2718,3 +2718,14 @@ inside the existing role scope (a counselor searching another counselor's code g
 
 - Audit metadata carries the decision / payment status only, never amounts, reasons or file keys.
 - Pinned by `test_ccrm_025_decisions.py::test_scope_and_on_hold_refuse_a_decision`, `test_ccrm_025_deposits.py::test_scope_readers_see_no_receipts_and_cannot_write`.
+
+### 2.171 Application details *(added 2026-10-24 — `DEC-SCOPE-256`, ccrm-013)*
+
+| Route / field | `overseas_admin` | `counselor` (overseas) | `agent` | `overseas_student` | Others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET`/`PATCH /applications/{id}/details` | ✅ any application | ✅ own applications, direct and agency (`403` otherwise) | `403` (reads the fields in its detail) | `403` | `403` | `401` |
+| Portal link, contact, fee, faculty/campus, internal dates (read) | ✅ | ✅ own | ✅ agency detail, read-only | ❌ | ❌ | — |
+| Course start date, scholarship (read) | ✅ | ✅ own | ✅ | ✅ own applications page | ❌ | — |
+
+- Pinned by `test_ccrm_013_application_fields.py::test_scope_other_counselor_agent_and_student_are_refused`,
+  `::test_the_counselor_edits_an_agency_application_and_the_agency_is_told`, `::test_the_student_sees_the_scholarship_and_is_told_only_when_it_changes`.

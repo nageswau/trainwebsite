@@ -166,6 +166,19 @@ export type AgentApplicationDetail = AgentApplicationItem & {
   university_student_id: string | null;
   enrollment_confirmed_at: string | null;
   counselor_name: string | null; // AGN-023 (DEC-SCOPE-090 H7): the EduSphere counselor's name only
+  // ccrm-013 (DEC-SCOPE-256, F9): EduSphere's university-side fields, read-only here (optional: older payloads in tests omit them)
+  faculty?: string | null;
+  campus?: string | null;
+  course_start_date?: string | null;
+  university_portal_url?: string | null;
+  university_contact_name?: string | null;
+  university_contact_email?: string | null;
+  tuition_fee?: string | number | null;
+  currency?: string | null;
+  scholarship_status?: string | null;
+  scholarship_amount?: string | number | null;
+  documents_completed_on?: string | null;
+  decision_due_on?: string | null;
   enrollment_check: EnrollmentCheck;
   visa?: Visa | null; // AGN-012: null until a case is started; absent in fixtures written before it
   history: HistoryEntry[];
