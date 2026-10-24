@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 
-type DocumentRow = { id: string; type: string; status: string; notes: string | null };
+import { formatCalendarDate } from "@/lib/formatDate";
+
+// ccrm-021 (DEC-SCOPE-249 S5): `status` arrives as words; the review date and expiry are calendar dates.
+type DocumentRow = { id: string; type: string; status: string; notes: string | null; reviewed_on?: string | null; expiry_date?: string | null };
 
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
@@ -71,6 +74,11 @@ export default function DocumentDownloadPanel() {
             <span className="badge">{row.status}</span>
             <h4 style={{ marginTop: 10 }}>{row.type}</h4>
             {row.notes && <p className="muted" style={{ fontSize: 13 }}>{row.notes}</p>}
+            {(row.reviewed_on || row.expiry_date) && (
+              <p className="muted" style={{ fontSize: 13 }}>
+                {[row.reviewed_on && `Reviewed ${formatCalendarDate(row.reviewed_on)}`, row.expiry_date && `Expires ${formatCalendarDate(row.expiry_date)}`].filter(Boolean).join(" · ")}
+              </p>
+            )}
             <button className="btn small" disabled={busyId === row.id} onClick={() => download(row)}>
               {busyId === row.id ? "Preparing…" : "Download"}
             </button>

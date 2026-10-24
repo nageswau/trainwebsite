@@ -5,12 +5,13 @@ import AgentDocumentHistory from "./AgentDocumentHistory";
 import AgentDocumentReviewForm from "./AgentDocumentReviewForm";
 import { sendRequest } from "@/lib/apiErrors";
 import { AgentDocumentItem, documentName, DOCUMENTS_URL, FILE_ACCEPT, formatSize, openDocument, reviewDecisions, statusLabel } from "@/lib/agentDocuments";
-import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
+import { NEEDS_ACTION } from "@/lib/documentChecklists";
+import { formatCalendarDate, formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
 import type { User } from "@/lib/types";
 
 type Panel = "review" | "replace" | "history" | null;
 type Note = { text: string; failed: boolean } | null; // this card's own errors
-const STATUS_CLASS: Record<string, string> = { pending: "status pending", verified: "status", rejected: "status error", changes_required: "status error" };
+const statusClass = (status: string) => (status === "pending" ? "status pending" : NEEDS_ACTION.has(status) ? "status error" : "status"); // ccrm-021
 
 // AGN-009: one document and its actions. Download uses the scoped OVS-005 route (`openDocument`: fetched on demand, never stored);
 // review follows the §6 matrix; replace is offered only where the server allows it (`replaceable`). After any change the list
@@ -56,15 +57,21 @@ export default function AgentDocumentCard({ doc, user, onChanged }: { doc: Agent
     }
   }
 
+  // ccrm-021 S5: who reviewed it and when, and the expiry date, on every document.
+  const reviewLine = [
+    doc.reviewed_at && `Reviewed${doc.reviewer ? ` by ${doc.reviewer}` : ""} ${formatDateTimeIn(doc.reviewed_at, viewerTimeZone())}`,
+    doc.expiry_date && `Expires ${formatCalendarDate(doc.expiry_date)}`,
+  ].filter(Boolean).join(" · ");
   const details = [doc.university && `Application: ${doc.university}`, doc.uploaded_by && `Uploaded by ${doc.uploaded_by}`, formatDateTimeIn(doc.created_at, viewerTimeZone()), formatSize(doc.file_size)].filter(Boolean).join(" · ");
   return (
     <li className="card" style={{ padding: 16 }}>
       <strong>{doc.student}</strong>
       {!doc.has_login && <span className="badge" style={{ marginLeft: 8 }}>no login</span>}
       <div>
-        {documentName(doc)} <span className={STATUS_CLASS[doc.verification_status] ?? "status"}>{statusLabel(doc.verification_status)}</span>
+        {documentName(doc)} <span className={statusClass(doc.verification_status)}>{statusLabel(doc.verification_status)}</span>
       </div>
       {doc.reviewer_notes && <div className="muted">Reason: {doc.reviewer_notes}</div>}
+      {reviewLine && <div className="muted">{reviewLine}</div>}
       <div className="muted">{details}</div>
       <div className="actions" style={{ marginTop: 8 }}>
         <button type="button" className="btn secondary small" aria-label={`Download ${name}`} disabled={busy === "download"} onClick={download}>

@@ -3,6 +3,7 @@
 import pytest
 import pytest_asyncio
 
+from app.document_checklists import review_status
 from app.models import StudentDocument
 from tests.agn001_helpers import client_for
 from tests.agn009_helpers import DOCS, DOWNLOAD, REQUESTS, VERIFY, events_of, mk_doc, upload_files, world
@@ -33,8 +34,9 @@ async def test_master_rejects_with_a_reason(db_session, w, outcome):
         response = await c.patch(VERIFY.format(doc.id), json={"verification_status": outcome, "notes": "  Scan is blurred  "})
     assert response.status_code == 200, response.text
     row = await db_session.get(StudentDocument, doc.id, populate_existing=True)
-    assert row.verification_status == outcome and row.reviewer_notes == "Scan is blurred"
-    assert [(e.event, e.notes) for e in await events_of(db_session, doc.id)] == [(outcome, "Scan is blurred")]
+    stored = review_status(outcome)  # ccrm-021 S1
+    assert row.verification_status == stored and row.reviewer_notes == "Scan is blurred"
+    assert [(e.event, e.notes) for e in await events_of(db_session, doc.id)] == [(stored, "Scan is blurred")]
 
 
 @pytest.mark.asyncio
@@ -73,8 +75,8 @@ async def test_history_lists_every_event_in_order(db_session, w):
     assert steps == [  # AC5
         ("uploaded", master, None, "pending"),
         ("downloaded", master, None, None),
-        ("rejected", master, "pending", "rejected"),
-        ("replaced", staff, "rejected", "pending"),
+        ("reupload_required", master, "pending", "reupload_required"),  # ccrm-021 S1
+        ("replaced", staff, "reupload_required", "pending"),
         ("verified", staff, "pending", "verified"),
     ]
     assert page["items"][2]["notes"] == "Expired"

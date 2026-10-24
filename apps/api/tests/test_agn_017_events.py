@@ -103,7 +103,7 @@ async def test_a_duplicate_open_request_is_refused_and_notifies_nobody(db_sessio
     assert len(await titled(db_session, dw["staff"]["user"], REQUESTED)) == 1
 
 
-@pytest.mark.parametrize(("outcome", "text"), [("rejected", "rejected"), ("changes_required", "changes required")])
+@pytest.mark.parametrize(("outcome", "text"), [("rejected", "re-upload required"), ("changes_required", "incomplete")])  # ccrm-021 S1 wording
 @pytest.mark.asyncio
 async def test_a_master_rejection_tells_the_assignee(db_session, dw, outcome, text):
     doc = await mk_doc(db_session, record=dw["record"], document_type="Transcripts")
@@ -142,7 +142,7 @@ async def test_a_counselor_rejection_of_an_agency_document_tells_the_assignee_an
     async with client_for(counselor.email) as c:
         assert (await c.patch(VERIFY.format(doc.id), json={"verification_status": "rejected"})).status_code == 200
     [item] = await notices(db_session, dw["staff"]["user"])
-    assert (item.title, item.body) == (ATTENTION, "A document: rejected.")  # a free-text type is never named
+    assert (item.title, item.body) == (ATTENTION, "A document: re-upload required.")  # a free-text type is never named (ccrm-021 wording)
     assert [n.title for n in await notices(db_session, dw["linked_user"])] == ["Document reviewed"]  # unchanged
 
 

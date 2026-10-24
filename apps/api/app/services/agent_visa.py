@@ -68,7 +68,7 @@ async def checklist_status(db: AsyncSession, application_id: UUID, items: list[s
     if items:
         rows = await db.execute(
             select(StudentDocument.document_type, StudentDocument.verification_status)
-            .where(StudentDocument.application_id == application_id, StudentDocument.document_type.in_(items))
+            .where(StudentDocument.application_id == application_id, StudentDocument.document_type.in_(items), StudentDocument.archived_at.is_(None))
             .order_by(StudentDocument.created_at, StudentDocument.id)
         )
         latest = {document_type: status for document_type, status in rows}  # ascending, so the newest wins

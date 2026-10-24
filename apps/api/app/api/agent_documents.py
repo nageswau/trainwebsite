@@ -33,6 +33,7 @@ NOT_AGENCY_DOCUMENT = "Only documents your agency uploaded can be replaced"
 DECIDED_BY_STAFF = "A counselor or administrator has reviewed this document, so it can't be replaced"
 APPLICATION_MISMATCH = "Document student does not match the application"
 OFFER_LETTER_NEEDS_APPLICATION = "Choose the application this offer letter belongs to"  # AGN-010 O3
+REPLACED_VERSION = "A newer version replaced this document"
 
 
 def _audit(db: AsyncSession, user: User, action: str, entity_type: str, entity_id, metadata: dict | None = None) -> None:
@@ -156,11 +157,14 @@ async def replace_document_file(document_id: UUID, file: UploadFile = File(...),
     item = await svc.load_scoped(db, user, document_id, lock=True)
     if svc.decided_by_staff(item, await svc.reviewer_role(db, item)):
         raise HTTPException(409, DECIDED_BY_STAFF)
+    if item.archived_at is not None:  # ccrm-021 S3: a counselor replaced it with a new version
+        raise HTTPException(409, REPLACED_VERSION)
     key = svc.store(data, content_type)
     old_key, old_status = item.file_url, item.verification_status
     try:
         item.file_url, item.content_type, item.original_filename, item.file_size = key, content_type, filename, len(data)
         item.verification_status, item.verified_by_id, item.reviewer_notes, item.uploaded_by_user_id = "pending", None, None, user.id
+        item.reviewed_at = None  # ccrm-021 S5: the new file is not reviewed yet
         svc.add_event(db, event="replaced", actor=user, document=item, from_status=old_status, to_status="pending", file_key=old_key)
         _audit(db, user, "document.replace", "student_document", item.id, {"from_status": old_status})
         await db.commit()

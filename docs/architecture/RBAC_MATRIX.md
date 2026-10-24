@@ -2639,3 +2639,13 @@ inside the existing role scope (a counselor searching another counselor's code g
 - Backlog roles: overseas_admin write, counselor read. Pinned by `test_ccrm_018_checklists.py::test_counselor_reads_but_cannot_write`,
   `::test_other_roles_and_signed_out_are_refused`, `::test_resolve_is_scoped_to_the_counselors_applications`. Web page
   `/overseas/admin/checklists` for Overseas and Super Admins (others see "Access unavailable").
+
+### 2.164 Document status, expiry and versions *(added 2026-10-24 — `DEC-SCOPE-249`, ccrm-021)*
+
+| Route | `overseas_admin` | `counselor` | `super_admin` | `agent` | `overseas_student`, others | Anonymous |
+|---|---|---|---|---|---|---|
+| `PATCH /workflows/overseas/documents/{id}/verify` | ✅ any status in the review list | ✅ own scope (`403` otherwise) | ✅ | AGN-003 §2 unchanged (Master: 3 codes; staff with Verify: verified) | `403` | `401` |
+| `POST /workflows/overseas/documents/{id}/versions` | ✅ | ✅ own scope (`403` otherwise) | ✅ | `403` (agency replace stays on `PUT …/agent/crm/documents/{id}/file`) | `403` | `401` |
+
+- Pinned by `test_ccrm_021_document_status.py::test_replace_is_scoped_like_review_and_checks_the_file`,
+  `::test_agency_staff_still_only_verify`, `::test_an_agency_master_decides_with_new_or_legacy_codes`.

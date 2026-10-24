@@ -71,7 +71,7 @@ async def test_awaiting_documents_counts_undecided_visa_cases_with_unverified_ch
     superseded = await mk_app(db_session, counselor, university, "visa_documentation")
     await mk_case(db_session, superseded, ["passport"])
     await mk_doc(db_session, superseded, "passport", "verified")
-    await mk_doc(db_session, superseded, "passport", "changes_required")  # the newest document of the type decides
+    await mk_doc(db_session, superseded, "passport", "incomplete")  # the newest document of the type decides
     complete = await mk_app(db_session, counselor, university, "visa_documentation")
     await mk_case(db_session, complete, ["passport"])
     await mk_doc(db_session, complete, "passport", "verified")

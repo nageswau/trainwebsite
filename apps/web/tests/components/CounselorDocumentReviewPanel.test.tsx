@@ -21,19 +21,19 @@ afterEach(() => {
 const card = (name: string) => screen.getByText(name).closest(".card") as HTMLElement;
 
 describe("CounselorDocumentReviewPanel -- counselor defaults (unchanged by AGN-003)", () => {
-  it("loads the counselor queue and offers all three decisions", async () => {
+  it("loads the counselor queue and offers the review statuses", async () => {
     const mock = vi.fn().mockResolvedValueOnce(json({ rows })).mockResolvedValueOnce(json({ id: "d1", verification_status: "rejected" })).mockResolvedValue(json({ rows }));
     vi.stubGlobal("fetch", mock);
     render(<CounselorDocumentReviewPanel />);
     expect(mock).toHaveBeenCalledWith("/api/v1/portal/overseas/counselor/documents");
     fireEvent.click((await screen.findAllByRole("button", { name: "Review" }))[1]); // decided rows stay reviewable for counselors
     const select = screen.getByLabelText("Decision") as HTMLSelectElement;
-    expect([...select.options].map((o) => o.value)).toEqual(["verified", "rejected", "changes_required"]);
-    fireEvent.change(select, { target: { value: "rejected" } });
+    expect([...select.options].map((o) => o.value)).toEqual(["verified", "under_review", "incomplete", "reupload_required", "not_required"]); // ccrm-021
+    fireEvent.change(select, { target: { value: "reupload_required" } });
     fireEvent.click(screen.getByRole("button", { name: "Submit review" }));
     expect(await screen.findByText("Document reviewed -- the student has been notified.")).toBeInTheDocument();
     expect(mock.mock.calls[1][0]).toBe("/api/v1/workflows/overseas/documents/d2/verify");
-    expect(JSON.parse(mock.mock.calls[1][1].body)).toEqual({ verification_status: "rejected", notes: null });
+    expect(JSON.parse(mock.mock.calls[1][1].body)).toEqual({ verification_status: "reupload_required", notes: null });
   });
 
   it("says when nothing is waiting", async () => {
@@ -135,11 +135,11 @@ describe("CounselorDocumentReviewPanel -- AGN-003 options", () => {
   });
 
   it("QA-05: statuses read as words", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ rows: [{ id: "d3", student: "S", document: "IELTS", status: "changes_required" }, ...rows] })));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ rows: [{ id: "d3", student: "S", document: "IELTS", status: "reupload_required" }, ...rows] })));
     render(<CounselorDocumentReviewPanel />);
-    expect(await screen.findByText("Changes required")).toBeInTheDocument();
-    expect(within(card("Passport")).getByText("Pending")).toBeInTheDocument();
-    expect(screen.queryByText("changes_required")).toBeNull();
+    expect(await screen.findByText("Re-upload required")).toBeInTheDocument(); // ccrm-021 codes
+    expect(within(card("Passport")).getByText("Pending review")).toBeInTheDocument();
+    expect(screen.queryByText("reupload_required")).toBeNull();
   });
 
   it("QA-06: submitting leaves View document alone", async () => {
@@ -166,5 +166,83 @@ describe("CounselorDocumentReviewPanel -- AGN-003 options", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ rows: [] })));
     render(<CounselorDocumentReviewPanel emptyText="No documents have been uploaded for your agency's applications yet." />);
     expect(await screen.findByText("No documents have been uploaded for your agency's applications yet.")).toBeInTheDocument();
+  });
+});
+
+describe("CounselorDocumentReviewPanel -- ccrm-021 status list, expiry and versions", () => {
+  const passport = { id: "p1", student: "Asha Rao", document: "Passport", status: "reupload_required", notes: "Blurry", reviewer: "Meera", reviewed_at: "2026-10-20T05:30:00Z", expiry_date: "2031-03-04", replaces_earlier: true };
+  const pdf = () => new File(["%PDF-1.4"], "p.pdf", { type: "application/pdf" });
+
+  it("shows the status in words with reviewer, review date, expiry and the version note", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ rows: [passport] })));
+    render(<CounselorDocumentReviewPanel />);
+    const row = await screen.findByText("Passport").then(() => card("Passport"));
+    expect(within(row).getByText("Re-upload required")).toBeInTheDocument();
+    expect(within(row).getByText("Notes: Blurry")).toBeInTheDocument();
+    expect(within(row).getByText(/Reviewed by Meera .* · Expires 04 Mar 2031 · Replaces an earlier version/)).toBeInTheDocument();
+  });
+
+  it("sends a passport's expiry date with the review", async () => {
+    const mock = vi.fn()
+      .mockResolvedValueOnce(json({ rows: [{ ...passport, expiry_date: null }] }))
+      .mockResolvedValueOnce(json({ id: "p1", verification_status: "verified" }))
+      .mockResolvedValue(json({ rows: [] }));
+    vi.stubGlobal("fetch", mock);
+    render(<CounselorDocumentReviewPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Review" }));
+    fireEvent.change(screen.getByLabelText("Expiry date (needed to verify a passport)"), { target: { value: "2032-01-31" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit review" }));
+    await waitFor(() => expect(mock).toHaveBeenCalledTimes(3));
+    expect(JSON.parse(mock.mock.calls[1][1].body)).toEqual({ verification_status: "verified", notes: null, expiry_date: "2032-01-31" });
+  });
+
+  it("QA-01: matches free-text types by word (a 'QA Passport' needs an expiry, an 'SOP draft' gets the drafting statuses)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ rows: [{ id: "q1", student: "S", document: "QA Passport", status: "pending" }, { id: "q2", student: "S", document: "SOP draft", status: "pending" }] })));
+    render(<CounselorDocumentReviewPanel />);
+    fireEvent.click(within(await screen.findByText("QA Passport").then(() => card("QA Passport"))).getByRole("button", { name: "Review" }));
+    expect(within(card("QA Passport")).getByLabelText("Expiry date (needed to verify a passport)")).toBeInTheDocument();
+    fireEvent.click(within(card("SOP draft")).getByRole("button", { name: "Review" }));
+    expect([...(within(card("SOP draft")).getByLabelText("Decision") as HTMLSelectElement).options].map((o) => o.value)).toContain("approved");
+  });
+
+  it("offers Draft, Review and Approved on an SOP only", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ rows: [{ id: "s1", student: "Ravi", document: "SOP", status: "pending" }] })));
+    render(<CounselorDocumentReviewPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Review" }));
+    const values = [...(screen.getByLabelText("Decision") as HTMLSelectElement).options].map((o) => o.value);
+    expect(values.slice(-3)).toEqual(["draft", "review", "approved"]);
+    expect(screen.getByLabelText("Expiry date (optional)")).toBeInTheDocument();
+  });
+
+  it("replaces a file with a new version and confirms on the new row", async () => {
+    const mock = vi.fn()
+      .mockResolvedValueOnce(json({ rows: [passport] }))
+      .mockResolvedValueOnce(json({ id: "p2", verification_status: "pending", version_of_id: "p1", expiry_date: "2031-03-04" }, 201))
+      .mockResolvedValue(json({ rows: [{ ...passport, id: "p2", status: "pending", reviewer: null, reviewed_at: null }] }));
+    vi.stubGlobal("fetch", mock);
+    render(<CounselorDocumentReviewPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Replace file of Passport for Asha Rao" }));
+    const form = screen.getByRole("form", { name: "Replace file of Passport for Asha Rao" });
+    fireEvent.change(within(form).getByLabelText("New file (PDF, JPEG or PNG)"), { target: { files: [pdf()] } });
+    fireEvent.submit(form);
+    expect(await screen.findByText("New version uploaded -- waiting for review. The previous file is kept in its history.")).toBeInTheDocument();
+    expect(mock.mock.calls[1][0]).toBe("/api/v1/workflows/overseas/documents/p1/versions");
+    const body = mock.mock.calls[1][1].body as FormData;
+    expect(body.get("file")).toBeInstanceOf(File);
+    expect(body.has("expiry_date")).toBe(false); // empty keeps the current expiry
+    expect(screen.getByText("Pending review")).toBeInTheDocument();
+  });
+
+  it("a version someone already replaced shows the refusal and reloads", async () => {
+    const refusal = "A newer version replaced this document -- open the current one";
+    const mock = vi.fn().mockResolvedValueOnce(json({ rows: [passport] })).mockResolvedValueOnce(json({ detail: refusal }, 409)).mockResolvedValue(json({ rows: [passport] }));
+    vi.stubGlobal("fetch", mock);
+    render(<CounselorDocumentReviewPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Replace file of Passport for Asha Rao" }));
+    const form = screen.getByRole("form", { name: "Replace file of Passport for Asha Rao" });
+    fireEvent.change(within(form).getByLabelText("New file (PDF, JPEG or PNG)"), { target: { files: [pdf()] } });
+    fireEvent.submit(form);
+    expect(await screen.findByText(refusal)).toBeInTheDocument();
+    await waitFor(() => expect(mock).toHaveBeenCalledTimes(3));
   });
 });

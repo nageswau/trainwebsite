@@ -105,7 +105,7 @@ async def document_requested(db: AsyncSession, record: AgentStudent, document_ty
     await notify(db, await recipients(db, record, actor), "Document requested", body, DOCUMENTS_URL)
 
 
-OUTCOME_TEXT = {"rejected": "rejected", "changes_required": "changes required"}  # N9: both need the agency to act
+OUTCOME_TEXT = {"reupload_required": "re-upload required", "incomplete": "incomplete"}  # N9: both need the agency to act (ccrm-021 codes)
 
 
 async def _document_record(db: AsyncSession, document: StudentDocument) -> AgentStudent | None:

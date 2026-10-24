@@ -185,8 +185,8 @@ def _of_application(model) -> ColumnElement[bool]:
 
 # MF4: the application's own documents are all verified (at least one), and its agency student has no open document request.
 _documents_complete = and_(
-    exists().where(_of_application(StudentDocument)),
-    ~exists().where(_of_application(StudentDocument), StudentDocument.verification_status != "verified"),
+    exists().where(_of_application(StudentDocument), StudentDocument.archived_at.is_(None)),
+    ~exists().where(_of_application(StudentDocument), StudentDocument.verification_status != "verified", StudentDocument.archived_at.is_(None)),
     ~exists().where(DocumentRequest.agent_student_id == OverseasApplication.agent_student_id, DocumentRequest.status == "open"),
 )
 # The computed stages and the withdrawn count (MF11), each a predicate on one application; None = every application.

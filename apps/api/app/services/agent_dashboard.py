@@ -65,7 +65,7 @@ async def headline_counts(db: AsyncSession, user: User) -> dict[str, int]:
     """The eight headline KPIs (spec §4) as scalar subqueries of ONE statement, so they come from one snapshot."""
     columns = {
         **funnel_columns(student_scope(user), agency_applications(user)),
-        "pending_documents": _count(StudentDocument, *document_scope(user), StudentDocument.verification_status == "pending"),
+        "pending_documents": _count(StudentDocument, *document_scope(user), StudentDocument.verification_status == "pending", StudentDocument.archived_at.is_(None)),
         "pending_actions": pending_stmt(user).scalar_subquery(),
     }
     row = (await db.execute(select(*(column.label(key) for key, column in columns.items())))).one()

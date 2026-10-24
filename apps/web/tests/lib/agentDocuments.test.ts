@@ -19,6 +19,8 @@ describe("agentDocuments (AGN-009)", () => {
     expect(statusLabel("pending")).toBe("Pending review");
     expect(statusLabel("changes_required")).toBe("Changes required");
     expect(statusLabel("verified")).toBe("Verified");
+    expect(statusLabel("reupload_required")).toBe("Re-upload required"); // ccrm-021
+    expect(statusLabel("expired")).toBe("Expired");
     expect(statusLabel("some_legacy_value")).toBe("Some legacy value");
   });
 
@@ -28,7 +30,7 @@ describe("agentDocuments (AGN-009)", () => {
   });
 
   it("offers review decisions by the §6 matrix (DEC-SCOPE-044 P1/P6)", () => {
-    expect(reviewDecisions(agent("master"))).toEqual(["verified", "rejected", "changes_required"]);
+    expect(reviewDecisions(agent("master"))).toEqual(["verified", "incomplete", "reupload_required"]); // ccrm-021 codes
     expect(reviewDecisions(agent("staff", true))).toEqual(["verified"]);
     expect(reviewDecisions(agent("staff", false))).toEqual([]);
   });

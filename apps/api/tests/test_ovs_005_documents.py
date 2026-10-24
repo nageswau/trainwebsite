@@ -93,7 +93,7 @@ async def test_assigned_counselor_verifies_a_document(client, db_session):
     document = await _make_document(db_session, student, application)
 
     await _login(client, counselor.email)
-    response = await client.patch(f"/api/v1/workflows/overseas/documents/{document.id}/verify", json={"verification_status": "verified", "notes": "Looks good"})
+    response = await client.patch(f"/api/v1/workflows/overseas/documents/{document.id}/verify", json={"verification_status": "verified", "notes": "Looks good", "expiry_date": "2099-01-01"})  # ccrm-021 S2: a passport needs one
     assert response.status_code == 200
     assert response.json()["verification_status"] == "verified"
 

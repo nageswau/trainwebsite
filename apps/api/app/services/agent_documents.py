@@ -186,7 +186,7 @@ def items_stmt() -> Select:
     """Documents with what a list item shows. Every join is outer, so a document with no account (or no uploader, application or
     reviewer) is never dropped."""
     return (
-        select(StudentDocument, AgentStudent.full_name, _Account.full_name, _Uploader.full_name, University.name, _Reviewer.role)
+        select(StudentDocument, AgentStudent.full_name, _Account.full_name, _Uploader.full_name, University.name, _Reviewer.role, _Reviewer.full_name)
         .outerjoin(AgentStudent, AgentStudent.id == StudentDocument.agent_student_id)
         .outerjoin(_Account, _Account.id == StudentDocument.student_id)
         .outerjoin(_Uploader, _Uploader.id == StudentDocument.uploaded_by_user_id)
@@ -201,7 +201,7 @@ def decided_by_staff(document: StudentDocument, reviewer_role: str | None) -> bo
 
 
 def item(row: tuple) -> dict:
-    document, record_name, account_name, uploader, university, reviewer_role = row
+    document, record_name, account_name, uploader, university, reviewer_role, reviewer = row
     return {
         "id": document.id,
         "agent_student_id": document.agent_student_id,
@@ -211,6 +211,9 @@ def item(row: tuple) -> dict:
         "document_label": document.document_label,
         "verification_status": document.verification_status,
         "reviewer_notes": document.reviewer_notes,
+        "reviewer": reviewer,  # ccrm-021 S5: who reviewed it, when, and the expiry
+        "reviewed_at": document.reviewed_at,
+        "expiry_date": document.expiry_date,
         "application_id": document.application_id,
         "university": university,
         "original_filename": document.original_filename,
@@ -271,7 +274,7 @@ def student_clause(record: AgentStudent) -> ColumnElement:
 
 async def list_page(db: AsyncSession, user: User, *, view: str, record: AgentStudent | None, limit: int, offset: int) -> dict:
     """G9: Pending = awaiting review; Uploaded = every in-scope document. Newest first."""
-    clauses = [*document_scope(user)]
+    clauses = [*document_scope(user), StudentDocument.archived_at.is_(None)]  # ccrm-021 S3: current versions only
     if view == "pending":
         clauses.append(StudentDocument.verification_status == "pending")
     if record is not None:

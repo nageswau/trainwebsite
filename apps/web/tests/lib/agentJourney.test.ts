@@ -23,6 +23,9 @@ describe("agentJourney (AGN-015)", () => {
       "visa_decision_recorded", "deposit_set", "deposit_paid", "deposit_remitted", "deposit_refunded", "document_uploaded",
       "document_replaced", "document_verified", "document_rejected", "document_changes_required", "document_requested",
       "document_fulfilled", "document_request_cancelled", "document_downloaded",
+      // ccrm-021: the 0174 review statuses and the expiry job
+      "document_under_review", "document_incomplete", "document_reupload_required", "document_not_required", "document_expired",
+      "document_draft", "document_review", "document_approved",
     ];
     expect(server.filter((k) => !(k in KIND_LABELS))).toEqual([]);
     expect(kindLabel("application_stage_changed")).toBe("Application stage changed");

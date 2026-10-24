@@ -22,6 +22,28 @@ export const STATUS_LABELS: Record<ItemStatus, string> = {
 };
 export const MAX_ITEMS = 50;
 
+// ccrm-021 (DEC-SCOPE-249): a stored document status as words. `pending` on a document is an upload awaiting review (S1); history rows
+// written before migration 0174 still carry the old outcomes.
+const LEGACY_LABELS: Record<string, string> = { rejected: "Rejected", changes_required: "Changes required" };
+export function documentStatusLabel(status: string): string {
+  if (status === "pending") return "Pending review";
+  const label = STATUS_LABELS[status as ItemStatus] ?? LEGACY_LABELS[status] ?? status.replaceAll("_", " ");
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+// What a counselor / Overseas Admin may set (app/document_checklists.REVIEW_STATUSES); Draft/Review/Approved on CV / SOP only (S6).
+export const REVIEW_STATUSES = ["verified", "under_review", "incomplete", "reupload_required", "not_required"] as const;
+// Free-text types match by whole words, as the server does ("QA Passport", "SOP draft"; browser QA-01).
+function named(documentType: string, names: string[]): boolean {
+  const words = ` ${(documentType.toLowerCase().match(/[a-z]+/g) ?? []).join(" ")} `;
+  return names.some((name) => words.includes(` ${name} `));
+}
+export function reviewStatusesFor(documentType: string): ItemStatus[] {
+  return named(documentType, ["cv", "resume", "sop", "statement of purpose"]) ? [...REVIEW_STATUSES, ...DRAFTING_STATUSES] : [...REVIEW_STATUSES];
+}
+export const needsExpiry = (documentType: string) => named(documentType, ["passport"]);
+/** A status that asks the uploader for something (shown in the error colour). */
+export const NEEDS_ACTION = new Set(["incomplete", "reupload_required", "expired", "rejected", "changes_required"]);
+
 export type ChecklistItem = { document_type: ChecklistDocumentType; label: string | null; required: boolean; allowed_statuses: ItemStatus[]; notes: string | null };
 type Scope = {
   name: string;

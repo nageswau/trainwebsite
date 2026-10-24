@@ -1,6 +1,7 @@
 // AGN-009 (DEC-SCOPE-052): an agency's documents and document requests -- the shapes, labels and §6 review rules the Documents
 // page shares. The server is the authority (scope, matrix, reasons, states); these only keep the screens from offering a refused action.
 import { detailMessage } from "@/lib/apiErrors";
+import { documentStatusLabel } from "@/lib/documentChecklists";
 import type { User } from "@/lib/types";
 
 export const DOCUMENTS_URL = "/api/v1/workflows/overseas/agent/crm/documents";
@@ -39,13 +40,9 @@ export function parseView(value: string | null | undefined): View {
   return (VIEWS as readonly string[]).includes(value ?? "") ? (value as View) : "pending";
 }
 
-export type ReviewDecision = "verified" | "rejected" | "changes_required";
-const STATUS_LABELS: Record<string, string> = { pending: "Pending review", verified: "Verified", rejected: "Rejected", changes_required: "Changes required" };
-
-export function statusLabel(status: string): string {
-  const label = STATUS_LABELS[status] ?? status.replaceAll("_", " ");
-  return label.charAt(0).toUpperCase() + label.slice(1);
-}
+// ccrm-021 (DEC-SCOPE-249 S1): the agency decisions use the fixed status list; labels are shared with the counselor screens.
+export type ReviewDecision = "verified" | "incomplete" | "reupload_required";
+export const statusLabel = documentStatusLabel;
 
 export function documentName(doc: { document_type: string; document_label: string | null }): string {
   return doc.document_type === OTHER && doc.document_label ? doc.document_label : doc.document_type;
@@ -53,7 +50,7 @@ export function documentName(doc: { document_type: string; document_label: strin
 
 // §6 (DEC-SCOPE-044 P1/P6): a Master decides all three; staff with Verify only verify; staff without it review nothing.
 export function reviewDecisions(user: User): ReviewDecision[] {
-  if (user.agent_member_role !== "staff") return ["verified", "rejected", "changes_required"];
+  if (user.agent_member_role !== "staff") return ["verified", "incomplete", "reupload_required"];
   return user.agent_permissions?.can_verify_documents ? ["verified"] : [];
 }
 
@@ -66,6 +63,9 @@ export type AgentDocumentItem = {
   document_label: string | null;
   verification_status: string;
   reviewer_notes: string | null;
+  reviewer: string | null; // ccrm-021 S5
+  reviewed_at: string | null;
+  expiry_date: string | null;
   application_id: string | null;
   university: string | null;
   original_filename: string | null;

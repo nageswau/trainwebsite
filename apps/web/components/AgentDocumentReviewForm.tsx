@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { sendJson } from "@/lib/apiErrors";
 import { ReviewDecision, reviewUrl } from "@/lib/agentDocuments";
 
-const LABELS: Record<ReviewDecision, string> = { verified: "Verified", rejected: "Rejected", changes_required: "Changes required" };
+const LABELS: Record<ReviewDecision, string> = { verified: "Verified", incomplete: "Incomplete", reupload_required: "Re-upload required" }; // ccrm-021 S1
 
 // AGN-009 (DEC-SCOPE-052 G1/G2 on DEC-SCOPE-044 P1/P6): a Master picks one of three decisions and gives a reason to reject or ask for
 // changes; staff with Verify get one "Mark verified" button. The server enforces both; `required` only saves a round trip.
