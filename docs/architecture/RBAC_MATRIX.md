@@ -2729,3 +2729,13 @@ inside the existing role scope (a counselor searching another counselor's code g
 
 - Pinned by `test_ccrm_013_application_fields.py::test_scope_other_counselor_agent_and_student_are_refused`,
   `::test_the_counselor_edits_an_agency_application_and_the_agency_is_told`, `::test_the_student_sees_the_scholarship_and_is_told_only_when_it_changes`.
+
+### 2.172 Application checklist and Ready-for-Submission gate *(added 2026-10-24 — `DEC-SCOPE-257`, ccrm-019)*
+
+| Route | `overseas_admin` | `counselor` (overseas) | `agent` | `overseas_student` | Others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET …/{id}/checklist` | ✅ any (with template + linkable documents) | ✅ own applications, direct and agency (`403` otherwise) | ✅ own agency's, read-only (no template / documents) | ✅ own, read-only | `403` | `401` |
+| `POST …/checklist`, items, marks, links | ✅ | ✅ own | `403` | `403` | `403` | `401` |
+| Ready for Submission gate (`…/sub-status`) | gated | gated | gated (agency route) | — | — | — |
+
+- Pinned by `test_ccrm_019_checklist.py::test_scope_other_counselor_agent_read_only_student_reads_own`, `::test_the_agency_route_is_gated_too`.

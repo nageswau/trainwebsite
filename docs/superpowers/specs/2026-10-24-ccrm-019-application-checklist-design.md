@@ -11,7 +11,7 @@ Depends on ccrm-014 (sub-status), ccrm-018 (templates, `services/document_checkl
 | ID | Question | Answer |
 | --- | --- | --- |
 | AC1 | How does a checklist item get its status? | **Derived + marks.** The counselor links student documents to an item (auto-linked by matching type when the checklist is created). Item status = the best status among its linked current documents. The counselor can mark an item **Requested** (Appendix B: University A asks again → pending on A only) or **Not required**; linking a document clears the mark. |
-| AC2 | `documents_completed_on` (a ccrm-013 field) | **Add the column here** (only if missing — ccrm-013 adds the same column in 0179). Set to today (India) when the last required item becomes complete and the field is empty; cleared when a required item stops being complete. |
+| AC2 | `documents_completed_on` (a ccrm-013 field) | **Set it here.** ccrm-013 (0179, merged as PR #319 during this build) owns the column, so 0180 no longer adds it. Set to today (India) when the last required item becomes complete and the field is empty; cleared when a required item stops being complete. |
 
 Defaults taken without a question (`NEEDS_CONFIRMATION` in the DEC):
 
@@ -36,7 +36,7 @@ Defaults taken without a question (`NEEDS_CONFIRMATION` in the DEC):
   `allowed_statuses`, `notes`. Nothing instantiates them yet.
 - `student_documents`: owner `student_id` and/or `agent_student_id`, optional `application_id`, `verification_status` in
   `ITEM_STATUSES`, `archived_at` for replaced versions. Direct-student uploads use free-text types; agency uploads the fixed list.
-- `overseas_applications.documents_completed_on` does not exist on main.
+- `overseas_applications.documents_completed_on` arrives with ccrm-013 (0179).
 
 ## 3. Data model (migration `0180_application_checklists`)
 
@@ -57,7 +57,7 @@ Defaults taken without a question (`NEEDS_CONFIRMATION` in the DEC):
 | --- | --- | --- |
 | id | uuid pk | |
 | application_id | uuid fk application_checklists ON DELETE CASCADE, index | |
-| template_item_id | uuid fk document_checklist_template_items ON DELETE SET NULL, null | null = counselor-added |
+| from_template | bool | false = counselor-added (no FK: ccrm-018 re-creates template items on edit) |
 | position | int | unique `(application_id, position)` |
 | document_type | varchar(80) | |
 | label | varchar(80) null | |
@@ -71,13 +71,13 @@ Defaults taken without a question (`NEEDS_CONFIRMATION` in the DEC):
 `application_checklist_item_documents` — `(item_id fk items ON DELETE CASCADE, document_id fk student_documents)` primary key, `linked_by_id`,
 `created_at`.
 
-`overseas_applications.documents_completed_on` DATE NULL (only if missing).
+`overseas_applications.documents_completed_on` is ccrm-013's column (0179); 0180 only adds the three tables.
 
 ## 4. Status rules (`app/application_checklists.py`)
 
 - Document rank (best first): `verified`, `approved`, `not_required` (complete) › `under_review`, `review` › `uploaded`, `pending`,
   `draft` › `requested` › `incomplete`, `reupload_required` › `expired`. Archived documents never count.
-- Item status = `mark` if set; else the best linked current document's status; else `pending` (missing).
+- Item status = `mark` if set; else the best linked current document's status; else `missing` (label "Missing"; browser QA-01 — a document's `pending` reads "Pending review").
 - Complete = status in {`verified`, `approved`, `not_required`}.
 - Summary: `required_total`, `required_complete`, `optional_total`, `optional_complete`, `ready` (all required complete),
   `missing` (required items not complete: id, label, status).

@@ -122,10 +122,9 @@ from app.schemas import (
 )
 from app.services import agent_documents as document_files
 from app.services import agent_notifications as agency_notices
+from app.services import application_checklists, applications, counselor_students, course_skills, interviews, offers, visa_lifecycle
 from app.services import application_outcomes as outcomes
-from app.services import application_checklists
 from app.services import application_sub_status as sub_statuses
-from app.services import applications, counselor_students, course_skills, interviews, offers, visa_lifecycle
 from app.services import document_checklists as checklist_templates
 from app.services import recruiter_requirements as requirements
 from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, open_clause, owned, stage_label, status_history, with_owner

@@ -21,7 +21,7 @@ export type ApplicationChecklistItem = {
   removable: boolean;
   documents: ChecklistDocument[];
 };
-export type MissingItem = { id: string; label: string; status: string };
+export type MissingItem = { id: string; label: string; status: string; status_label: string };
 export type ChecklistSummary = { required_total: number; required_complete: number; optional_total: number; optional_complete: number; ready: boolean; missing: MissingItem[] };
 export type ApplicationChecklist = {
   template_id: string | null;

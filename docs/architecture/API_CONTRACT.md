@@ -3719,3 +3719,21 @@ Daily beat task `ccrm025-offer-expiry` (18:40 UTC = 00:10 IST): see `DEC-SCOPE-2
 | `PATCH` | `/applications/{id}` (generic) | unchanged | Contract unchanged. |
 | `GET` | `/agent/crm/applications/{id}` (AGN-008) | unchanged | Detail adds the ccrm-013 fields (read-only) and `scholarship_label`. |
 | `GET` | `/portal/overseas/student/applications` | unchanged | Adds columns `course_start_date` and `scholarship` (e.g. "Awarded — GBP 1,500.00"). |
+
+## 12FJ. Application checklist and Ready-for-Submission gate (ccrm-019) — addendum, 2026-10-24
+
+`DEC-SCOPE-257`. All paths under `/api/v1/workflows/overseas/applications`. Writers = `counselor` (own applications, direct and agency),
+`overseas_admin`, `super_admin`.
+
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| `GET` | `/{id}/checklist` | writers, `agent` (own agency), `overseas_student` (own) | `{checklist, template, documents}`: `checklist` = `{template_id, template_version, gate_mode, documents_completed_on, summary:{required_total, required_complete, optional_total, optional_complete, ready, missing:[{id,label,status,status_label}]}, items:[{id, position, document_type, label, name, required, notes, allowed_statuses, mark, status, status_label, removable, documents:[{id, document_type, document_label, original_filename, verification_status, status_label, created_at}]}]}` or null; an item with no mark and nothing linked is `missing` ("Missing", browser QA-01); `template` (the matching admission template, writers only, while no checklist exists) and `documents` (linkable, writers only). Never a file key. |
+| `POST` | `/{id}/checklist` | writers | `201` the `GET` shape; from the matching admission template (version + gate mode frozen, documents auto-linked by type) or empty (`warn`). `409` exists, closed, archived agency record. |
+| `POST` | `/{id}/checklist/items` | writers | Body = a template item (`document_type` from the upload list, `label` (needed for Other), `required`, `allowed_statuses`, `notes`). `201`. `409` no checklist. |
+| `PATCH` | `/{id}/checklist/items/{item_id}` | writers | `{mark: "requested" \| "not_required" \| null}`; a mark outside the item's `allowed_statuses` `422`; another application's item `404`. |
+| `DELETE` | `/{id}/checklist/items/{item_id}` | writers | Counselor-added items only (`409` for a template item). `200` the `GET` shape. |
+| `PUT` | `/{id}/checklist/items/{item_id}/documents/{document_id}` | writers | Link (idempotent; clears the mark). A document that is not the application's student's current one (other student, other application, archived) `422`. |
+| `DELETE` | `/{id}/checklist/items/{item_id}/documents/{document_id}` | writers | Unlink. `200` the `GET` shape. |
+| `POST` | `/{id}/sub-status`, `/agent/crm/applications/{id}/sub-status` | unchanged roles | Body adds optional `override_reason` (≤ 1000). A move to `ready_for_submission` with required items incomplete: `block` → `409` `{detail:{message, gate_mode:"block", missing}}`; `warn` without a reason → `409` (`gate_mode:"warn"`); with one → `200`, history `reason` = `Override: <reason>`. |
+
+Writes hold the application row lock, refresh `documents_completed_on`, audit `overseas.application.checklist.<create|item_add|item_mark|item_remove|link|unlink>` and commit once; allowed on hold.

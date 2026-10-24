@@ -34,11 +34,10 @@ from app.schemas import (
     ApplicationSubStatusChange,
 )
 from app.services import agent_notifications as notices
+from app.services import application_checklists, visa_lifecycle
 from app.services import application_offers as offer_records
 from app.services import application_outcomes as outcomes
-from app.services import application_checklists
 from app.services import application_sub_status as sub_statuses
-from app.services import visa_lifecycle
 from app.services.agent_applications import (
     ARCHIVED,
     DEFAULT_NEXT_ACTION,

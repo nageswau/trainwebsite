@@ -17,9 +17,9 @@ const item = (over: Record<string, unknown> = {}) => ({
   id: "i1", position: 1, document_type: "Passport", label: null, name: "Passport", required: true, notes: null, allowed_statuses: ["pending", "requested", "verified", "not_required"],
   mark: null, status: "verified", status_label: "Verified", removable: false, documents: [doc()], ...over,
 });
-const checklist = (items = [item(), item({ id: "i2", document_type: "Transcripts", name: "Transcripts", status: "pending", status_label: "Pending", documents: [] })]) => ({
+const checklist = (items = [item(), item({ id: "i2", document_type: "Transcripts", name: "Transcripts", status: "missing", status_label: "Missing", documents: [] })]) => ({
   template_id: "t1", template_version: 3, gate_mode: "block", documents_completed_on: null,
-  summary: { required_total: 2, required_complete: 1, optional_total: 0, optional_complete: 0, ready: false, missing: [{ id: "i2", label: "Transcripts", status: "pending" }] },
+  summary: { required_total: 2, required_complete: 1, optional_total: 0, optional_complete: 0, ready: false, missing: [{ id: "i2", label: "Transcripts", status: "missing", status_label: "Missing" }] },
   items,
 });
 
@@ -45,7 +45,7 @@ describe("ApplicationChecklistPanel", () => {
   });
 
   it("marks an item requested, links a document and adds an item", async () => {
-    const fetchMock = vi.fn((..._args: [string, RequestInit?]) => json({ checklist: checklist(), template: null, documents: [doc({ id: "d9", document_type: "Transcript", original_filename: "tr.pdf", verification_status: "pending", status_label: "Pending review" })] }));
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => ReturnType<typeof json>>(() => json({ checklist: checklist(), template: null, documents: [doc({ id: "d9", document_type: "Transcript", original_filename: "tr.pdf", verification_status: "pending", status_label: "Pending review" })] }));
     vi.stubGlobal("fetch", fetchMock);
     render(<ApplicationChecklistPanel applicationId="a1" onChanged={vi.fn()} />);
     const row = (await screen.findByText("Transcripts")).closest("li") as HTMLElement;
@@ -82,13 +82,13 @@ describe("Ready-for-Submission gate in the sub-status form", () => {
   const props = { id: "a1", url: "/api/v1/workflows/overseas/applications/a1/sub-status", stage: "university_selection", current: "documents_pending" };
 
   it("block mode lists the missing items and does not offer an override", async () => {
-    vi.stubGlobal("fetch", vi.fn(() => json({ detail: { message: "Ready for Submission needs every required checklist document complete", gate_mode: "block", missing: [{ id: "i2", label: "Transcripts", status: "pending" }] } }, false, 409)));
+    vi.stubGlobal("fetch", vi.fn(() => json({ detail: { message: "Ready for Submission needs every required checklist document complete", gate_mode: "block", missing: [{ id: "i2", label: "Transcripts", status: "missing", status_label: "Missing" }] } }, false, 409)));
     const onFailed = vi.fn();
     render(<ApplicationSubStatusForm {...props} onSaved={vi.fn()} onFailed={onFailed} />);
     fireEvent.change(screen.getByLabelText("Sub-status"), { target: { value: "ready_for_submission" } });
     fireEvent.click(screen.getByRole("button", { name: "Update sub-status" }));
     expect(await screen.findByText(/needs every required checklist document complete/)).toBeInTheDocument();
-    expect(screen.getByText("Transcripts — Pending")).toBeInTheDocument();
+    expect(screen.getByText("Transcripts — Missing")).toBeInTheDocument(); // browser QA-01
     expect(screen.queryByLabelText("Override reason")).toBeNull();
     expect(onFailed).not.toHaveBeenCalled();
   });
@@ -96,7 +96,7 @@ describe("Ready-for-Submission gate in the sub-status form", () => {
   it("warn mode asks for an override reason and resends with it", async () => {
     const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
       const body = JSON.parse(String(init!.body));
-      if (!body.override_reason) return json({ detail: { message: "Some required checklist documents are not complete -- give an override reason to continue", gate_mode: "warn", missing: [{ id: "i2", label: "Transcripts", status: "requested" }] } }, false, 409);
+      if (!body.override_reason) return json({ detail: { message: "Some required checklist documents are not complete -- give an override reason to continue", gate_mode: "warn", missing: [{ id: "i2", label: "Transcripts", status: "requested", status_label: "Requested" }] } }, false, 409);
       return json({ id: "a1", status: "university_selection", sub_status: "ready_for_submission", changed: true });
     });
     vi.stubGlobal("fetch", fetchMock);

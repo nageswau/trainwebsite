@@ -2203,3 +2203,14 @@ currency when required, no fields when not, `paid_on` ⇔ a paid status. AGN-011
 `scholarship_amount` Numeric(12,2), `documents_completed_on`, `decision_due_on`. CHECKs (`models.APPLICATION_FIELD_CHECKS`):
 `ck_overseas_applications_currency`, `_scholarship_status`, `_money` (≥ 0), `_scholarship_awarded` (amount only when awarded). No backfill;
 downgrade drops the CHECKs and columns.
+
+## Application checklist (`ccrm-019`, `DEC-SCOPE-257`; migration `0180_application_checklists`, after ccrm-013's `0179_application_fields`)
+
+`application_checklists` — one per application: `application_id` PK/FK `overseas_applications` ON DELETE CASCADE, `template_id` FK
+`document_checklist_templates` NULL, `template_version` NULL (CHECK both or neither), `gate_mode` (CHECK `block`/`warn`), `created_by_id`,
+timestamps. `application_checklist_items`: `id`, `application_id` FK the checklist ON DELETE CASCADE (indexed), `from_template` bool (no FK:
+ccrm-018 re-creates template items on edit), `position` (unique per application), `document_type` (80), `label` (80) NULL, `required`,
+`allowed_statuses` JSON, `notes`, `mark` NULL (CHECK `requested`/`not_required`), `marked_by_id`, `marked_at`, `created_by_id`, timestamps.
+`application_checklist_item_documents`: PK (`item_id` FK ON DELETE CASCADE, `document_id` FK `student_documents` ON DELETE CASCADE,
+indexed), `linked_by_id`, `created_at`. ccrm-019 also writes ccrm-013's `overseas_applications.documents_completed_on`. No backfill;
+downgrade drops the three tables.

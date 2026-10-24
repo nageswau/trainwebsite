@@ -9317,3 +9317,21 @@ scholarship, the agency sees all fields read-only (its edit form unchanged). The
 (`_profile_not_future`); `test_the_agency_form_still_takes_a_submission_date` pins it.
 **Numbering:** migration `0179_application_fields` (after ccrm-025's 0178); API §12FI; RBAC §2.171.
 - **Feature ID authorized:** `ccrm-013`. **Status:** built on `feature/ccrm-013`.
+
+### DEC-SCOPE-257 — Application checklist, readiness summary, Ready-for-Submission gate (`ccrm-019`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-019` (source PDF §8 readiness summary, §14 document readiness, AC 5,
+`UNVERIFIED`; owner answer CC10 block/warn); design `docs/superpowers/specs/2026-10-24-ccrm-019-application-checklist-design.md`.
+**Owner answers (2026-10-24, in session):** AC1 an item's status is **derived + marks** — the best status among the current documents linked
+to it (auto-linked by type when the checklist is made), unless the counselor marks it Requested or Not required; linking a document clears
+the mark (Appendix B: a request on University A's application leaves B untouched). AC2 `documents_completed_on` (ccrm-013's column) is set
+to today (IST) when the last required item becomes complete and the field is empty, and cleared when a required item stops being complete.
+**Recommended defaults (`NEEDS_CONFIRMATION`):** AC3 only the `admission` template kind feeds it; AC4 the counselor creates the checklist,
+and the gate creates it under the application lock when a template matches and none exists — no template and no checklist passes; AC5 a
+checklist without a template is `warn`; AC6 the gate runs only for a move to `ready_for_submission`, on the counselor/admin and agency
+sub-status routes; `block` → `409` with the missing items, `warn` → `409` until `override_reason` is given, which the history row keeps as
+`Override: <reason>` and the audit as `checklist_override`; AC7 the agency and the student read the checklist (no student screen yet; the
+agency detail shows it read-only); AC8 only counselor-added items can be removed; AC9 a counselor's replace moves the links to the new
+version, and every review route, the agency replace and the expiry job refresh the completion date.
+**Numbering:** migration `0180_application_checklists` (after ccrm-013's 0179); API §12FJ; RBAC §2.172.
+- **Feature ID authorized:** `ccrm-019`. **Status:** built on `feature/ccrm-019`.

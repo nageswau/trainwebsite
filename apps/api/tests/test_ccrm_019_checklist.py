@@ -33,7 +33,11 @@ async def mk_template(db, world, *, gate_mode="block", items=(("Passport", True)
     db.add(template)
     await db.flush()
     for position, (document_type, required) in enumerate(items, start=1):
-        db.add(DocumentChecklistTemplateItem(template_id=template.id, position=position, document_type=document_type, required=required, allowed_statuses=["pending", "requested", "verified", "not_required"]))
+        db.add(
+            DocumentChecklistTemplateItem(
+                template_id=template.id, position=position, document_type=document_type, required=required, allowed_statuses=["pending", "requested", "verified", "not_required"]
+            )
+        )
     await db.commit()
     return template
 
@@ -51,7 +55,8 @@ def _items(data) -> dict:
 
 
 def test_item_status_prefers_the_mark_then_the_best_current_document():
-    assert item_status(None, []) == "pending"
+    assert item_status(None, []) == "missing"  # browser QA-01: nothing linked is not "Pending review"
+    assert item_status(None, ["pending"]) == "pending"
     assert item_status(None, ["pending", "verified", "expired"]) == "verified"
     assert item_status(None, ["reupload_required", "under_review"]) == "under_review"
     assert item_status("requested", ["verified"]) == "requested"
@@ -60,13 +65,13 @@ def test_item_status_prefers_the_mark_then_the_best_current_document():
 
 def test_summary_counts_required_and_optional_and_lists_the_missing():
     rows = [
-        {"id": 1, "label": "Passport", "required": True, "status": "verified"},
-        {"id": 2, "label": "Transcript", "required": True, "status": "pending"},
-        {"id": 3, "label": "CV", "required": False, "status": "approved"},
+        {"id": 1, "name": "Passport", "required": True, "status": "verified"},
+        {"id": 2, "name": "Transcript", "required": True, "status": "missing"},
+        {"id": 3, "name": "CV", "required": False, "status": "approved"},
     ]
     s = summary(rows)
     assert (s["required_total"], s["required_complete"], s["optional_total"], s["optional_complete"], s["ready"]) == (2, 1, 1, 1, False)
-    assert s["missing"] == [{"id": 2, "label": "Transcript", "status": "pending"}]
+    assert s["missing"] == [{"id": 2, "label": "Transcript", "status": "missing", "status_label": "Missing"}]
 
 
 # --- create, links, marks, summary ----------------------------------------------------------------------------------------
@@ -88,7 +93,8 @@ async def test_counselor_creates_the_checklist_from_the_template_and_documents_a
     assert (data["checklist"]["template_version"], data["checklist"]["gate_mode"]) == (3, "block")
     items = _items(data)
     assert [d["id"] for d in items["Passport"]["documents"]] == [str(passport.id)] and str(elsewhere.id) not in str(items)
-    assert items["Passport"]["status"] == "verified" and items["Academic transcript"]["status"] == "pending"
+    assert items["Passport"]["status"] == "verified"
+    assert (items["Academic transcript"]["status"], items["Academic transcript"]["status_label"]) == ("missing", "Missing")
     assert data["checklist"]["summary"]["required_complete"] == 1 and data["checklist"]["summary"]["required_total"] == 2
     assert "file_url" not in str(data)
     assert again.status_code == 409
@@ -157,9 +163,7 @@ async def test_appendix_b_a_request_on_one_application_leaves_the_other_complete
     """University A asks again for the transcript: pending on A only (AC 9)."""
     await mk_template(db_session, world)
     student = world["direct_student"]
-    second = await mk_application(
-        db_session, agent=None, university=world["university"], student=student, status="university_selection", counselor_id=world["counselor"].id
-    )
+    second = await mk_application(db_session, agent=None, university=world["university"], student=student, status="university_selection", counselor_id=world["counselor"].id)
     await mk_doc(db_session, student=student, document_type="Academic transcript", status="verified")
     async with client_for(world["counselor"].email) as c:
         a = _items((await c.post(CHECKLIST.format(world["direct_app"].id))).json())["Academic transcript"]
@@ -277,9 +281,7 @@ async def test_warn_mode_needs_an_override_reason_and_records_it_in_history(db_s
     assert r.status_code == 409 and r.json()["detail"]["gate_mode"] == "warn"
     assert ok.status_code == 200, ok.text
     assert (await fresh(db_session, app)).sub_status == "ready_for_submission"
-    row = await db_session.scalar(
-        select(ApplicationStatusHistory).where(ApplicationStatusHistory.application_id == app.id, ApplicationStatusHistory.to_sub_status == "ready_for_submission")
-    )
+    row = await db_session.scalar(select(ApplicationStatusHistory).where(ApplicationStatusHistory.application_id == app.id, ApplicationStatusHistory.to_sub_status == "ready_for_submission"))
     assert row.reason == "Override: University accepts the transcript later"
     audit = await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == str(app.id), AuditLog.action == "overseas.application.sub_status"))
     assert audit.metadata_json["checklist_override"] == "University accepts the transcript later"

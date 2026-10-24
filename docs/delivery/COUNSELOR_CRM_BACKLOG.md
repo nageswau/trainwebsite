@@ -502,6 +502,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Dependencies:** ccrm-014, ccrm-018, ccrm-021.
 - **Acceptance:** AC 5 in both modes; Appendix B "University A requests a missing transcript" marks the transcript pending on A only.
 - **Complexity:** large. **Risk:** medium.
+- **Status (2026-10-24):** built on `feature/ccrm-019` — `DEC-SCOPE-257` (AC1 derived + marks, AC2 completion date: owner; AC3–AC9
+  defaults `NEEDS_CONFIRMATION`), migration `0180_application_checklists`, API §12FJ, RBAC §2.172. Design
+  `docs/superpowers/specs/2026-10-24-ccrm-019-application-checklist-design.md`.
 
 ### `ccrm-020` — Document requests for direct students *(supersedes nehn-037 part 1)*
 

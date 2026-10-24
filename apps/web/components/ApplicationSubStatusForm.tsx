@@ -5,7 +5,6 @@ import { sendJson } from "@/lib/apiErrors";
 import { stageLabel } from "@/lib/agentApplications";
 import { GateRefusal, gateRefusal } from "@/lib/applicationChecklist";
 import { subStatusChoices, subStatusLabel } from "@/lib/applicationSubStatus";
-import { STATUS_LABELS, type ItemStatus } from "@/lib/documentChecklists";
 
 type Props = {
   id: string;
@@ -81,7 +80,7 @@ export default function ApplicationSubStatusForm({ id, url, stage, current, maxS
           <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
             {gate.missing.map((m) => (
               <li key={m.id}>
-                {m.label} — {STATUS_LABELS[m.status as ItemStatus] ?? m.status}
+                {m.label} — {m.status_label}
               </li>
             ))}
           </ul>

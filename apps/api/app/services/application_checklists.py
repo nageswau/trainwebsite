@@ -11,7 +11,7 @@ from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.application_checklists import GATE_BLOCKED, GATE_NEEDS_REASON, NO_TEMPLATE_GATE_MODE, READY_FOR_SUBMISSION, item_status, summary
+from app.application_checklists import GATE_BLOCKED, GATE_NEEDS_REASON, NO_TEMPLATE_GATE_MODE, READY_FOR_SUBMISSION, item_status, status_label, summary
 from app.document_checklists import STANDARD_STATUSES, STATUS_LABELS
 from app.models import (
     ApplicationChecklist,
@@ -41,7 +41,11 @@ def _today() -> date:
 
 def _documents_of(app: OverseasApplication):
     """The application's student's current documents: unattached or attached to this application (never another one's)."""
-    owners = [c for c in (StudentDocument.student_id == app.student_id if app.student_id else None, StudentDocument.agent_student_id == app.agent_student_id if app.agent_student_id else None) if c is not None]
+    owners = []
+    if app.student_id:
+        owners.append(StudentDocument.student_id == app.student_id)
+    if app.agent_student_id:
+        owners.append(StudentDocument.agent_student_id == app.agent_student_id)
     return select(StudentDocument).where(
         or_(*owners) if owners else StudentDocument.id.is_(None),
         StudentDocument.archived_at.is_(None),
@@ -90,7 +94,7 @@ def _status(item: ApplicationChecklistItem, documents: list[StudentDocument]) ->
 
 async def _summary(db: AsyncSession, application_id: UUID) -> dict:
     rows = await _items(db, application_id)
-    return summary([{"id": i.id, "label": _name(i), "required": i.required, "status": _status(i, docs)} for i, docs in rows])
+    return summary([{"id": i.id, "name": _name(i), "required": i.required, "status": _status(i, docs)} for i, docs in rows])
 
 
 async def view(db: AsyncSession, app: OverseasApplication, checklist: ApplicationChecklist | None) -> dict | None:
@@ -112,7 +116,7 @@ async def view(db: AsyncSession, app: OverseasApplication, checklist: Applicatio
                 "allowed_statuses": item.allowed_statuses,
                 "mark": item.mark,
                 "status": status,
-                "status_label": STATUS_LABELS.get(status, status),
+                "status_label": status_label(status),
                 "removable": not item.from_template,
                 "documents": [_document_view(d) for d in documents],
             }
@@ -122,7 +126,7 @@ async def view(db: AsyncSession, app: OverseasApplication, checklist: Applicatio
         "template_version": checklist.template_version,
         "gate_mode": checklist.gate_mode,
         "documents_completed_on": app.documents_completed_on,
-        "summary": summary([{"id": i["id"], "label": i["name"], "required": i["required"], "status": i["status"]} for i in items]),
+        "summary": summary(items),
         "items": items,
     }
 
@@ -132,7 +136,7 @@ async def linkable(db: AsyncSession, app: OverseasApplication) -> list[dict]:
     return [_document_view(d) for d in rows]
 
 
-async def create(db: AsyncSession, user: User | None, app: OverseasApplication) -> ApplicationChecklist:
+async def create(db: AsyncSession, user: User, app: OverseasApplication) -> ApplicationChecklist:
     """From the matching admission template (or empty, AC5); each item links the student's documents of its type (AC1)."""
     template = await templates.resolve(db, app, KIND)
     checklist = ApplicationChecklist(
@@ -140,7 +144,7 @@ async def create(db: AsyncSession, user: User | None, app: OverseasApplication) 
         template_id=template.id if template else None,
         template_version=template.version if template else None,
         gate_mode=template.gate_mode if template else NO_TEMPLATE_GATE_MODE,
-        created_by_id=user.id if user else None,
+        created_by_id=user.id,
     )
     db.add(checklist)
     await db.flush()
