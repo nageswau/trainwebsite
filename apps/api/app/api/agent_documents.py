@@ -21,6 +21,7 @@ from app.models import AgentOrgMember, AgentStudent, AuditLog, DocumentRequest, 
 from app.schemas import AgentDocumentRequestCreate, AgentUploadDocumentType
 from app.services import agent_documents as svc
 from app.services import agent_notifications as notices
+from app.services import application_checklists
 from app.services.agent_applications import load_scoped as load_scoped_application
 from app.services.agent_orgs import lock_active_org
 from app.services.agent_students import load_scoped as load_scoped_student
@@ -167,6 +168,7 @@ async def replace_document_file(document_id: UUID, file: UploadFile = File(...),
         item.reviewed_at = None  # ccrm-021 S5: the new file is not reviewed yet
         svc.add_event(db, event="replaced", actor=user, document=item, from_status=old_status, to_status="pending", file_key=old_key)
         _audit(db, user, "document.replace", "student_document", item.id, {"from_status": old_status})
+        await application_checklists.sync_for_documents(db, [item.id])  # ccrm-019 AC9: back to pending
         await db.commit()
     except Exception:  # the row keeps its old file; the new object goes
         await db.rollback()

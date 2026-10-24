@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import ApplicationChecklistPanel from "./ApplicationChecklistPanel";
 import ApplicationDepositPanel from "./ApplicationDepositPanel";
 import ApplicationOffersPanel from "./ApplicationOffersPanel";
 import ApplicationOutcomeForm from "./ApplicationOutcomeForm";
@@ -38,6 +39,7 @@ export default function CounselorEvaluationPanel() {
   const [subStatusId, setSubStatusId] = useState<string | null>(null); // ccrm-014: the card whose sub-status form is open
   const [outcomeId, setOutcomeId] = useState<string | null>(null); // ccrm-015: the card whose outcome form is open
   const [offersId, setOffersId] = useState<string | null>(null); // ccrm-023: the card whose offers are open
+  const [checklistId, setChecklistId] = useState<string | null>(null); // ccrm-019: the card whose document checklist is open
   const [historyId, setHistoryId] = useState<string | null>(null); // ccrm-016: the card whose status history is open
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ id: string; text: string; failed: boolean } | null>(null);
@@ -189,6 +191,19 @@ export default function CounselorEvaluationPanel() {
                     Record outcome
                   </button>
                 ))}
+              {/* ccrm-019: the document checklist behind the Ready-for-Submission gate; a closed application takes no checklist write */}
+              {!closed && (
+                <button
+                  type="button"
+                  className="btn ghost small"
+                  style={{ display: "block", marginTop: 8 }}
+                  aria-expanded={checklistId === row.id}
+                  onClick={() => (setChecklistId(checklistId === row.id ? null : row.id), setMessage(null))}
+                >
+                  {checklistId === row.id ? "Hide checklist" : "Document checklist"}
+                </button>
+              )}
+              {checklistId === row.id && <ApplicationChecklistPanel applicationId={row.id} onChanged={(text) => setMessage({ id: row.id, text, failed: false })} />}
               {/* ccrm-023: offers stay readable on hold (the server refuses a new one until resumed); a closed application has none to change */}
               {!closed && (
                 <button
