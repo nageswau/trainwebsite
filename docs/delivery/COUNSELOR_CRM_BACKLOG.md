@@ -294,6 +294,15 @@ asked one at a time when the item is picked up).
 - **Regression:** tel-018 conversion sweep, tel-021 conversion credit (csc-004 open item).
 - **Complexity:** medium. **Risk:** high (account creation).
 - **Open questions:** minimum lead stage to convert; whether the lead has no email (phone-only) blocks conversion.
+- **Status (2026-10-24):** built on `worktree-ccrm-008` as `DEC-SCOPE-252`, API §12FE, RBAC §2.167, with no migration. Recommended
+  defaults (NEEDS_CONFIRMATION):
+  - K1: Qualified or later, else `422`.
+  - K2: a phone-only lead converts with an email the counselor types.
+  - K3: city, state, qualification, course, intake, level and work experience are copied; free text stays on the lead.
+  - K4: a duplicate is `409` with the link offer.
+  - K6: "Create first application" is deferred.
+
+  Design: `docs/superpowers/specs/2026-10-24-ccrm-008-convert-lead-to-student-design.md`.
 
 ### `ccrm-009` — Counselor student 360 page
 
@@ -310,6 +319,10 @@ asked one at a time when the item is picked up).
 - **Dependencies:** ccrm-007 (tabs grow with later items).
 - **Acceptance:** a student with three applications shows three independent statuses; another counselor's student → 404.
 - **Complexity:** large. **Risk:** low.
+- **Status (2026-10-24):** built on `worktree-ccrm-009` — `DEC-SCOPE-253` (V1 the counselor sees all the student's applications,
+  documents and history read-only, marked "yours"; V2 Academic = personal + academic + work experience; B1–B6 defaults), no migration,
+  API §12FF, RBAC §2.168; pages `/overseas/{counselor|admin}/students/[id]`. Design
+  `docs/superpowers/specs/2026-10-24-ccrm-009-counselor-student-360-design.md`.
 
 ### `ccrm-010` — Student and application notes; counselling history *(supersedes nehn-037 part 5)*
 

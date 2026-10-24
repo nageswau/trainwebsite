@@ -2677,3 +2677,22 @@ inside the existing role scope (a counselor searching another counselor's code g
 
 - Pinned by `test_ccrm_021_document_status.py::test_replace_is_scoped_like_review_and_checks_the_file`,
   `::test_agency_staff_still_only_verify`, `::test_an_agency_master_decides_with_new_or_legacy_codes`.
+
+### 2.167 Convert a lead to a student *(added 2026-10-24 — `DEC-SCOPE-252`, ccrm-008)*
+
+| Route | overseas `counselor` | IT `counselor` | `overseas_admin`, `super_admin`, telecaller roles, others | Anonymous |
+|---|---|---|---|---|
+| `POST /counselor/leads/{id}/convert` | ✅ own handed-over lead only (`404` otherwise) | `403` (csc-002 W1) | `403` | `401` |
+
+- Pinned by `test_ccrm_008_convert.py::test_another_counselors_lead_is_404`, `::test_an_it_counselor_and_a_telecaller_are_403`,
+  `::test_extra_fields_are_refused`.
+
+### 2.168 Counselor student 360 *(added 2026-10-24 — `DEC-SCOPE-253`, ccrm-009)*
+
+| Route | `overseas_admin` | `counselor` (overseas) | `counselor` (IT) | `overseas_student`, `agent`, others | Anonymous |
+|---|---|---|---|---|---|
+| `GET /counselor/students/{id}/overview`, `/documents`, `/activities`, `/history` | ✅ any overseas student | ✅ csc-001 scope (`404` otherwise) — all the student's applications, read-only, marked `mine` | `403` | `403` | `401` |
+
+- Inside the page, downloads and writes keep their own routes' rules; `can_download` is false where the download route would `403`.
+- Pinned by `test_ccrm_009_student_360.py::test_out_of_scope_student_is_404_and_other_roles_403`,
+  `::test_documents_are_current_versions_with_download_only_where_allowed`, `::test_admin_reads_every_tab_and_sees_no_application_as_mine`.

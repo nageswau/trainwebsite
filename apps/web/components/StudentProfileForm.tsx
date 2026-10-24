@@ -20,9 +20,12 @@ function refusal(detail: unknown, message: string): string {
 
 // ccrm-007 (DEC-SCOPE-249): the structured overseas student profile, edited by the counselor, the Overseas Admin or the student (P1:
 // every field). A save replaces the whole profile (P5) and last write wins (CC5), so the form shows who saved last. On a refusal the
-// entries stay; a second save while one is in flight is ignored. ccrm-009's student 360 will host this in its Academic / Preferences /
-// English tabs.
-export default function StudentProfileForm({ initial, url, countries }: { initial: StudentProfile; url: string; countries: CountryOption[] }) {
+// entries stay; a second save while one is in flight is ignored.
+// ccrm-009 (DEC-SCOPE-253 V2): the student 360 shows one `section` per tab -- academic (personal details, academic history, work
+// experience), preferences or english. The whole profile is still held and saved, so a save on one tab never clears another's fields.
+export type ProfileSection = "academic" | "preferences" | "english";
+
+export default function StudentProfileForm({ initial, url, countries, section }: { initial: StudentProfile; url: string; countries: CountryOption[]; section?: ProfileSection }) {
   const [profile, setProfile] = useState<StudentProfile>(initial);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
@@ -34,6 +37,7 @@ export default function StudentProfileForm({ initial, url, countries }: { initia
     setProfile((p) => ({ ...p, [key]: (p[key] as T[]).map((row, i) => (i === index ? { ...row, ...change } : row)) }));
   const removeRow = (key: "qualifications" | "english_tests", index: number) => setProfile((p) => ({ ...p, [key]: (p[key] as unknown[]).filter((_, i) => i !== index) }));
 
+  const shows = (part: ProfileSection) => !section || section === part;
   const choosable = countries.filter((c) => !profile.preferred_countries.some((p) => p.id === c.id));
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -70,6 +74,8 @@ export default function StudentProfileForm({ initial, url, countries }: { initia
         )}
       </p>
 
+      {shows("academic") && (
+      <>
       <fieldset className="form-section">
         <legend>Personal details</legend>
         <div className="form-grid">
@@ -103,6 +109,10 @@ export default function StudentProfileForm({ initial, url, countries }: { initia
           <div className="field"><label htmlFor="sp-exp-details">Work experience details</label><input id="sp-exp-details" maxLength={1000} {...text("work_experience_details")} /></div>
         </div>
       </fieldset>
+      </>
+      )}
+
+      {shows("preferences") && (
 
       <fieldset className="form-section">
         <legend>Study preferences</legend>
@@ -154,7 +164,9 @@ export default function StudentProfileForm({ initial, url, countries }: { initia
           </div>
         </div>
       </fieldset>
+      )}
 
+      {shows("english") && (
       <fieldset className="form-section">
         <legend>English tests</legend>
         {profile.english_tests.length === 0 && <p className="muted" style={{ margin: 0 }}>No English tests added.</p>}
@@ -167,6 +179,7 @@ export default function StudentProfileForm({ initial, url, countries }: { initia
           <p className="field-help muted">Up to {MAX_ENGLISH_TESTS} English tests.</p>
         )}
       </fieldset>
+      )}
 
       {/* Always mounted so screen readers announce the outcome when it arrives; styled only while it has something to say. */}
       <div className={message ? (message.failed ? "form-error" : "form-message") : undefined} role="status" aria-live="polite">{message?.text}</div>

@@ -13,7 +13,8 @@ export type CounselorLeadDetail = CounselorLead & {
   message: string; milestones: Milestones;
   // ccrm-003 (DEC-SCOPE-243): the next action (a YYYY-MM-DD due date; overdue is the API's IST reading) and the stage / follow-up actions
   next_action: string | null; next_action_due: string | null; next_action_overdue: boolean;
-  permissions: { return: boolean; link: boolean; unlink: boolean; stage: boolean; follow_up: boolean };
+  // ccrm-008 (DEC-SCOPE-252): `convert` = one-step conversion to a new overseas student (Qualified onwards, not linked)
+  permissions: { return: boolean; link: boolean; unlink: boolean; stage: boolean; follow_up: boolean; convert: boolean };
 };
 export type StudentSuggestion = { id: string; full_name: string; email: string; phone: string | null; linked_elsewhere: boolean };
 

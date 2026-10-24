@@ -956,3 +956,33 @@ half.
 | `ccrm-021-AC5` | Lists show current versions with reviewer, review date, notes, expiry; no delete route | `::test_lists_show_the_current_version_with_review_metadata`, `::test_there_is_no_delete_route`; `apps/web/tests/components/CounselorDocumentReviewPanel.test.tsx` (ccrm-021 block), `AgentDocuments.test.tsx` |
 | `ccrm-021-AC6` | Daily job marks expired once (archived / not required untouched) | `::test_the_expiry_job_marks_expired_documents_once` |
 | `ccrm-021-AC7` | CV/SOP drafting statuses only; agency AGN-003 rules with new codes | `::test_drafting_statuses_only_on_cv_and_sop_documents`, `::test_an_agency_master_decides_with_new_or_legacy_codes`, `::test_agency_staff_still_only_verify`; e2e `apps/web/tests/e2e/ccrm-021-document-status.spec.ts` |
+
+**Addendum, 2026-10-24 (`ccrm-008`)** — one row and its acceptance-criteria map. Convert a lead to a student in one step.
+
+| Feature | Trace | Open | Evidence |
+|---|---|---|---|
+| `ccrm-008` | Requirement: §4 + §14 + AC 2 + CC9 → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-008` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-252` → design `docs/superpowers/specs/2026-10-24-ccrm-008-convert-lead-to-student-design.md`; `API_CONTRACT.md` §12FE, `RBAC_MATRIX.md` §2.167 | K1–K6 `NEEDS_CONFIRMATION` | Built on `worktree-ccrm-008`; lite API set, vitest, e2e and browser QA |
+
+| AC | Statement | Test |
+|---|---|---|
+| `ccrm-008-AC1` | Converting a qualified lead creates the student with the lead's details, links it (Application/Enrollment), keeps source/owner/telecaller, copies the profile, mails after commit, no token | `apps/api/tests/test_ccrm_008_convert.py::test_converting_creates_the_student_links_the_lead_and_copies_its_data`; e2e `apps/web/tests/e2e/ccrm-008-convert-lead.spec.ts` |
+| `ccrm-008-AC2` | An existing student's email or mobile → `409` with the link offer, nothing created; another user's email → csc-002's audited `409` | `::test_an_existing_student_with_the_email_or_mobile_is_409_with_the_link_offer`, `::test_another_staff_users_email_is_csc_002s_audited_409` |
+| `ccrm-008-AC3` | Before Qualified `422`; closed / linked / second convert `409` | `::test_a_lead_before_qualified_is_422_and_creates_nothing`, `::test_a_closed_lead_is_409`, `::test_converting_twice_is_409_the_second_time` |
+| `ccrm-008-AC4` | Scope: another counselor `404`; IT counselor / telecaller `403`; extra fields `422`; mail budget `429` | `::test_another_counselors_lead_is_404`, `::test_an_it_counselor_and_a_telecaller_are_403`, `::test_extra_fields_are_refused`, `::test_the_csc_002_mail_budget_applies` |
+| `ccrm-008-AC5` | Phone-only lead converts with the typed email; an unfit value is dropped, not the conversion | `::test_a_phone_only_lead_converts_with_the_email_the_counselor_types`, `::test_a_value_the_profile_refuses_is_dropped_not_the_conversion` |
+| `ccrm-008-AC6` | UI: prefilled form, success line + profile link, 409 keeps the entry, empty email refused, pre-Qualified hint | `apps/web/tests/components/CounselorLeadDetail.test.tsx` ("CounselorLeadDetail convert") |
+
+**Addendum, 2026-10-24 (`ccrm-009`)** — one row and its acceptance-criteria map. Counselor student 360 page.
+
+| Feature | Trace | Open | Evidence |
+|---|---|---|---|
+| `ccrm-009` | Requirement: §5 → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-009` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-253` → design `docs/superpowers/specs/2026-10-24-ccrm-009-counselor-student-360-design.md`; `API_CONTRACT.md` §12FF, `RBAC_MATRIX.md` §2.168 | B1–B6 `NEEDS_CONFIRMATION` | Built on `worktree-ccrm-009`; lite API set, vitest, e2e and browser QA |
+
+| AC | Statement | Test |
+|---|---|---|
+| `ccrm-009-AC1` | A student with three applications shows three independent statuses, each marked `mine` or not (V1) | `apps/api/tests/test_ccrm_009_student_360.py::test_overview_shows_each_application_with_its_own_status`; e2e `apps/web/tests/e2e/ccrm-009-student-360.spec.ts` |
+| `ccrm-009-AC2` | Another counselor's student / not a student `404`; student, agent, IT counselor `403`; admin reads every student | `::test_out_of_scope_student_is_404_and_other_roles_403`, `::test_admin_reads_every_tab_and_sees_no_application_as_mine` |
+| `ccrm-009-AC3` | Documents: current versions only; download offered only where the download route allows | `::test_documents_are_current_versions_with_download_only_where_allowed`; `apps/web/tests/components/OverseasStudent360.test.tsx` ("StudentDocumentDownload") |
+| `ccrm-009-AC4` | Activities (appointments, linked leads, lead link only for its owner) and History (status + audit + document events, newest first, no downloads) | `::test_activities_list_appointments_and_linked_leads`, `::test_history_merges_status_changes_audit_rows_and_document_events_newest_first` |
+| `ccrm-009-AC5` | Profile tabs show one section each; a save on one tab keeps the others' data (V2) | `OverseasStudent360.test.tsx` ("StudentProfileForm sections"); e2e Preferences save keeps the qualifications |
+| `ccrm-009-AC6` | Open link on the Students section, walk-in list and Admin Users | `::test_the_students_section_and_admin_users_link_to_the_360`; `OverseasStudent360.test.tsx` ("Open link", "walk-in student row") |
