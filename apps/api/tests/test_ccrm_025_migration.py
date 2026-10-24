@@ -25,7 +25,7 @@ HEAD, BASE = "0178_offer_decisions_deposits", "0177_visa_lifecycle"
 def test_migration_chains_after_0177_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
-    assert script.get_heads() == [HEAD]
+    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}  # ccrm-013's 0179 chains after it
 
 
 def test_the_migration_repeats_the_model_constants():
