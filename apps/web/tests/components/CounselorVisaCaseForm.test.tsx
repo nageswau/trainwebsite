@@ -71,6 +71,16 @@ describe("CounselorVisaCaseForm", () => {
     expect(field).toHaveValue("2026-10-01");
   });
 
+  it("reloads the case on a stale-screen 409, keeping the message", async () => {  // browser QA-03
+    vi.stubGlobal("fetch", respond(409, { detail: "This visa case changed since you opened it -- reload to see its current stage" }));
+    const onSaved = vi.fn();
+    render(<CounselorVisaCaseForm visa={CASE} onSaved={onSaved} />);
+    fireEvent.change(screen.getByLabelText("Visa category"), { target: { value: "Work" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save visa case" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("changed since you opened it");
+    expect(onSaved).toHaveBeenCalled();
+  });
+
   it("is read-only once the decision is recorded", () => {
     render(<CounselorVisaCaseForm visa={{ ...CASE, visa_status: "approved" }} onSaved={vi.fn()} />);
     expect(screen.queryByRole("button")).toBeNull();

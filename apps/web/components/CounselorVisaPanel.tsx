@@ -76,6 +76,7 @@ export default function CounselorVisaPanel() {
   }
 
   function saved(applicationId: string) {
+    setMessage((current) => (current?.id === applicationId ? null : current)); // browser QA-04: the form announces its own result
     loadChecklist(applicationId);
     router.refresh();
   }

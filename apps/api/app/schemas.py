@@ -593,6 +593,11 @@ class VisaLifecycleUpdate(BaseModel):
     next_steps: Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000)] | None = None
     correction_reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=500)] | None = None
 
+    @field_validator("readiness_review_date", "appointment_date", "submission_date", "interview_date", "expected_decision_date", "decision_date")
+    @classmethod
+    def _dates(cls, value):
+        return _application_date(value)  # browser QA-02: the AGN-012 range, so a typed year slip is a 422
+
 
 class SupportTicketCreate(BaseModel):
     subject: str = Field(min_length=2, max_length=180)

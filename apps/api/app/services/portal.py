@@ -70,6 +70,7 @@ from app.services.application_filters import ApplicationFilters
 from app.services.application_offers import TYPE_LABELS as OFFER_TYPE_LABELS
 from app.services.offers import status_label as offer_status_label
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
+from app.visa_status import label as visa_status_label
 
 logger = logging.getLogger("app.portal")
 
@@ -1189,7 +1190,8 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 "Visa Tracking",
                 "Visa checklists, appointments, and outcomes.",
                 (("id", "reference"), ("student", "Student"), ("status", "Status"), ("appointment", "Appointment"), ("reference", "Reference")),
-                ({"id": v.id, "student": s.full_name, "status": v.status, "appointment": v.appointment_date, "reference": v.tracking_reference} for v, _, s in visas),
+                # ccrm-026 (browser QA-01): the Appendix A status, worded, rather than the stage code.
+                ({"id": v.id, "student": s.full_name, "status": visa_status_label(v.visa_status), "appointment": v.appointment_date, "reference": v.tracking_reference} for v, _, s in visas),
             )
         if section == "appointments":
             # csc-001 QA-01: a counselor sees the students the booking form offers -- own applications' plus linked students.

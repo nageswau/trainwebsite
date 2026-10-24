@@ -12,7 +12,7 @@ from app.models import ApplicationOutcome, AuditLog, DocumentChecklistTemplate, 
 from tests.agn001_helpers import client_for
 from tests.agn008_helpers import APPS
 from tests.agn009_helpers import mk_doc
-from tests.agn023_helpers import ASSIGN, assign_world, fresh, notices
+from tests.agn023_helpers import ASSIGN, PORTAL, assign_world, fresh, notices
 
 CASES = "/api/v1/workflows/overseas/visa"
 LIFECYCLE = CASES + "/{}/lifecycle"
@@ -102,6 +102,21 @@ async def test_appointment_booked_and_submitted_need_their_dates(db_session, wor
     assert r.status_code == 422 and "submission date" in r.text
     r = await _patch(world["counselor"], case, expected_visa_status="preparing", submission_date=TODAY.isoformat(), interview_date=(TODAY - timedelta(days=3)).isoformat())
     assert r.status_code == 422 and "interview date" in r.text
+
+
+@pytest.mark.asyncio
+async def test_the_counselor_visa_table_shows_the_status_label(db_session, world):  # browser QA-01
+    await _walk(world["counselor"], world["case_direct"], "preparing")
+    async with client_for(world["counselor"].email) as c:
+        rows = (await c.get(PORTAL.format("counselor", "visa"))).json()["rows"]
+    row = next(r for r in rows if r["id"] == str(world["case_direct"].id))
+    assert row["status"] == "Preparing"
+
+
+@pytest.mark.asyncio
+async def test_a_typed_year_slip_is_422(db_session, world):  # browser QA-02: the AGN-012 date range
+    r = await _patch(world["counselor"], world["case_direct"], expected_visa_status="not_started", readiness_review_date="0202-11-05")
+    assert r.status_code == 422 and "between 2000 and 2100" in r.text
 
 
 @pytest.mark.asyncio

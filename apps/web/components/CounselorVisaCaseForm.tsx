@@ -88,6 +88,7 @@ export default function CounselorVisaCaseForm({ visa, onSaved }: { visa: VisaCas
       const perField = Object.fromEntries([...FIELDS, "visa_status"].map((f) => [f, fieldMessage(result.detail, f)]).filter(([, m]) => m));
       setErrors(perField);
       setMessage({ text: result.message, failed: true });
+      if (result.status === 409) onSaved(); // browser QA-03: a stale or locked case -- show its current state
       return;
     }
     setTarget("");
