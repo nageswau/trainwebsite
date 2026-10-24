@@ -1010,7 +1010,7 @@ half.
 
 | Feature | Trace | Open | Status |
 |---|---|---|---|
-| `ccrm-025` | Requirement: §9 + §7 + owner answers D1–D3 (in-session 2026-10-24) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-025` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-255` → design `docs/superpowers/specs/2026-10-24-ccrm-025-offer-decisions-deposits-design.md`; `API_CONTRACT.md` §12FH, `RBAC_MATRIX.md` §2.170, `DATA_MODEL.md` (0178) | Defaults `NEEDS_CONFIRMATION` (optional receipt, paid_on, on hold allowed, no agency UI) | Built on `feature/ccrm-025`; lite API set, vitest, e2e and browser QA |
+| `ccrm-025` | Requirement: §9 + §7 + owner answers D1–D3 (in-session 2026-10-24) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-025` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-255` → design `docs/superpowers/specs/2026-10-24-ccrm-025-offer-decisions-deposits-design.md`; `API_CONTRACT.md` §12FH, `RBAC_MATRIX.md` §2.170, `DATA_MODEL.md` (0178) | None — defaults D4–D7 confirmed 2026-10-24 (optional receipt, paid_on required, on hold allowed, no agency UI) | Merged PR #317; lite API set, vitest, e2e and browser QA |
 
 | AC | Criterion | Evidence |
 |---|---|---|
