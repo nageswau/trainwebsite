@@ -119,6 +119,15 @@ async def main():
             "preferred_intake": "September 2027",
             "english_test": "IELTS planned",
         }
+        # ccrm-007 (DEC-SCOPE-249): the demo student's structured profile -- the portal reads this now; migration 0174 copies the JSON
+        # above only on a database that already had the student before it ran.
+        demo_student = us["overseas_student"]
+        if not await db.get(OverseasStudentProfile, demo_student.id):
+            destinations = (await db.scalars(select(Country.id).where(Country.name.in_(("United Kingdom", "Germany"))).order_by(Country.name.desc()))).all()
+            db.add(OverseasStudentProfile(student_user_id=demo_student.id, preferred_country_ids=[str(c) for c in destinations], preferred_level="PG", preferred_intake="September 2027", study_mode="full_time"))
+            await db.flush()
+            db.add(OverseasStudentQualification(student_user_id=demo_student.id, position=0, level="bachelor", qualification_name="B.Tech"))
+            db.add(OverseasStudentEnglishTest(student_user_id=demo_student.id, position=0, test_type="IELTS", status="not_taken", remarks="IELTS planned"))
         us["counselor"].profile = {"demo": True, "specialisms": ["UK", "Germany", "Ireland"]}
         # csc-001 (DEC-SCOPE-226): a walk-in student who belongs to the demo counselor before any application.
         walk_in = await user(db, "student.walkin@edusphere.local", "Vikram Walk-in", "overseas_student", "overseas")

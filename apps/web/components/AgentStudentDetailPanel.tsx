@@ -6,6 +6,7 @@ import AgentShortlistPanel from "./AgentShortlistPanel";
 import AgentStudentCounselingCard from "./AgentStudentCounselingCard";
 import AgentStudentForm from "./AgentStudentForm";
 import AgentStudentJourney from "./AgentStudentJourney";
+import AgentStudentProfileCard from "./AgentStudentProfileCard";
 import AgentStudentTimeline from "./AgentStudentTimeline";
 import AgentTasksBlock from "./AgentTasksBlock";
 import { AgentStudentDetail, assignedText } from "@/lib/agentStudents";
@@ -92,6 +93,8 @@ export default function AgentStudentDetailPanel({
               Edit
             </button>
           )}
+          {/* ccrm-007 (DEC-SCOPE-249): the student's own structured profile, read-only (no passport). */}
+          {editing === "none" && detail.has_login && <AgentStudentProfileCard studentId={detail.id} />}
           {/* AGN-015 (DEC-SCOPE-061): where the student is on the nine steps; reloads when the record changes. */}
           {editing === "none" && <AgentStudentJourney studentId={detail.id} refreshKey={`${detail.updated_at}:${changes}`} />}
           <AgentStudentCounselingCard

@@ -2144,3 +2144,17 @@ withdraw/expire). `notes` is unchanged. Backfill: rows matching an `application_
 `(kind, country_id, university_id, course_level, lower(intake)) NULLS NOT DISTINCT WHERE active` — one active template per scope. No hard
 delete. `document_checklist_template_items`: `id`, `template_id` (ON DELETE CASCADE), `position` (unique per template), `document_type`
 (the upload type list), `label`, `required`, `allowed_statuses` (JSON list, never empty), `notes`. Nothing is seeded (§8).
+
+## Structured overseas student profile (`ccrm-007`, `DEC-SCOPE-249`; migration `0174_student_profiles`, after ccrm-018's `0173_checklist_templates`)
+
+`overseas_student_profiles` (PK `student_user_id` → users ON DELETE CASCADE): `date_of_birth`, `nationality`, `city`, `state`,
+`passport_number`, `passport_expiry`, `work_experience_months` (CHECK 0–600), `work_experience_details`, `preferred_country_ids` (JSON list of
+country ids, ≤5 — app-level), `preferred_course`, `preferred_level` (CHECK the course master levels), `preferred_intake`, `study_mode` (CHECK
+full_time / part_time / online), `budget_min`, `budget_max` (numeric 12,2), `budget_currency` (CHECK the counseling currencies),
+`updated_by_user_id` → users, timestamps. `overseas_student_qualifications`: `id`, `student_user_id` → profile (CASCADE), `position` (unique
+per student), `level` (CHECK class_10 … other), `qualification_name`, `institution`, `board_university`, `year_completed`, `score_type`
+(CHECK percentage / cgpa), `score` (5,2), `backlogs`. `overseas_student_english_tests`: `id`, `student_user_id` → profile (CASCADE),
+`position` (unique per student), `test_type` (CHECK the course master's `ENGLISH_TESTS`), `status` (nullable CHECK not_taken / booked /
+taken), `overall_score` (4,1), `test_date`, `valid_until`, `remarks`. The migration copies the old `users.profile` keys once per student
+without a profile (countries by name; `education` → one `other` qualification; `english_test` → one test, type read from the text, the text
+in `remarks`); `users.profile` is not changed. Downgrade drops the three tables.
