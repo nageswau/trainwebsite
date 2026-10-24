@@ -17,15 +17,15 @@ const detail = (over: Partial<Detail> = {}): Detail => ({
   status_label: "Counselling Completed", source: "website", priority: "warm", created_at: "2026-10-06T05:00:00Z", stage_changed_at: "2026-10-06T05:00:00Z",
   product: null, campaign: null, telecaller: { id: "t1", full_name: "Tara Caller" }, counselor: { id: "c1", full_name: "Cara Counselor" },
   converted_user: null, message: "Hello", milestones: { student: null, items: [] }, next_action: null, next_action_due: null, next_action_overdue: false,
-  permissions: { return: true, link: true, unlink: false, stage: true, follow_up: true }, ...over,
+  permissions: { return: true, link: true, unlink: false, stage: true, follow_up: true, convert: false }, ...over,
 });
-const closedPermissions = { return: true, link: false, unlink: false, stage: false, follow_up: false };
+const closedPermissions = { return: true, link: false, unlink: false, stage: false, follow_up: false, convert: false };
 const asha = { id: "s1", full_name: "Asha Rao", email: "asha@example.com", phone: null, linked_elsewhere: false };
 const taken = { id: "s2", full_name: "Asha R", email: "asha.r@example.com", phone: null, linked_elsewhere: true };
 const linked = detail({
   status: "application_enrollment", status_label: "Application/Enrollment", converted_user: { id: "s1", full_name: "Asha Rao", email: "asha@example.com" },
   milestones: { student: { id: "s1", full_name: "Asha Rao", email: "asha@example.com" }, items: [] },
-  permissions: { return: false, link: false, unlink: true, stage: true, follow_up: true },
+  permissions: { return: false, link: false, unlink: true, stage: true, follow_up: true, convert: false },
 });
 const followUp = {
   id: "F1", due_at: "2026-10-30T05:30:00Z", reason: "waiting_documents", notes: null, next_action: "Collect transcripts", status: "open", overdue: false,
@@ -216,10 +216,58 @@ describe("CounselorLeadDetail", () => {
   });
 
   it("a converted lead offers neither return, link nor unlink", async () => {
-    render(<CounselorLeadDetail initial={{ ...linked, status: "converted", status_label: "Converted", permissions: { return: false, link: false, unlink: false, stage: false, follow_up: false } }} />);
+    render(<CounselorLeadDetail initial={{ ...linked, status: "converted", status_label: "Converted", permissions: { return: false, link: false, unlink: false, stage: false, follow_up: false, convert: false } }} />);
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     for (const name of ["Return to telecaller", "Unlink student"]) expect(screen.queryByRole("button", { name })).toBeNull();
     expect(screen.getAllByText("Converted").length).toBeGreaterThan(0);
+  });
+});
+
+// ccrm-008 (DEC-SCOPE-252): one-step conversion to a new overseas student, prefilled from the lead.
+describe("CounselorLeadDetail convert", () => {
+  const overseas = (over: Partial<Detail> = {}) =>
+    detail({ division: "overseas", status: "qualified", status_label: "Qualified", permissions: { return: true, link: true, unlink: false, stage: true, follow_up: true, convert: true }, ...over });
+  const student = { id: "S9", full_name: "Asha Rao", email: "asha@example.com", phone: "+91 98765 43210", student_code: "AB12CD34", setup: "pending_setup" };
+
+  it("converts with the lead's details prefilled and links to the new student's profile", async () => {
+    reply["POST /convert"] = () => res({ student, lead: { ...linked, division: "overseas", converted_user: { id: "S9", full_name: "Asha Rao", email: "asha@example.com" } }, email_status: "sent", expires_at: "2026-10-27T00:00:00Z" }, 201);
+    render(<CounselorLeadDetail initial={overseas()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Convert to student" }));
+    expect(screen.getByLabelText("Full name")).toHaveValue("Asha Rao");
+    expect(screen.getByLabelText("Email")).toHaveValue("asha@example.com");
+    expect(screen.getByLabelText("Phone (optional)")).toHaveValue("+91 98765 43210");
+    fireEvent.click(screen.getByRole("button", { name: "Create student account" }));
+    expect(await screen.findByText(/Student account created for Asha Rao\. A set-password link was emailed to asha@example\.com\./)).toBeInTheDocument();
+    expect(body("POST", "/convert")).toEqual({ full_name: "Asha Rao", email: "asha@example.com", phone: "+91 98765 43210" });
+    expect(screen.getByRole("link", { name: "Open the student's profile" })).toHaveAttribute("href", "/overseas/counselor/students/S9/profile");
+    expect(screen.getByText(/Linked to/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Convert to student" })).toBeNull();
+  });
+
+  it("keeps the entry and points to the link list when the student already exists", async () => {
+    reply["POST /convert"] = () => res({ detail: "A student account already has this email or mobile. Link the existing student instead." }, 409);
+    render(<CounselorLeadDetail initial={overseas()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Convert to student" }));
+    fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Asha R. Rao" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create student account" }));
+    expect(await screen.findByText(/Link the existing student instead/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Full name")).toHaveValue("Asha R. Rao");
+    expect(screen.getByRole("button", { name: "Link Asha Rao" })).toBeInTheDocument();
+  });
+
+  it("asks for an email when the lead has none (a phone-only lead)", async () => {
+    render(<CounselorLeadDetail initial={overseas({ email: null })} />);
+    fireEvent.click(screen.getByRole("button", { name: "Convert to student" }));
+    expect(screen.getByLabelText("Email")).toHaveValue("");
+    fireEvent.click(screen.getByRole("button", { name: "Create student account" }));
+    expect(await screen.findByText("Add the student's name and email.")).toBeInTheDocument();
+    expect(body("POST", "/convert")).toBeUndefined();
+  });
+
+  it("explains why an overseas lead before Qualified cannot be converted yet", () => {
+    render(<CounselorLeadDetail initial={overseas({ status: "contacted", status_label: "Contacted", permissions: { return: true, link: true, unlink: false, stage: true, follow_up: true, convert: false } })} />);
+    expect(screen.queryByRole("button", { name: "Convert to student" })).toBeNull();
+    expect(screen.getByText("Move the lead to Qualified to convert it to a new student.")).toBeInTheDocument();
   });
 });
 

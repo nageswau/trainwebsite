@@ -9203,3 +9203,39 @@ cards. S6 Draft / Review / Approved only on CV / Resume / SOP / Statement of Pur
 S7 no delete route (archive only).
 **Numbering:** migration `0176_document_status` (after ccrm-029's 0175); API §12FD; RBAC §2.166 (0174 / 249 / 12FB / 2.164 taken by ccrm-007, 0175 / 250 / 12FC / 2.165 by ccrm-029).
 - **Feature ID authorized:** `ccrm-021`. **Status:** built on `worktree-ccrm-021`.
+
+### DEC-SCOPE-252 — Convert a lead to a student in one step (`ccrm-008`)
+
+**Status:** PROPOSED — CC9 is the owner's answer (backlog, 2026-10-22). K1–K6 are recommended defaults taken under the owner's standing
+instruction ("proceed with recommended answers"). They are `NEEDS_CONFIRMATION`.
+**Evidence:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-008` (source PDF §4, §14, AC 2, `UNVERIFIED`); CC9; csc-002
+(`DEC-SCOPE-227`); tel-018 (`DEC-SCOPE-101`); ccrm-007 (`DEC-SCOPE-249`).
+
+**Decision.** `POST /counselor/leads/{id}/convert` is for an overseas counselor, on a lead handed to them. In one transaction it:
+
+- creates the csc-002 account (`registration_source = lead_conversion`; the mail budget, the extra-field guard and the audited
+  "Email already exists" `409` all apply);
+- links the lead (tel-018 `student_linked` → Application/Enrollment, audit `lead.convert`);
+- copies the lead's data into the ccrm-007 profile.
+
+The set-password link is mailed after the commit; its token is never returned. Builder's calls:
+
+- **K1:** the lead must be at Qualified or later (Qualified … Counselling Completed). Earlier is `422`; closed or already linked is `409`.
+- **K2:** a lead with no email converts; the counselor types the address, and the lead itself is not changed.
+- **K3:** what is copied:
+  - city and state;
+  - one qualification (level "Other", with the lead's qualification, institution, passing year and the qualification percentage);
+  - preferred course, intake and level (UG/Masters → UG/PG);
+  - work experience (years × 12) and the current organisation.
+
+  Free text with no structured slot (budget range, English test status, passport status) stays on the linked lead. A value the profile
+  refuses is dropped and never blocks the conversion.
+- **K4:** an active overseas student with the same email or the same last ten mobile digits is `409` ("Link the existing student
+  instead"). Nothing is created; the link list offers the student.
+- **K5:** two converts serialise on the lead lock; the second is `409`.
+- **K6:** "Create first application" is deferred (there is no counselor create screen); the success line links to the student's
+  profile instead.
+
+The detail adds `permissions.convert`.
+**Numbering:** no migration; API §12FE; RBAC §2.167.
+- **Feature ID authorized:** `ccrm-008`. **Status:** built on `worktree-ccrm-008`.

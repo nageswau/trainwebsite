@@ -3652,3 +3652,13 @@ Other roles (incl. an IT counselor on `/counselor/tasks`) `403`; anonymous `401`
 
 No delete route exists or is added. Daily job (Celery beat, 18:35 UTC = 00:05 IST): documents with `expiry_date` before the India date,
 not archived and not `expired`/`not_required` → `expired` (event `expired`, no actor).
+
+## 12FE. Convert a lead to a student (ccrm-008) — addendum, 2026-10-24
+
+`DEC-SCOPE-252`. No migration. RBAC §2.167. Code: `app/services/lead_conversion.py`, `app/api/lead_handover.py`. Reuses
+`counselor_students.create_student` (csc-002), `lead_handover.link_student` / `commit_link` (tel-018) and `student_profiles.write` (ccrm-007).
+
+| Method/Path | Auth | Roles | Behaviour |
+|---|---|---|---|
+| `POST /api/v1/counselor/leads/{id}/convert` | Authenticated | overseas `counselor` (the lead's owner, in its division) | **New.** Body `CounselorStudentCreate` `{full_name, email, phone?}`; extra keys `422`. Errors: another role or an IT counselor `403`; outside the counselor's scope `404`; linked or closed `409`; before Qualified `422` "Move the lead to Qualified before converting it"; an active overseas student with the same email (any case) or the same last ten mobile digits `409` "A student account already has this email or mobile. Link the existing student instead."; another user's email `409` "Email already exists" (audited); mail budget `429` + `Retry-After`. On success, in one transaction: the student is created (`overseas_student`, csc-001 link, ENH-003 token), the lead's data is copied into the profile (DEC-SCOPE-252 K3), and the lead is linked (Application/Enrollment). Then the link is mailed. `201 {student: {id, full_name, email, phone, student_code, setup}, lead: <counselor lead detail>, email_status, expires_at}`; never the token. |
+| `GET /api/v1/counselor/leads/{id}` | unchanged | unchanged | `permissions` adds `convert` (not linked, overseas, Qualified … Counselling Completed). |
