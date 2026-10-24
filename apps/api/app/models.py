@@ -1794,6 +1794,9 @@ OUTCOME_CHECK = _in("outcome", APPLICATION_OUTCOMES)  # ccrm-015; migration 0170
 # ccrm-023 (DEC-SCOPE-245, OF3/OF4): an application offer's types and statuses. Migration 0171 repeats them (test_ccrm_023_migration).
 APPLICATION_OFFER_TYPES = ("conditional", "unconditional", "pathway", "other")
 APPLICATION_OFFER_STATUSES = ("active", "superseded", "withdrawn_by_university", "expired")
+# ccrm-025 (DEC-SCOPE-255): the student's decision on an offer, and the counselor's manual deposit record. Migration 0178 repeats them.
+APPLICATION_OFFER_DECISIONS = ("considering", "accepted", "declined", "expired")
+DEPOSIT_RECORD_STATUSES = ("not_required", "pending", "paid_to_university", "paid_via_edusphere")
 
 
 class OverseasApplication(Base, TimestampMixin):
@@ -1880,8 +1883,14 @@ class ApplicationOffer(Base, TimestampMixin):
     recorded_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     closed_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # ccrm-025: the student's decision; `decided_by_id` is NULL when the daily job expired it. A decline's reason is its outcome event's.
+    decision: Mapped[str] = mapped_column(String(20), default="considering", server_default=text("'considering'"))
+    decision_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    decided_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
     __table_args__ = (
+        CheckConstraint(_in("decision", APPLICATION_OFFER_DECISIONS), name="ck_application_offers_decision"),
+        CheckConstraint("(decision = 'considering') = (decision_date IS NULL)", name="ck_application_offers_decision_dated"),
         CheckConstraint("offer_type IN (" + ", ".join(f"'{t}'" for t in APPLICATION_OFFER_TYPES) + ")", name="ck_application_offers_type"),
         CheckConstraint("status IN (" + ", ".join(f"'{s}'" for s in APPLICATION_OFFER_STATUSES) + ")", name="ck_application_offers_status"),
         CheckConstraint("status IN ('active', 'superseded') OR status_reason IS NOT NULL", name="ck_application_offers_reason"),
@@ -1890,6 +1899,34 @@ class ApplicationOffer(Base, TimestampMixin):
         Index("uq_application_offers_active", "application_id", unique=True, postgresql_where=text("status = 'active'")),
         Index("ix_application_offers_application", "application_id", "created_at"),
     )
+
+
+class ApplicationDepositRecord(Base, TimestampMixin):
+    """ccrm-025 (DEC-SCOPE-255, D2): the counselor's record of the university deposit, one per application, any currency, no payment
+    taken. Beside AGN-011's `ApplicationDeposit` (agency, INR, Razorpay), which it never touches: an application with one of those
+    cannot have this record. Written only by services/application_deposit_records.py."""
+
+    __tablename__ = "application_deposit_records"
+    __table_args__ = (
+        CheckConstraint(_in("payment_status", DEPOSIT_RECORD_STATUSES), name="ck_application_deposit_records_status"),
+        CheckConstraint("(payment_status = 'not_required') = (NOT required)", name="ck_application_deposit_records_required"),
+        CheckConstraint(
+            "(required AND amount > 0 AND currency IS NOT NULL) OR (NOT required AND amount IS NULL AND currency IS NULL AND due_date IS NULL AND receipt_document_id IS NULL)",
+            name="ck_application_deposit_records_amount",
+        ),
+        CheckConstraint("(paid_on IS NOT NULL) = (payment_status IN ('paid_to_university', 'paid_via_edusphere'))", name="ck_application_deposit_records_paid"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id", ondelete="CASCADE"), unique=True)
+    required: Mapped[bool] = mapped_column(Boolean)
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    payment_status: Mapped[str] = mapped_column(String(30))
+    paid_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    receipt_document_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL"), nullable=True)
+    recorded_by_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    updated_by_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
 class OverseasStudentCounselor(Base, TimestampMixin):

@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import ApplicationDepositPanel from "./ApplicationDepositPanel";
 import ApplicationOffersPanel from "./ApplicationOffersPanel";
 import ApplicationOutcomeForm from "./ApplicationOutcomeForm";
 import ApplicationStatusHistory from "./ApplicationStatusHistory";
@@ -200,7 +201,13 @@ export default function CounselorEvaluationPanel() {
                   {offersId === row.id ? "Hide offers" : "Offers"}
                 </button>
               )}
-              {offersId === row.id && <ApplicationOffersPanel applicationId={row.id} onChanged={saved} />}
+              {offersId === row.id && (
+                <>
+                  <ApplicationOffersPanel applicationId={row.id} onChanged={saved} />
+                  {/* ccrm-025: an offer write changes the sub-status, so the key reloads the deposit's prefill from the new offer */}
+                  <ApplicationDepositPanel key={`${row.status}|${row.sub_status}|${row.outcome}`} applicationId={row.id} onChanged={saved} />
+                </>
+              )}
               {/* ccrm-016: who changed what and why, any state; the key reloads it after a write on this card changes the row */}
               <button
                 type="button"

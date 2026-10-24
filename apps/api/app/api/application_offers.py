@@ -7,6 +7,7 @@ queue and the last one wins; the other side is told (CC5). Spec: docs/superpower
 """
 
 import logging
+from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
@@ -14,13 +15,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.workflows import _agency_record_archived, _assigned_application, _audit, _notify_user, _recheck_counselor_scope, _require
+from app.api.workflows import _agency_record_archived, _assigned_application, _audit, _notify_user, _recheck_counselor_scope, _require, _tell_outcome
+from app.application_outcome import label as outcome_label
 from app.application_sub_status import label as sub_status_label
 from app.core.database import get_db
 from app.models import ApplicationOffer, ApplicationStatusHistory, OverseasApplication, StudentDocument, User
-from app.schemas import ApplicationOfferClose, ApplicationOfferCreate
+from app.schemas import ApplicationOfferClose, ApplicationOfferCreate, ApplicationOutcomeSet, DepositRecordSave, OfferDecisionSet
 from app.services import agent_documents as documents
 from app.services import agent_notifications as agency_notices
+from app.services import application_deposit_records as deposits
 from app.services import application_offers as offers
 from app.services import application_outcomes as outcomes
 from app.services.agent_applications import ARCHIVED, OFFER_DOCUMENT_MISMATCH, OFFER_LETTERS_SHOWN
@@ -49,10 +52,10 @@ async def _writable(db: AsyncSession, user: User, application_id: UUID, *, moves
     return item
 
 
-async def _letters(db: AsyncSession, item: OverseasApplication) -> list[dict]:
+async def _letters(db: AsyncSession, item: OverseasApplication, document_type: str = documents.OFFER_LETTER) -> list[dict]:
     rows = await db.scalars(
         select(StudentDocument)
-        .where(StudentDocument.application_id == item.id, StudentDocument.document_type == documents.OFFER_LETTER)
+        .where(StudentDocument.application_id == item.id, StudentDocument.document_type == document_type)
         .order_by(StudentDocument.created_at.desc(), StudentDocument.id)
         .limit(OFFER_LETTERS_SHOWN)
     )
@@ -86,6 +89,16 @@ async def list_offers(application_id: UUID, user: User = Depends(get_current_use
 async def upload_offer_letter(application_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """An "Offer letter" document attached to the application, owned like it (the account and/or the agency record). The AGN-009
     upload rules apply: the type is sniffed from the bytes (PDF or image) and the storage key is server-generated."""
+    return await _upload(db, user, application_id, file, documents.OFFER_LETTER)
+
+
+@router.post("/{application_id}/deposit-receipts", status_code=201)
+async def upload_deposit_receipt(application_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-025: a "Deposit receipt" document, under the offer letter's rules."""
+    return await _upload(db, user, application_id, file, deposits.RECEIPT)
+
+
+async def _upload(db: AsyncSession, user: User, application_id: UUID, file: UploadFile, document_type: str) -> dict:
     item = await _writable(db, user, application_id, moves_stage=False)
     if item.student_id is None and item.agent_student_id is None:
         raise HTTPException(422, NO_OWNER)
@@ -96,7 +109,7 @@ async def upload_offer_letter(application_id: UUID, file: UploadFile = File(...)
             student_id=item.student_id,
             agent_student_id=item.agent_student_id,
             application_id=item.id,
-            document_type=documents.OFFER_LETTER,
+            document_type=document_type,
             file_url=key,
             verification_status="pending",
             original_filename=filename,
@@ -107,13 +120,13 @@ async def upload_offer_letter(application_id: UUID, file: UploadFile = File(...)
         db.add(document)
         await db.flush()
         documents.add_event(db, event="uploaded", actor=user, document=document, to_status="pending")
-        await _audit(db, user, "document.upload", "student_document", document.id, {"application_id": str(item.id), "document_type": documents.OFFER_LETTER})
+        await _audit(db, user, "document.upload", "student_document", document.id, {"application_id": str(item.id), "document_type": document_type})
         await db.commit()
     except Exception:  # nothing was written: the stored object goes too
         await db.rollback()
         documents.discard(key)
         raise
-    logger.info("offer_letter_uploaded", extra={"extra_fields": {"application_id": str(item.id), "document_id": str(document.id), "actor_id": str(user.id)}})
+    logger.info("application_document_uploaded", extra={"extra_fields": {"application_id": str(item.id), "document_id": str(document.id), "document_type": document_type, "actor_id": str(user.id)}})
     return {"document": offers.document_view(document)}
 
 
@@ -179,3 +192,89 @@ async def close_offer(application_id: UUID, offer_id: UUID, payload: Application
     await db.commit()
     logger.info("application_offer_closed", extra={"extra_fields": {"application_id": str(item.id), "offer_id": str(offer.id), "status": payload.status, "actor_id": str(user.id)}})
     return _result(item, await _offer_view(db, offer), changed=True)
+
+
+@router.post("/{application_id}/offers/{offer_id}/decision")
+async def decide_offer(application_id: UUID, offer_id: UUID, payload: OfferDecisionSet, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-025 (DEC-SCOPE-255): the student accepted or declined the current offer. A decline is ccrm-015's `offer_declined` outcome
+    (terminal). Accepting never checks the student's other applications; it lists those already accepted (D1). Repeating it: 200, unchanged."""
+    item = await _writable(db, user, application_id)
+    offer = await db.get(ApplicationOffer, offer_id)
+    if offer is None or offer.application_id != item.id:
+        raise HTTPException(404, offers.OFFER_NOT_FOUND)
+    if offer.status != "active":
+        raise HTTPException(409, offers.NOT_DECIDABLE)
+    on = payload.decision_date or date.today()
+    if on < offer.issue_date:
+        raise HTTPException(422, offers.DECIDED_BEFORE_ISSUE)
+    if offer.decision == payload.decision:
+        return _result(item, await _offer_view(db, offer), changed=False) | {"other_accepted": await offers.other_accepted(db, item)}
+    audit = {"offer_id": str(offer.id), "decision": payload.decision, "from_decision": offer.decision}
+    if payload.decision == "declined":
+        body = ApplicationOutcomeSet(outcome="offer_declined", outcome_date=on, reason=payload.reason, another_offer_preferred=payload.another_offer_preferred)
+        event = await outcomes.record(db, user, item, body)
+        await db.flush()
+        await _tell_outcome(db, user, item, outcome_label(item.outcome))
+        audit["event_id"] = str(event.id)
+    else:
+        before = (item.status, item.sub_status)
+        offers.accept(user, item, offer, on)
+        db.add(
+            ApplicationStatusHistory(
+                application_id=item.id, from_status=before[0], to_status=item.status, from_sub_status=before[1], to_sub_status=item.sub_status,
+                next_action=item.next_action, notes=f"Offer accepted on {on.isoformat()} ({offers.TYPE_LABELS[offer.offer_type].lower()} offer).", changed_by_id=user.id,
+            )
+        )  # fmt: skip
+        await _tell_student(db, item, "Offer accepted", "Your acceptance of the offer is recorded on your application.")
+        await agency_notices.offer_changed(db, item, user, "Offer accepted")
+    await _audit(db, user, "overseas.application.offer_decision", "overseas_application", item.id, audit)
+    await db.commit()
+    logger.info("application_offer_decided", extra={"extra_fields": {"application_id": str(item.id), "offer_id": str(offer.id), "decision": payload.decision, "actor_id": str(user.id)}})
+    others = await offers.other_accepted(db, item) if payload.decision == "accepted" else []
+    return _result(item, await _offer_view(db, offer), changed=True) | {"other_accepted": others}
+
+
+@router.get("/{application_id}/deposit")
+async def get_deposit(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-025 (D2): the manual deposit record, the agency's AGN-011 deposit (read-only) and the current offer's deposit to start from.
+    The receipts to pick from go to the writers only."""
+    _require(user, READERS, "overseas")
+    item = await _assigned_application(db, user, application_id)
+    writer = user.role in WRITERS | {"super_admin"}
+    return {
+        "record": await deposits.view(db, item.id),
+        "agency_deposit": await deposits.agency_deposit(db, item.id),
+        "prefill": deposits.prefill(await offers.active_offer(db, item)),
+        "receipts": await _letters(db, item, deposits.RECEIPT) if writer else [],
+    }
+
+
+@router.put("/{application_id}/deposit")
+async def save_deposit(application_id: UUID, payload: DepositRecordSave, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-025 (D2): record or replace the deposit. Allowed on hold (it moves no stage); refused beside an AGN-011 deposit (409)."""
+    item = await _writable(db, user, application_id, moves_stage=False)
+    if await deposits.agency_deposit(db, item.id) is not None:
+        raise HTTPException(409, deposits.AGENCY_MANAGED)
+    if payload.receipt_document_id is not None:
+        receipt = await db.get(StudentDocument, payload.receipt_document_id)
+        if receipt is None or receipt.application_id != item.id or receipt.document_type != deposits.RECEIPT or receipt.archived_at is not None:
+            raise HTTPException(422, deposits.RECEIPT_MISMATCH)
+    values = payload.model_dump()
+    record = await deposits.record_for(db, item.id)
+    if deposits.values_of(record) == values:
+        return {"record": await deposits.view(db, item.id), "changed": False}
+    created = record is None
+    record = deposits.save(user, item, record, values)
+    db.add(record)
+    db.add(
+        ApplicationStatusHistory(
+            application_id=item.id, from_status=item.status, to_status=item.status, from_sub_status=item.sub_status, to_sub_status=item.sub_status,
+            next_action=item.next_action, notes=deposits.summary(record), changed_by_id=user.id,
+        )
+    )  # fmt: skip
+    await _tell_student(db, item, "Deposit updated", "The university deposit on your application was updated.")
+    await agency_notices.offer_changed(db, item, user, "Deposit updated")
+    await _audit(db, user, "overseas.application.deposit_record", "overseas_application", item.id, {"payment_status": record.payment_status, "created": created})
+    await db.commit()
+    logger.info("application_deposit_recorded", extra={"extra_fields": {"application_id": str(item.id), "payment_status": record.payment_status, "actor_id": str(user.id)}})
+    return {"record": await deposits.view(db, item.id), "changed": True}

@@ -2185,3 +2185,13 @@ codes back (new-only codes → `pending`, new-only events deleted).
 (FK `student_documents`, SET NULL), `refusal_reason` (Text, restricted), `next_steps` (Text). The submission date is `visa_application_date`
 and the reference `tracking_reference`. `status` (stage) and `decision` are derived from `visa_status` on every write (spec §3).
 Backfill: `decision` if set, else the stage's first status; `decision_date` from `decided_at` (IST). Downgrade drops the columns.
+
+## Offer decision and deposit record (`ccrm-025`, `DEC-SCOPE-255`; migration `0178_offer_decisions_deposits`, after ccrm-026's `0177_visa_lifecycle`)
+
+`application_offers` adds `decision` (20, NOT NULL, default `considering`; CHECK `ck_application_offers_decision` in
+`app.models.APPLICATION_OFFER_DECISIONS`), `decision_date` (Date; CHECK `ck_application_offers_decision_dated`: set exactly when decided) and
+`decided_by_id` (FK `users`, NULL when the expiry job decided). Existing offers become `considering`.
+New table `application_deposit_records` (one per application, `application_id` unique FK CASCADE): `required`, `amount` Numeric(12,2),
+`currency` (3), `due_date`, `payment_status` (`app.models.DEPOSIT_RECORD_STATUSES`), `paid_on`, `receipt_document_id` (FK
+`student_documents`, SET NULL), `recorded_by_id`, `updated_by_id`, timestamps; CHECKs tie `not_required` ⇔ not required, amount > 0 and a
+currency when required, no fields when not, `paid_on` ⇔ a paid status. AGN-011 `application_deposits` is unchanged. Downgrade drops both.
