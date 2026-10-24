@@ -52,6 +52,7 @@ from app.models import (
     CANDIDATE_STATUSES,
     CAPITAL_ENTRY_KINDS,
     CONTACT_CHANNELS,
+    COUNSELOR_TASK_STATUSES,
     COUNTRY_REGIONS,
     COURSE_CURRENCIES,
     COURSE_LEVELS,
@@ -13566,3 +13567,45 @@ class KycRejectRequest(BaseModel):
     @classmethod
     def strip_reason(cls, value):
         return value.strip() if isinstance(value, str) else value
+
+
+# ccrm-029 (DEC-SCOPE-250, T1-T4): counselor tasks. Field rules live here; the ones that need the database (an active overseas counselor,
+# a link in the counselor's scope) or today's IST date (the due window) are raised by `services/counselor_tasks.py` in the same shape.
+CounselorTaskStatus = Literal[COUNSELOR_TASK_STATUSES]  # type: ignore[valid-type]
+CounselorTaskBand = Literal["overdue", "today", "upcoming", "done", "cancelled"]
+
+
+class CounselorTaskLink(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    type: Literal["lead", "student", "application"]
+    id: UUID
+
+
+class CounselorTaskUpdate(BaseModel):
+    """A partial change. Only `link` can be cleared (null); `source` is never the client's."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: TaskTitle | None = None
+    due_on: date | None = None
+    priority: TaskPriority | None = None
+    status: CounselorTaskStatus | None = None
+    counselor_user_id: UUID | None = None
+    link: CounselorTaskLink | None = None
+
+    @field_validator("title", "due_on", "priority", "status", "counselor_user_id", mode="before")
+    @classmethod
+    def _required(cls, value, info: ValidationInfo):
+        if value is None:
+            raise ValueError(f"{(info.field_name or '').removesuffix('_user_id').replace('_', ' ').capitalize()} is required")
+        return value
+
+
+class CounselorTaskCreate(BaseModel):
+    """`counselor_user_id` is the Overseas Admin's choice; a counselor's own task leaves it out (or names themself)."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: TaskTitle
+    due_on: date
+    priority: TaskPriority = "medium"
+    counselor_user_id: UUID | None = None
+    link: CounselorTaskLink | None = None

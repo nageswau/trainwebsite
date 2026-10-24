@@ -104,14 +104,16 @@ def overdue(now: datetime):
     return IS_OPEN & (LeadFollowUp.due_at < now)
 
 
-async def list_page(db: AsyncSession, user: User, scope: list, view: str, day: date, now: datetime, limit: int, offset: int) -> dict:
+async def list_page(db: AsyncSession, user: User, scope: list, view: str, day: date, now: datetime, limit: int, offset: int,
+                    whose=lead_pipeline.TELECALLER_FOLLOW_UP) -> dict:
     """AC1 / AC2 / F1: `day` = the open follow-ups due in that IST day; `overdue` = every open one past its due time. Both oldest due
-    first; the counts are the two views' totals, so the tabs agree with the lists."""
+    first; the counts are the two views' totals, so the tabs agree with the lists. ccrm-029 (T7): the counselor's lists pass
+    `whose=true()` -- a handover cancels the telecaller's open follow-ups, so every open one on a counselor's lead is theirs."""
     chosen = in_day(day) if view == "day" else overdue(now)
-    out = await _page(db, user, now, [*scope, lead_pipeline.TELECALLER_FOLLOW_UP, chosen], (LeadFollowUp.due_at, LeadFollowUp.id), limit, offset)
+    out = await _page(db, user, now, [*scope, whose, chosen], (LeadFollowUp.due_at, LeadFollowUp.id), limit, offset)
     counts = (await db.execute(
         select(func.count().filter(in_day(day)), func.count().filter(overdue(now)))
-        .select_from(LeadFollowUp).join(Enquiry, Enquiry.id == LeadFollowUp.lead_id).where(*scope, lead_pipeline.TELECALLER_FOLLOW_UP)
+        .select_from(LeadFollowUp).join(Enquiry, Enquiry.id == LeadFollowUp.lead_id).where(*scope, whose)
     )).one()
     return {**out, "day": day, "counts": {"day": counts[0] or 0, "overdue": counts[1] or 0}}
 

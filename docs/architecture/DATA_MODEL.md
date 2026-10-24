@@ -2158,3 +2158,10 @@ per student), `level` (CHECK class_10 … other), `qualification_name`, `institu
 taken), `overall_score` (4,1), `test_date`, `valid_until`, `remarks`. The migration copies the old `users.profile` keys once per student
 without a profile (countries by name; `education` → one `other` qualification; `english_test` → one test, type read from the text, the text
 in `remarks`); `users.profile` is not changed. Downgrade drops the three tables.
+
+`counselor_tasks` (ccrm-029, migration `0175_counselor_tasks`, `DEC-SCOPE-250`): `id`, `title` (200), `counselor_user_id` → users
+(RESTRICT), `due_on` (date), `priority` (CHECK high / medium / low, default medium), `status` (CHECK open / done / cancelled, default open),
+`source` (CHECK manual / rule, default manual), `rule_key` (60, null; ccrm-030), `lead_id` → enquiries, `student_user_id` → users,
+`application_id` → overseas_applications (all three null, ON DELETE SET NULL, CHECK `num_nonnulls(...) <= 1`), `completed_at`,
+`cancelled_at`, `created_by_user_id` / `updated_by_user_id` → users (RESTRICT), timestamps. Index (`counselor_user_id`, `status`, `due_on`).
+Downgrade drops the table.

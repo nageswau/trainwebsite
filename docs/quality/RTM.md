@@ -924,3 +924,19 @@ half.
 | `ccrm-007-AC6` | P2/P3 agency read-only without passport | `::test_the_agency_reads_the_profile_without_the_passport`; `apps/web/tests/components/StudentProfileForm.test.tsx` (AgentStudentProfileCard) |
 | `ccrm-007-AC7` | P4 portal reads the table; JSON copied once and kept | `::test_the_student_portal_profile_section_reads_the_structured_profile`; `apps/api/tests/test_ccrm_007_migration.py` |
 | `ccrm-007-AC8` | Profile links in Students / Users tables; form UI states, errors located, in-flight guard | `::test_the_students_and_users_tables_link_to_the_profile_page`; `apps/web/tests/components/StudentProfileForm.test.tsx` |
+
+**Addendum, 2026-10-24 (`ccrm-029`)** — one row and its acceptance-criteria map. Counselor tasks.
+
+| Feature | Trace | Open | Evidence |
+|---|---|---|---|
+| `ccrm-029` | Requirement: §11 + §15 Task + §18 AC 7 → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-029` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-250` → design `docs/superpowers/specs/2026-10-24-ccrm-029-counselor-tasks-design.md`; `API_CONTRACT.md` §12FC, `RBAC_MATRIX.md` §2.165, `DATA_MODEL.md` (0175) | T1–T8 `NEEDS_CONFIRMATION` | Built on `feature/ccrm-029`; lite API set, vitest, e2e and browser QA |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `ccrm-029-AC1` | Spec AC 7: the counselor sees their own tasks and overdue follow-ups | `apps/api/tests/test_ccrm_029_counselor_tasks.py::test_my_tasks_bands_and_counts`, `::test_counselor_sees_their_overdue_follow_ups`; e2e `apps/web/tests/e2e/ccrm-029-counselor-tasks.spec.ts` |
+| `ccrm-029-AC2` | Counselor creates for self (validation, audit without text) | `::test_counselor_creates_a_task_for_themself`, `::test_validation`, `::test_counselor_cannot_create_for_another_counselor` |
+| `ccrm-029-AC3` | Overseas Admin creates/reassigns for any active overseas counselor; counselor notified | `::test_admin_creates_for_a_counselor_who_is_notified`, `::test_admin_must_name_an_active_overseas_counselor`, `::test_admin_reassigns_and_the_new_counselor_is_notified`, `::test_admin_lists_everyone_or_one_counselor` |
+| `ccrm-029-AC4` | Link to lead / student / application in the assignee's scope | `::test_links_in_the_assignees_scope`, `::test_admin_link_must_be_in_the_chosen_counselors_scope`, `::test_link_options_are_the_assignees` |
+| `ccrm-029-AC5` | Status moves; cancelled final; edit rights; unchanged patch records nothing | `::test_done_reopen_cancel`, `::test_counselor_edits_own_created_tasks_but_only_the_status_of_admin_tasks`, `::test_unchanged_patch_records_nothing`, `::test_a_past_due_task_stays_editable` |
+| `ccrm-029-AC6` | Roles and migration | `::test_other_roles_are_refused`, `::test_super_admin_passes`; `apps/api/tests/test_ccrm_029_migration.py` |
+| `ccrm-029-AC7` | UI: bands, add/edit/done/reopen/cancel-confirm, admin counselor picker, states, QA-01/QA-02 | `apps/web/tests/components/CounselorTasks.test.tsx`; e2e `apps/web/tests/e2e/ccrm-029-counselor-tasks.spec.ts` |

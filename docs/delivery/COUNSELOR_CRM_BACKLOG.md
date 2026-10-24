@@ -629,6 +629,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **DB:** migration: `counselor_tasks`. **API:** `/counselor/tasks` CRUD. **Dependencies:** none.
 - **Acceptance:** AC 7 — counselor sees own tasks and overdue follow-ups.
 - **Complexity:** medium. **Risk:** low.
+- **Status:** built on `feature/ccrm-029` — `DEC-SCOPE-250`, migration `0175_counselor_tasks`, API §12FC, RBAC §2.165 (T1–T8,
+  `NEEDS_CONFIRMATION`). Pages `/overseas/counselor/tasks` and `/overseas/admin/counselor-tasks`; overdue follow-ups via
+  `GET /counselor/follow-ups`.
 
 ### `ccrm-030` — Counselor reminder and trigger engine
 

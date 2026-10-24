@@ -9163,3 +9163,20 @@ table and the generic account form keeps only name and phone for an overseas stu
 (no version check). P6 limits 10 / 5 / 5 preferred countries (study destinations from the catalogue).
 **Numbering:** migration `0174_student_profiles`; API §12FB; RBAC §2.164.
 - **Feature ID authorized:** `ccrm-007`. **Status:** built on `worktree-ccrm-007`. Design `docs/superpowers/specs/2026-10-24-ccrm-007-structured-student-profile-design.md`.
+
+### DEC-SCOPE-250 — Counselor tasks (`ccrm-029`)
+
+**Status:** PROPOSED — T1–T8 are recommended defaults taken under the owner's standing instruction ("proceed with recommended answers")
+and are `NEEDS_CONFIRMATION`.
+**Evidence:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-029` (source PDF §11, §15 Task/Activity, §18 AC 7, `UNVERIFIED`); CC2, CC3.
+**Decision:** one `counselor_tasks` row per task for one overseas counselor: title, IST due date (T1, today to two years ahead when set or
+changed), priority, status `open`/`done`/`cancelled` (T2: done stamps `completed_at`, reopen clears it, cancelled is final — `409`), and at
+most one link to a lead, student or application in the **assignee's** scope (T4, `422` on `link` otherwise). T3 the counselor creates for
+themself only, moves the status of any own task, and edits the other fields only on tasks they created; the Overseas Admin (and Super Admin)
+creates for any active overseas counselor and changes anything, reassigning included (CC3). T5 a task someone else creates, reassigns or
+changes notifies the counselor in-app (+ opted-in channels); their own changes notify nobody. T6 "My tasks" bands Overdue / Today /
+Upcoming, then Done in the last 7 days; cancelled hidden. T7 the counselor's own day / overdue lead follow-ups (`GET /counselor/follow-ups`)
+are listed under the tasks (spec AC 7). T8 audit `counselor_task.create|update|complete|reopen|cancel` with field names only; logs carry
+ids only. `source`/`rule_key` are reserved for ccrm-030 (rules); every task built here is `manual`.
+**Numbering:** migration `0175_counselor_tasks` (after ccrm-007's `0174_student_profiles`); API §12FC; RBAC §2.165.
+- **Feature ID authorized:** `ccrm-029`. **Status:** built on `feature/ccrm-029`. Design `docs/superpowers/specs/2026-10-24-ccrm-029-counselor-tasks-design.md`.

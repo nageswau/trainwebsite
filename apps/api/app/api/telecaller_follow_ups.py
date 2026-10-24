@@ -12,7 +12,7 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.bdm import LIMIT, OFFSET
@@ -46,6 +46,21 @@ async def list_follow_ups(
     _, scope = lead_pipeline.scope(user)
     now = await db_now(db)
     return await svc.list_page(db, user, scope, view, day or today_ist(now), now, limit, offset)
+
+
+@counselor_router.get("/follow-ups")
+async def counselor_follow_ups(
+    view: Literal["day", "overdue"] = "day",
+    day: date | None = None,
+    limit: int = LIMIT,
+    offset: int = OFFSET,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """ccrm-029 (T7, spec AC 7): the counselor's own day / overdue follow-ups, on the leads handed to them."""
+    scope = lead_handover.counselor_scope(user)
+    now = await db_now(db)
+    return await svc.list_page(db, user, scope, view, day or today_ist(now), now, limit, offset, whose=true())
 
 
 async def _lead_follow_ups(db: AsyncSession, user: User, lead_id: UUID, scope: list, limit: int, offset: int) -> dict:

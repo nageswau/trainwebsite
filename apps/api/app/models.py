@@ -6160,6 +6160,41 @@ class ManagementTask(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
+# ccrm-029 (DEC-SCOPE-250, T1-T4): an overseas counselor's to-do, due on an IST day, about at most one lead, student or application.
+# `source` / `rule_key` are ccrm-030's (rules create tasks); every task ccrm-029 creates is `manual`. Migration 0175 repeats the CHECKs.
+COUNSELOR_TASK_STATUSES = ("open", "done", "cancelled")
+COUNSELOR_TASK_SOURCES = ("manual", "rule")
+COUNSELOR_TASK_CHECKS = {
+    "ck_counselor_tasks_status": _in_list("status", COUNSELOR_TASK_STATUSES),
+    "ck_counselor_tasks_priority": _in_list("priority", TASK_PRIORITIES),
+    "ck_counselor_tasks_source": _in_list("source", COUNSELOR_TASK_SOURCES),
+    "ck_counselor_tasks_one_link": "num_nonnulls(lead_id, student_user_id, application_id) <= 1",
+}
+
+
+class CounselorTask(Base, TimestampMixin):
+    __tablename__ = "counselor_tasks"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in COUNSELOR_TASK_CHECKS.items()),
+        Index("ix_counselor_tasks_counselor_status_due", "counselor_user_id", "status", "due_on"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    title: Mapped[str] = mapped_column(String(200))
+    counselor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    due_on: Mapped[date] = mapped_column(Date)
+    priority: Mapped[str] = mapped_column(String(8), default="medium", server_default=text("'medium'"))
+    status: Mapped[str] = mapped_column(String(10), default="open", server_default=text("'open'"))
+    source: Mapped[str] = mapped_column(String(10), default="manual", server_default=text("'manual'"))
+    rule_key: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    lead_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="SET NULL"), nullable=True)
+    student_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    application_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id", ondelete="SET NULL"), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
 # mgmt-026 (spec PN2-PN4): EVID-017 §25's monthly plan per vertical; §26's target vs actual is computed live, never stored (PN6). The
 # KPI key is checked by the schema against `management_metrics.PLAN_KPIS`, not here, so the catalogue can grow without a migration.
 # Migration 0159 repeats the CHECKs (test_mgmt_026_migration keeps them identical).

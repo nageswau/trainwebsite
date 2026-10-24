@@ -3614,3 +3614,23 @@ Decimals are strings as stored ("8.20"). An unsaved profile reads as empty with 
 Also: the portal Students section (counselor, admin) and the admin Users directory add a `profile` column (`type: student_profile`, the
 page href, null without a login / for staff); the student portal `profile` section rows are Name, Highest qualification, Preferred
 countries, Preferred intake, English test (from the table).
+
+## 12FC. Counselor tasks (ccrm-029) — addendum, 2026-10-24
+
+`DEC-SCOPE-250`. Migration `0175_counselor_tasks`. RBAC §2.165. Code: `app/services/counselor_tasks.py`, `app/api/counselor_tasks.py`;
+the follow-up list in `app/api/telecaller_follow_ups.py`.
+
+Task object: `{id, title, due_on, priority (high|medium|low), status (open|done|cancelled), band (overdue|today|upcoming|done|cancelled|null),
+source, completed_at, link: {type (lead|student|application), id, label} | null, counselor: {id, full_name}, created_by: {id, full_name},
+created_at, updated_at, can_edit}`. `band` is null for a task done more than 7 IST days ago.
+
+| Method/Path | Auth | Roles | Behaviour |
+|---|---|---|---|
+| `GET /api/v1/counselor/tasks?band=&counselor_id=&limit=&offset=` | Authenticated | overseas `counselor` (own only; `counselor_id` ignored), `overseas_admin`, `super_admin` | `200 {items, total, limit (1–200, default 100), offset, today, counts: {overdue, today, upcoming, done}}`. Without `band`: open tasks and those done in the last 7 days, open first by due date then priority. Bad `band` `422`. |
+| `GET /api/v1/counselor/tasks/options?counselor_id=` | Authenticated | same | `200 {counselors: [{id, full_name}] (admin only: active overseas counselors), links: {leads, students, applications: [{id, label}]}}` — the chosen counselor's (a counselor: their own) open leads, csc-001 students and non-withdrawn applications, 200 each. |
+| `POST /api/v1/counselor/tasks` | Authenticated | same | Body `{title (2–200, spaces collapsed), due_on, priority? (medium), counselor_user_id?, link?}`; extra keys `422`. A counselor naming another counselor `403`; the admin must name an active overseas counselor (`422` on `counselor_user_id`); due date today..+2 years (`422` on `due_on`); link out of the assignee's scope `422` on `link`. `201` task. Not idempotent. |
+| `GET /api/v1/counselor/tasks/{id}` | Authenticated | same | `200` task; another counselor's task `404`. |
+| `PATCH /api/v1/counselor/tasks/{id}` | Authenticated | same | Partial `{title?, due_on?, priority?, status?, counselor_user_id?, link? (null clears)}`; null on the others `422`. Row locked. Unchanged = nothing recorded. Cancelled task `409`. A counselor: reassigning `403`; a field other than `status` on a task they did not create `403`. Only changed fields are re-checked (an overdue task stays editable). `200` task. |
+| `GET /api/v1/counselor/follow-ups?view=day\|overdue&day=&limit=&offset=` | Authenticated | `counselor` (leads handed to them, own division) | tel-011's day / overdue page (`counts: {day, overdue}`) over the counselor's own leads; other roles `403`. |
+
+Other roles (incl. an IT counselor on `/counselor/tasks`) `403`; anonymous `401`.
