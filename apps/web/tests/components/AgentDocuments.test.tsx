@@ -23,6 +23,9 @@ const DOC = {
   document_label: null,
   verification_status: "pending",
   reviewer_notes: null,
+  reviewer: null,
+  reviewed_at: null,
+  expiry_date: null,
   application_id: null,
   university: null,
   original_filename: "passport.pdf",
@@ -76,21 +79,21 @@ describe("AgentDocumentsPanel", () => {
   it("gives a Master three decisions and requires a reason to reject", async () => {
     const fetchMock = stubFetch((url, init) => {
       if (url.includes("/crm/documents?")) return json(page([DOC]));
-      if (url.endsWith("/documents/d1/verify") && init?.method === "PATCH") return json({ id: "d1", verification_status: "rejected" });
+      if (url.endsWith("/documents/d1/verify") && init?.method === "PATCH") return json({ id: "d1", verification_status: "reupload_required" });
       return undefined;
     });
     render(<AgentDocumentsPanel view="pending" reloadKey={0} user={agent("master")} />);
     fireEvent.click(await screen.findByRole("button", { name: "Review Passport for Asha Rao" }));
     const decision = screen.getByLabelText("Decision") as HTMLSelectElement;
-    expect([...decision.options].map((o) => o.value)).toEqual(["verified", "rejected", "changes_required"]);
-    fireEvent.change(decision, { target: { value: "rejected" } });
+    expect([...decision.options].map((o) => o.value)).toEqual(["verified", "incomplete", "reupload_required"]);
+    fireEvent.change(decision, { target: { value: "reupload_required" } });
     const reason = screen.getByLabelText("Reason (required)") as HTMLTextAreaElement;
     expect(reason.required).toBe(true);
     fireEvent.change(reason, { target: { value: "Expired" } });
     fireEvent.click(screen.getByRole("button", { name: "Save decision" }));
     await waitFor(() => expect(fetchMock.mock.calls.some(([u, i]) => String(u).endsWith("/verify") && i?.method === "PATCH")).toBe(true));
     const call = fetchMock.mock.calls.find(([u]) => String(u).endsWith("/verify"))!;
-    expect(JSON.parse(String(call[1]!.body))).toEqual({ verification_status: "rejected", notes: "Expired" });
+    expect(JSON.parse(String(call[1]!.body))).toEqual({ verification_status: "reupload_required", notes: "Expired" });
   });
 
   it("gives staff with Verify one action and staff without none", async () => {
@@ -103,6 +106,14 @@ describe("AgentDocumentsPanel", () => {
     render(<AgentDocumentsPanel view="pending" reloadKey={0} user={agent("staff", false)} />);
     await screen.findByText("Asha Rao");
     expect(screen.queryByRole("button", { name: /^Review/ })).toBeNull();
+  });
+
+  it("ccrm-021: shows the new status in words with the reviewer, review date and expiry", async () => {
+    const reviewed = { ...DOC, verification_status: "reupload_required", reviewer_notes: "Blurry", reviewer: "Meera Counselor", reviewed_at: "2026-10-20T05:30:00Z", expiry_date: "2031-03-04" };
+    stubFetch((url) => (url.includes("/crm/documents?") ? json(page([reviewed])) : undefined));
+    render(<AgentDocumentsPanel view="uploaded" reloadKey={0} user={agent("master")} />);
+    expect(await screen.findByText("Re-upload required")).toHaveClass("status", "error");
+    expect(screen.getByText(/Reviewed by Meera Counselor .* · Expires 04 Mar 2031/)).toBeInTheDocument();
   });
 
   it("lists the history in order", async () => {

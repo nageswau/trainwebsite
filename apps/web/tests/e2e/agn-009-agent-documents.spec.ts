@@ -50,20 +50,20 @@ test("a Master requests, uploads against the request, rejects with a reason and 
   const card = page.getByRole("list", { name: "Pending review" }).locator(".card", { hasText: name });
   await expect(card).toContainText("Pending review");
 
-  // Reject needs a reason (AC3, client-side required; the server answers 422 too).
+  // Re-upload required (was Reject, ccrm-021) needs a reason (AC3, client-side required; the server answers 422 too).
   await card.getByRole("button", { name: `Review LOR for ${name}` }).click();
-  await card.getByLabel("Decision").selectOption("rejected");
+  await card.getByLabel("Decision").selectOption("reupload_required");
   await card.getByRole("button", { name: "Save decision" }).click();
   await expect(card.getByLabel("Reason (required)")).toHaveJSProperty("validity.valueMissing", true);
   await card.getByLabel("Reason (required)").fill("Unsigned copy");
   await card.getByRole("button", { name: "Save decision" }).click();
-  await expect(page.getByRole("status").filter({ hasText: `LOR for ${name}` })).toContainText("rejected.");
+  await expect(page.getByRole("status").filter({ hasText: `LOR for ${name}` })).toContainText("re-upload required.");
   await expect(card).toHaveCount(0); // left Pending
 
   // Uploaded view: status, reason, download, history in order (AC5).
   await page.locator(".portal-nav").getByRole("link", { name: "Uploaded" }).click();
   const uploaded = page.getByRole("list", { name: "Uploaded documents" }).locator(".card", { hasText: name });
-  await expect(uploaded).toContainText("Rejected");
+  await expect(uploaded).toContainText("Re-upload required");
   await expect(uploaded).toContainText("Reason: Unsigned copy");
   const [popup] = await Promise.all([page.waitForEvent("popup"), uploaded.getByRole("button", { name: `Download LOR for ${name}` }).click()]);
   expect(popup.url()).not.toBe("about:blank");
@@ -74,7 +74,7 @@ test("a Master requests, uploads against the request, rejects with a reason and 
   await expect(steps.nth(0)).toContainText("Requested");
   await expect(steps.nth(1)).toContainText("Uploaded");
   await expect(steps.nth(2)).toContainText("Request fulfilled");
-  await expect(steps.nth(3)).toContainText("Rejected");
+  await expect(steps.nth(3)).toContainText("Re-upload required");
   await expect(steps.nth(4)).toContainText("Downloaded");
 });
 

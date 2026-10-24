@@ -167,7 +167,7 @@ async def test_failed_commit_removes_the_stored_file(db_session, w, monkeypatch)
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("status", ["pending", "rejected", "changes_required", "verified"])
+@pytest.mark.parametrize("status", ["pending", "reupload_required", "incomplete", "verified"])  # ccrm-021 S1 codes
 async def test_replace_resets_to_pending_and_keeps_the_old_file(db_session, w, status):
     old_key = f"agent-documents/old-{status}"
     storage.write_bytes(old_key, PDF, "application/pdf")

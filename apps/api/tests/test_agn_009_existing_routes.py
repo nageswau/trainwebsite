@@ -75,8 +75,8 @@ async def test_counselor_review_unchanged_but_recorded(db_session, w):
     async with client_for(counselor.email) as c:
         response = await c.patch(VERIFY.format(doc.id), json={"verification_status": "rejected"})  # a reason stays optional (G1)
     assert response.status_code == 200
-    assert response.json() == {"id": str(doc.id), "verification_status": "rejected"}
-    assert [(e.event, e.from_status, e.to_status, e.actor_user_id) for e in await events_of(db_session, doc.id)] == [("rejected", "pending", "rejected", counselor.id)]
+    assert response.json() == {"id": str(doc.id), "verification_status": "reupload_required"}  # ccrm-021 S1: stored as the new code
+    assert [(e.event, e.from_status, e.to_status, e.actor_user_id) for e in await events_of(db_session, doc.id)] == [("reupload_required", "pending", "reupload_required", counselor.id)]
 
 
 @pytest.mark.asyncio

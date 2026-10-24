@@ -28,7 +28,7 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
-from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS
+from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS, DRAFTING_STATUSES, REVIEW_STATUSES, review_status
 from app.document_checklists import ITEM_STATUSES as CHECKLIST_ITEM_STATUSES
 from app.document_checklists import MAX_ITEMS as CHECKLIST_MAX_ITEMS
 from app.models import (
@@ -500,15 +500,38 @@ class StudentDocumentCreate(BaseModel):
     original_filename: str | None = Field(default=None, max_length=255)
     content_type: str | None = Field(default=None, max_length=120)
     file_size: int | None = Field(default=None, ge=0, le=50 * 1024 * 1024)
+    expiry_date: date | None = None  # ccrm-021 S2: optional on upload; a passport needs one before it is verified
 
 
 class AgentDocumentReview(BaseModel):
-    """AGN-003 (DEC-SCOPE-044 P5/P6, spec §7): an agency member's decision on a pending document. The counselor/admin body of the
-    same route is not parsed by this (unchanged)."""
+    """AGN-003 (DEC-SCOPE-044 P5/P6, spec §7): an agency member's decision on a pending document. ccrm-021 (DEC-SCOPE-251 S1): the
+    0174 codes, plus the earlier outcomes `rejected` / `changes_required`, which are stored as their new codes."""
 
     model_config = {"extra": "forbid"}
-    verification_status: Literal["verified", "rejected", "changes_required"]
+    verification_status: Literal["verified", "incomplete", "reupload_required", "rejected", "changes_required"]
     notes: str | None = Field(default=None, max_length=10000)
+
+    @field_validator("verification_status")
+    @classmethod
+    def _new_code(cls, value: str) -> str:
+        return review_status(value)
+
+
+class DocumentReview(BaseModel):
+    """ccrm-021 (DEC-SCOPE-251): a counselor's / Overseas Admin's review. A missing status means verified (OVS-005, unchanged);
+    unknown keys are ignored as before. The type rules (S2 passport expiry, S6 drafting types) are checked by the route."""
+
+    verification_status: str = "verified"
+    notes: str | None = Field(default=None, max_length=10000)
+    expiry_date: date | None = None
+
+    @field_validator("verification_status")
+    @classmethod
+    def _allowed(cls, value: str) -> str:
+        value = review_status(value)
+        if value not in REVIEW_STATUSES + DRAFTING_STATUSES:
+            raise ValueError("Choose a review status from the list")
+        return value
 
 
 # AGN-009 (DEC-SCOPE-052 G3): EVID-015 §5 Step 4, stored as written (the free-text style the visa checklist compares); the web mirrors

@@ -7,8 +7,9 @@ import secrets
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from sqlalchemy import func, or_, select
@@ -23,6 +24,8 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.core.rbac import REVIEW_MASTER_ONLY, REVIEW_REASON_REQUIRED, VERIFY_REFUSED, agent_denial_reason, agent_may, is_agent_staff
+from app.document_checklists import STATUS_LABELS as DOCUMENT_STATUS_LABELS
+from app.document_checklists import review_refusal
 from app.models import (
     JOB_OPEN_STATUSES,
     AgentCommission,
@@ -95,6 +98,7 @@ from app.schemas import (
     CommissionReportOut,
     CounselorAgencyVisaUpdate,
     CourseFeedbackCreate,
+    DocumentReview,
     EnrollmentCreate,
     EnrollmentProgressUpdate,
     LearningResourceCreate,
@@ -112,6 +116,7 @@ from app.schemas import (
     SupportTicketUpdate,
     VisaCaseCreate,
 )
+from app.services import agent_documents as document_files
 from app.services import agent_notifications as agency_notices
 from app.services import application_outcomes as outcomes
 from app.services import application_sub_status as sub_statuses
@@ -128,6 +133,8 @@ from app.services.storage import storage
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
 logger = logging.getLogger("app.workflows")
+INDIA = ZoneInfo("Asia/Kolkata")  # ccrm-021 S2: a passport expiry is compared with the India date
+DOCUMENT_REPLACED = "A newer version replaced this document -- open the current one"
 COUNSELOR_REFUSED_ON_UPDATE = "Use Assign counselor to change the counselor"  # AGN-023 (DEC-SCOPE-090 H10)
 APPLICATION_CLOSED = "This application is closed"
 CHOOSE_ACTIVE_COUNSELOR = "Choose an active overseas counselor"
@@ -2242,6 +2249,7 @@ async def add_document(payload: StudentDocumentCreate, user: User = Depends(get_
         content_type=payload.content_type,
         file_size=payload.file_size,
         uploaded_by_user_id=user.id,
+        expiry_date=payload.expiry_date,
     )
     db.add(item)
     await db.flush()
@@ -2282,15 +2290,16 @@ async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID
     # AGN-009: an unattached document follows its owner -- the agency record or the linked account (`document_scope`).
     elif not await in_scope(db, user, item.id):
         raise HTTPException(403, "Document is outside your assigned scope")
-    if item.verification_status != "pending":
+    if item.verification_status != "pending" or item.archived_at is not None:
         raise HTTPException(409, "This document has already been reviewed")
     item.verification_status = review.verification_status
     item.verified_by_id = user.id
     item.reviewer_notes = notes
+    item.reviewed_at = datetime.now(UTC)  # ccrm-021 S5
     add_event(db, event=item.verification_status, actor=user, document=item, from_status="pending", to_status=item.verification_status, notes=notes)
     student = await db.get(User, item.student_id) if item.student_id else None  # AGN-009: an agency-only document has no account
     if student:
-        await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {item.verification_status}.", "/overseas/student/documents")
+        await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {DOCUMENT_STATUS_LABELS[item.verification_status].lower()}.", "/overseas/student/documents")
     await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-059 N9): rejected / changes required only
     member_role = user.agent_membership.role
     await _audit(db, user, "document.verify", "student_document", item.id, {**review.model_dump(), "member_role": member_role})
@@ -2307,7 +2316,35 @@ async def verify_document(document_id: UUID, payload: dict, user: User = Depends
     _require(user, {"counselor", "overseas_admin", "agent"}, "overseas")
     if user.role == "agent":  # AGN-003: the agent path is fully separate; the counselor/admin lines below are unchanged
         return await _agent_document_review(db, user, document_id, payload)
-    item = await db.get(StudentDocument, document_id)
+    try:
+        review = DocumentReview.model_validate(payload)  # ccrm-021 (DEC-SCOPE-251): no longer any string
+    except ValidationError as exc:
+        raise RequestValidationError([{**e, "loc": ("body", *e["loc"])} for e in exc.errors(include_url=False)]) from exc
+    item = await _staff_document(db, user, document_id)
+    expiry = review.expiry_date or item.expiry_date
+    refusal = review_refusal(item.document_type, review.verification_status, expiry, datetime.now(INDIA).date())
+    if refusal:
+        raise HTTPException(422, refusal)
+    from_status = item.verification_status
+    item.verification_status = review.verification_status
+    item.verified_by_id = user.id
+    item.reviewer_notes = review.notes
+    item.reviewed_at = datetime.now(UTC)
+    item.expiry_date = expiry
+    add_event(db, event=item.verification_status, actor=user, document=item, from_status=from_status, to_status=item.verification_status, notes=item.reviewer_notes)
+    student = await db.get(User, item.student_id) if item.student_id else None
+    if student:
+        await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {DOCUMENT_STATUS_LABELS[item.verification_status].lower()}.", "/overseas/student/documents")
+    await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-059 N9): an agency document's assignee
+    await _audit(db, user, "document.verify", "student_document", item.id, review.model_dump(mode="json"))
+    await db.commit()
+    return {"id": item.id, "verification_status": item.verification_status}
+
+
+async def _staff_document(db: AsyncSession, user: User, document_id: UUID) -> StudentDocument:
+    """A counselor's / Overseas Admin's document to change, locked: the OVS-005 scope (its application, else an application of the
+    student that the counselor holds), then 409 for a version a newer one replaced (ccrm-021 S3)."""
+    item = await db.scalar(select(StudentDocument).where(StudentDocument.id == document_id).with_for_update())
     if not item:
         raise HTTPException(404, "Document not found")
     if item.application_id:
@@ -2316,19 +2353,54 @@ async def verify_document(document_id: UUID, payload: dict, user: User = Depends
         assigned = await db.scalar(select(OverseasApplication.id).where(OverseasApplication.student_id == item.student_id, OverseasApplication.counselor_id == user.id))
         if not assigned:
             raise HTTPException(403, "Document is outside your assigned scope")
-    from_status = item.verification_status
-    item.verification_status = payload.get("verification_status", "verified")
-    item.verified_by_id = user.id
-    item.reviewer_notes = payload.get("notes")
-    if item.verification_status in {"verified", "rejected", "changes_required"}:  # AGN-009: history names known outcomes only
-        add_event(db, event=item.verification_status, actor=user, document=item, from_status=from_status, to_status=item.verification_status, notes=item.reviewer_notes)
-    student = await db.get(User, item.student_id) if item.student_id else None
-    if student:
-        await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {item.verification_status}.", "/overseas/student/documents")
-    await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-059 N9): an agency document's assignee
-    await _audit(db, user, "document.verify", "student_document", item.id, payload)
-    await db.commit()
-    return {"id": item.id, "verification_status": item.verification_status}
+    if item.archived_at is not None:
+        raise HTTPException(409, DOCUMENT_REPLACED)
+    return item
+
+
+@router.post("/overseas/documents/{document_id}/versions", status_code=201)
+async def replace_document_version(
+    document_id: UUID,
+    file: UploadFile = File(...),
+    expiry_date: date | None = Form(None),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """ccrm-021 (DEC-SCOPE-251 S3): a counselor / Overseas Admin replaces a document with a new version. The new row starts at
+    `pending` and points at the old one, which is archived with its file and history; nothing is overwritten."""
+    _require(user, {"counselor", "overseas_admin"}, "overseas")
+    data, content_type, filename = await document_files.read_upload(file)
+    old = await _staff_document(db, user, document_id)
+    key = document_files.store(data, content_type)
+    try:
+        new = StudentDocument(
+            student_id=old.student_id,
+            agent_student_id=old.agent_student_id,
+            application_id=old.application_id,
+            document_type=old.document_type,
+            document_label=old.document_label,
+            file_url=key,
+            verification_status="pending",
+            original_filename=filename,
+            content_type=content_type,
+            file_size=len(data),
+            uploaded_by_user_id=user.id,
+            expiry_date=expiry_date or old.expiry_date,
+            version_of_id=old.id,
+        )
+        db.add(new)
+        old.archived_at = datetime.now(UTC)
+        await db.flush()
+        add_event(db, event="replaced", actor=user, document=old, from_status=old.verification_status, file_key=old.file_url)
+        add_event(db, event="uploaded", actor=user, document=new, to_status="pending")
+        await _audit(db, user, "document.replace", "student_document", new.id, {"version_of_id": str(old.id)})
+        await db.commit()
+    except Exception:  # nothing was written: the stored object goes too (AGN-009's order)
+        await db.rollback()
+        document_files.discard(key)
+        raise
+    logger.info("document_version_replaced", extra={"extra_fields": {"document_id": str(new.id), "version_of_id": str(old.id), "actor_id": str(user.id)}})
+    return {"id": new.id, "verification_status": new.verification_status, "version_of_id": new.version_of_id, "expiry_date": new.expiry_date}
 
 
 @router.get("/overseas/documents/{document_id}/download")
@@ -2370,7 +2442,13 @@ async def download_student_document(document_id: UUID, user: User = Depends(get_
 
 
 async def _checklist_verification(db: AsyncSession, application_id: UUID, checklist: list[str]) -> dict[str, str]:
-    docs = (await db.scalars(select(StudentDocument).where(StudentDocument.application_id == application_id))).all()
+    docs = (
+        await db.scalars(
+            select(StudentDocument)
+            .where(StudentDocument.application_id == application_id, StudentDocument.archived_at.is_(None))
+            .order_by(StudentDocument.created_at, StudentDocument.id)  # ascending, so the newest of a type wins (agent_visa)
+        )
+    ).all()
     latest_by_type = {d.document_type: d.verification_status for d in docs}
     return {item: latest_by_type.get(item, "not_uploaded") for item in checklist}
 

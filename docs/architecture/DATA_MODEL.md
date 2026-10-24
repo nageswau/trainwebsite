@@ -2165,3 +2165,15 @@ in `remarks`); `users.profile` is not changed. Downgrade drops the three tables.
 `application_id` → overseas_applications (all three null, ON DELETE SET NULL, CHECK `num_nonnulls(...) <= 1`), `completed_at`,
 `cancelled_at`, `created_by_user_id` / `updated_by_user_id` → users (RESTRICT), timestamps. Index (`counselor_user_id`, `status`, `due_on`).
 Downgrade drops the table.
+
+## Document status, expiry and versions (`ccrm-021`, `DEC-SCOPE-251`; migration `0176_document_status`, after ccrm-029's `0175_counselor_tasks`)
+
+`student_documents` gains `expiry_date` (date; S2 a passport is verified only with one), `reviewed_at` (timestamptz, set by every review;
+backfilled from the latest `verified`/`rejected`/`changes_required` event), `archived_at` (timestamptz; set when a counselor's replace
+supersedes the row — archived rows stay out of every list, count and checklist) and `version_of_id` → `student_documents` (the row a new
+version replaced). CHECK `ck_student_documents_status`: `verification_status` IN the 12 codes of `app/document_checklists.ITEM_STATUSES`.
+Data map: `rejected` → `reupload_required`, `changes_required` → `incomplete`, any other non-list value → `under_review`; `pending` stays.
+Partial index `ix_student_documents_expiry (expiry_date) WHERE archived_at IS NULL AND expiry_date IS NOT NULL` (the daily job).
+`document_events.event` CHECK widened to `app.models.DOCUMENT_EVENTS` (adds `under_review`, `incomplete`, `reupload_required`,
+`expired`, `not_required`, `draft`, `review`, `approved`; old history rows keep `rejected` / `changes_required`). Downgrade maps the
+codes back (new-only codes → `pending`, new-only events deleted).

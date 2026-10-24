@@ -23,19 +23,19 @@ async def _notifications(db_session, student_id) -> list[Notification]:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("decision", ["verified", "rejected", "changes_required"])
-async def test_a_master_decides_a_pending_document(db_session, decision):
+@pytest.mark.parametrize(("decision", "stored"), [("verified", "verified"), ("rejected", "reupload_required"), ("changes_required", "incomplete")])  # ccrm-021 S1 aliases
+async def test_a_master_decides_a_pending_document(db_session, decision, stored):
     ctx = await mk_active_org(db_session, name=f"Master Review {uniq()}")
     world = await agency_document(db_session, ctx)
     async with client_for(ctx["master"].email) as m:
         response = await m.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": decision, "notes": "Checked"})
     assert response.status_code == 200, response.text
-    assert response.json()["verification_status"] == decision
+    assert response.json()["verification_status"] == stored
     doc = await _doc(db_session, world["document"].id)
-    assert (doc.verification_status, doc.verified_by_id, doc.reviewer_notes) == (decision, ctx["master"].id, "Checked")
+    assert (doc.verification_status, doc.verified_by_id, doc.reviewer_notes) == (stored, ctx["master"].id, "Checked")
     assert [n.title for n in await _notifications(db_session, world["student"].id)] == ["Document reviewed"]
     audit = await db_session.scalar(select(AuditLog).where(AuditLog.action == "document.verify", AuditLog.entity_id == str(doc.id)))
-    assert audit.metadata_json == {"verification_status": decision, "notes": "Checked", "member_role": "master"}
+    assert audit.metadata_json == {"verification_status": stored, "notes": "Checked", "member_role": "master"}
 
 
 @pytest.mark.asyncio
@@ -90,7 +90,7 @@ async def test_a_second_review_is_refused_and_the_first_stands(db_session):  # R
         assert again.status_code == 409 and again.json()["detail"] == "This document has already been reviewed"
         repeat = await m.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": "rejected", "notes": "Blurred scan"})
         assert repeat.status_code == 409
-    assert (await _doc(db_session, world["document"].id)).verification_status == "rejected"
+    assert (await _doc(db_session, world["document"].id)).verification_status == "reupload_required"  # ccrm-021 S1
     assert len(await _notifications(db_session, world["student"].id)) == 1
 
 
@@ -113,7 +113,7 @@ async def test_a_counselor_can_still_re_review_an_agent_decision(db_session):  #
         assert (await m.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": "verified"})).status_code == 200
     async with client_for(counselor.email) as c:
         assert (await c.patch(DOC_VERIFY.format(world["document"].id), json={"verification_status": "rejected"})).status_code == 200
-    assert (await _doc(db_session, world["document"].id)).verification_status == "rejected"
+    assert (await _doc(db_session, world["document"].id)).verification_status == "reupload_required"  # ccrm-021 S1
 
 
 @pytest.mark.asyncio

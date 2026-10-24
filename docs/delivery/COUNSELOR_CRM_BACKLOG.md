@@ -516,6 +516,10 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
   (configured in ccrm-018 items).
 - **DB:** migration: CHECK + data migration, `expiry_date`, `archived_at`, `version_of_id`. **API:** counselor replace route.
 - **Dependencies:** none. **Complexity:** medium. **Risk:** medium (data migration of existing statuses).
+- **Status (2026-10-24):** built on `worktree-ccrm-021` — `DEC-SCOPE-251`, migration `0176_document_status` (after ccrm-029's 0175),
+  API §12FD, RBAC §2.166; owner answer S1 (keep `pending`; rejected → reupload_required, changes_required → incomplete); S2–S7 defaults.
+  Counselor replace route `POST /workflows/overseas/documents/{id}/versions` (backlog: "counselor replace route"). Design
+  `docs/superpowers/specs/2026-10-24-ccrm-021-document-status-design.md`.
 
 ### `ccrm-022` — Sensitive documents and access logging
 

@@ -2667,3 +2667,13 @@ inside the existing role scope (a counselor searching another counselor's code g
   `::test_counselor_edits_own_created_tasks_but_only_the_status_of_admin_tasks`, `::test_links_in_the_assignees_scope`,
   `::test_admin_link_must_be_in_the_chosen_counselors_scope`, `::test_other_roles_are_refused`, `::test_super_admin_passes`. Web pages
   `/overseas/counselor/tasks` (counselor only) and `/overseas/admin/counselor-tasks` (overseas admin, super admin).
+
+### 2.166 Document status, expiry and versions *(added 2026-10-24 — `DEC-SCOPE-251`, ccrm-021)*
+
+| Route | `overseas_admin` | `counselor` | `super_admin` | `agent` | `overseas_student`, others | Anonymous |
+|---|---|---|---|---|---|---|
+| `PATCH /workflows/overseas/documents/{id}/verify` | ✅ any status in the review list | ✅ own scope (`403` otherwise) | ✅ | AGN-003 §2 unchanged (Master: 3 codes; staff with Verify: verified) | `403` | `401` |
+| `POST /workflows/overseas/documents/{id}/versions` | ✅ | ✅ own scope (`403` otherwise) | ✅ | `403` (agency replace stays on `PUT …/agent/crm/documents/{id}/file`) | `403` | `401` |
+
+- Pinned by `test_ccrm_021_document_status.py::test_replace_is_scoped_like_review_and_checks_the_file`,
+  `::test_agency_staff_still_only_verify`, `::test_an_agency_master_decides_with_new_or_legacy_codes`.

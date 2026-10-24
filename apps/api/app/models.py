@@ -36,7 +36,7 @@ from app.application_sub_status import fit as fit_sub_status
 from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
 from app.core.identifiers import normalize_key
-from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS
+from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS, ITEM_STATUSES
 from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
 from app.partnership_event_kinds import KINDS as PARTNERSHIP_EVENT_KINDS
@@ -1982,9 +1982,17 @@ class StudentDocument(Base, TimestampMixin):
     uploaded_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     # One document fulfils a request (G5); the unique constraint is the database-level guard against two concurrent uploads.
     fulfils_request_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("document_requests.id"), nullable=True)
+    # ccrm-021 (DEC-SCOPE-251): the review date (S5), the expiry the daily job reads (S2/S4), and versions (S3) -- a counselor's
+    # replace adds a row pointing at the one it replaces and archives that one; archived rows stay out of every list.
+    expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    version_of_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("student_documents.id"), nullable=True)
     __table_args__ = (
         CheckConstraint("student_id IS NOT NULL OR agent_student_id IS NOT NULL", name="ck_student_documents_owner"),
         UniqueConstraint("fulfils_request_id", name="uq_student_documents_fulfils_request_id"),
+        CheckConstraint("verification_status IN (" + ", ".join(f"'{s}'" for s in ITEM_STATUSES) + ")", name="ck_student_documents_status"),
+        Index("ix_student_documents_expiry", "expiry_date", postgresql_where=text("archived_at IS NULL AND expiry_date IS NOT NULL")),
     )
 
 
@@ -2008,6 +2016,12 @@ class DocumentRequest(Base, TimestampMixin):
     )
 
 
+# AGN-009 events; a review event is named after the status it set (ccrm-021 adds the 0174 codes and the daily job's 'expired').
+DOCUMENT_EVENTS = ("uploaded", "replaced", "verified", "rejected", "changes_required", "requested", "fulfilled", "cancelled", "downloaded") + tuple(
+    s for s in ITEM_STATUSES if s not in {"pending", "requested", "uploaded", "verified"}
+)
+
+
 class DocumentEvent(Base):
     """AGN-009 (DEC-SCOPE-052): a document's history, one row per event, append-only. `seq` orders events written in one
     transaction (they share `now()`). `file_key` is the replaced object's key; it is never returned by the API."""
@@ -2027,7 +2041,7 @@ class DocumentEvent(Base):
     __table_args__ = (
         CheckConstraint("document_id IS NOT NULL OR request_id IS NOT NULL", name="ck_document_events_subject"),
         CheckConstraint(
-            "event IN ('uploaded', 'replaced', 'verified', 'rejected', 'changes_required', 'requested', 'fulfilled', 'cancelled', 'downloaded')",
+            "event IN (" + ", ".join(f"'{e}'" for e in DOCUMENT_EVENTS) + ")",
             name="ck_document_events_event",
         ),
     )

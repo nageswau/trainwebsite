@@ -124,7 +124,7 @@ async def journey(db: AsyncSession, user: User, record: AgentStudent) -> dict:
     visa_of = {v.application_id: v for v in src.visas.values()}
     return {
         "student": {"id": record.id, "full_name": await _full_name(db, record), "status": record.status},
-        "steps": student_steps(counseling, shortlisted, list(src.documents.values()), open_requests),
+        "steps": student_steps(counseling, shortlisted, [d for d in src.documents.values() if d.archived_at is None], open_requests),
         "applications": [{"id": a.id, "university": name, "intake": a.intake, "status": a.status, "steps": application_steps(a, deposit_of.get(a.id), visa_of.get(a.id))} for a, name in src.apps],
     }
 

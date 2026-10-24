@@ -4,11 +4,13 @@ from datetime import UTC, datetime
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.application_outcome import label as outcome_label
 from app.application_sub_status import label as sub_status_label
 from app.core.identifiers import uuid_reference
 from app.core.rbac import PERMISSIONS, is_agent_staff
+from app.document_checklists import STATUS_LABELS as DOCUMENT_STATUS_LABELS
 from app.lead_stages import label as lead_stage_label
 from app.models import (
     JOB_OPEN_STATUSES,
@@ -89,6 +91,7 @@ async def _safe[T](db: AsyncSession, fn: Callable[[], Awaitable[T]], default: T)
 
 
 # ENH-003 / QA-005: the same wording the Super Admin table and the Manage users panel use for a user's setup state.
+_Reviewer = aliased(User)  # ccrm-021 S5: the document queue names who reviewed each document
 _SETUP_LABEL = {"active": "Password set", "pending_setup": "Awaiting setup", "link_expired": "Link expired"}
 
 
@@ -118,7 +121,7 @@ async def _awaiting_documents(db: AsyncSession, applications: list[OverseasAppli
     cases = (await db.execute(select(VisaCase.application_id, VisaCase.checklist).where(VisaCase.application_id.in_(open_apps), VisaCase.decision.is_(None)))).all()
     docs = await db.execute(
         select(StudentDocument.application_id, StudentDocument.document_type, StudentDocument.verification_status)
-        .where(StudentDocument.application_id.in_(open_apps))
+        .where(StudentDocument.application_id.in_(open_apps), StudentDocument.archived_at.is_(None))
         .order_by(StudentDocument.created_at, StudentDocument.id)
     )
     latest: dict[tuple, str] = {}
@@ -582,7 +585,7 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
     ).all()
     app_ids = [a.id for a, _ in applications]
     if section == "dashboard":
-        documents = (await db.scalars(select(StudentDocument).where(StudentDocument.student_id == user.id))).all()
+        documents = (await db.scalars(select(StudentDocument).where(StudentDocument.student_id == user.id, StudentDocument.archived_at.is_(None)))).all()
         visas = (await db.scalars(select(VisaCase).where(VisaCase.application_id.in_(app_ids)))).all() if app_ids else []
         return _payload(
             "Overseas Student Dashboard",
@@ -634,7 +637,7 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
             panels=({"title": "University catalogue IDs", "items": [f"University reference {u.id}: {u.name}, {u.city}" for u in universities]},),
         )
     if section == "documents":
-        rows = (await db.scalars(select(StudentDocument).where(StudentDocument.student_id == user.id).order_by(StudentDocument.updated_at.desc()))).all()
+        rows = (await db.scalars(select(StudentDocument).where(StudentDocument.student_id == user.id, StudentDocument.archived_at.is_(None)).order_by(StudentDocument.updated_at.desc()))).all()
         # OVS-005: "file" used to surface the raw stored `file_url` here -- through the
         # generic table, which only ever renders plain text (never a link), that was a
         # permanently-public object path, not the least-privilege access this feature's
@@ -645,8 +648,19 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
         return _payload(
             "Documents",
             "Admission and visa documents and verification results.",
-            (("id", "reference"), ("type", "Document"), ("status", "Verification"), ("notes", "Notes")),
-            ({"id": d.id, "type": d.document_type, "status": d.verification_status, "notes": d.reviewer_notes} for d in rows),
+            # ccrm-021 (DEC-SCOPE-251 S5): the status as words, the review date and the expiry
+            (("id", "reference"), ("type", "Document"), ("status", "Verification"), ("reviewed_on", "Reviewed on"), ("expiry_date", "Expires"), ("notes", "Notes")),
+            (
+                {
+                    "id": d.id,
+                    "type": d.document_type,
+                    "status": DOCUMENT_STATUS_LABELS.get(d.verification_status, d.verification_status),
+                    "reviewed_on": d.reviewed_at.date().isoformat() if d.reviewed_at else None,
+                    "expiry_date": d.expiry_date.isoformat() if d.expiry_date else None,
+                    "notes": d.reviewer_notes,
+                }
+                for d in rows
+            ),
         )
     if section == "offer-letters":
         return _payload(
@@ -732,7 +746,7 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
             ({"from": m.sender_id, "message": m.body, "sent": m.created_at} for m in rows),
         )
     if section == "downloads":
-        documents = (await db.scalars(select(StudentDocument).where(StudentDocument.student_id == user.id, StudentDocument.verification_status == "verified"))).all()
+        documents = (await db.scalars(select(StudentDocument).where(StudentDocument.student_id == user.id, StudentDocument.verification_status == "verified", StudentDocument.archived_at.is_(None)))).all()
         rows = [{"name": d.document_type, "url": d.file_url} for d in documents] + [{"name": f"Offer letter - {u.name}", "url": a.offer_letter_url} for a, u in applications if a.offer_letter_url]
         return _payload("Downloads", "Verified documents and offer letters.", (("name", "Document"), ("url", "Download")), rows)
 
@@ -861,7 +875,7 @@ async def _agent(db: AsyncSession, user: User, section: str):
         docs = (
             (
                 await db.execute(
-                    select(StudentDocument, User).join(User, User.id == StudentDocument.student_id).where(StudentDocument.application_id.in_(app_ids)).order_by(StudentDocument.updated_at.desc())
+                    select(StudentDocument, User).join(User, User.id == StudentDocument.student_id).where(StudentDocument.application_id.in_(app_ids), StudentDocument.archived_at.is_(None)).order_by(StudentDocument.updated_at.desc())
                 )
             ).all()
             if app_ids
@@ -1125,10 +1139,11 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 (
                     await db.execute(
                         # AGN-023 (DEC-SCOPE-090 §4): outer joins, so a no-login agency student's documents are listed; still scoped to app_ids.
-                        select(StudentDocument, func.coalesce(User.full_name, AgentStudent.full_name, "A student"))
+                        select(StudentDocument, func.coalesce(User.full_name, AgentStudent.full_name, "A student"), _Reviewer.full_name)
                         .outerjoin(User, User.id == StudentDocument.student_id)
                         .outerjoin(AgentStudent, AgentStudent.id == StudentDocument.agent_student_id)
-                        .where(StudentDocument.application_id.in_(app_ids))
+                        .outerjoin(_Reviewer, _Reviewer.id == StudentDocument.verified_by_id)
+                        .where(StudentDocument.application_id.in_(app_ids), StudentDocument.archived_at.is_(None))  # ccrm-021 S3: current versions
                         .order_by(StudentDocument.updated_at.desc())
                     )
                 ).all()
@@ -1138,8 +1153,23 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             return _payload(
                 "Document Verification",
                 "Admission and visa document review queue.",
-                (("id", "reference"), ("student", "Student"), ("document", "Document"), ("status", "Status"), ("notes", "Notes")),
-                ({"id": d.id, "student": name, "document": d.document_type, "status": d.verification_status, "notes": d.reviewer_notes} for d, name in docs),
+                (("id", "reference"), ("student", "Student"), ("document", "Document"), ("status_label", "Status"), ("notes", "Notes")),
+                # ccrm-021 S5: reviewer, review date and expiry on every document; `replaces_earlier` marks a newer version
+                (
+                    {
+                        "id": d.id,
+                        "student": name,
+                        "document": d.document_type,
+                        "status": d.verification_status,
+                        "status_label": DOCUMENT_STATUS_LABELS.get(d.verification_status, d.verification_status),  # browser QA-02: the table shows words
+                        "notes": d.reviewer_notes,
+                        "reviewer": reviewer,
+                        "reviewed_at": d.reviewed_at,
+                        "expiry_date": d.expiry_date,
+                        "replaces_earlier": d.version_of_id is not None,
+                    }
+                    for d, name, reviewer in docs
+                ),
             )
         if section == "visa":
             visas = (
@@ -1196,7 +1226,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             # existed. A real aggregate of this Counselor's own already-scoped caseload,
             # not a fabricated metric.
             docs = (
-                (await db.scalars(select(StudentDocument).where(StudentDocument.application_id.in_(app_ids)))).all()
+                (await db.scalars(select(StudentDocument).where(StudentDocument.application_id.in_(app_ids), StudentDocument.archived_at.is_(None)))).all()
                 if app_ids
                 else []
             )

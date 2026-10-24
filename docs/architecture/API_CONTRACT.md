@@ -3634,3 +3634,21 @@ created_at, updated_at, can_edit}`. `band` is null for a task done more than 7 I
 | `GET /api/v1/counselor/follow-ups?view=day\|overdue&day=&limit=&offset=` | Authenticated | `counselor` (leads handed to them, own division) | tel-011's day / overdue page (`counts: {day, overdue}`) over the counselor's own leads; other roles `403`. |
 
 Other roles (incl. an IT counselor on `/counselor/tasks`) `403`; anonymous `401`.
+
+## 12FD. Document status model, expiry and versions (ccrm-021) — addendum, 2026-10-24
+
+`DEC-SCOPE-251`. Migration `0176_document_status` (after ccrm-029's 0175). RBAC §2.166. Code: `app/document_checklists.py` (vocabulary, `review_refusal`),
+`app/api/workflows.py`, `app/services/document_expiry.py`, `app/worker.py` (`ccrm021-document-expiry`).
+
+| Method/Path | Auth | Roles | Behaviour |
+|---|---|---|---|
+| `PATCH /api/v1/workflows/overseas/documents/{id}/verify` (counselor / admin body) | Authenticated | `counselor` (own scope), `overseas_admin`, `super_admin` | **Changed.** Body `{verification_status? (default verified), notes? (≤10000), expiry_date?}`; status one of `under_review`, `verified`, `incomplete`, `reupload_required`, `not_required` (Draft/Review/Approved on CV/SOP types only), or the aliases `rejected` → `reupload_required`, `changes_required` → `incomplete`; anything else `422`. A passport verified without an expiry date, or with one before today, `422`. Archived (replaced) document `409`. Sets `verified_by_id`, `reviewed_at`, `reviewer_notes`, `expiry_date`; event named after the status; audit `document.verify` with the parsed body. Response unchanged `{id, verification_status}`. |
+| same route (agent body) | Authenticated | `agent` | AGN-003 unchanged except the codes: `verified` \| `incomplete` \| `reupload_required` (aliases `rejected`, `changes_required` accepted and stored as the new codes); an archived document `409`; sets `reviewed_at`. |
+| `POST /api/v1/workflows/overseas/documents/{id}/versions` | Authenticated | `counselor` (same scope as verify), `overseas_admin`, `super_admin` | **New.** Multipart `file` (PDF/JPEG/PNG by content, size limit, image metadata stripped — AGN-009's `read_upload`), `expiry_date?`. Locks the document; archived `409`; out of scope `403`; unknown `404`; bad file `415`/`422`/`413`. Creates a new document (`pending`, `version_of_id` = old id, same owner/application/type/label, the given expiry or the old one) and archives the old one (`archived_at`; events `replaced` on the old, `uploaded` on the new; audit `document.replace` `{version_of_id}`). `201 {id, verification_status, version_of_id, expiry_date}`. |
+| `POST /api/v1/workflows/overseas/documents` | Authenticated | unchanged | Adds optional `expiry_date`. |
+| `GET /api/v1/portal/overseas/{counselor\|overseas_admin}/documents` | unchanged | unchanged | Current versions only; rows add `reviewer`, `reviewed_at`, `expiry_date`, `replaces_earlier`. |
+| `GET /api/v1/portal/overseas/student/documents` | unchanged | unchanged | Current versions only; `status` is the label ("Re-upload required"); adds `reviewed_on`, `expiry_date` columns. |
+| `GET /api/v1/workflows/overseas/agent/crm/documents` | unchanged | unchanged | Current versions only; items add `reviewer`, `reviewed_at`, `expiry_date`. `PUT …/documents/{id}/file` of an archived document `409`. |
+
+No delete route exists or is added. Daily job (Celery beat, 18:35 UTC = 00:05 IST): documents with `expiry_date` before the India date,
+not archived and not `expired`/`not_required` → `expired` (event `expired`, no actor).

@@ -940,3 +940,19 @@ half.
 | `ccrm-029-AC5` | Status moves; cancelled final; edit rights; unchanged patch records nothing | `::test_done_reopen_cancel`, `::test_counselor_edits_own_created_tasks_but_only_the_status_of_admin_tasks`, `::test_unchanged_patch_records_nothing`, `::test_a_past_due_task_stays_editable` |
 | `ccrm-029-AC6` | Roles and migration | `::test_other_roles_are_refused`, `::test_super_admin_passes`; `apps/api/tests/test_ccrm_029_migration.py` |
 | `ccrm-029-AC7` | UI: bands, add/edit/done/reopen/cancel-confirm, admin counselor picker, states, QA-01/QA-02 | `apps/web/tests/components/CounselorTasks.test.tsx`; e2e `apps/web/tests/e2e/ccrm-029-counselor-tasks.spec.ts` |
+
+**Addendum, 2026-10-24 (`ccrm-021`)** — one row and its acceptance-criteria map. Document status model, expiry and versions.
+
+| Feature | Trace | Open | Evidence |
+|---|---|---|---|
+| `ccrm-021` | Requirement: §8 status table + Appendix A + owner answer S1 (in-session 2026-10-24) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-021` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-251` → design `docs/superpowers/specs/2026-10-24-ccrm-021-document-status-design.md`; `API_CONTRACT.md` §12FD, `RBAC_MATRIX.md` §2.166, `DATA_MODEL.md` (0176) | S2–S7 defaults `NEEDS_CONFIRMATION` | Built on `worktree-ccrm-021`; lite API set, vitest, e2e and browser QA |
+
+| AC | Criterion | Tests |
+|---|---|---|
+| `ccrm-021-AC1` | Fixed status list + CHECK; data map from today's values; reviewed_at backfill; round trip | `apps/api/tests/test_ccrm_021_migration.py::test_data_map_backfill_checks_and_round_trip`, `::test_the_migration_repeats_the_model_constants` |
+| `ccrm-021-AC2` | Counselor review sets each allowed status with reviewer + date; legacy aliases; anything else 422; default verified | `apps/api/tests/test_ccrm_021_document_status.py::test_a_counselor_sets_each_review_status_with_reviewer_and_date`, `::test_the_pre_0174_outcomes_are_accepted_and_stored_as_their_new_codes`, `::test_a_status_outside_the_review_list_is_refused_and_nothing_changes`, `::test_a_missing_status_still_means_verified` |
+| `ccrm-021-AC3` | Passport expiry required to verify, not past; optional on upload | `::test_a_passport_cannot_be_verified_without_an_expiry_date`, `::test_a_passport_with_a_stored_expiry_is_verified_and_other_statuses_need_none`, `::test_an_upload_may_carry_an_expiry_date` |
+| `ccrm-021-AC4` | Replace = new version, old archived with file + events, never overwritten; archived read-only; scope + file checks | `::test_replace_creates_a_new_version_and_archives_the_old_one`, `::test_replace_takes_a_new_expiry_and_an_archived_version_is_read_only`, `::test_replace_is_scoped_like_review_and_checks_the_file` |
+| `ccrm-021-AC5` | Lists show current versions with reviewer, review date, notes, expiry; no delete route | `::test_lists_show_the_current_version_with_review_metadata`, `::test_there_is_no_delete_route`; `apps/web/tests/components/CounselorDocumentReviewPanel.test.tsx` (ccrm-021 block), `AgentDocuments.test.tsx` |
+| `ccrm-021-AC6` | Daily job marks expired once (archived / not required untouched) | `::test_the_expiry_job_marks_expired_documents_once` |
+| `ccrm-021-AC7` | CV/SOP drafting statuses only; agency AGN-003 rules with new codes | `::test_drafting_statuses_only_on_cv_and_sop_documents`, `::test_an_agency_master_decides_with_new_or_legacy_codes`, `::test_agency_staff_still_only_verify`; e2e `apps/web/tests/e2e/ccrm-021-document-status.spec.ts` |

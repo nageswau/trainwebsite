@@ -9180,3 +9180,26 @@ are listed under the tasks (spec AC 7). T8 audit `counselor_task.create|update|c
 ids only. `source`/`rule_key` are reserved for ccrm-030 (rules); every task built here is `manual`.
 **Numbering:** migration `0175_counselor_tasks` (after ccrm-007's `0174_student_profiles`); API §12FC; RBAC §2.165.
 - **Feature ID authorized:** `ccrm-029`. **Status:** built on `feature/ccrm-029`. Design `docs/superpowers/specs/2026-10-24-ccrm-029-counselor-tasks-design.md`.
+
+### DEC-SCOPE-251 — Document status model, expiry and versions (`ccrm-021`)
+
+**Status:** PROPOSED — S1 answered by the owner in session 2026-10-24 (`EXPLICIT_APPROVAL` for S1 only); S2–S7 are recommended defaults
+taken under the owner's standing instruction ("proceed with recommended answers") and are `NEEDS_CONFIRMATION`.
+**Evidence:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-021` (source PDF §8, Appendix A, `UNVERIFIED`); ccrm-018's status vocabulary
+(`app/document_checklists.ITEM_STATUSES`).
+**Decision:** S1 every stored `student_documents.verification_status` is one of the 12 codes (CHECK). Mapping: `pending` stays (a new
+upload awaiting review, "Pending review"); `rejected` → `reupload_required`; `changes_required` → `incomplete`; any other text →
+`under_review`. Both review routes still accept `rejected` / `changes_required` as input and store the new codes; review events are named
+after the status set (old history rows keep their names). Counselor / Overseas Admin set `under_review`, `verified`, `incomplete`,
+`reupload_required`, `not_required` (the free-text body is now validated, `422`); agency members keep AGN-003 (pending only, staff verify
+only, a reason otherwise) with `verified` / `incomplete` / `reupload_required`. S2 `expiry_date` optional on upload / replace / review;
+a passport cannot be verified by a counselor / admin without one, or with one before today (India date). S3 counselor / admin replace =
+new row (`version_of_id`, `pending`, same owner / application / type / expiry unless given) and the old row `archived_at` + `replaced`
+event, file kept; archived rows are out of every list, count and checklist; review / replace of an archived row `409`. The AGN-009
+agency in-place replace is unchanged (it refuses an archived row). S4 daily beat job 00:05 IST marks non-archived documents with
+`expiry_date` before today (not `expired` / `not_required`) as `expired`, event actor NULL. S5 `reviewed_at` set by every review,
+backfilled from the latest review event; reviewer / date / notes / expiry shown on the counselor queue, the student list and the agency
+cards. S6 Draft / Review / Approved only on CV / Resume / SOP / Statement of Purpose until ccrm-019 links documents to checklist items.
+S7 no delete route (archive only).
+**Numbering:** migration `0176_document_status` (after ccrm-029's 0175); API §12FD; RBAC §2.166 (0174 / 249 / 12FB / 2.164 taken by ccrm-007, 0175 / 250 / 12FC / 2.165 by ccrm-029).
+- **Feature ID authorized:** `ccrm-021`. **Status:** built on `worktree-ccrm-021`.
