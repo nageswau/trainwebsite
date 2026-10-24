@@ -9293,9 +9293,9 @@ deadline never expires; on hold and closed applications are skipped.
 **Rules:** decision `considering` → `accepted` / `declined`; `accepted` → `declined`. Accepting at stage `offer` sets sub-status
 `offer_accepted`. Declining is ccrm-015's `offer_declined` outcome (terminal), from the decision route or `/outcome`; both set the offer's
 decision. Only the current (active) offer is decided; a superseding offer starts at `considering`.
-**Recommended defaults (`NEEDS_CONFIRMATION`):** the receipt is optional; `paid_on` is required for a paid status; the deposit record is
+**Defaults, owner-confirmed in-session 2026-10-24 (`EXPLICIT_APPROVAL`, D4–D7):** the receipt is optional; `paid_on` is required for a paid status; the deposit record is
 allowed on hold (it moves no stage); the agency reads the decision and deposit through the existing read routes with no new agency UI.
 **Also:** fixes a defect on main — `schemas.py` defined `_not_future` twice (ccrm-007), so the offer, agency-application and deposit
 remit/refund date validators raised `TypeError` (500); the profile helper is now `_profile_not_future`.
 **Numbering:** migration `0178_offer_decisions_deposits`; API §12FH; RBAC §2.170.
-- **Feature ID authorized:** `ccrm-025`. **Status:** built on `feature/ccrm-025`.
+- **Feature ID authorized:** `ccrm-025`. **Status:** merged (PR #317, main @ `de55f72b`).
