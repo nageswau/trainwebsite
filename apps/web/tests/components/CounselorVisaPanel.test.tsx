@@ -53,6 +53,27 @@ describe("CounselorVisaPanel save failures", () => {
     expect(within(card).getByRole("button", { name: "Start visa case" })).toBeEnabled();
   });
 
+  it("drops the start message once the case form saves", async () => {  // browser QA-04
+    let started = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (init?.method === "POST") return (started = true), json(201, { id: "v1", status: "checklist" });
+        if (init?.method === "PATCH") return json(200, { id: "v1" });
+        if (url.includes("/counselor/applications")) return json(200, { rows: [{ id: "app1", student: "Asha", university: "Test University" }] });
+        if (url.includes("/visa-checklist"))
+          return json(200, started ? { exists: true, id: "v1", status: "checklist", visa_status: "not_started", checklist: [], locked_reason: null } : { exists: false, status: null, checklist: [] });
+        return json(200, { exists: started, disclaimer: "" });
+      }),
+    );
+    const card = await startCaseForAsha();
+    expect(await within(card).findByText("Visa case started.")).toBeInTheDocument();
+    fireEvent.change(await within(card).findByLabelText("Visa category"), { target: { value: "Student" } });
+    fireEvent.click(within(card).getByRole("button", { name: "Save visa case" }));
+    expect(await within(card).findByText("Visa details saved.")).toBeInTheDocument();
+    expect(within(card).queryByText("Visa case started.")).toBeNull();
+  });
+
   it("announces success politely", async () => {
     stubApi(() => json(201, { id: "v1", status: "checklist" }));
     const card = await startCaseForAsha();

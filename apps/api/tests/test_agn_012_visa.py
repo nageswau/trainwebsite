@@ -51,7 +51,8 @@ async def test_full_flow_to_an_approved_decision(db_session, world):
         r = await _patch(c, world["app"].id, expected_stage="decision", decision="approved")
         assert r.status_code == 200, r.text
         a = r.json()["application"]
-    assert (a["visa"]["decision"], a["status"]) == ("approved", "offer")  # V5: the application stage never moves
+    # ccrm-026 (VC5) supersedes V5: the application follows the visa status (approved -> status_tracking / visa_approved).
+    assert (a["visa"]["decision"], a["status"], a["sub_status"]) == ("approved", "status_tracking", "visa_approved")
     assert a["visa"]["decided_at"]
     actions = [(row.action, row.metadata_json) for row in await visa_audits(db_session, world["app"])]
     assert actions == [

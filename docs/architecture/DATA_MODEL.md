@@ -2177,3 +2177,11 @@ Partial index `ix_student_documents_expiry (expiry_date) WHERE archived_at IS NU
 `document_events.event` CHECK widened to `app.models.DOCUMENT_EVENTS` (adds `under_review`, `incomplete`, `reupload_required`,
 `expired`, `not_required`, `draft`, `review`, `approved`; old history rows keep `rejected` / `changes_required`). Downgrade maps the
 codes back (new-only codes → `pending`, new-only events deleted).
+
+## Visa case lifecycle (`ccrm-026`, `DEC-SCOPE-254`; migration `0177_visa_lifecycle`, after ccrm-021's `0176_document_status`)
+
+`visa_cases` gains `visa_status` String(40) NOT NULL default `not_started` + CHECK `ck_visa_cases_visa_status` (`app/visa_status.VISA_STATUSES`),
+`readiness_review_date`, `visa_category` (80), `appointment_place` (200), `expected_decision_date`, `decision_date`, `outcome_document_id`
+(FK `student_documents`, SET NULL), `refusal_reason` (Text, restricted), `next_steps` (Text). The submission date is `visa_application_date`
+and the reference `tracking_reference`. `status` (stage) and `decision` are derived from `visa_status` on every write (spec §3).
+Backfill: `decision` if set, else the stage's first status; `decision_date` from `decided_at` (IST). Downgrade drops the columns.

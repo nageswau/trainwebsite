@@ -64,7 +64,9 @@ test("advancing past the checklist stage is blocked while a document is unverifi
   await page.goto("/overseas/counselor/visa");
   const card = page.locator(".action-card", { has: page.getByRole("heading", { name: "Visa Cases" }) }).locator(".card", { hasText: universityName });
   await expect(card).toBeVisible();
-  await card.getByRole("button", { name: "Advance to Documentation" }).click();
+  // ccrm-026 (DEC-SCOPE-254): the stage buttons became the Appendix A "Next status" -- Preparing leaves the checklist stage.
+  await card.getByLabel("Next status").selectOption("preparing");
+  await card.getByRole("button", { name: "Save visa case" }).click();
   await expect(card.getByText(/Cannot advance past the checklist stage/)).toBeVisible();
 });
 

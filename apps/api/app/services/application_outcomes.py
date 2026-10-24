@@ -64,6 +64,14 @@ def withdraw_event(db: AsyncSession, user: User, app: OverseasApplication, *, re
     db.add(ApplicationOutcome(application_id=app.id, outcome="withdrawn", outcome_date=date.today(), reason=reason, requested_by=requested_by, created_by_id=user.id))
 
 
+def visa_refused(db: AsyncSession, user: User, app: OverseasApplication, *, note: str, next_steps: str | None) -> None:
+    """ccrm-026 (O4): a refused visa closes the application. The refusal reason is restricted, so the event carries none."""
+    before = (app.status, app.sub_status)
+    app.outcome = "visa_refused"
+    db.add(ApplicationOutcome(application_id=app.id, outcome="visa_refused", outcome_date=date.today(), next_steps=next_steps, created_by_id=user.id))
+    _history(db, user, app, before, note, outcome="visa_refused", reason=None)
+
+
 async def _check_document(db: AsyncSession, app: OverseasApplication, document_id: UUID | None) -> None:
     if document_id is None:
         return

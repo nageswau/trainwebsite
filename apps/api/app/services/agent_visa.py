@@ -13,6 +13,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import StudentDocument, VisaCase
+from app.visa_status import FIRST_OF_STAGE, STAGE_OF
+from app.visa_status import label as visa_status_label
 
 # DATA_MODEL.md #6.5, DEC-SCOPE-006: the four confirmed category names plus a terminal `decision` state. The outcomes are not stages:
 # DEC-SCOPE-057 V2 records them for agency cases in their own column, so this list is unchanged.
@@ -56,6 +58,16 @@ class ChecklistGateRefused(HTTPException):
         self.unverified = unverified
 
 
+def sync_from_stage(case: VisaCase) -> None:
+    """ccrm-026 (VC4): a stage-only write (this route, the legacy counselor PATCH) moved `status` or set `decision`: the Appendix A
+    status follows -- the decision itself, or the new stage's first status."""
+    if case.decision is not None:
+        case.visa_status = case.decision
+        case.decision_date = case.decision_date or date.today()
+    elif STAGE_OF.get(case.visa_status) != case.status:
+        case.visa_status = FIRST_OF_STAGE.get(case.status, "not_started")
+
+
 async def load_case(db: AsyncSession, application_id: UUID) -> VisaCase | None:
     """V7: one case per application. The counselor route refuses a second one; ordering keeps a pre-existing duplicate deterministic."""
     return await db.scalar(select(VisaCase).where(VisaCase.application_id == application_id).order_by(VisaCase.created_at, VisaCase.id).limit(1))
@@ -90,6 +102,15 @@ async def visa_block(db: AsyncSession, application_id: UUID) -> dict | None:
         "decision": case.decision,
         "decided_at": case.decided_at,
         "disclaimer": VISA_DECISION_DISCLAIMER,
+        # ccrm-026 (VC2): the counselor's lifecycle fields, read-only here -- never the refusal reason or the evidence document.
+        "visa_status": case.visa_status,
+        "visa_status_label": visa_status_label(case.visa_status),
+        "visa_category": case.visa_category,
+        "appointment_place": case.appointment_place,
+        "tracking_reference": case.tracking_reference,
+        "expected_decision_date": case.expected_decision_date,
+        "decision_date": case.decision_date,
+        "next_steps": case.next_steps,
     }
 
 
@@ -120,8 +141,10 @@ async def update_case(db: AsyncSession, case: VisaCase, changes: dict) -> tuple[
     fields = {"fields": changed} if changed else {}
     if "decision" in changes:
         case.decision, case.decided_at = changes["decision"], datetime.now(UTC)
+        sync_from_stage(case)
         return "visa_decision", {"decision": case.decision, **fields}
     if target is not None:
         old, case.status = case.status, target
+        sync_from_stage(case)
         return "visa_advance", {"from_stage": old, "to_stage": target, **fields}
     return ("visa_update", fields) if changed else None

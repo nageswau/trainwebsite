@@ -3678,3 +3678,16 @@ not an overseas student / out of scope / unknown → `404`; any other role, or a
 
 `GET /api/v1/portal/overseas/{counselor|admin}/students` and `…/admin/users` rows add `open` (the 360 path; `null` for a student with no
 login and for staff rows) with column type `student_360`.
+
+## 12FG. Visa case lifecycle (ccrm-026) — addendum, 2026-10-24
+
+`DEC-SCOPE-254`. All paths under `/api/v1/workflows/overseas`.
+
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| `PATCH` | `/visa/{id}/lifecycle` | `counselor` (own application, direct or agency), `overseas_admin` | Body `VisaLifecycleUpdate` (unknown keys `422`): `expected_visa_status` (required; stale `409`), optional `visa_status`, `readiness_review_date`, `visa_category`, `checklist` (only at `not_started`), `appointment_date`, `appointment_place`, `submission_date`, `tracking_reference`, `interview_date`, `expected_decision_date`, `decision_date`, `outcome_document_id`, `refusal_reason`, `next_steps`, `correction_reason`. `200` with `{id, status}` + every lifecycle field incl. `refusal_reason`; identical values → `200`, nothing written. `409`: stale, decided (counselor), closed application (except admin on `visa_refused`), archived agency record, enrolled, on hold (status change only). `422`: move not allowed, gate (unverified items), missing appointment / submission date / refusal reason / correction reason, date order, year outside 2000–2100, evidence not of this application, correction to a non-decision. |
+| `GET` | `/applications/{id}/visa-checklist` | unchanged | Adds the lifecycle fields; staff also get `refusal_reason`, `outcome_document_id`, `documents` (evidence picker); the student gets the D8 subset only. No case: `template` `{name, items}` when a ccrm-018 visa template matches (staff only). |
+| `GET` | `/applications/{id}/visa-status` | unchanged | Adds `visa_status`, `visa_status_label`, `appointment_place`, `submission_date`, `expected_decision_date`, `decision`, `decision_date`, `next_steps`. |
+| `POST` | `/visa` | unchanged | An empty checklist takes the resolved visa template's document types. |
+| `PATCH` | `/visa/{id}` (legacy) | unchanged | Keeps its contract; a decided case → `409`; `visa_status` follows the stage. |
+| `PATCH` | `/agent/crm/applications/{id}/visa` (AGN-012) | unchanged | Contract unchanged; `visa_status` follows the stage/decision; the application moves forward / closes as `visa_refused` (VC5); the counselor is notified. The detail's `visa` block adds the non-restricted lifecycle fields. |

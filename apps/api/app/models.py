@@ -63,6 +63,7 @@ from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
 from app.tel_content_kinds import EMAIL_KINDS as TEL_EMAIL_KINDS
 from app.tel_content_kinds import WHATSAPP_KINDS as TEL_WHATSAPP_KINDS
 from app.tel_sources import TEL_SOURCES
+from app.visa_status import VISA_STATUSES
 
 
 class Base(DeclarativeBase):
@@ -2110,7 +2111,10 @@ class ProfileDocument(Base, TimestampMixin):
 
 class VisaCase(Base, TimestampMixin):
     __tablename__ = "visa_cases"
-    __table_args__ = (CheckConstraint("decision IN ('approved', 'refused', 'withdrawn')", name="ck_visa_cases_decision"),)
+    __table_args__ = (
+        CheckConstraint("decision IN ('approved', 'refused', 'withdrawn')", name="ck_visa_cases_decision"),
+        CheckConstraint("visa_status IN (" + ", ".join(f"'{s}'" for s in VISA_STATUSES) + ")", name="ck_visa_cases_visa_status"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id"), index=True)
     status: Mapped[str] = mapped_column(String(50), default="checklist")
@@ -2123,6 +2127,18 @@ class VisaCase(Base, TimestampMixin):
     interview_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     decision: Mapped[str | None] = mapped_column(String(20), nullable=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # ccrm-026 (DEC-SCOPE-254; migration 0177): the Appendix A status every write keeps in step with `status` and `decision`
+    # (app/visa_status.py). The submission date is `visa_application_date`, the reference `tracking_reference`. `refusal_reason` is
+    # restricted: counselor and Overseas Admin reads only -- never in a log, audit row, notice, student or agency view.
+    visa_status: Mapped[str] = mapped_column(String(40), default="not_started", server_default="not_started")
+    readiness_review_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    visa_category: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    appointment_place: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    expected_decision_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    decision_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    outcome_document_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL"), nullable=True)
+    refusal_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    next_steps: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Scholarship(Base, TimestampMixin):

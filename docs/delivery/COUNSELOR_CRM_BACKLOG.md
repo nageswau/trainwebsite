@@ -612,6 +612,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Complexity:** large. **Risk:** high.
 - **Open questions:** **CC5 vs V2** — "last write wins" means a recorded decision becomes editable; keep V2 "final once recorded" with
   admin-only correction instead? Must be asked before build.
+- **Status:** built on `feature/ccrm-026` — `DEC-SCOPE-254`, migration `0177_visa_lifecycle`, API §12FG, RBAC §2.169. Answered: V2 kept
+  with Overseas Admin correction (VC1); agency sees the new fields read-only (VC2); counselor may record the agency decision (VC3);
+  Appendix A mapping (VC4); every writer moves the application, superseding AGN-012 V5 (VC5). Admin correction screen: follow-up.
 
 ### `ccrm-027` — Enrolment confirmation and post-offer outcomes (all applications)
 
