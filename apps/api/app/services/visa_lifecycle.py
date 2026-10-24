@@ -1,4 +1,4 @@
-"""ccrm-026 (DEC-SCOPE-252) -- a visa case's Appendix A lifecycle: the counselor / Overseas Admin update (VC1 lock and correction, VC4
+"""ccrm-026 (DEC-SCOPE-254) -- a visa case's Appendix A lifecycle: the counselor / Overseas Admin update (VC1 lock and correction, VC4
 moves, D2 required fields and dates, D3 evidence), the status sync for the stage-only writers (the AGN-012 agency route, the legacy
 counselor PATCH) and the application side of a status change (ccrm-014 sub-status, ccrm-015 visa_refused). Nothing here commits, logs
 or notifies: the caller scopes, locks, notifies, audits and commits. Spec: docs/superpowers/specs/2026-10-24-ccrm-026-visa-lifecycle-design.md."""

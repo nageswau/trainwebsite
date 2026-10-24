@@ -3,7 +3,7 @@
 Revision ID: 0177_visa_lifecycle
 Revises: 0176_document_status
 
-docs/superpowers/specs/2026-10-24-ccrm-026-visa-lifecycle-design.md (DEC-SCOPE-252). Backfill: the recorded decision if any, else the
+docs/superpowers/specs/2026-10-24-ccrm-026-visa-lifecycle-design.md (DEC-SCOPE-254). Backfill: the recorded decision if any, else the
 stage's first status (FIRST_OF_STAGE); a stage outside the list (the seed's legacy `not_started`) -> not_started. decision_date comes
 from decided_at. 0001 builds a fresh database from the current models, which already carry the columns, so each step runs only when
 missing (0166's idiom). STATUSES / FIRST_OF_STAGE repeat app.visa_status (test_ccrm_026_migration). The downgrade drops the columns.

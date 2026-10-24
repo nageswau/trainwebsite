@@ -571,7 +571,7 @@ VisaStatus = Literal["not_started", "preparing", "appointment_booked", "submitte
 
 
 class VisaLifecycleUpdate(BaseModel):
-    """ccrm-026 (DEC-SCOPE-252): a counselor's / Overseas Admin's partial change to a visa case (PATCH /overseas/visa/{id}/lifecycle).
+    """ccrm-026 (DEC-SCOPE-254): a counselor's / Overseas Admin's partial change to a visa case (PATCH /overseas/visa/{id}/lifecycle).
     An absent key is unchanged; an explicit null clears an optional field. `expected_visa_status` is the status the screen shows
     (stale -> 409). `correction_reason` is the Overseas Admin's reason for changing a decided case (VC1)."""
 

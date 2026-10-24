@@ -1,4 +1,4 @@
-"""ccrm-026 (DEC-SCOPE-252, VC4): a visa case's Appendix A status and how it maps onto the AGN-012 stage, the decision column and the
+"""ccrm-026 (DEC-SCOPE-254, VC4): a visa case's Appendix A status and how it maps onto the AGN-012 stage, the decision column and the
 ccrm-014 application sub-status. One definition; the web mirrors it in apps/web/lib/visaStatus.ts and migration 0177 repeats the values
 in its CHECK. No model imports."""
 

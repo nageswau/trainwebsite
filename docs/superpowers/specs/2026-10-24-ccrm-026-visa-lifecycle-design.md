@@ -1,6 +1,6 @@
 # ccrm-026 — Visa case: the counselor records the full visa lifecycle (all applications) — Design
 
-Status: built 2026-10-24 on `feature/ccrm-026`. Decision `DEC-SCOPE-252`. Migration `0177_visa_lifecycle`. API `12FE`. RBAC `2.167`.
+Status: built 2026-10-24 on `feature/ccrm-026`. Decision `DEC-SCOPE-254`. Migration `0177_visa_lifecycle`. API `12FG`. RBAC `2.169`.
 Source: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` ccrm-026 (§10 visa tracking, Appendix A statuses, CC2, CC4, CC5). The source spec is
 UNVERIFIED; VC1-VC4 are owner answers (2026-10-24), the rest are recommended defaults (NEEDS_CONFIRMATION).
 

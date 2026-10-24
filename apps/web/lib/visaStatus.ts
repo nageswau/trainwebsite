@@ -1,4 +1,4 @@
-// ccrm-026 (DEC-SCOPE-252): mirrors apps/api/app/visa_status.py -- a visa case's Appendix A status and the moves allowed from it.
+// ccrm-026 (DEC-SCOPE-254): mirrors apps/api/app/visa_status.py -- a visa case's Appendix A status and the moves allowed from it.
 export const VISA_STATUSES = [
   "not_started",
   "preparing",

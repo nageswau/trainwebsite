@@ -47,7 +47,7 @@ function fieldMessage(detail: unknown, field: string): string | null {
   return hit ? detailMessage([hit]) : null;
 }
 
-// ccrm-026 (DEC-SCOPE-252): the counselor records a visa case's Appendix A lifecycle -- details, the next status, and the decision
+// ccrm-026 (DEC-SCOPE-254): the counselor records a visa case's Appendix A lifecycle -- details, the next status, and the decision
 // with its date, evidence and (refused only) the restricted reason. The shown status travels as `expected_visa_status`, so a stale
 // screen gets a 409. A decided case is read-only here: the Overseas Admin corrects it (VC1).
 export default function CounselorVisaCaseForm({ visa, onSaved }: { visa: VisaCaseView; onSaved: () => void }) {

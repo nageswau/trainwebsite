@@ -1,4 +1,4 @@
-"""ccrm-026 -- migration 0177_visa_lifecycle (DEC-SCOPE-252): the chain, the constants it repeats, the status backfill, the CHECK and the
+"""ccrm-026 -- migration 0177_visa_lifecycle (DEC-SCOPE-254): the chain, the constants it repeats, the status backfill, the CHECK and the
 round trip, in a throwaway database (the ccrm-021 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util

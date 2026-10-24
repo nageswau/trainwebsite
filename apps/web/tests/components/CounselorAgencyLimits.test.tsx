@@ -49,7 +49,7 @@ describe("counselor limits on agency applications (H12)", () => {
     expect(within(card).queryByRole("form", { name: "Visa case" })).toBeNull();
   });
 
-  // ccrm-026 (DEC-SCOPE-252): the stage buttons became the Appendix A "Next status" choice -- still forward only.
+  // ccrm-026 (DEC-SCOPE-254): the stage buttons became the Appendix A "Next status" choice -- still forward only.
   it("offers only later visa statuses on an open agency case", async () => {  // AC21
     vi.stubGlobal("fetch", vi.fn((url: string) => {
       if (url.includes("/counselor/applications")) return json({ rows: [ROWS[0]] });

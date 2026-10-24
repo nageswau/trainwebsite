@@ -27,7 +27,7 @@ const CASE: VisaCaseView = {
 };
 const respond = (status: number, body: unknown) => vi.fn(() => Promise.resolve({ ok: status < 400, status, json: async () => body }));
 
-// ccrm-026 (DEC-SCOPE-252): the counselor's visa lifecycle form.
+// ccrm-026 (DEC-SCOPE-254): the counselor's visa lifecycle form.
 describe("CounselorVisaCaseForm", () => {
   it("sends only the changed fields with the shown status, and announces the save", async () => {
     const fetchMock = respond(200, { id: "v1" });

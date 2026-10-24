@@ -2127,7 +2127,7 @@ class VisaCase(Base, TimestampMixin):
     interview_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     decision: Mapped[str | None] = mapped_column(String(20), nullable=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # ccrm-026 (DEC-SCOPE-252; migration 0177): the Appendix A status every write keeps in step with `status` and `decision`
+    # ccrm-026 (DEC-SCOPE-254; migration 0177): the Appendix A status every write keeps in step with `status` and `decision`
     # (app/visa_status.py). The submission date is `visa_application_date`, the reference `tracking_reference`. `refusal_reason` is
     # restricted: counselor and Overseas Admin reads only -- never in a log, audit row, notice, student or agency view.
     visa_status: Mapped[str] = mapped_column(String(40), default="not_started", server_default="not_started")

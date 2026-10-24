@@ -2475,10 +2475,9 @@ async def get_visa_checklist(application_id: UUID, user: User = Depends(get_curr
         # enough along; not every application has reached that point).
         # ccrm-026 (D5): the visa template that would fill an empty checklist, so the start form can show it.
         empty = {"exists": False, "status": None, "checklist": [], "appointment_date": None, "tracking_reference": None, "locked_reason": locked_reason}
-        template = await checklist_templates.resolve(db, application, "visa") if user.role != "overseas_student" else None
+        template = await _visa_template(db, application) if user.role != "overseas_student" else None
         if template is not None:
-            items = (await checklist_templates.view(db, template))["items"]
-            empty["template"] = {"name": template.name, "items": [i["document_type"] for i in items]}
+            empty["template"] = template
         return empty
     staff = user.role != "overseas_student"
     out = {
@@ -2493,6 +2492,14 @@ async def get_visa_checklist(application_id: UUID, user: User = Depends(get_curr
     if staff:  # the evidence picker (D3)
         out["documents"] = await _visa_documents(db, application.id)
     return out
+
+
+async def _visa_template(db: AsyncSession, application: OverseasApplication) -> dict | None:
+    """ccrm-026 (D5): the matching ccrm-018 visa template's name and document types, or None."""
+    template = await checklist_templates.resolve(db, application, "visa")
+    if template is None:
+        return None
+    return {"name": template.name, "items": [i["document_type"] for i in (await checklist_templates.view(db, template))["items"]]}
 
 
 async def _visa_documents(db: AsyncSession, application_id: UUID) -> list[dict]:
@@ -2674,7 +2681,7 @@ async def _visa_notices(db: AsyncSession, user: User, application: OverseasAppli
 
 @router.patch("/overseas/visa/{visa_id}/lifecycle")
 async def update_visa_lifecycle(visa_id: UUID, payload: VisaLifecycleUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """ccrm-026 (DEC-SCOPE-252): the counselor (own applications, direct and agency, CC4) or the Overseas Admin records the Appendix A
+    """ccrm-026 (DEC-SCOPE-254): the counselor (own applications, direct and agency, CC4) or the Overseas Admin records the Appendix A
     lifecycle. Lock order: the application, then the case, as the agency route. A decided case is the admin's to correct (VC1)."""
     _require(user, {"counselor", "overseas_admin"}, "overseas")
     item = await db.get(VisaCase, visa_id)
@@ -2728,8 +2735,8 @@ async def create_visa_case(payload: VisaCaseCreate, user: User = Depends(get_cur
         raise HTTPException(409, "A visa case already exists for this application")
     checklist = payload.checklist
     if not checklist:  # ccrm-026 (D5): the resolved visa template's documents
-        template = await checklist_templates.resolve(db, application, "visa")
-        checklist = [i["document_type"] for i in (await checklist_templates.view(db, template))["items"]] if template else []
+        template = await _visa_template(db, application)
+        checklist = template["items"] if template else []
     item = VisaCase(
         application_id=application.id, status=payload.status, visa_status=VISA_FIRST_OF_STAGE[payload.status], appointment_date=payload.appointment_date,
         checklist=checklist, tracking_reference=payload.tracking_reference,

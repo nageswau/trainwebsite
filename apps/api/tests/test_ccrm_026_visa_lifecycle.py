@@ -1,4 +1,4 @@
-"""ccrm-026 (DEC-SCOPE-252, VC1-VC4) -- the counselor records the full visa lifecycle on direct and agency applications: Appendix A
+"""ccrm-026 (DEC-SCOPE-254, VC1-VC4) -- the counselor records the full visa lifecycle on direct and agency applications: Appendix A
 statuses mapped onto stage / decision / sub-status, the checklist gate, refused -> visa_refused outcome, the restricted refusal reason,
 the V2 decision lock with an admin correction, the stale check, the visa template, CC5 notices and the read views."""
 
