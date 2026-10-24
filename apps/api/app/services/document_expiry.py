@@ -1,4 +1,4 @@
-"""ccrm-021 (DEC-SCOPE-249 S4) -- the daily job that marks documents past their expiry date as `expired`.
+"""ccrm-021 (DEC-SCOPE-251 S4) -- the daily job that marks documents past their expiry date as `expired`.
 
 A document expires the day after its expiry date (India calendar). Archived versions and `not_required` documents are left alone. Each
 change writes an `expired` history event with no actor. Rows are locked SKIP LOCKED, so an overlapping run or a concurrent review never

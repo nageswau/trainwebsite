@@ -1,4 +1,4 @@
-"""ccrm-021 (DEC-SCOPE-249) -- the fixed document status list, review metadata, passport expiry, versions on replace and the expiry job.
+"""ccrm-021 (DEC-SCOPE-251) -- the fixed document status list, review metadata, passport expiry, versions on replace and the expiry job.
 Spec: docs/superpowers/specs/2026-10-24-ccrm-021-document-status-design.md (S1-S7)."""
 
 import io

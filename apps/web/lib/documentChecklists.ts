@@ -22,7 +22,7 @@ export const STATUS_LABELS: Record<ItemStatus, string> = {
 };
 export const MAX_ITEMS = 50;
 
-// ccrm-021 (DEC-SCOPE-249): a stored document status as words. `pending` on a document is an upload awaiting review (S1); history rows
+// ccrm-021 (DEC-SCOPE-251): a stored document status as words. `pending` on a document is an upload awaiting review (S1); history rows
 // written before migration 0174 still carry the old outcomes.
 const LEGACY_LABELS: Record<string, string> = { rejected: "Rejected", changes_required: "Changes required" };
 export function documentStatusLabel(status: string): string {

@@ -82,7 +82,7 @@ export const KIND_LABELS: Record<string, string> = {
   document_verified: "Document verified",
   document_rejected: "Document rejected",
   document_changes_required: "Document changes requested",
-  // ccrm-021 (DEC-SCOPE-249): review events are named after the status they set; `expired` comes from the daily job.
+  // ccrm-021 (DEC-SCOPE-251): review events are named after the status they set; `expired` comes from the daily job.
   document_under_review: "Document under review",
   document_incomplete: "Document marked incomplete",
   document_reupload_required: "Document re-upload requested",

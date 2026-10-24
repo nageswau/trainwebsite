@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { formatCalendarDate } from "@/lib/formatDate";
 
-// ccrm-021 (DEC-SCOPE-249 S5): `status` arrives as words; the review date and expiry are calendar dates.
+// ccrm-021 (DEC-SCOPE-251 S5): `status` arrives as words; the review date and expiry are calendar dates.
 type DocumentRow = { id: string; type: string; status: string; notes: string | null; reviewed_on?: string | null; expiry_date?: string | null };
 
 function detailMessage(detail: unknown) {

@@ -118,7 +118,7 @@ def send_daily_reminders_task():
 
 @celery.task
 def expire_documents_task():
-    """ccrm-021 (DEC-SCOPE-249 S4): daily at 00:05 IST via beat. Idempotent (an expired document is not picked again)."""
+    """ccrm-021 (DEC-SCOPE-251 S4): daily at 00:05 IST via beat. Idempotent (an expired document is not picked again)."""
     from app.services.document_expiry import run_document_expiry
 
     return _run_with_fresh_pool(run_document_expiry)

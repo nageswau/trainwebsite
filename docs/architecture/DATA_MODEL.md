@@ -2145,7 +2145,28 @@ withdraw/expire). `notes` is unchanged. Backfill: rows matching an `application_
 delete. `document_checklist_template_items`: `id`, `template_id` (ON DELETE CASCADE), `position` (unique per template), `document_type`
 (the upload type list), `label`, `required`, `allowed_statuses` (JSON list, never empty), `notes`. Nothing is seeded (§8).
 
-## Document status, expiry and versions (`ccrm-021`, `DEC-SCOPE-249`; migration `0174_document_status`, after ccrm-018's `0173_checklist_templates`)
+## Structured overseas student profile (`ccrm-007`, `DEC-SCOPE-249`; migration `0174_student_profiles`, after ccrm-018's `0173_checklist_templates`)
+
+`overseas_student_profiles` (PK `student_user_id` → users ON DELETE CASCADE): `date_of_birth`, `nationality`, `city`, `state`,
+`passport_number`, `passport_expiry`, `work_experience_months` (CHECK 0–600), `work_experience_details`, `preferred_country_ids` (JSON list of
+country ids, ≤5 — app-level), `preferred_course`, `preferred_level` (CHECK the course master levels), `preferred_intake`, `study_mode` (CHECK
+full_time / part_time / online), `budget_min`, `budget_max` (numeric 12,2), `budget_currency` (CHECK the counseling currencies),
+`updated_by_user_id` → users, timestamps. `overseas_student_qualifications`: `id`, `student_user_id` → profile (CASCADE), `position` (unique
+per student), `level` (CHECK class_10 … other), `qualification_name`, `institution`, `board_university`, `year_completed`, `score_type`
+(CHECK percentage / cgpa), `score` (5,2), `backlogs`. `overseas_student_english_tests`: `id`, `student_user_id` → profile (CASCADE),
+`position` (unique per student), `test_type` (CHECK the course master's `ENGLISH_TESTS`), `status` (nullable CHECK not_taken / booked /
+taken), `overall_score` (4,1), `test_date`, `valid_until`, `remarks`. The migration copies the old `users.profile` keys once per student
+without a profile (countries by name; `education` → one `other` qualification; `english_test` → one test, type read from the text, the text
+in `remarks`); `users.profile` is not changed. Downgrade drops the three tables.
+
+`counselor_tasks` (ccrm-029, migration `0175_counselor_tasks`, `DEC-SCOPE-250`): `id`, `title` (200), `counselor_user_id` → users
+(RESTRICT), `due_on` (date), `priority` (CHECK high / medium / low, default medium), `status` (CHECK open / done / cancelled, default open),
+`source` (CHECK manual / rule, default manual), `rule_key` (60, null; ccrm-030), `lead_id` → enquiries, `student_user_id` → users,
+`application_id` → overseas_applications (all three null, ON DELETE SET NULL, CHECK `num_nonnulls(...) <= 1`), `completed_at`,
+`cancelled_at`, `created_by_user_id` / `updated_by_user_id` → users (RESTRICT), timestamps. Index (`counselor_user_id`, `status`, `due_on`).
+Downgrade drops the table.
+
+## Document status, expiry and versions (`ccrm-021`, `DEC-SCOPE-251`; migration `0176_document_status`, after ccrm-029's `0175_counselor_tasks`)
 
 `student_documents` gains `expiry_date` (date; S2 a passport is verified only with one), `reviewed_at` (timestamptz, set by every review;
 backfilled from the latest `verified`/`rejected`/`changes_required` event), `archived_at` (timestamptz; set when a counselor's replace

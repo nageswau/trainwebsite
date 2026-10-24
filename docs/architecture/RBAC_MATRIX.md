@@ -2640,7 +2640,35 @@ inside the existing role scope (a counselor searching another counselor's code g
   `::test_other_roles_and_signed_out_are_refused`, `::test_resolve_is_scoped_to_the_counselors_applications`. Web page
   `/overseas/admin/checklists` for Overseas and Super Admins (others see "Access unavailable").
 
-### 2.164 Document status, expiry and versions *(added 2026-10-24 — `DEC-SCOPE-249`, ccrm-021)*
+### 2.164 Structured overseas student profile *(added 2026-10-24 — `DEC-SCOPE-249`, ccrm-007)*
+
+| Route | `counselor` (overseas) | `overseas_admin` | `overseas_student` | `agent` | IT counselor, `university_rep`, `super_admin`, others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET/PUT /counselor/students/{id}/profile` | ✅ csc-001 scope (`404` otherwise) | ✅ any overseas student | `403` | `403` | `403` | `401` |
+| `GET/PUT /overseas/me/profile` | `403` | `403` | ✅ self | `403` | `403` | `401` |
+| `GET /workflows/overseas/agent/crm/students/{id}/profile` | `403` | `403` | `403` | ✅ read, agency scope, no passport | `403` | `401` |
+
+- P1: the student edits every field; P3: the agency never receives the passport. Pinned by
+  `test_ccrm_007_student_profiles.py::test_other_roles_cannot_use_the_counselor_route`, `::test_only_an_overseas_student_has_a_my_profile`,
+  `::test_unknown_and_non_overseas_students_are_404`, `::test_the_agency_reads_the_profile_without_the_passport`. Web pages
+  `/overseas/{counselor|admin}/students/[id]/profile`; the student's Profile section.
+
+### 2.165 Counselor tasks *(added 2026-10-24 — `DEC-SCOPE-250`, ccrm-029)*
+
+| Route | `counselor` (overseas) | `overseas_admin` / `super_admin` | IT counselor | `overseas_student`, `agent`, others | Anonymous |
+|---|---|---|---|---|---|
+| `GET /counselor/tasks`, `GET /counselor/tasks/{id}` | ✅ own tasks only (`404` otherwise) | ✅ all, filter by counselor | `403` | `403` | `401` |
+| `GET /counselor/tasks/options` | ✅ own links | ✅ counselors + the chosen counselor's links | `403` | `403` | `401` |
+| `POST /counselor/tasks` | ✅ for self only (`403` for another) | ✅ for any active overseas counselor | `403` | `403` | `401` |
+| `PATCH /counselor/tasks/{id}` | ✅ status of own tasks; other fields only on tasks they created; no reassign | ✅ any field, reassign | `403` | `403` | `401` |
+| `GET /counselor/follow-ups` | ✅ own leads | `403` | ✅ own leads | `403` | `401` |
+
+- T3/T4: pinned by `test_ccrm_029_counselor_tasks.py::test_counselor_cannot_create_for_another_counselor`,
+  `::test_counselor_edits_own_created_tasks_but_only_the_status_of_admin_tasks`, `::test_links_in_the_assignees_scope`,
+  `::test_admin_link_must_be_in_the_chosen_counselors_scope`, `::test_other_roles_are_refused`, `::test_super_admin_passes`. Web pages
+  `/overseas/counselor/tasks` (counselor only) and `/overseas/admin/counselor-tasks` (overseas admin, super admin).
+
+### 2.166 Document status, expiry and versions *(added 2026-10-24 — `DEC-SCOPE-251`, ccrm-021)*
 
 | Route | `overseas_admin` | `counselor` | `super_admin` | `agent` | `overseas_student`, others | Anonymous |
 |---|---|---|---|---|---|---|

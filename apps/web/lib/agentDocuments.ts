@@ -40,7 +40,7 @@ export function parseView(value: string | null | undefined): View {
   return (VIEWS as readonly string[]).includes(value ?? "") ? (value as View) : "pending";
 }
 
-// ccrm-021 (DEC-SCOPE-249 S1): the agency decisions use the fixed status list; labels are shared with the counselor screens.
+// ccrm-021 (DEC-SCOPE-251 S1): the agency decisions use the fixed status list; labels are shared with the counselor screens.
 export type ReviewDecision = "verified" | "incomplete" | "reupload_required";
 export const statusLabel = documentStatusLabel;
 

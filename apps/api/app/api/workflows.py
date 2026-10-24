@@ -2317,7 +2317,7 @@ async def verify_document(document_id: UUID, payload: dict, user: User = Depends
     if user.role == "agent":  # AGN-003: the agent path is fully separate; the counselor/admin lines below are unchanged
         return await _agent_document_review(db, user, document_id, payload)
     try:
-        review = DocumentReview.model_validate(payload)  # ccrm-021 (DEC-SCOPE-249): no longer any string
+        review = DocumentReview.model_validate(payload)  # ccrm-021 (DEC-SCOPE-251): no longer any string
     except ValidationError as exc:
         raise RequestValidationError([{**e, "loc": ("body", *e["loc"])} for e in exc.errors(include_url=False)]) from exc
     item = await _staff_document(db, user, document_id)
@@ -2366,7 +2366,7 @@ async def replace_document_version(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """ccrm-021 (DEC-SCOPE-249 S3): a counselor / Overseas Admin replaces a document with a new version. The new row starts at
+    """ccrm-021 (DEC-SCOPE-251 S3): a counselor / Overseas Admin replaces a document with a new version. The new row starts at
     `pending` and points at the old one, which is archived with its file and history; nothing is overwritten."""
     _require(user, {"counselor", "overseas_admin"}, "overseas")
     data, content_type, filename = await document_files.read_upload(file)

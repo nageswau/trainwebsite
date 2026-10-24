@@ -1,7 +1,7 @@
 # ccrm-021 — Document status model, expiry and versions (design)
 
-Backlog: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` ccrm-021 (source §8 status table, Appendix A — UNVERIFIED spec). Decision: `DEC-SCOPE-249`.
-Migration `0174_document_status`. API §12FB, RBAC §2.164. Dependencies: none.
+Backlog: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` ccrm-021 (source §8 status table, Appendix A — UNVERIFIED spec). Decision: `DEC-SCOPE-251`.
+Migration `0176_document_status` (after ccrm-029's 0175). API §12FD, RBAC §2.166. Dependencies: none.
 
 ## Intent
 
@@ -27,7 +27,7 @@ AGN-003 rules (pending only; staff verify only; a reason for anything else) with
 
 ## Changes
 
-- **Model/migration 0174:** `student_documents.expiry_date` (date), `reviewed_at` (timestamptz), `archived_at` (timestamptz),
+- **Model/migration 0176:** `student_documents.expiry_date` (date), `reviewed_at` (timestamptz), `archived_at` (timestamptz),
   `version_of_id` (self FK); data map + backfill; `ck_student_documents_status`; `document_events` event CHECK widened with the new
   status codes and `expired`; partial index for the expiry job. Downgrade maps the codes back (lossy for new codes → `pending`).
 - **API:** `PATCH /workflows/overseas/documents/{id}/verify` validates the body (`DocumentReview`) for counselor/admin;

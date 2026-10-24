@@ -268,6 +268,9 @@ asked one at a time when the item is picked up).
 - **Regression:** student portal profile page, `profile` JSON readers (grep all).
 - **Complexity:** large. **Risk:** medium.
 - **Open questions:** which fields the student may edit; agency-student master record.
+- **Status (2026-10-24):** built on `worktree-ccrm-007` — `DEC-SCOPE-249` (P1 the student edits every field; P2 profile editable,
+  agency reads it without the passport; P3–P6 defaults), migration `0174_student_profiles`, API §12FB, RBAC §2.164; pages
+  `/overseas/{counselor|admin}/students/[id]/profile` and the student Profile section. Design `docs/superpowers/specs/2026-10-24-ccrm-007-structured-student-profile-design.md`.
 
 ### `ccrm-008` — Convert lead to student (one click, prefilled)
 
@@ -513,8 +516,8 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
   (configured in ccrm-018 items).
 - **DB:** migration: CHECK + data migration, `expiry_date`, `archived_at`, `version_of_id`. **API:** counselor replace route.
 - **Dependencies:** none. **Complexity:** medium. **Risk:** medium (data migration of existing statuses).
-- **Status (2026-10-24):** built on `worktree-ccrm-021` — `DEC-SCOPE-249`, migration `0174_document_status` (after ccrm-018's 0173),
-  API §12FB, RBAC §2.164; owner answer S1 (keep `pending`; rejected → reupload_required, changes_required → incomplete); S2–S7 defaults.
+- **Status (2026-10-24):** built on `worktree-ccrm-021` — `DEC-SCOPE-251`, migration `0176_document_status` (after ccrm-029's 0175),
+  API §12FD, RBAC §2.166; owner answer S1 (keep `pending`; rejected → reupload_required, changes_required → incomplete); S2–S7 defaults.
   Counselor replace route `POST /workflows/overseas/documents/{id}/versions` (backlog: "counselor replace route"). Design
   `docs/superpowers/specs/2026-10-24-ccrm-021-document-status-design.md`.
 
@@ -630,6 +633,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **DB:** migration: `counselor_tasks`. **API:** `/counselor/tasks` CRUD. **Dependencies:** none.
 - **Acceptance:** AC 7 — counselor sees own tasks and overdue follow-ups.
 - **Complexity:** medium. **Risk:** low.
+- **Status:** built on `feature/ccrm-029` — `DEC-SCOPE-250`, migration `0175_counselor_tasks`, API §12FC, RBAC §2.165 (T1–T8,
+  `NEEDS_CONFIRMATION`). Pages `/overseas/counselor/tasks` and `/overseas/admin/counselor-tasks`; overdue follow-ups via
+  `GET /counselor/follow-ups`.
 
 ### `ccrm-030` — Counselor reminder and trigger engine
 

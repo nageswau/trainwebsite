@@ -3593,9 +3593,51 @@ fields only; no new routes.
 | `PUT …/checklists/{id}` | Authenticated | `overseas_admin`, `super_admin` | Full replace: the POST body plus `version` (the one loaded) and `active`. A newer version on the server `409 "Someone else saved this template…"`; scope taken `409`; row locked; items replaced; `version + 1`. Audit `checklist_template.update`. `200` the template. |
 | `GET …/checklists/resolve?application_id=&kind=` | Authenticated | `counselor` (own applications, `_assigned_application`), `overseas_admin`, `super_admin` | `200 {"template": {…full template…} \| null}` — the most specific active template of `kind` matching the application's university country, university, course level (the linked course's level; legacy "Masters"/"Bachelors" etc. map to PG/UG) and intake. Weights: university 4, level 2, intake 1. Unknown application `404`; out of scope `403`. |
 
-## 12FB. Document status model, expiry and versions (ccrm-021) — addendum, 2026-10-24
+## 12FB. Structured overseas student profile (ccrm-007) — addendum, 2026-10-24
 
-`DEC-SCOPE-249`. Migration `0174_document_status`. RBAC §2.164. Code: `app/document_checklists.py` (vocabulary, `review_refusal`),
+`DEC-SCOPE-249`. Migration `0174_student_profiles`. RBAC §2.164. Code: `app/services/student_profiles.py`, `app/api/student_profiles.py`,
+agency read in `app/api/agent_students.py`.
+
+Profile object: `{exists, date_of_birth, nationality, city, state, passport_number, passport_expiry, work_experience_months,
+work_experience_details, preferred_countries: [{id, name}], preferred_course, preferred_level, preferred_intake, study_mode, budget_min,
+budget_max, budget_currency, qualifications: [{level, qualification_name, institution, board_university, year_completed, score_type, score,
+backlogs}], english_tests: [{test_type, status, overall_score, test_date, valid_until, remarks, expired}], updated_at, updated_by_name}`.
+Decimals are strings as stored ("8.20"). An unsaved profile reads as empty with `exists: false`.
+
+| Method/Path | Auth | Roles | Behaviour |
+|---|---|---|---|
+| `GET /api/v1/counselor/students/{id}/profile` | Authenticated | overseas `counselor` (csc-001 scope), `overseas_admin` (any overseas student) | `200 {student: {id, full_name, student_code}, profile}`. Unknown, out of scope or not an `overseas_student` `404`; any other role (incl. an IT counselor) `403`. |
+| `PUT /api/v1/counselor/students/{id}/profile` | Authenticated | same | Full replace. Body: every profile field (omitted = null / empty list), `preferred_country_ids` (≤5, distinct, must exist), `qualifications` (≤10 × {level (class_10\|class_12\|diploma\|bachelor\|master\|phd\|other), …}), `english_tests` (≤5 × {test_type (IELTS\|TOEFL\|PTE\|Duolingo\|Other), status? (not_taken\|booked\|taken), …}); extra keys `422`. Rules: DOB 1900..today; passport `[A-Z0-9]{5,20}` (upper-cased); percentage 0–100, CGPA 0–10, a score needs its type; year 1950..now+6; backlogs 0–99; experience 0–600 months; English score in the test's range (IELTS 0–9, TOEFL 0–120, PTE 10–90, Duolingo 10–160, Other 0–999); a taken test's date not in the future; `valid_until ≥ test_date`; budget needs a currency and min ≤ max. Unknown country `422 "Choose a listed country"`. Student row locked; audit `overseas_student_profile.update` `{fields, role}`. `200` as GET. |
+| `GET /api/v1/overseas/me/profile`, `PUT …` | Authenticated | `overseas_student` (self) | As above for the caller; any other role `403 "Only an overseas student has this profile"`. |
+| `GET /api/v1/workflows/overseas/agent/crm/students/{agent_student_id}/profile` | Authenticated | `agent` (agency scope, `load_scoped`) | `200 {profile}` without `passport_number` / `passport_expiry`; `{profile: null}` for a record with no login; out of scope `404`. |
+
+Also: the portal Students section (counselor, admin) and the admin Users directory add a `profile` column (`type: student_profile`, the
+page href, null without a login / for staff); the student portal `profile` section rows are Name, Highest qualification, Preferred
+countries, Preferred intake, English test (from the table).
+
+## 12FC. Counselor tasks (ccrm-029) — addendum, 2026-10-24
+
+`DEC-SCOPE-250`. Migration `0175_counselor_tasks`. RBAC §2.165. Code: `app/services/counselor_tasks.py`, `app/api/counselor_tasks.py`;
+the follow-up list in `app/api/telecaller_follow_ups.py`.
+
+Task object: `{id, title, due_on, priority (high|medium|low), status (open|done|cancelled), band (overdue|today|upcoming|done|cancelled|null),
+source, completed_at, link: {type (lead|student|application), id, label} | null, counselor: {id, full_name}, created_by: {id, full_name},
+created_at, updated_at, can_edit}`. `band` is null for a task done more than 7 IST days ago.
+
+| Method/Path | Auth | Roles | Behaviour |
+|---|---|---|---|
+| `GET /api/v1/counselor/tasks?band=&counselor_id=&limit=&offset=` | Authenticated | overseas `counselor` (own only; `counselor_id` ignored), `overseas_admin`, `super_admin` | `200 {items, total, limit (1–200, default 100), offset, today, counts: {overdue, today, upcoming, done}}`. Without `band`: open tasks and those done in the last 7 days, open first by due date then priority. Bad `band` `422`. |
+| `GET /api/v1/counselor/tasks/options?counselor_id=` | Authenticated | same | `200 {counselors: [{id, full_name}] (admin only: active overseas counselors), links: {leads, students, applications: [{id, label}]}}` — the chosen counselor's (a counselor: their own) open leads, csc-001 students and non-withdrawn applications, 200 each. |
+| `POST /api/v1/counselor/tasks` | Authenticated | same | Body `{title (2–200, spaces collapsed), due_on, priority? (medium), counselor_user_id?, link?}`; extra keys `422`. A counselor naming another counselor `403`; the admin must name an active overseas counselor (`422` on `counselor_user_id`); due date today..+2 years (`422` on `due_on`); link out of the assignee's scope `422` on `link`. `201` task. Not idempotent. |
+| `GET /api/v1/counselor/tasks/{id}` | Authenticated | same | `200` task; another counselor's task `404`. |
+| `PATCH /api/v1/counselor/tasks/{id}` | Authenticated | same | Partial `{title?, due_on?, priority?, status?, counselor_user_id?, link? (null clears)}`; null on the others `422`. Row locked. Unchanged = nothing recorded. Cancelled task `409`. A counselor: reassigning `403`; a field other than `status` on a task they did not create `403`. Only changed fields are re-checked (an overdue task stays editable). `200` task. |
+| `GET /api/v1/counselor/follow-ups?view=day\|overdue&day=&limit=&offset=` | Authenticated | `counselor` (leads handed to them, own division) | tel-011's day / overdue page (`counts: {day, overdue}`) over the counselor's own leads; other roles `403`. |
+
+Other roles (incl. an IT counselor on `/counselor/tasks`) `403`; anonymous `401`.
+
+## 12FD. Document status model, expiry and versions (ccrm-021) — addendum, 2026-10-24
+
+`DEC-SCOPE-251`. Migration `0176_document_status` (after ccrm-029's 0175). RBAC §2.166. Code: `app/document_checklists.py` (vocabulary, `review_refusal`),
 `app/api/workflows.py`, `app/services/document_expiry.py`, `app/worker.py` (`ccrm021-document-expiry`).
 
 | Method/Path | Auth | Roles | Behaviour |

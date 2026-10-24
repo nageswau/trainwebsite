@@ -8,7 +8,7 @@ import { detailMessage, sendJson, sendRequest } from "@/lib/apiErrors";
 import { documentStatusLabel, needsExpiry, reviewStatusesFor } from "@/lib/documentChecklists";
 import { formatCalendarDate, formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
 
-// ccrm-021 (DEC-SCOPE-249 S5): reviewer, review date, expiry, and whether this row replaced an earlier version.
+// ccrm-021 (DEC-SCOPE-251 S5): reviewer, review date, expiry, and whether this row replaced an earlier version.
 type DocumentRow = {
   id: string;
   student: string;

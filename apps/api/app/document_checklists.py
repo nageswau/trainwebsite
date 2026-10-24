@@ -12,7 +12,7 @@ STANDARD_STATUSES = ("pending", "requested", "uploaded", "under_review", "verifi
 DRAFTING_STATUSES = ("draft", "review", "approved")
 ITEM_STATUSES = STANDARD_STATUSES + DRAFTING_STATUSES
 
-# ccrm-021 (DEC-SCOPE-249): every stored `student_documents.verification_status` is one of ITEM_STATUSES (migration 0174 repeats it).
+# ccrm-021 (DEC-SCOPE-251): every stored `student_documents.verification_status` is one of ITEM_STATUSES (migration 0176 repeats it).
 # S1: `pending` is a new upload awaiting review; the review routes still accept the pre-0174 outcomes and store their new codes.
 LEGACY_STATUSES = {"rejected": "reupload_required", "changes_required": "incomplete"}
 # What a counselor / Overseas Admin may set (`expired` only by the daily job; `requested` / `uploaded` belong to ccrm-019/020).

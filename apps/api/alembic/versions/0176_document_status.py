@@ -1,10 +1,10 @@
 """ccrm-021 -- document status list, expiry and versions: student_documents CHECK + data map, expiry_date, reviewed_at, archived_at,
 version_of_id; the widened document_events CHECK.
 
-Revision ID: 0174_document_status
-Revises: 0173_checklist_templates
+Revision ID: 0176_document_status
+Revises: 0175_counselor_tasks
 
-docs/superpowers/specs/2026-10-24-ccrm-021-document-status-design.md (DEC-SCOPE-249). S1 data map: rejected -> reupload_required,
+docs/superpowers/specs/2026-10-24-ccrm-021-document-status-design.md (DEC-SCOPE-251). S1 data map: rejected -> reupload_required,
 changes_required -> incomplete, any other value outside STATUSES -> under_review; `pending` stays. reviewed_at is backfilled from the
 latest review event. 0001 builds a fresh database from the current models, which already carry the columns and constraints, so each
 step runs only when missing (0166's idiom). STATUSES / EVENTS repeat app.document_checklists.ITEM_STATUSES and
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0174_document_status"
-down_revision = "0173_checklist_templates"
+revision = "0176_document_status"
+down_revision = "0175_counselor_tasks"
 branch_labels = None
 depends_on = None
 

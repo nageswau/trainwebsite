@@ -37,6 +37,11 @@ function renderCell(column: Column, row: Row) {
     if (!row[column.key]) return null;
     return <Link className="btn small secondary" href={String(row[column.key])} aria-label={`Notes for ${String(row.student ?? row.name ?? "student")}`}>Notes</Link>;
   }
+  // ccrm-007 (DEC-SCOPE-249): the student's structured profile page (null for a student with no login, and for staff rows).
+  if (column.type === "student_profile") {
+    if (!row[column.key]) return null;
+    return <Link className="btn small secondary" href={String(row[column.key])} aria-label={`Profile for ${String(row.student ?? row.name ?? "student")}`}>Profile</Link>;
+  }
   if (column.type === "join") {
     return (
       <JoinSessionButton

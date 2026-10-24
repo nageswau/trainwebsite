@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
-// ccrm-021 (DEC-SCOPE-249) -- document status list, passport expiry and versions. Requires the stack with `python -m app.seed` applied;
+// ccrm-021 (DEC-SCOPE-251) -- document status list, passport expiry and versions. Requires the stack with `python -m app.seed` applied;
 // creates its own application and document (ovs-005's pattern), never touching the seeded student's documents.
 
 const PDF = Buffer.from("%PDF-1.4\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n");

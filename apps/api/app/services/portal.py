@@ -59,7 +59,7 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.services import application_filters, counselor_students
+from app.services import application_filters, counselor_students, student_profiles
 from app.services import application_outcomes as outcomes
 from app.services import applications as job_applications
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
@@ -600,18 +600,9 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
             ),
         )
     if section == "profile":
-        return _payload(
-            "Profile",
-            "Academic profile and study preferences.",
-            (("field", "Field"), ("value", "Value")),
-            (
-                {"field": "Name", "value": user.full_name},
-                {"field": "Education", "value": user.profile.get("education")},
-                {"field": "Preferred countries", "value": ", ".join(user.profile.get("preferred_countries", []))},
-                {"field": "Preferred intake", "value": user.profile.get("preferred_intake")},
-                {"field": "English test", "value": user.profile.get("english_test")},
-            ),
-        )
+        # ccrm-007 (DEC-SCOPE-249): from the structured profile (the old `users.profile` keys were copied into it by migration 0174).
+        rows = {"Name": user.full_name} | student_profiles.summary(await student_profiles.read(db, user.id))
+        return _payload("Profile", "Academic profile and study preferences.", (("field", "Field"), ("value", "Value")), ({"field": k, "value": v} for k, v in rows.items()))
     if section == "applications":
         # upc-003: the student's catalogue is the public one (published, active universities only).
         universities = (await db.scalars(select(University).where(University.catalogue_visible.is_(True), University.active.is_(True)).order_by(University.name).limit(200))).all()
@@ -657,7 +648,7 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
         return _payload(
             "Documents",
             "Admission and visa documents and verification results.",
-            # ccrm-021 (DEC-SCOPE-249 S5): the status as words, the review date and the expiry
+            # ccrm-021 (DEC-SCOPE-251 S5): the status as words, the review date and the expiry
             (("id", "reference"), ("type", "Document"), ("status", "Verification"), ("reviewed_on", "Reviewed on"), ("expiry_date", "Expires"), ("notes", "Notes")),
             (
                 {
@@ -1137,7 +1128,8 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 base = "/overseas/counselor" if user.role == "counselor" else "/overseas/admin"
                 for row, (_, _, s) in zip(rows, applications, strict=True):
                     row["notes"] = f"{base}/students/{s.id}/notes" if s.id else None
-                columns.append(("notes", "", "student_notes"))
+                    row["profile"] = f"{base}/students/{s.id}/profile" if s.id else None  # ccrm-007
+                columns += [("notes", "", "student_notes"), ("profile", "", "student_profile")]
             payload = _payload("Application Tracking", "Assigned applications and next actions.", columns, rows)
             if agn023:
                 payload["filters"] = await application_filters.payload_part(db, user, filters or ApplicationFilters())
@@ -1551,13 +1543,14 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                     ).all()
                 }
                 # ccrm-010 (DEC-SCOPE-241): and the student's internal notes page -- the walk-in with no application is reachable here.
-                columns += [("counselor", "EduSphere counsellor"), ("assign", "", "assign_student_counselor"), ("notes", "", "student_notes")]
+                columns += [("counselor", "EduSphere counsellor"), ("assign", "", "assign_student_counselor"), ("notes", "", "student_notes"), ("profile", "", "student_profile")]
                 for row in table:
                     if row["role"] != "overseas_student":  # staff: no counsellor, no control
-                        row |= {"counselor": None, "counselor_id": None, "assign": None, "notes": None}
+                        row |= {"counselor": None, "counselor_id": None, "assign": None, "notes": None, "profile": None}
                         continue
                     counselor_id, name = linked.get(row["id"], (None, None))
                     row |= {"counselor": name or "Not assigned", "counselor_id": str(counselor_id) if counselor_id else None, "assign": row["id"], "notes": f"/overseas/admin/students/{row['id']}/notes"}
+                    row["profile"] = f"/overseas/admin/students/{row['id']}/profile"  # ccrm-007
             return _payload(section.title(), "Role-scoped user administration.", columns, table)
         if section == "agents" and (division == "overseas" or user.role == "super_admin"):
             # AGT-001: Overseas Admin's own approve/reject queue -- the generic

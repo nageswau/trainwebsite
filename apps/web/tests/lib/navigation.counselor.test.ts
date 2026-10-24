@@ -27,10 +27,10 @@ describe("tel-017 IT counselor navigation", () => {
     expect(hrefs.indexOf("/it/admin/counselors")).toBe(hrefs.indexOf("/it/admin/trainers") + 1);
   });
 
-  // upc-030 (DEC-SCOPE-161) adds Universities (the 360 view) after Applications.
-  it("keeps the overseas counselor nav, plus Universities", () => {
+  // upc-030 (DEC-SCOPE-161) adds Universities (the 360 view) after Applications; ccrm-029 (DEC-SCOPE-250) adds Tasks after Dashboard.
+  it("keeps the overseas counselor nav, plus Tasks and Universities", () => {
     expect(PORTAL_NAV["overseas/counselor"].map((item) => item.href.split("/").pop())).toEqual(
-      ["dashboard", "students", "leads", "documents", "applications", "universities", "school-applications", "visa", "appointments", "counselor-chat", "reports", "management-tasks"], // mgmt-028 (MT14)
+      ["dashboard", "tasks", "students", "leads", "documents", "applications", "universities", "school-applications", "visa", "appointments", "counselor-chat", "reports", "management-tasks"], // mgmt-028 (MT14)
     );
   });
 
