@@ -17,6 +17,7 @@ from app.core.rbac import agent_denial_reason, is_agent_staff
 from app.models import AgentOrgMember, AuditLog, User
 from app.schemas import AgentStudentAssign, AgentStudentCounselingSave, AgentStudentRecordCreate, AgentStudentRecordUpdate
 from app.services import agent_notifications as notices
+from app.services import student_profiles
 from app.services.agent_journey import MAX_TIMELINE_OFFSET, journey, timeline_page
 from app.services.agent_orgs import lock_active_org
 from app.services.agent_students import (
@@ -111,6 +112,15 @@ async def create_student(payload: AgentStudentRecordCreate, user: User = Depends
 async def get_student(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _gate(user)
     return {"student": await record_detail(db, await load_scoped(db, user, student_id))}
+
+
+@router.get("/{student_id}/profile")
+async def get_student_profile(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-007 (DEC-SCOPE-249 P2/P3): the student's structured profile, read-only and without the passport; a record with no login has
+    none. Out of scope is the same 404 as the detail."""
+    _gate(user)
+    row = await load_scoped(db, user, student_id)
+    return {"profile": await student_profiles.read(db, row.student_id, passport=False) if row.student_id else None}
 
 
 @router.get("/{student_id}/journey")

@@ -3592,3 +3592,25 @@ fields only; no new routes.
 | `POST …/checklists` | Authenticated | `overseas_admin`, `super_admin` | Body `{name (1–120), kind, country_id, university_id?, course_level? (UG\|PG\|PhD\|Diploma\|Foundation), intake? (≤80, trimmed), gate_mode (block\|warn), notes?, items: 1–50 × {document_type (upload type list), label? (required for "Other", ≤80), required, allowed_statuses (subset of the 12; empty → the standard nine), notes?}}`; extra keys / a repeated document `422`. Unknown country, unknown university or one in another country `422`. Another active template with the same kind and scope (NULLs equal, intake case-insensitive) `409`. Audit `checklist_template.create`. `201` the template (version 1). |
 | `PUT …/checklists/{id}` | Authenticated | `overseas_admin`, `super_admin` | Full replace: the POST body plus `version` (the one loaded) and `active`. A newer version on the server `409 "Someone else saved this template…"`; scope taken `409`; row locked; items replaced; `version + 1`. Audit `checklist_template.update`. `200` the template. |
 | `GET …/checklists/resolve?application_id=&kind=` | Authenticated | `counselor` (own applications, `_assigned_application`), `overseas_admin`, `super_admin` | `200 {"template": {…full template…} \| null}` — the most specific active template of `kind` matching the application's university country, university, course level (the linked course's level; legacy "Masters"/"Bachelors" etc. map to PG/UG) and intake. Weights: university 4, level 2, intake 1. Unknown application `404`; out of scope `403`. |
+
+## 12FB. Structured overseas student profile (ccrm-007) — addendum, 2026-10-24
+
+`DEC-SCOPE-249`. Migration `0174_student_profiles`. RBAC §2.164. Code: `app/services/student_profiles.py`, `app/api/student_profiles.py`,
+agency read in `app/api/agent_students.py`.
+
+Profile object: `{exists, date_of_birth, nationality, city, state, passport_number, passport_expiry, work_experience_months,
+work_experience_details, preferred_countries: [{id, name}], preferred_course, preferred_level, preferred_intake, study_mode, budget_min,
+budget_max, budget_currency, qualifications: [{level, qualification_name, institution, board_university, year_completed, score_type, score,
+backlogs}], english_tests: [{test_type, status, overall_score, test_date, valid_until, remarks, expired}], updated_at, updated_by_name}`.
+Decimals are strings as stored ("8.20"). An unsaved profile reads as empty with `exists: false`.
+
+| Method/Path | Auth | Roles | Behaviour |
+|---|---|---|---|
+| `GET /api/v1/counselor/students/{id}/profile` | Authenticated | overseas `counselor` (csc-001 scope), `overseas_admin` (any overseas student) | `200 {student: {id, full_name, student_code}, profile}`. Unknown, out of scope or not an `overseas_student` `404`; any other role (incl. an IT counselor) `403`. |
+| `PUT /api/v1/counselor/students/{id}/profile` | Authenticated | same | Full replace. Body: every profile field (omitted = null / empty list), `preferred_country_ids` (≤5, distinct, must exist), `qualifications` (≤10 × {level (class_10\|class_12\|diploma\|bachelor\|master\|phd\|other), …}), `english_tests` (≤5 × {test_type (IELTS\|TOEFL\|PTE\|Duolingo\|Other), status? (not_taken\|booked\|taken), …}); extra keys `422`. Rules: DOB 1900..today; passport `[A-Z0-9]{5,20}` (upper-cased); percentage 0–100, CGPA 0–10, a score needs its type; year 1950..now+6; backlogs 0–99; experience 0–600 months; English score in the test's range (IELTS 0–9, TOEFL 0–120, PTE 10–90, Duolingo 10–160, Other 0–999); a taken test's date not in the future; `valid_until ≥ test_date`; budget needs a currency and min ≤ max. Unknown country `422 "Choose a listed country"`. Student row locked; audit `overseas_student_profile.update` `{fields, role}`. `200` as GET. |
+| `GET /api/v1/overseas/me/profile`, `PUT …` | Authenticated | `overseas_student` (self) | As above for the caller; any other role `403 "Only an overseas student has this profile"`. |
+| `GET /api/v1/workflows/overseas/agent/crm/students/{agent_student_id}/profile` | Authenticated | `agent` (agency scope, `load_scoped`) | `200 {profile}` without `passport_number` / `passport_expiry`; `{profile: null}` for a record with no login; out of scope `404`. |
+
+Also: the portal Students section (counselor, admin) and the admin Users directory add a `profile` column (`type: student_profile`, the
+page href, null without a login / for staff); the student portal `profile` section rows are Name, Highest qualification, Preferred
+countries, Preferred intake, English test (from the table).

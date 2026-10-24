@@ -268,6 +268,9 @@ asked one at a time when the item is picked up).
 - **Regression:** student portal profile page, `profile` JSON readers (grep all).
 - **Complexity:** large. **Risk:** medium.
 - **Open questions:** which fields the student may edit; agency-student master record.
+- **Status (2026-10-24):** built on `worktree-ccrm-007` — `DEC-SCOPE-249` (P1 the student edits every field; P2 profile editable,
+  agency reads it without the passport; P3–P6 defaults), migration `0174_student_profiles`, API §12FB, RBAC §2.164; pages
+  `/overseas/{counselor|admin}/students/[id]/profile` and the student Profile section. Design `docs/superpowers/specs/2026-10-24-ccrm-007-structured-student-profile-design.md`.
 
 ### `ccrm-008` — Convert lead to student (one click, prefilled)
 

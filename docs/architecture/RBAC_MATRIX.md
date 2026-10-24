@@ -2639,3 +2639,16 @@ inside the existing role scope (a counselor searching another counselor's code g
 - Backlog roles: overseas_admin write, counselor read. Pinned by `test_ccrm_018_checklists.py::test_counselor_reads_but_cannot_write`,
   `::test_other_roles_and_signed_out_are_refused`, `::test_resolve_is_scoped_to_the_counselors_applications`. Web page
   `/overseas/admin/checklists` for Overseas and Super Admins (others see "Access unavailable").
+
+### 2.164 Structured overseas student profile *(added 2026-10-24 — `DEC-SCOPE-249`, ccrm-007)*
+
+| Route | `counselor` (overseas) | `overseas_admin` | `overseas_student` | `agent` | IT counselor, `university_rep`, `super_admin`, others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET/PUT /counselor/students/{id}/profile` | ✅ csc-001 scope (`404` otherwise) | ✅ any overseas student | `403` | `403` | `403` | `401` |
+| `GET/PUT /overseas/me/profile` | `403` | `403` | ✅ self | `403` | `403` | `401` |
+| `GET /workflows/overseas/agent/crm/students/{id}/profile` | `403` | `403` | `403` | ✅ read, agency scope, no passport | `403` | `401` |
+
+- P1: the student edits every field; P3: the agency never receives the passport. Pinned by
+  `test_ccrm_007_student_profiles.py::test_other_roles_cannot_use_the_counselor_route`, `::test_only_an_overseas_student_has_a_my_profile`,
+  `::test_unknown_and_non_overseas_students_are_404`, `::test_the_agency_reads_the_profile_without_the_passport`. Web pages
+  `/overseas/{counselor|admin}/students/[id]/profile`; the student's Profile section.

@@ -84,6 +84,8 @@ export default function CounselorWalkInStudentRow({ student, onChanged }: { stud
         <span className="badge">{student.setup ? SETUP_LABEL[student.setup] : "Active"}</span>
         {/* ccrm-010 (DEC-SCOPE-241): the student's internal notes. */}
         <Link href={`/overseas/counselor/students/${encodeURIComponent(student.id)}/notes`} aria-label={`Notes for ${student.full_name}`}>Notes</Link>
+        {/* ccrm-007 (DEC-SCOPE-249): the student's structured profile. */}
+        <Link href={`/overseas/counselor/students/${encodeURIComponent(student.id)}/profile`} aria-label={`Profile for ${student.full_name}`}>Profile</Link>
       </div>
       {editing && (
         <form className="form" onSubmit={save} onKeyDown={(e) => e.key === "Escape" && close()} aria-label={`Edit ${student.full_name}`} style={{ marginTop: 8 }}>
