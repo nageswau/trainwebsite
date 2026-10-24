@@ -590,6 +590,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Regression:** AGN-011 deposit constraints and payments.
 - **Complexity:** medium. **Risk:** high (payments-adjacent).
 - **Open questions:** may a student accept more than one offer at once; currency handling for non-INR deposits.
+- **Status:** built on `feature/ccrm-025` — `DEC-SCOPE-255`, migration `0178_offer_decisions_deposits`, API §12FH, RBAC §2.170. Answered:
+  several accepted offers allowed with a warning (D1); a parallel `application_deposit_records` table in any currency, AGN-011 untouched and
+  shown read-only (D2); a daily job expires undecided offers past their deadline (D3).
 
 ---
 

@@ -2707,3 +2707,14 @@ inside the existing role scope (a counselor searching another counselor's code g
 - The refusal reason never appears in audit metadata (field names only), logs, notifications, status history or the outcome event.
 - Pinned by `test_ccrm_026_visa_lifecycle.py::test_scope_and_roles`, `::test_refused_needs_a_reason_writes_the_outcome_and_the_reason_stays_restricted`,
   `::test_a_decided_case_is_locked_and_only_the_admin_corrects_it`, `::test_the_counselor_records_the_decision_on_an_agency_case_and_the_agency_is_told`.
+
+### 2.170 Offer decision and deposit record *(added 2026-10-24 — `DEC-SCOPE-255`, ccrm-025)*
+
+| Route | `overseas_admin` | `counselor` (overseas) | `agent` | `overseas_student` | Others | Anonymous |
+|---|---|---|---|---|---|---|
+| `POST …/offers/{offer_id}/decision` | ✅ any application | ✅ own applications, direct and agency (`403` otherwise) | `403` | `403` | `403` | `401` |
+| `GET …/deposit` | ✅ (+ receipts) | ✅ own applications (+ receipts) | ✅ own agency's applications, no receipts list | ✅ own applications, no receipts list | `403` | `401` |
+| `PUT …/deposit`, `POST …/deposit-receipts` | ✅ any | ✅ own applications | `403` (keeps AGN-011 `PUT …/agent/crm/applications/{id}/deposit`) | `403` | `403` | `401` |
+
+- Audit metadata carries the decision / payment status only, never amounts, reasons or file keys.
+- Pinned by `test_ccrm_025_decisions.py::test_scope_and_on_hold_refuse_a_decision`, `test_ccrm_025_deposits.py::test_scope_readers_see_no_receipts_and_cannot_write`.

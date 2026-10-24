@@ -29,13 +29,58 @@ export type ApplicationOffer = {
   recorded_at: string;
   closed_by: string | null;
   closed_at: string | null;
+  decision: OfferDecision;
+  decision_label: string;
+  decision_date: string | null;
+  decided_by: string | null;
 };
 export type OffersPayload = { offers: ApplicationOffer[]; offer_letters: OfferDocument[] };
+
+// ccrm-025 (DEC-SCOPE-255): the student's decision on the current offer, and the counselor's manual deposit record (D2).
+export type OfferDecision = "considering" | "accepted" | "declined" | "expired";
+export type OtherAccepted = { id: string; application_code: string; university: string };
+export type DepositStatus = "not_required" | "pending" | "paid_to_university" | "paid_via_edusphere";
+export const DEPOSIT_STATUS_LABELS: Record<DepositStatus, string> = {
+  not_required: "Not required",
+  pending: "Pending",
+  paid_to_university: "Paid directly to the university",
+  paid_via_edusphere: "Paid via EduSphere",
+};
+export type DepositRecord = {
+  id: string;
+  required: boolean;
+  amount: string | null;
+  currency: string | null;
+  due_date: string | null;
+  payment_status: DepositStatus;
+  payment_status_label: string;
+  paid_on: string | null;
+  receipt: OfferDocument | null;
+  updated_by: string | null;
+  updated_at: string;
+};
+export type AgencyDeposit = { status: string; amount: string | null; currency: string; due_date: string | null };
+export type DepositPayload = {
+  record: DepositRecord | null;
+  agency_deposit: AgencyDeposit | null;
+  prefill: { amount: string; currency: string | null; due_date: string | null } | null;
+  receipts: OfferDocument[];
+};
+
+/** D1: the success message names the student's other accepted offers -- a warning, never a block. */
+export function acceptedMessage(others: OtherAccepted[]): string {
+  if (others.length === 0) return "Offer accepted.";
+  const list = others.map((o) => `${o.application_code} (${o.university})`).join(", ");
+  return `Offer accepted. Note: this student has also accepted ${others.length === 1 ? "an offer" : "offers"} on ${list}.`;
+}
 
 const APPLICATION_URL = (id: string) => `/api/v1/workflows/overseas/applications/${id}`;
 export const offersUrl = (id: string) => `${APPLICATION_URL(id)}/offers`;
 export const offerLettersUrl = (id: string) => `${APPLICATION_URL(id)}/offer-letters`;
 export const withdrawUrl = (id: string, offerId: string) => `${offersUrl(id)}/${offerId}/withdraw`;
+export const decisionUrl = (id: string, offerId: string) => `${offersUrl(id)}/${offerId}/decision`;
+export const depositUrl = (id: string) => `${APPLICATION_URL(id)}/deposit`;
+export const depositReceiptsUrl = (id: string) => `${APPLICATION_URL(id)}/deposit-receipts`;
 export const documentDownloadUrl = (documentId: string) => `/api/v1/workflows/overseas/documents/${documentId}/download`;
 
 export function money(currency: string | null, amount: string | null): string | null {

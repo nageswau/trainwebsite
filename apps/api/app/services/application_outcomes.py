@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.application_outcome import CLEARED, TERMINAL, label
 from app.application_sub_status import fit as fit_sub_status
 from app.models import ApplicationOutcome, ApplicationStatusHistory, OverseasApplication, StudentDocument, User
+from app.services import application_offers as offers
 from app.services.agent_applications import OFFER_STAGES_ON, WITHDRAWN, WITHDRAWN_REFUSED
 
 ON_HOLD = "This application is on hold -- resume it before changing its stage"
@@ -116,6 +117,8 @@ async def record(db: AsyncSession, user: User, app: OverseasApplication, body) -
             raise HTTPException(422, OFFER_NEEDED)
         event.another_offer_preferred = body.another_offer_preferred
     before = (app.status, app.sub_status)
+    if kind == "offer_declined" and (current := await offers.active_offer(db, app)) is not None:
+        offers.decline(user, app, current, event.outcome_date)  # ccrm-025: one path for a decline, from this route or the offer's decision route
     app.outcome = kind
     if kind == "withdrawn":
         app.status = WITHDRAWN

@@ -157,9 +157,10 @@ async def sub_status_changed(db: AsyncSession, application: OverseasApplication,
     await notify(db, users, "Application sub-status changed", body, url)
 
 
-async def _other_side(db: AsyncSession, application: OverseasApplication, actor: User) -> tuple[list[User], str]:
-    """CC5: the EduSphere counselor when the agency acted, else the AGN-017 recipients -- and the page each side opens."""
-    if actor.role == "agent":
+async def _other_side(db: AsyncSession, application: OverseasApplication, actor: User | None) -> tuple[list[User], str]:
+    """CC5: the EduSphere counselor when the agency acted, else (EduSphere staff or a job: no actor) the AGN-017 recipients -- and the
+    page each side opens."""
+    if actor is not None and actor.role == "agent":
         counselor = await db.get(User, application.counselor_id) if application.counselor_id else None
         return ([counselor] if counselor is not None and counselor.active else []), "/overseas/counselor/applications"
     record = await db.get(AgentStudent, application.agent_student_id)
@@ -175,9 +176,10 @@ async def outcome_changed(db: AsyncSession, application: OverseasApplication, ac
     await notify(db, users, "Application outcome changed", f"{university}: {text}.", url)
 
 
-async def offer_changed(db: AsyncSession, application: OverseasApplication, actor: User, title: str) -> None:
+async def offer_changed(db: AsyncSession, application: OverseasApplication, actor: User | None, title: str) -> None:
     """ccrm-023 (CC5): an offer recorded, withdrawn or expired on an agency application tells the other side. Replaces the stage-only
-    notice for that write, so nobody gets two notices for one change."""
+    notice for that write, so nobody gets two notices for one change. ccrm-025: also a decision or a deposit record; no actor = the
+    expiry job (the agency is told)."""
     if application.agent_student_id is None:
         return
     users, url = await _other_side(db, application, actor)
