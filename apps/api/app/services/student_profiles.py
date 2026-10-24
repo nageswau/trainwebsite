@@ -94,8 +94,17 @@ def _as_saved(profile, qualifications, tests) -> dict:
 
 
 async def save(db: AsyncSession, actor: User, student: User, payload: StudentProfileSave) -> dict:
-    """Commits. The student's row is locked first, so two first saves cannot both insert the profile (last write wins after that)."""
-    actor_id, student_id = actor.id, student.id
+    """Commits."""
+    profile = await write(db, actor, student.id, payload)
+    await db.commit()
+    await db.refresh(profile)
+    return await read(db, profile.student_user_id)
+
+
+async def write(db: AsyncSession, actor: User, student_id: UUID, payload: StudentProfileSave) -> OverseasStudentProfile:
+    """No commit (ccrm-008 writes the copied lead data inside its conversion). The student's row is locked first, so two first saves
+    cannot both insert the profile (last write wins after that)."""
+    actor_id = actor.id
     await db.execute(select(User.id).where(User.id == student_id).with_for_update())
     if payload.preferred_country_ids:
         found = await db.scalar(select(func.count()).select_from(Country).where(Country.id.in_(payload.preferred_country_ids)))
@@ -118,9 +127,7 @@ async def save(db: AsyncSession, actor: User, student: User, payload: StudentPro
     db.add_all(OverseasStudentQualification(student_user_id=student_id, position=i, **q) for i, q in enumerate(after["qualifications"]))
     db.add_all(OverseasStudentEnglishTest(student_user_id=student_id, position=i, **t) for i, t in enumerate(after["english_tests"]))
     db.add(AuditLog(user_id=actor_id, action=UPDATED, entity_type="user", entity_id=str(student_id), metadata_json={"fields": changed, "role": actor.role}))
-    await db.commit()
-    await db.refresh(profile)
-    return await read(db, student_id)
+    return profile
 
 
 def summary(profile: dict) -> dict:

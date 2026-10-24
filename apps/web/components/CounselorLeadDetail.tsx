@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useCallback, useEffect, useId, useMemo, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { LeadStageControl } from "@/components/AdminLeadStage";
 import BdmConfirm from "@/components/BdmConfirm";
@@ -10,6 +10,7 @@ import LocalTime from "@/components/LocalTime";
 import LeadMilestones from "@/components/LeadMilestones";
 import LeadNotes from "@/components/LeadNotes";
 import LeadTimeline from "@/components/LeadTimeline";
+import { staffFailure } from "@/lib/agentStaff";
 import { isRequestBody, sendJson, sendRequest, type SendOutcome } from "@/lib/apiErrors";
 import { formatCalendarDate } from "@/lib/formatDate";
 import { counselorLeadUrl, counselorMoveStage, type CounselorLeadDetail as Detail, type StudentSuggestion } from "@/lib/leadHandover";
@@ -220,6 +221,58 @@ function LinkStudentPanel({ lead, onLinked }: { lead: Detail; onLinked: (outcome
   );
 }
 
+type Converted = { id: string; full_name: string; email: string; mailed: boolean };
+
+/** ccrm-008 (DEC-SCOPE-252): one step from lead to a new overseas student -- the csc-002 account prefilled from the lead, the link and the
+ *  copy of the lead's details into the profile. The entry is kept on any failure; a 409 for an existing student points at the link list. */
+function ConvertLeadForm({ lead, onConverted }: { lead: Detail; onConverted: (lead: Detail, student: Converted) => void }) {
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  const [entry, setEntry] = useState({ full_name: lead.name, email: lead.email ?? "", phone: lead.phone ?? "" });
+  const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
+  const [notice, setNotice] = useState<Notice>(null);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (inFlight.current) return;
+    const full_name = entry.full_name.trim(), email = entry.email.trim(), phone = entry.phone.trim();
+    if (!full_name || !email) return setNotice({ text: "Add the student's name and email.", failed: true });
+    inFlight.current = true;
+    setBusy(true);
+    const outcome = await sendJson(counselorLeadUrl(lead.id, "/convert"), "POST", { full_name, email, phone: phone || null });
+    inFlight.current = false;
+    setBusy(false);
+    if (!outcome.ok) return setNotice({ text: staffFailure(outcome, true), failed: true });
+    const { student, lead: next, email_status } = outcome.data as { student?: Converted; lead?: unknown; email_status?: string };
+    if (!student || !isRequestBody(next)) return setNotice({ text: "Unable to convert the lead.", failed: true });
+    onConverted(next as unknown as Detail, { ...student, mailed: email_status === "sent" });
+  }
+
+  const field = (name: keyof typeof entry, label: string, type: string, max: number) => (
+    <div className="field">
+      <label htmlFor={`${id}-${name}`}>{label}</label>
+      <input id={`${id}-${name}`} type={type} maxLength={max} autoComplete="off" aria-required={name !== "phone"} value={entry[name]} disabled={busy}
+        onChange={(e) => { setEntry((v) => ({ ...v, [name]: e.target.value })); setNotice(null); }} />
+    </div>
+  );
+
+  if (!open) return <div><button type="button" className="btn small" onClick={() => setOpen(true)}>Convert to student</button></div>;
+  return (
+    <form onSubmit={submit} noValidate aria-label="Convert to student" style={{ display: "grid", gap: 8, maxWidth: "32rem" }}>
+      {field("full_name", "Full name", "text", 160)}
+      {field("email", "Email", "email", 255)}
+      {field("phone", "Phone (optional)", "tel", 40)}
+      <p className="muted" style={{ margin: 0, fontSize: 13 }}>Creates the student&apos;s account, copies this lead&apos;s details into their profile, emails a set-password link and moves the lead to Application/Enrollment.</p>
+      <NoticeLine notice={notice} />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <button type="submit" className="btn small" disabled={busy}>{busy ? "Creating…" : "Create student account"}</button>
+        <button type="button" className="btn secondary small" disabled={busy} onClick={() => { setOpen(false); setNotice(null); }}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
 /** tel-018 (spec §4): a lead handed to this counselor -- its details (read only), the student link (T20), the read-only milestones
  *  (T4), the return (T19) and the activity. ccrm-003: the next action, the CC8 stage moves and the follow-ups. `permissions` from the
  *  API decide which actions show; the API decides every rule. */
@@ -228,6 +281,7 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
   const [returned, setReturned] = useState(false);
   const [activityVersion, setActivityVersion] = useState(0); // tel-015: a bump re-reads the timeline
   const [unlinking, setUnlinking] = useState(false);
+  const [converted, setConverted] = useState<Converted | null>(null); // ccrm-008: the account just created, for the mail outcome line
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [leadNotice, setLeadNotice] = useState<Notice>(null);
@@ -312,9 +366,24 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
                   <div><button type="button" className="btn secondary small" onClick={() => { setUnlinking(true); setNotice(null); }}>Unlink student</button></div>
                 ))}
                 {lead.status === "converted" && <p className="muted" style={{ margin: 0, fontSize: 13 }}>The student has enrolled, so the lead is converted. Only an admin can unlink it.</p>}
+                {converted && converted.id === lead.converted_user.id && (
+                  <p className="form-message" role="status" style={{ margin: 0, fontSize: 13, overflowWrap: "anywhere" }}>
+                    {converted.mailed
+                      ? `Student account created for ${converted.full_name}. A set-password link was emailed to ${converted.email}.`
+                      : `Student account created for ${converted.full_name}, but the set-password email was not delivered. Re-send it from My students.`}{" "}
+                    <Link href={`/overseas/counselor/students/${encodeURIComponent(converted.id)}/profile`}>Open the student&apos;s profile</Link>
+                  </p>
+                )}
               </div>
             ) : lead.permissions.link ? (
-              <LinkStudentPanel lead={lead} onLinked={(outcome) => applied(outcome, "Student linked.")} />
+              <div style={{ display: "grid", gap: 10, marginTop: 6 }}>
+                {lead.permissions.convert ? (
+                  <ConvertLeadForm lead={lead} onConverted={(next, student) => { setLead(next); setConverted(student); setNotice(null); reloadActivity(); }} />
+                ) : lead.division === "overseas" && (
+                  <p className="muted" style={{ margin: 0, fontSize: 13 }}>Move the lead to Qualified to convert it to a new student.</p>
+                )}
+                <LinkStudentPanel lead={lead} onLinked={(outcome) => applied(outcome, "Student linked.")} />
+              </div>
             ) : (
               <p className="muted" style={{ fontSize: 13 }}>No student account is linked.</p>
             )}

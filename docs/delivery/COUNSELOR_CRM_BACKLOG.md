@@ -294,6 +294,15 @@ asked one at a time when the item is picked up).
 - **Regression:** tel-018 conversion sweep, tel-021 conversion credit (csc-004 open item).
 - **Complexity:** medium. **Risk:** high (account creation).
 - **Open questions:** minimum lead stage to convert; whether the lead has no email (phone-only) blocks conversion.
+- **Status (2026-10-24):** built on `worktree-ccrm-008` as `DEC-SCOPE-252`, API §12FE, RBAC §2.167, with no migration. Recommended
+  defaults (NEEDS_CONFIRMATION):
+  - K1: Qualified or later, else `422`.
+  - K2: a phone-only lead converts with an email the counselor types.
+  - K3: city, state, qualification, course, intake, level and work experience are copied; free text stays on the lead.
+  - K4: a duplicate is `409` with the link offer.
+  - K6: "Create first application" is deferred.
+
+  Design: `docs/superpowers/specs/2026-10-24-ccrm-008-convert-lead-to-student-design.md`.
 
 ### `ccrm-009` — Counselor student 360 page
 
