@@ -9239,3 +9239,23 @@ The set-password link is mailed after the commit; its token is never returned. B
 The detail adds `permissions.convert`.
 **Numbering:** no migration; API §12FE; RBAC §2.167.
 - **Feature ID authorized:** `ccrm-008`. **Status:** built on `worktree-ccrm-008`.
+
+### DEC-SCOPE-253 — Counselor student 360 page (`ccrm-009`)
+
+**Status:** PROPOSED — V1 and V2 answered by the owner in session 2026-10-24 (`EXPLICIT_APPROVAL` for V1–V2 only); B1–B6 are recommended
+defaults taken under the owner's standing instruction ("proceed with recommended answers") and are `NEEDS_CONFIRMATION`.
+**Evidence:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-009` (source PDF §5, `UNVERIFIED`); design
+`docs/superpowers/specs/2026-10-24-ccrm-009-counselor-student-360-design.md`.
+**Decision:** `/overseas/{counselor|admin}/students/{id}` with tabs Overview, Academic, Preferences, English, Documents, Applications,
+Activities, History; read access = ccrm-007's gate (overseas counselor with the student in csc-001 scope, or the Overseas Admin; another
+student `404`, another role `403`). V1 inside the page the counselor sees **all** the student's applications, current documents and
+history, read-only, each application marked `mine`; writes and downloads keep their own routes' rules and a download is offered only
+where the download route allows it. V2 Academic = personal details + academic history + work experience, Preferences = study
+preferences, English = English tests; each tab saves the whole ccrm-007 profile. B1 Finance (ccrm-039), journey stage (ccrm-017) and
+messages are not shown until built. B2 Activities = ccrm-010 notes, appointments, leads linked to the student (link to the lead page only
+for its owner). B3 History = status history of all the student's applications (staff view) + audit rows about the student (profile save,
+account edit/creation, link resend, counselor assignment) + document upload/review/replace; latest 200, field names only. B4 link tabs
+(`?tab=`), only the selected tab's data is read. B5 the Students section, the walk-in list and the Admin Users directory gain an **Open**
+link; the `/notes` and `/profile` pages stay. B6 Overview = contact, account status, linked counselor, counts, open applications' next actions.
+**Numbering:** no migration; API §12FF; RBAC §2.168.
+- **Feature ID authorized:** `ccrm-009`. **Status:** built on `worktree-ccrm-009`.

@@ -32,6 +32,11 @@ function renderCell(column: Column, row: Row) {
     if (!row.assign) return null;
     return <AssignCounselorButton applicationId={String(row.id)} currentId={(row.counselor_id as string | null) ?? null} url={`/api/v1/admin/users/${encodeURIComponent(String(row.id))}/counselor`} />;
   }
+  // ccrm-009 (DEC-SCOPE-253): the student 360 page (null for a student with no login, and for staff rows).
+  if (column.type === "student_360") {
+    if (!row[column.key]) return null;
+    return <Link className="btn small" href={String(row[column.key])} aria-label={`Open ${String(row.student ?? row.name ?? "student")}`}>Open</Link>;
+  }
   // ccrm-010 (DEC-SCOPE-241): the student's internal notes page (the server sends the href; a student with no login gets null).
   if (column.type === "student_notes") {
     if (!row[column.key]) return null;

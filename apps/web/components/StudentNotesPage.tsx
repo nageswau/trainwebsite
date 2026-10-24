@@ -15,7 +15,7 @@ const PORTALS = {
 } as const;
 
 /** ccrm-010 (DEC-SCOPE-241): /overseas/{counselor|admin}/students/[id]/notes. The API is the gate and the scope -- a student outside the
- *  counselor's caseload is a 404, another role a 403 card. ccrm-009's student 360 will host the same panel in its Activities tab. */
+ *  counselor's caseload is a 404, another role a 403 card. ccrm-009's student 360 hosts the same panel in its Activities tab. */
 export default async function StudentNotesPage({ portal, id }: { portal: keyof typeof PORTALS; id: string }) {
   const { nav, roleLabel, back } = PORTALS[portal];
   let user: User;
