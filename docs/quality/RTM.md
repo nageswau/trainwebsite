@@ -1005,3 +1005,14 @@ half.
 | `ccrm-026-AC08` | Visa template pre-fills the checklist | `::test_a_visa_template_prefills_the_checklist` |
 | `ccrm-026-AC09` | Student sees status label and next steps | `::test_refused_needs_a_reason_writes_the_outcome_and_the_reason_stays_restricted`; e2e student step |
 | `ccrm-026-AC10` | AGN-012 routes and legacy PATCH keep their contracts; agency moves keep the status in step (VC5) | `test_agn_012_*.py`, `test_agn_023_*.py`, `::test_the_legacy_patch_keeps_its_contract_and_the_status_follows_the_stage`, `::test_an_agency_stage_move_and_decision_keep_the_status_in_step_and_tell_the_counselor`; `apps/api/tests/test_ccrm_026_migration.py` |
+
+| `ccrm-013` | Requirement: §6 application field table + nehn-037 part 3 → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-013` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-256` → design `docs/superpowers/specs/2026-10-24-ccrm-013-application-fields-design.md`; `API_CONTRACT.md` §12FI, `RBAC_MATRIX.md` §2.171, `DATA_MODEL.md` (0179) | F1–F9 defaults `NEEDS_CONFIRMATION` |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-013-AC01` | Counselor edits the new fields and the three dates; they round-trip; null clears | `apps/api/tests/test_ccrm_013_application_fields.py::test_every_field_round_trips_and_null_clears`; `apps/web/tests/components/ApplicationDetailsPanel.test.tsx`; `apps/web/tests/e2e/ccrm-013-application-details.spec.ts` |
+| `ccrm-013-AC02` | Currency required with a fee (nehn-037) | `::test_field_rules`, `::test_a_fee_already_set_keeps_its_currency` |
+| `ccrm-013-AC03` | Scholarship update shows on the student's page (nehn-037 AC2) | `::test_the_student_sees_the_scholarship_and_is_told_only_when_it_changes` |
+| `ccrm-013-AC04` | Counselor edits agency applications; agency notified (CC4/CC5); audit keeps author + before/after | `::test_the_counselor_edits_an_agency_application_and_the_agency_is_told`, `::test_the_audit_keeps_before_and_after_with_the_author` |
+| `ccrm-013-AC05` | Scope: other counselor/agent/student refused; admin allowed; portal URL never with credentials | `::test_scope_other_counselor_agent_and_student_are_refused`, `::test_field_rules` |
+| `ccrm-013-AC06` | Regression: agency forms (date validators), AGN-017 deadlines | `::test_the_agency_form_still_takes_a_submission_date`; `test_agn_008_*.py`, `test_agn_017_*.py`; `apps/api/tests/test_ccrm_013_migration.py` |

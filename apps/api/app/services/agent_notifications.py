@@ -195,6 +195,16 @@ async def visa_changed(db: AsyncSession, application: OverseasApplication, actor
     await notify(db, users, "Visa case updated", f"{university}: {text}.", url)
 
 
+async def details_changed(db: AsyncSession, application: OverseasApplication, actor: User) -> None:
+    """ccrm-013 (DEC-SCOPE-256, CC5): EduSphere edited an agency application's details or dates -- the AGN-017 recipients are told. No
+    values in the body (fees, contacts); the agency detail shows them."""
+    if application.agent_student_id is None:
+        return
+    users, url = await _other_side(db, application, actor)
+    university = clean_text(await db.scalar(select(University.name).where(University.id == application.university_id)))
+    await notify(db, users, "Application details updated", f"{university}: application details or dates were updated by EduSphere.", url)
+
+
 async def counselor_assigned(db: AsyncSession, application: OverseasApplication, actor: User, *, changed: bool) -> None:
     """AGN-023 (DEC-SCOPE-090 H5): an EduSphere counselor was assigned to, or changed on, an agency application. AGN-017 recipients;
     no person names in the body (the counselor's name is on the application detail, H7)."""

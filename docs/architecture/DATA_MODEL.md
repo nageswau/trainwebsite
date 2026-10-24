@@ -2185,3 +2185,11 @@ codes back (new-only codes → `pending`, new-only events deleted).
 (FK `student_documents`, SET NULL), `refusal_reason` (Text, restricted), `next_steps` (Text). The submission date is `visa_application_date`
 and the reference `tracking_reference`. `status` (stage) and `decision` are derived from `visa_status` on every write (spec §3).
 Backfill: `decision` if set, else the stage's first status; `decision_date` from `decided_at` (IST). Downgrade drops the columns.
+
+## Application details (`ccrm-013`, `DEC-SCOPE-256`; migration `0179_application_fields`, after ccrm-026's `0177_visa_lifecycle`)
+
+`overseas_applications` gains, all nullable: `faculty` (140), `campus` (140), `course_start_date`, `university_portal_url` (500, link only),
+`university_contact_name` (140), `university_contact_email` (254), `tuition_fee` Numeric(12,2), `currency` (3), `scholarship_status` (20),
+`scholarship_amount` Numeric(12,2), `documents_completed_on`, `decision_due_on`. CHECKs (`models.APPLICATION_FIELD_CHECKS`):
+`ck_overseas_applications_currency`, `_scholarship_status`, `_money` (≥ 0), `_scholarship_awarded` (amount only when awarded). No backfill;
+downgrade drops the CHECKs and columns.

@@ -396,6 +396,8 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Regression:** agency application forms, AGN-017 deadlines.
 - **Complexity:** medium. **Risk:** low.
 - **Open questions:** currency list (INR, GBP, USD, EUR, CAD, AUD …?).
+- **Status (2026-10-24):** built on `feature/ccrm-013` — `DEC-SCOPE-256` (F1–F9 recommended defaults, `NEEDS_CONFIRMATION`), migration
+  `0179_application_fields`, API §12FI, RBAC §2.171. Design `docs/superpowers/specs/2026-10-24-ccrm-013-application-fields-design.md`.
 
 ### `ccrm-014` — Application sub-status (CC1)
 

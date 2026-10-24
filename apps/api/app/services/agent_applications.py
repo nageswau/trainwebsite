@@ -16,6 +16,7 @@ from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.application_fields import NEW_FIELDS, scholarship_label
 from app.application_outcome import TERMINAL as TERMINAL_OUTCOMES
 from app.application_outcome import label as outcome_label
 from app.application_sub_status import label as sub_status_label
@@ -216,6 +217,9 @@ async def detail(db: AsyncSession, user: User, app: OverseasApplication, *, reco
         # AGN-023 (DEC-SCOPE-090 H7): the EduSphere counselor's name only -- never their email or phone.
         "counselor_name": await db.scalar(select(User.full_name).where(User.id == found.counselor_id)) if found.counselor_id else None,
         "visa": await visa_block(db, found.id),  # AGN-012 (DEC-SCOPE-057): agency-only, single-application detail only
+        # ccrm-013 (DEC-SCOPE-256, F9): EduSphere's university-side fields, read-only for the agency (its edit form is unchanged).
+        **{name: getattr(found, name) for name in NEW_FIELDS},
+        "scholarship_label": scholarship_label(found.scholarship_status),
         "history": await status_history(db, found.id, staff=True),
         **await _offer_parts(db, user, found),
         # AGN-011 (DEC-SCOPE-058): the deposit, and whether online payment can be opened at all (AC6).

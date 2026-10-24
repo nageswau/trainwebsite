@@ -9278,3 +9278,21 @@ application of every change; D7 on hold refuses a status change, not a field edi
 and expected decision dates, decision and next steps. The admin correction is API-only until an admin visa screen exists.
 **Numbering:** migration `0177_visa_lifecycle`; API §12FG; RBAC §2.169.
 - **Feature ID authorized:** `ccrm-026`. **Status:** built on `feature/ccrm-026`.
+
+### DEC-SCOPE-256 — Application fields and counselor-editable dates (`ccrm-013`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-013` (source PDF §6 application field table, `UNVERIFIED`; absorbs `nehn-037`
+part 3 per CC7; CC4, CC5); design `docs/superpowers/specs/2026-10-24-ccrm-013-application-fields-design.md`.
+**Recommended defaults (`NEEDS_CONFIRMATION` — the owner asked to proceed with recommended answers):** F1 currencies INR, GBP, USD, EUR,
+CAD, AUD, NZD, SGD, AED, one per application for fee and scholarship amount; F2 a dedicated `GET`/`PATCH …/applications/{id}/details`
+(counselor on direct and agency applications, Overseas Admin) — the generic PATCH is unchanged and still refuses a counselor on an agency
+application (`DEC-SCOPE-090` H4); F3 scholarship none/applied/awarded/declined, amount only when awarded, leaving awarded clears it; F4
+currency required with a fee or amount, checked on the merged row; F5 dates within 2000–2100, submitted/documents-completed not in the
+future, `documents_completed_on` editable until ccrm-019 also sets it; F6 portal link http(s) only, never with credentials; F7 details stay
+editable on a closed application, an archived agency record is `409`; F8 audit row with before/after per field, the agency (AGN-017
+recipients) told of every edit without values, the student told only of a scholarship change; F9 the student sees course start date and
+scholarship, the agency sees all fields read-only (its edit form unchanged). The Overseas Admin edits through the API (no admin card yet).
+**Also fixed:** ccrm-007 had redefined `schemas._not_future` with another signature, breaking the AGN-008/010/011 agency date validators
+(TypeError → 500); renamed to `_not_future_named`.
+**Numbering:** migration `0179_application_fields` (0178 reserved by ccrm-025 in flight); API §12FI; RBAC §2.171.
+- **Feature ID authorized:** `ccrm-013`. **Status:** built on `feature/ccrm-013`.

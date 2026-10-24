@@ -2707,3 +2707,14 @@ inside the existing role scope (a counselor searching another counselor's code g
 - The refusal reason never appears in audit metadata (field names only), logs, notifications, status history or the outcome event.
 - Pinned by `test_ccrm_026_visa_lifecycle.py::test_scope_and_roles`, `::test_refused_needs_a_reason_writes_the_outcome_and_the_reason_stays_restricted`,
   `::test_a_decided_case_is_locked_and_only_the_admin_corrects_it`, `::test_the_counselor_records_the_decision_on_an_agency_case_and_the_agency_is_told`.
+
+### 2.171 Application details *(added 2026-10-24 — `DEC-SCOPE-256`, ccrm-013)*
+
+| Route / field | `overseas_admin` | `counselor` (overseas) | `agent` | `overseas_student` | Others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET`/`PATCH /applications/{id}/details` | ✅ any application | ✅ own applications, direct and agency (`403` otherwise) | `403` (reads the fields in its detail) | `403` | `403` | `401` |
+| Portal link, contact, fee, faculty/campus, internal dates (read) | ✅ | ✅ own | ✅ agency detail, read-only | ❌ | ❌ | — |
+| Course start date, scholarship (read) | ✅ | ✅ own | ✅ | ✅ own applications page | ❌ | — |
+
+- Pinned by `test_ccrm_013_application_fields.py::test_scope_other_counselor_agent_and_student_are_refused`,
+  `::test_the_counselor_edits_an_agency_application_and_the_agency_is_told`, `::test_the_student_sees_the_scholarship_and_is_told_only_when_it_changes`.

@@ -4,6 +4,7 @@ import unicodedata
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any, Literal
+from urllib.parse import urlsplit
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
@@ -28,6 +29,8 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
+from app.application_fields import CURRENCIES as APPLICATION_CURRENCIES
+from app.application_fields import SCHOLARSHIP_STATUSES
 from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS, DRAFTING_STATUSES, REVIEW_STATUSES, review_status
 from app.document_checklists import ITEM_STATUSES as CHECKLIST_ITEM_STATUSES
 from app.document_checklists import MAX_ITEMS as CHECKLIST_MAX_ITEMS
@@ -1029,6 +1032,60 @@ class ApplicationSubStatusChange(BaseModel):
         return clean_free_text(value, 2000)
 
 
+ApplicationMoney = Annotated[Decimal | None, Field(default=None, ge=0, max_digits=12, decimal_places=2)]
+
+
+class ApplicationDetailsUpdate(BaseModel):
+    """ccrm-013 (DEC-SCOPE-256): omitted = unchanged, null clears. The cross-field rules (currency with money, amount only when awarded)
+    need the saved row too, so the route checks them on the merged values (app/application_fields.py `problem`)."""
+
+    model_config = {"extra": "forbid"}
+    faculty: str | None = None
+    campus: str | None = None
+    course_start_date: date | None = None
+    university_portal_url: str | None = None
+    university_contact_name: str | None = None
+    university_contact_email: EmailStr | None = Field(default=None, max_length=254)
+    tuition_fee: ApplicationMoney = None
+    currency: Literal[APPLICATION_CURRENCIES] | None = None
+    scholarship_status: Literal[SCHOLARSHIP_STATUSES] | None = None
+    scholarship_amount: ApplicationMoney = None
+    submitted_on: date | None = None
+    application_deadline: date | None = None
+    offer_deadline: date | None = None
+    documents_completed_on: date | None = None
+    decision_due_on: date | None = None
+
+    @field_validator("faculty", "campus", "university_contact_name")
+    @classmethod
+    def _text(cls, value):
+        return clean_free_text(value, 140)
+
+    @field_validator("course_start_date", "application_deadline", "offer_deadline", "decision_due_on")
+    @classmethod
+    def _date(cls, value):
+        return _application_date(value)
+
+    @field_validator("submitted_on", "documents_completed_on")
+    @classmethod
+    def _past_date(cls, value):
+        return _not_future(_application_date(value), "future_date", "This date cannot be in the future")
+
+    @field_validator("university_portal_url")
+    @classmethod
+    def _portal(cls, value):
+        """F6: a link only -- http(s), no `user:password@` part (credentials are never stored)."""
+        value = clean_free_text(value, 500)
+        if value is None:
+            return None
+        parts = urlsplit(value)
+        if parts.scheme not in {"http", "https"} or not parts.hostname:
+            raise ValueError("Enter an http:// or https:// link")
+        if parts.username or parts.password:
+            raise ValueError("Remove the login details: the portal link must not contain credentials")
+        return value
+
+
 class AgentApplicationEnrollment(BaseModel):
     """AGN-013 (DEC-SCOPE-054): confirm or correct an application's enrollment. `expected_status` is required: confirming is the
     commission-triggering act, so a stale screen gets a 409 instead of acting."""
@@ -1564,7 +1621,7 @@ def _profile_text(value, info):
     return clean_free_text(value, PROFILE_TEXT_LIMITS[info.field_name])
 
 
-def _not_future(value: date | None, what: str) -> date | None:
+def _not_future_named(value: date | None, what: str) -> date | None:
     if value is not None and value > date.today():
         raise PydanticCustomError("future_date", "{what} cannot be in the future", {"what": what})
     return value
@@ -1614,7 +1671,7 @@ class StudentEnglishTestIn(BaseModel):
             if not low <= self.overall_score <= high:
                 raise PydanticCustomError("score_range", "A {test} score must be between {low} and {high}", {"test": self.test_type, "low": low, "high": high})
         if self.status == "taken":
-            _not_future(self.test_date, "The date of a test already taken")
+            _not_future_named(self.test_date, "The date of a test already taken")
         if self.test_date and self.valid_until and self.valid_until < self.test_date:
             raise PydanticCustomError("validity_before_test", "The valid-until date cannot be before the test date")
         return self
@@ -1648,7 +1705,7 @@ class StudentProfileSave(BaseModel):
     def _birth(cls, value):
         if value is not None and value.year < 1900:
             raise PydanticCustomError("birth_range", "Enter a date of birth after 1900")
-        return _not_future(value, "The date of birth")
+        return _not_future_named(value, "The date of birth")
 
     @field_validator("passport_number")
     @classmethod
