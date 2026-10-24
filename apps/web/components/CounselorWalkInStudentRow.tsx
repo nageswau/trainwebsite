@@ -82,6 +82,8 @@ export default function CounselorWalkInStudentRow({ student, onChanged }: { stud
         <span>{student.email}</span>
         {student.student_code && <span className="muted">Student ID {student.student_code}</span>}
         <span className="badge">{student.setup ? SETUP_LABEL[student.setup] : "Active"}</span>
+        {/* ccrm-009 (DEC-SCOPE-252): the student 360. */}
+        <Link href={`/overseas/counselor/students/${encodeURIComponent(student.id)}`} aria-label={`Open ${student.full_name}`}>Open</Link>
         {/* ccrm-010 (DEC-SCOPE-241): the student's internal notes. */}
         <Link href={`/overseas/counselor/students/${encodeURIComponent(student.id)}/notes`} aria-label={`Notes for ${student.full_name}`}>Notes</Link>
         {/* ccrm-007 (DEC-SCOPE-249): the student's structured profile. */}

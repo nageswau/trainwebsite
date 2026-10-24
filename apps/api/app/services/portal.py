@@ -1129,7 +1129,8 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 for row, (_, _, s) in zip(rows, applications, strict=True):
                     row["notes"] = f"{base}/students/{s.id}/notes" if s.id else None
                     row["profile"] = f"{base}/students/{s.id}/profile" if s.id else None  # ccrm-007
-                columns += [("notes", "", "student_notes"), ("profile", "", "student_profile")]
+                    row["open"] = f"{base}/students/{s.id}" if s.id else None  # ccrm-009: the student 360
+                columns += [("open", "", "student_360"), ("notes", "", "student_notes"), ("profile", "", "student_profile")]
             payload = _payload("Application Tracking", "Assigned applications and next actions.", columns, rows)
             if agn023:
                 payload["filters"] = await application_filters.payload_part(db, user, filters or ApplicationFilters())
@@ -1543,14 +1544,15 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                     ).all()
                 }
                 # ccrm-010 (DEC-SCOPE-241): and the student's internal notes page -- the walk-in with no application is reachable here.
-                columns += [("counselor", "EduSphere counsellor"), ("assign", "", "assign_student_counselor"), ("notes", "", "student_notes"), ("profile", "", "student_profile")]
+                columns += [("counselor", "EduSphere counsellor"), ("assign", "", "assign_student_counselor"), ("open", "", "student_360"), ("notes", "", "student_notes"), ("profile", "", "student_profile")]
                 for row in table:
                     if row["role"] != "overseas_student":  # staff: no counsellor, no control
-                        row |= {"counselor": None, "counselor_id": None, "assign": None, "notes": None, "profile": None}
+                        row |= {"counselor": None, "counselor_id": None, "assign": None, "open": None, "notes": None, "profile": None}
                         continue
                     counselor_id, name = linked.get(row["id"], (None, None))
                     row |= {"counselor": name or "Not assigned", "counselor_id": str(counselor_id) if counselor_id else None, "assign": row["id"], "notes": f"/overseas/admin/students/{row['id']}/notes"}
                     row["profile"] = f"/overseas/admin/students/{row['id']}/profile"  # ccrm-007
+                    row["open"] = f"/overseas/admin/students/{row['id']}"  # ccrm-009: the student 360
             return _payload(section.title(), "Role-scoped user administration.", columns, table)
         if section == "agents" and (division == "overseas" or user.role == "super_admin"):
             # AGT-001: Overseas Admin's own approve/reject queue -- the generic

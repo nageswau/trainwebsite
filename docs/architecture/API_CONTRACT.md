@@ -3652,3 +3652,19 @@ Other roles (incl. an IT counselor on `/counselor/tasks`) `403`; anonymous `401`
 
 No delete route exists or is added. Daily job (Celery beat, 18:35 UTC = 00:05 IST): documents with `expiry_date` before the India date,
 not archived and not `expired`/`not_required` → `expired` (event `expired`, no actor).
+
+## 12FE. Counselor student 360 (ccrm-009) — addendum, 2026-10-24
+
+`DEC-SCOPE-252`. No migration. RBAC §2.167. Code: `app/api/counselor_students.py`, `app/services/counselor_student_360.py`. All four are
+read-only `GET`s behind `student_profiles.staff_student` (`overseas_admin`, or an overseas `counselor` with the student in csc-001 scope;
+not an overseas student / out of scope / unknown → `404`; any other role, or an IT counselor → `403`; malformed id `422`).
+
+| Method/Path | Behaviour |
+|---|---|
+| `GET /api/v1/counselor/students/{id}/overview` | `{student {id, full_name, student_code, email, phone}, account_status (active \| pending_setup \| link_expired \| deactivated), counselor {id, full_name} \| null (csc-001 link), applications[] {id, application_code, university, course, intake, status, status_label, sub_status_label, outcome_summary, next_action, counselor, is_agency, mine, open}, counts {applications, open_applications, documents_to_review}, next_actions[] {application_id, application_code, university, next_action}}`. Every application of the student (V1); `open` = not withdrawn / terminal outcome / enrolled. |
+| `GET /api/v1/counselor/students/{id}/documents` | `{items[] {id, document_type, document_label, application_code, status, status_label, expiry_date, reviewer, reviewed_at, uploaded_at, can_download}}` — current (non-archived) versions. `can_download` mirrors `GET /workflows/overseas/documents/{id}/download` (admin always; counselor: own application, or no application and any own application of the student). |
+| `GET /api/v1/counselor/students/{id}/activities` | `{appointments[] {id, type, scheduled_at, mode, status, staff}, leads[] {id, lead_code, stage, stage_label, owner, href}}` — leads with `converted_user_id` = the student; `href` = the counselor lead page only for the lead's owner. |
+| `GET /api/v1/counselor/students/{id}/history` | `{items[] {at, kind (status \| audit \| document), summary, actor, application_code, notes, reason}}` newest first, at most 200: status history of the student's applications (staff view), audit rows `overseas_student_profile.update`, `counselor.student_update`, `counselor.student_create`, `counselor.student_resend`, `overseas.student.counselor_assign` on the student, and `document.upload` / `document.verify` / `document.replace` on the student's documents. Field names only, never values. |
+
+`GET /api/v1/portal/overseas/{counselor|admin}/students` and `…/admin/users` rows add `open` (the 360 path; `null` for a student with no
+login and for staff rows) with column type `student_360`.

@@ -310,6 +310,10 @@ asked one at a time when the item is picked up).
 - **Dependencies:** ccrm-007 (tabs grow with later items).
 - **Acceptance:** a student with three applications shows three independent statuses; another counselor's student → 404.
 - **Complexity:** large. **Risk:** low.
+- **Status (2026-10-24):** built on `worktree-ccrm-009` — `DEC-SCOPE-252` (V1 the counselor sees all the student's applications,
+  documents and history read-only, marked "yours"; V2 Academic = personal + academic + work experience; B1–B6 defaults), no migration,
+  API §12FE, RBAC §2.167; pages `/overseas/{counselor|admin}/students/[id]`. Design
+  `docs/superpowers/specs/2026-10-24-ccrm-009-counselor-student-360-design.md`.
 
 ### `ccrm-010` — Student and application notes; counselling history *(supersedes nehn-037 part 5)*
 
