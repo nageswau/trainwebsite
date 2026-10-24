@@ -2696,3 +2696,14 @@ inside the existing role scope (a counselor searching another counselor's code g
 - Inside the page, downloads and writes keep their own routes' rules; `can_download` is false where the download route would `403`.
 - Pinned by `test_ccrm_009_student_360.py::test_out_of_scope_student_is_404_and_other_roles_403`,
   `::test_documents_are_current_versions_with_download_only_where_allowed`, `::test_admin_reads_every_tab_and_sees_no_application_as_mine`.
+
+### 2.169 Visa case lifecycle *(added 2026-10-24 — `DEC-SCOPE-254`, ccrm-026)*
+
+| Route / field | `overseas_admin` | `counselor` (overseas) | `agent` | `overseas_student` | Others | Anonymous |
+|---|---|---|---|---|---|---|
+| `PATCH /visa/{id}/lifecycle` | ✅ any case; only role that changes a decided case (correction reason) | ✅ own applications, direct and agency (`403` otherwise); decided case `409` | `403` (keeps AGN-012 route) | `403` | `403` | `401` |
+| `refusal_reason` (read) | ✅ | ✅ own applications | ❌ never in the agency detail | ❌ never | ❌ | — |
+
+- The refusal reason never appears in audit metadata (field names only), logs, notifications, status history or the outcome event.
+- Pinned by `test_ccrm_026_visa_lifecycle.py::test_scope_and_roles`, `::test_refused_needs_a_reason_writes_the_outcome_and_the_reason_stays_restricted`,
+  `::test_a_decided_case_is_locked_and_only_the_admin_corrects_it`, `::test_the_counselor_records_the_decision_on_an_agency_case_and_the_agency_is_told`.

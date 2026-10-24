@@ -986,3 +986,22 @@ half.
 | `ccrm-009-AC4` | Activities (appointments, linked leads, lead link only for its owner) and History (status + audit + document events, newest first, no downloads) | `::test_activities_list_appointments_and_linked_leads`, `::test_history_merges_status_changes_audit_rows_and_document_events_newest_first` |
 | `ccrm-009-AC5` | Profile tabs show one section each; a save on one tab keeps the others' data (V2) | `OverseasStudent360.test.tsx` ("StudentProfileForm sections"); e2e Preferences save keeps the qualifications |
 | `ccrm-009-AC6` | Open link on the Students section, walk-in list and Admin Users | `::test_the_students_section_and_admin_users_link_to_the_360`; `OverseasStudent360.test.tsx` ("Open link", "walk-in student row") |
+
+**Addendum, 2026-10-24 (`ccrm-026`)** — one row and its acceptance-criteria map. Visa case full lifecycle.
+
+| Feature | Trace | Open | Status |
+|---|---|---|---|
+| `ccrm-026` | Requirement: §10 + Appendix A + owner answers VC1–VC5 (in-session 2026-10-24) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-026` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-254` → design `docs/superpowers/specs/2026-10-24-ccrm-026-visa-lifecycle-design.md`; `API_CONTRACT.md` §12FG, `RBAC_MATRIX.md` §2.169, `DATA_MODEL.md` (0177) | D1–D8 defaults `NEEDS_CONFIRMATION`; admin correction screen | Built on `feature/ccrm-026`; lite API set, vitest, e2e and browser QA |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-026-AC01` | Counselor records the lifecycle fields on a direct case | `apps/api/tests/test_ccrm_026_visa_lifecycle.py::test_the_counselor_records_the_lifecycle_fields_on_a_direct_case`; `apps/web/tests/components/CounselorVisaCaseForm.test.tsx` |
+| `ccrm-026-AC02` | Same on an agency case; agency notified and sees them read-only | `::test_the_counselor_records_the_decision_on_an_agency_case_and_the_agency_is_told` |
+| `ccrm-026-AC03` | Status moves map onto stage and sub-status (Appendix B "submitted") | `::test_status_moves_map_onto_stage_and_application_sub_status`, `::test_appointment_booked_and_submitted_need_their_dates`; `apps/web/tests/e2e/ccrm-026-visa-lifecycle.spec.ts` |
+| `ccrm-026-AC04` | Leaving Not started needs every checklist item verified | `::test_leaving_not_started_needs_every_checklist_item_verified`; `apps/web/tests/e2e/visa-001-checklist.spec.ts` |
+| `ccrm-026-AC05` | Refused needs a reason, writes visa_refused; the reason stays restricted | `::test_refused_needs_a_reason_writes_the_outcome_and_the_reason_stays_restricted` |
+| `ccrm-026-AC06` | Decided case locked; admin corrects with a reason | `::test_a_decided_case_is_locked_and_only_the_admin_corrects_it` |
+| `ccrm-026-AC07` | Stale expected status 409; identical save writes nothing | `::test_a_stale_expected_status_is_409_and_an_identical_save_writes_nothing`; `CounselorVisaCaseForm.test.tsx` (stale reload) |
+| `ccrm-026-AC08` | Visa template pre-fills the checklist | `::test_a_visa_template_prefills_the_checklist` |
+| `ccrm-026-AC09` | Student sees status label and next steps | `::test_refused_needs_a_reason_writes_the_outcome_and_the_reason_stays_restricted`; e2e student step |
+| `ccrm-026-AC10` | AGN-012 routes and legacy PATCH keep their contracts; agency moves keep the status in step (VC5) | `test_agn_012_*.py`, `test_agn_023_*.py`, `::test_the_legacy_patch_keeps_its_contract_and_the_status_follows_the_stage`, `::test_an_agency_stage_move_and_decision_keep_the_status_in_step_and_tell_the_counselor`; `apps/api/tests/test_ccrm_026_migration.py` |

@@ -13,6 +13,8 @@ UNVERIFIED; VC1-VC4 are owner answers (2026-10-24), the rest are recommended def
 - **VC3:** the counselor (or admin) may record the decision on an agency case too (supersedes DEC-SCOPE-090 H4 for the decision only).
   Whoever records first locks it (VC1); the other side is notified (CC5).
 - **VC4:** Appendix A statuses map onto the existing stages and the ccrm-014 sub-statuses (§3).
+- **VC5:** every writer — the AGN-012 agency route too — moves the application forward and closes it as `visa_refused` on a refusal.
+  Supersedes `DEC-SCOPE-057` V5 ("the application stage never moves").
 
 ## 2. Recommended defaults (NEEDS_CONFIRMATION)
 

@@ -9259,3 +9259,22 @@ account edit/creation, link resend, counselor assignment) + document upload/revi
 link; the `/notes` and `/profile` pages stay. B6 Overview = contact, account status, linked counselor, counts, open applications' next actions.
 **Numbering:** no migration; API §12FF; RBAC §2.168.
 - **Feature ID authorized:** `ccrm-009`. **Status:** built on `worktree-ccrm-009`.
+
+### DEC-SCOPE-254 — Visa case: the counselor records the full visa lifecycle (`ccrm-026`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-026` (source PDF §10 + Appendix A, `UNVERIFIED`; CC2, CC4, CC5); design
+`docs/superpowers/specs/2026-10-24-ccrm-026-visa-lifecycle-design.md`.
+**Owner answers (in-session 2026-10-24, `EXPLICIT_APPROVAL` for these points):** VC1 CC5 vs `DEC-SCOPE-057` V2 — V2 stays: a recorded
+decision (Approved / Refused / Withdrawn) locks the case for counselor and agency; only the Overseas Admin corrects it, with a correction
+reason; a correction never reopens the application (ccrm-015 reopen does). VC2 the agency keeps its AGN-012 form and fields and sees the
+new fields read-only, never the refusal reason. VC3 the counselor (or admin) may record the decision on an agency case too — supersedes
+`DEC-SCOPE-090` H4 for the decision only. VC4 Appendix A statuses map onto the AGN-012 stages and the ccrm-014 sub-statuses (spec §3);
+forward only except Additional information requested ↔ Decision pending; Withdrawn from any open status. VC5 every writer (the agency
+route too) moves the application forward and Refused writes the ccrm-015 `visa_refused` outcome — supersedes `DEC-SCOPE-057` V5.
+**Recommended defaults (`NEEDS_CONFIRMATION`):** D1 new `PATCH …/visa/{id}/lifecycle`, legacy PATCH kept; D2 Appointment booked needs
+a date, Submitted needs a submission date, Refused needs a reason; D3 evidence = a document of the application; D4 visa category free
+text; D5 an empty checklist uses the resolved ccrm-018 `visa` template; D6 student told of each status change, the other side of an agency
+application of every change; D7 on hold refuses a status change, not a field edit; D8 student sees the status label, place, submission
+and expected decision dates, decision and next steps. The admin correction is API-only until an admin visa screen exists.
+**Numbering:** migration `0177_visa_lifecycle`; API §12FG; RBAC §2.169.
+- **Feature ID authorized:** `ccrm-026`. **Status:** built on `feature/ccrm-026`.
