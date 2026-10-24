@@ -29,6 +29,7 @@ from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column, relationship, validates
 from sqlalchemy.sql import func
 
+from app.application_checklists import MARKS as CHECKLIST_MARKS
 from app.application_fields import CURRENCIES as APPLICATION_CURRENCIES
 from app.application_fields import SCHOLARSHIP_STATUSES
 from app.application_outcome import CLEARED as OUTCOME_CLEARED
@@ -2153,6 +2154,56 @@ class DocumentChecklistTemplateItem(Base):
     allowed_statuses: Mapped[list] = mapped_column(JSON, default=list)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     __table_args__ = (UniqueConstraint("template_id", "position", name="uq_document_checklist_template_items_position"),)
+
+
+class ApplicationChecklist(Base, TimestampMixin):
+    """ccrm-019 (DEC-SCOPE-257): an application's document checklist, made once from the matching admission template (its version
+    and gate mode frozen here) or empty (gate mode `warn`, AC5). Items and links: services/application_checklists.py."""
+
+    __tablename__ = "application_checklists"
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id", ondelete="CASCADE"), primary_key=True)
+    template_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("document_checklist_templates.id"), nullable=True)
+    template_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    gate_mode: Mapped[str] = mapped_column(String(10))
+    created_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    __table_args__ = (
+        CheckConstraint("gate_mode IN (" + ", ".join(f"'{m}'" for m in CHECKLIST_GATE_MODES) + ")", name="ck_application_checklists_gate_mode"),
+        CheckConstraint("(template_id IS NULL) = (template_version IS NULL)", name="ck_application_checklists_template_version"),
+    )
+
+
+class ApplicationChecklistItem(Base, TimestampMixin):
+    """ccrm-019: one document an application's checklist asks for -- a template item's copy or a counselor's own (removable, AC8).
+    `mark` (AC1) overrides the linked documents' status until a document is linked."""
+
+    __tablename__ = "application_checklist_items"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("application_checklists.application_id", ondelete="CASCADE"), index=True)
+    from_template: Mapped[bool] = mapped_column(Boolean, default=False)  # a template copy (ccrm-018 re-creates its items on edit, so no FK)
+    position: Mapped[int] = mapped_column(Integer)
+    document_type: Mapped[str] = mapped_column(String(80))
+    label: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    required: Mapped[bool] = mapped_column(Boolean, default=True)
+    allowed_statuses: Mapped[list] = mapped_column(JSON, default=list)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mark: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    marked_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    marked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    __table_args__ = (
+        UniqueConstraint("application_id", "position", name="uq_application_checklist_items_position"),
+        CheckConstraint("mark IS NULL OR mark IN (" + ", ".join(f"'{m}'" for m in CHECKLIST_MARKS) + ")", name="ck_application_checklist_items_mark"),
+    )
+
+
+class ApplicationChecklistItemDocument(Base):
+    """ccrm-019: a student document counted toward a checklist item. A replaced document's links move to its new version (AC9)."""
+
+    __tablename__ = "application_checklist_item_documents"
+    item_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("application_checklist_items.id", ondelete="CASCADE"), primary_key=True)
+    document_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("student_documents.id", ondelete="CASCADE"), primary_key=True, index=True)
+    linked_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ProfileDocument(Base, TimestampMixin):

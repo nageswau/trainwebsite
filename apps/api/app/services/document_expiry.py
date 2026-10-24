@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import StudentDocument
+from app.services import application_checklists
 from app.services.agent_documents import add_event
 
 logger = logging.getLogger("app.document_expiry")
@@ -36,6 +37,7 @@ async def expire_documents(db: AsyncSession, today: date) -> int:
     for document in rows:
         add_event(db, event="expired", actor=None, document=document, from_status=document.verification_status, to_status="expired")
         document.verification_status = "expired"
+    await application_checklists.sync_for_documents(db, [d.id for d in rows])  # ccrm-019 AC9
     await db.commit()
     logger.info("documents_expired", extra={"extra_fields": {"day": today.isoformat(), "count": len(rows)}})
     return len(rows)

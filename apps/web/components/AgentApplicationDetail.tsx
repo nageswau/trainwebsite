@@ -7,6 +7,7 @@ import AgentApplicationEnrollment from "./AgentApplicationEnrollment";
 import AgentApplicationOffer from "./AgentApplicationOffer";
 import AgentApplicationStatusForm from "./AgentApplicationStatusForm";
 import AgentApplicationVisa from "./AgentApplicationVisa";
+import ApplicationChecklistPanel from "./ApplicationChecklistPanel";
 import ApplicationSubStatusForm from "./ApplicationSubStatusForm";
 import OutcomeSummary from "./OutcomeSummary";
 import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
@@ -192,6 +193,8 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
         onFailed={editFailed}
         onReload={reload}
       />
+      {/* ccrm-019 (AC7): the EduSphere counselor keeps the checklist; the agency sees what Ready for Submission still needs */}
+      <ApplicationChecklistPanel key={`${detail.status}|${detail.sub_status ?? ""}`} applicationId={detail.id} readOnly />
       {!editing && openForm !== "offer" && openForm !== "deposit" && (
         // A status, visa stage or decision change starts the section forms afresh.
         <Fragment key={`${detail.status}|${detail.visa?.stage ?? ""}|${detail.visa?.decision ?? ""}`}>

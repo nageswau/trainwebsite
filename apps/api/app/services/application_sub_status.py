@@ -26,9 +26,10 @@ def stage_of(sub_status: str) -> str:
     return stage
 
 
-def change(db: AsyncSession, user: User, app: OverseasApplication, sub_status: str, notes: str | None) -> Before | None:
+def change(db: AsyncSession, user: User, app: OverseasApplication, sub_status: str, notes: str | None, reason: str | None = None) -> Before | None:
     """Move within the stage, or forward to a later stage's sub-status (a legacy stage counts as before the first, as `/advance`
-    treats it). The values before the change, or None when it is already set (no history row: a retry is safe)."""
+    treats it). The values before the change, or None when it is already set (no history row: a retry is safe). `reason`: ccrm-019's
+    checklist override, kept on the history row."""
     stage = stage_of(sub_status)
     current = OVERSEAS_APPLICATION_STAGES.index(app.status) if app.status in OVERSEAS_APPLICATION_STAGES else -1
     if OVERSEAS_APPLICATION_STAGES.index(stage) < current:
@@ -41,7 +42,7 @@ def change(db: AsyncSession, user: User, app: OverseasApplication, sub_status: s
     db.add(
         ApplicationStatusHistory(
             application_id=app.id, from_status=before.status, to_status=stage, from_sub_status=before.sub_status, to_sub_status=sub_status,
-            next_action=app.next_action, notes=notes, changed_by_id=user.id,
+            next_action=app.next_action, notes=notes, reason=reason, changed_by_id=user.id,
         )
     )  # fmt: skip
     return before

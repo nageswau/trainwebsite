@@ -1025,11 +1025,17 @@ class ApplicationSubStatusChange(BaseModel):
     model_config = {"extra": "forbid"}
     sub_status: str = Field(max_length=40)
     notes: str | None = None
+    override_reason: str | None = None  # ccrm-019 (DEC-SCOPE-257): passes a warn-mode checklist gate for Ready for Submission
 
     @field_validator("notes")
     @classmethod
     def _notes(cls, value):
         return clean_free_text(value, 2000)
+
+    @field_validator("override_reason")
+    @classmethod
+    def _override_reason(cls, value):
+        return clean_free_text(value, 1000)
 
 
 ApplicationMoney = Annotated[Decimal | None, Field(default=None, ge=0, max_digits=12, decimal_places=2)]
@@ -1401,6 +1407,13 @@ class DepositRecordSave(BaseModel):
         if not paid and self.paid_on is not None:
             raise PydanticCustomError("deposit_paid_on", "A payment date is recorded only for a paid deposit")
         return self
+
+
+class ApplicationChecklistMark(BaseModel):
+    """ccrm-019 (DEC-SCOPE-257, AC1): mark a checklist item Requested or Not required, or clear the mark (null)."""
+
+    model_config = {"extra": "forbid"}
+    mark: Literal["requested", "not_required"] | None
 
 
 class ChecklistTemplateItemIn(BaseModel):

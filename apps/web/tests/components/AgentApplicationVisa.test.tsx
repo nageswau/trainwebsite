@@ -124,7 +124,8 @@ describe("AgentApplicationVisa (AGN-012)", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Edit visa details" }));
     fireEvent.click(screen.getByRole("button", { name: "Save visa details" }));
     await waitFor(() => expect(screen.getByText(/changed since you opened it/)).toHaveFocus());
-    expect(fetchMock.mock.calls.filter(([, i]) => !i?.method || i.method === "GET")).toHaveLength(2);
+    // the detail loads twice; ccrm-019's read-only checklist panel makes its own GET
+    expect(fetchMock.mock.calls.filter(([u, i]) => (!i?.method || i.method === "GET") && !String(u).endsWith("/checklist"))).toHaveLength(2);
     expect(screen.queryByRole("form", { name: "Edit visa details" })).toBeNull();
   });
 

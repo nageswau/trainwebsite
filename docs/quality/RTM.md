@@ -1033,3 +1033,15 @@ half.
 | `ccrm-013-AC04` | Counselor edits agency applications; agency notified (CC4/CC5); audit keeps author + before/after | `::test_the_counselor_edits_an_agency_application_and_the_agency_is_told`, `::test_the_audit_keeps_before_and_after_with_the_author` |
 | `ccrm-013-AC05` | Scope: other counselor/agent/student refused; admin allowed; portal URL never with credentials | `::test_scope_other_counselor_agent_and_student_are_refused`, `::test_field_rules` |
 | `ccrm-013-AC06` | Regression: agency forms (date validators), AGN-017 deadlines | `::test_the_agency_form_still_takes_a_submission_date`; `test_agn_008_*.py`, `test_agn_017_*.py`; `apps/api/tests/test_ccrm_013_migration.py` |
+
+| `ccrm-019` | Requirement: §8 readiness summary, §14 document readiness, AC 5, CC10 → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-019` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-257` → design `docs/superpowers/specs/2026-10-24-ccrm-019-application-checklist-design.md`; `API_CONTRACT.md` §12FJ, `RBAC_MATRIX.md` §2.172, `DATA_MODEL.md` (0180) | AC1–AC2 owner answers; AC3–AC9 defaults `NEEDS_CONFIRMATION` |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-019-AC01` | Checklist from the matching template, version frozen, documents auto-linked; empty in warn mode without one | `apps/api/tests/test_ccrm_019_checklist.py::test_counselor_creates_the_checklist_from_the_template_and_documents_auto_link`, `::test_without_a_template_the_checklist_is_empty_in_warn_mode_and_takes_counselor_items`, `::test_a_document_of_another_student_never_auto_links` |
+| `ccrm-019-AC02` | Item status derived + marks; summary "N of M required complete" | `::test_item_status_prefers_the_mark_then_the_best_current_document`, `::test_summary_counts_required_and_optional_and_lists_the_missing`, `::test_link_mark_unlink_and_remove`, `::test_linking_clears_a_requested_mark`; `apps/web/tests/components/ApplicationChecklistPanel.test.tsx` |
+| `ccrm-019-AC03` | Appendix B: a request on application A leaves B complete | `::test_appendix_b_a_request_on_one_application_leaves_the_other_complete` |
+| `ccrm-019-AC04` | `documents_completed_on` set/cleared; replace and expiry keep it current | `::test_documents_completed_on_is_set_when_complete_and_cleared_when_not`, `::test_a_replaced_document_moves_its_links_and_expiry_refreshes_completion` |
+| `ccrm-019-AC05` | AC 5 gate: block 409 with missing items; warn needs a reason kept in history; agency route gated; no template passes | `::test_block_mode_refuses_…`, `::test_block_mode_passes_once_every_required_item_is_complete`, `::test_warn_mode_needs_an_override_reason_and_records_it_in_history`, `::test_the_agency_route_is_gated_too`, `::test_no_template_and_no_checklist_passes_and_other_sub_statuses_are_not_gated`; `apps/web/tests/e2e/ccrm-019-application-checklist.spec.ts` |
+| `ccrm-019-AC06` | Scope: other counselor 403, agency/student read-only, foreign item 404 | `::test_scope_other_counselor_agent_read_only_student_reads_own` |
+| `ccrm-019-AC07` | Migration round-trips and is the single head | `apps/api/tests/test_ccrm_019_migration.py` |

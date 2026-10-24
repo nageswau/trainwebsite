@@ -34,10 +34,10 @@ from app.schemas import (
     ApplicationSubStatusChange,
 )
 from app.services import agent_notifications as notices
+from app.services import application_checklists, visa_lifecycle
 from app.services import application_offers as offer_records
 from app.services import application_outcomes as outcomes
 from app.services import application_sub_status as sub_statuses
-from app.services import visa_lifecycle
 from app.services.agent_applications import (
     ARCHIVED,
     DEFAULT_NEXT_ACTION,
@@ -235,9 +235,11 @@ async def change_sub_status(application_id: UUID, payload: ApplicationSubStatusC
     outcomes.refuse_on_hold(item)
     if sub_statuses.stage_of(payload.sub_status) == "enrolled":
         raise HTTPException(403, ENROLLED_REFUSED)
-    before = sub_statuses.change(db, user, item, payload.sub_status, payload.notes)
+    override = await application_checklists.ready_gate(db, user, item, payload.sub_status, payload.override_reason)  # ccrm-019
+    before = sub_statuses.change(db, user, item, payload.sub_status, payload.notes, f"Override: {override}" if override else None)
     if before is not None:
-        _audit(db, user, "sub_status", item.id, {"from_status": before.status, "to_status": item.status, "from_sub_status": before.sub_status, "to_sub_status": item.sub_status})
+        changed = {"from_status": before.status, "to_status": item.status, "from_sub_status": before.sub_status, "to_sub_status": item.sub_status}
+        _audit(db, user, "sub_status", item.id, changed | ({"checklist_override": override} if override else {}))
         await notices.status_changed(db, item, before.status, user, had_commission=True)  # a no-op unless the stage moved
         await notices.sub_status_changed(db, item, user)
         await db.commit()

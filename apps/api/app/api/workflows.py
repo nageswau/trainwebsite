@@ -122,9 +122,9 @@ from app.schemas import (
 )
 from app.services import agent_documents as document_files
 from app.services import agent_notifications as agency_notices
+from app.services import application_checklists, applications, counselor_students, course_skills, interviews, offers, visa_lifecycle
 from app.services import application_outcomes as outcomes
 from app.services import application_sub_status as sub_statuses
-from app.services import applications, counselor_students, course_skills, interviews, offers, visa_lifecycle
 from app.services import document_checklists as checklist_templates
 from app.services import recruiter_requirements as requirements
 from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, open_clause, owned, stage_label, status_history, with_owner
@@ -2131,7 +2131,8 @@ async def change_application_sub_status(application_id: UUID, payload: Applicati
         raise HTTPException(409, ARCHIVED)
     if item.agent_id is not None and stage == "enrolled" and user.role == "counselor":
         raise HTTPException(403, MASTER_ENROLLS)
-    before = sub_statuses.change(db, user, item, payload.sub_status, payload.notes)
+    override = await application_checklists.ready_gate(db, user, item, payload.sub_status, payload.override_reason)  # ccrm-019
+    before = sub_statuses.change(db, user, item, payload.sub_status, payload.notes, f"Override: {override}" if override else None)
     if before is not None:
         if before.status != item.status:
             had_commission = await agency_notices.has_commission(db, item.id)
@@ -2148,7 +2149,8 @@ async def change_application_sub_status(application_id: UUID, payload: Applicati
             "overseas.application.sub_status",
             "overseas_application",
             item.id,
-            {"from_status": before.status, "to_status": item.status, "from_sub_status": before.sub_status, "to_sub_status": item.sub_status},
+            {"from_status": before.status, "to_status": item.status, "from_sub_status": before.sub_status, "to_sub_status": item.sub_status}
+            | ({"checklist_override": override} if override else {}),
         )
         await db.commit()
     return {"id": item.id, "status": item.status, "sub_status": item.sub_status, "sub_status_label": sub_status_label(item.sub_status), "changed": before is not None}
@@ -2353,6 +2355,7 @@ async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID
     if student:
         await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {DOCUMENT_STATUS_LABELS[item.verification_status].lower()}.", "/overseas/student/documents")
     await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-059 N9): rejected / changes required only
+    await application_checklists.sync_for_documents(db, [item.id])  # ccrm-019 AC9
     member_role = user.agent_membership.role
     await _audit(db, user, "document.verify", "student_document", item.id, {**review.model_dump(), "member_role": member_role})
     await db.commit()
@@ -2388,6 +2391,7 @@ async def verify_document(document_id: UUID, payload: dict, user: User = Depends
     if student:
         await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {DOCUMENT_STATUS_LABELS[item.verification_status].lower()}.", "/overseas/student/documents")
     await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-059 N9): an agency document's assignee
+    await application_checklists.sync_for_documents(db, [item.id])  # ccrm-019 AC9
     await _audit(db, user, "document.verify", "student_document", item.id, review.model_dump(mode="json"))
     await db.commit()
     return {"id": item.id, "verification_status": item.verification_status}
@@ -2445,6 +2449,8 @@ async def replace_document_version(
         await db.flush()
         add_event(db, event="replaced", actor=user, document=old, from_status=old.verification_status, file_key=old.file_url)
         add_event(db, event="uploaded", actor=user, document=new, to_status="pending")
+        await application_checklists.move_links(db, old.id, new.id)  # ccrm-019 AC9: the checklist counts the new version
+        await application_checklists.sync_for_documents(db, [new.id])
         await _audit(db, user, "document.replace", "student_document", new.id, {"version_of_id": str(old.id)})
         await db.commit()
     except Exception:  # nothing was written: the stored object goes too (AGN-009's order)
