@@ -30,6 +30,8 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
 from sqlalchemy.sql import func
 
 from app.application_checklists import MARKS as CHECKLIST_MARKS
+from app.application_fields import CURRENCIES as APPLICATION_CURRENCIES
+from app.application_fields import SCHOLARSHIP_STATUSES
 from app.application_outcome import CLEARED as OUTCOME_CLEARED
 from app.application_outcome import OUTCOMES as APPLICATION_OUTCOMES
 from app.application_outcome import REQUESTERS as OUTCOME_REQUESTERS
@@ -1792,6 +1794,13 @@ APPLICATION_CODE_DEFAULT = "'APP-' || translate(format('%6s', nextval('overseas_
 
 
 OUTCOME_CHECK = _in("outcome", APPLICATION_OUTCOMES)  # ccrm-015; migration 0170 repeats it
+# ccrm-013 (DEC-SCOPE-256): migration 0179 repeats these (test_ccrm_013_migration).
+APPLICATION_FIELD_CHECKS = {
+    "ck_overseas_applications_currency": _in("currency", APPLICATION_CURRENCIES),
+    "ck_overseas_applications_scholarship_status": _in("scholarship_status", SCHOLARSHIP_STATUSES),
+    "ck_overseas_applications_money": "(tuition_fee IS NULL OR tuition_fee >= 0) AND (scholarship_amount IS NULL OR scholarship_amount >= 0)",
+    "ck_overseas_applications_scholarship_awarded": "scholarship_amount IS NULL OR scholarship_status = 'awarded'",
+}
 # ccrm-023 (DEC-SCOPE-245, OF3/OF4): an application offer's types and statuses. Migration 0171 repeats them (test_ccrm_023_migration).
 APPLICATION_OFFER_TYPES = ("conditional", "unconditional", "pathway", "other")
 APPLICATION_OFFER_STATUSES = ("active", "superseded", "withdrawn_by_university", "expired")
@@ -1829,8 +1838,6 @@ class OverseasApplication(Base, TimestampMixin):
     offer_letter_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     agent_student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id"), nullable=True, index=True)
     submitted_on: Mapped[date | None] = mapped_column(Date, nullable=True)
-    # ccrm-019 (DEC-SCOPE-257, AC2): the day the checklist's last required item became complete; cleared when one stops being complete.
-    documents_completed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     application_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
     offer_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
     # AGN-013 (DEC-SCOPE-054): recorded by an agency Master at enrollment (PUT .../enrollment); NULL until then.
@@ -1845,9 +1852,24 @@ class OverseasApplication(Base, TimestampMixin):
     offer_document_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL", use_alter=True, name="fk_overseas_applications_offer_document_id"), nullable=True
     )
+    # ccrm-013 (DEC-SCOPE-256): the university-side fields, written by the counselor/Admin details route. The portal URL is a link only,
+    # never credentials (F6); one currency serves the fee and the scholarship amount (F1); the amount only when awarded (F3).
+    faculty: Mapped[str | None] = mapped_column(String(140), nullable=True)
+    campus: Mapped[str | None] = mapped_column(String(140), nullable=True)
+    course_start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    university_portal_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    university_contact_name: Mapped[str | None] = mapped_column(String(140), nullable=True)
+    university_contact_email: Mapped[str | None] = mapped_column(String(254), nullable=True)
+    tuition_fee: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    scholarship_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    scholarship_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    documents_completed_on: Mapped[date | None] = mapped_column(Date, nullable=True)  # editable now; ccrm-019 also sets it (F5)
+    decision_due_on: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     __table_args__ = (
         UniqueConstraint("application_code", name="uq_overseas_applications_code"),
+        *(CheckConstraint(sql, name=name) for name, sql in APPLICATION_FIELD_CHECKS.items()),
         CheckConstraint("offer_type IS NULL OR offer_type IN (" + ", ".join(f"'{t}'" for t in APPLICATION_OFFER_TYPES) + ")", name="ck_overseas_applications_offer_type"),
         CheckConstraint("(offer_type IS NULL) = (offer_date IS NULL)", name="ck_overseas_applications_offer_dated"),
         CheckConstraint(OUTCOME_CHECK, name="ck_overseas_applications_outcome"),

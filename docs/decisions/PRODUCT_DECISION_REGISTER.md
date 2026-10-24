@@ -9299,3 +9299,21 @@ allowed on hold (it moves no stage); the agency reads the decision and deposit t
 remit/refund date validators raised `TypeError` (500); the profile helper is now `_profile_not_future`.
 **Numbering:** migration `0178_offer_decisions_deposits`; API §12FH; RBAC §2.170.
 - **Feature ID authorized:** `ccrm-025`. **Status:** merged (PR #317, main @ `de55f72b`).
+
+### DEC-SCOPE-256 — Application fields and counselor-editable dates (`ccrm-013`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-013` (source PDF §6 application field table, `UNVERIFIED`; absorbs `nehn-037`
+part 3 per CC7; CC4, CC5); design `docs/superpowers/specs/2026-10-24-ccrm-013-application-fields-design.md`.
+**Recommended defaults (`NEEDS_CONFIRMATION` — the owner asked to proceed with recommended answers):** F1 currencies INR, GBP, USD, EUR,
+CAD, AUD, NZD, SGD, AED, one per application for fee and scholarship amount; F2 a dedicated `GET`/`PATCH …/applications/{id}/details`
+(counselor on direct and agency applications, Overseas Admin) — the generic PATCH is unchanged and still refuses a counselor on an agency
+application (`DEC-SCOPE-090` H4); F3 scholarship none/applied/awarded/declined, amount only when awarded, leaving awarded clears it; F4
+currency required with a fee or amount, checked on the merged row; F5 dates within 2000–2100, submitted/documents-completed not in the
+future, `documents_completed_on` editable until ccrm-019 also sets it; F6 portal link http(s) only, never with credentials; F7 details stay
+editable on a closed application, an archived agency record is `409`; F8 audit row with before/after per field, the agency (AGN-017
+recipients) told of every edit without values, the student told only of a scholarship change; F9 the student sees course start date and
+scholarship, the agency sees all fields read-only (its edit form unchanged). The Overseas Admin edits through the API (no admin card yet).
+**Regression pin:** ccrm-007's shadowing `_not_future` (which broke the agency date validators) is fixed on main by ccrm-025
+(`_profile_not_future`); `test_the_agency_form_still_takes_a_submission_date` pins it.
+**Numbering:** migration `0179_application_fields` (after ccrm-025's 0178); API §12FI; RBAC §2.171.
+- **Feature ID authorized:** `ccrm-013`. **Status:** built on `feature/ccrm-013`.

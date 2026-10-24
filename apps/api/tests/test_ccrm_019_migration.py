@@ -22,7 +22,7 @@ HEAD = "0180_application_checklists"
 
 
 def test_migration_chains_after_the_previous_head_and_is_the_single_head():
-    assert _migration.revision == HEAD and _migration.down_revision in {"0178_offer_decisions_deposits", "0179_application_fields"}
+    assert _migration.revision == HEAD and _migration.down_revision == "0179_application_fields"
     script = ScriptDirectory.from_config(_config())
     assert script.get_heads() == [HEAD]
 
@@ -55,7 +55,6 @@ def test_tables_checks_and_round_trip(isolated_db):
     cfg, url = isolated_db["cfg"], isolated_db["url"]
     assert "application_checklists" not in {r[0] for r in _sql(url, "SELECT tablename FROM pg_tables")}
     command.upgrade(cfg, HEAD)
-    assert "documents_completed_on" in _columns(url, "overseas_applications")
     assert {"mark", "from_template", "allowed_statuses"} <= set(_columns(url, "application_checklist_items"))
     student, university, country, app_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
     _sql(

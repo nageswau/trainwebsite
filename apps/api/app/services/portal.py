@@ -6,6 +6,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.application_fields import scholarship_text
 from app.application_outcome import label as outcome_label
 from app.application_sub_status import label as sub_status_label
 from app.core.identifiers import uuid_reference
@@ -619,6 +620,8 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
                 ("status", "Status"),
                 ("sub_status_label", "Sub-status"),
                 ("outcome_label", "Outcome"),
+                ("course_start_date", "Course start"),
+                ("scholarship", "Scholarship"),
                 ("next_action", "Next action"),
             ),
             (
@@ -631,6 +634,9 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
                     "status": a.status,
                     "sub_status_label": sub_status_label(a.sub_status),
                     "outcome_label": outcome_label(a.outcome),  # ccrm-015: the label only (reason and owner are internal)
+                    # ccrm-013 (F9): the start date and the scholarship only; fees, contacts and the portal link stay staff/agency-side
+                    "course_start_date": a.course_start_date,
+                    "scholarship": scholarship_text(a.scholarship_status, a.scholarship_amount, a.currency),
                     "next_action": a.next_action,
                 }
                 for a, u in applications

@@ -14,6 +14,8 @@ import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { AGENT_MAX_STAGE, AgentApplicationDetail as Detail, APPLICATIONS_URL, deadlineText, READ_ONLY_TEXT, stageLabel, todayIso } from "@/lib/agentApplications";
 import { subStatusLabel } from "@/lib/applicationSubStatus";
+import { scholarshipText } from "@/lib/applicationDetails";
+import { money } from "@/lib/applicationOffers";
 
 type Props = { id: string; isMaster?: boolean; onChanged: (d: Detail) => void; onClose: () => void };
 
@@ -151,6 +153,19 @@ export default function AgentApplicationDetail({ id, isMaster = false, onChanged
             <dd>{detail.next_action ?? "—"}</dd>
             <dt>EduSphere counsellor</dt>
             <dd>{detail.counselor_name ?? "Not assigned yet"}</dd>
+            {/* ccrm-013 (F9): recorded by EduSphere; read-only for the agency */}
+            <dt>Faculty / campus</dt>
+            <dd>{[detail.faculty, detail.campus].filter(Boolean).join(" · ") || "—"}</dd>
+            <dt>Course start date</dt>
+            <dd>{detail.course_start_date ?? "—"}</dd>
+            <dt>Tuition fee</dt>
+            <dd>{detail.tuition_fee == null ? "—" : money(detail.currency ?? null, String(detail.tuition_fee))}</dd>
+            <dt>Scholarship</dt>
+            <dd>{scholarshipText({ scholarship_status: detail.scholarship_status ?? null, scholarship_amount: detail.scholarship_amount ?? null, currency: detail.currency ?? null }) ?? "—"}</dd>
+            <dt>Decision due on</dt>
+            <dd>{detail.decision_due_on ?? "—"}</dd>
+            <dt>Documents completed on</dt>
+            <dd>{detail.documents_completed_on ?? "—"}</dd>
           </dl>
           {!detail.read_only_reason && openForm !== "offer" && openForm !== "deposit" && (
             <button id={editId} type="button" className="btn secondary small" onClick={() => setEditing(true)}>

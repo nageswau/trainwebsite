@@ -3707,3 +3707,15 @@ login and for staff rows) with column type `student_360`.
 | `POST` | `/{id}/deposit-receipts` | writers | Multipart `file` (PDF or image, AGN-009 rules) → `201` `{document:{id, name}}`, type "Deposit receipt". |
 
 Daily beat task `ccrm025-offer-expiry` (18:40 UTC = 00:10 IST): see `DEC-SCOPE-255` D3.
+
+## 12FI. Application details (ccrm-013) — addendum, 2026-10-24
+
+`DEC-SCOPE-256`. All paths under `/api/v1/workflows/overseas`.
+
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| `GET` | `/applications/{id}/details` | `counselor` (own application, direct or agency), `overseas_admin` | `200` `{id, application_code, faculty, campus, course_start_date, university_portal_url, university_contact_name, university_contact_email, tuition_fee, currency, scholarship_status, scholarship_amount, submitted_on, application_deadline, offer_deadline, documents_completed_on, decision_due_on, scholarship_label}`. `403` out of scope, `404` unknown. |
+| `PATCH` | `/applications/{id}/details` | as `GET` | Body `ApplicationDetailsUpdate` (unknown keys `422`; omitted = unchanged, null clears). `200` = the `GET` shape + `changed`; identical values → `changed: false`, nothing written. `422`: currency outside the list, scholarship status outside the list, negative money, currency missing with a fee/amount (merged row), amount without `awarded`, date outside 2000–2100, future submitted/documents-completed date, portal link not http(s) or with credentials, bad contact email. `409` archived agency record. |
+| `PATCH` | `/applications/{id}` (generic) | unchanged | Contract unchanged. |
+| `GET` | `/agent/crm/applications/{id}` (AGN-008) | unchanged | Detail adds the ccrm-013 fields (read-only) and `scholarship_label`. |
+| `GET` | `/portal/overseas/student/applications` | unchanged | Adds columns `course_start_date` and `scholarship` (e.g. "Awarded — GBP 1,500.00"). |

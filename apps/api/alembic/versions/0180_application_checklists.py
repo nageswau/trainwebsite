@@ -1,14 +1,13 @@
 """ccrm-019 -- an application's document checklist (application_checklists, application_checklist_items,
-application_checklist_item_documents) and overseas_applications.documents_completed_on.
+application_checklist_item_documents).
 
 Revision ID: 0180_application_checklists
-Revises: 0178_offer_decisions_deposits
+Revises: 0179_application_fields
 
 docs/superpowers/specs/2026-10-24-ccrm-019-application-checklist-design.md (DEC-SCOPE-257). Nothing is backfilled: a checklist is made
-when the counselor creates it or the gate first needs it. ccrm-013 (0179, built in parallel) adds the same `documents_completed_on`
-column, so it is added only when missing. 0001 builds a fresh database from the current models, so each step runs only when missing
-(0166's idiom). MARKS / GATE_MODES repeat app.application_checklists / app.document_checklists (test_ccrm_019_migration). The downgrade
-drops the tables and the column.
+when the counselor creates it or the gate first needs it. `overseas_applications.documents_completed_on`, which ccrm-019 sets, is
+ccrm-013's (0179). 0001 builds a fresh database from the current models, so the tables are made only when missing (0166's idiom).
+MARKS / GATE_MODES repeat app.application_checklists / app.document_checklists (test_ccrm_019_migration). The downgrade drops the tables.
 """
 
 import sqlalchemy as sa
@@ -16,11 +15,10 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0180_application_checklists"
-down_revision = "0178_offer_decisions_deposits"
+down_revision = "0179_application_fields"
 branch_labels = None
 depends_on = None
 
-APPLICATIONS = "overseas_applications"
 CHECKLISTS = "application_checklists"
 ITEMS = "application_checklist_items"
 LINKS = "application_checklist_item_documents"
@@ -38,9 +36,6 @@ def _inspect():
 
 def upgrade() -> None:
     inspector = _inspect()
-    columns = set() if inspector is None else {c["name"] for c in inspector.get_columns(APPLICATIONS)}
-    if "documents_completed_on" not in columns:
-        op.add_column(APPLICATIONS, sa.Column("documents_completed_on", sa.Date(), nullable=True))
     if inspector is not None and CHECKLISTS in inspector.get_table_names():
         return
     op.create_table(
@@ -88,4 +83,3 @@ def downgrade() -> None:
     op.drop_table(LINKS)
     op.drop_table(ITEMS)
     op.drop_table(CHECKLISTS)
-    op.drop_column(APPLICATIONS, "documents_completed_on")

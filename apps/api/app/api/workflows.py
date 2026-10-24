@@ -10,11 +10,13 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import application_fields
 from app.api.deps import get_current_user
 from app.api.files import _allowed
 from app.api.school_bulk import _safe_cell
@@ -79,6 +81,7 @@ from app.notifications.dispatch import queue_deliveries
 from app.schemas import (
     AgentDocumentReview,
     AgentStudentCreate,
+    ApplicationDetailsUpdate,
     ApplicationOutcomeReopen,
     ApplicationOutcomeSet,
     ApplicationSubStatusChange,
@@ -2152,6 +2155,50 @@ async def change_application_sub_status(application_id: UUID, payload: Applicati
         )
         await db.commit()
     return {"id": item.id, "status": item.status, "sub_status": item.sub_status, "sub_status_label": sub_status_label(item.sub_status), "changed": before is not None}
+
+
+def _details_view(item: OverseasApplication) -> dict:
+    return {
+        "id": item.id,
+        "application_code": item.application_code,
+        **{name: getattr(item, name) for name in application_fields.DETAIL_FIELDS},
+        "scholarship_label": application_fields.scholarship_label(item.scholarship_status),
+    }
+
+
+@router.get("/overseas/applications/{application_id}/details")
+async def get_application_details(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-013 (DEC-SCOPE-256): the university-side fields and the three dates -- the counselor of the application or the Admin."""
+    _require(user, {"counselor", "overseas_admin"}, "overseas")
+    return _details_view(await _assigned_application(db, user, application_id))
+
+
+@router.patch("/overseas/applications/{application_id}/details")
+async def update_application_details(application_id: UUID, payload: ApplicationDetailsUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-013 (DEC-SCOPE-256, F2): the counselor (their applications, direct and agency: CC4) or the Overseas Admin edits the details.
+    Not the generic PATCH, which keeps refusing a counselor on an agency application (no stage write here). CC5: last write wins, the
+    audit keeps every change with its author, the agency is told."""
+    item = await _outcome_entry(db, user, application_id)
+    changes = payload.model_dump(exclude_unset=True)
+    if "scholarship_amount" not in changes and changes.get("scholarship_status", item.scholarship_status) != "awarded":
+        changes["scholarship_amount"] = None  # F3: leaving awarded clears the amount; one sent with another status is a 422 below
+    merged = {name: getattr(item, name) for name in application_fields.DETAIL_FIELDS} | changes
+    if problem := application_fields.problem(merged):
+        raise HTTPException(422, problem)
+    diff = {name: {"from": getattr(item, name), "to": value} for name, value in changes.items() if getattr(item, name) != value}
+    if diff:
+        old_scholarship = item.scholarship_status
+        for name in diff:
+            setattr(item, name, changes[name])
+        await _audit(db, user, "overseas.application.details", "overseas_application", item.id, jsonable_encoder(diff))
+        await agency_notices.details_changed(db, item, user)  # CC5
+        student = await db.get(User, item.student_id) if item.student_id else None
+        if student and item.scholarship_status != old_scholarship:  # F8: the student hears about the scholarship only
+            university = await db.scalar(select(University.name).where(University.id == item.university_id))
+            text = application_fields.scholarship_text(item.scholarship_status, item.scholarship_amount, item.currency) or "No scholarship recorded"
+            await _notify_user(db, student, "Scholarship update", f"{university}: {text}.", "/overseas/student/applications")
+        await db.commit()
+    return {**_details_view(item), "changed": bool(diff)}
 
 
 async def _outcome_entry(db: AsyncSession, user: User, application_id: UUID) -> OverseasApplication:
