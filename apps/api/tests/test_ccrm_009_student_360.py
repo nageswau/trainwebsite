@@ -1,4 +1,4 @@
-"""ccrm-009 (DEC-SCOPE-252, V1-V2, B1-B6) -- the counselor's student 360: read-only GET /counselor/students/{id}/overview, /documents,
+"""ccrm-009 (DEC-SCOPE-253, V1-V2, B1-B6) -- the counselor's student 360: read-only GET /counselor/students/{id}/overview, /documents,
 /activities and /history. The overseas counselor with the student in csc-001 scope and the Overseas Admin read; anyone else is refused.
 V1: inside the page the counselor sees ALL the student's applications, documents and history, marked "yours" or not; a download is
 offered only where the existing download route allows it."""

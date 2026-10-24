@@ -26,7 +26,7 @@ from app.models import AuditLog, Notification, OverseasApplication, OverseasStud
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import CounselorStudentCreate
 from app.services.agent_orgs import retry_after
-from app.services.provisioning import IssuedWelcome, flush_unique_email, issue_welcome_token, provisioning_statuses, resend_wait_seconds, unusable_password_hash
+from app.services.provisioning import IssuedWelcome, deliver_welcome_link, flush_unique_email, issue_welcome_token, provisioning_statuses, resend_wait_seconds, unusable_password_hash
 
 logger = logging.getLogger("app.counselor_students")
 
@@ -59,9 +59,9 @@ async def is_visible_student(db: AsyncSession, counselor: User, student_id: UUID
     return bool(await db.scalar(select(exists().where(User.id == student_id, User.id.in_(visible_student_ids(counselor))))))
 
 
-def require_overseas_counselor(user: User) -> None:
+def require_overseas_counselor(user: User, message: str = OVERSEAS_COUNSELOR_ONLY) -> None:
     if user.role != "counselor" or user.division != "overseas":  # W1: an IT counselor works leads only (tel-017)
-        raise HTTPException(403, OVERSEAS_COUNSELOR_ONLY)
+        raise HTTPException(403, message)
 
 
 def student_out(student: User, setup: str | None) -> dict:
@@ -103,8 +103,8 @@ async def _lock_counselor(db: AsyncSession, counselor_id: UUID) -> None:
     await db.execute(select(User.id).where(User.id == counselor_id).with_for_update())
 
 
-async def create_student(db: AsyncSession, counselor: User, payload: CounselorStudentCreate) -> tuple[User, IssuedWelcome]:
-    """No commit. The counselor's own row is locked first, so one counselor's creates run one at a time and the budget holds under
+async def create_student(db: AsyncSession, counselor: User, payload: CounselorStudentCreate, *, registration_source: str = "counselor_walk_in") -> tuple[User, IssuedWelcome]:
+    """No commit (ccrm-008's lead conversion passes `lead_conversion`). The counselor's own row is locked first, so one counselor's creates run one at a time and the budget holds under
     concurrency (lock order: counselor -> new user -> tokens, as ENH-003 Re-send)."""
     counselor_id = counselor.id  # a plain value: a rollback below expires the ORM objects
     await _lock_counselor(db, counselor_id)
@@ -114,7 +114,7 @@ async def create_student(db: AsyncSession, counselor: User, payload: CounselorSt
     student = User(
         email=payload.email, password_hash=unusable_password_hash(), full_name=payload.full_name, role="overseas_student", division="overseas",
         phone=payload.phone, active=True, email_verified=False, student_code=await unique_student_code(db, User.student_code),
-        profile={"registration_source": "counselor_walk_in"},
+        profile={"registration_source": registration_source},
     )  # fmt: skip
     db.add(student)
     try:
@@ -126,6 +126,13 @@ async def create_student(db: AsyncSession, counselor: User, payload: CounselorSt
     issued = await issue_welcome_token(db, user=student, issued_by=counselor)
     db.add(AuditLog(user_id=counselor_id, action=CREATED, entity_type="user", entity_id=str(student.id), outcome="created", metadata_json={"student_code": student.student_code}))
     return student, issued
+
+
+async def deliver_link(student: User, issued: IssuedWelcome, counselor: User) -> dict:
+    """After the commit. AGN-001/002 S3: only an admin may see the link token, so a counselor never can."""
+    delivery = await deliver_welcome_link(user=student, issued=issued, issued_by=counselor)
+    delivery.pop("development_welcome_token", None)
+    return delivery
 
 
 async def _locked_pending_student(db: AsyncSession, counselor_id: UUID, student_id: UUID) -> tuple[User, str]:

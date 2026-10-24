@@ -3,7 +3,7 @@
 - POST /telecaller/leads/{id}/handover: the lead's telecaller (tel-004 scope; 403 once handed over), their manager or super_admin.
 - /counselor/leads/...: the assigned counselor only -- the list, the detail (milestones, permissions), the timeline, the return, the
   link suggestions and the student link / unlink; ccrm-003 the stage move and the next action (its follow-ups are in
-  `api/telecaller_follow_ups.py`).
+  `api/telecaller_follow_ups.py`); ccrm-008 the one-step conversion to a new overseas student (API §12FE).
 
 Scope always comes from the session; an id outside it is 404, a role that may not act 403, a rule conflict 409, invalid input 422."""
 
@@ -21,6 +21,7 @@ from app.lead_stages import CLOSED
 from app.models import Enquiry, User
 from app.schemas import (
     CounselorLeadStageMove,
+    CounselorStudentCreate,
     LeadHandoverIn,
     LeadNextActionIn,
     LeadNoteIn,
@@ -30,7 +31,7 @@ from app.schemas import (
     LeadStudentLinkIn,
     LeadTimelinePage,
 )
-from app.services import bdm_leads, lead_handover, lead_notes, lead_pipeline, telecaller_leads
+from app.services import bdm_leads, counselor_students, lead_conversion, lead_handover, lead_notes, lead_pipeline, telecaller_leads
 from app.services.lead_timeline import page as timeline_page
 
 telecaller_router = APIRouter(prefix="/telecaller/leads", tags=["lead-handover"])
@@ -144,6 +145,20 @@ async def link_student(lead_id: UUID, payload: LeadStudentLinkIn, user: User = D
     await lead_handover.link_student(db, user, lead, User.id == payload.student_id)
     await lead_handover.commit_link(db, user, lead_id)
     return await lead_handover.detail(db, lead_id, filters)
+
+
+@counselor_router.post("/{lead_id}/convert", status_code=201)
+async def convert_to_student(lead_id: UUID, payload: CounselorStudentCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-008 (DEC-SCOPE-252): an overseas counselor only (403), on a lead handed to them (404); the rules are `lead_conversion.convert`.
+    The set-password link is mailed after the commit and its token is never returned."""
+    counselor_students.require_overseas_counselor(user, lead_conversion.COUNSELOR_ONLY)
+    filters = lead_handover.counselor_scope(user)
+    lead = await lead_pipeline.locked_lead(db, lead_id, *filters)
+    student, issued = await lead_conversion.convert(db, user, lead, payload)
+    out = counselor_students.student_out(student, "pending_setup")
+    await lead_handover.commit_link(db, user, lead_id)
+    delivery = await counselor_students.deliver_link(student, issued, user)
+    return {"student": out, "lead": await lead_handover.detail(db, lead_id, filters), **delivery}
 
 
 @counselor_router.delete("/{lead_id}/student-link")

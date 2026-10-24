@@ -104,7 +104,7 @@ async def test_the_counselor_lists_and_reads_only_their_own_leads(client, db_ses
     assert [item["id"] for item in page["items"]] == [str(lead.id)] and page["total"] == 1
     detail = await client.get(c_url(lead.id))
     assert detail.status_code == 200
-    assert detail.json()["permissions"] == {"return": True, "link": True, "unlink": False, "stage": True, "follow_up": True}  # ccrm-003 adds stage / follow_up
+    assert detail.json()["permissions"] == {"return": True, "link": True, "unlink": False, "stage": True, "follow_up": True, "convert": False}  # ccrm-003 adds stage / follow_up; ccrm-008 convert (an IT lead)
     assert detail.json()["milestones"] == {"student": None, "items": []}
     assert (await client.get(c_url(other_lead.id))).status_code == 404
     assert (await client.get(c_url(lead.id, "/timeline"))).status_code == 200

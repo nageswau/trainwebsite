@@ -1,7 +1,7 @@
 # ccrm-009 — Counselor student 360 page (design)
 
 NO-ASSUMPTION MODE. Source: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` §`ccrm-009` (spec PDF §5, `UNVERIFIED`, owner request).
-Dependency `ccrm-007` is merged (PR #311). Decision: `DEC-SCOPE-252`. API §12FE. RBAC §2.167. **No migration.**
+Dependency `ccrm-007` is merged (PR #311). Decision: `DEC-SCOPE-253`. API §12FF. RBAC §2.168. **No migration.**
 
 ## Intent
 

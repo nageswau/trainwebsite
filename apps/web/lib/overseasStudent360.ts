@@ -1,5 +1,5 @@
-// ccrm-009 (DEC-SCOPE-252): the counselor's / Overseas Admin's student 360 -- tab list and the read-only tab payloads
-// (API_CONTRACT.md §12FE). Profile tabs use lib/studentProfile.ts, the notes panel lib/studentNotes.ts.
+// ccrm-009 (DEC-SCOPE-253): the counselor's / Overseas Admin's student 360 -- tab list and the read-only tab payloads
+// (API_CONTRACT.md §12FF). Profile tabs use lib/studentProfile.ts, the notes panel lib/studentNotes.ts.
 
 export const STUDENT_TABS = [
   { key: "overview", label: "Overview" },

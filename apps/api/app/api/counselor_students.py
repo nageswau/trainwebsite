@@ -3,8 +3,8 @@ emailed ENH-003 link) and list the students linked to the counselor (csc-001). A
 csc-003 (DEC-SCOPE-228) -- while such an account is pending: resend the link, or fix name/phone/email. API §12EN; RBAC §2.150.
 csc-005 (DEC-SCOPE-230) -- the Overseas Admin moves a student to another counselor. API §12EP; RBAC §2.152.
 ccrm-010 (DEC-SCOPE-241) -- internal notes on a student (the counselling history), counselor and Overseas Admin. API §12ET; RBAC §2.156.
-ccrm-009 (DEC-SCOPE-252) -- the student 360's read-only tabs (overview, documents, activities, history), counselor and Overseas Admin.
-API §12FE; RBAC §2.167."""
+ccrm-009 (DEC-SCOPE-253) -- the student 360's read-only tabs (overview, documents, activities, history), counselor and Overseas Admin.
+API §12FF; RBAC §2.168."""
 
 import logging
 from uuid import UUID
@@ -17,18 +17,10 @@ from app.core.database import get_db
 from app.models import User
 from app.schemas import CounselorStudentCreate, CounselorStudentUpdate, OverseasApplicationCounselorAssign, StudentNoteCreate
 from app.services import counselor_student_360, counselor_students, student_notes, student_profiles
-from app.services.provisioning import IssuedWelcome, deliver_welcome_link
 
 logger = logging.getLogger("app.counselor_students")
 router = APIRouter(prefix="/counselor/students", tags=["counselor-students"])
 admin_router = APIRouter(prefix="/admin/users", tags=["counselor-students"])
-
-
-async def _deliver(student: User, issued: IssuedWelcome, counselor: User) -> dict:
-    """After the commit. AGN-001/002 S3: only an admin may see the link token, so a counselor never can."""
-    delivery = await deliver_welcome_link(user=student, issued=issued, issued_by=counselor)
-    delivery.pop("development_welcome_token", None)
-    return delivery
 
 
 @router.get("")
@@ -44,7 +36,7 @@ async def create_student(payload: CounselorStudentCreate, user: User = Depends(g
     out = counselor_students.student_out(student, "pending_setup")
     await db.commit()
     logger.info("counselor_student_created", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(out["id"])}})
-    return {"student": out, **await _deliver(student, issued, user)}
+    return {"student": out, **await counselor_students.deliver_link(student, issued, user)}
 
 
 @router.post("/{student_id}/welcome-links", status_code=201)
@@ -54,7 +46,7 @@ async def resend_link(student_id: UUID, user: User = Depends(get_current_user), 
     out = counselor_students.student_out(student, "pending_setup")
     await db.commit()
     logger.info("counselor_student_link_resent", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student_id)}})
-    return {"student": out, **await _deliver(student, issued, user)}
+    return {"student": out, **await counselor_students.deliver_link(student, issued, user)}
 
 
 @router.patch("/{student_id}")
@@ -66,7 +58,7 @@ async def update_student(student_id: UUID, payload: CounselorStudentUpdate, user
     if issued is None:
         return {"student": out}
     logger.info("counselor_student_email_changed", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student_id)}})
-    return {"student": out, **await _deliver(student, issued, user)}
+    return {"student": out, **await counselor_students.deliver_link(student, issued, user)}
 
 
 @router.get("/{student_id}/notes")
@@ -91,7 +83,7 @@ async def assign_student_counselor(user_id: UUID, payload: OverseasApplicationCo
     return result
 
 
-# ccrm-009 (DEC-SCOPE-252): ccrm-007's gate -- csc-001 scope or the Overseas Admin; another student is a 404, another role a 403.
+# ccrm-009 (DEC-SCOPE-253): ccrm-007's gate -- csc-001 scope or the Overseas Admin; another student is a 404, another role a 403.
 @router.get("/{student_id}/overview")
 async def student_overview(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     student = await student_profiles.staff_student(db, user, student_id)

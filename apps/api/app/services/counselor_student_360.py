@@ -1,4 +1,4 @@
-"""ccrm-009 (DEC-SCOPE-252) -- the reads behind the counselor's student 360: overview, documents, activities and history. Read-only;
+"""ccrm-009 (DEC-SCOPE-253) -- the reads behind the counselor's student 360: overview, documents, activities and history. Read-only;
 the caller has already passed `student_profiles.staff_student` (csc-001 scope or the Overseas Admin).
 
 V1: the page shows ALL the student's applications, current documents and history, each application marked `mine`; every write and

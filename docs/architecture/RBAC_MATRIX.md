@@ -2678,7 +2678,16 @@ inside the existing role scope (a counselor searching another counselor's code g
 - Pinned by `test_ccrm_021_document_status.py::test_replace_is_scoped_like_review_and_checks_the_file`,
   `::test_agency_staff_still_only_verify`, `::test_an_agency_master_decides_with_new_or_legacy_codes`.
 
-### 2.167 Counselor student 360 *(added 2026-10-24 — `DEC-SCOPE-252`, ccrm-009)*
+### 2.167 Convert a lead to a student *(added 2026-10-24 — `DEC-SCOPE-252`, ccrm-008)*
+
+| Route | overseas `counselor` | IT `counselor` | `overseas_admin`, `super_admin`, telecaller roles, others | Anonymous |
+|---|---|---|---|---|
+| `POST /counselor/leads/{id}/convert` | ✅ own handed-over lead only (`404` otherwise) | `403` (csc-002 W1) | `403` | `401` |
+
+- Pinned by `test_ccrm_008_convert.py::test_another_counselors_lead_is_404`, `::test_an_it_counselor_and_a_telecaller_are_403`,
+  `::test_extra_fields_are_refused`.
+
+### 2.168 Counselor student 360 *(added 2026-10-24 — `DEC-SCOPE-253`, ccrm-009)*
 
 | Route | `overseas_admin` | `counselor` (overseas) | `counselor` (IT) | `overseas_student`, `agent`, others | Anonymous |
 |---|---|---|---|---|---|

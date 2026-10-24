@@ -21,7 +21,7 @@ function refusal(detail: unknown, message: string): string {
 // ccrm-007 (DEC-SCOPE-249): the structured overseas student profile, edited by the counselor, the Overseas Admin or the student (P1:
 // every field). A save replaces the whole profile (P5) and last write wins (CC5), so the form shows who saved last. On a refusal the
 // entries stay; a second save while one is in flight is ignored.
-// ccrm-009 (DEC-SCOPE-252 V2): the student 360 shows one `section` per tab -- academic (personal details, academic history, work
+// ccrm-009 (DEC-SCOPE-253 V2): the student 360 shows one `section` per tab -- academic (personal details, academic history, work
 // experience), preferences or english. The whole profile is still held and saved, so a save on one tab never clears another's fields.
 export type ProfileSection = "academic" | "preferences" | "english";
 

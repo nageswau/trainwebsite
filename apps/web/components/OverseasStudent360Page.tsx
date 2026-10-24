@@ -27,7 +27,7 @@ const PORTALS = {
 
 type Portal = keyof typeof PORTALS;
 
-/** ccrm-009 (DEC-SCOPE-252): /overseas/{counselor|admin}/students/[id]?tab=... -- one student's 360. ccrm-010's page rules: the API is
+/** ccrm-009 (DEC-SCOPE-253): /overseas/{counselor|admin}/students/[id]?tab=... -- one student's 360. ccrm-010's page rules: the API is
  *  the gate and the scope (a student outside the caseload is a 404, another role a 403 card) and each reader stays in their own portal.
  *  B4: link tabs -- only the selected tab's data is fetched; a tab that fails to load says so and leaves the rest of the page working. */
 export default async function OverseasStudent360Page({ portal, id, tab }: { portal: Portal; id: string; tab: StudentTab }) {

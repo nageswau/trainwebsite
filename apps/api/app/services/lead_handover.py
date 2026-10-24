@@ -30,6 +30,7 @@ HANDED_OVER = "Handed over to counselor"  # the cancel reason on the follow-ups 
 RETURNED = "Returned to telecaller"  # and on the counselling appointment and follow-ups a return cancelled (ccrm-003 A6)
 NEXT_ACTION_PAST = "Choose a due date from today onwards"
 NEXT_ACTION_CLOSED = "This lead is closed; it needs no next action"
+CONVERT_FROM = ORDER.index("qualified")
 SWEEP_BATCH = 500
 MAX_SUGGESTIONS = 10
 
@@ -78,12 +79,19 @@ def list_filters(stage: str | None, priority: str | None, created_from: str | No
     return clauses
 
 
+def convertible_stage(stage: str) -> bool:
+    """ccrm-008 K1: Qualified onwards, up to the link (a linked lead is past it)."""
+    return stage in ORDER and CONVERT_FROM <= ORDER.index(stage) < MANUAL_BEFORE
+
+
 def permissions(lead: Enquiry) -> dict:
     linked, closed = lead.converted_user_id is not None, lead.status in CLOSED
     return {
         "return": not linked, "link": not linked and not closed, "unlink": linked and lead.status != "converted",
         # ccrm-003: a stage move (CC8 list; a linked lead only closes, a converted one never) and new follow-ups / next action
         "stage": not closed and lead.status != "converted", "follow_up": not closed,
+        # ccrm-008: one-step conversion to an overseas student (csc-002 is overseas only)
+        "convert": not linked and lead.division == "overseas" and convertible_stage(lead.status),
     }
 
 
@@ -247,20 +255,30 @@ async def page(db: AsyncSession, filters: list, limit: int, offset: int) -> dict
     return {"items": [bdm_leads.admin_out(row) for row in rows], "total": total or 0, "limit": limit, "offset": offset}
 
 
+def student_filters(division: str) -> list:
+    return [User.role == f"{division}_student", User.division == division, User.active.is_(True)]
+
+
+def contact_matches(email: str | None, phone: str | None) -> list:
+    """The same email (any case) or the same last ten mobile digits -- T20's suggested match, and ccrm-008's duplicate check."""
+    matches = []
+    if email:
+        matches.append(func.lower(User.email) == email.lower())
+    digits = "".join(ch for ch in (phone or "") if ch.isdigit())[-10:]
+    if len(digits) == 10:
+        matches.append(func.right(func.regexp_replace(User.phone, r"\D", "", "g"), 10) == digits)
+    return matches
+
+
 async def suggestions(db: AsyncSession, lead: Enquiry, pattern: str | None) -> dict:
     """T20: active students of the lead's division -- without a search, the accounts whose email or mobile (last ten digits) equals the
     lead's (the suggested match); with one, a literal substring of name, email or mobile. A counselor already sees this division's
     students, so this reveals nothing new. Each says whether another lead already holds it."""
-    filters = [User.role == f"{lead.division}_student", User.division == lead.division, User.active.is_(True)]
+    filters = student_filters(lead.division)
     if pattern:
         filters.append(or_(*(c.ilike(pattern, escape="\\") for c in (User.full_name, User.email, User.phone))))
     else:
-        matches = []
-        if lead.email:
-            matches.append(func.lower(User.email) == lead.email.lower())
-        digits = "".join(ch for ch in (lead.phone_normalized or "") if ch.isdigit())[-10:]
-        if len(digits) == 10:
-            matches.append(func.right(func.regexp_replace(User.phone, r"\D", "", "g"), 10) == digits)
+        matches = contact_matches(lead.email, lead.phone_normalized)
         if not matches:
             return {"items": []}
         filters.append(or_(*matches))

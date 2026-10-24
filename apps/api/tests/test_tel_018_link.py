@@ -35,7 +35,7 @@ async def test_the_counselor_links_a_student_and_the_lead_moves_to_application_e
     assert response.status_code == 200, response.text
     body = response.json()
     assert (body["status"], body["converted_user"]["id"]) == ("application_enrollment", str(student.id))
-    assert body["permissions"] == {"return": False, "link": False, "unlink": True, "stage": True, "follow_up": True}  # ccrm-003 adds stage / follow_up
+    assert body["permissions"] == {"return": False, "link": False, "unlink": True, "stage": True, "follow_up": True, "convert": False}  # ccrm-003 adds stage / follow_up; ccrm-008 convert (an IT lead)
     assert body["milestones"]["student"]["id"] == str(student.id)
     audit = await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == str(lead.id), AuditLog.action == "lead.convert"))
     assert (audit.user_id, audit.metadata_json) == (counselor.id, {"converted_user_id": str(student.id)})

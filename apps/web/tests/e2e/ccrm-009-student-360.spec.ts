@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 import { signIn } from "./helpers/agency";
 
-// ccrm-009 (DEC-SCOPE-252) -- the counselor opens the seeded demo student's 360 from the Students section, walks the tabs (each one
+// ccrm-009 (DEC-SCOPE-253) -- the counselor opens the seeded demo student's 360 from the Students section, walks the tabs (each one
 // its own server read), saves the Preferences tab without losing the Academic tab's qualifications, and the Overseas Admin is kept in
 // their own portal. The student is refused. Uses only seeded accounts (no account emails). Requires `python -m app.seed`.
 

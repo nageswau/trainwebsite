@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { sendRequest } from "@/lib/apiErrors";
 
-// ccrm-009 (DEC-SCOPE-252): one document's download on the student 360. The id is exchanged for a short-lived link by the existing,
+// ccrm-009 (DEC-SCOPE-253): one document's download on the student 360. The id is exchanged for a short-lived link by the existing,
 // scoped and audited route (OVS-005); the button is only rendered where that route allows the reader (`can_download`).
 export default function StudentDocumentDownload({ id, name }: { id: string; name: string }) {
   const [busy, setBusy] = useState(false);
