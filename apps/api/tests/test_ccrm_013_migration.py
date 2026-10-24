@@ -17,7 +17,7 @@ _spec = importlib.util.spec_from_file_location("_ccrm_013_migration_0179", VERSI
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0179_application_fields", "0177_visa_lifecycle"
+HEAD, BASE = "0179_application_fields", "0178_offer_decisions_deposits"
 
 
 def test_migration_chains_after_its_base_and_is_the_single_head():

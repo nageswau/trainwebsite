@@ -3,11 +3,13 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { sendJson, sendRequest } from "@/lib/apiErrors";
 import {
+  acceptedMessage,
   APPLICATION_OFFER_TYPE_LABELS,
   ApplicationOffer,
   ApplicationOfferType,
   CLOSE_STATUSES,
   CloseStatus,
+  decisionUrl,
   documentDownloadUrl,
   money,
   OFFER_STATUS_LABELS,
@@ -15,6 +17,7 @@ import {
   offerLettersUrl,
   offersUrl,
   OffersPayload,
+  OtherAccepted,
   withdrawUrl,
 } from "@/lib/applicationOffers";
 
@@ -30,7 +33,7 @@ const blank = (value: string) => value.trim() || null;
 export default function ApplicationOffersPanel({ applicationId, onChanged }: Props) {
   const [data, setData] = useState<OffersPayload | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [mode, setMode] = useState<"list" | "record" | "close">("list");
+  const [mode, setMode] = useState<"list" | "record" | "close" | "accept" | "decline">("list");
 
   async function load() {
     setLoadError(null);
@@ -75,11 +78,24 @@ export default function ApplicationOffersPanel({ applicationId, onChanged }: Pro
       )}
       {mode === "record" && <RecordOfferForm applicationId={applicationId} letters={data.offer_letters} onSaved={saved} onCancel={() => setMode("list")} />}
       {mode === "close" && current && <CloseOfferForm applicationId={applicationId} offer={current} onSaved={saved} onCancel={() => setMode("list")} />}
+      {(mode === "accept" || mode === "decline") && current && (
+        <DecisionForm applicationId={applicationId} offer={current} decision={mode === "accept" ? "accepted" : "declined"} onSaved={saved} onCancel={() => setMode("list")} />
+      )}
       {mode === "list" && (
         <div className="actions" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
           <button type="button" className="btn small" onClick={() => setMode("record")}>
             {current ? "Record new offer" : "Record offer"}
           </button>
+          {current?.decision === "considering" && (
+            <button type="button" className="btn ghost small" onClick={() => setMode("accept")}>
+              Record acceptance
+            </button>
+          )}
+          {(current?.decision === "considering" || current?.decision === "accepted") && (
+            <button type="button" className="btn ghost small" onClick={() => setMode("decline")}>
+              Record decline
+            </button>
+          )}
           {current && (
             <button type="button" className="btn ghost small" onClick={() => setMode("close")}>
               Close offer
@@ -131,6 +147,13 @@ function OfferItem({ offer }: { offer: ApplicationOffer }) {
       )}
       {offer.conditions && <p style={{ margin: "4px 0 0", whiteSpace: "pre-line" }}>Conditions: {offer.conditions}</p>}
       {offer.status_reason && <p style={{ margin: "4px 0 0" }}>Reason: {offer.status_reason}</p>}
+      {(offer.status === "active" || (offer.decision && offer.decision !== "considering")) && offer.decision_label && (
+        <p style={{ margin: "4px 0 0" }}>
+          Student decision: <strong>{offer.decision_label}</strong>
+          {offer.decision_date && ` on ${offer.decision_date}`}
+          {offer.decided_by && ` (recorded by ${offer.decided_by})`}
+        </p>
+      )}
       <p className="muted" style={{ margin: "4px 0 0" }}>Recorded by {offer.recorded_by ?? "an earlier record"}</p>
       {offer.document && (
         <button type="button" className="btn ghost small" style={{ marginTop: 6 }} onClick={() => openLetter(offer.document as OfferDocument)}>
@@ -327,6 +350,74 @@ function CloseOfferForm({ applicationId, offer, onSaved, onCancel }: { applicati
       <div className="actions" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         <button className="btn small" disabled={busy}>
           {busy ? "Saving…" : "Confirm"}
+        </button>
+        <button type="button" className="btn ghost small" disabled={busy} onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// ccrm-025 (DEC-SCOPE-255): the student accepted or declined the current offer. A decline closes the application (ccrm-015's
+// Offer declined outcome); accepting names the student's other accepted offers (D1) but is never blocked.
+function DecisionForm({ applicationId, offer, decision, onSaved, onCancel }: { applicationId: string; offer: ApplicationOffer; decision: "accepted" | "declined"; onSaved: (m: string) => void; onCancel: () => void }) {
+  const id = applicationId;
+  const [on, setOn] = useState(today());
+  const [reason, setReason] = useState("");
+  const [preferred, setPreferred] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
+  const declining = decision === "declined";
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    setError(null);
+    try {
+      const body = declining ? { decision, decision_date: on, reason: reason.trim(), another_offer_preferred: preferred } : { decision, decision_date: on };
+      const outcome = await sendJson(decisionUrl(id, offer.id), "POST", body);
+      if (!outcome.ok) return setError(outcome.message);
+      onSaved(declining ? "Offer declined. The application is now closed." : acceptedMessage((outcome.data.other_accepted as OtherAccepted[] | undefined) ?? []));
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="form" onSubmit={submit} aria-label={declining ? "Record decline" : "Record acceptance"} style={{ marginTop: 8 }}>
+      {declining && (
+        <p className="muted" style={{ fontSize: 13 }}>
+          Declining closes this application; only the Overseas Admin can reopen it.
+        </p>
+      )}
+      <div className="field">
+        <label htmlFor={`decision-date-${id}`}>{declining ? "Decline date" : "Acceptance date"}</label>
+        <input id={`decision-date-${id}`} type="date" required min={offer.issue_date} max={today()} value={on} onChange={(e) => setOn(e.target.value)} />
+      </div>
+      {declining && (
+        <>
+          <div className="field">
+            <label htmlFor={`decision-reason-${id}`}>Reason</label>
+            <textarea id={`decision-reason-${id}`} rows={2} maxLength={2000} required value={reason} onChange={(e) => setReason(e.target.value)} />
+          </div>
+          <label>
+            <input type="checkbox" checked={preferred} onChange={(e) => setPreferred(e.target.checked)} /> The student prefers another offer
+          </label>
+        </>
+      )}
+      {error && (
+        <div className="form-error" role="status" aria-live="polite">
+          {error}
+        </div>
+      )}
+      <div className="actions" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <button className="btn small" disabled={busy}>
+          {busy ? "Saving…" : declining ? "Save decline" : "Save acceptance"}
         </button>
         <button type="button" className="btn ghost small" disabled={busy} onClick={onCancel}>
           Cancel

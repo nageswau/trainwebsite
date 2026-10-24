@@ -3692,6 +3692,22 @@ login and for staff rows) with column type `student_360`.
 | `PATCH` | `/visa/{id}` (legacy) | unchanged | Keeps its contract; a decided case → `409`; `visa_status` follows the stage. |
 | `PATCH` | `/agent/crm/applications/{id}/visa` (AGN-012) | unchanged | Contract unchanged; `visa_status` follows the stage/decision; the application moves forward / closes as `visa_refused` (VC5); the counselor is notified. The detail's `visa` block adds the non-restricted lifecycle fields. |
 
+## 12FH. Offer decision and deposit record (ccrm-025) — addendum, 2026-10-24
+
+`DEC-SCOPE-255`. All paths under `/api/v1/workflows/overseas/applications`. Writers: `counselor` (own applications, direct and agency) and
+`overseas_admin` (any); entry as §12EX (role, scope, row lock, closed `409`, archived agency record `409`).
+
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| `POST` | `/{id}/offers/{offer_id}/decision` | writers | Body `OfferDecisionSet` (unknown keys `422`): `decision` (`accepted` \| `declined`), `decision_date` (default today; future or before the issue date `422`), `reason` (required for declined), `another_offer_preferred` (declined only). `200` `{id, status, sub_status, sub_status_label, offer, changed, other_accepted:[{id, application_code, university}]}`; same decision again → `changed: false`. Declined writes outcome `offer_declined` (terminal). `404` offer of another application; `409` not the current offer, on hold, closed. |
+| `GET` | `/{id}/offers` | unchanged | Each offer adds `decision`, `decision_label`, `decision_date`, `decided_by`. |
+| `POST` | `/{id}/outcome` (ccrm-015) | unchanged | `offer_declined` also sets the current offer's decision to `declined`. |
+| `GET` | `/{id}/deposit` | writers, `overseas_student` (own), `agent` (own agency) | `{record, agency_deposit, prefill, receipts}`: `record` = `{id, required, amount, currency, due_date, payment_status, payment_status_label, paid_on, receipt:{id,name}, updated_by, updated_at}` or null; `agency_deposit` = AGN-011 `{status, amount, currency, due_date}` or null; `prefill` = the current offer's deposit; `receipts` (writers only). Never a file key. |
+| `PUT` | `/{id}/deposit` | writers | Body `DepositRecordSave`: `required`, `amount` (> 0), `currency` (3 letters), `due_date`, `payment_status` (`not_required` \| `pending` \| `paid_to_university` \| `paid_via_edusphere`), `paid_on` (paid statuses only, required there, not future), `receipt_document_id` (a "Deposit receipt" of this application, else `422`). Not required ⇒ no amount, currency, dates or receipt. `200` `{record, changed}`; identical → `changed: false`. `409` beside an AGN-011 deposit, closed; allowed on hold. |
+| `POST` | `/{id}/deposit-receipts` | writers | Multipart `file` (PDF or image, AGN-009 rules) → `201` `{document:{id, name}}`, type "Deposit receipt". |
+
+Daily beat task `ccrm025-offer-expiry` (18:40 UTC = 00:10 IST): see `DEC-SCOPE-255` D3.
+
 ## 12FI. Application details (ccrm-013) — addendum, 2026-10-24
 
 `DEC-SCOPE-256`. All paths under `/api/v1/workflows/overseas`.

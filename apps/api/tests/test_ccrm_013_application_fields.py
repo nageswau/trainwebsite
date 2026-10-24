@@ -175,7 +175,7 @@ async def test_the_student_sees_the_scholarship_and_is_told_only_when_it_changes
 
 @pytest.mark.asyncio
 async def test_the_agency_form_still_takes_a_submission_date(db_session, world):
-    """Regression: ccrm-007's two-argument `_not_future` shadowed AGN-008's, so the agency date validators raised a TypeError (500)."""
+    """Regression pin: ccrm-007's two-argument `_not_future` once shadowed AGN-008's, so the agency date validators raised a TypeError (500)."""
     async with client_for(world["master"].email) as c:
         r = await c.patch(f"{APPS}/{world['app'].id}", json={"submitted_on": date.today().isoformat()})
         assert r.status_code == 200, r.text

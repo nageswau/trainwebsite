@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ApplicationDetailsPanel from "./ApplicationDetailsPanel";
+import ApplicationDepositPanel from "./ApplicationDepositPanel";
 import ApplicationOffersPanel from "./ApplicationOffersPanel";
 import ApplicationOutcomeForm from "./ApplicationOutcomeForm";
 import ApplicationStatusHistory from "./ApplicationStatusHistory";
@@ -202,7 +203,13 @@ export default function CounselorEvaluationPanel() {
                   {offersId === row.id ? "Hide offers" : "Offers"}
                 </button>
               )}
-              {offersId === row.id && <ApplicationOffersPanel applicationId={row.id} onChanged={saved} />}
+              {offersId === row.id && (
+                <>
+                  <ApplicationOffersPanel applicationId={row.id} onChanged={saved} />
+                  {/* ccrm-025: an offer write changes the sub-status, so the key reloads the deposit's prefill from the new offer */}
+                  <ApplicationDepositPanel key={`${row.status}|${row.sub_status}|${row.outcome}`} applicationId={row.id} onChanged={saved} />
+                </>
+              )}
               {/* ccrm-013: details and dates stay editable in any state, like the generic PATCH's non-stage fields (F7) */}
               <button
                 type="button"

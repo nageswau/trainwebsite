@@ -2,7 +2,7 @@
 documents-complete and decision-due dates on overseas_applications, with their CHECKs.
 
 Revision ID: 0179_application_fields
-Revises: 0177_visa_lifecycle
+Revises: 0178_offer_decisions_deposits
 
 docs/superpowers/specs/2026-10-24-ccrm-013-application-fields-design.md (DEC-SCOPE-256). Additive and nullable: no backfill, existing
 rows keep every value. 0001 builds a fresh database from the current models, which already carry the columns, so each step runs only
@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0179_application_fields"
-down_revision = "0177_visa_lifecycle"
+down_revision = "0178_offer_decisions_deposits"
 branch_labels = None
 depends_on = None
 

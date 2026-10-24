@@ -1319,6 +1319,90 @@ class ApplicationOfferClose(BaseModel):
         return cleaned
 
 
+# --- ccrm-025: the student's decision on the current offer and the manual deposit record (DEC-SCOPE-255) ---
+
+
+class OfferDecisionSet(BaseModel):
+    """Accepted or declined (`expired` is the daily job's). The date defaults to today; the route checks it is not before the issue date.
+    A decline needs its reason and writes ccrm-015's `offer_declined` outcome."""
+
+    model_config = {"extra": "forbid"}
+    decision: Literal["accepted", "declined"]
+    decision_date: date | None = None
+    reason: str | None = None
+    another_offer_preferred: bool | None = None
+
+    @field_validator("decision_date")
+    @classmethod
+    def _date(cls, value):
+        return _not_future(_application_date(value), "future_decision_date", "The decision date cannot be in the future")
+
+    @field_validator("reason")
+    @classmethod
+    def _reason(cls, value):
+        return clean_free_text(value, 2000)
+
+    @model_validator(mode="after")
+    def _decline_fields(self):
+        if self.decision == "declined" and not self.reason:
+            raise PydanticCustomError("reason_required", "Give the reason the student declined")
+        if self.decision == "accepted" and (self.reason is not None or self.another_offer_preferred is not None):
+            raise PydanticCustomError("decline_fields", "A reason and another preferred offer are recorded only with a decline")
+        return self
+
+
+DepositRecordStatus = Literal["not_required", "pending", "paid_to_university", "paid_via_edusphere"]  # models.DEPOSIT_RECORD_STATUSES
+
+
+class DepositRecordSave(BaseModel):
+    """The counselor's record of the university deposit (D2): any currency, no payment taken. A save replaces the record."""
+
+    model_config = {"extra": "forbid"}
+    required: bool
+    amount: Annotated[Decimal, Field(gt=0, max_digits=12, decimal_places=2)] | None = None
+    currency: str | None = Field(default=None, pattern=r"^[A-Za-z]{3}$")
+    due_date: date | None = None
+    payment_status: DepositRecordStatus
+    paid_on: date | None = None
+    receipt_document_id: UUID | None = None
+
+    @field_validator("currency")
+    @classmethod
+    def _currency(cls, value):
+        return value.upper() if value else None
+
+    @field_validator("due_date")
+    @classmethod
+    def _due(cls, value):
+        return _application_date(value)
+
+    @field_validator("paid_on")
+    @classmethod
+    def _paid(cls, value):
+        return _not_future(_application_date(value), "future_paid_on", "The payment date cannot be in the future")
+
+    @model_validator(mode="after")
+    def _deposit_rules(self):
+        if not self.required:
+            if any(v is not None for v in (self.amount, self.currency, self.due_date, self.paid_on, self.receipt_document_id)):
+                raise PydanticCustomError("deposit_not_required", "A deposit that is not required has no amount, dates or receipt")
+            if self.payment_status != "not_required":
+                raise PydanticCustomError("deposit_status", "A deposit that is not required has the status Not required")
+            return self
+        if self.payment_status == "not_required":
+            raise PydanticCustomError("deposit_status", "Choose the payment status of a required deposit")
+        if self.amount is None:
+            raise PydanticCustomError("deposit_amount_required", "Enter the deposit amount")
+        if self.currency is None:
+            raise PydanticCustomError("deposit_currency", "Choose the currency of the deposit")
+        paid = self.payment_status.startswith("paid")
+        if paid and self.paid_on is None:
+            raise PydanticCustomError("deposit_paid_on", "Enter the date it was paid")
+        if not paid and self.paid_on is not None:
+            raise PydanticCustomError("deposit_paid_on", "A payment date is recorded only for a paid deposit")
+        return self
+
+
 class ChecklistTemplateItemIn(BaseModel):
     """ccrm-018: one document a checklist template asks for. The type list is the upload list (AGN-009/AGN-010); "Other" needs a label.
     No statuses means the standard list (filled by the service)."""
@@ -1621,7 +1705,8 @@ def _profile_text(value, info):
     return clean_free_text(value, PROFILE_TEXT_LIMITS[info.field_name])
 
 
-def _not_future_named(value: date | None, what: str) -> date | None:
+def _profile_not_future(value: date | None, what: str) -> date | None:
+    """ccrm-007's rule (today, by name); ccrm-025 renamed it -- as `_not_future` it shadowed the offer/deposit one above."""
     if value is not None and value > date.today():
         raise PydanticCustomError("future_date", "{what} cannot be in the future", {"what": what})
     return value
@@ -1671,7 +1756,7 @@ class StudentEnglishTestIn(BaseModel):
             if not low <= self.overall_score <= high:
                 raise PydanticCustomError("score_range", "A {test} score must be between {low} and {high}", {"test": self.test_type, "low": low, "high": high})
         if self.status == "taken":
-            _not_future_named(self.test_date, "The date of a test already taken")
+            _profile_not_future(self.test_date, "The date of a test already taken")
         if self.test_date and self.valid_until and self.valid_until < self.test_date:
             raise PydanticCustomError("validity_before_test", "The valid-until date cannot be before the test date")
         return self
@@ -1705,7 +1790,7 @@ class StudentProfileSave(BaseModel):
     def _birth(cls, value):
         if value is not None and value.year < 1900:
             raise PydanticCustomError("birth_range", "Enter a date of birth after 1900")
-        return _not_future_named(value, "The date of birth")
+        return _profile_not_future(value, "The date of birth")
 
     @field_validator("passport_number")
     @classmethod

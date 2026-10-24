@@ -9279,6 +9279,27 @@ and expected decision dates, decision and next steps. The admin correction is AP
 **Numbering:** migration `0177_visa_lifecycle`; API §12FG; RBAC §2.169.
 - **Feature ID authorized:** `ccrm-026`. **Status:** built on `feature/ccrm-026`.
 
+### DEC-SCOPE-255 — Student decision, acceptance and deposits on every application (`ccrm-025`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-025` (source PDF §9 + §7 Offer Accepted / Offer Declined, `UNVERIFIED`;
+CC4, CC5); design `docs/superpowers/specs/2026-10-24-ccrm-025-offer-decisions-deposits-design.md`.
+**Owner answers (in-session 2026-10-24, `EXPLICIT_APPROVAL` for these points):** D1 a student may have accepted offers on several
+applications at once — accepting is never blocked; the response and the panel name the other accepted ones. D2 the counselor's deposit is a
+new `application_deposit_records` row (one per application, any 3-letter currency prefilled from the current offer, no conversion); AGN-011
+`application_deposits` and Razorpay are unchanged (`DEC-SCOPE-058` stands); an application with an AGN-011 deposit shows it read-only and
+refuses a manual record (`409`). D3 a daily job (00:10 IST) expires the current offer of an application at stage `offer` that is still
+undecided after its deadline: decision `expired` and the offer closed `expired` (ccrm-023 OF4); counselor, student and agency told; no
+deadline never expires; on hold and closed applications are skipped.
+**Rules:** decision `considering` → `accepted` / `declined`; `accepted` → `declined`. Accepting at stage `offer` sets sub-status
+`offer_accepted`. Declining is ccrm-015's `offer_declined` outcome (terminal), from the decision route or `/outcome`; both set the offer's
+decision. Only the current (active) offer is decided; a superseding offer starts at `considering`.
+**Recommended defaults (`NEEDS_CONFIRMATION`):** the receipt is optional; `paid_on` is required for a paid status; the deposit record is
+allowed on hold (it moves no stage); the agency reads the decision and deposit through the existing read routes with no new agency UI.
+**Also:** fixes a defect on main — `schemas.py` defined `_not_future` twice (ccrm-007), so the offer, agency-application and deposit
+remit/refund date validators raised `TypeError` (500); the profile helper is now `_profile_not_future`.
+**Numbering:** migration `0178_offer_decisions_deposits`; API §12FH; RBAC §2.170.
+- **Feature ID authorized:** `ccrm-025`. **Status:** built on `feature/ccrm-025`.
+
 ### DEC-SCOPE-256 — Application fields and counselor-editable dates (`ccrm-013`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-013` (source PDF §6 application field table, `UNVERIFIED`; absorbs `nehn-037`
@@ -9292,7 +9313,7 @@ future, `documents_completed_on` editable until ccrm-019 also sets it; F6 portal
 editable on a closed application, an archived agency record is `409`; F8 audit row with before/after per field, the agency (AGN-017
 recipients) told of every edit without values, the student told only of a scholarship change; F9 the student sees course start date and
 scholarship, the agency sees all fields read-only (its edit form unchanged). The Overseas Admin edits through the API (no admin card yet).
-**Also fixed:** ccrm-007 had redefined `schemas._not_future` with another signature, breaking the AGN-008/010/011 agency date validators
-(TypeError → 500); renamed to `_not_future_named`.
-**Numbering:** migration `0179_application_fields` (0178 reserved by ccrm-025 in flight); API §12FI; RBAC §2.171.
+**Regression pin:** ccrm-007's shadowing `_not_future` (which broke the agency date validators) is fixed on main by ccrm-025
+(`_profile_not_future`); `test_the_agency_form_still_takes_a_submission_date` pins it.
+**Numbering:** migration `0179_application_fields` (after ccrm-025's 0178); API §12FI; RBAC §2.171.
 - **Feature ID authorized:** `ccrm-013`. **Status:** built on `feature/ccrm-013`.

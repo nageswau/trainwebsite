@@ -1006,6 +1006,23 @@ half.
 | `ccrm-026-AC09` | Student sees status label and next steps | `::test_refused_needs_a_reason_writes_the_outcome_and_the_reason_stays_restricted`; e2e student step |
 | `ccrm-026-AC10` | AGN-012 routes and legacy PATCH keep their contracts; agency moves keep the status in step (VC5) | `test_agn_012_*.py`, `test_agn_023_*.py`, `::test_the_legacy_patch_keeps_its_contract_and_the_status_follows_the_stage`, `::test_an_agency_stage_move_and_decision_keep_the_status_in_step_and_tell_the_counselor`; `apps/api/tests/test_ccrm_026_migration.py` |
 
+**Addendum, 2026-10-24 (`ccrm-025`)** — one row and its acceptance-criteria map. Student decision, acceptance and deposits.
+
+| Feature | Trace | Open | Status |
+|---|---|---|---|
+| `ccrm-025` | Requirement: §9 + §7 + owner answers D1–D3 (in-session 2026-10-24) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-025` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-255` → design `docs/superpowers/specs/2026-10-24-ccrm-025-offer-decisions-deposits-design.md`; `API_CONTRACT.md` §12FH, `RBAC_MATRIX.md` §2.170, `DATA_MODEL.md` (0178) | Defaults `NEEDS_CONFIRMATION` (optional receipt, paid_on, on hold allowed, no agency UI) | Built on `feature/ccrm-025`; lite API set, vitest, e2e and browser QA |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-025-AC01` | Accepting records decision + date, sub-status Offer accepted, history, notices (Appendix B "Student accepts University B") | `apps/api/tests/test_ccrm_025_decisions.py::test_accepting_records_the_decision_sub_status_history_audit_and_notice`; `apps/web/tests/components/ApplicationOfferDecision.test.tsx`; `apps/web/tests/e2e/ccrm-025-offer-decision-deposit.spec.ts` |
+| `ccrm-025-AC02` | Declining writes outcome Offer declined (terminal) from either route | `::test_declining_writes_the_offer_declined_outcome_and_closes_the_application`, `::test_the_ccrm_015_outcome_route_also_records_the_decline_on_the_current_offer` |
+| `ccrm-025-AC03` | A second acceptance warns, never blocks (D1) | `::test_accepting_warns_about_the_students_other_accepted_offers_but_never_blocks` |
+| `ccrm-025-AC04` | The daily job expires an undecided past-deadline offer once (D3) | `::test_the_daily_job_expires_undecided_offers_past_their_deadline_once`, `::test_the_job_leaves_decided_undated_future_and_on_hold_offers_alone` |
+| `ccrm-025-AC05` | Counselor records a GBP deposit with a receipt on a direct application | `apps/api/tests/test_ccrm_025_deposits.py::test_the_counselor_records_a_gbp_deposit_with_a_receipt_on_a_direct_application`; `ApplicationDepositPanel.test.tsx`; e2e |
+| `ccrm-025-AC06` | An AGN-011 deposit is read-only and blocks a manual record (D2) | `::test_an_agency_deposit_is_shown_read_only_and_blocks_a_manual_record`; `test_agn_011_*.py` unchanged |
+| `ccrm-025-AC07` | Scope, on hold and closed refusals | `::test_scope_and_on_hold_refuse_a_decision`, `::test_on_hold_allows_a_deposit_but_a_closed_application_refuses_it`, `::test_scope_readers_see_no_receipts_and_cannot_write` |
+| `ccrm-025-AC08` | Migration round-trips and is the single head | `apps/api/tests/test_ccrm_025_migration.py` |
+
 | `ccrm-013` | Requirement: §6 application field table + nehn-037 part 3 → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-013` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-256` → design `docs/superpowers/specs/2026-10-24-ccrm-013-application-fields-design.md`; `API_CONTRACT.md` §12FI, `RBAC_MATRIX.md` §2.171, `DATA_MODEL.md` (0179) | F1–F9 defaults `NEEDS_CONFIRMATION` |
 
 | AC | Criterion | Evidence |

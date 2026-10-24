@@ -125,6 +125,14 @@ def expire_documents_task():
 
 
 @celery.task
+def expire_offers_task():
+    """ccrm-025 (DEC-SCOPE-255 D3): daily at 00:10 IST via beat. Idempotent (an expired offer is no longer active)."""
+    from app.services.application_offers import run_offer_expiry
+
+    return _run_with_fresh_pool(run_offer_expiry)
+
+
+@celery.task
 def send_bdm_reminders_task():
     """bdm-012 (DEC-SCOPE-102 R2): every 5 minutes via beat. Idempotent per reminder (notifications.dedupe_key), so a rerun or an
     overlapping run creates nothing new."""
@@ -226,6 +234,7 @@ celery.conf.beat_schedule = {
     "enh014-sweep-stale-deliveries": {"task": "app.worker.sweep_stale_deliveries_task", "schedule": 300.0},
     "agn017-daily-reminders": {"task": "app.worker.send_daily_reminders_task", "schedule": crontab(hour=2, minute=30)},  # UTC = 08:00 IST
     "ccrm021-document-expiry": {"task": "app.worker.expire_documents_task", "schedule": crontab(hour=18, minute=35)},  # UTC = 00:05 IST
+    "ccrm025-offer-expiry": {"task": "app.worker.expire_offers_task", "schedule": crontab(hour=18, minute=40)},  # UTC = 00:10 IST
     "bdm012-reminders":{"task": "app.worker.send_bdm_reminders_task", "schedule": 300.0},
     "tel018-conversion-sweep": {"task": "app.worker.sweep_lead_conversions_task", "schedule": 900.0},
     "tel014-sweep-stale-lead-emails": {"task": "app.worker.sweep_stale_lead_emails_task", "schedule": 300.0},
