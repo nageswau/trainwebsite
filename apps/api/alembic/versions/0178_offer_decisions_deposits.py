@@ -31,8 +31,7 @@ DEPOSIT_CHECKS = {
     "ck_application_deposit_records_status": f"payment_status IN {'(' + ', '.join(repr(v) for v in DEPOSIT_STATUSES) + ')'}",
     "ck_application_deposit_records_required": "(payment_status = 'not_required') = (NOT required)",
     "ck_application_deposit_records_amount": (
-        "(required AND amount > 0 AND currency IS NOT NULL) OR (NOT required AND amount IS NULL AND currency IS NULL AND due_date IS NULL "
-        "AND receipt_document_id IS NULL)"
+        "(required AND amount > 0 AND currency IS NOT NULL) OR (NOT required AND amount IS NULL AND currency IS NULL AND due_date IS NULL AND receipt_document_id IS NULL)"
     ),
     "ck_application_deposit_records_paid": "(paid_on IS NOT NULL) = (payment_status IN ('paid_to_university', 'paid_via_edusphere'))",
 }

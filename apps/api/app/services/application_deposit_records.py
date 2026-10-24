@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.models import ApplicationDeposit, ApplicationDepositRecord, ApplicationOffer, OverseasApplication, StudentDocument, User
-from app.services.application_offers import money, document_view
+from app.services.application_offers import document_view, money
 
 FIELDS = ("required", "amount", "currency", "due_date", "payment_status", "paid_on", "receipt_document_id")
 STATUS_LABELS = {"not_required": "Not required", "pending": "Pending", "paid_to_university": "Paid directly to the university", "paid_via_edusphere": "Paid via EduSphere"}

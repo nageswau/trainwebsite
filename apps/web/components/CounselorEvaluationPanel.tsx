@@ -204,7 +204,8 @@ export default function CounselorEvaluationPanel() {
               {offersId === row.id && (
                 <>
                   <ApplicationOffersPanel applicationId={row.id} onChanged={saved} />
-                  <ApplicationDepositPanel applicationId={row.id} onChanged={saved} />
+                  {/* ccrm-025: an offer write changes the sub-status, so the key reloads the deposit's prefill from the new offer */}
+                  <ApplicationDepositPanel key={`${row.status}|${row.sub_status}|${row.outcome}`} applicationId={row.id} onChanged={saved} />
                 </>
               )}
               {/* ccrm-016: who changed what and why, any state; the key reloads it after a write on this card changes the row */}

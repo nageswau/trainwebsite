@@ -7,7 +7,7 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import AgentApplicationUpdate, ApplicationOfferCreate, DepositRemit, DepositRecordSave, OfferDecisionSet, StudentEnglishTestIn
+from app.schemas import AgentApplicationUpdate, ApplicationOfferCreate, DepositRecordSave, DepositRemit, OfferDecisionSet, StudentEnglishTestIn
 
 FUTURE = (date.today() + timedelta(days=5)).isoformat()
 

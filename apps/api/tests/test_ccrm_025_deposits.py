@@ -2,6 +2,7 @@
 offer, the receipt, idempotent saves, the refusals beside an AGN-011 deposit and on a closed application, scope, and no file keys."""
 
 import pytest
+import pytest_asyncio
 from sqlalchemy import select
 
 from app.models import ApplicationDepositRecord, AuditLog
@@ -9,7 +10,14 @@ from tests.agn001_helpers import client_for
 from tests.agn009_helpers import PDF, mk_doc
 from tests.agn011_helpers import mk_deposit
 from tests.agn023_helpers import fresh, history_notes, notices
-from tests.test_ccrm_023_offers import BASE, OFFERS, body, world  # noqa: F401 -- `world` is the shared fixture
+from tests.ccrm025_helpers import offers_world
+from tests.test_ccrm_023_offers import BASE, OFFERS, body
+
+
+@pytest_asyncio.fixture
+async def world(db_session):
+    return await offers_world(db_session)
+
 
 DEPOSIT = BASE + "/deposit"
 RECEIPTS = BASE + "/deposit-receipts"

@@ -4,6 +4,7 @@
 from datetime import date, timedelta
 
 import pytest
+import pytest_asyncio
 from sqlalchemy import select
 
 from app.models import ApplicationOffer, ApplicationOutcome, AuditLog
@@ -13,11 +14,17 @@ from tests.agn003_helpers import mk_university
 from tests.agn008_helpers import mk_application
 from tests.agn009_helpers import mk_doc
 from tests.agn023_helpers import ASSIGN, fresh, history_notes, notices
-from tests.test_ccrm_023_offers import ISSUED, OFFERS, _offers, body, world  # noqa: F401 -- `world` is the shared fixture
+from tests.ccrm025_helpers import offers_world
+from tests.test_ccrm_023_offers import ISSUED, OFFERS, _offers, body
 
 DECIDE = OFFERS + "/{}/decision"
 OUTCOME = "/api/v1/workflows/overseas/applications/{}/outcome"
 TODAY = date.today()
+
+
+@pytest_asyncio.fixture
+async def world(db_session):
+    return await offers_world(db_session)
 
 
 async def _record(world, app, letter, **overrides) -> dict:

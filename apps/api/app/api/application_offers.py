@@ -266,8 +266,12 @@ async def save_deposit(application_id: UUID, payload: DepositRecordSave, user: U
     created = record is None
     record = deposits.save(user, item, record, values)
     db.add(record)
-    note = deposits.summary(record)
-    db.add(ApplicationStatusHistory(application_id=item.id, from_status=item.status, to_status=item.status, from_sub_status=item.sub_status, to_sub_status=item.sub_status, next_action=item.next_action, notes=note, changed_by_id=user.id))
+    db.add(
+        ApplicationStatusHistory(
+            application_id=item.id, from_status=item.status, to_status=item.status, from_sub_status=item.sub_status, to_sub_status=item.sub_status,
+            next_action=item.next_action, notes=deposits.summary(record), changed_by_id=user.id,
+        )
+    )  # fmt: skip
     await _tell_student(db, item, "Deposit updated", "The university deposit on your application was updated.")
     await agency_notices.offer_changed(db, item, user, "Deposit updated")
     await _audit(db, user, "overseas.application.deposit_record", "overseas_application", item.id, {"payment_status": record.payment_status, "created": created})
