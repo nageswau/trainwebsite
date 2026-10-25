@@ -52,18 +52,19 @@ def test_migration_chains_after_0088_bdm_appointment_trip_and_there_is_one_head(
 
 
 def test_model_matches_the_migration():
-    from app.models import LeadQualification
+    from app.models import LEAD_QUAL_FIELD_CHECKS, LeadQualification
 
     table = LeadQualification.__table__
-    assert {c.name for c in table.columns} == {
+    later = {"preferred_country_id", "study_mode", "preferred_campus", "academic_cgpa", "backlogs"}  # ccrm-005's 0181 (test_ccrm_005_migration)
+    assert {c.name for c in table.columns} - later == {
         "lead_id", "current_org", "work_experience_years", "it_skill_level", "career_objective", "preferred_batch", "budget_range",
         "preferred_mode", "study_level", "preferred_course", "intake", "academic_percentage", "english_test_status", "passport_status",
         "updated_by_user_id", "created_at", "updated_at",
     }
     assert [c.name for c in table.primary_key] == ["lead_id"] and not table.c.updated_by_user_id.nullable
-    fks = {fk.parent.name: (fk.column.table.name, fk.ondelete) for fk in table.foreign_keys}
+    fks = {fk.parent.name: (fk.column.table.name, fk.ondelete) for fk in table.foreign_keys if fk.parent.name not in later}
     assert fks == {"lead_id": ("enquiries", "CASCADE"), "updated_by_user_id": ("users", "RESTRICT")}
-    checks = {c.name: str(c.sqltext) for c in table.constraints if isinstance(c, sa.CheckConstraint)}
+    checks = {c.name: str(c.sqltext) for c in table.constraints if isinstance(c, sa.CheckConstraint) and c.name not in LEAD_QUAL_FIELD_CHECKS}
     assert checks == _migration.CHECKS
 
 

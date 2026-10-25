@@ -14,7 +14,9 @@ from tests.bdm017_helpers import ADMIN_LEADS, as_user, conversion
 
 KEYS = {"id", "lead_code", "name", "email", "phone", "division", "subject", "status", "status_label", "source", "crm_sync_status", "priority",
         "whatsapp_number", "city", "state", "qualification", "passing_year", "institution", "created_at", "stage_changed_at",
-        "product", "campaign", "telecaller", "counselor", "organization", "bdm", "converted_user"}
+        "product", "campaign", "telecaller", "counselor", "organization", "bdm", "converted_user",
+        # ccrm-005 (DEC-SCOPE-259): the spec §3 contact, consent and referral fields, additive
+        "contact_preference", "enquiry_date", "marketing_opt_in", "marketing_consent_at", "referral_name", "referral_contact"}
 
 
 def tag() -> str:

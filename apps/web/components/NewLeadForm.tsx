@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 
+import LeadContactFields, { CONTACT_KEYS, EMPTY_CONTACT, contactValue, type ContactKey } from "@/components/LeadContactFields";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import { isRequestBody, sendJson } from "@/lib/apiErrors";
 import { formatDate } from "@/lib/formatDate";
@@ -32,7 +33,7 @@ const REQUIRED = [["name", "student name"], ["phone", "mobile number"], ["produc
 const listed = (items: string[]) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} and ${items.at(-1)}` : items[0]);
 const EMPTY: Record<string, string> = {
   ...Object.fromEntries(TEXT_FIELDS.map(({ key }) => [key, ""])),
-  product_id: "", campaign_id: "", source: "", priority: "warm", division: "", subject: "", message: "",
+  product_id: "", campaign_id: "", source: "", priority: "warm", division: "", subject: "", message: "", ...EMPTY_CONTACT,
 };
 
 function NoticeLine({ notice }: { notice: Notice }) {
@@ -176,10 +177,12 @@ export default function NewLeadForm({ basePath, apiBase = LEADS_URL, initial, te
     if (missing.length) return setNotice({ text: `Enter the ${listed(missing)}.`, failed: true }); // QA-02
     if (sending.current) return;
     sending.current = true;
-    const payload: Record<string, string | number> = { priority: values.priority };
+    const payload: Record<string, string | number | boolean | null> = { priority: values.priority };
     for (const [key, value] of Object.entries(values)) {
       const text = value.trim();
-      if (text && key !== "priority") payload[key] = key === "passing_year" ? Number(text) : text;
+      if (!text || key === "priority") continue;
+      const contact = (CONTACT_KEYS as readonly string[]).includes(key);  // ccrm-005: consent goes as true / false
+      payload[key] = key === "passing_year" ? Number(text) : contact ? contactValue(key as ContactKey, text) : text;
     }
     setBusy(true);
     const outcome = await sendJson(apiBase, "POST", payload);
@@ -261,6 +264,13 @@ export default function NewLeadForm({ basePath, apiBase = LEADS_URL, initial, te
               onChange={(e) => set("subject", e.target.value)} />
           </div>
         </div>
+        {/* ccrm-005 (spec §3): how to reach them, their consent and who referred them -- all optional */}
+        <fieldset className="form-section">
+          <legend>Contact and consent</legend>
+          <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))" }}>
+            <LeadContactFields idPrefix="new" values={values as Record<ContactKey, string>} disabled={busy} onChange={set} />
+          </div>
+        </fieldset>
         <div className="field">
           <label htmlFor="new-message">Notes</label>
           <textarea id="new-message" maxLength={5000} rows={3} value={values.message} disabled={busy} onChange={(e) => set("message", e.target.value)} />

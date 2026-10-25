@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.lead_stages import CLOSED
 from app.models import Enquiry, LeadQualification, User
 from app.schemas import CounselorStudentCreate, StudentProfileSave, StudentQualificationIn
-from app.services import bdm_leads, counselor_students, lead_handover, student_profiles
+from app.services import bdm_leads, counselor_students, lead_handover, lead_qualification, student_profiles
 from app.services.provisioning import IssuedWelcome
 
 logger = logging.getLogger("app.leads")
@@ -40,13 +40,16 @@ def _accepted(model: type[BaseModel], parts: list[dict]) -> dict:
     return kept
 
 
-def profile_from_lead(lead: Enquiry, qual: LeadQualification | None) -> StudentProfileSave | None:
+def profile_from_lead(lead: Enquiry, qual: LeadQualification | None, tests: list[dict] = ()) -> StudentProfileSave | None:
     """What the lead holds that has a structured place in the profile; None when there is nothing to copy. Free text with no such place
-    (budget range, English test status, passport status) stays on the linked lead."""
+    (budget range, English test status, passport status) stays on the linked lead. ccrm-005 LF8: the study mode, preferred country,
+    CGPA (when there is no percentage), backlogs and English tests come along too."""
     q = qual or LeadQualification()
+    score = ({"score_type": "percentage", "score": q.academic_percentage} if q.academic_percentage is not None
+             else {"score_type": "cgpa" if q.academic_cgpa is not None else None, "score": q.academic_cgpa})
     qualification = _accepted(StudentQualificationIn, [
         {"level": "other"}, {"qualification_name": lead.qualification}, {"institution": lead.institution}, {"year_completed": lead.passing_year},
-        {"score_type": "percentage" if q.academic_percentage is not None else None, "score": q.academic_percentage},
+        score, {"backlogs": q.backlogs},
     ])  # fmt: skip
     if len(qualification) == 1:  # the level alone: the lead named no qualification
         qualification = {}
@@ -54,6 +57,8 @@ def profile_from_lead(lead: Enquiry, qual: LeadQualification | None) -> StudentP
     fields = _accepted(StudentProfileSave, [
         {"city": lead.city}, {"state": lead.state}, {"preferred_course": q.preferred_course}, {"preferred_intake": q.intake},
         {"preferred_level": LEVELS.get(q.study_level or "")}, {"work_experience_months": experience}, {"work_experience_details": q.current_org},
+        {"study_mode": q.study_mode}, {"preferred_country_ids": [q.preferred_country_id] if q.preferred_country_id else None},
+        {"english_tests": list(tests) or None},
     ])  # fmt: skip
     if not fields and not qualification:
         return None
@@ -73,7 +78,7 @@ async def convert(db: AsyncSession, counselor: User, lead: Enquiry, payload: Cou
     if matches and await db.scalar(select(exists().where(*lead_handover.student_filters(lead.division), or_(*matches)))):
         raise HTTPException(409, STUDENT_EXISTS)  # K4: the link panel offers that student
     student, issued = await counselor_students.create_student(db, counselor, payload, registration_source="lead_conversion")
-    profile = profile_from_lead(lead, await db.get(LeadQualification, lead.id))
+    profile = profile_from_lead(lead, await db.get(LeadQualification, lead.id), await lead_qualification.english_tests(db, lead))
     if profile is not None:
         await student_profiles.write(db, counselor, student.id, profile)
     await lead_handover.link_student(db, counselor, lead, User.id == student.id)

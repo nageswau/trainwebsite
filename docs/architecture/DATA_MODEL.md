@@ -2214,3 +2214,13 @@ ccrm-018 re-creates template items on edit), `position` (unique per application)
 `application_checklist_item_documents`: PK (`item_id` FK ON DELETE CASCADE, `document_id` FK `student_documents` ON DELETE CASCADE,
 indexed), `linked_by_id`, `created_at`. ccrm-019 also writes ccrm-013's `overseas_applications.documents_completed_on`. No backfill;
 downgrade drops the three tables.
+
+## Lead data fields (`ccrm-005`, `DEC-SCOPE-259`; migration `0181_lead_data_fields`, after ccrm-019's `0180_application_checklists`)
+
+`enquiries` gains `contact_preference` (10) NULL (CHECK `call`/`whatsapp`/`email`/`sms`), `enquiry_date` DATE NOT NULL DEFAULT the IST date
+of `now()` (existing rows back-filled from `created_at` in IST), `marketing_opt_in` bool NULL (= not asked), `marketing_consent_at` timestamptz
+NULL (CHECK both or neither; stamped by the model when the consent changes), `referral_name` (160) NULL, `referral_contact` (120) NULL.
+`lead_qualifications` gains `preferred_country_id` FK `countries` ON DELETE SET NULL, `study_mode` (20) NULL (CHECK ccrm-007's list),
+`preferred_campus` (200), `academic_cgpa` numeric(4,2) (CHECK 0–10), `backlogs` smallint (CHECK 0–99). New `lead_english_tests`: `id`,
+`lead_id` FK `enquiries` ON DELETE CASCADE, `position` (unique per lead), `test_type` (CHECK ccrm-007's list), `status` NULL (CHECK),
+`overall_score` numeric(4,1), `test_date`, `valid_until`, `remarks` (200) — ccrm-007's row shape. Downgrade drops the table and columns.

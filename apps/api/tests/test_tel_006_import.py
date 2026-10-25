@@ -19,7 +19,7 @@ from tests.tel004_helpers import make_telecaller, make_tl_manager, make_user
 IMPORTS = "/api/v1/telecaller/imports"
 TEMPLATE = f"{IMPORTS}/template"
 HEADER = ["name", "phone", "email", "whatsapp_number", "city", "state", "qualification", "passing_year", "institution", "priority", "subject",
-          "message"]
+          "message", "contact_preference", "enquiry_date", "marketing_opt_in", "referral_name", "referral_contact"]  # ccrm-005 LF6: the last five
 
 
 def mobile() -> str:

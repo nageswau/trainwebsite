@@ -55,6 +55,7 @@ from app.models import (
     CANDIDATE_STATUSES,
     CAPITAL_ENTRY_KINDS,
     CONTACT_CHANNELS,
+    CONTACT_PREFERENCES,
     COUNSELOR_TASK_STATUSES,
     COUNTRY_REGIONS,
     COURSE_CURRENCIES,
@@ -5453,7 +5454,8 @@ BDM_LEAD_LABELS = {"name": "Student name", "email": "Email", "student_email": "E
                    "qualification": "Qualification", "institution": "College/University", "subject": "Enquiry subject", "message": "Notes",  # tel-005
                    "current_org": "Current college/company", "career_objective": "Career objective", "preferred_batch": "Preferred batch",
                    "budget_range": "Budget range", "preferred_course": "Preferred course", "intake": "Intake",
-                   "english_test_status": "IELTS/PTE status"}  # tel-009
+                   "english_test_status": "IELTS/PTE status",  # tel-009
+                   "referral_name": "Referral name", "referral_contact": "Referral contact", "preferred_campus": "Preferred campus"}  # ccrm-005
 
 
 def _bdm_lead_text(pattern: re.Pattern, required: bool):
@@ -6621,8 +6623,41 @@ class BdmSchoolActivityOut(BaseModel):
 LeadPlace = Annotated[Annotated[str, _trimmed(120)] | None, AfterValidator(_bdm_lead_text(_BDM_CONTROL, False))]
 
 
-class TelecallerLeadUpdate(BaseModel):
+def _enquiry_date(value: date | None) -> date | None:
+    """ccrm-005 LF4: from 2000 to today (one day ahead of UTC is today east of it, as `_not_future`)."""
+    if value is not None and not date(2000, 1, 1) <= value <= datetime.now(UTC).date() + timedelta(days=1):
+        raise PydanticCustomError("enquiry_date_range", "The enquiry date must be between 2000 and today")
+    return value
+
+
+# ccrm-005 (DEC-SCOPE-259; LF1, LF4-LF7): the spec §3 contact, consent and referral fields of every lead -- on create, the details edit,
+# the CSV import and the counselor's edit. None is mandatory (LF2); on create and import an omitted enquiry date is the created date.
+LeadEnquiryDate = Annotated[date | None, AfterValidator(_enquiry_date)]
+LeadReferralName = Annotated[Annotated[str, _trimmed(160)] | None, AfterValidator(_bdm_lead_text(_BDM_CONTROL, False))]
+LeadReferralContact = Annotated[Annotated[str, _trimmed(120)] | None, AfterValidator(_bdm_lead_text(_BDM_CONTROL, False))]
+
+
+class LeadContactFields(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    contact_preference: Literal[CONTACT_PREFERENCES] | None = None
+    enquiry_date: LeadEnquiryDate = None
+    marketing_opt_in: bool | None = None  # None = not asked
+    referral_name: LeadReferralName = None
+    referral_contact: LeadReferralContact = None
+
+
+class CounselorLeadUpdate(LeadContactFields):
+    """ccrm-005 LF7: what the counselor changes on a lead handed to them; contact details, product and priority stay the telecaller's.
+    Omitted = unchanged; the enquiry date cannot be cleared."""
+
+    @model_validator(mode="after")
+    def _keep_enquiry_date(self):
+        if "enquiry_date" in self.model_fields_set and self.enquiry_date is None:
+            raise PydanticCustomError("enquiry_date_required", "The enquiry date cannot be cleared")
+        return self
+
+
+class TelecallerLeadUpdate(CounselorLeadUpdate):
     name: BdmLeadName = None
     email: BdmLeadEmail = None
     phone: BdmLeadPhone = None
@@ -6647,8 +6682,7 @@ LeadInstitution = Annotated[Annotated[str, _trimmed(200)] | None, AfterValidator
 LeadSubject = Annotated[Annotated[str, _trimmed(180)] | None, AfterValidator(_bdm_lead_text(_BDM_CONTROL, False))]
 
 
-class TelecallerLeadCreate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class TelecallerLeadCreate(LeadContactFields):
     name: BdmLeadName
     phone: LeadMobile
     email: LeadOptionalEmail = None
@@ -6704,10 +6738,18 @@ class LeadQualificationIn(BaseModel):
     academic_percentage: Decimal | None = Field(default=None, ge=0, le=100, max_digits=5, decimal_places=2)
     english_test_status: _qual_text(120) = None
     passport_status: Literal[QUAL_PASSPORT] | None = None
+    # ccrm-005 (DEC-SCOPE-259, LF1/LF3): overseas study preferences, academic profile and English tests (ccrm-007's row rules, <= 5)
+    preferred_country_id: UUID | None = None
+    study_mode: Literal[STUDY_MODES] | None = None
+    preferred_campus: _qual_text(200) = None
+    academic_cgpa: Decimal | None = Field(default=None, ge=0, le=10, max_digits=4, decimal_places=2)
+    backlogs: int | None = Field(default=None, ge=0, le=99)
+    english_tests: Annotated[list[StudentEnglishTestIn], Field(max_length=MAX_ENGLISH_TESTS)] | None = None
 
 
 class LeadImportRow(BaseModel):
-    """tel-006 (IM1): one CSV row -- tel-005's lead fields; the campaign gives the source, product and team."""
+    """tel-006 (IM1): one CSV row -- tel-005's lead fields; the campaign gives the source, product and team. ccrm-005 LF6: the contact
+    fields are the last columns (the CSV order is the field order); `marketing_opt_in` takes yes/no, `enquiry_date` YYYY-MM-DD."""
 
     model_config = ConfigDict(extra="forbid")
     name: BdmLeadName
@@ -6722,6 +6764,11 @@ class LeadImportRow(BaseModel):
     priority: Literal[LEAD_PRIORITIES] = "warm"
     subject: LeadSubject = None
     message: BdmLeadNote = None
+    contact_preference: Literal[CONTACT_PREFERENCES] | None = None
+    enquiry_date: LeadEnquiryDate = None
+    marketing_opt_in: bool | None = None
+    referral_name: LeadReferralName = None
+    referral_contact: LeadReferralContact = None
 
 
 class LeadTimelineRow(BaseModel):

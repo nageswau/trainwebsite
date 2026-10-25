@@ -5,6 +5,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { LeadStageControl } from "@/components/AdminLeadStage";
 import LeadAppointmentsSection from "@/components/LeadAppointmentsSection";
 import LeadCalls from "@/components/LeadCalls";
+import LeadContactFields, { contactChanges, contactDraft, contactRows } from "@/components/LeadContactFields";
 import LeadFollowUps from "@/components/LeadFollowUps";
 import LeadHandoverForm from "@/components/LeadHandoverForm";
 import LeadMessages from "@/components/LeadMessages";
@@ -46,6 +47,7 @@ function DetailsForm({ lead, onSaved, onCancel }: { lead: TelecallerLeadDetail; 
   const [values, setValues] = useState<Record<string, string>>(
     Object.fromEntries([...FIELDS.map(({ key }) => [key, lead[key] ?? ""]), ["product_id", lead.product?.id ?? ""]]),
   );
+  const [contact, setContact] = useState(contactDraft(lead)); // ccrm-005
   const [products, setProducts] = useState<Product[]>([]);
   const [notice, setNotice] = useState<Notice>(null);
   const [busy, setBusy] = useState(false);
@@ -57,12 +59,13 @@ function DetailsForm({ lead, onSaved, onCancel }: { lead: TelecallerLeadDetail; 
 
   async function save(event: FormEvent) {
     event.preventDefault();
-    const changes: Record<string, string | null> = {};
+    const changes: Record<string, string | boolean | null> = {};
     for (const { key, required } of FIELDS) {
       const text = values[key].trim();
       if (text !== (lead[key] ?? "")) changes[key] = text || (required ? "" : null);
     }
     if (values.product_id !== (lead.product?.id ?? "")) changes.product_id = values.product_id || null;
+    Object.assign(changes, contactChanges(contact, lead));
     if (Object.keys(changes).length === 0) return onCancel();
     setBusy(true);
     const outcome = await sendJson(leadUrl(lead.id), "PATCH", changes);
@@ -95,6 +98,7 @@ function DetailsForm({ lead, onSaved, onCancel }: { lead: TelecallerLeadDetail; 
             <ProductOptions products={products} />
           </select>
         </div>
+        <LeadContactFields idPrefix="lead" values={contact} disabled={busy} onChange={(key, value) => setContact((c) => ({ ...c, [key]: value }))} />
       </div>
       <NoticeLine notice={notice} />
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -192,6 +196,7 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
     ["College/University", show(lead.institution)], ["Lead source", SOURCE_LABEL[lead.source] ?? lead.source], ["Campaign", show(lead.campaign?.name)],
     ["Product interest", show(lead.product?.name)], ["Assigned telecaller", show(lead.telecaller?.full_name, "Unassigned")],
     ["Assigned counselor", show(lead.counselor?.full_name, "Not assigned")], ["Lead date", formatDate(lead.created_at)],
+    ...contactRows(lead), // ccrm-005
   ];
 
   return (
