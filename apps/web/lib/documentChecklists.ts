@@ -44,7 +44,21 @@ export const needsExpiry = (documentType: string) => named(documentType, ["passp
 /** A status that asks the uploader for something (shown in the error colour). */
 export const NEEDS_ACTION = new Set(["incomplete", "reupload_required", "expired", "rejected", "changes_required"]);
 
-export type ChecklistItem = { document_type: ChecklistDocumentType; label: string | null; required: boolean; allowed_statuses: ItemStatus[]; notes: string | null };
+// ccrm-022 (DEC-SCOPE-263 SD1): sensitivity classes and the words that class a type (app/document_checklists.py type_sensitivity).
+export type Sensitivity = "standard" | "identity" | "financial";
+export const SENSITIVITY_LABELS: Record<Sensitivity, string> = { standard: "Standard", identity: "Identity", financial: "Financial" };
+const IDENTITY_TYPES = ["passport", "aadhaar", "aadhar", "national id", "identity", "id card", "birth certificate"];
+const FINANCIAL_TYPES = ["financial", "finance", "bank", "sponsor", "sponsorship", "loan", "income", "salary", "tax", "itr", "affidavit"];
+export function typeSensitivity(documentType: string, label?: string | null): Sensitivity {
+  const words = `${documentType} ${label ?? ""}`;
+  if (named(words, FINANCIAL_TYPES)) return "financial";
+  return named(words, IDENTITY_TYPES) ? "identity" : "standard";
+}
+/** "Sensitive · Financial" for an identity/financial document or item; null for a standard one. */
+export const sensitivityBadge = (sensitivity: string | null | undefined) =>
+  sensitivity === "identity" || sensitivity === "financial" ? `Sensitive · ${SENSITIVITY_LABELS[sensitivity]}` : null;
+
+export type ChecklistItem = { document_type: ChecklistDocumentType; label: string | null; required: boolean; allowed_statuses: ItemStatus[]; notes: string | null; sensitivity: Sensitivity };
 type Scope = {
   name: string;
   kind: ChecklistKind;

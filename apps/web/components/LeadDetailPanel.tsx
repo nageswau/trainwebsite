@@ -5,6 +5,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { LeadStageControl } from "@/components/AdminLeadStage";
 import LeadAppointmentsSection from "@/components/LeadAppointmentsSection";
 import LeadCalls from "@/components/LeadCalls";
+import LeadClosure from "@/components/LeadClosure";
 import LeadContactFields, { contactChanges, contactDraft, contactRows } from "@/components/LeadContactFields";
 import LeadFollowUps from "@/components/LeadFollowUps";
 import LeadHandoverForm from "@/components/LeadHandoverForm";
@@ -205,6 +206,7 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
         <div className="eyebrow">{lead.lead_code}</div>
         <h2 style={{ margin: "4px 0" }}>{lead.name}</h2>
         <p className="muted" style={{ margin: 0 }}>Stage: <strong>{lead.status_label}</strong> · Priority: <strong>{PRIORITY_LABEL[lead.priority] ?? lead.priority}</strong></p>
+        <LeadClosure lead={lead} />
         {/* D1 / QA-05: a manager still acts on a handed-over lead, but sees that the counselor has it */}
         {(lead.read_only || lead.counselor) && (
           <p className="form-message" role="note" style={{ marginTop: 8 }}>
@@ -229,7 +231,7 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
         {!lead.read_only && (
           <div>
             <LeadStageControl lead={lead} canReopen={canReopen} move={moveStage} onMessage={(m) => setStageNotice({ text: m.text, failed: m.failed })}
-              onChanged={(status) => { setLead((l) => ({ ...l, status, status_label: stageLabel(status) })); reloadActivity(); }} />
+              onChanged={(status, closure) => { setLead((l) => ({ ...l, status, status_label: stageLabel(status), ...closure })); reloadActivity(); }} />
             <NoticeLine notice={stageNotice} />
           </div>
         )}

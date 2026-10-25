@@ -199,7 +199,10 @@ describe("CounselorLeadDetail", () => {
   });
 
   it("confirms a closing move even though the stage control goes away (QA-03), replacing the last notice (QA-02)", async () => {
-    const closed = detail({ status: "lost", status_label: "Lost", next_action: "Call", next_action_due: "2026-10-30", permissions: closedPermissions });
+    const closed = detail({ status: "lost", status_label: "Lost", next_action: "Call", next_action_due: "2026-10-30", permissions: closedPermissions,
+      lost_reason: { id: "r1", name: "Chose another agency" }, lost_to: null });
+    // ccrm-006 (D4): Lost needs a reason from the list
+    reply["GET /api/v1/telecaller/lost-reasons?active=true&limit=100"] = () => res(pageOf([{ id: "r1", name: "Chose another agency", active: true, sort_order: 1 }]));
     reply["PUT /next-action"] = () => res(detail({ next_action: "Call", next_action_due: "2026-10-30" }));
     reply["POST /stage"] = () => res({ id: "L1", status: "lost", status_label: "Lost", stage_changed_at: "2026-10-22T06:00:00Z", next_action: "Call", next_action_due: "2026-10-30" });
     reply["GET "] = () => res(closed);
@@ -211,9 +214,10 @@ describe("CounselorLeadDetail", () => {
     expect(await screen.findByText("Next action saved.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Change stage for Asha Rao" }));
     fireEvent.change(screen.getByLabelText("New stage for Asha Rao"), { target: { value: "lost" } });
-    fireEvent.change(screen.getByLabelText("Reason (required)"), { target: { value: "Chose another agency" } });
+    fireEvent.change(await screen.findByLabelText("Lost reason (required)"), { target: { value: "r1" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByText("Stage updated.")).toBeInTheDocument();
+    expect(await screen.findByText("Lost reason: Chose another agency")).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole("button", { name: "Change stage for Asha Rao" })).toBeNull());
     expect(screen.getByText("Stage updated.")).toBeInTheDocument();
     expect(screen.queryByText("Next action saved.")).toBeNull();

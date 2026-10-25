@@ -232,7 +232,7 @@ async def change_stage(lead_id: UUID, payload: LeadStageMove, user: User = Depen
     kind, filters = lead_pipeline.scope(user)
     lead = await lead_pipeline.locked_lead(db, lead_id, *filters)
     telecaller_leads.require_writable(user, lead)
-    await lead_pipeline.person_move(db, lead, user, kind, payload.to_stage, payload.reason)
+    await lead_pipeline.person_move(db, lead, user, kind, payload.to_stage, payload.reason, payload.closure())
     out = lead_pipeline.stage_out(lead)
     await db.commit()
     return out

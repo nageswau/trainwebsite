@@ -52,7 +52,7 @@ async def _outcomes(db: AsyncSession, user_ids: list[UUID], start, end) -> dict[
     """TC5 / TC9: each telecaller's own stage moves to Interested and into a closed outcome in [start, end)."""
     actor = LeadStageHistory.actor_user_id
     rows = await db.execute(
-        select(actor, func.count().filter(LeadStageHistory.to_stage == "interested"), func.count().filter(LeadStageHistory.to_stage.in_(CLOSED)))
+        select(actor, func.count().filter(LeadStageHistory.to_stage == "interested"), func.count().filter(LeadStageHistory.to_stage.in_(CLOSED - {"duplicate"})))  # ccrm-006 D10
         .where(actor.in_(user_ids), LeadStageHistory.created_at >= start, LeadStageHistory.created_at < end)
         .group_by(actor)
     )

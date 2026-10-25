@@ -1,4 +1,4 @@
-"""tel-004 (DEC-SCOPE-081, spec §2): the EVID-019 §19 lead pipeline -- 11 ordered stages and 5 closed outcomes, with the system
+"""tel-004 (DEC-SCOPE-081, spec §2): the EVID-019 §19 lead pipeline -- 11 ordered stages and 5 closed outcomes (ccrm-006: 6), with the system
 events that move a lead. `services/lead_pipeline.py` is the only writer; migration 0081 keeps a frozen copy of STAGES."""
 
 OPEN_STAGES = (
@@ -17,9 +17,10 @@ OPEN_STAGES = (
 CLOSED_STAGES = (
     ("not_interested", "Not Interested"),
     ("not_eligible", "Not Eligible"),
-    ("wrong_number", "Wrong Number"),
+    ("wrong_number", "Invalid Contact"),  # ccrm-006 D1: the spec's Invalid Contact -- relabelled, the key stays
     ("no_response", "No Response"),
     ("lost", "Lost"),
+    ("duplicate", "Duplicate"),  # ccrm-006 D2/D3: closed against the surviving lead (`enquiries.duplicate_of_id`)
 )
 STAGE_LABELS = dict(OPEN_STAGES + CLOSED_STAGES)
 STAGES = tuple(STAGE_LABELS)
@@ -29,6 +30,8 @@ MANUAL = frozenset({"qualified", "interested", "follow_up"})  # T13: the telecal
 # ccrm-003 (DEC-SCOPE-243, CC8 / A1): the counselor's own moves -- these open stages and these closed outcomes only
 COUNSELOR_MANUAL = frozenset({"qualified", "follow_up", "counselling_scheduled", "counselling_completed"})
 COUNSELOR_CLOSED = frozenset({"not_interested", "not_eligible", "lost"})
+# ccrm-006 (DEC-SCOPE-264, D4): a person's move here needs a reason from `lead_lost_reasons`; migration 0186 repeats it
+LOSS_STAGES = ("lost", "not_interested")
 REOPEN_TO = "follow_up"  # T13: a manager reopens a closed lead here
 MANUAL_BEFORE = ORDER.index("application_enrollment")  # D2: manual moves stop once the counselor's link is in place
 

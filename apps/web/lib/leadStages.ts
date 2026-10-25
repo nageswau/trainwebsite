@@ -17,9 +17,10 @@ export const OPEN_STAGES = [
 export const CLOSED_STAGES = [
   ["not_interested", "Not Interested"],
   ["not_eligible", "Not Eligible"],
-  ["wrong_number", "Wrong Number"],
+  ["wrong_number", "Invalid Contact"], // ccrm-006 D1: the spec's Invalid Contact -- relabelled, the key stays
   ["no_response", "No Response"],
   ["lost", "Lost"],
+  ["duplicate", "Duplicate"], // ccrm-006 D2/D3
 ] as const;
 
 export const STAGES: readonly (readonly [string, string])[] = [...OPEN_STAGES, ...CLOSED_STAGES];
@@ -53,5 +54,17 @@ export function counselorTargets(current: string): string[] {
   return [...(beforeLink ? COUNSELOR_MANUAL : []), ...COUNSELOR_CLOSED].filter((stage) => stage !== current);
 }
 
-/** Closed outcomes and reopening need a reason (D1). */
-export const needsReason = (current: string, target: string) => isClosed(target) || isClosed(current);
+// ccrm-006 (DEC-SCOPE-264, D3/D4): Lost / Not Interested take a reason from the list, Duplicate the surviving lead's Lead ID.
+const LOSS_STAGES = ["lost", "not_interested"];
+export const isLoss = (stage: string) => LOSS_STAGES.includes(stage);
+export type Closure = { duplicate_of?: string; lost_reason_id?: string; lost_to?: string };
+/** How a lead closed, as every lead read returns it (optional: older fixtures and callers predate ccrm-006). */
+export type LeadClosureFields = {
+  duplicate_of?: { id?: string; lead_code: string } | null; lost_reason?: { id: string; name: string } | null; lost_to?: string | null;
+};
+export const LOST_REASONS_URL = "/api/v1/telecaller/lost-reasons";
+export type LostReason = { id: string; name: string; active: boolean; sort_order: number };
+
+/** Closed outcomes and reopening need a reason (D1); ccrm-006 D5: not when the close carries its structured reason instead. */
+export const needsReason = (current: string, target: string) =>
+  isClosed(current) || (isClosed(target) && !isLoss(target) && target !== "duplicate");

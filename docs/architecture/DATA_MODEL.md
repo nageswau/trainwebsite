@@ -2248,6 +2248,21 @@ document of the application) and `pre_enrollment_checklist_complete` (bool, NOT 
 `ck_overseas_applications_outcome`, `ck_application_outcomes_outcome` and `ck_application_status_history_outcome`. No backfill; downgrade
 restores the ccrm-015 values and drops the two columns.
 
+## Document sensitivity (`ccrm-022`, `DEC-SCOPE-263`; migration `0185_document_sensitivity`, after ccrm-027's `0184_enrollment_confirmation`)
+
+`document_checklist_template_items.sensitivity` and `application_checklist_items.sensitivity`: String(20) NOT NULL, server default
+`standard`, CHECK standard / identity / financial. The migration classes existing items from their type and label words (the
+`app.document_checklists` lists); the downgrade drops both columns. A document has no stored class: it is the highest of its type's
+class and its linked items' (`services/document_access.sensitivities`).
+
+## Lead loss capture (`ccrm-006`, `DEC-SCOPE-264`; migration `0186_lead_loss_capture`, after ccrm-022's `0185_document_sensitivity`)
+
+New `lead_lost_reasons`: `id`, `name` (120, CHECK length 1–120, unique on `lower(name)`), `active` bool default true, `sort_order` int
+default 0, `created_at`, `updated_at`; never deleted; seeded with six reasons when empty. `enquiries` gains `duplicate_of_id` FK `enquiries`
+ON DELETE RESTRICT, `lost_reason_id` FK `lead_lost_reasons` ON DELETE RESTRICT and `lost_to` (160), all NULL; the status CHECK adds
+`duplicate`; CHECKs `duplicate_of_id <> id`, `(duplicate_of_id IS NOT NULL) = (status = 'duplicate')`, and `lost_reason_id` / `lost_to`
+only on `lost` / `not_interested`. Downgrade turns Duplicate leads into Lost, restores the old status CHECK, drops the columns and the table.
+
 ## Arrival and orientation (`ccrm-028`, `DEC-SCOPE-265`; migration `0187_application_arrival`, after ccrm-006's `0186_lead_loss_capture`)
 
 `overseas_applications` gains `arrival_date` (date, NULL; the expected date until arrival is confirmed), `arrival_confirmed_at`

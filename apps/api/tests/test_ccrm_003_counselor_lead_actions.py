@@ -96,10 +96,10 @@ async def test_closing_needs_a_reason_and_cancels_follow_ups_and_appointments(cl
     assert (await handover(client, tel, row, counselor)).status_code == 200
     await as_user(client, counselor)
     assert (await client.post(c_url(row.id, "/follow-ups"), json={"due_at": soon(), "reason": "fee_details"})).status_code == 201
-    assert field_error(await move(client, row, "lost"), "reason")
-    response = await move(client, row, "lost", reason="Chose another agency")
+    assert field_error(await move(client, row, "not_eligible"), "reason")  # ccrm-006: Lost / Not Interested need a listed reason instead
+    response = await move(client, row, "not_eligible", reason="Chose another agency")
     assert response.status_code == 200, response.text
-    assert (await stored(db_session, row)).status == "lost"
+    assert (await stored(db_session, row)).status == "not_eligible"
     statuses = (await db_session.scalars(select(LeadFollowUp.status).where(LeadFollowUp.lead_id == row.id))).all()
     assert statuses == ["cancelled"]
     appts = (await db_session.scalars(select(Appointment.status).where(Appointment.lead_id == row.id).execution_options(populate_existing=True))).all()
@@ -170,7 +170,7 @@ async def test_an_overdue_next_action_keeps_its_date_when_only_the_text_changes(
 @pytest.mark.asyncio
 async def test_next_action_on_a_closed_lead_is_409(client, db_session):
     _, _, _, row = await handed(client, db_session)
-    assert (await move(client, row, "not_interested", reason="Busy")).status_code == 200
+    assert (await move(client, row, "not_eligible", reason="Busy")).status_code == 200  # ccrm-006: not a loss stage
     assert (await client.put(c_url(row.id, "/next-action"), json={"next_action": "Call", "next_action_due": due()})).status_code == 409
 
 

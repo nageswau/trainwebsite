@@ -39,13 +39,13 @@ test("admin closes a lead with a reason, reopens it, and reads the history", asy
   const select = row.getByLabel(`New stage for ${name}`);
   await expect(select.locator("option", { hasText: "Converted" })).toHaveCount(0); // T5: never chosen by a person
   await expect(select.locator("option", { hasText: "Contacted" })).toHaveCount(0); // system stage
-  await select.selectOption("not_interested");
+  await select.selectOption("no_response"); // ccrm-006: Lost / Not Interested take a listed reason instead (ccrm-006-loss-capture.spec)
   await row.getByRole("button", { name: "Save" }).click();
   await expect(row.getByRole("alert")).toHaveText("Add a reason for this stage.");
   await row.getByLabel("Reason (required)").fill("Chose a different course");
   await row.getByRole("button", { name: "Save" }).click();
   await expect(row.getByRole("status")).toHaveText("Stage updated.");
-  await expect(row).toContainText("Not Interested");
+  await expect(row).toContainText("No Response");
 
   await row.getByRole("button", { name: `Change stage for ${name}` }).click();
   await row.getByLabel(`New stage for ${name}`).selectOption({ label: "Reopen to Follow-up" });
@@ -61,8 +61,8 @@ test("admin closes a lead with a reason, reopens it, and reads the history", asy
   const list = reloaded.getByRole("list", { name: `History for ${name}` });
   const stages = list.getByRole("listitem").filter({ hasText: "Stage:" });
   await expect(stages).toHaveCount(assigned ? 3 : 2);
-  await expect(stages.nth(0)).toContainText("Not Interested → Follow-up");
-  await expect(stages.nth(1)).toContainText(`${first} → Not Interested`);
+  await expect(stages.nth(0)).toContainText("No Response → Follow-up");
+  await expect(stages.nth(1)).toContainText(`${first} → No Response`);
   await expect(stages.nth(1)).toContainText("Chose a different course");
   if (assigned) await expect(stages.nth(2)).toContainText("New Lead → Assigned");
   await expect(list.getByRole("listitem").last()).toContainText("Lead created");
@@ -72,7 +72,7 @@ test("the Stage filter lists the pipeline by label", async ({ page }) => {
   await signInAsItAdmin(page);
   await page.goto("/it/admin/leads");
   const stage = page.getByLabel("Stage", { exact: true });
-  await expect(stage.locator("option")).toHaveCount(17); // All stages + 16
+  await expect(stage.locator("option")).toHaveCount(18); // All stages + 17 (ccrm-006: Duplicate)
   await stage.selectOption({ label: "First Call Pending" });
   await expect(page).toHaveURL(/status=first_call_pending/);
 });

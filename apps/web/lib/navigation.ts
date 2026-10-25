@@ -120,6 +120,7 @@ export const TELECALLER_MANAGER_NAV: NavItem[] = [
   { label: "Alert settings", href: "/telecaller/manager/alerts" }, // tel-020
   { label: "Products", href: "/telecaller/manager/products" },
   { label: "Campaigns", href: "/telecaller/manager/campaigns" },
+  { label: "Lost reasons", href: "/telecaller/manager/lost-reasons" }, // ccrm-006
   // tel-012: the content library telecallers work from.
   { label: "Scripts", href: "/telecaller/manager/scripts" }, { label: "Templates", href: "/telecaller/manager/templates" },
   { label: "Brochures", href: "/telecaller/manager/brochures" },

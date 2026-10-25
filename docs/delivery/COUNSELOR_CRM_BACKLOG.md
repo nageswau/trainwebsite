@@ -248,6 +248,9 @@ asked one at a time when the item is picked up).
 - **Regression:** tel-024 reports, management funnel "lost".
 - **Complexity:** small. **Risk:** medium (stage list is shared by four modules).
 - **Open questions:** relabel Wrong Number → "Invalid Contact", or add it beside? Default: relabel display only.
+- **Status (2026-10-25):** built on `feature/ccrm-006` — `DEC-SCOPE-264` (D1–D10 defaults `NEEDS_CONFIRMATION`: relabel only; Duplicate
+  for telecaller/manager/admin, not the counselor; reason list on the tel-002 pattern with six seeded reasons; call-logged closes keep no
+  reason code; Lost Reasons report), migration `0186_lead_loss_capture` (after ccrm-022's 0185), API §12FQ, RBAC §2.178.
 
 ### `ccrm-007` — Structured overseas student profile
 
@@ -559,6 +562,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Acceptance:** AC 10 — a university_rep cannot open a financial document; each download appears in the audit log.
 - **Complexity:** medium. **Risk:** high.
 - **Open questions:** should university_rep ever see identity documents (passport for submission)?
+- **Status (2026-10-25):** built on `worktree-ccrm-022` — `DEC-SCOPE-263`, migration `0185_document_sensitivity` (after ccrm-027's
+  `0184_enrollment_confirmation`), API §12FP, RBAC §2.177; recommended defaults SD1–SD8 `NEEDS_CONFIRMATION` (university_rep: never). The
+  `/local-files` mount stays with nehn-003. Design `docs/superpowers/specs/2026-10-25-ccrm-022-sensitive-documents-design.md`.
 
 ### `ccrm-023` — Offer records with history (counselor on all applications)
 
