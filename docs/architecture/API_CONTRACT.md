@@ -3944,3 +3944,21 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 `tasks_completed`. Now keys: `overdue_tasks`, `overdue_follow_ups`, `applications`, `students`, `offers`, `visas_pending`, `visas_approved`,
 `visas_refused`, `enrollments`, `documents_pending`. No revenue. Read-only, not audited.
 - Errors: 401 anonymous; 403 anyone but the overseas counselor; 422 a malformed date, `from` after `to`, or a period over 366 days.
+
+## 12FW. Counselor reminder rules (ccrm-030) — addendum, 2026-10-25
+
+`DEC-SCOPE-270`. Router `api/counselor_reminders.py`, service `services/counselor_reminders.py`, beat `ccrm030-counselor-reminders`
+(daily 08:15 IST). Design `docs/superpowers/specs/2026-10-25-ccrm-030-counselor-reminders-design.md`.
+
+- `GET /api/v1/overseas-admin/reminder-rules` → `{rules: [{key, label, description, action: task|notify, timing: assign|silent|before|after,
+  min_offset, max_offset, enabled, offset_days, notify_student (null on rules that never remind the student), updated_at}]}` in catalogue order.
+- `PUT /api/v1/overseas-admin/reminder-rules/{key}` body `{enabled, offset_days, notify_student?}` (extra fields 422) → the rule. 404 unknown
+  key; 422 offset outside the rule's range or `notify_student: true` on a rule without a student column. Audited
+  `counselor_reminder_rule.update` with field names.
+- `POST /api/v1/overseas-admin/reminder-rules/run` → `{created, duplicate, skipped, failed, rules: {key: created}}`; the daily job, now.
+  Idempotent: a second run creates nothing new.
+- `GET /api/v1/overseas-admin/reminder-rules/log?limit=50&offset=0` (limit 1–100) → `{items: [{id, rule_key, rule_label, summary, task_created,
+  recipients, created_at}], total, limit, offset}`, newest first.
+- Side effects outside the routes: `POST /telecaller/leads/{id}/handover` and `PATCH /admin/leads/{id}` (owner changed to an overseas
+  counselor) add the counselor's first-contact task and notice when the rule is on. Response shapes unchanged.
+- Errors: 401 anonymous; 403 any role but `overseas_admin` (overseas division) and `super_admin`.

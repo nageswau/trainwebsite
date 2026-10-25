@@ -53,6 +53,9 @@ async def handover(db: AsyncSession, user: User, lead: Enquiry, counselor_id: UU
         raise HTTPException(409, SAME_COUNSELOR)
     previous, lead.owner_id = lead.owner_id, counselor.id
     await lead_pipeline.cancel_open_follow_ups(db, lead, HANDED_OVER)
+    from app.services import counselor_reminders  # noqa: PLC0415 -- ccrm-030 RM1; a module import loops back through ledger -> lead_handover
+
+    await counselor_reminders.first_contact(db, lead)
     db.add(AuditLog(user_id=user.id, action="lead.handover", entity_type="enquiry", entity_id=str(lead.id),
                     metadata_json={"counselor_id": str(counselor.id), "from_counselor_id": str(previous) if previous else None}))
     _log("lead_handed_over", user, lead.id, counselor_id=str(counselor.id))

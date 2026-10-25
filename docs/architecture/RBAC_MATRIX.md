@@ -2862,3 +2862,16 @@ inside the existing role scope (a counselor searching another counselor's code g
 - "Own" = the caller's id only; the request names no counselor, so there is no IDOR surface. Admins and management read every counselor at
   `/management/counseling` and `/management/crm-reports`. Pinned by `test_ccrm_036_performance.py::test_the_overseas_counselor_reads_their_own_report`,
   `::test_everyone_else_is_refused`, `::test_anonymous_is_refused`.
+
+### 2.184 Counselor reminder rules *(added 2026-10-25 — `DEC-SCOPE-270`, ccrm-030)*
+
+| Route | `overseas_admin` (overseas) | `super_admin` | `overseas_admin` (other division) | `counselor` | Others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET /overseas-admin/reminder-rules` | ✅ | ✅ | `403` | `403` | `403` | `401` |
+| `PUT /overseas-admin/reminder-rules/{key}` | ✅ | ✅ | `403` | `403` | `403` | `401` |
+| `POST /overseas-admin/reminder-rules/run` | ✅ | ✅ | `403` | `403` | `403` | `401` |
+| `GET /overseas-admin/reminder-rules/log` | ✅ | ✅ | `403` | `403` | `403` | `401` |
+
+- Page `/overseas/admin/reminder-rules` (Overseas Admin sidebar "Reminder rules"; the page refuses other roles before calling the API).
+- Rule tasks belong to the counselor (created by them, ccrm-029 T3 applies); the job never notifies agents. Pinned by
+  `test_ccrm_030_reminders.py::test_only_the_overseas_admin`.

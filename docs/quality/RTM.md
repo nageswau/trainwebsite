@@ -1198,3 +1198,15 @@ half.
 | `ccrm-036-AC05` | Overdue tasks; tasks completed (P5) | `::test_overdue_tasks_now_and_tasks_completed_in_the_period` |
 | `ccrm-036-AC06` | Applications by sub-status, offers, visas, enrolments; another counselor's records excluded (P7, P8) | `::test_the_caseload_counts_applications_students_offers_visas_enrolments_and_pending_documents`, `::test_applications_are_grouped_by_stage_then_sub_status_in_stage_order` |
 | `ccrm-036-AC07` | UI: tiles with definitions, table with total, empty / error states, period in the address, phone layout | `apps/web/tests/components/CounselorPerformance.test.tsx`, `apps/web/tests/lib/counselorPerformance.test.ts`; e2e `ccrm-036-counselor-performance.spec.ts`, `cns-001-counselor-workspace.spec.ts` |
+
+| `ccrm-030` | Requirement: §11 trigger table, §14 deadline alerts, AC 12 → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-030` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-270` → design `docs/superpowers/specs/2026-10-25-ccrm-030-counselor-reminders-design.md`; `API_CONTRACT.md` §12FW; `RBAC_MATRIX.md` §2.184 | RM1–RM10 defaults `NEEDS_CONFIRMATION` |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-030-AC01` | AC 12: each rule fires on sample records (deadline, offer, deposit, condition, visa, decision, hold, document, no response) | `apps/api/tests/test_ccrm_030_reminders.py` (one test per rule); browser QA on seeded APP-000088/089 |
+| `ccrm-030-AC02` | No duplicate reminder on a re-run; a changed date is a new one (RM3) | `::test_application_deadline_notifies_the_counselor_once`, `::test_a_changed_deadline_is_a_new_reminder`, `::test_run_now_is_idempotent_and_logged`; `ccrm-030-reminder-rules.spec.ts` |
+| `ccrm-030-AC03` | Recipients: counselor; direct student where the rule says so; never agents; inactive counselor skipped (RM4/RM5) | `::test_terminal_inactive_and_agency_exclusions`, `::test_student_reminder_can_be_switched_off`, `::test_qa02_a_school_bridged_application_reminds_its_overseas_counselor` |
+| `ccrm-030-AC04` | New lead assigned → first-contact task (handover, admin owner change; once; off when disabled) | `::test_handover_adds_a_first_contact_task`, `::test_admin_owner_change_adds_first_contact_once` |
+| `ccrm-030-AC05` | Admin configures rules (range, student switch, audit), runs now, reads the log; others 403 | `::test_admin_reads_and_changes_rules`, `::test_only_the_overseas_admin`; `apps/web/tests/components/ReminderRules.test.tsx`; `ccrm-030-reminder-rules.spec.ts` |
+| `ccrm-030-AC06` | AGN-017 agency reminders unchanged | `test_agn_017_reminders.py`, `test_agn_017_events.py`, `test_agn_017_api.py` |
+| `ccrm-030-AC07` | Migration: tables, seed, CHECKs, unique dedupe key, round trip | `apps/api/tests/test_ccrm_030_migration.py` |

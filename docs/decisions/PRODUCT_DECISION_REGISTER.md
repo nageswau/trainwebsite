@@ -9556,3 +9556,24 @@ P8 the caseload by stage then sub-status, closed stages included. P9 read-only, 
 counselor's sidebar "Reports" opens this report in place of the generic "My Caseload Report" (the portal section payload is unchanged).
 **Numbering:** no migration; API §12FV; RBAC §2.183.
 - **Feature ID authorized:** `ccrm-036`. **Status:** built on `feature/ccrm-036`.
+
+### DEC-SCOPE-270 — Counselor reminder and trigger engine (`ccrm-030`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-030` (source PDF §11 trigger table, §14 deadline alerts / ownership, §18 AC 12;
+`UNVERIFIED` — only the backlog's quotes are used); owner answers CC2 (no visa coordinator role: the counselor is told), CC3 (escalation is
+ccrm-031); design `docs/superpowers/specs/2026-10-25-ccrm-030-counselor-reminders-design.md`. Dependencies ccrm-003/013/015/019/020/024/025/026/029 merged.
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** RM1 ten rules with
+default offsets — first contact (task, due +1 day, on handover / admin owner change), no response (task after 3 quiet days on a contacted
+lead with no next action due), document request overdue (task + student reminder), application deadline (7 days before, unsubmitted),
+university decision overdue (task), offer deadline / deposit due / offer condition due (3 days before, counselor + direct student), visa
+appointment (2 days before, student off), on-hold review date (task for the hold owner). RM2 "before" rules catch up from (date − offset)
+to the date; "after" rules look back 30 days. RM3 one `counselor_reminder_log` row per `rule:subject:anchor`, claimed with ON CONFLICT DO
+NOTHING — no duplicate on a re-run; a changed date is a new reminder. RM4 counselor = the application's, else the direct student's csc-001
+counselor, active overseas only (else skipped); the student only on direct applications; agents never (AGN-017 unchanged). RM5 live
+applications only (not withdrawn / enrolled / terminal; on hold only for its review); a status outside the pipeline counts as before the
+offer (browser QA-01); School-bridged applications with an overseas counselor are included (browser QA-02). RM6 rule tasks are
+`source='rule'`, created by the counselor themself, audited. RM7 in-app + email + opted-in channels, no names or typed text. RM8 beat
+daily 08:15 IST. RM9 Overseas Admin edits on/off, offset, student switch; audited with field names. RM10 "Run now" and a recent-reminders
+list for AC 12 testing.
+**Numbering:** migration `0189_counselor_reminders`; API §12FW; RBAC §2.184.
+- **Feature ID authorized:** `ccrm-030`. **Status:** built on `worktree-ccrm-030`.
