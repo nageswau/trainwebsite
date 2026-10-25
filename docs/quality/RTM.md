@@ -1245,3 +1245,15 @@ half.
 | `ccrm-032-AC02` | Overseas counselor only; nothing outside their scope | `::test_only_the_overseas_counselor_reads_a_dashboard`; e2e admin refusal |
 | `ccrm-032-AC03` | Counts stay full when the list is capped at 10 | `::test_a_section_caps_its_items_and_keeps_the_full_count` |
 | `ccrm-032-AC04` | Quick search stays on the dashboard; sections load on their own (error/loading states); fits a phone | `apps/web/tests/components/PortalPage.counselorDashboard.test.tsx`; `CounselorDashboardPanel.test.tsx`; e2e phone test |
+
+**Addendum, 2026-10-25 (`ccrm-041`)** — go-live verification. Tests and docs only.
+
+| ID | Requirement / acceptance | Evidence |
+|---|---|---|
+| `ccrm-041` | Requirement: §2 "every role and permission tested before go-live", §17, Appendix B → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-041` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-278` → design `docs/superpowers/specs/2026-10-25-ccrm-041-go-live-verification-design.md`; `RBAC_MATRIX.md` §2.192 | G1–G10 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-041-AC01` | Every new counselor route has a role row; a new route without one fails | `apps/api/tests/test_ccrm_041_matrix.py::test_every_counselor_crm_route_has_a_row`; `test_tel_026_matrix.py::test_every_telecaller_crm_route_has_a_row` |
+| `ccrm-041-AC02` | Every route × 12 roles matches RBAC §2.153–§2.191 (IDOR: another counselor 404/403; role escalation; anonymous 401; public feed token 404) | `test_ccrm_041_matrix.py::test_matrix_row[...]` (118) |
+| `ccrm-041-AC03` | Appendix B: enquiry → convert → three applications → A missing transcript (409), B conditional offer, C rejected → accept B → visa → enrolment | `apps/api/tests/test_ccrm_041_journey.py::test_the_appendix_b_journey`; `apps/web/tests/e2e/ccrm-041-sample-journey.spec.ts` |
+| `ccrm-041-AC04` | A and B never change when C is rejected; A and C never change when B is accepted and enrolled (AC 3, AC 9) | `::test_the_appendix_b_journey` (snapshots); e2e 360 cards |
+| `ccrm-041-AC05` | Status history names the author and reason (AC 6) | `::test_the_appendix_b_journey` (C's history row) |
+| `ccrm-041-AC06` | Notifications fire once on seeded deadlines: offer, condition, deposit (counselor + student), visa appointment (counselor) (AC 12) | `::test_the_appendix_b_journey` (two reminder runs) |

@@ -9712,3 +9712,19 @@ failure shows "Dashboard sections are unavailable right now" and leaves the page
 Call Pending (not repeated under "no next action").
 **Numbering:** no migration; API §12GD; RBAC §2.191.
 - **Feature ID authorized:** `ccrm-032`. **Status:** built on `worktree-ccrm-032`.
+
+### DEC-SCOPE-278 — Go-live verification: counselor CRM permission matrix and sample journey (`ccrm-041`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-041` (source PDF §2 "every role and permission should be tested before
+go-live", §17, Appendix B, AC 1–12; `UNVERIFIED`); design `docs/superpowers/specs/2026-10-25-ccrm-041-go-live-verification-design.md`.
+Dependencies: every item it covers, ccrm-001 … ccrm-040, all merged (main @ `19edc627`, the last being PRs #337–#340).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** G1 the 118 operations ccrm-001…040 added, one
+row each, plus a guard over the counselor CRM prefixes (earlier routes listed once as `EARLIER`). G2 12 roles per route. G3 expected
+values from RBAC_MATRIX §2.153–§2.191, never from the code; unlisted roles 403, anonymous 401. G4 tel-026's inventory leaves the ccrm
+routes to this matrix (it had failed on main since ccrm-002 added routes under its prefixes). G5 write cells on a fresh world, reads and
+refusals on a shared one. G6 the Appendix B journey as an API test and a Playwright spec; the enquiry is a telecaller lead handed over
+(API) / a walk-in lead (UI). G7 A and B snapshot-equal across C's rejection and B's acceptance. G8 B's deadlines seeded inside the
+ccrm-030 windows; one run notifies, a second sends nothing. G9 product defects are reported, not edited around — none was found. G10
+`super_admin` passes the application-level routes as the Overseas Admin does (RBAC §2.192).
+**Numbering:** no migration; no API change; RBAC §2.192.
+- **Feature ID authorized:** `ccrm-041`. **Status:** built on `worktree-ccrm-041`.

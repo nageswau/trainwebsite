@@ -847,6 +847,10 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
   e2e journey: enquiry → convert → three applications → A missing transcript, B conditional offer, C rejected → accept B → visa →
   enrolment, asserting A and B never change when C is rejected; notifications fired on seeded deadlines.
 - **Dependencies:** all items it covers. **Complexity:** medium. **Risk:** low.
+- **Status (2026-10-25):** built on `worktree-ccrm-041` — `DEC-SCOPE-278` (G1–G10 defaults `NEEDS_CONFIRMATION`), RBAC §2.192, no
+  migration / API change. `test_ccrm_041_matrix.py` (118 routes × 12 roles + inventory guard; tel-026's inventory repaired),
+  `test_ccrm_041_journey.py` and `ccrm-041-sample-journey.spec.ts`. No product defect found. Design
+  `docs/superpowers/specs/2026-10-25-ccrm-041-go-live-verification-design.md`.
 
 ## 4. Out of scope (owner answers)
 
