@@ -1,6 +1,7 @@
 """ccrm-030 (DEC-SCOPE-270, RM1-RM10): the counselor reminder and trigger engine -- one catalogue of rules, configured by the Overseas Admin,
 that turns lead and application dates into counselor tasks (ccrm-029, `source='rule'`) or notifications, and reminds the student where the
-rule says so. The daily job runs every time-based rule; `first_contact` runs inside the handover / admin owner write.
+rule says so. The daily job runs every time-based rule; `first_contact` runs inside the handover / admin owner write. ccrm-031
+(DEC-SCOPE-272, E1-E8) adds `overdue_escalation`: counselor work overdue past the threshold reaches every active Overseas Admin once.
 
 Every firing claims a `counselor_reminder_log` row by its unique `rule:subject:anchor` key (INSERT ... ON CONFLICT DO NOTHING), so a re-run
 never repeats one (RM3), in a savepoint, so one failure is counted and logged with ids only (RM7). Agents are never told here: AGN-017 keeps
@@ -32,6 +33,7 @@ from app.models import (
     DocumentRequest,
     Enquiry,
     LeadCall,
+    LeadFollowUp,
     Notification,
     OverseasApplication,
     OverseasStudentCounselor,
@@ -62,7 +64,7 @@ class Rule:
     label: str
     description: str
     action: str  # "task" | "notify"
-    timing: str  # "assign" | "silent" | "before" | "after"
+    timing: str  # "assign" | "silent" | "before" | "after" | "escalate"
     offset: int  # RM1 default
     max_offset: int
     student: bool | None  # None: the rule never reminds the student; else the default
@@ -84,6 +86,9 @@ RULES: dict[str, Rule] = {
     "condition_due": Rule("Offer condition due", "Before an open offer condition's due date (the student when it is theirs).", "notify", "before", 3, 60, True),
     "visa_appointment": Rule("Visa appointment approaching", "Before the visa appointment of an undecided visa case.", "notify", "before", 2, 30, False),
     "hold_review": Rule("On-hold review date", "A task to review an on-hold application on its review date.", "task", "before", 0, 30, None),
+    "overdue_escalation": Rule(
+        "Overdue work escalation", "Tells every Overseas Admin, once, about a counselor's tasks and follow-ups overdue by more than this many days.", "notify", "escalate", 2, 30, None
+    ),
 }
 assert COUNSELOR_REMINDER_MAX_OFFSET >= max(r.max_offset for r in RULES.values())
 
@@ -169,17 +174,28 @@ def _counts() -> dict:
     return {"created": 0, "duplicate": 0, "skipped": 0, "failed": 0, "rules": dict.fromkeys(RULES, 0)}
 
 
+async def _claim(db: AsyncSession, key: str, subject_id, anchor, summary: str):
+    """RM3: the firing's log row id, or `None` when its `rule:subject:anchor` key already fired."""
+    claim = (
+        pg_insert(CounselorReminderLog)
+        .values(id=uuid4(), rule_key=key, dedupe_key=f"{key}:{subject_id}:{anchor}"[:200], subject_id=subject_id, summary=summary[:200])
+        .on_conflict_do_nothing(index_elements=["dedupe_key"])
+        .returning(CounselorReminderLog.id)
+    )
+    return await db.scalar(claim)
+
+
+async def _notify(db: AsyncSession, user: User, url: str, title: str, body: str) -> None:
+    note = Notification(user_id=user.id, title=title, body=body, read=False, action_url=url)
+    db.add(note)
+    await queue_deliveries(db, note, user)
+
+
 async def _fire(db: AsyncSession, counts: dict, key: str, subject_id, anchor, summary: str, notices: list[tuple[User, str]], *, title: str, body: str, task: dict | None = None) -> None:
     """One firing: claim the log row, create the task (first notice's user is the counselor), send the notices."""
     try:
         async with db.begin_nested():
-            claim = (
-                pg_insert(CounselorReminderLog)
-                .values(id=uuid4(), rule_key=key, dedupe_key=f"{key}:{subject_id}:{anchor}"[:200], subject_id=subject_id, summary=summary[:200])
-                .on_conflict_do_nothing(index_elements=["dedupe_key"])
-                .returning(CounselorReminderLog.id)
-            )
-            log_id = await db.scalar(claim)
+            log_id = await _claim(db, key, subject_id, anchor, summary)
             if log_id is None:
                 counts["duplicate"] += 1
                 return
@@ -210,9 +226,7 @@ async def _fire(db: AsyncSession, counts: dict, key: str, subject_id, anchor, su
                     )
                 )
             for user, url in notices:
-                note = Notification(user_id=user.id, title=title, body=body, read=False, action_url=url)
-                db.add(note)
-                await queue_deliveries(db, note, user)
+                await _notify(db, user, url, title, body)
             await db.execute(update(CounselorReminderLog).where(CounselorReminderLog.id == log_id).values(task_id=task_id, recipients=len(notices)))
         counts["created"] += 1
         counts["rules"][key] += 1
@@ -224,8 +238,13 @@ async def _fire(db: AsyncSession, counts: dict, key: str, subject_id, anchor, su
 _Counselor = aliased(User)
 
 
+def _overseas_counselor(user_alias, id_column):
+    """Active or not -- ccrm-031 E6 escalates a deactivated counselor's work too."""
+    return and_(user_alias.id == id_column, user_alias.role == "counselor", user_alias.division == "overseas")
+
+
 def _is_counselor(user_alias, id_column):
-    return and_(user_alias.id == id_column, user_alias.active.is_(True), user_alias.role == "counselor", user_alias.division == "overseas")
+    return and_(_overseas_counselor(user_alias, id_column), user_alias.active.is_(True))
 
 
 def _app_select(*extra):
@@ -427,6 +446,104 @@ async def _no_response(db, counts, s, today):
         await _fire(db, counts, "no_response", lead.id, day.isoformat(), f"{lead.lead_code} · quiet since {_day(day)}", [(counselor, TASKS_URL)], title="Lead needs a follow-up", body=body, task=task)
 
 
+# --- ccrm-031: escalation of overdue counselor work (E2-E7) ----------------------------------------------------------------------------
+ESCALATION_TITLE, ESCALATION_URL = "Overdue work escalated", "/overseas/admin/counselor-tasks#overdue"
+
+
+def _cutoff(today: date, days: int) -> date:
+    """E2: overdue by more than `days` days = due before this day (0: due yesterday or earlier)."""
+    return today - timedelta(days=days)
+
+
+def _start_of(day_: date) -> datetime:
+    return datetime.combine(day_, time.min, INDIA)
+
+
+def _counselor_follow_ups(*columns):
+    """Open follow-ups on overseas leads owned by an overseas counselor -- every open one is theirs (ccrm-029 T7)."""
+    return (
+        select(*columns)
+        .select_from(LeadFollowUp)
+        .join(Enquiry, Enquiry.id == LeadFollowUp.lead_id)
+        .join(_Counselor, _overseas_counselor(_Counselor, Enquiry.owner_id))
+        .where(LeadFollowUp.status == "open", Enquiry.division == "overseas")
+    )
+
+
+async def _escalation_admins(db: AsyncSession) -> list[User]:
+    """E4: every active Overseas Admin of the overseas division -- not Super Admin."""
+    return list((await db.scalars(select(User).where(User.role == "overseas_admin", User.division == "overseas", User.active.is_(True)))).all())
+
+
+def _plural(n: int, word: str) -> str:
+    return f"{n} {word}{'' if n == 1 else 's'}"
+
+
+async def _overdue_escalation(db, counts, s, today):
+    """E3/E5: each item past the threshold claims its log row once; the newly claimed ones reach the admins as one notice per counselor."""
+    cutoff = _cutoff(today, s.offset_days)
+    groups: dict = {}
+    tasks = select(CounselorTask, _Counselor).join(_Counselor, _Counselor.id == CounselorTask.counselor_user_id).where(CounselorTask.status == "open", CounselorTask.due_on < cutoff)
+    for task, counselor in (await db.execute(tasks)).all():
+        groups.setdefault(counselor.id, (counselor, []))[1].append(("task", task.id, task.due_on, None))
+    follow_ups = _counselor_follow_ups(LeadFollowUp, Enquiry.lead_code, _Counselor).where(LeadFollowUp.due_at < _start_of(cutoff))
+    for fu, code, counselor in (await db.execute(follow_ups)).all():
+        groups.setdefault(counselor.id, (counselor, []))[1].append(("follow_up", fu.id, fu.due_at.astimezone(INDIA).date(), code))
+    admins = await _escalation_admins(db) if groups else []
+    for counselor, items in groups.values():
+        if not admins:
+            counts["skipped"] += len(items)
+            continue
+        name = clean_text(counselor.full_name, 80)
+        try:
+            async with db.begin_nested():
+                claimed = []
+                for kind, subject_id, due, code in items:
+                    what = f"follow-up {code}" if kind == "follow_up" else "task"
+                    log_id = await _claim(db, "overdue_escalation", subject_id, f"{kind}-{due.isoformat()}", f"{name} · {what} due {_day(due)}")
+                    if log_id is not None:
+                        claimed.append((log_id, kind))
+                counts["duplicate"] += len(items) - len(claimed)
+                if not claimed:
+                    continue
+                n_tasks = sum(kind == "task" for _, kind in claimed)
+                parts = [_plural(n, word) for n, word in ((n_tasks, "task"), (len(claimed) - n_tasks, "follow-up")) if n]
+                body = f"{name}: {' and '.join(parts)} overdue by more than {_plural(s.offset_days, 'day')}."
+                for admin in admins:
+                    await _notify(db, admin, ESCALATION_URL, ESCALATION_TITLE, body)
+                await db.execute(update(CounselorReminderLog).where(CounselorReminderLog.id.in_([i for i, _ in claimed])).values(recipients=len(admins)))
+            counts["created"] += len(claimed)
+            counts["rules"]["overdue_escalation"] += len(claimed)
+        except Exception:
+            counts["failed"] += 1
+            logger.exception("counselor_reminder_failed", extra={"extra_fields": {"rule": "overdue_escalation", "counselor_id": str(counselor.id)}})
+
+
+async def overdue_by_counselor(db: AsyncSession) -> dict:
+    """E7: every counselor with overdue work, live -- one grouped query for tasks, one for follow-ups, one for the people."""
+    setting = (await configured(db))["overdue_escalation"]
+    today, now = india_today(), datetime.now(UTC)
+    cutoff = _cutoff(today, setting.offset_days)
+    rows: dict = {}
+
+    def row(counselor_id) -> dict:
+        return rows.setdefault(counselor_id, {"overdue_tasks": 0, "overdue_follow_ups": 0, "past_threshold": 0, "oldest_due": None})
+
+    t, f = CounselorTask, LeadFollowUp
+    tasks = select(t.counselor_user_id, func.count(), func.count().filter(t.due_on < cutoff), func.min(t.due_on)).where(t.status == "open", t.due_on < today).group_by(t.counselor_user_id)
+    for counselor_id, overdue, past, oldest in (await db.execute(tasks)).all():
+        row(counselor_id).update(overdue_tasks=overdue, past_threshold=past, oldest_due=oldest)
+    follow_ups = _counselor_follow_ups(_Counselor.id, func.count(), func.count().filter(f.due_at < _start_of(cutoff)), func.min(f.due_at)).where(f.due_at < now).group_by(_Counselor.id)
+    for counselor_id, overdue, past, oldest in (await db.execute(follow_ups)).all():
+        r = row(counselor_id)
+        first = oldest.astimezone(INDIA).date()
+        r.update(overdue_follow_ups=overdue, past_threshold=r["past_threshold"] + past, oldest_due=min(r["oldest_due"] or first, first))
+    people = {u.id: u for u in (await db.scalars(select(User).where(User.id.in_(rows)))).all()} if rows else {}
+    items = [{"counselor": {"id": cid, "full_name": people[cid].full_name}, "active": people[cid].active, **r} for cid, r in rows.items()]
+    items.sort(key=lambda i: (-i["past_threshold"], -(i["overdue_tasks"] + i["overdue_follow_ups"]), i["counselor"]["full_name"]))
+    return {"today": today, "threshold_days": setting.offset_days, "enabled": setting.enabled, "items": items}
+
+
 JOB_RULES = {
     "no_response": _no_response,
     "document_overdue": _document_overdue,
@@ -437,6 +554,7 @@ JOB_RULES = {
     "condition_due": _condition_due,
     "visa_appointment": _visa_appointment,
     "hold_review": _hold_review,
+    "overdue_escalation": _overdue_escalation,
 }
 
 

@@ -5,7 +5,7 @@ V1: the page shows ALL the student's applications, current documents and history
 download keeps its own route's rule, so `can_download` mirrors `GET /workflows/overseas/documents/{id}/download` for a counselor.
 B3: history = the applications' status history (ccrm-016, staff view) + audit rows about the student + document uploads, reviews and
 replacements; field names only, never values.
-ccrm-039 (DEC-SCOPE-272): finance = the student's fees and payments, each application's university deposit and the refunds; read-only."""
+ccrm-039 (DEC-SCOPE-275): finance = the student's fees and payments, each application's university deposit and the refunds; read-only."""
 
 from uuid import UUID
 
@@ -241,7 +241,7 @@ def _payment_description(p: Payment) -> str:
 
 
 async def finance(db: AsyncSession, user: User, student: User) -> dict:
-    """ccrm-039 (DEC-SCOPE-272). F5: a download is offered only where its route allows the reader -- the invoice/receipt route takes the
+    """ccrm-039 (DEC-SCOPE-275). F5: a download is offered only where its route allows the reader -- the invoice/receipt route takes the
     payer and the division's admin; a deposit receipt is a student document (the documents tab's rule). F7: an agency's deposit payment
     is the agency's and is shown on the deposit. Never a `file_url`."""
     admin = user.role == "overseas_admin"  # staff_student already admitted only the overseas division's admin

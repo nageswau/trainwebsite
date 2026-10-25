@@ -21,8 +21,8 @@ from app.core.database import get_db
 from app.lead_stages import CLOSED
 from app.models import LEAD_APPOINTMENT_STATUSES, Appointment, Enquiry, User
 from app.schemas import LeadAppointmentCancel, LeadAppointmentComplete, LeadAppointmentCreate, LeadAppointmentReschedule
+from app.services import appointment_invites, lead_pipeline, telecaller_alerts, telecaller_leads
 from app.services import lead_appointments as svc
-from app.services import lead_pipeline, telecaller_alerts, telecaller_leads
 
 telecaller_router = APIRouter(prefix="/telecaller/leads", tags=["lead-appointments"])
 counselor_router = APIRouter(prefix="/counselor/appointments", tags=["lead-appointments"])
@@ -31,6 +31,7 @@ router = APIRouter(prefix="/lead-appointments", tags=["lead-appointments"])
 LEAD_CLOSED = "This lead is closed; reopen it before booking"
 ONE_OPEN = "This lead already has an open counselling appointment"
 BOOKER_ONLY = "Only the lead's telecaller can book an appointment"
+INVITE_CHANGE = {"reschedule": "rescheduled", "cancel": "cancelled"}
 
 
 async def _scoped_lead(db: AsyncSession, user: User, lead_id: UUID) -> Enquiry:
@@ -82,6 +83,7 @@ async def book(lead_id: UUID, payload: LeadAppointmentCreate, user: User = Depen
     svc.record(db, appt, user, None, "scheduled", new=appt.scheduled_at)
     svc.audit(db, user, "create", appt, {"counselor_id": str(counselor.id), "scheduled_at": appt.scheduled_at.isoformat()})
     await lead_pipeline.apply_event(db, lead, "appointment_booked", user)
+    await appointment_invites.queue(db, appt, "booked")  # ccrm-038 (DEC-SCOPE-274 CA1): the counselor's invite
     await db.commit()
     return (await svc.outs(db, user, [appt]))[0]
 
@@ -121,6 +123,8 @@ async def _act(db: AsyncSession, user: User, appt_id: UUID, action: str, *, reas
         await lead_pipeline.apply_event(db, lead, svc.STAGE_EVENT[action], user)
     if action == "complete":
         await telecaller_alerts.notify_appointment_completed(db, appt, lead, user)  # tel-020
+    if action in INVITE_CHANGE:  # ccrm-038 (CA1)
+        await appointment_invites.queue(db, appt, INVITE_CHANGE[action])
     await db.commit()
     return (await svc.outs(db, user, [appt]))[0]
 

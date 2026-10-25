@@ -2,7 +2,7 @@
 
 NO-ASSUMPTION MODE. Source: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` §`ccrm-039` (spec PDF §5 Finance + §13 revenue, both optional,
 `UNVERIFIED`; owner answer CC6 puts the finance tab in scope). Dependencies `ccrm-009` (PR #315) and `ccrm-025` (PR #317) are merged.
-Decision: `DEC-SCOPE-272`. API §12FY. RBAC §2.186. **No migration.**
+Decision: `DEC-SCOPE-275`. API §12GB. RBAC §2.189. **No migration.**
 
 ## Intent
 

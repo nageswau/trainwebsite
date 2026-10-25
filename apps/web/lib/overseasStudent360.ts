@@ -8,7 +8,7 @@ export const STUDENT_TABS = [
   { key: "english", label: "English" },
   { key: "documents", label: "Documents" },
   { key: "applications", label: "Applications" },
-  { key: "finance", label: "Finance" }, // ccrm-039 (DEC-SCOPE-272)
+  { key: "finance", label: "Finance" }, // ccrm-039 (DEC-SCOPE-275)
   { key: "activities", label: "Activities" },
   { key: "history", label: "History" },
 ] as const;
@@ -95,7 +95,7 @@ export type StudentHistoryItem = {
   reason: string | null;
 };
 
-// ccrm-039 (DEC-SCOPE-272): the finance tab -- read-only (API_CONTRACT.md §12FY). Amounts are decimal strings.
+// ccrm-039 (DEC-SCOPE-275): the finance tab -- read-only (API_CONTRACT.md §12GB). Amounts are decimal strings.
 export type StudentPayment = {
   id: string;
   description: string;

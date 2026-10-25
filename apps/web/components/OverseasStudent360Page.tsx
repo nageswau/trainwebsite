@@ -9,10 +9,12 @@ import OverseasStudentFinance from "@/components/OverseasStudentFinance";
 import OverseasStudentJourney from "@/components/OverseasStudentJourney";
 import PortalShell from "@/components/PortalShell";
 import StudentDocumentDownload from "@/components/StudentDocumentDownload";
+import StudentMessages from "@/components/StudentMessages";
 import StudentNotesPanel from "@/components/StudentNotesPanel";
 import StudentProfileForm from "@/components/StudentProfileForm";
 import { destinationOptions } from "@/components/StudentProfilePage";
 import { ApiError, serverApi } from "@/lib/api";
+import { studentMessagesUrl, type StudentMessagesPage } from "@/lib/counselorMessages";
 import { formatCalendarDate } from "@/lib/formatDate";
 import { PORTAL_NAV } from "@/lib/navigation";
 import {
@@ -117,8 +119,20 @@ async function panel(tab: StudentTab, id: string, overview: StudentOverview, por
     case "finance":
       return load<StudentFinance>(student360Url(id, "finance"), (data) => <OverseasStudentFinance finance={data} />);
     case "activities":
-      return load<StudentActivities>(student360Url(id, "activities"), (activities) =>
-        load<StudentNotes>(`${studentNotesUrl(id)}?limit=20&offset=0`, (notes) => <ActivitiesPanel activities={activities} notes={notes} />),
+      return (
+        <>
+          {await load<StudentActivities>(student360Url(id, "activities"), (activities) =>
+            load<StudentNotes>(`${studentNotesUrl(id)}?limit=20&offset=0`, (notes) => <ActivitiesPanel activities={activities} notes={notes} />),
+          )}
+          {/* ccrm-037: its own load, so a failure leaves the rest of the tab working; the card reads the log itself */}
+          {await load<StudentMessagesPage>(studentMessagesUrl(id, 1), (data) => (
+            <div className="card">
+              <h2>Communication</h2>
+              <p className="muted">WhatsApp and email with the student, and the replies recorded here — the student and the agent never see this log.</p>
+              <StudentMessages studentId={id} recipient={data.recipient} applications={data.applications} canWrite={portal === "counselor"} />
+            </div>
+          ))}
+        </>
       );
     case "history":
       return load<{ items: StudentHistoryItem[] }>(student360Url(id, "history"), (data) => <HistoryPanel items={data.items} />);

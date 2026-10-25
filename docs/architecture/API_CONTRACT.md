@@ -3980,9 +3980,68 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   carries `reason`; the lead timeline (`…/timeline`) has a `handover` row per `lead.owner_change` with `from_value` / `to_value`
   (empty = removed) and `reason`.
 
-## 12FY. Student finance tab (ccrm-039) — addendum, 2026-10-25
+## 12FY. Overdue escalation (ccrm-031) — addendum, 2026-10-25
 
-`DEC-SCOPE-272`. No migration. RBAC §2.186. Code: `app/api/counselor_students.py`, `app/services/counselor_student_360.py`. Same gate as §12FF.
+`DEC-SCOPE-272`. One new route; one new reminder rule.
+
+- `GET /api/v1/overseas-admin/reminder-rules` lists `overdue_escalation` (`action: "notify"`, `timing: "escalate"`, `min_offset: 0`,
+  `max_offset: 30`, `notify_student: null`); `PUT .../overdue_escalation` takes `offset_days` 0–30 (422 outside, 422 with
+  `notify_student: true`). `POST .../run` counts escalated items under `rules.overdue_escalation`; the log lists one row per item
+  ("<counselor> · task due <day>" / "<counselor> · follow-up <lead code> due <day>").
+- `GET /api/v1/counselor/tasks/overdue-by-counselor` → `{today, threshold_days, enabled, items: [{counselor: {id, full_name}, active,
+  overdue_tasks, overdue_follow_ups, past_threshold, oldest_due}]}` — counselors with at least one open task due before today or open
+  follow-up past its due time; ordered by `past_threshold` desc, total desc, name. 403 `"Overseas Administrator role required"` for any
+  role but `overseas_admin` / `super_admin`. Live, not paginated.
+- Notification to each active Overseas Admin: title "Overdue work escalated", body "<counselor>: N tasks and M follow-ups overdue by
+  more than D days.", `action_url` `/overseas/admin/counselor-tasks#overdue`.
+
+## 12FZ. Counselor message templates and the student message log (ccrm-037) — addendum, 2026-10-25
+
+`DEC-SCOPE-273`. Router `api/counselor_messages.py`, service `services/counselor_messages.py`, worker `notifications/student_email.py`
+(task `deliver_student_email_task`, beat `ccrm037-sweep-stale-student-emails` every 5 minutes). Migration `0191_student_messages`. Design
+`docs/superpowers/specs/2026-10-25-ccrm-037-counselor-student-messages-design.md`.
+
+- `GET /api/v1/counselor/templates?channel&active&q&limit&offset` → `{items: [{id, channel, name, subject, body, active}], total, limit,
+  offset}`; a counselor always gets active rows only.
+- `POST /api/v1/counselor/templates` body `{channel: whatsapp|email, name, subject (email only, required there), body}` → 201;
+  `PATCH /api/v1/counselor/templates/{id}` body any of `{name, subject, body, active}` (channel fixed, 422). 409 duplicate name per channel;
+  422 unknown placeholder (MT2), subject rules, body over 1000 / 5000. Audited `counselor_template.create|update` with field names.
+- `GET /api/v1/counselor/templates/{id}/preview` → `{subject, body, missing}` with sample values; an inactive template is 404 to a counselor.
+- `GET /api/v1/counselor/students/{id}/messages?limit=50&offset=0` (limit 1–100) → `{items: [Message], total, limit, offset, recipient:
+  {name, email, whatsapp_to}, applications: [{id, label}]}` newest first; `applications` = those a message may be about (the counselor's own
+  for this student; every one for the Overseas Admin).
+- `GET /api/v1/counselor/students/{id}/messages/render?template_id&application_id?` → `{template: {id, name, channel}, subject, body,
+  missing}`. 422 an application that is not the student's and the counselor's own; 404 an inactive or unknown template.
+- `POST /api/v1/counselor/students/{id}/messages` body `{channel: "whatsapp", template_id?, body ≤ 1000, application_id?}` or
+  `{channel: "email", template_id?, subject ≤ 200, body ≤ 5000, application_id?}` (extra fields 422) → 201 Message. WhatsApp is the
+  counselor's confirmation after wa.me; email is stored `queued` and published after the commit. 409 deactivated student / no usable number /
+  WhatsApp cap; 422 application or template; 429 email cap; 503 SMTP not configured. Not idempotent. Audited `student_message.create`.
+- `POST /api/v1/counselor/students/{id}/replies` body `{channel: "whatsapp", body, received_at?, application_id?}` or `{channel: "email",
+  subject?, body, received_at?, application_id?}` → 201 Message (`direction: "inbound"`). 422 future / older than 7 days / application;
+  409 cap. Audited `student_message.reply`.
+- `Message = {id, student_id, application: {id, label} | null, direction: outbound|inbound, channel, template: {id, name} | null, subject,
+  body, delivery_status: queued|sending|retrying|sent|failed | null, sent_at, sender: {id, full_name}}` (for a reply, `sent_at` is when it
+  was received and `sender` who recorded it).
+- Errors: 401 anonymous; templates 403 any role but the overseas counselor (read), `overseas_admin` (overseas) and `super_admin`; messages
+  403 any role but the overseas counselor and the Overseas Admin (who reads only: sends and replies 403); 404 a student outside the
+  counselor's csc-001 scope, unknown, or not an overseas student.
+
+## 12GA. Calendar integration, phase 1 (ccrm-038) — addendum, 2026-10-25
+
+`DEC-SCOPE-274`. Migration `0192_calendar_feeds` (`calendar_feeds`, `appointments.calendar_sequence`).
+
+- `GET /api/v1/counselor/calendar-feed` → `{active, created_at, url: null}`. `POST` (201) creates or regenerates the feed and returns
+  `{active: true, created_at, url}` — `url` = `FRONTEND_URL/api/v1/calendar/feeds/<token>.ics`, returned only here. `DELETE` (204,
+  idempotent) revokes it. Overseas counselor only (403 otherwise; 401 without a session). Audit `calendar_feed.create|regenerate|revoke`.
+- `GET /api/v1/calendar/feeds/{token}.ics` — no session; `text/calendar; charset=utf-8`, `Cache-Control: private, no-store`. An unknown
+  or revoked token, an inactive owner or one who is no longer an overseas counselor → 404 `Calendar feed not found`.
+- Appointment invites (no contract change on the writes): `POST /workflows/overseas/appointments`, `PATCH …/{id}` (new `scheduled_at`,
+  or `status` → cancelled), `POST /telecaller/leads/{id}/appointments` and `POST /lead-appointments/{id}/reschedule|cancel` queue a
+  notification + email delivery (context `{kind: "appointment_invite", ics, method}`) per CA1. IT appointments send nothing.
+
+## 12GB. Student finance tab (ccrm-039) — addendum, 2026-10-25
+
+`DEC-SCOPE-275`. No migration. RBAC §2.189. Code: `app/api/counselor_students.py`, `app/services/counselor_student_360.py`. Same gate as §12FF.
 
 | Method/Path | Behaviour |
 |---|---|

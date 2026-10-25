@@ -1,4 +1,4 @@
-"""ccrm-039 (DEC-SCOPE-272, F1-F7) -- the finance tab of the counselor's student 360: read-only GET /counselor/students/{id}/finance.
+"""ccrm-039 (DEC-SCOPE-275, F1-F7) -- the finance tab of the counselor's student 360: read-only GET /counselor/students/{id}/finance.
 The student's service fees and payments (with invoice / receipt numbers), each application's university deposit (ccrm-025 record or
 AGN-011 agency deposit) and refunds. Same gate as ccrm-009; downloads keep their own routes' rules."""
 

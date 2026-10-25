@@ -96,7 +96,7 @@ async def student_documents(student_id: UUID, user: User = Depends(get_current_u
     return await counselor_student_360.documents(db, user, student)
 
 
-# ccrm-039 (DEC-SCOPE-272): the finance tab -- read-only, the same gate.
+# ccrm-039 (DEC-SCOPE-275): the finance tab -- read-only, the same gate.
 @router.get("/{student_id}/finance")
 async def student_finance(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     student = await student_profiles.staff_student(db, user, student_id)

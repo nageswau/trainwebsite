@@ -5,7 +5,10 @@ import CounselorTaskForm from "@/components/CounselorTaskForm";
 import CounselorTaskList from "@/components/CounselorTaskList";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
-import { adminFilters, adminTasksUrl, BANDS, COUNSELOR_TASKS_API, type CounselorTaskOptions, type CounselorTaskPage } from "@/lib/counselorTasks";
+import OverdueByCounselor from "@/components/OverdueByCounselor";
+import {
+  adminFilters, adminTasksUrl, BANDS, COUNSELOR_TASKS_API, OVERDUE_BY_COUNSELOR_API, type CounselorTaskOptions, type CounselorTaskPage, type OverdueByCounselorPage,
+} from "@/lib/counselorTasks";
 import { PORTAL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
@@ -15,11 +18,15 @@ const ADMIN_ROLES = ["overseas_admin", "super_admin"];
 
 export default async function AdminCounselorTasksPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const filters = adminFilters(await searchParams);
-  let user: User, tasks: CounselorTaskPage, options: CounselorTaskOptions;
+  let user: User, tasks: CounselorTaskPage, options: CounselorTaskOptions, overdue: OverdueByCounselorPage;
   try {
     user = await serverApi<User>("/api/v1/auth/me");
     if (!ADMIN_ROLES.includes(user.role)) return accessDenied(user, "Overseas Administrator role required");
-    [tasks, options] = await Promise.all([serverApi<CounselorTaskPage>(adminTasksUrl(filters)), serverApi<CounselorTaskOptions>(`${COUNSELOR_TASKS_API}/options`)]);
+    [tasks, options, overdue] = await Promise.all([
+      serverApi<CounselorTaskPage>(adminTasksUrl(filters)),
+      serverApi<CounselorTaskOptions>(`${COUNSELOR_TASKS_API}/options`),
+      serverApi<OverdueByCounselorPage>(OVERDUE_BY_COUNSELOR_API),
+    ]);
   } catch (e) {
     return accessUnavailable(e);
   }
@@ -38,8 +45,10 @@ export default async function AdminCounselorTasksPage({ searchParams }: { search
           </div>
         </div>
         <div style={{ display: "grid", gap: 24, maxWidth: 900 }}>
+          <OverdueByCounselor data={overdue} />
           <CounselorTaskForm options={options} today={tasks.today} admin />
-          <form method="get" role="search" aria-label="Filter tasks" className="form-grid" style={{ alignItems: "end" }}>
+          {/* ccrm-031 QA-01: keyed by the filters so a client-side visit ("View tasks") re-mounts the uncontrolled selects */}
+          <form key={`${filters.counselor}:${filters.band}`} method="get" role="search" aria-label="Filter tasks" className="form-grid" style={{ alignItems: "end" }}>
             <div className="field" style={{ margin: 0 }}>
               <label htmlFor="filter-counselor">Counselor</label>
               <select id="filter-counselor" name="counselor" defaultValue={filters.counselor}>

@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 import { signIn } from "./helpers/agency";
 
-// ccrm-039 (DEC-SCOPE-272) -- the counselor opens the seeded demo student's 360 Finance tab: read-only fees (the seed's paid service
+// ccrm-039 (DEC-SCOPE-275) -- the counselor opens the seeded demo student's 360 Finance tab: read-only fees (the seed's paid service
 // fee), deposits and refunds, each section empty in words when there is nothing; no invoice/receipt download for the counselor. The
 // Overseas Admin is kept in their own portal; the student is refused. Uses only seeded accounts. Requires `python -m app.seed`.
 

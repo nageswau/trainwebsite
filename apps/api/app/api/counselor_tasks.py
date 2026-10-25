@@ -4,16 +4,19 @@ names only). Spec: docs/superpowers/specs/2026-10-24-ccrm-029-counselor-tasks-de
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import CounselorTask, User
 from app.schemas import CounselorTaskBand, CounselorTaskCreate, CounselorTaskUpdate
+from app.services import counselor_reminders as reminders
 from app.services import counselor_tasks as svc
 
 router = APIRouter(prefix="/counselor/tasks", tags=["counselor-tasks"])
+
+ADMIN_ONLY = "Overseas Administrator role required"
 
 
 @router.get("")
@@ -38,6 +41,15 @@ async def list_tasks(
 async def task_options(counselor_id: UUID | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     svc.require_access(user)
     return await svc.options(db, user, counselor_id)
+
+
+@router.get("/overdue-by-counselor")
+async def overdue_by_counselor(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-031 (DEC-SCOPE-272, E7): every counselor with overdue tasks or follow-ups -- the Overseas Admin (and Super Admin) only. Declared
+    before `/{task_id}` so the path is not read as a task id."""
+    if not svc.is_admin(user):
+        raise HTTPException(403, ADMIN_ONLY)
+    return await reminders.overdue_by_counselor(db)
 
 
 @router.post("", status_code=201)
