@@ -14,6 +14,7 @@ import pytest
 
 from app.main import app
 from tests.tel026_helpers import ROLES, at, headers, world
+from tests.test_ccrm_041_matrix import CCRM_ROUTES
 
 API = "/api/v1"
 OK = {200, 201, 204}
@@ -126,7 +127,7 @@ MATRIX = [
     R("post", "/telecaller/scripts", lambda w: {"product_id": w["bare_product"], "name": f"T26 {uuid.uuid4().hex[:8]}",
                                                 "steps": [{"title": "Open"}]}, mgr=201, mgr_out=201, super=201),
     R("patch", "/telecaller/scripts/{script}", {"active": False}, **MANAGERS),
-    R("get", "/telecaller/templates", **TEAM_READ),
+    R("get", "/telecaller/templates", **TEAM_READ, cns=200, cns_out=200),  # ccrm-004 (RBAC §2.173): counselors read the active rows
     R("post", "/telecaller/templates", lambda w: {"channel": "whatsapp", "kind": "welcome", "name": f"T26 {uuid.uuid4().hex[:8]}", "body": "Hi {name}"},
       mgr=201, mgr_out=201, super=201),
     R("patch", "/telecaller/templates/{template}", {"active": False}, **MANAGERS),
@@ -268,8 +269,10 @@ def _template(key: str) -> str:
 
 
 def test_every_telecaller_crm_route_has_a_row():
-    """AC1 / PM1: a route added under the telecaller CRM prefixes without a matrix row (or a stale row) fails here."""
-    routes = {_template(k) for k in _operations() if k.split(" ", 1)[1].startswith(PREFIXES)}
+    """AC1 / PM1: a route added under the telecaller CRM prefixes without a matrix row (or a stale row) fails here. The counselor CRM's
+    routes under these prefixes (lead notes, counselor lead actions, lost reasons -- ccrm-002..008) have their rows in ccrm-041's
+    matrix (DEC-SCOPE-278 G4), so each route has exactly one row."""
+    routes = {_template(k) for k in _operations() if k.split(" ", 1)[1].startswith(PREFIXES)} - CCRM_ROUTES
     rows = {_template(row.key) for row in MATRIX}
     assert routes - rows == set(), "routes without a matrix row"
     assert rows - routes == set(), "matrix rows without a route"

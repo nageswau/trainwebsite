@@ -2953,3 +2953,18 @@ Nobody consents on a student's behalf. Pinned by `test_ccrm_040_archive_consent.
 The request names no one, so another counselor's work cannot be asked for. Pinned by
 `test_ccrm_032_dashboard.py::test_only_the_overseas_counselor_reads_a_dashboard` and
 `::test_every_section_lists_only_the_counselors_own_live_work`.
+
+### 2.192 Counselor CRM go-live permission matrix *(added 2026-10-25 — `DEC-SCOPE-278`, ccrm-041)*
+
+No new route or permission. Every route ccrm-001…040 added (118 operations: the OpenAPI diff `37f087fa` → `19edc627`) is called as 12
+roles — anonymous, the owning overseas counselor, another overseas counselor, an IT counselor, Overseas Admin, IT Admin, Super Admin, the
+lead's telecaller and their manager, the direct student, the agency Master, a management partner — against §2.153–§2.191. A route added
+under the counselor CRM prefixes without a row fails `test_every_counselor_crm_route_has_a_row`.
+
+- **G10 (made explicit here):** on the application-level routes (§2.154, §2.159, §2.160, §2.166, §2.169–§2.172, §2.175, §2.176, §2.179)
+  `super_admin` passes like the Overseas Admin — the overseas workflow's existing access, which those items kept (§1 role table; ccrm-022
+  SD3 "super_admin keeps its existing access"). Their "Others" column means every *other* role. Where a section names `super_admin` as
+  `403` (§2.156, §2.158, §2.164, §2.167, §2.173, §2.174, §2.183, §2.187 student routes, §2.188, §2.190, §2.191) it is refused.
+- `GET /telecaller/templates` admits counselors (active rows, §2.173); tel-026's row is updated to match.
+- The public `GET /calendar/feeds/{token}.ics` needs no session: a bad token is `404` for every caller, signed in or not.
+- Pinned by `test_ccrm_041_matrix.py` (`test_matrix_row[...]`, one per route) and `test_tel_026_matrix.py::test_every_telecaller_crm_route_has_a_row`.
