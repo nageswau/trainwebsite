@@ -2828,3 +2828,14 @@ inside the existing role scope (a counselor searching another counselor's code g
 - The agency's AGN-009 request routes never return a direct student's request (their scope is `agent_student_id`).
 - Pinned by `test_ccrm_020_requests.py::test_scope_admin_yes_other_counselor_and_roles_no`, `::test_student_sees_the_request_and_uploads_against_it`,
   `::test_the_agency_request_list_never_shows_a_direct_students_request`.
+
+
+### 2.181 Management CRM reports *(added 2026-10-25 — `DEC-SCOPE-267`, ccrm-034)*
+
+| Route | `partner` | `super_admin` | `overseas_admin` | `accountant` | `counselor` | Others | Anonymous |
+|---|---|---|---|---|---|---|---|
+| `GET /management/crm-reports` | ✅ | ✅ | ✅ | `403` | `403` | `403` | `401` |
+
+- Pages: `/management/crm-reports` (Command Center, Students pillar) and `/overseas/admin/crm-reports` (Overseas Admin sidebar; the page
+  refuses other roles before calling the API). Pinned by `test_ccrm_034_reports.py::test_management_and_the_overseas_admin_read_the_reports`,
+  `::test_everyone_else_is_refused`, `::test_anonymous_is_refused`.

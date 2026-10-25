@@ -20,6 +20,9 @@ STAFF_ROLES = MANAGEMENT_ROLES | frozenset({
     "partnership_head",
 })
 
+# ccrm-034 (DEC-SCOPE-267, R1): the CRM reports carry no money, so the operational tier and the Overseas Admin read them.
+CRM_REPORT_ROLES = OPERATIONAL_ROLES | frozenset({"overseas_admin"})
+
 NO_ACCESS = "Management access required"
 PARTNER_ONLY = "Only partners can open this"
 
@@ -49,6 +52,12 @@ def tiers(user: User) -> dict[str, bool]:
 def require_management(user: User) -> User:
     if user.role not in MANAGEMENT_ROLES:
         raise HTTPException(403, NO_ACCESS)
+    return user
+
+
+def require_crm_reports(user: User) -> User:
+    if user.role not in CRM_REPORT_ROLES:
+        raise HTTPException(403, "Management or Overseas Administrator access required")
     return user
 
 

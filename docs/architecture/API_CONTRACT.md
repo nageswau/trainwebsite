@@ -3897,3 +3897,20 @@ Changed: `PATCH /api/v1/workflows/overseas/documents/{id}/verify` (counselor/adm
 `reupload_required` (legacy `rejected` / `changes_required` included) on a document that fulfils a direct student's request reopens it (the
 document stays, no longer fulfilling it; a `requested` event `fulfilled → open` with the review note). `GET …/applications/{id}/checklist`
 (§12FJ) gains `student_id` (writers only) and each item `open_request:{id, due_date}|null`. AGN-009 agency request routes are unchanged.
+
+
+## 12FT. Management CRM reports (ccrm-034) — addendum, 2026-10-25
+
+`DEC-SCOPE-267`. `GET /api/v1/management/crm-reports?date_from&date_to&counselor&country&university&course&intake` (router
+`api/management.py`, service `services/management_crm_reports.py`). Read-only, nothing stored or audited.
+
+- Returns `{filters, as_of, options: {counselors, countries, universities, courses, intakes}, ageing, universities, visa, readiness, leads,
+  forecast}`. Each report is `{definitions: [{key, label, definition}], rows: [...], total: {...}}`; the total is counted, not summed.
+- Rows: ageing `{stage, stage_label, sub_status, sub_status_label, applications, students, bands: {d0_7, d8_14, d15_30, d31_60, d61_plus},
+  oldest_days}`; universities `{university_id, label, applications, students, offers, offer_rate, rejections, acceptances, enrollments}`;
+  visa `{country_id, label, applications, students, submitted, pending, approved, refused, enrolled}`; readiness `{stage, stage_label,
+  applications, students, ready, blocked, needs_override, no_checklist}`; leads `{intake, label, leads, converted, conversion_pct, students,
+  applications}`; forecast `{intake, label, applications, students, confirmed, expected, possible, lost, forecast}`. A blank intake is
+  `intake: null`, label "Not recorded"; rates are `null` when nothing divides.
+- Errors: 401 anonymous; 403 any role but partner, super_admin, overseas_admin; 422 end before start, malformed `counselor` (id or
+  `none`), `country`/`university`/`course` not a UUID, `intake` over 80 characters.

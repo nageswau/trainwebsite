@@ -92,6 +92,7 @@ MATRIX = [
     R("get", "/management/snapshot", **_all(200, *OPERATIONAL)),
     # operational dashboards (mgmt-016 … 025, 030, 031)
     R("get", "/management/applications", **_all(200, *OPERATIONAL)),
+    R("get", "/management/crm-reports", **_all(200, *OPERATIONAL, "ovs_admin")),  # ccrm-034 R1 (DEC-SCOPE-267)
     R("get", "/management/bdm", **_all(200, *OPERATIONAL)),
     R("get", "/management/counseling", **_all(200, *OPERATIONAL)),
     R("get", "/management/training", **_all(200, *OPERATIONAL)),

@@ -35,7 +35,7 @@ describe("mgmt-001 pillars (§33, MG8/MG9)", () => {
 
   it("names a mgmt item and a tier on every entry; only the landed items are live", () => {
     const entries = MANAGEMENT_PILLARS.flatMap((p) => p.entries);
-    expect(entries.every((e) => /^mgmt-\d{3}$/.test(e.item) && ["operational", "finance", "partner_only"].includes(e.tier))).toBe(true);
+    expect(entries.every((e) => /^(mgmt|ccrm)-\d{3}$/.test(e.item) && ["operational", "finance", "partner_only"].includes(e.tier))).toBe(true);
     expect(entries.filter((e) => e.href).map((e) => e.item)).toContain("mgmt-003");
   });
 
