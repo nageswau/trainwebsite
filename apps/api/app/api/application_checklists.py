@@ -39,6 +39,7 @@ async def _response(db: AsyncSession, user: User, item: OverseasApplication) -> 
         "checklist": await svc.view(db, item, checklist),
         "template": {"id": template.id, "name": template.name, "version": template.version, "gate_mode": template.gate_mode} if template else None,
         "documents": await svc.linkable(db, item) if staff else [],
+        "student_id": item.student_id if staff else None,  # ccrm-020: the writers request a missing item from this student's login
     }
 
 

@@ -49,7 +49,7 @@ Roles: partner, super_admin, overseas_admin.
   not yet enrolled; possible = open applications at Offer or later without a visa approval; lost = terminal outcome or withdrawn;
   **forecast = confirmed + expected**. No probability weighting.
 
-## API (§12FS)
+## API (§12FT)
 
 `GET /api/v1/management/crm-reports?date_from&date_to&counselor&country&university&course&intake` → `{filters, as_of, options,
 definitions: {report: [{key,label,definition}]}, ageing, universities, visa, readiness, leads, forecast}`. Each report has `rows` and a

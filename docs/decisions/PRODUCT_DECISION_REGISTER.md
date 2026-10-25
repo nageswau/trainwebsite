@@ -9481,8 +9481,25 @@ confirmed arrival (also a DB CHECK). A6 columns on `overseas_applications`; a ch
 only) and tells the agency (CC5); the student is not notified; an unchanged save writes nothing.
 **Numbering:** migration `0187_application_arrival`; API §12FR; RBAC §2.179.
 - **Feature ID authorized:** `ccrm-028`. **Status:** built on `worktree-ccrm-028`.
+### DEC-SCOPE-266 — Document requests for direct students (`ccrm-020`, supersedes `nehn-037` part 1)
 
-### DEC-SCOPE-266 — Management CRM reports (`ccrm-034`)
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-020` (source PDF §11 "Document missing → add a task … optionally send a student
+reminder", nehn-037 #1, `UNVERIFIED`); design `docs/superpowers/specs/2026-10-25-ccrm-020-document-requests-design.md`.
+**Owner answers (2026-10-25, in session):** dependency `nehn-003` (private storage) is not built — proceed on the existing document storage
+with the AGN-009 server-side upload rules; R1 a staff rejection (`incomplete` / `reupload_required`) of the fulfilling document reopens the
+request (same due date, the review note shown) and the student uploads again against it; verified leaves it fulfilled; R2 a request made
+from a checklist item marks the item Requested, the student's upload is attached to that application and auto-linked to the item, verified
+makes the item complete; cancel clears a still-Requested mark.
+**Recommended defaults (`NEEDS_CONFIRMATION`):** R3 counselor (csc-001 scope) and Overseas Admin create and cancel, any of them in scope may
+cancel; R4 due date required (today IST or later), note optional, AGN-009 request types; R5 one open request per student + application +
+type + label; R6 the student is notified on create / cancel (never the note), the requester on upload; R7 AGN-009 byte rules for the
+upload, optional expiry; R8 `overdue` computed (open, past due) with a partial index for ccrm-030; R9 a request needs a student login
+(agency-only records keep AGN-009).
+**Numbering:** migration `0188_student_document_requests` (after ccrm-028's `0187`); API §12FS; RBAC §2.180.
+- **Feature ID authorized:** `ccrm-020`. **Status:** built on `feature/ccrm-020`.
+
+
+### DEC-SCOPE-267 — Management CRM reports (`ccrm-034`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-034` (source PDF §13 report table, §4 conversion by intake, §18 AC 8;
 `UNVERIFIED` — only the backlog's quotes are used); owner answer CC3 (no team filter; the Overseas Admin is the team-wide view); design
@@ -9501,5 +9518,5 @@ approved, refused, enrolled (approved + confirmed). R8 readiness over open, not-
 (overseas leads): leads, converted now, conversion %, converted students, their applications. R10 forecast **method**: forecast = confirmed
 enrolments + open applications with the visa approved (expected); possible (open, Offer or later, no visa approval) and lost (withdrawn or
 terminal) shown beside it; no probability weighting.
-**Numbering:** no migration; API §12FS; RBAC §2.180.
+**Numbering:** no migration; API §12FT; RBAC §2.181.
 - **Feature ID authorized:** `ccrm-034`. **Status:** built on `worktree-ccrm-034`.

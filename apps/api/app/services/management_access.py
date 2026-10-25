@@ -20,7 +20,7 @@ STAFF_ROLES = MANAGEMENT_ROLES | frozenset({
     "partnership_head",
 })
 
-# ccrm-034 (DEC-SCOPE-266, R1): the CRM reports carry no money, so the operational tier and the Overseas Admin read them.
+# ccrm-034 (DEC-SCOPE-267, R1): the CRM reports carry no money, so the operational tier and the Overseas Admin read them.
 CRM_REPORT_ROLES = OPERATIONAL_ROLES | frozenset({"overseas_admin"})
 
 NO_ACCESS = "Management access required"
