@@ -6513,7 +6513,7 @@ class CounselorTask(Base, TimestampMixin):
 # every firing -- its unique `dedupe_key` (rule:subject:anchor) is what keeps a re-run from sending twice. Migration 0189 repeats the CHECKs.
 COUNSELOR_REMINDER_RULE_KEYS = (
     "first_contact", "no_response", "document_overdue", "application_deadline", "decision_overdue",
-    "offer_deadline", "deposit_due", "condition_due", "visa_appointment", "hold_review",
+    "offer_deadline", "deposit_due", "condition_due", "visa_appointment", "hold_review", "overdue_escalation",  # ccrm-031 (0190)
 )
 COUNSELOR_REMINDER_MAX_OFFSET = 60
 COUNSELOR_REMINDER_CHECKS = {
