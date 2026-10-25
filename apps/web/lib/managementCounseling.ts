@@ -2,14 +2,14 @@ import { isCalendarDate } from "@/lib/formatDate";
 
 // mgmt-018 (EVID-017 §13, spec CS1-CS12): GET /management/counseling -- every counselor's figures and the totals for an IST period. The
 // API decides access and every figure: `revenue` is null unless `revenue_visible` (partners). ccrm-004 (LG6): `calls` = the calls each
-// counselor logged (a number; null only from an older API).
+// counselor logged in the period.
 export const COUNSELING_HOME = "/management/counseling";
 export const COUNSELING_API = "/api/v1/management/counseling";
 
 export type CounselingFigureKey = "leads_assigned" | "calls" | "counseling_sessions" | "follow_ups" | "conversions" | "revenue" | "conversion_pct";
 export type CounselingFigure = { key: CounselingFigureKey; label: string; definition: string; tracked: boolean };
 export type CounselingFigures = {
-  leads_assigned: number; calls: number | null; counseling_sessions: number; follow_ups: number; conversions: number;
+  leads_assigned: number; calls: number; counseling_sessions: number; follow_ups: number; conversions: number;
   revenue: string | null; conversion_pct: number | null;
 }; // prettier-ignore
 export type CounselorRow = CounselingFigures & { id: string; full_name: string; division: string; active: boolean };
