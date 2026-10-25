@@ -9,7 +9,7 @@ import { MANAGEMENT_HOME, MANAGEMENT_ROLE_LABEL, managementNavFor, type Manageme
 import { CRM_REPORTS_HOME, CRM_REPORTS_UNAVAILABLE, crmFilters, crmReportsHref, crmReportsUrl, type CrmReports } from "@/lib/managementCrmReports";
 import { SUPER_ADMIN_NAV } from "@/lib/navigation";
 
-// ccrm-034 (DEC-SCOPE-265, R1): the management CRM reports in the Command Center (partner, super_admin). The API refuses everyone else,
+// ccrm-034 (DEC-SCOPE-266, R1): the management CRM reports in the Command Center (partner, super_admin). The API refuses everyone else,
 // and that refusal is shown as the access card. A 422 (the date order) shows the API's words.
 export default async function ManagementCrmReportsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const search = await searchParams;

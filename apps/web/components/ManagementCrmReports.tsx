@@ -77,7 +77,7 @@ function Report<Total, Row extends Total>({ id, title, empty, rowHeader, firstCo
   );
 }
 
-// ccrm-034 (DEC-SCOPE-265, R1-R10): the six management CRM reports, server-rendered; the filters are a GET form to `home`, the page
+// ccrm-034 (DEC-SCOPE-266, R1-R10): the six management CRM reports, server-rendered; the filters are a GET form to `home`, the page
 // that renders it (the Command Center or the Overseas Admin's), so refresh, back and shared links keep them.
 export default function ManagementCrmReports({ data, error, filters, home }: { data: CrmReports | null; error: string; filters: CrmFilters; home: string }) {
   const percent = { offer_rate: percentText, conversion_pct: percentText } as Record<string, (value: never) => string>;

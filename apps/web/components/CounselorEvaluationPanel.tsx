@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import ApplicationChecklistPanel from "./ApplicationChecklistPanel";
 import ApplicationDetailsPanel from "./ApplicationDetailsPanel";
 import ApplicationDepositPanel from "./ApplicationDepositPanel";
+import ApplicationArrivalPanel from "./ApplicationArrivalPanel";
 import ApplicationEnrollmentPanel from "./ApplicationEnrollmentPanel";
 import ApplicationOffersPanel from "./ApplicationOffersPanel";
 import ApplicationOutcomeForm from "./ApplicationOutcomeForm";
@@ -46,6 +47,7 @@ export default function CounselorEvaluationPanel() {
   const [historyId, setHistoryId] = useState<string | null>(null); // ccrm-016: the card whose status history is open
   const [detailsId, setDetailsId] = useState<string | null>(null); // ccrm-013: the card whose application details are open
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null); // ccrm-027: the card whose enrolment panel is open
+  const [arrivalId, setArrivalId] = useState<string | null>(null); // ccrm-028: the card whose arrival panel is open
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ id: string; text: string; failed: boolean } | null>(null);
 
@@ -240,6 +242,19 @@ export default function CounselorEvaluationPanel() {
                 </button>
               )}
               {enrollmentId === row.id && <ApplicationEnrollmentPanel key={`${row.status}|${row.outcome}`} applicationId={row.id} onChanged={saved} />}
+              {/* ccrm-028: arrival and orientation once enrolled (direct and agency: CC4) */}
+              {!closed && row.status === "enrolled" && (
+                <button
+                  type="button"
+                  className="btn ghost small"
+                  style={{ display: "block", marginTop: 8 }}
+                  aria-expanded={arrivalId === row.id}
+                  onClick={() => (setArrivalId(arrivalId === row.id ? null : row.id), setMessage(null))}
+                >
+                  {arrivalId === row.id ? "Hide arrival" : "Arrival and orientation"}
+                </button>
+              )}
+              {arrivalId === row.id && <ApplicationArrivalPanel applicationId={row.id} onChanged={saved} />}
               {/* ccrm-013: details and dates stay editable in any state, like the generic PATCH's non-stage fields (F7) */}
               <button
                 type="button"

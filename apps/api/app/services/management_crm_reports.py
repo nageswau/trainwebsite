@@ -1,4 +1,4 @@
-"""ccrm-034 (DEC-SCOPE-265, R1-R10; source PDF §13, AC 8): the management CRM reports -- application ageing, university performance,
+"""ccrm-034 (DEC-SCOPE-266, R1-R10; source PDF §13, AC 8): the management CRM reports -- application ageing, university performance,
 visa outcomes, document readiness, lead conversion by intake and the forecast by intake. Every report counts applications and the students
 behind them separately (R3) and carries its definitions. Each report is one grouped SELECT plus one for its total (students are distinct
 people, so a total is never the sum of its rows). Read-only; only counts and organisation, place, intake and stage names leave."""

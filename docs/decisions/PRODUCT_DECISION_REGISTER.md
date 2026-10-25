@@ -9466,7 +9466,23 @@ gains the Lost Reasons report (leads created in range, in scope, now Lost / Not 
 **Numbering:** migration `0186_lead_loss_capture`; API §12FQ; RBAC §2.178.
 - **Feature ID authorized:** `ccrm-006`. **Status:** built on `feature/ccrm-006`.
 
-### DEC-SCOPE-265 — Management CRM reports (`ccrm-034`)
+### DEC-SCOPE-265 — Arrival and orientation tracking (`ccrm-028`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-028` (source PDF §10 "track arrival/orientation confirmation if this is part
+of EduSphere's service"; `UNVERIFIED` — only the backlog's quote is used); owner answers CC6 (arrival/orientation tracking in scope) and
+CC4 (the counselor records post-offer steps on all applications); design `docs/superpowers/specs/2026-10-25-ccrm-028-arrival-orientation-design.md`.
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** A1 arrival triggers
+nothing — no stage, sub-status, outcome, commission or UPC/management eligibility change (answers the backlog's open question). A2 the
+counselor (own applications, direct **and agency**) and the Overseas Admin record through `PUT …/applications/{id}/arrival`; the student and
+the agency read. A3 only once `enrolled` (422 otherwise); closed / archived agency → 409; allowed on hold. A4 "arrival confirmed (by whom)"
+= the server stamps the signed-in staff member and the time when arrival is confirmed; how it was confirmed goes in the notes; un-confirming
+clears the stamp. A5 the date is optional while unconfirmed (expected date), required and not in the future to confirm; orientation needs a
+confirmed arrival (also a DB CHECK). A6 columns on `overseas_applications`; a change writes one history note, an audit row (field names
+only) and tells the agency (CC5); the student is not notified; an unchanged save writes nothing.
+**Numbering:** migration `0187_application_arrival`; API §12FR; RBAC §2.179.
+- **Feature ID authorized:** `ccrm-028`. **Status:** built on `worktree-ccrm-028`.
+
+### DEC-SCOPE-266 — Management CRM reports (`ccrm-034`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-034` (source PDF §13 report table, §4 conversion by intake, §18 AC 8;
 `UNVERIFIED` — only the backlog's quotes are used); owner answer CC3 (no team filter; the Overseas Admin is the team-wide view); design
@@ -9485,5 +9501,5 @@ approved, refused, enrolled (approved + confirmed). R8 readiness over open, not-
 (overseas leads): leads, converted now, conversion %, converted students, their applications. R10 forecast **method**: forecast = confirmed
 enrolments + open applications with the visa approved (expected); possible (open, Offer or later, no visa approval) and lost (withdrawn or
 terminal) shown beside it; no probability weighting.
-**Numbering:** no migration; API §12FR; RBAC §2.179.
+**Numbering:** no migration; API §12FS; RBAC §2.180.
 - **Feature ID authorized:** `ccrm-034`. **Status:** built on `worktree-ccrm-034`.

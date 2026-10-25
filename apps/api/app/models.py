@@ -1854,6 +1854,15 @@ class OverseasApplication(Base, TimestampMixin):
         Uuid(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL", use_alter=True, name="fk_overseas_applications_enrollment_document_id"), nullable=True
     )
     pre_enrollment_checklist_complete: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    # ccrm-028 (DEC-SCOPE-265): arrival and orientation after enrolment (PUT …/arrival). `arrival_date` is the expected date until arrival
+    # is confirmed; confirming stamps who and when (A4). Orientation needs a confirmed arrival (the CHECK below; migration 0187 repeats it).
+    arrival_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    arrival_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    arrival_confirmed_by_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL", name="fk_overseas_applications_arrival_confirmed_by_id"), nullable=True
+    )
+    orientation_attended: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    arrival_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     # AGN-010 (DEC-SCOPE-056): the current offer, recorded by the agency. `offer_deadline` above is its deadline (O2); the letter is an
     # AGN-009 document (O3). `use_alter`: student_documents.application_id points back at this table.
     offer_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -1883,6 +1892,7 @@ class OverseasApplication(Base, TimestampMixin):
         CheckConstraint("offer_type IS NULL OR offer_type IN (" + ", ".join(f"'{t}'" for t in APPLICATION_OFFER_TYPES) + ")", name="ck_overseas_applications_offer_type"),
         CheckConstraint("(offer_type IS NULL) = (offer_date IS NULL)", name="ck_overseas_applications_offer_dated"),
         CheckConstraint(OUTCOME_CHECK, name="ck_overseas_applications_outcome"),
+        CheckConstraint("NOT orientation_attended OR arrival_confirmed_at IS NOT NULL", name="ck_overseas_applications_orientation_arrival"),
         # AGN-017 (DEC-SCOPE-059): the daily reminder job reads agency deadlines through these partial indexes (migration 0065).
         Index("ix_overseas_applications_agent_application_deadline", "application_deadline", postgresql_where=text("agent_student_id IS NOT NULL")),
         Index("ix_overseas_applications_agent_offer_deadline", "offer_deadline", postgresql_where=text("agent_student_id IS NOT NULL")),
