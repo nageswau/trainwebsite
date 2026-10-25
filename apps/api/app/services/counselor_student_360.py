@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app import student_journey as journey
 from app.application_outcome import label as outcome_label
 from app.application_sub_status import label as sub_status_label
 from app.document_checklists import STATUS_LABELS as DOCUMENT_STATUS_LABELS
@@ -63,6 +64,17 @@ def _is_open(app: OverseasApplication) -> bool:
     return not outcomes.is_closed(app) and app.status != "enrolled"
 
 
+async def _journey(db: AsyncSession, student: User, rows: list, linked) -> dict:
+    """ccrm-017 (DEC-SCOPE-258): the derived journey stage. J4: engaged = a csc-001 counselor link or an appointment still on."""
+    engaged = linked is not None or bool(await db.scalar(select(Appointment.id).where(Appointment.student_id == student.id, Appointment.status.not_in(("cancelled", "no_show"))).limit(1)))
+    university = {a.id: name for a, name, *_ in rows}
+    stage, best, note = journey.derive([a for a, *_ in rows], engaged=engaged)
+    return {
+        "stage": stage, "label": journey.LABELS[stage], "steps": journey.steps(stage), "note": note,
+        "application": {"id": best.id, "application_code": best.application_code, "university": university[best.id]} if best else None,
+    }  # fmt: skip
+
+
 async def overview(db: AsyncSession, user: User, student: User) -> dict:
     rows = await _applications(db, student.id)
     events = await outcomes.latest(db, [a.id for a, *_ in rows if a.outcome])
@@ -88,6 +100,7 @@ async def overview(db: AsyncSession, user: User, student: User) -> dict:
         "student": {"id": student.id, "full_name": student.full_name, "student_code": student.student_code, "email": student.email, "phone": student.phone},
         "account_status": "deactivated" if not student.active else setup or "active",
         "counselor": {"id": linked.id, "full_name": linked.full_name} if linked else None,
+        "journey": await _journey(db, student, rows, linked),
         "applications": applications,
         "counts": {"applications": len(applications), "open_applications": sum(a["open"] for a in applications), "documents_to_review": to_review or 0},
         "next_actions": [
