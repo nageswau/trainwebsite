@@ -714,6 +714,10 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Expected behaviour:** tasks/follow-ups overdue by a configurable threshold notify Overseas Admin once; admin sees an "Overdue by
   counselor" list.
 - **Dependencies:** ccrm-029, ccrm-030. **Complexity:** small. **Risk:** low.
+- **Status (2026-10-25):** built on `worktree-ccrm-031` — `DEC-SCOPE-272` (E1–E8 defaults `NEEDS_CONFIRMATION`: rule
+  `overdue_escalation` default 2 days, one notice per counselor to every active Overseas Admin), migration `0190_overdue_escalation`,
+  API §12FY, RBAC §2.186; "Overdue by counselor" on `/overseas/admin/counselor-tasks`. Design
+  `docs/superpowers/specs/2026-10-25-ccrm-031-overdue-escalation-design.md`.
 
 ### `ccrm-032` — Counselor action dashboard
 

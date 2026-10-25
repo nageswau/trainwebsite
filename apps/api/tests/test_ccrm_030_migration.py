@@ -20,19 +20,20 @@ _spec.loader.exec_module(_migration)
 HEAD, BASE = "0189_counselor_reminders", "0188_student_document_requests"
 
 
-def test_migration_chains_after_0188_and_is_the_single_head():
+def test_migration_chains_after_0188():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
 
 
 def test_the_migration_repeats_the_model_and_catalogue():
+    """0189 froze the first ten keys; ccrm-031's 0190 adds `overdue_escalation` (test_ccrm_031_migration)."""
     from app.models import COUNSELOR_REMINDER_CHECKS, COUNSELOR_REMINDER_RULE_KEYS
     from app.services.counselor_reminders import RULES
 
-    assert _migration.CHECKS == COUNSELOR_REMINDER_CHECKS
-    assert _migration.RULE_KEYS == COUNSELOR_REMINDER_RULE_KEYS == tuple(RULES)
-    assert _migration.DEFAULTS == {k: (r.offset, bool(r.student)) for k, r in RULES.items()}
+    assert _migration.CHECKS["ck_counselor_reminder_rules_offset"] == COUNSELOR_REMINDER_CHECKS["ck_counselor_reminder_rules_offset"]
+    assert _migration.RULE_KEYS == COUNSELOR_REMINDER_RULE_KEYS[:10] == tuple(RULES)[:10]
+    assert _migration.DEFAULTS == {k: (r.offset, bool(r.student)) for k, r in RULES.items() if k in _migration.RULE_KEYS}
 
 
 @pytest.fixture
