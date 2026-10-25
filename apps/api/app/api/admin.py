@@ -499,7 +499,12 @@ async def update_lead(lead_id: UUID, payload: dict, user: User = Depends(ensure_
             raise RequestValidationError(exc.errors()) from None
         await lead_pipeline.person_move(db, x, user, "manager", move.to_stage, move.reason, move.closure())
     if "owner_id" in payload:  # ccrm-003 A7: an active counselor of the lead's division, or null to un-assign
+        previous_owner = x.owner_id
         x.owner_id = None if payload["owner_id"] is None else await _lead_owner_id(db, x, payload["owner_id"])
+        if x.owner_id != previous_owner:
+            from app.services import counselor_reminders  # noqa: PLC0415 -- ccrm-030 RM1; a module import breaks the services' import order
+
+            await counselor_reminders.first_contact(db, x)
     audited = {f: payload[f] for f in ("status", "owner_id") if f in payload}
     db.add(AuditLog(user_id=user.id, action="lead.update", entity_type="enquiry", entity_id=str(x.id), metadata_json=audited))
     await db.commit()

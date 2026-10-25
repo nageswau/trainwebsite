@@ -704,6 +704,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Acceptance:** AC 12 with seeded sample records; no duplicate reminder on re-run.
 - **Regression:** AGN-017 reminders (do not double-send on agency apps).
 - **Complexity:** large. **Risk:** medium.
+- **Status (2026-10-25):** built on `worktree-ccrm-030` — `DEC-SCOPE-268` (RM1–RM10 defaults `NEEDS_CONFIRMATION`), migration
+  `0189_counselor_reminders`, API §12FU, RBAC §2.182; page `/overseas/admin/reminder-rules` (configure, run now, recent reminders). Design
+  `docs/superpowers/specs/2026-10-25-ccrm-030-counselor-reminders-design.md`.
 
 ### `ccrm-031` — Overdue escalation to Overseas Admin (CC3)
 

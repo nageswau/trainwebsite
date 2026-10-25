@@ -6509,6 +6509,42 @@ class CounselorTask(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
+# ccrm-030 (DEC-SCOPE-268): the reminder rules the Overseas Admin configures (catalogue: services/counselor_reminders.RULES) and the log of
+# every firing -- its unique `dedupe_key` (rule:subject:anchor) is what keeps a re-run from sending twice. Migration 0189 repeats the CHECKs.
+COUNSELOR_REMINDER_RULE_KEYS = (
+    "first_contact", "no_response", "document_overdue", "application_deadline", "decision_overdue",
+    "offer_deadline", "deposit_due", "condition_due", "visa_appointment", "hold_review",
+)
+COUNSELOR_REMINDER_MAX_OFFSET = 60
+COUNSELOR_REMINDER_CHECKS = {
+    "ck_counselor_reminder_rules_key": _in_list("rule_key", COUNSELOR_REMINDER_RULE_KEYS),
+    "ck_counselor_reminder_rules_offset": f"offset_days BETWEEN 0 AND {COUNSELOR_REMINDER_MAX_OFFSET}",
+}
+
+
+class CounselorReminderRule(Base, TimestampMixin):
+    __tablename__ = "counselor_reminder_rules"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in COUNSELOR_REMINDER_CHECKS.items())
+    rule_key: Mapped[str] = mapped_column(String(40), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    offset_days: Mapped[int] = mapped_column(Integer)
+    notify_student: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class CounselorReminderLog(Base):
+    __tablename__ = "counselor_reminder_log"
+    __table_args__ = (UniqueConstraint("dedupe_key", name="uq_counselor_reminder_log_dedupe_key"), Index("ix_counselor_reminder_log_created", "created_at"))
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    rule_key: Mapped[str] = mapped_column(String(40))
+    dedupe_key: Mapped[str] = mapped_column(String(200))
+    subject_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True))
+    summary: Mapped[str] = mapped_column(String(200))
+    task_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("counselor_tasks.id", ondelete="SET NULL"), nullable=True)
+    recipients: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 # mgmt-026 (spec PN2-PN4): EVID-017 §25's monthly plan per vertical; §26's target vs actual is computed live, never stored (PN6). The
 # KPI key is checked by the schema against `management_metrics.PLAN_KPIS`, not here, so the catalogue can grow without a migration.
 # Migration 0159 repeats the CHECKs (test_mgmt_026_migration keeps them identical).

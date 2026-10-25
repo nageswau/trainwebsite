@@ -133,6 +133,15 @@ def expire_offers_task():
 
 
 @celery.task
+def send_counselor_reminders_task():
+    """ccrm-030 (DEC-SCOPE-268 RM8): daily at 08:15 IST via beat. Idempotent per firing (counselor_reminder_log.dedupe_key), so a rerun, a
+    second beat process or the admin's "Run now" creates nothing new."""
+    from app.services.counselor_reminders import run_counselor_reminders
+
+    return _run_with_fresh_pool(run_counselor_reminders)
+
+
+@celery.task
 def send_bdm_reminders_task():
     """bdm-012 (DEC-SCOPE-102 R2): every 5 minutes via beat. Idempotent per reminder (notifications.dedupe_key), so a rerun or an
     overlapping run creates nothing new."""
@@ -233,6 +242,7 @@ def draft_monthly_review_task():
 celery.conf.beat_schedule = {
     "enh014-sweep-stale-deliveries": {"task": "app.worker.sweep_stale_deliveries_task", "schedule": 300.0},
     "agn017-daily-reminders": {"task": "app.worker.send_daily_reminders_task", "schedule": crontab(hour=2, minute=30)},  # UTC = 08:00 IST
+    "ccrm030-counselor-reminders": {"task": "app.worker.send_counselor_reminders_task", "schedule": crontab(hour=2, minute=45)},  # UTC = 08:15 IST
     "ccrm021-document-expiry": {"task": "app.worker.expire_documents_task", "schedule": crontab(hour=18, minute=35)},  # UTC = 00:05 IST
     "ccrm025-offer-expiry": {"task": "app.worker.expire_offers_task", "schedule": crontab(hour=18, minute=40)},  # UTC = 00:10 IST
     "bdm012-reminders":{"task": "app.worker.send_bdm_reminders_task", "schedule": 300.0},
