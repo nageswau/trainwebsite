@@ -15,8 +15,8 @@ async def world(db_session):
     return await assign_world(db_session)
 
 
-async def _assign(c, app, counselor):
-    return await c.put(ASSIGN.format(app.id), json={"counselor_id": str(counselor.id)})
+async def _assign(c, app, counselor, reason: str | None = None):
+    return await c.put(ASSIGN.format(app.id), json={"counselor_id": str(counselor.id), **({"reason": reason} if reason else {})})
 
 
 @pytest.mark.asyncio
@@ -37,16 +37,16 @@ async def test_admin_assigns_a_counselor_who_then_sees_the_application(db_sessio
 async def test_a_swap_moves_access_and_tells_both_counselors(db_session, world):  # AC02, AC08
     async with client_for(world["admin"].email) as c:
         assert (await _assign(c, world["app"], world["counselor"])).status_code == 200
-        r = await _assign(c, world["app"], world["counselor2"])
+        r = await _assign(c, world["app"], world["counselor2"], "Workload balance")  # ccrm-033: a swap needs a reason
     assert r.status_code == 200 and r.json()["changed"] is True
     assert await history_notes(db_session, world["app"]) == ["EduSphere counsellor assigned", "EduSphere counsellor changed"]
     audits = await assign_audits(db_session, world["app"])
-    assert audits[1] == {"from_counselor_id": str(world["counselor"].id), "to_counselor_id": str(world["counselor2"].id)}  # T15
+    assert audits[1] == {"from_counselor_id": str(world["counselor"].id), "to_counselor_id": str(world["counselor2"].id), "reason": "Workload balance"}  # T15
     async with client_for(world["counselor"].email) as c:
         assert (await c.post(ADVANCE.format(world["app"].id), json={"to_status": "visa_documentation"})).status_code == 403
     assert [n.title for n in await notices(db_session, world["counselor"])] == ["Application assigned to you", "Application reassigned"]
     reassigned = (await notices(db_session, world["counselor"]))[-1]
-    assert reassigned.body == "An application has moved to another counselor."
+    assert reassigned.body == "An application has moved to another counselor. Reason: Workload balance"
     assert [n.title for n in await notices(db_session, world["counselor2"])] == ["Application assigned to you"]
 
 
@@ -150,7 +150,7 @@ async def test_the_agency_hears_without_names_and_a_direct_application_does_not_
     staff = world["staff"]["user"]  # the no-login student's assigned staff member: the AGN-017 recipient
     async with client_for(world["admin"].email) as c:
         await _assign(c, world["app"], world["counselor"])
-        await _assign(c, world["app"], world["counselor2"])
+        await _assign(c, world["app"], world["counselor2"], "Workload balance")
         await _assign(c, world["direct_app"], world["counselor"])
     titles = [n.title for n in await notices(db_session, staff)]
     assert titles == ["EduSphere counsellor assigned", "EduSphere counsellor changed"]

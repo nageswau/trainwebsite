@@ -9577,3 +9577,19 @@ daily 08:15 IST. RM9 Overseas Admin edits on/off, offset, student switch; audite
 list for AC 12 testing.
 **Numbering:** migration `0189_counselor_reminders`; API §12FW; RBAC §2.184.
 - **Feature ID authorized:** `ccrm-030`. **Status:** built on `worktree-ccrm-030`.
+
+### DEC-SCOPE-271 — Reassignment with a logged reason (`ccrm-033`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-033` (source PDF §2 "administrators can reassign ownership and correct
+records with a logged reason", §11 student reassigned; `UNVERIFIED` — only the backlog's quotes are used); design
+`docs/superpowers/specs/2026-10-25-ccrm-033-reassignment-reason-design.md`. Dependencies: none.
+**Owner answers (2026-10-25, clarifying-question prompt):** RR1 a reason is required when an existing owner is replaced or removed
+(application counselor, csc-005 student counselor, lead owner); optional but stored on a first assignment; the same owner is a no-op
+needing none. RR2 the agency sees the "EduSphere counsellor changed" history row but not its reason; the student never sees reasons
+(ccrm-016 H2). RR3 lead owner: reason on the admin API (`owner_reason`), new and previous counselor notified with the reason, the lead
+timeline shows the change; no owner-picker UI.
+**Storage:** application — the history row's `reason` + audit metadata `reason`; student — audit metadata `reason` (the student 360
+History shows it); lead — new audit action `lead.owner_change` `{from_owner_id, owner_id, reason?}` (`lead.update` unchanged;
+`lead.handover` not reused — the counselling report counts it). Reason: trimmed, ≤ 500, no control characters; never in structured logs.
+**Numbering:** no migration; API §12FX; RBAC §2.185.
+- **Feature ID authorized:** `ccrm-033`. **Status:** built on `worktree-ccrm-033`.

@@ -20,7 +20,7 @@ async function documentsAtTheRepsUniversity(page: Page, stamp: number) {
     const rows = (await (await page.request.get("/api/v1/portal/overseas/student/applications")).json()).rows as { id: string; university: string }[];
     applicationId = rows.find((r) => r.university === name)!.id;
     await login(page.request, "overseasadmin@edusphere.local");
-    await page.request.put(`/api/v1/workflows/overseas/applications/${applicationId}/counselor`, { data: { counselor_id: counselorId } });
+    await page.request.put(`/api/v1/workflows/overseas/applications/${applicationId}/counselor`, { data: { counselor_id: counselorId, reason: "E2E set-up" } }); // ccrm-033: a swap needs a reason
     await login(page.request, "student.overseas@edusphere.local");
   }
   const application = { id: applicationId };

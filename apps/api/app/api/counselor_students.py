@@ -76,7 +76,7 @@ async def add_note(student_id: UUID, payload: StudentNoteCreate, user: User = De
 @admin_router.put("/{user_id}/counselor")
 async def assign_student_counselor(user_id: UUID, payload: OverseasApplicationCounselorAssign, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """csc-005: AGN-023's assign body (swap only); the same counselor is `changed: false`."""
-    result = await counselor_students.assign_counselor(db, user, user_id, payload.counselor_id)
+    result = await counselor_students.assign_counselor(db, user, user_id, payload.counselor_id, payload.reason)
     if result["changed"]:
         await db.commit()
         logger.info("student_counselor_assigned", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(user_id), "counselor_id": str(result["counselor_id"])}})

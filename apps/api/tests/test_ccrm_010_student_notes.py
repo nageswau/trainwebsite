@@ -127,7 +127,7 @@ async def test_history_survives_a_reassignment(client, db_session, world):
     await login(client, world["counselor"].email)
     await client.post(url(walk_in.id), json={"body": "Before the move"})
     await login(client, world["admin"].email)
-    assert (await client.put(f"/api/v1/admin/users/{walk_in.id}/counselor", json={"counselor_id": str(world["other"].id)})).status_code == 200
+    assert (await client.put(f"/api/v1/admin/users/{walk_in.id}/counselor", json={"counselor_id": str(world["other"].id), "reason": "Workload balance"})).status_code == 200
     await login(client, world["other"].email)
     items = (await client.get(url(walk_in.id))).json()["items"]
     assert [(i["body"], i["author_name"]) for i in items] == [("Before the move", "Nora Counselor")]

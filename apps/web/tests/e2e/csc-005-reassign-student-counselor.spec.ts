@@ -29,6 +29,7 @@ test("the Overseas Admin moves a walk-in student to another counselor (csc-005)"
   await row.getByRole("button", { name: "Change counsellor" }).click();
   await page.getByRole("combobox", { name: "EduSphere counsellor" }).fill(String(unique));
   await page.getByRole("option", { name: new RegExp(target) }).click();
+  await page.getByRole("textbox", { name: "Reason for the change" }).fill("Student request"); // ccrm-033: a swap needs a reason
   await page.getByRole("button", { name: "Save" }).click();
 
   await expect(page.getByRole("row").filter({ hasText: student }).getByText(target)).toBeVisible();
