@@ -2242,3 +2242,10 @@ rows), `status_changed_at`, `created_at`, `updated_at`. Met needs evidence and w
 `services/offer_conditions.py`. The migration copies each offer's non-blank `conditions` text into one open student row (every offer
 status); the downgrade drops the table.
 =======
+
+## Document sensitivity (`ccrm-022`, `DEC-SCOPE-262`; migration `0184_document_sensitivity`, after ccrm-024's `0183_offer_conditions`)
+
+`document_checklist_template_items.sensitivity` and `application_checklist_items.sensitivity`: String(20) NOT NULL, server default
+`standard`, CHECK standard / identity / financial. The migration classes existing items from their type and label words (the
+`app.document_checklists` lists); the downgrade drops both columns. A document has no stored class: it is the highest of its type's
+class and its linked items' (`services/document_access.sensitivities`).

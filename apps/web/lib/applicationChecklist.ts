@@ -1,10 +1,10 @@
 // ccrm-019 (DEC-SCOPE-257): an application's document checklist. The server (api/application_checklists.py) is the authority on
 // every rule -- item status (AC1), the summary, the completion date and the Ready-for-Submission gate; this only shapes the responses.
-import type { GateMode } from "@/lib/documentChecklists";
+import type { GateMode, Sensitivity } from "@/lib/documentChecklists";
 
 export const checklistUrl = (applicationId: string) => `/api/v1/workflows/overseas/applications/${applicationId}/checklist`;
 
-export type ChecklistDocument = { id: string; document_type: string; document_label: string | null; original_filename: string | null; verification_status: string; status_label: string; created_at: string };
+export type ChecklistDocument = { id: string; document_type: string; document_label: string | null; original_filename: string | null; verification_status: string; status_label: string; created_at: string; sensitivity: Sensitivity };
 export type ChecklistMark = "requested" | "not_required";
 export type ApplicationChecklistItem = {
   id: string;
@@ -19,6 +19,7 @@ export type ApplicationChecklistItem = {
   status: string;
   status_label: string;
   removable: boolean;
+  sensitivity: Sensitivity; // ccrm-022 (DEC-SCOPE-262 SD2)
   documents: ChecklistDocument[];
 };
 export type MissingItem = { id: string; label: string; status: string; status_label: string };

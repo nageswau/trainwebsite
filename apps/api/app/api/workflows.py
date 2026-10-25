@@ -122,7 +122,7 @@ from app.schemas import (
 )
 from app.services import agent_documents as document_files
 from app.services import agent_notifications as agency_notices
-from app.services import application_checklists, applications, counselor_students, course_skills, interviews, offers, visa_lifecycle
+from app.services import application_checklists, applications, counselor_students, course_skills, document_access, interviews, offers, visa_lifecycle
 from app.services import application_outcomes as outcomes
 from app.services import application_sub_status as sub_statuses
 from app.services import document_checklists as checklist_templates
@@ -174,8 +174,8 @@ def _require_agent_master(user: User) -> None:
         raise HTTPException(403, "Only an agency Master can view commissions")
 
 
-async def _audit(db: AsyncSession, user: User, action: str, entity_type: str, entity_id: UUID | str | None, metadata: dict | None = None):
-    db.add(AuditLog(user_id=user.id, action=action, entity_type=entity_type, entity_id=str(entity_id) if entity_id is not None else None, metadata_json=metadata or {}))
+async def _audit(db: AsyncSession, user: User, action: str, entity_type: str, entity_id: UUID | str | None, metadata: dict | None = None, *, outcome: str = "recorded"):
+    db.add(AuditLog(user_id=user.id, action=action, entity_type=entity_type, entity_id=str(entity_id) if entity_id is not None else None, outcome=outcome, metadata_json=metadata or {}))
 
 
 async def _notify_user(db: AsyncSession, recipient: User, title: str, body: str, action_url: str | None, channels: list[str] | None = None):
@@ -2469,21 +2469,31 @@ async def download_student_document(document_id: UUID, user: User = Depends(get_
     # fixed for STU-007's certificates). Only the owning student, an assigned
     # Counselor/Agent, or Admin can exchange a document id for a real download URL --
     # verified here, never left to the frontend to hide.
-    _require(user, {"overseas_student", "counselor", "overseas_admin", "agent"}, "overseas")
     item = await db.get(StudentDocument, document_id)
-    if not item:
-        raise HTTPException(404, "Document not found")
-    if user.role == "overseas_student" and item.student_id != user.id:
-        raise HTTPException(403, "Document belongs to another student")
-    elif user.role == "counselor":
-        if item.application_id:
-            await _assigned_application(db, user, item.application_id)
-        else:
-            assigned = await db.scalar(select(OverseasApplication.id).where(OverseasApplication.student_id == item.student_id, OverseasApplication.counselor_id == user.id))
-            if not assigned:
-                raise HTTPException(403, "Document is outside your assigned scope")
-    elif user.role == "agent" and not await in_scope(db, user, item.id):  # AGN-009: safe for an agency-only document
-        raise HTTPException(403, "Document is outside your assigned scope")
+    sensitivity = (await document_access.sensitivities(db, [item]))[item.id] if item else "standard"
+    try:
+        _require(user, {"overseas_student", "counselor", "overseas_admin", "agent"}, "overseas")
+        if not item:
+            raise HTTPException(404, "Document not found")
+        if user.role == "overseas_student" and item.student_id != user.id:
+            raise HTTPException(403, "Document belongs to another student")
+        elif user.role == "counselor":
+            if item.application_id:
+                await _assigned_application(db, user, item.application_id)
+            else:
+                assigned = await db.scalar(select(OverseasApplication.id).where(OverseasApplication.student_id == item.student_id, OverseasApplication.counselor_id == user.id))
+                if not assigned:
+                    raise HTTPException(403, "Document is outside your assigned scope")
+        elif user.role == "agent" and not await in_scope(db, user, item.id):  # AGN-009: safe for an agency-only document
+            raise HTTPException(403, "Document is outside your assigned scope")
+        if not document_access.may_see(user, sensitivity):  # ccrm-022 SD3: the central rule, whatever the route admits
+            raise HTTPException(403, "This document is restricted")
+    except HTTPException as refusal:
+        # ccrm-022 SD4: a refused attempt on an identity/financial document is in the audit log too, committed before the 403.
+        if item is not None and refusal.status_code == 403 and sensitivity != "standard":
+            await _audit(db, user, "document.download", "student_document", item.id, {"role": user.role, "sensitivity": sensitivity}, outcome="denied")
+            await db.commit()
+        raise
     # `file_url` is stored in two shapes depending on which upload path a client used
     # (local-upload returns an already browser-servable "/local-files/..." path; the
     # S3 presign path returns a bare object key) -- normalize to a bare key so this
@@ -2491,7 +2501,7 @@ async def download_student_document(document_id: UUID, user: User = Depends(get_
     key = item.file_url[len("/local-files/"):] if item.file_url.startswith("/local-files/") else item.file_url.lstrip("/")
     # AGN-009 (G9): every download is in the document's history and the audit log, committed before the link is handed out.
     add_event(db, event="downloaded", actor=user, document=item)
-    await _audit(db, user, "document.download", "student_document", item.id, {"role": user.role})
+    await _audit(db, user, "document.download", "student_document", item.id, {"role": user.role, "sensitivity": sensitivity})
     await db.commit()
     return {"url": storage.presign_download(key), "expires_in": 900 if storage.bucket else None}
 

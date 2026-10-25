@@ -31,7 +31,7 @@ from pydantic_core import PydanticCustomError
 
 from app.application_fields import CURRENCIES as APPLICATION_CURRENCIES
 from app.application_fields import SCHOLARSHIP_STATUSES
-from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS, DRAFTING_STATUSES, REVIEW_STATUSES, review_status
+from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS, DRAFTING_STATUSES, REVIEW_STATUSES, SENSITIVITY_CLASSES, review_status
 from app.document_checklists import ITEM_STATUSES as CHECKLIST_ITEM_STATUSES
 from app.document_checklists import MAX_ITEMS as CHECKLIST_MAX_ITEMS
 from app.models import (
@@ -1493,6 +1493,7 @@ class ChecklistTemplateItemIn(BaseModel):
     required: bool = True
     allowed_statuses: list[Literal[CHECKLIST_ITEM_STATUSES]] = Field(default_factory=list, max_length=len(CHECKLIST_ITEM_STATUSES))
     notes: str | None = None
+    sensitivity: Literal[SENSITIVITY_CLASSES] | None = None  # ccrm-022 SD2: omitted -> the type's class
 
     @field_validator("label")
     @classmethod

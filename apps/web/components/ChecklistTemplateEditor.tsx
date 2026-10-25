@@ -11,8 +11,10 @@ import {
   GATE_LABELS,
   KIND_LABELS,
   MAX_ITEMS,
+  SENSITIVITY_LABELS,
   STANDARD_STATUSES,
   STATUS_LABELS,
+  typeSensitivity,
   universitySearch,
   type ChecklistDocumentType,
   type ChecklistKind,
@@ -20,17 +22,18 @@ import {
   type CourseLevel,
   type GateMode,
   type ItemStatus,
+  type Sensitivity,
 } from "@/lib/documentChecklists";
 import type { PickOption } from "@/lib/lookups";
 import { countrySearch } from "@/lib/universities";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
-type Row = { key: number; document_type: ChecklistDocumentType; label: string; required: boolean; allowed_statuses: ItemStatus[]; notes: string };
+type Row = { key: number; document_type: ChecklistDocumentType; label: string; required: boolean; allowed_statuses: ItemStatus[]; notes: string; sensitivity: Sensitivity };
 type Props = { template: ChecklistTemplate | null; onSaved: (saved: ChecklistTemplate) => void; onCancel: () => void };
 
 const ALL_STATUSES: ItemStatus[] = [...STANDARD_STATUSES, ...DRAFTING_STATUSES];
 let nextKey = 1;
-const newRow = (): Row => ({ key: nextKey++, document_type: "Passport", label: "", required: true, allowed_statuses: [...STANDARD_STATUSES], notes: "" });
+const newRow = (): Row => ({ key: nextKey++, document_type: "Passport", label: "", required: true, allowed_statuses: [...STANDARD_STATUSES], notes: "", sensitivity: typeSensitivity("Passport") });
 
 // ccrm-018 (DEC-SCOPE-248): create or edit one checklist template -- scope, gate mode (CC10) and the ordered items, each with its
 // allowed statuses. An edit sends the version it loaded; the server answers 409 when another admin saved first or the scope is taken,
@@ -47,7 +50,7 @@ export default function ChecklistTemplateEditor({ template, onSaved, onCancel }:
   const [active, setActive] = useState(template?.active ?? true);
   const [rows, setRows] = useState<Row[]>(() =>
     template
-      ? template.items.map((i) => ({ key: nextKey++, document_type: i.document_type, label: i.label ?? "", required: i.required, allowed_statuses: i.allowed_statuses, notes: i.notes ?? "" }))
+      ? template.items.map((i) => ({ key: nextKey++, document_type: i.document_type, label: i.label ?? "", required: i.required, allowed_statuses: i.allowed_statuses, notes: i.notes ?? "", sensitivity: i.sensitivity }))
       : [newRow()],
   );
   const [busy, setBusy] = useState(false);
@@ -91,7 +94,7 @@ export default function ChecklistTemplateEditor({ template, onSaved, onCancel }:
       intake: intake.trim() || null,
       gate_mode: gate,
       notes: notes.trim() || null,
-      items: rows.map((r) => ({ document_type: r.document_type, label: r.label.trim() || null, required: r.required, allowed_statuses: r.allowed_statuses, notes: r.notes.trim() || null })),
+      items: rows.map((r) => ({ document_type: r.document_type, label: r.label.trim() || null, required: r.required, allowed_statuses: r.allowed_statuses, notes: r.notes.trim() || null, sensitivity: r.sensitivity })),
       ...(template ? { version: template.version, active } : {}),
     };
     const outcome = await sendJson(template ? `${CHECKLISTS_URL}/${template.id}` : CHECKLISTS_URL, template ? "PUT" : "POST", body);
@@ -192,7 +195,7 @@ export default function ChecklistTemplateEditor({ template, onSaved, onCancel }:
               <div className="grid two">
                 <div className="field">
                   <label htmlFor={id(`item-${row.key}-type`)}>Document type</label>
-                  <select id={id(`item-${row.key}-type`)} value={row.document_type} onChange={(e) => update(row.key, { document_type: e.target.value as ChecklistDocumentType })}>
+                  <select id={id(`item-${row.key}-type`)} value={row.document_type} onChange={(e) => update(row.key, { document_type: e.target.value as ChecklistDocumentType, sensitivity: typeSensitivity(e.target.value, row.label) })}>
                     {CHECKLIST_DOCUMENT_TYPES.map((t) => (
                       <option key={t} value={t}>
                         {t}
@@ -212,9 +215,30 @@ export default function ChecklistTemplateEditor({ template, onSaved, onCancel }:
                   />
                 </div>
               </div>
-              <label style={{ display: "block" }}>
-                <input type="checkbox" checked={row.required} onChange={(e) => update(row.key, { required: e.target.checked })} /> Required
-              </label>
+              <div className="grid two">
+                <label style={{ display: "block", alignSelf: "end" }}>
+                  <input type="checkbox" checked={row.required} onChange={(e) => update(row.key, { required: e.target.checked })} /> Required
+                </label>
+                {/* ccrm-022 (DEC-SCOPE-262 SD2/SD3): identity and financial documents are hidden from university representatives. */}
+                <div className="field">
+                  <label htmlFor={id(`item-${row.key}-sensitivity`)}>Sensitivity</label>
+                  <select
+                    id={id(`item-${row.key}-sensitivity`)}
+                    value={row.sensitivity}
+                    aria-describedby={id(`item-${row.key}-sensitivity-hint`)}
+                    onChange={(e) => update(row.key, { sensitivity: e.target.value as Sensitivity })}
+                  >
+                    {(Object.keys(SENSITIVITY_LABELS) as Sensitivity[]).map((s) => (
+                      <option key={s} value={s}>
+                        {SENSITIVITY_LABELS[s]}
+                      </option>
+                    ))}
+                  </select>
+                  <small id={id(`item-${row.key}-sensitivity-hint`)} className="muted">
+                    Identity and Financial documents are hidden from university representatives and every download is logged.
+                  </small>
+                </div>
+              </div>
               <fieldset style={{ border: 0, padding: 0, margin: "8px 0" }}>
                 <legend style={{ fontSize: 13 }}>Allowed statuses (none ticked = the standard nine)</legend>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px" }}>

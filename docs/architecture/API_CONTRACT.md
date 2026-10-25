@@ -3805,3 +3805,16 @@ Writes hold the application row lock, are allowed on hold, write one history row
 offer (§12EX `POST …/offers`, the agency `PUT …/offer`) with conditions text also creates one open student condition; the agency `PATCH`
 that moves only the offer deadline carries the conditions to the new offer row.
 =======
+
+## 12FO. Sensitive documents and access logging (ccrm-022) — addendum, 2026-10-25
+
+`DEC-SCOPE-262`. Classes `standard | identity | financial` (`services/document_access.py` is the one rule).
+
+| Method | Path | Change |
+|---|---|---|
+| `GET` | `/workflows/overseas/documents/{id}/download` (OVS-005) | Roles and scope unchanged. The `document.download` audit row's metadata gains `sensitivity`. A `403` on an identity/financial document also writes `document.download` with outcome `denied` (committed before the error). |
+| `GET` | `/files/download?key=` | `404 Not found` when the key is an overseas student document's file (current or archived row, either stored shape, a replaced file's history key) or starts `agent-documents/`; other keys unchanged. |
+| `GET`/`POST`/`PUT` | `/overseas-admin/checklists…` (§12FA) | Each item accepts optional `sensitivity` (omitted → the type's class; unknown → `422`) and returns it. |
+| `GET`/`POST` | `/workflows/overseas/applications/{id}/checklist…` (§12FJ) | Each item returns `sensitivity` (copied from the template item; a counselor's item takes its type's unless sent); each linked / linkable document returns its effective `sensitivity`. |
+| `GET` | `/portal/overseas/{counselor,admin,university}/documents` | Rows gain `sensitivity`; a university_rep gets no identity/financial rows. |
+| `GET` | `/portal/overseas/student/downloads`, `/portal/overseas/agent/documents` | No file key: the student's document rows read "Download from Documents"; the agent rows drop the `file` column. |

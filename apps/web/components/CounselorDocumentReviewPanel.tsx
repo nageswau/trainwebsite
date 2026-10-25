@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { FILE_ACCEPT } from "@/lib/agentDocuments";
 import { detailMessage, sendJson, sendRequest } from "@/lib/apiErrors";
-import { documentStatusLabel, needsExpiry, reviewStatusesFor } from "@/lib/documentChecklists";
+import { documentStatusLabel, needsExpiry, reviewStatusesFor, sensitivityBadge } from "@/lib/documentChecklists";
 import { formatCalendarDate, formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
 
 // ccrm-021 (DEC-SCOPE-251 S5): reviewer, review date, expiry, and whether this row replaced an earlier version.
@@ -19,6 +19,7 @@ type DocumentRow = {
   reviewed_at?: string | null;
   expiry_date?: string | null;
   replaces_earlier?: boolean;
+  sensitivity?: string; // ccrm-022 (DEC-SCOPE-262): identity / financial show a "Sensitive" marker (not a `.badge`: that is the status)
 };
 
 // AGN-003 browser QA-04/QA-02: how a failed request reads. A 5xx carries nothing useful; a dropped connection on a button action
@@ -193,6 +194,11 @@ export default function CounselorDocumentReviewPanel({
           return (
             <div className="card" key={row.id}>
               <span className="badge">{statusLabel(row.status)}</span>
+              {sensitivityBadge(row.sensitivity) && (
+                <span className="status closed" style={{ marginLeft: 6 }}>
+                  {sensitivityBadge(row.sensitivity)}
+                </span>
+              )}
               <h4 style={{ marginTop: 10 }}>{row.document}</h4>
               <p className="muted" style={{ fontSize: 13 }}>{row.student}</p>
               {row.notes && <p className="muted" style={{ fontSize: 13 }}>Notes: {row.notes}</p>}

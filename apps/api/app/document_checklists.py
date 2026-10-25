@@ -57,6 +57,25 @@ def review_refusal(document_type: str, status: str, expiry_date, today) -> str |
             return PASSPORT_EXPIRED
     return None
 
+# ccrm-022 (DEC-SCOPE-262 SD1): sensitivity classes in rising order (`highest` picks the last), and the words that class a type.
+SENSITIVITY_CLASSES = ("standard", "identity", "financial")
+IDENTITY_TYPES = frozenset({"passport", "aadhaar", "aadhar", "national id", "identity", "id card", "birth certificate"})
+FINANCIAL_TYPES = frozenset({"financial", "finance", "bank", "sponsor", "sponsorship", "loan", "income", "salary", "tax", "itr", "affidavit"})
+
+
+def type_sensitivity(document_type: str, label: str | None = None) -> str:
+    """SD1: a (free-text) type's class, read from the type and its label ("Other" + "Bank statement" is financial)."""
+    words = f"{document_type} {label or ''}"
+    if _named(words, FINANCIAL_TYPES):
+        return "financial"
+    return "identity" if _named(words, IDENTITY_TYPES) else "standard"
+
+
+def highest(classes) -> str:
+    """SD2: a document's class -- the highest of its type's and its checklist items'."""
+    return max(classes, key=SENSITIVITY_CLASSES.index, default="standard")
+
+
 MAX_ITEMS = 50
 
 # Courses saved before the course master's level list (upc-017 CO3) carry free-text levels such as the seed's "Masters". Template

@@ -2777,3 +2777,13 @@ inside the existing role scope (a counselor searching another counselor's code g
 
 - Pinned by `test_ccrm_024_conditions.py::test_scope_readers_see_conditions_but_cannot_write`.
 =======
+
+### 2.176 Sensitive documents *(added 2026-10-25 — `DEC-SCOPE-262`, ccrm-022)*
+
+| Identity / financial document | `overseas_admin` / `super_admin` | `counselor` | `agent` | `overseas_student` | `university_rep` | Anonymous |
+|---|---|---|---|---|---|---|
+| Listed (portal Documents, checklist) | ✅ | ✅ own applications | ✅ own agency's (`document_scope`) | ✅ own | ❌ left out | `401` |
+| Download link (`…/documents/{id}/download`) | ✅ audited | ✅ own, audited | ✅ own agency's, audited | ✅ own, audited | `403`, audited `denied` | `401` |
+| `/files/download?key=<document key>` | `404` | `404` | `404` | `404` | `404` | `401` |
+
+- Pinned by `test_ccrm_022_sensitive_documents.py` (AC 10: `test_a_university_rep_sees_only_standard_documents_and_cannot_open_a_financial_one`).

@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.document_checklists import STANDARD_STATUSES, course_level_key
+from app.document_checklists import STANDARD_STATUSES, course_level_key, type_sensitivity
 from app.models import Country, DocumentChecklistTemplate, DocumentChecklistTemplateItem, OverseasApplication, OverseasCourse, University
 from app.schemas import ChecklistTemplateIn
 
@@ -23,6 +23,7 @@ def item_view(item: DocumentChecklistTemplateItem) -> dict:
         "required": item.required,
         "allowed_statuses": item.allowed_statuses,
         "notes": item.notes,
+        "sensitivity": item.sensitivity,
     }
 
 
@@ -78,6 +79,7 @@ async def replace_items(db: AsyncSession, template: DocumentChecklistTemplate, p
                 required=item.required,
                 allowed_statuses=list(item.allowed_statuses or STANDARD_STATUSES),
                 notes=item.notes,
+                sensitivity=item.sensitivity or type_sensitivity(item.document_type, item.label),
             )
         )
 
