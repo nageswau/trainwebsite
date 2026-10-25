@@ -95,7 +95,7 @@ export function LeadStageControl({ lead, onChanged, onMessage, move = adminMove,
     const picked = reasons.items?.find((r) => r.id === lostReasonId);
     close();
     onChanged(target, {
-      duplicate_of: code && target === "duplicate" ? { id: "", lead_code: code } : null,
+      duplicate_of: target === "duplicate" ? { lead_code: code } : null,
       lost_reason: loss && picked ? { id: picked.id, name: picked.name } : null,
       lost_to: loss ? closure.lost_to ?? null : null,
     });

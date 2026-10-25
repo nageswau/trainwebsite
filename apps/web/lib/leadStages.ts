@@ -55,14 +55,13 @@ export function counselorTargets(current: string): string[] {
 }
 
 // ccrm-006 (DEC-SCOPE-262, D3/D4): Lost / Not Interested take a reason from the list, Duplicate the surviving lead's Lead ID.
-export const LOSS_STAGES = ["lost", "not_interested"];
+const LOSS_STAGES = ["lost", "not_interested"];
 export const isLoss = (stage: string) => LOSS_STAGES.includes(stage);
 export type Closure = { duplicate_of?: string; lost_reason_id?: string; lost_to?: string };
 /** How a lead closed, as every lead read returns it (optional: older fixtures and callers predate ccrm-006). */
 export type LeadClosureFields = {
-  duplicate_of?: { id: string; lead_code: string } | null; lost_reason?: { id: string; name: string } | null; lost_to?: string | null;
+  duplicate_of?: { id?: string; lead_code: string } | null; lost_reason?: { id: string; name: string } | null; lost_to?: string | null;
 };
-export const NO_CLOSURE: Required<LeadClosureFields> = { duplicate_of: null, lost_reason: null, lost_to: null };
 export const LOST_REASONS_URL = "/api/v1/telecaller/lost-reasons";
 export type LostReason = { id: string; name: string; active: boolean; sort_order: number };
 

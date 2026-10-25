@@ -23,8 +23,22 @@ depends_on = None
 
 LEADS, REASONS = "enquiries", "lead_lost_reasons"
 OLD_STAGES = (
-    "new", "assigned", "first_call_pending", "contacted", "qualified", "interested", "follow_up", "counselling_scheduled",
-    "counselling_completed", "application_enrollment", "converted", "not_interested", "not_eligible", "wrong_number", "no_response", "lost",
+    "new",
+    "assigned",
+    "first_call_pending",
+    "contacted",
+    "qualified",
+    "interested",
+    "follow_up",
+    "counselling_scheduled",
+    "counselling_completed",
+    "application_enrollment",
+    "converted",
+    "not_interested",
+    "not_eligible",
+    "wrong_number",
+    "no_response",
+    "lost",
 )
 STAGES = (*OLD_STAGES, "duplicate")
 LOSS_STAGES = ("lost", "not_interested")

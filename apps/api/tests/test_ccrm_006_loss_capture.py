@@ -83,8 +83,7 @@ async def test_a_bad_duplicate_target_is_422(client, db_session, case):
         code = "LD-999999999"
     else:
         survivor = await lead(db_session, division="it")
-        dup = Enquiry(division="it", name="Dup", email=f"{uuid.uuid4().hex[:8]}@example.local", subject="S", message="", source="website",
-                      status="duplicate", duplicate_of_id=survivor.id)
+        dup = Enquiry(division="it", name="Dup", email=f"{uuid.uuid4().hex[:8]}@example.local", subject="S", message="", source="website", status="duplicate", duplicate_of_id=survivor.id)
         db_session.add(dup)
         await db_session.commit()
         code = dup.lead_code
@@ -220,10 +219,21 @@ async def test_the_lost_report_groups_losses_by_reason(client, db_session):
     item = TelProduct(product_group="it", team="it", name=f"Course {uuid.uuid4().hex[:8]}")  # isolates the rows (the DB is shared)
     db_session.add(item)
     await db_session.commit()
-    rows = [Enquiry(division="it", name="L", email=f"{uuid.uuid4().hex[:8]}@example.local", subject="S", message="", source="website",
-                    telecaller_user_id=tel.id, status=status, lost_reason_id=rid, product_id=item.id)
-            for status, rid in (("lost", a.id), ("lost", a.id), ("not_interested", a.id), ("not_interested", b.id), ("lost", None),
-                                ("wrong_number", None), ("contacted", None))]
+    rows = [
+        Enquiry(
+            division="it",
+            name="L",
+            email=f"{uuid.uuid4().hex[:8]}@example.local",
+            subject="S",
+            message="",
+            source="website",
+            telecaller_user_id=tel.id,
+            status=status,
+            lost_reason_id=rid,
+            product_id=item.id,
+        )
+        for status, rid in (("lost", a.id), ("lost", a.id), ("not_interested", a.id), ("not_interested", b.id), ("lost", None), ("wrong_number", None), ("contacted", None))
+    ]
     db_session.add_all(rows)
     await db_session.commit()
     await as_user(client, manager)
@@ -246,8 +256,12 @@ async def test_management_lost_figure_excludes_duplicates(db_session):
 
     tel = await make_telecaller(db_session, await make_tl_manager(db_session))
     row = await lead(db_session, telecaller=tel)
-    db_session.add_all([LeadStageHistory(lead_id=row.id, from_stage="new", to_stage="duplicate", event="manual", actor_user_id=tel.id),
-                        LeadStageHistory(lead_id=row.id, from_stage="new", to_stage="lost", event="manual", actor_user_id=tel.id)])
+    db_session.add_all(
+        [
+            LeadStageHistory(lead_id=row.id, from_stage="new", to_stage="duplicate", event="manual", actor_user_id=tel.id),
+            LeadStageHistory(lead_id=row.id, from_stage="new", to_stage="lost", event="manual", actor_user_id=tel.id),
+        ]
+    )
     await db_session.commit()
     now = datetime.now(UTC)
     assert (await _outcomes(db_session, [tel.id], now - timedelta(hours=1), now + timedelta(hours=1)))[tel.id] == (0, 1)

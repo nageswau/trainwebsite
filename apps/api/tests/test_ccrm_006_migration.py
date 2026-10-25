@@ -63,8 +63,10 @@ def _columns(url: str, table: str) -> set[str]:
     return {row[0] for row in _sql(url, "SELECT column_name FROM information_schema.columns WHERE table_name = :t", {"t": table})}
 
 
-INSERT = ("INSERT INTO enquiries (id, division, name, email, subject, message, source, status, crm_sync_status, metadata_json, created_at, updated_at) "
-          "VALUES (:id, 'it', 'Lead', 'l@example.com', 'S', '', 'website', :status, 'pending', '{}', now(), now())")
+INSERT = (
+    "INSERT INTO enquiries (id, division, name, email, subject, message, source, status, crm_sync_status, metadata_json, created_at, updated_at) "
+    "VALUES (:id, 'it', 'Lead', 'l@example.com', 'S', '', 'website', :status, 'pending', '{}', now(), now())"
+)
 
 
 def test_round_trip_seeds_the_reasons_and_enforces_the_closure(isolated_db):
