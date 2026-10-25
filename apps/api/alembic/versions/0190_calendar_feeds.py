@@ -3,7 +3,7 @@
 Revision ID: 0190_calendar_feeds
 Revises: 0189_counselor_reminders
 
-docs/superpowers/specs/2026-10-25-ccrm-038-calendar-integration-design.md (DEC-SCOPE-271 CA2, CA4). 0001 builds a fresh database from the
+docs/superpowers/specs/2026-10-25-ccrm-038-calendar-integration-design.md (DEC-SCOPE-272 CA2, CA4). 0001 builds a fresh database from the
 current models, which already carry both, so each is added only when missing (0181's idiom). Existing appointments start at SEQUENCE 0.
 The downgrade drops the table (every feed link stops working) and the column.
 """

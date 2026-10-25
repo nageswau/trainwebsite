@@ -1,4 +1,4 @@
-"""ccrm-038 (DEC-SCOPE-271 CA1-CA3): the calendar invite of an overseas appointment.
+"""ccrm-038 (DEC-SCOPE-272 CA1-CA3): the calendar invite of an overseas appointment.
 
 `queue` runs inside the caller's transaction: one in-app notification per attendee plus an email delivery whose context carries the
 `.ics` built now, so a later change can never alter an email already queued. The attendees are the student (a student appointment) and

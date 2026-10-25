@@ -122,7 +122,7 @@ from app.schemas import (
 )
 from app.services import agent_documents as document_files
 from app.services import agent_notifications as agency_notices
-from app.services import appointment_invites, application_checklists, applications, counselor_students, course_skills, document_access, interviews, offers, student_document_requests, visa_lifecycle
+from app.services import application_checklists, applications, appointment_invites, counselor_students, course_skills, document_access, interviews, offers, student_document_requests, visa_lifecycle
 from app.services import application_outcomes as outcomes
 from app.services import application_sub_status as sub_statuses
 from app.services import document_checklists as checklist_templates
@@ -2864,7 +2864,7 @@ async def create_appointment(payload: AppointmentCreate, user: User = Depends(ge
     db.add(item)
     await db.flush()
     await _audit(db, user, "appointment.create", "appointment", item.id)
-    await appointment_invites.queue(db, item, "booked")  # ccrm-038 (DEC-SCOPE-271 CA1)
+    await appointment_invites.queue(db, item, "booked")  # ccrm-038 (DEC-SCOPE-272 CA1)
     await db.commit()
     await db.refresh(item)
     return {"id": item.id, "scheduled_at": item.scheduled_at, "status": item.status}
