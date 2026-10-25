@@ -45,6 +45,22 @@ EMAILED = "emailed"  # the outcome of an update that mailed a new link (an email
 ADMIN_ONLY = "Only the Overseas Admin can assign a counselor"  # csc-005: AGN-023's wording and rule
 CHOOSE_ACTIVE_COUNSELOR = "Choose an active overseas counselor"
 ASSIGNED = "overseas.student.counselor_assign"
+REASON_REQUIRED = "Give a reason for the reassignment"  # ccrm-033 (DEC-SCOPE-268 RR1)
+
+
+def require_reason(previous_id, reason: str | None) -> None:
+    """ccrm-033 RR1: replacing an existing counselor needs a reason; a first assignment does not."""
+    if previous_id is not None and not reason:
+        raise HTTPException(422, REASON_REQUIRED)
+
+
+def with_reason(body: str, reason: str | None) -> str:
+    return f"{body} Reason: {reason}" if reason else body
+
+
+def reason_meta(reason: str | None) -> dict:
+    """The audit metadata's `reason`, only when one was given (rows without one keep their pre-ccrm-033 shape)."""
+    return {"reason": reason} if reason else {}
 
 
 def visible_student_ids(counselor: User):
@@ -200,9 +216,10 @@ async def _notify(db: AsyncSession, recipient: User, title: str, body: str) -> N
     await queue_deliveries(db, item, recipient)
 
 
-async def assign_counselor(db: AsyncSession, admin: User, student_id: UUID, counselor_id: UUID) -> dict:
+async def assign_counselor(db: AsyncSession, admin: User, student_id: UUID, counselor_id: UUID, reason: str | None = None) -> dict:
     """No commit. AGN-023 (H2, H8): the Overseas Admin only; swap only (a counselor is required); the same counselor changes nothing. A
-    student with no link yet gets one (C14). The student row is locked so two reassignments serialise."""
+    student with no link yet gets one (C14). The student row is locked so two reassignments serialise. ccrm-033: a swap needs a reason,
+    kept in the audit row (the student 360 History shows it) and sent to both counselors."""
     if admin.role != "overseas_admin" or admin.division != "overseas":  # C13: not super_admin, as AGN-023
         raise HTTPException(403, ADMIN_ONLY)
     student = await db.scalar(select(User).where(User.id == student_id, User.role == "overseas_student").with_for_update())
@@ -216,16 +233,17 @@ async def assign_counselor(db: AsyncSession, admin: User, student_id: UUID, coun
     if row is not None and row.counselor_user_id == counselor.id:
         return {**result, "changed": False}
     previous_id = row.counselor_user_id if row else None
+    require_reason(previous_id, reason)
     if row is None:
         db.add(OverseasStudentCounselor(student_user_id=student.id, counselor_user_id=counselor.id, assigned_by_user_id=admin.id))
     else:
         row.counselor_user_id, row.assigned_by_user_id = counselor.id, admin.id
     db.add(AuditLog(user_id=admin.id, action=ASSIGNED, entity_type="user", entity_id=str(student.id),
-                    metadata_json={"from_counselor_id": str(previous_id) if previous_id else None, "to_counselor_id": str(counselor.id)}))  # fmt: skip
-    await _notify(db, counselor, "Student assigned to you", f"{student.full_name} is now one of your students.")
+                    metadata_json={"from_counselor_id": str(previous_id) if previous_id else None, "to_counselor_id": str(counselor.id), **reason_meta(reason)}))  # fmt: skip
+    await _notify(db, counselor, "Student assigned to you", with_reason(f"{student.full_name} is now one of your students.", reason))
     previous = await db.get(User, previous_id) if previous_id else None
     if previous is not None and previous.active:
-        await _notify(db, previous, "Student reassigned", "A student has moved to another counselor.")
+        await _notify(db, previous, "Student reassigned", with_reason("A student has moved to another counselor.", reason))
     return {**result, "changed": True}
 
 

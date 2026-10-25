@@ -2839,3 +2839,11 @@ inside the existing role scope (a counselor searching another counselor's code g
 - Pages: `/management/crm-reports` (Command Center, Students pillar) and `/overseas/admin/crm-reports` (Overseas Admin sidebar; the page
   refuses other roles before calling the API). Pinned by `test_ccrm_034_reports.py::test_management_and_the_overseas_admin_read_the_reports`,
   `::test_everyone_else_is_refused`, `::test_anonymous_is_refused`.
+
+### 2.182 Reassignment reason *(added 2026-10-25 — `DEC-SCOPE-268`, ccrm-033)*
+
+No route or role change: the three reassignment writes keep their gates (application and student counselor — `overseas_admin` only;
+lead owner — `ensure_admin` in the lead's division). Who sees the reason: Overseas Admin and counselor (status history, student 360,
+lead timeline) ✅; agent ❌ (`reason: null` on the counsellor row, RR2); student ❌ (ccrm-016 H2). Pinned by
+`test_ccrm_033_reassignment_reason.py::test_the_agency_sees_the_change_but_not_the_reason` and
+`::test_an_application_reassignment_logs_the_reason_everywhere`.

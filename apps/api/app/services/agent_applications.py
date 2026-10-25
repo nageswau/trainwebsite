@@ -158,12 +158,16 @@ async def owner_record(db: AsyncSession, user: User, app: OverseasApplication) -
 
 
 Changer = aliased(User)
+# AGN-023: the history notes of the Overseas Admin's counsellor assignment; ccrm-033 keeps its reason on that row.
+COUNSELLOR_ASSIGNED, COUNSELLOR_CHANGED = "EduSphere counsellor assigned", "EduSphere counsellor changed"
+COUNSELLOR_NOTES = (COUNSELLOR_ASSIGNED, COUNSELLOR_CHANGED)
 MISSING = object()  # `detail`'s "record not given" -- None is a real value (no agency record)
 
 
-async def status_history(db: AsyncSession, application_id: UUID, *, staff: bool) -> list[dict]:
+async def status_history(db: AsyncSession, application_id: UUID, *, staff: bool, agency: bool = False) -> list[dict]:
     """ccrm-016 (DEC-SCOPE-247): an application's status history, oldest first -- stage, sub-status, the outcome a row set, time; staff also
-    get the author's name, notes and reason (H2: the student's view is filtered here, not in the UI)."""
+    get the author's name, notes and reason (H2: the student's view is filtered here, not in the UI). ccrm-033 (RR2): the agency sees a
+    counsellor change but not its internal reason."""
     rows = (
         await db.execute(
             select(ApplicationStatusHistory, Changer.full_name)
@@ -182,7 +186,7 @@ async def status_history(db: AsyncSession, application_id: UUID, *, staff: bool)
             "outcome_label": outcome_label(h.outcome),
             "next_action": h.next_action,
             "created_at": h.created_at,
-            **({"notes": h.notes, "reason": h.reason, "changed_by": name} if staff else {}),
+            **({"notes": h.notes, "reason": None if agency and h.notes in COUNSELLOR_NOTES else h.reason, "changed_by": name} if staff else {}),
         }
         for h, name in rows
     ]
@@ -220,7 +224,7 @@ async def detail(db: AsyncSession, user: User, app: OverseasApplication, *, reco
         # ccrm-013 (DEC-SCOPE-256, F9): EduSphere's university-side fields, read-only for the agency (its edit form is unchanged).
         **{name: getattr(found, name) for name in NEW_FIELDS},
         "scholarship_label": scholarship_label(found.scholarship_status),
-        "history": await status_history(db, found.id, staff=True),
+        "history": await status_history(db, found.id, staff=True, agency=True),
         **await _offer_parts(db, user, found),
         # AGN-011 (DEC-SCOPE-058): the deposit, and whether online payment can be opened at all (AC6).
         "deposit": await deposit_view(db, await deposit_for(db, found.id)),

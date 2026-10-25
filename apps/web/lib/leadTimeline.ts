@@ -80,7 +80,9 @@ export function timelineEntry(row: TimelineRow): TimelineEntry {
       return { ...base, badge: "Telecaller", tone: TONE.owner, title: assignmentTitle(row), meta: compact([row.event && (METHOD[row.event] ?? humanise(row.event))]) };
     case "handover":
       return { ...base, badge: "Counselor", tone: TONE.owner,
-        title: row.from_value ? `Counselor changed from ${row.from_label} to ${row.to_label}` : `Handed over to ${row.to_label}` };
+        // ccrm-033: an admin owner change may remove the counselor (no `to`)
+        title: !row.to_value ? `Counselor removed (was ${row.from_label})`
+          : row.from_value ? `Counselor changed from ${row.from_label} to ${row.to_label}` : `Handed over to ${row.to_label}` };
     case "student_link":
       return { ...base, badge: "Student", tone: row.event === "unlinked" ? TONE.stop : TONE.contact,
         title: `${row.event === "unlinked" ? "Student unlinked" : "Student linked"}: ${row.to_label}` };

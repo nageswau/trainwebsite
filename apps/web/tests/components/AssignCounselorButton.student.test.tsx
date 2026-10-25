@@ -49,9 +49,11 @@ describe("DataTable assign_student_counselor column (csc-005)", () => {
     fireEvent.click(within(screen.getByText("Walk-in Student").closest("tr") as HTMLElement).getByRole("button", { name: "Change counsellor" }));
     fireEvent.change(await screen.findByRole("combobox", { name: "EduSphere counsellor" }), { target: { value: "Neha" } });
     fireEvent.click(await screen.findByRole("option", { name: /Neha Counselor/ }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Reason for the change" }), { target: { value: "Student request" } }); // ccrm-033 RR1
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByText("Neha Counselor assigned.")).toBeTruthy();
-    expect(fetchMock).toHaveBeenCalledWith("/api/v1/admin/users/s1/counselor", expect.objectContaining({ method: "PUT", body: JSON.stringify({ counselor_id: "c2" }) }));
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/admin/users/s1/counselor",
+      expect.objectContaining({ method: "PUT", body: JSON.stringify({ counselor_id: "c2", reason: "Student request" }) }));
     expect(refresh).toHaveBeenCalled();
   });
 });

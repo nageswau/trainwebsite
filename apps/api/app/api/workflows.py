@@ -127,7 +127,19 @@ from app.services import application_outcomes as outcomes
 from app.services import application_sub_status as sub_statuses
 from app.services import document_checklists as checklist_templates
 from app.services import recruiter_requirements as requirements
-from app.services.agent_applications import ARCHIVED, DEFAULT_NEXT_ACTION, OFFER_STAGES_ON, OVERSEAS_APPLICATION_STAGES, open_clause, owned, stage_label, status_history, with_owner
+from app.services.agent_applications import (
+    ARCHIVED,
+    COUNSELLOR_ASSIGNED,
+    COUNSELLOR_CHANGED,
+    DEFAULT_NEXT_ACTION,
+    OFFER_STAGES_ON,
+    OVERSEAS_APPLICATION_STAGES,
+    open_clause,
+    owned,
+    stage_label,
+    status_history,
+    with_owner,
+)
 from app.services.agent_documents import add_event, in_scope
 from app.services.agent_orgs import lock_org, notification_recipients, org_member_ids
 from app.services.agent_students import application_scope, student_scope
@@ -2038,15 +2050,18 @@ async def assign_overseas_counselor(
     if item.counselor_id == counselor.id:
         return {**result, "changed": False}
     previous_id = item.counselor_id
+    reason = payload.reason
+    counselor_students.require_reason(previous_id, reason)  # ccrm-033 (DEC-SCOPE-268 RR1): a swap needs a reason
     item.counselor_id = counselor.id
-    note = "EduSphere counsellor changed" if previous_id else "EduSphere counsellor assigned"
-    db.add(ApplicationStatusHistory(application_id=item.id, from_status=item.status, to_status=item.status, next_action=item.next_action, notes=note, changed_by_id=user.id))
-    await _audit(db, user, "overseas.application.counselor_assign", "overseas_application", item.id, {"from_counselor_id": str(previous_id) if previous_id else None, "to_counselor_id": str(counselor.id)})
+    note = COUNSELLOR_CHANGED if previous_id else COUNSELLOR_ASSIGNED
+    db.add(ApplicationStatusHistory(application_id=item.id, from_status=item.status, to_status=item.status, next_action=item.next_action, notes=note, reason=reason, changed_by_id=user.id))
+    await _audit(db, user, "overseas.application.counselor_assign", "overseas_application", item.id,
+                 {"from_counselor_id": str(previous_id) if previous_id else None, "to_counselor_id": str(counselor.id), **counselor_students.reason_meta(reason)})  # fmt: skip
     university = await db.scalar(select(University.name).where(University.id == item.university_id))
-    await _notify_user(db, counselor, "Application assigned to you", f"{await _owner_name(db, item)} — {university}", "/overseas/counselor/applications")
+    await _notify_user(db, counselor, "Application assigned to you", counselor_students.with_reason(f"{await _owner_name(db, item)} — {university}", reason), "/overseas/counselor/applications")
     previous = await db.get(User, previous_id) if previous_id else None
     if previous is not None and previous.active:
-        await _notify_user(db, previous, "Application reassigned", "An application has moved to another counselor.", "/overseas/counselor/applications")
+        await _notify_user(db, previous, "Application reassigned", counselor_students.with_reason("An application has moved to another counselor.", reason), "/overseas/counselor/applications")
     if item.agent_id is not None:
         await agency_notices.counselor_assigned(db, item, user, changed=previous_id is not None)
     await db.commit()

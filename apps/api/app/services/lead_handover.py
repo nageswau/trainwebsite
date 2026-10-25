@@ -14,8 +14,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lead_stages import CLOSED, MANUAL_BEFORE, ORDER, STAGES
-from app.models import LEAD_PRIORITIES, AuditLog, Batch, Enquiry, Enrollment, OverseasApplication, University, User, VisaCase
-from app.services import application_filters, bdm_leads, lead_appointments, lead_pipeline, telecaller_alerts
+from app.models import LEAD_PRIORITIES, AuditLog, Batch, Enquiry, Enrollment, Notification, OverseasApplication, University, User, VisaCase
+from app.notifications.dispatch import queue_deliveries
+from app.services import application_filters, bdm_leads, counselor_students, lead_appointments, lead_pipeline, telecaller_alerts
 from app.services.bdm_appointments import db_now, today_ist
 
 logger = logging.getLogger("app.leads")
@@ -26,6 +27,7 @@ HANDOVER_PAST = "This lead is already past the counselor handover"
 SAME_COUNSELOR = "This lead is already with this counselor"
 RETURN_LINKED = "Unlink the student before returning the lead"
 UNLINK_CONVERTED = "Only an admin can unlink a converted lead"
+OWNER_CHANGE = "lead.owner_change"  # ccrm-033: the admin's owner change, with its reason
 HANDED_OVER = "Handed over to counselor"  # the cancel reason on the follow-ups a handover cancelled
 RETURNED = "Returned to telecaller"  # and on the counselling appointment and follow-ups a return cancelled (ccrm-003 A6)
 NEXT_ACTION_PAST = "Choose a due date from today onwards"
@@ -56,6 +58,35 @@ async def handover(db: AsyncSession, user: User, lead: Enquiry, counselor_id: UU
     db.add(AuditLog(user_id=user.id, action="lead.handover", entity_type="enquiry", entity_id=str(lead.id),
                     metadata_json={"counselor_id": str(counselor.id), "from_counselor_id": str(previous) if previous else None}))
     _log("lead_handed_over", user, lead.id, counselor_id=str(counselor.id))
+
+
+async def _notice(db: AsyncSession, recipient: User, title: str, body: str, action_url: str) -> None:
+    item = Notification(user_id=recipient.id, title=title, body=body, read=False, action_url=action_url)
+    db.add(item)
+    await db.flush()
+    await queue_deliveries(db, item, recipient)
+
+
+async def reassign_owner(db: AsyncSession, user: User, lead: Enquiry, owner_id: UUID | None, reason: str | None) -> None:
+    """ccrm-033 (DEC-SCOPE-268 RR1, RR3): the admin's owner change (ccrm-003 A7 checked the counselor). The same owner changes nothing;
+    replacing or removing an owner needs a reason. Its own audit row (`lead.update` keeps its shape; `lead.handover` stays the
+    telecaller's, which the counselling report counts), shown on the timeline; both counselors are told, with the reason."""
+    previous = lead.owner_id
+    if owner_id == previous:
+        return
+    if previous is not None and not reason:
+        raise lead_pipeline.invalid("owner_reason", counselor_students.REASON_REQUIRED, reason)
+    lead.owner_id = owner_id
+    db.add(AuditLog(user_id=user.id, action=OWNER_CHANGE, entity_type="enquiry", entity_id=str(lead.id),
+                    metadata_json={"from_owner_id": str(previous) if previous else None, "owner_id": str(owner_id) if owner_id else None,
+                                   **counselor_students.reason_meta(reason)}))  # fmt: skip
+    leads = f"/{lead.division}/counselor/leads"
+    if owner_id is not None:
+        await _notice(db, await db.get(User, owner_id), "Lead assigned to you", counselor_students.with_reason(f"{lead.lead_code} is now yours.", reason), f"{leads}/{lead.id}")
+    old = await db.get(User, previous) if previous else None
+    if old is not None and old.active:
+        await _notice(db, old, "Lead reassigned", counselor_students.with_reason(f"{lead.lead_code} has moved to another counselor.", reason), leads)
+    _log("lead_owner_changed", user, lead.id, owner_id=str(owner_id) if owner_id else None)
 
 
 # --- the counselor's side --------------------------------------------------------------------------------------------------------

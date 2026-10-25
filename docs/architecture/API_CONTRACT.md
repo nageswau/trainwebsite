@@ -3914,3 +3914,20 @@ document stays, no longer fulfilling it; a `requested` event `fulfilled → open
   `intake: null`, label "Not recorded"; rates are `null` when nothing divides.
 - Errors: 401 anonymous; 403 any role but partner, super_admin, overseas_admin; 422 end before start, malformed `counselor` (id or
   `none`), `country`/`university`/`course` not a UUID, `intake` over 80 characters.
+
+## 12FU. Reassignment with a logged reason (ccrm-033) — addendum, 2026-10-25
+
+`DEC-SCOPE-268`. Contract change on three existing writes; no new route.
+
+- `PUT /api/v1/workflows/overseas/applications/{id}/counselor` and `PUT /api/v1/admin/users/{id}/counselor`: body
+  `{counselor_id, reason?}`. `reason` is trimmed, at most 500 characters, no control characters (422), blank = none. Replacing an
+  existing counselor without a reason is `422 {"detail": "Give a reason for the reassignment"}` and changes nothing; a first assignment
+  or the same counselor needs none. The reason is stored on the history row (application) and in the audit metadata, and appended to
+  both counselors' notices ("… Reason: <text>"). Response unchanged.
+- `PATCH /api/v1/admin/leads/{id}`: new optional key `owner_reason` (same rules; `reason` stays the stage move's). Replacing or removing
+  an owner without it is a field-shaped 422 at `body.owner_reason`. A change writes audit `lead.owner_change` and notifies the new owner
+  ("Lead assigned to you", `/{division}/counselor/leads/{id}`) and the previous one if active ("Lead reassigned").
+- Reads: status history (`GET …/applications/{id}/status`, staff) returns the reason on the counsellor row; the agency detail
+  (`GET /workflows/overseas/agent/crm/applications/{id}`) returns `reason: null` on it; the student 360 history item "Counselor assigned"
+  carries `reason`; the lead timeline (`…/timeline`) has a `handover` row per `lead.owner_change` with `from_value` / `to_value`
+  (empty = removed) and `reason`.

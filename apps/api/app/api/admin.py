@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.exceptions import RequestValidationError
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,6 +63,7 @@ from app.schemas import (
     LeadStageMove,
     LeadTimelinePage,
     ProgramSkillsUpdate,
+    ReassignReason,
     SchoolCreate,
     SchoolCreateIn,
     SchoolLinkedBdm,
@@ -486,6 +487,17 @@ async def _lead_owner_id(db: AsyncSession, lead: Enquiry, value) -> UUID:
     return owner_id
 
 
+_OWNER_REASON = TypeAdapter(ReassignReason)
+
+
+def _owner_reason(value) -> str | None:
+    """ccrm-033: the assign body's reason rules (trimmed, at most 500, no control characters; blank is none) as a field-shaped 422."""
+    try:
+        return _OWNER_REASON.validate_python(value)
+    except ValidationError as exc:
+        raise lead_pipeline.invalid("owner_reason", exc.errors()[0]["msg"], value) from None
+
+
 @router.patch("/leads/{lead_id}")
 async def update_lead(lead_id: UUID, payload: dict, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
     """tel-004 (T25): `status` is a stage move through the pipeline, as a manager (reason required for a closed outcome or a reopen); the
@@ -499,7 +511,9 @@ async def update_lead(lead_id: UUID, payload: dict, user: User = Depends(ensure_
             raise RequestValidationError(exc.errors()) from None
         await lead_pipeline.person_move(db, x, user, "manager", move.to_stage, move.reason, move.closure())
     if "owner_id" in payload:  # ccrm-003 A7: an active counselor of the lead's division, or null to un-assign
-        x.owner_id = None if payload["owner_id"] is None else await _lead_owner_id(db, x, payload["owner_id"])
+        owner_id = None if payload["owner_id"] is None else await _lead_owner_id(db, x, payload["owner_id"])
+        # ccrm-033: `owner_reason`, not `reason` -- that one is the stage move's
+        await lead_handover.reassign_owner(db, user, x, owner_id, _owner_reason(payload.get("owner_reason")))
     audited = {f: payload[f] for f in ("status", "owner_id") if f in payload}
     db.add(AuditLog(user_id=user.id, action="lead.update", entity_type="enquiry", entity_id=str(x.id), metadata_json=audited))
     await db.commit()
