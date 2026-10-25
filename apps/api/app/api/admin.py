@@ -493,10 +493,11 @@ async def update_lead(lead_id: UUID, payload: dict, user: User = Depends(ensure_
     x = await lead_rules.locked_for_admin(db, user, lead_id)
     if "status" in payload and payload["status"] != x.status:
         try:
-            move = LeadStageMove.model_validate({"to_stage": payload["status"], "reason": payload.get("reason")})
+            move = LeadStageMove.model_validate({"to_stage": payload["status"], "reason": payload.get("reason"),
+                                                 **{f: payload[f] for f in ("duplicate_of", "lost_reason_id", "lost_to") if f in payload}})  # ccrm-006
         except ValidationError as exc:
             raise RequestValidationError(exc.errors()) from None
-        await lead_pipeline.person_move(db, x, user, "manager", move.to_stage, move.reason)
+        await lead_pipeline.person_move(db, x, user, "manager", move.to_stage, move.reason, move.closure())
     if "owner_id" in payload:  # ccrm-003 A7: an active counselor of the lead's division, or null to un-assign
         x.owner_id = None if payload["owner_id"] is None else await _lead_owner_id(db, x, payload["owner_id"])
     audited = {f: payload[f] for f in ("status", "owner_id") if f in payload}

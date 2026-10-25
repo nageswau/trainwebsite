@@ -1,4 +1,5 @@
-"""tel-002 (DEC-SCOPE-074, spec §4): the product/interest catalogue and the campaign list. Managers and super_admin write; the P1
+"""tel-002 (DEC-SCOPE-074, spec §4): the product/interest catalogue and the campaign list (ccrm-006: and the
+lost-reason list). Managers and super_admin write; the P1
 readers see active rows. The catalogue is global (T17), so there is no row scope -- only the role checks below.
 
 Bodies are untyped dicts parsed by services/telecaller._parse, so a 422 is one sentence naming the field (the tel-001 idiom)."""
@@ -14,9 +15,13 @@ from app.api.bdm import LIMIT, OFFSET, SEARCH, _matching
 from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
-from app.models import Program, TelCampaign, TelProduct, User
+from app.models import LeadLostReason, Program, TelCampaign, TelProduct, User
 from app.schemas import (
     TEL_CATALOGUE_FIELD_LABELS,
+    LeadLostReasonCreate,
+    LeadLostReasonOut,
+    LeadLostReasonPage,
+    LeadLostReasonUpdate,
     TelCampaignCreate,
     TelCampaignOut,
     TelCampaignPage,
@@ -30,6 +35,7 @@ from app.schemas import (
 from app.services.telecaller import _parse, require_manager
 from app.services.telecaller_catalogue import (
     CAMPAIGN_NAME_INDEX,
+    LOST_REASON_NAME_INDEX,
     PRODUCT_NAME_INDEX,
     active_filters,
     active_program,
@@ -186,5 +192,57 @@ async def update_campaign(campaign_id: UUID, payload: dict = Body(...), user: Us
     if fields:
         audit(db, user, "telecaller.campaign_update", "tel_campaign", campaign.id, fields)
     out = campaign_out(campaign, product)
+    await db.commit()
+    return out
+
+
+# --- lost reasons (ccrm-006, DEC-SCOPE-261 D8) --------------------------------------------------------------------------------------
+def _reason_out(row: LeadLostReason) -> dict:
+    return {"id": row.id, "name": row.name, "active": row.active, "sort_order": row.sort_order}
+
+
+@router.get("/lost-reasons", response_model=LeadLostReasonPage)
+async def lost_reasons(
+    active: bool | None = None,
+    q: str | None = SEARCH,
+    limit: int = LIMIT,
+    offset: int = OFFSET,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """The list a Lost / Not Interested close picks from, in the manager's order; readers other than managers see active rows only."""
+    require_reader(user)
+    filters = active_filters(user, LeadLostReason.active, active) + _matching(like_pattern(q), LeadLostReason.name)
+    stmt = select(LeadLostReason).where(*filters)
+    order = (LeadLostReason.sort_order, func.lower(LeadLostReason.name), LeadLostReason.id)
+    return await _page(db, stmt, order, limit, offset, _reason_out)
+
+
+@router.post("/lost-reasons", response_model=LeadLostReasonOut, status_code=201)
+async def create_lost_reason(payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    require_manager(user)
+    data = _body(LeadLostReasonCreate, payload)
+    sort_order = data.sort_order
+    if sort_order is None:
+        sort_order = min((await db.scalar(select(func.max(LeadLostReason.sort_order))) or 0) + 1, 9999)
+    row = LeadLostReason(name=data.name, sort_order=sort_order, active=True)
+    db.add(row)
+    await flush_unique(db, LOST_REASON_NAME_INDEX, f"A lost reason named “{data.name}” already exists")
+    audit(db, user, "telecaller.lost_reason_create", "lead_lost_reason", row.id, ["name", "sort_order"])
+    out = _reason_out(row)
+    await db.commit()
+    return out
+
+
+@router.patch("/lost-reasons/{reason_id}", response_model=LeadLostReasonOut)
+async def update_lost_reason(reason_id: UUID, payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Renaming keeps the id, so closed leads keep their reason; deactivating only hides it from the picker."""
+    require_manager(user)
+    row = await _locked(db, LeadLostReason, reason_id, "Lost reason")
+    fields = apply_changes(row, _body(LeadLostReasonUpdate, payload).model_dump(exclude_unset=True))
+    await flush_unique(db, LOST_REASON_NAME_INDEX, f"A lost reason named “{row.name}” already exists")
+    if fields:
+        audit(db, user, "telecaller.lost_reason_update", "lead_lost_reason", row.id, fields)
+    out = _reason_out(row)
     await db.commit()
     return out

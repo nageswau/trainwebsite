@@ -13,8 +13,19 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.lead_stages import CLOSED, COUNSELOR_CLOSED, COUNSELOR_MANUAL, EVENTS, MANUAL, MANUAL_BEFORE, ORDER, REOPEN_TO, STAGE_LABELS, label
-from app.models import LEAD_APPOINTMENT_OPEN, Appointment, AppointmentEvent, AuditLog, Enquiry, LeadFollowUp, LeadStageHistory, TelecallerProfile, User
+from app.lead_stages import CLOSED, COUNSELOR_CLOSED, COUNSELOR_MANUAL, EVENTS, LOSS_STAGES, MANUAL, MANUAL_BEFORE, ORDER, REOPEN_TO, STAGE_LABELS, label
+from app.models import (
+    LEAD_APPOINTMENT_OPEN,
+    Appointment,
+    AppointmentEvent,
+    AuditLog,
+    Enquiry,
+    LeadFollowUp,
+    LeadLostReason,
+    LeadStageHistory,
+    TelecallerProfile,
+    User,
+)
 
 logger = logging.getLogger("app.leads")
 
@@ -29,6 +40,15 @@ REOPEN_FORBIDDEN = "Only a manager can reopen a closed lead"
 REASON_CLOSED = "Add a reason for closing the lead"
 REASON_REOPEN = "Add a reason for reopening the lead"
 NEXT_ACTION_REQUIRED = "Set a next action and its due date first"  # ccrm-003 A2
+# ccrm-006 (DEC-SCOPE-261): the closure details each target takes, and their refusals
+CLOSURE_FIELDS = {"duplicate": ("duplicate_of",), **{stage: ("lost_reason_id", "lost_to") for stage in LOSS_STAGES}}
+CLOSURE_NOT_HERE = "This detail only applies when closing a lead as Duplicate, Lost or Not Interested"
+DUPLICATE_REQUIRED = "Enter the Lead ID of the lead this one duplicates"
+DUPLICATE_UNKNOWN = "No lead with this Lead ID in this team"
+DUPLICATE_SELF = "A lead cannot be a duplicate of itself"
+DUPLICATE_CHAIN = "That lead is itself a duplicate; enter the lead it duplicates"
+LOST_REASON_REQUIRED = "Choose why the lead was lost"
+LOST_REASON_INACTIVE = "Choose an active lost reason"
 FOLLOW_UPS_CLOSED = "Lead closed"  # tel-011 F4: the cancel reason on follow-ups a closing move cancelled
 APPOINTMENTS_CLOSED = FOLLOW_UPS_CLOSED  # tel-016 AP15: and on the counselling appointment it cancelled
 
@@ -83,15 +103,54 @@ async def apply_event(db: AsyncSession, lead: Enquiry, event: str, actor: User |
     return True
 
 
-async def person_move(db: AsyncSession, lead: Enquiry, actor: User, kind: Kind, to_stage: str, reason: str | None) -> None:
+def _closure_fields(to_stage: str, closure: dict | None) -> dict:
+    """ccrm-006 D3/D4: the closure details sent; one meant for another target is 422 at that field."""
+    sent = {field: value for field, value in (closure or {}).items() if value is not None}
+    for field, value in sent.items():
+        if field not in CLOSURE_FIELDS.get(to_stage, ()):
+            raise invalid(field, CLOSURE_NOT_HERE, str(value))
+    return sent
+
+
+async def _resolve_closure(db: AsyncSession, lead: Enquiry, to_stage: str, sent: dict) -> tuple[dict, str | None]:
+    """ccrm-006 D3/D4: the columns to store and the history text used when the person wrote none (D5). A Duplicate names a lead of the
+    same team that is not itself a Duplicate; a loss names an active reason, read FOR SHARE so a concurrent deactivation waits (P4)."""
+    if to_stage == "duplicate":
+        code = sent.get("duplicate_of")
+        if code is None:
+            raise invalid("duplicate_of", DUPLICATE_REQUIRED, None)
+        target = await db.scalar(select(Enquiry).where(Enquiry.lead_code == code, Enquiry.division == lead.division))
+        if target is None:
+            raise invalid("duplicate_of", DUPLICATE_UNKNOWN, code)
+        if target.id == lead.id:
+            raise invalid("duplicate_of", DUPLICATE_SELF, code)
+        if target.status == "duplicate":
+            raise invalid("duplicate_of", DUPLICATE_CHAIN, code)
+        return {"duplicate_of_id": target.id}, f"Duplicate of {target.lead_code}"
+    if to_stage in LOSS_STAGES:
+        reason_id = sent.get("lost_reason_id")
+        if reason_id is None:
+            raise invalid("lost_reason_id", LOST_REASON_REQUIRED, None)
+        row = await db.scalar(select(LeadLostReason).where(LeadLostReason.id == reason_id, LeadLostReason.active.is_(True)).with_for_update(read=True))
+        if row is None:
+            raise invalid("lost_reason_id", LOST_REASON_INACTIVE, str(reason_id))
+        return {"lost_reason_id": row.id, "lost_to": sent.get("lost_to")}, row.name
+    return {}, None
+
+
+async def person_move(db: AsyncSession, lead: Enquiry, actor: User, kind: Kind, to_stage: str, reason: str | None,
+                      closure: dict | None = None) -> None:
     """T13 / D1-D3: a telecaller or manager (an admin acts as a manager) chooses Qualified, Interested, Follow-up or a closed outcome;
     only a manager reopens a closed lead, to Follow-up. Nobody chooses a system stage (AC2, T5). ccrm-003 (CC8 / A1, A2): a counselor
-    chooses from their own list, and an open target needs the lead's next action and its due date (the route applies any sent first)."""
+    chooses from their own list, and an open target needs the lead's next action and its due date (the route applies any sent first).
+    ccrm-006 (D3-D7): a person's stage dialog sends `closure` (even all-empty) -- Duplicate then needs the surviving lead, Lost / Not
+    Interested a reason from the list; a call-logged close (tel-010) sends none and keeps its old rules (D6). A reopen clears them."""
     current = lead.status
     if to_stage not in STAGE_LABELS:
         raise invalid("to_stage", STAGE_UNKNOWN, to_stage)
     if to_stage == current:
         raise invalid("to_stage", STAGE_SAME, to_stage)
+    sent = _closure_fields(to_stage, closure)
     if current in CLOSED:
         if kind != "manager":
             raise HTTPException(403, REOPEN_FORBIDDEN)
@@ -100,12 +159,15 @@ async def person_move(db: AsyncSession, lead: Enquiry, actor: User, kind: Kind, 
         if reason is None:
             raise invalid("reason", REASON_REOPEN, reason)
         await _record(db, lead, to_stage, "reopen", actor.id, reason)
+        lead.duplicate_of_id = lead.lost_reason_id = lead.lost_to = None  # D7; after the stage, so one flush satisfies the closure CHECKs
         return
     manual, closed = (COUNSELOR_MANUAL, COUNSELOR_CLOSED) if kind == "counselor" else (MANUAL, CLOSED)
     if to_stage not in manual and to_stage not in closed:
         raise invalid("to_stage", STAGE_SYSTEM, to_stage)
     if current == "converted" or (to_stage in manual and ORDER.index(current) >= MANUAL_BEFORE):
         raise invalid("to_stage", STAGE_PAST, to_stage)
+    values, default_reason = await _resolve_closure(db, lead, to_stage, sent) if closure is not None else ({}, None)
+    reason = reason or default_reason
     if to_stage in CLOSED and reason is None:
         raise invalid("reason", REASON_CLOSED, reason)
     if kind == "counselor" and to_stage not in CLOSED:
@@ -113,6 +175,8 @@ async def person_move(db: AsyncSession, lead: Enquiry, actor: User, kind: Kind, 
             if getattr(lead, field) is None:
                 raise invalid(field, NEXT_ACTION_REQUIRED, None)
     await _record(db, lead, to_stage, "manual", actor.id, reason)
+    for field, value in values.items():  # after the stage (as the reopen above)
+        setattr(lead, field, value)
     if to_stage in CLOSED:
         await cancel_open_follow_ups(db, lead, FOLLOW_UPS_CLOSED)
         await cancel_open_appointments(db, lead, actor, APPOINTMENTS_CLOSED, "lead_closed")

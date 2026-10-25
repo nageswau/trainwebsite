@@ -9391,3 +9391,22 @@ conversion copies study mode, preferred country, CGPA (when no percentage), back
 and audit rows carry field names only.
 **Numbering:** migration `0182_lead_data_fields` (after ccrm-004's `0181_lead_meetings`); API §12FM; RBAC §2.174.
 - **Feature ID authorized:** `ccrm-005`. **Status:** built on `feature/ccrm-005`.
+
+### DEC-SCOPE-261 — Lead stage additions and structured loss capture (`ccrm-006`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-006` (source PDF §3 alternative statuses Duplicate / Invalid Contact, "capture
+lost reason and competitor/destination preference", `UNVERIFIED`); design `docs/superpowers/specs/2026-10-25-ccrm-006-lead-stages-loss-design.md`.
+Dependency `ccrm-003` (`DEC-SCOPE-243`, merged).
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** D1 *Invalid Contact* is
+the existing `wrong_number` stage relabelled (display only; key, history and the tel-010 call outcome "Wrong Number" unchanged); D2 a new
+closed stage `duplicate` for telecaller, telecaller manager and admins — the counselor's CC8 list is unchanged; D3 Duplicate needs
+`duplicate_of`, the surviving lead's Lead ID (case-insensitive) in the same team, not the lead itself and not itself a Duplicate (missing or
+bad → 422), stored as `enquiries.duplicate_of_id`; D4 a person's move to Lost or Not Interested needs `lost_reason_id` (an active row of
+`lead_lost_reasons`) plus optional `lost_to` (≤160: competitor or chosen destination); closure fields for another target → 422; D5 with a
+structured reason the text reason is optional and the history keeps the text, else the reason name / "Duplicate of LD-…"; D6 call-logged
+closes (tel-010) are unchanged and carry no reason code ("No reason recorded"); D7 reopening clears the three fields; D8 the reason list
+follows tel-002 (telecaller_manager / super_admin write, catalogue readers see active rows, never deleted, six seeded reasons); D9 tel-024
+gains the Lost Reasons report (leads created in range, in scope, now Lost / Not Interested, by reason); D10 the management telecalling
+"lost" figure excludes moves to Duplicate.
+**Numbering:** migration `0183_lead_loss_capture`; API §12FN; RBAC §2.175.
+- **Feature ID authorized:** `ccrm-006`. **Status:** built on `feature/ccrm-006`.

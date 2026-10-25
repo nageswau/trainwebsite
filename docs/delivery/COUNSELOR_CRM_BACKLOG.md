@@ -248,6 +248,9 @@ asked one at a time when the item is picked up).
 - **Regression:** tel-024 reports, management funnel "lost".
 - **Complexity:** small. **Risk:** medium (stage list is shared by four modules).
 - **Open questions:** relabel Wrong Number → "Invalid Contact", or add it beside? Default: relabel display only.
+- **Status (2026-10-25):** built on `feature/ccrm-006` — `DEC-SCOPE-261` (D1–D10 defaults `NEEDS_CONFIRMATION`: relabel only; Duplicate
+  for telecaller/manager/admin, not the counselor; reason list on the tel-002 pattern with six seeded reasons; call-logged closes keep no
+  reason code; Lost Reasons report), migration `0183_lead_loss_capture`, API §12FN, RBAC §2.175.
 
 ### `ccrm-007` — Structured overseas student profile
 

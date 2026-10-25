@@ -2765,3 +2765,16 @@ inside the existing role scope (a counselor searching another counselor's code g
 
 - Pinned by `test_ccrm_005_lead_fields.py::test_another_counselors_lead_is_404_and_the_telecaller_stays_read_only`,
   `::test_counselor_cannot_change_contact_details_product_or_priority`.
+
+### 2.175 Lead loss capture and the lost-reason list *(added 2026-10-25 — `DEC-SCOPE-261`, ccrm-006)*
+
+| Route | `telecaller` | `telecaller_manager` / `super_admin` | `counselor` | `it_admin` / `overseas_admin` | Others | Anonymous |
+|---|---|---|---|---|---|---|
+| Stage moves with `duplicate_of` / `lost_reason_id` / `lost_to` | ✅ own leads (T23) | ✅ T23 scope | ✅ leads handed to them; no `duplicate` | ✅ `PATCH /admin/leads/{id}`, own division | `403` | `401` |
+| `GET /telecaller/lost-reasons` | ✅ active rows | ✅ all rows | ✅ active rows | ✅ active rows | `403` | `401` |
+| `POST` / `PATCH /telecaller/lost-reasons` | `403` | ✅ | `403` | `403` | `403` | `401` |
+| `GET /telecaller/reports/lost` | `403` | ✅ §2.35 scope | `403` | ✅ own division | `403` | `401` |
+
+- The `duplicate_of` lookup is limited to the lead's own division, so a Lead ID of another division reads as unknown (422).
+- Pinned by `test_ccrm_006_loss_capture.py::test_a_manager_manages_the_reason_list_and_readers_see_active_rows`,
+  `::test_a_bad_duplicate_target_is_422`, `::test_counselor_closes_lost_with_a_reason_but_cannot_choose_duplicate`.
