@@ -60,7 +60,7 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.services import application_filters, counselor_students, document_access, student_profiles
+from app.services import application_filters, counselor_students, document_access, student_archive, student_profiles
 from app.services import application_outcomes as outcomes
 from app.services import applications as job_applications
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
@@ -1069,6 +1069,8 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             )
     if user.role in {"counselor", "university_rep", "overseas_admin"}:
         stmt = with_owner(select(OverseasApplication, University).join(University, University.id == OverseasApplication.university_id))
+        if user.role != "university_rep":  # ccrm-040 (DEC-SCOPE-276 AR5): an archived student's applications leave the staff lists
+            stmt = stmt.where(student_archive.not_archived(OverseasApplication.student_id))
         if user.role == "counselor":
             stmt = stmt.where(OverseasApplication.counselor_id == user.id)
         elif user.role == "university_rep":

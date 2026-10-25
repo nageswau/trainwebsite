@@ -16,7 +16,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AuditLog, CounselorMessageTemplate, OverseasApplication, OverseasCourse, StudentMessage, University, User
+from app.models import AuditLog, CounselorMessageTemplate, NotificationPreference, OverseasApplication, OverseasCourse, StudentMessage, University, User
 from app.notifications.phone import wa_number
 from app.schemas import StudentEmailCreate, StudentEmailReply, StudentWhatsAppCreate, StudentWhatsAppReply
 from app.services import mailer
@@ -48,6 +48,7 @@ SENDER_ONLY = "Only the student's counselor can send messages"
 TEMPLATE_NOT_FOUND = "Template not found"
 DEACTIVATED = "This student's account is deactivated"
 NO_NUMBER = "This student has no usable mobile number"
+NOT_OPTED_IN = "This student has not opted in to WhatsApp messages"  # ccrm-040 (DEC-SCOPE-276 CN7)
 TEMPLATE_UNUSABLE = {"whatsapp": "Choose an active WhatsApp template", "email": "Choose an active email template"}
 CAP_REACHED = f"You've sent {DAILY_CAP} WhatsApp messages today"
 EMAIL_CAP_REACHED = f"You've sent {EMAIL_DAILY_CAP} emails today"
@@ -185,6 +186,8 @@ async def create_message(db: AsyncSession, user: User, student_id: UUID, payload
         raise HTTPException(503, EMAIL_NOT_CONFIGURED)
     if not is_email and wa_number(student.phone) is None:
         raise HTTPException(409, NO_NUMBER)
+    if not is_email and not await whatsapp_opt_in(db, student.id):
+        raise HTTPException(409, NOT_OPTED_IN)
     await own_application(db, user, student.id, payload.application_id)
     template = await db.get(T, payload.template_id) if payload.template_id else None
     if payload.template_id and (template is None or not template.active or template.channel != payload.channel):
@@ -261,17 +264,24 @@ def message_out(message: StudentMessage, sender: User, university: str | None, r
     }
 
 
+async def whatsapp_opt_in(db: AsyncSession, student_id: UUID) -> bool:
+    """ccrm-040 (DEC-SCOPE-276 CN7): WhatsApp to a student honours their ENH-014 preference (no row = not opted in); email is always on."""
+    pref = await db.get(NotificationPreference, student_id)
+    return bool(pref and pref.whatsapp_opt_in)
+
+
 async def page(db: AsyncSession, user: User, student: User, limit: int, offset: int) -> dict:
     """The student's whole log, newest first, whoever wrote it; the recipient and the applications a message may be about."""
     where = Msg.student_user_id == student.id
     total = await db.scalar(select(func.count()).select_from(Msg).where(where))
     rows = (await db.execute(_rows().where(where).order_by(Msg.sent_at.desc(), Msg.created_at.desc()).limit(limit).offset(offset))).all()
+    opted_in = await whatsapp_opt_in(db, student.id)
     return {
         "items": [message_out(*row) for row in rows],
         "total": total or 0,
         "limit": limit,
         "offset": offset,
-        "recipient": {"name": student.full_name, "email": student.email, "whatsapp_to": wa_number(student.phone)},
+        "recipient": {"name": student.full_name, "email": student.email, "whatsapp_to": wa_number(student.phone), "whatsapp_opt_in": opted_in},
         "applications": await _applications(db, user, student.id),
     }
 

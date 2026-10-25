@@ -11,7 +11,7 @@ import pytest_asyncio
 from sqlalchemy import func, select
 
 from app.core.config import settings
-from app.models import AuditLog, OverseasStudentCounselor, StudentMessage
+from app.models import AuditLog, NotificationPreference, OverseasStudentCounselor, StudentMessage
 from app.services import counselor_messages
 from tests.agn001_helpers import login, mk_user, uniq
 from tests.enh031_helpers import mk_application, mk_course, mk_university
@@ -36,6 +36,7 @@ async def world(db_session):
     admin = await mk_user(db_session, role="overseas_admin", full_name="Ada Admin")
     student = await mk_user(db_session, role="overseas_student", full_name="Priya Student")
     student.phone = "98765 43210"
+    db_session.add(NotificationPreference(user_id=student.id, whatsapp_opt_in=True))  # ccrm-040 CN7: WhatsApp needs the student's opt-in
     university = await mk_university(db_session, name=uniq("Leeds"))
     course = await mk_course(db_session, university, "MSc Data Science")
     own = await mk_application(db_session, student=student, university=university, counselor=counselor, course=course, reference="REF-37")
@@ -165,7 +166,7 @@ async def test_a_whatsapp_send_is_logged_against_the_student_and_application(cli
 
     page = (await client.get(url(world["student"].id))).json()
     assert page["total"] == 1 and page["items"][0]["id"] == message["id"]
-    assert page["recipient"] == {"name": "Priya Student", "email": world["student"].email, "whatsapp_to": "919876543210"}
+    assert page["recipient"] == {"name": "Priya Student", "email": world["student"].email, "whatsapp_to": "919876543210", "whatsapp_opt_in": True}
     assert page["applications"] == [{"id": str(world["own"].id), "label": f"{world['university'].name} · REF-37"}]
     audit = await db_session.scalar(select(AuditLog).where(AuditLog.entity_id == message["id"]))
     assert audit.action == "student_message.create" and "offer" not in str(audit.metadata_json) and world["student"].email not in str(audit.metadata_json)

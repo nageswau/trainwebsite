@@ -122,7 +122,19 @@ from app.schemas import (
 )
 from app.services import agent_documents as document_files
 from app.services import agent_notifications as agency_notices
-from app.services import application_checklists, applications, appointment_invites, counselor_students, course_skills, document_access, interviews, offers, student_document_requests, visa_lifecycle
+from app.services import (
+    application_checklists,
+    applications,
+    appointment_invites,
+    counselor_students,
+    course_skills,
+    document_access,
+    interviews,
+    offers,
+    student_archive,
+    student_document_requests,
+    visa_lifecycle,
+)
 from app.services import application_outcomes as outcomes
 from app.services import application_sub_status as sub_statuses
 from app.services import document_checklists as checklist_templates
@@ -1843,6 +1855,7 @@ async def create_overseas_application(payload: OverseasApplicationCreate, user: 
     student = await db.get(User, student_id)
     if not student or student.role != "overseas_student" or student.division != "overseas":
         raise HTTPException(422, "Valid overseas student is required")
+    await student_archive.refuse_new_application(db, student_id)  # ccrm-040 (DEC-SCOPE-276 AR6)
     if user.role == "agent":
         linked = await db.scalar(select(AgentStudent.id).where(*student_scope(user), AgentStudent.student_id == student_id, AgentStudent.status == "active"))
         if not linked:

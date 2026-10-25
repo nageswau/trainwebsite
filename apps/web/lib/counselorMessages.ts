@@ -20,7 +20,7 @@ export type StudentMessage = {
   template: Ref | null; subject: string | null; body: string; delivery_status: DeliveryStatus | null; sent_at: string;
   sender: { id: string; full_name: string };
 };
-export type StudentRecipient = { name: string; email: string; whatsapp_to: string | null };
+export type StudentRecipient = { name: string; email: string; whatsapp_to: string | null; whatsapp_opt_in: boolean }; // ccrm-040 CN7
 /** The list also says who the student is (their wa.me number, MT3) and which applications a message may be about (MT4). */
 export type StudentMessagesPage = Page<StudentMessage> & { recipient: StudentRecipient; applications: StudentApplicationRef[] };
 

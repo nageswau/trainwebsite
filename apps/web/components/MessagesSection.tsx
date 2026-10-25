@@ -93,7 +93,7 @@ export default function MessagesSection({ listUrl, parties, picker, targetFor, c
     onChanged?.();
   };
   const reasons = [
-    party && !party.whatsappTo ? `No usable mobile number for ${party.name}.` : null,
+    party && !party.whatsappTo ? (party.whatsappOff ?? `No usable mobile number for ${party.name}.`) : null,
     party && !party.email ? `No email address for ${party.name}.` : null,
   ].filter(Boolean);
 

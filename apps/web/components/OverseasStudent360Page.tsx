@@ -8,6 +8,7 @@ import LocalTime from "@/components/LocalTime";
 import OverseasStudentFinance from "@/components/OverseasStudentFinance";
 import OverseasStudentJourney from "@/components/OverseasStudentJourney";
 import PortalShell from "@/components/PortalShell";
+import StudentArchiveControls from "@/components/StudentArchiveControls";
 import StudentDocumentDownload from "@/components/StudentDocumentDownload";
 import StudentMessages from "@/components/StudentMessages";
 import StudentNotesPanel from "@/components/StudentNotesPanel";
@@ -57,7 +58,10 @@ export default async function OverseasStudent360Page({ portal, id, tab }: { port
         <p className="muted">
           {student.student_code && <>Student ID {student.student_code} · </>}
           {ACCOUNT_STATUS[overview.account_status] ?? overview.account_status}
+          {overview.archive && <> · <span className="badge">Archived</span></>}
         </p>
+        {/* ccrm-040 (DEC-SCOPE-276): on every tab, so an archived record is never mistaken for a live one */}
+        <StudentArchiveControls studentId={student.id} archive={overview.archive} permissions={overview.permissions} />
         <nav aria-label="Student record sections" className="report-tablist">
           {STUDENT_TABS.map((t) => (
             <Link key={t.key} href={`${base}?tab=${t.key}`} className="s360-tab" aria-current={t.key === tab ? "page" : undefined} scroll={false}>
@@ -165,6 +169,7 @@ function OverviewPanel({ overview }: { overview: StudentOverview }) {
           <div><dt className="muted">Documents awaiting review</dt><dd>{counts.documents_to_review}</dd></div>
         </dl>
       </div>
+      <ConsentCard consents={overview.consents} />
       <div className="card">
         <h2>Next actions</h2>
         {overview.next_actions.length === 0 ? (
@@ -181,6 +186,27 @@ function OverviewPanel({ overview }: { overview: StudentOverview }) {
         )}
       </div>
     </>
+  );
+}
+
+// ccrm-040 (DEC-SCOPE-276 CN4): what the student has agreed to; only the student can give consent.
+function ConsentCard({ consents }: { consents: StudentOverview["consents"] }) {
+  return (
+    <div className="card">
+      <h2>Consent</h2>
+      {consents.length === 0 ? (
+        <Empty>No consent is requested at the moment.</Empty>
+      ) : (
+        <dl className="s360-facts">
+          {consents.map((c) => (
+            <div key={c.kind}>
+              <dt className="muted">{c.label}</dt>
+              <dd>{c.accepted_at ? <>Given <LocalTime value={c.accepted_at} /> ({c.version})</> : "Not yet given — the student is asked on their dashboard"}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
   );
 }
 

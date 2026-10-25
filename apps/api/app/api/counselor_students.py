@@ -4,7 +4,9 @@ csc-003 (DEC-SCOPE-228) -- while such an account is pending: resend the link, or
 csc-005 (DEC-SCOPE-230) -- the Overseas Admin moves a student to another counselor. API §12EP; RBAC §2.152.
 ccrm-010 (DEC-SCOPE-241) -- internal notes on a student (the counselling history), counselor and Overseas Admin. API §12ET; RBAC §2.156.
 ccrm-009 (DEC-SCOPE-253) -- the student 360's read-only tabs (overview, documents, activities, history), counselor and Overseas Admin.
-API §12FF; RBAC §2.168."""
+API §12FF; RBAC §2.168.
+ccrm-040 (DEC-SCOPE-276) -- archive instead of delete: the student's counselor or the Overseas Admin archives, the Admin restores, both
+list archived students. API §12GC; RBAC §2.190."""
 
 import logging
 from uuid import UUID
@@ -15,8 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import User
-from app.schemas import CounselorStudentCreate, CounselorStudentUpdate, OverseasApplicationCounselorAssign, StudentNoteCreate
-from app.services import counselor_student_360, counselor_students, student_notes, student_profiles
+from app.schemas import CounselorStudentCreate, CounselorStudentUpdate, OverseasApplicationCounselorAssign, StudentArchiveCreate, StudentNoteCreate
+from app.services import counselor_student_360, counselor_students, student_archive, student_notes, student_profiles
 
 logger = logging.getLogger("app.counselor_students")
 router = APIRouter(prefix="/counselor/students", tags=["counselor-students"])
@@ -27,6 +29,27 @@ admin_router = APIRouter(prefix="/admin/users", tags=["counselor-students"])
 async def list_students(limit: int = Query(20, ge=1, le=50), offset: int = Query(0, ge=0), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     counselor_students.require_overseas_counselor(user)
     return await counselor_students.page(db, user, limit, offset)
+
+
+@router.get("/archived")
+async def list_archived(limit: int = Query(20, ge=1, le=50), offset: int = Query(0, ge=0), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await student_archive.page(db, user, limit, offset)
+
+
+@router.post("/{student_id}/archive")
+async def archive_student(student_id: UUID, payload: StudentArchiveCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    archived = await student_archive.archive(db, user, student_id, payload.reason)
+    await db.commit()
+    logger.info("student_archived", extra={"extra_fields": {"actor_id": str(user.id), "actor_role": user.role, "student_id": str(student_id)}})
+    return archived
+
+
+@router.post("/{student_id}/restore")
+async def restore_student(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    restored = await student_archive.restore(db, user, student_id)
+    await db.commit()
+    logger.info("student_restored", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student_id)}})
+    return restored
 
 
 @router.post("", status_code=201)

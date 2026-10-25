@@ -4046,3 +4046,23 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 | Method/Path | Behaviour |
 |---|---|
 | `GET /api/v1/counselor/students/{id}/finance` | `{payments[] {id, description, amount, currency, status, status_label, due_date, created_at, installment_no, invoice_no, receipt_no, can_download}, deposits[] {application_id, application_code, university, mine, source (counselor \| agency), required, amount, currency, due_date, status, status_label, paid_on, refund {amount, refunded_on, reason} \| null, receipt {id, name, can_download} \| null}, refunds[] {kind (payment \| deposit), description, amount, currency, refunded_on, application_code}}`. Read-only. Payments = the student's own, not `agent_deposit`, newest first; `can_download` = Overseas Admin (mirrors `GET /payments/{id}/invoice\|receipt`). Deposits: the ccrm-025 record, else the AGN-011 deposit, per application; a receipt's `can_download` follows the §12FF documents rule. Amounts are 2-decimal strings; no `file_url`. |
+
+## 12GC. Archive instead of delete; overseas consent capture (ccrm-040) — addendum, 2026-10-25
+
+`DEC-SCOPE-276`. Migration `0193_student_archive_consent` (`overseas_student_archives`, `agreements.kind`, v1 overseas consents).
+
+- `POST /api/v1/counselor/students/{id}/archive` `{reason}` (3–500 chars, trimmed) → 200 `{archived_at, archived_by, reason}`. The
+  student's csc-001 counselor or the Overseas Admin; another role 403; outside csc-001 scope 404; a counselor who is not the student's
+  counselor 403; already archived 409; an open application 409 `Close or withdraw the student's open applications first: APP-…`.
+- `POST /api/v1/counselor/students/{id}/restore` → 200 `{id, archived: false}`. Overseas Admin only (403); not archived 409.
+- `GET /api/v1/counselor/students/archived?limit&offset` → `{items: [{id, full_name, email, student_code, archived_at, archived_by,
+  reason}], total, limit, offset}`, newest first. Admin: all; overseas counselor: their csc-001 students; others 403.
+- `GET /api/v1/counselor/students/{id}/overview` gains `archive` (null or as above), `permissions: {archive, restore}` and
+  `consents: [{kind, label, version, accepted_at}]`. History adds "Archived" (with `reason`), "Restored" and "Consent given".
+- `GET /api/v1/overseas/me/consents` → `{items: [{id, kind, title, body, version, accepted_at}]}` (current agreement per kind).
+  `POST /api/v1/overseas/me/consents/{agreement_id}/accept` → 201 `{id, kind, version, accepted_at}`; a repeat 200 with the first time;
+  not a current overseas consent 404. Overseas student only (403).
+- Changed: `POST /api/v1/workflows/overseas/applications` → 409 `This student is archived. The Overseas Admin can restore them.`; the
+  portal application sections (counselor/admin), `GET /counselor/students` and `GET /lookups/overseas-students` (counselor/admin) leave
+  archived students out. ccrm-037: `GET /counselor/students/{id}/messages` `recipient` gains `whatsapp_opt_in`; a WhatsApp send to a
+  student who has not opted in → 409 `This student has not opted in to WhatsApp messages`.

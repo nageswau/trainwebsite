@@ -9664,3 +9664,30 @@ the documents tab rule). F6 refunds = payments in status `refunded` (date = last
 student's own `Payment` rows except `agent_deposit`.
 **Numbering:** no migration; API §12GB; RBAC §2.189 (ccrm-031, ccrm-037 and ccrm-038 took 272–274 / 12FY–12GA / 2.186–2.188 first).
 - **Feature ID authorized:** `ccrm-039`. **Status:** built on `worktree-ccrm-039`.
+
+### DEC-SCOPE-276 — Archive instead of delete; overseas consent capture (`ccrm-040`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-040` (source PDF §2 "prefer archive/withdrawn statuses", §16 consent and
+communication preferences; `UNVERIFIED` — only the backlog's quotes are used); design
+`docs/superpowers/specs/2026-10-25-ccrm-040-archive-consent-design.md`. Dependency `ccrm-008` (merged).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** AR1 the student's csc-001 counselor or the
+Overseas Admin archives; only the Admin restores; a counselor with an application but not the student's counselor → 403. AR2 archiving
+is refused (409, naming the APP- codes) while the student has an open application (not closed by an outcome, not enrolled), direct or
+agency. AR3 a reason of 3–500 characters, kept on the row and in the audit metadata (shown on the 360 History). AR4 table
+`overseas_student_archives` (one row per archived student); the student's applications are archived with them (derived, no flag);
+restore deletes the row, the audit log keeps `overseas.student.archive|restore`. AR5 an archived student and their applications leave the
+counselor's and Admin's portal application sections, the linked-students list and the staff picker; the 360 stays readable with a
+banner; university_rep, agency and management views unchanged. AR6 a new application for an archived student → 409 (any role); the
+login is not touched. AR7 `GET /counselor/students/archived` (Admin all, counselor own) and pages
+`/overseas/{admin|counselor}/archived-students`; the counselor is notified when the Admin archives or restores.
+CN1 two consents `data_processing` and `document_sharing` as `Agreement` rows (`division='overseas'`, new column `kind`, IT rows
+`enrolment`), version v1 seeded by the migration; the wording is a placeholder for legal review. CN2 captured from the student on their
+dashboard (not blocking); the counselor cannot consent for the student, so conversion records none. CN3 `ConsentRecord` once per
+agreement (201, a repeat 200 with the first time), audited `overseas_consent.accept`. CN4 the 360 Overview shows Given (date, version) or
+Not yet given; missing consent blocks nothing. CN5 a newer active agreement of a kind asks again. CN6 consent withdrawal, retention
+periods and lead `marketing_opt_in` enforcement are out. CN7 ccrm-037's WhatsApp to a student needs the student's ENH-014 WhatsApp
+opt-in (409 otherwise; the composer says so, after "no usable number"); email stays always on (ENH-014 D4); ccrm-030 already sends
+through `queue_deliveries`, which honours the opt-ins.
+**Numbering:** migration `0193_student_archive_consent`; API §12GC; RBAC §2.190 (ccrm-037 took 273 / 12FZ / 2.187 / 0191, ccrm-038
+took 274 / 12GA / 2.188 / 0192 and ccrm-039 took 275 / 12GB / 2.189 first).
+- **Feature ID authorized:** `ccrm-040`. **Status:** built on `worktree-ccrm-040`.

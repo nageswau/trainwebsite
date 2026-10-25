@@ -2930,3 +2930,16 @@ student and the assigned counselor of an overseas appointment, never to a lead, 
 - Pinned by `test_ccrm_039_student_finance.py::test_another_counselors_student_is_not_found`, `::test_other_roles_are_refused`,
   `::test_an_it_counselor_is_refused`, `::test_the_overseas_admin_reads_it_and_may_download`,
   `::test_a_receipt_on_another_counselors_application_is_not_downloadable`.
+
+### 2.190 Student archive and overseas consent *(added 2026-10-25 — `DEC-SCOPE-276`, ccrm-040)*
+
+| Action | Overseas counselor | Overseas Admin | Overseas student | Other roles |
+|---|---|---|---|---|
+| Archive a student (`/counselor/students/{id}/archive`) | ✅ their csc-001 students only (403 if only on an application; 404 out of scope) | ✅ any | ❌ 403 | ❌ 403 |
+| Restore (`…/restore`) | ❌ 403 | ✅ | ❌ 403 | ❌ 403 |
+| List archived students | ✅ own csc-001 students | ✅ all | ❌ 403 | ❌ 403 |
+| Read / accept own consents (`/overseas/me/consents`) | ❌ 403 | ❌ 403 | ✅ self only | ❌ 403 |
+| See a student's consents (360 Overview) | ✅ csc-001 scope | ✅ | — | ❌ |
+
+Nobody consents on a student's behalf. Pinned by `test_ccrm_040_archive_consent.py::test_who_may_archive`,
+`::test_only_the_admin_restores`, `::test_archived_list` and `::test_consent_routes_are_the_students_own`.

@@ -14,7 +14,8 @@ export type RecMessage = {
   subject: string | null; body: string; delivery_status: DeliveryStatus | null; sent_at: string; sender: { id: string; full_name: string };
 };
 /** The recipient a composer writes to: a company contact or a candidate (ccrm-037: or an overseas student). */
-export type Party = { kind: "contact" | "candidate" | "student"; id: string; name: string; whatsappTo: string | null; email: string | null };
+// ccrm-040 (DEC-SCOPE-276 CN7): `whatsappOff` says why WhatsApp is unavailable when it is not a missing number (a student who has not opted in).
+export type Party = { kind: "contact" | "candidate" | "student"; id: string; name: string; whatsappTo: string | null; email: string | null; whatsappOff?: string };
 
 /** EVID-018 §19 in source order and wording (WhatsApp L766-L776, email L778-L792). */
 export const KINDS: Record<Channel, { key: string; label: string }[]> = {

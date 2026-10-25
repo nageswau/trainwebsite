@@ -21,6 +21,7 @@ from app.core.identifiers import uuid_reference
 from app.core.rbac import agent_denial_reason
 from app.models import AgentStudent, AuditLog, Company, Country, Job, JobApplication, OverseasApplication, OverseasCourse, School, SchoolStudent, University, User
 from app.services import applications as job_applications
+from app.services import student_archive
 from app.services.agent_orgs import org_member_ids
 from app.services.agent_students import application_scope, visible_student_user_ids
 from app.services.counselor_students import visible_student_ids
@@ -137,6 +138,8 @@ async def overseas_students(
         await db.commit()
     else:
         _allow(user, {"overseas_admin", "counselor", "agent"}, "overseas")
+        if user.role != "agent":  # ccrm-040 (DEC-SCOPE-276 AR5): staff pick from students who are not archived
+            stmt = stmt.where(student_archive.not_archived(User.id))
         if user.role == "counselor":
             stmt = stmt.where(User.id.in_(visible_student_ids(user)))  # csc-001: own applications' students + linked students
         elif user.role == "agent":
