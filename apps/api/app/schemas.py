@@ -501,6 +501,12 @@ class OverseasApplicationCounselorAssign(BaseModel):
     reason: ReassignReason = None
 
 
+class StudentArchiveCreate(BaseModel):
+    """ccrm-040 (DEC-SCOPE-273 AR3): why the student is archived."""
+
+    reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=500)]
+
+
 class OverseasApplicationAdvance(BaseModel):
     to_status: str = Field(max_length=50)
     next_action: str | None = Field(default=None, max_length=5000)

@@ -31,6 +31,7 @@ from app.models import (
     User,
 )  # fmt: skip
 from app.services import application_outcomes as outcomes
+from app.services import overseas_consents, student_archive
 from app.services.agent_applications import stage_label
 from app.services.counselor_students import ASSIGNED as COUNSELOR_ASSIGNED
 from app.services.provisioning import provisioning_statuses
@@ -45,6 +46,9 @@ ACCOUNT_ACTIONS = {
     "counselor.student_create": "Account created by the counselor",
     "counselor.student_resend": "Set-password link re-sent",
     COUNSELOR_ASSIGNED: "Counselor assigned",
+    student_archive.ARCHIVED: "Archived",  # ccrm-040 (DEC-SCOPE-273 AR4)
+    student_archive.RESTORED: "Restored",
+    overseas_consents.ACCEPTED: "Consent given",
 }
 
 
@@ -97,6 +101,7 @@ async def overview(db: AsyncSession, user: User, student: User) -> dict:
         select(func.count()).select_from(StudentDocument).where(StudentDocument.student_id == student.id, StudentDocument.archived_at.is_(None), StudentDocument.verification_status.in_(TO_REVIEW))
     )
     setup = (await provisioning_statuses(db, [student.id])).get(student.id)
+    archive = await student_archive.read(db, student.id)
     return {
         "student": {"id": student.id, "full_name": student.full_name, "student_code": student.student_code, "email": student.email, "phone": student.phone},
         "account_status": "deactivated" if not student.active else setup or "active",
@@ -109,6 +114,10 @@ async def overview(db: AsyncSession, user: User, student: User) -> dict:
             for a in applications
             if a["open"] and a["next_action"]
         ],
+        # ccrm-040 (DEC-SCOPE-273): the archive banner, what the reader may do, and the student's consents (CN4)
+        "archive": archive,
+        "permissions": await student_archive.permissions(db, user, student, archive is not None),
+        "consents": overseas_consents.staff_view(await overseas_consents.status(db, student.id)),
     }
 
 
@@ -210,8 +219,8 @@ async def history(db: AsyncSession, student: User) -> dict:
             {
                 "at": log.created_at, "kind": "document" if doc else "audit", "summary": _audit_summary(log, doc.document_type if doc else None), "actor": actor,
                 "application_code": apps.get(doc.application_id) if doc else None, "notes": None,
-                # ccrm-033: a counselor reassignment's reason (staff only: this History is the counselor's and the admin's)
-                "reason": (log.metadata_json or {}).get("reason") if log.action == COUNSELOR_ASSIGNED else None,
+                # ccrm-033: a counselor reassignment's reason, ccrm-040: an archive's (staff only: this History is the counselor's and the admin's)
+                "reason": (log.metadata_json or {}).get("reason") if log.action in (COUNSELOR_ASSIGNED, student_archive.ARCHIVED) else None,
             }
         )  # fmt: skip
     items.sort(key=lambda i: i["at"], reverse=True)

@@ -198,6 +198,9 @@ class Agreement(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(200))
     body: Mapped[str] = mapped_column(Text)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # ccrm-040 (DEC-SCOPE-273 CN1): what the student agrees to -- the IT enrolment agreement, or the overseas data-processing and
+    # document-sharing consents. The latest active row of a (division, kind) is the current one.
+    kind: Mapped[str] = mapped_column(String(30), default="enrolment", server_default="enrolment")
 
 
 class ConsentRecord(Base, TimestampMixin):
@@ -2009,6 +2012,16 @@ class OverseasStudentCounselor(Base, TimestampMixin):
     student_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
     counselor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
     assigned_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class OverseasStudentArchive(Base, TimestampMixin):
+    """ccrm-040 (DEC-SCOPE-273 AR4): an archived overseas student -- hidden from the staff working lists with their applications, never
+    deleted. `created_at` is the archive time; a restore deletes the row (the audit log keeps the history)."""
+
+    __tablename__ = "overseas_student_archives"
+    student_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), primary_key=True)
+    archived_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    reason: Mapped[str] = mapped_column(String(500))
 
 
 class OverseasStudentNote(Base, TimestampMixin):
