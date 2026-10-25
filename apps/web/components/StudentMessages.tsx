@@ -21,7 +21,10 @@ export default function StudentMessages({ studentId, recipient, applications, ca
   const [notice, setNotice] = useState<string | null>(null);
   const aboutId = useId();
   const parties = useMemo(
-    (): Party[] => [{ kind: "student", id: studentId, name: recipient.name, whatsappTo: recipient.whatsapp_to, email: recipient.email }],
+    (): Party[] => [{
+      kind: "student", id: studentId, name: recipient.name, whatsappTo: recipient.whatsapp_to, email: recipient.email,
+      whatsappOff: recipient.whatsapp_opt_in ? undefined : `${recipient.name} has not opted in to WhatsApp messages.`, // ccrm-040 CN7
+    }],
     [studentId, recipient],
   );
   const target = useMemo(() => studentTarget(studentId, about), [studentId, about]);

@@ -13,7 +13,7 @@ const message = (over: Partial<StudentMessage> = {}): StudentMessage => ({
   template: { id: "T1", name: "Offer update" }, subject: null, body: "Your offer is in", delivery_status: null, sent_at: "2026-10-08T05:30:00Z",
   sender: { id: "c1", full_name: "Nora Counselor" }, ...over,
 });
-const recipient = { name: "Priya Student", email: "priya@example.com", whatsapp_to: "919876543210" };
+const recipient = { name: "Priya Student", email: "priya@example.com", whatsapp_to: "919876543210", whatsapp_opt_in: true };
 const applications = [{ id: "A1", label: "Leeds · REF-37" }];
 
 let items: StudentMessage[];

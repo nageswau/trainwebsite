@@ -63,7 +63,18 @@ export type StudentOverview = {
   applications: StudentApplication[];
   counts: { applications: number; open_applications: number; documents_to_review: number };
   next_actions: { application_id: string; application_code: string | null; university: string; next_action: string }[];
+  archive: StudentArchive | null;
+  permissions: { archive: boolean; restore: boolean };
+  consents: StudentConsent[];
 };
+
+// ccrm-040 (DEC-SCOPE-275, API_CONTRACT.md §12GB): archive instead of delete (AR1-AR7) and the student's consents as staff see them (CN4).
+export type StudentArchive = { archived_at: string; archived_by: string | null; reason: string };
+export type StudentConsent = { kind: string; label: string; version: string; accepted_at: string | null };
+export type ArchivedStudent = StudentArchive & { id: string; full_name: string; email: string; student_code: string | null };
+export const ARCHIVE_REASON_MAX = 500;
+export const ARCHIVED_STUDENTS_URL = "/api/v1/counselor/students/archived";
+export const studentArchiveUrl = (id: string, action: "archive" | "restore") => `/api/v1/counselor/students/${encodeURIComponent(id)}/${action}`;
 
 export type StudentDocumentRow = {
   id: string;
