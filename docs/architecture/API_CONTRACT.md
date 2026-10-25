@@ -3914,3 +3914,22 @@ document stays, no longer fulfilling it; a `requested` event `fulfilled → open
   `intake: null`, label "Not recorded"; rates are `null` when nothing divides.
 - Errors: 401 anonymous; 403 any role but partner, super_admin, overseas_admin; 422 end before start, malformed `counselor` (id or
   `none`), `country`/`university`/`course` not a UUID, `intake` over 80 characters.
+
+## 12FU. CRM exports (ccrm-035) — addendum, 2026-10-25
+
+`DEC-SCOPE-268`. CSV (`text/csv; charset=utf-8`, BOM) or xlsx (`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`),
+`Content-Disposition: attachment`, `Cache-Control: private, no-store`. `format` is `csv` (default) or `xlsx`.
+
+- `GET /api/v1/management/crm-reports/export?report=<ageing|universities|visa|readiness|leads|forecast>&format&date_from&date_to&counselor&country&university&course&intake`
+  (router `api/management.py`): one §12FT report — the row header, its measures under their on-screen labels (rates `… (%)`, ageing bands
+  one column each), then `Total`. File `crm-<report>-<IST date>`.
+- `GET /api/v1/counselor/exports/applications?format&country&university&intake&stage&sub_status&from&to` (router `api/crm_exports.py`):
+  the counselor's own applications, newest change first. Columns: EduSphere ID, Student, University, Agency, Intake, Status, Sub-status,
+  Outcome (label only), Next action, Last updated. File `my-applications-<IST date>`.
+- `GET /api/v1/counselor/exports/leads?format&stage&priority&from&to`: the counselor's own leads, newest first. Columns: Lead ID, Name,
+  Interest, Stage, Priority, Source, Telecaller, Lead date. File `my-leads-<IST date>`.
+- Each export writes `audit_logs` `action=crm.export`, `entity_type` `crm_report`|`counselor_list`, `entity_id` the key, metadata
+  `{format, filters: {set filters → values}, rows}`, committed before the response.
+- Errors: 401 anonymous; 403 wrong role (management: not partner/super_admin/overseas_admin; lists: not the overseas counselor); 422 unknown
+  `report`/`format`, the §12FT / ccrm-012 filter errors (same messages), or a list over 5,000 rows ("narrow the filters"); 429 + `Retry-After`
+  after 30 exports in 10 minutes.

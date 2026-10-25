@@ -756,6 +756,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
   every export logged (who, report, filters, row count); sensitive columns never exported.
 - **Reuse:** `_report_logged` (`api/workflows.py:2732`), nehn-004 xlsx helper if built. **Dependencies:** ccrm-034.
 - **Complexity:** medium. **Risk:** medium.
+- **Status (2026-10-25):** built on `worktree-ccrm-035` — `DEC-SCOPE-268` (E1–E9 defaults `NEEDS_CONFIRMATION`; xlsx from a
+  standard-library writer since nehn-004 is not built; contact details never exported), no migration, API §12FU, RBAC §2.182. Design
+  `docs/superpowers/specs/2026-10-25-ccrm-035-crm-exports-design.md`.
 
 ### `ccrm-036` — Counselor's own performance report
 

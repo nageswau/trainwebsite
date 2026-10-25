@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ADMIN_CRM_REPORTS_HOME, CRM_REPORTS_HOME, crmFilters, crmReportsHref, crmReportsUrl, EMPTY_CRM_FILTERS, hasCrmFilters, percentText } from "@/lib/managementCrmReports";
+import { ADMIN_CRM_REPORTS_HOME, CRM_REPORTS_HOME, crmExportUrl, crmFilters, crmReportsHref, crmReportsUrl, EMPTY_CRM_FILTERS, hasCrmFilters, percentText } from "@/lib/managementCrmReports";
 
 const ID = "0b9c3f1e-6a52-4e43-9d7a-2b8f8f2f3c11";
 
@@ -34,5 +34,12 @@ describe("ccrm-034 percentText", () => {
     expect(percentText(null)).toBe("—");
     expect(percentText(66.7)).toBe("66.7%");
     expect(percentText(50)).toBe("50%");
+  });
+});
+
+describe("ccrm-035 export URL", () => {
+  it("names the report and carries the applied filters", () => {
+    expect(crmExportUrl("ageing", EMPTY_CRM_FILTERS)).toBe("/api/v1/management/crm-reports/export?report=ageing");
+    expect(crmExportUrl("leads", { ...EMPTY_CRM_FILTERS, intake: "Fall 2027" })).toBe("/api/v1/management/crm-reports/export?intake=Fall+2027&report=leads");
   });
 });

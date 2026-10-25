@@ -63,14 +63,17 @@ export function hasCrmFilters(filters: CrmFilters): boolean {
   return CRM_FILTER_KEYS.some((key) => filters[key] !== "");
 }
 
-function withQuery(path: string, filters: CrmFilters): string {
+function withQuery(path: string, filters: CrmFilters, extra: Record<string, string> = {}): string {
   const query = new URLSearchParams();
   for (const key of CRM_FILTER_KEYS) if (filters[key]) query.set(key, filters[key]);
+  for (const [key, value] of Object.entries(extra)) query.set(key, value);
   const text = query.toString();
   return text ? `${path}?${text}` : path;
 }
 
 export const crmReportsUrl = (filters: CrmFilters) => withQuery(CRM_REPORTS_API, filters);
+/** ccrm-035 (DEC-SCOPE-268 E2): one report's export with the applied filters; `ExportButtons` adds the format. */
+export const crmExportUrl = (report: string, filters: CrmFilters) => withQuery(`${CRM_REPORTS_API}/export`, filters, { report });
 /** The page's own address for these filters -- only the set ones, so a link is short and shareable. */
 export const crmReportsHref = (home: string, filters: CrmFilters) => withQuery(home, filters);
 
