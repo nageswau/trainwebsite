@@ -261,5 +261,5 @@ async def test_admin_owner_must_be_an_active_counselor_of_the_division(client, d
     assert (await stored(db_session, row)).owner_id is None
     assert (await client.patch(url, json={"owner_id": str(counselor.id)})).status_code == 200
     assert (await stored(db_session, row)).owner_id == counselor.id
-    assert (await client.patch(url, json={"owner_id": None})).status_code == 200
+    assert (await client.patch(url, json={"owner_id": None, "owner_reason": "Lead paused"})).status_code == 200  # ccrm-033 RR1
     assert (await stored(db_session, row)).owner_id is None

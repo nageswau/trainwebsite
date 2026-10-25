@@ -97,6 +97,11 @@ def _sources(lead_id: UUID) -> list:
                 from_name=From.full_name, to_value=meta["counselor_id"].as_string(), to_name=To.full_name)
         .outerjoin(From, From.id == cast(meta["from_counselor_id"].as_string(), Uuid)).outerjoin(To, To.id == cast(meta["counselor_id"].as_string(), Uuid))
         .where(*_audits(lead_id, "lead.handover")),
+        # ccrm-033 (RR3): the admin's owner change reads as a counselor change, with its reason; no `to` is a removal
+        _branch(AuditLog.id, "handover", AuditLog.created_at, actor=AuditLog.user_id, from_value=meta["from_owner_id"].as_string(),
+                from_name=From.full_name, to_value=meta["owner_id"].as_string(), to_name=To.full_name, reason=meta["reason"].as_string())
+        .outerjoin(From, From.id == cast(meta["from_owner_id"].as_string(), Uuid)).outerjoin(To, To.id == cast(meta["owner_id"].as_string(), Uuid))
+        .where(*_audits(lead_id, "lead.owner_change")),
         _branch(AuditLog.id, "student_link", AuditLog.created_at, actor=AuditLog.user_id, to_value=meta["converted_user_id"].as_string(),
                 to_name=To.full_name, event=case((AuditLog.action == "lead.convert", "linked"), else_="unlinked"))
         .outerjoin(To, To.id == cast(meta["converted_user_id"].as_string(), Uuid)).where(*_audits(lead_id, "lead.convert", "lead.unconvert")),
