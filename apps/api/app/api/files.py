@@ -2,10 +2,14 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.config import settings
-from app.models import User
+from app.core.database import get_db
+from app.models import DocumentEvent, StudentDocument, User
+from app.services.agent_documents import STORAGE_PREFIX
 from app.services.storage import storage
 
 router = APIRouter(prefix="/files", tags=["files"])
@@ -42,10 +46,22 @@ async def local_upload(file: UploadFile = File(...), user: User = Depends(get_cu
     return {"url": f"/local-files/uploads/{dest.name}", "size": len(data), "content_type": file.content_type}
 
 
+async def _overseas_document(db: AsyncSession, key: str) -> bool:
+    """ccrm-022 SD5: the key is (or was) an overseas student document's file -- in either stored shape, current, archived or replaced."""
+    if key.startswith(f"{STORAGE_PREFIX}/"):
+        return True
+    shapes = (key, f"/{key}", f"/local-files/{key}")
+    if await db.scalar(select(StudentDocument.id).where(StudentDocument.file_url.in_(shapes)).limit(1)):
+        return True
+    return bool(await db.scalar(select(DocumentEvent.id).where(DocumentEvent.file_key.in_(shapes)).limit(1)))
+
+
 @router.get("/download")
-async def download(key: str, user: User = Depends(get_current_user)):
+async def download(key: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if ".." in key or key.startswith(("/", "\\")):
         raise HTTPException(422, "Invalid object key")
     if key.startswith("agent-kyc/"):  # AGN-024: KYC files are served only by the admin streaming route
+        raise HTTPException(404, "Not found")
+    if await _overseas_document(db, key):  # ccrm-022 SD5: only the scope-checked, audited document download hands these out
         raise HTTPException(404, "Not found")
     return {"url": storage.presign_download(key), "expires_in": 900 if settings.aws_s3_bucket else None}

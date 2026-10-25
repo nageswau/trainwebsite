@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application_checklists import GATE_BLOCKED, GATE_NEEDS_REASON, NO_TEMPLATE_GATE_MODE, READY_FOR_SUBMISSION, item_status, status_label, summary
-from app.document_checklists import STANDARD_STATUSES, STATUS_LABELS
+from app.document_checklists import STANDARD_STATUSES, STATUS_LABELS, type_sensitivity
 from app.models import (
     ApplicationChecklist,
     ApplicationChecklistItem,
@@ -24,6 +24,7 @@ from app.models import (
 )
 from app.schemas import ChecklistTemplateItemIn
 from app.services import document_checklists as templates
+from app.services.document_access import sensitivities
 
 INDIA = ZoneInfo("Asia/Kolkata")
 KIND = "admission"  # AC3
@@ -57,7 +58,7 @@ def _name(item: ApplicationChecklistItem) -> str:
     return item.label or item.document_type
 
 
-def _document_view(d: StudentDocument) -> dict:
+def _document_view(d: StudentDocument, sensitivity: str) -> dict:
     return {
         "id": d.id,
         "document_type": d.document_type,
@@ -66,6 +67,7 @@ def _document_view(d: StudentDocument) -> dict:
         "verification_status": d.verification_status,
         "status_label": STATUS_LABELS.get(d.verification_status, d.verification_status),
         "created_at": d.created_at,
+        "sensitivity": sensitivity,  # ccrm-022 SD2
     }
 
 
@@ -101,6 +103,7 @@ async def view(db: AsyncSession, app: OverseasApplication, checklist: Applicatio
     if checklist is None:
         return None
     rows = await _items(db, app.id)
+    classes = await sensitivities(db, (d for _, documents in rows for d in documents))
     items = []
     for item, documents in rows:
         status = _status(item, documents)
@@ -118,7 +121,8 @@ async def view(db: AsyncSession, app: OverseasApplication, checklist: Applicatio
                 "status": status,
                 "status_label": status_label(status),
                 "removable": not item.from_template,
-                "documents": [_document_view(d) for d in documents],
+                "sensitivity": item.sensitivity,
+                "documents": [_document_view(d, classes[d.id]) for d in documents],
             }
         )
     return {
@@ -132,8 +136,9 @@ async def view(db: AsyncSession, app: OverseasApplication, checklist: Applicatio
 
 
 async def linkable(db: AsyncSession, app: OverseasApplication) -> list[dict]:
-    rows = await db.scalars(_documents_of(app).order_by(StudentDocument.document_type, StudentDocument.created_at.desc()))
-    return [_document_view(d) for d in rows]
+    rows = list((await db.scalars(_documents_of(app).order_by(StudentDocument.document_type, StudentDocument.created_at.desc()))).all())
+    classes = await sensitivities(db, rows)
+    return [_document_view(d, classes[d.id]) for d in rows]
 
 
 async def create(db: AsyncSession, user: User, app: OverseasApplication) -> ApplicationChecklist:
@@ -156,6 +161,7 @@ async def create(db: AsyncSession, user: User, app: OverseasApplication) -> Appl
         item = ApplicationChecklistItem(
             application_id=app.id, from_template=True, position=source.position, document_type=source.document_type, label=source.label,
             required=source.required, allowed_statuses=list(source.allowed_statuses), notes=source.notes, created_by_id=checklist.created_by_id,
+            sensitivity=source.sensitivity,
         )  # fmt: skip
         db.add(item)
         await db.flush()
@@ -215,6 +221,7 @@ async def add_item(db: AsyncSession, user: User, app: OverseasApplication, paylo
     item = ApplicationChecklistItem(
         application_id=app.id, from_template=False, position=position, document_type=payload.document_type, label=payload.label,
         required=payload.required, allowed_statuses=list(payload.allowed_statuses or STANDARD_STATUSES), notes=payload.notes, created_by_id=user.id,
+        sensitivity=payload.sensitivity or type_sensitivity(payload.document_type, payload.label),
     )  # fmt: skip
     db.add(item)
     await db.flush()

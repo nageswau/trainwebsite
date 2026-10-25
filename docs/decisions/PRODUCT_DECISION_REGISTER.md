@@ -9427,3 +9427,22 @@ no history row, no commission). E8 the pre-enrolment checklist is a stored attes
 confirmation of an agency application runs the AGT-003 trigger (at most one commission) and tells the agency (CC5).
 **Numbering:** migration `0184_enrollment_confirmation`; API §12FO; RBAC §2.176.
 - **Feature ID authorized:** `ccrm-027`. **Status:** built on `worktree-ccrm-027`.
+
+### DEC-SCOPE-263 — Sensitive documents and access logging (`ccrm-022`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-022` (source PDF §2 "sensitive financial and identity documents only to
+authorized roles", §8 secure access, §16, AC 10, `UNVERIFIED`); design `docs/superpowers/specs/2026-10-25-ccrm-022-sensitive-documents-design.md`.
+**From the backlog:** classes `standard` / `identity` / `financial`; identity/financial visible to the student, the student's counselor, the
+application's agency and Overseas Admin; downloads always audited; lists never return file keys; the `/files/download` gap closed for
+overseas documents; `sensitivity` on checklist template items and application checklist items; one central check.
+**Recommended defaults (`NEEDS_CONFIRMATION`):** SD1 the word lists that class a free-text type (identity: passport, aadhaar/aadhar,
+national id, identity, id card, birth certificate; financial: financial, finance, bank, sponsor(ship), loan, income, salary, tax, itr,
+affidavit), whole words, type + label; SD2 a document's class is the highest of its type's and every checklist item it is linked to (an
+item raises, never lowers); SD3 **university_rep never sees identity/financial documents** (the backlog's open question — the passport for
+submission stays with the counselor), super_admin keeps its existing access; SD4 a refused download of an identity/financial document is
+audited (`document.download`, outcome `denied`) and every download's audit row carries `sensitivity`; SD5 `/files/download` answers `404`
+for any current, archived or replaced overseas document key and the `agent-documents/` prefix; SD6 the student's Downloads section and
+the agent portal Documents section no longer carry file keys; SD7 there is no inline view route, so `document.download` is the only
+hand-out event; SD8 the `/local-files` public mount in local storage mode is left to nehn-003 (residual risk).
+**Numbering:** migration `0185_document_sensitivity` (after ccrm-027's `0184_enrollment_confirmation`); API §12FP; RBAC §2.177.
+- **Feature ID authorized:** `ccrm-022`. **Status:** built on `worktree-ccrm-022`.

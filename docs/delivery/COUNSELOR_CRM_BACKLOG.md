@@ -559,6 +559,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Acceptance:** AC 10 — a university_rep cannot open a financial document; each download appears in the audit log.
 - **Complexity:** medium. **Risk:** high.
 - **Open questions:** should university_rep ever see identity documents (passport for submission)?
+- **Status (2026-10-25):** built on `worktree-ccrm-022` — `DEC-SCOPE-263`, migration `0185_document_sensitivity` (after ccrm-027's
+  `0184_enrollment_confirmation`), API §12FP, RBAC §2.177; recommended defaults SD1–SD8 `NEEDS_CONFIRMATION` (university_rep: never). The
+  `/local-files` mount stays with nehn-003. Design `docs/superpowers/specs/2026-10-25-ccrm-022-sensitive-documents-design.md`.
 
 ### `ccrm-023` — Offer records with history (counselor on all applications)
 

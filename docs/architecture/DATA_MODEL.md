@@ -2247,3 +2247,10 @@ document of the application) and `pre_enrollment_checklist_complete` (bool, NOT 
 (AGN-013) now marks a confirmed enrolment from either route. Outcome values `non_arrival` and `cancelled` join the CHECKs
 `ck_overseas_applications_outcome`, `ck_application_outcomes_outcome` and `ck_application_status_history_outcome`. No backfill; downgrade
 restores the ccrm-015 values and drops the two columns.
+
+## Document sensitivity (`ccrm-022`, `DEC-SCOPE-263`; migration `0185_document_sensitivity`, after ccrm-027's `0184_enrollment_confirmation`)
+
+`document_checklist_template_items.sensitivity` and `application_checklist_items.sensitivity`: String(20) NOT NULL, server default
+`standard`, CHECK standard / identity / financial. The migration classes existing items from their type and label words (the
+`app.document_checklists` lists); the downgrade drops both columns. A document has no stored class: it is the highest of its type's
+class and its linked items' (`services/document_access.sensitivities`).
