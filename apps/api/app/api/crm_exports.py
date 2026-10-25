@@ -48,10 +48,6 @@ LEAD_COLUMNS = (
 )  # fmt: skip
 
 
-def render(table: dict, fmt: str, sheet_name: str) -> str | bytes:
-    return to_csv(table) if fmt == "csv" else to_xlsx(table, sheet_name)
-
-
 async def export(db: AsyncSession, user: User, *, entity_type: str, key: str, fmt: str, filters: dict[str, str], filename: str, sheet_name: str, build: Callable[[], Awaitable[dict]]) -> Response:
     """E5-E7. `filters` are the set filters and their values (ids, dates, intakes, stage keys -- no personal data)."""
     await db.execute(select(User.id).where(User.id == user.id).with_for_update())
@@ -64,7 +60,7 @@ async def export(db: AsyncSession, user: User, *, entity_type: str, key: str, fm
     if rows > ROW_CAP:
         _log(logging.WARNING, "crm.export_too_large", user, entity_type, key, fmt, filters, rows)
         raise HTTPException(422, TOO_LARGE.format(cap=ROW_CAP))
-    body = render(table, fmt, sheet_name)
+    body = to_csv(table) if fmt == "csv" else to_xlsx(table, sheet_name)
     db.add(AuditLog(user_id=user.id, action=EXPORT_ACTION, entity_type=entity_type, entity_id=key, metadata_json={"format": fmt, "filters": filters, "rows": rows}))
     await db.commit()
     _log(logging.INFO, "crm.export", user, entity_type, key, fmt, filters, rows)
@@ -96,9 +92,9 @@ def _table(columns: tuple[tuple[str, str], ...], items: list[dict]) -> dict:
 @router.get("/applications")
 async def export_applications(
     request: Request,
-    format: Format = "csv",
+    format: Format = "csv",  # noqa: A002 -- the query name
     country: str | None = None,
-    university: str | None = None,  # noqa: A002 -- the query name
+    university: str | None = None,
     intake: str | None = None,
     stage: str | None = None,
     sub_status: str | None = None,
@@ -134,9 +130,9 @@ async def export_applications(
 
 @router.get("/leads")
 async def export_leads(
-    format: Format = "csv",
+    format: Format = "csv",  # noqa: A002 -- the query name
     stage: str | None = None,
-    priority: str | None = None,  # noqa: A002 -- the query name
+    priority: str | None = None,
     created_from: str | None = Query(None, alias="from"),
     created_to: str | None = Query(None, alias="to"),
     user: User = Depends(get_current_user),

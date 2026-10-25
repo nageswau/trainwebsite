@@ -179,6 +179,14 @@ async def application_funnel(
     }
 
 
+def _crm_filters(date_from: date | None, date_to: date | None, counselor: str | None, country: UUID | None, university: UUID | None, course: UUID | None,
+                 intake: str | None) -> management_crm_reports.ReportFilters:
+    """ccrm-034 R2 (shared with the ccrm-035 export): end before start, or a counselor that is neither an id nor "none", is a 422."""
+    if date_from and date_to and date_to < date_from:
+        raise HTTPException(422, "The end date must be on or after the start date")
+    return management_crm_reports.ReportFilters(date_from=date_from, date_to=date_to, counselor=_id_or_none(counselor), country=country, university=university, course=course, intake=intake or None)
+
+
 @router.get("/crm-reports", response_model=CrmReportsOut)
 async def crm_reports(
     date_from: date | None = None,
@@ -194,9 +202,7 @@ async def crm_reports(
     """ccrm-034 (§13, AC 8, DEC-SCOPE-267 R1-R10): ageing, university performance, visa outcomes, document readiness, lead conversion
     by intake and the forecast by intake -- counts only. Partner, super_admin and the Overseas Admin; everyone else 403."""
     require_crm_reports(user)
-    if date_from and date_to and date_to < date_from:
-        raise HTTPException(422, "The end date must be on or after the start date")
-    filters = management_crm_reports.ReportFilters(date_from=date_from, date_to=date_to, counselor=_id_or_none(counselor), country=country, university=university, course=course, intake=intake or None)
+    filters = _crm_filters(date_from, date_to, counselor, country, university, course, intake)
     today = india_date(await db_now(db))
     body = await management_crm_reports.reports(db, filters, today)
     return {**body, "filters": {key: None if value is None else str(value) for key, value in vars(filters).items()}, "as_of": today}
@@ -219,9 +225,7 @@ async def crm_report_export(
     """ccrm-035 (DEC-SCOPE-268 E2): one ccrm-034 report as CSV or xlsx -- its table and Total row, for the same roles and filters.
     Audited (who, report, filters, rows) and throttled by `crm_exports.export`."""
     require_crm_reports(user)
-    if date_from and date_to and date_to < date_from:
-        raise HTTPException(422, "The end date must be on or after the start date")
-    filters = management_crm_reports.ReportFilters(date_from=date_from, date_to=date_to, counselor=_id_or_none(counselor), country=country, university=university, course=course, intake=intake or None)
+    filters = _crm_filters(date_from, date_to, counselor, country, university, course, intake)
     given = {key: str(value) for key, value in vars(filters).items() if value is not None}
     today = india_date(await db_now(db))
 
