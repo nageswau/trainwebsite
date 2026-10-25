@@ -9691,3 +9691,24 @@ through `queue_deliveries`, which honours the opt-ins.
 **Numbering:** migration `0193_student_archive_consent`; API §12GC; RBAC §2.190 (ccrm-037 took 273 / 12FZ / 2.187 / 0191, ccrm-038
 took 274 / 12GA / 2.188 / 0192 and ccrm-039 took 275 / 12GB / 2.189 first).
 - **Feature ID authorized:** `ccrm-040`. **Status:** built on `worktree-ccrm-040`.
+
+### DEC-SCOPE-277 — Counselor action dashboard (`ccrm-032`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-032` (source PDF §12; `UNVERIFIED` — only the backlog's list is used); design
+`docs/superpowers/specs/2026-10-25-ccrm-032-counselor-action-dashboard-design.md`. Dependencies ccrm-001, 003, 012, 014, 019, 023, 026,
+029 (all merged). Closes ccrm-003's deferred acceptance (a counselor's follow-up shows on their dashboard).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** D1 the overseas counselor only (anyone else
+403); own records only, the request names nobody; read-only, not audited. D2 scope: leads they own; applications assigned to them, not
+withdrawn, not closed by a terminal outcome or on hold, the student not archived (ccrm-040); csc-001 visible students; their own tasks,
+appointments (lead and student) and logged calls. D3 "today" is the India date of the DB clock. D4 "approaching" = due within 14 days,
+past-due included and flagged. D5 twelve sections: new/not-contacted leads, today's appointments, calls logged today, follow-ups due
+today or overdue, overdue tasks, leads past first contact without a next action, students with an open document request or a
+document awaiting verification, applications not ready (University selection, not submitted, ccrm-019 checklist not complete),
+submitted awaiting decision, offer deadlines / open conditions / pending required deposits, undecided visa cases with an appointment
+in the window or a pending decision, enrolment to confirm (visa approved) and arrival to confirm (enrolled). D6 each section returns
+its full count and the first 10 items, soonest first. D7 the ccrm-012 quick search stays; sections link to the existing lists — no new
+dashboard filter. D8 the ccrm-001 tiles and the application table stay below. D9 the sections stream in on their own endpoint; a
+failure shows "Dashboard sections are unavailable right now" and leaves the page working. D10 not-contacted = New, Assigned, First
+Call Pending (not repeated under "no next action").
+**Numbering:** no migration; API §12GD; RBAC §2.191.
+- **Feature ID authorized:** `ccrm-032`. **Status:** built on `worktree-ccrm-032`.

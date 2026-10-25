@@ -183,8 +183,7 @@ asked one at a time when the item is picked up).
 - **Open questions:** does "next action required" also apply to telecaller-owned leads (spec says "active leads")? Default: counselor
   leads only, telecaller unchanged.
 - **Status:** built on `feature/ccrm-003` — `DEC-SCOPE-243`, migration `0169_lead_next_action`, API §12EV, RBAC §2.158 (A1–A8). The
-  dashboard acceptance ("a follow-up the counselor creates shows in their dashboard") waits for ccrm-032; the follow-up shows on the
-  counselor lead detail today.
+  dashboard acceptance ("a follow-up the counselor creates shows in their dashboard") was closed by ccrm-032 (Follow-ups due section).
 
 ### `ccrm-004` — Counselor activity logging on leads: calls, WhatsApp, email, meetings
 
@@ -729,6 +728,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **FE:** replace the generic `PortalPage` dashboard for the counselor. **BE:** one aggregate endpoint.
 - **Dependencies:** ccrm-001, 003, 012, 014, 019, 023, 026, 029. Sections ship as their data lands.
 - **Complexity:** large. **Risk:** low.
+- **Status (2026-10-25):** built on `worktree-ccrm-032` — `DEC-SCOPE-277` (D1–D10 defaults `NEEDS_CONFIRMATION`), no migration, API
+  §12GD, RBAC §2.191; `GET /counselor/dashboard`, `components/CounselorDashboardPanel.tsx` under the quick search. Also closes ccrm-003's
+  dashboard acceptance. Design `docs/superpowers/specs/2026-10-25-ccrm-032-counselor-action-dashboard-design.md`.
 
 ### `ccrm-033` — Reassignment with a logged reason
 

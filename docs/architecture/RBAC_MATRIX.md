@@ -2943,3 +2943,13 @@ student and the assigned counselor of an overseas appointment, never to a lead, 
 
 Nobody consents on a student's behalf. Pinned by `test_ccrm_040_archive_consent.py::test_who_may_archive`,
 `::test_only_the_admin_restores`, `::test_archived_list` and `::test_consent_routes_are_the_students_own`.
+
+### 2.191 Counselor action dashboard *(added 2026-10-25 — `DEC-SCOPE-277`, ccrm-032)*
+
+| Action | Overseas counselor | IT counselor | Overseas Admin | Other roles |
+|---|---|---|---|---|
+| Read the action dashboard (`/counselor/dashboard`) | ✅ own leads, tasks, appointments, calls, csc-001 students and assigned applications only | ❌ 403 | ❌ 403 | ❌ 403 |
+
+The request names no one, so another counselor's work cannot be asked for. Pinned by
+`test_ccrm_032_dashboard.py::test_only_the_overseas_counselor_reads_a_dashboard` and
+`::test_every_section_lists_only_the_counselors_own_live_work`.
