@@ -1514,6 +1514,27 @@ class ApplicationEnrollmentSave(BaseModel):
         return value
 
 
+class ApplicationArrivalSave(BaseModel):
+    """ccrm-028 (DEC-SCOPE-265): arrival and orientation after enrolment, saved whole. Who confirmed and when are stamped by the server
+    (A4); the date and orientation rules (A5) are checked in services/application_arrival.py."""
+
+    model_config = {"extra": "forbid"}
+    arrival_date: date | None = None
+    arrival_confirmed: bool = False
+    orientation_attended: bool = False
+    notes: str | None = None
+
+    @field_validator("arrival_date")
+    @classmethod
+    def _date(cls, value):
+        return _application_date(value)
+
+    @field_validator("notes")
+    @classmethod
+    def _notes(cls, value):
+        return clean_free_text(value, 2000)
+
+
 class ApplicationChecklistMark(BaseModel):
     """ccrm-019 (DEC-SCOPE-257, AC1): mark a checklist item Requested or Not required, or clear the mark (null)."""
 

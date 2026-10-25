@@ -663,6 +663,10 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Expected behaviour:** after enrolment, the counselor records arrival date, arrival confirmed (by whom), orientation attended, notes.
 - **DB:** migration (columns or `application_arrivals`). **Dependencies:** ccrm-027. **Complexity:** small. **Risk:** low.
 - **Open questions:** does arrival trigger anything (e.g. commission eligibility in UPC/mgmt)?
+- **Status (2026-10-25):** built on `worktree-ccrm-028` — `DEC-SCOPE-265` (A1–A6 defaults `NEEDS_CONFIRMATION`: arrival triggers
+  nothing; counselor/Admin `PUT …/arrival` on enrolled direct and agency applications; the server stamps who confirmed and when; orientation
+  needs a confirmed arrival), migration `0187_application_arrival`, API §12FR, RBAC §2.179. Design
+  `docs/superpowers/specs/2026-10-25-ccrm-028-arrival-orientation-design.md`.
 
 ---
 
