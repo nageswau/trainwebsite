@@ -207,6 +207,8 @@ asked one at a time when the item is picked up).
 - **Regression:** telecaller call counts and targets (tel-022), daily report.
 - **Complexity:** medium. **Risk:** medium.
 - **Open questions:** should counselor calls count in management "counselor performance" (calls are marked untracked today)?
+- **Status:** built on `feature/ccrm-004` — `DEC-SCOPE-259`, migration `0181_lead_meetings`, API §12FL, RBAC §2.173 (LG1–LG8; the open
+  question answered yes by default: mgmt-018 Calls is tracked). Consent opt-out waits for ccrm-040.
 
 ### `ccrm-005` — Lead data fields: contact preference, study, academic, English, consent, referral
 
@@ -227,6 +229,8 @@ asked one at a time when the item is picked up).
 - **Regression:** import template columns, qualification form, duplicate panel.
 - **Complexity:** medium. **Risk:** low.
 - **Open questions:** which new fields are mandatory, and at which stage (e.g. country + intake before Qualified)?
+- **Status (2026-10-25):** built on `feature/ccrm-005` — `DEC-SCOPE-260` (LF1–LF9 defaults `NEEDS_CONFIRMATION`; LF2 nothing mandatory),
+  migration `0182_lead_data_fields`, API §12FM, RBAC §2.174. Design `docs/superpowers/specs/2026-10-25-ccrm-005-lead-data-fields-design.md`.
 
 ### `ccrm-006` — Lead stage additions and structured loss capture
 
@@ -583,6 +587,10 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
   failed), evidence document. Unconditional when all met (counselor may then record an unconditional offer). Due dates feed ccrm-030.
 - **DB:** migration: `offer_conditions` table; existing text migrated into one row. **Dependencies:** ccrm-023.
 - **Complexity:** small. **Risk:** low.
+- **Status (2026-10-25):** built on `worktree-ccrm-024` — `DEC-SCOPE-261`, migration `0183_offer_conditions` (after ccrm-005's
+  `0182_lead_data_fields`; table `application_offer_conditions`), API §12FN, RBAC §2.175; owner answers C1 (offer text seeds one open student condition), C2 (evidence
+  required for Met), C3 (conditions stay with their offer), C4 (all satisfied → prompt to record an unconditional offer); C5–C11 defaults.
+  Design `docs/superpowers/specs/2026-10-25-ccrm-024-offer-conditions-design.md`.
 
 ### `ccrm-025` — Student decision, acceptance and deposits (all applications)
 
@@ -638,9 +646,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Acceptance:** Appendix B final row; the management funnel counts enrolments only with confirmation.
 - **Regression:** tel-018 conversion sweep (Converted relies on `enrolled`), mgmt revenue.
 - **Complexity:** medium. **Risk:** medium.
-- **Status (2026-10-25):** built on `worktree-ccrm-027` — `DEC-SCOPE-259` (E1–E9 defaults `NEEDS_CONFIRMATION`: counselor/Admin
+- **Status (2026-10-25):** built on `worktree-ccrm-027` — `DEC-SCOPE-262` (E1–E9 defaults `NEEDS_CONFIRMATION`: counselor/Admin
   `PUT …/enrollment` on direct and agency applications; other routes into `enrolled` → 422; "Deferred (post-visa)" = ccrm-015 `deferred`;
-  new terminal outcomes `non_arrival`, `cancelled`), migration `0181_enrollment_confirmation`, API §12FL, RBAC §2.173. Design
+  new terminal outcomes `non_arrival`, `cancelled`), migration `0184_enrollment_confirmation`, API §12FO, RBAC §2.176. Design
   `docs/superpowers/specs/2026-10-25-ccrm-027-enrolment-confirmation-design.md`.
 
 ### `ccrm-028` — Arrival and orientation tracking (CC6)

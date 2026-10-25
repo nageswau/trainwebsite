@@ -55,6 +55,7 @@ from app.models import (
     CANDIDATE_STATUSES,
     CAPITAL_ENTRY_KINDS,
     CONTACT_CHANNELS,
+    CONTACT_PREFERENCES,
     COUNSELOR_TASK_STATUSES,
     COUNTRY_REGIONS,
     COURSE_CURRENCIES,
@@ -1327,6 +1328,72 @@ class ApplicationOfferClose(BaseModel):
         return cleaned
 
 
+# --- ccrm-024: an offer's conditions (DEC-SCOPE-261) ---
+
+OfferConditionOwner = Literal["student", "counselor", "agent"]  # models.OFFER_CONDITION_OWNERS
+
+
+def _condition_text(value: str | None) -> str:
+    cleaned = clean_free_text(value, 1000)
+    if not cleaned:
+        raise PydanticCustomError("condition_description_required", "Describe the condition")
+    return cleaned
+
+
+class OfferConditionCreate(BaseModel):
+    """A new condition on the current offer; it starts open. An `agent` owner is checked against the application by the route (C6)."""
+
+    model_config = {"extra": "forbid"}
+    description: str = Field(max_length=1000)
+    owner: OfferConditionOwner
+    due_date: date | None = None
+
+    @field_validator("description")
+    @classmethod
+    def _description(cls, value):
+        return _condition_text(value)
+
+    @field_validator("due_date")
+    @classmethod
+    def _due(cls, value):
+        return _application_date(value)
+
+
+class OfferConditionUpdate(BaseModel):
+    """A partial change: only the keys sent apply. The route checks the result -- met needs evidence (C2), waived/failed a note (C5) --
+    and the evidence document. `null` clears the due date, the evidence or the note; description, owner and status cannot be null."""
+
+    model_config = {"extra": "forbid"}
+    description: str | None = Field(default=None, max_length=1000)
+    owner: OfferConditionOwner | None = None
+    due_date: date | None = None
+    status: Literal["open", "met", "waived", "failed"] | None = None  # models.OFFER_CONDITION_STATUSES
+    evidence_document_id: UUID | None = None
+    note: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("description")
+    @classmethod
+    def _description(cls, value):
+        return None if value is None else _condition_text(value)
+
+    @field_validator("due_date")
+    @classmethod
+    def _due(cls, value):
+        return _application_date(value)
+
+    @field_validator("note")
+    @classmethod
+    def _note(cls, value):
+        return clean_free_text(value, 1000)
+
+    @model_validator(mode="after")
+    def _not_null(self):
+        for field in ("description", "owner", "status"):
+            if field in self.model_fields_set and getattr(self, field) is None:
+                raise PydanticCustomError("condition_field_required", f"{field.capitalize()} cannot be empty")
+        return self
+
+
 # --- ccrm-025: the student's decision on the current offer and the manual deposit record (DEC-SCOPE-255) ---
 
 
@@ -1412,7 +1479,7 @@ class DepositRecordSave(BaseModel):
 
 
 class ApplicationEnrollmentSave(BaseModel):
-    """ccrm-027 (DEC-SCOPE-259, E2): confirm an application's enrolment, or correct it once enrolled. The confirmation document and the
+    """ccrm-027 (DEC-SCOPE-262, E2): confirm an application's enrolment, or correct it once enrolled. The confirmation document and the
     pre-enrolment checklist are required; `expected_status` turns a stale screen into a 409 (confirming triggers the commission)."""
 
     model_config = {"extra": "forbid"}
@@ -5491,7 +5558,8 @@ BDM_LEAD_LABELS = {"name": "Student name", "email": "Email", "student_email": "E
                    "qualification": "Qualification", "institution": "College/University", "subject": "Enquiry subject", "message": "Notes",  # tel-005
                    "current_org": "Current college/company", "career_objective": "Career objective", "preferred_batch": "Preferred batch",
                    "budget_range": "Budget range", "preferred_course": "Preferred course", "intake": "Intake",
-                   "english_test_status": "IELTS/PTE status"}  # tel-009
+                   "english_test_status": "IELTS/PTE status",  # tel-009
+                   "referral_name": "Referral name", "referral_contact": "Referral contact", "preferred_campus": "Preferred campus"}  # ccrm-005
 
 
 def _bdm_lead_text(pattern: re.Pattern, required: bool):
@@ -6659,8 +6727,41 @@ class BdmSchoolActivityOut(BaseModel):
 LeadPlace = Annotated[Annotated[str, _trimmed(120)] | None, AfterValidator(_bdm_lead_text(_BDM_CONTROL, False))]
 
 
-class TelecallerLeadUpdate(BaseModel):
+def _enquiry_date(value: date | None) -> date | None:
+    """ccrm-005 LF4: from 2000 to today (one day ahead of UTC is today east of it, as `_not_future`)."""
+    if value is not None and not date(2000, 1, 1) <= value <= datetime.now(UTC).date() + timedelta(days=1):
+        raise PydanticCustomError("enquiry_date_range", "The enquiry date must be between 2000 and today")
+    return value
+
+
+# ccrm-005 (DEC-SCOPE-260; LF1, LF4-LF7): the spec §3 contact, consent and referral fields of every lead -- on create, the details edit,
+# the CSV import and the counselor's edit. None is mandatory (LF2); on create and import an omitted enquiry date is the created date.
+LeadEnquiryDate = Annotated[date | None, AfterValidator(_enquiry_date)]
+LeadReferralName = Annotated[Annotated[str, _trimmed(160)] | None, AfterValidator(_bdm_lead_text(_BDM_CONTROL, False))]
+LeadReferralContact = Annotated[Annotated[str, _trimmed(120)] | None, AfterValidator(_bdm_lead_text(_BDM_CONTROL, False))]
+
+
+class LeadContactFields(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    contact_preference: Literal[CONTACT_PREFERENCES] | None = None
+    enquiry_date: LeadEnquiryDate = None
+    marketing_opt_in: bool | None = None  # None = not asked
+    referral_name: LeadReferralName = None
+    referral_contact: LeadReferralContact = None
+
+
+class CounselorLeadUpdate(LeadContactFields):
+    """ccrm-005 LF7: what the counselor changes on a lead handed to them; contact details, product and priority stay the telecaller's.
+    Omitted = unchanged; the enquiry date cannot be cleared."""
+
+    @model_validator(mode="after")
+    def _keep_enquiry_date(self):
+        if "enquiry_date" in self.model_fields_set and self.enquiry_date is None:
+            raise PydanticCustomError("enquiry_date_required", "The enquiry date cannot be cleared")
+        return self
+
+
+class TelecallerLeadUpdate(CounselorLeadUpdate):
     name: BdmLeadName = None
     email: BdmLeadEmail = None
     phone: BdmLeadPhone = None
@@ -6685,8 +6786,7 @@ LeadInstitution = Annotated[Annotated[str, _trimmed(200)] | None, AfterValidator
 LeadSubject = Annotated[Annotated[str, _trimmed(180)] | None, AfterValidator(_bdm_lead_text(_BDM_CONTROL, False))]
 
 
-class TelecallerLeadCreate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class TelecallerLeadCreate(LeadContactFields):
     name: BdmLeadName
     phone: LeadMobile
     email: LeadOptionalEmail = None
@@ -6742,10 +6842,18 @@ class LeadQualificationIn(BaseModel):
     academic_percentage: Decimal | None = Field(default=None, ge=0, le=100, max_digits=5, decimal_places=2)
     english_test_status: _qual_text(120) = None
     passport_status: Literal[QUAL_PASSPORT] | None = None
+    # ccrm-005 (DEC-SCOPE-260, LF1/LF3): overseas study preferences, academic profile and English tests (ccrm-007's row rules, <= 5)
+    preferred_country_id: UUID | None = None
+    study_mode: Literal[STUDY_MODES] | None = None
+    preferred_campus: _qual_text(200) = None
+    academic_cgpa: Decimal | None = Field(default=None, ge=0, le=10, max_digits=4, decimal_places=2)
+    backlogs: int | None = Field(default=None, ge=0, le=99)
+    english_tests: Annotated[list[StudentEnglishTestIn], Field(max_length=MAX_ENGLISH_TESTS)] | None = None
 
 
 class LeadImportRow(BaseModel):
-    """tel-006 (IM1): one CSV row -- tel-005's lead fields; the campaign gives the source, product and team."""
+    """tel-006 (IM1): one CSV row -- tel-005's lead fields; the campaign gives the source, product and team. ccrm-005 LF6: the contact
+    fields are the last columns (the CSV order is the field order); `marketing_opt_in` takes yes/no, `enquiry_date` YYYY-MM-DD."""
 
     model_config = ConfigDict(extra="forbid")
     name: BdmLeadName
@@ -6760,6 +6868,11 @@ class LeadImportRow(BaseModel):
     priority: Literal[LEAD_PRIORITIES] = "warm"
     subject: LeadSubject = None
     message: BdmLeadNote = None
+    contact_preference: Literal[CONTACT_PREFERENCES] | None = None
+    enquiry_date: LeadEnquiryDate = None
+    marketing_opt_in: bool | None = None
+    referral_name: LeadReferralName = None
+    referral_contact: LeadReferralContact = None
 
 
 class LeadTimelineRow(BaseModel):
@@ -6768,7 +6881,7 @@ class LeadTimelineRow(BaseModel):
 
     id: UUID
     kind: Literal["created", "enquiry", "stage", "priority", "assignment", "handover", "student_link", "call", "message", "follow_up",
-                  "appointment", "milestone", "note"]
+                  "appointment", "milestone", "note", "meeting"]
     at: datetime
     actor: LeadStageActor | None
     from_value: str
@@ -6809,6 +6922,39 @@ class LeadNotePage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class LeadMeetingIn(BaseModel):
+    """ccrm-004 (DEC-SCOPE-259 LG3): when (not in the future, up to 7 days back -- the call rules), how, and trimmed notes 1-2000
+    (`LEAD_MEETING_NOTES_MAX`)."""
+
+    model_config = ConfigDict(extra="forbid")
+    occurred_at: AwareDatetime
+    mode: Literal[APPOINTMENT_MODES]
+    notes: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+
+
+class LeadMeetingOut(BaseModel):
+    id: UUID
+    occurred_at: datetime
+    mode: str
+    notes: str
+    author: LeadStageActor
+    created_at: datetime
+
+
+class LeadMeetingPage(BaseModel):
+    items: list[LeadMeetingOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class LeadAppointmentComplete(BaseModel):
+    """ccrm-004 (DEC-SCOPE-259 LG4): the session's outcome, optional; blank is none."""
+
+    model_config = ConfigDict(extra="forbid")
+    outcome_notes: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=2000)] = None
 
 
 class UniversityTimelineRow(BaseModel):

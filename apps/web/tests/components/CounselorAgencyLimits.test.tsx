@@ -17,7 +17,7 @@ const ROWS = [
 ];
 
 describe("counselor limits on agency applications (H12)", () => {
-  // ccrm-027 (DEC-SCOPE-259, E3): no card advances to Enrolled; both confirm it through the Enrolment panel (CC4: agency too).
+  // ccrm-027 (DEC-SCOPE-262, E3): no card advances to Enrolled; both confirm it through the Enrolment panel (CC4: agency too).
   it("never offers Enrolled as a stage, on agency or direct applications, and offers Enrolment instead", async () => {  // AC20
     vi.stubGlobal("fetch", vi.fn(() => json({ rows: ROWS })));
     render(<CounselorEvaluationPanel />);

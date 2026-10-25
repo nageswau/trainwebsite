@@ -98,7 +98,9 @@ def _stages(start: date, end: date) -> list[tuple[str, str, str, str, Select]]:
     return [
         ("leads", "Leads", "lead", "Leads created in the period, from every source and division.", _leads(Enquiry.created_at >= lo, Enquiry.created_at < hi)),
         ("telecalling", "Telecalling", "lead", "Leads with at least one telecaller call logged in the period.",
-         _leads(exists().where(LeadCall.lead_id == Enquiry.id, LeadCall.occurred_at >= lo, LeadCall.occurred_at < hi))),
+         # ccrm-004 LG5: a counselor's call is not telecalling
+         _leads(exists().where(LeadCall.lead_id == Enquiry.id, LeadCall.occurred_at >= lo, LeadCall.occurred_at < hi,
+                               LeadCall.caller_user_id.not_in(select(User.id).where(User.role == "counselor"))))),
         ("counseling", "Counseling", "lead", "Leads with a counseling appointment completed that was scheduled in the period.",
          _leads(exists().where(Appointment.lead_id == Enquiry.id, Appointment.status == "completed", Appointment.scheduled_at >= lo, Appointment.scheduled_at < hi))),
         ("registration", "Registration", "lead", "Leads first converted in the period and still converted.",
@@ -117,7 +119,7 @@ def _stages(start: date, end: date) -> list[tuple[str, str, str, str, Select]]:
          _abroad(OverseasApplication.submitted_on >= start, OverseasApplication.submitted_on <= end)),
         ("offer", "Offer", "abroad", "Applications whose first move into an offer status was recorded in the period.", _first_moved(OFFER_COUNTED_STATUSES, lo, hi)),
         ("visa", "Visa", "abroad", "Applications with a visa decided approved in the period.", _abroad(visa)),
-        # ccrm-027 (DEC-SCOPE-259, E4): an enrolment counts only once confirmed -- an offer or a visa approval is not one (§13).
+        # ccrm-027 (DEC-SCOPE-262, E4): an enrolment counts only once confirmed -- an offer or a visa approval is not one (§13).
         ("enrollment", "Enrollment", "abroad", "Applications whose first move to enrolled was recorded in the period, with the enrolment confirmed.",
          _first_moved(("enrolled",), lo, hi).where(OverseasApplication.enrollment_confirmed_at.is_not(None))),
     ]  # fmt: skip

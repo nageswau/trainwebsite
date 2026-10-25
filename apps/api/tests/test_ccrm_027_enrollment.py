@@ -1,4 +1,4 @@
-"""ccrm-027 (DEC-SCOPE-259) -- enrolment only after confirmation: the counselor/Admin `PUT …/enrollment` (document, checklist, student
+"""ccrm-027 (DEC-SCOPE-262) -- enrolment only after confirmation: the counselor/Admin `PUT …/enrollment` (document, checklist, student
 number, course start date; agency applications too: CC4), the 422 on every other way into `enrolled`, corrections once enrolled, the
 non-arrival / cancelled outcomes, and the funnel counting confirmed enrolments only."""
 

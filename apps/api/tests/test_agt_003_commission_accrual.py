@@ -115,7 +115,7 @@ async def _create_overseas_admin(db_session) -> User:
     return await _create_user(db_session, role="overseas_admin")
 
 
-# ccrm-027 (DEC-SCOPE-259, E3/E9): `enrolled` is reached through the enrolment confirmation, which runs the same trigger.
+# ccrm-027 (DEC-SCOPE-262, E3/E9): `enrolled` is reached through the enrolment confirmation, which runs the same trigger.
 @pytest.mark.asyncio
 async def test_confirming_enrolment_auto_creates_an_estimated_commission(db_session, client):
     agent = await _create_agent(db_session)

@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
+import OfferConditions from "@/components/OfferConditions";
 import { sendJson, sendRequest } from "@/lib/apiErrors";
 import {
   acceptedMessage,
@@ -34,6 +35,7 @@ export default function ApplicationOffersPanel({ applicationId, onChanged }: Pro
   const [data, setData] = useState<OffersPayload | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [mode, setMode] = useState<"list" | "record" | "close" | "accept" | "decline">("list");
+  const [recordType, setRecordType] = useState<ApplicationOfferType | "">(""); // ccrm-024 C4: "Record unconditional offer" presets it
 
   async function load() {
     setLoadError(null);
@@ -65,6 +67,10 @@ export default function ApplicationOffersPanel({ applicationId, onChanged }: Pro
   if (data === null) return <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>Loading offers…</p>;
 
   const current = data.offers.find((o) => o.status === "active");
+  function record(type: ApplicationOfferType | "") {
+    setRecordType(type);
+    setMode("record");
+  }
   return (
     <section aria-label="Offers" style={{ marginTop: 8 }}>
       {data.offers.length === 0 ? (
@@ -72,18 +78,27 @@ export default function ApplicationOffersPanel({ applicationId, onChanged }: Pro
       ) : (
         <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
           {data.offers.map((offer) => (
-            <OfferItem key={offer.id} offer={offer} />
+            <OfferItem key={offer.id} offer={offer}>
+              <OfferConditions
+                applicationId={applicationId}
+                offer={offer}
+                agency={data.agency ?? false}
+                evidence={data.evidence_documents ?? []}
+                onSaved={saved}
+                onRecordUnconditional={() => record("unconditional")}
+              />
+            </OfferItem>
           ))}
         </ul>
       )}
-      {mode === "record" && <RecordOfferForm applicationId={applicationId} letters={data.offer_letters} onSaved={saved} onCancel={() => setMode("list")} />}
+      {mode === "record" && <RecordOfferForm applicationId={applicationId} letters={data.offer_letters} initialType={recordType} onSaved={saved} onCancel={() => setMode("list")} />}
       {mode === "close" && current && <CloseOfferForm applicationId={applicationId} offer={current} onSaved={saved} onCancel={() => setMode("list")} />}
       {(mode === "accept" || mode === "decline") && current && (
         <DecisionForm applicationId={applicationId} offer={current} decision={mode === "accept" ? "accepted" : "declined"} onSaved={saved} onCancel={() => setMode("list")} />
       )}
       {mode === "list" && (
         <div className="actions" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-          <button type="button" className="btn small" onClick={() => setMode("record")}>
+          <button type="button" className="btn small" onClick={() => record("")}>
             {current ? "Record new offer" : "Record offer"}
           </button>
           {current?.decision === "considering" && (
@@ -107,7 +122,7 @@ export default function ApplicationOffersPanel({ applicationId, onChanged }: Pro
   );
 }
 
-function OfferItem({ offer }: { offer: ApplicationOffer }) {
+function OfferItem({ offer, children }: { offer: ApplicationOffer; children?: ReactNode }) {
   const [letterError, setLetterError] = useState<string | null>(null);
   const amounts = (
     [
@@ -145,7 +160,7 @@ function OfferItem({ offer }: { offer: ApplicationOffer }) {
           ))}
         </p>
       )}
-      {offer.conditions && <p style={{ margin: "4px 0 0", whiteSpace: "pre-line" }}>Conditions: {offer.conditions}</p>}
+      {offer.conditions && <p style={{ margin: "4px 0 0", whiteSpace: "pre-line" }}>Offer letter conditions: {offer.conditions}</p>}
       {offer.status_reason && <p style={{ margin: "4px 0 0" }}>Reason: {offer.status_reason}</p>}
       {(offer.status === "active" || (offer.decision && offer.decision !== "considering")) && offer.decision_label && (
         <p style={{ margin: "4px 0 0" }}>
@@ -161,13 +176,26 @@ function OfferItem({ offer }: { offer: ApplicationOffer }) {
         </button>
       )}
       {letterError && <div className="form-error" role="status">{letterError}</div>}
+      {children}
     </li>
   );
 }
 
-function RecordOfferForm({ applicationId, letters, onSaved, onCancel }: { applicationId: string; letters: OfferDocument[]; onSaved: (m: string) => void; onCancel: () => void }) {
+function RecordOfferForm({
+  applicationId,
+  letters,
+  initialType,
+  onSaved,
+  onCancel,
+}: {
+  applicationId: string;
+  letters: OfferDocument[];
+  initialType: ApplicationOfferType | "";
+  onSaved: (m: string) => void;
+  onCancel: () => void;
+}) {
   const id = applicationId;
-  const [type, setType] = useState<ApplicationOfferType | "">("");
+  const [type, setType] = useState<ApplicationOfferType | "">(initialType);
   const [fields, setFields] = useState({ issue_date: "", offer_deadline: "", conditions: "", currency: "", tuition_amount: "", scholarship_amount: "", deposit_amount: "", deposit_deadline: "" });
   const [documentId, setDocumentId] = useState("");
   const [file, setFile] = useState<File | null>(null);

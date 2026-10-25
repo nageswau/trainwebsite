@@ -1,5 +1,5 @@
 """ccrm-023 (DEC-SCOPE-245) -- an application's offers: list, upload an offer letter, record an offer, withdraw/expire it. The post-offer
-writes that follow share this router: ccrm-025's decision and deposit, ccrm-027's enrolment confirmation (DEC-SCOPE-259).
+writes that follow share this router: ccrm-025's decision and deposit, ccrm-027's enrolment confirmation (DEC-SCOPE-262).
 
 CC4: the counselor records offers on their applications, direct and agency; the Overseas Admin on any. The student and the agency read.
 Every write uses `/sub-status`'s entry (api/workflows.py): role, `_assigned_application` scope, the row lock, the swapped-counselor
@@ -29,14 +29,24 @@ from app.api.workflows import (
 from app.application_outcome import label as outcome_label
 from app.application_sub_status import label as sub_status_label
 from app.core.database import get_db
-from app.models import ApplicationOffer, ApplicationStatusHistory, OverseasApplication, StudentDocument, User
-from app.schemas import ApplicationEnrollmentSave, ApplicationOfferClose, ApplicationOfferCreate, ApplicationOutcomeSet, DepositRecordSave, OfferDecisionSet
+from app.models import ApplicationOffer, ApplicationOfferCondition, ApplicationStatusHistory, OverseasApplication, StudentDocument, User
+from app.schemas import (
+    ApplicationEnrollmentSave,
+    ApplicationOfferClose,
+    ApplicationOfferCreate,
+    ApplicationOutcomeSet,
+    DepositRecordSave,
+    OfferConditionCreate,
+    OfferConditionUpdate,
+    OfferDecisionSet,
+)
 from app.services import agent_documents as documents
 from app.services import agent_notifications as agency_notices
 from app.services import application_deposit_records as deposits
 from app.services import application_enrollment as enrollment
 from app.services import application_offers as offers
 from app.services import application_outcomes as outcomes
+from app.services import offer_conditions as conditions
 from app.services.agent_applications import ARCHIVED, OFFER_DOCUMENT_MISMATCH, OFFER_LETTERS_SHOWN, STALE
 
 logger = logging.getLogger("app.application_offers")
@@ -90,10 +100,17 @@ async def _tell_student(db: AsyncSession, item: OverseasApplication, title: str,
 
 @router.get("/{application_id}/offers")
 async def list_offers(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Every offer, newest first. The offer letters to pick from go to the writers only."""
+    """Every offer, newest first, with its conditions (ccrm-024). The offer letters and condition evidence to pick from go to the
+    writers only; `agency` says whether a condition may be owned by the agent (C6)."""
     _require(user, READERS, "overseas")
     item = await _assigned_application(db, user, application_id)
-    return {"offers": await offers.views(db, item.id), "offer_letters": await _letters(db, item) if user.role in WRITERS | {"super_admin"} else []}
+    writer = user.role in WRITERS | {"super_admin"}
+    return {
+        "offers": await offers.views(db, item.id),
+        "offer_letters": await _letters(db, item) if writer else [],
+        "evidence_documents": await _letters(db, item, conditions.EVIDENCE) if writer else [],
+        "agency": item.agent_id is not None,
+    }
 
 
 @router.post("/{application_id}/offer-letters", status_code=201)
@@ -107,6 +124,12 @@ async def upload_offer_letter(application_id: UUID, file: UploadFile = File(...)
 async def upload_deposit_receipt(application_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """ccrm-025: a "Deposit receipt" document, under the offer letter's rules."""
     return await _upload(db, user, application_id, file, deposits.RECEIPT)
+
+
+@router.post("/{application_id}/condition-evidence", status_code=201)
+async def upload_condition_evidence(application_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-024 (C11): a "Condition evidence" document, under the offer letter's rules."""
+    return await _upload(db, user, application_id, file, conditions.EVIDENCE)
 
 
 async def _upload(db: AsyncSession, user: User, application_id: UUID, file: UploadFile, document_type: str) -> dict:
@@ -245,6 +268,72 @@ async def decide_offer(application_id: UUID, offer_id: UUID, payload: OfferDecis
     return _result(item, await _offer_view(db, offer), changed=True) | {"other_accepted": others}
 
 
+async def _current_offer(db: AsyncSession, item: OverseasApplication, offer_id: UUID) -> ApplicationOffer:
+    """ccrm-024: an offer of another application is 404; conditions change only on the current offer (C3), else 409."""
+    offer = await db.get(ApplicationOffer, offer_id)
+    if offer is None or offer.application_id != item.id:
+        raise HTTPException(404, offers.OFFER_NOT_FOUND)
+    if offer.status != "active":
+        raise HTTPException(409, conditions.NOT_CURRENT)
+    return offer
+
+
+async def _save_condition(db: AsyncSession, user: User, item: OverseasApplication, offer: ApplicationOffer, condition: ApplicationOfferCondition | None, values: dict) -> dict:
+    """Check, save, then one history row (stage unchanged), the student and the agency told (CC5), the audit and a log line."""
+    await conditions.check(db, item, values)
+    added = condition is None
+    condition = conditions.save(user, offer, condition, values)
+    db.add(condition)
+    await db.flush()
+    db.add(
+        ApplicationStatusHistory(
+            application_id=item.id, from_status=item.status, to_status=item.status, from_sub_status=item.sub_status, to_sub_status=item.sub_status,
+            next_action=item.next_action, notes=conditions.describe(condition, added=added), changed_by_id=user.id,
+        )
+    )  # fmt: skip
+    await _tell_student(db, item, "Offer condition updated", f"Offer condition: {condition.description} -- {conditions.STATUS_LABELS[condition.status]}.")
+    await agency_notices.offer_changed(db, item, user, "Offer condition updated")
+    action = "added" if added else "updated"
+    await _audit(
+        db, user, "overseas.application.offer_condition", "overseas_application", item.id, {"offer_id": str(offer.id), "condition_id": str(condition.id), "action": action, "status": condition.status}
+    )
+    await db.commit()
+    logger.info(
+        "application_offer_condition_saved",
+        extra={"extra_fields": {"application_id": str(item.id), "condition_id": str(condition.id), "action": action, "status": condition.status, "actor_id": str(user.id)}},
+    )
+    return await _condition_result(db, offer, condition.id, changed=True)
+
+
+async def _condition_result(db: AsyncSession, offer: ApplicationOffer, condition_id: UUID, *, changed: bool) -> dict:
+    items = (await conditions.views(db, [offer.id]))[offer.id]
+    [condition] = [i for i in items if i["id"] == condition_id]
+    return {"condition": condition, "conditions_summary": conditions.summary(items), "changed": changed}
+
+
+@router.post("/{application_id}/offers/{offer_id}/conditions", status_code=201)
+async def add_condition(application_id: UUID, offer_id: UUID, payload: OfferConditionCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-024: a new open condition on the current offer. Moves no stage, so it is allowed on hold (C8)."""
+    item = await _writable(db, user, application_id, moves_stage=False)
+    offer = await _current_offer(db, item, offer_id)
+    return await _save_condition(db, user, item, offer, None, payload.model_dump() | {"status": "open", "evidence_document_id": None, "note": None})
+
+
+@router.patch("/{application_id}/offers/{offer_id}/conditions/{condition_id}")
+async def update_condition(application_id: UUID, offer_id: UUID, condition_id: UUID, payload: OfferConditionUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-024: change a condition of the current offer -- only the keys sent. The result is checked as a whole (C2, C5, C6, C11).
+    Nothing different: 200, unchanged."""
+    item = await _writable(db, user, application_id, moves_stage=False)
+    offer = await _current_offer(db, item, offer_id)
+    condition = await db.get(ApplicationOfferCondition, condition_id)
+    if condition is None or condition.offer_id != offer.id:
+        raise HTTPException(404, conditions.CONDITION_NOT_FOUND)
+    values = conditions.values_of(condition) | payload.model_dump(exclude_unset=True)
+    if values == conditions.values_of(condition):
+        return await _condition_result(db, offer, condition.id, changed=False)
+    return await _save_condition(db, user, item, offer, condition, values)
+
+
 @router.get("/{application_id}/deposit")
 async def get_deposit(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """ccrm-025 (D2): the manual deposit record, the agency's AGN-011 deposit (read-only) and the current offer's deposit to start from.
@@ -293,7 +382,7 @@ async def save_deposit(application_id: UUID, payload: DepositRecordSave, user: U
 
 @router.get("/{application_id}/enrollment")
 async def get_enrollment(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """ccrm-027 (DEC-SCOPE-259): the enrolment confirmation. The confirmation documents to pick from go to the writers only."""
+    """ccrm-027 (DEC-SCOPE-262): the enrolment confirmation. The confirmation documents to pick from go to the writers only."""
     _require(user, READERS, "overseas")
     item = await _assigned_application(db, user, application_id)
     writer = user.role in WRITERS | {"super_admin"}
@@ -308,7 +397,7 @@ async def upload_enrollment_document(application_id: UUID, file: UploadFile = Fi
 
 @router.put("/{application_id}/enrollment")
 async def save_enrollment(application_id: UUID, payload: ApplicationEnrollmentSave, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """ccrm-027 (DEC-SCOPE-259): confirm enrolment -- the only counselor/Admin way into `enrolled` (E3), on direct and agency applications
+    """ccrm-027 (DEC-SCOPE-262): confirm enrolment -- the only counselor/Admin way into `enrolled` (E3), on direct and agency applications
     (CC4): one history row, the AGT-003 commission trigger (at most one), the student and the agency told. Once enrolled it corrects the
     details (audit only, E7); an unchanged save writes nothing. `expected_status` makes a stale screen a 409."""
     item = await _writable(db, user, application_id)

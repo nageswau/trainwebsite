@@ -5,10 +5,15 @@ import { type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useStat
 
 import { LeadStageControl } from "@/components/AdminLeadStage";
 import BdmConfirm from "@/components/BdmConfirm";
+import LeadCalls from "@/components/LeadCalls";
+import LeadContactFields, { contactChanges, contactDraft, contactRows } from "@/components/LeadContactFields";
 import LeadFollowUps from "@/components/LeadFollowUps";
+import LeadMeetings from "@/components/LeadMeetings";
+import LeadMessages from "@/components/LeadMessages";
 import LocalTime from "@/components/LocalTime";
 import LeadMilestones from "@/components/LeadMilestones";
 import LeadNotes from "@/components/LeadNotes";
+import LeadQualificationForm from "@/components/LeadQualificationForm";
 import LeadTimeline from "@/components/LeadTimeline";
 import { staffFailure } from "@/lib/agentStaff";
 import { isRequestBody, sendJson, sendRequest, type SendOutcome } from "@/lib/apiErrors";
@@ -16,7 +21,9 @@ import { formatCalendarDate } from "@/lib/formatDate";
 import { counselorLeadUrl, counselorMoveStage, type CounselorLeadDetail as Detail, type StudentSuggestion } from "@/lib/leadHandover";
 import { counselorTargets, stageLabel } from "@/lib/leadStages";
 import { SOURCE_LABEL } from "@/lib/telecallerCatalogue";
+import { counselorCallApi } from "@/lib/telecallerCalls";
 import { counselorFollowUpApi } from "@/lib/telecallerFollowUps";
+import { COUNSELOR_MESSAGE_API } from "@/lib/telecallerMessages";
 
 type Notice = { text: string; failed: boolean } | null;
 
@@ -26,6 +33,37 @@ function NoticeLine({ notice }: { notice: Notice }) {
 }
 
 const show = (value: string | number | null | undefined, empty = "—") => (value === null || value === undefined || value === "" ? <span className="muted">{empty}</span> : value);
+
+/** ccrm-005 (LF7): the counselor's edit of the spec §3 contact, consent and referral fields -- changes only; the API answers with the lead. */
+function ContactForm({ lead, onSaved, onCancel }: { lead: Detail; onSaved: (lead: Detail) => void; onCancel: () => void }) {
+  const [values, setValues] = useState(contactDraft(lead));
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<Notice>(null);
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    const changes = contactChanges(values, lead);
+    if (Object.keys(changes).length === 0) return onCancel();
+    setBusy(true);
+    const outcome = await sendJson(counselorLeadUrl(lead.id), "PATCH", changes);
+    setBusy(false);
+    if (!outcome.ok || !isRequestBody(outcome.data)) return setNotice({ text: outcome.ok ? "Unable to save the details." : outcome.message, failed: true });
+    onSaved(outcome.data as unknown as Detail);
+  }
+
+  return (
+    <form onSubmit={save} noValidate aria-label="Lead details" style={{ display: "grid", gap: 8, marginTop: 8 }}>
+      <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))" }}>
+        <LeadContactFields idPrefix="counselor-lead" values={values} disabled={busy} onChange={(key, value) => setValues((v) => ({ ...v, [key]: value }))} />
+      </div>
+      <NoticeLine notice={notice} />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <button type="submit" className="btn small" disabled={busy}>{busy ? "Saving…" : "Save details"}</button>
+        <button type="button" className="btn secondary small" disabled={busy} onClick={onCancel}>Cancel</button>
+      </div>
+    </form>
+  );
+}
 
 /** T19 / HO4: back to the telecaller with a reason (required; kept in the stage history). */
 function ReturnLeadForm({ lead, onReturned }: { lead: Detail; onReturned: () => void }) {
@@ -285,7 +323,11 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [leadNotice, setLeadNotice] = useState<Notice>(null);
+  const [editing, setEditing] = useState(false); // ccrm-005: the contact, consent and referral edit
+  const [detailsNotice, setDetailsNotice] = useState<Notice>(null);
   const followUpApi = useMemo(() => counselorFollowUpApi(lead.division), [lead.division]);
+  const callApi = useMemo(() => counselorCallApi(lead.division), [lead.division]);
+  const [followUpsVersion, setFollowUpsVersion] = useState(0); // ccrm-004: a call's next follow-up shows in the list
   const listHref = `/${lead.division === "overseas" ? "overseas" : "it"}/counselor/leads`;
   const reloadActivity = () => setActivityVersion((n) => n + 1);
   // A closing move cancels open follow-ups and appointments on the server; re-read the lead so its permissions follow the new stage.
@@ -316,6 +358,7 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
     ["Lead ID", lead.lead_code], ["Mobile number", show(lead.phone)], ["Email", show(lead.email)], ["City", show(lead.city)],
     ["Qualification", show(lead.qualification)], ["Lead source", SOURCE_LABEL[lead.source] ?? lead.source], ["Product interest", show(lead.product?.name)],
     ["Telecaller", show(lead.telecaller?.full_name, "Unassigned")], ["Lead date", <LocalTime key="date" value={lead.created_at} />],
+    ...contactRows(lead), // ccrm-005
   ];
 
   return (
@@ -342,8 +385,14 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
               </div>
             </section>
           )}
-          <LeadFollowUps leadId={lead.id} leadStage={lead.status} canWrite={lead.permissions.follow_up} api={followUpApi}
+          <LeadFollowUps leadId={lead.id} leadStage={lead.status} canWrite={lead.permissions.follow_up} api={followUpApi} refresh={followUpsVersion}
             onStageChanged={(status) => void stageChanged(status)} onChanged={reloadActivity} />
+          {/* ccrm-004 (LG1-LG3): the counselor's own calls, messages and meetings; a call never moves the stage */}
+          <LeadCalls leadId={lead.id} leadStage={lead.status} canWrite={lead.permissions.activity} api={callApi}
+            onLogged={(result) => { if (result.follow_up_id) setFollowUpsVersion((n) => n + 1); }} onChanged={reloadActivity} />
+          <LeadMessages leadId={lead.id} whatsappTo={lead.whatsapp_to} email={lead.email} canWrite={lead.permissions.activity} api={COUNSELOR_MESSAGE_API}
+            onChanged={reloadActivity} />
+          <LeadMeetings leadId={lead.id} canWrite={lead.permissions.activity} onChanged={reloadActivity} />
         </>
       )}
 
@@ -395,18 +444,35 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
       <LeadMilestones milestones={lead.milestones} status={lead.status} />
 
       <section aria-labelledby="lead-details-heading">
-        <h3 id="lead-details-heading" style={{ margin: 0 }}>Lead details</h3>
-        <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(12rem, 1fr))", gap: "8px 16px", margin: "8px 0 0" }}>
-          {fields.map(([term, value]) => (
-            <div key={term}>
-              <dt className="muted" style={{ fontSize: 13 }}>{term}</dt>
-              <dd style={{ margin: 0, overflowWrap: "anywhere" }}>{value}</dd>
-            </div>
-          ))}
-        </dl>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
+          <h3 id="lead-details-heading" style={{ margin: 0 }}>Lead details</h3>
+          {!returned && !editing && (
+            <button type="button" className="btn secondary small" onClick={() => { setEditing(true); setDetailsNotice(null); }}>Edit details</button>
+          )}
+        </div>
+        {editing ? (
+          <ContactForm lead={lead} onCancel={() => setEditing(false)}
+            onSaved={(next) => { setLead(next); setEditing(false); setDetailsNotice({ text: "Details saved.", failed: false }); }} />
+        ) : (
+          <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(12rem, 1fr))", gap: "8px 16px", margin: "8px 0 0" }}>
+            {fields.map(([term, value]) => (
+              <div key={term}>
+                <dt className="muted" style={{ fontSize: 13 }}>{term}</dt>
+                <dd style={{ margin: 0, overflowWrap: "anywhere" }}>{value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        <NoticeLine notice={detailsNotice} />
         <p style={{ margin: "8px 0 0" }}><strong>{lead.subject}</strong></p>
         {lead.message && <p style={{ margin: "4px 0 0", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{lead.message}</p>}
       </section>
+
+      {/* ccrm-005 (LF7): tel-009's qualification through the counselor's route; a returned lead has left this counselor's scope */}
+      {!returned && (
+        <LeadQualificationForm leadId={lead.id} url={counselorLeadUrl(lead.id, "/qualification")} productId={lead.product?.id ?? null} readOnly={false}
+          onSaved={(q) => setLead((l) => ({ ...l, qualification: q.qualification, passing_year: q.passing_year, city: q.city, state: q.state }))} />
+      )}
 
       {/* ccrm-002: a returned lead has left this counselor's scope (its notes stay on the lead for the telecaller) */}
       {!returned && (

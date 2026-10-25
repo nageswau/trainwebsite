@@ -104,7 +104,7 @@ export default function CounselorEvaluationPanel() {
       <div className="grid two" style={{ marginTop: 16 }}>
         {rows.map((row) => {
           const currentIndex = STAGES.indexOf(row.status);
-          // ccrm-027 (DEC-SCOPE-259, E3): `enrolled` is reached only through the Enrolment confirmation below, never a stage change.
+          // ccrm-027 (DEC-SCOPE-262, E3): `enrolled` is reached only through the Enrolment confirmation below, never a stage change.
           // ccrm-015 (O2): a closed application takes no stage write; on hold pauses them until resumed.
           const closed = row.status === "withdrawn" || isTerminal(row.outcome);
           const paused = closed || row.outcome === "on_hold";

@@ -125,7 +125,7 @@ async def test_on_an_agency_application_the_counselor_cannot_enrol_and_the_agenc
 
 @pytest.mark.asyncio
 async def test_the_admin_can_enrol_and_the_commission_trigger_runs(db_session, world):
-    # ccrm-027 (DEC-SCOPE-259, E3): the sub-status `enrolled` is a 422; the enrolment confirmation enrols and runs the trigger
+    # ccrm-027 (DEC-SCOPE-262, E3): the sub-status `enrolled` is a 422; the enrolment confirmation enrols and runs the trigger
     app = world["app"]
     async with client_for(world["admin"].email) as c:
         assert (await c.post(SUB.format(app.id), json={"sub_status": "enrolled"})).status_code == 422

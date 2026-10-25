@@ -11,7 +11,7 @@ type Props = { applicationId: string; onChanged: (message: string) => void };
 const NEED_DOCUMENT = "Attach the enrolment confirmation: pick an uploaded one or upload the file.";
 const NEED_CHECKLIST = "Confirm the pre-enrolment checklist is complete.";
 
-// ccrm-027 (DEC-SCOPE-259): enrolment is confirmed here, never by a stage change (E3). Confirming needs the confirmation document and the
+// ccrm-027 (DEC-SCOPE-262): enrolment is confirmed here, never by a stage change (E3). Confirming needs the confirmation document and the
 // pre-enrolment checklist, from an offer onwards, and goes through an explicit step (it may estimate an agency commission). Once enrolled
 // the same form corrects the details. The server checks every rule again; the shown stage travels as `expected_status`.
 export default function ApplicationEnrollmentPanel({ applicationId, onChanged }: Props) {

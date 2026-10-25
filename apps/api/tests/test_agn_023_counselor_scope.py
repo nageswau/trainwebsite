@@ -44,7 +44,7 @@ async def test_the_counselor_cannot_enroll_an_agency_application(db_session, wor
 
 @pytest.mark.asyncio
 async def test_a_direct_application_can_still_be_enrolled_by_its_counselor(db_session, world):  # AC11
-    # ccrm-027 (DEC-SCOPE-259, E3): through the enrolment confirmation; `/advance` to enrolled is a 422
+    # ccrm-027 (DEC-SCOPE-262, E3): through the enrolment confirmation; `/advance` to enrolled is a 422
     async with client_for(world["counselor"].email) as c:
         assert (await c.post(ADVANCE.format(world["direct_app"].id), json={"to_status": "enrolled"})).status_code == 422
         assert (await confirm_enrollment(c, db_session, world["direct_app"])).status_code == 200

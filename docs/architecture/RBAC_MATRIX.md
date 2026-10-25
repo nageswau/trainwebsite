@@ -2740,7 +2740,42 @@ inside the existing role scope (a counselor searching another counselor's code g
 
 - Pinned by `test_ccrm_019_checklist.py::test_scope_other_counselor_agent_read_only_student_reads_own`, `::test_the_agency_route_is_gated_too`.
 
-### 2.173 Enrolment confirmation *(added 2026-10-25 — `DEC-SCOPE-259`, ccrm-027)*
+### 2.173 Counselor calls, messages and meetings on their leads *(added 2026-10-25 — `DEC-SCOPE-259`, ccrm-004)*
+
+| Route | `counselor` (lead's owner, same division) | Another counselor | `telecaller` / `telecaller_manager` / `super_admin` | Others | Anonymous |
+|---|---|---|---|---|---|
+| `GET, POST /counselor/leads/{id}/calls`, `PATCH, DELETE /counselor/calls/{id}` | ✅ (edit / delete: own call, same IST day) | `404` | `403` (they use `/telecaller/...`, read only once handed over) | `403` | `401` |
+| `GET /counselor/leads/{id}/render`, `GET, POST …/messages`, `DELETE /counselor/messages/{id}` | ✅ (delete: own WhatsApp, same IST day) | `404` | `403` | `403` | `401` |
+| `GET, POST /counselor/leads/{id}/meetings` | ✅ | `404` | `403` | `403` | `401` |
+| `GET /telecaller/templates` | ✅ active rows only (new) | ✅ | ✅ (unchanged) | `403` | `401` |
+| `POST /lead-appointments/{id}/complete` with `outcome_notes` | ✅ own appointment (unchanged rule) | `404` | `403` | `403` | `401` |
+
+- Pinned by `test_ccrm_004_counselor_activities.py::test_call_scope_role_and_closed_lead`, `::test_message_scope_role_and_closed_lead`,
+  `::test_meeting_validation_scope_and_closed_lead`; `test_tel_012_templates.py::test_non_readers_cannot_read`, `::test_a_counselor_lists_active_templates_only`.
+
+### 2.174 Lead data fields *(added 2026-10-25 — `DEC-SCOPE-260`, ccrm-005)*
+
+| Route | `telecaller` | `telecaller_manager` / `super_admin` | `counselor` | Others | Anonymous |
+|---|---|---|---|---|---|
+| `POST /telecaller/leads`, `PATCH /telecaller/leads/{id}` (new contact fields) | ✅ own leads; `403` once handed over (tel-008 D1) | ✅ T23 scope | `403` | `403` | `401` |
+| `POST /counselor/walk-in-leads` (new contact fields) | `403` | `403` | ✅ overseas counselor (csc-004) | `403` | `401` |
+| `PATCH /counselor/leads/{id}` | `403` | `403` | ✅ a lead handed to them in their division; `404` otherwise | `403` | `401` |
+| `GET` / `PUT /counselor/leads/{id}/qualification` | `403` | `403` | ✅ same scope; `404` otherwise | `403` | `401` |
+| `GET` / `PUT /telecaller/leads/{id}/qualification` (new overseas fields) | ✅ own; PUT `403` once handed over | ✅ T23 scope | `403` | `403` | `401` |
+
+- Pinned by `test_ccrm_005_lead_fields.py::test_another_counselors_lead_is_404_and_the_telecaller_stays_read_only`,
+  `::test_counselor_cannot_change_contact_details_product_or_priority`.
+
+### 2.175 Offer conditions *(added 2026-10-25 — `DEC-SCOPE-261`, ccrm-024)*
+
+| Route | `overseas_admin` | `counselor` (overseas) | `agent` | `overseas_student` | Others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET …/{id}/offers` (conditions inside) | ✅ any (with evidence list) | ✅ own applications, direct and agency (`403` otherwise) | ✅ own agency's, read-only (no evidence list) | ✅ own, read-only | `403` | `401` |
+| `POST …/condition-evidence`, `POST …/offers/{offer_id}/conditions`, `PATCH …/conditions/{condition_id}` | ✅ | ✅ own | `403` | `403` | `403` | `401` |
+
+- Pinned by `test_ccrm_024_conditions.py::test_scope_readers_see_conditions_but_cannot_write`.
+
+### 2.176 Enrolment confirmation *(added 2026-10-25 — `DEC-SCOPE-262`, ccrm-027)*
 
 | Route | `overseas_admin` | `counselor` (overseas) | `agent` | `overseas_student` | Others | Anonymous |
 |---|---|---|---|---|---|---|

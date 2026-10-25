@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.lead_stages import label as stage_label
 from app.models import AuditLog, Enquiry, LeadEnquiry, TelCampaign, TelProduct, User
 from app.notifications.phone import normalise_phone
-from app.schemas import EnquiryIn, LeadEnquiryCreate, LeadImportRow, TelecallerLeadCreate
+from app.schemas import EnquiryIn, LeadContactFields, LeadEnquiryCreate, LeadImportRow, TelecallerLeadCreate
 from app.services import lead_distribution, lead_handover, lead_pipeline
 from app.services.telecaller_catalogue import locked_active_product
 
@@ -140,7 +140,9 @@ async def create_lead(db: AsyncSession, user: User, payload: TelecallerLeadCreat
         raise HTTPException(409, jsonable_encoder(detail))  # an exception's detail is serialised as is: ids and dates become text
 
     fields = payload.model_dump(include={"name", "phone", "email", "whatsapp_number", "city", "state", "qualification", "passing_year",
-                                         "institution", "product_id", "campaign_id", "source", "priority"})
+                                         "institution", "product_id", "campaign_id", "source", "priority", *LeadContactFields.model_fields})
+    if fields["enquiry_date"] is None:
+        del fields["enquiry_date"]  # ccrm-005 LF4: the column's default, the created date in IST
     assigned = user.role == "telecaller"
     lead = Enquiry(**fields, division=division, subject=payload.subject or product.name, message=payload.message or "",
                    telecaller_user_id=user.id if assigned else None, owner_id=user.id if walk_in else None)
@@ -206,7 +208,8 @@ async def import_row(db: AsyncSession, user: User, campaign: TelCampaign, produc
                            metadata_json=trace, created_by_user_id=user.id))
         await db.flush()
         return known[0], True
-    lead = Enquiry(**row.model_dump(exclude={"subject", "message"}), division=division, product_id=product.id, campaign_id=campaign.id,
+    # exclude_none: an omitted enquiry date takes the column's default (ccrm-005 LF4) instead of an explicit NULL
+    lead = Enquiry(**row.model_dump(exclude={"subject", "message"}, exclude_none=True), division=division, product_id=product.id, campaign_id=campaign.id,
                    source=campaign.source, subject=subject, message=message, metadata_json=trace)
     db.add(lead)
     await db.flush()

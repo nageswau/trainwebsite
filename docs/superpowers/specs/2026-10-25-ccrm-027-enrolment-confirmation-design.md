@@ -2,7 +2,7 @@
 
 Status: design, 2026-10-25. Backlog item `ccrm-027` (`docs/delivery/COUNSELOR_CRM_BACKLOG.md`). Source class: owner request on an
 `UNVERIFIED` spec (see the backlog header; the PDF is not in the repository, so only the backlog's quotes of §10 / §13 / Appendix B are
-used). Decision `DEC-SCOPE-259`, migration `0181_enrollment_confirmation`, API §12FL, RBAC §2.173. Depends on ccrm-015
+used). Decision `DEC-SCOPE-262`, migration `0184_enrollment_confirmation`, API §12FO, RBAC §2.176. Depends on ccrm-015
 (`application_outcomes`, DEC-SCOPE-244, PR #306) and ccrm-026 (visa lifecycle, DEC-SCOPE-254, PR #316), both merged.
 
 ## 1. Requirement (backlog)
@@ -13,7 +13,7 @@ used). Decision `DEC-SCOPE-259`, migration `0181_enrollment_confirmation`, API �
 - Acceptance: Appendix B final row (the student enrols); the management funnel counts enrolments only with confirmation.
 - Regression: tel-018 conversion sweep (Converted relies on `enrolled`), management revenue.
 
-No owner questions were asked in this session; the defaults below are recorded as `NEEDS_CONFIRMATION` in `DEC-SCOPE-259`.
+No owner questions were asked in this session; the defaults below are recorded as `NEEDS_CONFIRMATION` in `DEC-SCOPE-262`.
 
 ## 2. Existing behaviour (verified on main @ 6941d5dc)
 
@@ -43,7 +43,7 @@ No owner questions were asked in this session; the defaults below are recorded a
 
 ## 4. Design
 
-**DB (`0181_enrollment_confirmation`).** `overseas_applications.enrollment_document_id` (FK `student_documents`, `ON DELETE SET NULL`,
+**DB (`0184_enrollment_confirmation`).** `overseas_applications.enrollment_document_id` (FK `student_documents`, `ON DELETE SET NULL`,
 `use_alter` like `offer_document_id`), `pre_enrollment_checklist_complete BOOLEAN NOT NULL DEFAULT false`. The three outcome CHECKs
 (`ck_overseas_applications_outcome`, `ck_application_outcomes_outcome`, `ck_application_status_history_outcome`) are recreated with the
 two new values. No data is changed.

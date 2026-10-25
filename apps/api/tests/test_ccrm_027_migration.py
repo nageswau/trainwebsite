@@ -1,4 +1,4 @@
-"""ccrm-027 -- migration 0181_enrollment_confirmation (DEC-SCOPE-259): the chain, the outcome values it repeats, the two columns, the
+"""ccrm-027 -- migration 0184_enrollment_confirmation (DEC-SCOPE-262): the chain, the outcome values it repeats, the two columns, the
 three outcome CHECKs taking the new values, and the round trip, in a throwaway database (the ccrm-025 pattern)."""
 
 import importlib.util
@@ -14,14 +14,14 @@ from app.core.config import settings
 from tests.test_ccrm_014_migration import _columns
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_ccrm_027_migration_0181", VERSIONS / "0181_enrollment_confirmation.py")
+_spec = importlib.util.spec_from_file_location("_ccrm_027_migration_0184", VERSIONS / "0184_enrollment_confirmation.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0181_enrollment_confirmation", "0180_application_checklists"
+HEAD, BASE = "0184_enrollment_confirmation", "0183_offer_conditions"
 
 
-def test_migration_chains_after_0180_and_is_the_single_head():
+def test_migration_chains_after_0183_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

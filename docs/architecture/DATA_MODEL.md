@@ -2215,7 +2215,32 @@ ccrm-018 re-creates template items on edit), `position` (unique per application)
 indexed), `linked_by_id`, `created_at`. ccrm-019 also writes ccrm-013's `overseas_applications.documents_completed_on`. No backfill;
 downgrade drops the three tables.
 
-## Enrolment confirmation (`ccrm-027`, `DEC-SCOPE-259`; migration `0181_enrollment_confirmation`, after ccrm-019's `0180_application_checklists`)
+## Counselor meetings and appointment outcome notes (`ccrm-004`, `DEC-SCOPE-259`; migration `0181_lead_meetings`, after ccrm-019's `0180`)
+
+`lead_meetings` — append-only: `id`, `lead_id` FK `enquiries` ON DELETE RESTRICT, `author_user_id` FK `users` ON DELETE RESTRICT,
+`occurred_at`, `mode` (40, CHECK `Online`/`Phone`/`In person`), `notes` (text, CHECK length 1–2000), `created_at`; index (`lead_id`,
+`occurred_at`). `appointments.outcome_notes` (text, NULL). No backfill; downgrade refuses while meetings or outcome notes exist.
+
+## Lead data fields (`ccrm-005`, `DEC-SCOPE-260`; migration `0182_lead_data_fields`, after ccrm-004's `0181_lead_meetings`)
+
+`enquiries` gains `contact_preference` (10) NULL (CHECK `call`/`whatsapp`/`email`/`sms`), `enquiry_date` DATE NOT NULL DEFAULT the IST date
+of `now()` (existing rows back-filled from `created_at` in IST), `marketing_opt_in` bool NULL (= not asked), `marketing_consent_at` timestamptz
+NULL (CHECK both or neither; stamped by the model when the consent changes), `referral_name` (160) NULL, `referral_contact` (120) NULL.
+`lead_qualifications` gains `preferred_country_id` FK `countries` ON DELETE SET NULL, `study_mode` (20) NULL (CHECK ccrm-007's list),
+`preferred_campus` (200), `academic_cgpa` numeric(4,2) (CHECK 0–10), `backlogs` smallint (CHECK 0–99). New `lead_english_tests`: `id`,
+`lead_id` FK `enquiries` ON DELETE CASCADE, `position` (unique per lead), `test_type` (CHECK ccrm-007's list), `status` NULL (CHECK),
+`overall_score` numeric(4,1), `test_date`, `valid_until`, `remarks` (200) — ccrm-007's row shape. Downgrade drops the table and columns.
+
+## Offer conditions (`ccrm-024`, `DEC-SCOPE-261`; migration `0183_offer_conditions`, after ccrm-005's `0182_lead_data_fields`)
+
+`application_offer_conditions`: `id`, `offer_id` (FK `application_offers` ON DELETE CASCADE, indexed), `description` text, `owner` (CHECK
+student / counselor / agent), `due_date` NULL (feeds ccrm-030), `status` default `open` (CHECK open / met / waived / failed),
+`evidence_document_id` (FK `student_documents` ON DELETE SET NULL), `note`, `created_by_id` / `updated_by_id` (FK users, NULL on migrated
+rows), `status_changed_at`, `created_at`, `updated_at`. Met needs evidence and waived / failed a note (route rules). Written only by
+`services/offer_conditions.py`. The migration copies each offer's non-blank `conditions` text into one open student row (every offer
+status); the downgrade drops the table.
+
+## Enrolment confirmation (`ccrm-027`, `DEC-SCOPE-262`; migration `0184_enrollment_confirmation`, after ccrm-024's `0183_offer_conditions`)
 
 `overseas_applications` gains `enrollment_document_id` (FK `student_documents` ON DELETE SET NULL, NULL; an "Enrolment confirmation"
 document of the application) and `pre_enrollment_checklist_complete` (bool, NOT NULL, default `false`). `enrollment_confirmed_at`

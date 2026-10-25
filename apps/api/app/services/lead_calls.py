@@ -2,8 +2,9 @@
 rules, the lead's call list, the same-day edit/delete gate and the day counts.
 
 A call belongs to its lead: reads go through the lead's scope (`lead_pipeline.scope`), so a call on a lead the caller can't see is the
-same 404 as a missing one. Only the lead's telecaller logs (D8), and only the caller changes a call, on its IST day (CL4). Writes lock the
-lead first (the order of every lead write). Functions only; nothing here commits. Logs and audit carry ids, the outcome and field names --
+same 404 as a missing one. Only the lead's telecaller logs (D8), and only the caller changes a call, on its IST day (CL4). ccrm-004 (LG1):
+the counselor the lead is handed to logs too, through `counselor_scope` -- with no pipeline effect. Writes lock the lead first (the order
+of every lead write). Functions only; nothing here commits. Logs and audit carry ids, the outcome and field names --
 never remarks."""
 
 import logging
@@ -38,7 +39,7 @@ DAILY_CAP = 300  # D9: an abuse bound, far above real use
 
 NOT_FOUND = "Call not found"
 TELECALLER_ONLY = "Only the lead's telecaller can log a call"
-CALLER_ONLY = "Only the telecaller who logged this call can change it"
+CALLER_ONLY = "Only the person who logged this call can change it"
 LEAD_CLOSED = "This lead is closed. A manager can reopen it before a call is logged"
 FUTURE = "The call time can't be in the future"
 TOO_OLD = f"Calls can be logged up to {BACKDATE_DAYS} days back"
@@ -55,12 +56,13 @@ def _invalid(field: str, msg: str, value) -> RequestValidationError:
     return RequestValidationError([{"type": "value_error", "loc": ("body", field), "msg": msg, "input": value}])
 
 
-def check_time(occurred_at: datetime, now: datetime) -> datetime:
-    """D6 (bdm-009 V4 + V9): up to CLOCK_TOLERANCE ahead is stored as `now`, so no future call is ever stored."""
+def check_time(occurred_at: datetime, now: datetime, future: str = FUTURE, too_old: str = TOO_OLD) -> datetime:
+    """D6 (bdm-009 V4 + V9): up to CLOCK_TOLERANCE ahead is stored as `now`, so no future call is ever stored. ccrm-004 meetings pass
+    their own messages."""
     if occurred_at > now + CLOCK_TOLERANCE:
-        raise _invalid("occurred_at", FUTURE, occurred_at.isoformat())
+        raise _invalid("occurred_at", future, occurred_at.isoformat())
     if today_ist(occurred_at) < today_ist(now) - timedelta(days=BACKDATE_DAYS):
-        raise _invalid("occurred_at", TOO_OLD, occurred_at.isoformat())
+        raise _invalid("occurred_at", too_old, occurred_at.isoformat())
     return min(occurred_at, now)
 
 
@@ -68,8 +70,15 @@ def editable(call: LeadCall, now: datetime) -> bool:
     return today_ist(call.occurred_at) == today_ist(now)
 
 
+def writer(user: User, lead: Enquiry) -> bool:
+    """The lead's telecaller before handover, or (ccrm-004 LG1) the counselor it is handed to, in their division."""
+    if user.role == "counselor":
+        return lead.owner_id == user.id and lead.division == user.division
+    return user.role == "telecaller" and not telecaller_leads.read_only(user, lead)
+
+
 def can_change(user: User, lead: Enquiry, call: LeadCall, now: datetime) -> bool:
-    return user.role == "telecaller" and call.caller_user_id == user.id and not telecaller_leads.read_only(user, lead) and editable(call, now)
+    return call.caller_user_id == user.id and writer(user, lead) and editable(call, now)
 
 
 def out(user: User, lead: Enquiry, call: LeadCall, caller: User, now: datetime) -> dict:
@@ -126,8 +135,9 @@ async def _apply_effect(db: AsyncSession, user: User, lead: Enquiry, outcome: st
 
 
 async def create(db: AsyncSession, user: User, lead: Enquiry, payload: LeadCallCreate, now: datetime) -> tuple[LeadCall, UUID | None]:
-    """The caller locked the lead and checked role and handover. CL2 closed -> 409; D6 time; CL3/D4 outcome rules; D9 cap; the effect;
-    the call; D5 the next follow-up (tel-011's rules, so a refusal there rolls the whole call back)."""
+    """The caller locked the lead and checked role and handover. CL2 closed -> 409; D6 time; CL3/D4 outcome rules; D9 cap; the effect
+    (never for a counselor, LG1: they move the stage themselves); the call; D5 the next follow-up (tel-011's rules, so a refusal there
+    rolls the whole call back)."""
     if lead.status in CLOSED:
         raise HTTPException(409, LEAD_CLOSED)
     occurred_at = check_time(payload.occurred_at or now, now)
@@ -137,7 +147,8 @@ async def create(db: AsyncSession, user: User, lead: Enquiry, payload: LeadCallC
         LeadCall.caller_user_id == user.id, LeadCall.occurred_at >= start, LeadCall.occurred_at < end))
     if (count or 0) >= DAILY_CAP:
         raise HTTPException(409, CAP_REACHED)
-    await _apply_effect(db, user, lead, payload.outcome)
+    if user.role != "counselor":
+        await _apply_effect(db, user, lead, payload.outcome)
     call = LeadCall(lead_id=lead.id, caller_user_id=user.id, occurred_at=occurred_at, duration_seconds=payload.duration_seconds,
                     call_type=payload.call_type, outcome=payload.outcome, remarks=payload.remarks)
     db.add(call)
@@ -150,7 +161,8 @@ async def create(db: AsyncSession, user: User, lead: Enquiry, payload: LeadCallC
 
 
 async def load_for_write(db: AsyncSession, user: User, call_id: UUID, scope: list, now: datetime) -> LeadCall:
-    """In scope (404) -> lead lock -> telecaller and the caller (403) -> handover (403) -> call lock -> its IST day (409)."""
+    """In scope (404) -> lead lock -> telecaller (or the scoped counselor, LG1) and the caller (403) -> handover (403) -> call lock -> its
+    IST day (409)."""
     lead_id = await db.scalar(select(LeadCall.lead_id).join(Enquiry, Enquiry.id == LeadCall.lead_id).where(LeadCall.id == call_id, *scope))
     if lead_id is None:
         raise HTTPException(404, NOT_FOUND)
@@ -158,7 +170,8 @@ async def load_for_write(db: AsyncSession, user: User, call_id: UUID, scope: lis
     call = await db.scalar(select(LeadCall).where(LeadCall.id == call_id).with_for_update().execution_options(populate_existing=True))
     if call is None:  # deleted while we waited for the lead lock
         raise HTTPException(404, NOT_FOUND)
-    require_telecaller(user, CALLER_ONLY)
+    if user.role != "counselor":
+        require_telecaller(user, CALLER_ONLY)
     if call.caller_user_id != user.id:
         raise HTTPException(403, CALLER_ONLY)
     telecaller_leads.require_writable(user, lead)

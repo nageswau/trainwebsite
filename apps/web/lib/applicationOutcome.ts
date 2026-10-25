@@ -1,5 +1,5 @@
 // ccrm-015 (DEC-SCOPE-244): mirrors apps/api/app/application_outcome.py -- an application's exception outcome, independent of its stage.
-// ccrm-027 (DEC-SCOPE-259, E6): non_arrival / cancelled -- post-offer and terminal, like offer_declined.
+// ccrm-027 (DEC-SCOPE-262, E6): non_arrival / cancelled -- post-offer and terminal, like offer_declined.
 export const SETTABLE_OUTCOMES = ["rejected", "withdrawn", "deferred", "on_hold", "offer_declined", "non_arrival", "cancelled"] as const;
 export type SettableOutcome = (typeof SETTABLE_OUTCOMES)[number];
 export const TERMINAL_OUTCOMES = ["rejected", "withdrawn", "offer_declined", "visa_refused", "non_arrival", "cancelled"];

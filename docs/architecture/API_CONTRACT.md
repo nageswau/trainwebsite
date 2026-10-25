@@ -3745,9 +3745,67 @@ Writes hold the application row lock, refresh `documents_completed_on`, audit `o
 note: "On hold" | "Deferred" | "All applications closed" | null}`. `stage` ∈ `lead`, `counselling`, `applying`, `offer`, `visa`, `enrolled`;
 derived on every read from the student's applications (stage + ccrm-015 outcome) and counselor engagement — never stored, no write, no audit.
 
-## 12FL. Enrolment confirmation and post-offer outcomes (ccrm-027) — addendum, 2026-10-25
+## 12FL. Counselor activity on leads (ccrm-004) — addendum, 2026-10-25
 
-`DEC-SCOPE-259`. Under `/api/v1/workflows/overseas/applications/{id}` (router `api/application_offers.py`):
+`DEC-SCOPE-259`. Every `/counselor/...` route below is the counselor a lead is handed to, in their division (`counselor_scope`: other roles
+`403`, another counselor's lead / row `404`); the bodies and answers are the telecaller routes' own.
+
+- Calls (§12R): `GET|POST /api/v1/counselor/leads/{id}/calls`, `PATCH|DELETE /api/v1/counselor/calls/{call_id}`. A counselor's call never
+  moves the stage (`lead` in the `201` is the unchanged stage); `next_follow_up` follows the counselor's tel-011 rules.
+- Messages (§12U / §12Z): `GET /api/v1/counselor/leads/{id}/render?template_id=`, `GET|POST /api/v1/counselor/leads/{id}/messages`,
+  `DELETE /api/v1/counselor/messages/{message_id}` (WhatsApp, sender, same IST day). `GET /api/v1/telecaller/templates` now also answers a
+  counselor (active rows only); previews, scripts and brochures stay `403`.
+- Meetings (new): `GET /api/v1/counselor/leads/{id}/meetings` → page of `{id, occurred_at, mode, notes, author{id, full_name},
+  created_at}`, newest first. `POST` `{occurred_at (offset required), mode: "Online" | "Phone" | "In person", notes (1–2000, trimmed)}` →
+  `201` the row; future or more than 7 days back `422` on `occurred_at`; closed lead `409`. Append-only; not idempotent.
+- Appointment completion (§12Q): `POST /api/v1/lead-appointments/{id}/complete` takes an optional body `{outcome_notes (≤ 2000)}`; every
+  appointment answer carries `outcome_notes`.
+- Counselor lead detail (§12V): adds `whatsapp_to` and `permissions.activity` (lead not closed).
+- Timeline (§12AH): new kind `meeting` (`from_value` = mode, `reason` = notes excerpt); a completed appointment's `reason` is its outcome notes.
+- Management counseling (§mgmt-018): `calls` is a number (the calls the counselor logged in the period) and its figure is `tracked: true`.
+
+## 12FM. Lead data fields (ccrm-005) — addendum, 2026-10-25
+
+`DEC-SCOPE-260`. Additive.
+
+- **Lead fields.** `POST /api/v1/telecaller/leads`, `POST /api/v1/counselor/walk-in-leads` (same body) and `PATCH /api/v1/telecaller/leads/{id}`
+  accept optional `contact_preference` (`call` | `whatsapp` | `email` | `sms` | null), `enquiry_date` (YYYY-MM-DD, 2000 → today; omitted on
+  create = today in IST; null on an edit → 422), `marketing_opt_in` (true | false | null = not asked), `referral_name` (≤ 160) and
+  `referral_contact` (≤ 120). Every lead read (admin list/detail, telecaller list/detail, counselor list/detail) adds those five plus
+  `marketing_consent_at` (set by the server when the consent changes).
+- **`PATCH /api/v1/counselor/leads/{id}`** — counselor only (403 otherwise), a lead handed to them in their division (404 otherwise). Body: the
+  five fields above, nothing else (`extra="forbid"` → 422). Only changed values are written; a consent change writes `lead.consent_change`
+  `{from, to}`, the rest one `lead.contact_update` `{fields}`. Answers the counselor lead detail (§12V).
+- **`GET` / `PUT /api/v1/counselor/leads/{id}/qualification`** — the §12O body and answer on a lead handed to the counselor (404 otherwise).
+- **Qualification (§12O) overseas group** adds `preferred_country_id` (an unknown country → 422 at `preferred_country_id`), `study_mode`
+  (`full_time` | `part_time` | `online`), `preferred_campus` (≤ 200), `academic_cgpa` (0–10, 2 dp), `backlogs` (0–99) and `english_tests`
+  (≤ 5 rows `{test_type, status, overall_score, test_date, valid_until, remarks}`, ccrm-007's §12FB rules; omitted or null = none). The read adds
+  `preferred_country {id, name} | null` and `english_tests[].expired`. On an IT or `other` product these fields are 422 like any other field
+  that does not apply.
+- **CSV import (§12N)** — the template and accepted header gain `contact_preference`, `enquiry_date`, `marketing_opt_in` (yes/no/true/false),
+  `referral_name`, `referral_contact` as the last five columns; older files without them still import.
+- **Conversion (§12FE)** copies study mode, preferred country, CGPA / backlogs and the English tests into the new student's profile.
+
+## 12FN. Offer conditions (ccrm-024) — addendum, 2026-10-25
+
+`DEC-SCOPE-261`. All paths under `/api/v1/workflows/overseas/applications`. Writers = `counselor` (own applications, direct and agency),
+`overseas_admin`, `super_admin` (ccrm-023's).
+
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| `GET` | `/{id}/offers` (§12EX) | unchanged | Additive: each offer gains `condition_items:[{id, description, owner, owner_label, due_date, status, status_label, evidence:{id,name}\|null, note, status_changed_at}]` (oldest first) and `conditions_summary:{total, satisfied, open, failed, all_satisfied}`; the payload gains `agency` (bool) and `evidence_documents` (writers only). Never a file key. |
+| `POST` | `/{id}/condition-evidence` (multipart `file`) | writers | A "Condition evidence" document under the offer-letter upload rules (§12EX). `201 {"document"}`. |
+| `POST` | `/{id}/offers/{offer_id}/conditions` | writers | `{description (≤1000), owner: student\|counselor\|agent, due_date?}`, extra keys `422`. Starts `open`. Another application's offer `404`; not the current offer `409`; `agent` on a direct application `422`. `201 {condition, conditions_summary, changed}`. |
+| `PATCH` | `/{id}/offers/{offer_id}/conditions/{condition_id}` | writers | Partial `{description, owner, due_date, status: open\|met\|waived\|failed, evidence_document_id, note}`; description / owner / status cannot be `null`. Met without evidence `422`; waived / failed without a note `422`; evidence that is not this application's "Condition evidence" `422`; another offer's condition `404`; not the current offer `409`. Nothing different → `200 changed:false`. |
+
+Writes hold the application row lock, are allowed on hold, write one history row (stage unchanged), notify the student, tell the agency
+(CC5), audit `overseas.application.offer_condition` (`{offer_id, condition_id, action: added|updated, status}`) and commit once. Recording an
+offer (§12EX `POST …/offers`, the agency `PUT …/offer`) with conditions text also creates one open student condition; the agency `PATCH`
+that moves only the offer deadline carries the conditions to the new offer row.
+
+## 12FO. Enrolment confirmation and post-offer outcomes (ccrm-027) — addendum, 2026-10-25
+
+`DEC-SCOPE-262`. Under `/api/v1/workflows/overseas/applications/{id}` (router `api/application_offers.py`):
 
 - `GET …/enrollment` — counselor (own, direct and agency), Overseas Admin; the student and the agency read their own. Returns
   `{enrollment: {status, confirmed, confirmed_at, can_confirm, enrollment_date, university_student_id, course_start_date,

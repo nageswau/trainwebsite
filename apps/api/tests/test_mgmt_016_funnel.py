@@ -235,7 +235,7 @@ async def build(db, year: int) -> dict:
                                            status="enrolled", enrollment_confirmed_at=at(6, 20), submitted_on=d(6, 5), created_at=at(6, 2)))  # fmt: skip
     a2 = await add(db, OverseasApplication(university_id=other_uni.id, agent_student_id=record.id, agent_id=org["master"].id, intake="",
                                            status="accepted", submitted_on=d(5, 30), created_at=at(6, 3)))  # fmt: skip
-    # ccrm-027 (DEC-SCOPE-259, E4): the funnel counts confirmed enrolments only, so both enrolled rows carry their confirmation.
+    # ccrm-027 (DEC-SCOPE-262, E4): the funnel counts confirmed enrolments only, so both enrolled rows carry their confirmation.
     a3 = await add(db, OverseasApplication(university_id=uni.id, school_student_id=pupil.id, intake="Jan 2028", status="enrolled", submitted_on=d(6, 8),
                                            enrollment_confirmed_at=at(6, 29), created_at=at(4, 1)))  # fmt: skip
     for app, to_status, when in (
@@ -266,6 +266,20 @@ async def test_each_stage_counts_its_definition(client, db_session):
         "training": 2, "it_application": 1, "certification": 1, "placement": 2, "joining": 1,
         "abroad_education": 2, "abroad_application": 2, "offer": 2, "visa": 1, "enrollment": 2,
     }  # fmt: skip
+
+
+async def test_a_counselors_call_is_not_telecalling(client, db_session):
+    """ccrm-004 (DEC-SCOPE-259 LG5): the Telecalling stage counts telecaller calls only; a lead the counselor called is not in it."""
+    year = random.randint(1700, 1899)
+    counselor = await make_user(db_session, "counselor", "overseas")
+    row = await add(db_session, Enquiry(division="overseas", name=f"Lead {tag()}", email=f"{tag()}@example.local", phone="9876543210", subject="Study",
+                                        message="", source="website", status="follow_up", owner_id=counselor.id,
+                                        created_at=datetime(year, 6, 5, 12, 0, tzinfo=IST)))  # fmt: skip
+    await add(db_session, LeadCall(lead_id=row.id, caller_user_id=counselor.id, occurred_at=datetime(year, 6, 6, 12, 0, tzinfo=IST), duration_seconds=60,
+                                   call_type="outgoing", outcome="interested"))  # fmt: skip
+    await as_role(client, db_session, "partner")
+    counts = values(await read(client, year))
+    assert counts["leads"] == 1 and counts["telecalling"] == 0
 
 
 async def test_an_empty_period_counts_zero(client, db_session):

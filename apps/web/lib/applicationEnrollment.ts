@@ -1,4 +1,4 @@
-// ccrm-027 (DEC-SCOPE-259): an application's enrolment confirmation. The server (services/application_enrollment.py) is the authority on
+// ccrm-027 (DEC-SCOPE-262): an application's enrolment confirmation. The server (services/application_enrollment.py) is the authority on
 // every rule; this mirrors its payload for the counselor's Enrolment panel.
 import type { OfferDocument } from "@/lib/applicationOffers";
 

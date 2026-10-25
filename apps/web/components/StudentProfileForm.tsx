@@ -228,7 +228,8 @@ function QualificationRow({ index, row, onChange, onRemove }: { index: number; r
   );
 }
 
-function EnglishTestRow({ index, row, onChange, onRemove }: { index: number; row: EnglishTest; onChange: (c: Partial<EnglishTest>) => void; onRemove: () => void }) {
+/** One English test's fields (ccrm-005 reuses it for a lead's tests, LF3). */
+export function EnglishTestRow({ index, row, onChange, onRemove }: { index: number; row: EnglishTest; onChange: (c: Partial<EnglishTest>) => void; onRemove: () => void }) {
   const name = `English test ${index + 1}`;
   const id = `sp-t${index}`;
   const input = (key: keyof EnglishTest) => ({ value: String(row[key] ?? ""), onChange: (e: { target: { value: string } }) => onChange({ [key]: e.target.value || null } as Partial<EnglishTest>) });

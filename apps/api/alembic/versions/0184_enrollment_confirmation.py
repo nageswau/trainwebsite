@@ -1,10 +1,10 @@
 """ccrm-027 -- enrolment confirmation: overseas_applications.enrollment_document_id / pre_enrollment_checklist_complete, and the
 non_arrival / cancelled outcomes in the three outcome CHECKs.
 
-Revision ID: 0181_enrollment_confirmation
-Revises: 0180_application_checklists
+Revision ID: 0184_enrollment_confirmation
+Revises: 0183_offer_conditions
 
-docs/superpowers/specs/2026-10-25-ccrm-027-enrolment-confirmation-design.md (DEC-SCOPE-259). Additive: existing rows keep a NULL document
+docs/superpowers/specs/2026-10-25-ccrm-027-enrolment-confirmation-design.md (DEC-SCOPE-262). Additive: existing rows keep a NULL document
 and `false`; nothing is backfilled (E4: an old unconfirmed enrolment stays unconfirmed). 0001 builds a fresh database from the current
 models, which already carry the columns, so they are added only when missing (0170's idiom); the CHECKs are always recreated. OUTCOMES /
 CLEARED repeat app.application_outcome (test_ccrm_027_migration). downgrade() restores the ccrm-015 values and drops the columns (it
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0181_enrollment_confirmation"
-down_revision = "0180_application_checklists"
+revision = "0184_enrollment_confirmation"
+down_revision = "0183_offer_conditions"
 branch_labels = None
 depends_on = None
 

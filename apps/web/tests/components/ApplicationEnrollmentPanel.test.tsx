@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import ApplicationEnrollmentPanel from "@/components/ApplicationEnrollmentPanel";
 
-// ccrm-027 (DEC-SCOPE-259): the counselor confirms enrolment with the confirmation document and the pre-enrolment checklist.
+// ccrm-027 (DEC-SCOPE-262): the counselor confirms enrolment with the confirmation document and the pre-enrolment checklist.
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();

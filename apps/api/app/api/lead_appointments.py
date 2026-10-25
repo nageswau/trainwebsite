@@ -20,7 +20,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.lead_stages import CLOSED
 from app.models import LEAD_APPOINTMENT_STATUSES, Appointment, Enquiry, User
-from app.schemas import LeadAppointmentCancel, LeadAppointmentCreate, LeadAppointmentReschedule
+from app.schemas import LeadAppointmentCancel, LeadAppointmentComplete, LeadAppointmentCreate, LeadAppointmentReschedule
 from app.services import lead_appointments as svc
 from app.services import lead_pipeline, telecaller_alerts, telecaller_leads
 
@@ -96,8 +96,9 @@ async def my_appointments(
     return await svc.counselor_page(db, user, status, limit, offset)
 
 
-async def _act(db: AsyncSession, user: User, appt_id: UUID, action: str, *, reason: str | None = None, new_time=None) -> dict:
-    """AP2 / AP9 / AP10: one transition, its event row and audit row, and its stage effect (AC2, AP3)."""
+async def _act(db: AsyncSession, user: User, appt_id: UUID, action: str, *, reason: str | None = None, new_time=None, outcome_notes: str | None = None) -> dict:
+    """AP2 / AP9 / AP10: one transition, its event row and audit row, and its stage effect (AC2, AP3). ccrm-004 LG4: a completion keeps
+    the session's outcome notes (never in the audit row or the log)."""
     appt, lead = await svc.load_for_action(db, user, appt_id)
     if user.role == "telecaller":
         telecaller_leads.require_writable(user, lead)
@@ -110,6 +111,8 @@ async def _act(db: AsyncSession, user: User, appt_id: UUID, action: str, *, reas
         await svc.require_free(db, appt.staff_id, new_time, exclude_id=appt.id)
         appt.scheduled_at = new_time
     appt.status = svc.ACTION_STATUS[action]
+    if action == "complete":
+        appt.outcome_notes = outcome_notes or None
     moved = action == "reschedule"
     svc.record(db, appt, user, from_status, appt.status, old=old if moved else None, new=new_time if moved else None, reason=reason)
     meta = {"from": from_status, "to": appt.status, **({"old": old.isoformat(), "new": new_time.isoformat()} if moved else {})}
@@ -128,8 +131,10 @@ async def confirm(appt_id: UUID, user: User = Depends(get_current_user), db: Asy
 
 
 @router.post("/{appt_id}/complete")
-async def complete(appt_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _act(db, user, appt_id, "complete")
+async def complete(appt_id: UUID, payload: LeadAppointmentComplete | None = Body(None), user: User = Depends(get_current_user),
+                   db: AsyncSession = Depends(get_db)):
+    """LG4: the body is optional; without it a completion has no outcome notes (tel-016's call)."""
+    return await _act(db, user, appt_id, "complete", outcome_notes=payload.outcome_notes if payload else None)
 
 
 @router.post("/{appt_id}/no-show")

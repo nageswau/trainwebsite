@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 
 import { signInAsFreshCounselor } from "./helpers/counselor";
 
-// ccrm-027 (DEC-SCOPE-259) -- Appendix B final row: the counselor confirms the student's enrolment with the confirmation document and the
+// ccrm-027 (DEC-SCOPE-262) -- Appendix B final row: the counselor confirms the student's enrolment with the confirmation document and the
 // pre-enrolment checklist; a stage change never reaches Enrolled; another application records Non-arrival, which closes it. Requires the
 // stack running with `python -m app.seed` applied; the spec makes its own counselor, students and applications.
 

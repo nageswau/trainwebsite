@@ -24,7 +24,7 @@ HEAD = "0180_application_checklists"
 def test_migration_chains_after_the_previous_head_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == "0179_application_fields"
     script = ScriptDirectory.from_config(_config())
-    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}  # ccrm-027's 0181 chains after it
+    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}  # later migrations chain after it
 
 
 def test_the_migration_repeats_the_model_constants():

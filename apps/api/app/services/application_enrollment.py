@@ -1,4 +1,4 @@
-"""ccrm-027 (DEC-SCOPE-259): an application's enrolment confirmation -- the document type, the checks and the read view behind the
+"""ccrm-027 (DEC-SCOPE-262): an application's enrolment confirmation -- the document type, the checks and the read view behind the
 counselor/Admin routes in api/application_offers.py. Nothing here commits: the route scopes, locks, notifies, audits and commits.
 Spec: docs/superpowers/specs/2026-10-25-ccrm-027-enrolment-confirmation-design.md."""
 

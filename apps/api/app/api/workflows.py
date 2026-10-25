@@ -147,7 +147,7 @@ COUNSELOR_REFUSED_ON_UPDATE = "Use Assign counselor to change the counselor"  # 
 APPLICATION_CLOSED = "This application is closed"
 CHOOSE_ACTIVE_COUNSELOR = "Choose an active overseas counselor"
 MASTER_ENROLLS = "Only the agency's Master confirms enrollment"  # AGN-023 (DEC-SCOPE-090 H4), DEC-SCOPE-054 E1
-# ccrm-027 (DEC-SCOPE-259, E3): `enrolled` is reached only through a confirmation (PUT …/enrollment, or the agency's AGN-013 route).
+# ccrm-027 (DEC-SCOPE-262, E3): `enrolled` is reached only through a confirmation (PUT …/enrollment, or the agency's AGN-013 route).
 CONFIRM_ENROLLMENT = "Enrolment is confirmed with the enrolment confirmation document, not by a stage change"
 
 

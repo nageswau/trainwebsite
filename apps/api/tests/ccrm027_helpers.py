@@ -1,4 +1,4 @@
-"""ccrm-027 test helpers: since DEC-SCOPE-259 (E3) a counselor/Admin reaches `enrolled` only through `PUT …/enrollment`. Tests that need
+"""ccrm-027 test helpers: since DEC-SCOPE-262 (E3) a counselor/Admin reaches `enrolled` only through `PUT …/enrollment`. Tests that need
 an enrolled application as a step confirm it the real way: an "Enrolment confirmation" document of the application, then the PUT."""
 
 from datetime import date

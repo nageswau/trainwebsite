@@ -1056,7 +1056,51 @@ half.
 | `ccrm-017-AC04` | Overview carries the journey beside each application's own status; scope unchanged (404) | `::test_overview_carries_the_journey_from_the_best_application`, `::test_another_counselors_student_is_still_404`; `apps/api/tests/test_ccrm_009_student_360.py` |
 | `ccrm-017-AC05` | 360 Overview shows the tracker, state as text, current marked, responsive | `apps/web/tests/components/OverseasStudentJourney.test.tsx`; `apps/web/tests/e2e/ccrm-017-student-journey.spec.ts` |
 
-| `ccrm-027` | Requirement: §10 enrolment tracking, §13 "do not count an offer or a visa approval as enrolment", Appendix B final row → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-027` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-259` → design `docs/superpowers/specs/2026-10-25-ccrm-027-enrolment-confirmation-design.md`; `API_CONTRACT.md` §12FL; `RBAC_MATRIX.md` §2.173 | E1–E9 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-004` | Requirement: §3 record every call, email, meeting, WhatsApp, counselling session; §14 communication logging → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-004` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-259` → design `docs/superpowers/specs/2026-10-25-ccrm-004-counselor-lead-activities-design.md`; `API_CONTRACT.md` §12FL, `RBAC_MATRIX.md` §2.173, `DATA_MODEL.md` (0181) | LG1–LG8 defaults `NEEDS_CONFIRMATION` |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-004-AC01` | The counselor logs a call on their lead (no stage effect); it shows in the timeline; edit / delete same day; telecaller read only | `apps/api/tests/test_ccrm_004_counselor_activities.py::test_counselor_logs_a_call_with_no_stage_effect_and_it_shows_in_the_timeline`, `::test_a_follow_up_outcome_needs_and_creates_the_counselors_follow_up`, `::test_counselor_edits_and_deletes_their_own_call_the_same_day`; `apps/web/tests/components/CounselorLeadDetail.test.tsx`; `apps/web/tests/e2e/ccrm-004-counselor-activities.spec.ts` |
+| `ccrm-004-AC02` | The counselor sends WhatsApp and email to their lead through the existing services; email hidden-disabled without an address | `::test_counselor_records_a_whatsapp_send_and_deletes_it_the_same_day`, `::test_counselor_emails_their_lead`; `CounselorLeadDetail.test.tsx` |
+| `ccrm-004-AC03` | A meeting (date, mode, notes) is recorded and shows in the timeline | `::test_counselor_records_a_meeting_and_it_shows_in_the_timeline`, `::test_meeting_validation_scope_and_closed_lead`; `apps/web/tests/lib/leadTimeline.test.ts` |
+| `ccrm-004-AC04` | Appointment completion takes optional outcome notes, shown on the appointment and in the timeline | `::test_completing_an_appointment_keeps_its_outcome_notes`, `::test_completing_without_a_body_still_works`; `apps/web/tests/components/LeadAppointmentCard.test.tsx` |
+| `ccrm-004-AC05` | Telecaller metrics do not count the counselor's calls; management counselor performance does | `apps/api/tests/test_mgmt_016_funnel.py::test_a_counselors_call_is_not_telecalling`, `test_mgmt_018_counseling.py::test_each_counselors_figures`; `ManagementCounseling.test.tsx` |
+| `ccrm-004-AC06` | Scope: another counselor 404, other roles 403, closed lead 409 | `::test_call_scope_role_and_closed_lead`, `::test_message_scope_role_and_closed_lead`, `::test_meeting_validation_scope_and_closed_lead` |
+| `ccrm-004-AC07` | Migration round-trips and is the single head | `apps/api/tests/test_ccrm_004_migration.py` |
+
+| `ccrm-005` | Requirement: §3 lead creation fields → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-005` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-260` → design `docs/superpowers/specs/2026-10-25-ccrm-005-lead-data-fields-design.md`; `API_CONTRACT.md` §12FM, `RBAC_MATRIX.md` §2.174, `DATA_MODEL.md` (0182) | LF1–LF9 defaults `NEEDS_CONFIRMATION` |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-005-AC01` | Contact preference, enquiry date, consent and referral round-trip on create and edit; invalid values 422; enquiry date defaults to today (IST) | `apps/api/tests/test_ccrm_005_lead_fields.py::test_create_round_trips_the_contact_fields_and_stamps_the_consent`, `::test_enquiry_date_defaults_to_the_created_date_and_consent_is_not_asked`, `::test_invalid_contact_fields_are_422`; `apps/web/tests/components/LeadContactFields.test.tsx` |
+| `ccrm-005-AC02` | Consent change audited (`lead.consent_change`, names/booleans only) and stamped; unchanged consent writes nothing | `::test_details_edit_changes_the_fields_and_audits_the_consent_change_without_values`, `::test_an_unchanged_consent_writes_no_audit` |
+| `ccrm-005-AC03` | CSV import round-trips the five columns; a bad date rejects only its row; template lists them | `::test_import_round_trips_the_contact_fields`, `::test_the_import_template_lists_the_new_columns`; `test_tel_006_import.py::test_the_template_is_the_header_row` |
+| `ccrm-005-AC04` | Overseas qualification: country, study mode, campus, CGPA, backlogs and English tests round-trip; a past validity shows as expired; invalid 422; IT lead 422 | `::test_overseas_qualification_round_trips_study_academic_and_english_tests`, `::test_invalid_overseas_answers_are_422`, `::test_the_new_overseas_fields_do_not_apply_to_an_it_lead`; `apps/web/tests/components/LeadQualificationForm.test.tsx` (ccrm-005 block) |
+| `ccrm-005-AC05` | Counselor edits contact fields and qualification of their lead; not contact details/product/priority; other counselor 404; telecaller read-only after handover | `::test_counselor_edits_the_contact_fields_of_their_lead`, `::test_counselor_cannot_change_contact_details_product_or_priority`, `::test_counselor_saves_and_reads_the_qualification_of_their_lead`, `::test_another_counselors_lead_is_404_and_the_telecaller_stays_read_only`; `apps/web/tests/components/CounselorLeadDetail.test.tsx` (ccrm-005 block) |
+| `ccrm-005-AC06` | Conversion copies study mode, country, CGPA/backlogs and English tests | `::test_conversion_copies_study_mode_country_backlogs_and_english_tests` |
+| `ccrm-005-AC07` | Migration back-fills the enquiry date in IST, round-trips and is the single head | `apps/api/tests/test_ccrm_005_migration.py` |
+| `ccrm-005-AC08` | Browser: telecaller create/edit/qualification with an expired IELTS; counselor edit; phone width; no console errors | `apps/web/tests/e2e/ccrm-005-lead-data-fields.spec.ts` |
+
+**Addendum, 2026-10-25 (`ccrm-024`)** — one row and its acceptance-criteria map. Offer conditions.
+
+| Feature | Trace | Open items | Evidence |
+|---|---|---|---|
+| `ccrm-024` | Requirement: §9 + §11 + owner answers C1–C4 (in-session 2026-10-25) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-024` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-261` → design `docs/superpowers/specs/2026-10-25-ccrm-024-offer-conditions-design.md`; `API_CONTRACT.md` §12FN, `RBAC_MATRIX.md` §2.175, `DATA_MODEL.md` (0183) | Defaults C5–C11 `NEEDS_CONFIRMATION` | Lite API set, vitest, e2e and browser QA |
+
+| AC | Statement | Tests |
+|---|---|---|
+| `ccrm-024-AC01` | The counselor adds a condition (description, owner, due date); history, audit, student + agency told | `apps/api/tests/test_ccrm_024_conditions.py::test_the_counselor_adds_a_condition_with_history_audit_and_both_sides_told`; `apps/web/tests/components/OfferConditions.test.tsx`; `apps/web/tests/e2e/ccrm-024-offer-conditions.spec.ts` |
+| `ccrm-024-AC02` | Met needs this application's condition evidence (C2) | `::test_met_needs_this_applications_condition_evidence` |
+| `ccrm-024-AC03` | Waived / failed need a note; failed blocks all-satisfied | `::test_waived_and_failed_need_a_note_and_failed_blocks_all_satisfied` |
+| `ccrm-024-AC04` | Agent owner only on an agency application (C6) | `::test_an_agent_owner_needs_an_agency_application_and_validation_is_422` |
+| `ccrm-024-AC05` | Superseded / closed offers read-only; another offer's condition 404 (C3) | `::test_a_superseded_offers_conditions_stay_and_are_read_only`, `::test_a_closed_offer_refuses_condition_writes_and_another_applications_offer_is_404` |
+| `ccrm-024-AC06` | Offer text seeds one open student condition; agency deadline PATCH moves them (C1, C9) | `::test_recording_an_offer_with_conditions_text_seeds_one_open_student_condition`, `::test_an_offer_without_conditions_text_seeds_nothing`, `::test_the_agency_put_seeds_and_the_deadline_patch_moves_the_conditions` |
+| `ccrm-024-AC07` | All satisfied → prompt for an unconditional offer (C4) | `::test_met_needs_this_applications_condition_evidence` (summary); `OfferConditions.test.tsx` "prompts for an unconditional offer" |
+| `ccrm-024-AC08` | Scope: readers see, cannot write; no file keys | `::test_scope_readers_see_conditions_but_cannot_write` |
+| `ccrm-024-AC09` | On hold allowed; terminal outcome refused (C8) | `::test_on_hold_allows_condition_writes_and_a_terminal_outcome_refuses_them` |
+| `ccrm-024-AC10` | Migration: text → one open student row; round trip | `apps/api/tests/test_ccrm_024_migration.py` |
+
+| `ccrm-027` | Requirement: §10 enrolment tracking, §13 "do not count an offer or a visa approval as enrolment", Appendix B final row → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-027` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-262` → design `docs/superpowers/specs/2026-10-25-ccrm-027-enrolment-confirmation-design.md`; `API_CONTRACT.md` §12FO; `RBAC_MATRIX.md` §2.176 | E1–E9 defaults `NEEDS_CONFIRMATION` |
 
 | AC | Criterion | Evidence |
 |---|---|---|

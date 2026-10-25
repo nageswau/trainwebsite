@@ -1,6 +1,6 @@
 import { expect, type APIRequestContext } from "@playwright/test";
 
-// ccrm-027 (DEC-SCOPE-259, E3): `enrolled` is reached only through the enrolment confirmation. For specs that need an enrolled
+// ccrm-027 (DEC-SCOPE-262, E3): `enrolled` is reached only through the enrolment confirmation. For specs that need an enrolled
 // application as setup: as the signed-in Overseas Admin, move it to Offer, upload an enrolment confirmation and confirm.
 export async function confirmEnrollment(request: APIRequestContext, applicationId: string) {
   const url = `/api/v1/workflows/overseas/applications/${applicationId}`;

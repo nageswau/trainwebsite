@@ -38,7 +38,7 @@ async def _events(db, app) -> list[ApplicationOutcome]:
 
 
 def test_the_values_are_the_owner_list():  # O2, O4
-    # ccrm-027 (DEC-SCOPE-259, E6) adds non_arrival and cancelled, both terminal
+    # ccrm-027 (DEC-SCOPE-262, E6) adds non_arrival and cancelled, both terminal
     assert OUTCOMES == ("rejected", "withdrawn", "deferred", "on_hold", "offer_declined", "visa_refused", "non_arrival", "cancelled")
     assert {"rejected", "withdrawn", "offer_declined", "visa_refused", "non_arrival", "cancelled"} == TERMINAL
     assert label("offer_declined") == "Offer declined" and label(None) is None

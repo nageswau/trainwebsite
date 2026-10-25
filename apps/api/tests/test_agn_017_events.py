@@ -285,7 +285,7 @@ async def test_an_offer_correction_at_the_offer_stage_or_by_the_assignee_notifie
 @pytest.mark.asyncio
 async def test_enrolling_an_unassigned_students_application_gives_each_master_one_notice(db_session, world):
     record = await mk_record(db_session, agent=world["master"], full_name="Unassigned")
-    # ccrm-027 (DEC-SCOPE-259, E3): the Overseas Admin enrols it through the enrolment confirmation
+    # ccrm-027 (DEC-SCOPE-262, E3): the Overseas Admin enrols it through the enrolment confirmation
     admin = await mk_user(db_session, role="overseas_admin", full_name="Apps Admin")
     app = await _agency_app(db_session, world, record=record, status="status_tracking")
     async with client_for(admin.email) as c:
