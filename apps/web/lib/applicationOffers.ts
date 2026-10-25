@@ -38,7 +38,7 @@ export type ApplicationOffer = {
 };
 export type OffersPayload = { offers: ApplicationOffer[]; offer_letters: OfferDocument[]; evidence_documents?: OfferDocument[]; agency?: boolean };
 
-// ccrm-024 (DEC-SCOPE-260): an offer's conditions. Met needs evidence (C2); waived and failed need a note (C5); the agent owns one only
+// ccrm-024 (DEC-SCOPE-261): an offer's conditions. Met needs evidence (C2); waived and failed need a note (C5); the agent owns one only
 // on an agency application (C6). The server checks each rule again.
 export type ConditionOwner = "student" | "counselor" | "agent";
 export type ConditionStatus = "open" | "met" | "waived" | "failed";

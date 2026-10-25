@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 import { signInAsFreshCounselor } from "./helpers/counselor";
 
-// ccrm-024 (DEC-SCOPE-260) -- offer conditions: a conditional offer's text becomes one open condition (C1), the counselor adds a second,
+// ccrm-024 (DEC-SCOPE-261) -- offer conditions: a conditional offer's text becomes one open condition (C1), the counselor adds a second,
 // Met is refused without evidence (C2), evidence is uploaded, the other is waived with a note, and the all-satisfied prompt opens Record
 // offer as Unconditional (C4). Requires the stack running with `python -m app.seed` applied; the spec makes its own counselor, student and
 // application.

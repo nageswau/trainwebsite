@@ -1,4 +1,4 @@
-"""ccrm-024 (DEC-SCOPE-260): an offer's conditions -- the only writer of `application_offer_conditions`. Seeded from the offer's text
+"""ccrm-024 (DEC-SCOPE-261): an offer's conditions -- the only writer of `application_offer_conditions`. Seeded from the offer's text
 when an offer is recorded (C1), moved to the re-recorded row when the agency only moves the deadline (C9), otherwise left with their offer
 (C3). Nothing here commits: the route (api/application_offers.py) scopes, locks the application row, writes history, notifies, audits and
 commits. Spec: docs/superpowers/specs/2026-10-25-ccrm-024-offer-conditions-design.md.

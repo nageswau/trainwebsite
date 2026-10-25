@@ -1,4 +1,4 @@
-"""ccrm-024 -- migration 0182_offer_conditions (DEC-SCOPE-260): the chain, the constants it repeats, existing offer text becoming one
+"""ccrm-024 -- migration 0183_offer_conditions (DEC-SCOPE-261): the chain, the constants it repeats, existing offer text becoming one
 open student condition, the CHECKs and the round trip, in a throwaway database (the ccrm-025 pattern). Plain tests: alembic/env.py calls
 asyncio.run()."""
 
@@ -14,15 +14,15 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_ccrm_024_migration_0182", VERSIONS / "0182_offer_conditions.py")
+_spec = importlib.util.spec_from_file_location("_ccrm_024_migration_0183", VERSIONS / "0183_offer_conditions.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0182_offer_conditions", "0181_lead_meetings"
+HEAD, BASE = "0183_offer_conditions", "0182_lead_data_fields"
 TABLE = "application_offer_conditions"
 
 
-def test_migration_chains_after_0181_and_is_the_single_head():
+def test_migration_chains_after_0182_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

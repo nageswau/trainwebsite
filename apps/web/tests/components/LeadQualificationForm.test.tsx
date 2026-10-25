@@ -11,7 +11,9 @@ const EMPTY = {
   qualification: null, passing_year: null, city: null, state: null, current_org: null, work_experience_years: null, it_skill_level: null,
   career_objective: null, preferred_batch: null, budget_range: null, preferred_mode: null, study_level: null, preferred_course: null,
   intake: null, academic_percentage: null, english_test_status: null, passport_status: null,
+  preferred_country_id: null, preferred_country: null, study_mode: null, preferred_campus: null, academic_cgpa: null, backlogs: null, english_tests: [],
 };
+const COUNTRIES = [{ id: "c-uk", name: "United Kingdom" }, { id: "c-ca", name: "Canada" }];
 const qual = (over: Partial<LeadQualification> = {}): LeadQualification => ({
   lead_id: "L1", product: { id: "p-uk", name: "UK", group: "overseas" }, product_group: "overseas", ...EMPTY, city: "Chennai",
   read_only: false, updated_by: null, updated_at: null, ...over,
@@ -25,7 +27,8 @@ beforeEach(() => {
   getReply = () => res(qual());
   putReply = (body) => res({ ...qual(), ...body, updated_by: { id: "t1", full_name: "Tara Caller" }, updated_at: "2026-10-06T07:00:00Z" });
   fetchMock = vi.fn((url: string, init?: RequestInit) => {
-    if (!url.startsWith("/api/v1/telecaller/leads/L1/qualification")) return Promise.resolve(res({}, 404));
+    if (url === "/api/v1/public/countries") return Promise.resolve(res(COUNTRIES)); // ccrm-005: the destination picker
+    if (!url.startsWith("/api/v1/telecaller/leads/L1/qualification") && !url.startsWith("/api/v1/counselor/leads/L1/qualification")) return Promise.resolve(res({}, 404));
     if (init?.method === "PUT") return Promise.resolve(putReply(JSON.parse(String(init.body))));
     return Promise.resolve(getReply());
   });
@@ -139,5 +142,66 @@ describe("LeadQualificationForm (tel-009)", () => {
     rerender(<LeadQualificationForm leadId="L1" productId="p-java" readOnly={false} onSaved={() => undefined} />);
     expect(await screen.findByText("IT training requirement")).toBeTruthy();
     expect(screen.queryByText("Overseas requirement")).toBeNull();
+  });
+});
+
+describe("LeadQualificationForm (ccrm-005)", () => {
+  const ielts = { test_type: "IELTS", status: "taken", overall_score: 6.5, test_date: "2024-01-10", valid_until: "2026-01-10", remarks: null, expired: true };
+
+  it("shows the study preferences, academic profile and an expired English test", async () => {
+    getReply = () => res(qual({ preferred_country_id: "c-uk", preferred_country: { id: "c-uk", name: "United Kingdom" }, study_mode: "part_time",
+      preferred_campus: "City campus", academic_cgpa: 8.4, backlogs: 1, english_tests: [ielts] }));
+    render(<LeadQualificationForm leadId="L1" productId="p-uk" readOnly={false} onSaved={() => undefined} />);
+    expect(await screen.findByText("United Kingdom")).toBeTruthy();
+    expect(screen.getByText("Part-time")).toBeTruthy();
+    expect(screen.getByText("8.4")).toBeTruthy();
+    expect(screen.getByText(/IELTS 6\.5/)).toBeTruthy();
+    expect(screen.getByText("Expired")).toBeTruthy();
+  });
+
+  it("edits the new overseas fields and English tests and PUTs them", async () => {
+    render(<LeadQualificationForm leadId="L1" productId="p-uk" readOnly={false} onSaved={() => undefined} />);
+    await edit();
+    const overseas = screen.getByRole("group", { name: "Overseas requirement" });
+    await waitFor(() => expect(within(overseas).getByRole("option", { name: "Canada" })).toBeTruthy());
+    fireEvent.change(within(overseas).getByLabelText("Preferred country"), { target: { value: "c-ca" } });
+    fireEvent.change(within(overseas).getByLabelText("Study mode"), { target: { value: "online" } });
+    fireEvent.change(within(overseas).getByLabelText("CGPA (out of 10)"), { target: { value: "7.9" } });
+    fireEvent.change(within(overseas).getByLabelText("Backlogs"), { target: { value: "2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add English test" }));
+    fireEvent.change(screen.getByLabelText("English test 1 overall score"), { target: { value: "7" } });
+    fireEvent.change(screen.getByLabelText("English test 1 status"), { target: { value: "taken" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save qualification" }));
+    await waitFor(() => expect(puts()).toHaveLength(1));
+    const body = JSON.parse(String(puts()[0][1].body));
+    expect(body).toMatchObject({ preferred_country_id: "c-ca", study_mode: "online", academic_cgpa: 7.9, backlogs: 2, preferred_campus: null });
+    expect(body.english_tests).toEqual([{ test_type: "IELTS", status: "taken", overall_score: 7, test_date: null, valid_until: null, remarks: null }]);
+  });
+
+  it("QA-01: accepts two-decimal values that are inexact in floating point (8.2, 72.3)", async () => {
+    render(<LeadQualificationForm leadId="L1" productId="p-uk" readOnly={false} onSaved={() => undefined} />);
+    await edit();
+    fireEvent.change(screen.getByLabelText("CGPA (out of 10)"), { target: { value: "8.2" } });
+    fireEvent.change(screen.getByLabelText("Academic percentage"), { target: { value: "72.3" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save qualification" }));
+    await waitFor(() => expect(puts()).toHaveLength(1));
+    expect(JSON.parse(String(puts()[0][1].body))).toMatchObject({ academic_cgpa: 8.2, academic_percentage: 72.3 });
+  });
+
+  it("refuses an out-of-range CGPA in place", async () => {
+    render(<LeadQualificationForm leadId="L1" productId="p-uk" readOnly={false} onSaved={() => undefined} />);
+    await edit();
+    fireEvent.change(screen.getByLabelText("CGPA (out of 10)"), { target: { value: "11" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save qualification" }));
+    expect(await screen.findByText("Enter a CGPA from 0 to 10.")).toBeTruthy();
+    expect(puts()).toHaveLength(0);
+  });
+
+  it("reads and saves through the URL it is given (the counselor's lead)", async () => {
+    render(<LeadQualificationForm leadId="L1" url="/api/v1/counselor/leads/L1/qualification" productId="p-uk" readOnly={false} onSaved={() => undefined} />);
+    await edit();
+    fireEvent.click(screen.getByRole("button", { name: "Save qualification" }));
+    await waitFor(() => expect(puts()).toHaveLength(1));
+    expect(fetchMock.mock.calls.every(([url]) => !String(url).startsWith("/api/v1/telecaller"))).toBe(true);
   });
 });

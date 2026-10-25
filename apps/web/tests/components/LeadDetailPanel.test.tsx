@@ -14,7 +14,8 @@ const detail = (over: Partial<TelecallerLeadDetail> = {}): TelecallerLeadDetail 
   city: "Hyderabad", state: "Telangana", qualification: "B.Tech", passing_year: 2024, institution: "JNTU", division: "it", subject: "Python",
   status: "contacted", status_label: "Contacted", source: "instagram", priority: "warm", created_at: "2026-10-06T05:00:00Z",
   stage_changed_at: "2026-10-06T05:00:00Z", product: { id: "p1", name: "Cyber Security" }, campaign: { id: "c1", name: "Sep 2026" },
-  telecaller: { id: "t1", full_name: "Tara Caller" }, counselor: null, read_only: false, message: "Please call after 6pm", whatsapp_to: "919876543210", ...over,
+  telecaller: { id: "t1", full_name: "Tara Caller" }, counselor: null, read_only: false, message: "Please call after 6pm", whatsapp_to: "919876543210",
+  contact_preference: null, enquiry_date: "2026-10-06", marketing_opt_in: null, marketing_consent_at: null, referral_name: null, referral_contact: null, ...over,
 });
 const priorityRow: TimelineRow = {
   id: "a1", kind: "priority", at: "2026-10-06T06:00:00Z", actor: { id: "t1", full_name: "Tara Caller" }, from_value: "warm", from_label: "Warm",
@@ -32,6 +33,7 @@ const qual = {
   city: "Hyderabad", state: "Telangana", current_org: null, work_experience_years: null, it_skill_level: null, career_objective: null,
   preferred_batch: null, budget_range: null, preferred_mode: null, study_level: null, preferred_course: null, intake: null,
   academic_percentage: null, english_test_status: null, passport_status: null, read_only: false, updated_by: null, updated_at: null,
+  preferred_country_id: null, preferred_country: null, study_mode: null, preferred_campus: null, academic_cgpa: null, backlogs: null, english_tests: [],
 };
 
 let fetchMock: ReturnType<typeof vi.fn>;

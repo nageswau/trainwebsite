@@ -3764,9 +3764,33 @@ derived on every read from the student's applications (stage + ccrm-015 outcome)
 - Timeline (§12AH): new kind `meeting` (`from_value` = mode, `reason` = notes excerpt); a completed appointment's `reason` is its outcome notes.
 - Management counseling (§mgmt-018): `calls` is a number (the calls the counselor logged in the period) and its figure is `tracked: true`.
 
-## 12FM. Offer conditions (ccrm-024) — addendum, 2026-10-25
+<<<<<<< HEAD
+## 12FM. Lead data fields (ccrm-005) — addendum, 2026-10-25
 
-`DEC-SCOPE-260`. All paths under `/api/v1/workflows/overseas/applications`. Writers = `counselor` (own applications, direct and agency),
+`DEC-SCOPE-260`. Additive.
+
+- **Lead fields.** `POST /api/v1/telecaller/leads`, `POST /api/v1/counselor/walk-in-leads` (same body) and `PATCH /api/v1/telecaller/leads/{id}`
+  accept optional `contact_preference` (`call` | `whatsapp` | `email` | `sms` | null), `enquiry_date` (YYYY-MM-DD, 2000 → today; omitted on
+  create = today in IST; null on an edit → 422), `marketing_opt_in` (true | false | null = not asked), `referral_name` (≤ 160) and
+  `referral_contact` (≤ 120). Every lead read (admin list/detail, telecaller list/detail, counselor list/detail) adds those five plus
+  `marketing_consent_at` (set by the server when the consent changes).
+- **`PATCH /api/v1/counselor/leads/{id}`** — counselor only (403 otherwise), a lead handed to them in their division (404 otherwise). Body: the
+  five fields above, nothing else (`extra="forbid"` → 422). Only changed values are written; a consent change writes `lead.consent_change`
+  `{from, to}`, the rest one `lead.contact_update` `{fields}`. Answers the counselor lead detail (§12V).
+- **`GET` / `PUT /api/v1/counselor/leads/{id}/qualification`** — the §12O body and answer on a lead handed to the counselor (404 otherwise).
+- **Qualification (§12O) overseas group** adds `preferred_country_id` (an unknown country → 422 at `preferred_country_id`), `study_mode`
+  (`full_time` | `part_time` | `online`), `preferred_campus` (≤ 200), `academic_cgpa` (0–10, 2 dp), `backlogs` (0–99) and `english_tests`
+  (≤ 5 rows `{test_type, status, overall_score, test_date, valid_until, remarks}`, ccrm-007's §12FB rules; omitted or null = none). The read adds
+  `preferred_country {id, name} | null` and `english_tests[].expired`. On an IT or `other` product these fields are 422 like any other field
+  that does not apply.
+- **CSV import (§12N)** — the template and accepted header gain `contact_preference`, `enquiry_date`, `marketing_opt_in` (yes/no/true/false),
+  `referral_name`, `referral_contact` as the last five columns; older files without them still import.
+- **Conversion (§12FE)** copies study mode, preferred country, CGPA / backlogs and the English tests into the new student's profile.
+>>>>>>> 2eb7292c444c1bd7c7c4249ebff5d5474a682d9e
+
+## 12FN. Offer conditions (ccrm-024) — addendum, 2026-10-25
+
+`DEC-SCOPE-261`. All paths under `/api/v1/workflows/overseas/applications`. Writers = `counselor` (own applications, direct and agency),
 `overseas_admin`, `super_admin` (ccrm-023's).
 
 | Method | Path | Roles | Notes |
@@ -3780,3 +3804,4 @@ Writes hold the application row lock, are allowed on hold, write one history row
 (CC5), audit `overseas.application.offer_condition` (`{offer_id, condition_id, action: added|updated, status}`) and commit once. Recording an
 offer (§12EX `POST …/offers`, the agency `PUT …/offer`) with conditions text also creates one open student condition; the agency `PATCH`
 that moves only the offer deadline carries the conditions to the new offer row.
+=======

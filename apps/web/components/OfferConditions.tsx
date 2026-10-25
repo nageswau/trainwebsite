@@ -26,7 +26,7 @@ type Props = {
   onRecordUnconditional: () => void;
 };
 
-// ccrm-024 (DEC-SCOPE-260): the conditions an offer carries. Only the current offer's can change (C3); met needs evidence (C2), waived
+// ccrm-024 (DEC-SCOPE-261): the conditions an offer carries. Only the current offer's can change (C3); met needs evidence (C2), waived
 // and failed a note (C5). Once every condition is met or waived the counselor is prompted -- nothing changes on its own (C4).
 export default function OfferConditions({ applicationId, offer, agency, evidence, onSaved, onRecordUnconditional }: Props) {
   const [editing, setEditing] = useState<string | null>(null); // a condition id, "new", or null

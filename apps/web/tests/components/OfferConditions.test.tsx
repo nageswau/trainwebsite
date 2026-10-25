@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import ApplicationOffersPanel from "@/components/ApplicationOffersPanel";
 import { conditionProblem } from "@/lib/applicationOffers";
 
-// ccrm-024 (DEC-SCOPE-260): an offer's conditions inside the counselor's Offers panel -- list, add, update with evidence (C2) or a
+// ccrm-024 (DEC-SCOPE-261): an offer's conditions inside the counselor's Offers panel -- list, add, update with evidence (C2) or a
 // note (C5), read-only on a superseded offer (C3), and the all-satisfied prompt (C4).
 afterEach(() => {
   cleanup();

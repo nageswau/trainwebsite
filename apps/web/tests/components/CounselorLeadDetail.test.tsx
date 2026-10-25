@@ -17,7 +17,8 @@ const detail = (over: Partial<Detail> = {}): Detail => ({
   status_label: "Counselling Completed", source: "website", priority: "warm", created_at: "2026-10-06T05:00:00Z", stage_changed_at: "2026-10-06T05:00:00Z",
   product: null, campaign: null, telecaller: { id: "t1", full_name: "Tara Caller" }, counselor: { id: "c1", full_name: "Cara Counselor" },
   converted_user: null, message: "Hello", milestones: { student: null, items: [] }, next_action: null, next_action_due: null, next_action_overdue: false,
-  permissions: { return: true, link: true, unlink: false, stage: true, follow_up: true, convert: false, activity: true }, whatsapp_to: "919876543210", ...over,
+  permissions: { return: true, link: true, unlink: false, stage: true, follow_up: true, convert: false, activity: true }, whatsapp_to: "919876543210",
+  contact_preference: null, enquiry_date: "2026-10-06", marketing_opt_in: null, marketing_consent_at: null, referral_name: null, referral_contact: null, ...over,
 });
 const closedPermissions = { return: true, link: false, unlink: false, stage: false, follow_up: false, convert: false, activity: false };
 const asha = { id: "s1", full_name: "Asha Rao", email: "asha@example.com", phone: null, linked_elsewhere: false };
@@ -32,6 +33,14 @@ const followUp = {
   lead: { id: "L1", lead_code: "LD-000042", name: "Asha Rao", priority: "warm", status: "counselling_completed", status_label: "Counselling Completed", product: null, telecaller: null },
   created_by: { id: "c1", full_name: "Cara Counselor" }, created_at: "2026-10-22T05:00:00Z", completed_at: null, completed_by: null, cancelled_at: null,
   cancel_reason: null, can_change: true,
+};
+
+const qualification = {
+  lead_id: "L1", product: null, product_group: null, qualification: null, passing_year: null, city: null, state: null, current_org: null,
+  work_experience_years: null, it_skill_level: null, career_objective: null, preferred_batch: null, budget_range: null, preferred_mode: null,
+  study_level: null, preferred_course: null, intake: null, academic_percentage: null, english_test_status: null, passport_status: null,
+  preferred_country_id: null, preferred_country: null, study_mode: null, preferred_campus: null, academic_cgpa: null, backlogs: null,
+  english_tests: [], read_only: false, updated_by: null, updated_at: null,
 };
 
 let fetchMock: ReturnType<typeof vi.fn>;
@@ -49,6 +58,8 @@ beforeEach(() => {
     if (tail === "/link-suggestions") return Promise.resolve(res({ items: [asha] }));
     if (tail.startsWith("/link-suggestions?q=")) return Promise.resolve(res({ items: [taken] }));
     if (["/timeline", "/notes", "/follow-ups", "/calls", "/messages", "/meetings"].some((t) => tail.startsWith(t))) return Promise.resolve(res(pageOf([])));
+    if (tail === "/qualification") return Promise.resolve(res(qualification)); // ccrm-005's section
+    if (url === "/api/v1/public/countries") return Promise.resolve(res([]));
     if (url.startsWith("/api/v1/counselor/leads?")) return Promise.resolve(res(pageOf([detail()])));
     return Promise.resolve(res({}, 404));
   });
@@ -324,5 +335,25 @@ describe("CounselorLeadsPanel", () => {
     render(<CounselorLeadDetail initial={detail({ status: "lost", status_label: "Lost", permissions: closedPermissions })} />);
     expect(await screen.findByRole("heading", { name: "Calls" })).toBeInTheDocument();
     for (const name of ["Log call", "Send WhatsApp", "Send email", "Record meeting"]) expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+  });
+});
+
+describe("CounselorLeadDetail (ccrm-005)", () => {
+  it("edits the contact, consent and referral fields through the counselor route", async () => {
+    reply["PATCH "] = () => res(detail({ contact_preference: "call", referral_name: "Asha" }));
+    render(<CounselorLeadDetail initial={detail()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit details" }));
+    fireEvent.change(screen.getByLabelText("Preferred contact method"), { target: { value: "call" } });
+    fireEvent.change(screen.getByLabelText("Referred by (name)"), { target: { value: "Asha" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save details" }));
+    expect(await screen.findByText("Details saved.")).toBeInTheDocument();
+    expect(body("PATCH", "")).toEqual({ contact_preference: "call", referral_name: "Asha" });
+    expect(screen.getByText("Phone call")).toBeInTheDocument();
+  });
+
+  it("shows the lead's qualification from the counselor route", async () => {
+    render(<CounselorLeadDetail initial={detail()} />);
+    expect(await screen.findByRole("heading", { name: "Qualification" })).toBeInTheDocument();
+    await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => u === "/api/v1/counselor/leads/L1/qualification")).toBe(true));
   });
 });

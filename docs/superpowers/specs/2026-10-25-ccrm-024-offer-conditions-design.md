@@ -1,9 +1,9 @@
 # ccrm-024 — Offer conditions — design
 
 Date 2026-10-25. Backlog: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` § `ccrm-024` (source §9 "conditions to satisfy, owner, due date and
-completion evidence"; §11 offer condition due). Depends on ccrm-023 (merged, PR #307). Decision `DEC-SCOPE-260`. Migration
-`0182_offer_conditions` (after ccrm-004's `0181_lead_meetings`). API §12FM. RBAC §2.174. Re-chained 2026-10-25 after ccrm-004 (PR #322)
-took 0181 / DEC-SCOPE-259 / 12FL / 2.173.
+completion evidence"; §11 offer condition due). Depends on ccrm-023 (merged, PR #307). Decision `DEC-SCOPE-261`. Migration
+`0183_offer_conditions` (after ccrm-005's `0182_lead_data_fields`). API §12FN. RBAC §2.175. Re-chained 2026-10-25 after ccrm-004 (PR #322)
+took 0181 / DEC-SCOPE-259 / 12FL / 2.173, then after ccrm-005 (PR #323) took 0182 / DEC-SCOPE-260 / 12FM / 2.174.
 
 ## 1. Owner answers (2026-10-25, clarifying prompt)
 
@@ -46,7 +46,7 @@ route (`POST …/offers`) and the agency PUT/PATCH through `services/application
 | status_changed_at | timestamptz null | |
 | created_at, updated_at | TimestampMixin | |
 
-Migration `0182`: create the table (guarded — 0001 builds from models), then insert one `open` / `student` row per offer whose
+Migration `0183`: create the table (guarded — 0001 builds from models), then insert one `open` / `student` row per offer whose
 `conditions` text is non-blank (every offer status, so history stays faithful). Downgrade drops the table.
 
 ### 3.2 Service `services/offer_conditions.py` (no commits)
@@ -105,4 +105,4 @@ Reminders on due dates (ccrm-030), student/agency condition UI (nehn-033 / agenc
 ## 5. Risks
 
 `record()` is shared with the agency PUT/PATCH (AGN-010 tests); the offer view grows two keys (ccrm-023/025 tests compare fields, not
-whole dicts); ccrm-004's 0181 migration test uses the walk idiom, so 0182 chaining after it needs no test change.
+whole dicts); ccrm-004's 0181 migration test uses the walk idiom, so 0183 chaining after it needs no test change.

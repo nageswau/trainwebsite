@@ -1068,12 +1068,24 @@ half.
 | `ccrm-004-AC06` | Scope: another counselor 404, other roles 403, closed lead 409 | `::test_call_scope_role_and_closed_lead`, `::test_message_scope_role_and_closed_lead`, `::test_meeting_validation_scope_and_closed_lead` |
 | `ccrm-004-AC07` | Migration round-trips and is the single head | `apps/api/tests/test_ccrm_004_migration.py` |
 
+| `ccrm-005` | Requirement: §3 lead creation fields → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-005` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-260` → design `docs/superpowers/specs/2026-10-25-ccrm-005-lead-data-fields-design.md`; `API_CONTRACT.md` §12FM, `RBAC_MATRIX.md` §2.174, `DATA_MODEL.md` (0182) | LF1–LF9 defaults `NEEDS_CONFIRMATION` |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-005-AC01` | Contact preference, enquiry date, consent and referral round-trip on create and edit; invalid values 422; enquiry date defaults to today (IST) | `apps/api/tests/test_ccrm_005_lead_fields.py::test_create_round_trips_the_contact_fields_and_stamps_the_consent`, `::test_enquiry_date_defaults_to_the_created_date_and_consent_is_not_asked`, `::test_invalid_contact_fields_are_422`; `apps/web/tests/components/LeadContactFields.test.tsx` |
+| `ccrm-005-AC02` | Consent change audited (`lead.consent_change`, names/booleans only) and stamped; unchanged consent writes nothing | `::test_details_edit_changes_the_fields_and_audits_the_consent_change_without_values`, `::test_an_unchanged_consent_writes_no_audit` |
+| `ccrm-005-AC03` | CSV import round-trips the five columns; a bad date rejects only its row; template lists them | `::test_import_round_trips_the_contact_fields`, `::test_the_import_template_lists_the_new_columns`; `test_tel_006_import.py::test_the_template_is_the_header_row` |
+| `ccrm-005-AC04` | Overseas qualification: country, study mode, campus, CGPA, backlogs and English tests round-trip; a past validity shows as expired; invalid 422; IT lead 422 | `::test_overseas_qualification_round_trips_study_academic_and_english_tests`, `::test_invalid_overseas_answers_are_422`, `::test_the_new_overseas_fields_do_not_apply_to_an_it_lead`; `apps/web/tests/components/LeadQualificationForm.test.tsx` (ccrm-005 block) |
+| `ccrm-005-AC05` | Counselor edits contact fields and qualification of their lead; not contact details/product/priority; other counselor 404; telecaller read-only after handover | `::test_counselor_edits_the_contact_fields_of_their_lead`, `::test_counselor_cannot_change_contact_details_product_or_priority`, `::test_counselor_saves_and_reads_the_qualification_of_their_lead`, `::test_another_counselors_lead_is_404_and_the_telecaller_stays_read_only`; `apps/web/tests/components/CounselorLeadDetail.test.tsx` (ccrm-005 block) |
+| `ccrm-005-AC06` | Conversion copies study mode, country, CGPA/backlogs and English tests | `::test_conversion_copies_study_mode_country_backlogs_and_english_tests` |
+| `ccrm-005-AC07` | Migration back-fills the enquiry date in IST, round-trips and is the single head | `apps/api/tests/test_ccrm_005_migration.py` |
+| `ccrm-005-AC08` | Browser: telecaller create/edit/qualification with an expired IELTS; counselor edit; phone width; no console errors | `apps/web/tests/e2e/ccrm-005-lead-data-fields.spec.ts` |
 
 **Addendum, 2026-10-25 (`ccrm-024`)** — one row and its acceptance-criteria map. Offer conditions.
 
 | Feature | Trace | Open items | Evidence |
 |---|---|---|---|
-| `ccrm-024` | Requirement: §9 + §11 + owner answers C1–C4 (in-session 2026-10-25) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-024` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-260` → design `docs/superpowers/specs/2026-10-25-ccrm-024-offer-conditions-design.md`; `API_CONTRACT.md` §12FM, `RBAC_MATRIX.md` §2.174, `DATA_MODEL.md` (0182) | Defaults C5–C11 `NEEDS_CONFIRMATION` | Lite API set, vitest, e2e and browser QA |
+| `ccrm-024` | Requirement: §9 + §11 + owner answers C1–C4 (in-session 2026-10-25) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-024` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-261` → design `docs/superpowers/specs/2026-10-25-ccrm-024-offer-conditions-design.md`; `API_CONTRACT.md` §12FN, `RBAC_MATRIX.md` §2.175, `DATA_MODEL.md` (0183) | Defaults C5–C11 `NEEDS_CONFIRMATION` | Lite API set, vitest, e2e and browser QA |
 
 | AC | Statement | Tests |
 |---|---|---|

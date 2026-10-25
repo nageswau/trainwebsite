@@ -90,11 +90,11 @@ test("a manager opens a queue lead, sets its priority and stage, edits it, and f
 
   await page.getByRole("button", { name: "Edit details" }).click();
   await page.getByLabel("City").fill("Hyderabad");
-  await page.getByLabel("Email").fill("not-an-email");
+  await page.getByLabel("Email", { exact: true }).fill("not-an-email");
   await page.getByRole("button", { name: "Save details" }).click();
   // Next's route announcer is also role=alert, so narrow to the form's message
   await expect(page.getByRole("alert").filter({ hasText: "Enter a valid email address" })).toBeVisible();
-  await page.getByLabel("Email").fill(`tel008-${stamp}@example.com`);
+  await page.getByLabel("Email", { exact: true }).fill(`tel008-${stamp}@example.com`);
   await page.getByLabel("Product interest").selectOption({ label: "Cyber Security" });
   await page.getByRole("button", { name: "Save details" }).click();
   await expect(page.getByText("Details saved.")).toBeVisible();

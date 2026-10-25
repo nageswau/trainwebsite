@@ -1,9 +1,9 @@
 """ccrm-024 -- an offer's conditions (application_offer_conditions).
 
-Revision ID: 0182_offer_conditions
-Revises: 0181_lead_meetings
+Revision ID: 0183_offer_conditions
+Revises: 0182_lead_data_fields
 
-docs/superpowers/specs/2026-10-25-ccrm-024-offer-conditions-design.md (DEC-SCOPE-260). Each offer's free-text conditions become one open
+docs/superpowers/specs/2026-10-25-ccrm-024-offer-conditions-design.md (DEC-SCOPE-261). Each offer's free-text conditions become one open
 condition owned by the student (C1), on every offer status so the history stays faithful; blank text makes none. 0001 builds a fresh
 database from the current models, so the table is made only when missing (0166's idiom) and the backfill then finds nothing to copy twice.
 OWNERS / STATUSES repeat app.models (test_ccrm_024_migration). The downgrade drops the table.
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0182_offer_conditions"
-down_revision = "0181_lead_meetings"
+revision = "0183_offer_conditions"
+down_revision = "0182_lead_data_fields"
 branch_labels = None
 depends_on = None
 

@@ -1,4 +1,4 @@
-"""ccrm-024 (DEC-SCOPE-260, C1-C11) -- offer conditions: add and update on the current offer, evidence for met (C2), notes for
+"""ccrm-024 (DEC-SCOPE-261, C1-C11) -- offer conditions: add and update on the current offer, evidence for met (C2), notes for
 waived/failed (C5), the agent owner on agency applications only (C6), seeding from the offer text (C1) on the counselor route and the
 agency PUT, history on supersede (C3), the agency deadline PATCH moving them (C9), the all-satisfied summary (C4), scope and no file keys."""
 

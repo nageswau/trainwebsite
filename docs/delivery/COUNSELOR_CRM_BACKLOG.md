@@ -229,6 +229,8 @@ asked one at a time when the item is picked up).
 - **Regression:** import template columns, qualification form, duplicate panel.
 - **Complexity:** medium. **Risk:** low.
 - **Open questions:** which new fields are mandatory, and at which stage (e.g. country + intake before Qualified)?
+- **Status (2026-10-25):** built on `feature/ccrm-005` — `DEC-SCOPE-260` (LF1–LF9 defaults `NEEDS_CONFIRMATION`; LF2 nothing mandatory),
+  migration `0182_lead_data_fields`, API §12FM, RBAC §2.174. Design `docs/superpowers/specs/2026-10-25-ccrm-005-lead-data-fields-design.md`.
 
 ### `ccrm-006` — Lead stage additions and structured loss capture
 
@@ -585,8 +587,8 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
   failed), evidence document. Unconditional when all met (counselor may then record an unconditional offer). Due dates feed ccrm-030.
 - **DB:** migration: `offer_conditions` table; existing text migrated into one row. **Dependencies:** ccrm-023.
 - **Complexity:** small. **Risk:** low.
-- **Status (2026-10-25):** built on `worktree-ccrm-024` — `DEC-SCOPE-260`, migration `0182_offer_conditions` (after ccrm-004's
-  `0181_lead_meetings`; table `application_offer_conditions`), API §12FM, RBAC §2.174; owner answers C1 (offer text seeds one open student condition), C2 (evidence
+- **Status (2026-10-25):** built on `worktree-ccrm-024` — `DEC-SCOPE-261`, migration `0183_offer_conditions` (after ccrm-005's
+  `0182_lead_data_fields`; table `application_offer_conditions`), API §12FN, RBAC §2.175; owner answers C1 (offer text seeds one open student condition), C2 (evidence
   required for Met), C3 (conditions stay with their offer), C4 (all satisfied → prompt to record an unconditional offer); C5–C11 defaults.
   Design `docs/superpowers/specs/2026-10-25-ccrm-024-offer-conditions-design.md`.
 

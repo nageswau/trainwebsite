@@ -9372,12 +9372,34 @@ lead activity is not copied to the student (the student 360 links to the lead, c
 **Numbering:** migration `0181_lead_meetings` (after ccrm-019's `0180`); API §12FL; RBAC §2.173. ccrm-017 took DEC-SCOPE-258 / §12FK first.
 - **Feature ID authorized:** `ccrm-004`. **Status:** built on `feature/ccrm-004`.
 
-### DEC-SCOPE-260 — Offer conditions (`ccrm-024`)
+<<<<<<< HEAD
+### DEC-SCOPE-260 — Lead data fields: contact preference, study, academic, English, consent, referral (`ccrm-005`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-005` (source PDF §3 "Lead creation fields", `UNVERIFIED`); design
+`docs/superpowers/specs/2026-10-25-ccrm-005-lead-data-fields-design.md`. Dependency `ccrm-003` (counselor write scope, `DEC-SCOPE-243`).
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** LF1 contact preference
+(call / WhatsApp / email / SMS), enquiry date, marketing consent and referral name/contact are `enquiries` columns for every lead; preferred
+country (FK `countries`), study mode (full-time / part-time / online), preferred campus, CGPA (0–10) and backlogs (0–99) join tel-009's
+**overseas** qualification group, and the English tests are a `lead_english_tests` list in the same group (QD2: replaced whole, a field that
+does not apply → 422); LF2 nothing is mandatory at create or at any stage; LF3 English tests use ccrm-007's row rules, at most 5, and the read
+flags `expired` (valid-until before today, IST); LF4 the enquiry date defaults to the created date (IST), is set on create, import and edit,
+2000 → today, never cleared, and existing leads are back-filled from `created_at`; LF5 a consent change is its own audit row
+`lead.consent_change` `{from, to}` and stamps `marketing_consent_at` (cleared with "not asked"); LF6 the CSV import gains the five `enquiries`
+columns (yes/no, YYYY-MM-DD) — study and English answers stay in the form; LF7 the counselor edits the five fields
+(`PATCH /counselor/leads/{id}`) and the qualification (`GET/PUT /counselor/leads/{id}/qualification`) of a lead handed to them; contact
+details, product and priority stay the telecaller's, and a handed-over lead stays read-only for the telecaller (tel-008 D1); LF8 the ccrm-008
+conversion copies study mode, preferred country, CGPA (when no percentage), backlogs and the English tests into the student profile; LF9 logs
+and audit rows carry field names only.
+**Numbering:** migration `0182_lead_data_fields` (after ccrm-004's `0181_lead_meetings`); API §12FM; RBAC §2.174.
+- **Feature ID authorized:** `ccrm-005`. **Status:** built on `feature/ccrm-005`.
+>>>>>>> 2eb7292c444c1bd7c7c4249ebff5d5474a682d9e
+
+### DEC-SCOPE-261 — Offer conditions (`ccrm-024`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-024` (source PDF §9 "conditions to satisfy, owner, due date and completion
 evidence", §11 offer condition due, `UNVERIFIED`); design `docs/superpowers/specs/2026-10-25-ccrm-024-offer-conditions-design.md`.
 **Owner answers (2026-10-25, in session):** C1 the offer's free-text conditions stay; recording an offer with that text (counselor route or
-agency PUT) seeds one open condition owned by the student, as migration 0182 does for existing offers; C2 an evidence document is
+agency PUT) seeds one open condition owned by the student, as migration 0183 does for existing offers; C2 an evidence document is
 **required** to mark a condition Met; C3 conditions belong to their offer and stay with it, read-only, when a new offer supersedes it; C4
 all conditions met or waived → a prompt ("All conditions satisfied" + "Record unconditional offer" prefilled), nothing automatic.
 **Recommended defaults (`NEEDS_CONFIRMATION`):** C5 waived / failed need a note; C6 owner `agent` only on an agency application; C7
@@ -9385,5 +9407,6 @@ writers = ccrm-023's (counselor on own applications, Overseas Admin), the studen
 writes move no stage — allowed on hold, refused on withdrawn / terminal outcome / archived agency record; C9 the agency PATCH that only
 moves the active offer's deadline moves its conditions to the re-recorded row; C10 no delete (waive with a note), any status may be changed
 again, each change kept in history; C11 evidence is a "Condition evidence" document uploaded to the application.
-**Numbering:** migration `0182_offer_conditions` (after ccrm-004's `0181_lead_meetings`); API §12FM; RBAC §2.174.
+**Numbering:** migration `0183_offer_conditions` (after ccrm-005's `0182_lead_data_fields`); API §12FN; RBAC §2.175.
 - **Feature ID authorized:** `ccrm-024`. **Status:** built on `worktree-ccrm-024`.
+=======

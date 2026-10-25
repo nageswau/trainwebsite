@@ -21,6 +21,7 @@ from app.lead_stages import CLOSED
 from app.models import Enquiry, User
 from app.schemas import (
     CounselorLeadStageMove,
+    CounselorLeadUpdate,
     CounselorStudentCreate,
     LeadHandoverIn,
     LeadMeetingIn,
@@ -30,11 +31,22 @@ from app.schemas import (
     LeadNoteIn,
     LeadNoteOut,
     LeadNotePage,
+    LeadQualificationIn,
     LeadReturnIn,
     LeadStudentLinkIn,
     LeadTimelinePage,
 )
-from app.services import bdm_leads, counselor_students, lead_conversion, lead_handover, lead_meetings, lead_notes, lead_pipeline, telecaller_leads
+from app.services import (
+    bdm_leads,
+    counselor_students,
+    lead_conversion,
+    lead_handover,
+    lead_meetings,
+    lead_notes,
+    lead_pipeline,
+    lead_qualification,
+    telecaller_leads,
+)
 from app.services.bdm_appointments import db_now
 from app.services.lead_timeline import page as timeline_page
 
@@ -72,6 +84,36 @@ async def my_leads(
 @counselor_router.get("/{lead_id}")
 async def lead_detail(lead_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return await lead_handover.detail(db, lead_id, lead_handover.counselor_scope(user))
+
+
+@counselor_router.patch("/{lead_id}")
+async def update_lead(lead_id: UUID, payload: CounselorLeadUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-005 (DEC-SCOPE-260, LF7): the contact preference, enquiry date, marketing consent and referral of a lead handed to this
+    counselor -- tel-008's update (only changed values; the consent change is its own audit row, LF5). The answer is the lead detail."""
+    filters = lead_handover.counselor_scope(user)
+    lead = await lead_pipeline.locked_lead(db, lead_id, *filters)
+    await telecaller_leads.apply_update(db, user, lead, payload.model_dump(exclude_unset=True))
+    await db.commit()
+    return await lead_handover.detail(db, lead_id, filters)
+
+
+@counselor_router.get("/{lead_id}/qualification")
+async def qualification(lead_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-005 LF7: tel-009's qualification of a lead handed to this counselor."""
+    lead = await db.scalar(select(Enquiry).where(Enquiry.id == lead_id, *lead_handover.counselor_scope(user)))
+    if lead is None:
+        raise HTTPException(404, lead_pipeline.LEAD_NOT_FOUND)
+    return await lead_qualification.read(db, user, lead)
+
+
+@counselor_router.put("/{lead_id}/qualification")
+async def save_qualification(lead_id: UUID, payload: LeadQualificationIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-005 LF7: tel-009's replace (QD2-QD4) on a lead handed to this counselor; the stage never moves."""
+    lead = await lead_pipeline.locked_lead(db, lead_id, *lead_handover.counselor_scope(user))
+    await lead_qualification.replace(db, user, lead, payload.model_dump(exclude_unset=True))
+    await db.commit()
+    lead = await db.scalar(select(Enquiry).where(Enquiry.id == lead_id).execution_options(populate_existing=True))
+    return await lead_qualification.read(db, user, lead)
 
 
 async def _counselor_lead(db: AsyncSession, user: User, lead_id: UUID) -> None:
