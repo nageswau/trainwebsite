@@ -114,6 +114,7 @@ async def test_a_student_appointment_invites_the_student_and_the_counselor(clien
     attachment = next(invites[0].iter_attachments())
     assert attachment.get_filename() == "invite.ics" and attachment.get_content_type() == "text/calendar"
     assert attachment.get_param("method") == "REQUEST" and f"UID:appointment-{appt_id}@edusphere" in attachment.get_content()
+    assert attachment.get_param("charset") == "utf-8"  # QA-01: the summary's dash must not be read as ASCII
 
     client.cookies.clear()
     await login(client, counselor.email)

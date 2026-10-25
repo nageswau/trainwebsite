@@ -3979,3 +3979,16 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   (`GET /workflows/overseas/agent/crm/applications/{id}`) returns `reason: null` on it; the student 360 history item "Counselor assigned"
   carries `reason`; the lead timeline (`…/timeline`) has a `handover` row per `lead.owner_change` with `from_value` / `to_value`
   (empty = removed) and `reason`.
+
+## 12FY. Calendar integration, phase 1 (ccrm-038) — addendum, 2026-10-25
+
+`DEC-SCOPE-272`. Migration `0190_calendar_feeds` (`calendar_feeds`, `appointments.calendar_sequence`).
+
+- `GET /api/v1/counselor/calendar-feed` → `{active, created_at, url: null}`. `POST` (201) creates or regenerates the feed and returns
+  `{active: true, created_at, url}` — `url` = `FRONTEND_URL/api/v1/calendar/feeds/<token>.ics`, returned only here. `DELETE` (204,
+  idempotent) revokes it. Overseas counselor only (403 otherwise; 401 without a session). Audit `calendar_feed.create|regenerate|revoke`.
+- `GET /api/v1/calendar/feeds/{token}.ics` — no session; `text/calendar; charset=utf-8`, `Cache-Control: private, no-store`. An unknown
+  or revoked token, an inactive owner or one who is no longer an overseas counselor → 404 `Calendar feed not found`.
+- Appointment invites (no contract change on the writes): `POST /workflows/overseas/appointments`, `PATCH …/{id}` (new `scheduled_at`,
+  or `status` → cancelled), `POST /telecaller/leads/{id}/appointments` and `POST /lead-appointments/{id}/reschedule|cancel` queue a
+  notification + email delivery (context `{kind: "appointment_invite", ics, method}`) per CA1. IT appointments send nothing.

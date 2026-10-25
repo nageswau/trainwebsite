@@ -2883,3 +2883,14 @@ lead owner — `ensure_admin` in the lead's division). Who sees the reason: Over
 lead timeline) ✅; agent ❌ (`reason: null` on the counsellor row, RR2); student ❌ (ccrm-016 H2). Pinned by
 `test_ccrm_033_reassignment_reason.py::test_the_agency_sees_the_change_but_not_the_reason` and
 `::test_an_application_reassignment_logs_the_reason_everywhere`.
+
+### 2.186 Calendar feed *(added 2026-10-25 — `DEC-SCOPE-272`, ccrm-038)*
+
+| Action | Overseas counselor | Overseas Admin | Other roles | No session |
+|---|---|---|---|---|
+| Read status / create / regenerate / revoke own feed (`/counselor/calendar-feed`) | ✅ own only (session user; no id in the URL) | ❌ 403 | ❌ 403 | 401 |
+| Read the feed (`/calendar/feeds/{token}.ics`) | — | — | — | ✅ with the token (the credential); 404 otherwise |
+
+The feed holds only the owner's appointments and the visa appointments of the applications they counsel (CA5). Invites go to the
+student and the assigned counselor of an overseas appointment, never to a lead, telecaller or agent. Pinned by
+`test_ccrm_038_calendar.py::test_only_an_overseas_counselor_has_a_feed` and `::test_the_feed_lists_own_appointments_and_counselled_visa_appointments`.
