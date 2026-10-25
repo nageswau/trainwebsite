@@ -55,7 +55,7 @@ def test_model_matches_the_migration():
     from app.models import LEAD_QUAL_FIELD_CHECKS, LeadQualification
 
     table = LeadQualification.__table__
-    later = {"preferred_country_id", "study_mode", "preferred_campus", "academic_cgpa", "backlogs"}  # ccrm-005's 0181 (test_ccrm_005_migration)
+    later = {"preferred_country_id", "study_mode", "preferred_campus", "academic_cgpa", "backlogs"}  # ccrm-005's 0182 (test_ccrm_005_migration)
     assert {c.name for c in table.columns} - later == {
         "lead_id", "current_org", "work_experience_years", "it_skill_level", "career_objective", "preferred_batch", "budget_range",
         "preferred_mode", "study_level", "preferred_course", "intake", "academic_percentage", "english_test_status", "passport_status",

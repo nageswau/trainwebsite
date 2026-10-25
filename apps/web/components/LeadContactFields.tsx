@@ -3,7 +3,7 @@
 import { formatCalendarDate, formatDate } from "@/lib/formatDate";
 import { CONTACT_PREFERENCES, consentLabel, type LeadContact } from "@/lib/telecallerLeads";
 
-// ccrm-005 (DEC-SCOPE-259; LF1, LF4-LF7): the spec §3 contact, consent and referral fields -- one group for the New Lead form, the
+// ccrm-005 (DEC-SCOPE-260; LF1, LF4-LF7): the spec §3 contact, consent and referral fields -- one group for the New Lead form, the
 // telecaller's Lead details edit and the counselor's. A draft holds strings ("" = none; consent "yes" / "no" / "" = not asked); the API
 // checks every value (none is mandatory, LF2).
 export const CONTACT_KEYS = ["contact_preference", "enquiry_date", "marketing_opt_in", "referral_name", "referral_contact"] as const;

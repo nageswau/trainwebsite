@@ -6,14 +6,14 @@ import { sendRequest, type Page } from "@/lib/apiErrors";
 import { SAVE_FAILED, writeFailure } from "@/lib/bdmTasks";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 import { getPage } from "@/lib/telecallerCatalogue";
-import { callUrl, formatDuration, leadCallsUrl, type LeadCall, type LogCallResult } from "@/lib/telecallerCalls";
+import { TELECALLER_CALL_API, formatDuration, type CallApi, type LeadCall, type LogCallResult } from "@/lib/telecallerCalls";
 
 type Notice = { text: string; failed: boolean } | null;
 const TEXT = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
 
 /** One call with Edit / Delete when the API says the viewer may change it (CL4: the caller, on its IST day). */
-function CallItem({ call, leadId, leadStage, onEdited, onDeleted, onRefused }: {
-  call: LeadCall; leadId: string; leadStage: string; onEdited: (call: LeadCall) => void; onDeleted: () => void; onRefused: (message: string) => void;
+function CallItem({ call, leadId, leadStage, api, onEdited, onDeleted, onRefused }: {
+  call: LeadCall; leadId: string; leadStage: string; api: CallApi; onEdited: (call: LeadCall) => void; onDeleted: () => void; onRefused: (message: string) => void;
 }) {
   const [mode, setMode] = useState<"view" | "edit" | "delete">("view");
   const [busy, setBusy] = useState(false);
@@ -23,7 +23,7 @@ function CallItem({ call, leadId, leadStage, onEdited, onDeleted, onRefused }: {
   async function remove() {
     setBusy(true);
     setFailure(null);
-    const result = await sendRequest(callUrl(call.id), { method: "DELETE" });
+    const result = await sendRequest(api.item(call.id), { method: "DELETE" });
     setBusy(false);
     if (result.ok) return onDeleted();
     const kind = writeFailure(result.status);
@@ -42,11 +42,11 @@ function CallItem({ call, leadId, leadStage, onEdited, onDeleted, onRefused }: {
       </p>
       {call.remarks && <p style={{ ...TEXT, margin: 0 }}>{call.remarks}</p>}
       {mode === "edit" && (
-        <CallLogForm leadId={leadId} leadStage={leadStage} call={call} onCancel={() => setMode("view")} onEdited={(next) => { setMode("view"); onEdited(next); }} />
+        <CallLogForm leadId={leadId} leadStage={leadStage} call={call} api={api} onCancel={() => setMode("view")} onEdited={(next) => { setMode("view"); onEdited(next); }} />
       )}
       {mode === "delete" && (
         <div role="group" aria-label="Confirm delete" className="actions">
-          <span>Delete this call? The lead&apos;s stage and any follow-up it added stay.</span>
+          <span>{api.stageEffect ? "Delete this call? The lead's stage and any follow-up it added stay." : "Delete this call? Any follow-up it added stays."}</span>
           <button type="button" className="btn small" disabled={busy} onClick={() => void remove()}>{busy ? "Deleting…" : "Yes, delete"}</button>
           <button type="button" className="btn secondary small" disabled={busy} onClick={() => setMode("view")}>Keep it</button>
         </div>
@@ -65,8 +65,9 @@ function CallItem({ call, leadId, leadStage, onEdited, onDeleted, onRefused }: {
 /** tel-010 (spec §5): the lead page's calls, newest first. `canWrite` (the lead's telecaller, lead not handed over or closed) offers Log call;
  *  a bump of `openSignal` (the page's Call button) opens the form too. A logged call's result -- the stage after its effect and any
  *  follow-up it created -- is handed up so the page header, follow-ups and activity follow. */
-export default function LeadCalls({ leadId, leadStage, canWrite, openSignal, onLogged, onChanged }: {
-  leadId: string; leadStage: string; canWrite: boolean; openSignal: number; onLogged: (result: LogCallResult) => void;
+export default function LeadCalls({ leadId, leadStage, canWrite, openSignal = 0, api = TELECALLER_CALL_API, onLogged, onChanged }: {
+  leadId: string; leadStage: string; canWrite: boolean; openSignal?: number; onLogged: (result: LogCallResult) => void;
+  api?: CallApi; // ccrm-004: the counselor's routes on CounselorLeadDetail
   onChanged?: () => void; // tel-015: a log, edit or delete -- the page's timeline re-reads
 }) {
   const [data, setData] = useState<Page<LeadCall> | null>(null);
@@ -86,9 +87,9 @@ export default function LeadCalls({ leadId, leadStage, canWrite, openSignal, onL
   useEffect(() => {
     const controller = new AbortController();
     setFailed(false);
-    getPage<LeadCall>(leadCallsUrl(leadId), controller.signal).then(setData).catch(() => controller.signal.aborted || setFailed(true));
+    getPage<LeadCall>(api.list(leadId), controller.signal).then(setData).catch(() => controller.signal.aborted || setFailed(true));
     return () => controller.abort();
-  }, [leadId, version]);
+  }, [leadId, version, api]);
 
   const done = (text: string) => {
     setNotice({ text, failed: false });
@@ -108,7 +109,7 @@ export default function LeadCalls({ leadId, leadStage, canWrite, openSignal, onL
         {notice && <p className={notice.failed ? "form-error" : "form-message"} style={{ margin: "6px 0 0", fontSize: 13 }}>{notice.text}</p>}
       </div>
       {adding && canWrite && (
-        <CallLogForm leadId={leadId} leadStage={leadStage} onCancel={() => setAdding(false)}
+        <CallLogForm leadId={leadId} leadStage={leadStage} api={api} onCancel={() => setAdding(false)}
           onLogged={(result) => { setAdding(false); done("Call logged."); onLogged(result); }} />
       )}
       {failed ? (
@@ -123,7 +124,7 @@ export default function LeadCalls({ leadId, leadStage, canWrite, openSignal, onL
       ) : (
         <ul aria-label="Calls" style={{ padding: 0, margin: "8px 0 0", display: "grid", gap: 8 }}>
           {data.items.map((call) => (
-            <CallItem key={call.id} call={call} leadId={leadId} leadStage={leadStage} onEdited={() => done("Call updated.")}
+            <CallItem key={call.id} call={call} leadId={leadId} leadStage={leadStage} api={api} onEdited={() => done("Call updated.")}
               onDeleted={() => done("Call deleted.")} onRefused={(text) => { setNotice({ text, failed: true }); reload(); }} />
           ))}
         </ul>

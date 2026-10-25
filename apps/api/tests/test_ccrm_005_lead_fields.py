@@ -1,4 +1,4 @@
-"""ccrm-005 (DEC-SCOPE-259): the spec §3 lead fields -- contact preference, enquiry date, marketing consent and referral on the lead
+"""ccrm-005 (DEC-SCOPE-260): the spec §3 lead fields -- contact preference, enquiry date, marketing consent and referral on the lead
 (LF1, LF4, LF5) through create, the details edit and the CSV import (LF6); the overseas study, academic and English test answers in the
 qualification (LF1, LF3); the counselor's writes on their own leads (LF7) and the conversion carry-over (LF8). The shared test database is
 never truncated: every assertion is about rows the test made."""

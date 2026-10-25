@@ -6,7 +6,7 @@ import LeadDetailPanel from "@/components/LeadDetailPanel";
 import NewLeadForm from "@/components/NewLeadForm";
 import type { LeadContact, TelecallerLeadDetail } from "@/lib/telecallerLeads";
 
-// ccrm-005 (DEC-SCOPE-259; LF1, LF4-LF6): the spec §3 contact, consent and referral fields on the New Lead form and the Lead details edit.
+// ccrm-005 (DEC-SCOPE-260; LF1, LF4-LF6): the spec §3 contact, consent and referral fields on the New Lead form and the Lead details edit.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });

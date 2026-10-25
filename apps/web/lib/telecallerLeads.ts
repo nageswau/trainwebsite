@@ -13,7 +13,7 @@ export type TelecallerLead = {
   product: { id: string; name: string } | null; campaign: { id: string; name: string } | null; telecaller: PersonRef | null; counselor: PersonRef | null;
   read_only: boolean;
 } & LeadContact;
-// ccrm-005 (DEC-SCOPE-259, LF1/LF5): the spec §3 contact, consent and referral fields of every lead. `marketing_opt_in` null = not asked.
+// ccrm-005 (DEC-SCOPE-260, LF1/LF5): the spec §3 contact, consent and referral fields of every lead. `marketing_opt_in` null = not asked.
 export type LeadContact = {
   contact_preference: string | null; enquiry_date: string; marketing_opt_in: boolean | null; marketing_consent_at: string | null;
   referral_name: string | null; referral_contact: string | null;

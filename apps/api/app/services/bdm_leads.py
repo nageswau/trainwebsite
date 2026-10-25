@@ -134,7 +134,7 @@ def admin_out(row) -> dict:
         "subject": x.subject, "status": x.status, "status_label": stage_label(x.status), "source": x.source, "crm_sync_status": x.crm_sync_status, "priority": x.priority,
         "whatsapp_number": x.whatsapp_number, "city": x.city, "state": x.state, "qualification": x.qualification,
         "passing_year": x.passing_year, "institution": x.institution, "created_at": x.created_at, "stage_changed_at": x.stage_changed_at,
-        # ccrm-005 (DEC-SCOPE-259): the spec §3 contact, consent and referral fields
+        # ccrm-005 (DEC-SCOPE-260): the spec §3 contact, consent and referral fields
         "contact_preference": x.contact_preference, "enquiry_date": x.enquiry_date, "marketing_opt_in": x.marketing_opt_in,
         "marketing_consent_at": x.marketing_consent_at, "referral_name": x.referral_name, "referral_contact": x.referral_contact,
         "product": _ref(x.product_id, name=product_name),

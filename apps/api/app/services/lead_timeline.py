@@ -23,6 +23,7 @@ from app.models import (
     LeadCall,
     LeadEnquiry,
     LeadFollowUp,
+    LeadMeeting,
     LeadMessage,
     LeadNote,
     LeadStageHistory,
@@ -113,11 +114,16 @@ def _sources(lead_id: UUID) -> list:
                 scheduled_for=fu.due_at).where(fu.lead_id == lead_id, fu.cancelled_at.is_not(None)),
         _branch(AppointmentEvent.id, "appointment", AppointmentEvent.created_at, seq=AppointmentEvent.position, actor=AppointmentEvent.actor_user_id,
                 from_value=AppointmentEvent.from_status, to_value=AppointmentEvent.to_status, event=Appointment.appointment_type,
-                subject=Appointment.appointment_code, reason=_excerpt(AppointmentEvent.reason),
+                subject=Appointment.appointment_code,
+                # ccrm-004 LG4: a completion reads the session's outcome notes
+                reason=_excerpt(case((AppointmentEvent.to_status == "completed", Appointment.outcome_notes), else_=AppointmentEvent.reason)),
                 scheduled_for=func.coalesce(AppointmentEvent.new_scheduled_at, Appointment.scheduled_at))
         .join(Appointment, Appointment.id == AppointmentEvent.appointment_id).where(Appointment.lead_id == lead_id),
         # ccrm-002: a note -- an excerpt (TM2); the notes panel shows the whole text
         _branch(LeadNote.id, "note", LeadNote.created_at, actor=LeadNote.author_user_id, reason=_excerpt(LeadNote.body)).where(LeadNote.lead_id == lead_id),
+        # ccrm-004 LG3: a counselor's meeting -- the mode and an excerpt of the notes
+        _branch(LeadMeeting.id, "meeting", LeadMeeting.occurred_at, actor=LeadMeeting.author_user_id, from_value=LeadMeeting.mode,
+                reason=_excerpt(LeadMeeting.notes)).where(LeadMeeting.lead_id == lead_id),
         # TM3: the linked student's records, read live (an unlink removes them)
         _branch(Enrollment.id, "milestone", Enrollment.created_at, to_value=Batch.name, event="enrollment", subject=Enrollment.enrollment_code,
                 status=Enrollment.status).join(Batch, Batch.id == Enrollment.batch_id).where(Enrollment.student_id == student),

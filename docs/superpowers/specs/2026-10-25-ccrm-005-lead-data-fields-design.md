@@ -2,7 +2,7 @@
 
 Design, 2026-10-25. Backlog item `ccrm-005` (`docs/delivery/COUNSELOR_CRM_BACKLOG.md`), spec §3 "Lead creation fields" (UNVERIFIED
 source, owner request; see the backlog's evidence note). Dependency `ccrm-003` (counselor write scope) is merged (PR #305).
-Numbers: migration `0181_lead_data_fields`, `DEC-SCOPE-259`, API §12FL, RBAC §2.173 (ccrm-017 took 258 / 12FK).
+Numbers: migration `0182_lead_data_fields`, `DEC-SCOPE-260`, API §12FM, RBAC §2.174 (re-chained at merge: ccrm-017 took 258 / 12FK, ccrm-004 took 259 / 0181 / 12FL / 2.173).
 
 ## 1. What the spec asks for, against what exists
 
@@ -45,7 +45,7 @@ Numbers: migration `0181_lead_data_fields`, `DEC-SCOPE-259`, API §12FL, RBAC §
   percentage), backlogs and the English tests are copied into the student profile; a value the profile refuses stays on the lead.
 - **LF9 — logs and audit rows** name fields only, never values (referral names and contacts are personal data).
 
-## 3. API (§12FL)
+## 3. API (§12FM)
 
 - `POST /telecaller/leads`, `POST /counselor/walk-in-leads` (same schema), `PATCH /telecaller/leads/{id}`: optional
   `contact_preference`, `enquiry_date`, `marketing_opt_in`, `referral_name`, `referral_contact`.
@@ -56,7 +56,7 @@ Numbers: migration `0181_lead_data_fields`, `DEC-SCOPE-259`, API §12FL, RBAC §
 - `PATCH /counselor/leads/{id}` → the counselor lead detail. Another counselor's lead → 404; a non-counselor → 404 (the scope is empty).
 - `GET /telecaller/imports/template` gains the five columns.
 
-## 4. Data (migration 0181)
+## 4. Data (migration 0182)
 
 Additive. `enquiries`: 5 nullable columns + `enquiry_date` (added nullable, back-filled, then NOT NULL with an IST server default);
 CHECKs for the contact preference list, the referral lengths and `(marketing_opt_in IS NULL) = (marketing_consent_at IS NULL)`.

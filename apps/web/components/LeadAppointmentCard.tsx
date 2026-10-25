@@ -21,7 +21,7 @@ export default function LeadAppointmentCard({ appointment: a, showLead, onChange
 }) {
   const idp = useId();
   const focus = useFocusAfterRender();
-  const [open, setOpen] = useState<"cancel" | "reschedule" | null>(null);
+  const [open, setOpen] = useState<"cancel" | "reschedule" | "complete" | null>(null);
   const [reason, setReason] = useState("");
   const [when, setWhen] = useState("");
   const [busy, setBusy] = useState(false);
@@ -30,13 +30,13 @@ export default function LeadAppointmentCard({ appointment: a, showLead, onChange
   const link = safeLink(a.meeting_link);
   const p = a.permissions;
 
-  function start(kind: "cancel" | "reschedule") {
+  function start(kind: "cancel" | "reschedule" | "complete") {
     setOpen(kind);
     setNotice(null);
     setFieldError(null);
     setReason("");
     setWhen(kind === "reschedule" ? isoToIstInput(a.scheduled_at) : "");
-    focus(`${idp}-${kind}-input`);
+    focus(kind === "reschedule" ? `${idp}-reschedule-input` : `${idp}-${kind === "cancel" ? "cancel" : "reason"}-input`);
   }
 
   async function act(action: AppointmentAction, body: Record<string, string> = {}) {
@@ -49,7 +49,7 @@ export default function LeadAppointmentCard({ appointment: a, showLead, onChange
       const field = Object.values(fieldErrors(outcome.detail))[0];
       if (field && open) {
         setFieldError(field);
-        return focus(`${idp}-${open}-input`);
+        return focus(open === "complete" ? `${idp}-reason-input` : `${idp}-${open}-input`);
       }
       return setNotice({ text: clashText(outcome.detail) ?? outcome.message, failed: true });
     }
@@ -62,6 +62,7 @@ export default function LeadAppointmentCard({ appointment: a, showLead, onChange
 
   function submit(event: FormEvent) {
     event.preventDefault();
+    if (open === "complete") return act("complete", reason.trim() ? { outcome_notes: reason.trim() } : {}); // ccrm-004 LG4: optional
     if (open === "cancel") {
       if (!reason.trim()) {
         setFieldError("Add a reason for cancelling.");
@@ -89,6 +90,7 @@ export default function LeadAppointmentCard({ appointment: a, showLead, onChange
     ["Purpose", a.purpose ?? "—"],
     ["Remarks", a.remarks ?? "—"],
     ["Booked by", a.booked_by?.full_name ?? "—"],
+    ...(a.outcome_notes ? [["Outcome notes", a.outcome_notes] as [string, React.ReactNode]] : []),
   ];
   const actions = STATUS_ACTIONS.filter(([, key]) => p[key]);
   const reasonId = open === "cancel" ? `${idp}-cancel-input` : `${idp}-reason-input`; // a cancel's reason is the field focused on error
@@ -109,7 +111,8 @@ export default function LeadAppointmentCard({ appointment: a, showLead, onChange
       {(actions.length > 0 || p.can_reschedule || p.can_cancel) && !open && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {actions.map(([action]) => (
-            <button key={action} type="button" className="btn small" disabled={busy} onClick={() => act(action)}>{ACTION_LABEL[action]}</button>
+            <button key={action} type="button" className="btn small" disabled={busy}
+              onClick={() => (action === "complete" ? start("complete") : act(action))}>{ACTION_LABEL[action]}</button>
           ))}
           {p.can_reschedule && <button type="button" className="btn secondary small" disabled={busy} onClick={() => start("reschedule")}>Reschedule</button>}
           {p.can_cancel && <button type="button" className="btn secondary small" disabled={busy} onClick={() => start("cancel")}>Cancel appointment</button>}
@@ -125,14 +128,14 @@ export default function LeadAppointmentCard({ appointment: a, showLead, onChange
             </div>
           )}
           <div className="field">
-            <label htmlFor={reasonId}>{open === "cancel" ? "Reason for cancelling" : "Reason (optional)"}</label>
-            <textarea id={reasonId} rows={2} maxLength={500} value={reason} disabled={busy}
+            <label htmlFor={reasonId}>{open === "cancel" ? "Reason for cancelling" : open === "complete" ? "Outcome notes (optional)" : "Reason (optional)"}</label>
+            <textarea id={reasonId} rows={open === "complete" ? 3 : 2} maxLength={open === "complete" ? 2000 : 500} value={reason} disabled={busy}
               aria-invalid={open === "cancel" && fieldError ? true : undefined} aria-describedby={fieldError ? `${idp}-error` : undefined}
               onChange={(e) => { setReason(e.target.value); setFieldError(null); }} />
           </div>
           {fieldError && <p id={`${idp}-error`} className="form-error" style={{ margin: 0 }}>{fieldError}</p>}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            <button type="submit" className="btn small" disabled={busy}>{busy ? "Saving…" : open === "cancel" ? "Cancel appointment" : "Save new time"}</button>
+            <button type="submit" className="btn small" disabled={busy}>{busy ? "Saving…" : open === "cancel" ? "Cancel appointment" : open === "complete" ? "Mark completed" : "Save new time"}</button>
             <button type="button" className="btn secondary small" disabled={busy} onClick={() => setOpen(null)}>Back</button>
           </div>
         </form>

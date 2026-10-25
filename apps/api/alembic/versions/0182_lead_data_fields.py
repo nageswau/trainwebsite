@@ -1,10 +1,10 @@
 """ccrm-005 -- the spec §3 lead fields: contact preference, enquiry date, marketing consent and referral on `enquiries`; the overseas study
 and academic answers on `lead_qualifications`; the lead's English tests (`lead_english_tests`).
 
-Revision ID: 0181_lead_data_fields
-Revises: 0180_application_checklists
+Revision ID: 0182_lead_data_fields
+Revises: 0181_lead_meetings
 
-docs/superpowers/specs/2026-10-25-ccrm-005-lead-data-fields-design.md (DEC-SCOPE-259). Additive. `enquiry_date` is added nullable,
+docs/superpowers/specs/2026-10-25-ccrm-005-lead-data-fields-design.md (DEC-SCOPE-260). Additive. `enquiry_date` is added nullable,
 back-filled with each lead's created date in IST (LF4) and then made NOT NULL with that default for new rows. 0001 builds a fresh database
 from the current models, which already carry all of this, so each step is guarded (0166's idiom). The lists and CHECKs repeat
 app.models (test_ccrm_005_migration). The downgrade drops the table and the columns.
@@ -14,8 +14,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0181_lead_data_fields"
-down_revision = "0180_application_checklists"
+revision = "0182_lead_data_fields"
+down_revision = "0181_lead_meetings"
 branch_labels = None
 depends_on = None
 

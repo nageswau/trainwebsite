@@ -2316,6 +2316,8 @@ class Appointment(Base, TimestampMixin):
     location: Mapped[str | None] = mapped_column(String(200), nullable=True)
     remarks: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     booked_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    # ccrm-004 (DEC-SCOPE-259 LG4): what the counselling session concluded, given when the counselor completes it. Never logged.
+    outcome_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class AppointmentEvent(Base):
@@ -2435,7 +2437,7 @@ LEAD_CHECKS = {  # migration 0078 repeats these strings; test_tel_003_migration 
 # tel-004 (DEC-SCOPE-081): `status` is a pipeline stage; migration 0081 repeats this string (test_tel_004_migration).
 LEAD_STATUS_CHECK = f"status IN ({', '.join(repr(s) for s in LEAD_STAGES)})"
 LEAD_NEXT_ACTION_MAX = 200  # ccrm-003; migration 0168 repeats it (test_ccrm_003_migration asserts they stay identical)
-# ccrm-005 (DEC-SCOPE-259, LF1/LF5): the spec §3 contact, consent and referral fields; migration 0181 repeats these (test_ccrm_005_migration).
+# ccrm-005 (DEC-SCOPE-260, LF1/LF5): the spec §3 contact, consent and referral fields; migration 0182 repeats these (test_ccrm_005_migration).
 CONTACT_PREFERENCES = ("call", "whatsapp", "email", "sms")
 LEAD_REFERRAL_NAME_MAX, LEAD_REFERRAL_CONTACT_MAX = 160, 120
 LEAD_FIELD_CHECKS = {
@@ -2504,7 +2506,7 @@ class Enquiry(Base, TimestampMixin):
     # ccrm-003 (DEC-SCOPE-243, A2): what the counselor does next and by when -- required on a counselor-owned open lead's stage move
     next_action: Mapped[str | None] = mapped_column(String(LEAD_NEXT_ACTION_MAX), nullable=True)
     next_action_due: Mapped[date | None] = mapped_column(Date, nullable=True)
-    # ccrm-005 (DEC-SCOPE-259): how the person likes to be reached, when they enquired (LF4), their marketing consent -- NULL = not asked,
+    # ccrm-005 (DEC-SCOPE-260): how the person likes to be reached, when they enquired (LF4), their marketing consent -- NULL = not asked,
     # stamped whenever it changes (LF5, the validator below) -- and who referred them
     contact_preference: Mapped[str | None] = mapped_column(String(10), nullable=True)
     enquiry_date: Mapped[date] = mapped_column(Date, server_default=text(ENQUIRY_DATE_DEFAULT))
@@ -2571,7 +2573,7 @@ QUAL_STUDY_LEVELS = ("ug", "masters")
 QUAL_PASSPORT = ("none", "applied", "valid")
 STUDY_MODES = ("full_time", "part_time", "online")  # ccrm-007's lists; ccrm-005's lead answers use them too
 ENGLISH_TEST_STATUSES = ("not_taken", "booked", "taken")
-# ccrm-005 (DEC-SCOPE-259, LF1): the overseas study and academic answers; migration 0181 repeats these (test_ccrm_005_migration).
+# ccrm-005 (DEC-SCOPE-260, LF1): the overseas study and academic answers; migration 0182 repeats these (test_ccrm_005_migration).
 LEAD_QUAL_FIELD_CHECKS = {
     "ck_lead_qualifications_study_mode": _in("study_mode", STUDY_MODES),
     "ck_lead_qualifications_cgpa": "academic_cgpa IS NULL OR academic_cgpa BETWEEN 0 AND 10",
@@ -2618,7 +2620,7 @@ class LeadQualification(Base, TimestampMixin):
 
 
 class LeadEnglishTest(Base):
-    """ccrm-005 (DEC-SCOPE-259, LF3): one English test on a lead, in the order entered -- ccrm-007's row shape, so a conversion copies it
+    """ccrm-005 (DEC-SCOPE-260, LF3): one English test on a lead, in the order entered -- ccrm-007's row shape, so a conversion copies it
     as is (LF8). Replaced as a list with the overseas qualification answers."""
 
     __tablename__ = "lead_english_tests"
@@ -2754,6 +2756,28 @@ class LeadNote(Base):
     lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
     author_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+LEAD_MEETING_NOTES_MAX = 2000  # migration 0181 repeats it (test_ccrm_004_migration asserts they stay identical)
+
+
+class LeadMeeting(Base):
+    """ccrm-004 (DEC-SCOPE-259 LG3): a meeting the lead's counselor held with them -- when, how (the appointment modes) and notes.
+    Append-only, as ccrm-002 notes; its scope is the lead's. The notes are never logged."""
+
+    __tablename__ = "lead_meetings"
+    __table_args__ = (
+        CheckConstraint("mode IN ({})".format(", ".join(f"'{m}'" for m in APPOINTMENT_MODES)), name="ck_lead_meetings_mode"),
+        CheckConstraint(f"length(notes) BETWEEN 1 AND {LEAD_MEETING_NOTES_MAX}", name="ck_lead_meetings_notes"),
+        Index("ix_lead_meetings_lead_occurred", "lead_id", "occurred_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
+    author_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    mode: Mapped[str] = mapped_column(String(40))
+    notes: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

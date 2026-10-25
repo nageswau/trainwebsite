@@ -23,7 +23,8 @@ test("the partner reads the counseling KPIs and every counselor, and keeps a cho
   await expect(page.getByRole("heading", { name: "Counseling dashboard" })).toBeVisible();
 
   await expect(kpis(page).getByRole("listitem")).toHaveCount(7);
-  await expect(kpis(page).getByRole("listitem").filter({ hasText: "Calls" })).toContainText("Not tracked");
+  await expect(kpis(page).getByRole("listitem").filter({ hasText: "Calls" })).not.toContainText("Not tracked"); // ccrm-004 LG6
+  await expect(table(page).getByRole("columnheader", { name: "Calls" })).toBeVisible();
   await expect(kpis(page).getByRole("listitem").filter({ hasText: "Revenue" })).toContainText("₹");
   await expect(table(page).getByRole("columnheader", { name: "Revenue" })).toBeVisible();
   await expect(table(page).locator("tfoot")).toContainText("All counselors");

@@ -1,7 +1,7 @@
 """tel-009 (DEC-SCOPE-093, spec §3): the lead qualification form -- basic answers always, the IT or overseas requirement by the lead's
 product group (QD2). The shared answers live on `enquiries` (QD1); the rest in `lead_qualifications`. A PUT replaces only the fields that
 apply, so the other group's stored values are kept (AC3).
-ccrm-005 (DEC-SCOPE-259, LF1/LF3): the overseas group adds the spec §3 study and academic answers and the English tests -- a list kept in
+ccrm-005 (DEC-SCOPE-260, LF1/LF3): the overseas group adds the spec §3 study and academic answers and the English tests -- a list kept in
 `lead_english_tests`, replaced whole like any other applicable field. The counselor uses this service on the leads handed to them (LF7).
 
 Functions only; nothing here commits -- the route owns the transaction and has already locked the lead. Logs and the audit row carry

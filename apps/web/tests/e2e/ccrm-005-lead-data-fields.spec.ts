@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// ccrm-005 (DEC-SCOPE-259): the spec §3 lead fields -- a telecaller creates an overseas lead with a contact preference, enquiry date,
+// ccrm-005 (DEC-SCOPE-260): the spec §3 lead fields -- a telecaller creates an overseas lead with a contact preference, enquiry date,
 // marketing consent and referral (LF1, LF4, LF5), changes the consent, and records the study, academic and English test answers with an
 // expired IELTS (LF3); after the handover the counselor edits the referral and the qualification (LF7); another counselor is 404.
 // Throwaway accounts; phone width has no sideways scroll.

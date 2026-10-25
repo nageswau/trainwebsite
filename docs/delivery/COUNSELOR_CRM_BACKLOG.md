@@ -207,6 +207,8 @@ asked one at a time when the item is picked up).
 - **Regression:** telecaller call counts and targets (tel-022), daily report.
 - **Complexity:** medium. **Risk:** medium.
 - **Open questions:** should counselor calls count in management "counselor performance" (calls are marked untracked today)?
+- **Status:** built on `feature/ccrm-004` — `DEC-SCOPE-259`, migration `0181_lead_meetings`, API §12FL, RBAC §2.173 (LG1–LG8; the open
+  question answered yes by default: mgmt-018 Calls is tracked). Consent opt-out waits for ccrm-040.
 
 ### `ccrm-005` — Lead data fields: contact preference, study, academic, English, consent, referral
 
@@ -227,8 +229,8 @@ asked one at a time when the item is picked up).
 - **Regression:** import template columns, qualification form, duplicate panel.
 - **Complexity:** medium. **Risk:** low.
 - **Open questions:** which new fields are mandatory, and at which stage (e.g. country + intake before Qualified)?
-- **Status (2026-10-25):** built on `feature/ccrm-005` — `DEC-SCOPE-259` (LF1–LF9 defaults `NEEDS_CONFIRMATION`; LF2 nothing mandatory),
-  migration `0181_lead_data_fields`, API §12FL, RBAC §2.173. Design `docs/superpowers/specs/2026-10-25-ccrm-005-lead-data-fields-design.md`.
+- **Status (2026-10-25):** built on `feature/ccrm-005` — `DEC-SCOPE-260` (LF1–LF9 defaults `NEEDS_CONFIRMATION`; LF2 nothing mandatory),
+  migration `0182_lead_data_fields`, API §12FM, RBAC §2.174. Design `docs/superpowers/specs/2026-10-25-ccrm-005-lead-data-fields-design.md`.
 
 ### `ccrm-006` — Lead stage additions and structured loss capture
 

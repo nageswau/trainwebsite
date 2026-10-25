@@ -6630,7 +6630,7 @@ def _enquiry_date(value: date | None) -> date | None:
     return value
 
 
-# ccrm-005 (DEC-SCOPE-259; LF1, LF4-LF7): the spec §3 contact, consent and referral fields of every lead -- on create, the details edit,
+# ccrm-005 (DEC-SCOPE-260; LF1, LF4-LF7): the spec §3 contact, consent and referral fields of every lead -- on create, the details edit,
 # the CSV import and the counselor's edit. None is mandatory (LF2); on create and import an omitted enquiry date is the created date.
 LeadEnquiryDate = Annotated[date | None, AfterValidator(_enquiry_date)]
 LeadReferralName = Annotated[Annotated[str, _trimmed(160)] | None, AfterValidator(_bdm_lead_text(_BDM_CONTROL, False))]
@@ -6738,7 +6738,7 @@ class LeadQualificationIn(BaseModel):
     academic_percentage: Decimal | None = Field(default=None, ge=0, le=100, max_digits=5, decimal_places=2)
     english_test_status: _qual_text(120) = None
     passport_status: Literal[QUAL_PASSPORT] | None = None
-    # ccrm-005 (DEC-SCOPE-259, LF1/LF3): overseas study preferences, academic profile and English tests (ccrm-007's row rules, <= 5)
+    # ccrm-005 (DEC-SCOPE-260, LF1/LF3): overseas study preferences, academic profile and English tests (ccrm-007's row rules, <= 5)
     preferred_country_id: UUID | None = None
     study_mode: Literal[STUDY_MODES] | None = None
     preferred_campus: _qual_text(200) = None
@@ -6777,7 +6777,7 @@ class LeadTimelineRow(BaseModel):
 
     id: UUID
     kind: Literal["created", "enquiry", "stage", "priority", "assignment", "handover", "student_link", "call", "message", "follow_up",
-                  "appointment", "milestone", "note"]
+                  "appointment", "milestone", "note", "meeting"]
     at: datetime
     actor: LeadStageActor | None
     from_value: str
@@ -6818,6 +6818,39 @@ class LeadNotePage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class LeadMeetingIn(BaseModel):
+    """ccrm-004 (DEC-SCOPE-259 LG3): when (not in the future, up to 7 days back -- the call rules), how, and trimmed notes 1-2000
+    (`LEAD_MEETING_NOTES_MAX`)."""
+
+    model_config = ConfigDict(extra="forbid")
+    occurred_at: AwareDatetime
+    mode: Literal[APPOINTMENT_MODES]
+    notes: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+
+
+class LeadMeetingOut(BaseModel):
+    id: UUID
+    occurred_at: datetime
+    mode: str
+    notes: str
+    author: LeadStageActor
+    created_at: datetime
+
+
+class LeadMeetingPage(BaseModel):
+    items: list[LeadMeetingOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class LeadAppointmentComplete(BaseModel):
+    """ccrm-004 (DEC-SCOPE-259 LG4): the session's outcome, optional; blank is none."""
+
+    model_config = ConfigDict(extra="forbid")
+    outcome_notes: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=2000)] = None
 
 
 class UniversityTimelineRow(BaseModel):

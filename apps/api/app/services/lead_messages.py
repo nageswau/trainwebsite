@@ -2,7 +2,8 @@
 WhatsApp send log (wa.me can't report delivery, so a row is the telecaller's confirmation, T8) and the sender's same-day delete (WA3).
 
 A message belongs to its lead: reads go through the lead's scope (`lead_pipeline.scope`), so a message on a lead the caller can't see is the
-same 404 as a missing one. Only the lead's telecaller sends (WA2), and only the sender deletes, on its IST day. Writes lock the lead first.
+same 404 as a missing one. Only the lead's telecaller sends (WA2), and only the sender deletes, on its IST day. ccrm-004 (LG2): the counselor
+the lead is handed to sends too, through `counselor_scope`, by the same rules. Writes lock the lead first.
 Functions only; nothing here commits. Logs and audit carry ids, the channel and the template id -- never the text or a number (WA1).
 
 tel-014 (DEC-SCOPE-106) adds email: the row is stored `queued` and the caller publishes it after the commit (E4); the worker
@@ -19,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.lead_stages import CLOSED
 from app.models import LEAD_APPOINTMENT_OPEN, Appointment, AuditLog, Enquiry, LeadMessage, TelAsset, TelMessageTemplate, TelProduct, User
 from app.schemas import LeadEmailCreate, LeadWhatsAppCreate
-from app.services import lead_pipeline, mailer, telecaller_content, telecaller_leads
+from app.services import lead_calls, lead_pipeline, mailer, telecaller_content, telecaller_leads
 from app.services.bdm_activities import day_range
 from app.services.bdm_appointments import IST, today_ist
 from app.services.lead_appointments import invalid
@@ -33,7 +34,7 @@ MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct",
 NOT_FOUND = "Message not found"
 TEMPLATE_NOT_FOUND = "Template not found"
 TELECALLER_ONLY = "Only the lead's telecaller can send a message"
-SENDER_ONLY = "Only the telecaller who sent this message can delete it"
+SENDER_ONLY = "Only the person who sent this message can delete it"
 LEAD_CLOSED = "This lead is closed. A manager can reopen it before a message is sent"
 NO_NUMBER = "This lead has no WhatsApp or mobile number"
 TEMPLATE_UNUSABLE = "Choose an active WhatsApp template"
@@ -80,7 +81,7 @@ async def render(db: AsyncSession, lead: Enquiry, template: TelMessageTemplate) 
 
 
 def can_delete(user: User, lead: Enquiry, message: LeadMessage, now: datetime) -> bool:
-    return (message.channel == "whatsapp" and user.role == "telecaller" and message.sender_user_id == user.id and not telecaller_leads.read_only(user, lead)
+    return (message.channel == "whatsapp" and message.sender_user_id == user.id and lead_calls.writer(user, lead)
             and today_ist(message.sent_at) == today_ist(now))
 
 
@@ -134,7 +135,8 @@ async def create(db: AsyncSession, user: User, lead: Enquiry, payload: LeadWhats
 
 
 async def load_for_delete(db: AsyncSession, user: User, message_id: UUID, scope: list, now: datetime) -> LeadMessage:
-    """In scope (404) -> lead lock -> telecaller and the sender (403) -> handover (403) -> an email (409, EM2) -> its IST day (409)."""
+    """In scope (404) -> lead lock -> telecaller (or the scoped counselor, LG2) and the sender (403) -> handover (403) -> an email (409,
+    EM2) -> its IST day (409)."""
     lead_id = await db.scalar(select(LeadMessage.lead_id).join(Enquiry, Enquiry.id == LeadMessage.lead_id).where(LeadMessage.id == message_id, *scope))
     if lead_id is None:
         raise HTTPException(404, NOT_FOUND)
@@ -142,7 +144,7 @@ async def load_for_delete(db: AsyncSession, user: User, message_id: UUID, scope:
     message = await db.scalar(select(LeadMessage).where(LeadMessage.id == message_id).with_for_update().execution_options(populate_existing=True))
     if message is None:  # deleted while we waited for the lead lock
         raise HTTPException(404, NOT_FOUND)
-    if user.role != "telecaller" or message.sender_user_id != user.id:
+    if user.role not in ("telecaller", "counselor") or message.sender_user_id != user.id:
         raise HTTPException(403, SENDER_ONLY)
     telecaller_leads.require_writable(user, lead)
     if message.channel == "email":

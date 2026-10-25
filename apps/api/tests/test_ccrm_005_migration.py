@@ -1,4 +1,4 @@
-"""ccrm-005 -- migration 0181_lead_data_fields (DEC-SCOPE-259): the lead's contact/consent/referral columns, the overseas study and
+"""ccrm-005 -- migration 0182_lead_data_fields (DEC-SCOPE-260): the lead's contact/consent/referral columns, the overseas study and
 academic columns on `lead_qualifications` and the `lead_english_tests` table. Round trip in a throwaway database built from scratch (the
 csc-001 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls asyncio.run()."""
 
@@ -15,16 +15,16 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_ccrm_005_migration_0181", VERSIONS / "0181_lead_data_fields.py")
+_spec = importlib.util.spec_from_file_location("_ccrm_005_migration_0182", VERSIONS / "0182_lead_data_fields.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0180_application_checklists", "0181_lead_data_fields"
+BASE, HEAD = "0181_lead_meetings", "0182_lead_data_fields"
 LEAD_COLUMNS = {"contact_preference", "enquiry_date", "marketing_opt_in", "marketing_consent_at", "referral_name", "referral_contact"}
 QUAL_COLUMNS = {"preferred_country_id", "study_mode", "preferred_campus", "academic_cgpa", "backlogs"}
 
 
-def test_migration_chains_after_0180_and_is_the_single_head():
+def test_migration_chains_after_0181_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -51,7 +51,7 @@ async def test_columns_exist_in_the_shared_database(db_session):
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0180_application_checklists."""
+    """A fresh database at 0181_lead_meetings."""
     cfg = _config()
     original = settings.database_url
     name = f"ccrm005_migration_{uuid.uuid4().hex[:8]}"
