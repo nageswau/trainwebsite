@@ -9427,3 +9427,25 @@ no history row, no commission). E8 the pre-enrolment checklist is a stored attes
 confirmation of an agency application runs the AGT-003 trigger (at most one commission) and tells the agency (CC5).
 **Numbering:** migration `0184_enrollment_confirmation`; API §12FO; RBAC §2.176.
 - **Feature ID authorized:** `ccrm-027`. **Status:** built on `worktree-ccrm-027`.
+
+### DEC-SCOPE-263 — Management CRM reports (`ccrm-034`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-034` (source PDF §13 report table, §4 conversion by intake, §18 AC 8;
+`UNVERIFIED` — only the backlog's quotes are used); owner answer CC3 (no team filter; the Overseas Admin is the team-wide view); design
+`docs/superpowers/specs/2026-10-25-ccrm-034-management-crm-reports-design.md`. Dependencies ccrm-014/015/019/023/026/027 merged.
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** R1 partner, super_admin
+and overseas_admin read the reports (no money, so no finance tier); accountant, counselor and everyone else 403; counselors' own figures
+stay ccrm-036. R2 filters optional and ANDed — created date (IST, inclusive), counselor (`none` = no counselor; for leads the owner),
+destination (university country; lead preferred country), university and course (applications only), intake (application intake; lead
+qualification intake); end before start → 422. R3 students = distinct people (agency student, else school student, else user — MS4).
+R4 open = not withdrawn, not enrolled, no terminal outcome (on hold / deferred open). R5 ageing by stage + sub-status, days since the
+application's last update (IST), bands 0–7 / 8–14 / 15–30 / 31–60 / 61+, oldest. R6 university performance: offers = the funnel's MF6
+predicate; offer rate = offers ÷ applications; rejections = outcome Rejected; acceptances = an offer decision Accepted (ccrm-025);
+enrolments = confirmed (E4). R7 visa outcomes per destination over applications with a visa case: submitted (reached Submitted), pending,
+approved, refused, enrolled (approved + confirmed). R8 readiness over open, not-yet-submitted, pre-offer applications: ready / blocked
+(gate block) / needs override (gate warn) / no checklist, with ccrm-019's item rule in SQL. R9 lead conversion by qualification intake
+(overseas leads): leads, converted now, conversion %, converted students, their applications. R10 forecast **method**: forecast = confirmed
+enrolments + open applications with the visa approved (expected); possible (open, Offer or later, no visa approval) and lost (withdrawn or
+terminal) shown beside it; no probability weighting.
+**Numbering:** no migration; API §12FP; RBAC §2.177.
+- **Feature ID authorized:** `ccrm-034`. **Status:** built on `worktree-ccrm-034`.

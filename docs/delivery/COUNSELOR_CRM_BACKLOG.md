@@ -729,6 +729,10 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Roles:** management partner, super_admin, overseas_admin (tiered visibility per mgmt decisions M1–M14).
 - **Dependencies:** ccrm-014, 015, 019, 023, 026, 027. **Complexity:** large. **Risk:** medium.
 - **Open questions:** forecast method; whether counselors see a read-only version of their own figures (ccrm-036).
+- **Status (2026-10-25):** built on `worktree-ccrm-034` — `DEC-SCOPE-263` (R1–R10 defaults `NEEDS_CONFIRMATION`; forecast method R10 =
+  confirmed enrolments + open visa-approved applications; counselors' own figures stay ccrm-036), no migration, API §12FP, RBAC §2.177.
+  Pages `/management/crm-reports` and `/overseas/admin/crm-reports`. Design
+  `docs/superpowers/specs/2026-10-25-ccrm-034-management-crm-reports-design.md`.
 
 ### `ccrm-035` — Export of reports and records (CSV/Excel) with logging
 

@@ -11860,6 +11860,169 @@ class ApplicationFunnelOut(BaseModel):
     options: ApplicationFunnelOptions
 
 
+# --- ccrm-034 (DEC-SCOPE-263, R1-R10): the management CRM reports. Every report has its rows, a total row (students are distinct people,
+# so it is counted, not summed) and its definitions. A row's key fields are absent on the total.
+class CrmReportFiltersOut(BaseModel):
+    date_from: date | None
+    date_to: date | None
+    counselor: str | None
+    country: str | None
+    university: str | None
+    course: str | None
+    intake: str | None
+
+
+class CrmReportDefinition(BaseModel):
+    key: str
+    label: str
+    definition: str
+
+
+class CrmCounts(BaseModel):
+    applications: int
+    students: int
+
+
+class CrmAgeingBands(BaseModel):
+    d0_7: int
+    d8_14: int
+    d15_30: int
+    d31_60: int
+    d61_plus: int
+
+
+class CrmAgeingTotal(CrmCounts):
+    bands: CrmAgeingBands
+    oldest_days: int | None
+
+
+class CrmAgeingRow(CrmAgeingTotal):
+    stage: str
+    stage_label: str
+    sub_status: str | None
+    sub_status_label: str
+
+
+class CrmUniversityTotal(CrmCounts):
+    offers: int
+    offer_rate: float | None
+    rejections: int
+    acceptances: int
+    enrollments: int
+
+
+class CrmUniversityRow(CrmUniversityTotal):
+    university_id: UUID
+    label: str
+
+
+class CrmVisaTotal(CrmCounts):
+    submitted: int
+    pending: int
+    approved: int
+    refused: int
+    enrolled: int
+
+
+class CrmVisaRow(CrmVisaTotal):
+    country_id: UUID
+    label: str
+
+
+class CrmReadinessTotal(CrmCounts):
+    ready: int
+    blocked: int
+    needs_override: int
+    no_checklist: int
+
+
+class CrmReadinessRow(CrmReadinessTotal):
+    stage: str
+    stage_label: str
+
+
+class CrmLeadTotal(BaseModel):
+    leads: int
+    converted: int
+    conversion_pct: float | None
+    students: int
+    applications: int
+
+
+class CrmLeadRow(CrmLeadTotal):
+    intake: str | None
+    label: str
+
+
+class CrmForecastTotal(CrmCounts):
+    confirmed: int
+    expected: int
+    possible: int
+    lost: int
+    forecast: int
+
+
+class CrmForecastRow(CrmForecastTotal):
+    intake: str | None
+    label: str
+
+
+class CrmAgeingReport(BaseModel):
+    definitions: list[CrmReportDefinition]
+    rows: list[CrmAgeingRow]
+    total: CrmAgeingTotal
+
+
+class CrmUniversityReport(BaseModel):
+    definitions: list[CrmReportDefinition]
+    rows: list[CrmUniversityRow]
+    total: CrmUniversityTotal
+
+
+class CrmVisaReport(BaseModel):
+    definitions: list[CrmReportDefinition]
+    rows: list[CrmVisaRow]
+    total: CrmVisaTotal
+
+
+class CrmReadinessReport(BaseModel):
+    definitions: list[CrmReportDefinition]
+    rows: list[CrmReadinessRow]
+    total: CrmReadinessTotal
+
+
+class CrmLeadReport(BaseModel):
+    definitions: list[CrmReportDefinition]
+    rows: list[CrmLeadRow]
+    total: CrmLeadTotal
+
+
+class CrmForecastReport(BaseModel):
+    definitions: list[CrmReportDefinition]
+    rows: list[CrmForecastRow]
+    total: CrmForecastTotal
+
+
+class CrmReportOptions(BaseModel):
+    counselors: list[FilterChoice]
+    countries: list[FilterChoice]
+    universities: list[FilterChoice]
+    courses: list[FilterChoice]
+    intakes: list[FilterChoice]
+
+
+class CrmReportsOut(BaseModel):
+    filters: CrmReportFiltersOut
+    as_of: date
+    ageing: CrmAgeingReport
+    universities: CrmUniversityReport
+    visa: CrmVisaReport
+    readiness: CrmReadinessReport
+    leads: CrmLeadReport
+    forecast: CrmForecastReport
+    options: CrmReportOptions
+
+
 # mgmt-020 (spec BD1-BD12): GET /management/bdm -- one BDM type's §16 figures; `value` is null when the figure is not tracked.
 class ManagementBdmFigure(BaseModel):
     key: str

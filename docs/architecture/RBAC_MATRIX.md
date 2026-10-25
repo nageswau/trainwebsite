@@ -2785,3 +2785,13 @@ inside the existing role scope (a counselor searching another counselor's code g
 
 - Pinned by `test_ccrm_027_enrollment.py::test_readers_see_no_document_picker_and_cannot_write`,
   `::test_the_counselor_confirms_an_agency_enrolment_once_with_one_commission`, `::test_every_other_way_into_enrolled_is_a_422`.
+
+### 2.177 Management CRM reports *(added 2026-10-25 — `DEC-SCOPE-263`, ccrm-034)*
+
+| Route | `partner` | `super_admin` | `overseas_admin` | `accountant` | `counselor` | Others | Anonymous |
+|---|---|---|---|---|---|---|---|
+| `GET /management/crm-reports` | ✅ | ✅ | ✅ | `403` | `403` | `403` | `401` |
+
+- Pages: `/management/crm-reports` (Command Center, Students pillar) and `/overseas/admin/crm-reports` (Overseas Admin sidebar; the page
+  refuses other roles before calling the API). Pinned by `test_ccrm_034_reports.py::test_management_and_the_overseas_admin_read_the_reports`,
+  `::test_everyone_else_is_refused`, `::test_anonymous_is_refused`.

@@ -21,6 +21,7 @@ from app.schemas import (
     CapitalOut,
     CapitalSharesIn,
     CapitalSharesOut,
+    CrmReportsOut,
     DepartmentCreate,
     DepartmentOut,
     DepartmentPage,
@@ -65,6 +66,7 @@ from app.services import (
     management_audit,
     management_bdm,
     management_counseling,
+    management_crm_reports,
     management_drill,
     management_expenses,
     management_funnel,
@@ -87,7 +89,7 @@ from app.services import (
 from app.services.bdm_activities import india_date
 from app.services.bdm_appointments import db_now
 from app.services.bdm_performance import period
-from app.services.management_access import can_view_operational, can_view_university_commission, require_management, require_partner_only, tiers
+from app.services.management_access import can_view_operational, can_view_university_commission, require_crm_reports, require_management, require_partner_only, tiers
 from app.services.partnership_metrics import period as partnership_period
 
 router = APIRouter(prefix="/management", tags=["management"])
@@ -174,6 +176,29 @@ async def application_funnel(
         "withdrawn": counts["withdrawn"],
         "options": await management_metrics.application_options(db),
     }
+
+
+@router.get("/crm-reports", response_model=CrmReportsOut)
+async def crm_reports(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    counselor: str | None = Query(None, max_length=36),
+    country: UUID | None = None,
+    university: UUID | None = None,
+    course: UUID | None = None,
+    intake: str | None = Query(None, max_length=80),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """ccrm-034 (§13, AC 8, DEC-SCOPE-263 R1-R10): ageing, university performance, visa outcomes, document readiness, lead conversion
+    by intake and the forecast by intake -- counts only. Partner, super_admin and the Overseas Admin; everyone else 403."""
+    require_crm_reports(user)
+    if date_from and date_to and date_to < date_from:
+        raise HTTPException(422, "The end date must be on or after the start date")
+    filters = management_crm_reports.ReportFilters(date_from=date_from, date_to=date_to, counselor=_id_or_none(counselor), country=country, university=university, course=course, intake=intake or None)
+    today = india_date(await db_now(db))
+    body = await management_crm_reports.reports(db, filters, today)
+    return {**body, "filters": {key: None if value is None else str(value) for key, value in vars(filters).items()}, "as_of": today}
 
 
 def _operational(user: User) -> User:

@@ -3826,3 +3826,19 @@ that moves only the offer deadline carries the conditions to the new offer row.
 - `POST …/outcome` accepts `non_arrival` and `cancelled` (reason required; 422 "An offer is needed before this outcome" before an offer;
   409 once enrolled); both terminal (reopen: Overseas Admin, §12EW).
 - Management funnel (`GET /management/funnel`): the Enrollment stage counts first moves to `enrolled` whose enrolment is confirmed.
+
+## 12FP. Management CRM reports (ccrm-034) — addendum, 2026-10-25
+
+`DEC-SCOPE-263`. `GET /api/v1/management/crm-reports?date_from&date_to&counselor&country&university&course&intake` (router
+`api/management.py`, service `services/management_crm_reports.py`). Read-only, nothing stored or audited.
+
+- Returns `{filters, as_of, options: {counselors, countries, universities, courses, intakes}, ageing, universities, visa, readiness, leads,
+  forecast}`. Each report is `{definitions: [{key, label, definition}], rows: [...], total: {...}}`; the total is counted, not summed.
+- Rows: ageing `{stage, stage_label, sub_status, sub_status_label, applications, students, bands: {d0_7, d8_14, d15_30, d31_60, d61_plus},
+  oldest_days}`; universities `{university_id, label, applications, students, offers, offer_rate, rejections, acceptances, enrollments}`;
+  visa `{country_id, label, applications, students, submitted, pending, approved, refused, enrolled}`; readiness `{stage, stage_label,
+  applications, students, ready, blocked, needs_override, no_checklist}`; leads `{intake, label, leads, converted, conversion_pct, students,
+  applications}`; forecast `{intake, label, applications, students, confirmed, expected, possible, lost, forecast}`. A blank intake is
+  `intake: null`, label "Not recorded"; rates are `null` when nothing divides.
+- Errors: 401 anonymous; 403 any role but partner, super_admin, overseas_admin; 422 end before start, malformed `counselor` (id or
+  `none`), `country`/`university`/`course` not a UUID, `intake` over 80 characters.

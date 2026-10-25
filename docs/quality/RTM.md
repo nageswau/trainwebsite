@@ -1113,3 +1113,17 @@ half.
 | `ccrm-027-AC07` | The funnel counts confirmed enrolments only | `::test_the_funnel_counts_only_confirmed_enrolments`; `apps/api/tests/test_mgmt_016_funnel.py` |
 | `ccrm-027-AC08` | Migration round-trips, repeats the outcome values, single head | `apps/api/tests/test_ccrm_027_migration.py` |
 | `ccrm-027-AC09` | Counselor UI: Enrolment panel (load/error/confirm step/correction); no Enrolled in Advance / sub-status | `apps/web/tests/components/ApplicationEnrollmentPanel.test.tsx`, `CounselorAgencyLimits.test.tsx`; `apps/web/tests/e2e/ccrm-027-enrollment.spec.ts` |
+
+| `ccrm-034` | Requirement: §13 report table, §4 conversion by intake, AC 8 → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-034` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-263` → design `docs/superpowers/specs/2026-10-25-ccrm-034-management-crm-reports-design.md`; `API_CONTRACT.md` §12FP; `RBAC_MATRIX.md` §2.177 | R1–R10 defaults `NEEDS_CONFIRMATION` |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-034-AC01` | Partner, super_admin, Overseas Admin read all six reports with definitions; others 403, anonymous 401 (R1) | `apps/api/tests/test_ccrm_034_reports.py::test_management_and_the_overseas_admin_read_the_reports`, `::test_everyone_else_is_refused`, `::test_anonymous_is_refused` |
+| `ccrm-034-AC02` | Ageing by stage/sub-status with day bands; closed rows excluded; students ≠ applications (R3–R5) | `::test_ageing_groups_open_applications_by_stage_and_sub_status_with_day_bands` |
+| `ccrm-034-AC03` | University performance: offers, rate, rejections, acceptances, confirmed enrolments (R6) | `::test_university_performance_counts_offers_rejections_acceptances_and_confirmed_enrolments` |
+| `ccrm-034-AC04` | Visa outcomes by destination (R7) | `::test_visa_outcomes_by_destination` |
+| `ccrm-034-AC05` | Document readiness: ready / blocked / needs override / no checklist (R8) | `::test_readiness_splits_pre_submission_applications_by_checklist_state` |
+| `ccrm-034-AC06` | Lead conversion by intake; owner filter; blank intake "Not recorded" (R9) | `::test_lead_conversion_by_intake`, `::test_lead_report_filters_by_owner_counselor_and_names_a_blank_intake` |
+| `ccrm-034-AC07` | Forecast = confirmed + expected; possible and lost beside it (R10) | `::test_forecast_by_intake_is_confirmed_plus_visa_approved` |
+| `ccrm-034-AC08` | Filters narrow; bad filters 422 (R2) | `::test_filters_narrow_every_application_report`, `::test_bad_filters_are_422`, `::test_intake_choices_never_offer_a_blank` (browser QA-02) |
+| `ccrm-034-AC09` | UI: six tables with Students and Applications columns, definitions, empty/error states, GET filters on both pages, access | `apps/web/tests/components/ManagementCrmReports.test.tsx`, `apps/web/tests/lib/managementCrmReports.test.ts`; `apps/web/tests/e2e/ccrm-034-crm-reports.spec.ts` (incl. phone no-overflow, browser QA-01) |
