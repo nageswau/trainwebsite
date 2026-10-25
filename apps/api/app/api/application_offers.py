@@ -274,9 +274,14 @@ async def _save_condition(db: AsyncSession, user: User, item: OverseasApplicatio
     await _tell_student(db, item, "Offer condition updated", f"Offer condition: {condition.description} -- {conditions.STATUS_LABELS[condition.status]}.")
     await agency_notices.offer_changed(db, item, user, "Offer condition updated")
     action = "added" if added else "updated"
-    await _audit(db, user, "overseas.application.offer_condition", "overseas_application", item.id, {"offer_id": str(offer.id), "condition_id": str(condition.id), "action": action, "status": condition.status})
+    await _audit(
+        db, user, "overseas.application.offer_condition", "overseas_application", item.id, {"offer_id": str(offer.id), "condition_id": str(condition.id), "action": action, "status": condition.status}
+    )
     await db.commit()
-    logger.info("application_offer_condition_saved", extra={"extra_fields": {"application_id": str(item.id), "condition_id": str(condition.id), "action": action, "status": condition.status, "actor_id": str(user.id)}})
+    logger.info(
+        "application_offer_condition_saved",
+        extra={"extra_fields": {"application_id": str(item.id), "condition_id": str(condition.id), "action": action, "status": condition.status, "actor_id": str(user.id)}},
+    )
     return await _condition_result(db, offer, condition.id, changed=True)
 
 
@@ -295,9 +300,7 @@ async def add_condition(application_id: UUID, offer_id: UUID, payload: OfferCond
 
 
 @router.patch("/{application_id}/offers/{offer_id}/conditions/{condition_id}")
-async def update_condition(
-    application_id: UUID, offer_id: UUID, condition_id: UUID, payload: OfferConditionUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
-):
+async def update_condition(application_id: UUID, offer_id: UUID, condition_id: UUID, payload: OfferConditionUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """ccrm-024: change a condition of the current offer -- only the keys sent. The result is checked as a whole (C2, C5, C6, C11).
     Nothing different: 200, unchanged."""
     item = await _writable(db, user, application_id, moves_stage=False)
