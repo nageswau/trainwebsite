@@ -105,4 +105,4 @@ Reminders on due dates (ccrm-030), student/agency condition UI (nehn-033 / agenc
 ## 5. Risks
 
 `record()` is shared with the agency PUT/PATCH (AGN-010 tests); the offer view grows two keys (ccrm-023/025 tests compare fields, not
-whole dicts); the 0181 migration test may assert it is the single head (checked when main is merged).
+whole dicts); ccrm-004's 0181 migration test uses the walk idiom, so 0182 chaining after it needs no test change.

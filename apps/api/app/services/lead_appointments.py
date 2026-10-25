@@ -221,7 +221,7 @@ async def outs(db: AsyncSession, user: User, appts: list[Appointment]) -> list[d
             "appointment_type": a.appointment_type, "type_label": LEAD_APPOINTMENT_TYPE_LABELS.get(a.appointment_type, a.appointment_type),
             "counselor": _person(people.get(a.staff_id)), "booked_by": _person(people.get(a.booked_by_user_id)),
             "scheduled_at": a.scheduled_at, "duration_minutes": a.duration_minutes, "mode": a.mode, "meeting_link": a.meeting_link,
-            "location": a.location, "purpose": a.purpose, "remarks": a.remarks, "status": a.status, "created_at": a.created_at,
+            "location": a.location, "purpose": a.purpose, "remarks": a.remarks, "status": a.status, "outcome_notes": a.outcome_notes, "created_at": a.created_at,
             "events": events[a.id], "permissions": permissions(user, a, lead, now),
         })
     return result

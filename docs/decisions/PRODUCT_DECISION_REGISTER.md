@@ -9352,6 +9352,26 @@ pure module `app/student_journey.py` for ccrm-032 / nehn-033 to reuse. Derived o
 **Numbering:** no migration; API §12FK (additive field on §12FF); no RBAC change (same route, same scope).
 - **Feature ID authorized:** `ccrm-017`. **Status:** built on `feature/ccrm-017`.
 
+### DEC-SCOPE-259 — Counselor activity logging on leads: calls, WhatsApp, email, meetings (`ccrm-004`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-004` (source PDF §3 "record every call, email, meeting, WhatsApp interaction or
+counselling session as an activity", §14 communication logging, `UNVERIFIED`); design
+`docs/superpowers/specs/2026-10-25-ccrm-004-counselor-lead-activities-design.md`. Builds on ccrm-003 (`DEC-SCOPE-243`).
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** LG1 the counselor logs,
+edits and deletes calls on the leads handed to them (`/counselor/...` routes on the tel-010 service: same outcomes, time rules, cap, CL2
+closed lead 409, CL4 same-day by the caller) and **a counselor's call has no pipeline effect** — they move the stage through the CC8
+control; a next follow-up uses tel-011 with the counselor's rules. LG2 WhatsApp and email through the tel-013 / tel-014 service with
+WA1–WA4 and EM1–EM4 unchanged (From "<Counselor> via EduSphere", Reply-To the counselor); the counselor lists the **active message
+templates** only (not scripts, brochures or previews). LG3 a new append-only `lead_meetings` (date/time, mode Online / Phone / In person,
+notes 1–2000; no future, up to 7 days back; closed lead 409). LG4 `appointments.outcome_notes`, given optionally when the counselor
+completes a lead appointment. LG5 telecaller metrics stay telecaller-only (tel-021–024 count telecaller ids; the mgmt-016 funnel's
+Telecalling stage now excludes counselor callers). LG6 the backlog open question — counselor calls in management counselor performance —
+answered **yes**: mgmt-018's Calls figure is tracked (calls each counselor logged in the period). LG7 the counselor lead detail gains
+`whatsapp_to` and `permissions.activity`. LG8 logs and audit carry ids, outcome / channel / mode only. Consent opt-out waits for ccrm-040;
+lead activity is not copied to the student (the student 360 links to the lead, ccrm-009).
+**Numbering:** migration `0181_lead_meetings` (after ccrm-019's `0180`); API §12FL; RBAC §2.173. ccrm-017 took DEC-SCOPE-258 / §12FK first.
+- **Feature ID authorized:** `ccrm-004`. **Status:** built on `feature/ccrm-004`.
+
 ### DEC-SCOPE-260 — Offer conditions (`ccrm-024`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-024` (source PDF §9 "conditions to satisfy, owner, due date and completion

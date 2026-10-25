@@ -5,7 +5,10 @@ import { type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useStat
 
 import { LeadStageControl } from "@/components/AdminLeadStage";
 import BdmConfirm from "@/components/BdmConfirm";
+import LeadCalls from "@/components/LeadCalls";
 import LeadFollowUps from "@/components/LeadFollowUps";
+import LeadMeetings from "@/components/LeadMeetings";
+import LeadMessages from "@/components/LeadMessages";
 import LocalTime from "@/components/LocalTime";
 import LeadMilestones from "@/components/LeadMilestones";
 import LeadNotes from "@/components/LeadNotes";
@@ -16,7 +19,9 @@ import { formatCalendarDate } from "@/lib/formatDate";
 import { counselorLeadUrl, counselorMoveStage, type CounselorLeadDetail as Detail, type StudentSuggestion } from "@/lib/leadHandover";
 import { counselorTargets, stageLabel } from "@/lib/leadStages";
 import { SOURCE_LABEL } from "@/lib/telecallerCatalogue";
+import { counselorCallApi } from "@/lib/telecallerCalls";
 import { counselorFollowUpApi } from "@/lib/telecallerFollowUps";
+import { COUNSELOR_MESSAGE_API } from "@/lib/telecallerMessages";
 
 type Notice = { text: string; failed: boolean } | null;
 
@@ -286,6 +291,8 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
   const [notice, setNotice] = useState<Notice>(null);
   const [leadNotice, setLeadNotice] = useState<Notice>(null);
   const followUpApi = useMemo(() => counselorFollowUpApi(lead.division), [lead.division]);
+  const callApi = useMemo(() => counselorCallApi(lead.division), [lead.division]);
+  const [followUpsVersion, setFollowUpsVersion] = useState(0); // ccrm-004: a call's next follow-up shows in the list
   const listHref = `/${lead.division === "overseas" ? "overseas" : "it"}/counselor/leads`;
   const reloadActivity = () => setActivityVersion((n) => n + 1);
   // A closing move cancels open follow-ups and appointments on the server; re-read the lead so its permissions follow the new stage.
@@ -342,8 +349,14 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
               </div>
             </section>
           )}
-          <LeadFollowUps leadId={lead.id} leadStage={lead.status} canWrite={lead.permissions.follow_up} api={followUpApi}
+          <LeadFollowUps leadId={lead.id} leadStage={lead.status} canWrite={lead.permissions.follow_up} api={followUpApi} refresh={followUpsVersion}
             onStageChanged={(status) => void stageChanged(status)} onChanged={reloadActivity} />
+          {/* ccrm-004 (LG1-LG3): the counselor's own calls, messages and meetings; a call never moves the stage */}
+          <LeadCalls leadId={lead.id} leadStage={lead.status} canWrite={lead.permissions.activity} api={callApi}
+            onLogged={(result) => { if (result.follow_up_id) setFollowUpsVersion((n) => n + 1); }} onChanged={reloadActivity} />
+          <LeadMessages leadId={lead.id} whatsappTo={lead.whatsapp_to} email={lead.email} canWrite={lead.permissions.activity} api={COUNSELOR_MESSAGE_API}
+            onChanged={reloadActivity} />
+          <LeadMeetings leadId={lead.id} canWrite={lead.permissions.activity} onChanged={reloadActivity} />
         </>
       )}
 

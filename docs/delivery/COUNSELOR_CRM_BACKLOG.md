@@ -207,6 +207,8 @@ asked one at a time when the item is picked up).
 - **Regression:** telecaller call counts and targets (tel-022), daily report.
 - **Complexity:** medium. **Risk:** medium.
 - **Open questions:** should counselor calls count in management "counselor performance" (calls are marked untracked today)?
+- **Status:** built on `feature/ccrm-004` — `DEC-SCOPE-259`, migration `0181_lead_meetings`, API §12FL, RBAC §2.173 (LG1–LG8; the open
+  question answered yes by default: mgmt-018 Calls is tracked). Consent opt-out waits for ccrm-040.
 
 ### `ccrm-005` — Lead data fields: contact preference, study, academic, English, consent, referral
 

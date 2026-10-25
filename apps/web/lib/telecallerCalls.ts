@@ -1,5 +1,7 @@
 // tel-010 (DEC-SCOPE-096): calls on a lead -- types, the EVID-019 §5 outcomes (mirroring services/lead_calls.py) and the endpoints. The
 // API decides scope, every rule and `can_change` (the caller, on the call's IST day, lead not handed over); the UI only offers what it allows.
+import { counselorLeadUrl } from "@/lib/leadHandover";
+import { TELECALLER_SIGN_IN } from "@/lib/navigation";
 import { leadUrl, type PersonRef } from "@/lib/telecallerLeads";
 
 type Outcome = { key: string; label: string; connected: boolean; closes?: string; followUp?: boolean };
@@ -38,6 +40,17 @@ export const LIST_LIMIT = 50;
 export const leadCallsUrl = (leadId: string) => leadUrl(leadId, `/calls?limit=${LIST_LIMIT}`);
 export const createCallUrl = (leadId: string) => leadUrl(leadId, "/calls");
 export const callUrl = (id: string) => `/api/v1/telecaller/calls/${encodeURIComponent(id)}`;
+
+/** ccrm-004 (DEC-SCOPE-259 LG1): where the calls section reads and writes -- the telecaller's routes, or the counselor's on
+ *  CounselorLeadDetail. A counselor's call never moves the stage, so `stageEffect` hides the "closes the lead" note and the move. */
+export type CallApi = { list: (leadId: string) => string; create: (leadId: string) => string; item: (id: string) => string; signIn: string; stageEffect: boolean };
+export const TELECALLER_CALL_API: CallApi = { list: leadCallsUrl, create: createCallUrl, item: callUrl, signIn: TELECALLER_SIGN_IN, stageEffect: true };
+export function counselorCallApi(division: string): CallApi {
+  return {
+    list: (leadId) => counselorLeadUrl(leadId, `/calls?limit=${LIST_LIMIT}`), create: (leadId) => counselorLeadUrl(leadId, "/calls"),
+    item: (id) => `/api/v1/counselor/calls/${encodeURIComponent(id)}`, signIn: `/${division === "overseas" ? "overseas" : "it"}/login`, stageEffect: false,
+  };
+}
 
 export function isLeadCall(data: unknown): data is LeadCall {
   const d = data as Partial<LeadCall> | null;

@@ -1056,6 +1056,18 @@ half.
 | `ccrm-017-AC04` | Overview carries the journey beside each application's own status; scope unchanged (404) | `::test_overview_carries_the_journey_from_the_best_application`, `::test_another_counselors_student_is_still_404`; `apps/api/tests/test_ccrm_009_student_360.py` |
 | `ccrm-017-AC05` | 360 Overview shows the tracker, state as text, current marked, responsive | `apps/web/tests/components/OverseasStudentJourney.test.tsx`; `apps/web/tests/e2e/ccrm-017-student-journey.spec.ts` |
 
+| `ccrm-004` | Requirement: §3 record every call, email, meeting, WhatsApp, counselling session; §14 communication logging → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-004` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-259` → design `docs/superpowers/specs/2026-10-25-ccrm-004-counselor-lead-activities-design.md`; `API_CONTRACT.md` §12FL, `RBAC_MATRIX.md` §2.173, `DATA_MODEL.md` (0181) | LG1–LG8 defaults `NEEDS_CONFIRMATION` |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-004-AC01` | The counselor logs a call on their lead (no stage effect); it shows in the timeline; edit / delete same day; telecaller read only | `apps/api/tests/test_ccrm_004_counselor_activities.py::test_counselor_logs_a_call_with_no_stage_effect_and_it_shows_in_the_timeline`, `::test_a_follow_up_outcome_needs_and_creates_the_counselors_follow_up`, `::test_counselor_edits_and_deletes_their_own_call_the_same_day`; `apps/web/tests/components/CounselorLeadDetail.test.tsx`; `apps/web/tests/e2e/ccrm-004-counselor-activities.spec.ts` |
+| `ccrm-004-AC02` | The counselor sends WhatsApp and email to their lead through the existing services; email hidden-disabled without an address | `::test_counselor_records_a_whatsapp_send_and_deletes_it_the_same_day`, `::test_counselor_emails_their_lead`; `CounselorLeadDetail.test.tsx` |
+| `ccrm-004-AC03` | A meeting (date, mode, notes) is recorded and shows in the timeline | `::test_counselor_records_a_meeting_and_it_shows_in_the_timeline`, `::test_meeting_validation_scope_and_closed_lead`; `apps/web/tests/lib/leadTimeline.test.ts` |
+| `ccrm-004-AC04` | Appointment completion takes optional outcome notes, shown on the appointment and in the timeline | `::test_completing_an_appointment_keeps_its_outcome_notes`, `::test_completing_without_a_body_still_works`; `apps/web/tests/components/LeadAppointmentCard.test.tsx` |
+| `ccrm-004-AC05` | Telecaller metrics do not count the counselor's calls; management counselor performance does | `apps/api/tests/test_mgmt_016_funnel.py::test_a_counselors_call_is_not_telecalling`, `test_mgmt_018_counseling.py::test_each_counselors_figures`; `ManagementCounseling.test.tsx` |
+| `ccrm-004-AC06` | Scope: another counselor 404, other roles 403, closed lead 409 | `::test_call_scope_role_and_closed_lead`, `::test_message_scope_role_and_closed_lead`, `::test_meeting_validation_scope_and_closed_lead` |
+| `ccrm-004-AC07` | Migration round-trips and is the single head | `apps/api/tests/test_ccrm_004_migration.py` |
+
 
 **Addendum, 2026-10-25 (`ccrm-024`)** — one row and its acceptance-criteria map. Offer conditions.
 

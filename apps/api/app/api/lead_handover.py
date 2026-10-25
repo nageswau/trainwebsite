@@ -23,6 +23,9 @@ from app.schemas import (
     CounselorLeadStageMove,
     CounselorStudentCreate,
     LeadHandoverIn,
+    LeadMeetingIn,
+    LeadMeetingOut,
+    LeadMeetingPage,
     LeadNextActionIn,
     LeadNoteIn,
     LeadNoteOut,
@@ -31,7 +34,8 @@ from app.schemas import (
     LeadStudentLinkIn,
     LeadTimelinePage,
 )
-from app.services import bdm_leads, counselor_students, lead_conversion, lead_handover, lead_notes, lead_pipeline, telecaller_leads
+from app.services import bdm_leads, counselor_students, lead_conversion, lead_handover, lead_meetings, lead_notes, lead_pipeline, telecaller_leads
+from app.services.bdm_appointments import db_now
 from app.services.lead_timeline import page as timeline_page
 
 telecaller_router = APIRouter(prefix="/telecaller/leads", tags=["lead-handover"])
@@ -93,6 +97,20 @@ async def lead_note_add(lead_id: UUID, payload: LeadNoteIn, user: User = Depends
     """ccrm-002: a note on a closed lead is allowed (history); another counselor's lead is 404."""
     await _counselor_lead(db, user, lead_id)
     return await lead_notes.add(db, user, lead_id, payload.body)
+
+
+@counselor_router.get("/{lead_id}/meetings", response_model=LeadMeetingPage)
+async def lead_meetings_list(lead_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-004 (DEC-SCOPE-259 LG3): the meetings recorded on a lead handed to this counselor, newest first."""
+    await _counselor_lead(db, user, lead_id)
+    return await lead_meetings.page(db, lead_id, limit, offset)
+
+
+@counselor_router.post("/{lead_id}/meetings", response_model=LeadMeetingOut, status_code=201)
+async def lead_meeting_add(lead_id: UUID, payload: LeadMeetingIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """LG3: append-only; a closed lead is 409, another counselor's lead 404. Not idempotent (a retry records a second meeting)."""
+    lead = await lead_pipeline.locked_lead(db, lead_id, *lead_handover.counselor_scope(user))
+    return await lead_meetings.add(db, user, lead, payload, await db_now(db))
 
 
 @counselor_router.post("/{lead_id}/stage")

@@ -6796,7 +6796,7 @@ class LeadTimelineRow(BaseModel):
 
     id: UUID
     kind: Literal["created", "enquiry", "stage", "priority", "assignment", "handover", "student_link", "call", "message", "follow_up",
-                  "appointment", "milestone", "note"]
+                  "appointment", "milestone", "note", "meeting"]
     at: datetime
     actor: LeadStageActor | None
     from_value: str
@@ -6837,6 +6837,39 @@ class LeadNotePage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class LeadMeetingIn(BaseModel):
+    """ccrm-004 (DEC-SCOPE-259 LG3): when (not in the future, up to 7 days back -- the call rules), how, and trimmed notes 1-2000
+    (`LEAD_MEETING_NOTES_MAX`)."""
+
+    model_config = ConfigDict(extra="forbid")
+    occurred_at: AwareDatetime
+    mode: Literal[APPOINTMENT_MODES]
+    notes: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+
+
+class LeadMeetingOut(BaseModel):
+    id: UUID
+    occurred_at: datetime
+    mode: str
+    notes: str
+    author: LeadStageActor
+    created_at: datetime
+
+
+class LeadMeetingPage(BaseModel):
+    items: list[LeadMeetingOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class LeadAppointmentComplete(BaseModel):
+    """ccrm-004 (DEC-SCOPE-259 LG4): the session's outcome, optional; blank is none."""
+
+    model_config = ConfigDict(extra="forbid")
+    outcome_notes: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=2000)] = None
 
 
 class UniversityTimelineRow(BaseModel):

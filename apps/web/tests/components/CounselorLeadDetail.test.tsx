@@ -17,15 +17,15 @@ const detail = (over: Partial<Detail> = {}): Detail => ({
   status_label: "Counselling Completed", source: "website", priority: "warm", created_at: "2026-10-06T05:00:00Z", stage_changed_at: "2026-10-06T05:00:00Z",
   product: null, campaign: null, telecaller: { id: "t1", full_name: "Tara Caller" }, counselor: { id: "c1", full_name: "Cara Counselor" },
   converted_user: null, message: "Hello", milestones: { student: null, items: [] }, next_action: null, next_action_due: null, next_action_overdue: false,
-  permissions: { return: true, link: true, unlink: false, stage: true, follow_up: true, convert: false }, ...over,
+  permissions: { return: true, link: true, unlink: false, stage: true, follow_up: true, convert: false, activity: true }, whatsapp_to: "919876543210", ...over,
 });
-const closedPermissions = { return: true, link: false, unlink: false, stage: false, follow_up: false, convert: false };
+const closedPermissions = { return: true, link: false, unlink: false, stage: false, follow_up: false, convert: false, activity: false };
 const asha = { id: "s1", full_name: "Asha Rao", email: "asha@example.com", phone: null, linked_elsewhere: false };
 const taken = { id: "s2", full_name: "Asha R", email: "asha.r@example.com", phone: null, linked_elsewhere: true };
 const linked = detail({
   status: "application_enrollment", status_label: "Application/Enrollment", converted_user: { id: "s1", full_name: "Asha Rao", email: "asha@example.com" },
   milestones: { student: { id: "s1", full_name: "Asha Rao", email: "asha@example.com" }, items: [] },
-  permissions: { return: false, link: false, unlink: true, stage: true, follow_up: true, convert: false },
+  permissions: { return: false, link: false, unlink: true, stage: true, follow_up: true, convert: false, activity: true },
 });
 const followUp = {
   id: "F1", due_at: "2026-10-30T05:30:00Z", reason: "waiting_documents", notes: null, next_action: "Collect transcripts", status: "open", overdue: false,
@@ -48,7 +48,7 @@ beforeEach(() => {
     if (reply[`${method} ${tail}`]) return Promise.resolve(reply[`${method} ${tail}`]());
     if (tail === "/link-suggestions") return Promise.resolve(res({ items: [asha] }));
     if (tail.startsWith("/link-suggestions?q=")) return Promise.resolve(res({ items: [taken] }));
-    if (tail.startsWith("/timeline") || tail.startsWith("/notes") || tail.startsWith("/follow-ups")) return Promise.resolve(res(pageOf([])));
+    if (["/timeline", "/notes", "/follow-ups", "/calls", "/messages", "/meetings"].some((t) => tail.startsWith(t))) return Promise.resolve(res(pageOf([])));
     if (url.startsWith("/api/v1/counselor/leads?")) return Promise.resolve(res(pageOf([detail()])));
     return Promise.resolve(res({}, 404));
   });
@@ -216,7 +216,7 @@ describe("CounselorLeadDetail", () => {
   });
 
   it("a converted lead offers neither return, link nor unlink", async () => {
-    render(<CounselorLeadDetail initial={{ ...linked, status: "converted", status_label: "Converted", permissions: { return: false, link: false, unlink: false, stage: false, follow_up: false, convert: false } }} />);
+    render(<CounselorLeadDetail initial={{ ...linked, status: "converted", status_label: "Converted", permissions: { return: false, link: false, unlink: false, stage: false, follow_up: false, convert: false, activity: false } }} />);
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     for (const name of ["Return to telecaller", "Unlink student"]) expect(screen.queryByRole("button", { name })).toBeNull();
     expect(screen.getAllByText("Converted").length).toBeGreaterThan(0);
@@ -226,7 +226,7 @@ describe("CounselorLeadDetail", () => {
 // ccrm-008 (DEC-SCOPE-252): one-step conversion to a new overseas student, prefilled from the lead.
 describe("CounselorLeadDetail convert", () => {
   const overseas = (over: Partial<Detail> = {}) =>
-    detail({ division: "overseas", status: "qualified", status_label: "Qualified", permissions: { return: true, link: true, unlink: false, stage: true, follow_up: true, convert: true }, ...over });
+    detail({ division: "overseas", status: "qualified", status_label: "Qualified", permissions: { return: true, link: true, unlink: false, stage: true, follow_up: true, convert: true, activity: true }, ...over });
   const student = { id: "S9", full_name: "Asha Rao", email: "asha@example.com", phone: "+91 98765 43210", student_code: "AB12CD34", setup: "pending_setup" };
 
   it("converts with the lead's details prefilled and links to the new student's profile", async () => {
@@ -265,7 +265,7 @@ describe("CounselorLeadDetail convert", () => {
   });
 
   it("explains why an overseas lead before Qualified cannot be converted yet", () => {
-    render(<CounselorLeadDetail initial={overseas({ status: "contacted", status_label: "Contacted", permissions: { return: true, link: true, unlink: false, stage: true, follow_up: true, convert: false } })} />);
+    render(<CounselorLeadDetail initial={overseas({ status: "contacted", status_label: "Contacted", permissions: { return: true, link: true, unlink: false, stage: true, follow_up: true, convert: false, activity: true } })} />);
     expect(screen.queryByRole("button", { name: "Convert to student" })).toBeNull();
     expect(screen.getByText("Move the lead to Qualified to convert it to a new student.")).toBeInTheDocument();
   });
@@ -284,5 +284,45 @@ describe("CounselorLeadsPanel", () => {
     render(<CounselorLeadsPanel division="it" />);
     fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
     expect(await screen.findByRole("link", { name: "LD-000042" })).toBeInTheDocument();
+  });
+
+  // ccrm-004 (DEC-SCOPE-259 LG1-LG3): the counselor's calls, messages and meetings on their own lead
+  it("logs a call on the counselor's route, without the telecaller's stage effect note", async () => {
+    const call = { id: "K1", lead_id: "L1", occurred_at: "2026-10-25T05:00:00Z", duration_seconds: 120, call_type: "outgoing", outcome: "not_interested",
+      outcome_label: "Not Interested", connected: true, remarks: null, caller: { id: "c1", full_name: "Cara Counselor" }, created_at: "2026-10-25T05:00:00Z", can_change: true };
+    reply["POST /calls"] = () => res({ call, lead: { id: "L1", status: "counselling_completed", status_label: "Counselling Completed" }, follow_up_id: null }, 201);
+    render(<CounselorLeadDetail initial={detail()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Log call" }));
+    fireEvent.change(screen.getByLabelText("Outcome (required)"), { target: { value: "not_interested" } });
+    expect(screen.queryByText(/closes the lead/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save call" }));
+    await screen.findByText("Call logged.");
+    expect(body("POST", "/calls")).toMatchObject({ outcome: "not_interested", call_type: "outgoing" });
+  });
+
+  it("records a meeting with its mode and notes", async () => {
+    reply["POST /meetings"] = () => res({ id: "M1", occurred_at: "2026-10-25T05:00:00Z", mode: "Online", notes: "Shortlist", author: { id: "c1", full_name: "Cara Counselor" }, created_at: "2026-10-25T05:00:00Z" }, 201);
+    render(<CounselorLeadDetail initial={detail()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Record meeting" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save meeting" }));
+    expect(await screen.findByText("Add what was discussed")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Mode"), { target: { value: "Online" } });
+    fireEvent.change(screen.getByLabelText("Notes (required)"), { target: { value: "  Shortlist  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save meeting" }));
+    await screen.findByText("Meeting recorded.");
+    expect(body("POST", "/meetings")).toMatchObject({ mode: "Online", notes: "Shortlist" });
+  });
+
+  it("reads the messages from the counselor's route and offers both channels", async () => {
+    render(<CounselorLeadDetail initial={detail()} />);
+    expect(await screen.findByRole("button", { name: "Send WhatsApp" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Send email" })).toBeEnabled();
+    await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).startsWith("/api/v1/counselor/leads/L1/messages"))).toBe(true));
+  });
+
+  it("offers no activity on a closed lead", async () => {
+    render(<CounselorLeadDetail initial={detail({ status: "lost", status_label: "Lost", permissions: closedPermissions })} />);
+    expect(await screen.findByRole("heading", { name: "Calls" })).toBeInTheDocument();
+    for (const name of ["Log call", "Send WhatsApp", "Send email", "Record meeting"]) expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
   });
 });
