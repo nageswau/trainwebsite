@@ -168,6 +168,42 @@ def _post(client: httpx.Client, payload: dict, token: str) -> httpx.Response:
         raise EmailPermanentError(_cap(f"zoho_mail outcome unknown: {type(exc).__name__}")) from None
 
 
+def attachments_of(msg: EmailMessage) -> list[tuple[str, bytes]]:
+    """ccrm-038 (DEC-SCOPE-274 CA3): the real attachments (`.ics` invites); the inline logo is not one."""
+    return [(part.get_filename() or "attachment", part.get_payload(decode=True)) for part in msg.iter_attachments()
+            if part.get_content_disposition() == "attachment"]
+
+
+def _upload_post(client: httpx.Client, name: str, data: bytes, token: str) -> httpx.Response:
+    try:
+        return client.post(
+            f"{settings.zoho_mail_api_base}/api/accounts/{settings.zoho_mail_account_id}/messages/attachments",
+            params={"fileName": name}, content=data,
+            headers={"Authorization": f"Zoho-oauthtoken {token}", "Accept": "application/json", "Content-Type": "application/octet-stream"},
+        )
+    except httpx.TransportError as exc:  # no message was sent yet: retrying is safe
+        raise EmailTransientError(_cap(f"zoho_mail attachment upload failed: {type(exc).__name__}")) from None
+
+
+def _upload(client: httpx.Client, name: str, data: bytes, token: str) -> dict:
+    """Zoho's upload-attachment API; its answer (storeName, attachmentPath, attachmentName) is referenced by the send. Nothing is sent
+    yet, so a 5xx is transient; any other refusal is permanent (the same file would be refused again). A 401 refreshes once, as `send`."""
+    response = _upload_post(client, name, data, token)
+    if response.status_code == 401:
+        _drop_token(token)
+        response = _upload_post(client, name, data, _access_token(client))
+    if response.status_code >= 500:
+        raise EmailTransientError(_cap(f"zoho_mail attachment upload HTTP {response.status_code}"))
+    try:
+        data_out = response.json().get("data") if 200 <= response.status_code < 300 else None
+    except (ValueError, AttributeError):
+        data_out = None
+    item = data_out[0] if isinstance(data_out, list) and data_out else data_out  # one file: an object, or a one-item list
+    if not isinstance(item, dict) or not item.get("storeName"):
+        raise EmailPermanentError(_cap(f"zoho_mail attachment upload refused: HTTP {response.status_code}"))
+    return {key: item.get(key) for key in ("storeName", "attachmentPath", "attachmentName")}
+
+
 def send(msg: EmailMessage, *, client: httpx.Client | None = None) -> None:
     """Raises only EmailTransientError / EmailPermanentError."""
     payload = payload_from_message(msg)
@@ -175,6 +211,9 @@ def send(msg: EmailMessage, *, client: httpx.Client | None = None) -> None:
     client = client or httpx.Client(timeout=_TIMEOUT)
     try:
         token = _access_token(client)
+        if files := attachments_of(msg):
+            payload["attachments"] = [_upload(client, name, data, token) for name, data in files]
+            token = _access_token(client)  # the cached token, refreshed if an upload hit a 401
         response = _post(client, payload, token)
         if response.status_code == 401:  # token revoked/expired early: refresh once and retry once
             _drop_token(token)

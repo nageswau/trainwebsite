@@ -230,6 +230,22 @@ def sweep_stale_university_emails_task():
 
 
 @celery.task
+def deliver_student_email_task(message_id: str):
+    """ccrm-037 (DEC-SCOPE-273 MT6): send one queued counselor email to a student; retries are re-enqueued by `deliver_student_email`."""
+    from app.notifications.student_email import deliver_student_email
+
+    return _run_with_fresh_pool(lambda: deliver_student_email(UUID(message_id)))
+
+
+@celery.task
+def sweep_stale_student_emails_task():
+    """ccrm-037 (MT6): every 5 minutes via beat."""
+    from app.notifications.student_email import sweep_stale_student_emails
+
+    return _run_with_fresh_pool(sweep_stale_student_emails)
+
+
+@celery.task
 def draft_monthly_review_task():
     """mgmt-032 (DEC-SCOPE-220 MR3): on the 1st at 06:00 IST via beat -- drafts the previous month's review. Idempotent per month (the
     unique month; an existing review is never overwritten), so a rerun or a second beat process creates nothing new."""
@@ -251,6 +267,7 @@ celery.conf.beat_schedule = {
     "tel020-alerts": {"task": "app.worker.send_telecaller_alerts_task", "schedule": 900.0},
     "rec026-sweep-stale-recruiter-emails": {"task": "app.worker.sweep_stale_recruiter_emails_task", "schedule": 300.0},
     "upc012-sweep-stale-university-emails": {"task": "app.worker.sweep_stale_university_emails_task", "schedule": 300.0},
+    "ccrm037-sweep-stale-student-emails": {"task": "app.worker.sweep_stale_student_emails_task", "schedule": 300.0},
     "upc015-alerts": {"task": "app.worker.send_partnership_alerts_task", "schedule": crontab(minute=30)},  # UTC :30 = every IST hour
     "mgmt032-monthly-review": {"task": "app.worker.draft_monthly_review_task", "schedule": crontab(day_of_month=1, hour=0, minute=30)},  # UTC 00:30 = 06:00 IST
 }

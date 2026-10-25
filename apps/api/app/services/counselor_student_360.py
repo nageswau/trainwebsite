@@ -46,7 +46,7 @@ ACCOUNT_ACTIONS = {
     "counselor.student_create": "Account created by the counselor",
     "counselor.student_resend": "Set-password link re-sent",
     COUNSELOR_ASSIGNED: "Counselor assigned",
-    student_archive.ARCHIVED: "Archived",  # ccrm-040 (DEC-SCOPE-273 AR4)
+    student_archive.ARCHIVED: "Archived",  # ccrm-040 (DEC-SCOPE-275 AR4)
     student_archive.RESTORED: "Restored",
     overseas_consents.ACCEPTED: "Consent given",
 }
@@ -114,7 +114,7 @@ async def overview(db: AsyncSession, user: User, student: User) -> dict:
             for a in applications
             if a["open"] and a["next_action"]
         ],
-        # ccrm-040 (DEC-SCOPE-273): the archive banner, what the reader may do, and the student's consents (CN4)
+        # ccrm-040 (DEC-SCOPE-275): the archive banner, what the reader may do, and the student's consents (CN4)
         "archive": archive,
         "permissions": await student_archive.permissions(db, user, student, archive is not None),
         "consents": overseas_consents.staff_view(await overseas_consents.status(db, student.id)),

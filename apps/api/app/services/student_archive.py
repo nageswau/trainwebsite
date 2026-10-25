@@ -1,4 +1,4 @@
-"""ccrm-040 (DEC-SCOPE-273, AR1-AR7) -- archive instead of delete. The student's csc-001 counselor or the Overseas Admin archives an
+"""ccrm-040 (DEC-SCOPE-275, AR1-AR7) -- archive instead of delete. The student's csc-001 counselor or the Overseas Admin archives an
 overseas student whose applications are all closed; only the Admin restores. An archived student's applications are archived with
 them (derived from the archive row, no per-application flag): both leave the staff working lists and no new application is opened.
 Functions only; the routes commit."""

@@ -1,8 +1,8 @@
 # ccrm-040 — Archive instead of delete; overseas consent capture — design
 
 Backlog: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` § `ccrm-040` (spec §2 "prefer archive/withdrawn statuses", §16 consent and
-communication preferences). Dependency `ccrm-008` merged (PR #314). Numbers: migration `0191_student_archive_consent`,
-`DEC-SCOPE-273`, API §12FZ, RBAC §2.187 (recheck at merge: ccrm-038 runs in parallel).
+communication preferences). Dependency `ccrm-008` merged (PR #314). Numbers: migration `0193_student_archive_consent`,
+`DEC-SCOPE-275`, API §12GB, RBAC §2.189 (recheck at merge: ccrm-038 runs in parallel).
 
 The owner asked for the session to proceed on recommended answers, so every rule below is a default marked `NEEDS_CONFIRMATION`.
 
@@ -57,7 +57,7 @@ The owner asked for the session to proceed on recommended answers, so every rule
 - **CN6 — out of scope:** withdrawing consent (handled by the existing data-subject request route), retention periods (PRD open items
   15 and 85), lead `marketing_opt_in` enforcement (ccrm-005's field; no lead messaging change here).
 
-## API (§12FZ)
+## API (§12GB)
 
 | Method | Path | Who |
 | --- | --- | --- |
@@ -90,4 +90,4 @@ Playwright `ccrm-040-archive-consent.spec.ts`.
 3. Exclusions: portal query, linked list, picker, application create — TDD.
 4. `services/overseas_consents.py` + `/overseas/me/consents` routes; overview `archive`/`consents`/`permissions`; history labels — TDD.
 5. Web: types/lib, 360 archive + consent cards, consent card on the student dashboard, archived students page + nav; vitest.
-6. Docs: DEC-SCOPE-273, API §12FZ, RBAC §2.187, RTM, backlog status.
+6. Docs: DEC-SCOPE-275, API §12GB, RBAC §2.189, RTM, backlog status.

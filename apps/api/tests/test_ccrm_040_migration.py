@@ -1,4 +1,4 @@
-"""ccrm-040 -- migration 0191_student_archive_consent (DEC-SCOPE-273): the chain, the archive table, the agreement `kind` column with
+"""ccrm-040 -- migration 0193_student_archive_consent (DEC-SCOPE-275): the chain, the archive table, the agreement `kind` column with
 the CN1 seed (idempotent), and the round trip, in a throwaway database (the ccrm-030 pattern). Plain tests: alembic/env.py calls
 asyncio.run()."""
 
@@ -13,14 +13,14 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_ccrm_040_migration_0191", VERSIONS / "0191_student_archive_consent.py")
+_spec = importlib.util.spec_from_file_location("_ccrm_040_migration_0193", VERSIONS / "0193_student_archive_consent.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0191_student_archive_consent", "0190_overdue_escalation"
+HEAD, BASE = "0193_student_archive_consent", "0192_calendar_feeds"
 
 
-def test_migration_chains_after_0190():
+def test_migration_chains_after_0192():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

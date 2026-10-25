@@ -1,4 +1,4 @@
-"""ccrm-040 (DEC-SCOPE-273) -- archive instead of delete (AR1-AR7) and the overseas consent capture (CN1-CN5).
+"""ccrm-040 (DEC-SCOPE-275) -- archive instead of delete (AR1-AR7) and the overseas consent capture (CN1-CN5).
 
 AR: the student's csc-001 counselor or the Overseas Admin archives a student whose applications are all closed; only the Admin restores.
 An archived student and their applications leave the staff working lists, a new application for them is refused, the 360 still reads.
@@ -8,7 +8,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from app.models import Agreement, AuditLog, ConsentRecord, Notification, OverseasStudentArchive, OverseasStudentCounselor
+from app.models import Agreement, AuditLog, ConsentRecord, Notification, NotificationPreference, OverseasStudentArchive, OverseasStudentCounselor, StudentMessage
 from tests.agn001_helpers import login, mk_user, uniq
 from tests.enh031_helpers import mk_application, mk_university
 
@@ -239,3 +239,24 @@ async def test_consent_routes_are_the_students_own(client, db_session, world):
     finally:
         it_agreement.active = False
         await db_session.commit()
+
+
+# --- CN7: ccrm-037's WhatsApp honours the student's communication preference (ENH-014 opt-in) ---------------------------------
+
+
+@pytest.mark.asyncio
+async def test_whatsapp_to_a_student_needs_their_opt_in(client, db_session, world):
+    world["student"].phone = "98765 43210"
+    await db_session.commit()
+    await login(client, world["counselor"].email)
+    messages = url(world["student"].id, "messages")
+    recipient = (await client.get(messages)).json()["recipient"]
+    assert recipient["whatsapp_to"] is None and recipient["whatsapp_opt_in"] is False
+    response = await client.post(messages, json={"channel": "whatsapp", "body": "Hello"})
+    assert response.status_code == 409 and response.json()["detail"] == "This student has not opted in to WhatsApp messages"
+    assert await db_session.scalar(select(StudentMessage.id).where(StudentMessage.student_user_id == world["student"].id)) is None
+    db_session.add(NotificationPreference(user_id=world["student"].id, whatsapp_opt_in=True))
+    await db_session.commit()
+    recipient = (await client.get(messages)).json()["recipient"]
+    assert recipient["whatsapp_to"] == "919876543210" and recipient["whatsapp_opt_in"] is True
+    assert (await client.post(messages, json={"channel": "whatsapp", "body": "Hello"})).status_code == 201

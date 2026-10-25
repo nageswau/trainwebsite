@@ -502,7 +502,7 @@ class OverseasApplicationCounselorAssign(BaseModel):
 
 
 class StudentArchiveCreate(BaseModel):
-    """ccrm-040 (DEC-SCOPE-273 AR3): why the student is archived."""
+    """ccrm-040 (DEC-SCOPE-275 AR3): why the student is archived."""
 
     reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=500)]
 
@@ -14305,3 +14305,51 @@ class CounselorTaskCreate(BaseModel):
     priority: TaskPriority = "medium"
     counselor_user_id: UUID | None = None
     link: CounselorTaskLink | None = None
+
+
+# ccrm-037 (DEC-SCOPE-273): the Overseas Admin's templates for counselors have upc-012's shape (no kind, MT1), so its bodies are reused.
+# A message or reply is about the student in the path; the recipient's number or address is never a request field (MT3).
+CounselorTemplateCreate = PartnershipTemplateCreate
+CounselorTemplateUpdate = PartnershipTemplateUpdate
+_StudentWhatsAppBody = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+_StudentEmailBody = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=5000)]
+_StudentSubject = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200), BeforeValidator(_one_line)]
+
+
+class _StudentMessageBase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    application_id: UUID | None = None  # MT4: one of the student's applications that is the counselor's own
+
+
+class StudentWhatsAppCreate(_StudentMessageBase):
+    channel: Literal["whatsapp"]
+    template_id: UUID | None = None
+    body: _StudentWhatsAppBody
+
+
+class StudentEmailCreate(_StudentMessageBase):
+    channel: Literal["email"]
+    template_id: UUID | None = None
+    subject: _StudentSubject
+    body: _StudentEmailBody
+
+
+StudentMessageCreate = Annotated[StudentWhatsAppCreate | StudentEmailCreate, Field(discriminator="channel")]
+
+
+class StudentWhatsAppReply(_StudentMessageBase):
+    """MT7: a reply recorded by hand -- no template; `received_at` defaults to now."""
+
+    channel: Literal["whatsapp"]
+    body: _StudentWhatsAppBody
+    received_at: AwareDatetime | None = None
+
+
+class StudentEmailReply(_StudentMessageBase):
+    channel: Literal["email"]
+    subject: _StudentSubject | None = None
+    body: _StudentEmailBody
+    received_at: AwareDatetime | None = None
+
+
+StudentReplyCreate = Annotated[StudentWhatsAppReply | StudentEmailReply, Field(discriminator="channel")]

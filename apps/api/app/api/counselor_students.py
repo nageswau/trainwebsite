@@ -5,8 +5,8 @@ csc-005 (DEC-SCOPE-230) -- the Overseas Admin moves a student to another counsel
 ccrm-010 (DEC-SCOPE-241) -- internal notes on a student (the counselling history), counselor and Overseas Admin. API §12ET; RBAC §2.156.
 ccrm-009 (DEC-SCOPE-253) -- the student 360's read-only tabs (overview, documents, activities, history), counselor and Overseas Admin.
 API §12FF; RBAC §2.168.
-ccrm-040 (DEC-SCOPE-273) -- archive instead of delete: the student's counselor or the Overseas Admin archives, the Admin restores, both
-list archived students. API §12FZ; RBAC §2.187."""
+ccrm-040 (DEC-SCOPE-275) -- archive instead of delete: the student's counselor or the Overseas Admin archives, the Admin restores, both
+list archived students. API §12GB; RBAC §2.189."""
 
 import logging
 from uuid import UUID

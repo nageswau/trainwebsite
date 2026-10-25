@@ -2894,3 +2894,28 @@ lead timeline) ✅; agent ❌ (`reason: null` on the counsellor row, RR2); stude
 
 Pinned by `test_ccrm_031_escalation.py::test_list_is_for_the_overseas_admin_and_super_admin_only` and
 `::test_inactive_and_other_division_admins_are_not_told`.
+
+### 2.187 Counselor message templates and the student message log *(added 2026-10-25 — `DEC-SCOPE-273`, ccrm-037)*
+
+| Route | `counselor` (overseas) | `overseas_admin` (overseas) | `super_admin` | `counselor` (IT) | `overseas_student`, `agent`, others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET /counselor/templates`, `GET …/{id}/preview` | ✅ active only | ✅ | ✅ | `403` | `403` | `401` |
+| `POST /counselor/templates`, `PATCH …/{id}` | `403` | ✅ | ✅ | `403` | `403` | `401` |
+| `GET /counselor/students/{id}/messages` | ✅ csc-001 scope (else `404`) | ✅ any overseas student | `403` | `403` | `403` | `401` |
+| `GET …/messages/render`, `POST …/messages`, `POST …/replies` | ✅ csc-001 scope; own applications only (`422`) | `403` | `403` | `403` | `403` | `401` |
+
+- Page `/overseas/admin/message-templates` (Overseas Admin sidebar "Message templates"; Super Admin passes too). The student 360's
+  Activities tab shows the Communication card — the counselor writes, the Overseas Admin reads.
+- The log is never returned by a student- or agent-facing route. Pinned by `test_ccrm_037_messages.py::test_other_roles_never_see_the_log`,
+  `::test_other_roles_cannot_read_or_write_templates`, `::test_out_of_scope_unknown_and_non_students_are_404`.
+
+### 2.188 Calendar feed *(added 2026-10-25 — `DEC-SCOPE-274`, ccrm-038)*
+
+| Action | Overseas counselor | Overseas Admin | Other roles | No session |
+|---|---|---|---|---|
+| Read status / create / regenerate / revoke own feed (`/counselor/calendar-feed`) | ✅ own only (session user; no id in the URL) | ❌ 403 | ❌ 403 | 401 |
+| Read the feed (`/calendar/feeds/{token}.ics`) | — | — | — | ✅ with the token (the credential); 404 otherwise |
+
+The feed holds only the owner's appointments and the visa appointments of the applications they counsel (CA5). Invites go to the
+student and the assigned counselor of an overseas appointment, never to a lead, telecaller or agent. Pinned by
+`test_ccrm_038_calendar.py::test_only_an_overseas_counselor_has_a_feed` and `::test_the_feed_lists_own_appointments_and_counselled_visa_appointments`.
