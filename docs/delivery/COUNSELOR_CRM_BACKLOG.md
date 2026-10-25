@@ -714,6 +714,10 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Expected behaviour:** tasks/follow-ups overdue by a configurable threshold notify Overseas Admin once; admin sees an "Overdue by
   counselor" list.
 - **Dependencies:** ccrm-029, ccrm-030. **Complexity:** small. **Risk:** low.
+- **Status (2026-10-25):** built on `worktree-ccrm-031` — `DEC-SCOPE-272` (E1–E8 defaults `NEEDS_CONFIRMATION`: rule
+  `overdue_escalation` default 2 days, one notice per counselor to every active Overseas Admin), migration `0190_overdue_escalation`,
+  API §12FY, RBAC §2.186; "Overdue by counselor" on `/overseas/admin/counselor-tasks`. Design
+  `docs/superpowers/specs/2026-10-25-ccrm-031-overdue-escalation-design.md`.
 
 ### `ccrm-032` — Counselor action dashboard
 
@@ -800,9 +804,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Security:** feed URL is a revocable secret token. **Dependencies:** none.
 - **Complexity:** medium. **Risk:** medium.
 - **Open questions:** whether two-way sync is wanted; provider (Google Workspace / Microsoft 365 / Zoho Calendar).
-- **Status (2026-10-25):** phase 1 built on `worktree-ccrm-038` — `DEC-SCOPE-272` (CA1–CA8 defaults: `.ics` REQUEST/CANCEL on overseas
+- **Status (2026-10-25):** phase 1 built on `worktree-ccrm-038` — `DEC-SCOPE-273` (CA1–CA8 defaults: `.ics` REQUEST/CANCEL on overseas
   appointment emails to student + counselor, never a lead; per-counselor feed with a hash-only, shown-once, revocable token; visa
-  appointments all-day; phase 2 sync still awaits the provider decision). Migration `0190_calendar_feeds`, API §12FY, RBAC §2.186.
+  appointments all-day; phase 2 sync still awaits the provider decision). Migration `0191_calendar_feeds`, API §12FZ, RBAC §2.187.
   Design `docs/superpowers/specs/2026-10-25-ccrm-038-calendar-integration-design.md`.
 
 ### `ccrm-039` — Student finance tab (CC6)

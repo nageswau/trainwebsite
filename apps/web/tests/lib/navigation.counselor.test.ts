@@ -28,7 +28,7 @@ describe("tel-017 IT counselor navigation", () => {
   });
 
   // upc-030 (DEC-SCOPE-161) adds Universities (the 360 view) after Applications; ccrm-029 (DEC-SCOPE-250) adds Tasks after Dashboard;
-  // ccrm-038 (DEC-SCOPE-272) adds Calendar after Appointments.
+  // ccrm-038 (DEC-SCOPE-273) adds Calendar after Appointments.
   it("keeps the overseas counselor nav, plus Tasks and Universities", () => {
     expect(PORTAL_NAV["overseas/counselor"].map((item) => item.href.split("/").pop())).toEqual(
       ["dashboard", "tasks", "students", "leads", "documents", "applications", "universities", "school-applications", "visa", "appointments", "calendar", "counselor-chat", "reports", "management-tasks"], // mgmt-028 (MT14)

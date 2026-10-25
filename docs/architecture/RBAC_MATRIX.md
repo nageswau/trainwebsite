@@ -2884,7 +2884,18 @@ lead timeline) ✅; agent ❌ (`reason: null` on the counsellor row, RR2); stude
 `test_ccrm_033_reassignment_reason.py::test_the_agency_sees_the_change_but_not_the_reason` and
 `::test_an_application_reassignment_logs_the_reason_everywhere`.
 
-### 2.186 Calendar feed *(added 2026-10-25 — `DEC-SCOPE-272`, ccrm-038)*
+### 2.186 Overdue escalation *(added 2026-10-25 — `DEC-SCOPE-272`, ccrm-031)*
+
+| Action | overseas_admin | super_admin | counselor | others |
+|---|---|---|---|---|
+| `GET /counselor/tasks/overdue-by-counselor` | ✅ | ✅ | ❌ 403 | ❌ 403 |
+| Configure `overdue_escalation` (reminder rules, §2.184 gate) | ✅ | ✅ | ❌ | ❌ |
+| Receives the escalation notice | ✅ (active, overseas division) | ❌ | ❌ | ❌ |
+
+Pinned by `test_ccrm_031_escalation.py::test_list_is_for_the_overseas_admin_and_super_admin_only` and
+`::test_inactive_and_other_division_admins_are_not_told`.
+
+### 2.187 Calendar feed *(added 2026-10-25 — `DEC-SCOPE-273`, ccrm-038)*
 
 | Action | Overseas counselor | Overseas Admin | Other roles | No session |
 |---|---|---|---|---|

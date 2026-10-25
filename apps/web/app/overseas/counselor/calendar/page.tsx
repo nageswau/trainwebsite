@@ -6,7 +6,7 @@ import { CALENDAR_FEED_API, type CalendarFeedStatus } from "@/lib/counselorCalen
 import { PORTAL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
-// ccrm-038 (DEC-SCOPE-272 CA4-CA7): the overseas counselor's calendar feed. Unauthenticated users are redirected by the middleware.
+// ccrm-038 (DEC-SCOPE-273 CA4-CA7): the overseas counselor's calendar feed. Unauthenticated users are redirected by the middleware.
 const REFUSED = "Only an overseas counselor has a calendar feed";
 
 export default async function CounselorCalendarPage() {

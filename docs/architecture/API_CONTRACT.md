@@ -3980,9 +3980,24 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   carries `reason`; the lead timeline (`…/timeline`) has a `handover` row per `lead.owner_change` with `from_value` / `to_value`
   (empty = removed) and `reason`.
 
-## 12FY. Calendar integration, phase 1 (ccrm-038) — addendum, 2026-10-25
+## 12FY. Overdue escalation (ccrm-031) — addendum, 2026-10-25
 
-`DEC-SCOPE-272`. Migration `0190_calendar_feeds` (`calendar_feeds`, `appointments.calendar_sequence`).
+`DEC-SCOPE-272`. One new route; one new reminder rule.
+
+- `GET /api/v1/overseas-admin/reminder-rules` lists `overdue_escalation` (`action: "notify"`, `timing: "escalate"`, `min_offset: 0`,
+  `max_offset: 30`, `notify_student: null`); `PUT .../overdue_escalation` takes `offset_days` 0–30 (422 outside, 422 with
+  `notify_student: true`). `POST .../run` counts escalated items under `rules.overdue_escalation`; the log lists one row per item
+  ("<counselor> · task due <day>" / "<counselor> · follow-up <lead code> due <day>").
+- `GET /api/v1/counselor/tasks/overdue-by-counselor` → `{today, threshold_days, enabled, items: [{counselor: {id, full_name}, active,
+  overdue_tasks, overdue_follow_ups, past_threshold, oldest_due}]}` — counselors with at least one open task due before today or open
+  follow-up past its due time; ordered by `past_threshold` desc, total desc, name. 403 `"Overseas Administrator role required"` for any
+  role but `overseas_admin` / `super_admin`. Live, not paginated.
+- Notification to each active Overseas Admin: title "Overdue work escalated", body "<counselor>: N tasks and M follow-ups overdue by
+  more than D days.", `action_url` `/overseas/admin/counselor-tasks#overdue`.
+
+## 12FZ. Calendar integration, phase 1 (ccrm-038) — addendum, 2026-10-25
+
+`DEC-SCOPE-273`. Migration `0191_calendar_feeds` (`calendar_feeds`, `appointments.calendar_sequence`).
 
 - `GET /api/v1/counselor/calendar-feed` → `{active, created_at, url: null}`. `POST` (201) creates or regenerates the feed and returns
   `{active: true, created_at, url}` — `url` = `FRONTEND_URL/api/v1/calendar/feeds/<token>.ics`, returned only here. `DELETE` (204,

@@ -1,4 +1,4 @@
-// ccrm-038 (DEC-SCOPE-272 CA4-CA7): the overseas counselor's read-only iCal feed. The API shows the feed URL only in the answer to a
+// ccrm-038 (DEC-SCOPE-273 CA4-CA7): the overseas counselor's read-only iCal feed. The API shows the feed URL only in the answer to a
 // create/regenerate; afterwards it says only whether a feed is active.
 export const CALENDAR_FEED_API = "/api/v1/counselor/calendar-feed";
 export const CALENDAR_HOME = "/overseas/counselor/calendar";

@@ -2864,7 +2864,7 @@ async def create_appointment(payload: AppointmentCreate, user: User = Depends(ge
     db.add(item)
     await db.flush()
     await _audit(db, user, "appointment.create", "appointment", item.id)
-    await appointment_invites.queue(db, item, "booked")  # ccrm-038 (DEC-SCOPE-272 CA1)
+    await appointment_invites.queue(db, item, "booked")  # ccrm-038 (DEC-SCOPE-273 CA1)
     await db.commit()
     await db.refresh(item)
     return {"id": item.id, "scheduled_at": item.scheduled_at, "status": item.status}

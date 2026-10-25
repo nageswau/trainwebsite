@@ -80,3 +80,14 @@ export function adminTasksUrl(filters: AdminFilters): string {
   if (filters.band) params.set("band", filters.band);
   return `${COUNSELOR_TASKS_API}?${params}`;
 }
+
+// --- ccrm-031 (DEC-SCOPE-272, E7): the admin's "Overdue by counselor" list -----------------------------------------------------------
+export const OVERDUE_BY_COUNSELOR_API = `${COUNSELOR_TASKS_API}/overdue-by-counselor`;
+export type OverdueCounselorRow = {
+  counselor: { id: string; full_name: string }; active: boolean; overdue_tasks: number; overdue_follow_ups: number; past_threshold: number; oldest_due: string | null;
+};
+export type OverdueByCounselorPage = { today: string; threshold_days: number; enabled: boolean; items: OverdueCounselorRow[] };
+
+export function overdueTasksHref(counselorId: string): string {
+  return `${ADMIN_TASKS_HOME}?${new URLSearchParams({ counselor: counselorId, band: "overdue" })}`;
+}

@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { signIn } from "./helpers/agency";
 
-// ccrm-038 (DEC-SCOPE-272 CA4-CA7): the overseas counselor's calendar feed on their sidebar "Calendar". Seeded demo accounts; the feed is
+// ccrm-038 (DEC-SCOPE-273 CA4-CA7): the overseas counselor's calendar feed on their sidebar "Calendar". Seeded demo accounts; the feed is
 // one row per counselor, so each test first turns it off through the API to start from "Off".
 
 const COUNSELOR = ["counselor@edusphere.local", "Demo@123", "/overseas/counselor/dashboard"] as const;
