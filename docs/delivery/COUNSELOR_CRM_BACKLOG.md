@@ -467,6 +467,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
   Enrolled, or as confirmed), computed from the best application and outcome, never stored on an application.
 - **BE:** generalise `agent_journey` to take a student user. **DB:** none. **Consumers:** ccrm-009, ccrm-032, nehn-033.
 - **Dependencies:** ccrm-014, ccrm-015. **Complexity:** small. **Risk:** low.
+- **Status (2026-10-25):** built on `feature/ccrm-017` — `DEC-SCOPE-258` (J1–J6 defaults `NEEDS_CONFIRMATION`; J6: a pure module
+  `app/student_journey.py` instead of generalising `agent_journey`), no migration, API §12FK, no RBAC change; shown on the ccrm-009 360
+  Overview. Design `docs/superpowers/specs/2026-10-25-ccrm-017-student-journey-stage-design.md`.
 
 ---
 

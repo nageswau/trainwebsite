@@ -1045,3 +1045,13 @@ half.
 | `ccrm-019-AC05` | AC 5 gate: block 409 with missing items; warn needs a reason kept in history; agency route gated; no template passes | `::test_block_mode_refuses_…`, `::test_block_mode_passes_once_every_required_item_is_complete`, `::test_warn_mode_needs_an_override_reason_and_records_it_in_history`, `::test_the_agency_route_is_gated_too`, `::test_no_template_and_no_checklist_passes_and_other_sub_statuses_are_not_gated`; `apps/web/tests/e2e/ccrm-019-application-checklist.spec.ts` |
 | `ccrm-019-AC06` | Scope: other counselor 403, agency/student read-only, foreign item 404 | `::test_scope_other_counselor_agent_read_only_student_reads_own` |
 | `ccrm-019-AC07` | Migration round-trips and is the single head | `apps/api/tests/test_ccrm_019_migration.py` |
+
+| `ccrm-017` | Requirement: §6 journey stage separate from application statuses, §5 Overview → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-017` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-258` → design `docs/superpowers/specs/2026-10-25-ccrm-017-student-journey-stage-design.md`; `API_CONTRACT.md` §12FK | J1–J6 defaults `NEEDS_CONFIRMATION` |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-017-AC01` | Six stages; each application stage maps to one (incl. legacy values) | `apps/api/tests/test_ccrm_017_student_journey.py::test_six_stages_in_order`, `::test_each_application_stage_maps_to_a_journey_stage` |
+| `ccrm-017-AC02` | Computed from the best live application and outcome; closed ignored; on hold / deferred noted | `::test_the_furthest_live_application_wins_and_closed_ones_are_ignored`, `::test_a_tie_goes_to_the_most_recently_updated_application`, `::test_on_hold_and_deferred_stay_live_with_a_note`, `::test_every_application_closed_is_counselling_with_a_note` |
+| `ccrm-017-AC03` | Lead vs Counselling with no application | `::test_no_application_is_lead_unless_the_student_is_engaged`, `::test_overview_journey_without_applications` |
+| `ccrm-017-AC04` | Overview carries the journey beside each application's own status; scope unchanged (404) | `::test_overview_carries_the_journey_from_the_best_application`, `::test_another_counselors_student_is_still_404`; `apps/api/tests/test_ccrm_009_student_360.py` |
+| `ccrm-017-AC05` | 360 Overview shows the tracker, state as text, current marked, responsive | `apps/web/tests/components/OverseasStudentJourney.test.tsx`; `apps/web/tests/e2e/ccrm-017-student-journey.spec.ts` |

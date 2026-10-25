@@ -3737,3 +3737,10 @@ Daily beat task `ccrm025-offer-expiry` (18:40 UTC = 00:10 IST): see `DEC-SCOPE-2
 | `POST` | `/{id}/sub-status`, `/agent/crm/applications/{id}/sub-status` | unchanged roles | Body adds optional `override_reason` (≤ 1000). A move to `ready_for_submission` with required items incomplete: `block` → `409` `{detail:{message, gate_mode:"block", missing}}`; `warn` without a reason → `409` (`gate_mode:"warn"`); with one → `200`, history `reason` = `Override: <reason>`. |
 
 Writes hold the application row lock, refresh `documents_completed_on`, audit `overseas.application.checklist.<create|item_add|item_mark|item_remove|link|unlink>` and commit once; allowed on hold.
+
+## 12FK. Student journey stage (ccrm-017) — addendum, 2026-10-25
+
+`DEC-SCOPE-258`. Additive: `GET /api/v1/counselor/students/{id}/overview` (§12FF, same roles and csc-001 scope) gains
+`journey` = `{stage, label, steps:[{key, label, state: "done" | "current" | "upcoming"}], application: {id, application_code, university} | null,
+note: "On hold" | "Deferred" | "All applications closed" | null}`. `stage` ∈ `lead`, `counselling`, `applying`, `offer`, `visa`, `enrolled`;
+derived on every read from the student's applications (stage + ccrm-015 outcome) and counselor engagement — never stored, no write, no audit.

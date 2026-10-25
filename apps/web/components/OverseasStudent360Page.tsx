@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import LocalTime from "@/components/LocalTime";
+import OverseasStudentJourney from "@/components/OverseasStudentJourney";
 import PortalShell from "@/components/PortalShell";
 import StudentDocumentDownload from "@/components/StudentDocumentDownload";
 import StudentNotesPanel from "@/components/StudentNotesPanel";
@@ -118,6 +119,7 @@ function OverviewPanel({ overview }: { overview: StudentOverview }) {
   const { student, counts } = overview;
   return (
     <>
+      <OverseasStudentJourney journey={overview.journey} />
       <div className="card">
         <h2>Contact</h2>
         <dl className="s360-facts">
