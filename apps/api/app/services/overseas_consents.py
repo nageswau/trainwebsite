@@ -18,9 +18,7 @@ NOT_FOUND = "Consent not found"
 async def current(db: AsyncSession) -> list[Agreement]:
     """The current agreement of each kind, in KINDS order; a kind with no active agreement is left out."""
     rows = (
-        await db.scalars(
-            select(Agreement).where(Agreement.division == "overseas", Agreement.kind.in_(KINDS), Agreement.active.is_(True)).order_by(Agreement.created_at.desc(), Agreement.id)
-        )
+        await db.scalars(select(Agreement).where(Agreement.division == "overseas", Agreement.kind.in_(KINDS), Agreement.active.is_(True)).order_by(Agreement.created_at.desc(), Agreement.id))
     ).all()
     latest: dict[str, Agreement] = {}
     for row in rows:
@@ -31,8 +29,7 @@ async def current(db: AsyncSession) -> list[Agreement]:
 async def status(db: AsyncSession, student_id: UUID) -> list[dict]:
     agreements = await current(db)
     given = {
-        r.agreement_id: r.created_at
-        for r in (await db.scalars(select(ConsentRecord).where(ConsentRecord.user_id == student_id, ConsentRecord.agreement_id.in_([a.id for a in agreements])))).all()
+        r.agreement_id: r.created_at for r in (await db.scalars(select(ConsentRecord).where(ConsentRecord.user_id == student_id, ConsentRecord.agreement_id.in_([a.id for a in agreements])))).all()
     }
     return [{"id": a.id, "kind": a.kind, "title": a.title, "body": a.body, "version": a.version, "accepted_at": given.get(a.id)} for a in agreements]
 

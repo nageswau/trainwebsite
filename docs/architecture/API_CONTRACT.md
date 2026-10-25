@@ -4038,3 +4038,23 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - Appointment invites (no contract change on the writes): `POST /workflows/overseas/appointments`, `PATCH …/{id}` (new `scheduled_at`,
   or `status` → cancelled), `POST /telecaller/leads/{id}/appointments` and `POST /lead-appointments/{id}/reschedule|cancel` queue a
   notification + email delivery (context `{kind: "appointment_invite", ics, method}`) per CA1. IT appointments send nothing.
+
+## 12GB. Archive instead of delete; overseas consent capture (ccrm-040) — addendum, 2026-10-25
+
+`DEC-SCOPE-275`. Migration `0193_student_archive_consent` (`overseas_student_archives`, `agreements.kind`, v1 overseas consents).
+
+- `POST /api/v1/counselor/students/{id}/archive` `{reason}` (3–500 chars, trimmed) → 200 `{archived_at, archived_by, reason}`. The
+  student's csc-001 counselor or the Overseas Admin; another role 403; outside csc-001 scope 404; a counselor who is not the student's
+  counselor 403; already archived 409; an open application 409 `Close or withdraw the student's open applications first: APP-…`.
+- `POST /api/v1/counselor/students/{id}/restore` → 200 `{id, archived: false}`. Overseas Admin only (403); not archived 409.
+- `GET /api/v1/counselor/students/archived?limit&offset` → `{items: [{id, full_name, email, student_code, archived_at, archived_by,
+  reason}], total, limit, offset}`, newest first. Admin: all; overseas counselor: their csc-001 students; others 403.
+- `GET /api/v1/counselor/students/{id}/overview` gains `archive` (null or as above), `permissions: {archive, restore}` and
+  `consents: [{kind, label, version, accepted_at}]`. History adds "Archived" (with `reason`), "Restored" and "Consent given".
+- `GET /api/v1/overseas/me/consents` → `{items: [{id, kind, title, body, version, accepted_at}]}` (current agreement per kind).
+  `POST /api/v1/overseas/me/consents/{agreement_id}/accept` → 201 `{id, kind, version, accepted_at}`; a repeat 200 with the first time;
+  not a current overseas consent 404. Overseas student only (403).
+- Changed: `POST /api/v1/workflows/overseas/applications` → 409 `This student is archived. The Overseas Admin can restore them.`; the
+  portal application sections (counselor/admin), `GET /counselor/students` and `GET /lookups/overseas-students` (counselor/admin) leave
+  archived students out. ccrm-037: `GET /counselor/students/{id}/messages` `recipient` gains `whatsapp_opt_in`; a WhatsApp send to a
+  student who has not opted in → 409 `This student has not opted in to WhatsApp messages`.

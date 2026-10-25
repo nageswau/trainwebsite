@@ -13,8 +13,8 @@ The owner asked for the session to proceed on recommended answers, so every rule
 - `ConsentRecord` (STU-009) is insert-only, unique per (user, agreement), with IP; `Agreement` rows have a `division` only. The IT
   enrolment agreement is `division='it'`. Nothing exists for overseas.
 - Communication preferences already exist for every user: `NotificationPreference` (WhatsApp/SMS opt-in, ENH-014), edited on
-  `/account/profile`, honoured by `queue_deliveries` — which ccrm-030's reminders use. ccrm-037 is not built; it will use the same
-  dispatcher. So "communication preferences honoured" needs no new mechanism; the consent card links to the existing page.
+  `/account/profile`, honoured by `queue_deliveries` — which ccrm-030's reminders use. ccrm-037 (merged during this build) sends
+  WhatsApp through wa.me without checking the opt-in, so CN7 adds that check; the consent card links to the existing page.
 
 ## Archive rules
 
@@ -56,6 +56,9 @@ The owner asked for the session to proceed on recommended answers, so every rule
 - **CN5 — new version:** a newer active agreement of the same kind replaces the old one as "current"; the student is asked again.
 - **CN6 — out of scope:** withdrawing consent (handled by the existing data-subject request route), retention periods (PRD open items
   15 and 85), lead `marketing_opt_in` enforcement (ccrm-005's field; no lead messaging change here).
+- **CN7 — ccrm-037 honours the preference:** a counselor's WhatsApp to a student needs the student's ENH-014 WhatsApp opt-in (409
+  otherwise); the composer says "<name> has not opted in to WhatsApp messages", after the "no usable number" reason (browser QA-01).
+  Email stays always on (ENH-014 D4).
 
 ## API (§12GB)
 

@@ -12,6 +12,7 @@ seeded agreements with their consent records, and the column.
 import uuid
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision = "0193_student_archive_consent"

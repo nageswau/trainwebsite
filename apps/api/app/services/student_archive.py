@@ -57,9 +57,7 @@ def archive_out(row: OverseasStudentArchive, archived_by: str | None) -> dict:
 async def read(db: AsyncSession, student_id: UUID) -> dict | None:
     found = (
         await db.execute(
-            select(OverseasStudentArchive, Archiver.full_name)
-            .join(Archiver, Archiver.id == OverseasStudentArchive.archived_by_user_id)
-            .where(OverseasStudentArchive.student_user_id == student_id)
+            select(OverseasStudentArchive, Archiver.full_name).join(Archiver, Archiver.id == OverseasStudentArchive.archived_by_user_id).where(OverseasStudentArchive.student_user_id == student_id)
         )
     ).first()
     return archive_out(*found) if found else None
@@ -78,9 +76,7 @@ async def _tell_counselor(db: AsyncSession, actor: User, student: User, title: s
 async def archive(db: AsyncSession, user: User, student_id: UUID, reason: str) -> dict:
     """No commit. AR1-AR3. The student row is locked so an archive and a restore of the same student serialise; the primary key on the
     archive row stops a second archive either way."""
-    if not _is_admin(user):
-        require_overseas_counselor(user, OWNER_ONLY)
-    student = await staff_student(db, user, student_id)  # csc-001 scope or the Admin; anything else is a 404
+    student = await staff_student(db, user, student_id)  # another role 403; outside csc-001 scope 404
     if not _is_admin(user) and await _counselor_id(db, student.id) != user.id:
         raise HTTPException(403, OWNER_ONLY)
     await db.execute(select(User.id).where(User.id == student.id).with_for_update())

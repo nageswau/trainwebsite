@@ -2919,3 +2919,16 @@ Pinned by `test_ccrm_031_escalation.py::test_list_is_for_the_overseas_admin_and_
 The feed holds only the owner's appointments and the visa appointments of the applications they counsel (CA5). Invites go to the
 student and the assigned counselor of an overseas appointment, never to a lead, telecaller or agent. Pinned by
 `test_ccrm_038_calendar.py::test_only_an_overseas_counselor_has_a_feed` and `::test_the_feed_lists_own_appointments_and_counselled_visa_appointments`.
+
+### 2.189 Student archive and overseas consent *(added 2026-10-25 — `DEC-SCOPE-275`, ccrm-040)*
+
+| Action | Overseas counselor | Overseas Admin | Overseas student | Other roles |
+|---|---|---|---|---|
+| Archive a student (`/counselor/students/{id}/archive`) | ✅ their csc-001 students only (403 if only on an application; 404 out of scope) | ✅ any | ❌ 403 | ❌ 403 |
+| Restore (`…/restore`) | ❌ 403 | ✅ | ❌ 403 | ❌ 403 |
+| List archived students | ✅ own csc-001 students | ✅ all | ❌ 403 | ❌ 403 |
+| Read / accept own consents (`/overseas/me/consents`) | ❌ 403 | ❌ 403 | ✅ self only | ❌ 403 |
+| See a student's consents (360 Overview) | ✅ csc-001 scope | ✅ | — | ❌ |
+
+Nobody consents on a student's behalf. Pinned by `test_ccrm_040_archive_consent.py::test_who_may_archive`,
+`::test_only_the_admin_restores`, `::test_archived_list` and `::test_consent_routes_are_the_students_own`.
