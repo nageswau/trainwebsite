@@ -92,7 +92,16 @@ Backend `tests/test_ccrm_020_requests.py` (create/list/cancel/upload/reopen/chec
 uploads → counselor verifies → checklist Verified). Lite regression: `test_agn_009_requests.py`, `test_agn_009_migration.py`,
 `test_ccrm_019_*`, `test_ccrm_021_*`.
 
-## 8. Plan
+## 8. Browser QA (2026-10-25, stack `ccrm020`, demo counselor / student)
+
+- QA-01 (medium, fixed): a reopened request did not say why — lists now carry `review_note` (the rejection note), shown to the counselor
+  ("Reopened after review: …") and the student ("Please upload a new file: …").
+- QA-02 (low, fixed): the staff list put a newer cancelled request above an older open one — open first by due date, then newest.
+- QA-03 (low, fixed): more than 20 requests gave no hint — "Showing the latest N of M requests."
+- Not changed: "Clear mark" on a requested checklist item leaves the open request (cancel it on the student 360); the generic `main`
+  conflict-marker lines left by the ccrm-024 merge in four docs were removed while appending this feature's entries.
+
+## 9. Plan
 
 1. Migration + model (RED migration test → GREEN).
 2. Service `services/student_document_requests.py` + schemas + routes (counselor router in `api/counselor_students.py`, student router

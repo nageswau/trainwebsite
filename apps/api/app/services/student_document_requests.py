@@ -149,18 +149,13 @@ async def create(db: AsyncSession, user: User, student: User, payload: StudentDo
     return request
 
 
-async def _load(db: AsyncSession, request_id: UUID, student_id: UUID) -> DocumentRequest:
+async def open_request(db: AsyncSession, request_id: UUID, student_id: UUID) -> DocumentRequest:
+    """The student's open request, locked, or 404 (another student's is not found either) / 409."""
     request = await db.scalar(
         select(DocumentRequest).where(DocumentRequest.id == request_id, DocumentRequest.student_user_id == student_id).with_for_update().execution_options(populate_existing=True)
     )
     if request is None:
         raise HTTPException(404, REQUEST_NOT_FOUND)
-    return request
-
-
-async def open_request(db: AsyncSession, request_id: UUID, student_id: UUID) -> DocumentRequest:
-    """The student's open request, locked, or 404 / 409."""
-    request = await _load(db, request_id, student_id)
     if request.status != "open":
         raise HTTPException(409, REQUEST_CLOSED)
     return request

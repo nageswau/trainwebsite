@@ -2221,7 +2221,6 @@ downgrade drops the three tables.
 `occurred_at`, `mode` (40, CHECK `Online`/`Phone`/`In person`), `notes` (text, CHECK length 1–2000), `created_at`; index (`lead_id`,
 `occurred_at`). `appointments.outcome_notes` (text, NULL). No backfill; downgrade refuses while meetings or outcome notes exist.
 
-<<<<<<< HEAD
 ## Lead data fields (`ccrm-005`, `DEC-SCOPE-260`; migration `0182_lead_data_fields`, after ccrm-004's `0181_lead_meetings`)
 
 `enquiries` gains `contact_preference` (10) NULL (CHECK `call`/`whatsapp`/`email`/`sms`), `enquiry_date` DATE NOT NULL DEFAULT the IST date
@@ -2231,7 +2230,6 @@ NULL (CHECK both or neither; stamped by the model when the consent changes), `re
 `preferred_campus` (200), `academic_cgpa` numeric(4,2) (CHECK 0–10), `backlogs` smallint (CHECK 0–99). New `lead_english_tests`: `id`,
 `lead_id` FK `enquiries` ON DELETE CASCADE, `position` (unique per lead), `test_type` (CHECK ccrm-007's list), `status` NULL (CHECK),
 `overall_score` numeric(4,1), `test_date`, `valid_until`, `remarks` (200) — ccrm-007's row shape. Downgrade drops the table and columns.
->>>>>>> 2eb7292c444c1bd7c7c4249ebff5d5474a682d9e
 
 ## Offer conditions (`ccrm-024`, `DEC-SCOPE-261`; migration `0183_offer_conditions`, after ccrm-005's `0182_lead_data_fields`)
 
@@ -2241,4 +2239,12 @@ student / counselor / agent), `due_date` NULL (feeds ccrm-030), `status` default
 rows), `status_changed_at`, `created_at`, `updated_at`. Met needs evidence and waived / failed a note (route rules). Written only by
 `services/offer_conditions.py`. The migration copies each offer's non-blank `conditions` text into one open student row (every offer
 status); the downgrade drops the table.
-=======
+
+## Document requests for direct students (`ccrm-020`, `DEC-SCOPE-262`; migration `0184_student_document_requests`, after ccrm-024's `0183_offer_conditions`)
+
+`document_requests`: `agent_student_id` becomes NULL-able; new `student_user_id` (FK `users`), `application_id` (FK
+`overseas_applications`), `checklist_item_id` (FK `application_checklist_items` ON DELETE SET NULL), `due_date` (date). CHECK
+`ck_document_requests_owner`: exactly one of `agent_student_id` / `student_user_id` (existing rows are agency requests). Indexes
+`ix_document_requests_student_user_status` (`student_user_id`, `status`) and partial `ix_document_requests_open_due` (`due_date`) WHERE open
+and dated (ccrm-030). No new event code: a reopen is a `requested` event `fulfilled → open`. Downgrade (lossy) deletes direct students'
+requests and their events, unlinks their documents, and restores NOT NULL.

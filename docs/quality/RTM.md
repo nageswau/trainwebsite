@@ -1099,3 +1099,22 @@ half.
 | `ccrm-024-AC08` | Scope: readers see, cannot write; no file keys | `::test_scope_readers_see_conditions_but_cannot_write` |
 | `ccrm-024-AC09` | On hold allowed; terminal outcome refused (C8) | `::test_on_hold_allows_condition_writes_and_a_terminal_outcome_refuses_them` |
 | `ccrm-024-AC10` | Migration: text → one open student row; round trip | `apps/api/tests/test_ccrm_024_migration.py` |
+
+**Addendum, 2026-10-25 (`ccrm-020`)** — one row and its acceptance-criteria map. Document requests for direct students.
+
+| Feature | Trace | Open items | Evidence |
+|---|---|---|---|
+| `ccrm-020` | Requirement: §11 + nehn-037 #1 + owner answers R1–R2 (in-session 2026-10-25) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-020` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-262` → design `docs/superpowers/specs/2026-10-25-ccrm-020-document-requests-design.md`; `API_CONTRACT.md` §12FO, `RBAC_MATRIX.md` §2.176, `DATA_MODEL.md` (0184) | Defaults R3–R9 `NEEDS_CONFIRMATION`; nehn-003 still open | Lite API set, vitest, e2e and browser QA |
+
+| AC | Statement | Tests |
+|---|---|---|
+| `ccrm-020-AC01` | The counselor requests a document (type, due date, note); the student is told; history and audit | `apps/api/tests/test_ccrm_020_requests.py::test_counselor_requests_a_document_and_the_student_is_told`; `apps/web/tests/components/DocumentRequests.test.tsx` |
+| `ccrm-020-AC02` | Rules: due date, label, type, duplicate, the student's application | `::test_create_rules` |
+| `ccrm-020-AC03` | Scope: Overseas Admin yes; another counselor, IT counselor, student no | `::test_scope_admin_yes_other_counselor_and_roles_no` |
+| `ccrm-020-AC04` | The student sees the due date and uploads against the request (bytes checked; one upload fulfils) | `::test_student_sees_the_request_and_uploads_against_it` |
+| `ccrm-020-AC05` | Accept keeps it fulfilled; a rejection reopens it with the review note (R1) | `::test_verified_keeps_it_fulfilled_a_rejection_reopens_it` |
+| `ccrm-020-AC06` | Checklist tie: marked Requested, auto-linked, Verified leaves "missing" (R2, nehn-037 acceptance) | `::test_a_checklist_request_marks_links_and_clears_from_missing`; `apps/web/tests/e2e/ccrm-020-document-requests.spec.ts` |
+| `ccrm-020-AC07` | Cancel closes it, tells the student, clears the mark | `::test_cancel_closes_it_tells_the_student_and_clears_the_mark` |
+| `ccrm-020-AC08` | Overdue flag; open requests first | `::test_an_open_request_past_its_due_date_is_overdue`, `::test_the_staff_list_shows_open_requests_first` |
+| `ccrm-020-AC09` | AGN-009 agency requests unchanged | `::test_the_agency_request_list_never_shows_a_direct_students_request`; `test_agn_009_requests.py`; `agn-009-agent-documents.spec.ts` |
+| `ccrm-020-AC10` | Migration: columns, owner CHECK, indexes, lossy round trip | `apps/api/tests/test_ccrm_020_migration.py` |

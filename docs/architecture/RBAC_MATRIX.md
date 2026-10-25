@@ -2753,7 +2753,6 @@ inside the existing role scope (a counselor searching another counselor's code g
 - Pinned by `test_ccrm_004_counselor_activities.py::test_call_scope_role_and_closed_lead`, `::test_message_scope_role_and_closed_lead`,
   `::test_meeting_validation_scope_and_closed_lead`; `test_tel_012_templates.py::test_non_readers_cannot_read`, `::test_a_counselor_lists_active_templates_only`.
 
-<<<<<<< HEAD
 ### 2.174 Lead data fields *(added 2026-10-25 — `DEC-SCOPE-260`, ccrm-005)*
 
 | Route | `telecaller` | `telecaller_manager` / `super_admin` | `counselor` | Others | Anonymous |
@@ -2766,7 +2765,6 @@ inside the existing role scope (a counselor searching another counselor's code g
 
 - Pinned by `test_ccrm_005_lead_fields.py::test_another_counselors_lead_is_404_and_the_telecaller_stays_read_only`,
   `::test_counselor_cannot_change_contact_details_product_or_priority`.
->>>>>>> 2eb7292c444c1bd7c7c4249ebff5d5474a682d9e
 
 ### 2.175 Offer conditions *(added 2026-10-25 — `DEC-SCOPE-261`, ccrm-024)*
 
@@ -2776,4 +2774,14 @@ inside the existing role scope (a counselor searching another counselor's code g
 | `POST …/condition-evidence`, `POST …/offers/{offer_id}/conditions`, `PATCH …/conditions/{condition_id}` | ✅ | ✅ own | `403` | `403` | `403` | `401` |
 
 - Pinned by `test_ccrm_024_conditions.py::test_scope_readers_see_conditions_but_cannot_write`.
-=======
+
+### 2.176 Document requests for direct students *(added 2026-10-25 — `DEC-SCOPE-262`, ccrm-020)*
+
+| Route | `overseas_admin` | `counselor` (overseas) | `overseas_student` | IT `counselor` / others | Anonymous |
+|---|---|---|---|---|---|
+| `GET` / `POST /counselor/students/{id}/document-requests`, `POST …/{request_id}/cancel` | ✅ any student | ✅ csc-001 students (`404` otherwise; an application write also needs the checklist writers' scope) | `403` | `403` | `401` |
+| `GET /overseas/me/document-requests`, `POST …/{request_id}/upload` | `403` | `403` | ✅ own (`404` for another's) | `403` | `401` |
+
+- The agency's AGN-009 request routes never return a direct student's request (their scope is `agent_student_id`).
+- Pinned by `test_ccrm_020_requests.py::test_scope_admin_yes_other_counselor_and_roles_no`, `::test_student_sees_the_request_and_uploads_against_it`,
+  `::test_the_agency_request_list_never_shows_a_direct_students_request`.

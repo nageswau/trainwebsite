@@ -9372,7 +9372,6 @@ lead activity is not copied to the student (the student 360 links to the lead, c
 **Numbering:** migration `0181_lead_meetings` (after ccrm-019's `0180`); API §12FL; RBAC §2.173. ccrm-017 took DEC-SCOPE-258 / §12FK first.
 - **Feature ID authorized:** `ccrm-004`. **Status:** built on `feature/ccrm-004`.
 
-<<<<<<< HEAD
 ### DEC-SCOPE-260 — Lead data fields: contact preference, study, academic, English, consent, referral (`ccrm-005`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-005` (source PDF §3 "Lead creation fields", `UNVERIFIED`); design
@@ -9392,7 +9391,6 @@ conversion copies study mode, preferred country, CGPA (when no percentage), back
 and audit rows carry field names only.
 **Numbering:** migration `0182_lead_data_fields` (after ccrm-004's `0181_lead_meetings`); API §12FM; RBAC §2.174.
 - **Feature ID authorized:** `ccrm-005`. **Status:** built on `feature/ccrm-005`.
->>>>>>> 2eb7292c444c1bd7c7c4249ebff5d5474a682d9e
 
 ### DEC-SCOPE-261 — Offer conditions (`ccrm-024`)
 
@@ -9409,4 +9407,20 @@ moves the active offer's deadline moves its conditions to the re-recorded row; C
 again, each change kept in history; C11 evidence is a "Condition evidence" document uploaded to the application.
 **Numbering:** migration `0183_offer_conditions` (after ccrm-005's `0182_lead_data_fields`); API §12FN; RBAC §2.175.
 - **Feature ID authorized:** `ccrm-024`. **Status:** built on `worktree-ccrm-024`.
-=======
+
+### DEC-SCOPE-262 — Document requests for direct students (`ccrm-020`, supersedes `nehn-037` part 1)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-020` (source PDF §11 "Document missing → add a task … optionally send a student
+reminder", nehn-037 #1, `UNVERIFIED`); design `docs/superpowers/specs/2026-10-25-ccrm-020-document-requests-design.md`.
+**Owner answers (2026-10-25, in session):** dependency `nehn-003` (private storage) is not built — proceed on the existing document storage
+with the AGN-009 server-side upload rules; R1 a staff rejection (`incomplete` / `reupload_required`) of the fulfilling document reopens the
+request (same due date, the review note shown) and the student uploads again against it; verified leaves it fulfilled; R2 a request made
+from a checklist item marks the item Requested, the student's upload is attached to that application and auto-linked to the item, verified
+makes the item complete; cancel clears a still-Requested mark.
+**Recommended defaults (`NEEDS_CONFIRMATION`):** R3 counselor (csc-001 scope) and Overseas Admin create and cancel, any of them in scope may
+cancel; R4 due date required (today IST or later), note optional, AGN-009 request types; R5 one open request per student + application +
+type + label; R6 the student is notified on create / cancel (never the note), the requester on upload; R7 AGN-009 byte rules for the
+upload, optional expiry; R8 `overdue` computed (open, past due) with a partial index for ccrm-030; R9 a request needs a student login
+(agency-only records keep AGN-009).
+**Numbering:** migration `0184_student_document_requests` (after ccrm-024's `0183`); API §12FO; RBAC §2.176.
+- **Feature ID authorized:** `ccrm-020`. **Status:** built on `feature/ccrm-020`.

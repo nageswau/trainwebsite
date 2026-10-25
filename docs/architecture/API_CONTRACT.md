@@ -3764,7 +3764,6 @@ derived on every read from the student's applications (stage + ccrm-015 outcome)
 - Timeline (§12AH): new kind `meeting` (`from_value` = mode, `reason` = notes excerpt); a completed appointment's `reason` is its outcome notes.
 - Management counseling (§mgmt-018): `calls` is a number (the calls the counselor logged in the period) and its figure is `tracked: true`.
 
-<<<<<<< HEAD
 ## 12FM. Lead data fields (ccrm-005) — addendum, 2026-10-25
 
 `DEC-SCOPE-260`. Additive.
@@ -3786,7 +3785,6 @@ derived on every read from the student's applications (stage + ccrm-015 outcome)
 - **CSV import (§12N)** — the template and accepted header gain `contact_preference`, `enquiry_date`, `marketing_opt_in` (yes/no/true/false),
   `referral_name`, `referral_contact` as the last five columns; older files without them still import.
 - **Conversion (§12FE)** copies study mode, preferred country, CGPA / backlogs and the English tests into the new student's profile.
->>>>>>> 2eb7292c444c1bd7c7c4249ebff5d5474a682d9e
 
 ## 12FN. Offer conditions (ccrm-024) — addendum, 2026-10-25
 
@@ -3804,4 +3802,25 @@ Writes hold the application row lock, are allowed on hold, write one history row
 (CC5), audit `overseas.application.offer_condition` (`{offer_id, condition_id, action: added|updated, status}`) and commit once. Recording an
 offer (§12EX `POST …/offers`, the agency `PUT …/offer`) with conditions text also creates one open student condition; the agency `PATCH`
 that moves only the offer deadline carries the conditions to the new offer row.
-=======
+
+## 12FO. Document requests for direct students (ccrm-020) — addendum, 2026-10-25
+
+`DEC-SCOPE-262`. Staff = `counselor` (overseas, csc-001 scope) and `overseas_admin` through ccrm-007's `staff_student` gate (another student
+`404`, another role `403`). A request item: `{id, document_type, document_label, name, note, review_note, status: open|fulfilled|cancelled,
+due_date, overdue, application_id, application_code, university, checklist_item_id, requested_by, created_at, closed_at,
+document:{id, original_filename, verification_status, status_label}|null}` — never a file key. `overdue` = open and due before today (IST);
+`review_note` = the note on the rejection that reopened an open request (R1), else `null`. Lists are `{items, total, limit, offset}`
+(`limit` 1–100, default 20), open requests first by due date, then the rest newest first.
+
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| `GET` | `/api/v1/counselor/students/{student_id}/document-requests?status=all\|open` | staff | Default `all`. |
+| `POST` | `/api/v1/counselor/students/{student_id}/document-requests` | staff | `{document_type?, document_label?, due_date, note? (≤1000), application_id?, checklist_item_id?}`, extra keys `422`. Type from the AGN-009 request list ("Other" needs a 2–80 label, no "Offer letter"); a checklist item (needs its `application_id`, else `422`) gives the type and label and is marked `requested`. Due date before today `422`; an application that is not the student's `422`; the application through the checklist writers' entry (scope, row lock, closed `409`); an item not on it `404`; an open request for the same student + application + type + label `409`. `201 {request}`; the student is notified (never the note). Audit `document_request.create`. |
+| `POST` | `/api/v1/counselor/students/{student_id}/document-requests/{request_id}/cancel` | staff | Not open `409`; clears the item's `requested` mark; the student is notified. Audit `document_request.cancel`. `200 {request}`. |
+| `GET` | `/api/v1/overseas/me/document-requests?status=open\|all` | `overseas_student` (own) | Default `open`. |
+| `POST` | `/api/v1/overseas/me/document-requests/{request_id}/upload` | `overseas_student` (own, open) | Multipart `file` (AGN-009 rules: PDF/JPEG/PNG by bytes, global size limit, metadata stripped), `expiry_date?`. Another student's `404`; not open `409`. Creates the document (`pending`, the request's application, type and label), fulfils the request, links it to the checklist item, tells the requester. `201 {request, document_id}`. Audit `document.upload`. |
+
+Changed: `PATCH /api/v1/workflows/overseas/documents/{id}/verify` (counselor/admin and AGN-003 agent paths) — `incomplete` /
+`reupload_required` (legacy `rejected` / `changes_required` included) on a document that fulfils a direct student's request reopens it (the
+document stays, no longer fulfilling it; a `requested` event `fulfilled → open` with the review note). `GET …/applications/{id}/checklist`
+(§12FJ) gains `student_id` (writers only) and each item `open_request:{id, due_date}|null`. AGN-009 agency request routes are unchanged.

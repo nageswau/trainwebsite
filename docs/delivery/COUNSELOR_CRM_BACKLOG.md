@@ -528,6 +528,10 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
   missing documents.
 - **Regression:** AGN-009 agency requests unchanged.
 - **Complexity:** medium. **Risk:** medium.
+- **Status (2026-10-25):** built on `feature/ccrm-020` — `DEC-SCOPE-262`, migration `0184_student_document_requests` (after ccrm-024's
+  `0183`), API §12FO, RBAC §2.176; owner answers: proceed without nehn-003 (still open), R1 a rejection reopens the request, R2 a checklist
+  request marks the item Requested and the upload auto-links; R3–R9 defaults. Design
+  `docs/superpowers/specs/2026-10-25-ccrm-020-document-requests-design.md`.
 
 ### `ccrm-021` — Document status model, expiry and versions
 
