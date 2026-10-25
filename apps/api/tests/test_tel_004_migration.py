@@ -45,8 +45,8 @@ def test_model_matches_the_migration():
     from app.lead_stages import STAGES
     from app.models import LEAD_STATUS_CHECK, Enquiry, LeadStageHistory
 
-    # ccrm-006: 0185 added `duplicate` -- the frozen copy is 0185's starting list, and the live catalogue is that list plus Duplicate
-    spec = importlib.util.spec_from_file_location("_ccrm_006_migration_0185", VERSIONS / "0185_lead_loss_capture.py")
+    # ccrm-006: 0186 added `duplicate` -- the frozen copy is 0186's starting list, and the live catalogue is that list plus Duplicate
+    spec = importlib.util.spec_from_file_location("_ccrm_006_migration_0186", VERSIONS / "0186_lead_loss_capture.py")
     later = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(later)
     assert _migration.STAGES == later.OLD_STAGES and STAGES == later.STAGES

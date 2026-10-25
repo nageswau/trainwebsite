@@ -1,7 +1,7 @@
 # ccrm-006 — Lead stage additions and structured loss capture (design)
 
 Backlog: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` § ccrm-006 (source: Counselor CRM Specification §3, UNVERIFIED). Decision:
-`DEC-SCOPE-263`. Migration `0185_lead_loss_capture`. API §12FP. RBAC §2.177. Dependency ccrm-003 MERGED (PR #305).
+`DEC-SCOPE-264`. Migration `0186_lead_loss_capture`. API §12FQ. RBAC §2.178. Dependency ccrm-003 MERGED (PR #305).
 
 The owner's standing instruction is "proceed with recommended answers". Every D-item below is a **recommended default**
 (`NEEDS_CONFIRMATION`), not an explicit approval.

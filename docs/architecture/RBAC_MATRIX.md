@@ -2786,7 +2786,17 @@ inside the existing role scope (a counselor searching another counselor's code g
 - Pinned by `test_ccrm_027_enrollment.py::test_readers_see_no_document_picker_and_cannot_write`,
   `::test_the_counselor_confirms_an_agency_enrolment_once_with_one_commission`, `::test_every_other_way_into_enrolled_is_a_422`.
 
-### 2.177 Lead loss capture and the lost-reason list *(added 2026-10-25 — `DEC-SCOPE-263`, ccrm-006)*
+### 2.177 Sensitive documents *(added 2026-10-25 — `DEC-SCOPE-263`, ccrm-022)*
+
+| Identity / financial document | `overseas_admin` / `super_admin` | `counselor` | `agent` | `overseas_student` | `university_rep` | Anonymous |
+|---|---|---|---|---|---|---|
+| Listed (portal Documents, checklist) | ✅ | ✅ own applications | ✅ own agency's (`document_scope`) | ✅ own | ❌ left out | `401` |
+| Download link (`…/documents/{id}/download`) | ✅ audited | ✅ own, audited | ✅ own agency's, audited | ✅ own, audited | `403`, audited `denied` | `401` |
+| `/files/download?key=<document key>` | `404` | `404` | `404` | `404` | `404` | `401` |
+
+- Pinned by `test_ccrm_022_sensitive_documents.py` (AC 10: `test_a_university_rep_sees_only_standard_documents_and_cannot_open_a_financial_one`).
+
+### 2.178 Lead loss capture and the lost-reason list *(added 2026-10-25 — `DEC-SCOPE-264`, ccrm-006)*
 
 | Route | `telecaller` | `telecaller_manager` / `super_admin` | `counselor` | `it_admin` / `overseas_admin` | Others | Anonymous |
 |---|---|---|---|---|---|---|

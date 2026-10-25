@@ -2248,7 +2248,14 @@ document of the application) and `pre_enrollment_checklist_complete` (bool, NOT 
 `ck_overseas_applications_outcome`, `ck_application_outcomes_outcome` and `ck_application_status_history_outcome`. No backfill; downgrade
 restores the ccrm-015 values and drops the two columns.
 
-## Lead loss capture (`ccrm-006`, `DEC-SCOPE-263`; migration `0185_lead_loss_capture`, after ccrm-027's `0184_enrollment_confirmation`)
+## Document sensitivity (`ccrm-022`, `DEC-SCOPE-263`; migration `0185_document_sensitivity`, after ccrm-027's `0184_enrollment_confirmation`)
+
+`document_checklist_template_items.sensitivity` and `application_checklist_items.sensitivity`: String(20) NOT NULL, server default
+`standard`, CHECK standard / identity / financial. The migration classes existing items from their type and label words (the
+`app.document_checklists` lists); the downgrade drops both columns. A document has no stored class: it is the highest of its type's
+class and its linked items' (`services/document_access.sensitivities`).
+
+## Lead loss capture (`ccrm-006`, `DEC-SCOPE-264`; migration `0186_lead_loss_capture`, after ccrm-022's `0185_document_sensitivity`)
 
 New `lead_lost_reasons`: `id`, `name` (120, CHECK length 1–120, unique on `lower(name)`), `active` bool default true, `sort_order` int
 default 0, `created_at`, `updated_at`; never deleted; seeded with six reasons when empty. `enquiries` gains `duplicate_of_id` FK `enquiries`

@@ -1,4 +1,4 @@
-"""ccrm-006 (DEC-SCOPE-263, API §12FP, RBAC §2.177): the Duplicate closed stage (D2/D3), Wrong Number shown as Invalid Contact (D1), the
+"""ccrm-006 (DEC-SCOPE-264, API §12FQ, RBAC §2.178): the Duplicate closed stage (D2/D3), Wrong Number shown as Invalid Contact (D1), the
 structured loss reason + "lost to" on Lost / Not Interested (D4/D5), call-logged closes unchanged (D6), reopen clears (D7), the reason
 list (D8), the Lost Reasons report (D9) and the management "lost" figure (D10). The shared test database is never truncated: every
 assertion is about rows the test made."""

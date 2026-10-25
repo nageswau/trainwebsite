@@ -54,7 +54,7 @@ export function counselorTargets(current: string): string[] {
   return [...(beforeLink ? COUNSELOR_MANUAL : []), ...COUNSELOR_CLOSED].filter((stage) => stage !== current);
 }
 
-// ccrm-006 (DEC-SCOPE-263, D3/D4): Lost / Not Interested take a reason from the list, Duplicate the surviving lead's Lead ID.
+// ccrm-006 (DEC-SCOPE-264, D3/D4): Lost / Not Interested take a reason from the list, Duplicate the surviving lead's Lead ID.
 const LOSS_STAGES = ["lost", "not_interested"];
 export const isLoss = (stage: string) => LOSS_STAGES.includes(stage);
 export type Closure = { duplicate_of?: string; lost_reason_id?: string; lost_to?: string };

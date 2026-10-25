@@ -148,7 +148,7 @@ def admin_out(row) -> dict:
         "organization": _ref(x.bdm_organization_id, code=org_code, name=org_name),
         "bdm": _ref(x.bdm_user_id, full_name=bdm_name),
         "converted_user": _ref(x.converted_user_id, full_name=student_name, email=student_email),
-        # ccrm-006 (DEC-SCOPE-263): how the lead closed
+        # ccrm-006 (DEC-SCOPE-264): how the lead closed
         "duplicate_of": _ref(x.duplicate_of_id, lead_code=survivor_code),
         "lost_reason": _ref(x.lost_reason_id, name=lost_reason_name),
         "lost_to": x.lost_to,

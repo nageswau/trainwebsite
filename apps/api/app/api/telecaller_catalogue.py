@@ -196,7 +196,7 @@ async def update_campaign(campaign_id: UUID, payload: dict = Body(...), user: Us
     return out
 
 
-# --- lost reasons (ccrm-006, DEC-SCOPE-263 D8) --------------------------------------------------------------------------------------
+# --- lost reasons (ccrm-006, DEC-SCOPE-264 D8) --------------------------------------------------------------------------------------
 def _reason_out(row: LeadLostReason) -> dict:
     return {"id": row.id, "name": row.name, "active": row.active, "sort_order": row.sort_order}
 

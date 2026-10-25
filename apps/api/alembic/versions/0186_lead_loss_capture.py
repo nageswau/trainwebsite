@@ -1,10 +1,10 @@
 """ccrm-006 -- the Duplicate closed stage, how a lead closed (`duplicate_of_id`, `lost_reason_id`, `lost_to` on `enquiries`) and the
 admin-managed `lead_lost_reasons` list, seeded once.
 
-Revision ID: 0185_lead_loss_capture
-Revises: 0184_enrollment_confirmation
+Revision ID: 0186_lead_loss_capture
+Revises: 0185_document_sensitivity
 
-docs/superpowers/specs/2026-10-25-ccrm-006-lead-stages-loss-design.md (DEC-SCOPE-263). Additive. 0001 builds a fresh database from the
+docs/superpowers/specs/2026-10-25-ccrm-006-lead-stages-loss-design.md (DEC-SCOPE-264). Additive. 0001 builds a fresh database from the
 current models, which already carry all of this, so each step is guarded (0166's idiom); the status CHECK is always replaced (same
 text on a fresh build). The stage list and CHECKs repeat app.models (test_ccrm_006_migration). The downgrade turns Duplicate leads into
 Lost, so the old status CHECK holds, then drops the columns and the table.
@@ -16,8 +16,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0185_lead_loss_capture"
-down_revision = "0184_enrollment_confirmation"
+revision = "0186_lead_loss_capture"
+down_revision = "0185_document_sensitivity"
 branch_labels = None
 depends_on = None
 

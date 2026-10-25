@@ -31,7 +31,7 @@ from pydantic_core import PydanticCustomError
 
 from app.application_fields import CURRENCIES as APPLICATION_CURRENCIES
 from app.application_fields import SCHOLARSHIP_STATUSES
-from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS, DRAFTING_STATUSES, REVIEW_STATUSES, review_status
+from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS, DRAFTING_STATUSES, REVIEW_STATUSES, SENSITIVITY_CLASSES, review_status
 from app.document_checklists import ITEM_STATUSES as CHECKLIST_ITEM_STATUSES
 from app.document_checklists import MAX_ITEMS as CHECKLIST_MAX_ITEMS
 from app.models import (
@@ -1531,6 +1531,7 @@ class ChecklistTemplateItemIn(BaseModel):
     required: bool = True
     allowed_statuses: list[Literal[CHECKLIST_ITEM_STATUSES]] = Field(default_factory=list, max_length=len(CHECKLIST_ITEM_STATUSES))
     notes: str | None = None
+    sensitivity: Literal[SENSITIVITY_CLASSES] | None = None  # ccrm-022 SD2: omitted -> the type's class
 
     @field_validator("label")
     @classmethod
@@ -6604,7 +6605,7 @@ class TelSettingsPage(BaseModel):
 
 # tel-004 (DEC-SCOPE-081, spec §5): a person's lead stage move. The reason reuses bdm-004's note rules (trimmed, at most 500,
 # blank -> None); the service decides when it is required.
-# ccrm-006 (DEC-SCOPE-263, D3/D4): how the lead closes -- the surviving lead's Lead ID (any case), a reason from the list, who it was lost to
+# ccrm-006 (DEC-SCOPE-264, D3/D4): how the lead closes -- the surviving lead's Lead ID (any case), a reason from the list, who it was lost to
 LeadCodeRef = Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True, min_length=1, max_length=20)] | None
 LeadLostTo = Annotated[Annotated[str, _trimmed(160)] | None, AfterValidator(_bdm_lead_text(_BDM_CONTROL, False))]
 

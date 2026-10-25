@@ -3827,9 +3827,22 @@ that moves only the offer deadline carries the conditions to the new offer row.
   409 once enrolled); both terminal (reopen: Overseas Admin, §12EW).
 - Management funnel (`GET /management/funnel`): the Enrollment stage counts first moves to `enrolled` whose enrolment is confirmed.
 
-## 12FP. Lead stage additions and structured loss capture (ccrm-006) — addendum, 2026-10-25
+## 12FP. Sensitive documents and access logging (ccrm-022) — addendum, 2026-10-25
 
-`DEC-SCOPE-263`. Additive.
+`DEC-SCOPE-263`. Classes `standard | identity | financial` (`services/document_access.py` is the one rule).
+
+| Method | Path | Change |
+|---|---|---|
+| `GET` | `/workflows/overseas/documents/{id}/download` (OVS-005) | Roles and scope unchanged. The `document.download` audit row's metadata gains `sensitivity`. A `403` on an identity/financial document also writes `document.download` with outcome `denied` (committed before the error). |
+| `GET` | `/files/download?key=` | `404 Not found` when the key is an overseas student document's file (current or archived row, either stored shape, a replaced file's history key) or starts `agent-documents/`; other keys unchanged. |
+| `GET`/`POST`/`PUT` | `/overseas-admin/checklists…` (§12FA) | Each item accepts optional `sensitivity` (omitted → the type's class; unknown → `422`) and returns it. |
+| `GET`/`POST` | `/workflows/overseas/applications/{id}/checklist…` (§12FJ) | Each item returns `sensitivity` (copied from the template item; a counselor's item takes its type's unless sent); each linked / linkable document returns its effective `sensitivity`. |
+| `GET` | `/portal/overseas/{counselor,admin,university}/documents` | Rows gain `sensitivity`; a university_rep gets no identity/financial rows. |
+| `GET` | `/portal/overseas/student/downloads`, `/portal/overseas/agent/documents` | No file key: the student's document rows read "Download from Documents"; the agent rows drop the `file` column. |
+
+## 12FQ. Lead stage additions and structured loss capture (ccrm-006) — addendum, 2026-10-25
+
+`DEC-SCOPE-264`. Additive.
 
 - **Stages.** The catalogue gains the closed stage `duplicate` ("Duplicate"); `wrong_number` is labelled "Invalid Contact" (key unchanged).
 - **Stage moves** — `POST /api/v1/telecaller/leads/{id}/stage`, `POST /api/v1/counselor/leads/{id}/stage` and `PATCH /api/v1/admin/leads/{id}`

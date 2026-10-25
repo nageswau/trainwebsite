@@ -20,8 +20,8 @@ const summary = (over: Record<string, unknown> = {}) => ({
 const template = (over: Record<string, unknown> = {}) => ({
   ...summary(), notes: null,
   items: [
-    { id: "i1", position: 1, document_type: "Passport", label: null, required: true, allowed_statuses: [...STANDARD_STATUSES], notes: null },
-    { id: "i2", position: 2, document_type: "CV", label: null, required: false, allowed_statuses: ["draft", "review", "approved"], notes: "Latest" },
+    { id: "i1", position: 1, document_type: "Passport", label: null, required: true, allowed_statuses: [...STANDARD_STATUSES], notes: null, sensitivity: "identity" },
+    { id: "i2", position: 2, document_type: "CV", label: null, required: false, allowed_statuses: ["draft", "review", "approved"], notes: "Latest", sensitivity: "standard" },
   ],
   ...over,
 });

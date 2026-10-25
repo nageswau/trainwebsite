@@ -1114,7 +1114,7 @@ half.
 | `ccrm-027-AC08` | Migration round-trips, repeats the outcome values, single head | `apps/api/tests/test_ccrm_027_migration.py` |
 | `ccrm-027-AC09` | Counselor UI: Enrolment panel (load/error/confirm step/correction); no Enrolled in Advance / sub-status | `apps/web/tests/components/ApplicationEnrollmentPanel.test.tsx`, `CounselorAgencyLimits.test.tsx`; `apps/web/tests/e2e/ccrm-027-enrollment.spec.ts` |
 
-| `ccrm-006` | Requirement: §3 alternative statuses + lost reason / competitor → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-006` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-263` → design `docs/superpowers/specs/2026-10-25-ccrm-006-lead-stages-loss-design.md`; `API_CONTRACT.md` §12FP, `RBAC_MATRIX.md` §2.177, migration 0185 | D1–D10 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-006` | Requirement: §3 alternative statuses + lost reason / competitor → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-006` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-264` → design `docs/superpowers/specs/2026-10-25-ccrm-006-lead-stages-loss-design.md`; `API_CONTRACT.md` §12FQ, `RBAC_MATRIX.md` §2.178, migration 0186 | D1–D10 defaults `NEEDS_CONFIRMATION` |
 
 | AC | Criterion | Evidence |
 |---|---|---|

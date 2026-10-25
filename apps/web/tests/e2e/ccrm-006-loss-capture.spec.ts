@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// ccrm-006 (DEC-SCOPE-263): the manager adds a lost reason (D8); a telecaller closes one lead as a Duplicate of another (D3, the Lead ID
+// ccrm-006 (DEC-SCOPE-264): the manager adds a lost reason (D8); a telecaller closes one lead as a Duplicate of another (D3, the Lead ID
 // is required) and another as Lost with that reason and "lost to" (D4); Wrong Number reads Invalid Contact (D1); the Lost Reasons report
 // counts it (D9). Throwaway accounts; phone width has no sideways scroll; no console errors.
 test.describe.configure({ timeout: 240_000 });
