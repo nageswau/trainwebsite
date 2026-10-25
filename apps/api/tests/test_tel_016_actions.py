@@ -166,9 +166,9 @@ async def test_only_counselors_read_the_counselor_list(client, db_session):
 async def test_closing_a_lead_cancels_its_open_appointment(client, db_session):
     _, tel, counselor, lead, out = await booked(client, db_session)
     await as_user(client, tel)
-    response = await client.post(f"/api/v1/telecaller/leads/{lead.id}/stage", json={"to_stage": "not_interested", "reason": "Joined elsewhere"})
+    response = await client.post(f"/api/v1/telecaller/leads/{lead.id}/stage", json={"to_stage": "no_response", "reason": "Joined elsewhere"})  # ccrm-006: not a loss stage
     assert response.status_code == 200, response.text
-    assert await stage(db_session, lead) == "not_interested"  # the close stands -- no release back to Follow-up
+    assert await stage(db_session, lead) == "no_response"  # the close stands -- no release back to Follow-up
     items = (await client.get(f"/api/v1/telecaller/leads/{lead.id}/appointments")).json()["items"]
     assert items[0]["status"] == "cancelled"
     last = items[0]["events"][-1]
@@ -187,7 +187,7 @@ async def test_closing_a_lead_leaves_finished_appointments_alone(client, db_sess
     await started(db_session, out["id"])
     assert (await client.post(action_url(out["id"], "complete"))).status_code == 200
     await as_user(client, tel)
-    assert (await client.post(f"/api/v1/telecaller/leads/{lead.id}/stage", json={"to_stage": "lost", "reason": "No budget"})).status_code == 200
+    assert (await client.post(f"/api/v1/telecaller/leads/{lead.id}/stage", json={"to_stage": "no_response", "reason": "No budget"})).status_code == 200  # ccrm-006
     items = (await client.get(f"/api/v1/telecaller/leads/{lead.id}/appointments")).json()["items"]
     assert items[0]["status"] == "completed" and len(items[0]["events"]) == 2
 

@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy import select
 
 from app.lead_stages import CLOSED, label
-from app.models import AuditLog, Enquiry, LeadLostReason, LeadStageHistory
+from app.models import AuditLog, Enquiry, LeadLostReason, LeadStageHistory, TelProduct
 from tests.bdm017_helpers import as_user
 from tests.tel004_helpers import lead, make_telecaller, make_tl_manager, make_user, stage_url
 from tests.tel018_helpers import c_url, handover, setup
@@ -217,21 +217,24 @@ async def test_the_lost_report_groups_losses_by_reason(client, db_session):
     manager = await make_tl_manager(db_session)
     tel = await make_telecaller(db_session, manager)
     a, b = await reason(db_session), await reason(db_session)
+    item = TelProduct(product_group="it", team="it", name=f"Course {uuid.uuid4().hex[:8]}")  # isolates the rows (the DB is shared)
+    db_session.add(item)
+    await db_session.commit()
     rows = [Enquiry(division="it", name="L", email=f"{uuid.uuid4().hex[:8]}@example.local", subject="S", message="", source="website",
-                    telecaller_user_id=tel.id, status=status, lost_reason_id=rid)
+                    telecaller_user_id=tel.id, status=status, lost_reason_id=rid, product_id=item.id)
             for status, rid in (("lost", a.id), ("lost", a.id), ("not_interested", a.id), ("not_interested", b.id), ("lost", None),
                                 ("wrong_number", None), ("contacted", None))]
     db_session.add_all(rows)
     await db_session.commit()
     await as_user(client, manager)
-    body = (await client.get(REPORT)).json()
+    body = (await client.get(f"{REPORT}?product_id={item.id}")).json()
     assert [c["key"] for c in body["columns"]] == ["label", "leads", "lost", "not_interested"]
     by = {item["label"]: item for item in body["items"]}
     assert (by[a.name]["leads"], by[a.name]["lost"], by[a.name]["not_interested"]) == (3, 2, 1)
     assert (by[b.name]["leads"], by[b.name]["not_interested"]) == (1, 1)
     assert by["No reason recorded"]["leads"] == 1
     assert body["totals"]["leads"] == 5
-    csv = await client.get(f"{REPORT}.csv")
+    csv = await client.get(f"{REPORT}.csv?product_id={item.id}")
     assert csv.status_code == 200 and a.name in csv.text
 
 
@@ -248,3 +251,17 @@ async def test_management_lost_figure_excludes_duplicates(db_session):
     await db_session.commit()
     now = datetime.now(UTC)
     assert (await _outcomes(db_session, [tel.id], now - timedelta(hours=1), now + timedelta(hours=1)))[tel.id] == (0, 1)
+
+
+async def test_an_engine_caller_without_a_closure_still_needs_the_duplicate_target(db_session):
+    """Regression: a caller that sends no closure (D6's path) must get a 422 for Duplicate, never the closure CHECK's IntegrityError."""
+    from fastapi.exceptions import RequestValidationError
+
+    from app.services import lead_pipeline
+
+    tel = await make_telecaller(db_session, await make_tl_manager(db_session))
+    row = await lead(db_session, telecaller=tel, status="contacted")
+    locked = await lead_pipeline.locked_lead(db_session, row.id)
+    with pytest.raises(RequestValidationError):
+        await lead_pipeline.person_move(db_session, locked, tel, "telecaller", "duplicate", "Same person")
+    await db_session.rollback()

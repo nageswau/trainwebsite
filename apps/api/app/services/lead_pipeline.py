@@ -166,7 +166,8 @@ async def person_move(db: AsyncSession, lead: Enquiry, actor: User, kind: Kind, 
         raise invalid("to_stage", STAGE_SYSTEM, to_stage)
     if current == "converted" or (to_stage in manual and ORDER.index(current) >= MANUAL_BEFORE):
         raise invalid("to_stage", STAGE_PAST, to_stage)
-    values, default_reason = await _resolve_closure(db, lead, to_stage, sent) if closure is not None else ({}, None)
+    structured = closure is not None or to_stage == "duplicate"  # D6 spares only the loss reason of a call-logged close
+    values, default_reason = await _resolve_closure(db, lead, to_stage, sent) if structured else ({}, None)
     reason = reason or default_reason
     if to_stage in CLOSED and reason is None:
         raise invalid("reason", REASON_CLOSED, reason)

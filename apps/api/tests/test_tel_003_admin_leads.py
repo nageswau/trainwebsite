@@ -16,7 +16,9 @@ KEYS = {"id", "lead_code", "name", "email", "phone", "division", "subject", "sta
         "whatsapp_number", "city", "state", "qualification", "passing_year", "institution", "created_at", "stage_changed_at",
         "product", "campaign", "telecaller", "counselor", "organization", "bdm", "converted_user",
         # ccrm-005 (DEC-SCOPE-260): the spec §3 contact, consent and referral fields, additive
-        "contact_preference", "enquiry_date", "marketing_opt_in", "marketing_consent_at", "referral_name", "referral_contact"}
+        "contact_preference", "enquiry_date", "marketing_opt_in", "marketing_consent_at", "referral_name", "referral_contact",
+        # ccrm-006 (DEC-SCOPE-261): how the lead closed, additive
+        "duplicate_of", "lost_reason", "lost_to"}
 
 
 def tag() -> str:
