@@ -17,7 +17,7 @@ KEYS = {"id", "lead_code", "name", "email", "phone", "division", "subject", "sta
         "product", "campaign", "telecaller", "counselor", "organization", "bdm", "converted_user",
         # ccrm-005 (DEC-SCOPE-260): the spec §3 contact, consent and referral fields, additive
         "contact_preference", "enquiry_date", "marketing_opt_in", "marketing_consent_at", "referral_name", "referral_contact",
-        # ccrm-006 (DEC-SCOPE-262): how the lead closed, additive
+        # ccrm-006 (DEC-SCOPE-263): how the lead closed, additive
         "duplicate_of", "lost_reason", "lost_to"}
 
 

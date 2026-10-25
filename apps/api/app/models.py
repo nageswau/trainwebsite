@@ -1808,7 +1808,7 @@ APPLICATION_OFFER_STATUSES = ("active", "superseded", "withdrawn_by_university",
 # ccrm-025 (DEC-SCOPE-255): the student's decision on an offer, and the counselor's manual deposit record. Migration 0178 repeats them.
 APPLICATION_OFFER_DECISIONS = ("considering", "accepted", "declined", "expired")
 DEPOSIT_RECORD_STATUSES = ("not_required", "pending", "paid_to_university", "paid_via_edusphere")
-# ccrm-024 (DEC-SCOPE-262): who must satisfy an offer condition, and its status. Migration 0184 repeats them (test_ccrm_024_migration).
+# ccrm-024 (DEC-SCOPE-261): who must satisfy an offer condition, and its status. Migration 0183 repeats them (test_ccrm_024_migration).
 OFFER_CONDITION_OWNERS = ("student", "counselor", "agent")
 OFFER_CONDITION_STATUSES = ("open", "met", "waived", "failed")
 
@@ -1848,6 +1848,12 @@ class OverseasApplication(Base, TimestampMixin):
     enrollment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     university_student_id: Mapped[str | None] = mapped_column(String(60), nullable=True)
     enrollment_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # ccrm-027 (DEC-SCOPE-262): the counselor/Admin confirmation (PUT …/enrollment) -- its "Enrolment confirmation" document and the
+    # pre-enrolment checklist attestation (E8). An agency Master's AGN-013 confirmation sets neither.
+    enrollment_document_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL", use_alter=True, name="fk_overseas_applications_enrollment_document_id"), nullable=True
+    )
+    pre_enrollment_checklist_complete: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     # AGN-010 (DEC-SCOPE-056): the current offer, recorded by the agency. `offer_deadline` above is its deadline (O2); the letter is an
     # AGN-009 document (O3). `use_alter`: student_documents.application_id points back at this table.
     offer_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -1931,7 +1937,7 @@ class ApplicationOffer(Base, TimestampMixin):
 
 
 class ApplicationOfferCondition(Base, TimestampMixin):
-    """ccrm-024 (DEC-SCOPE-262): a condition an offer carries -- description, owner, due date, status and the evidence that it is met.
+    """ccrm-024 (DEC-SCOPE-261): a condition an offer carries -- description, owner, due date, status and the evidence that it is met.
     Conditions belong to their offer (C3) and are changed only while it is the current one. Met needs evidence and waived/failed a note
     (route rules, C2/C5). `created_by_id` is NULL on rows migrated from the offer text by 0183. Written only by services/offer_conditions.py."""
 
@@ -2473,7 +2479,7 @@ LEAD_FIELD_CHECKS = {
     "ck_enquiries_marketing_consent": "(marketing_opt_in IS NULL) = (marketing_consent_at IS NULL)",
 }
 ENQUIRY_DATE_DEFAULT = "(now() AT TIME ZONE 'Asia/Kolkata')::date"  # LF4: the created date in IST
-# ccrm-006 (DEC-SCOPE-262, D3/D4): a Duplicate names its surviving lead; a reason and "lost to" only on Lost / Not Interested. Migration 0184
+# ccrm-006 (DEC-SCOPE-263, D3/D4): a Duplicate names its surviving lead; a reason and "lost to" only on Lost / Not Interested. Migration 0185
 # repeats these (test_ccrm_006_migration).
 LEAD_LOST_REASON_NAME_MAX, LEAD_LOST_TO_MAX = 120, 160
 _LOSS_SQL = f"status IN ({', '.join(repr(s) for s in LOSS_STAGES)})"
@@ -2567,7 +2573,7 @@ class Enquiry(Base, TimestampMixin):
     marketing_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     referral_name: Mapped[str | None] = mapped_column(String(LEAD_REFERRAL_NAME_MAX), nullable=True)
     referral_contact: Mapped[str | None] = mapped_column(String(LEAD_REFERRAL_CONTACT_MAX), nullable=True)
-    # ccrm-006 (DEC-SCOPE-262): how the lead closed -- set by lead_pipeline.person_move, cleared on reopen (D7)
+    # ccrm-006 (DEC-SCOPE-263): how the lead closed -- set by lead_pipeline.person_move, cleared on reopen (D7)
     duplicate_of_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"), nullable=True)
     lost_reason_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("lead_lost_reasons.id", ondelete="RESTRICT"), nullable=True)
     lost_to: Mapped[str | None] = mapped_column(String(LEAD_LOST_TO_MAX), nullable=True)

@@ -9,7 +9,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.application_outcome import CLEARED, TERMINAL, label
+from app.application_outcome import CLEARED, POST_OFFER, TERMINAL, label
 from app.application_sub_status import fit as fit_sub_status
 from app.models import ApplicationOutcome, ApplicationStatusHistory, OverseasApplication, StudentDocument, User
 from app.services import application_offers as offers
@@ -18,6 +18,7 @@ from app.services.agent_applications import OFFER_STAGES_ON, WITHDRAWN, WITHDRAW
 ON_HOLD = "This application is on hold -- resume it before changing its stage"
 ENROLLED = "An enrolled application cannot be given an outcome"
 OFFER_NEEDED = "An offer is needed before it can be declined"
+OFFER_NEEDED_FOR_OUTCOME = "An offer is needed before this outcome"  # ccrm-027: non-arrival, cancelled
 LETTER_MISMATCH = "Choose a document uploaded for this application"
 HOLD_OWNER = "Choose an active overseas counselor or admin as the hold owner"
 REVIEW_PAST = "The review date cannot be in the past"
@@ -112,9 +113,9 @@ async def record(db: AsyncSession, user: User, app: OverseasApplication, body) -
         if body.review_date < date.today():
             raise HTTPException(422, REVIEW_PAST)
         event.review_date, event.hold_owner_id = body.review_date, await _hold_owner(db, user, body.hold_owner_id)
-    elif kind == "offer_declined":
-        if app.status not in OFFER_STAGES_ON and app.offer_type is None:
-            raise HTTPException(422, OFFER_NEEDED)
+    if kind in POST_OFFER and app.status not in OFFER_STAGES_ON and app.offer_type is None:
+        raise HTTPException(422, OFFER_NEEDED if kind == "offer_declined" else OFFER_NEEDED_FOR_OUTCOME)  # ccrm-027 (E6)
+    if kind == "offer_declined":
         event.another_offer_preferred = body.another_offer_preferred
     before = (app.status, app.sub_status)
     if kind == "offer_declined" and (current := await offers.active_offer(db, app)) is not None:

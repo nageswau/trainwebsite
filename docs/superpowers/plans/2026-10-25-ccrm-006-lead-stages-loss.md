@@ -1,10 +1,10 @@
 # ccrm-006 Lead stages + loss capture — implementation plan
 
-Spec: `docs/superpowers/specs/2026-10-25-ccrm-006-lead-stages-loss-design.md` (DEC-SCOPE-262, 0184, §12FO, §2.176).
+Spec: `docs/superpowers/specs/2026-10-25-ccrm-006-lead-stages-loss-design.md` (DEC-SCOPE-263, 0185, §12FP, §2.177).
 
 1. **Catalogue + schema** — `lead_stages.py` (`duplicate`, "Invalid Contact", `LOSS_STAGES`), `LeadLostReason` model, Enquiry columns
-   and CHECKs, migration `0184_lead_loss_capture` (guarded, seeds when empty, downgrade maps duplicate→lost). Tests:
-   `test_ccrm_006_migration.py` (model = migration, round trip); `test_tel_004_migration` compares 0081's frozen copy to the pre-0184 list.
+   and CHECKs, migration `0185_lead_loss_capture` (guarded, seeds when empty, downgrade maps duplicate→lost). Tests:
+   `test_ccrm_006_migration.py` (model = migration, round trip); `test_tel_004_migration` compares 0081's frozen copy to the pre-0185 list.
 2. **Engine** — `lead_pipeline.person_move(..., closure)` validates D3/D4/D5, stores, clears on reopen (D7). Schemas gain the three
    optional fields; the three routes pass them. Tests: `test_ccrm_006_loss_capture.py` (422s, happy paths, reopen clears, counselor,
    admin PATCH, call-logged close unchanged).

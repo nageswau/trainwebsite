@@ -2240,7 +2240,15 @@ rows), `status_changed_at`, `created_at`, `updated_at`. Met needs evidence and w
 `services/offer_conditions.py`. The migration copies each offer's non-blank `conditions` text into one open student row (every offer
 status); the downgrade drops the table.
 
-## Lead loss capture (`ccrm-006`, `DEC-SCOPE-262`; migration `0184_lead_loss_capture`, after ccrm-024's `0183_offer_conditions`)
+## Enrolment confirmation (`ccrm-027`, `DEC-SCOPE-262`; migration `0184_enrollment_confirmation`, after ccrm-024's `0183_offer_conditions`)
+
+`overseas_applications` gains `enrollment_document_id` (FK `student_documents` ON DELETE SET NULL, NULL; an "Enrolment confirmation"
+document of the application) and `pre_enrollment_checklist_complete` (bool, NOT NULL, default `false`). `enrollment_confirmed_at`
+(AGN-013) now marks a confirmed enrolment from either route. Outcome values `non_arrival` and `cancelled` join the CHECKs
+`ck_overseas_applications_outcome`, `ck_application_outcomes_outcome` and `ck_application_status_history_outcome`. No backfill; downgrade
+restores the ccrm-015 values and drops the two columns.
+
+## Lead loss capture (`ccrm-006`, `DEC-SCOPE-263`; migration `0185_lead_loss_capture`, after ccrm-027's `0184_enrollment_confirmation`)
 
 New `lead_lost_reasons`: `id`, `name` (120, CHECK length 1–120, unique on `lower(name)`), `active` bool default true, `sort_order` int
 default 0, `created_at`, `updated_at`; never deleted; seeded with six reasons when empty. `enquiries` gains `duplicate_of_id` FK `enquiries`

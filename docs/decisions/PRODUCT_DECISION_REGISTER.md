@@ -9408,7 +9408,27 @@ again, each change kept in history; C11 evidence is a "Condition evidence" docum
 **Numbering:** migration `0183_offer_conditions` (after ccrm-005's `0182_lead_data_fields`); API §12FN; RBAC §2.175.
 - **Feature ID authorized:** `ccrm-024`. **Status:** built on `worktree-ccrm-024`.
 
-### DEC-SCOPE-262 — Lead stage additions and structured loss capture (`ccrm-006`)
+### DEC-SCOPE-262 — Enrolment confirmation and post-offer outcomes (`ccrm-027`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-027` (source PDF §10 enrolment tracking, §13 "do not count an offer or a visa
+approval as enrolment", Appendix B final row; `UNVERIFIED` — the PDF is not in the repository, only the backlog's quotes are used); owner
+answer CC4 (the counselor records enrolment on all applications); design `docs/superpowers/specs/2026-10-25-ccrm-027-enrolment-confirmation-design.md`.
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** E1 the counselor (own
+applications, direct **and agency**: CC4) and the Overseas Admin confirm through `PUT …/applications/{id}/enrollment`; the agency Master's
+AGN-013 route stays as it is (no document). E2 confirming needs an offer stage (AGN-013 E6), no hold / closed / archived agency,
+`expected_status` (stale → 409), `enrollment_date`, an "Enrolment confirmation" document of this application and the pre-enrolment
+checklist attested; student number, course start date and a note optional. E3 `PATCH` status, `/advance` and `/sub-status` to `enrolled`
+→ 422 for every role (supersedes the stage-change path of OVS-003 / ccrm-014 SS4 for `enrolled`; the existing 403s on agency applications
+keep their order). E4 "confirmed" = `enrollment_confirmed_at IS NOT NULL` (this route or AGN-013); the management funnel's Enrollment stage
+counts only confirmed enrolments; old unconfirmed enrolments are not backfilled. E5 "Deferred (post-visa)" is ccrm-015's `deferred`
+(already allowed at visa stages; the application continues) — no new value. E6 new outcomes `non_arrival`, `cancelled`: terminal (Overseas
+Admin reopens), reason required, only with an offer, refused once enrolled. E7 once enrolled the route corrects the details (audit only,
+no history row, no commission). E8 the pre-enrolment checklist is a stored attestation (no ccrm-018 template kind). E9 a counselor/Admin
+confirmation of an agency application runs the AGT-003 trigger (at most one commission) and tells the agency (CC5).
+**Numbering:** migration `0184_enrollment_confirmation`; API §12FO; RBAC §2.176.
+- **Feature ID authorized:** `ccrm-027`. **Status:** built on `worktree-ccrm-027`.
+
+### DEC-SCOPE-263 — Lead stage additions and structured loss capture (`ccrm-006`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-006` (source PDF §3 alternative statuses Duplicate / Invalid Contact, "capture
 lost reason and competitor/destination preference", `UNVERIFIED`); design `docs/superpowers/specs/2026-10-25-ccrm-006-lead-stages-loss-design.md`.
@@ -9424,5 +9444,5 @@ closes (tel-010) are unchanged and carry no reason code ("No reason recorded"); 
 follows tel-002 (telecaller_manager / super_admin write, catalogue readers see active rows, never deleted, six seeded reasons); D9 tel-024
 gains the Lost Reasons report (leads created in range, in scope, now Lost / Not Interested, by reason); D10 the management telecalling
 "lost" figure excludes moves to Duplicate.
-**Numbering:** migration `0184_lead_loss_capture`; API §12FO; RBAC §2.176.
+**Numbering:** migration `0185_lead_loss_capture`; API §12FP; RBAC §2.177.
 - **Feature ID authorized:** `ccrm-006`. **Status:** built on `feature/ccrm-006`.

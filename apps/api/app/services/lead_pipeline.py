@@ -40,7 +40,7 @@ REOPEN_FORBIDDEN = "Only a manager can reopen a closed lead"
 REASON_CLOSED = "Add a reason for closing the lead"
 REASON_REOPEN = "Add a reason for reopening the lead"
 NEXT_ACTION_REQUIRED = "Set a next action and its due date first"  # ccrm-003 A2
-# ccrm-006 (DEC-SCOPE-262): the closure details each target takes, and their refusals
+# ccrm-006 (DEC-SCOPE-263): the closure details each target takes, and their refusals
 CLOSURE_FIELDS = {"duplicate": ("duplicate_of",), **{stage: ("lost_reason_id", "lost_to") for stage in LOSS_STAGES}}
 CLOSURE_NOT_HERE = "This detail only applies when closing a lead as Duplicate, Lost or Not Interested"
 DUPLICATE_REQUIRED = "Enter the Lead ID of the lead this one duplicates"

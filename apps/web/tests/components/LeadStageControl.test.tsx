@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LeadStageControl } from "@/components/AdminLeadStage";
 import LeadClosure from "@/components/LeadClosure";
 
-// ccrm-006 (DEC-SCOPE-262, D3-D5): the stage control asks for the surviving Lead ID on Duplicate and a reason from the list (plus an
+// ccrm-006 (DEC-SCOPE-263, D3-D5): the stage control asks for the surviving Lead ID on Duplicate and a reason from the list (plus an
 // optional "lost to") on Lost / Not Interested; the text reason is optional for those.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const reasons = { items: [{ id: "r1", name: "Fees / budget", active: true, sort_order: 1 }, { id: "r2", name: "Other", active: true, sort_order: 2 }], total: 2, limit: 100, offset: 0 };

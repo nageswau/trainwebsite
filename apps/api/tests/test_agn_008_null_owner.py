@@ -11,6 +11,7 @@ from app.services.staff_activity import _subjects
 from tests.agn001_helpers import client_for, mk_user
 from tests.agn004_helpers import mk_record
 from tests.agn008_helpers import agency_world, mk_application, mk_school_student
+from tests.ccrm027_helpers import confirm_enrollment
 
 
 @pytest_asyncio.fixture
@@ -125,8 +126,9 @@ async def test_commission_lists_name_the_no_login_owner(db_session, world):
 
 @pytest.mark.asyncio
 async def test_admin_enrolment_accrues_the_commission_of_a_no_login_application(db_session, world):  # AC10
-    async with client_for(world["admin"].email) as c:
-        response = await c.patch(f"/api/v1/workflows/overseas/applications/{world['no_login_app'].id}", json={"status": "enrolled"})
+    async with client_for(world["admin"].email) as c:  # ccrm-027 (DEC-SCOPE-262, E3): enrolment through the confirmation
+        assert (await c.patch(f"/api/v1/workflows/overseas/applications/{world['no_login_app'].id}", json={"status": "offer"})).status_code == 200
+        response = await confirm_enrollment(c, db_session, world["no_login_app"])
     assert response.status_code == 200, response.text
     commission = await db_session.scalar(select(AgentCommission).where(AgentCommission.application_id == world["no_login_app"].id))
     assert commission is not None and commission.agent_id == world["master"].id and commission.status == "estimated"
