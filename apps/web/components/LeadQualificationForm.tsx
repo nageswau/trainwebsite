@@ -17,7 +17,7 @@ const COUNTRIES_URL = "/api/v1/public/countries"; // ccrm-005: the study destina
 
 // ccrm-005 (LF3): the English tests travel with the overseas answers; the row editor is ccrm-007's (strings while editing).
 const testsOf = (q: LeadQualification): EnglishTest[] =>
-  q.english_tests.map(({ expired, ...t }) => ({ ...t, overall_score: t.overall_score === null ? null : String(t.overall_score), expired }));
+  q.english_tests.map((t) => ({ ...t, overall_score: t.overall_score === null ? null : String(t.overall_score) }));
 const testBody = (t: EnglishTest) => ({
   test_type: t.test_type, status: t.status || null, overall_score: t.overall_score ? Number(t.overall_score) : null,
   test_date: t.test_date || null, valid_until: t.valid_until || null, remarks: t.remarks?.trim() || null,
