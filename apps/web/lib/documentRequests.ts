@@ -1,4 +1,4 @@
-// ccrm-020 (DEC-SCOPE-262): a counselor's / Overseas Admin's document requests to a direct student. The server
+// ccrm-020 (DEC-SCOPE-265): a counselor's / Overseas Admin's document requests to a direct student. The server
 // (api/student_document_requests.py) owns every rule -- scope, due date, duplicates, overdue, reopen on rejection; this shapes responses.
 
 export const staffRequestsUrl = (studentId: string) => `/api/v1/counselor/students/${studentId}/document-requests`;

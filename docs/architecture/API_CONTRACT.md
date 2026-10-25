@@ -3839,9 +3839,30 @@ that moves only the offer deadline carries the conditions to the new offer row.
 | `GET`/`POST` | `/workflows/overseas/applications/{id}/checklist…` (§12FJ) | Each item returns `sensitivity` (copied from the template item; a counselor's item takes its type's unless sent); each linked / linkable document returns its effective `sensitivity`. |
 | `GET` | `/portal/overseas/{counselor,admin,university}/documents` | Rows gain `sensitivity`; a university_rep gets no identity/financial rows. |
 | `GET` | `/portal/overseas/student/downloads`, `/portal/overseas/agent/documents` | No file key: the student's document rows read "Download from Documents"; the agent rows drop the `file` column. |
-## 12FQ. Document requests for direct students (ccrm-020) — addendum, 2026-10-25
 
-`DEC-SCOPE-264`. Staff = `counselor` (overseas, csc-001 scope) and `overseas_admin` through ccrm-007's `staff_student` gate (another student
+## 12FQ. Lead stage additions and structured loss capture (ccrm-006) — addendum, 2026-10-25
+
+`DEC-SCOPE-264`. Additive.
+
+- **Stages.** The catalogue gains the closed stage `duplicate` ("Duplicate"); `wrong_number` is labelled "Invalid Contact" (key unchanged).
+- **Stage moves** — `POST /api/v1/telecaller/leads/{id}/stage`, `POST /api/v1/counselor/leads/{id}/stage` and `PATCH /api/v1/admin/leads/{id}`
+  (with `status`) accept optional `duplicate_of` (a Lead ID, `LD-…`, any case), `lost_reason_id` (uuid) and `lost_to` (≤ 160, trimmed).
+  `duplicate` needs `duplicate_of` — a lead of the same division, not the lead itself and not itself a Duplicate (422 at `duplicate_of`).
+  `lost` / `not_interested` need `lost_reason_id` of an active reason (422 at `lost_reason_id`). A closure field sent for another target → 422
+  at that field. For those three targets `reason` is optional (the history keeps the reason name or "Duplicate of LD-…" instead); other closed
+  outcomes still need it. The counselor's list (CC8) has no `duplicate`. Reopening clears all three fields. Call-logged closes (§12R) are unchanged.
+- **Lead reads** (admin list, telecaller list/detail, counselor list/detail) add `duplicate_of {id, lead_code} | null`,
+  `lost_reason {id, name} | null`, `lost_to`.
+- **`GET /api/v1/telecaller/lost-reasons`** — catalogue readers (§12F P1); `active`, `q`, `limit`, `offset`; managers and super_admin also see
+  inactive rows. Page of `{id, name, active, sort_order}`, ordered by sort order then name.
+- **`POST /api/v1/telecaller/lost-reasons`** `{name (1–120), sort_order?}` → 201; **`PATCH /api/v1/telecaller/lost-reasons/{id}`**
+  `{name?, active?, sort_order?}`. telecaller_manager / super_admin only (403); a duplicate name (any case) → 409; audit
+  `telecaller.lost_reason_create` / `_update` with field names. Never deleted.
+- **`GET /api/v1/telecaller/reports/lost`** (+ `.csv`) — §12AC's scope and filters; rows: leads created in the range now Lost or Not
+  Interested, by reason (`label`, `leads`, `lost`, `not_interested`); no reason → "No reason recorded".
+## 12FR. Document requests for direct students (ccrm-020) — addendum, 2026-10-25
+
+`DEC-SCOPE-265`. Staff = `counselor` (overseas, csc-001 scope) and `overseas_admin` through ccrm-007's `staff_student` gate (another student
 `404`, another role `403`). A request item: `{id, document_type, document_label, name, note, review_note, status: open|fulfilled|cancelled,
 due_date, overdue, application_id, application_code, university, checklist_item_id, requested_by, created_at, closed_at,
 document:{id, original_filename, verification_status, status_label}|null}` — never a file key. `overdue` = open and due before today (IST);

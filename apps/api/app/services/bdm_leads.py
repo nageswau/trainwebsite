@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.lead_stages import label as stage_label
-from app.models import AuditLog, BdmOrganization, Enquiry, TelCampaign, TelProduct, User
+from app.models import AuditLog, BdmOrganization, Enquiry, LeadLostReason, TelCampaign, TelProduct, User
 from app.services.bdm_activities import day_range, india_date
 
 logger = logging.getLogger("app.bdm")
@@ -103,6 +103,7 @@ Attributor = aliased(User)
 Converted = aliased(User)
 Telecaller = aliased(User)
 Counselor = aliased(User)
+Survivor = aliased(Enquiry)  # ccrm-006 D3: the lead a Duplicate points at
 
 
 def admin_rows():
@@ -110,7 +111,7 @@ def admin_rows():
     outer joins, so a row missing any of them comes back with NULLs."""
     return (
         select(Enquiry, BdmOrganization.code, BdmOrganization.name, Attributor.full_name, Converted.full_name, Converted.email,
-               TelProduct.name, TelCampaign.name, Telecaller.full_name, Counselor.full_name)
+               TelProduct.name, TelCampaign.name, Telecaller.full_name, Counselor.full_name, Survivor.lead_code, LeadLostReason.name)
         .outerjoin(BdmOrganization, BdmOrganization.id == Enquiry.bdm_organization_id)
         .outerjoin(Attributor, Attributor.id == Enquiry.bdm_user_id)
         .outerjoin(Converted, Converted.id == Enquiry.converted_user_id)
@@ -118,6 +119,8 @@ def admin_rows():
         .outerjoin(TelCampaign, TelCampaign.id == Enquiry.campaign_id)
         .outerjoin(Telecaller, Telecaller.id == Enquiry.telecaller_user_id)
         .outerjoin(Counselor, Counselor.id == Enquiry.owner_id)
+        .outerjoin(Survivor, Survivor.id == Enquiry.duplicate_of_id)
+        .outerjoin(LeadLostReason, LeadLostReason.id == Enquiry.lost_reason_id)
     )
 
 
@@ -126,9 +129,10 @@ def _ref(ref_id, **fields) -> dict | None:
 
 
 def admin_out(row) -> dict:
-    """ADM-002's row (keys unchanged), the three bdm-017 objects, the tel-003 lead fields and (tel-004) the stage label; each object is
-    null when absent."""
-    x, org_code, org_name, bdm_name, student_name, student_email, product_name, campaign_name, telecaller_name, counselor_name = row
+    """ADM-002's row (keys unchanged), the three bdm-017 objects, the tel-003 lead fields, (tel-004) the stage label and (ccrm-006) the
+    closure; each object is null when absent."""
+    (x, org_code, org_name, bdm_name, student_name, student_email, product_name, campaign_name, telecaller_name, counselor_name,
+     survivor_code, lost_reason_name) = row
     return {
         "id": x.id, "lead_code": x.lead_code, "name": x.name, "email": x.email, "phone": x.phone, "division": x.division,
         "subject": x.subject, "status": x.status, "status_label": stage_label(x.status), "source": x.source, "crm_sync_status": x.crm_sync_status, "priority": x.priority,
@@ -144,6 +148,10 @@ def admin_out(row) -> dict:
         "organization": _ref(x.bdm_organization_id, code=org_code, name=org_name),
         "bdm": _ref(x.bdm_user_id, full_name=bdm_name),
         "converted_user": _ref(x.converted_user_id, full_name=student_name, email=student_email),
+        # ccrm-006 (DEC-SCOPE-264): how the lead closed
+        "duplicate_of": _ref(x.duplicate_of_id, lead_code=survivor_code),
+        "lost_reason": _ref(x.lost_reason_id, name=lost_reason_name),
+        "lost_to": x.lost_to,
     }
 
 

@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import { STAGES, counselorTargets, isClosed, needsReason, personTargets, stageLabel } from "@/lib/leadStages";
 
 describe("leadStages (tel-004)", () => {
-  it("lists 11 open stages and 5 closed outcomes with source labels", () => {
-    expect(STAGES).toHaveLength(16);
+  it("lists 11 open stages and 6 closed outcomes with source labels (ccrm-006: Duplicate, Wrong Number shown as Invalid Contact)", () => {
+    expect(STAGES).toHaveLength(17);
+    expect(stageLabel("wrong_number")).toBe("Invalid Contact");
+    expect(isClosed("duplicate")).toBe(true);
     expect(stageLabel("first_call_pending")).toBe("First Call Pending");
     expect(stageLabel("application_enrollment")).toBe("Application/Enrollment");
     expect(stageLabel("legacy_text")).toBe("legacy_text");
@@ -14,7 +16,7 @@ describe("leadStages (tel-004)", () => {
 
   it("offers only manual stages and closed outcomes on an open lead, never a system stage", () => {
     const targets = personTargets("contacted", true);
-    expect(targets).toEqual(["qualified", "interested", "follow_up", "not_interested", "not_eligible", "wrong_number", "no_response", "lost"]);
+    expect(targets).toEqual(["qualified", "interested", "follow_up", "not_interested", "not_eligible", "wrong_number", "no_response", "lost", "duplicate"]);
     expect(personTargets("qualified", false)).not.toContain("qualified");
     for (const system of ["new", "assigned", "first_call_pending", "contacted", "counselling_scheduled", "counselling_completed", "application_enrollment", "converted"]) {
       expect(targets).not.toContain(system);
@@ -22,7 +24,7 @@ describe("leadStages (tel-004)", () => {
   });
 
   it("stops manual moves at the counselor and freezes a converted lead", () => {
-    expect(personTargets("application_enrollment", true)).toEqual(["not_interested", "not_eligible", "wrong_number", "no_response", "lost"]);
+    expect(personTargets("application_enrollment", true)).toEqual(["not_interested", "not_eligible", "wrong_number", "no_response", "lost", "duplicate"]);
     expect(personTargets("converted", true)).toEqual([]);
   });
 
@@ -32,7 +34,9 @@ describe("leadStages (tel-004)", () => {
   });
 
   it("requires a reason to close or reopen", () => {
-    expect(needsReason("contacted", "lost")).toBe(true);
+    expect(needsReason("contacted", "no_response")).toBe(true);
+    // ccrm-006 D5: Lost / Not Interested / Duplicate carry a structured reason instead
+    for (const structured of ["lost", "not_interested", "duplicate"]) expect(needsReason("contacted", structured)).toBe(false);
     expect(needsReason("lost", "follow_up")).toBe(true);
     expect(needsReason("contacted", "qualified")).toBe(false);
   });

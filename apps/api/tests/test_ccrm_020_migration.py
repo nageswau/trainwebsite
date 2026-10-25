@@ -1,4 +1,4 @@
-"""ccrm-020 -- migration 0184_student_document_requests (DEC-SCOPE-262): the chain, the new columns, the owner CHECK (an agency record or a
+"""ccrm-020 -- migration 0187_student_document_requests (DEC-SCOPE-265): the chain, the new columns, the owner CHECK (an agency record or a
 student login, never both or neither), the indexes and the lossy round trip, in a throwaway database (the ccrm-024 pattern). Plain tests:
 alembic/env.py calls asyncio.run()."""
 
@@ -14,15 +14,15 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_ccrm_020_migration_0184", VERSIONS / "0184_student_document_requests.py")
+_spec = importlib.util.spec_from_file_location("_ccrm_020_migration_0187", VERSIONS / "0187_student_document_requests.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0184_student_document_requests", "0183_offer_conditions"
+HEAD, BASE = "0187_student_document_requests", "0186_lead_loss_capture"
 NEW_COLUMNS = {"student_user_id", "application_id", "checklist_item_id", "due_date"}
 
 
-def test_migration_chains_after_0183_and_is_in_the_chain():
+def test_migration_chains_after_0186_and_is_in_the_chain():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

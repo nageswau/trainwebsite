@@ -198,7 +198,7 @@ describe("AdminLeadManagementPanel (ADM-002, bdm-017 spec §6, tel-003 spec §5)
     fireEvent.click(within(tr).getByRole("button", { name: "Change stage for Lead w1" }));
     const select = within(tr).getByLabelText("New stage for Lead w1");
     const options = within(select).getAllByRole("option").map((o) => o.getAttribute("value"));
-    expect(options).toEqual(["", "qualified", "interested", "follow_up", "not_interested", "not_eligible", "wrong_number", "no_response", "lost"]);
+    expect(options).toEqual(["", "qualified", "interested", "follow_up", "not_interested", "not_eligible", "wrong_number", "no_response", "lost", "duplicate"]);
     fetchMock.mockImplementationOnce(() => Promise.resolve(res({ ok: true })));
     fireEvent.change(select, { target: { value: "qualified" } });
     fireEvent.click(within(tr).getByRole("button", { name: "Save" }));
@@ -223,7 +223,7 @@ describe("AdminLeadManagementPanel (ADM-002, bdm-017 spec §6, tel-003 spec §5)
     fireEvent.click(within(tr).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(within(tr).getByRole("status")).toHaveTextContent("Stage updated."));
     expect(JSON.parse(String(lastCall()[1].body))).toEqual({ status: "wrong_number", reason: "Number not in service" });
-    expect(tr).toHaveTextContent("Wrong Number");
+    expect(tr).toHaveTextContent("Invalid Contact"); // ccrm-006 D1
   });
 
   it("offers only Reopen to Follow-up on a closed lead and shows a server refusal", async () => {

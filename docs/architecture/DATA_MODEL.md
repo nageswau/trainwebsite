@@ -2254,7 +2254,15 @@ restores the ccrm-015 values and drops the two columns.
 `standard`, CHECK standard / identity / financial. The migration classes existing items from their type and label words (the
 `app.document_checklists` lists); the downgrade drops both columns. A document has no stored class: it is the highest of its type's
 class and its linked items' (`services/document_access.sensitivities`).
-## Document requests for direct students (`ccrm-020`, `DEC-SCOPE-264`; migration `0186_student_document_requests`, after ccrm-022's `0185_document_sensitivity`)
+
+## Lead loss capture (`ccrm-006`, `DEC-SCOPE-264`; migration `0186_lead_loss_capture`, after ccrm-022's `0185_document_sensitivity`)
+
+New `lead_lost_reasons`: `id`, `name` (120, CHECK length 1–120, unique on `lower(name)`), `active` bool default true, `sort_order` int
+default 0, `created_at`, `updated_at`; never deleted; seeded with six reasons when empty. `enquiries` gains `duplicate_of_id` FK `enquiries`
+ON DELETE RESTRICT, `lost_reason_id` FK `lead_lost_reasons` ON DELETE RESTRICT and `lost_to` (160), all NULL; the status CHECK adds
+`duplicate`; CHECKs `duplicate_of_id <> id`, `(duplicate_of_id IS NOT NULL) = (status = 'duplicate')`, and `lost_reason_id` / `lost_to`
+only on `lost` / `not_interested`. Downgrade turns Duplicate leads into Lost, restores the old status CHECK, drops the columns and the table.
+## Document requests for direct students (`ccrm-020`, `DEC-SCOPE-265`; migration `0187_student_document_requests`, after ccrm-006's `0186_lead_loss_capture`)
 
 `document_requests`: `agent_student_id` becomes NULL-able; new `student_user_id` (FK `users`), `application_id` (FK
 `overseas_applications`), `checklist_item_id` (FK `application_checklist_items` ON DELETE SET NULL), `due_date` (date). CHECK

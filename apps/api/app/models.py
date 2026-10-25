@@ -40,6 +40,7 @@ from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
 from app.core.identifiers import normalize_key
 from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS, ITEM_STATUSES, SENSITIVITY_CLASSES
+from app.lead_stages import LOSS_STAGES
 from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
 from app.partnership_event_kinds import KINDS as PARTNERSHIP_EVENT_KINDS
@@ -2095,7 +2096,7 @@ class StudentDocument(Base, TimestampMixin):
 class DocumentRequest(Base, TimestampMixin):
     """AGN-009 (DEC-SCOPE-052 G4/G5): an agency's request for an additional document from one of its students. Open until an upload
     made against it fulfils it, or a member cancels it.
-    ccrm-020 (DEC-SCOPE-262): or a counselor's / Overseas Admin's request to a student login (`student_user_id`, exactly one owner), with a
+    ccrm-020 (DEC-SCOPE-265): or a counselor's / Overseas Admin's request to a student login (`student_user_id`, exactly one owner), with a
     due date and optionally an application and its checklist item; a staff rejection of the fulfilling document reopens it (R1)."""
 
     __tablename__ = "document_requests"
@@ -2495,6 +2496,31 @@ LEAD_FIELD_CHECKS = {
     "ck_enquiries_marketing_consent": "(marketing_opt_in IS NULL) = (marketing_consent_at IS NULL)",
 }
 ENQUIRY_DATE_DEFAULT = "(now() AT TIME ZONE 'Asia/Kolkata')::date"  # LF4: the created date in IST
+# ccrm-006 (DEC-SCOPE-264, D3/D4): a Duplicate names its surviving lead; a reason and "lost to" only on Lost / Not Interested. Migration 0186
+# repeats these (test_ccrm_006_migration).
+LEAD_LOST_REASON_NAME_MAX, LEAD_LOST_TO_MAX = 120, 160
+_LOSS_SQL = f"status IN ({', '.join(repr(s) for s in LOSS_STAGES)})"
+LEAD_CLOSURE_CHECKS = {
+    "ck_enquiries_duplicate_not_self": "duplicate_of_id IS NULL OR duplicate_of_id <> id",
+    "ck_enquiries_duplicate_of": "(duplicate_of_id IS NOT NULL) = (status = 'duplicate')",
+    "ck_enquiries_lost_reason": f"lost_reason_id IS NULL OR {_LOSS_SQL}",
+    "ck_enquiries_lost_to": f"lost_to IS NULL OR ({_LOSS_SQL} AND length(lost_to) BETWEEN 1 AND {LEAD_LOST_TO_MAX})",
+}
+
+
+class LeadLostReason(Base, TimestampMixin):
+    """ccrm-006 (D8): the admin-managed list a Lost / Not Interested close picks its reason from -- tel-002's catalogue pattern. Never
+    deleted: deactivating hides it from the picker while closed leads keep it."""
+
+    __tablename__ = "lead_lost_reasons"
+    __table_args__ = (
+        CheckConstraint(f"length(name) BETWEEN 1 AND {LEAD_LOST_REASON_NAME_MAX}", name="ck_lead_lost_reasons_name"),
+        Index("uq_lead_lost_reasons_name", text("lower(name)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(LEAD_LOST_REASON_NAME_MAX))
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
 
 
 class Enquiry(Base, TimestampMixin):
@@ -2510,7 +2536,7 @@ class Enquiry(Base, TimestampMixin):
             "(converted_user_id IS NULL) = (converted_at IS NULL) AND (converted_user_id IS NULL) = (converted_by_user_id IS NULL)",
             name="ck_enquiries_conversion",
         ),
-        *(CheckConstraint(sql, name=name) for name, sql in (LEAD_CHECKS | LEAD_FIELD_CHECKS).items()),
+        *(CheckConstraint(sql, name=name) for name, sql in (LEAD_CHECKS | LEAD_FIELD_CHECKS | LEAD_CLOSURE_CHECKS).items()),
         CheckConstraint(LEAD_STATUS_CHECK, name="ck_enquiries_status"),
         CheckConstraint(f"next_action IS NULL OR length(next_action) BETWEEN 1 AND {LEAD_NEXT_ACTION_MAX}", name="ck_enquiries_next_action_len"),
         UniqueConstraint("lead_code", name="uq_enquiries_lead_code"),
@@ -2564,6 +2590,10 @@ class Enquiry(Base, TimestampMixin):
     marketing_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     referral_name: Mapped[str | None] = mapped_column(String(LEAD_REFERRAL_NAME_MAX), nullable=True)
     referral_contact: Mapped[str | None] = mapped_column(String(LEAD_REFERRAL_CONTACT_MAX), nullable=True)
+    # ccrm-006 (DEC-SCOPE-264): how the lead closed -- set by lead_pipeline.person_move, cleared on reopen (D7)
+    duplicate_of_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"), nullable=True)
+    lost_reason_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("lead_lost_reasons.id", ondelete="RESTRICT"), nullable=True)
+    lost_to: Mapped[str | None] = mapped_column(String(LEAD_LOST_TO_MAX), nullable=True)
 
     @validates("phone")
     def _derive_phone_normalized(self, _key: str, phone: str | None) -> str | None:

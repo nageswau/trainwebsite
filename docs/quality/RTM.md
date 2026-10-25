@@ -1113,11 +1113,26 @@ half.
 | `ccrm-027-AC07` | The funnel counts confirmed enrolments only | `::test_the_funnel_counts_only_confirmed_enrolments`; `apps/api/tests/test_mgmt_016_funnel.py` |
 | `ccrm-027-AC08` | Migration round-trips, repeats the outcome values, single head | `apps/api/tests/test_ccrm_027_migration.py` |
 | `ccrm-027-AC09` | Counselor UI: Enrolment panel (load/error/confirm step/correction); no Enrolled in Advance / sub-status | `apps/web/tests/components/ApplicationEnrollmentPanel.test.tsx`, `CounselorAgencyLimits.test.tsx`; `apps/web/tests/e2e/ccrm-027-enrollment.spec.ts` |
+
+| `ccrm-006` | Requirement: §3 alternative statuses + lost reason / competitor → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-006` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-264` → design `docs/superpowers/specs/2026-10-25-ccrm-006-lead-stages-loss-design.md`; `API_CONTRACT.md` §12FQ, `RBAC_MATRIX.md` §2.178, migration 0186 | D1–D10 defaults `NEEDS_CONFIRMATION` |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-006-AC01` | Closing as Duplicate without a target → 422; a bad target (self, other team, unknown, a duplicate) → 422; a good one links the surviving lead | `apps/api/tests/test_ccrm_006_loss_capture.py::test_closing_as_duplicate_without_a_target_is_422_and_nothing_moves`, `::test_a_bad_duplicate_target_is_422`, `::test_closing_as_duplicate_links_the_surviving_lead` |
+| `ccrm-006-AC02` | Lost / Not Interested need an active reason from the list; "lost to" stored; text reason optional; closure fields for another target 422 | `::test_lost_or_not_interested_needs_a_reason_from_the_list`, `::test_lost_with_a_reason_and_lost_to_is_stored_and_shown`, `::test_the_text_reason_is_kept_when_sent`, `::test_closure_fields_for_another_target_are_422` |
+| `ccrm-006-AC03` | Wrong Number reads Invalid Contact; Duplicate is a closed stage | `::test_duplicate_is_a_closed_stage_and_wrong_number_reads_invalid_contact`; `apps/web/tests/lib/leadStages.test.ts` |
+| `ccrm-006-AC04` | Reopen clears the closure; call-logged close unchanged | `::test_reopen_clears_the_closure`, `::test_a_call_logged_close_still_works_without_a_reason_code` |
+| `ccrm-006-AC05` | Counselor and admin routes take the closure; counselor cannot choose Duplicate | `::test_counselor_closes_lost_with_a_reason_but_cannot_choose_duplicate`, `::test_admin_patch_takes_the_closure_fields` |
+| `ccrm-006-AC06` | Manager manages the reason list; readers see active rows; others 403; seeded reasons | `::test_a_manager_manages_the_reason_list_and_readers_see_active_rows`, `::test_the_seeded_reasons_exist` |
+| `ccrm-006-AC07` | Reports group losses by reason; management lost figure excludes duplicates | `::test_the_lost_report_groups_losses_by_reason`, `::test_management_lost_figure_excludes_duplicates` |
+| `ccrm-006-AC08` | Migration seeds, enforces the closure CHECKs, round-trips (duplicate → lost on downgrade), single head | `apps/api/tests/test_ccrm_006_migration.py` |
+| `ccrm-006-AC09` | UI: the stage control asks for the Lead ID / reason / lost to; closure shown on the lead | `apps/web/tests/components/LeadStageControl.test.tsx`, `CounselorLeadDetail.test.tsx` |
+| `ccrm-006-AC10` | Browser: reason created, Duplicate + Lost closes, report row, phone width, no console errors | `apps/web/tests/e2e/ccrm-006-loss-capture.spec.ts` |
 **Addendum, 2026-10-25 (`ccrm-020`)** — one row and its acceptance-criteria map. Document requests for direct students.
 
 | Feature | Trace | Open items | Evidence |
 |---|---|---|---|
-| `ccrm-020` | Requirement: §11 + nehn-037 #1 + owner answers R1–R2 (in-session 2026-10-25) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-020` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-264` → design `docs/superpowers/specs/2026-10-25-ccrm-020-document-requests-design.md`; `API_CONTRACT.md` §12FQ, `RBAC_MATRIX.md` §2.178, `DATA_MODEL.md` (0184) | Defaults R3–R9 `NEEDS_CONFIRMATION`; nehn-003 still open | Lite API set, vitest, e2e and browser QA |
+| `ccrm-020` | Requirement: §11 + nehn-037 #1 + owner answers R1–R2 (in-session 2026-10-25) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-020` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-265` → design `docs/superpowers/specs/2026-10-25-ccrm-020-document-requests-design.md`; `API_CONTRACT.md` §12FR, `RBAC_MATRIX.md` §2.179, `DATA_MODEL.md` (0187) | Defaults R3–R9 `NEEDS_CONFIRMATION`; nehn-003 still open | Lite API set, vitest, e2e and browser QA |
 
 | AC | Statement | Tests |
 |---|---|---|

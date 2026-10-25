@@ -122,11 +122,7 @@ from app.schemas import (
 )
 from app.services import agent_documents as document_files
 from app.services import agent_notifications as agency_notices
-<<<<<<< HEAD
-from app.services import application_checklists, applications, counselor_students, course_skills, interviews, offers, student_document_requests, visa_lifecycle
-=======
-from app.services import application_checklists, applications, counselor_students, course_skills, document_access, interviews, offers, visa_lifecycle
->>>>>>> 0968bbd5c527bc5b7bf0d9e8d68905ec4dbd43f3
+from app.services import application_checklists, applications, counselor_students, course_skills, document_access, interviews, offers, student_document_requests, visa_lifecycle
 from app.services import application_outcomes as outcomes
 from app.services import application_sub_status as sub_statuses
 from app.services import document_checklists as checklist_templates

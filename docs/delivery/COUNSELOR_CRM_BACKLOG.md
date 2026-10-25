@@ -248,6 +248,9 @@ asked one at a time when the item is picked up).
 - **Regression:** tel-024 reports, management funnel "lost".
 - **Complexity:** small. **Risk:** medium (stage list is shared by four modules).
 - **Open questions:** relabel Wrong Number → "Invalid Contact", or add it beside? Default: relabel display only.
+- **Status (2026-10-25):** built on `feature/ccrm-006` — `DEC-SCOPE-264` (D1–D10 defaults `NEEDS_CONFIRMATION`: relabel only; Duplicate
+  for telecaller/manager/admin, not the counselor; reason list on the tel-002 pattern with six seeded reasons; call-logged closes keep no
+  reason code; Lost Reasons report), migration `0186_lead_loss_capture` (after ccrm-022's 0185), API §12FQ, RBAC §2.178.
 
 ### `ccrm-007` — Structured overseas student profile
 
@@ -528,8 +531,8 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
   missing documents.
 - **Regression:** AGN-009 agency requests unchanged.
 - **Complexity:** medium. **Risk:** medium.
-- **Status (2026-10-25):** built on `feature/ccrm-020` — `DEC-SCOPE-262`, migration `0184_student_document_requests` (after ccrm-024's
-  `0183`), API §12FO, RBAC §2.176; owner answers: proceed without nehn-003 (still open), R1 a rejection reopens the request, R2 a checklist
+- **Status (2026-10-25):** built on `feature/ccrm-020` — `DEC-SCOPE-265`, migration `0187_student_document_requests` (after ccrm-006's
+  `0186_lead_loss_capture`), API §12FR, RBAC §2.179; owner answers: proceed without nehn-003 (still open), R1 a rejection reopens the request, R2 a checklist
   request marks the item Requested and the upload auto-links; R3–R9 defaults. Design
   `docs/superpowers/specs/2026-10-25-ccrm-020-document-requests-design.md`.
 
@@ -653,9 +656,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Acceptance:** Appendix B final row; the management funnel counts enrolments only with confirmation.
 - **Regression:** tel-018 conversion sweep (Converted relies on `enrolled`), mgmt revenue.
 - **Complexity:** medium. **Risk:** medium.
-- **Status (2026-10-25):** built on `worktree-ccrm-027` — `DEC-SCOPE-262` (E1–E9 defaults `NEEDS_CONFIRMATION`: counselor/Admin
+- **Status (2026-10-25):** built on `worktree-ccrm-027` — `DEC-SCOPE-265` (E1–E9 defaults `NEEDS_CONFIRMATION`: counselor/Admin
   `PUT …/enrollment` on direct and agency applications; other routes into `enrolled` → 422; "Deferred (post-visa)" = ccrm-015 `deferred`;
-  new terminal outcomes `non_arrival`, `cancelled`), migration `0184_enrollment_confirmation`, API §12FO, RBAC §2.176. Design
+  new terminal outcomes `non_arrival`, `cancelled`), migration `0184_enrollment_confirmation`, API §12FR, RBAC §2.179. Design
   `docs/superpowers/specs/2026-10-25-ccrm-027-enrolment-confirmation-design.md`.
 
 ### `ccrm-028` — Arrival and orientation tracking (CC6)

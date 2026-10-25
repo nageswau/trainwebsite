@@ -9,7 +9,7 @@ import { formatCalendarDate } from "@/lib/formatDate";
 
 type Props = { studentId: string; applications: { id: string; label: string }[] };
 
-// ccrm-020 (DEC-SCOPE-262): the student 360's Documents tab -- the counselor's / Overseas Admin's requests to this student (due date,
+// ccrm-020 (DEC-SCOPE-265): the student 360's Documents tab -- the counselor's / Overseas Admin's requests to this student (due date,
 // overdue, the uploaded document's review status, Cancel while open) and the form to ask for one. One write at a time.
 export default function CounselorDocumentRequestsPanel({ studentId, applications }: Props) {
   const url = staffRequestsUrl(studentId);

@@ -45,10 +45,14 @@ def test_model_matches_the_migration():
     from app.lead_stages import STAGES
     from app.models import LEAD_STATUS_CHECK, Enquiry, LeadStageHistory
 
-    assert _migration.STAGES == STAGES  # the frozen copy still equals the live catalogue
-    assert LEAD_STATUS_CHECK == _migration.STATUS_CHECK
+    # ccrm-006: 0186 added `duplicate` -- the frozen copy is 0186's starting list, and the live catalogue is that list plus Duplicate
+    spec = importlib.util.spec_from_file_location("_ccrm_006_migration_0186", VERSIONS / "0186_lead_loss_capture.py")
+    later = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(later)
+    assert _migration.STAGES == later.OLD_STAGES and STAGES == later.STAGES
+    assert LEAD_STATUS_CHECK == later.STATUS_CHECK
     checks = {c.name: str(c.sqltext) for c in Enquiry.__table__.constraints if isinstance(c, sa.CheckConstraint)}
-    assert checks["ck_enquiries_status"] == _migration.STATUS_CHECK
+    assert checks["ck_enquiries_status"] == later.STATUS_CHECK
     table = LeadStageHistory.__table__
     assert {"id", "lead_id", "from_stage", "to_stage", "event", "actor_user_id", "reason", "position", "created_at"} == {c.name for c in table.columns}
     assert table.c.actor_user_id.nullable and table.c.reason.nullable and not table.c.event.nullable

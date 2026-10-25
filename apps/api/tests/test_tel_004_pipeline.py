@@ -128,7 +128,7 @@ async def test_no_manual_or_closed_move_once_counselor_or_converted(db_session, 
 
 # --- AC3 / D1: closed outcomes need a reason --------------------------------------------------------------------------------
 @pytest.mark.asyncio
-@pytest.mark.parametrize("to_stage", sorted(CLOSED))
+@pytest.mark.parametrize("to_stage", sorted(CLOSED - {"duplicate"}))  # ccrm-006: Duplicate needs its surviving lead instead
 async def test_closed_outcome_needs_a_reason(db_session, to_stage):
     _, tel = await _fixtures(db_session)
     row = await lead(db_session, telecaller=tel, status="contacted")
@@ -169,5 +169,5 @@ async def test_manager_reopens_to_follow_up_with_a_reason(db_session):
     assert (await _history(db_session, row))[-1] == ("wrong_number", "follow_up", "reopen", "Correct number found")
 
 
-def test_catalogue_has_eleven_open_stages_and_five_closed():
-    assert len(STAGES) == 16 and len(CLOSED) == 5
+def test_catalogue_has_eleven_open_stages_and_six_closed():
+    assert len(STAGES) == 17 and len(CLOSED) == 6  # ccrm-006 added Duplicate

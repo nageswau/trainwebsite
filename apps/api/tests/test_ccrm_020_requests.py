@@ -1,4 +1,4 @@
-"""ccrm-020 (DEC-SCOPE-262, R1-R9) -- a counselor's / Overseas Admin's document requests to a direct student: create (rules, scope,
+"""ccrm-020 (DEC-SCOPE-265, R1-R9) -- a counselor's / Overseas Admin's document requests to a direct student: create (rules, scope,
 duplicate, notice), the student's list and upload against a request, the counselor's review (verified keeps it fulfilled, a rejection
 reopens it), the checklist tie (mark Requested, auto-link, Verified leaves "missing"), cancel, overdue, and the AGN-009 agency list
 untouched. Spec: docs/superpowers/specs/2026-10-25-ccrm-020-document-requests-design.md."""

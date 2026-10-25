@@ -1,4 +1,4 @@
-"""ccrm-020 (DEC-SCOPE-262) -- document requests to a direct student. API_CONTRACT.md §12FO; RBAC_MATRIX.md §2.176.
+"""ccrm-020 (DEC-SCOPE-265) -- document requests to a direct student. API_CONTRACT.md §12FR; RBAC_MATRIX.md §2.179.
 
 Staff (counselor in csc-001 scope, Overseas Admin; ccrm-007's `staff_student` gate -- another student is a 404) list, create and cancel
 under the student; a checklist / application request takes the checklist writers' entry (`application_offers._writable`: scope, row lock,
