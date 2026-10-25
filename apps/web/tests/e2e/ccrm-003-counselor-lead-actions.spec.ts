@@ -102,8 +102,9 @@ test("counselor sets a next action, moves the stage, works a follow-up and close
   await page.getByRole("button", { name: `Change stage for ${lead}` }).click();
   await page.getByLabel(`New stage for ${lead}`).selectOption("lost");
   await page.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(page.getByText("Add a reason for this stage.")).toBeVisible();
-  await page.getByLabel("Reason (required)").fill("Chose another institute");
+  await expect(page.getByText("Choose why the lead was lost.")).toBeVisible(); // ccrm-006 D4: a reason from the list
+  await page.getByLabel("Lost reason (required)").selectOption({ index: 1 });
+  await page.getByLabel("Reason (optional)").fill("Chose another institute");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("Stage updated.")).toBeVisible();
   await expect(page.getByRole("button", { name: `Change stage for ${lead}` })).toHaveCount(0);

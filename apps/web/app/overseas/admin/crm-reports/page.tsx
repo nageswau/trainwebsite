@@ -8,7 +8,7 @@ import { ADMIN_CRM_REPORTS_HOME, CRM_REPORTS_UNAVAILABLE, crmFilters, crmReports
 import { PORTAL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
-// ccrm-034 (DEC-SCOPE-263, R1): the same CRM reports for the Overseas Admin (CC3: the team-wide view). Super Admin passes too.
+// ccrm-034 (DEC-SCOPE-265, R1): the same CRM reports for the Overseas Admin (CC3: the team-wide view). Super Admin passes too.
 const ADMIN_ROLES = ["overseas_admin", "super_admin"];
 
 export default async function AdminCrmReportsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {

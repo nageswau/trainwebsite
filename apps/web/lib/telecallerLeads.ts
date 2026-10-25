@@ -2,6 +2,7 @@
 // are display only; the API decides scope, editability (`read_only`) and every rule.
 import { sendJson, type SendOutcome } from "@/lib/apiErrors";
 import type { Milestones } from "@/lib/leadHandover";
+import type { Closure, LeadClosureFields } from "@/lib/leadStages";
 import { STUDY_MODES, type EnglishTest } from "@/lib/studentProfile";
 
 export type Priority = "hot" | "warm" | "cold";
@@ -12,7 +13,7 @@ export type TelecallerLead = {
   status: string; status_label: string; source: string; priority: Priority; created_at: string; stage_changed_at: string;
   product: { id: string; name: string } | null; campaign: { id: string; name: string } | null; telecaller: PersonRef | null; counselor: PersonRef | null;
   read_only: boolean;
-} & LeadContact;
+} & LeadContact & LeadClosureFields;
 // ccrm-005 (DEC-SCOPE-260, LF1/LF5): the spec §3 contact, consent and referral fields of every lead. `marketing_opt_in` null = not asked.
 export type LeadContact = {
   contact_preference: string | null; enquiry_date: string; marketing_opt_in: boolean | null; marketing_consent_at: string | null;
@@ -53,8 +54,8 @@ export function telHref(phone: string | null): string | null {
 }
 
 /** tel-004's telecaller stage route ({to_stage, reason}); LeadStageControl calls it on the lead detail. */
-export const moveStage = (id: string, target: string, reason: string): Promise<SendOutcome> =>
-  sendJson(leadUrl(id, "/stage"), "POST", reason ? { to_stage: target, reason } : { to_stage: target });
+export const moveStage = (id: string, target: string, reason: string, closure: Closure = {}): Promise<SendOutcome> =>
+  sendJson(leadUrl(id, "/stage"), "POST", { to_stage: target, ...(reason ? { reason } : {}), ...closure });
 
 // tel-009 (DEC-SCOPE-093, spec §3-§4): the qualification form. The API decides which fields apply (QD2); these lists only lay out the form.
 export type ProductGroup = "it" | "overseas" | "other";

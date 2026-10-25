@@ -31,7 +31,7 @@ from pydantic_core import PydanticCustomError
 
 from app.application_fields import CURRENCIES as APPLICATION_CURRENCIES
 from app.application_fields import SCHOLARSHIP_STATUSES
-from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS, DRAFTING_STATUSES, REVIEW_STATUSES, review_status
+from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS, DRAFTING_STATUSES, REVIEW_STATUSES, SENSITIVITY_CLASSES, review_status
 from app.document_checklists import ITEM_STATUSES as CHECKLIST_ITEM_STATUSES
 from app.document_checklists import MAX_ITEMS as CHECKLIST_MAX_ITEMS
 from app.models import (
@@ -1531,6 +1531,7 @@ class ChecklistTemplateItemIn(BaseModel):
     required: bool = True
     allowed_statuses: list[Literal[CHECKLIST_ITEM_STATUSES]] = Field(default_factory=list, max_length=len(CHECKLIST_ITEM_STATUSES))
     notes: str | None = None
+    sensitivity: Literal[SENSITIVITY_CLASSES] | None = None  # ccrm-022 SD2: omitted -> the type's class
 
     @field_validator("label")
     @classmethod
@@ -5559,7 +5560,8 @@ BDM_LEAD_LABELS = {"name": "Student name", "email": "Email", "student_email": "E
                    "current_org": "Current college/company", "career_objective": "Career objective", "preferred_batch": "Preferred batch",
                    "budget_range": "Budget range", "preferred_course": "Preferred course", "intake": "Intake",
                    "english_test_status": "IELTS/PTE status",  # tel-009
-                   "referral_name": "Referral name", "referral_contact": "Referral contact", "preferred_campus": "Preferred campus"}  # ccrm-005
+                   "referral_name": "Referral name", "referral_contact": "Referral contact", "preferred_campus": "Preferred campus",  # ccrm-005
+                   "lost_to": "Lost to"}  # ccrm-006
 
 
 def _bdm_lead_text(pattern: re.Pattern, required: bool):
@@ -5807,6 +5809,43 @@ class TelProductUpdate(BaseModel):
     program_id: UUID | None = None
     active: StrictBool = None
     sort_order: TelSortOrder = None
+
+
+class LeadLostReasonCreate(BaseModel):
+    """ccrm-006 D8: `sort_order` may be omitted -- the reason goes to the end of the list."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: TelProductName
+    sort_order: TelSortOrder = None
+
+
+class LeadLostReasonUpdate(BaseModel):
+    """Omitted = unchanged; null on any key is a 422."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: TelProductName = None
+    active: StrictBool = None
+    sort_order: TelSortOrder = None
+
+    @model_validator(mode="after")
+    def _not_cleared(self):
+        if any(getattr(self, field) is None for field in self.model_fields_set):
+            raise PydanticCustomError("required", "Name, active and sort order cannot be empty")
+        return self
+
+
+class LeadLostReasonOut(BaseModel):
+    id: UUID
+    name: str
+    active: bool
+    sort_order: int
+
+
+class LeadLostReasonPage(BaseModel):
+    items: list[LeadLostReasonOut]
+    total: int
+    limit: int
+    offset: int
 
 
 class TelCampaignCreate(BaseModel):
@@ -6566,10 +6605,21 @@ class TelSettingsPage(BaseModel):
 
 # tel-004 (DEC-SCOPE-081, spec §5): a person's lead stage move. The reason reuses bdm-004's note rules (trimmed, at most 500,
 # blank -> None); the service decides when it is required.
+# ccrm-006 (DEC-SCOPE-264, D3/D4): how the lead closes -- the surviving lead's Lead ID (any case), a reason from the list, who it was lost to
+LeadCodeRef = Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True, min_length=1, max_length=20)] | None
+LeadLostTo = Annotated[Annotated[str, _trimmed(160)] | None, AfterValidator(_bdm_lead_text(_BDM_CONTROL, False))]
+
+
 class LeadStageMove(BaseModel):
     model_config = ConfigDict(extra="forbid")
     to_stage: BdmStageKey
     reason: BdmPipelineNote = None
+    duplicate_of: LeadCodeRef = None
+    lost_reason_id: UUID | None = None
+    lost_to: LeadLostTo = None
+
+    def closure(self) -> dict:
+        return {"duplicate_of": self.duplicate_of, "lost_reason_id": self.lost_reason_id, "lost_to": self.lost_to}
 
 
 class LeadStageOut(BaseModel):
@@ -7119,12 +7169,9 @@ LeadNextAction = Annotated[Annotated[str, _trimmed(200)], AfterValidator(_trip_t
 LeadNextActionDue = Annotated[date, BeforeValidator(_trip_date("due date"))]
 
 
-class CounselorLeadStageMove(BaseModel):
+class CounselorLeadStageMove(LeadStageMove):
     """ccrm-003 A1/A2: tel-004's move plus the next action, applied before the stage rules check it (both optional when stored)."""
 
-    model_config = ConfigDict(extra="forbid")
-    to_stage: BdmStageKey
-    reason: BdmPipelineNote = None
     next_action: LeadFollowUpAction = None
     next_action_due: LeadNextActionDue | None = None
 
@@ -11860,7 +11907,7 @@ class ApplicationFunnelOut(BaseModel):
     options: ApplicationFunnelOptions
 
 
-# --- ccrm-034 (DEC-SCOPE-263, R1-R10): the management CRM reports. Every report has its rows, a total row (students are distinct people,
+# --- ccrm-034 (DEC-SCOPE-265, R1-R10): the management CRM reports. Every report has its rows, a total row (students are distinct people,
 # so it is counted, not summed) and its definitions. A row's key fields are absent on the total.
 class CrmReportFiltersOut(BaseModel):
     date_from: date | None

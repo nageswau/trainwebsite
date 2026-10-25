@@ -190,7 +190,7 @@ async def crm_reports(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """ccrm-034 (§13, AC 8, DEC-SCOPE-263 R1-R10): ageing, university performance, visa outcomes, document readiness, lead conversion
+    """ccrm-034 (§13, AC 8, DEC-SCOPE-265 R1-R10): ageing, university performance, visa outcomes, document readiness, lead conversion
     by intake and the forecast by intake -- counts only. Partner, super_admin and the Overseas Admin; everyone else 403."""
     require_crm_reports(user)
     if date_from and date_to and date_to < date_from:

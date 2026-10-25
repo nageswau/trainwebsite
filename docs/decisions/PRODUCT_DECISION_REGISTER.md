@@ -9428,7 +9428,45 @@ confirmation of an agency application runs the AGT-003 trigger (at most one comm
 **Numbering:** migration `0184_enrollment_confirmation`; API §12FO; RBAC §2.176.
 - **Feature ID authorized:** `ccrm-027`. **Status:** built on `worktree-ccrm-027`.
 
-### DEC-SCOPE-263 — Management CRM reports (`ccrm-034`)
+### DEC-SCOPE-263 — Sensitive documents and access logging (`ccrm-022`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-022` (source PDF §2 "sensitive financial and identity documents only to
+authorized roles", §8 secure access, §16, AC 10, `UNVERIFIED`); design `docs/superpowers/specs/2026-10-25-ccrm-022-sensitive-documents-design.md`.
+**From the backlog:** classes `standard` / `identity` / `financial`; identity/financial visible to the student, the student's counselor, the
+application's agency and Overseas Admin; downloads always audited; lists never return file keys; the `/files/download` gap closed for
+overseas documents; `sensitivity` on checklist template items and application checklist items; one central check.
+**Recommended defaults (`NEEDS_CONFIRMATION`):** SD1 the word lists that class a free-text type (identity: passport, aadhaar/aadhar,
+national id, identity, id card, birth certificate; financial: financial, finance, bank, sponsor(ship), loan, income, salary, tax, itr,
+affidavit), whole words, type + label; SD2 a document's class is the highest of its type's and every checklist item it is linked to (an
+item raises, never lowers); SD3 **university_rep never sees identity/financial documents** (the backlog's open question — the passport for
+submission stays with the counselor), super_admin keeps its existing access; SD4 a refused download of an identity/financial document is
+audited (`document.download`, outcome `denied`) and every download's audit row carries `sensitivity`; SD5 `/files/download` answers `404`
+for any current, archived or replaced overseas document key and the `agent-documents/` prefix; SD6 the student's Downloads section and
+the agent portal Documents section no longer carry file keys; SD7 there is no inline view route, so `document.download` is the only
+hand-out event; SD8 the `/local-files` public mount in local storage mode is left to nehn-003 (residual risk).
+**Numbering:** migration `0185_document_sensitivity` (after ccrm-027's `0184_enrollment_confirmation`); API §12FP; RBAC §2.177.
+- **Feature ID authorized:** `ccrm-022`. **Status:** built on `worktree-ccrm-022`.
+
+### DEC-SCOPE-264 — Lead stage additions and structured loss capture (`ccrm-006`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-006` (source PDF §3 alternative statuses Duplicate / Invalid Contact, "capture
+lost reason and competitor/destination preference", `UNVERIFIED`); design `docs/superpowers/specs/2026-10-25-ccrm-006-lead-stages-loss-design.md`.
+Dependency `ccrm-003` (`DEC-SCOPE-243`, merged).
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** D1 *Invalid Contact* is
+the existing `wrong_number` stage relabelled (display only; key, history and the tel-010 call outcome "Wrong Number" unchanged); D2 a new
+closed stage `duplicate` for telecaller, telecaller manager and admins — the counselor's CC8 list is unchanged; D3 Duplicate needs
+`duplicate_of`, the surviving lead's Lead ID (case-insensitive) in the same team, not the lead itself and not itself a Duplicate (missing or
+bad → 422), stored as `enquiries.duplicate_of_id`; D4 a person's move to Lost or Not Interested needs `lost_reason_id` (an active row of
+`lead_lost_reasons`) plus optional `lost_to` (≤160: competitor or chosen destination); closure fields for another target → 422; D5 with a
+structured reason the text reason is optional and the history keeps the text, else the reason name / "Duplicate of LD-…"; D6 call-logged
+closes (tel-010) are unchanged and carry no reason code ("No reason recorded"); D7 reopening clears the three fields; D8 the reason list
+follows tel-002 (telecaller_manager / super_admin write, catalogue readers see active rows, never deleted, six seeded reasons); D9 tel-024
+gains the Lost Reasons report (leads created in range, in scope, now Lost / Not Interested, by reason); D10 the management telecalling
+"lost" figure excludes moves to Duplicate.
+**Numbering:** migration `0186_lead_loss_capture`; API §12FQ; RBAC §2.178.
+- **Feature ID authorized:** `ccrm-006`. **Status:** built on `feature/ccrm-006`.
+
+### DEC-SCOPE-265 — Management CRM reports (`ccrm-034`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-034` (source PDF §13 report table, §4 conversion by intake, §18 AC 8;
 `UNVERIFIED` — only the backlog's quotes are used); owner answer CC3 (no team filter; the Overseas Admin is the team-wide view); design
@@ -9447,5 +9485,5 @@ approved, refused, enrolled (approved + confirmed). R8 readiness over open, not-
 (overseas leads): leads, converted now, conversion %, converted students, their applications. R10 forecast **method**: forecast = confirmed
 enrolments + open applications with the visa approved (expected); possible (open, Offer or later, no visa approval) and lost (withdrawn or
 terminal) shown beside it; no probability weighting.
-**Numbering:** no migration; API §12FP; RBAC §2.177.
+**Numbering:** no migration; API §12FR; RBAC §2.179.
 - **Feature ID authorized:** `ccrm-034`. **Status:** built on `worktree-ccrm-034`.
