@@ -176,9 +176,7 @@ async def dashboard(db: AsyncSession, user: User, now: datetime) -> dict:
     s["not_ready"] = await _section(
         db,
         _apps(user).where(a.status == "university_selection", a.submitted_on.is_(None), a.documents_completed_on.is_(None)).order_by(a.application_deadline.asc().nulls_last(), a.id),
-        lambda app, uni, owner: _app_item(
-            app.id, app, uni, owner, "Application deadline" if app.application_deadline else "Checklist not complete", app.application_deadline, today
-        ),
+        lambda app, uni, owner: _app_item(app.id, app, uni, owner, "Application deadline" if app.application_deadline else "Checklist not complete", app.application_deadline, today),
     )
     s["awaiting_decision"] = await _section(
         db,
@@ -222,6 +220,7 @@ async def dashboard(db: AsyncSession, user: User, now: datetime) -> dict:
 
     v = VisaCase
     upcoming = and_(v.appointment_date.isnot(None), v.appointment_date.between(today, horizon))
+
     def visa(app, uni, owner, case: VisaCase) -> dict:
         """QA-01/02: the detail names the date shown -- the appointment in the window, else the expected decision (when known)."""
         if case.appointment_date and today <= case.appointment_date <= horizon:
@@ -243,9 +242,9 @@ async def dashboard(db: AsyncSession, user: User, now: datetime) -> dict:
         _apps(user)
         .where(or_(and_(a.status != "enrolled", a.enrollment_confirmed_at.is_(None), approved), and_(a.status == "enrolled", a.arrival_confirmed_at.is_(None))))
         .order_by(a.course_start_date.asc().nulls_last(), a.id),
-        lambda app, uni, owner: (
-            _app_item(app.id, app, uni, owner, ("Confirm arrival" if app.status == "enrolled" else "Confirm enrolment") + (", course starts" if app.course_start_date else ""), app.course_start_date, today)
-            | {"overdue": False}
+        # overdue once the course has started and the enrolment or arrival is still not confirmed
+        lambda app, uni, owner: _app_item(
+            app.id, app, uni, owner, ("Confirm arrival" if app.status == "enrolled" else "Confirm enrolment") + (", course starts" if app.course_start_date else ""), app.course_start_date, today
         ),
     )
     return {"today": today, "window_days": WINDOW_DAYS, "sections": s}

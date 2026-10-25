@@ -51,7 +51,7 @@ Response `{today, window_days, sections: {key: {count, more, items[]}}}`; every 
 | `awaiting_decision` | Applications at `university_selection` with `submitted_on` set; `decision_due_on` shown, overdue flagged. |
 | `offers_due` | On my applications: active+considering offers with a deadline, open offer conditions with a due date, required pending deposits with a due date — each due within D4. |
 | `visa` | Undecided visa cases: appointment within D4 ("Visa appointment"), or status `submitted`/`additional_info_requested`/`decision_pending` ("Decision pending"). |
-| `enrolment` | Visa approved and enrolment not confirmed ("Confirm enrolment"); enrolled with arrival not confirmed ("Confirm arrival"). |
+| `enrolment` | Visa approved and enrolment not confirmed ("Confirm enrolment"); enrolled with arrival not confirmed ("Confirm arrival"); overdue once the course start date has passed. |
 
 Application hrefs: the student's 360 when the application has a direct student, else the applications list narrowed by university and
 intake (the ccrm-012 QA-01 precedent).
