@@ -9335,3 +9335,19 @@ agency detail shows it read-only); AC8 only counselor-added items can be removed
 version, and every review route, the agency replace and the expiry job refresh the completion date.
 **Numbering:** migration `0180_application_checklists` (after ccrm-013's 0179); API §12FJ; RBAC §2.172.
 - **Feature ID authorized:** `ccrm-019`. **Status:** built on `feature/ccrm-019`.
+
+### DEC-SCOPE-258 — Student journey stage for direct students (`ccrm-017`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-017` (source PDF §6 critical rule "journey stage separate from application
+statuses", §5 Overview, `UNVERIFIED`); design `docs/superpowers/specs/2026-10-25-ccrm-017-student-journey-stage-design.md`.
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** J1 six stages Lead →
+Counselling → Applying → Offer → Visa → Enrolled; J2 `enquiry`/`eligibility_evaluation` → Counselling, `university_selection` (and the
+seed's legacy `university_review`, browser QA-01) → Applying, `offer` → Offer, `visa_documentation`/`status_tracking` → Visa, `enrolled` →
+Enrolled, any other value → Counselling; J3 the furthest **live** application (not withdrawn, no terminal ccrm-015 outcome; agency
+applications included) wins, a tie to the most recently updated, On hold / Deferred keep the stage with a note; J4 with no live
+application: Counselling when a csc-001 counselor link, an appointment not cancelled / no-show, or any (closed) application exists — the
+last with the note "All applications closed" — else Lead; J5 the ccrm-009 overview carries `journey` and the 360 Overview tab shows a
+six-step tracker (ccrm-009 B1 "journey hidden" lifted); J6 `services/agent_journey.py` (AGN-015) is **not** generalised — the rule is a
+pure module `app/student_journey.py` for ccrm-032 / nehn-033 to reuse. Derived on every read, never stored.
+**Numbering:** no migration; API §12FK (additive field on §12FF); no RBAC change (same route, same scope).
+- **Feature ID authorized:** `ccrm-017`. **Status:** built on `feature/ccrm-017`.

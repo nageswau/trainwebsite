@@ -46,10 +46,20 @@ export type StudentApplication = {
   open: boolean;
 };
 
+// ccrm-017 (DEC-SCOPE-258): the derived journey stage -- read-only, never stored on an application.
+export type StudentJourney = {
+  stage: string;
+  label: string;
+  steps: { key: string; label: string; state: "done" | "current" | "upcoming" }[];
+  application: { id: string; application_code: string | null; university: string } | null;
+  note: string | null;
+};
+
 export type StudentOverview = {
   student: { id: string; full_name: string; student_code: string | null; email: string; phone: string | null };
   account_status: string;
   counselor: { id: string; full_name: string } | null;
+  journey: StudentJourney;
   applications: StudentApplication[];
   counts: { applications: number; open_applications: number; documents_to_review: number };
   next_actions: { application_id: string; application_code: string | null; university: string; next_action: string }[];
