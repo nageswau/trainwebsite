@@ -6,6 +6,9 @@ import { REMINDER_RULES_HOME } from "@/lib/reminderRules";
 
 // ccrm-031 (DEC-SCOPE-271, E7/E8): who is behind -- every counselor with overdue tasks or follow-ups, worst first, computed live by the
 // API. "Past N days" counts what the escalation rule tells the Overseas Admin about; the link opens that counselor's overdue tasks.
+// QA-03: a row header reads as a name, not as the uppercase column-header style `.table th` gives it
+const ROW_HEADER = { background: "transparent", color: "inherit", fontSize: 13, fontWeight: 600, textTransform: "none", letterSpacing: 0 } as const;
+
 export default function OverdueByCounselor({ data }: { data: OverdueByCounselorPage }) {
   const days = `${data.threshold_days} day${data.threshold_days === 1 ? "" : "s"}`;
   return (
@@ -14,7 +17,7 @@ export default function OverdueByCounselor({ data }: { data: OverdueByCounselorP
         <h3 id="overdue-heading" style={{ margin: 0 }}>Overdue by counselor</h3>
         <span className="muted">{data.items.length} counselor{data.items.length === 1 ? "" : "s"} behind</span>
       </div>
-      <p className="muted" style={{ margin: "0 0 12px" }}>
+      <p className="muted" style={{ margin: 0, padding: "12px 20px" }}>
         {data.enabled ? `Work overdue by more than ${days} is escalated to every Overseas Admin once.` : "Escalation is switched off."} Change it in{" "}
         <Link href={REMINDER_RULES_HOME}>Reminder rules</Link>.
       </p>
@@ -32,12 +35,12 @@ export default function OverdueByCounselor({ data }: { data: OverdueByCounselorP
             <tbody>
               {data.items.map((row) => (
                 <tr key={row.counselor.id}>
-                  <th scope="row">{row.counselor.full_name}{row.active ? "" : " (inactive)"}</th>
+                  <th scope="row" style={ROW_HEADER}>{row.counselor.full_name}{row.active ? "" : " (inactive)"}</th>
                   <td>{row.overdue_tasks}</td>
                   <td>{row.overdue_follow_ups}</td>
                   <td>{row.past_threshold ? <strong>{row.past_threshold}</strong> : 0}</td>
                   <td className="no-wrap">{row.oldest_due ? formatDay(row.oldest_due) : "—"}</td>
-                  <td>
+                  <td className="no-wrap">
                     {row.overdue_tasks > 0 && (
                       <Link href={overdueTasksHref(row.counselor.id)} aria-label={`View ${row.counselor.full_name}'s overdue tasks`}>View tasks</Link>
                     )}

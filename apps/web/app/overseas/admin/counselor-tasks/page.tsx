@@ -47,7 +47,8 @@ export default async function AdminCounselorTasksPage({ searchParams }: { search
         <div style={{ display: "grid", gap: 24, maxWidth: 900 }}>
           <OverdueByCounselor data={overdue} />
           <CounselorTaskForm options={options} today={tasks.today} admin />
-          <form method="get" role="search" aria-label="Filter tasks" className="form-grid" style={{ alignItems: "end" }}>
+          {/* ccrm-031 QA-01: keyed by the filters so a client-side visit ("View tasks") re-mounts the uncontrolled selects */}
+          <form key={`${filters.counselor}:${filters.band}`} method="get" role="search" aria-label="Filter tasks" className="form-grid" style={{ alignItems: "end" }}>
             <div className="field" style={{ margin: 0 }}>
               <label htmlFor="filter-counselor">Counselor</label>
               <select id="filter-counselor" name="counselor" defaultValue={filters.counselor}>
