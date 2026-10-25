@@ -12,6 +12,7 @@ export type DocumentRequest = {
   document_label: string | null;
   name: string;
   note: string | null;
+  review_note?: string | null; // why an open request is open again: the counselor's note on the rejected upload (R1)
   status: RequestStatus;
   due_date: string | null;
   overdue: boolean;

@@ -11,12 +11,12 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.document_checklists import STATUS_LABELS
-from app.models import ApplicationChecklistItem, DocumentRequest, OverseasApplication, StudentDocument, University, User
+from app.models import ApplicationChecklistItem, DocumentEvent, DocumentRequest, OverseasApplication, StudentDocument, University, User
 from app.schemas import StudentDocumentRequestCreate
 from app.services import application_checklists as checklists
 from app.services.agent_documents import REQUEST_CLOSED, REQUEST_EXISTS, add_event, clean_label, close_request
@@ -39,8 +39,16 @@ def name(request: DocumentRequest) -> str:
 
 
 def _stmt() -> Select:
+    # browser QA-01: why a request is open again -- the note of its latest reopen (R1) event
+    review_note = (
+        select(DocumentEvent.notes)
+        .where(DocumentEvent.request_id == DocumentRequest.id, DocumentEvent.event == "requested", DocumentEvent.from_status == "fulfilled")
+        .order_by(DocumentEvent.seq.desc())
+        .limit(1)
+        .scalar_subquery()
+    )
     return (
-        select(DocumentRequest, _Requester.full_name, OverseasApplication.application_code, University.name, StudentDocument)
+        select(DocumentRequest, _Requester.full_name, OverseasApplication.application_code, University.name, StudentDocument, review_note)
         .outerjoin(_Requester, _Requester.id == DocumentRequest.requested_by_user_id)
         .outerjoin(OverseasApplication, OverseasApplication.id == DocumentRequest.application_id)
         .outerjoin(University, University.id == OverseasApplication.university_id)
@@ -49,13 +57,14 @@ def _stmt() -> Select:
 
 
 def _item(row: tuple, now: date) -> dict:
-    request, requester, application_code, university, document = row
+    request, requester, application_code, university, document, review_note = row
     return {
         "id": request.id,
         "document_type": request.document_type,
         "document_label": request.document_label,
         "name": name(request),
         "note": request.note,
+        "review_note": review_note if request.status == "open" else None,
         "status": request.status,
         "due_date": request.due_date,
         "overdue": request.status == "open" and request.due_date is not None and request.due_date < now,
@@ -83,12 +92,12 @@ async def view(db: AsyncSession, request_id: UUID) -> dict:
 
 
 async def page(db: AsyncSession, student_id: UUID, *, status: str, limit: int, offset: int) -> dict:
-    """Open first by due date when `status=open`; every request newest first otherwise."""
+    """Open requests by due date, then the closed ones newest first (browser QA-02); `status=open` keeps only the open ones."""
     clauses = [DocumentRequest.student_user_id == student_id]
-    order = [DocumentRequest.created_at.desc(), DocumentRequest.id]
     if status == "open":
         clauses.append(DocumentRequest.status == "open")
-        order = [DocumentRequest.due_date, *order]
+    is_open = DocumentRequest.status == "open"
+    order = [is_open.desc(), case((is_open, DocumentRequest.due_date)), DocumentRequest.created_at.desc(), DocumentRequest.id]
     total = await db.scalar(select(func.count()).select_from(DocumentRequest).where(*clauses))
     rows = (await db.execute(_stmt().where(*clauses).order_by(*order).limit(limit).offset(offset))).all()
     now = today()

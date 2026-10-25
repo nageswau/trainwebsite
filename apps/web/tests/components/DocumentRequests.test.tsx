@@ -57,6 +57,13 @@ describe("CounselorDocumentRequestsPanel", () => {
     expect(await screen.findByText("Request sent to the student.")).toBeInTheDocument();
   });
 
+  it("shows why a request is open again and says when only part of the list is shown", async () => {
+    vi.stubGlobal("fetch", vi.fn<Fetch>(() => json({ items: [req({ review_note: "Page 2 is missing" })], total: 25, limit: 20, offset: 0 })));
+    render(<CounselorDocumentRequestsPanel studentId="s1" applications={[]} />);
+    expect(await screen.findByText(/Reopened after review: Page 2 is missing/)).toBeInTheDocument();
+    expect(screen.getByText("Showing the latest 1 of 25 requests.")).toBeInTheDocument();
+  });
+
   it("cancels an open request and shows a server refusal", async () => {
     const fetchMock = vi.fn<Fetch>((url, init) => (init?.method === "POST" ? json({ detail: "This request has already been fulfilled or cancelled" }, false, 409) : json(page([req()]))));
     vi.stubGlobal("fetch", fetchMock);
@@ -85,12 +92,13 @@ describe("StudentDocumentRequestsPanel", () => {
         uploaded = true;
         return json({ request: req({ status: "fulfilled" }), document_id: "d1" }, true, 201);
       }
-      return json(page(uploaded ? [] : [req({ overdue: true })]));
+      return json(page(uploaded ? [] : [req({ overdue: true, review_note: "Page 2 is missing" })]));
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<StudentDocumentRequestsPanel />);
     const row = (await screen.findByText("IELTS scorecard")).closest("li") as HTMLElement;
     expect(within(row).getByText("Overdue")).toBeInTheDocument();
+    expect(within(row).getByText(/Please upload a new file: Page 2 is missing/)).toBeInTheDocument();
     expect(within(row).getByText(/Academic, 6.5/)).toBeInTheDocument();
     const file = new File(["%PDF-1.4"], "ielts.pdf", { type: "application/pdf" });
     fireEvent.change(within(row).getByLabelText("File for IELTS scorecard"), { target: { files: [file] } });

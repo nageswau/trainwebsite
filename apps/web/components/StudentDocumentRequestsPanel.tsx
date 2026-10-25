@@ -99,6 +99,11 @@ function RequestRow({ request: r, busyId, onUpload }: { request: DocumentRequest
         {r.requested_by && <> · requested by {r.requested_by}</>}
       </p>
       {r.note && <p style={{ fontSize: 13, margin: "4px 0 0" }}>{r.note}</p>}
+      {r.review_note && (
+        <p className="form-error" style={{ fontSize: 13, margin: "6px 0 0" }}>
+          Please upload a new file: {r.review_note}
+        </p>
+      )}
       <form className="form" onSubmit={submit} style={{ marginTop: 8 }}>
         <div className="form-grid">
           <div className="field">

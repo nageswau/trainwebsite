@@ -139,6 +139,9 @@ async def test_verified_keeps_it_fulfilled_a_rejection_reopens_it(db_session, w)
         assert (await c.patch(VERIFY.format(first), json={"verification_status": "reupload_required", "notes": "Page 2 missing"})).status_code == 200
         reopened = (await c.get(STAFF.format(student.id))).json()["items"][0]
     assert reopened["status"] == "open" and reopened["document"] is None
+    assert reopened["review_note"] == "Page 2 missing"  # browser QA-01: why it is back, for the counselor and the student
+    async with client_for(student.email) as c:
+        assert (await c.get(MINE)).json()["items"][0]["review_note"] == "Page 2 missing"
     assert (await _fresh(db_session, StudentDocument, first)).fulfils_request_id is None  # the rejected file stays, unlinked
     async with client_for(student.email) as c:
         second = (await c.post(UPLOAD.format(req["id"]), files=upload_files())).json()["document_id"]
@@ -146,6 +149,7 @@ async def test_verified_keeps_it_fulfilled_a_rejection_reopens_it(db_session, w)
         assert (await c.patch(VERIFY.format(second), json={"verification_status": "verified"})).status_code == 200
         done = (await c.get(STAFF.format(student.id))).json()["items"][0]
     assert done["status"] == "fulfilled" and done["document"]["id"] == second and done["document"]["verification_status"] == "verified"
+    assert done["review_note"] is None  # only an open (reopened) request carries it
     events = [(e.event, e.from_status, e.to_status) for e in await events_of(db_session, request_id=req["id"])]
     assert events == [("requested", None, "open"), ("fulfilled", None, "fulfilled"), ("requested", "fulfilled", "open"), ("fulfilled", None, "fulfilled")]
 
@@ -201,6 +205,17 @@ async def test_cancel_closes_it_tells_the_student_and_clears_the_mark(db_session
     assert any(n.title == "Document request cancelled" for n in await notices(db_session, student))
     assert mine["items"] == [] and [i["status"] for i in everything["items"]] == ["cancelled"]  # open is the student's default view
     assert await audit_actions(db_session, req["id"]) == ["document_request.create", "document_request.cancel"]
+
+
+@pytest.mark.asyncio
+async def test_the_staff_list_shows_open_requests_first(db_session, w):
+    student = w["direct_student"]
+    async with client_for(w["counselor"].email) as c:
+        older = (await _request(c, student, document_type="Passport")).json()["request"]
+        newer = (await _request(c, student, document_type="CV")).json()["request"]
+        await c.post(CANCEL.format(student.id, newer["id"]))
+        listed = (await c.get(STAFF.format(student.id))).json()["items"]
+    assert [i["id"] for i in listed] == [older["id"], newer["id"]]  # browser QA-02: open before closed, even when older
 
 
 @pytest.mark.asyncio

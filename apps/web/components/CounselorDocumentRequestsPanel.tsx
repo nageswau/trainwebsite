@@ -14,6 +14,7 @@ type Props = { studentId: string; applications: { id: string; label: string }[] 
 export default function CounselorDocumentRequestsPanel({ studentId, applications }: Props) {
   const url = staffRequestsUrl(studentId);
   const [items, setItems] = useState<DocumentRequest[] | null>(null);
+  const [total, setTotal] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -23,7 +24,9 @@ export default function CounselorDocumentRequestsPanel({ studentId, applications
     setLoadError(null);
     const outcome = await sendRequest(url, {});
     if (!outcome.ok) return setLoadError(outcome.message);
-    setItems((outcome.data as unknown as RequestPage).items ?? []);
+    const data = outcome.data as unknown as RequestPage;
+    setItems(data.items ?? []);
+    setTotal(data.total ?? 0);
   }, [url]);
 
   useEffect(() => {
@@ -69,6 +72,11 @@ export default function CounselorDocumentRequestsPanel({ studentId, applications
           ))}
         </ul>
       )}
+      {items !== null && total > items.length && (
+        <p className="muted" style={{ fontSize: 12, margin: "6px 0 0" }}>
+          Showing the latest {items.length} of {total} requests.
+        </p>
+      )}
       <RequestForm applications={applications} busy={busy} onSend={(body) => write("", body, "Request sent to the student.")} />
     </section>
   );
@@ -89,6 +97,7 @@ function RequestRow({ request: r, busy, onCancel }: { request: DocumentRequest; 
         {r.requested_by && <> · Requested by {r.requested_by}</>}
       </p>
       {r.note && <p style={{ fontSize: 13, margin: "2px 0 0" }}>Note: {r.note}</p>}
+      {r.review_note && <p style={{ fontSize: 13, margin: "2px 0 0" }}>Reopened after review: {r.review_note}</p>}
       {r.status === "open" && (
         <button type="button" className="btn ghost small" style={{ marginTop: 4 }} disabled={busy} aria-label={`Cancel request for ${r.name}`} onClick={onCancel}>
           Cancel request
