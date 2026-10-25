@@ -583,6 +583,10 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
   failed), evidence document. Unconditional when all met (counselor may then record an unconditional offer). Due dates feed ccrm-030.
 - **DB:** migration: `offer_conditions` table; existing text migrated into one row. **Dependencies:** ccrm-023.
 - **Complexity:** small. **Risk:** low.
+- **Status (2026-10-25):** built on `worktree-ccrm-024` — `DEC-SCOPE-260`, migration `0182_offer_conditions` (after ccrm-004's
+  `0181_lead_meetings`; table `application_offer_conditions`), API §12FM, RBAC §2.174; owner answers C1 (offer text seeds one open student condition), C2 (evidence
+  required for Met), C3 (conditions stay with their offer), C4 (all satisfied → prompt to record an unconditional offer); C5–C11 defaults.
+  Design `docs/superpowers/specs/2026-10-25-ccrm-024-offer-conditions-design.md`.
 
 ### `ccrm-025` — Student decision, acceptance and deposits (all applications)
 

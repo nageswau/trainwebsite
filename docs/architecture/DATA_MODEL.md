@@ -2214,3 +2214,12 @@ ccrm-018 re-creates template items on edit), `position` (unique per application)
 `application_checklist_item_documents`: PK (`item_id` FK ON DELETE CASCADE, `document_id` FK `student_documents` ON DELETE CASCADE,
 indexed), `linked_by_id`, `created_at`. ccrm-019 also writes ccrm-013's `overseas_applications.documents_completed_on`. No backfill;
 downgrade drops the three tables.
+
+## Offer conditions (`ccrm-024`, `DEC-SCOPE-260`; migration `0182_offer_conditions`, after ccrm-004's `0181_lead_meetings`)
+
+`application_offer_conditions`: `id`, `offer_id` (FK `application_offers` ON DELETE CASCADE, indexed), `description` text, `owner` (CHECK
+student / counselor / agent), `due_date` NULL (feeds ccrm-030), `status` default `open` (CHECK open / met / waived / failed),
+`evidence_document_id` (FK `student_documents` ON DELETE SET NULL), `note`, `created_by_id` / `updated_by_id` (FK users, NULL on migrated
+rows), `status_changed_at`, `created_at`, `updated_at`. Met needs evidence and waived / failed a note (route rules). Written only by
+`services/offer_conditions.py`. The migration copies each offer's non-blank `conditions` text into one open student row (every offer
+status); the downgrade drops the table.

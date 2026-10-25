@@ -9351,3 +9351,19 @@ six-step tracker (ccrm-009 B1 "journey hidden" lifted); J6 `services/agent_journ
 pure module `app/student_journey.py` for ccrm-032 / nehn-033 to reuse. Derived on every read, never stored.
 **Numbering:** no migration; API §12FK (additive field on §12FF); no RBAC change (same route, same scope).
 - **Feature ID authorized:** `ccrm-017`. **Status:** built on `feature/ccrm-017`.
+
+### DEC-SCOPE-260 — Offer conditions (`ccrm-024`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-024` (source PDF §9 "conditions to satisfy, owner, due date and completion
+evidence", §11 offer condition due, `UNVERIFIED`); design `docs/superpowers/specs/2026-10-25-ccrm-024-offer-conditions-design.md`.
+**Owner answers (2026-10-25, in session):** C1 the offer's free-text conditions stay; recording an offer with that text (counselor route or
+agency PUT) seeds one open condition owned by the student, as migration 0182 does for existing offers; C2 an evidence document is
+**required** to mark a condition Met; C3 conditions belong to their offer and stay with it, read-only, when a new offer supersedes it; C4
+all conditions met or waived → a prompt ("All conditions satisfied" + "Record unconditional offer" prefilled), nothing automatic.
+**Recommended defaults (`NEEDS_CONFIRMATION`):** C5 waived / failed need a note; C6 owner `agent` only on an agency application; C7
+writers = ccrm-023's (counselor on own applications, Overseas Admin), the student and the agency read through `GET …/offers`; C8 condition
+writes move no stage — allowed on hold, refused on withdrawn / terminal outcome / archived agency record; C9 the agency PATCH that only
+moves the active offer's deadline moves its conditions to the re-recorded row; C10 no delete (waive with a note), any status may be changed
+again, each change kept in history; C11 evidence is a "Condition evidence" document uploaded to the application.
+**Numbering:** migration `0182_offer_conditions` (after ccrm-004's `0181_lead_meetings`); API §12FM; RBAC §2.174.
+- **Feature ID authorized:** `ccrm-024`. **Status:** built on `worktree-ccrm-024`.

@@ -2739,3 +2739,12 @@ inside the existing role scope (a counselor searching another counselor's code g
 | Ready for Submission gate (`…/sub-status`) | gated | gated | gated (agency route) | — | — | — |
 
 - Pinned by `test_ccrm_019_checklist.py::test_scope_other_counselor_agent_read_only_student_reads_own`, `::test_the_agency_route_is_gated_too`.
+
+### 2.174 Offer conditions *(added 2026-10-25 — `DEC-SCOPE-260`, ccrm-024)*
+
+| Route | `overseas_admin` | `counselor` (overseas) | `agent` | `overseas_student` | Others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET …/{id}/offers` (conditions inside) | ✅ any (with evidence list) | ✅ own applications, direct and agency (`403` otherwise) | ✅ own agency's, read-only (no evidence list) | ✅ own, read-only | `403` | `401` |
+| `POST …/condition-evidence`, `POST …/offers/{offer_id}/conditions`, `PATCH …/conditions/{condition_id}` | ✅ | ✅ own | `403` | `403` | `403` | `401` |
+
+- Pinned by `test_ccrm_024_conditions.py::test_scope_readers_see_conditions_but_cannot_write`.
