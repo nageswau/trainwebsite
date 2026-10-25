@@ -4066,3 +4066,12 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   portal application sections (counselor/admin), `GET /counselor/students` and `GET /lookups/overseas-students` (counselor/admin) leave
   archived students out. ccrm-037: `GET /counselor/students/{id}/messages` `recipient` gains `whatsapp_opt_in`; a WhatsApp send to a
   student who has not opted in → 409 `This student has not opted in to WhatsApp messages`.
+
+## 12GD. Counselor action dashboard (ccrm-032) — addendum, 2026-10-25
+
+`DEC-SCOPE-277`. No migration.
+
+- `GET /api/v1/counselor/dashboard` → 200 `{today, window_days: 14, sections: {new_leads, appointments_today, calls_today, follow_ups,
+  overdue_tasks, no_next_action, pending_documents, not_ready, awaiting_decision, offers_due, visa, enrolment}}`; each section
+  `{count, more, items: [{id, label, detail, date, overdue, href}]}` (at most 10 items; `date` is an ISO date or timestamp or null;
+  `href` is the web page for the item). Overseas counselor only; every other role (IT counselor included) 403. Read-only, not audited.

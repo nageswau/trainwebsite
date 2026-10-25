@@ -53,6 +53,14 @@ export type Scholarship = {id:string; title:string; eligibility:string; amount:s
 // --- ENH-016 analytics dashboards (docs/superpowers/specs/2026-09-28-enh-016-analytics-dashboards-design.md §7) ---
 export type SchoolKpi = { key: string; label: string; value: number | null; tracked: boolean; note: string | null };
 
+// --- ccrm-032 counselor action dashboard (DEC-SCOPE-277; API §12GD): every section is its full count plus the first ten items ---
+export type CounselorDashboardItem = { id: string; label: string; detail: string; date: string | null; overdue: boolean; href: string };
+export type CounselorDashboardSection = { count: number; more: boolean; items: CounselorDashboardItem[] };
+export type CounselorDashboardKey =
+  | "new_leads" | "appointments_today" | "calls_today" | "follow_ups" | "overdue_tasks" | "no_next_action"
+  | "pending_documents" | "not_ready" | "awaiting_decision" | "offers_due" | "visa" | "enrolment";
+export type CounselorDashboard = { today: string; window_days: number; sections: Record<CounselorDashboardKey, CounselorDashboardSection> };
+
 // --- AGN-018 agency dashboard (DEC-SCOPE-062; spec §5.3): one shape for Masters and staff, Master-only fields null for staff ---
 export type CurrencyTotal = { currency: string; count: number; amount: number };
 export type AgentBreakdown = { items: { label: string; count: number }[]; other: number };
