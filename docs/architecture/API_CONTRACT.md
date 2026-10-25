@@ -3786,9 +3786,26 @@ derived on every read from the student's applications (stage + ccrm-015 outcome)
   `referral_name`, `referral_contact` as the last five columns; older files without them still import.
 - **Conversion (§12FE)** copies study mode, preferred country, CGPA / backlogs and the English tests into the new student's profile.
 
-## 12FN. Lead stage additions and structured loss capture (ccrm-006) — addendum, 2026-10-25
+## 12FN. Offer conditions (ccrm-024) — addendum, 2026-10-25
 
-`DEC-SCOPE-261`. Additive.
+`DEC-SCOPE-261`. All paths under `/api/v1/workflows/overseas/applications`. Writers = `counselor` (own applications, direct and agency),
+`overseas_admin`, `super_admin` (ccrm-023's).
+
+| Method | Path | Roles | Notes |
+|---|---|---|---|
+| `GET` | `/{id}/offers` (§12EX) | unchanged | Additive: each offer gains `condition_items:[{id, description, owner, owner_label, due_date, status, status_label, evidence:{id,name}\|null, note, status_changed_at}]` (oldest first) and `conditions_summary:{total, satisfied, open, failed, all_satisfied}`; the payload gains `agency` (bool) and `evidence_documents` (writers only). Never a file key. |
+| `POST` | `/{id}/condition-evidence` (multipart `file`) | writers | A "Condition evidence" document under the offer-letter upload rules (§12EX). `201 {"document"}`. |
+| `POST` | `/{id}/offers/{offer_id}/conditions` | writers | `{description (≤1000), owner: student\|counselor\|agent, due_date?}`, extra keys `422`. Starts `open`. Another application's offer `404`; not the current offer `409`; `agent` on a direct application `422`. `201 {condition, conditions_summary, changed}`. |
+| `PATCH` | `/{id}/offers/{offer_id}/conditions/{condition_id}` | writers | Partial `{description, owner, due_date, status: open\|met\|waived\|failed, evidence_document_id, note}`; description / owner / status cannot be `null`. Met without evidence `422`; waived / failed without a note `422`; evidence that is not this application's "Condition evidence" `422`; another offer's condition `404`; not the current offer `409`. Nothing different → `200 changed:false`. |
+
+Writes hold the application row lock, are allowed on hold, write one history row (stage unchanged), notify the student, tell the agency
+(CC5), audit `overseas.application.offer_condition` (`{offer_id, condition_id, action: added|updated, status}`) and commit once. Recording an
+offer (§12EX `POST …/offers`, the agency `PUT …/offer`) with conditions text also creates one open student condition; the agency `PATCH`
+that moves only the offer deadline carries the conditions to the new offer row.
+
+## 12FO. Lead stage additions and structured loss capture (ccrm-006) — addendum, 2026-10-25
+
+`DEC-SCOPE-262`. Additive.
 
 - **Stages.** The catalogue gains the closed stage `duplicate` ("Duplicate"); `wrong_number` is labelled "Invalid Contact" (key unchanged).
 - **Stage moves** — `POST /api/v1/telecaller/leads/{id}/stage`, `POST /api/v1/counselor/leads/{id}/stage` and `PATCH /api/v1/admin/leads/{id}`

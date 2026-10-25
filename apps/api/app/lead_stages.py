@@ -30,7 +30,7 @@ MANUAL = frozenset({"qualified", "interested", "follow_up"})  # T13: the telecal
 # ccrm-003 (DEC-SCOPE-243, CC8 / A1): the counselor's own moves -- these open stages and these closed outcomes only
 COUNSELOR_MANUAL = frozenset({"qualified", "follow_up", "counselling_scheduled", "counselling_completed"})
 COUNSELOR_CLOSED = frozenset({"not_interested", "not_eligible", "lost"})
-# ccrm-006 (DEC-SCOPE-261, D4): a person's move here needs a reason from `lead_lost_reasons`; migration 0183 repeats it
+# ccrm-006 (DEC-SCOPE-262, D4): a person's move here needs a reason from `lead_lost_reasons`; migration 0184 repeats it
 LOSS_STAGES = ("lost", "not_interested")
 REOPEN_TO = "follow_up"  # T13: a manager reopens a closed lead here
 MANUAL_BEFORE = ORDER.index("application_enrollment")  # D2: manual moves stop once the counselor's link is in place

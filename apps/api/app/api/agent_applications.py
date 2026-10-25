@@ -179,8 +179,8 @@ async def update_application(application_id: UUID, payload: AgentApplicationUpda
     for key in changed:
         setattr(item, key, changes[key])
     if "offer_deadline" in changed and (current := await offer_records.active_offer(db, item)) is not None:
-        # ccrm-023: the active offer's deadline moved -- a superseding row, so nothing is overwritten
-        await offer_records.record(db, user, item, offer_records.values_of(current) | {"offer_deadline": item.offer_deadline})
+        # ccrm-023: the active offer's deadline moved -- a superseding row, so nothing is overwritten; ccrm-024 C9: its conditions move with it
+        await offer_records.record(db, user, item, offer_records.values_of(current) | {"offer_deadline": item.offer_deadline}, carry_conditions=True)
     if changed:
         if "next_action" in changed:  # the existing PATCH's rule: a next-action change is part of the status timeline
             db.add(ApplicationStatusHistory(application_id=item.id, from_status=item.status, to_status=item.status, next_action=item.next_action, changed_by_id=user.id))

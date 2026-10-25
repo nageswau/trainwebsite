@@ -9392,7 +9392,23 @@ and audit rows carry field names only.
 **Numbering:** migration `0182_lead_data_fields` (after ccrm-004's `0181_lead_meetings`); API §12FM; RBAC §2.174.
 - **Feature ID authorized:** `ccrm-005`. **Status:** built on `feature/ccrm-005`.
 
-### DEC-SCOPE-261 — Lead stage additions and structured loss capture (`ccrm-006`)
+### DEC-SCOPE-261 — Offer conditions (`ccrm-024`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-024` (source PDF §9 "conditions to satisfy, owner, due date and completion
+evidence", §11 offer condition due, `UNVERIFIED`); design `docs/superpowers/specs/2026-10-25-ccrm-024-offer-conditions-design.md`.
+**Owner answers (2026-10-25, in session):** C1 the offer's free-text conditions stay; recording an offer with that text (counselor route or
+agency PUT) seeds one open condition owned by the student, as migration 0183 does for existing offers; C2 an evidence document is
+**required** to mark a condition Met; C3 conditions belong to their offer and stay with it, read-only, when a new offer supersedes it; C4
+all conditions met or waived → a prompt ("All conditions satisfied" + "Record unconditional offer" prefilled), nothing automatic.
+**Recommended defaults (`NEEDS_CONFIRMATION`):** C5 waived / failed need a note; C6 owner `agent` only on an agency application; C7
+writers = ccrm-023's (counselor on own applications, Overseas Admin), the student and the agency read through `GET …/offers`; C8 condition
+writes move no stage — allowed on hold, refused on withdrawn / terminal outcome / archived agency record; C9 the agency PATCH that only
+moves the active offer's deadline moves its conditions to the re-recorded row; C10 no delete (waive with a note), any status may be changed
+again, each change kept in history; C11 evidence is a "Condition evidence" document uploaded to the application.
+**Numbering:** migration `0183_offer_conditions` (after ccrm-005's `0182_lead_data_fields`); API §12FN; RBAC §2.175.
+- **Feature ID authorized:** `ccrm-024`. **Status:** built on `worktree-ccrm-024`.
+
+### DEC-SCOPE-262 — Lead stage additions and structured loss capture (`ccrm-006`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-006` (source PDF §3 alternative statuses Duplicate / Invalid Contact, "capture
 lost reason and competitor/destination preference", `UNVERIFIED`); design `docs/superpowers/specs/2026-10-25-ccrm-006-lead-stages-loss-design.md`.
@@ -9408,5 +9424,5 @@ closes (tel-010) are unchanged and carry no reason code ("No reason recorded"); 
 follows tel-002 (telecaller_manager / super_admin write, catalogue readers see active rows, never deleted, six seeded reasons); D9 tel-024
 gains the Lost Reasons report (leads created in range, in scope, now Lost / Not Interested, by reason); D10 the management telecalling
 "lost" figure excludes moves to Duplicate.
-**Numbering:** migration `0183_lead_loss_capture`; API §12FN; RBAC §2.175.
+**Numbering:** migration `0184_lead_loss_capture`; API §12FO; RBAC §2.176.
 - **Feature ID authorized:** `ccrm-006`. **Status:** built on `feature/ccrm-006`.

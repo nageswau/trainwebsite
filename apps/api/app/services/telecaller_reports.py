@@ -52,7 +52,7 @@ REPORTS = {
     "telecaller": Report("Telecaller Report", (("telecaller", "Telecaller"),), ACTIVITY),
     "handover": Report("Counselor Handover Report", (("telecaller", "Telecaller"), ("counselor", "Counselor")), HANDOVER),
     "campaign": Report("Campaign Report", (("label", "Campaign"),), FUNNEL),
-    # ccrm-006 (DEC-SCOPE-261, D9): the cohort's leads now Lost / Not Interested, by reason -- counted by current stage, not reach
+    # ccrm-006 (DEC-SCOPE-262, D9): the cohort's leads now Lost / Not Interested, by reason -- counted by current stage, not reach
     "lost": Report("Lost Reasons Report", (("label", "Reason"),), LOSSES),
 }
 LEAD_FILTERS = ("product_id", "campaign_id", "source")  # cohort reports only; the telecaller report is per actor, not per lead

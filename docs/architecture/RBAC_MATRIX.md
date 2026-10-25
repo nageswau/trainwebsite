@@ -2766,7 +2766,16 @@ inside the existing role scope (a counselor searching another counselor's code g
 - Pinned by `test_ccrm_005_lead_fields.py::test_another_counselors_lead_is_404_and_the_telecaller_stays_read_only`,
   `::test_counselor_cannot_change_contact_details_product_or_priority`.
 
-### 2.175 Lead loss capture and the lost-reason list *(added 2026-10-25 — `DEC-SCOPE-261`, ccrm-006)*
+### 2.175 Offer conditions *(added 2026-10-25 — `DEC-SCOPE-261`, ccrm-024)*
+
+| Route | `overseas_admin` | `counselor` (overseas) | `agent` | `overseas_student` | Others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET …/{id}/offers` (conditions inside) | ✅ any (with evidence list) | ✅ own applications, direct and agency (`403` otherwise) | ✅ own agency's, read-only (no evidence list) | ✅ own, read-only | `403` | `401` |
+| `POST …/condition-evidence`, `POST …/offers/{offer_id}/conditions`, `PATCH …/conditions/{condition_id}` | ✅ | ✅ own | `403` | `403` | `403` | `401` |
+
+- Pinned by `test_ccrm_024_conditions.py::test_scope_readers_see_conditions_but_cannot_write`.
+
+### 2.176 Lead loss capture and the lost-reason list *(added 2026-10-25 — `DEC-SCOPE-262`, ccrm-006)*
 
 | Route | `telecaller` | `telecaller_manager` / `super_admin` | `counselor` | `it_admin` / `overseas_admin` | Others | Anonymous |
 |---|---|---|---|---|---|---|

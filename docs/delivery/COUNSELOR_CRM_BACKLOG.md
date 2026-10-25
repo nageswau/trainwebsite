@@ -248,9 +248,9 @@ asked one at a time when the item is picked up).
 - **Regression:** tel-024 reports, management funnel "lost".
 - **Complexity:** small. **Risk:** medium (stage list is shared by four modules).
 - **Open questions:** relabel Wrong Number → "Invalid Contact", or add it beside? Default: relabel display only.
-- **Status (2026-10-25):** built on `feature/ccrm-006` — `DEC-SCOPE-261` (D1–D10 defaults `NEEDS_CONFIRMATION`: relabel only; Duplicate
+- **Status (2026-10-25):** built on `feature/ccrm-006` — `DEC-SCOPE-262` (D1–D10 defaults `NEEDS_CONFIRMATION`: relabel only; Duplicate
   for telecaller/manager/admin, not the counselor; reason list on the tel-002 pattern with six seeded reasons; call-logged closes keep no
-  reason code; Lost Reasons report), migration `0183_lead_loss_capture`, API §12FN, RBAC §2.175.
+  reason code; Lost Reasons report), migration `0184_lead_loss_capture` (after ccrm-024's 0183), API §12FO, RBAC §2.176.
 
 ### `ccrm-007` — Structured overseas student profile
 
@@ -590,6 +590,10 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
   failed), evidence document. Unconditional when all met (counselor may then record an unconditional offer). Due dates feed ccrm-030.
 - **DB:** migration: `offer_conditions` table; existing text migrated into one row. **Dependencies:** ccrm-023.
 - **Complexity:** small. **Risk:** low.
+- **Status (2026-10-25):** built on `worktree-ccrm-024` — `DEC-SCOPE-261`, migration `0183_offer_conditions` (after ccrm-005's
+  `0182_lead_data_fields`; table `application_offer_conditions`), API §12FN, RBAC §2.175; owner answers C1 (offer text seeds one open student condition), C2 (evidence
+  required for Met), C3 (conditions stay with their offer), C4 (all satisfied → prompt to record an unconditional offer); C5–C11 defaults.
+  Design `docs/superpowers/specs/2026-10-25-ccrm-024-offer-conditions-design.md`.
 
 ### `ccrm-025` — Student decision, acceptance and deposits (all applications)
 

@@ -1,4 +1,4 @@
-"""ccrm-006 -- migration 0183_lead_loss_capture (DEC-SCOPE-261): the Duplicate stage in the status CHECK, the closure columns and CHECKs
+"""ccrm-006 -- migration 0184_lead_loss_capture (DEC-SCOPE-262): the Duplicate stage in the status CHECK, the closure columns and CHECKs
 on `enquiries` and the seeded `lead_lost_reasons` list. Round trip in a throwaway database built from scratch (the csc-001 pattern); a
 downgrade never runs against the shared test database. Plain tests: alembic/env.py calls asyncio.run()."""
 
@@ -15,15 +15,15 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_ccrm_006_migration_0183", VERSIONS / "0183_lead_loss_capture.py")
+_spec = importlib.util.spec_from_file_location("_ccrm_006_migration_0184", VERSIONS / "0184_lead_loss_capture.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0182_lead_data_fields", "0183_lead_loss_capture"
+BASE, HEAD = "0183_offer_conditions", "0184_lead_loss_capture"
 COLUMNS = {"duplicate_of_id", "lost_reason_id", "lost_to"}
 
 
-def test_migration_chains_after_0182_and_is_the_single_head():
+def test_migration_chains_after_0183_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
@@ -43,7 +43,7 @@ def test_model_matches_the_migration():
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0182_lead_data_fields."""
+    """A fresh database at 0183_offer_conditions."""
     cfg = _config()
     original = settings.database_url
     name = f"ccrm006_migration_{uuid.uuid4().hex[:8]}"

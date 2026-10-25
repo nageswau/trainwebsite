@@ -2230,3 +2230,20 @@ NULL (CHECK both or neither; stamped by the model when the consent changes), `re
 `preferred_campus` (200), `academic_cgpa` numeric(4,2) (CHECK 0–10), `backlogs` smallint (CHECK 0–99). New `lead_english_tests`: `id`,
 `lead_id` FK `enquiries` ON DELETE CASCADE, `position` (unique per lead), `test_type` (CHECK ccrm-007's list), `status` NULL (CHECK),
 `overall_score` numeric(4,1), `test_date`, `valid_until`, `remarks` (200) — ccrm-007's row shape. Downgrade drops the table and columns.
+
+## Offer conditions (`ccrm-024`, `DEC-SCOPE-261`; migration `0183_offer_conditions`, after ccrm-005's `0182_lead_data_fields`)
+
+`application_offer_conditions`: `id`, `offer_id` (FK `application_offers` ON DELETE CASCADE, indexed), `description` text, `owner` (CHECK
+student / counselor / agent), `due_date` NULL (feeds ccrm-030), `status` default `open` (CHECK open / met / waived / failed),
+`evidence_document_id` (FK `student_documents` ON DELETE SET NULL), `note`, `created_by_id` / `updated_by_id` (FK users, NULL on migrated
+rows), `status_changed_at`, `created_at`, `updated_at`. Met needs evidence and waived / failed a note (route rules). Written only by
+`services/offer_conditions.py`. The migration copies each offer's non-blank `conditions` text into one open student row (every offer
+status); the downgrade drops the table.
+
+## Lead loss capture (`ccrm-006`, `DEC-SCOPE-262`; migration `0184_lead_loss_capture`, after ccrm-024's `0183_offer_conditions`)
+
+New `lead_lost_reasons`: `id`, `name` (120, CHECK length 1–120, unique on `lower(name)`), `active` bool default true, `sort_order` int
+default 0, `created_at`, `updated_at`; never deleted; seeded with six reasons when empty. `enquiries` gains `duplicate_of_id` FK `enquiries`
+ON DELETE RESTRICT, `lost_reason_id` FK `lead_lost_reasons` ON DELETE RESTRICT and `lost_to` (160), all NULL; the status CHECK adds
+`duplicate`; CHECKs `duplicate_of_id <> id`, `(duplicate_of_id IS NOT NULL) = (status = 'duplicate')`, and `lost_reason_id` / `lost_to`
+only on `lost` / `not_interested`. Downgrade turns Duplicate leads into Lost, restores the old status CHECK, drops the columns and the table.

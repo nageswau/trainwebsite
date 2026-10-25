@@ -10,7 +10,7 @@ import { toneClass, type Feedback } from "@/lib/welcomeLink";
 
 const FEEDBACK_ID = "lost-reason-feedback";
 
-// ccrm-006 (DEC-SCOPE-261, D8): the reasons a Lost / Not Interested close picks from -- create, rename / reorder, deactivate and
+// ccrm-006 (DEC-SCOPE-262, D8): the reasons a Lost / Not Interested close picks from -- create, rename / reorder, deactivate and
 // reactivate (never delete: closed leads keep their reason). tel-002's products page layout; the API decides who may write.
 export default function LostReasonsPanel() {
   const [data, setData] = useState<Page<LostReason> | null>(null);

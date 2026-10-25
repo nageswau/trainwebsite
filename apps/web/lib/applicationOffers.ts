@@ -33,8 +33,30 @@ export type ApplicationOffer = {
   decision_label: string;
   decision_date: string | null;
   decided_by: string | null;
+  condition_items?: OfferCondition[];
+  conditions_summary?: ConditionsSummary;
 };
-export type OffersPayload = { offers: ApplicationOffer[]; offer_letters: OfferDocument[] };
+export type OffersPayload = { offers: ApplicationOffer[]; offer_letters: OfferDocument[]; evidence_documents?: OfferDocument[]; agency?: boolean };
+
+// ccrm-024 (DEC-SCOPE-261): an offer's conditions. Met needs evidence (C2); waived and failed need a note (C5); the agent owns one only
+// on an agency application (C6). The server checks each rule again.
+export type ConditionOwner = "student" | "counselor" | "agent";
+export type ConditionStatus = "open" | "met" | "waived" | "failed";
+export const CONDITION_OWNER_LABELS: Record<ConditionOwner, string> = { student: "Student", counselor: "Counselor", agent: "Agent" };
+export const CONDITION_STATUS_LABELS: Record<ConditionStatus, string> = { open: "Open", met: "Met", waived: "Waived", failed: "Failed" };
+export type OfferCondition = {
+  id: string;
+  description: string;
+  owner: ConditionOwner;
+  owner_label: string;
+  due_date: string | null;
+  status: ConditionStatus;
+  status_label: string;
+  evidence: OfferDocument | null;
+  note: string | null;
+  status_changed_at: string | null;
+};
+export type ConditionsSummary = { total: number; satisfied: number; open: number; failed: number; all_satisfied: boolean };
 
 // ccrm-025 (DEC-SCOPE-255): the student's decision on the current offer, and the counselor's manual deposit record (D2).
 export type OfferDecision = "considering" | "accepted" | "declined" | "expired";
@@ -82,6 +104,16 @@ export const decisionUrl = (id: string, offerId: string) => `${offersUrl(id)}/${
 export const depositUrl = (id: string) => `${APPLICATION_URL(id)}/deposit`;
 export const depositReceiptsUrl = (id: string) => `${APPLICATION_URL(id)}/deposit-receipts`;
 export const documentDownloadUrl = (documentId: string) => `/api/v1/workflows/overseas/documents/${documentId}/download`;
+export const conditionsUrl = (id: string, offerId: string) => `${offersUrl(id)}/${offerId}/conditions`;
+export const conditionUrl = (id: string, offerId: string, conditionId: string) => `${conditionsUrl(id, offerId)}/${conditionId}`;
+export const conditionEvidenceUrl = (id: string) => `${APPLICATION_URL(id)}/condition-evidence`;
+
+/** C2/C5: the message for a condition that cannot be saved as it stands, or null. */
+export function conditionProblem(status: ConditionStatus, hasEvidence: boolean, note: string): string | null {
+  if (status === "met" && !hasEvidence) return "Attach the evidence before marking the condition met.";
+  if ((status === "waived" || status === "failed") && !note.trim()) return "Give a note when a condition is waived or failed.";
+  return null;
+}
 
 export function money(currency: string | null, amount: string | null): string | null {
   return amount === null ? null : `${currency ?? ""} ${Number(amount).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim();

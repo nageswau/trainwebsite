@@ -1808,6 +1808,9 @@ APPLICATION_OFFER_STATUSES = ("active", "superseded", "withdrawn_by_university",
 # ccrm-025 (DEC-SCOPE-255): the student's decision on an offer, and the counselor's manual deposit record. Migration 0178 repeats them.
 APPLICATION_OFFER_DECISIONS = ("considering", "accepted", "declined", "expired")
 DEPOSIT_RECORD_STATUSES = ("not_required", "pending", "paid_to_university", "paid_via_edusphere")
+# ccrm-024 (DEC-SCOPE-262): who must satisfy an offer condition, and its status. Migration 0184 repeats them (test_ccrm_024_migration).
+OFFER_CONDITION_OWNERS = ("student", "counselor", "agent")
+OFFER_CONDITION_STATUSES = ("open", "met", "waived", "failed")
 
 
 class OverseasApplication(Base, TimestampMixin):
@@ -1924,6 +1927,30 @@ class ApplicationOffer(Base, TimestampMixin):
         CheckConstraint("tuition_amount >= 0 AND scholarship_amount >= 0 AND deposit_amount >= 0", name="ck_application_offers_amounts"),
         Index("uq_application_offers_active", "application_id", unique=True, postgresql_where=text("status = 'active'")),
         Index("ix_application_offers_application", "application_id", "created_at"),
+    )
+
+
+class ApplicationOfferCondition(Base, TimestampMixin):
+    """ccrm-024 (DEC-SCOPE-262): a condition an offer carries -- description, owner, due date, status and the evidence that it is met.
+    Conditions belong to their offer (C3) and are changed only while it is the current one. Met needs evidence and waived/failed a note
+    (route rules, C2/C5). `created_by_id` is NULL on rows migrated from the offer text by 0183. Written only by services/offer_conditions.py."""
+
+    __tablename__ = "application_offer_conditions"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    offer_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("application_offers.id", ondelete="CASCADE"), index=True)
+    description: Mapped[str] = mapped_column(Text)
+    owner: Mapped[str] = mapped_column(String(20))
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="open", server_default=text("'open'"))
+    evidence_document_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL"), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    updated_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint(_in("owner", OFFER_CONDITION_OWNERS), name="ck_application_offer_conditions_owner"),
+        CheckConstraint(_in("status", OFFER_CONDITION_STATUSES), name="ck_application_offer_conditions_status"),
     )
 
 
@@ -2446,7 +2473,7 @@ LEAD_FIELD_CHECKS = {
     "ck_enquiries_marketing_consent": "(marketing_opt_in IS NULL) = (marketing_consent_at IS NULL)",
 }
 ENQUIRY_DATE_DEFAULT = "(now() AT TIME ZONE 'Asia/Kolkata')::date"  # LF4: the created date in IST
-# ccrm-006 (DEC-SCOPE-261, D3/D4): a Duplicate names its surviving lead; a reason and "lost to" only on Lost / Not Interested. Migration 0183
+# ccrm-006 (DEC-SCOPE-262, D3/D4): a Duplicate names its surviving lead; a reason and "lost to" only on Lost / Not Interested. Migration 0184
 # repeats these (test_ccrm_006_migration).
 LEAD_LOST_REASON_NAME_MAX, LEAD_LOST_TO_MAX = 120, 160
 _LOSS_SQL = f"status IN ({', '.join(repr(s) for s in LOSS_STAGES)})"
@@ -2540,7 +2567,7 @@ class Enquiry(Base, TimestampMixin):
     marketing_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     referral_name: Mapped[str | None] = mapped_column(String(LEAD_REFERRAL_NAME_MAX), nullable=True)
     referral_contact: Mapped[str | None] = mapped_column(String(LEAD_REFERRAL_CONTACT_MAX), nullable=True)
-    # ccrm-006 (DEC-SCOPE-261): how the lead closed -- set by lead_pipeline.person_move, cleared on reopen (D7)
+    # ccrm-006 (DEC-SCOPE-262): how the lead closed -- set by lead_pipeline.person_move, cleared on reopen (D7)
     duplicate_of_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"), nullable=True)
     lost_reason_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("lead_lost_reasons.id", ondelete="RESTRICT"), nullable=True)
     lost_to: Mapped[str | None] = mapped_column(String(LEAD_LOST_TO_MAX), nullable=True)
