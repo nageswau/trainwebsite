@@ -1,7 +1,7 @@
 // tel-024 (DEC-SCOPE-109): the five Telecaller CRM management reports -- types, tabs and URLs. Every figure, column label and option
 // comes from the API (services/telecaller_reports.py); the browser only lays them out, so the screen and the CSV always agree.
 
-export type ReportKind = "source" | "product" | "telecaller" | "handover" | "campaign";
+export type ReportKind = "source" | "product" | "telecaller" | "handover" | "campaign" | "lost";
 export type ReportColumn = { key: string; label: string };
 export type ReportRow = Record<string, string | number>;
 export type ReportOptions = {
@@ -23,6 +23,7 @@ export type ReportParams = Partial<Record<(typeof FILTERS)[number], string>>;
 export const REPORT_TABS: { key: ReportKind; label: string }[] = [
   { key: "source", label: "Lead Source" }, { key: "product", label: "Course" }, { key: "telecaller", label: "Telecaller" },
   { key: "handover", label: "Counselor Handover" }, { key: "campaign", label: "Campaign" },
+  { key: "lost", label: "Lost Reasons" }, // ccrm-006 (D9)
 ];
 export const TEAM_LABEL: Record<string, string> = { it: "IT", overseas: "Overseas" };
 export const REPORTS_URL = "/api/v1/telecaller/reports";

@@ -39,11 +39,11 @@ describe("telecallerReports helpers (tel-024)", () => {
 });
 
 describe("TelecallerReportView (tel-024 §21)", () => {
-  it("shows the five reports as links, the current one marked", () => {
+  it("shows the six reports as links, the current one marked (ccrm-006: Lost Reasons)", () => {
     render(<TelecallerReportView kind="campaign" report={report()} error="" params={{}} basePath={BASE} />);
     const nav = screen.getByRole("navigation", { name: "Reports" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual(["Lead Source", "Course", "Telecaller", "Counselor Handover", "Campaign"]);
+    expect(links.map((l) => l.textContent)).toEqual(["Lead Source", "Course", "Telecaller", "Counselor Handover", "Campaign", "Lost Reasons"]);
     expect(links[4]).toHaveAttribute("aria-current", "page");
     expect(links[0]).not.toHaveAttribute("aria-current");
   });

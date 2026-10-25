@@ -1,6 +1,7 @@
 // tel-018 (DEC-SCOPE-101, API §12V): the counselor handover, the counselor's leads, the return and the student link. Labels are display
 // only; the API decides scope, `permissions` and every rule.
 import { sendJson, type SendOutcome } from "@/lib/apiErrors";
+import type { Closure } from "@/lib/leadStages";
 import type { PersonRef, TelecallerLead } from "@/lib/telecallerLeads";
 
 export type MilestoneKind = "enrollment" | "application" | "visa";
@@ -27,8 +28,8 @@ export const WALK_IN_LEADS_URL = "/api/v1/counselor/walk-in-leads";
 export const counselorLeadUrl = (id: string, suffix = "") => `${COUNSELOR_LEADS_URL}/${encodeURIComponent(id)}${suffix}`;
 export const handoverUrl = (id: string) => `/api/v1/telecaller/leads/${encodeURIComponent(id)}/handover`;
 /** ccrm-003 A1: the counselor's stage move (the next action is set on its own form first, so only the stage and reason go here). */
-export const counselorMoveStage = (id: string, target: string, reason: string): Promise<SendOutcome> =>
-  sendJson(counselorLeadUrl(id, "/stage"), "POST", reason ? { to_stage: target, reason } : { to_stage: target });
+export const counselorMoveStage = (id: string, target: string, reason: string, closure: Closure = {}): Promise<SendOutcome> =>
+  sendJson(counselorLeadUrl(id, "/stage"), "POST", { to_stage: target, ...(reason ? { reason } : {}), ...closure });
 export const counselorLeadHref =(division: string, id: string) => `/${division === "overseas" ? "overseas" : "it"}/counselor/leads/${encodeURIComponent(id)}`;
 
 const KIND_LABEL: Record<MilestoneKind, string> = { enrollment: "IT enrolment", application: "Overseas application", visa: "Visa case" };

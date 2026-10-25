@@ -17,7 +17,7 @@ describe("tel-001 navigation", () => {
     // library at the end.
     expect(TELECALLER_MANAGER_NAV.map((x) => x.href)).toEqual([
       "/telecaller/manager/team", "/telecaller/manager/leads", "/telecaller/manager/follow-ups", "/telecaller/manager/assignment", "/telecaller/manager/distribution",
-      "/telecaller/manager/imports", "/telecaller/manager/targets", "/telecaller/manager/performance", "/telecaller/manager/reports", "/telecaller/manager/alerts", "/telecaller/manager/products", "/telecaller/manager/campaigns",
+      "/telecaller/manager/imports", "/telecaller/manager/targets", "/telecaller/manager/performance", "/telecaller/manager/reports", "/telecaller/manager/alerts", "/telecaller/manager/products", "/telecaller/manager/campaigns", "/telecaller/manager/lost-reasons",
       "/telecaller/manager/scripts",
       "/telecaller/manager/templates", "/telecaller/manager/brochures",
       "/account/management-tasks", // mgmt-028 (MT14)

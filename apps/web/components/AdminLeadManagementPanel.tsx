@@ -6,8 +6,9 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AdminLeadFilters, { LEAD_FILTERS, type LeadFilter, type Organization } from "@/components/AdminLeadFilters";
 import { LeadStageControl, LeadStageHistory } from "@/components/AdminLeadStage";
 import BdmConfirm from "@/components/BdmConfirm";
+import LeadClosure from "@/components/LeadClosure";
 import { sendJson, sendRequest, type Page } from "@/lib/apiErrors";
-import { stageLabel } from "@/lib/leadStages";
+import { stageLabel, type LeadClosureFields } from "@/lib/leadStages";
 import { pageOffset } from "@/lib/telecaller";
 import { SOURCE_LABEL, getPage } from "@/lib/telecallerCatalogue";
 
@@ -19,7 +20,7 @@ type AdminLeadRow = {
   // tel-003 (spec §4): the lead record; each object is null when unset
   lead_code: string; priority: "hot" | "warm" | "cold"; product: { id: string; name: string } | null; campaign: { id: string; name: string } | null;
   telecaller: Ref | null; counselor: Ref | null;
-};
+} & LeadClosureFields; // ccrm-006
 type RowMessage = { id: string; text: string; failed: boolean };
 
 const LEADS_URL = "/api/v1/admin/leads";
@@ -192,13 +193,14 @@ export default function AdminLeadManagementPanel() {
                     <td>{row.crm_sync_status === "failed" ? <span className="form-error">Failed</span> : row.crm_sync_status}</td>
                     <td>
                       {stageLabel(row.status)}
+                      <LeadClosure lead={row} />
                       <LeadStageHistory key={row.status} lead={row} />
                     </td>
                     <td>
                       <LeadConversion row={row} onChanged={replace} onMessage={setMessage} />
                     </td>
                     <td>
-                      <LeadStageControl lead={row} onMessage={setMessage} onChanged={(status) => replace({ ...row, status })} />
+                      <LeadStageControl lead={row} onMessage={setMessage} onChanged={(status, closure) => replace({ ...row, status, ...closure })} />
                       {message?.id === row.id && (
                         <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 6, fontSize: 13 }}>
                           {message.text}

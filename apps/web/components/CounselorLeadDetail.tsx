@@ -6,6 +6,7 @@ import { type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useStat
 import { LeadStageControl } from "@/components/AdminLeadStage";
 import BdmConfirm from "@/components/BdmConfirm";
 import LeadCalls from "@/components/LeadCalls";
+import LeadClosure from "@/components/LeadClosure";
 import LeadContactFields, { contactChanges, contactDraft, contactRows } from "@/components/LeadContactFields";
 import LeadFollowUps from "@/components/LeadFollowUps";
 import LeadMeetings from "@/components/LeadMeetings";
@@ -368,6 +369,7 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
         <div className="eyebrow" style={{ marginTop: 8 }}>{lead.lead_code}</div>
         <h2 style={{ margin: "4px 0" }}>{lead.name}</h2>
         <p className="muted" style={{ margin: 0 }}>Stage: <strong>{lead.status_label}</strong></p>
+        <LeadClosure lead={lead} />
         {/* QA-02/QA-03: one line for the stage and next-action results -- stays visible when a closing move removes the stage control */}
         <NoticeLine notice={leadNotice} />
       </div>

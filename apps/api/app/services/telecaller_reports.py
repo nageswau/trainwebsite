@@ -14,8 +14,8 @@ from uuid import UUID
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.lead_stages import ORDER
-from app.models import Enquiry, LeadStageHistory, TelCampaign, TelecallerProfile, TelProduct, User
+from app.lead_stages import LOSS_STAGES, ORDER, label
+from app.models import Enquiry, LeadLostReason, LeadStageHistory, TelCampaign, TelecallerProfile, TelProduct, User
 from app.services import lead_pipeline, telecaller_metrics
 from app.services.bdm_activities import day_range
 from app.services.telecaller import TEAMS
@@ -33,6 +33,8 @@ RANK = {stage: index for index, stage in enumerate(ORDER)}
 FUNNEL = (("leads", "Leads", None), ("connected", "Connected", "contacted"), ("qualified", "Qualified", "qualified"),
           ("counselling", "Counselling", "counselling_scheduled"), ("enrolled", "Enrolled", "converted"))
 HANDOVER = (("handed_over", "Handed over", None), ("counselling_done", "Counselling done", "counselling_completed"), ("enrolled", "Enrolled", "converted"))
+LOSSES = (("leads", "Leads", None), *((stage, label(stage), stage) for stage in LOSS_STAGES))
+NO_REASON = "No reason recorded"  # D6: a call-logged close, or a lead closed before ccrm-006
 ACTIVITY = (("calls", "Calls", "calls"), ("connected", "Connected", "connected_calls"), ("qualified", "Qualified", "qualified_leads"),
             ("appointments", "Appointments", "new_appointments"), ("conversions", "Conversions", "converted_leads"))
 
@@ -50,6 +52,8 @@ REPORTS = {
     "telecaller": Report("Telecaller Report", (("telecaller", "Telecaller"),), ACTIVITY),
     "handover": Report("Counselor Handover Report", (("telecaller", "Telecaller"), ("counselor", "Counselor")), HANDOVER),
     "campaign": Report("Campaign Report", (("label", "Campaign"),), FUNNEL),
+    # ccrm-006 (DEC-SCOPE-264, D9): the cohort's leads now Lost / Not Interested, by reason -- counted by current stage, not reach
+    "lost": Report("Lost Reasons Report", (("label", "Reason"),), LOSSES),
 }
 LEAD_FILTERS = ("product_id", "campaign_id", "source")  # cohort reports only; the telecaller report is per actor, not per lead
 
@@ -183,10 +187,16 @@ async def _names(db: AsyncSession, model, ids: set, column) -> dict:
 
 async def _cohort(db: AsyncSession, user: User, kind: str, spec: Report, f: Filters) -> list[dict]:
     keys = {"source": [Enquiry.source], "product": [Enquiry.product_id], "campaign": [Enquiry.campaign_id],
-            "handover": [Enquiry.telecaller_user_id, Enquiry.owner_id]}[kind]
-    where = _lead_filters(user, f) + ([Enquiry.owner_id.is_not(None)] if kind == "handover" else [])
-    counts = [_count(stage).label(key) for key, _, stage in spec.counts]
+            "handover": [Enquiry.telecaller_user_id, Enquiry.owner_id], "lost": [Enquiry.lost_reason_id]}[kind]
+    where = _lead_filters(user, f) + {"handover": [Enquiry.owner_id.is_not(None)], "lost": [Enquiry.status.in_(LOSS_STAGES)]}.get(kind, [])
+    if kind == "lost":
+        counts = [(func.count() if stage is None else func.count().filter(Enquiry.status == stage)).label(key) for key, _, stage in spec.counts]
+    else:
+        counts = [_count(stage).label(key) for key, _, stage in spec.counts]
     rows = (await db.execute(select(*keys, *counts).where(*where).group_by(*keys))).all()
+    if kind == "lost":
+        names = await _names(db, LeadLostReason, {r[0] for r in rows}, LeadLostReason.name)
+        return [{"label": names.get(r[0], NO_REASON)} | dict(r._mapping) for r in rows]
     if kind == "source":
         return [{"label": SOURCE_LABELS.get(r[0], r[0])} | dict(r._mapping) for r in rows]
     if kind == "handover":

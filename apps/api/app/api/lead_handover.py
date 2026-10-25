@@ -161,7 +161,7 @@ async def change_stage(lead_id: UUID, payload: CounselorLeadStageMove, user: Use
     then tel-004's engine with the counselor's list; an open target with no next action stored is 422 and nothing is kept."""
     lead = await lead_pipeline.locked_lead(db, lead_id, *lead_handover.counselor_scope(user))
     await lead_handover.set_next_action(db, user, lead, payload.next_action, payload.next_action_due)
-    await lead_pipeline.person_move(db, lead, user, "counselor", payload.to_stage, payload.reason)
+    await lead_pipeline.person_move(db, lead, user, "counselor", payload.to_stage, payload.reason, payload.closure())
     out = {**lead_pipeline.stage_out(lead), "next_action": lead.next_action, "next_action_due": lead.next_action_due}
     await db.commit()
     return out

@@ -30,12 +30,12 @@ async def test_telecaller_moves_own_lead_and_reads_its_history(client, db_sessio
     assert response.status_code == 200, response.text
     assert set(response.json()) == {"id", "status", "status_label", "stage_changed_at"}
     assert (response.json()["status"], response.json()["status_label"]) == ("qualified", "Qualified")
-    assert (await client.post(stage_url(row.id), json={"to_stage": "lost", "reason": "  Joined elsewhere  "})).status_code == 200
+    assert (await client.post(stage_url(row.id), json={"to_stage": "no_response", "reason": "  Joined elsewhere  "})).status_code == 200  # ccrm-006: Lost needs a listed reason
     history = (await client.get(history_url(row.id))).json()
     assert history["total"] == 2
     assert [(h["from_stage"], h["to_stage"], h["to_label"], h["reason"], h["actor"]["id"]) for h in history["items"]] == [
         ("contacted", "qualified", "Qualified", None, str(tel.id)),
-        ("qualified", "lost", "Lost", "Joined elsewhere", str(tel.id)),
+        ("qualified", "no_response", "No Response", "Joined elsewhere", str(tel.id)),
     ]
 
 
@@ -116,15 +116,15 @@ async def test_admin_patch_follows_the_stage_rules(client, db_session):
     await as_user(client, admin)
     url = f"{ADMIN_LEADS}/{row.id}"
     assert (await client.patch(url, json={"status": "converted"})).status_code == 422
-    assert (await client.patch(url, json={"status": "lost"})).status_code == 422
+    assert (await client.patch(url, json={"status": "no_response"})).status_code == 422
     assert (await client.patch(url, json={"status": 7})).status_code == 422
-    assert (await client.patch(url, json={"status": "lost", "reason": "Duplicate enquiry"})).status_code == 200
+    assert (await client.patch(url, json={"status": "no_response", "reason": "Duplicate enquiry"})).status_code == 200  # ccrm-006: not Lost
     assert (await client.patch(url, json={"status": "follow_up", "reason": "Not a duplicate"})).status_code == 200  # admins reopen
     counselor = await make_user(db_session, "counselor", "it")  # ccrm-003 A7: the owner is an active counselor of the division
     assert (await client.patch(url, json={"status": "follow_up", "owner_id": str(counselor.id)})).status_code == 200  # same stage: no-op
     assert await _status(db_session, row) == "follow_up"
     history = (await client.get(history_url(row.id, admin=True))).json()
-    assert [(h["to_stage"], h["event"], h["actor"]["id"]) for h in history["items"]] == [("lost", "manual", str(admin.id)),
+    assert [(h["to_stage"], h["event"], h["actor"]["id"]) for h in history["items"]] == [("no_response", "manual", str(admin.id)),
                                                                                         ("follow_up", "reopen", str(admin.id))]
     audits = (await db_session.scalars(select(AuditLog.metadata_json).where(AuditLog.entity_id == str(row.id), AuditLog.action == "lead.update"))).all()
     assert audits and all("reason" not in a for a in audits)  # reasons live in the history only

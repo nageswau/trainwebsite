@@ -350,7 +350,7 @@ async def test_closing_a_lead_cancels_its_open_follow_ups_only(client, db_sessio
     done = await stored(db_session, row, tel, now - timedelta(days=1), status="done", completed_at=now, completed_by_user_id=tel.id)
     untouched = await stored(db_session, other_lead, tel, now + timedelta(days=1))
     await as_user(client, tel)
-    response = await client.post(stage_url(row.id), json={"to_stage": "not_interested", "reason": "Joined elsewhere"})
+    response = await client.post(stage_url(row.id), json={"to_stage": "no_response", "reason": "Joined elsewhere"})  # ccrm-006: not a loss stage
     assert response.status_code == 200, response.text
     for fu in (open_one, done, untouched):
         await db_session.refresh(fu)
