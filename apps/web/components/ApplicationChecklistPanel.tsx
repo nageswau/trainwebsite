@@ -4,6 +4,8 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { sendJson, sendRequest } from "@/lib/apiErrors";
 import { ApplicationChecklistItem, ChecklistDocument, ChecklistMark, ChecklistPayload, checklistUrl, COMPLETE } from "@/lib/applicationChecklist";
 import { CHECKLIST_DOCUMENT_TYPES, GATE_LABELS, NEEDS_ACTION } from "@/lib/documentChecklists";
+import { staffRequestsUrl, todayInIndia } from "@/lib/documentRequests";
+import { formatCalendarDate } from "@/lib/formatDate";
 
 type Props = { applicationId: string; readOnly?: boolean; onChanged?: (message: string) => void };
 
@@ -47,6 +49,24 @@ export default function ApplicationChecklistPanel({ applicationId, readOnly = fa
     }
     setData(outcome.data as unknown as ChecklistPayload);
     onChanged?.(message);
+    return true;
+  }
+
+  // ccrm-020 (DEC-SCOPE-262 R2): ask the student for a missing item; the server marks it Requested, so the checklist is reloaded.
+  async function requestFromStudent(itemId: string, body: { due_date: string; note?: string }): Promise<boolean> {
+    if (inFlight.current || !data?.student_id) return false;
+    inFlight.current = true;
+    setBusy(true);
+    setActionError(null);
+    const outcome = await sendJson(staffRequestsUrl(data.student_id), "POST", { ...body, application_id: applicationId, checklist_item_id: itemId });
+    inFlight.current = false;
+    setBusy(false);
+    if (!outcome.ok) {
+      setActionError(outcome.message);
+      return false;
+    }
+    await load();
+    onChanged?.("Requested from the student.");
     return true;
   }
 
@@ -100,7 +120,15 @@ export default function ApplicationChecklistPanel({ applicationId, readOnly = fa
           ) : (
             <ul style={{ listStyle: "none", padding: 0, margin: "6px 0 0", display: "grid", gap: 8 }}>
               {checklist.items.map((item) => (
-                <ItemRow key={item.id} item={item} documents={data.documents} readOnly={readOnly} busy={busy} act={act} />
+                <ItemRow
+                  key={item.id}
+                  item={item}
+                  documents={data.documents}
+                  readOnly={readOnly}
+                  busy={busy}
+                  act={act}
+                  onRequest={data.student_id ? (body) => requestFromStudent(item.id, body) : undefined}
+                />
               ))}
             </ul>
           )}
@@ -120,8 +148,12 @@ export default function ApplicationChecklistPanel({ applicationId, readOnly = fa
 
 type Act = (path: string, method: "POST" | "PATCH" | "PUT" | "DELETE", body: unknown, message: string) => Promise<boolean>;
 
-function ItemRow({ item, documents, readOnly, busy, act }: { item: ApplicationChecklistItem; documents: ChecklistDocument[]; readOnly: boolean; busy: boolean; act: Act }) {
+type RequestBody = { due_date: string; note?: string };
+type RowProps = { item: ApplicationChecklistItem; documents: ChecklistDocument[]; readOnly: boolean; busy: boolean; act: Act; onRequest?: (body: RequestBody) => Promise<boolean> };
+
+function ItemRow({ item, documents, readOnly, busy, act, onRequest }: RowProps) {
   const [picked, setPicked] = useState("");
+  const [requesting, setRequesting] = useState(false);
   const path = `/items/${item.id}`;
   const linkable = documents.filter((d) => !item.documents.some((linked) => linked.id === d.id));
   const allows = (mark: ChecklistMark) => item.allowed_statuses.length === 0 || item.allowed_statuses.includes(mark);
@@ -135,6 +167,11 @@ function ItemRow({ item, documents, readOnly, busy, act }: { item: ApplicationCh
         {item.mark && <span className="muted" style={{ fontSize: 12 }}>(marked by counselor)</span>}
       </div>
       {item.notes && <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>{item.notes}</p>}
+      {item.open_request && (
+        <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>
+          Requested from the student{item.open_request.due_date && <> · due {formatCalendarDate(item.open_request.due_date)}</>}
+        </p>
+      )}
       {item.documents.length > 0 && (
         <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 12 }}>
           {item.documents.map((d) => (
@@ -189,9 +226,50 @@ function ItemRow({ item, documents, readOnly, busy, act }: { item: ApplicationCh
               Remove
             </button>
           )}
+          {onRequest && !item.open_request && !COMPLETE.has(item.status) && !requesting && (
+            <button type="button" className="btn ghost small" disabled={busy} onClick={() => setRequesting(true)}>
+              Request from student
+            </button>
+          )}
         </div>
       )}
+      {!readOnly && onRequest && requesting && !item.open_request && (
+        <RequestForm id={item.id} name={item.name} busy={busy} onCancel={() => setRequesting(false)} onSend={async (body) => (await onRequest(body)) && setRequesting(false)} />
+      )}
     </li>
+  );
+}
+
+function RequestForm({ id, name, busy, onSend, onCancel }: { id: string; name: string; busy: boolean; onSend: (body: RequestBody) => void; onCancel: () => void }) {
+  const [due, setDue] = useState("");
+  const [note, setNote] = useState("");
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    onSend({ due_date: due, ...(note.trim() ? { note: note.trim() } : {}) });
+  }
+
+  return (
+    <form className="form" onSubmit={submit} aria-label={`Request ${name} from the student`} style={{ marginTop: 6 }}>
+      <div className="form-grid">
+        <div className="field">
+          <label htmlFor={`request-due-${id}`}>Due date for {name}</label>
+          <input id={`request-due-${id}`} type="date" required min={todayInIndia()} value={due} onChange={(event) => setDue(event.target.value)} />
+        </div>
+        <div className="field">
+          <label htmlFor={`request-note-${id}`}>Note to the student (optional)</label>
+          <input id={`request-note-${id}`} maxLength={1000} value={note} onChange={(event) => setNote(event.target.value)} />
+        </div>
+      </div>
+      <div className="actions">
+        <button className="btn small" disabled={busy}>
+          Send request
+        </button>
+        <button type="button" className="btn ghost small" disabled={busy} onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }
 

@@ -2088,11 +2088,17 @@ class StudentDocument(Base, TimestampMixin):
 
 class DocumentRequest(Base, TimestampMixin):
     """AGN-009 (DEC-SCOPE-052 G4/G5): an agency's request for an additional document from one of its students. Open until an upload
-    made against it fulfils it, or a member cancels it."""
+    made against it fulfils it, or a member cancels it.
+    ccrm-020 (DEC-SCOPE-262): or a counselor's / Overseas Admin's request to a student login (`student_user_id`, exactly one owner), with a
+    due date and optionally an application and its checklist item; a staff rejection of the fulfilling document reopens it (R1)."""
 
     __tablename__ = "document_requests"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
-    agent_student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id"))
+    agent_student_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("agent_students.id"), nullable=True)
+    student_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    application_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id"), nullable=True)
+    checklist_item_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("application_checklist_items.id", ondelete="SET NULL"), nullable=True)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     document_type: Mapped[str] = mapped_column(String(80))
     document_label: Mapped[str | None] = mapped_column(String(80), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -2102,7 +2108,10 @@ class DocumentRequest(Base, TimestampMixin):
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     __table_args__ = (
         CheckConstraint("status IN ('open', 'fulfilled', 'cancelled')", name="ck_document_requests_status"),
+        CheckConstraint("(agent_student_id IS NULL) <> (student_user_id IS NULL)", name="ck_document_requests_owner"),
         Index("ix_document_requests_student_status", "agent_student_id", "status"),
+        Index("ix_document_requests_student_user_status", "student_user_id", "status"),
+        Index("ix_document_requests_open_due", "due_date", postgresql_where=text("status = 'open' AND due_date IS NOT NULL")),  # ccrm-030
     )
 
 

@@ -122,7 +122,7 @@ from app.schemas import (
 )
 from app.services import agent_documents as document_files
 from app.services import agent_notifications as agency_notices
-from app.services import application_checklists, applications, counselor_students, course_skills, interviews, offers, visa_lifecycle
+from app.services import application_checklists, applications, counselor_students, course_skills, interviews, offers, student_document_requests, visa_lifecycle
 from app.services import application_outcomes as outcomes
 from app.services import application_sub_status as sub_statuses
 from app.services import document_checklists as checklist_templates
@@ -2355,6 +2355,7 @@ async def _agent_document_review(db: AsyncSession, user: User, document_id: UUID
     if student:
         await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {DOCUMENT_STATUS_LABELS[item.verification_status].lower()}.", "/overseas/student/documents")
     await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-059 N9): rejected / changes required only
+    await student_document_requests.reopen_on_rejection(db, user, item)  # ccrm-020 R1: a direct student's request opens again
     await application_checklists.sync_for_documents(db, [item.id])  # ccrm-019 AC9
     member_role = user.agent_membership.role
     await _audit(db, user, "document.verify", "student_document", item.id, {**review.model_dump(), "member_role": member_role})
@@ -2391,6 +2392,7 @@ async def verify_document(document_id: UUID, payload: dict, user: User = Depends
     if student:
         await _notify_user(db, student, "Document reviewed", f"{item.document_type}: {DOCUMENT_STATUS_LABELS[item.verification_status].lower()}.", "/overseas/student/documents")
     await agency_notices.document_needs_attention(db, item, user)  # AGN-017 (DEC-SCOPE-059 N9): an agency document's assignee
+    await student_document_requests.reopen_on_rejection(db, user, item)  # ccrm-020 R1: a direct student's request opens again
     await application_checklists.sync_for_documents(db, [item.id])  # ccrm-019 AC9
     await _audit(db, user, "document.verify", "student_document", item.id, review.model_dump(mode="json"))
     await db.commit()

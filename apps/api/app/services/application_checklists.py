@@ -18,6 +18,7 @@ from app.models import (
     ApplicationChecklistItem,
     ApplicationChecklistItemDocument,
     DocumentChecklistTemplateItem,
+    DocumentRequest,
     OverseasApplication,
     StudentDocument,
     User,
@@ -101,6 +102,12 @@ async def view(db: AsyncSession, app: OverseasApplication, checklist: Applicatio
     if checklist is None:
         return None
     rows = await _items(db, app.id)
+    # ccrm-020 R2: an item's open request to the student (its due date shows beside the Requested status)
+    requests = (
+        {r.checklist_item_id: r for r in await db.scalars(select(DocumentRequest).where(DocumentRequest.checklist_item_id.in_([i.id for i, _ in rows]), DocumentRequest.status == "open"))}
+        if rows
+        else {}
+    )
     items = []
     for item, documents in rows:
         status = _status(item, documents)
@@ -119,6 +126,7 @@ async def view(db: AsyncSession, app: OverseasApplication, checklist: Applicatio
                 "status_label": status_label(status),
                 "removable": not item.from_template,
                 "documents": [_document_view(d) for d in documents],
+                "open_request": {"id": r.id, "due_date": r.due_date} if (r := requests.get(item.id)) else None,
             }
         )
     return {
