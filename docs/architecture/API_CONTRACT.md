@@ -4038,3 +4038,11 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - Appointment invites (no contract change on the writes): `POST /workflows/overseas/appointments`, `PATCH …/{id}` (new `scheduled_at`,
   or `status` → cancelled), `POST /telecaller/leads/{id}/appointments` and `POST /lead-appointments/{id}/reschedule|cancel` queue a
   notification + email delivery (context `{kind: "appointment_invite", ics, method}`) per CA1. IT appointments send nothing.
+
+## 12GB. Student finance tab (ccrm-039) — addendum, 2026-10-25
+
+`DEC-SCOPE-275`. No migration. RBAC §2.189. Code: `app/api/counselor_students.py`, `app/services/counselor_student_360.py`. Same gate as §12FF.
+
+| Method/Path | Behaviour |
+|---|---|
+| `GET /api/v1/counselor/students/{id}/finance` | `{payments[] {id, description, amount, currency, status, status_label, due_date, created_at, installment_no, invoice_no, receipt_no, can_download}, deposits[] {application_id, application_code, university, mine, source (counselor \| agency), required, amount, currency, due_date, status, status_label, paid_on, refund {amount, refunded_on, reason} \| null, receipt {id, name, can_download} \| null}, refunds[] {kind (payment \| deposit), description, amount, currency, refunded_on, application_code}}`. Read-only. Payments = the student's own, not `agent_deposit`, newest first; `can_download` = Overseas Admin (mirrors `GET /payments/{id}/invoice\|receipt`). Deposits: the ccrm-025 record, else the AGN-011 deposit, per application; a receipt's `can_download` follows the §12FF documents rule. Amounts are 2-decimal strings; no `file_url`. |

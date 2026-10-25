@@ -9647,3 +9647,20 @@ CA6 public `GET /calendar/feeds/{token}.ics`, `no-store`, every refusal 404. CA7
 CA8 phase 2 (two-way Google / Microsoft 365 / Zoho Calendar sync) is out until a provider decision.
 **Numbering:** migration `0192_calendar_feeds`; API §12GA; RBAC §2.188 (ccrm-033 took 271 / 12FX / 2.185, ccrm-031 took 272 / 12FY / 2.186 / 0190, ccrm-037 took 273 / 12FZ / 2.187 / 0191 first).
 - **Feature ID authorized:** `ccrm-038`. **Status:** built on `worktree-ccrm-038`.
+
+### DEC-SCOPE-275 — Student finance tab on the student 360 (`ccrm-039`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-039` (source PDF §5 Finance, §13 revenue — both optional, `UNVERIFIED`;
+owner answer CC6 puts the tab in scope); design `docs/superpowers/specs/2026-10-25-ccrm-039-student-finance-tab-design.md`.
+Dependencies `ccrm-009` (PR #315) and `ccrm-025` (PR #317) merged. Closes `DEC-SCOPE-253` B1 for Finance.
+**Recommended defaults (`NEEDS_CONFIRMATION` — the owner asked to proceed with recommended answers):** F1 the tab is read-only; service
+fees stay recorded by the Overseas Admin (`POST /admin/payments`, discount, EMI), gateway refunds by the Razorpay webhook, the AGN-011
+deposit refund by the Overseas Admin (`DEC-SCOPE-058`), the ccrm-025 deposit record by the counselor on the application — the backlog's
+"who may record" stays open. F2 a service fee is a free amount (no catalogue). F3 visibility = ccrm-009's gate (csc-001 counselor or
+Overseas Admin; another counselor's student `404`; student, agent, university_rep, IT counselor `403`); the agent's AGN-011 deposit routes
+and the university_rep are unchanged. F4 a deposit row per application of the student (V1: all applications, marked `mine`) — the
+ccrm-025 record, else the AGN-011 deposit. F5 downloads keep their routes' rules (invoice/receipt: Overseas Admin only; deposit receipt:
+the documents tab rule). F6 refunds = payments in status `refunded` (date = last update) + AGN-011 deposit refunds. F7 payments = the
+student's own `Payment` rows except `agent_deposit`.
+**Numbering:** no migration; API §12GB; RBAC §2.189 (ccrm-031, ccrm-037 and ccrm-038 took 272–274 / 12FY–12GA / 2.186–2.188 first).
+- **Feature ID authorized:** `ccrm-039`. **Status:** built on `worktree-ccrm-039`.
