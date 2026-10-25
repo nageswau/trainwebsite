@@ -2753,6 +2753,7 @@ inside the existing role scope (a counselor searching another counselor's code g
 - Pinned by `test_ccrm_004_counselor_activities.py::test_call_scope_role_and_closed_lead`, `::test_message_scope_role_and_closed_lead`,
   `::test_meeting_validation_scope_and_closed_lead`; `test_tel_012_templates.py::test_non_readers_cannot_read`, `::test_a_counselor_lists_active_templates_only`.
 
+<<<<<<< HEAD
 ### 2.174 Lead data fields *(added 2026-10-25 — `DEC-SCOPE-260`, ccrm-005)*
 
 | Route | `telecaller` | `telecaller_manager` / `super_admin` | `counselor` | Others | Anonymous |
@@ -2765,3 +2766,14 @@ inside the existing role scope (a counselor searching another counselor's code g
 
 - Pinned by `test_ccrm_005_lead_fields.py::test_another_counselors_lead_is_404_and_the_telecaller_stays_read_only`,
   `::test_counselor_cannot_change_contact_details_product_or_priority`.
+>>>>>>> 2eb7292c444c1bd7c7c4249ebff5d5474a682d9e
+
+### 2.175 Offer conditions *(added 2026-10-25 — `DEC-SCOPE-261`, ccrm-024)*
+
+| Route | `overseas_admin` | `counselor` (overseas) | `agent` | `overseas_student` | Others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET …/{id}/offers` (conditions inside) | ✅ any (with evidence list) | ✅ own applications, direct and agency (`403` otherwise) | ✅ own agency's, read-only (no evidence list) | ✅ own, read-only | `403` | `401` |
+| `POST …/condition-evidence`, `POST …/offers/{offer_id}/conditions`, `PATCH …/conditions/{condition_id}` | ✅ | ✅ own | `403` | `403` | `403` | `401` |
+
+- Pinned by `test_ccrm_024_conditions.py::test_scope_readers_see_conditions_but_cannot_write`.
+=======

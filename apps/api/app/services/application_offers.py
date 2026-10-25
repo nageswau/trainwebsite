@@ -16,6 +16,7 @@ from app.application_outcome import TERMINAL
 from app.application_sub_status import SUB_STATUSES
 from app.models import ApplicationOffer, ApplicationStatusHistory, OverseasApplication, StudentDocument, University, User
 from app.services import agent_notifications as agency_notices
+from app.services import offer_conditions
 from app.services.agent_applications import WITHDRAWN, before_offer, check_transition
 
 logger = logging.getLogger("app.application_offers")
@@ -57,9 +58,10 @@ def _mirror(app: OverseasApplication, offer: ApplicationOffer | None) -> None:
     app.offer_document_id = offer.offer_document_id if offer else None
 
 
-async def record(db: AsyncSession, user: User, app: OverseasApplication, values: dict) -> ApplicationOffer:
+async def record(db: AsyncSession, user: User, app: OverseasApplication, values: dict, *, carry_conditions: bool = False) -> ApplicationOffer:
     """Supersede the active offer (kept), add the new one and mirror it. The superseded row is flushed first, so the one-active index
-    never sees two active rows."""
+    never sees two active rows. ccrm-024: the new offer's conditions text seeds one condition (C1); `carry_conditions` -- the same offer
+    re-recorded with a new deadline -- moves the previous offer's conditions instead (C9)."""
     previous = await active_offer(db, app)
     if previous is not None:
         previous.status = "superseded"
@@ -67,6 +69,10 @@ async def record(db: AsyncSession, user: User, app: OverseasApplication, values:
     offer = ApplicationOffer(application_id=app.id, recorded_by_id=user.id, status="active", **{field: values.get(field) for field in FIELDS})
     db.add(offer)
     await db.flush()
+    if carry_conditions and previous is not None:
+        await offer_conditions.move(db, previous, offer)
+    else:
+        offer_conditions.seed(db, user, offer)
     _mirror(app, offer)
     return offer
 
@@ -198,8 +204,8 @@ def money(value) -> str | None:
 
 
 async def views(db: AsyncSession, application_id, *, offer_id=None) -> list[dict]:
-    """The application's offers (or the one `offer_id`), newest first, with the recorder's and closer's names and the letter's id and
-    name -- never `file_url` (the audited download route presigns it)."""
+    """The application's offers (or the one `offer_id`), newest first, with the recorder's and closer's names, the letter's id and
+    name -- never `file_url` (the audited download route presigns it) -- and ccrm-024's conditions with their summary."""
     clause = ApplicationOffer.application_id == application_id if offer_id is None else ApplicationOffer.id == offer_id
     rows = (
         await db.execute(
@@ -212,7 +218,11 @@ async def views(db: AsyncSession, application_id, *, offer_id=None) -> list[dict
             .order_by(ApplicationOffer.created_at.desc(), ApplicationOffer.id.desc())
         )
     ).all()
-    return [view(offer, recorder, closer, document, decider) for offer, recorder, closer, document, decider in rows]
+    conditions = await offer_conditions.views(db, [offer.id for offer, *_ in rows])
+    return [
+        view(offer, recorder, closer, document, decider) | {"condition_items": conditions[offer.id], "conditions_summary": offer_conditions.summary(conditions[offer.id])}
+        for offer, recorder, closer, document, decider in rows
+    ]
 
 
 def document_view(document: StudentDocument) -> dict:

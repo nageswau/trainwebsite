@@ -1326,6 +1326,72 @@ class ApplicationOfferClose(BaseModel):
         return cleaned
 
 
+# --- ccrm-024: an offer's conditions (DEC-SCOPE-261) ---
+
+OfferConditionOwner = Literal["student", "counselor", "agent"]  # models.OFFER_CONDITION_OWNERS
+
+
+def _condition_text(value: str | None) -> str:
+    cleaned = clean_free_text(value, 1000)
+    if not cleaned:
+        raise PydanticCustomError("condition_description_required", "Describe the condition")
+    return cleaned
+
+
+class OfferConditionCreate(BaseModel):
+    """A new condition on the current offer; it starts open. An `agent` owner is checked against the application by the route (C6)."""
+
+    model_config = {"extra": "forbid"}
+    description: str = Field(max_length=1000)
+    owner: OfferConditionOwner
+    due_date: date | None = None
+
+    @field_validator("description")
+    @classmethod
+    def _description(cls, value):
+        return _condition_text(value)
+
+    @field_validator("due_date")
+    @classmethod
+    def _due(cls, value):
+        return _application_date(value)
+
+
+class OfferConditionUpdate(BaseModel):
+    """A partial change: only the keys sent apply. The route checks the result -- met needs evidence (C2), waived/failed a note (C5) --
+    and the evidence document. `null` clears the due date, the evidence or the note; description, owner and status cannot be null."""
+
+    model_config = {"extra": "forbid"}
+    description: str | None = Field(default=None, max_length=1000)
+    owner: OfferConditionOwner | None = None
+    due_date: date | None = None
+    status: Literal["open", "met", "waived", "failed"] | None = None  # models.OFFER_CONDITION_STATUSES
+    evidence_document_id: UUID | None = None
+    note: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("description")
+    @classmethod
+    def _description(cls, value):
+        return None if value is None else _condition_text(value)
+
+    @field_validator("due_date")
+    @classmethod
+    def _due(cls, value):
+        return _application_date(value)
+
+    @field_validator("note")
+    @classmethod
+    def _note(cls, value):
+        return clean_free_text(value, 1000)
+
+    @model_validator(mode="after")
+    def _not_null(self):
+        for field in ("description", "owner", "status"):
+            if field in self.model_fields_set and getattr(self, field) is None:
+                raise PydanticCustomError("condition_field_required", f"{field.capitalize()} cannot be empty")
+        return self
+
+
 # --- ccrm-025: the student's decision on the current offer and the manual deposit record (DEC-SCOPE-255) ---
 
 

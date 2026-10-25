@@ -60,7 +60,7 @@ test("the counselor records, supersedes and closes offers (ccrm-023)", async ({ 
   await page.reload();
   const again = cardOf();
   await again.getByRole("button", { name: "Offers" }).click();
-  await expect(again.getByRole("listitem")).toHaveCount(2);
+  await expect(again.getByRole("region", { name: "Offers" }).locator(":scope > ul > li")).toHaveCount(2); // offers only, not ccrm-024's nested conditions
   await expect(again.getByText(/Deadline passed without acceptance/)).toBeVisible();
   const listed = (await (await page.request.get(`/api/v1/workflows/overseas/applications/${appId}/offers`)).json()) as { offers: { status: string }[] };
   expect(listed.offers.map((o) => o.status)).toEqual(["expired", "superseded"]);

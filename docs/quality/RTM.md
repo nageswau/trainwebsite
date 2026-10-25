@@ -1080,3 +1080,22 @@ half.
 | `ccrm-005-AC06` | Conversion copies study mode, country, CGPA/backlogs and English tests | `::test_conversion_copies_study_mode_country_backlogs_and_english_tests` |
 | `ccrm-005-AC07` | Migration back-fills the enquiry date in IST, round-trips and is the single head | `apps/api/tests/test_ccrm_005_migration.py` |
 | `ccrm-005-AC08` | Browser: telecaller create/edit/qualification with an expired IELTS; counselor edit; phone width; no console errors | `apps/web/tests/e2e/ccrm-005-lead-data-fields.spec.ts` |
+
+**Addendum, 2026-10-25 (`ccrm-024`)** — one row and its acceptance-criteria map. Offer conditions.
+
+| Feature | Trace | Open items | Evidence |
+|---|---|---|---|
+| `ccrm-024` | Requirement: §9 + §11 + owner answers C1–C4 (in-session 2026-10-25) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-024` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-261` → design `docs/superpowers/specs/2026-10-25-ccrm-024-offer-conditions-design.md`; `API_CONTRACT.md` §12FN, `RBAC_MATRIX.md` §2.175, `DATA_MODEL.md` (0183) | Defaults C5–C11 `NEEDS_CONFIRMATION` | Lite API set, vitest, e2e and browser QA |
+
+| AC | Statement | Tests |
+|---|---|---|
+| `ccrm-024-AC01` | The counselor adds a condition (description, owner, due date); history, audit, student + agency told | `apps/api/tests/test_ccrm_024_conditions.py::test_the_counselor_adds_a_condition_with_history_audit_and_both_sides_told`; `apps/web/tests/components/OfferConditions.test.tsx`; `apps/web/tests/e2e/ccrm-024-offer-conditions.spec.ts` |
+| `ccrm-024-AC02` | Met needs this application's condition evidence (C2) | `::test_met_needs_this_applications_condition_evidence` |
+| `ccrm-024-AC03` | Waived / failed need a note; failed blocks all-satisfied | `::test_waived_and_failed_need_a_note_and_failed_blocks_all_satisfied` |
+| `ccrm-024-AC04` | Agent owner only on an agency application (C6) | `::test_an_agent_owner_needs_an_agency_application_and_validation_is_422` |
+| `ccrm-024-AC05` | Superseded / closed offers read-only; another offer's condition 404 (C3) | `::test_a_superseded_offers_conditions_stay_and_are_read_only`, `::test_a_closed_offer_refuses_condition_writes_and_another_applications_offer_is_404` |
+| `ccrm-024-AC06` | Offer text seeds one open student condition; agency deadline PATCH moves them (C1, C9) | `::test_recording_an_offer_with_conditions_text_seeds_one_open_student_condition`, `::test_an_offer_without_conditions_text_seeds_nothing`, `::test_the_agency_put_seeds_and_the_deadline_patch_moves_the_conditions` |
+| `ccrm-024-AC07` | All satisfied → prompt for an unconditional offer (C4) | `::test_met_needs_this_applications_condition_evidence` (summary); `OfferConditions.test.tsx` "prompts for an unconditional offer" |
+| `ccrm-024-AC08` | Scope: readers see, cannot write; no file keys | `::test_scope_readers_see_conditions_but_cannot_write` |
+| `ccrm-024-AC09` | On hold allowed; terminal outcome refused (C8) | `::test_on_hold_allows_condition_writes_and_a_terminal_outcome_refuses_them` |
+| `ccrm-024-AC10` | Migration: text → one open student row; round trip | `apps/api/tests/test_ccrm_024_migration.py` |
