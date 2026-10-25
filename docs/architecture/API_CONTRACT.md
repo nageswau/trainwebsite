@@ -3962,3 +3962,34 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - Side effects outside the routes: `POST /telecaller/leads/{id}/handover` and `PATCH /admin/leads/{id}` (owner changed to an overseas
   counselor) add the counselor's first-contact task and notice when the rule is on. Response shapes unchanged.
 - Errors: 401 anonymous; 403 any role but `overseas_admin` (overseas division) and `super_admin`.
+
+## 12FX. Counselor message templates and the student message log (ccrm-037) — addendum, 2026-10-25
+
+`DEC-SCOPE-271`. Router `api/counselor_messages.py`, service `services/counselor_messages.py`, worker `notifications/student_email.py`
+(task `deliver_student_email_task`, beat `ccrm037-sweep-stale-student-emails` every 5 minutes). Migration `0190_student_messages`. Design
+`docs/superpowers/specs/2026-10-25-ccrm-037-counselor-student-messages-design.md`.
+
+- `GET /api/v1/counselor/templates?channel&active&q&limit&offset` → `{items: [{id, channel, name, subject, body, active}], total, limit,
+  offset}`; a counselor always gets active rows only.
+- `POST /api/v1/counselor/templates` body `{channel: whatsapp|email, name, subject (email only, required there), body}` → 201;
+  `PATCH /api/v1/counselor/templates/{id}` body any of `{name, subject, body, active}` (channel fixed, 422). 409 duplicate name per channel;
+  422 unknown placeholder (MT2), subject rules, body over 1000 / 5000. Audited `counselor_template.create|update` with field names.
+- `GET /api/v1/counselor/templates/{id}/preview` → `{subject, body, missing}` with sample values; an inactive template is 404 to a counselor.
+- `GET /api/v1/counselor/students/{id}/messages?limit=50&offset=0` (limit 1–100) → `{items: [Message], total, limit, offset, recipient:
+  {name, email, whatsapp_to}, applications: [{id, label}]}` newest first; `applications` = those a message may be about (the counselor's own
+  for this student; every one for the Overseas Admin).
+- `GET /api/v1/counselor/students/{id}/messages/render?template_id&application_id?` → `{template: {id, name, channel}, subject, body,
+  missing}`. 422 an application that is not the student's and the counselor's own; 404 an inactive or unknown template.
+- `POST /api/v1/counselor/students/{id}/messages` body `{channel: "whatsapp", template_id?, body ≤ 1000, application_id?}` or
+  `{channel: "email", template_id?, subject ≤ 200, body ≤ 5000, application_id?}` (extra fields 422) → 201 Message. WhatsApp is the
+  counselor's confirmation after wa.me; email is stored `queued` and published after the commit. 409 deactivated student / no usable number /
+  WhatsApp cap; 422 application or template; 429 email cap; 503 SMTP not configured. Not idempotent. Audited `student_message.create`.
+- `POST /api/v1/counselor/students/{id}/replies` body `{channel: "whatsapp", body, received_at?, application_id?}` or `{channel: "email",
+  subject?, body, received_at?, application_id?}` → 201 Message (`direction: "inbound"`). 422 future / older than 7 days / application;
+  409 cap. Audited `student_message.reply`.
+- `Message = {id, student_id, application: {id, label} | null, direction: outbound|inbound, channel, template: {id, name} | null, subject,
+  body, delivery_status: queued|sending|retrying|sent|failed | null, sent_at, sender: {id, full_name}}` (for a reply, `sent_at` is when it
+  was received and `sender` who recorded it).
+- Errors: 401 anonymous; templates 403 any role but the overseas counselor (read), `overseas_admin` (overseas) and `super_admin`; messages
+  403 any role but the overseas counselor and the Overseas Admin (who reads only: sends and replies 403); 404 a student outside the
+  counselor's csc-001 scope, unknown, or not an overseas student.

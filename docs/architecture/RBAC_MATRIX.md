@@ -2875,3 +2875,17 @@ inside the existing role scope (a counselor searching another counselor's code g
 - Page `/overseas/admin/reminder-rules` (Overseas Admin sidebar "Reminder rules"; the page refuses other roles before calling the API).
 - Rule tasks belong to the counselor (created by them, ccrm-029 T3 applies); the job never notifies agents. Pinned by
   `test_ccrm_030_reminders.py::test_only_the_overseas_admin`.
+
+### 2.185 Counselor message templates and the student message log *(added 2026-10-25 — `DEC-SCOPE-271`, ccrm-037)*
+
+| Route | `counselor` (overseas) | `overseas_admin` (overseas) | `super_admin` | `counselor` (IT) | `overseas_student`, `agent`, others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET /counselor/templates`, `GET …/{id}/preview` | ✅ active only | ✅ | ✅ | `403` | `403` | `401` |
+| `POST /counselor/templates`, `PATCH …/{id}` | `403` | ✅ | ✅ | `403` | `403` | `401` |
+| `GET /counselor/students/{id}/messages` | ✅ csc-001 scope (else `404`) | ✅ any overseas student | `403` | `403` | `403` | `401` |
+| `GET …/messages/render`, `POST …/messages`, `POST …/replies` | ✅ csc-001 scope; own applications only (`422`) | `403` | `403` | `403` | `403` | `401` |
+
+- Page `/overseas/admin/message-templates` (Overseas Admin sidebar "Message templates"; Super Admin passes too). The student 360's
+  Activities tab shows the Communication card — the counselor writes, the Overseas Admin reads.
+- The log is never returned by a student- or agent-facing route. Pinned by `test_ccrm_037_messages.py::test_other_roles_never_see_the_log`,
+  `::test_other_roles_cannot_read_or_write_templates`, `::test_out_of_scope_unknown_and_non_students_are_404`.

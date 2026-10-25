@@ -23,7 +23,9 @@ test("a template is sent to a student, a reply is recorded and the admin reads t
   await page.getByLabel("Template name (required)").fill(template);
   await page.getByLabel("Message (required)").fill("Hi {name}, this is {counselor}. Ask me anything.");
   await page.getByRole("button", { name: "Create template" }).click();
-  await expect(page.getByRole("cell", { name: template })).toBeVisible();
+  await expect(page.getByText(`Created ${template}.`)).toBeVisible(); // the shared stack DB holds backend-test templates, so not the list
+  const found = await page.request.get(`/api/v1/counselor/templates?q=${encodeURIComponent(template)}`);
+  expect((await found.json()).items.map((t: { name: string }) => t.name)).toEqual([template]);
   await page.request.post("/api/v1/auth/logout");
 
   await signInAsFreshCounselor(page, "ccrm037");
