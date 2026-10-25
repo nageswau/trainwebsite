@@ -219,7 +219,7 @@ export default function ChecklistTemplateEditor({ template, onSaved, onCancel }:
                 <label style={{ display: "block", alignSelf: "end" }}>
                   <input type="checkbox" checked={row.required} onChange={(e) => update(row.key, { required: e.target.checked })} /> Required
                 </label>
-                {/* ccrm-022 (DEC-SCOPE-262 SD2/SD3): identity and financial documents are hidden from university representatives. */}
+                {/* ccrm-022 (DEC-SCOPE-263 SD2/SD3): identity and financial documents are hidden from university representatives. */}
                 <div className="field">
                   <label htmlFor={id(`item-${row.key}-sensitivity`)}>Sensitivity</label>
                   <select

@@ -19,7 +19,7 @@ type DocumentRow = {
   reviewed_at?: string | null;
   expiry_date?: string | null;
   replaces_earlier?: boolean;
-  sensitivity?: string; // ccrm-022 (DEC-SCOPE-262): identity / financial show a "Sensitive" marker (not a `.badge`: that is the status)
+  sensitivity?: string; // ccrm-022 (DEC-SCOPE-263): identity / financial show a "Sensitive" marker (not a `.badge`: that is the status)
 };
 
 // AGN-003 browser QA-04/QA-02: how a failed request reads. A 5xx carries nothing useful; a dropped connection on a button action

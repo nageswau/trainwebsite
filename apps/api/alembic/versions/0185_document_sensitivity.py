@@ -1,9 +1,9 @@
 """ccrm-022 -- a sensitivity class on checklist template items and application checklist items.
 
-Revision ID: 0184_document_sensitivity
-Revises: 0183_offer_conditions
+Revision ID: 0185_document_sensitivity
+Revises: 0184_enrollment_confirmation
 
-docs/superpowers/specs/2026-10-25-ccrm-022-sensitive-documents-design.md (DEC-SCOPE-262). Each table gets `sensitivity` (standard /
+docs/superpowers/specs/2026-10-25-ccrm-022-sensitive-documents-design.md (DEC-SCOPE-263). Each table gets `sensitivity` (standard /
 identity / financial, default standard) and its CHECK; existing items are classed from their type and label words (SD1, the
 app.document_checklists word lists, repeated here and checked by test_ccrm_022_migration). 0001 builds a fresh database from the current
 models, so a column is added only when missing (0166's idiom). The downgrade drops the columns.
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0184_document_sensitivity"
-down_revision = "0183_offer_conditions"
+revision = "0185_document_sensitivity"
+down_revision = "0184_enrollment_confirmation"
 branch_labels = None
 depends_on = None
 

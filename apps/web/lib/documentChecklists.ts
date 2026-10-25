@@ -44,7 +44,7 @@ export const needsExpiry = (documentType: string) => named(documentType, ["passp
 /** A status that asks the uploader for something (shown in the error colour). */
 export const NEEDS_ACTION = new Set(["incomplete", "reupload_required", "expired", "rejected", "changes_required"]);
 
-// ccrm-022 (DEC-SCOPE-262 SD1): sensitivity classes and the words that class a type (app/document_checklists.py type_sensitivity).
+// ccrm-022 (DEC-SCOPE-263 SD1): sensitivity classes and the words that class a type (app/document_checklists.py type_sensitivity).
 export type Sensitivity = "standard" | "identity" | "financial";
 export const SENSITIVITY_LABELS: Record<Sensitivity, string> = { standard: "Standard", identity: "Identity", financial: "Financial" };
 const IDENTITY_TYPES = ["passport", "aadhaar", "aadhar", "national id", "identity", "id card", "birth certificate"];

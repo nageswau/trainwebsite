@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+import { confirmEnrollment } from "./helpers/enrollment";
+
 // AGT-004 -- Commission payout request and approval. Builds on the same throwaway-
 // student-and-application setup as agt-003-commission-accrual.spec.ts (never reuses the
 // shared seeded demo student -- see that spec's own comment for why), advances an
@@ -28,8 +30,7 @@ async function createClaimedCommissionForDemoAgent(page: import("@playwright/tes
   const applicationId = (await created.json()).id as string;
 
   await page.request.post("/api/v1/auth/login", { data: { email: "overseasadmin@edusphere.local", password: "Demo@123", division: "overseas" } });
-  const advanced = await page.request.patch(`/api/v1/workflows/overseas/applications/${applicationId}`, { data: { status: "enrolled" } });
-  expect(advanced.ok()).toBeTruthy();
+  await confirmEnrollment(page.request, applicationId);
 
   const rows = (await (await page.request.get("/api/v1/portal/overseas/admin/commissions")).json()).rows as { id: string; student: string }[];
   const commissionRow = rows.find((r) => r.student === studentName);

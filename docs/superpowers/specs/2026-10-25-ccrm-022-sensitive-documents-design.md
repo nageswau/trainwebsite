@@ -1,7 +1,7 @@
 # ccrm-022 — Sensitive documents and access logging (design)
 
 Backlog: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` ccrm-022 (source §2, §8 secure access, §16, AC 10 — UNVERIFIED spec, owner request).
-Decision: `DEC-SCOPE-262`. Migration `0184_document_sensitivity` (after ccrm-024's 0183). API §12FO, RBAC §2.176.
+Decision: `DEC-SCOPE-263`. Migration `0185_document_sensitivity` (after ccrm-027's 0184). API §12FP, RBAC §2.177.
 Dependency ccrm-021 is merged (PR #313). Relates: nehn-003 (not built) — see SD8.
 
 ## What exists (verified on `origin/main` @ `475269c6`)

@@ -6,7 +6,7 @@ import ChecklistTemplateEditor from "@/components/ChecklistTemplateEditor";
 import CounselorDocumentReviewPanel from "@/components/CounselorDocumentReviewPanel";
 import { sensitivityBadge, STANDARD_STATUSES, typeSensitivity, type ChecklistTemplate } from "@/lib/documentChecklists";
 
-// ccrm-022 (DEC-SCOPE-262): sensitivity classes -- the type rule mirrored from the server, the template editor's select, and the
+// ccrm-022 (DEC-SCOPE-263): sensitivity classes -- the type rule mirrored from the server, the template editor's select, and the
 // "Sensitive" badges on the counselor's document queue and the application checklist.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 

@@ -1,4 +1,4 @@
-"""ccrm-022 (DEC-SCOPE-262, AC 10) -- document sensitivity classes, who may see identity/financial documents, audited downloads (a
+"""ccrm-022 (DEC-SCOPE-263, AC 10) -- document sensitivity classes, who may see identity/financial documents, audited downloads (a
 refusal too), the /files/download gap and file keys kept out of lists. Spec:
 docs/superpowers/specs/2026-10-25-ccrm-022-sensitive-documents-design.md (SD1-SD8)."""
 

@@ -1099,3 +1099,17 @@ half.
 | `ccrm-024-AC08` | Scope: readers see, cannot write; no file keys | `::test_scope_readers_see_conditions_but_cannot_write` |
 | `ccrm-024-AC09` | On hold allowed; terminal outcome refused (C8) | `::test_on_hold_allows_condition_writes_and_a_terminal_outcome_refuses_them` |
 | `ccrm-024-AC10` | Migration: text → one open student row; round trip | `apps/api/tests/test_ccrm_024_migration.py` |
+
+| `ccrm-027` | Requirement: §10 enrolment tracking, §13 "do not count an offer or a visa approval as enrolment", Appendix B final row → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-027` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-262` → design `docs/superpowers/specs/2026-10-25-ccrm-027-enrolment-confirmation-design.md`; `API_CONTRACT.md` §12FO; `RBAC_MATRIX.md` §2.176 | E1–E9 defaults `NEEDS_CONFIRMATION` |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-027-AC01` | Confirming with document + checklist enrols, records the fields, one history row, student told (Appendix B final row) | `apps/api/tests/test_ccrm_027_enrollment.py::test_the_counselor_confirms_a_direct_enrolment_with_the_document_and_checklist`, `::test_the_upload_route_stores_an_enrolment_confirmation_document` |
+| `ccrm-027-AC02` | No document / checklist / wrong document / before an offer → 422; stale, on hold, closed → 409 | `::test_confirming_needs_the_document_the_checklist_and_an_offer`, `::test_on_hold_and_closed_applications_refuse_confirmation` |
+| `ccrm-027-AC03` | Every other way into `enrolled` → 422 | `::test_every_other_way_into_enrolled_is_a_422` |
+| `ccrm-027-AC04` | Agency application: counselor confirms, one commission, agency told; another counselor 403 | `::test_the_counselor_confirms_an_agency_enrolment_once_with_one_commission` |
+| `ccrm-027-AC05` | Corrections once enrolled: audit only | `::test_once_enrolled_the_route_corrects_the_details_without_a_history_row` |
+| `ccrm-027-AC06` | Non-arrival / Cancelled: reason, offer needed, terminal; not once enrolled | `::test_non_arrival_and_cancelled_need_a_reason_and_an_offer_and_close_the_application`, `::test_an_enrolled_application_takes_no_cancelled_outcome`; `apps/web/tests/components/ApplicationOutcome.test.tsx` |
+| `ccrm-027-AC07` | The funnel counts confirmed enrolments only | `::test_the_funnel_counts_only_confirmed_enrolments`; `apps/api/tests/test_mgmt_016_funnel.py` |
+| `ccrm-027-AC08` | Migration round-trips, repeats the outcome values, single head | `apps/api/tests/test_ccrm_027_migration.py` |
+| `ccrm-027-AC09` | Counselor UI: Enrolment panel (load/error/confirm step/correction); no Enrolled in Advance / sub-status | `apps/web/tests/components/ApplicationEnrollmentPanel.test.tsx`, `CounselorAgencyLimits.test.tsx`; `apps/web/tests/e2e/ccrm-027-enrollment.spec.ts` |

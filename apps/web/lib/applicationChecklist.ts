@@ -19,7 +19,7 @@ export type ApplicationChecklistItem = {
   status: string;
   status_label: string;
   removable: boolean;
-  sensitivity: Sensitivity; // ccrm-022 (DEC-SCOPE-262 SD2)
+  sensitivity: Sensitivity; // ccrm-022 (DEC-SCOPE-263 SD2)
   documents: ChecklistDocument[];
 };
 export type MissingItem = { id: string; label: string; status: string; status_label: string };

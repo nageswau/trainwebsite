@@ -1,4 +1,4 @@
-"""ccrm-022 -- migration 0184_document_sensitivity (DEC-SCOPE-262): the chain, the word lists it repeats, the SQL classing agreeing with
+"""ccrm-022 -- migration 0185_document_sensitivity (DEC-SCOPE-263): the chain, the word lists it repeats, the SQL classing agreeing with
 the app's rule, the backfill, the CHECKs and the round trip, in a throwaway database (the ccrm-024 pattern). Plain tests: alembic/env.py
 calls asyncio.run()."""
 
@@ -15,15 +15,15 @@ from app.core.config import settings
 from app.document_checklists import FINANCIAL_TYPES, IDENTITY_TYPES, SENSITIVITY_CLASSES, type_sensitivity
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_ccrm_022_migration_0184", VERSIONS / "0184_document_sensitivity.py")
+_spec = importlib.util.spec_from_file_location("_ccrm_022_migration_0185", VERSIONS / "0185_document_sensitivity.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0184_document_sensitivity", "0183_offer_conditions"
+HEAD, BASE = "0185_document_sensitivity", "0184_enrollment_confirmation"
 SAMPLES = ("Passport", "QA passport copy", "National-ID", "Birth certificate", "Financial documents", "Other Bank statement", "Income tax return", "Transcripts", "Bankruptcy-free", "CV")
 
 
-def test_migration_chains_after_0183_and_is_the_single_head():
+def test_migration_chains_after_0184_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

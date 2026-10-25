@@ -1,6 +1,6 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 
-// ccrm-022 (DEC-SCOPE-262, AC 10) -- identity / financial documents are marked for the counselor, hidden from the university rep and
+// ccrm-022 (DEC-SCOPE-263, AC 10) -- identity / financial documents are marked for the counselor, hidden from the university rep and
 // never opened by them; /files/download no longer hands out a document's file. Requires the stack with `python -m app.seed` applied;
 // creates its own application and documents at the seeded rep's university (University of Manchester), never touching seeded ones.
 

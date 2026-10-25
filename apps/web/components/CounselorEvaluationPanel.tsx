@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import ApplicationChecklistPanel from "./ApplicationChecklistPanel";
 import ApplicationDetailsPanel from "./ApplicationDetailsPanel";
 import ApplicationDepositPanel from "./ApplicationDepositPanel";
+import ApplicationEnrollmentPanel from "./ApplicationEnrollmentPanel";
 import ApplicationOffersPanel from "./ApplicationOffersPanel";
 import ApplicationOutcomeForm from "./ApplicationOutcomeForm";
 import ApplicationStatusHistory from "./ApplicationStatusHistory";
 import ApplicationSubStatusForm from "./ApplicationSubStatusForm";
 import ReopenOutcomeButton from "./ReopenOutcomeButton";
+import { showsEnrollment } from "@/lib/applicationEnrollment";
 import { isTerminal, outcomeChoices } from "@/lib/applicationOutcome";
 
 type ApplicationRow = { id: string; student: string; university: string; reference: string | null; status: string; sub_status?: string | null; sub_status_label?: string | null; next_action: string | null; is_agency?: boolean; outcome?: string | null; outcome_label?: string | null; outcome_summary?: string | null };
@@ -43,6 +45,7 @@ export default function CounselorEvaluationPanel() {
   const [checklistId, setChecklistId] = useState<string | null>(null); // ccrm-019: the card whose document checklist is open
   const [historyId, setHistoryId] = useState<string | null>(null); // ccrm-016: the card whose status history is open
   const [detailsId, setDetailsId] = useState<string | null>(null); // ccrm-013: the card whose application details are open
+  const [enrollmentId, setEnrollmentId] = useState<string | null>(null); // ccrm-027: the card whose enrolment panel is open
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ id: string; text: string; failed: boolean } | null>(null);
 
@@ -101,11 +104,11 @@ export default function CounselorEvaluationPanel() {
       <div className="grid two" style={{ marginTop: 16 }}>
         {rows.map((row) => {
           const currentIndex = STAGES.indexOf(row.status);
-          // AGN-023 (DEC-SCOPE-090 H12): an agency application is enrolled by the agency's Master only (DEC-SCOPE-054); not offered here.
+          // ccrm-027 (DEC-SCOPE-262, E3): `enrolled` is reached only through the Enrolment confirmation below, never a stage change.
           // ccrm-015 (O2): a closed application takes no stage write; on hold pauses them until resumed.
           const closed = row.status === "withdrawn" || isTerminal(row.outcome);
           const paused = closed || row.outcome === "on_hold";
-          const nextStages = paused ? [] : STAGES.slice(currentIndex + 1).filter((stage) => !(row.is_agency && stage === "enrolled"));
+          const nextStages = paused ? [] : STAGES.slice(currentIndex + 1).filter((stage) => stage !== "enrolled");
           const saved = (text: string) => {
             setMessage({ id: row.id, text, failed: false });
             setOutcomeId(null);
@@ -123,7 +126,6 @@ export default function CounselorEvaluationPanel() {
               <h4 style={{ marginTop: 10 }}>{row.student}</h4>
               <p className="muted" style={{ fontSize: 13 }}>{row.university}</p>
               {row.next_action && <p className="muted" style={{ fontSize: 13 }}>{row.next_action}</p>}
-              {row.is_agency && <p className="muted" style={{ fontSize: 13 }}>Enrollment is confirmed by the agency.</p>}
               {row.outcome_summary && <p style={{ fontSize: 13 }}>{row.outcome_summary}</p>}
               {paused ? (
                 <p className="muted" style={{ fontSize: 13 }}>{closed ? "This application is closed -- only the Overseas Admin can reopen it." : "On hold -- resume it to change its stage."}</p>
@@ -157,8 +159,8 @@ export default function CounselorEvaluationPanel() {
                     url={`/api/v1/workflows/overseas/applications/${row.id}/sub-status`}
                     stage={row.status}
                     current={row.sub_status}
-                    // AGN-023 H12 / ccrm-014 SS4: the agency enrols its own applications
-                    maxStage={row.is_agency ? "status_tracking" : "enrolled"}
+                    // ccrm-027 (E3): enrolment is confirmed through the Enrolment panel, so the sub-statuses stop before it
+                    maxStage="status_tracking"
                     onSaved={(_data, text) => {
                       setMessage({ id: row.id, text: `${text} The student has been notified.`, failed: false });
                       setSubStatusId(null);
@@ -225,6 +227,19 @@ export default function CounselorEvaluationPanel() {
                   <ApplicationDepositPanel key={`${row.status}|${row.sub_status}|${row.outcome}`} applicationId={row.id} onChanged={saved} />
                 </>
               )}
+              {/* ccrm-027: confirm enrolment from the offer stage on (direct and agency: CC4); readable once enrolled */}
+              {!closed && showsEnrollment(row.status) && (
+                <button
+                  type="button"
+                  className="btn ghost small"
+                  style={{ display: "block", marginTop: 8 }}
+                  aria-expanded={enrollmentId === row.id}
+                  onClick={() => (setEnrollmentId(enrollmentId === row.id ? null : row.id), setMessage(null))}
+                >
+                  {enrollmentId === row.id ? "Hide enrolment" : "Enrolment"}
+                </button>
+              )}
+              {enrollmentId === row.id && <ApplicationEnrollmentPanel key={`${row.status}|${row.outcome}`} applicationId={row.id} onChanged={saved} />}
               {/* ccrm-013: details and dates stay editable in any state, like the generic PATCH's non-stage fields (F7) */}
               <button
                 type="button"

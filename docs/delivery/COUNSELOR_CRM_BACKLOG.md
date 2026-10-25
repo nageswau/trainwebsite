@@ -559,8 +559,8 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Acceptance:** AC 10 — a university_rep cannot open a financial document; each download appears in the audit log.
 - **Complexity:** medium. **Risk:** high.
 - **Open questions:** should university_rep ever see identity documents (passport for submission)?
-- **Status (2026-10-25):** built on `worktree-ccrm-022` — `DEC-SCOPE-262`, migration `0184_document_sensitivity` (after ccrm-024's
-  `0183_offer_conditions`), API §12FO, RBAC §2.176; recommended defaults SD1–SD8 `NEEDS_CONFIRMATION` (university_rep: never). The
+- **Status (2026-10-25):** built on `worktree-ccrm-022` — `DEC-SCOPE-263`, migration `0185_document_sensitivity` (after ccrm-027's
+  `0184_enrollment_confirmation`), API §12FP, RBAC §2.177; recommended defaults SD1–SD8 `NEEDS_CONFIRMATION` (university_rep: never). The
   `/local-files` mount stays with nehn-003. Design `docs/superpowers/specs/2026-10-25-ccrm-022-sensitive-documents-design.md`.
 
 ### `ccrm-023` — Offer records with history (counselor on all applications)
@@ -649,6 +649,10 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Acceptance:** Appendix B final row; the management funnel counts enrolments only with confirmation.
 - **Regression:** tel-018 conversion sweep (Converted relies on `enrolled`), mgmt revenue.
 - **Complexity:** medium. **Risk:** medium.
+- **Status (2026-10-25):** built on `worktree-ccrm-027` — `DEC-SCOPE-262` (E1–E9 defaults `NEEDS_CONFIRMATION`: counselor/Admin
+  `PUT …/enrollment` on direct and agency applications; other routes into `enrolled` → 422; "Deferred (post-visa)" = ccrm-015 `deferred`;
+  new terminal outcomes `non_arrival`, `cancelled`), migration `0184_enrollment_confirmation`, API §12FO, RBAC §2.176. Design
+  `docs/superpowers/specs/2026-10-25-ccrm-027-enrolment-confirmation-design.md`.
 
 ### `ccrm-028` — Arrival and orientation tracking (CC6)
 

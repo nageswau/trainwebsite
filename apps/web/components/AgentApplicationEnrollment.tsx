@@ -125,7 +125,7 @@ export default function AgentApplicationEnrollment({ detail, isMaster, onSaved, 
           <dd>{detail.enrollment_date ?? "Not recorded"}</dd>
           <dt>University student ID</dt>
           <dd>{detail.university_student_id ?? "Not recorded"}</dd>
-          <dt>Confirmed by the agency</dt>
+          <dt>Confirmed</dt>{/* ccrm-027 (CC4): the agency or the EduSphere counselor */}
           <dd>{detail.enrollment_confirmed_at ? formatDateTimeIn(detail.enrollment_confirmed_at, viewerTimeZone(), true) : "—"}</dd>
         </dl>
       )}
