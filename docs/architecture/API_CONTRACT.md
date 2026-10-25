@@ -3744,3 +3744,27 @@ Writes hold the application row lock, refresh `documents_completed_on`, audit `o
 `journey` = `{stage, label, steps:[{key, label, state: "done" | "current" | "upcoming"}], application: {id, application_code, university} | null,
 note: "On hold" | "Deferred" | "All applications closed" | null}`. `stage` ∈ `lead`, `counselling`, `applying`, `offer`, `visa`, `enrolled`;
 derived on every read from the student's applications (stage + ccrm-015 outcome) and counselor engagement — never stored, no write, no audit.
+
+## 12FL. Enrolment confirmation and post-offer outcomes (ccrm-027) — addendum, 2026-10-25
+
+`DEC-SCOPE-259`. Under `/api/v1/workflows/overseas/applications/{id}` (router `api/application_offers.py`):
+
+- `GET …/enrollment` — counselor (own, direct and agency), Overseas Admin; the student and the agency read their own. Returns
+  `{enrollment: {status, confirmed, confirmed_at, can_confirm, enrollment_date, university_student_id, course_start_date,
+  pre_enrollment_checklist_complete, document: {id, name} | null}, documents: [{id, name, created_at}]}` — `documents` (the picker) for
+  writers only, `[]` otherwise. No file keys.
+- `POST …/enrollment-documents` (multipart `file`) — `201 {document}`; an "Enrolment confirmation" document under the offer-letter rules
+  (PDF or image sniffed; allowed on hold; closed → 409).
+- `PUT …/enrollment` — body `{expected_status, enrollment_date, enrollment_document_id, pre_enrollment_checklist_complete: true,
+  university_student_id?, course_start_date?, notes?}` (extra fields 422). Confirm (stage before `enrolled`): stage → `enrolled`, sub-status
+  `enrolled`, `enrollment_confirmed_at`, one history row "Enrolment confirmed[ -- note]", AGT-003 commission (agency, at most one), student
+  notice "Enrolment confirmed", agency notice (CC5), audit `overseas.application.enrollment`. Once enrolled: a correction (audit
+  `{fields, confirmed: false}`, agency told, no history row); unchanged → `changed: false`, nothing written. Returns
+  `{id, status, sub_status, enrollment, changed}`. Errors: 422 checklist false / missing document / document not this application's
+  "Enrolment confirmation" / before an offer ("An offer is needed before enrollment"); 409 stale `expected_status`, on hold, closed,
+  archived agency record; 403 other roles or out of scope.
+- `PATCH …` (`status`), `POST …/advance` and `POST …/sub-status` to `enrolled` → **422** "Enrolment is confirmed with the enrolment confirmation
+  document, not by a stage change" (E3).
+- `POST …/outcome` accepts `non_arrival` and `cancelled` (reason required; 422 "An offer is needed before this outcome" before an offer;
+  409 once enrolled); both terminal (reopen: Overseas Admin, §12EW).
+- Management funnel (`GET /management/funnel`): the Enrollment stage counts first moves to `enrolled` whose enrolment is confirmed.

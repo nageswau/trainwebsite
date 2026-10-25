@@ -232,11 +232,12 @@ async def build(db, year: int) -> dict:
     pupil = await add(db, SchoolStudent(school_id=school.id, student_code=tag().upper(), full_name="Pupil", created_by_user_id=bdm.id))
     overseas = await make_user(db, "overseas_student", "overseas")
     a1 = await add(db, OverseasApplication(university_id=uni.id, student_id=overseas.id, course_id=course.id, counselor_id=counselor.id, intake="Sep 2027",
-                                           status="enrolled", submitted_on=d(6, 5), created_at=at(6, 2)))  # fmt: skip
+                                           status="enrolled", enrollment_confirmed_at=at(6, 20), submitted_on=d(6, 5), created_at=at(6, 2)))  # fmt: skip
     a2 = await add(db, OverseasApplication(university_id=other_uni.id, agent_student_id=record.id, agent_id=org["master"].id, intake="",
                                            status="accepted", submitted_on=d(5, 30), created_at=at(6, 3)))  # fmt: skip
+    # ccrm-027 (DEC-SCOPE-259, E4): the funnel counts confirmed enrolments only, so both enrolled rows carry their confirmation.
     a3 = await add(db, OverseasApplication(university_id=uni.id, school_student_id=pupil.id, intake="Jan 2028", status="enrolled", submitted_on=d(6, 8),
-                                           created_at=at(4, 1)))  # fmt: skip
+                                           enrollment_confirmed_at=at(6, 29), created_at=at(4, 1)))  # fmt: skip
     for app, to_status, when in (
         (a1, "offer_received", at(6, 10)),
         (a1, "enrolled", at(6, 20)),

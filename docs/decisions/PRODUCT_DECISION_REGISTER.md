@@ -9351,3 +9351,23 @@ six-step tracker (ccrm-009 B1 "journey hidden" lifted); J6 `services/agent_journ
 pure module `app/student_journey.py` for ccrm-032 / nehn-033 to reuse. Derived on every read, never stored.
 **Numbering:** no migration; API §12FK (additive field on §12FF); no RBAC change (same route, same scope).
 - **Feature ID authorized:** `ccrm-017`. **Status:** built on `feature/ccrm-017`.
+
+### DEC-SCOPE-259 — Enrolment confirmation and post-offer outcomes (`ccrm-027`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-027` (source PDF §10 enrolment tracking, §13 "do not count an offer or a visa
+approval as enrolment", Appendix B final row; `UNVERIFIED` — the PDF is not in the repository, only the backlog's quotes are used); owner
+answer CC4 (the counselor records enrolment on all applications); design `docs/superpowers/specs/2026-10-25-ccrm-027-enrolment-confirmation-design.md`.
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** E1 the counselor (own
+applications, direct **and agency**: CC4) and the Overseas Admin confirm through `PUT …/applications/{id}/enrollment`; the agency Master's
+AGN-013 route stays as it is (no document). E2 confirming needs an offer stage (AGN-013 E6), no hold / closed / archived agency,
+`expected_status` (stale → 409), `enrollment_date`, an "Enrolment confirmation" document of this application and the pre-enrolment
+checklist attested; student number, course start date and a note optional. E3 `PATCH` status, `/advance` and `/sub-status` to `enrolled`
+→ 422 for every role (supersedes the stage-change path of OVS-003 / ccrm-014 SS4 for `enrolled`; the existing 403s on agency applications
+keep their order). E4 "confirmed" = `enrollment_confirmed_at IS NOT NULL` (this route or AGN-013); the management funnel's Enrollment stage
+counts only confirmed enrolments; old unconfirmed enrolments are not backfilled. E5 "Deferred (post-visa)" is ccrm-015's `deferred`
+(already allowed at visa stages; the application continues) — no new value. E6 new outcomes `non_arrival`, `cancelled`: terminal (Overseas
+Admin reopens), reason required, only with an offer, refused once enrolled. E7 once enrolled the route corrects the details (audit only,
+no history row, no commission). E8 the pre-enrolment checklist is a stored attestation (no ccrm-018 template kind). E9 a counselor/Admin
+confirmation of an agency application runs the AGT-003 trigger (at most one commission) and tells the agency (CC5).
+**Numbering:** migration `0181_enrollment_confirmation`; API §12FL; RBAC §2.173.
+- **Feature ID authorized:** `ccrm-027`. **Status:** built on `worktree-ccrm-027`.

@@ -969,7 +969,7 @@ class ApplicationOutcomeSet(BaseModel):
     database or today's date (closed, enrolled, offer stage, the letter, the hold owner, a past review date)."""
 
     model_config = {"extra": "forbid"}
-    outcome: Literal["rejected", "withdrawn", "deferred", "on_hold", "offer_declined"]
+    outcome: Literal["rejected", "withdrawn", "deferred", "on_hold", "offer_declined", "non_arrival", "cancelled"]
     outcome_date: date | None = None
     reason: str | None = None
     requested_by: OutcomeRequester | None = None
@@ -995,6 +995,8 @@ class ApplicationOutcomeSet(BaseModel):
             "deferred": ("new_intake",),
             "on_hold": ("reason", "review_date"),
             "offer_declined": ("reason",),
+            "non_arrival": ("reason",),
+            "cancelled": ("reason",),
         }[self.outcome]
         missing = [name for name in needed if getattr(self, name) is None]
         if missing:
@@ -1407,6 +1409,42 @@ class DepositRecordSave(BaseModel):
         if not paid and self.paid_on is not None:
             raise PydanticCustomError("deposit_paid_on", "A payment date is recorded only for a paid deposit")
         return self
+
+
+class ApplicationEnrollmentSave(BaseModel):
+    """ccrm-027 (DEC-SCOPE-259, E2): confirm an application's enrolment, or correct it once enrolled. The confirmation document and the
+    pre-enrolment checklist are required; `expected_status` turns a stale screen into a 409 (confirming triggers the commission)."""
+
+    model_config = {"extra": "forbid"}
+    expected_status: str = Field(max_length=50)
+    enrollment_date: date
+    enrollment_document_id: UUID
+    pre_enrollment_checklist_complete: bool
+    university_student_id: str | None = None
+    course_start_date: date | None = None
+    notes: str | None = None
+
+    @field_validator("enrollment_date", "course_start_date")
+    @classmethod
+    def _dates(cls, value):
+        return _application_date(value)
+
+    @field_validator("university_student_id")
+    @classmethod
+    def _student_number(cls, value):
+        return clean_free_text(value, 60)
+
+    @field_validator("notes")
+    @classmethod
+    def _notes(cls, value):
+        return clean_free_text(value, 2000)
+
+    @field_validator("pre_enrollment_checklist_complete")
+    @classmethod
+    def _checklist(cls, value):
+        if not value:
+            raise PydanticCustomError("pre_enrollment_checklist", "Confirm the pre-enrolment checklist is complete")
+        return value
 
 
 class ApplicationChecklistMark(BaseModel):

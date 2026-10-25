@@ -2214,3 +2214,11 @@ ccrm-018 re-creates template items on edit), `position` (unique per application)
 `application_checklist_item_documents`: PK (`item_id` FK ON DELETE CASCADE, `document_id` FK `student_documents` ON DELETE CASCADE,
 indexed), `linked_by_id`, `created_at`. ccrm-019 also writes ccrm-013's `overseas_applications.documents_completed_on`. No backfill;
 downgrade drops the three tables.
+
+## Enrolment confirmation (`ccrm-027`, `DEC-SCOPE-259`; migration `0181_enrollment_confirmation`, after ccrm-019's `0180_application_checklists`)
+
+`overseas_applications` gains `enrollment_document_id` (FK `student_documents` ON DELETE SET NULL, NULL; an "Enrolment confirmation"
+document of the application) and `pre_enrollment_checklist_complete` (bool, NOT NULL, default `false`). `enrollment_confirmed_at`
+(AGN-013) now marks a confirmed enrolment from either route. Outcome values `non_arrival` and `cancelled` join the CHECKs
+`ck_overseas_applications_outcome`, `ck_application_outcomes_outcome` and `ck_application_status_history_outcome`. No backfill; downgrade
+restores the ccrm-015 values and drops the two columns.

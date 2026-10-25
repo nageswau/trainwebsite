@@ -2739,3 +2739,14 @@ inside the existing role scope (a counselor searching another counselor's code g
 | Ready for Submission gate (`…/sub-status`) | gated | gated | gated (agency route) | — | — | — |
 
 - Pinned by `test_ccrm_019_checklist.py::test_scope_other_counselor_agent_read_only_student_reads_own`, `::test_the_agency_route_is_gated_too`.
+
+### 2.173 Enrolment confirmation *(added 2026-10-25 — `DEC-SCOPE-259`, ccrm-027)*
+
+| Route | `overseas_admin` | `counselor` (overseas) | `agent` | `overseas_student` | Others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET …/{id}/enrollment` | ✅ any (with document picker) | ✅ own applications, direct and agency (`403` otherwise) | ✅ own agency's, read-only (no picker) | ✅ own, read-only | `403` | `401` |
+| `POST …/{id}/enrollment-documents`, `PUT …/{id}/enrollment` | ✅ | ✅ own, direct **and agency** (CC4) | `403` (the Master keeps AGN-013's `PUT /agent/applications/{id}/enrollment`) | `403` | `403` | `401` |
+| `PATCH` / `/advance` / `/sub-status` to `enrolled` | `422` | `422` (agency: `403` first, unchanged) | — | — | — | — |
+
+- Pinned by `test_ccrm_027_enrollment.py::test_readers_see_no_document_picker_and_cannot_write`,
+  `::test_the_counselor_confirms_an_agency_enrolment_once_with_one_commission`, `::test_every_other_way_into_enrolled_is_a_422`.

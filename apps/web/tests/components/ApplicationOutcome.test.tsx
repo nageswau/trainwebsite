@@ -30,6 +30,9 @@ describe("outcomeChoices", () => {
     expect(outcomeChoices("offer", "rejected")).toEqual([]);
     expect(outcomeChoices("withdrawn", null)).toEqual([]);
     expect(outcomeChoices("enrolled", null)).toEqual([]);
+    // ccrm-027 (E6): non-arrival and cancelled are post-offer and terminal
+    expect(outcomeChoices("status_tracking", null)).toEqual(["rejected", "withdrawn", "deferred", "on_hold", "offer_declined", "non_arrival", "cancelled"]);
+    expect(isTerminal("non_arrival") && isTerminal("cancelled")).toBe(true);
     expect(isTerminal("visa_refused") && !isTerminal("on_hold")).toBe(true);
     expect(outcomeLabel("on_hold")).toBe("On hold");
   });

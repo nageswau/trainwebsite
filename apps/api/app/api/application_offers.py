@@ -1,4 +1,5 @@
-"""ccrm-023 (DEC-SCOPE-245) -- an application's offers: list, upload an offer letter, record an offer, withdraw/expire it.
+"""ccrm-023 (DEC-SCOPE-245) -- an application's offers: list, upload an offer letter, record an offer, withdraw/expire it. The post-offer
+writes that follow share this router: ccrm-025's decision and deposit, ccrm-027's enrolment confirmation (DEC-SCOPE-259).
 
 CC4: the counselor records offers on their applications, direct and agency; the Overseas Admin on any. The student and the agency read.
 Every write uses `/sub-status`'s entry (api/workflows.py): role, `_assigned_application` scope, the row lock, the swapped-counselor
@@ -7,7 +8,7 @@ queue and the last one wins; the other side is told (CC5). Spec: docs/superpower
 """
 
 import logging
-from datetime import date
+from datetime import UTC, date, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
@@ -15,18 +16,28 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.workflows import _agency_record_archived, _assigned_application, _audit, _notify_user, _recheck_counselor_scope, _require, _tell_outcome
+from app.api.workflows import (
+    _agency_record_archived,
+    _assigned_application,
+    _audit,
+    _maybe_trigger_agent_commission,
+    _notify_user,
+    _recheck_counselor_scope,
+    _require,
+    _tell_outcome,
+)
 from app.application_outcome import label as outcome_label
 from app.application_sub_status import label as sub_status_label
 from app.core.database import get_db
 from app.models import ApplicationOffer, ApplicationStatusHistory, OverseasApplication, StudentDocument, User
-from app.schemas import ApplicationOfferClose, ApplicationOfferCreate, ApplicationOutcomeSet, DepositRecordSave, OfferDecisionSet
+from app.schemas import ApplicationEnrollmentSave, ApplicationOfferClose, ApplicationOfferCreate, ApplicationOutcomeSet, DepositRecordSave, OfferDecisionSet
 from app.services import agent_documents as documents
 from app.services import agent_notifications as agency_notices
 from app.services import application_deposit_records as deposits
+from app.services import application_enrollment as enrollment
 from app.services import application_offers as offers
 from app.services import application_outcomes as outcomes
-from app.services.agent_applications import ARCHIVED, OFFER_DOCUMENT_MISMATCH, OFFER_LETTERS_SHOWN
+from app.services.agent_applications import ARCHIVED, OFFER_DOCUMENT_MISMATCH, OFFER_LETTERS_SHOWN, STALE
 
 logger = logging.getLogger("app.application_offers")
 
@@ -278,3 +289,58 @@ async def save_deposit(application_id: UUID, payload: DepositRecordSave, user: U
     await db.commit()
     logger.info("application_deposit_recorded", extra={"extra_fields": {"application_id": str(item.id), "payment_status": record.payment_status, "actor_id": str(user.id)}})
     return {"record": await deposits.view(db, item.id), "changed": True}
+
+
+@router.get("/{application_id}/enrollment")
+async def get_enrollment(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-027 (DEC-SCOPE-259): the enrolment confirmation. The confirmation documents to pick from go to the writers only."""
+    _require(user, READERS, "overseas")
+    item = await _assigned_application(db, user, application_id)
+    writer = user.role in WRITERS | {"super_admin"}
+    return {"enrollment": await enrollment.view(db, item), "documents": await _letters(db, item, enrollment.CONFIRMATION) if writer else []}
+
+
+@router.post("/{application_id}/enrollment-documents", status_code=201)
+async def upload_enrollment_document(application_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-027: an "Enrolment confirmation" document, under the offer letter's rules."""
+    return await _upload(db, user, application_id, file, enrollment.CONFIRMATION)
+
+
+@router.put("/{application_id}/enrollment")
+async def save_enrollment(application_id: UUID, payload: ApplicationEnrollmentSave, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-027 (DEC-SCOPE-259): confirm enrolment -- the only counselor/Admin way into `enrolled` (E3), on direct and agency applications
+    (CC4): one history row, the AGT-003 commission trigger (at most one), the student and the agency told. Once enrolled it corrects the
+    details (audit only, E7); an unchanged save writes nothing. `expected_status` makes a stale screen a 409."""
+    item = await _writable(db, user, application_id)
+    if payload.expected_status != item.status:
+        raise HTTPException(409, STALE)
+    await enrollment.check(db, item, payload.enrollment_document_id)
+    values = payload.model_dump(include=set(enrollment.FIELDS))
+    changed = [name for name in enrollment.FIELDS if getattr(item, name) != values[name]]
+    confirming = item.status != "enrolled"
+    if not confirming and not changed:
+        return {"id": item.id, "status": item.status, "sub_status": item.sub_status, "enrollment": await enrollment.view(db, item), "changed": False}
+    for name in changed:
+        setattr(item, name, values[name])
+    old = (item.status, item.sub_status)
+    if confirming:
+        item.enrollment_confirmed_at = datetime.now(UTC)
+        item.status = "enrolled"
+        db.add(
+            ApplicationStatusHistory(
+                application_id=item.id, from_status=old[0], to_status=item.status, from_sub_status=old[1], to_sub_status=item.sub_status,
+                next_action=item.next_action, notes=f"Enrolment confirmed -- {payload.notes}" if payload.notes else "Enrolment confirmed", changed_by_id=user.id,
+            )
+        )  # fmt: skip
+        had_commission = await agency_notices.has_commission(db, item.id)
+        await _maybe_trigger_agent_commission(db, item, old[0], user)
+        await agency_notices.status_changed(db, item, old[0], user, had_commission=had_commission)  # CC5
+        await _tell_student(db, item, "Enrolment confirmed", "Your enrolment at the university is confirmed on your application.")
+        audit = {"from_status": old[0], "to_status": item.status, "confirmed": True}
+    else:
+        await agency_notices.details_changed(db, item, user)  # CC5
+        audit = {"fields": changed, "confirmed": False}
+    await _audit(db, user, "overseas.application.enrollment", "overseas_application", item.id, audit)
+    await db.commit()
+    logger.info("application_enrollment_saved", extra={"extra_fields": {"application_id": str(item.id), "confirmed": confirming, "actor_id": str(user.id)}})
+    return {"id": item.id, "status": item.status, "sub_status": item.sub_status, "enrollment": await enrollment.view(db, item), "changed": True}

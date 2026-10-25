@@ -10,6 +10,7 @@ from app.models import AgentCommission, ApplicationStatusHistory
 from tests.agn001_helpers import client_for, mk_active_org
 from tests.agn008_helpers import APPS
 from tests.agn023_helpers import ADVANCE, ASSIGN, PORTAL, assign_world, fresh, notices
+from tests.ccrm027_helpers import confirm_enrollment
 
 SUB = "/api/v1/workflows/overseas/applications/{}/sub-status"
 AGENT_SUB = APPS + "/{}/sub-status"
@@ -124,10 +125,13 @@ async def test_on_an_agency_application_the_counselor_cannot_enrol_and_the_agenc
 
 @pytest.mark.asyncio
 async def test_the_admin_can_enrol_and_the_commission_trigger_runs(db_session, world):
+    # ccrm-027 (DEC-SCOPE-259, E3): the sub-status `enrolled` is a 422; the enrolment confirmation enrols and runs the trigger
     app = world["app"]
     async with client_for(world["admin"].email) as c:
-        r = await c.post(SUB.format(app.id), json={"sub_status": "enrolled"})
-    assert r.status_code == 200 and r.json()["status"] == "enrolled"
+        assert (await c.post(SUB.format(app.id), json={"sub_status": "enrolled"})).status_code == 422
+        assert (await c.post(SUB.format(app.id), json={"sub_status": "conditional_offer"})).status_code == 200
+        r = await confirm_enrollment(c, db_session, app)
+    assert r.status_code == 200 and r.json()["status"] == "enrolled" and r.json()["sub_status"] == "enrolled"
     count = await db_session.scalar(select(func.count()).select_from(AgentCommission).where(AgentCommission.application_id == app.id))
     assert count == 1
 
@@ -156,7 +160,7 @@ async def test_a_stage_change_elsewhere_clears_a_foreign_sub_status_and_enrolled
         assert (await c.post(SUB.format(app.id), json={"sub_status": "submitted"})).status_code == 200
         assert (await c.post(ADVANCE.format(app.id), json={"to_status": "offer"})).status_code == 200
         assert (await fresh(db_session, app)).sub_status is None
-        assert (await c.post(ADVANCE.format(app.id), json={"to_status": "enrolled"})).status_code == 200
+        assert (await confirm_enrollment(c, db_session, app)).status_code == 200  # ccrm-027: the only way into enrolled
     assert (await fresh(db_session, app)).sub_status == "enrolled"
 
 

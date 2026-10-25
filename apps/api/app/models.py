@@ -1844,6 +1844,12 @@ class OverseasApplication(Base, TimestampMixin):
     enrollment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     university_student_id: Mapped[str | None] = mapped_column(String(60), nullable=True)
     enrollment_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # ccrm-027 (DEC-SCOPE-259): the counselor/Admin confirmation (PUT …/enrollment) -- its "Enrolment confirmation" document and the
+    # pre-enrolment checklist attestation (E8). An agency Master's AGN-013 confirmation sets neither.
+    enrollment_document_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL", use_alter=True, name="fk_overseas_applications_enrollment_document_id"), nullable=True
+    )
+    pre_enrollment_checklist_complete: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     # AGN-010 (DEC-SCOPE-056): the current offer, recorded by the agency. `offer_deadline` above is its deadline (O2); the letter is an
     # AGN-009 document (O3). `use_alter`: student_documents.application_id points back at this table.
     offer_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
