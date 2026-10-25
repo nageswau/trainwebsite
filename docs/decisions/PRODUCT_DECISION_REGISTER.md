@@ -9538,3 +9538,21 @@ the file (fail closed); views not audited. E6 throttle 30 per user per 10 minute
 cap 5,000 rows → 422. E8 formula escaping in both formats. E9 `no-store`, attachment filenames with the IST date.
 **Numbering:** no migration; API §12FU; RBAC §2.182.
 - **Feature ID authorized:** `ccrm-035`. **Status:** built on `worktree-ccrm-035`.
+
+### DEC-SCOPE-269 — Counselor's own performance report (`ccrm-036`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-036` (source PDF §1 "measure counselor performance", §4 conversion rate by
+counselor; `UNVERIFIED` — only the backlog's quotes are used); design `docs/superpowers/specs/2026-10-25-ccrm-036-counselor-performance-design.md`.
+Dependencies ccrm-029 (`DEC-SCOPE-250`) and ccrm-034 (`DEC-SCOPE-267`) merged.
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** P1 the overseas counselor
+reads only their own report (no counselor id in the request); the IT counselor, admins, management and everyone else 403. P2 `from`/`to`
+inclusive IST dates, default this month, `/management/counseling`'s period rule (422 reversed or longer than 366 days). P3 leads assigned,
+calls, counseling sessions, follow-ups (repeat sessions), conversions and conversion % by mgmt-018's own builders, labels and definitions;
+never revenue. P4 lead follow-up completion: follow-ups on the counselor's leads (owner + division) due in the period, cancelled excluded;
+completed = done; % = completed ÷ due (none due → no %). P5 tasks completed in the period; overdue tasks now (ccrm-029 T6 Overdue band).
+P6 overdue follow-ups now. P7 caseload now (every application with `counselor_id = me`): applications, students (ccrm-034 R3), offers
+(funnel Offer), visas pending / approved / refused (ccrm-034 R7), enrolments (confirmed, ccrm-027 E4), documents pending verification.
+P8 the caseload by stage then sub-status, closed stages included. P9 read-only, not audited; counts and stage names only. The overseas
+counselor's sidebar "Reports" opens this report in place of the generic "My Caseload Report" (the portal section payload is unchanged).
+**Numbering:** no migration; API §12FV; RBAC §2.183.
+- **Feature ID authorized:** `ccrm-036`. **Status:** built on `feature/ccrm-036`.

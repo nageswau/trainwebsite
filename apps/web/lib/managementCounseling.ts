@@ -26,9 +26,10 @@ export function counselingQuery(search: Record<string, string | string[] | undef
   return { from: day("from"), to: day("to") };
 }
 
-export function counselingUrl({ from, to }: CounselingQuery): string {
+/** ccrm-036: `api` lets the counselor's own report ask its route for the same period. */
+export function counselingUrl({ from, to }: CounselingQuery, api: string = COUNSELING_API): string {
   const params = new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}) }).toString();
-  return params ? `${COUNSELING_API}?${params}` : COUNSELING_API;
+  return params ? `${api}?${params}` : api;
 }
 
 export const formatCount = (value: number) => value.toLocaleString("en-IN");

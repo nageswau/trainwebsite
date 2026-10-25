@@ -767,6 +767,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Expected behaviour:** the counselor sees own leads assigned, follow-up completion, overdue tasks, conversions, applications by
   sub-status, offers, visas, enrolments — using the same definitions as `management_counseling.py`, no revenue.
 - **Dependencies:** ccrm-029, ccrm-034. **Complexity:** small. **Risk:** low.
+- **Status (2026-10-25):** built on `feature/ccrm-036` — `DEC-SCOPE-269` (P1–P9 defaults `NEEDS_CONFIRMATION`; period figures by
+  mgmt-018's own builders, no revenue), no migration, API §12FV, RBAC §2.183. Page `/overseas/counselor/reports` ("My performance"). Design
+  `docs/superpowers/specs/2026-10-25-ccrm-036-counselor-performance-design.md`.
 
 ---
 
