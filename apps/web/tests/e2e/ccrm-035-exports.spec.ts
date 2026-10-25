@@ -32,11 +32,11 @@ test("a partner exports a CRM report as CSV and Excel with the filters applied",
   await adminSignIn(page, "partner.one@edusphere.local", "/management");
   await page.goto("/management/crm-reports");
   const csv = await download(page, "Export University performance", "Download CSV");
-  expect(csv.file.suggestedFilename()).toBe("crm-universities.csv");
+  expect(csv.file.suggestedFilename()).toMatch(/^crm-universities-\d{4}-\d{2}-\d{2}\.csv$/);
   expect(firstLine(csv.body)).toBe("University,Applications,Students,Offers,Offer rate (%),Rejections,Acceptances,Enrolments");
   expect(csv.body.toString("utf-8").trimEnd().split(/\r?\n/).at(-1)).toMatch(/^Total,/);
   const xlsx = await download(page, "Export Application ageing", "Download Excel");
-  expect(xlsx.file.suggestedFilename()).toBe("crm-ageing.xlsx");
+  expect(xlsx.file.suggestedFilename()).toMatch(/^crm-ageing-\d{4}-\d{2}-\d{2}\.xlsx$/);
   expect(xlsx.body.subarray(0, 2).toString()).toBe("PK"); // a zip package
   expect(errors).toEqual([]);
 });
@@ -57,7 +57,7 @@ test("the overseas counselor exports their own applications and leads without co
 
   await page.goto("/overseas/counselor/leads");
   const leads = await download(page, "Export my leads", "Download Excel");
-  expect(leads.file.suggestedFilename()).toBe("my-leads.xlsx");
+  expect(leads.file.suggestedFilename()).toMatch(/^my-leads-\d{4}-\d{2}-\d{2}\.xlsx$/);
   const csv = await page.request.get("/api/v1/counselor/exports/leads?format=csv");
   expect(firstLine(await csv.body())).toBe("Lead ID,Name,Interest,Stage,Priority,Source,Telecaller,Lead date");
   expect((await csv.text()).includes("@")).toBe(false);
