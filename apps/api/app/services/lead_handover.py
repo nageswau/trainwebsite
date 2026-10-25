@@ -92,6 +92,8 @@ def permissions(lead: Enquiry) -> dict:
         "stage": not closed and lead.status != "converted", "follow_up": not closed,
         # ccrm-008: one-step conversion to an overseas student (csc-002 is overseas only)
         "convert": not linked and lead.division == "overseas" and convertible_stage(lead.status),
+        # ccrm-004 (LG7): calls, messages and meetings -- every one refuses a closed lead
+        "activity": not closed,
     }
 
 
@@ -220,13 +222,15 @@ async def milestones(db: AsyncSession, lead: Enquiry) -> dict:
 
 
 async def detail(db: AsyncSession, lead_id: UUID, filters: list) -> dict:
+    from app.services.telecaller_leads import whatsapp_to  # local: telecaller_leads imports this module
+
     await observe_conversion(db, lead_id)
     row = (await db.execute(bdm_leads.admin_rows().where(Enquiry.id == lead_id, *filters).execution_options(populate_existing=True))).one_or_none()
     if row is None:
         raise HTTPException(404, lead_pipeline.LEAD_NOT_FOUND)
     lead = row[0]
-    return {**bdm_leads.admin_out(row), "message": lead.message, **await next_action_out(db, lead), "milestones": await milestones(db, lead),
-            "permissions": permissions(lead)}
+    return {**bdm_leads.admin_out(row), "message": lead.message, "whatsapp_to": whatsapp_to(lead), **await next_action_out(db, lead),
+            "milestones": await milestones(db, lead), "permissions": permissions(lead)}
 
 
 async def next_action_out(db: AsyncSession, lead: Enquiry) -> dict:

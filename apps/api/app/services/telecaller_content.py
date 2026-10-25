@@ -27,6 +27,9 @@ logger = logging.getLogger("app.telecaller_content")
 
 # Recorded default (spec §1): telecallers read the library; managers and super_admin also write and see inactive rows.
 CONTENT_READERS = frozenset({"telecaller", "telecaller_manager", "super_admin"})
+# ccrm-004 (DEC-SCOPE-259 LG2): counselors list the active message templates for their messages to the leads handed to them -- not the
+# scripts, the brochures or a template's sample preview (they render against their own lead).
+TEMPLATE_READERS = CONTENT_READERS | {"counselor"}
 SCRIPT_INDEX, TEMPLATE_NAME_INDEX = "uq_tel_scripts_active_product", "uq_tel_message_templates_channel_name"
 CHANNEL_LABEL = {"whatsapp": "WhatsApp", "email": "email"}
 BODY_LIMIT = {"whatsapp": 1000, "email": 5000}
@@ -45,8 +48,8 @@ STORAGE_PREFIX = "tel-assets"
 PDF = "application/pdf"
 
 
-def require_content_reader(user: User) -> None:
-    if user.role not in CONTENT_READERS:
+def require_content_reader(user: User, readers: frozenset[str] = CONTENT_READERS) -> None:
+    if user.role not in readers:
         raise HTTPException(403, "Your role cannot view the telecaller library")
 
 

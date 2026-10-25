@@ -12,18 +12,18 @@ from sqlalchemy import Uuid, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.models import Appointment, AuditLog, Enquiry, Payment, User
+from app.models import Appointment, AuditLog, Enquiry, LeadCall, Payment, User
 from app.services import ledger
 from app.services.bdm_performance import _instants
 from app.services.management_access import can_view_finance
 from app.services.telecaller_metrics import first_conversions
 
 DIVISIONS = {"it": "IT", "overseas": "Overseas"}  # CS10: always shown, in this order; any other division follows
-COUNTS = ("leads_assigned", "counseling_sessions", "follow_ups", "conversions")
+COUNTS = ("leads_assigned", "calls", "counseling_sessions", "follow_ups", "conversions")
 # CS3-CS9, in §13 order: (key, label, definition, tracked).
 FIGURES = (
     ("leads_assigned", "Leads assigned", "Leads handed over to the counselor in the period.", True),
-    ("calls", "Calls", "Calls are logged by telecallers; counselors have no call log.", False),
+    ("calls", "Calls", "Calls the counselor logged in the period.", True),  # ccrm-004 LG6
     ("counseling_sessions", "Counseling sessions", "Appointments the counselor completed that were scheduled in the period.", True),
     ("follow_ups", "Follow-ups", "Counseling sessions with a lead or student the counselor had counseled before.", True),
     ("conversions", "Conversions", "The counselor's leads first converted in the period and still converted.", True),
@@ -48,6 +48,12 @@ async def _handovers(db: AsyncSession, ids: list[UUID], lo: datetime, hi: dateti
     converted = func.count().filter(Enquiry.status == "converted", Enquiry.owner_id == handed.c.counselor)
     stmt = select(handed.c.counselor, func.count(), converted).join(Enquiry, Enquiry.id == handed.c.lead_id).where(handed.c.counselor.in_(ids))
     return _grouped(await db.execute(stmt.group_by(handed.c.counselor)))
+
+
+async def _calls(db: AsyncSession, ids: list[UUID], lo: datetime, hi: datetime) -> dict[UUID, tuple]:
+    """ccrm-004 (DEC-SCOPE-259 LG6): the calls each counselor logged in the period, on any lead handed to them."""
+    stmt = select(LeadCall.caller_user_id, func.count()).where(LeadCall.caller_user_id.in_(ids), LeadCall.occurred_at >= lo, LeadCall.occurred_at < hi)
+    return _grouped(await db.execute(stmt.group_by(LeadCall.caller_user_id)))
 
 
 async def _sessions(db: AsyncSession, ids: list[UUID], lo: datetime, hi: datetime) -> dict[UUID, tuple]:
@@ -97,7 +103,6 @@ def _group(division: str | None, label: str, rows: list[dict], money: bool) -> d
         "label": label,
         "counselor_count": len(rows),
         **{key: sum(r[key] for r in rows) for key in COUNTS},
-        "calls": None,
         "revenue": sum((r["revenue"] for r in rows), Decimal(0)).quantize(ledger.CENTS) if money else None,
         "conversion_pct": _pct(sum(r["_converted"] for r in rows), sum(r["leads_assigned"] for r in rows)),
     }
@@ -110,6 +115,7 @@ async def dashboard(db: AsyncSession, user: User, start: date, end: date, now: d
     ids = [p.id for p in people]
     lo, hi = _instants(start, end)
     handovers, sessions, conversions = (await _handovers(db, ids, lo, hi), await _sessions(db, ids, lo, hi), await _conversions(db, ids, lo, hi))
+    calls = await _calls(db, ids, lo, hi)
     revenue = await _revenue(db, ids, start, end) if money else {}
 
     order = {division: i for i, division in enumerate(DIVISIONS)}
@@ -119,7 +125,7 @@ async def dashboard(db: AsyncSession, user: User, start: date, end: date, now: d
         held, repeats = sessions.get(p.id, (0, 0))
         rows.append({
             "id": p.id, "full_name": p.full_name, "division": p.division, "active": p.active,
-            "leads_assigned": assigned, "calls": None, "counseling_sessions": held, "follow_ups": repeats,
+            "leads_assigned": assigned, "calls": calls.get(p.id, (0,))[0], "counseling_sessions": held, "follow_ups": repeats,
             "conversions": conversions.get(p.id, (0,))[0],
             "revenue": Decimal(revenue.get(p.id, (0,))[0] or 0).quantize(ledger.CENTS) if money else None,
             "conversion_pct": _pct(converted, assigned), "_converted": converted,

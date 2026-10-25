@@ -6,13 +6,12 @@ import {
 } from "@/lib/managementCounseling"; // prettier-ignore
 import { formatInr } from "@/lib/managementLedger";
 
-const COLUMNS: CounselingFigureKey[] = ["leads_assigned", "counseling_sessions", "follow_ups", "conversions", "revenue", "conversion_pct"];
+const COLUMNS: CounselingFigureKey[] = ["leads_assigned", "calls", "counseling_sessions", "follow_ups", "conversions", "revenue", "conversion_pct"];
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
 
-/** A tile's value: words, not a 0, where there is no figure to show (CS4, CS8, CS9). */
+/** A tile's value: words, not a 0, where there is no figure to show (CS8, CS9). ccrm-004 LG6: calls are counted (counselors log them). */
 function TileValue({ figure, values }: { figure: CounselingFigureKey; values: CounselingFigures }) {
   const value = values[figure];
-  if (figure === "calls") return <strong className="metric-untracked">Not tracked</strong>;
   if (figure === "revenue" && value === null) return <strong className="metric-untracked">Partners only</strong>;
   if (figure === "conversion_pct" && value === null) return <strong className="metric-untracked">No leads assigned</strong>;
   return <strong>{cell(figure, values)}</strong>;
@@ -100,7 +99,6 @@ export default function ManagementCounseling({ data, error, query }: { data: Cou
                 </table>
               </div>
             )}
-            <p className="muted">Calls are not tracked for counselors: telecallers log calls in EduSphere.</p>
           </section>
         </>
       )}

@@ -142,7 +142,7 @@ async def templates(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    svc.require_content_reader(user)
+    svc.require_content_reader(user, svc.TEMPLATE_READERS)
     filters = active_filters(user, TelMessageTemplate.active, active) + _matching(like_pattern(q), TelMessageTemplate.name)
     for column, value in ((TelMessageTemplate.channel, channel), (TelMessageTemplate.kind, kind), (TelMessageTemplate.product_id, product_id)):
         if value:

@@ -6,7 +6,7 @@ import WhatsAppComposer from "@/components/WhatsAppComposer";
 import { sendRequest, type Page } from "@/lib/apiErrors";
 import { SAVE_FAILED, writeFailure } from "@/lib/bdmTasks";
 import { getPage } from "@/lib/telecallerCatalogue";
-import { isPending, leadMessagesUrl, leadTarget, messageTitle, messageUrl, type LeadMessage } from "@/lib/telecallerMessages";
+import { TELECALLER_MESSAGE_API, isPending, messageTitle, type LeadMessage, type MessageApi } from "@/lib/telecallerMessages";
 
 type Notice = { text: string; failed: boolean } | null;
 type Channel = "whatsapp" | "email";
@@ -14,7 +14,7 @@ const TEXT = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
 const POLL_MS = 5000; // tel-014: a queued email is usually sent within seconds
 
 /** One send with Delete when the API says the viewer may (WA3: the sender, on its IST day; never an email, EM2). */
-function MessageItem({ message, onDeleted, onRefused }: { message: LeadMessage; onDeleted: () => void; onRefused: (text: string) => void }) {
+function MessageItem({ message, api, onDeleted, onRefused }: { message: LeadMessage; api: MessageApi; onDeleted: () => void; onRefused: (text: string) => void }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -23,7 +23,7 @@ function MessageItem({ message, onDeleted, onRefused }: { message: LeadMessage; 
   async function remove() {
     setBusy(true);
     setFailure(null);
-    const result = await sendRequest(messageUrl(message.id), { method: "DELETE" });
+    const result = await sendRequest(api.item(message.id), { method: "DELETE" });
     setBusy(false);
     if (result.ok) return onDeleted();
     const kind = writeFailure(result.status);
@@ -61,8 +61,9 @@ function MessageItem({ message, onDeleted, onRefused }: { message: LeadMessage; 
  *  closed) offers Send WhatsApp and Send email, each disabled with its reason when the lead has no usable number / address (AC3). A bump of
  *  `openSignal` / `emailSignal` (the page's WhatsApp / Email button) opens that composer. While an email is queued or sending, the list
  *  refreshes so its status moves on. */
-export default function LeadMessages({ leadId, whatsappTo, email = null, canWrite, openSignal, emailSignal = 0, onChanged }: {
-  leadId: string; whatsappTo: string | null; email?: string | null; canWrite: boolean; openSignal: number; emailSignal?: number;
+export default function LeadMessages({ leadId, whatsappTo, email = null, canWrite, openSignal = 0, emailSignal = 0, api = TELECALLER_MESSAGE_API, onChanged }: {
+  leadId: string; whatsappTo: string | null; email?: string | null; canWrite: boolean; openSignal?: number; emailSignal?: number;
+  api?: MessageApi; // ccrm-004: the counselor's routes on CounselorLeadDetail
   onChanged?: () => void; // tel-015: a send or delete -- the page's timeline re-reads
 }) {
   const [data, setData] = useState<Page<LeadMessage> | null>(null);
@@ -99,9 +100,9 @@ export default function LeadMessages({ leadId, whatsappTo, email = null, canWrit
   useEffect(() => {
     const controller = new AbortController();
     setFailed(false);
-    getPage<LeadMessage>(leadMessagesUrl(leadId), controller.signal).then(setData).catch(() => controller.signal.aborted || setFailed(true));
+    getPage<LeadMessage>(api.list(leadId), controller.signal).then(setData).catch(() => controller.signal.aborted || setFailed(true));
     return () => controller.abort();
-  }, [leadId, version]);
+  }, [leadId, version, api]);
 
   useEffect(() => {
     if (!data?.items.some(isPending)) return;
@@ -134,11 +135,11 @@ export default function LeadMessages({ leadId, whatsappTo, email = null, canWrit
         {notice && <p className={notice.failed ? "form-error" : "form-message"} style={{ margin: "6px 0 0", fontSize: 13 }}>{notice.text}</p>}
       </div>
       {composing === "whatsapp" && canWhatsApp && whatsappTo && (
-        <WhatsAppComposer target={leadTarget(leadId)} to={whatsappTo} onCancel={() => setComposing(null)}
+        <WhatsAppComposer target={api.target(leadId)} to={whatsappTo} onCancel={() => setComposing(null)}
           onRecorded={() => { setComposing(null); done("WhatsApp send recorded."); }} />
       )}
       {composing === "email" && canEmail && (
-        <EmailComposer target={leadTarget(leadId)} onCancel={() => setComposing(null)} onSent={() => { setComposing(null); done("Email queued for sending."); }} />
+        <EmailComposer target={api.target(leadId)} onCancel={() => setComposing(null)} onSent={() => { setComposing(null); done("Email queued for sending."); }} />
       )}
       {failed ? (
         <div>
@@ -152,7 +153,7 @@ export default function LeadMessages({ leadId, whatsappTo, email = null, canWrit
       ) : (
         <ul aria-label="Messages" style={{ padding: 0, margin: "8px 0 0", display: "grid", gap: 8 }}>
           {data.items.map((message) => (
-            <MessageItem key={message.id} message={message} onDeleted={() => done("Message deleted.")}
+            <MessageItem key={message.id} message={message} api={api} onDeleted={() => done("Message deleted.")}
               onRefused={(text) => { setNotice({ text, failed: true }); reload(); }} />
           ))}
         </ul>

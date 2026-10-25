@@ -19,24 +19,24 @@ const superAdmin: ManagementMe = { id: "s1", full_name: "Sam Admin", role: "supe
 const QUERY = { from: "2026-05-01", to: "2026-05-31" };
 
 const figures = (over: Partial<CounselingFigures> = {}): CounselingFigures => ({
-  leads_assigned: 0, calls: null, counseling_sessions: 0, follow_ups: 0, conversions: 0, revenue: "0.00", conversion_pct: null, ...over,
+  leads_assigned: 0, calls: 0, counseling_sessions: 0, follow_ups: 0, conversions: 0, revenue: "0.00", conversion_pct: null, ...over,
 }); // prettier-ignore
 
 function dashboard(over: Partial<CounselingDashboard> = {}): CounselingDashboard {
-  const asha = { id: "c1", full_name: "Asha Rao", division: "it", active: true, ...figures({ leads_assigned: 3, counseling_sessions: 4, follow_ups: 1, conversions: 1, revenue: "150000.00", conversion_pct: 33.3 }) };
+  const asha = { id: "c1", full_name: "Asha Rao", division: "it", active: true, ...figures({ leads_assigned: 3, calls: 1250, counseling_sessions: 4, follow_ups: 1, conversions: 1, revenue: "150000.00", conversion_pct: 33.3 }) };
   const ben = { id: "c2", full_name: "Ben Paul", division: "overseas", active: false, ...figures({ counseling_sessions: 2 }) };
   return {
     from: "2026-05-01", to: "2026-05-31", as_of: "2026-10-13T05:00:00Z", revenue_visible: true,
     figures: [
       { key: "leads_assigned", label: "Leads assigned", definition: "Leads handed over.", tracked: true },
-      { key: "calls", label: "Calls", definition: "Not tracked: calls are logged by telecallers.", tracked: false },
+      { key: "calls", label: "Calls", definition: "Calls the counselor logged in the period.", tracked: true },
       { key: "counseling_sessions", label: "Counseling sessions", definition: "Completed sessions.", tracked: true },
       { key: "follow_ups", label: "Follow-ups", definition: "Repeat sessions.", tracked: true },
       { key: "conversions", label: "Conversions", definition: "Converted leads.", tracked: true },
       { key: "revenue", label: "Revenue", definition: "Rupee payments.", tracked: true },
       { key: "conversion_pct", label: "Conversion %", definition: "Share converted.", tracked: true },
     ],
-    total: { division: null, label: "All counselors", counselor_count: 2, ...figures({ leads_assigned: 3, counseling_sessions: 6, follow_ups: 1, conversions: 1, revenue: "150000.00", conversion_pct: 33.3 }) },
+    total: { division: null, label: "All counselors", counselor_count: 2, ...figures({ leads_assigned: 3, calls: 1250, counseling_sessions: 6, follow_ups: 1, conversions: 1, revenue: "150000.00", conversion_pct: 33.3 }) },
     divisions: [
       { division: "it", label: "IT", counselor_count: 1, ...figures({ leads_assigned: 3, counseling_sessions: 4, follow_ups: 1, conversions: 1, revenue: "150000.00", conversion_pct: 33.3 }) },
       { division: "overseas", label: "Overseas", counselor_count: 1, ...figures({ counseling_sessions: 2 }) },
@@ -66,10 +66,13 @@ describe("mgmt-018 ManagementCounseling", () => {
     expect(tile("Leads assigned")).toHaveTextContent("Leads handed over.");
   });
 
-  it("says Not tracked for calls, never 0", () => {
+  it("shows the counselors' logged calls (ccrm-004 LG6) in the tile and the table", () => {
     view();
-    expect(within(tile("Calls")).getByText("Not tracked")).toHaveClass("metric-untracked");
-    expect(tile("Calls")).not.toHaveTextContent(/\b0\b/);
+    expect(tile("Calls")).toHaveTextContent("1,250");
+    expect(tile("Calls")).not.toHaveTextContent("Not tracked");
+    const table = screen.getByRole("table", { name: "Counselor-wise performance" });
+    expect(within(table).getByRole("columnheader", { name: "Calls" })).toBeInTheDocument();
+    expect(screen.queryByText(/Calls are not tracked/)).not.toBeInTheDocument();
   });
 
   it("shows the super admin that revenue is the partners', with no revenue column", () => {
@@ -90,13 +93,13 @@ describe("mgmt-018 ManagementCounseling", () => {
     view();
     const table = screen.getByRole("table", { name: "Counselor-wise performance" });
     expect(within(table).getAllByRole("columnheader").map((th) => th.textContent)).toEqual([
-      "Counselor", "Division", "Leads assigned", "Counseling sessions", "Follow-ups", "Conversions", "Revenue", "Conversion %",
+      "Counselor", "Division", "Leads assigned", "Calls", "Counseling sessions", "Follow-ups", "Conversions", "Revenue", "Conversion %",
     ]);
     const asha = within(table).getByRole("rowheader", { name: "Asha Rao" }).closest("tr")!;
-    expect(Array.from(asha.querySelectorAll("td")).map((td) => td.textContent)).toEqual(["IT", "3", "4", "1", "1", "₹1,50,000.00", "33.3%"]);
+    expect(Array.from(asha.querySelectorAll("td")).map((td) => td.textContent)).toEqual(["IT", "3", "1,250", "4", "1", "1", "₹1,50,000.00", "33.3%"]);
     const ben = within(table).getByRole("rowheader", { name: /Ben Paul/ }).closest("tr")!;
     expect(ben).toHaveTextContent("Inactive");
-    expect(ben.querySelectorAll("td")[6]).toHaveTextContent("—");
+    expect(ben.querySelectorAll("td")[7]).toHaveTextContent("—");
     const footer = Array.from(table.querySelectorAll("tfoot th")).map((th) => th.textContent);
     expect(footer).toEqual(["IT total", "Overseas total", "All counselors"]);
     expect(screen.getByRole("heading", { name: "Counselor-wise performance" }).closest("section")).toHaveAttribute("id", "counselors");

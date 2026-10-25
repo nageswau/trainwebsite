@@ -4,6 +4,7 @@
 import { SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 import { CATALOGUE_PAGE_SIZE, getPage } from "@/lib/telecallerCatalogue";
 import { TEMPLATES_URL, type Template } from "@/lib/telecallerContent";
+import { counselorLeadUrl } from "@/lib/leadHandover";
 import { leadUrl, type PersonRef } from "@/lib/telecallerLeads";
 
 export type DeliveryStatus = "queued" | "sending" | "retrying" | "sent" | "failed";
@@ -79,3 +80,16 @@ export type ComposerTarget = {
 export const leadTarget = (leadId: string): ComposerTarget => ({
   loadTemplates: activeTemplates, renderUrl: (templateId) => renderUrl(leadId, templateId), createUrl: createMessageUrl(leadId),
 });
+
+/** ccrm-004 (DEC-SCOPE-259 LG2): where the lead's messages section reads, sends and deletes -- the telecaller's routes, or the counselor's
+ *  on CounselorLeadDetail (same rules, same template library). */
+export type MessageApi = { list: (leadId: string) => string; item: (id: string) => string; target: (leadId: string) => ComposerTarget };
+export const TELECALLER_MESSAGE_API: MessageApi = { list: leadMessagesUrl, item: messageUrl, target: leadTarget };
+export const COUNSELOR_MESSAGE_API: MessageApi = {
+  list: (leadId) => counselorLeadUrl(leadId, `/messages?limit=${LIST_LIMIT}`),
+  item: (id) => `/api/v1/counselor/messages/${encodeURIComponent(id)}`,
+  target: (leadId) => ({
+    loadTemplates: activeTemplates, createUrl: counselorLeadUrl(leadId, "/messages"),
+    renderUrl: (templateId) => counselorLeadUrl(leadId, `/render?template_id=${encodeURIComponent(templateId)}`),
+  }),
+};

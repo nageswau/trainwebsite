@@ -9,7 +9,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.models import Appointment, AuditLog, Enquiry, LeadStageHistory, Payment
+from app.models import Appointment, AuditLog, Enquiry, LeadCall, LeadStageHistory, Payment
 from app.services.bdm_appointments import IST
 from app.services.bdm_performance import _instants
 from app.services.telecaller_metrics import conversions_by_user
@@ -23,7 +23,7 @@ IN = datetime(2024, 6, 12, 11, 0, tzinfo=IST)
 BEFORE = datetime(2024, 5, 20, 11, 0, tzinfo=IST)
 OUT = datetime(2024, 7, 1, 0, 30, tzinfo=IST)  # 30 minutes after the period's last IST day
 KEYS = ["leads_assigned", "calls", "counseling_sessions", "follow_ups", "conversions", "revenue", "conversion_pct"]
-COUNTS = ["leads_assigned", "counseling_sessions", "follow_ups", "conversions"]
+COUNTS = ["leads_assigned", "calls", "counseling_sessions", "follow_ups", "conversions"]
 
 
 async def as_role(client, db, role: str):
@@ -78,6 +78,12 @@ async def session(db, counselor, at: datetime, *, lead_row=None, student=None, s
     await db.commit()
 
 
+async def called(db, counselor, lead_row: Enquiry, at: datetime) -> None:
+    """ccrm-004 (DEC-SCOPE-259 LG6): a call logged on a lead, by the counselor or anyone else."""
+    db.add(LeadCall(lead_id=lead_row.id, caller_user_id=counselor.id, occurred_at=at, duration_seconds=60, call_type="outgoing", outcome="interested"))
+    await db.commit()
+
+
 async def paid(db, student, amount: str, at: datetime, *, currency: str = "INR", status: str = "paid") -> None:
     db.add(Payment(user_id=student.id, division=student.division, reference_type="enrollment_fee", amount=Decimal(amount), currency=currency,
                    status=status, created_at=at, updated_at=at))  # fmt: skip
@@ -93,8 +99,8 @@ async def test_the_operational_tier_reads_it(client, db_session, role):
     body = await read(client)
     assert [f["key"] for f in body["figures"]] == KEYS
     calls = next(f for f in body["figures"] if f["key"] == "calls")
-    assert calls["tracked"] is False
-    assert not calls["definition"].startswith("Not tracked")  # QA-01: the tile already says so; the note says why
+    assert calls["tracked"] is True  # ccrm-004 LG6: counselors log calls
+    assert calls["definition"] == "Calls the counselor logged in the period."
     assert body["from"] == PERIOD["from"] and body["to"] == PERIOD["to"] and body["as_of"]
     assert body["revenue_visible"] is (role == "partner")
 
@@ -153,6 +159,11 @@ async def test_each_counselors_figures(client, db_session):
     await session(db, a, IN.replace(day=11), student=y, status="cancelled")
     await session(db, a, OUT, student=y)
     # CS8: counted rupee payments in the period by the students of A's converted leads.
+    # ccrm-004 LG6: the calls A logged in the period; a telecaller's call on A's lead and A's call after the period do not count.
+    await called(db, a, lead1, IN)
+    await called(db, a, lead2, IN.replace(day=20))
+    await called(db, a, lead1, OUT)
+    await called(db, await make_user(db, "telecaller", "it"), lead1, IN)
     await paid(db, s1, "5000.00", IN)
     await paid(db, s3, "2000.00", IN)
     await paid(db, s1, "100.00", IN, currency="USD")
@@ -162,10 +173,10 @@ async def test_each_counselors_figures(client, db_session):
     await as_role(client, db, "partner")
     body = await read(client)
     assert row(body, a) | {"id": None} == {
-        "id": None, "full_name": a.full_name, "division": "it", "active": True, "leads_assigned": 1, "calls": None, "counseling_sessions": 3,
+        "id": None, "full_name": a.full_name, "division": "it", "active": True, "leads_assigned": 1, "calls": 2, "counseling_sessions": 3,
         "follow_ups": 2, "conversions": 2, "revenue": "7000.00", "conversion_pct": 100.0,
     }  # fmt: skip
-    assert {k: row(body, b)[k] for k in KEYS} == {"leads_assigned": 0, "calls": None, "counseling_sessions": 1, "follow_ups": 0,
+    assert {k: row(body, b)[k] for k in KEYS} == {"leads_assigned": 0, "calls": 0, "counseling_sessions": 1, "follow_ups": 0,
                                                  "conversions": 0, "revenue": "0.00", "conversion_pct": None}  # fmt: skip
 
     await as_role(client, db, "super_admin")
@@ -212,4 +223,3 @@ async def test_an_inactive_counselor_is_listed_and_totals_are_the_sum_of_the_row
     for key in COUNTS:
         assert total[key] == sum(r[key] for r in rows) == sum(g[key] for g in body["divisions"])
     assert Decimal(total["revenue"]) == sum(Decimal(r["revenue"]) for r in rows)
-    assert total["calls"] is None

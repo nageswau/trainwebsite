@@ -2316,6 +2316,8 @@ class Appointment(Base, TimestampMixin):
     location: Mapped[str | None] = mapped_column(String(200), nullable=True)
     remarks: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     booked_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    # ccrm-004 (DEC-SCOPE-259 LG4): what the counselling session concluded, given when the counselor completes it. Never logged.
+    outcome_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class AppointmentEvent(Base):
@@ -2694,6 +2696,28 @@ class LeadNote(Base):
     lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
     author_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+LEAD_MEETING_NOTES_MAX = 2000  # migration 0181 repeats it (test_ccrm_004_migration asserts they stay identical)
+
+
+class LeadMeeting(Base):
+    """ccrm-004 (DEC-SCOPE-259 LG3): a meeting the lead's counselor held with them -- when, how (the appointment modes) and notes.
+    Append-only, as ccrm-002 notes; its scope is the lead's. The notes are never logged."""
+
+    __tablename__ = "lead_meetings"
+    __table_args__ = (
+        CheckConstraint("mode IN ({})".format(", ".join(f"'{m}'" for m in APPOINTMENT_MODES)), name="ck_lead_meetings_mode"),
+        CheckConstraint(f"length(notes) BETWEEN 1 AND {LEAD_MEETING_NOTES_MAX}", name="ck_lead_meetings_notes"),
+        Index("ix_lead_meetings_lead_occurred", "lead_id", "occurred_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
+    author_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    mode: Mapped[str] = mapped_column(String(40))
+    notes: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
