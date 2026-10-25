@@ -810,6 +810,8 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Authz:** restricted (§5 "subject to permissions"); never shown to university_rep; agent sees only agency deposits.
 - **Dependencies:** ccrm-009, ccrm-025. **Complexity:** medium. **Risk:** high (money).
 - **Open questions:** who may see and who may record; is the service fee a catalogue item or free amount.
+- **Status (2026-10-25):** built on `worktree-ccrm-039` — `DEC-SCOPE-272` (F1–F7 defaults `NEEDS_CONFIRMATION`: read-only tab, recording
+  unchanged; free-amount fee; ccrm-009's gate; downloads keep their routes' rules), API §12FY, RBAC §2.186, no migration.
 
 ### `ccrm-040` — Archive instead of delete; overseas consent capture
 

@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import CounselorDocumentRequestsPanel from "@/components/CounselorDocumentRequestsPanel";
 import LocalTime from "@/components/LocalTime";
+import OverseasStudentFinance from "@/components/OverseasStudentFinance";
 import OverseasStudentJourney from "@/components/OverseasStudentJourney";
 import PortalShell from "@/components/PortalShell";
 import StudentDocumentDownload from "@/components/StudentDocumentDownload";
@@ -16,7 +17,7 @@ import { formatCalendarDate } from "@/lib/formatDate";
 import { PORTAL_NAV } from "@/lib/navigation";
 import {
   ACCOUNT_STATUS, STUDENT_TABS, student360Url,
-  type StudentActivities, type StudentApplication, type StudentDocumentRow, type StudentHistoryItem, type StudentOverview, type StudentTab,
+  type StudentActivities, type StudentApplication, type StudentDocumentRow, type StudentFinance, type StudentHistoryItem, type StudentOverview, type StudentTab,
 } from "@/lib/overseasStudent360";
 import { studentNotesUrl, type StudentNotes } from "@/lib/studentNotes";
 import { studentProfileUrl, type StudentProfileResponse } from "@/lib/studentProfile";
@@ -113,6 +114,8 @@ async function panel(tab: StudentTab, id: string, overview: StudentOverview, por
         </>
       );
     }
+    case "finance":
+      return load<StudentFinance>(student360Url(id, "finance"), (data) => <OverseasStudentFinance finance={data} />);
     case "activities":
       return load<StudentActivities>(student360Url(id, "activities"), (activities) =>
         load<StudentNotes>(`${studentNotesUrl(id)}?limit=20&offset=0`, (notes) => <ActivitiesPanel activities={activities} notes={notes} />),

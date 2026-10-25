@@ -3979,3 +3979,11 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   (`GET /workflows/overseas/agent/crm/applications/{id}`) returns `reason: null` on it; the student 360 history item "Counselor assigned"
   carries `reason`; the lead timeline (`…/timeline`) has a `handover` row per `lead.owner_change` with `from_value` / `to_value`
   (empty = removed) and `reason`.
+
+## 12FY. Student finance tab (ccrm-039) — addendum, 2026-10-25
+
+`DEC-SCOPE-272`. No migration. RBAC §2.186. Code: `app/api/counselor_students.py`, `app/services/counselor_student_360.py`. Same gate as §12FF.
+
+| Method/Path | Behaviour |
+|---|---|
+| `GET /api/v1/counselor/students/{id}/finance` | `{payments[] {id, description, amount, currency, status, status_label, due_date, created_at, installment_no, invoice_no, receipt_no, can_download}, deposits[] {application_id, application_code, university, mine, source (counselor \| agency), required, amount, currency, due_date, status, status_label, paid_on, refund {amount, refunded_on, reason} \| null, receipt {id, name, can_download} \| null}, refunds[] {kind (payment \| deposit), description, amount, currency, refunded_on, application_code}}`. Read-only. Payments = the student's own, not `agent_deposit`, newest first; `can_download` = Overseas Admin (mirrors `GET /payments/{id}/invoice\|receipt`). Deposits: the ccrm-025 record, else the AGN-011 deposit, per application; a receipt's `can_download` follows the §12FF documents rule. Amounts are 2-decimal strings; no `file_url`. |

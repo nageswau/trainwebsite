@@ -8,6 +8,7 @@ export const STUDENT_TABS = [
   { key: "english", label: "English" },
   { key: "documents", label: "Documents" },
   { key: "applications", label: "Applications" },
+  { key: "finance", label: "Finance" }, // ccrm-039 (DEC-SCOPE-272)
   { key: "activities", label: "Activities" },
   { key: "history", label: "History" },
 ] as const;
@@ -19,7 +20,7 @@ export function studentTab(value: string | string[] | undefined): StudentTab {
   return STUDENT_TABS.find((t) => t.key === key)?.key ?? "overview";
 }
 
-export const student360Url = (id: string, tab: "overview" | "documents" | "activities" | "history") =>
+export const student360Url = (id: string, tab: "overview" | "documents" | "finance" | "activities" | "history") =>
   `/api/v1/counselor/students/${encodeURIComponent(id)}/${tab}`;
 
 export const ACCOUNT_STATUS: Record<string, string> = {
@@ -93,3 +94,47 @@ export type StudentHistoryItem = {
   notes: string | null;
   reason: string | null;
 };
+
+// ccrm-039 (DEC-SCOPE-272): the finance tab -- read-only (API_CONTRACT.md §12FY). Amounts are decimal strings.
+export type StudentPayment = {
+  id: string;
+  description: string;
+  amount: string;
+  currency: string;
+  status: string;
+  status_label: string;
+  due_date: string | null;
+  created_at: string;
+  installment_no: number | null;
+  invoice_no: string | null;
+  receipt_no: string | null;
+  can_download: boolean;
+};
+
+export type StudentDeposit = {
+  application_id: string;
+  application_code: string | null;
+  university: string;
+  mine: boolean;
+  source: "counselor" | "agency";
+  required: boolean;
+  amount: string | null;
+  currency: string | null;
+  due_date: string | null;
+  status: string;
+  status_label: string;
+  paid_on: string | null;
+  refund: { amount: string; refunded_on: string; reason: string } | null;
+  receipt: { id: string; name: string; can_download: boolean } | null;
+};
+
+export type StudentRefund = {
+  kind: "payment" | "deposit";
+  description: string;
+  amount: string;
+  currency: string;
+  refunded_on: string;
+  application_code: string | null;
+};
+
+export type StudentFinance = { payments: StudentPayment[]; deposits: StudentDeposit[]; refunds: StudentRefund[] };
