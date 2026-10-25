@@ -122,7 +122,7 @@ from app.schemas import (
 )
 from app.services import agent_documents as document_files
 from app.services import agent_notifications as agency_notices
-from app.services import application_checklists, applications, counselor_students, course_skills, document_access, interviews, offers, student_document_requests, visa_lifecycle
+from app.services import appointment_invites, application_checklists, applications, counselor_students, course_skills, document_access, interviews, offers, student_document_requests, visa_lifecycle
 from app.services import application_outcomes as outcomes
 from app.services import application_sub_status as sub_statuses
 from app.services import document_checklists as checklist_templates
@@ -2849,6 +2849,7 @@ async def create_appointment(payload: AppointmentCreate, user: User = Depends(ge
     db.add(item)
     await db.flush()
     await _audit(db, user, "appointment.create", "appointment", item.id)
+    await appointment_invites.queue(db, item, "booked")  # ccrm-038 (DEC-SCOPE-271 CA1)
     await db.commit()
     await db.refresh(item)
     return {"id": item.id, "scheduled_at": item.scheduled_at, "status": item.status}
@@ -2863,12 +2864,18 @@ async def update_appointment(appointment_id: UUID, payload: dict, user: User = D
         raise HTTPException(404, "Appointment not found")
     if user.role == "counselor" and item.staff_id != user.id:
         raise HTTPException(403, "Appointment is outside your assigned scope")
+    was_cancelled, old_time = item.status in appointment_invites.CANCELLED, item.scheduled_at
     for key in {"appointment_type", "mode", "status"}:
         if key in payload:
             setattr(item, key, payload[key])
     if payload.get("scheduled_at"):
         item.scheduled_at = datetime.fromisoformat(payload["scheduled_at"])
     await _audit(db, user, "appointment.update", "appointment", item.id, payload)
+    # ccrm-038 (CA1): a cancellation or a new time re-sends the invite; other edits send nothing
+    if not was_cancelled and item.status in appointment_invites.CANCELLED:
+        await appointment_invites.queue(db, item, "cancelled")
+    elif not was_cancelled and item.scheduled_at != old_time:
+        await appointment_invites.queue(db, item, "rescheduled")
     await db.commit()
     return {"id": item.id, "status": item.status}
 

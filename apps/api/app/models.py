@@ -2379,6 +2379,19 @@ class Appointment(Base, TimestampMixin):
     booked_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     # ccrm-004 (DEC-SCOPE-259 LG4): what the counselling session concluded, given when the counselor completes it. Never logged.
     outcome_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # ccrm-038 (DEC-SCOPE-271 CA2): the `.ics` SEQUENCE -- +1 each time the invite is re-sent for a new time or a cancellation.
+    calendar_sequence: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+
+class CalendarFeed(Base):
+    """ccrm-038 (DEC-SCOPE-271 CA4): a counselor's read-only iCal feed. Only the SHA-256 of the URL token is kept; regenerating replaces
+    the row, revoking deletes it."""
+
+    __tablename__ = "calendar_feeds"
+    __table_args__ = (UniqueConstraint("token_hash", name="uq_calendar_feeds_token_hash"),)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    token_hash: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class AppointmentEvent(Base):

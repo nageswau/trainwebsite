@@ -421,33 +421,47 @@ async def send_password_reset_email(*, to_email: str, recipient_name: str, reset
         return "failed", failure_text(exc)
 
 
-async def send_generic_notification_email(*, to_email: str, recipient_name: str, title: str, body: str, action_url: str | None) -> tuple[str, str | None]:
-    """ENH-032 E8: the email copy of a generic or inbound notification (like `send_parent_notification_email`, no school)."""
-    if not email_configured():
-        return "not_configured", None
+INVITE_FILENAME = "invite.ics"
+
+
+def generic_notification_message(*, to_email: str, recipient_name: str, title: str, body: str, action_url: str | None, ics: str | None = None,
+                                 ics_method: str | None = None) -> EmailMessage:
     # ENH-032 / DEC-SCOPE-225 (I2): an app path ("/it/...") becomes FRONTEND_URL + path, as in send_bdm_reminder_email; an absolute
     # URL is kept as-is.
     if action_url and action_url.startswith("/"):
         action_url = f"{settings.frontend_url.rstrip('/')}{action_url}"
+    msg = EmailMessage()
+    msg["Subject"] = f"{title} -- EduSphere"
+    msg["From"] = f"EduSphere <{settings.smtp_from_email}>"
+    msg["To"] = to_email
+    text = f"Hi {recipient_name},\n\n{title}\n\n{body}\n"
+    if action_url:
+        text += f"\nOpen in EduSphere: {action_url}\n"
+    msg.set_content(text)
+    msg.add_alternative(
+        _card_html(
+            heading=escape(title),
+            paragraphs=[f"Hi {escape(recipient_name)},", escape(body)],
+            button=_button(action_url, "Open in EduSphere") if action_url else "",
+            footer="Sent by EduSphere. You receive this because you have an EduSphere account.",
+        ),
+        subtype="html",
+    )
+    _attach_logo(msg)
+    if ics:  # ccrm-038 (DEC-SCOPE-271 CA3): the calendar invite
+        msg.add_attachment(ics.encode(), maintype="text", subtype="calendar", filename=INVITE_FILENAME, params={"method": ics_method or "PUBLISH"})
+    return msg
+
+
+async def send_generic_notification_email(*, to_email: str, recipient_name: str, title: str, body: str, action_url: str | None, ics: str | None = None,
+                                          ics_method: str | None = None) -> tuple[str, str | None]:
+    """ENH-032 E8: the email copy of a generic or inbound notification (like `send_parent_notification_email`, no school); ccrm-038 adds
+    an optional `.ics` attachment."""
+    if not email_configured():
+        return "not_configured", None
     try:
-        msg = EmailMessage()
-        msg["Subject"] = f"{title} -- EduSphere"
-        msg["From"] = f"EduSphere <{settings.smtp_from_email}>"
-        msg["To"] = to_email
-        text = f"Hi {recipient_name},\n\n{title}\n\n{body}\n"
-        if action_url:
-            text += f"\nOpen in EduSphere: {action_url}\n"
-        msg.set_content(text)
-        msg.add_alternative(
-            _card_html(
-                heading=escape(title),
-                paragraphs=[f"Hi {escape(recipient_name)},", escape(body)],
-                button=_button(action_url, "Open in EduSphere") if action_url else "",
-                footer="Sent by EduSphere. You receive this because you have an EduSphere account.",
-            ),
-            subtype="html",
-        )
-        _attach_logo(msg)
+        msg = generic_notification_message(to_email=to_email, recipient_name=recipient_name, title=title, body=body, action_url=action_url,
+                                           ics=ics, ics_method=ics_method)
         await asyncio.to_thread(_send_sync, msg)
         return "sent", None
     except Exception as exc:
