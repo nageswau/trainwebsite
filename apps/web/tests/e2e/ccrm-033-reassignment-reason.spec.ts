@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 import { signIn } from "./helpers/agency";
 
-// ccrm-033 (DEC-SCOPE-268, RR1) -- replacing a student's counsellor needs a reason; the student 360 History shows it. Requires the stack
+// ccrm-033 (DEC-SCOPE-271, RR1) -- replacing a student's counsellor needs a reason; the student 360 History shows it. Requires the stack
 // running with `python -m app.seed` applied. The spec makes its own counsellors and student (first assignment through the API, no reason).
 
 test("the Overseas Admin gives a reason to replace a student's counsellor and History shows it (ccrm-033)", async ({ page }) => {

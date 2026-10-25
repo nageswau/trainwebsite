@@ -494,7 +494,7 @@ ReassignReason = Annotated[Annotated[str, StringConstraints(strip_whitespace=Tru
 
 
 class OverseasApplicationCounselorAssign(BaseModel):
-    """AGN-023 (DEC-SCOPE-090 H8): swap only -- a counselor is required; null or missing is a 422. ccrm-033 (DEC-SCOPE-268 RR1): the
+    """AGN-023 (DEC-SCOPE-090 H8): swap only -- a counselor is required; null or missing is a 422. ccrm-033 (DEC-SCOPE-271 RR1): the
     reason, required by the route when an existing counselor is replaced."""
 
     counselor_id: UUID
@@ -12184,6 +12184,38 @@ class ManagementCounselingOut(BaseModel):
     total: ManagementCounselingGroup
     divisions: list[ManagementCounselingGroup]
     counselors: list[ManagementCounselorRow]
+
+
+# ccrm-036 (DEC-SCOPE-269 P1-P9): GET /counselor/performance -- the overseas counselor's own figures. A percentage is null when there is
+# nothing to divide; there is no revenue.
+class CounselorPerformanceFigure(BaseModel):
+    key: str
+    label: str
+    definition: str
+    unit: Literal["count", "percent"]
+    value: int | float | None
+
+
+class CounselorPerformanceRow(CrmCounts):
+    stage: str
+    stage_label: str
+    sub_status: str | None
+    sub_status_label: str
+
+
+class CounselorPerformanceApplications(BaseModel):
+    rows: list[CounselorPerformanceRow]
+    total: CrmCounts
+    definitions: list[CrmReportDefinition]
+
+
+class CounselorPerformanceOut(BaseModel):
+    from_: date = Field(serialization_alias="from")
+    to: date
+    as_of: datetime
+    period: list[CounselorPerformanceFigure]
+    now: list[CounselorPerformanceFigure]
+    applications: CounselorPerformanceApplications
 
 
 # mgmt-017 (spec TR1-TR16): the training dashboard. A share or average is null when there is nothing to divide (never a fabricated 0).

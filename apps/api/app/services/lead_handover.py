@@ -55,6 +55,9 @@ async def handover(db: AsyncSession, user: User, lead: Enquiry, counselor_id: UU
         raise HTTPException(409, SAME_COUNSELOR)
     previous, lead.owner_id = lead.owner_id, counselor.id
     await lead_pipeline.cancel_open_follow_ups(db, lead, HANDED_OVER)
+    from app.services import counselor_reminders  # noqa: PLC0415 -- ccrm-030 RM1; a module import loops back through ledger -> lead_handover
+
+    await counselor_reminders.first_contact(db, lead)
     db.add(AuditLog(user_id=user.id, action="lead.handover", entity_type="enquiry", entity_id=str(lead.id),
                     metadata_json={"counselor_id": str(counselor.id), "from_counselor_id": str(previous) if previous else None}))
     _log("lead_handed_over", user, lead.id, counselor_id=str(counselor.id))
@@ -68,7 +71,7 @@ async def _notice(db: AsyncSession, recipient: User, title: str, body: str, acti
 
 
 async def reassign_owner(db: AsyncSession, user: User, lead: Enquiry, owner_id: UUID | None, reason: str | None) -> None:
-    """ccrm-033 (DEC-SCOPE-268 RR1, RR3): the admin's owner change (ccrm-003 A7 checked the counselor). The same owner changes nothing;
+    """ccrm-033 (DEC-SCOPE-271 RR1, RR3): the admin's owner change (ccrm-003 A7 checked the counselor). The same owner changes nothing;
     replacing or removing an owner needs a reason. Its own audit row (`lead.update` keeps its shape; `lead.handover` stays the
     telecaller's, which the counselling report counts), shown on the timeline; both counselors are told, with the reason."""
     previous = lead.owner_id

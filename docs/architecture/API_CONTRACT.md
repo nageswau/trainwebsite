@@ -3915,9 +3915,57 @@ document stays, no longer fulfilling it; a `requested` event `fulfilled → open
 - Errors: 401 anonymous; 403 any role but partner, super_admin, overseas_admin; 422 end before start, malformed `counselor` (id or
   `none`), `country`/`university`/`course` not a UUID, `intake` over 80 characters.
 
-## 12FU. Reassignment with a logged reason (ccrm-033) — addendum, 2026-10-25
+## 12FU. CRM exports (ccrm-035) — addendum, 2026-10-25
 
-`DEC-SCOPE-268`. Contract change on three existing writes; no new route.
+`DEC-SCOPE-268`. CSV (`text/csv; charset=utf-8`, BOM) or xlsx (`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`),
+`Content-Disposition: attachment`, `Cache-Control: private, no-store`. `format` is `csv` (default) or `xlsx`.
+
+- `GET /api/v1/management/crm-reports/export?report=<ageing|universities|visa|readiness|leads|forecast>&format&date_from&date_to&counselor&country&university&course&intake`
+  (router `api/management.py`): one §12FT report — the row header, its measures under their on-screen labels (rates `… (%)`, ageing bands
+  one column each), then `Total`. File `crm-<report>-<IST date>`.
+- `GET /api/v1/counselor/exports/applications?format&country&university&intake&stage&sub_status&from&to` (router `api/crm_exports.py`):
+  the counselor's own applications, newest change first. Columns: EduSphere ID, Student, University, Agency, Intake, Status, Sub-status,
+  Outcome (label only), Next action, Last updated. File `my-applications-<IST date>`.
+- `GET /api/v1/counselor/exports/leads?format&stage&priority&from&to`: the counselor's own leads, newest first. Columns: Lead ID, Name,
+  Interest, Stage, Priority, Source, Telecaller, Lead date. File `my-leads-<IST date>`.
+- Each export writes `audit_logs` `action=crm.export`, `entity_type` `crm_report`|`counselor_list`, `entity_id` the key, metadata
+  `{format, filters: {set filters → values}, rows}`, committed before the response.
+- Errors: 401 anonymous; 403 wrong role (management: not partner/super_admin/overseas_admin; lists: not the overseas counselor); 422 unknown
+  `report`/`format`, the §12FT / ccrm-012 filter errors (same messages), or a list over 5,000 rows ("narrow the filters"); 429 + `Retry-After`
+  after 30 exports in 10 minutes.
+
+## 12FV. Counselor's own performance report (ccrm-036) — addendum, 2026-10-25
+
+`DEC-SCOPE-269`. `GET /api/v1/counselor/performance?from&to` (router `api/counselor_performance.py`) → `{from, to, as_of, period: [Figure],
+now: [Figure], applications: {rows: [{stage, stage_label, sub_status, sub_status_label, applications, students}], total: {applications,
+students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, definition, unit: "count"|"percent", value: int|float|null}`
+(a percentage is null when nothing is due / assigned). Period keys: `leads_assigned`, `calls`, `counseling_sessions`, `follow_ups`,
+`conversions`, `conversion_pct` (mgmt-018's definitions), `follow_ups_due`, `follow_ups_completed`, `follow_up_completion_pct`,
+`tasks_completed`. Now keys: `overdue_tasks`, `overdue_follow_ups`, `applications`, `students`, `offers`, `visas_pending`, `visas_approved`,
+`visas_refused`, `enrollments`, `documents_pending`. No revenue. Read-only, not audited.
+- Errors: 401 anonymous; 403 anyone but the overseas counselor; 422 a malformed date, `from` after `to`, or a period over 366 days.
+
+## 12FW. Counselor reminder rules (ccrm-030) — addendum, 2026-10-25
+
+`DEC-SCOPE-270`. Router `api/counselor_reminders.py`, service `services/counselor_reminders.py`, beat `ccrm030-counselor-reminders`
+(daily 08:15 IST). Design `docs/superpowers/specs/2026-10-25-ccrm-030-counselor-reminders-design.md`.
+
+- `GET /api/v1/overseas-admin/reminder-rules` → `{rules: [{key, label, description, action: task|notify, timing: assign|silent|before|after,
+  min_offset, max_offset, enabled, offset_days, notify_student (null on rules that never remind the student), updated_at}]}` in catalogue order.
+- `PUT /api/v1/overseas-admin/reminder-rules/{key}` body `{enabled, offset_days, notify_student?}` (extra fields 422) → the rule. 404 unknown
+  key; 422 offset outside the rule's range or `notify_student: true` on a rule without a student column. Audited
+  `counselor_reminder_rule.update` with field names.
+- `POST /api/v1/overseas-admin/reminder-rules/run` → `{created, duplicate, skipped, failed, rules: {key: created}}`; the daily job, now.
+  Idempotent: a second run creates nothing new.
+- `GET /api/v1/overseas-admin/reminder-rules/log?limit=50&offset=0` (limit 1–100) → `{items: [{id, rule_key, rule_label, summary, task_created,
+  recipients, created_at}], total, limit, offset}`, newest first.
+- Side effects outside the routes: `POST /telecaller/leads/{id}/handover` and `PATCH /admin/leads/{id}` (owner changed to an overseas
+  counselor) add the counselor's first-contact task and notice when the rule is on. Response shapes unchanged.
+- Errors: 401 anonymous; 403 any role but `overseas_admin` (overseas division) and `super_admin`.
+
+## 12FX. Reassignment with a logged reason (ccrm-033) — addendum, 2026-10-25
+
+`DEC-SCOPE-271`. Contract change on three existing writes; no new route.
 
 - `PUT /api/v1/workflows/overseas/applications/{id}/counselor` and `PUT /api/v1/admin/users/{id}/counselor`: body
   `{counselor_id, reason?}`. `reason` is trimmed, at most 500 characters, no control characters (422), blank = none. Replacing an

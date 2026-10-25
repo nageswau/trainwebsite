@@ -45,7 +45,7 @@ EMAILED = "emailed"  # the outcome of an update that mailed a new link (an email
 ADMIN_ONLY = "Only the Overseas Admin can assign a counselor"  # csc-005: AGN-023's wording and rule
 CHOOSE_ACTIVE_COUNSELOR = "Choose an active overseas counselor"
 ASSIGNED = "overseas.student.counselor_assign"
-REASON_REQUIRED = "Give a reason for the reassignment"  # ccrm-033 (DEC-SCOPE-268 RR1)
+REASON_REQUIRED = "Give a reason for the reassignment"  # ccrm-033 (DEC-SCOPE-271 RR1)
 
 
 def require_reason(previous_id, reason: str | None) -> None:

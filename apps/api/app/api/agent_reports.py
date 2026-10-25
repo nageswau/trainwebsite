@@ -40,14 +40,14 @@ EXPORT_WINDOW = timedelta(minutes=10)
 EXPORT_THROTTLED = "You've downloaded a lot of reports in a short time. Try again in a few minutes."
 
 
-async def _export_wait(db: AsyncSession, user: User) -> int:
-    """Seconds until the oldest of the caller's last EXPORT_LIMIT exports leaves the window; 0 while under the budget. Runs under
-    the caller's membership lock."""
+async def _export_wait(db: AsyncSession, user: User, action: str = EXPORT_ACTION) -> int:
+    """Seconds until the oldest of the caller's last EXPORT_LIMIT exports (audit rows `action`) leaves the window; 0 while under the
+    budget. Runs under a lock on the caller (the membership row here; ccrm-035 locks the user row)."""
     now = datetime.now(UTC)
     recent = (
         await db.scalars(
             select(AuditLog.created_at)
-            .where(AuditLog.user_id == user.id, AuditLog.action == EXPORT_ACTION, AuditLog.created_at > now - EXPORT_WINDOW)
+            .where(AuditLog.user_id == user.id, AuditLog.action == action, AuditLog.created_at > now - EXPORT_WINDOW)
             .order_by(AuditLog.created_at.desc())
             .limit(EXPORT_LIMIT)
         )

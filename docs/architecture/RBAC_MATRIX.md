@@ -2840,7 +2840,43 @@ inside the existing role scope (a counselor searching another counselor's code g
   refuses other roles before calling the API). Pinned by `test_ccrm_034_reports.py::test_management_and_the_overseas_admin_read_the_reports`,
   `::test_everyone_else_is_refused`, `::test_anonymous_is_refused`.
 
-### 2.182 Reassignment reason *(added 2026-10-25 — `DEC-SCOPE-268`, ccrm-033)*
+### 2.182 CRM exports *(added 2026-10-25 — `DEC-SCOPE-268`, ccrm-035)*
+
+| Route | `partner` | `super_admin` | `overseas_admin` | `counselor` (overseas) | `counselor` (IT) | `accountant` | Others | Anonymous |
+|---|---|---|---|---|---|---|---|---|
+| `GET /management/crm-reports/export` | ✅ | ✅ | ✅ | `403` | `403` | `403` | `403` | `401` |
+| `GET /counselor/exports/applications` | `403` | `403` | `403` | ✅ own | `403` | `403` | `403` | `401` |
+| `GET /counselor/exports/leads` | `403` | `403` | `403` | ✅ own | `403` | `403` | `403` | `401` |
+
+- "Own" = `counselor_id = me` (applications) and owner + division (leads). Every export is audited (`crm.export`) and throttled. Pinned by
+  `test_ccrm_035_exports.py::test_management_roles_export_a_report_with_its_total_and_the_export_is_audited`,
+  `::test_other_roles_cannot_export_management_reports_and_nothing_is_audited`, `::test_only_the_overseas_counselor_exports_own_lists`,
+  `::test_anonymous_export_is_refused`.
+
+### 2.183 Counselor's own performance report *(added 2026-10-25 — `DEC-SCOPE-269`, ccrm-036)*
+
+| Route | `counselor` (overseas) | `counselor` (IT) | `overseas_admin` | `super_admin` | `partner` | Others | Anonymous |
+|---|---|---|---|---|---|---|---|
+| `GET /counselor/performance` | ✅ own | `403` | `403` | `403` | `403` | `403` | `401` |
+
+- "Own" = the caller's id only; the request names no counselor, so there is no IDOR surface. Admins and management read every counselor at
+  `/management/counseling` and `/management/crm-reports`. Pinned by `test_ccrm_036_performance.py::test_the_overseas_counselor_reads_their_own_report`,
+  `::test_everyone_else_is_refused`, `::test_anonymous_is_refused`.
+
+### 2.184 Counselor reminder rules *(added 2026-10-25 — `DEC-SCOPE-270`, ccrm-030)*
+
+| Route | `overseas_admin` (overseas) | `super_admin` | `overseas_admin` (other division) | `counselor` | Others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET /overseas-admin/reminder-rules` | ✅ | ✅ | `403` | `403` | `403` | `401` |
+| `PUT /overseas-admin/reminder-rules/{key}` | ✅ | ✅ | `403` | `403` | `403` | `401` |
+| `POST /overseas-admin/reminder-rules/run` | ✅ | ✅ | `403` | `403` | `403` | `401` |
+| `GET /overseas-admin/reminder-rules/log` | ✅ | ✅ | `403` | `403` | `403` | `401` |
+
+- Page `/overseas/admin/reminder-rules` (Overseas Admin sidebar "Reminder rules"; the page refuses other roles before calling the API).
+- Rule tasks belong to the counselor (created by them, ccrm-029 T3 applies); the job never notifies agents. Pinned by
+  `test_ccrm_030_reminders.py::test_only_the_overseas_admin`.
+
+### 2.185 Reassignment reason *(added 2026-10-25 — `DEC-SCOPE-271`, ccrm-033)*
 
 No route or role change: the three reassignment writes keep their gates (application and student counselor — `overseas_admin` only;
 lead owner — `ensure_admin` in the lead's division). Who sees the reason: Overseas Admin and counselor (status history, student 360,

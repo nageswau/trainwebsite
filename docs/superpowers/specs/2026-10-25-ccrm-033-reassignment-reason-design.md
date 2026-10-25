@@ -2,7 +2,7 @@
 
 NO-ASSUMPTION MODE. Backlog item `ccrm-033` (`docs/delivery/COUNSELOR_CRM_BACKLOG.md`); spec §2 "administrators can reassign ownership
 and correct records with a logged reason", §11 student reassigned. Dependencies: none. Branch `worktree-ccrm-033`.
-Numbers: `DEC-SCOPE-268`, API §12FU, RBAC §2.182, **no migration**.
+Numbers: `DEC-SCOPE-271`, API §12FX, RBAC §2.185, **no migration** (re-chained after ccrm-035, ccrm-036 and ccrm-030 merged).
 
 ## 1. Owner answers (2026-10-25, clarifying-question prompt)
 
@@ -80,4 +80,4 @@ counselling metrics); a generic "reassignment" service (three callers with diffe
 4. Lead path: replace/remove without `owner_reason` 422; first assign OK; `lead.owner_change` row; notices; timeline row with reason.
 5. Web: `AssignCounselorButton` reason field (required when replacing, sent in body); `leadTimeline` unassign title.
 6. Update existing tests that swap without a reason (AGN-023, csc-005, ccrm-003) to send one — contract change, not a behaviour fudge.
-7. Docs: DEC-SCOPE-268, API §12FU, RBAC §2.182, backlog status.
+7. Docs: DEC-SCOPE-271, API §12FX, RBAC §2.185, backlog status.

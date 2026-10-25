@@ -96,6 +96,27 @@ def _pct(converted: int, assigned: int) -> float | None:
     return round(100 * converted / assigned, 1) if assigned else None
 
 
+async def _counts(db: AsyncSession, ids: list[UUID], lo: datetime, hi: datetime) -> tuple[dict, dict, dict, dict]:
+    return await _handovers(db, ids, lo, hi), await _calls(db, ids, lo, hi), await _sessions(db, ids, lo, hi), await _conversions(db, ids, lo, hi)
+
+
+def _figures(counselor_id: UUID, handovers: dict, calls: dict, sessions: dict, conversions: dict) -> dict:
+    """One counselor's CS3-CS7 and CS9 figures from the grouped counts; `_converted` is the CS9 numerator the totals sum."""
+    assigned, converted = handovers.get(counselor_id, (0, 0))
+    held, repeats = sessions.get(counselor_id, (0, 0))
+    return {
+        "leads_assigned": assigned, "calls": calls.get(counselor_id, (0,))[0], "counseling_sessions": held, "follow_ups": repeats,
+        "conversions": conversions.get(counselor_id, (0,))[0], "conversion_pct": _pct(converted, assigned), "_converted": converted,
+    }  # fmt: skip
+
+
+async def counselor_figures(db: AsyncSession, counselor_id: UUID, start: date, end: date) -> dict:
+    """ccrm-036 (DEC-SCOPE-269 P3): one counselor's figures by the same builders as the dashboard -- never revenue."""
+    figures = _figures(counselor_id, *await _counts(db, [counselor_id], *_instants(start, end)))
+    del figures["_converted"]
+    return figures
+
+
 def _group(division: str | None, label: str, rows: list[dict], money: bool) -> dict:
     """A total row: the sum of its counselors' figures (CS1), its conversion % from the summed parts (CS9)."""
     return {
@@ -113,22 +134,15 @@ async def dashboard(db: AsyncSession, user: User, start: date, end: date, now: d
     money = can_view_finance(user)
     people = (await db.execute(select(User.id, User.full_name, User.division, User.active).where(User.role == "counselor"))).all()
     ids = [p.id for p in people]
-    lo, hi = _instants(start, end)
-    handovers, sessions, conversions = (await _handovers(db, ids, lo, hi), await _sessions(db, ids, lo, hi), await _conversions(db, ids, lo, hi))
-    calls = await _calls(db, ids, lo, hi)
+    counts = await _counts(db, ids, *_instants(start, end))
     revenue = await _revenue(db, ids, start, end) if money else {}
 
     order = {division: i for i, division in enumerate(DIVISIONS)}
     rows = []
     for p in sorted(people, key=lambda p: (order.get(p.division, len(order)), p.division, p.full_name.lower(), str(p.id))):
-        assigned, converted = handovers.get(p.id, (0, 0))
-        held, repeats = sessions.get(p.id, (0, 0))
         rows.append({
-            "id": p.id, "full_name": p.full_name, "division": p.division, "active": p.active,
-            "leads_assigned": assigned, "calls": calls.get(p.id, (0,))[0], "counseling_sessions": held, "follow_ups": repeats,
-            "conversions": conversions.get(p.id, (0,))[0],
+            "id": p.id, "full_name": p.full_name, "division": p.division, "active": p.active, **_figures(p.id, *counts),
             "revenue": Decimal(revenue.get(p.id, (0,))[0] or 0).quantize(ledger.CENTS) if money else None,
-            "conversion_pct": _pct(converted, assigned), "_converted": converted,
         })  # fmt: skip
 
     divisions = list(DIVISIONS) + sorted({r["division"] for r in rows} - set(DIVISIONS))

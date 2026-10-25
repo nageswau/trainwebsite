@@ -2051,7 +2051,7 @@ async def assign_overseas_counselor(
         return {**result, "changed": False}
     previous_id = item.counselor_id
     reason = payload.reason
-    counselor_students.require_reason(previous_id, reason)  # ccrm-033 (DEC-SCOPE-268 RR1): a swap needs a reason
+    counselor_students.require_reason(previous_id, reason)  # ccrm-033 (DEC-SCOPE-271 RR1): a swap needs a reason
     item.counselor_id = counselor.id
     note = COUNSELLOR_CHANGED if previous_id else COUNSELLOR_ASSIGNED
     db.add(ApplicationStatusHistory(application_id=item.id, from_status=item.status, to_status=item.status, next_action=item.next_action, notes=note, reason=reason, changed_by_id=user.id))

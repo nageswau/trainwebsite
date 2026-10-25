@@ -1174,3 +1174,39 @@ half.
 | `ccrm-034-AC07` | Forecast = confirmed + expected; possible and lost beside it (R10) | `::test_forecast_by_intake_is_confirmed_plus_visa_approved` |
 | `ccrm-034-AC08` | Filters narrow; bad filters 422 (R2) | `::test_filters_narrow_every_application_report`, `::test_bad_filters_are_422`, `::test_intake_choices_never_offer_a_blank` (browser QA-02) |
 | `ccrm-034-AC09` | UI: six tables with Students and Applications columns, definitions, empty/error states, GET filters on both pages, access | `apps/web/tests/components/ManagementCrmReports.test.tsx`, `apps/web/tests/lib/managementCrmReports.test.ts`; `apps/web/tests/e2e/ccrm-034-crm-reports.spec.ts` (incl. phone no-overflow, browser QA-01) |
+
+| `ccrm-035` | Requirement: §13 export, §16 restrict and log bulk exports, AC 11 → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-035` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-268` → design `docs/superpowers/specs/2026-10-25-ccrm-035-crm-exports-design.md`; `API_CONTRACT.md` §12FU; `RBAC_MATRIX.md` §2.182 | E1–E9 defaults `NEEDS_CONFIRMATION` |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-035-AC01` | Each ccrm-034 report exports as CSV and xlsx with its Total row, for partner / super_admin / Overseas Admin (E1, E2) | `apps/api/tests/test_ccrm_035_exports.py::test_management_roles_export_a_report_with_its_total_and_the_export_is_audited`, `::test_ageing_bands_are_one_column_each`, `::test_every_report_exports_a_header_and_a_total`; `apps/api/tests/test_ccrm_035_tabular.py` |
+| `ccrm-035-AC02` | The overseas counselor exports own applications and leads with the list filters; never another counselor's (E3) | `::test_counselor_exports_own_applications_with_allowlisted_columns_only`, `::test_application_filters_narrow_the_export_and_are_audited`, `::test_counselor_exports_own_leads_without_contact_details` |
+| `ccrm-035-AC03` | Role-restricted: other roles 403, anonymous 401, nothing audited on refusal | `::test_other_roles_cannot_export_management_reports_and_nothing_is_audited`, `::test_only_the_overseas_counselor_exports_own_lists`, `::test_anonymous_export_is_refused` |
+| `ccrm-035-AC04` | Every export logged: who, report, filters, row count, format (E5) | the audit assertions in AC01/AC02 tests |
+| `ccrm-035-AC05` | Sensitive columns never exported (E4); formula escaping (E8) | `::test_counselor_exports_own_applications_with_allowlisted_columns_only`, `::test_counselor_exports_own_leads_without_contact_details`; `test_ccrm_035_tabular.py::test_text_is_neutralised_and_control_characters_dropped` |
+| `ccrm-035-AC06` | Throttle 429 and row cap 422; bad inputs 422 (E6, E7) | `::test_exports_are_throttled_from_the_callers_own_audit_rows`, `::test_counts_are_unaffected_by_other_users_exports`, `::test_a_list_over_the_cap_is_refused`, `::test_bad_management_export_requests_are_422`, `::test_bad_counselor_export_requests_are_422` |
+| `ccrm-035-AC07` | UI: Download CSV / Excel per report with rows, on the counselor's lists and leads; refusal shown as a message; phone layout | `apps/web/tests/components/ExportButtons.test.tsx`, `apps/web/tests/components/ManagementCrmReports.test.tsx`, `apps/web/tests/lib/managementCrmReports.test.ts`; `apps/web/tests/e2e/ccrm-035-exports.spec.ts` |
+
+| `ccrm-036` | Requirement: §1 measure counselor performance, §4 conversion rate by counselor → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-036` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-269` → design `docs/superpowers/specs/2026-10-25-ccrm-036-counselor-performance-design.md`; `API_CONTRACT.md` §12FV; `RBAC_MATRIX.md` §2.183 | P1–P9 defaults `NEEDS_CONFIRMATION` |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-036-AC01` | Only the overseas counselor reads the report, and only their own (P1) | `apps/api/tests/test_ccrm_036_performance.py::test_the_overseas_counselor_reads_their_own_report`, `::test_everyone_else_is_refused`, `::test_anonymous_is_refused`; e2e `ccrm-036-counselor-performance.spec.ts` (Overseas Admin refused) |
+| `ccrm-036-AC02` | Period IST, default this month; bad period 422 (P2) | `::test_the_period_defaults_to_this_ist_month`, `::test_a_bad_period_is_422`; e2e "an impossible period shows the reason" |
+| `ccrm-036-AC03` | Leads assigned, conversions, conversion % with mgmt-018's definitions; no revenue (P3) | `::test_period_figures_equal_the_counseling_dashboard_row_and_carry_no_revenue`, `::test_no_leads_assigned_gives_no_conversion_percentage`; `apps/api/tests/test_mgmt_018_counseling.py` unchanged and passing |
+| `ccrm-036-AC04` | Follow-up completion; overdue follow-ups (P4, P6) | `::test_follow_up_completion_counts_the_follow_ups_on_my_leads_due_in_the_period`, `::test_no_follow_ups_due_gives_no_completion_percentage` |
+| `ccrm-036-AC05` | Overdue tasks; tasks completed (P5) | `::test_overdue_tasks_now_and_tasks_completed_in_the_period` |
+| `ccrm-036-AC06` | Applications by sub-status, offers, visas, enrolments; another counselor's records excluded (P7, P8) | `::test_the_caseload_counts_applications_students_offers_visas_enrolments_and_pending_documents`, `::test_applications_are_grouped_by_stage_then_sub_status_in_stage_order` |
+| `ccrm-036-AC07` | UI: tiles with definitions, table with total, empty / error states, period in the address, phone layout | `apps/web/tests/components/CounselorPerformance.test.tsx`, `apps/web/tests/lib/counselorPerformance.test.ts`; e2e `ccrm-036-counselor-performance.spec.ts`, `cns-001-counselor-workspace.spec.ts` |
+
+| `ccrm-030` | Requirement: §11 trigger table, §14 deadline alerts, AC 12 → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-030` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-270` → design `docs/superpowers/specs/2026-10-25-ccrm-030-counselor-reminders-design.md`; `API_CONTRACT.md` §12FW; `RBAC_MATRIX.md` §2.184 | RM1–RM10 defaults `NEEDS_CONFIRMATION` |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-030-AC01` | AC 12: each rule fires on sample records (deadline, offer, deposit, condition, visa, decision, hold, document, no response) | `apps/api/tests/test_ccrm_030_reminders.py` (one test per rule); browser QA on seeded APP-000088/089 |
+| `ccrm-030-AC02` | No duplicate reminder on a re-run; a changed date is a new one (RM3) | `::test_application_deadline_notifies_the_counselor_once`, `::test_a_changed_deadline_is_a_new_reminder`, `::test_run_now_is_idempotent_and_logged`; `ccrm-030-reminder-rules.spec.ts` |
+| `ccrm-030-AC03` | Recipients: counselor; direct student where the rule says so; never agents; inactive counselor skipped (RM4/RM5) | `::test_terminal_inactive_and_agency_exclusions`, `::test_student_reminder_can_be_switched_off`, `::test_qa02_a_school_bridged_application_reminds_its_overseas_counselor` |
+| `ccrm-030-AC04` | New lead assigned → first-contact task (handover, admin owner change; once; off when disabled) | `::test_handover_adds_a_first_contact_task`, `::test_admin_owner_change_adds_first_contact_once` |
+| `ccrm-030-AC05` | Admin configures rules (range, student switch, audit), runs now, reads the log; others 403 | `::test_admin_reads_and_changes_rules`, `::test_only_the_overseas_admin`; `apps/web/tests/components/ReminderRules.test.tsx`; `ccrm-030-reminder-rules.spec.ts` |
+| `ccrm-030-AC06` | AGN-017 agency reminders unchanged | `test_agn_017_reminders.py`, `test_agn_017_events.py`, `test_agn_017_api.py` |
+| `ccrm-030-AC07` | Migration: tables, seed, CHECKs, unique dedupe key, round trip | `apps/api/tests/test_ccrm_030_migration.py` |

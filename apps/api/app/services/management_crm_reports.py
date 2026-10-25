@@ -3,6 +3,7 @@ visa outcomes, document readiness, lead conversion by intake and the forecast by
 behind them separately (R3) and carries its definitions. Each report is one grouped SELECT plus one for its total (students are distinct
 people, so a total is never the sum of its rows). Read-only; only counts and organisation, place, intake and stage names leave."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, timedelta
 from uuid import UUID
@@ -287,12 +288,44 @@ async def _options(db: AsyncSession) -> dict[str, list[dict]]:
     return {**{k: options[k] for k in ("counselors", "countries", "universities", "courses")}, "intakes": [{"value": i, "label": i} for i in intakes]}
 
 
+REPORT_KEYS = tuple(DEFINITIONS)
+_BUILDERS = {"universities": _universities, "visa": _visa, "readiness": _readiness, "leads": _leads, "forecast": _forecast}
+
+
+async def report(db: AsyncSession, f: ReportFilters, key: str, today: date) -> dict:
+    """One report with its definitions; `today` is the IST date the ageing counts from."""
+    built = await (_ageing(db, f, today) if key == "ageing" else _BUILDERS[key](db, f))
+    built["definitions"] = [{"key": k, "label": label, "definition": text} for k, label, text in DEFINITIONS[key]]
+    return built
+
+
 async def reports(db: AsyncSession, f: ReportFilters, today: date) -> dict:
-    """The six reports for the filters; `today` is the IST date the ageing counts from."""
-    built = {
-        "ageing": await _ageing(db, f, today), "universities": await _universities(db, f), "visa": await _visa(db, f),
-        "readiness": await _readiness(db, f), "leads": await _leads(db, f), "forecast": await _forecast(db, f),
-    }  # fmt: skip
-    for key, report in built.items():
-        report["definitions"] = [{"key": k, "label": label, "definition": text} for k, label, text in DEFINITIONS[key]]
+    """The six reports for the filters."""
+    built = {key: await report(db, f, key, today) for key in REPORT_KEYS}
     return {**built, "options": await _options(db)}
+
+
+# ccrm-035 (DEC-SCOPE-268 E2): each report as its on-screen table -- the row header and how a row names itself; then the measures in the
+# page's order under their labels (ageing's days-since-update definition becomes one column per band), then the Total row.
+ROW_HEADERS: dict[str, tuple[str, Callable[[dict], str]]] = {
+    "ageing": ("Stage · sub-status", lambda r: f"{r['stage_label']} · {r['sub_status_label']}"),
+    "universities": ("University", lambda r: r["label"]), "visa": ("Destination", lambda r: r["label"]),
+    "readiness": ("Stage", lambda r: r["stage_label"]), "leads": ("Intake", lambda r: r["label"]), "forecast": ("Intake", lambda r: r["label"]),
+}  # fmt: skip
+BAND_LABELS = {"d0_7": "0–7 days", "d8_14": "8–14 days", "d15_30": "15–30 days", "d31_60": "31–60 days", "d61_plus": "Over 60 days"}
+EXPORT_LABELS = {"oldest_days": "Oldest (days)", "offer_rate": "Offer rate (%)", "conversion_pct": "Conversion (%)"}
+
+
+def table(key: str, built: dict) -> dict:
+    header, name = ROW_HEADERS[key]
+    columns = [{"key": "row", "label": header}]
+    for k, label, _ in DEFINITIONS[key]:
+        if k == "days":
+            columns += [{"key": band, "label": text} for band, text in BAND_LABELS.items()]
+        else:
+            columns.append({"key": k, "label": EXPORT_LABELS.get(k, label)})
+
+    def flat(r: dict, row: str) -> dict:
+        return {**r, **r.get("bands", {}), "row": row}
+
+    return {"columns": columns, "items": [flat(r, name(r)) for r in built["rows"]], "totals": flat(built["total"], "Total")}

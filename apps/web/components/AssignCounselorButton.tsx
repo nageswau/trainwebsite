@@ -19,7 +19,7 @@ export default function AssignCounselorButton({ applicationId, currentId, url }:
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
   const label = currentId ? "Change counsellor" : "Assign counsellor";
-  // ccrm-033 (DEC-SCOPE-268 RR1): replacing a counsellor needs a reason; a first assignment may give one. The server re-checks.
+  // ccrm-033 (DEC-SCOPE-271 RR1): replacing a counsellor needs a reason; a first assignment may give one. The server re-checks.
   const reasonRequired = currentId !== null;
   const trimmed = reason.trim();
   const buttonRef = useRef<HTMLButtonElement>(null);

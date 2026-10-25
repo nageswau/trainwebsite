@@ -704,6 +704,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Acceptance:** AC 12 with seeded sample records; no duplicate reminder on re-run.
 - **Regression:** AGN-017 reminders (do not double-send on agency apps).
 - **Complexity:** large. **Risk:** medium.
+- **Status (2026-10-25):** built on `worktree-ccrm-030` — `DEC-SCOPE-270` (RM1–RM10 defaults `NEEDS_CONFIRMATION`), migration
+  `0189_counselor_reminders`, API §12FW, RBAC §2.184; page `/overseas/admin/reminder-rules` (configure, run now, recent reminders). Design
+  `docs/superpowers/specs/2026-10-25-ccrm-030-counselor-reminders-design.md`.
 
 ### `ccrm-031` — Overdue escalation to Overseas Admin (CC3)
 
@@ -730,9 +733,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Expected behaviour:** a required reason on every reassignment (application counselor, csc-005 student link, lead owner); stored in
   AuditLog and status history; shown in History. Old and new owners already notified — include the reason.
 - **DB:** none (audit metadata) or `reason` column. **Dependencies:** none. **Complexity:** small. **Risk:** low.
-- **Status (2026-10-25):** built on `worktree-ccrm-033` — `DEC-SCOPE-268` (RR1 reason required when replacing/removing an owner, optional
+- **Status (2026-10-25):** built on `worktree-ccrm-033` — `DEC-SCOPE-271` (RR1 reason required when replacing/removing an owner, optional
   on a first assignment; RR2 hidden from the agent; RR3 lead owner `owner_reason` + notices + timeline, no picker), no migration, API
-  §12FU, RBAC §2.182. Design `docs/superpowers/specs/2026-10-25-ccrm-033-reassignment-reason-design.md`.
+  §12FX, RBAC §2.185. Design `docs/superpowers/specs/2026-10-25-ccrm-033-reassignment-reason-design.md`.
 
 ### `ccrm-034` — Management reports: ageing, university performance, visa outcomes, readiness, intake conversion
 
@@ -759,6 +762,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
   every export logged (who, report, filters, row count); sensitive columns never exported.
 - **Reuse:** `_report_logged` (`api/workflows.py:2732`), nehn-004 xlsx helper if built. **Dependencies:** ccrm-034.
 - **Complexity:** medium. **Risk:** medium.
+- **Status (2026-10-25):** built on `worktree-ccrm-035` — `DEC-SCOPE-268` (E1–E9 defaults `NEEDS_CONFIRMATION`; xlsx from a
+  standard-library writer since nehn-004 is not built; contact details never exported), no migration, API §12FU, RBAC §2.182. Design
+  `docs/superpowers/specs/2026-10-25-ccrm-035-crm-exports-design.md`.
 
 ### `ccrm-036` — Counselor's own performance report
 
@@ -767,6 +773,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Expected behaviour:** the counselor sees own leads assigned, follow-up completion, overdue tasks, conversions, applications by
   sub-status, offers, visas, enrolments — using the same definitions as `management_counseling.py`, no revenue.
 - **Dependencies:** ccrm-029, ccrm-034. **Complexity:** small. **Risk:** low.
+- **Status (2026-10-25):** built on `feature/ccrm-036` — `DEC-SCOPE-269` (P1–P9 defaults `NEEDS_CONFIRMATION`; period figures by
+  mgmt-018's own builders, no revenue), no migration, API §12FV, RBAC §2.183. Page `/overseas/counselor/reports` ("My performance"). Design
+  `docs/superpowers/specs/2026-10-25-ccrm-036-counselor-performance-design.md`.
 
 ---
 

@@ -9521,7 +9521,64 @@ terminal) shown beside it; no probability weighting.
 **Numbering:** no migration; API §12FT; RBAC §2.181.
 - **Feature ID authorized:** `ccrm-034`. **Status:** built on `worktree-ccrm-034`.
 
-### DEC-SCOPE-268 — Reassignment with a logged reason (`ccrm-033`)
+### DEC-SCOPE-268 — Export of CRM reports and the counselor's own lists (`ccrm-035`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-035` (source PDF §13 export, §16 "restrict bulk exports to authorized roles
+and log exports", §18 AC 11; `UNVERIFIED` — only the backlog's quotes are used); design
+`docs/superpowers/specs/2026-10-25-ccrm-035-crm-exports-design.md`. Dependency ccrm-034 (`DEC-SCOPE-267`) merged.
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** E1 formats CSV (UTF-8
+BOM, on-screen labels) and xlsx (one sheet, frozen header, numbers typed) from a standard-library writer — no new dependency (nehn-004 not
+built). E2 one ccrm-034 report per file (rows + counted Total row; ageing bands one column each), for ccrm-034's roles (partner,
+super_admin, overseas_admin) and filters. E3 the overseas counselor exports their own Students/Applications list (ccrm-012 QS6 filters,
+`counselor_id = me`) and own leads (QS7 filters, owner + division); the IT counselor, Overseas Admin and everyone else 403 (Admin list
+exports not in this item). E4 allowlisted columns only — never email, phone, WhatsApp, address, DOB, identity, documents, notes, consent,
+referral contact, outcome/loss reasons, money or internal ids; whether contact details may ever be exported stays `NEEDS_CONFIRMATION`.
+E5 every export one `AuditLog` (`crm.export`; entity `crm_report`/`counselor_list`; metadata format, filter values, rows) committed before
+the file (fail closed); views not audited. E6 throttle 30 per user per 10 minutes (AGN-020 R10) → 429 + `Retry-After`. E7 counselor list
+cap 5,000 rows → 422. E8 formula escaping in both formats. E9 `no-store`, attachment filenames with the IST date.
+**Numbering:** no migration; API §12FU; RBAC §2.182.
+- **Feature ID authorized:** `ccrm-035`. **Status:** built on `worktree-ccrm-035`.
+
+### DEC-SCOPE-269 — Counselor's own performance report (`ccrm-036`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-036` (source PDF §1 "measure counselor performance", §4 conversion rate by
+counselor; `UNVERIFIED` — only the backlog's quotes are used); design `docs/superpowers/specs/2026-10-25-ccrm-036-counselor-performance-design.md`.
+Dependencies ccrm-029 (`DEC-SCOPE-250`) and ccrm-034 (`DEC-SCOPE-267`) merged.
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** P1 the overseas counselor
+reads only their own report (no counselor id in the request); the IT counselor, admins, management and everyone else 403. P2 `from`/`to`
+inclusive IST dates, default this month, `/management/counseling`'s period rule (422 reversed or longer than 366 days). P3 leads assigned,
+calls, counseling sessions, follow-ups (repeat sessions), conversions and conversion % by mgmt-018's own builders, labels and definitions;
+never revenue. P4 lead follow-up completion: follow-ups on the counselor's leads (owner + division) due in the period, cancelled excluded;
+completed = done; % = completed ÷ due (none due → no %). P5 tasks completed in the period; overdue tasks now (ccrm-029 T6 Overdue band).
+P6 overdue follow-ups now. P7 caseload now (every application with `counselor_id = me`): applications, students (ccrm-034 R3), offers
+(funnel Offer), visas pending / approved / refused (ccrm-034 R7), enrolments (confirmed, ccrm-027 E4), documents pending verification.
+P8 the caseload by stage then sub-status, closed stages included. P9 read-only, not audited; counts and stage names only. The overseas
+counselor's sidebar "Reports" opens this report in place of the generic "My Caseload Report" (the portal section payload is unchanged).
+**Numbering:** no migration; API §12FV; RBAC §2.183.
+- **Feature ID authorized:** `ccrm-036`. **Status:** built on `feature/ccrm-036`.
+
+### DEC-SCOPE-270 — Counselor reminder and trigger engine (`ccrm-030`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-030` (source PDF §11 trigger table, §14 deadline alerts / ownership, §18 AC 12;
+`UNVERIFIED` — only the backlog's quotes are used); owner answers CC2 (no visa coordinator role: the counselor is told), CC3 (escalation is
+ccrm-031); design `docs/superpowers/specs/2026-10-25-ccrm-030-counselor-reminders-design.md`. Dependencies ccrm-003/013/015/019/020/024/025/026/029 merged.
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** RM1 ten rules with
+default offsets — first contact (task, due +1 day, on handover / admin owner change), no response (task after 3 quiet days on a contacted
+lead with no next action due), document request overdue (task + student reminder), application deadline (7 days before, unsubmitted),
+university decision overdue (task), offer deadline / deposit due / offer condition due (3 days before, counselor + direct student), visa
+appointment (2 days before, student off), on-hold review date (task for the hold owner). RM2 "before" rules catch up from (date − offset)
+to the date; "after" rules look back 30 days. RM3 one `counselor_reminder_log` row per `rule:subject:anchor`, claimed with ON CONFLICT DO
+NOTHING — no duplicate on a re-run; a changed date is a new reminder. RM4 counselor = the application's, else the direct student's csc-001
+counselor, active overseas only (else skipped); the student only on direct applications; agents never (AGN-017 unchanged). RM5 live
+applications only (not withdrawn / enrolled / terminal; on hold only for its review); a status outside the pipeline counts as before the
+offer (browser QA-01); School-bridged applications with an overseas counselor are included (browser QA-02). RM6 rule tasks are
+`source='rule'`, created by the counselor themself, audited. RM7 in-app + email + opted-in channels, no names or typed text. RM8 beat
+daily 08:15 IST. RM9 Overseas Admin edits on/off, offset, student switch; audited with field names. RM10 "Run now" and a recent-reminders
+list for AC 12 testing.
+**Numbering:** migration `0189_counselor_reminders`; API §12FW; RBAC §2.184.
+- **Feature ID authorized:** `ccrm-030`. **Status:** built on `worktree-ccrm-030`.
+
+### DEC-SCOPE-271 — Reassignment with a logged reason (`ccrm-033`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-033` (source PDF §2 "administrators can reassign ownership and correct
 records with a logged reason", §11 student reassigned; `UNVERIFIED` — only the backlog's quotes are used); design
@@ -9534,5 +9591,5 @@ timeline shows the change; no owner-picker UI.
 **Storage:** application — the history row's `reason` + audit metadata `reason`; student — audit metadata `reason` (the student 360
 History shows it); lead — new audit action `lead.owner_change` `{from_owner_id, owner_id, reason?}` (`lead.update` unchanged;
 `lead.handover` not reused — the counselling report counts it). Reason: trimmed, ≤ 500, no control characters; never in structured logs.
-**Numbering:** no migration; API §12FU; RBAC §2.182.
+**Numbering:** no migration; API §12FX; RBAC §2.185.
 - **Feature ID authorized:** `ccrm-033`. **Status:** built on `worktree-ccrm-033`.

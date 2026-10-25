@@ -1,4 +1,4 @@
-"""ccrm-033 (DEC-SCOPE-268, RR1-RR3) -- a reassignment carries a logged reason: required when an existing owner is replaced or removed,
+"""ccrm-033 (DEC-SCOPE-271, RR1-RR3) -- a reassignment carries a logged reason: required when an existing owner is replaced or removed,
 optional on a first assignment (RR1); kept in the audit row and the status history, shown in History, sent to both counselors; hidden
 from the agent (RR2) and the student (ccrm-016 H2). Lead owner: `owner_reason` on the admin PATCH, notices, the lead timeline (RR3).
 The shared test database is never truncated: every assertion is about rows the test made."""

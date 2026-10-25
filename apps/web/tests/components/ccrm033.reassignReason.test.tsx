@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import AssignCounselorButton from "@/components/AssignCounselorButton";
 import { timelineEntry, type TimelineRow } from "@/lib/leadTimeline";
 
-// ccrm-033 (DEC-SCOPE-268, RR1): a reason is required when a counsellor is replaced, optional on a first assignment.
+// ccrm-033 (DEC-SCOPE-271, RR1): a reason is required when a counsellor is replaced, optional on a first assignment.
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 
