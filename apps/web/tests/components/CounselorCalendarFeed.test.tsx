@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import CounselorCalendarFeed from "@/components/CounselorCalendarFeed";
 import { CALENDAR_FEED_API, REGENERATE_PROMPT, REVOKE_PROMPT } from "@/lib/counselorCalendar";
 
-// ccrm-038 (DEC-SCOPE-273 CA4): create / copy / regenerate / turn off the counselor's calendar feed.
+// ccrm-038 (DEC-SCOPE-274 CA4): create / copy / regenerate / turn off the counselor's calendar feed.
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();

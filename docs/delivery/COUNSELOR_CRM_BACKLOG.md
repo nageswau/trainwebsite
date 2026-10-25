@@ -795,6 +795,10 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
   exists.
 - **Reuse:** tel-013/014 and rec-026 template services. **Dependencies:** ccrm-004.
 - **Complexity:** medium. **Risk:** low.
+- **Status (2026-10-25):** built on `worktree-ccrm-037` — `DEC-SCOPE-273` (MT1–MT10 defaults `NEEDS_CONFIRMATION`; no student inbound
+  channel exists, so replies are recorded by hand; the Overseas Admin reads but does not send), migration `0191_student_messages`, API
+  §12FZ, RBAC §2.187. Page `/overseas/admin/message-templates`; the student 360 Activities tab's Communication card. Design
+  `docs/superpowers/specs/2026-10-25-ccrm-037-counselor-student-messages-design.md`.
 
 ### `ccrm-038` — Calendar integration (CC6)
 
@@ -804,9 +808,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Security:** feed URL is a revocable secret token. **Dependencies:** none.
 - **Complexity:** medium. **Risk:** medium.
 - **Open questions:** whether two-way sync is wanted; provider (Google Workspace / Microsoft 365 / Zoho Calendar).
-- **Status (2026-10-25):** phase 1 built on `worktree-ccrm-038` — `DEC-SCOPE-273` (CA1–CA8 defaults: `.ics` REQUEST/CANCEL on overseas
+- **Status (2026-10-25):** phase 1 built on `worktree-ccrm-038` — `DEC-SCOPE-274` (CA1–CA8 defaults: `.ics` REQUEST/CANCEL on overseas
   appointment emails to student + counselor, never a lead; per-counselor feed with a hash-only, shown-once, revocable token; visa
-  appointments all-day; phase 2 sync still awaits the provider decision). Migration `0191_calendar_feeds`, API §12FZ, RBAC §2.187.
+  appointments all-day; phase 2 sync still awaits the provider decision). Migration `0192_calendar_feeds`, API §12GA, RBAC §2.188.
   Design `docs/superpowers/specs/2026-10-25-ccrm-038-calendar-integration-design.md`.
 
 ### `ccrm-039` — Student finance tab (CC6)

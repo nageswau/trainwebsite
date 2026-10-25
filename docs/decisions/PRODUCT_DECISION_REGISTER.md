@@ -9609,7 +9609,27 @@ Counselor tasks page.
 **Numbering:** migration `0190_overdue_escalation` (rule-key CHECK + seed); API §12FY; RBAC §2.186.
 - **Feature ID authorized:** `ccrm-031`. **Status:** built on `worktree-ccrm-031`.
 
-### DEC-SCOPE-273 — Calendar integration, phase 1 (`ccrm-038`)
+### DEC-SCOPE-273 — Counselor communication templates and the student/application message log (`ccrm-037`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-037` (source PDF §11 communication channels: "templates should be configurable;
+record outbound and responses against the student and application"; `UNVERIFIED` — only the backlog's quotes are used); design
+`docs/superpowers/specs/2026-10-25-ccrm-037-counselor-student-messages-design.md`. Dependency ccrm-004 (`DEC-SCOPE-259`, PR #322) merged.
+Verified: no inbound channel exists for student messages (only `/inbound/university-email`), so replies are recorded by hand.
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** MT1 one global WhatsApp +
+email library with no kind, name unique per channel, subject on email only, never deleted — the Overseas Admin and super_admin write, the
+overseas counselor reads active ones. MT2 merge fields `{name}` `{university}` `{course}` `{intake}` `{application_deadline}`
+`{offer_deadline}` `{counselor}`; application fields come from the application the message is about (empty, and listed as missing,
+without one). MT3 the recipient is the student's account email / phone, never a request field. MT4 the overseas counselor sends to students
+in csc-001 scope, optionally about one of the student's applications that is their own (ccrm-010 N3); the Overseas Admin reads every log
+but does not send. MT5 deactivated student 409, no usable number 409, SMTP unset 503, template active + same channel 422, caps 300 WhatsApp
+(409) / 100 email (429) per sender per IST day. MT6 email queued and published after the commit; worker claim, retry, sweeper (upc-012).
+MT7 replies recorded by hand: channel, optional email subject, body, received time (≤ 5-minute clock tolerance ahead, ≤ 7 days back),
+optional own application; 300 per day. MT8 permanent. MT9 the student's whole log for everyone in scope, on the student 360 Activities tab;
+never student- or agent-facing. MT10 audit `counselor_template.create|update`, `student_message.create|reply` with ids only.
+**Numbering:** migration `0191_student_messages`; API §12FZ; RBAC §2.187.
+- **Feature ID authorized:** `ccrm-037`. **Status:** built on `worktree-ccrm-037`.
+
+### DEC-SCOPE-274 — Calendar integration, phase 1 (`ccrm-038`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-038` (source PDF §11 "email, calendar", Phase 6; CC6 calendar in scope;
 `UNVERIFIED` — only the backlog's quotes are used); design `docs/superpowers/specs/2026-10-25-ccrm-038-calendar-integration-design.md`.
@@ -9625,5 +9645,5 @@ revoke deletes, both audited without the token. CA5 the feed = own appointments 
 applications (ccrm-030 RM4 rule, not withdrawn), last 90 days onward, ≤ 500 events, visa = all-day; no refusal reason / notes.
 CA6 public `GET /calendar/feeds/{token}.ics`, `no-store`, every refusal 404. CA7 only an overseas counselor manages a feed.
 CA8 phase 2 (two-way Google / Microsoft 365 / Zoho Calendar sync) is out until a provider decision.
-**Numbering:** migration `0191_calendar_feeds`; API §12FZ; RBAC §2.187 (ccrm-033 took 271 / 12FX / 2.185, ccrm-031 took 272 / 12FY / 2.186 / 0190 first).
+**Numbering:** migration `0192_calendar_feeds`; API §12GA; RBAC §2.188 (ccrm-033 took 271 / 12FX / 2.185, ccrm-031 took 272 / 12FY / 2.186 / 0190, ccrm-037 took 273 / 12FZ / 2.187 / 0191 first).
 - **Feature ID authorized:** `ccrm-038`. **Status:** built on `worktree-ccrm-038`.

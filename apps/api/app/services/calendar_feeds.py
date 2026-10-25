@@ -1,4 +1,4 @@
-"""ccrm-038 (DEC-SCOPE-273 CA4-CA6): the overseas counselor's read-only iCal feed.
+"""ccrm-038 (DEC-SCOPE-274 CA4-CA6): the overseas counselor's read-only iCal feed.
 
 The URL token is 256 random bits; only its SHA-256 is stored, so the full link exists only in the create/regenerate answer. Neither
 the token nor its hash goes to the audit row or a log. The feed is served without a session: the token is the credential, and every

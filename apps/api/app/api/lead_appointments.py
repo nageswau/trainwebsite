@@ -83,7 +83,7 @@ async def book(lead_id: UUID, payload: LeadAppointmentCreate, user: User = Depen
     svc.record(db, appt, user, None, "scheduled", new=appt.scheduled_at)
     svc.audit(db, user, "create", appt, {"counselor_id": str(counselor.id), "scheduled_at": appt.scheduled_at.isoformat()})
     await lead_pipeline.apply_event(db, lead, "appointment_booked", user)
-    await appointment_invites.queue(db, appt, "booked")  # ccrm-038 (DEC-SCOPE-273 CA1): the counselor's invite
+    await appointment_invites.queue(db, appt, "booked")  # ccrm-038 (DEC-SCOPE-274 CA1): the counselor's invite
     await db.commit()
     return (await svc.outs(db, user, [appt]))[0]
 

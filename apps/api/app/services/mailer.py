@@ -448,7 +448,7 @@ def generic_notification_message(*, to_email: str, recipient_name: str, title: s
         subtype="html",
     )
     _attach_logo(msg)
-    if ics:  # ccrm-038 (DEC-SCOPE-273 CA3): the calendar invite
+    if ics:  # ccrm-038 (DEC-SCOPE-274 CA3): the calendar invite
         msg.add_attachment(ics.encode(), maintype="text", subtype="calendar", filename=INVITE_FILENAME, params={"method": ics_method or "PUBLISH", "charset": "utf-8"})
     return msg
 

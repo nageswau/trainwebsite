@@ -169,7 +169,7 @@ def _post(client: httpx.Client, payload: dict, token: str) -> httpx.Response:
 
 
 def attachments_of(msg: EmailMessage) -> list[tuple[str, bytes]]:
-    """ccrm-038 (DEC-SCOPE-273 CA3): the real attachments (`.ics` invites); the inline logo is not one."""
+    """ccrm-038 (DEC-SCOPE-274 CA3): the real attachments (`.ics` invites); the inline logo is not one."""
     return [(part.get_filename() or "attachment", part.get_payload(decode=True)) for part in msg.iter_attachments()
             if part.get_content_disposition() == "attachment"]
 

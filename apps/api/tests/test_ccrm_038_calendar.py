@@ -1,4 +1,4 @@
-"""ccrm-038 (DEC-SCOPE-273 CA1-CA8; API §12FZ; RBAC §2.187): `.ics` invites on appointment emails and the counselor's read-only iCal feed.
+"""ccrm-038 (DEC-SCOPE-274 CA1-CA8; API §12GA; RBAC §2.188): `.ics` invites on appointment emails and the counselor's read-only iCal feed.
 The shared test database is never truncated: every builder makes its own users."""
 
 import uuid

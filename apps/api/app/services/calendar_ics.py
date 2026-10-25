@@ -1,4 +1,4 @@
-"""ccrm-038 (DEC-SCOPE-273 CA2, CA5): RFC 5545 text for the appointment invites and the counselor's feed, standard library only.
+"""ccrm-038 (DEC-SCOPE-274 CA2, CA5): RFC 5545 text for the appointment invites and the counselor's feed, standard library only.
 
 Every text value is escaped and its CR/LF become `\\n`, so no value can start a property of its own; lines are folded at 75 octets."""
 

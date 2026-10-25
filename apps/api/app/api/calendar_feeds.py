@@ -1,4 +1,4 @@
-"""ccrm-038 (DEC-SCOPE-273 CA4-CA7; API §12FZ): the overseas counselor's iCal feed.
+"""ccrm-038 (DEC-SCOPE-274 CA4-CA7; API §12GA): the overseas counselor's iCal feed.
 
 - /counselor/calendar-feed: the session user's own feed -- status, create/regenerate (the URL is in this answer only), revoke.
 - /calendar/feeds/{token}.ics: the feed itself, without a session (the token is the credential)."""

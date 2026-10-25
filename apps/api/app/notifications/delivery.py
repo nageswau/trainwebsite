@@ -111,7 +111,7 @@ async def _send_email(s: _Snapshot, context: dict | None) -> twilio.SendResult:
     # bdm-012 R9 / tel-020 AL2 / upc-015 AL10: through the mailer (either transport, ENH-032); no webhook fallback, not_configured stays recorded
     elif context and context.get("kind") in ("bdm_reminder", "tel_alert", "partnership_alert"):
         status, error = await send_bdm_reminder_email(to_email=s.email, recipient_name=s.full_name, title=s.title, body=s.body, links=context.get("links") or [])
-    elif context and context.get("kind") == "appointment_invite":  # ccrm-038 (DEC-SCOPE-273 CA3): through the mailer with the .ics, no webhook
+    elif context and context.get("kind") == "appointment_invite":  # ccrm-038 (DEC-SCOPE-274 CA3): through the mailer with the .ics, no webhook
         status, error = await send_generic_notification_email(to_email=s.email, recipient_name=s.full_name, title=s.title, body=s.body, action_url=s.action_url,
                                                               ics=context.get("ics"), ics_method=context.get("method"))
     elif context and context.get("kind") == "inbound":  # inbound._notify_student never sent the phone

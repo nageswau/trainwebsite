@@ -1,9 +1,9 @@
 """ccrm-038 -- the counselor's iCal feed token (hash only) and the appointment's calendar SEQUENCE.
 
-Revision ID: 0191_calendar_feeds
-Revises: 0190_overdue_escalation
+Revision ID: 0192_calendar_feeds
+Revises: 0191_student_messages
 
-docs/superpowers/specs/2026-10-25-ccrm-038-calendar-integration-design.md (DEC-SCOPE-273 CA2, CA4). 0001 builds a fresh database from the
+docs/superpowers/specs/2026-10-25-ccrm-038-calendar-integration-design.md (DEC-SCOPE-274 CA2, CA4). 0001 builds a fresh database from the
 current models, which already carry both, so each is added only when missing (0181's idiom). Existing appointments start at SEQUENCE 0.
 The downgrade drops the table (every feed link stops working) and the column.
 """
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0191_calendar_feeds"
-down_revision = "0190_overdue_escalation"
+revision = "0192_calendar_feeds"
+down_revision = "0191_student_messages"
 branch_labels = None
 depends_on = None
 

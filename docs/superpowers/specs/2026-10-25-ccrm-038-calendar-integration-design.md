@@ -1,7 +1,7 @@
 # ccrm-038 — Calendar integration, phase 1 (design)
 
-**Feature:** `ccrm-038` (docs/delivery/COUNSELOR_CRM_BACKLOG.md, CC6). **Decision:** DEC-SCOPE-273. **API:** §12FZ. **RBAC:** §2.187.
-**Migration:** `0191_calendar_feeds`. **Dependencies:** none (backlog).
+**Feature:** `ccrm-038` (docs/delivery/COUNSELOR_CRM_BACKLOG.md, CC6). **Decision:** DEC-SCOPE-274. **API:** §12GA. **RBAC:** §2.188.
+**Migration:** `0192_calendar_feeds`. **Dependencies:** none (backlog).
 
 ## Requirement (backlog, UNVERIFIED spec §11 "email, calendar"; Phase 6)
 
