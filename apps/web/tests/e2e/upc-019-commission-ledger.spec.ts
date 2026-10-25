@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
+import { confirmEnrollment } from "./helpers/enrollment";
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
 // upc-019 (AC1, AC2, AC3, P1): a signed commission agreement pays 15% of a GBP 18,000 programme on enrolment. Once a student's
@@ -61,7 +62,7 @@ async function setUp(page: Page, stamp: number) {
   await apiLogin(r, "student.overseas@edusphere.local", "Demo@123", "overseas");
   const application = await call(r, "post", "/api/v1/workflows/overseas/applications", { university_id: university.id, course_id: course.id, intake: "Jan 2027" });
   await apiLogin(r, "overseasadmin@edusphere.local", "Demo@123", "overseas");
-  await call(r, "patch", `/api/v1/workflows/overseas/applications/${application.id}`, { status: "enrolled" });
+  await confirmEnrollment(r, application.id);
   await r.post("/api/v1/auth/logout");
   return { head, manager, admin, university };
 }

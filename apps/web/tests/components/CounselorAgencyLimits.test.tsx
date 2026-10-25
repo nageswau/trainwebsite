@@ -17,15 +17,16 @@ const ROWS = [
 ];
 
 describe("counselor limits on agency applications (H12)", () => {
-  it("never offers Enrolled on an agency application, and says why", async () => {  // AC20
+  // ccrm-027 (DEC-SCOPE-262, E3): no card advances to Enrolled; both confirm it through the Enrolment panel (CC4: agency too).
+  it("never offers Enrolled as a stage, on agency or direct applications, and offers Enrolment instead", async () => {  // AC20
     vi.stubGlobal("fetch", vi.fn(() => json({ rows: ROWS })));
     render(<CounselorEvaluationPanel />);
-    const agency = (await screen.findByRole("heading", { name: "Priya" })).closest(".card") as HTMLElement;
-    expect(within(agency).getByText("Enrollment is confirmed by the agency.")).toBeInTheDocument();
-    expect(within(agency).queryByRole("button", { name: "Advance stage" })).toBeNull();
-    const direct = screen.getByRole("heading", { name: "Ravi" }).closest(".card") as HTMLElement;
-    fireEvent.click(within(direct).getByRole("button", { name: "Advance stage" }));
-    expect(Array.from((within(direct).getByLabelText("Advance to") as HTMLSelectElement).options).map((o) => o.value)).toEqual(["enrolled"]);
+    for (const name of ["Priya", "Ravi"]) {
+      const card = (await screen.findByRole("heading", { name })).closest(".card") as HTMLElement;
+      expect(within(card).queryByRole("button", { name: "Advance stage" })).toBeNull();
+      expect(within(card).getByText("No further stage to advance to.")).toBeInTheDocument();
+      expect(within(card).getByRole("button", { name: "Enrolment" })).toBeInTheDocument();
+    }
   });
 
   it("offers every later stage but Enrolled on an agency application at Offer", async () => {  // T16

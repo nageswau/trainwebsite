@@ -31,6 +31,7 @@ from app.models import (
     User,
     UserRoleAssignment,
 )
+from tests.ccrm027_helpers import confirm_enrollment
 
 
 async def _create_user(db_session, *, role: str, division: str = "overseas", **overrides) -> User:
@@ -114,8 +115,9 @@ async def _create_overseas_admin(db_session) -> User:
     return await _create_user(db_session, role="overseas_admin")
 
 
+# ccrm-027 (DEC-SCOPE-262, E3/E9): `enrolled` is reached through the enrolment confirmation, which runs the same trigger.
 @pytest.mark.asyncio
-async def test_advancing_to_enrolled_auto_creates_an_estimated_commission(db_session, client):
+async def test_confirming_enrolment_auto_creates_an_estimated_commission(db_session, client):
     agent = await _create_agent(db_session)
     student = await _create_user(db_session, role="overseas_student")
     university = await _make_university(db_session)
@@ -125,8 +127,8 @@ async def test_advancing_to_enrolled_auto_creates_an_estimated_commission(db_ses
     await db_session.commit()
 
     await _login(client, counselor.email)
-    response = await client.post(f"/api/v1/workflows/overseas/applications/{application.id}/advance", json={"to_status": "enrolled"})
-    assert response.status_code == 200
+    response = await confirm_enrollment(client, db_session, application, expected_status="status_tracking")
+    assert response.status_code == 200, response.text
 
     commission = await db_session.scalar(select(AgentCommission).where(AgentCommission.application_id == application.id))
     assert commission is not None
@@ -137,7 +139,7 @@ async def test_advancing_to_enrolled_auto_creates_an_estimated_commission(db_ses
 
 
 @pytest.mark.asyncio
-async def test_generic_patch_reaching_enrolled_also_triggers_the_commission(db_session, client):
+async def test_the_admin_confirming_enrolment_also_triggers_the_commission_and_the_generic_patch_cannot_enrol(db_session, client):
     agent = await _create_agent(db_session)
     student = await _create_user(db_session, role="overseas_student")
     university = await _make_university(db_session)
@@ -145,8 +147,10 @@ async def test_generic_patch_reaching_enrolled_also_triggers_the_commission(db_s
     application = await _make_application(db_session, agent=agent, student=student, university=university)
 
     await _login(client, admin.email)
-    response = await client.patch(f"/api/v1/workflows/overseas/applications/{application.id}", json={"status": "enrolled"})
-    assert response.status_code == 200
+    refused = await client.patch(f"/api/v1/workflows/overseas/applications/{application.id}", json={"status": "enrolled"})
+    assert refused.status_code == 422
+    response = await confirm_enrollment(client, db_session, application, expected_status="status_tracking")
+    assert response.status_code == 200, response.text
 
     commission = await db_session.scalar(select(AgentCommission).where(AgentCommission.application_id == application.id))
     assert commission is not None
@@ -163,8 +167,8 @@ async def test_no_commission_when_the_application_has_no_agent(db_session, clien
     await db_session.commit()
 
     await _login(client, counselor.email)
-    response = await client.post(f"/api/v1/workflows/overseas/applications/{application.id}/advance", json={"to_status": "enrolled"})
-    assert response.status_code == 200
+    response = await confirm_enrollment(client, db_session, application, expected_status="status_tracking")
+    assert response.status_code == 200, response.text
 
     commission = await db_session.scalar(select(AgentCommission).where(AgentCommission.application_id == application.id))
     assert commission is None

@@ -147,6 +147,14 @@ COUNSELOR_REFUSED_ON_UPDATE = "Use Assign counselor to change the counselor"  # 
 APPLICATION_CLOSED = "This application is closed"
 CHOOSE_ACTIVE_COUNSELOR = "Choose an active overseas counselor"
 MASTER_ENROLLS = "Only the agency's Master confirms enrollment"  # AGN-023 (DEC-SCOPE-090 H4), DEC-SCOPE-054 E1
+# ccrm-027 (DEC-SCOPE-262, E3): `enrolled` is reached only through a confirmation (PUT …/enrollment, or the agency's AGN-013 route).
+CONFIRM_ENROLLMENT = "Enrolment is confirmed with the enrolment confirmation document, not by a stage change"
+
+
+def _refuse_unconfirmed_enrollment(item: OverseasApplication, target: str | None) -> None:
+    if target == "enrolled" and item.status != "enrolled":
+        raise HTTPException(422, CONFIRM_ENROLLMENT)
+
 AGENCY_VISA_STARTS_AT_CHECKLIST = "A visa case starts at the checklist stage"
 AGENCY_RECORDS_VISA_DECISION = "The visa decision is recorded by the agency"
 AGENCY_USE_ADVANCE = "Use Advance stage to move an agency application"  # AGN-023 (DEC-SCOPE-090 H4): the generic PATCH has no agency rules
@@ -1962,6 +1970,7 @@ async def update_overseas_application(application_id: UUID, payload: OverseasApp
     if "status" in changes:
         outcomes.refuse_closed(item)
         outcomes.refuse_on_hold(item)
+        _refuse_unconfirmed_enrollment(item, changes["status"])
     channels = changes.pop("notify_channels", ["email"])
     notes = changes.pop("notes", None)
     if user.role == "university_rep":
@@ -2084,6 +2093,7 @@ async def advance_overseas_application(application_id: UUID, payload: OverseasAp
         raise HTTPException(409, ARCHIVED)
     if item.agent_id is not None and payload.to_status == "enrolled":
         raise HTTPException(403, MASTER_ENROLLS)
+    _refuse_unconfirmed_enrollment(item, payload.to_status)
     if payload.to_status not in OVERSEAS_APPLICATION_STAGES:
         raise HTTPException(422, f"'{payload.to_status}' is not a supported application stage yet -- rejection/waitlist/deferral outcomes are an open item (see docs/product/PRD_OPEN_ITEMS.md), not a status this endpoint can set.")
     current_index = OVERSEAS_APPLICATION_STAGES.index(item.status) if item.status in OVERSEAS_APPLICATION_STAGES else -1
@@ -2131,7 +2141,8 @@ async def change_application_sub_status(application_id: UUID, payload: Applicati
         raise HTTPException(409, ARCHIVED)
     if item.agent_id is not None and stage == "enrolled" and user.role == "counselor":
         raise HTTPException(403, MASTER_ENROLLS)
-    override = await application_checklists.ready_gate(db, user, item, payload.sub_status, payload.override_reason)  # ccrm-019
+    _refuse_unconfirmed_enrollment(item, stage)
+    override =await application_checklists.ready_gate(db, user, item, payload.sub_status, payload.override_reason)  # ccrm-019
     before = sub_statuses.change(db, user, item, payload.sub_status, payload.notes, f"Override: {override}" if override else None)
     if before is not None:
         if before.status != item.status:

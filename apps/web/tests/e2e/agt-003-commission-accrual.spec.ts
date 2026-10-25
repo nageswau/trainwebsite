@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+import { confirmEnrollment } from "./helpers/enrollment";
+
 // AGT-003 -- Commission accrual (automatic trigger). Creates its own throwaway student
 // and application (assigned to the seeded demo agent) via the real API, advances it to
 // "enrolled" as the seeded Overseas Admin, then confirms the system-triggered
@@ -32,8 +34,7 @@ async function createEnrolledApplicationForDemoAgent(page: import("@playwright/t
   const applicationId = (await created.json()).id as string;
 
   await page.request.post("/api/v1/auth/login", { data: { email: "overseasadmin@edusphere.local", password: "Demo@123", division: "overseas" } });
-  const advanced = await page.request.patch(`/api/v1/workflows/overseas/applications/${applicationId}`, { data: { status: "enrolled" } });
-  expect(advanced.ok()).toBeTruthy();
+  await confirmEnrollment(page.request, applicationId);
   return { applicationId, studentName };
 }
 
