@@ -704,8 +704,8 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Acceptance:** AC 12 with seeded sample records; no duplicate reminder on re-run.
 - **Regression:** AGN-017 reminders (do not double-send on agency apps).
 - **Complexity:** large. **Risk:** medium.
-- **Status (2026-10-25):** built on `worktree-ccrm-030` — `DEC-SCOPE-269` (RM1–RM10 defaults `NEEDS_CONFIRMATION`), migration
-  `0189_counselor_reminders`, API §12FV, RBAC §2.183; page `/overseas/admin/reminder-rules` (configure, run now, recent reminders). Design
+- **Status (2026-10-25):** built on `worktree-ccrm-030` — `DEC-SCOPE-270` (RM1–RM10 defaults `NEEDS_CONFIRMATION`), migration
+  `0189_counselor_reminders`, API §12FW, RBAC §2.184; page `/overseas/admin/reminder-rules` (configure, run now, recent reminders). Design
   `docs/superpowers/specs/2026-10-25-ccrm-030-counselor-reminders-design.md`.
 
 ### `ccrm-031` — Overdue escalation to Overseas Admin (CC3)
@@ -770,6 +770,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Expected behaviour:** the counselor sees own leads assigned, follow-up completion, overdue tasks, conversions, applications by
   sub-status, offers, visas, enrolments — using the same definitions as `management_counseling.py`, no revenue.
 - **Dependencies:** ccrm-029, ccrm-034. **Complexity:** small. **Risk:** low.
+- **Status (2026-10-25):** built on `feature/ccrm-036` — `DEC-SCOPE-269` (P1–P9 defaults `NEEDS_CONFIRMATION`; period figures by
+  mgmt-018's own builders, no revenue), no migration, API §12FV, RBAC §2.183. Page `/overseas/counselor/reports` ("My performance"). Design
+  `docs/superpowers/specs/2026-10-25-ccrm-036-counselor-performance-design.md`.
 
 ---
 

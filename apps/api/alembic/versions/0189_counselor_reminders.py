@@ -3,7 +3,7 @@
 Revision ID: 0189_counselor_reminders
 Revises: 0188_student_document_requests
 
-docs/superpowers/specs/2026-10-25-ccrm-030-counselor-reminders-design.md (DEC-SCOPE-269). 0001 builds a fresh database from the current
+docs/superpowers/specs/2026-10-25-ccrm-030-counselor-reminders-design.md (DEC-SCOPE-270). 0001 builds a fresh database from the current
 models, which already carry both tables, so each table is created only when missing (0166's idiom); the seed is ON CONFLICT DO NOTHING
 either way. The downgrade drops both tables (the log and the admin's settings go; rule tasks stay as ordinary tasks).
 """

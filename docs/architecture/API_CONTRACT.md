@@ -3934,9 +3934,20 @@ document stays, no longer fulfilling it; a `requested` event `fulfilled → open
   `report`/`format`, the §12FT / ccrm-012 filter errors (same messages), or a list over 5,000 rows ("narrow the filters"); 429 + `Retry-After`
   after 30 exports in 10 minutes.
 
-## 12FV. Counselor reminder rules (ccrm-030) — addendum, 2026-10-25
+## 12FV. Counselor's own performance report (ccrm-036) — addendum, 2026-10-25
 
-`DEC-SCOPE-269`. Router `api/counselor_reminders.py`, service `services/counselor_reminders.py`, beat `ccrm030-counselor-reminders`
+`DEC-SCOPE-269`. `GET /api/v1/counselor/performance?from&to` (router `api/counselor_performance.py`) → `{from, to, as_of, period: [Figure],
+now: [Figure], applications: {rows: [{stage, stage_label, sub_status, sub_status_label, applications, students}], total: {applications,
+students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, definition, unit: "count"|"percent", value: int|float|null}`
+(a percentage is null when nothing is due / assigned). Period keys: `leads_assigned`, `calls`, `counseling_sessions`, `follow_ups`,
+`conversions`, `conversion_pct` (mgmt-018's definitions), `follow_ups_due`, `follow_ups_completed`, `follow_up_completion_pct`,
+`tasks_completed`. Now keys: `overdue_tasks`, `overdue_follow_ups`, `applications`, `students`, `offers`, `visas_pending`, `visas_approved`,
+`visas_refused`, `enrollments`, `documents_pending`. No revenue. Read-only, not audited.
+- Errors: 401 anonymous; 403 anyone but the overseas counselor; 422 a malformed date, `from` after `to`, or a period over 366 days.
+
+## 12FW. Counselor reminder rules (ccrm-030) — addendum, 2026-10-25
+
+`DEC-SCOPE-270`. Router `api/counselor_reminders.py`, service `services/counselor_reminders.py`, beat `ccrm030-counselor-reminders`
 (daily 08:15 IST). Design `docs/superpowers/specs/2026-10-25-ccrm-030-counselor-reminders-design.md`.
 
 - `GET /api/v1/overseas-admin/reminder-rules` → `{rules: [{key, label, description, action: task|notify, timing: assign|silent|before|after,

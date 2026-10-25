@@ -1,4 +1,4 @@
-"""ccrm-030 (DEC-SCOPE-269, RM1-RM10): the counselor reminder rules fire once on sample records (AC 12) and never again on a re-run (RM3);
+"""ccrm-030 (DEC-SCOPE-270, RM1-RM10): the counselor reminder rules fire once on sample records (AC 12) and never again on a re-run (RM3);
 the windows (RM2), the exclusions (RM4/RM5), the student reminder, first contact on assignment (RM8) and the admin routes (RM9/RM10).
 The shared test database is never truncated: every assertion is about rows the test made.
 Spec: docs/superpowers/specs/2026-10-25-ccrm-030-counselor-reminders-design.md."""

@@ -6509,7 +6509,7 @@ class CounselorTask(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
 
 
-# ccrm-030 (DEC-SCOPE-269): the reminder rules the Overseas Admin configures (catalogue: services/counselor_reminders.RULES) and the log of
+# ccrm-030 (DEC-SCOPE-270): the reminder rules the Overseas Admin configures (catalogue: services/counselor_reminders.RULES) and the log of
 # every firing -- its unique `dedupe_key` (rule:subject:anchor) is what keeps a re-run from sending twice. Migration 0189 repeats the CHECKs.
 COUNSELOR_REMINDER_RULE_KEYS = (
     "first_contact", "no_response", "document_overdue", "application_deadline", "decision_overdue",

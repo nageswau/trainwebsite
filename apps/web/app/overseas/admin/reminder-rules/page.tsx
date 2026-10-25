@@ -6,7 +6,7 @@ import { PORTAL_NAV } from "@/lib/navigation";
 import { REMINDER_RULES_API, type ReminderLogPage, type ReminderRule } from "@/lib/reminderRules";
 import type { User } from "@/lib/types";
 
-// ccrm-030 (DEC-SCOPE-269, RM9/RM10): the Overseas Admin configures the counselor reminder rules, runs them now to test with sample
+// ccrm-030 (DEC-SCOPE-270, RM9/RM10): the Overseas Admin configures the counselor reminder rules, runs them now to test with sample
 // records (AC 12) and sees the recent firings. Super Admin passes too.
 const ADMIN_ROLES = ["overseas_admin", "super_admin"];
 
