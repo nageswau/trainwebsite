@@ -69,6 +69,13 @@ describe("LeadStageControl closure (ccrm-006)", () => {
     expect(await screen.findByLabelText("Lost reason (required)")).toBeTruthy();
   });
 
+  it("says when no lost reason is set up yet (QA-03)", async () => {
+    fetchMock.mockImplementationOnce(() => Promise.resolve(res({ items: [], total: 0, limit: 100, offset: 0 })));
+    open("lost");
+    expect(await screen.findByText("No lost reasons are set up yet. Ask a telecaller manager to add one.")).toBeTruthy();
+    expect(screen.queryByLabelText("Lost reason (required)")).toBeNull();
+  });
+
   it("still requires the text reason for other closed outcomes", async () => {
     open("wrong_number");
     fireEvent.click(screen.getByRole("button", { name: "Save" }));

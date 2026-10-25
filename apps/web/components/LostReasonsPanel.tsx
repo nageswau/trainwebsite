@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { sendJson, type Page } from "@/lib/apiErrors";
 import { LOST_REASONS_URL, type LostReason } from "@/lib/leadStages";
 import { formText, statusLabel } from "@/lib/telecaller";
-import { getPage } from "@/lib/telecallerCatalogue";
+import { CATALOGUE_PAGE_SIZE, getPage } from "@/lib/telecallerCatalogue";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { toneClass, type Feedback } from "@/lib/welcomeLink";
 
@@ -16,6 +16,7 @@ export default function LostReasonsPanel() {
   const [data, setData] = useState<Page<LostReason> | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [version, setVersion] = useState(0);
+  const [offset, setOffset] = useState(0); // Browser QA-01: tel-002's page size and pager
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -25,9 +26,10 @@ export default function LostReasonsPanel() {
   useEffect(() => {
     const controller = new AbortController();
     setLoadFailed(false);
-    getPage<LostReason>(`${LOST_REASONS_URL}?limit=100`, controller.signal).then(setData).catch(() => controller.signal.aborted || setLoadFailed(true));
+    const query = new URLSearchParams({ limit: String(CATALOGUE_PAGE_SIZE), offset: String(offset) });
+    getPage<LostReason>(`${LOST_REASONS_URL}?${query}`, controller.signal).then(setData).catch(() => controller.signal.aborted || setLoadFailed(true));
     return () => controller.abort();
-  }, [version]);
+  }, [offset, version]);
   const reload = () => setVersion((v) => v + 1);
 
   async function create(event: React.FormEvent<HTMLFormElement>) {
@@ -73,16 +75,25 @@ export default function LostReasonsPanel() {
         ) : data.items.length === 0 ? (
           <p className="empty" role="status">No lost reasons yet. Leads can&apos;t be closed as Lost or Not Interested until one exists.</p>
         ) : (
-          <div className="table-wrap" role="region" aria-label="Lost reasons" tabIndex={0}>
-            <table>
-              <thead>
-                <tr><th scope="col">Name</th><th scope="col">Order</th><th scope="col">Status</th><th scope="col"><span className="visually-hidden">Actions</span></th></tr>
-              </thead>
-              <tbody>
-                {data.items.map((r) => <LostReasonRow key={r.id} row={r} onChanged={(text) => { setNotice(text); reload(); }} />)}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="table-wrap" role="region" aria-label="Lost reasons" tabIndex={0}>
+              <table>
+                <thead>
+                  <tr><th scope="col">Name</th><th scope="col">Order</th><th scope="col">Status</th><th scope="col"><span className="visually-hidden">Actions</span></th></tr>
+                </thead>
+                <tbody>
+                  {data.items.map((r) => <LostReasonRow key={r.id} row={r} onChanged={(text) => { setNotice(text); reload(); }} />)}
+                </tbody>
+              </table>
+            </div>
+            {data.total > CATALOGUE_PAGE_SIZE && (
+              <nav aria-label="Lost reason pages" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
+                <span className="muted" style={{ fontSize: 13 }}>Showing {data.offset + 1}–{data.offset + data.items.length} of {data.total}</span>
+                <button type="button" className="btn secondary small" aria-label="Previous page" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - CATALOGUE_PAGE_SIZE))}>Previous</button>
+                <button type="button" className="btn secondary small" aria-label="Next page" disabled={data.offset + data.items.length >= data.total} onClick={() => setOffset(offset + CATALOGUE_PAGE_SIZE)}>Next</button>
+              </nav>
+            )}
+          </>
         )}
       </div>
     </>
@@ -95,6 +106,18 @@ function LostReasonRow({ row, onChanged }: { row: LostReason; onChanged: (notice
   const [error, setError] = useState<string | null>(null);
   const focus = useFocusAfterRender();
   const id = (name: string) => `lost-reason-${name}-${row.id}`;
+  // Browser QA-02 (tel-002's row idiom): a toggle reloads the list; once this row comes back with its new status, focus its new button.
+  const toggleFocus = useRef(false);
+  useEffect(() => {
+    if (toggleFocus.current) document.getElementById(`lost-reason-toggle-${row.id}`)?.focus();
+    toggleFocus.current = false;
+  }, [row.active, row.id]);
+
+  function close() {
+    setEditing(false);
+    setError(null);
+    focus(id("edit"));
+  }
 
   async function patch(body: Record<string, unknown>, notice: string) {
     setError(null);
@@ -106,7 +129,7 @@ function LostReasonRow({ row, onChanged }: { row: LostReason; onChanged: (notice
       focus(id("error"));
       return;
     }
-    setEditing(false);
+    if (editing) close();
     onChanged(notice);
   }
 
@@ -121,13 +144,13 @@ function LostReasonRow({ row, onChanged }: { row: LostReason; onChanged: (notice
     return (
       <tr>
         <td colSpan={4}>
-          <form className="form" onSubmit={save} onKeyDown={(e) => { if (e.key === "Escape") setEditing(false); }}>
+          <form className="form" onSubmit={save} onKeyDown={(e) => { if (e.key === "Escape") close(); }}>
             <div className="field"><label htmlFor={id("name")}>Reason name (required)</label><input id={id("name")} name="name" defaultValue={row.name} required maxLength={120} autoFocus disabled={busy} /></div>
             <div className="field"><label htmlFor={id("order")}>Order (required)</label><input id={id("order")} name="sort_order" type="number" inputMode="numeric" min={0} max={9999} step={1} defaultValue={row.sort_order} required disabled={busy} /></div>
             <div id={id("error")} tabIndex={-1} className={error ? "form-error" : undefined} role="alert">{error}</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button className="btn small" disabled={busy}>{busy ? "Saving…" : "Save"}</button>
-              <button type="button" className="btn secondary small" onClick={() => setEditing(false)} disabled={busy}>Cancel</button>
+              <button type="button" className="btn secondary small" onClick={close} disabled={busy}>Cancel</button>
             </div>
           </form>
         </td>
@@ -141,9 +164,9 @@ function LostReasonRow({ row, onChanged }: { row: LostReason; onChanged: (notice
       <td data-label="Status"><span className="badge">{statusLabel(row.active)}</span></td>
       <td data-label="Actions">
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <button type="button" className="btn secondary small" aria-label={`Edit ${row.name}`} onClick={() => { setError(null); setEditing(true); }} disabled={busy}>Edit</button>
-          <button type="button" className="btn secondary small" aria-label={`${row.active ? "Deactivate" : "Reactivate"} ${row.name}`} disabled={busy}
-            onClick={() => patch({ active: !row.active }, `${row.active ? "Deactivated" : "Reactivated"} ${row.name}.`)}>
+          <button id={id("edit")} type="button" className="btn secondary small" aria-label={`Edit ${row.name}`} onClick={() => { setError(null); setEditing(true); }} disabled={busy}>Edit</button>
+          <button id={id("toggle")} type="button" className="btn secondary small" aria-label={`${row.active ? "Deactivate" : "Reactivate"} ${row.name}`} disabled={busy}
+            onClick={() => { toggleFocus.current = true; void patch({ active: !row.active }, `${row.active ? "Deactivated" : "Reactivated"} ${row.name}.`); }}>
             {row.active ? "Deactivate" : "Reactivate"}
           </button>
         </div>

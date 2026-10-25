@@ -70,17 +70,17 @@ test("a lead closes as Duplicate of another and as Lost with a reason the report
   await expect(picker.locator("option", { hasText: "Invalid Contact" })).toHaveCount(1);
   await expect(picker.locator("option", { hasText: "Wrong Number" })).toHaveCount(0);
   await picker.selectOption("duplicate");
-  await page.getByRole("button", { name: "Save" }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("Enter the Lead ID of the lead this one duplicates.")).toBeVisible();
   await page.getByLabel("Duplicate of Lead ID (required)").fill(dup.lead_code.toLowerCase());
-  await page.getByRole("button", { name: "Save" }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("A lead cannot be a duplicate of itself")).toBeVisible(); // the API's sentence
   await page.getByLabel("Duplicate of Lead ID (required)").fill(survivor.lead_code.toLowerCase());
-  await page.getByRole("button", { name: "Save" }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("Stage updated.")).toBeVisible();
-  await expect(page.getByText(`Duplicate of ${survivor.lead_code}`)).toBeVisible();
+  await expect(page.getByText(`Duplicate of ${survivor.lead_code}`).first()).toBeVisible(); // also the timeline entry (D5)
   await page.reload();
-  await expect(page.getByText(`Duplicate of ${survivor.lead_code}`)).toBeVisible();
+  await expect(page.getByText(`Duplicate of ${survivor.lead_code}`).first()).toBeVisible(); // also the timeline entry (D5)
 
   // D4: Lost with a reason from the list and "lost to"
   await page.goto(`/telecaller/leads/${lost.id}`);
@@ -89,11 +89,11 @@ test("a lead closes as Duplicate of another and as Lost with a reason the report
   await page.getByLabel(`New stage for ${lostName}`).selectOption("lost");
   const reason = page.getByLabel("Lost reason (required)");
   await expect(reason.locator("option", { hasText: reasonName })).toHaveCount(1);
-  await page.getByRole("button", { name: "Save" }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("Choose why the lead was lost.")).toBeVisible();
   await reason.selectOption({ label: reasonName });
   await page.getByLabel("Lost to (optional)").fill("Canada");
-  await page.getByRole("button", { name: "Save" }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("Stage updated.")).toBeVisible();
   await expect(page.getByText(`Lost reason: ${reasonName} · Lost to: Canada`)).toBeVisible();
   await page.setViewportSize({ width: 375, height: 800 });
@@ -107,5 +107,5 @@ test("a lead closes as Duplicate of another and as Lost with a reason the report
   await page.goto("/telecaller/manager/reports?report=lost");
   await expect(page.getByRole("heading", { name: "Lost Reasons Report" })).toBeVisible();
   await expect(page.getByRole("row", { name: new RegExp(reasonName) })).toContainText("1");
-  expect(consoleErrors).toEqual([]);
+  expect(consoleErrors).toEqual(["Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"]); // the self-duplicate refusal above
 });

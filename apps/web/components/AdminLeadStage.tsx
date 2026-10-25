@@ -132,6 +132,8 @@ export function LeadStageControl({ lead, onChanged, onMessage, move = adminMove,
         </div>
       ) : reasons.items === null ? (
         <p className="muted" role="status" style={{ margin: 0, fontSize: 13 }}>Loading lost reasons…</p>
+      ) : reasons.items.length === 0 ? ( // Browser QA-03
+        <p className="form-error" role="alert" style={{ margin: 0, fontSize: 13 }}>No lost reasons are set up yet. Ask a telecaller manager to add one.</p>
       ) : (
         <>
           <label htmlFor={`${reasonId}-lost`} style={{ fontSize: 13 }}>Lost reason (required)</label>
