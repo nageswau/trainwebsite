@@ -32,6 +32,7 @@ from app.models import (
 )  # fmt: skip
 from app.services import application_outcomes as outcomes
 from app.services.agent_applications import stage_label
+from app.services.counselor_students import ASSIGNED as COUNSELOR_ASSIGNED
 from app.services.provisioning import provisioning_statuses
 
 Staff = aliased(User)
@@ -43,7 +44,7 @@ ACCOUNT_ACTIONS = {
     "counselor.student_update": "Account details updated",
     "counselor.student_create": "Account created by the counselor",
     "counselor.student_resend": "Set-password link re-sent",
-    "overseas.student.counselor_assign": "Counselor assigned",
+    COUNSELOR_ASSIGNED: "Counselor assigned",
 }
 
 
@@ -208,7 +209,9 @@ async def history(db: AsyncSession, student: User) -> dict:
         items.append(
             {
                 "at": log.created_at, "kind": "document" if doc else "audit", "summary": _audit_summary(log, doc.document_type if doc else None), "actor": actor,
-                "application_code": apps.get(doc.application_id) if doc else None, "notes": None, "reason": None,
+                "application_code": apps.get(doc.application_id) if doc else None, "notes": None,
+                # ccrm-033: a counselor reassignment's reason (staff only: this History is the counselor's and the admin's)
+                "reason": (log.metadata_json or {}).get("reason") if log.action == COUNSELOR_ASSIGNED else None,
             }
         )  # fmt: skip
     items.sort(key=lambda i: i["at"], reverse=True)

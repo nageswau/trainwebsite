@@ -1,4 +1,4 @@
-"""ccrm-037 (DEC-SCOPE-271, MT1-MT10): the Overseas Admin's message templates for counselors and the student message log -- the template
+"""ccrm-037 (DEC-SCOPE-273, MT1-MT10): the Overseas Admin's message templates for counselors and the student message log -- the template
 library rules (MT1, MT2), rendering with a student's and an application's values, sends (WhatsApp logged on confirm, email queued for the
 worker), replies recorded by hand (no inbound provider, MT7) and the student's log. The upc-012 engine copied: its tables are bound to
 universities.

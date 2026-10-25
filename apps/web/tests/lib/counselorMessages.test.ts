@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { COUNSELOR_LIBRARY, replyUrl, studentMessagesUrl, studentTarget } from "@/lib/counselorMessages";
 
-// ccrm-037 (DEC-SCOPE-271): the counselor's endpoints -- the application the message is about rides on the render query and the send body.
+// ccrm-037 (DEC-SCOPE-273): the counselor's endpoints -- the application the message is about rides on the render query and the send body.
 describe("counselorMessages (ccrm-037)", () => {
   it("builds the student's list and reply URLs", () => {
     expect(studentMessagesUrl("S 1")).toBe("/api/v1/counselor/students/S%201/messages?limit=50");

@@ -483,10 +483,22 @@ class OverseasApplicationUpdate(BaseModel):
     notify_channels: list[str] = Field(default_factory=lambda: ["email"])
 
 
+def _reassign_reason(value: str | None) -> str | None:
+    """ccrm-033: blank is no reason; control characters other than a newline or tab are refused."""
+    if value is not None and re.search(r"[\x00-\x08\x0b-\x1f\x7f]", value):
+        raise ValueError("Reason contains invalid characters")
+    return value or None
+
+
+ReassignReason = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None, AfterValidator(_reassign_reason)]
+
+
 class OverseasApplicationCounselorAssign(BaseModel):
-    """AGN-023 (DEC-SCOPE-090 H8): swap only -- a counselor is required; null or missing is a 422."""
+    """AGN-023 (DEC-SCOPE-090 H8): swap only -- a counselor is required; null or missing is a 422. ccrm-033 (DEC-SCOPE-271 RR1): the
+    reason, required by the route when an existing counselor is replaced."""
 
     counselor_id: UUID
+    reason: ReassignReason = None
 
 
 class OverseasApplicationAdvance(BaseModel):
@@ -14289,7 +14301,7 @@ class CounselorTaskCreate(BaseModel):
     link: CounselorTaskLink | None = None
 
 
-# ccrm-037 (DEC-SCOPE-271): the Overseas Admin's templates for counselors have upc-012's shape (no kind, MT1), so its bodies are reused.
+# ccrm-037 (DEC-SCOPE-273): the Overseas Admin's templates for counselors have upc-012's shape (no kind, MT1), so its bodies are reused.
 # A message or reply is about the student in the path; the recipient's number or address is never a request field (MT3).
 CounselorTemplateCreate = PartnershipTemplateCreate
 CounselorTemplateUpdate = PartnershipTemplateUpdate

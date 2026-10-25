@@ -8,7 +8,7 @@ import { replyUrl, studentMessagesUrl, studentTarget, type StudentApplicationRef
 import { CHANNEL_LABEL, type Channel, type Party } from "@/lib/recruiterMessages";
 import { BODY_MAX, EMAIL_BODY_MAX, SUBJECT_MAX } from "@/lib/telecallerMessages";
 
-/** ccrm-037 (DEC-SCOPE-271, MT4-MT9): the student 360's Messages -- the shared rec-026/upc-012 section with the student as the only
+/** ccrm-037 (DEC-SCOPE-273, MT4-MT9): the student 360's Messages -- the shared rec-026/upc-012 section with the student as the only
  *  recipient. "About" ties a send to one of the counselor's applications (it rides on the render query and the send body); changing it
  *  starts the composer afresh, so the text never carries another application's values. Replies arrive outside the platform (no inbound
  *  provider), so the counselor records them by hand (MT7). The Overseas Admin (`canWrite` false) reads only. */

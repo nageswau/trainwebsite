@@ -19,12 +19,12 @@ Verified on `origin/main` @ `0219aca4`: there is no inbound channel for student 
    products, brochures) and `lead_messages` is bound to `enquiries`; a student is a `users` row and a message needs an application.
 2. **One generic message table for every module** — rejected: rec-026 and upc-012 deliberately copied the engine rather than share it;
    a generic table would touch three live features (high regression risk, out of scope).
-3. **Chosen:** the upc-012 engine copied onto two new tables (`counselor_message_templates`, `student_messages`, migration `0190`), with
+3. **Chosen:** the upc-012 engine copied onto two new tables (`counselor_message_templates`, `student_messages`, migration `0191`), with
    the frontend's existing shared pieces reused unchanged in behaviour: `RecruiterTemplatesPanel` (library config), `MessagesSection`,
    `WhatsAppComposer`, `EmailComposer` (a `ComposerTarget` carries the application id). The partnership template schemas (no kind) are
    reused as-is.
 
-## Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers) — `DEC-SCOPE-271`
+## Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers) — `DEC-SCOPE-273`
 
 - **MT1 Template library.** One global library: WhatsApp and email, no kind (the source names none), name unique per channel
   (case-insensitive), subject only on email, body ≤ 1000 (WhatsApp) / 5000 (email), never deleted — deactivated. The Overseas Admin
@@ -50,7 +50,7 @@ Verified on `origin/main` @ `0219aca4`: there is no inbound channel for student 
 - **MT10 Audit and logs.** `counselor_template.create|update`, `student_message.create`, `student_message.reply` with ids, channel,
   direction and template id — never the text, a subject, a number or an address.
 
-## API (§12FX)
+## API (§12FZ)
 
 - `GET /api/v1/counselor/templates?channel&active&q&limit&offset` — page of `{id, channel, name, subject, body, active}`.
 - `POST /api/v1/counselor/templates` / `PATCH /api/v1/counselor/templates/{id}` — upc-012's bodies and rules (channel fixed).

@@ -1,4 +1,4 @@
-// ccrm-037 (DEC-SCOPE-271): the counselor's messages to a student -- the Overseas Admin's template library (MT1/MT2), the endpoints and the
+// ccrm-037 (DEC-SCOPE-273): the counselor's messages to a student -- the Overseas Admin's template library (MT1/MT2), the endpoints and the
 // composer target, whose application id rides on the render query and the send body (MT4). The API decides scope and every rule; the UI
 // only offers what it allows. Messages and replies are permanent (MT8): there is no edit or delete.
 import type { Page } from "@/lib/apiErrors";

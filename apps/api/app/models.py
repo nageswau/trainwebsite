@@ -2025,7 +2025,7 @@ class OverseasStudentNote(Base, TimestampMixin):
     body: Mapped[str] = mapped_column(Text)
 
 
-# ccrm-037 (DEC-SCOPE-271): the Overseas Admin's template library for counselors and the student message log. Migration 0190 repeats these;
+# ccrm-037 (DEC-SCOPE-273): the Overseas Admin's template library for counselors and the student message log. Migration 0191 repeats these;
 # test_ccrm_037_migration keeps them identical.
 COUNSELOR_TEMPLATE_CHECKS = {
     "ck_counselor_message_templates_channel": "channel IN ('whatsapp', 'email')",
@@ -6575,7 +6575,7 @@ class CounselorTask(Base, TimestampMixin):
 # every firing -- its unique `dedupe_key` (rule:subject:anchor) is what keeps a re-run from sending twice. Migration 0189 repeats the CHECKs.
 COUNSELOR_REMINDER_RULE_KEYS = (
     "first_contact", "no_response", "document_overdue", "application_deadline", "decision_overdue",
-    "offer_deadline", "deposit_due", "condition_due", "visa_appointment", "hold_review",
+    "offer_deadline", "deposit_due", "condition_due", "visa_appointment", "hold_review", "overdue_escalation",  # ccrm-031 (0190)
 )
 COUNSELOR_REMINDER_MAX_OFFSET = 60
 COUNSELOR_REMINDER_CHECKS = {

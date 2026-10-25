@@ -1,4 +1,4 @@
-"""ccrm-037 (DEC-SCOPE-271 MT6): the worker side of a counselor's email to a student -- upc-012's `university_email` pattern on a
+"""ccrm-037 (DEC-SCOPE-273 MT6): the worker side of a counselor's email to a student -- upc-012's `university_email` pattern on a
 `student_messages` row (tel-014's SMTP classification `_send` and ENH-014's retry constants are reused). Claim the row atomically
 (`queued`/`retrying` -> `sending`), so a duplicate task can never send twice; send with no transaction open; record `sent`, `retrying` or
 `failed`. The address is the student's account email at send time. Logs carry the message id, the status and the error type -- never an

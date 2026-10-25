@@ -1,4 +1,4 @@
-"""ccrm-037 -- the worker side of a counselor's email to a student (DEC-SCOPE-271 MT6): claim, send to the student's account email with the
+"""ccrm-037 -- the worker side of a counselor's email to a student (DEC-SCOPE-273 MT6): claim, send to the student's account email with the
 counselor's reply-to, record, retry and the stale sweeper. SMTP is replaced by tel-014's recorder on `mailer._send_sync`; the shared database
 is never truncated."""
 

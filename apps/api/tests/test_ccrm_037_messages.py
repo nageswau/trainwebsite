@@ -1,4 +1,4 @@
-"""ccrm-037 (DEC-SCOPE-271, MT1-MT10) -- the Overseas Admin's message templates for counselors and the student message log:
+"""ccrm-037 (DEC-SCOPE-273, MT1-MT10) -- the Overseas Admin's message templates for counselors and the student message log:
 /counselor/templates (library, preview) and /counselor/students/{id}/messages|replies (render, send, record a reply, list). The overseas
 counselor sends to the students in csc-001 scope, optionally about one of their own applications; the Overseas Admin manages templates and
 reads every log; the student, the agent and other roles never see it."""

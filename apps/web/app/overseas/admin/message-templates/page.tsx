@@ -8,7 +8,7 @@ import { COUNSELOR_LIBRARY } from "@/lib/counselorMessages";
 import { PORTAL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
-// ccrm-037 (DEC-SCOPE-271, MT1): the Overseas Admin's WhatsApp and email templates for counselors -- rec-026's panel with this library.
+// ccrm-037 (DEC-SCOPE-273, MT1): the Overseas Admin's WhatsApp and email templates for counselors -- rec-026's panel with this library.
 // Counselors pick them on a student's Activities tab; the API enforces who may read and write. Super Admin passes too.
 const ADMIN_ROLES = ["overseas_admin", "super_admin"];
 

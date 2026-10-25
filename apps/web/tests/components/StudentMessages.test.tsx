@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import StudentMessages from "@/components/StudentMessages";
 import type { StudentMessage } from "@/lib/counselorMessages";
 
-// ccrm-037 (DEC-SCOPE-271, MT4-MT9): the Messages card on the student 360 -- sends about one of the counselor's applications, replies
+// ccrm-037 (DEC-SCOPE-273, MT4-MT9): the Messages card on the student 360 -- sends about one of the counselor's applications, replies
 // recorded by hand, the log with direction and application, and the Overseas Admin's read-only view.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const pageOf = (items: unknown[]) => ({ items, total: items.length, limit: 50, offset: 0 });

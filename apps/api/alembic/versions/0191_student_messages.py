@@ -1,9 +1,9 @@
 """ccrm-037 -- counselor_message_templates and student_messages.
 
-Revision ID: 0190_student_messages
-Revises: 0189_counselor_reminders
+Revision ID: 0191_student_messages
+Revises: 0190_overdue_escalation
 
-docs/superpowers/specs/2026-10-25-ccrm-037-counselor-student-messages-design.md (DEC-SCOPE-271). Two new tables; no existing row changes and
+docs/superpowers/specs/2026-10-25-ccrm-037-counselor-student-messages-design.md (DEC-SCOPE-273). Two new tables; no existing row changes and
 no seed (MT1: the Overseas Admin writes the templates). 0001 builds a fresh database from the current models, which already carry these
 tables, so creation is guarded (0125's idiom). The CHECKS repeat app.models (test_ccrm_037_migration). downgrade() refuses while any template
 or message exists: entered data is never dropped silently.
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0190_student_messages"
-down_revision = "0189_counselor_reminders"
+revision = "0191_student_messages"
+down_revision = "0190_overdue_escalation"
 branch_labels = None
 depends_on = None
 
@@ -88,6 +88,6 @@ def downgrade() -> None:
     if not op.get_context().as_sql:
         bind = op.get_bind()
         if any(bind.execute(sa.text(f"SELECT 1 FROM {table} LIMIT 1")).first() for table in (TEMPLATES, MESSAGES)):
-            raise RuntimeError("Cannot downgrade 0190_student_messages: counselor templates or student messages exist. Clear them deliberately first.")
+            raise RuntimeError("Cannot downgrade 0191_student_messages: counselor templates or student messages exist. Clear them deliberately first.")
     op.drop_table(MESSAGES)
     op.drop_table(TEMPLATES)

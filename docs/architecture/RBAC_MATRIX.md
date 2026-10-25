@@ -2876,7 +2876,26 @@ inside the existing role scope (a counselor searching another counselor's code g
 - Rule tasks belong to the counselor (created by them, ccrm-029 T3 applies); the job never notifies agents. Pinned by
   `test_ccrm_030_reminders.py::test_only_the_overseas_admin`.
 
-### 2.185 Counselor message templates and the student message log *(added 2026-10-25 — `DEC-SCOPE-271`, ccrm-037)*
+### 2.185 Reassignment reason *(added 2026-10-25 — `DEC-SCOPE-271`, ccrm-033)*
+
+No route or role change: the three reassignment writes keep their gates (application and student counselor — `overseas_admin` only;
+lead owner — `ensure_admin` in the lead's division). Who sees the reason: Overseas Admin and counselor (status history, student 360,
+lead timeline) ✅; agent ❌ (`reason: null` on the counsellor row, RR2); student ❌ (ccrm-016 H2). Pinned by
+`test_ccrm_033_reassignment_reason.py::test_the_agency_sees_the_change_but_not_the_reason` and
+`::test_an_application_reassignment_logs_the_reason_everywhere`.
+
+### 2.186 Overdue escalation *(added 2026-10-25 — `DEC-SCOPE-272`, ccrm-031)*
+
+| Action | overseas_admin | super_admin | counselor | others |
+|---|---|---|---|---|
+| `GET /counselor/tasks/overdue-by-counselor` | ✅ | ✅ | ❌ 403 | ❌ 403 |
+| Configure `overdue_escalation` (reminder rules, §2.184 gate) | ✅ | ✅ | ❌ | ❌ |
+| Receives the escalation notice | ✅ (active, overseas division) | ❌ | ❌ | ❌ |
+
+Pinned by `test_ccrm_031_escalation.py::test_list_is_for_the_overseas_admin_and_super_admin_only` and
+`::test_inactive_and_other_division_admins_are_not_told`.
+
+### 2.187 Counselor message templates and the student message log *(added 2026-10-25 — `DEC-SCOPE-273`, ccrm-037)*
 
 | Route | `counselor` (overseas) | `overseas_admin` (overseas) | `super_admin` | `counselor` (IT) | `overseas_student`, `agent`, others | Anonymous |
 |---|---|---|---|---|---|---|

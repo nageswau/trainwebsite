@@ -231,7 +231,7 @@ def sweep_stale_university_emails_task():
 
 @celery.task
 def deliver_student_email_task(message_id: str):
-    """ccrm-037 (DEC-SCOPE-271 MT6): send one queued counselor email to a student; retries are re-enqueued by `deliver_student_email`."""
+    """ccrm-037 (DEC-SCOPE-273 MT6): send one queued counselor email to a student; retries are re-enqueued by `deliver_student_email`."""
     from app.notifications.student_email import deliver_student_email
 
     return _run_with_fresh_pool(lambda: deliver_student_email(UUID(message_id)))

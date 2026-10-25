@@ -1,4 +1,4 @@
-"""ccrm-037 -- migration 0190_student_messages (DEC-SCOPE-271). The round trip and the downgrade refusal run in a throwaway database built
+"""ccrm-037 -- migration 0191_student_messages (DEC-SCOPE-273). The round trip and the downgrade refusal run in a throwaway database built
 from scratch (the upc-012 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -12,15 +12,15 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_ccrm_037_migration_0190", VERSIONS / "0190_student_messages.py")
+_spec = importlib.util.spec_from_file_location("_ccrm_037_migration_0191", VERSIONS / "0191_student_messages.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0189_counselor_reminders", "0190_student_messages"
+BASE, HEAD = "0190_overdue_escalation", "0191_student_messages"
 TABLES = ("counselor_message_templates", "student_messages")
 
 
-def test_migration_chains_after_0189_and_is_the_single_head():
+def test_migration_chains_after_0190_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
 
@@ -86,7 +86,7 @@ def test_round_trip_checks_and_the_downgrade_refuses_while_history_exists(isolat
     with pytest.raises(Exception, match="ck_student_messages_inbound"):  # a reply has no delivery status
         _sql(url, insert, {**row, "id": uuid.uuid4(), "d": "inbound", "ch": "email", "subj": None, "st": "sent"})
     _sql(url, insert, {**row, "id": uuid.uuid4(), "d": "inbound", "ch": "whatsapp", "subj": None, "st": None})
-    with pytest.raises(RuntimeError, match="0190_student_messages"):
+    with pytest.raises(RuntimeError, match="0191_student_messages"):
         command.downgrade(cfg, BASE)
     _sql(url, "DELETE FROM student_messages")
     command.downgrade(cfg, BASE)

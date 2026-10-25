@@ -1,4 +1,4 @@
-"""ccrm-037 (DEC-SCOPE-271, API §12FX, RBAC §2.185): the Overseas Admin's message templates for counselors (MT1) and the student message log
+"""ccrm-037 (DEC-SCOPE-273, API §12FZ, RBAC §2.187): the Overseas Admin's message templates for counselors (MT1) and the student message log
 -- render, send (WhatsApp logged on confirm, email queued for the worker), record a reply by hand (MT7) and the student's log (MT9).
 
 Template bodies are untyped dicts parsed by services/telecaller._parse, so a 422 is one sentence naming the field (the tel-012 idiom); the

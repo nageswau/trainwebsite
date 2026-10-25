@@ -3963,10 +3963,42 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   counselor) add the counselor's first-contact task and notice when the rule is on. Response shapes unchanged.
 - Errors: 401 anonymous; 403 any role but `overseas_admin` (overseas division) and `super_admin`.
 
-## 12FX. Counselor message templates and the student message log (ccrm-037) — addendum, 2026-10-25
+## 12FX. Reassignment with a logged reason (ccrm-033) — addendum, 2026-10-25
 
-`DEC-SCOPE-271`. Router `api/counselor_messages.py`, service `services/counselor_messages.py`, worker `notifications/student_email.py`
-(task `deliver_student_email_task`, beat `ccrm037-sweep-stale-student-emails` every 5 minutes). Migration `0190_student_messages`. Design
+`DEC-SCOPE-271`. Contract change on three existing writes; no new route.
+
+- `PUT /api/v1/workflows/overseas/applications/{id}/counselor` and `PUT /api/v1/admin/users/{id}/counselor`: body
+  `{counselor_id, reason?}`. `reason` is trimmed, at most 500 characters, no control characters (422), blank = none. Replacing an
+  existing counselor without a reason is `422 {"detail": "Give a reason for the reassignment"}` and changes nothing; a first assignment
+  or the same counselor needs none. The reason is stored on the history row (application) and in the audit metadata, and appended to
+  both counselors' notices ("… Reason: <text>"). Response unchanged.
+- `PATCH /api/v1/admin/leads/{id}`: new optional key `owner_reason` (same rules; `reason` stays the stage move's). Replacing or removing
+  an owner without it is a field-shaped 422 at `body.owner_reason`. A change writes audit `lead.owner_change` and notifies the new owner
+  ("Lead assigned to you", `/{division}/counselor/leads/{id}`) and the previous one if active ("Lead reassigned").
+- Reads: status history (`GET …/applications/{id}/status`, staff) returns the reason on the counsellor row; the agency detail
+  (`GET /workflows/overseas/agent/crm/applications/{id}`) returns `reason: null` on it; the student 360 history item "Counselor assigned"
+  carries `reason`; the lead timeline (`…/timeline`) has a `handover` row per `lead.owner_change` with `from_value` / `to_value`
+  (empty = removed) and `reason`.
+
+## 12FY. Overdue escalation (ccrm-031) — addendum, 2026-10-25
+
+`DEC-SCOPE-272`. One new route; one new reminder rule.
+
+- `GET /api/v1/overseas-admin/reminder-rules` lists `overdue_escalation` (`action: "notify"`, `timing: "escalate"`, `min_offset: 0`,
+  `max_offset: 30`, `notify_student: null`); `PUT .../overdue_escalation` takes `offset_days` 0–30 (422 outside, 422 with
+  `notify_student: true`). `POST .../run` counts escalated items under `rules.overdue_escalation`; the log lists one row per item
+  ("<counselor> · task due <day>" / "<counselor> · follow-up <lead code> due <day>").
+- `GET /api/v1/counselor/tasks/overdue-by-counselor` → `{today, threshold_days, enabled, items: [{counselor: {id, full_name}, active,
+  overdue_tasks, overdue_follow_ups, past_threshold, oldest_due}]}` — counselors with at least one open task due before today or open
+  follow-up past its due time; ordered by `past_threshold` desc, total desc, name. 403 `"Overseas Administrator role required"` for any
+  role but `overseas_admin` / `super_admin`. Live, not paginated.
+- Notification to each active Overseas Admin: title "Overdue work escalated", body "<counselor>: N tasks and M follow-ups overdue by
+  more than D days.", `action_url` `/overseas/admin/counselor-tasks#overdue`.
+
+## 12FZ. Counselor message templates and the student message log (ccrm-037) — addendum, 2026-10-25
+
+`DEC-SCOPE-273`. Router `api/counselor_messages.py`, service `services/counselor_messages.py`, worker `notifications/student_email.py`
+(task `deliver_student_email_task`, beat `ccrm037-sweep-stale-student-emails` every 5 minutes). Migration `0191_student_messages`. Design
 `docs/superpowers/specs/2026-10-25-ccrm-037-counselor-student-messages-design.md`.
 
 - `GET /api/v1/counselor/templates?channel&active&q&limit&offset` → `{items: [{id, channel, name, subject, body, active}], total, limit,

@@ -1210,8 +1210,13 @@ half.
 | `ccrm-030-AC05` | Admin configures rules (range, student switch, audit), runs now, reads the log; others 403 | `::test_admin_reads_and_changes_rules`, `::test_only_the_overseas_admin`; `apps/web/tests/components/ReminderRules.test.tsx`; `ccrm-030-reminder-rules.spec.ts` |
 | `ccrm-030-AC06` | AGN-017 agency reminders unchanged | `test_agn_017_reminders.py`, `test_agn_017_events.py`, `test_agn_017_api.py` |
 | `ccrm-030-AC07` | Migration: tables, seed, CHECKs, unique dedupe key, round trip | `apps/api/tests/test_ccrm_030_migration.py` |
+| `ccrm-031` | Requirement: §11 "Task overdue → escalate", §14 escalation, CC3 → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-031` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-272` → design `docs/superpowers/specs/2026-10-25-ccrm-031-overdue-escalation-design.md`; `API_CONTRACT.md` §12FY; `RBAC_MATRIX.md` §2.186 | E1–E8 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-031-AC01` | Tasks/follow-ups overdue past the threshold notify every active Overseas Admin once, one notice per counselor | `apps/api/tests/test_ccrm_031_escalation.py::test_overdue_task_and_follow_up_escalate_once_in_one_notice`, `::test_inside_the_threshold_or_closed_never_escalates`, `::test_a_moved_due_date_escalates_again_and_old_items_are_not_capped`, `::test_inactive_counselor_still_escalates`, `::test_no_active_overseas_admin_skips_without_logging`, `::test_inactive_and_other_division_admins_are_not_told`; browser QA (Ritika Counselor, seeded overdue task + follow-up) |
+| `ccrm-031-AC02` | The threshold is configurable (and the rule can be switched off) | `::test_threshold_is_configurable_and_the_rule_can_be_switched_off`, `::test_rule_is_listed_and_configurable`; `ccrm-031-overdue-escalation.spec.ts` |
+| `ccrm-031-AC03` | Admin sees an "Overdue by counselor" list; others 403 | `::test_overdue_by_counselor_list`, `::test_list_is_for_the_overseas_admin_and_super_admin_only`; `apps/web/tests/components/OverdueByCounselor.test.tsx`; `ccrm-031-overdue-escalation.spec.ts` |
+| `ccrm-031-AC04` | Migration 0190: CHECK widened, seed, round trip | `apps/api/tests/test_ccrm_031_migration.py`, `test_ccrm_030_migration.py` |
 
-| `ccrm-037` | Requirement: §11 communication channels → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-037` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-271` → design `docs/superpowers/specs/2026-10-25-ccrm-037-counselor-student-messages-design.md`; `API_CONTRACT.md` §12FX; `RBAC_MATRIX.md` §2.185 | MT1–MT10 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-037` | Requirement: §11 communication channels → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-037` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-273` → design `docs/superpowers/specs/2026-10-25-ccrm-037-counselor-student-messages-design.md`; `API_CONTRACT.md` §12FZ; `RBAC_MATRIX.md` §2.187 | MT1–MT10 defaults `NEEDS_CONFIRMATION` |
 
 | AC | Criterion | Evidence |
 |---|---|---|

@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { signIn } from "./helpers/agency";
 import { signInAsFreshCounselor } from "./helpers/counselor";
 
-// ccrm-037 (DEC-SCOPE-271, MT1-MT9): the Overseas Admin writes a counselor template; a counselor sends it to a walk-in student over
+// ccrm-037 (DEC-SCOPE-273, MT1-MT9): the Overseas Admin writes a counselor template; a counselor sends it to a walk-in student over
 // WhatsApp from the student 360's Activities tab and records the student's reply by hand; the Overseas Admin reads the log read-only.
 // Requires the stack running with `python -m app.seed` applied.
 

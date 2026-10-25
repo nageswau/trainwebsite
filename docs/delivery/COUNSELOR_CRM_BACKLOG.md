@@ -714,6 +714,10 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Expected behaviour:** tasks/follow-ups overdue by a configurable threshold notify Overseas Admin once; admin sees an "Overdue by
   counselor" list.
 - **Dependencies:** ccrm-029, ccrm-030. **Complexity:** small. **Risk:** low.
+- **Status (2026-10-25):** built on `worktree-ccrm-031` — `DEC-SCOPE-272` (E1–E8 defaults `NEEDS_CONFIRMATION`: rule
+  `overdue_escalation` default 2 days, one notice per counselor to every active Overseas Admin), migration `0190_overdue_escalation`,
+  API §12FY, RBAC §2.186; "Overdue by counselor" on `/overseas/admin/counselor-tasks`. Design
+  `docs/superpowers/specs/2026-10-25-ccrm-031-overdue-escalation-design.md`.
 
 ### `ccrm-032` — Counselor action dashboard
 
@@ -733,6 +737,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Expected behaviour:** a required reason on every reassignment (application counselor, csc-005 student link, lead owner); stored in
   AuditLog and status history; shown in History. Old and new owners already notified — include the reason.
 - **DB:** none (audit metadata) or `reason` column. **Dependencies:** none. **Complexity:** small. **Risk:** low.
+- **Status (2026-10-25):** built on `worktree-ccrm-033` — `DEC-SCOPE-271` (RR1 reason required when replacing/removing an owner, optional
+  on a first assignment; RR2 hidden from the agent; RR3 lead owner `owner_reason` + notices + timeline, no picker), no migration, API
+  §12FX, RBAC §2.185. Design `docs/superpowers/specs/2026-10-25-ccrm-033-reassignment-reason-design.md`.
 
 ### `ccrm-034` — Management reports: ageing, university performance, visa outcomes, readiness, intake conversion
 
@@ -788,9 +795,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
   exists.
 - **Reuse:** tel-013/014 and rec-026 template services. **Dependencies:** ccrm-004.
 - **Complexity:** medium. **Risk:** low.
-- **Status (2026-10-25):** built on `worktree-ccrm-037` — `DEC-SCOPE-271` (MT1–MT10 defaults `NEEDS_CONFIRMATION`; no student inbound
-  channel exists, so replies are recorded by hand; the Overseas Admin reads but does not send), migration `0190_student_messages`, API
-  §12FX, RBAC §2.185. Page `/overseas/admin/message-templates`; the student 360 Activities tab's Communication card. Design
+- **Status (2026-10-25):** built on `worktree-ccrm-037` — `DEC-SCOPE-273` (MT1–MT10 defaults `NEEDS_CONFIRMATION`; no student inbound
+  channel exists, so replies are recorded by hand; the Overseas Admin reads but does not send), migration `0191_student_messages`, API
+  §12FZ, RBAC §2.187. Page `/overseas/admin/message-templates`; the student 360 Activities tab's Communication card. Design
   `docs/superpowers/specs/2026-10-25-ccrm-037-counselor-student-messages-design.md`.
 
 ### `ccrm-038` — Calendar integration (CC6)

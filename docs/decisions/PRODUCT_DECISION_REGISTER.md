@@ -9578,7 +9578,38 @@ list for AC 12 testing.
 **Numbering:** migration `0189_counselor_reminders`; API §12FW; RBAC §2.184.
 - **Feature ID authorized:** `ccrm-030`. **Status:** built on `worktree-ccrm-030`.
 
-### DEC-SCOPE-271 — Counselor communication templates and the student/application message log (`ccrm-037`)
+### DEC-SCOPE-271 — Reassignment with a logged reason (`ccrm-033`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-033` (source PDF §2 "administrators can reassign ownership and correct
+records with a logged reason", §11 student reassigned; `UNVERIFIED` — only the backlog's quotes are used); design
+`docs/superpowers/specs/2026-10-25-ccrm-033-reassignment-reason-design.md`. Dependencies: none.
+**Owner answers (2026-10-25, clarifying-question prompt):** RR1 a reason is required when an existing owner is replaced or removed
+(application counselor, csc-005 student counselor, lead owner); optional but stored on a first assignment; the same owner is a no-op
+needing none. RR2 the agency sees the "EduSphere counsellor changed" history row but not its reason; the student never sees reasons
+(ccrm-016 H2). RR3 lead owner: reason on the admin API (`owner_reason`), new and previous counselor notified with the reason, the lead
+timeline shows the change; no owner-picker UI.
+**Storage:** application — the history row's `reason` + audit metadata `reason`; student — audit metadata `reason` (the student 360
+History shows it); lead — new audit action `lead.owner_change` `{from_owner_id, owner_id, reason?}` (`lead.update` unchanged;
+`lead.handover` not reused — the counselling report counts it). Reason: trimmed, ≤ 500, no control characters; never in structured logs.
+**Numbering:** no migration; API §12FX; RBAC §2.185.
+- **Feature ID authorized:** `ccrm-033`. **Status:** built on `worktree-ccrm-033`.
+
+### DEC-SCOPE-272 — Overdue escalation to the Overseas Admin (`ccrm-031`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-031` (source PDF §11 "Task overdue → escalate to team lead", §14
+escalation; `UNVERIFIED`); owner answer CC3 (no teams — the Overseas Admin is the escalation point); design
+`docs/superpowers/specs/2026-10-25-ccrm-031-overdue-escalation-design.md`. Dependencies: ccrm-029, ccrm-030 (merged).
+**Builder's calls (owner pre-authorised recommended defaults; `NEEDS_CONFIRMATION`):** E1 a ccrm-030 rule `overdue_escalation`
+(notify, timing `escalate`, default 2 days, 0–30, no student) on the Reminder rules page; E2 open counselor tasks and open follow-ups on
+overseas leads owned by an overseas counselor, overdue by more than the threshold (IST days), no 30-day lookback; E3 once per item and
+due day (log dedupe key); E4 every active `overseas_admin` (not Super Admin), none → skipped and retried; E5 one notice per counselor per
+run naming the counselor (no task titles, notes or lead names), link `/overseas/admin/counselor-tasks#overdue`; E6 inactive counselors
+included; E7 `GET /counselor/tasks/overdue-by-counselor` (overseas_admin / super_admin); E8 "Overdue by counselor" section on the admin
+Counselor tasks page.
+**Numbering:** migration `0190_overdue_escalation` (rule-key CHECK + seed); API §12FY; RBAC §2.186.
+- **Feature ID authorized:** `ccrm-031`. **Status:** built on `worktree-ccrm-031`.
+
+### DEC-SCOPE-273 — Counselor communication templates and the student/application message log (`ccrm-037`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-037` (source PDF §11 communication channels: "templates should be configurable;
 record outbound and responses against the student and application"; `UNVERIFIED` — only the backlog's quotes are used); design
@@ -9595,5 +9626,5 @@ but does not send. MT5 deactivated student 409, no usable number 409, SMTP unset
 MT7 replies recorded by hand: channel, optional email subject, body, received time (≤ 5-minute clock tolerance ahead, ≤ 7 days back),
 optional own application; 300 per day. MT8 permanent. MT9 the student's whole log for everyone in scope, on the student 360 Activities tab;
 never student- or agent-facing. MT10 audit `counselor_template.create|update`, `student_message.create|reply` with ids only.
-**Numbering:** migration `0190_student_messages`; API §12FX; RBAC §2.185.
+**Numbering:** migration `0191_student_messages`; API §12FZ; RBAC §2.187.
 - **Feature ID authorized:** `ccrm-037`. **Status:** built on `worktree-ccrm-037`.
