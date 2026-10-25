@@ -3744,3 +3744,22 @@ Writes hold the application row lock, refresh `documents_completed_on`, audit `o
 `journey` = `{stage, label, steps:[{key, label, state: "done" | "current" | "upcoming"}], application: {id, application_code, university} | null,
 note: "On hold" | "Deferred" | "All applications closed" | null}`. `stage` ∈ `lead`, `counselling`, `applying`, `offer`, `visa`, `enrolled`;
 derived on every read from the student's applications (stage + ccrm-015 outcome) and counselor engagement — never stored, no write, no audit.
+
+## 12FL. Counselor activity on leads (ccrm-004) — addendum, 2026-10-25
+
+`DEC-SCOPE-259`. Every `/counselor/...` route below is the counselor a lead is handed to, in their division (`counselor_scope`: other roles
+`403`, another counselor's lead / row `404`); the bodies and answers are the telecaller routes' own.
+
+- Calls (§12R): `GET|POST /api/v1/counselor/leads/{id}/calls`, `PATCH|DELETE /api/v1/counselor/calls/{call_id}`. A counselor's call never
+  moves the stage (`lead` in the `201` is the unchanged stage); `next_follow_up` follows the counselor's tel-011 rules.
+- Messages (§12U / §12Z): `GET /api/v1/counselor/leads/{id}/render?template_id=`, `GET|POST /api/v1/counselor/leads/{id}/messages`,
+  `DELETE /api/v1/counselor/messages/{message_id}` (WhatsApp, sender, same IST day). `GET /api/v1/telecaller/templates` now also answers a
+  counselor (active rows only); previews, scripts and brochures stay `403`.
+- Meetings (new): `GET /api/v1/counselor/leads/{id}/meetings` → page of `{id, occurred_at, mode, notes, author{id, full_name},
+  created_at}`, newest first. `POST` `{occurred_at (offset required), mode: "Online" | "Phone" | "In person", notes (1–2000, trimmed)}` →
+  `201` the row; future or more than 7 days back `422` on `occurred_at`; closed lead `409`. Append-only; not idempotent.
+- Appointment completion (§12Q): `POST /api/v1/lead-appointments/{id}/complete` takes an optional body `{outcome_notes (≤ 2000)}`; every
+  appointment answer carries `outcome_notes`.
+- Counselor lead detail (§12V): adds `whatsapp_to` and `permissions.activity` (lead not closed).
+- Timeline (§12AH): new kind `meeting` (`from_value` = mode, `reason` = notes excerpt); a completed appointment's `reason` is its outcome notes.
+- Management counseling (§mgmt-018): `calls` is a number (the calls the counselor logged in the period) and its figure is `tracked: true`.

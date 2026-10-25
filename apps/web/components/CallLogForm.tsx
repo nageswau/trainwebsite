@@ -6,10 +6,9 @@ import { sendJson, type SendOutcome } from "@/lib/apiErrors";
 import { istInputToIso, isoToIstInput, nowIstInput } from "@/lib/bdmAppointments";
 import { SAVE_FAILED, SESSION_ENDED, writeFailure } from "@/lib/bdmTasks";
 import { fieldErrors } from "@/lib/bdmTravel";
-import { TELECALLER_SIGN_IN } from "@/lib/navigation";
 import {
-  CALL_TYPES, OUTCOMES, REMARKS_MAX, callUrl, closesAs, createCallUrl, isLeadCall, isLogCallResult, needsFollowUp, toSeconds, type LeadCall,
-  type LogCallResult,
+  CALL_TYPES, OUTCOMES, REMARKS_MAX, TELECALLER_CALL_API, closesAs, isLeadCall, isLogCallResult, needsFollowUp, toSeconds, type CallApi,
+  type LeadCall, type LogCallResult,
 } from "@/lib/telecallerCalls";
 import { ACTION_MAX, REASONS, canMoveToFollowUp } from "@/lib/telecallerFollowUps";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
@@ -28,8 +27,9 @@ function earliestInput(): string {
 // tel-010 (spec §5; CL3, CL4, D3-D7): log a call on a lead, or edit one of today's. Times are entered in IST. The outcome sets what the
 // form asks for -- a next follow-up when the outcome needs one (D4), none when it closes the lead -- and the API decides every rule; its
 // answers land on the fields and typed text is never cleared. Editing never offers the outcome (CL4: delete and log again).
-export default function CallLogForm({ leadId, leadStage, call, onLogged, onEdited, onCancel }: {
-  leadId: string; leadStage: string; call?: LeadCall; onLogged?: (result: LogCallResult) => void; onEdited?: (call: LeadCall) => void;
+// ccrm-004 (LG1): `api` names the counselor's routes; their call has no stage effect, so the close note and the move are not offered.
+export default function CallLogForm({ leadId, leadStage, call, api = TELECALLER_CALL_API, onLogged, onEdited, onCancel }: {
+  leadId: string; leadStage: string; call?: LeadCall; api?: CallApi; onLogged?: (result: LogCallResult) => void; onEdited?: (call: LeadCall) => void;
   onCancel: () => void;
 }) {
   const id = useId();
@@ -52,6 +52,7 @@ export default function CallLogForm({ leadId, leadStage, call, onLogged, onEdite
 
   const closing = closesAs(v.outcome);
   const required = needsFollowUp(v.outcome);
+  const offerMove = api.stageEffect && canMoveToFollowUp(leadStage);
   const withFollowUp = !call && !!v.outcome && !closing && (required || addFollowUp);
   const fid = (key: string) => `${id}-${key}`;
   const set = (key: keyof Values) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setV({ ...v, [key]: e.target.value });
@@ -73,9 +74,9 @@ export default function CallLogForm({ leadId, leadStage, call, onLogged, onEdite
     const remarks = v.remarks.trim() || null;
     if (!call) {
       const nextFollowUp = withFollowUp ? {
-        due_at: istInputToIso(v.due), reason: v.reason, next_action: v.next_action.trim() || null, move_to_follow_up: canMoveToFollowUp(leadStage) && move,
+        due_at: istInputToIso(v.due), reason: v.reason, next_action: v.next_action.trim() || null, move_to_follow_up: offerMove && move,
       } : null;
-      return sendJson(createCallUrl(leadId), "POST", {
+      return sendJson(api.create(leadId), "POST", {
         occurred_at: istInputToIso(v.when), duration_seconds: seconds, call_type: v.call_type, outcome: v.outcome, remarks, next_follow_up: nextFollowUp,
       });
     }
@@ -84,7 +85,7 @@ export default function CallLogForm({ leadId, leadStage, call, onLogged, onEdite
     if (seconds !== call.duration_seconds) changes.duration_seconds = seconds;
     if (v.call_type !== call.call_type) changes.call_type = v.call_type;
     if (remarks !== (call.remarks ?? null)) changes.remarks = remarks;
-    return Object.keys(changes).length ? sendJson(callUrl(call.id), "PATCH", changes) : null;
+    return Object.keys(changes).length ? sendJson(api.item(call.id), "PATCH", changes) : null;
   }
 
   async function submit(event: FormEvent) {
@@ -165,7 +166,7 @@ export default function CallLogForm({ leadId, leadStage, call, onLogged, onEdite
           {error("call_type")}
         </div>
       </div>
-      {closing && <p className="form-message" role="note" style={{ margin: "4px 0 8px" }}>This outcome closes the lead as {closing}. Its open follow-ups are cancelled.</p>}
+      {closing && api.stageEffect && <p className="form-message" role="note" style={{ margin: "4px 0 8px" }}>This outcome closes the lead as {closing}. Its open follow-ups are cancelled.</p>}
       <div className="field">
         <label htmlFor={fid("remarks")}>Remarks{v.outcome === "duplicate_lead" ? " (required: name the other lead)" : ""}</label>
         <textarea id={fid("remarks")} rows={3} maxLength={REMARKS_MAX} value={v.remarks} onChange={set("remarks")} aria-invalid={errors.remarks ? true : undefined}
@@ -203,7 +204,7 @@ export default function CallLogForm({ leadId, leadStage, call, onLogged, onEdite
               {...invalid("next_action")} />
             {error("next_action")}
           </div>
-          {canMoveToFollowUp(leadStage) && (
+          {offerMove && (
             <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <input type="checkbox" checked={move} onChange={(e) => setMove(e.target.checked)} /> Also move the lead to Follow-up
             </label>
@@ -215,7 +216,7 @@ export default function CallLogForm({ leadId, leadStage, call, onLogged, onEdite
       {sessionEnded && (
         <div role="alert">
           <p className="form-error">{SESSION_ENDED}</p>
-          <ReturnToLoginLink loginHref={TELECALLER_SIGN_IN} />
+          <ReturnToLoginLink loginHref={api.signIn} />
         </div>
       )}
       <div className="actions">

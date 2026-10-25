@@ -2,7 +2,10 @@
 same-day edit and delete, and the day counts.
 
 Scope is the lead's (tel-004 `lead_pipeline.scope`; other roles 403, out of scope 404). Every write is one transaction -- scope, the lead
-lock, role, handover, the rules, the change, audit, one commit here, then the log."""
+lock, role, handover, the rules, the change, audit, one commit here, then the log.
+
+ccrm-004 (DEC-SCOPE-259, LG1): `/counselor/...` -- the same list, log, edit and delete for the counselor a lead is handed to, in
+`lead_handover.counselor_scope` (owner + division; other roles 403, another counselor's lead 404). The handlers below serve both."""
 
 from datetime import date
 from uuid import UUID
@@ -17,10 +20,15 @@ from app.core.database import get_db
 from app.models import Enquiry, User
 from app.schemas import LeadCallCreate, LeadCallUpdate
 from app.services import lead_calls as svc
-from app.services import lead_pipeline, telecaller_leads
+from app.services import lead_handover, lead_pipeline, telecaller_leads
 from app.services.bdm_appointments import db_now, today_ist
 
 router = APIRouter(prefix="/telecaller", tags=["telecaller-calls"])
+counselor_router = APIRouter(prefix="/counselor", tags=["telecaller-calls"])
+
+
+def _telecaller_scope(user: User) -> list:
+    return lead_pipeline.scope(user)[1]
 
 
 @router.get("/calls/day-counts")
@@ -30,35 +38,51 @@ async def call_day_counts(day: date | None = None, user: User = Depends(get_curr
     return await svc.day_counts(db, filters, day or today_ist(await db_now(db)))
 
 
-@router.get("/leads/{lead_id}/calls")
-async def lead_calls(lead_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _, scope = lead_pipeline.scope(user)
+async def _lead_calls(db: AsyncSession, user: User, lead_id: UUID, scope: list, limit: int, offset: int) -> dict:
     lead = await db.scalar(select(Enquiry).where(Enquiry.id == lead_id, *scope))
     if lead is None:
         raise HTTPException(404, lead_pipeline.LEAD_NOT_FOUND)
     return await svc.lead_page(db, user, lead, await db_now(db), limit, offset)
 
 
-@router.post("/leads/{lead_id}/calls", status_code=201)
-async def log_call(lead_id: UUID, payload: LeadCallCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Not idempotent (a retry logs a second call; the daily cap bounds it). Returns the call, the lead's stage after the outcome's effect
-    and the id of the follow-up it created."""
-    _, scope = lead_pipeline.scope(user)
-    lead = await lead_pipeline.locked_lead(db, lead_id, *scope)
-    svc.require_telecaller(user)
-    telecaller_leads.require_writable(user, lead)
+@router.get("/leads/{lead_id}/calls")
+async def lead_calls(lead_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _lead_calls(db, user, lead_id, _telecaller_scope(user), limit, offset)
+
+
+@counselor_router.get("/leads/{lead_id}/calls")
+async def counselor_lead_calls(lead_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _lead_calls(db, user, lead_id, lead_handover.counselor_scope(user), limit, offset)
+
+
+async def _log(db: AsyncSession, user: User, lead: Enquiry, payload: LeadCallCreate) -> dict:
     now = await db_now(db)
     call, follow_up_id = await svc.create(db, user, lead, payload, now)
     stage = lead_pipeline.stage_out(lead)
     await db.commit()
-    svc.log("lead_call_logged", user, call.id, lead_id=str(lead_id), outcome=payload.outcome, follow_up=follow_up_id is not None)
+    svc.log("lead_call_logged", user, call.id, lead_id=str(lead.id), outcome=payload.outcome, follow_up=follow_up_id is not None)
     return {"call": await svc.one(db, user, call.id, now), "lead": stage, "follow_up_id": follow_up_id}
 
 
-@router.patch("/calls/{call_id}")
-async def update_call(call_id: UUID, payload: LeadCallUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+@router.post("/leads/{lead_id}/calls", status_code=201)
+async def log_call(lead_id: UUID, payload: LeadCallCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Not idempotent (a retry logs a second call; the daily cap bounds it). Returns the call, the lead's stage after the outcome's effect
+    and the id of the follow-up it created."""
+    lead = await lead_pipeline.locked_lead(db, lead_id, *_telecaller_scope(user))
+    svc.require_telecaller(user)
+    telecaller_leads.require_writable(user, lead)
+    return await _log(db, user, lead, payload)
+
+
+@counselor_router.post("/leads/{lead_id}/calls", status_code=201)
+async def counselor_log_call(lead_id: UUID, payload: LeadCallCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """LG1: no pipeline effect -- the returned stage is the lead's own; a next follow-up goes through the counselor's rules."""
+    lead = await lead_pipeline.locked_lead(db, lead_id, *lead_handover.counselor_scope(user))
+    return await _log(db, user, lead, payload)
+
+
+async def _update(db: AsyncSession, user: User, call_id: UUID, scope: list, payload: LeadCallUpdate) -> dict:
     """CL4: same IST day, by the caller; the outcome is locked."""
-    _, scope = lead_pipeline.scope(user)
     now = await db_now(db)
     call = await svc.load_for_write(db, user, call_id, scope, now)
     changed = svc.apply_update(db, user, call, payload.model_dump(exclude_unset=True), now)
@@ -68,13 +92,31 @@ async def update_call(call_id: UUID, payload: LeadCallUpdate, user: User = Depen
     return await svc.one(db, user, call_id, now)
 
 
-@router.delete("/calls/{call_id}", status_code=204)
-async def delete_call(call_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def _delete(db: AsyncSession, user: User, call_id: UUID, scope: list) -> Response:
     """CL4: no reversal -- a stage move or a follow-up the call made stays."""
-    _, scope = lead_pipeline.scope(user)
     call = await svc.load_for_write(db, user, call_id, scope, await db_now(db))
     svc.audit(db, user, "delete", call.id, {"lead_id": str(call.lead_id), "outcome": call.outcome})
     await db.delete(call)
     await db.commit()
     svc.log("lead_call_deleted", user, call_id)
     return Response(status_code=204)
+
+
+@router.patch("/calls/{call_id}")
+async def update_call(call_id: UUID, payload: LeadCallUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _update(db, user, call_id, _telecaller_scope(user), payload)
+
+
+@router.delete("/calls/{call_id}", status_code=204)
+async def delete_call(call_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _delete(db, user, call_id, _telecaller_scope(user))
+
+
+@counselor_router.patch("/calls/{call_id}")
+async def counselor_update_call(call_id: UUID, payload: LeadCallUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _update(db, user, call_id, lead_handover.counselor_scope(user), payload)
+
+
+@counselor_router.delete("/calls/{call_id}", status_code=204)
+async def counselor_delete_call(call_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _delete(db, user, call_id, lead_handover.counselor_scope(user))

@@ -2739,3 +2739,16 @@ inside the existing role scope (a counselor searching another counselor's code g
 | Ready for Submission gate (`…/sub-status`) | gated | gated | gated (agency route) | — | — | — |
 
 - Pinned by `test_ccrm_019_checklist.py::test_scope_other_counselor_agent_read_only_student_reads_own`, `::test_the_agency_route_is_gated_too`.
+
+### 2.173 Counselor calls, messages and meetings on their leads *(added 2026-10-25 — `DEC-SCOPE-259`, ccrm-004)*
+
+| Route | `counselor` (lead's owner, same division) | Another counselor | `telecaller` / `telecaller_manager` / `super_admin` | Others | Anonymous |
+|---|---|---|---|---|---|
+| `GET, POST /counselor/leads/{id}/calls`, `PATCH, DELETE /counselor/calls/{id}` | ✅ (edit / delete: own call, same IST day) | `404` | `403` (they use `/telecaller/...`, read only once handed over) | `403` | `401` |
+| `GET /counselor/leads/{id}/render`, `GET, POST …/messages`, `DELETE /counselor/messages/{id}` | ✅ (delete: own WhatsApp, same IST day) | `404` | `403` | `403` | `401` |
+| `GET, POST /counselor/leads/{id}/meetings` | ✅ | `404` | `403` | `403` | `401` |
+| `GET /telecaller/templates` | ✅ active rows only (new) | ✅ | ✅ (unchanged) | `403` | `401` |
+| `POST /lead-appointments/{id}/complete` with `outcome_notes` | ✅ own appointment (unchanged rule) | `404` | `403` | `403` | `401` |
+
+- Pinned by `test_ccrm_004_counselor_activities.py::test_call_scope_role_and_closed_lead`, `::test_message_scope_role_and_closed_lead`,
+  `::test_meeting_validation_scope_and_closed_lead`; `test_tel_012_templates.py::test_non_readers_cannot_read`, `::test_a_counselor_lists_active_templates_only`.

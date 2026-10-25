@@ -64,8 +64,19 @@ async def test_non_readers_cannot_read(client, db_session, role, division):
     await as_role(client, db_session)
     created = (await _wa(client)).json()
     await as_role(client, db_session, role, division)
-    assert (await client.get(TEMPLATES)).status_code == 403
+    # ccrm-004 (DEC-SCOPE-259 LG2): a counselor lists the active templates, but never previews one
+    assert (await client.get(TEMPLATES)).status_code == (200 if role == "counselor" else 403)
     assert (await client.get(f"{TEMPLATES}/{created['id']}/preview")).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_a_counselor_lists_active_templates_only(client, db_session):
+    await as_role(client, db_session)
+    created = (await _wa(client)).json()
+    assert (await client.patch(f"{TEMPLATES}/{created['id']}", json={"active": False})).status_code == 200
+    await as_role(client, db_session, "counselor", "overseas")
+    listed = await client.get(f"{TEMPLATES}?active=false&limit=100")
+    assert listed.status_code == 200 and created["id"] not in {t["id"] for t in listed.json()["items"]}
 
 
 @pytest.mark.asyncio

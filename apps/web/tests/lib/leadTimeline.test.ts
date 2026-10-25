@@ -72,4 +72,10 @@ describe("timelineEntry", () => {
   it("reads a note (ccrm-002) with its excerpt as the detail", () => {
     expect(timelineEntry(row({ kind: "note", reason: "Father prefers Sunday" }))).toMatchObject({ badge: "Note", title: "Note added", detail: "Father prefers Sunday" });
   });
+
+  it("reads a meeting (ccrm-004 QA-01) with its mode and notes", () => {
+    expect(timelineEntry(row({ kind: "meeting", from_value: "In person", reason: "UK shortlist" }))).toMatchObject({
+      badge: "Meeting", title: "In person meeting", detail: "UK shortlist",
+    });
+  });
 });

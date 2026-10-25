@@ -16,6 +16,7 @@ export type LeadAppointment = {
   appointment_type: string; type_label: string; counselor: PersonRef | null; booked_by: PersonRef | null; scheduled_at: string;
   duration_minutes: number; mode: string; meeting_link: string | null; location: string | null; purpose: string | null; remarks: string | null;
   status: AppointmentStatus; created_at: string; events: AppointmentEvent[];
+  outcome_notes?: string | null; // ccrm-004 (LG4): what the completed session concluded
   permissions: { can_confirm: boolean; can_complete: boolean; can_no_show: boolean; can_cancel: boolean; can_reschedule: boolean };
 };
 export type AppointmentOptions = { types: { key: string; label: string }[]; counselors: PersonRef[]; modes: string[]; duration_minutes: number };

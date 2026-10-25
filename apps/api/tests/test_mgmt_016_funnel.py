@@ -267,6 +267,20 @@ async def test_each_stage_counts_its_definition(client, db_session):
     }  # fmt: skip
 
 
+async def test_a_counselors_call_is_not_telecalling(client, db_session):
+    """ccrm-004 (DEC-SCOPE-259 LG5): the Telecalling stage counts telecaller calls only; a lead the counselor called is not in it."""
+    year = random.randint(1700, 1899)
+    counselor = await make_user(db_session, "counselor", "overseas")
+    row = await add(db_session, Enquiry(division="overseas", name=f"Lead {tag()}", email=f"{tag()}@example.local", phone="9876543210", subject="Study",
+                                        message="", source="website", status="follow_up", owner_id=counselor.id,
+                                        created_at=datetime(year, 6, 5, 12, 0, tzinfo=IST)))  # fmt: skip
+    await add(db_session, LeadCall(lead_id=row.id, caller_user_id=counselor.id, occurred_at=datetime(year, 6, 6, 12, 0, tzinfo=IST), duration_seconds=60,
+                                   call_type="outgoing", outcome="interested"))  # fmt: skip
+    await as_role(client, db_session, "partner")
+    counts = values(await read(client, year))
+    assert counts["leads"] == 1 and counts["telecalling"] == 0
+
+
 async def test_an_empty_period_counts_zero(client, db_session):
     await as_role(client, db_session, "super_admin")
     assert set(values(await read(client, 1699)).values()) == {0}

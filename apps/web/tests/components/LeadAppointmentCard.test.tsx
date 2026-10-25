@@ -51,4 +51,32 @@ describe("LeadAppointmentCard (tel-016)", () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith(cancelled));
     expect(fetch).toHaveBeenCalledWith("/api/v1/lead-appointments/a1/cancel", expect.objectContaining({ method: "POST", body: JSON.stringify({ reason: "Lead travelling" }) }));
   });
+
+  // ccrm-004 (DEC-SCOPE-259 LG4): completing asks for optional outcome notes, then shows them
+  it("completes with optional outcome notes and shows them", async () => {
+    const started = { ...base, permissions: { ...none, can_complete: true } };
+    const completed = { ...base, status: "completed" as const, permissions: none, outcome_notes: "Picked the UK shortlist" };
+    const fetch = vi.fn(() => Promise.resolve(new Response(JSON.stringify(completed), { status: 200 })));
+    vi.stubGlobal("fetch", fetch);
+    const onChanged = vi.fn();
+    const { rerender } = render(<LeadAppointmentCard appointment={started} showLead onChanged={onChanged} />);
+    fireEvent.click(screen.getByRole("button", { name: "Mark completed" }));
+    expect(fetch).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Outcome notes (optional)"), { target: { value: "  Picked the UK shortlist " } });
+    fireEvent.click(screen.getByRole("button", { name: "Mark completed" }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledWith(completed));
+    expect(fetch).toHaveBeenCalledWith("/api/v1/lead-appointments/a1/complete", expect.objectContaining({ body: JSON.stringify({ outcome_notes: "Picked the UK shortlist" }) }));
+    rerender(<LeadAppointmentCard appointment={completed} showLead onChanged={onChanged} />);
+    expect(screen.getByText("Outcome notes")).toBeTruthy();
+    expect(screen.getByText("Picked the UK shortlist")).toBeTruthy();
+  });
+
+  it("completes without notes with an empty body", async () => {
+    const fetch = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ ...base, status: "completed", permissions: none }), { status: 200 })));
+    vi.stubGlobal("fetch", fetch);
+    render(<LeadAppointmentCard appointment={{ ...base, permissions: { ...none, can_complete: true } }} showLead onChanged={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "Mark completed" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mark completed" }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/v1/lead-appointments/a1/complete", expect.objectContaining({ body: "{}" })));
+  });
 });

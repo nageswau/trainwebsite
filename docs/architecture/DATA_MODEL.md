@@ -2214,3 +2214,9 @@ ccrm-018 re-creates template items on edit), `position` (unique per application)
 `application_checklist_item_documents`: PK (`item_id` FK ON DELETE CASCADE, `document_id` FK `student_documents` ON DELETE CASCADE,
 indexed), `linked_by_id`, `created_at`. ccrm-019 also writes ccrm-013's `overseas_applications.documents_completed_on`. No backfill;
 downgrade drops the three tables.
+
+## Counselor meetings and appointment outcome notes (`ccrm-004`, `DEC-SCOPE-259`; migration `0181_lead_meetings`, after ccrm-019's `0180`)
+
+`lead_meetings` — append-only: `id`, `lead_id` FK `enquiries` ON DELETE RESTRICT, `author_user_id` FK `users` ON DELETE RESTRICT,
+`occurred_at`, `mode` (40, CHECK `Online`/`Phone`/`In person`), `notes` (text, CHECK length 1–2000), `created_at`; index (`lead_id`,
+`occurred_at`). `appointments.outcome_notes` (text, NULL). No backfill; downgrade refuses while meetings or outcome notes exist.

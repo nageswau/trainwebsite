@@ -14,7 +14,9 @@ export type CounselorLeadDetail = CounselorLead & {
   // ccrm-003 (DEC-SCOPE-243): the next action (a YYYY-MM-DD due date; overdue is the API's IST reading) and the stage / follow-up actions
   next_action: string | null; next_action_due: string | null; next_action_overdue: boolean;
   // ccrm-008 (DEC-SCOPE-252): `convert` = one-step conversion to a new overseas student (Qualified onwards, not linked)
-  permissions: { return: boolean; link: boolean; unlink: boolean; stage: boolean; follow_up: boolean; convert: boolean };
+  // ccrm-004 (DEC-SCOPE-259 LG7): `activity` = calls, messages and meetings may be logged (lead not closed); the wa.me number
+  permissions: { return: boolean; link: boolean; unlink: boolean; stage: boolean; follow_up: boolean; convert: boolean; activity: boolean };
+  whatsapp_to: string | null;
 };
 export type StudentSuggestion = { id: string; full_name: string; email: string; phone: string | null; linked_elsewhere: boolean };
 
