@@ -1,4 +1,4 @@
-"""ccrm-030 (DEC-SCOPE-268, RM9/RM10) -- the Overseas Admin's reminder rules: read and change each rule, run the job now (idempotent) and
+"""ccrm-030 (DEC-SCOPE-269, RM9/RM10) -- the Overseas Admin's reminder rules: read and change each rule, run the job now (idempotent) and
 read the recent firings. Super Admin passes `_require` as everywhere; anyone else is 403. Spec:
 docs/superpowers/specs/2026-10-25-ccrm-030-counselor-reminders-design.md."""
 

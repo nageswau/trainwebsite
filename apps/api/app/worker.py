@@ -134,7 +134,7 @@ def expire_offers_task():
 
 @celery.task
 def send_counselor_reminders_task():
-    """ccrm-030 (DEC-SCOPE-268 RM8): daily at 08:15 IST via beat. Idempotent per firing (counselor_reminder_log.dedupe_key), so a rerun, a
+    """ccrm-030 (DEC-SCOPE-269 RM8): daily at 08:15 IST via beat. Idempotent per firing (counselor_reminder_log.dedupe_key), so a rerun, a
     second beat process or the admin's "Run now" creates nothing new."""
     from app.services.counselor_reminders import run_counselor_reminders
 

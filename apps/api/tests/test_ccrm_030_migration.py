@@ -1,4 +1,4 @@
-"""ccrm-030 -- migration 0189_counselor_reminders (DEC-SCOPE-268): the chain, the CHECKs and keys it repeats, the RM1 seed, the unique
+"""ccrm-030 -- migration 0189_counselor_reminders (DEC-SCOPE-269): the chain, the CHECKs and keys it repeats, the RM1 seed, the unique
 dedupe key and the round trip, in a throwaway database (the ccrm-018 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util

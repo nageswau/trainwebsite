@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api import crm_exports
 from app.api.deps import get_current_user, get_db
 from app.models import INVESTMENT_STATUSES, INVESTMENT_VERTICALS, User
 from app.schemas import (
@@ -178,6 +179,14 @@ async def application_funnel(
     }
 
 
+def _crm_filters(date_from: date | None, date_to: date | None, counselor: str | None, country: UUID | None, university: UUID | None, course: UUID | None,
+                 intake: str | None) -> management_crm_reports.ReportFilters:
+    """ccrm-034 R2 (shared with the ccrm-035 export): end before start, or a counselor that is neither an id nor "none", is a 422."""
+    if date_from and date_to and date_to < date_from:
+        raise HTTPException(422, "The end date must be on or after the start date")
+    return management_crm_reports.ReportFilters(date_from=date_from, date_to=date_to, counselor=_id_or_none(counselor), country=country, university=university, course=course, intake=intake or None)
+
+
 @router.get("/crm-reports", response_model=CrmReportsOut)
 async def crm_reports(
     date_from: date | None = None,
@@ -193,12 +202,38 @@ async def crm_reports(
     """ccrm-034 (§13, AC 8, DEC-SCOPE-267 R1-R10): ageing, university performance, visa outcomes, document readiness, lead conversion
     by intake and the forecast by intake -- counts only. Partner, super_admin and the Overseas Admin; everyone else 403."""
     require_crm_reports(user)
-    if date_from and date_to and date_to < date_from:
-        raise HTTPException(422, "The end date must be on or after the start date")
-    filters = management_crm_reports.ReportFilters(date_from=date_from, date_to=date_to, counselor=_id_or_none(counselor), country=country, university=university, course=course, intake=intake or None)
+    filters = _crm_filters(date_from, date_to, counselor, country, university, course, intake)
     today = india_date(await db_now(db))
     body = await management_crm_reports.reports(db, filters, today)
     return {**body, "filters": {key: None if value is None else str(value) for key, value in vars(filters).items()}, "as_of": today}
+
+
+@router.get("/crm-reports/export")
+async def crm_report_export(
+    report: Literal["ageing", "universities", "visa", "readiness", "leads", "forecast"],
+    format: Literal["csv", "xlsx"] = "csv",  # noqa: A002 -- the query parameter name
+    date_from: date | None = None,
+    date_to: date | None = None,
+    counselor: str | None = Query(None, max_length=36),
+    country: UUID | None = None,
+    university: UUID | None = None,
+    course: UUID | None = None,
+    intake: str | None = Query(None, max_length=80),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """ccrm-035 (DEC-SCOPE-268 E2): one ccrm-034 report as CSV or xlsx -- its table and Total row, for the same roles and filters.
+    Audited (who, report, filters, rows) and throttled by `crm_exports.export`."""
+    require_crm_reports(user)
+    filters = _crm_filters(date_from, date_to, counselor, country, university, course, intake)
+    given = {key: str(value) for key, value in vars(filters).items() if value is not None}
+    today = india_date(await db_now(db))
+
+    async def build() -> dict:
+        return management_crm_reports.table(report, await management_crm_reports.report(db, filters, report, today))
+
+    return await crm_exports.export(db, user, entity_type="crm_report", key=report, fmt=format, filters=given, filename=f"crm-{report}-{today}",
+                                    sheet_name=f"CRM {report}", build=build)
 
 
 def _operational(user: User) -> User:

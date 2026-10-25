@@ -1,7 +1,7 @@
 # ccrm-030 — Counselor reminder and trigger engine (design)
 
-- **Feature:** `ccrm-030` (docs/delivery/COUNSELOR_CRM_BACKLOG.md). **Decision:** `DEC-SCOPE-268`. **Migration:** `0189_counselor_reminders`.
-  **API:** §12FU. **RBAC:** §2.182.
+- **Feature:** `ccrm-030` (docs/delivery/COUNSELOR_CRM_BACKLOG.md). **Decision:** `DEC-SCOPE-269`. **Migration:** `0189_counselor_reminders`.
+  **API:** §12FV. **RBAC:** §2.183.
 - **Source:** Counselor CRM Specification (UNVERIFIED) §11 trigger table, §14 "Deadline alerts — trigger configurable reminders before
   application, offer, deposit and visa dates", AC 12 "Notifications and deadlines are tested with sample records before go-live".
 - **Dependencies (all merged):** ccrm-003 (lead next action), 013 (decision_due_on), 015 (on hold review date), 020 (student document
@@ -70,7 +70,7 @@ the counselor logs a call is not automatic.
 - `counselor_reminder_log(id uuid PK, rule_key varchar(40), dedupe_key varchar(200) UNIQUE, subject_id uuid, summary varchar(200),
   task_id FK counselor_tasks SET NULL, recipients int, created_at)`; index (created_at).
 
-## API (§12FU)
+## API (§12FV)
 
 - `GET /overseas-admin/reminder-rules` → `{rules: [...]}` (catalogue order, with label, description, action, timing, min/max, current
   values, `notify_student` null where not supported).

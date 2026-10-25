@@ -1,4 +1,4 @@
-// ccrm-030 (DEC-SCOPE-268, RM1/RM9/RM10): the Overseas Admin's counselor reminder rules. The API owns the catalogue, the ranges and every
+// ccrm-030 (DEC-SCOPE-269, RM1/RM9/RM10): the Overseas Admin's counselor reminder rules. The API owns the catalogue, the ranges and every
 // check; the page shows what it returns and sends one rule at a time.
 export const REMINDER_RULES_API = "/api/v1/overseas-admin/reminder-rules";
 export const REMINDER_RULES_HOME = "/overseas/admin/reminder-rules";

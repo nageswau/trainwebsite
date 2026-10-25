@@ -1,4 +1,4 @@
-"""ccrm-030 (DEC-SCOPE-268, RM1-RM10): the counselor reminder and trigger engine -- one catalogue of rules, configured by the Overseas Admin,
+"""ccrm-030 (DEC-SCOPE-269, RM1-RM10): the counselor reminder and trigger engine -- one catalogue of rules, configured by the Overseas Admin,
 that turns lead and application dates into counselor tasks (ccrm-029, `source='rule'`) or notifications, and reminds the student where the
 rule says so. The daily job runs every time-based rule; `first_contact` runs inside the handover / admin owner write.
 

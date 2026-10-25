@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { signIn } from "./helpers/agency";
 
-// ccrm-030 (DEC-SCOPE-268, RM9/RM10) -- the Overseas Admin opens Reminder rules from the sidebar, is stopped by an out-of-range offset,
+// ccrm-030 (DEC-SCOPE-269, RM9/RM10) -- the Overseas Admin opens Reminder rules from the sidebar, is stopped by an out-of-range offset,
 // changes one rule and puts it back, and runs the reminders twice (the second run sends nothing new); the counselor is refused. Requires
 // the stack running with `python -m app.seed` applied.
 

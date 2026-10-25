@@ -9521,7 +9521,25 @@ terminal) shown beside it; no probability weighting.
 **Numbering:** no migration; API §12FT; RBAC §2.181.
 - **Feature ID authorized:** `ccrm-034`. **Status:** built on `worktree-ccrm-034`.
 
-### DEC-SCOPE-268 — Counselor reminder and trigger engine (`ccrm-030`)
+### DEC-SCOPE-268 — Export of CRM reports and the counselor's own lists (`ccrm-035`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-035` (source PDF §13 export, §16 "restrict bulk exports to authorized roles
+and log exports", §18 AC 11; `UNVERIFIED` — only the backlog's quotes are used); design
+`docs/superpowers/specs/2026-10-25-ccrm-035-crm-exports-design.md`. Dependency ccrm-034 (`DEC-SCOPE-267`) merged.
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** E1 formats CSV (UTF-8
+BOM, on-screen labels) and xlsx (one sheet, frozen header, numbers typed) from a standard-library writer — no new dependency (nehn-004 not
+built). E2 one ccrm-034 report per file (rows + counted Total row; ageing bands one column each), for ccrm-034's roles (partner,
+super_admin, overseas_admin) and filters. E3 the overseas counselor exports their own Students/Applications list (ccrm-012 QS6 filters,
+`counselor_id = me`) and own leads (QS7 filters, owner + division); the IT counselor, Overseas Admin and everyone else 403 (Admin list
+exports not in this item). E4 allowlisted columns only — never email, phone, WhatsApp, address, DOB, identity, documents, notes, consent,
+referral contact, outcome/loss reasons, money or internal ids; whether contact details may ever be exported stays `NEEDS_CONFIRMATION`.
+E5 every export one `AuditLog` (`crm.export`; entity `crm_report`/`counselor_list`; metadata format, filter values, rows) committed before
+the file (fail closed); views not audited. E6 throttle 30 per user per 10 minutes (AGN-020 R10) → 429 + `Retry-After`. E7 counselor list
+cap 5,000 rows → 422. E8 formula escaping in both formats. E9 `no-store`, attachment filenames with the IST date.
+**Numbering:** no migration; API §12FU; RBAC §2.182.
+- **Feature ID authorized:** `ccrm-035`. **Status:** built on `worktree-ccrm-035`.
+
+### DEC-SCOPE-269 — Counselor reminder and trigger engine (`ccrm-030`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-030` (source PDF §11 trigger table, §14 deadline alerts / ownership, §18 AC 12;
 `UNVERIFIED` — only the backlog's quotes are used); owner answers CC2 (no visa coordinator role: the counselor is told), CC3 (escalation is
@@ -9539,5 +9557,5 @@ offer (browser QA-01); School-bridged applications with an overseas counselor ar
 `source='rule'`, created by the counselor themself, audited. RM7 in-app + email + opted-in channels, no names or typed text. RM8 beat
 daily 08:15 IST. RM9 Overseas Admin edits on/off, offset, student switch; audited with field names. RM10 "Run now" and a recent-reminders
 list for AC 12 testing.
-**Numbering:** migration `0189_counselor_reminders`; API §12FU; RBAC §2.182.
+**Numbering:** migration `0189_counselor_reminders`; API §12FV; RBAC §2.183.
 - **Feature ID authorized:** `ccrm-030`. **Status:** built on `worktree-ccrm-030`.
