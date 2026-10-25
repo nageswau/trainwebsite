@@ -19,11 +19,12 @@ test("counselor's Leads workspace loads instead of 404ing (CNS-001-AC01)", async
   await expect(page.getByRole("heading", { name: "My Leads", level: 2 })).toBeVisible();
 });
 
+// ccrm-036 (DEC-SCOPE-269): the Reports link now opens the counselor's own performance report, which keeps the caseload aggregate.
 test("counselor's Reports workspace loads with a real aggregate of their own caseload (CNS-001-AC01)", async ({ page }) => {
   await loginAsCounselor(page);
   await page.goto("/overseas/counselor/reports");
-  await expect(page.getByRole("heading", { name: "My Caseload Report", level: 2 })).toBeVisible();
-  await expect(page.getByText("Assigned applications", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "My performance", level: 2 })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Now" }).getByText("Applications", { exact: true })).toBeVisible();
 });
 
 test("counselor workspace sections require authentication", async ({ page }) => {

@@ -2852,3 +2852,13 @@ inside the existing role scope (a counselor searching another counselor's code g
   `test_ccrm_035_exports.py::test_management_roles_export_a_report_with_its_total_and_the_export_is_audited`,
   `::test_other_roles_cannot_export_management_reports_and_nothing_is_audited`, `::test_only_the_overseas_counselor_exports_own_lists`,
   `::test_anonymous_export_is_refused`.
+
+### 2.183 Counselor's own performance report *(added 2026-10-25 — `DEC-SCOPE-269`, ccrm-036)*
+
+| Route | `counselor` (overseas) | `counselor` (IT) | `overseas_admin` | `super_admin` | `partner` | Others | Anonymous |
+|---|---|---|---|---|---|---|---|
+| `GET /counselor/performance` | ✅ own | `403` | `403` | `403` | `403` | `403` | `401` |
+
+- "Own" = the caller's id only; the request names no counselor, so there is no IDOR surface. Admins and management read every counselor at
+  `/management/counseling` and `/management/crm-reports`. Pinned by `test_ccrm_036_performance.py::test_the_overseas_counselor_reads_their_own_report`,
+  `::test_everyone_else_is_refused`, `::test_anonymous_is_refused`.
