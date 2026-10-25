@@ -111,7 +111,7 @@ async def dashboard(db: AsyncSession, user: User, now: datetime) -> dict:
     s["new_leads"] = await _section(
         db,
         select(Enquiry).where(*leads, Enquiry.status.in_(NOT_CONTACTED)).order_by(Enquiry.created_at.desc(), Enquiry.id),
-        lambda e: _item(e.id, _lead_label(e), STAGE_LABELS.get(e.status, e.status), e.created_at, _lead_href(e.id)),
+        lambda e: _item(e.id, _lead_label(e), f"{STAGE_LABELS.get(e.status, e.status)}, received", e.created_at, _lead_href(e.id)),
     )
 
     def appointment(a: Appointment, lead: Enquiry | None, student: str | None) -> dict:
@@ -152,7 +152,7 @@ async def dashboard(db: AsyncSession, user: User, now: datetime) -> dict:
     s["no_next_action"] = await _section(
         db,
         select(Enquiry).where(*leads, Enquiry.status.notin_((*NOT_CONTACTED, *CLOSED, *PAST_NEXT_ACTION)), Enquiry.next_action.is_(None)).order_by(Enquiry.stage_changed_at, Enquiry.id),
-        lambda e: _item(e.id, _lead_label(e), STAGE_LABELS.get(e.status, e.status), e.stage_changed_at, _lead_href(e.id)),
+        lambda e: _item(e.id, _lead_label(e), f"{STAGE_LABELS.get(e.status, e.status)} since", e.stage_changed_at, _lead_href(e.id)),
     )
 
     # D5 pending documents: a visible, unarchived student with an open request or a document awaiting verification
@@ -177,7 +177,7 @@ async def dashboard(db: AsyncSession, user: User, now: datetime) -> dict:
         db,
         _apps(user).where(a.status == "university_selection", a.submitted_on.is_(None), a.documents_completed_on.is_(None)).order_by(a.application_deadline.asc().nulls_last(), a.id),
         lambda app, uni, owner: _app_item(
-            app.id, app, uni, owner, f"Deadline {app.application_deadline:%d %b %Y}" if app.application_deadline else "Checklist not complete", app.application_deadline, today
+            app.id, app, uni, owner, "Application deadline" if app.application_deadline else "Checklist not complete", app.application_deadline, today
         ),
     )
     s["awaiting_decision"] = await _section(
@@ -189,7 +189,7 @@ async def dashboard(db: AsyncSession, user: User, now: datetime) -> dict:
         ),
     )
 
-    # offers_due: three kinds of dated offer work in one list, by date (a UNION of ids, then one query per kind for the shown rows)
+    # offers_due: three kinds of dated offer work merged into one list by date (one query per kind)
     o, c, d = ApplicationOffer, ApplicationOfferCondition, ApplicationDepositRecord
     kinds = (
         (
@@ -217,23 +217,25 @@ async def dashboard(db: AsyncSession, user: User, now: datetime) -> dict:
     s["offers_due"] = {
         "count": len(offer_rows),
         "more": len(offer_rows) > LIMIT,
-        "items": [_app_item(item_id, app, uni, owner, f"{what} {due:%d %b %Y}", due, today) for due, what, item_id, app, uni, owner in offer_rows[:LIMIT]],
+        "items": [_app_item(item_id, app, uni, owner, what, due, today) for due, what, item_id, app, uni, owner in offer_rows[:LIMIT]],
     }
 
     v = VisaCase
     upcoming = and_(v.appointment_date.isnot(None), v.appointment_date.between(today, horizon))
+    def visa(app, uni, owner, case: VisaCase) -> dict:
+        """QA-01/02: the detail names the date shown -- the appointment in the window, else the expected decision (when known)."""
+        if case.appointment_date and today <= case.appointment_date <= horizon:
+            return _app_item(case.id, app, uni, owner, "Visa appointment", case.appointment_date, today)
+        status = f"Visa {visa_label(case.visa_status).lower()}"
+        if case.expected_decision_date is None:
+            return _app_item(case.id, app, uni, owner, status, None, today)
+        what = "Visa decision expected" if case.visa_status == "decision_pending" else f"{status}, decision expected"
+        return _app_item(case.id, app, uni, owner, what, case.expected_decision_date, today)
+
     s["visa"] = await _section(
         db,
         _apps(user, v).join(v, v.application_id == a.id).where(v.decision.is_(None), or_(upcoming, v.visa_status.in_(VISA_WAITING))).order_by(v.appointment_date.asc().nulls_last(), v.id),
-        lambda app, uni, owner, case: _app_item(
-            case.id,
-            app,
-            uni,
-            owner,
-            f"Visa appointment {case.appointment_date:%d %b %Y}" if case.appointment_date and today <= case.appointment_date <= horizon else f"Decision pending ({visa_label(case.visa_status)})",
-            case.appointment_date if case.appointment_date and case.appointment_date >= today else case.expected_decision_date,
-            today,
-        ),
+        visa,
     )
     approved = or_(a.sub_status == "visa_approved", exists().where(v.application_id == a.id, v.decision == "approved"))
     s["enrolment"] = await _section(
@@ -241,6 +243,9 @@ async def dashboard(db: AsyncSession, user: User, now: datetime) -> dict:
         _apps(user)
         .where(or_(and_(a.status != "enrolled", a.enrollment_confirmed_at.is_(None), approved), and_(a.status == "enrolled", a.arrival_confirmed_at.is_(None))))
         .order_by(a.course_start_date.asc().nulls_last(), a.id),
-        lambda app, uni, owner: _app_item(app.id, app, uni, owner, "Confirm arrival" if app.status == "enrolled" else "Confirm enrolment", app.course_start_date, today) | {"overdue": False},
+        lambda app, uni, owner: (
+            _app_item(app.id, app, uni, owner, ("Confirm arrival" if app.status == "enrolled" else "Confirm enrolment") + (", course starts" if app.course_start_date else ""), app.course_start_date, today)
+            | {"overdue": False}
+        ),
     )
     return {"today": today, "window_days": WINDOW_DAYS, "sections": s}

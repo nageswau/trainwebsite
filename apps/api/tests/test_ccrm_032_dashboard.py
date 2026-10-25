@@ -195,6 +195,32 @@ async def test_every_section_lists_only_the_counselors_own_live_work(db_session,
 
 
 @pytest.mark.asyncio
+async def test_each_detail_names_its_date_without_repeating_it(db_session, world):
+    """Browser QA-01..03: the date shows once (in `date`); the detail says what that date is."""
+    w = world
+    w["approved"].course_start_date = day(30)
+    await db_session.commit()
+    async with client_for(w["a"].email) as c:
+        s = (await c.get(URL)).json()["sections"]
+
+    def detail(key: str, row) -> str:
+        return next(i["detail"] for i in s[key]["items"] if i["id"] == str(row.id))
+
+    university = next(i["detail"] for i in s["not_ready"]["items"]).split(" · ")[-1]
+    assert detail("new_leads", w["new"]) == "New Lead, received"
+    assert detail("no_next_action", w["bare"]) == "Follow-up since"
+    assert detail("not_ready", w["not_ready"]) == f"Application deadline · {university}"
+    assert detail("offers_due", w["offer_row"]) == f"Offer deadline · {university}"
+    assert detail("offers_due", w["condition"]) == f"Condition due · {university}"
+    assert detail("offers_due", w["deposit"]) == f"Deposit due · {university}"
+    assert detail("visa", w["visa_appt"]) == f"Visa appointment · {university}"
+    assert detail("visa", w["visa_wait"]) == f"Visa decision pending · {university}"  # QA-02: the status is not repeated
+    assert detail("enrolment", w["approved"]) == f"Confirm enrolment, course starts · {university}"
+    assert detail("enrolment", w["enrolled"]) == f"Confirm arrival · {university}"
+    assert all(not any(ch.isdigit() for ch in i["detail"].split(" · ")[0]) for key in ("not_ready", "offers_due", "visa") for i in s[key]["items"])
+
+
+@pytest.mark.asyncio
 async def test_a_confirmed_arrival_leaves_the_enrolment_section(db_session, world):
     w = world
     w["enrolled"].arrival_date, w["enrolled"].arrival_confirmed_at = day(-1), datetime.now(UTC)

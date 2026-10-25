@@ -12,32 +12,41 @@ const SECTIONS = [
   "Visa appointments and decisions", "Enrolment and arrival",
 ];
 
-function day(offset: number): string {
-  const d = new Date(Date.now() + 5.5 * 3600_000 + offset * 86_400_000); // India date
-  return d.toISOString().slice(0, 10);
+function today(): string {
+  return new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10); // India date
 }
 
-test("a fresh counselor sees every section empty, then their overdue task", async ({ page }) => {
+test("a fresh counselor sees every section empty, then their new lead and its follow-up", async ({ page }) => {
   const errors: string[] = [];
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   await signInAsFreshCounselor(page, "ccrm032");
   await expect(page.getByRole("search")).toBeVisible(); // ccrm-012's quick search stays on top
   for (const title of SECTIONS) {
-    const region = page.getByRole("region", { name: new RegExp(`^${title.replace(/[()]/g, "\\$&")} 0$`) });
-    await expect(region).toBeVisible();
+    await expect(page.getByRole("region", { name: new RegExp(`^${title} 0$`) })).toBeVisible();
   }
   await expect(page.getByText("No overdue tasks.")).toBeVisible();
 
-  const title = `Chase passport ${Date.now()}`;
-  expect((await page.request.post("/api/v1/counselor/tasks", { data: { title, due_on: day(-2), priority: "high" } })).status()).toBe(201);
-  expect((await page.request.post("/api/v1/counselor/tasks", { data: { title: `${title} today`, due_on: day(0) } })).status()).toBe(201);
+  // A task due today is not overdue (ccrm-029 accepts no past due date); a walk-in lead with a follow-up later today shows up.
+  const stamp = Date.now();
+  expect((await page.request.post("/api/v1/counselor/tasks", { data: { title: `Chase passport ${stamp}`, due_on: today() } })).status()).toBe(201);
+  const products = (await (await page.request.get("/api/v1/telecaller/products?group=overseas&active=true&limit=100")).json()).items;
+  const phone = `8${String(Math.floor(Math.random() * 1e9)).padStart(9, "0")}`;
+  const created = await page.request.post("/api/v1/counselor/walk-in-leads", { data: { name: `Dash Lead ${stamp}`, phone, product_id: products[0].id, source: "walk_in" } });
+  expect(created.status(), await created.text()).toBe(201);
+  const lead = await created.json();
+  const due = new Date(Date.now() + 2 * 60_000).toISOString();
+  const fu = await page.request.post(`/api/v1/counselor/leads/${lead.id}/follow-ups`, { data: { due_at: due, reason: "counselor_call", next_action: "Call about the intake" } });
+  expect(fu.status(), await fu.text()).toBe(201);
+
   await page.reload();
-  const overdue = page.getByRole("region", { name: /^Overdue tasks 1$/ });
-  await expect(overdue.getByRole("link", { name: title, exact: true })).toBeVisible();
-  await expect(overdue.getByText("Overdue", { exact: true })).toBeVisible();
-  await expect(overdue.getByText("High priority")).toBeVisible();
-  await overdue.getByRole("link", { name: title, exact: true }).click();
-  await expect(page).toHaveURL(/\/overseas\/counselor\/tasks$/);
+  await expect(page.getByRole("region", { name: /^Overdue tasks 0$/ })).toBeVisible();
+  const followUps = page.getByRole("region", { name: /^Follow-ups due 1$/ });
+  const link = followUps.getByRole("link", { name: new RegExp(`Dash Lead ${stamp}`) });
+  await expect(link).toBeVisible();
+  await expect(followUps.getByText("Call about the intake")).toBeVisible();
+  await expect(followUps.getByText("Overdue", { exact: true })).toHaveCount(0);
+  await link.click();
+  await expect(page).toHaveURL(new RegExp(`/overseas/counselor/leads/${lead.id}$`));
   expect(errors).toEqual([]);
 });
 
