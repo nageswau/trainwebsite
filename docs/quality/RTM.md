@@ -1215,3 +1215,15 @@ half.
 | `ccrm-031-AC02` | The threshold is configurable (and the rule can be switched off) | `::test_threshold_is_configurable_and_the_rule_can_be_switched_off`, `::test_rule_is_listed_and_configurable`; `ccrm-031-overdue-escalation.spec.ts` |
 | `ccrm-031-AC03` | Admin sees an "Overdue by counselor" list; others 403 | `::test_overdue_by_counselor_list`, `::test_list_is_for_the_overseas_admin_and_super_admin_only`; `apps/web/tests/components/OverdueByCounselor.test.tsx`; `ccrm-031-overdue-escalation.spec.ts` |
 | `ccrm-031-AC04` | Migration 0190: CHECK widened, seed, round trip | `apps/api/tests/test_ccrm_031_migration.py`, `test_ccrm_030_migration.py` |
+
+| `ccrm-037` | Requirement: §11 communication channels → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-037` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-273` → design `docs/superpowers/specs/2026-10-25-ccrm-037-counselor-student-messages-design.md`; `API_CONTRACT.md` §12FZ; `RBAC_MATRIX.md` §2.187 | MT1–MT10 defaults `NEEDS_CONFIRMATION` |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-037-AC01` | Overseas-Admin-managed WhatsApp/email templates; counselors read active ones; other roles 403 (MT1) | `apps/api/tests/test_ccrm_037_messages.py::test_the_overseas_admin_manages_templates_and_the_counselor_reads_active_ones`, `::test_other_roles_cannot_read_or_write_templates`, `::test_template_rules_are_422`, `::test_a_template_name_is_unique_per_channel_and_the_channel_is_fixed`; `ccrm-037-student-messages.spec.ts` |
+| `ccrm-037-AC02` | Merge fields: student, university, course, intake, deadlines, counselor; missing listed (MT2) | `::test_render_fills_the_students_and_the_applications_values`, `::test_render_refuses_another_counselors_application_and_the_admin` |
+| `ccrm-037-AC03` | Sends logged against the student + application; email queued for the worker (MT4–MT6) | `::test_a_whatsapp_send_is_logged_against_the_student_and_application`, `::test_an_email_is_queued_and_published_after_the_commit`, `::test_send_rules`, `::test_daily_caps`; `apps/api/tests/test_ccrm_037_delivery.py` |
+| `ccrm-037-AC04` | Replies recorded by hand (no inbound provider) (MT7) | `::test_a_reply_is_recorded_by_hand`, `::test_reply_rules` |
+| `ccrm-037-AC05` | Scope: csc-001 counselor, admin read-only, out of scope 404, student/agent never (MT4, MT9) | `::test_the_log_survives_a_reassignment_and_the_admin_reads_it`, `::test_out_of_scope_unknown_and_non_students_are_404`, `::test_other_roles_never_see_the_log`, `::test_anonymous_is_401` |
+| `ccrm-037-AC06` | UI: Communication card (About, send, record a reply, log, read-only admin, no-number reason, phone layout); admin templates page | `apps/web/tests/components/StudentMessages.test.tsx`, `apps/web/tests/lib/counselorMessages.test.ts`; e2e `ccrm-037-student-messages.spec.ts` |
+| `ccrm-037-AC07` | Migration: tables, CHECKs, round trip, downgrade refusal | `apps/api/tests/test_ccrm_037_migration.py` |

@@ -795,6 +795,10 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
   exists.
 - **Reuse:** tel-013/014 and rec-026 template services. **Dependencies:** ccrm-004.
 - **Complexity:** medium. **Risk:** low.
+- **Status (2026-10-25):** built on `worktree-ccrm-037` — `DEC-SCOPE-273` (MT1–MT10 defaults `NEEDS_CONFIRMATION`; no student inbound
+  channel exists, so replies are recorded by hand; the Overseas Admin reads but does not send), migration `0191_student_messages`, API
+  §12FZ, RBAC §2.187. Page `/overseas/admin/message-templates`; the student 360 Activities tab's Communication card. Design
+  `docs/superpowers/specs/2026-10-25-ccrm-037-counselor-student-messages-design.md`.
 
 ### `ccrm-038` — Calendar integration (CC6)
 
