@@ -251,7 +251,7 @@ async def test_whatsapp_to_a_student_needs_their_opt_in(client, db_session, worl
     await login(client, world["counselor"].email)
     messages = url(world["student"].id, "messages")
     recipient = (await client.get(messages)).json()["recipient"]
-    assert recipient["whatsapp_to"] is None and recipient["whatsapp_opt_in"] is False
+    assert recipient["whatsapp_to"] == "919876543210" and recipient["whatsapp_opt_in"] is False  # QA-01: the UI tells "no number" from "not opted in"
     response = await client.post(messages, json={"channel": "whatsapp", "body": "Hello"})
     assert response.status_code == 409 and response.json()["detail"] == "This student has not opted in to WhatsApp messages"
     assert await db_session.scalar(select(StudentMessage.id).where(StudentMessage.student_user_id == world["student"].id)) is None

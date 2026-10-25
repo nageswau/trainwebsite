@@ -22,8 +22,9 @@ export default function StudentMessages({ studentId, recipient, applications, ca
   const aboutId = useId();
   const parties = useMemo(
     (): Party[] => [{
-      kind: "student", id: studentId, name: recipient.name, whatsappTo: recipient.whatsapp_to, email: recipient.email,
-      whatsappOff: recipient.whatsapp_opt_in ? undefined : `${recipient.name} has not opted in to WhatsApp messages.`, // ccrm-040 CN7
+      // ccrm-040 CN7: WhatsApp needs the student's opt-in; a missing number is still the first reason given (browser QA-01)
+      kind: "student", id: studentId, name: recipient.name, whatsappTo: recipient.whatsapp_opt_in ? recipient.whatsapp_to : null, email: recipient.email,
+      whatsappOff: recipient.whatsapp_to && !recipient.whatsapp_opt_in ? `${recipient.name} has not opted in to WhatsApp messages.` : undefined,
     }],
     [studentId, recipient],
   );

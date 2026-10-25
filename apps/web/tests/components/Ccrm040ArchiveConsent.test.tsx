@@ -96,10 +96,18 @@ describe("OverseasConsentCard (ccrm-040 CN2/CN3)", () => {
 });
 
 describe("StudentMessages WhatsApp opt-in (ccrm-040 CN7)", () => {
-  it("says the student has not opted in instead of 'no number'", async () => {
-    fetchMock.mockImplementation(() => Promise.resolve(res({ items: [], total: 0, limit: 50, offset: 0 })));
-    render(<StudentMessages studentId="S1" recipient={{ name: "Priya Student", email: "p@example.com", whatsapp_to: null, whatsapp_opt_in: false }} applications={[]} canWrite />);
+  const recipient = { name: "Priya Student", email: "p@example.com", whatsapp_to: "919876543210", whatsapp_opt_in: false };
+  beforeEach(() => fetchMock.mockImplementation(() => Promise.resolve(res({ items: [], total: 0, limit: 50, offset: 0 }))));
+
+  it("says the student has not opted in when they have a number", async () => {
+    render(<StudentMessages studentId="S1" recipient={recipient} applications={[]} canWrite />);
     expect(await screen.findByText("Priya Student has not opted in to WhatsApp messages.")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Send WhatsApp" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("still says 'no usable number' first (browser QA-01)", async () => {
+    render(<StudentMessages studentId="S1" recipient={{ ...recipient, whatsapp_to: null }} applications={[]} canWrite />);
+    expect(await screen.findByText("No usable mobile number for Priya Student.")).toBeTruthy();
+    expect(screen.queryByText(/has not opted in/)).toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { signIn } from "./helpers/agency";
-import { signInAsFreshCounselor } from "./helpers/counselor";
+import { signInAsFreshCounselor, studentOptsInToWhatsApp } from "./helpers/counselor";
 
 // ccrm-037 (DEC-SCOPE-273, MT1-MT9): the Overseas Admin writes a counselor template; a counselor sends it to a walk-in student over
 // WhatsApp from the student 360's Activities tab and records the student's reply by hand; the Overseas Admin reads the log read-only.
@@ -9,7 +9,7 @@ import { signInAsFreshCounselor } from "./helpers/counselor";
 
 const ADMIN = ["overseasadmin@edusphere.local", "Demo@123", "/overseas/admin/dashboard"] as const;
 
-test("a template is sent to a student, a reply is recorded and the admin reads the log (ccrm-037)", async ({ page, context }) => {
+test("a template is sent to a student, a reply is recorded and the admin reads the log (ccrm-037)", async ({ page, context, request }) => {
   const errors: string[] = [];
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   const unique = Date.now();
@@ -32,6 +32,7 @@ test("a template is sent to a student, a reply is recorded and the admin reads t
   const created = await page.request.post("/api/v1/counselor/students", { data: { full_name: student, email: `ccrm037-s-${unique}@example.local`, phone: "98765 43210" } });
   expect(created.status()).toBe(201);
   const studentId = (await created.json()).student.id as string;
+  await studentOptsInToWhatsApp(request, `ccrm037-s-${unique}@example.local`); // ccrm-040 CN7: WhatsApp needs the student's opt-in
   await page.goto(`/overseas/counselor/students/${studentId}?tab=activities`);
   const card = page.locator(".card").filter({ has: page.getByRole("heading", { name: "Communication" }) });
   await expect(card.getByText("No messages sent yet.")).toBeVisible();

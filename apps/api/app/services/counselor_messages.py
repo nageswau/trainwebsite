@@ -281,7 +281,7 @@ async def page(db: AsyncSession, user: User, student: User, limit: int, offset: 
         "total": total or 0,
         "limit": limit,
         "offset": offset,
-        "recipient": {"name": student.full_name, "email": student.email, "whatsapp_to": wa_number(student.phone) if opted_in else None, "whatsapp_opt_in": opted_in},
+        "recipient": {"name": student.full_name, "email": student.email, "whatsapp_to": wa_number(student.phone), "whatsapp_opt_in": opted_in},
         "applications": await _applications(db, user, student.id),
     }
 
