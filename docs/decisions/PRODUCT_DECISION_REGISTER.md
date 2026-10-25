@@ -9628,3 +9628,22 @@ optional own application; 300 per day. MT8 permanent. MT9 the student's whole lo
 never student- or agent-facing. MT10 audit `counselor_template.create|update`, `student_message.create|reply` with ids only.
 **Numbering:** migration `0191_student_messages`; API §12FZ; RBAC §2.187.
 - **Feature ID authorized:** `ccrm-037`. **Status:** built on `worktree-ccrm-037`.
+
+### DEC-SCOPE-274 — Calendar integration, phase 1 (`ccrm-038`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-038` (source PDF §11 "email, calendar", Phase 6; CC6 calendar in scope;
+`UNVERIFIED` — only the backlog's quotes are used); design `docs/superpowers/specs/2026-10-25-ccrm-038-calendar-integration-design.md`.
+Dependencies: none.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** CA1 a booked / re-timed / cancelled overseas
+appointment sends an in-app notice + email with an `.ics` (REQUEST, or CANCEL) to the student (student appointments) and the assigned
+counselor (both kinds); a lead is never emailed (ccrm-040 consent first); the actor is included; confirm / complete / no-show and other
+edits send nothing. CA2 UID `appointment-<id>@edusphere`, SEQUENCE = new `appointments.calendar_sequence` (+1 per re-time or cancel),
+the `.ics` is built at commit and kept in the delivery context; never the purpose, remarks or outcome notes. CA3 SMTP attachment
+`invite.ics` (`text/calendar; method=…; charset=utf-8`); the Zoho Mail API uploads it first and references it (live Zoho check
+`NEEDS_CONFIRMATION`). CA4 one feed per overseas counselor, 256-bit token, SHA-256 only at rest, URL shown once, regenerate replaces,
+revoke deletes, both audited without the token. CA5 the feed = own appointments (not cancelled) + visa appointments of counselled
+applications (ccrm-030 RM4 rule, not withdrawn), last 90 days onward, ≤ 500 events, visa = all-day; no refusal reason / notes.
+CA6 public `GET /calendar/feeds/{token}.ics`, `no-store`, every refusal 404. CA7 only an overseas counselor manages a feed.
+CA8 phase 2 (two-way Google / Microsoft 365 / Zoho Calendar sync) is out until a provider decision.
+**Numbering:** migration `0192_calendar_feeds`; API §12GA; RBAC §2.188 (ccrm-033 took 271 / 12FX / 2.185, ccrm-031 took 272 / 12FY / 2.186 / 0190, ccrm-037 took 273 / 12FZ / 2.187 / 0191 first).
+- **Feature ID authorized:** `ccrm-038`. **Status:** built on `worktree-ccrm-038`.

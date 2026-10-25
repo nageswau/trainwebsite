@@ -808,6 +808,10 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Security:** feed URL is a revocable secret token. **Dependencies:** none.
 - **Complexity:** medium. **Risk:** medium.
 - **Open questions:** whether two-way sync is wanted; provider (Google Workspace / Microsoft 365 / Zoho Calendar).
+- **Status (2026-10-25):** phase 1 built on `worktree-ccrm-038` — `DEC-SCOPE-274` (CA1–CA8 defaults: `.ics` REQUEST/CANCEL on overseas
+  appointment emails to student + counselor, never a lead; per-counselor feed with a hash-only, shown-once, revocable token; visa
+  appointments all-day; phase 2 sync still awaits the provider decision). Migration `0192_calendar_feeds`, API §12GA, RBAC §2.188.
+  Design `docs/superpowers/specs/2026-10-25-ccrm-038-calendar-integration-design.md`.
 
 ### `ccrm-039` — Student finance tab (CC6)
 
