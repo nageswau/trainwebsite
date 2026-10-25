@@ -2025,6 +2025,68 @@ class OverseasStudentNote(Base, TimestampMixin):
     body: Mapped[str] = mapped_column(Text)
 
 
+# ccrm-037 (DEC-SCOPE-271): the Overseas Admin's template library for counselors and the student message log. Migration 0190 repeats these;
+# test_ccrm_037_migration keeps them identical.
+COUNSELOR_TEMPLATE_CHECKS = {
+    "ck_counselor_message_templates_channel": "channel IN ('whatsapp', 'email')",
+    "ck_counselor_message_templates_subject": "(channel = 'email') = (subject IS NOT NULL)",
+}
+STUDENT_MESSAGE_CHECKS = {
+    "ck_student_messages_channel": "channel IN ('whatsapp', 'email')",
+    "ck_student_messages_direction": "direction IN ('outbound', 'inbound')",
+    "ck_student_messages_status": "delivery_status IS NULL OR delivery_status IN ('queued', 'sending', 'retrying', 'sent', 'failed')",
+    "ck_student_messages_outbound_email": (
+        "direction <> 'outbound' OR ((channel = 'email') = (delivery_status IS NOT NULL) AND (channel = 'email') = (subject IS NOT NULL))"
+    ),
+    "ck_student_messages_inbound": "direction <> 'inbound' OR (delivery_status IS NULL AND template_id IS NULL AND (channel = 'email' OR subject IS NULL))",
+}
+
+
+class CounselorMessageTemplate(Base, TimestampMixin):
+    """ccrm-037 (MT1): a WhatsApp or email template of the Overseas Admin's library for counselors -- no kind (upc-012's shape). Only email
+    has a subject; placeholders are checked on save; a name is unique per channel (case-insensitive). Never deleted, only deactivated."""
+
+    __tablename__ = "counselor_message_templates"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in COUNSELOR_TEMPLATE_CHECKS.items()),
+        Index("uq_counselor_message_templates_channel_name", "channel", text("lower(name)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    channel: Mapped[str] = mapped_column(String(20))
+    name: Mapped[str] = mapped_column(String(160))
+    subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+
+
+class StudentMessage(Base, TimestampMixin):
+    """ccrm-037 (MT4-MT8): a message between a counselor and an overseas student, optionally about one application. Outbound: WhatsApp via
+    wa.me (the row is the counselor's confirmation) or email (queued for the worker; `attempt_count` counts SMTP attempts). Inbound: a reply
+    the counselor recorded by hand (no inbound provider) -- `sender_user_id` is who recorded it and `sent_at` when it was received.
+    Permanent. `template_name` is the name when sent."""
+
+    __tablename__ = "student_messages"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in STUDENT_MESSAGE_CHECKS.items()),
+        Index("ix_student_messages_student_sent", "student_user_id", "sent_at"),
+        Index("ix_student_messages_application_sent", "application_id", "sent_at"),
+        Index("ix_student_messages_sender_sent", "sender_user_id", "sent_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    student_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    application_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id", ondelete="RESTRICT"), nullable=True)
+    sender_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    direction: Mapped[str] = mapped_column(String(16))
+    channel: Mapped[str] = mapped_column(String(16))
+    template_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("counselor_message_templates.id", ondelete="RESTRICT"), nullable=True)
+    template_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    subject: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    delivery_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class ApplicationStatusHistory(Base, TimestampMixin):
     __tablename__ = "application_status_history"
     __table_args__ = (CheckConstraint(_in("outcome", (*APPLICATION_OUTCOMES, OUTCOME_CLEARED)), name="ck_application_status_history_outcome"),)
