@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { hasCrmFilters, percentText, type CrmDefinition, type CrmFilterKey, type CrmFilters, type CrmReports } from "@/lib/managementCrmReports";
+import ExportButtons from "@/components/ExportButtons";
+import { crmExportUrl, hasCrmFilters, percentText, type CrmDefinition, type CrmFilterKey, type CrmFilters, type CrmReports } from "@/lib/managementCrmReports";
 
 // The backlog's filters in its order (§13: no team filter, CC3): the query key, the label, the choices list and the "none" choice.
 const SELECTS: { key: CrmFilterKey; label: string; options: keyof CrmReports["options"]; none?: string }[] = [
@@ -25,10 +26,10 @@ function fields(definitions: CrmDefinition[], keys: string[], format: Record<str
   }));
 }
 
-/** One report: its heading, how it is counted, and a table with a total row -- or its empty state. */
-function Report<Total, Row extends Total>({ id, title, empty, rowHeader, firstColumn, definitions, rows, total, columns }: {
+/** One report: its heading, how it is counted, and a table with a total row and its export (ccrm-035) -- or its empty state. */
+function Report<Total, Row extends Total>({ id, title, empty, rowHeader, firstColumn, definitions, rows, total, columns, exportUrl }: {
   id: string; title: string; empty: string; rowHeader: string; firstColumn: (row: Row) => string; definitions: CrmDefinition[];
-  rows: Row[]; total: Total; columns: Column<Total>[];
+  rows: Row[]; total: Total; columns: Column<Total>[]; exportUrl: string;
 }) {
   const heading = `${id}-heading`;
   return (
@@ -73,6 +74,7 @@ function Report<Total, Row extends Total>({ id, title, empty, rowHeader, firstCo
           </table>
         </div>
       )}
+      {rows.length > 0 && <ExportButtons url={exportUrl} filename={id} label={`Export ${title}`} />}
     </section>
   );
 }
@@ -114,7 +116,7 @@ export default function ManagementCrmReports({ data, error, filters, home }: { d
             Figures as of {data.as_of}, counted live. Students and applications are counted separately: one student can have several applications.
           </p>
           <Report
-            id="crm-ageing" title="Application ageing" empty="No open applications match these filters." rowHeader="Stage · sub-status"
+            id="crm-ageing" exportUrl={crmExportUrl("ageing", filters)} title="Application ageing" empty="No open applications match these filters." rowHeader="Stage · sub-status"
             firstColumn={(r) => `${r.stage_label} · ${r.sub_status_label}`} definitions={data.ageing.definitions} rows={data.ageing.rows} total={data.ageing.total}
             columns={[
               ...fields(data.ageing.definitions, ["applications", "students"]),
@@ -123,27 +125,27 @@ export default function ManagementCrmReports({ data, error, filters, home }: { d
             ]}
           />
           <Report
-            id="crm-universities" title="University performance" empty="No applications match these filters." rowHeader="University"
+            id="crm-universities" exportUrl={crmExportUrl("universities", filters)} title="University performance" empty="No applications match these filters." rowHeader="University"
             firstColumn={(r) => r.label} definitions={data.universities.definitions} rows={data.universities.rows} total={data.universities.total}
             columns={fields(data.universities.definitions, ["applications", "students", "offers", "offer_rate", "rejections", "acceptances", "enrollments"], percent)}
           />
           <Report
-            id="crm-visa" title="Visa outcomes" empty="No visa cases match these filters." rowHeader="Destination"
+            id="crm-visa" exportUrl={crmExportUrl("visa", filters)} title="Visa outcomes" empty="No visa cases match these filters." rowHeader="Destination"
             firstColumn={(r) => r.label} definitions={data.visa.definitions} rows={data.visa.rows} total={data.visa.total}
             columns={fields(data.visa.definitions, ["applications", "students", "submitted", "pending", "approved", "refused", "enrolled"])}
           />
           <Report
-            id="crm-readiness" title="Document readiness" empty="No applications waiting for submission match these filters." rowHeader="Stage"
+            id="crm-readiness" exportUrl={crmExportUrl("readiness", filters)} title="Document readiness" empty="No applications waiting for submission match these filters." rowHeader="Stage"
             firstColumn={(r) => r.stage_label} definitions={data.readiness.definitions} rows={data.readiness.rows} total={data.readiness.total}
             columns={fields(data.readiness.definitions, ["applications", "students", "ready", "blocked", "needs_override", "no_checklist"])}
           />
           <Report
-            id="crm-leads" title="Lead conversion by intake" empty="No overseas leads match these filters." rowHeader="Intake"
+            id="crm-leads" exportUrl={crmExportUrl("leads", filters)} title="Lead conversion by intake" empty="No overseas leads match these filters." rowHeader="Intake"
             firstColumn={(r) => r.label} definitions={data.leads.definitions} rows={data.leads.rows} total={data.leads.total}
             columns={fields(data.leads.definitions, ["leads", "converted", "conversion_pct", "students", "applications"], percent)}
           />
           <Report
-            id="crm-forecast" title="Forecast by intake" empty="No applications match these filters." rowHeader="Intake"
+            id="crm-forecast" exportUrl={crmExportUrl("forecast", filters)} title="Forecast by intake" empty="No applications match these filters." rowHeader="Intake"
             firstColumn={(r) => r.label} definitions={data.forecast.definitions} rows={data.forecast.rows} total={data.forecast.total}
             columns={fields(data.forecast.definitions, ["applications", "students", "confirmed", "expected", "possible", "lost", "forecast"])}
           />

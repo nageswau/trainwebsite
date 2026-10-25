@@ -77,6 +77,16 @@ describe("ccrm-034 ManagementCrmReports", () => {
     expect(screen.getByRole("link", { name: "Clear filters" }).getAttribute("href")).toBe(ADMIN_CRM_REPORTS_HOME);
   });
 
+  // ccrm-035 (DEC-SCOPE-268 E2): each report with rows exports its own table with the applied filters; an empty one offers nothing.
+  it("offers CSV and Excel for each report that has rows", () => {
+    render(<ManagementCrmReports data={reports} error="" filters={{ ...EMPTY_CRM_FILTERS, intake: "Fall 2027" }} home={CRM_REPORTS_HOME} />);
+    const group = screen.getByRole("group", { name: "Export University performance" });
+    expect(within(group).getByRole("button", { name: "Download CSV" })).toBeTruthy();
+    expect(within(group).getByRole("button", { name: "Download Excel" })).toBeTruthy();
+    expect(screen.getAllByRole("group", { name: /^Export / })).toHaveLength(5);
+    expect(screen.queryByRole("group", { name: "Export Visa outcomes" })).toBeNull();
+  });
+
   it("shows the API's error", () => {
     render(<ManagementCrmReports data={null} error="The end date must be on or after the start date" filters={EMPTY_CRM_FILTERS} home={CRM_REPORTS_HOME} />);
     expect(screen.getByRole("alert").textContent).toBe("The end date must be on or after the start date");

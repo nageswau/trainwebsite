@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 
+import ExportButtons from "@/components/ExportButtons";
 import LocalTime from "@/components/LocalTime";
 import { detailMessage, isPage, type Page } from "@/lib/apiErrors";
 import { STAGES } from "@/lib/leadStages";
@@ -11,6 +12,7 @@ import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { COUNSELOR_LEADS_URL, counselorLeadHref, type CounselorLead } from "@/lib/leadHandover";
 
 const PAGE_SIZE = 20;
+const COUNSELOR_LEADS_EXPORT_URL = "/api/v1/counselor/exports/leads";
 const PRIORITIES = [["hot", "Hot"], ["warm", "Warm"], ["cold", "Cold"]] as const;
 const FILTER_KEYS = ["stage", "priority", "from", "to"] as const;
 type FilterKey = (typeof FILTER_KEYS)[number];
@@ -90,6 +92,8 @@ export default function CounselorLeadsPanel({ division }: { division: "it" | "ov
           {page.offset > 0 && <button type="button" className="btn secondary small" onClick={() => setOffset(Math.max(0, page.offset - PAGE_SIZE))}>Previous</button>}
           {page.offset + page.items.length < page.total && <button type="button" className="btn secondary small" onClick={() => setOffset(page.offset + PAGE_SIZE)}>Next</button>}
         </nav>
+        {/* ccrm-035 (DEC-SCOPE-268 E3): every lead matching the filters, not just this page; overseas only. */}
+        {division === "overseas" && <ExportButtons url={filterQuery ? `${COUNSELOR_LEADS_EXPORT_URL}?${filterQuery}` : COUNSELOR_LEADS_EXPORT_URL} filename="my-leads" label="Export my leads" />}
       </>
     );
   }
