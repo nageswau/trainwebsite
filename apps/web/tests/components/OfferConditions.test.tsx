@@ -52,6 +52,7 @@ describe("OfferConditions", () => {
     expect(within(list).getByText("Open")).toBeInTheDocument();
     expect(within(list).getByText(/Owner: Student · Due 2026-11-20/)).toBeInTheDocument();
     expect(screen.getByText(/0 of 1 conditions satisfied/)).toBeInTheDocument();
+    expect(screen.getByText("Offer letter conditions: IELTS 6.5 overall")).toBeInTheDocument(); // QA-01: the free text is not a second "Conditions"
   });
 
   it("adds a condition; the agent owner is offered only on an agency application", async () => {

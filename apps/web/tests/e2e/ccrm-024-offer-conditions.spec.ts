@@ -39,7 +39,8 @@ test("the counselor tracks offer conditions to all satisfied (ccrm-024)", async 
   await expect(card.getByText("Offer recorded.")).toBeVisible();
 
   const conditions = card.getByRole("list", { name: "Conditions" });
-  await expect(conditions.getByText("IELTS 6.5 overall", { exact: true })).toBeVisible();
+  await expect(conditions.locator("span:not(.visually-hidden)", { hasText: /^IELTS 6\.5 overall$/ })).toBeVisible();
+  await expect(card.getByText("Offer letter conditions: IELTS 6.5 overall")).toBeVisible();
   await expect(card.getByText(/0 of 1 conditions satisfied/)).toBeVisible();
 
   await card.getByRole("button", { name: "Add condition" }).click();

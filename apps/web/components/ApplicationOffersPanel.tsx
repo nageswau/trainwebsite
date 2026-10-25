@@ -160,7 +160,7 @@ function OfferItem({ offer, children }: { offer: ApplicationOffer; children?: Re
           ))}
         </p>
       )}
-      {offer.conditions && <p style={{ margin: "4px 0 0", whiteSpace: "pre-line" }}>Conditions: {offer.conditions}</p>}
+      {offer.conditions && <p style={{ margin: "4px 0 0", whiteSpace: "pre-line" }}>Offer letter conditions: {offer.conditions}</p>}
       {offer.status_reason && <p style={{ margin: "4px 0 0" }}>Reason: {offer.status_reason}</p>}
       {(offer.status === "active" || (offer.decision && offer.decision !== "considering")) && offer.decision_label && (
         <p style={{ margin: "4px 0 0" }}>
