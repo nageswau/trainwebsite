@@ -2220,3 +2220,13 @@ downgrade drops the three tables.
 `lead_meetings` — append-only: `id`, `lead_id` FK `enquiries` ON DELETE RESTRICT, `author_user_id` FK `users` ON DELETE RESTRICT,
 `occurred_at`, `mode` (40, CHECK `Online`/`Phone`/`In person`), `notes` (text, CHECK length 1–2000), `created_at`; index (`lead_id`,
 `occurred_at`). `appointments.outcome_notes` (text, NULL). No backfill; downgrade refuses while meetings or outcome notes exist.
+
+## Lead data fields (`ccrm-005`, `DEC-SCOPE-260`; migration `0182_lead_data_fields`, after ccrm-004's `0181_lead_meetings`)
+
+`enquiries` gains `contact_preference` (10) NULL (CHECK `call`/`whatsapp`/`email`/`sms`), `enquiry_date` DATE NOT NULL DEFAULT the IST date
+of `now()` (existing rows back-filled from `created_at` in IST), `marketing_opt_in` bool NULL (= not asked), `marketing_consent_at` timestamptz
+NULL (CHECK both or neither; stamped by the model when the consent changes), `referral_name` (160) NULL, `referral_contact` (120) NULL.
+`lead_qualifications` gains `preferred_country_id` FK `countries` ON DELETE SET NULL, `study_mode` (20) NULL (CHECK ccrm-007's list),
+`preferred_campus` (200), `academic_cgpa` numeric(4,2) (CHECK 0–10), `backlogs` smallint (CHECK 0–99). New `lead_english_tests`: `id`,
+`lead_id` FK `enquiries` ON DELETE CASCADE, `position` (unique per lead), `test_type` (CHECK ccrm-007's list), `status` NULL (CHECK),
+`overall_score` numeric(4,1), `test_date`, `valid_until`, `remarks` (200) — ccrm-007's row shape. Downgrade drops the table and columns.

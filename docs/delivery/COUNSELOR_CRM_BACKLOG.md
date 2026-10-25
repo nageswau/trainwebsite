@@ -229,6 +229,8 @@ asked one at a time when the item is picked up).
 - **Regression:** import template columns, qualification form, duplicate panel.
 - **Complexity:** medium. **Risk:** low.
 - **Open questions:** which new fields are mandatory, and at which stage (e.g. country + intake before Qualified)?
+- **Status (2026-10-25):** built on `feature/ccrm-005` — `DEC-SCOPE-260` (LF1–LF9 defaults `NEEDS_CONFIRMATION`; LF2 nothing mandatory),
+  migration `0182_lead_data_fields`, API §12FM, RBAC §2.174. Design `docs/superpowers/specs/2026-10-25-ccrm-005-lead-data-fields-design.md`.
 
 ### `ccrm-006` — Lead stage additions and structured loss capture
 

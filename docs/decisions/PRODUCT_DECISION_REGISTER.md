@@ -9371,3 +9371,23 @@ answered **yes**: mgmt-018's Calls figure is tracked (calls each counselor logge
 lead activity is not copied to the student (the student 360 links to the lead, ccrm-009).
 **Numbering:** migration `0181_lead_meetings` (after ccrm-019's `0180`); API §12FL; RBAC §2.173. ccrm-017 took DEC-SCOPE-258 / §12FK first.
 - **Feature ID authorized:** `ccrm-004`. **Status:** built on `feature/ccrm-004`.
+
+### DEC-SCOPE-260 — Lead data fields: contact preference, study, academic, English, consent, referral (`ccrm-005`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-005` (source PDF §3 "Lead creation fields", `UNVERIFIED`); design
+`docs/superpowers/specs/2026-10-25-ccrm-005-lead-data-fields-design.md`. Dependency `ccrm-003` (counselor write scope, `DEC-SCOPE-243`).
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** LF1 contact preference
+(call / WhatsApp / email / SMS), enquiry date, marketing consent and referral name/contact are `enquiries` columns for every lead; preferred
+country (FK `countries`), study mode (full-time / part-time / online), preferred campus, CGPA (0–10) and backlogs (0–99) join tel-009's
+**overseas** qualification group, and the English tests are a `lead_english_tests` list in the same group (QD2: replaced whole, a field that
+does not apply → 422); LF2 nothing is mandatory at create or at any stage; LF3 English tests use ccrm-007's row rules, at most 5, and the read
+flags `expired` (valid-until before today, IST); LF4 the enquiry date defaults to the created date (IST), is set on create, import and edit,
+2000 → today, never cleared, and existing leads are back-filled from `created_at`; LF5 a consent change is its own audit row
+`lead.consent_change` `{from, to}` and stamps `marketing_consent_at` (cleared with "not asked"); LF6 the CSV import gains the five `enquiries`
+columns (yes/no, YYYY-MM-DD) — study and English answers stay in the form; LF7 the counselor edits the five fields
+(`PATCH /counselor/leads/{id}`) and the qualification (`GET/PUT /counselor/leads/{id}/qualification`) of a lead handed to them; contact
+details, product and priority stay the telecaller's, and a handed-over lead stays read-only for the telecaller (tel-008 D1); LF8 the ccrm-008
+conversion copies study mode, preferred country, CGPA (when no percentage), backlogs and the English tests into the student profile; LF9 logs
+and audit rows carry field names only.
+**Numbering:** migration `0182_lead_data_fields` (after ccrm-004's `0181_lead_meetings`); API §12FM; RBAC §2.174.
+- **Feature ID authorized:** `ccrm-005`. **Status:** built on `feature/ccrm-005`.

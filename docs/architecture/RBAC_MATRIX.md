@@ -2752,3 +2752,16 @@ inside the existing role scope (a counselor searching another counselor's code g
 
 - Pinned by `test_ccrm_004_counselor_activities.py::test_call_scope_role_and_closed_lead`, `::test_message_scope_role_and_closed_lead`,
   `::test_meeting_validation_scope_and_closed_lead`; `test_tel_012_templates.py::test_non_readers_cannot_read`, `::test_a_counselor_lists_active_templates_only`.
+
+### 2.174 Lead data fields *(added 2026-10-25 — `DEC-SCOPE-260`, ccrm-005)*
+
+| Route | `telecaller` | `telecaller_manager` / `super_admin` | `counselor` | Others | Anonymous |
+|---|---|---|---|---|---|
+| `POST /telecaller/leads`, `PATCH /telecaller/leads/{id}` (new contact fields) | ✅ own leads; `403` once handed over (tel-008 D1) | ✅ T23 scope | `403` | `403` | `401` |
+| `POST /counselor/walk-in-leads` (new contact fields) | `403` | `403` | ✅ overseas counselor (csc-004) | `403` | `401` |
+| `PATCH /counselor/leads/{id}` | `403` | `403` | ✅ a lead handed to them in their division; `404` otherwise | `403` | `401` |
+| `GET` / `PUT /counselor/leads/{id}/qualification` | `403` | `403` | ✅ same scope; `404` otherwise | `403` | `401` |
+| `GET` / `PUT /telecaller/leads/{id}/qualification` (new overseas fields) | ✅ own; PUT `403` once handed over | ✅ T23 scope | `403` | `403` | `401` |
+
+- Pinned by `test_ccrm_005_lead_fields.py::test_another_counselors_lead_is_404_and_the_telecaller_stays_read_only`,
+  `::test_counselor_cannot_change_contact_details_product_or_priority`.

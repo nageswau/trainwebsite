@@ -2,6 +2,7 @@
 // are display only; the API decides scope, editability (`read_only`) and every rule.
 import { sendJson, type SendOutcome } from "@/lib/apiErrors";
 import type { Milestones } from "@/lib/leadHandover";
+import { STUDY_MODES, type EnglishTest } from "@/lib/studentProfile";
 
 export type Priority = "hot" | "warm" | "cold";
 export type PersonRef = { id: string; full_name: string };
@@ -11,7 +12,14 @@ export type TelecallerLead = {
   status: string; status_label: string; source: string; priority: Priority; created_at: string; stage_changed_at: string;
   product: { id: string; name: string } | null; campaign: { id: string; name: string } | null; telecaller: PersonRef | null; counselor: PersonRef | null;
   read_only: boolean;
+} & LeadContact;
+// ccrm-005 (DEC-SCOPE-260, LF1/LF5): the spec §3 contact, consent and referral fields of every lead. `marketing_opt_in` null = not asked.
+export type LeadContact = {
+  contact_preference: string | null; enquiry_date: string; marketing_opt_in: boolean | null; marketing_consent_at: string | null;
+  referral_name: string | null; referral_contact: string | null;
 };
+export const CONTACT_PREFERENCES: Record<string, string> = { call: "Phone call", whatsapp: "WhatsApp", email: "Email", sms: "SMS" };
+export const consentLabel = (value: boolean | null) => (value === null ? "Not asked" : value ? "Yes" : "No");
 // tel-013 D1: `whatsapp_to` is the wa.me number (the WhatsApp number, else the mobile, as E.164 digits) or null; tel-018: the linked
 // student's milestones
 export type TelecallerLeadDetail = TelecallerLead & { message: string; whatsapp_to: string | null; milestones?: Milestones };
@@ -57,13 +65,19 @@ export type LeadQualification = {
   budget_range: string | null; preferred_mode: string | null; study_level: string | null; preferred_course: string | null; intake: string | null;
   academic_percentage: number | null; english_test_status: string | null; passport_status: string | null; read_only: boolean;
   updated_by: PersonRef | null; updated_at: string | null;
+  // ccrm-005 (LF1, LF3): overseas study preferences, academic profile and English tests (ccrm-007's row shape; `expired` from the API)
+  preferred_country_id: string | null; preferred_country: { id: string; name: string } | null; study_mode: string | null;
+  preferred_campus: string | null; academic_cgpa: number | null; backlogs: number | null; english_tests: LeadEnglishTest[];
 };
-export type QualKey = Exclude<keyof LeadQualification, "lead_id" | "product" | "product_group" | "read_only" | "updated_by" | "updated_at">;
+export type LeadEnglishTest = Omit<EnglishTest, "overall_score"> & { overall_score: number | null };
+export type QualKey = Exclude<keyof LeadQualification,
+  "lead_id" | "product" | "product_group" | "read_only" | "updated_by" | "updated_at" | "preferred_country" | "english_tests">;
 type Option = { value: string; label: string };
 export type QualField =
   | { key: QualKey; label: string; kind: "text"; max: number }
   | { key: QualKey; label: string; kind: "number"; min: number; max: number; step: number; error: string }
-  | { key: QualKey; label: string; kind: "select" | "radio"; options: Option[] };
+  | { key: QualKey; label: string; kind: "select" | "radio"; options: Option[] }
+  | { key: QualKey; label: string; kind: "country" }; // ccrm-005: a pick from the public study-destination list
 
 const options = (pairs: [string, string][]): Option[] => pairs.map(([value, label]) => ({ value, label }));
 // Appendix A L148-L196, in the source's order; lengths and ranges are the `lead_qualifications` / `enquiries` columns' (QF2).
@@ -94,6 +108,12 @@ export const REQUIREMENT: Record<"it" | "overseas", { legend: string; product: s
       { key: "english_test_status", label: "IELTS/PTE status", kind: "text", max: 120 },
       { key: "budget_range", label: "Budget", kind: "text", max: 120 },
       { key: "passport_status", label: "Passport status", kind: "select", options: options([["none", "No passport"], ["applied", "Applied"], ["valid", "Has a valid passport"]]) },
+      // ccrm-005 (spec §3): study preferences and academic profile; ranges are the columns' (the API enforces them)
+      { key: "preferred_country_id", label: "Preferred country", kind: "country" },
+      { key: "study_mode", label: "Study mode", kind: "select", options: Object.entries(STUDY_MODES).map(([value, label]) => ({ value, label })) },
+      { key: "preferred_campus", label: "Preferred campus", kind: "text", max: 200 },
+      { key: "academic_cgpa", label: "CGPA (out of 10)", kind: "number", min: 0, max: 10, step: 0.01, error: "Enter a CGPA from 0 to 10." },
+      { key: "backlogs", label: "Backlogs", kind: "number", min: 0, max: 99, step: 1, error: "Enter whole backlogs from 0 to 99." },
     ],
   },
 };

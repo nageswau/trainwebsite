@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -2437,6 +2437,14 @@ LEAD_CHECKS = {  # migration 0078 repeats these strings; test_tel_003_migration 
 # tel-004 (DEC-SCOPE-081): `status` is a pipeline stage; migration 0081 repeats this string (test_tel_004_migration).
 LEAD_STATUS_CHECK = f"status IN ({', '.join(repr(s) for s in LEAD_STAGES)})"
 LEAD_NEXT_ACTION_MAX = 200  # ccrm-003; migration 0168 repeats it (test_ccrm_003_migration asserts they stay identical)
+# ccrm-005 (DEC-SCOPE-260, LF1/LF5): the spec §3 contact, consent and referral fields; migration 0182 repeats these (test_ccrm_005_migration).
+CONTACT_PREFERENCES = ("call", "whatsapp", "email", "sms")
+LEAD_REFERRAL_NAME_MAX, LEAD_REFERRAL_CONTACT_MAX = 160, 120
+LEAD_FIELD_CHECKS = {
+    "ck_enquiries_contact_preference": _in("contact_preference", CONTACT_PREFERENCES),
+    "ck_enquiries_marketing_consent": "(marketing_opt_in IS NULL) = (marketing_consent_at IS NULL)",
+}
+ENQUIRY_DATE_DEFAULT = "(now() AT TIME ZONE 'Asia/Kolkata')::date"  # LF4: the created date in IST
 
 
 class Enquiry(Base, TimestampMixin):
@@ -2452,7 +2460,7 @@ class Enquiry(Base, TimestampMixin):
             "(converted_user_id IS NULL) = (converted_at IS NULL) AND (converted_user_id IS NULL) = (converted_by_user_id IS NULL)",
             name="ck_enquiries_conversion",
         ),
-        *(CheckConstraint(sql, name=name) for name, sql in LEAD_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in (LEAD_CHECKS | LEAD_FIELD_CHECKS).items()),
         CheckConstraint(LEAD_STATUS_CHECK, name="ck_enquiries_status"),
         CheckConstraint(f"next_action IS NULL OR length(next_action) BETWEEN 1 AND {LEAD_NEXT_ACTION_MAX}", name="ck_enquiries_next_action_len"),
         UniqueConstraint("lead_code", name="uq_enquiries_lead_code"),
@@ -2498,11 +2506,27 @@ class Enquiry(Base, TimestampMixin):
     # ccrm-003 (DEC-SCOPE-243, A2): what the counselor does next and by when -- required on a counselor-owned open lead's stage move
     next_action: Mapped[str | None] = mapped_column(String(LEAD_NEXT_ACTION_MAX), nullable=True)
     next_action_due: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # ccrm-005 (DEC-SCOPE-260): how the person likes to be reached, when they enquired (LF4), their marketing consent -- NULL = not asked,
+    # stamped whenever it changes (LF5, the validator below) -- and who referred them
+    contact_preference: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    enquiry_date: Mapped[date] = mapped_column(Date, server_default=text(ENQUIRY_DATE_DEFAULT))
+    marketing_opt_in: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    marketing_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    referral_name: Mapped[str | None] = mapped_column(String(LEAD_REFERRAL_NAME_MAX), nullable=True)
+    referral_contact: Mapped[str | None] = mapped_column(String(LEAD_REFERRAL_CONTACT_MAX), nullable=True)
 
     @validates("phone")
     def _derive_phone_normalized(self, _key: str, phone: str | None) -> str | None:
         self.phone_normalized = normalise_phone(phone)
         return phone
+
+    @validates("marketing_opt_in")
+    def _stamp_consent(self, _key: str, opt_in: bool | None) -> bool | None:
+        if opt_in is None:
+            self.marketing_consent_at = None
+        elif opt_in != self.marketing_opt_in or self.marketing_consent_at is None:
+            self.marketing_consent_at = datetime.now(UTC)
+        return opt_in
 
 
 class LeadStageHistory(Base):
@@ -2547,6 +2571,14 @@ QUAL_SKILL_LEVELS = ("beginner", "intermediate", "advanced")
 QUAL_MODES = ("online", "offline")
 QUAL_STUDY_LEVELS = ("ug", "masters")
 QUAL_PASSPORT = ("none", "applied", "valid")
+STUDY_MODES = ("full_time", "part_time", "online")  # ccrm-007's lists; ccrm-005's lead answers use them too
+ENGLISH_TEST_STATUSES = ("not_taken", "booked", "taken")
+# ccrm-005 (DEC-SCOPE-260, LF1): the overseas study and academic answers; migration 0182 repeats these (test_ccrm_005_migration).
+LEAD_QUAL_FIELD_CHECKS = {
+    "ck_lead_qualifications_study_mode": _in("study_mode", STUDY_MODES),
+    "ck_lead_qualifications_cgpa": "academic_cgpa IS NULL OR academic_cgpa BETWEEN 0 AND 10",
+    "ck_lead_qualifications_backlogs": "backlogs IS NULL OR backlogs BETWEEN 0 AND 99",
+}
 
 
 class LeadQualification(Base, TimestampMixin):
@@ -2562,6 +2594,7 @@ class LeadQualification(Base, TimestampMixin):
         CheckConstraint(_in("preferred_mode", QUAL_MODES), name="ck_lead_qualifications_mode"),
         CheckConstraint(_in("study_level", QUAL_STUDY_LEVELS), name="ck_lead_qualifications_study_level"),
         CheckConstraint(_in("passport_status", QUAL_PASSPORT), name="ck_lead_qualifications_passport"),
+        *(CheckConstraint(sql, name=name) for name, sql in LEAD_QUAL_FIELD_CHECKS.items()),
     )
     lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="CASCADE"), primary_key=True)
     current_org: Mapped[str | None] = mapped_column(String(200), nullable=True)
@@ -2577,7 +2610,34 @@ class LeadQualification(Base, TimestampMixin):
     academic_percentage: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     english_test_status: Mapped[str | None] = mapped_column(String(120), nullable=True)
     passport_status: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # ccrm-005 (LF1): the spec §3 study preferences and academic profile beside tel-009's overseas answers
+    preferred_country_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("countries.id", ondelete="SET NULL"), nullable=True)
+    study_mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    preferred_campus: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    academic_cgpa: Mapped[Decimal | None] = mapped_column(Numeric(4, 2), nullable=True)
+    backlogs: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+class LeadEnglishTest(Base):
+    """ccrm-005 (DEC-SCOPE-260, LF3): one English test on a lead, in the order entered -- ccrm-007's row shape, so a conversion copies it
+    as is (LF8). Replaced as a list with the overseas qualification answers."""
+
+    __tablename__ = "lead_english_tests"
+    __table_args__ = (
+        UniqueConstraint("lead_id", "position", name="uq_lead_english_tests_position"),
+        CheckConstraint(f"test_type IN ({', '.join(repr(v) for v in ENGLISH_TESTS)})", name="ck_lead_english_tests_type"),
+        CheckConstraint(_in("status", ENGLISH_TEST_STATUSES), name="ck_lead_english_tests_status"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="CASCADE"))
+    position: Mapped[int] = mapped_column(SmallInteger)
+    test_type: Mapped[str] = mapped_column(String(20))
+    status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    overall_score: Mapped[Decimal | None] = mapped_column(Numeric(4, 1), nullable=True)
+    test_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    remarks: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class LeadImportBatch(Base, TimestampMixin):
@@ -3984,9 +4044,7 @@ class AgentStudentCounseling(Base, TimestampMixin):
 # ccrm-007 (DEC-SCOPE-249): the structured overseas student profile; its test types are the course master's ENGLISH_TESTS. Migration
 # 0174 repeats these (test_ccrm_007_migration).
 QUALIFICATION_LEVELS = ("class_10", "class_12", "diploma", "bachelor", "master", "phd", "other")
-SCORE_TYPES = ("percentage", "cgpa")
-STUDY_MODES = ("full_time", "part_time", "online")
-ENGLISH_TEST_STATUSES = ("not_taken", "booked", "taken")
+SCORE_TYPES = ("percentage", "cgpa")  # STUDY_MODES and ENGLISH_TEST_STATUSES are above LeadQualification, which shares them (ccrm-005)
 
 
 class OverseasStudentProfile(Base, TimestampMixin):

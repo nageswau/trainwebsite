@@ -20,6 +20,7 @@ logger = logging.getLogger("app.leads")
 
 HANDED_OVER = "This lead is with the counselor; you can view it but not change it"
 PRIORITY_CHANGE = "lead.priority_change"
+CONSENT_CHANGE = "lead.consent_change"  # ccrm-005 LF5: {from, to} -- true, false or null (not asked)
 PRIORITY_LABEL = {"hot": "Hot", "warm": "Warm", "cold": "Cold"}
 SEARCHED = (Enquiry.lead_code, Enquiry.name, Enquiry.email, Enquiry.phone, Enquiry.whatsapp_number)
 
@@ -68,10 +69,11 @@ async def apply_update(db: AsyncSession, user: User, lead: Enquiry, changes: dic
     changes = {key: value for key, value in changes.items() if getattr(lead, key) != value}
     if changes.get("product_id") is not None:
         await locked_active_product(db, changes["product_id"])
-    if "priority" in changes:
-        db.add(AuditLog(user_id=user.id, action=PRIORITY_CHANGE, entity_type="enquiry", entity_id=str(lead.id),
-                        metadata_json={"from": lead.priority, "to": changes["priority"]}))
-    fields = sorted(key for key in changes if key != "priority")
+    for key, action in (("priority", PRIORITY_CHANGE), ("marketing_opt_in", CONSENT_CHANGE)):  # ccrm-005 LF5: consent has its own row too
+        if key in changes:
+            db.add(AuditLog(user_id=user.id, action=action, entity_type="enquiry", entity_id=str(lead.id),
+                            metadata_json={"from": getattr(lead, key), "to": changes[key]}))
+    fields = sorted(key for key in changes if key not in ("priority", "marketing_opt_in"))
     if fields:
         db.add(AuditLog(user_id=user.id, action="lead.contact_update", entity_type="enquiry", entity_id=str(lead.id), metadata_json={"fields": fields}))
     for key, value in changes.items():
