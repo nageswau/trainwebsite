@@ -249,7 +249,7 @@ async def assign_counselor(db: AsyncSession, admin: User, student_id: UUID, coun
 
 async def page(db: AsyncSession, counselor: User, limit: int, offset: int) -> dict:
     """The counselor's linked students, newest link first, with ENH-003's set-up status (`None` once the student has a password).
-    ccrm-040 (DEC-SCOPE-275 AR5): archived students are listed on their own page instead."""
+    ccrm-040 (DEC-SCOPE-276 AR5): archived students are listed on their own page instead."""
     from app.services.student_archive import not_archived  # it imports this module
 
     mine = (OverseasStudentCounselor.counselor_user_id == counselor.id) & not_archived(OverseasStudentCounselor.student_user_id)

@@ -6,7 +6,7 @@ import { type FormEvent, useState } from "react";
 import { sendJson } from "@/lib/apiErrors";
 import { acceptConsentUrl, type MyConsent } from "@/lib/overseasConsents";
 
-/** ccrm-040 (DEC-SCOPE-275 CN2/CN3): the overseas student's consent request, leading the dashboard until every current consent is
+/** ccrm-040 (DEC-SCOPE-276 CN2/CN3): the overseas student's consent request, leading the dashboard until every current consent is
  *  given. Not blocking: the rest of the portal works. Each consent is its own checkbox (the student may give one and not the other);
  *  "Save" records the ticked ones and the page re-reads. Communication channels stay on the existing preferences page (ENH-014). */
 export default function OverseasConsentCard({ items }: { items: MyConsent[] }) {

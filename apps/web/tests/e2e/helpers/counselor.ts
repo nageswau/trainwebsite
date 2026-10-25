@@ -27,7 +27,7 @@ export async function activateWalkInStudent(request: APIRequestContext, email: s
   await request.post("/api/v1/auth/logout");
 }
 
-// ccrm-040 (DEC-SCOPE-275 CN7): WhatsApp to a student needs the student's own ENH-014 opt-in, which only the student can give.
+// ccrm-040 (DEC-SCOPE-276 CN7): WhatsApp to a student needs the student's own ENH-014 opt-in, which only the student can give.
 export async function studentOptsInToWhatsApp(request: APIRequestContext, email: string): Promise<void> {
   await activateWalkInStudent(request, email);
   expect((await request.post("/api/v1/auth/login", { data: { email, password: E2E_PASSWORD, division: "overseas" } })).ok()).toBeTruthy();

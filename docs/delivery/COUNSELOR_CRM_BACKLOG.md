@@ -822,6 +822,8 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Authz:** restricted (§5 "subject to permissions"); never shown to university_rep; agent sees only agency deposits.
 - **Dependencies:** ccrm-009, ccrm-025. **Complexity:** medium. **Risk:** high (money).
 - **Open questions:** who may see and who may record; is the service fee a catalogue item or free amount.
+- **Status (2026-10-25):** built on `worktree-ccrm-039` — `DEC-SCOPE-275` (F1–F7 defaults `NEEDS_CONFIRMATION`: read-only tab, recording
+  unchanged; free-amount fee; ccrm-009's gate; downloads keep their routes' rules), API §12GB, RBAC §2.189, no migration.
 
 ### `ccrm-040` — Archive instead of delete; overseas consent capture
 
@@ -831,9 +833,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
   data processing and document sharing captured at conversion/first login (`ConsentRecord`), communication preferences honoured by ccrm-030
   and ccrm-037. **Retention periods are out of scope until PRD open items 15 and 85 are answered.**
 - **Dependencies:** ccrm-008. **Complexity:** medium. **Risk:** medium.
-- **Status (2026-10-25):** built on `worktree-ccrm-040` — `DEC-SCOPE-275` (AR1–AR7, CN1–CN7 defaults `NEEDS_CONFIRMATION`: archive by the
+- **Status (2026-10-25):** built on `worktree-ccrm-040` — `DEC-SCOPE-276` (AR1–AR7, CN1–CN7 defaults `NEEDS_CONFIRMATION`: archive by the
   student's counselor or Overseas Admin only when every application is closed, Admin restores; consents given by the student on their
-  dashboard; ccrm-037 WhatsApp needs the student's opt-in), migration `0193_student_archive_consent`, API §12GB, RBAC §2.189; pages
+  dashboard; ccrm-037 WhatsApp needs the student's opt-in), migration `0193_student_archive_consent`, API §12GC, RBAC §2.190; pages
   `/overseas/{admin|counselor}/archived-students`. Design `docs/superpowers/specs/2026-10-25-ccrm-040-archive-consent-design.md`.
 
 ### `ccrm-041` — Go-live verification: permission matrix and sample journey

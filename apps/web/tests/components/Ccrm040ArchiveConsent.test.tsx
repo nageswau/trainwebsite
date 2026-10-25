@@ -6,7 +6,7 @@ import StudentArchiveControls from "@/components/StudentArchiveControls";
 import StudentMessages from "@/components/StudentMessages";
 import type { MyConsent } from "@/lib/overseasConsents";
 
-// ccrm-040 (DEC-SCOPE-275): the 360's archive controls (AR1-AR7), the student's consent card (CN2/CN3) and ccrm-037's WhatsApp
+// ccrm-040 (DEC-SCOPE-276): the 360's archive controls (AR1-AR7), the student's consent card (CN2/CN3) and ccrm-037's WhatsApp
 // opt-in reason (CN7).
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh }) }));

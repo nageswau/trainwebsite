@@ -138,7 +138,7 @@ async def overseas_students(
         await db.commit()
     else:
         _allow(user, {"overseas_admin", "counselor", "agent"}, "overseas")
-        if user.role != "agent":  # ccrm-040 (DEC-SCOPE-275 AR5): staff pick from students who are not archived
+        if user.role != "agent":  # ccrm-040 (DEC-SCOPE-276 AR5): staff pick from students who are not archived
             stmt = stmt.where(student_archive.not_archived(User.id))
         if user.role == "counselor":
             stmt = stmt.where(User.id.in_(visible_student_ids(user)))  # csc-001: own applications' students + linked students

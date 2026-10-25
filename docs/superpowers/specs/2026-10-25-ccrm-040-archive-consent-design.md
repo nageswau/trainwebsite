@@ -2,7 +2,7 @@
 
 Backlog: `docs/delivery/COUNSELOR_CRM_BACKLOG.md` § `ccrm-040` (spec §2 "prefer archive/withdrawn statuses", §16 consent and
 communication preferences). Dependency `ccrm-008` merged (PR #314). Numbers: migration `0193_student_archive_consent`,
-`DEC-SCOPE-275`, API §12GB, RBAC §2.189 (recheck at merge: ccrm-038 runs in parallel).
+`DEC-SCOPE-276`, API §12GC, RBAC §2.190 (recheck at merge: ccrm-038 runs in parallel).
 
 The owner asked for the session to proceed on recommended answers, so every rule below is a default marked `NEEDS_CONFIRMATION`.
 
@@ -60,7 +60,7 @@ The owner asked for the session to proceed on recommended answers, so every rule
   otherwise); the composer says "<name> has not opted in to WhatsApp messages", after the "no usable number" reason (browser QA-01).
   Email stays always on (ENH-014 D4).
 
-## API (§12GB)
+## API (§12GC)
 
 | Method | Path | Who |
 | --- | --- | --- |
@@ -93,4 +93,4 @@ Playwright `ccrm-040-archive-consent.spec.ts`.
 3. Exclusions: portal query, linked list, picker, application create — TDD.
 4. `services/overseas_consents.py` + `/overseas/me/consents` routes; overview `archive`/`consents`/`permissions`; history labels — TDD.
 5. Web: types/lib, 360 archive + consent cards, consent card on the student dashboard, archived students page + nav; vitest.
-6. Docs: DEC-SCOPE-275, API §12GB, RBAC §2.189, RTM, backlog status.
+6. Docs: DEC-SCOPE-276, API §12GC, RBAC §2.190, RTM, backlog status.

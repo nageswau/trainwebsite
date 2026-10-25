@@ -502,7 +502,7 @@ class OverseasApplicationCounselorAssign(BaseModel):
 
 
 class StudentArchiveCreate(BaseModel):
-    """ccrm-040 (DEC-SCOPE-275 AR3): why the student is archived."""
+    """ccrm-040 (DEC-SCOPE-276 AR3): why the student is archived."""
 
     reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=500)]
 

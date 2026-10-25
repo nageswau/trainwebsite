@@ -3,7 +3,7 @@
 Revision ID: 0193_student_archive_consent
 Revises: 0192_calendar_feeds
 
-docs/superpowers/specs/2026-10-25-ccrm-040-archive-consent-design.md (DEC-SCOPE-275). 0001 builds a fresh database from the current
+docs/superpowers/specs/2026-10-25-ccrm-040-archive-consent-design.md (DEC-SCOPE-276). 0001 builds a fresh database from the current
 models, which already carry the table and the column, so each is added only when missing (0166's idiom); the seed inserts a kind only
 when no overseas agreement of that kind exists. The downgrade drops the archive table (archived students reappear in the lists), the
 seeded agreements with their consent records, and the column.

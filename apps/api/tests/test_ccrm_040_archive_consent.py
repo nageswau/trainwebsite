@@ -1,4 +1,4 @@
-"""ccrm-040 (DEC-SCOPE-275) -- archive instead of delete (AR1-AR7) and the overseas consent capture (CN1-CN5).
+"""ccrm-040 (DEC-SCOPE-276) -- archive instead of delete (AR1-AR7) and the overseas consent capture (CN1-CN5).
 
 AR: the student's csc-001 counselor or the Overseas Admin archives a student whose applications are all closed; only the Admin restores.
 An archived student and their applications leave the staff working lists, a new application for them is refused, the 360 still reads.

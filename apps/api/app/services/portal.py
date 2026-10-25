@@ -1069,7 +1069,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             )
     if user.role in {"counselor", "university_rep", "overseas_admin"}:
         stmt = with_owner(select(OverseasApplication, University).join(University, University.id == OverseasApplication.university_id))
-        if user.role != "university_rep":  # ccrm-040 (DEC-SCOPE-275 AR5): an archived student's applications leave the staff lists
+        if user.role != "university_rep":  # ccrm-040 (DEC-SCOPE-276 AR5): an archived student's applications leave the staff lists
             stmt = stmt.where(student_archive.not_archived(OverseasApplication.student_id))
         if user.role == "counselor":
             stmt = stmt.where(OverseasApplication.counselor_id == user.id)

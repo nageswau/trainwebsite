@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import CounselorDocumentRequestsPanel from "@/components/CounselorDocumentRequestsPanel";
 import LocalTime from "@/components/LocalTime";
+import OverseasStudentFinance from "@/components/OverseasStudentFinance";
 import OverseasStudentJourney from "@/components/OverseasStudentJourney";
 import PortalShell from "@/components/PortalShell";
 import StudentArchiveControls from "@/components/StudentArchiveControls";
@@ -19,7 +20,7 @@ import { formatCalendarDate } from "@/lib/formatDate";
 import { PORTAL_NAV } from "@/lib/navigation";
 import {
   ACCOUNT_STATUS, STUDENT_TABS, student360Url,
-  type StudentActivities, type StudentApplication, type StudentDocumentRow, type StudentHistoryItem, type StudentOverview, type StudentTab,
+  type StudentActivities, type StudentApplication, type StudentDocumentRow, type StudentFinance, type StudentHistoryItem, type StudentOverview, type StudentTab,
 } from "@/lib/overseasStudent360";
 import { studentNotesUrl, type StudentNotes } from "@/lib/studentNotes";
 import { studentProfileUrl, type StudentProfileResponse } from "@/lib/studentProfile";
@@ -59,7 +60,7 @@ export default async function OverseasStudent360Page({ portal, id, tab }: { port
           {ACCOUNT_STATUS[overview.account_status] ?? overview.account_status}
           {overview.archive && <> · <span className="badge">Archived</span></>}
         </p>
-        {/* ccrm-040 (DEC-SCOPE-275): on every tab, so an archived record is never mistaken for a live one */}
+        {/* ccrm-040 (DEC-SCOPE-276): on every tab, so an archived record is never mistaken for a live one */}
         <StudentArchiveControls studentId={student.id} archive={overview.archive} permissions={overview.permissions} />
         <nav aria-label="Student record sections" className="report-tablist">
           {STUDENT_TABS.map((t) => (
@@ -119,6 +120,8 @@ async function panel(tab: StudentTab, id: string, overview: StudentOverview, por
         </>
       );
     }
+    case "finance":
+      return load<StudentFinance>(student360Url(id, "finance"), (data) => <OverseasStudentFinance finance={data} />);
     case "activities":
       return (
         <>
@@ -186,7 +189,7 @@ function OverviewPanel({ overview }: { overview: StudentOverview }) {
   );
 }
 
-// ccrm-040 (DEC-SCOPE-275 CN4): what the student has agreed to; only the student can give consent.
+// ccrm-040 (DEC-SCOPE-276 CN4): what the student has agreed to; only the student can give consent.
 function ConsentCard({ consents }: { consents: StudentOverview["consents"] }) {
   return (
     <div className="card">

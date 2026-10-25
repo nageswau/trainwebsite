@@ -6,7 +6,7 @@ import LocalTime from "@/components/LocalTime";
 import { sendJson } from "@/lib/apiErrors";
 import { ARCHIVE_REASON_MAX, studentArchiveUrl, type StudentArchive } from "@/lib/overseasStudent360";
 
-/** ccrm-040 (DEC-SCOPE-275 AR1-AR7): the student 360's archive state. An archived student shows a banner (the Overseas Admin may
+/** ccrm-040 (DEC-SCOPE-276 AR1-AR7): the student 360's archive state. An archived student shows a banner (the Overseas Admin may
  *  restore); otherwise the student's counselor or the Admin may archive with a reason. The server holds every rule (an open application
  *  is a 409 naming it), so its message is shown as it comes. */
 export default function StudentArchiveControls({ studentId, archive, permissions }: {

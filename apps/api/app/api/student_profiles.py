@@ -1,7 +1,7 @@
 """ccrm-007 (DEC-SCOPE-249) -- the structured overseas student profile: the counselor (csc-001 scope) and the Overseas Admin on
 /counselor/students/{id}/profile, the student on /overseas/me/profile. A save replaces the whole profile. API_CONTRACT.md §12FB;
 RBAC_MATRIX.md §2.164. The agency's read-only view is in api/agent_students.py.
-ccrm-040 (DEC-SCOPE-275 CN1-CN5) -- the student's own consents on /overseas/me/consents. API §12GB; RBAC §2.189."""
+ccrm-040 (DEC-SCOPE-276 CN1-CN5) -- the student's own consents on /overseas/me/consents. API §12GC; RBAC §2.190."""
 
 import logging
 from uuid import UUID

@@ -48,7 +48,7 @@ SENDER_ONLY = "Only the student's counselor can send messages"
 TEMPLATE_NOT_FOUND = "Template not found"
 DEACTIVATED = "This student's account is deactivated"
 NO_NUMBER = "This student has no usable mobile number"
-NOT_OPTED_IN = "This student has not opted in to WhatsApp messages"  # ccrm-040 (DEC-SCOPE-275 CN7)
+NOT_OPTED_IN = "This student has not opted in to WhatsApp messages"  # ccrm-040 (DEC-SCOPE-276 CN7)
 TEMPLATE_UNUSABLE = {"whatsapp": "Choose an active WhatsApp template", "email": "Choose an active email template"}
 CAP_REACHED = f"You've sent {DAILY_CAP} WhatsApp messages today"
 EMAIL_CAP_REACHED = f"You've sent {EMAIL_DAILY_CAP} emails today"
@@ -265,7 +265,7 @@ def message_out(message: StudentMessage, sender: User, university: str | None, r
 
 
 async def whatsapp_opt_in(db: AsyncSession, student_id: UUID) -> bool:
-    """ccrm-040 (DEC-SCOPE-275 CN7): WhatsApp to a student honours their ENH-014 preference (no row = not opted in); email is always on."""
+    """ccrm-040 (DEC-SCOPE-276 CN7): WhatsApp to a student honours their ENH-014 preference (no row = not opted in); email is always on."""
     pref = await db.get(NotificationPreference, student_id)
     return bool(pref and pref.whatsapp_opt_in)
 

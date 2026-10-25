@@ -2920,7 +2920,18 @@ The feed holds only the owner's appointments and the visa appointments of the ap
 student and the assigned counselor of an overseas appointment, never to a lead, telecaller or agent. Pinned by
 `test_ccrm_038_calendar.py::test_only_an_overseas_counselor_has_a_feed` and `::test_the_feed_lists_own_appointments_and_counselled_visa_appointments`.
 
-### 2.189 Student archive and overseas consent *(added 2026-10-25 — `DEC-SCOPE-275`, ccrm-040)*
+### 2.189 Student finance tab *(added 2026-10-25 — `DEC-SCOPE-275`, ccrm-039)*
+
+| Route | `overseas_admin` | `counselor` (overseas) | `counselor` (IT) | `overseas_student`, `agent`, `university_rep`, others | Anonymous |
+|---|---|---|---|---|---|
+| `GET /counselor/students/{id}/finance` | ✅ any overseas student; invoice/receipt downloads | ✅ csc-001 scope (`404` otherwise) — numbers only, no invoice/receipt download; deposit receipt only on own application | `403` | `403` | `401` |
+
+- Read-only: no new write. The agent keeps its AGN-011 deposit routes (agency deposits only); the university_rep sees no finance.
+- Pinned by `test_ccrm_039_student_finance.py::test_another_counselors_student_is_not_found`, `::test_other_roles_are_refused`,
+  `::test_an_it_counselor_is_refused`, `::test_the_overseas_admin_reads_it_and_may_download`,
+  `::test_a_receipt_on_another_counselors_application_is_not_downloadable`.
+
+### 2.190 Student archive and overseas consent *(added 2026-10-25 — `DEC-SCOPE-276`, ccrm-040)*
 
 | Action | Overseas counselor | Overseas Admin | Overseas student | Other roles |
 |---|---|---|---|---|

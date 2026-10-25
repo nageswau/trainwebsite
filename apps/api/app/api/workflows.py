@@ -1855,7 +1855,7 @@ async def create_overseas_application(payload: OverseasApplicationCreate, user: 
     student = await db.get(User, student_id)
     if not student or student.role != "overseas_student" or student.division != "overseas":
         raise HTTPException(422, "Valid overseas student is required")
-    await student_archive.refuse_new_application(db, student_id)  # ccrm-040 (DEC-SCOPE-275 AR6)
+    await student_archive.refuse_new_application(db, student_id)  # ccrm-040 (DEC-SCOPE-276 AR6)
     if user.role == "agent":
         linked = await db.scalar(select(AgentStudent.id).where(*student_scope(user), AgentStudent.student_id == student_id, AgentStudent.status == "active"))
         if not linked:

@@ -198,7 +198,7 @@ class Agreement(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(200))
     body: Mapped[str] = mapped_column(Text)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
-    # ccrm-040 (DEC-SCOPE-275 CN1): what the student agrees to -- the IT enrolment agreement, or the overseas data-processing and
+    # ccrm-040 (DEC-SCOPE-276 CN1): what the student agrees to -- the IT enrolment agreement, or the overseas data-processing and
     # document-sharing consents. The latest active row of a (division, kind) is the current one.
     kind: Mapped[str] = mapped_column(String(30), default="enrolment", server_default="enrolment")
 
@@ -2015,7 +2015,7 @@ class OverseasStudentCounselor(Base, TimestampMixin):
 
 
 class OverseasStudentArchive(Base, TimestampMixin):
-    """ccrm-040 (DEC-SCOPE-275 AR4): an archived overseas student -- hidden from the staff working lists with their applications, never
+    """ccrm-040 (DEC-SCOPE-276 AR4): an archived overseas student -- hidden from the staff working lists with their applications, never
     deleted. `created_at` is the archive time; a restore deletes the row (the audit log keeps the history)."""
 
     __tablename__ = "overseas_student_archives"

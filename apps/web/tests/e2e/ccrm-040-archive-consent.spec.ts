@@ -4,7 +4,7 @@ import { signIn } from "./helpers/agency";
 import { activateWalkInStudent, signInAsFreshCounselor } from "./helpers/counselor";
 import { E2E_PASSWORD } from "./helpers/welcome";
 
-// ccrm-040 (DEC-SCOPE-275): a counselor archives a walk-in student once the student's application is closed (an open one is refused,
+// ccrm-040 (DEC-SCOPE-276): a counselor archives a walk-in student once the student's application is closed (an open one is refused,
 // named), the student leaves the working lists and shows on Archived students; the Overseas Admin restores them (AR1-AR7). The student
 // gives both consents on their dashboard and the counselor's 360 shows them (CN2-CN4). Requires the stack with `python -m app.seed`.
 

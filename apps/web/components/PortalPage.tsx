@@ -54,7 +54,7 @@ const main=agentApplications?<AgentApplicationsSection user={user}/>:agentDocume
 :key==="overseas/counselor"&&section==="dashboard"?<PortalSection data={data} lead={<CounselorQuickSearch/>}/>
 // ccrm-007 (DEC-SCOPE-249): the section (page heading + summary table) first, then the student's structured profile editor (QA-02).
 :key==="overseas/student"&&section==="profile"?<><PortalSection data={data}/><MyStudentProfile/></>
-// ccrm-040 (DEC-SCOPE-275 CN2): the overseas student's dashboard leads with any consent still to give.
+// ccrm-040 (DEC-SCOPE-276 CN2): the overseas student's dashboard leads with any consent still to give.
 :key==="overseas/student"&&section==="dashboard"?<PortalSection data={data} lead={<OverseasConsentPrompt/>}/>
 :<PortalSection data={data}/>;
 return <PortalShell nav={agent?withBadge(agentNavFor(nav,user.agent_member_role,user.agent_permissions),AGENT_NOTIFICATIONS_HREF,user.role==="agent"?unread:null):nav} roleLabel={agent&&user.agent_member_role==="staff"?"Agency Staff":labels[key]||role} userName={user.full_name} studentCode={role==="student"?user.student_code:null}>{/* AGN-003 browser QA-07: Back/Forward re-asks the server, so revoked permissions apply. */}{agent&&<RefreshOnHistoryNav/>}{main}{teacherWorkspace?<TeacherWorkspaceActions section={section}/>:agentNotifications?null:<WorkflowPanel user={user} section={section}/>}</PortalShell>}

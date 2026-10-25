@@ -1,4 +1,4 @@
-"""ccrm-040 (DEC-SCOPE-275, CN1-CN5) -- the overseas student's data-processing and document-sharing consents. Each kind's current
+"""ccrm-040 (DEC-SCOPE-276, CN1-CN5) -- the overseas student's data-processing and document-sharing consents. Each kind's current
 agreement is the latest active overseas `Agreement` of that kind (a newer version asks again); acceptance is a `ConsentRecord`
 (STU-009's insert-only row with the version and IP). Only the student consents; staff read the result on the 360."""
 

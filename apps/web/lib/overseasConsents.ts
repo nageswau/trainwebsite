@@ -1,4 +1,4 @@
-// ccrm-040 (DEC-SCOPE-275 CN1-CN5, API_CONTRACT.md §12GB): the overseas student's own data-processing and document-sharing consents.
+// ccrm-040 (DEC-SCOPE-276 CN1-CN5, API_CONTRACT.md §12GC): the overseas student's own data-processing and document-sharing consents.
 
 export type MyConsent = { id: string; kind: string; title: string; body: string; version: string; accepted_at: string | null };
 

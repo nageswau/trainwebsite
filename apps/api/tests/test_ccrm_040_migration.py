@@ -1,4 +1,4 @@
-"""ccrm-040 -- migration 0193_student_archive_consent (DEC-SCOPE-275): the chain, the archive table, the agreement `kind` column with
+"""ccrm-040 -- migration 0193_student_archive_consent (DEC-SCOPE-276): the chain, the archive table, the agreement `kind` column with
 the CN1 seed (idempotent), and the round trip, in a throwaway database (the ccrm-030 pattern). Plain tests: alembic/env.py calls
 asyncio.run()."""
 

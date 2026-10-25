@@ -4,7 +4,8 @@ the caller has already passed `student_profiles.staff_student` (csc-001 scope or
 V1: the page shows ALL the student's applications, current documents and history, each application marked `mine`; every write and
 download keeps its own route's rule, so `can_download` mirrors `GET /workflows/overseas/documents/{id}/download` for a counselor.
 B3: history = the applications' status history (ccrm-016, staff view) + audit rows about the student + document uploads, reviews and
-replacements; field names only, never values."""
+replacements; field names only, never values.
+ccrm-039 (DEC-SCOPE-275): finance = the student's fees and payments, each application's university deposit and the refunds; read-only."""
 
 from uuid import UUID
 
@@ -19,20 +20,28 @@ from app.document_checklists import STATUS_LABELS as DOCUMENT_STATUS_LABELS
 from app.document_checklists import review_status
 from app.lead_stages import label as lead_stage_label
 from app.models import (
+    ApplicationDeposit,
+    ApplicationDepositRecord,
     ApplicationStatusHistory,
     Appointment,
     AuditLog,
     Enquiry,
+    Invoice,
     OverseasApplication,
     OverseasCourse,
     OverseasStudentCounselor,
+    Payment,
+    Receipt,
     StudentDocument,
     University,
     User,
 )  # fmt: skip
+from app.services import agent_deposits
 from app.services import application_outcomes as outcomes
 from app.services import overseas_consents, student_archive
 from app.services.agent_applications import stage_label
+from app.services.application_deposit_records import STATUS_LABELS as DEPOSIT_RECORD_LABELS
+from app.services.application_offers import money
 from app.services.counselor_students import ASSIGNED as COUNSELOR_ASSIGNED
 from app.services.provisioning import provisioning_statuses
 
@@ -46,7 +55,7 @@ ACCOUNT_ACTIONS = {
     "counselor.student_create": "Account created by the counselor",
     "counselor.student_resend": "Set-password link re-sent",
     COUNSELOR_ASSIGNED: "Counselor assigned",
-    student_archive.ARCHIVED: "Archived",  # ccrm-040 (DEC-SCOPE-275 AR4)
+    student_archive.ARCHIVED: "Archived",  # ccrm-040 (DEC-SCOPE-276 AR4)
     student_archive.RESTORED: "Restored",
     overseas_consents.ACCEPTED: "Consent given",
 }
@@ -114,7 +123,7 @@ async def overview(db: AsyncSession, user: User, student: User) -> dict:
             for a in applications
             if a["open"] and a["next_action"]
         ],
-        # ccrm-040 (DEC-SCOPE-275): the archive banner, what the reader may do, and the student's consents (CN4)
+        # ccrm-040 (DEC-SCOPE-276): the archive banner, what the reader may do, and the student's consents (CN4)
         "archive": archive,
         "permissions": await student_archive.permissions(db, user, student, archive is not None),
         "consents": overseas_consents.staff_view(await overseas_consents.status(db, student.id)),
@@ -225,3 +234,77 @@ async def history(db: AsyncSession, student: User) -> dict:
         )  # fmt: skip
     items.sort(key=lambda i: i["at"], reverse=True)
     return {"items": items[:HISTORY_LIMIT]}
+
+
+PAYMENT_LABELS = {"pending": "Pending", "overdue": "Overdue", "paid": "Paid", "succeeded": "Paid", "failed": "Failed", "refunded": "Refunded", "cancelled": "Cancelled"}
+AGENCY_DEPOSIT_LABELS = {"not_required": "Not required", "pending": "Pending", "paid": "Paid via EduSphere", "remitted": "Remitted to the university", "refunded": "Refunded"}
+
+
+def _humanize(value: str) -> str:
+    return value.replace("_", " ").capitalize()
+
+
+def _payment_description(p: Payment) -> str:
+    text = _humanize(p.reference_type)
+    return f"{text} (instalment {p.installment_no})" if p.installment_no else text
+
+
+async def finance(db: AsyncSession, user: User, student: User) -> dict:
+    """ccrm-039 (DEC-SCOPE-275). F5: a download is offered only where its route allows the reader -- the invoice/receipt route takes the
+    payer and the division's admin; a deposit receipt is a student document (the documents tab's rule). F7: an agency's deposit payment
+    is the agency's and is shown on the deposit. Never a `file_url`."""
+    admin = user.role == "overseas_admin"  # staff_student already admitted only the overseas division's admin
+    payments = (
+        await db.execute(
+            select(Payment, Invoice.invoice_no, Receipt.receipt_no)
+            .outerjoin(Invoice, Invoice.payment_id == Payment.id)
+            .outerjoin(Receipt, Receipt.payment_id == Payment.id)
+            .where(Payment.user_id == student.id, Payment.reference_type != agent_deposits.REFERENCE_TYPE)
+            .order_by(Payment.created_at.desc(), Payment.id)
+        )
+    ).all()
+    apps = await _applications(db, student.id)
+    ids = [a.id for a, *_ in apps]
+    records = {r.application_id: r for r in (await db.scalars(select(ApplicationDepositRecord).where(ApplicationDepositRecord.application_id.in_(ids)))).all()}
+    agency = {d.application_id: d for d in (await db.scalars(select(ApplicationDeposit).where(ApplicationDeposit.application_id.in_(ids)))).all()}
+    receipt_ids = [r.receipt_document_id for r in records.values() if r.receipt_document_id]
+    receipts = {d.id: d for d in (await db.scalars(select(StudentDocument).where(StudentDocument.id.in_(receipt_ids)))).all()}
+
+    deposits, refunds = [], []
+    for a, university, *_ in apps:
+        base = {"application_id": a.id, "application_code": a.application_code, "university": university, "mine": a.counselor_id == user.id}
+        if record := records.get(a.id):
+            doc = receipts.get(record.receipt_document_id)
+            deposits.append(base | {
+                "source": "counselor", "required": record.required, "amount": money(record.amount), "currency": record.currency, "due_date": record.due_date,
+                "status": record.payment_status, "status_label": DEPOSIT_RECORD_LABELS[record.payment_status], "paid_on": record.paid_on, "refund": None,
+                "receipt": {"id": doc.id, "name": doc.document_label or doc.document_type, "can_download": admin or a.counselor_id == user.id} if doc else None,
+            })  # fmt: skip
+        elif deposit := agency.get(a.id):
+            refund = {"amount": money(deposit.refund_amount), "refunded_on": deposit.refunded_at, "reason": deposit.refund_reason} if deposit.refunded_at else None
+            deposits.append(base | {
+                "source": "agency", "required": deposit.required, "amount": money(deposit.amount), "currency": deposit.currency, "due_date": deposit.due_date,
+                "status": deposit.status, "status_label": AGENCY_DEPOSIT_LABELS[deposit.status], "paid_on": deposit.paid_at.date() if deposit.paid_at else None,
+                "refund": refund, "receipt": None,
+            })  # fmt: skip
+            if refund:
+                refunds.append({"kind": "deposit", "description": f"University deposit — {university}", "amount": refund["amount"], "currency": deposit.currency, "refunded_on": refund["refunded_on"], "application_code": a.application_code})  # fmt: skip
+    # F6: a gateway refund has no date of its own; the payment's last update is when it was marked refunded
+    refunds += [
+        {"kind": "payment", "description": _payment_description(p), "amount": money(p.amount), "currency": p.currency, "refunded_on": p.updated_at.date(), "application_code": None}
+        for p, *_ in payments
+        if p.status == "refunded"
+    ]  # fmt: skip
+    refunds.sort(key=lambda r: r["refunded_on"], reverse=True)
+    return {
+        "payments": [
+            {
+                "id": p.id, "description": _payment_description(p), "amount": money(p.amount), "currency": p.currency, "status": p.status,
+                "status_label": PAYMENT_LABELS.get(p.status) or _humanize(p.status), "due_date": p.due_date, "created_at": p.created_at, "installment_no": p.installment_no,
+                "invoice_no": invoice_no, "receipt_no": receipt_no, "can_download": admin,
+            }
+            for p, invoice_no, receipt_no in payments
+        ],
+        "deposits": deposits,
+        "refunds": refunds,
+    }  # fmt: skip

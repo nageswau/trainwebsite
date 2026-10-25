@@ -17,7 +17,7 @@ const PORTALS = {
   },
 } as const;
 
-/** ccrm-040 (DEC-SCOPE-275 AR7): /overseas/{counselor|admin}/archived-students -- archived students, newest first, each opening the
+/** ccrm-040 (DEC-SCOPE-276 AR7): /overseas/{counselor|admin}/archived-students -- archived students, newest first, each opening the
  *  read-only 360; the Overseas Admin restores from here. */
 export default async function ArchivedStudentsPage({ portal, offset }: { portal: keyof typeof PORTALS; offset: number }) {
   const { nav, role, roleLabel, intro } = PORTALS[portal];
