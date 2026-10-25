@@ -3826,3 +3826,19 @@ that moves only the offer deadline carries the conditions to the new offer row.
 - `POST …/outcome` accepts `non_arrival` and `cancelled` (reason required; 422 "An offer is needed before this outcome" before an offer;
   409 once enrolled); both terminal (reopen: Overseas Admin, §12EW).
 - Management funnel (`GET /management/funnel`): the Enrollment stage counts first moves to `enrolled` whose enrolment is confirmed.
+
+## 12FR. Arrival and orientation (ccrm-028) — addendum, 2026-10-25
+
+`DEC-SCOPE-265`. Under `/api/v1/workflows/overseas/applications/{id}` (router `api/application_offers.py`):
+
+- `GET …/arrival` — counselor (own, direct and agency), Overseas Admin; the student and the agency read their own. Returns
+  `{arrival: {status, can_record, arrival_date, arrival_confirmed, confirmed_at, confirmed_by, orientation_attended, notes}}` —
+  `confirmed_by` is the confirming staff member's name (no email or id).
+- `PUT …/arrival` — body `{arrival_date?, arrival_confirmed, orientation_attended, notes?}` (saved whole; extra fields 422; dates
+  2000–2100; notes ≤ 2000, cleaned). Turning `arrival_confirmed` on stamps who and when; keeping it on keeps the first stamp; turning it off
+  clears it. A change writes one history row "Arrival updated -- arrived|expected <date>[, orientation attended]" (stage and sub-status
+  unchanged), the agency notice "Application details updated" (CC5), audit `overseas.application.arrival` `{fields}`; unchanged →
+  `changed: false`, nothing written. Returns `{arrival, changed}`. Moves no stage, sub-status, outcome or commission (A1). Errors: 422
+  "Arrival is recorded after enrolment is confirmed" (not `enrolled`), "Enter the arrival date to confirm arrival", "A confirmed arrival
+  date cannot be in the future", "Confirm arrival before recording orientation"; 409 closed or archived agency record (on hold allowed);
+  403 other roles or out of scope.

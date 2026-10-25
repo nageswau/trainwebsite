@@ -1,5 +1,6 @@
 """ccrm-023 (DEC-SCOPE-245) -- an application's offers: list, upload an offer letter, record an offer, withdraw/expire it. The post-offer
-writes that follow share this router: ccrm-025's decision and deposit, ccrm-027's enrolment confirmation (DEC-SCOPE-262).
+writes that follow share this router: ccrm-025's decision and deposit, ccrm-027's enrolment confirmation (DEC-SCOPE-262), ccrm-028's
+arrival and orientation (DEC-SCOPE-265).
 
 CC4: the counselor records offers on their applications, direct and agency; the Overseas Admin on any. The student and the agency read.
 Every write uses `/sub-status`'s entry (api/workflows.py): role, `_assigned_application` scope, the row lock, the swapped-counselor
@@ -31,6 +32,7 @@ from app.application_sub_status import label as sub_status_label
 from app.core.database import get_db
 from app.models import ApplicationOffer, ApplicationOfferCondition, ApplicationStatusHistory, OverseasApplication, StudentDocument, User
 from app.schemas import (
+    ApplicationArrivalSave,
     ApplicationEnrollmentSave,
     ApplicationOfferClose,
     ApplicationOfferCreate,
@@ -42,6 +44,7 @@ from app.schemas import (
 )
 from app.services import agent_documents as documents
 from app.services import agent_notifications as agency_notices
+from app.services import application_arrival as arrival
 from app.services import application_deposit_records as deposits
 from app.services import application_enrollment as enrollment
 from app.services import application_offers as offers
@@ -433,3 +436,34 @@ async def save_enrollment(application_id: UUID, payload: ApplicationEnrollmentSa
     await db.commit()
     logger.info("application_enrollment_saved", extra={"extra_fields": {"application_id": str(item.id), "confirmed": confirming, "actor_id": str(user.id)}})
     return {"id": item.id, "status": item.status, "sub_status": item.sub_status, "enrollment": await enrollment.view(db, item), "changed": True}
+
+
+@router.get("/{application_id}/arrival")
+async def get_arrival(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-028 (DEC-SCOPE-265, A2): arrival and orientation, for the enrolment readers."""
+    _require(user, READERS, "overseas")
+    item = await _assigned_application(db, user, application_id)
+    return {"arrival": await arrival.view(db, item)}
+
+
+@router.put("/{application_id}/arrival")
+async def save_arrival(application_id: UUID, payload: ApplicationArrivalSave, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-028 (DEC-SCOPE-265): record arrival and orientation once enrolled, on direct and agency applications (CC4). Allowed on hold
+    (it moves no stage); one history note, the agency told (CC5), an audit row with the field names. Nothing else moves (A1); an
+    unchanged save writes nothing."""
+    item = await _writable(db, user, application_id, moves_stage=False)
+    changed = arrival.changes(item, payload)
+    if not changed:
+        return {"arrival": await arrival.view(db, item), "changed": False}
+    arrival.apply(item, payload, user)
+    db.add(
+        ApplicationStatusHistory(
+            application_id=item.id, from_status=item.status, to_status=item.status, from_sub_status=item.sub_status, to_sub_status=item.sub_status,
+            next_action=item.next_action, notes=arrival.summary(item), changed_by_id=user.id,
+        )
+    )  # fmt: skip
+    await agency_notices.details_changed(db, item, user)  # CC5
+    await _audit(db, user, "overseas.application.arrival", "overseas_application", item.id, {"fields": changed})
+    await db.commit()
+    logger.info("application_arrival_saved", extra={"extra_fields": {"application_id": str(item.id), "fields": changed, "actor_id": str(user.id)}})
+    return {"arrival": await arrival.view(db, item), "changed": True}

@@ -2247,3 +2247,10 @@ document of the application) and `pre_enrollment_checklist_complete` (bool, NOT 
 (AGN-013) now marks a confirmed enrolment from either route. Outcome values `non_arrival` and `cancelled` join the CHECKs
 `ck_overseas_applications_outcome`, `ck_application_outcomes_outcome` and `ck_application_status_history_outcome`. No backfill; downgrade
 restores the ccrm-015 values and drops the two columns.
+
+## Arrival and orientation (`ccrm-028`, `DEC-SCOPE-265`; migration `0187_application_arrival`, after ccrm-006's `0186_lead_loss_capture`)
+
+`overseas_applications` gains `arrival_date` (date, NULL; the expected date until arrival is confirmed), `arrival_confirmed_at`
+(timestamptz, NULL), `arrival_confirmed_by_id` (FK `users` ON DELETE SET NULL, NULL), `orientation_attended` (bool, NOT NULL, default
+`false`) and `arrival_notes` (text, NULL), with CHECK `ck_overseas_applications_orientation_arrival` (`NOT orientation_attended OR
+arrival_confirmed_at IS NOT NULL`). One arrival per application. No backfill; downgrade drops the five columns.

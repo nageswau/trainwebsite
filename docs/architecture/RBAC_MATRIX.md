@@ -2785,3 +2785,13 @@ inside the existing role scope (a counselor searching another counselor's code g
 
 - Pinned by `test_ccrm_027_enrollment.py::test_readers_see_no_document_picker_and_cannot_write`,
   `::test_the_counselor_confirms_an_agency_enrolment_once_with_one_commission`, `::test_every_other_way_into_enrolled_is_a_422`.
+
+### 2.179 Arrival and orientation *(added 2026-10-25 — `DEC-SCOPE-265`, ccrm-028)*
+
+| Route | `overseas_admin` | `counselor` (overseas) | `agent` | `overseas_student` | Others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET …/{id}/arrival` | ✅ any | ✅ own applications, direct and agency (`403` otherwise) | ✅ own agency's, read-only | ✅ own, read-only | `403` | `401` |
+| `PUT …/{id}/arrival` | ✅ | ✅ own, direct **and agency** (CC4) | `403` | `403` | `403` | `401` |
+
+- Pinned by `test_ccrm_028_arrival.py::test_student_and_agent_read_but_cannot_write`,
+  `::test_agency_application_counselor_scope_admin_and_agency_told`.
