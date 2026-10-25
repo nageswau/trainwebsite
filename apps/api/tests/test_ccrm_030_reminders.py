@@ -325,11 +325,12 @@ async def test_admin_owner_change_adds_first_contact_once(client, db_session, wo
     lead = await mk_lead(db_session, other, status="contacted")
     await login(client, world["admin"].email, "overseas")
     url = f"/api/v1/admin/leads/{lead.id}"
-    assert (await client.patch(url, json={"owner_id": str(world["counselor"].id)})).status_code == 200
+    # ccrm-033 RR1: replacing the prior counselor needs a reason; the unchanged resend needs none
+    assert (await client.patch(url, json={"owner_id": str(world["counselor"].id), "owner_reason": "Workload balance"})).status_code == 200
     assert (await client.patch(url, json={"owner_id": str(world["counselor"].id)})).status_code == 200  # unchanged owner: nothing new
     assert len(await rule_tasks(db_session, "first_contact", lead_id=lead.id)) == 1
     await set_rule(db_session, "first_contact", enabled=False)
-    assert (await client.patch(url, json={"owner_id": str(other.id)})).status_code == 200
+    assert (await client.patch(url, json={"owner_id": str(other.id), "owner_reason": "Workload balance"})).status_code == 200  # ccrm-033 RR1
     assert len(await rule_tasks(db_session, "first_contact", lead_id=lead.id)) == 1
 
 

@@ -733,6 +733,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Expected behaviour:** a required reason on every reassignment (application counselor, csc-005 student link, lead owner); stored in
   AuditLog and status history; shown in History. Old and new owners already notified — include the reason.
 - **DB:** none (audit metadata) or `reason` column. **Dependencies:** none. **Complexity:** small. **Risk:** low.
+- **Status (2026-10-25):** built on `worktree-ccrm-033` — `DEC-SCOPE-271` (RR1 reason required when replacing/removing an owner, optional
+  on a first assignment; RR2 hidden from the agent; RR3 lead owner `owner_reason` + notices + timeline, no picker), no migration, API
+  §12FX, RBAC §2.185. Design `docs/superpowers/specs/2026-10-25-ccrm-033-reassignment-reason-design.md`.
 
 ### `ccrm-034` — Management reports: ageing, university performance, visa outcomes, readiness, intake conversion
 

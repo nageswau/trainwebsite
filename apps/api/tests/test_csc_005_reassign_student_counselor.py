@@ -39,14 +39,14 @@ async def test_the_overseas_admin_moves_a_student_to_another_counselor(client, d
     admin = await mk_user(db_session, role="overseas_admin")
     await link(db_session, student, old)
     await login(client, admin.email)
-    response = await client.put(url(student.id), json={"counselor_id": str(new.id)})
+    response = await client.put(url(student.id), json={"counselor_id": str(new.id), "reason": "Student request"})  # ccrm-033: a swap needs a reason
     assert response.status_code == 200, response.text
     assert response.json() == {"id": str(student.id), "counselor_id": str(new.id), "counselor_name": "New Counselor", "changed": True}
     assert await linked_counselor(db_session, student) == new.id
     row = await db_session.scalar(select(OverseasStudentCounselor).where(OverseasStudentCounselor.student_user_id == student.id))
     assert row.assigned_by_user_id == admin.id
     audit = await db_session.scalar(select(AuditLog).where(AuditLog.action == "overseas.student.counselor_assign", AuditLog.entity_id == str(student.id)))
-    assert audit.user_id == admin.id and audit.metadata_json == {"from_counselor_id": str(old.id), "to_counselor_id": str(new.id)}
+    assert audit.user_id == admin.id and audit.metadata_json == {"from_counselor_id": str(old.id), "to_counselor_id": str(new.id), "reason": "Student request"}
     assert await notes(db_session, new, "Student assigned to you") == 1
     assert await notes(db_session, old, "Student reassigned") == 1
 
