@@ -119,7 +119,9 @@ def _stages(start: date, end: date) -> list[tuple[str, str, str, str, Select]]:
          _abroad(OverseasApplication.submitted_on >= start, OverseasApplication.submitted_on <= end)),
         ("offer", "Offer", "abroad", "Applications whose first move into an offer status was recorded in the period.", _first_moved(OFFER_COUNTED_STATUSES, lo, hi)),
         ("visa", "Visa", "abroad", "Applications with a visa decided approved in the period.", _abroad(visa)),
-        ("enrollment", "Enrollment", "abroad", "Applications whose first move to enrolled was recorded in the period.", _first_moved(("enrolled",), lo, hi)),
+        # ccrm-027 (DEC-SCOPE-262, E4): an enrolment counts only once confirmed -- an offer or a visa approval is not one (§13).
+        ("enrollment", "Enrollment", "abroad", "Applications whose first move to enrolled was recorded in the period, with the enrolment confirmed.",
+         _first_moved(("enrolled",), lo, hi).where(OverseasApplication.enrollment_confirmed_at.is_not(None))),
     ]  # fmt: skip
 
 

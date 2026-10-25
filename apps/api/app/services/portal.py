@@ -60,7 +60,7 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.services import application_filters, counselor_students, student_profiles
+from app.services import application_filters, counselor_students, document_access, student_profiles
 from app.services import application_outcomes as outcomes
 from app.services import applications as job_applications
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
@@ -754,7 +754,8 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
         )
     if section == "downloads":
         documents = (await db.scalars(select(StudentDocument).where(StudentDocument.student_id == user.id, StudentDocument.verification_status == "verified", StudentDocument.archived_at.is_(None)))).all()
-        rows = [{"name": d.document_type, "url": d.file_url} for d in documents] + [{"name": f"Offer letter - {u.name}", "url": a.offer_letter_url} for a, u in applications if a.offer_letter_url]
+        # ccrm-022 SD6: never a document's file key -- its Download button is on the Documents page (the audited route).
+        rows = [{"name": d.document_type, "url": "Download from Documents"} for d in documents] + [{"name": f"Offer letter - {u.name}", "url": a.offer_letter_url} for a, u in applications if a.offer_letter_url]
         return _payload("Downloads", "Verified documents and offer letters.", (("name", "Document"), ("url", "Download")), rows)
 
 
@@ -891,8 +892,8 @@ async def _agent(db: AsyncSession, user: User, section: str):
         return _payload(
             "Documents",
             "Documents uploaded for your linked student applications.",
-            (("id", "reference"), ("student", "Student"), ("document", "Document"), ("status", "Status"), ("file", "File")),
-            ({"id": d.id, "student": s.full_name, "document": d.document_type, "status": d.verification_status, "file": d.file_url} for d, s in docs),
+            (("id", "reference"), ("student", "Student"), ("document", "Document"), ("status", "Status")),  # ccrm-022 SD6: no file key
+            ({"id": d.id, "student": s.full_name, "document": d.document_type, "status": d.verification_status} for d, s in docs),
         )
     if section == "commissions":
         return _payload(
@@ -1158,6 +1159,8 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 if app_ids
                 else []
             )
+            classes = await document_access.sensitivities(db, (d for d, _, _ in docs))
+            docs = [row for row in docs if document_access.may_see(user, classes[row[0].id])]  # ccrm-022 SD3: never to a university_rep
             return _payload(
                 "Document Verification",
                 "Admission and visa document review queue.",
@@ -1175,6 +1178,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                         "reviewed_at": d.reviewed_at,
                         "expiry_date": d.expiry_date,
                         "replaces_earlier": d.version_of_id is not None,
+                        "sensitivity": classes[d.id],
                     }
                     for d, name, reviewer in docs
                 ),

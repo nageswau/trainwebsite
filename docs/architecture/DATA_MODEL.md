@@ -2240,7 +2240,21 @@ rows), `status_changed_at`, `created_at`, `updated_at`. Met needs evidence and w
 `services/offer_conditions.py`. The migration copies each offer's non-blank `conditions` text into one open student row (every offer
 status); the downgrade drops the table.
 
-## Document requests for direct students (`ccrm-020`, `DEC-SCOPE-262`; migration `0184_student_document_requests`, after ccrm-024's `0183_offer_conditions`)
+## Enrolment confirmation (`ccrm-027`, `DEC-SCOPE-262`; migration `0184_enrollment_confirmation`, after ccrm-024's `0183_offer_conditions`)
+
+`overseas_applications` gains `enrollment_document_id` (FK `student_documents` ON DELETE SET NULL, NULL; an "Enrolment confirmation"
+document of the application) and `pre_enrollment_checklist_complete` (bool, NOT NULL, default `false`). `enrollment_confirmed_at`
+(AGN-013) now marks a confirmed enrolment from either route. Outcome values `non_arrival` and `cancelled` join the CHECKs
+`ck_overseas_applications_outcome`, `ck_application_outcomes_outcome` and `ck_application_status_history_outcome`. No backfill; downgrade
+restores the ccrm-015 values and drops the two columns.
+
+## Document sensitivity (`ccrm-022`, `DEC-SCOPE-263`; migration `0185_document_sensitivity`, after ccrm-027's `0184_enrollment_confirmation`)
+
+`document_checklist_template_items.sensitivity` and `application_checklist_items.sensitivity`: String(20) NOT NULL, server default
+`standard`, CHECK standard / identity / financial. The migration classes existing items from their type and label words (the
+`app.document_checklists` lists); the downgrade drops both columns. A document has no stored class: it is the highest of its type's
+class and its linked items' (`services/document_access.sensitivities`).
+## Document requests for direct students (`ccrm-020`, `DEC-SCOPE-264`; migration `0186_student_document_requests`, after ccrm-022's `0185_document_sensitivity`)
 
 `document_requests`: `agent_student_id` becomes NULL-able; new `student_user_id` (FK `users`), `application_id` (FK
 `overseas_applications`), `checklist_item_id` (FK `application_checklist_items` ON DELETE SET NULL), `due_date` (date). CHECK

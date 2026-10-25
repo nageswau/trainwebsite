@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { sendJson, sendRequest } from "@/lib/apiErrors";
 import { ApplicationChecklistItem, ChecklistDocument, ChecklistMark, ChecklistPayload, checklistUrl, COMPLETE } from "@/lib/applicationChecklist";
-import { CHECKLIST_DOCUMENT_TYPES, GATE_LABELS, NEEDS_ACTION } from "@/lib/documentChecklists";
+import { CHECKLIST_DOCUMENT_TYPES, GATE_LABELS, NEEDS_ACTION, sensitivityBadge } from "@/lib/documentChecklists";
 import { staffRequestsUrl, todayInIndia } from "@/lib/documentRequests";
 import { formatCalendarDate } from "@/lib/formatDate";
 
@@ -163,6 +163,7 @@ function ItemRow({ item, documents, readOnly, busy, act, onRequest }: RowProps) 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
         <strong style={{ fontSize: 13 }}>{item.name}</strong>
         <span className="badge">{item.required ? "Required" : "Optional"}</span>
+        {sensitivityBadge(item.sensitivity) && <span className="status closed">{sensitivityBadge(item.sensitivity)}</span>}
         <span className={tone}>{item.status_label}</span>
         {item.mark && <span className="muted" style={{ fontSize: 12 }}>(marked by counselor)</span>}
       </div>

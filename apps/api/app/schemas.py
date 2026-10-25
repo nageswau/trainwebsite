@@ -31,7 +31,7 @@ from pydantic_core import PydanticCustomError
 
 from app.application_fields import CURRENCIES as APPLICATION_CURRENCIES
 from app.application_fields import SCHOLARSHIP_STATUSES
-from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS, DRAFTING_STATUSES, REVIEW_STATUSES, review_status
+from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS, DRAFTING_STATUSES, REVIEW_STATUSES, SENSITIVITY_CLASSES, review_status
 from app.document_checklists import ITEM_STATUSES as CHECKLIST_ITEM_STATUSES
 from app.document_checklists import MAX_ITEMS as CHECKLIST_MAX_ITEMS
 from app.models import (
@@ -991,7 +991,7 @@ class ApplicationOutcomeSet(BaseModel):
     database or today's date (closed, enrolled, offer stage, the letter, the hold owner, a past review date)."""
 
     model_config = {"extra": "forbid"}
-    outcome: Literal["rejected", "withdrawn", "deferred", "on_hold", "offer_declined"]
+    outcome: Literal["rejected", "withdrawn", "deferred", "on_hold", "offer_declined", "non_arrival", "cancelled"]
     outcome_date: date | None = None
     reason: str | None = None
     requested_by: OutcomeRequester | None = None
@@ -1017,6 +1017,8 @@ class ApplicationOutcomeSet(BaseModel):
             "deferred": ("new_intake",),
             "on_hold": ("reason", "review_date"),
             "offer_declined": ("reason",),
+            "non_arrival": ("reason",),
+            "cancelled": ("reason",),
         }[self.outcome]
         missing = [name for name in needed if getattr(self, name) is None]
         if missing:
@@ -1497,6 +1499,42 @@ class DepositRecordSave(BaseModel):
         return self
 
 
+class ApplicationEnrollmentSave(BaseModel):
+    """ccrm-027 (DEC-SCOPE-262, E2): confirm an application's enrolment, or correct it once enrolled. The confirmation document and the
+    pre-enrolment checklist are required; `expected_status` turns a stale screen into a 409 (confirming triggers the commission)."""
+
+    model_config = {"extra": "forbid"}
+    expected_status: str = Field(max_length=50)
+    enrollment_date: date
+    enrollment_document_id: UUID
+    pre_enrollment_checklist_complete: bool
+    university_student_id: str | None = None
+    course_start_date: date | None = None
+    notes: str | None = None
+
+    @field_validator("enrollment_date", "course_start_date")
+    @classmethod
+    def _dates(cls, value):
+        return _application_date(value)
+
+    @field_validator("university_student_id")
+    @classmethod
+    def _student_number(cls, value):
+        return clean_free_text(value, 60)
+
+    @field_validator("notes")
+    @classmethod
+    def _notes(cls, value):
+        return clean_free_text(value, 2000)
+
+    @field_validator("pre_enrollment_checklist_complete")
+    @classmethod
+    def _checklist(cls, value):
+        if not value:
+            raise PydanticCustomError("pre_enrollment_checklist", "Confirm the pre-enrolment checklist is complete")
+        return value
+
+
 class ApplicationChecklistMark(BaseModel):
     """ccrm-019 (DEC-SCOPE-257, AC1): mark a checklist item Requested or Not required, or clear the mark (null)."""
 
@@ -1514,6 +1552,7 @@ class ChecklistTemplateItemIn(BaseModel):
     required: bool = True
     allowed_statuses: list[Literal[CHECKLIST_ITEM_STATUSES]] = Field(default_factory=list, max_length=len(CHECKLIST_ITEM_STATUSES))
     notes: str | None = None
+    sensitivity: Literal[SENSITIVITY_CLASSES] | None = None  # ccrm-022 SD2: omitted -> the type's class
 
     @field_validator("label")
     @classmethod

@@ -39,7 +39,7 @@ from app.application_sub_status import fit as fit_sub_status
 from app.bdm_stages import FIRST_STAGE as BDM_FIRST_STAGE
 from app.bdm_stages import MANUAL_STAGES as BDM_MANUAL_STAGES
 from app.core.identifiers import normalize_key
-from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS, ITEM_STATUSES
+from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS, ITEM_STATUSES, SENSITIVITY_CLASSES
 from app.lead_stages import STAGES as LEAD_STAGES
 from app.notifications.phone import normalise_phone
 from app.partnership_event_kinds import KINDS as PARTNERSHIP_EVENT_KINDS
@@ -1847,6 +1847,12 @@ class OverseasApplication(Base, TimestampMixin):
     enrollment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     university_student_id: Mapped[str | None] = mapped_column(String(60), nullable=True)
     enrollment_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # ccrm-027 (DEC-SCOPE-262): the counselor/Admin confirmation (PUT …/enrollment) -- its "Enrolment confirmation" document and the
+    # pre-enrolment checklist attestation (E8). An agency Master's AGN-013 confirmation sets neither.
+    enrollment_document_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL", use_alter=True, name="fk_overseas_applications_enrollment_document_id"), nullable=True
+    )
+    pre_enrollment_checklist_complete: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     # AGN-010 (DEC-SCOPE-056): the current offer, recorded by the agency. `offer_deadline` above is its deadline (O2); the letter is an
     # AGN-009 document (O3). `use_alter`: student_documents.application_id points back at this table.
     offer_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -2189,7 +2195,12 @@ class DocumentChecklistTemplateItem(Base):
     required: Mapped[bool] = mapped_column(Boolean, default=True)
     allowed_statuses: Mapped[list] = mapped_column(JSON, default=list)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    __table_args__ = (UniqueConstraint("template_id", "position", name="uq_document_checklist_template_items_position"),)
+    # ccrm-022 (DEC-SCOPE-263 SD2): the item's sensitivity class; it raises (never lowers) the class of the documents it counts.
+    sensitivity: Mapped[str] = mapped_column(String(20), default="standard", server_default=text("'standard'"))
+    __table_args__ = (
+        UniqueConstraint("template_id", "position", name="uq_document_checklist_template_items_position"),
+        CheckConstraint("sensitivity IN (" + ", ".join(f"'{c}'" for c in SENSITIVITY_CLASSES) + ")", name="ck_document_checklist_template_items_sensitivity"),
+    )
 
 
 class ApplicationChecklist(Base, TimestampMixin):
@@ -2226,8 +2237,11 @@ class ApplicationChecklistItem(Base, TimestampMixin):
     marked_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     marked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    # ccrm-022 (DEC-SCOPE-263 SD2): the item's sensitivity class; it raises (never lowers) the class of the documents it counts.
+    sensitivity: Mapped[str] = mapped_column(String(20), default="standard", server_default=text("'standard'"))
     __table_args__ = (
         UniqueConstraint("application_id", "position", name="uq_application_checklist_items_position"),
+        CheckConstraint("sensitivity IN (" + ", ".join(f"'{c}'" for c in SENSITIVITY_CLASSES) + ")", name="ck_application_checklist_items_sensitivity"),
         CheckConstraint("mark IS NULL OR mark IN (" + ", ".join(f"'{m}'" for m in CHECKLIST_MARKS) + ")", name="ck_application_checklist_items_mark"),
     )
 

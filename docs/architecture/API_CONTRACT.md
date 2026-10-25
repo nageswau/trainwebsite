@@ -3803,9 +3803,45 @@ Writes hold the application row lock, are allowed on hold, write one history row
 offer (§12EX `POST …/offers`, the agency `PUT …/offer`) with conditions text also creates one open student condition; the agency `PATCH`
 that moves only the offer deadline carries the conditions to the new offer row.
 
-## 12FO. Document requests for direct students (ccrm-020) — addendum, 2026-10-25
+## 12FO. Enrolment confirmation and post-offer outcomes (ccrm-027) — addendum, 2026-10-25
 
-`DEC-SCOPE-262`. Staff = `counselor` (overseas, csc-001 scope) and `overseas_admin` through ccrm-007's `staff_student` gate (another student
+`DEC-SCOPE-262`. Under `/api/v1/workflows/overseas/applications/{id}` (router `api/application_offers.py`):
+
+- `GET …/enrollment` — counselor (own, direct and agency), Overseas Admin; the student and the agency read their own. Returns
+  `{enrollment: {status, confirmed, confirmed_at, can_confirm, enrollment_date, university_student_id, course_start_date,
+  pre_enrollment_checklist_complete, document: {id, name} | null}, documents: [{id, name, created_at}]}` — `documents` (the picker) for
+  writers only, `[]` otherwise. No file keys.
+- `POST …/enrollment-documents` (multipart `file`) — `201 {document}`; an "Enrolment confirmation" document under the offer-letter rules
+  (PDF or image sniffed; allowed on hold; closed → 409).
+- `PUT …/enrollment` — body `{expected_status, enrollment_date, enrollment_document_id, pre_enrollment_checklist_complete: true,
+  university_student_id?, course_start_date?, notes?}` (extra fields 422). Confirm (stage before `enrolled`): stage → `enrolled`, sub-status
+  `enrolled`, `enrollment_confirmed_at`, one history row "Enrolment confirmed[ -- note]", AGT-003 commission (agency, at most one), student
+  notice "Enrolment confirmed", agency notice (CC5), audit `overseas.application.enrollment`. Once enrolled: a correction (audit
+  `{fields, confirmed: false}`, agency told, no history row); unchanged → `changed: false`, nothing written. Returns
+  `{id, status, sub_status, enrollment, changed}`. Errors: 422 checklist false / missing document / document not this application's
+  "Enrolment confirmation" / before an offer ("An offer is needed before enrollment"); 409 stale `expected_status`, on hold, closed,
+  archived agency record; 403 other roles or out of scope.
+- `PATCH …` (`status`), `POST …/advance` and `POST …/sub-status` to `enrolled` → **422** "Enrolment is confirmed with the enrolment confirmation
+  document, not by a stage change" (E3).
+- `POST …/outcome` accepts `non_arrival` and `cancelled` (reason required; 422 "An offer is needed before this outcome" before an offer;
+  409 once enrolled); both terminal (reopen: Overseas Admin, §12EW).
+- Management funnel (`GET /management/funnel`): the Enrollment stage counts first moves to `enrolled` whose enrolment is confirmed.
+
+## 12FP. Sensitive documents and access logging (ccrm-022) — addendum, 2026-10-25
+
+`DEC-SCOPE-263`. Classes `standard | identity | financial` (`services/document_access.py` is the one rule).
+
+| Method | Path | Change |
+|---|---|---|
+| `GET` | `/workflows/overseas/documents/{id}/download` (OVS-005) | Roles and scope unchanged. The `document.download` audit row's metadata gains `sensitivity`. A `403` on an identity/financial document also writes `document.download` with outcome `denied` (committed before the error). |
+| `GET` | `/files/download?key=` | `404 Not found` when the key is an overseas student document's file (current or archived row, either stored shape, a replaced file's history key) or starts `agent-documents/`; other keys unchanged. |
+| `GET`/`POST`/`PUT` | `/overseas-admin/checklists…` (§12FA) | Each item accepts optional `sensitivity` (omitted → the type's class; unknown → `422`) and returns it. |
+| `GET`/`POST` | `/workflows/overseas/applications/{id}/checklist…` (§12FJ) | Each item returns `sensitivity` (copied from the template item; a counselor's item takes its type's unless sent); each linked / linkable document returns its effective `sensitivity`. |
+| `GET` | `/portal/overseas/{counselor,admin,university}/documents` | Rows gain `sensitivity`; a university_rep gets no identity/financial rows. |
+| `GET` | `/portal/overseas/student/downloads`, `/portal/overseas/agent/documents` | No file key: the student's document rows read "Download from Documents"; the agent rows drop the `file` column. |
+## 12FQ. Document requests for direct students (ccrm-020) — addendum, 2026-10-25
+
+`DEC-SCOPE-264`. Staff = `counselor` (overseas, csc-001 scope) and `overseas_admin` through ccrm-007's `staff_student` gate (another student
 `404`, another role `403`). A request item: `{id, document_type, document_label, name, note, review_note, status: open|fulfilled|cancelled,
 due_date, overdue, application_id, application_code, university, checklist_item_id, requested_by, created_at, closed_at,
 document:{id, original_filename, verification_status, status_label}|null}` — never a file key. `overdue` = open and due before today (IST);

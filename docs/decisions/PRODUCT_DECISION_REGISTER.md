@@ -9408,7 +9408,45 @@ again, each change kept in history; C11 evidence is a "Condition evidence" docum
 **Numbering:** migration `0183_offer_conditions` (after ccrm-005's `0182_lead_data_fields`); API §12FN; RBAC §2.175.
 - **Feature ID authorized:** `ccrm-024`. **Status:** built on `worktree-ccrm-024`.
 
-### DEC-SCOPE-262 — Document requests for direct students (`ccrm-020`, supersedes `nehn-037` part 1)
+### DEC-SCOPE-262 — Enrolment confirmation and post-offer outcomes (`ccrm-027`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-027` (source PDF §10 enrolment tracking, §13 "do not count an offer or a visa
+approval as enrolment", Appendix B final row; `UNVERIFIED` — the PDF is not in the repository, only the backlog's quotes are used); owner
+answer CC4 (the counselor records enrolment on all applications); design `docs/superpowers/specs/2026-10-25-ccrm-027-enrolment-confirmation-design.md`.
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** E1 the counselor (own
+applications, direct **and agency**: CC4) and the Overseas Admin confirm through `PUT …/applications/{id}/enrollment`; the agency Master's
+AGN-013 route stays as it is (no document). E2 confirming needs an offer stage (AGN-013 E6), no hold / closed / archived agency,
+`expected_status` (stale → 409), `enrollment_date`, an "Enrolment confirmation" document of this application and the pre-enrolment
+checklist attested; student number, course start date and a note optional. E3 `PATCH` status, `/advance` and `/sub-status` to `enrolled`
+→ 422 for every role (supersedes the stage-change path of OVS-003 / ccrm-014 SS4 for `enrolled`; the existing 403s on agency applications
+keep their order). E4 "confirmed" = `enrollment_confirmed_at IS NOT NULL` (this route or AGN-013); the management funnel's Enrollment stage
+counts only confirmed enrolments; old unconfirmed enrolments are not backfilled. E5 "Deferred (post-visa)" is ccrm-015's `deferred`
+(already allowed at visa stages; the application continues) — no new value. E6 new outcomes `non_arrival`, `cancelled`: terminal (Overseas
+Admin reopens), reason required, only with an offer, refused once enrolled. E7 once enrolled the route corrects the details (audit only,
+no history row, no commission). E8 the pre-enrolment checklist is a stored attestation (no ccrm-018 template kind). E9 a counselor/Admin
+confirmation of an agency application runs the AGT-003 trigger (at most one commission) and tells the agency (CC5).
+**Numbering:** migration `0184_enrollment_confirmation`; API §12FO; RBAC §2.176.
+- **Feature ID authorized:** `ccrm-027`. **Status:** built on `worktree-ccrm-027`.
+
+### DEC-SCOPE-263 — Sensitive documents and access logging (`ccrm-022`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-022` (source PDF §2 "sensitive financial and identity documents only to
+authorized roles", §8 secure access, §16, AC 10, `UNVERIFIED`); design `docs/superpowers/specs/2026-10-25-ccrm-022-sensitive-documents-design.md`.
+**From the backlog:** classes `standard` / `identity` / `financial`; identity/financial visible to the student, the student's counselor, the
+application's agency and Overseas Admin; downloads always audited; lists never return file keys; the `/files/download` gap closed for
+overseas documents; `sensitivity` on checklist template items and application checklist items; one central check.
+**Recommended defaults (`NEEDS_CONFIRMATION`):** SD1 the word lists that class a free-text type (identity: passport, aadhaar/aadhar,
+national id, identity, id card, birth certificate; financial: financial, finance, bank, sponsor(ship), loan, income, salary, tax, itr,
+affidavit), whole words, type + label; SD2 a document's class is the highest of its type's and every checklist item it is linked to (an
+item raises, never lowers); SD3 **university_rep never sees identity/financial documents** (the backlog's open question — the passport for
+submission stays with the counselor), super_admin keeps its existing access; SD4 a refused download of an identity/financial document is
+audited (`document.download`, outcome `denied`) and every download's audit row carries `sensitivity`; SD5 `/files/download` answers `404`
+for any current, archived or replaced overseas document key and the `agent-documents/` prefix; SD6 the student's Downloads section and
+the agent portal Documents section no longer carry file keys; SD7 there is no inline view route, so `document.download` is the only
+hand-out event; SD8 the `/local-files` public mount in local storage mode is left to nehn-003 (residual risk).
+**Numbering:** migration `0185_document_sensitivity` (after ccrm-027's `0184_enrollment_confirmation`); API §12FP; RBAC §2.177.
+- **Feature ID authorized:** `ccrm-022`. **Status:** built on `worktree-ccrm-022`.
+### DEC-SCOPE-264 — Document requests for direct students (`ccrm-020`, supersedes `nehn-037` part 1)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-020` (source PDF §11 "Document missing → add a task … optionally send a student
 reminder", nehn-037 #1, `UNVERIFIED`); design `docs/superpowers/specs/2026-10-25-ccrm-020-document-requests-design.md`.
@@ -9422,5 +9460,5 @@ cancel; R4 due date required (today IST or later), note optional, AGN-009 reques
 type + label; R6 the student is notified on create / cancel (never the note), the requester on upload; R7 AGN-009 byte rules for the
 upload, optional expiry; R8 `overdue` computed (open, past due) with a partial index for ccrm-030; R9 a request needs a student login
 (agency-only records keep AGN-009).
-**Numbering:** migration `0184_student_document_requests` (after ccrm-024's `0183`); API §12FO; RBAC §2.176.
+**Numbering:** migration `0186_student_document_requests` (after ccrm-022's `0185`); API §12FQ; RBAC §2.178.
 - **Feature ID authorized:** `ccrm-020`. **Status:** built on `feature/ccrm-020`.

@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 
 import { E2E_PASSWORD } from "./helpers/welcome";
 import { adminActivate, registerApprovedAgency, signIn } from "./helpers/agency";
+import { confirmEnrollment } from "./helpers/enrollment";
 
 // AGN-014 -- a Master sees Revenue and the commission report (filter + CSV); staff are refused commissions and see no Revenue.
 // Requires the stack running with `python -m app.seed` applied. The commission is made `paid` through the real API: a student
@@ -33,7 +34,7 @@ test("a Master sees Revenue and the commission report; staff are refused (AGN-01
   const applicationId = (await created.json()).id as string;
 
   await api.post("/api/v1/auth/login", { data: ADMIN });
-  expect((await api.patch(`/api/v1/workflows/overseas/applications/${applicationId}`, { data: { status: "enrolled" } })).ok()).toBeTruthy();
+  await confirmEnrollment(api, applicationId);
   const rows = (await (await api.get("/api/v1/portal/overseas/admin/commissions")).json()).rows as { id: string; student: string }[];
   const commissionId = rows.find((r) => r.student === studentName)?.id;
   if (!commissionId) throw new Error("the auto-created commission was not found");

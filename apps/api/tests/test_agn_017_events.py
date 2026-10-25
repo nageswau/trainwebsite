@@ -12,6 +12,7 @@ from tests.agn009_helpers import REQUESTS, VERIFY, mk_doc
 from tests.agn009_helpers import world as docs_world
 from tests.agn016_helpers import TASKS, mk_task
 from tests.agn017_helpers import all_text, channels_of, deactivate, notices, titled
+from tests.ccrm027_helpers import confirm_enrollment
 
 ASSIGNED = "Student assigned to you"
 
@@ -284,11 +285,11 @@ async def test_an_offer_correction_at_the_offer_stage_or_by_the_assignee_notifie
 @pytest.mark.asyncio
 async def test_enrolling_an_unassigned_students_application_gives_each_master_one_notice(db_session, world):
     record = await mk_record(db_session, agent=world["master"], full_name="Unassigned")
-    # AGN-023 (DEC-SCOPE-090 H4): a counselor never enrols an agency application, so the Overseas Admin's generic PATCH enrols it here
+    # ccrm-027 (DEC-SCOPE-262, E3): the Overseas Admin enrols it through the enrolment confirmation
     admin = await mk_user(db_session, role="overseas_admin", full_name="Apps Admin")
     app = await _agency_app(db_session, world, record=record, status="status_tracking")
     async with client_for(admin.email) as c:
-        assert (await c.patch(f"{LEGACY}/{app.id}", json={"status": "enrolled"})).status_code == 200
+        assert (await confirm_enrollment(c, db_session, app, expected_status="status_tracking")).status_code == 200
     assert [n.title for n in await notices(db_session, world["master"])] == [COMMISSION]  # not also the status notice (AC3)
 
 

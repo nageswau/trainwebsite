@@ -56,7 +56,6 @@ test("admin assigns a counsellor to an agency application; counsellor advances (
 
   await counselor.goto("/overseas/counselor/applications");
   const card = counselor.locator(".card").filter({ has: counselor.getByRole("heading", { name }) });
-  await expect(card.getByText("Enrollment is confirmed by the agency.")).toBeVisible();
   await card.getByRole("button", { name: "Advance stage" }).click();
   await expect(card.getByLabel("Advance to").locator("option[value=enrolled]")).toHaveCount(0);
   await card.getByLabel("Advance to").selectOption("eligibility_evaluation");

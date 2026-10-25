@@ -31,7 +31,7 @@ def test_migration_chains_after_0171_and_stays_in_the_single_line():
 def test_the_migration_repeats_the_outcome_values():
     from app.application_outcome import CLEARED, OUTCOMES
 
-    assert _migration.OUTCOMES == (*OUTCOMES, CLEARED)
+    assert _migration.OUTCOMES == (*OUTCOMES[:6], CLEARED)  # ccrm-015's six; 0181 (ccrm-027) adds the rest
 
 
 @pytest.fixture
