@@ -45,7 +45,7 @@ async def task_options(counselor_id: UUID | None = None, user: User = Depends(ge
 
 @router.get("/overdue-by-counselor")
 async def overdue_by_counselor(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """ccrm-031 (DEC-SCOPE-271, E7): every counselor with overdue tasks or follow-ups -- the Overseas Admin (and Super Admin) only. Declared
+    """ccrm-031 (DEC-SCOPE-272, E7): every counselor with overdue tasks or follow-ups -- the Overseas Admin (and Super Admin) only. Declared
     before `/{task_id}` so the path is not read as a task id."""
     if not svc.is_admin(user):
         raise HTTPException(403, ADMIN_ONLY)

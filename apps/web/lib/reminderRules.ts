@@ -18,7 +18,7 @@ const UNITS: Record<ReminderTiming, string> = {
   silent: "days without a call or stage change",
   before: "days before the date",
   after: "days after the date",
-  escalate: "days overdue before the Overseas Admin is told", // ccrm-031 (DEC-SCOPE-271)
+  escalate: "days overdue before the Overseas Admin is told", // ccrm-031 (DEC-SCOPE-272)
 };
 
 export function offsetUnit(timing: ReminderTiming): string {

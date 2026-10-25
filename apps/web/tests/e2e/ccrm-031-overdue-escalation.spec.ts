@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { signIn } from "./helpers/agency";
 
-// ccrm-031 (DEC-SCOPE-271, E1/E7/E8) -- the Overseas Admin finds the escalation threshold among the reminder rules, runs the rules, and
+// ccrm-031 (DEC-SCOPE-272, E1/E7/E8) -- the Overseas Admin finds the escalation threshold among the reminder rules, runs the rules, and
 // sees "Overdue by counselor" on Counselor tasks; a row's "View tasks" opens that counselor's overdue tasks. The counselor is refused
 // the list. Requires the stack running with `python -m app.seed` applied (rows appear only when some counselor has overdue work).
 

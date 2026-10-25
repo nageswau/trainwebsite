@@ -5,7 +5,7 @@ import OverdueByCounselor from "@/components/OverdueByCounselor";
 import { overdueTasksHref, type OverdueByCounselorPage } from "@/lib/counselorTasks";
 import { offsetUnit } from "@/lib/reminderRules";
 
-// ccrm-031 (DEC-SCOPE-271, E7/E8): the Overseas Admin's "Overdue by counselor" section on the counselor-tasks page.
+// ccrm-031 (DEC-SCOPE-272, E7/E8): the Overseas Admin's "Overdue by counselor" section on the counselor-tasks page.
 const page = (over: Partial<OverdueByCounselorPage> = {}): OverdueByCounselorPage => ({
   today: "2026-10-25",
   threshold_days: 2,

@@ -1,4 +1,4 @@
-"""ccrm-031 (DEC-SCOPE-271, E1-E8): overdue counselor tasks and follow-ups past the threshold reach every active Overseas Admin once, in
+"""ccrm-031 (DEC-SCOPE-272, E1-E8): overdue counselor tasks and follow-ups past the threshold reach every active Overseas Admin once, in
 one notice per counselor (E3/E5), and the admin's "Overdue by counselor" list (E7). The shared test database is never truncated: every
 assertion is about rows the test made. Spec: docs/superpowers/specs/2026-10-25-ccrm-031-overdue-escalation-design.md."""
 

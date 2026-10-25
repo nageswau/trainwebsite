@@ -1,7 +1,7 @@
 # ccrm-031 — Overdue escalation to the Overseas Admin (design)
 
-- **Feature:** `ccrm-031` (docs/delivery/COUNSELOR_CRM_BACKLOG.md). **Decision:** `DEC-SCOPE-271`. **Migration:** `0190_overdue_escalation`.
-  **API:** §12FX. **RBAC:** §2.185.
+- **Feature:** `ccrm-031` (docs/delivery/COUNSELOR_CRM_BACKLOG.md). **Decision:** `DEC-SCOPE-272`. **Migration:** `0190_overdue_escalation`.
+  **API:** §12FY. **RBAC:** §2.186.
 - **Source:** Counselor CRM Specification (UNVERIFIED) §11 "Task overdue → escalate to team lead", §14 escalation; owner answer CC3
   (no teams — the Overseas Admin is the escalation point).
 - **Dependencies (merged):** ccrm-029 (counselor tasks, bands), ccrm-030 (reminder rule catalogue, log, daily job, admin page), ccrm-003
@@ -52,7 +52,7 @@ No new table. Migration `0190_overdue_escalation`: re-creates `ck_counselor_remi
 fresh database built by 0001 from the models passes too) and seeds `('overdue_escalation', 2, false)` ON CONFLICT DO NOTHING. Downgrade
 deletes the row and the rule's log rows, then restores the 10-key CHECK.
 
-## API (§12FX)
+## API (§12FY)
 
 - `GET /overseas-admin/reminder-rules` lists the new rule (timing `escalate`); `PUT .../overdue_escalation` takes 0–30;
   `notify_student: true` → 422. Run counts include `rules.overdue_escalation` (items escalated).

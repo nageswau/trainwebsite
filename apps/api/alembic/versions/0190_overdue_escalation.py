@@ -3,7 +3,7 @@
 Revision ID: 0190_overdue_escalation
 Revises: 0189_counselor_reminders
 
-docs/superpowers/specs/2026-10-25-ccrm-031-overdue-escalation-design.md (DEC-SCOPE-271). 0001 builds a fresh database from the current
+docs/superpowers/specs/2026-10-25-ccrm-031-overdue-escalation-design.md (DEC-SCOPE-272). 0001 builds a fresh database from the current
 models, whose CHECK already carries the new key, so the constraint is dropped if it exists and re-created; the seed is ON CONFLICT DO
 NOTHING. The downgrade removes the rule's row and log rows, then restores 0189's ten keys.
 """

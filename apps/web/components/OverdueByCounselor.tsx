@@ -4,11 +4,11 @@ import { overdueTasksHref, type OverdueByCounselorPage } from "@/lib/counselorTa
 import { formatDay } from "@/lib/managementDiscussions";
 import { REMINDER_RULES_HOME } from "@/lib/reminderRules";
 
-// ccrm-031 (DEC-SCOPE-271, E7/E8): who is behind -- every counselor with overdue tasks or follow-ups, worst first, computed live by the
-// API. "Past N days" counts what the escalation rule tells the Overseas Admin about; the link opens that counselor's overdue tasks.
 // QA-03: a row header reads as a name, not as the uppercase column-header style `.table th` gives it
 const ROW_HEADER = { background: "transparent", color: "inherit", fontSize: 13, fontWeight: 600, textTransform: "none", letterSpacing: 0 } as const;
 
+// ccrm-031 (DEC-SCOPE-272, E7/E8): who is behind -- every counselor with overdue tasks or follow-ups, worst first, computed live by the
+// API. "Past N days" counts what the escalation rule tells the Overseas Admin about; the link opens that counselor's overdue tasks.
 export default function OverdueByCounselor({ data }: { data: OverdueByCounselorPage }) {
   const days = `${data.threshold_days} day${data.threshold_days === 1 ? "" : "s"}`;
   return (

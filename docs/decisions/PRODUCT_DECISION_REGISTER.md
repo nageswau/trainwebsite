@@ -9593,3 +9593,18 @@ History shows it); lead — new audit action `lead.owner_change` `{from_owner_id
 `lead.handover` not reused — the counselling report counts it). Reason: trimmed, ≤ 500, no control characters; never in structured logs.
 **Numbering:** no migration; API §12FX; RBAC §2.185.
 - **Feature ID authorized:** `ccrm-033`. **Status:** built on `worktree-ccrm-033`.
+
+### DEC-SCOPE-272 — Overdue escalation to the Overseas Admin (`ccrm-031`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-031` (source PDF §11 "Task overdue → escalate to team lead", §14
+escalation; `UNVERIFIED`); owner answer CC3 (no teams — the Overseas Admin is the escalation point); design
+`docs/superpowers/specs/2026-10-25-ccrm-031-overdue-escalation-design.md`. Dependencies: ccrm-029, ccrm-030 (merged).
+**Builder's calls (owner pre-authorised recommended defaults; `NEEDS_CONFIRMATION`):** E1 a ccrm-030 rule `overdue_escalation`
+(notify, timing `escalate`, default 2 days, 0–30, no student) on the Reminder rules page; E2 open counselor tasks and open follow-ups on
+overseas leads owned by an overseas counselor, overdue by more than the threshold (IST days), no 30-day lookback; E3 once per item and
+due day (log dedupe key); E4 every active `overseas_admin` (not Super Admin), none → skipped and retried; E5 one notice per counselor per
+run naming the counselor (no task titles, notes or lead names), link `/overseas/admin/counselor-tasks#overdue`; E6 inactive counselors
+included; E7 `GET /counselor/tasks/overdue-by-counselor` (overseas_admin / super_admin); E8 "Overdue by counselor" section on the admin
+Counselor tasks page.
+**Numbering:** migration `0190_overdue_escalation` (rule-key CHECK + seed); API §12FY; RBAC §2.186.
+- **Feature ID authorized:** `ccrm-031`. **Status:** built on `worktree-ccrm-031`.

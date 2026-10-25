@@ -1,7 +1,7 @@
 """ccrm-030 (DEC-SCOPE-270, RM1-RM10): the counselor reminder and trigger engine -- one catalogue of rules, configured by the Overseas Admin,
 that turns lead and application dates into counselor tasks (ccrm-029, `source='rule'`) or notifications, and reminds the student where the
 rule says so. The daily job runs every time-based rule; `first_contact` runs inside the handover / admin owner write. ccrm-031
-(DEC-SCOPE-271, E1-E8) adds `overdue_escalation`: counselor work overdue past the threshold reaches every active Overseas Admin once.
+(DEC-SCOPE-272, E1-E8) adds `overdue_escalation`: counselor work overdue past the threshold reaches every active Overseas Admin once.
 
 Every firing claims a `counselor_reminder_log` row by its unique `rule:subject:anchor` key (INSERT ... ON CONFLICT DO NOTHING), so a re-run
 never repeats one (RM3), in a savepoint, so one failure is counted and logged with ids only (RM7). Agents are never told here: AGN-017 keeps
