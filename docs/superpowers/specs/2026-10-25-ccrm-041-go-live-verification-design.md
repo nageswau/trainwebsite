@@ -73,6 +73,7 @@ Tests: `test_every_counselor_crm_route_has_a_row`, `test_matrix_row[...]` (one p
 | F2 | tel-026's `GET /telecaller/templates` row still said counselors 403; ccrm-004 (§2.173) opened it to them. | Row updated to the approved rule. |
 | F3 | `super_admin` passes the application-level ccrm routes while their RBAC sections only say "Others 403". | Not a defect: the overseas workflow's existing super_admin access, kept by every item (ccrm-022 SD3). Made explicit as G10 / RBAC §2.192. |
 | F4 | No route returned a cell that contradicts its owner-approved rule; the journey ran end to end; browser QA found no defect. | — |
+| F5 | Found by the full regression (2026-10-26): mgmt-034's inventory (`/management` prefix) failed on `GET /management/crm-reports/export`, which this matrix rows. | As G4: mgmt-034's inventory leaves out `CCRM_ROUTES`. Its own `/management/crm-reports` row stays — it covers the management roles (e.g. accountant) this matrix does not. |
 
 Added `G10`: `super_admin` on application-level routes passes as the Overseas Admin (F3).
 

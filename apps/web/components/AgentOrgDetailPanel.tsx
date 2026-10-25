@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import AgentNetworkRecords from "@/components/AgentNetworkRecords";
 import { formatInr } from "@/lib/agentApplications";
 import { failureText, NETWORK_ERROR, NETWORK_PATH, ORG_STATUS_LABEL, orgUrl, statusClass, type CommissionTotal, type OrgDetail } from "@/lib/agentNetwork";
-import { formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // AGN-022 (DEC-SCOPE-064): one agency for Overseas and Super Admins -- its figures, money and Masters; its students and
@@ -127,7 +127,7 @@ export default function AgentOrgDetailPanel({ orgId, canAct }: { orgId: string; 
         <p>
           <span className={statusClass(org.status)}>{ORG_STATUS_LABEL[org.status] ?? org.status}</span>{" "}
           <span className="muted" style={{ fontSize: 13 }}>
-            since {formatDate(org.status_changed_at ?? org.created_at)}
+            since <LocalTime value={org.status_changed_at ?? org.created_at} />
           </span>
         </p>
         {/* Always mounted so screen readers announce the result when it arrives; inside the header so that, while empty, it adds

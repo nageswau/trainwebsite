@@ -26,16 +26,18 @@ const company: Company = {
 };
 
 type Call = { url: string; init?: RequestInit };
+// rec-030: the contract section reads with an explicit `method: "GET"`; only other methods are writes.
+const isWrite = (call: Call) => Boolean(call.init?.method) && call.init?.method !== "GET";
 function serve(read: (url: string) => Response, onWrite: (call: Call) => Response = () => res({})) {
   const calls: Call[] = [];
   vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
     const call = { url: String(url), init };
     calls.push(call);
-    return Promise.resolve(init?.method ? onWrite(call) : read(String(url)));
+    return Promise.resolve(isWrite(call) ? onWrite(call) : read(String(url)));
   }));
   return calls;
 }
-const writes = (calls: Call[]) => calls.filter((c) => c.init?.method);
+const writes = (calls: Call[]) => calls.filter(isWrite);
 const emptyPickers = (url: string) => (url.includes("/catalogue/") ? res(page([])) : res(page([row])));
 
 afterEach(() => {

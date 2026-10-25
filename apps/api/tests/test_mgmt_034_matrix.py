@@ -17,6 +17,7 @@ import pytest_asyncio
 
 from app.main import app
 from tests.mgmt034_helpers import PDF_BYTES, ROLES, headers, retire_departments, today, world
+from tests.test_ccrm_041_matrix import CCRM_ROUTES
 
 API = "/api/v1"
 OK = {200, 201, 204}
@@ -237,7 +238,7 @@ def test_every_management_route_has_a_row():
     """AC1 / CS3: a route added under the management prefixes without a matrix row (or a stale row) fails here."""
     routes = {_template(k) for k in _operations() if k.split(" ", 1)[1].startswith(PREFIXES)}
     rows = {_template(row.key) for row in MATRIX}
-    assert routes - rows == set(), "routes without a matrix row"
+    assert routes - rows - CCRM_ROUTES == set(), "routes without a matrix row"  # the counselor CRM routes have theirs in ccrm-041 (G4)
     assert rows - routes == set(), "matrix rows without a route"
 
 

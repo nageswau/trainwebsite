@@ -8,8 +8,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 //   - calendar dates (YYYY-MM-DD)      -> formatCalendarDate(v)
 //   - school portal timestamps (D10)   -> formatDate(v, withTime, SCHOOL_TIME_ZONE) / formatSchoolDateTime(v, label)
 //   - other timestamps (viewer's zone) -> <LocalTime value=... />
-// So any formatDate call with fewer than three arguments, and any toLocale*String called on a Date, is a finding. Numbers
-// (amount.toLocaleString()) are fine. The check reads the TypeScript syntax tree and types (not the source text), so line breaks,
+// So any formatDate call with fewer than three arguments, and any toLocale*String called on a Date whose options object does not name
+// a `timeZone`, is a finding. Numbers (amount.toLocaleString()) are fine. The check reads the TypeScript syntax tree and types (not the source text), so line breaks,
 // a variable time flag, or a Date kept in a variable cannot hide a call (review finding).
 const ROOT = join(__dirname, "..", "..");
 const DIRS = ["app", "components", "lib"].map((d) => join(ROOT, d));
@@ -39,6 +39,11 @@ beforeAll(() => {
   program = ts.createProgram(SOURCES, { ...options, noEmit: true });
 }, 120_000);
 
+// An options object literal that sets `timeZone` (`{ timeZone: "UTC", ...o }`, `{ timeZone }`) names its zone.
+const namesZone = (options: ts.Expression | undefined) =>
+  !!options && ts.isObjectLiteralExpression(options) &&
+  options.properties.some((p) => (ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p)) && p.name.getText() === "timeZone");
+
 function scan(paths: string[]): Finding[] {
   const checker = program.getTypeChecker();
   return paths.flatMap((path) => {
@@ -51,7 +56,7 @@ function scan(paths: string[]): Finding[] {
       if (ts.isCallExpression(node)) {
         const callee = node.expression;
         if (ts.isIdentifier(callee) && callee.text === "formatDate" && node.arguments.length < 3) add(node, "formatDate without a zone");
-        if (ts.isPropertyAccessExpression(callee) && LOCALE_METHODS.has(callee.name.text)) {
+        if (ts.isPropertyAccessExpression(callee) && LOCALE_METHODS.has(callee.name.text) && !namesZone(node.arguments[1])) {
           const receiver = checker.getTypeAtLocation(callee.expression);
           if (receiver.getSymbol()?.getName() === "Date") add(node, `Date#${callee.name.text}`);
         }
@@ -67,7 +72,7 @@ describe("dates are always formatted with a zone", () => {
   // Review finding (date sweep): the guard must see a multi-line call, a variable time flag and a Date held in a variable -- and must
   // still pass a number's toLocaleString() and a zoned call. Lines refer to tests/lib/fixtures/dateZoneSweep.fixture.ts.
   it("flags exactly the unzoned shapes in the fixture", () => {
-    expect(scan([FIXTURE]).map((f) => f.line)).toEqual([6, 13, 18]);
+    expect(scan([FIXTURE]).map((f) => f.line)).toEqual([6, 13, 18, 34]);
   });
 
   it("finds no unzoned date formatting in app/, components/ or lib/", () => {

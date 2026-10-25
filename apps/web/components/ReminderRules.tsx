@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
 import { fieldErrors } from "@/lib/bdmTravel";
-import { formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
 import {
   actionLabel, offsetError, offsetUnit, REMINDER_RULES_API, runSummary, type ReminderLogPage, type ReminderRule, type ReminderRunCounts,
 } from "@/lib/reminderRules";
@@ -145,7 +145,7 @@ export default function ReminderRules({ rules, log }: { rules: ReminderRule[]; l
               <tbody>
                 {log.items.map((item) => (
                   <tr key={item.id}>
-                    <td className="no-wrap">{formatDate(item.created_at, true)}</td>
+                    <td className="no-wrap"><LocalTime value={item.created_at} time /></td>
                     <td>{item.rule_label}</td>
                     <td>{item.summary}</td>
                     <td>{item.task_created ? "Task added" : "—"}</td>

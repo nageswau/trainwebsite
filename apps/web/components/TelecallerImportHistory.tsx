@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import type { Page } from "@/lib/apiErrors";
-import { formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
 import { getPage, teamLabel } from "@/lib/telecallerCatalogue";
 import { IMPORTS_URL, importCounts, type ImportSummary } from "@/lib/telecallerImport";
 
@@ -38,7 +38,7 @@ export default function TelecallerImportHistory({ version }: { version: number }
             <tbody>
               {data.items.map((b) => (
                 <tr key={b.id}>
-                  <td data-label="When">{formatDate(b.created_at, true)}</td>
+                  <td data-label="When"><LocalTime value={b.created_at} time /></td>
                   <td data-label="Campaign">{b.campaign.name}</td>
                   <td data-label="Team">{teamLabel(b.division)}</td>
                   <td data-label="Uploaded by">{b.uploaded_by.full_name}</td>
