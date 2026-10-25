@@ -531,8 +531,8 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
   missing documents.
 - **Regression:** AGN-009 agency requests unchanged.
 - **Complexity:** medium. **Risk:** medium.
-- **Status (2026-10-25):** built on `feature/ccrm-020` — `DEC-SCOPE-265`, migration `0187_student_document_requests` (after ccrm-006's
-  `0186_lead_loss_capture`), API §12FR, RBAC §2.179; owner answers: proceed without nehn-003 (still open), R1 a rejection reopens the request, R2 a checklist
+- **Status (2026-10-25):** built on `feature/ccrm-020` — `DEC-SCOPE-266`, migration `0188_student_document_requests` (after ccrm-028's
+  `0187_application_arrival`), API §12FS, RBAC §2.180; owner answers: proceed without nehn-003 (still open), R1 a rejection reopens the request, R2 a checklist
   request marks the item Requested and the upload auto-links; R3–R9 defaults. Design
   `docs/superpowers/specs/2026-10-25-ccrm-020-document-requests-design.md`.
 
@@ -656,9 +656,9 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Acceptance:** Appendix B final row; the management funnel counts enrolments only with confirmation.
 - **Regression:** tel-018 conversion sweep (Converted relies on `enrolled`), mgmt revenue.
 - **Complexity:** medium. **Risk:** medium.
-- **Status (2026-10-25):** built on `worktree-ccrm-027` — `DEC-SCOPE-265` (E1–E9 defaults `NEEDS_CONFIRMATION`: counselor/Admin
+- **Status (2026-10-25):** built on `worktree-ccrm-027` — `DEC-SCOPE-266` (E1–E9 defaults `NEEDS_CONFIRMATION`: counselor/Admin
   `PUT …/enrollment` on direct and agency applications; other routes into `enrolled` → 422; "Deferred (post-visa)" = ccrm-015 `deferred`;
-  new terminal outcomes `non_arrival`, `cancelled`), migration `0184_enrollment_confirmation`, API §12FR, RBAC §2.179. Design
+  new terminal outcomes `non_arrival`, `cancelled`), migration `0184_enrollment_confirmation`, API §12FS, RBAC §2.180. Design
   `docs/superpowers/specs/2026-10-25-ccrm-027-enrolment-confirmation-design.md`.
 
 ### `ccrm-028` — Arrival and orientation tracking (CC6)
@@ -667,6 +667,10 @@ reference, AGN-008). Spec `docs/superpowers/specs/2026-10-22-ccrm-011-applicatio
 - **Expected behaviour:** after enrolment, the counselor records arrival date, arrival confirmed (by whom), orientation attended, notes.
 - **DB:** migration (columns or `application_arrivals`). **Dependencies:** ccrm-027. **Complexity:** small. **Risk:** low.
 - **Open questions:** does arrival trigger anything (e.g. commission eligibility in UPC/mgmt)?
+- **Status (2026-10-25):** built on `worktree-ccrm-028` — `DEC-SCOPE-266` (A1–A6 defaults `NEEDS_CONFIRMATION`: arrival triggers
+  nothing; counselor/Admin `PUT …/arrival` on enrolled direct and agency applications; the server stamps who confirmed and when; orientation
+  needs a confirmed arrival), migration `0187_application_arrival`, API §12FS, RBAC §2.180. Design
+  `docs/superpowers/specs/2026-10-25-ccrm-028-arrival-orientation-design.md`.
 
 ---
 

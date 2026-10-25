@@ -52,7 +52,7 @@ export default function ApplicationChecklistPanel({ applicationId, readOnly = fa
     return true;
   }
 
-  // ccrm-020 (DEC-SCOPE-265 R2): ask the student for a missing item; the server marks it Requested, so the checklist is reloaded.
+  // ccrm-020 (DEC-SCOPE-266 R2): ask the student for a missing item; the server marks it Requested, so the checklist is reloaded.
   async function requestFromStudent(itemId: string, body: { due_date: string; note?: string }): Promise<boolean> {
     if (inFlight.current || !data?.student_id) return false;
     inFlight.current = true;

@@ -2808,7 +2808,17 @@ inside the existing role scope (a counselor searching another counselor's code g
 - The `duplicate_of` lookup is limited to the lead's own division, so a Lead ID of another division reads as unknown (422).
 - Pinned by `test_ccrm_006_loss_capture.py::test_a_manager_manages_the_reason_list_and_readers_see_active_rows`,
   `::test_a_bad_duplicate_target_is_422`, `::test_counselor_closes_lost_with_a_reason_but_cannot_choose_duplicate`.
-### 2.179 Document requests for direct students *(added 2026-10-25 — `DEC-SCOPE-265`, ccrm-020)*
+
+### 2.179 Arrival and orientation *(added 2026-10-25 — `DEC-SCOPE-265`, ccrm-028)*
+
+| Route | `overseas_admin` | `counselor` (overseas) | `agent` | `overseas_student` | Others | Anonymous |
+|---|---|---|---|---|---|---|
+| `GET …/{id}/arrival` | ✅ any | ✅ own applications, direct and agency (`403` otherwise) | ✅ own agency's, read-only | ✅ own, read-only | `403` | `401` |
+| `PUT …/{id}/arrival` | ✅ | ✅ own, direct **and agency** (CC4) | `403` | `403` | `403` | `401` |
+
+- Pinned by `test_ccrm_028_arrival.py::test_student_and_agent_read_but_cannot_write`,
+  `::test_agency_application_counselor_scope_admin_and_agency_told`.
+### 2.180 Document requests for direct students *(added 2026-10-25 — `DEC-SCOPE-266`, ccrm-020)*
 
 | Route | `overseas_admin` | `counselor` (overseas) | `overseas_student` | IT `counselor` / others | Anonymous |
 |---|---|---|---|---|---|

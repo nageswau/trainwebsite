@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 import { signIn } from "./helpers/agency";
 import { E2E_PASSWORD, createAndActivate } from "./helpers/welcome";
 
-// ccrm-020 (DEC-SCOPE-265) -- the nehn-037 acceptance: the counselor requests "IELTS scorecard" from a checklist item (R2), the student
+// ccrm-020 (DEC-SCOPE-266) -- the nehn-037 acceptance: the counselor requests "IELTS scorecard" from a checklist item (R2), the student
 // sees the due date and uploads against it, a rejection reopens it with the counselor's note (R1), the student uploads again, the
 // counselor accepts and the item leaves "missing". Requires the stack running with `python -m app.seed` applied; the spec makes its own
 // counselor, student and application.

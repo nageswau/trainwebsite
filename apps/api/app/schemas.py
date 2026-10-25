@@ -556,7 +556,7 @@ class AgentDocumentRequestCreate(BaseModel):
 
 
 class StudentDocumentRequestCreate(BaseModel):
-    """ccrm-020 (DEC-SCOPE-265 R4): a counselor's / Overseas Admin's request to a direct student. A checklist item (which needs its
+    """ccrm-020 (DEC-SCOPE-266 R4): a counselor's / Overseas Admin's request to a direct student. A checklist item (which needs its
     application) supplies the type and label; otherwise the type is required and "Other" needs a label (checked by the service)."""
 
     model_config = {"extra": "forbid"}
@@ -1533,6 +1533,27 @@ class ApplicationEnrollmentSave(BaseModel):
         if not value:
             raise PydanticCustomError("pre_enrollment_checklist", "Confirm the pre-enrolment checklist is complete")
         return value
+
+
+class ApplicationArrivalSave(BaseModel):
+    """ccrm-028 (DEC-SCOPE-265): arrival and orientation after enrolment, saved whole. Who confirmed and when are stamped by the server
+    (A4); the date and orientation rules (A5) are checked in services/application_arrival.py."""
+
+    model_config = {"extra": "forbid"}
+    arrival_date: date | None = None
+    arrival_confirmed: bool = False
+    orientation_attended: bool = False
+    notes: str | None = None
+
+    @field_validator("arrival_date")
+    @classmethod
+    def _date(cls, value):
+        return _application_date(value)
+
+    @field_validator("notes")
+    @classmethod
+    def _notes(cls, value):
+        return clean_free_text(value, 2000)
 
 
 class ApplicationChecklistMark(BaseModel):

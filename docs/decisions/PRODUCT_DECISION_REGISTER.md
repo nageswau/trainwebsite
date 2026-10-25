@@ -9465,7 +9465,23 @@ gains the Lost Reasons report (leads created in range, in scope, now Lost / Not 
 "lost" figure excludes moves to Duplicate.
 **Numbering:** migration `0186_lead_loss_capture`; API §12FQ; RBAC §2.178.
 - **Feature ID authorized:** `ccrm-006`. **Status:** built on `feature/ccrm-006`.
-### DEC-SCOPE-265 — Document requests for direct students (`ccrm-020`, supersedes `nehn-037` part 1)
+
+### DEC-SCOPE-265 — Arrival and orientation tracking (`ccrm-028`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-028` (source PDF §10 "track arrival/orientation confirmation if this is part
+of EduSphere's service"; `UNVERIFIED` — only the backlog's quote is used); owner answers CC6 (arrival/orientation tracking in scope) and
+CC4 (the counselor records post-offer steps on all applications); design `docs/superpowers/specs/2026-10-25-ccrm-028-arrival-orientation-design.md`.
+**Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers):** A1 arrival triggers
+nothing — no stage, sub-status, outcome, commission or UPC/management eligibility change (answers the backlog's open question). A2 the
+counselor (own applications, direct **and agency**) and the Overseas Admin record through `PUT …/applications/{id}/arrival`; the student and
+the agency read. A3 only once `enrolled` (422 otherwise); closed / archived agency → 409; allowed on hold. A4 "arrival confirmed (by whom)"
+= the server stamps the signed-in staff member and the time when arrival is confirmed; how it was confirmed goes in the notes; un-confirming
+clears the stamp. A5 the date is optional while unconfirmed (expected date), required and not in the future to confirm; orientation needs a
+confirmed arrival (also a DB CHECK). A6 columns on `overseas_applications`; a change writes one history note, an audit row (field names
+only) and tells the agency (CC5); the student is not notified; an unchanged save writes nothing.
+**Numbering:** migration `0187_application_arrival`; API §12FR; RBAC §2.179.
+- **Feature ID authorized:** `ccrm-028`. **Status:** built on `worktree-ccrm-028`.
+### DEC-SCOPE-266 — Document requests for direct students (`ccrm-020`, supersedes `nehn-037` part 1)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-020` (source PDF §11 "Document missing → add a task … optionally send a student
 reminder", nehn-037 #1, `UNVERIFIED`); design `docs/superpowers/specs/2026-10-25-ccrm-020-document-requests-design.md`.
@@ -9479,5 +9495,5 @@ cancel; R4 due date required (today IST or later), note optional, AGN-009 reques
 type + label; R6 the student is notified on create / cancel (never the note), the requester on upload; R7 AGN-009 byte rules for the
 upload, optional expiry; R8 `overdue` computed (open, past due) with a partial index for ccrm-030; R9 a request needs a student login
 (agency-only records keep AGN-009).
-**Numbering:** migration `0187_student_document_requests` (after ccrm-006's `0186`); API §12FR; RBAC §2.179.
+**Numbering:** migration `0188_student_document_requests` (after ccrm-028's `0187`); API §12FS; RBAC §2.180.
 - **Feature ID authorized:** `ccrm-020`. **Status:** built on `feature/ccrm-020`.

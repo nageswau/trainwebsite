@@ -1,10 +1,10 @@
 """ccrm-020 -- document requests for direct students: document_requests.student_user_id, application_id, checklist_item_id, due_date; a
 nullable agent_student_id with the owner CHECK (an agency record or a student login, exactly one); the student and open-due indexes.
 
-Revision ID: 0187_student_document_requests
-Revises: 0186_lead_loss_capture
+Revision ID: 0188_student_document_requests
+Revises: 0187_application_arrival
 
-docs/superpowers/specs/2026-10-25-ccrm-020-document-requests-design.md (DEC-SCOPE-265). Existing rows are all agency requests, so the
+docs/superpowers/specs/2026-10-25-ccrm-020-document-requests-design.md (DEC-SCOPE-266). Existing rows are all agency requests, so the
 CHECK holds without a backfill. 0001 builds a fresh database from the current models, which already carry the columns and constraints,
 so each step runs only when missing (0166's idiom). The downgrade is lossy: a direct student's requests, their events and the documents'
 links to them go before agent_student_id is NOT NULL again.
@@ -14,8 +14,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0187_student_document_requests"
-down_revision = "0186_lead_loss_capture"
+revision = "0188_student_document_requests"
+down_revision = "0187_application_arrival"
 branch_labels = None
 depends_on = None
 

@@ -3860,9 +3860,25 @@ that moves only the offer deadline carries the conditions to the new offer row.
   `telecaller.lost_reason_create` / `_update` with field names. Never deleted.
 - **`GET /api/v1/telecaller/reports/lost`** (+ `.csv`) — §12AC's scope and filters; rows: leads created in the range now Lost or Not
   Interested, by reason (`label`, `leads`, `lost`, `not_interested`); no reason → "No reason recorded".
-## 12FR. Document requests for direct students (ccrm-020) — addendum, 2026-10-25
 
-`DEC-SCOPE-265`. Staff = `counselor` (overseas, csc-001 scope) and `overseas_admin` through ccrm-007's `staff_student` gate (another student
+## 12FR. Arrival and orientation (ccrm-028) — addendum, 2026-10-25
+
+`DEC-SCOPE-265`. Under `/api/v1/workflows/overseas/applications/{id}` (router `api/application_offers.py`):
+
+- `GET …/arrival` — counselor (own, direct and agency), Overseas Admin; the student and the agency read their own. Returns
+  `{arrival: {status, can_record, arrival_date, arrival_confirmed, confirmed_at, confirmed_by, orientation_attended, notes}}` —
+  `confirmed_by` is the confirming staff member's name (no email or id).
+- `PUT …/arrival` — body `{arrival_date?, arrival_confirmed, orientation_attended, notes?}` (saved whole; extra fields 422; dates
+  2000–2100; notes ≤ 2000, cleaned). Turning `arrival_confirmed` on stamps who and when; keeping it on keeps the first stamp; turning it off
+  clears it. A change writes one history row "Arrival updated -- arrived|expected <date>[, orientation attended]" (stage and sub-status
+  unchanged), the agency notice "Application details updated" (CC5), audit `overseas.application.arrival` `{fields}`; unchanged →
+  `changed: false`, nothing written. Returns `{arrival, changed}`. Moves no stage, sub-status, outcome or commission (A1). Errors: 422
+  "Arrival is recorded after enrolment is confirmed" (not `enrolled`), "Enter the arrival date to confirm arrival", "A confirmed arrival
+  date cannot be in the future", "Confirm arrival before recording orientation"; 409 closed or archived agency record (on hold allowed);
+  403 other roles or out of scope.
+## 12FS. Document requests for direct students (ccrm-020) — addendum, 2026-10-25
+
+`DEC-SCOPE-266`. Staff = `counselor` (overseas, csc-001 scope) and `overseas_admin` through ccrm-007's `staff_student` gate (another student
 `404`, another role `403`). A request item: `{id, document_type, document_label, name, note, review_note, status: open|fulfilled|cancelled,
 due_date, overdue, application_id, application_code, university, checklist_item_id, requested_by, created_at, closed_at,
 document:{id, original_filename, verification_status, status_label}|null}` — never a file key. `overdue` = open and due before today (IST);

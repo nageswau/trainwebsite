@@ -5,7 +5,7 @@ import ApplicationChecklistPanel from "@/components/ApplicationChecklistPanel";
 import CounselorDocumentRequestsPanel from "@/components/CounselorDocumentRequestsPanel";
 import StudentDocumentRequestsPanel from "@/components/StudentDocumentRequestsPanel";
 
-// ccrm-020 (DEC-SCOPE-265): the counselor's requests on the student 360, the student's "Requested documents", and the checklist row's
+// ccrm-020 (DEC-SCOPE-266): the counselor's requests on the student 360, the student's "Requested documents", and the checklist row's
 // "Request from student".
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh, push: vi.fn() }) }));

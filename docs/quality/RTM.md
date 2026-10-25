@@ -1128,11 +1128,24 @@ half.
 | `ccrm-006-AC08` | Migration seeds, enforces the closure CHECKs, round-trips (duplicate → lost on downgrade), single head | `apps/api/tests/test_ccrm_006_migration.py` |
 | `ccrm-006-AC09` | UI: the stage control asks for the Lead ID / reason / lost to; closure shown on the lead | `apps/web/tests/components/LeadStageControl.test.tsx`, `CounselorLeadDetail.test.tsx` |
 | `ccrm-006-AC10` | Browser: reason created, Duplicate + Lost closes, report row, phone width, no console errors | `apps/web/tests/e2e/ccrm-006-loss-capture.spec.ts` |
+
+| `ccrm-028` | Requirement: §10 arrival/orientation confirmation (CC6) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-028` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-265` → design `docs/superpowers/specs/2026-10-25-ccrm-028-arrival-orientation-design.md`; `API_CONTRACT.md` §12FR; `RBAC_MATRIX.md` §2.179 | A1–A6 defaults `NEEDS_CONFIRMATION` |
+
+| AC | Criterion | Evidence |
+|---|---|---|
+| `ccrm-028-AC01` | Expected date, then confirmed arrival + orientation; stamped by/at; history note; audit | `apps/api/tests/test_ccrm_028_arrival.py::test_the_counselor_records_an_expected_date_then_confirms_arrival_and_orientation` |
+| `ccrm-028-AC02` | Before enrolment 422; confirm needs a date not in the future; orientation needs confirmed arrival | `::test_arrival_is_recorded_only_after_enrolment`, `::test_the_rules_on_date_and_orientation` |
+| `ccrm-028-AC03` | Un-confirming clears the stamp; unchanged save writes nothing | `::test_unconfirming_clears_the_stamp_and_an_unchanged_save_writes_nothing` |
+| `ccrm-028-AC04` | Agency application: assigned counselor + Admin record, agency told; another counselor 403 | `::test_agency_application_counselor_scope_admin_and_agency_told` |
+| `ccrm-028-AC05` | Student and agent read, cannot write | `::test_student_and_agent_read_but_cannot_write` |
+| `ccrm-028-AC06` | Nothing else moves (A1) | `::test_recording_arrival_moves_nothing_else` |
+| `ccrm-028-AC07` | Migration chain, columns, CHECK round trip | `apps/api/tests/test_ccrm_028_migration.py` |
+| `ccrm-028-AC08` | Counselor UI: Arrival panel (load/error, orientation gated, refusal shown) | `apps/web/tests/components/ApplicationArrivalPanel.test.tsx`; `apps/web/tests/e2e/ccrm-028-arrival.spec.ts` |
 **Addendum, 2026-10-25 (`ccrm-020`)** — one row and its acceptance-criteria map. Document requests for direct students.
 
 | Feature | Trace | Open items | Evidence |
 |---|---|---|---|
-| `ccrm-020` | Requirement: §11 + nehn-037 #1 + owner answers R1–R2 (in-session 2026-10-25) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-020` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-265` → design `docs/superpowers/specs/2026-10-25-ccrm-020-document-requests-design.md`; `API_CONTRACT.md` §12FR, `RBAC_MATRIX.md` §2.179, `DATA_MODEL.md` (0187) | Defaults R3–R9 `NEEDS_CONFIRMATION`; nehn-003 still open | Lite API set, vitest, e2e and browser QA |
+| `ccrm-020` | Requirement: §11 + nehn-037 #1 + owner answers R1–R2 (in-session 2026-10-25) → `docs/delivery/COUNSELOR_CRM_BACKLOG.md` `ccrm-020` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-266` → design `docs/superpowers/specs/2026-10-25-ccrm-020-document-requests-design.md`; `API_CONTRACT.md` §12FS, `RBAC_MATRIX.md` §2.180, `DATA_MODEL.md` (0188) | Defaults R3–R9 `NEEDS_CONFIRMATION`; nehn-003 still open | Lite API set, vitest, e2e and browser QA |
 
 | AC | Statement | Tests |
 |---|---|---|

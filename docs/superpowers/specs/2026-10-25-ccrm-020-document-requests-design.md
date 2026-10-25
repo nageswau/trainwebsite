@@ -1,7 +1,7 @@
 # ccrm-020 — Document requests for direct students (design)
 
-Feature: `ccrm-020` (`docs/delivery/COUNSELOR_CRM_BACKLOG.md`), supersedes `nehn-037` part 1. Decision `DEC-SCOPE-265`, migration
-`0187_student_document_requests`, API §12FR, RBAC §2.179. Branch `feature/ccrm-020` (worktree `worktree-ccrm-020`), cut from main
+Feature: `ccrm-020` (`docs/delivery/COUNSELOR_CRM_BACKLOG.md`), supersedes `nehn-037` part 1. Decision `DEC-SCOPE-266`, migration
+`0188_student_document_requests`, API §12FS, RBAC §2.180. Branch `feature/ccrm-020` (worktree `worktree-ccrm-020`), cut from main
 @475269c6.
 
 ## 1. Requirement (backlog, UNVERIFIED source — counselor CRM spec PDF §11, nehn-037 #1)
@@ -54,7 +54,7 @@ Defaults (`NEEDS_CONFIRMATION`):
 - **R8** `overdue` = open and due date before today (IST), computed in every list; a partial index on open due dates serves ccrm-030.
 - **R9** the request needs a student login (`student_user_id`); agency-only records keep AGN-009.
 
-## 4. Data (migration 0187)
+## 4. Data (migration 0188)
 
 `document_requests`: `agent_student_id` → nullable; new `student_user_id` (FK users), `application_id` (FK overseas_applications),
 `checklist_item_id` (FK application_checklist_items, ON DELETE SET NULL), `due_date` (date). CHECK `ck_document_requests_owner`:
@@ -63,7 +63,7 @@ partial `ix_document_requests_open_due (due_date) WHERE status = 'open' AND due_
 builds from models). Downgrade (lossy): delete direct-student requests (their events, unlink documents), restore NOT NULL. No new
 event code: a reopen is a `requested` event `fulfilled → open` with the review note.
 
-## 5. API (§12FR)
+## 5. API (§12FS)
 
 | Route | Who | Notes |
 |---|---|---|

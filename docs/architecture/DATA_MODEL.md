@@ -2262,7 +2262,14 @@ default 0, `created_at`, `updated_at`; never deleted; seeded with six reasons wh
 ON DELETE RESTRICT, `lost_reason_id` FK `lead_lost_reasons` ON DELETE RESTRICT and `lost_to` (160), all NULL; the status CHECK adds
 `duplicate`; CHECKs `duplicate_of_id <> id`, `(duplicate_of_id IS NOT NULL) = (status = 'duplicate')`, and `lost_reason_id` / `lost_to`
 only on `lost` / `not_interested`. Downgrade turns Duplicate leads into Lost, restores the old status CHECK, drops the columns and the table.
-## Document requests for direct students (`ccrm-020`, `DEC-SCOPE-265`; migration `0187_student_document_requests`, after ccrm-006's `0186_lead_loss_capture`)
+
+## Arrival and orientation (`ccrm-028`, `DEC-SCOPE-265`; migration `0187_application_arrival`, after ccrm-006's `0186_lead_loss_capture`)
+
+`overseas_applications` gains `arrival_date` (date, NULL; the expected date until arrival is confirmed), `arrival_confirmed_at`
+(timestamptz, NULL), `arrival_confirmed_by_id` (FK `users` ON DELETE SET NULL, NULL), `orientation_attended` (bool, NOT NULL, default
+`false`) and `arrival_notes` (text, NULL), with CHECK `ck_overseas_applications_orientation_arrival` (`NOT orientation_attended OR
+arrival_confirmed_at IS NOT NULL`). One arrival per application. No backfill; downgrade drops the five columns.
+## Document requests for direct students (`ccrm-020`, `DEC-SCOPE-266`; migration `0188_student_document_requests`, after ccrm-028's `0187_application_arrival`)
 
 `document_requests`: `agent_student_id` becomes NULL-able; new `student_user_id` (FK `users`), `application_id` (FK
 `overseas_applications`), `checklist_item_id` (FK `application_checklist_items` ON DELETE SET NULL), `due_date` (date). CHECK
