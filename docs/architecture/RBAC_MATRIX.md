@@ -2818,3 +2818,13 @@ inside the existing role scope (a counselor searching another counselor's code g
 
 - Pinned by `test_ccrm_028_arrival.py::test_student_and_agent_read_but_cannot_write`,
   `::test_agency_application_counselor_scope_admin_and_agency_told`.
+### 2.180 Document requests for direct students *(added 2026-10-25 — `DEC-SCOPE-266`, ccrm-020)*
+
+| Route | `overseas_admin` | `counselor` (overseas) | `overseas_student` | IT `counselor` / others | Anonymous |
+|---|---|---|---|---|---|
+| `GET` / `POST /counselor/students/{id}/document-requests`, `POST …/{request_id}/cancel` | ✅ any student | ✅ csc-001 students (`404` otherwise; an application write also needs the checklist writers' scope) | `403` | `403` | `401` |
+| `GET /overseas/me/document-requests`, `POST …/{request_id}/upload` | `403` | `403` | ✅ own (`404` for another's) | `403` | `401` |
+
+- The agency's AGN-009 request routes never return a direct student's request (their scope is `agent_student_id`).
+- Pinned by `test_ccrm_020_requests.py::test_scope_admin_yes_other_counselor_and_roles_no`, `::test_student_sees_the_request_and_uploads_against_it`,
+  `::test_the_agency_request_list_never_shows_a_direct_students_request`.

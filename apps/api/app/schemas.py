@@ -555,6 +555,27 @@ class AgentDocumentRequestCreate(BaseModel):
     note: str | None = Field(default=None, max_length=1000)
 
 
+class StudentDocumentRequestCreate(BaseModel):
+    """ccrm-020 (DEC-SCOPE-266 R4): a counselor's / Overseas Admin's request to a direct student. A checklist item (which needs its
+    application) supplies the type and label; otherwise the type is required and "Other" needs a label (checked by the service)."""
+
+    model_config = {"extra": "forbid"}
+    document_type: AgentDocumentType | None = None
+    document_label: str | None = Field(default=None, max_length=200)
+    due_date: date
+    note: str | None = Field(default=None, max_length=1000)
+    application_id: UUID | None = None
+    checklist_item_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def _source(self):
+        if self.checklist_item_id is not None and self.application_id is None:
+            raise ValueError("A checklist item request needs its application")
+        if self.checklist_item_id is None and self.document_type is None:
+            raise ValueError("Choose the document type")
+        return self
+
+
 class AppointmentCreate(BaseModel):
     student_id: UUID | None = None
     staff_id: UUID | None = None

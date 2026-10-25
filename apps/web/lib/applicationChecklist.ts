@@ -21,6 +21,7 @@ export type ApplicationChecklistItem = {
   removable: boolean;
   sensitivity: Sensitivity; // ccrm-022 (DEC-SCOPE-263 SD2)
   documents: ChecklistDocument[];
+  open_request?: { id: string; due_date: string | null } | null; // ccrm-020: the item's open request to the student
 };
 export type MissingItem = { id: string; label: string; status: string; status_label: string };
 export type ChecklistSummary = { required_total: number; required_complete: number; optional_total: number; optional_complete: number; ready: boolean; missing: MissingItem[] };
@@ -36,6 +37,7 @@ export type ChecklistPayload = {
   checklist: ApplicationChecklist | null;
   template: { id: string; name: string; version: number; gate_mode: GateMode } | null;
   documents: ChecklistDocument[];
+  student_id?: string | null; // ccrm-020: writers only -- the student a missing item can be requested from (none on a no-login record)
 };
 
 /** Complete statuses (app/application_checklists.COMPLETE). */

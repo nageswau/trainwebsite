@@ -2269,3 +2269,11 @@ only on `lost` / `not_interested`. Downgrade turns Duplicate leads into Lost, re
 (timestamptz, NULL), `arrival_confirmed_by_id` (FK `users` ON DELETE SET NULL, NULL), `orientation_attended` (bool, NOT NULL, default
 `false`) and `arrival_notes` (text, NULL), with CHECK `ck_overseas_applications_orientation_arrival` (`NOT orientation_attended OR
 arrival_confirmed_at IS NOT NULL`). One arrival per application. No backfill; downgrade drops the five columns.
+## Document requests for direct students (`ccrm-020`, `DEC-SCOPE-266`; migration `0188_student_document_requests`, after ccrm-028's `0187_application_arrival`)
+
+`document_requests`: `agent_student_id` becomes NULL-able; new `student_user_id` (FK `users`), `application_id` (FK
+`overseas_applications`), `checklist_item_id` (FK `application_checklist_items` ON DELETE SET NULL), `due_date` (date). CHECK
+`ck_document_requests_owner`: exactly one of `agent_student_id` / `student_user_id` (existing rows are agency requests). Indexes
+`ix_document_requests_student_user_status` (`student_user_id`, `status`) and partial `ix_document_requests_open_due` (`due_date`) WHERE open
+and dated (ccrm-030). No new event code: a reopen is a `requested` event `fulfilled → open`. Downgrade (lossy) deletes direct students'
+requests and their events, unlinks their documents, and restores NOT NULL.

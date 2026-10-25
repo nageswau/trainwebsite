@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
+import CounselorDocumentRequestsPanel from "@/components/CounselorDocumentRequestsPanel";
 import LocalTime from "@/components/LocalTime";
 import OverseasStudentJourney from "@/components/OverseasStudentJourney";
 import PortalShell from "@/components/PortalShell";
@@ -68,7 +69,7 @@ export default async function OverseasStudent360Page({ portal, id, tab }: { port
           ))}
         </nav>
         <section aria-label={STUDENT_TABS.find((t) => t.key === tab)?.label} className="s360-section">
-          {await panel(tab, id, overview)}
+          {await panel(tab, id, overview, portal)}
         </section>
       </div>
     </PortalShell>
@@ -85,7 +86,7 @@ async function load<T>(url: string, render: (data: T) => ReactNode | Promise<Rea
   return render(data);
 }
 
-async function panel(tab: StudentTab, id: string, overview: StudentOverview): Promise<ReactNode> {
+async function panel(tab: StudentTab, id: string, overview: StudentOverview, portal: Portal): Promise<ReactNode> {
   switch (tab) {
     case "overview":
       return <OverviewPanel overview={overview} />;
@@ -100,8 +101,18 @@ async function panel(tab: StudentTab, id: string, overview: StudentOverview): Pr
           <StudentProfileForm key={tab} initial={data.profile} url={studentProfileUrl(id)} countries={tab === "preferences" ? await destinationOptions() : []} section={tab} />
         </div>
       ));
-    case "documents":
-      return load<{ items: StudentDocumentRow[] }>(student360Url(id, "documents"), (data) => <DocumentsPanel items={data.items} />);
+    case "documents": {
+      // ccrm-020: requests can be tied to an application the reader may write (the counselor's own; every one for the Overseas Admin)
+      const applications = overview.applications
+        .filter((a) => a.open && (portal === "admin" || a.mine))
+        .map((a) => ({ id: a.id, label: [a.application_code, a.university, a.course].filter(Boolean).join(" · ") }));
+      return (
+        <>
+          <CounselorDocumentRequestsPanel studentId={id} applications={applications} />
+          {await load<{ items: StudentDocumentRow[] }>(student360Url(id, "documents"), (data) => <DocumentsPanel items={data.items} />)}
+        </>
+      );
+    }
     case "activities":
       return load<StudentActivities>(student360Url(id, "activities"), (activities) =>
         load<StudentNotes>(`${studentNotesUrl(id)}?limit=20&offset=0`, (notes) => <ActivitiesPanel activities={activities} notes={notes} />),
