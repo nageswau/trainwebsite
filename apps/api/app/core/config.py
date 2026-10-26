@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -70,7 +71,22 @@ class Settings(BaseSettings):
     razorpay_key_id: str | None = None
     razorpay_key_secret: str | None = None
     razorpay_webhook_secret: str | None = None
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
+    # nehn-022 (DEC-SCOPE-282): the explicit gateway mode, checked against the keys at startup -- a mismatch stops the API, worker
+    # and beat before they serve anything. Go-live steps: docs/architecture/RAZORPAY_GO_LIVE.md.
+    razorpay_mode: Literal["test", "live"] = "test"
+    # A failed startup check must never print the keys or any other secret it was given.
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False, hide_input_in_errors=True)
+
+    @model_validator(mode="after")
+    def _razorpay_keys_match_mode(self) -> "Settings":
+        prefix = f"rzp_{self.razorpay_mode}_"
+        if self.razorpay_mode == "live":
+            missing = [name.upper() for name in ("razorpay_key_id", "razorpay_key_secret", "razorpay_webhook_secret") if not getattr(self, name)]
+            if missing:
+                raise ValueError(f"RAZORPAY_MODE=live needs {', '.join(missing)} to be set")
+        if self.razorpay_key_id and not self.razorpay_key_id.startswith(prefix):
+            raise ValueError(f"RAZORPAY_MODE={self.razorpay_mode} needs a RAZORPAY_KEY_ID starting with {prefix}")
+        return self
 
 
 @lru_cache

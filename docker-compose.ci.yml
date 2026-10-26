@@ -36,6 +36,7 @@ x-ci-api-environment: &ci-api-environment
   RAZORPAY_KEY_ID: ""
   RAZORPAY_KEY_SECRET: ""
   RAZORPAY_WEBHOOK_SECRET: ""
+  RAZORPAY_MODE: "test"
 
 services:
   api:

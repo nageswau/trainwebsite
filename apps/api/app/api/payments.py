@@ -75,6 +75,12 @@ async def _mark_paid(db: AsyncSession, item: Payment, payer: User, *, source: st
         await agent_deposits.on_payment_paid(db, item, source=source, provider_amount=provider_amount)
 
 
+@router.get("/mode")
+async def mode(user: User = Depends(get_current_user)):
+    """nehn-022 (DEC-SCOPE-282): the gateway mode only (never a key), so payment screens can show the test-mode banner."""
+    return {"mode": settings.razorpay_mode}
+
+
 @router.get("/mine")
 async def mine(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     # AGN-011 D4: a deposit an agent paid for a student is shown on that application, not in the agent's own fees.
