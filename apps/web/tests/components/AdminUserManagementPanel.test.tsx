@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import AdminUserManagementPanel from "@/components/AdminUserManagementPanel";
 
@@ -167,5 +167,41 @@ describe("AdminUserManagementPanel Re-send", () => {
     fireEvent.click(screen.getByRole("button", { name: "Re-send set-password link to Pia Pending" }));
     expect(await screen.findByText(/no pending invitation/)).toHaveClass("form-error");
     expect(screen.getByRole("button", { name: "Re-send set-password link to Pia Pending" })).not.toBeDisabled();
+  });
+});
+
+describe("AdminUserManagementPanel ?q= (nehn-041)", () => {
+  afterEach(() => window.history.replaceState(null, "", "/"));
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn();  // jsdom does not implement it
+  });
+
+  it("starts with the search from the address, so a Student search card opens this student", async () => {
+    window.history.replaceState(null, "", "/admin/users?q=3FA9C21B");
+    const calls: string[] = [];
+    stubFetch((url) => {
+      calls.push(url);
+      return json(users.filter((u) => u.id === "a"));
+    });
+    render(<AdminUserManagementPanel />);
+    await waitFor(() => expect((screen.getByLabelText("Search by name, email, role, or Student ID") as HTMLInputElement).value).toBe("3FA9C21B"));
+    await waitFor(() => expect(calls).toContain("/api/v1/admin/users?q=3FA9C21B"));
+  });
+
+  it("scrolls the searched list into view once it loads (QA-041-02: the page has other tables above it)", async () => {
+    window.history.replaceState(null, "", "/admin/users?q=3FA9C21B");
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    stubFetch(() => json(users));
+    render(<AdminUserManagementPanel />);
+    await waitFor(() => expect(scroll).toHaveBeenCalledTimes(1));
+    expect(scroll.mock.contexts[0]).toBe(screen.getByLabelText("Search by name, email, role, or Student ID"));
+  });
+
+  it("does not scroll without ?q=", async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    await renderPanel();
+    expect(scroll).not.toHaveBeenCalled();
   });
 });

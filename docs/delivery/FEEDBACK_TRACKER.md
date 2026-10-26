@@ -94,7 +94,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-038 | Agent portal | Agent performance dashboard: remaining KPIs | Enhancement | Waiting — client input | Dev + Client | Wave 4 | Agent KPI list and definitions (CI-06) |
 | nehn-039 | School portal | School documents and statuses, application detail, bulk-upload reconfirmation | Enhancement | Waiting — client input | Dev + Client | Wave 0 · next review | School fields and visibility (CI-05); keep bulk upload? (OD-13) |
 | nehn-040 | Identification | Student ID for every student, and search by it; no Agent ID | Enhancement | Done — confirm defaults | Dev + Client | Wave 3 | Confirm no Agent ID (OD-01) |
-| nehn-041 | Search | Unified admin and operations student search | Enhancement | Ready to start | Dev + Client | Wave 3 | Include leads in the same search? |
+| nehn-041 | Search | Unified admin and operations student search | Enhancement | Done — confirm defaults | Dev + Client | Wave 3 | Include leads in the same search? |
 | nehn-042 | Search | Audit log search and filters | Enhancement | Ready to start | Dev + Client | Wave 4 | Audit log retention period |
 | nehn-043 | Process | This feedback tracker | Enhancement | Done — confirm defaults | Dev | Wave 0 · next review | Confirm format and audience (§2) |
 
@@ -123,7 +123,7 @@ These items are built. Where a question was open, we used the recommended answer
 | A19 | Confirm Phase-1 bulk school upload | Client + Dev, next review | nehn-039 | Waiting — client input (CI-05, OD-13); bulk upload is already built |
 | A20 | Agent Performance Dashboard | Dev, Medium | nehn-038 | Waiting — client input (CI-06) |
 | A21 | Business-facing Student/Agent ID | Dev, High | nehn-040 | Done — confirm defaults (Student ID everywhere; no Agent ID, OD-01) |
-| A22 | Student/agent search | Dev, High | nehn-040, 041 | Partly done — search by Student ID done; unified search ready to start |
+| A22 | Student/agent search | Dev, High | nehn-040, 041 | Done — confirm defaults (Student ID search; unified student search, leads not included) |
 | A23 | Admin report template | Client, pending | CI-02 | Waiting — client input |
 | A24 | Role-specific reports | Dev, after report definition | nehn-010, 016, 017 | Waiting — dependency (CI-02, nehn-009) |
 | A25 | Feedback tracker | Dev, before next review | nehn-043 | Done — confirm defaults (this document) |

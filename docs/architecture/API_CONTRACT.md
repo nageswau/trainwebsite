@@ -4224,3 +4224,20 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   Admins (own division; `super_admin` all) and other payers (agents) are unchanged: 200 signed URL, or 404 if not yet generated.
 - Invoice generation is unchanged (checkout, enrolment, admin create/discount/EMI, agent deposit) until OD-11 (GST) is answered.
 - `GET /payments/{payment_id}/receipt` is unchanged and is the student's payment document.
+
+## 12GP. Unified student search (nehn-041) — addendum, 2026-10-26
+
+`DEC-SCOPE-291`. No migration. New route; nothing else changes shape.
+
+- `GET /api/v1/search/students?q=` — `q` required, trimmed 3-100 characters (422 "Type at least 3 characters" / "Use at most 100
+  characters"). Optional `type` (`it_student` | `overseas_student` | `agency_student` | `school_student`), `division` (`it` |
+  `overseas` | `school`) and `program` (IT program UUID → IT students enrolled in it); a bad value 422. Matching: literal,
+  case-insensitive substring of name, email and Student ID; a phone-shaped `q` also matches the phone's digits (last 10 digits when
+  longer); IT students also by enrolled program title, overseas students by an application's course title, agency students (no login)
+  by agency name or prefix, school students by school name.
+  Response `{"q": str, "groups": {<kind>: {"items": [{"id", "code", "label", "detail", "href"}], "more": bool}}}` — only the caller's
+  kinds after the filters, each capped at 20 (`more` when there are more). `href` is the caller's page for that student, or `null`.
+  403 for a role with no student list (see RBAC §2.202); an agent refused by the approval gate 403 with its reason. 429 + `Retry-After`
+  past 30 searches a minute per user. Each search writes one `AuditLog` row (`action=student.search`, `metadata_json` = result counts per
+  kind, never the search text).
+- `AdminUserManagementPanel` (`/admin/users`, `/it/admin/students`, …) starts with its search set from `?q=` (web only).

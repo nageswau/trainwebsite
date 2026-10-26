@@ -39,6 +39,6 @@ nehn-037,Overseas,"Counselor tools — document requests, checklist, scholarship
 nehn-038,Agent portal,Agent performance dashboard: remaining KPIs,Enhancement,Waiting — client input,Dev + Client,Wave 4,Agent KPI list and definitions (CI-06)
 nehn-039,School portal,"School documents and statuses, application detail, bulk-upload reconfirmation",Enhancement,Waiting — client input,Dev + Client,Wave 0 · next review,School fields and visibility (CI-05); keep bulk upload? (OD-13)
 nehn-040,Identification,"Student ID for every student, and search by it; no Agent ID",Enhancement,Done — confirm defaults,Dev + Client,Wave 3,Confirm no Agent ID (OD-01)
-nehn-041,Search,Unified admin and operations student search,Enhancement,Ready to start,Dev + Client,Wave 3,Include leads in the same search?
+nehn-041,Search,Unified admin and operations student search,Enhancement,Done — confirm defaults,Dev + Client,Wave 3,Include leads in the same search?
 nehn-042,Search,Audit log search and filters,Enhancement,Ready to start,Dev + Client,Wave 4,Audit log retention period
 nehn-043,Process,This feedback tracker,Enhancement,Done — confirm defaults,Dev,Wave 0 · next review,Confirm format and audience (§2)
