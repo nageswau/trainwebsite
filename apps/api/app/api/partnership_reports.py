@@ -11,7 +11,7 @@ import time
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.agent_reports import NO_STORE, to_csv
+from app.api.agent_reports import NO_STORE, export_response
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import AuditLog, User
@@ -43,46 +43,41 @@ def _log(event: str, user: User, kind: str, raw: dict, rows: int, started: float
                                                      "rows": rows, "duration_ms": round((time.perf_counter() - started) * 1000)}})  # fmt: skip
 
 
+def _raw(window: str | None = None, first: str | None = FROM, last: str | None = TO, month: str | None = None) -> dict[str, str | None]:
+    """The filters as plain strings -- one dependency for the read, CSV and xlsx routes, so they cannot drift."""
+    return {"window": window, "from": first, "to": last, "month": month}
+
+
 # Registered before `/{kind}`, whose path parameter would otherwise also match "pipeline.csv".
 @router.get("/{kind}.csv")
-async def export_report(
-    kind: str,
-    window: str | None = None,
-    first: str | None = FROM,
-    last: str | None = TO,
-    month: str | None = None,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
+async def export_report(kind: str, raw: dict = Depends(_raw), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _export(db, user, kind, raw, "csv")
+
+
+@router.get("/{kind}.xlsx")
+async def export_report_xlsx(kind: str, raw: dict = Depends(_raw), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """nehn-004 (DEC-SCOPE-282 X3): the CSV export's twin -- the same checks, cap and audit."""
+    return await _export(db, user, kind, raw, "xlsx")
+
+
+async def _export(db: AsyncSession, user: User, kind: str, raw: dict[str, str | None], fmt: str) -> Response:
     started = time.perf_counter()
-    raw = {"window": window, "from": first, "to": last, "month": month}
     payload = await _report(db, user, kind, raw)
     rows = len(payload["items"])
     if rows > reports.CSV_ROWS:
         _log("partnership_report.export_too_large", user, kind, raw, rows, started, logging.WARNING)
         raise HTTPException(422, f"This report has more than {reports.CSV_ROWS:,} rows; narrow the filters")
-    body = to_csv(payload)
+    response = export_response(payload, fmt, f"partnership-{kind}-{payload['as_of']}", payload["title"])
     db.add(AuditLog(user_id=user.id, action=EXPORT_ACTION, entity_type="partnership_report", entity_id=kind,
-                    metadata_json={"filters": reports.given(kind, raw), "rows": rows}))  # fmt: skip
+                    metadata_json={"filters": reports.given(kind, raw), "rows": rows, "format": fmt}))  # fmt: skip
     await db.commit()
     _log("partnership_report.export", user, kind, raw, rows, started)
-    filename = f"partnership-{kind}-{payload['as_of']}.csv"
-    return Response(content=body, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{filename}"', **NO_STORE})
+    return response
 
 
 @router.get("/{kind}")
-async def read_report(
-    kind: str,
-    response: Response,
-    window: str | None = None,
-    first: str | None = FROM,
-    last: str | None = TO,
-    month: str | None = None,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
+async def read_report(kind: str, response: Response, raw: dict = Depends(_raw), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     started = time.perf_counter()
-    raw = {"window": window, "from": first, "to": last, "month": month}
     payload = await _report(db, user, kind, raw)
     response.headers.update(NO_STORE)
     _log("partnership_report.read", user, kind, raw, payload["total"], started)

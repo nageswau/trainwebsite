@@ -9778,3 +9778,22 @@ P10 `PUT` replaces the set by diff; a concurrent edit is 409; a no-op is not aud
 (open question 3). P12 no custom roles (open question 4). Granting a key to a role never widens the route's record scope.
 **Numbering:** migration `0196_role_permissions`; API §12GG; RBAC §2.195.
 - **Feature ID authorized:** `nehn-005`. **Status:** built on `worktree-nehn-005`.
+
+### DEC-SCOPE-282 — Shared Excel (`.xlsx`) export and import helper (`nehn-004`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-004` (§14 "Excel Download" L320-323, §9 "Excel" template
+L200, §24 "Report Export" / "Trainer Questions", actions 2 and 10; `UNVERIFIED` backlog); design
+`docs/superpowers/specs/2026-10-26-nehn-004-xlsx-export-import-design.md`. Dependencies: none. Builds on ccrm-035's writer
+(`DEC-SCOPE-268` E1/E8).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** X1 the standard-library writer stays and gains
+a bold, frozen, auto-filtered header (Total row outside the filter), column widths, and typed dates (`date`; `datetime` in IST; an exact
+ISO `YYYY-MM-DD` string) and `Decimal` numbers; text stays an inline string through `_safe_cell` (formula injection, leading zeros).
+X2 `read_tabular(filename, raw, *, required, known, max_rows=5000, max_bytes=1 MB)` reads `.xlsx` (openpyxl `>=3.1,<4`, read-only,
+`data_only`, no links) and `.csv`; `.xlsm`/`.xls`/others 415, oversize 413, every missing required column one 422 message; zip bomb
+(200 entries / 20 MB unpacked), macros (`vbaProject.bin`, `macroEnabled`) and any DTD refused before parsing. No existing import is
+switched over; nehn-025 is its first consumer. X3 CSV stays; each CSV report route gains an `.xlsx` sibling path with the same
+dependency, scope, caps and throttle. X4 the xlsx export writes the same audit row as its CSV twin; both now record `format`. The
+agency commission report stays logged, not audited (AGN-014) — whether it should be audited is `NEEDS_CONFIRMATION`. X5 no new row cap:
+each twin keeps its CSV's. X6 "Download Excel" beside "Download CSV" on the six report pages.
+**Numbering:** no migration; API §12GH; RBAC §2.196.
+- **Feature ID authorized:** `nehn-004`. **Status:** built on `worktree-nehn-004`.

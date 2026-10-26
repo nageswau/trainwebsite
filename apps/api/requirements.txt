@@ -22,3 +22,5 @@ uharfbuzz>=0.39,<1
 # rec-012 (R7): in-house resume text extraction. pypdf is BSD-3-Clause, python-docx is MIT; both are pure Python and run no macros.
 pypdf>=5.1,<7
 python-docx>=1.1,<2
+# nehn-004: reads uploaded .xlsx files (read-only mode, no macros, no formulas evaluated). MIT, pure Python.
+openpyxl>=3.1,<4

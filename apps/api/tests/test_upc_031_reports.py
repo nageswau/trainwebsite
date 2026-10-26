@@ -287,7 +287,7 @@ async def test_csv_is_the_screen_with_a_bom_a_total_row_and_formula_guard(client
     lines = text.strip().splitlines()
     assert len(lines) == 3 and lines[1].startswith("'=HYPERLINK(1)") and lines[2].startswith("Total,")
     audit = (await db_session.scalars(select(AuditLog).where(AuditLog.user_id == manager.id, AuditLog.action == "partnership_report.export"))).all()
-    assert len(audit) == 1 and audit[0].entity_id == "expected" and audit[0].metadata_json == {"filters": ["window"], "rows": 1}
+    assert len(audit) == 1 and audit[0].entity_id == "expected" and audit[0].metadata_json == {"filters": ["window"], "rows": 1, "format": "csv"}  # nehn-004 X4
 
 
 @pytest.mark.asyncio

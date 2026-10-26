@@ -229,6 +229,7 @@ MATRIX = [
     R("get", "/partnership/universities/{uni}/performance", **_all(200, *READERS)),
     R("get", "/partnership/reports/{report}", **_all(200, *STAFF)),
     R("get", "/partnership/reports/{report}.csv", **_all(200, *STAFF)),
+    R("get", "/partnership/reports/{report}.xlsx", **_all(200, *STAFF)),  # nehn-004
     # upc-021 targets (another manager's sheet is hidden)
     R("get", "/partnership/targets", **_all(200, *STAFF)),
     R("get", "/partnership/targets/{pm_id}", pm=200, pm_out=404, head=200, head_out=404, super=200),

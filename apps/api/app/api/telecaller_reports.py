@@ -10,7 +10,7 @@ import time
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.agent_reports import NO_STORE, to_csv
+from app.api.agent_reports import NO_STORE, export_response
 from app.api.deps import require_permission
 from app.core.database import get_db
 from app.models import AuditLog, User
@@ -48,34 +48,40 @@ def _log(event: str, user: User, kind: str, filters: reports.Filters, rows: int,
                                                "rows": rows, "duration_ms": round((time.perf_counter() - started) * 1000)}})
 
 
+def _raw(date_from: str | None = None, date_to: str | None = None, team: str | None = None, product_id: str | None = None,
+         campaign_id: str | None = None, source: str | None = None) -> dict[str, str | None]:  # fmt: skip
+    """The filters as plain strings -- one dependency for the read, CSV and xlsx routes, so they cannot drift."""
+    return {"date_from": date_from, "date_to": date_to, "team": team, "product_id": product_id, "campaign_id": campaign_id, "source": source}
+
+
 # Registered before `/{kind}`, whose path parameter would otherwise also match "source.csv".
 @router.get("/{kind}.csv")
-async def export_report(
-    kind: str, date_from: str | None = None, date_to: str | None = None, team: str | None = None, product_id: str | None = None,
-    campaign_id: str | None = None, source: str | None = None, user: User = Depends(CAN_DOWNLOAD), db: AsyncSession = Depends(get_db),
-):
+async def export_report(kind: str, raw: dict = Depends(_raw), user: User = Depends(CAN_DOWNLOAD), db: AsyncSession = Depends(get_db)):
+    return await _export(db, user, kind, raw, "csv")
+
+
+@router.get("/{kind}.xlsx")
+async def export_report_xlsx(kind: str, raw: dict = Depends(_raw), user: User = Depends(CAN_DOWNLOAD), db: AsyncSession = Depends(get_db)):
+    """nehn-004 (DEC-SCOPE-282 X3): the CSV export's twin -- the same download grant."""
+    return await _export(db, user, kind, raw, "xlsx")
+
+
+async def _export(db: AsyncSession, user: User, kind: str, raw: dict[str, str | None], fmt: str) -> Response:
     started = time.perf_counter()
-    payload, filters = await _report(db, user, kind, {"date_from": date_from, "date_to": date_to, "team": team, "product_id": product_id,
-                                                      "campaign_id": campaign_id, "source": source})
+    payload, filters = await _report(db, user, kind, raw)
     rows = len(payload["items"])
+    response = export_response(payload, fmt, f"telecaller-{kind}-{filters.date_from.isoformat()}-to-{filters.date_to.isoformat()}", payload["title"])
     db.add(AuditLog(user_id=user.id, action=EXPORT_ACTION, entity_type="telecaller_report", entity_id=kind,
-                    metadata_json={"filters": list(filters.given), "rows": rows}))
+                    metadata_json={"filters": list(filters.given), "rows": rows, "format": fmt}))
     await db.commit()
     _log("telecaller_report.export", user, kind, filters, rows, started)
-    filename = f"telecaller-{kind}-{filters.date_from.isoformat()}-to-{filters.date_to.isoformat()}.csv"
-    return Response(content=to_csv(payload), media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": f'attachment; filename="{filename}"', **NO_STORE})
+    return response
 
 
 @router.get("/{kind}")
-async def read_report(
-    kind: str, response: Response, date_from: str | None = None, date_to: str | None = None, team: str | None = None,
-    product_id: str | None = None, campaign_id: str | None = None, source: str | None = None,
-    user: User = Depends(CAN_VIEW), db: AsyncSession = Depends(get_db),
-):
+async def read_report(kind: str, response: Response, raw: dict = Depends(_raw), user: User = Depends(CAN_VIEW), db: AsyncSession = Depends(get_db)):
     started = time.perf_counter()
-    payload, filters = await _report(db, user, kind, {"date_from": date_from, "date_to": date_to, "team": team, "product_id": product_id,
-                                                      "campaign_id": campaign_id, "source": source})
+    payload, filters = await _report(db, user, kind, raw)
     response.headers.update(NO_STORE)
     _log("telecaller_report.read", user, kind, filters, len(payload["items"]), started)
     return payload

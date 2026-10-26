@@ -4124,3 +4124,17 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   `GET /telecaller/reports/{kind}` (`reports.telecaller.view`) — "Telecaller reports are for managers and administrators"; and
   `GET /telecaller/reports/{kind}.csv` (`reports.telecaller.download`), whose 403 text is now "You don't have permission to download
   telecaller reports" (QA-01: true for a manager whose download alone is revoked).
+
+## 12GH. Excel (`.xlsx`) twins of the CSV report exports (nehn-004) — addendum, 2026-10-26
+
+`DEC-SCOPE-282`. No migration.
+
+- New, each the twin of the existing `.csv` route — same query parameters, roles, scope, row cap, throttle and refusals (401/403/404/
+  422/429), same audit row (metadata now also `format`), `Cache-Control: private, no-store`, `Content-Disposition: attachment;
+  filename="<the CSV's name>.xlsx"`, content type `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`:
+  `GET /telecaller/reports/{kind}.xlsx`, `GET /telecaller/manager/performance.xlsx`, `GET /recruiter/performance.xlsx`,
+  `GET /workflows/overseas/agent/crm/reports/{kind}.xlsx`, `GET /partnership/reports/{kind}.xlsx`,
+  `GET /workflows/overseas/agent/commissions/report.xlsx` (logged, not audited, as its CSV).
+- The workbook: one sheet; header row bold, frozen and auto-filtered (a Total row sits below the filter); numbers and dates are typed
+  cells (dates `yyyy-mm-dd`, timestamps IST `yyyy-mm-dd hh:mm`); text is literal (formula-looking text prefixed `'`, as in the CSV).
+- The `.csv` routes are unchanged apart from the audit row's added `format: "csv"`.

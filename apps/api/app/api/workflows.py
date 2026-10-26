@@ -159,6 +159,7 @@ from app.services.agent_visa import VISA_CASE_STAGES, VISA_DECIDED, VISA_DECISIO
 from app.services.bdm_appointments import db_now
 from app.services.certificates import generate_certificate_pdf
 from app.services.storage import storage
+from app.services.tabular import XLSX_TYPE, to_xlsx
 from app.visa_status import DECISIONS as VISA_DECISIONS
 from app.visa_status import FIRST_OF_STAGE as VISA_FIRST_OF_STAGE
 from app.visa_status import label as visa_status_label
@@ -3124,6 +3125,24 @@ async def agent_commission_report_csv(date_from: str | None = REPORT_DATE_FROM, 
         content=buffer.getvalue(), media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f"attachment; filename={filename}", "Cache-Control": "private, no-store"},
     )
+
+
+@router.get("/overseas/agent/commissions/report.xlsx")
+async def agent_commission_report_xlsx(date_from: str | None = REPORT_DATE_FROM, date_to: str | None = REPORT_DATE_TO, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """nehn-004 (DEC-SCOPE-282 X3, X4): the CSV's twin -- the same rows, the amount a number and the days date cells; logged, not
+    audited, as the CSV is (AGN-014)."""
+    items, start, end = await _commission_report_items(user, db, date_from, date_to)
+    keys = ("student", "university", "country", "intake", "status", "amount", "currency", "created_at", "claimed_at", "paid_at", "claim_reference")
+    days = {"created_at", "claimed_at", "paid_at"}
+    table = {
+        "columns": [{"key": key, "label": label} for key, label in zip(keys, COMMISSION_CSV_COLUMNS, strict=True)],
+        "items": [{key: _csv_day(item[key]) if key in days else item[key] for key in keys} for item in items],
+        "totals": None,
+    }
+    body = to_xlsx(table, "Commissions")
+    _report_logged(user, "xlsx", len(items), start, end)
+    filename = f"agency-commissions-{start.isoformat() if start else 'all'}-to-{end.isoformat() if end else 'all'}.xlsx"
+    return Response(content=body, media_type=XLSX_TYPE, headers={"Content-Disposition": f"attachment; filename={filename}", "Cache-Control": "private, no-store"})
 
 
 @router.post("/overseas/agent/commissions/{commission_id}/claim")
