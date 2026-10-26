@@ -270,10 +270,10 @@ async def test_the_trainer_portal_table_shows_cancelled_with_the_reason_and_no_j
     w = await _world(db_session)
     await _login(client, w["trainer"])
     row = (await client.get("/api/v1/portal/it/trainer/live-sessions")).json()["rows"][0]
-    assert (row["status"], row["meeting"]) == ("Scheduled", "https://meet.example.com/a")
+    assert (row["status"], row["meeting"], row["cancelled"]) == ("Scheduled", "https://meet.example.com/a", False)
     assert (await client.post(f"{API}/{w['session'].id}/cancel", json={"reason": "Holiday"})).status_code == 200
     row = (await client.get("/api/v1/portal/it/trainer/live-sessions")).json()["rows"][0]
-    assert (row["status"], row["meeting"]) == ("Cancelled — Holiday", None)
+    assert (row["status"], row["meeting"], row["cancelled"]) == ("Cancelled — Holiday", None, True)
 
 
 # --- authorization --------------------------------------------------------------------------------------------------------------------

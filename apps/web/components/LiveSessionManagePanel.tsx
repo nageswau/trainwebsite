@@ -35,7 +35,9 @@ function errorText(detail: unknown) {
   return "The change could not be saved.";
 }
 
-export default function LiveSessionManagePanel() {
+// `refreshKey` changes when the page's own session list changes (a class was just scheduled): the list is re-read in place, so a form
+// the trainer has open stays open (a remount would close it -- QA-01).
+export default function LiveSessionManagePanel({ refreshKey = "" }: { refreshKey?: string }) {
   const router = useRouter();
   const [sessions, setSessions] = useState<LiveSessionInfo[] | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -57,7 +59,7 @@ export default function LiveSessionManagePanel() {
     }
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [refreshKey]);
   useEffect(() => { if (message) feedbackRef.current?.focus(); }, [message]);
 
   async function send(event: FormEvent<HTMLFormElement>, path: string, method: "PATCH" | "POST", body: Record<string, unknown>, done: (result: Result) => string) {

@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import DataTable from "@/components/DataTable";
 import LiveClassesPanel from "@/components/LiveClassesPanel";
 import LiveSessionManagePanel, { toZoneInput } from "@/components/LiveSessionManagePanel";
 
@@ -103,6 +104,15 @@ describe("LiveSessionManagePanel", () => {
     expect(calls.some(call => call.method === "POST")).toBe(false);
   });
 
+  it("re-reads the list when refreshKey changes, keeping an open form open (QA-01)", async () => {
+    serve([SESSION]);
+    const { rerender } = render(<LiveSessionManagePanel refreshKey="" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel class" }));
+    rerender(<LiveSessionManagePanel refreshKey="s1,s9" />);
+    await waitFor(() => expect(calls.filter(call => call.method === "GET")).toHaveLength(2));
+    expect(screen.getByRole("form", { name: "Cancel Python basics" })).toBeTruthy();
+  });
+
   it("shows the server's refusal", async () => {
     serve([SESSION], { status: 409, body: { detail: "Past sessions cannot be rescheduled or cancelled" } });
     render(<LiveSessionManagePanel />);
@@ -110,6 +120,17 @@ describe("LiveSessionManagePanel", () => {
     fireEvent.change(screen.getByLabelText("Reason learners will see"), { target: { value: "Holiday" } });
     fireEvent.submit(screen.getByRole("form", { name: "Cancel Python basics" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Past sessions");
+  });
+});
+
+describe("DataTable join column (QA-02)", () => {
+  it("offers no join state for a cancelled row", () => {
+    const columns = [{ key: "title", label: "Session" }, { key: "meeting", label: "Join", type: "join" }];
+    render(<DataTable label="Live Sessions" columns={columns} rows={[
+      { title: "Live", starts: FUTURE.toISOString(), meeting: null, cancelled: false },
+      { title: "Gone", starts: FUTURE.toISOString(), meeting: null, cancelled: true },
+    ]} />);
+    expect(screen.getAllByText("Join link not yet available.")).toHaveLength(1);
   });
 });
 

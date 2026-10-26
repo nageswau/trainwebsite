@@ -48,6 +48,8 @@ function renderCell(column: Column, row: Row) {
     return <Link className="btn small secondary" href={String(row[column.key])} aria-label={`Profile for ${String(row.student ?? row.name ?? "student")}`}>Profile</Link>;
   }
   if (column.type === "join") {
+    // nehn-029: a cancelled session (its Status cell says so) gets no join state at all, not "not yet available".
+    if (row.cancelled) return null;
     return (
       <JoinSessionButton
         joinUrl={row[column.key] as string | null}

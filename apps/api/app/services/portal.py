@@ -538,6 +538,7 @@ async def _trainer(db: AsyncSession, user: User, section: str):
                     "status": f"Cancelled — {s.cancel_reason}" if s.status == "cancelled" else s.status.capitalize(),
                     "ends_at": s.ends_at,
                     "meeting": None if s.status == "cancelled" else s.host_url or s.meeting_url,
+                    "cancelled": s.status == "cancelled",  # the join cell renders nothing (DataTable)
                     "host_url": s.host_url,
                     "recording": s.recording_url or s.recording_status,
                 }
