@@ -3033,3 +3033,10 @@ scope. Pinned by `test_nehn_004_xlsx_exports.py` and the rows added to `test_tel
 | `GET /portal/overseas/student/explore-countries` | 401 | 200 (header only) | 403 |
 
 Public data only; no new permission key. Pinned by `apps/api/tests/test_nehn_034_country_cards.py`.
+
+### 2.199 Live class reschedule and cancel *(added 2026-10-26 — `DEC-SCOPE-287`, nehn-029)*
+
+`PATCH /communications/it/live-sessions/{session_id}` and `POST /communications/it/live-sessions/{session_id}/cancel`: the batch's
+trainer (another trainer 403), `it_admin`, `super_admin`; every other signed-in role 403; anonymous 401. Learners only read the result
+(`GET /communications/it/live-sessions`, own active enrollments). Pinned by `test_nehn_029_live_session_manage.py` and the route list
+in `test_uuid_contracts.py`.

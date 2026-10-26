@@ -63,13 +63,16 @@ export default function LiveClassesPanel({ title = "Live classes", upcomingOnly 
       <div className="grid two" style={{ marginTop: 16 }}>
         {visible.map((session) => {
           const joinUrl = session.host_url || session.meeting_url;
+          const cancelled = session.status === "cancelled";
           return (
           <div className="card" key={session.id}>
             <span className="badge">{session.batch}</span>
+            {/* nehn-029: a cancelled class says so with the trainer's reason, and offers nothing to join. */}
+            {cancelled && <span className="status error" style={{ marginLeft: 8 }}>Cancelled</span>}
             <h4 style={{ marginTop: 10 }}>{session.title}</h4>
             <p className="muted" style={{ fontSize: 13 }}><LocalTime value={session.starts_at} time label /></p>
             <p className="muted" style={{ fontSize: 13 }}>{PROVIDER_LABEL[session.provider] || session.provider}</p>
-            <JoinSessionButton
+            {cancelled ? <p style={{ fontSize: 13 }}><strong>Reason:</strong> {session.cancel_reason || "Not given"}</p> : <JoinSessionButton
               joinUrl={joinUrl}
               startsAt={session.starts_at}
               endsAt={session.ends_at}
@@ -77,7 +80,7 @@ export default function LiveClassesPanel({ title = "Live classes", upcomingOnly 
               userName={userName}
               userEmail={userEmail}
               label="Join class"
-            />
+            />}
             <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
               {session.recording_url ? (
                 <a href={session.recording_url} target="_blank" rel="noreferrer">Watch recording</a>

@@ -4185,3 +4185,19 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - `GET /api/v1/public/universities?country=<slug>` (existing) is the cards' "View universities" target; an unknown slug returns `[]`.
 - `GET /api/v1/portal/overseas/student/explore-countries` → 200 header-only payload (`title` "Explore Countries", no rows/metrics) for
   an `overseas_student`; other roles 403, no session 401 (the portal gate).
+
+## 12GM. Live class reschedule and cancel (nehn-029) — addendum, 2026-10-26
+
+`DEC-SCOPE-287`. Migration `0198_live_session_cancel_reason` (`live_sessions.cancel_reason`, nullable text).
+
+- `PATCH /communications/it/live-sessions/{session_id}` — body any of `title` (2-180), `starts_at`, `ends_at`, `meeting_url`
+  (`http(s)://`, ≤500); at least one (422). A time without a zone is read in the batch timezone. 200
+  `{id, title, starts_at, ends_at, meeting_url, status, sync_status, warning}`; `warning` is set for a Google Meet/Zoho session (the
+  provider meeting is not changed). 404 unknown; 403 not trainer/it_admin/super_admin or a trainer outside the batch; 409 cancelled or
+  already started ("Past sessions cannot be rescheduled or cancelled"); 422 new start in the past, or end not after start.
+- `POST /communications/it/live-sessions/{session_id}/cancel` — body `{reason}` (3-500 after trimming). 200
+  `{id, status: "cancelled", cancel_reason, sync_status, attendance_records, warning}`. Same 404/403/409.
+- Both notify active-enrolled learners (in-app + email) and write `live_session.update` / `live_session.cancel` audit rows.
+- `GET /communications/it/live-sessions` rows and `GET /workflows/it/student/learning` `live_sessions` gain `cancel_reason`; the list
+  also gains `timezone` (the batch's). `GET /portal/it/trainer/live-sessions` gains a `status` column; a cancelled row has no join link.
+- `POST /workflows/it/trainer/attendance` — new 409 when the date's live sessions for the batch are all cancelled.

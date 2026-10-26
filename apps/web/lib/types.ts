@@ -46,7 +46,7 @@ export type RealProject = {id:string; division:string; slug:string; title:string
 export type Testimonial = {id:string; division:string; person_name:string; headline:string; quote:string; rating:number; context?:string|null; photo_url?:string|null};
 export type ContentPage = {id:string; slug:string; title:string; body:string; seo:Record<string,unknown>};
 export type AvailableBatch = {id:string; name:string; program_id:string; program:string; schedule:string; timezone:string; capacity:number; available:number; start_date:string; end_date:string; mode:string};
-export type LiveSessionInfo = {id:string; batch:string; title:string; starts_at:string; ends_at:string; provider:string; meeting_url:string|null; host_url:string|null; recording_url:string|null; recording_status:string; sync_status:string; status:string};
+export type LiveSessionInfo = {id:string; batch:string; title:string; starts_at:string; ends_at:string; provider:string; meeting_url:string|null; host_url:string|null; recording_url:string|null; recording_status:string; sync_status:string; status:string; cancel_reason?:string|null; timezone?:string};
 export type Webinar = {id:string; division:string; title:string; event_type:string; starts_at:string; location:string; description:string; is_past:boolean; registration_url?:string|null};
 export type Scholarship = {id:string; title:string; eligibility:string; amount:string; deadline:string|null};
 

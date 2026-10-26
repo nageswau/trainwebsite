@@ -34,6 +34,8 @@ def test_teacher_action_routes_are_registered():
         ("/api/v1/workflows/it/trainer/materials", "post"),
         ("/api/v1/communications/it/live-sessions", "post"),
         ("/api/v1/communications/it/live-sessions/{session_id}/recording", "patch"),
+        ("/api/v1/communications/it/live-sessions/{session_id}", "patch"),
+        ("/api/v1/communications/it/live-sessions/{session_id}/cancel", "post"),
         ("/api/v1/workflows/it/trainer/enrollments/{enrollment_id}/progress", "patch"),
         ("/api/v1/workflows/it/certificates/{enrollment_id}/issue", "post"),
     }

@@ -469,6 +469,30 @@ class MeetingCreate(BaseModel):
     agenda: str = Field(default="", max_length=5000)
 
 
+class LiveSessionUpdate(BaseModel):
+    """nehn-029: a reschedule/edit of a live session that has not started. At least one field; a naive time is in the batch timezone."""
+
+    title: str | None = Field(default=None, min_length=2, max_length=180)
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+    meeting_url: str | None = Field(default=None, max_length=500, pattern=r"^https?://\S+$")
+
+    @model_validator(mode="after")
+    def _not_empty(self):
+        if all(value is None for value in (self.title, self.starts_at, self.ends_at, self.meeting_url)):
+            raise ValueError("Change at least one of title, start, end or meeting link")
+        return self
+
+
+class LiveSessionCancel(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def _strip(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+
 class RecordingLinkUpdate(BaseModel):
     recording_url: str = Field(max_length=500)
     recording_external_id: str | None = Field(default=None, max_length=200)

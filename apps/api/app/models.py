@@ -4180,6 +4180,7 @@ class LiveSession(Base, TimestampMixin):
     recording_status: Mapped[str] = mapped_column(String(30), default="not_available")
     sync_status: Mapped[str] = mapped_column(String(30), default="manual")
     status: Mapped[str] = mapped_column(String(30), default="scheduled")
+    cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)  # nehn-029: set with status "cancelled"
 
 
 class AgentStudent(Base, TimestampMixin):

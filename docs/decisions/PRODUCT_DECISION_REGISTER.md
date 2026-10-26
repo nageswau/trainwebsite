@@ -9859,3 +9859,20 @@ with universities); it narrows the university list and `?country=` preselects it
 client assets), the rest of `psb-019`, agent-portal changes, response caching.
 **Numbering:** no migration; API §12GL; RBAC §2.198.
 - **Feature ID authorized:** `nehn-034`. **Status:** built on `worktree-nehn-034`.
+
+### DEC-SCOPE-287 — Live class reschedule and cancel (`nehn-029`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-029` (§10 "Schedule/manage live classes", L217;
+`UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-26-nehn-029-live-class-reschedule-cancel-design.md`. Dependencies: none
+hard; provider sync waits on the open Zoho live-class decisions (`PENDING_ZOHO_LIVE_CLASSES.md`, `DEC-LIVE-002..005`).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** C1 no automatic Google Meet/Zoho update or
+cancel: the local change always succeeds, the session's `sync_status` becomes `manual_update_required` and the trainer is told to change
+the provider meeting by hand (the backlog's own fallback; open question "must the provider be updated automatically?" stays open).
+C2 a session that has started (`starts_at <= now`) can be neither rescheduled nor cancelled (409); a new start must be in the future.
+C3 cancelling keeps attendance already marked for that batch and date and reports how many records exist. C4 attendance for a batch and
+date is refused (409) only when that date has live sessions and every one is cancelled; a date with no live session is unchanged. C5 the
+trainer of the batch, `it_admin` and `super_admin` may manage a session (as the recording route); no admin UI page. C6 any real change
+notifies every active-enrolled learner in-app and by email (`queue_deliveries`, worker fan-out); an unchanged payload notifies nobody.
+C7 a cancelled session cannot be reinstated or edited. C8 a new meeting link must be `http(s)://`.
+**Numbering:** migration `0198_live_session_cancel_reason`; API §12GM; RBAC §2.199.
+- **Feature ID authorized:** `nehn-029`. **Status:** built on `worktree-nehn-029`.
