@@ -6,7 +6,7 @@ import AgentCommissionReportPanel from "@/components/AgentCommissionReportPanel"
 import AgentReportFilters, { type FieldError, type ReportField } from "@/components/AgentReportFilters";
 import AgentReportTable from "@/components/AgentReportTable";
 import LocalTime from "@/components/LocalTime";
-import ReportDownloadButton from "@/components/ReportDownloadButton";
+import { SpreadsheetButtons } from "@/components/ExportButtons";
 import { SESSION_EXPIRED, SIGN_IN_PATH } from "@/lib/activityFeedback";
 import { PAGE_SIZE, REPORTS_URL, type ReportKey, type ReportState, csvFilename, csvUrl, isAgentReport, readState, reportQuery, tabsFor, writeState } from "@/lib/agentReports";
 import { detailMessage } from "@/lib/apiErrors";
@@ -202,7 +202,7 @@ export default function AgentReportsPanel({ memberRole }: { memberRole: "master"
               <>
                 <div className="report-toolbar">
                   <p className="muted">{`${report.total} row${report.total === 1 ? "" : "s"} · As of `}<LocalTime value={report.as_of} time /></p>
-                  <ReportDownloadButton url={csvUrl(applied)} label="Download CSV" filename={csvFilename(applied.report, applied.from, applied.to)} hint="Up to 10,000 rows." contentType="text/csv" busyLabel="Preparing CSV…" />
+                  <SpreadsheetButtons csvUrl={csvUrl(applied)} filename={csvFilename(applied.report, applied.from, applied.to)} label={`Export ${report.title}`} hint="Up to 10,000 rows." />
                 </div>
                 <AgentReportTable
                   report={report} headingId={headingId} caption={caption} busy={loading} regionRef={region}

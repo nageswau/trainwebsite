@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import ReportDownloadButton from "@/components/ReportDownloadButton";
+import { SpreadsheetButtons } from "@/components/ExportButtons";
 import {
   REPORT_TABS, TEAM_LABEL, type ReportKind, type ReportParams, type ReportRow, type TelecallerReport, csvUrl, tabHref,
 } from "@/lib/telecallerReports";
@@ -75,8 +75,8 @@ export default function TelecallerReportView({ kind, report, error, params, base
               <tfoot><tr>{cells(report.totals)}</tr></tfoot>
             </table>
           </div>
-          <ReportDownloadButton
-            url={csvUrl(kind, params)} label="Download CSV" busyLabel="Preparing CSV…" contentType="text/csv"
+          <SpreadsheetButtons
+            csvUrl={csvUrl(kind, params)} label={`Export ${report.title}`}
             filename={`telecaller-${kind}-${report.date_from}-to-${report.date_to}.csv`}
           />
         </>
