@@ -186,7 +186,7 @@ test("S3 team and staff", async ({ browser }) => {
   p = await ctx.newPage();
   await signIn(p, "overseasadmin@edusphere.local");
   await p.goto("/overseas/admin/users");
-  const search = p.getByLabel("Search by name, email, or role");
+  const search = p.getByLabel("Search by name, email, role, or Student ID");
   await search.fill(S.e.email);
   await search.press("Enter");
   const resend = p.getByRole("button", { name: `Re-send set-password link to ${S.e.name}` });

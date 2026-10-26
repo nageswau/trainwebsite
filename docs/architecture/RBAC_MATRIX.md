@@ -2980,3 +2980,10 @@ under the counselor CRM prefixes without a row fails `test_every_counselor_crm_r
 | `GET /local-files/<other key>` | 404 | 200 | 200 | 200 (as `/files/download`); KYC / overseas-document keys 404 for everyone |
 
 Pinned by `apps/api/tests/test_nehn_003_private_storage.py`.
+
+### 2.194 Student ID coverage and lookup *(added 2026-10-26 — `DEC-SCOPE-280`, nehn-040)*
+
+No new route or permission. The Student ID is display and search data, never an authentication factor. Every search that matches it
+keeps its route's existing scope: admin users (division-scoped for non-super admins), the overseas-student lookup (counselor: visible
+students; agent: assigned students), the agency student list (`student_scope`: own agency, staff their assigned students) and the
+agent network (Overseas Admin). The agent link search does not match codes. Pinned by `apps/api/tests/test_nehn_040_student_ids.py`.

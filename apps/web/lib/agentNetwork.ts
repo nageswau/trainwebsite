@@ -27,7 +27,7 @@ export type OrgDetail = NetworkOrg & {
   deposits: { currency: "INR"; count: number; collected: number; remitted: number; refunded: number };
   as_of: string;
 };
-export type NetworkStudent = { id: string; full_name: string | null; status: string; assigned_code: string | null; has_login: boolean; applications: number; created_at: string };
+export type NetworkStudent = { id: string; full_name: string | null; student_code?: string | null; status: string; assigned_code: string | null; has_login: boolean; applications: number; created_at: string };
 export type NetworkApplication = {
   id: string;
   student_name: string | null;

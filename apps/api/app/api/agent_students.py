@@ -96,7 +96,7 @@ async def create_student(payload: AgentStudentRecordCreate, user: User = Depends
     if found and not payload.confirm_duplicate:
         _log("agent_student_duplicate_warned", membership, user, "-", match_count=found)
         raise duplicate_conflict(matches, hidden)
-    row = create_record(db, user, data)
+    row = await create_record(db, user, data)
     await db.flush()
     _audit(db, user, "create", row.id, {"fields": sorted(k for k, v in data.items() if v is not None), "assigned_member_id": str(row.assigned_member_id) if row.assigned_member_id else None})
     if found:

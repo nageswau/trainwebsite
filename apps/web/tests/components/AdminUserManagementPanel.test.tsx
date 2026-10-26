@@ -64,9 +64,9 @@ describe("AdminUserManagementPanel setup filter", () => {
     expect(screen.getByText("Eli Expired")).toBeInTheDocument();
     expect(screen.queryByText("Pia Pending")).toBeNull();
 
-    fireEvent.change(screen.getByLabelText("Search by name, email, or role"), { target: { value: "zzz" } });
+    fireEvent.change(screen.getByLabelText("Search by name, email, role, or Student ID"), { target: { value: "zzz" } });
     expect(screen.getByText("No records match this search.")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Search by name, email, or role"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Search by name, email, role, or Student ID"), { target: { value: "" } });
     fireEvent.change(filter, { target: { value: "pending_setup" } });
     expect(await screen.findByText("Pia Pending")).toBeInTheDocument();
   });

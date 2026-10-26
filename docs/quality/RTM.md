@@ -1270,3 +1270,15 @@ half.
 | `nehn-003-AC4` | 5.1 MB submission 413; renamed `.exe` 415 | `::test_the_submission_policy_rejects_5_1_mb_with_413`, `::test_a_renamed_exe_is_rejected_by_the_sniffing_check`, `::test_upload_refusals` |
 | `nehn-003-AC5` | Certificates, receipts, invoices written through `StorageService` | `::test_certificates_receipts_and_invoices_are_written_through_storage` |
 | `nehn-003-AC6` | Stored `/local-files/…` URLs resolve for signed-in users; download routes hand out signed links | `::test_a_stored_local_files_url_still_resolves_for_a_signed_in_user`, `::test_a_local_presigned_link_is_signed_short_lived_and_scoped_to_its_key`; `test_stu_007…`, `test_ovs_005…`, `test_agn_009…`; e2e `stu-007`, `stu-011`, `pay-001` |
+
+**Addendum, 2026-10-26 (`nehn-040`)** — Student ID coverage and lookup.
+
+| ID | Requirement / acceptance | Evidence |
+|---|---|---|
+| `nehn-040` | Requirement: PDF §22/§23 → `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-040` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-280` → design `docs/superpowers/specs/2026-10-26-nehn-040-student-id-coverage-design.md` → API §12GF, RBAC §2.194 → migration `0195_agent_student_codes` | N1–N9 defaults `NEEDS_CONFIRMATION` |
+| `nehn-040-AC1` | Searching a student's code in admin users finds that student | `apps/api/tests/test_nehn_040_student_ids.py::test_admin_users_list_returns_the_code`, `::test_the_overseas_student_lookup_matches_and_shows_the_code_in_scope`; `apps/web/tests/components/nehn040StudentId.test.tsx`; `apps/web/tests/e2e/nehn-040-student-id.spec.ts` |
+| `nehn-040-AC2` | Every agency-created student has a code (new at create; existing after the backfill) | `::test_an_agency_created_student_gets_a_code_at_create`; `apps/api/tests/test_nehn_040_migration.py::test_upgrade_backfills_codes_and_round_trips`; e2e |
+| `nehn-040-AC3` | The code shows in list rows and the agency detail header | `::test_a_linked_student_shows_the_account_code_and_the_row_keeps_none`, `::test_the_agent_network_students_carry_the_code`; `nehn040StudentId.test.tsx`; e2e |
+| `nehn-040-AC4` | Agent ID | Not applicable — N1 (`DEC-DATA-003`) |
+| `nehn-040-AC5` | Search by code stays inside the caller's scope | `::test_the_agency_search_matches_a_code_only_inside_the_agency`, `::test_the_overseas_student_lookup_matches_and_shows_the_code_in_scope`, `::test_the_link_lookup_does_not_match_a_code` |
+| `nehn-040-AC6` | New codes never collide across `users` and `agent_students` | `::test_a_new_code_is_unique_across_every_column_given`; migration test (skips a taken code) |

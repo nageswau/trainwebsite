@@ -159,13 +159,14 @@ function Head({ columns }: { columns: string[] }) {
 function StudentTable({ rows }: { rows: NetworkStudent[] }) {
   return (
     <table className="table compact stack">
-      <Head columns={["Student", "Assigned to", "Login", "Applications", "Added"]} />
+      <Head columns={["Student", "Student ID", "Assigned to", "Login", "Applications", "Added"]} />
       <tbody>
         {rows.map((s) => (
           <tr key={s.id}>
             <th scope="row" style={{ overflowWrap: "anywhere" }}>
               {s.full_name ?? "—"}
             </th>
+            <td data-label="Student ID">{s.student_code ?? "—"}</td>
             <td data-label="Assigned to">{s.assigned_code ?? "Unassigned"}</td>
             <td data-label="Login">{s.has_login ? "Yes" : "No"}</td>
             <td data-label="Applications">{s.applications}</td>

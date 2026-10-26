@@ -96,7 +96,7 @@ async def org_students(db: AsyncSession, org_id, *, status: str, limit: int, off
         .scalar_subquery()
     )
     rows = await db.execute(
-        select(AgentStudent, func.coalesce(User.full_name, AgentStudent.full_name), Assignee.code, applications)
+        select(AgentStudent, func.coalesce(User.full_name, AgentStudent.full_name), func.coalesce(User.student_code, AgentStudent.student_code), Assignee.code, applications)
         .outerjoin(User, User.id == AgentStudent.student_id)
         .outerjoin(Assignee, Assignee.id == AgentStudent.assigned_member_id)
         .where(*where)
@@ -105,8 +105,8 @@ async def org_students(db: AsyncSession, org_id, *, status: str, limit: int, off
         .offset(offset)
     )
     items = [
-        {"id": s.id, "full_name": name, "status": s.status, "assigned_code": code, "has_login": s.student_id is not None, "applications": n, "created_at": s.created_at}
-        for s, name, code, n in rows.all()
+        {"id": s.id, "full_name": name, "student_code": student_code, "status": s.status, "assigned_code": code, "has_login": s.student_id is not None, "applications": n, "created_at": s.created_at}
+        for s, name, student_code, code, n in rows.all()
     ]
     return items, total or 0
 
