@@ -124,6 +124,7 @@ ROWS = [
     # rec-033 performance (§2.108, PF1) and its CSV, rec-034 per recruiter (§2.109, own row only; it_admin 403), rec-035 management (§2.110)
     R("get", "/recruiter/performance?recruiter={rec_id}", **allow(200, "mgr", "super", "it_admin"), mgr_out=404),
     R("get", "/recruiter/performance.csv", **allow(200, *METRICS)),
+    R("get", "/recruiter/performance.xlsx", **allow(200, *METRICS)),  # nehn-004
     R("get", "/recruiter/performance/by-recruiter?recruiter={rec_id}", **allow(200, "rec", "mgr", "super"), rec_out=403, mgr_out=404),
     R("get", "/recruiter/management", **allow(200, *METRICS)),
 ]

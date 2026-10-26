@@ -81,7 +81,7 @@ async def test_each_export_writes_one_audit_row_without_names(world, db_session)
         await c.get(f"{REPORTS}/students.csv", params={"status": "all", "date_to": "2030-12-31"})
     (row,) = await _exports(db_session, master)
     assert (row.entity_type, row.entity_id) == ("agent_report", "students")
-    assert row.metadata_json == {"scope": "agency", "filters": {"status": "all", "date_to": "2030-12-31"}, "rows": 5}
+    assert row.metadata_json == {"scope": "agency", "filters": {"status": "all", "date_to": "2030-12-31"}, "rows": 5, "format": "csv"}  # nehn-004 X4
     assert world["records"]["r1"].full_name not in str(row.metadata_json)
 
 

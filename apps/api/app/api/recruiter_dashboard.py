@@ -18,7 +18,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.agent_reports import NO_STORE, to_csv
+from app.api.agent_reports import NO_STORE, export_response
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import AuditLog, User
@@ -48,16 +48,24 @@ async def _performance(
 @router.get("/performance.csv")
 async def performance_csv(read: tuple[User, dict] = Depends(_performance), db: AsyncSession = Depends(get_db)):
     """PF9: CSV = the table (same columns and rows, Total last). One audit row, committed before the file is returned (fail closed)."""
-    user, payload = read
-    body = to_csv(payload)
+    return await _export_performance(db, *read, "csv")
+
+
+@router.get("/performance.xlsx")
+async def performance_xlsx(read: tuple[User, dict] = Depends(_performance), db: AsyncSession = Depends(get_db)):
+    """nehn-004 (DEC-SCOPE-280 X3): the CSV's twin."""
+    return await _export_performance(db, *read, "xlsx")
+
+
+async def _export_performance(db: AsyncSession, user: User, payload: dict, fmt: str) -> Response:
+    response = export_response(payload, fmt, f"recruiter-performance-{payload['date_from']}-to-{payload['date_to']}", "Recruiter performance")
     recruiter = payload["recruiter"]
     db.add(AuditLog(user_id=user.id, action="recruiter_performance.export", entity_type="recruiter_performance", entity_id="performance", metadata_json={
         "date_from": payload["date_from"].isoformat(), "date_to": payload["date_to"].isoformat(),
-        "recruiter": str(recruiter["id"]) if recruiter else None, "rows": len(payload["items"]),
+        "recruiter": str(recruiter["id"]) if recruiter else None, "rows": len(payload["items"]), "format": fmt,
     }))
     await db.commit()
-    filename = f"recruiter-performance-{payload['date_from']}-to-{payload['date_to']}.csv"
-    return Response(content=body, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{filename}"', **NO_STORE})
+    return response
 
 
 @router.get("/performance")

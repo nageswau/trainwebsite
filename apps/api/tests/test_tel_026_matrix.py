@@ -190,6 +190,7 @@ MATRIX = [
     R("get", "/telecaller/activity?user_id={tel_id}", tel=200, tel_out=403, mgr=200, mgr_out=404, super=200),
     R("get", "/telecaller/manager/performance", **REPORTS),
     R("get", "/telecaller/manager/performance.csv", **REPORTS),
+    R("get", "/telecaller/manager/performance.xlsx", **REPORTS),  # nehn-004
     # tel-022 targets
     R("post", "/telecaller/targets", {"scope": "team", "team": "it", "period": "daily", "values": {"calls": 80}}, **MANAGERS),
     R("get", "/telecaller/targets", **MANAGERS),
@@ -198,6 +199,7 @@ MATRIX = [
     # tel-024 reports
     R("get", "/telecaller/reports/{kind}", **REPORTS),
     R("get", "/telecaller/reports/{kind}.csv", **REPORTS),
+    R("get", "/telecaller/reports/{kind}.xlsx", **REPORTS),  # nehn-004
     # tel-025 lifecycle
     R("get", "/admin/telecallers/{spare_id}/open-work", it_admin=200, super=200),
     R("post", "/admin/telecallers/{spare_id}/deactivate", {}, it_admin=200, super=200),
@@ -227,8 +229,10 @@ DENIED_22 = [
     ("Change counselor records", "post", "/lead-appointments/{appointment}/complete", {}),
     ("View confidential management reports", "get", "/telecaller/reports/{kind}", None),
     ("View confidential management reports", "get", "/telecaller/reports/{kind}.csv", None),
+    ("View confidential management reports", "get", "/telecaller/reports/{kind}.xlsx", None),  # nehn-004
     ("View confidential management reports", "get", "/telecaller/manager/performance", None),
     ("View confidential management reports", "get", "/telecaller/manager/performance.csv", None),
+    ("View confidential management reports", "get", "/telecaller/manager/performance.xlsx", None),  # nehn-004
     ("Modify employee targets", "post", "/telecaller/targets", {"scope": "team", "team": "it", "period": "daily", "values": {"calls": 1}}),
     ("Modify employee targets", "post", "/telecaller/targets", lambda w: {"scope": "user", "user_id": w["tel_id"], "period": "daily",
                                                                           "values": {"calls": 1}}),

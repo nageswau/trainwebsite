@@ -24,6 +24,7 @@ from app.core.rbac import REPORTS_REFUSED, agent_may, is_agent_staff
 from app.models import AgentOrgMember, AuditLog, User
 from app.schemas import AgentReportOut
 from app.services import agent_reports as reports
+from app.services.tabular import XLSX_TYPE, to_xlsx
 
 logger = logging.getLogger("app.agent_reports")
 
@@ -102,24 +103,44 @@ def to_csv(payload: dict) -> str:
     return buffer.getvalue()
 
 
-def _raw(date_from, date_to, member, country, university, intake, status) -> dict[str, str | None]:
+def export_response(payload: dict, fmt: str, stem: str, sheet_name: str) -> Response:
+    """nehn-004 (DEC-SCOPE-280 X3): a report payload as a CSV or xlsx attachment, never cached. Rendered before the caller commits its
+    audit row, so a file that cannot be built writes no audit."""
+    if fmt == "csv":
+        body, media_type = to_csv(payload), "text/csv; charset=utf-8"
+    else:
+        body, media_type = to_xlsx(payload, sheet_name), XLSX_TYPE
+    return Response(content=body, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{stem}.{fmt}"', **NO_STORE})
+
+
+def _raw(
+    date_from: str | None = None, date_to: str | None = None, member: str | None = None, country: str | None = None, university: str | None = None,
+    intake: str | None = None, status: str | None = None,
+) -> dict[str, str | None]:
+    """The report filters as plain strings (also the CSV/xlsx routes' shared query parameters, so the twins cannot drift)."""
     return {"date_from": date_from, "date_to": date_to, "member": member, "country": country, "university": university, "intake": intake, "status": status}
 
 
 # Registered before `/{kind}`, whose path parameter would otherwise also match "students.csv".
 @router.get("/{kind}.csv")
-async def export_report(
-    kind: str, date_from: str | None = None, date_to: str | None = None, member: str | None = None, country: str | None = None,
-    university: str | None = None, intake: str | None = None, status: str | None = None,
-    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
-):
+async def export_report(kind: str, raw: dict = Depends(_raw), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _export(db, user, kind, raw, "csv")
+
+
+@router.get("/{kind}.xlsx")
+async def export_report_xlsx(kind: str, raw: dict = Depends(_raw), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """nehn-004: the CSV export's twin -- the same checks, cap, throttle and audit."""
+    return await _export(db, user, kind, raw, "xlsx")
+
+
+async def _export(db: AsyncSession, user: User, kind: str, raw: dict[str, str | None], fmt: str) -> Response:
     """Spec §5.5, one transaction: checks, then the caller's own membership row locked (parallel downloads by one user queue, so
     the throttle count cannot be raced; other users are not blocked), the throttle, the rows, the audit row, and the commit before
     the file is returned -- an audit write that fails means no file (fail closed). A refused export writes nothing."""
     membership = _authorize(user, kind)
     started = time.perf_counter()
     try:
-        filters = await reports.parse_filters(db, user, kind, _raw(date_from, date_to, member, country, university, intake, status))
+        filters = await reports.parse_filters(db, user, kind, raw)
     except reports.ReportInputError as error:
         raise _invalid(error) from None
     await db.execute(select(AgentOrgMember.id).where(AgentOrgMember.id == membership.id).with_for_update())
@@ -133,13 +154,14 @@ async def export_report(
     if rows > cap:
         _log("agent_report.export_too_large", membership, user, kind, filters, rows, started, level=logging.WARNING)
         raise HTTPException(422, f"This report has more than {cap:,} rows; narrow the filters")
-    body = to_csv(payload)
-    db.add(AuditLog(user_id=user.id, action=EXPORT_ACTION, entity_type="agent_report", entity_id=kind, metadata_json={"scope": payload["scope"], "filters": filters.echo, "rows": rows}))
-    await db.commit()
-    _log("agent_report.export", membership, user, kind, filters, rows, started)
     start, end = filters.start, filters.end
-    filename = f"agency-{kind}-{start.isoformat() if start else 'all'}-to-{end.isoformat() if end else 'all'}.csv"
-    return Response(content=body, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{filename}"', **NO_STORE})
+    stem = f"agency-{kind}-{start.isoformat() if start else 'all'}-to-{end.isoformat() if end else 'all'}"
+    response = export_response(payload, fmt, stem, payload["title"])
+    db.add(AuditLog(user_id=user.id, action=EXPORT_ACTION, entity_type="agent_report", entity_id=kind,
+                    metadata_json={"scope": payload["scope"], "filters": filters.echo, "rows": rows, "format": fmt}))  # fmt: skip
+    await db.commit()
+    _log("agent_report.export", membership, user, kind, filters, rows, started, format=fmt)
+    return response
 
 
 @router.get("/{kind}", response_model=AgentReportOut)
