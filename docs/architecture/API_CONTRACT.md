@@ -4149,3 +4149,16 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   unchanged).
 - Startup (not an HTTP contract): `RAZORPAY_MODE` / `RAZORPAY_KEY_ID` mismatch, or `live` without the key secret and webhook secret, stops
   the process before it serves. Runbook: `RAZORPAY_GO_LIVE.md`.
+
+## 12GJ. Attendance correction usability and notifications (nehn-023) — addendum, 2026-10-26
+
+`DEC-SCOPE-284`. No migration, no new route.
+
+- `PATCH /api/v1/workflows/it/attendance-corrections/{id}` body is typed: `{"status": "approved" | "rejected", "review_notes"?: string ≤ 2000
+  | null}` (same shape; anything else → 422; blank notes stored as null). A request that is no longer `pending` → 409. Approval or
+  rejection queues an in-app notification + email to the student.
+- `POST /api/v1/workflows/it/student/attendance-corrections` (unchanged contract) now queues an in-app notification + email to the batch's
+  active trainer, or to every active IT Admin when the batch has none.
+- `GET /api/v1/workflows/it/student/attendance` rows gain `"correction_pending": bool` (additive).
+- `GET /api/v1/portal/it/student/attendance` drops the `id` ("Record reference") column; correction items read
+  `<dd Mon yyyy> · <batch>: <requested> — <status>[ (<comment>)]`.

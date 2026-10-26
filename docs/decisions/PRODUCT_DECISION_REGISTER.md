@@ -9813,3 +9813,18 @@ agency application's Deposit section when *Pay deposit* is offered; nothing whil
 `docs/architecture/RAZORPAY_GO_LIVE.md`, linked from `DEPLOYMENT.md`; who runs the live ₹1 verification is open.
 **Numbering:** no migration; API §12GI; RBAC §2.197.
 - **Feature ID authorized:** `nehn-022`. **Status:** built on `worktree-nehn-022`.
+
+### DEC-SCOPE-284 — Attendance correction usability and notifications (`nehn-023`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-023` (§8 L173-182; `UNVERIFIED` backlog); design
+`docs/superpowers/specs/2026-10-26-nehn-023-attendance-correction-design.md`. No upstream dependency.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** D1 in-app + an instant email (no digest), sent
+by the worker after commit through `queue_deliveries(channels=["email"])`. D2 a new request goes to the batch's active trainer; a batch
+without an active trainer goes to every active IT Admin, linking `/it/admin/batches` (assign a trainer; admins have no attendance page).
+D3 the decision goes to the student, with the reviewer's comment. D4 typed review body `{status: approved|rejected, review_notes?: ≤2000}`
+(same JSON shape; malformed → 422; blank comment → null). D5 a decided request cannot be reviewed again (409; row locked). D6
+`GET /it/student/attendance` rows gain `correction_pending`. D7 the student picks the session row (no UUID); D8 the portal view drops the
+"Record reference" column; D9 trainers decide from a pending queue (Approve / Reject + optional comment); the unreachable UUID
+`WorkflowPanel` trainer spec is removed. Authorization unchanged (a reassigned batch's new trainer reviews; the old one gets 403).
+**Numbering:** no migration (`attendance_corrections.review_notes` already exists); API §12GJ; no new route (RBAC unchanged).
+- **Feature ID authorized:** `nehn-023`. **Status:** built on `worktree-nehn-023`.

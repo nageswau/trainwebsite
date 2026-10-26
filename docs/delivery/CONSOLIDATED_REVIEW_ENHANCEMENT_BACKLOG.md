@@ -1053,6 +1053,7 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** existing correction tests; e2e that type UUIDs.
 - **Open questions:** email or in-app only? Instant or daily digest?
 - **Complexity:** small · **Risk:** low
+- **Status (2026-10-26):** built in `worktree-nehn-023` (`DEC-SCOPE-284`, API §12GJ). The student picks the session row in `AttendanceCorrectionPanel` (no UUID anywhere); trainers decide from a pending queue (Approve / Reject + optional comment). In-app + instant email to the trainer on a request (no active trainer → the IT Admins) and to the student on the decision, sent by the worker. Typed review body (422), re-review refused (409). No migration: `review_notes` already existed. Digest vs instant stays `NEEDS_CONFIRMATION`.
 
 ### G. Assignments, assessments, trainer portal (§9, §10)
 
