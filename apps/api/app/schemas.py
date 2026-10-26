@@ -60,6 +60,7 @@ from app.models import (
     COUNSELOR_TASK_STATUSES,
     COUNTRY_REGIONS,
     COURSE_CURRENCIES,
+    COURSE_ICONS,
     COURSE_LEVELS,
     COURSE_MONTHS,
     DISCUSSION_STATUSES,
@@ -10846,6 +10847,7 @@ class PartnershipTargetTeam(BaseModel):
 CourseText = _university_str(2000, multiline=True)
 CourseLevel = Literal[COURSE_LEVELS]  # CO3: the master's levels for new and edited courses
 EnglishTest = Literal[ENGLISH_TESTS]  # CO8
+CourseIcon = Literal[COURSE_ICONS]  # nehn-036 (DEC-SCOPE-285 I6): None = automatic (derived from the category by the web client)
 CourseMoney = Annotated[Decimal, Field(ge=0, le=Decimal("9999999999.99"), max_digits=12, decimal_places=2)]  # CO4: never negative
 CourseFee = Annotated[Decimal, Field(ge=0, le=Decimal("99999999.99"), max_digits=10, decimal_places=2)]  # CO6
 EnglishScore = Annotated[Decimal, Field(gt=0, le=Decimal("999.9"), max_digits=4, decimal_places=1)]
@@ -10900,6 +10902,7 @@ class CourseIn(BaseModel):
     campus: _university_str(200) = None
     fee_text: _university_str(300) = None
     intake_text: _university_str(200) = None
+    icon: CourseIcon | None = None
     active: bool = True
     commission: CourseCommissionIn | None = None
 
@@ -10926,6 +10929,7 @@ class CourseUpdate(BaseModel):
     campus: _university_str(200) = None
     fee_text: _university_str(300) = None
     intake_text: _university_str(200) = None
+    icon: CourseIcon | None = None
     active: bool | None = None
     commission: CourseCommissionIn | None = None
 

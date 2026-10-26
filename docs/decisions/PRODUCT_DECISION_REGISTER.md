@@ -9828,3 +9828,19 @@ D3 the decision goes to the student, with the reviewer's comment. D4 typed revie
 `WorkflowPanel` trainer spec is removed. Authorization unchanged (a reassigned batch's new trainer reviews; the old one gets 403).
 **Numbering:** no migration (`attendance_corrections.review_notes` already exists); API §12GJ; no new route (RBAC unchanged).
 - **Feature ID authorized:** `nehn-023`. **Status:** built on `worktree-nehn-023`.
+
+### DEC-SCOPE-285 — Course/program icons: a curated subject icon per overseas course (`nehn-036`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-036` (§17 L476, L493-495; §26 L803; **optional**;
+`UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-26-nehn-036-course-icons-design.md`. No upstream dependency (nehn-003
+only for upload, which is not built).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** I1 overseas courses only (the §16 master; IT
+`programs` unchanged, open). I2 a curated set of 12 subject icons + General drawn as inline SVG; no upload, no icon library, no user SVG.
+I3 `overseas_courses.icon` nullable (NULL = automatic), CHECK one of the keys. I4 keys `ai, security, data, computing, engineering,
+business, health, hospitality, law, education, arts, science, general`. I5 automatic = the first subject the category names (whole words,
+case-insensitive, fixed order), else General; a chosen icon wins. I6 additive `icon` on course writes and every course/public payload;
+write access unchanged; audited as a field name; CSV import unchanged. I7 decorative (`aria-hidden`) icon on the public course cards, the
+public university page, the university master's course list and the Courses & Programs table. I8 an *Icon* select (Automatic default)
+with a live preview in the course form. Whether icons are in scope this cycle at all is the backlog's open question.
+**Numbering:** migration `0197_course_icons`; API §12GK; no new route (no RBAC row).
+- **Feature ID authorized:** `nehn-036`. **Status:** built on `worktree-nehn-036`.

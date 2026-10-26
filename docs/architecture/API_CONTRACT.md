@@ -4162,3 +4162,16 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - `GET /api/v1/workflows/it/student/attendance` rows gain `"correction_pending": bool` (additive).
 - `GET /api/v1/portal/it/student/attendance` drops the `id` ("Record reference") column; correction items read
   `<dd Mon yyyy> · <batch>: <requested> — <status>[ (<comment>)]`.
+
+## 12GK. Course icons (nehn-036) — addendum, 2026-10-26
+
+`DEC-SCOPE-285`. Migration `0197_course_icons` (`overseas_courses.icon`, nullable, CHECK one of the curated keys).
+
+- `POST /api/v1/partnership/universities/{id}/courses` and `PATCH …/courses/{course_id}` accept `icon`: one of `ai`, `security`, `data`,
+  `computing`, `engineering`, `business`, `health`, `hospitality`, `law`, `education`, `arts`, `science`, `general`, or `null` (automatic;
+  PATCH `null` clears a choice). Anything else → `422`. Who may write is unchanged (CO1); a changed icon is named in the course's audit row.
+- Every course payload (`course_out`: the university's course list, `GET /partnership/courses`, create/update responses) gains `icon`
+  (key or `null`). Additive.
+- `GET /api/v1/public/overseas-courses` and `GET /api/v1/public/universities/{slug}` course rows gain `icon` (key or `null`). Still never
+  commission. `null` is shown by the web client as the icon its category names (`web/lib/courseIcons.ts`), else the general icon.
+- The CSV course import is unchanged (imported courses are automatic).
