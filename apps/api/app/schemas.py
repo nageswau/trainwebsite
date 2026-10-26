@@ -60,6 +60,7 @@ from app.models import (
     COUNSELOR_TASK_STATUSES,
     COUNTRY_REGIONS,
     COURSE_CURRENCIES,
+    COURSE_ICONS,
     COURSE_LEVELS,
     COURSE_MONTHS,
     DISCUSSION_STATUSES,
@@ -340,6 +341,18 @@ class AttendanceCorrectionIn(BaseModel):
     attendance_id: UUID
     requested_status: str = Field(pattern="^(present|absent|late|excused)$")
     reason: str = Field(min_length=5, max_length=2000)
+
+
+class AttendanceCorrectionReviewIn(BaseModel):
+    """nehn-023: the review body was an untyped dict. Same JSON shape, stricter validation; a blank comment is stored as null."""
+
+    status: Literal["approved", "rejected"]
+    review_notes: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("review_notes")
+    @classmethod
+    def blank_review_notes_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
 
 
 class AssignmentCreate(BaseModel):
@@ -2463,7 +2476,7 @@ class CountryOut(BaseModel):
     post_study_work: str
     pr_opportunities: str
     faq: list
-    university_count: int = 0  # nehn-034 (DEC-SCOPE-284 C1): published, active universities; the routes set it (not a column)
+    university_count: int = 0  # nehn-034 (DEC-SCOPE-286 C1): published, active universities; the routes set it (not a column)
     model_config = {"from_attributes": True}
 
 
@@ -10835,6 +10848,7 @@ class PartnershipTargetTeam(BaseModel):
 CourseText = _university_str(2000, multiline=True)
 CourseLevel = Literal[COURSE_LEVELS]  # CO3: the master's levels for new and edited courses
 EnglishTest = Literal[ENGLISH_TESTS]  # CO8
+CourseIcon = Literal[COURSE_ICONS]  # nehn-036 (DEC-SCOPE-285 I6): None = automatic (derived from the category by the web client)
 CourseMoney = Annotated[Decimal, Field(ge=0, le=Decimal("9999999999.99"), max_digits=12, decimal_places=2)]  # CO4: never negative
 CourseFee = Annotated[Decimal, Field(ge=0, le=Decimal("99999999.99"), max_digits=10, decimal_places=2)]  # CO6
 EnglishScore = Annotated[Decimal, Field(gt=0, le=Decimal("999.9"), max_digits=4, decimal_places=1)]
@@ -10889,6 +10903,7 @@ class CourseIn(BaseModel):
     campus: _university_str(200) = None
     fee_text: _university_str(300) = None
     intake_text: _university_str(200) = None
+    icon: CourseIcon | None = None
     active: bool = True
     commission: CourseCommissionIn | None = None
 
@@ -10915,6 +10930,7 @@ class CourseUpdate(BaseModel):
     campus: _university_str(200) = None
     fee_text: _university_str(300) = None
     intake_text: _university_str(200) = None
+    icon: CourseIcon | None = None
     active: bool | None = None
     commission: CourseCommissionIn | None = None
 

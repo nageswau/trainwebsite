@@ -2,7 +2,7 @@
 
 Source: `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-034` (an `UNVERIFIED` derived backlog; no hard dependency).
 The owner pre-authorised the builder's recommended answers; every open question below is the builder's call and stays
-`NEEDS_CONFIRMATION` (recorded as `DEC-SCOPE-284`).
+`NEEDS_CONFIRMATION` (recorded as `DEC-SCOPE-286`).
 
 ## Intent
 
@@ -53,7 +53,7 @@ No migration. No auth change: the public routes stay public; the portal section 
 5. Web: nav item + PortalPage mount (`StudentCountryExplorer`).
 6. Web: `OverseasApplyPanel` vitest (country select filters, preselect from `?country=`, reset on change) → implement.
 7. e2e `nehn-034-country-cards.spec.ts`: public card → filtered list; portal explore → apply preselect; 360/1280 screenshots.
-8. Docs: DEC-SCOPE-284, API addendum, RBAC row, backlog status.
+8. Docs: DEC-SCOPE-286, API addendum, RBAC row, backlog status.
 
 ## Risks
 

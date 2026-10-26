@@ -4150,9 +4150,35 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - Startup (not an HTTP contract): `RAZORPAY_MODE` / `RAZORPAY_KEY_ID` mismatch, or `live` without the key secret and webhook secret, stops
   the process before it serves. Runbook: `RAZORPAY_GO_LIVE.md`.
 
-## 12GJ. Country cards (nehn-034) — addendum, 2026-10-26
+## 12GJ. Attendance correction usability and notifications (nehn-023) — addendum, 2026-10-26
 
-`DEC-SCOPE-284`. No migration. All additive.
+`DEC-SCOPE-284`. No migration, no new route.
+
+- `PATCH /api/v1/workflows/it/attendance-corrections/{id}` body is typed: `{"status": "approved" | "rejected", "review_notes"?: string ≤ 2000
+  | null}` (same shape; anything else → 422; blank notes stored as null). A request that is no longer `pending` → 409. Approval or
+  rejection queues an in-app notification + email to the student.
+- `POST /api/v1/workflows/it/student/attendance-corrections` (unchanged contract) now queues an in-app notification + email to the batch's
+  active trainer, or to every active IT Admin when the batch has none.
+- `GET /api/v1/workflows/it/student/attendance` rows gain `"correction_pending": bool` (additive).
+- `GET /api/v1/portal/it/student/attendance` drops the `id` ("Record reference") column; correction items read
+  `<dd Mon yyyy> · <batch>: <requested> — <status>[ (<comment>)]`.
+
+## 12GK. Course icons (nehn-036) — addendum, 2026-10-26
+
+`DEC-SCOPE-285`. Migration `0197_course_icons` (`overseas_courses.icon`, nullable, CHECK one of the curated keys).
+
+- `POST /api/v1/partnership/universities/{id}/courses` and `PATCH …/courses/{course_id}` accept `icon`: one of `ai`, `security`, `data`,
+  `computing`, `engineering`, `business`, `health`, `hospitality`, `law`, `education`, `arts`, `science`, `general`, or `null` (automatic;
+  PATCH `null` clears a choice). Anything else → `422`. Who may write is unchanged (CO1); a changed icon is named in the course's audit row.
+- Every course payload (`course_out`: the university's course list, `GET /partnership/courses`, create/update responses) gains `icon`
+  (key or `null`). Additive.
+- `GET /api/v1/public/overseas-courses` and `GET /api/v1/public/universities/{slug}` course rows gain `icon` (key or `null`). Still never
+  commission. `null` is shown by the web client as the icon its category names (`web/lib/courseIcons.ts`), else the general icon.
+- The CSV course import is unchanged (imported courses are automatic).
+
+## 12GL. Country cards (nehn-034) — addendum, 2026-10-26
+
+`DEC-SCOPE-286`. No migration. All additive.
 
 - `GET /api/v1/public/countries` and `GET /api/v1/public/countries/{slug}` (`country`): each country gains `university_count` (int) —
   its published, active universities (`catalogue_visible` and `active`). Public, unchanged access; an unknown slug stays 404.

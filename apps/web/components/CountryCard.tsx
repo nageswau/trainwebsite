@@ -3,7 +3,7 @@ import CountryFlag from "./CountryFlag";
 import { flagSrc } from "@/lib/countryFlag";
 import type { Country } from "@/lib/types";
 
-// nehn-034 (DEC-SCOPE-284 C2-C5): one destination card for the public page and the student portal. Server-safe and data-only (no
+// nehn-034 (DEC-SCOPE-286 C2-C5): one destination card for the public page and the student portal. Server-safe and data-only (no
 // function props) so both server pages render it. No universities yet (C2): "Coming soon" instead of the count and links to them.
 export default function CountryCard({ country, applyHref }: { country: Country; applyHref?: string }) {
   const slug = encodeURIComponent(country.slug);

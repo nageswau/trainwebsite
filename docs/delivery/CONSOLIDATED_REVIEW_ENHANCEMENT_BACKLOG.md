@@ -1053,6 +1053,7 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** existing correction tests; e2e that type UUIDs.
 - **Open questions:** email or in-app only? Instant or daily digest?
 - **Complexity:** small · **Risk:** low
+- **Status (2026-10-26):** built in `worktree-nehn-023` (`DEC-SCOPE-284`, API §12GJ). The student picks the session row in `AttendanceCorrectionPanel` (no UUID anywhere); trainers decide from a pending queue (Approve / Reject + optional comment). In-app + instant email to the trainer on a request (no active trainer → the IT Admins) and to the student on the decision, sent by the worker. Typed review body (422), re-review refused (409). No migration: `review_notes` already existed. Digest vs instant stays `NEEDS_CONFIRMATION`.
 
 ### G. Assignments, assessments, trainer portal (§9, §10)
 
@@ -1482,7 +1483,7 @@ Risk is the risk of regression or of a wrong outcome.
 - **Open questions:** hide empty countries? Include all of `psb-019`? Custom images from the client?
 - **Complexity:** small · **Risk:** low
 - **Status (2026-10-26):**
-  - Built on `worktree-nehn-034` (`DEC-SCOPE-284`; no migration; API §12GJ; RBAC §2.198). AC1-AC4 met: shared `CountryCard` on the
+  - Built on `worktree-nehn-034` (`DEC-SCOPE-286`; no migration; API §12GL; RBAC §2.198). AC1-AC4 met: shared `CountryCard` on the
     public page and the student portal's new Explore Countries page; the apply form starts with a country choice.
   - Open questions took the builder's defaults: empty countries show "Coming soon" (not hidden); only the screens this item touches
     (rest of `psb-019` deferred); custom images wait for client assets and a migration.
@@ -1547,6 +1548,11 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** card layout snapshots.
 - **Open questions:** **in scope this cycle at all?** Curated set or upload?
 - **Complexity:** small · **Risk:** low
+- **Status (2026-10-26):**
+  - Built on `worktree-nehn-036` (`DEC-SCOPE-285`; migration `0197_course_icons`; API §12GK; no new route). Acceptance met for overseas
+    courses: a chosen icon shows, otherwise the subject default from the category (General when unknown), on desktop and mobile.
+  - Open questions took the builder's defaults: a curated set of 12 subject icons + General (no upload); IT `programs` stay without icons
+    (`NEEDS_CONFIRMATION`); whether this optional item is in scope this cycle remains the owner's call.
 
 #### `nehn-037` — Counselor overseas tools: document requests, admission checklist, scholarship update, interviews, notes
 **Status (2026-10-22): SUPERSEDED** for parts 1, 2, 3 and 5 by `ccrm-020`, `ccrm-018`/`ccrm-019`, `ccrm-013` and `ccrm-010` (`docs/delivery/COUNSELOR_CRM_BACKLOG.md`, CC7). Part 4 (admission interviews) remains open here.

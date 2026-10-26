@@ -1,4 +1,4 @@
-"""nehn-034 (DEC-SCOPE-284): the country cards' university count (C1) and the student portal's Explore Countries section (C5)."""
+"""nehn-034 (DEC-SCOPE-286): the country cards' university count (C1) and the student portal's Explore Countries section (C5)."""
 
 import pytest
 

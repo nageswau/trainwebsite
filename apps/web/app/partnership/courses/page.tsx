@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
+import CourseIcon from "@/components/CourseIcon";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
@@ -90,7 +91,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
                   {page.items.map((c) => (
                     <tr key={c.id}>
                       {/* one wrapper per mixed cell -- on a phone each cell is a flex row (upc-026 QA-01) */}
-                      <td data-label="Course"><span>{c.title}{!c.active && <> <span className="badge">Inactive</span></>}</span></td>
+                      <td data-label="Course"><span><CourseIcon icon={c.icon} category={c.category} />{c.title}{!c.active && <> <span className="badge">Inactive</span></>}</span></td>
                       <td data-label="University">
                         <span><Link href={universityPath(c.university.id)}>{c.university.name}</Link> <span className="muted" style={{ whiteSpace: "nowrap" }}>{c.university.country}</span></span>
                       </td>

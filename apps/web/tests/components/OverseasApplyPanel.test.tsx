@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import OverseasApplyPanel from "@/components/OverseasApplyPanel";
 
-// nehn-034 (DEC-SCOPE-284 C6): the apply form starts with a country choice that narrows the university list.
+// nehn-034 (DEC-SCOPE-286 C6): the apply form starts with a country choice that narrows the university list.
 const nav = vi.hoisted(() => ({ search: "" }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),

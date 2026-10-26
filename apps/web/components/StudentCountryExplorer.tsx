@@ -3,7 +3,7 @@ import CountryCard from "./CountryCard";
 import { publicApi } from "@/lib/api";
 import type { Country, PortalPayload } from "@/lib/types";
 
-// nehn-034 (DEC-SCOPE-284 C5): the overseas student's Explore Countries page -- the public destination cards, each with Apply
+// nehn-034 (DEC-SCOPE-286 C5): the overseas student's Explore Countries page -- the public destination cards, each with Apply
 // (the apply form with that country preselected). The portal payload is header-only; it gates the page and gives the heading.
 export default async function StudentCountryExplorer({ data }: { data: PortalPayload }) {
   let countries: Country[] | null = null;

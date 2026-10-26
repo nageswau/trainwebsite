@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import CourseForm from "@/components/CourseForm";
+import CourseIcon from "@/components/CourseIcon";
 import CourseImportPanel from "@/components/CourseImportPanel";
 import { commissionText, type Course, type CourseOptions, type CoursePage, COURSES_PATH, englishText, moneyText } from "@/lib/courseMaster";
 import { dateText } from "@/lib/universityAgreements";
@@ -57,7 +58,7 @@ export default function UniversityCourses({ universityId, page, options, canSetC
           {page.items.map((c) => (
             <li key={c.id} style={{ display: "grid", gap: 6, borderTop: "1px solid var(--line, #e5e7eb)", paddingTop: 10 }}>
               <p style={{ margin: 0, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline" }}>
-                <strong>{c.title}</strong> <span className="badge">{c.level}</span>
+                <strong><CourseIcon icon={c.icon} category={c.category} />{c.title}</strong> <span className="badge">{c.level}</span>
                 {!c.active && <span className="badge">Inactive</span>}
               </p>
               <dl style={{ display: "grid", gridTemplateColumns: "minmax(120px, max-content) 1fr", gap: "4px 16px", margin: 0 }}>

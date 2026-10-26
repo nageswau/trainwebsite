@@ -140,7 +140,7 @@ async def social_proof_strip(division: Literal["it", "overseas", "all"] = "all",
 
 
 async def _public_university_counts(db: AsyncSession, country_ids: list[UUID]) -> dict[UUID, int]:
-    """nehn-034 (DEC-SCOPE-284 C1): each country's published, active universities, in one grouped query."""
+    """nehn-034 (DEC-SCOPE-286 C1): each country's published, active universities, in one grouped query."""
     stmt = select(University.country_id, func.count()).where(University.country_id.in_(country_ids), *public_visible()).group_by(University.country_id)
     return dict((await db.execute(stmt)).tuples().all())
 
@@ -191,7 +191,7 @@ async def university(slug: str, db: AsyncSession = Depends(get_db)):
     cs = (await db.scalars(select(OverseasCourse).where(OverseasCourse.university_id == u.id, OverseasCourse.active.is_(True)))).all()
     return {
         "university": UniversityOut.model_validate(u),
-        "courses": [{"id": c.id, "title": c.title, "level": c.level, "category": c.category, "duration": c.duration, "tuition_fee": c.tuition_fee, "intake": c.intake, "campus": c.campus, "fee_text": c.fee_text, "intake_text": c.intake_text} for c in cs],
+        "courses": [{"id": c.id, "title": c.title, "level": c.level, "category": c.category, "duration": c.duration, "tuition_fee": c.tuition_fee, "intake": c.intake, "campus": c.campus, "fee_text": c.fee_text, "intake_text": c.intake_text, "icon": c.icon} for c in cs],
     }
 
 
@@ -209,7 +209,7 @@ async def overseas_courses(category: str | None = None, level: str | None = None
         stmt = stmt.where(OverseasCourse.level == level)
     rows = (await db.execute(stmt.limit(100))).all()
     return [
-        {"id": c.id, "title": c.title, "level": c.level, "category": c.category, "duration": c.duration, "tuition_fee": c.tuition_fee, "intake": c.intake, "campus": c.campus, "fee_text": c.fee_text, "intake_text": c.intake_text, "university": u.name, "country": co.name, "country_iso2": co.iso2}
+        {"id": c.id, "title": c.title, "level": c.level, "category": c.category, "duration": c.duration, "tuition_fee": c.tuition_fee, "intake": c.intake, "campus": c.campus, "fee_text": c.fee_text, "intake_text": c.intake_text, "icon": c.icon, "university": u.name, "country": co.name, "country_iso2": co.iso2}
         for c, u, co in rows
     ]
 

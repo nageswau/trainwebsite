@@ -96,6 +96,7 @@ from app.schemas import (
     AssignmentUpdate,
     AttendanceBulkIn,
     AttendanceCorrectionIn,
+    AttendanceCorrectionReviewIn,
     CommissionAmountUpdate,
     CommissionCreate,
     CommissionReportOut,
@@ -625,7 +626,9 @@ async def mark_attendance(payload: AttendanceBulkIn, user: User = Depends(get_cu
 async def student_attendance(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"it_student"}, "it")
     rows = (await db.execute(select(Attendance, Batch).join(Batch).where(Attendance.student_id == user.id).order_by(Attendance.session_date.desc()))).all()
-    return [{"id": a.id, "batch": b.name, "session_date": a.session_date, "status": a.status, "notes": a.notes} for a, b in rows]
+    # nehn-023: the row says whether a request is already pending, so the UI offers "Request correction" only where it can succeed.
+    pending = set((await db.scalars(select(AttendanceCorrection.attendance_id).where(AttendanceCorrection.student_id == user.id, AttendanceCorrection.status == "pending"))).all())
+    return [{"id": a.id, "batch": b.name, "session_date": a.session_date, "status": a.status, "notes": a.notes, "correction_pending": a.id in pending} for a, b in rows]
 
 
 @router.post("/it/student/attendance-corrections", status_code=201)
@@ -641,30 +644,48 @@ async def request_attendance_correction(payload: AttendanceCorrectionIn, user: U
     db.add(item)
     await db.flush()
     await _audit(db, user, "attendance.correction_request", "attendance_correction", item.id)
+    # nehn-023 (DEC-SCOPE-284 D1/D2): in-app + email to the batch's trainer; a batch without an active trainer goes to the IT Admins,
+    # whose action is to assign one (they have no attendance page).
+    batch = await db.get(Batch, attendance.batch_id)
+    trainer = await db.get(User, batch.trainer_id) if batch.trainer_id else None
+    change = f"{user.full_name} asked to change {batch.name} on {attendance.session_date:%d %b %Y} from {attendance.status} to {item.requested_status}."
+    if trainer and trainer.active:
+        await _notify_user(db, trainer, "Attendance correction requested", change, "/it/trainer/attendance", channels=["email"])
+    else:
+        body = f"{change} The batch has no trainer to review it; assign one so the request can be decided."
+        for admin in (await db.scalars(select(User).where(User.role == "it_admin", User.active.is_(True)))).all():
+            await _notify_user(db, admin, "Attendance correction needs a trainer", body, "/it/admin/batches", channels=["email"])
     await db.commit()
     await db.refresh(item)
     return {"id": item.id, "status": item.status}
 
 
 @router.patch("/it/attendance-corrections/{correction_id}")
-async def review_attendance_correction(correction_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def review_attendance_correction(correction_id: UUID, payload: AttendanceCorrectionReviewIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, {"trainer", "it_admin"}, "it")
-    item = await db.get(AttendanceCorrection, correction_id)
+    item = await db.get(AttendanceCorrection, correction_id, with_for_update=True)  # nehn-023: two reviewers at once -> the second gets 409
     if not item:
         raise HTTPException(404, "Correction request not found")
     attendance = await db.get(Attendance, item.attendance_id)
     batch = await db.get(Batch, attendance.batch_id) if attendance else None
     if user.role == "trainer" and (not batch or batch.trainer_id != user.id):
         raise HTTPException(403, "Correction is outside your assigned batch")
-    decision = payload.get("status")
-    if decision not in {"approved", "rejected"}:
-        raise HTTPException(422, "Status must be approved or rejected")
+    # nehn-023 (D5): decide once -- a repeat would flip the attendance again and notify the student twice.
+    if item.status != "pending":
+        raise HTTPException(409, "This correction request has already been reviewed")
+    decision = payload.status
     item.status = decision
     item.reviewed_by_id = user.id
-    item.review_notes = payload.get("review_notes")
+    item.review_notes = payload.review_notes
     if decision == "approved" and attendance:
         attendance.status = item.requested_status
     await _audit(db, user, "attendance.correction_review", "attendance_correction", item.id, {"status": decision})
+    student = await db.get(User, item.student_id)
+    if student and student.active and attendance and batch:
+        body = f"Your request to change {batch.name} on {attendance.session_date:%d %b %Y} to {item.requested_status} was {decision}."
+        if item.review_notes:
+            body += f" Comment: {item.review_notes}"
+        await _notify_user(db, student, f"Attendance correction {decision}", body, "/it/student/attendance", channels=["email"])
     await db.commit()
     return {"id": item.id, "status": item.status}
 

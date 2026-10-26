@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
-// nehn-034 (DEC-SCOPE-284) -- country cards: flag, count, View universities (filtered), the student portal's Explore Countries page
+// nehn-034 (DEC-SCOPE-286) -- country cards: flag, count, View universities (filtered), the student portal's Explore Countries page
 // and the apply form's country step. Requires the seeded stack (Germany has published universities: TU Munich, RWTH Aachen).
 
 async function germanyCard(page: Page) {

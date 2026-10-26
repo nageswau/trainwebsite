@@ -3025,7 +3025,7 @@ scope. Pinned by `test_nehn_004_xlsx_exports.py` and the rows added to `test_tel
 `GET /admin/system-status` keeps its access (`ensure_admin`); it only gains the `Razorpay mode` row. Pinned by
 `apps/api/tests/test_nehn_022_razorpay_mode.py`.
 
-### 2.198 Country cards *(added 2026-10-26 — `DEC-SCOPE-284`, nehn-034)*
+### 2.198 Country cards *(added 2026-10-26 — `DEC-SCOPE-286`, nehn-034)*
 
 | Route | Anonymous | overseas_student | Other roles |
 |---|---|---|---|

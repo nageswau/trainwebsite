@@ -18,7 +18,7 @@ function detailMessage(status: number, detail: unknown) {
 // OVS-002: submitting interest previously meant typing a raw university/course UUID
 // into a generic form (same class of gap already fixed for ADM-001/002/003/004/006/007).
 // This lists real universities (public catalogue, OVS-001) and their real courses instead.
-// nehn-034 (DEC-SCOPE-284 C6): the form starts with a country choice that narrows the universities. "All countries" (the default)
+// nehn-034 (DEC-SCOPE-286 C6): the form starts with a country choice that narrows the universities. "All countries" (the default)
 // keeps the full list; ?country=<slug> (a portal country card's Apply) preselects one. A failed country read leaves just "All countries".
 export default function OverseasApplyPanel() {
   const router = useRouter();

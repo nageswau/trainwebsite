@@ -14,7 +14,7 @@ const course = (over: Partial<Course> = {}): Course => ({
   id: "c1", university_id: "u1", title: "MSc Cyber Security", level: "PG", category: "Computer Science", duration: "1 year", tuition_fee: "GBP 18,000",
   intake: "Jan, Sep", tuition_amount: "18000.00", tuition_currency: "GBP", application_fee: "75.00", application_fee_currency: "GBP", intakes: ["Jan", "Sep"],
   entry_requirements: "2:1 honours degree", english_test: "IELTS", english_score: "6.5", scholarships: [{ id: "s1", title: "Global Award", amount: "£5,000" }],
-  application_process: "Apply online", deadline: "2027-06-30", active: true, campus: null, fee_text: null, intake_text: null, permissions: { can_edit: true }, ...over,
+  application_process: "Apply online", deadline: "2027-06-30", active: true, campus: null, fee_text: null, intake_text: null, icon: null, permissions: { can_edit: true }, ...over,
 });
 const page = (items: Course[], can_edit = true): CoursePage => ({ items, total: items.length, limit: 50, offset: 0, can_edit });
 const options = { scholarships: [{ id: "s1", title: "Global Award", amount: "£5,000" }] };
@@ -184,5 +184,50 @@ describe("CourseImportPanel (upc-017)", () => {
     expect(fetchMock.mock.calls[0][1].headers["Idempotency-Key"]).toBeTruthy();
     expect(refresh).toHaveBeenCalled();
     expect(screen.getByRole("link", { name: "Download the template" })).toHaveAttribute("href", "/api/v1/partnership/universities/u1/courses/imports/template");
+  });
+});
+
+describe("course icons (nehn-036)", () => {
+  const iconOf = (el: HTMLElement) => el.querySelector("svg.course-icon")?.getAttribute("data-icon");
+
+  it("shows the chosen icon, else the subject default, beside each course", () => {
+    render(<UniversityCourses universityId="u1" page={page([course({ icon: "law" }), course({ id: "c2", title: "MSc Data", category: "Data Science" })])} options={null} canSetCommission={false} />);
+    const [first, second] = screen.getAllByRole("listitem").filter((li) => li.parentElement?.getAttribute("aria-label") === "Courses");
+    expect(iconOf(first)).toBe("law");
+    expect(iconOf(second)).toBe("data");
+  });
+
+  it("picks an icon for a new course and previews the automatic one meanwhile", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res({ course: course() }, 201));
+    vi.stubGlobal("fetch", fetchMock);
+    const onSaved = vi.fn();
+    render(<CourseForm universityId="u1" options={options} canSetCommission={false} label="Course form" onSaved={onSaved} onCancel={vi.fn()} />);
+    const form = screen.getByRole("form", { name: "Course form" });
+    const picker = within(form).getByLabelText("Icon");
+    expect(picker).toHaveValue("");
+    expect(within(picker).getByRole("option", { name: "Automatic (from category)" })).toBeInTheDocument();
+    fireEvent.change(within(form).getByLabelText("Category (required)"), { target: { value: "Cyber Security" } });
+    expect(iconOf(form)).toBe("security"); // the preview follows the category while Automatic
+    fireEvent.change(picker, { target: { value: "law" } });
+    expect(iconOf(form)).toBe("law");
+    for (const [key, value] of [["Course title (required)", "LLM"], ["Level (required)", "PG"], ["Duration (required)", "1 year"]]) {
+      fireEvent.change(within(form).getByLabelText(key), { target: { value } });
+    }
+    fireEvent.click(within(form).getByRole("button", { name: "Save course" }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith("Course added."));
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ category: "Cyber Security", icon: "law" });
+  });
+
+  it("an edit sends the new icon, and Automatic sends null", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res({ course: course() }));
+    vi.stubGlobal("fetch", fetchMock);
+    const onSaved = vi.fn();
+    render(<CourseForm universityId="u1" options={options} course={course({ icon: "law" })} canSetCommission={false} label="Course form" onSaved={onSaved} onCancel={vi.fn()} />);
+    const form = screen.getByRole("form", { name: "Course form" });
+    expect(within(form).getByLabelText("Icon")).toHaveValue("law");
+    fireEvent.change(within(form).getByLabelText("Icon"), { target: { value: "" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save course" }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith("Course updated."));
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ icon: null });
   });
 });

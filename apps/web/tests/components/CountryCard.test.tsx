@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import CountryCard from "@/components/CountryCard";
 import type { Country } from "@/lib/types";
 
-// nehn-034 (DEC-SCOPE-284 C2-C5): the country card shared by the public destinations page and the student portal.
+// nehn-034 (DEC-SCOPE-286 C2-C5): the country card shared by the public destinations page and the student portal.
 const country = (overrides: Partial<Country> = {}): Country => ({
   id: "c1", slug: "united-kingdom", name: "United Kingdom", iso2: "GB", overview: "Short, intensive degrees.", tuition: "GBP 15,000-30,000",
   living_expenses: "", visa_process: [], work_opportunities: "", post_study_work: "", pr_opportunities: "", faq: [], university_count: 3, ...overrides,
