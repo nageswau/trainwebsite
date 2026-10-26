@@ -669,7 +669,7 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
     _reject_supplied_password(payload, user, USERS_ROUTE, "password")
     allowed_by_division = {
         # tel-017 (DEC-SCOPE-076, T3): a counselor belongs to IT or Overseas.
-        "it": {"it_student", "trainer", "placement_team", "hr_team", "it_admin", "bdm", "telecaller", "counselor"},
+        "it": {"it_student", "trainer", "placement_team", "hr_team", "it_admin", "bdm", "telecaller", "counselor", "coordinator"},  # nehn-030
         "overseas": {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin", "bdm", "telecaller", "partnership_manager"},
         "global": {"super_admin", "bdm_manager", "telecaller_manager", "placement_manager", "partnership_head", "partner", "accountant"},
     }

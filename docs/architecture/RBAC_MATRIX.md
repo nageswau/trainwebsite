@@ -3081,3 +3081,20 @@ No new permission key; each kind reuses the scope of the caller's existing list.
 | `GET /workflows/it/submissions/{sid}/files/{fid}` | 401 | 200 | 403 | 200 / 403 | 200 | 200 |
 
 No new permission key. Pinned by `apps/api/tests/test_nehn_024_submission_files.py`.
+
+### 2.204 IT Coordinator role *(added 2026-10-26 — `DEC-SCOPE-293`, nehn-030; `DEC-ROLE-003`)*
+
+New role `coordinator`, division `it`, coarse bundle `{"it:certificates:read"}`. Created by `it_admin` / `super_admin` through
+`POST /admin/users` (division it only; another division 403, overseas/global 422). Signs in at `/it/login`, lands on
+`/it/coordinator/dashboard`. New catalogue key `certificates.view` (nehn-005 engine), granted by default to `coordinator` only (migration
+`0201_coordinator_role`); a Super Admin can revoke or restore it.
+
+| Route | Anonymous | coordinator (grant on / off) | trainer, it_admin, it_student, other roles | super_admin |
+|---|---|---|---|---|
+| `GET /portal/it/coordinator/dashboard` | 401 | 200 metrics + latest 5 / 200 header only | 403 | 200 (its own operations payload) |
+| `GET /portal/it/coordinator/certificates` | 401 | 200 / 403 | 403 | 200 (its own operations payload) |
+| `GET /portal/it/coordinator/{other section}` | 401 | 404 | 403 | — |
+| `/admin/*`, `/portal/it/{admin,trainer,hr}/*`, `POST /workflows/it/certificates/{id}/issue` | 401 | 403 | unchanged | unchanged |
+
+Certificate issuance is unchanged here (trainer, it_admin); nehn-031 moves it to the coordinator. Pinned by
+`apps/api/tests/test_nehn_030_coordinator.py` and the role-equivalence test in `test_nehn_005_permissions.py` (29 roles).

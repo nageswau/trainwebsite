@@ -348,7 +348,7 @@ function overseasOperationsSpecs(role: string, section: string): ActionSpec[] {
 // (apps/api/app/api/admin.py) -- keeps the dropdown from ever offering a role the backend
 // would 422 on.
 const ROLES_BY_DIVISION: Record<string, string[]> = {
-  it: ["it_student", "trainer", "placement_team", "hr_team", "counselor", "it_admin"], // tel-017: counselors are IT or Overseas
+  it: ["it_student", "trainer", "placement_team", "hr_team", "counselor", "coordinator", "it_admin"], // tel-017: counselors are IT or Overseas; nehn-030
   overseas: ["overseas_student", "counselor", "university_rep", "agent", "overseas_admin"],
   // bdm-001 / tel-001: managers have no profile, so this generic form creates them; a BDM or telecaller needs its own admin page
   // (profile required).

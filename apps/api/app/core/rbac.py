@@ -62,6 +62,8 @@ PERMISSIONS: dict[str, set[str]] = {
     # mgmt-001 (Management M2/M5/M13): coarse bundles; the tiers are enforced in services/management_access.py.
     "partner": {"management:*"},
     "accountant": {"management:finance"},
+    # nehn-030 (DEC-ROLE-003, DEC-SCOPE-293): the IT certificate coordinator; it reads certificates through the `certificates.view` grant.
+    "coordinator": {"it:certificates:read"},
 }
 
 
@@ -75,6 +77,7 @@ CATALOGUE: dict[str, dict] = {
     "payments": {"label": "Payments", "actions": ("view", "add")},
     "discounts": {"label": "Payment discounts", "actions": ("add",)},
     "reports.telecaller": {"label": "Telecaller reports", "actions": ("view", "download")},
+    "certificates": {"label": "Certificates", "actions": ("view",)},  # nehn-030: the coordinator portal's Certificates section
 }
 # The day-one grants, equal to the inline checks they replace (P3): admin.ensure_admin and telecaller_reports' REPORT_ROLES.
 # super_admin holds every key implicitly and never has rows (P5). Migration 0196 seeds a frozen copy.
@@ -84,6 +87,7 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "it_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,
     "overseas_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,
     "telecaller_manager": _TELECALLER_REPORTS,
+    "coordinator": ("certificates.view",),  # nehn-030; migration 0201 seeds it
 }
 
 
