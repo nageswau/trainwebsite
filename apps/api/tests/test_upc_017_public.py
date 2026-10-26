@@ -11,7 +11,7 @@ from tests.test_upc_017_courses import add_course, courses_url
 from tests.upc003_helpers import create, login, make_user
 
 PUBLIC = "/api/v1/public"
-KEYS = {"id", "title", "level", "category", "duration", "tuition_fee", "intake", "campus", "fee_text", "intake_text"}  # campus/fee_text/intake_text: dtu-001 (stale pin fixed in PUB-023)
+KEYS = {"id", "title", "level", "category", "duration", "tuition_fee", "intake", "campus", "fee_text", "intake_text", "icon"}  # campus/fee_text/intake_text: dtu-001 (stale pin fixed in PUB-023); icon: nehn-036
 
 
 @pytest.mark.asyncio

@@ -1542,6 +1542,11 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** card layout snapshots.
 - **Open questions:** **in scope this cycle at all?** Curated set or upload?
 - **Complexity:** small · **Risk:** low
+- **Status (2026-10-26):**
+  - Built on `worktree-nehn-036` (`DEC-SCOPE-284`; migration `0197_course_icons`; API §12GJ; no new route). Acceptance met for overseas
+    courses: a chosen icon shows, otherwise the subject default from the category (General when unknown), on desktop and mobile.
+  - Open questions took the builder's defaults: a curated set of 12 subject icons + General (no upload); IT `programs` stay without icons
+    (`NEEDS_CONFIRMATION`); whether this optional item is in scope this cycle remains the owner's call.
 
 #### `nehn-037` — Counselor overseas tools: document requests, admission checklist, scholarship update, interviews, notes
 **Status (2026-10-22): SUPERSEDED** for parts 1, 2, 3 and 5 by `ccrm-020`, `ccrm-018`/`ccrm-019`, `ccrm-013` and `ccrm-010` (`docs/delivery/COUNSELOR_CRM_BACKLOG.md`, CC7). Part 4 (admission interviews) remains open here.
