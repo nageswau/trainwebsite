@@ -6,6 +6,7 @@ import Script from "next/script";
 import { formatCalendarDate } from "@/lib/formatDate";
 import { newIdempotencyKey } from "@/lib/idempotencyKey";
 import { openRazorpayCheckout } from "@/lib/razorpayCheckout";
+import PaymentModeBanner from "./PaymentModeBanner";
 
 type PaymentRow = {
   id: string;
@@ -144,6 +145,7 @@ export default function FeePaymentPanel() {
     <div className="action-card">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
       <h3>Fee Payments</h3>
+      <PaymentModeBanner />
       {rows.length === 0 ? (
         <p className="muted">No payment records yet.</p>
       ) : (

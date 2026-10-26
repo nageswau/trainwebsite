@@ -342,6 +342,18 @@ class AttendanceCorrectionIn(BaseModel):
     reason: str = Field(min_length=5, max_length=2000)
 
 
+class AttendanceCorrectionReviewIn(BaseModel):
+    """nehn-023: the review body was an untyped dict. Same JSON shape, stricter validation; a blank comment is stored as null."""
+
+    status: Literal["approved", "rejected"]
+    review_notes: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("review_notes")
+    @classmethod
+    def blank_review_notes_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
+
+
 class AssignmentCreate(BaseModel):
     batch_id: UUID
     title: str = Field(min_length=2, max_length=180)

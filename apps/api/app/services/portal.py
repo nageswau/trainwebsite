@@ -217,7 +217,16 @@ async def _it_student(db: AsyncSession, user: User, section: str):
         rows = (
             await db.execute(select(Attendance, Batch).join(Batch, Batch.id == Attendance.batch_id).where(Attendance.student_id == user.id).order_by(Attendance.session_date.desc()).limit(300))
         ).all()
-        corrections = (await db.scalars(select(AttendanceCorrection).where(AttendanceCorrection.student_id == user.id).order_by(AttendanceCorrection.created_at.desc()).limit(30))).all()
+        corrections = (
+            await db.execute(
+                select(AttendanceCorrection, Attendance, Batch)
+                .join(Attendance, Attendance.id == AttendanceCorrection.attendance_id)
+                .join(Batch, Batch.id == Attendance.batch_id)
+                .where(AttendanceCorrection.student_id == user.id)
+                .order_by(AttendanceCorrection.created_at.desc())
+                .limit(30)
+            )
+        ).all()
         # STU-006 (PRD-STU-007): course/module completion % and outstanding blockers
         # (unfinished assignments) belong on this same read-only view, alongside
         # attendance -- not just a session list. STU-006-AC02: a session with no
@@ -236,15 +245,19 @@ async def _it_student(db: AsyncSession, user: User, section: str):
         return _payload(
             "Attendance & Progress",
             "Session records, course completion, and outstanding work.",
-            (("id", "Record reference"), ("batch", "Batch"), ("date", "Date"), ("status", "Status"), ("notes", "Notes")),
-            ({"id": a.id, "batch": b.name, "date": a.session_date, "status": a.status, "notes": a.notes} for a, b in rows),
+            # nehn-023: no "Record reference" (UUID) column -- the student picks the row in AttendanceCorrectionPanel instead.
+            (("batch", "Batch"), ("date", "Date"), ("status", "Status"), ("notes", "Notes")),
+            ({"batch": b.name, "date": a.session_date, "status": a.status, "notes": a.notes} for a, b in rows),
             (
                 {"label": "Attendance", "value": f"{attendance_percent}%" if attendance_percent is not None else "No sessions recorded yet"},
                 {"label": "Course progress", "value": f"{progress_percent}%" if progress_percent is not None else "Not enrolled"},
                 {"label": "Outstanding blockers", "value": len(blockers)},
             ),
             panels=(
-                {"title": "Correction requests", "items": [f"Request {c.id}: {c.requested_status} - {c.status}" for c in corrections]},
+                {
+                    "title": "Correction requests",
+                    "items": [f"{a.session_date:%d %b %Y} · {b.name}: {c.requested_status} — {c.status}" + (f" ({c.review_notes})" if c.review_notes else "") for c, a, b in corrections],
+                },
                 {"title": "Outstanding blockers", "items": [f"{a.title} (due {a.due_date}) - not submitted" for a in blockers] or ["No outstanding blockers"]},
             ),
         )

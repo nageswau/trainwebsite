@@ -1,4 +1,4 @@
-"""nehn-029 -- migration 0197_live_session_cancel_reason (DEC-SCOPE-283). The round trip runs in a throwaway database built from scratch
+"""nehn-029 -- migration 0197_live_session_cancel_reason (DEC-SCOPE-285). The round trip runs in a throwaway database built from scratch
 (the upc-001 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util

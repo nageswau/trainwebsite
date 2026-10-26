@@ -3016,7 +3016,16 @@ Every `.xlsx` route answers exactly as its `.csv` twin, cell for cell: `GET /tel
 scope. Pinned by `test_nehn_004_xlsx_exports.py` and the rows added to `test_tel_026_matrix.py`, `rec038_rows_activity.py` and
 `test_upc_033_matrix.py`.
 
-### 2.197 Live class reschedule and cancel *(added 2026-10-26 — `DEC-SCOPE-283`, nehn-029)*
+### 2.197 Razorpay mode *(added 2026-10-26 — `DEC-SCOPE-283`, nehn-022)*
+
+| Route | Anonymous | Any signed-in role |
+|---|---|---|
+| `GET /payments/mode` | 401 | 200 (mode only) |
+
+`GET /admin/system-status` keeps its access (`ensure_admin`); it only gains the `Razorpay mode` row. Pinned by
+`apps/api/tests/test_nehn_022_razorpay_mode.py`.
+
+### 2.198 Live class reschedule and cancel *(added 2026-10-26 — `DEC-SCOPE-285`, nehn-029)*
 
 `PATCH /communications/it/live-sessions/{session_id}` and `POST /communications/it/live-sessions/{session_id}/cancel`: the batch's
 trainer (another trainer 403), `it_admin`, `super_admin`; every other signed-in role 403; anonymous 401. Learners only read the result

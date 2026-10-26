@@ -4139,9 +4139,33 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   cells (dates `yyyy-mm-dd`, timestamps IST `yyyy-mm-dd hh:mm`); text is literal (formula-looking text prefixed `'`, as in the CSV).
 - The `.csv` routes are unchanged apart from the audit row's added `format: "csv"`.
 
-## 12GI. Live class reschedule and cancel (nehn-029) — addendum, 2026-10-26
+## 12GI. Razorpay mode (nehn-022) — addendum, 2026-10-26
 
-`DEC-SCOPE-283`. Migration `0197_live_session_cancel_reason` (`live_sessions.cancel_reason`, nullable text).
+`DEC-SCOPE-283`. No migration.
+
+- `GET /api/v1/payments/mode` → 200 `{"mode": "test" | "live"}` for any signed-in user; 401 without a session. Read-only, non-secret
+  (never a key id or secret). The value is `RAZORPAY_MODE`, already checked against the keys at startup.
+- `GET /api/v1/admin/system-status` gains one row: `{"service": "Razorpay mode", "status": "test mode" | "live mode"}` (additive; access
+  unchanged).
+- Startup (not an HTTP contract): `RAZORPAY_MODE` / `RAZORPAY_KEY_ID` mismatch, or `live` without the key secret and webhook secret, stops
+  the process before it serves. Runbook: `RAZORPAY_GO_LIVE.md`.
+
+## 12GJ. Attendance correction usability and notifications (nehn-023) — addendum, 2026-10-26
+
+`DEC-SCOPE-284`. No migration, no new route.
+
+- `PATCH /api/v1/workflows/it/attendance-corrections/{id}` body is typed: `{"status": "approved" | "rejected", "review_notes"?: string ≤ 2000
+  | null}` (same shape; anything else → 422; blank notes stored as null). A request that is no longer `pending` → 409. Approval or
+  rejection queues an in-app notification + email to the student.
+- `POST /api/v1/workflows/it/student/attendance-corrections` (unchanged contract) now queues an in-app notification + email to the batch's
+  active trainer, or to every active IT Admin when the batch has none.
+- `GET /api/v1/workflows/it/student/attendance` rows gain `"correction_pending": bool` (additive).
+- `GET /api/v1/portal/it/student/attendance` drops the `id` ("Record reference") column; correction items read
+  `<dd Mon yyyy> · <batch>: <requested> — <status>[ (<comment>)]`.
+
+## 12GK. Live class reschedule and cancel (nehn-029) — addendum, 2026-10-26
+
+`DEC-SCOPE-285`. Migration `0197_live_session_cancel_reason` (`live_sessions.cancel_reason`, nullable text).
 
 - `PATCH /communications/it/live-sessions/{session_id}` — body any of `title` (2-180), `starts_at`, `ends_at`, `meeting_url`
   (`http(s)://`, ≤500); at least one (422). A time without a zone is read in the batch timezone. 200

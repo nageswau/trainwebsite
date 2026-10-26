@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import AgentApplicationDepositForm from "./AgentApplicationDepositForm";
+import PaymentModeBanner from "./PaymentModeBanner";
 import { SESSION_EXPIRED, SIGN_IN_PATH } from "@/lib/activityFeedback";
 import { detailMessage, sendJson, sendRequest } from "@/lib/apiErrors";
 import { AgentApplicationDetail, DEPOSIT_STATUS_LABELS, depositUrl, formatInr, PAYMENT_UNAVAILABLE } from "@/lib/agentApplications";
@@ -168,6 +169,7 @@ export default function AgentApplicationDeposit({ detail, open, canOpen, onOpen,
             </dl>
           )}
           {pending && !available && <p className="form-warning">{PAYMENT_UNAVAILABLE}</p>}
+          {pending && available && canOpen && <PaymentModeBanner />}
           {pending && available && deposit.checkout_in_progress && !note && (
             <p className="muted">A payment was started for this deposit. If it was completed, it will appear here shortly.</p>
           )}

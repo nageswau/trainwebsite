@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AgentApplicationDetail from "@/components/AgentApplicationDetail";
+import { TEST_MODE_TEXT } from "@/components/PaymentModeBanner";
 
 // AGN-011 (DEC-SCOPE-058): the application's deposit -- record it, pay it through Razorpay Checkout (stubbed here), download the receipt,
 // and say plainly when online payment is unavailable (AC6).
@@ -86,6 +87,26 @@ describe("AgentApplicationDeposit (AGN-011)", () => {
     expect(within(deposit).getByText("₹50,000.00")).toBeTruthy();
     expect(within(deposit).getByText("2026-12-01")).toBeTruthy();
     expect(within(deposit).getByRole("button", { name: "Pay deposit" })).toBeTruthy();
+  });
+
+  it("nehn-022: shows the test-mode banner beside Pay deposit, and not in live mode", async () => {
+    for (const mode of ["test", "live"]) {
+      serve({ deposit: DEPOSIT }, (url) => (url === "/api/v1/payments/mode" ? json({ mode }) : undefined));
+      mount();
+      const deposit = await region();
+      await within(deposit).findByRole("button", { name: "Pay deposit" });
+      if (mode === "test") expect(await within(deposit).findByText(TEST_MODE_TEXT)).toBeTruthy();
+      else await waitFor(() => expect(within(deposit).queryByText(TEST_MODE_TEXT)).toBeNull());
+      cleanup();
+    }
+  });
+
+  it("nehn-022: no test-mode banner when nothing can be paid", async () => {
+    const fetchMock = serve({ deposit: DEPOSIT, payment_available: false }, (url) => (url === "/api/v1/payments/mode" ? json({ mode: "test" }) : undefined));
+    mount();
+    await region();
+    expect(fetchMock.mock.calls.some(([url]) => url === "/api/v1/payments/mode")).toBe(false);
+    expect(screen.queryByText(TEST_MODE_TEXT)).toBeNull();
   });
 
   it("says payment is unavailable when Razorpay is not configured, with no Pay button", async () => {

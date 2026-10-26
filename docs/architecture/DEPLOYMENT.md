@@ -99,3 +99,8 @@ Notes:
 - Over the API there is no Reply-To (replies go to the From address) and the inline logo is omitted.
 - `NEEDS_CONFIRMATION`: Zoho Mail's daily sending limit for the mailbox depends on the plan; the owner checks it before large bulk sends (for example a school roster invite). A 429 is a permanent failure and is never retried.
 - Switching back is a `.env` change only (`EMAIL_TRANSPORT=smtp`), for example if DigitalOcean lifts the SMTP block.
+
+
+## Payments go-live (`nehn-022`, `DEC-SCOPE-283`)
+
+Razorpay runs in `RAZORPAY_MODE=test` until the owner switches it, and the API refuses to start if the mode and the key prefix disagree. The step-by-step switch to live (live keys, webhook secret and URL registration, a ₹1 live payment and refund, reconciliation, rollback) is in [`RAZORPAY_GO_LIVE.md`](RAZORPAY_GO_LIVE.md).
