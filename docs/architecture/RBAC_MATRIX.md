@@ -3040,3 +3040,11 @@ Public data only; no new permission key. Pinned by `apps/api/tests/test_nehn_034
 trainer (another trainer 403), `it_admin`, `super_admin`; every other signed-in role 403; anonymous 401. Learners only read the result
 (`GET /communications/it/live-sessions`, own active enrollments). Pinned by `test_nehn_029_live_session_manage.py` and the route list
 in `test_uuid_contracts.py`.
+
+### 2.200 Audit log search *(added 2026-10-26 — `DEC-SCOPE-289`, nehn-042)*
+
+`GET /admin/audit` (with any filters): `super_admin` sees every division; `it_admin` / `overseas_admin` see only rows whose actor is in
+their own division plus system rows (no actor) — enforced in the SQL `WHERE` before paging, so a `division`/`actor` filter for another
+division returns `[]`, never its rows. Every other signed-in role 403; anonymous 401. Web: `/admin/security-logs` (Super Admin, with
+Export), `/it/admin/audit-log` (IT Admin), `/overseas/admin/audit-log` (Overseas Admin); audit `metadata` is not rendered. Pinned by
+`test_nehn_042_audit_search.py`.
