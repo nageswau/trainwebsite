@@ -36,6 +36,7 @@ test("a public country card shows flag, count and opens that country's universit
 
 test("an unknown country filter shows the empty state, not an error", async ({ page }) => {
   await page.goto("/overseas/universities?country=no-such-country");
+  await expect(page.getByText("Destination not found")).toBeVisible(); // QA-034-01
   await expect(page.getByRole("heading", { name: "No universities available" })).toBeVisible();
 });
 
