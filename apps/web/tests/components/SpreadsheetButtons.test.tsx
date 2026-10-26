@@ -46,6 +46,15 @@ describe("SpreadsheetButtons (nehn-004)", () => {
     expect(group).toHaveAccessibleDescription("Up to 10,000 rows.");
   });
 
+  // Browser QA-01: in a flex toolbar the hint must stay with its buttons, so the pair and the hint are one box.
+  it("keeps the hint in one box with the buttons", () => {
+    vi.stubGlobal("fetch", vi.fn());
+    render(<div data-testid="toolbar"><SpreadsheetButtons csvUrl="/api/v1/x/students.csv" filename="students.csv" label="Export students" hint="Up to 10,000 rows." /></div>);
+    const toolbar = screen.getByTestId("toolbar");
+    expect(toolbar.children).toHaveLength(1);
+    expect(toolbar.firstElementChild).toContainElement(screen.getByText("Up to 10,000 rows."));
+  });
+
   it("only saves a real spreadsheet: a refusal is shown instead", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: "This report has more than 10,000 rows; narrow the filters" }), { status: 422 })));
     render(<SpreadsheetButtons csvUrl="/api/v1/x/students.csv" filename="students.csv" label="Export students" />);

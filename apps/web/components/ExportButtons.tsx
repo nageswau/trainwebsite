@@ -23,13 +23,12 @@ export function SpreadsheetButtons({ csvUrl, filename, label, hint }: { csvUrl: 
 
 function Pair({ csv, xlsx, name, label, hint }: { csv: string; xlsx: string; name: string; label: string; hint?: string }) {
   const hintId = useId();
-  return (
-    <>
-      <div className="export-buttons" role="group" aria-label={label} aria-describedby={hint ? hintId : undefined}>
-        <ReportDownloadButton url={csv} label="Download CSV" filename={`${name}.csv`} contentType="text/csv" busyLabel="Preparing CSV…" />
-        <ReportDownloadButton url={xlsx} label="Download Excel" filename={`${name}.xlsx`} contentType={XLSX_TYPE} busyLabel="Preparing Excel…" />
-      </div>
-      {hint && <p id={hintId} className="field-hint">{hint}</p>}
-    </>
+  const group = (
+    <div className="export-buttons" role="group" aria-label={label} aria-describedby={hint ? hintId : undefined}>
+      <ReportDownloadButton url={csv} label="Download CSV" filename={`${name}.csv`} contentType="text/csv" busyLabel="Preparing CSV…" />
+      <ReportDownloadButton url={xlsx} label="Download Excel" filename={`${name}.xlsx`} contentType={XLSX_TYPE} busyLabel="Preparing Excel…" />
+    </div>
   );
+  // Browser QA-01: one box with its hint, so a flex toolbar never pulls the hint away from the buttons.
+  return hint ? <div>{group}<p id={hintId} className="field-hint">{hint}</p></div> : group;
 }

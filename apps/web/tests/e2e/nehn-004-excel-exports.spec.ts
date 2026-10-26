@@ -17,11 +17,12 @@ async function signIn(page: Page, loginPath: string, email: string) {
 }
 
 async function download(page: Page, button: "Download CSV" | "Download Excel"): Promise<{ file: Download; body: Buffer }> {
-  const group = page.getByRole("group", { name: /^Export / }).first();
+  // Each button announces its own outcome under itself (its `.report-download` box).
+  const box = page.getByRole("group", { name: /^Export / }).first().locator(".report-download").filter({ has: page.getByRole("button", { name: button }) });
   const pending = page.waitForEvent("download");
-  await group.getByRole("button", { name: button }).click();
+  await box.getByRole("button", { name: button }).click();
   const file = await pending;
-  await expect(group.getByText("Report downloaded.")).toBeVisible();
+  await expect(box.getByText("Report downloaded.")).toBeVisible();
   return { file, body: await readFile((await file.path())!) };
 }
 
@@ -58,7 +59,7 @@ test("a telecaller is refused the Excel export too", async ({ page }) => {
 
 test("a placement manager downloads recruiter performance as Excel", async ({ page }) => {
   const errors = watchErrors(page);
-  await signIn(page, "/it/login", "placement.manager@edusphere.local");
+  await signIn(page, "/admin/login", "placement.manager@edusphere.local");
   await page.goto("/recruiter/manager/performance");
   await bothFormats(page, /^recruiter-performance-.*\.csv$/);
   expect(errors).toEqual([]);
