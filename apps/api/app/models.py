@@ -1720,7 +1720,7 @@ class UniversityMessage(Base, TimestampMixin):
 COURSE_CURRENCIES = ("INR", "USD", "GBP", "EUR", "CAD", "AUD", "NZD")  # = COUNSELING_CURRENCIES (defined later in this module)
 COURSE_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 ENGLISH_TESTS = ("IELTS", "TOEFL", "PTE", "Duolingo", "Other")
-# nehn-036 (DEC-SCOPE-284 I3-I4): the curated subject icons; NULL = automatic (the web client derives it from the category).
+# nehn-036 (DEC-SCOPE-285 I3-I4): the curated subject icons; NULL = automatic (the web client derives it from the category).
 # Migration 0197 repeats these; test_nehn_036_migration keeps them identical.
 COURSE_ICONS = ("ai", "security", "data", "computing", "engineering", "business", "health", "hospitality", "law", "education", "arts", "science", "general")
 COURSE_CHECKS = {

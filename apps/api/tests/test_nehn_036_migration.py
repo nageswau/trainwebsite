@@ -1,4 +1,4 @@
-"""nehn-036 -- migration 0197_course_icons (DEC-SCOPE-284 I3). The round trip runs in a throwaway database built from scratch (the upc-001
+"""nehn-036 -- migration 0197_course_icons (DEC-SCOPE-285 I3). The round trip runs in a throwaway database built from scratch (the upc-001
 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util

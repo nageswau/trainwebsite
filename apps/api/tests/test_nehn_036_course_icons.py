@@ -1,4 +1,4 @@
-"""nehn-036 -- an optional subject icon per overseas course (DEC-SCOPE-284 I3-I6): chosen from the curated set, cleared back to automatic
+"""nehn-036 -- an optional subject icon per overseas course (DEC-SCOPE-285 I3-I6): chosen from the curated set, cleared back to automatic
 (null), refused outside the set, audited as a field name, and carried by the course and public payloads."""
 
 import uuid

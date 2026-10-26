@@ -1,7 +1,7 @@
 # nehn-036 — Course/program icons (design)
 
 **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-036` (§17 L476, L493-495; §26 L803; action 17,
-**Optional**; `UNVERIFIED` backlog). Decision `DEC-SCOPE-284`. No upstream dependency (nehn-003 is needed only for upload, which is not
+**Optional**; `UNVERIFIED` backlog). Decision `DEC-SCOPE-285`. No upstream dependency (nehn-003 is needed only for upload, which is not
 built).
 
 ## Intent
@@ -58,7 +58,7 @@ Upload, IT program icons, icons in the apply form's `<select>` (options cannot h
    public courses and university pages, `Course` type.
 4. **e2e:** `tests/e2e/nehn-036-course-icons.spec.ts` — an admin sets an icon, it shows on the master list and the public pages;
    automatic icon on mobile width.
-5. **Docs:** `DEC-SCOPE-284`, API §12GJ, `DATA_MODEL` note if the course master table is documented there, backlog status line.
+5. **Docs:** `DEC-SCOPE-285`, API §12GK, `DATA_MODEL` note if the course master table is documented there, backlog status line.
 
 ## Risks
 

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { courseIconKey, type CourseIconKey } from "@/lib/courseIcons";
 
-// nehn-036 (DEC-SCOPE-284 I2, I7): a decorative subject icon before a course (the title/category is always beside it, so aria-hidden).
+// nehn-036 (DEC-SCOPE-285 I2, I7): a decorative subject icon before a course (the title/category is always beside it, so aria-hidden).
 // Drawn from this fixed set only -- never markup from the API -- and server-safe so public pages stay server-rendered.
 const SHAPES: Record<CourseIconKey, ReactNode> = {
   ai: <><rect x="6" y="6" width="12" height="12" rx="2" /><path d="M10 10h4v4h-4zM9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4" /></>,

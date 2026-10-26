@@ -343,6 +343,18 @@ class AttendanceCorrectionIn(BaseModel):
     reason: str = Field(min_length=5, max_length=2000)
 
 
+class AttendanceCorrectionReviewIn(BaseModel):
+    """nehn-023: the review body was an untyped dict. Same JSON shape, stricter validation; a blank comment is stored as null."""
+
+    status: Literal["approved", "rejected"]
+    review_notes: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("review_notes")
+    @classmethod
+    def blank_review_notes_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
+
+
 class AssignmentCreate(BaseModel):
     batch_id: UUID
     title: str = Field(min_length=2, max_length=180)
@@ -10835,7 +10847,7 @@ class PartnershipTargetTeam(BaseModel):
 CourseText = _university_str(2000, multiline=True)
 CourseLevel = Literal[COURSE_LEVELS]  # CO3: the master's levels for new and edited courses
 EnglishTest = Literal[ENGLISH_TESTS]  # CO8
-CourseIcon = Literal[COURSE_ICONS]  # nehn-036 (DEC-SCOPE-284 I6): None = automatic (derived from the category by the web client)
+CourseIcon = Literal[COURSE_ICONS]  # nehn-036 (DEC-SCOPE-285 I6): None = automatic (derived from the category by the web client)
 CourseMoney = Annotated[Decimal, Field(ge=0, le=Decimal("9999999999.99"), max_digits=12, decimal_places=2)]  # CO4: never negative
 CourseFee = Annotated[Decimal, Field(ge=0, le=Decimal("99999999.99"), max_digits=10, decimal_places=2)]  # CO6
 EnglishScore = Annotated[Decimal, Field(gt=0, le=Decimal("999.9"), max_digits=4, decimal_places=1)]

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import BatchRosterPanel from "./BatchRosterPanel";
 import LiveClassesPanel from "./LiveClassesPanel";
 import SupportTicketQueuePanel from "./SupportTicketQueuePanel";
+import { formatDate } from "@/lib/formatDate";
 
 type Batch = { id: string; name: string; schedule: string; capacity: number };
 type Student = { id: string; name: string; batch_id: string };
@@ -53,6 +54,8 @@ function detailMessage(detail: unknown) {
   if (Array.isArray(detail)) return detail.map(item => item?.msg || "Invalid input").join("; ");
   return "The operation could not be completed.";
 }
+
+const statusLabel = (status: string) => status.charAt(0).toUpperCase() + status.slice(1);
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return <div className="action-card"><h3>{title}</h3>{children}</div>;
@@ -199,14 +202,28 @@ export default function TeacherWorkspaceActions({ section }: { section: string }
         <button className="btn" disabled={busy || loading || !batch || !students.length} aria-describedby={!students.length ? "attendance-empty" : undefined}>Save attendance</button>
       </form>
     </Card>
-    <Card title="Review correction">
-      <form className="form" onSubmit={event => { const form = new FormData(event.currentTarget); const reference = String(form.get("correction")); void submit(event, `/api/v1/workflows/it/attendance-corrections/${reference}`, "PATCH", { status: form.get("status"), review_notes: form.get("review_notes") }, "Correction reviewed."); }}>
-        <Field controlId="correction-request" label="Pending request"><select name="correction" required><option value="">Select request</option>{corrections.map(item => <option key={item.id} value={item.id}>{item.student} · {item.batch} · {item.current_status} → {item.requested_status}</option>)}</select></Field>
-        <Field controlId="correction-decision" label="Decision"><select name="status" required><option value="approved">Approve</option><option value="rejected">Reject</option></select></Field>
-        <Field controlId="correction-notes" label="Review notes" full><textarea name="review_notes" /></Field>
-        {!corrections.length && <p id="correction-empty" className="muted">{loading ? "Loading pending requests…" : "No pending correction requests."}</p>}
-        <button className="btn" disabled={busy || loading || !corrections.length} aria-describedby={!corrections.length ? "correction-empty" : undefined}>Review request</button>
-      </form>
+    {/* nehn-023: a pending queue -- each request decided in place with Approve / Reject and an optional comment. */}
+    <Card title="Pending corrections">
+      {corrections.length ? <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 12 }}>{corrections.map(item => {
+        const date = formatDate(item.session_date, false, "UTC");
+        return <li key={item.id} className="card" style={{ padding: 16 }}>
+          <strong>{item.student}</strong>
+          <p className="muted" style={{ margin: "4px 0" }}>{item.batch} · {date}</p>
+          <p style={{ margin: "4px 0" }}>{statusLabel(item.current_status)} → {statusLabel(item.requested_status)}</p>
+          <p style={{ margin: "4px 0 12px" }}>{item.reason}</p>
+          <form className="form" aria-label={`Review correction for ${item.student}, ${date}`} onSubmit={event => {
+            const status = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value;
+            const notes = String(new FormData(event.currentTarget).get("review_notes") || "").trim();
+            void submit(event, `/api/v1/workflows/it/attendance-corrections/${item.id}`, "PATCH", { status, review_notes: notes || null }, status === "approved" ? "Correction approved." : "Correction rejected.");
+          }}>
+            <Field controlId={`correction-notes-${item.id}`} label="Comment (optional)" full><textarea name="review_notes" maxLength={2000} /></Field>
+            <div className="actions">
+              <button className="btn small" name="status" value="approved" disabled={busy} aria-label={`Approve correction for ${item.student}, ${date}`}>Approve</button>
+              <button className="btn small secondary" name="status" value="rejected" disabled={busy} aria-label={`Reject correction for ${item.student}, ${date}`}>Reject</button>
+            </div>
+          </form>
+        </li>;
+      })}</ul> : <p className="muted">{loading ? "Loading pending requests…" : "No pending correction requests."}</p>}
     </Card>
   </>;
 

@@ -1,4 +1,4 @@
-// nehn-036 (DEC-SCOPE-284 I4-I5): the curated course icons (= models.COURSE_ICONS, the API's order) and the automatic icon. A course
+// nehn-036 (DEC-SCOPE-285 I4-I5): the curated course icons (= models.COURSE_ICONS, the API's order) and the automatic icon. A course
 // with no chosen icon (null) shows the first rule its category matches -- case-insensitive, whole words, in RULES order so "Data
 // Science" is data and "Tourism Management" hospitality -- or the general icon. A chosen icon always wins.
 export const COURSE_ICONS = ["ai", "security", "data", "computing", "engineering", "business", "health", "hospitality", "law", "education", "arts", "science", "general"] as const;

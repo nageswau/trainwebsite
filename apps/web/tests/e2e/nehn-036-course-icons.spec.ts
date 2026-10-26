@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// nehn-036 (DEC-SCOPE-284): a super admin picks the Law icon for one course in the course form and leaves another on Automatic ("Data
+// nehn-036 (DEC-SCOPE-285): a super admin picks the Law icon for one course in the course form and leaves another on Automatic ("Data
 // Science"). Both show their icon on the university's course list and the Courses & Programs table, and -- once published -- on the public
 // university page, on desktop and on a phone (no sideways scroll). The university and second course come from the real API.
 
