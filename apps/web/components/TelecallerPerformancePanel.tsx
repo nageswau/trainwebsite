@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import ReportDownloadButton from "@/components/ReportDownloadButton";
+import { SpreadsheetButtons } from "@/components/ExportButtons";
 import {
   COUNT_COLUMNS, PERFORMANCE_URL, TEAM_LABEL, ariaSort, csvFilename, nextDir, performanceQuery, sortHref,
   type Performance, type PerformanceParams, type SortKey,
@@ -78,9 +78,9 @@ export default function TelecallerPerformancePanel({ data, error, params, base, 
               </tfoot>
             </table>
           </div>
-          <ReportDownloadButton
-            url={`${PERFORMANCE_URL}.csv${performanceQuery({ date_from: data.date_from, date_to: data.date_to, team: data.team ?? undefined, sort: data.sort, dir: data.dir })}`}
-            label="Download CSV" filename={csvFilename(data)} contentType="text/csv" busyLabel="Preparing CSV…"
+          <SpreadsheetButtons
+            csvUrl={`${PERFORMANCE_URL}.csv${performanceQuery({ date_from: data.date_from, date_to: data.date_to, team: data.team ?? undefined, sort: data.sort, dir: data.dir })}`}
+            filename={csvFilename(data)} label="Export telecaller performance"
           />
         </>
       )}

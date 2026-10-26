@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import FormMessage from "@/components/FormMessage";
-import ReportDownloadButton from "@/components/ReportDownloadButton";
+import { SpreadsheetButtons } from "@/components/ExportButtons";
 import { SESSION_EXPIRED, SIGN_IN_PATH } from "@/lib/activityFeedback";
 import { detailMessage } from "@/lib/apiErrors";
 import { CSV_URL, REPORT_URL, STATUS_LABELS, type CommissionReport, type DateRange, csvFilename, isReport, readRange, reportQuery, writeRange } from "@/lib/agentCommissionReport";
@@ -183,7 +183,7 @@ export default function AgentCommissionReportPanel() {
             <strong>Total:</strong> {report.totals.map((t) => `${money(t.amount, t.currency)} (${t.count} commission${t.count === 1 ? "" : "s"})`).join(" · ")}
           </p>
           {/* QA14-02/10: the export sits with the totals, before the tables, and only when there is something to export. */}
-          <ReportDownloadButton url={`${CSV_URL}${reportQuery(applied.from, applied.to)}`} label="Download CSV" filename={csvFilename(applied.from, applied.to)} contentType="text/csv" busyLabel="Preparing CSV…" />
+          <SpreadsheetButtons csvUrl={`${CSV_URL}${reportQuery(applied.from, applied.to)}`} filename={csvFilename(applied.from, applied.to)} label="Export commission report" />
           {tablesFor(report).map((table) => (
             <Breakdown key={table.title} table={table} />
           ))}

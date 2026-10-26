@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import ReportDownloadButton from "@/components/ReportDownloadButton";
+import { SpreadsheetButtons } from "@/components/ExportButtons";
 import {
   FIGURES, PERFORMANCE_PATH, csvFilename, csvUrl, formatFigure, periodHref, type Performance, type PerformanceParams,
 } from "@/lib/recruiterPerformance";
@@ -81,7 +81,7 @@ export default function RecruiterPerformancePanel({ data, error, params, today }
             </div>
           ))}
           <div style={{ marginTop: 16 }}>{/* QA33-02: not flush against the table */}
-            <ReportDownloadButton url={csvUrl(data)} label="Download CSV" filename={csvFilename(data)} contentType="text/csv" busyLabel="Preparing CSV…" />
+            <SpreadsheetButtons csvUrl={csvUrl(data)} filename={csvFilename(data)} label="Export recruiter performance" />
           </div>
         </>
       )}

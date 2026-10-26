@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import ReportDownloadButton from "@/components/ReportDownloadButton";
+import { SpreadsheetButtons } from "@/components/ExportButtons";
 import {
   type PartnershipReport, type PartnershipReportKind, type PartnershipReportParams, type PartnershipReportRow, REPORT_FILTERS, REPORT_TABS,
   REPORTS_PATH, WINDOW_OPTIONS, csvUrl, reportQuery, tabHref,
@@ -86,8 +86,8 @@ export default function PartnershipReportView({ kind, report, error, params }: {
               {report.totals && <tfoot><tr>{cells(report.totals)}</tr></tfoot>}
             </table>
           </div>
-          <ReportDownloadButton
-            url={csvUrl(kind, params)} label="Download CSV" busyLabel="Preparing CSV…" contentType="text/csv"
+          <SpreadsheetButtons
+            csvUrl={csvUrl(kind, params)} label={`Export ${report.title}`}
             filename={`partnership-${kind}-${report.as_of}.csv`}
           />
         </>

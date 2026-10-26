@@ -3007,6 +3007,15 @@ former inline checks, so the cells below are unchanged until super_admin edits a
 Granting a key to another role never widens record scope: a role outside a route's scope branches gets the narrowest one (own division,
 own reports) or a 403 from the service. Pinned by `apps/api/tests/test_nehn_005_permissions.py` (a 28-role equivalence matrix).
 
+### 2.196 Excel twins of the CSV report exports *(added 2026-10-26 — `DEC-SCOPE-282`, nehn-004)*
+
+Every `.xlsx` route answers exactly as its `.csv` twin, cell for cell: `GET /telecaller/reports/{kind}.xlsx` and
+`GET /telecaller/manager/performance.xlsx` (§2.35 / tel-023 rows; `reports/{kind}.xlsx` needs the `reports.telecaller` download grant, §2.195), `GET /recruiter/performance.xlsx` (rec-033 row),
+`GET /workflows/overseas/agent/crm/reports/{kind}.xlsx` (AGN-020: Master-only kinds stay Master-only),
+`GET /workflows/overseas/agent/commissions/report.xlsx` (AGN-014), `GET /partnership/reports/{kind}.xlsx` (upc-031). No new role or
+scope. Pinned by `test_nehn_004_xlsx_exports.py` and the rows added to `test_tel_026_matrix.py`, `rec038_rows_activity.py` and
+`test_upc_033_matrix.py`.
+
 ### 2.197 Razorpay mode *(added 2026-10-26 — `DEC-SCOPE-283`, nehn-022)*
 
 | Route | Anonymous | Any signed-in role |
