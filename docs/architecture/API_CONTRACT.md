@@ -101,7 +101,7 @@ never a frontend-only gate (`FND-002`, `NFR-SEC-001`).
 | `GET /student/agreements/current`, `POST /student/agreements/{id}/accept` | Authenticated | Self | (`STU-009`) |
 | `GET /payments/mine`, `GET /payments/emi-schedule` | Authenticated | Self | (`STU-010`). Actual paths differ from this document's original `/student/payments*` draft — corrected `prompts/13`, 2026-09-03, to match the inherited dedicated `/payments` router rather than inventing a parallel `/student/*` route family (same correction class as `STU-005`'s `/workflows/support`). |
 | `POST /payments/{payment_id}/checkout` | Authenticated | Self | Creates a Razorpay hosted checkout session. `Idempotency-Key` header required (§0.2) — a repeat with the same key replays the original result rather than creating a second provider order. Self only, even for Admin roles (`STU-010-AC04` — Admin's payments scope is view, not act). |
-| `GET /payments/{payment_id}/invoice`, `GET /payments/{payment_id}/receipt` | Authenticated | Self / Admin (own division, view) | Signed download URL (STU-007's certificate-download pattern). 404 if not yet generated — a receipt only exists once the payment has completed. |
+| `GET /payments/{payment_id}/invoice`, `GET /payments/{payment_id}/receipt` | Authenticated | Self / Admin (own division, view) | Signed download URL (STU-007's certificate-download pattern). 404 if not yet generated — a receipt only exists once the payment has completed. The invoice route answers 404 to a student caller (nehn-020, §12GN). |
 | `GET /student/profile`, `PATCH /student/profile` | Authenticated | Self | (`STU-011`) |
 | `POST /student/profile/documents` | Authenticated | Self | Same upload-validation contract as assignment submission. |
 
@@ -4201,3 +4201,13 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - `GET /communications/it/live-sessions` rows and `GET /workflows/it/student/learning` `live_sessions` gain `cancel_reason`; the list
   also gains `timezone` (the batch's). `GET /portal/it/trainer/live-sessions` gains a `status` column; a cancelled row has no join link.
 - `POST /workflows/it/trainer/attendance` — new 409 when the date's live sessions for the batch are all cancelled.
+
+## 12GN. Student invoices retired (nehn-020) — addendum, 2026-10-26
+
+`DEC-SCOPE-289`. No migration; no response-shape change.
+
+- `GET /payments/{payment_id}/invoice` — after the existing ownership check (another user's payment stays 403), an `it_student` or
+  `overseas_student` caller gets **404** `{"detail": "Invoices are not issued to students. Download your receipt instead."}`.
+  Admins (own division; `super_admin` all) and other payers (agents) are unchanged: 200 signed URL, or 404 if not yet generated.
+- Invoice generation is unchanged (checkout, enrolment, admin create/discount/EMI, agent deposit) until OD-11 (GST) is answered.
+- `GET /payments/{payment_id}/receipt` is unchanged and is the student's payment document.

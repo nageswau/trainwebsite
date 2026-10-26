@@ -3040,3 +3040,11 @@ Public data only; no new permission key. Pinned by `apps/api/tests/test_nehn_034
 trainer (another trainer 403), `it_admin`, `super_admin`; every other signed-in role 403; anonymous 401. Learners only read the result
 (`GET /communications/it/live-sessions`, own active enrollments). Pinned by `test_nehn_029_live_session_manage.py` and the route list
 in `test_uuid_contracts.py`.
+
+### 2.200 Student invoices retired *(added 2026-10-26 — `DEC-SCOPE-289`, nehn-020)*
+
+| Route | Anonymous | it_student / overseas_student | Admin (own division; super_admin all) | Other payer (agent) |
+|---|---|---|---|---|
+| `GET /payments/{id}/invoice` | 401 | 404 own payment; 403 another's | 200 | 200 own payment |
+
+No new permission key. Pinned by `apps/api/tests/test_nehn_020_student_invoices.py`.

@@ -71,9 +71,8 @@ async def test_checkout_creates_a_real_razorpay_order_and_an_invoice(db_session,
     assert body["status"] == "ready"
     assert body["provider_order_id"].startswith("order_")
 
-    invoice_response = await client.get(f"/api/v1/payments/{payment.id}/invoice")
-    assert invoice_response.status_code == 200
-    assert invoice_response.json()["url"]
+    # nehn-020: the invoice is still generated, but the student downloads the receipt, not the invoice.
+    assert await db_session.scalar(select(Invoice.id).where(Invoice.payment_id == payment.id))
 
     await db_session.refresh(payment)
     assert payment.checkout_provider_order_id == body["provider_order_id"]

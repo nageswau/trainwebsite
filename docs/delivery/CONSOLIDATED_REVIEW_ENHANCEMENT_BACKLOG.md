@@ -944,6 +944,10 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** payment tests that assert an invoice exists.
 - **Open questions:** **is any invoice legally required (GST)?** If so, this item may close as "keep".
 - **Complexity:** small · **Risk:** low
+- **Status (2026-10-26):**
+  - Built on `worktree-nehn-020` (`DEC-SCOPE-289`; no migration; API §12GN; RBAC §2.200). AC1 met (no student invoice button; the
+    route answers 404 to students). AC3 met (admins keep historical invoices).
+  - AC2 deferred to OD-11: generation is unchanged, because the rows feed the Accounts pending-invoices KPI (AD6).
 
 #### `nehn-021` — Discount/scholarship authority through a finance permission
 - **Source:** §7 L169-172; §5 recruiter "should not … Discounts" (L112).

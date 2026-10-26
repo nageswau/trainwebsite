@@ -9890,3 +9890,15 @@ Client / Dev + Client. F7 extra tables: the 25 action items, client inputs `CI-0
 the review" list of the recommended answers built into Done items.
 **Numbering:** no migration; no API; no RBAC row.
 - **Feature ID authorized:** `nehn-043`. **Status:** built on `worktree-nehn-043`.
+
+### DEC-SCOPE-289 — Retire student-facing invoices; keep generation pending OD-11 (`nehn-020`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-020` (§7 L167-168; `UNVERIFIED` backlog); design
+`docs/superpowers/specs/2026-10-26-nehn-020-retire-student-invoices-design.md`. Coordinates with nehn-019 (not merged; no shared code
+touched).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** I1 the student Fee Payments card shows no
+Invoice button (Receipt unchanged). I2 `GET /payments/{id}/invoice` answers 404 to a student caller, after the ownership check. I3 admins
+and agents keep the route. I4 invoice generation is **not** removed: AC2's "removed contexts" is empty until **OD-11** (is a GST/tax
+invoice legally required?) is answered, because the rows feed the Accounts pending-invoices KPI (AD6) and admin history. I5 no data change.
+**Numbering:** no migration; API §12GN; RBAC §2.200.
+- **Feature ID authorized:** `nehn-020`. **Status:** built on `worktree-nehn-020`.
