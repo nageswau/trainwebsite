@@ -9813,3 +9813,18 @@ agency application's Deposit section when *Pay deposit* is offered; nothing whil
 `docs/architecture/RAZORPAY_GO_LIVE.md`, linked from `DEPLOYMENT.md`; who runs the live ₹1 verification is open.
 **Numbering:** no migration; API §12GI; RBAC §2.197.
 - **Feature ID authorized:** `nehn-022`. **Status:** built on `worktree-nehn-022`.
+
+### DEC-SCOPE-284 — Country visual cards, university count and the apply form's country step (`nehn-034`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-034` (§17 L474-496, action 15; `UNVERIFIED` backlog);
+design `docs/superpowers/specs/2026-10-26-nehn-034-country-cards-design.md`. No upstream dependency; builds on PUB-023 (`DEC-SCOPE-222`).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** C1 `university_count` on the public country
+list and detail = published, active universities (one grouped query). C2 a country with none stays listed with "Coming soon" and no
+"View universities" (open question: hide instead?). C3 "View universities" → `/overseas/universities?country=<slug>` (the existing API
+filter); an unknown slug is the empty list. C4 one shared `CountryCard` (flag or 🌍 fallback, name, overview, count, tuition, links).
+C5 overseas student nav **Explore Countries** (`explore-countries`, header-only payload), cards add **Apply** →
+`/overseas/student/applications?country=<slug>`. C6 the apply form's first field is **Country** (`All countries` default, then countries
+with universities); it narrows the university list and `?country=` preselects it. C7 out of scope: custom country images (no column;
+client assets), the rest of `psb-019`, agent-portal changes, response caching.
+**Numbering:** no migration; API §12GJ; RBAC §2.198.
+- **Feature ID authorized:** `nehn-034`. **Status:** built on `worktree-nehn-034`.

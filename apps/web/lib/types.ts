@@ -1,5 +1,5 @@
 export type Program = { id:string; slug:string; category:string; title:string; summary:string; duration:string; eligibility:string; fees:number; certification:string; curriculum:string[]; placement_assistance:string; trainer_name:string };
-export type Country = { id:string; slug:string; name:string; iso2?:string|null; overview:string; tuition:string; living_expenses:string; visa_process:string[]; work_opportunities:string; post_study_work:string; pr_opportunities:string; faq:{question:string;answer:string}[] };
+export type Country = { id:string; slug:string; name:string; iso2?:string|null; overview:string; tuition:string; living_expenses:string; visa_process:string[]; work_opportunities:string; post_study_work:string; pr_opportunities:string; faq:{question:string;answer:string}[]; university_count?:number };
 export type University = { id:string; country_id:string; slug:string; name:string; city:string; overview:string; eligibility:string; requirements:string[]; deadlines:string[]; scholarships:string[]; logo_url?:string|null; campuses?:string[]|null; fee_structure?:string|null };
 // AGN-023 (DEC-SCOPE-090 H11): the overseas Students/Applications list filters; `counselors` is the Overseas Admin's only.
 export type FilterOption = { value: string; label: string };

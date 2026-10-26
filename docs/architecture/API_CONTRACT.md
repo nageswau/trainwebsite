@@ -4149,3 +4149,13 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   unchanged).
 - Startup (not an HTTP contract): `RAZORPAY_MODE` / `RAZORPAY_KEY_ID` mismatch, or `live` without the key secret and webhook secret, stops
   the process before it serves. Runbook: `RAZORPAY_GO_LIVE.md`.
+
+## 12GJ. Country cards (nehn-034) — addendum, 2026-10-26
+
+`DEC-SCOPE-284`. No migration. All additive.
+
+- `GET /api/v1/public/countries` and `GET /api/v1/public/countries/{slug}` (`country`): each country gains `university_count` (int) —
+  its published, active universities (`catalogue_visible` and `active`). Public, unchanged access; an unknown slug stays 404.
+- `GET /api/v1/public/universities?country=<slug>` (existing) is the cards' "View universities" target; an unknown slug returns `[]`.
+- `GET /api/v1/portal/overseas/student/explore-countries` → 200 header-only payload (`title` "Explore Countries", no rows/metrics) for
+  an `overseas_student`; other roles 403, no session 401 (the portal gate).

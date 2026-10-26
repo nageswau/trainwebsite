@@ -1481,6 +1481,11 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** PUB-023 e2e; public page snapshots.
 - **Open questions:** hide empty countries? Include all of `psb-019`? Custom images from the client?
 - **Complexity:** small · **Risk:** low
+- **Status (2026-10-26):**
+  - Built on `worktree-nehn-034` (`DEC-SCOPE-284`; no migration; API §12GJ; RBAC §2.198). AC1-AC4 met: shared `CountryCard` on the
+    public page and the student portal's new Explore Countries page; the apply form starts with a country choice.
+  - Open questions took the builder's defaults: empty countries show "Coming soon" (not hidden); only the screens this item touches
+    (rest of `psb-019` deferred); custom images wait for client assets and a migration.
 
 #### `nehn-035` — University logo upload and richer university cards
 - **Source:** §17 "University Selection" (L486-492), "University icons/logos/images – Required" (L475); §26 L798-800 (logos, copyright restrictions); action 16.

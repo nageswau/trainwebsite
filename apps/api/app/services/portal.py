@@ -577,6 +577,9 @@ async def _trainer(db: AsyncSession, user: User, section: str):
 
 
 async def _overseas_student(db: AsyncSession, user: User, section: str):
+    if section == "explore-countries":
+        # nehn-034 (DEC-SCOPE-284 C5): header only -- the page's role gate; PortalPage mounts the country cards (the public list).
+        return _payload("Explore Countries", "Study destinations, how many universities each has, and where to apply.")
     applications = (
         await db.execute(
             select(OverseasApplication, University)

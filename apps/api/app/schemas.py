@@ -2463,6 +2463,7 @@ class CountryOut(BaseModel):
     post_study_work: str
     pr_opportunities: str
     faq: list
+    university_count: int = 0  # nehn-034 (DEC-SCOPE-284 C1): published, active universities; the routes set it (not a column)
     model_config = {"from_attributes": True}
 
 
