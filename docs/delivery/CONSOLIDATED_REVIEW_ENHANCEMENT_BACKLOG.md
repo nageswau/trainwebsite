@@ -364,6 +364,10 @@ Risk is the risk of regression or of a wrong outcome.
   3. Do Agent Master → Staff flags stay separate?
   4. Should custom roles be supported ("Additional roles can be introduced when required", L88)?
 - **Complexity:** large · **Risk:** high
+- **Status (2026-10-26):**
+  - Engine built on `worktree-nehn-005` (`DEC-SCOPE-281`; migration `0196`; API §12GG; RBAC §2.195). Open questions 2–4 took the
+    builder's defaults: super_admin only, flags separate, no custom roles.
+  - Pilots: the admin payment routes and the telecaller reports routes. The other modules are follow-up slices.
 
 #### `nehn-006` — Admin permission-matrix UI and permission-driven navigation and route guard
 - **Source:** §5 "Admin Permission Matrix" (L122-128), "User-interface level" (L126).

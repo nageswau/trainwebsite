@@ -2987,3 +2987,22 @@ No new route or permission. The Student ID is display and search data, never an 
 keeps its route's existing scope: admin users (division-scoped for non-super admins), the overseas-student lookup (counselor: visible
 students; agent: assigned students), the agency student list (`student_scope`: own agency, staff their assigned students) and the
 agent network (Overseas Admin). The agent link search does not match codes. Pinned by `apps/api/tests/test_nehn_040_student_ids.py`.
+
+### 2.195 Permission engine *(added 2026-10-26 — `DEC-SCOPE-281`, nehn-005)*
+
+Grant-driven routes check `role_permissions` for the caller's `users.role` (super_admin: everything; an unknown key: denied for everyone).
+The route's own record scope still applies after the grant (payments: own division; telecaller reports: §2.35). Day-one grants equal the
+former inline checks, so the cells below are unchanged until super_admin edits a grant.
+
+| Route | Anonymous | super_admin | it_admin / overseas_admin | telecaller_manager | Any other signed-in role |
+|---|---|---|---|---|---|
+| `GET /admin/payments` (`payments.view`) | 401 | 200 | 200 (seed) | 403 | 403 |
+| `POST /admin/payments`, `POST /admin/payments/emi-schedule` (`payments.add`) | 401 | allowed | allowed (seed) | 403 | 403 |
+| `POST /admin/payments/{id}/discount` (`discounts.add`) | 401 | allowed | allowed (seed) | 403 | 403 |
+| `GET /telecaller/reports/{kind}` (`reports.telecaller.view`) | 401 | 200 | 200 (seed) | 200 (seed) | 403 |
+| `GET /telecaller/reports/{kind}.csv` (`reports.telecaller.download`) | 401 | 200 | 200 (seed) | 200 (seed) | 403 |
+| `GET /admin/permissions/catalogue`, `GET/PUT /admin/roles/{role}/permissions` | 401 | 200 | 403 | 403 | 403 |
+| `GET /auth/me/permissions` | 401 | 200 | 200 | 200 | 200 |
+
+Granting a key to another role never widens record scope: a role outside a route's scope branches gets the narrowest one (own division,
+own reports) or a 403 from the service. Pinned by `apps/api/tests/test_nehn_005_permissions.py` (a 28-role equivalence matrix).
