@@ -145,6 +145,28 @@ async def test_override_with_a_reason_issues_and_records_it_durably(db_session, 
 
 
 @pytest.mark.asyncio
+async def test_nehn_002_batch_trainer_overrides_with_a_reason(db_session, client):
+    # nehn-002 AC1: the trainer's own card sends override + override_reason; the batch's trainer gets a 201
+    # and the reason lands in the snapshot and the audit trail, exactly as for the admin.
+    student = await _create_student(db_session)
+    enrollment = await _create_enrollment(db_session, student)
+    batch = await db_session.get(Batch, enrollment.batch_id)
+    trainer = await db_session.get(User, batch.trainer_id)
+    await _login(client, trainer.email)
+    url = f"/api/v1/workflows/it/certificates/{enrollment.id}/issue"
+
+    assert (await client.post(url, json={"override": True})).status_code == 422
+    response = await client.post(url, json={"override": True, "override_reason": "Prior industry certification accepted."})
+    assert response.status_code == 201
+    certificate_id = response.json()["id"]
+    certificate = await db_session.get(Certificate, certificate_id)
+    assert certificate.criteria_snapshot["override_reason"] == "Prior industry certification accepted."
+    audit = await db_session.scalar(select(AuditLog).where(AuditLog.entity_type == "certificate", AuditLog.entity_id == str(certificate_id)))
+    assert audit.user_id == trainer.id
+    assert audit.metadata_json["override_reason"] == "Prior industry certification accepted."
+
+
+@pytest.mark.asyncio
 async def test_admin_certificates_directory_lists_issued_certificates(db_session, client):
     admin = await _create_admin(db_session)
     student = await _create_student(db_session)
