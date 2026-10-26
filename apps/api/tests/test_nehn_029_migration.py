@@ -1,4 +1,4 @@
-"""nehn-029 -- migration 0197_live_session_cancel_reason (DEC-SCOPE-285). The round trip runs in a throwaway database built from scratch
+"""nehn-029 -- migration 0198_live_session_cancel_reason (DEC-SCOPE-286). The round trip runs in a throwaway database built from scratch
 (the upc-001 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,15 +13,15 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_nehn_029_migration_0197", VERSIONS / "0197_live_session_cancel_reason.py")
+_spec = importlib.util.spec_from_file_location("_nehn_029_migration_0198", VERSIONS / "0198_live_session_cancel_reason.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0196_role_permissions", "0197_live_session_cancel_reason"
+BASE, HEAD = "0197_course_icons", "0198_live_session_cancel_reason"
 COLUMNS = "SELECT column_name FROM information_schema.columns WHERE table_name = 'live_sessions' AND column_name = 'cancel_reason'"
 
 
-def test_migration_chains_after_0196_and_is_the_single_head():
+def test_migration_chains_after_0197_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
 

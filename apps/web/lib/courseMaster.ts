@@ -18,6 +18,7 @@ export type Course = {
   intakes: string[]; entry_requirements: string | null; english_test: string | null; english_score: string | null;
   scholarships: { id: string; title: string; amount: string }[]; application_process: string | null; deadline: string | null; active: boolean;
   campus: string | null; fee_text: string | null; intake_text: string | null; // dtu-001
+  icon: string | null; // nehn-036: a lib/courseIcons key; null = automatic (from the category)
   commission?: CourseCommission | null; // present for the commission roles only
   permissions: { can_edit: boolean };
 };

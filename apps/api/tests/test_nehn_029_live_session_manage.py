@@ -1,5 +1,5 @@
 """nehn-029 -- live class reschedule and cancel (spec docs/superpowers/specs/2026-10-26-nehn-029-live-class-reschedule-cancel-design.md,
-DEC-SCOPE-285). `PATCH /communications/it/live-sessions/{id}` moves/edits a session that has not started, `POST …/cancel` cancels one
+DEC-SCOPE-286). `PATCH /communications/it/live-sessions/{id}` moves/edits a session that has not started, `POST …/cancel` cancels one
 with a reason; students are notified in-app and by email (queue_deliveries), provider sessions carry a manual-update warning, and a
 date whose only live sessions are cancelled refuses attendance."""
 

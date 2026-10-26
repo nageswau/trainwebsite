@@ -1720,6 +1720,9 @@ class UniversityMessage(Base, TimestampMixin):
 COURSE_CURRENCIES = ("INR", "USD", "GBP", "EUR", "CAD", "AUD", "NZD")  # = COUNSELING_CURRENCIES (defined later in this module)
 COURSE_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 ENGLISH_TESTS = ("IELTS", "TOEFL", "PTE", "Duolingo", "Other")
+# nehn-036 (DEC-SCOPE-285 I3-I4): the curated subject icons; NULL = automatic (the web client derives it from the category).
+# Migration 0197 repeats these; test_nehn_036_migration keeps them identical.
+COURSE_ICONS = ("ai", "security", "data", "computing", "engineering", "business", "health", "hospitality", "law", "education", "arts", "science", "general")
 COURSE_CHECKS = {
     "ck_overseas_courses_tuition": "(tuition_amount IS NULL) = (tuition_currency IS NULL) AND (tuition_amount IS NULL OR tuition_amount >= 0)",
     "ck_overseas_courses_tuition_currency": _one_of("tuition_currency", COURSE_CURRENCIES),
@@ -1738,6 +1741,7 @@ class OverseasCourse(Base, TimestampMixin):
     __tablename__ = "overseas_courses"
     __table_args__ = (
         *(CheckConstraint(sql, name=name) for name, sql in COURSE_CHECKS.items()),
+        CheckConstraint(_one_of("icon", COURSE_ICONS), name="ck_overseas_courses_icon"),  # nehn-036 (0197)
         Index("ix_overseas_courses_university_level", "university_id", "level"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -1767,6 +1771,7 @@ class OverseasCourse(Base, TimestampMixin):
     campus: Mapped[str | None] = mapped_column(String(200), nullable=True)
     fee_text: Mapped[str | None] = mapped_column(String(300), nullable=True)
     intake_text: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    icon: Mapped[str | None] = mapped_column(String(20), nullable=True)  # nehn-036: a COURSE_ICONS key; NULL = automatic
 
 
 class CourseImportBatch(Base, TimestampMixin):

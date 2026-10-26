@@ -540,6 +540,9 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 /* PUB-023: country flags (CountryFlag). The hairline keeps white flags visible on white cards. */
 .country-flag{display:inline-block;vertical-align:-0.15em;margin-right:6px;border-radius:2px;box-shadow:0 0 0 1px rgba(15,23,42,.14);object-fit:cover;flex:none}
 .country-flag--inline{width:20px;height:15px}.country-flag--large{width:40px;height:30px;margin-right:0}
+/* nehn-036: a decorative course subject icon (CourseIcon); the card size is a tile like .icon-tile-plane. */
+.course-icon{display:inline-block;flex:none;color:var(--blue)}.course-icon--inline{vertical-align:-0.25em;margin-right:6px}
+.course-icon--card{display:block;padding:7px;border-radius:10px;background:#e0eefe;color:var(--blue2)}
 
 /* PUB-024: office addresses (OfficeLocations). */
 .office-grid{margin-top:18px}.office-locations address{font-style:normal;margin:8px 0 16px;line-height:1.6}

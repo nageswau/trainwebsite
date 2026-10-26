@@ -1,7 +1,7 @@
 # nehn-029 — Live class reschedule and cancel (design)
 
 **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-029` (§10 "Schedule/manage live classes", L217;
-`UNVERIFIED` backlog). Decision: `DEC-SCOPE-285` (builder's defaults, owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`).
+`UNVERIFIED` backlog). Decision: `DEC-SCOPE-286` (builder's defaults, owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`).
 Dependencies: none hard. Provider sync depends on the open Zoho live-class decisions (`PENDING_ZOHO_LIVE_CLASSES.md`), so this item
 uses the backlog's own fallback: the trainer is warned to update the provider manually.
 
@@ -11,7 +11,7 @@ change and are notified in-app and by email.
 
 ## Current state (verified)
 - `POST/GET /communications/it/live-sessions`, `PATCH …/{id}/recording` (`app/api/communications.py`).
-- `live_sessions.status` exists (default `scheduled`); `cancel_reason` does not → migration `0197_live_session_cancel_reason`.
+- `live_sessions.status` exists (default `scheduled`); `cancel_reason` does not → migration `0198_live_session_cancel_reason`.
 - Attendance is per batch + date (`attendance.session_date`), not per live session.
 - Notifications: `queue_deliveries` (in-app row + email, WhatsApp/SMS on opt-in) publishes to the Celery worker after commit.
 
