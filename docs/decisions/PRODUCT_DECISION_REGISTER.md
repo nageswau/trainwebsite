@@ -9797,3 +9797,19 @@ agency commission report stays logged, not audited (AGN-014) — whether it shou
 each twin keeps its CSV's. X6 "Download Excel" beside "Download CSV" on the six report pages.
 **Numbering:** no migration; API §12GH; RBAC §2.196.
 - **Feature ID authorized:** `nehn-004`. **Status:** built on `worktree-nehn-004`.
+
+### DEC-SCOPE-283 — Razorpay test/live mode switch and go-live runbook (`nehn-022`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-022` (§7 L153-156; `UNVERIFIED` backlog); design
+`docs/superpowers/specs/2026-10-26-nehn-022-razorpay-mode-design.md`. No upstream dependency. The live switch itself is client-owned
+(live Razorpay account, KYC) and the owner's go-live decision.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** M1 `RAZORPAY_MODE=test|live`, default `test`
+(any other value fails startup). M2 startup check: `test` needs a `rzp_test_` key id or none; `live` needs a `rzp_live_` key id plus
+`RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET`; a mismatch stops api/worker/beat with one error naming every problem (QA22-01).
+M3 `hide_input_in_errors` — a failed startup never prints a value. M4 `GET /payments/mode` (signed-in, `{mode}` only) feeds the banner.
+M5 admin system-status row `Razorpay mode` (`test mode` / `live mode`). M6 the test-mode banner on the student Fee Payments card and an
+agency application's Deposit section when *Pay deposit* is offered; nothing while loading, on a failed read or in live mode. M7 no
+`payments.mode` column (backlog "optional"; open question) — the runbook's cut-over time separates test rows. M8 runbook
+`docs/architecture/RAZORPAY_GO_LIVE.md`, linked from `DEPLOYMENT.md`; who runs the live ₹1 verification is open.
+**Numbering:** no migration; API §12GI; RBAC §2.197.
+- **Feature ID authorized:** `nehn-022`. **Status:** built on `worktree-nehn-022`.

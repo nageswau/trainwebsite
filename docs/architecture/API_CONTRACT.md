@@ -4138,3 +4138,14 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - The workbook: one sheet; header row bold, frozen and auto-filtered (a Total row sits below the filter); numbers and dates are typed
   cells (dates `yyyy-mm-dd`, timestamps IST `yyyy-mm-dd hh:mm`); text is literal (formula-looking text prefixed `'`, as in the CSV).
 - The `.csv` routes are unchanged apart from the audit row's added `format: "csv"`.
+
+## 12GI. Razorpay mode (nehn-022) — addendum, 2026-10-26
+
+`DEC-SCOPE-283`. No migration.
+
+- `GET /api/v1/payments/mode` → 200 `{"mode": "test" | "live"}` for any signed-in user; 401 without a session. Read-only, non-secret
+  (never a key id or secret). The value is `RAZORPAY_MODE`, already checked against the keys at startup.
+- `GET /api/v1/admin/system-status` gains one row: `{"service": "Razorpay mode", "status": "test mode" | "live mode"}` (additive; access
+  unchanged).
+- Startup (not an HTTP contract): `RAZORPAY_MODE` / `RAZORPAY_KEY_ID` mismatch, or `live` without the key secret and webhook secret, stops
+  the process before it serves. Runbook: `RAZORPAY_GO_LIVE.md`.

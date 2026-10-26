@@ -1010,6 +1010,11 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** CI env must set the mode.
 - **Open questions:** mark the test/live mode on Payment rows? Who performs the live verification?
 - **Complexity:** small · **Risk:** medium
+- **Status (2026-10-26):**
+  - Built on `worktree-nehn-022` (`DEC-SCOPE-283`; no migration; API §12GI; RBAC §2.197). AC1-AC3 met; runbook
+    `docs/architecture/RAZORPAY_GO_LIVE.md`.
+  - Open questions took the builder's defaults: no `payments.mode` column (the runbook's cut-over time separates test rows), and the
+    live ₹1 verifier is the client's call.
 
 #### `nehn-023` — Attendance correction usability and notifications
 - **Source:** §8 L173-182 ("Email notifications for pending approvals may be added if required").
