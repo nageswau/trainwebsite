@@ -4,6 +4,7 @@ import { FormEvent, ReactElement, ReactNode, cloneElement, useEffect, useMemo, u
 import { useRouter } from "next/navigation";
 import BatchRosterPanel from "./BatchRosterPanel";
 import LiveClassesPanel from "./LiveClassesPanel";
+import LiveSessionManagePanel from "./LiveSessionManagePanel";
 import SupportTicketQueuePanel from "./SupportTicketQueuePanel";
 
 type Batch = { id: string; name: string; schedule: string; capacity: number };
@@ -423,6 +424,8 @@ export default function TeacherWorkspaceActions({ section }: { section: string }
         <button className="btn" disabled={busy || loading}>Schedule session</button>
       </form>
     </Card>
+    {/* Remounts (re-reads) when a newly scheduled session appears in this page's own list. */}
+    <LiveSessionManagePanel key={sessions.map(item => item.id).join()} />
     <Card title="Attach provider recording">
       <p className="muted">EduSphere stores only the Google Meet or Zoho Meeting recording link.</p>
       <form className="form" onSubmit={event => { const form = new FormData(event.currentTarget); const reference = String(form.get("session")); void submit(event, `/api/v1/communications/it/live-sessions/${reference}/recording`, "PATCH", { recording_url: form.get("recording_url"), recording_external_id: form.get("provider_reference") || undefined, recording_status: form.get("status") }, "Provider recording attached."); }}>

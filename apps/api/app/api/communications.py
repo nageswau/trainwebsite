@@ -1,16 +1,17 @@
+from datetime import UTC, datetime
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
-from app.models import AuditLog, Batch, Enrollment, LiveSession, Message, Notification, User
+from app.models import Attendance, AuditLog, Batch, Enrollment, LiveSession, Message, Notification, User
 from app.notifications.dispatch import queue_deliveries
-from app.schemas import MeetingCreate, RecordingLinkUpdate
+from app.schemas import LiveSessionCancel, LiveSessionUpdate, MeetingCreate, RecordingLinkUpdate
 from app.services.integrations import send_notification
 from app.services.meetings import MeetingProviderError, create_provider_meeting
 
@@ -170,9 +171,114 @@ async def list_live_sessions(user: User = Depends(get_current_user), db: AsyncSe
             "recording_status": session.recording_status,
             "sync_status": session.sync_status,
             "status": session.status,
+            "cancel_reason": session.cancel_reason,
+            "timezone": batch.timezone,  # nehn-029: the reschedule form edits times in the batch's zone
         }
         for session, batch in rows
     ]
+
+
+PROVIDER_LABEL = {"google_meet": "Google Meet", "zoho_meeting": "Zoho Meeting"}
+
+
+async def _manageable_session(session_id: UUID, user: User, db: AsyncSession) -> tuple[LiveSession, Batch]:
+    """nehn-029: a not-yet-started, not-cancelled session the caller may change, row-locked so a double submit cannot act twice."""
+    if user.role not in {"trainer", "it_admin", "super_admin"}:
+        raise HTTPException(403, "Trainer/admin required")
+    item = await db.get(LiveSession, session_id, with_for_update=True)
+    if not item:
+        raise HTTPException(404, "Live session not found")
+    batch = await db.get(Batch, item.batch_id)
+    if user.role == "trainer" and (not batch or batch.trainer_id != user.id):
+        raise HTTPException(403, "Session is outside your assigned batch")
+    if item.status == "cancelled":
+        raise HTTPException(409, "This live session is cancelled")
+    if item.starts_at <= datetime.now(UTC):
+        raise HTTPException(409, "Past sessions cannot be rescheduled or cancelled")
+    return item, batch
+
+
+def _batch_zone(batch: Batch) -> ZoneInfo:
+    try:
+        return ZoneInfo(batch.timezone or "Asia/Kolkata")
+    except ZoneInfoNotFoundError as exc:
+        raise HTTPException(422, "Batch timezone is invalid") from exc
+
+
+def _provider_warning(item: LiveSession, change: str) -> str | None:
+    """No provider update API is wired (the Zoho live-class decisions are open): the local change stands and the trainer is told."""
+    label = PROVIDER_LABEL.get(item.provider)
+    if not label:
+        return None
+    item.sync_status = "manual_update_required"
+    return f"EduSphere has {change} this session, but {label} was not changed. {change.capitalize()} the {label} meeting yourself so its invitation matches."
+
+
+async def _notify_students(db: AsyncSession, batch: Batch, title: str, body: str) -> None:
+    students = (await db.scalars(select(User).join(Enrollment, Enrollment.student_id == User.id).where(Enrollment.batch_id == batch.id, Enrollment.status == "active"))).all()
+    for student in students:
+        notification = Notification(user_id=student.id, title=title, body=body, read=False, action_url="/it/student/course")
+        db.add(notification)
+        await queue_deliveries(db, notification, student)  # in-app row + email (WhatsApp/SMS on opt-in), sent by the worker after commit
+
+
+def _when(value: datetime, zone: ZoneInfo) -> str:
+    return value.astimezone(zone).strftime("%d %b %Y, %I:%M %p ") + str(zone)
+
+
+@router.patch("/it/live-sessions/{session_id}")
+async def update_live_session(session_id: UUID, payload: LiveSessionUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    item, batch = await _manageable_session(session_id, user, db)
+    zone = _batch_zone(batch)
+    changes = payload.model_dump(exclude_none=True)
+    for key in ("starts_at", "ends_at"):
+        if key in changes and changes[key].tzinfo is None:
+            changes[key] = changes[key].replace(tzinfo=zone)
+    starts_at, ends_at = changes.get("starts_at", item.starts_at), changes.get("ends_at", item.ends_at)
+    if "starts_at" in changes and starts_at <= datetime.now(UTC):
+        raise HTTPException(422, "The new start time must be in the future")
+    if ends_at is not None and ends_at <= starts_at:
+        raise HTTPException(422, "Meeting end time must be after start time")
+    changed = sorted(key for key, value in changes.items() if getattr(item, key) != value)
+    warning = None
+    if changed:
+        original_title = item.title
+        for key in changed:
+            setattr(item, key, changes[key])
+        moved = bool({"starts_at", "ends_at"} & set(changed))
+        warning = _provider_warning(item, "rescheduled" if moved else "updated")
+        await _notify_students(
+            db,
+            batch,
+            "Live class rescheduled" if moved else "Live class updated",
+            f'{original_title} is now "{item.title}" on {_when(item.starts_at, zone)}.' if item.title != original_title else f"{item.title} is now on {_when(item.starts_at, zone)}.",
+        )
+        db.add(AuditLog(user_id=user.id, action="live_session.update", entity_type="live_session", entity_id=str(item.id), metadata_json={"changed": changed, "provider": item.provider}))
+    await db.commit()
+    return {
+        "id": item.id,
+        "title": item.title,
+        "starts_at": item.starts_at,
+        "ends_at": item.ends_at,
+        "meeting_url": item.meeting_url,
+        "status": item.status,
+        "sync_status": item.sync_status,
+        "warning": warning,
+    }
+
+
+@router.post("/it/live-sessions/{session_id}/cancel")
+async def cancel_live_session(session_id: UUID, payload: LiveSessionCancel, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    item, batch = await _manageable_session(session_id, user, db)
+    zone = _batch_zone(batch)
+    item.status, item.cancel_reason = "cancelled", payload.reason
+    warning = _provider_warning(item, "cancelled")
+    # Attendance is kept per batch and date; anything already marked for that date stays (the trainer is told how much).
+    marked = await db.scalar(select(func.count()).select_from(Attendance).where(Attendance.batch_id == batch.id, Attendance.session_date == item.starts_at.astimezone(zone).date()))
+    await _notify_students(db, batch, "Live class cancelled", f"{item.title} on {_when(item.starts_at, zone)} is cancelled. Reason: {payload.reason}")
+    db.add(AuditLog(user_id=user.id, action="live_session.cancel", entity_type="live_session", entity_id=str(item.id), metadata_json={"provider": item.provider, "attendance_records": marked}))
+    await db.commit()
+    return {"id": item.id, "status": item.status, "cancel_reason": item.cancel_reason, "sync_status": item.sync_status, "attendance_records": marked, "warning": warning}
 
 
 @router.patch("/it/live-sessions/{session_id}/recording")

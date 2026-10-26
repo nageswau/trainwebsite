@@ -521,14 +521,28 @@ async def _trainer(db: AsyncSession, user: User, section: str):
         return _payload(
             "Live Sessions",
             "Schedule Google Meet, Zoho Meeting, or manual-provider sessions.",
-            (("title", "Session"), ("batch", "Batch"), ("provider", "Provider"), ("starts", "Starts"), ("meeting", "Join", "join"), ("recording", "Recording")),
+            (("title", "Session"), ("batch", "Batch"), ("provider", "Provider"), ("starts", "Starts"), ("status", "Status"), ("meeting", "Join", "join"), ("recording", "Recording")),
             # `ends_at`/`host_url` aren't shown as their own columns -- they back the
             # "join" cell's own time-window gating and host detection (`JoinSessionButton`).
             # The "meeting" cell itself now prefers `host_url` when present, matching
             # `LiveClassesPanel`'s own already-established "host gets the host link"
             # precedent -- previously this table showed the plain participant link even
             # to the trainer who owns the session.
-            ({"title": s.title, "batch": b.name, "provider": s.provider, "starts": s.starts_at, "ends_at": s.ends_at, "meeting": s.host_url or s.meeting_url, "host_url": s.host_url, "recording": s.recording_url or s.recording_status} for s, b in rows),
+            # nehn-029: a cancelled session shows its reason and offers no join link.
+            (
+                {
+                    "title": s.title,
+                    "batch": b.name,
+                    "provider": s.provider,
+                    "starts": s.starts_at,
+                    "status": f"Cancelled — {s.cancel_reason}" if s.status == "cancelled" else s.status.capitalize(),
+                    "ends_at": s.ends_at,
+                    "meeting": None if s.status == "cancelled" else s.host_url or s.meeting_url,
+                    "host_url": s.host_url,
+                    "recording": s.recording_url or s.recording_status,
+                }
+                for s, b in rows
+            ),
         )
     if section == "student-progress":
         rows = (

@@ -405,6 +405,7 @@ async def student_learning(user: User = Depends(get_current_user), db: AsyncSess
                 "recording_url": s.recording_url,
                 "recording_status": s.recording_status,
                 "status": s.status,
+                "cancel_reason": s.cancel_reason,
             }
             for s in live_sessions
         ],
@@ -608,6 +609,12 @@ async def mark_attendance(payload: AttendanceBulkIn, user: User = Depends(get_cu
     if not set(requested_ids).issubset(enrolled_ids):
         raise HTTPException(422, "Attendance can only be marked for active students in this batch")
     session_date = payload.session_date
+    # nehn-029: a date whose live classes were all cancelled takes no attendance; a date with no live session is unaffected.
+    zone = ZoneInfo(batch.timezone or "Asia/Kolkata")
+    day_starts = datetime.combine(session_date, time.min, zone)
+    day_statuses = set((await db.scalars(select(LiveSession.status).where(LiveSession.batch_id == batch_id, LiveSession.starts_at >= day_starts, LiveSession.starts_at < day_starts + timedelta(days=1)))).all())
+    if day_statuses == {"cancelled"}:
+        raise HTTPException(409, "The live class on this date was cancelled; attendance cannot be marked for it")
     for item in payload.records:
         student_id = item.student_id
         current = await db.scalar(select(Attendance).where(Attendance.student_id == student_id, Attendance.batch_id == batch_id, Attendance.session_date == session_date))
