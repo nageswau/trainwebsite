@@ -2475,6 +2475,18 @@ class StoredFile(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class RolePermission(Base):
+    """nehn-005 (DEC-SCOPE-280 P8): one grant -- `role` may `action` on `resource` (both from `rbac.CATALOGUE`). super_admin never has
+    rows (it holds everything); a change is audited in `audit_logs` (`role_permissions.update`)."""
+
+    __tablename__ = "role_permissions"
+    role: Mapped[str] = mapped_column(String(50), primary_key=True)
+    resource: Mapped[str] = mapped_column(String(60), primary_key=True)
+    action: Mapped[str] = mapped_column(String(20), primary_key=True)
+    granted_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class CalendarFeed(Base):
     """ccrm-038 (DEC-SCOPE-274 CA4): a counselor's read-only iCal feed. Only the SHA-256 of the URL token is kept; regenerating replaces
     the row, revoking deletes it."""

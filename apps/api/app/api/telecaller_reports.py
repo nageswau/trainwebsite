@@ -1,7 +1,7 @@
 """tel-024 (DEC-SCOPE-109, API §12AC, RBAC §2.35): the five Telecaller CRM management reports and their CSV export.
 
-Checks run in the AGN-020 order -- role (a telecaller and every other role → 403, EVID-019 §22), then the kind (unknown → 404), then
-the inputs (422, a sentence naming the form's field, as the other telecaller routes) -- so a refused caller never learns which kinds exist. Query parameters are plain strings validated
+Checks run in the AGN-020 order -- role (a telecaller and every other role → 403, EVID-019 §22; a grant since nehn-005), then the kind
+(unknown → 404), then the inputs (422, a sentence naming the form's field, as the other telecaller routes) -- so a refused caller never learns which kinds exist. Query parameters are plain strings validated
 after authorization. Reads are not audited; an export is, and the audit row commits before the file is returned (fail closed)."""
 
 import logging
@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.agent_reports import NO_STORE, to_csv
-from app.api.deps import get_current_user
+from app.api.deps import require_permission
 from app.core.database import get_db
 from app.models import AuditLog, User
 from app.services import telecaller_reports as reports
@@ -24,11 +24,15 @@ router = APIRouter(prefix="/telecaller/reports", tags=["telecaller-reports"])
 ROLE_REQUIRED = "Telecaller reports are for managers and administrators"
 NOT_FOUND = "Report not found"
 EXPORT_ACTION = "telecaller_report.export"
+# nehn-005 (DEC-SCOPE-280 P2): the role gate is grant-driven -- view for the JSON report, download for the CSV. The seed gives both to
+# the former REPORT_ROLES; it still runs first (a dependency), so the AGN-020 order is unchanged. The CSV's refusal names the download
+# (QA-01: a manager whose download alone is revoked still reads the report, so "for managers" would be wrong).
+DOWNLOAD_REFUSED = "You don't have permission to download telecaller reports"
+CAN_VIEW = require_permission("reports.telecaller", "view", ROLE_REQUIRED)
+CAN_DOWNLOAD = require_permission("reports.telecaller", "download", DOWNLOAD_REFUSED)
 
 
 async def _report(db: AsyncSession, user: User, kind: str, raw: dict[str, str | None]) -> tuple[dict, reports.Filters]:
-    if user.role not in reports.REPORT_ROLES:
-        raise HTTPException(403, ROLE_REQUIRED)
     if kind not in reports.REPORTS:
         raise HTTPException(404, NOT_FOUND)
     try:
@@ -48,7 +52,7 @@ def _log(event: str, user: User, kind: str, filters: reports.Filters, rows: int,
 @router.get("/{kind}.csv")
 async def export_report(
     kind: str, date_from: str | None = None, date_to: str | None = None, team: str | None = None, product_id: str | None = None,
-    campaign_id: str | None = None, source: str | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    campaign_id: str | None = None, source: str | None = None, user: User = Depends(CAN_DOWNLOAD), db: AsyncSession = Depends(get_db),
 ):
     started = time.perf_counter()
     payload, filters = await _report(db, user, kind, {"date_from": date_from, "date_to": date_to, "team": team, "product_id": product_id,
@@ -67,7 +71,7 @@ async def export_report(
 async def read_report(
     kind: str, response: Response, date_from: str | None = None, date_to: str | None = None, team: str | None = None,
     product_id: str | None = None, campaign_id: str | None = None, source: str | None = None,
-    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    user: User = Depends(CAN_VIEW), db: AsyncSession = Depends(get_db),
 ):
     started = time.perf_counter()
     payload, filters = await _report(db, user, kind, {"date_from": date_from, "date_to": date_to, "team": team, "product_id": product_id,

@@ -31,6 +31,7 @@ from pydantic_core import PydanticCustomError
 
 from app.application_fields import CURRENCIES as APPLICATION_CURRENCIES
 from app.application_fields import SCHOLARSHIP_STATUSES
+from app.core.rbac import parse_key as parse_permission_key
 from app.document_checklists import CHECKLIST_GATE_MODES, CHECKLIST_KINDS, DRAFTING_STATUSES, REVIEW_STATUSES, SENSITIVITY_CLASSES, review_status
 from app.document_checklists import ITEM_STATUSES as CHECKLIST_ITEM_STATUSES
 from app.document_checklists import MAX_ITEMS as CHECKLIST_MAX_ITEMS
@@ -14353,3 +14354,19 @@ class StudentEmailReply(_StudentMessageBase):
 
 
 StudentReplyCreate = Annotated[StudentWhatsAppReply | StudentEmailReply, Field(discriminator="channel")]
+
+
+class RolePermissionsUpdate(BaseModel):
+    """nehn-005 (DEC-SCOPE-280): `PUT /admin/roles/{role}/permissions` -- the role's whole new set of "<resource>.<action>" keys."""
+
+    model_config = ConfigDict(extra="forbid")
+    permissions: list[StrictStr] = Field(max_length=200)
+
+    @field_validator("permissions")
+    @classmethod
+    def _known_and_unique(cls, keys: list[str]) -> list[str]:
+        if len(set(keys)) != len(keys):
+            raise ValueError("Each permission may appear only once")
+        for key in keys:
+            parse_permission_key(key)  # ValueError names the unknown key
+        return keys

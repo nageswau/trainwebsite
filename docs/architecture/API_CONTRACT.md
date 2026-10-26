@@ -4091,3 +4091,23 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - `GET /local-files/{key}` (no `/api/v1` prefix) → `public/…` keys open; any other key 404 without a session, and for a signed-in user
   the `/files/download` rules apply (KYC and overseas-document keys 404). PDFs and images are inline, any other type an attachment.
 - `POST /files/local-upload` and `POST /public/career-upload`: unchanged shapes; content now sniffed (415 on a mismatch).
+
+## 12GF. Permission engine: role × resource × action (nehn-005) — addendum, 2026-10-26
+
+`DEC-SCOPE-280`. Migration `0195_role_permissions`. A key is `"<resource>.<action>"` from the catalogue (today: `payments.view`,
+`payments.add`, `discounts.add`, `reports.telecaller.view`, `reports.telecaller.download`).
+
+- `GET /api/v1/admin/permissions/catalogue` → 200 `{actions: [view, add, edit, delete, download, approve, review, issue, manage],
+  resources: [{key, label, actions}]}`. super_admin only (403 for every other role, 401 without a session).
+- `GET /api/v1/admin/roles/{role}/permissions` → 200 `{role, permissions: [sorted keys], editable}` (`editable: false` for super_admin,
+  who holds the whole catalogue). super_admin only; 404 for an unknown role. A refused caller gets 403 first, so role names are not disclosed.
+- `PUT /api/v1/admin/roles/{role}/permissions` body `{permissions: [keys]}` (replaces the whole set) → 200 same shape as GET. 403 for any
+  caller but super_admin; 404 unknown role; 422 for an unknown or repeated key, or a missing `permissions`; 409 for `super_admin` (its grants
+  cannot be reduced) or a concurrent edit of the same role. A real change writes an `audit_logs` row (`role_permissions.update`); a no-op
+  writes none. It applies on the next request, on every API worker.
+- `GET /api/v1/auth/me/permissions` → 200 `{role, permissions: [sorted keys]}` for any signed-in user; 401 without a session.
+- Pilot routes now grant-driven, with unchanged shapes and unchanged 403 text: `GET /admin/payments` (`payments.view`), `POST /admin/payments`
+  and `POST /admin/payments/emi-schedule` (`payments.add`), `POST /admin/payments/{id}/discount` (`discounts.add`) — "Admin role required";
+  `GET /telecaller/reports/{kind}` (`reports.telecaller.view`) — "Telecaller reports are for managers and administrators"; and
+  `GET /telecaller/reports/{kind}.csv` (`reports.telecaller.download`), whose 403 text is now "You don't have permission to download
+  telecaller reports" (QA-01: true for a manager whose download alone is revoked).

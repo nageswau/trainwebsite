@@ -9747,3 +9747,20 @@ DOC, DOCX, JPEG, PNG, HEIC; 5 MB), `learning_material` (20 MB), `signature` (PNG
 certificates, receipts, invoices written through `StorageService`. PS8 no AV scan. PS9 callers' `expires_in` unchanged.
 **Numbering:** migration `0194_stored_files`; API §12GE; RBAC §2.193.
 - **Feature ID authorized:** `nehn-003`. **Status:** built on `worktree-nehn-003`.
+
+### DEC-SCOPE-280 — Permission engine: role × resource × action, DB-backed, enforced on the API (`nehn-005`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-005` (§5 L89-128, §24 "Permissions"; action 1;
+`MEETING_TRANSCRIPT_REQUEST`, `UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-26-nehn-005-permission-engine-design.md`.
+Dependencies: none upstream; blocks nehn-006, 007, 008, 017, 021. Scope per the backlog: the engine plus two pilot modules.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** P1 the catalogue is per module and lists only
+wired resources (`payments` view/add, `discounts` add, `reports.telecaller` view/download); later slices add theirs. P2 pilots: the four
+admin payment routes and the two telecaller report routes, each checking its own action. P3 the seed equals the inline checks it replaces
+(`ensure_admin`, `REPORT_ROLES`), proven by a 28-role equivalence test. P4 the caller's `users.role` column (as the inline checks read);
+a union across several `UserRoleAssignment` rows is deferred. P5 super_admin holds everything in code, has no rows, and `PUT` on it is
+409. P6 only super_admin reads or edits grants (open question 2). P7 no in-process cache: one primary-key lookup per check, so a change
+applies on the next request on every worker. P8 one table `role_permissions`; history in `audit_logs`. P9 each pilot keeps its 403 text, except the CSV download ("You don't have permission to download telecaller reports", QA-01).
+P10 `PUT` replaces the set by diff; a concurrent edit is 409; a no-op is not audited. P11 Agent Master → Staff flags stay separate
+(open question 3). P12 no custom roles (open question 4). Granting a key to a role never widens the route's record scope.
+**Numbering:** migration `0195_role_permissions`; API §12GF; RBAC §2.194.
+- **Feature ID authorized:** `nehn-005`. **Status:** built on `worktree-nehn-005`.

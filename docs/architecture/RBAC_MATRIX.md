@@ -2980,3 +2980,22 @@ under the counselor CRM prefixes without a row fails `test_every_counselor_crm_r
 | `GET /local-files/<other key>` | 404 | 200 | 200 | 200 (as `/files/download`); KYC / overseas-document keys 404 for everyone |
 
 Pinned by `apps/api/tests/test_nehn_003_private_storage.py`.
+
+### 2.194 Permission engine *(added 2026-10-26 — `DEC-SCOPE-280`, nehn-005)*
+
+Grant-driven routes check `role_permissions` for the caller's `users.role` (super_admin: everything; an unknown key: denied for everyone).
+The route's own record scope still applies after the grant (payments: own division; telecaller reports: §2.35). Day-one grants equal the
+former inline checks, so the cells below are unchanged until super_admin edits a grant.
+
+| Route | Anonymous | super_admin | it_admin / overseas_admin | telecaller_manager | Any other signed-in role |
+|---|---|---|---|---|---|
+| `GET /admin/payments` (`payments.view`) | 401 | 200 | 200 (seed) | 403 | 403 |
+| `POST /admin/payments`, `POST /admin/payments/emi-schedule` (`payments.add`) | 401 | allowed | allowed (seed) | 403 | 403 |
+| `POST /admin/payments/{id}/discount` (`discounts.add`) | 401 | allowed | allowed (seed) | 403 | 403 |
+| `GET /telecaller/reports/{kind}` (`reports.telecaller.view`) | 401 | 200 | 200 (seed) | 200 (seed) | 403 |
+| `GET /telecaller/reports/{kind}.csv` (`reports.telecaller.download`) | 401 | 200 | 200 (seed) | 200 (seed) | 403 |
+| `GET /admin/permissions/catalogue`, `GET/PUT /admin/roles/{role}/permissions` | 401 | 200 | 403 | 403 | 403 |
+| `GET /auth/me/permissions` | 401 | 200 | 200 | 200 | 200 |
+
+Granting a key to another role never widens record scope: a role outside a route's scope branches gets the narrowest one (own division,
+own reports) or a 403 from the service. Pinned by `apps/api/tests/test_nehn_005_permissions.py` (a 28-role equivalence matrix).

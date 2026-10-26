@@ -21,7 +21,6 @@ from app.services.bdm_activities import day_range
 from app.services.telecaller import TEAMS
 from app.tel_sources import TEL_SOURCES
 
-REPORT_ROLES = frozenset({"telecaller_manager", "super_admin", "it_admin", "overseas_admin"})
 DIVISION_ADMINS = frozenset({"it_admin", "overseas_admin"})
 MAX_DAYS = 366
 SOURCE_LABELS = {

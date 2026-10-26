@@ -2283,3 +2283,12 @@ requests and their events, unlinks their documents, and restores NOT NULL.
 New table `stored_files`: `id` (UUID PK), `key` (String 500, `uq_stored_files_key`), `purpose` (String 40), `owner_id` (FK `users` ON
 DELETE CASCADE, `ix_stored_files_owner_id`), `original_filename` (String 255), `content_type` (String 120), `size_bytes` (int), `sha256`
 (String 64), `created_at`. Written only by `POST /files/upload`; no existing data changes. Downgrade drops the table (objects stay).
+
+## Role permissions (`nehn-005`, `DEC-SCOPE-280`; migration `0195_role_permissions`, after nehn-003's `0194_stored_files`)
+
+New table `role_permissions`: `role` (String 50), `resource` (String 60), `action` (String 20) — together the primary key —,
+`granted_by_id` (FK `users` ON DELETE SET NULL, null for the seed), `granted_at` (default now). Seeded with the grants the pilot routes'
+inline checks gave (it_admin/overseas_admin: `payments.view`, `payments.add`, `discounts.add`, `reports.telecaller.view`,
+`reports.telecaller.download`; telecaller_manager: the two report keys). super_admin holds every key in code and has no rows. Written only
+by `PUT /admin/roles/{role}/permissions`; history in `audit_logs` (`role_permissions.update`, before/after). No existing data changes.
+Downgrade drops the table.
