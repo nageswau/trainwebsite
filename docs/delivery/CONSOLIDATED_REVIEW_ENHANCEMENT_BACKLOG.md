@@ -1728,6 +1728,7 @@ Risk is the risk of regression or of a wrong outcome.
 - **Complexity:** small · **Risk:** low
 
 #### `nehn-041` — Unified admin/operations student search
+- **Status (2026-10-26):** built — `DEC-SCOPE-291` (builder's defaults; leads not included, no `pg_trgm`, no migration).
 - **Source:** §23 L588-597 (Student ID, name, email, phone, Agent ID, course); action 22.
 - **Business requirement:** Admin and operational users find student records quickly by ID or basic details.
 - **Existing behavior:**

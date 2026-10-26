@@ -3056,3 +3056,19 @@ Export), `/it/admin/audit-log` (IT Admin), `/overseas/admin/audit-log` (Overseas
 | `GET /payments/{id}/invoice` | 401 | 404 own payment; 403 another's | 200 | 200 own payment |
 
 No new permission key. Pinned by `apps/api/tests/test_nehn_020_student_invoices.py`.
+
+### 2.202 Unified student search *(added 2026-10-26 — `DEC-SCOPE-291`, nehn-041)*
+
+| Caller | `GET /search/students` kinds and scope |
+|---|---|
+| Anonymous | 401 |
+| `super_admin` | IT, overseas, agency (no login) and school students — all |
+| `it_admin` | IT students — all |
+| `overseas_admin` | overseas students — all; agency students (no login) — all |
+| `counselor` (overseas) | overseas students they may see (`counselor_students.visible_student_ids`: own applications + linked) |
+| `agent` | overseas students linked to the agency and its no-login agency students (`agent_students.student_scope`; staff: assigned only); 403 when the approval gate refuses |
+| `counselor` (IT), `telecaller_manager`, school roles, students, every other role | 403 |
+
+No new permission key; each kind reuses the scope of the caller's existing list. Web: `/admin/student-search`, `/it/admin/student-search`,
+`/overseas/admin/student-search` (role-gated pages) and the portal top-bar search box on those portals. Pinned by
+`apps/api/tests/test_nehn_041_student_search.py`.
