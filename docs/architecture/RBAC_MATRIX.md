@@ -2980,3 +2980,12 @@ under the counselor CRM prefixes without a row fails `test_every_counselor_crm_r
 | `GET /local-files/<other key>` | 404 | 200 | 200 | 200 (as `/files/download`); KYC / overseas-document keys 404 for everyone |
 
 Pinned by `apps/api/tests/test_nehn_003_private_storage.py`.
+
+### 2.194 Excel twins of the CSV report exports *(added 2026-10-26 — `DEC-SCOPE-280`, nehn-004)*
+
+Every `.xlsx` route answers exactly as its `.csv` twin, cell for cell: `GET /telecaller/reports/{kind}.xlsx` and
+`GET /telecaller/manager/performance.xlsx` (§2.35 / tel-023 rows), `GET /recruiter/performance.xlsx` (rec-033 row),
+`GET /workflows/overseas/agent/crm/reports/{kind}.xlsx` (AGN-020: Master-only kinds stay Master-only),
+`GET /workflows/overseas/agent/commissions/report.xlsx` (AGN-014), `GET /partnership/reports/{kind}.xlsx` (upc-031). No new role or
+scope. Pinned by `test_nehn_004_xlsx_exports.py` and the rows added to `test_tel_026_matrix.py`, `rec038_rows_activity.py` and
+`test_upc_033_matrix.py`.

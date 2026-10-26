@@ -4091,3 +4091,17 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - `GET /local-files/{key}` (no `/api/v1` prefix) → `public/…` keys open; any other key 404 without a session, and for a signed-in user
   the `/files/download` rules apply (KYC and overseas-document keys 404). PDFs and images are inline, any other type an attachment.
 - `POST /files/local-upload` and `POST /public/career-upload`: unchanged shapes; content now sniffed (415 on a mismatch).
+
+## 12GF. Excel (`.xlsx`) twins of the CSV report exports (nehn-004) — addendum, 2026-10-26
+
+`DEC-SCOPE-280`. No migration.
+
+- New, each the twin of the existing `.csv` route — same query parameters, roles, scope, row cap, throttle and refusals (401/403/404/
+  422/429), same audit row (metadata now also `format`), `Cache-Control: private, no-store`, `Content-Disposition: attachment;
+  filename="<the CSV's name>.xlsx"`, content type `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`:
+  `GET /telecaller/reports/{kind}.xlsx`, `GET /telecaller/manager/performance.xlsx`, `GET /recruiter/performance.xlsx`,
+  `GET /workflows/overseas/agent/crm/reports/{kind}.xlsx`, `GET /partnership/reports/{kind}.xlsx`,
+  `GET /workflows/overseas/agent/commissions/report.xlsx` (logged, not audited, as its CSV).
+- The workbook: one sheet; header row bold, frozen and auto-filtered (a Total row sits below the filter); numbers and dates are typed
+  cells (dates `yyyy-mm-dd`, timestamps IST `yyyy-mm-dd hh:mm`); text is literal (formula-looking text prefixed `'`, as in the CSV).
+- The `.csv` routes are unchanged apart from the audit row's added `format: "csv"`.
