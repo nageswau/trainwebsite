@@ -16,7 +16,7 @@ async function loginAsItAdmin(page: import("@playwright/test").Page) {
   await page.waitForURL("**/it/admin/dashboard");
 }
 
-test("@external student pays a pending fee via a real Razorpay checkout session and downloads the invoice/receipt once paid (STU-010-AC01/PAY-001-AC01)", async ({ page, request }) => {
+test("@external student pays a pending fee via a real Razorpay checkout session and downloads the receipt once paid (STU-010-AC01/PAY-001-AC01)", async ({ page, request }) => {
   const unique = Date.now();
   const email = `pay001-${unique}@example.com`;
   const registered = await request.post("/api/v1/auth/register", {
@@ -57,12 +57,8 @@ test("@external student pays a pending fee via a real Razorpay checkout session 
   await page.reload();
   await expect(card).toBeVisible();
 
-  // The already-paid fee shows both documents; download the invoice via its real signed URL.
-  const [invoiceRequest] = await Promise.all([
-    page.context().waitForEvent("request", (req) => req.url().includes("/api/v1/files/signed/")),
-    card.getByRole("button", { name: "Invoice" }).last().click(),
-  ]);
-  expect((await invoiceRequest.response())?.status()).toBe(200);
+  // The already-paid fee offers its receipt; students get no invoice (nehn-020).
+  await expect(card.getByRole("button", { name: "Invoice" })).toHaveCount(0);
 
   const [receiptRequest] = await Promise.all([
     page.context().waitForEvent("request", (req) => req.url().includes("/api/v1/files/signed/")),

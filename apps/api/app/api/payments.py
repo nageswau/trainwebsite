@@ -22,6 +22,7 @@ from app.services.storage import storage
 router = APIRouter(prefix="/payments", tags=["payments"])
 
 ADMIN_ROLES = {"super_admin", "it_admin", "overseas_admin"}
+STUDENT_ROLES = {"it_student", "overseas_student"}
 PAID_STATUSES = {"paid", "succeeded"}
 
 
@@ -136,13 +137,16 @@ async def emi_schedule(user: User = Depends(get_current_user), db: AsyncSession 
 @router.get("/{payment_id}/invoice")
 async def download_invoice(payment_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Signed download URL, same pattern as STU-007's certificate download -- never a public
-    object link, only an id-for-URL exchange verified here.
+    object link, only an id-for-URL exchange verified here. nehn-020: a student's document is
+    the receipt; invoices are still generated and stay available to admins and agents.
     """
     item = await db.get(Payment, payment_id)
     if not item:
         raise HTTPException(404, "Payment not found")
     if item.user_id != user.id and not (user.role in ADMIN_ROLES and (user.role == "super_admin" or item.division == user.division)):
         raise HTTPException(403, "Payment belongs to another user")
+    if user.role in STUDENT_ROLES:
+        raise HTTPException(404, "Invoices are not issued to students. Download your receipt instead.")
     invoice = await db.scalar(select(Invoice).where(Invoice.payment_id == item.id))
     if not invoice:
         raise HTTPException(404, "Invoice not yet generated for this payment")

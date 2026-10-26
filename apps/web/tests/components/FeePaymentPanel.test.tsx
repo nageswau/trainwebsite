@@ -35,3 +35,15 @@ describe("FeePaymentPanel test-mode banner (nehn-022)", () => {
     await waitFor(() => expect(screen.queryByText(TEST_MODE_TEXT)).toBeNull());
   });
 });
+
+// nehn-020 (DEC-SCOPE-290) AC1: the student's payment document is the receipt; no fee card offers an invoice.
+describe("FeePaymentPanel documents (nehn-020)", () => {
+  it("offers the receipt on a paid fee and never an invoice", async () => {
+    const paid = { ...ROW, id: "p2", status: "paid" };
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => (url === "/api/v1/payments/mine" ? json([ROW, paid]) : url === "/api/v1/payments/mode" ? json({ mode: "live" }) : json([]))));
+    render(<FeePaymentPanel />);
+    expect(await screen.findByRole("button", { name: "Receipt" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pay Now" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /invoice/i })).toBeNull();
+  });
+});

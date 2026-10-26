@@ -3048,3 +3048,11 @@ their own division plus system rows (no actor) — enforced in the SQL `WHERE` b
 division returns `[]`, never its rows. Every other signed-in role 403; anonymous 401. Web: `/admin/security-logs` (Super Admin, with
 Export), `/it/admin/audit-log` (IT Admin), `/overseas/admin/audit-log` (Overseas Admin); audit `metadata` is not rendered. Pinned by
 `test_nehn_042_audit_search.py`.
+
+### 2.201 Student invoices retired *(added 2026-10-26 — `DEC-SCOPE-290`, nehn-020)*
+
+| Route | Anonymous | it_student / overseas_student | Admin (own division; super_admin all) | Other payer (agent) |
+|---|---|---|---|---|
+| `GET /payments/{id}/invoice` | 401 | 404 own payment; 403 another's | 200 | 200 own payment |
+
+No new permission key. Pinned by `apps/api/tests/test_nehn_020_student_invoices.py`.

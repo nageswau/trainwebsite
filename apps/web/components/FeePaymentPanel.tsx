@@ -39,7 +39,7 @@ function detailMessage(detail: unknown) {
 // STU-010/PAY-001: the generic portal table listed payment rows as plain text with a
 // raw-UUID "Start checkout" form (WorkflowPanel's checkoutSpec) -- the same "type in an id"
 // UX gap fixed for ADM-001/003/005/007. This replaces it with a Pay Now action per pending
-// row, invoice/receipt downloads (PRD-PAY-003, signed URLs -- STU-007's download pattern),
+// row, receipt downloads (PRD-PAY-003, signed URLs -- STU-007's download pattern; nehn-020: no invoice for students),
 // and the EMI installment timeline (PRD-STU-011).
 export default function FeePaymentPanel() {
   const [rows, setRows] = useState<PaymentRow[] | null>(null);
@@ -119,10 +119,10 @@ export default function FeePaymentPanel() {
     if (!opened) setMessage({ id: row.id, text: "Unable to load the payment provider. Please try again.", failed: true });
   }
 
-  async function downloadDocument(row: PaymentRow, kind: "invoice" | "receipt") {
-    setBusyId(`${row.id}-${kind}`);
+  async function downloadReceipt(row: PaymentRow) {
+    setBusyId(`${row.id}-receipt`);
     setMessage(null);
-    const response = await fetch(`/api/v1/payments/${row.id}/${kind}`);
+    const response = await fetch(`/api/v1/payments/${row.id}/receipt`);
     const data = await response.json().catch(() => ({}));
     setBusyId(null);
     if (!response.ok) {
@@ -161,11 +161,8 @@ export default function FeePaymentPanel() {
                     {busyId === row.id ? "Preparing…" : "Pay Now"}
                   </button>
                 )}
-                <button className="btn small secondary" disabled={busyId === `${row.id}-invoice`} onClick={() => downloadDocument(row, "invoice")}>
-                  Invoice
-                </button>
                 {["paid", "succeeded"].includes(row.status) && (
-                  <button className="btn small secondary" disabled={busyId === `${row.id}-receipt`} onClick={() => downloadDocument(row, "receipt")}>
+                  <button className="btn small secondary" disabled={busyId === `${row.id}-receipt`} onClick={() => downloadReceipt(row)}>
                     Receipt
                   </button>
                 )}
