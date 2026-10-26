@@ -71,7 +71,7 @@ class Settings(BaseSettings):
     razorpay_key_id: str | None = None
     razorpay_key_secret: str | None = None
     razorpay_webhook_secret: str | None = None
-    # nehn-022 (DEC-SCOPE-282): the explicit gateway mode, checked against the keys at startup -- a mismatch stops the API, worker
+    # nehn-022 (DEC-SCOPE-283): the explicit gateway mode, checked against the keys at startup -- a mismatch stops the API, worker
     # and beat before they serve anything. Go-live steps: docs/architecture/RAZORPAY_GO_LIVE.md.
     razorpay_mode: Literal["test", "live"] = "test"
     # A failed startup check must never print the keys or any other secret it was given.

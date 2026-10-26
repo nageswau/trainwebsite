@@ -1,4 +1,4 @@
-# Razorpay go-live runbook (`nehn-022`, `DEC-SCOPE-282`)
+# Razorpay go-live runbook (`nehn-022`, `DEC-SCOPE-283`)
 
 This runbook moves the payment gateway from Razorpay **test** mode to **live** mode. Linked from `DEPLOYMENT.md`.
 

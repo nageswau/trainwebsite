@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import FeePaymentPanel from "@/components/FeePaymentPanel";
 import { TEST_MODE_TEXT } from "@/components/PaymentModeBanner";
 
-// nehn-022 (DEC-SCOPE-282) AC2: the student Fee Payments card carries the test-mode banner; live mode hides it.
+// nehn-022 (DEC-SCOPE-283) AC2: the student Fee Payments card carries the test-mode banner; live mode hides it.
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const ROW = { id: "p1", amount: 1000, currency: "INR", provider: "razorpay", status: "pending", due_date: null, reference_type: "service_fee", is_manual: false, emi_schedule_id: null, installment_no: null };
 

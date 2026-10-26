@@ -1,4 +1,4 @@
-"""nehn-022 (DEC-SCOPE-282): RAZORPAY_MODE=test|live, checked at startup against the key prefix; the non-secret mode read for the
+"""nehn-022 (DEC-SCOPE-283): RAZORPAY_MODE=test|live, checked at startup against the key prefix; the non-secret mode read for the
 payment-screen banner; the admin system-status row."""
 
 import uuid

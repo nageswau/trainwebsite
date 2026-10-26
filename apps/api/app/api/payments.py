@@ -77,7 +77,7 @@ async def _mark_paid(db: AsyncSession, item: Payment, payer: User, *, source: st
 
 @router.get("/mode")
 async def mode(user: User = Depends(get_current_user)):
-    """nehn-022 (DEC-SCOPE-282): the gateway mode only (never a key), so payment screens can show the test-mode banner."""
+    """nehn-022 (DEC-SCOPE-283): the gateway mode only (never a key), so payment screens can show the test-mode banner."""
     return {"mode": settings.razorpay_mode}
 
 

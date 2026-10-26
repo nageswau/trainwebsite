@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import PaymentModeBanner, { TEST_MODE_TEXT } from "@/components/PaymentModeBanner";
 
-// nehn-022 (DEC-SCOPE-282) AC2: payment screens say plainly when Razorpay runs in test mode; live mode shows nothing.
+// nehn-022 (DEC-SCOPE-283) AC2: payment screens say plainly when Razorpay runs in test mode; live mode shows nothing.
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
 function serve(response: () => Promise<Response>) {

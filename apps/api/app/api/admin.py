@@ -445,7 +445,7 @@ async def system_status(user: User = Depends(ensure_admin)):
             else "manual fallback",
         },
         {"service": "Razorpay", "status": "configured" if settings.razorpay_key_id and settings.razorpay_key_secret else "not configured"},
-        # nehn-022 (DEC-SCOPE-282): test vs live, already checked against the keys at startup.
+        # nehn-022 (DEC-SCOPE-283): test vs live, already checked against the keys at startup.
         {"service": "Razorpay mode", "status": f"{settings.razorpay_mode} mode"},
         {"service": "Inbound university email", "status": "configured" if settings.inbound_email_webhook_secret else "not configured"},
         # ENH-032 / DEC-SCOPE-225: which transport is live (never the credentials themselves).

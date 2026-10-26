@@ -4124,3 +4124,14 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   `GET /telecaller/reports/{kind}` (`reports.telecaller.view`) — "Telecaller reports are for managers and administrators"; and
   `GET /telecaller/reports/{kind}.csv` (`reports.telecaller.download`), whose 403 text is now "You don't have permission to download
   telecaller reports" (QA-01: true for a manager whose download alone is revoked).
+
+## 12GI. Razorpay mode (nehn-022) — addendum, 2026-10-26
+
+`DEC-SCOPE-283`. No migration.
+
+- `GET /api/v1/payments/mode` → 200 `{"mode": "test" | "live"}` for any signed-in user; 401 without a session. Read-only, non-secret
+  (never a key id or secret). The value is `RAZORPAY_MODE`, already checked against the keys at startup.
+- `GET /api/v1/admin/system-status` gains one row: `{"service": "Razorpay mode", "status": "test mode" | "live mode"}` (additive; access
+  unchanged).
+- Startup (not an HTTP contract): `RAZORPAY_MODE` / `RAZORPAY_KEY_ID` mismatch, or `live` without the key secret and webhook secret, stops
+  the process before it serves. Runbook: `RAZORPAY_GO_LIVE.md`.

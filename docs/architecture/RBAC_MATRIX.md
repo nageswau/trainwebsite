@@ -3006,3 +3006,12 @@ former inline checks, so the cells below are unchanged until super_admin edits a
 
 Granting a key to another role never widens record scope: a role outside a route's scope branches gets the narrowest one (own division,
 own reports) or a 403 from the service. Pinned by `apps/api/tests/test_nehn_005_permissions.py` (a 28-role equivalence matrix).
+
+### 2.197 Razorpay mode *(added 2026-10-26 — `DEC-SCOPE-283`, nehn-022)*
+
+| Route | Anonymous | Any signed-in role |
+|---|---|---|
+| `GET /payments/mode` | 401 | 200 (mode only) |
+
+`GET /admin/system-status` keeps its access (`ensure_admin`); it only gains the `Razorpay mode` row. Pinned by
+`apps/api/tests/test_nehn_022_razorpay_mode.py`.

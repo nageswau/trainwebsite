@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
-// nehn-022 (DEC-SCOPE-282): the stack runs with RAZORPAY_MODE=test (the default), so the student Fee Payments card shows the test-mode
+// nehn-022 (DEC-SCOPE-283): the stack runs with RAZORPAY_MODE=test (the default), so the student Fee Payments card shows the test-mode
 // banner and Admin -> Settings shows the mode. Live hides the banner (vitest: PaymentModeBanner / FeePaymentPanel) -- flipping a stack
 // to live needs real rzp_live_ keys, and the API refuses to start without them (pytest: test_nehn_022_razorpay_mode.py).
 const BANNER = "Test mode: payments here use Razorpay test mode and no real money is charged.";
