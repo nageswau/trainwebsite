@@ -1,8 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import type { University } from "@/lib/types";
+import { useRouter, useSearchParams } from "next/navigation";
+import type { Country, University } from "@/lib/types";
 import ApplicationStatusHistory from "@/components/ApplicationStatusHistory";
 
 type Course = { id: string; title: string; level: string; category: string; duration: string; tuition_fee: string; intake: string };
@@ -18,9 +18,14 @@ function detailMessage(status: number, detail: unknown) {
 // OVS-002: submitting interest previously meant typing a raw university/course UUID
 // into a generic form (same class of gap already fixed for ADM-001/002/003/004/006/007).
 // This lists real universities (public catalogue, OVS-001) and their real courses instead.
+// nehn-034 (DEC-SCOPE-286 C6): the form starts with a country choice that narrows the universities. "All countries" (the default)
+// keeps the full list; ?country=<slug> (a portal country card's Apply) preselects one. A failed country read leaves just "All countries".
 export default function OverseasApplyPanel() {
   const router = useRouter();
+  const countrySlug = useSearchParams().get("country");
   const [universities, setUniversities] = useState<University[] | null>(null);
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [countryId, setCountryId] = useState("");
   const [applications, setApplications] = useState<ApplicationRow[] | null>(null);
   const [universityId, setUniversityId] = useState("");
   const [courses, setCourses] = useState<Course[] | null>(null);
@@ -39,10 +44,24 @@ export default function OverseasApplyPanel() {
       .then((res) => (res.ok ? res.json() : { rows: [] }))
       .then((data) => !cancelled && setApplications(data.rows || []))
       .catch(() => !cancelled && setApplications([]));
+    fetch("/api/v1/public/countries")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: Country[]) => {
+        if (cancelled) return;
+        const offered = data.filter((c) => (c.university_count ?? 0) > 0);
+        setCountries(offered);
+        setCountryId(offered.find((c) => c.slug === countrySlug)?.id ?? "");
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [countrySlug]);
+
+  function chooseCountry(id: string) {
+    setCountryId(id);
+    if (id && universities?.find((u) => u.id === universityId)?.country_id !== id) setUniversityId("");
+  }
 
   useEffect(() => {
     setCourseId("");
@@ -105,10 +124,19 @@ export default function OverseasApplyPanel() {
       <h3>Apply to a University</h3>
       <form className="form" onSubmit={submit}>
         <div className="field">
+          <label htmlFor="apply-country">Country</label>
+          <select id="apply-country" value={countryId} onChange={(event) => chooseCountry(event.target.value)}>
+            <option value="">All countries</option>
+            {countries.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
           <label htmlFor="apply-university">University</label>
           <select id="apply-university" value={universityId} onChange={(event) => setUniversityId(event.target.value)} required>
             <option value="">Select a university…</option>
-            {universities.map((u) => (
+            {universities.filter((u) => !countryId || u.country_id === countryId).map((u) => (
               <option key={u.id} value={u.id}>{u.name} -- {u.city}</option>
             ))}
           </select>

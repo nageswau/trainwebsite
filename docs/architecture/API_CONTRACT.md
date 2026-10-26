@@ -4175,3 +4175,13 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - `GET /api/v1/public/overseas-courses` and `GET /api/v1/public/universities/{slug}` course rows gain `icon` (key or `null`). Still never
   commission. `null` is shown by the web client as the icon its category names (`web/lib/courseIcons.ts`), else the general icon.
 - The CSV course import is unchanged (imported courses are automatic).
+
+## 12GL. Country cards (nehn-034) — addendum, 2026-10-26
+
+`DEC-SCOPE-286`. No migration. All additive.
+
+- `GET /api/v1/public/countries` and `GET /api/v1/public/countries/{slug}` (`country`): each country gains `university_count` (int) —
+  its published, active universities (`catalogue_visible` and `active`). Public, unchanged access; an unknown slug stays 404.
+- `GET /api/v1/public/universities?country=<slug>` (existing) is the cards' "View universities" target; an unknown slug returns `[]`.
+- `GET /api/v1/portal/overseas/student/explore-countries` → 200 header-only payload (`title` "Explore Countries", no rows/metrics) for
+  an `overseas_student`; other roles 403, no session 401 (the portal gate).
