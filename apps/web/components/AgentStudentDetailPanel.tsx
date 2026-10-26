@@ -66,6 +66,7 @@ export default function AgentStudentDetailPanel({
       <h4 id={headingId} tabIndex={-1}>
         {detail.full_name}
       </h4>
+      {detail.student_code && <p className="muted" style={{ margin: "4px 0 0" }}>Student ID {detail.student_code}</p>}
       {editing === "student" ? (
         <AgentStudentForm
           mode="edit"

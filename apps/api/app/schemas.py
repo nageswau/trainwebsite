@@ -2243,6 +2243,7 @@ class AgentOrgDetailOut(BaseModel):
 class AgentNetworkStudentOut(BaseModel):
     id: UUID
     full_name: str | None
+    student_code: str | None = None  # nehn-040: the account's code for a linked row
     status: str
     assigned_code: str | None
     has_login: bool

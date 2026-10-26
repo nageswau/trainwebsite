@@ -21,7 +21,7 @@ from app.core.database import SessionLocal, get_db
 from app.core.identifiers import unique_student_code
 from app.core.rbac import agent_permissions
 from app.core.security import create_token, decode_token, hash_password, verify_password
-from app.models import AgentOrg, AgentOrgKycDocument, AuditLog, Notification, NotificationDelivery, PasswordResetToken, User, UserRoleAssignment
+from app.models import AgentOrg, AgentOrgKycDocument, AgentStudent, AuditLog, Notification, NotificationDelivery, PasswordResetToken, User, UserRoleAssignment
 from app.schemas import ChangePasswordRequest, LoginRequest, LoginResponse, ProfileUpdate, RegistrationRequest, UserOut
 from app.services import agent_kyc as kyc
 from app.services.agent_orgs import ensure_agent_org
@@ -242,7 +242,7 @@ async def _register(fields: dict, files: dict, response: Response, db: AsyncSess
         for _doc_type, (data, content_type, _name) in contents.items():
             stored.append(kyc.store(data, content_type))
         role = "agent" if is_agent else ("it_student" if payload.division == "it" else "overseas_student")
-        student_code = await unique_student_code(db, User.student_code) if role in ("it_student", "overseas_student") else None
+        student_code = await unique_student_code(db, User.student_code, AgentStudent.student_code) if role in ("it_student", "overseas_student") else None
         user = User(
             email=email,
             password_hash=hash_password(payload.password),

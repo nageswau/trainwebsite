@@ -29,7 +29,7 @@ test("admin views a role-scoped student directory and edits detail fields (ADM-0
 
   await page.goto("/it/admin/students");
   const panel = page.locator(".action-card", { has: page.getByRole("heading", { name: "Directory" }) });
-  await panel.getByLabel("Search by name, email, or role").fill("ADM-004 Directory");
+  await panel.getByLabel("Search by name, email, role, or Student ID").fill("ADM-004 Directory");
   // Role-scoped: the freshly created student shows on the Students directory, the
   // freshly created trainer does not, even though both match the search text.
   await expect(panel.locator("table")).toContainText(uniqueName);

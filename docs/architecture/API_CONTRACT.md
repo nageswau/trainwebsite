@@ -4075,3 +4075,16 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   overdue_tasks, no_next_action, pending_documents, not_ready, awaiting_decision, offers_due, visa, enrolment}}`; each section
   `{count, more, items: [{id, label, detail, date, overdue, href}]}` (at most 10 items; `date` is an ISO date or timestamp or null;
   `href` is the web page for the item). Overseas counselor only; every other role (IT counselor included) 403. Read-only, not audited.
+
+## 12GE. Student ID coverage and lookup (nehn-040) — addendum, 2026-10-26
+
+`DEC-SCOPE-279`. Migration `0194_agent_student_codes`. Additive fields only; no new route.
+
+- `GET /api/v1/admin/users` items gain `student_code` (string|null) and the request takes an optional `q` (≤ 100 chars, else 422): a
+  literal, case-insensitive substring of the name, email, role or Student ID, matched before the 500-row cap (QA-01) inside the caller's
+  existing division scope. `POST /api/v1/admin/users` assigns a code to an `it_student` / `overseas_student` account.
+- `GET /api/v1/lookups/overseas-students` (not `purpose=link`): `q` also matches `student_code`; `detail` is `email · CODE` when the
+  student has one. `purpose=link` is unchanged.
+- `GET /api/v1/workflows/overseas/agent/crm/students` (list, `q` also matches the code), `GET …/{id}`, `POST` and `PATCH` responses gain
+  `student_code` — the record's own code for a student with no login, the account's code for a linked one.
+- `GET /api/v1/overseas-admin/agent-orgs/{org_id}/students` items gain `student_code`.

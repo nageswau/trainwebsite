@@ -144,13 +144,13 @@ async def overseas_students(
             stmt = stmt.where(User.id.in_(visible_student_ids(user)))  # csc-001: own applications' students + linked students
         elif user.role == "agent":
             stmt = stmt.where(User.id.in_(visible_student_user_ids(user)))  # AGN-004 (G4): staff see their assigned students only
-        if pattern:
-            stmt = stmt.where(or_(_like(User.full_name, pattern), _like(User.email, pattern)))
+        if pattern:  # nehn-040: the Student ID matches too (not for `purpose=link`, N7)
+            stmt = stmt.where(or_(_like(User.full_name, pattern), _like(User.email, pattern), _like(User.student_code, pattern)))
     stmt = stmt.order_by(User.full_name, User.id)
     masked = purpose == "link"
     return await _page(
         db, stmt, limit,
-        lambda row: {"id": row[0].id, "label": row[0].full_name, "detail": mask_email(row[0].email) if masked else row[0].email},
+        lambda row: {"id": row[0].id, "label": row[0].full_name, "detail": mask_email(row[0].email) if masked else _join(row[0].email, row[0].student_code)},
         "overseas-students", user,
     )
 

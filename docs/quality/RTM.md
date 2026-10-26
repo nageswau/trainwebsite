@@ -1257,3 +1257,15 @@ half.
 | `ccrm-041-AC04` | A and B never change when C is rejected; A and C never change when B is accepted and enrolled (AC 3, AC 9) | `::test_the_appendix_b_journey` (snapshots); e2e 360 cards |
 | `ccrm-041-AC05` | Status history names the author and reason (AC 6) | `::test_the_appendix_b_journey` (C's history row) |
 | `ccrm-041-AC06` | Notifications fire once on seeded deadlines: offer, condition, deposit (counselor + student), visa appointment (counselor) (AC 12) | `::test_the_appendix_b_journey` (two reminder runs) |
+
+**Addendum, 2026-10-26 (`nehn-040`)** — Student ID coverage and lookup.
+
+| ID | Requirement / acceptance | Evidence |
+|---|---|---|
+| `nehn-040` | Requirement: PDF §22/§23 → `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-040` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-279` → design `docs/superpowers/specs/2026-10-26-nehn-040-student-id-coverage-design.md` → API §12GE, RBAC §2.193 → migration `0194_agent_student_codes` | N1–N9 defaults `NEEDS_CONFIRMATION` |
+| `nehn-040-AC1` | Searching a student's code in admin users finds that student | `apps/api/tests/test_nehn_040_student_ids.py::test_admin_users_list_returns_the_code`, `::test_the_overseas_student_lookup_matches_and_shows_the_code_in_scope`; `apps/web/tests/components/nehn040StudentId.test.tsx`; `apps/web/tests/e2e/nehn-040-student-id.spec.ts` |
+| `nehn-040-AC2` | Every agency-created student has a code (new at create; existing after the backfill) | `::test_an_agency_created_student_gets_a_code_at_create`; `apps/api/tests/test_nehn_040_migration.py::test_upgrade_backfills_codes_and_round_trips`; e2e |
+| `nehn-040-AC3` | The code shows in list rows and the agency detail header | `::test_a_linked_student_shows_the_account_code_and_the_row_keeps_none`, `::test_the_agent_network_students_carry_the_code`; `nehn040StudentId.test.tsx`; e2e |
+| `nehn-040-AC4` | Agent ID | Not applicable — N1 (`DEC-DATA-003`) |
+| `nehn-040-AC5` | Search by code stays inside the caller's scope | `::test_the_agency_search_matches_a_code_only_inside_the_agency`, `::test_the_overseas_student_lookup_matches_and_shows_the_code_in_scope`, `::test_the_link_lookup_does_not_match_a_code` |
+| `nehn-040-AC6` | New codes never collide across `users` and `agent_students` | `::test_a_new_code_is_unique_across_every_column_given`; migration test (skips a taken code) |

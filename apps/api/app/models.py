@@ -4162,6 +4162,8 @@ class AgentStudent(Base, TimestampMixin):
     email: Mapped[str | None] = mapped_column(String(320), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
     phone_digits: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # nehn-040 (DEC-SCOPE-279 N2): the Student ID of a row with no login; a linked row shows its account's users.student_code.
+    student_code: Mapped[str | None] = mapped_column(String(8), unique=True, nullable=True, index=True)
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     highest_qualification: Mapped[str | None] = mapped_column(String(200), nullable=True)
     institution: Mapped[str | None] = mapped_column(String(200), nullable=True)
