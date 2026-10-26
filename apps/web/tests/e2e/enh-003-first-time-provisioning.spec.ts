@@ -96,7 +96,7 @@ test("the users directory shows the setup status and Re-send works from the keyb
 
   await page.goto("/it/admin/users");
   const panel = page.locator(".action-card", { has: page.getByRole("heading", { name: "Manage users" }) });
-  await panel.getByLabel("Search by name, email, or role").fill(name);
+  await panel.getByLabel("Search by name, email, role, or Student ID").fill(name);
   const row = panel.locator("tr", { hasText: name });
   await expect(row).toContainText("Active");
   await expect(row.getByText("Awaiting setup")).toBeVisible();

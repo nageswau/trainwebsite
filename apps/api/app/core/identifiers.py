@@ -21,13 +21,14 @@ def generate_student_code() -> str:
     return secrets.token_hex(STUDENT_CODE_LENGTH // 2).upper()
 
 
-async def unique_student_code(db: AsyncSession, column) -> str:
-    """Generate a student_code guaranteed unique for the given mapped column (e.g.
+async def unique_student_code(db: AsyncSession, *columns) -> str:
+    """Generate a student_code guaranteed unique for every mapped column given (e.g.
     User.student_code, SchoolStudent.student_code), retrying on collision rather than
-    assuming the ~4.3 billion-code space can't ever repeat."""
+    assuming the ~4.3 billion-code space can't ever repeat. nehn-040 (DEC-SCOPE-280 N3):
+    User and AgentStudent codes are one space, so their callers pass both columns."""
     for _ in range(10):
         code = generate_student_code()
-        if not await db.scalar(select(column).where(column == code)):
+        if not any([await db.scalar(select(column).where(column == code)) for column in columns]):
             return code
     raise RuntimeError("Could not generate a unique student code after 10 attempts")
 

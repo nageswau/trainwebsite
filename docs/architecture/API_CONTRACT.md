@@ -4092,9 +4092,22 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   the `/files/download` rules apply (KYC and overseas-document keys 404). PDFs and images are inline, any other type an attachment.
 - `POST /files/local-upload` and `POST /public/career-upload`: unchanged shapes; content now sniffed (415 on a mismatch).
 
-## 12GF. Permission engine: role × resource × action (nehn-005) — addendum, 2026-10-26
+## 12GF. Student ID coverage and lookup (nehn-040) — addendum, 2026-10-26
 
-`DEC-SCOPE-280`. Migration `0195_role_permissions`. A key is `"<resource>.<action>"` from the catalogue (today: `payments.view`,
+`DEC-SCOPE-280`. Migration `0195_agent_student_codes`. Additive fields only; no new route.
+
+- `GET /api/v1/admin/users` items gain `student_code` (string|null) and the request takes an optional `q` (≤ 100 chars, else 422): a
+  literal, case-insensitive substring of the name, email, role or Student ID, matched before the 500-row cap (QA-01) inside the caller's
+  existing division scope. `POST /api/v1/admin/users` assigns a code to an `it_student` / `overseas_student` account.
+- `GET /api/v1/lookups/overseas-students` (not `purpose=link`): `q` also matches `student_code`; `detail` is `email · CODE` when the
+  student has one. `purpose=link` is unchanged.
+- `GET /api/v1/workflows/overseas/agent/crm/students` (list, `q` also matches the code), `GET …/{id}`, `POST` and `PATCH` responses gain
+  `student_code` — the record's own code for a student with no login, the account's code for a linked one.
+- `GET /api/v1/overseas-admin/agent-orgs/{org_id}/students` items gain `student_code`.
+
+## 12GG. Permission engine: role × resource × action (nehn-005) — addendum, 2026-10-26
+
+`DEC-SCOPE-281`. Migration `0196_role_permissions`. A key is `"<resource>.<action>"` from the catalogue (today: `payments.view`,
 `payments.add`, `discounts.add`, `reports.telecaller.view`, `reports.telecaller.download`).
 
 - `GET /api/v1/admin/permissions/catalogue` → 200 `{actions: [view, add, edit, delete, download, approve, review, issue, manage],

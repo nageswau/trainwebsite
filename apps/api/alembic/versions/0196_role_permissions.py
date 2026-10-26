@@ -1,9 +1,9 @@
 """nehn-005 -- the role_permissions grant table behind `deps.require_permission`, seeded with today's behaviour.
 
-Revision ID: 0195_role_permissions
-Revises: 0194_stored_files
+Revision ID: 0196_role_permissions
+Revises: 0195_agent_student_codes
 
-docs/superpowers/specs/2026-10-26-nehn-005-permission-engine-design.md (DEC-SCOPE-280 P3/P8). 0001 builds a fresh database from the
+docs/superpowers/specs/2026-10-26-nehn-005-permission-engine-design.md (DEC-SCOPE-281 P3/P8). 0001 builds a fresh database from the
 current models, which already carry the table (empty), so it is created only when missing (0192's idiom); the seed is inserted either
 way. SEED is a frozen copy of `rbac.DEFAULT_GRANTS` at this revision: the grants the pilot routes' inline checks
 gave (admin payments: it_admin/overseas_admin; telecaller reports: also telecaller_manager). super_admin holds everything in code and has
@@ -14,8 +14,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0195_role_permissions"
-down_revision = "0194_stored_files"
+revision = "0196_role_permissions"
+down_revision = "0195_agent_student_codes"
 branch_labels = None
 depends_on = None
 

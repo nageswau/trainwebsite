@@ -24,6 +24,7 @@ from app.models import (
     AgentCommission,
     AgentOrg,
     AgentOrgMember,
+    AgentStudent,
     AuditLog,
     Batch,
     BdmOrganization,
@@ -123,7 +124,7 @@ async def ensure_admin(user: User = Depends(get_current_user)):
     return user
 
 
-# nehn-005 (DEC-SCOPE-280 P2): the payment routes are grant-driven; the seed gives these to exactly the `ensure_admin` roles. Each route
+# nehn-005 (DEC-SCOPE-281 P2): the payment routes are grant-driven; the seed gives these to exactly the `ensure_admin` roles. Each route
 # keeps its division scope. The refusal text is unchanged (P9).
 PAYMENTS_VIEW = require_permission("payments", "view", ADMIN_REQUIRED)
 PAYMENTS_ADD = require_permission("payments", "add", ADMIN_REQUIRED)
@@ -272,7 +273,14 @@ async def dashboard(user: User = Depends(ensure_admin), db: AsyncSession = Depen
 
 
 @router.get("/users")
-async def users(division: str | None = None, role: str | None = None, provisioning_status: str | None = None, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+async def users(
+    division: str | None = None,
+    role: str | None = None,
+    provisioning_status: str | None = None,
+    q: str | None = Query(None, max_length=100),
+    user: User = Depends(ensure_admin),
+    db: AsyncSession = Depends(get_db),
+):
     if provisioning_status is not None and provisioning_status not in {"pending_setup", "link_expired"}:
         raise HTTPException(422, "provisioning_status must be pending_setup or link_expired")
     stmt = select(User)
@@ -282,6 +290,11 @@ async def users(division: str | None = None, role: str | None = None, provisioni
         stmt = stmt.where(User.division == division)
     if role:
         stmt = stmt.where(User.role == role)
+    term = (q or "").strip()
+    if term:
+        # nehn-040 QA-01: matched by the server (literal, case-insensitive substring), so the cap below limits matches, never hides one.
+        pattern = "%" + term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        stmt = stmt.where(or_(*(column.ilike(pattern, escape="\\") for column in (User.full_name, User.email, User.role, User.student_code))))
     if provisioning_status:
         # Resolve the exact id set first; the cap below is skipped for a filtered request so it cannot hide a match.
         stmt = stmt.where(User.id.in_(await user_ids_with_status(db, user, provisioning_status)))
@@ -302,6 +315,7 @@ async def users(division: str | None = None, role: str | None = None, provisioni
             "phone": x.phone,
             "profile": x.profile,
             "provisioning_status": statuses.get(x.id, "active"),
+            "student_code": x.student_code,  # nehn-040: shown and searched by the Users panel
         }
         for x in xs
     ]
@@ -672,6 +686,8 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
         active=payload.get("active", True),
         email_verified=payload.get("email_verified", False),
         profile=payload.get("profile", {}),
+        # nehn-040 (DEC-SCOPE-280 N4): an admin-provisioned student gets a Student ID, as self-registration does.
+        student_code=await unique_student_code(db, User.student_code, AgentStudent.student_code) if role in ("it_student", "overseas_student") else None,
     )
     db.add(item)
     await _flush_unique_email(db)

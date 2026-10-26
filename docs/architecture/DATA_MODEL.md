@@ -2284,7 +2284,7 @@ New table `stored_files`: `id` (UUID PK), `key` (String 500, `uq_stored_files_ke
 DELETE CASCADE, `ix_stored_files_owner_id`), `original_filename` (String 255), `content_type` (String 120), `size_bytes` (int), `sha256`
 (String 64), `created_at`. Written only by `POST /files/upload`; no existing data changes. Downgrade drops the table (objects stay).
 
-## Role permissions (`nehn-005`, `DEC-SCOPE-280`; migration `0195_role_permissions`, after nehn-003's `0194_stored_files`)
+## Role permissions (`nehn-005`, `DEC-SCOPE-281`; migration `0196_role_permissions`, after nehn-040's `0195_agent_student_codes`)
 
 New table `role_permissions`: `role` (String 50), `resource` (String 60), `action` (String 20) — together the primary key —,
 `granted_by_id` (FK `users` ON DELETE SET NULL, null for the seed), `granted_at` (default now). Seeded with the grants the pilot routes'

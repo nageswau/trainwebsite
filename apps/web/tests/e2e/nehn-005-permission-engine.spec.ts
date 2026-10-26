@@ -2,7 +2,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 
 import { E2E_PASSWORD, createAndActivate } from "./helpers/welcome";
 
-// nehn-005 (DEC-SCOPE-280): the permission engine is API-only (the matrix UI is nehn-006). The existing pages keep working on the seed
+// nehn-005 (DEC-SCOPE-281): the permission engine is API-only (the matrix UI is nehn-006). The existing pages keep working on the seed
 // grants, and a grant super_admin changes applies to an open session on its next request. Grants are role-wide, so a test changes them
 // only for a role no other spec relies on (accountant), or for as short a window as the browser check needs (telecaller_manager's
 // download), and always restores them.

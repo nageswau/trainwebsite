@@ -1,7 +1,7 @@
 # nehn-005 — Permission engine: role × resource × action, DB-backed, enforced on the API
 
 Source: `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-005` (§5 L89-128; `MEETING_TRANSCRIPT_REQUEST`, `UNVERIFIED`
-backlog). Decision: `DEC-SCOPE-280`. Numbering: migration `0195_role_permissions`, API §12GF, RBAC §2.194. Dependencies: none upstream.
+backlog). Decision: `DEC-SCOPE-281`. Numbering: migration `0196_role_permissions`, API §12GG, RBAC §2.195. Dependencies: none upstream.
 
 ## Intent
 
@@ -84,7 +84,7 @@ equivalent.
 - **P11 Agent Master → Staff flags** (`can_verify_documents`/`can_view_reports`) stay organisation-level and separate (open question 3).
 - **P12 Custom roles:** none. Roles are the 28 keys of `PERMISSIONS` (open question 4).
 
-## API (§12GF)
+## API (§12GG)
 
 | Method | Path | Who | Result |
 |---|---|---|---|
@@ -108,7 +108,7 @@ Other signed-in roles get 403 on the admin endpoints, and anonymous callers get 
 7. Removing `reports.telecaller.download` from telecaller_manager gives 403 on `.csv`, while the JSON report still returns 200.
 8. A non-super-admin `PUT` returns 403, and an unknown key returns 422.
 
-## Migration 0195
+## Migration 0196
 
 - 0001 builds a fresh database from the current models, which already include the table. So the table is created only when it is
   missing, and the seed is inserted `ON CONFLICT DO NOTHING`.

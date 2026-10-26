@@ -45,7 +45,7 @@ UNIVERSITIES = [
 async def user(db, email, name, role, division):
     x = await db.scalar(select(User).where(User.email == email))
     if not x:
-        student_code = await unique_student_code(db, User.student_code) if role in ("it_student", "overseas_student") else None
+        student_code = await unique_student_code(db, User.student_code, AgentStudent.student_code) if role in ("it_student", "overseas_student") else None
         x = User(email=email, password_hash=hash_password(PASSWORD), full_name=name, role=role, division=division, student_code=student_code, profile={"demo": True})
         db.add(x)
         await db.flush()

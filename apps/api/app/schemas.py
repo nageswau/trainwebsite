@@ -2244,6 +2244,7 @@ class AgentOrgDetailOut(BaseModel):
 class AgentNetworkStudentOut(BaseModel):
     id: UUID
     full_name: str | None
+    student_code: str | None = None  # nehn-040: the account's code for a linked row
     status: str
     assigned_code: str | None
     has_login: bool
@@ -14357,7 +14358,7 @@ StudentReplyCreate = Annotated[StudentWhatsAppReply | StudentEmailReply, Field(d
 
 
 class RolePermissionsUpdate(BaseModel):
-    """nehn-005 (DEC-SCOPE-280): `PUT /admin/roles/{role}/permissions` -- the role's whole new set of "<resource>.<action>" keys."""
+    """nehn-005 (DEC-SCOPE-281): `PUT /admin/roles/{role}/permissions` -- the role's whole new set of "<resource>.<action>" keys."""
 
     model_config = ConfigDict(extra="forbid")
     permissions: list[StrictStr] = Field(max_length=200)

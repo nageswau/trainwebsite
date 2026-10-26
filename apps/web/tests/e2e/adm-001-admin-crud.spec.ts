@@ -26,7 +26,7 @@ test("admin can deactivate and reactivate a user with no active dependents (ADM-
 
   await page.goto("/it/admin/users");
   const panel = page.locator(".action-card", { has: page.getByRole("heading", { name: "Manage users" }) });
-  await panel.getByLabel("Search by name, email, or role").fill(trainerName);
+  await panel.getByLabel("Search by name, email, role, or Student ID").fill(trainerName);
   const row = panel.locator("tr", { hasText: trainerName });
   await expect(row).toContainText("Active");
   await row.getByRole("button", { name: "Deactivate" }).click();

@@ -1,4 +1,4 @@
-"""nehn-005 -- migration 0195_role_permissions (DEC-SCOPE-280): the chain, the seed and the round trip, in a throwaway database (the
+"""nehn-005 -- migration 0196_role_permissions (DEC-SCOPE-281): the chain, the seed and the round trip, in a throwaway database (the
 ccrm-040 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,14 +13,14 @@ from app.core import rbac
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_nehn_005_migration_0195", VERSIONS / "0195_role_permissions.py")
+_spec = importlib.util.spec_from_file_location("_nehn_005_migration_0196", VERSIONS / "0196_role_permissions.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0195_role_permissions", "0194_stored_files"
+HEAD, BASE = "0196_role_permissions", "0195_agent_student_codes"
 
 
-def test_migration_chains_after_0194():
+def test_migration_chains_after_0195():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

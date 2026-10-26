@@ -67,7 +67,7 @@ PERMISSIONS: dict[str, set[str]] = {
 
 ROLES: tuple[str, ...] = tuple(PERMISSIONS)
 
-# nehn-005 (DEC-SCOPE-280): the grant-based permission catalogue -- role x resource x action, held in `role_permissions` and checked by
+# nehn-005 (DEC-SCOPE-281): the grant-based permission catalogue -- role x resource x action, held in `role_permissions` and checked by
 # `deps.require_permission`. It lists only resources whose routes are wired (P1); each later module slice adds its own resource. A key
 # is "<resource>.<action>"; anything not listed is denied.
 ACTIONS = ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "manage")
@@ -77,7 +77,7 @@ CATALOGUE: dict[str, dict] = {
     "reports.telecaller": {"label": "Telecaller reports", "actions": ("view", "download")},
 }
 # The day-one grants, equal to the inline checks they replace (P3): admin.ensure_admin and telecaller_reports' REPORT_ROLES.
-# super_admin holds every key implicitly and never has rows (P5). Migration 0195 seeds a frozen copy.
+# super_admin holds every key implicitly and never has rows (P5). Migration 0196 seeds a frozen copy.
 _PAYMENT_ADMIN = ("payments.view", "payments.add", "discounts.add")
 _TELECALLER_REPORTS = ("reports.telecaller.view", "reports.telecaller.download")
 DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {

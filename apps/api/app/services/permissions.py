@@ -1,4 +1,4 @@
-"""nehn-005 (DEC-SCOPE-280): the permission engine's reads and its one write.
+"""nehn-005 (DEC-SCOPE-281): the permission engine's reads and its one write.
 
 The engine says whether a role *may* use a resource action; each route's own record scope (division, own team) still says *which rows*.
 There is no in-process cache (P7): a check is one primary-key lookup, so a change applies on the next request on every worker."""

@@ -24,6 +24,8 @@ export type AgentStudentItem = {
   status: "active" | "archived";
   assigned_to: Assignee | null;
   created_at: string;
+  // nehn-040: always sent by the server (the account's code for a linked student); optional so older fixtures stay valid.
+  student_code?: string | null;
 };
 export type AgentStudentDetail = AgentStudentItem & {
   date_of_birth: string | null;

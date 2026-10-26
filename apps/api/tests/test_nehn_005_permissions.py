@@ -1,5 +1,5 @@
 """nehn-005 -- the permission engine: role x resource x action grants in `role_permissions`, enforced by `require_permission` on the two
-pilot modules (admin payments, telecaller reports). DEC-SCOPE-280; spec docs/superpowers/specs/2026-10-26-nehn-005-permission-engine-design.md."""
+pilot modules (admin payments, telecaller reports). DEC-SCOPE-281; spec docs/superpowers/specs/2026-10-26-nehn-005-permission-engine-design.md."""
 
 import uuid
 from contextlib import asynccontextmanager

@@ -1,12 +1,12 @@
 # nehn-005 — Permission engine: implementation plan
 
-Design: `docs/superpowers/specs/2026-10-26-nehn-005-permission-engine-design.md` (DEC-SCOPE-280).
+Design: `docs/superpowers/specs/2026-10-26-nehn-005-permission-engine-design.md` (DEC-SCOPE-281).
 
 ## Tasks (TDD: red → green → refactor)
 
 1. **Model and migration.**
    - Add the `RolePermission` model (`role_permissions`, PK `(role, resource, action)`, `granted_by_id` FK users `ON DELETE SET NULL`,
-     `granted_at`) and migration `0195_role_permissions` (create if missing, seed `ON CONFLICT DO NOTHING`, downgrade drops it).
+     `granted_at`) and migration `0196_role_permissions` (create if missing, seed `ON CONFLICT DO NOTHING`, downgrade drops it).
    - Tests: chain/single head; round trip in a throwaway database; the seed rows equal `rbac.DEFAULT_GRANTS`.
 2. **Catalogue and checks.**
    - In `core/rbac.py`: `ACTIONS`, `CATALOGUE` (resource → label, actions), `ROLES = tuple(PERMISSIONS)`, `DEFAULT_GRANTS`
@@ -24,7 +24,7 @@ Design: `docs/superpowers/specs/2026-10-26-nehn-005-permission-engine-design.md`
    - Remove `REPORT_ROLES` and the inline role check.
    - Tests: the 28-role equivalence matrix on all six pilot routes; revoke/restore without a restart (AC2/AC3); download revoked while
      the view still works (AC7).
-6. **Docs:** DEC-SCOPE-280, API §12GF, RBAC §2.194, the DATA_MODEL table, and the backlog status line.
+6. **Docs:** DEC-SCOPE-281, API §12GG, RBAC §2.195, the DATA_MODEL table, and the backlog status line.
 
 ## Phase 3 review notes (folded in)
 

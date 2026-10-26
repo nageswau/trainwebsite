@@ -1,4 +1,4 @@
-"""nehn-005 (DEC-SCOPE-280, API §12GF, RBAC §2.194): the permission catalogue, a role's grants, and the caller's own effective set.
+"""nehn-005 (DEC-SCOPE-281, API §12GG, RBAC §2.195): the permission catalogue, a role's grants, and the caller's own effective set.
 
 Only super_admin reads or edits grants (P6). Checks run caller (401/403) → role (404) → body (422) → target (409), so a refused caller
 never learns which role names exist."""

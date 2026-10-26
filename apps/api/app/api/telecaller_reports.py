@@ -24,7 +24,7 @@ router = APIRouter(prefix="/telecaller/reports", tags=["telecaller-reports"])
 ROLE_REQUIRED = "Telecaller reports are for managers and administrators"
 NOT_FOUND = "Report not found"
 EXPORT_ACTION = "telecaller_report.export"
-# nehn-005 (DEC-SCOPE-280 P2): the role gate is grant-driven -- view for the JSON report, download for the CSV. The seed gives both to
+# nehn-005 (DEC-SCOPE-281 P2): the role gate is grant-driven -- view for the JSON report, download for the CSV. The seed gives both to
 # the former REPORT_ROLES; it still runs first (a dependency), so the AGN-020 order is unchanged. The CSV's refusal names the download
 # (QA-01: a manager whose download alone is revoked still reads the report, so "for managers" would be wrong).
 DOWNLOAD_REFUSED = "You don't have permission to download telecaller reports"
