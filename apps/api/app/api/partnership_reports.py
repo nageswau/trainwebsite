@@ -44,7 +44,7 @@ def _log(event: str, user: User, kind: str, raw: dict, rows: int, started: float
 
 
 def _raw(window: str | None = None, first: str | None = FROM, last: str | None = TO, month: str | None = None) -> dict[str, str | None]:
-    """The filters as plain strings -- the CSV and xlsx routes share them, so the twins cannot drift."""
+    """The filters as plain strings -- one dependency for the read, CSV and xlsx routes, so they cannot drift."""
     return {"window": window, "from": first, "to": last, "month": month}
 
 
@@ -76,18 +76,8 @@ async def _export(db: AsyncSession, user: User, kind: str, raw: dict[str, str | 
 
 
 @router.get("/{kind}")
-async def read_report(
-    kind: str,
-    response: Response,
-    window: str | None = None,
-    first: str | None = FROM,
-    last: str | None = TO,
-    month: str | None = None,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
+async def read_report(kind: str, response: Response, raw: dict = Depends(_raw), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     started = time.perf_counter()
-    raw = {"window": window, "from": first, "to": last, "month": month}
     payload = await _report(db, user, kind, raw)
     response.headers.update(NO_STORE)
     _log("partnership_report.read", user, kind, raw, payload["total"], started)

@@ -18,6 +18,8 @@ from decimal import Decimal
 from xml.sax.saxutils import escape, quoteattr
 from zoneinfo import ZoneInfo
 
+import openpyxl
+
 from app.api.school_bulk import _safe_cell
 
 XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -277,8 +279,6 @@ def _text(value) -> str:
 
 def _xlsx_lines(raw: bytes):
     """The first sheet's header row, then (sheet row, cells). data_only: a formula cell gives Excel's saved value, never a re-run."""
-    import openpyxl  # only an import pays for loading it
-
     _check_archive(raw)
     try:
         book = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True, keep_links=False)

@@ -46,7 +46,7 @@ def _log(event: str, user: User, kind: str, filters: reports.Filters, rows: int,
 
 def _raw(date_from: str | None = None, date_to: str | None = None, team: str | None = None, product_id: str | None = None,
          campaign_id: str | None = None, source: str | None = None) -> dict[str, str | None]:  # fmt: skip
-    """The filters as plain strings -- the CSV and xlsx routes share them, so the twins cannot drift."""
+    """The filters as plain strings -- one dependency for the read, CSV and xlsx routes, so they cannot drift."""
     return {"date_from": date_from, "date_to": date_to, "team": team, "product_id": product_id, "campaign_id": campaign_id, "source": source}
 
 
@@ -75,14 +75,9 @@ async def _export(db: AsyncSession, user: User, kind: str, raw: dict[str, str | 
 
 
 @router.get("/{kind}")
-async def read_report(
-    kind: str, response: Response, date_from: str | None = None, date_to: str | None = None, team: str | None = None,
-    product_id: str | None = None, campaign_id: str | None = None, source: str | None = None,
-    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
-):
+async def read_report(kind: str, response: Response, raw: dict = Depends(_raw), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     started = time.perf_counter()
-    payload, filters = await _report(db, user, kind, {"date_from": date_from, "date_to": date_to, "team": team, "product_id": product_id,
-                                                      "campaign_id": campaign_id, "source": source})
+    payload, filters = await _report(db, user, kind, raw)
     response.headers.update(NO_STORE)
     _log("telecaller_report.read", user, kind, filters, len(payload["items"]), started)
     return payload

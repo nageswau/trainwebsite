@@ -117,7 +117,7 @@ def _raw(
     date_from: str | None = None, date_to: str | None = None, member: str | None = None, country: str | None = None, university: str | None = None,
     intake: str | None = None, status: str | None = None,
 ) -> dict[str, str | None]:
-    """The report filters as plain strings (also the CSV/xlsx routes' shared query parameters, so the twins cannot drift)."""
+    """The report filters as plain strings -- one dependency for the read, CSV and xlsx routes, so they cannot drift."""
     return {"date_from": date_from, "date_to": date_to, "member": member, "country": country, "university": university, "intake": intake, "status": status}
 
 
@@ -166,15 +166,13 @@ async def _export(db: AsyncSession, user: User, kind: str, raw: dict[str, str | 
 
 @router.get("/{kind}", response_model=AgentReportOut)
 async def read_report(
-    kind: str, response: Response, date_from: str | None = None, date_to: str | None = None, member: str | None = None,
-    country: str | None = None, university: str | None = None, intake: str | None = None, status: str | None = None,
-    limit: str | None = None, offset: str | None = None,
+    kind: str, response: Response, raw: dict = Depends(_raw), limit: str | None = None, offset: str | None = None,
     user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
     membership = _authorize(user, kind)
     started = time.perf_counter()
     try:
-        filters = await reports.parse_filters(db, user, kind, _raw(date_from, date_to, member, country, university, intake, status))
+        filters = await reports.parse_filters(db, user, kind, raw)
         page_limit, page_offset = reports.parse_page(limit, offset)
     except reports.ReportInputError as error:
         raise _invalid(error) from None
