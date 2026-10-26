@@ -860,6 +860,7 @@ half.
 | `ccrm-023-AC6` | Scope and roles; withdrawn 409; letter upload | `::test_scope_and_roles`, `::test_a_withdrawn_application_is_409`, `::test_the_counselor_uploads_an_offer_letter_then_records_with_it` |
 | `ccrm-023-AC7` | Migration 0171: chain after 0170, CHECK widened, backfill, round trip | `apps/api/tests/test_ccrm_023_migration.py` (3) |
 | `ccrm-023-AC8` | nehn-001 ACs 1–4 + student offer columns | `::test_nehn_001_an_offer_stage_application_counts_for_the_student`, `::test_nehn_001_the_student_offer_list_shows_the_recorded_type_and_deadline` |
+| `nehn-001` (verification, 2026-10-26) | Every AC stage (`status_tracking`, `accepted` added); withdrawn after a recorded offer still counts; an early letter is listed, not counted; the university rep lists a counselor-advanced offer. No production change. | `::test_nehn_001_an_offer_withdrawn_after_it_was_recorded_still_counts`, `::test_nehn_001_a_letter_uploaded_before_the_offer_stage_is_listed_but_not_counted`, `::test_nehn_001_the_university_rep_lists_a_counselor_advanced_offer` |
 
 **Addendum, 2026-10-23 (`ccrm-012`)** — one row and its acceptance-criteria map. Counselor quick search and list filters.
 
