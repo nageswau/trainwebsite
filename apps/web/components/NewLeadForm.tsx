@@ -7,7 +7,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import LeadContactFields, { CONTACT_KEYS, EMPTY_CONTACT, contactValue, type ContactKey } from "@/components/LeadContactFields";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import { isRequestBody, sendJson } from "@/lib/apiErrors";
-import { formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
 import { SOURCES, SOURCE_LABEL, activeCampaigns, activeProducts, type Campaign, type Product } from "@/lib/telecallerCatalogue";
 import { LEADS_URL, PRIORITIES, type DuplicateMatch } from "@/lib/telecallerLeads";
 
@@ -84,7 +84,7 @@ function DuplicatePanel({ matches, basePath, enquiry, enquiryUrl, focusRequest }
           <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: "4px 16px", margin: "6px 0 0" }}>
             {([
               ["Existing telecaller", m.telecaller?.full_name ?? "Unassigned"], ["Counselor", m.counselor?.full_name ?? "Not assigned"],
-              ["Last contact", m.last_contact_at ? formatDate(m.last_contact_at, true) : "No contact logged yet"], ["Current status", m.status_label],
+              ["Last contact", m.last_contact_at ? <LocalTime value={m.last_contact_at} time /> : "No contact logged yet"], ["Current status", m.status_label],
             ] as const).map(([term, value]) => (
               <div key={term}>
                 <dt className="muted" style={{ fontSize: 13 }}>{term}</dt>
@@ -95,7 +95,7 @@ function DuplicatePanel({ matches, basePath, enquiry, enquiryUrl, focusRequest }
           <p className="muted" style={{ margin: "6px 0 0", fontSize: 13 }}>Previous enquiries</p>
           <ul style={{ margin: "2px 0 0", paddingLeft: 18, fontSize: 13 }}>
             {m.enquiries.map((e, i) => (
-              <li key={i} style={{ overflowWrap: "anywhere" }}>{e.subject} · {SOURCE_LABEL[e.source] ?? e.source} · {formatDate(e.at)}</li>
+              <li key={i} style={{ overflowWrap: "anywhere" }}>{e.subject} · {SOURCE_LABEL[e.source] ?? e.source} · <LocalTime value={e.at} /></li>
             ))}
           </ul>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>

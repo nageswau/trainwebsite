@@ -5,7 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Page } from "@/lib/apiErrors";
 import { stageLabel } from "@/lib/agentApplications";
 import { fetchPage, orgUrl, PAGE_SIZE, type NetworkApplication, type NetworkStudent } from "@/lib/agentNetwork";
-import { formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
+import { formatCalendarDate } from "@/lib/formatDate";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // AGN-022 (DEC-SCOPE-064 N1/N2): one agency's students or applications for Overseas Admin -- read-only, no contact details, and
@@ -168,7 +169,7 @@ function StudentTable({ rows }: { rows: NetworkStudent[] }) {
             <td data-label="Assigned to">{s.assigned_code ?? "Unassigned"}</td>
             <td data-label="Login">{s.has_login ? "Yes" : "No"}</td>
             <td data-label="Applications">{s.applications}</td>
-            <td data-label="Added">{formatDate(s.created_at)}</td>
+            <td data-label="Added"><LocalTime value={s.created_at} /></td>
           </tr>
         ))}
       </tbody>
@@ -189,8 +190,8 @@ function ApplicationTable({ rows }: { rows: NetworkApplication[] }) {
             <td data-label="University">{a.university}</td>
             <td data-label="Country">{a.country}</td>
             <td data-label="Stage">{stageLabel(a.status)}</td>
-            <td data-label="Enrolled">{a.enrollment_date ? formatDate(a.enrollment_date) : "—"}</td>
-            <td data-label="Updated">{formatDate(a.updated_at)}</td>
+            <td data-label="Enrolled">{a.enrollment_date ? formatCalendarDate(a.enrollment_date) : "—"}</td>
+            <td data-label="Updated"><LocalTime value={a.updated_at} /></td>
           </tr>
         ))}
       </tbody>

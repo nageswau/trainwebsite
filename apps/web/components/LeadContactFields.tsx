@@ -1,6 +1,7 @@
 "use client";
 
-import { formatCalendarDate, formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
+import { formatCalendarDate } from "@/lib/formatDate";
 import { CONTACT_PREFERENCES, consentLabel, type LeadContact } from "@/lib/telecallerLeads";
 
 // ccrm-005 (DEC-SCOPE-260; LF1, LF4-LF7): the spec §3 contact, consent and referral fields -- one group for the New Lead form, the
@@ -37,7 +38,7 @@ export function contactRows(lead: LeadContact): [string, React.ReactNode][] {
   return [
     ["Enquiry date", formatCalendarDate(lead.enquiry_date)],
     ["Preferred contact", lead.contact_preference ? CONTACT_PREFERENCES[lead.contact_preference] ?? lead.contact_preference : none],
-    ["Marketing consent", lead.marketing_consent_at ? `${consentLabel(lead.marketing_opt_in)} · ${formatDate(lead.marketing_consent_at)}` : consentLabel(lead.marketing_opt_in)],
+    ["Marketing consent", lead.marketing_consent_at ? <>{consentLabel(lead.marketing_opt_in)} · <LocalTime value={lead.marketing_consent_at} /></> : consentLabel(lead.marketing_opt_in)],
     ["Referred by", lead.referral_name || lead.referral_contact ? [lead.referral_name, lead.referral_contact].filter(Boolean).join(" · ") : none],
   ];
 }

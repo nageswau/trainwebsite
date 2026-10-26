@@ -5,7 +5,8 @@ import { type FormEvent, useEffect, useId, useState } from "react";
 import { EnglishTestRow } from "@/components/StudentProfileForm";
 import { detailMessage, sendJson } from "@/lib/apiErrors";
 import { fieldErrors } from "@/lib/bdmTravel";
-import { formatCalendarDate, formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
+import { formatCalendarDate } from "@/lib/formatDate";
 import { MAX_ENGLISH_TESTS, TEST_STATUSES, emptyEnglishTest, fieldPlace, type CountryOption, type EnglishTest } from "@/lib/studentProfile";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
@@ -286,7 +287,7 @@ export default function LeadQualificationForm({ leadId, url = qualificationUrl(l
         </div>
       ))}
       {q.updated_by && q.updated_at && (
-        <p className="muted" style={{ margin: 0, fontSize: 13 }}>Last updated by {q.updated_by.full_name} · {formatDate(q.updated_at, true)}</p>
+        <p className="muted" style={{ margin: 0, fontSize: 13 }}>Last updated by {q.updated_by.full_name} · <LocalTime value={q.updated_at} time /></p>
       )}
     </div>
   );

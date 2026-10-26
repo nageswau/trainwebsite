@@ -2,7 +2,8 @@
 import { useState } from "react";
 
 import { LibraryEditFooter, LibraryRowActions, useLibraryRow } from "@/components/TelecallerLibraryRow";
-import { formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
+import { formatDateTimeIn, viewerTimeZone } from "@/lib/formatDate";
 import { formText, statusLabel } from "@/lib/telecaller";
 import type { Product } from "@/lib/telecallerCatalogue";
 import { ASSETS_URL, ASSET_KIND_LABEL, formatBytes, type Asset, type AssetLink } from "@/lib/telecallerContent";
@@ -34,7 +35,7 @@ export default function TelecallerBrochureRow({ row, products, onChanged, onNoti
       return focus(id("status-error"));
     }
     const link: AssetLink = await response.json();
-    const until = formatDate(link.expires_at, true);
+    const until = formatDateTimeIn(link.expires_at, viewerTimeZone()); // a click handler: the browser's zone is the viewer's
     try {
       await navigator.clipboard.writeText(link.url);
       setManualLink(null);
@@ -79,7 +80,7 @@ export default function TelecallerBrochureRow({ row, products, onChanged, onNoti
       <td data-label="Kind">{ASSET_KIND_LABEL[row.kind]}</td>
       <td data-label="Product">{row.product?.name ?? "Any"}</td>
       <td data-label="File" style={{ overflowWrap: "anywhere" }}>{row.file_name} <span className="muted">({formatBytes(row.size_bytes)})</span></td>
-      <td data-label="Uploaded">{formatDate(row.uploaded_at)}</td>
+      <td data-label="Uploaded"><LocalTime value={row.uploaded_at} /></td>
       <td data-label="Status"><span className="badge">{statusLabel(row.active)}</span></td>
       <td data-label="Actions">
         <LibraryRowActions state={state} row={row} hint="Every link already sent stops working at once. Templates that use it stop offering a link.">

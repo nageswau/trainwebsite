@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 
 import { sendRequest } from "@/lib/apiErrors";
 import { CALENDAR_FEED_API, REGENERATE_PROMPT, REVOKE_PROMPT, type CalendarFeedStatus } from "@/lib/counselorCalendar";
-import { formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
 
 // ccrm-038 (CA4): create, copy, regenerate or turn off the counselor's calendar feed. The link is shown once, right after it is made;
 // a regenerate or turn-off asks first because every subscribed calendar stops updating.
@@ -54,7 +54,7 @@ export default function CounselorCalendarFeed({ initial }: { initial: CalendarFe
         appointments. It is read-only: changes made in your calendar app do not come back to EduSphere.
       </p>
       <p style={{ margin: 0 }}>
-        <strong>Status:</strong> {feed.active ? `On (link created ${formatDate(feed.created_at!)})` : "Off"}
+        <strong>Status:</strong> {feed.active ? <>On (link created <LocalTime value={feed.created_at} />)</> : "Off"}
       </p>
       {feed.url && (
         <div className="field">

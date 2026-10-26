@@ -1,6 +1,7 @@
 // upc-014 (DEC-SCOPE-142): §13 MoU / agreement management -- types, words, URLs and the menu list's query helpers. The API decides every
 // permission and move (`permissions`, `moves`); nothing here filters for security.
 import type { CommissionTerm } from "@/lib/commissionTerms";
+import { formatCalendarDate } from "@/lib/formatDate";
 import type { LookupPage } from "@/lib/lookups";
 import type { ManagerRef } from "@/lib/telecaller";
 import { UNIVERSITIES_URL } from "@/lib/universities";
@@ -54,10 +55,10 @@ export async function signatorySearch(q: string, signal: AbortSignal): Promise<L
 export const typeLabel = (type: string) => AGREEMENT_TYPES[type] ?? type;
 export const statusLabel = (status: string) => AGREEMENT_STATUSES[status] ?? status;
 
-/** A calendar date ("2026-10-09") as "09 Oct 2026" -- no time zone involved. */
+/** A calendar date ("2026-10-09") as "09 Oct 2026" -- the same day for every viewer (formatCalendarDate). */
 export function dateText(value: string | null): string {
   if (!value) return "—";
-  return new Date(`${value}T00:00:00`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return formatCalendarDate(value);
 }
 
 /** "Expires in 30 days", "Expires today", "Expired 3 days ago" -- for an agreement in force (signed / active). */

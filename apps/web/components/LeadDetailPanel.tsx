@@ -16,7 +16,7 @@ import LeadNotes from "@/components/LeadNotes";
 import LeadTimeline from "@/components/LeadTimeline";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import { isRequestBody, sendJson, type Page } from "@/lib/apiErrors";
-import { formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
 import { isClosed, stageLabel } from "@/lib/leadStages";
 import type { TimelineRow } from "@/lib/leadTimeline";
 import { SOURCE_LABEL, activeProducts, getPage, type Product } from "@/lib/telecallerCatalogue";
@@ -196,7 +196,7 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
     ["City", show(lead.city)], ["State", show(lead.state)], ["Qualification", show(lead.qualification)], ["Passing year", show(lead.passing_year)],
     ["College/University", show(lead.institution)], ["Lead source", SOURCE_LABEL[lead.source] ?? lead.source], ["Campaign", show(lead.campaign?.name)],
     ["Product interest", show(lead.product?.name)], ["Assigned telecaller", show(lead.telecaller?.full_name, "Unassigned")],
-    ["Assigned counselor", show(lead.counselor?.full_name, "Not assigned")], ["Lead date", formatDate(lead.created_at)],
+    ["Assigned counselor", show(lead.counselor?.full_name, "Not assigned")], ["Lead date", <LocalTime key="lead-date" value={lead.created_at} />],
     ...contactRows(lead), // ccrm-005
   ];
 

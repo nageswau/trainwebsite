@@ -4,7 +4,7 @@ import { type FormEvent, useRef, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
 import { fieldErrors, stageChanged } from "@/lib/bdmPipeline";
-import { formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
 import { isBackward, lostConflict } from "@/lib/partnershipPipeline";
 import { type University, universityUrl } from "@/lib/universities";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
@@ -95,7 +95,7 @@ export default function UniversityStagePanel({ university: u }: { university: Un
       <p className="muted" style={{ marginTop: 0 }}>Kanban column: {p.column_label}</p>
       {p.lost && (
         <p className="form-message" style={{ whiteSpace: "pre-line" }}>
-          Marked lost on {formatDate(p.lost.at)}: {p.lost.reason}
+          Marked lost on <LocalTime value={p.lost.at} />: {p.lost.reason}
         </p>
       )}
       <ol className="jny-steps" aria-label="Partnership stages">

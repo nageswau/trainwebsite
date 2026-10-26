@@ -4,7 +4,7 @@ import { type FormEvent, useRef, useState } from "react";
 import { sendJson, sendRequest } from "@/lib/apiErrors";
 import { isOrganizationBody, type Organization, ORGS_URL } from "@/lib/bdmOrganizations";
 import { fieldErrors, isBackward, lostConflict, orgActionUrl, stageChanged, STATE_TEXT, type StepState } from "@/lib/bdmPipeline";
-import { formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 const GLYPH: Record<StepState, string> = { done: "✓", current: "•", upcoming: "–", awaiting_handover: "…", not_tracked: "–" };
@@ -110,7 +110,7 @@ export default function BdmOrganizationPipeline({ organization: org, onChanged, 
       )}
       {p.lost && (
         <p className="form-message" style={{ whiteSpace: "pre-line" }}>
-          Marked lost on {formatDate(p.lost.at)}: {p.lost.reason}
+          Marked lost on <LocalTime value={p.lost.at} />: {p.lost.reason}
         </p>
       )}
       <ol className="jny-steps" aria-label="Pipeline stages">

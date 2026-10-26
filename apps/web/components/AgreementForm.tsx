@@ -3,6 +3,7 @@ import { type FormEvent, type ReactNode, useState } from "react";
 
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
+import { viewerTimeZone } from "@/lib/formatDate";
 import type { PickOption } from "@/lib/lookups";
 import { countrySearch } from "@/lib/universities";
 import { type Agreement, type AgreementOptions, AGREEMENT_TYPES, agreementsUrl, agreementUrl, EXCLUSIVITY, signatorySearch } from "@/lib/universityAgreements";
@@ -28,7 +29,7 @@ function startValues(a: Agreement | null): Values {
 }
 
 const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id));
-const today = () => new Date().toLocaleDateString("en-CA"); // yyyy-mm-dd in the browser's zone
+const today = () => new Date().toLocaleDateString("en-CA", { timeZone: viewerTimeZone() }); // yyyy-mm-dd in the browser's zone
 
 export default function AgreementForm({ universityId, options, agreement = null, canTerms = true, canSigning = true, onSaved, onCancel }: {
   universityId: string; options: AgreementOptions; agreement?: Agreement | null; canTerms?: boolean; canSigning?: boolean;

@@ -27,7 +27,7 @@ import type { StageEvent } from "@/lib/bdmPipeline";
 import type { SchoolActivity } from "@/lib/bdmSchoolActivity";
 import type { TaskPage } from "@/lib/bdmTasks";
 import { display, isOrganizationBody, LINK_STYLE, meetingText, type Organization, ORG_TYPE_LABEL, ORGS_URL, safeWebsite } from "@/lib/bdmOrganizations";
-import { formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
 import { bdmUniversityPath } from "@/lib/universityView";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
@@ -141,7 +141,7 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
     ["Last meeting", meetingText(org.last_meeting_at)],
     ["Next meeting", meetingText(org.next_meeting_at)],
     ["Assigned BDM", `${org.assigned_bdm.full_name}${org.assigned_bdm.active ? "" : " (inactive)"}`],
-    ["Created by", `${org.created_by_name} on ${formatDate(org.created_at)}`],
+    ["Created by", <>{org.created_by_name} on <LocalTime value={org.created_at} /></>],
   ];
 
   return (
