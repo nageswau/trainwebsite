@@ -19,6 +19,7 @@ import pytest
 
 from app.core.security import hash_password
 from app.models import Country, OverseasApplication, StudentDocument, University, User
+from app.services.storage import storage
 
 
 async def _create_user(db_session, role: str, **overrides) -> User:
@@ -161,7 +162,7 @@ async def test_download_url_normalizes_a_local_upload_path_to_the_same_resolvabl
     await _login(client, student.email)
     response = await client.get(f"/api/v1/workflows/overseas/documents/{document.id}/download")
     assert response.status_code == 200
-    assert response.json()["url"] == "/local-files/uploads/already-prefixed.pdf"
+    assert storage.signed_key(response.json()["url"].removeprefix("/api/v1/files/signed/")) == "uploads/already-prefixed.pdf"  # nehn-003 PS2
 
 
 @pytest.mark.asyncio

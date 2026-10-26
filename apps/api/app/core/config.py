@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     auto_create_schema: bool = True
     aws_region: str = "eu-west-2"
     aws_s3_bucket: str | None = None
+    # nehn-003 (DEC-SCOPE-279 PS1): an S3-compatible endpoint (DigitalOcean Spaces, MinIO); unset = AWS. Empty `S3_SSE` disables SSE.
+    s3_endpoint_url: str | None = None
+    s3_sse: str = "AES256"
     local_upload_dir: str = "/data/uploads"
     crm_webhook_url: str | None = None
     whatsapp_webhook_url: str | None = None

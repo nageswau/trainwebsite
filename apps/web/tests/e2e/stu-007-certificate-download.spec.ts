@@ -31,7 +31,7 @@ test("trainer issues a certificate and the student downloads it via a real signe
   // page navigation, so assert on the resulting request hitting the real signed-download
   // proxy route instead of a popup page's `url()` (which the PDF viewer never populates).
   const [downloadRequest] = await Promise.all([
-    page.context().waitForEvent("request", (req) => req.url().includes("/local-files/certificates/")),
+    page.context().waitForEvent("request", (req) => req.url().includes("/api/v1/files/signed/")),
     card.getByRole("button", { name: "Download certificate" }).first().click(),
   ]);
   const response = await downloadRequest.response();
