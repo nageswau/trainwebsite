@@ -56,6 +56,14 @@ def test_live_mode_needs_every_live_value(missing):
     assert missing.upper() in str(caught.value)
 
 
+def test_one_startup_error_names_every_problem():
+    # QA22-01: ops fix the .env once, not once per restart.
+    with pytest.raises(ValidationError) as caught:
+        build(razorpay_mode="live", **{**TEST, "razorpay_key_secret": None, "razorpay_webhook_secret": None})
+    message = str(caught.value)
+    assert "RAZORPAY_KEY_SECRET" in message and "RAZORPAY_WEBHOOK_SECRET" in message and "rzp_live_" in message
+
+
 def test_unknown_mode_refuses_to_start():
     with pytest.raises(ValidationError):
         build(razorpay_mode="production", **NONE)

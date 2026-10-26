@@ -80,12 +80,15 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _razorpay_keys_match_mode(self) -> "Settings":
         prefix = f"rzp_{self.razorpay_mode}_"
+        problems = []  # every problem in one error (QA22-01), so ops fix the .env once
         if self.razorpay_mode == "live":
             missing = [name.upper() for name in ("razorpay_key_id", "razorpay_key_secret", "razorpay_webhook_secret") if not getattr(self, name)]
             if missing:
-                raise ValueError(f"RAZORPAY_MODE=live needs {', '.join(missing)} to be set")
+                problems.append(f"{', '.join(missing)} to be set")
         if self.razorpay_key_id and not self.razorpay_key_id.startswith(prefix):
-            raise ValueError(f"RAZORPAY_MODE={self.razorpay_mode} needs a RAZORPAY_KEY_ID starting with {prefix}")
+            problems.append(f"a RAZORPAY_KEY_ID starting with {prefix}")
+        if problems:
+            raise ValueError(f"RAZORPAY_MODE={self.razorpay_mode} needs {' and '.join(problems)}")
         return self
 
 
