@@ -1325,7 +1325,7 @@ async def audit(
     user: User = Depends(ensure_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """nehn-042 (DEC-SCOPE-288 A1-A4): newest first, filtered and paged in SQL. Still a JSON array (existing clients read one)."""
+    """nehn-042 (DEC-SCOPE-289 A1-A4): newest first, filtered and paged in SQL. Still a JSON array (existing clients read one)."""
     if date_from and date_to and date_to < date_from:
         raise HTTPException(422, "The end date must be on or after the start date")
     # mgmt-002 (MA8): finance and partner-only management rows are not admin data (M13).

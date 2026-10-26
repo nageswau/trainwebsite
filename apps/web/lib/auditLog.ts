@@ -1,6 +1,6 @@
 import { isCalendarDate } from "@/lib/formatDate";
 
-// nehn-042 (DEC-SCOPE-288 A1-A8): the admin Audit log page's filters, links and API address. One page for the three admin portals; the
+// nehn-042 (DEC-SCOPE-289 A1-A8): the admin Audit log page's filters, links and API address. One page for the three admin portals; the
 // API scopes a division admin to their own division (in SQL), so the page never filters rows itself.
 
 export const AUDIT_PAGE_SIZE = 50;

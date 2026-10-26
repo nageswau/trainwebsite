@@ -3,7 +3,7 @@ import Link from "next/link";
 import { actorHistoryHref, AUDIT_DIVISIONS, AUDIT_PAGE_SIZE, auditHref, entityHistoryHref, type AuditFilters, type AuditRow } from "@/lib/auditLog";
 import { formatDateTimeIn, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 
-// nehn-042 (DEC-SCOPE-288 A7/A8): the admin Audit log -- a GET form (refresh, back and a shared link keep the filters), the matching
+// nehn-042 (DEC-SCOPE-289 A7/A8): the admin Audit log -- a GET form (refresh, back and a shared link keep the filters), the matching
 // rows newest first, and Previous/Next. `rows` is one more than a page when a next page exists (lib/auditLog `auditUrl`), and null when
 // the read failed or the filters were refused; the form stays so they can be corrected. An entity reference opens that entity's whole
 // history and an actor's name everything they did. Metadata is not shown (it may hold personal data); times are India time (IST).

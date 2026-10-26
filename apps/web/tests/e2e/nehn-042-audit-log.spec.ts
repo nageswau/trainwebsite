@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
-// nehn-042 (DEC-SCOPE-288): the admin Audit log -- filters, one entity's whole history, the division scope, paging links, phone layout.
+// nehn-042 (DEC-SCOPE-289): the admin Audit log -- filters, one entity's whole history, the division scope, paging links, phone layout.
 // The fixture is an inactive (never public) IT program the IT Admin creates and then edits, so its history is exactly two rows.
 
 const PASSWORD = "Demo@123";

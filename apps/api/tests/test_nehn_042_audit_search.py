@@ -1,4 +1,4 @@
-"""nehn-042 (DEC-SCOPE-288) -- GET /admin/audit filters, paging and the division scope in SQL (spec A1-A5; AC1-AC4)."""
+"""nehn-042 (DEC-SCOPE-289) -- GET /admin/audit filters, paging and the division scope in SQL (spec A1-A5; AC1-AC4)."""
 
 import uuid
 from datetime import UTC, datetime, timedelta

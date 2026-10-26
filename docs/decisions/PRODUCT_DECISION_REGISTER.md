@@ -9877,7 +9877,21 @@ C7 a cancelled session cannot be reinstated or edited. C8 a new meeting link mus
 **Numbering:** migration `0198_live_session_cancel_reason`; API §12GM; RBAC §2.199.
 - **Feature ID authorized:** `nehn-029`. **Status:** built on `worktree-nehn-029`.
 
-### DEC-SCOPE-288 — Audit log search and filters (`nehn-042`)
+### DEC-SCOPE-288 — Client-facing feedback tracker for the next review (`nehn-043`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-043` (PDF action 25, §27 L812-828; `UNVERIFIED` backlog);
+design `docs/superpowers/specs/2026-10-26-nehn-043-feedback-tracker-design.md`. Dependency: the backlog only. Documentation only.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** F1 `docs/delivery/FEEDBACK_TRACKER.md` is the
+source of truth and `FEEDBACK_TRACKER.csv` carries its 43 item rows for Excel (no `.xlsx` binary in the repo). F2 client-facing plain
+language: no source paths, line numbers, secrets or exposure detail. F3 eight statuses (Done, Done — confirm defaults, Superseded,
+Partly done, Ready to start, Waiting — dependency / client input / decision). F4 Done = merged on `origin/main` (PRs cited; snapshot
+`1c00985f`), refreshed by hand before each review. F5 target = the backlog's §6.5 wave plus a next-review flag; no dates. F6 owner Dev /
+Client / Dev + Client. F7 extra tables: the 25 action items, client inputs `CI-01..07`, open decisions `OD-01..13`, and a "confirm at
+the review" list of the recommended answers built into Done items.
+**Numbering:** no migration; no API; no RBAC row.
+- **Feature ID authorized:** `nehn-043`. **Status:** built on `worktree-nehn-043`.
+
+### DEC-SCOPE-289 — Audit log search and filters (`nehn-042`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-042` (§23 L606 "appropriate activity history/audit
 information"; `UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-26-nehn-042-audit-log-search-design.md`. Dependencies: none.

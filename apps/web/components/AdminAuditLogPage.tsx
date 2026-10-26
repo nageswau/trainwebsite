@@ -11,7 +11,7 @@ const UNAVAILABLE = "The audit log is unavailable right now. Please try again.";
 // A FastAPI validation 422 (e.g. an over-long filter from a hand-edited address) has no worded detail; a worded one is shown as is.
 const REFUSED = "These filters could not be applied. Check them and try again.";
 
-// nehn-042 (DEC-SCOPE-288 A7): the one body behind /admin/security-logs (Super Admin, every division, plus the Export panel) and the
+// nehn-042 (DEC-SCOPE-289 A7): the one body behind /admin/security-logs (Super Admin, every division, plus the Export panel) and the
 // division admins' /it/admin/audit-log and /overseas/admin/audit-log (a static route wins over [module]/[section]). The role check only
 // spares other roles a screen that can only fail; the API scopes a division admin to their own division in SQL (A3).
 export default async function AdminAuditLogPage({ base, role, nav, roleLabel, loginHref, searchParams }: {

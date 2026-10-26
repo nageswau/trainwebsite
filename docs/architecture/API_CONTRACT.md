@@ -4204,7 +4204,7 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 
 ## 12GN. Audit log search and filters (nehn-042) — addendum, 2026-10-26
 
-`DEC-SCOPE-288`. Migration `0199_audit_log_indexes` (`ix_audit_logs_created_at`; `ix_audit_logs_user_id` only if missing). All additive.
+`DEC-SCOPE-289`. Migration `0199_audit_log_indexes` (`ix_audit_logs_created_at`; `ix_audit_logs_user_id` only if missing). All additive.
 
 - `GET /api/v1/admin/audit` gains query parameters: `actor` (user UUID), `action` (≤120, literal prefix: `payment.` matches every
   payment action), `entity_type` (≤80, exact), `entity_id` (≤80, exact), `division` (`it` | `overseas` | `global`, the actor's),

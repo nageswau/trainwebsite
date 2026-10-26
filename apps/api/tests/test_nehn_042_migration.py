@@ -1,4 +1,4 @@
-"""nehn-042 -- migration 0199_audit_log_indexes (DEC-SCOPE-288 A6). The round trip runs in a throwaway database built from scratch (the
+"""nehn-042 -- migration 0199_audit_log_indexes (DEC-SCOPE-289 A6). The round trip runs in a throwaway database built from scratch (the
 upc-001 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util

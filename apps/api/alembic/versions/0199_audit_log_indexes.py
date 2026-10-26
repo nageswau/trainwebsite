@@ -3,7 +3,7 @@
 Revision ID: 0199_audit_log_indexes
 Revises: 0198_live_session_cancel_reason
 
-docs/superpowers/specs/2026-10-26-nehn-042-audit-log-search-design.md (DEC-SCOPE-288 A6). `ix_audit_logs_created_at` is new; the actor
+docs/superpowers/specs/2026-10-26-nehn-042-audit-log-search-design.md (DEC-SCOPE-289 A6). `ix_audit_logs_created_at` is new; the actor
 index `ix_audit_logs_user_id` comes from the model (`index=True`) and is added only if a database lacks it. 0001 builds a fresh database
 from the current models, which already carry both, so each add is guarded (0067's idiom). No row is read or written. The downgrade drops
 only the created_at index (the user_id index predates this migration).

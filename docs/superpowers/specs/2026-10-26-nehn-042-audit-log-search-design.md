@@ -1,7 +1,7 @@
 # nehn-042 — Audit log search and filters (design)
 
 **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-042` (§23 L606, "appropriate activity history/audit
-information"; `UNVERIFIED` backlog). Decision `DEC-SCOPE-288`. No upstream dependency.
+information"; `UNVERIFIED` backlog). Decision `DEC-SCOPE-289`. No upstream dependency.
 
 ## Intent
 
