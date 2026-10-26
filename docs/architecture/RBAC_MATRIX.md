@@ -3015,3 +3015,12 @@ Every `.xlsx` route answers exactly as its `.csv` twin, cell for cell: `GET /tel
 `GET /workflows/overseas/agent/commissions/report.xlsx` (AGN-014), `GET /partnership/reports/{kind}.xlsx` (upc-031). No new role or
 scope. Pinned by `test_nehn_004_xlsx_exports.py` and the rows added to `test_tel_026_matrix.py`, `rec038_rows_activity.py` and
 `test_upc_033_matrix.py`.
+
+### 2.197 Razorpay mode *(added 2026-10-26 — `DEC-SCOPE-283`, nehn-022)*
+
+| Route | Anonymous | Any signed-in role |
+|---|---|---|
+| `GET /payments/mode` | 401 | 200 (mode only) |
+
+`GET /admin/system-status` keeps its access (`ensure_admin`); it only gains the `Razorpay mode` row. Pinned by
+`apps/api/tests/test_nehn_022_razorpay_mode.py`.
