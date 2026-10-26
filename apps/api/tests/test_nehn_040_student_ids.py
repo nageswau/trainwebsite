@@ -1,4 +1,4 @@
-"""nehn-040 (DEC-SCOPE-279) -- the business-facing Student ID covers agency-created and admin-provisioned students, and is shown and
+"""nehn-040 (DEC-SCOPE-280) -- the business-facing Student ID covers agency-created and admin-provisioned students, and is shown and
 searchable in the admin users list, the overseas-student lookup, the agency student list and the agent network list, inside each
 caller's existing scope."""
 

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// nehn-040 (DEC-SCOPE-279) -- the Student ID is shown and searchable: the Overseas Admin finds the seeded overseas student by it on
+// nehn-040 (DEC-SCOPE-280) -- the Student ID is shown and searchable: the Overseas Admin finds the seeded overseas student by it on
 // Users, and an agency student created with no login gets one, shown on the card and the record, and found by the agency search.
 // The E2E database is shared and keeps rows: names are unique per run.
 

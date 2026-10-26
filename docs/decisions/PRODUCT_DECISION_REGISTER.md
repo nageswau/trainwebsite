@@ -9729,7 +9729,7 @@ ccrm-030 windows; one run notifies, a second sends nothing. G9 product defects a
 **Numbering:** no migration; no API change; RBAC §2.192.
 - **Feature ID authorized:** `ccrm-041`. **Status:** built on `worktree-ccrm-041`.
 
-### DEC-SCOPE-279 — Student ID coverage and lookup; Agent ID stays out (`nehn-040`)
+### DEC-SCOPE-280 — Student ID coverage and lookup; Agent ID stays out (`nehn-040`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-040` (PDF §22 L578-587, §23 L592/L596, actions 21/22;
 `UNVERIFIED`); design `docs/superpowers/specs/2026-10-26-nehn-040-student-id-coverage-design.md`. Builds on `DEC-DATA-003`.
@@ -9737,8 +9737,8 @@ ccrm-030 windows; one run notifies, a second sends nothing. G9 product defects a
 students only) is an approval record and the `UNVERIFIED` PDF does not supersede it; backlog AC4 does not apply. N2 an agency student with
 no login gets `agent_students.student_code` (8-char hex, unique); a linked row keeps NULL and shows its account's `users.student_code`.
 N3 `users` and `agent_students` codes are one space (every generator checks both); `school_students` stays its own (`DEC-DATA-003`).
-N4 admin-provisioned `it_student`/`overseas_student` accounts get a code. N5 migration `0194` backfills both. N6 search is the existing
+N4 admin-provisioned `it_student`/`overseas_student` accounts get a code. N5 migration `0195` backfills both. N6 search is the existing
 literal case-insensitive substring, inside each caller's existing scope. N7 the agent link search (`purpose=link`) is unchanged. N8 no
 flow turns a no-login row into a login, so no code merge. N9 label "Student ID".
-**Numbering:** migration `0194_agent_student_codes`; API §12GE; RBAC §2.193 (no new permission).
+**Numbering:** migration `0195_agent_student_codes`; API §12GF; RBAC §2.194 (no new permission).
 - **Feature ID authorized:** `nehn-040`. **Status:** built on `worktree-nehn-040`.

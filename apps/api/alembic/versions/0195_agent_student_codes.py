@@ -1,9 +1,9 @@
 """nehn-040 -- a Student ID for agency students with no login, and for student accounts still without one.
 
-Revision ID: 0194_agent_student_codes
-Revises: 0193_student_archive_consent
+Revision ID: 0195_agent_student_codes
+Revises: 0194_stored_files
 
-docs/superpowers/specs/2026-10-26-nehn-040-student-id-coverage-design.md (DEC-SCOPE-279 N2-N5). Adds `agent_students.student_code`
+docs/superpowers/specs/2026-10-26-nehn-040-student-id-coverage-design.md (DEC-SCOPE-280 N2-N5). Adds `agent_students.student_code`
 (8-char uppercase hex, nullable, unique) only when missing (0001 builds a fresh database from the current models; 0166's idiom), then
 backfills every no-login agency row and every it_student/overseas_student account with no code (admin-provisioned accounts had none).
 `users` and `agent_students` are one code space, so a new code is never one either table already holds. A linked agency row keeps NULL
@@ -16,8 +16,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0194_agent_student_codes"
-down_revision = "0193_student_archive_consent"
+revision = "0195_agent_student_codes"
+down_revision = "0194_stored_files"
 branch_labels = None
 depends_on = None
 

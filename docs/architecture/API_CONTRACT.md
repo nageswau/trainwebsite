@@ -4076,9 +4076,9 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   `{count, more, items: [{id, label, detail, date, overdue, href}]}` (at most 10 items; `date` is an ISO date or timestamp or null;
   `href` is the web page for the item). Overseas counselor only; every other role (IT counselor included) 403. Read-only, not audited.
 
-## 12GE. Student ID coverage and lookup (nehn-040) — addendum, 2026-10-26
+## 12GF. Student ID coverage and lookup (nehn-040) — addendum, 2026-10-26
 
-`DEC-SCOPE-279`. Migration `0194_agent_student_codes`. Additive fields only; no new route.
+`DEC-SCOPE-280`. Migration `0195_agent_student_codes`. Additive fields only; no new route.
 
 - `GET /api/v1/admin/users` items gain `student_code` (string|null) and the request takes an optional `q` (≤ 100 chars, else 422): a
   literal, case-insensitive substring of the name, email, role or Student ID, matched before the 500-row cap (QA-01) inside the caller's

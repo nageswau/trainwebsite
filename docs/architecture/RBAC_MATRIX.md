@@ -2969,7 +2969,7 @@ under the counselor CRM prefixes without a row fails `test_every_counselor_crm_r
 - The public `GET /calendar/feeds/{token}.ics` needs no session: a bad token is `404` for every caller, signed in or not.
 - Pinned by `test_ccrm_041_matrix.py` (`test_matrix_row[...]`, one per route) and `test_tel_026_matrix.py::test_every_telecaller_crm_route_has_a_row`.
 
-### 2.193 Student ID coverage and lookup *(added 2026-10-26 — `DEC-SCOPE-279`, nehn-040)*
+### 2.194 Student ID coverage and lookup *(added 2026-10-26 — `DEC-SCOPE-280`, nehn-040)*
 
 No new route or permission. The Student ID is display and search data, never an authentication factor. Every search that matches it
 keeps its route's existing scope: admin users (division-scoped for non-super admins), the overseas-student lookup (counselor: visible

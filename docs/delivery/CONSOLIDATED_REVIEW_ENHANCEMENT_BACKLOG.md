@@ -1657,7 +1657,7 @@ Risk is the risk of regression or of a wrong outcome.
 ### K. Identification and search (§22, §23)
 
 #### `nehn-040` — Student ID coverage and lookup; Agent ID conflict
-- **Status (2026-10-26):** built — `DEC-SCOPE-279` (builder's defaults; Agent ID stays out per `DEC-DATA-003`).
+- **Status (2026-10-26):** built — `DEC-SCOPE-280` (builder's defaults; Agent ID stays out per `DEC-DATA-003`).
 - **Source:** §22 L578-587; §23 "Student ID", "Agent ID" (L592, L596); actions 21 and 22; `DEC-DATA-003` (2026-09-15: 8-char, **students only, no Agent ID**).
 - **Business requirement:** A unique, searchable, displayed business ID is assigned at registration for students (and agents, per the PDF).
 - **Existing behavior:**

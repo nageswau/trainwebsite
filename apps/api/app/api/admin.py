@@ -676,7 +676,7 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
         active=payload.get("active", True),
         email_verified=payload.get("email_verified", False),
         profile=payload.get("profile", {}),
-        # nehn-040 (DEC-SCOPE-279 N4): an admin-provisioned student gets a Student ID, as self-registration does.
+        # nehn-040 (DEC-SCOPE-280 N4): an admin-provisioned student gets a Student ID, as self-registration does.
         student_code=await unique_student_code(db, User.student_code, AgentStudent.student_code) if role in ("it_student", "overseas_student") else None,
     )
     db.add(item)

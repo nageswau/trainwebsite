@@ -1,4 +1,4 @@
-"""nehn-040 -- migration 0194_agent_student_codes (DEC-SCOPE-279 N5). The backfill and round trip run in a throwaway database built from
+"""nehn-040 -- migration 0195_agent_student_codes (DEC-SCOPE-280 N5). The backfill and round trip run in a throwaway database built from
 scratch (the upc-001 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,15 +13,15 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_nehn_040_migration_0194", VERSIONS / "0194_agent_student_codes.py")
+_spec = importlib.util.spec_from_file_location("_nehn_040_migration_0195", VERSIONS / "0195_agent_student_codes.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0193_student_archive_consent", "0194_agent_student_codes"
+BASE, HEAD = "0194_stored_files", "0195_agent_student_codes"
 TAKEN = "ABCDEF01"
 
 
-def test_migration_chains_after_0193_and_is_the_single_head():
+def test_migration_chains_after_0194_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
 
@@ -53,7 +53,7 @@ def _insert_record(url, agent, student=None, name="Record"):
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0193 with an agent, two no-login records, a linked record and a student account with no code."""
+    """A fresh database at 0194 with an agent, two no-login records, a linked record and a student account with no code."""
     cfg = _config()
     original = settings.database_url
     name = f"nehn040_migration_{uuid.uuid4().hex[:8]}"

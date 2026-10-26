@@ -6,7 +6,7 @@ import AgentNetworkRecords from "@/components/AgentNetworkRecords";
 import AgentStudentDetailPanel from "@/components/AgentStudentDetailPanel";
 import AgentStudentsPanel from "@/components/AgentStudentsPanel";
 
-// nehn-040 (DEC-SCOPE-279): the Student ID is shown in list rows and the agency detail header, and the admin search matches it.
+// nehn-040 (DEC-SCOPE-280): the Student ID is shown in list rows and the agency detail header, and the admin search matches it.
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }),

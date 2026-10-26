@@ -1,7 +1,7 @@
 # nehn-040 — Student ID coverage and lookup (design + plan)
 
 **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-040` (PDF §22 L578-587, §23 L592/L596, actions 21/22;
-the PDF is `UNVERIFIED`). **Decision:** `DEC-SCOPE-279` (builder's defaults; owner pre-authorised recommended answers,
+the PDF is `UNVERIFIED`). **Decision:** `DEC-SCOPE-280` (builder's defaults; owner pre-authorised recommended answers,
 `NEEDS_CONFIRMATION`). Builds on `DEC-DATA-003` (CONFIRMED_CURRENT 2026-09-15: 8-character hex Student ID, students only, no Agent ID).
 
 ## Intent
@@ -18,7 +18,7 @@ network list neither show nor search it.
 | N2 | Agency students with **no login** get `agent_students.student_code` (8-char hex, unique, nullable). A **linked** row (has a login) keeps NULL and shows its account's `users.student_code` — one person, one code. |
 | N3 | `users.student_code` and `agent_students.student_code` are **one code space**: every new code (registration, seed, walk-in, admin-provisioned, agency-created) is checked against both columns, because the agency list shows both kinds side by side. `school_students` stays its own space (`DEC-DATA-003`). |
 | N4 | **Admin-provisioned** `it_student`/`overseas_student` accounts (`POST /admin/users`) now get a code; they had none since `0028`. |
-| N5 | Migration `0194_agent_student_codes` adds the column and backfills (a) every no-login agency student and (b) every student account still without a code. Additive; downgrade drops the column only (users keep their codes). |
+| N5 | Migration `0195_agent_student_codes` adds the column and backfills (a) every no-login agency student and (b) every student account still without a code. Additive; downgrade drops the column only (users keep their codes). |
 | N6 | Search is the existing case-insensitive literal substring (`ILIKE`, escaped), so a full code and a partial code both match — the backlog's "prefix only" question is answered "substring, like the other fields". Scopes are unchanged; nothing outside the caller's scope matches. |
 | N7 | The anti-enumeration agent link search (`/lookups/overseas-students?purpose=link`) is **unchanged**. |
 | N8 | There is no flow that turns a no-login agency row into a login, so no code merge is built. |
@@ -39,13 +39,13 @@ detail header show "Student ID …"; search placeholder "Name, email, phone or S
 
 1. `core/identifiers.unique_student_code(db, *columns)` — unique across every column given. Callers pass `User.student_code,
    AgentStudent.student_code` (auth, seed, counselor walk-in, admin create, agency create).
-2. Model column + migration `0194` with backfill; migration test (backfill, no collision with users, round trip).
+2. Model column + migration `0195` with backfill; migration test (backfill, no collision with users, round trip).
 3. `services/agent_students`: async `create_record` assigns a code; `record_item` returns `student_code`; `list_page` `q` matches it.
 4. `admin.py`: `/users` returns `student_code`; create assigns it.
 5. `lookups.py`: `q` matches code; `detail` shows it.
 6. `agent_network.org_students` + `AgentNetworkStudentOut.student_code`.
 7. Web: types, panels, unit tests; Playwright `nehn-040-student-id.spec.ts`.
-8. Docs: register, API §12GE, RBAC §2.193, RTM.
+8. Docs: register, API §12GF, RBAC §2.194, RTM.
 
 ## Acceptance criteria
 

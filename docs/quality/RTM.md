@@ -1262,7 +1262,7 @@ half.
 
 | ID | Requirement / acceptance | Evidence |
 |---|---|---|
-| `nehn-040` | Requirement: PDF §22/§23 → `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-040` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-279` → design `docs/superpowers/specs/2026-10-26-nehn-040-student-id-coverage-design.md` → API §12GE, RBAC §2.193 → migration `0194_agent_student_codes` | N1–N9 defaults `NEEDS_CONFIRMATION` |
+| `nehn-040` | Requirement: PDF §22/§23 → `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-040` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-280` → design `docs/superpowers/specs/2026-10-26-nehn-040-student-id-coverage-design.md` → API §12GF, RBAC §2.194 → migration `0195_agent_student_codes` | N1–N9 defaults `NEEDS_CONFIRMATION` |
 | `nehn-040-AC1` | Searching a student's code in admin users finds that student | `apps/api/tests/test_nehn_040_student_ids.py::test_admin_users_list_returns_the_code`, `::test_the_overseas_student_lookup_matches_and_shows_the_code_in_scope`; `apps/web/tests/components/nehn040StudentId.test.tsx`; `apps/web/tests/e2e/nehn-040-student-id.spec.ts` |
 | `nehn-040-AC2` | Every agency-created student has a code (new at create; existing after the backfill) | `::test_an_agency_created_student_gets_a_code_at_create`; `apps/api/tests/test_nehn_040_migration.py::test_upgrade_backfills_codes_and_round_trips`; e2e |
 | `nehn-040-AC3` | The code shows in list rows and the agency detail header | `::test_a_linked_student_shows_the_account_code_and_the_row_keeps_none`, `::test_the_agent_network_students_carry_the_code`; `nehn040StudentId.test.tsx`; e2e |

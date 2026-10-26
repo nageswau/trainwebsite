@@ -24,7 +24,7 @@ def generate_student_code() -> str:
 async def unique_student_code(db: AsyncSession, *columns) -> str:
     """Generate a student_code guaranteed unique for every mapped column given (e.g.
     User.student_code, SchoolStudent.student_code), retrying on collision rather than
-    assuming the ~4.3 billion-code space can't ever repeat. nehn-040 (DEC-SCOPE-279 N3):
+    assuming the ~4.3 billion-code space can't ever repeat. nehn-040 (DEC-SCOPE-280 N3):
     User and AgentStudent codes are one space, so their callers pass both columns."""
     for _ in range(10):
         code = generate_student_code()
