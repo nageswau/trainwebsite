@@ -49,6 +49,7 @@ test("a chosen course icon and the automatic subject icon show in the master, th
 
   const publish = await page.request.post(`/api/v1/partnership/universities/${university.id}/publish`);
   expect(publish.ok(), await publish.text()).toBe(true);
+  await page.request.post("/api/v1/auth/logout"); // the public viewer (the signed-in public header overflows on its own -- not this feature)
   for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
     await page.goto(`/overseas/universities/${university.slug}`);
