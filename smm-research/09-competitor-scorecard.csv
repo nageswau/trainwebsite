@@ -1,0 +1,21 @@
+﻿competitor,type,offer_clarity (w=12; Q),creative_quality (w=12; Q (07 rubric /35 or /30 rescaled)),"social_consistency (w=10; M (IG posts/week, visible grid))",engagement_signals (w=8; M (IG median ER%)),student_success_evidence (w=10; Q),transparency (w=14; Q),cta_strength (w=8; Q+M (CTA types)),brand_credibility (w=12; Q),"job_claims_responsibility (w=7; Q (5=specific/substantiated, 1=unsubstantiated guarantee))",refund_policy_clarity (w=7; Q (only if a refund is claimed)),score_normalised_0_100,weight_coverage_of_100,notes
+BITS Pilani Dubai Campus,Branch campus,5,4.7,5,3,2,4,4,5,5,N/A,84.6,93,Specific internship lengths: best practice
+De Montfort University Dubai,Branch campus,4,4.3,5,4,2,4,4,5,N/A,N/A,81.3,86,Clean intake-led creatives
+MAHE Dubai,Branch campus,3,4.2,5,5,5,3,2,5,N/A,N/A,80.1,86,Real student video testimonials; highest ER
+SP Jain School of Global Management,Institution,4,3,5,4,3,5,2,5,4,N/A,79.6,93,"Honest fine print, poor legibility"
+Middlesex University Dubai,Branch campus,3,3.6,5,4,4,4,2,5,N/A,N/A,77.5,86,Strong student life/alumni highlights
+India - StudyIn,Consultant,5,4.7,5,2,2,3,5,4,N/A,N/A,77.3,86,Curtin Dubai co-brand; 99 UAE ads; ER 0.02%
+AEC Overseas,Consultant,5,4.4,N/A,N/A,2,2,5,4,2,N/A,70.1,75,'97% Graduate Placement Rate' unsourced
+Leverage Edu,Consultant,4,3.3,5,1,3,3,3,4,3,N/A,66.8,93,"'Golden Visa*', 'visa in under 10 days'"
+Shiksha Study Abroad,Consultant/portal,3,2.7,5,3,3,3,3,4,N/A,N/A,66.6,86,"'Free counselling, no hidden charges'"
+Heriot-Watt University Dubai,Branch campus,3,3.6,3,4,2,4,1,5,N/A,N/A,66.3,86,226K-view programme reel on FB; few CTAs
+Leap Scholar,Consultant,3,2,5,3,4,2,4,4,N/A,N/A,65.6,86,Comment-to-DM; visible accountability complaint
+TIIB Dubai,Institution,4,3.2,4,4,3,1,4,2,1,N/A,57.1,93,'Guaranteed Paid Internships' unverified; Malayalam plus-two
+Fateh Education,Consultant,3,2,5,1,3,2,4,3,N/A,N/A,56.7,86,"DCO copy mismatch (UK text on Dubai headline); '45,000+ success stories' unsourced"
+AHZ India,Consultant,4,3.9,N/A,N/A,N/A,1,5,2,1,N/A,55.3,65,'Guaranteed Placement' badge image-only; 'Masters in 5 Lakhs'
+"Brookstone Institute of Global Studies, India",Institution (EduSphere partner BIGS),5,N/A,N/A,N/A,N/A,2,3,2,2,2,54.7,60,"'Not Placed? Half Your Fee Comes Back'; terms claimed published, not found"
+IICCM,Institution (India),3,2,N/A,N/A,3,2,3,3,1,N/A,49.3,75,'100% Placement Guarantee (With Written Agreement)' not public; ER inflated by pinned posts
+The Confluence Global Education,Consultant (BIGS reseller),4,3.1,1,1,2,1,4,1,1,N/A,40.5,93,"'Guaranteed placement from AED 55,000*'; 317 IG followers; no posts since Aug"
+Skymark Education,Consultant (UK benchmark),3,1,N/A,N/A,3,1,3,2,1,1,37.6,82,'100% Job Guarantee / 100% fee refund in 9 months' vs source 50% cash + 50% credit; IG login-walled
+
+"METHOD: score_normalised = sum(weight*score/5 over scored criteria) / sum(weights of scored criteria) * 100. N/A criteria are excluded, never scored 0. M = measured from public data (2026-10-27), Q = qualitative judgement by one reviewer (Claude). Compare totals only between rows with similar weight coverage."
