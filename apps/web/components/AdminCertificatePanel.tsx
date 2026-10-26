@@ -62,14 +62,21 @@ export default function AdminCertificatePanel() {
 
   async function issue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const override = Boolean(criteria && !criteria.eligible);
+    const reason = String(new FormData(event.currentTarget).get("override_reason") ?? "").trim();
+    // nehn-002: `required` lets a whitespace-only reason through; stop it here instead of a server 422.
+    if (override && !reason) {
+      setFailed(true);
+      setMessage("Enter a reason for the override.");
+      return;
+    }
     setBusy(true);
     setMessage("");
     setFailed(false);
-    const form = new FormData(event.currentTarget);
     const response = await fetch(`/api/v1/workflows/it/certificates/${enrollmentId}/issue`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ override: criteria && !criteria.eligible, override_reason: form.get("override_reason") || undefined }),
+      body: JSON.stringify({ override, override_reason: reason || undefined }),
     });
     const data = await response.json().catch(() => ({}));
     setBusy(false);
