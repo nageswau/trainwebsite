@@ -9930,3 +9930,15 @@ students). S8 30 searches a minute, one audit row each with counts only. S9 no m
 Student search page in the three admin portals plus a header box; counselor and agent keep their own search UIs (API only).
 **Numbering:** no migration; API §12GP; RBAC §2.202.
 - **Feature ID authorized:** `nehn-041`. **Status:** built on `worktree-nehn-041`.
+
+### DEC-SCOPE-292 — Direct file upload for assignment submissions (`nehn-024`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-024` (§9 L188-198; §24; action 8; `UNVERIFIED` backlog);
+design `docs/superpowers/specs/2026-10-26-nehn-024-submission-file-upload-design.md`. Builds on nehn-003 (`DEC-SCOPE-279`).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** F1 `submission_files` links a submission to its
+`stored_files` rows (one file, one submission). F2 up to 5 files per submission. F3 external links (`file_url`) are kept as an optional
+"Link" field. F4 submit takes `file_ids`; each must be the caller's own `assignment_submission` upload not attached elsewhere (one 422
+otherwise). F6 a resubmission with `file_ids` replaces the set; without keeps it (no versioning). F8 download: the student, the batch's
+trainer, it_admin, super_admin. F12 no orphan sweep; unattached uploads stay owner-only. No AV scan (nehn-003 PS8).
+**Numbering:** migration `0200_submission_files`; API §12GQ; RBAC §2.203.
+- **Feature ID authorized:** `nehn-024`. **Status:** built on `worktree-nehn-024`.

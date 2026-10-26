@@ -290,6 +290,7 @@ async def _it_student(db: AsyncSession, user: User, section: str):
                     ),
                     "score": f"{by_assignment[a.id].score}/{a.max_score}" if a.id in by_assignment and by_assignment[a.id].score is not None else None,
                     "feedback": by_assignment[a.id].feedback if a.id in by_assignment else None,
+                    "submission_type": a.submission_type,  # nehn-024 F10: the panel says what the work needs (not a table column)
                 }
                 for a in work
             ),

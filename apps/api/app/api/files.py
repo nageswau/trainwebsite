@@ -141,6 +141,12 @@ async def stored_file(file_id: UUID, user: User = Depends(get_current_user), db:
         raise HTTPException(404, "File not found")
     if row.owner_id != user.id and user.role != "super_admin":
         raise HTTPException(403, "This file belongs to someone else")
+    return serve_stored_file(row)
+
+
+def serve_stored_file(row: StoredFile):
+    """The file behind an authorised `stored_files` row: a presigned redirect in S3 mode, else an attachment under nosniff. Callers
+    (here, nehn-024's submission route) do the authorisation."""
     if storage.bucket:
         return RedirectResponse(storage.presign_download(row.key), status_code=307)
     return _local_response(row.key, filename=row.original_filename, media_type=row.content_type)

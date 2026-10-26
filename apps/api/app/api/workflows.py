@@ -13,12 +13,13 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Reques
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import application_fields
 from app.api.deps import get_current_user
-from app.api.files import _allowed
+from app.api.files import _allowed, serve_stored_file
 from app.api.school_bulk import _safe_cell
 from app.application_outcome import label as outcome_label
 from app.application_sub_status import label as sub_status_label
@@ -70,8 +71,10 @@ from app.models import (
     Scholarship,
     ScholarshipApplication,
     SchoolStudent,
+    StoredFile,
     StudentDocument,
     Submission,
+    SubmissionFile,
     SupportTicket,
     University,
     User,
@@ -568,9 +571,10 @@ async def submit_assignment(assignment_id: UUID, payload: AssignmentSubmissionIn
         raise HTTPException(403, "You are not enrolled in this batch")
     if assignment.submission_type == "text" and not payload.answer:
         raise HTTPException(422, "A text answer is required")
-    if assignment.submission_type == "file" and not payload.file_url:
+    has_file = bool(payload.file_url or payload.file_ids)
+    if assignment.submission_type == "file" and not has_file:
         raise HTTPException(422, "A file is required")
-    if not payload.answer and not payload.file_url:
+    if not payload.answer and not has_file:
         raise HTTPException(422, "Provide an answer or file")
     # STU-004-AC02: "Submission after due date flagged, not silently accepted unless
     # allowed." No global late-submission policy is confirmed anywhere in evidence, so
@@ -588,10 +592,63 @@ async def submit_assignment(assignment_id: UUID, payload: AssignmentSubmissionIn
     else:
         submission = Submission(assignment_id=assignment_id, student_id=user.id, answer=payload.answer, file_url=payload.file_url, status="submitted", is_late=is_late)
         db.add(submission)
-    await _audit(db, user, "assignment.submit", "submission", getattr(submission, "id", None), {"assignment_id": assignment_id, "is_late": is_late})
-    await db.commit()
+    await db.flush()
+    metadata = {"assignment_id": assignment_id, "is_late": is_late}
+    if payload.file_ids is not None:
+        file_ids = list(dict.fromkeys(payload.file_ids))  # a repeated id is attached once
+        await _attach_submission_files(db, user, submission, file_ids)
+        metadata["file_count"] = len(file_ids)
+    await _audit(db, user, "assignment.submit", "submission", submission.id, metadata)
+    try:
+        await db.commit()
+    except IntegrityError:  # a concurrent submit took the same row or file first
+        await db.rollback()
+        raise HTTPException(409, "This submission changed while saving. Please try again.") from None
     await db.refresh(submission)
     return {"id": submission.id, "status": submission.status, "is_late": submission.is_late}
+
+
+async def _attach_submission_files(db: AsyncSession, user: User, submission: Submission, file_ids: list[UUID]) -> None:
+    """nehn-024 (DEC-SCOPE-292 F4/F6): replace the submission's files. Each must be the caller's own `assignment_submission` upload, not
+    attached to another submission -- one 422 for every failure, so nothing about other users' files is confirmed."""
+    if file_ids:
+        usable = await db.scalar(
+            select(func.count(StoredFile.id))
+            .outerjoin(SubmissionFile, SubmissionFile.stored_file_id == StoredFile.id)
+            .where(
+                StoredFile.id.in_(file_ids),
+                StoredFile.owner_id == user.id,
+                StoredFile.purpose == "assignment_submission",
+                or_(SubmissionFile.id.is_(None), SubmissionFile.submission_id == submission.id),
+            )
+        )
+        if usable != len(file_ids):
+            raise HTTPException(422, "One or more files cannot be attached to this submission")
+    await db.execute(delete(SubmissionFile).where(SubmissionFile.submission_id == submission.id))
+    db.add_all(SubmissionFile(submission_id=submission.id, stored_file_id=file_id) for file_id in file_ids)
+
+
+@router.get("/it/submissions/{submission_id}/files/{file_id}")
+async def submission_file(submission_id: UUID, file_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """nehn-024 (DEC-SCOPE-292 F8): the submitting student, the batch's trainer, it_admin and super_admin download an attached file."""
+    row = (
+        await db.execute(
+            select(Submission, Batch, StoredFile)
+            .join(Assignment, Assignment.id == Submission.assignment_id)
+            .join(Batch, Batch.id == Assignment.batch_id)
+            .join(SubmissionFile, SubmissionFile.submission_id == Submission.id)
+            .join(StoredFile, StoredFile.id == SubmissionFile.stored_file_id)
+            .where(Submission.id == submission_id, StoredFile.id == file_id)
+        )
+    ).first()
+    if not row:
+        raise HTTPException(404, "File not found")
+    submission, batch, stored = row
+    if user.id != submission.student_id:
+        _require(user, {"trainer", "it_admin"}, "it")
+        if user.role == "trainer" and batch.trainer_id != user.id:
+            raise HTTPException(403, "Submission is outside your assigned batch")
+    return serve_stored_file(stored)
 
 
 @router.post("/it/trainer/attendance", status_code=201)
@@ -840,6 +897,19 @@ async def trainer_submissions(batch_id: UUID | None = None, user: User = Depends
     if batch_id:
         stmt = stmt.where(Assignment.batch_id == batch_id)
     rows = (await db.execute(stmt.order_by(Submission.created_at.desc()).limit(500))).all()
+    # nehn-024 (DEC-SCOPE-292 F7): each row lists its attached files with the authorised download route.
+    files: dict[UUID, list[dict]] = {s.id: [] for s, _, _ in rows}
+    if files:
+        attached = await db.execute(
+            select(SubmissionFile.submission_id, StoredFile)
+            .join(StoredFile, StoredFile.id == SubmissionFile.stored_file_id)
+            .where(SubmissionFile.submission_id.in_(files))
+            .order_by(SubmissionFile.created_at, StoredFile.original_filename)
+        )
+        for submission_id, stored in attached:
+            files[submission_id].append(
+                {"id": stored.id, "filename": stored.original_filename, "content_type": stored.content_type, "size": stored.size_bytes, "url": f"/api/v1/workflows/it/submissions/{submission_id}/files/{stored.id}"}
+            )
     return [
         {
             "id": s.id,
@@ -849,6 +919,7 @@ async def trainer_submissions(batch_id: UUID | None = None, user: User = Depends
             "student": student.full_name,
             "answer": s.answer,
             "file_url": s.file_url,
+            "files": files[s.id],
             "score": s.score,
             "max_score": a.max_score,
             "feedback": s.feedback,

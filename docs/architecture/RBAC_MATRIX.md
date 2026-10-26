@@ -3072,3 +3072,12 @@ No new permission key. Pinned by `apps/api/tests/test_nehn_020_student_invoices.
 No new permission key; each kind reuses the scope of the caller's existing list. Web: `/admin/student-search`, `/it/admin/student-search`,
 `/overseas/admin/student-search` (role-gated pages) and the portal top-bar search box on those portals. Pinned by
 `apps/api/tests/test_nehn_041_student_search.py`.
+
+### 2.203 Assignment submission files *(added 2026-10-26 — `DEC-SCOPE-292`, nehn-024)*
+
+| Route | Anonymous | Submitting it_student | Other it_student | Trainer (own batch / other) | it_admin | super_admin |
+|---|---|---|---|---|---|---|
+| `POST /workflows/it/assignments/{id}/submissions` with `file_ids` | 401 | 201 (own uploads only, else 422) | 422 for another's file ids | 403 | 403 | 403 (not enrolled) |
+| `GET /workflows/it/submissions/{sid}/files/{fid}` | 401 | 200 | 403 | 200 / 403 | 200 | 200 |
+
+No new permission key. Pinned by `apps/api/tests/test_nehn_024_submission_files.py`.

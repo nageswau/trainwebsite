@@ -2292,3 +2292,10 @@ inline checks gave (it_admin/overseas_admin: `payments.view`, `payments.add`, `d
 `reports.telecaller.download`; telecaller_manager: the two report keys). super_admin holds every key in code and has no rows. Written only
 by `PUT /admin/roles/{role}/permissions`; history in `audit_logs` (`role_permissions.update`, before/after). No existing data changes.
 Downgrade drops the table.
+
+## Submission files (`nehn-024`, `DEC-SCOPE-292`; migration `0200_submission_files`, after nehn-042's `0199_audit_log_indexes`)
+
+New table `submission_files`: `id` (UUID PK), `submission_id` (FK `submissions` ON DELETE CASCADE, `ix_submission_files_submission_id`),
+`stored_file_id` (FK `stored_files` ON DELETE CASCADE, `uq_submission_files_stored_file`), `created_at`. Filename, size and MIME live on
+the `stored_files` row. `submissions.file_url` is unchanged and still accepted. No existing data changes. Downgrade drops the table (the
+submissions and stored files stay).
