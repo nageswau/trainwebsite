@@ -1,4 +1,4 @@
-"""nehn-020 (DEC-SCOPE-289): students get the receipt, not an invoice. The invoice route answers 404 to a student caller; admins keep
+"""nehn-020 (DEC-SCOPE-290): students get the receipt, not an invoice. The invoice route answers 404 to a student caller; admins keep
 historical invoices; generation is unchanged until OD-11 (I4)."""
 
 import uuid

@@ -36,7 +36,7 @@ describe("FeePaymentPanel test-mode banner (nehn-022)", () => {
   });
 });
 
-// nehn-020 (DEC-SCOPE-289) AC1: the student's payment document is the receipt; no fee card offers an invoice.
+// nehn-020 (DEC-SCOPE-290) AC1: the student's payment document is the receipt; no fee card offers an invoice.
 describe("FeePaymentPanel documents (nehn-020)", () => {
   it("offers the receipt on a paid fee and never an invoice", async () => {
     const paid = { ...ROW, id: "p2", status: "paid" };

@@ -3,7 +3,7 @@ import logging
 import re
 import time
 from collections.abc import Awaitable, Callable
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Literal
 from uuid import UUID, uuid4
 
@@ -1307,16 +1307,58 @@ async def create_emi_schedule(payload: dict, user: User = Depends(PAYMENTS_ADD),
     return {"id": schedule.id, "installment_count": schedule.installment_count, "total_amount": float(schedule.total_amount), "installments": [{"id": p.id, "installment_no": p.installment_no} for p in created_payments]}
 
 
+def _ist_day_start(day: date) -> datetime:
+    return datetime.combine(day, datetime.min.time(), management_audit.IST)
+
+
 @router.get("/audit")
-async def audit(user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+async def audit(
+    actor: UUID | None = None,
+    action: str | None = Query(None, max_length=120),
+    entity_type: str | None = Query(None, max_length=80),
+    entity_id: str | None = Query(None, max_length=80),
+    division: Literal["it", "overseas", "global"] | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    limit: int = Query(500, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(ensure_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """nehn-042 (DEC-SCOPE-289 A1-A4): newest first, filtered and paged in SQL. Still a JSON array (existing clients read one)."""
+    if date_from and date_to and date_to < date_from:
+        raise HTTPException(422, "The end date must be on or after the start date")
     # mgmt-002 (MA8): finance and partner-only management rows are not admin data (M13).
-    stmt = select(AuditLog).where(management_audit.hidden_from_admin_audit()).order_by(AuditLog.created_at.desc()).limit(500)
-    rows = (await db.scalars(stmt)).all()
-    # Division admins only see events performed by users from their own division.
+    where = [management_audit.hidden_from_admin_audit()]
+    # Division admins only see events performed by users from their own division (and system events) -- in the WHERE clause, so the
+    # limit and paging apply after the scope and an older row of their own is never cut off by another division's newer ones (A3).
     if user.role != "super_admin":
-        own_ids = set((await db.scalars(select(User.id).where(User.division == user.division))).all())
-        rows = [x for x in rows if x.user_id in own_ids or x.user_id is None]
-    return [{"id": x.id, "user_id": x.user_id, "action": x.action, "entity_type": x.entity_type, "entity_id": x.entity_id, "outcome": x.outcome, "metadata": x.metadata_json, "created_at": x.created_at} for x in rows]
+        where.append(or_(AuditLog.user_id.is_(None), User.division == user.division))
+    if actor:
+        where.append(AuditLog.user_id == actor)
+    if action:
+        where.append(AuditLog.action.startswith(action, autoescape=True))
+    if entity_type:
+        where.append(AuditLog.entity_type == entity_type)
+    if entity_id:
+        where.append(AuditLog.entity_id == entity_id)
+    if division:
+        where.append(User.division == division)
+    if date_from:
+        where.append(AuditLog.created_at >= _ist_day_start(date_from))
+    if date_to:
+        where.append(AuditLog.created_at < _ist_day_start(date_to) + timedelta(days=1))
+    stmt = (select(AuditLog, User).outerjoin(User, User.id == AuditLog.user_id).where(*where)
+            .order_by(AuditLog.created_at.desc(), AuditLog.id.desc()).limit(limit).offset(offset))
+    rows = (await db.execute(stmt)).all()
+    return [
+        {
+            "id": x.id, "user_id": x.user_id, "action": x.action, "entity_type": x.entity_type, "entity_id": x.entity_id, "outcome": x.outcome,
+            "metadata": x.metadata_json, "created_at": x.created_at,
+            "actor": {"id": who.id, "full_name": who.full_name, "email": who.email, "division": who.division} if who else None,
+        }
+        for x, who in rows
+    ]
 
 
 @router.post("/audit/export", status_code=201)

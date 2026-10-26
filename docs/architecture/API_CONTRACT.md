@@ -101,7 +101,7 @@ never a frontend-only gate (`FND-002`, `NFR-SEC-001`).
 | `GET /student/agreements/current`, `POST /student/agreements/{id}/accept` | Authenticated | Self | (`STU-009`) |
 | `GET /payments/mine`, `GET /payments/emi-schedule` | Authenticated | Self | (`STU-010`). Actual paths differ from this document's original `/student/payments*` draft — corrected `prompts/13`, 2026-09-03, to match the inherited dedicated `/payments` router rather than inventing a parallel `/student/*` route family (same correction class as `STU-005`'s `/workflows/support`). |
 | `POST /payments/{payment_id}/checkout` | Authenticated | Self | Creates a Razorpay hosted checkout session. `Idempotency-Key` header required (§0.2) — a repeat with the same key replays the original result rather than creating a second provider order. Self only, even for Admin roles (`STU-010-AC04` — Admin's payments scope is view, not act). |
-| `GET /payments/{payment_id}/invoice`, `GET /payments/{payment_id}/receipt` | Authenticated | Self / Admin (own division, view) | Signed download URL (STU-007's certificate-download pattern). 404 if not yet generated — a receipt only exists once the payment has completed. The invoice route answers 404 to a student caller (nehn-020, §12GN). |
+| `GET /payments/{payment_id}/invoice`, `GET /payments/{payment_id}/receipt` | Authenticated | Self / Admin (own division, view) | Signed download URL (STU-007's certificate-download pattern). 404 if not yet generated — a receipt only exists once the payment has completed. The invoice route answers 404 to a student caller (nehn-020, §12GO). |
 | `GET /student/profile`, `PATCH /student/profile` | Authenticated | Self | (`STU-011`) |
 | `POST /student/profile/documents` | Authenticated | Self | Same upload-validation contract as assignment submission. |
 
@@ -4202,9 +4202,22 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   also gains `timezone` (the batch's). `GET /portal/it/trainer/live-sessions` gains a `status` column; a cancelled row has no join link.
 - `POST /workflows/it/trainer/attendance` — new 409 when the date's live sessions for the batch are all cancelled.
 
-## 12GN. Student invoices retired (nehn-020) — addendum, 2026-10-26
+## 12GN. Audit log search and filters (nehn-042) — addendum, 2026-10-26
 
-`DEC-SCOPE-289`. No migration; no response-shape change.
+`DEC-SCOPE-289`. Migration `0199_audit_log_indexes` (`ix_audit_logs_created_at`; `ix_audit_logs_user_id` only if missing). All additive.
+
+- `GET /api/v1/admin/audit` gains query parameters: `actor` (user UUID), `action` (≤120, literal prefix: `payment.` matches every
+  payment action), `entity_type` (≤80, exact), `entity_id` (≤80, exact), `division` (`it` | `overseas` | `global`, the actor's),
+  `date_from` / `date_to` (India calendar days, inclusive), `limit` (1-500, default 500) and `offset` (≥ 0, no cap). Newest first
+  (`created_at`, then `id`). **Still a JSON array**; each row gains `actor` (`{id, full_name, email, division}` or `null` for a system
+  row). 422: `date_to` before `date_from` ("The end date must be on or after the start date"), an unknown `division`, a malformed
+  `actor`/date, `limit`/`offset` out of range. Access unchanged (403 for non-admins). A division admin's scope (own-division actors and
+  system rows) is now a SQL `WHERE`, applied before `LIMIT`/`OFFSET`; a `division` filter narrows within it. MA8 unchanged.
+- `POST /api/v1/admin/audit/export` unchanged.
+
+## 12GO. Student invoices retired (nehn-020) — addendum, 2026-10-26
+
+`DEC-SCOPE-290`. No migration; no response-shape change.
 
 - `GET /payments/{payment_id}/invoice` — after the existing ownership check (another user's payment stays 403), an `it_student` or
   `overseas_student` caller gets **404** `{"detail": "Invoices are not issued to students. Download your receipt instead."}`.

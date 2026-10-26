@@ -1,7 +1,7 @@
 # nehn-020 — Retire student-facing invoices (design)
 
 **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-020` (§7 L167-168, "invoice functionality can be removed
-where not required"; `UNVERIFIED` backlog). Decision: `DEC-SCOPE-289`. Owner pre-authorised the recommended answers; open questions are
+where not required"; `UNVERIFIED` backlog). Decision: `DEC-SCOPE-290`. Owner pre-authorised the recommended answers; open questions are
 recorded as `NEEDS_CONFIRMATION`, not resolved.
 
 ## Intent
@@ -39,7 +39,7 @@ one-way product choice); 410 Gone (see I2).
 
 ## Review notes (Phase 3)
 
-- **API:** behaviour change limited to student callers on one route; response shape unchanged for everyone else. Documented in API §12GN.
+- **API:** behaviour change limited to student callers on one route; response shape unchanged for everyone else. Documented in API §12GO.
 - **Security:** no new data exposure; the 403 for non-owners is preserved; no IDOR change; no logging of document keys.
 - **Frontend:** removing a button from an existing flex row; no new state. The download helper narrows to receipts.
 - **Regression risks:** tests that fetch the invoice as a student (`test_pay_001_stu_010_payment_gateway.py`, `pay-001-stu-010`

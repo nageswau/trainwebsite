@@ -25,7 +25,6 @@ const info: Record<string, { title: string; subtitle: string }> = {
   notifications: { title: "Notification Management", subtitle: "In-app and provider delivery history." },
   roles: { title: "Role & Permission Management", subtitle: "The API-enforced, deny-by-default RBAC matrix." },
   settings: { title: "Integration Settings", subtitle: "Non-secret provider readiness and environment state." },
-  "security-logs": { title: "Security & Audit Logs", subtitle: "Authentication and privileged workflow events." },
   backups: { title: "Backup & Restore", subtitle: "Production recovery remains an AWS RDS/S3 operator workflow." },
 };
 
@@ -61,7 +60,6 @@ async function tableData(module: string): Promise<TableData> {
   if (module === "applications") return { rows: await getRows("/api/v1/admin/applications"), columns: columns([["id", "reference"], ["division", "Division"], ["student", "Student"], ["target", "University / Job"], ["reference", "Reference"], ["status", "Status"], ["updated_at", "Updated"]]) };
   if (module === "payments") return { rows: await getRows("/api/v1/admin/payments"), columns: columns([["id", "reference"], ["user_id", "User reference"], ["student", "User"], ["division", "Division"], ["amount", "Amount"], ["currency", "Currency"], ["provider", "Provider"], ["status", "Status"]]) };
   if (module === "notifications") return { rows: await getRows("/api/v1/admin/notifications"), columns: columns([["id", "reference"], ["user_id", "User reference"], ["recipient", "Recipient"], ["division", "Division"], ["title", "Title"], ["read", "Read"], ["deliveries", "Deliveries"], ["created_at", "Created"]]) };
-  if (module === "security-logs") return { rows: await getRows("/api/v1/admin/audit"), columns: columns([["id", "reference"], ["user_id", "User reference"], ["action", "Action"], ["entity_type", "Entity"], ["entity_id", "Entity reference"], ["outcome", "Outcome"], ["created_at", "Created"]]) };
   if (module === "settings") return { rows: await getRows("/api/v1/admin/system-status"), columns: columns([["service", "Service"], ["status", "Status"]]) };
   if (module === "reports") {
     const report = await serverApi<Record<string, Record<string, unknown>>>("/api/v1/admin/reports/summary");

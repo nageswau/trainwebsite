@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-// nehn-020 (DEC-SCOPE-289): the student's payment document is the receipt. The fee card offers no invoice, the invoice route answers
+// nehn-020 (DEC-SCOPE-290): the student's payment document is the receipt. The fee card offers no invoice, the invoice route answers
 // 404 to the student, and the IT Admin can still download the (still generated) invoice. Own throwaway student (RAID.md I-06); no
 // Razorpay call -- the paid fee is a manual payment.
 

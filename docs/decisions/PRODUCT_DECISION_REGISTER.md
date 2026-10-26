@@ -9891,7 +9891,20 @@ the review" list of the recommended answers built into Done items.
 **Numbering:** no migration; no API; no RBAC row.
 - **Feature ID authorized:** `nehn-043`. **Status:** built on `worktree-nehn-043`.
 
-### DEC-SCOPE-289 — Retire student-facing invoices; keep generation pending OD-11 (`nehn-020`)
+### DEC-SCOPE-289 — Audit log search and filters (`nehn-042`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-042` (§23 L606 "appropriate activity history/audit
+information"; `UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-26-nehn-042-audit-log-search-design.md`. Dependencies: none.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** A1 filters actor, action (literal prefix),
+entity type, entity id, division (actor's), IST date range. A2 `limit`/`offset` paging, response stays an array (the web reads one row
+more than a page; no COUNT). A3 division scope moved into SQL, same rule (own-division actors + system rows). A4 rows gain `actor`.
+A5 access, MA8 and the export unchanged. A6 `created_at` index. A7 one Audit log page for the three admin portals. A8 "History" = an
+entity reference links to that entity's full history (no admin lead/payment detail page exists; the student 360 History tab is
+unchanged); dedicated History tabs on future detail pages and the retention period stay open.
+**Numbering:** migration `0199_audit_log_indexes`; API §12GN; RBAC §2.200.
+- **Feature ID authorized:** `nehn-042`. **Status:** built on `worktree-nehn-042`.
+
+### DEC-SCOPE-290 — Retire student-facing invoices; keep generation pending OD-11 (`nehn-020`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-020` (§7 L167-168; `UNVERIFIED` backlog); design
 `docs/superpowers/specs/2026-10-26-nehn-020-retire-student-invoices-design.md`. Coordinates with nehn-019 (not merged; no shared code
@@ -9900,5 +9913,5 @@ touched).
 Invoice button (Receipt unchanged). I2 `GET /payments/{id}/invoice` answers 404 to a student caller, after the ownership check. I3 admins
 and agents keep the route. I4 invoice generation is **not** removed: AC2's "removed contexts" is empty until **OD-11** (is a GST/tax
 invoice legally required?) is answered, because the rows feed the Accounts pending-invoices KPI (AD6) and admin history. I5 no data change.
-**Numbering:** no migration; API §12GN; RBAC §2.200.
+**Numbering:** no migration; API §12GO; RBAC §2.201.
 - **Feature ID authorized:** `nehn-020`. **Status:** built on `worktree-nehn-020`.
