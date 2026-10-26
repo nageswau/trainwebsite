@@ -4201,3 +4201,16 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - `GET /communications/it/live-sessions` rows and `GET /workflows/it/student/learning` `live_sessions` gain `cancel_reason`; the list
   also gains `timezone` (the batch's). `GET /portal/it/trainer/live-sessions` gains a `status` column; a cancelled row has no join link.
 - `POST /workflows/it/trainer/attendance` — new 409 when the date's live sessions for the batch are all cancelled.
+
+## 12GN. Audit log search and filters (nehn-042) — addendum, 2026-10-26
+
+`DEC-SCOPE-288`. Migration `0199_audit_log_indexes` (`ix_audit_logs_created_at`; `ix_audit_logs_user_id` only if missing). All additive.
+
+- `GET /api/v1/admin/audit` gains query parameters: `actor` (user UUID), `action` (≤120, literal prefix: `payment.` matches every
+  payment action), `entity_type` (≤80, exact), `entity_id` (≤80, exact), `division` (`it` | `overseas` | `global`, the actor's),
+  `date_from` / `date_to` (India calendar days, inclusive), `limit` (1-500, default 500) and `offset` (≥ 0, no cap). Newest first
+  (`created_at`, then `id`). **Still a JSON array**; each row gains `actor` (`{id, full_name, email, division}` or `null` for a system
+  row). 422: `date_to` before `date_from` ("The end date must be on or after the start date"), an unknown `division`, a malformed
+  `actor`/date, `limit`/`offset` out of range. Access unchanged (403 for non-admins). A division admin's scope (own-division actors and
+  system rows) is now a SQL `WHERE`, applied before `LIMIT`/`OFFSET`; a `division` filter narrows within it. MA8 unchanged.
+- `POST /api/v1/admin/audit/export` unchanged.

@@ -9876,3 +9876,16 @@ notifies every active-enrolled learner in-app and by email (`queue_deliveries`, 
 C7 a cancelled session cannot be reinstated or edited. C8 a new meeting link must be `http(s)://`.
 **Numbering:** migration `0198_live_session_cancel_reason`; API §12GM; RBAC §2.199.
 - **Feature ID authorized:** `nehn-029`. **Status:** built on `worktree-nehn-029`.
+
+### DEC-SCOPE-288 — Audit log search and filters (`nehn-042`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-042` (§23 L606 "appropriate activity history/audit
+information"; `UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-26-nehn-042-audit-log-search-design.md`. Dependencies: none.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** A1 filters actor, action (literal prefix),
+entity type, entity id, division (actor's), IST date range. A2 `limit`/`offset` paging, response stays an array (the web reads one row
+more than a page; no COUNT). A3 division scope moved into SQL, same rule (own-division actors + system rows). A4 rows gain `actor`.
+A5 access, MA8 and the export unchanged. A6 `created_at` index. A7 one Audit log page for the three admin portals. A8 "History" = an
+entity reference links to that entity's full history (no admin lead/payment detail page exists; the student 360 History tab is
+unchanged); dedicated History tabs on future detail pages and the retention period stay open.
+**Numbering:** migration `0199_audit_log_indexes`; API §12GN; RBAC §2.200.
+- **Feature ID authorized:** `nehn-042`. **Status:** built on `worktree-nehn-042`.
