@@ -2,6 +2,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 
+from fastapi import HTTPException
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -60,7 +61,7 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.services import application_filters, counselor_students, document_access, student_archive, student_profiles
+from app.services import application_filters, counselor_students, document_access, permissions, student_archive, student_profiles
 from app.services import application_outcomes as outcomes
 from app.services import applications as job_applications
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
@@ -1699,15 +1700,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 ({"id": b.id, "batch": b.name, "program": p.title, "schedule": b.schedule, "capacity": b.capacity, "enrolled": counts.get(b.id, 0), "status": b.status} for b, p in rows),
             )
         if section == "certificates":
-            rows = (
-                await db.execute(select(Certificate, User, Program).join(User, User.id == Certificate.student_id).join(Program, Program.id == Certificate.program_id).order_by(Certificate.issued_on.desc()))
-            ).all()
-            return _payload(
-                "Certificates",
-                "Issued completion certificates across the division (ADM-006).",
-                (("number", "Certificate"), ("student", "Student"), ("program", "Program"), ("issued", "Issued"), ("status", "Status"), ("override", "Issued via override")),
-                ({"number": c.certificate_no, "student": s.full_name, "program": p.title, "issued": c.issued_on, "status": c.status, "override": "Yes" if not c.criteria_snapshot.get("eligible", True) else "No"} for c, s, p in rows),
-            )
+            return _payload("Certificates", "Issued completion certificates across the division (ADM-006).", CERTIFICATE_COLUMNS, await _certificate_rows(db))
         if section == "enrollments":
             stmt = select(Enrollment, User, Batch).join(User, User.id == Enrollment.student_id).join(Batch, Batch.id == Enrollment.batch_id)
             rows = (await db.execute(stmt.order_by(Enrollment.created_at.desc()).limit(500))).all()
@@ -1796,6 +1789,42 @@ async def _it_counselor(db: AsyncSession, user: User, section: str):
     )
 
 
+CERTIFICATE_COLUMNS = (("number", "Certificate"), ("student", "Student"), ("program", "Program"), ("issued", "Issued"), ("status", "Status"), ("override", "Issued via override"))
+
+
+async def _certificate_rows(db: AsyncSession, limit: int | None = None) -> list[dict]:
+    """Issued certificates, newest first: the admin Certificates page (ADM-006) and the coordinator's (nehn-030)."""
+    stmt = select(Certificate, User, Program).join(User, User.id == Certificate.student_id).join(Program, Program.id == Certificate.program_id)
+    rows = (await db.execute(stmt.order_by(Certificate.issued_on.desc()).limit(limit))).all()
+    return [
+        {"number": c.certificate_no, "student": s.full_name, "program": p.title, "issued": c.issued_on, "status": c.status, "override": "Yes" if not c.criteria_snapshot.get("eligible", True) else "No"}
+        for c, s, p in rows
+    ]
+
+
+async def _coordinator(db: AsyncSession, user: User, section: str):
+    """nehn-030 (DEC-SCOPE-293): Dashboard and Certificates, read only. The certificate data follows the `certificates.view` grant, so a
+    Super Admin who revokes it closes the list (403) and empties the dashboard on the next request; any other section is a 404."""
+    if section not in {"dashboard", "certificates"}:
+        return None
+    allowed = await permissions.has_grant(db, user.role, "certificates", "view")
+    if section == "certificates":
+        if not allowed:
+            raise HTTPException(403, "You do not have permission to view certificates")
+        return _payload("Certificates", "Issued completion certificates.", CERTIFICATE_COLUMNS, await _certificate_rows(db))
+    if not allowed:
+        return _payload("Coordinator Dashboard", "Your Certificates permission is switched off. Ask a Super Admin to restore it.")
+    issued = await db.scalar(select(func.count()).select_from(Certificate)) or 0
+    overrides = await db.scalar(select(func.count()).select_from(Certificate).where(Certificate.criteria_snapshot["eligible"].as_boolean().is_(False))) or 0
+    return _payload(
+        "Coordinator Dashboard",
+        "The latest certificates issued.",
+        CERTIFICATE_COLUMNS,
+        await _certificate_rows(db, limit=5),
+        ({"label": "Certificates issued", "value": issued}, {"label": "Issued via override", "value": overrides}),
+    )
+
+
 async def section_payload(db: AsyncSession, user: User, section: str, *, filters: ApplicationFilters | None = None) -> dict | None:
     if user.role == "it_student":
         result = await _it_student(db, user, section)
@@ -1807,6 +1836,8 @@ async def section_payload(db: AsyncSession, user: User, section: str, *, filters
         result = await _agent(db, user, section)
     elif user.role == "counselor" and user.division == "it":
         result = await _it_counselor(db, user, section)
+    elif user.role == "coordinator":
+        result = await _coordinator(db, user, section)
     else:
         result = await _operations(db, user, section, filters=filters)
     return result

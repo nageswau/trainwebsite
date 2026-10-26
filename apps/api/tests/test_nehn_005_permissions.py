@@ -26,6 +26,7 @@ DIVISION = {
     "trainer": "it",
     "placement_team": "it",
     "hr_team": "it",
+    "coordinator": "it",
     "placement_manager": "it",
     "overseas_admin": "overseas",
     "overseas_student": "overseas",
@@ -66,14 +67,14 @@ async def _restored(db, role: str):
 
 
 def test_the_catalogue_names_the_pilot_resources_and_known_actions():
-    assert set(rbac.CATALOGUE) == {"payments", "discounts", "reports.telecaller"}
+    assert set(rbac.CATALOGUE) == {"payments", "discounts", "reports.telecaller", "certificates"}  # nehn-030 added certificates
     for resource in rbac.CATALOGUE.values():
         assert set(resource["actions"]) <= set(rbac.ACTIONS)
     assert rbac.ACTIONS == ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "manage")
 
 
-def test_roles_are_the_28_existing_roles():
-    assert len(rbac.ROLES) == 28 and "super_admin" in rbac.ROLES
+def test_roles_are_the_29_existing_roles():
+    assert len(rbac.ROLES) == 29 and "super_admin" in rbac.ROLES and "coordinator" in rbac.ROLES  # nehn-030 added coordinator
 
 
 def test_the_default_grants_reproduce_the_old_inline_sets():

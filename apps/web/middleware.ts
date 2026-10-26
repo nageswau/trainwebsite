@@ -4,11 +4,11 @@ export function middleware(req:NextRequest) {
   const p=req.nextUrl.pathname;
   // bdm-001 (AC12): /bdm is protected; /bdm/sign-in is the public chooser. QA-05: the admin portal's recovery pages are public too.
   // tel-001 (AC5, TL1): /telecaller likewise, with /telecaller/sign-in as its chooser.
-  // tel-017: an IT counselor's workspace is /it/counselor.
+  // tel-017: an IT counselor's workspace is /it/counselor. nehn-030: the IT coordinator's is /it/coordinator.
   // rec-001 (Q-29): /recruiter likewise; a recruiter signs in at /it, a placement manager at /admin.
   // upc-001 (PU1): /partnership too -- heads under /partnership/head sign in at /admin, managers at /overseas.
   // mgmt-001 (AC4, MG3): /management too -- partners, accountants and the super admin all sign in at /admin.
-  const protectedRoute = !PUBLIC_PATHS.has(p) &&/^\/(it\/(student|trainer|placement|hr|admin|counselor)|overseas\/(student|counselor|university|agent|admin)|admin|bdm|telecaller|recruiter|partnership|management)(\/|$)/.test(p);
+  const protectedRoute = !PUBLIC_PATHS.has(p) &&/^\/(it\/(student|trainer|placement|hr|admin|counselor|coordinator)|overseas\/(student|counselor|university|agent|admin)|admin|bdm|telecaller|recruiter|partnership|management)(\/|$)/.test(p);
   if (protectedRoute && !req.cookies.get("edusphere_access")) {
     // AGN-008 QA8-07: `next` keeps the query string (e.g. an Applications filter); LoginForm only follows a same-origin path.
     const next=encodeURIComponent(p+req.nextUrl.search);

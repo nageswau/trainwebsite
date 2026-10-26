@@ -21,6 +21,7 @@ USERS = [
     ("trainer@edusphere.local", "Meera Iyer", "trainer", "it"),
     ("placement@edusphere.local", "Kiran Placement", "placement_team", "it"),
     ("hr@edusphere.local", "Priya HR", "hr_team", "it"),
+    ("coordinator@edusphere.local", "Nisha Coordinator", "coordinator", "it"),  # nehn-030: the IT certificate coordinator
     ("overseasadmin@edusphere.local", "Overseas Administrator", "overseas_admin", "overseas"),
     ("student.overseas@edusphere.local", "Ananya Sharma", "overseas_student", "overseas"),
     ("counselor@edusphere.local", "Ritika Counselor", "counselor", "overseas"),

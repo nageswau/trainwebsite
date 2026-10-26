@@ -25,6 +25,7 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
   placement_team: "/recruiter/dashboard", // rec-001 (DEC-SCOPE-116 R2, Q-29): the recruiter's own workspace
   placement_manager: "/recruiter/manager/team",
   hr_team: "/it/hr/dashboard",
+  coordinator: "/it/coordinator/dashboard", // nehn-030 (DEC-SCOPE-293)
   employer: "/it/employer/dashboard",
   it_admin: "/it/admin/dashboard",
   overseas_student: "/overseas/student/dashboard",
@@ -258,6 +259,8 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
   "it/trainer": withTasks(["dashboard","attendance","assignments","assessments","materials","live-sessions","student-progress","questions","support"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/trainer/${x}`}))),
   "it/placement": withTasks([...["dashboard","candidates","company-requirements","interviews","offers","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/placement/${x}`})),{label:"Recruiter Workspace",href:"/recruiter/dashboard"}]), // rec-001: the way back
   "it/hr": withTasks([...["dashboard","job-requirements","shortlists","candidates","interviews"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/hr/${x}`})),{label:"Candidate Master",href:"/recruiter/candidates"},{label:"Find Candidates",href:"/recruiter/find-candidates"},{label:"Talent Pools",href:"/recruiter/pools"}]), // rec-009 / rec-013 / rec-015: read only
+  // nehn-030 (DEC-SCOPE-293 C3): the IT coordinator's certificate portal.
+  "it/coordinator": withTasks(["dashboard","certificates"].map(x=>({label:x.replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/coordinator/${x}`}))),
   // bdm-001: "BDMs" is written out -- the generated label would read "Bdms".
   // tel-017 (DEC-SCOPE-076 C1): an IT counselor works leads only; tel-016 added Appointments (lead bookings), tel-018 the student link.
   "it/counselor": withTasks(["dashboard","leads","appointments"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/counselor/${x}`}))),

@@ -9942,3 +9942,16 @@ otherwise). F6 a resubmission with `file_ids` replaces the set; without keeps it
 trainer, it_admin, super_admin. F12 no orphan sweep; unattached uploads stay owner-only. No AV scan (nehn-003 PS8).
 **Numbering:** migration `0200_submission_files`; API §12GQ; RBAC §2.203.
 - **Feature ID authorized:** `nehn-024`. **Status:** built on `worktree-nehn-024`.
+
+### DEC-SCOPE-293 — IT Coordinator role and account model (`nehn-030`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-030` (§4 L87, §11 L245-248; `UNVERIFIED` backlog);
+`DEC-ROLE-003` (CONFIRMED_CURRENT: new distinct role, exclusive issuance); design
+`docs/superpowers/specs/2026-10-26-nehn-030-coordinator-role-design.md`. Dependency nehn-005 (`DEC-SCOPE-281`) merged.
+**Builder's defaults for the open parts of `DEC-ROLE-003` / OD-05 (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):**
+C1 a new account type, role `coordinator`, one role per user. C2 IT only. C3 no duties beyond certificates yet (Dashboard, Certificates,
+Management tasks). C4 created by it_admin / super_admin with the existing welcome-link provisioning. C5 standard `/it/login`, no MFA (none
+exists in the product). C6 a trainer who is also a coordinator needs two accounts. C7 trainer/admin issuance unchanged until nehn-031.
+The Certificates section is read only and follows the new `certificates.view` grant (coordinator only by default).
+**Numbering:** migration `0201_coordinator_role`; no new API route (existing `GET /portal/{division}/{role}/{section}`); RBAC §2.204.
+- **Feature ID authorized:** `nehn-030`. **Status:** built on `worktree-nehn-030`.
