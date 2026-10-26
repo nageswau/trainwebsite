@@ -2458,6 +2458,23 @@ class Appointment(Base, TimestampMixin):
     calendar_sequence: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
 
+class StoredFile(Base):
+    """nehn-003 (DEC-SCOPE-279 PS5): one file uploaded through `POST /files/upload`. `GET /files/{id}` serves it to its owner (and
+    super_admin); the key is random and never returned."""
+
+    __tablename__ = "stored_files"
+    __table_args__ = (UniqueConstraint("key", name="uq_stored_files_key"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    key: Mapped[str] = mapped_column(String(500))
+    purpose: Mapped[str] = mapped_column(String(40))
+    owner_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    original_filename: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(120))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class CalendarFeed(Base):
     """ccrm-038 (DEC-SCOPE-274 CA4): a counselor's read-only iCal feed. Only the SHA-256 of the URL token is kept; regenerating replaces
     the row, revoking deletes it."""

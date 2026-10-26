@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { User } from "@/lib/types";
 import { type Feedback, toneClass, welcomeLinkFeedback } from "@/lib/welcomeLink";
 import { announceUsersChanged } from "@/lib/usersChanged";
+import { uploadFile } from "@/lib/uploadFile";
 import { type LookupName, lookupSearch } from "@/lib/lookups";
 import SearchableSelect, { type Noun } from "./SearchableSelect";
 import BatchSlotPicker from "./BatchSlotPicker";
@@ -90,21 +91,6 @@ function detailMessage(detail: unknown) {
   if (detail && typeof detail === "object" && "message" in detail) return String((detail as { message: unknown }).message);
   if (Array.isArray(detail)) return detail.map(item => item?.msg || "Invalid input").join("; ");
   return "The operation could not be completed.";
-}
-
-// Shared local-upload/presign flow (mirrors DocumentUpload's own inline copy) -- used by
-// AssessmentForm to give a `file`-response question a real upload instead of the plain
-// textarea every other non-MCQ question type falls back to.
-async function uploadFile(file: File): Promise<string> {
-  const local = new FormData(); local.set("file", file);
-  const localResponse = await fetch("/api/v1/files/local-upload", { method: "POST", body: local });
-  if (localResponse.ok) return String((await localResponse.json()).url);
-  const presignResponse = await fetch("/api/v1/files/presign", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ filename: file.name, content_type: file.type, size: file.size }) });
-  const signed = await presignResponse.json();
-  if (!presignResponse.ok) throw new Error(detailMessage(signed.detail));
-  const upload = await fetch(signed.upload_url, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-  if (!upload.ok) throw new Error("Object storage upload failed");
-  return String(signed.key);
 }
 
 function parseValues(form: FormData, fields: Field[]) {
@@ -235,16 +221,7 @@ function DocumentUpload() {
     const form = new FormData(formElement); const file = form.get("file");
     if (!(file instanceof File) || !file.size) { setBusy(false); return; }
     try {
-      let fileUrl = "";
-      const local = new FormData(); local.set("file", file);
-      const localResponse = await fetch("/api/v1/files/local-upload", { method: "POST", body: local });
-      if (localResponse.ok) fileUrl = String((await localResponse.json()).url);
-      else {
-        const presignResponse = await fetch("/api/v1/files/presign", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ filename: file.name, content_type: file.type, size: file.size }) });
-        const signed = await presignResponse.json(); if (!presignResponse.ok) throw new Error(detailMessage(signed.detail));
-        const upload = await fetch(signed.upload_url, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-        if (!upload.ok) throw new Error("Object storage upload failed"); fileUrl = signed.key;
-      }
+      const fileUrl = await uploadFile(file);
       const applicationId = String(form.get("application_id") || "");
       const response = await fetch("/api/v1/workflows/overseas/documents", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application_id: applicationId || undefined, document_type: form.get("document_type"), expiry_date: form.get("expiry_date") || undefined, file_url: fileUrl, original_filename: file.name, content_type: file.type, file_size: file.size }) });
       const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(detailMessage(data.detail));

@@ -60,7 +60,7 @@ test("an uploaded document has a real, working download button (RAID.md I-16)", 
     row.getByRole("button", { name: "Download" }).click(),
   ]);
   await downloadPage.waitForLoadState();
-  expect(downloadPage.url()).toMatch(/local-files|amazonaws|storage/);
+  expect(downloadPage.url()).toMatch(/files\/signed|amazonaws|storage/);
   await downloadPage.close();
 });
 

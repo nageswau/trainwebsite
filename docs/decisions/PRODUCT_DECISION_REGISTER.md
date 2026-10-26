@@ -9729,6 +9729,25 @@ ccrm-030 windows; one run notifies, a second sends nothing. G9 product defects a
 **Numbering:** no migration; no API change; RBAC §2.192.
 - **Feature ID authorized:** `ccrm-041`. **Status:** built on `worktree-ccrm-041`.
 
+### DEC-SCOPE-279 — Private, S3-compatible file storage with per-purpose upload policy (`nehn-003`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-003` (§9 L191-198, §24 "Storage"; `DEC-INFRA-002` ID4;
+`psb-017`; `UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-26-nehn-003-private-storage-design.md`.
+Dependencies: no feature dependency. The backlog's infra question (Spaces vs Volume) is answered by PS1: the Volume stays
+(`DEC-INFRA-002` ID4, topology `CONFIRMED_CURRENT`); the code becomes S3-compatible so Spaces is configuration only. No provider
+infrastructure is created (`DEC-INFRA-001` gate).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** PS1 `S3_ENDPOINT_URL` + configurable `S3_SSE`
+(default `AES256`) through one boto3 client; the local → Spaces migration script waits for the owner choosing Spaces. PS2 local-mode
+`presign_download` returns a signed 900 s link `/api/v1/files/signed/<token>` (JWT `type=download`, not usable as a session). PS3
+`/local-files/<key>`: `public/` open; any other key 404 without a session, otherwise the `/files/download` rules (KYC and overseas
+documents 404) — the compatibility route for stored URLs. PS4 policies `default` (today's list, 20 MB), `assignment_submission` (PDF,
+DOC, DOCX, JPEG, PNG, HEIC; 5 MB), `learning_material` (20 MB), `signature` (PNG 1 MB), `university_logo` (PNG/WebP/JPEG 1 MB, no SVG),
+`career_resume` (PDF/DOC/DOCX 5 MB), each checked by content-type and magic bytes. PS5 `stored_files` + `POST /files/upload?purpose=` +
+`GET /files/{id}` (owner or super_admin). PS6 `local-upload`/`career-upload` keep their shapes, now sniffed and streamed. PS7
+certificates, receipts, invoices written through `StorageService`. PS8 no AV scan. PS9 callers' `expires_in` unchanged.
+**Numbering:** migration `0194_stored_files`; API §12GE; RBAC §2.193.
+- **Feature ID authorized:** `nehn-003`. **Status:** built on `worktree-nehn-003`.
+
 ### DEC-SCOPE-280 — Student ID coverage and lookup; Agent ID stays out (`nehn-040`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-040` (PDF §22 L578-587, §23 L592/L596, actions 21/22;

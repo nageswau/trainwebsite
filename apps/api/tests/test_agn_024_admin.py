@@ -102,6 +102,8 @@ async def test_kyc_keys_are_never_served_by_generic_routes(client, db_session):
     admin = await mk_user(db_session, role="overseas_admin")
     async with client_for(admin.email) as c:
         assert (await c.get("/api/v1/files/download", params={"key": docs["pan"].file_key})).status_code == 404
-    if not settings.aws_s3_bucket:  # the public static mount exists only in local storage mode
+    if not settings.aws_s3_bucket:  # the /local-files compatibility route (nehn-003) refuses KYC keys even with a session
+        async with client_for(admin.email) as c:
+            assert (await c.get(f"/local-files/{docs['pan'].file_key}")).status_code == 404
         assert storage.read_bytes(docs["pan"].file_key) == PDF
         assert (await client.get(f"/local-files/{docs['pan'].file_key}")).status_code == 404

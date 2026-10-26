@@ -328,26 +328,27 @@ async def test_the_counselor_uploads_an_offer_letter_then_records_with_it(db_ses
 # --- nehn-001 (OF1): the portal's offer predicates ---
 
 
+async def _student_offers(student) -> tuple[int, list[dict]]:
+    """The student's Offers tile and Offer letters rows."""
+    async with client_for(student.email) as c:
+        dash = (await c.get(PORTAL.format("student", "dashboard"))).json()
+        letters = (await c.get(PORTAL.format("student", "offer-letters"))).json()
+    return {m["label"]: m["value"] for m in dash["metrics"]}["Offers"], letters["rows"]
+
+
 @pytest.mark.asyncio
 async def test_nehn_001_an_offer_stage_application_counts_for_the_student(db_session, world):
     app = await fresh(db_session, world["direct_app"])
     student = world["direct_student"]
-    async with client_for(student.email) as c:
-        dash = (await c.get(PORTAL.format("student", "dashboard"))).json()
-        assert {m["label"]: m["value"] for m in dash["metrics"]}["Offers"] == 0  # university_selection does not count
-    for status in ("offer", "visa_documentation", "enrolled", "offer_received"):
+    assert (await _student_offers(student))[0] == 0  # university_selection does not count
+    for status in ("offer", "visa_documentation", "status_tracking", "enrolled", "offer_received", "accepted"):  # AC1-AC3
         app.status = status
         await db_session.commit()
-        async with client_for(student.email) as c:
-            dash = (await c.get(PORTAL.format("student", "dashboard"))).json()
-            letters = (await c.get(PORTAL.format("student", "offer-letters"))).json()
-        assert {m["label"]: m["value"] for m in dash["metrics"]}["Offers"] == 1, status
-        assert len(letters["rows"]) == 1, status
+        tile, rows = await _student_offers(student)
+        assert (tile, len(rows)) == (1, 1), status
     app.status = "withdrawn"  # withdrawn before any offer was recorded
     await db_session.commit()
-    async with client_for(student.email) as c:
-        dash = (await c.get(PORTAL.format("student", "dashboard"))).json()
-    assert {m["label"]: m["value"] for m in dash["metrics"]}["Offers"] == 0
+    assert (await _student_offers(student))[0] == 0
 
 
 @pytest.mark.asyncio
@@ -358,3 +359,36 @@ async def test_nehn_001_the_student_offer_list_shows_the_recorded_type_and_deadl
         letters = (await c.get(PORTAL.format("student", "offer-letters"))).json()
     [row] = letters["rows"]
     assert row["offer_type"] == "Conditional" and row["offer_deadline"] == (ISSUED + timedelta(days=30)).isoformat()
+
+
+@pytest.mark.asyncio
+async def test_nehn_001_an_offer_withdrawn_after_it_was_recorded_still_counts(db_session, world):  # AGN-010 O5
+    async with client_for(world["counselor"].email) as c:
+        assert (await c.post(OFFERS.format(world["direct_app"].id), json=body(world["direct_letter"]))).status_code == 201
+    app = await fresh(db_session, world["direct_app"])
+    app.status = "withdrawn"
+    await db_session.commit()
+    tile, rows = await _student_offers(world["direct_student"])
+    assert (tile, len(rows)) == (1, 1)
+
+
+@pytest.mark.asyncio
+async def test_nehn_001_a_letter_uploaded_before_the_offer_stage_is_listed_but_not_counted(db_session, world):
+    app = await fresh(db_session, world["direct_app"])
+    app.offer_letter_url = "https://example.local/early-offer.pdf"  # still at university_selection
+    await db_session.commit()
+    tile, rows = await _student_offers(world["direct_student"])
+    assert tile == 0
+    assert [r["offer"] for r in rows] == ["https://example.local/early-offer.pdf"]
+
+
+@pytest.mark.asyncio
+async def test_nehn_001_the_university_rep_lists_a_counselor_advanced_offer(db_session, world):
+    rep = await mk_user(db_session, role="university_rep", profile={"university_id": str(world["direct_app"].university_id)})
+    async with client_for(rep.email) as c:
+        assert (await c.get(PORTAL.format("university", "offer-letters"))).json()["rows"] == []  # university_selection
+    async with client_for(world["counselor"].email) as c:
+        assert (await c.post(OFFERS.format(world["direct_app"].id), json=body(world["direct_letter"]))).status_code == 201
+    async with client_for(rep.email) as c:
+        rows = (await c.get(PORTAL.format("university", "offer-letters"))).json()["rows"]
+    assert [(r["application_code"], r["status"]) for r in rows] == [(world["direct_app"].application_code, "offer")]

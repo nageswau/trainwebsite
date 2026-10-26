@@ -4076,6 +4076,22 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   `{count, more, items: [{id, label, detail, date, overdue, href}]}` (at most 10 items; `date` is an ISO date or timestamp or null;
   `href` is the web page for the item). Overseas counselor only; every other role (IT counselor included) 403. Read-only, not audited.
 
+## 12GE. Private file storage and upload policy (nehn-003) — addendum, 2026-10-26
+
+`DEC-SCOPE-279`. Migration `0194_stored_files`.
+
+- `POST /api/v1/files/upload?purpose=<default|assignment_submission|learning_material|signature|university_logo|career_resume>`
+  (multipart `file`) → 201 `{id, purpose, filename, content_type, size, url: "/api/v1/files/{id}"}`. 401 without a session; 413 empty or
+  over the purpose's limit; 415 type not allowed or bytes that do not match the type; 422 unknown purpose. The storage key is never returned.
+- `GET /api/v1/files/{id}` → 200 the file (`Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`) in local mode, 307 to a
+  presigned URL in S3 mode. Owner or super_admin; others 403; 401 without a session; 404 unknown.
+- `GET /api/v1/files/signed/{token}` → 200 the file; 404 for a forged, expired or non-download token. No session needed: it is what
+  local-mode `presign_download` returns (every existing `{url, expires_in}` download response now carries this link instead of
+  `/local-files/<key>`; the shape is unchanged).
+- `GET /local-files/{key}` (no `/api/v1` prefix) → `public/…` keys open; any other key 404 without a session, and for a signed-in user
+  the `/files/download` rules apply (KYC and overseas-document keys 404). PDFs and images are inline, any other type an attachment.
+- `POST /files/local-upload` and `POST /public/career-upload`: unchanged shapes; content now sniffed (415 on a mismatch).
+
 ## 12GF. Student ID coverage and lookup (nehn-040) — addendum, 2026-10-26
 
 `DEC-SCOPE-280`. Migration `0195_agent_student_codes`. Additive fields only; no new route.

@@ -1,13 +1,12 @@
 from datetime import date
 from io import BytesIO
-from pathlib import Path
 
-import boto3
 from reportlab.lib.colors import HexColor
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
 from app.core.config import settings
+from app.services.storage import storage
 
 
 def _generate_billing_pdf(*, kind: str, doc_no: str, payer_name: str, amount: float, currency: str, issued_on: date, reference_type: str, student_name: str | None = None) -> str:
@@ -41,12 +40,9 @@ def _generate_billing_pdf(*, kind: str, doc_no: str, payer_name: str, amount: fl
     pdf.save()
     data = buffer.getvalue()
     key = f"{kind.lower()}s/{doc_no}.pdf"
+    storage.write_bytes(key, data, "application/pdf")  # nehn-003 PS7: one storage path for every writer
     if settings.aws_s3_bucket:
-        boto3.client("s3", region_name=settings.aws_region).put_object(Bucket=settings.aws_s3_bucket, Key=key, Body=data, ContentType="application/pdf", ServerSideEncryption="AES256")
         return f"s3://{settings.aws_s3_bucket}/{key}"
-    destination = Path(settings.local_upload_dir) / key
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_bytes(data)
     return f"/local-files/{key}"
 
 

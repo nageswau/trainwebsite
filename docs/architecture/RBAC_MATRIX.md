@@ -2969,6 +2969,18 @@ under the counselor CRM prefixes without a row fails `test_every_counselor_crm_r
 - The public `GET /calendar/feeds/{token}.ics` needs no session: a bad token is `404` for every caller, signed in or not.
 - Pinned by `test_ccrm_041_matrix.py` (`test_matrix_row[...]`, one per route) and `test_tel_026_matrix.py::test_every_telecaller_crm_route_has_a_row`.
 
+### 2.193 Private file storage *(added 2026-10-26 — `DEC-SCOPE-279`, nehn-003)*
+
+| Route | Anonymous | Owner | super_admin | Any other signed-in user |
+|---|---|---|---|---|
+| `POST /files/upload` | 401 | 201 (becomes owner) | 201 | 201 |
+| `GET /files/{id}` | 401 | 200 | 200 | 403 |
+| `GET /files/signed/{token}` | 200 with a valid token (the issuing route authorised), else 404 | same | same | same |
+| `GET /local-files/public/…` | 200 | 200 | 200 | 200 |
+| `GET /local-files/<other key>` | 404 | 200 | 200 | 200 (as `/files/download`); KYC / overseas-document keys 404 for everyone |
+
+Pinned by `apps/api/tests/test_nehn_003_private_storage.py`.
+
 ### 2.194 Student ID coverage and lookup *(added 2026-10-26 — `DEC-SCOPE-280`, nehn-040)*
 
 No new route or permission. The Student ID is display and search data, never an authentication factor. Every search that matches it

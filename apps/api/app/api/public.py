@@ -29,8 +29,9 @@ from app.models import (
     WebinarRegistration,
 )
 from app.schemas import CareerPathOut, CountryOut, EnquiryIn, ProgramOut, RealProjectOut, SocialProofOut, TestimonialOut, UniversityOut, WebinarRegistrationIn
-from app.services import lead_intake, social_proof
+from app.services import lead_intake, social_proof, upload_policy
 from app.services.partnership_universities import public_visible
+from app.services.storage import storage
 from app.worker import sync_enquiry_to_crm_task
 
 router = APIRouter(prefix="/public", tags=["public"])
@@ -398,21 +399,14 @@ async def career_upload(file: UploadFile = File(...)):
     import uuid
     from pathlib import Path
 
-    import boto3
-
-    allowed = {"application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"}
-    if file.content_type not in allowed:
-        raise HTTPException(415, "Resume must be PDF, DOC or DOCX")
-    data = await file.read()
-    if len(data) > 5 * 1024 * 1024:
-        raise HTTPException(413, "Resume is limited to 5 MB")
-    suffix = Path(file.filename or "resume.pdf").suffix.lower()
+    # nehn-003 PS6: the `career_resume` policy (sniffed), written through StorageService; the response shape is unchanged.
+    try:
+        size = upload_policy.check_upload("career_resume", file)
+    except upload_policy.PolicyError as refused:
+        raise HTTPException(refused.status_code, "Resume is limited to 5 MB" if refused.status_code == 413 else "Resume must be PDF, DOC or DOCX") from None
+    suffix = Path(file.filename or "resume.pdf").suffix.lower()[:10]
     key = f"career-resumes/{uuid.uuid4().hex}{suffix}"
+    storage.write_stream(key, file.file, str(file.content_type))  # allowed by the policy, so never None
     if settings.aws_s3_bucket:
-        s3 = boto3.client("s3", region_name=settings.aws_region)
-        s3.put_object(Bucket=settings.aws_s3_bucket, Key=key, Body=data, ContentType=file.content_type, ServerSideEncryption="AES256")
-        return {"url": f"s3://{settings.aws_s3_bucket}/{key}", "storage": "s3", "size": len(data)}
-    dest = Path(settings.local_upload_dir) / key
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(data)
-    return {"url": f"/local-files/{key}", "storage": "local", "size": len(data)}
+        return {"url": f"s3://{settings.aws_s3_bucket}/{key}", "storage": "s3", "size": size}
+    return {"url": f"/local-files/{key}", "storage": "local", "size": size}
