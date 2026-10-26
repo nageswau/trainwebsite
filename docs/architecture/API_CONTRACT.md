@@ -4224,3 +4224,18 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   Admins (own division; `super_admin` all) and other payers (agents) are unchanged: 200 signed URL, or 404 if not yet generated.
 - Invoice generation is unchanged (checkout, enrolment, admin create/discount/EMI, agent deposit) until OD-11 (GST) is answered.
 - `GET /payments/{payment_id}/receipt` is unchanged and is the student's payment document.
+
+## 12GP. Assignment submission files (nehn-024) — addendum, 2026-10-26
+
+`DEC-SCOPE-291`. Migration `0200_submission_files`. Additive; existing fields and status codes unchanged.
+
+- `POST /workflows/it/assignments/{id}/submissions` — body gains optional `file_ids: UUID[]` (≤ 5; repeats ignored), ids from
+  `POST /files/upload?purpose=assignment_submission` (nehn-003, 5 MB, PDF/DOC/DOCX/JPEG/PNG/HEIC, sniffed). Present replaces the
+  submission's files; absent keeps them. Any id that is not the caller's own `assignment_submission` upload, or is attached to another
+  submission → **422** `"One or more files cannot be attached to this submission"`. `file_ids` counts as "a file" for `file` and
+  `text_or_file` assignments. A concurrent submit that collides → **409**. Audit `assignment.submit` metadata gains `file_count`.
+- `GET /workflows/it/trainer/submissions` — each row gains `files: [{id, filename, content_type, size, url}]` (`[]` when none).
+- `GET /workflows/it/submissions/{submission_id}/files/{file_id}` (new) — the file (attachment unless PDF/image, `nosniff`; 307 to a
+  presigned URL in S3 mode). 401 anonymous; 403 not the submitter / batch trainer / it_admin / super_admin; 404 unknown submission or a
+  file not attached to it.
+- `GET /portal/it/student/{assignments|projects}` — rows gain `submission_type` (not a table column).

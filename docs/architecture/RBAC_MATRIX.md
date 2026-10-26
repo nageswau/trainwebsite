@@ -3056,3 +3056,12 @@ Export), `/it/admin/audit-log` (IT Admin), `/overseas/admin/audit-log` (Overseas
 | `GET /payments/{id}/invoice` | 401 | 404 own payment; 403 another's | 200 | 200 own payment |
 
 No new permission key. Pinned by `apps/api/tests/test_nehn_020_student_invoices.py`.
+
+### 2.202 Assignment submission files *(added 2026-10-26 — `DEC-SCOPE-291`, nehn-024)*
+
+| Route | Anonymous | Submitting it_student | Other it_student | Trainer (own batch / other) | it_admin | super_admin |
+|---|---|---|---|---|---|---|
+| `POST /workflows/it/assignments/{id}/submissions` with `file_ids` | 401 | 201 (own uploads only, else 422) | 422 for another's file ids | 403 | 403 | 403 (not enrolled) |
+| `GET /workflows/it/submissions/{sid}/files/{fid}` | 401 | 200 | 403 | 200 / 403 | 200 | 200 |
+
+No new permission key. Pinned by `apps/api/tests/test_nehn_024_submission_files.py`.

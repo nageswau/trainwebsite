@@ -7,6 +7,16 @@ function detailMessage(detail: unknown) {
   return "The operation could not be completed.";
 }
 
+// nehn-024: a policy-checked upload recorded in `stored_files` (nehn-003 `POST /files/upload?purpose=`); returns the file's id.
+export async function uploadStoredFile(file: File, purpose: string): Promise<string> {
+  const form = new FormData();
+  form.set("file", file);
+  const response = await fetch(`/api/v1/files/upload?purpose=${encodeURIComponent(purpose)}`, { method: "POST", body: form });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(detailMessage(data.detail));
+  return String(data.id);
+}
+
 export async function uploadFile(file: File): Promise<string> {
   const local = new FormData();
   local.set("file", file);

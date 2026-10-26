@@ -6,13 +6,15 @@ import BatchRosterPanel from "./BatchRosterPanel";
 import LiveClassesPanel from "./LiveClassesPanel";
 import LiveSessionManagePanel from "./LiveSessionManagePanel";
 import SupportTicketQueuePanel from "./SupportTicketQueuePanel";
+import { formatSize } from "@/lib/agentDocuments";
 import { formatDate } from "@/lib/formatDate";
 
 type Batch = { id: string; name: string; schedule: string; capacity: number };
 type Student = { id: string; name: string; batch_id: string };
 type Enrollment = { id: string; student_id: string; student: string; batch_id: string; batch: string; enrollment_code: string; progress_percent: number };
 type Correction = { id: string; student: string; batch: string; session_date: string; current_status: string; requested_status: string; reason: string };
-type Submission = { id: string; assignment: string; student: string; answer: string | null; file_url: string | null; score?: number; max_score: number; status: string };
+type SubmissionFile = { id: string; filename: string; size: number; url: string };
+type Submission = { id: string; assignment: string; student: string; answer: string | null; file_url: string | null; files?: SubmissionFile[]; score?: number; max_score: number; status: string };
 type TrainerAssignment = {
   id: string;
   batch_id: string;
@@ -286,13 +288,15 @@ export default function TeacherWorkspaceActions({ section }: { section: string }
       {gradingSubmissionId && (() => {
         const current = submissions.find(item => item.id === gradingSubmissionId);
         if (!current) return null;
+        const files = current.files ?? [];
         return (
           <>
             <div className="qa-item">
               <div className="qa-item-head"><strong>What {current.student} submitted</strong></div>
               {current.answer && <blockquote className="answer-text">{current.answer}</blockquote>}
-              {current.file_url && <p style={{ margin: current.answer ? "8px 0 0" : 0 }}><a className="btn small secondary" href={current.file_url} target="_blank" rel="noreferrer">Open submitted file</a></p>}
-              {!current.answer && !current.file_url && <p className="muted answer-empty">Nothing was submitted.</p>}
+              {files.length > 0 && <ul className="upload-list" style={{ marginTop: current.answer ? 8 : 0 }}>{files.map(file => <li key={file.id}><a href={file.url} download>Download {file.filename} ({formatSize(file.size)})</a></li>)}</ul>}
+              {current.file_url && <p style={{ margin: current.answer || files.length ? "8px 0 0" : 0 }}><a className="btn small secondary" href={current.file_url} target="_blank" rel="noreferrer">Open submitted file</a></p>}
+              {!current.answer && !current.file_url && !files.length && <p className="muted answer-empty">Nothing was submitted.</p>}
             </div>
             <form key={gradingSubmissionId} className="form" onSubmit={event => { const form = new FormData(event.currentTarget); void submit(event, `/api/v1/workflows/it/trainer/submissions/${gradingSubmissionId}`, "PATCH", { score: Number(form.get("score")), status: form.get("status"), feedback: form.get("feedback") }, "Submission graded."); }}>
               <Field controlId="grade-score" label={`Score (of ${current.max_score})`}><input name="score" type="number" min="0" max={current.max_score} required /></Field>

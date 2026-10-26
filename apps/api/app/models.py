@@ -2480,6 +2480,18 @@ class StoredFile(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class SubmissionFile(Base):
+    """nehn-024 (DEC-SCOPE-291 F1): a stored file attached to an assignment submission. Filename, size and type live on the
+    `stored_files` row; a file belongs to one submission."""
+
+    __tablename__ = "submission_files"
+    __table_args__ = (UniqueConstraint("stored_file_id", name="uq_submission_files_stored_file"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    submission_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("submissions.id", ondelete="CASCADE"), index=True)
+    stored_file_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("stored_files.id", ondelete="CASCADE"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class RolePermission(Base):
     """nehn-005 (DEC-SCOPE-281 P8): one grant -- `role` may `action` on `resource` (both from `rbac.CATALOGUE`). super_admin never has
     rows (it holds everything); a change is audited in `audit_logs` (`role_permissions.update`)."""

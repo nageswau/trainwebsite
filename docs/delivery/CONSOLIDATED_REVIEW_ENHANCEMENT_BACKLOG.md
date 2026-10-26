@@ -1102,6 +1102,10 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** submission tests that use `file_url` strings; grading UI.
 - **Open questions:** allow multiple files? Keep external URLs? Resubmission versioning?
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-26):**
+  - Built on `worktree-nehn-024` (`DEC-SCOPE-291`; migration `0200_submission_files`; API §12GP; RBAC §2.202). AC1-AC5 met.
+  - Builder's defaults (`NEEDS_CONFIRMATION`): up to 5 files; links kept as optional; a resubmission replaces the files (no versioning);
+    no orphan sweep.
 
 #### `nehn-025` — Trainer question upload from a standard Excel template
 - **Source:** §9 "Trainer Assessment Upload" (L199-208); §10 "Upload assignment/question templates" (L222); action 10.
