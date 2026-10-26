@@ -3,7 +3,7 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -139,10 +139,22 @@ async def social_proof_strip(division: Literal["it", "overseas", "all"] = "all",
     }
 
 
+async def _public_university_counts(db: AsyncSession, country_ids: list[UUID]) -> dict[UUID, int]:
+    """nehn-034 (DEC-SCOPE-286 C1): each country's published, active universities, in one grouped query."""
+    stmt = select(University.country_id, func.count()).where(University.country_id.in_(country_ids), *public_visible()).group_by(University.country_id)
+    return dict((await db.execute(stmt)).tuples().all())
+
+
+def _country_out(country: Country, count: int) -> CountryOut:
+    return CountryOut.model_validate(country).model_copy(update={"university_count": count})
+
+
 @router.get("/countries", response_model=list[CountryOut])
 async def countries(db: AsyncSession = Depends(get_db)):
     # upc-002: the ISO rows are internal; only catalogue countries are public.
-    return (await db.scalars(select(Country).where(Country.catalogue_visible.is_(True)).order_by(Country.name))).all()
+    cs = (await db.scalars(select(Country).where(Country.catalogue_visible.is_(True)).order_by(Country.name))).all()
+    counts = await _public_university_counts(db, [c.id for c in cs])
+    return [_country_out(c, counts.get(c.id, 0)) for c in cs]
 
 
 @router.get("/countries/{slug}")
@@ -154,7 +166,7 @@ async def country(slug: str, db: AsyncSession = Depends(get_db)):
     us = (await db.scalars(select(University).where(University.country_id == c.id, *public_visible()).limit(20))).all()
     ss = (await db.scalars(select(Scholarship).where(Scholarship.country_id == c.id, Scholarship.active.is_(True)).limit(20))).all()
     return {
-        "country": CountryOut.model_validate(c),
+        "country": _country_out(c, (await _public_university_counts(db, [c.id])).get(c.id, 0)),
         "universities": [UniversityOut.model_validate(u) for u in us],
         "scholarships": [{"id": s.id, "title": s.title, "amount": s.amount, "eligibility": s.eligibility, "deadline": s.deadline} for s in ss],
     }

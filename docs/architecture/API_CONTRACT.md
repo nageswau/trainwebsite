@@ -4176,9 +4176,19 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   commission. `null` is shown by the web client as the icon its category names (`web/lib/courseIcons.ts`), else the general icon.
 - The CSV course import is unchanged (imported courses are automatic).
 
-## 12GL. Live class reschedule and cancel (nehn-029) — addendum, 2026-10-26
+## 12GL. Country cards (nehn-034) — addendum, 2026-10-26
 
-`DEC-SCOPE-286`. Migration `0198_live_session_cancel_reason` (`live_sessions.cancel_reason`, nullable text).
+`DEC-SCOPE-286`. No migration. All additive.
+
+- `GET /api/v1/public/countries` and `GET /api/v1/public/countries/{slug}` (`country`): each country gains `university_count` (int) —
+  its published, active universities (`catalogue_visible` and `active`). Public, unchanged access; an unknown slug stays 404.
+- `GET /api/v1/public/universities?country=<slug>` (existing) is the cards' "View universities" target; an unknown slug returns `[]`.
+- `GET /api/v1/portal/overseas/student/explore-countries` → 200 header-only payload (`title` "Explore Countries", no rows/metrics) for
+  an `overseas_student`; other roles 403, no session 401 (the portal gate).
+
+## 12GM. Live class reschedule and cancel (nehn-029) — addendum, 2026-10-26
+
+`DEC-SCOPE-287`. Migration `0198_live_session_cancel_reason` (`live_sessions.cancel_reason`, nullable text).
 
 - `PATCH /communications/it/live-sessions/{session_id}` — body any of `title` (2-180), `starts_at`, `ends_at`, `meeting_url`
   (`http(s)://`, ≤500); at least one (422). A time without a zone is read in the batch timezone. 200

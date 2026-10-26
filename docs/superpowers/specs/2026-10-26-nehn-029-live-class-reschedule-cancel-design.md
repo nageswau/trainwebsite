@@ -1,7 +1,7 @@
 # nehn-029 — Live class reschedule and cancel (design)
 
 **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-029` (§10 "Schedule/manage live classes", L217;
-`UNVERIFIED` backlog). Decision: `DEC-SCOPE-286` (builder's defaults, owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`).
+`UNVERIFIED` backlog). Decision: `DEC-SCOPE-287` (builder's defaults, owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`).
 Dependencies: none hard. Provider sync depends on the open Zoho live-class decisions (`PENDING_ZOHO_LIVE_CLASSES.md`), so this item
 uses the backlog's own fallback: the trainer is warned to update the provider manually.
 

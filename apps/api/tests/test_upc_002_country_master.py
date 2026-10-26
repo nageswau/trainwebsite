@@ -31,8 +31,8 @@ async def test_public_list_shows_visible_countries_only(client, db_session):  # 
 async def test_public_list_contract_is_unchanged(client, db_session):
     shown = await _country(db_session, visible=True)
     match = next(c for c in (await client.get("/api/v1/public/countries")).json() if c["slug"] == shown.slug)
-    # PUB-023 (DEC-SCOPE-222) adds iso2 for the flag; nothing else changes
-    assert set(match) == {"id", "slug", "name", "iso2", "overview", "tuition", "living_expenses", "visa_process", "work_opportunities", "post_study_work", "pr_opportunities", "faq"}
+    # PUB-023 (DEC-SCOPE-222) adds iso2 for the flag, nehn-034 (DEC-SCOPE-286) university_count for the card; nothing else changes
+    assert set(match) == {"id", "slug", "name", "iso2", "overview", "tuition", "living_expenses", "visa_process", "work_opportunities", "post_study_work", "pr_opportunities", "faq", "university_count"}
 
 
 @pytest.mark.asyncio
