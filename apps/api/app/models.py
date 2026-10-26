@@ -2481,7 +2481,7 @@ class StoredFile(Base):
 
 
 class SubmissionFile(Base):
-    """nehn-024 (DEC-SCOPE-291 F1): a stored file attached to an assignment submission. Filename, size and type live on the
+    """nehn-024 (DEC-SCOPE-292 F1): a stored file attached to an assignment submission. Filename, size and type live on the
     `stored_files` row; a file belongs to one submission."""
 
     __tablename__ = "submission_files"

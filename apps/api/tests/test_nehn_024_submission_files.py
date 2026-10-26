@@ -1,4 +1,4 @@
-"""nehn-024 -- direct file upload for assignment submissions (DEC-SCOPE-291; spec
+"""nehn-024 -- direct file upload for assignment submissions (DEC-SCOPE-292; spec
 docs/superpowers/specs/2026-10-26-nehn-024-submission-file-upload-design.md)."""
 
 import datetime

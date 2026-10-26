@@ -1,6 +1,6 @@
 import { test, expect, type Page, type APIRequestContext } from "@playwright/test";
 
-// nehn-024 (DEC-SCOPE-291) -- a student attaches files to a submission (picker, camera input on mobile), the batch trainer downloads
+// nehn-024 (DEC-SCOPE-292) -- a student attaches files to a submission (picker, camera input on mobile), the batch trainer downloads
 // them through the authorised route. Needs the stack running with `python -m app.seed` applied. Each test creates its own uniquely
 // titled `file` assignment, so it never races other specs over the shared demo student.
 

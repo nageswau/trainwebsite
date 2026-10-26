@@ -9916,7 +9916,22 @@ invoice legally required?) is answered, because the rows feed the Accounts pendi
 **Numbering:** no migration; API §12GO; RBAC §2.201.
 - **Feature ID authorized:** `nehn-020`. **Status:** built on `worktree-nehn-020`.
 
-### DEC-SCOPE-291 — Direct file upload for assignment submissions (`nehn-024`)
+### DEC-SCOPE-291 — Unified admin/operations student search (`nehn-041`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-041` (§23 L588-597, action 22; `UNVERIFIED` backlog);
+design `docs/superpowers/specs/2026-10-26-nehn-041-unified-student-search-design.md`. Dependency nehn-040 (`DEC-SCOPE-280`) merged.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** S1 Super Admin all four kinds; IT Admin IT
+students; Overseas Admin overseas + no-login agency students; overseas counselor csc-001 visible students; agent own agency (staff:
+assigned); IT counselor, telecaller manager, school roles and others 403. S2 leads not included (open question stays open). S3 one card
+per record. S4 3-100 characters; name/email/Student ID substring, phone digits in any format, IT program / overseas application course,
+agency name/prefix (no Agent ID, `DEC-DATA-003`), school name; diacritics not folded. S5 filters `type`, `division`, `program`. S6 ≤ 20
+per kind with `more`. S7 deep links to existing pages (Users panel `?q=` for Super/IT Admin; student 360; agent network; none for school
+students). S8 30 searches a minute, one audit row each with counts only. S9 no migration / no `pg_trgm` (measured instead). S10 a
+Student search page in the three admin portals plus a header box; counselor and agent keep their own search UIs (API only).
+**Numbering:** no migration; API §12GP; RBAC §2.202.
+- **Feature ID authorized:** `nehn-041`. **Status:** built on `worktree-nehn-041`.
+
+### DEC-SCOPE-292 — Direct file upload for assignment submissions (`nehn-024`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-024` (§9 L188-198; §24; action 8; `UNVERIFIED` backlog);
 design `docs/superpowers/specs/2026-10-26-nehn-024-submission-file-upload-design.md`. Builds on nehn-003 (`DEC-SCOPE-279`).
@@ -9925,5 +9940,5 @@ design `docs/superpowers/specs/2026-10-26-nehn-024-submission-file-upload-design
 "Link" field. F4 submit takes `file_ids`; each must be the caller's own `assignment_submission` upload not attached elsewhere (one 422
 otherwise). F6 a resubmission with `file_ids` replaces the set; without keeps it (no versioning). F8 download: the student, the batch's
 trainer, it_admin, super_admin. F12 no orphan sweep; unattached uploads stay owner-only. No AV scan (nehn-003 PS8).
-**Numbering:** migration `0200_submission_files`; API §12GP; RBAC §2.202.
+**Numbering:** migration `0200_submission_files`; API §12GQ; RBAC §2.203.
 - **Feature ID authorized:** `nehn-024`. **Status:** built on `worktree-nehn-024`.

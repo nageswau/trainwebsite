@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import TeacherWorkspaceActions from "@/components/TeacherWorkspaceActions";
 
-// nehn-024 (DEC-SCOPE-291 F7): the grading card lists a submission's uploaded files through the authorised download route.
+// nehn-024 (DEC-SCOPE-292 F7): the grading card lists a submission's uploaded files through the authorised download route.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const res = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });

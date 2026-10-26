@@ -3,7 +3,7 @@
 Revision ID: 0200_submission_files
 Revises: 0199_audit_log_indexes
 
-docs/superpowers/specs/2026-10-26-nehn-024-submission-file-upload-design.md (DEC-SCOPE-291 F1). 0001 builds a fresh database from the
+docs/superpowers/specs/2026-10-26-nehn-024-submission-file-upload-design.md (DEC-SCOPE-292 F1). 0001 builds a fresh database from the
 current models, which already carry the table, so it is created only when missing (0194's idiom). No existing row changes;
 `submissions.file_url` stays. The downgrade drops the links; the submissions and stored files stay.
 """

@@ -382,7 +382,7 @@ class AssignmentUpdate(BaseModel):
 class AssignmentSubmissionIn(BaseModel):
     answer: str | None = Field(default=None, max_length=50000)
     file_url: str | None = Field(default=None, max_length=500)
-    # nehn-024 (DEC-SCOPE-291 F4): ids from `POST /files/upload?purpose=assignment_submission`; present replaces the attached set.
+    # nehn-024 (DEC-SCOPE-292 F4): ids from `POST /files/upload?purpose=assignment_submission`; present replaces the attached set.
     file_ids: list[UUID] | None = Field(default=None, max_length=5)
 
 

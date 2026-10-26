@@ -1,4 +1,4 @@
-"""nehn-024 -- migration 0200_submission_files (DEC-SCOPE-291 F1): the chain and the round trip, in a throwaway database (the
+"""nehn-024 -- migration 0200_submission_files (DEC-SCOPE-292 F1): the chain and the round trip, in a throwaway database (the
 nehn-003 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util

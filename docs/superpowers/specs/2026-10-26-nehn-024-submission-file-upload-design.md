@@ -1,7 +1,7 @@
 # nehn-024 — Direct file upload for assignment submissions (design)
 
 **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-024` (§9 "File Submission" L188-198; §24 "Assignments";
-action 8; `UNVERIFIED` backlog). Decision: `DEC-SCOPE-291`. Depends on nehn-003 (`DEC-SCOPE-279`, merged): `POST /files/upload?purpose=`,
+action 8; `UNVERIFIED` backlog). Decision: `DEC-SCOPE-292`. Depends on nehn-003 (`DEC-SCOPE-279`, merged): `POST /files/upload?purpose=`,
 `stored_files`, the `assignment_submission` policy (PDF, DOC, DOCX, JPEG, PNG, HEIC — 5 MB, sniffed). The owner pre-authorised the
 recommended answers; open questions are recorded as `NEEDS_CONFIRMATION`, not resolved.
 

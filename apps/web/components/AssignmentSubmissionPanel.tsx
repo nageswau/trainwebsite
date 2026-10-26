@@ -9,7 +9,7 @@ import { uploadStoredFile } from "@/lib/uploadFile";
 
 type AssignmentRow = { id: string; title: string; due: string; submission: string; score: string | null; feedback: string | null; submission_type?: string };
 
-// nehn-024 (DEC-SCOPE-291 F9): the `assignment_submission` upload policy (nehn-003) -- checked here first so a student gets a named
+// nehn-024 (DEC-SCOPE-292 F9): the `assignment_submission` upload policy (nehn-003) -- checked here first so a student gets a named
 // message before anything is uploaded; the server still sniffs every file. Types come from the extension because browsers often
 // leave HEIC (and sometimes Word) untyped, which the server would refuse.
 const MAX_BYTES = 5 * 1024 * 1024;

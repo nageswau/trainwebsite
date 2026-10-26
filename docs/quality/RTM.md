@@ -1282,3 +1282,16 @@ half.
 | `nehn-040-AC4` | Agent ID | Not applicable — N1 (`DEC-DATA-003`) |
 | `nehn-040-AC5` | Search by code stays inside the caller's scope | `::test_the_agency_search_matches_a_code_only_inside_the_agency`, `::test_the_overseas_student_lookup_matches_and_shows_the_code_in_scope`, `::test_the_link_lookup_does_not_match_a_code` |
 | `nehn-040-AC6` | New codes never collide across `users` and `agent_students` | `::test_a_new_code_is_unique_across_every_column_given`; migration test (skips a taken code) |
+
+**Addendum, 2026-10-26 (`nehn-041`)** — Unified admin/operations student search.
+
+| ID | Requirement / acceptance | Evidence |
+|---|---|---|
+| `nehn-041` | Requirement: PDF §23 L588-597, action 22 → `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-041` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-291` → design `docs/superpowers/specs/2026-10-26-nehn-041-unified-student-search-design.md` → API §12GP, RBAC §2.202 → no migration | S1–S10 defaults `NEEDS_CONFIRMATION` |
+| `nehn-041-AC1` | A phone in any format finds the student | `apps/api/tests/test_nehn_041_student_search.py::test_phone_in_any_format_finds_the_student`; `apps/web/tests/e2e/nehn-041-student-search.spec.ts` (header box, `0…-…` format) |
+| `nehn-041-AC2` | A course name returns its enrolled IT students (and overseas applicants) | `::test_course_name_returns_enrolled_and_applied_students` |
+| `nehn-041-AC3` | Counselor only visible students; agent only own agency (staff: assigned); IT Admin only IT students | `::test_counselor_finds_only_their_students`, `::test_agent_finds_only_own_agency`, `::test_agent_staff_finds_only_assigned_students`, `::test_it_admin_sees_it_students_only`, `::test_overseas_admin_sees_overseas_and_agency_students`; e2e |
+| `nehn-041-AC4` | Under 300 ms at the expected volume | Measured on the isolated stack (feature evidence in the PR) |
+| `nehn-041-AC5` | 1-2 character query 422; other roles 403 | `::test_short_or_long_query_is_422`, `::test_other_roles_are_refused`, `::test_an_it_counselor_is_refused`; `StudentSearchPage.test.tsx`; e2e |
+| `nehn-041-AC6` | One click opens the student where the caller has a page | `::test_items_carry_code_detail_and_links`; `StudentSearch.test.tsx`, `AdminUserManagementPanel.test.tsx` (`?q=`), `PortalShell.studentSearch.test.tsx`; e2e |
+| `nehn-041-AC7` | Every search audited without its text; 31st a minute 429 | `::test_every_search_is_audited_without_its_text`, `::test_the_31st_search_in_a_minute_is_429` |

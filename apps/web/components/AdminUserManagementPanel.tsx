@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { refocus } from "@/lib/focus";
@@ -57,6 +57,22 @@ export default function AdminUserManagementPanel({ section }: { section?: string
     window.addEventListener(USERS_CHANGED, reload);
     return () => window.removeEventListener(USERS_CHANGED, reload);
   }, []);
+
+  // nehn-041 (DEC-SCOPE-291 S7): a Student search card links here as `?q=<Student ID>`, so the list opens searched for that student and,
+  // once loaded, scrolled into view (QA-041-02: the page's generic records table sits above this panel).
+  const scrollToList = useRef(false);
+  useEffect(() => {
+    const initial = new URLSearchParams(window.location.search).get("q");
+    if (initial) {
+      setQuery(initial);
+      scrollToList.current = true;
+    }
+  }, []);
+  useEffect(() => {
+    if (!scrollToList.current || users === null) return;
+    scrollToList.current = false;
+    document.getElementById("admin-user-search")?.scrollIntoView({ block: "center" });
+  }, [users]);
 
   // nehn-040 QA-01: the search is also sent to the server (debounced), so an older account past the list cap is still found.
   const [serverQuery, setServerQuery] = useState("");

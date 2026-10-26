@@ -342,6 +342,9 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 /* AGN-017 QA17-05: the unread count in the portal top bar, only while the sidebar is collapsed into the menu (same 980 px breakpoint). */
 .topbar-unread{display:none}
 @media(max-width:980px){.topbar-unread{display:inline-flex}}
+/* nehn-041: the header Student search box; below 640 px the top bar keeps only the name and menu (the menu lists Student search) */
+.topbar-search{margin:0}.topbar-search .input{width:min(240px,28vw);padding:8px 12px}
+@media(max-width:640px){.topbar-search{display:none}}
 /* bdm-001 browser QA-15: once .action-grid is one column, the BDM list comes before the long create form, so an admin
    looking for a BDM on a phone or tablet does not scroll past nine fields first. Desktop keeps the form first. */
 @media(max-width:980px){.action-grid > .bdm-list,.action-grid > .telecaller-list{order:-1}}

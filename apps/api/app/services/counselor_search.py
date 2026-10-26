@@ -55,12 +55,13 @@ def _matches(pattern: str, digits: str | None, text_columns, phone_columns):
     return or_(*clauses)
 
 
-async def _wait_seconds(db: AsyncSession, user: User) -> int:
+async def _wait_seconds(db: AsyncSession, user: User, action: str = AUDIT_ACTION) -> int:
+    """Seconds before `user` may search again (0: now), counted from their `action` audit rows; nehn-041 counts its own action."""
     now = datetime.now(UTC)
     recent = (
         await db.scalars(
             select(AuditLog.created_at)
-            .where(AuditLog.user_id == user.id, AuditLog.action == AUDIT_ACTION, AuditLog.created_at > now - RATE_WINDOW)
+            .where(AuditLog.user_id == user.id, AuditLog.action == action, AuditLog.created_at > now - RATE_WINDOW)
             .order_by(AuditLog.created_at.desc())
             .limit(RATE_LIMIT)
         )

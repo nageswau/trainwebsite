@@ -609,7 +609,7 @@ async def submit_assignment(assignment_id: UUID, payload: AssignmentSubmissionIn
 
 
 async def _attach_submission_files(db: AsyncSession, user: User, submission: Submission, file_ids: list[UUID]) -> None:
-    """nehn-024 (DEC-SCOPE-291 F4/F6): replace the submission's files. Each must be the caller's own `assignment_submission` upload, not
+    """nehn-024 (DEC-SCOPE-292 F4/F6): replace the submission's files. Each must be the caller's own `assignment_submission` upload, not
     attached to another submission -- one 422 for every failure, so nothing about other users' files is confirmed."""
     if file_ids:
         usable = await db.scalar(
@@ -630,7 +630,7 @@ async def _attach_submission_files(db: AsyncSession, user: User, submission: Sub
 
 @router.get("/it/submissions/{submission_id}/files/{file_id}")
 async def submission_file(submission_id: UUID, file_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """nehn-024 (DEC-SCOPE-291 F8): the submitting student, the batch's trainer, it_admin and super_admin download an attached file."""
+    """nehn-024 (DEC-SCOPE-292 F8): the submitting student, the batch's trainer, it_admin and super_admin download an attached file."""
     row = (
         await db.execute(
             select(Submission, Batch, StoredFile)
@@ -897,7 +897,7 @@ async def trainer_submissions(batch_id: UUID | None = None, user: User = Depends
     if batch_id:
         stmt = stmt.where(Assignment.batch_id == batch_id)
     rows = (await db.execute(stmt.order_by(Submission.created_at.desc()).limit(500))).all()
-    # nehn-024 (DEC-SCOPE-291 F7): each row lists its attached files with the authorised download route.
+    # nehn-024 (DEC-SCOPE-292 F7): each row lists its attached files with the authorised download route.
     files: dict[UUID, list[dict]] = {s.id: [] for s, _, _ in rows}
     if files:
         attached = await db.execute(

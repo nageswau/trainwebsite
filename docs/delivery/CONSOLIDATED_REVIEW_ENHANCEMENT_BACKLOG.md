@@ -1103,7 +1103,7 @@ Risk is the risk of regression or of a wrong outcome.
 - **Open questions:** allow multiple files? Keep external URLs? Resubmission versioning?
 - **Complexity:** medium · **Risk:** medium
 - **Status (2026-10-26):**
-  - Built on `worktree-nehn-024` (`DEC-SCOPE-291`; migration `0200_submission_files`; API §12GP; RBAC §2.202). AC1-AC5 met.
+  - Built on `worktree-nehn-024` (`DEC-SCOPE-292`; migration `0200_submission_files`; API §12GQ; RBAC §2.203). AC1-AC5 met.
   - Builder's defaults (`NEEDS_CONFIRMATION`): up to 5 files; links kept as optional; a resubmission replaces the files (no versioning);
     no orphan sweep.
 
@@ -1732,6 +1732,7 @@ Risk is the risk of regression or of a wrong outcome.
 - **Complexity:** small · **Risk:** low
 
 #### `nehn-041` — Unified admin/operations student search
+- **Status (2026-10-26):** built — `DEC-SCOPE-291` (builder's defaults; leads not included, no `pg_trgm`, no migration).
 - **Source:** §23 L588-597 (Student ID, name, email, phone, Agent ID, course); action 22.
 - **Business requirement:** Admin and operational users find student records quickly by ID or basic details.
 - **Existing behavior:**

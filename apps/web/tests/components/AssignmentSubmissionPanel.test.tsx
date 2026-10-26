@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AssignmentSubmissionPanel from "@/components/AssignmentSubmissionPanel";
 
-// nehn-024 (DEC-SCOPE-291 F9/F10): files are picked, dropped or photographed, uploaded through nehn-003, then submitted by id.
+// nehn-024 (DEC-SCOPE-292 F9/F10): files are picked, dropped or photographed, uploaded through nehn-003, then submitted by id.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });

@@ -2293,7 +2293,7 @@ inline checks gave (it_admin/overseas_admin: `payments.view`, `payments.add`, `d
 by `PUT /admin/roles/{role}/permissions`; history in `audit_logs` (`role_permissions.update`, before/after). No existing data changes.
 Downgrade drops the table.
 
-## Submission files (`nehn-024`, `DEC-SCOPE-291`; migration `0200_submission_files`, after nehn-042's `0199_audit_log_indexes`)
+## Submission files (`nehn-024`, `DEC-SCOPE-292`; migration `0200_submission_files`, after nehn-042's `0199_audit_log_indexes`)
 
 New table `submission_files`: `id` (UUID PK), `submission_id` (FK `submissions` ON DELETE CASCADE, `ix_submission_files_submission_id`),
 `stored_file_id` (FK `stored_files` ON DELETE CASCADE, `uq_submission_files_stored_file`), `created_at`. Filename, size and MIME live on
