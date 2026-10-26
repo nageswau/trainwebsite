@@ -103,4 +103,4 @@ Notes:
 
 ## Payments go-live (`nehn-022`, `DEC-SCOPE-282`)
 
-Razorpay runs in `RAZORPAY_MODE=test` until the owner switches it, and the API refuses to start if the mode and the key prefix disagree. The step-by-step switch to live (live keys, webhook secret and URL registration, a Rs 1 live payment and refund, reconciliation, rollback) is in [`RAZORPAY_GO_LIVE.md`](RAZORPAY_GO_LIVE.md).
+Razorpay runs in `RAZORPAY_MODE=test` until the owner switches it, and the API refuses to start if the mode and the key prefix disagree. The step-by-step switch to live (live keys, webhook secret and URL registration, a ₹1 live payment and refund, reconciliation, rollback) is in [`RAZORPAY_GO_LIVE.md`](RAZORPAY_GO_LIVE.md).
