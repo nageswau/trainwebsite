@@ -135,7 +135,8 @@ def course_out(user: User, course: OverseasCourse, scholarships: dict, can_edit:
     payload = {
         "id": course.id,
         "university_id": course.university_id,
-        **{k: getattr(course, k) for k in ("title", "level", "category", "duration", "tuition_fee", "intake", "tuition_currency", "application_fee_currency", "campus", "fee_text", "intake_text", "icon")},
+        **{k: getattr(course, k) for k in ("title", "level", "category", "duration", "tuition_fee", "intake", "tuition_currency", "application_fee_currency")},
+        **{k: getattr(course, k) for k in ("campus", "fee_text", "intake_text", "icon")},  # dtu-001, nehn-036
         "tuition_amount": _money(course.tuition_amount),
         "application_fee": _money(course.application_fee),
         "intakes": course.intakes,

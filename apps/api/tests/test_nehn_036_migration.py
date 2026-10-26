@@ -38,7 +38,9 @@ def test_models_match_the_migration():
 @pytest.mark.asyncio
 async def test_column_and_check_exist_in_the_shared_database(db_session):
     conn = await db_session.connection()
-    columns, checks = await conn.run_sync(lambda sync: ({c["name"]: c for c in inspect(sync).get_columns("overseas_courses")}, {c["name"] for c in inspect(sync).get_check_constraints("overseas_courses")}))
+    columns, checks = await conn.run_sync(
+        lambda sync: ({c["name"]: c for c in inspect(sync).get_columns("overseas_courses")}, {c["name"] for c in inspect(sync).get_check_constraints("overseas_courses")})
+    )
     assert columns["icon"]["nullable"] and CHECK in checks
 
 
@@ -47,9 +49,23 @@ def _columns(url) -> set[str]:
 
 
 def _insert_course(url, icon=None):
-    country = _sql(url, "INSERT INTO countries (id, slug, name, overview, visa_overview, cost_of_living, post_study_work, created_at, updated_at) VALUES (gen_random_uuid(), :slug, 'Land', '', '', '', '', now(), now()) RETURNING id", {"slug": uuid.uuid4().hex[:10]})[0][0]
-    uni = _sql(url, "INSERT INTO universities (id, country_id, slug, name, city, overview, eligibility, requirements, deadlines, scholarships, created_at, updated_at) VALUES (gen_random_uuid(), :c, :slug, 'Uni', 'City', '', '', '[]', '[]', '[]', now(), now()) RETURNING id", {"c": country, "slug": uuid.uuid4().hex[:10]})[0][0]
-    return _sql(url, "INSERT INTO overseas_courses (id, university_id, title, level, category, duration, tuition_fee, intake, created_at, updated_at) VALUES (gen_random_uuid(), :u, 'MSc', 'PG', 'Law', '1 year', '', '', now(), now()) RETURNING id", {"u": uni})[0][0]
+    country = _sql(
+        url,
+        "INSERT INTO countries (id, slug, name, overview, tuition, living_expenses, work_opportunities, post_study_work, pr_opportunities, visa_process, faq) "
+        "VALUES (gen_random_uuid(), :slug, 'Land', '', '', '', '', '', '', '[]', '[]') RETURNING id",
+        {"slug": uuid.uuid4().hex[:10]},
+    )[0][0]
+    uni = _sql(
+        url,
+        "INSERT INTO universities (id, country_id, slug, name, name_key, city, overview, eligibility, requirements, deadlines, scholarships) "
+        "VALUES (gen_random_uuid(), :c, :slug, 'Uni', :slug, 'City', '', '', '[]', '[]', '[]') RETURNING id",
+        {"c": country, "slug": uuid.uuid4().hex[:10]},
+    )[0][0]
+    return _sql(
+        url,
+        "INSERT INTO overseas_courses (id, university_id, title, level, category, duration, tuition_fee, intake) VALUES (gen_random_uuid(), :u, 'MSc', 'PG', 'Law', '1 year', '', '') RETURNING id",
+        {"u": uni},
+    )[0][0]
 
 
 @pytest.fixture
