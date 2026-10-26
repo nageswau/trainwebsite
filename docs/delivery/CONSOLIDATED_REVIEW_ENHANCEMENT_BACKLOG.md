@@ -194,6 +194,7 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** existing vitest for WorkflowPanel.
 - **Open questions:** given `DEC-ROLE-003`, should this fix ship at all, or wait for nehn-031? (Cheap; recommended to ship.)
 - **Complexity:** small · **Risk:** low
+- **Status (2026-10-26):** built in `worktree-nehn-002`. Discovery found that the cited `WorkflowPanel` trainer spec is never rendered: `PortalPage` gives every IT trainer `TeacherWorkspaceActions`, whose card already showed and sent the reason. Changes: that card and `AdminCertificatePanel` now stop a blank or whitespace-only reason in the browser ("Enter a reason for the override."), send it trimmed, and the trainer card re-hides the reason after a successful issue (its controlled checkbox used to stay ticked through `form.reset()`). The unreachable reason-less `WorkflowPanel` spec was removed. No API/DB change. The max length stays `NEEDS_CONFIRMATION` (the API sets none).
 
 #### `nehn-003` — Private, S3-compatible file storage with per-feature upload policy
 - **Source:** §9 "external/cloud object storage" (L197-198), "~5 MB" (L191), formats (L193-196); §24 "Storage"; `DEC-INFRA-002` ID4; `psb-017`.
