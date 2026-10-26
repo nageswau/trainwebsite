@@ -5,6 +5,7 @@ import pytest
 import pytest_asyncio
 
 from app.models import OverseasApplication, StudentDocument
+from app.services.storage import storage
 from tests.agn001_helpers import client_for, mk_user
 from tests.agn004_helpers import mk_record
 from tests.agn009_helpers import DOWNLOAD, OLD_UPLOAD, VERIFY, audit_actions, events_of, mk_doc, world
@@ -49,7 +50,8 @@ async def test_student_download_keeps_its_shape_and_is_recorded(db_session, w):
     async with client_for(w["linked_user"].email) as c:
         response = await c.get(DOWNLOAD.format(doc.id))
     assert response.status_code == 200
-    assert response.json() == {"url": "/local-files/uploads/own.pdf", "expires_in": None}
+    body = response.json()
+    assert body["expires_in"] is None and storage.signed_key(body["url"].removeprefix("/api/v1/files/signed/")) == "uploads/own.pdf"  # nehn-003 PS2
     events = await events_of(db_session, doc.id)
     assert [(e.event, e.actor_user_id) for e in events] == [("downloaded", w["linked_user"].id)]
 

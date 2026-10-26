@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
+import { uploadFile } from "@/lib/uploadFile";
+
 type ProfileDocumentRow = { id: string; document_type: string; file_url: string; original_filename: string | null; uploaded_at: string };
 
 function detailMessage(detail: unknown) {
@@ -61,19 +63,7 @@ export default function ProfileDocumentUpload() {
       return;
     }
     try {
-      let fileUrl = "";
-      const local = new FormData();
-      local.set("file", file);
-      const localResponse = await fetch("/api/v1/files/local-upload", { method: "POST", body: local });
-      if (localResponse.ok) fileUrl = String((await localResponse.json()).url);
-      else {
-        const presignResponse = await fetch("/api/v1/files/presign", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ filename: file.name, content_type: file.type, size: file.size }) });
-        const signed = await presignResponse.json();
-        if (!presignResponse.ok) throw new Error(detailMessage(signed.detail));
-        const upload = await fetch(signed.upload_url, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-        if (!upload.ok) throw new Error("Object storage upload failed");
-        fileUrl = signed.key;
-      }
+      const fileUrl = await uploadFile(file);
       const response = await fetch("/api/v1/workflows/it/student/profile/documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

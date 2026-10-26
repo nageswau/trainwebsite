@@ -1257,3 +1257,15 @@ half.
 | `ccrm-041-AC04` | A and B never change when C is rejected; A and C never change when B is accepted and enrolled (AC 3, AC 9) | `::test_the_appendix_b_journey` (snapshots); e2e 360 cards |
 | `ccrm-041-AC05` | Status history names the author and reason (AC 6) | `::test_the_appendix_b_journey` (C's history row) |
 | `ccrm-041-AC06` | Notifications fire once on seeded deadlines: offer, condition, deposit (counselor + student), visa appointment (counselor) (AC 12) | `::test_the_appendix_b_journey` (two reminder runs) |
+
+**Addendum, 2026-10-26 (`nehn-003`)** — private, S3-compatible storage with per-purpose upload policy.
+
+| ID | Requirement / acceptance | Evidence |
+|---|---|---|
+| `nehn-003` | Requirement: §9 L191-198, §24 → `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-003` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-279` → design `docs/superpowers/specs/2026-10-26-nehn-003-private-storage-design.md`; `API_CONTRACT.md` §12GE, `RBAC_MATRIX.md` §2.193, `DATA_MODEL.md` (0194) | PS1–PS9 defaults `NEEDS_CONFIRMATION`; Spaces migration script deferred |
+| `nehn-003-AC1` | `GET /local-files/<private key>` is 404 without a session | `apps/api/tests/test_nehn_003_private_storage.py::test_a_private_key_is_404_on_local_files_without_a_session`; `test_agn_024_admin.py::test_kyc_keys_are_never_served_by_generic_routes` |
+| `nehn-003-AC2` | `/files/{id}`: anonymous 401, another user 403, owner and super_admin 200 | `::test_upload_by_purpose_then_owner_downloads_and_others_are_refused` |
+| `nehn-003-AC3` | `S3_ENDPOINT_URL` reaches the S3 client; SSE configurable; local mode works unset | `::test_the_s3_client_takes_the_endpoint_and_sse_is_configurable`; the local tests |
+| `nehn-003-AC4` | 5.1 MB submission 413; renamed `.exe` 415 | `::test_the_submission_policy_rejects_5_1_mb_with_413`, `::test_a_renamed_exe_is_rejected_by_the_sniffing_check`, `::test_upload_refusals` |
+| `nehn-003-AC5` | Certificates, receipts, invoices written through `StorageService` | `::test_certificates_receipts_and_invoices_are_written_through_storage` |
+| `nehn-003-AC6` | Stored `/local-files/…` URLs resolve for signed-in users; download routes hand out signed links | `::test_a_stored_local_files_url_still_resolves_for_a_signed_in_user`, `::test_a_local_presigned_link_is_signed_short_lived_and_scoped_to_its_key`; `test_stu_007…`, `test_ovs_005…`, `test_agn_009…`; e2e `stu-007`, `stu-011`, `pay-001` |

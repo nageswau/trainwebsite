@@ -2277,3 +2277,9 @@ arrival_confirmed_at IS NOT NULL`). One arrival per application. No backfill; do
 `ix_document_requests_student_user_status` (`student_user_id`, `status`) and partial `ix_document_requests_open_due` (`due_date`) WHERE open
 and dated (ccrm-030). No new event code: a reopen is a `requested` event `fulfilled → open`. Downgrade (lossy) deletes direct students'
 requests and their events, unlinks their documents, and restores NOT NULL.
+
+## Stored files (`nehn-003`, `DEC-SCOPE-279`; migration `0194_stored_files`, after ccrm-040's `0193_student_archive_consent`)
+
+New table `stored_files`: `id` (UUID PK), `key` (String 500, `uq_stored_files_key`), `purpose` (String 40), `owner_id` (FK `users` ON
+DELETE CASCADE, `ix_stored_files_owner_id`), `original_filename` (String 255), `content_type` (String 120), `size_bytes` (int), `sha256`
+(String 64), `created_at`. Written only by `POST /files/upload`; no existing data changes. Downgrade drops the table (objects stay).

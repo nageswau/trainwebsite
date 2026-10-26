@@ -59,13 +59,13 @@ test("@external student pays a pending fee via a real Razorpay checkout session 
 
   // The already-paid fee shows both documents; download the invoice via its real signed URL.
   const [invoiceRequest] = await Promise.all([
-    page.context().waitForEvent("request", (req) => req.url().includes("/local-files/invoices/")),
+    page.context().waitForEvent("request", (req) => req.url().includes("/api/v1/files/signed/")),
     card.getByRole("button", { name: "Invoice" }).last().click(),
   ]);
   expect((await invoiceRequest.response())?.status()).toBe(200);
 
   const [receiptRequest] = await Promise.all([
-    page.context().waitForEvent("request", (req) => req.url().includes("/local-files/receipts/")),
+    page.context().waitForEvent("request", (req) => req.url().includes("/api/v1/files/signed/")),
     card.getByRole("button", { name: "Receipt" }).click(),
   ]);
   expect((await receiptRequest.response())?.status()).toBe(200);

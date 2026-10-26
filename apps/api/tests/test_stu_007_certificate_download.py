@@ -18,6 +18,7 @@ import pytest
 
 from app.core.security import hash_password
 from app.models import Certificate, Program, User
+from app.services.storage import storage
 
 
 async def _create_student(db_session, *, email_prefix: str = "cert-student") -> User:
@@ -101,7 +102,8 @@ async def test_student_lists_and_downloads_own_certificate(db_session, client):
     download = await client.get(f"/api/v1/workflows/it/certificates/{certificate.id}/download")
     assert download.status_code == 200
     body = download.json()
-    assert body["url"] == f"/local-files/certificates/{certificate.certificate_no}.pdf"
+    # nehn-003 PS2: a short-lived signed link to the same key, never the public /local-files path
+    assert storage.signed_key(body["url"].removeprefix("/api/v1/files/signed/")) == f"certificates/{certificate.certificate_no}.pdf"
 
 
 @pytest.mark.asyncio
