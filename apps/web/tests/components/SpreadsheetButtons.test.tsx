@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SpreadsheetButtons, XLSX_TYPE } from "@/components/ExportButtons";
 
-// nehn-004 (DEC-SCOPE-280 X6): the report pages whose export format is the path's extension offer the `.csv` and its `.xlsx` twin
+// nehn-004 (DEC-SCOPE-282 X6): the report pages whose export format is the path's extension offer the `.csv` and its `.xlsx` twin
 // side by side, each fetched first (ReportDownloadButton), so a refusal is a message, never a saved file.
 const saved: string[] = [];
 const file = (type: string) => new Response("data", { status: 200, headers: { "content-type": type } });

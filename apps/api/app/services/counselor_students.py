@@ -22,7 +22,7 @@ from sqlalchemy import and_, exists, func, or_, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.identifiers import unique_student_code
-from app.models import AuditLog, Notification, OverseasApplication, OverseasStudentCounselor, User, UserRoleAssignment
+from app.models import AgentStudent, AuditLog, Notification, OverseasApplication, OverseasStudentCounselor, User, UserRoleAssignment
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import CounselorStudentCreate
 from app.services.agent_orgs import retry_after
@@ -129,7 +129,7 @@ async def create_student(db: AsyncSession, counselor: User, payload: CounselorSt
         await _reject_existing_email(db, counselor_id)
     student = User(
         email=payload.email, password_hash=unusable_password_hash(), full_name=payload.full_name, role="overseas_student", division="overseas",
-        phone=payload.phone, active=True, email_verified=False, student_code=await unique_student_code(db, User.student_code),
+        phone=payload.phone, active=True, email_verified=False, student_code=await unique_student_code(db, User.student_code, AgentStudent.student_code),
         profile={"registration_source": registration_source},
     )  # fmt: skip
     db.add(student)

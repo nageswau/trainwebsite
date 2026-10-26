@@ -1,7 +1,7 @@
 # nehn-004 — Shared Excel (`.xlsx`) export and import helper — design
 
 Source: `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-004` (`DERIVED_WORKBOOK`/`UNVERIFIED` backlog). Dependencies: none.
-The owner asked for an autonomous run with recommended answers; every default below is `NEEDS_CONFIRMATION` (DEC-SCOPE-280).
+The owner asked for an autonomous run with recommended answers; every default below is `NEEDS_CONFIRMATION` (DEC-SCOPE-282).
 
 ## Intent
 Every report that downloads as CSV can also download as Excel, and future imports (nehn-025 trainer questions) can read `.xlsx` as well

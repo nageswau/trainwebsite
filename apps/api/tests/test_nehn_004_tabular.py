@@ -1,4 +1,4 @@
-"""nehn-004 (DEC-SCOPE-280): the shared tabular helper -- the xlsx writer's typed dates, header style, auto-filter and widths (X1), and
+"""nehn-004 (DEC-SCOPE-282): the shared tabular helper -- the xlsx writer's typed dates, header style, auto-filter and widths (X1), and
 `read_tabular`, the hardened `.xlsx`/`.csv` reader every import can share (X2)."""
 
 import io

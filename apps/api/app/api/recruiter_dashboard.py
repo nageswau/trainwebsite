@@ -53,7 +53,7 @@ async def performance_csv(read: tuple[User, dict] = Depends(_performance), db: A
 
 @router.get("/performance.xlsx")
 async def performance_xlsx(read: tuple[User, dict] = Depends(_performance), db: AsyncSession = Depends(get_db)):
-    """nehn-004 (DEC-SCOPE-280 X3): the CSV's twin."""
+    """nehn-004 (DEC-SCOPE-282 X3): the CSV's twin."""
     return await _export_performance(db, *read, "xlsx")
 
 

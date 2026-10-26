@@ -14,7 +14,7 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_permission
 from app.api.lookups import _pattern as like_pattern
 from app.core.config import settings
 from app.core.database import get_db
@@ -24,6 +24,7 @@ from app.models import (
     AgentCommission,
     AgentOrg,
     AgentOrgMember,
+    AgentStudent,
     AuditLog,
     Batch,
     BdmOrganization,
@@ -114,10 +115,20 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 logger = logging.getLogger("app.admin")
 
 
+ADMIN_REQUIRED = "Admin role required"
+
+
 async def ensure_admin(user: User = Depends(get_current_user)):
     if user.role not in {"super_admin", "it_admin", "overseas_admin"}:
-        raise HTTPException(403, "Admin role required")
+        raise HTTPException(403, ADMIN_REQUIRED)
     return user
+
+
+# nehn-005 (DEC-SCOPE-281 P2): the payment routes are grant-driven; the seed gives these to exactly the `ensure_admin` roles. Each route
+# keeps its division scope. The refusal text is unchanged (P9).
+PAYMENTS_VIEW = require_permission("payments", "view", ADMIN_REQUIRED)
+PAYMENTS_ADD = require_permission("payments", "add", ADMIN_REQUIRED)
+DISCOUNTS_ADD = require_permission("discounts", "add", ADMIN_REQUIRED)
 
 
 def _reject_supplied_password(payload: dict, actor: User, route: str, field: str) -> None:
@@ -262,7 +273,14 @@ async def dashboard(user: User = Depends(ensure_admin), db: AsyncSession = Depen
 
 
 @router.get("/users")
-async def users(division: str | None = None, role: str | None = None, provisioning_status: str | None = None, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+async def users(
+    division: str | None = None,
+    role: str | None = None,
+    provisioning_status: str | None = None,
+    q: str | None = Query(None, max_length=100),
+    user: User = Depends(ensure_admin),
+    db: AsyncSession = Depends(get_db),
+):
     if provisioning_status is not None and provisioning_status not in {"pending_setup", "link_expired"}:
         raise HTTPException(422, "provisioning_status must be pending_setup or link_expired")
     stmt = select(User)
@@ -272,6 +290,11 @@ async def users(division: str | None = None, role: str | None = None, provisioni
         stmt = stmt.where(User.division == division)
     if role:
         stmt = stmt.where(User.role == role)
+    term = (q or "").strip()
+    if term:
+        # nehn-040 QA-01: matched by the server (literal, case-insensitive substring), so the cap below limits matches, never hides one.
+        pattern = "%" + term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        stmt = stmt.where(or_(*(column.ilike(pattern, escape="\\") for column in (User.full_name, User.email, User.role, User.student_code))))
     if provisioning_status:
         # Resolve the exact id set first; the cap below is skipped for a filtered request so it cannot hide a match.
         stmt = stmt.where(User.id.in_(await user_ids_with_status(db, user, provisioning_status)))
@@ -292,6 +315,7 @@ async def users(division: str | None = None, role: str | None = None, provisioni
             "phone": x.phone,
             "profile": x.profile,
             "provisioning_status": statuses.get(x.id, "active"),
+            "student_code": x.student_code,  # nehn-040: shown and searched by the Users panel
         }
         for x in xs
     ]
@@ -320,7 +344,7 @@ async def companies(user: User = Depends(ensure_admin), db: AsyncSession = Depen
 
 
 @router.get("/payments")
-async def payment_records(user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+async def payment_records(user: User = Depends(PAYMENTS_VIEW), db: AsyncSession = Depends(get_db)):
     stmt = select(Payment, User).join(User, User.id == Payment.user_id)
     if user.role != "super_admin":
         stmt = stmt.where(Payment.division == user.division)
@@ -662,6 +686,8 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
         active=payload.get("active", True),
         email_verified=payload.get("email_verified", False),
         profile=payload.get("profile", {}),
+        # nehn-040 (DEC-SCOPE-280 N4): an admin-provisioned student gets a Student ID, as self-registration does.
+        student_code=await unique_student_code(db, User.student_code, AgentStudent.student_code) if role in ("it_student", "overseas_student") else None,
     )
     db.add(item)
     await _flush_unique_email(db)
@@ -1125,7 +1151,7 @@ async def reject_enrollment(enrollment_id: UUID, payload: dict, user: User = Dep
 
 
 @router.post("/payments", status_code=201)
-async def create_payment(payload: dict, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+async def create_payment(payload: dict, user: User = Depends(PAYMENTS_ADD), db: AsyncSession = Depends(get_db)):
     from app.api.payments import _ensure_invoice, _ensure_receipt
     from app.models import AuditLog, Payment
 
@@ -1167,7 +1193,7 @@ async def create_payment(payload: dict, user: User = Depends(ensure_admin), db: 
 
 
 @router.post("/payments/{payment_id}/discount")
-async def discount_payment(payment_id: UUID, payload: dict, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+async def discount_payment(payment_id: UUID, payload: dict, user: User = Depends(DISCOUNTS_ADD), db: AsyncSession = Depends(get_db)):
     """Applies a written-justification discount to a still-unpaid fee -- same "a
     discretionary change is never silent" pattern as `ADM-006`'s certificate override
     and `AGT-003`'s commission-amount adjustment. Only lowers the amount (never raises
@@ -1223,7 +1249,7 @@ async def discount_payment(payment_id: UUID, payload: dict, user: User = Depends
 
 
 @router.post("/payments/emi-schedule", status_code=201)
-async def create_emi_schedule(payload: dict, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+async def create_emi_schedule(payload: dict, user: User = Depends(PAYMENTS_ADD), db: AsyncSession = Depends(get_db)):
     """Admin-discretionary EMI plan (see `EMISchedule`'s own docstring for why installment
     amounts aren't computed here): the Admin supplies each installment's amount and due date
     explicitly, and each becomes its own `Payment` row linked to the schedule.

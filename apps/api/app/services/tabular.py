@@ -1,5 +1,5 @@
 """The shared spreadsheet helper: `to_xlsx`, a one-sheet writer over the same `{columns, items, totals}` payload as `agent_reports.to_csv`
-(ccrm-035, DEC-SCOPE-268 E1/E8), and `read_tabular`, the one hardened `.xlsx`/`.csv` reader for imports (nehn-004, DEC-SCOPE-280).
+(ccrm-035, DEC-SCOPE-268 E1/E8), and `read_tabular`, the one hardened `.xlsx`/`.csv` reader for imports (nehn-004, DEC-SCOPE-282).
 
 The writer is standard library only. Numbers and dates are typed cells (nehn-004 X1: `date`/`datetime` values and ISO `YYYY-MM-DD`
 strings, the form every report payload uses for days); everything else is an inline string through `_safe_cell`, so a cell never runs

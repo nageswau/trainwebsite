@@ -9748,7 +9748,38 @@ certificates, receipts, invoices written through `StorageService`. PS8 no AV sca
 **Numbering:** migration `0194_stored_files`; API §12GE; RBAC §2.193.
 - **Feature ID authorized:** `nehn-003`. **Status:** built on `worktree-nehn-003`.
 
-### DEC-SCOPE-280 — Shared Excel (`.xlsx`) export and import helper (`nehn-004`)
+### DEC-SCOPE-280 — Student ID coverage and lookup; Agent ID stays out (`nehn-040`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-040` (PDF §22 L578-587, §23 L592/L596, actions 21/22;
+`UNVERIFIED`); design `docs/superpowers/specs/2026-10-26-nehn-040-student-id-coverage-design.md`. Builds on `DEC-DATA-003`.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** N1 no Agent ID — `DEC-DATA-003` (CONFIRMED_CURRENT,
+students only) is an approval record and the `UNVERIFIED` PDF does not supersede it; backlog AC4 does not apply. N2 an agency student with
+no login gets `agent_students.student_code` (8-char hex, unique); a linked row keeps NULL and shows its account's `users.student_code`.
+N3 `users` and `agent_students` codes are one space (every generator checks both); `school_students` stays its own (`DEC-DATA-003`).
+N4 admin-provisioned `it_student`/`overseas_student` accounts get a code. N5 migration `0195` backfills both. N6 search is the existing
+literal case-insensitive substring, inside each caller's existing scope. N7 the agent link search (`purpose=link`) is unchanged. N8 no
+flow turns a no-login row into a login, so no code merge. N9 label "Student ID".
+**Numbering:** migration `0195_agent_student_codes`; API §12GF; RBAC §2.194 (no new permission).
+- **Feature ID authorized:** `nehn-040`. **Status:** built on `worktree-nehn-040`.
+
+### DEC-SCOPE-281 — Permission engine: role × resource × action, DB-backed, enforced on the API (`nehn-005`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-005` (§5 L89-128, §24 "Permissions"; action 1;
+`MEETING_TRANSCRIPT_REQUEST`, `UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-26-nehn-005-permission-engine-design.md`.
+Dependencies: none upstream; blocks nehn-006, 007, 008, 017, 021. Scope per the backlog: the engine plus two pilot modules.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** P1 the catalogue is per module and lists only
+wired resources (`payments` view/add, `discounts` add, `reports.telecaller` view/download); later slices add theirs. P2 pilots: the four
+admin payment routes and the two telecaller report routes, each checking its own action. P3 the seed equals the inline checks it replaces
+(`ensure_admin`, `REPORT_ROLES`), proven by a 28-role equivalence test. P4 the caller's `users.role` column (as the inline checks read);
+a union across several `UserRoleAssignment` rows is deferred. P5 super_admin holds everything in code, has no rows, and `PUT` on it is
+409. P6 only super_admin reads or edits grants (open question 2). P7 no in-process cache: one primary-key lookup per check, so a change
+applies on the next request on every worker. P8 one table `role_permissions`; history in `audit_logs`. P9 each pilot keeps its 403 text, except the CSV download ("You don't have permission to download telecaller reports", QA-01).
+P10 `PUT` replaces the set by diff; a concurrent edit is 409; a no-op is not audited. P11 Agent Master → Staff flags stay separate
+(open question 3). P12 no custom roles (open question 4). Granting a key to a role never widens the route's record scope.
+**Numbering:** migration `0196_role_permissions`; API §12GG; RBAC §2.195.
+- **Feature ID authorized:** `nehn-005`. **Status:** built on `worktree-nehn-005`.
+
+### DEC-SCOPE-282 — Shared Excel (`.xlsx`) export and import helper (`nehn-004`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-004` (§14 "Excel Download" L320-323, §9 "Excel" template
 L200, §24 "Report Export" / "Trainer Questions", actions 2 and 10; `UNVERIFIED` backlog); design
@@ -9764,5 +9795,5 @@ switched over; nehn-025 is its first consumer. X3 CSV stays; each CSV report rou
 dependency, scope, caps and throttle. X4 the xlsx export writes the same audit row as its CSV twin; both now record `format`. The
 agency commission report stays logged, not audited (AGN-014) — whether it should be audited is `NEEDS_CONFIRMATION`. X5 no new row cap:
 each twin keeps its CSV's. X6 "Download Excel" beside "Download CSV" on the six report pages.
-**Numbering:** no migration; API §12GF; RBAC §2.194.
+**Numbering:** no migration; API §12GH; RBAC §2.196.
 - **Feature ID authorized:** `nehn-004`. **Status:** built on `worktree-nehn-004`.

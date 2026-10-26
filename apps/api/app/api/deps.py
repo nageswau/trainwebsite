@@ -6,9 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.core.rbac import user_has_division, user_has_permission, user_has_role
+from app.core.rbac import parse_key, user_has_division, user_has_role
 from app.core.security import decode_token
 from app.models import AgentOrgMember, User
+from app.services.permissions import has_grant
 
 # AGN-002 browser QA-02/QA-03: what a refused session is told. Staff learn that their agency deactivated them (they cannot
 # fix it by signing in again); everyone else keeps the generic message, so nothing new is disclosed about other accounts.
@@ -85,12 +86,16 @@ def require_role(*roles: str):
     return _dependency
 
 
-def require_permission(permission: str):
-    """Deny-by-default: 403 unless an active, usable assignment's role grants `permission`."""
+def require_permission(resource: str, action: str, detail: str = "Insufficient permission"):
+    """nehn-005 (DEC-SCOPE-281): deny-by-default 403 unless the caller's role holds `resource.action` in `role_permissions` (super_admin
+    holds everything). Reads the legacy `users.role` column, as the inline checks it replaces did (P4). `detail` keeps a route's existing
+    refusal text (P9). Record scope stays in the route. A key outside the catalogue fails at import, not as a silent deny."""
+
+    parse_key(f"{resource}.{action}")
 
     async def _dependency(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> User:
-        if not await user_has_permission(db, user.id, permission):
-            raise HTTPException(403, "Insufficient permission")
+        if not await has_grant(db, user.role, resource, action):
+            raise HTTPException(403, detail)
         return user
 
     return _dependency

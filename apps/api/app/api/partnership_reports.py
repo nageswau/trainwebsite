@@ -56,7 +56,7 @@ async def export_report(kind: str, raw: dict = Depends(_raw), user: User = Depen
 
 @router.get("/{kind}.xlsx")
 async def export_report_xlsx(kind: str, raw: dict = Depends(_raw), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """nehn-004 (DEC-SCOPE-280 X3): the CSV export's twin -- the same checks, cap and audit."""
+    """nehn-004 (DEC-SCOPE-282 X3): the CSV export's twin -- the same checks, cap and audit."""
     return await _export(db, user, kind, raw, "xlsx")
 
 

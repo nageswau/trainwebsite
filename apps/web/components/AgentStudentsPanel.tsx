@@ -247,7 +247,7 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
       <div role="search" style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 8, marginTop: 8 }}>
         <div className="field" style={{ flex: "1 1 220px", margin: 0 }}>
           <label htmlFor="agent-students-search">Search students</label>
-          <input id="agent-students-search" type="search" value={draft} maxLength={100} placeholder="Name, email or phone" onChange={(e) => setDraft(e.target.value)} />
+          <input id="agent-students-search" type="search" value={draft} maxLength={100} placeholder="Name, email, phone or Student ID" onChange={(e) => setDraft(e.target.value)} />
         </div>
         <label style={{ display: "flex", gap: 6, alignItems: "center", minHeight: 44 }}>
           <input
@@ -361,6 +361,7 @@ export default function AgentStudentsPanel({ memberRole }: { memberRole: "master
                   <li className="card" key={s.id}>
                     <span className="badge">{s.status === "archived" ? "Archived" : "Active"}</span> <span className="badge">{s.has_login ? "Has login" : "No login"}</span>
                     <h4 style={{ marginTop: 10, fontSize: "1rem", overflowWrap: "anywhere" }}>{s.full_name}</h4>
+                    {s.student_code && <p className="muted" style={{ margin: "2px 0 0", fontSize: 13 }}>Student ID {s.student_code}</p>}
                     <dl className="record-details" style={{ fontSize: 13 }}>
                       <dt>Contact</dt>
                       <dd>

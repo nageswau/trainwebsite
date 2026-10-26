@@ -188,7 +188,7 @@ test("School CRM S2 admin school management", async ({ browser }) => {
 
   // --- SADM-010 Re-send a set-password link (Users page) ---
   await a.goto("/overseas/admin/users");
-  const search = a.getByLabel("Search by name, email, or role");
+  const search = a.getByLabel("Search by name, email, role, or Student ID");
   await search.fill(STAFF[0].email);
   await search.press("Enter");
   const resend = a.getByRole("button", { name: `Re-send set-password link to ${STAFF[0].name}` });

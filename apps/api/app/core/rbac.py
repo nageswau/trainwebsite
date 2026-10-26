@@ -65,6 +65,40 @@ PERMISSIONS: dict[str, set[str]] = {
 }
 
 
+ROLES: tuple[str, ...] = tuple(PERMISSIONS)
+
+# nehn-005 (DEC-SCOPE-281): the grant-based permission catalogue -- role x resource x action, held in `role_permissions` and checked by
+# `deps.require_permission`. It lists only resources whose routes are wired (P1); each later module slice adds its own resource. A key
+# is "<resource>.<action>"; anything not listed is denied.
+ACTIONS = ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "manage")
+CATALOGUE: dict[str, dict] = {
+    "payments": {"label": "Payments", "actions": ("view", "add")},
+    "discounts": {"label": "Payment discounts", "actions": ("add",)},
+    "reports.telecaller": {"label": "Telecaller reports", "actions": ("view", "download")},
+}
+# The day-one grants, equal to the inline checks they replace (P3): admin.ensure_admin and telecaller_reports' REPORT_ROLES.
+# super_admin holds every key implicitly and never has rows (P5). Migration 0196 seeds a frozen copy.
+_PAYMENT_ADMIN = ("payments.view", "payments.add", "discounts.add")
+_TELECALLER_REPORTS = ("reports.telecaller.view", "reports.telecaller.download")
+DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
+    "it_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,
+    "overseas_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,
+    "telecaller_manager": _TELECALLER_REPORTS,
+}
+
+
+def all_keys() -> list[str]:
+    return [f"{resource}.{action}" for resource, entry in CATALOGUE.items() for action in entry["actions"]]
+
+
+def parse_key(key: str) -> tuple[str, str]:
+    """"reports.telecaller.view" -> ("reports.telecaller", "view"). Raises ValueError for a key outside the catalogue."""
+    resource, _, action = key.rpartition(".")
+    if action not in CATALOGUE.get(resource, {}).get("actions", ()):
+        raise ValueError(f"Unknown permission: {key}")
+    return resource, action
+
+
 def has_permission(role: str, permission: str) -> bool:
     perms = PERMISSIONS.get(role, set())
     if "*" in perms or permission in perms:
@@ -167,8 +201,3 @@ async def user_has_division(db: AsyncSession, user_id: UUID, *divisions: str) ->
 async def user_has_role(db: AsyncSession, user_id: UUID, *roles: str) -> bool:
     assignments = await get_active_assignments(db, user_id)
     return any(a.role in roles for a in assignments)
-
-
-async def user_has_permission(db: AsyncSession, user_id: UUID, permission: str) -> bool:
-    assignments = await get_active_assignments(db, user_id)
-    return any(has_permission(a.role, permission) for a in assignments)

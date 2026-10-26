@@ -104,7 +104,7 @@ def to_csv(payload: dict) -> str:
 
 
 def export_response(payload: dict, fmt: str, stem: str, sheet_name: str) -> Response:
-    """nehn-004 (DEC-SCOPE-280 X3): a report payload as a CSV or xlsx attachment, never cached. Rendered before the caller commits its
+    """nehn-004 (DEC-SCOPE-282 X3): a report payload as a CSV or xlsx attachment, never cached. Rendered before the caller commits its
     audit row, so a file that cannot be built writes no audit."""
     if fmt == "csv":
         body, media_type = to_csv(payload), "text/csv; charset=utf-8"

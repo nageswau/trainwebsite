@@ -1,4 +1,4 @@
-"""nehn-004 (DEC-SCOPE-280 X3-X5): every CSV report export has an `.xlsx` twin -- the same rows (typed), the same refusals, the same
+"""nehn-004 (DEC-SCOPE-282 X3-X5): every CSV report export has an `.xlsx` twin -- the same rows (typed), the same refusals, the same
 audit row (AC1, AC2, AC5) -- for the telecaller reports and performance, the recruiter performance, the agency reports and commissions,
 and the partnership reports."""
 
@@ -95,6 +95,20 @@ async def test_telecaller_reports_refusals_match(client, db_session):
     assert (await client.get(f"{API}/telecaller/reports/nope.xlsx")).status_code == 404
     response = await client.get(f"{API}/telecaller/reports/source.xlsx", params={"date_from": "nope"})
     assert response.status_code == 422 and response.json() == (await client.get(f"{API}/telecaller/reports/source.csv", params={"date_from": "nope"})).json()
+
+
+async def test_telecaller_xlsx_needs_the_download_grant_as_the_csv_does(client, db_session):
+    """nehn-005 (DEC-SCOPE-281): revoking `reports.telecaller.download` refuses both files, and the screen stays readable."""
+    from tests.test_nehn_005_permissions import DOWNLOAD_REFUSED, _headers, _restored, _user
+
+    root, manager = await _user(db_session, "super_admin"), await _user(db_session, "telecaller_manager")
+    async with _restored(db_session, "telecaller_manager"):
+        revoke = await client.put(f"{API}/admin/roles/telecaller_manager/permissions", json={"permissions": ["reports.telecaller.view"]}, headers=_headers(root))
+        assert revoke.status_code == 200, revoke.text
+        for ext in ("csv", "xlsx"):
+            response = await client.get(f"{API}/telecaller/reports/source.{ext}", headers=_headers(manager))
+            assert response.status_code == 403 and response.json()["detail"] == DOWNLOAD_REFUSED
+        assert (await client.get(f"{API}/telecaller/reports/source", headers=_headers(manager))).status_code == 200
 
 
 async def test_telecaller_performance(client, db_session):

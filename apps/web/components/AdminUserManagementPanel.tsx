@@ -8,7 +8,7 @@ import { USERS_CHANGED } from "@/lib/usersChanged";
 import { type Feedback, errorText, requestWelcomeLink, toneClass, welcomeLinkFeedback } from "@/lib/welcomeLink";
 
 type Profile = { education?: string; skills?: string[]; [key: string]: unknown };
-type AdminUserRow = { id: string; name: string; email: string; division: string; role: string; active: boolean; phone: string | null; profile: Profile; provisioning_status?: "active" | "pending_setup" | "link_expired" };
+type AdminUserRow = { id: string; name: string; email: string; division: string; role: string; active: boolean; phone: string | null; profile: Profile; provisioning_status?: "active" | "pending_setup" | "link_expired"; student_code?: string | null };
 
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
@@ -58,11 +58,22 @@ export default function AdminUserManagementPanel({ section }: { section?: string
     return () => window.removeEventListener(USERS_CHANGED, reload);
   }, []);
 
+  // nehn-040 QA-01: the search is also sent to the server (debounced), so an older account past the list cap is still found.
+  const [serverQuery, setServerQuery] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setServerQuery(query.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
   // The setup filter is resolved by the server (the exact set), never by slicing the capped unfiltered list: an older
   // pending or expired account would otherwise be invisible to the filter and to Re-send.
   useEffect(() => {
     let cancelled = false;
-    const url = setupFilter === "all" ? "/api/v1/admin/users" : `/api/v1/admin/users?provisioning_status=${setupFilter}`;
+    const params = new URLSearchParams();
+    if (setupFilter !== "all") params.set("provisioning_status", setupFilter);
+    if (serverQuery) params.set("q", serverQuery);
+    const search = params.toString();
+    const url = search ? `/api/v1/admin/users?${search}` : "/api/v1/admin/users";
     fetch(url)
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
@@ -78,7 +89,7 @@ export default function AdminUserManagementPanel({ section }: { section?: string
     return () => {
       cancelled = true;
     };
-  }, [setupFilter, reloadTick]);
+  }, [setupFilter, serverQuery, reloadTick]);
 
   function changeSetupFilter(next: "all" | "pending_setup" | "link_expired") {
     setSetupFilter(next);
@@ -92,7 +103,13 @@ export default function AdminUserManagementPanel({ section }: { section?: string
     const scoped = scopedRoles ? users.filter((u) => scopedRoles.includes(u.role)) : users;
     const normalized = query.trim().toLowerCase();
     if (!normalized) return scoped;
-    return scoped.filter((u) => u.name.toLowerCase().includes(normalized) || u.email.toLowerCase().includes(normalized) || u.role.toLowerCase().includes(normalized));
+    return scoped.filter(
+      (u) =>
+        u.name.toLowerCase().includes(normalized) ||
+        u.email.toLowerCase().includes(normalized) ||
+        u.role.toLowerCase().includes(normalized) ||
+        Boolean(u.student_code?.toLowerCase().includes(normalized)), // nehn-040
+    );
   }, [users, query, scopedRoles]);
 
   async function toggleActive(row: AdminUserRow, confirmCascade: boolean) {
@@ -193,7 +210,7 @@ export default function AdminUserManagementPanel({ section }: { section?: string
     <div className="action-card">
       <h3>{scopedRoles ? "Directory" : "Manage users"}</h3>
       <div className="field" style={{ marginTop: 8 }}>
-        <label htmlFor="admin-user-search">Search by name, email, or role</label>
+        <label htmlFor="admin-user-search">Search by name, email, role, or Student ID</label>
         <input id="admin-user-search" className="search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} />
       </div>
       <div className="field" style={{ marginTop: 8 }}>
@@ -239,7 +256,10 @@ export default function AdminUserManagementPanel({ section }: { section?: string
             <tbody>
               {visible.map((row) => (
                 <tr key={row.id}>
-                  <th scope="row">{row.name}</th>
+                  <th scope="row">
+                    {row.name}
+                    {row.student_code && <span className="muted" style={{ display: "block", fontWeight: "normal", fontSize: 13, textTransform: "none", letterSpacing: 0, whiteSpace: "nowrap" }}>Student ID {row.student_code}</span>}
+                  </th>
                   <td>{row.email}</td>
                   <td>{row.role}</td>
                   <td>

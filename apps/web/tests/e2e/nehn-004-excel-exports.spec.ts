@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 
 import { expect, test, type Download, type Page } from "@playwright/test";
 
-// nehn-004 (DEC-SCOPE-280 X3, X6): every report page that downloads a CSV also downloads Excel -- the telecaller reports and
+// nehn-004 (DEC-SCOPE-282 X3, X6): every report page that downloads a CSV also downloads Excel -- the telecaller reports and
 // performance, the recruiter performance, the partnership reports and the agency reports and commissions. Seeded demo accounts; the
 // shared stack DB also holds backend-test rows, so the checks are on file names, the zip signature and refusals, not numbers.
 

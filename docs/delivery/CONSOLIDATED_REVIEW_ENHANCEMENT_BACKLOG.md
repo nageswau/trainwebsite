@@ -364,6 +364,10 @@ Risk is the risk of regression or of a wrong outcome.
   3. Do Agent Master → Staff flags stay separate?
   4. Should custom roles be supported ("Additional roles can be introduced when required", L88)?
 - **Complexity:** large · **Risk:** high
+- **Status (2026-10-26):**
+  - Engine built on `worktree-nehn-005` (`DEC-SCOPE-281`; migration `0196`; API §12GG; RBAC §2.195). Open questions 2–4 took the
+    builder's defaults: super_admin only, flags separate, no custom roles.
+  - Pilots: the admin payment routes and the telecaller reports routes. The other modules are follow-up slices.
 
 #### `nehn-006` — Admin permission-matrix UI and permission-driven navigation and route guard
 - **Source:** §5 "Admin Permission Matrix" (L122-128), "User-interface level" (L126).
@@ -1659,6 +1663,7 @@ Risk is the risk of regression or of a wrong outcome.
 ### K. Identification and search (§22, §23)
 
 #### `nehn-040` — Student ID coverage and lookup; Agent ID conflict
+- **Status (2026-10-26):** built — `DEC-SCOPE-280` (builder's defaults; Agent ID stays out per `DEC-DATA-003`).
 - **Source:** §22 L578-587; §23 "Student ID", "Agent ID" (L592, L596); actions 21 and 22; `DEC-DATA-003` (2026-09-15: 8-char, **students only, no Agent ID**).
 - **Business requirement:** A unique, searchable, displayed business ID is assigned at registration for students (and agents, per the PDF).
 - **Existing behavior:**

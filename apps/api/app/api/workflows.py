@@ -3129,7 +3129,7 @@ async def agent_commission_report_csv(date_from: str | None = REPORT_DATE_FROM, 
 
 @router.get("/overseas/agent/commissions/report.xlsx")
 async def agent_commission_report_xlsx(date_from: str | None = REPORT_DATE_FROM, date_to: str | None = REPORT_DATE_TO, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """nehn-004 (DEC-SCOPE-280 X3, X4): the CSV's twin -- the same rows, the amount a number and the days date cells; logged, not
+    """nehn-004 (DEC-SCOPE-282 X3, X4): the CSV's twin -- the same rows, the amount a number and the days date cells; logged, not
     audited, as the CSV is (AGN-014)."""
     items, start, end = await _commission_report_items(user, db, date_from, date_to)
     keys = ("student", "university", "country", "intake", "status", "amount", "currency", "created_at", "claimed_at", "paid_at", "claim_reference")

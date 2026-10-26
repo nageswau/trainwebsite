@@ -14,7 +14,7 @@ export default function ExportButtons({ url, filename, label }: { url: string; f
   return <Pair csv={`${url}${join}format=csv`} xlsx={`${url}${join}format=xlsx`} name={name} label={label} />;
 }
 
-// nehn-004 (DEC-SCOPE-280 X6): the same pair for the report routes whose format is the path's extension -- a `….csv` URL (filters in
+// nehn-004 (DEC-SCOPE-282 X6): the same pair for the report routes whose format is the path's extension -- a `….csv` URL (filters in
 // its query) and its `….xlsx` twin, saved under the CSV's filename with the Excel extension. `hint` describes the whole group.
 export function SpreadsheetButtons({ csvUrl, filename, label, hint }: { csvUrl: string; filename: string; label: string; hint?: string }) {
   const xlsx = csvUrl.replace(/\.csv(?=\?|$)/, ".xlsx");

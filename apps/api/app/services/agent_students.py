@@ -12,6 +12,7 @@ from sqlalchemy import ColumnElement, Select, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.core.identifiers import unique_student_code
 from app.core.rbac import is_agent_staff
 from app.models import AgentOrgMember, AgentStudent, AgentStudentCounseling, OverseasApplication, User
 from app.services.agent_orgs import org_member_ids
@@ -84,6 +85,7 @@ def record_item(row: AgentStudent, account: User | None, member: AgentOrgMember 
         "id": row.id,
         "has_login": row.student_id is not None,
         **_identity(row, account),
+        "student_code": account.student_code if account is not None else row.student_code,  # nehn-040 N2
         "preferred_country": row.preferred_country,
         "preferred_intake": row.preferred_intake,
         "status": row.status,
@@ -149,7 +151,8 @@ async def list_page(db: AsyncSession, user: User, *, q: str | None, include_arch
     name = func.coalesce(User.full_name, AgentStudent.full_name)
     if term:
         email, phone = func.coalesce(User.email, AgentStudent.email), func.coalesce(User.phone, AgentStudent.phone)
-        filters.append(or_(_contains(name, term), _contains(email, term), _contains(phone, term)))
+        code = func.coalesce(User.student_code, AgentStudent.student_code)  # nehn-040
+        filters.append(or_(_contains(name, term), _contains(email, term), _contains(phone, term), _contains(code, term)))
     base = _rows_stmt().where(*filters)
     total = await db.scalar(select(func.count()).select_from(base.subquery()))
     rows = (await db.execute(base.order_by(name, AgentStudent.id).limit(limit).offset(offset))).all()
@@ -257,12 +260,13 @@ def duplicate_conflict(matches: list[dict], hidden: int) -> HTTPException:
 # --- writes (no commit) ------------------------------------------------------------------------------------------------------------
 
 
-def create_record(db: AsyncSession, user: User, data: dict) -> AgentStudent:
-    """D4: a staff creator is the assignee; a Master's student starts unassigned."""
+async def create_record(db: AsyncSession, user: User, data: dict) -> AgentStudent:
+    """D4: a staff creator is the assignee; a Master's student starts unassigned. nehn-040: the row gets its Student ID."""
     row = AgentStudent(
         agent_id=user.id,
         student_id=None,
         status="active",
+        student_code=await unique_student_code(db, User.student_code, AgentStudent.student_code),
         assigned_member_id=user.agent_membership.id if is_agent_staff(user) else None,
         phone_digits=phone_digits(data.get("phone")),
         updated_by_user_id=user.id,

@@ -2981,10 +2981,36 @@ under the counselor CRM prefixes without a row fails `test_every_counselor_crm_r
 
 Pinned by `apps/api/tests/test_nehn_003_private_storage.py`.
 
-### 2.194 Excel twins of the CSV report exports *(added 2026-10-26 — `DEC-SCOPE-280`, nehn-004)*
+### 2.194 Student ID coverage and lookup *(added 2026-10-26 — `DEC-SCOPE-280`, nehn-040)*
+
+No new route or permission. The Student ID is display and search data, never an authentication factor. Every search that matches it
+keeps its route's existing scope: admin users (division-scoped for non-super admins), the overseas-student lookup (counselor: visible
+students; agent: assigned students), the agency student list (`student_scope`: own agency, staff their assigned students) and the
+agent network (Overseas Admin). The agent link search does not match codes. Pinned by `apps/api/tests/test_nehn_040_student_ids.py`.
+
+### 2.195 Permission engine *(added 2026-10-26 — `DEC-SCOPE-281`, nehn-005)*
+
+Grant-driven routes check `role_permissions` for the caller's `users.role` (super_admin: everything; an unknown key: denied for everyone).
+The route's own record scope still applies after the grant (payments: own division; telecaller reports: §2.35). Day-one grants equal the
+former inline checks, so the cells below are unchanged until super_admin edits a grant.
+
+| Route | Anonymous | super_admin | it_admin / overseas_admin | telecaller_manager | Any other signed-in role |
+|---|---|---|---|---|---|
+| `GET /admin/payments` (`payments.view`) | 401 | 200 | 200 (seed) | 403 | 403 |
+| `POST /admin/payments`, `POST /admin/payments/emi-schedule` (`payments.add`) | 401 | allowed | allowed (seed) | 403 | 403 |
+| `POST /admin/payments/{id}/discount` (`discounts.add`) | 401 | allowed | allowed (seed) | 403 | 403 |
+| `GET /telecaller/reports/{kind}` (`reports.telecaller.view`) | 401 | 200 | 200 (seed) | 200 (seed) | 403 |
+| `GET /telecaller/reports/{kind}.csv` (`reports.telecaller.download`) | 401 | 200 | 200 (seed) | 200 (seed) | 403 |
+| `GET /admin/permissions/catalogue`, `GET/PUT /admin/roles/{role}/permissions` | 401 | 200 | 403 | 403 | 403 |
+| `GET /auth/me/permissions` | 401 | 200 | 200 | 200 | 200 |
+
+Granting a key to another role never widens record scope: a role outside a route's scope branches gets the narrowest one (own division,
+own reports) or a 403 from the service. Pinned by `apps/api/tests/test_nehn_005_permissions.py` (a 28-role equivalence matrix).
+
+### 2.196 Excel twins of the CSV report exports *(added 2026-10-26 — `DEC-SCOPE-282`, nehn-004)*
 
 Every `.xlsx` route answers exactly as its `.csv` twin, cell for cell: `GET /telecaller/reports/{kind}.xlsx` and
-`GET /telecaller/manager/performance.xlsx` (§2.35 / tel-023 rows), `GET /recruiter/performance.xlsx` (rec-033 row),
+`GET /telecaller/manager/performance.xlsx` (§2.35 / tel-023 rows; `reports/{kind}.xlsx` needs the `reports.telecaller` download grant, §2.195), `GET /recruiter/performance.xlsx` (rec-033 row),
 `GET /workflows/overseas/agent/crm/reports/{kind}.xlsx` (AGN-020: Master-only kinds stay Master-only),
 `GET /workflows/overseas/agent/commissions/report.xlsx` (AGN-014), `GET /partnership/reports/{kind}.xlsx` (upc-031). No new role or
 scope. Pinned by `test_nehn_004_xlsx_exports.py` and the rows added to `test_tel_026_matrix.py`, `rec038_rows_activity.py` and
