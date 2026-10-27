@@ -4257,6 +4257,29 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   file not attached to it.
 - `GET /portal/it/student/{assignments|projects}` — rows gain `submission_type` (not a table column).
 
+## 12GR. Learning material files and management (nehn-027) — addendum, 2026-10-27
+
+`DEC-SCOPE-294`. Migration `0202_learning_resource_files`. The existing create route keeps its path, response keys and status codes.
+
+- `POST /workflows/it/trainer/materials` — body takes **exactly one** of `url` (now `^https?://`, ≤ 500) or `file_id` (an id from
+  `POST /files/upload?purpose=learning_material`: nehn-003, 20 MB, PDF/DOC/DOCX/XLSX/PPTX/JPEG/PNG, sniffed); both or neither → **422**.
+  A `file_id` that is not the caller's own `learning_material` upload, or is already attached to a material → **422** `"This file cannot be
+  attached to a material"`. `resource_type` `video`/`recording` with a file → **422** `"Upload videos to YouTube or Google Drive and add
+  the link"`. For a file the response `url` is the download route below. Audit `learning_resource.create` metadata gains `kind`.
+- `GET /workflows/it/trainer/materials?batch_id=` (new) — live materials: trainer → own batches, it_admin → all; ordered `sort_order`,
+  then newest. Rows `{id, batch_id, batch, title, resource_type, url, sort_order, file: {filename, content_type, size} | null,
+  created_at}`. 401 anonymous; 403 other roles.
+- `PATCH /workflows/it/trainer/materials/{id}` (new) — any of `title`, `resource_type`, `url` (link materials only, else 422),
+  `sort_order` (0-100000); an empty body → 422. Returns the row. 403 another trainer's batch; 404 unknown or deleted. Audit
+  `learning_resource.update` (`fields`).
+- `DELETE /workflows/it/trainer/materials/{id}` (new) — **204**, soft (`deleted_at`); repeat → 404. Audit `learning_resource.delete`.
+- `GET /workflows/it/materials/{id}/file` (new) — the file (attachment unless PDF/image, `nosniff`; 307 to a presigned URL in S3 mode)
+  for an it_student enrolled in the batch, the batch's trainer, it_admin, super_admin. **404** for anyone else signed in and for a
+  deleted, link-only or unknown material; 401 anonymous.
+- Deleted materials are hidden from `GET /portal/it/student/downloads`, `GET /workflows/it/student/learning`, the trainer `materials` and
+  admin `resources` portal sections; their `url` for a file material is the download route. The student `downloads` URL column has
+  `type: "link"`.
+
 ## 12GS. Permission-matrix screen (nehn-006) — addendum, 2026-10-27
 
 `DEC-SCOPE-295`. No migration, no new route.
