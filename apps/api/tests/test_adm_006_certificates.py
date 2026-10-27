@@ -12,6 +12,9 @@ Trainer access to the same shared issuance endpoint predates this feature (no ap
 `TRN-*` Feature ID claims it, and it's already exercised by `STU-007`'s own test coverage)
 -- left as-is rather than removed, since doing so would break already-shipped, tested
 functionality on an interpretive reading of `ADM-006-AC03`'s "IT Admin" framing.
+
+nehn-031 (DEC-ROLE-003, DEC-SCOPE-294): issuance has since moved to the Coordinator; the trainer and the IT admin
+now get 403, and the override-reason rule below is exercised as the coordinator. The admin page keeps the directory.
 """
 
 import datetime
@@ -24,12 +27,12 @@ from app.core.security import hash_password
 from app.models import AuditLog, Batch, Certificate, Enrollment, Program, User
 
 
-async def _create_admin(db_session, *, email_prefix: str = "adm006-admin") -> User:
+async def _create_admin(db_session, *, email_prefix: str = "adm006-admin", role: str = "it_admin") -> User:
     admin = User(
         email=f"{email_prefix}-{uuid.uuid4().hex[:8]}@example.local",
         password_hash=hash_password("Sup3r-Secret-Pass!"),
         full_name="Certificate Admin",
-        role="it_admin",
+        role=role,
         division="it",
         active=True,
     )
@@ -106,10 +109,10 @@ async def _login(client, email: str) -> None:
 
 @pytest.mark.asyncio
 async def test_issuing_before_criteria_met_requires_override_reason(db_session, client):
-    admin = await _create_admin(db_session)
+    coordinator = await _create_admin(db_session, role="coordinator")
     student = await _create_student(db_session)
     enrollment = await _create_enrollment(db_session, student)
-    await _login(client, admin.email)
+    await _login(client, coordinator.email)
 
     without_override = await client.post(f"/api/v1/workflows/it/certificates/{enrollment.id}/issue", json={})
     assert without_override.status_code == 409
@@ -123,10 +126,10 @@ async def test_issuing_before_criteria_met_requires_override_reason(db_session, 
 
 @pytest.mark.asyncio
 async def test_override_with_a_reason_issues_and_records_it_durably(db_session, client):
-    admin = await _create_admin(db_session)
+    coordinator = await _create_admin(db_session, role="coordinator")
     student = await _create_student(db_session)
     enrollment = await _create_enrollment(db_session, student)
-    await _login(client, admin.email)
+    await _login(client, coordinator.email)
 
     response = await client.post(
         f"/api/v1/workflows/it/certificates/{enrollment.id}/issue",
@@ -145,25 +148,17 @@ async def test_override_with_a_reason_issues_and_records_it_durably(db_session, 
 
 
 @pytest.mark.asyncio
-async def test_nehn_002_batch_trainer_overrides_with_a_reason(db_session, client):
-    # nehn-002 AC1: the trainer's own card sends override + override_reason; the batch's trainer gets a 201
-    # and the reason lands in the snapshot and the audit trail, exactly as for the admin.
+async def test_nehn_031_batch_trainer_and_it_admin_no_longer_issue(db_session, client):
+    # nehn-031 AC1 (DEC-ROLE-003 cut-over): the batch's own trainer and the IT admin are refused, override reason or not.
     student = await _create_student(db_session)
     enrollment = await _create_enrollment(db_session, student)
     batch = await db_session.get(Batch, enrollment.batch_id)
     trainer = await db_session.get(User, batch.trainer_id)
-    await _login(client, trainer.email)
     url = f"/api/v1/workflows/it/certificates/{enrollment.id}/issue"
-
-    assert (await client.post(url, json={"override": True})).status_code == 422
-    response = await client.post(url, json={"override": True, "override_reason": "Prior industry certification accepted."})
-    assert response.status_code == 201
-    certificate_id = response.json()["id"]
-    certificate = await db_session.get(Certificate, certificate_id)
-    assert certificate.criteria_snapshot["override_reason"] == "Prior industry certification accepted."
-    audit = await db_session.scalar(select(AuditLog).where(AuditLog.entity_type == "certificate", AuditLog.entity_id == str(certificate_id)))
-    assert audit.user_id == trainer.id
-    assert audit.metadata_json["override_reason"] == "Prior industry certification accepted."
+    for actor in (trainer, await _create_admin(db_session)):
+        await _login(client, actor.email)
+        assert (await client.post(url, json={"override": True, "override_reason": "Prior industry certification accepted."})).status_code == 403
+    assert await db_session.scalar(select(Certificate).where(Certificate.enrollment_id == enrollment.id)) is None
 
 
 @pytest.mark.asyncio
@@ -171,10 +166,11 @@ async def test_admin_certificates_directory_lists_issued_certificates(db_session
     admin = await _create_admin(db_session)
     student = await _create_student(db_session)
     enrollment = await _create_enrollment(db_session, student)
-    await _login(client, admin.email)
+    await _login(client, (await _create_admin(db_session, role="coordinator")).email)
     issue = await client.post(f"/api/v1/workflows/it/certificates/{enrollment.id}/issue", json={"override": True, "override_reason": "Manual review approved."})
     assert issue.status_code == 201
 
+    await _login(client, admin.email)
     listing = await client.get("/api/v1/portal/it/admin/certificates")
     assert listing.status_code == 200
     row = next(r for r in listing.json()["rows"] if r["number"] == issue.json()["certificate_no"])

@@ -7,6 +7,7 @@ import LiveClassesPanel from "./LiveClassesPanel";
 import LiveSessionManagePanel from "./LiveSessionManagePanel";
 import SupportTicketQueuePanel from "./SupportTicketQueuePanel";
 import { formatSize } from "@/lib/agentDocuments";
+import { type CertificateCriteria, criteriaSummary } from "@/lib/certificates";
 import { formatDate } from "@/lib/formatDate";
 
 type Batch = { id: string; name: string; schedule: string; capacity: number };
@@ -84,7 +85,8 @@ export default function TeacherWorkspaceActions({ section }: { section: string }
   const [loadingAttemptDetail, setLoadingAttemptDetail] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [certificateOverride, setCertificateOverride] = useState(false);
+  const [recommendStatus, setRecommendStatus] = useState<"recommended" | "not_ready">("recommended");
+  const [recommendCriteria, setRecommendCriteria] = useState<CertificateCriteria | null>(null);
   const [batch, setBatch] = useState("");
   const [message, setMessage] = useState("");
   const [failed, setFailed] = useState(false);
@@ -186,7 +188,7 @@ export default function TeacherWorkspaceActions({ section }: { section: string }
       ["Assessments", "Schedule tests, author questions, and grade attempts."],
       ["Materials", "Publish notes, links, documents, videos, and provider recordings."],
       ["Live sessions", "Schedule Google Meet or Zoho Meeting classes and attach provider recordings."],
-      ["Student progress", "Update learner progress and issue eligible certificates."],
+      ["Student progress", "Update learner progress and recommend learners for a certificate."],
       ["Support", "Pick up and resolve student support tickets for your division."],
     ].map(([title, description]) => <div className="action-card" key={title}><h3>{title}</h3><p className="muted">{description}</p></div>)}</div></div></div>;
   }
@@ -468,14 +470,18 @@ export default function TeacherWorkspaceActions({ section }: { section: string }
         <button className="btn" disabled={busy || loading || !context.enrollments.length} aria-describedby={!context.enrollments.length ? "progress-empty" : undefined}>Update progress</button>
       </form>
     </Card>
-    <Card title="Issue certificate">
-      {/* nehn-002: an override needs a written reason (the API 422s without one), so a blank one never leaves the browser; reset re-hides it. */}
-      <form className="form" onReset={() => setCertificateOverride(false)} onSubmit={event => { const form = new FormData(event.currentTarget); const reference = String(form.get("enrollment")); const override = form.get("override") === "on"; const reason = String(form.get("override_reason") ?? "").trim(); if (override && !reason) { event.preventDefault(); setFailed(true); setMessage("Enter a reason for the override."); return; } void submit(event, `/api/v1/workflows/it/certificates/${reference}/issue`, "POST", { override, override_reason: reason || undefined }, "Certificate issued."); }}>
-        <Field controlId="certificate-enrollment" label="Eligible learner"><select name="enrollment" required><option value="">Select learner</option>{context.enrollments.map(item => <option key={item.id} value={item.id}>{item.student} · {item.batch} · {item.enrollment_code}</option>)}</select></Field>
-        <div className="field"><label htmlFor="certificate-override"><input id="certificate-override" name="override" type="checkbox" checked={certificateOverride} onChange={event => setCertificateOverride(event.target.checked)} /> Override unmet criteria</label></div>
-        {certificateOverride && <Field controlId="certificate-override-reason" label="Override reason (required to issue before criteria are met)"><textarea name="override_reason" required /></Field>}
-        {!context.enrollments.length && <p id="certificate-empty" className="muted">{loading ? "Loading eligible learners…" : "No active enrollment is available for certificate issuance."}</p>}
-        <button className="btn" disabled={busy || loading || !context.enrollments.length} aria-describedby={!context.enrollments.length ? "certificate-empty" : undefined}>Issue certificate</button>
+    <Card title="Recommend for certificate">
+      {/* nehn-031 (DEC-ROLE-003): the Coordinator issues certificates; the trainer recommends a learner, or flags them not ready with a reason. */}
+      <form className="form" onReset={() => { setRecommendStatus("recommended"); setRecommendCriteria(null); }} onSubmit={event => { const form = new FormData(event.currentTarget); const reference = String(form.get("enrollment")); const comment = String(form.get("comment") ?? "").trim(); if (recommendStatus === "not_ready" && !comment) { event.preventDefault(); setFailed(true); setMessage("Say why the learner is not ready."); return; } void submit(event, `/api/v1/workflows/it/certificates/${reference}/recommend`, "POST", { status: recommendStatus, comment: comment || undefined }, recommendStatus === "recommended" ? "Recommended to the coordinator." : "Flagged as not ready."); }}>
+        <Field controlId="certificate-enrollment" label="Learner"><select name="enrollment" required onChange={event => { const id = event.target.value; setRecommendCriteria(null); if (id) request<CertificateCriteria>(`/api/v1/workflows/it/certificates/eligibility/${id}`).then(setRecommendCriteria, () => setRecommendCriteria(null)); }}><option value="">Select learner</option>{context.enrollments.map(item => <option key={item.id} value={item.id}>{item.student} · {item.batch} · {item.enrollment_code}</option>)}</select></Field>
+        {recommendCriteria && <p className="muted" role="status">{recommendCriteria.certificate_issued ? "A certificate has already been issued for this learner." : criteriaSummary(recommendCriteria)}</p>}
+        <fieldset className="field"><legend>Recommendation</legend>
+          <label><input type="radio" name="status" value="recommended" checked={recommendStatus === "recommended"} onChange={() => setRecommendStatus("recommended")} /> Ready for a certificate</label>
+          <label><input type="radio" name="status" value="not_ready" checked={recommendStatus === "not_ready"} onChange={() => setRecommendStatus("not_ready")} /> Not ready yet</label>
+        </fieldset>
+        <Field controlId="certificate-comment" label={recommendStatus === "not_ready" ? "Comment (required)" : "Comment (optional)"}><textarea name="comment" maxLength={1000} required={recommendStatus === "not_ready"} /></Field>
+        {!context.enrollments.length && <p id="certificate-empty" className="muted">{loading ? "Loading learners…" : "No active enrollment is assigned to this trainer."}</p>}
+        <button className="btn" disabled={busy || loading || !context.enrollments.length || Boolean(recommendCriteria?.certificate_issued)} aria-describedby={!context.enrollments.length ? "certificate-empty" : undefined}>Send recommendation</button>
       </form>
     </Card>
   </>;

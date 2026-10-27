@@ -2299,3 +2299,12 @@ New table `submission_files`: `id` (UUID PK), `submission_id` (FK `submissions` 
 `stored_file_id` (FK `stored_files` ON DELETE CASCADE, `uq_submission_files_stored_file`), `created_at`. Filename, size and MIME live on
 the `stored_files` row. `submissions.file_url` is unchanged and still accepted. No existing data changes. Downgrade drops the table (the
 submissions and stored files stay).
+
+## Certificate workflow (`nehn-031`, `DEC-SCOPE-294`; migration `0202_certificate_workflow`)
+
+New table `certificate_rules`: `division` (String PK, check `= 'it'`; the `tel_settings` keyed-row idiom), `min_progress_percent`,
+`min_attendance_percent` (each 0–100, `ck_certificate_rules_percent`), `updated_by_id` (FK users), timestamps. Seeded `('it', 100, 75)`,
+the thresholds that were hardcoded before, so no eligibility changes on upgrade. New table `certificate_requests`: `id` (UUID PK),
+`enrollment_id` (FK `enrollments` ON DELETE CASCADE, unique), `status` (`recommended | not_ready | issued`), `comment`,
+`recommended_by_id` (FK users), `certificate_id` (FK `certificates` ON DELETE SET NULL), timestamps. Issued certificates are unchanged;
+new ones record the thresholds used in `criteria_snapshot.rules`. Downgrade drops both tables and the three seeded grants.
