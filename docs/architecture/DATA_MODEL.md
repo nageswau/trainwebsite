@@ -2315,3 +2315,10 @@ submissions and stored files stay).
 none). Filename, size and MIME live on the `stored_files` row. Existing rows keep their `url` and get `sort_order` 0. The downgrade
 removes already-deleted rows, points each file material's `url` at `/api/v1/files/{stored_file_id}` (nehn-003 owner route), and drops
 the columns.
+
+## Admission interviews (`nehn-037` part 4, `DEC-SCOPE-296`; migration `0203_application_interviews`, after nehn-027's `0202_learning_resource_files`)
+
+New table `application_interviews`: `id` (UUID PK), `application_id` (FK `overseas_applications` ON DELETE CASCADE), `scheduled_at`
+(timestamptz), `mode` (CHECK online / in_person / phone), `location` (≤300), `student_note` (≤500), `outcome` (NULL = awaiting; CHECK
+passed / not_successful / cancelled), `created_by_id` / `updated_by_id` (FK `users` ON DELETE SET NULL), timestamps;
+`ix_application_interviews_application (application_id, scheduled_at)`. No existing data changes. Downgrade drops the table.

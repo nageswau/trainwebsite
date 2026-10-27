@@ -1306,3 +1306,13 @@ half.
 | `nehn-027-AC3` | A link material still works (only `http(s)` links) | `::test_link_resource_still_works_and_rejects_unsafe_schemes`; `test_trn_004_recordings_and_resources.py`; `DataTable.test.tsx` (link column) |
 | `nehn-027-AC4` | A batch B student gets 404; other trainers 403; anonymous 401 | `::test_uploaded_pdf_reaches_only_the_batch_students`, `::test_manage_routes_are_scoped_to_the_batch_trainer`, `::test_anonymous_is_refused` |
 | `nehn-027-neg` | An oversize or video file is refused with guidance to use a link | `::test_create_needs_exactly_one_source_and_an_own_unattached_file`; `CourseMaterialsPanel.test.tsx`; e2e |
+
+**Addendum, 2026-10-27 (`nehn-037` part 4)** — Admission interviews.
+
+| ID | Requirement / acceptance | Evidence |
+|---|---|---|
+| `nehn-037-P4` | Requirement: §19 L540, §17 L468 → `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-037` part 4 → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-296` → design `docs/superpowers/specs/2026-10-27-nehn-037-admission-interviews-design.md` → API §12GT, RBAC §2.207, `DATA_MODEL.md` (0203) | I1–I9 defaults `NEEDS_CONFIRMATION` |
+| `nehn-037-AC3` | An interview entry is visible to the student, with outcome after the date | `apps/api/tests/test_nehn_037_interviews.py::test_the_counselor_schedules_an_interview_the_student_sees_it_and_is_told`, `::test_an_outcome_is_accepted_only_after_the_date_and_cancelled_any_time`; `ApplicationInterviews.test.tsx`; `apps/web/tests/e2e/nehn-037-admission-interviews.spec.ts` |
+| `nehn-037-AC4` | Counselor-only information never in a student payload (who recorded it) | `::test_the_counselor_schedules_an_interview_the_student_sees_it_and_is_told` (`recorded_by` absent) |
+| `nehn-037-AC5` | A counselor who is not assigned gets 403/404; the student cannot write | `::test_scope_and_roles`, `::test_agency_applications_the_counselor_writes_the_agency_reads_and_is_told` |
+| `nehn-037-I4/I6/I7` | Cap 20; closed application 409; notices and audit; unchanged save writes nothing | `::test_a_closed_application_refuses_writes_and_the_cap_holds`, `::test_an_unchanged_save_writes_nothing_and_a_note_change_is_not_announced`; migration `test_nehn_037_migration.py` |
