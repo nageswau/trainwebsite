@@ -3227,3 +3227,11 @@ No new resource or grant: the seven reports use §2.214's `reports.training` (se
 | `student-courses`, `students-by-trainer`, `course-completion`, `completions`, `attendance`, `trainers`, `courses` | super_admin, it_admin every batch; trainer only batches where `Batch.trainer_id` is the caller (a named other trainer/batch/course → empty); any other granted role none | `courses.revenue` is `field.financial` — super_admin or a holder of `field.financial.view` (not seeded to it_admin or trainer; recruiter/HR never hold the report) |
 
 Pinned by `apps/api/tests/test_nehn_010_training_reports.py` and `apps/web/tests/e2e/nehn-010-training-reports.spec.ts`.
+
+### 2.218 School document statuses *(added 2026-10-27 — `DEC-SCOPE-307`, nehn-039)*
+
+| Route | Anonymous | school_coordinator / school_principal | school_teacher | school_parent | other roles |
+|---|---|---|---|---|---|
+| `GET /school/students/{id}/document-statuses` | 401 | 200, own school's students | 200, assigned students | 200, linked children | 403 |
+
+Out-of-scope students answer 404, not 403 (no existence leak). Pinned by `apps/api/tests/test_nehn_039_school_document_statuses.py`.

@@ -4478,3 +4478,15 @@ error order, paging, throttle, cap and audit row is §12HA's. `GET /api/v1/repor
   latest certificate status or `"Not issued"`. `revenue` is omitted (JSON and files) without `field.financial.view`.
 - `GET /workflows/it/certificates/eligibility/{id}` is unchanged in shape; its attendance/assignment/assessment figures now come from the
   same calculator as the `attendance` report.
+
+## 12HE. School document statuses (nehn-039) — addendum, 2026-10-27
+
+`DEC-SCOPE-307`. No migration. Additive only.
+
+- `GET /school/students/{student_id}/document-statuses` → `{student_id, applications: [{application_id, university_name,
+  has_checklist, items: [{name, required, status, status_label}]}]}`. Applications newest first, items in checklist order; status
+  is `app.application_checklists.item_status` (`missing` when nothing is marked or linked). Financial-class items are left out; no
+  files, ids of documents, notes or intake. Not paginated (a student has a handful of applications).
+- 401 signed out; 403 `School role required` for any non-school role; **404** `Student not found` for a student outside the
+  reader's scope or a missing id. Each 200 writes one `school.document_statuses_view` audit row (`school_id`, application and item
+  counts).
