@@ -3122,3 +3122,14 @@ off a batch loses manage and download access at once. No new permission key. Pin
 | "Create payment due" / "Apply discount" forms; telecaller report "Download CSV" | the role | Rendered only with `payments.add` / `discounts.add` / `reports.telecaller.download`. |
 
 No grant logic runs in the web app beyond "is this key in my set"; nehn-005 remains the enforcement point.
+
+### 2.207 Admission interviews (`nehn-037` part 4, `DEC-SCOPE-296`)
+
+| Route | Anonymous | overseas_student | counselor (assigned / other) | overseas_admin | agent (own agency app) | other roles |
+|---|---|---|---|---|---|---|
+| `GET /workflows/overseas/applications/{id}/interviews` | 401 | 200 own / 403 | 200 / 403 | 200 | 200 | 403 |
+| `POST`, `PATCH .../interviews[/{interview_id}]` | 401 | 403 | 200-201 / 403 | 200-201 | 403 | 403 |
+| `GET /workflows/overseas/student/interviews` | 401 | 200 (own only) | 403 | 403 | 403 | 403 |
+
+Writes share the offers' entry (scope, row lock, swapped-counselor re-check, closed → 409). Pinned by
+`apps/api/tests/test_nehn_037_interviews.py`.
