@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application_checklists import GATE_BLOCKED, GATE_NEEDS_REASON, NO_TEMPLATE_GATE_MODE, READY_FOR_SUBMISSION, item_status, status_label, summary
-from app.document_checklists import STANDARD_STATUSES, STATUS_LABELS, type_sensitivity
+from app.document_checklists import STANDARD_STATUSES, STATUS_LABELS, highest, type_sensitivity
 from app.models import (
     ApplicationChecklist,
     ApplicationChecklistItem,
@@ -93,6 +93,14 @@ async def _items(db: AsyncSession, application_id: UUID) -> list[tuple[Applicati
 
 def _status(item: ApplicationChecklistItem, documents: list[StudentDocument]) -> str:
     return item_status(item.mark, [d.verification_status for d in documents])
+
+
+async def item_statuses(db: AsyncSession, application_id: UUID) -> list[dict]:
+    """nehn-039: each item's name, required flag, status and class (item and type, SD1) -- no documents, notes or marks' authors."""
+    return [
+        {"name": _name(i), "required": i.required, "status": _status(i, docs), "sensitivity": highest((i.sensitivity, type_sensitivity(i.document_type, i.label)))}
+        for i, docs in await _items(db, application_id)
+    ]
 
 
 async def _summary(db: AsyncSession, application_id: UUID) -> dict:

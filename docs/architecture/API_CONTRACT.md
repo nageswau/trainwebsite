@@ -4458,6 +4458,18 @@ designation, active, active_from, active_to}`; the storage key is never returned
   feedback, certificates) answers 200 with no rows, metrics, actions or panels and an additive `locked: {feature, label,
   required_state, current_state}`; the dashboard withholds its upcoming-work rows while assignments are locked.
 - `GET /workflows/it/student/learning` — locked features' lists are empty; additive `access` key.
+
+## 12HE. School document statuses (nehn-039) — addendum, 2026-10-27
+
+`DEC-SCOPE-307`. No migration. Additive only.
+
+- `GET /school/students/{student_id}/document-statuses` → `{student_id, applications: [{application_id, university_name,
+  has_checklist, items: [{name, required, status, status_label}]}]}`. Applications newest first, items in checklist order; status
+  is `app.application_checklists.item_status` (`missing` when nothing is marked or linked). Financial-class items are left out; no
+  files, ids of documents, notes or intake. Not paginated (a student has a handful of applications).
+- 401 signed out; 403 `School role required` for any non-school role; **404** `Student not found` for a student outside the
+  reader's scope or a missing id. Each 200 writes one `school.document_statuses_view` audit row (`school_id`, application and item
+  counts).
 ## 12HD. Agent dashboard KPIs (nehn-038) — addendum, 2026-10-27
 
 `DEC-SCOPE-306`. No migration. Additive only.

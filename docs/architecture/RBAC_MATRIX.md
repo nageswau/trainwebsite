@@ -3217,6 +3217,14 @@ Pinned by `apps/api/tests/test_nehn_009_reports.py` and `apps/web/tests/e2e/nehn
 
 A new entitlement layer under the role check: the payment check runs after the route's role and ownership checks, so another
 student's or batch's record keeps its existing 403/404. Pinned by `apps/api/tests/test_nehn_018_student_access.py`.
+
+### 2.218 School document statuses *(added 2026-10-27 — `DEC-SCOPE-307`, nehn-039)*
+
+| Route | Anonymous | school_coordinator / school_principal | school_teacher | school_parent | other roles |
+|---|---|---|---|---|---|
+| `GET /school/students/{id}/document-statuses` | 401 | 200, own school's students | 200, assigned students | 200, linked children | 403 |
+
+Out-of-scope students answer 404, not 403 (no existence leak). Pinned by `apps/api/tests/test_nehn_039_school_document_statuses.py`.
 ### 2.217 Agent dashboard KPIs *(added 2026-10-27 — `DEC-SCOPE-306`, nehn-038)*
 
 No new permission or route. The new figures and the date filter follow AGN-018's gate and scope:
