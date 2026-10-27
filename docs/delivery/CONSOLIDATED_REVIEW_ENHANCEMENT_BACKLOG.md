@@ -734,6 +734,7 @@ Risk is the risk of regression or of a wrong outcome.
 - **Complexity:** medium · **Risk:** medium
 
 #### `nehn-015` — Internal CRM workflow reconciliation (blocked on the client CRM flow)
+**Status (2026-10-27): still waiting for client input (CI-01).** A readiness template is prepared on `worktree-nehn-015`: [`NEHN_015_CRM_DELTA_MATRIX.md`](NEHN_015_CRM_DELTA_MATRIX.md) maps all 26 client-flow items (§16 L424–L448, §26 L760–L783) to the as-built code and decisions, with every client and delta column `NEEDS_CONFIRMATION`. No code, migration or DEC is involved. AC1–AC3 stay open until the client document arrives.
 - **Source:** §16 L351-357, L377-404, L420-449; §26 L758-784; actions 4–7. Evidence: `MEETING_TRANSCRIPT_REQUEST` plus a pending client document.
 - **Business requirement:** Implement the client's final CRM process: sources, stages, transitions, assignment rules (including workload- and source-based), ownership, reassignment, escalation, duplicates, IT/Overseas/Agent flows, notifications, dashboards, reports, filters, export fields, permissions and approvals.
 - **Existing behavior:** The Telecaller CRM covers most of the list:
@@ -1678,6 +1679,11 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** agent dashboard tests (AGN-0xx).
 - **Open questions:** the final KPI list and definitions; whether admin needs a cross-agent ranking.
 - **Complexity:** small · **Risk:** low
+- **Status (2026-10-27):** built in `worktree-nehn-038` (`DEC-SCOPE-306`, defaults D1-D6 `NEEDS_CONFIRMATION` pending CI-06):
+  `/crm/dashboard` gains `applications_submitted`, the visa outcome split (decisions / approvals / refusals / withdrawals, which sum),
+  per-student conversions and rate (also per staff row), and an optional referral-date range (`date_from`/`date_to`, the AGN-019
+  cohort) applied to every KPI tile, the breakdowns and the staff table. Pending queues and commission stay current. The dashboard has a
+  GET From/To filter. No migration; API §12HD; RBAC §2.217. The admin cross-agent ranking is not built (open question).
 
 ### J. School / Institution (§21)
 
@@ -2080,7 +2086,7 @@ The order follows the PDF's priorities (§25 High, the §27 next-review focus an
 | Founder + Coordinator signature PNGs; final certificate design | nehn-032 | Pending, client |
 | Country images, university logos, icon style, logo copyright restrictions | nehn-034, 035, 036 | Pending, client (standard visuals allowed meanwhile, §26 L801) |
 | Phase-1 school functionality, bulk upload, school report fields, visibility | nehn-039 | Pending, client (defaults built, DEC-SCOPE-307) |
-| Agent performance KPIs | nehn-038 | Pending, client |
+| Agent performance KPIs | nehn-038 | Pending, client (defaults built, DEC-SCOPE-306) |
 | Razorpay live account and webhook | nehn-022 | Pending, client |
 
 ## 8. Owner decisions needed before building (`NEEDS_CONFIRMATION`)

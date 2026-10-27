@@ -70,7 +70,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-012 | Internal CRM | Lead list date-range and counselor filters; filtered Excel export | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 | Admins and telecaller managers export; telecallers and counselors do not (DEC-SCOPE-298) |
 | nehn-013 | Internal CRM | CRM reports: lost, conversion rate, counselor-wise, date-wise, pending follow-ups (DEC-SCOPE-301) | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Conversion-rate definition |
 | nehn-014 | Internal CRM | Lead notes and counselor lead actions — delivered by counselor CRM items ccrm-002 and ccrm-003 | Enhancement | Superseded | Dev | — | — |
-| nehn-015 | Internal CRM | Internal CRM workflow reconciliation | Enhancement | Waiting — client input | Dev + Client | Wave 4 | Internal CRM workflow document (CI-01) |
+| nehn-015 | Internal CRM | Internal CRM workflow reconciliation | Enhancement | Waiting — client input | Dev + Client | Wave 4 | Internal CRM workflow document (CI-01); readiness matrix ready (`NEHN_015_CRM_DELTA_MATRIX.md`) |
 | nehn-016 | Placement | Nearing-completion list; recruiter read-only training progress | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | Recruiters see opted-in students only, or all? (OD-08); needs nehn-010 |
 | nehn-017 | HR | HR access to permitted progress, attendance and documents; HR reports | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | HR population and document types (OD-09); needs nehn-008 and nehn-010 |
 | nehn-018 | Student portal | Student feature access by enrolment and payment status | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Confirm the unlock rules: every feature opens at the first payment, editable by the IT admin (OD-06, DEC-SCOPE-304) |
@@ -93,7 +93,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-035 | Overseas | University logo upload and richer university cards | Enhancement | Ready to start | Dev + Client | Wave 2 · next review | Logo usage and copyright guidance (CI-04) |
 | nehn-036 | Overseas | Course and program icons (optional) | Enhancement | Done — confirm defaults | Dev | Wave 4 | Confirm icons are wanted this cycle (§2) |
 | nehn-037 | Overseas | Counselor tools — document requests, checklist, scholarship and notes delivered by counselor CRM items ccrm-010, 013, 018, 019, 020; admission interviews built (DEC-SCOPE-296) | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Are admission interviews needed? |
-| nehn-038 | Agent portal | Agent performance dashboard: remaining KPIs | Enhancement | Waiting — client input | Dev + Client | Wave 4 | Agent KPI list and definitions (CI-06) |
+| nehn-038 | Agent portal | Agent performance dashboard: remaining KPIs | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Confirm the KPI list and definitions (CI-06; DEC-SCOPE-306 D1-D6) |
 | nehn-039 | School portal | School documents and statuses, application detail, bulk-upload reconfirmation | Enhancement | Done — confirm defaults | Dev + Client | Wave 0 · next review | Confirm the school document statuses and that bulk upload stays (DEC-SCOPE-307 D1-D7; CI-05, OD-13) |
 | nehn-040 | Identification | Student ID for every student, and search by it; no Agent ID | Enhancement | Done — confirm defaults | Dev + Client | Wave 3 | Confirm no Agent ID (OD-01) |
 | nehn-041 | Search | Unified admin and operations student search | Enhancement | Done — confirm defaults | Dev + Client | Wave 3 | Include leads in the same search? |
@@ -123,7 +123,7 @@ These items are built. Where a question was open, we used the recommended answer
 | A17 | Course/program icons | Dev, Optional | nehn-036 | Done — confirm defaults |
 | A18 | School/Institution login | Dev | nehn-039 | Done — school logins in place; remaining detail in nehn-039 |
 | A19 | Confirm Phase-1 bulk school upload | Client + Dev, next review | nehn-039 | Waiting — client input (CI-05, OD-13); bulk upload is already built |
-| A20 | Agent Performance Dashboard | Dev, Medium | nehn-038 | Waiting — client input (CI-06) |
+| A20 | Agent Performance Dashboard | Dev, Medium | nehn-038 | Done — KPI definitions to confirm (CI-06) |
 | A21 | Business-facing Student/Agent ID | Dev, High | nehn-040 | Done — confirm defaults (Student ID everywhere; no Agent ID, OD-01) |
 | A22 | Student/agent search | Dev, High | nehn-040, 041 | Done — confirm defaults (Student ID search; unified student search, leads not included) |
 | A23 | Admin report template | Client, pending | CI-02 | Waiting — client input |

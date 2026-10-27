@@ -10174,3 +10174,27 @@ an audit row `school.document_statuses_view` (counts only). D7 bulk roster uploa
 supersedes `DEC-SCOPE-009`'s "bulk upload stays deferred".
 **Numbering:** no migration; API §12HE; RBAC §2.218.
 - **Feature ID authorized:** `nehn-039`. **Status:** built on `worktree-nehn-039`.
+### DEC-SCOPE-306 — Agent performance dashboard: KPI completion and referral-date filter (`nehn-038`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-038` (§20 L553-560, §26 L810-811, action 20;
+`UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-27-nehn-038-agent-kpis-design.md`. The dependency is the client's KPI
+list (CI-06), not a feature. It is still pending, and the source itself says "the final KPI list can be confirmed separately".
+- **Builder's defaults** (the owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):
+  - **D1 — range.** The range is optional: inclusive UTC days on the day the student's agency record was created, i.e. "students referred
+    in the period" (the AGN-019 P4 cohort). With no range, every AGN-018 figure is unchanged.
+  - **D2 — not filtered.** Pending documents, pending actions and commission are never date-filtered. They are work queues and a ledger,
+    and their links open unfiltered lists.
+  - **D3 — visa outcome.** A visa outcome is each decided application once, by its strongest decision across its cases (approved >
+    refused > withdrawn). So `visa_approvals + visa_refusals + visa_withdrawals = visa_decisions`.
+  - **D4 — conversion.** Counted per student. A conversion is an active agency student (the Students set) with an enrolled application in
+    scope. `conversion_rate` = conversions ÷ students × 100, one decimal, or null with no students.
+  - **D5 — submitted.** Applications submitted means `submitted_on` is set, withdrawn applications included.
+  - **D6 — no ranking.** No admin cross-agent ranking (an open question in the backlog).
+- **KPI appendix.** Every figure follows the caller's existing scope: a Master gets the agency, a staff member their assigned students (AGN-003/AGN-018 G4).
+  - Students referred = `students`.
+  - Applications submitted = `applications_submitted`.
+  - Offers received = `offers` (O5).
+  - Conversions = `conversions` / `conversion_rate`, also per staff row.
+  - Visa outcomes = `visa_applications`, `visa_decisions`, `visa_approvals`, `visa_refusals`, `visa_withdrawals`.
+- **Numbering:** no migration; API §12HD; RBAC §2.217.
+- **Feature ID authorized:** `nehn-038`. **Status:** built on `worktree-nehn-038`.

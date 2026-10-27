@@ -3,14 +3,14 @@
 Master only (the route refuses staff). Students count for their current owner (P1), selected by the day their agency record was
 created (P4). Read-only: nothing here writes, locks or commits."""
 
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, date, datetime
 
 from sqlalchemy import ColumnElement, Select, and_, case, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AgentOrgMember, AgentStudent, OverseasApplication, User, VisaCase
 from app.services.agent_applications import WITHDRAWN
-from app.services.agent_dashboard import agency_applications, offer_clause, owner_join
+from app.services.agent_dashboard import agency_applications, created_range, offer_clause, owner_join
 from app.services.agent_orgs import org_member_ids
 from app.services.agent_students import student_scope
 
@@ -21,12 +21,7 @@ ZEROS = (0,) * 6  # an owner with no row in a GROUP BY result
 
 def cohort(user: User, start: date | None, end: date | None) -> list[ColumnElement]:
     """The caller's agency students (archived included), created within the inclusive UTC days when given (P4, spec §4.1)."""
-    where = list(student_scope(user))
-    if start:
-        where.append(AgentStudent.created_at >= datetime.combine(start, time.min, UTC))
-    if end:
-        where.append(AgentStudent.created_at < datetime.combine(end + timedelta(days=1), time.min, UTC))
-    return where
+    return [*student_scope(user), *created_range(start, end)]
 
 
 def _visa_by_application(user: User):
