@@ -2299,3 +2299,10 @@ New table `submission_files`: `id` (UUID PK), `submission_id` (FK `submissions` 
 `stored_file_id` (FK `stored_files` ON DELETE CASCADE, `uq_submission_files_stored_file`), `created_at`. Filename, size and MIME live on
 the `stored_files` row. `submissions.file_url` is unchanged and still accepted. No existing data changes. Downgrade drops the table (the
 submissions and stored files stay).
+
+## Admission interviews (`nehn-037` part 4, `DEC-SCOPE-296`; migration `0203_application_interviews`, after nehn-030's `0201_coordinator_role`)
+
+New table `application_interviews`: `id` (UUID PK), `application_id` (FK `overseas_applications` ON DELETE CASCADE), `scheduled_at`
+(timestamptz), `mode` (CHECK online / in_person / phone), `location` (≤300), `student_note` (≤500), `outcome` (NULL = awaiting; CHECK
+passed / not_successful / cancelled), `created_by_id` / `updated_by_id` (FK `users` ON DELETE SET NULL), timestamps;
+`ix_application_interviews_application (application_id, scheduled_at)`. No existing data changes. Downgrade drops the table.

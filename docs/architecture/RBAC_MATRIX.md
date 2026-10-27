@@ -3098,3 +3098,14 @@ New role `coordinator`, division `it`, coarse bundle `{"it:certificates:read"}`.
 
 Certificate issuance is unchanged here (trainer, it_admin); nehn-031 moves it to the coordinator. Pinned by
 `apps/api/tests/test_nehn_030_coordinator.py` and the role-equivalence test in `test_nehn_005_permissions.py` (29 roles).
+
+### 2.207 Admission interviews (`nehn-037` part 4, `DEC-SCOPE-296`)
+
+| Route | Anonymous | overseas_student | counselor (assigned / other) | overseas_admin | agent (own agency app) | other roles |
+|---|---|---|---|---|---|---|
+| `GET /workflows/overseas/applications/{id}/interviews` | 401 | 200 own / 403 | 200 / 403 | 200 | 200 | 403 |
+| `POST`, `PATCH .../interviews[/{interview_id}]` | 401 | 403 | 200-201 / 403 | 200-201 | 403 | 403 |
+| `GET /workflows/overseas/student/interviews` | 401 | 200 (own only) | 403 | 403 | 403 | 403 |
+
+Writes share the offers' entry (scope, row lock, swapped-counselor re-check, closed → 409). Pinned by
+`apps/api/tests/test_nehn_037_interviews.py`.

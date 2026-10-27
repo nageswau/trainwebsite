@@ -130,7 +130,7 @@ async def add_interview(application_id: UUID, payload: ApplicationInterviewCreat
     values = payload.model_dump()
     if message := problem(values):
         raise HTTPException(422, message)
-    count = await db.scalar(select(func.count()).select_from(ApplicationInterview).where(ApplicationInterview.application_id == item.id))
+    count = await db.scalar(select(func.count()).select_from(ApplicationInterview).where(ApplicationInterview.application_id == item.id)) or 0
     if count >= MAX_PER_APPLICATION:
         raise HTTPException(422, FULL)
     row = ApplicationInterview(application_id=item.id, created_by_id=user.id, updated_by_id=user.id, **values)

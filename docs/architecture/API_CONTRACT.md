@@ -4256,3 +4256,21 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   presigned URL in S3 mode). 401 anonymous; 403 not the submitter / batch trainer / it_admin / super_admin; 404 unknown submission or a
   file not attached to it.
 - `GET /portal/it/student/{assignments|projects}` — rows gain `submission_type` (not a table column).
+
+## 12GT. Admission interviews (nehn-037 part 4) — addendum, 2026-10-27
+
+`DEC-SCOPE-296`. Migration `0203_application_interviews`. New routes only; nothing existing changes.
+
+- `GET /workflows/overseas/applications/{id}/interviews` → `{interviews: [{id, application_id, scheduled_at, mode, mode_label, location,
+  student_note, outcome, outcome_label, updated_at, recorded_by?}]}`, latest first. Readers as the offers' list: counselor (own), Overseas
+  Admin, the student (own), the agency (its applications). `recorded_by` for counselor / admin only.
+- `POST /workflows/overseas/applications/{id}/interviews` (201) — body `{scheduled_at (offset required), mode: online|in_person|phone,
+  location? ≤300, student_note? ≤500, outcome?: passed|not_successful|cancelled}` → `{interview, changed: true}`.
+- `PATCH /workflows/overseas/applications/{id}/interviews/{interview_id}` — only the keys sent (null clears location / note / outcome;
+  `scheduled_at` and `mode` cannot be null) → `{interview, changed}`; nothing different → 200 `changed: false`, nothing written.
+- Writes: counselor of the application (direct and agency) or Overseas Admin; 403 other roles / other counselors; 404 an interview of
+  another application; 409 withdrawn / terminal application or archived agency record; 422 a result before the interview time
+  (`"A result can be recorded only after the interview date -- or mark it cancelled"`), the 21st interview, bad mode / outcome / length /
+  time without offset or outside 2000–2100. Audit `overseas.application.interview` `{interview_id, action, fields, outcome}`.
+- `GET /workflows/overseas/student/interviews` → `{items: [... same fields without recorded_by, + application_code, university]}` — the
+  signed-in overseas student's own applications only (max 200); other roles 403.

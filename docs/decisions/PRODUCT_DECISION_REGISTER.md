@@ -9955,3 +9955,18 @@ exists in the product). C6 a trainer who is also a coordinator needs two account
 The Certificates section is read only and follows the new `certificates.view` grant (coordinator only by default).
 **Numbering:** migration `0201_coordinator_role`; no new API route (existing `GET /portal/{division}/{role}/{section}`); RBAC §2.204.
 - **Feature ID authorized:** `nehn-030`. **Status:** built on `worktree-nehn-030`.
+
+### DEC-SCOPE-296 — Admission interviews on overseas applications (`nehn-037` part 4)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-037` part 4 (§19 L540, §17 L468; `UNVERIFIED` backlog;
+parts 1, 2, 3 and 5 superseded by ccrm-020, ccrm-018/019, ccrm-013, ccrm-010); design
+`docs/superpowers/specs/2026-10-27-nehn-037-admission-interviews-design.md`. The tracker question "Are admission interviews needed?" has
+no owner answer.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** I1 built, as a separate entity that moves no
+stage. I2 date-time, mode (online / in person / phone), optional link or place, optional note for the student. I3 passed / not successful
+only after the interview time; cancelled any time. I4 several per application, at most 20. I5 no delete (cancel instead). I6 withdrawn /
+terminal applications refuse writes (409); on hold allows them. I7 the student is told on add, move, change of mode/place and a new
+result (not on a note-only edit); the agency gets "Application details updated"; every write audited without the free text. I8 the
+student sees the whole entry except who recorded it. I9 times carry an offset, 2000–2100.
+**Numbering:** migration `0203_application_interviews`; API §12GT; RBAC §2.207.
+- **Feature ID authorized:** `nehn-037` (part 4). **Status:** built on `worktree-nehn-037`.

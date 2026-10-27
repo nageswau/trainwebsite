@@ -24,9 +24,9 @@
 | Status | Items |
 |---|---|
 | Done | 2 |
-| Done — confirm defaults | 10 |
+| Done — confirm defaults | 11 |
 | Superseded | 1 |
-| Partly done | 1 |
+| Partly done | 0 |
 | Ready to start | 11 |
 | Waiting — dependency | 6 |
 | Waiting — client input | 5 |
@@ -90,7 +90,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-034 | Overseas | Country cards with flags and university count | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 · next review | Custom country images, if wanted (CI-04) |
 | nehn-035 | Overseas | University logo upload and richer university cards | Enhancement | Ready to start | Dev + Client | Wave 2 · next review | Logo usage and copyright guidance (CI-04) |
 | nehn-036 | Overseas | Course and program icons (optional) | Enhancement | Done — confirm defaults | Dev | Wave 4 | Confirm icons are wanted this cycle (§2) |
-| nehn-037 | Overseas | Counselor tools — document requests, checklist, scholarship and notes delivered by counselor CRM items ccrm-010, 013, 018, 019, 020; admission interviews remain | Enhancement | Partly done | Dev + Client | Wave 4 | Are admission interviews needed? |
+| nehn-037 | Overseas | Counselor tools — document requests, checklist, scholarship and notes delivered by counselor CRM items ccrm-010, 013, 018, 019, 020; admission interviews built (DEC-SCOPE-296) | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Are admission interviews needed? |
 | nehn-038 | Agent portal | Agent performance dashboard: remaining KPIs | Enhancement | Waiting — client input | Dev + Client | Wave 4 | Agent KPI list and definitions (CI-06) |
 | nehn-039 | School portal | School documents and statuses, application detail, bulk-upload reconfirmation | Enhancement | Waiting — client input | Dev + Client | Wave 0 · next review | School fields and visibility (CI-05); keep bulk upload? (OD-13) |
 | nehn-040 | Identification | Student ID for every student, and search by it; no Agent ID | Enhancement | Done — confirm defaults | Dev + Client | Wave 3 | Confirm no Agent ID (OD-01) |

@@ -1563,7 +1563,7 @@ Risk is the risk of regression or of a wrong outcome.
     (`NEEDS_CONFIRMATION`); whether this optional item is in scope this cycle remains the owner's call.
 
 #### `nehn-037` — Counselor overseas tools: document requests, admission checklist, scholarship update, interviews, notes
-**Status (2026-10-22): SUPERSEDED** for parts 1, 2, 3 and 5 by `ccrm-020`, `ccrm-018`/`ccrm-019`, `ccrm-013` and `ccrm-010` (`docs/delivery/COUNSELOR_CRM_BACKLOG.md`, CC7). Part 4 (admission interviews) remains open here.
+**Status (2026-10-22): SUPERSEDED** for parts 1, 2, 3 and 5 by `ccrm-020`, `ccrm-018`/`ccrm-019`, `ccrm-013` and `ccrm-010` (`docs/delivery/COUNSELOR_CRM_BACKLOG.md`, CC7). Part 4 (admission interviews) remains open here. **Part 4 built (2026-10-27)** on `worktree-nehn-037` (`DEC-SCOPE-296`, migration `0203_application_interviews`, API §12GT); defaults I1–I9 `NEEDS_CONFIRMATION`.
 - **Source:** §19 L518-544 (request missing documents, update university progress, update scholarship, schedule/track interviews, CRM notes/history); §17 "View document checklist", "View interview/appointment information" (L463, L468).
 - **Business requirement:** Counselors run the student's application: they request missing documents, record scholarship and interview information, and keep notes. The student sees the results.
 - **Existing behavior:**
