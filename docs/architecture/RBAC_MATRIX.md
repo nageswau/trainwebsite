@@ -3151,7 +3151,7 @@ super_admin holds every key. **Trainer and it_admin no longer issue** (the `DEC-
 
 Pinned by `apps/api/tests/test_nehn_031_certificate_workflow.py`, `test_adm_006_certificates.py` and `test_nehn_031_migration.py`.
 
-### 2.209 Per-user permission overrides *(added 2026-10-27 — `DEC-SCOPE-298`, nehn-007)*
+### 2.210 Per-user permission overrides *(added 2026-10-27 — `DEC-SCOPE-299`, nehn-007)*
 
 | Surface | Who | Rule |
 |---|---|---|

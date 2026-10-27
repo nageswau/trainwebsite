@@ -4333,9 +4333,9 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   `certificates.override` (403). A second issue for the same enrolment is **409** (was 201 with the existing certificate). Body and 201
   response unchanged; `override_reason` is capped at 1000 characters. Eligibility is re-checked at issue time.
 
-## 12GV. Per-user permission overrides (nehn-007) — addendum, 2026-10-27
+## 12GW. Per-user permission overrides (nehn-007) — addendum, 2026-10-27
 
-`DEC-SCOPE-298`; migration `0205_user_permission_overrides`. All three routes are super_admin only (401 without a session, 403 for any
+`DEC-SCOPE-299`; migration `0206_user_permission_overrides`. All three routes are super_admin only (401 without a session, 403 for any
 other role, checked before the target).
 
 - `GET /admin/users/{user_id}/permissions` → 200 `{user:{id, full_name, email, role}, editable, role_permissions:[key],

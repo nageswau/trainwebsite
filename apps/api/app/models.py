@@ -2545,7 +2545,7 @@ class RolePermission(Base):
 
 
 class UserPermissionOverride(Base):
-    """nehn-007 (DEC-SCOPE-298): one user's allow or deny of one catalogue key, on top of their role's grants. A deny wins; a row past
+    """nehn-007 (DEC-SCOPE-299): one user's allow or deny of one catalogue key, on top of their role's grants. A deny wins; a row past
     `expires_at` no longer applies (read-time filter). super_admin users never have rows; a change is audited
     (`user_permission_overrides.update`)."""
 

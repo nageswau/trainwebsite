@@ -88,7 +88,7 @@ def require_role(*roles: str):
 
 def require_permission(resource: str, action: str, detail: str = "Insufficient permission"):
     """nehn-005 (DEC-SCOPE-281): deny-by-default 403 unless the caller's role holds `resource.action` in `role_permissions` (super_admin
-    holds everything), as adjusted by the caller's own active override (nehn-007, DEC-SCOPE-298: a deny wins). Reads the legacy `users.role` column, as the inline checks it replaces did (P4). `detail` keeps a route's existing
+    holds everything), as adjusted by the caller's own active override (nehn-007, DEC-SCOPE-299: a deny wins). Reads the legacy `users.role` column, as the inline checks it replaces did (P4). `detail` keeps a route's existing
     refusal text (P9). Record scope stays in the route. A key outside the catalogue fails at import, not as a silent deny."""
 
     parse_key(f"{resource}.{action}")

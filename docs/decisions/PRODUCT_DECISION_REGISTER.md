@@ -10015,7 +10015,7 @@ in the request. W9 revocation/reissue and an email on issue are out of scope.
 **Numbering:** migration `0204_certificate_workflow`; API §12GU; RBAC §2.208.
 - **Feature ID authorized:** `nehn-031`. **Status:** built on `worktree-nehn-031`.
 
-### DEC-SCOPE-298 — Per-user permission overrides (`nehn-007`)
+### DEC-SCOPE-299 — Per-user permission overrides (`nehn-007`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-007` (§5 L92 "control individual permissions for individual
 users or roles"; `UNVERIFIED` backlog); `CLIENT_QUESTIONS.md` D-09 §3 / OD-03 (**open**); design
@@ -10029,5 +10029,5 @@ overrides list on the Permissions screen's "By user" tab (no `/admin/users` grid
 lacks is accepted. U8 any user, found through the existing `GET /admin/users?q=`. U9 no cache. U10 overrides persist across a role change. The backlog's AC keys
 `reports.placement.download` / `documents.view` are not catalogue keys; the rules are proven on `reports.telecaller.download` and
 `payments.view`.
-**Numbering:** migration `0205_user_permission_overrides`; API §12GV; RBAC §2.209.
+**Numbering:** migration `0206_user_permission_overrides`; API §12GW; RBAC §2.210.
 - **Feature ID authorized:** `nehn-007`. **Status:** built on `worktree-nehn-007`.

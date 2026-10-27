@@ -1,4 +1,4 @@
-"""nehn-007 -- migration 0205_user_permission_overrides (DEC-SCOPE-298): the chain and the round trip, in a throwaway database (the
+"""nehn-007 -- migration 0206_user_permission_overrides (DEC-SCOPE-299): the chain and the round trip, in a throwaway database (the
 ccrm-040 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -12,14 +12,14 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_nehn_007_migration_0205", VERSIONS / "0205_user_permission_overrides.py")
+_spec = importlib.util.spec_from_file_location("_nehn_007_migration_0206", VERSIONS / "0206_user_permission_overrides.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0205_user_permission_overrides", "0204_certificate_workflow"
+HEAD, BASE = "0206_user_permission_overrides", "0205_enquiry_list_indexes"
 
 
-def test_migration_chains_after_0204():
+def test_migration_chains_after_0205():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
