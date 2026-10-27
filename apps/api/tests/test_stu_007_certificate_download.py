@@ -17,7 +17,7 @@ import uuid
 import pytest
 
 from app.core.security import hash_password
-from app.models import Certificate, Program, User
+from app.models import Batch, Certificate, Enrollment, Program, User
 from app.services.storage import storage
 
 
@@ -77,6 +77,14 @@ async def _issue_certificate(db_session, student: User) -> Certificate:
         status="issued",
     )
     db_session.add(certificate)
+    # nehn-018: a certificate is issued from an enrolment -- without one the student is "registered" and certificates are locked.
+    batch = Batch(
+        program_id=program.id, name=f"STU-007 {certificate_no}", start_date=datetime.date(2020, 1, 1), end_date=datetime.date(2020, 2, 1), schedule="-",
+        capacity=10, enrollment_open=False, status="active",
+    )
+    db_session.add(batch)
+    await db_session.flush()
+    db_session.add(Enrollment(student_id=student.id, batch_id=batch.id, enrollment_code=f"N018-{certificate_no}", status="active", progress_percent=100))
     await db_session.commit()
     await db_session.refresh(certificate)
     return certificate

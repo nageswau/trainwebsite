@@ -123,6 +123,7 @@ async def test_student_never_sees_another_students_batch_session(client, db_sess
     other_session = await _create_enrolled_batch_with_session(db_session, other_student, with_recording=False)
 
     unrelated_student = await _create_student(db_session)
+    await _create_enrolled_batch_with_session(db_session, unrelated_student, with_recording=False)  # nehn-018: enrolled, unbilled
     await _login(client, unrelated_student.email)
 
     response = await client.get("/api/v1/communications/it/live-sessions")
@@ -131,12 +132,14 @@ async def test_student_never_sees_another_students_batch_session(client, db_sess
 
 
 @pytest.mark.asyncio
-async def test_student_with_no_enrollment_sees_empty_list_not_an_error(client, db_session):
+async def test_student_with_no_enrollment_is_told_to_enrol(client, db_session):
+    # nehn-018 (DEC-SCOPE-304): live classes open from the first payment; a student with no enrolment is "registered".
     student = await _create_student(db_session)
     await _login(client, student.email)
     response = await client.get("/api/v1/communications/it/live-sessions")
-    assert response.status_code == 200
-    assert response.json() == []
+    assert response.status_code == 403
+    detail = response.json()["detail"]
+    assert (detail["code"], detail["current_state"]) == ("payment_required", "registered") and detail["message"].startswith("Enrol in a course")
 
 
 @pytest.mark.asyncio
