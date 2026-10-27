@@ -444,6 +444,9 @@ Risk is the risk of regression or of a wrong outcome.
 - **Edge cases:** the user's role changes (do overrides persist? `NEEDS_CONFIRMATION`); a deactivated user (overrides are ignored).
 - **Regression risks:** low, once nehn-005 is in.
 - **Open questions:** D-09: is it required this release? Is expiry required?
+- **Status (2026-10-27):** built on `worktree-nehn-007` (`DEC-SCOPE-296`; API §12GT; RBAC §2.207; migration
+  `0203_user_permission_overrides`). Builder's defaults: built this release; expiry optional; overrides persist across a role change;
+  a deactivated user cannot sign in, so their overrides never apply. AC keys mapped to catalogue keys (see DEC-SCOPE-296).
 - **Complexity:** medium · **Risk:** medium
 
 #### `nehn-008` — Role-based field (column) policy for views and downloads

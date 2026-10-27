@@ -3122,3 +3122,10 @@ off a batch loses manage and download access at once. No new permission key. Pin
 | "Create payment due" / "Apply discount" forms; telecaller report "Download CSV" | the role | Rendered only with `payments.add` / `discounts.add` / `reports.telecaller.download`. |
 
 No grant logic runs in the web app beyond "is this key in my set"; nehn-005 remains the enforcement point.
+
+### 2.207 Per-user permission overrides *(added 2026-10-27 — `DEC-SCOPE-296`, nehn-007)*
+
+| Surface | Who | Rule |
+|---|---|---|
+| `GET/PUT /admin/users/{user_id}/permissions`, `GET /admin/permissions/overrides`, `/admin/permissions?tab=user` | super_admin | Reads and replaces any non-super-admin user's overrides; the report lists every override in force. Any other role: 403 / the access card. |
+| Every grant check (`require_permission`, portal payments / certificates) and `GET /auth/me/permissions` | every user | Effective = (role grants + the user's active allows) - the user's active denies. A deny wins over the role. An override past `expires_at` stops applying. super_admin holds every key and cannot be overridden. |

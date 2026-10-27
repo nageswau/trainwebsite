@@ -4291,3 +4291,22 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   holds every key).
 - The web app reads `GET /auth/me/permissions` to hide sidebar items (`<resource>.view`), the payment forms (`payments.add`,
   `discounts.add`) and the telecaller report export (`reports.telecaller.download`). Hidden UI is not the control; the routes refuse.
+
+## 12GT. Per-user permission overrides (nehn-007) — addendum, 2026-10-27
+
+`DEC-SCOPE-296`; migration `0203_user_permission_overrides`. All three routes are super_admin only (401 without a session, 403 for any
+other role, checked before the target).
+
+- `GET /admin/users/{user_id}/permissions` → 200 `{user:{id, full_name, email, role}, editable, role_permissions:[key],
+  overrides:[{permission, effect:"allow"|"deny", reason, expires_at|null, created_at}], effective:[key]}`. Only overrides in force are
+  listed. `editable` is false for a super_admin user. 404 unknown user; 422 malformed id.
+- `PUT /admin/users/{user_id}/permissions` body `{overrides:[{permission, effect, reason, expires_at?}]}` (≤ 200 items; extra fields
+  forbidden) replaces the user's whole override set → 200 with the GET body. 422: unknown key, duplicate key, effect not allow/deny, blank
+  or > 500-character reason, `expires_at` without a timezone or not in the future. 404 unknown user. 409 a super_admin target, or a
+  concurrent edit of the same user. A real change writes one `audit_logs` row (`user_permission_overrides.update`, entity `user`,
+  before/after); an unchanged set writes nothing.
+- `GET /admin/permissions/overrides` → 200 `[{user_id, full_name, email, role, permission, effect, reason, expires_at, created_at}]`,
+  every override in force, by user name then key.
+- Changed: `GET /auth/me/permissions` and every `require_permission` route (and the portal payments / certificates sections) now resolve
+  the caller's effective set: (role grants + active allows) - active denies. Response shapes unchanged; with no overrides every answer is
+  as before.

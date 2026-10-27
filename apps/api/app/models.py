@@ -2515,6 +2515,27 @@ class RolePermission(Base):
     granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class UserPermissionOverride(Base):
+    """nehn-007 (DEC-SCOPE-296): one user's allow or deny of one catalogue key, on top of their role's grants. A deny wins; a row past
+    `expires_at` no longer applies (read-time filter). super_admin users never have rows; a change is audited
+    (`user_permission_overrides.update`)."""
+
+    __tablename__ = "user_permission_overrides"
+    __table_args__ = (
+        UniqueConstraint("user_id", "resource", "action", name="uq_user_permission_overrides_user_key"),
+        CheckConstraint("effect IN ('allow', 'deny')", name="ck_user_permission_overrides_effect"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    resource: Mapped[str] = mapped_column(String(60))
+    action: Mapped[str] = mapped_column(String(20))
+    effect: Mapped[str] = mapped_column(String(10))
+    reason: Mapped[str] = mapped_column(String(500))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class CalendarFeed(Base):
     """ccrm-038 (DEC-SCOPE-274 CA4): a counselor's read-only iCal feed. Only the SHA-256 of the URL token is kept; regenerating replaces
     the row, revoking deletes it."""
