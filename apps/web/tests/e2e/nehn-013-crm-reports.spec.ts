@@ -4,7 +4,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// nehn-013 (DEC-SCOPE-299): a manager's campaign with three leads; the telecaller sets a follow-up due in a minute. The manager reads
+// nehn-013 (DEC-SCOPE-300): a manager's campaign with three leads; the telecaller sets a follow-up due in a minute. The manager reads
 // the Date-wise report (grouped by day, then month), the Counselor report's empty state, the Follow-up status counts, and -- once the
 // follow-up is past due -- the Pending Follow-ups list and its CSV. The pages hold at tablet and phone widths; a telecaller is refused.
 

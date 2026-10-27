@@ -2,18 +2,25 @@
 
 import { useEffect, useState } from "react";
 
+import LeadCreatedRange, { CREATED_FILTERS } from "@/components/LeadCreatedRange";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import { STAGES } from "@/lib/leadStages";
 import { SOURCES, SOURCE_LABEL, activeCampaigns, activeProducts, type Campaign, type Product } from "@/lib/telecallerCatalogue";
 
-export const LEAD_FILTERS = ["status", "source", "product_id", "campaign_id", "telecaller_user_id", "bdm_organization_id"] as const;
+// nehn-012: the counselor (`owner_id`) and the created range
+export const LEAD_FILTERS = ["status", "source", "product_id", "campaign_id", "telecaller_user_id", "bdm_organization_id", "owner_id", ...CREATED_FILTERS] as const;
 export type LeadFilter = (typeof LEAD_FILTERS)[number];
 export type Organization = { id: string; code: string; name: string };
-type Telecaller = { id: string; name: string };
+type Staff = { id: string; name: string };
+
+const staff = (role: string, signal: AbortSignal): Promise<Staff[]> =>
+  fetch(`/api/v1/admin/users?role=${role}`, { signal })
+    .then((res) => (res.ok ? res.json() : []))
+    .then((body: unknown) => (Array.isArray(body) ? body.map((u: Staff) => ({ id: u.id, name: u.name })) : []));
 
 /** tel-003 (spec §5): the admin lead list's search and filters. Values come from and go to the URL (the panel owns that); the option
- *  lists are the catalogue (tel-002), the division's telecallers (/admin/users is already division-scoped) and the organizations the
- *  panel has seen. A list that fails to load leaves just "All", so the other filters keep working. */
+ *  lists are the catalogue (tel-002), the division's telecallers and (nehn-012) counselors (/admin/users is already division-scoped) and
+ *  the organizations the panel has seen. A list that fails to load leaves just "All", so the other filters keep working. */
 export default function AdminLeadFilters({ values, query, organizations, onChange, onSearch }: {
   values: Record<LeadFilter, string>;
   query: string;
@@ -24,16 +31,15 @@ export default function AdminLeadFilters({ values, query, organizations, onChang
   const [draft, setDraft] = useState(query);
   const [products, setProducts] = useState<Product[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [telecallers, setTelecallers] = useState<Telecaller[]>([]);
+  const [telecallers, setTelecallers] = useState<Staff[]>([]);
+  const [counselors, setCounselors] = useState<Staff[]>([]);
   useEffect(() => setDraft(query), [query]);
   useEffect(() => {
     const controller = new AbortController();
     activeProducts(controller.signal).then(setProducts).catch(() => undefined);
     activeCampaigns(controller.signal).then(setCampaigns).catch(() => undefined);
-    fetch("/api/v1/admin/users?role=telecaller", { signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : []))
-      .then((body: unknown) => Array.isArray(body) && setTelecallers(body.map((u: Telecaller) => ({ id: u.id, name: u.name }))))
-      .catch(() => undefined);
+    staff("telecaller", controller.signal).then(setTelecallers).catch(() => undefined);
+    staff("counselor", controller.signal).then(setCounselors).catch(() => undefined);
     return () => controller.abort();
   }, []);
 
@@ -74,6 +80,8 @@ export default function AdminLeadFilters({ values, query, organizations, onChang
           {values.bdm_organization_id && !organizations.some((o) => o.id === values.bdm_organization_id) &&
             <option value={values.bdm_organization_id}>Selected organization</option>}
         </>)}
+        {select("owner_id", "Counselor", "All counselors", counselors.map((c) => <option key={c.id} value={c.id}>{c.name}</option>))}
+        <LeadCreatedRange idPrefix="admin-lead" values={values} onChange={onChange} />
       </div>
     </>
   );

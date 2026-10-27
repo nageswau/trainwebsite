@@ -1,6 +1,6 @@
 # nehn-013 — CRM report gaps: lost, conversion rate, counselor-wise, date-wise, follow-ups (design)
 
-Source: `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` §nehn-013 (EVID §16 L405-419, §14 L304-305). Decision: `DEC-SCOPE-299`.
+Source: `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` §nehn-013 (EVID §16 L405-419, §14 L304-305). Decision: `DEC-SCOPE-300`.
 Dependency nehn-004 (xlsx) is Done (PR #349), so every new report gets the CSV and Excel downloads for free.
 The owner asked that the build proceed on the recommended answers. Every open definition below is therefore an implementer's call and is
 marked `NEEDS_CONFIRMATION` until the client CRM workflow document (CI-01 / nehn-015) arrives.

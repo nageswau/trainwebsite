@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import LeadCreatedRange, { RANGE_REVERSED, reversed, validDay } from "@/components/LeadCreatedRange";
+import LeadExport from "@/components/LeadExport";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import type { Page } from "@/lib/apiErrors";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
@@ -22,12 +24,14 @@ function validFilter(key: LeadListFilter, value: string): string {
   if (key === "priority") return PRIORITIES.some((p) => p.key === value) ? value : "";
   if (key === "product_id" || key === "campaign_id") return UUID.test(value) ? value : "";
   if (key === "follow_up") return FOLLOW_UP_FILTERS.some((f) => f.key === value) ? value : "";
+  if (key === "created_from" || key === "created_to") return validDay(value);
   return value;
 }
 
 /** tel-008 (spec §3, D3): My Leads (and a manager's Leads). The API scopes, filters, searches and pages; the filters, search and page live
  *  in the URL, so refresh keeps the place and Back returns to the previous view (the admin lead panel's idiom). */
-export default function TelecallerLeadTable({ basePath, showTelecaller = false }: { basePath: string; showTelecaller?: boolean }) {
+// nehn-012: `canExport` -- a manager's "Download Excel" of the filtered list (the API refuses a telecaller anyway).
+export default function TelecallerLeadTable({ basePath, showTelecaller = false, canExport = false }: { basePath: string; showTelecaller?: boolean; canExport?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -36,9 +40,10 @@ export default function TelecallerLeadTable({ basePath, showTelecaller = false }
   const filters = Object.fromEntries(LEAD_LIST_FILTERS.map((key) => [key, validFilter(key, params.get(key) ?? "")])) as Record<LeadListFilter, string>;
   const request = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
   if (query) request.set("q", query);
+  const exportUrl = `${LEADS_URL}.xlsx?${request}`; // nehn-012: the same filters, every page
   request.set("limit", String(PAGE_SIZE));
   request.set("offset", String(offset));
-  const requestUrl = `${LEADS_URL}?${request}`;
+  const requestUrl = reversed(filters) ? null : `${LEADS_URL}?${request}`;
   const filtered = !!query || Object.values(filters).some(Boolean);
 
   const [data, setData] = useState<Page<TelecallerLead> | null>(null);
@@ -50,6 +55,7 @@ export default function TelecallerLeadTable({ basePath, showTelecaller = false }
   useEffect(() => setDraft(query), [query]);
 
   useEffect(() => {
+    if (requestUrl === null) return;
     const controller = new AbortController();
     setLoadFailed(false);
     getPage<TelecallerLead>(requestUrl, controller.signal).then(setData).catch(() => controller.signal.aborted || setLoadFailed(true));
@@ -87,7 +93,7 @@ export default function TelecallerLeadTable({ basePath, showTelecaller = false }
   );
 
   return (
-    <div className="action-card" aria-busy={data === null && !loadFailed}>
+    <div className="action-card" aria-busy={requestUrl !== null && data === null && !loadFailed}>
       <form role="search" onSubmit={(event) => { event.preventDefault(); go({ q: draft.trim() }); }}
         style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
         <div className="field" style={{ flex: "1 1 16rem", minWidth: 0, marginBottom: 0 }}>
@@ -105,8 +111,11 @@ export default function TelecallerLeadTable({ basePath, showTelecaller = false }
         {select("product_id", "Product", "All products", <ProductOptions products={products} />)}
         {select("campaign_id", "Campaign", "All campaigns", campaigns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>))}
         {select("follow_up", "Due follow-up", "Any", FOLLOW_UP_FILTERS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>))}
+        <LeadCreatedRange idPrefix="tel-lead" values={filters} onChange={(key, value) => go({ [key]: value })} />
       </div>
-      {loadFailed ? (
+      {requestUrl === null ? (
+        <p className="form-error" role="status" style={{ marginTop: 12 }}>{RANGE_REVERSED}</p>
+      ) : loadFailed ? (
         <div style={{ marginTop: 12 }}>
           <p className="form-error" role="alert">Unable to load leads.</p>
           <button type="button" className="btn secondary small" onClick={() => setVersion((v) => v + 1)}>Retry</button>
@@ -119,6 +128,7 @@ export default function TelecallerLeadTable({ basePath, showTelecaller = false }
         </p>
       ) : (
         <>
+          {canExport && <LeadExport url={exportUrl} total={data.total} />}
           <div className="table-scroll" style={{ marginTop: 12 }}>
             <table className="table">
               <thead>

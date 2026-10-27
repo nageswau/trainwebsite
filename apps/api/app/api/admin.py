@@ -14,6 +14,7 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api import crm_exports
 from app.api.deps import get_current_user, require_permission
 from app.api.lookups import _pattern as like_pattern
 from app.core.config import settings
@@ -80,6 +81,7 @@ from app.services import (
     course_skills,
     lead_appointments,
     lead_handover,
+    lead_list,
     lead_notes,
     lead_pipeline,
     lead_timeline,
@@ -98,6 +100,7 @@ from app.services import telecaller as tel_rules
 from app.services.agent_applications import open_clause, owned, with_owner
 from app.services.agent_network import APPLICATION_FILTERS, org_applications, org_counts, org_money, org_students
 from app.services.agent_orgs import ensure_agent_org, lock_org, org_masters, set_org_status, transition_org
+from app.services.bdm_appointments import db_now, today_ist
 from app.services.provisioning import (
     IssuedWelcome,
     deliver_welcome_link,
@@ -453,29 +456,47 @@ async def system_status(user: User = Depends(ensure_admin)):
     ]
 
 
-@router.get("/leads")
-async def leads(division: str | None = None, status: str | None = None, source: TelSource | None = None, product_id: UUID | None = None,
+def _lead_query(division: str | None = None, status: str | None = None, source: TelSource | None = None, product_id: UUID | None = None,
                 campaign_id: UUID | None = None, telecaller_user_id: UUID | None = None, bdm_organization_id: UUID | None = None,
-                q: str | None = Query(None, max_length=200), limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0),
-                user: User = Depends(ensure_admin),
-                db: AsyncSession = Depends(get_db)):
-    # bdm-017 (spec §5): rows also carry organization / bdm / converted_user (null for website leads).
-    # tel-003 (DEC-SCOPE-077, T25): a {items,total,limit,offset} page (the 500-row cap is gone) with the lead fields; every filter is
-    # ANDed with the division scope, so it can only narrow. `q` is a literal substring of the Lead ID, name, email, phone or subject.
-    filters = []
+                owner_id: UUID | None = None, created_from: date | None = None, created_to: date | None = None,
+                q: str | None = Query(None, max_length=200), user: User = Depends(ensure_admin)) -> dict:  # fmt: skip
+    """The admin lead list's filters, shared by the list and its Excel twin (nehn-012), so the two can never drift.
+    tel-003 (DEC-SCOPE-077, T25): every filter is ANDed with the division scope, so it can only narrow. `q` is a literal substring of the
+    Lead ID, name, email, phone or subject. nehn-012: India-time created days and the counselor (`owner_id`)."""
+    where = []
     if user.role != "super_admin":
-        filters.append(Enquiry.division == user.division)
+        division = None  # their own division always; a `division` they send is ignored, as before
+        where.append(Enquiry.division == user.division)
     elif division:
-        filters.append(Enquiry.division == division)
+        where.append(Enquiry.division == division)
     for column, value in ((Enquiry.status, status), (Enquiry.source, source), (Enquiry.product_id, product_id), (Enquiry.campaign_id, campaign_id),
                           (Enquiry.telecaller_user_id, telecaller_user_id), (Enquiry.bdm_organization_id, bdm_organization_id)):
         if value:
-            filters.append(column == value)
+            where.append(column == value)
+    where += lead_list.filters(created_from, created_to, owner_id)
     if pattern := like_pattern(q):
-        filters.append(or_(*(c.ilike(pattern, escape="\\") for c in (Enquiry.lead_code, Enquiry.name, Enquiry.email, Enquiry.phone, Enquiry.subject))))
-    total = await db.scalar(select(func.count()).select_from(Enquiry).where(*filters))
-    rows = (await db.execute(lead_rules.admin_rows().where(*filters).order_by(*lead_rules.NEWEST).limit(limit).offset(offset))).all()
+        where.append(or_(*(c.ilike(pattern, escape="\\") for c in (Enquiry.lead_code, Enquiry.name, Enquiry.email, Enquiry.phone, Enquiry.subject))))
+    audited = lead_list.audited(q, division=division, status=status, source=source, product_id=product_id, campaign_id=campaign_id,
+                                telecaller_user_id=telecaller_user_id, bdm_organization_id=bdm_organization_id, owner_id=owner_id,
+                                created_from=created_from, created_to=created_to)  # fmt: skip
+    return {"user": user, "where": where, "audited": audited}
+
+
+@router.get("/leads")
+async def leads(query: dict = Depends(_lead_query), limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0), db: AsyncSession = Depends(get_db)):
+    # bdm-017 (spec §5): rows also carry organization / bdm / converted_user (null for website leads).
+    # tel-003 (DEC-SCOPE-077, T25): a {items,total,limit,offset} page (the 500-row cap is gone) with the lead fields.
+    total = await db.scalar(select(func.count()).select_from(Enquiry).where(*query["where"]))
+    rows = (await db.execute(lead_rules.admin_rows().where(*query["where"]).order_by(*lead_rules.NEWEST).limit(limit).offset(offset))).all()
     return {"items": [lead_rules.admin_out(row) for row in rows], "total": total or 0, "limit": limit, "offset": offset}
+
+
+@router.get("/leads.xlsx")
+async def leads_xlsx(query: dict = Depends(_lead_query), db: AsyncSession = Depends(get_db)):
+    """nehn-012 (DEC-SCOPE-298): every row of the filtered list (no paging), newest first, as Excel -- audited and throttled."""
+    return await crm_exports.export(db, query["user"], entity_type="lead_list", key="admin", fmt="xlsx", filters=query["audited"],
+                                    filename=f"leads-{today_ist(await db_now(db))}", sheet_name="Leads",
+                                    build=lambda: lead_list.table(db, query["where"], crm_exports.ROW_CAP + 1))  # fmt: skip
 
 
 @router.post("/leads/{lead_id}/conversion")

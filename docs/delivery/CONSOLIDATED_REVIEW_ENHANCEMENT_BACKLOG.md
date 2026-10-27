@@ -444,6 +444,9 @@ Risk is the risk of regression or of a wrong outcome.
 - **Edge cases:** the user's role changes (do overrides persist? `NEEDS_CONFIRMATION`); a deactivated user (overrides are ignored).
 - **Regression risks:** low, once nehn-005 is in.
 - **Open questions:** D-09: is it required this release? Is expiry required?
+- **Status (2026-10-27):** built on `worktree-nehn-007` (`DEC-SCOPE-299`; API §12GW; RBAC §2.210; migration
+  `0206_user_permission_overrides`). Builder's defaults: built this release; expiry optional; overrides persist across a role change;
+  a deactivated user cannot sign in, so their overrides never apply. AC keys mapped to catalogue keys (see DEC-SCOPE-299).
 - **Complexity:** medium · **Risk:** medium
 
 #### `nehn-008` — Role-based field (column) policy for views and downloads
@@ -636,9 +639,12 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** existing lead-list tests and the admin leads page.
 - **Open questions:** may counselors and telecallers export their own leads? One row per lead or per enquiry?
 - **Complexity:** medium · **Risk:** low
+- **Status (2026-10-27):** built on `worktree-nehn-012` (`DEC-SCOPE-298`; API §12GV; RBAC §2.209; migration
+  `0205_enquiry_list_indexes`, indexes only). Open questions took the builder's defaults: admins and telecaller managers export,
+  telecallers and counselors do not; one row per lead; fixed admin column set until nehn-008.
 
 #### `nehn-013` — CRM report gaps: lost, conversion rate, counselor-wise, date-wise, follow-up status, pending follow-ups
-**Status (2026-10-27): built** on `worktree-nehn-013` (`DEC-SCOPE-299`, API §12GW, RBAC §2.210, no migration). The definitions (R1–R10) are builder's defaults, `NEEDS_CONFIRMATION` until the client CRM workflow document (CI-01) arrives.
+**Status (2026-10-27): built** on `worktree-nehn-013` (`DEC-SCOPE-300`, API §12GX, RBAC §2.211, no migration). The definitions (R1–R10) are builder's defaults, `NEEDS_CONFIRMATION` until the client CRM workflow document (CI-01) arrives.
 - **Source:** §16 "CRM Reporting" (L405-419); §14 "Converted leads", "Contacted leads" (L304-305).
 - **Business requirement:** CRM reports for new/contacted/qualified/converted/lost, counselor-, source-, course- and date-wise, conversion rates, follow-up status and pending follow-ups.
 - **Existing behavior:**
@@ -1360,6 +1366,9 @@ Risk is the risk of regression or of a wrong outcome.
   - Are thresholds per course?
   - Revocation?
 - **Complexity:** medium · **Risk:** high
+- **Status (2026-10-27):** built in `worktree-nehn-031` (`DEC-SCOPE-297`, defaults W1-W9 `NEEDS_CONFIRMATION`): global thresholds
+  (`certificate_rules`, it_admin edits), trainer recommend / not-ready, coordinator queue with bulk issue, override as its own grant with
+  a reason, duplicate issue 409; trainer and it_admin issuance removed in the same change. Migration `0204`; API §12GU; RBAC §2.208.
 
 #### `nehn-032` — Certificate digital signatures (Founder + Coordinator) and designation
 - **Source:** §11 "Digital Signatures" (L249-260); §26 Certificates (L791-794); actions 11 and 12 (the **client provides the PNGs**).

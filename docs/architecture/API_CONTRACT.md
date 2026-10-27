@@ -4310,9 +4310,67 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - `GET /workflows/overseas/student/interviews` → `{items: [... same fields without recorded_by, + application_code, university]}` — the
   signed-in overseas student's own applications only (max 200); other roles 403.
 
-## 12GW. CRM report gaps (nehn-013) — addendum, 2026-10-27
+## 12GU. Coordinator certificate workflow (nehn-031) — addendum, 2026-10-27
 
-`DEC-SCOPE-299`. No migration. Additive only: new `kind` values and one query parameter on the existing §12AC routes
+`DEC-SCOPE-297`. Migration `0204_certificate_workflow`. All under `/workflows/it/certificates`.
+
+- `GET /eligibility/{enrollment_id}` — the coordinator is also admitted; the body gains `rules: {min_progress_percent,
+  min_attendance_percent}` (the thresholds used) and `certificate_issued: bool`. `eligible` now compares against those thresholds.
+- `GET /rules` (new) — `{min_progress_percent, min_attendance_percent}`. it_admin, coordinator, trainer, super_admin; others 403.
+- `PUT /rules` (new) — same body, each 0–100, unknown fields 422. Needs `certificates.configure` (403 "You do not have permission to
+  change certificate rules"). Audit `certificate_rules.update` with before/after. Applies to the next evaluation.
+- `POST /{enrollment_id}/recommend` (new) — `{status: "recommended" | "not_ready", comment?}` (≤ 1000; required for `not_ready`, else 422).
+  Only the batch's trainer (403 otherwise). 404 unknown enrolment; 409 a certificate already exists. 200 `{enrollment_id, status, comment}`;
+  replaces any earlier one. Audit `certificate.recommended` / `certificate.not_ready`.
+- `GET /queue` (new) — needs `certificates.issue`. `{can_override, rules, items: [{enrollment_id, student, batch, program, eligible,
+  criteria, recommendation: {status, comment, by, at} | null}]}`: enrolments without a certificate (not pending consent, rejected,
+  withdrawn or dropped) that pass the progress threshold or carry a recommendation/flag; recommended first; at most 200.
+- `POST /issue` (new, bulk) — `{enrollment_ids: UUID[1..50], override?: bool, override_reason?: str ≤ 1000}`, unknown fields 422. Needs
+  `certificates.issue`; `override: true` without `certificates.override` → 403 for the whole request. 200 `{issued: [{enrollment_id, id,
+  certificate_no, verification_code, file_url, status}], failed: [{enrollment_id, status_code, detail}]}` — each enrolment is checked
+  and issued on its own (404 unknown, 409 not eligible without override or already issued, 422 override without a reason).
+- `POST /{enrollment_id}/issue` — **now needs `certificates.issue`** (trainer and it_admin 403, `DEC-ROLE-003`); `override: true` needs
+  `certificates.override` (403). A second issue for the same enrolment is **409** (was 201 with the existing certificate). Body and 201
+  response unchanged; `override_reason` is capped at 1000 characters. Eligibility is re-checked at issue time.
+
+## 12GV. Lead list filters and filtered Excel export (nehn-012) — addendum, 2026-10-27
+
+`DEC-SCOPE-298`. Migration `0205_enquiry_list_indexes` (indexes only).
+
+- `GET /admin/leads`, `GET /telecaller/leads` — new optional query parameters (additive; responses unchanged):
+  `created_from`, `created_to` (ISO dates, inclusive India-time days on the lead's creation time) and `owner_id` (the assigned
+  counselor). Every filter is ANDed with the existing scope. **422** for a malformed date or id, or `created_from` after `created_to`.
+- `GET /admin/leads.xlsx` (new) — `ensure_admin` roles, the list's division scope and the same query parameters (`limit`/`offset`
+  ignored): every matching lead, newest first, as one `.xlsx` sheet "Leads" (`leads-<IST date>.xlsx`, `Cache-Control: private,
+  no-store`). Columns: Lead ID, Name, Phone, Email, Source, Course interest, Stage, Telecaller, Counselor, Created, Last contact, Next
+  follow-up (times in India time). **401** anonymous; **403** other roles; **422** over 5,000 rows ("narrow the filters"); **429** with
+  `Retry-After` past 30 exports in 10 minutes. One audit row per file: action `crm.export`, `entity_type` `lead_list`, `entity_id`
+  `admin`, metadata `{format, filters, rows}` (search text recorded only as `"q": true`). A refused export writes nothing.
+- `GET /telecaller/leads.xlsx` (new) — the same for the telecaller list's scope and filters; telecaller_manager (own reports' leads and
+  their teams' unassigned leads) and super_admin. A telecaller or any other role **403**; `entity_id` `telecaller`.
+
+## 12GW. Per-user permission overrides (nehn-007) — addendum, 2026-10-27
+
+`DEC-SCOPE-299`; migration `0206_user_permission_overrides`. All three routes are super_admin only (401 without a session, 403 for any
+other role, checked before the target).
+
+- `GET /admin/users/{user_id}/permissions` → 200 `{user:{id, full_name, email, role}, editable, role_permissions:[key],
+  overrides:[{permission, effect:"allow"|"deny", reason, expires_at|null, created_at}], effective:[key]}`. Only overrides in force are
+  listed. `editable` is false for a super_admin user. 404 unknown user; 422 malformed id.
+- `PUT /admin/users/{user_id}/permissions` body `{overrides:[{permission, effect, reason, expires_at?}]}` (≤ 200 items; extra fields
+  forbidden) replaces the user's whole override set → 200 with the GET body. 422: unknown key, duplicate key, effect not allow/deny, blank
+  or > 500-character reason, `expires_at` without a timezone or not in the future. 404 unknown user. 409 a super_admin target, or a
+  concurrent edit of the same user. A real change writes one `audit_logs` row (`user_permission_overrides.update`, entity `user`,
+  before/after); an unchanged set writes nothing.
+- `GET /admin/permissions/overrides` → 200 `[{user_id, full_name, email, role, permission, effect, reason, expires_at, created_at}]`,
+  every override in force, by user name then key.
+- Changed: `GET /auth/me/permissions` and every `require_permission` route (and the portal payments / certificates sections) now resolve
+  the caller's effective set: (role grants + active allows) - active denies. Response shapes unchanged; with no overrides every answer is
+  as before.
+
+## 12GX. CRM report gaps (nehn-013) — addendum, 2026-10-27
+
+`DEC-SCOPE-300`. No migration. Additive only: new `kind` values and one query parameter on the existing §12AC routes
 (`GET /telecaller/reports/{kind}`, `.csv`, `.xlsx`); every existing kind keeps its columns in order.
 
 - Funnel kinds `source`, `product`, `campaign` append `lost` ("Lost") and `conversion_rate` ("Conversion rate (%)", a number with 1

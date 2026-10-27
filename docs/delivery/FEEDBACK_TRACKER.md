@@ -48,6 +48,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-034 Country cards | A country with no universities yet shows "Coming soon" instead of being hidden. Standard flags until the client supplies country images. |
 | nehn-036 Course icons | A curated set of 13 subject icons, chosen automatically from the course category, overridable per course. No upload. |
 | nehn-040 Student ID | Every student, including agency students without a login, has a Student ID that admin and agency screens can search. No Agent ID, as decided on 15 Sep 2026. |
+| nehn-012 Lead list export | Lead lists filter by creation date (India time) and counselor. Admins and telecaller managers download the filtered list as Excel, with contact details; telecallers and counselors do not. One row per lead. Each download is recorded and limited to 30 per 10 minutes. |
 | nehn-043 This tracker | Markdown plus an Excel-compatible CSV, written for the client. |
 
 ## 3. Backlog items
@@ -60,13 +61,13 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-004 | Reporting | Excel download beside every CSV report; Excel import reader | Enhancement | Done — confirm defaults | Dev | Wave 1 | — |
 | nehn-005 | Permissions | Permission engine (role × module × action), first two modules | Enhancement | Done — confirm defaults | Dev + Client | Wave 1 | Confirm who edits permissions; custom roles needed? (OD-04) |
 | nehn-006 | Permissions | Admin permission-matrix screen and permission-driven menus | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 | Per role only; non-applicable actions shown as "—" (DEC-SCOPE-295) |
-| nehn-007 | Permissions | Per-user permission overrides | Enhancement | Waiting — decision | Dev + Client | Wave 4 | Are per-user overrides needed this release? (OD-03) |
+| nehn-007 | Permissions | Per-user permission overrides | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Built with reason + optional expiry; confirm OD-03 (DEC-SCOPE-299) |
 | nehn-008 | Permissions | Role-based column policy for screens and downloads | Enhancement | Waiting — client input | Dev + Client | Wave 3 | Which columns each role may see (CI-02) |
 | nehn-009 | Reporting | Report framework: standard filters, CSV/Excel, audited | Enhancement | Waiting — dependency | Dev | Wave 3 | — (needs nehn-008) |
 | nehn-010 | Reporting | Training reports: student, trainer, course, completion, attendance | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | Admin report template (CI-02); needs nehn-009 |
 | nehn-011 | Reporting | Admin dashboard: enrolments, progress, course-wise and fee tiles | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | Tile list from the report template (CI-02); needs nehn-010 |
-| nehn-012 | Internal CRM | Lead list date-range and counselor filters; filtered Excel export | Enhancement | Ready to start | Dev | Wave 2 | May counselors and telecallers export their own leads? |
-| nehn-013 | Internal CRM | CRM reports: lost, conversion rate, counselor-wise, date-wise, pending follow-ups (DEC-SCOPE-299) | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Conversion-rate definition |
+| nehn-012 | Internal CRM | Lead list date-range and counselor filters; filtered Excel export | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 | Admins and telecaller managers export; telecallers and counselors do not (DEC-SCOPE-298) |
+| nehn-013 | Internal CRM | CRM reports: lost, conversion rate, counselor-wise, date-wise, pending follow-ups (DEC-SCOPE-300) | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Conversion-rate definition |
 | nehn-014 | Internal CRM | Lead notes and counselor lead actions — delivered by counselor CRM items ccrm-002 and ccrm-003 | Enhancement | Superseded | Dev | — | — |
 | nehn-015 | Internal CRM | Internal CRM workflow reconciliation | Enhancement | Waiting — client input | Dev + Client | Wave 4 | Internal CRM workflow document (CI-01) |
 | nehn-016 | Placement | Nearing-completion list; recruiter read-only training progress | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | Recruiters see opted-in students only, or all? (OD-08); needs nehn-010 |
@@ -84,7 +85,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-028 | Trainer portal | Per-student progress view for trainers | Enhancement | Ready to start | Dev | Wave 4 | — |
 | nehn-029 | Trainer portal | Live class reschedule and cancel | Enhancement | Done — confirm defaults | Dev | Wave 4 | Confirm meeting provider is updated by hand for now (§2) |
 | nehn-030 | Certificates | IT Coordinator role and account model | Enhancement | Waiting — decision | Dev + Client | Wave 3 | Coordinator account model and duties (OD-05) |
-| nehn-031 | Certificates | Coordinator certificate workflow: eligibility, recommend, issue, override | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | Who may override eligibility (OD-05); needs nehn-030 |
+| nehn-031 | Certificates | Coordinator certificate workflow: eligibility, recommend, issue, override | Enhancement | Done — confirm defaults | Dev + Client | Wave 3 | Confirm the builder defaults (DEC-SCOPE-297 W1-W9): coordinator overrides, global thresholds, recommendation optional (OD-05) |
 | nehn-032 | Certificates | Certificate signatures (Founder + Coordinator) and designation | Enhancement | Waiting — client input | Dev + Client | Wave 3 | Signature PNGs and final certificate design (CI-03); needs nehn-031 |
 | nehn-033 | Overseas | Overseas student Overview / Progress page | Enhancement | Waiting — decision | Dev + Client | Wave 2 · next review | Mapping of the client's 10 stages onto the portal's stages (OD-10) |
 | nehn-034 | Overseas | Country cards with flags and university count | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 · next review | Custom country images, if wanted (CI-04) |
@@ -102,7 +103,7 @@ These items are built. Where a question was open, we used the recommended answer
 
 | # | Action item | Owner / priority | Tracker items | Status |
 |---|---|---|---|---|
-| A01 | Granular role/page/action permission matrix | Dev, High | nehn-005, 006, 007 | Partly done — engine built; matrix screen ready to start; per-user overrides wait on OD-03 |
+| A01 | Granular role/page/action permission matrix | Dev, High | nehn-005, 006, 007 | Done — confirm defaults (engine, matrix screen, per-user overrides) |
 | A02 | Excel download with filters | Dev, High | nehn-004, 009, 012 | Partly done — Excel beside every CSV report; filters and new exports to follow |
 | A03 | Downloads respect role permissions | Dev, High | nehn-008 | Partly done — downloads are already limited to each role's records; per-role columns wait on CI-02 |
 | A04 | Provide CRM workflow document | Client, required | CI-01 | Waiting — client input |
@@ -146,7 +147,7 @@ These items are built. Where a question was open, we used the recommended answer
 |---|---|---|---|
 | OD-01 | Business-facing Agent ID, or Student ID only? | nehn-040 | Recommended answer in place: Student ID only (decision of 15 Sep 2026) — please confirm |
 | OD-02 | Keep files on the server volume, or move to cloud storage? | nehn-003 | Recommended answer in place: server volume; cloud storage is a configuration change — please confirm |
-| OD-03 | Are per-user permission overrides needed this release? | nehn-007 | Open |
+| OD-03 | Are per-user permission overrides needed this release? | nehn-007 | Open — built on the default (DEC-SCOPE-299) |
 | OD-04 | Permission unit (page or module), who edits grants, custom roles? | nehn-005 | Recommended answer in place: per module, Super Admin edits, no custom roles — please confirm |
 | OD-05 | Coordinator account model and duties; who may override certificate eligibility | nehn-030, 031 | Open |
 | OD-06 | Which student features unlock at which payment status | nehn-018 | Open |

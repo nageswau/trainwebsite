@@ -34,7 +34,8 @@ export type DuplicateMatch = {
 export const LEADS_URL = "/api/v1/telecaller/leads";
 export const DUPLICATE_CHECK_URL = `${LEADS_URL}/duplicate-check`;
 export const leadUrl = (id: string, suffix = "") => `${LEADS_URL}/${encodeURIComponent(id)}${suffix}`;
-export const LEAD_LIST_FILTERS = ["status", "priority", "product_id", "campaign_id", "follow_up"] as const; // tel-011 F9: follow_up
+// tel-011 F9: follow_up; nehn-012: the created range
+export const LEAD_LIST_FILTERS = ["status", "priority", "product_id", "campaign_id", "follow_up", "created_from", "created_to"] as const;
 export type LeadListFilter = (typeof LEAD_LIST_FILTERS)[number];
 export const FOLLOW_UP_FILTERS = [{ key: "today", label: "Due today" }, { key: "overdue", label: "Overdue" }] as const;
 

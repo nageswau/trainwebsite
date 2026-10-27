@@ -1732,7 +1732,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             )
         if section == "payments":
             # nehn-006 (DEC-SCOPE-295): the page follows `payments.view`, as `/admin/payments` does (seed: both division admins hold it).
-            if not await permissions.has_grant(db, user.role, "payments", "view"):
+            if not await permissions.user_has_grant(db, user, "payments", "view"):
                 raise HTTPException(403, "You do not have permission to view payments")
             stmt = select(Payment, User).join(User, User.id == Payment.user_id)
             stmt = stmt.where(Payment.division == division) if division else stmt
@@ -1811,7 +1811,7 @@ async def _coordinator(db: AsyncSession, user: User, section: str):
     Super Admin who revokes it closes the list (403) and empties the dashboard on the next request; any other section is a 404."""
     if section not in {"dashboard", "certificates"}:
         return None
-    allowed = await permissions.has_grant(db, user.role, "certificates", "view")
+    allowed = await permissions.user_has_grant(db, user, "certificates", "view")
     if section == "certificates":
         if not allowed:
             raise HTTPException(403, "You do not have permission to view certificates")

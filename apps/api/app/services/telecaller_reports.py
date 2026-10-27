@@ -7,7 +7,7 @@ current stage and every stage in its history (closed outcomes have none): it cou
 (DEC-SCOPE-036 D3). Enrolled is a lead still converted now (RP2, tel-021 DB2). The telecaller report is activity in the range (RP1):
 `telecaller_metrics.flow_counts_by_user`, the dashboard's own counts.
 
-nehn-013 (DEC-SCOPE-299, spec docs/superpowers/specs/2026-10-27-nehn-013-crm-report-gaps-design.md) appends Lost (current loss stage, R1)
+nehn-013 (DEC-SCOPE-300, spec docs/superpowers/specs/2026-10-27-nehn-013-crm-report-gaps-design.md) appends Lost (current loss stage, R1)
 and Conversion rate (enrolled / leads, R2) to the funnel reports and adds the counselor (by owner, R5) and date-wise (IST day / week /
 month of creation, R6) cohorts, plus two follow-up reports on the telecaller-side follow-ups DUE in the range (R7, R8). The pending
 follow-up list is the one report that names a lead (R8: a manager cannot act on it otherwise) -- never its mobile or email."""
@@ -73,7 +73,7 @@ REPORTS = {
     "campaign": Report("Campaign Report", (("label", "Campaign"),), FUNNEL),
     # ccrm-006 (DEC-SCOPE-264, D9): the cohort's leads now Lost / Not Interested, by reason -- counted by current stage, not reach
     "lost": Report("Lost Reasons Report", (("label", "Reason"),), LOSSES),
-    # nehn-013 (DEC-SCOPE-299)
+    # nehn-013 (DEC-SCOPE-300)
     "counselor": Report("Counselor Report", (("counselor", "Counselor"),), COUNSELOR),
     "date": Report("Date-wise Report", (("period", "Period"),), FUNNEL, ordered=True),
     "follow_ups": Report("Follow-up Status Report", (("telecaller", "Telecaller"),), FOLLOW_UPS),

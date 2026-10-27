@@ -1317,11 +1317,37 @@ half.
 | `nehn-037-AC5` | A counselor who is not assigned gets 403/404; the student cannot write | `::test_scope_and_roles`, `::test_agency_applications_the_counselor_writes_the_agency_reads_and_is_told` |
 | `nehn-037-I4/I6/I7` | Cap 20; closed application 409; notices and audit; unchanged save writes nothing | `::test_a_closed_application_refuses_writes_and_the_cap_holds`, `::test_an_unchanged_save_writes_nothing_and_a_note_change_is_not_announced`; migration `test_nehn_037_migration.py` |
 
+**Addendum, 2026-10-27 (`nehn-031`)** — Coordinator certificate workflow. Tests in `apps/api/tests/test_nehn_031_certificate_workflow.py`
+(`::`), `test_nehn_031_migration.py`, `apps/web/tests/components/nehn031CertificateWorkflow.test.tsx` and e2e
+`nehn-031-certificate-workflow.spec.ts`.
+
+| ID | Requirement / acceptance | Evidence |
+|---|---|---|
+| `nehn-031` | Requirement: PDF §11 L237-248, §10 L231 → backlog `nehn-031` → `DEC-ROLE-003` + `DEC-SCOPE-297` → design `docs/superpowers/specs/2026-10-27-nehn-031-coordinator-certificate-workflow-design.md` → API §12GU → RBAC §2.208 | — |
+| `nehn-031-AC1` | Only the coordinator issues; trainer and admin 403 | `::test_other_roles_cannot_issue`, `::test_coordinator_issues_an_eligible_learner`, `::test_revoking_the_issue_grant_closes_issuance`; `test_adm_006_certificates.py::test_nehn_031_batch_trainer_and_it_admin_no_longer_issue`; e2e |
+| `nehn-031-AC2` | Not eligible + override without the grant 403; with it a reason is required and audited | `::test_override_without_the_override_grant_is_403`, `::test_not_eligible_needs_override_and_a_reason`; vitest queue override; e2e |
+| `nehn-031-AC3` | Thresholds changed by admin apply to new evaluations | `::test_admin_threshold_change_applies_to_the_next_evaluation`; vitest rules panel; e2e |
+| `nehn-031-AC4` | Bulk issue of 30 creates 30 unique numbers and PDFs | `::test_bulk_issue_of_thirty_creates_thirty_unique_certificates`, `::test_bulk_reports_each_failure_and_issues_the_rest` |
+| `nehn-031-AC5` | The trainer's recommendation is visible in the queue | `::test_trainer_recommendation_is_visible_in_the_queue`, `::test_only_the_batch_trainer_recommends`; vitest trainer card + queue; e2e |
+| `nehn-031-AC6` | A duplicate issue is 409 | `::test_duplicate_issue_is_409`; e2e |
+
+`nehn-012` evidence: `apps/api/tests/test_nehn_012_lead_list.py` (`::`), `test_nehn_012_migration.py`,
+`apps/web/tests/components/nehn012.leadListExport.test.tsx` and e2e `nehn-012-lead-list-export.spec.ts`.
+
+| ID | Requirement / acceptance | Evidence |
+|---|---|---|
+| `nehn-012` | Requirement: PDF §14 L322-323, §16 L363/L375, §23 L598-605 → backlog `nehn-012` → `DEC-SCOPE-298` → design `docs/superpowers/specs/2026-10-27-nehn-012-lead-list-filters-export-design.md` → API §12GV → RBAC §2.209 | — |
+| `nehn-012-AC1` | `created_from=today&created_to=today` returns exactly today's leads in IST | `::test_a_created_day_is_the_india_calendar_day`, `::test_a_reversed_or_malformed_filter_is_422`; vitest; e2e |
+| `nehn-012-AC2` | `owner_id` filters by counselor | `::test_owner_id_filters_by_counselor`, `::test_the_telecaller_list_takes_the_same_filters_inside_its_scope`; vitest |
+| `nehn-012-AC3` | The xlsx holds the same rows as the filtered list (all pages) | `::test_the_admin_export_holds_every_filtered_row_with_the_fixed_columns_and_is_audited`, `::test_the_admin_export_keeps_the_division_scope`; e2e |
+| `nehn-012-AC4` | A telecaller manager's export holds only their scope | `::test_a_managers_export_holds_only_their_scope`, `::test_a_telecaller_or_another_role_cannot_use_the_manager_export`; e2e |
+| `nehn-012-AC5` | The audit row records filters and row count | `::test_the_admin_export_holds_every_filtered_row_with_the_fixed_columns_and_is_audited`, `::test_the_export_is_throttled_and_capped` |
+
 **Addendum, 2026-10-27 (`nehn-013`)** — CRM report gaps.
 
 | ID | Requirement / acceptance | Evidence |
 |---|---|---|
-| `nehn-013` | Requirement: §16 L405-419, §14 L304-305 → `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-013` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-299` → design `docs/superpowers/specs/2026-10-27-nehn-013-crm-report-gaps-design.md`; `API_CONTRACT.md` §12GW, `RBAC_MATRIX.md` §2.210; no migration | R1–R10 defaults `NEEDS_CONFIRMATION` |
+| `nehn-013` | Requirement: §16 L405-419, §14 L304-305 → `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-013` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-300` → design `docs/superpowers/specs/2026-10-27-nehn-013-crm-report-gaps-design.md`; `API_CONTRACT.md` §12GX, `RBAC_MATRIX.md` §2.211; no migration | R1–R10 defaults `NEEDS_CONFIRMATION` |
 | `nehn-013-AC1` | Funnel rows include Lost and Conversion rate, matching a hand-computed fixture; Total recomputed | `apps/api/tests/test_nehn_013_crm_reports.py::test_funnel_reports_append_lost_and_conversion_rate`, `::test_the_total_rate_is_recomputed_not_summed`, `::test_the_new_reports_export_as_csv_with_the_screen_columns` |
 | `nehn-013-AC2` | Counselor report groups by `owner_id` | `::test_the_counselor_report_groups_by_lead_owner`; e2e `nehn-013-crm-reports.spec.ts` |
 | `nehn-013-AC3` | Date report supports day / week / month | `::test_the_date_report_groups_by_ist_day_week_or_month_in_calendar_order`, `::test_the_date_report_defaults_to_days_and_refuses_an_unknown_grouping`; `nehn013.crmReports.test.tsx`; e2e |

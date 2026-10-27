@@ -2293,6 +2293,14 @@ inline checks gave (it_admin/overseas_admin: `payments.view`, `payments.add`, `d
 by `PUT /admin/roles/{role}/permissions`; history in `audit_logs` (`role_permissions.update`, before/after). No existing data changes.
 Downgrade drops the table.
 
+## User permission overrides (`nehn-007`, `DEC-SCOPE-299`; migration `0206_user_permission_overrides`, after nehn-037's `0203_application_interviews`)
+
+New table `user_permission_overrides`: `id` (UUID PK), `user_id` (FK `users` ON DELETE CASCADE, indexed), `resource` (String 60),
+`action` (String 20), `effect` (String 10, CHECK `allow`/`deny`), `reason` (String 500, required), `expires_at` (timestamptz, null = no
+expiry), `created_by_id` (FK `users` ON DELETE SET NULL), `created_at` (default now). UNIQUE (`user_id`, `resource`, `action`). A row past
+`expires_at` is ignored at read time. Written only by `PUT /admin/users/{user_id}/permissions`; history in `audit_logs`
+(`user_permission_overrides.update`). No seed; no existing data changes. Downgrade drops the table.
+
 ## Submission files (`nehn-024`, `DEC-SCOPE-292`; migration `0200_submission_files`, after nehn-042's `0199_audit_log_indexes`)
 
 New table `submission_files`: `id` (UUID PK), `submission_id` (FK `submissions` ON DELETE CASCADE, `ix_submission_files_submission_id`),
@@ -2314,3 +2322,17 @@ New table `application_interviews`: `id` (UUID PK), `application_id` (FK `overse
 (timestamptz), `mode` (CHECK online / in_person / phone), `location` (≤300), `student_note` (≤500), `outcome` (NULL = awaiting; CHECK
 passed / not_successful / cancelled), `created_by_id` / `updated_by_id` (FK `users` ON DELETE SET NULL), timestamps;
 `ix_application_interviews_application (application_id, scheduled_at)`. No existing data changes. Downgrade drops the table.
+
+## Certificate workflow (`nehn-031`, `DEC-SCOPE-297`; migration `0204_certificate_workflow`)
+
+New table `certificate_rules`: `division` (String PK, check `= 'it'`; the `tel_settings` keyed-row idiom), `min_progress_percent`,
+`min_attendance_percent` (each 0–100, `ck_certificate_rules_percent`), `updated_by_id` (FK users), timestamps. Seeded `('it', 100, 75)`,
+the thresholds that were hardcoded before, so no eligibility changes on upgrade. New table `certificate_requests`: `id` (UUID PK),
+`enrollment_id` (FK `enrollments` ON DELETE CASCADE, unique), `status` (`recommended | not_ready | issued`), `comment`,
+`recommended_by_id` (FK users), `certificate_id` (FK `certificates` ON DELETE SET NULL), timestamps. Issued certificates are unchanged;
+new ones record the thresholds used in `criteria_snapshot.rules`. Downgrade drops both tables and the three seeded grants.
+
+## Lead list indexes (`nehn-012`, `DEC-SCOPE-298`; migration `0205_enquiry_list_indexes`)
+
+`enquiries` gains `ix_enquiries_created` (`created_at`, `id`) for the newest-first lists filtered by an India-time created range, and
+`ix_enquiries_owner` (`owner_id`) for the counselor filter. No column or row changes; the downgrade drops both indexes.

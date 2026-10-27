@@ -9997,7 +9997,58 @@ student sees the whole entry except who recorded it. I9 times carry an offset, 2
 **Numbering:** migration `0203_application_interviews`; API §12GT; RBAC §2.207.
 - **Feature ID authorized:** `nehn-037` (part 4). **Status:** built on `worktree-nehn-037`.
 
-### DEC-SCOPE-299 — CRM report gaps: lost, conversion rate, counselor-wise, date-wise and follow-up reports (`nehn-013`)
+### DEC-SCOPE-297 — Coordinator certificate workflow: eligibility rules, recommend, issue, override (`nehn-031`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-031` (§11 L237-248, §10 L231; `UNVERIFIED` backlog);
+`DEC-ROLE-003` (CONFIRMED_CURRENT: exclusive issuance; the old path goes only once the coordinator flow exists — both land together
+here); design `docs/superpowers/specs/2026-10-27-nehn-031-coordinator-certificate-workflow-design.md`. Dependencies nehn-030
+(`DEC-SCOPE-293`) and nehn-005 (`DEC-SCOPE-281`) merged.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`, OD-05):** W1 global thresholds (one IT row:
+progress 100, attendance 75; the other conditions stay fixed). W2 thresholds edited by the `certificates.configure` grant (it_admin by
+default), audited. W3 issuing needs `certificates.issue` (coordinator only); trainer and it_admin lose it (403). super_admin holds every
+key implicitly (engine P5) but has no queue screen. W4 the eligibility override is its own grant `certificates.override` (coordinator)
+and needs a reason (≤ 1000 chars), stored on the certificate and in the audit log. W5 a trainer recommendation is not required before
+issue; the queue shows eligible or recommended/flagged learners. W6 only the batch's trainer recommends or flags not ready (a comment is
+required for not ready); one per enrolment, replaced by a later call; 409 once issued. W7 a duplicate issue is 409 (was 201 with the
+existing certificate); the enrolment row is locked while issuing. W8 bulk issue of 1–50 enrolments answers per item (200); PDFs are made
+in the request. W9 revocation/reissue and an email on issue are out of scope.
+**Numbering:** migration `0204_certificate_workflow`; API §12GU; RBAC §2.208.
+- **Feature ID authorized:** `nehn-031`. **Status:** built on `worktree-nehn-031`.
+
+### DEC-SCOPE-298 — Lead list date-range and counselor filters; filtered Excel export of the lead list (`nehn-012`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-012` (§14 L322-323, §16 L363/L375, §23 L598-605;
+`UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-27-nehn-012-lead-list-filters-export-design.md`. Dependency nehn-004
+(`DEC-SCOPE-282`) merged; nehn-008 (column policy) not built, so the backlog's fallback applies: one fixed admin / manager column set.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** L1 `created_from` / `created_to` are inclusive
+India-time calendar days on `enquiries.created_at`. L2 a malformed date or id is 422; a reversed range is 422 "The start date must be on
+or before the end date" (the web lists explain it and do not call the API). L3 one row per lead, not per repeat enquiry. L4 a telecaller
+(not a manager) and a counselor get 403 on the export (the overseas counselor keeps ccrm-035's own export). L5 columns: Lead ID, Name,
+Phone, Email, Source, Course interest, Stage, Telecaller, Counselor, Created, Last contact (latest logged call or message), Next
+follow-up (earliest open follow-up). L6 the audit row records the filters as ids/keys/dates and the search text only as set
+(`"q": true`). L7 no counselor picker for the telecaller manager (no manager-readable counselor list); the API takes `owner_id` there too.
+No reason prompt. The export shares ccrm-035's `crm.export` throttle (30 per 10 minutes per person) and 5,000-row cap.
+**Numbering:** migration `0205_enquiry_list_indexes`; API §12GV; RBAC §2.209.
+- **Feature ID authorized:** `nehn-012`. **Status:** built on `worktree-nehn-012`.
+
+### DEC-SCOPE-299 — Per-user permission overrides (`nehn-007`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-007` (§5 L92 "control individual permissions for individual
+users or roles"; `UNVERIFIED` backlog); `CLIENT_QUESTIONS.md` D-09 §3 / OD-03 (**open**); design
+`docs/superpowers/specs/2026-10-27-nehn-007-per-user-permission-overrides-design.md`. Dependencies nehn-005 (`DEC-SCOPE-281`) and nehn-006
+(`DEC-SCOPE-295`) merged.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** U1 built this release (OD-03); with no override
+rows every check answers as before. Effective = (role grants + active allows) - active denies. U2 super_admin users cannot carry
+overrides (409). U3 a reason is required (1-500). U4 optional expiry, future when saved, honoured at read time (no job). U5 the user's
+whole set is replaced in one PUT, one audit row per real change (`user_permission_overrides.update`). U6 the "badge" is the Active
+overrides list on the Permissions screen's "By user" tab (no `/admin/users` grid column). U7 an allow the role already has / a deny it
+lacks is accepted. U8 any user, found through the existing `GET /admin/users?q=`. U9 no cache. U10 overrides persist across a role change. The backlog's AC keys
+`reports.placement.download` / `documents.view` are not catalogue keys; the rules are proven on `reports.telecaller.download` and
+`payments.view`.
+**Numbering:** migration `0206_user_permission_overrides`; API §12GW; RBAC §2.210.
+- **Feature ID authorized:** `nehn-007`. **Status:** built on `worktree-nehn-007`.
+
+### DEC-SCOPE-300 — CRM report gaps: lost, conversion rate, counselor-wise, date-wise and follow-up reports (`nehn-013`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-013` (§16 L405-419, §14 L304-305; `UNVERIFIED` backlog);
 design `docs/superpowers/specs/2026-10-27-nehn-013-crm-report-gaps-design.md`. Dependency `nehn-004` (xlsx) is done. The final report list
@@ -10011,5 +10062,5 @@ follow-up status = telecaller-side follow-ups due in the range by the lead's tel
 pending follow-ups = open ones due in the range and before now, with lead name, telecaller, due date, reason and days overdue (no mobile
 or email). R9 the lead filters apply to every new report. R10 access unchanged (`reports.telecaller` view / download); counselors' own
 view is not built.
-**Numbering:** no migration; API §12GW; RBAC §2.210.
+**Numbering:** no migration; API §12GX; RBAC §2.211.
 - **Feature ID authorized:** `nehn-013`. **Status:** built on `worktree-nehn-013`.

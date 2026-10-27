@@ -3134,7 +3134,41 @@ No grant logic runs in the web app beyond "is this key in my set"; nehn-005 rema
 Writes share the offers' entry (scope, row lock, swapped-counselor re-check, closed → 409). Pinned by
 `apps/api/tests/test_nehn_037_interviews.py`.
 
-### 2.210 CRM report gaps (`nehn-013`, `DEC-SCOPE-299`)
+### 2.208 Certificate workflow *(added 2026-10-27 — `DEC-SCOPE-297`, nehn-031; `DEC-ROLE-003`)*
+
+The catalogue's `certificates` resource gains `issue`, `override` and `configure` (the matrix columns gain `override` and `configure`).
+Default grants (migration `0204_certificate_workflow`): coordinator `certificates.view/issue/override`; it_admin `certificates.configure`.
+super_admin holds every key. **Trainer and it_admin no longer issue** (the `DEC-ROLE-003` cut-over).
+
+| Route (`/workflows/it/certificates/…`) | Anonymous | coordinator | trainer | it_admin | it_student, other roles | super_admin |
+|---|---|---|---|---|---|---|
+| `POST {id}/issue`, `POST issue`, `GET queue` | 401 | 200/201 (`issue` grant) | 403 | 403 | 403 | 200/201 |
+| … with `override: true` | 401 | needs `override` grant, else 403 | 403 | 403 | 403 | allowed |
+| `POST {id}/recommend` | 401 | 403 | own batch only (else 403) | 403 | 403 | 403 (not the batch trainer) |
+| `GET rules` | 401 | 200 | 200 | 200 | 403 | 200 |
+| `PUT rules` | 401 | 403 | 403 | 200 (`configure` grant) | 403 | 200 |
+| `GET eligibility/{id}` | 401 | 200 | own batch | 200 | own (student) / 403 | 200 |
+
+Pinned by `apps/api/tests/test_nehn_031_certificate_workflow.py`, `test_adm_006_certificates.py` and `test_nehn_031_migration.py`.
+
+### 2.209 Lead list Excel export *(added 2026-10-27 — `DEC-SCOPE-298`, nehn-012)*
+
+| Route | Anonymous | super_admin | it_admin / overseas_admin | telecaller_manager | telecaller | counselor, other roles |
+|---|---|---|---|---|---|---|
+| `GET /admin/leads.xlsx` | 401 | 200, all divisions (or `division`) | 200, own division | 403 | 403 | 403 |
+| `GET /telecaller/leads.xlsx` | 401 | 200, all leads | 403 | 200, own reports + their teams' unassigned | 403 | 403 |
+
+The new list filters (`created_from`, `created_to`, `owner_id`) only narrow the existing scope. Each file is audited and throttled.
+Pinned by `apps/api/tests/test_nehn_012_lead_list.py`.
+
+### 2.210 Per-user permission overrides *(added 2026-10-27 — `DEC-SCOPE-299`, nehn-007)*
+
+| Surface | Who | Rule |
+|---|---|---|
+| `GET/PUT /admin/users/{user_id}/permissions`, `GET /admin/permissions/overrides`, `/admin/permissions?tab=user` | super_admin | Reads and replaces any non-super-admin user's overrides; the report lists every override in force. Any other role: 403 / the access card. |
+| Every grant check (`require_permission`, portal payments / certificates) and `GET /auth/me/permissions` | every user | Effective = (role grants + the user's active allows) - the user's active denies. A deny wins over the role. An override past `expires_at` stops applying. super_admin holds every key and cannot be overridden. |
+
+### 2.211 CRM report gaps (`nehn-013`, `DEC-SCOPE-300`)
 
 | Route | Anonymous | telecaller_manager | it_admin / overseas_admin | super_admin | telecaller, counselor, other roles |
 |---|---|---|---|---|---|
