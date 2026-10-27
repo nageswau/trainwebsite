@@ -17,7 +17,7 @@ export default function SchoolDocumentStatusesCard({ data, headingLevel = 2 }: {
   const Heading = headingLevel === 2 ? "h2" : "h3";
   const Sub = headingLevel === 2 ? "h3" : "h4";
   return (
-    <div className="card">
+    <div className="card school-documents">
       <Heading>Overseas application documents</Heading>
       {data === null ? (
         <p className="muted">Document statuses couldn&apos;t be loaded. Reload the page to try again.</p>

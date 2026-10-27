@@ -33,6 +33,7 @@ describe("SchoolDocumentStatusesCard", () => {
     expect(within(table).getByText("Re-upload required")).toHaveClass("status", "error");
     expect(within(table).getByText("Missing")).toHaveClass("status", "pending");
     expect(within(table).getAllByRole("cell")[0]).toHaveAttribute("data-label", "Document");
+    expect(table.closest(".school-documents")).not.toBeNull(); // QA39-01: the phone label rule (globals.css) is scoped to this card
     expect(screen.getByText("No document checklist yet for this application.")).toBeInTheDocument();
     expect(screen.getByText(/Financial documents are not shown/)).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
