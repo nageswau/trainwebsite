@@ -4,6 +4,7 @@ list and the reporting-manager picker.
 Scope always comes from the session -- no /telecaller route takes a user id -- so there is no IDOR surface; the admin list is
 narrowed by team in SQL (T21). Lists reuse bdm-001's paging helpers: {items, total, limit, offset}, ordered by name then id."""
 
+from datetime import date
 from typing import Literal
 from uuid import UUID
 
@@ -12,6 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.api import crm_exports
 from app.api.admin import ensure_admin
 from app.api.bdm import LIMIT, OFFSET, SEARCH, _matching, _paged
 from app.api.deps import get_current_user
@@ -35,8 +37,8 @@ from app.schemas import (
     TelecallerMeOut,
     TelecallerTeamPage,
 )
-from app.services import lead_follow_ups, lead_intake, lead_notes, lead_pipeline, lead_qualification, telecaller_leads
-from app.services.bdm_appointments import db_now
+from app.services import lead_follow_ups, lead_intake, lead_list, lead_notes, lead_pipeline, lead_qualification, telecaller_leads
+from app.services.bdm_appointments import db_now, today_ist
 from app.services.lead_timeline import page as timeline_page
 from app.services.telecaller import admin_team_filter, parse_self_update, person_ref, profile_out, require_manager, team_filter, telecaller_context
 from app.worker import sync_enquiry_to_crm_task
@@ -100,29 +102,49 @@ async def team(q: str | None = SEARCH, limit: int = LIMIT, offset: int = OFFSET,
     return await _paged(db, _profiles(filters), limit, offset, lambda profile, member, _manager: _team_row(profile, member))
 
 
-@router.get("/leads")
-async def my_leads(
+async def _lead_query(
     status: str | None = None,
     priority: Literal[LEAD_PRIORITIES] | None = None,
     product_id: UUID | None = None,
     campaign_id: UUID | None = None,
     follow_up: Literal["today", "overdue"] | None = None,
+    owner_id: UUID | None = None,
+    created_from: date | None = None,
+    created_to: date | None = None,
     q: str | None = SEARCH,
-    limit: int = LIMIT,
-    offset: int = OFFSET,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
-    """tel-008 (spec §2, AC1/AC6): My Leads -- the caller's scope (tel-004 T23), newest first. Every filter is ANDed with the scope, so
-    it can only narrow; `q` is a literal substring of the Lead ID, name, email, phone or WhatsApp number. tel-011 F9: `follow_up`."""
+) -> dict:
+    """My Leads' scope and filters, shared by the list and the manager's Excel twin (nehn-012). Every filter is ANDed with the scope, so
+    it can only narrow; `q` is a literal substring of the Lead ID, name, email, phone or WhatsApp number. tel-011 F9: `follow_up`.
+    nehn-012: India-time created days and the counselor (`owner_id`)."""
     _, filters = lead_pipeline.scope(user)
     for column, value in ((Enquiry.status, status), (Enquiry.priority, priority), (Enquiry.product_id, product_id), (Enquiry.campaign_id, campaign_id)):
         if value:
             filters.append(column == value)
     if follow_up:
         filters.append(lead_follow_ups.due_filter(follow_up, await db_now(db)))
+    filters += lead_list.filters(created_from, created_to, owner_id)
     filters += _matching(like_pattern(q), *telecaller_leads.SEARCHED)
-    return await telecaller_leads.page(db, user, filters, limit, offset)
+    audited = lead_list.audited(q, status=status, priority=priority, product_id=product_id, campaign_id=campaign_id, follow_up=follow_up,
+                                owner_id=owner_id, created_from=created_from, created_to=created_to)  # fmt: skip
+    return {"user": user, "where": filters, "audited": audited}
+
+
+@router.get("/leads")
+async def my_leads(query: dict = Depends(_lead_query), limit: int = LIMIT, offset: int = OFFSET, db: AsyncSession = Depends(get_db)):
+    """tel-008 (spec §2, AC1/AC6): My Leads -- the caller's scope (tel-004 T23), newest first."""
+    return await telecaller_leads.page(db, query["user"], query["where"], limit, offset)
+
+
+@router.get("/leads.xlsx")
+async def my_leads_xlsx(query: dict = Depends(_lead_query), db: AsyncSession = Depends(get_db)):
+    """nehn-012 (DEC-SCOPE-298): a manager's (or super_admin's) filtered list, every page, as Excel -- audited and throttled. A telecaller
+    is 403 (L4)."""
+    require_manager(query["user"])
+    return await crm_exports.export(db, query["user"], entity_type="lead_list", key="telecaller", fmt="xlsx", filters=query["audited"],
+                                    filename=f"leads-{today_ist(await db_now(db))}", sheet_name="Leads",
+                                    build=lambda: lead_list.table(db, query["where"], crm_exports.ROW_CAP + 1))  # fmt: skip
 
 
 @router.get("/leads/duplicate-check")
