@@ -3160,3 +3160,10 @@ Pinned by `apps/api/tests/test_nehn_031_certificate_workflow.py`, `test_adm_006_
 
 The new list filters (`created_from`, `created_to`, `owner_id`) only narrow the existing scope. Each file is audited and throttled.
 Pinned by `apps/api/tests/test_nehn_012_lead_list.py`.
+
+### 2.210 Per-user permission overrides *(added 2026-10-27 — `DEC-SCOPE-299`, nehn-007)*
+
+| Surface | Who | Rule |
+|---|---|---|
+| `GET/PUT /admin/users/{user_id}/permissions`, `GET /admin/permissions/overrides`, `/admin/permissions?tab=user` | super_admin | Reads and replaces any non-super-admin user's overrides; the report lists every override in force. Any other role: 403 / the access card. |
+| Every grant check (`require_permission`, portal payments / certificates) and `GET /auth/me/permissions` | every user | Effective = (role grants + the user's active allows) - the user's active denies. A deny wins over the role. An override past `expires_at` stops applying. super_admin holds every key and cannot be overridden. |

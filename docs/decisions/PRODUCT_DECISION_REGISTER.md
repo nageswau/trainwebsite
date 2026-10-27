@@ -10030,3 +10030,20 @@ follow-up (earliest open follow-up). L6 the audit row records the filters as ids
 No reason prompt. The export shares ccrm-035's `crm.export` throttle (30 per 10 minutes per person) and 5,000-row cap.
 **Numbering:** migration `0205_enquiry_list_indexes`; API §12GV; RBAC §2.209.
 - **Feature ID authorized:** `nehn-012`. **Status:** built on `worktree-nehn-012`.
+
+### DEC-SCOPE-299 — Per-user permission overrides (`nehn-007`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-007` (§5 L92 "control individual permissions for individual
+users or roles"; `UNVERIFIED` backlog); `CLIENT_QUESTIONS.md` D-09 §3 / OD-03 (**open**); design
+`docs/superpowers/specs/2026-10-27-nehn-007-per-user-permission-overrides-design.md`. Dependencies nehn-005 (`DEC-SCOPE-281`) and nehn-006
+(`DEC-SCOPE-295`) merged.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** U1 built this release (OD-03); with no override
+rows every check answers as before. Effective = (role grants + active allows) - active denies. U2 super_admin users cannot carry
+overrides (409). U3 a reason is required (1-500). U4 optional expiry, future when saved, honoured at read time (no job). U5 the user's
+whole set is replaced in one PUT, one audit row per real change (`user_permission_overrides.update`). U6 the "badge" is the Active
+overrides list on the Permissions screen's "By user" tab (no `/admin/users` grid column). U7 an allow the role already has / a deny it
+lacks is accepted. U8 any user, found through the existing `GET /admin/users?q=`. U9 no cache. U10 overrides persist across a role change. The backlog's AC keys
+`reports.placement.download` / `documents.view` are not catalogue keys; the rules are proven on `reports.telecaller.download` and
+`payments.view`.
+**Numbering:** migration `0206_user_permission_overrides`; API §12GW; RBAC §2.210.
+- **Feature ID authorized:** `nehn-007`. **Status:** built on `worktree-nehn-007`.

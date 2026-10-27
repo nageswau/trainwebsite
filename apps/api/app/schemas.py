@@ -14517,3 +14517,49 @@ class ApplicationInterviewUpdate(BaseModel):
         if value is None:
             raise PydanticCustomError("required", "This field cannot be cleared")
         return value
+
+
+class UserPermissionOverrideIn(BaseModel):
+    """nehn-007 (DEC-SCOPE-299): one allow/deny of a catalogue key for one user. The reason is required (U3); the expiry, when given,
+    must carry a timezone and lie in the future (U4)."""
+
+    model_config = ConfigDict(extra="forbid")
+    permission: StrictStr
+    effect: Literal["allow", "deny"]
+    reason: str = Field(max_length=500)
+    expires_at: AwareDatetime | None = None
+
+    @field_validator("permission")
+    @classmethod
+    def _known(cls, key: str) -> str:
+        parse_permission_key(key)
+        return key
+
+    @field_validator("reason")
+    @classmethod
+    def _reason(cls, reason: str) -> str:
+        reason = reason.strip()
+        if not reason:
+            raise ValueError("Give a reason for the override")
+        return reason
+
+    @field_validator("expires_at")
+    @classmethod
+    def _future(cls, expires_at: datetime | None) -> datetime | None:
+        if expires_at is not None and expires_at <= datetime.now(UTC):
+            raise ValueError("The expiry must be in the future")
+        return expires_at
+
+
+class UserPermissionOverridesUpdate(BaseModel):
+    """nehn-007 (DEC-SCOPE-299 U5): `PUT /admin/users/{user_id}/permissions` -- the user's whole new override set."""
+
+    model_config = ConfigDict(extra="forbid")
+    overrides: list[UserPermissionOverrideIn] = Field(max_length=200)
+
+    @field_validator("overrides")
+    @classmethod
+    def _unique(cls, overrides: list[UserPermissionOverrideIn]) -> list[UserPermissionOverrideIn]:
+        if len({o.permission for o in overrides}) != len(overrides):
+            raise ValueError("Each permission may appear only once")
+        return overrides
