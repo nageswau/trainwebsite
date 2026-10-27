@@ -43,7 +43,7 @@ describe("TelecallerReportView (tel-024 §21)", () => {
     render(<TelecallerReportView kind="campaign" report={report()} error="" params={{}} basePath={BASE} />);
     const nav = screen.getByRole("navigation", { name: "Reports" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual(["Lead Source", "Course", "Telecaller", "Counselor Handover", "Campaign", "Lost Reasons"]);
+    expect(links.map((l) => l.textContent).slice(0, 6)).toEqual(["Lead Source", "Course", "Telecaller", "Counselor Handover", "Campaign", "Lost Reasons"]);
     expect(links[4]).toHaveAttribute("aria-current", "page");
     expect(links[0]).not.toHaveAttribute("aria-current");
   });

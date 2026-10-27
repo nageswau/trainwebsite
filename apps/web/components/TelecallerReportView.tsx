@@ -2,10 +2,14 @@ import Link from "next/link";
 
 import { SpreadsheetButtons } from "@/components/ExportButtons";
 import {
-  REPORT_TABS, TEAM_LABEL, type ReportKind, type ReportParams, type ReportRow, type TelecallerReport, csvUrl, tabHref,
+  GROUPS, REPORT_TABS, TEAM_LABEL, type ReportKind, type ReportParams, type ReportRow, type TelecallerReport, csvUrl, tabHref,
 } from "@/lib/telecallerReports";
 
-const EMPTY: Partial<Record<ReportKind, string>> = { telecaller: "No telecallers in your scope.", handover: "No leads with a counselor in this range." };
+const EMPTY: Partial<Record<ReportKind, string>> = {
+  telecaller: "No telecallers in your scope.", handover: "No leads with a counselor in this range.",
+  counselor: "No leads with a counselor in this range.", follow_ups: "No follow-ups due in this range.",
+  pending_follow_ups: "No overdue follow-ups in this range.", // nehn-013
+};
 
 const show = (value: string | number | undefined) => (value === undefined || value === "" ? "—" : String(value));
 
@@ -19,11 +23,11 @@ export default function TelecallerReportView({ kind, report, error, params, base
 }) {
   const options = report?.options;
   const leadReport = kind !== "telecaller";
-  const select = (name: keyof ReportParams, label: string, all: string, choices: { value: string; label: string }[]) => (
+  const select = (name: keyof ReportParams, label: string, all: string | null, choices: { value: string; label: string }[]) => (
     <div className="field" style={{ margin: 0 }}>
       <label htmlFor={`report-${name}`}>{label}</label>
       <select id={`report-${name}`} name={name} defaultValue={params[name] ?? ""}>
-        <option value="">{all}</option>
+        {all !== null && <option value="">{all}</option>}
         {/* A value from the address that is not offered (refused with a 422) stays visible beside the message. */}
         {params[name] && !choices.some((c) => c.value === params[name]) && <option value={params[name]}>{params[name]}</option>}
         {choices.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
@@ -60,6 +64,7 @@ export default function TelecallerReportView({ kind, report, error, params, base
         {leadReport && select("product_id", "Course", "All courses", (options?.products ?? []).map((p) => ({ value: p.id, label: p.name })))}
         {leadReport && select("campaign_id", "Campaign", "All campaigns", (options?.campaigns ?? []).map((c) => ({ value: c.id, label: c.name })))}
         {leadReport && select("source", "Source", "All sources", (options?.sources ?? []).map((s) => ({ value: s.key, label: s.label })))}
+        {kind === "date" && select("group", "Group by", null, GROUPS)}
         <button className="btn" type="submit">Apply</button>
         <Link className="btn secondary" href={`${basePath}?report=${kind}`}>Clear filters</Link>
       </form>
