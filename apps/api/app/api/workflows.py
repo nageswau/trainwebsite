@@ -150,6 +150,7 @@ from app.services import (
     student_access,
     student_archive,
     student_document_requests,
+    training_progress,
     visa_lifecycle,
 )
 from app.services import application_outcomes as outcomes
@@ -1502,60 +1503,8 @@ async def _certificate_rules(db: AsyncSession) -> dict:
 
 
 async def _certificate_eligibility(db: AsyncSession, enrollment: Enrollment, rules: dict | None = None) -> dict:
-    rules = rules or await _certificate_rules(db)
-    batch = await db.get(Batch, enrollment.batch_id)
-    attendance_total = await db.scalar(select(func.count()).select_from(Attendance).where(Attendance.student_id == enrollment.student_id, Attendance.batch_id == enrollment.batch_id)) or 0
-    attendance_present = (
-        await db.scalar(
-            select(func.count())
-            .select_from(Attendance)
-            .where(Attendance.student_id == enrollment.student_id, Attendance.batch_id == enrollment.batch_id, Attendance.status.in_(["present", "late", "excused"]))
-        )
-        or 0
-    )
-    attendance_percent = round(attendance_present * 100 / attendance_total, 2) if attendance_total else 0
-    assignment_total = await db.scalar(select(func.count()).select_from(Assignment).where(Assignment.batch_id == enrollment.batch_id, Assignment.published.is_(True))) or 0
-    assignment_graded = (
-        await db.scalar(
-            select(func.count())
-            .select_from(Submission)
-            .join(Assignment)
-            .where(Submission.student_id == enrollment.student_id, Assignment.batch_id == enrollment.batch_id, Submission.status == "graded")
-        )
-        or 0
-    )
-    assessments = (await db.scalars(select(Assessment).where(Assessment.batch_id == enrollment.batch_id, Assessment.status.in_(["scheduled", "open", "closed", "published"])))).all()
-    passed = 0
-    for assessment in assessments:
-        best = await db.scalar(
-            select(func.max(AssessmentAttempt.percentage)).where(
-                AssessmentAttempt.assessment_id == assessment.id, AssessmentAttempt.student_id == enrollment.student_id, AssessmentAttempt.status == "graded"
-            )
-        )
-        if best is not None and float(best) >= assessment.pass_percent:
-            passed += 1
-    pending_fee = (
-        await db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.user_id == enrollment.student_id, Payment.division == "it", Payment.status.in_(["pending", "overdue"]))) or 0
-    )
-    criteria: dict[str, object] = {
-        "progress_percent": enrollment.progress_percent,
-        "attendance_percent": attendance_percent,
-        "assignments_graded": assignment_graded,
-        "assignments_total": assignment_total,
-        "assessments_passed": passed,
-        "assessments_total": len(assessments),
-        "pending_fee": float(pending_fee),
-        "rules": rules,
-    }
-    criteria["eligible"] = bool(
-        enrollment.progress_percent >= rules["min_progress_percent"]
-        and attendance_percent >= rules["min_attendance_percent"]
-        and assignment_graded >= assignment_total
-        and passed >= len(assessments)
-        and float(pending_fee) == 0
-    )
-    criteria["batch_id"] = batch.id if batch else enrollment.batch_id
-    return criteria
+    criteria = (await training_progress.criteria(db, [enrollment], rules or await _certificate_rules(db)))[enrollment.id]  # nehn-028
+    return {**criteria, "batch_id": enrollment.batch_id}
 
 
 @router.get("/it/certificates/eligibility/{enrollment_id}")
@@ -1573,6 +1522,83 @@ async def certificate_eligibility(enrollment_id: UUID, user: User = Depends(get_
         raise HTTPException(403, "Certificate access denied")
     issued = await db.scalar(select(Certificate.id).where(Certificate.enrollment_id == enrollment.id))
     return {**await _certificate_eligibility(db, enrollment), "certificate_issued": issued is not None}  # nehn-031 QA31-04
+
+
+PROGRESS_UNSEATED = ("pending_consent", "rejected")  # nehn-028: never seated in the batch, so not one of its students
+
+
+def _not_met(missing: int, total: int, noun: str, verb: str) -> str:
+    return f"{missing} of {total} {noun if total == 1 else noun + 's'} not {verb}"
+
+
+def _progress_reasons(c: dict) -> list[str]:
+    """nehn-028: why a student is not eligible yet, one line per unmet criterion (the eligibility rule, in words)."""
+    rules, reasons = c["rules"], []
+    if c["progress_percent"] < rules["min_progress_percent"]:
+        reasons.append(f"Progress {c['progress_percent']}% (needs {rules['min_progress_percent']}%)")
+    if not c["attendance_sessions"]:
+        reasons.append("No attendance recorded yet")
+    elif c["attendance_percent"] < rules["min_attendance_percent"]:
+        reasons.append(f"Attendance {c['attendance_percent']:g}% (needs {rules['min_attendance_percent']}%)")
+    if c["assignments_graded"] < c["assignments_total"]:
+        reasons.append(_not_met(c["assignments_total"] - c["assignments_graded"], c["assignments_total"], "assignment", "graded"))
+    if c["assessments_passed"] < c["assessments_total"]:
+        reasons.append(_not_met(c["assessments_total"] - c["assessments_passed"], c["assessments_total"], "assessment", "passed"))
+    if c["pending_fee"]:
+        reasons.append("Fee payment pending")
+    return reasons
+
+
+@router.get("/it/batches/{batch_id}/progress")
+async def batch_progress(batch_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """nehn-028 (DEC-SCOPE-305): each student of a batch against the certificate criteria -- the eligibility endpoint's numbers, from
+    the shared calculator -- with the attendance risk flag and the reasons eligibility is not met. A trainer reads their own batches
+    only; the fee shows as cleared or pending, never as an amount."""
+    _require(user, {"trainer", "it_admin"}, "it")
+    batch = await db.get(Batch, batch_id)
+    if not batch:
+        raise HTTPException(404, "Batch not found")
+    if user.role == "trainer" and batch.trainer_id != user.id:
+        raise HTTPException(403, "Batch is outside your assigned batches")
+    rules = await _certificate_rules(db)
+    rows = (
+        await db.execute(
+            select(Enrollment, User)
+            .join(User, User.id == Enrollment.student_id)
+            .where(Enrollment.batch_id == batch.id, Enrollment.status.not_in(PROGRESS_UNSEATED))
+            .order_by(User.full_name, Enrollment.enrollment_code)
+        )
+    ).all()
+    enrollments = [enrollment for enrollment, _ in rows]
+    every = await training_progress.criteria(db, enrollments, rules)
+    student_ids = [e.student_id for e in enrollments]
+    submitted = dict(
+        (await db.execute(
+            select(Submission.student_id, func.count(func.distinct(Submission.assignment_id)))
+            .join(Assignment)
+            .where(Assignment.batch_id == batch.id, Assignment.published.is_(True), Submission.student_id.in_(student_ids))
+            .group_by(Submission.student_id)
+        )).all()
+    ) if student_ids else {}
+    issued = set(await db.scalars(select(Certificate.enrollment_id).where(Certificate.enrollment_id.in_([e.id for e in enrollments])))) if enrollments else set()
+    program = await db.get(Program, batch.program_id)
+    students = []
+    for enrollment, student in rows:
+        c = every[enrollment.id]
+        students.append({
+            "enrollment_id": enrollment.id, "student_id": student.id, "student_code": student.student_code, "student": student.full_name,
+            "enrollment_code": enrollment.enrollment_code, "status": enrollment.status,
+            "progress_percent": c["progress_percent"], "attendance_percent": c["attendance_percent"], "attendance_sessions": c["attendance_sessions"],
+            "at_risk": bool(c["attendance_sessions"]) and c["attendance_percent"] < rules["min_attendance_percent"],
+            "assignments_submitted": submitted.get(student.id, 0), "assignments_graded": c["assignments_graded"], "assignments_total": c["assignments_total"],
+            "assessments_passed": c["assessments_passed"], "assessments_total": c["assessments_total"],
+            "fee_clear": not c["pending_fee"], "eligible": c["eligible"], "reasons": _progress_reasons(c), "certificate_issued": enrollment.id in issued,
+        })
+    return {
+        "batch": {"id": batch.id, "name": batch.name, "program": program.title if program else None, "start_date": batch.start_date, "end_date": batch.end_date},
+        "rules": rules,
+        "students": students,
+    }
 
 
 @router.get("/it/certificates/rules")
@@ -1660,7 +1686,7 @@ async def recommend_certificate(enrollment_id: UUID, payload: CertificateRecomme
 @router.get("/it/certificates/queue")
 async def certificate_queue(user: User = Depends(CAN_ISSUE_CERTIFICATES), db: AsyncSession = Depends(get_db)):
     """nehn-031 (DEC-SCOPE-297 W5): enrolments without a certificate that pass the progress threshold or carry a trainer's
-    recommendation, recommended first. Full eligibility is evaluated per row (capped at 200)."""
+    recommendation, recommended first. Full eligibility is evaluated for every row (capped at 200)."""
     rules = await _certificate_rules(db)
     recommender = aliased(User)
     rows = (
@@ -1680,9 +1706,10 @@ async def certificate_queue(user: User = Depends(CAN_ISSUE_CERTIFICATES), db: As
             .limit(200)
         )
     ).all()
+    every = await training_progress.criteria(db, [row[0] for row in rows], rules)  # nehn-028: grouped, not one query set per row
     items = []
     for enrollment, student, batch_name, program_title, request, recommended_by in rows:
-        criteria = await _certificate_eligibility(db, enrollment, rules)
+        criteria = {**every[enrollment.id], "batch_id": enrollment.batch_id}
         recommendation = (
             {"status": request.status, "comment": request.comment, "by": recommended_by, "at": request.updated_at} if request and request.status != "issued" else None
         )

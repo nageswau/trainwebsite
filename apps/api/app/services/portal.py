@@ -561,21 +561,9 @@ async def _trainer(db: AsyncSession, user: User, section: str):
             ),
         )
     if section == "student-progress":
-        rows = (
-            await db.execute(
-                select(Enrollment, User, Batch)
-                .join(User, User.id == Enrollment.student_id)
-                .join(Batch, Batch.id == Enrollment.batch_id)
-                .where(Batch.trainer_id == user.id, Enrollment.status == "active")
-                .order_by(User.full_name)
-            )
-        ).all()
-        return _payload(
-            "Student Progress",
-            "Progress and attendance risk across assigned batches.",
-            (("student", "Student"), ("batch", "Batch"), ("enrollment", "Enrollment number"), ("progress", "Progress")),
-            ({"student": s.full_name, "batch": b.name, "enrollment": e.enrollment_code, "progress": f"{e.progress_percent}%"} for e, s, b in rows),
-        )
+        # nehn-028 (DEC-SCOPE-305): header-only -- the page's progress table reads `GET /workflows/it/batches/{id}/progress` (AC3: the
+        # subtitle names what that table shows).
+        return _payload("Student Progress", "Attendance, assignments, assessments, progress and certificate eligibility for each student in your batches.")
     if section == "support":
         # STU-005: division-scoped, not just batch-scoped -- any trainer in the division
         # can pick up a ticket, unassigned or not (STU-005-AC02: never hidden).
