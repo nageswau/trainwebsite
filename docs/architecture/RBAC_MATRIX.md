@@ -3206,3 +3206,14 @@ Pinned by `apps/api/tests/test_nehn_032_certificate_signatures.py` and `apps/web
 | `/admin/report-library`, `/it/admin/report-library`, `/it/trainer/report-library` | super_admin; it_admin (+ super_admin); trainer | Other roles see the access card; the API remains the authority. |
 
 Pinned by `apps/api/tests/test_nehn_009_reports.py` and `apps/web/tests/e2e/nehn-009-report-library.spec.ts`.
+
+### 2.215 Student feature access by payment status *(added 2026-10-27 — `DEC-SCOPE-304`, nehn-018)*
+
+| Route | Anonymous | super_admin | it_admin | it_student | other roles |
+|---|---|---|---|---|---|
+| `GET /workflows/it/student/access` | 401 | 200 | 403 | 200, own | 403 |
+| `GET`/`PUT /workflows/it/student-access/rules` | 401 | 200 | 200 (`student_access.configure`) | 403 | 403 |
+| Gated student routes (API §12HB) | 401 | unchanged | unchanged | 403 `payment_required` below the feature's state | unchanged |
+
+A new entitlement layer under the role check: the payment check runs after the route's role and ownership checks, so another
+student's or batch's record keeps its existing 403/404. Pinned by `apps/api/tests/test_nehn_018_student_access.py`.

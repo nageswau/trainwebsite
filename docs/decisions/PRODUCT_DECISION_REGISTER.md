@@ -10120,3 +10120,21 @@ placement roles wait for their own items. R7 a Report library page in the super 
 away until a filter is applied. No new indexes (EXPLAIN on real volumes first).
 **Numbering:** migration `0210_training_report_grants` (after nehn-032's `0208_certificate_signatories`); API §12HA; RBAC §2.214.
 - **Feature ID authorized:** `nehn-009`. **Status:** built on `worktree-nehn-009`.
+
+### DEC-SCOPE-304 — Student feature access by enrolment and payment status (`nehn-018`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-018` (§6 L148-151, §24; `UNVERIFIED` backlog); design
+`docs/superpowers/specs/2026-10-27-nehn-018-student-payment-access-design.md`. Dependency nehn-003 (private file serving) is done. OD-06
+(which feature unlocks at which payment status) is still open with the client.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** P1 an IT student's payment state is derived
+on every request, never stored: `registered` (no enrolment other than rejected/withdrawn/dropped) < `enrolled_pending_payment` <
+`partially_paid` (something owed, something paid; EMI instalment 1 counts) < `fully_paid` (nothing pending/overdue; a free course, an
+unbilled student and a fee discounted to 0 count). P2 per student, not per enrolment (the certificate `pending_fee` basis). P3 an overdue
+instalment or a refund does not re-lock. P4 default policy: every gated feature (attendance, assignments and projects, examinations,
+course materials, live classes, questions, course feedback, certificates) opens at `partially_paid`; course, fees and payment, profile,
+dashboard, placement and support are never gated. Certificate issuance still needs no fee owed (nehn-031). P5 the IT admin edits the
+policy (`student_access.configure`), applied on the next request, audited. P6 a refused route is 403 with
+`{code: "payment_required", feature, label, required_state, current_state, message}` (403, not 402); a student with no enrolment is
+told to enrol. P7 overseas students are not gated. P8 locked sections stay in the sidebar with a "Locked" badge.
+**Numbering:** migration `0211_student_access_rules`; API §12HB; RBAC §2.215.
+- **Feature ID authorized:** `nehn-018`. **Status:** built on `worktree-nehn-018`.
