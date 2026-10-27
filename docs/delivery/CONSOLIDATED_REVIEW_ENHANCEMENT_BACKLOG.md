@@ -729,6 +729,7 @@ Risk is the risk of regression or of a wrong outcome.
 - **Complexity:** medium · **Risk:** medium
 
 #### `nehn-015` — Internal CRM workflow reconciliation (blocked on the client CRM flow)
+**Status (2026-10-27): still waiting for client input (CI-01).** A readiness template is prepared on `worktree-nehn-015`: [`NEHN_015_CRM_DELTA_MATRIX.md`](NEHN_015_CRM_DELTA_MATRIX.md) maps all 26 client-flow items (§16 L424–L448, §26 L760–L783) to the as-built code and decisions, with every client and delta column `NEEDS_CONFIRMATION`. No code, migration or DEC is involved. AC1–AC3 stay open until the client document arrives.
 - **Source:** §16 L351-357, L377-404, L420-449; §26 L758-784; actions 4–7. Evidence: `MEETING_TRANSCRIPT_REQUEST` plus a pending client document.
 - **Business requirement:** Implement the client's final CRM process: sources, stages, transitions, assignment rules (including workload- and source-based), ownership, reassignment, escalation, duplicates, IT/Overseas/Agent flows, notifications, dashboards, reports, filters, export fields, permissions and approvals.
 - **Existing behavior:** The Telecaller CRM covers most of the list:
