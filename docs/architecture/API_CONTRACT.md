@@ -4292,9 +4292,9 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - The web app reads `GET /auth/me/permissions` to hide sidebar items (`<resource>.view`), the payment forms (`payments.add`,
   `discounts.add`) and the telecaller report export (`reports.telecaller.download`). Hidden UI is not the control; the routes refuse.
 
-## 12GT. Per-user permission overrides (nehn-007) — addendum, 2026-10-27
+## 12GU. Per-user permission overrides (nehn-007) — addendum, 2026-10-27
 
-`DEC-SCOPE-296`; migration `0203_user_permission_overrides`. All three routes are super_admin only (401 without a session, 403 for any
+`DEC-SCOPE-297`; migration `0204_user_permission_overrides`. All three routes are super_admin only (401 without a session, 403 for any
 other role, checked before the target).
 
 - `GET /admin/users/{user_id}/permissions` → 200 `{user:{id, full_name, email, role}, editable, role_permissions:[key],

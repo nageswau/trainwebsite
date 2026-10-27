@@ -40,7 +40,7 @@ function toDraft(overrides: Override[]): Draft {
 const same = (a: Draft[string] | undefined, b: Draft[string] | undefined) =>
   (a?.effect ?? "") === (b?.effect ?? "") && (!a?.effect || (a.reason === b?.reason && a.expires === b?.expires));
 
-// nehn-007 (DEC-SCOPE-296): the "By user" tab. One row per catalogue key: where the user's access comes from (role or override) and an
+// nehn-007 (DEC-SCOPE-297): the "By user" tab. One row per catalogue key: where the user's access comes from (role or override) and an
 // allow/deny override with a reason and an optional expiry. Save replaces the user's whole override set with one PUT (audited by the API).
 export default function UserPermissionOverrides({ catalogue, userId }: { catalogue: PermissionCatalogue; userId: string | null }) {
   const keys = catalogue.resources.flatMap((r) => r.actions.map((a) => ({ key: `${r.key}.${a}`, label: `${r.label}: ${title(a)}` })));

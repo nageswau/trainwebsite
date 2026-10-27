@@ -1,9 +1,9 @@
 """nehn-007 -- per-user permission overrides on top of the role grants.
 
-Revision ID: 0203_user_permission_overrides
-Revises: 0202_learning_resource_files
+Revision ID: 0204_user_permission_overrides
+Revises: 0203_application_interviews
 
-docs/superpowers/specs/2026-10-27-nehn-007-per-user-permission-overrides-design.md (DEC-SCOPE-296). New table
+docs/superpowers/specs/2026-10-27-nehn-007-per-user-permission-overrides-design.md (DEC-SCOPE-297). New table
 `user_permission_overrides`: one allow/deny per (user, resource, action), a required reason and an optional expiry. 0001 builds a fresh
 database from the current models, which already carry the table, so it is created only when missing (0196's idiom). No seed; no existing
 row changes. The downgrade drops the table.
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0203_user_permission_overrides"
-down_revision = "0202_learning_resource_files"
+revision = "0204_user_permission_overrides"
+down_revision = "0203_application_interviews"
 branch_labels = None
 depends_on = None
 

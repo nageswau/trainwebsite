@@ -1,5 +1,5 @@
 """nehn-007 -- per-user permission overrides: effective = (role grants + active allows) - active denies, applied by every grant check
-and `/auth/me/permissions`; super_admin-only endpoints to read, replace and report them. DEC-SCOPE-296; spec
+and `/auth/me/permissions`; super_admin-only endpoints to read, replace and report them. DEC-SCOPE-297; spec
 docs/superpowers/specs/2026-10-27-nehn-007-per-user-permission-overrides-design.md."""
 
 import uuid

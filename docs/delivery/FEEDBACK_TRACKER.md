@@ -60,7 +60,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-004 | Reporting | Excel download beside every CSV report; Excel import reader | Enhancement | Done — confirm defaults | Dev | Wave 1 | — |
 | nehn-005 | Permissions | Permission engine (role × module × action), first two modules | Enhancement | Done — confirm defaults | Dev + Client | Wave 1 | Confirm who edits permissions; custom roles needed? (OD-04) |
 | nehn-006 | Permissions | Admin permission-matrix screen and permission-driven menus | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 | Per role only; non-applicable actions shown as "—" (DEC-SCOPE-295) |
-| nehn-007 | Permissions | Per-user permission overrides | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Built with reason + optional expiry; confirm OD-03 (DEC-SCOPE-296) |
+| nehn-007 | Permissions | Per-user permission overrides | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Built with reason + optional expiry; confirm OD-03 (DEC-SCOPE-297) |
 | nehn-008 | Permissions | Role-based column policy for screens and downloads | Enhancement | Waiting — client input | Dev + Client | Wave 3 | Which columns each role may see (CI-02) |
 | nehn-009 | Reporting | Report framework: standard filters, CSV/Excel, audited | Enhancement | Waiting — dependency | Dev | Wave 3 | — (needs nehn-008) |
 | nehn-010 | Reporting | Training reports: student, trainer, course, completion, attendance | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | Admin report template (CI-02); needs nehn-009 |
@@ -146,7 +146,7 @@ These items are built. Where a question was open, we used the recommended answer
 |---|---|---|---|
 | OD-01 | Business-facing Agent ID, or Student ID only? | nehn-040 | Recommended answer in place: Student ID only (decision of 15 Sep 2026) — please confirm |
 | OD-02 | Keep files on the server volume, or move to cloud storage? | nehn-003 | Recommended answer in place: server volume; cloud storage is a configuration change — please confirm |
-| OD-03 | Are per-user permission overrides needed this release? | nehn-007 | Open — built on the default (DEC-SCOPE-296) |
+| OD-03 | Are per-user permission overrides needed this release? | nehn-007 | Open — built on the default (DEC-SCOPE-297) |
 | OD-04 | Permission unit (page or module), who edits grants, custom roles? | nehn-005 | Recommended answer in place: per module, Super Admin edits, no custom roles — please confirm |
 | OD-05 | Coordinator account model and duties; who may override certificate eligibility | nehn-030, 031 | Open |
 | OD-06 | Which student features unlock at which payment status | nehn-018 | Open |

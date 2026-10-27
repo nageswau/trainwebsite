@@ -3123,7 +3123,7 @@ off a batch loses manage and download access at once. No new permission key. Pin
 
 No grant logic runs in the web app beyond "is this key in my set"; nehn-005 remains the enforcement point.
 
-### 2.207 Per-user permission overrides *(added 2026-10-27 — `DEC-SCOPE-296`, nehn-007)*
+### 2.208 Per-user permission overrides *(added 2026-10-27 — `DEC-SCOPE-297`, nehn-007)*
 
 | Surface | Who | Rule |
 |---|---|---|

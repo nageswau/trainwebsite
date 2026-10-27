@@ -2293,7 +2293,7 @@ inline checks gave (it_admin/overseas_admin: `payments.view`, `payments.add`, `d
 by `PUT /admin/roles/{role}/permissions`; history in `audit_logs` (`role_permissions.update`, before/after). No existing data changes.
 Downgrade drops the table.
 
-## User permission overrides (`nehn-007`, `DEC-SCOPE-296`; migration `0203_user_permission_overrides`, after nehn-027's `0202_learning_resource_files`)
+## User permission overrides (`nehn-007`, `DEC-SCOPE-297`; migration `0204_user_permission_overrides`, after nehn-037's `0203_application_interviews`)
 
 New table `user_permission_overrides`: `id` (UUID PK), `user_id` (FK `users` ON DELETE CASCADE, indexed), `resource` (String 60),
 `action` (String 20), `effect` (String 10, CHECK `allow`/`deny`), `reason` (String 500, required), `expires_at` (timestamptz, null = no

@@ -2,7 +2,7 @@
 
 The engine says whether a role *may* use a resource action; each route's own record scope (division, own team) still says *which rows*.
 There is no in-process cache (P7): a check is at most two indexed lookups, so a change applies on the next request on every worker.
-nehn-007 (DEC-SCOPE-296): a user's effective set is (role grants + active allows) - active denies; super_admin holds everything."""
+nehn-007 (DEC-SCOPE-297): a user's effective set is (role grants + active allows) - active denies; super_admin holds everything."""
 
 import logging
 from datetime import UTC, datetime

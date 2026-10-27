@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PermissionCatalogue } from "@/components/PermissionMatrix";
 import UserPermissionOverrides from "@/components/UserPermissionOverrides";
 
-// nehn-007 (DEC-SCOPE-296): the "By user" tab -- find a user, see where each permission comes from, set allow/deny overrides with a
+// nehn-007 (DEC-SCOPE-297): the "By user" tab -- find a user, see where each permission comes from, set allow/deny overrides with a
 // reason and an optional expiry, and see every active override.
 const CATALOGUE: PermissionCatalogue = {
   roles: ["super_admin", "hr_team"],
