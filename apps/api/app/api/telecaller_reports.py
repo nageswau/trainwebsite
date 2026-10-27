@@ -49,9 +49,11 @@ def _log(event: str, user: User, kind: str, filters: reports.Filters, rows: int,
 
 
 def _raw(date_from: str | None = None, date_to: str | None = None, team: str | None = None, product_id: str | None = None,
-         campaign_id: str | None = None, source: str | None = None) -> dict[str, str | None]:  # fmt: skip
-    """The filters as plain strings -- one dependency for the read, CSV and xlsx routes, so they cannot drift."""
-    return {"date_from": date_from, "date_to": date_to, "team": team, "product_id": product_id, "campaign_id": campaign_id, "source": source}
+         campaign_id: str | None = None, source: str | None = None, group: str | None = None) -> dict[str, str | None]:  # fmt: skip
+    """The filters as plain strings -- one dependency for the read, CSV and xlsx routes, so they cannot drift. nehn-013: `group` is the
+    date-wise report's period (day / week / month), ignored by the other kinds."""
+    return {"date_from": date_from, "date_to": date_to, "team": team, "product_id": product_id, "campaign_id": campaign_id, "source": source,
+            "group": group}
 
 
 # Registered before `/{kind}`, whose path parameter would otherwise also match "source.csv".

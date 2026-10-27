@@ -46,7 +46,7 @@ export default async function TelecallerReportsPage({ roles, nav, roleLabel, log
           <div>
             <div className="eyebrow">Telecaller CRM</div>
             <h2>Reports</h2>
-            <p className="muted">Lead source, course, telecaller, counselor handover and campaign figures for a date range. Lead reports count leads created in the range; a lead counts in every stage it has reached. The Telecaller report counts the activity logged in the range.</p>
+            <p className="muted">Lead source, course, telecaller, counselor, campaign, date-wise and follow-up figures for a date range. Lead reports count leads created in the range; a lead counts in every stage it has reached, and the conversion rate is enrolled leads as a share of all leads. The Telecaller report counts the activity logged in the range; the follow-up reports count follow-ups due in the range.</p>
           </div>
         </div>
         <TelecallerReportView kind={kind} report={report} error={error} params={params} basePath={basePath} canDownload={await canDownload} />
