@@ -5,7 +5,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 
 const SUPER = { email: "superadmin@edusphere.local", password: "Demo@123", division: "global" };
 const IT_ADMIN = { email: "itadmin@edusphere.local", password: "Demo@123" };
-const IT_ADMIN_SEED = ["certificates.configure", "discounts.add", "payments.add", "payments.view", "reports.telecaller.download", "reports.telecaller.view"]; // nehn-031 added certificates.configure
+const IT_ADMIN_SEED = ["certificates.configure", "discounts.add", "payments.add", "payments.view", "reports.telecaller.download", "reports.telecaller.view", "reports.training.download", "reports.training.view"]; // nehn-031 added certificates.configure; nehn-009 reports.training
 const noSideScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
 
 async function restoreItAdmin(request: APIRequestContext) {

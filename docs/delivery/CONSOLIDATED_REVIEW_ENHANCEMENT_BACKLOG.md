@@ -532,6 +532,10 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** low, as it is a new router.
 - **Open questions:** should existing module reports move into the registry later? What is the maximum export row count?
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-27):** built on `worktree-nehn-009` (`DEC-SCOPE-303`; API §12HA; RBAC §2.214; migration
+  `0210_training_report_grants`). `/api/v1/reports` + `services/reports/` registry; pilot report `enrollments` (`reports.training`,
+  seeded to it_admin and trainer); Report library pages for super admin, IT admin and trainer. Builder's defaults: export cap 10,000
+  rows (refused, not cut short); a trainer naming another trainer gets an empty result; completion period = batch end date for the pilot.
 
 #### `nehn-010` — Training reports pack (student, trainer, course, completion, attendance)
 - **Source:** §14 L298-308 (student-wise course report, students under each trainer, course-completion report, students completing within a selected period, attendance reports, trainer reports, course-wise reports); action 24; client input "Admin report template" (§26 L785-790).
