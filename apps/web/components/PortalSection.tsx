@@ -3,7 +3,8 @@ import DataTable from "./DataTable";
 import type {PortalPayload} from "@/lib/types";
 
 // `lead` (AGN-018): optional content between the title and the metrics/table -- the agency KPI board. Other callers pass nothing.
-export default function PortalSection({data, lead, emptyText}: {data: PortalPayload; lead?: React.ReactNode; emptyText?: string}) {
+// `table={false}` (nehn-028): a header-only payload whose page brings its own table -- no empty "No records yet" box.
+export default function PortalSection({data, lead, emptyText, table = true}: {data: PortalPayload; lead?: React.ReactNode; emptyText?: string; table?: boolean}) {
   return <div className="portal-content">
     <div className="portal-title">
       <div><div className="eyebrow">Workspace</div><h2>{data.title}</h2><p className="muted">{data.subtitle}</p></div>
@@ -11,10 +12,10 @@ export default function PortalSection({data, lead, emptyText}: {data: PortalPayl
     </div>
     {lead}
     {data.metrics.length > 0 && <div className="metric-grid">{data.metrics.map(metric => <div className="metric" key={metric.label}><span>{metric.label}</span><strong>{metric.value}</strong></div>)}</div>}
-    <div className="workspace">
+    {table && <div className="workspace">
       <div className="workspace-head"><strong>{data.title}</strong><span className="badge">{data.rows.length} role-scoped records</span></div>
       {data.rows.length > 0 && data.columns.length > 0 ? <DataTable key={data.title} columns={data.columns} rows={data.rows} label={data.title}/> : emptyText ? <div className="empty"><h3>{emptyText}</h3></div> : <div className="empty"><h3>No records yet</h3><p>When this workflow has data, permitted records will appear here. Use the relevant action above to begin.</p></div>}
-    </div>
+    </div>}
     {data.panels?.length > 0 && <div className="panel-list">{data.panels.map(panel => <div className="panel" key={panel.title}><h3>{panel.title}</h3><ul>{panel.items.map(item => <li key={item}>{item}</li>)}</ul></div>)}</div>}
   </div>;
 }
