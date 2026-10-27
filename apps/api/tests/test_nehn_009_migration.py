@@ -17,10 +17,10 @@ _spec = importlib.util.spec_from_file_location("_nehn_009_migration_0210", VERSI
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0210_training_report_grants", "0207_field_financial_grant"
+HEAD, BASE = "0210_training_report_grants", "0208_certificate_signatories"
 
 
-def test_migration_chains_after_0207():
+def test_migration_chains_after_0208():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

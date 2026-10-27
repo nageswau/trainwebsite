@@ -50,7 +50,7 @@ async def _enrollment(db, *, progress: int = 100, present: int = 4, batch: Batch
 
 
 def test_catalogue_and_default_grants():
-    assert rbac.CATALOGUE["certificates"]["actions"] == ("view", "issue", "override", "configure")
+    assert rbac.CATALOGUE["certificates"]["actions"] == ("view", "issue", "override", "configure", "manage")  # nehn-032 adds manage
     assert set(rbac.DEFAULT_GRANTS["coordinator"]) == {"certificates.view", "certificates.issue", "certificates.override"}
     assert {key for key in rbac.DEFAULT_GRANTS["it_admin"] if key.startswith("certificates.")} == {"certificates.configure"}
     assert not any(key.startswith("certificates.") for key in rbac.DEFAULT_GRANTS.get("trainer", ()))  # nehn-009 gave trainers reports only

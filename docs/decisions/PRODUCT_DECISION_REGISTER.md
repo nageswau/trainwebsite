@@ -10065,3 +10065,58 @@ masked. F6 export audit unchanged. Only `field.financial` is in the catalogue: t
 one (nehn-005 P1). The partnership pages' commission figures keep the U2 rule.
 **Numbering:** migration `0207_field_financial_grant`; API §12GX; RBAC §2.211.
 - **Feature ID authorized:** `nehn-008`. **Status:** built on `worktree-nehn-008`.
+
+### DEC-SCOPE-301 — CRM report gaps: lost, conversion rate, counselor-wise, date-wise and follow-up reports (`nehn-013`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-013` (§16 L405-419, §14 L304-305; `UNVERIFIED` backlog);
+design `docs/superpowers/specs/2026-10-27-nehn-013-crm-report-gaps-design.md`. Dependency `nehn-004` (xlsx) is done. The final report list
+and definitions still wait on the client CRM workflow document (CI-01, nehn-015).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** R1 Lost = the cohort's leads now in a loss stage
+(lost / not interested), so a reopened lead is not lost. R2 Conversion rate (%) = Enrolled ÷ Leads × 100, 1 decimal, and the Total row
+recomputes it. R3 the date anchor is the lead's creation date (as every cohort report). R4 Lost + Conversion rate are appended to the
+source, course and campaign reports (handover, telecaller and lost-reasons unchanged). R5 counselor report = leads by `owner_id`. R6
+date-wise report by IST day / week (Monday) / month of creation (`group`, default day), calendar order, empty periods omitted. R7
+follow-up status = telecaller-side follow-ups due in the range by the lead's telecaller (total, completed, open, overdue, cancelled). R8
+pending follow-ups = open ones due in the range and before now, with lead name, telecaller, due date, reason and days overdue (no mobile
+or email). R9 the lead filters apply to every new report. R10 access unchanged (`reports.telecaller` view / download); counselors' own
+view is not built.
+**Numbering:** no migration; API §12GY; RBAC §2.212.
+- **Feature ID authorized:** `nehn-013`. **Status:** built on `worktree-nehn-013`.
+
+### DEC-SCOPE-302 — Certificate signatures: Founder + Coordinator, designation (`nehn-032`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-032` (§11 L249-260, §26 L791-794, actions 11/12;
+`UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-27-nehn-032-certificate-signatures-design.md`. Dependencies nehn-003
+(`DEC-SCOPE-279`), nehn-030 (`DEC-SCOPE-293`), nehn-031 (`DEC-SCOPE-297`) merged. The client's PNGs and final design (CI-03) are still
+pending: they are uploaded through this feature, and a final design is a later change.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** S1 two fixed slots; the coordinator signature is
+a configured person, not the issuing coordinator. S2 versions: a new image closes the active row and inserts another; one active row per
+slot. S3 name/designation edited in place on the active version. S4 PNG ≤ 1 MB with an alpha channel, 50–2000 × 20–1000 px. S5 private
+storage, streamed only to grant holders, never presigned. S6 new grant `certificates.manage`, no default holder (super_admin only).
+S7 issuing is refused (409) while a slot is empty — no placeholder; certificates snapshot the versions used. S8 slots between the
+program and the authenticity rule, scaled to fit. S9 an admin PDF preview with long sample text. "Relevant designation/details" is read as
+the signatories' designations (no course duration or grade).
+**Numbering:** migration `0208_certificate_signatories` (after nehn-008's `0207_field_financial_grant`); API §12GZ; RBAC §2.213.
+- **Feature ID authorized:** `nehn-032`. **Status:** built on `worktree-nehn-032`.
+
+### DEC-SCOPE-303 — Report framework: registry, standard filters, JSON/CSV/xlsx, audited (`nehn-009`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-009` (§14 L309-323; §15; actions 2, 3, 24; `UNVERIFIED`
+backlog); design `docs/superpowers/specs/2026-10-27-nehn-009-report-framework-design.md`. Dependencies nehn-004 (`DEC-SCOPE-282`),
+nehn-005 (`DEC-SCOPE-281`) and nehn-008 (`DEC-SCOPE-300`) merged.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** R1 a registry (`services/reports/registry.py`)
+declares each report once (id, title, catalogue resource, columns with nehn-008 classes, supported filters, a scoped query, filter
+pickers); `/api/v1/reports` serves every registered report one way. Existing module reports are not migrated. R2 the pilot is one report,
+`enrollments` (resource `reports.training`, columns without a sensitive class); nehn-010 adds the training pack. R3 standard filters
+`from`, `to`, `course_id`, `batch_id`, `trainer_id`, `recruiter_id`, `student`, `status`, `latest` (1-1,000), `completion_from`,
+`completion_to`, plus `page` / `page_size` (default 50, at most 200); a parameter the report does not declare, or any other name, or a
+repeated one is a 422; empty values count as not given; days are inclusive calendar days (stored `date`s, IST). For the pilot `from`/`to`
+are the enrolment date and the completion period is the batch end date. R4 rows: super_admin and it_admin every enrolment; a trainer
+their own batches; any other role granted the report sees no rows (deny by default); a trainer filtering by another trainer, batch or
+course gets an empty result, not a 403. R5 a download is every matching row, refused (422) over 10,000 rows, never cut short; throttled at
+30 per user per 10 minutes from the caller's own `report.export` audit rows (429 + `Retry-After`); one audit row per download carrying the
+filter values, committed before the file is returned. R6 seed `reports.training.view` + `.download` → it_admin, trainer. Management, HR and
+placement roles wait for their own items. R7 a Report library page in the super admin, IT admin and trainer portals; the filter form folds
+away until a filter is applied. No new indexes (EXPLAIN on real volumes first).
+**Numbering:** migration `0210_training_report_grants` (after nehn-032's `0208_certificate_signatories`); API §12HA; RBAC §2.214.
+- **Feature ID authorized:** `nehn-009`. **Status:** built on `worktree-nehn-009`.

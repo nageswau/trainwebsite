@@ -4378,3 +4378,63 @@ other role, checked before the target).
   are returned only when the caller holds `field.financial.view` (as well as the U2 rule, unchanged). A denied column is absent from
   `columns`, every item and `totals`, in the JSON and in both files alike. Routes, statuses and every other column are unchanged; with the
   seed every reader gets the same columns as before.
+
+## 12GY. CRM report gaps (nehn-013) — addendum, 2026-10-27
+
+`DEC-SCOPE-301`. No migration. Additive only: new `kind` values and one query parameter on the existing §12AC routes
+(`GET /telecaller/reports/{kind}`, `.csv`, `.xlsx`); every existing kind keeps its columns in order.
+
+- Funnel kinds `source`, `product`, `campaign` append `lost` ("Lost") and `conversion_rate` ("Conversion rate (%)", a number with 1
+  decimal; the `totals` row recomputes it from the totals).
+- `kind=counselor` — rows `{counselor, leads, counselling_done, enrolled, lost, conversion_rate}`: cohort leads with an owner, by owner.
+- `kind=date` — rows `{period, leads, connected, qualified, counselling, enrolled, lost, conversion_rate}` in calendar order. New query
+  parameter `group=day|week|month` (default `day`; IST; weeks start Monday; labels `2026-03-02`, `Week of 2026-03-02`, `March 2026`).
+  Any other value → 422 `"Choose day, week or month"`. Other kinds accept and ignore `group`; when set, the export audit lists it.
+- `kind=follow_ups` — rows `{telecaller, follow_ups, completed, open, overdue, cancelled}`: telecaller-side follow-ups on the caller's
+  leads due in the range, by the lead's telecaller.
+- `kind=pending_follow_ups` — rows `{lead, telecaller, due (IST date), reason (label), overdue_days}`: open follow-ups due in the range
+  and before now, most overdue first; `totals.overdue_days` is `""`.
+- Lead filters (`team`, `product_id`, `campaign_id`, `source`) apply to all four new kinds. Errors and order unchanged (403 → 404 → 422).
+
+## 12GZ. Certificate signatures (nehn-032) — addendum, 2026-10-27
+
+`DEC-SCOPE-302`. Migration `0208_certificate_signatories`. Every route needs `certificates.manage` (403 "You do not have permission to
+manage certificate signatures"; super_admin only until granted). A signatory is `{id, role: "founder" | "coordinator", display_name,
+designation, active, active_from, active_to}`; the storage key is never returned.
+
+- `GET /admin/certificate-signatories` (new) — `{items: [signatory]}`: every version, founder then coordinator, the active one first, then
+  newest first; at most 100.
+- `POST /admin/certificate-signatories` (new, multipart) — `role`, `display_name`, `designation` (each trimmed, 1–120, else 422), `file`.
+  The file passes the nehn-003 `signature` policy (PNG only 415, ≤ 1 MB 413, bytes must be PNG 415), then must decode (422), be 50–2000 px
+  wide and 20–1000 px high (422) and have an alpha channel (422 "The signature must have a transparent background"). Text chunks are
+  stripped. 201 `signatory`: the new active version; the slot's previous version gets `active_to` (409 if a concurrent upload won the
+  slot). Audit `certificate_signatory.upload`.
+- `PATCH /admin/certificate-signatories/{id}` (new) — `{display_name?, designation?}` (≤ 120; unknown fields 422). Edits the active version
+  in place; 404 unknown, 409 "This signature version is no longer active". Audit `certificate_signatory.update`.
+- `GET /admin/certificate-signatories/{id}/image` (new) — `image/png`, `Cache-Control: private, no-store`, `nosniff`. 404 unknown/missing.
+- `GET /admin/certificates/preview` (new) — `application/pdf` (inline, `no-store`): the layout with the active signatures and long sample
+  text; nothing stored. 409 "Certificate signatures are not configured: …" when a slot is empty.
+- `POST /workflows/it/certificates/{enrollment_id}/issue` and `POST /workflows/it/certificates/issue` — **now 409** "Certificate
+  signatures are not configured: <slots>" (per item in bulk) while a slot is empty. Issued certificates draw both signatures, names and
+  designations and record `signatory_snapshot`. Response bodies unchanged.
+
+## 12HA. Report library (nehn-009) — addendum, 2026-10-27
+
+`DEC-SCOPE-303`; migration `0210_training_report_grants`. New router `/api/v1/reports`; every response is `Cache-Control: private, no-store`.
+
+- `GET /reports` (signed in) → `{items: [{id, title, description, filters, can_download}]}`: only the reports whose `<resource>.view` the
+  caller holds (role grant ± nehn-007 override). A caller holding none gets `{items: []}`.
+- `GET /reports/{id}` → `{id, title, description, columns, items, totals: null, total, page, page_size, filters, applied, options}`.
+  `items` are the requested page of the report's rows in its default order; `total` counts every matching row (at most `latest`);
+  `applied` echoes the filters given; `options` are the pickers within the caller's scope (`courses`, `batches`, `trainers`, `statuses`
+  as `{value, label}`). Columns pass through the nehn-008 field policy.
+- `GET /reports/{id}.csv` / `.xlsx` → every matching row as an attachment `"<id>-<IST date>.<ext>"`, the same columns and rows as the JSON.
+- Errors, in this order: unknown id **404** `Report not found`; no grant **403** `You don't have permission to view this report` (read) /
+  `… to download this report` (files); inputs **422** with a sentence naming the field (an undeclared or unknown filter: `This report can't
+  be filtered by <Label>`; `'From' must be on or before 'To'`; `Enter <Label> as a date (YYYY-MM-DD)`; `Choose a <label> from the list`;
+  `Latest must be a whole number from 1 to 1,000`; `Give <Label> once`); a download over 10,000 rows **422** `This report has more than
+  10,000 rows; narrow the filters`; over 30 downloads in 10 minutes **429** with `Retry-After`.
+- Audit: each download writes `AuditLog(action="report.export", entity_type="report", entity_id=<id>, metadata_json={filters: {name: value},
+  rows, format})` before the file is returned; reads and refused downloads write nothing.
+- Registered reports: `enrollments` (resource `reports.training`) — columns Enrollment code, Student code, Student, Course, Batch, Trainer,
+  Enrolled on, Batch ends, Status, Progress %; every standard filter except `recruiter_id`.

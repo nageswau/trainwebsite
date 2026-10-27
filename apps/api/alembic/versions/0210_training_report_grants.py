@@ -1,7 +1,7 @@
 """nehn-009 -- the `reports.training` grants: the report library's training reports follow the permission engine.
 
 Revision ID: 0210_training_report_grants
-Revises: 0207_field_financial_grant
+Revises: 0208_certificate_signatories
 
 docs/superpowers/specs/2026-10-27-nehn-009-report-framework-design.md (DEC-SCOPE-303). Seed only: SEED is a frozen copy of the new
 `rbac.DEFAULT_GRANTS` keys at this revision -- IT admins (every enrolment, as `/admin/enrollments`) and trainers (their own batches). A
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0210_training_report_grants"
-down_revision = "0207_field_financial_grant"
+down_revision = "0208_certificate_signatories"
 branch_labels = None
 depends_on = None
 

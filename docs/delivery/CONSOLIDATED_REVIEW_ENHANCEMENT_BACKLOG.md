@@ -532,6 +532,10 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** low, as it is a new router.
 - **Open questions:** should existing module reports move into the registry later? What is the maximum export row count?
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-27):** built on `worktree-nehn-009` (`DEC-SCOPE-303`; API §12HA; RBAC §2.214; migration
+  `0210_training_report_grants`). `/api/v1/reports` + `services/reports/` registry; pilot report `enrollments` (`reports.training`,
+  seeded to it_admin and trainer); Report library pages for super admin, IT admin and trainer. Builder's defaults: export cap 10,000
+  rows (refused, not cut short); a trainer naming another trainer gets an empty result; completion period = batch end date for the pilot.
 
 #### `nehn-010` — Training reports pack (student, trainer, course, completion, attendance)
 - **Source:** §14 L298-308 (student-wise course report, students under each trainer, course-completion report, students completing within a selected period, attendance reports, trainer reports, course-wise reports); action 24; client input "Admin report template" (§26 L785-790).
@@ -648,6 +652,7 @@ Risk is the risk of regression or of a wrong outcome.
   telecallers and counselors do not; one row per lead; fixed admin column set until nehn-008.
 
 #### `nehn-013` — CRM report gaps: lost, conversion rate, counselor-wise, date-wise, follow-up status, pending follow-ups
+**Status (2026-10-27): built** on `worktree-nehn-013` (`DEC-SCOPE-301`, API §12GY, RBAC §2.212, no migration). The definitions (R1–R10) are builder's defaults, `NEEDS_CONFIRMATION` until the client CRM workflow document (CI-01) arrives.
 - **Source:** §16 "CRM Reporting" (L405-419); §14 "Converted leads", "Contacted leads" (L304-305).
 - **Business requirement:** CRM reports for new/contacted/qualified/converted/lost, counselor-, source-, course- and date-wise, conversion rates, follow-up status and pending follow-ups.
 - **Existing behavior:**
@@ -1413,6 +1418,10 @@ Risk is the risk of regression or of a wrong outcome.
   - Is a final design or template from the client expected?
   - What does "relevant designation/details" mean (signatory titles? course duration? grade?)?
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-27):** built in `worktree-nehn-032` (`DEC-SCOPE-302`, defaults S1-S9 `NEEDS_CONFIRMATION`): versioned
+  `certificate_signatories` (founder, coordinator) managed by the new `certificates.manage` grant (super_admin), PNG upload with an
+  alpha/dimension check, private image route, admin PDF preview; new certificates draw both signatures and snapshot them; issuing is 409
+  while a slot is empty. The client's PNGs (CI-03) are still to be uploaded. Migration `0208`; API §12GZ; RBAC §2.213.
 
 ### I. Overseas Education (§17–§20)
 

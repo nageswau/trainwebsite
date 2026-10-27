@@ -3173,3 +3173,36 @@ Pinned by `apps/api/tests/test_nehn_012_lead_list.py`.
 | Surface | Who | Rule |
 |---|---|---|
 | A report's columns tagged with a field class (today: partnership Performance `commission_expected` / `commission_received` = `financial`) | every reader of the report | The column is returned (JSON, CSV, xlsx alike) only with `field.<class>.view`. Seed: `field.financial.view` → partnership_manager, partnership_head; super_admin always. placement_team, placement_manager, hr_team, it_admin, overseas_admin hold none. The grant narrows only: it never opens a report the role cannot read. |
+
+### 2.212 CRM report gaps (`nehn-013`, `DEC-SCOPE-301`)
+
+| Route | Anonymous | telecaller_manager | it_admin / overseas_admin | super_admin | telecaller, counselor, other roles |
+|---|---|---|---|---|---|
+| `GET /telecaller/reports/{counselor,date,follow_ups,pending_follow_ups}` | 401 | 200 (own reports' leads) | 200 (own division) | 200 | 403 |
+| `GET /telecaller/reports/{kind}.csv`, `.xlsx` (same kinds) | 401 | 200 | 200 | 200 | 403 |
+
+Unchanged from §2.35 / §2.197: the `reports.telecaller` view / download grants decide; scope is the caller's Leads list. The pending list
+names leads (never mobile or email). Pinned by `apps/api/tests/test_nehn_013_crm_reports.py`.
+
+### 2.213 Certificate signatures *(added 2026-10-27 — `DEC-SCOPE-302`, nehn-032)*
+
+The catalogue's `certificates` resource gains `manage` (a new matrix column). No role holds it by default (migration
+`0208_certificate_signatories` seeds nothing); super_admin holds every key. The signature images are never sent to students or issuers
+as files: they exist outside the API only inside rendered certificates.
+
+| Route | Anonymous | super_admin | role granted `certificates.manage` | it_admin, coordinator, trainer, it_student, others |
+|---|---|---|---|---|
+| `GET/POST /admin/certificate-signatories`, `PATCH …/{id}`, `GET …/{id}/image`, `GET /admin/certificates/preview` | 401 | 200/201 | 200/201 | 403 |
+
+The IT admin portal's Certificates section shows the "Certificate signatures" card only when the role holds `certificates.manage`.
+Pinned by `apps/api/tests/test_nehn_032_certificate_signatures.py` and `apps/web/tests/e2e/nehn-032-certificate-signatures.spec.ts`.
+
+### 2.214 Report library *(added 2026-10-27 — `DEC-SCOPE-303`, nehn-009)*
+
+| Surface | Who | Rule |
+|---|---|---|
+| `GET /api/v1/reports` (catalogue) | any signed-in user | Lists only the reports whose `<resource>.view` the caller holds. |
+| `GET /api/v1/reports/enrollments` (+ `.csv`, `.xlsx`) | `reports.training.view` (read) / `.download` (files); seed: it_admin, trainer; super_admin always | Rows: super_admin, it_admin every enrolment; trainer only batches where `Batch.trainer_id` is the caller (pickers too); any other granted role no rows. A filter only narrows the scope (another trainer's id → empty). |
+| `/admin/report-library`, `/it/admin/report-library`, `/it/trainer/report-library` | super_admin; it_admin (+ super_admin); trainer | Other roles see the access card; the API remains the authority. |
+
+Pinned by `apps/api/tests/test_nehn_009_reports.py` and `apps/web/tests/e2e/nehn-009-report-library.spec.ts`.

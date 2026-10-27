@@ -63,11 +63,11 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-006 | Permissions | Admin permission-matrix screen and permission-driven menus | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 | Per role only; non-applicable actions shown as "—" (DEC-SCOPE-295) |
 | nehn-007 | Permissions | Per-user permission overrides | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Built with reason + optional expiry; confirm OD-03 (DEC-SCOPE-299) |
 | nehn-008 | Permissions | Role-based column policy for screens and downloads | Enhancement | Done — confirm defaults | Dev + Client | Wave 3 | Financial columns follow a permission (DEC-SCOPE-300); per-role column lists still wait on CI-02 |
-| nehn-009 | Reporting | Report framework: standard filters, CSV/Excel, audited | Enhancement | Waiting — dependency | Dev | Wave 3 | — (needs nehn-008) |
+| nehn-009 | Reporting | Report framework: standard filters, CSV/Excel, audited (DEC-SCOPE-303) | Enhancement | Done — confirm defaults | Dev + Client | Wave 3 | Export row cap (10,000) and who else reads training reports |
 | nehn-010 | Reporting | Training reports: student, trainer, course, completion, attendance | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | Admin report template (CI-02); needs nehn-009 |
 | nehn-011 | Reporting | Admin dashboard: enrolments, progress, course-wise and fee tiles | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | Tile list from the report template (CI-02); needs nehn-010 |
 | nehn-012 | Internal CRM | Lead list date-range and counselor filters; filtered Excel export | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 | Admins and telecaller managers export; telecallers and counselors do not (DEC-SCOPE-298) |
-| nehn-013 | Internal CRM | CRM reports: lost, conversion rate, counselor-wise, date-wise, pending follow-ups | Enhancement | Ready to start | Dev + Client | Wave 4 | Conversion-rate definition |
+| nehn-013 | Internal CRM | CRM reports: lost, conversion rate, counselor-wise, date-wise, pending follow-ups (DEC-SCOPE-301) | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Conversion-rate definition |
 | nehn-014 | Internal CRM | Lead notes and counselor lead actions — delivered by counselor CRM items ccrm-002 and ccrm-003 | Enhancement | Superseded | Dev | — | — |
 | nehn-015 | Internal CRM | Internal CRM workflow reconciliation | Enhancement | Waiting — client input | Dev + Client | Wave 4 | Internal CRM workflow document (CI-01) |
 | nehn-016 | Placement | Nearing-completion list; recruiter read-only training progress | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | Recruiters see opted-in students only, or all? (OD-08); needs nehn-010 |
@@ -86,7 +86,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-029 | Trainer portal | Live class reschedule and cancel | Enhancement | Done — confirm defaults | Dev | Wave 4 | Confirm meeting provider is updated by hand for now (§2) |
 | nehn-030 | Certificates | IT Coordinator role and account model | Enhancement | Waiting — decision | Dev + Client | Wave 3 | Coordinator account model and duties (OD-05) |
 | nehn-031 | Certificates | Coordinator certificate workflow: eligibility, recommend, issue, override | Enhancement | Done — confirm defaults | Dev + Client | Wave 3 | Confirm the builder defaults (DEC-SCOPE-297 W1-W9): coordinator overrides, global thresholds, recommendation optional (OD-05) |
-| nehn-032 | Certificates | Certificate signatures (Founder + Coordinator) and designation | Enhancement | Waiting — client input | Dev + Client | Wave 3 | Signature PNGs and final certificate design (CI-03); needs nehn-031 |
+| nehn-032 | Certificates | Certificate signatures (Founder + Coordinator) and designation | Enhancement | Done — confirm defaults | Dev + Client | Wave 3 | Upload the signature PNGs and confirm the builder defaults (DEC-SCOPE-302 S1-S9); final certificate design (CI-03) |
 | nehn-033 | Overseas | Overseas student Overview / Progress page | Enhancement | Waiting — decision | Dev + Client | Wave 2 · next review | Mapping of the client's 10 stages onto the portal's stages (OD-10) |
 | nehn-034 | Overseas | Country cards with flags and university count | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 · next review | Custom country images, if wanted (CI-04) |
 | nehn-035 | Overseas | University logo upload and richer university cards | Enhancement | Ready to start | Dev + Client | Wave 2 · next review | Logo usage and copyright guidance (CI-04) |
@@ -113,7 +113,7 @@ These items are built. Where a question was open, we used the recommended answer
 | A08 | Direct assignment file upload | Dev, High | nehn-003, 024 | Ready to start — private storage done; upload screen next |
 | A09 | Assignment text submission | Dev, High | — | Done — already in the portal |
 | A10 | Trainer Excel question upload | Dev, High | nehn-004, 025 | Ready to start — Excel reader done; upload screen next |
-| A11 | Founder + Coordinator signatures | Dev, High | nehn-032 | Waiting — client input (CI-03) |
+| A11 | Founder + Coordinator signatures | Dev, High | nehn-032 | Done — PNGs to upload (CI-03) |
 | A12 | Provide signature PNGs | Client, required | CI-03 | Waiting — client input |
 | A13 | Coordinator certificate workflow | Dev, High | nehn-030, 031 | Waiting — decision (OD-05) |
 | A14 | Overseas Student Overview / Progress | Dev, High | nehn-033, 001 | Waiting — decision (OD-10); offer fix done |
