@@ -1367,6 +1367,11 @@ half.
 | `nehn-032-AC4` | Issuing without an active signatory is blocked | `::test_issue_is_refused_while_a_slot_is_empty`; vitest empty slot |
 | `nehn-032-S4` | JPEG / oversize / opaque / tiny / undecodable uploads refused; non-admin 403 | `::test_upload_check_refuses_bad_files`, `::test_upload_validates_fields`; e2e JPEG |
 | `nehn-032-S9` | Admin preview | `::test_preview_renders_a_pdf`; e2e AC1 |
+| `nehn-018` | Requirement: PDF §6 L148-151, §24 → backlog `nehn-018` → `DEC-SCOPE-304` → design `docs/superpowers/specs/2026-10-27-nehn-018-student-payment-access-design.md` → API §12HB → RBAC §2.215 | — |
+| `nehn-018-AC1` | An enrolled-but-unpaid student sees course and fees, the gated sections locked with a call to action; gated routes return `payment_required` | `test_nehn_018_student_access.py::test_an_unpaid_student_gets_payment_required`, `::test_locked_portal_section`, `::test_course_and_fee_sections_stay_open`; `nehn018StudentAccess.test.tsx`; e2e `nehn-018-student-payment-access.spec.ts` |
+| `nehn-018-AC2` | After the webhook marks the payment paid, access follows without signing in again | `::test_webhook_payment_unlocks_without_signing_in_again`; e2e (discount to 0) |
+| `nehn-018-AC3` | A partially paid student gets exactly what the policy says | `::test_state`, `::test_admin_change_applies_immediately_and_is_audited` |
+| `nehn-018-AC4` | An admin's policy change takes effect immediately | `::test_admin_change_applies_immediately_and_is_audited`, `::test_policy_validation`, `::test_only_the_grant_reads_or_changes_the_policy`; e2e |
 
 ### nehn-010 — Training reports pack (`DEC-SCOPE-305`)
 

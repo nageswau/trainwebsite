@@ -110,7 +110,11 @@ async def test_feedback_for_a_batch_not_enrolled_in_is_rejected(db_session, clie
     trainer = await _create_trainer(db_session)
     student = await _create_student(db_session)
     batch = await _create_batch(db_session, trainer)
-    # deliberately no Enrollment created
+    # deliberately no Enrollment created for this batch
+    # nehn-018: enrolled (unbilled, so fully paid) in another batch -- a student with no enrolment at all is told to enrol first.
+    other_batch = await _create_batch(db_session, trainer)
+    db_session.add(Enrollment(student_id=student.id, batch_id=other_batch.id, enrollment_code=f"N018-{uuid.uuid4().hex[:8]}", status="active"))
+    await db_session.commit()
 
     await _login(client, student.email)
     response = await client.post("/api/v1/workflows/it/student/feedback", json={"batch_id": str(batch.id), "rating": 4})

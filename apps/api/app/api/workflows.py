@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app import application_fields
-from app.api.deps import get_current_user, require_permission
+from app.api.deps import get_current_user, require_paid_feature, require_permission
 from app.api.files import _allowed, serve_stored_file
 from app.api.school_bulk import _safe_cell
 from app.application_outcome import label as outcome_label
@@ -76,6 +76,7 @@ from app.models import (
     ScholarshipApplication,
     SchoolStudent,
     StoredFile,
+    StudentAccessRule,
     StudentDocument,
     Submission,
     SubmissionFile,
@@ -126,6 +127,7 @@ from app.schemas import (
     ProfileDocumentCreate,
     QuestionReplyCreate,
     QuestionThreadCreate,
+    StudentAccessRulesIn,
     StudentDocumentCreate,
     SubmissionGradeIn,
     SupportTicketCreate,
@@ -145,6 +147,7 @@ from app.services import (
     interviews,
     offers,
     permissions,
+    student_access,
     student_archive,
     student_document_requests,
     training_progress,
@@ -180,6 +183,12 @@ from app.visa_status import FIRST_OF_STAGE as VISA_FIRST_OF_STAGE
 from app.visa_status import label as visa_status_label
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
+# nehn-018 (DEC-SCOPE-304): an IT student below the feature's payment state gets 403 `payment_required`.
+PAID_ASSESSMENTS = require_paid_feature("assessments")
+PAID_ASSIGNMENTS = require_paid_feature("assignments")
+PAID_ATTENDANCE = require_paid_feature("attendance")
+PAID_FEEDBACK = require_paid_feature("feedback")
+PAID_QUESTIONS = require_paid_feature("questions")
 logger = logging.getLogger("app.workflows")
 INDIA = ZoneInfo("Asia/Kolkata")  # ccrm-021 S2: a passport expiry is compared with the India date
 DOCUMENT_REPLACED = "A newer version replaced this document -- open the current one"
@@ -359,14 +368,23 @@ async def student_learning(user: User = Depends(get_current_user), db: AsyncSess
     live_sessions = []
     certificates = []
     submissions = []
+    # nehn-018 (DEC-SCOPE-304): a locked feature's list stays empty; the enrolments (course information) never are.
+    access = await student_access.summary(db, user)
+    locked = student_access.locked_features(access)
     if batch_ids:
-        assignments = (await db.scalars(select(Assignment).where(Assignment.batch_id.in_(batch_ids)).order_by(Assignment.due_date))).all()
-        resources = (await db.scalars(select(LearningResource).where(LearningResource.batch_id.in_(batch_ids), LearningResource.deleted_at.is_(None)).order_by(LearningResource.sort_order, LearningResource.created_at.desc()))).all()
-        assessments = (await db.scalars(select(Assessment).where(Assessment.batch_id.in_(batch_ids)).order_by(Assessment.scheduled_at))).all()
-        live_sessions = (await db.scalars(select(LiveSession).where(LiveSession.batch_id.in_(batch_ids)).order_by(LiveSession.starts_at))).all()
-        submissions = (await db.scalars(select(Submission).where(Submission.student_id == user.id))).all()
-    certificates = (await db.scalars(select(Certificate).where(Certificate.student_id == user.id).order_by(Certificate.issued_on.desc()))).all()
+        if "assignments" not in locked:
+            assignments = (await db.scalars(select(Assignment).where(Assignment.batch_id.in_(batch_ids)).order_by(Assignment.due_date))).all()
+            submissions = (await db.scalars(select(Submission).where(Submission.student_id == user.id))).all()
+        if "resources" not in locked:
+            resources = (await db.scalars(select(LearningResource).where(LearningResource.batch_id.in_(batch_ids), LearningResource.deleted_at.is_(None)).order_by(LearningResource.sort_order, LearningResource.created_at.desc()))).all()
+        if "assessments" not in locked:
+            assessments = (await db.scalars(select(Assessment).where(Assessment.batch_id.in_(batch_ids)).order_by(Assessment.scheduled_at))).all()
+        if "live_classes" not in locked:
+            live_sessions = (await db.scalars(select(LiveSession).where(LiveSession.batch_id.in_(batch_ids)).order_by(LiveSession.starts_at))).all()
+    if "certificates" not in locked:
+        certificates = (await db.scalars(select(Certificate).where(Certificate.student_id == user.id).order_by(Certificate.issued_on.desc()))).all()
     return {
+        "access": access,
         "enrollments": [
             {
                 "id": e.id,
@@ -572,7 +590,7 @@ async def accept_agreement(agreement_id: UUID, request: Request, user: User = De
 
 
 @router.post("/it/assignments/{assignment_id}/submissions", status_code=201)
-async def submit_assignment(assignment_id: UUID, payload: AssignmentSubmissionIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def submit_assignment(assignment_id: UUID, payload: AssignmentSubmissionIn, user: User = Depends(PAID_ASSIGNMENTS), db: AsyncSession = Depends(get_db)):
     _require(user, {"it_student"}, "it")
     assignment = await db.get(Assignment, assignment_id)
     if not assignment:
@@ -659,6 +677,7 @@ async def submission_file(submission_id: UUID, file_id: UUID, user: User = Depen
         _require(user, {"trainer", "it_admin"}, "it")
         if user.role == "trainer" and batch.trainer_id != user.id:
             raise HTTPException(403, "Submission is outside your assigned batch")
+    await student_access.require(db, user, "assignments")  # nehn-018: after ownership, so another student's file is refused as before
     return serve_stored_file(stored)
 
 
@@ -698,7 +717,7 @@ async def mark_attendance(payload: AttendanceBulkIn, user: User = Depends(get_cu
 
 
 @router.get("/it/student/attendance")
-async def student_attendance(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def student_attendance(user: User = Depends(PAID_ATTENDANCE), db: AsyncSession = Depends(get_db)):
     _require(user, {"it_student"}, "it")
     rows = (await db.execute(select(Attendance, Batch).join(Batch).where(Attendance.student_id == user.id).order_by(Attendance.session_date.desc()))).all()
     # nehn-023: the row says whether a request is already pending, so the UI offers "Request correction" only where it can succeed.
@@ -707,7 +726,7 @@ async def student_attendance(user: User = Depends(get_current_user), db: AsyncSe
 
 
 @router.post("/it/student/attendance-corrections", status_code=201)
-async def request_attendance_correction(payload: AttendanceCorrectionIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def request_attendance_correction(payload: AttendanceCorrectionIn, user: User = Depends(PAID_ATTENDANCE), db: AsyncSession = Depends(get_db)):
     _require(user, {"it_student"}, "it")
     attendance = await db.get(Attendance, payload.attendance_id)
     if not attendance or attendance.student_id != user.id:
@@ -996,6 +1015,7 @@ async def learning_resource_file(resource_id: UUID, user: User = Depends(get_cur
         allowed = bool(await db.scalar(select(Enrollment.id).where(Enrollment.batch_id == batch.id, Enrollment.student_id == user.id).limit(1)))
     if not allowed:
         raise HTTPException(404, "Material not found")
+    await student_access.require(db, user, "resources")  # nehn-018: after the enrolment check, so another batch's material stays a 404
     return serve_stored_file(stored)
 
 
@@ -1262,7 +1282,7 @@ async def trainer_assessment_questions(assessment_id: UUID, user: User = Depends
 
 
 @router.post("/it/assessments/{assessment_id}/attempts", status_code=201)
-async def start_assessment(assessment_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def start_assessment(assessment_id: UUID, user: User = Depends(PAID_ASSESSMENTS), db: AsyncSession = Depends(get_db)):
     _require(user, {"it_student"}, "it")
     assessment = await db.get(Assessment, assessment_id)
     if not assessment or assessment.status not in {"scheduled", "open", "published"}:
@@ -1291,7 +1311,7 @@ async def start_assessment(assessment_id: UUID, user: User = Depends(get_current
 
 
 @router.post("/it/assessment-attempts/{attempt_id}/submit")
-async def submit_assessment(attempt_id: UUID, payload: AssessmentSubmitIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def submit_assessment(attempt_id: UUID, payload: AssessmentSubmitIn, user: User = Depends(PAID_ASSESSMENTS), db: AsyncSession = Depends(get_db)):
     _require(user, {"it_student"}, "it")
     attempt = await db.get(AssessmentAttempt, attempt_id)
     if not attempt or attempt.student_id != user.id:
@@ -1556,6 +1576,43 @@ async def update_certificate_rules(
     return after
 
 
+CAN_CONFIGURE_STUDENT_ACCESS = require_permission("student_access", "configure", "You do not have permission to change student access rules")
+
+
+@router.get("/it/student/access")
+async def student_access_summary(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """nehn-018 (DEC-SCOPE-304): the student's payment state and which features it unlocks -- the portal's locks and nav badges."""
+    _require(user, {"it_student"}, "it")
+    return await student_access.summary(db, user)
+
+
+def _student_access_rules(rules: dict[str, str]) -> dict:
+    return {
+        "rules": [{"feature": f, "label": student_access.FEATURE_LABELS[f], "min_state": rules[f]} for f in student_access.FEATURES],
+        "states": [{"key": s, "label": student_access.STATE_LABELS[s]} for s in student_access.STATES],
+    }
+
+
+@router.get("/it/student-access/rules")
+async def read_student_access_rules(user: User = Depends(CAN_CONFIGURE_STUDENT_ACCESS), db: AsyncSession = Depends(get_db)):
+    return _student_access_rules(await student_access.policy(db))
+
+
+@router.put("/it/student-access/rules")
+async def update_student_access_rules(payload: StudentAccessRulesIn, user: User = Depends(CAN_CONFIGURE_STUDENT_ACCESS), db: AsyncSession = Depends(get_db)):
+    """nehn-018 (DEC-SCOPE-304 AC4): replaces the policy; the next request of every student uses it. Audited with before and after."""
+    rows = {r.feature: r for r in (await db.scalars(select(StudentAccessRule).with_for_update())).all()}
+    before = await student_access.policy(db)
+    for feature, state in payload.rules.items():
+        rule = rows.get(feature) or StudentAccessRule(feature=feature)
+        rule.min_state, rule.updated_by_id = state, user.id
+        db.add(rule)
+    after = {f: payload.rules[f] for f in student_access.FEATURES}
+    await _audit(db, user, "student_access_rules.update", "student_access_rules", "it", {"before": before, "after": after})
+    await db.commit()
+    return _student_access_rules(after)
+
+
 @router.post("/it/certificates/{enrollment_id}/recommend")
 async def recommend_certificate(enrollment_id: UUID, payload: CertificateRecommendIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """nehn-031 (DEC-SCOPE-297 W6): the batch's trainer recommends a learner or flags them not ready; a later call replaces it."""
@@ -1728,12 +1785,13 @@ async def download_certificate(certificate_id: UUID, user: User = Depends(get_cu
         raise HTTPException(403, "Certificate belongs to another student")
     elif user.role not in {"it_student", "it_admin", "super_admin"}:
         raise HTTPException(403, "Certificate access denied")
+    await student_access.require(db, user, "certificates")  # nehn-018: after ownership
     key = f"certificates/{certificate.certificate_no}.pdf"
     return {"url": storage.presign_download(key), "expires_in": 900 if storage.bucket else None}
 
 
 @router.post("/it/student/feedback", status_code=201)
-async def submit_feedback(payload: CourseFeedbackCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def submit_feedback(payload: CourseFeedbackCreate, user: User = Depends(PAID_FEEDBACK), db: AsyncSession = Depends(get_db)):
     # STU-008-AC03: 422, not a silent drop or a 403, when there is no matching Enrollment
     # for the target batch -- an anonymous-submission option is an explicitly unconfirmed
     # PRD open item (PRD-STU-009), so this only ever records identified feedback.
@@ -1802,7 +1860,7 @@ def _reply_payload(reply: QuestionReply) -> dict:
 
 
 @router.post("/it/student/questions", status_code=201)
-async def raise_question(payload: QuestionThreadCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def raise_question(payload: QuestionThreadCreate, user: User = Depends(PAID_QUESTIONS), db: AsyncSession = Depends(get_db)):
     # TRN-009: a question can only be raised against a batch the student actually holds
     # an Enrollment for -- same "422, not a silent drop" pattern as STU-008's feedback.
     _require(user, {"it_student"}, "it")
@@ -1819,7 +1877,7 @@ async def raise_question(payload: QuestionThreadCreate, user: User = Depends(get
 
 
 @router.get("/it/student/questions")
-async def list_student_questions(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def list_student_questions(user: User = Depends(PAID_QUESTIONS), db: AsyncSession = Depends(get_db)):
     _require(user, {"it_student"}, "it")
     threads = (await db.scalars(select(QuestionThread).where(QuestionThread.student_id == user.id).order_by(QuestionThread.created_at.desc()))).all()
     thread_ids = [t.id for t in threads]

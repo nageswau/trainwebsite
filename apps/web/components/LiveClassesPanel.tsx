@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import type { LiveSessionInfo } from "@/lib/types";
 import JoinSessionButton from "./JoinSessionButton";
 import LocalTime from "@/components/LocalTime";
+import { paymentLock, type PaymentLock } from "@/lib/studentAccess";
+import LockedFeatureCard from "./LockedFeatureCard";
 
 const PROVIDER_LABEL: Record<string, string> = {
   zoho_meeting: "Zoho Meeting",
@@ -19,19 +21,30 @@ const PROVIDER_LABEL: Record<string, string> = {
 // always null). Previously this data existed only as an unclickable text string inside a
 // generic panel; this is the actual "join" UI. `upcomingOnly` scopes it to a dashboard
 // widget (soonest-first, sessions not yet concluded) rather than the full session history.
-export default function LiveClassesPanel({ title = "Live classes", upcomingOnly = false, userName, userEmail }: { title?: string; upcomingOnly?: boolean; userName?: string; userEmail?: string }) {
+// nehn-018 (DEC-SCOPE-304): `lock` -- the page already knows live classes are locked, so nothing is fetched (QA18-02).
+export default function LiveClassesPanel({ title = "Live classes", upcomingOnly = false, userName, userEmail, lock: knownLock = null }: { title?: string; upcomingOnly?: boolean; userName?: string; userEmail?: string; lock?: PaymentLock | null }) {
   const [sessions, setSessions] = useState<LiveSessionInfo[] | null>(null);
+  const [lock, setLock] = useState<PaymentLock | null>(knownLock);
 
   useEffect(() => {
+    if (knownLock) return;
     let cancelled = false;
     fetch("/api/v1/communications/it/live-sessions")
-      .then((res) => (res.ok ? res.json() : []))
+      .then(async (res) => {
+        if (res.ok) return res.json();
+        // nehn-018 (DEC-SCOPE-304): a student whose payment state does not unlock live classes gets the lock, not an empty list.
+        const found = paymentLock((await res.json().catch(() => ({}))).detail);
+        if (found && !cancelled) setLock(found);
+        return [];
+      })
       .then((data) => !cancelled && setSessions(data))
       .catch(() => !cancelled && setSessions([]));
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [knownLock]);
+
+  if (lock) return <LockedFeatureCard lock={lock} />;
 
   if (sessions === null) {
     return (

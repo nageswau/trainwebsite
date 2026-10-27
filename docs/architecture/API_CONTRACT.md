@@ -4439,6 +4439,26 @@ designation, active, active_from, active_to}`; the storage key is never returned
 - Registered reports: `enrollments` (resource `reports.training`) — columns Enrollment code, Student code, Student, Course, Batch, Trainer,
   Enrolled on, Batch ends, Status, Progress %; every standard filter except `recruiter_id`.
 
+## 12HB. Student feature access by payment status (nehn-018) — addendum, 2026-10-27
+
+`DEC-SCOPE-304`. Migration `0211_student_access_rules`.
+
+- `GET /workflows/it/student/access` (new) — it_student: `{state, features: [{key, label, unlocked, required_state}]}`. **403** other roles.
+- `GET /workflows/it/student-access/rules`, `PUT` (new) — `student_access.configure` (it_admin; super_admin implicit), else **403**.
+  Body/response `{rules: {<feature>: <state>}}` / `{rules: [{feature, label, min_state}], states: [{key, label}]}`. The PUT replaces the
+  whole policy: a missing feature, an unknown feature or state is **422**. Audited `student_access_rules.update` with before and after.
+- Gated for it_student below the feature's state (**403** `detail = {message, code: "payment_required", feature, label, required_state,
+  current_state}`; checked before body validation): `GET /workflows/it/student/attendance`, `POST .../attendance-corrections`
+  (attendance); `POST /it/assignments/{id}/submissions` (assignments); `POST /it/assessments/{id}/attempts`,
+  `POST /it/assessment-attempts/{id}/submit` (assessments); `GET`/`POST /it/student/questions` (questions); `POST /it/student/feedback`
+  (feedback); `GET /communications/it/live-sessions` (live_classes). After the existing ownership check: the student's own
+  `GET /it/submissions/{id}/files/{fid}` (assignments), `GET /it/materials/{id}/file` (resources), `GET /it/certificates/{id}/download`
+  (certificates). Every other role is unchanged.
+- `GET /portal/it/student/<section>` — a locked section (attendance, assignments, projects, examinations, downloads, questions,
+  feedback, certificates) answers 200 with no rows, metrics, actions or panels and an additive `locked: {feature, label,
+  required_state, current_state}`; the dashboard withholds its upcoming-work rows while assignments are locked.
+- `GET /workflows/it/student/learning` — locked features' lists are empty; additive `access` key.
+
 ## 12HC. Training reports pack (nehn-010) — addendum, 2026-10-27
 
 `DEC-SCOPE-305`. Seven reports registered in the §12HA report library; every route, gate (`reports.training.view` / `.download`),
