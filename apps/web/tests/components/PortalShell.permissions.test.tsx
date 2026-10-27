@@ -21,7 +21,7 @@ const NAV: NavItem[] = [
 
 const permissionsResponse = (permissions: string[]) => new Response(JSON.stringify({ role: "it_admin", permissions }), { status: 200 });
 
-async function renderShell(nav: NavItem[] = NAV) {
+function renderShell(nav: NavItem[] = NAV) {
   return render(<PortalShell nav={nav} roleLabel="IT Administrator" userName="Ira"><p>page</p></PortalShell>);
 }
 
@@ -37,7 +37,7 @@ describe("nehn-006 PortalShell permission-driven nav", () => {
   it("drops an item whose view grant is missing once the set arrives", async () => {
     const fetchMock = vi.fn().mockResolvedValue(permissionsResponse(["reports.telecaller.view", "payments.add"]));
     vi.stubGlobal("fetch", fetchMock);
-    await renderShell();
+    renderShell();
     await waitFor(() => expect(screen.queryByRole("link", { name: "Payments" })).not.toBeInTheDocument());
     expect(sidebar()).toHaveTextContent("Telecaller Reports");
     expect(sidebar()).toHaveTextContent("Dashboard");
@@ -46,14 +46,14 @@ describe("nehn-006 PortalShell permission-driven nav", () => {
 
   it("keeps every item while the lookup fails", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("offline")));
-    await renderShell();
+    renderShell();
     await waitFor(() => expect(fetch).toHaveBeenCalled());
     expect(screen.getAllByRole("link", { name: "Payments" }).length).toBeGreaterThan(0);
   });
 
   it("keeps every item on a refused lookup", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}", { status: 401 })));
-    await renderShell();
+    renderShell();
     await waitFor(() => expect(fetch).toHaveBeenCalled());
     expect(screen.getAllByRole("link", { name: "Payments" }).length).toBeGreaterThan(0);
   });
@@ -61,13 +61,13 @@ describe("nehn-006 PortalShell permission-driven nav", () => {
   it("does not ask when no item is tagged", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    await renderShell([{ href: "/it/admin/dashboard", label: "Dashboard" }]);
+    renderShell([{ href: "/it/admin/dashboard", label: "Dashboard" }]);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("also removes the item from the mobile menu", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(permissionsResponse([])));
-    await renderShell();
+    renderShell();
     await waitFor(() => expect(screen.queryAllByText("Payments")).toHaveLength(0));
   });
 });
