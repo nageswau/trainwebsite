@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Browser, type Page } from "@playwright/test";
 
-// nehn-018 (DEC-SCOPE-299): an enrolled-but-unpaid student sees course and fees, and the gated sections locked with "Complete payment to
+// nehn-018 (DEC-SCOPE-303): an enrolled-but-unpaid student sees course and fees, and the gated sections locked with "Complete payment to
 // unlock" (AC1); the IT admin's policy change applies on the student's next page (AC4); a fee discounted to nothing counts as paid.
 // Each run registers a fresh student and enrols them in the demo trainer's batch (billed, unpaid), so it repeats on one database.
 

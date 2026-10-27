@@ -21,7 +21,7 @@ export type PortalPayload = {
   actions:{label:string;href:string}[]; columns:{key:string;label:string;type?:string}[];
   rows:Record<string, unknown>[]; panels:{title:string;items:string[]}[];
   filters?: ApplicationFilterState;
-  locked?: PaymentLock; // nehn-018 (DEC-SCOPE-299): a student section the payment state does not unlock -- no data, the lock instead
+  locked?: PaymentLock; // nehn-018 (DEC-SCOPE-303): a student section the payment state does not unlock -- no data, the lock instead
 };
 // AGN-003 (DEC-SCOPE-044): an agency member's effective optional permissions (GET /auth/me; a Master gets both true).
 export type AgentPermissions = { can_verify_documents: boolean; can_view_reports: boolean };

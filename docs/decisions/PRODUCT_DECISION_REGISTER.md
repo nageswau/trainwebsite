@@ -10031,7 +10031,7 @@ No reason prompt. The export shares ccrm-035's `crm.export` throttle (30 per 10 
 **Numbering:** migration `0205_enquiry_list_indexes`; API §12GV; RBAC §2.209.
 - **Feature ID authorized:** `nehn-012`. **Status:** built on `worktree-nehn-012`.
 
-### DEC-SCOPE-299 — Student feature access by enrolment and payment status (`nehn-018`)
+### DEC-SCOPE-303 — Student feature access by enrolment and payment status (`nehn-018`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-018` (§6 L148-151, §24; `UNVERIFIED` backlog); design
 `docs/superpowers/specs/2026-10-27-nehn-018-student-payment-access-design.md`. Dependency nehn-003 (private file serving) is done. OD-06
@@ -10046,5 +10046,5 @@ dashboard, placement and support are never gated. Certificate issuance still nee
 policy (`student_access.configure`), applied on the next request, audited. P6 a refused route is 403 with
 `{code: "payment_required", feature, label, required_state, current_state, message}` (403, not 402); a student with no enrolment is
 told to enrol. P7 overseas students are not gated. P8 locked sections stay in the sidebar with a "Locked" badge.
-**Numbering:** migration `0206_student_access_rules`; API §12GW; RBAC §2.210.
+**Numbering:** migration `0209_student_access_rules`; API §12HA; RBAC §2.214.
 - **Feature ID authorized:** `nehn-018`. **Status:** built on `worktree-nehn-018`.

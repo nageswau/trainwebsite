@@ -133,7 +133,7 @@ async def test_student_never_sees_another_students_batch_session(client, db_sess
 
 @pytest.mark.asyncio
 async def test_student_with_no_enrollment_is_told_to_enrol(client, db_session):
-    # nehn-018 (DEC-SCOPE-299): live classes open from the first payment; a student with no enrolment is "registered".
+    # nehn-018 (DEC-SCOPE-303): live classes open from the first payment; a student with no enrolment is "registered".
     student = await _create_student(db_session)
     await _login(client, student.email)
     response = await client.get("/api/v1/communications/it/live-sessions")

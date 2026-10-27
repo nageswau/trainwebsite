@@ -103,7 +103,7 @@ def require_permission(resource: str, action: str, detail: str = "Insufficient p
 
 
 def require_paid_feature(feature: str):
-    """nehn-018 (DEC-SCOPE-299): 403 `payment_required` for an IT student below the feature's payment state; every other role passes
+    """nehn-018 (DEC-SCOPE-303): 403 `payment_required` for an IT student below the feature's payment state; every other role passes
     to the route's own checks. A dependency, so it answers before the body is validated: the student learns why, not a 422."""
     if feature not in student_access.FEATURES:
         raise ValueError(f"Unknown student feature: {feature}")

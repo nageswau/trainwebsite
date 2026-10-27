@@ -1,6 +1,6 @@
 import type { NavItem } from "./navigation";
 
-// nehn-018 (DEC-SCOPE-299): which IT student features unlock at which payment state (apps/api/app/services/student_access.py).
+// nehn-018 (DEC-SCOPE-303): which IT student features unlock at which payment state (apps/api/app/services/student_access.py).
 export type PaymentState = "registered" | "enrolled_pending_payment" | "partially_paid" | "fully_paid";
 export type PaymentLock = { feature: string; label: string; required_state: PaymentState; current_state: PaymentState };
 export type StudentAccess = { state: PaymentState; features: { key: string; label: string; unlocked: boolean; required_state: PaymentState }[] };

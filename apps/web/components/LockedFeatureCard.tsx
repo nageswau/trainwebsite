@@ -1,7 +1,7 @@
 import { PAYMENT_STATE_LABELS, unlocksWhen, type PaymentLock } from "@/lib/studentAccess";
 import type { PortalPayload } from "@/lib/types";
 
-// nehn-018 (DEC-SCOPE-299 AC1): a student feature their payment state does not unlock yet -- shown in place of the feature, never hidden,
+// nehn-018 (DEC-SCOPE-303 AC1): a student feature their payment state does not unlock yet -- shown in place of the feature, never hidden,
 // with the one step that opens it. A student with no enrolment has nothing to pay yet, so they are sent to choose a course.
 export default function LockedFeatureCard({ lock }: { lock: PaymentLock }) {
   const enrol = lock.current_state === "registered";

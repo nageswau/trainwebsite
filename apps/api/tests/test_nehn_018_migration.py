@@ -1,4 +1,4 @@
-"""nehn-018 -- migration 0206_student_access_rules (DEC-SCOPE-299): the chain, the frozen copies and the round trip, in a throwaway
+"""nehn-018 -- migration 0209_student_access_rules (DEC-SCOPE-303): the chain, the frozen copies and the round trip, in a throwaway
 database (the nehn-003 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -14,15 +14,15 @@ from app.models import STUDENT_ACCESS_FEATURES, STUDENT_PAYMENT_STATES
 from app.services import student_access
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_nehn_018_migration_0206", VERSIONS / "0206_student_access_rules.py")
+_spec = importlib.util.spec_from_file_location("_nehn_018_migration_0209", VERSIONS / "0209_student_access_rules.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0206_student_access_rules", "0205_enquiry_list_indexes"
+HEAD, BASE = "0209_student_access_rules", "0208_certificate_signatories"
 GRANTS = "SELECT role, resource, action FROM role_permissions WHERE resource = 'student_access'"
 
 
-def test_migration_chains_after_0205_and_matches_the_model():
+def test_migration_chains_after_0208_and_matches_the_model():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

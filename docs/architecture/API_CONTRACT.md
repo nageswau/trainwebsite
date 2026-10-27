@@ -4349,9 +4349,9 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - `GET /telecaller/leads.xlsx` (new) — the same for the telecaller list's scope and filters; telecaller_manager (own reports' leads and
   their teams' unassigned leads) and super_admin. A telecaller or any other role **403**; `entity_id` `telecaller`.
 
-## 12GW. Student feature access by payment status (nehn-018) — addendum, 2026-10-27
+## 12HA. Student feature access by payment status (nehn-018) — addendum, 2026-10-27
 
-`DEC-SCOPE-299`. Migration `0206_student_access_rules`.
+`DEC-SCOPE-303`. Migration `0209_student_access_rules`.
 
 - `GET /workflows/it/student/access` (new) — it_student: `{state, features: [{key, label, unlocked, required_state}]}`. **403** other roles.
 - `GET /workflows/it/student-access/rules`, `PUT` (new) — `student_access.configure` (it_admin; super_admin implicit), else **403**.

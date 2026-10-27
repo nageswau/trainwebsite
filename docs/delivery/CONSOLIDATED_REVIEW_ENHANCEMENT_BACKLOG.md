@@ -883,8 +883,8 @@ Risk is the risk of regression or of a wrong outcome.
   - Does an overdue instalment re-lock?
   - Does the overseas portal gate anything?
 - **Complexity:** medium · **Risk:** high
-- **Status (2026-10-27):** built on `worktree-nehn-018` (`DEC-SCOPE-299`; API §12GW; RBAC §2.210; migration
-  `0206_student_access_rules`). OD-06 took the builder's defaults, editable by the IT admin: every gated feature opens at the first
+- **Status (2026-10-27):** built on `worktree-nehn-018` (`DEC-SCOPE-303`; API §12HA; RBAC §2.214; migration
+  `0209_student_access_rules`). OD-06 took the builder's defaults, editable by the IT admin: every gated feature opens at the first
   payment; overdue instalments and refunds do not re-lock; state per student; overseas not gated; 403 `payment_required`.
 
 #### `nehn-019` — Payment discount ledger and complete receipt

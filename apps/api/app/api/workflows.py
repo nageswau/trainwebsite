@@ -182,7 +182,7 @@ from app.visa_status import FIRST_OF_STAGE as VISA_FIRST_OF_STAGE
 from app.visa_status import label as visa_status_label
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
-# nehn-018 (DEC-SCOPE-299): an IT student below the feature's payment state gets 403 `payment_required`.
+# nehn-018 (DEC-SCOPE-303): an IT student below the feature's payment state gets 403 `payment_required`.
 PAID_ASSESSMENTS = require_paid_feature("assessments")
 PAID_ASSIGNMENTS = require_paid_feature("assignments")
 PAID_ATTENDANCE = require_paid_feature("attendance")
@@ -367,7 +367,7 @@ async def student_learning(user: User = Depends(get_current_user), db: AsyncSess
     live_sessions = []
     certificates = []
     submissions = []
-    # nehn-018 (DEC-SCOPE-299): a locked feature's list stays empty; the enrolments (course information) never are.
+    # nehn-018 (DEC-SCOPE-303): a locked feature's list stays empty; the enrolments (course information) never are.
     access = await student_access.summary(db, user)
     locked = student_access.locked_features(access)
     if batch_ids:
@@ -1605,7 +1605,7 @@ CAN_CONFIGURE_STUDENT_ACCESS = require_permission("student_access", "configure",
 
 @router.get("/it/student/access")
 async def student_access_summary(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """nehn-018 (DEC-SCOPE-299): the student's payment state and which features it unlocks -- the portal's locks and nav badges."""
+    """nehn-018 (DEC-SCOPE-303): the student's payment state and which features it unlocks -- the portal's locks and nav badges."""
     _require(user, {"it_student"}, "it")
     return await student_access.summary(db, user)
 
@@ -1624,7 +1624,7 @@ async def read_student_access_rules(user: User = Depends(CAN_CONFIGURE_STUDENT_A
 
 @router.put("/it/student-access/rules")
 async def update_student_access_rules(payload: StudentAccessRulesIn, user: User = Depends(CAN_CONFIGURE_STUDENT_ACCESS), db: AsyncSession = Depends(get_db)):
-    """nehn-018 (DEC-SCOPE-299 AC4): replaces the policy; the next request of every student uses it. Audited with before and after."""
+    """nehn-018 (DEC-SCOPE-303 AC4): replaces the policy; the next request of every student uses it. Audited with before and after."""
     rows = {r.feature: r for r in (await db.scalars(select(StudentAccessRule).with_for_update())).all()}
     before = await student_access.policy(db)
     for feature, state in payload.rules.items():

@@ -1,9 +1,9 @@
 """nehn-018 -- student feature access by payment status: `student_access_rules` and the `student_access.configure` grant.
 
-Revision ID: 0206_student_access_rules
-Revises: 0205_enquiry_list_indexes
+Revision ID: 0209_student_access_rules
+Revises: 0208_certificate_signatories
 
-docs/superpowers/specs/2026-10-27-nehn-018-student-payment-access-design.md (DEC-SCOPE-299). 0001 builds a fresh database from the
+docs/superpowers/specs/2026-10-27-nehn-018-student-payment-access-design.md (DEC-SCOPE-303). 0001 builds a fresh database from the
 current models, which already carry the table, so it is created only when missing (0194's idiom). Every feature is seeded at the
 builder's default (`partially_paid`: the first payment unlocks the course). FEATURES / STATES are frozen copies of the model's tuples
 at this revision. No existing row changes. The downgrade drops the table and deletes only this grant.
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0206_student_access_rules"
-down_revision = "0205_enquiry_list_indexes"
+revision = "0209_student_access_rules"
+down_revision = "0208_certificate_signatories"
 branch_labels = None
 depends_on = None
 

@@ -2329,7 +2329,7 @@ new ones record the thresholds used in `criteria_snapshot.rules`. Downgrade drop
 `enquiries` gains `ix_enquiries_created` (`created_at`, `id`) for the newest-first lists filtered by an India-time created range, and
 `ix_enquiries_owner` (`owner_id`) for the counselor filter. No column or row changes; the downgrade drops both indexes.
 
-## Student access rules (`nehn-018`, `DEC-SCOPE-299`; migration `0206_student_access_rules`)
+## Student access rules (`nehn-018`, `DEC-SCOPE-303`; migration `0209_student_access_rules`)
 
 `student_access_rules` — one row per gated student feature: `feature` (PK; CHECK attendance, assignments, assessments, resources,
 live_classes, questions, feedback, certificates), `min_state` (CHECK registered, enrolled_pending_payment, partially_paid, fully_paid),
