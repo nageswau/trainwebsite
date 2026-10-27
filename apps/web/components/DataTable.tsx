@@ -47,6 +47,15 @@ function renderCell(column: Column, row: Row) {
     if (!row[column.key]) return null;
     return <Link className="btn small secondary" href={String(row[column.key])} aria-label={`Profile for ${String(row.student ?? row.name ?? "student")}`}>Profile</Link>;
   }
+  // nehn-027 (DEC-SCOPE-294 M8): a material the reader opens -- a web link (new tab) or an authorised API download. Any other stored
+  // value (an old row could hold anything) stays text, so it can never run as a `javascript:` link.
+  if (column.type === "link") {
+    const href = String(row[column.key] ?? "");
+    const name = `Open ${String(row.title ?? row.resource ?? "")}`.trim();
+    if (/^https?:\/\//i.test(href)) return <a className="btn small secondary" href={href} target="_blank" rel="noopener noreferrer" aria-label={name}>Open</a>;
+    if (href.startsWith("/api/")) return <a className="btn small secondary" href={href} aria-label={name}>Open</a>;
+    return displayValue(row[column.key]);
+  }
   if (column.type === "join") {
     // nehn-029: a cancelled session (its Status cell says so) gets no join state at all, not "not yet available".
     if (row.cancelled) return null;

@@ -17,7 +17,7 @@ _spec = importlib.util.spec_from_file_location("_nehn_037_migration_0203", VERSI
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0203_application_interviews", "0201_coordinator_role"
+HEAD, BASE = "0203_application_interviews", "0202_learning_resource_files"
 
 
 def test_migration_chains_after_its_base_and_is_the_single_head():

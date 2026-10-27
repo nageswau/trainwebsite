@@ -423,12 +423,12 @@ async def _it_student(db: AsyncSession, user: User, section: str):
             panels=({"title": "Open jobs", "items": [f"Job reference {j.id}: {c.name} / {j.title} / {j.location}" for j, c in open_jobs]},),
         )
     if section == "downloads":
-        resources = (await db.scalars(select(LearningResource).where(LearningResource.batch_id.in_(batch_ids)).order_by(LearningResource.created_at.desc()))).all() if batch_ids else []
+        resources = (await db.scalars(select(LearningResource).where(LearningResource.batch_id.in_(batch_ids), LearningResource.deleted_at.is_(None)).order_by(LearningResource.sort_order, LearningResource.created_at.desc()))).all() if batch_ids else []
         return _payload(
             "Downloads",
             "Approved course materials and resources.",
-            (("title", "Resource"), ("type", "Type"), ("url", "Download")),
-            ({"title": r.title, "type": r.resource_type, "url": r.url} for r in resources),
+            (("title", "Resource"), ("type", "Type"), ("url", "Download", "link")),
+            ({"title": r.title, "type": r.resource_type, "url": r.href} for r in resources),
         )
     if section == "support":
         rows = (await db.scalars(select(SupportTicket).where(SupportTicket.user_id == user.id).order_by(SupportTicket.created_at.desc()))).all()
@@ -523,13 +523,13 @@ async def _trainer(db: AsyncSession, user: User, section: str):
         )
     if section == "materials":
         rows = (
-            await db.execute(select(LearningResource, Batch).join(Batch, Batch.id == LearningResource.batch_id).where(Batch.trainer_id == user.id).order_by(LearningResource.created_at.desc()))
+            await db.execute(select(LearningResource, Batch).join(Batch, Batch.id == LearningResource.batch_id).where(Batch.trainer_id == user.id, LearningResource.deleted_at.is_(None)).order_by(LearningResource.sort_order, LearningResource.created_at.desc()))
         ).all()
         return _payload(
             "Course Materials",
             "Notes, links, and approved provider recordings.",
-            (("resource", "Resource"), ("batch", "Batch"), ("type", "Type"), ("url", "URL")),
-            ({"resource": r.title, "batch": b.name, "type": r.resource_type, "url": r.url} for r, b in rows),
+            (("resource", "Resource"), ("batch", "Batch"), ("type", "Type"), ("url", "Open", "link")),  # nehn-027 QA-01
+            ({"resource": r.title, "batch": b.name, "type": r.resource_type, "url": r.href} for r, b in rows),
         )
     if section == "live-sessions":
         rows = (await db.execute(select(LiveSession, Batch).join(Batch, Batch.id == LiveSession.batch_id).where(Batch.trainer_id == user.id).order_by(LiveSession.starts_at.desc()))).all()
@@ -1496,6 +1496,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                     select(LearningResource, Batch, User)
                     .join(Batch, Batch.id == LearningResource.batch_id)
                     .outerjoin(User, User.id == Batch.trainer_id)
+                    .where(LearningResource.deleted_at.is_(None))  # nehn-027 M8
                     .order_by(LearningResource.created_at.desc())
                     .limit(500)
                 )
@@ -1504,7 +1505,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 "Resources & Recordings",
                 "Trainer-uploaded course resources and recordings across every batch.",
                 (("resource", "Resource"), ("batch", "Batch"), ("trainer", "Trainer"), ("type", "Type"), ("url", "URL")),
-                ({"resource": r.title, "batch": b.name, "trainer": t.full_name if t else "Unassigned", "type": r.resource_type, "url": r.url} for r, b, t in rows),
+                ({"resource": r.title, "batch": b.name, "trainer": t.full_name if t else "Unassigned", "type": r.resource_type, "url": r.href} for r, b, t in rows),
             )
         if section == "consent" and user.role in {"it_admin", "super_admin"}:
             # ADM-010: mirrors ADM-009's shape -- STU-009's self-scoped agreement/consent
@@ -1730,6 +1731,9 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                  for e in rows),
             )
         if section == "payments":
+            # nehn-006 (DEC-SCOPE-295): the page follows `payments.view`, as `/admin/payments` does (seed: both division admins hold it).
+            if not await permissions.has_grant(db, user.role, "payments", "view"):
+                raise HTTPException(403, "You do not have permission to view payments")
             stmt = select(Payment, User).join(User, User.id == Payment.user_id)
             stmt = stmt.where(Payment.division == division) if division else stmt
             rows = (await db.execute(stmt.order_by(Payment.created_at.desc()))).all()

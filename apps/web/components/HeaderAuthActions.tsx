@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { dashboardPathFor } from "@/lib/navigation";
+import { clearPermissions } from "@/lib/usePermissions";
 
 type Session = { role: string; dashboardHref: string } | null | "loading";
 
@@ -36,6 +37,7 @@ export default function HeaderAuthActions({ loginHref }: { loginHref: string | n
   async function logout() {
     await fetch("/api/v1/auth/logout", { method: "POST" });
     setSession(null);
+    clearPermissions(); // nehn-006: the next account's portal must not start from this one's permissions
     router.push("/");
     router.refresh();
   }

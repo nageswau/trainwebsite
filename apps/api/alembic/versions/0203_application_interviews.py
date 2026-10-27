@@ -1,7 +1,7 @@
 """nehn-037 part 4 -- `application_interviews`: admission interviews on an overseas application.
 
 Revision ID: 0203_application_interviews
-Revises: 0201_coordinator_role
+Revises: 0202_learning_resource_files
 
 docs/superpowers/specs/2026-10-27-nehn-037-admission-interviews-design.md (DEC-SCOPE-296). A new table only; no existing row changes.
 MODES/OUTCOMES are frozen copies of the model constants at this revision (test_nehn_037_migration). The downgrade drops the table.
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0203_application_interviews"
-down_revision = "0201_coordinator_role"
+down_revision = "0202_learning_resource_files"
 branch_labels = None
 depends_on = None
 

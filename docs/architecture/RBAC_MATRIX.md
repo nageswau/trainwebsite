@@ -3099,6 +3099,30 @@ New role `coordinator`, division `it`, coarse bundle `{"it:certificates:read"}`.
 Certificate issuance is unchanged here (trainer, it_admin); nehn-031 moves it to the coordinator. Pinned by
 `apps/api/tests/test_nehn_030_coordinator.py` and the role-equivalence test in `test_nehn_005_permissions.py` (29 roles).
 
+### 2.205 Learning material files *(added 2026-10-27 — `DEC-SCOPE-294`, nehn-027)*
+
+| Route | Anonymous | it_student (enrolled / other batch) | Trainer (own batch / other) | it_admin | super_admin |
+|---|---|---|---|---|---|
+| `POST /workflows/it/trainer/materials` with `file_id` | 401 | 403 | 201 (own upload only, else 422) / 403 | 201 | 201 |
+| `GET /workflows/it/trainer/materials` | 401 | 403 | own batches only | all | all |
+| `PATCH`/`DELETE /workflows/it/trainer/materials/{id}` | 401 | 403 | 200·204 / 403 | 200·204 | 200·204 |
+| `GET /workflows/it/materials/{id}/file` | 401 | 200 / **404** | 200 / 404 | 200 | 200 |
+
+The download answers 404 (not 403) to anyone outside the batch so another batch's materials are not confirmed to exist. A trainer moved
+off a batch loses manage and download access at once. No new permission key. Pinned by
+`apps/api/tests/test_nehn_027_learning_material_files.py`.
+
+### 2.206 Permission-matrix screen *(added 2026-10-27 — `DEC-SCOPE-295`, nehn-006)*
+
+| Surface | Who | Rule |
+|---|---|---|
+| `/admin/permissions` | super_admin | Reads the catalogue and edits any role but super_admin (read-only, holds everything). Any other role gets the access card; the API answers 403. |
+| `/portal/{it,overseas}/admin/payments` | it_admin, overseas_admin, super_admin | Needs `payments.view` (new); the division scope is unchanged. |
+| Sidebar: Payments, Telecaller Reports (division admins), Reports (telecaller manager), Certificates (coordinator) | the role | Shown while the role holds `<resource>.view`; the API refuses the page without it. |
+| "Create payment due" / "Apply discount" forms; telecaller report "Download CSV" | the role | Rendered only with `payments.add` / `discounts.add` / `reports.telecaller.download`. |
+
+No grant logic runs in the web app beyond "is this key in my set"; nehn-005 remains the enforcement point.
+
 ### 2.207 Admission interviews (`nehn-037` part 4, `DEC-SCOPE-296`)
 
 | Route | Anonymous | overseas_student | counselor (assigned / other) | overseas_admin | agent (own agency app) | other roles |

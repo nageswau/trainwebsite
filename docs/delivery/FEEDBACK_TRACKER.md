@@ -59,7 +59,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-003 | Files and storage | Private file storage with per-purpose upload rules | Bug | Done — confirm defaults | Dev + Client | Wave 0 | Confirm storage location and upload limits (§2) |
 | nehn-004 | Reporting | Excel download beside every CSV report; Excel import reader | Enhancement | Done — confirm defaults | Dev | Wave 1 | — |
 | nehn-005 | Permissions | Permission engine (role × module × action), first two modules | Enhancement | Done — confirm defaults | Dev + Client | Wave 1 | Confirm who edits permissions; custom roles needed? (OD-04) |
-| nehn-006 | Permissions | Admin permission-matrix screen and permission-driven menus | Enhancement | Ready to start | Dev | Wave 2 | — |
+| nehn-006 | Permissions | Admin permission-matrix screen and permission-driven menus | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 | Per role only; non-applicable actions shown as "—" (DEC-SCOPE-295) |
 | nehn-007 | Permissions | Per-user permission overrides | Enhancement | Waiting — decision | Dev + Client | Wave 4 | Are per-user overrides needed this release? (OD-03) |
 | nehn-008 | Permissions | Role-based column policy for screens and downloads | Enhancement | Waiting — client input | Dev + Client | Wave 3 | Which columns each role may see (CI-02) |
 | nehn-009 | Reporting | Report framework: standard filters, CSV/Excel, audited | Enhancement | Waiting — dependency | Dev | Wave 3 | — (needs nehn-008) |
