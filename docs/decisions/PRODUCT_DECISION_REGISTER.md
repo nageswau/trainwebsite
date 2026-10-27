@@ -10138,3 +10138,21 @@ policy (`student_access.configure`), applied on the next request, audited. P6 a 
 told to enrol. P7 overseas students are not gated. P8 locked sections stay in the sidebar with a "Locked" badge.
 **Numbering:** migration `0211_student_access_rules`; API §12HB; RBAC §2.215.
 - **Feature ID authorized:** `nehn-018`. **Status:** built on `worktree-nehn-018`.
+
+### DEC-SCOPE-307 — School portal: document statuses, application depth, bulk-upload reconfirmation (`nehn-039`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-039` (§21 L561-577, §26 L804-809, actions 18/19;
+`UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-27-nehn-039-school-document-statuses-design.md`. Dependency `nehn-003`
+is done; documents themselves are not made viewable. The client's school fields and visibility (CI-05) and the bulk-upload answer
+(OD-13) are still pending.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** D1 the four existing school roles on the
+shared login are the "dedicated institution login" (no branded `/school/login`). D2 statuses only: per School-bridged application, each
+ccrm-019 checklist item's name, required flag and status — never files, document ids, filenames, notes or reviewer notes. D3 every
+item except the financial class (ccrm-022 SD1, the higher of the item's class and its type's); identity (passport) stays visible. D4
+coordinator, principal, teacher (assigned) and parent (linked) through the existing reader scope; any student outside it — another
+school, transferred out, unassigned, unlinked or missing — is 404; a non-school role is 403. D5 application depth unchanged
+(university, stage, visa stage as the overview shows); the new read adds only the university name as a label. D6 every read writes
+an audit row `school.document_statuses_view` (counts only). D7 bulk roster upload is kept as built (coordinator only) — this
+supersedes `DEC-SCOPE-009`'s "bulk upload stays deferred".
+**Numbering:** no migration; API §12HE; RBAC §2.218.
+- **Feature ID authorized:** `nehn-039`. **Status:** built on `worktree-nehn-039`.
