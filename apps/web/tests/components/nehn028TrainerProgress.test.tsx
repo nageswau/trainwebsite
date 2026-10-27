@@ -101,6 +101,16 @@ describe("TrainerProgressPanel", () => {
     expect(screen.queryByRole("region", { name: "Asha Rao progress details" })).toBeNull();
   });
 
+  it("says plainly when no session is recorded yet (QA28-01)", async () => {
+    stub({ [URL("b1")]: () => json(payload(STUDENTS)) });
+    render(<TrainerProgressPanel batches={BATCHES} />);
+    await screen.findByRole("row", { name: /Chitra Das/ });
+    fireEvent.click(screen.getByRole("button", { name: "Details for Chitra Das" }));
+    const details = screen.getByRole("region", { name: "Chitra Das progress details" });
+    expect(within(details).getByText("Attendance: no session recorded yet (needs 75%)")).toBeTruthy();
+    expect(details.textContent).not.toContain("— —");
+  });
+
   it("re-reads when the trainer picks another batch", async () => {
     const mock = stub({ [URL("b1")]: () => json(payload(STUDENTS)), [URL("b2")]: () => json(payload([])) });
     render(<TrainerProgressPanel batches={BATCHES} />);

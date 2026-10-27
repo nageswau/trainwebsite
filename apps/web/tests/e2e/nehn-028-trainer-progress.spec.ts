@@ -67,10 +67,11 @@ test("trainer spots an at-risk student and reads why they are not eligible", asy
 
   const panel = page.locator(".trainer-progress");
   await panel.getByLabel("Search students").fill(name);
-  const learner = panel.getByRole("row", { name: new RegExp(name) });
+  const learner = panel.getByRole("row").filter({ has: page.getByRole("rowheader", { name: new RegExp(name) }) }); // not its details row
   await expect(learner.getByText("50%")).toBeVisible();
   await expect(learner.getByText("At risk")).toBeVisible(); // AC2
   await expect(learner.getByText("Not eligible")).toBeVisible();
+  expect(await learner.getByRole("rowheader").evaluate(cell => getComputedStyle(cell).textTransform)).toBe("none"); // QA28-02
   await learner.getByRole("button", { name: `Details for ${name}` }).click();
   const details = panel.getByRole("region", { name: `${name} progress details` });
   await expect(details.getByText("Attendance 50% (needs 75%)")).toBeVisible();

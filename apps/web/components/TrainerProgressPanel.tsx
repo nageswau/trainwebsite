@@ -184,7 +184,7 @@ export default function TrainerProgressPanel({ batches, loading = false, refresh
                           <td colSpan={COLUMNS.length + 1}>
                             <div id={detailsId} role="region" aria-label={`${row.student} progress details`}>
                               <ul>
-                                <li>Attendance: {attendance(row)} — {row.attendance_sessions} sessions recorded (needs {data.rules.min_attendance_percent}%)</li>
+                                <li>{row.attendance_sessions ? `Attendance: ${attendance(row)} of ${row.attendance_sessions} ${row.attendance_sessions === 1 ? "session" : "sessions"} recorded (needs ${data.rules.min_attendance_percent}%)` : `Attendance: no session recorded yet (needs ${data.rules.min_attendance_percent}%)`}</li>
                                 <li>Assignments: {row.assignments_submitted} submitted, {row.assignments_graded} graded, of {row.assignments_total}</li>
                                 <li>Assessments: {row.assessments_passed} passed of {row.assessments_total}</li>
                                 <li>Progress: {row.progress_percent}% (needs {data.rules.min_progress_percent}%)</li>
