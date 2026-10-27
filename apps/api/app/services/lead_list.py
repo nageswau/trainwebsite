@@ -1,4 +1,4 @@
-"""nehn-012 (DEC-SCOPE-296): what the admin and telecaller lead lists share -- the India-time created range, the counselor filter and the
+"""nehn-012 (DEC-SCOPE-298): what the admin and telecaller lead lists share -- the India-time created range, the counselor filter and the
 fixed-column Excel table of the filtered list (nehn-008's per-role column policy is not built yet, so this is the admin / manager set).
 
 Functions only; the route owns the scope, the transaction and the export step (`crm_exports.export`)."""

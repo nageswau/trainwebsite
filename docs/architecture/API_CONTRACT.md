@@ -4332,3 +4332,19 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - `POST /{enrollment_id}/issue` — **now needs `certificates.issue`** (trainer and it_admin 403, `DEC-ROLE-003`); `override: true` needs
   `certificates.override` (403). A second issue for the same enrolment is **409** (was 201 with the existing certificate). Body and 201
   response unchanged; `override_reason` is capped at 1000 characters. Eligibility is re-checked at issue time.
+
+## 12GV. Lead list filters and filtered Excel export (nehn-012) — addendum, 2026-10-27
+
+`DEC-SCOPE-298`. Migration `0205_enquiry_list_indexes` (indexes only).
+
+- `GET /admin/leads`, `GET /telecaller/leads` — new optional query parameters (additive; responses unchanged):
+  `created_from`, `created_to` (ISO dates, inclusive India-time days on the lead's creation time) and `owner_id` (the assigned
+  counselor). Every filter is ANDed with the existing scope. **422** for a malformed date or id, or `created_from` after `created_to`.
+- `GET /admin/leads.xlsx` (new) — `ensure_admin` roles, the list's division scope and the same query parameters (`limit`/`offset`
+  ignored): every matching lead, newest first, as one `.xlsx` sheet "Leads" (`leads-<IST date>.xlsx`, `Cache-Control: private,
+  no-store`). Columns: Lead ID, Name, Phone, Email, Source, Course interest, Stage, Telecaller, Counselor, Created, Last contact, Next
+  follow-up (times in India time). **401** anonymous; **403** other roles; **422** over 5,000 rows ("narrow the filters"); **429** with
+  `Retry-After` past 30 exports in 10 minutes. One audit row per file: action `crm.export`, `entity_type` `lead_list`, `entity_id`
+  `admin`, metadata `{format, filters, rows}` (search text recorded only as `"q": true`). A refused export writes nothing.
+- `GET /telecaller/leads.xlsx` (new) — the same for the telecaller list's scope and filters; telecaller_manager (own reports' leads and
+  their teams' unassigned leads) and super_admin. A telecaller or any other role **403**; `entity_id` `telecaller`.

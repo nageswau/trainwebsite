@@ -2323,3 +2323,8 @@ the thresholds that were hardcoded before, so no eligibility changes on upgrade.
 `enrollment_id` (FK `enrollments` ON DELETE CASCADE, unique), `status` (`recommended | not_ready | issued`), `comment`,
 `recommended_by_id` (FK users), `certificate_id` (FK `certificates` ON DELETE SET NULL), timestamps. Issued certificates are unchanged;
 new ones record the thresholds used in `criteria_snapshot.rules`. Downgrade drops both tables and the three seeded grants.
+
+## Lead list indexes (`nehn-012`, `DEC-SCOPE-298`; migration `0205_enquiry_list_indexes`)
+
+`enquiries` gains `ix_enquiries_created` (`created_at`, `id`) for the newest-first lists filtered by an India-time created range, and
+`ix_enquiries_owner` (`owner_id`) for the counselor filter. No column or row changes; the downgrade drops both indexes.

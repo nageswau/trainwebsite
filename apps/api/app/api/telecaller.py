@@ -139,7 +139,7 @@ async def my_leads(query: dict = Depends(_lead_query), limit: int = LIMIT, offse
 
 @router.get("/leads.xlsx")
 async def my_leads_xlsx(query: dict = Depends(_lead_query), db: AsyncSession = Depends(get_db)):
-    """nehn-012 (DEC-SCOPE-296): a manager's (or super_admin's) filtered list, every page, as Excel -- audited and throttled. A telecaller
+    """nehn-012 (DEC-SCOPE-298): a manager's (or super_admin's) filtered list, every page, as Excel -- audited and throttled. A telecaller
     is 403 (L4)."""
     require_manager(query["user"])
     return await crm_exports.export(db, query["user"], entity_type="lead_list", key="telecaller", fmt="xlsx", filters=query["audited"],

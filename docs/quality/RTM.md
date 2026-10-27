@@ -1330,3 +1330,15 @@ half.
 | `nehn-031-AC4` | Bulk issue of 30 creates 30 unique numbers and PDFs | `::test_bulk_issue_of_thirty_creates_thirty_unique_certificates`, `::test_bulk_reports_each_failure_and_issues_the_rest` |
 | `nehn-031-AC5` | The trainer's recommendation is visible in the queue | `::test_trainer_recommendation_is_visible_in_the_queue`, `::test_only_the_batch_trainer_recommends`; vitest trainer card + queue; e2e |
 | `nehn-031-AC6` | A duplicate issue is 409 | `::test_duplicate_issue_is_409`; e2e |
+
+`nehn-012` evidence: `apps/api/tests/test_nehn_012_lead_list.py` (`::`), `test_nehn_012_migration.py`,
+`apps/web/tests/components/nehn012.leadListExport.test.tsx` and e2e `nehn-012-lead-list-export.spec.ts`.
+
+| ID | Requirement / acceptance | Evidence |
+|---|---|---|
+| `nehn-012` | Requirement: PDF §14 L322-323, §16 L363/L375, §23 L598-605 → backlog `nehn-012` → `DEC-SCOPE-298` → design `docs/superpowers/specs/2026-10-27-nehn-012-lead-list-filters-export-design.md` → API §12GV → RBAC §2.209 | — |
+| `nehn-012-AC1` | `created_from=today&created_to=today` returns exactly today's leads in IST | `::test_a_created_day_is_the_india_calendar_day`, `::test_a_reversed_or_malformed_filter_is_422`; vitest; e2e |
+| `nehn-012-AC2` | `owner_id` filters by counselor | `::test_owner_id_filters_by_counselor`, `::test_the_telecaller_list_takes_the_same_filters_inside_its_scope`; vitest |
+| `nehn-012-AC3` | The xlsx holds the same rows as the filtered list (all pages) | `::test_the_admin_export_holds_every_filtered_row_with_the_fixed_columns_and_is_audited`, `::test_the_admin_export_keeps_the_division_scope`; e2e |
+| `nehn-012-AC4` | A telecaller manager's export holds only their scope | `::test_a_managers_export_holds_only_their_scope`, `::test_a_telecaller_or_another_role_cannot_use_the_manager_export`; e2e |
+| `nehn-012-AC5` | The audit row records filters and row count | `::test_the_admin_export_holds_every_filtered_row_with_the_fixed_columns_and_is_audited`, `::test_the_export_is_throttled_and_capped` |

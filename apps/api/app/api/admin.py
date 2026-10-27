@@ -493,7 +493,7 @@ async def leads(query: dict = Depends(_lead_query), limit: int = Query(50, ge=1,
 
 @router.get("/leads.xlsx")
 async def leads_xlsx(query: dict = Depends(_lead_query), db: AsyncSession = Depends(get_db)):
-    """nehn-012 (DEC-SCOPE-296): every row of the filtered list (no paging), newest first, as Excel -- audited and throttled."""
+    """nehn-012 (DEC-SCOPE-298): every row of the filtered list (no paging), newest first, as Excel -- audited and throttled."""
     return await crm_exports.export(db, query["user"], entity_type="lead_list", key="admin", fmt="xlsx", filters=query["audited"],
                                     filename=f"leads-{today_ist(await db_now(db))}", sheet_name="Leads",
                                     build=lambda: lead_list.table(db, query["where"], crm_exports.ROW_CAP + 1))  # fmt: skip

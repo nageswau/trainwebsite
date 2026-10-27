@@ -1,4 +1,4 @@
-"""nehn-012 -- migration 0203_enquiry_list_indexes (DEC-SCOPE-296). The round trip runs in a throwaway database built from scratch (the
+"""nehn-012 -- migration 0205_enquiry_list_indexes (DEC-SCOPE-298). The round trip runs in a throwaway database built from scratch (the
 upc-001 pattern); a downgrade never runs against the shared test database. Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,15 +13,15 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_nehn_012_migration_0203", VERSIONS / "0203_enquiry_list_indexes.py")
+_spec = importlib.util.spec_from_file_location("_nehn_012_migration_0205", VERSIONS / "0205_enquiry_list_indexes.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0202_learning_resource_files", "0203_enquiry_list_indexes"
+BASE, HEAD = "0204_certificate_workflow", "0205_enquiry_list_indexes"
 INDEXES = {"ix_enquiries_created": ["created_at", "id"], "ix_enquiries_owner": ["owner_id"]}
 
 
-def test_migration_chains_after_0202_and_is_the_single_head():
+def test_migration_chains_after_0204_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
 
@@ -46,7 +46,7 @@ def _indexes(url) -> set[str]:
 
 @pytest.fixture
 def isolated_db():
-    """A fresh database at 0202 holding one lead."""
+    """A fresh database at 0204 holding one lead."""
     cfg = _config()
     original = settings.database_url
     name = f"nehn012_migration_{uuid.uuid4().hex[:8]}"

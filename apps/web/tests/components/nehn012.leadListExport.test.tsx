@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AdminLeadManagementPanel from "@/components/AdminLeadManagementPanel";
 import TelecallerLeadTable from "@/components/TelecallerLeadTable";
 
-// nehn-012 (DEC-SCOPE-296): the lead lists' created-date and counselor filters (in the URL, like every other filter) and the
+// nehn-012 (DEC-SCOPE-298): the lead lists' created-date and counselor filters (in the URL, like every other filter) and the
 // "Download Excel" of the filtered list -- the list's own query without the page, for the roles that may export.
 let search = "";
 const push = vi.fn();

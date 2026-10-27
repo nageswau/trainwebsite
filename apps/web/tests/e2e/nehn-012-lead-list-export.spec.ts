@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 
 import { expect, test, type Page } from "@playwright/test";
 
-// nehn-012 (DEC-SCOPE-296): the admin narrows the lead list to today's (India time) enquiries and downloads exactly those as Excel;
+// nehn-012 (DEC-SCOPE-298): the admin narrows the lead list to today's (India time) enquiries and downloads exactly those as Excel;
 // the filters live in the URL; a reversed range is explained, not sent; a telecaller manager may download the team's list, a
 // telecaller may not. The shared stack DB also holds backend-test rows, so the admin checks narrow to this run's leads by a stamp.
 test.describe.configure({ timeout: 90_000 });

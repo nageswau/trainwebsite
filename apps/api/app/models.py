@@ -2731,7 +2731,7 @@ class Enquiry(Base, TimestampMixin):
         Index("ix_enquiries_email_lower", text("lower(email)")),
         Index("ix_enquiries_campaign", "campaign_id"),
         Index("ix_enquiries_product", "product_id"),
-        # nehn-012 (migration 0203): the lead lists' India-time created range and counselor filters
+        # nehn-012 (migration 0205): the lead lists' India-time created range and counselor filters
         Index("ix_enquiries_created", "created_at", "id"),
         Index("ix_enquiries_owner", "owner_id"),
     )

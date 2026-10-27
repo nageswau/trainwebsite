@@ -20,7 +20,7 @@ exactly that list as one Excel file. Contact data leaves the system, so every do
   throttle (30 / 10 min) and row cap (5,000 → 422 "narrow the filters") as ccrm-035, by reusing `crm_exports.export`.
 - UI: "Created from", "Created to" and (admin) "Counselor" filters on the admin lead list; the date filters on the telecaller lead
   list; a "Download Excel" button beside each list for the roles that may export.
-- Indexes `ix_enquiries_created` (`created_at`, `id`) and `ix_enquiries_owner` (`owner_id`) — migration `0203` (none existed).
+- Indexes `ix_enquiries_created` (`created_at`, `id`) and `ix_enquiries_owner` (`owner_id`) — migration `0205` (none existed).
 
 ## Non-goals
 

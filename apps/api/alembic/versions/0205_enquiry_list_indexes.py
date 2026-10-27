@@ -1,9 +1,9 @@
 """nehn-012 -- enquiries (created_at, id) and (owner_id) for the lead lists' date-range and counselor filters.
 
-Revision ID: 0203_enquiry_list_indexes
-Revises: 0202_learning_resource_files
+Revision ID: 0205_enquiry_list_indexes
+Revises: 0204_certificate_workflow
 
-docs/superpowers/specs/2026-10-27-nehn-012-lead-list-filters-export-design.md (DEC-SCOPE-296). Both indexes are new: the newest-first
+docs/superpowers/specs/2026-10-27-nehn-012-lead-list-filters-export-design.md (DEC-SCOPE-298). Both indexes are new: the newest-first
 lead lists and their Excel export filter on an India-time `created_at` range, and the admin list on the counselor (`owner_id`). 0001
 builds a fresh database from the current models, which already carry both, so each add is guarded (0199's idiom). No row is read or
 written. The downgrade drops both.
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0203_enquiry_list_indexes"
-down_revision = "0202_learning_resource_files"
+revision = "0205_enquiry_list_indexes"
+down_revision = "0204_certificate_workflow"
 branch_labels = None
 depends_on = None
 

@@ -1,4 +1,4 @@
-"""nehn-012 (DEC-SCOPE-296): the admin and telecaller lead lists' India-time date range and counselor filters, and their filtered Excel
+"""nehn-012 (DEC-SCOPE-298): the admin and telecaller lead lists' India-time date range and counselor filters, and their filtered Excel
 export -- the same rows as the list (all pages), each download audited (filters, rows) and throttled. The shared database is never
 truncated, so every test narrows to rows it created (a unique `q`)."""
 
