@@ -4459,6 +4459,26 @@ designation, active, active_from, active_to}`; the storage key is never returned
   required_state, current_state}`; the dashboard withholds its upcoming-work rows while assignments are locked.
 - `GET /workflows/it/student/learning` — locked features' lists are empty; additive `access` key.
 
+## 12HC. Training reports pack (nehn-010) — addendum, 2026-10-27
+
+`DEC-SCOPE-305`. Seven reports registered in the §12HA report library; every route, gate (`reports.training.view` / `.download`),
+error order, paging, throttle, cap and audit row is §12HA's. `GET /api/v1/reports/{id}` (+ `.csv`, `.xlsx`):
+
+| id | Grain | Columns | Filters |
+|---|---|---|---|
+| `student-courses` | enrolment | student_code, student, course, batch, trainer, enrolled_on, status, progress, attendance_pct, assignments_graded, assignments_total, assessments_passed, assessments_total, certificate | from, to (enrolled), course_id, batch_id, trainer_id, student, status, latest, completion_from, completion_to |
+| `students-by-trainer` | enrolment | trainer, batch, course, student_code, student, status, progress | from, to (enrolled), course_id, batch_id, trainer_id, student, status |
+| `course-completion` | batch | course, batch, trainer, batch_starts, batch_ends, students, completed, completion_pct, certificates | course_id, batch_id, trainer_id, completion_from, completion_to |
+| `completions` | completed enrolment | student_code, student, course, batch, trainer, batch_ends, progress, attendance_pct, certificate | completion_from, completion_to, course_id, batch_id, trainer_id, student, latest |
+| `attendance` | enrolment | student_code, student, course, batch, trainer, marked, present, absent, late, excused, attendance_pct | from, to (**class date**), course_id, batch_id, trainer_id, student, status |
+| `trainers` | trainer | trainer, batches, students, attendance_pct, average_progress, pending_grading | course_id, trainer_id, completion_from, completion_to |
+| `courses` | course | course, batches, enrolments, active, completed, dropped, revenue (`financial`) | from, to (enrolled), course_id, trainer_id |
+
+- Percentages are numbers (attendance 2 decimals, completion/average 1); `null` when the base is 0. `certificate` is the enrolment's
+  latest certificate status or `"Not issued"`. `revenue` is omitted (JSON and files) without `field.financial.view`.
+- `GET /workflows/it/certificates/eligibility/{id}` is unchanged in shape; its attendance/assignment/assessment figures now come from the
+  same calculator as the `attendance` report.
+
 ## 12HE. School document statuses (nehn-039) — addendum, 2026-10-27
 
 `DEC-SCOPE-307`. No migration. Additive only.

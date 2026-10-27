@@ -10139,6 +10139,24 @@ told to enrol. P7 overseas students are not gated. P8 locked sections stay in th
 **Numbering:** migration `0211_student_access_rules`; API §12HB; RBAC §2.215.
 - **Feature ID authorized:** `nehn-018`. **Status:** built on `worktree-nehn-018`.
 
+### DEC-SCOPE-305 — Training reports pack: student, trainer, course, completion, attendance (`nehn-010`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-010` (§14 L296-308; action 24; `UNVERIFIED` backlog);
+design `docs/superpowers/specs/2026-10-27-nehn-010-training-reports-design.md`. Dependency nehn-009 (`DEC-SCOPE-303`) merged. The client's
+admin report template (CI-02) is still pending: **field lists are provisional**.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** C1 *completed* = a counted seat at progress 100;
+its completion date is the batch end date (no `enrollments.completed_at`, no migration). C2 `pending_consent`/`rejected` are not seats,
+`withdrawn`/`dropped` are dropped; the rest are counted. C3 attendance % = (present + late + excused) / marked, 2 decimals, nothing marked
+→ "—". C4 assignments graded / published, assessments passed (best graded attempt ≥ pass mark) / counted — the certificate criteria,
+computed by one shared set-based calculator (`services/training_progress.py`) that `_certificate_eligibility` now reads too (AC2: same
+%). C5 revenue (course-wise, `financial` class) = paid enrolment-fee payments of the course's seats; ledger manual entries/refunds stay
+on the mgmt-007 dashboard. C6 pending grading = submissions still `submitted`. R1 seven reports on resource `reports.training`:
+`student-courses`, `students-by-trainer`, `course-completion`, `completions`, `attendance` (From/To = class date), `trainers`, `courses`.
+R2 a trainer sees own batches in every report (not only a, b, e); no new grant; it_admin is not seeded `field.financial.view` (revenue is
+super_admin's until granted in the permission matrix). R3 management, recruiter and HR access waits for nehn-011/016/017.
+**Numbering:** no migration; API §12HC; RBAC §2.216.
+- **Feature ID authorized:** `nehn-010`. **Status:** built on `worktree-nehn-010`.
+
 ### DEC-SCOPE-307 — School portal: document statuses, application depth, bulk-upload reconfirmation (`nehn-039`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-039` (§21 L561-577, §26 L804-809, actions 18/19;
