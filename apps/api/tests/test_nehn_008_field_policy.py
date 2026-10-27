@@ -4,7 +4,6 @@ report today)."""
 
 import csv
 import io
-import uuid
 
 import openpyxl
 import pytest
@@ -152,5 +151,5 @@ async def test_an_allow_override_cannot_widen_past_the_report_gate(client, db_se
 
 async def test_an_unknown_class_is_denied(db_session):
     head = await make_head(db_session)
-    out = await field_policy.strip(db_session, head, _payload(), {"fee": f"nonsense{uuid.uuid4().hex[:4]}"})
+    out = await field_policy.strip(db_session, head, _payload(), {"fee": "nonsense"})
     assert [c["key"] for c in out["columns"]] == ["name"]  # deny by default: a class outside the catalogue reaches nobody
