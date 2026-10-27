@@ -1,3 +1,4 @@
+import SchoolDocumentStatusesCard, { loadDocumentStatuses, type SchoolDocumentStatuses } from "@/components/SchoolDocumentStatusesCard";
 import PortalShell from "@/components/PortalShell";
 import SchoolStudentDetailPanel from "@/components/SchoolStudentDetailPanel";
 import { serverApi } from "@/lib/api";
@@ -13,8 +14,9 @@ export default async function SchoolTeacherStudentDetailPage({ params }: { param
   const { id } = await params;
   let user: User;
   let student: Student;
+  let documents: SchoolDocumentStatuses | null;
   try {
-    [user, student] = await Promise.all([serverApi<User>("/api/v1/auth/me"), serverApi<Student>(`/api/v1/school/students/${id}`)]);
+    [user, student, documents] = await Promise.all([serverApi<User>("/api/v1/auth/me"), serverApi<Student>(`/api/v1/school/students/${id}`), loadDocumentStatuses(id)]);
   } catch (e) {
     return (
       <div className="section">
@@ -29,6 +31,8 @@ export default async function SchoolTeacherStudentDetailPage({ params }: { param
   return (
     <PortalShell nav={SCHOOL_NAV.teacher} roleLabel="Teacher" userName={user.full_name}>
       <SchoolStudentDetailPanel student={student} role="school_teacher" backHref="/school/teacher/dashboard" backLabel="Back to your students" />
+      {/* nehn-039: document statuses for this assigned student's overseas applications (statuses only). */}
+      <div className="portal-content"><SchoolDocumentStatusesCard data={documents} /></div>
     </PortalShell>
   );
 }

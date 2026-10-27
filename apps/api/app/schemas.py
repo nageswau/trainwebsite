@@ -14571,3 +14571,26 @@ class UserPermissionOverridesUpdate(BaseModel):
         if len({o.permission for o in overrides}) != len(overrides):
             raise ValueError("Each permission may appear only once")
         return overrides
+
+
+class SchoolDocumentStatusItem(BaseModel):
+    """nehn-039 (D2): one checklist item as a school sees it -- name, required flag and status only."""
+
+    name: str
+    required: bool
+    status: str
+    status_label: str
+
+
+class SchoolDocumentStatusApplication(BaseModel):
+    application_id: UUID
+    university_name: str
+    has_checklist: bool
+    items: list[SchoolDocumentStatusItem]
+
+
+class SchoolDocumentStatusesOut(BaseModel):
+    """nehn-039: `GET /school/students/{student_id}/document-statuses`, applications newest first."""
+
+    student_id: UUID
+    applications: list[SchoolDocumentStatusApplication]
