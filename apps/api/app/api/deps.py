@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.core.rbac import parse_key, user_has_division, user_has_role
 from app.core.security import decode_token
 from app.models import AgentOrgMember, User
+from app.services import student_access
 from app.services.permissions import user_has_grant
 
 # AGN-002 browser QA-02/QA-03: what a refused session is told. Staff learn that their agency deactivated them (they cannot
@@ -96,6 +97,19 @@ def require_permission(resource: str, action: str, detail: str = "Insufficient p
     async def _dependency(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> User:
         if not await user_has_grant(db, user, resource, action):
             raise HTTPException(403, detail)
+        return user
+
+    return _dependency
+
+
+def require_paid_feature(feature: str):
+    """nehn-018 (DEC-SCOPE-304): 403 `payment_required` for an IT student below the feature's payment state; every other role passes
+    to the route's own checks. A dependency, so it answers before the body is validated: the student learns why, not a 422."""
+    if feature not in student_access.FEATURES:
+        raise ValueError(f"Unknown student feature: {feature}")
+
+    async def _dependency(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> User:
+        await student_access.require(db, user, feature)
         return user
 
     return _dependency

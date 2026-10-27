@@ -2345,3 +2345,11 @@ version), `created_by_id` (FK users), timestamps. Partial unique index `uq_certi
 `active_to IS NULL`): one active version per slot. New nullable JSON column `certificates.signatory_snapshot`
 (`[{id, role, display_name, designation}]`, the versions drawn on the PDF); existing certificates keep NULL. Downgrade drops the column
 and the table; stored images stay in storage. The demo seed adds a generated stand-in signature for each empty slot.
+
+## Student access rules (`nehn-018`, `DEC-SCOPE-304`; migration `0211_student_access_rules`)
+
+`student_access_rules` — one row per gated student feature: `feature` (PK; CHECK attendance, assignments, assessments, resources,
+live_classes, questions, feedback, certificates), `min_state` (CHECK registered, enrolled_pending_payment, partially_paid, fully_paid),
+`updated_by_id` → users, timestamps. Seeded `partially_paid` for every feature; a missing row means the same default. The student's
+payment state is not stored: it is derived from `enrollments` and IT `payments` on each request. Grant `it_admin`
+`student_access.configure`. The downgrade drops the table and the grant; no existing row changes.

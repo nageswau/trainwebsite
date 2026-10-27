@@ -53,7 +53,7 @@ def test_catalogue_and_default_grants():
     assert rbac.CATALOGUE["certificates"]["actions"] == ("view", "issue", "override", "configure", "manage")  # nehn-032 adds manage
     assert set(rbac.DEFAULT_GRANTS["coordinator"]) == {"certificates.view", "certificates.issue", "certificates.override"}
     assert {key for key in rbac.DEFAULT_GRANTS["it_admin"] if key.startswith("certificates.")} == {"certificates.configure"}
-    assert "trainer" not in rbac.DEFAULT_GRANTS
+    assert not any(key.startswith("certificates.") for key in rbac.DEFAULT_GRANTS.get("trainer", ()))  # nehn-009 gave trainers reports only
 
 
 # --- AC1: only the coordinator issues ---------------------------------------------------------------------------------------------

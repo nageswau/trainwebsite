@@ -63,6 +63,7 @@ For **Agency Masters** and **Agency Staff**. Verified in the browser on 2026-10-
 - [Agency reports](reports/rpt-001-agency-reports.md)
 - [Export a report to CSV](reports/rpt-002-export-csv.md)
 - [Commission report](reports/rpt-003-commission-report.md)
+- [Report library](reports/rpt-004-report-library.md)
 
 ## Team and staff (Masters)
 - [Invite or deactivate a Master](team/team-001-masters.md)
