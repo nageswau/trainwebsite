@@ -1209,6 +1209,9 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** the student downloads section.
 - **Open questions:** video uploads or links only? Sharing across batches?
 - **Complexity:** medium · **Risk:** low
+- **Status (2026-10-27):** built on `worktree-nehn-027` (`DEC-SCOPE-294`; migration `0202_learning_resource_files`; API §12GR; RBAC
+  §2.205). AC1-AC4 met. Builder's defaults (`NEEDS_CONFIRMATION`): videos stay links (20 MB file limit, with link guidance); no
+  cross-batch sharing (publish per batch); no visibility flag; delete is soft.
 
 #### `nehn-028` — Trainer per-student progress view
 - **Source:** §10 "View student progress" and L232-236 (attendance, assignments, assessments, overall completion).

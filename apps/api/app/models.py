@@ -331,8 +331,19 @@ class LearningResource(Base, TimestampMixin):
     batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("batches.id"), index=True)
     title: Mapped[str] = mapped_column(String(180))
     resource_type: Mapped[str] = mapped_column(String(30))
-    url: Mapped[str] = mapped_column(String(500))
+    # nehn-027 (DEC-SCOPE-294 M1): a resource is a link (`url`) or an uploaded file (`stored_file_id`; filename, size and type live on
+    # the `stored_files` row). `deleted_at` hides it everywhere; `sort_order` orders a batch's list.
+    url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    stored_file_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("stored_files.id", ondelete="SET NULL"), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    __table_args__ = (UniqueConstraint("stored_file_id", name="uq_learning_resources_stored_file"),)
+
+    @property
+    def href(self) -> str | None:
+        """What a reader opens: the link, or the authorised download route for an uploaded file (nehn-027 M7)."""
+        return f"/api/v1/workflows/it/materials/{self.id}/file" if self.stored_file_id else self.url
 
 
 class Certificate(Base, TimestampMixin):

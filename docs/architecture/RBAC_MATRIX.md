@@ -3098,3 +3098,16 @@ New role `coordinator`, division `it`, coarse bundle `{"it:certificates:read"}`.
 
 Certificate issuance is unchanged here (trainer, it_admin); nehn-031 moves it to the coordinator. Pinned by
 `apps/api/tests/test_nehn_030_coordinator.py` and the role-equivalence test in `test_nehn_005_permissions.py` (29 roles).
+
+### 2.205 Learning material files *(added 2026-10-27 — `DEC-SCOPE-294`, nehn-027)*
+
+| Route | Anonymous | it_student (enrolled / other batch) | Trainer (own batch / other) | it_admin | super_admin |
+|---|---|---|---|---|---|
+| `POST /workflows/it/trainer/materials` with `file_id` | 401 | 403 | 201 (own upload only, else 422) / 403 | 201 | 201 |
+| `GET /workflows/it/trainer/materials` | 401 | 403 | own batches only | all | all |
+| `PATCH`/`DELETE /workflows/it/trainer/materials/{id}` | 401 | 403 | 200·204 / 403 | 200·204 | 200·204 |
+| `GET /workflows/it/materials/{id}/file` | 401 | 200 / **404** | 200 / 404 | 200 | 200 |
+
+The download answers 404 (not 403) to anyone outside the batch so another batch's materials are not confirmed to exist. A trainer moved
+off a batch loses manage and download access at once. No new permission key. Pinned by
+`apps/api/tests/test_nehn_027_learning_material_files.py`.

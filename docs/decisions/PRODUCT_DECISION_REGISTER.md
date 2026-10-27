@@ -9955,3 +9955,16 @@ exists in the product). C6 a trainer who is also a coordinator needs two account
 The Certificates section is read only and follows the new `certificates.view` grant (coordinator only by default).
 **Numbering:** migration `0201_coordinator_role`; no new API route (existing `GET /portal/{division}/{role}/{section}`); RBAC §2.204.
 - **Feature ID authorized:** `nehn-030`. **Status:** built on `worktree-nehn-030`.
+
+### DEC-SCOPE-294 — Trainer learning materials: file upload and manage (`nehn-027`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-027` (§10 L223-225, L230; `UNVERIFIED` backlog); design
+`docs/superpowers/specs/2026-10-27-nehn-027-learning-material-files-design.md`. Builds on nehn-003 (`DEC-SCOPE-279`).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** M1 `learning_resources.stored_file_id` points at
+the `stored_files` row instead of copying key/filename/size/MIME. M2 a material is a link or one uploaded file (the caller's own
+`learning_material` upload, not attached elsewhere). M3 **videos and provider recordings stay links** (no video hosting is approved); the
+20 MB policy refuses larger files with guidance to use a link. M5 "visibility" in the backlog has no existing field and is not built. M6
+delete is soft. M7 students download only from batches they are enrolled in (others 404). M11 sharing one material across batches is not
+built (publish per batch). New links must be `http(s)://` because they are now rendered as clickable links.
+**Numbering:** migration `0202_learning_resource_files`; API §12GR; RBAC §2.205.
+- **Feature ID authorized:** `nehn-027`. **Status:** built on `worktree-nehn-027`.

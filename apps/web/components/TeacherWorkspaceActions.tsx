@@ -3,6 +3,7 @@
 import { FormEvent, ReactElement, ReactNode, cloneElement, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import BatchRosterPanel from "./BatchRosterPanel";
+import CourseMaterialsPanel from "./CourseMaterialsPanel";
 import LiveClassesPanel from "./LiveClassesPanel";
 import LiveSessionManagePanel from "./LiveSessionManagePanel";
 import SupportTicketQueuePanel from "./SupportTicketQueuePanel";
@@ -422,15 +423,8 @@ export default function TeacherWorkspaceActions({ section }: { section: string }
     </Card>
   </>;
 
-  if (section === "materials") content = <Card title="Publish course material">
-    <form className="form" onSubmit={event => { const form = new FormData(event.currentTarget); void submit(event, "/api/v1/workflows/it/trainer/materials", "POST", { batch_id: form.get("batch"), title: form.get("title"), resource_type: form.get("type"), url: form.get("url") }, "Material published."); }}>
-      <Field controlId="material-batch" label="Batch"><select name="batch" required><option value="">Select batch</option>{batchOptions}</select></Field>
-      <Field controlId="material-title" label="Title"><input name="title" required /></Field>
-      <Field controlId="material-type" label="Material type"><select name="type"><option value="link">Link</option><option value="document">Document</option><option value="video">Video</option><option value="recording">Provider recording</option><option value="notes">Notes</option></select></Field>
-      <Field controlId="material-url" label="Resource URL"><input name="url" type="url" required /></Field>
-      <button className="btn" disabled={busy || loading}>Publish material</button>
-    </form>
-  </Card>;
+  // nehn-027: publish a file or a link, then edit, reorder and delete the batch's materials.
+  if (section === "materials") content = loading ? <Card title="Publish course material"><p className="muted">Loading your batches…</p></Card> : <CourseMaterialsPanel batches={context.batches} />;
 
   if (section === "live-sessions") content = <>
     <Card title="Schedule live session">
