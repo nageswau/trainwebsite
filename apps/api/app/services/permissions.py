@@ -72,15 +72,19 @@ def _active():
     return or_(UserPermissionOverride.expires_at.is_(None), UserPermissionOverride.expires_at > datetime.now(UTC))
 
 
+def _key(row: UserPermissionOverride) -> str:
+    return f"{row.resource}.{row.action}"
+
+
 def override_out(row: UserPermissionOverride) -> dict:
-    return {"permission": f"{row.resource}.{row.action}", "effect": row.effect, "reason": row.reason, "expires_at": row.expires_at, "created_at": row.created_at}
+    return {"permission": _key(row), "effect": row.effect, "reason": row.reason, "expires_at": row.expires_at, "created_at": row.created_at}
 
 
 async def active_overrides(db: AsyncSession, user_id: UUID) -> list[UserPermissionOverride]:
     """The user's overrides still in force, by key. A row whose key has left the catalogue is not reported."""
     rows = await db.scalars(select(UserPermissionOverride).where(UserPermissionOverride.user_id == user_id, _active()).order_by(UserPermissionOverride.resource, UserPermissionOverride.action))
     keys = set(rbac.all_keys())
-    return [row for row in rows if f"{row.resource}.{row.action}" in keys]
+    return [row for row in rows if _key(row) in keys]
 
 
 async def user_has_grant(db: AsyncSession, user: User, resource: str, action: str) -> bool:
@@ -103,11 +107,10 @@ async def user_grants(db: AsyncSession, user: User) -> list[str]:
     if user.role == SUPER_ADMIN:
         return sorted(keys)
     for row in await active_overrides(db, user.id):
-        key = f"{row.resource}.{row.action}"
         if row.effect == "allow":
-            keys.add(key)
+            keys.add(_key(row))
         else:
-            keys.discard(key)
+            keys.discard(_key(row))
     return sorted(keys)
 
 
@@ -120,7 +123,7 @@ async def override_report(db: AsyncSession) -> list[dict]:
         .order_by(User.full_name, User.id, UserPermissionOverride.resource, UserPermissionOverride.action)
     )
     keys = set(rbac.all_keys())
-    return [{"user_id": user.id, "full_name": user.full_name, "email": user.email, "role": user.role, **override_out(row)} for row, user in rows if f"{row.resource}.{row.action}" in keys]
+    return [{"user_id": user.id, "full_name": user.full_name, "email": user.email, "role": user.role, **override_out(row)} for row, user in rows if _key(row) in keys]
 
 
 async def replace_user_overrides(db: AsyncSession, actor_id: UUID, user: User, items: list) -> None:
@@ -136,7 +139,7 @@ async def replace_user_overrides(db: AsyncSession, actor_id: UUID, user: User, i
             key=lambda e: e["permission"],
         )
 
-    current = {f"{row.resource}.{row.action}": row for row in await active_overrides(db, user.id)}
+    current = {_key(row): row for row in await active_overrides(db, user.id)}
     before = snapshot(override_out(row) for row in current.values())
     after = snapshot(item.model_dump() for item in items)
     if before == after:
