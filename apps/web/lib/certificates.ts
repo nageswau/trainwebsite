@@ -1,4 +1,4 @@
-// nehn-031 (DEC-SCOPE-296): the certificate eligibility returned by `GET /workflows/it/certificates/eligibility/{id}` and the queue.
+// nehn-031 (DEC-SCOPE-297): the certificate eligibility returned by `GET /workflows/it/certificates/eligibility/{id}` and the queue.
 export type CertificateRules = { min_progress_percent: number; min_attendance_percent: number };
 export type CertificateCriteria = {
   eligible: boolean;

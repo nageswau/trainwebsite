@@ -363,7 +363,7 @@ class Certificate(Base, TimestampMixin):
 
 
 class CertificateRule(Base, TimestampMixin):
-    """nehn-031 (DEC-SCOPE-296 W1): the eligibility thresholds, one row for the IT division (tel_settings' keyed-row idiom). The other
+    """nehn-031 (DEC-SCOPE-297 W1): the eligibility thresholds, one row for the IT division (tel_settings' keyed-row idiom). The other
     conditions stay fixed in code."""
 
     __tablename__ = "certificate_rules"
@@ -378,7 +378,7 @@ class CertificateRule(Base, TimestampMixin):
 
 
 class CertificateRequest(Base, TimestampMixin):
-    """nehn-031 (DEC-SCOPE-296 W6): one per enrolment -- the batch trainer's recommendation (or not-ready flag), marked issued when the
+    """nehn-031 (DEC-SCOPE-297 W6): one per enrolment -- the batch trainer's recommendation (or not-ready flag), marked issued when the
     coordinator issues the certificate."""
 
     __tablename__ = "certificate_requests"
@@ -6888,3 +6888,32 @@ class MarketingBudget(Base, TimestampMixin):
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
+# nehn-037 part 4 (DEC-SCOPE-296): admission interviews on an overseas application. Migration 0203 repeats these
+# (test_nehn_037_migration). Labels live in app/api/application_interviews.py and the web client.
+APPLICATION_INTERVIEW_MODES = ("online", "in_person", "phone")
+APPLICATION_INTERVIEW_OUTCOMES = ("passed", "not_successful", "cancelled")
+
+
+class ApplicationInterview(Base, TimestampMixin):
+    """nehn-037 part 4 (DEC-SCOPE-296): one admission interview a university holds for an application -- when, how, where, and its
+    result (NULL = awaiting). Never deleted: a called-off interview is `cancelled` (I5). Moves no stage. Everything on the row is shown
+    to the student (I8); internal notes stay in ccrm-010's student notes."""
+
+    __tablename__ = "application_interviews"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("overseas_applications.id", ondelete="CASCADE"))
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    mode: Mapped[str] = mapped_column(String(20))
+    location: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    student_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    outcome: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    created_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    updated_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint(_in_list("mode", APPLICATION_INTERVIEW_MODES), name="ck_application_interviews_mode"),
+        CheckConstraint(_in("outcome", APPLICATION_INTERVIEW_OUTCOMES), name="ck_application_interviews_outcome"),
+        Index("ix_application_interviews_application", "application_id", "scheduled_at"),
+    )

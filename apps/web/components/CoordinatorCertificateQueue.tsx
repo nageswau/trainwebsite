@@ -19,7 +19,7 @@ function detailMessage(detail: unknown, fallback: string) {
 
 const plural = (count: number) => `${count} certificate${count === 1 ? "" : "s"}`;
 
-// nehn-031 (DEC-ROLE-003, DEC-SCOPE-296): the coordinator's queue -- learners without a certificate who are eligible or carry the
+// nehn-031 (DEC-ROLE-003, DEC-SCOPE-297): the coordinator's queue -- learners without a certificate who are eligible or carry the
 // trainer's recommendation. Issue one or many; a learner who is not eligible needs the override permission and a written reason.
 export default function CoordinatorCertificateQueue() {
   const router = useRouter();

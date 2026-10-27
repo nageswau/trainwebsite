@@ -1469,12 +1469,12 @@ async def grade_assessment_attempt(attempt_id: UUID, payload: AssessmentGradeIn,
 
 CAN_ISSUE_CERTIFICATES = require_permission("certificates", "issue", "You do not have permission to issue certificates")  # nehn-031 W3
 CAN_CONFIGURE_CERTIFICATES = require_permission("certificates", "configure", "You do not have permission to change certificate rules")
-DEFAULT_CERTIFICATE_RULES = {"min_progress_percent": 100, "min_attendance_percent": 75}  # nehn-031 W1: the thresholds before 0203
+DEFAULT_CERTIFICATE_RULES = {"min_progress_percent": 100, "min_attendance_percent": 75}  # nehn-031 W1: the thresholds before 0204
 CERTIFICATE_QUEUE_EXCLUDED = ("pending_consent", "rejected", "withdrawn", "dropped")  # never seated, or left the course
 
 
 async def _certificate_rules(db: AsyncSession) -> dict:
-    """nehn-031 (DEC-SCOPE-296 W1): the global thresholds, read on every evaluation so an admin's change applies to the next one."""
+    """nehn-031 (DEC-SCOPE-297 W1): the global thresholds, read on every evaluation so an admin's change applies to the next one."""
     rule = await db.get(CertificateRule, "it")
     if not rule:
         return dict(DEFAULT_CERTIFICATE_RULES)
@@ -1567,7 +1567,7 @@ async def update_certificate_rules(
     user: User = Depends(CAN_CONFIGURE_CERTIFICATES),
     db: AsyncSession = Depends(get_db),
 ):
-    """nehn-031 (DEC-SCOPE-296 W2): the thresholds; audited with before and after. Issued certificates keep their own snapshot."""
+    """nehn-031 (DEC-SCOPE-297 W2): the thresholds; audited with before and after. Issued certificates keep their own snapshot."""
     rule = await db.get(CertificateRule, "it", with_for_update=True)
     before = await _certificate_rules(db)  # the locked row, from the identity map
     if not rule:
@@ -1582,7 +1582,7 @@ async def update_certificate_rules(
 
 @router.post("/it/certificates/{enrollment_id}/recommend")
 async def recommend_certificate(enrollment_id: UUID, payload: CertificateRecommendIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """nehn-031 (DEC-SCOPE-296 W6): the batch's trainer recommends a learner or flags them not ready; a later call replaces it."""
+    """nehn-031 (DEC-SCOPE-297 W6): the batch's trainer recommends a learner or flags them not ready; a later call replaces it."""
     _require(user, {"trainer"}, "it")
     enrollment = await db.get(Enrollment, enrollment_id)
     if not enrollment:
@@ -1602,7 +1602,7 @@ async def recommend_certificate(enrollment_id: UUID, payload: CertificateRecomme
 
 @router.get("/it/certificates/queue")
 async def certificate_queue(user: User = Depends(CAN_ISSUE_CERTIFICATES), db: AsyncSession = Depends(get_db)):
-    """nehn-031 (DEC-SCOPE-296 W5): enrolments without a certificate that pass the progress threshold or carry a trainer's
+    """nehn-031 (DEC-SCOPE-297 W5): enrolments without a certificate that pass the progress threshold or carry a trainer's
     recommendation, recommended first. Full eligibility is evaluated per row (capped at 200)."""
     rules = await _certificate_rules(db)
     recommender = aliased(User)
@@ -1703,7 +1703,7 @@ async def bulk_issue_certificates(
     user: User = Depends(CAN_ISSUE_CERTIFICATES),
     db: AsyncSession = Depends(get_db),
 ):
-    """nehn-031 (DEC-SCOPE-296 W8): each enrolment is checked and issued on its own; the answer says which were issued and why the
+    """nehn-031 (DEC-SCOPE-297 W8): each enrolment is checked and issued on its own; the answer says which were issued and why the
     others were not."""
     await _check_override(db, user, payload.override)
     issued, failed = [], []

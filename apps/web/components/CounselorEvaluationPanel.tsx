@@ -7,6 +7,7 @@ import ApplicationDetailsPanel from "./ApplicationDetailsPanel";
 import ApplicationDepositPanel from "./ApplicationDepositPanel";
 import ApplicationArrivalPanel from "./ApplicationArrivalPanel";
 import ApplicationEnrollmentPanel from "./ApplicationEnrollmentPanel";
+import ApplicationInterviewsPanel from "./ApplicationInterviewsPanel";
 import ApplicationOffersPanel from "./ApplicationOffersPanel";
 import ApplicationOutcomeForm from "./ApplicationOutcomeForm";
 import ApplicationStatusHistory from "./ApplicationStatusHistory";
@@ -48,6 +49,7 @@ export default function CounselorEvaluationPanel() {
   const [detailsId, setDetailsId] = useState<string | null>(null); // ccrm-013: the card whose application details are open
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null); // ccrm-027: the card whose enrolment panel is open
   const [arrivalId, setArrivalId] = useState<string | null>(null); // ccrm-028: the card whose arrival panel is open
+  const [interviewsId, setInterviewsId] = useState<string | null>(null); // nehn-037: the card whose admission interviews are open
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ id: string; text: string; failed: boolean } | null>(null);
 
@@ -255,6 +257,17 @@ export default function CounselorEvaluationPanel() {
                 </button>
               )}
               {arrivalId === row.id && <ApplicationArrivalPanel applicationId={row.id} onChanged={saved} />}
+              {/* nehn-037: admission interviews, any state (a closed application shows them read-only, I6) */}
+              <button
+                type="button"
+                className="btn ghost small"
+                style={{ display: "block", marginTop: 8 }}
+                aria-expanded={interviewsId === row.id}
+                onClick={() => (setInterviewsId(interviewsId === row.id ? null : row.id), setMessage(null))}
+              >
+                {interviewsId === row.id ? "Hide interviews" : "Interviews"}
+              </button>
+              {interviewsId === row.id && <ApplicationInterviewsPanel applicationId={row.id} readOnly={closed} onChanged={(text) => setMessage({ id: row.id, text, failed: false })} />}
               {/* ccrm-013: details and dates stay editable in any state, like the generic PATCH's non-stage fields (F7) */}
               <button
                 type="button"

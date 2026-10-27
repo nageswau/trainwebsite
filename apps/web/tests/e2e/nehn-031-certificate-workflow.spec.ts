@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Browser, type Page } from "@playwright/test";
 
-// nehn-031 (DEC-ROLE-003, DEC-SCOPE-296): the trainer recommends a learner, the coordinator issues from the queue with an override
+// nehn-031 (DEC-ROLE-003, DEC-SCOPE-297): the trainer recommends a learner, the coordinator issues from the queue with an override
 // reason, the student's certificate appears in the issued list; trainer and IT admin can no longer issue; the IT admin sets thresholds.
 // Each run registers a fresh student and enrols them in the demo trainer's batch, so it can be repeated on one database.
 

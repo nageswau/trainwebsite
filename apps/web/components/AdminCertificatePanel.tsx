@@ -11,7 +11,7 @@ function detailMessage(detail: unknown, fallback: string) {
   return fallback;
 }
 
-// ADM-006 gave the admin a form to issue certificates. nehn-031 (DEC-ROLE-003, DEC-SCOPE-296) moved issuance to the Coordinator, so the
+// ADM-006 gave the admin a form to issue certificates. nehn-031 (DEC-ROLE-003, DEC-SCOPE-297) moved issuance to the Coordinator, so the
 // admin's Certificates page now sets the eligibility thresholds instead (`certificates.configure`); the directory below it is unchanged.
 export default function AdminCertificatePanel() {
   const [rules, setRules] = useState<CertificateRules | null>(null);
