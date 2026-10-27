@@ -9955,3 +9955,16 @@ exists in the product). C6 a trainer who is also a coordinator needs two account
 The Certificates section is read only and follows the new `certificates.view` grant (coordinator only by default).
 **Numbering:** migration `0201_coordinator_role`; no new API route (existing `GET /portal/{division}/{role}/{section}`); RBAC §2.204.
 - **Feature ID authorized:** `nehn-030`. **Status:** built on `worktree-nehn-030`.
+
+### DEC-SCOPE-295 — Admin permission-matrix screen and permission-driven navigation (`nehn-006`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-006` (§5 L122-128, L126; `UNVERIFIED` backlog); design
+`docs/superpowers/specs/2026-10-27-nehn-006-permission-matrix-ui-design.md`. Dependency nehn-005 (`DEC-SCOPE-281`) merged.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** M1 per-role matrix only (per-user is nehn-007).
+M2 non-applicable actions shown as a "—" cell, not clickable. M3 the catalogue response lists the roles. M4 one row per catalogue
+resource, in catalogue order. M5 last-write-wins with nehn-005's 409 on a race. M6 one audit row per save listing every changed cell
+(nehn-005's contract, not one row per cell). M7 super_admin shown read-only. M8 the "403 page" is the existing access-unavailable card.
+M9 while the permission set is unknown (loading, failed lookup) the nav and controls render as before; the API refuses either way.
+M10 the client keeps the last set and re-asks on each portal page. The admin portal's Payments section now follows `payments.view`.
+**Numbering:** no migration; API §12GS (additive); RBAC §2.206.
+- **Feature ID authorized:** `nehn-006`. **Status:** built on `worktree-nehn-006`.

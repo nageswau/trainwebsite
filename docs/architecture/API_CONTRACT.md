@@ -4256,3 +4256,15 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   presigned URL in S3 mode). 401 anonymous; 403 not the submitter / batch trainer / it_admin / super_admin; 404 unknown submission or a
   file not attached to it.
 - `GET /portal/it/student/{assignments|projects}` — rows gain `submission_type` (not a table column).
+
+## 12GS. Permission-matrix screen (nehn-006) — addendum, 2026-10-27
+
+`DEC-SCOPE-295`. No migration, no new route.
+
+- `GET /admin/permissions/catalogue` — the body gains `roles: string[]` (every role key, `rbac.ROLES` order), which the matrix's role
+  picker offers. Existing fields and status codes unchanged.
+- `GET /portal/{it|overseas}/admin/payments` — now needs `payments.view` (as `GET /admin/payments` does since nehn-005): without it
+  **403** `"You do not have permission to view payments"`. Day one is unchanged (both division admins hold the key by seed; super_admin
+  holds every key).
+- The web app reads `GET /auth/me/permissions` to hide sidebar items (`<resource>.view`), the payment forms (`payments.add`,
+  `discounts.add`) and the telecaller report export (`reports.telecaller.download`). Hidden UI is not the control; the routes refuse.

@@ -410,6 +410,8 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** all navigation; existing e2e specs that click sidebar links; role-literal checks left in components drifting from grants.
 - **Open questions:** matrix per role only, or also per user (nehn-007)? Should non-applicable actions be shown?
 - **Complexity:** large · **Risk:** medium
+- **Status (2026-10-27):** built on `worktree-nehn-006` (`DEC-SCOPE-295`; API §12GS; RBAC §2.206; no migration). Open questions took the
+  builder's defaults: per role only; non-applicable actions shown as "—".
 
 #### `nehn-007` — Per-user permission overrides
 - **Source:** §5 L92 "control individual permissions for individual users or roles"; `CLIENT_QUESTIONS.md` D-09 §3 (**open**).

@@ -3098,3 +3098,14 @@ New role `coordinator`, division `it`, coarse bundle `{"it:certificates:read"}`.
 
 Certificate issuance is unchanged here (trainer, it_admin); nehn-031 moves it to the coordinator. Pinned by
 `apps/api/tests/test_nehn_030_coordinator.py` and the role-equivalence test in `test_nehn_005_permissions.py` (29 roles).
+
+### 2.206 Permission-matrix screen *(added 2026-10-27 — `DEC-SCOPE-295`, nehn-006)*
+
+| Surface | Who | Rule |
+|---|---|---|
+| `/admin/permissions` | super_admin | Reads the catalogue and edits any role but super_admin (read-only, holds everything). Any other role gets the access card; the API answers 403. |
+| `/portal/{it,overseas}/admin/payments` | it_admin, overseas_admin, super_admin | Needs `payments.view` (new); the division scope is unchanged. |
+| Sidebar: Payments, Telecaller Reports (division admins), Reports (telecaller manager), Certificates (coordinator) | the role | Shown while the role holds `<resource>.view`; the API refuses the page without it. |
+| "Create payment due" / "Apply discount" forms; telecaller report "Download CSV" | the role | Rendered only with `payments.add` / `discounts.add` / `reports.telecaller.download`. |
+
+No grant logic runs in the web app beyond "is this key in my set"; nehn-005 remains the enforcement point.
