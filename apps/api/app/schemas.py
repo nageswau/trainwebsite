@@ -37,6 +37,8 @@ from app.document_checklists import ITEM_STATUSES as CHECKLIST_ITEM_STATUSES
 from app.document_checklists import MAX_ITEMS as CHECKLIST_MAX_ITEMS
 from app.models import (
     AGENT_COMMISSION_CURRENCIES,
+    APPLICATION_INTERVIEW_MODES,
+    APPLICATION_INTERVIEW_OUTCOMES,
     APPLICATION_STATUSES,
     APPOINTMENT_MODES,
     BDM_ACTIVITY_DIRECTIONAL,
@@ -14414,3 +14416,45 @@ class RolePermissionsUpdate(BaseModel):
         for key in keys:
             parse_permission_key(key)  # ValueError names the unknown key
         return keys
+
+
+def _interview_time(value: datetime | None) -> datetime | None:
+    """nehn-037 I9: an instant with an offset, inside 2000-2100."""
+    if value is not None and not 2000 <= value.astimezone(UTC).year <= 2100:
+        raise ValueError("must be between 2000 and 2100")
+    return value
+
+
+InterviewTime = Annotated[AwareDatetime, AfterValidator(_interview_time)]
+InterviewLocation = Annotated[str | None, Field(max_length=300), AfterValidator(lambda value: clean_free_text(value, 300))]
+InterviewNote = Annotated[str | None, Field(max_length=500), AfterValidator(lambda value: clean_free_text(value, 500))]
+
+
+class ApplicationInterviewCreate(BaseModel):
+    """nehn-037 part 4 (DEC-SCOPE-296): a new admission interview. The outcome-after-the-date rule (I3) needs the clock, so the route
+    checks it (app/api/application_interviews.py `problem`)."""
+
+    model_config = {"extra": "forbid"}
+    scheduled_at: InterviewTime
+    mode: Literal[APPLICATION_INTERVIEW_MODES]
+    location: InterviewLocation = None
+    student_note: InterviewNote = None
+    outcome: Literal[APPLICATION_INTERVIEW_OUTCOMES] | None = None
+
+
+class ApplicationInterviewUpdate(BaseModel):
+    """nehn-037 part 4: omitted = unchanged, null clears (the time and the mode cannot be cleared)."""
+
+    model_config = {"extra": "forbid"}
+    scheduled_at: InterviewTime | None = None
+    mode: Literal[APPLICATION_INTERVIEW_MODES] | None = None
+    location: InterviewLocation = None
+    student_note: InterviewNote = None
+    outcome: Literal[APPLICATION_INTERVIEW_OUTCOMES] | None = None
+
+    @field_validator("scheduled_at", "mode")
+    @classmethod
+    def _required(cls, value):
+        if value is None:
+            raise PydanticCustomError("required", "This field cannot be cleared")
+        return value
