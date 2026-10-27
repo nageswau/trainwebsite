@@ -4368,9 +4368,20 @@ other role, checked before the target).
   the caller's effective set: (role grants + active allows) - active denies. Response shapes unchanged; with no overrides every answer is
   as before.
 
-## 12GX. CRM report gaps (nehn-013) — addendum, 2026-10-27
+## 12GX. Field (column) policy (nehn-008) — addendum, 2026-10-27
 
-`DEC-SCOPE-300`. No migration. Additive only: new `kind` values and one query parameter on the existing §12AC routes
+`DEC-SCOPE-300`; migration `0207_field_financial_grant`.
+
+- New catalogue key `field.financial.view` ("Financial columns"), listed by `GET /admin/permissions/catalogue`, editable through
+  `PUT /admin/roles/{role}/permissions` and the per-user overrides (§12GW), reported by `GET /auth/me/permissions`.
+- Changed: `GET /partnership/reports/{kind}`, `.csv` and `.xlsx` — the `commission_expected` / `commission_received` columns (Performance)
+  are returned only when the caller holds `field.financial.view` (as well as the U2 rule, unchanged). A denied column is absent from
+  `columns`, every item and `totals`, in the JSON and in both files alike. Routes, statuses and every other column are unchanged; with the
+  seed every reader gets the same columns as before.
+
+## 12GY. CRM report gaps (nehn-013) — addendum, 2026-10-27
+
+`DEC-SCOPE-301`. No migration. Additive only: new `kind` values and one query parameter on the existing §12AC routes
 (`GET /telecaller/reports/{kind}`, `.csv`, `.xlsx`); every existing kind keeps its columns in order.
 
 - Funnel kinds `source`, `product`, `campaign` append `lost` ("Lost") and `conversion_rate` ("Conversion rate (%)", a number with 1

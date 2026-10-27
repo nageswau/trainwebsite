@@ -488,6 +488,10 @@ Risk is the risk of regression or of a wrong outcome.
 - **Open questions:**
   - Is "Address" a stored field for IT students today? (`NEEDS_CONFIRMATION`: verify the profile JSON keys.)
   - The exact field list per role awaits the client's report template (§26 Reports).
+- **Status (2026-10-27):** built on `worktree-nehn-008` (`DEC-SCOPE-300`; API §12GX; RBAC §2.211; migration
+  `0207_field_financial_grant`). `services/field_policy.strip` + catalogue key `field.financial.view`; piloted on the partnership
+  Performance report's commission columns (the only financial columns in any report today), seeded to today's U2 readers so nothing
+  changes on day one. Recruiter and HR roles hold no financial grant; their student reports (nehn-016/017) must tag their columns.
 - **Complexity:** medium · **Risk:** medium
 
 ### C. Reporting (§14, §15)
@@ -644,7 +648,7 @@ Risk is the risk of regression or of a wrong outcome.
   telecallers and counselors do not; one row per lead; fixed admin column set until nehn-008.
 
 #### `nehn-013` — CRM report gaps: lost, conversion rate, counselor-wise, date-wise, follow-up status, pending follow-ups
-**Status (2026-10-27): built** on `worktree-nehn-013` (`DEC-SCOPE-300`, API §12GX, RBAC §2.211, no migration). The definitions (R1–R10) are builder's defaults, `NEEDS_CONFIRMATION` until the client CRM workflow document (CI-01) arrives.
+**Status (2026-10-27): built** on `worktree-nehn-013` (`DEC-SCOPE-301`, API §12GY, RBAC §2.212, no migration). The definitions (R1–R10) are builder's defaults, `NEEDS_CONFIRMATION` until the client CRM workflow document (CI-01) arrives.
 - **Source:** §16 "CRM Reporting" (L405-419); §14 "Converted leads", "Contacted leads" (L304-305).
 - **Business requirement:** CRM reports for new/contacted/qualified/converted/lost, counselor-, source-, course- and date-wise, conversion rates, follow-up status and pending follow-ups.
 - **Existing behavior:**

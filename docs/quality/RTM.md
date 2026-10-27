@@ -1347,7 +1347,7 @@ half.
 
 | ID | Requirement / acceptance | Evidence |
 |---|---|---|
-| `nehn-013` | Requirement: §16 L405-419, §14 L304-305 → `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-013` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-300` → design `docs/superpowers/specs/2026-10-27-nehn-013-crm-report-gaps-design.md`; `API_CONTRACT.md` §12GX, `RBAC_MATRIX.md` §2.211; no migration | R1–R10 defaults `NEEDS_CONFIRMATION` |
+| `nehn-013` | Requirement: §16 L405-419, §14 L304-305 → `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-013` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-301` → design `docs/superpowers/specs/2026-10-27-nehn-013-crm-report-gaps-design.md`; `API_CONTRACT.md` §12GY, `RBAC_MATRIX.md` §2.212; no migration | R1–R10 defaults `NEEDS_CONFIRMATION` |
 | `nehn-013-AC1` | Funnel rows include Lost and Conversion rate, matching a hand-computed fixture; Total recomputed | `apps/api/tests/test_nehn_013_crm_reports.py::test_funnel_reports_append_lost_and_conversion_rate`, `::test_the_total_rate_is_recomputed_not_summed`, `::test_the_new_reports_export_as_csv_with_the_screen_columns` |
 | `nehn-013-AC2` | Counselor report groups by `owner_id` | `::test_the_counselor_report_groups_by_lead_owner`; e2e `nehn-013-crm-reports.spec.ts` |
 | `nehn-013-AC3` | Date report supports day / week / month | `::test_the_date_report_groups_by_ist_day_week_or_month_in_calendar_order`, `::test_the_date_report_defaults_to_days_and_refuses_an_unknown_grouping`; `nehn013.crmReports.test.tsx`; e2e |

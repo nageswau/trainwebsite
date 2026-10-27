@@ -25,7 +25,7 @@ export const REPORT_TABS: { key: ReportKind; label: string }[] = [
   { key: "source", label: "Lead Source" }, { key: "product", label: "Course" }, { key: "telecaller", label: "Telecaller" },
   { key: "handover", label: "Counselor Handover" }, { key: "campaign", label: "Campaign" },
   { key: "lost", label: "Lost Reasons" }, // ccrm-006 (D9)
-  // nehn-013 (DEC-SCOPE-300)
+  // nehn-013 (DEC-SCOPE-301)
   { key: "counselor", label: "Counselor" }, { key: "date", label: "Date-wise" },
   { key: "follow_ups", label: "Follow-up Status" }, { key: "pending_follow_ups", label: "Pending Follow-ups" },
 ];

@@ -1,4 +1,4 @@
-"""nehn-013 (DEC-SCOPE-300, spec docs/superpowers/specs/2026-10-27-nehn-013-crm-report-gaps-design.md): the CRM report gaps -- Lost and
+"""nehn-013 (DEC-SCOPE-301, spec docs/superpowers/specs/2026-10-27-nehn-013-crm-report-gaps-design.md): the CRM report gaps -- Lost and
 Conversion rate on every funnel report, and the counselor, date-wise, follow-up status and pending follow-up reports. Figures are
 hand-computed against fixtures isolated by a fresh campaign / manager (the shared test database is never truncated)."""
 

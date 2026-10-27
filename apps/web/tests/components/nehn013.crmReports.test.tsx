@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import TelecallerReportView from "@/components/TelecallerReportView";
 import { reportKind, reportParams, reportQuery, tabHref, type TelecallerReport } from "@/lib/telecallerReports";
 
-// nehn-013 (DEC-SCOPE-300): the counselor, date-wise, follow-up status and pending follow-up reports on the telecaller reports page.
+// nehn-013 (DEC-SCOPE-301): the counselor, date-wise, follow-up status and pending follow-up reports on the telecaller reports page.
 afterEach(cleanup);
 
 const OPTIONS = { teams: ["it"], sources: [], products: [], campaigns: [] };
