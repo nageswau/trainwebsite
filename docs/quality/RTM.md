@@ -1372,3 +1372,8 @@ half.
 | `nehn-018-AC2` | After the webhook marks the payment paid, access follows without signing in again | `::test_webhook_payment_unlocks_without_signing_in_again`; e2e (discount to 0) |
 | `nehn-018-AC3` | A partially paid student gets exactly what the policy says | `::test_state`, `::test_admin_change_applies_immediately_and_is_audited` |
 | `nehn-018-AC4` | An admin's policy change takes effect immediately | `::test_admin_change_applies_immediately_and_is_audited`, `::test_policy_validation`, `::test_only_the_grant_reads_or_changes_the_policy`; e2e |
+| `nehn-028` | Requirement: PDF §10 "View student progress", L232-236 → backlog `nehn-028` → `DEC-SCOPE-305` → design `docs/superpowers/specs/2026-10-27-nehn-028-trainer-progress-view-design.md` → API §12HC → RBAC §2.216 | — |
+| `nehn-028-AC1` | Each student's attendance % and eligibility match the eligibility endpoint | `test_nehn_028_batch_progress.py::test_rows_match_the_eligibility_endpoint`, `::test_pending_fee_is_a_reason_without_the_amount`; certificate suites (nehn-031, adm-006, stu-007, nehn-032) on the shared calculator; e2e `nehn-028-trainer-progress.spec.ts` |
+| `nehn-028-AC2` | Students below the attendance threshold are flagged | `::test_below_the_threshold_is_at_risk`, `::test_no_sessions_yet_is_not_at_risk`; `nehn028TrainerProgress.test.tsx`; e2e |
+| `nehn-028-AC3` | The subtitle matches what is shown | `::test_student_progress_section_subtitle`; vitest header-only section; e2e |
+| `nehn-028-AC4` | Another trainer's batch is refused | `::test_another_trainers_batch_is_403`, `::test_unknown_batch_is_404`, `::test_other_roles_are_refused`, `::test_signed_out_is_401`; e2e (student 403) |

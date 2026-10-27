@@ -1266,6 +1266,10 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** the certificate eligibility refactor.
 - **Open questions:** should progress % be computed automatically from the criteria?
 - **Complexity:** small · **Risk:** low
+- **Status (2026-10-27):** built on `worktree-nehn-028` (`DEC-SCOPE-305`; no migration; API §12HC; RBAC §2.216). AC1-AC4 met. The
+  shared calculator is `app/services/training_progress.py` (eligibility, the coordinator queue and this view; nehn-010 should reuse it).
+  Builder's defaults (`NEEDS_CONFIRMATION`): progress % stays manual; dropped/withdrawn hidden by default, greyed on request; no fee
+  amount for trainers; no IT-admin page yet (the API admits it_admin).
 
 #### `nehn-029` — Live class reschedule and cancel
 - **Source:** §10 "Schedule/manage live classes" (L217).

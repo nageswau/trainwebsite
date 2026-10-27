@@ -3217,3 +3217,12 @@ Pinned by `apps/api/tests/test_nehn_009_reports.py` and `apps/web/tests/e2e/nehn
 
 A new entitlement layer under the role check: the payment check runs after the route's role and ownership checks, so another
 student's or batch's record keeps its existing 403/404. Pinned by `apps/api/tests/test_nehn_018_student_access.py`.
+
+### 2.216 Trainer batch progress *(added 2026-10-27 — `DEC-SCOPE-305`, nehn-028)*
+
+| Route | Anonymous | super_admin | it_admin | trainer | other roles |
+|---|---|---|---|---|---|
+| `GET /workflows/it/batches/{id}/progress` | 401 | 200 | 200 (any IT batch) | 200 own batch, 403 another's | 403 |
+
+Read-only; the same `_require({"trainer", "it_admin"}, "it")` rule as the other trainer routes plus the `Batch.trainer_id` check. A
+trainer gets `fee_clear`, never the pending amount. Pinned by `apps/api/tests/test_nehn_028_batch_progress.py`.

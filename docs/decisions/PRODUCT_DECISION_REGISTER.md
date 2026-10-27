@@ -10138,3 +10138,21 @@ policy (`student_access.configure`), applied on the next request, audited. P6 a 
 told to enrol. P7 overseas students are not gated. P8 locked sections stay in the sidebar with a "Locked" badge.
 **Numbering:** migration `0211_student_access_rules`; API §12HB; RBAC §2.215.
 - **Feature ID authorized:** `nehn-018`. **Status:** built on `worktree-nehn-018`.
+
+### DEC-SCOPE-305 — Trainer per-student progress view (`nehn-028`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-028` (§10 "View student progress", L232-236; `UNVERIFIED`
+backlog); design `docs/superpowers/specs/2026-10-27-nehn-028-trainer-progress-view-design.md`. Soft dependency nehn-010 (shared
+calculator) not built; the calculator lands here and nehn-010 reuses it.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** V1 progress % stays manual (the existing
+"Update learner progress" form) -- computing it from the criteria is still open. V2 a trainer reads their own batches only (another's
+**403**, unknown **404**); it_admin and super_admin any IT batch; there is no IT-admin page yet. V3 rows are every enrolment except
+`pending_consent`/`rejected`; dropped and withdrawn are hidden by default and shown greyed on request. V4 attendance % is the
+certificate one (present + late + excused over recorded sessions); with no session recorded it shows "—" and flags nobody. V5 at risk
+= at least one session and attendance below the admin's `min_attendance_percent` (nehn-031, default 75). V6 assignments are shown as
+submitted / graded / total published. V7 the trainer sees the fee only as cleared or pending, never the amount. V8 the reasons are
+worded server-side from the same criteria. V9 `_certificate_eligibility`, the coordinator queue and this view share
+`app/services/training_progress.py` (one grouped query per factor; the queue's per-row loop is gone); the criteria dict gains an
+additive `attendance_sessions`.
+**Numbering:** no migration; API §12HC; RBAC §2.216.
+- **Feature ID authorized:** `nehn-028`. **Status:** built on `worktree-nehn-028`.
