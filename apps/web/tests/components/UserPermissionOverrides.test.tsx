@@ -68,7 +68,8 @@ describe("nehn-007 UserPermissionOverrides", () => {
   });
 
   it("searches users on the server and links each result", async () => {
-    const fetchMock = api({ users: [{ id: USER_ID, full_name: "Hana Rao", email: "hana@example.local", role: "telecaller_manager" }] });
+    // The real /admin/users row carries `name` (not `full_name`) -- QA-01.
+    const fetchMock = api({ users: [{ id: USER_ID, name: "Hana Rao", email: "hana@example.local", role: "telecaller_manager" }] });
     vi.stubGlobal("fetch", fetchMock);
     render(<UserPermissionOverrides catalogue={CATALOGUE} userId={null} />);
     fireEvent.change(screen.getByLabelText("Find a user"), { target: { value: "hana" } });
@@ -76,6 +77,27 @@ describe("nehn-007 UserPermissionOverrides", () => {
     const results = await screen.findByRole("list", { name: "Matching users" });
     expect(within(results).getByRole("link", { name: /Hana Rao/ })).toHaveAttribute("href", `/admin/permissions?tab=user&user=${USER_ID}`);
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/admin/users?q=hana", expect.anything());
+  });
+
+  it("keeps the newest search when an older one answers last (QA-02)", async () => {
+    let releaseOld: (r: Response) => void = () => {};
+    const fetchMock = vi.fn((url: string) => {
+      if (url.endsWith("/admin/permissions/overrides")) return Promise.resolve(new Response("[]"));
+      if (url.endsWith("q=old")) return new Promise<Response>((resolve) => { releaseOld = resolve; });
+      return Promise.resolve(new Response(JSON.stringify([{ id: USER_ID, name: "Hana Rao", email: "hana@example.local", role: "hr_team" }])));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<UserPermissionOverrides catalogue={CATALOGUE} userId={null} />);
+    const input = screen.getByLabelText("Find a user");
+    fireEvent.change(input, { target: { value: "old" } });
+    fireEvent.submit(input.closest("form")!);
+    fireEvent.change(input, { target: { value: "hana" } });
+    fireEvent.submit(input.closest("form")!);
+    await screen.findByRole("link", { name: /Hana Rao/ });
+    releaseOld(new Response("[]"));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.getByRole("link", { name: /Hana Rao/ })).toBeInTheDocument();
+    expect(screen.queryByText("No user matches.")).toBeNull();
   });
 
   it("shows where each permission comes from", async () => {

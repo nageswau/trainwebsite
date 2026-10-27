@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { NOT_COMPLETED, sendJson } from "@/lib/apiErrors";
 import { roleLabel } from "@/lib/managementDiscussions";
@@ -11,6 +11,8 @@ import type { PermissionCatalogue } from "./PermissionMatrix";
 type Effect = "" | "allow" | "deny";
 type Override = { permission: string; effect: "allow" | "deny"; reason: string; expires_at: string | null };
 type Person = { id: string; full_name: string; email: string; role: string };
+// A `GET /admin/users` row, which names the person `name`.
+type SearchHit = { id: string; name: string; email: string; role: string };
 type Loaded = { user: Person; editable: boolean; role_permissions: string[]; overrides: Override[] };
 type ReportRow = Override & { user_id: string; full_name: string; role: string };
 type Draft = Record<string, { effect: Effect; reason: string; expires: string }>;
@@ -24,6 +26,8 @@ const title = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const userHref = (id: string) => `/admin/permissions?tab=user&user=${encodeURIComponent(id)}`;
 const userPath = (id: string) => `/api/v1/admin/users/${encodeURIComponent(id)}/permissions`;
+// QA-04: links here would otherwise read as plain text (the global `a` style inherits colour, no underline).
+const LINK = { color: "var(--blue)", fontWeight: 700 } as const;
 const pad = (n: number) => String(n).padStart(2, "0");
 // The expiry is picked as a day; it lasts to the end of that local day.
 const toDay = (iso: string | null) => (iso ? ((d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`)(new Date(iso)) : "");
@@ -45,7 +49,8 @@ export default function UserPermissionOverrides({ catalogue, userId }: { catalog
   const [report, setReport] = useState<ReportRow[] | null>(null);
   const [reportError, setReportError] = useState(false);
   const [term, setTerm] = useState("");
-  const [results, setResults] = useState<Person[] | null>(null);
+  const [results, setResults] = useState<SearchHit[] | null>(null);
+  const latestSearch = useRef(0);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState(false);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -96,15 +101,21 @@ export default function UserPermissionOverrides({ catalogue, userId }: { catalog
     event.preventDefault();
     const q = term.trim();
     if (!q) return;
+    // Only the newest search may show its answer; an older one that answers late is dropped (QA-02).
+    const ticket = ++latestSearch.current;
     setSearching(true);
     setSearchError(false);
+    let hits: SearchHit[] | null = null;
     try {
       const response = await fetch(`/api/v1/admin/users?q=${encodeURIComponent(q)}`, { cache: "no-store" });
       if (!response.ok) throw new Error(String(response.status));
-      setResults(((await response.json()) as Person[]).slice(0, 20));
+      hits = ((await response.json()) as SearchHit[]).slice(0, 20);
     } catch {
-      setSearchError(true);
+      hits = null;
     }
+    if (ticket !== latestSearch.current) return;
+    if (hits) setResults(hits);
+    setSearchError(!hits);
     setSearching(false);
   }
 
@@ -147,7 +158,7 @@ export default function UserPermissionOverrides({ catalogue, userId }: { catalog
   return (
     <>
       <div className="card">
-        <h3>Find a user</h3>
+        <h3>Choose a user</h3>
         <form onSubmit={search} style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 8 }}>
           <div className="field" style={{ flex: "1 1 220px", maxWidth: 360, marginBottom: 0 }}>
             <label htmlFor="override-user-search">Find a user</label>
@@ -161,7 +172,7 @@ export default function UserPermissionOverrides({ catalogue, userId }: { catalog
         ) : (
           <ul aria-label="Matching users" style={{ margin: "12px 0 0", paddingLeft: 18 }}>
             {results.map((person) => (
-              <li key={person.id}><Link href={userHref(person.id)}>{person.full_name}</Link> <span className="muted">· {person.email} · {roleLabel(person.role)}</span></li>
+              <li key={person.id}><Link href={userHref(person.id)} style={LINK}>{person.name}</Link> <span className="muted">· {person.email} · {roleLabel(person.role)}</span></li>
             ))}
           </ul>
         ))}
@@ -256,7 +267,7 @@ export default function UserPermissionOverrides({ catalogue, userId }: { catalog
               <tbody>
                 {report.map((row) => (
                   <tr key={`${row.user_id}-${row.permission}`}>
-                    <td><Link href={userHref(row.user_id)}>{row.full_name}</Link></td>
+                    <td><Link href={userHref(row.user_id)} style={LINK}>{row.full_name}</Link></td>
                     <td>{roleLabel(row.role)}</td>
                     <td>{labelOf(row.permission)}</td>
                     <td>{title(row.effect)}</td>
