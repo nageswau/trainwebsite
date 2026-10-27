@@ -65,5 +65,7 @@ const main=data?.locked?<LockedSection data={data} lock={data.locked}/>:agentApp
 :key==="overseas/student"&&section==="dashboard"?<PortalSection data={data} lead={<OverseasConsentPrompt/>}/>
 // nehn-034 (DEC-SCOPE-286 C5): the payload is header-only (it gates the page); the country cards are the page.
 :key==="overseas/student"&&section==="explore-countries"?<StudentCountryExplorer data={data}/>
+// nehn-028 (DEC-SCOPE-308): header-only -- the progress table is the first card of the trainer actions below.
+:key==="it/trainer"&&section==="student-progress"?<PortalSection data={data} table={false}/>
 :<PortalSection data={data}/>;
 return <PortalShell nav={key==="it/student"?withLocks(nav,access):agent?withBadge(agentNavFor(nav,user.agent_member_role,user.agent_permissions),AGENT_NOTIFICATIONS_HREF,user.role==="agent"?unread:null):nav} roleLabel={agent&&user.agent_member_role==="staff"?"Agency Staff":labels[key]||role} userName={user.full_name} studentCode={role==="student"?user.student_code:null}>{/* AGN-003 browser QA-07: Back/Forward re-asks the server, so revoked permissions apply. */}{agent&&<RefreshOnHistoryNav/>}{main}{teacherWorkspace?<TeacherWorkspaceActions section={section}/>:agentNotifications||data?.locked?null:<WorkflowPanel user={user} section={section} liveClassesLock={featureLock(access,"live_classes")}/>}</PortalShell>}

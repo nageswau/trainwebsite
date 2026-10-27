@@ -17,6 +17,8 @@ const item = (id: string, student: string, eligible: boolean, recommendation: un
   enrollment_id: id, student, batch: "Batch A", program: "Java Full Stack", eligible, criteria: { ...CRITERIA, eligible }, recommendation,
 });
 const json = (body: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(body), { status }));
+// nehn-028: the Student progress page also reads the batch progress table.
+const PROGRESS = { "GET /api/v1/workflows/it/batches/b1/progress": () => json({ rules: RULES, students: [] }) };
 
 type Routes = Record<string, (init?: RequestInit) => Promise<Response>>;
 function stubFetch(routes: Routes) {
@@ -38,6 +40,7 @@ describe("trainer Recommend for certificate card", () => {
   async function renderCard() {
     const mock = stubFetch({
       "GET /api/v1/workflows/it/trainer/context": () => json(CONTEXT),
+      ...PROGRESS,
       [`GET ${BASE}/eligibility/e1`]: () => json({ ...CRITERIA, eligible: false }),
       [`POST ${BASE}/e1/recommend`]: () => json({ enrollment_id: "e1", status: "recommended", comment: null }),
     });
@@ -70,6 +73,7 @@ describe("trainer Recommend for certificate card", () => {
   it("says when the learner already holds a certificate and does not offer to send (QA31-04)", async () => {
     stubFetch({
       "GET /api/v1/workflows/it/trainer/context": () => json(CONTEXT),
+      ...PROGRESS,
       [`GET ${BASE}/eligibility/e1`]: () => json({ ...CRITERIA, eligible: true, certificate_issued: true }),
     });
     render(<TeacherWorkspaceActions section="student-progress" />);

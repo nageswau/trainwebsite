@@ -99,3 +99,28 @@ async def seat(db: AsyncSession, student_id: UUID, batch_id: UUID) -> dict:
         )
     ).one()
     return dict(row._mapping)
+
+
+async def seats(db: AsyncSession, batch_id: UUID, student_ids: list[UUID]) -> dict[UUID, dict]:
+    """nehn-028 (DEC-SCOPE-308): `seat()` for every listed student of one batch, from the same builders in five queries whatever the
+    class size, plus `attendance_marked` (sessions marked) so a seat with none can show "—"."""
+    if not student_ids:
+        return {}
+    att, done, won = attendance(batch_id=batch_id), graded(batch_id=batch_id), passed(batch_id=batch_id)
+    tasks = await db.scalar(select(assignments(batch_id).c.total)) or 0
+    tests = await db.scalar(select(assessments(batch_id).c.total)) or 0
+    marks = {
+        student_id: (marked, pct)
+        for student_id, marked, pct in await db.execute(select(att.c.student_id, att.c.marked, percent(att.c.attended, att.c.marked)).where(att.c.student_id.in_(student_ids)))
+    }
+    graded_by = dict((await db.execute(select(done.c.student_id, done.c.graded).where(done.c.student_id.in_(student_ids)))).all())
+    passed_by = dict((await db.execute(select(won.c.student_id, won.c.passed).where(won.c.student_id.in_(student_ids)))).all())
+    result = {}
+    for student_id in student_ids:
+        marked, pct = marks.get(student_id, (0, None))
+        result[student_id] = {
+            "attendance_percent": pct, "attendance_marked": marked,
+            "assignments_graded": graded_by.get(student_id, 0), "assignments_total": tasks,
+            "assessments_passed": passed_by.get(student_id, 0), "assessments_total": tests,
+        }
+    return result

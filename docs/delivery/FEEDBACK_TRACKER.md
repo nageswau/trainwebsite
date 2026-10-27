@@ -50,6 +50,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-040 Student ID | Every student, including agency students without a login, has a Student ID that admin and agency screens can search. No Agent ID, as decided on 15 Sep 2026. |
 | nehn-012 Lead list export | Lead lists filter by creation date (India time) and counselor. Admins and telecaller managers download the filtered list as Excel, with contact details; telecallers and counselors do not. One row per lead. Each download is recorded and limited to 30 per 10 minutes. |
 | nehn-018 Payment access | Before any payment a student sees course, fees and payment; attendance, assignments, examinations, materials, live classes, questions, feedback and certificates show as locked with "Complete payment to unlock". The first payment (including EMI instalment 1) opens them all. The IT admin can change this per feature on the Payments page. An overdue instalment does not lock a student again. |
+| nehn-028 Trainer progress | The Student Progress page shows, per batch, each student's attendance (below 75% flagged "At risk"; "—" before any session), assignments submitted/graded/total, assessments passed, progress and certificate eligibility with the reasons. Progress % is still set by the trainer. Dropped students are hidden unless asked for. |
 | nehn-043 This tracker | Markdown plus an Excel-compatible CSV, written for the client. |
 
 ## 3. Backlog items
@@ -83,7 +84,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-025 | Assessments | Trainer question upload from a standard Excel template | Enhancement | Ready to start | Dev | Wave 2 | — |
 | nehn-026 | Assessments | Keyword-based auto-scoring for descriptive answers | Enhancement | Waiting — decision | Dev + Client | Wave 4 | Keyword scoring rule (OD-07); needs nehn-025 |
 | nehn-027 | Trainer portal | Learning materials: file upload and manage | Enhancement | Ready to start | Dev + Client | Wave 4 | Video uploads, or links only? |
-| nehn-028 | Trainer portal | Per-student progress view for trainers | Enhancement | Ready to start | Dev | Wave 4 | — |
+| nehn-028 | Trainer portal | Per-student progress view for trainers | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Should progress % be computed from the criteria? Dropped students hidden or greyed? (DEC-SCOPE-308) |
 | nehn-029 | Trainer portal | Live class reschedule and cancel | Enhancement | Done — confirm defaults | Dev | Wave 4 | Confirm meeting provider is updated by hand for now (§2) |
 | nehn-030 | Certificates | IT Coordinator role and account model | Enhancement | Waiting — decision | Dev + Client | Wave 3 | Coordinator account model and duties (OD-05) |
 | nehn-031 | Certificates | Coordinator certificate workflow: eligibility, recommend, issue, override | Enhancement | Done — confirm defaults | Dev + Client | Wave 3 | Confirm the builder defaults (DEC-SCOPE-297 W1-W9): coordinator overrides, global thresholds, recommendation optional (OD-05) |

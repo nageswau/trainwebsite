@@ -7,6 +7,7 @@ import CourseMaterialsPanel from "./CourseMaterialsPanel";
 import LiveClassesPanel from "./LiveClassesPanel";
 import LiveSessionManagePanel from "./LiveSessionManagePanel";
 import SupportTicketQueuePanel from "./SupportTicketQueuePanel";
+import TrainerProgressPanel from "./TrainerProgressPanel";
 import { formatSize } from "@/lib/agentDocuments";
 import { type CertificateCriteria, criteriaSummary } from "@/lib/certificates";
 import { formatDate } from "@/lib/formatDate";
@@ -456,6 +457,8 @@ export default function TeacherWorkspaceActions({ section }: { section: string }
   </>;
 
   if (section === "student-progress") content = <>
+    {/* nehn-028: the per-student table first; it re-reads in place after a progress update (the context's percentages change). */}
+    <TrainerProgressPanel batches={context.batches} loading={loading && !context.batches.length} refreshKey={context.enrollments.map(item => `${item.id}:${item.progress_percent}`).join()} />
     <Card title="Update learner progress">
       <form className="form" onSubmit={event => { const form = new FormData(event.currentTarget); const reference = String(form.get("enrollment")); void submit(event, `/api/v1/workflows/it/trainer/enrollments/${reference}/progress`, "PATCH", { progress_percent: Number(form.get("progress")) }, "Progress updated."); }}>
         <Field controlId="progress-enrollment" label="Learner and batch"><select name="enrollment" required><option value="">Select learner</option>{context.enrollments.map(item => <option key={item.id} value={item.id}>{item.student} · {item.batch} · {item.progress_percent}%</option>)}</select></Field>

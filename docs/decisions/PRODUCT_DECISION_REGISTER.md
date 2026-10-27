@@ -10198,3 +10198,20 @@ list (CI-06), not a feature. It is still pending, and the source itself says "th
   - Visa outcomes = `visa_applications`, `visa_decisions`, `visa_approvals`, `visa_refusals`, `visa_withdrawals`.
 - **Numbering:** no migration; API §12HD; RBAC §2.217.
 - **Feature ID authorized:** `nehn-038`. **Status:** built on `worktree-nehn-038`.
+
+### DEC-SCOPE-308 — Trainer per-student progress view (`nehn-028`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-028` (§10 "View student progress", L232-236; `UNVERIFIED`
+backlog); design `docs/superpowers/specs/2026-10-27-nehn-028-trainer-progress-view-design.md`. Builds on nehn-010's set-based calculator
+(`app/services/training_progress.py`, `DEC-SCOPE-305`).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** V1 progress % stays manual (the existing
+"Update learner progress" form) -- computing it from the criteria is still open. V2 a trainer reads their own batches only (another's
+**403**, unknown **404**); it_admin and super_admin any IT batch; there is no IT-admin page yet. V3 rows are every enrolment except
+`pending_consent`/`rejected`; dropped and withdrawn are hidden by default and shown greyed on request. V4 attendance % is the
+certificate one (present + late + excused over marked sessions); with no session marked it shows "—" and flags nobody. V5 at risk
+= at least one session and attendance below the admin's `min_attendance_percent` (nehn-031, default 75). V6 assignments are shown as
+submitted / graded / total published. V7 the trainer sees the fee only as cleared or pending, never the amount. V8 the reasons are
+worded server-side from the same criteria. V9 the certificate rule is one helper (`_criteria`) applied by `_certificate_eligibility`
+(one seat, `training_progress.seat`) and by this view (every seat, `training_progress.seats` over the same SQL builders).
+**Numbering:** no migration; API §12HF; RBAC §2.219.
+- **Feature ID authorized:** `nehn-028`. **Status:** built on `worktree-nehn-028`.

@@ -1393,3 +1393,8 @@ half.
 | `nehn-038-AC3` | Visa outcomes sum to the total decided | `::test_visa_outcomes_sum_to_decided` |
 | `nehn-038-AC4` | Staff see only their own figures | `::test_staff_see_only_their_own_figures`, `::test_staff_filter_stays_in_own_scope` |
 | `nehn-038-neg` | Another agency is never included; bad ranges 422 after the guards | `::test_other_agency_never_counted`, `::test_bad_ranges_are_422`, `::test_guards_run_before_date_validation`; e2e reversed range |
+| `nehn-028` | Requirement: PDF §10 "View student progress", L232-236 → backlog `nehn-028` → `DEC-SCOPE-308` → design `docs/superpowers/specs/2026-10-27-nehn-028-trainer-progress-view-design.md` → API §12HF → RBAC §2.219 | — |
+| `nehn-028-AC1` | Each student's attendance % and eligibility match the eligibility endpoint | `test_nehn_028_batch_progress.py::test_rows_match_the_eligibility_endpoint`, `::test_pending_fee_is_a_reason_without_the_amount`; certificate suites (nehn-031, adm-006, stu-007, nehn-032) on the shared `_criteria`; e2e `nehn-028-trainer-progress.spec.ts` |
+| `nehn-028-AC2` | Students below the attendance threshold are flagged | `::test_below_the_threshold_is_at_risk`, `::test_no_sessions_yet_is_not_at_risk`; `nehn028TrainerProgress.test.tsx`; e2e |
+| `nehn-028-AC3` | The subtitle matches what is shown | `::test_student_progress_section_subtitle`; vitest header-only section; e2e |
+| `nehn-028-AC4` | Another trainer's batch is refused | `::test_another_trainers_batch_is_403`, `::test_unknown_batch_is_404`, `::test_other_roles_are_refused`, `::test_signed_out_is_401`; e2e (student 403) |

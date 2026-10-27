@@ -4507,3 +4507,16 @@ days on the day the students' agency records were created).
 - **What a range narrows.** Students, the pipeline and visa figures, conversion, both breakdowns, the staff rows and
   `unassigned_students` are narrowed to the cohort. `pending_documents`, `pending_actions` and `commission` are not.
 - **Unchanged.** Every existing field and its unfiltered value, `Cache-Control: private, no-store`, and the absence of ids.
+
+## 12HF. Trainer batch progress (nehn-028) — addendum, 2026-10-27
+
+`DEC-SCOPE-308`. No migration.
+
+- `GET /workflows/it/batches/{batch_id}/progress` (new) — trainer (own batch), it_admin, super_admin. **404** unknown batch, **403**
+  another trainer's batch or any other role, **422** a malformed id. Response `{batch: {id, name, program, start_date, end_date}, rules:
+  {min_progress_percent, min_attendance_percent}, students: [{enrollment_id, student_id, student_code, student, enrollment_code, status,
+  progress_percent, attendance_percent, attendance_sessions, at_risk, assignments_submitted, assignments_graded, assignments_total,
+  assessments_passed, assessments_total, fee_clear, eligible, reasons: [str], certificate_issued}]}`, by student name. Every enrolment
+  except `pending_consent`/`rejected`. The numbers equal `GET /workflows/it/certificates/eligibility/{enrollment_id}`; no fee amount.
+- `GET /portal/it/trainer/student-progress` — now header-only (no rows); subtitle "Attendance, assignments, assessments, progress and
+  certificate eligibility for each student in your batches."
