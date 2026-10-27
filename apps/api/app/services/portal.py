@@ -1731,6 +1731,9 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                  for e in rows),
             )
         if section == "payments":
+            # nehn-006 (DEC-SCOPE-295): the page follows `payments.view`, as `/admin/payments` does (seed: both division admins hold it).
+            if not await permissions.has_grant(db, user.role, "payments", "view"):
+                raise HTTPException(403, "You do not have permission to view payments")
             stmt = select(Payment, User).join(User, User.id == Payment.user_id)
             stmt = stmt.where(Payment.division == division) if division else stmt
             rows = (await db.execute(stmt.order_by(Payment.created_at.desc()))).all()

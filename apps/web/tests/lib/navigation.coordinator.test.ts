@@ -14,7 +14,7 @@ describe("nehn-030 coordinator navigation", () => {
   it("gives the coordinator Dashboard, Certificates and the shared Management tasks only", () => {
     expect(PORTAL_NAV["it/coordinator"]).toEqual([
       { label: "Dashboard", href: "/it/coordinator/dashboard" },
-      { label: "Certificates", href: "/it/coordinator/certificates" },
+      { label: "Certificates", href: "/it/coordinator/certificates", resource: "certificates" }, // nehn-006: follows certificates.view
       { label: "Management tasks", href: "/account/management-tasks" }, // mgmt-028 (MT14)
     ]);
   });

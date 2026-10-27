@@ -4279,3 +4279,15 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - Deleted materials are hidden from `GET /portal/it/student/downloads`, `GET /workflows/it/student/learning`, the trainer `materials` and
   admin `resources` portal sections; their `url` for a file material is the download route. The student `downloads` URL column has
   `type: "link"`.
+
+## 12GS. Permission-matrix screen (nehn-006) — addendum, 2026-10-27
+
+`DEC-SCOPE-295`. No migration, no new route.
+
+- `GET /admin/permissions/catalogue` — the body gains `roles: string[]` (every role key, `rbac.ROLES` order), which the matrix's role
+  picker offers. Existing fields and status codes unchanged.
+- `GET /portal/{it|overseas}/admin/payments` — now needs `payments.view` (as `GET /admin/payments` does since nehn-005): without it
+  **403** `"You do not have permission to view payments"`. Day one is unchanged (both division admins hold the key by seed; super_admin
+  holds every key).
+- The web app reads `GET /auth/me/permissions` to hide sidebar items (`<resource>.view`), the payment forms (`payments.add`,
+  `discounts.add`) and the telecaller report export (`reports.telecaller.download`). Hidden UI is not the control; the routes refuse.
