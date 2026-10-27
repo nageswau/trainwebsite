@@ -1,5 +1,5 @@
-"""nehn-032 -- the Founder and Coordinator certificate signatures (DEC-SCOPE-301; spec
-docs/superpowers/specs/2026-10-27-nehn-032-certificate-signatures-design.md; API_CONTRACT §12GY; RBAC_MATRIX §2.212). Every route needs
+"""nehn-032 -- the Founder and Coordinator certificate signatures (DEC-SCOPE-302; spec
+docs/superpowers/specs/2026-10-27-nehn-032-certificate-signatures-design.md; API_CONTRACT §12GZ; RBAC_MATRIX §2.213). Every route needs
 `certificates.manage` (super_admin until granted). Images are private: stored under a server-generated key, streamed only here, never
 presigned, never in a response body. A new image is a new version; issued certificates keep the version they snapshot."""
 

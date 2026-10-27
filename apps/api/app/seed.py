@@ -60,7 +60,7 @@ DEMO_SIGNATORIES = {"founder": ("Demo Founder", "Founder & Director"), "coordina
 
 
 async def demo_signatories(db):
-    """nehn-032 (DEC-SCOPE-301): a generated, transparent stand-in signature for each empty slot, so demo and CI certificates can be issued.
+    """nehn-032 (DEC-SCOPE-302): a generated, transparent stand-in signature for each empty slot, so demo and CI certificates can be issued.
     The client's real PNGs (CI-03) replace them through the admin Certificates page."""
     for role, (name, designation) in DEMO_SIGNATORIES.items():
         if await db.scalar(select(CertificateSignatory.id).where(CertificateSignatory.role == role, CertificateSignatory.active_to.is_(None))):

@@ -3,7 +3,7 @@
 Revision ID: 0208_certificate_signatories
 Revises: 0207_field_financial_grant
 
-docs/superpowers/specs/2026-10-27-nehn-032-certificate-signatures-design.md (DEC-SCOPE-301). 0001 builds a fresh database from the current
+docs/superpowers/specs/2026-10-27-nehn-032-certificate-signatures-design.md (DEC-SCOPE-302). 0001 builds a fresh database from the current
 models, which already carry the table and the column, so both are created only when missing (0204's idiom). No existing row changes:
 issued certificates keep a NULL snapshot. No grant is seeded (`certificates.manage` is super_admin's until granted). The downgrade drops the
 column and the table; stored signature images are left in storage.

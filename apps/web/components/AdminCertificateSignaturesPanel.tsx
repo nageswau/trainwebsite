@@ -16,7 +16,7 @@ function detailMessage(detail: unknown, fallback: string) {
   return fallback;
 }
 
-// nehn-032 (DEC-SCOPE-301): the Founder and Coordinator signatures drawn on every new certificate. A new image is always a new version
+// nehn-032 (DEC-SCOPE-302): the Founder and Coordinator signatures drawn on every new certificate. A new image is always a new version
 // (certificates already issued keep the one they were signed with); without an image, saving edits the current version's details.
 export default function AdminCertificateSignaturesPanel() {
   const [items, setItems] = useState<CertificateSignatory[] | null>(null);

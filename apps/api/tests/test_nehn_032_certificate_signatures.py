@@ -1,5 +1,5 @@
-"""nehn-032 -- certificate signatures (DEC-SCOPE-301; spec docs/superpowers/specs/2026-10-27-nehn-032-certificate-signatures-design.md,
-RBAC_MATRIX §2.212): both slots drawn on new certificates (AC1), a replaced signature affects only later certificates (AC2), signature files
+"""nehn-032 -- certificate signatures (DEC-SCOPE-302; spec docs/superpowers/specs/2026-10-27-nehn-032-certificate-signatures-design.md,
+RBAC_MATRIX §2.213): both slots drawn on new certificates (AC1), a replaced signature affects only later certificates (AC2), signature files
 are not downloadable by students (AC3), issuing without both slots is refused (AC4), and the upload check (S4)."""
 
 import datetime

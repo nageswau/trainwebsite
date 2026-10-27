@@ -1413,10 +1413,10 @@ Risk is the risk of regression or of a wrong outcome.
   - Is a final design or template from the client expected?
   - What does "relevant designation/details" mean (signatory titles? course duration? grade?)?
 - **Complexity:** medium · **Risk:** medium
-- **Status (2026-10-27):** built in `worktree-nehn-032` (`DEC-SCOPE-301`, defaults S1-S9 `NEEDS_CONFIRMATION`): versioned
+- **Status (2026-10-27):** built in `worktree-nehn-032` (`DEC-SCOPE-302`, defaults S1-S9 `NEEDS_CONFIRMATION`): versioned
   `certificate_signatories` (founder, coordinator) managed by the new `certificates.manage` grant (super_admin), PNG upload with an
   alpha/dimension check, private image route, admin PDF preview; new certificates draw both signatures and snapshot them; issuing is 409
-  while a slot is empty. The client's PNGs (CI-03) are still to be uploaded. Migration `0208`; API §12GY; RBAC §2.212.
+  while a slot is empty. The client's PNGs (CI-03) are still to be uploaded. Migration `0208`; API §12GZ; RBAC §2.213.
 
 ### I. Overseas Education (§17–§20)
 

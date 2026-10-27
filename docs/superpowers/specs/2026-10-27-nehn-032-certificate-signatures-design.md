@@ -1,6 +1,6 @@
 # nehn-032 — Certificate digital signatures (Founder + Coordinator) and designation
 
-**Status:** builder's design, defaults `NEEDS_CONFIRMATION` (DEC-SCOPE-301). **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md`
+**Status:** builder's design, defaults `NEEDS_CONFIRMATION` (DEC-SCOPE-302). **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md`
 `nehn-032` (§11 L249-260, §26 L791-794, actions 11/12; `UNVERIFIED` backlog). Dependencies nehn-003 (`DEC-SCOPE-279`), nehn-030
 (`DEC-SCOPE-293`), nehn-031 (`DEC-SCOPE-297`) are merged. The client's signature PNGs (CI-03) are content uploaded through this feature,
 not a code dependency.

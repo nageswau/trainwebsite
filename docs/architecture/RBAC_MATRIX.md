@@ -3174,7 +3174,7 @@ Pinned by `apps/api/tests/test_nehn_012_lead_list.py`.
 |---|---|---|
 | A report's columns tagged with a field class (today: partnership Performance `commission_expected` / `commission_received` = `financial`) | every reader of the report | The column is returned (JSON, CSV, xlsx alike) only with `field.<class>.view`. Seed: `field.financial.view` → partnership_manager, partnership_head; super_admin always. placement_team, placement_manager, hr_team, it_admin, overseas_admin hold none. The grant narrows only: it never opens a report the role cannot read. |
 
-### 2.212 Certificate signatures *(added 2026-10-27 — `DEC-SCOPE-301`, nehn-032)*
+### 2.213 Certificate signatures *(added 2026-10-27 — `DEC-SCOPE-302`, nehn-032)*
 
 The catalogue's `certificates` resource gains `manage` (a new matrix column). No role holds it by default (migration
 `0208_certificate_signatories` seeds nothing); super_admin holds every key. The signature images are never sent to students or issuers

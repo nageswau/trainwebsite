@@ -461,7 +461,7 @@ export default function WorkflowPanel({ user, section }: { user: User; section: 
   const showEnrollmentReview = isAdmin && section === "enrollments";
   const showSupportQueue = isAdmin && section === "support";
   const showCertificateRules = isAdmin && section === "certificates"; // nehn-031: AdminCertificatePanel now sets the eligibility thresholds
-  const showCertificateSignatures = adminCertificates && !!granted?.includes("certificates.manage"); // nehn-032 (DEC-SCOPE-301)
+  const showCertificateSignatures = adminCertificates && !!granted?.includes("certificates.manage"); // nehn-032 (DEC-SCOPE-302)
   const showCertificateQueue = user.role === "coordinator" && section === "certificates"; // nehn-031 (DEC-ROLE-003): the coordinator issues
   const showPlacementCandidates = user.role === "placement_team" && section === "candidates";
   const showHrShortlists = user.role === "hr_team" && section === "shortlists";

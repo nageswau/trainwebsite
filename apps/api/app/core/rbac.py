@@ -78,7 +78,7 @@ CATALOGUE: dict[str, dict] = {
     "discounts": {"label": "Payment discounts", "actions": ("add",)},
     "reports.telecaller": {"label": "Telecaller reports", "actions": ("view", "download")},
     # nehn-030: the coordinator portal's Certificates section; nehn-031 (DEC-SCOPE-297): issuing, the eligibility override, thresholds;
-    # nehn-032 (DEC-SCOPE-301 S6): `manage` -- the certificate signatures (no default holder: super_admin only until granted).
+    # nehn-032 (DEC-SCOPE-302 S6): `manage` -- the certificate signatures (no default holder: super_admin only until granted).
     "certificates": {"label": "Certificates", "actions": ("view", "issue", "override", "configure", "manage")},
     # nehn-008 (DEC-SCOPE-300): a report's financial columns (fees, payments, discounts, commission), in its JSON and downloads alike.
     "field.financial": {"label": "Financial columns", "actions": ("view",)},

@@ -1,7 +1,7 @@
 import { deflateSync } from "node:zlib";
 import { expect, test, type APIRequestContext, type Browser, type Page } from "@playwright/test";
 
-// nehn-032 (DEC-SCOPE-301): the super admin replaces the Founder signature on the IT admin's Certificates page and previews the layout;
+// nehn-032 (DEC-SCOPE-302): the super admin replaces the Founder signature on the IT admin's Certificates page and previews the layout;
 // the IT admin (no `certificates.manage`) does not see the card, and nobody without the grant can fetch a signature image (AC3).
 
 const DEMO = "Demo@123";

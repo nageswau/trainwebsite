@@ -13,7 +13,7 @@
 
 ## Global Constraints
 
-- Numbering: DEC-SCOPE-301, migration `0208_certificate_signatories` (down_revision `0207_field_financial_grant`), API §12GY, RBAC §2.212.
+- Numbering: DEC-SCOPE-302, migration `0208_certificate_signatories` (down_revision `0207_field_financial_grant`), API §12GZ, RBAC §2.213.
 - Slots: `founder`, `coordinator`. Name/designation 1–120 chars. Image 50–2000 px wide, 20–1000 px high, PNG with alpha, ≤ 1 MB.
 - Image keys `signatures/<uuid32>.png`; never presigned; image route sends `Cache-Control: no-store`.
 - Refusal copy: issue/preview without both slots → 409 `"Certificate signatures are not configured: <missing roles>"`.
@@ -83,4 +83,4 @@
 
 ### Task 5: Docs
 
-API_CONTRACT §12GY, RBAC_MATRIX §2.212, DATA_MODEL, PRODUCT_DECISION_REGISTER DEC-SCOPE-301, RTM, backlog status, FEEDBACK_TRACKER.
+API_CONTRACT §12GZ, RBAC_MATRIX §2.213, DATA_MODEL, PRODUCT_DECISION_REGISTER DEC-SCOPE-302, RTM, backlog status, FEEDBACK_TRACKER.

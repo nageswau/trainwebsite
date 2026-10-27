@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AdminCertificateSignaturesPanel from "@/components/AdminCertificateSignaturesPanel";
 
-// nehn-032 (DEC-SCOPE-301): one card per signature slot -- the current image, name and designation; saving with a PNG uploads a new
+// nehn-032 (DEC-SCOPE-302): one card per signature slot -- the current image, name and designation; saving with a PNG uploads a new
 // version, saving without one edits the details of the current version.
 const URL = "/api/v1/admin/certificate-signatories";
 const founder = { id: "f1", role: "founder", display_name: "Asha Founder", designation: "Founder & Director", active: true, active_from: "2026-10-27T00:00:00Z", active_to: null };

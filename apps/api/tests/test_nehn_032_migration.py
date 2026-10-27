@@ -1,4 +1,4 @@
-"""nehn-032 -- migration 0208_certificate_signatories (DEC-SCOPE-301): the chain and the round trip, in a throwaway database (the nehn-031
+"""nehn-032 -- migration 0208_certificate_signatories (DEC-SCOPE-302): the chain and the round trip, in a throwaway database (the nehn-031
 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util

@@ -4379,9 +4379,9 @@ other role, checked before the target).
   `columns`, every item and `totals`, in the JSON and in both files alike. Routes, statuses and every other column are unchanged; with the
   seed every reader gets the same columns as before.
 
-## 12GY. Certificate signatures (nehn-032) — addendum, 2026-10-27
+## 12GZ. Certificate signatures (nehn-032) — addendum, 2026-10-27
 
-`DEC-SCOPE-301`. Migration `0208_certificate_signatories`. Every route needs `certificates.manage` (403 "You do not have permission to
+`DEC-SCOPE-302`. Migration `0208_certificate_signatories`. Every route needs `certificates.manage` (403 "You do not have permission to
 manage certificate signatures"; super_admin only until granted). A signatory is `{id, role: "founder" | "coordinator", display_name,
 designation, active, active_from, active_to}`; the storage key is never returned.
 
