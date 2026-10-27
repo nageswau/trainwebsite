@@ -3134,7 +3134,7 @@ No grant logic runs in the web app beyond "is this key in my set"; nehn-005 rema
 Writes share the offers' entry (scope, row lock, swapped-counselor re-check, closed → 409). Pinned by
 `apps/api/tests/test_nehn_037_interviews.py`.
 
-### 2.208 Per-user permission overrides *(added 2026-10-27 — `DEC-SCOPE-297`, nehn-007)*
+### 2.209 Per-user permission overrides *(added 2026-10-27 — `DEC-SCOPE-298`, nehn-007)*
 
 | Surface | Who | Rule |
 |---|---|---|

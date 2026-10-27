@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
-// nehn-007 (DEC-SCOPE-297): per-user permission overrides on the Permissions screen's "By user" tab. Every test that sets an override
+// nehn-007 (DEC-SCOPE-298): per-user permission overrides on the Permissions screen's "By user" tab. Every test that sets an override
 // on the seeded IT admin clears that user's overrides in `finally`.
 
 const SUPER = { email: "superadmin@edusphere.local", password: "Demo@123", division: "global" };

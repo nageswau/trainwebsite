@@ -4310,9 +4310,9 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - `GET /workflows/overseas/student/interviews` → `{items: [... same fields without recorded_by, + application_code, university]}` — the
   signed-in overseas student's own applications only (max 200); other roles 403.
 
-## 12GU. Per-user permission overrides (nehn-007) — addendum, 2026-10-27
+## 12GV. Per-user permission overrides (nehn-007) — addendum, 2026-10-27
 
-`DEC-SCOPE-297`; migration `0204_user_permission_overrides`. All three routes are super_admin only (401 without a session, 403 for any
+`DEC-SCOPE-298`; migration `0205_user_permission_overrides`. All three routes are super_admin only (401 without a session, 403 for any
 other role, checked before the target).
 
 - `GET /admin/users/{user_id}/permissions` → 200 `{user:{id, full_name, email, role}, editable, role_permissions:[key],

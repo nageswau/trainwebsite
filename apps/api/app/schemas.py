@@ -14489,7 +14489,7 @@ class ApplicationInterviewUpdate(BaseModel):
 
 
 class UserPermissionOverrideIn(BaseModel):
-    """nehn-007 (DEC-SCOPE-297): one allow/deny of a catalogue key for one user. The reason is required (U3); the expiry, when given,
+    """nehn-007 (DEC-SCOPE-298): one allow/deny of a catalogue key for one user. The reason is required (U3); the expiry, when given,
     must carry a timezone and lie in the future (U4)."""
 
     model_config = ConfigDict(extra="forbid")
@@ -14521,7 +14521,7 @@ class UserPermissionOverrideIn(BaseModel):
 
 
 class UserPermissionOverridesUpdate(BaseModel):
-    """nehn-007 (DEC-SCOPE-297 U5): `PUT /admin/users/{user_id}/permissions` -- the user's whole new override set."""
+    """nehn-007 (DEC-SCOPE-298 U5): `PUT /admin/users/{user_id}/permissions` -- the user's whole new override set."""
 
     model_config = ConfigDict(extra="forbid")
     overrides: list[UserPermissionOverrideIn] = Field(max_length=200)

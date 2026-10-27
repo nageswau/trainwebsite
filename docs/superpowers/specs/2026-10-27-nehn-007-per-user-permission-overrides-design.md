@@ -3,7 +3,7 @@
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-007` (§5 L92 "control individual permissions for
   individual users or roles"; `MEETING_TRANSCRIPT_REQUEST`, `UNVERIFIED` backlog). `CLIENT_QUESTIONS.md` D-09 §3 / OD-03 is **open**.
 - **Dependencies:** nehn-005 engine (`DEC-SCOPE-281`, #347) and nehn-006 matrix screen (`DEC-SCOPE-295`, #362), both merged.
-- **Decision:** `DEC-SCOPE-297`. **RBAC:** §2.208. **API:** §12GU. **Migration:** `0204_user_permission_overrides`.
+- **Decision:** `DEC-SCOPE-298`. **RBAC:** §2.209. **API:** §12GV. **Migration:** `0205_user_permission_overrides`.
 
 ## Intent
 
@@ -49,7 +49,7 @@ and can see every override in force. Overrides are easy to forget, so they are v
 
 ## Design
 
-### Data — migration `0204_user_permission_overrides`
+### Data — migration `0205_user_permission_overrides`
 
 `id` UUID PK; `user_id` FK users CASCADE (indexed); `resource` String(60); `action` String(20); `effect` String(10) CHECK in
 (`allow`,`deny`); `reason` String(500) NOT NULL; `expires_at` timestamptz NULL; `created_by_id` FK users SET NULL; `created_at`
@@ -127,4 +127,4 @@ default now. UNIQUE (`user_id`, `resource`, `action`). No seed; no existing data
    `/auth/me/permissions` — tests AC1/AC2/AC3 against real routes.
 3. Admin endpoints + schema — tests AC4 (authz matrix, 404/422/409, audit, no-op).
 4. Web: `UserPermissionOverrides` + page tabs — vitest (origin column, save body, validation, 409, states).
-5. Docs: DEC-SCOPE-297, API §12GU, RBAC §2.208, DATA_MODEL, backlog/tracker status. Playwright e2e for the user tab.
+5. Docs: DEC-SCOPE-298, API §12GV, RBAC §2.209, DATA_MODEL, backlog/tracker status. Playwright e2e for the user tab.

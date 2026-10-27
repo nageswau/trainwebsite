@@ -54,7 +54,7 @@ describe("nehn-006 /admin/permissions", () => {
     expect(screen.getByRole("heading", { name: "Access unavailable" })).toBeInTheDocument();
   });
 
-  // nehn-007 (DEC-SCOPE-297): a "By user" tab beside the role matrix; the tab and the picked user live in the URL.
+  // nehn-007 (DEC-SCOPE-298): a "By user" tab beside the role matrix; the tab and the picked user live in the URL.
   it("offers the By role and By user tabs, By role current by default", async () => {
     api("super_admin");
     render(await AdminPermissionsPage(page()));

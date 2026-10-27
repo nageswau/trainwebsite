@@ -3,7 +3,7 @@
 Only super_admin reads or edits grants (P6). Checks run caller (401/403) → role (404) → body (422) → target (409), so a refused caller
 never learns which role names exist.
 
-nehn-007 (DEC-SCOPE-297, API §12GU, RBAC §2.208): one user's overrides (read / replace) and the report of every active override, under
+nehn-007 (DEC-SCOPE-298, API §12GV, RBAC §2.209): one user's overrides (read / replace) and the report of every active override, under
 the same super_admin guard; the caller's own set now includes their overrides."""
 
 from uuid import UUID

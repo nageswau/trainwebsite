@@ -12,7 +12,7 @@ const LOGIN = "/admin/login";
 
 // nehn-006 (DEC-SCOPE-295): the Super Admin's permission matrix over nehn-005's catalogue. Only super_admin may read or edit grants (P6),
 // so anyone else gets the access card here before the catalogue is asked for; the API refuses them either way.
-// nehn-007 (DEC-SCOPE-297): a "By user" tab for per-user overrides; the tab and the picked user live in the URL (refresh/back keep them).
+// nehn-007 (DEC-SCOPE-298): a "By user" tab for per-user overrides; the tab and the picked user live in the URL (refresh/back keep them).
 export default async function AdminPermissionsPage({ searchParams }: { searchParams: Promise<{ tab?: string; user?: string }> }) {
   const { tab, user: picked } = await searchParams;
   const byUser = tab === "user";
