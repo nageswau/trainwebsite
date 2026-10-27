@@ -135,6 +135,8 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
    AGN-014: the commission report likewise. */
 .action-grid > .agent-students, .action-grid > .commission-report { grid-column: 1 / -1; }
 .action-grid > .lead-management { grid-column: 1 / -1; } /* bdm-017 QA17-03: organization, student and action columns need the full width */
+.action-grid > .certificate-queue { grid-column: 1 / -1; } /* nehn-031: the queue table needs the full width */
+@media (max-width: 640px) { .certificate-queue .table.stack td::before { flex: none; } } /* QA31-06: the label never squeezes */
 .action-grid > .lead-import { grid-column: 1 / -1; } /* tel-006 QA-03: the import result and past-imports tables need the full width */
 /* tel-004 QA-03: below 360px the sticky Name column left too little room, so the row's stage and link forms sat partly under it. */
 @media (max-width: 359px) { .lead-management .table-scroll table th:first-child, .lead-management .table-scroll table td:first-child { position: static; } }

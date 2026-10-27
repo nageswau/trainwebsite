@@ -4291,3 +4291,44 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   holds every key).
 - The web app reads `GET /auth/me/permissions` to hide sidebar items (`<resource>.view`), the payment forms (`payments.add`,
   `discounts.add`) and the telecaller report export (`reports.telecaller.download`). Hidden UI is not the control; the routes refuse.
+
+## 12GT. Admission interviews (nehn-037 part 4) — addendum, 2026-10-27
+
+`DEC-SCOPE-296`. Migration `0203_application_interviews`. New routes only; nothing existing changes.
+
+- `GET /workflows/overseas/applications/{id}/interviews` → `{interviews: [{id, application_id, scheduled_at, mode, mode_label, location,
+  student_note, outcome, outcome_label, updated_at, recorded_by?}]}`, latest first. Readers as the offers' list: counselor (own), Overseas
+  Admin, the student (own), the agency (its applications). `recorded_by` for counselor / admin only.
+- `POST /workflows/overseas/applications/{id}/interviews` (201) — body `{scheduled_at (offset required), mode: online|in_person|phone,
+  location? ≤300, student_note? ≤500, outcome?: passed|not_successful|cancelled}` → `{interview, changed: true}`.
+- `PATCH /workflows/overseas/applications/{id}/interviews/{interview_id}` — only the keys sent (null clears location / note / outcome;
+  `scheduled_at` and `mode` cannot be null) → `{interview, changed}`; nothing different → 200 `changed: false`, nothing written.
+- Writes: counselor of the application (direct and agency) or Overseas Admin; 403 other roles / other counselors; 404 an interview of
+  another application; 409 withdrawn / terminal application or archived agency record; 422 a result before the interview time
+  (`"A result can be recorded only after the interview date -- or mark it cancelled"`), the 21st interview, bad mode / outcome / length /
+  time without offset or outside 2000–2100. Audit `overseas.application.interview` `{interview_id, action, fields, outcome}`.
+- `GET /workflows/overseas/student/interviews` → `{items: [... same fields without recorded_by, + application_code, university]}` — the
+  signed-in overseas student's own applications only (max 200); other roles 403.
+
+## 12GU. Coordinator certificate workflow (nehn-031) — addendum, 2026-10-27
+
+`DEC-SCOPE-297`. Migration `0204_certificate_workflow`. All under `/workflows/it/certificates`.
+
+- `GET /eligibility/{enrollment_id}` — the coordinator is also admitted; the body gains `rules: {min_progress_percent,
+  min_attendance_percent}` (the thresholds used) and `certificate_issued: bool`. `eligible` now compares against those thresholds.
+- `GET /rules` (new) — `{min_progress_percent, min_attendance_percent}`. it_admin, coordinator, trainer, super_admin; others 403.
+- `PUT /rules` (new) — same body, each 0–100, unknown fields 422. Needs `certificates.configure` (403 "You do not have permission to
+  change certificate rules"). Audit `certificate_rules.update` with before/after. Applies to the next evaluation.
+- `POST /{enrollment_id}/recommend` (new) — `{status: "recommended" | "not_ready", comment?}` (≤ 1000; required for `not_ready`, else 422).
+  Only the batch's trainer (403 otherwise). 404 unknown enrolment; 409 a certificate already exists. 200 `{enrollment_id, status, comment}`;
+  replaces any earlier one. Audit `certificate.recommended` / `certificate.not_ready`.
+- `GET /queue` (new) — needs `certificates.issue`. `{can_override, rules, items: [{enrollment_id, student, batch, program, eligible,
+  criteria, recommendation: {status, comment, by, at} | null}]}`: enrolments without a certificate (not pending consent, rejected,
+  withdrawn or dropped) that pass the progress threshold or carry a recommendation/flag; recommended first; at most 200.
+- `POST /issue` (new, bulk) — `{enrollment_ids: UUID[1..50], override?: bool, override_reason?: str ≤ 1000}`, unknown fields 422. Needs
+  `certificates.issue`; `override: true` without `certificates.override` → 403 for the whole request. 200 `{issued: [{enrollment_id, id,
+  certificate_no, verification_code, file_url, status}], failed: [{enrollment_id, status_code, detail}]}` — each enrolment is checked
+  and issued on its own (404 unknown, 409 not eligible without override or already issued, 422 override without a reason).
+- `POST /{enrollment_id}/issue` — **now needs `certificates.issue`** (trainer and it_admin 403, `DEC-ROLE-003`); `override: true` needs
+  `certificates.override` (403). A second issue for the same enrolment is **409** (was 201 with the existing certificate). Body and 201
+  response unchanged; `override_reason` is capped at 1000 characters. Eligibility is re-checked at issue time.

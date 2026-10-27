@@ -254,11 +254,12 @@ async def test_issuing_a_certificate_to_an_opted_in_student_adds_the_course_skil
     candidate = await _candidate_of(db_session, student.id)
     assert java.id not in await _rows(db_session, candidate.id)  # enrolled is not completed (CI2)
 
-    await login(client, admin)
+    coordinator = await make_user(db_session, "coordinator", "it")  # nehn-031: the coordinator issues
+    await login(client, coordinator)
     response = await client.post(f"/api/v1/workflows/it/certificates/{enrollment.id}/issue", json={"override": True, "override_reason": "QA"})
     assert response.status_code == 201, response.text
     row = (await _rows(db_session, candidate.id))[java.id]
-    assert (row.source, row.status, row.verified_by_user_id) == ("course_completed", "verified", admin.id)
+    assert (row.source, row.status, row.verified_by_user_id) == ("course_completed", "verified", coordinator.id)
 
 
 async def test_a_certificate_for_a_student_who_has_not_opted_in_adds_nothing(client, db_session):
@@ -271,7 +272,7 @@ async def test_a_certificate_for_a_student_who_has_not_opted_in_adds_nothing(cli
     employer, company = await _create_employer(db_session)
     await student_application(db_session, (await _create_job(db_session, company)).id, student)  # backfilled, not opted in (R6)
     await db_session.commit()
-    await login(client, admin)
+    await login(client, await make_user(db_session, "coordinator", "it"))  # nehn-031: the coordinator issues
     response = await client.post(f"/api/v1/workflows/it/certificates/{enrollment.id}/issue", json={"override": True, "override_reason": "QA"})
     assert response.status_code == 201, response.text
     candidate = await _candidate_of(db_session, student.id)

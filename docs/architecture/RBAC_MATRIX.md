@@ -3122,3 +3122,31 @@ off a batch loses manage and download access at once. No new permission key. Pin
 | "Create payment due" / "Apply discount" forms; telecaller report "Download CSV" | the role | Rendered only with `payments.add` / `discounts.add` / `reports.telecaller.download`. |
 
 No grant logic runs in the web app beyond "is this key in my set"; nehn-005 remains the enforcement point.
+
+### 2.207 Admission interviews (`nehn-037` part 4, `DEC-SCOPE-296`)
+
+| Route | Anonymous | overseas_student | counselor (assigned / other) | overseas_admin | agent (own agency app) | other roles |
+|---|---|---|---|---|---|---|
+| `GET /workflows/overseas/applications/{id}/interviews` | 401 | 200 own / 403 | 200 / 403 | 200 | 200 | 403 |
+| `POST`, `PATCH .../interviews[/{interview_id}]` | 401 | 403 | 200-201 / 403 | 200-201 | 403 | 403 |
+| `GET /workflows/overseas/student/interviews` | 401 | 200 (own only) | 403 | 403 | 403 | 403 |
+
+Writes share the offers' entry (scope, row lock, swapped-counselor re-check, closed → 409). Pinned by
+`apps/api/tests/test_nehn_037_interviews.py`.
+
+### 2.208 Certificate workflow *(added 2026-10-27 — `DEC-SCOPE-297`, nehn-031; `DEC-ROLE-003`)*
+
+The catalogue's `certificates` resource gains `issue`, `override` and `configure` (the matrix columns gain `override` and `configure`).
+Default grants (migration `0204_certificate_workflow`): coordinator `certificates.view/issue/override`; it_admin `certificates.configure`.
+super_admin holds every key. **Trainer and it_admin no longer issue** (the `DEC-ROLE-003` cut-over).
+
+| Route (`/workflows/it/certificates/…`) | Anonymous | coordinator | trainer | it_admin | it_student, other roles | super_admin |
+|---|---|---|---|---|---|---|
+| `POST {id}/issue`, `POST issue`, `GET queue` | 401 | 200/201 (`issue` grant) | 403 | 403 | 403 | 200/201 |
+| … with `override: true` | 401 | needs `override` grant, else 403 | 403 | 403 | 403 | allowed |
+| `POST {id}/recommend` | 401 | 403 | own batch only (else 403) | 403 | 403 | 403 (not the batch trainer) |
+| `GET rules` | 401 | 200 | 200 | 200 | 403 | 200 |
+| `PUT rules` | 401 | 403 | 403 | 200 (`configure` grant) | 403 | 200 |
+| `GET eligibility/{id}` | 401 | 200 | own batch | 200 | own (student) / 403 | 200 |
+
+Pinned by `apps/api/tests/test_nehn_031_certificate_workflow.py`, `test_adm_006_certificates.py` and `test_nehn_031_migration.py`.

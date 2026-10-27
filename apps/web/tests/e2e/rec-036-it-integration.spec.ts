@@ -44,8 +44,9 @@ test("course skills reach an opted-in completer when the IT admin tags the progr
   const admin = await api(browser, ADMIN, "it");
   const enrolment = ((await (await admin.get("/api/v1/admin/enrollments")).json()) as { id: string; email: string; batch_id: string }[]).find((e) => e.email === STUDENT)!;
   const batch = ((await (await admin.get("/api/v1/admin/batches")).json()) as { id: string; program_id: string; program: string }[]).find((b) => b.id === enrolment.batch_id)!;
-  const issued = await admin.post(`/api/v1/workflows/it/certificates/${enrolment.id}/issue`, { data: { override: true, override_reason: "rec-036 e2e" } });
-  expect([200, 201]).toContain(issued.status());
+  const coordinator = await api(browser, "coordinator@edusphere.local", "it"); // nehn-031: the coordinator issues
+  const issued = await coordinator.post(`/api/v1/workflows/it/certificates/${enrolment.id}/issue`, { data: { override: true, override_reason: "rec-036 e2e" } });
+  expect([201, 409]).toContain(issued.status()); // 409: issued by an earlier run on this database
 
   // The student joins the placement pool (a second click adds nothing).
   const student = await api(browser, STUDENT, "it");
