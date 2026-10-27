@@ -117,6 +117,7 @@ from app.schemas import (
     EnrollmentCreate,
     EnrollmentProgressUpdate,
     LearningResourceCreate,
+    LearningResourceUpdate,
     NotificationUnreadCount,
     OverseasApplicationAdvance,
     OverseasApplicationCounselorAssign,
@@ -359,7 +360,7 @@ async def student_learning(user: User = Depends(get_current_user), db: AsyncSess
     submissions = []
     if batch_ids:
         assignments = (await db.scalars(select(Assignment).where(Assignment.batch_id.in_(batch_ids)).order_by(Assignment.due_date))).all()
-        resources = (await db.scalars(select(LearningResource).where(LearningResource.batch_id.in_(batch_ids)).order_by(LearningResource.created_at.desc()))).all()
+        resources = (await db.scalars(select(LearningResource).where(LearningResource.batch_id.in_(batch_ids), LearningResource.deleted_at.is_(None)).order_by(LearningResource.sort_order, LearningResource.created_at.desc()))).all()
         assessments = (await db.scalars(select(Assessment).where(Assessment.batch_id.in_(batch_ids)).order_by(Assessment.scheduled_at))).all()
         live_sessions = (await db.scalars(select(LiveSession).where(LiveSession.batch_id.in_(batch_ids)).order_by(LiveSession.starts_at))).all()
         submissions = (await db.scalars(select(Submission).where(Submission.student_id == user.id))).all()
@@ -425,7 +426,7 @@ async def student_learning(user: User = Depends(get_current_user), db: AsyncSess
         "certificates": [
             {"id": c.id, "certificate_no": c.certificate_no, "verification_code": c.verification_code, "issued_on": c.issued_on, "file_url": c.file_url, "status": c.status} for c in certificates
         ],
-        "resources": [{"id": r.id, "batch_id": r.batch_id, "title": r.title, "type": r.resource_type, "url": r.url} for r in resources],
+        "resources": [{"id": r.id, "batch_id": r.batch_id, "title": r.title, "type": r.resource_type, "url": r.href} for r in resources],
     }
 
 
@@ -873,13 +874,128 @@ async def create_learning_resource(payload: LearningResourceCreate, user: User =
         raise HTTPException(404, "Batch not found")
     if user.role == "trainer" and batch.trainer_id != user.id:
         raise HTTPException(403, "Trainer is not assigned to this batch")
-    item = LearningResource(batch_id=batch.id, title=payload.title, resource_type=payload.resource_type, url=payload.url, metadata_json=payload.metadata)
+    if payload.file_id:
+        _check_material_type(payload.resource_type)
+        usable = await db.scalar(
+            select(StoredFile.id)
+            .outerjoin(LearningResource, LearningResource.stored_file_id == StoredFile.id)
+            .where(StoredFile.id == payload.file_id, StoredFile.owner_id == user.id, StoredFile.purpose == "learning_material", LearningResource.id.is_(None))
+        )
+        if not usable:  # one message for every reason, so nothing about another user's file is confirmed (M2)
+            raise HTTPException(422, "This file cannot be attached to a material")
+    item = LearningResource(batch_id=batch.id, title=payload.title, resource_type=payload.resource_type, url=payload.url, stored_file_id=payload.file_id, metadata_json=payload.metadata)
     db.add(item)
     await db.flush()
-    await _audit(db, user, "learning_resource.create", "learning_resource", item.id, {"batch_id": batch.id})
+    await _audit(db, user, "learning_resource.create", "learning_resource", item.id, {"batch_id": batch.id, "kind": "file" if payload.file_id else "link"})
+    try:
+        await db.commit()
+    except IntegrityError:  # a concurrent create attached the same file first
+        await db.rollback()
+        raise HTTPException(422, "This file cannot be attached to a material") from None
+    await db.refresh(item)
+    return {"id": item.id, "title": item.title, "type": item.resource_type, "url": item.href}
+
+
+def _check_material_type(resource_type: str) -> None:
+    """nehn-027 M3: videos and provider recordings stay links (NEEDS_CONFIRMATION); no video hosting is approved."""
+    if resource_type in {"video", "recording"}:
+        raise HTTPException(422, "Upload videos to YouTube or Google Drive and add the link")
+
+
+def _material_row(item: LearningResource, batch: Batch, stored: StoredFile | None) -> dict:
+    return {
+        "id": item.id,
+        "batch_id": batch.id,
+        "batch": batch.name,
+        "title": item.title,
+        "resource_type": item.resource_type,
+        "url": item.href,
+        "sort_order": item.sort_order,
+        "file": {"filename": stored.original_filename, "content_type": stored.content_type, "size": stored.size_bytes} if stored else None,
+        "created_at": item.created_at,
+    }
+
+
+@router.get("/it/trainer/materials")
+async def list_learning_resources(batch_id: UUID | None = None, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """nehn-027 M4: live materials, the trainer's own batches only (it_admin: every batch), in `sort_order` then newest first."""
+    _require(user, {"trainer", "it_admin"}, "it")
+    stmt = (
+        select(LearningResource, Batch, StoredFile)
+        .join(Batch, Batch.id == LearningResource.batch_id)
+        .outerjoin(StoredFile, StoredFile.id == LearningResource.stored_file_id)
+        .where(LearningResource.deleted_at.is_(None))
+    )
+    if user.role == "trainer":
+        stmt = stmt.where(Batch.trainer_id == user.id)
+    if batch_id:
+        stmt = stmt.where(Batch.id == batch_id)
+    rows = (await db.execute(stmt.order_by(LearningResource.sort_order, LearningResource.created_at.desc()).limit(500))).all()
+    return [_material_row(item, batch, stored) for item, batch, stored in rows]
+
+
+async def _managed_material(db: AsyncSession, user: User, resource_id: UUID) -> tuple[LearningResource, Batch]:
+    _require(user, {"trainer", "it_admin"}, "it")
+    row = (
+        await db.execute(select(LearningResource, Batch).join(Batch, Batch.id == LearningResource.batch_id).where(LearningResource.id == resource_id, LearningResource.deleted_at.is_(None)))
+    ).first()
+    if not row:
+        raise HTTPException(404, "Material not found")
+    if user.role == "trainer" and row[1].trainer_id != user.id:
+        raise HTTPException(403, "Trainer is not assigned to this batch")
+    return row[0], row[1]
+
+
+@router.patch("/it/trainer/materials/{resource_id}")
+async def update_learning_resource(resource_id: UUID, payload: LearningResourceUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """nehn-027 M5: edit the title, type or link, or move it (`sort_order`)."""
+    item, batch = await _managed_material(db, user, resource_id)
+    changes = payload.model_dump(exclude_unset=True)
+    if item.stored_file_id:
+        if "url" in changes:
+            raise HTTPException(422, "An uploaded file has no link to edit")
+        if "resource_type" in changes:
+            _check_material_type(changes["resource_type"])
+    for field, value in changes.items():
+        if value is not None:
+            setattr(item, field, value)
+    await _audit(db, user, "learning_resource.update", "learning_resource", item.id, {"batch_id": batch.id, "fields": sorted(changes)})
     await db.commit()
     await db.refresh(item)
-    return {"id": item.id, "title": item.title, "type": item.resource_type, "url": item.url}
+    stored = await db.get(StoredFile, item.stored_file_id) if item.stored_file_id else None
+    return _material_row(item, batch, stored)
+
+
+@router.delete("/it/trainer/materials/{resource_id}", status_code=204)
+async def delete_learning_resource(resource_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """nehn-027 M6: a soft delete -- hidden from every list and download; the stored file stays with its owner."""
+    item, batch = await _managed_material(db, user, resource_id)
+    item.deleted_at = datetime.now(UTC)
+    await _audit(db, user, "learning_resource.delete", "learning_resource", item.id, {"batch_id": batch.id})
+    await db.commit()
+
+
+@router.get("/it/materials/{resource_id}/file")
+async def learning_resource_file(resource_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """nehn-027 M7: a learner enrolled in the batch, the batch's trainer, it_admin and super_admin download the file. Everyone else --
+    and a deleted, link-only or unknown material -- gets the same 404, so another batch's materials are not confirmed to exist."""
+    row = (
+        await db.execute(
+            select(LearningResource, Batch, StoredFile)
+            .join(Batch, Batch.id == LearningResource.batch_id)
+            .join(StoredFile, StoredFile.id == LearningResource.stored_file_id)
+            .where(LearningResource.id == resource_id, LearningResource.deleted_at.is_(None))
+        )
+    ).first()
+    if not row:
+        raise HTTPException(404, "Material not found")
+    _, batch, stored = row
+    allowed = user.role == "super_admin" or (user.role == "it_admin" and user.division == "it") or (user.role == "trainer" and batch.trainer_id == user.id)
+    if not allowed and user.role == "it_student":
+        allowed = bool(await db.scalar(select(Enrollment.id).where(Enrollment.batch_id == batch.id, Enrollment.student_id == user.id).limit(1)))
+    if not allowed:
+        raise HTTPException(404, "Material not found")
+    return serve_stored_file(stored)
 
 
 @router.patch("/it/trainer/enrollments/{enrollment_id}/progress")
@@ -1353,12 +1469,12 @@ async def grade_assessment_attempt(attempt_id: UUID, payload: AssessmentGradeIn,
 
 CAN_ISSUE_CERTIFICATES = require_permission("certificates", "issue", "You do not have permission to issue certificates")  # nehn-031 W3
 CAN_CONFIGURE_CERTIFICATES = require_permission("certificates", "configure", "You do not have permission to change certificate rules")
-DEFAULT_CERTIFICATE_RULES = {"min_progress_percent": 100, "min_attendance_percent": 75}  # nehn-031 W1: the thresholds before 0202
+DEFAULT_CERTIFICATE_RULES = {"min_progress_percent": 100, "min_attendance_percent": 75}  # nehn-031 W1: the thresholds before 0203
 CERTIFICATE_QUEUE_EXCLUDED = ("pending_consent", "rejected", "withdrawn", "dropped")  # never seated, or left the course
 
 
 async def _certificate_rules(db: AsyncSession) -> dict:
-    """nehn-031 (DEC-SCOPE-294 W1): the global thresholds, read on every evaluation so an admin's change applies to the next one."""
+    """nehn-031 (DEC-SCOPE-296 W1): the global thresholds, read on every evaluation so an admin's change applies to the next one."""
     rule = await db.get(CertificateRule, "it")
     if not rule:
         return dict(DEFAULT_CERTIFICATE_RULES)
@@ -1451,7 +1567,7 @@ async def update_certificate_rules(
     user: User = Depends(CAN_CONFIGURE_CERTIFICATES),
     db: AsyncSession = Depends(get_db),
 ):
-    """nehn-031 (DEC-SCOPE-294 W2): the thresholds; audited with before and after. Issued certificates keep their own snapshot."""
+    """nehn-031 (DEC-SCOPE-296 W2): the thresholds; audited with before and after. Issued certificates keep their own snapshot."""
     rule = await db.get(CertificateRule, "it", with_for_update=True)
     before = await _certificate_rules(db)  # the locked row, from the identity map
     if not rule:
@@ -1466,7 +1582,7 @@ async def update_certificate_rules(
 
 @router.post("/it/certificates/{enrollment_id}/recommend")
 async def recommend_certificate(enrollment_id: UUID, payload: CertificateRecommendIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """nehn-031 (DEC-SCOPE-294 W6): the batch's trainer recommends a learner or flags them not ready; a later call replaces it."""
+    """nehn-031 (DEC-SCOPE-296 W6): the batch's trainer recommends a learner or flags them not ready; a later call replaces it."""
     _require(user, {"trainer"}, "it")
     enrollment = await db.get(Enrollment, enrollment_id)
     if not enrollment:
@@ -1486,7 +1602,7 @@ async def recommend_certificate(enrollment_id: UUID, payload: CertificateRecomme
 
 @router.get("/it/certificates/queue")
 async def certificate_queue(user: User = Depends(CAN_ISSUE_CERTIFICATES), db: AsyncSession = Depends(get_db)):
-    """nehn-031 (DEC-SCOPE-294 W5): enrolments without a certificate that pass the progress threshold or carry a trainer's
+    """nehn-031 (DEC-SCOPE-296 W5): enrolments without a certificate that pass the progress threshold or carry a trainer's
     recommendation, recommended first. Full eligibility is evaluated per row (capped at 200)."""
     rules = await _certificate_rules(db)
     recommender = aliased(User)
@@ -1587,7 +1703,7 @@ async def bulk_issue_certificates(
     user: User = Depends(CAN_ISSUE_CERTIFICATES),
     db: AsyncSession = Depends(get_db),
 ):
-    """nehn-031 (DEC-SCOPE-294 W8): each enrolment is checked and issued on its own; the answer says which were issued and why the
+    """nehn-031 (DEC-SCOPE-296 W8): each enrolment is checked and issued on its own; the answer says which were issued and why the
     others were not."""
     await _check_override(db, user, payload.override)
     issued, failed = [], []

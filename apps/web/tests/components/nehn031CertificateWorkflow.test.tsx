@@ -7,7 +7,7 @@ import TeacherWorkspaceActions from "@/components/TeacherWorkspaceActions";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
 
-// nehn-031 (DEC-ROLE-003, DEC-SCOPE-294): the trainer recommends, the coordinator issues from a queue (singly or in bulk, with a
+// nehn-031 (DEC-ROLE-003, DEC-SCOPE-296): the trainer recommends, the coordinator issues from a queue (singly or in bulk, with a
 // reason when overriding), the admin sets the thresholds.
 const BASE = "/api/v1/workflows/it/certificates";
 const RULES = { min_progress_percent: 100, min_attendance_percent: 75 };

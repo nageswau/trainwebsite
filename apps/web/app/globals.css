@@ -560,3 +560,7 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 .upload-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .upload-list li{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 12px;border:1px solid #e3ebf5;border-radius:10px;overflow-wrap:anywhere}
 .upload-list li span:first-child{flex:1 1 140px;min-width:0}
+
+/* nehn-027: trainer course materials (CourseMaterialsPanel) -- source choice, the managed list, long links/filenames wrap on phones. */
+.material-source{display:flex;flex-wrap:wrap;gap:8px 18px;border:0;padding:0;margin:0}.material-source legend{font-weight:800;font-size:13px;padding:0;margin-bottom:6px}.material-source label{display:flex;align-items:center;gap:6px;font-weight:600}
+.material-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}.material-list li{padding:14px;display:grid;gap:8px}.material-list h4{margin:0;overflow-wrap:anywhere}.material-meta{margin:0;font-size:13px;overflow-wrap:anywhere}

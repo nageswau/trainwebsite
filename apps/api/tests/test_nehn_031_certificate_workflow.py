@@ -1,5 +1,5 @@
-"""nehn-031 -- the coordinator certificate workflow (DEC-ROLE-003; DEC-SCOPE-294; spec
-docs/superpowers/specs/2026-10-27-nehn-031-coordinator-certificate-workflow-design.md, RBAC_MATRIX §2.205): issuance is the coordinator's
+"""nehn-031 -- the coordinator certificate workflow (DEC-ROLE-003; DEC-SCOPE-296; spec
+docs/superpowers/specs/2026-10-27-nehn-031-coordinator-certificate-workflow-design.md, RBAC_MATRIX §2.207): issuance is the coordinator's
 (AC1), the override is its own grant and needs a reason (AC2), thresholds are configurable (AC3), bulk issue (AC4), the trainer's
 recommendation in the queue (AC5) and duplicate issue (AC6)."""
 

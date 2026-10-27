@@ -3,7 +3,7 @@
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-031` (§11 L237-248, §10 L231; `UNVERIFIED` backlog);
   `DEC-ROLE-003` (CONFIRMED_CURRENT 2026-09-12: new distinct role, **exclusive** issuance, old path removed only once the coordinator
   flow exists). Dependencies merged: nehn-030 (`DEC-SCOPE-293`, the role and portal) and nehn-005 (`DEC-SCOPE-281`, the matrix).
-- **Decision:** `DEC-SCOPE-294`. **API:** §12GR. **RBAC:** §2.205. **Migration:** `0202_certificate_workflow`.
+- **Decision:** `DEC-SCOPE-296`. **API:** §12GT. **RBAC:** §2.207. **Migration:** `0203_certificate_workflow`.
 
 ## Intent
 

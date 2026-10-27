@@ -2300,7 +2300,15 @@ New table `submission_files`: `id` (UUID PK), `submission_id` (FK `submissions` 
 the `stored_files` row. `submissions.file_url` is unchanged and still accepted. No existing data changes. Downgrade drops the table (the
 submissions and stored files stay).
 
-## Certificate workflow (`nehn-031`, `DEC-SCOPE-294`; migration `0202_certificate_workflow`)
+## Learning material files (`nehn-027`, `DEC-SCOPE-294`; migration `0202_learning_resource_files`, after nehn-030's `0201_coordinator_role`)
+
+`learning_resources` gains `stored_file_id` (UUID, nullable, FK `stored_files` ON DELETE SET NULL, `uq_learning_resources_stored_file`),
+`sort_order` (int, NOT NULL, default 0) and `deleted_at` (timestamptz, nullable, soft delete); `url` becomes nullable (a file material has
+none). Filename, size and MIME live on the `stored_files` row. Existing rows keep their `url` and get `sort_order` 0. The downgrade
+removes already-deleted rows, points each file material's `url` at `/api/v1/files/{stored_file_id}` (nehn-003 owner route), and drops
+the columns.
+
+## Certificate workflow (`nehn-031`, `DEC-SCOPE-296`; migration `0203_certificate_workflow`)
 
 New table `certificate_rules`: `division` (String PK, check `= 'it'`; the `tel_settings` keyed-row idiom), `min_progress_percent`,
 `min_attendance_percent` (each 0–100, `ck_certificate_rules_percent`), `updated_by_id` (FK users), timestamps. Seeded `('it', 100, 75)`,

@@ -9956,7 +9956,33 @@ The Certificates section is read only and follows the new `certificates.view` gr
 **Numbering:** migration `0201_coordinator_role`; no new API route (existing `GET /portal/{division}/{role}/{section}`); RBAC §2.204.
 - **Feature ID authorized:** `nehn-030`. **Status:** built on `worktree-nehn-030`.
 
-### DEC-SCOPE-294 — Coordinator certificate workflow: eligibility rules, recommend, issue, override (`nehn-031`)
+### DEC-SCOPE-294 — Trainer learning materials: file upload and manage (`nehn-027`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-027` (§10 L223-225, L230; `UNVERIFIED` backlog); design
+`docs/superpowers/specs/2026-10-27-nehn-027-learning-material-files-design.md`. Builds on nehn-003 (`DEC-SCOPE-279`).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** M1 `learning_resources.stored_file_id` points at
+the `stored_files` row instead of copying key/filename/size/MIME. M2 a material is a link or one uploaded file (the caller's own
+`learning_material` upload, not attached elsewhere). M3 **videos and provider recordings stay links** (no video hosting is approved); the
+20 MB policy refuses larger files with guidance to use a link. M5 "visibility" in the backlog has no existing field and is not built. M6
+delete is soft. M7 students download only from batches they are enrolled in (others 404). M11 sharing one material across batches is not
+built (publish per batch). New links must be `http(s)://` because they are now rendered as clickable links.
+**Numbering:** migration `0202_learning_resource_files`; API §12GR; RBAC §2.205.
+- **Feature ID authorized:** `nehn-027`. **Status:** built on `worktree-nehn-027`.
+
+### DEC-SCOPE-295 — Admin permission-matrix screen and permission-driven navigation (`nehn-006`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-006` (§5 L122-128, L126; `UNVERIFIED` backlog); design
+`docs/superpowers/specs/2026-10-27-nehn-006-permission-matrix-ui-design.md`. Dependency nehn-005 (`DEC-SCOPE-281`) merged.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** M1 per-role matrix only (per-user is nehn-007).
+M2 non-applicable actions shown as a "—" cell, not clickable. M3 the catalogue response lists the roles. M4 one row per catalogue
+resource, in catalogue order. M5 last-write-wins with nehn-005's 409 on a race. M6 one audit row per save listing every changed cell
+(nehn-005's contract, not one row per cell). M7 super_admin shown read-only. M8 the "403 page" is the existing access-unavailable card.
+M9 while the permission set is unknown (loading, failed lookup) the nav and controls render as before; the API refuses either way.
+M10 the client keeps the last set and re-asks on each portal page. The admin portal's Payments section now follows `payments.view`.
+**Numbering:** no migration; API §12GS (additive); RBAC §2.206.
+- **Feature ID authorized:** `nehn-006`. **Status:** built on `worktree-nehn-006`.
+
+### DEC-SCOPE-296 — Coordinator certificate workflow: eligibility rules, recommend, issue, override (`nehn-031`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-031` (§11 L237-248, §10 L231; `UNVERIFIED` backlog);
 `DEC-ROLE-003` (CONFIRMED_CURRENT: exclusive issuance; the old path goes only once the coordinator flow exists — both land together
@@ -9971,5 +9997,5 @@ issue; the queue shows eligible or recommended/flagged learners. W6 only the bat
 required for not ready); one per enrolment, replaced by a later call; 409 once issued. W7 a duplicate issue is 409 (was 201 with the
 existing certificate); the enrolment row is locked while issuing. W8 bulk issue of 1–50 enrolments answers per item (200); PDFs are made
 in the request. W9 revocation/reissue and an email on issue are out of scope.
-**Numbering:** migration `0202_certificate_workflow`; API §12GR; RBAC §2.205.
+**Numbering:** migration `0203_certificate_workflow`; API §12GT; RBAC §2.207.
 - **Feature ID authorized:** `nehn-031`. **Status:** built on `worktree-nehn-031`.

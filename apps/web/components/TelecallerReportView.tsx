@@ -12,9 +12,10 @@ const show = (value: string | number | undefined) => (value === undefined || val
 // tel-024 (DEC-SCOPE-109, EVID-019 §21): one management report -- a strip of report links (each report is its own address, so a view
 // can be shared and Back works), a plain GET filter form (no client JS), the table and its CSV. The columns, labels and options are the
 // server's; counts are text nodes only. On a phone the table stacks into labelled blocks (`.table.stack`). `report` null + `error` =
-// the read failed or the API refused the inputs; the form stays so the inputs can be corrected.
-export default function TelecallerReportView({ kind, report, error, params, basePath }: {
-  kind: ReportKind; report: TelecallerReport | null; error: string; params: ReportParams; basePath: string;
+// the read failed or the API refused the inputs; the form stays so the inputs can be corrected. nehn-006: `canDownload` false (the role
+// lacks `reports.telecaller.download`) drops the export buttons; the .csv route refuses it anyway.
+export default function TelecallerReportView({ kind, report, error, params, basePath, canDownload = true }: {
+  kind: ReportKind; report: TelecallerReport | null; error: string; params: ReportParams; basePath: string; canDownload?: boolean;
 }) {
   const options = report?.options;
   const leadReport = kind !== "telecaller";
@@ -75,10 +76,12 @@ export default function TelecallerReportView({ kind, report, error, params, base
               <tfoot><tr>{cells(report.totals)}</tr></tfoot>
             </table>
           </div>
-          <SpreadsheetButtons
-            csvUrl={csvUrl(kind, params)} label={`Export ${report.title}`}
-            filename={`telecaller-${kind}-${report.date_from}-to-${report.date_to}.csv`}
-          />
+          {canDownload && (
+            <SpreadsheetButtons
+              csvUrl={csvUrl(kind, params)} label={`Export ${report.title}`}
+              filename={`telecaller-${kind}-${report.date_from}-to-${report.date_to}.csv`}
+            />
+          )}
         </>
       )}
     </div>

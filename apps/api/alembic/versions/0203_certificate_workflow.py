@@ -1,9 +1,9 @@
 """nehn-031 -- the coordinator certificate workflow: `certificate_rules`, `certificate_requests` and the new certificate grants.
 
-Revision ID: 0202_certificate_workflow
-Revises: 0201_coordinator_role
+Revision ID: 0203_certificate_workflow
+Revises: 0202_learning_resource_files
 
-docs/superpowers/specs/2026-10-27-nehn-031-coordinator-certificate-workflow-design.md (DEC-SCOPE-294). 0001 builds a fresh database from the
+docs/superpowers/specs/2026-10-27-nehn-031-coordinator-certificate-workflow-design.md (DEC-SCOPE-296). 0001 builds a fresh database from the
 current models, which already carry both tables, so they are created only when missing (0194's idiom). The rules row is seeded with the
 thresholds that were hardcoded before (100 / 75), so eligibility does not change on upgrade. SEED is a frozen copy of the new
 `rbac.DEFAULT_GRANTS` keys at this revision. No existing row changes: issued certificates stay as they are. The downgrade drops both
@@ -14,8 +14,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0202_certificate_workflow"
-down_revision = "0201_coordinator_role"
+revision = "0203_certificate_workflow"
+down_revision = "0202_learning_resource_files"
 branch_labels = None
 depends_on = None
 

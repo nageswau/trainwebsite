@@ -27,6 +27,10 @@ export default async function TelecallerReportsPage({ roles, nav, roleLabel, log
   const params = reportParams(search);
   let report: TelecallerReport | null = null;
   let error = "";
+  // nehn-006 (DEC-SCOPE-295 M9): the export buttons follow `reports.telecaller.download`; a failed lookup leaves them (the .csv refuses).
+  const canDownload = serverApi<{ permissions: string[] }>("/api/v1/auth/me/permissions").then(
+    (body) => body.permissions.includes("reports.telecaller.download"), () => true,
+  );
   try {
     report = await serverApi<TelecallerReport>(reportUrl(kind, params));
   } catch (e) {
@@ -45,7 +49,7 @@ export default async function TelecallerReportsPage({ roles, nav, roleLabel, log
             <p className="muted">Lead source, course, telecaller, counselor handover and campaign figures for a date range. Lead reports count leads created in the range; a lead counts in every stage it has reached. The Telecaller report counts the activity logged in the range.</p>
           </div>
         </div>
-        <TelecallerReportView kind={kind} report={report} error={error} params={params} basePath={basePath} />
+        <TelecallerReportView kind={kind} report={report} error={error} params={params} basePath={basePath} canDownload={await canDownload} />
       </div>
     </PortalShell>
   );

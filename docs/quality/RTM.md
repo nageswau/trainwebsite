@@ -1296,13 +1296,24 @@ half.
 | `nehn-041-AC6` | One click opens the student where the caller has a page | `::test_items_carry_code_detail_and_links`; `StudentSearch.test.tsx`, `AdminUserManagementPanel.test.tsx` (`?q=`), `PortalShell.studentSearch.test.tsx`; e2e |
 | `nehn-041-AC7` | Every search audited without its text; 31st a minute 429 | `::test_every_search_is_audited_without_its_text`, `::test_the_31st_search_in_a_minute_is_429` |
 
+**Addendum, 2026-10-27 (`nehn-027`)** — Trainer learning materials: file upload and manage.
+
+| ID | Requirement / acceptance | Evidence |
+|---|---|---|
+| `nehn-027` | Requirement: §10 L223-225, L230 → `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-027` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-294` → design `docs/superpowers/specs/2026-10-27-nehn-027-learning-material-files-design.md` → API §12GR, RBAC §2.205, migration `0202_learning_resource_files` | `apps/api/tests/test_nehn_027_migration.py` |
+| `nehn-027-AC1` | A PDF uploaded to batch A is seen and downloaded only by batch A's students | `apps/api/tests/test_nehn_027_learning_material_files.py::test_uploaded_pdf_reaches_only_the_batch_students`; `CourseMaterialsPanel.test.tsx`; `apps/web/tests/e2e/nehn-027-learning-material-files.spec.ts` |
+| `nehn-027-AC2` | Edit the title, reorder, soft-delete; it disappears for students | `::test_edit_reorder_and_soft_delete`; `CourseMaterialsPanel.test.tsx`; e2e |
+| `nehn-027-AC3` | A link material still works (only `http(s)` links) | `::test_link_resource_still_works_and_rejects_unsafe_schemes`; `test_trn_004_recordings_and_resources.py`; `DataTable.test.tsx` (link column) |
+| `nehn-027-AC4` | A batch B student gets 404; other trainers 403; anonymous 401 | `::test_uploaded_pdf_reaches_only_the_batch_students`, `::test_manage_routes_are_scoped_to_the_batch_trainer`, `::test_anonymous_is_refused` |
+| `nehn-027-neg` | An oversize or video file is refused with guidance to use a link | `::test_create_needs_exactly_one_source_and_an_own_unattached_file`; `CourseMaterialsPanel.test.tsx`; e2e |
+
 **Addendum, 2026-10-27 (`nehn-031`)** — Coordinator certificate workflow. Tests in `apps/api/tests/test_nehn_031_certificate_workflow.py`
 (`::`), `test_nehn_031_migration.py`, `apps/web/tests/components/nehn031CertificateWorkflow.test.tsx` and e2e
 `nehn-031-certificate-workflow.spec.ts`.
 
 | ID | Requirement / acceptance | Evidence |
 |---|---|---|
-| `nehn-031` | Requirement: PDF §11 L237-248, §10 L231 → backlog `nehn-031` → `DEC-ROLE-003` + `DEC-SCOPE-294` → design `docs/superpowers/specs/2026-10-27-nehn-031-coordinator-certificate-workflow-design.md` → API §12GR → RBAC §2.205 | — |
+| `nehn-031` | Requirement: PDF §11 L237-248, §10 L231 → backlog `nehn-031` → `DEC-ROLE-003` + `DEC-SCOPE-296` → design `docs/superpowers/specs/2026-10-27-nehn-031-coordinator-certificate-workflow-design.md` → API §12GT → RBAC §2.207 | — |
 | `nehn-031-AC1` | Only the coordinator issues; trainer and admin 403 | `::test_other_roles_cannot_issue`, `::test_coordinator_issues_an_eligible_learner`, `::test_revoking_the_issue_grant_closes_issuance`; `test_adm_006_certificates.py::test_nehn_031_batch_trainer_and_it_admin_no_longer_issue`; e2e |
 | `nehn-031-AC2` | Not eligible + override without the grant 403; with it a reason is required and audited | `::test_override_without_the_override_grant_is_403`, `::test_not_eligible_needs_override_and_a_reason`; vitest queue override; e2e |
 | `nehn-031-AC3` | Thresholds changed by admin apply to new evaluations | `::test_admin_threshold_change_applies_to_the_next_evaluation`; vitest rules panel; e2e |

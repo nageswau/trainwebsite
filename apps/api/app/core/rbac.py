@@ -77,7 +77,7 @@ CATALOGUE: dict[str, dict] = {
     "payments": {"label": "Payments", "actions": ("view", "add")},
     "discounts": {"label": "Payment discounts", "actions": ("add",)},
     "reports.telecaller": {"label": "Telecaller reports", "actions": ("view", "download")},
-    # nehn-030: the coordinator portal's Certificates section; nehn-031 (DEC-SCOPE-294): issuing, the eligibility override, thresholds.
+    # nehn-030: the coordinator portal's Certificates section; nehn-031 (DEC-SCOPE-296): issuing, the eligibility override, thresholds.
     "certificates": {"label": "Certificates", "actions": ("view", "issue", "override", "configure")},
 }
 # The day-one grants, equal to the inline checks they replace (P3): admin.ensure_admin and telecaller_reports' REPORT_ROLES.
@@ -85,10 +85,10 @@ CATALOGUE: dict[str, dict] = {
 _PAYMENT_ADMIN = ("payments.view", "payments.add", "discounts.add")
 _TELECALLER_REPORTS = ("reports.telecaller.view", "reports.telecaller.download")
 DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
-    "it_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure",),  # nehn-031 W2; migration 0202 seeds it
+    "it_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure",),  # nehn-031 W2; migration 0203 seeds it
     "overseas_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,
     "telecaller_manager": _TELECALLER_REPORTS,
-    # nehn-030 (0201 seeds view); nehn-031 W3/W4 (0202 seeds issue, override): issuance is the coordinator's alone (DEC-ROLE-003).
+    # nehn-030 (0201 seeds view); nehn-031 W3/W4 (0203 seeds issue, override): issuance is the coordinator's alone (DEC-ROLE-003).
     "coordinator": ("certificates.view", "certificates.issue", "certificates.override"),
 }
 

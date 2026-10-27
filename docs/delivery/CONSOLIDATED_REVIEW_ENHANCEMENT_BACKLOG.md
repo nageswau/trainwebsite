@@ -410,6 +410,8 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** all navigation; existing e2e specs that click sidebar links; role-literal checks left in components drifting from grants.
 - **Open questions:** matrix per role only, or also per user (nehn-007)? Should non-applicable actions be shown?
 - **Complexity:** large · **Risk:** medium
+- **Status (2026-10-27):** built on `worktree-nehn-006` (`DEC-SCOPE-295`; API §12GS; RBAC §2.206; no migration). Open questions took the
+  builder's defaults: per role only; non-applicable actions shown as "—".
 
 #### `nehn-007` — Per-user permission overrides
 - **Source:** §5 L92 "control individual permissions for individual users or roles"; `CLIENT_QUESTIONS.md` D-09 §3 (**open**).
@@ -1209,6 +1211,9 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** the student downloads section.
 - **Open questions:** video uploads or links only? Sharing across batches?
 - **Complexity:** medium · **Risk:** low
+- **Status (2026-10-27):** built on `worktree-nehn-027` (`DEC-SCOPE-294`; migration `0202_learning_resource_files`; API §12GR; RBAC
+  §2.205). AC1-AC4 met. Builder's defaults (`NEEDS_CONFIRMATION`): videos stay links (20 MB file limit, with link guidance); no
+  cross-batch sharing (publish per batch); no visibility flag; delete is soft.
 
 #### `nehn-028` — Trainer per-student progress view
 - **Source:** §10 "View student progress" and L232-236 (attendance, assignments, assessments, overall completion).
@@ -1354,9 +1359,9 @@ Risk is the risk of regression or of a wrong outcome.
   - Are thresholds per course?
   - Revocation?
 - **Complexity:** medium · **Risk:** high
-- **Status (2026-10-27):** built in `worktree-nehn-031` (`DEC-SCOPE-294`, defaults W1-W9 `NEEDS_CONFIRMATION`): global thresholds
+- **Status (2026-10-27):** built in `worktree-nehn-031` (`DEC-SCOPE-296`, defaults W1-W9 `NEEDS_CONFIRMATION`): global thresholds
   (`certificate_rules`, it_admin edits), trainer recommend / not-ready, coordinator queue with bulk issue, override as its own grant with
-  a reason, duplicate issue 409; trainer and it_admin issuance removed in the same change. Migration `0202`; API §12GR; RBAC §2.205.
+  a reason, duplicate issue 409; trainer and it_admin issuance removed in the same change. Migration `0203`; API §12GT; RBAC §2.207.
 
 #### `nehn-032` — Certificate digital signatures (Founder + Coordinator) and designation
 - **Source:** §11 "Digital Signatures" (L249-260); §26 Certificates (L791-794); actions 11 and 12 (the **client provides the PNGs**).

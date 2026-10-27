@@ -59,7 +59,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-003 | Files and storage | Private file storage with per-purpose upload rules | Bug | Done — confirm defaults | Dev + Client | Wave 0 | Confirm storage location and upload limits (§2) |
 | nehn-004 | Reporting | Excel download beside every CSV report; Excel import reader | Enhancement | Done — confirm defaults | Dev | Wave 1 | — |
 | nehn-005 | Permissions | Permission engine (role × module × action), first two modules | Enhancement | Done — confirm defaults | Dev + Client | Wave 1 | Confirm who edits permissions; custom roles needed? (OD-04) |
-| nehn-006 | Permissions | Admin permission-matrix screen and permission-driven menus | Enhancement | Ready to start | Dev | Wave 2 | — |
+| nehn-006 | Permissions | Admin permission-matrix screen and permission-driven menus | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 | Per role only; non-applicable actions shown as "—" (DEC-SCOPE-295) |
 | nehn-007 | Permissions | Per-user permission overrides | Enhancement | Waiting — decision | Dev + Client | Wave 4 | Are per-user overrides needed this release? (OD-03) |
 | nehn-008 | Permissions | Role-based column policy for screens and downloads | Enhancement | Waiting — client input | Dev + Client | Wave 3 | Which columns each role may see (CI-02) |
 | nehn-009 | Reporting | Report framework: standard filters, CSV/Excel, audited | Enhancement | Waiting — dependency | Dev | Wave 3 | — (needs nehn-008) |
@@ -84,7 +84,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-028 | Trainer portal | Per-student progress view for trainers | Enhancement | Ready to start | Dev | Wave 4 | — |
 | nehn-029 | Trainer portal | Live class reschedule and cancel | Enhancement | Done — confirm defaults | Dev | Wave 4 | Confirm meeting provider is updated by hand for now (§2) |
 | nehn-030 | Certificates | IT Coordinator role and account model | Enhancement | Waiting — decision | Dev + Client | Wave 3 | Coordinator account model and duties (OD-05) |
-| nehn-031 | Certificates | Coordinator certificate workflow: eligibility, recommend, issue, override | Enhancement | Done — confirm defaults | Dev + Client | Wave 3 | Confirm the builder defaults (DEC-SCOPE-294 W1-W9): coordinator overrides, global thresholds, recommendation optional (OD-05) |
+| nehn-031 | Certificates | Coordinator certificate workflow: eligibility, recommend, issue, override | Enhancement | Done — confirm defaults | Dev + Client | Wave 3 | Confirm the builder defaults (DEC-SCOPE-296 W1-W9): coordinator overrides, global thresholds, recommendation optional (OD-05) |
 | nehn-032 | Certificates | Certificate signatures (Founder + Coordinator) and designation | Enhancement | Waiting — client input | Dev + Client | Wave 3 | Signature PNGs and final certificate design (CI-03); needs nehn-031 |
 | nehn-033 | Overseas | Overseas student Overview / Progress page | Enhancement | Waiting — decision | Dev + Client | Wave 2 · next review | Mapping of the client's 10 stages onto the portal's stages (OD-10) |
 | nehn-034 | Overseas | Country cards with flags and university count | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 · next review | Custom country images, if wanted (CI-04) |

@@ -386,8 +386,13 @@ class AssignmentSubmissionIn(BaseModel):
     file_ids: list[UUID] | None = Field(default=None, max_length=5)
 
 
+# nehn-027 (DEC-SCOPE-294): material links are shown to students as clickable links, so only web addresses are accepted.
+MATERIAL_URL = r"^https?://\S+$"
+MATERIAL_TYPE = "^(link|document|video|recording|notes)$"
+
+
 class CertificateIssueIn(BaseModel):
-    """nehn-031 (DEC-SCOPE-294 W4): the single issue route's existing body, now typed and bounded."""
+    """nehn-031 (DEC-SCOPE-296 W4): the single issue route's existing body, now typed and bounded."""
 
     override: bool = False
     override_reason: str | None = Field(default=None, max_length=1000)
@@ -420,9 +425,32 @@ class CertificateRulesIn(BaseModel):
 class LearningResourceCreate(BaseModel):
     batch_id: UUID
     title: str = Field(min_length=2, max_length=180)
-    resource_type: str = Field(default="link", pattern="^(link|document|video|recording|notes)$")
-    url: str = Field(min_length=1, max_length=500)
+    resource_type: str = Field(default="link", pattern=MATERIAL_TYPE)
+    # nehn-027 M2: exactly one of a link or an id from `POST /files/upload?purpose=learning_material`.
+    url: str | None = Field(default=None, min_length=1, max_length=500, pattern=MATERIAL_URL)
+    file_id: UUID | None = None
     metadata: dict = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def one_source(self):
+        if (self.url is None) == (self.file_id is None):
+            raise ValueError("Provide either a link or an uploaded file")
+        return self
+
+
+class LearningResourceUpdate(BaseModel):
+    """nehn-027 M5: every field optional, at least one."""
+
+    title: str | None = Field(default=None, min_length=2, max_length=180)
+    resource_type: str | None = Field(default=None, pattern=MATERIAL_TYPE)
+    url: str | None = Field(default=None, min_length=1, max_length=500, pattern=MATERIAL_URL)
+    sort_order: int | None = Field(default=None, ge=0, le=100000)
+
+    @model_validator(mode="after")
+    def not_empty(self):
+        if not self.model_fields_set:
+            raise ValueError("Nothing to change")
+        return self
 
 
 class EnrollmentProgressUpdate(BaseModel):

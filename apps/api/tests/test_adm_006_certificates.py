@@ -13,7 +13,7 @@ Trainer access to the same shared issuance endpoint predates this feature (no ap
 -- left as-is rather than removed, since doing so would break already-shipped, tested
 functionality on an interpretive reading of `ADM-006-AC03`'s "IT Admin" framing.
 
-nehn-031 (DEC-ROLE-003, DEC-SCOPE-294): issuance has since moved to the Coordinator; the trainer and the IT admin
+nehn-031 (DEC-ROLE-003, DEC-SCOPE-296): issuance has since moved to the Coordinator; the trainer and the IT admin
 now get 403, and the override-reason rule below is exercised as the coordinator. The admin page keeps the directory.
 """
 
