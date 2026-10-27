@@ -1330,3 +1330,17 @@ half.
 | `nehn-031-AC4` | Bulk issue of 30 creates 30 unique numbers and PDFs | `::test_bulk_issue_of_thirty_creates_thirty_unique_certificates`, `::test_bulk_reports_each_failure_and_issues_the_rest` |
 | `nehn-031-AC5` | The trainer's recommendation is visible in the queue | `::test_trainer_recommendation_is_visible_in_the_queue`, `::test_only_the_batch_trainer_recommends`; vitest trainer card + queue; e2e |
 | `nehn-031-AC6` | A duplicate issue is 409 | `::test_duplicate_issue_is_409`; e2e |
+
+**Addendum, 2026-10-27 (`nehn-032`)** — Certificate signatures. Tests in `apps/api/tests/test_nehn_032_certificate_signatures.py` (`::`),
+`test_nehn_032_migration.py`, `apps/web/tests/components/nehn032CertificateSignatures.test.tsx` and e2e
+`nehn-032-certificate-signatures.spec.ts`.
+
+| ID | Requirement / acceptance | Evidence |
+|---|---|---|
+| `nehn-032` | Requirement: PDF §11 L249-260, §26 L791-794, actions 11/12 → backlog `nehn-032` → `DEC-SCOPE-300` → design `docs/superpowers/specs/2026-10-27-nehn-032-certificate-signatures-design.md` → API §12GX → RBAC §2.211 | — |
+| `nehn-032-AC1` | Both signatures with names and designations in their slots, no overlap with long names | `::test_render_draws_both_slots_with_long_names`, `::test_issue_snapshots_the_active_signatories_and_a_replacement_affects_only_later_certificates`; preview rendered and inspected in QA; e2e |
+| `nehn-032-AC2` | Replacing the founder signature affects only later certificates | `::test_issue_snapshots_the_active_signatories_and_a_replacement_affects_only_later_certificates`, `::test_upload_replaces_the_active_version` |
+| `nehn-032-AC3` | Signature files are not downloadable by students | `::test_other_roles_cannot_manage_or_see_signatures`; e2e AC3 |
+| `nehn-032-AC4` | Issuing without an active signatory is blocked | `::test_issue_is_refused_while_a_slot_is_empty`; vitest empty slot |
+| `nehn-032-S4` | JPEG / oversize / opaque / tiny / undecodable uploads refused; non-admin 403 | `::test_upload_check_refuses_bad_files`, `::test_upload_validates_fields`; e2e JPEG |
+| `nehn-032-S9` | Admin preview | `::test_preview_renders_a_pdf`; e2e AC1 |

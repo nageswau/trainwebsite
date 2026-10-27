@@ -10014,3 +10014,20 @@ existing certificate); the enrolment row is locked while issuing. W8 bulk issue 
 in the request. W9 revocation/reissue and an email on issue are out of scope.
 **Numbering:** migration `0204_certificate_workflow`; API §12GU; RBAC §2.208.
 - **Feature ID authorized:** `nehn-031`. **Status:** built on `worktree-nehn-031`.
+
+### DEC-SCOPE-300 — Certificate signatures: Founder + Coordinator, designation (`nehn-032`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-032` (§11 L249-260, §26 L791-794, actions 11/12;
+`UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-27-nehn-032-certificate-signatures-design.md`. Dependencies nehn-003
+(`DEC-SCOPE-279`), nehn-030 (`DEC-SCOPE-293`), nehn-031 (`DEC-SCOPE-297`) merged. The client's PNGs and final design (CI-03) are still
+pending: they are uploaded through this feature, and a final design is a later change.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** S1 two fixed slots; the coordinator signature is
+a configured person, not the issuing coordinator. S2 versions: a new image closes the active row and inserts another; one active row per
+slot. S3 name/designation edited in place on the active version. S4 PNG ≤ 1 MB with an alpha channel, 50–2000 × 20–1000 px. S5 private
+storage, streamed only to grant holders, never presigned. S6 new grant `certificates.manage`, no default holder (super_admin only).
+S7 issuing is refused (409) while a slot is empty — no placeholder; certificates snapshot the versions used. S8 slots between the
+program and the authenticity rule, scaled to fit. S9 an admin PDF preview with long sample text. "Relevant designation/details" is read as
+the signatories' designations (no course duration or grade).
+**Numbering:** migration `0207_certificate_signatories`; API §12GX; RBAC §2.211 (0205/0206, DEC-SCOPE-298/299, §12GV/§12GW and
+§2.209/§2.210 are left for nehn-007 and nehn-012, which claimed them in their worktrees).
+- **Feature ID authorized:** `nehn-032`. **Status:** built on `worktree-nehn-032`.

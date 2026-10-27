@@ -360,6 +360,27 @@ class Certificate(Base, TimestampMixin):
     emailed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     criteria_snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String(30), default="issued")
+    # nehn-032 (DEC-SCOPE-300 S7): the signatory versions drawn on the PDF, [{id, role, display_name, designation}]; NULL before nehn-032.
+    signatory_snapshot: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
+
+class CertificateSignatory(Base, TimestampMixin):
+    """nehn-032 (DEC-SCOPE-300 S1/S2): one version of the Founder's or Coordinator's certificate signature. A new image closes the active
+    row (`active_to`) and inserts another, so an issued certificate's snapshot always names the version it was signed with."""
+
+    __tablename__ = "certificate_signatories"
+    __table_args__ = (
+        CheckConstraint("role IN ('founder', 'coordinator')", name="ck_certificate_signatories_role"),
+        Index("uq_certificate_signatories_active_role", "role", unique=True, postgresql_where=text("active_to IS NULL")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    role: Mapped[str] = mapped_column(String(20))
+    display_name: Mapped[str] = mapped_column(String(120))
+    designation: Mapped[str] = mapped_column(String(120))
+    image_key: Mapped[str] = mapped_column(String(200))
+    active_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    active_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
 class CertificateRule(Base, TimestampMixin):

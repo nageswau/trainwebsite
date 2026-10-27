@@ -1,8 +1,10 @@
 import asyncio
 import json
 from datetime import UTC, date, datetime, timedelta
+from io import BytesIO
 from pathlib import Path
 
+from PIL import Image, ImageDraw
 from sqlalchemy import select
 
 from app.core.database import SessionLocal, engine
@@ -12,6 +14,7 @@ from app.models import *
 from app.services import applications, management_audit
 from app.services import recruiter_requirements as requirements
 from app.services.agent_orgs import ensure_agent_org
+from app.services.storage import storage
 
 PASSWORD = "Demo@123"
 USERS = [
@@ -51,6 +54,26 @@ async def user(db, email, name, role, division):
         db.add(x)
         await db.flush()
     return x
+
+
+DEMO_SIGNATORIES = {"founder": ("Demo Founder", "Founder & Director"), "coordinator": ("Nisha Coordinator", "IT Coordinator")}
+
+
+async def demo_signatories(db):
+    """nehn-032 (DEC-SCOPE-300): a generated, transparent stand-in signature for each empty slot, so demo and CI certificates can be issued.
+    The client's real PNGs (CI-03) replace them through the admin Certificates page."""
+    for role, (name, designation) in DEMO_SIGNATORIES.items():
+        if await db.scalar(select(CertificateSignatory.id).where(CertificateSignatory.role == role, CertificateSignatory.active_to.is_(None))):
+            continue
+        image = Image.new("RGBA", (420, 120), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(image)
+        draw.line([(20, 90), (90, 30), (150, 85), (220, 35), (290, 80), (400, 50)], fill=(14, 27, 43, 255), width=5)
+        out = BytesIO()
+        image.save(out, format="PNG")
+        key = f"signatures/demo-{role}.png"
+        storage.write_bytes(key, out.getvalue(), "image/png")
+        db.add(CertificateSignatory(role=role, display_name=name, designation=designation, image_key=key))
+    await db.flush()
 
 
 async def catalogue_country(db, row: list, interview_prep: dict[str, str]) -> Country:
@@ -934,6 +957,7 @@ async def main():
                 db.add(PartnerCapitalEntry(partner_user_id=partner_id, entry_date=date(2024, 4, 1), kind="initial", amount=Decimal("500000.00"),
                                            note=capital_note, created_by_user_id=partner_one.id))
 
+        await demo_signatories(db)
         await db.commit()
     print("Seed complete; demo password:", PASSWORD)
 

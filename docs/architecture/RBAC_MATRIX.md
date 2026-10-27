@@ -3150,3 +3150,16 @@ super_admin holds every key. **Trainer and it_admin no longer issue** (the `DEC-
 | `GET eligibility/{id}` | 401 | 200 | own batch | 200 | own (student) / 403 | 200 |
 
 Pinned by `apps/api/tests/test_nehn_031_certificate_workflow.py`, `test_adm_006_certificates.py` and `test_nehn_031_migration.py`.
+
+### 2.211 Certificate signatures *(added 2026-10-27 — `DEC-SCOPE-300`, nehn-032)*
+
+The catalogue's `certificates` resource gains `manage` (a new matrix column). No role holds it by default (migration
+`0207_certificate_signatories` seeds nothing); super_admin holds every key. The signature images are never sent to students or issuers
+as files: they exist outside the API only inside rendered certificates.
+
+| Route | Anonymous | super_admin | role granted `certificates.manage` | it_admin, coordinator, trainer, it_student, others |
+|---|---|---|---|---|
+| `GET/POST /admin/certificate-signatories`, `PATCH …/{id}`, `GET …/{id}/image`, `GET /admin/certificates/preview` | 401 | 200/201 | 200/201 | 403 |
+
+The IT admin portal's Certificates section shows the "Certificate signatures" card only when the role holds `certificates.manage`.
+Pinned by `apps/api/tests/test_nehn_032_certificate_signatures.py` and `apps/web/tests/e2e/nehn-032-certificate-signatures.spec.ts`.

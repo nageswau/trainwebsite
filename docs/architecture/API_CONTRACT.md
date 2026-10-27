@@ -4332,3 +4332,25 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - `POST /{enrollment_id}/issue` — **now needs `certificates.issue`** (trainer and it_admin 403, `DEC-ROLE-003`); `override: true` needs
   `certificates.override` (403). A second issue for the same enrolment is **409** (was 201 with the existing certificate). Body and 201
   response unchanged; `override_reason` is capped at 1000 characters. Eligibility is re-checked at issue time.
+
+## 12GX. Certificate signatures (nehn-032) — addendum, 2026-10-27
+
+`DEC-SCOPE-300`. Migration `0207_certificate_signatories`. Every route needs `certificates.manage` (403 "You do not have permission to
+manage certificate signatures"; super_admin only until granted). A signatory is `{id, role: "founder" | "coordinator", display_name,
+designation, active, active_from, active_to}`; the storage key is never returned.
+
+- `GET /admin/certificate-signatories` (new) — `{items: [signatory]}`: every version, founder then coordinator, the active one first, then
+  newest first; at most 100.
+- `POST /admin/certificate-signatories` (new, multipart) — `role`, `display_name`, `designation` (each trimmed, 1–120, else 422), `file`.
+  The file passes the nehn-003 `signature` policy (PNG only 415, ≤ 1 MB 413, bytes must be PNG 415), then must decode (422), be 50–2000 px
+  wide and 20–1000 px high (422) and have an alpha channel (422 "The signature must have a transparent background"). Text chunks are
+  stripped. 201 `signatory`: the new active version; the slot's previous version gets `active_to` (409 if a concurrent upload won the
+  slot). Audit `certificate_signatory.upload`.
+- `PATCH /admin/certificate-signatories/{id}` (new) — `{display_name?, designation?}` (≤ 120; unknown fields 422). Edits the active version
+  in place; 404 unknown, 409 "This signature version is no longer active". Audit `certificate_signatory.update`.
+- `GET /admin/certificate-signatories/{id}/image` (new) — `image/png`, `Cache-Control: private, no-store`, `nosniff`. 404 unknown/missing.
+- `GET /admin/certificates/preview` (new) — `application/pdf` (inline, `no-store`): the layout with the active signatures and long sample
+  text; nothing stored. 409 "Certificate signatures are not configured: …" when a slot is empty.
+- `POST /workflows/it/certificates/{enrollment_id}/issue` and `POST /workflows/it/certificates/issue` — **now 409** "Certificate
+  signatures are not configured: <slots>" (per item in bulk) while a slot is empty. Issued certificates draw both signatures, names and
+  designations and record `signatory_snapshot`. Response bodies unchanged.

@@ -77,8 +77,9 @@ CATALOGUE: dict[str, dict] = {
     "payments": {"label": "Payments", "actions": ("view", "add")},
     "discounts": {"label": "Payment discounts", "actions": ("add",)},
     "reports.telecaller": {"label": "Telecaller reports", "actions": ("view", "download")},
-    # nehn-030: the coordinator portal's Certificates section; nehn-031 (DEC-SCOPE-297): issuing, the eligibility override, thresholds.
-    "certificates": {"label": "Certificates", "actions": ("view", "issue", "override", "configure")},
+    # nehn-030: the coordinator portal's Certificates section; nehn-031 (DEC-SCOPE-297): issuing, the eligibility override, thresholds;
+    # nehn-032 (DEC-SCOPE-300 S6): `manage` -- the certificate signatures (no default holder: super_admin only until granted).
+    "certificates": {"label": "Certificates", "actions": ("view", "issue", "override", "configure", "manage")},
 }
 # The day-one grants, equal to the inline checks they replace (P3): admin.ensure_admin and telecaller_reports' REPORT_ROLES.
 # super_admin holds every key implicitly and never has rows (P5). Migration 0196 seeds a frozen copy.
