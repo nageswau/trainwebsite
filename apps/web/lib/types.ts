@@ -64,7 +64,17 @@ export type CounselorDashboard = { today: string; window_days: number; sections:
 // --- AGN-018 agency dashboard (DEC-SCOPE-062; spec §5.3): one shape for Masters and staff, Master-only fields null for staff ---
 export type CurrencyTotal = { currency: string; count: number; amount: number };
 export type AgentBreakdown = { items: { label: string; count: number }[]; other: number };
-export type AgentStaffRow = { code: string; name: string; active: boolean; students: number; applications: number; offers: number; enrollments: number };
+export type AgentStaffRow = {
+  code: string;
+  name: string;
+  active: boolean;
+  students: number;
+  applications: number;
+  offers: number;
+  enrollments: number;
+  conversions: number; // nehn-038
+  conversion_rate: number | null;
+};
 export type AgentDashboard = {
   scope: "agency" | "own";
   member_code: string | null;
@@ -76,6 +86,15 @@ export type AgentDashboard = {
   enrollments: number;
   pending_documents: number;
   pending_actions: number;
+  // nehn-038 (DEC-SCOPE-306): visa_approvals + visa_refusals + visa_withdrawals = visa_decisions; the rate is a percent or null.
+  applications_submitted: number;
+  visa_decisions: number;
+  visa_refusals: number;
+  visa_withdrawals: number;
+  conversions: number;
+  conversion_rate: number | null;
+  date_from: string | null;
+  date_to: string | null;
   by_country: AgentBreakdown;
   by_university: AgentBreakdown;
   staff: AgentStaffRow[] | null;

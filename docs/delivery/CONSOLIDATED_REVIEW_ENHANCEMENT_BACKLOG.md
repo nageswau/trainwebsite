@@ -1661,6 +1661,11 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** agent dashboard tests (AGN-0xx).
 - **Open questions:** the final KPI list and definitions; whether admin needs a cross-agent ranking.
 - **Complexity:** small · **Risk:** low
+- **Status (2026-10-27):** built in `worktree-nehn-038` (`DEC-SCOPE-306`, defaults D1-D6 `NEEDS_CONFIRMATION` pending CI-06):
+  `/crm/dashboard` gains `applications_submitted`, the visa outcome split (decisions / approvals / refusals / withdrawals, which sum),
+  per-student conversions and rate (also per staff row), and an optional referral-date range (`date_from`/`date_to`, the AGN-019
+  cohort) applied to every KPI tile, the breakdowns and the staff table. Pending queues and commission stay current. The dashboard has a
+  GET From/To filter. No migration; API §12HD; RBAC §2.217. The admin cross-agent ranking is not built (open question).
 
 ### J. School / Institution (§21)
 
@@ -2060,7 +2065,7 @@ The order follows the PDF's priorities (§25 High, the §27 next-review focus an
 | Founder + Coordinator signature PNGs; final certificate design | nehn-032 | Pending, client |
 | Country images, university logos, icon style, logo copyright restrictions | nehn-034, 035, 036 | Pending, client (standard visuals allowed meanwhile, §26 L801) |
 | Phase-1 school functionality, bulk upload, school report fields, visibility | nehn-039 | Pending, client |
-| Agent performance KPIs | nehn-038 | Pending, client |
+| Agent performance KPIs | nehn-038 | Pending, client (defaults built, DEC-SCOPE-306) |
 | Razorpay live account and webhook | nehn-022 | Pending, client |
 
 ## 8. Owner decisions needed before building (`NEEDS_CONFIRMATION`)

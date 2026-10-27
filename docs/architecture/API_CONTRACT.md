@@ -4417,3 +4417,21 @@ designation, active, active_from, active_to}`; the storage key is never returned
 - `POST /workflows/it/certificates/{enrollment_id}/issue` and `POST /workflows/it/certificates/issue` — **now 409** "Certificate
   signatures are not configured: <slots>" (per item in bulk) while a slot is empty. Issued certificates draw both signatures, names and
   designations and record `signatory_snapshot`. Response bodies unchanged.
+
+## 12HD. Agent dashboard KPIs (nehn-038) — addendum, 2026-10-27
+
+`DEC-SCOPE-306`. No migration. Additive only.
+
+`GET /workflows/overseas/agent/crm/dashboard` gains two optional query parameters, `date_from` and `date_to` (YYYY-MM-DD, inclusive UTC
+days on the day the students' agency records were created).
+
+- **Validation and order.** The gate runs first (401/403 as before). Then `report_range`: 422 for a malformed date, "date_to must be on
+  or after date_from", or "date_to must be before 9999-12-31".
+- **New body fields:**
+  - `applications_submitted`, `visa_decisions`, `visa_refusals`, `visa_withdrawals`, `conversions`: int.
+  - `conversion_rate`: float or null (a percent, one decimal).
+  - `date_from`, `date_to`: date or null (the applied range).
+  - Each `staff[]` row gains `conversions` (int) and `conversion_rate` (float or null).
+- **What a range narrows.** Students, the pipeline and visa figures, conversion, both breakdowns, the staff rows and
+  `unassigned_students` are narrowed to the cohort. `pending_documents`, `pending_actions` and `commission` are not.
+- **Unchanged.** Every existing field and its unfiltered value, `Cache-Control: private, no-store`, and the absence of ids.

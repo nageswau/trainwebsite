@@ -2209,6 +2209,8 @@ class AgentStaffRowOut(BaseModel):
     applications: int
     offers: int
     enrollments: int
+    conversions: int  # nehn-038 (DEC-SCOPE-306 D4): the member's active students with an enrolled application
+    conversion_rate: float | None  # percent, one decimal; null with no students
 
 
 class AgentCommissionSummaryOut(BaseModel):
@@ -2230,6 +2232,17 @@ class AgentDashboardOut(BaseModel):
     enrollments: int
     pending_documents: int
     pending_actions: int
+    # nehn-038 (DEC-SCOPE-306): additive. Visa outcomes count each decided application once by its strongest decision, so
+    # visa_approvals + visa_refusals + visa_withdrawals = visa_decisions. A range narrows every figure except the pending queues
+    # and commission to the students whose agency records were created in it.
+    applications_submitted: int
+    visa_decisions: int
+    visa_refusals: int
+    visa_withdrawals: int
+    conversions: int
+    conversion_rate: float | None
+    date_from: date | None
+    date_to: date | None
     by_country: AgentBreakdownOut
     by_university: AgentBreakdownOut
     staff: list[AgentStaffRowOut] | None

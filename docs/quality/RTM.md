@@ -1367,3 +1367,15 @@ half.
 | `nehn-032-AC4` | Issuing without an active signatory is blocked | `::test_issue_is_refused_while_a_slot_is_empty`; vitest empty slot |
 | `nehn-032-S4` | JPEG / oversize / opaque / tiny / undecodable uploads refused; non-admin 403 | `::test_upload_check_refuses_bad_files`, `::test_upload_validates_fields`; e2e JPEG |
 | `nehn-032-S9` | Admin preview | `::test_preview_renders_a_pdf`; e2e AC1 |
+
+**Addendum, 2026-10-27 (`nehn-038`)** — Agent dashboard KPIs. Tests in `apps/api/tests/test_nehn_038_agent_kpis.py` (`::`),
+`apps/web/tests/components/nehn038AgentKpis.test.tsx` and e2e `nehn-038-agent-kpis.spec.ts`.
+
+| ID | Requirement / acceptance | Evidence |
+|---|---|---|
+| `nehn-038` | Requirement: PDF §20 L553-560, §26 L810-811, action 20 → backlog `nehn-038` → `DEC-SCOPE-306` → design `docs/superpowers/specs/2026-10-27-nehn-038-agent-kpis-design.md` → API §12HD → RBAC §2.217 | — |
+| `nehn-038-AC1` | Each KPI matches a hand-computed fixture | `::test_master_new_kpis_equal_hand_counts`, `::test_staff_see_only_their_own_figures`, `::test_open_ended_ranges`; vitest tiles |
+| `nehn-038-AC2` | The date filter applies to all KPI tiles (work queues and commission stay current, D2) | `::test_date_filter_applies_to_every_kpi_tile`; e2e range |
+| `nehn-038-AC3` | Visa outcomes sum to the total decided | `::test_visa_outcomes_sum_to_decided` |
+| `nehn-038-AC4` | Staff see only their own figures | `::test_staff_see_only_their_own_figures`, `::test_staff_filter_stays_in_own_scope` |
+| `nehn-038-neg` | Another agency is never included; bad ranges 422 after the guards | `::test_other_agency_never_counted`, `::test_bad_ranges_are_422`, `::test_guards_run_before_date_validation`; e2e reversed range |

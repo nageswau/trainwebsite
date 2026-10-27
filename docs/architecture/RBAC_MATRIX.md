@@ -3196,3 +3196,19 @@ as files: they exist outside the API only inside rendered certificates.
 
 The IT admin portal's Certificates section shows the "Certificate signatures" card only when the role holds `certificates.manage`.
 Pinned by `apps/api/tests/test_nehn_032_certificate_signatures.py` and `apps/web/tests/e2e/nehn-032-certificate-signatures.spec.ts`.
+
+### 2.217 Agent dashboard KPIs *(added 2026-10-27 — `DEC-SCOPE-306`, nehn-038)*
+
+No new permission or route. The new figures and the date filter follow AGN-018's gate and scope:
+
+- Agency members of an active agency only. A super admin, a counselor or anyone else gets 403; an anonymous caller gets 401. Both come
+  before any 422 on the dates.
+- A Master sees the whole agency. A staff member sees only their assigned students (`scope: "own"`, whatever the query says), and gets
+  no staff table and no commission.
+- Another agency's rows are never counted.
+
+| Route | Anonymous | Agency Master | Agency staff | super_admin, counselor, others |
+|---|---|---|---|---|
+| `GET /workflows/overseas/agent/crm/dashboard[?date_from&date_to]` | 401 | 200 (agency) | 200 (own) | 403 |
+
+Pinned by `apps/api/tests/test_nehn_038_agent_kpis.py` and `apps/web/tests/e2e/nehn-038-agent-kpis.spec.ts`.
