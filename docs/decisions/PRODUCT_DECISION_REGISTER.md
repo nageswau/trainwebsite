@@ -9996,3 +9996,21 @@ result (not on a note-only edit); the agency gets "Application details updated";
 student sees the whole entry except who recorded it. I9 times carry an offset, 2000–2100.
 **Numbering:** migration `0203_application_interviews`; API §12GT; RBAC §2.207.
 - **Feature ID authorized:** `nehn-037` (part 4). **Status:** built on `worktree-nehn-037`.
+
+### DEC-SCOPE-297 — Coordinator certificate workflow: eligibility rules, recommend, issue, override (`nehn-031`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-031` (§11 L237-248, §10 L231; `UNVERIFIED` backlog);
+`DEC-ROLE-003` (CONFIRMED_CURRENT: exclusive issuance; the old path goes only once the coordinator flow exists — both land together
+here); design `docs/superpowers/specs/2026-10-27-nehn-031-coordinator-certificate-workflow-design.md`. Dependencies nehn-030
+(`DEC-SCOPE-293`) and nehn-005 (`DEC-SCOPE-281`) merged.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`, OD-05):** W1 global thresholds (one IT row:
+progress 100, attendance 75; the other conditions stay fixed). W2 thresholds edited by the `certificates.configure` grant (it_admin by
+default), audited. W3 issuing needs `certificates.issue` (coordinator only); trainer and it_admin lose it (403). super_admin holds every
+key implicitly (engine P5) but has no queue screen. W4 the eligibility override is its own grant `certificates.override` (coordinator)
+and needs a reason (≤ 1000 chars), stored on the certificate and in the audit log. W5 a trainer recommendation is not required before
+issue; the queue shows eligible or recommended/flagged learners. W6 only the batch's trainer recommends or flags not ready (a comment is
+required for not ready); one per enrolment, replaced by a later call; 409 once issued. W7 a duplicate issue is 409 (was 201 with the
+existing certificate); the enrolment row is locked while issuing. W8 bulk issue of 1–50 enrolments answers per item (200); PDFs are made
+in the request. W9 revocation/reissue and an email on issue are out of scope.
+**Numbering:** migration `0204_certificate_workflow`; API §12GU; RBAC §2.208.
+- **Feature ID authorized:** `nehn-031`. **Status:** built on `worktree-nehn-031`.

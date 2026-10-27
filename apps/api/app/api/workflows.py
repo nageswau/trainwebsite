@@ -6,19 +6,21 @@ import re
 import secrets
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
-from uuid import UUID
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app import application_fields
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_permission
 from app.api.files import _allowed, serve_stored_file
 from app.api.school_bulk import _safe_cell
 from app.application_outcome import label as outcome_label
@@ -47,6 +49,8 @@ from app.models import (
     AuditLog,
     Batch,
     Certificate,
+    CertificateRequest,
+    CertificateRule,
     Company,
     ConsentRecord,
     Country,
@@ -100,6 +104,10 @@ from app.schemas import (
     AttendanceBulkIn,
     AttendanceCorrectionIn,
     AttendanceCorrectionReviewIn,
+    CertificateBulkIssueIn,
+    CertificateIssueIn,
+    CertificateRecommendIn,
+    CertificateRulesIn,
     CommissionAmountUpdate,
     CommissionCreate,
     CommissionReportOut,
@@ -136,6 +144,7 @@ from app.services import (
     document_access,
     interviews,
     offers,
+    permissions,
     student_archive,
     student_document_requests,
     visa_lifecycle,
@@ -1458,7 +1467,22 @@ async def grade_assessment_attempt(attempt_id: UUID, payload: AssessmentGradeIn,
     return {"id": attempt.id, "status": attempt.status, "score": total, "percentage": percentage, "grade": attempt.grade}
 
 
-async def _certificate_eligibility(db: AsyncSession, enrollment: Enrollment) -> dict:
+CAN_ISSUE_CERTIFICATES = require_permission("certificates", "issue", "You do not have permission to issue certificates")  # nehn-031 W3
+CAN_CONFIGURE_CERTIFICATES = require_permission("certificates", "configure", "You do not have permission to change certificate rules")
+DEFAULT_CERTIFICATE_RULES = {"min_progress_percent": 100, "min_attendance_percent": 75}  # nehn-031 W1: the thresholds before 0204
+CERTIFICATE_QUEUE_EXCLUDED = ("pending_consent", "rejected", "withdrawn", "dropped")  # never seated, or left the course
+
+
+async def _certificate_rules(db: AsyncSession) -> dict:
+    """nehn-031 (DEC-SCOPE-297 W1): the global thresholds, read on every evaluation so an admin's change applies to the next one."""
+    rule = await db.get(CertificateRule, "it")
+    if not rule:
+        return dict(DEFAULT_CERTIFICATE_RULES)
+    return {"min_progress_percent": rule.min_progress_percent, "min_attendance_percent": rule.min_attendance_percent}
+
+
+async def _certificate_eligibility(db: AsyncSession, enrollment: Enrollment, rules: dict | None = None) -> dict:
+    rules = rules or await _certificate_rules(db)
     batch = await db.get(Batch, enrollment.batch_id)
     attendance_total = await db.scalar(select(func.count()).select_from(Attendance).where(Attendance.student_id == enrollment.student_id, Attendance.batch_id == enrollment.batch_id)) or 0
     attendance_present = (
@@ -1493,7 +1517,7 @@ async def _certificate_eligibility(db: AsyncSession, enrollment: Enrollment) -> 
     pending_fee = (
         await db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.user_id == enrollment.student_id, Payment.division == "it", Payment.status.in_(["pending", "overdue"]))) or 0
     )
-    criteria = {
+    criteria: dict[str, object] = {
         "progress_percent": enrollment.progress_percent,
         "attendance_percent": attendance_percent,
         "assignments_graded": assignment_graded,
@@ -1501,8 +1525,15 @@ async def _certificate_eligibility(db: AsyncSession, enrollment: Enrollment) -> 
         "assessments_passed": passed,
         "assessments_total": len(assessments),
         "pending_fee": float(pending_fee),
+        "rules": rules,
     }
-    criteria["eligible"] = bool(enrollment.progress_percent >= 100 and attendance_percent >= 75 and assignment_graded >= assignment_total and passed >= len(assessments) and float(pending_fee) == 0)
+    criteria["eligible"] = bool(
+        enrollment.progress_percent >= rules["min_progress_percent"]
+        and attendance_percent >= rules["min_attendance_percent"]
+        and assignment_graded >= assignment_total
+        and passed >= len(assessments)
+        and float(pending_fee) == 0
+    )
     criteria["batch_id"] = batch.id if batch else enrollment.batch_id
     return criteria
 
@@ -1518,40 +1549,112 @@ async def certificate_eligibility(enrollment_id: UUID, user: User = Depends(get_
         batch = await db.get(Batch, enrollment.batch_id)
         if not batch or batch.trainer_id != user.id:
             raise HTTPException(403, "Enrollment is outside your assigned batch")
-    elif user.role not in {"it_student", "it_admin", "super_admin"}:
+    elif user.role not in {"it_student", "it_admin", "super_admin", "coordinator"}:  # nehn-031: the coordinator checks before issuing
         raise HTTPException(403, "Certificate access denied")
-    return await _certificate_eligibility(db, enrollment)
+    issued = await db.scalar(select(Certificate.id).where(Certificate.enrollment_id == enrollment.id))
+    return {**await _certificate_eligibility(db, enrollment), "certificate_issued": issued is not None}  # nehn-031 QA31-04
 
 
-@router.post("/it/certificates/{enrollment_id}/issue", status_code=201)
-async def issue_certificate(enrollment_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _require(user, {"trainer", "it_admin"}, "it")
+@router.get("/it/certificates/rules")
+async def read_certificate_rules(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _require(user, {"it_admin", "coordinator", "trainer"}, "it")
+    return await _certificate_rules(db)
+
+
+@router.put("/it/certificates/rules")
+async def update_certificate_rules(
+    payload: CertificateRulesIn,
+    user: User = Depends(CAN_CONFIGURE_CERTIFICATES),
+    db: AsyncSession = Depends(get_db),
+):
+    """nehn-031 (DEC-SCOPE-297 W2): the thresholds; audited with before and after. Issued certificates keep their own snapshot."""
+    rule = await db.get(CertificateRule, "it", with_for_update=True)
+    before = await _certificate_rules(db)  # the locked row, from the identity map
+    if not rule:
+        rule = CertificateRule(division="it")
+        db.add(rule)
+    rule.min_progress_percent, rule.min_attendance_percent, rule.updated_by_id = payload.min_progress_percent, payload.min_attendance_percent, user.id
+    after = payload.model_dump()
+    await _audit(db, user, "certificate_rules.update", "certificate_rules", "it", {"before": before, "after": after})
+    await db.commit()
+    return after
+
+
+@router.post("/it/certificates/{enrollment_id}/recommend")
+async def recommend_certificate(enrollment_id: UUID, payload: CertificateRecommendIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """nehn-031 (DEC-SCOPE-297 W6): the batch's trainer recommends a learner or flags them not ready; a later call replaces it."""
+    _require(user, {"trainer"}, "it")
     enrollment = await db.get(Enrollment, enrollment_id)
+    if not enrollment:
+        raise HTTPException(404, "Enrollment not found")
+    batch = await db.get(Batch, enrollment.batch_id)
+    if not batch or batch.trainer_id != user.id:
+        raise HTTPException(403, "Enrollment is outside your assigned batch")
+    if await db.scalar(select(Certificate.id).where(Certificate.enrollment_id == enrollment.id)):
+        raise HTTPException(409, "A certificate has already been issued for this enrolment")
+    values = {"status": payload.status, "comment": payload.comment, "recommended_by_id": user.id, "updated_at": func.now()}
+    stmt = pg_insert(CertificateRequest).values(id=uuid4(), enrollment_id=enrollment.id, **values)
+    await db.execute(stmt.on_conflict_do_update(index_elements=[CertificateRequest.enrollment_id], set_=values))
+    await _audit(db, user, f"certificate.{payload.status}", "enrollment", enrollment.id, {"comment": payload.comment})
+    await db.commit()
+    return {"enrollment_id": enrollment.id, "status": payload.status, "comment": payload.comment}
+
+
+@router.get("/it/certificates/queue")
+async def certificate_queue(user: User = Depends(CAN_ISSUE_CERTIFICATES), db: AsyncSession = Depends(get_db)):
+    """nehn-031 (DEC-SCOPE-297 W5): enrolments without a certificate that pass the progress threshold or carry a trainer's
+    recommendation, recommended first. Full eligibility is evaluated per row (capped at 200)."""
+    rules = await _certificate_rules(db)
+    recommender = aliased(User)
+    rows = (
+        await db.execute(
+            select(Enrollment, User.full_name, Batch.name, Program.title, CertificateRequest, recommender.full_name)
+            .join(User, User.id == Enrollment.student_id)
+            .join(Batch, Batch.id == Enrollment.batch_id)
+            .join(Program, Program.id == Batch.program_id)
+            .outerjoin(CertificateRequest, CertificateRequest.enrollment_id == Enrollment.id)
+            .outerjoin(recommender, recommender.id == CertificateRequest.recommended_by_id)
+            .where(
+                Enrollment.status.not_in(CERTIFICATE_QUEUE_EXCLUDED),
+                ~select(Certificate.id).where(Certificate.enrollment_id == Enrollment.id).exists(),
+                or_(Enrollment.progress_percent >= rules["min_progress_percent"], CertificateRequest.status.in_(("recommended", "not_ready"))),
+            )
+            .order_by(CertificateRequest.status != "recommended", User.full_name)  # recommended, then not ready, then the rest (NULLS LAST)
+            .limit(200)
+        )
+    ).all()
+    items = []
+    for enrollment, student, batch_name, program_title, request, recommended_by in rows:
+        criteria = await _certificate_eligibility(db, enrollment, rules)
+        recommendation = (
+            {"status": request.status, "comment": request.comment, "by": recommended_by, "at": request.updated_at} if request and request.status != "issued" else None
+        )
+        items.append(
+            {"enrollment_id": enrollment.id, "student": student, "batch": batch_name, "program": program_title, "eligible": criteria["eligible"], "criteria": criteria, "recommendation": recommendation}
+        )
+    return {"can_override": await permissions.has_grant(db, user.role, "certificates", "override"), "rules": rules, "items": items}
+
+
+async def _issue_certificate(db: AsyncSession, user: User, enrollment_id: UUID, override: bool, override_reason: str | None) -> Certificate:
+    """Issue one certificate (DEC-ROLE-003: a `certificates.issue` holder) and commit. Eligibility is re-evaluated now, not taken from
+    the queue. The enrolment row is locked, so two concurrent issues cannot both create one (W7)."""
+    enrollment = await db.scalar(select(Enrollment).where(Enrollment.id == enrollment_id).with_for_update())
     if not enrollment:
         raise HTTPException(404, "Enrollment not found")
     batch = await db.get(Batch, enrollment.batch_id)
     if not batch:
         raise HTTPException(404, "Batch not found")
-    if user.role == "trainer" and batch.trainer_id != user.id:
-        raise HTTPException(403, "Enrollment is outside your assigned batch")
-    existing = await db.scalar(select(Certificate).where(Certificate.enrollment_id == enrollment.id))
-    if existing:
-        return {"id": existing.id, "certificate_no": existing.certificate_no, "file_url": existing.file_url, "status": existing.status}
+    if await db.scalar(select(Certificate.id).where(Certificate.enrollment_id == enrollment.id)):
+        raise HTTPException(409, "A certificate has already been issued for this enrolment")
     criteria = await _certificate_eligibility(db, enrollment)
-    override = bool(payload.get("override", False))
-    override_reason = payload.get("override_reason")
+    override_reason = (override_reason or "").strip() or None
     if not criteria["eligible"]:
         if not override:
-            # A real, pre-existing bug found while testing this path directly (never
-            # exercised before -- every prior caller always passed override=True):
-            # `HTTPException.detail` is serialized by Starlette's plain `json.dumps`,
-            # not FastAPI's `jsonable_encoder`, so the raw `UUID` in `criteria["batch_id"]`
-            # crashed this response with a 500 instead of ever returning the intended 409.
+            # `HTTPException.detail` is serialized by Starlette's plain `json.dumps`, so the UUID in `batch_id` goes out as a string.
             raise HTTPException(409, {"message": "Completion criteria are not met", "criteria": {**criteria, "batch_id": str(criteria["batch_id"])}})
-        # ADM-006-AC02: an override is never silent -- a written justification is
-        # required in the same request, not just a boolean flag, and it's captured
-        # durably below (both the certificate's own snapshot and the audit trail).
-        if not override_reason or not str(override_reason).strip():
+        # ADM-006-AC02: an override is never silent -- a written justification is required in the same request, captured on the
+        # certificate's own snapshot and in the audit trail.
+        if not override_reason:
             raise HTTPException(422, "override_reason is required to issue a certificate before completion criteria are met")
     program = await db.get(Program, batch.program_id)
     student = await db.get(User, enrollment.student_id)
@@ -1574,13 +1677,60 @@ async def issue_certificate(enrollment_id: UUID, payload: dict, user: User = Dep
     )
     db.add(item)
     await db.flush()
+    await db.execute(update(CertificateRequest).where(CertificateRequest.enrollment_id == enrollment.id).values(status="issued", certificate_id=item.id, updated_at=func.now()))
     await course_skills.grant(db, user, student_id=student.id, program_id=program.id)  # rec-036 CI3: opted-in students only
     await _notify_user(db, student, "Certificate issued", f"Your {program.title} certificate is ready.", "/it/student/certificates")
     item.emailed_at = datetime.now(UTC)
-    await _audit(db, user, "certificate.issue", "certificate", item.id, {"enrollment_id": enrollment.id, "override": override, "override_reason": override_reason if override else None})
+    override_used = not criteria["eligible"]
+    await _audit(db, user, "certificate.issue", "certificate", item.id, {"enrollment_id": enrollment.id, "override": override_used, "override_reason": override_reason if override_used else None})
     await db.commit()
     await db.refresh(item)
+    return item
+
+
+async def _check_override(db: AsyncSession, user: User, override: bool) -> None:
+    if override and not await permissions.has_grant(db, user.role, "certificates", "override"):
+        raise HTTPException(403, "You do not have permission to override certificate eligibility")
+
+
+def _certificate_out(item: Certificate) -> dict:
     return {"id": item.id, "certificate_no": item.certificate_no, "verification_code": item.verification_code, "file_url": item.file_url, "status": item.status}
+
+
+@router.post("/it/certificates/issue")
+async def bulk_issue_certificates(
+    payload: CertificateBulkIssueIn,
+    user: User = Depends(CAN_ISSUE_CERTIFICATES),
+    db: AsyncSession = Depends(get_db),
+):
+    """nehn-031 (DEC-SCOPE-297 W8): each enrolment is checked and issued on its own; the answer says which were issued and why the
+    others were not."""
+    await _check_override(db, user, payload.override)
+    issued, failed = [], []
+    for enrollment_id in dict.fromkeys(payload.enrollment_ids):
+        try:
+            item = await _issue_certificate(db, user, enrollment_id, payload.override, payload.override_reason)
+        except HTTPException as error:
+            await db.rollback()  # releases the row lock; it also expires `user`, which the next issue reads
+            await db.refresh(user)
+            detail = error.detail.get("message") if isinstance(error.detail, dict) else error.detail
+            failed.append({"enrollment_id": str(enrollment_id), "status_code": error.status_code, "detail": detail})
+            continue
+        issued.append({"enrollment_id": str(enrollment_id), **_certificate_out(item)})
+    logger.info("certificate.bulk_issue", extra={"extra_fields": {"actor_id": str(user.id), "issued": len(issued), "failed": len(failed)}})
+    return {"issued": issued, "failed": failed}
+
+
+@router.post("/it/certificates/{enrollment_id}/issue", status_code=201)
+async def issue_certificate(
+    enrollment_id: UUID,
+    payload: CertificateIssueIn,
+    user: User = Depends(CAN_ISSUE_CERTIFICATES),
+    db: AsyncSession = Depends(get_db),
+):
+    # nehn-031 (DEC-ROLE-003): the cut-over -- trainers and IT admins no longer issue; a duplicate is now a 409 (W7).
+    await _check_override(db, user, payload.override)
+    return _certificate_out(await _issue_certificate(db, user, enrollment_id, payload.override, payload.override_reason))
 
 
 @router.get("/it/certificates/{certificate_id}/download")

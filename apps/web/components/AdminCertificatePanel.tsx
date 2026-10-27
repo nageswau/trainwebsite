@@ -1,126 +1,75 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import type { CertificateRules } from "@/lib/certificates";
 
-type EnrollmentRow = { id: string; student: string; batch: string; progress_percent: number };
-type Criteria = {
-  eligible: boolean;
-  progress_percent: number;
-  attendance_percent: number;
-  assignments_graded: number;
-  assignments_total: number;
-  assessments_passed: number;
-  assessments_total: number;
-  pending_fee: number;
-};
+const RULES = "/api/v1/workflows/it/certificates/rules";
 
-function detailMessage(detail: unknown) {
+function detailMessage(detail: unknown, fallback: string) {
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) return detail.map((item: { msg?: string }) => item.msg || "Invalid input").join("; ");
-  return "Unable to issue certificate.";
+  return fallback;
 }
 
-// ADM-006: "Admin uploads/issues certificate" -- issuance (`POST
-// /workflows/it/certificates/{enrollment_id}/issue`) already existed and already worked
-// (own-batch RBAC for a Trainer, eligibility check, criteria snapshot), but no Admin-facing
-// UI to use it existed at all -- only a Trainer-side form under "student-progress". This is
-// that missing surface. ADM-006-AC02: issuing before completion criteria are met now
-// requires a real written `override_reason`, not just a checkbox -- enforced server-side
-// (422 without one), surfaced here as a required field that only appears once the fetched
-// eligibility criteria say the enrollment isn't eligible yet.
+// ADM-006 gave the admin a form to issue certificates. nehn-031 (DEC-ROLE-003, DEC-SCOPE-297) moved issuance to the Coordinator, so the
+// admin's Certificates page now sets the eligibility thresholds instead (`certificates.configure`); the directory below it is unchanged.
 export default function AdminCertificatePanel() {
-  const router = useRouter();
-  const [enrollments, setEnrollments] = useState<EnrollmentRow[]>([]);
-  const [enrollmentId, setEnrollmentId] = useState("");
-  const [criteria, setCriteria] = useState<Criteria | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [checking, setChecking] = useState(false);
+  const [rules, setRules] = useState<CertificateRules | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    fetch("/api/v1/admin/enrollments")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data) => setEnrollments(data))
-      .catch(() => setEnrollments([]))
-      .finally(() => setLoading(false));
+    fetch(RULES)
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(detailMessage(data.detail, "The certificate rules could not be loaded."));
+        setRules(data);
+      })
+      .catch((error: Error) => {
+        setFailed(true);
+        setMessage(error.message || "The certificate rules could not be loaded.");
+      });
   }, []);
 
-  async function checkEligibility(id: string) {
-    setEnrollmentId(id);
-    setCriteria(null);
-    setMessage("");
-    if (!id) return;
-    setChecking(true);
-    const response = await fetch(`/api/v1/workflows/it/certificates/eligibility/${id}`);
-    const data = await response.json().catch(() => ({}));
-    setChecking(false);
-    if (response.ok) setCriteria(data);
-  }
-
-  async function issue(event: FormEvent<HTMLFormElement>) {
+  async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const override = Boolean(criteria && !criteria.eligible);
-    const reason = String(new FormData(event.currentTarget).get("override_reason") ?? "").trim();
-    // nehn-002: `required` lets a whitespace-only reason through; stop it here instead of a server 422.
-    if (override && !reason) {
-      setFailed(true);
-      setMessage("Enter a reason for the override.");
-      return;
-    }
+    const form = new FormData(event.currentTarget);
     setBusy(true);
     setMessage("");
     setFailed(false);
-    const response = await fetch(`/api/v1/workflows/it/certificates/${enrollmentId}/issue`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ override, override_reason: reason || undefined }),
-    });
-    const data = await response.json().catch(() => ({}));
+    const body = { min_progress_percent: Number(form.get("min_progress_percent")), min_attendance_percent: Number(form.get("min_attendance_percent")) };
+    const response = await fetch(RULES, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => null);
+    const data = await response?.json().catch(() => ({}));
     setBusy(false);
-    if (!response.ok) {
+    if (!response?.ok) {
       setFailed(true);
-      setMessage(detailMessage(data.detail));
+      setMessage(detailMessage(data?.detail, "The certificate rules could not be saved."));
       return;
     }
-    setMessage(`Certificate ${data.certificate_no} issued.`);
-    setEnrollmentId("");
-    setCriteria(null);
-    router.refresh();
+    setRules(data);
+    setMessage("Certificate rules saved. They apply to the next eligibility check.");
   }
 
   return (
     <div className="action-card">
-      <h3>Issue certificate</h3>
-      <div className="field">
-        <label htmlFor="admin-cert-enrollment">Enrolment</label>
-        <select id="admin-cert-enrollment" value={enrollmentId} onChange={(event) => void checkEligibility(event.target.value)} disabled={loading}>
-          <option value="">{loading ? "Loading enrolments…" : "Select enrolment"}</option>
-          {enrollments.map((item) => (
-            <option key={item.id} value={item.id}>{item.student} · {item.batch} · {item.progress_percent}%</option>
-          ))}
-        </select>
-      </div>
-      {checking && <p className="muted">Checking completion criteria…</p>}
-      {criteria && (
-        <form className="form" onSubmit={issue}>
-          <p className={criteria.eligible ? "form-message" : "form-error"} role="status">
-            {criteria.eligible
-              ? "Completion criteria are met."
-              : `Not yet eligible: progress ${criteria.progress_percent}%, attendance ${criteria.attendance_percent}%, assignments graded ${criteria.assignments_graded}/${criteria.assignments_total}, assessments passed ${criteria.assessments_passed}/${criteria.assessments_total}, pending fee ${criteria.pending_fee}.`}
-          </p>
-          {!criteria.eligible && (
-            <div className="field">
-              <label htmlFor="admin-cert-override-reason">Override reason (required to issue before criteria are met)</label>
-              <textarea id="admin-cert-override-reason" name="override_reason" required />
-            </div>
-          )}
-          <button className="btn small" disabled={busy}>{busy ? "Issuing…" : "Issue certificate"}</button>
+      <h3>Certificate rules</h3>
+      <p className="muted">Certificates are issued by the Coordinator. A learner is eligible when they meet these thresholds, have every published assignment graded, have passed every assessment and owe no fee.</p>
+      {!rules && !failed && <p className="muted">Loading the certificate rules…</p>}
+      {rules && (
+        <form className="form" onSubmit={save} key={`${rules.min_progress_percent}-${rules.min_attendance_percent}`}>
+          <div className="field">
+            <label htmlFor="cert-min-progress">Minimum progress (%)</label>
+            <input id="cert-min-progress" name="min_progress_percent" type="number" min={0} max={100} step={1} required defaultValue={rules.min_progress_percent} />
+          </div>
+          <div className="field">
+            <label htmlFor="cert-min-attendance">Minimum attendance (%)</label>
+            <input id="cert-min-attendance" name="min_attendance_percent" type="number" min={0} max={100} step={1} required defaultValue={rules.min_attendance_percent} />
+          </div>
+          <button className="btn small" disabled={busy}>{busy ? "Saving…" : "Save rules"}</button>
         </form>
       )}
-      {message && <div className={failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 8 }}>{message}</div>}
+      {message && <div className={failed ? "form-error" : "form-message"} role={failed ? "alert" : "status"} aria-live="polite">{message}</div>}
     </div>
   );
 }

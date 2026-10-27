@@ -1359,6 +1359,9 @@ Risk is the risk of regression or of a wrong outcome.
   - Are thresholds per course?
   - Revocation?
 - **Complexity:** medium · **Risk:** high
+- **Status (2026-10-27):** built in `worktree-nehn-031` (`DEC-SCOPE-297`, defaults W1-W9 `NEEDS_CONFIRMATION`): global thresholds
+  (`certificate_rules`, it_admin edits), trainer recommend / not-ready, coordinator queue with bulk issue, override as its own grant with
+  a reason, duplicate issue 409; trainer and it_admin issuance removed in the same change. Migration `0204`; API §12GU; RBAC §2.208.
 
 #### `nehn-032` — Certificate digital signatures (Founder + Coordinator) and designation
 - **Source:** §11 "Digital Signatures" (L249-260); §26 Certificates (L791-794); actions 11 and 12 (the **client provides the PNGs**).

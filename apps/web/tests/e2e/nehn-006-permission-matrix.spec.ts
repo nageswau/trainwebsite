@@ -5,7 +5,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 
 const SUPER = { email: "superadmin@edusphere.local", password: "Demo@123", division: "global" };
 const IT_ADMIN = { email: "itadmin@edusphere.local", password: "Demo@123" };
-const IT_ADMIN_SEED = ["discounts.add", "payments.add", "payments.view", "reports.telecaller.download", "reports.telecaller.view"];
+const IT_ADMIN_SEED = ["certificates.configure", "discounts.add", "payments.add", "payments.view", "reports.telecaller.download", "reports.telecaller.view"]; // nehn-031 added certificates.configure
 const noSideScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
 
 async function restoreItAdmin(request: APIRequestContext) {
@@ -104,7 +104,7 @@ test("AC2/AC4/AC7: the matrix is keyboard-operable, asks before leaving unsaved 
   await signIn(page, "admin", SUPER.email, SUPER.password);
   await openMatrix(page, "Coordinator");
   const table = page.getByRole("region", { name: "Permissions for Coordinator" });
-  await expect(table.getByRole("columnheader")).toHaveCount(10);
+  await expect(table.getByRole("columnheader")).toHaveCount(12); // the resource + rbac.ACTIONS (nehn-031 added override, configure)
   const certificates = page.getByRole("checkbox", { name: "Certificates: View" });
   await expect(certificates).toBeChecked();
   await certificates.focus();

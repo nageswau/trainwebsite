@@ -65,7 +65,7 @@ def test_coordinator_is_an_it_role_with_only_the_certificate_bundle():
 
 
 def test_the_catalogue_has_certificates_view_granted_to_the_coordinator_only():
-    assert rbac.CATALOGUE["certificates"]["actions"] == ("view",)
+    assert rbac.CATALOGUE["certificates"]["actions"] == ("view", "issue", "override", "configure")  # nehn-031 added issue, override, configure
     holders = {role for role, keys in rbac.DEFAULT_GRANTS.items() if "certificates.view" in keys}
     assert holders == {"coordinator"}
 
@@ -122,7 +122,6 @@ async def test_a_coordinator_cannot_be_created_in_the_global_division(client, db
         ("get", "/api/v1/portal/it/trainer/dashboard"),
         ("get", "/api/v1/portal/it/hr/dashboard"),
         ("get", "/api/v1/portal/overseas/coordinator/dashboard"),
-        ("post", f"/api/v1/workflows/it/certificates/{uuid.uuid4()}/issue"),  # issuance stays trainer/it_admin until nehn-031
     ],
 )
 async def test_coordinator_is_refused_everywhere_else(client, db_session, method, path):
@@ -170,7 +169,7 @@ async def test_certificates_section_lists_issued_certificates(client, db_session
 async def test_revoking_the_grant_closes_certificates_and_empties_the_dashboard(client, db_session):
     await _certificate(db_session)
     await as_role(client, db_session, "coordinator", "it")
-    await db_session.execute(delete(RolePermission).where(RolePermission.role == "coordinator"))
+    await db_session.execute(delete(RolePermission).where(RolePermission.role == "coordinator", RolePermission.action == "view"))
     await db_session.commit()
     try:
         refused = await client.get(f"{PORTAL}/certificates")

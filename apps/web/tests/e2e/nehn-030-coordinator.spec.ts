@@ -8,6 +8,8 @@ import { E2E_PASSWORD, createAndActivateFromUi } from "./helpers/welcome";
 
 const SUPER = { email: "superadmin@edusphere.local", password: "Demo@123", division: "global" };
 const SEED_COORDINATOR = "coordinator@edusphere.local";
+// The coordinator's default grants (rbac.DEFAULT_GRANTS); nehn-031 added issue and override, which a restore must keep.
+const COORDINATOR_GRANTS = ["certificates.issue", "certificates.override", "certificates.view"];
 const noSideScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
 
 async function signIn(page: Page, email: string, password: string) {
@@ -89,14 +91,14 @@ test("another IT role cannot open the coordinator portal", async ({ page }) => {
 // `request` is its own cookie jar, so the super admin's sign-in there never touches the coordinator's open session in `page`.
 test("switching certificates.view off closes Certificates on the next request; switching it on restores it", async ({ page, request }) => {
   await signIn(page, SEED_COORDINATOR, "Demo@123");
-  await setCoordinatorGrants(request, []);
+  await setCoordinatorGrants(request, COORDINATOR_GRANTS.filter((key) => key !== "certificates.view"));
   try {
     await page.goto("/it/coordinator/certificates");
     await expect(page.getByText("You do not have permission to view certificates")).toBeVisible();
     await page.goto("/it/coordinator/dashboard");
     await expect(page.getByText("Your Certificates permission is switched off")).toBeVisible();
   } finally {
-    await setCoordinatorGrants(request, ["certificates.view"]);
+    await setCoordinatorGrants(request, COORDINATOR_GRANTS);
   }
   await page.goto("/it/coordinator/certificates");
   await expect(page.getByRole("heading", { name: "Certificates", exact: true })).toBeVisible();
