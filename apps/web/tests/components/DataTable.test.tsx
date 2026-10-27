@@ -42,3 +42,28 @@ describe("DataTable assign_counselor column", () => {
     expect(within(ravi).getByRole("button", { name: "Assign counsellor" })).toBeTruthy();
   });
 });
+
+// nehn-027 (DEC-SCOPE-294 M8): the student Downloads table opens each material; only web and API addresses become links.
+describe("DataTable link column", () => {
+  it("links web and download-route values and leaves anything else as text", () => {
+    render(
+      <DataTable
+        columns={[{ key: "title", label: "Resource" }, { key: "url", label: "Download", type: "link" }]}
+        rows={[
+          { title: "Week 1 notes", url: "/api/v1/workflows/it/materials/m1/file" },
+          { title: "Recording", url: "https://youtu.be/abc" },
+          { title: "Legacy", url: "javascript:alert(1)" },
+        ]}
+        label="Downloads"
+      />,
+    );
+    const notes = screen.getByText("Week 1 notes").closest("tr") as HTMLElement;
+    expect(within(notes).getByRole("link", { name: "Open Week 1 notes" }).getAttribute("href")).toBe("/api/v1/workflows/it/materials/m1/file");
+    const recording = within(screen.getByText("Recording").closest("tr") as HTMLElement).getByRole("link", { name: "Open Recording" });
+    expect(recording.getAttribute("target")).toBe("_blank");
+    expect(recording.getAttribute("rel")).toContain("noopener");
+    const legacy = screen.getByText("Legacy").closest("tr") as HTMLElement;
+    expect(within(legacy).queryByRole("link")).toBeNull();
+    expect(within(legacy).getByText("javascript:alert(1)")).toBeTruthy();
+  });
+});
