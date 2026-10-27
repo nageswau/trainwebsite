@@ -58,7 +58,7 @@ export async function TelecallerLeadsPage({ manager }: { manager: boolean }) {
           <Link className="btn" href={`${basePath(manager)}/new`}>New lead</Link>
         </div>
         <Suspense fallback={<p className="muted" role="status">Loading leads…</p>}>
-          <TelecallerLeadTable basePath={basePath(manager)} showTelecaller={manager} />
+          <TelecallerLeadTable basePath={basePath(manager)} showTelecaller={manager} canExport={manager} />
         </Suspense>
       </div>
     </PortalShell>

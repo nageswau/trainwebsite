@@ -3151,6 +3151,16 @@ super_admin holds every key. **Trainer and it_admin no longer issue** (the `DEC-
 
 Pinned by `apps/api/tests/test_nehn_031_certificate_workflow.py`, `test_adm_006_certificates.py` and `test_nehn_031_migration.py`.
 
+### 2.209 Lead list Excel export *(added 2026-10-27 — `DEC-SCOPE-298`, nehn-012)*
+
+| Route | Anonymous | super_admin | it_admin / overseas_admin | telecaller_manager | telecaller | counselor, other roles |
+|---|---|---|---|---|---|---|
+| `GET /admin/leads.xlsx` | 401 | 200, all divisions (or `division`) | 200, own division | 403 | 403 | 403 |
+| `GET /telecaller/leads.xlsx` | 401 | 200, all leads | 403 | 200, own reports + their teams' unassigned | 403 | 403 |
+
+The new list filters (`created_from`, `created_to`, `owner_id`) only narrow the existing scope. Each file is audited and throttled.
+Pinned by `apps/api/tests/test_nehn_012_lead_list.py`.
+
 ### 2.210 Per-user permission overrides *(added 2026-10-27 — `DEC-SCOPE-299`, nehn-007)*
 
 | Surface | Who | Rule |

@@ -10015,6 +10015,22 @@ in the request. W9 revocation/reissue and an email on issue are out of scope.
 **Numbering:** migration `0204_certificate_workflow`; API §12GU; RBAC §2.208.
 - **Feature ID authorized:** `nehn-031`. **Status:** built on `worktree-nehn-031`.
 
+### DEC-SCOPE-298 — Lead list date-range and counselor filters; filtered Excel export of the lead list (`nehn-012`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-012` (§14 L322-323, §16 L363/L375, §23 L598-605;
+`UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-27-nehn-012-lead-list-filters-export-design.md`. Dependency nehn-004
+(`DEC-SCOPE-282`) merged; nehn-008 (column policy) not built, so the backlog's fallback applies: one fixed admin / manager column set.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** L1 `created_from` / `created_to` are inclusive
+India-time calendar days on `enquiries.created_at`. L2 a malformed date or id is 422; a reversed range is 422 "The start date must be on
+or before the end date" (the web lists explain it and do not call the API). L3 one row per lead, not per repeat enquiry. L4 a telecaller
+(not a manager) and a counselor get 403 on the export (the overseas counselor keeps ccrm-035's own export). L5 columns: Lead ID, Name,
+Phone, Email, Source, Course interest, Stage, Telecaller, Counselor, Created, Last contact (latest logged call or message), Next
+follow-up (earliest open follow-up). L6 the audit row records the filters as ids/keys/dates and the search text only as set
+(`"q": true`). L7 no counselor picker for the telecaller manager (no manager-readable counselor list); the API takes `owner_id` there too.
+No reason prompt. The export shares ccrm-035's `crm.export` throttle (30 per 10 minutes per person) and 5,000-row cap.
+**Numbering:** migration `0205_enquiry_list_indexes`; API §12GV; RBAC §2.209.
+- **Feature ID authorized:** `nehn-012`. **Status:** built on `worktree-nehn-012`.
+
 ### DEC-SCOPE-299 — Per-user permission overrides (`nehn-007`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-007` (§5 L92 "control individual permissions for individual

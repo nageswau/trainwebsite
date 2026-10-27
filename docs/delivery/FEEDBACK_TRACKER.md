@@ -48,6 +48,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-034 Country cards | A country with no universities yet shows "Coming soon" instead of being hidden. Standard flags until the client supplies country images. |
 | nehn-036 Course icons | A curated set of 13 subject icons, chosen automatically from the course category, overridable per course. No upload. |
 | nehn-040 Student ID | Every student, including agency students without a login, has a Student ID that admin and agency screens can search. No Agent ID, as decided on 15 Sep 2026. |
+| nehn-012 Lead list export | Lead lists filter by creation date (India time) and counselor. Admins and telecaller managers download the filtered list as Excel, with contact details; telecallers and counselors do not. One row per lead. Each download is recorded and limited to 30 per 10 minutes. |
 | nehn-043 This tracker | Markdown plus an Excel-compatible CSV, written for the client. |
 
 ## 3. Backlog items
@@ -65,7 +66,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-009 | Reporting | Report framework: standard filters, CSV/Excel, audited | Enhancement | Waiting — dependency | Dev | Wave 3 | — (needs nehn-008) |
 | nehn-010 | Reporting | Training reports: student, trainer, course, completion, attendance | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | Admin report template (CI-02); needs nehn-009 |
 | nehn-011 | Reporting | Admin dashboard: enrolments, progress, course-wise and fee tiles | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | Tile list from the report template (CI-02); needs nehn-010 |
-| nehn-012 | Internal CRM | Lead list date-range and counselor filters; filtered Excel export | Enhancement | Ready to start | Dev | Wave 2 | May counselors and telecallers export their own leads? |
+| nehn-012 | Internal CRM | Lead list date-range and counselor filters; filtered Excel export | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 | Admins and telecaller managers export; telecallers and counselors do not (DEC-SCOPE-298) |
 | nehn-013 | Internal CRM | CRM reports: lost, conversion rate, counselor-wise, date-wise, pending follow-ups | Enhancement | Ready to start | Dev + Client | Wave 4 | Conversion-rate definition |
 | nehn-014 | Internal CRM | Lead notes and counselor lead actions — delivered by counselor CRM items ccrm-002 and ccrm-003 | Enhancement | Superseded | Dev | — | — |
 | nehn-015 | Internal CRM | Internal CRM workflow reconciliation | Enhancement | Waiting — client input | Dev + Client | Wave 4 | Internal CRM workflow document (CI-01) |
