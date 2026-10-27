@@ -30,7 +30,7 @@ nehn-028,Trainer portal,Per-student progress view for trainers,Enhancement,Ready
 nehn-029,Trainer portal,Live class reschedule and cancel,Enhancement,Done — confirm defaults,Dev,Wave 4,Confirm meeting provider is updated by hand for now (§2)
 nehn-030,Certificates,IT Coordinator role and account model,Enhancement,Waiting — decision,Dev + Client,Wave 3,Coordinator account model and duties (OD-05)
 nehn-031,Certificates,"Coordinator certificate workflow: eligibility, recommend, issue, override",Enhancement,Done — confirm defaults,Dev + Client,Wave 3,"Confirm the builder defaults (DEC-SCOPE-297 W1-W9): coordinator overrides, global thresholds, recommendation optional (OD-05)"
-nehn-032,Certificates,Certificate signatures (Founder + Coordinator) and designation,Enhancement,Waiting — client input,Dev + Client,Wave 3,Signature PNGs and final certificate design (CI-03); needs nehn-031
+nehn-032,Certificates,Certificate signatures (Founder + Coordinator) and designation,Enhancement,Done — confirm defaults,Dev + Client,Wave 3,"Upload the signature PNGs and confirm the builder defaults (DEC-SCOPE-302 S1-S9); final certificate design (CI-03)"
 nehn-033,Overseas,Overseas student Overview / Progress page,Enhancement,Waiting — decision,Dev + Client,Wave 2 · next review,Mapping of the client's 10 stages onto the portal's stages (OD-10)
 nehn-034,Overseas,Country cards with flags and university count,Enhancement,Done — confirm defaults,Dev + Client,Wave 2 · next review,"Custom country images, if wanted (CI-04)"
 nehn-035,Overseas,University logo upload and richer university cards,Enhancement,Ready to start,Dev + Client,Wave 2 · next review,Logo usage and copyright guidance (CI-04)

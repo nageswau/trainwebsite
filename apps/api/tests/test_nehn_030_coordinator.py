@@ -65,7 +65,7 @@ def test_coordinator_is_an_it_role_with_only_the_certificate_bundle():
 
 
 def test_the_catalogue_has_certificates_view_granted_to_the_coordinator_only():
-    assert rbac.CATALOGUE["certificates"]["actions"] == ("view", "issue", "override", "configure")  # nehn-031 added issue, override, configure
+    assert rbac.CATALOGUE["certificates"]["actions"] == ("view", "issue", "override", "configure", "manage")  # nehn-031 added issue, override, configure; nehn-032 manage
     holders = {role for role, keys in rbac.DEFAULT_GRANTS.items() if "certificates.view" in keys}
     assert holders == {"coordinator"}
 

@@ -171,7 +171,7 @@ from app.services.agent_orgs import lock_org, notification_recipients, org_membe
 from app.services.agent_students import application_scope, student_scope
 from app.services.agent_visa import VISA_CASE_STAGES, VISA_DECIDED, VISA_DECISION_DISCLAIMER, VISA_ENROLLED, VISA_OFFER_NEEDED, ChecklistGateRefused, sync_from_stage, update_case
 from app.services.bdm_appointments import db_now
-from app.services.certificates import generate_certificate_pdf
+from app.services.certificates import active_signatories, generate_certificate_pdf, require_signatories, signatory_snapshot
 from app.services.storage import storage
 from app.services.tabular import XLSX_TYPE, to_xlsx
 from app.visa_status import DECISIONS as VISA_DECISIONS
@@ -1660,9 +1660,14 @@ async def _issue_certificate(db: AsyncSession, user: User, enrollment_id: UUID, 
     student = await db.get(User, enrollment.student_id)
     if not program or not student:
         raise HTTPException(422, "Certificate data is incomplete")
+    # nehn-032 (DEC-SCOPE-302 S7): both signatures are drawn on the PDF and their versions snapshotted; without both, no certificate.
+    signatories = await active_signatories(db)
+    require_signatories(signatories)
     certificate_no = f"EDU-CERT-{date.today():%Y}-{secrets.token_hex(4).upper()}"
     verification_code = secrets.token_urlsafe(12)
-    file_url = generate_certificate_pdf(certificate_no=certificate_no, student_name=student.full_name, program_title=program.title, issued_on=date.today(), verification_code=verification_code)
+    file_url = generate_certificate_pdf(
+        certificate_no=certificate_no, student_name=student.full_name, program_title=program.title, issued_on=date.today(), verification_code=verification_code, signatories=signatories
+    )
     item = Certificate(
         student_id=student.id,
         program_id=program.id,
@@ -1673,6 +1678,7 @@ async def _issue_certificate(db: AsyncSession, user: User, enrollment_id: UUID, 
         file_url=file_url,
         approved_by_id=user.id,
         criteria_snapshot={**criteria, "override_reason": override_reason} if not criteria["eligible"] else criteria,
+        signatory_snapshot=signatory_snapshot(signatories),
         status="issued",
     )
     db.add(item)

@@ -2336,3 +2336,12 @@ new ones record the thresholds used in `criteria_snapshot.rules`. Downgrade drop
 
 `enquiries` gains `ix_enquiries_created` (`created_at`, `id`) for the newest-first lists filtered by an India-time created range, and
 `ix_enquiries_owner` (`owner_id`) for the counselor filter. No column or row changes; the downgrade drops both indexes.
+
+## Certificate signatures (`nehn-032`, `DEC-SCOPE-302`; migration `0208_certificate_signatories`)
+
+New table `certificate_signatories`: `id` (UUID PK), `role` (`founder | coordinator`, `ck_certificate_signatories_role`), `display_name`,
+`designation` (each ≤ 120), `image_key` (`signatures/<uuid>.png`, private storage), `active_from`, `active_to` (NULL = the slot's active
+version), `created_by_id` (FK users), timestamps. Partial unique index `uq_certificate_signatories_active_role` (`role` WHERE
+`active_to IS NULL`): one active version per slot. New nullable JSON column `certificates.signatory_snapshot`
+(`[{id, role, display_name, designation}]`, the versions drawn on the PDF); existing certificates keep NULL. Downgrade drops the column
+and the table; stored images stay in storage. The demo seed adds a generated stand-in signature for each empty slot.

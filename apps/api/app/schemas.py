@@ -424,6 +424,14 @@ class CertificateRulesIn(BaseModel):
     min_attendance_percent: int = Field(ge=0, le=100)
 
 
+class CertificateSignatoryUpdate(BaseModel):
+    """nehn-032 (DEC-SCOPE-302 S3): the active version's details only -- a new image is a new version (POST)."""
+
+    model_config = ConfigDict(extra="forbid")
+    display_name: str | None = Field(default=None, max_length=120)
+    designation: str | None = Field(default=None, max_length=120)
+
+
 class LearningResourceCreate(BaseModel):
     batch_id: UUID
     title: str = Field(min_length=2, max_length=180)

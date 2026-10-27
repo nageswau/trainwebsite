@@ -3183,3 +3183,16 @@ Pinned by `apps/api/tests/test_nehn_012_lead_list.py`.
 
 Unchanged from §2.35 / §2.197: the `reports.telecaller` view / download grants decide; scope is the caller's Leads list. The pending list
 names leads (never mobile or email). Pinned by `apps/api/tests/test_nehn_013_crm_reports.py`.
+
+### 2.213 Certificate signatures *(added 2026-10-27 — `DEC-SCOPE-302`, nehn-032)*
+
+The catalogue's `certificates` resource gains `manage` (a new matrix column). No role holds it by default (migration
+`0208_certificate_signatories` seeds nothing); super_admin holds every key. The signature images are never sent to students or issuers
+as files: they exist outside the API only inside rendered certificates.
+
+| Route | Anonymous | super_admin | role granted `certificates.manage` | it_admin, coordinator, trainer, it_student, others |
+|---|---|---|---|---|
+| `GET/POST /admin/certificate-signatories`, `PATCH …/{id}`, `GET …/{id}/image`, `GET /admin/certificates/preview` | 401 | 200/201 | 200/201 | 403 |
+
+The IT admin portal's Certificates section shows the "Certificate signatures" card only when the role holds `certificates.manage`.
+Pinned by `apps/api/tests/test_nehn_032_certificate_signatures.py` and `apps/web/tests/e2e/nehn-032-certificate-signatures.spec.ts`.

@@ -10082,3 +10082,19 @@ or email). R9 the lead filters apply to every new report. R10 access unchanged (
 view is not built.
 **Numbering:** no migration; API §12GY; RBAC §2.212.
 - **Feature ID authorized:** `nehn-013`. **Status:** built on `worktree-nehn-013`.
+
+### DEC-SCOPE-302 — Certificate signatures: Founder + Coordinator, designation (`nehn-032`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-032` (§11 L249-260, §26 L791-794, actions 11/12;
+`UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-27-nehn-032-certificate-signatures-design.md`. Dependencies nehn-003
+(`DEC-SCOPE-279`), nehn-030 (`DEC-SCOPE-293`), nehn-031 (`DEC-SCOPE-297`) merged. The client's PNGs and final design (CI-03) are still
+pending: they are uploaded through this feature, and a final design is a later change.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** S1 two fixed slots; the coordinator signature is
+a configured person, not the issuing coordinator. S2 versions: a new image closes the active row and inserts another; one active row per
+slot. S3 name/designation edited in place on the active version. S4 PNG ≤ 1 MB with an alpha channel, 50–2000 × 20–1000 px. S5 private
+storage, streamed only to grant holders, never presigned. S6 new grant `certificates.manage`, no default holder (super_admin only).
+S7 issuing is refused (409) while a slot is empty — no placeholder; certificates snapshot the versions used. S8 slots between the
+program and the authenticity rule, scaled to fit. S9 an admin PDF preview with long sample text. "Relevant designation/details" is read as
+the signatories' designations (no course duration or grade).
+**Numbering:** migration `0208_certificate_signatories` (after nehn-008's `0207_field_financial_grant`); API §12GZ; RBAC §2.213.
+- **Feature ID authorized:** `nehn-032`. **Status:** built on `worktree-nehn-032`.
