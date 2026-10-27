@@ -3173,3 +3173,13 @@ Pinned by `apps/api/tests/test_nehn_012_lead_list.py`.
 | Surface | Who | Rule |
 |---|---|---|
 | A report's columns tagged with a field class (today: partnership Performance `commission_expected` / `commission_received` = `financial`) | every reader of the report | The column is returned (JSON, CSV, xlsx alike) only with `field.<class>.view`. Seed: `field.financial.view` → partnership_manager, partnership_head; super_admin always. placement_team, placement_manager, hr_team, it_admin, overseas_admin hold none. The grant narrows only: it never opens a report the role cannot read. |
+
+### 2.212 CRM report gaps (`nehn-013`, `DEC-SCOPE-301`)
+
+| Route | Anonymous | telecaller_manager | it_admin / overseas_admin | super_admin | telecaller, counselor, other roles |
+|---|---|---|---|---|---|
+| `GET /telecaller/reports/{counselor,date,follow_ups,pending_follow_ups}` | 401 | 200 (own reports' leads) | 200 (own division) | 200 | 403 |
+| `GET /telecaller/reports/{kind}.csv`, `.xlsx` (same kinds) | 401 | 200 | 200 | 200 | 403 |
+
+Unchanged from §2.35 / §2.197: the `reports.telecaller` view / download grants decide; scope is the caller's Leads list. The pending list
+names leads (never mobile or email). Pinned by `apps/api/tests/test_nehn_013_crm_reports.py`.

@@ -648,6 +648,7 @@ Risk is the risk of regression or of a wrong outcome.
   telecallers and counselors do not; one row per lead; fixed admin column set until nehn-008.
 
 #### `nehn-013` — CRM report gaps: lost, conversion rate, counselor-wise, date-wise, follow-up status, pending follow-ups
+**Status (2026-10-27): built** on `worktree-nehn-013` (`DEC-SCOPE-301`, API §12GY, RBAC §2.212, no migration). The definitions (R1–R10) are builder's defaults, `NEEDS_CONFIRMATION` until the client CRM workflow document (CI-01) arrives.
 - **Source:** §16 "CRM Reporting" (L405-419); §14 "Converted leads", "Contacted leads" (L304-305).
 - **Business requirement:** CRM reports for new/contacted/qualified/converted/lost, counselor-, source-, course- and date-wise, conversion rates, follow-up status and pending follow-ups.
 - **Existing behavior:**

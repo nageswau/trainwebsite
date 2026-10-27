@@ -67,7 +67,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-010 | Reporting | Training reports: student, trainer, course, completion, attendance | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | Admin report template (CI-02); needs nehn-009 |
 | nehn-011 | Reporting | Admin dashboard: enrolments, progress, course-wise and fee tiles | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | Tile list from the report template (CI-02); needs nehn-010 |
 | nehn-012 | Internal CRM | Lead list date-range and counselor filters; filtered Excel export | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 | Admins and telecaller managers export; telecallers and counselors do not (DEC-SCOPE-298) |
-| nehn-013 | Internal CRM | CRM reports: lost, conversion rate, counselor-wise, date-wise, pending follow-ups | Enhancement | Ready to start | Dev + Client | Wave 4 | Conversion-rate definition |
+| nehn-013 | Internal CRM | CRM reports: lost, conversion rate, counselor-wise, date-wise, pending follow-ups (DEC-SCOPE-301) | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Conversion-rate definition |
 | nehn-014 | Internal CRM | Lead notes and counselor lead actions — delivered by counselor CRM items ccrm-002 and ccrm-003 | Enhancement | Superseded | Dev | — | — |
 | nehn-015 | Internal CRM | Internal CRM workflow reconciliation | Enhancement | Waiting — client input | Dev + Client | Wave 4 | Internal CRM workflow document (CI-01) |
 | nehn-016 | Placement | Nearing-completion list; recruiter read-only training progress | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | Recruiters see opted-in students only, or all? (OD-08); needs nehn-010 |

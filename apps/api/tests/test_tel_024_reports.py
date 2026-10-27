@@ -102,7 +102,8 @@ async def test_the_campaign_funnel_is_cumulative_and_monotonic(client, db_sessio
     line = row(body, label=camp.name)
     assert [line[k] for k in ("leads", "connected", "qualified", "counselling", "enrolled")] == [6, 5, 4, 3, 1]
     assert body["totals"]["leads"] == 6 and body["totals"]["label"] == "Total"
-    assert [c["label"] for c in body["columns"]] == ["Campaign", "Leads", "Connected", "Qualified", "Counselling", "Enrolled"]
+    assert [c["label"] for c in body["columns"]] == ["Campaign", "Leads", "Connected", "Qualified", "Counselling", "Enrolled",
+                                                     "Lost", "Conversion rate (%)"]  # nehn-013 R4: appended
 
 
 async def test_the_source_report_reconciles_with_the_manager_lead_list(client, db_session):
@@ -280,9 +281,9 @@ async def test_the_csv_export_matches_the_screen_neutralises_formulas_and_is_aud
     assert response.headers["content-type"].startswith("text/csv")
     assert "telecaller-campaign-" in response.headers["content-disposition"]
     lines = response.text.lstrip("﻿").splitlines()
-    assert lines[0] == "Campaign,Leads,Connected,Qualified,Counselling,Enrolled"
-    assert lines[1].startswith("\"'=HYPERLINK") and lines[1].endswith(",1,0,0,0,0")
-    assert lines[-1] == "Total,1,0,0,0,0"
+    assert lines[0] == "Campaign,Leads,Connected,Qualified,Counselling,Enrolled,Lost,Conversion rate (%)"  # nehn-013 R4: appended
+    assert lines[1].startswith("\"'=HYPERLINK") and lines[1].endswith(",1,0,0,0,0,0,0.0")
+    assert lines[-1] == "Total,1,0,0,0,0,0,0.0"
     audit = (await db_session.scalars(select(AuditLog).where(AuditLog.user_id == manager.id, AuditLog.action == "telecaller_report.export"))).all()
     assert len(audit) == 1 and audit[0].entity_id == "campaign" and audit[0].metadata_json["rows"] == 1
     assert audit[0].metadata_json["filters"] == ["campaign_id"]
