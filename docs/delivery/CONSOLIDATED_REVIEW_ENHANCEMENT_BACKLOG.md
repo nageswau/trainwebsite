@@ -694,6 +694,11 @@ Risk is the risk of regression or of a wrong outcome.
 
 #### `nehn-014` — Lead notes and counselor lead actions (status and follow-ups)
 **Status (2026-10-22): SUPERSEDED** by `ccrm-002` and `ccrm-003` (`docs/delivery/COUNSELOR_CRM_BACKLOG.md`, owner answer CC7). Kept for history.
+  **Verified (2026-10-27, nehn-014 session):** on main `64161f18`, AC1 → `test_counselor_adds_a_note_and_the_timeline_shows_it_with_author_and_time`;
+  AC2 → `test_counselor_moves_their_lead_with_a_next_action`, `test_stages_outside_the_cc8_list_are_422`; AC3 →
+  `test_another_counselors_lead_is_404_for_read_and_write`, `test_scope_another_counselor_and_division_404_telecaller_403`; AC4 →
+  `test_admin_owner_must_be_an_active_counselor_of_the_division`. ccrm-002/003 pytest 48 passed; e2e `ccrm-002-lead-notes`,
+  `ccrm-003-counselor-lead-actions` 2 passed. No code change needed.
 - **Source:** §16 "Maintain notes/comments" (L368); §19 "Manage assigned CRM leads", "Update lead/follow-up status", "Maintain relevant CRM notes/history" (L532-533, L542); audit finding (`admin.py:479`).
 - **Business requirement:** Counselors manage their assigned leads (status, follow-ups, notes), and notes are part of the lead history.
 - **Existing behavior:**
