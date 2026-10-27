@@ -35,7 +35,9 @@ async def _role_out(db: AsyncSession, role: str) -> dict:
 
 @admin_router.get("/permissions/catalogue")
 async def catalogue(_: User = Depends(_super_admin)):
+    # nehn-006 (DEC-SCOPE-295 M3): `roles` is what the matrix screen's role picker offers (additive).
     return {
+        "roles": list(rbac.ROLES),
         "actions": list(rbac.ACTIONS),
         "resources": [{"key": key, "label": entry["label"], "actions": list(entry["actions"])} for key, entry in rbac.CATALOGUE.items()],
     }

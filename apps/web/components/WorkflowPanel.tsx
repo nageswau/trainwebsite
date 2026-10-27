@@ -7,6 +7,7 @@ import { type Feedback, toneClass, welcomeLinkFeedback } from "@/lib/welcomeLink
 import { announceUsersChanged } from "@/lib/usersChanged";
 import { uploadFile } from "@/lib/uploadFile";
 import { type LookupName, lookupSearch } from "@/lib/lookups";
+import { usePermissions } from "@/lib/usePermissions";
 import SearchableSelect, { type Noun } from "./SearchableSelect";
 import BatchSlotPicker from "./BatchSlotPicker";
 import LiveClassesPanel from "./LiveClassesPanel";
@@ -78,6 +79,8 @@ type ActionSpec = {
   fields: Field[];
   pathFields?: string[];
   buildBody?: (values: Record<string, unknown>) => Record<string, unknown>;
+  // nehn-006 (DEC-SCOPE-295): the catalogue key the endpoint checks; the form is not rendered once the role is known to lack it.
+  permission?: string;
 };
 
 const options = (values: string[]) => values.map(value => ({ value, label: value.replaceAll("_", " ") }));
@@ -379,8 +382,8 @@ function adminSpecs(user: User, section: string): ActionSpec[] {
   if (section === "programs") return [{ title: "Create program", endpoint: "/api/v1/admin/programs", success: "Program created.", fields: [{ name: "slug", label: "Slug", required: true }, { name: "category", label: "Category", required: true }, { name: "title", label: "Title", required: true }, { name: "summary", label: "Summary", type: "textarea" }, { name: "duration", label: "Duration", required: true }, { name: "fees", label: "Fees", type: "number", required: true }, { name: "eligibility", label: "Eligibility", type: "textarea" }, { name: "curriculum", label: "Curriculum (comma separated)", parse: "list" }] }];
   // "batches" is handled by AdminBatchCreatePanel (ADM-003) -- see showBatchCreate below.
   if (section === "payments") return [
-    { title: "Create payment due", endpoint: "/api/v1/admin/payments", success: "Payment due created.", fields: [{ name: "user_id", label: "User reference", type: "text", required: true }, { name: "reference_type", label: "Fee type", defaultValue: "service_fee" }, { name: "amount", label: "Amount", type: "number", required: true }, { name: "currency", label: "Currency", defaultValue: "INR" }, { name: "provider", label: "Provider", type: "select", defaultValue: "razorpay", options: options(["razorpay", "manual"]) }, { name: "status", label: "Status", type: "select", defaultValue: "pending", options: options(["pending", "paid"]) }, { name: "due_date", label: "Due date", type: "date" }] },
-    { title: "Apply discount", description: "Lowers a still-unpaid fee -- never a paid one. Requires a written reason.", endpoint: "/api/v1/admin/payments/:payment_id/discount", success: "Discount applied.", pathFields: ["payment_id"], fields: [{ name: "payment_id", label: "Payment reference", type: "text", required: true }, { name: "amount", label: "New (discounted) amount", type: "number", required: true }, { name: "reason", label: "Reason", type: "textarea", required: true }] },
+    { title: "Create payment due", endpoint: "/api/v1/admin/payments", success: "Payment due created.", permission: "payments.add", fields: [{ name: "user_id", label: "User reference", type: "text", required: true }, { name: "reference_type", label: "Fee type", defaultValue: "service_fee" }, { name: "amount", label: "Amount", type: "number", required: true }, { name: "currency", label: "Currency", defaultValue: "INR" }, { name: "provider", label: "Provider", type: "select", defaultValue: "razorpay", options: options(["razorpay", "manual"]) }, { name: "status", label: "Status", type: "select", defaultValue: "pending", options: options(["pending", "paid"]) }, { name: "due_date", label: "Due date", type: "date" }] },
+    { title: "Apply discount", description: "Lowers a still-unpaid fee -- never a paid one. Requires a written reason.", endpoint: "/api/v1/admin/payments/:payment_id/discount", success: "Discount applied.", permission: "discounts.add", pathFields: ["payment_id"], fields: [{ name: "payment_id", label: "Payment reference", type: "text", required: true }, { name: "amount", label: "New (discounted) amount", type: "number", required: true }, { name: "reason", label: "Reason", type: "textarea", required: true }] },
   ];
   // "leads" is handled by AdminLeadManagementPanel (ADM-002) -- see showLeadManagement below.
   // RAID.md I-32 / upc-003: "universities" links to the University Master (UniversityMasterLink)
@@ -413,7 +416,9 @@ function specsFor(user: User, section: string): ActionSpec[] {
 }
 
 export default function WorkflowPanel({ user, section }: { user: User; section: string }) {
-  const specs = specsFor(user, section);
+  const allSpecs = specsFor(user, section);
+  const granted = usePermissions(allSpecs.some((spec) => spec.permission));
+  const specs = granted ? allSpecs.filter((spec) => !spec.permission || granted.includes(spec.permission)) : allSpecs;
   const showAssessment = user.role === "it_student" && section === "examinations";
   // AGN-009 (DEC-SCOPE-052): the agent Documents page is AgentDocumentsSection (PortalPage) -- upload, review, requests, history.
   const showDocuments = section === "documents" && user.role === "overseas_student";

@@ -105,4 +105,11 @@ describe("TelecallerReportView (tel-024 §21)", () => {
     render(<TelecallerReportView kind="campaign" report={report()} error="" params={{ campaign_id: "c1" }} basePath={BASE} />);
     expect(screen.getByRole("button", { name: "Download CSV" })).toBeInTheDocument();
   });
+
+  // nehn-006 (DEC-SCOPE-295): without `reports.telecaller.download` the report still shows, without its export buttons.
+  it("offers no download without the download grant", () => {
+    render(<TelecallerReportView kind="campaign" report={report()} error="" params={{}} basePath={BASE} canDownload={false} />);
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Download CSV" })).toBeNull();
+  });
 });
