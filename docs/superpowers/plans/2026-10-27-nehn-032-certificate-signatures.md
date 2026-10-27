@@ -13,7 +13,7 @@
 
 ## Global Constraints
 
-- Numbering: DEC-SCOPE-300, migration `0207_certificate_signatories` (down_revision `0204_certificate_workflow`), API §12GX, RBAC §2.211.
+- Numbering: DEC-SCOPE-300, migration `0207_certificate_signatories` (down_revision `0206_user_permission_overrides`), API §12GX, RBAC §2.211.
 - Slots: `founder`, `coordinator`. Name/designation 1–120 chars. Image 50–2000 px wide, 20–1000 px high, PNG with alpha, ≤ 1 MB.
 - Image keys `signatures/<uuid32>.png`; never presigned; image route sends `Cache-Control: no-store`.
 - Refusal copy: issue/preview without both slots → 409 `"Certificate signatures are not configured: <missing roles>"`.

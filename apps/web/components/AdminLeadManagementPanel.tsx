@@ -7,6 +7,8 @@ import AdminLeadFilters, { LEAD_FILTERS, type LeadFilter, type Organization } fr
 import { LeadStageControl, LeadStageHistory } from "@/components/AdminLeadStage";
 import BdmConfirm from "@/components/BdmConfirm";
 import LeadClosure from "@/components/LeadClosure";
+import { CREATED_FILTERS, RANGE_REVERSED, reversed, validDay } from "@/components/LeadCreatedRange";
+import LeadExport from "@/components/LeadExport";
 import { sendJson, sendRequest, type Page } from "@/lib/apiErrors";
 import { stageLabel, type LeadClosureFields } from "@/lib/leadStages";
 import { pageOffset } from "@/lib/telecaller";
@@ -103,11 +105,13 @@ export default function AdminLeadManagementPanel() {
   const query = (params.get("q") ?? "").trim();
   const offset = pageOffset(params.get("offset") ?? undefined);
   const filters = Object.fromEntries(LEAD_FILTERS.map((key) => [key, params.get(key) ?? ""])) as Record<LeadFilter, string>;
+  for (const key of CREATED_FILTERS) filters[key] = validDay(filters[key]);
   const request = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
   if (query) request.set("q", query);
+  const exportUrl = `${LEADS_URL}.xlsx?${request}`; // nehn-012: the same filters, every page
   request.set("limit", String(PAGE_SIZE));
   request.set("offset", String(offset));
-  const requestUrl = `${LEADS_URL}?${request}`;
+  const requestUrl = reversed(filters) ? null : `${LEADS_URL}?${request}`;
   const filtered = !!query || Object.values(filters).some(Boolean);
 
   const [data, setData] = useState<Page<AdminLeadRow> | null>(null);
@@ -117,6 +121,7 @@ export default function AdminLeadManagementPanel() {
   const seen = useRef(new Map<string, Organization>()); // the Organization filter's options: every organization shown so far
 
   useEffect(() => {
+    if (requestUrl === null) return;
     const controller = new AbortController();
     setLoadFailed(false);
     getPage<AdminLeadRow>(requestUrl, controller.signal)
@@ -145,11 +150,13 @@ export default function AdminLeadManagementPanel() {
   const replace = (next: AdminLeadRow) => setData((prev) => (prev ? { ...prev, items: prev.items.map((l) => (l.id === next.id ? next : l)) } : prev));
 
   return (
-    <div className="action-card lead-management" aria-busy={data === null && !loadFailed}>
+    <div className="action-card lead-management" aria-busy={requestUrl !== null && data === null && !loadFailed}>
       <h3>Manage leads</h3>
       <AdminLeadFilters values={filters} query={query} organizations={organizations}
         onChange={(key, value) => go({ [key]: value })} onSearch={(text) => go({ q: text })} />
-      {loadFailed ? (
+      {requestUrl === null ? (
+        <p className="form-error" role="status" style={{ marginTop: 12 }}>{RANGE_REVERSED}</p>
+      ) : loadFailed ? (
         <div style={{ marginTop: 12 }}>
           <p className="form-error" role="alert">Unable to load leads.</p>
           <button type="button" className="btn secondary small" onClick={() => setVersion((v) => v + 1)}>Retry</button>
@@ -160,6 +167,7 @@ export default function AdminLeadManagementPanel() {
         <p className="muted" role="status" style={{ marginTop: 12 }}>{filtered ? "No leads match these filters." : "No leads found."}</p>
       ) : (
         <>
+          <LeadExport url={exportUrl} total={data.total} />
           <div className="table-scroll" style={{ marginTop: 12 }}> {/* QA17-03: the lead's name stays in view while the columns scroll */}
             <table className="table">
               <thead>

@@ -444,6 +444,9 @@ Risk is the risk of regression or of a wrong outcome.
 - **Edge cases:** the user's role changes (do overrides persist? `NEEDS_CONFIRMATION`); a deactivated user (overrides are ignored).
 - **Regression risks:** low, once nehn-005 is in.
 - **Open questions:** D-09: is it required this release? Is expiry required?
+- **Status (2026-10-27):** built on `worktree-nehn-007` (`DEC-SCOPE-299`; API §12GW; RBAC §2.210; migration
+  `0206_user_permission_overrides`). Builder's defaults: built this release; expiry optional; overrides persist across a role change;
+  a deactivated user cannot sign in, so their overrides never apply. AC keys mapped to catalogue keys (see DEC-SCOPE-299).
 - **Complexity:** medium · **Risk:** medium
 
 #### `nehn-008` — Role-based field (column) policy for views and downloads
@@ -636,6 +639,9 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** existing lead-list tests and the admin leads page.
 - **Open questions:** may counselors and telecallers export their own leads? One row per lead or per enquiry?
 - **Complexity:** medium · **Risk:** low
+- **Status (2026-10-27):** built on `worktree-nehn-012` (`DEC-SCOPE-298`; API §12GV; RBAC §2.209; migration
+  `0205_enquiry_list_indexes`, indexes only). Open questions took the builder's defaults: admins and telecaller managers export,
+  telecallers and counselors do not; one row per lead; fixed admin column set until nehn-008.
 
 #### `nehn-013` — CRM report gaps: lost, conversion rate, counselor-wise, date-wise, follow-up status, pending follow-ups
 - **Source:** §16 "CRM Reporting" (L405-419); §14 "Converted leads", "Contacted leads" (L304-305).

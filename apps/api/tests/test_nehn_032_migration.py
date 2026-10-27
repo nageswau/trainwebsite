@@ -16,11 +16,11 @@ _spec = importlib.util.spec_from_file_location("_nehn_032_migration_0207", VERSI
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0207_certificate_signatories", "0204_certificate_workflow"
+HEAD, BASE = "0207_certificate_signatories", "0206_user_permission_overrides"
 SNAPSHOT = "SELECT 1 FROM information_schema.columns WHERE table_name = 'certificates' AND column_name = 'signatory_snapshot'"
 
 
-def test_migration_chains_after_0204():
+def test_migration_chains_after_0206():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

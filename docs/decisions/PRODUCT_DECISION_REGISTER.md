@@ -10015,6 +10015,39 @@ in the request. W9 revocation/reissue and an email on issue are out of scope.
 **Numbering:** migration `0204_certificate_workflow`; API §12GU; RBAC §2.208.
 - **Feature ID authorized:** `nehn-031`. **Status:** built on `worktree-nehn-031`.
 
+### DEC-SCOPE-298 — Lead list date-range and counselor filters; filtered Excel export of the lead list (`nehn-012`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-012` (§14 L322-323, §16 L363/L375, §23 L598-605;
+`UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-27-nehn-012-lead-list-filters-export-design.md`. Dependency nehn-004
+(`DEC-SCOPE-282`) merged; nehn-008 (column policy) not built, so the backlog's fallback applies: one fixed admin / manager column set.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** L1 `created_from` / `created_to` are inclusive
+India-time calendar days on `enquiries.created_at`. L2 a malformed date or id is 422; a reversed range is 422 "The start date must be on
+or before the end date" (the web lists explain it and do not call the API). L3 one row per lead, not per repeat enquiry. L4 a telecaller
+(not a manager) and a counselor get 403 on the export (the overseas counselor keeps ccrm-035's own export). L5 columns: Lead ID, Name,
+Phone, Email, Source, Course interest, Stage, Telecaller, Counselor, Created, Last contact (latest logged call or message), Next
+follow-up (earliest open follow-up). L6 the audit row records the filters as ids/keys/dates and the search text only as set
+(`"q": true`). L7 no counselor picker for the telecaller manager (no manager-readable counselor list); the API takes `owner_id` there too.
+No reason prompt. The export shares ccrm-035's `crm.export` throttle (30 per 10 minutes per person) and 5,000-row cap.
+**Numbering:** migration `0205_enquiry_list_indexes`; API §12GV; RBAC §2.209.
+- **Feature ID authorized:** `nehn-012`. **Status:** built on `worktree-nehn-012`.
+
+### DEC-SCOPE-299 — Per-user permission overrides (`nehn-007`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-007` (§5 L92 "control individual permissions for individual
+users or roles"; `UNVERIFIED` backlog); `CLIENT_QUESTIONS.md` D-09 §3 / OD-03 (**open**); design
+`docs/superpowers/specs/2026-10-27-nehn-007-per-user-permission-overrides-design.md`. Dependencies nehn-005 (`DEC-SCOPE-281`) and nehn-006
+(`DEC-SCOPE-295`) merged.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** U1 built this release (OD-03); with no override
+rows every check answers as before. Effective = (role grants + active allows) - active denies. U2 super_admin users cannot carry
+overrides (409). U3 a reason is required (1-500). U4 optional expiry, future when saved, honoured at read time (no job). U5 the user's
+whole set is replaced in one PUT, one audit row per real change (`user_permission_overrides.update`). U6 the "badge" is the Active
+overrides list on the Permissions screen's "By user" tab (no `/admin/users` grid column). U7 an allow the role already has / a deny it
+lacks is accepted. U8 any user, found through the existing `GET /admin/users?q=`. U9 no cache. U10 overrides persist across a role change. The backlog's AC keys
+`reports.placement.download` / `documents.view` are not catalogue keys; the rules are proven on `reports.telecaller.download` and
+`payments.view`.
+**Numbering:** migration `0206_user_permission_overrides`; API §12GW; RBAC §2.210.
+- **Feature ID authorized:** `nehn-007`. **Status:** built on `worktree-nehn-007`.
+
 ### DEC-SCOPE-300 — Certificate signatures: Founder + Coordinator, designation (`nehn-032`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-032` (§11 L249-260, §26 L791-794, actions 11/12;
@@ -10028,6 +10061,5 @@ storage, streamed only to grant holders, never presigned. S6 new grant `certific
 S7 issuing is refused (409) while a slot is empty — no placeholder; certificates snapshot the versions used. S8 slots between the
 program and the authenticity rule, scaled to fit. S9 an admin PDF preview with long sample text. "Relevant designation/details" is read as
 the signatories' designations (no course duration or grade).
-**Numbering:** migration `0207_certificate_signatories`; API §12GX; RBAC §2.211 (0205/0206, DEC-SCOPE-298/299, §12GV/§12GW and
-§2.209/§2.210 are left for nehn-007 and nehn-012, which claimed them in their worktrees).
+**Numbering:** migration `0207_certificate_signatories` (after nehn-007's `0206_user_permission_overrides`); API §12GX; RBAC §2.211.
 - **Feature ID authorized:** `nehn-032`. **Status:** built on `worktree-nehn-032`.

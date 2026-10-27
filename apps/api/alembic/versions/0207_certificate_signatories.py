@@ -1,7 +1,7 @@
 """nehn-032 -- certificate signatures: `certificate_signatories` and `certificates.signatory_snapshot`.
 
 Revision ID: 0207_certificate_signatories
-Revises: 0204_certificate_workflow
+Revises: 0206_user_permission_overrides
 
 docs/superpowers/specs/2026-10-27-nehn-032-certificate-signatures-design.md (DEC-SCOPE-300). 0001 builds a fresh database from the current
 models, which already carry the table and the column, so both are created only when missing (0204's idiom). No existing row changes:
@@ -14,7 +14,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0207_certificate_signatories"
-down_revision = "0204_certificate_workflow"
+down_revision = "0206_user_permission_overrides"
 branch_labels = None
 depends_on = None
 
