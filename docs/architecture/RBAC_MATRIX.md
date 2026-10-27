@@ -3218,6 +3218,16 @@ Pinned by `apps/api/tests/test_nehn_009_reports.py` and `apps/web/tests/e2e/nehn
 A new entitlement layer under the role check: the payment check runs after the route's role and ownership checks, so another
 student's or batch's record keeps its existing 403/404. Pinned by `apps/api/tests/test_nehn_018_student_access.py`.
 
+### 2.216 Training reports pack *(added 2026-10-27 — `DEC-SCOPE-305`, nehn-010)*
+
+No new resource or grant: the seven reports use §2.214's `reports.training` (seed it_admin, trainer; super_admin always).
+
+| Report | Rows | Columns |
+|---|---|---|
+| `student-courses`, `students-by-trainer`, `course-completion`, `completions`, `attendance`, `trainers`, `courses` | super_admin, it_admin every batch; trainer only batches where `Batch.trainer_id` is the caller (a named other trainer/batch/course → empty); any other granted role none | `courses.revenue` is `field.financial` — super_admin or a holder of `field.financial.view` (not seeded to it_admin or trainer; recruiter/HR never hold the report) |
+
+Pinned by `apps/api/tests/test_nehn_010_training_reports.py` and `apps/web/tests/e2e/nehn-010-training-reports.spec.ts`.
+
 ### 2.218 School document statuses *(added 2026-10-27 — `DEC-SCOPE-307`, nehn-039)*
 
 | Route | Anonymous | school_coordinator / school_principal | school_teacher | school_parent | other roles |

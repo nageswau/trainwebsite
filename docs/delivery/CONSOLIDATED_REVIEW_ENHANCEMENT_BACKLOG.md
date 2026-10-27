@@ -580,6 +580,11 @@ Risk is the risk of regression or of a wrong outcome.
   - What does "completed" mean: progress = 100, a certificate issued, or batch ended?
   - Is a completion date needed?
   - Waiting on the client template.
+- **Status (2026-10-27):** built on `worktree-nehn-010` (`DEC-SCOPE-305`; API §12HC; RBAC §2.216; no migration). Seven reports
+  registered in `services/reports/training.py` on the shared calculator `services/training_progress.py` (which certificate eligibility
+  now reads too). Builder's defaults: completed = progress 100, dated by the batch end (no `completed_at`); trainers see their own batches
+  in every report; revenue is the `financial` class (super_admin, or a `field.financial.view` grant; it_admin not seeded); management /
+  recruiter / HR access waits for nehn-011/016/017. Field lists stay provisional until the client template.
 - **Complexity:** large · **Risk:** medium
 
 #### `nehn-011` — Admin dashboard: enrolments, student progress, course-wise and fee tiles

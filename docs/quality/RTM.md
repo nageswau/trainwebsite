@@ -1372,3 +1372,13 @@ half.
 | `nehn-018-AC2` | After the webhook marks the payment paid, access follows without signing in again | `::test_webhook_payment_unlocks_without_signing_in_again`; e2e (discount to 0) |
 | `nehn-018-AC3` | A partially paid student gets exactly what the policy says | `::test_state`, `::test_admin_change_applies_immediately_and_is_audited` |
 | `nehn-018-AC4` | An admin's policy change takes effect immediately | `::test_admin_change_applies_immediately_and_is_audited`, `::test_policy_validation`, `::test_only_the_grant_reads_or_changes_the_policy`; e2e |
+
+### nehn-010 — Training reports pack (`DEC-SCOPE-305`)
+
+| Req | Criterion | Evidence (`apps/api/tests/test_nehn_010_training_reports.py` unless noted) |
+|---|---|---|
+| `nehn-010-AC1` | Reports (a)–(g) exist, honour their filters, export xlsx | `::test_the_pack_is_registered_under_the_training_resource`, `::test_a_…`–`::test_g_…`, `::test_every_report_downloads_the_rows_of_its_json`, `::test_an_undeclared_filter_is_refused`; e2e `nehn-010-training-reports.spec.ts` |
+| `nehn-010-AC2` | Report (e) attendance % = certificate eligibility % | `::test_e_attendance_matches_certificate_eligibility`; nehn-031/032 certificate suites green |
+| `nehn-010-AC3` | A trainer sees only own batches | `::test_a_trainer_sees_only_their_own_batches_in_every_report`; e2e trainer row |
+| `nehn-010-AC4` | Recruiter/HR never see financial columns | `::test_recruiter_and_hr_cannot_read_the_pack`, `::test_g_revenue_is_left_out_without_the_financial_grant`; e2e revenue |
+| `nehn-010-E` | Edge: two batches of one course, dropped seat, 0/0 attendance "—" | `::test_a_…`, `::test_c_…`, `::test_g_…` |

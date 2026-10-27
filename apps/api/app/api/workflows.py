@@ -150,6 +150,7 @@ from app.services import (
     student_access,
     student_archive,
     student_document_requests,
+    training_progress,
     visa_lifecycle,
 )
 from app.services import application_outcomes as outcomes
@@ -1504,36 +1505,11 @@ async def _certificate_rules(db: AsyncSession) -> dict:
 async def _certificate_eligibility(db: AsyncSession, enrollment: Enrollment, rules: dict | None = None) -> dict:
     rules = rules or await _certificate_rules(db)
     batch = await db.get(Batch, enrollment.batch_id)
-    attendance_total = await db.scalar(select(func.count()).select_from(Attendance).where(Attendance.student_id == enrollment.student_id, Attendance.batch_id == enrollment.batch_id)) or 0
-    attendance_present = (
-        await db.scalar(
-            select(func.count())
-            .select_from(Attendance)
-            .where(Attendance.student_id == enrollment.student_id, Attendance.batch_id == enrollment.batch_id, Attendance.status.in_(["present", "late", "excused"]))
-        )
-        or 0
-    )
-    attendance_percent = round(attendance_present * 100 / attendance_total, 2) if attendance_total else 0
-    assignment_total = await db.scalar(select(func.count()).select_from(Assignment).where(Assignment.batch_id == enrollment.batch_id, Assignment.published.is_(True))) or 0
-    assignment_graded = (
-        await db.scalar(
-            select(func.count())
-            .select_from(Submission)
-            .join(Assignment)
-            .where(Submission.student_id == enrollment.student_id, Assignment.batch_id == enrollment.batch_id, Submission.status == "graded")
-        )
-        or 0
-    )
-    assessments = (await db.scalars(select(Assessment).where(Assessment.batch_id == enrollment.batch_id, Assessment.status.in_(["scheduled", "open", "closed", "published"])))).all()
-    passed = 0
-    for assessment in assessments:
-        best = await db.scalar(
-            select(func.max(AssessmentAttempt.percentage)).where(
-                AssessmentAttempt.assessment_id == assessment.id, AssessmentAttempt.student_id == enrollment.student_id, AssessmentAttempt.status == "graded"
-            )
-        )
-        if best is not None and float(best) >= assessment.pass_percent:
-            passed += 1
+    # nehn-010 (DEC-SCOPE-305): the same set-based SQL as the training reports, so report (e) and this rule show one attendance %.
+    seat = await training_progress.seat(db, enrollment.student_id, enrollment.batch_id)
+    attendance_percent = float(seat["attendance_percent"]) if seat["attendance_percent"] is not None else 0
+    assignment_total, assignment_graded = seat["assignments_total"], seat["assignments_graded"]
+    assessments_total, passed = seat["assessments_total"], seat["assessments_passed"]
     pending_fee = (
         await db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.user_id == enrollment.student_id, Payment.division == "it", Payment.status.in_(["pending", "overdue"]))) or 0
     )
@@ -1543,7 +1519,7 @@ async def _certificate_eligibility(db: AsyncSession, enrollment: Enrollment, rul
         "assignments_graded": assignment_graded,
         "assignments_total": assignment_total,
         "assessments_passed": passed,
-        "assessments_total": len(assessments),
+        "assessments_total": assessments_total,
         "pending_fee": float(pending_fee),
         "rules": rules,
     }
@@ -1551,7 +1527,7 @@ async def _certificate_eligibility(db: AsyncSession, enrollment: Enrollment, rul
         enrollment.progress_percent >= rules["min_progress_percent"]
         and attendance_percent >= rules["min_attendance_percent"]
         and assignment_graded >= assignment_total
-        and passed >= len(assessments)
+        and passed >= assessments_total
         and float(pending_fee) == 0
     )
     criteria["batch_id"] = batch.id if batch else enrollment.batch_id
