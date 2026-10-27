@@ -18,7 +18,7 @@ from app.api.partnership_performance import _add, ranking
 from app.models import Country, University, UniversityAgreement, User
 from app.partnership_stages import effective_probability, label_of
 from app.partnership_target_kpis import KPIS
-from app.services import partnership_targets, partnership_universities
+from app.services import field_policy, partnership_targets, partnership_universities
 from app.services.bdm_activities import india_date
 from app.services.bdm_appointments import db_now
 from app.services.partnership import partnership_context
@@ -183,10 +183,13 @@ async def _targets(db: AsyncSession, user: User, today: date, raw: dict) -> dict
 
 
 BUILDERS = {"pipeline": _pipeline, "expected": _expected, "performance": _performance, "agreements": _agreements, "targets": _targets}
+# nehn-008 (DEC-SCOPE-300): the commission columns also need `field.financial.view`, on top of the U2 rule that builds them (RP12).
+FIELD_CLASSES = {"commission_expected": "financial", "commission_received": "financial"}
 
 
 async def build(db: AsyncSession, user: User, kind: str, raw: dict[str, str | None]) -> dict:
-    """Every row of one report (the caller has passed `require_reader` and the kind exists); the screen and the CSV cap are the route's."""
+    """Every row of one report (the caller has passed `require_reader` and the kind exists); the screen and the CSV cap are the route's.
+    The field policy applies here, the one payload the JSON, CSV and xlsx are all rendered from."""
     today = india_date(await db_now(db))
-    report = await BUILDERS[kind](db, user, today, raw)
+    report = await field_policy.strip(db, user, await BUILDERS[kind](db, user, today, raw), FIELD_CLASSES)
     return {"kind": kind, "title": f"{TITLES[kind]} Report", "as_of": today.isoformat(), "notes": [], **report, "total": len(report["items"])}

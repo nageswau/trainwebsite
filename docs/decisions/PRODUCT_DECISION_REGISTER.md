@@ -10047,3 +10047,21 @@ lacks is accepted. U8 any user, found through the existing `GET /admin/users?q=`
 `payments.view`.
 **Numbering:** migration `0206_user_permission_overrides`; API §12GW; RBAC §2.210.
 - **Feature ID authorized:** `nehn-007`. **Status:** built on `worktree-nehn-007`.
+
+### DEC-SCOPE-300 — Role-based field (column) policy for views and downloads (`nehn-008`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-008` (§15 L324-350; §5 L104-121; action 3; `UNVERIFIED`
+backlog); `CLIENT_QUESTIONS.md` CI-02 (per-role columns, **pending client**); design
+`docs/superpowers/specs/2026-10-27-nehn-008-field-column-policy-design.md`. Dependencies nehn-004 (`DEC-SCOPE-282`), nehn-005
+(`DEC-SCOPE-281`) and nehn-007 (`DEC-SCOPE-299`) merged.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** a report tags its sensitive columns with a field
+class and `services/field_policy.strip` removes every column whose `field.<class>.view` the caller lacks (role grant ± nehn-007
+override; super_admin always), from the one payload the JSON, CSV and xlsx are rendered from. F1 the pilot is the partnership
+Performance report's commission columns, the only financial columns in any report today. F2 an untagged column is unrestricted (the
+route gate and row scope apply). F3 seed `field.financial.view` → partnership_manager, partnership_head (today's U2 commission readers,
+DEC-SCOPE-118); it_admin / overseas_admin are not seeded. F4 recruiter (placement_team, placement_manager) and HR (hr_team) hold no
+financial grant; their student reports arrive with nehn-016 / nehn-017 and must tag their columns. F5 a denied column is removed, not
+masked. F6 export audit unchanged. Only `field.financial` is in the catalogue: the other backlog classes join when a report first tags
+one (nehn-005 P1). The partnership pages' commission figures keep the U2 rule.
+**Numbering:** migration `0207_field_financial_grant`; API §12GX; RBAC §2.211.
+- **Feature ID authorized:** `nehn-008`. **Status:** built on `worktree-nehn-008`.
