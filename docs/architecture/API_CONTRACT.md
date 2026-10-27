@@ -4459,9 +4459,58 @@ designation, active, active_from, active_to}`; the storage key is never returned
   required_state, current_state}`; the dashboard withholds its upcoming-work rows while assignments are locked.
 - `GET /workflows/it/student/learning` — locked features' lists are empty; additive `access` key.
 
-## 12HC. Trainer batch progress (nehn-028) — addendum, 2026-10-27
+## 12HC. Training reports pack (nehn-010) — addendum, 2026-10-27
 
-`DEC-SCOPE-305`. No migration.
+`DEC-SCOPE-305`. Seven reports registered in the §12HA report library; every route, gate (`reports.training.view` / `.download`),
+error order, paging, throttle, cap and audit row is §12HA's. `GET /api/v1/reports/{id}` (+ `.csv`, `.xlsx`):
+
+| id | Grain | Columns | Filters |
+|---|---|---|---|
+| `student-courses` | enrolment | student_code, student, course, batch, trainer, enrolled_on, status, progress, attendance_pct, assignments_graded, assignments_total, assessments_passed, assessments_total, certificate | from, to (enrolled), course_id, batch_id, trainer_id, student, status, latest, completion_from, completion_to |
+| `students-by-trainer` | enrolment | trainer, batch, course, student_code, student, status, progress | from, to (enrolled), course_id, batch_id, trainer_id, student, status |
+| `course-completion` | batch | course, batch, trainer, batch_starts, batch_ends, students, completed, completion_pct, certificates | course_id, batch_id, trainer_id, completion_from, completion_to |
+| `completions` | completed enrolment | student_code, student, course, batch, trainer, batch_ends, progress, attendance_pct, certificate | completion_from, completion_to, course_id, batch_id, trainer_id, student, latest |
+| `attendance` | enrolment | student_code, student, course, batch, trainer, marked, present, absent, late, excused, attendance_pct | from, to (**class date**), course_id, batch_id, trainer_id, student, status |
+| `trainers` | trainer | trainer, batches, students, attendance_pct, average_progress, pending_grading | course_id, trainer_id, completion_from, completion_to |
+| `courses` | course | course, batches, enrolments, active, completed, dropped, revenue (`financial`) | from, to (enrolled), course_id, trainer_id |
+
+- Percentages are numbers (attendance 2 decimals, completion/average 1); `null` when the base is 0. `certificate` is the enrolment's
+  latest certificate status or `"Not issued"`. `revenue` is omitted (JSON and files) without `field.financial.view`.
+- `GET /workflows/it/certificates/eligibility/{id}` is unchanged in shape; its attendance/assignment/assessment figures now come from the
+  same calculator as the `attendance` report.
+
+## 12HE. School document statuses (nehn-039) — addendum, 2026-10-27
+
+`DEC-SCOPE-307`. No migration. Additive only.
+
+- `GET /school/students/{student_id}/document-statuses` → `{student_id, applications: [{application_id, university_name,
+  has_checklist, items: [{name, required, status, status_label}]}]}`. Applications newest first, items in checklist order; status
+  is `app.application_checklists.item_status` (`missing` when nothing is marked or linked). Financial-class items are left out; no
+  files, ids of documents, notes or intake. Not paginated (a student has a handful of applications).
+- 401 signed out; 403 `School role required` for any non-school role; **404** `Student not found` for a student outside the
+  reader's scope or a missing id. Each 200 writes one `school.document_statuses_view` audit row (`school_id`, application and item
+  counts).
+## 12HD. Agent dashboard KPIs (nehn-038) — addendum, 2026-10-27
+
+`DEC-SCOPE-306`. No migration. Additive only.
+
+`GET /workflows/overseas/agent/crm/dashboard` gains two optional query parameters, `date_from` and `date_to` (YYYY-MM-DD, inclusive UTC
+days on the day the students' agency records were created).
+
+- **Validation and order.** The gate runs first (401/403 as before). Then `report_range`: 422 for a malformed date, "date_to must be on
+  or after date_from", or "date_to must be before 9999-12-31".
+- **New body fields:**
+  - `applications_submitted`, `visa_decisions`, `visa_refusals`, `visa_withdrawals`, `conversions`: int.
+  - `conversion_rate`: float or null (a percent, one decimal).
+  - `date_from`, `date_to`: date or null (the applied range).
+  - Each `staff[]` row gains `conversions` (int) and `conversion_rate` (float or null).
+- **What a range narrows.** Students, the pipeline and visa figures, conversion, both breakdowns, the staff rows and
+  `unassigned_students` are narrowed to the cohort. `pending_documents`, `pending_actions` and `commission` are not.
+- **Unchanged.** Every existing field and its unfiltered value, `Cache-Control: private, no-store`, and the absence of ids.
+
+## 12HF. Trainer batch progress (nehn-028) — addendum, 2026-10-27
+
+`DEC-SCOPE-308`. No migration.
 
 - `GET /workflows/it/batches/{batch_id}/progress` (new) — trainer (own batch), it_admin, super_admin. **404** unknown batch, **403**
   another trainer's batch or any other role, **422** a malformed id. Response `{batch: {id, name, program, start_date, end_date}, rules:
@@ -4469,7 +4518,5 @@ designation, active, active_from, active_to}`; the storage key is never returned
   progress_percent, attendance_percent, attendance_sessions, at_risk, assignments_submitted, assignments_graded, assignments_total,
   assessments_passed, assessments_total, fee_clear, eligible, reasons: [str], certificate_issued}]}`, by student name. Every enrolment
   except `pending_consent`/`rejected`. The numbers equal `GET /workflows/it/certificates/eligibility/{enrollment_id}`; no fee amount.
-- `GET /workflows/it/certificates/eligibility/{enrollment_id}` and `GET /workflows/it/certificates/queue` — criteria gain an additive
-  `attendance_sessions`; values unchanged.
 - `GET /portal/it/trainer/student-progress` — now header-only (no rows); subtitle "Attendance, assignments, assessments, progress and
   certificate eligibility for each student in your batches."

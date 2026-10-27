@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Browser, type Page } from "@playwright/test";
 
-// nehn-028 (DEC-SCOPE-305): the trainer's Student Progress page leads with one batch's students against the certificate criteria --
+// nehn-028 (DEC-SCOPE-308): the trainer's Student Progress page leads with one batch's students against the certificate criteria --
 // attendance with an at-risk flag, assignments, assessments, progress and eligibility with its reasons. Each run registers a fresh
 // student in the demo trainer's first batch and marks one present and one absent session (50%), so it can repeat on one database.
 

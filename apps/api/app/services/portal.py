@@ -561,7 +561,7 @@ async def _trainer(db: AsyncSession, user: User, section: str):
             ),
         )
     if section == "student-progress":
-        # nehn-028 (DEC-SCOPE-305): header-only -- the page's progress table reads `GET /workflows/it/batches/{id}/progress` (AC3: the
+        # nehn-028 (DEC-SCOPE-308): header-only -- the page's progress table reads `GET /workflows/it/batches/{id}/progress` (AC3: the
         # subtitle names what that table shows).
         return _payload("Student Progress", "Attendance, assignments, assessments, progress and certificate eligibility for each student in your batches.")
     if section == "support":

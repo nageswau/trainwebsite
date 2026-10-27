@@ -1372,8 +1372,29 @@ half.
 | `nehn-018-AC2` | After the webhook marks the payment paid, access follows without signing in again | `::test_webhook_payment_unlocks_without_signing_in_again`; e2e (discount to 0) |
 | `nehn-018-AC3` | A partially paid student gets exactly what the policy says | `::test_state`, `::test_admin_change_applies_immediately_and_is_audited` |
 | `nehn-018-AC4` | An admin's policy change takes effect immediately | `::test_admin_change_applies_immediately_and_is_audited`, `::test_policy_validation`, `::test_only_the_grant_reads_or_changes_the_policy`; e2e |
-| `nehn-028` | Requirement: PDF §10 "View student progress", L232-236 → backlog `nehn-028` → `DEC-SCOPE-305` → design `docs/superpowers/specs/2026-10-27-nehn-028-trainer-progress-view-design.md` → API §12HC → RBAC §2.216 | — |
-| `nehn-028-AC1` | Each student's attendance % and eligibility match the eligibility endpoint | `test_nehn_028_batch_progress.py::test_rows_match_the_eligibility_endpoint`, `::test_pending_fee_is_a_reason_without_the_amount`; certificate suites (nehn-031, adm-006, stu-007, nehn-032) on the shared calculator; e2e `nehn-028-trainer-progress.spec.ts` |
+
+### nehn-010 — Training reports pack (`DEC-SCOPE-305`)
+
+| Req | Criterion | Evidence (`apps/api/tests/test_nehn_010_training_reports.py` unless noted) |
+|---|---|---|
+| `nehn-010-AC1` | Reports (a)–(g) exist, honour their filters, export xlsx | `::test_the_pack_is_registered_under_the_training_resource`, `::test_a_…`–`::test_g_…`, `::test_every_report_downloads_the_rows_of_its_json`, `::test_an_undeclared_filter_is_refused`; e2e `nehn-010-training-reports.spec.ts` |
+| `nehn-010-AC2` | Report (e) attendance % = certificate eligibility % | `::test_e_attendance_matches_certificate_eligibility`; nehn-031/032 certificate suites green |
+| `nehn-010-AC3` | A trainer sees only own batches | `::test_a_trainer_sees_only_their_own_batches_in_every_report`; e2e trainer row |
+| `nehn-010-AC4` | Recruiter/HR never see financial columns | `::test_recruiter_and_hr_cannot_read_the_pack`, `::test_g_revenue_is_left_out_without_the_financial_grant`; e2e revenue |
+| `nehn-010-E` | Edge: two batches of one course, dropped seat, 0/0 attendance "—" | `::test_a_…`, `::test_c_…`, `::test_g_…` |
+**Addendum, 2026-10-27 (`nehn-038`)** — Agent dashboard KPIs. Tests in `apps/api/tests/test_nehn_038_agent_kpis.py` (`::`),
+`apps/web/tests/components/nehn038AgentKpis.test.tsx` and e2e `nehn-038-agent-kpis.spec.ts`.
+
+| ID | Requirement / acceptance | Evidence |
+|---|---|---|
+| `nehn-038` | Requirement: PDF §20 L553-560, §26 L810-811, action 20 → backlog `nehn-038` → `DEC-SCOPE-306` → design `docs/superpowers/specs/2026-10-27-nehn-038-agent-kpis-design.md` → API §12HD → RBAC §2.217 | — |
+| `nehn-038-AC1` | Each KPI matches a hand-computed fixture | `::test_master_new_kpis_equal_hand_counts`, `::test_staff_see_only_their_own_figures`, `::test_open_ended_ranges`; vitest tiles |
+| `nehn-038-AC2` | The date filter applies to all KPI tiles (work queues and commission stay current, D2) | `::test_date_filter_applies_to_every_kpi_tile`; e2e range |
+| `nehn-038-AC3` | Visa outcomes sum to the total decided | `::test_visa_outcomes_sum_to_decided` |
+| `nehn-038-AC4` | Staff see only their own figures | `::test_staff_see_only_their_own_figures`, `::test_staff_filter_stays_in_own_scope` |
+| `nehn-038-neg` | Another agency is never included; bad ranges 422 after the guards | `::test_other_agency_never_counted`, `::test_bad_ranges_are_422`, `::test_guards_run_before_date_validation`; e2e reversed range |
+| `nehn-028` | Requirement: PDF §10 "View student progress", L232-236 → backlog `nehn-028` → `DEC-SCOPE-308` → design `docs/superpowers/specs/2026-10-27-nehn-028-trainer-progress-view-design.md` → API §12HF → RBAC §2.219 | — |
+| `nehn-028-AC1` | Each student's attendance % and eligibility match the eligibility endpoint | `test_nehn_028_batch_progress.py::test_rows_match_the_eligibility_endpoint`, `::test_pending_fee_is_a_reason_without_the_amount`; certificate suites (nehn-031, adm-006, stu-007, nehn-032) on the shared `_criteria`; e2e `nehn-028-trainer-progress.spec.ts` |
 | `nehn-028-AC2` | Students below the attendance threshold are flagged | `::test_below_the_threshold_is_at_risk`, `::test_no_sessions_yet_is_not_at_risk`; `nehn028TrainerProgress.test.tsx`; e2e |
 | `nehn-028-AC3` | The subtitle matches what is shown | `::test_student_progress_section_subtitle`; vitest header-only section; e2e |
 | `nehn-028-AC4` | Another trainer's batch is refused | `::test_another_trainers_batch_is_403`, `::test_unknown_batch_is_404`, `::test_other_roles_are_refused`, `::test_signed_out_is_401`; e2e (student 403) |

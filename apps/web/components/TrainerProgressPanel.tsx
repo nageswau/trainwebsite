@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import type { CertificateRules } from "@/lib/certificates";
 
-// nehn-028 (DEC-SCOPE-305; docs/superpowers/specs/2026-10-27-nehn-028-trainer-progress-view-design.md): one batch's students against the
+// nehn-028 (DEC-SCOPE-308; docs/superpowers/specs/2026-10-27-nehn-028-trainer-progress-view-design.md): one batch's students against the
 // certificate criteria, from `GET /workflows/it/batches/{id}/progress` -- the eligibility endpoint's own numbers, so nothing is
 // re-derived here. A batch with no attendance yet shows "—", not 0%, and flags nobody.
 

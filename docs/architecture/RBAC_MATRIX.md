@@ -3218,7 +3218,40 @@ Pinned by `apps/api/tests/test_nehn_009_reports.py` and `apps/web/tests/e2e/nehn
 A new entitlement layer under the role check: the payment check runs after the route's role and ownership checks, so another
 student's or batch's record keeps its existing 403/404. Pinned by `apps/api/tests/test_nehn_018_student_access.py`.
 
-### 2.216 Trainer batch progress *(added 2026-10-27 — `DEC-SCOPE-305`, nehn-028)*
+### 2.216 Training reports pack *(added 2026-10-27 — `DEC-SCOPE-305`, nehn-010)*
+
+No new resource or grant: the seven reports use §2.214's `reports.training` (seed it_admin, trainer; super_admin always).
+
+| Report | Rows | Columns |
+|---|---|---|
+| `student-courses`, `students-by-trainer`, `course-completion`, `completions`, `attendance`, `trainers`, `courses` | super_admin, it_admin every batch; trainer only batches where `Batch.trainer_id` is the caller (a named other trainer/batch/course → empty); any other granted role none | `courses.revenue` is `field.financial` — super_admin or a holder of `field.financial.view` (not seeded to it_admin or trainer; recruiter/HR never hold the report) |
+
+Pinned by `apps/api/tests/test_nehn_010_training_reports.py` and `apps/web/tests/e2e/nehn-010-training-reports.spec.ts`.
+
+### 2.218 School document statuses *(added 2026-10-27 — `DEC-SCOPE-307`, nehn-039)*
+
+| Route | Anonymous | school_coordinator / school_principal | school_teacher | school_parent | other roles |
+|---|---|---|---|---|---|
+| `GET /school/students/{id}/document-statuses` | 401 | 200, own school's students | 200, assigned students | 200, linked children | 403 |
+
+Out-of-scope students answer 404, not 403 (no existence leak). Pinned by `apps/api/tests/test_nehn_039_school_document_statuses.py`.
+### 2.217 Agent dashboard KPIs *(added 2026-10-27 — `DEC-SCOPE-306`, nehn-038)*
+
+No new permission or route. The new figures and the date filter follow AGN-018's gate and scope:
+
+- Agency members of an active agency only. A super admin, a counselor or anyone else gets 403; an anonymous caller gets 401. Both come
+  before any 422 on the dates.
+- A Master sees the whole agency. A staff member sees only their assigned students (`scope: "own"`, whatever the query says), and gets
+  no staff table and no commission.
+- Another agency's rows are never counted.
+
+| Route | Anonymous | Agency Master | Agency staff | super_admin, counselor, others |
+|---|---|---|---|---|
+| `GET /workflows/overseas/agent/crm/dashboard[?date_from&date_to]` | 401 | 200 (agency) | 200 (own) | 403 |
+
+Pinned by `apps/api/tests/test_nehn_038_agent_kpis.py` and `apps/web/tests/e2e/nehn-038-agent-kpis.spec.ts`.
+
+### 2.219 Trainer batch progress *(added 2026-10-27 — `DEC-SCOPE-308`, nehn-028)*
 
 | Route | Anonymous | super_admin | it_admin | trainer | other roles |
 |---|---|---|---|---|---|

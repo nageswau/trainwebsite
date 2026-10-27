@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import PortalSection from "@/components/PortalSection";
 import TrainerProgressPanel from "@/components/TrainerProgressPanel";
 
-// nehn-028 (DEC-SCOPE-305): the trainer's per-student progress table -- attendance with a risk flag, assignments, assessments, progress
+// nehn-028 (DEC-SCOPE-308): the trainer's per-student progress table -- attendance with a risk flag, assignments, assessments, progress
 // and certificate eligibility with its reasons, for one batch at a time.
 const URL = (id: string) => `/api/v1/workflows/it/batches/${id}/progress`;
 const RULES = { min_progress_percent: 100, min_attendance_percent: 75 };

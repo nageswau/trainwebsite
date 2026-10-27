@@ -1,6 +1,6 @@
 # Report library
 
-> Doc ID: DOC-RPT-004 · Verified 2026-10-27 against `worktree-nehn-009` (`DEC-SCOPE-303`) · Roles: Super Admin; IT Admin; Trainer
+> Doc ID: DOC-RPT-004 · Verified 2026-10-27 against `worktree-nehn-009` (`DEC-SCOPE-303`) and `worktree-nehn-010` (`DEC-SCOPE-305`) · Roles: Super Admin; IT Admin; Trainer
 
 ## Purpose
 Open a report, filter it, page through the rows and download every matching row as CSV or Excel.
@@ -38,6 +38,21 @@ matches the filters (not only the page on screen), for example `enrollments-2026
 | Student | A student code, or part of a name or email. |
 | Latest | Only the N most recent enrolments (1–1,000). |
 | Completion from / to | The batch end date range. |
+
+## Training reports (nehn-010, `DEC-SCOPE-305`)
+Field lists are provisional until the client's report template arrives.
+
+| Report | One row per | Notes |
+|---|---|---|
+| Student-wise course report | enrolment | Progress, attendance %, assignments graded, assessments passed, certificate. |
+| Students per trainer | enrolment | Sorted by trainer, batch, student. |
+| Course completion | batch | Students, completed (progress 100%), completion %, certificates. |
+| Completions in a period | completed enrolment | Use **Completion from / to** (the batch end date). |
+| Attendance | enrolment | Classes marked, present, absent, late, excused, attendance % — the same % certificate eligibility uses. Here **From / To** is the class date. |
+| Trainer report | trainer | Batches, students, attendance %, average progress, submissions waiting to be graded. |
+| Course-wise report | course | Enrolments, active, completed, dropped; **Revenue (INR)** shows only to roles allowed to see financial columns. |
+
+"—" means there is nothing to measure yet (for example no attendance marked), not 0%.
 
 ## Expected Result
 The table and the files hold the same columns and rows. Every download is recorded in the audit log with the filters used.

@@ -580,6 +580,11 @@ Risk is the risk of regression or of a wrong outcome.
   - What does "completed" mean: progress = 100, a certificate issued, or batch ended?
   - Is a completion date needed?
   - Waiting on the client template.
+- **Status (2026-10-27):** built on `worktree-nehn-010` (`DEC-SCOPE-305`; API §12HC; RBAC §2.216; no migration). Seven reports
+  registered in `services/reports/training.py` on the shared calculator `services/training_progress.py` (which certificate eligibility
+  now reads too). Builder's defaults: completed = progress 100, dated by the batch end (no `completed_at`); trainers see their own batches
+  in every report; revenue is the `financial` class (super_admin, or a `field.financial.view` grant; it_admin not seeded); management /
+  recruiter / HR access waits for nehn-011/016/017. Field lists stay provisional until the client template.
 - **Complexity:** large · **Risk:** medium
 
 #### `nehn-011` — Admin dashboard: enrolments, student progress, course-wise and fee tiles
@@ -689,6 +694,11 @@ Risk is the risk of regression or of a wrong outcome.
 
 #### `nehn-014` — Lead notes and counselor lead actions (status and follow-ups)
 **Status (2026-10-22): SUPERSEDED** by `ccrm-002` and `ccrm-003` (`docs/delivery/COUNSELOR_CRM_BACKLOG.md`, owner answer CC7). Kept for history.
+  **Verified (2026-10-27, nehn-014 session):** on main `64161f18`, AC1 → `test_counselor_adds_a_note_and_the_timeline_shows_it_with_author_and_time`;
+  AC2 → `test_counselor_moves_their_lead_with_a_next_action`, `test_stages_outside_the_cc8_list_are_422`; AC3 →
+  `test_another_counselors_lead_is_404_for_read_and_write`, `test_scope_another_counselor_and_division_404_telecaller_403`; AC4 →
+  `test_admin_owner_must_be_an_active_counselor_of_the_division`. ccrm-002/003 pytest 48 passed; e2e `ccrm-002-lead-notes`,
+  `ccrm-003-counselor-lead-actions` 2 passed. No code change needed.
 - **Source:** §16 "Maintain notes/comments" (L368); §19 "Manage assigned CRM leads", "Update lead/follow-up status", "Maintain relevant CRM notes/history" (L532-533, L542); audit finding (`admin.py:479`).
 - **Business requirement:** Counselors manage their assigned leads (status, follow-ups, notes), and notes are part of the lead history.
 - **Existing behavior:**
@@ -724,6 +734,7 @@ Risk is the risk of regression or of a wrong outcome.
 - **Complexity:** medium · **Risk:** medium
 
 #### `nehn-015` — Internal CRM workflow reconciliation (blocked on the client CRM flow)
+**Status (2026-10-27): still waiting for client input (CI-01).** A readiness template is prepared on `worktree-nehn-015`: [`NEHN_015_CRM_DELTA_MATRIX.md`](NEHN_015_CRM_DELTA_MATRIX.md) maps all 26 client-flow items (§16 L424–L448, §26 L760–L783) to the as-built code and decisions, with every client and delta column `NEEDS_CONFIRMATION`. No code, migration or DEC is involved. AC1–AC3 stay open until the client document arrives.
 - **Source:** §16 L351-357, L377-404, L420-449; §26 L758-784; actions 4–7. Evidence: `MEETING_TRANSCRIPT_REQUEST` plus a pending client document.
 - **Business requirement:** Implement the client's final CRM process: sources, stages, transitions, assignment rules (including workload- and source-based), ownership, reassignment, escalation, duplicates, IT/Overseas/Agent flows, notifications, dashboards, reports, filters, export fields, permissions and approvals.
 - **Existing behavior:** The Telecaller CRM covers most of the list:
@@ -1266,8 +1277,8 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** the certificate eligibility refactor.
 - **Open questions:** should progress % be computed automatically from the criteria?
 - **Complexity:** small · **Risk:** low
-- **Status (2026-10-27):** built on `worktree-nehn-028` (`DEC-SCOPE-305`; no migration; API §12HC; RBAC §2.216). AC1-AC4 met. The
-  shared calculator is `app/services/training_progress.py` (eligibility, the coordinator queue and this view; nehn-010 should reuse it).
+- **Status (2026-10-27):** built on `worktree-nehn-028` (`DEC-SCOPE-308`; no migration; API §12HF; RBAC §2.219). AC1-AC4 met. The
+  view reads nehn-010's calculator (`training_progress.seats`, the same SQL as `seat`) and one certificate rule (`_criteria`).
   Builder's defaults (`NEEDS_CONFIRMATION`): progress % stays manual; dropped/withdrawn hidden by default, greyed on request; no fee
   amount for trainers; no IT-admin page yet (the API admits it_admin).
 
@@ -1672,10 +1683,18 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** agent dashboard tests (AGN-0xx).
 - **Open questions:** the final KPI list and definitions; whether admin needs a cross-agent ranking.
 - **Complexity:** small · **Risk:** low
+- **Status (2026-10-27):** built in `worktree-nehn-038` (`DEC-SCOPE-306`, defaults D1-D6 `NEEDS_CONFIRMATION` pending CI-06):
+  `/crm/dashboard` gains `applications_submitted`, the visa outcome split (decisions / approvals / refusals / withdrawals, which sum),
+  per-student conversions and rate (also per staff row), and an optional referral-date range (`date_from`/`date_to`, the AGN-019
+  cohort) applied to every KPI tile, the breakdowns and the staff table. Pending queues and commission stay current. The dashboard has a
+  GET From/To filter. No migration; API §12HD; RBAC §2.217. The admin cross-agent ranking is not built (open question).
 
 ### J. School / Institution (§21)
 
 #### `nehn-039` — School portal: allowed documents/statuses, application depth, bulk-upload reconfirmation
+- **Status (2026-10-27):** built in `worktree-nehn-039` (`DEC-SCOPE-307`, defaults D1-D7 `NEEDS_CONFIRMATION` pending CI-05/OD-13):
+  `GET /school/students/{id}/document-statuses` (checklist statuses of bridged applications, financial class hidden, out of scope
+  404, audited) and an "Overseas application documents" card on the four school student pages; bulk upload kept. No migration.
 - **Source:** §21 L561-577; §26 School (L804-809); actions 18 and 19.
 - **Business requirement:**
   - A dedicated login for the institution representative, limited to their students.
@@ -2070,8 +2089,8 @@ The order follows the PDF's priorities (§25 High, the §27 next-review focus an
 | Admin report template, report names, fields, filters, role access | nehn-010, 011, 016, 017 (fields); nehn-008 (per-role columns) | Pending, client |
 | Founder + Coordinator signature PNGs; final certificate design | nehn-032 | Pending, client |
 | Country images, university logos, icon style, logo copyright restrictions | nehn-034, 035, 036 | Pending, client (standard visuals allowed meanwhile, §26 L801) |
-| Phase-1 school functionality, bulk upload, school report fields, visibility | nehn-039 | Pending, client |
-| Agent performance KPIs | nehn-038 | Pending, client |
+| Phase-1 school functionality, bulk upload, school report fields, visibility | nehn-039 | Pending, client (defaults built, DEC-SCOPE-307) |
+| Agent performance KPIs | nehn-038 | Pending, client (defaults built, DEC-SCOPE-306) |
 | Razorpay live account and webhook | nehn-022 | Pending, client |
 
 ## 8. Owner decisions needed before building (`NEEDS_CONFIRMATION`)

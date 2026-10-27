@@ -1,7 +1,7 @@
 # nehn-028 — Trainer per-student progress view (design)
 
 **Source:** backlog `nehn-028` (`docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md`), requirement §10 "View student progress", L232-236.
-**Decision:** `DEC-SCOPE-305`. **API:** §12HC. **RBAC:** §2.216. **Migration:** none.
+**Decision:** `DEC-SCOPE-308`. **API:** §12HF. **RBAC:** §2.219. **Migration:** none.
 
 ## Intent
 
@@ -13,9 +13,10 @@ be spotted mid-course. Today the Student Progress page shows only the hand-set p
 ## Goals
 
 - `GET /api/v1/workflows/it/batches/{batch_id}/progress` — one row per seated enrolment of the batch.
-- The numbers are the certificate eligibility numbers: `_certificate_eligibility` is refactored onto a shared, set-based
-  calculator (`app/services/training_progress.py`) used by the eligibility endpoint, the issue path, the coordinator queue and the
-  new view. AC1 then holds by construction.
+- The numbers are the certificate eligibility numbers: the view reads nehn-010's set-based calculator
+  (`app/services/training_progress.py`; `seats()` runs the same SQL builders as `seat()` for a whole batch) and applies the one
+  certificate rule `_criteria` that `_certificate_eligibility` also applies. AC1 then holds by construction. *(Revised at the main
+  merge: nehn-010 landed the calculator first; this feature's own calculator and queue change were dropped in favour of it.)*
 - The trainer page leads with a progress table: batch picker, search, "at risk only", "show dropped/withdrawn", sortable columns,
   and a per-student details row (each criterion against its threshold, the reasons).
 - The subtitle says what is shown (AC3).
@@ -40,7 +41,7 @@ be spotted mid-course. Today the Student Progress page shows only the hand-set p
 6. **Fee:** a trainer gets `fee_clear: true|false` and the reason "Fee payment pending" — never the amount (the new endpoint is
    not a financial surface; the existing eligibility endpoint is unchanged).
 7. **Reasons:** computed server-side from the same criteria, so the UI never re-derives eligibility.
-8. **Performance:** the calculator runs one grouped query per factor for any number of enrolments (no N+1). The queue's per-row
+8. **Performance:** `seats()` runs one grouped query per factor for the whole batch (no N+1). *(The queue change originally planned here was dropped at the merge.)* The queue's per-row
    loop moves onto it too.
 
 ## Response
@@ -71,13 +72,13 @@ be spotted mid-course. Today the Student Progress page shows only the hand-set p
 
 1. RED/GREEN `tests/test_nehn_028_batch_progress.py`: scope (own/other/unknown/admin/student), parity with the eligibility endpoint,
    at-risk flag, no-sessions edge, dropped rows, reasons, fee without amount, subtitle.
-2. Extract `training_progress.criteria(db, enrollments, rules)`; `_certificate_eligibility` and the queue call it. Existing
+2. `training_progress.seats(db, batch_id, student_ids)` on nehn-010's builders; `_criteria` shared with `_certificate_eligibility`. Existing
    certificate tests (nehn-031, adm-006, stu-007, nehn-032) stay green.
 3. Endpoint + portal subtitle/header-only.
 4. Web: `TrainerProgressPanel.tsx` (vitest RED/GREEN) mounted first in the student-progress actions; `PortalSection` gets
    `table={false}` for this header-only section.
 5. e2e `nehn-028-trainer-progress.spec.ts`; browser QA desktop/tablet/mobile.
-6. Docs: DEC-SCOPE-305, API §12HC, RBAC §2.216, RTM, tracker, backlog status.
+6. Docs: DEC-SCOPE-308, API §12HF, RBAC §2.219, RTM, tracker, backlog status.
 
 ## Regression risks
 

@@ -1,100 +1,126 @@
-"""nehn-028 (DEC-SCOPE-305): the certificate completion criteria of many enrolments at once -- one grouped query per factor, whatever the
-number of enrolments. Certificate eligibility (one enrolment), the coordinator's queue and the trainer's batch progress view all read it,
-so the numbers a trainer sees are the numbers a certificate is issued on."""
+"""nehn-010 (DEC-SCOPE-305): the set-based progress calculator shared by the training reports and certificate eligibility.
 
-from collections import defaultdict
+Each builder returns a subquery grouped by seat (student, batch) or by batch, so a report joins them once instead of one query per student,
+and `_certificate_eligibility` reads one seat's figures from the same SQL -- the two can never disagree (nehn-010 AC2). The optional
+`student_id`/`batch_id` narrow a builder to one seat (eligibility); a report leaves them out and scopes through its own joins."""
+
+from datetime import date
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import Numeric, Subquery, case, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import ColumnElement
 
-from app.models import Assessment, AssessmentAttempt, Assignment, Attendance, Enrollment, Payment, Submission
+from app.models import Assessment, AssessmentAttempt, Assignment, Attendance, Submission
 
-PRESENT = ("present", "late", "excused")
+ATTENDED = ("present", "late", "excused")  # the certificate rule's attended statuses (mgmt-017 TR8)
 COUNTED_ASSESSMENTS = ("scheduled", "open", "closed", "published")
 
 
-async def criteria(db: AsyncSession, enrollments: list[Enrollment], rules: dict) -> dict[UUID, dict]:
-    """{enrollment_id: criteria} -- the dict `_certificate_eligibility` has always returned, minus its `batch_id`."""
-    if not enrollments:
+def percent(part, whole, places: int = 2) -> ColumnElement:
+    """part / whole as a percentage; NULL when `whole` is 0 or missing (0/0 is "—", not 0 %)."""
+    return case((func.coalesce(whole, 0) > 0, func.round(cast(func.coalesce(part, 0), Numeric) * 100 / whole, places)))
+
+
+def attendance(student_id: UUID | None = None, batch_id: UUID | None = None, date_from: date | None = None, date_to: date | None = None) -> Subquery:
+    """(student_id, batch_id, marked, present, absent, late, excused, attended) per seat with any attendance marked."""
+    stmt = select(
+        Attendance.student_id, Attendance.batch_id, func.count().label("marked"),
+        *(func.count().filter(Attendance.status == status).label(status) for status in ("present", "absent", "late", "excused")),
+        func.count().filter(Attendance.status.in_(ATTENDED)).label("attended"),
+    ).group_by(Attendance.student_id, Attendance.batch_id)
+    if student_id:
+        stmt = stmt.where(Attendance.student_id == student_id)
+    if batch_id:
+        stmt = stmt.where(Attendance.batch_id == batch_id)
+    if date_from:
+        stmt = stmt.where(Attendance.session_date >= date_from)
+    if date_to:
+        stmt = stmt.where(Attendance.session_date <= date_to)
+    return stmt.subquery()
+
+
+def assignments(batch_id: UUID | None = None) -> Subquery:
+    """(batch_id, total) published assignments per batch."""
+    stmt = select(Assignment.batch_id, func.count().label("total")).where(Assignment.published.is_(True)).group_by(Assignment.batch_id)
+    return (stmt.where(Assignment.batch_id == batch_id) if batch_id else stmt).subquery()
+
+
+def graded(student_id: UUID | None = None, batch_id: UUID | None = None) -> Subquery:
+    """(student_id, batch_id, graded) graded submissions per seat."""
+    stmt = (
+        select(Submission.student_id, Assignment.batch_id, func.count().label("graded"))
+        .join(Assignment, Assignment.id == Submission.assignment_id)
+        .where(Submission.status == "graded")
+        .group_by(Submission.student_id, Assignment.batch_id)
+    )
+    if student_id:
+        stmt = stmt.where(Submission.student_id == student_id)
+    if batch_id:
+        stmt = stmt.where(Assignment.batch_id == batch_id)
+    return stmt.subquery()
+
+
+def assessments(batch_id: UUID | None = None) -> Subquery:
+    """(batch_id, total) counted assessments per batch."""
+    stmt = select(Assessment.batch_id, func.count().label("total")).where(Assessment.status.in_(COUNTED_ASSESSMENTS)).group_by(Assessment.batch_id)
+    return (stmt.where(Assessment.batch_id == batch_id) if batch_id else stmt).subquery()
+
+
+def passed(student_id: UUID | None = None, batch_id: UUID | None = None) -> Subquery:
+    """(student_id, batch_id, passed) counted assessments whose best graded attempt reached the pass mark, per seat."""
+    attempts = select(AssessmentAttempt.student_id, AssessmentAttempt.assessment_id, func.max(AssessmentAttempt.percentage).label("best")).where(
+        AssessmentAttempt.status == "graded"
+    )
+    if student_id:
+        attempts = attempts.where(AssessmentAttempt.student_id == student_id)
+    best = attempts.group_by(AssessmentAttempt.student_id, AssessmentAttempt.assessment_id).subquery()
+    stmt = (
+        select(best.c.student_id, Assessment.batch_id, func.count().label("passed"))
+        .join(Assessment, Assessment.id == best.c.assessment_id)
+        .where(Assessment.status.in_(COUNTED_ASSESSMENTS), best.c.best >= Assessment.pass_percent)
+        .group_by(best.c.student_id, Assessment.batch_id)
+    )
+    return (stmt.where(Assessment.batch_id == batch_id) if batch_id else stmt).subquery()
+
+
+async def seat(db: AsyncSession, student_id: UUID, batch_id: UUID) -> dict:
+    """One seat's figures: attendance_percent (None when nothing is marked), assignments graded/total, assessments passed/total."""
+    att, done, tasks, won, tests = attendance(student_id, batch_id), graded(student_id, batch_id), assignments(batch_id), passed(student_id, batch_id), assessments(batch_id)
+    row = (
+        await db.execute(
+            select(
+                percent(select(att.c.attended).scalar_subquery(), select(att.c.marked).scalar_subquery()).label("attendance_percent"),
+                func.coalesce(select(done.c.graded).scalar_subquery(), 0).label("assignments_graded"),
+                func.coalesce(select(tasks.c.total).scalar_subquery(), 0).label("assignments_total"),
+                func.coalesce(select(won.c.passed).scalar_subquery(), 0).label("assessments_passed"),
+                func.coalesce(select(tests.c.total).scalar_subquery(), 0).label("assessments_total"),
+            )
+        )
+    ).one()
+    return dict(row._mapping)
+
+
+async def seats(db: AsyncSession, batch_id: UUID, student_ids: list[UUID]) -> dict[UUID, dict]:
+    """nehn-028 (DEC-SCOPE-308): `seat()` for every listed student of one batch, from the same builders in five queries whatever the
+    class size, plus `attendance_marked` (sessions marked) so a seat with none can show "—"."""
+    if not student_ids:
         return {}
-    batch_ids = {e.batch_id for e in enrollments}
-    student_ids = {e.student_id for e in enrollments}
-
-    attendance = {
-        (batch_id, student_id): (total, present)
-        for batch_id, student_id, total, present in await db.execute(
-            select(Attendance.batch_id, Attendance.student_id, func.count(), func.count().filter(Attendance.status.in_(PRESENT)))
-            .where(Attendance.batch_id.in_(batch_ids), Attendance.student_id.in_(student_ids))
-            .group_by(Attendance.batch_id, Attendance.student_id)
-        )
+    att, done, won = attendance(batch_id=batch_id), graded(batch_id=batch_id), passed(batch_id=batch_id)
+    tasks = await db.scalar(select(assignments(batch_id).c.total)) or 0
+    tests = await db.scalar(select(assessments(batch_id).c.total)) or 0
+    marks = {
+        student_id: (marked, pct)
+        for student_id, marked, pct in await db.execute(select(att.c.student_id, att.c.marked, percent(att.c.attended, att.c.marked)).where(att.c.student_id.in_(student_ids)))
     }
-    assignment_totals = dict(
-        (await db.execute(select(Assignment.batch_id, func.count()).where(Assignment.batch_id.in_(batch_ids), Assignment.published.is_(True)).group_by(Assignment.batch_id))).all()
-    )
-    graded = {
-        (batch_id, student_id): count
-        for batch_id, student_id, count in await db.execute(
-            select(Assignment.batch_id, Submission.student_id, func.count())
-            .select_from(Submission)
-            .join(Assignment)
-            .where(Assignment.batch_id.in_(batch_ids), Submission.student_id.in_(student_ids), Submission.status == "graded")
-            .group_by(Assignment.batch_id, Submission.student_id)
-        )
-    }
-    assessments: dict[UUID, list[tuple[UUID, int]]] = defaultdict(list)
-    for assessment_id, batch_id, pass_percent in await db.execute(
-        select(Assessment.id, Assessment.batch_id, Assessment.pass_percent).where(Assessment.batch_id.in_(batch_ids), Assessment.status.in_(COUNTED_ASSESSMENTS))
-    ):
-        assessments[batch_id].append((assessment_id, pass_percent))
-    assessment_ids = [assessment_id for rows in assessments.values() for assessment_id, _ in rows]
-    best = (
-        {
-            (assessment_id, student_id): percentage
-            for assessment_id, student_id, percentage in await db.execute(
-                select(AssessmentAttempt.assessment_id, AssessmentAttempt.student_id, func.max(AssessmentAttempt.percentage))
-                .where(AssessmentAttempt.assessment_id.in_(assessment_ids), AssessmentAttempt.student_id.in_(student_ids), AssessmentAttempt.status == "graded")
-                .group_by(AssessmentAttempt.assessment_id, AssessmentAttempt.student_id)
-            )
-        }
-        if assessment_ids
-        else {}
-    )
-    pending_fees = dict(
-        (
-            await db.execute(
-                select(Payment.user_id, func.sum(Payment.amount))
-                .where(Payment.user_id.in_(student_ids), Payment.division == "it", Payment.status.in_(["pending", "overdue"]))
-                .group_by(Payment.user_id)
-            )
-        ).all()
-    )
-
+    graded_by = dict((await db.execute(select(done.c.student_id, done.c.graded).where(done.c.student_id.in_(student_ids)))).all())
+    passed_by = dict((await db.execute(select(won.c.student_id, won.c.passed).where(won.c.student_id.in_(student_ids)))).all())
     result = {}
-    for enrollment in enrollments:
-        total, present = attendance.get((enrollment.batch_id, enrollment.student_id), (0, 0))
-        attendance_percent = round(present * 100 / total, 2) if total else 0
-        assignment_total = assignment_totals.get(enrollment.batch_id, 0)
-        assignment_graded = graded.get((enrollment.batch_id, enrollment.student_id), 0)
-        batch_assessments = assessments.get(enrollment.batch_id, [])
-        passed = sum(1 for assessment_id, pass_percent in batch_assessments if (score := best.get((assessment_id, enrollment.student_id))) is not None and float(score) >= pass_percent)
-        pending_fee = float(pending_fees.get(enrollment.student_id) or 0)
-        result[enrollment.id] = {
-            "progress_percent": enrollment.progress_percent,
-            "attendance_percent": attendance_percent,
-            "attendance_sessions": total,
-            "assignments_graded": assignment_graded,
-            "assignments_total": assignment_total,
-            "assessments_passed": passed,
-            "assessments_total": len(batch_assessments),
-            "pending_fee": pending_fee,
-            "rules": rules,
-            "eligible": bool(
-                enrollment.progress_percent >= rules["min_progress_percent"]
-                and attendance_percent >= rules["min_attendance_percent"]
-                and assignment_graded >= assignment_total
-                and passed >= len(batch_assessments)
-                and pending_fee == 0
-            ),
+    for student_id in student_ids:
+        marked, pct = marks.get(student_id, (0, None))
+        result[student_id] = {
+            "attendance_percent": pct, "attendance_marked": marked,
+            "assignments_graded": graded_by.get(student_id, 0), "assignments_total": tasks,
+            "assessments_passed": passed_by.get(student_id, 0), "assessments_total": tests,
         }
     return result

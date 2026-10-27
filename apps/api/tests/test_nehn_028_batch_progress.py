@@ -1,5 +1,5 @@
-"""nehn-028 -- the trainer's per-student progress view (DEC-SCOPE-305; spec
-docs/superpowers/specs/2026-10-27-nehn-028-trainer-progress-view-design.md, API §12HC, RBAC §2.216): one row per seated enrolment of a
+"""nehn-028 -- the trainer's per-student progress view (DEC-SCOPE-308; spec
+docs/superpowers/specs/2026-10-27-nehn-028-trainer-progress-view-design.md, API §12HF, RBAC §2.219): one row per seated enrolment of a
 batch with attendance, assignments, assessments, progress and certificate eligibility -- the same numbers as the eligibility endpoint
 (AC1), at-risk students flagged (AC2), an honest subtitle (AC3), and only the trainer's own batches (AC4)."""
 
