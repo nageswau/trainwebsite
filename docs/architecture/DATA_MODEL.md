@@ -2337,7 +2337,7 @@ new ones record the thresholds used in `criteria_snapshot.rules`. Downgrade drop
 `enquiries` gains `ix_enquiries_created` (`created_at`, `id`) for the newest-first lists filtered by an India-time created range, and
 `ix_enquiries_owner` (`owner_id`) for the counselor filter. No column or row changes; the downgrade drops both indexes.
 
-## Certificate signatures (`nehn-032`, `DEC-SCOPE-300`; migration `0207_certificate_signatories`)
+## Certificate signatures (`nehn-032`, `DEC-SCOPE-301`; migration `0208_certificate_signatories`)
 
 New table `certificate_signatories`: `id` (UUID PK), `role` (`founder | coordinator`, `ck_certificate_signatories_role`), `display_name`,
 `designation` (each ≤ 120), `image_key` (`signatures/<uuid>.png`, private storage), `active_from`, `active_to` (NULL = the slot's active

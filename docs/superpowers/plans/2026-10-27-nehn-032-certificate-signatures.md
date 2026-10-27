@@ -13,7 +13,7 @@
 
 ## Global Constraints
 
-- Numbering: DEC-SCOPE-300, migration `0207_certificate_signatories` (down_revision `0206_user_permission_overrides`), API §12GX, RBAC §2.211.
+- Numbering: DEC-SCOPE-301, migration `0208_certificate_signatories` (down_revision `0207_field_financial_grant`), API §12GY, RBAC §2.212.
 - Slots: `founder`, `coordinator`. Name/designation 1–120 chars. Image 50–2000 px wide, 20–1000 px high, PNG with alpha, ≤ 1 MB.
 - Image keys `signatures/<uuid32>.png`; never presigned; image route sends `Cache-Control: no-store`.
 - Refusal copy: issue/preview without both slots → 409 `"Certificate signatures are not configured: <missing roles>"`.
@@ -31,7 +31,7 @@
 ### Task 1: Model, migration, renderer slots
 
 **Files:** Modify `apps/api/app/models.py`, `apps/api/app/services/certificates.py`, `apps/api/app/core/rbac.py`; Create
-`apps/api/alembic/versions/0207_certificate_signatories.py`; Test `apps/api/tests/test_nehn_032_certificate_signatures.py`,
+`apps/api/alembic/versions/0208_certificate_signatories.py`; Test `apps/api/tests/test_nehn_032_certificate_signatures.py`,
 `apps/api/tests/test_nehn_032_migration.py`.
 
 **Interfaces — Produces:**
@@ -83,4 +83,4 @@
 
 ### Task 5: Docs
 
-API_CONTRACT §12GX, RBAC_MATRIX §2.211, DATA_MODEL, PRODUCT_DECISION_REGISTER DEC-SCOPE-300, RTM, backlog status, FEEDBACK_TRACKER.
+API_CONTRACT §12GY, RBAC_MATRIX §2.212, DATA_MODEL, PRODUCT_DECISION_REGISTER DEC-SCOPE-301, RTM, backlog status, FEEDBACK_TRACKER.

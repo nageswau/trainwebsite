@@ -1349,7 +1349,7 @@ half.
 
 | ID | Requirement / acceptance | Evidence |
 |---|---|---|
-| `nehn-032` | Requirement: PDF §11 L249-260, §26 L791-794, actions 11/12 → backlog `nehn-032` → `DEC-SCOPE-300` → design `docs/superpowers/specs/2026-10-27-nehn-032-certificate-signatures-design.md` → API §12GX → RBAC §2.211 | — |
+| `nehn-032` | Requirement: PDF §11 L249-260, §26 L791-794, actions 11/12 → backlog `nehn-032` → `DEC-SCOPE-301` → design `docs/superpowers/specs/2026-10-27-nehn-032-certificate-signatures-design.md` → API §12GY → RBAC §2.212 | — |
 | `nehn-032-AC1` | Both signatures with names and designations in their slots, no overlap with long names | `::test_render_draws_both_slots_with_long_names`, `::test_issue_snapshots_the_active_signatories_and_a_replacement_affects_only_later_certificates`; preview rendered and inspected in QA; e2e |
 | `nehn-032-AC2` | Replacing the founder signature affects only later certificates | `::test_issue_snapshots_the_active_signatories_and_a_replacement_affects_only_later_certificates`, `::test_upload_replaces_the_active_version` |
 | `nehn-032-AC3` | Signature files are not downloadable by students | `::test_other_roles_cannot_manage_or_see_signatures`; e2e AC3 |

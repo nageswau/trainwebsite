@@ -1,6 +1,6 @@
 # nehn-032 — Certificate digital signatures (Founder + Coordinator) and designation
 
-**Status:** builder's design, defaults `NEEDS_CONFIRMATION` (DEC-SCOPE-300). **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md`
+**Status:** builder's design, defaults `NEEDS_CONFIRMATION` (DEC-SCOPE-301). **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md`
 `nehn-032` (§11 L249-260, §26 L791-794, actions 11/12; `UNVERIFIED` backlog). Dependencies nehn-003 (`DEC-SCOPE-279`), nehn-030
 (`DEC-SCOPE-293`), nehn-031 (`DEC-SCOPE-297`) are merged. The client's signature PNGs (CI-03) are content uploaded through this feature,
 not a code dependency.
@@ -66,7 +66,7 @@ uploaded — certificates cannot be issued"), and error states; messages in `rol
 
 ## Data
 
-Migration `0207_certificate_signatories`: the table (guarded create, 0204's idiom), the partial unique index, and
+Migration `0208_certificate_signatories`: the table (guarded create, 0204's idiom), the partial unique index, and
 `certificates.signatory_snapshot JSON NULL`. No existing row changes. The downgrade drops the column and the table (stored images remain).
 The demo seed (`app.seed`) adds a generated transparent PNG for both slots when a slot is empty, so local and CI issuing keeps working.
 

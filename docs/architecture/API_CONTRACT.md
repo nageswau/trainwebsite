@@ -4368,9 +4368,9 @@ other role, checked before the target).
   the caller's effective set: (role grants + active allows) - active denies. Response shapes unchanged; with no overrides every answer is
   as before.
 
-## 12GX. Certificate signatures (nehn-032) — addendum, 2026-10-27
+## 12GY. Certificate signatures (nehn-032) — addendum, 2026-10-27
 
-`DEC-SCOPE-300`. Migration `0207_certificate_signatories`. Every route needs `certificates.manage` (403 "You do not have permission to
+`DEC-SCOPE-301`. Migration `0208_certificate_signatories`. Every route needs `certificates.manage` (403 "You do not have permission to
 manage certificate signatures"; super_admin only until granted). A signatory is `{id, role: "founder" | "coordinator", display_name,
 designation, active, active_from, active_to}`; the storage key is never returned.
 

@@ -425,7 +425,7 @@ class CertificateRulesIn(BaseModel):
 
 
 class CertificateSignatoryUpdate(BaseModel):
-    """nehn-032 (DEC-SCOPE-300 S3): the active version's details only -- a new image is a new version (POST)."""
+    """nehn-032 (DEC-SCOPE-301 S3): the active version's details only -- a new image is a new version (POST)."""
 
     model_config = ConfigDict(extra="forbid")
     display_name: str | None = Field(default=None, max_length=120)

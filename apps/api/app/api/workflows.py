@@ -1660,7 +1660,7 @@ async def _issue_certificate(db: AsyncSession, user: User, enrollment_id: UUID, 
     student = await db.get(User, enrollment.student_id)
     if not program or not student:
         raise HTTPException(422, "Certificate data is incomplete")
-    # nehn-032 (DEC-SCOPE-300 S7): both signatures are drawn on the PDF and their versions snapshotted; without both, no certificate.
+    # nehn-032 (DEC-SCOPE-301 S7): both signatures are drawn on the PDF and their versions snapshotted; without both, no certificate.
     signatories = await active_signatories(db)
     require_signatories(signatories)
     certificate_no = f"EDU-CERT-{date.today():%Y}-{secrets.token_hex(4).upper()}"

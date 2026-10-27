@@ -10048,7 +10048,7 @@ lacks is accepted. U8 any user, found through the existing `GET /admin/users?q=`
 **Numbering:** migration `0206_user_permission_overrides`; API §12GW; RBAC §2.210.
 - **Feature ID authorized:** `nehn-007`. **Status:** built on `worktree-nehn-007`.
 
-### DEC-SCOPE-300 — Certificate signatures: Founder + Coordinator, designation (`nehn-032`)
+### DEC-SCOPE-301 — Certificate signatures: Founder + Coordinator, designation (`nehn-032`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-032` (§11 L249-260, §26 L791-794, actions 11/12;
 `UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-27-nehn-032-certificate-signatures-design.md`. Dependencies nehn-003
@@ -10061,5 +10061,5 @@ storage, streamed only to grant holders, never presigned. S6 new grant `certific
 S7 issuing is refused (409) while a slot is empty — no placeholder; certificates snapshot the versions used. S8 slots between the
 program and the authenticity rule, scaled to fit. S9 an admin PDF preview with long sample text. "Relevant designation/details" is read as
 the signatories' designations (no course duration or grade).
-**Numbering:** migration `0207_certificate_signatories` (after nehn-007's `0206_user_permission_overrides`); API §12GX; RBAC §2.211.
+**Numbering:** migration `0208_certificate_signatories` (after nehn-008's `0207_field_financial_grant`); API §12GY; RBAC §2.212.
 - **Feature ID authorized:** `nehn-032`. **Status:** built on `worktree-nehn-032`.

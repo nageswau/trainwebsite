@@ -26,7 +26,7 @@ SLATE = HexColor("#5B6B7C")
 
 GUTTER_WIDTH = 70
 
-# nehn-032 (DEC-SCOPE-300): the two signature slots, left to right; the upload's pixel bounds (S4) and the drawn box in points (S8).
+# nehn-032 (DEC-SCOPE-301): the two signature slots, left to right; the upload's pixel bounds (S4) and the drawn box in points (S8).
 SIGNATORY_ROLES = ("founder", "coordinator")
 SIGNATURE_MIN_PX, SIGNATURE_MAX_PX = (50, 20), (2000, 1000)
 SIGNATURE_BOX = (170, 50)
@@ -181,7 +181,7 @@ def render_certificate_pdf(*, certificate_no: str, student_name: str, program_ti
     pdf.setFont("Helvetica-Bold", program_size)
     pdf.drawCentredString(content_center, height - 290, program_title)
 
-    # nehn-032 (DEC-SCOPE-300 S8): the Founder and Coordinator signatures, between the program and the authenticity rule.
+    # nehn-032 (DEC-SCOPE-301 S8): the Founder and Coordinator signatures, between the program and the authenticity rule.
     _draw_signatories(pdf, signatories, content_left, content_width)
 
     # A thin section rule (the same left-gutter vernacular, not a decorative flourish)

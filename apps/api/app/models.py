@@ -360,12 +360,12 @@ class Certificate(Base, TimestampMixin):
     emailed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     criteria_snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String(30), default="issued")
-    # nehn-032 (DEC-SCOPE-300 S7): the signatory versions drawn on the PDF, [{id, role, display_name, designation}]; NULL before nehn-032.
+    # nehn-032 (DEC-SCOPE-301 S7): the signatory versions drawn on the PDF, [{id, role, display_name, designation}]; NULL before nehn-032.
     signatory_snapshot: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
 
 class CertificateSignatory(Base, TimestampMixin):
-    """nehn-032 (DEC-SCOPE-300 S1/S2): one version of the Founder's or Coordinator's certificate signature. A new image closes the active
+    """nehn-032 (DEC-SCOPE-301 S1/S2): one version of the Founder's or Coordinator's certificate signature. A new image closes the active
     row (`active_to`) and inserts another, so an issued certificate's snapshot always names the version it was signed with."""
 
     __tablename__ = "certificate_signatories"

@@ -1,4 +1,4 @@
-"""nehn-032 -- migration 0207_certificate_signatories (DEC-SCOPE-300): the chain and the round trip, in a throwaway database (the nehn-031
+"""nehn-032 -- migration 0208_certificate_signatories (DEC-SCOPE-301): the chain and the round trip, in a throwaway database (the nehn-031
 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -12,15 +12,15 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_nehn_032_migration_0207", VERSIONS / "0207_certificate_signatories.py")
+_spec = importlib.util.spec_from_file_location("_nehn_032_migration_0208", VERSIONS / "0208_certificate_signatories.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0207_certificate_signatories", "0206_user_permission_overrides"
+HEAD, BASE = "0208_certificate_signatories", "0207_field_financial_grant"
 SNAPSHOT = "SELECT 1 FROM information_schema.columns WHERE table_name = 'certificates' AND column_name = 'signatory_snapshot'"
 
 
-def test_migration_chains_after_0206():
+def test_migration_chains_after_0207():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

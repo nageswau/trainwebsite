@@ -13,7 +13,7 @@ export type CertificateCriteria = {
   certificate_issued?: boolean; // only on the eligibility route (QA31-04)
 };
 
-// nehn-032 (DEC-SCOPE-300): one version of a certificate signature, from `GET /admin/certificate-signatories`. The image is fetched from
+// nehn-032 (DEC-SCOPE-301): one version of a certificate signature, from `GET /admin/certificate-signatories`. The image is fetched from
 // `/admin/certificate-signatories/{id}/image`; its storage key never leaves the server.
 export type SignatoryRole = "founder" | "coordinator";
 export type CertificateSignatory = { id: string; role: SignatoryRole; display_name: string; designation: string; active: boolean; active_from: string; active_to: string | null };

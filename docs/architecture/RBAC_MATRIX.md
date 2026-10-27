@@ -3168,10 +3168,10 @@ Pinned by `apps/api/tests/test_nehn_012_lead_list.py`.
 | `GET/PUT /admin/users/{user_id}/permissions`, `GET /admin/permissions/overrides`, `/admin/permissions?tab=user` | super_admin | Reads and replaces any non-super-admin user's overrides; the report lists every override in force. Any other role: 403 / the access card. |
 | Every grant check (`require_permission`, portal payments / certificates) and `GET /auth/me/permissions` | every user | Effective = (role grants + the user's active allows) - the user's active denies. A deny wins over the role. An override past `expires_at` stops applying. super_admin holds every key and cannot be overridden. |
 
-### 2.211 Certificate signatures *(added 2026-10-27 — `DEC-SCOPE-300`, nehn-032)*
+### 2.212 Certificate signatures *(added 2026-10-27 — `DEC-SCOPE-301`, nehn-032)*
 
 The catalogue's `certificates` resource gains `manage` (a new matrix column). No role holds it by default (migration
-`0207_certificate_signatories` seeds nothing); super_admin holds every key. The signature images are never sent to students or issuers
+`0208_certificate_signatories` seeds nothing); super_admin holds every key. The signature images are never sent to students or issuers
 as files: they exist outside the API only inside rendered certificates.
 
 | Route | Anonymous | super_admin | role granted `certificates.manage` | it_admin, coordinator, trainer, it_student, others |
