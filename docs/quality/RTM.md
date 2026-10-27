@@ -1342,6 +1342,31 @@ half.
 | `nehn-012-AC3` | The xlsx holds the same rows as the filtered list (all pages) | `::test_the_admin_export_holds_every_filtered_row_with_the_fixed_columns_and_is_audited`, `::test_the_admin_export_keeps_the_division_scope`; e2e |
 | `nehn-012-AC4` | A telecaller manager's export holds only their scope | `::test_a_managers_export_holds_only_their_scope`, `::test_a_telecaller_or_another_role_cannot_use_the_manager_export`; e2e |
 | `nehn-012-AC5` | The audit row records filters and row count | `::test_the_admin_export_holds_every_filtered_row_with_the_fixed_columns_and_is_audited`, `::test_the_export_is_throttled_and_capped` |
+
+**Addendum, 2026-10-27 (`nehn-013`)** — CRM report gaps.
+
+| ID | Requirement / acceptance | Evidence |
+|---|---|---|
+| `nehn-013` | Requirement: §16 L405-419, §14 L304-305 → `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-013` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-301` → design `docs/superpowers/specs/2026-10-27-nehn-013-crm-report-gaps-design.md`; `API_CONTRACT.md` §12GY, `RBAC_MATRIX.md` §2.212; no migration | R1–R10 defaults `NEEDS_CONFIRMATION` |
+| `nehn-013-AC1` | Funnel rows include Lost and Conversion rate, matching a hand-computed fixture; Total recomputed | `apps/api/tests/test_nehn_013_crm_reports.py::test_funnel_reports_append_lost_and_conversion_rate`, `::test_the_total_rate_is_recomputed_not_summed`, `::test_the_new_reports_export_as_csv_with_the_screen_columns` |
+| `nehn-013-AC2` | Counselor report groups by `owner_id` | `::test_the_counselor_report_groups_by_lead_owner`; e2e `nehn-013-crm-reports.spec.ts` |
+| `nehn-013-AC3` | Date report supports day / week / month | `::test_the_date_report_groups_by_ist_day_week_or_month_in_calendar_order`, `::test_the_date_report_defaults_to_days_and_refuses_an_unknown_grouping`; `nehn013.crmReports.test.tsx`; e2e |
+| `nehn-013-AC4` | Pending follow-ups lists open follow-ups with due < now, with days overdue | `::test_pending_follow_ups_lists_open_overdue_ones_most_overdue_first`, `::test_follow_ups_due_outside_the_range_are_not_counted`; e2e |
+| `nehn-013-neg` | A telecaller (non-manager) gets 403; scope is the caller's leads | `::test_a_telecaller_and_a_counselor_are_refused_the_new_reports`, `::test_follow_up_reports_are_scoped_to_the_callers_leads`; e2e |
+
+**Addendum, 2026-10-27 (`nehn-032`)** — Certificate signatures. Tests in `apps/api/tests/test_nehn_032_certificate_signatures.py` (`::`),
+`test_nehn_032_migration.py`, `apps/web/tests/components/nehn032CertificateSignatures.test.tsx` and e2e
+`nehn-032-certificate-signatures.spec.ts`.
+
+| ID | Requirement / acceptance | Evidence |
+|---|---|---|
+| `nehn-032` | Requirement: PDF §11 L249-260, §26 L791-794, actions 11/12 → backlog `nehn-032` → `DEC-SCOPE-302` → design `docs/superpowers/specs/2026-10-27-nehn-032-certificate-signatures-design.md` → API §12GZ → RBAC §2.213 | — |
+| `nehn-032-AC1` | Both signatures with names and designations in their slots, no overlap with long names | `::test_render_draws_both_slots_with_long_names`, `::test_issue_snapshots_the_active_signatories_and_a_replacement_affects_only_later_certificates`; preview rendered and inspected in QA; e2e |
+| `nehn-032-AC2` | Replacing the founder signature affects only later certificates | `::test_issue_snapshots_the_active_signatories_and_a_replacement_affects_only_later_certificates`, `::test_upload_replaces_the_active_version` |
+| `nehn-032-AC3` | Signature files are not downloadable by students | `::test_other_roles_cannot_manage_or_see_signatures`; e2e AC3 |
+| `nehn-032-AC4` | Issuing without an active signatory is blocked | `::test_issue_is_refused_while_a_slot_is_empty`; vitest empty slot |
+| `nehn-032-S4` | JPEG / oversize / opaque / tiny / undecodable uploads refused; non-admin 403 | `::test_upload_check_refuses_bad_files`, `::test_upload_validates_fields`; e2e JPEG |
+| `nehn-032-S9` | Admin preview | `::test_preview_renders_a_pdf`; e2e AC1 |
 | `nehn-018` | Requirement: PDF §6 L148-151, §24 → backlog `nehn-018` → `DEC-SCOPE-303` → design `docs/superpowers/specs/2026-10-27-nehn-018-student-payment-access-design.md` → API §12HA → RBAC §2.214 | — |
 | `nehn-018-AC1` | An enrolled-but-unpaid student sees course and fees, the gated sections locked with a call to action; gated routes return `payment_required` | `test_nehn_018_student_access.py::test_an_unpaid_student_gets_payment_required`, `::test_locked_portal_section`, `::test_course_and_fee_sections_stay_open`; `nehn018StudentAccess.test.tsx`; e2e `nehn-018-student-payment-access.spec.ts` |
 | `nehn-018-AC2` | After the webhook marks the payment paid, access follows without signing in again | `::test_webhook_payment_unlocks_without_signing_in_again`; e2e (discount to 0) |

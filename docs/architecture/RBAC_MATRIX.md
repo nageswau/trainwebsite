@@ -3161,6 +3161,42 @@ Pinned by `apps/api/tests/test_nehn_031_certificate_workflow.py`, `test_adm_006_
 The new list filters (`created_from`, `created_to`, `owner_id`) only narrow the existing scope. Each file is audited and throttled.
 Pinned by `apps/api/tests/test_nehn_012_lead_list.py`.
 
+### 2.210 Per-user permission overrides *(added 2026-10-27 — `DEC-SCOPE-299`, nehn-007)*
+
+| Surface | Who | Rule |
+|---|---|---|
+| `GET/PUT /admin/users/{user_id}/permissions`, `GET /admin/permissions/overrides`, `/admin/permissions?tab=user` | super_admin | Reads and replaces any non-super-admin user's overrides; the report lists every override in force. Any other role: 403 / the access card. |
+| Every grant check (`require_permission`, portal payments / certificates) and `GET /auth/me/permissions` | every user | Effective = (role grants + the user's active allows) - the user's active denies. A deny wins over the role. An override past `expires_at` stops applying. super_admin holds every key and cannot be overridden. |
+
+### 2.211 Field (column) policy *(added 2026-10-27 — `DEC-SCOPE-300`, nehn-008)*
+
+| Surface | Who | Rule |
+|---|---|---|
+| A report's columns tagged with a field class (today: partnership Performance `commission_expected` / `commission_received` = `financial`) | every reader of the report | The column is returned (JSON, CSV, xlsx alike) only with `field.<class>.view`. Seed: `field.financial.view` → partnership_manager, partnership_head; super_admin always. placement_team, placement_manager, hr_team, it_admin, overseas_admin hold none. The grant narrows only: it never opens a report the role cannot read. |
+
+### 2.212 CRM report gaps (`nehn-013`, `DEC-SCOPE-301`)
+
+| Route | Anonymous | telecaller_manager | it_admin / overseas_admin | super_admin | telecaller, counselor, other roles |
+|---|---|---|---|---|---|
+| `GET /telecaller/reports/{counselor,date,follow_ups,pending_follow_ups}` | 401 | 200 (own reports' leads) | 200 (own division) | 200 | 403 |
+| `GET /telecaller/reports/{kind}.csv`, `.xlsx` (same kinds) | 401 | 200 | 200 | 200 | 403 |
+
+Unchanged from §2.35 / §2.197: the `reports.telecaller` view / download grants decide; scope is the caller's Leads list. The pending list
+names leads (never mobile or email). Pinned by `apps/api/tests/test_nehn_013_crm_reports.py`.
+
+### 2.213 Certificate signatures *(added 2026-10-27 — `DEC-SCOPE-302`, nehn-032)*
+
+The catalogue's `certificates` resource gains `manage` (a new matrix column). No role holds it by default (migration
+`0208_certificate_signatories` seeds nothing); super_admin holds every key. The signature images are never sent to students or issuers
+as files: they exist outside the API only inside rendered certificates.
+
+| Route | Anonymous | super_admin | role granted `certificates.manage` | it_admin, coordinator, trainer, it_student, others |
+|---|---|---|---|---|
+| `GET/POST /admin/certificate-signatories`, `PATCH …/{id}`, `GET …/{id}/image`, `GET /admin/certificates/preview` | 401 | 200/201 | 200/201 | 403 |
+
+The IT admin portal's Certificates section shows the "Certificate signatures" card only when the role holds `certificates.manage`.
+Pinned by `apps/api/tests/test_nehn_032_certificate_signatures.py` and `apps/web/tests/e2e/nehn-032-certificate-signatures.spec.ts`.
+
 ### 2.214 Student feature access by payment status *(added 2026-10-27 — `DEC-SCOPE-303`, nehn-018)*
 
 | Route | Anonymous | super_admin | it_admin | it_student | other roles |

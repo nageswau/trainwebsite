@@ -2293,6 +2293,14 @@ inline checks gave (it_admin/overseas_admin: `payments.view`, `payments.add`, `d
 by `PUT /admin/roles/{role}/permissions`; history in `audit_logs` (`role_permissions.update`, before/after). No existing data changes.
 Downgrade drops the table.
 
+## User permission overrides (`nehn-007`, `DEC-SCOPE-299`; migration `0206_user_permission_overrides`, after nehn-037's `0203_application_interviews`)
+
+New table `user_permission_overrides`: `id` (UUID PK), `user_id` (FK `users` ON DELETE CASCADE, indexed), `resource` (String 60),
+`action` (String 20), `effect` (String 10, CHECK `allow`/`deny`), `reason` (String 500, required), `expires_at` (timestamptz, null = no
+expiry), `created_by_id` (FK `users` ON DELETE SET NULL), `created_at` (default now). UNIQUE (`user_id`, `resource`, `action`). A row past
+`expires_at` is ignored at read time. Written only by `PUT /admin/users/{user_id}/permissions`; history in `audit_logs`
+(`user_permission_overrides.update`). No seed; no existing data changes. Downgrade drops the table.
+
 ## Submission files (`nehn-024`, `DEC-SCOPE-292`; migration `0200_submission_files`, after nehn-042's `0199_audit_log_indexes`)
 
 New table `submission_files`: `id` (UUID PK), `submission_id` (FK `submissions` ON DELETE CASCADE, `ix_submission_files_submission_id`),
@@ -2328,6 +2336,15 @@ new ones record the thresholds used in `criteria_snapshot.rules`. Downgrade drop
 
 `enquiries` gains `ix_enquiries_created` (`created_at`, `id`) for the newest-first lists filtered by an India-time created range, and
 `ix_enquiries_owner` (`owner_id`) for the counselor filter. No column or row changes; the downgrade drops both indexes.
+
+## Certificate signatures (`nehn-032`, `DEC-SCOPE-302`; migration `0208_certificate_signatories`)
+
+New table `certificate_signatories`: `id` (UUID PK), `role` (`founder | coordinator`, `ck_certificate_signatories_role`), `display_name`,
+`designation` (each ≤ 120), `image_key` (`signatures/<uuid>.png`, private storage), `active_from`, `active_to` (NULL = the slot's active
+version), `created_by_id` (FK users), timestamps. Partial unique index `uq_certificate_signatories_active_role` (`role` WHERE
+`active_to IS NULL`): one active version per slot. New nullable JSON column `certificates.signatory_snapshot`
+(`[{id, role, display_name, designation}]`, the versions drawn on the PDF); existing certificates keep NULL. Downgrade drops the column
+and the table; stored images stay in storage. The demo seed adds a generated stand-in signature for each empty slot.
 
 ## Student access rules (`nehn-018`, `DEC-SCOPE-303`; migration `0209_student_access_rules`)
 

@@ -136,6 +136,7 @@ fieldset.form-busy-wrap > .btn { justify-self: start; }
 .action-grid > .agent-students, .action-grid > .commission-report { grid-column: 1 / -1; }
 .action-grid > .lead-management { grid-column: 1 / -1; } /* bdm-017 QA17-03: organization, student and action columns need the full width */
 .action-grid > .certificate-queue { grid-column: 1 / -1; } /* nehn-031: the queue table needs the full width */
+.signature-slot{border:1px solid var(--line);border-radius:8px;padding:12px;margin:0 0 12px;min-width:0}.signature-slot legend{padding:0 4px}.signature-current{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:8px;min-width:0}.signature-current img{max-width:min(220px,100%);max-height:70px;object-fit:contain;background:repeating-conic-gradient(#eef1f4 0 25%,#fff 0 50%) 0 0/12px 12px;border:1px solid var(--line);border-radius:4px} /* nehn-032: a checkerboard shows the transparency */
 @media (max-width: 640px) { .certificate-queue .table.stack td::before { flex: none; } } /* QA31-06: the label never squeezes */
 .action-grid > .lead-import { grid-column: 1 / -1; } /* tel-006 QA-03: the import result and past-imports tables need the full width */
 /* tel-004 QA-03: below 360px the sticky Name column left too little room, so the row's stage and link forms sat partly under it. */

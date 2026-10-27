@@ -444,6 +444,9 @@ Risk is the risk of regression or of a wrong outcome.
 - **Edge cases:** the user's role changes (do overrides persist? `NEEDS_CONFIRMATION`); a deactivated user (overrides are ignored).
 - **Regression risks:** low, once nehn-005 is in.
 - **Open questions:** D-09: is it required this release? Is expiry required?
+- **Status (2026-10-27):** built on `worktree-nehn-007` (`DEC-SCOPE-299`; API §12GW; RBAC §2.210; migration
+  `0206_user_permission_overrides`). Builder's defaults: built this release; expiry optional; overrides persist across a role change;
+  a deactivated user cannot sign in, so their overrides never apply. AC keys mapped to catalogue keys (see DEC-SCOPE-299).
 - **Complexity:** medium · **Risk:** medium
 
 #### `nehn-008` — Role-based field (column) policy for views and downloads
@@ -485,6 +488,10 @@ Risk is the risk of regression or of a wrong outcome.
 - **Open questions:**
   - Is "Address" a stored field for IT students today? (`NEEDS_CONFIRMATION`: verify the profile JSON keys.)
   - The exact field list per role awaits the client's report template (§26 Reports).
+- **Status (2026-10-27):** built on `worktree-nehn-008` (`DEC-SCOPE-300`; API §12GX; RBAC §2.211; migration
+  `0207_field_financial_grant`). `services/field_policy.strip` + catalogue key `field.financial.view`; piloted on the partnership
+  Performance report's commission columns (the only financial columns in any report today), seeded to today's U2 readers so nothing
+  changes on day one. Recruiter and HR roles hold no financial grant; their student reports (nehn-016/017) must tag their columns.
 - **Complexity:** medium · **Risk:** medium
 
 ### C. Reporting (§14, §15)
@@ -641,6 +648,7 @@ Risk is the risk of regression or of a wrong outcome.
   telecallers and counselors do not; one row per lead; fixed admin column set until nehn-008.
 
 #### `nehn-013` — CRM report gaps: lost, conversion rate, counselor-wise, date-wise, follow-up status, pending follow-ups
+**Status (2026-10-27): built** on `worktree-nehn-013` (`DEC-SCOPE-301`, API §12GY, RBAC §2.212, no migration). The definitions (R1–R10) are builder's defaults, `NEEDS_CONFIRMATION` until the client CRM workflow document (CI-01) arrives.
 - **Source:** §16 "CRM Reporting" (L405-419); §14 "Converted leads", "Contacted leads" (L304-305).
 - **Business requirement:** CRM reports for new/contacted/qualified/converted/lost, counselor-, source-, course- and date-wise, conversion rates, follow-up status and pending follow-ups.
 - **Existing behavior:**
@@ -1409,6 +1417,10 @@ Risk is the risk of regression or of a wrong outcome.
   - Is a final design or template from the client expected?
   - What does "relevant designation/details" mean (signatory titles? course duration? grade?)?
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-27):** built in `worktree-nehn-032` (`DEC-SCOPE-302`, defaults S1-S9 `NEEDS_CONFIRMATION`): versioned
+  `certificate_signatories` (founder, coordinator) managed by the new `certificates.manage` grant (super_admin), PNG upload with an
+  alpha/dimension check, private image route, admin PDF preview; new certificates draw both signatures and snapshot them; issuing is 409
+  while a slot is empty. The client's PNGs (CI-03) are still to be uploaded. Migration `0208`; API §12GZ; RBAC §2.213.
 
 ### I. Overseas Education (§17–§20)
 

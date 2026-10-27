@@ -10031,6 +10031,74 @@ No reason prompt. The export shares ccrm-035's `crm.export` throttle (30 per 10 
 **Numbering:** migration `0205_enquiry_list_indexes`; API §12GV; RBAC §2.209.
 - **Feature ID authorized:** `nehn-012`. **Status:** built on `worktree-nehn-012`.
 
+### DEC-SCOPE-299 — Per-user permission overrides (`nehn-007`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-007` (§5 L92 "control individual permissions for individual
+users or roles"; `UNVERIFIED` backlog); `CLIENT_QUESTIONS.md` D-09 §3 / OD-03 (**open**); design
+`docs/superpowers/specs/2026-10-27-nehn-007-per-user-permission-overrides-design.md`. Dependencies nehn-005 (`DEC-SCOPE-281`) and nehn-006
+(`DEC-SCOPE-295`) merged.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** U1 built this release (OD-03); with no override
+rows every check answers as before. Effective = (role grants + active allows) - active denies. U2 super_admin users cannot carry
+overrides (409). U3 a reason is required (1-500). U4 optional expiry, future when saved, honoured at read time (no job). U5 the user's
+whole set is replaced in one PUT, one audit row per real change (`user_permission_overrides.update`). U6 the "badge" is the Active
+overrides list on the Permissions screen's "By user" tab (no `/admin/users` grid column). U7 an allow the role already has / a deny it
+lacks is accepted. U8 any user, found through the existing `GET /admin/users?q=`. U9 no cache. U10 overrides persist across a role change. The backlog's AC keys
+`reports.placement.download` / `documents.view` are not catalogue keys; the rules are proven on `reports.telecaller.download` and
+`payments.view`.
+**Numbering:** migration `0206_user_permission_overrides`; API §12GW; RBAC §2.210.
+- **Feature ID authorized:** `nehn-007`. **Status:** built on `worktree-nehn-007`.
+
+### DEC-SCOPE-300 — Role-based field (column) policy for views and downloads (`nehn-008`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-008` (§15 L324-350; §5 L104-121; action 3; `UNVERIFIED`
+backlog); `CLIENT_QUESTIONS.md` CI-02 (per-role columns, **pending client**); design
+`docs/superpowers/specs/2026-10-27-nehn-008-field-column-policy-design.md`. Dependencies nehn-004 (`DEC-SCOPE-282`), nehn-005
+(`DEC-SCOPE-281`) and nehn-007 (`DEC-SCOPE-299`) merged.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** a report tags its sensitive columns with a field
+class and `services/field_policy.strip` removes every column whose `field.<class>.view` the caller lacks (role grant ± nehn-007
+override; super_admin always), from the one payload the JSON, CSV and xlsx are rendered from. F1 the pilot is the partnership
+Performance report's commission columns, the only financial columns in any report today. F2 an untagged column is unrestricted (the
+route gate and row scope apply). F3 seed `field.financial.view` → partnership_manager, partnership_head (today's U2 commission readers,
+DEC-SCOPE-118); it_admin / overseas_admin are not seeded. F4 recruiter (placement_team, placement_manager) and HR (hr_team) hold no
+financial grant; their student reports arrive with nehn-016 / nehn-017 and must tag their columns. F5 a denied column is removed, not
+masked. F6 export audit unchanged. Only `field.financial` is in the catalogue: the other backlog classes join when a report first tags
+one (nehn-005 P1). The partnership pages' commission figures keep the U2 rule.
+**Numbering:** migration `0207_field_financial_grant`; API §12GX; RBAC §2.211.
+- **Feature ID authorized:** `nehn-008`. **Status:** built on `worktree-nehn-008`.
+
+### DEC-SCOPE-301 — CRM report gaps: lost, conversion rate, counselor-wise, date-wise and follow-up reports (`nehn-013`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-013` (§16 L405-419, §14 L304-305; `UNVERIFIED` backlog);
+design `docs/superpowers/specs/2026-10-27-nehn-013-crm-report-gaps-design.md`. Dependency `nehn-004` (xlsx) is done. The final report list
+and definitions still wait on the client CRM workflow document (CI-01, nehn-015).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** R1 Lost = the cohort's leads now in a loss stage
+(lost / not interested), so a reopened lead is not lost. R2 Conversion rate (%) = Enrolled ÷ Leads × 100, 1 decimal, and the Total row
+recomputes it. R3 the date anchor is the lead's creation date (as every cohort report). R4 Lost + Conversion rate are appended to the
+source, course and campaign reports (handover, telecaller and lost-reasons unchanged). R5 counselor report = leads by `owner_id`. R6
+date-wise report by IST day / week (Monday) / month of creation (`group`, default day), calendar order, empty periods omitted. R7
+follow-up status = telecaller-side follow-ups due in the range by the lead's telecaller (total, completed, open, overdue, cancelled). R8
+pending follow-ups = open ones due in the range and before now, with lead name, telecaller, due date, reason and days overdue (no mobile
+or email). R9 the lead filters apply to every new report. R10 access unchanged (`reports.telecaller` view / download); counselors' own
+view is not built.
+**Numbering:** no migration; API §12GY; RBAC §2.212.
+- **Feature ID authorized:** `nehn-013`. **Status:** built on `worktree-nehn-013`.
+
+### DEC-SCOPE-302 — Certificate signatures: Founder + Coordinator, designation (`nehn-032`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-032` (§11 L249-260, §26 L791-794, actions 11/12;
+`UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-27-nehn-032-certificate-signatures-design.md`. Dependencies nehn-003
+(`DEC-SCOPE-279`), nehn-030 (`DEC-SCOPE-293`), nehn-031 (`DEC-SCOPE-297`) merged. The client's PNGs and final design (CI-03) are still
+pending: they are uploaded through this feature, and a final design is a later change.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** S1 two fixed slots; the coordinator signature is
+a configured person, not the issuing coordinator. S2 versions: a new image closes the active row and inserts another; one active row per
+slot. S3 name/designation edited in place on the active version. S4 PNG ≤ 1 MB with an alpha channel, 50–2000 × 20–1000 px. S5 private
+storage, streamed only to grant holders, never presigned. S6 new grant `certificates.manage`, no default holder (super_admin only).
+S7 issuing is refused (409) while a slot is empty — no placeholder; certificates snapshot the versions used. S8 slots between the
+program and the authenticity rule, scaled to fit. S9 an admin PDF preview with long sample text. "Relevant designation/details" is read as
+the signatories' designations (no course duration or grade).
+**Numbering:** migration `0208_certificate_signatories` (after nehn-008's `0207_field_financial_grant`); API §12GZ; RBAC §2.213.
+- **Feature ID authorized:** `nehn-032`. **Status:** built on `worktree-nehn-032`.
+
 ### DEC-SCOPE-303 — Student feature access by enrolment and payment status (`nehn-018`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-018` (§6 L148-151, §24; `UNVERIFIED` backlog); design

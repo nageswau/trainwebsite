@@ -4349,6 +4349,75 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
 - `GET /telecaller/leads.xlsx` (new) — the same for the telecaller list's scope and filters; telecaller_manager (own reports' leads and
   their teams' unassigned leads) and super_admin. A telecaller or any other role **403**; `entity_id` `telecaller`.
 
+## 12GW. Per-user permission overrides (nehn-007) — addendum, 2026-10-27
+
+`DEC-SCOPE-299`; migration `0206_user_permission_overrides`. All three routes are super_admin only (401 without a session, 403 for any
+other role, checked before the target).
+
+- `GET /admin/users/{user_id}/permissions` → 200 `{user:{id, full_name, email, role}, editable, role_permissions:[key],
+  overrides:[{permission, effect:"allow"|"deny", reason, expires_at|null, created_at}], effective:[key]}`. Only overrides in force are
+  listed. `editable` is false for a super_admin user. 404 unknown user; 422 malformed id.
+- `PUT /admin/users/{user_id}/permissions` body `{overrides:[{permission, effect, reason, expires_at?}]}` (≤ 200 items; extra fields
+  forbidden) replaces the user's whole override set → 200 with the GET body. 422: unknown key, duplicate key, effect not allow/deny, blank
+  or > 500-character reason, `expires_at` without a timezone or not in the future. 404 unknown user. 409 a super_admin target, or a
+  concurrent edit of the same user. A real change writes one `audit_logs` row (`user_permission_overrides.update`, entity `user`,
+  before/after); an unchanged set writes nothing.
+- `GET /admin/permissions/overrides` → 200 `[{user_id, full_name, email, role, permission, effect, reason, expires_at, created_at}]`,
+  every override in force, by user name then key.
+- Changed: `GET /auth/me/permissions` and every `require_permission` route (and the portal payments / certificates sections) now resolve
+  the caller's effective set: (role grants + active allows) - active denies. Response shapes unchanged; with no overrides every answer is
+  as before.
+
+## 12GX. Field (column) policy (nehn-008) — addendum, 2026-10-27
+
+`DEC-SCOPE-300`; migration `0207_field_financial_grant`.
+
+- New catalogue key `field.financial.view` ("Financial columns"), listed by `GET /admin/permissions/catalogue`, editable through
+  `PUT /admin/roles/{role}/permissions` and the per-user overrides (§12GW), reported by `GET /auth/me/permissions`.
+- Changed: `GET /partnership/reports/{kind}`, `.csv` and `.xlsx` — the `commission_expected` / `commission_received` columns (Performance)
+  are returned only when the caller holds `field.financial.view` (as well as the U2 rule, unchanged). A denied column is absent from
+  `columns`, every item and `totals`, in the JSON and in both files alike. Routes, statuses and every other column are unchanged; with the
+  seed every reader gets the same columns as before.
+
+## 12GY. CRM report gaps (nehn-013) — addendum, 2026-10-27
+
+`DEC-SCOPE-301`. No migration. Additive only: new `kind` values and one query parameter on the existing §12AC routes
+(`GET /telecaller/reports/{kind}`, `.csv`, `.xlsx`); every existing kind keeps its columns in order.
+
+- Funnel kinds `source`, `product`, `campaign` append `lost` ("Lost") and `conversion_rate` ("Conversion rate (%)", a number with 1
+  decimal; the `totals` row recomputes it from the totals).
+- `kind=counselor` — rows `{counselor, leads, counselling_done, enrolled, lost, conversion_rate}`: cohort leads with an owner, by owner.
+- `kind=date` — rows `{period, leads, connected, qualified, counselling, enrolled, lost, conversion_rate}` in calendar order. New query
+  parameter `group=day|week|month` (default `day`; IST; weeks start Monday; labels `2026-03-02`, `Week of 2026-03-02`, `March 2026`).
+  Any other value → 422 `"Choose day, week or month"`. Other kinds accept and ignore `group`; when set, the export audit lists it.
+- `kind=follow_ups` — rows `{telecaller, follow_ups, completed, open, overdue, cancelled}`: telecaller-side follow-ups on the caller's
+  leads due in the range, by the lead's telecaller.
+- `kind=pending_follow_ups` — rows `{lead, telecaller, due (IST date), reason (label), overdue_days}`: open follow-ups due in the range
+  and before now, most overdue first; `totals.overdue_days` is `""`.
+- Lead filters (`team`, `product_id`, `campaign_id`, `source`) apply to all four new kinds. Errors and order unchanged (403 → 404 → 422).
+
+## 12GZ. Certificate signatures (nehn-032) — addendum, 2026-10-27
+
+`DEC-SCOPE-302`. Migration `0208_certificate_signatories`. Every route needs `certificates.manage` (403 "You do not have permission to
+manage certificate signatures"; super_admin only until granted). A signatory is `{id, role: "founder" | "coordinator", display_name,
+designation, active, active_from, active_to}`; the storage key is never returned.
+
+- `GET /admin/certificate-signatories` (new) — `{items: [signatory]}`: every version, founder then coordinator, the active one first, then
+  newest first; at most 100.
+- `POST /admin/certificate-signatories` (new, multipart) — `role`, `display_name`, `designation` (each trimmed, 1–120, else 422), `file`.
+  The file passes the nehn-003 `signature` policy (PNG only 415, ≤ 1 MB 413, bytes must be PNG 415), then must decode (422), be 50–2000 px
+  wide and 20–1000 px high (422) and have an alpha channel (422 "The signature must have a transparent background"). Text chunks are
+  stripped. 201 `signatory`: the new active version; the slot's previous version gets `active_to` (409 if a concurrent upload won the
+  slot). Audit `certificate_signatory.upload`.
+- `PATCH /admin/certificate-signatories/{id}` (new) — `{display_name?, designation?}` (≤ 120; unknown fields 422). Edits the active version
+  in place; 404 unknown, 409 "This signature version is no longer active". Audit `certificate_signatory.update`.
+- `GET /admin/certificate-signatories/{id}/image` (new) — `image/png`, `Cache-Control: private, no-store`, `nosniff`. 404 unknown/missing.
+- `GET /admin/certificates/preview` (new) — `application/pdf` (inline, `no-store`): the layout with the active signatures and long sample
+  text; nothing stored. 409 "Certificate signatures are not configured: …" when a slot is empty.
+- `POST /workflows/it/certificates/{enrollment_id}/issue` and `POST /workflows/it/certificates/issue` — **now 409** "Certificate
+  signatures are not configured: <slots>" (per item in bulk) while a slot is empty. Issued certificates draw both signatures, names and
+  designations and record `signatory_snapshot`. Response bodies unchanged.
+
 ## 12HA. Student feature access by payment status (nehn-018) — addendum, 2026-10-27
 
 `DEC-SCOPE-303`. Migration `0209_student_access_rules`.
