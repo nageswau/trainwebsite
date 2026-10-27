@@ -81,13 +81,17 @@ CATALOGUE: dict[str, dict] = {
     "certificates": {"label": "Certificates", "actions": ("view", "issue", "override", "configure")},
     # nehn-008 (DEC-SCOPE-300): a report's financial columns (fees, payments, discounts, commission), in its JSON and downloads alike.
     "field.financial": {"label": "Financial columns", "actions": ("view",)},
+    # nehn-009 (DEC-SCOPE-303): the report library's training reports (the `enrollments` pilot; nehn-010 adds the rest).
+    "reports.training": {"label": "Training reports", "actions": ("view", "download")},
 }
 # The day-one grants, equal to the inline checks they replace (P3): admin.ensure_admin and telecaller_reports' REPORT_ROLES.
 # super_admin holds every key implicitly and never has rows (P5). Migration 0196 seeds a frozen copy.
 _PAYMENT_ADMIN = ("payments.view", "payments.add", "discounts.add")
 _TELECALLER_REPORTS = ("reports.telecaller.view", "reports.telecaller.download")
+_TRAINING_REPORTS = ("reports.training.view", "reports.training.download")  # nehn-009 (migration 0210 seeds it); a trainer's rows are own batches
 DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
-    "it_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure",),  # nehn-031 W2; migration 0204 seeds it
+    "it_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure",) + _TRAINING_REPORTS,  # nehn-031 W2; migration 0204 seeds it
+    "trainer": _TRAINING_REPORTS,
     "overseas_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,
     "telecaller_manager": _TELECALLER_REPORTS,
     # nehn-030 (0201 seeds view); nehn-031 W3/W4 (0204 seeds issue, override): issuance is the coordinator's alone (DEC-ROLE-003).
