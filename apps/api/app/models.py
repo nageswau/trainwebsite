@@ -377,6 +377,24 @@ class CertificateRule(Base, TimestampMixin):
     updated_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
+STUDENT_ACCESS_FEATURES = ("attendance", "assignments", "assessments", "resources", "live_classes", "questions", "feedback", "certificates")
+STUDENT_PAYMENT_STATES = ("registered", "enrolled_pending_payment", "partially_paid", "fully_paid")  # lowest first
+
+
+class StudentAccessRule(Base, TimestampMixin):
+    """nehn-018 (DEC-SCOPE-299): the lowest payment state at which an IT student may use one feature -- one row per feature, the
+    certificate_rules keyed-row idiom. A missing row means the default (services/student_access.py)."""
+
+    __tablename__ = "student_access_rules"
+    __table_args__ = (
+        CheckConstraint(f"feature IN {STUDENT_ACCESS_FEATURES}", name="ck_student_access_rules_feature"),
+        CheckConstraint(f"min_state IN {STUDENT_PAYMENT_STATES}", name="ck_student_access_rules_min_state"),
+    )
+    feature: Mapped[str] = mapped_column(String(30), primary_key=True)
+    min_state: Mapped[str] = mapped_column(String(30))
+    updated_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
 class CertificateRequest(Base, TimestampMixin):
     """nehn-031 (DEC-SCOPE-297 W6): one per enrolment -- the batch trainer's recommendation (or not-ready flag), marked issued when the
     coordinator issues the certificate."""

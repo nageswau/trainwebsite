@@ -67,7 +67,7 @@ async def _restored(db, role: str):
 
 
 def test_the_catalogue_names_the_pilot_resources_and_known_actions():
-    assert set(rbac.CATALOGUE) == {"payments", "discounts", "reports.telecaller", "certificates"}  # nehn-030 added certificates
+    assert set(rbac.CATALOGUE) == {"payments", "discounts", "reports.telecaller", "certificates", "student_access"}  # nehn-030 added certificates, nehn-018 student_access
     for resource in rbac.CATALOGUE.values():
         assert set(resource["actions"]) <= set(rbac.ACTIONS)
     assert rbac.ACTIONS == ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage")  # nehn-031

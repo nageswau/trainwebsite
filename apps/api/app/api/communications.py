@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_paid_feature
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.models import Attendance, AuditLog, Batch, Enrollment, LiveSession, Message, Notification, User
@@ -16,6 +16,7 @@ from app.services.integrations import send_notification
 from app.services.meetings import MeetingProviderError, create_provider_meeting
 
 router = APIRouter(prefix="/communications", tags=["communications"])
+PAID_LIVE_CLASSES = require_paid_feature("live_classes")  # nehn-018 (DEC-SCOPE-299)
 
 
 @router.get("/messages/{other_user_id}")
@@ -148,7 +149,7 @@ async def create_live_session(payload: MeetingCreate, user: User = Depends(get_c
 
 
 @router.get("/it/live-sessions")
-async def list_live_sessions(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def list_live_sessions(user: User = Depends(PAID_LIVE_CLASSES), db: AsyncSession = Depends(get_db)):
     stmt = select(LiveSession, Batch).join(Batch)
     if user.role == "it_student":
         stmt = stmt.join(Enrollment, Enrollment.batch_id == Batch.id).where(Enrollment.student_id == user.id, Enrollment.status == "active")

@@ -4348,3 +4348,23 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   `admin`, metadata `{format, filters, rows}` (search text recorded only as `"q": true`). A refused export writes nothing.
 - `GET /telecaller/leads.xlsx` (new) — the same for the telecaller list's scope and filters; telecaller_manager (own reports' leads and
   their teams' unassigned leads) and super_admin. A telecaller or any other role **403**; `entity_id` `telecaller`.
+
+## 12GW. Student feature access by payment status (nehn-018) — addendum, 2026-10-27
+
+`DEC-SCOPE-299`. Migration `0206_student_access_rules`.
+
+- `GET /workflows/it/student/access` (new) — it_student: `{state, features: [{key, label, unlocked, required_state}]}`. **403** other roles.
+- `GET /workflows/it/student-access/rules`, `PUT` (new) — `student_access.configure` (it_admin; super_admin implicit), else **403**.
+  Body/response `{rules: {<feature>: <state>}}` / `{rules: [{feature, label, min_state}], states: [{key, label}]}`. The PUT replaces the
+  whole policy: a missing feature, an unknown feature or state is **422**. Audited `student_access_rules.update` with before and after.
+- Gated for it_student below the feature's state (**403** `detail = {message, code: "payment_required", feature, label, required_state,
+  current_state}`; checked before body validation): `GET /workflows/it/student/attendance`, `POST .../attendance-corrections`
+  (attendance); `POST /it/assignments/{id}/submissions` (assignments); `POST /it/assessments/{id}/attempts`,
+  `POST /it/assessment-attempts/{id}/submit` (assessments); `GET`/`POST /it/student/questions` (questions); `POST /it/student/feedback`
+  (feedback); `GET /communications/it/live-sessions` (live_classes). After the existing ownership check: the student's own
+  `GET /it/submissions/{id}/files/{fid}` (assignments), `GET /it/materials/{id}/file` (resources), `GET /it/certificates/{id}/download`
+  (certificates). Every other role is unchanged.
+- `GET /portal/it/student/<section>` — a locked section (attendance, assignments, projects, examinations, downloads, questions,
+  feedback, certificates) answers 200 with no rows, metrics, actions or panels and an additive `locked: {feature, label,
+  required_state, current_state}`; the dashboard withholds its upcoming-work rows while assignments are locked.
+- `GET /workflows/it/student/learning` — locked features' lists are empty; additive `access` key.

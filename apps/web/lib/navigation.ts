@@ -3,7 +3,7 @@ import { GROUP_LABELS, STATUS_GROUPS } from "./agentApplications";
 import { VIEW_NAV_LABELS, VIEWS } from "./agentDocuments";
 // `badge` (AGN-017): an unread count shown after the label; only the agency's Notifications item sets it.
 // `resource` (nehn-006): the permission-catalogue resource whose `view` grant the page needs; see navForPermissions.
-export type NavItem = { label:string; href:string; children?:NavItem[]; badge?:number; resource?:string };
+export type NavItem = { label:string; href:string; children?:NavItem[]; badge?:number; resource?:string; locked?:boolean }; // nehn-018: locked = a student feature not paid for yet
 
 // nehn-006 (DEC-SCOPE-295): the pages a catalogue resource (core/rbac.py CATALOGUE) gates. The super-admin nav is not tagged (super_admin
 // holds every key), nor is the IT admin's Certificates (its own role check, not `certificates.view`).

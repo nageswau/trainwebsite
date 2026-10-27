@@ -24,13 +24,13 @@
 | Status | Items |
 |---|---|
 | Done | 2 |
-| Done — confirm defaults | 11 |
+| Done — confirm defaults | 12 |
 | Superseded | 1 |
 | Partly done | 0 |
 | Ready to start | 11 |
 | Waiting — dependency | 6 |
 | Waiting — client input | 5 |
-| Waiting — decision | 7 |
+| Waiting — decision | 6 |
 | **Total** | **43** |
 
 ## 2. Please confirm at the review
@@ -49,6 +49,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-036 Course icons | A curated set of 13 subject icons, chosen automatically from the course category, overridable per course. No upload. |
 | nehn-040 Student ID | Every student, including agency students without a login, has a Student ID that admin and agency screens can search. No Agent ID, as decided on 15 Sep 2026. |
 | nehn-012 Lead list export | Lead lists filter by creation date (India time) and counselor. Admins and telecaller managers download the filtered list as Excel, with contact details; telecallers and counselors do not. One row per lead. Each download is recorded and limited to 30 per 10 minutes. |
+| nehn-018 Payment access | Before any payment a student sees course, fees and payment; attendance, assignments, examinations, materials, live classes, questions, feedback and certificates show as locked with "Complete payment to unlock". The first payment (including EMI instalment 1) opens them all. The IT admin can change this per feature on the Payments page. An overdue instalment does not lock a student again. |
 | nehn-043 This tracker | Markdown plus an Excel-compatible CSV, written for the client. |
 
 ## 3. Backlog items
@@ -72,7 +73,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-015 | Internal CRM | Internal CRM workflow reconciliation | Enhancement | Waiting — client input | Dev + Client | Wave 4 | Internal CRM workflow document (CI-01) |
 | nehn-016 | Placement | Nearing-completion list; recruiter read-only training progress | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | Recruiters see opted-in students only, or all? (OD-08); needs nehn-010 |
 | nehn-017 | HR | HR access to permitted progress, attendance and documents; HR reports | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | HR population and document types (OD-09); needs nehn-008 and nehn-010 |
-| nehn-018 | Student portal | Student feature access by enrolment and payment status | Enhancement | Waiting — decision | Dev + Client | Wave 4 | Payment unlock rules per feature (OD-06) |
+| nehn-018 | Student portal | Student feature access by enrolment and payment status | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Confirm the unlock rules: every feature opens at the first payment, editable by the IT admin (OD-06, DEC-SCOPE-299) |
 | nehn-019 | Payments | Discount ledger and complete receipt | Enhancement | Ready to start | Dev + Client | Wave 3 | Are receipts fixed once issued? |
 | nehn-020 | Payments | Retire student-facing invoices where not required | Enhancement | Waiting — decision | Client | Wave 3 | Is a GST/tax invoice legally required? (OD-11) |
 | nehn-021 | Payments | Discount and scholarship authority through a finance permission | Enhancement | Waiting — decision | Dev + Client | Wave 3 | Does the Overseas Admin keep discount rights? (OD-12) |
@@ -150,7 +151,7 @@ These items are built. Where a question was open, we used the recommended answer
 | OD-03 | Are per-user permission overrides needed this release? | nehn-007 | Open |
 | OD-04 | Permission unit (page or module), who edits grants, custom roles? | nehn-005 | Recommended answer in place: per module, Super Admin edits, no custom roles — please confirm |
 | OD-05 | Coordinator account model and duties; who may override certificate eligibility | nehn-030, 031 | Open |
-| OD-06 | Which student features unlock at which payment status | nehn-018 | Open |
+| OD-06 | Which student features unlock at which payment status | nehn-018 | Default built — confirm (DEC-SCOPE-299) |
 | OD-07 | Keyword scoring rule for descriptive answers | nehn-026 | Open |
 | OD-08 | Recruiter population: opted-in students only, or all? | nehn-016 | Open |
 | OD-09 | HR population and allowed document types | nehn-017 | Open |

@@ -61,7 +61,7 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.services import application_filters, counselor_students, document_access, permissions, student_archive, student_profiles
+from app.services import application_filters, counselor_students, document_access, permissions, student_access, student_archive, student_profiles
 from app.services import application_outcomes as outcomes
 from app.services import applications as job_applications
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
@@ -1829,9 +1829,23 @@ async def _coordinator(db: AsyncSession, user: User, section: str):
     )
 
 
+def _student_locks(result: dict | None, section: str, access: dict) -> dict | None:
+    """nehn-018 (DEC-SCOPE-299 AC1): a locked feature's section keeps its heading but no data, plus the `locked` block the page turns
+    into "Complete payment to unlock". The dashboard stays open; only its upcoming-work rows (assignments) are withheld."""
+    if result is None:
+        return None
+    if section == "dashboard":
+        return result | {"rows": []} if student_access.lock(access, "assignments") else result
+    feature = student_access.SECTION_FEATURES.get(section)
+    locked = feature and student_access.lock(access, feature)
+    if not locked:
+        return result
+    return result | {"rows": [], "metrics": [], "actions": [], "panels": [], "locked": locked}
+
+
 async def section_payload(db: AsyncSession, user: User, section: str, *, filters: ApplicationFilters | None = None) -> dict | None:
     if user.role == "it_student":
-        result = await _it_student(db, user, section)
+        result = _student_locks(await _it_student(db, user, section), section, await student_access.summary(db, user))
     elif user.role == "trainer":
         result = await _trainer(db, user, section)
     elif user.role == "overseas_student":

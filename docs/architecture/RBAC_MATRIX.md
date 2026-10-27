@@ -3160,3 +3160,14 @@ Pinned by `apps/api/tests/test_nehn_031_certificate_workflow.py`, `test_adm_006_
 
 The new list filters (`created_from`, `created_to`, `owner_id`) only narrow the existing scope. Each file is audited and throttled.
 Pinned by `apps/api/tests/test_nehn_012_lead_list.py`.
+
+### 2.210 Student feature access by payment status *(added 2026-10-27 — `DEC-SCOPE-299`, nehn-018)*
+
+| Route | Anonymous | super_admin | it_admin | it_student | other roles |
+|---|---|---|---|---|---|
+| `GET /workflows/it/student/access` | 401 | 200 | 403 | 200, own | 403 |
+| `GET`/`PUT /workflows/it/student-access/rules` | 401 | 200 | 200 (`student_access.configure`) | 403 | 403 |
+| Gated student routes (API §12GW) | 401 | unchanged | unchanged | 403 `payment_required` below the feature's state | unchanged |
+
+A new entitlement layer under the role check: the payment check runs after the route's role and ownership checks, so another
+student's or batch's record keeps its existing 403/404. Pinned by `apps/api/tests/test_nehn_018_student_access.py`.

@@ -424,6 +424,25 @@ class CertificateRulesIn(BaseModel):
     min_attendance_percent: int = Field(ge=0, le=100)
 
 
+StudentAccessFeature = Literal["attendance", "assignments", "assessments", "resources", "live_classes", "questions", "feedback", "certificates"]
+StudentPaymentState = Literal["registered", "enrolled_pending_payment", "partially_paid", "fully_paid"]
+
+
+class StudentAccessRulesIn(BaseModel):
+    """nehn-018 (DEC-SCOPE-299): the whole policy -- every feature, each at a known state (a full replacement, never a partial one)."""
+
+    model_config = ConfigDict(extra="forbid")
+    rules: dict[StudentAccessFeature, StudentPaymentState]
+
+    @field_validator("rules")
+    @classmethod
+    def _every_feature(cls, rules: dict) -> dict:
+        missing = set(StudentAccessFeature.__args__) - set(rules)
+        if missing:
+            raise ValueError(f"Set a payment state for every feature (missing: {', '.join(sorted(missing))})")
+        return rules
+
+
 class LearningResourceCreate(BaseModel):
     batch_id: UUID
     title: str = Field(min_length=2, max_length=180)
