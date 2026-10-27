@@ -1367,3 +1367,13 @@ half.
 | `nehn-032-AC4` | Issuing without an active signatory is blocked | `::test_issue_is_refused_while_a_slot_is_empty`; vitest empty slot |
 | `nehn-032-S4` | JPEG / oversize / opaque / tiny / undecodable uploads refused; non-admin 403 | `::test_upload_check_refuses_bad_files`, `::test_upload_validates_fields`; e2e JPEG |
 | `nehn-032-S9` | Admin preview | `::test_preview_renders_a_pdf`; e2e AC1 |
+
+### nehn-010 — Training reports pack (`DEC-SCOPE-305`)
+
+| Req | Criterion | Evidence (`apps/api/tests/test_nehn_010_training_reports.py` unless noted) |
+|---|---|---|
+| `nehn-010-AC1` | Reports (a)–(g) exist, honour their filters, export xlsx | `::test_the_pack_is_registered_under_the_training_resource`, `::test_a_…`–`::test_g_…`, `::test_every_report_downloads_the_rows_of_its_json`, `::test_an_undeclared_filter_is_refused`; e2e `nehn-010-training-reports.spec.ts` |
+| `nehn-010-AC2` | Report (e) attendance % = certificate eligibility % | `::test_e_attendance_matches_certificate_eligibility`; nehn-031/032 certificate suites green |
+| `nehn-010-AC3` | A trainer sees only own batches | `::test_a_trainer_sees_only_their_own_batches_in_every_report`; e2e trainer row |
+| `nehn-010-AC4` | Recruiter/HR never see financial columns | `::test_recruiter_and_hr_cannot_read_the_pack`, `::test_g_revenue_is_left_out_without_the_financial_grant`; e2e revenue |
+| `nehn-010-E` | Edge: two batches of one course, dropped seat, 0/0 attendance "—" | `::test_a_…`, `::test_c_…`, `::test_g_…` |

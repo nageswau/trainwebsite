@@ -3206,3 +3206,13 @@ Pinned by `apps/api/tests/test_nehn_032_certificate_signatures.py` and `apps/web
 | `/admin/report-library`, `/it/admin/report-library`, `/it/trainer/report-library` | super_admin; it_admin (+ super_admin); trainer | Other roles see the access card; the API remains the authority. |
 
 Pinned by `apps/api/tests/test_nehn_009_reports.py` and `apps/web/tests/e2e/nehn-009-report-library.spec.ts`.
+
+### 2.216 Training reports pack *(added 2026-10-27 — `DEC-SCOPE-305`, nehn-010)*
+
+No new resource or grant: the seven reports use §2.214's `reports.training` (seed it_admin, trainer; super_admin always).
+
+| Report | Rows | Columns |
+|---|---|---|
+| `student-courses`, `students-by-trainer`, `course-completion`, `completions`, `attendance`, `trainers`, `courses` | super_admin, it_admin every batch; trainer only batches where `Batch.trainer_id` is the caller (a named other trainer/batch/course → empty); any other granted role none | `courses.revenue` is `field.financial` — super_admin or a holder of `field.financial.view` (not seeded to it_admin or trainer; recruiter/HR never hold the report) |
+
+Pinned by `apps/api/tests/test_nehn_010_training_reports.py` and `apps/web/tests/e2e/nehn-010-training-reports.spec.ts`.
