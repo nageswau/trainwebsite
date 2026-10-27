@@ -3168,6 +3168,12 @@ Pinned by `apps/api/tests/test_nehn_012_lead_list.py`.
 | `GET/PUT /admin/users/{user_id}/permissions`, `GET /admin/permissions/overrides`, `/admin/permissions?tab=user` | super_admin | Reads and replaces any non-super-admin user's overrides; the report lists every override in force. Any other role: 403 / the access card. |
 | Every grant check (`require_permission`, portal payments / certificates) and `GET /auth/me/permissions` | every user | Effective = (role grants + the user's active allows) - the user's active denies. A deny wins over the role. An override past `expires_at` stops applying. super_admin holds every key and cannot be overridden. |
 
+### 2.211 Field (column) policy *(added 2026-10-27 — `DEC-SCOPE-300`, nehn-008)*
+
+| Surface | Who | Rule |
+|---|---|---|
+| A report's columns tagged with a field class (today: partnership Performance `commission_expected` / `commission_received` = `financial`) | every reader of the report | The column is returned (JSON, CSV, xlsx alike) only with `field.<class>.view`. Seed: `field.financial.view` → partnership_manager, partnership_head; super_admin always. placement_team, placement_manager, hr_team, it_admin, overseas_admin hold none. The grant narrows only: it never opens a report the role cannot read. |
+
 ### 2.212 Certificate signatures *(added 2026-10-27 — `DEC-SCOPE-301`, nehn-032)*
 
 The catalogue's `certificates` resource gains `manage` (a new matrix column). No role holds it by default (migration

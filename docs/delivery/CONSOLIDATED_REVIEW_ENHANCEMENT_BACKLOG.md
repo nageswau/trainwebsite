@@ -488,6 +488,10 @@ Risk is the risk of regression or of a wrong outcome.
 - **Open questions:**
   - Is "Address" a stored field for IT students today? (`NEEDS_CONFIRMATION`: verify the profile JSON keys.)
   - The exact field list per role awaits the client's report template (§26 Reports).
+- **Status (2026-10-27):** built on `worktree-nehn-008` (`DEC-SCOPE-300`; API §12GX; RBAC §2.211; migration
+  `0207_field_financial_grant`). `services/field_policy.strip` + catalogue key `field.financial.view`; piloted on the partnership
+  Performance report's commission columns (the only financial columns in any report today), seeded to today's U2 readers so nothing
+  changes on day one. Recruiter and HR roles hold no financial grant; their student reports (nehn-016/017) must tag their columns.
 - **Complexity:** medium · **Risk:** medium
 
 ### C. Reporting (§14, §15)
