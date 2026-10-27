@@ -4417,3 +4417,24 @@ designation, active, active_from, active_to}`; the storage key is never returned
 - `POST /workflows/it/certificates/{enrollment_id}/issue` and `POST /workflows/it/certificates/issue` — **now 409** "Certificate
   signatures are not configured: <slots>" (per item in bulk) while a slot is empty. Issued certificates draw both signatures, names and
   designations and record `signatory_snapshot`. Response bodies unchanged.
+
+## 12HA. Report library (nehn-009) — addendum, 2026-10-27
+
+`DEC-SCOPE-303`; migration `0210_training_report_grants`. New router `/api/v1/reports`; every response is `Cache-Control: private, no-store`.
+
+- `GET /reports` (signed in) → `{items: [{id, title, description, filters, can_download}]}`: only the reports whose `<resource>.view` the
+  caller holds (role grant ± nehn-007 override). A caller holding none gets `{items: []}`.
+- `GET /reports/{id}` → `{id, title, description, columns, items, totals: null, total, page, page_size, filters, applied, options}`.
+  `items` are the requested page of the report's rows in its default order; `total` counts every matching row (at most `latest`);
+  `applied` echoes the filters given; `options` are the pickers within the caller's scope (`courses`, `batches`, `trainers`, `statuses`
+  as `{value, label}`). Columns pass through the nehn-008 field policy.
+- `GET /reports/{id}.csv` / `.xlsx` → every matching row as an attachment `"<id>-<IST date>.<ext>"`, the same columns and rows as the JSON.
+- Errors, in this order: unknown id **404** `Report not found`; no grant **403** `You don't have permission to view this report` (read) /
+  `… to download this report` (files); inputs **422** with a sentence naming the field (an undeclared or unknown filter: `This report can't
+  be filtered by <Label>`; `'From' must be on or before 'To'`; `Enter <Label> as a date (YYYY-MM-DD)`; `Choose a <label> from the list`;
+  `Latest must be a whole number from 1 to 1,000`; `Give <Label> once`); a download over 10,000 rows **422** `This report has more than
+  10,000 rows; narrow the filters`; over 30 downloads in 10 minutes **429** with `Retry-After`.
+- Audit: each download writes `AuditLog(action="report.export", entity_type="report", entity_id=<id>, metadata_json={filters: {name: value},
+  rows, format})` before the file is returned; reads and refused downloads write nothing.
+- Registered reports: `enrollments` (resource `reports.training`) — columns Enrollment code, Student code, Student, Course, Batch, Trainer,
+  Enrolled on, Batch ends, Status, Progress %; every standard filter except `recruiter_id`.

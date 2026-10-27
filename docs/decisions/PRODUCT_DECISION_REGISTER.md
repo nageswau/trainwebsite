@@ -10098,3 +10098,25 @@ program and the authenticity rule, scaled to fit. S9 an admin PDF preview with l
 the signatories' designations (no course duration or grade).
 **Numbering:** migration `0208_certificate_signatories` (after nehn-008's `0207_field_financial_grant`); API §12GZ; RBAC §2.213.
 - **Feature ID authorized:** `nehn-032`. **Status:** built on `worktree-nehn-032`.
+
+### DEC-SCOPE-303 — Report framework: registry, standard filters, JSON/CSV/xlsx, audited (`nehn-009`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-009` (§14 L309-323; §15; actions 2, 3, 24; `UNVERIFIED`
+backlog); design `docs/superpowers/specs/2026-10-27-nehn-009-report-framework-design.md`. Dependencies nehn-004 (`DEC-SCOPE-282`),
+nehn-005 (`DEC-SCOPE-281`) and nehn-008 (`DEC-SCOPE-300`) merged.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** R1 a registry (`services/reports/registry.py`)
+declares each report once (id, title, catalogue resource, columns with nehn-008 classes, supported filters, a scoped query, filter
+pickers); `/api/v1/reports` serves every registered report one way. Existing module reports are not migrated. R2 the pilot is one report,
+`enrollments` (resource `reports.training`, columns without a sensitive class); nehn-010 adds the training pack. R3 standard filters
+`from`, `to`, `course_id`, `batch_id`, `trainer_id`, `recruiter_id`, `student`, `status`, `latest` (1-1,000), `completion_from`,
+`completion_to`, plus `page` / `page_size` (default 50, at most 200); a parameter the report does not declare, or any other name, or a
+repeated one is a 422; empty values count as not given; days are inclusive calendar days (stored `date`s, IST). For the pilot `from`/`to`
+are the enrolment date and the completion period is the batch end date. R4 rows: super_admin and it_admin every enrolment; a trainer
+their own batches; any other role granted the report sees no rows (deny by default); a trainer filtering by another trainer, batch or
+course gets an empty result, not a 403. R5 a download is every matching row, refused (422) over 10,000 rows, never cut short; throttled at
+30 per user per 10 minutes from the caller's own `report.export` audit rows (429 + `Retry-After`); one audit row per download carrying the
+filter values, committed before the file is returned. R6 seed `reports.training.view` + `.download` → it_admin, trainer. Management, HR and
+placement roles wait for their own items. R7 a Report library page in the super admin, IT admin and trainer portals; the filter form folds
+away until a filter is applied. No new indexes (EXPLAIN on real volumes first).
+**Numbering:** migration `0210_training_report_grants` (after nehn-032's `0208_certificate_signatories`); API §12HA; RBAC §2.214.
+- **Feature ID authorized:** `nehn-009`. **Status:** built on `worktree-nehn-009`.
