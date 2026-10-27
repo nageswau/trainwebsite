@@ -25,11 +25,20 @@ const master: AgentDashboard = {
   enrollments: 1,
   pending_documents: 4,
   pending_actions: 2,
+  // nehn-038 (DEC-SCOPE-306) fields; their rendering is covered by nehn038AgentKpis.test.tsx.
+  applications_submitted: 0,
+  visa_decisions: 1,
+  visa_refusals: 0,
+  visa_withdrawals: 0,
+  conversions: 1,
+  conversion_rate: 25,
+  date_from: null,
+  date_to: null,
   by_country: breakdown([["Aland", 4], ["Betaland", 3]]),
   by_university: breakdown([["Alpha University", 4]], 3),
   staff: [
-    { code: "ABC-S001", name: "Staff One", active: true, students: 2, applications: 5, offers: 3, enrollments: 1 },
-    { code: "ABC-S002", name: "Staff Two", active: false, students: 1, applications: 1, offers: 2, enrollments: 0 },
+    { code: "ABC-S001", name: "Staff One", active: true, students: 2, applications: 5, offers: 3, enrollments: 1, conversions: 1, conversion_rate: 50 },
+    { code: "ABC-S002", name: "Staff Two", active: false, students: 1, applications: 1, offers: 2, enrollments: 0, conversions: 0, conversion_rate: 0 },
   ],
   unassigned_students: 1,
   commission: {
@@ -106,7 +115,7 @@ describe("AgentDashboardBoard (AGN-018)", () => {
     const team = within(screen.getByRole("region", { name: "Staff performance" })).getByRole("table");
     expect(team).toHaveClass("stack");
     const firstRow = within(team).getAllByRole("row")[1];
-    expect(within(firstRow).getAllByRole("cell").map((td) => td.getAttribute("data-label"))).toEqual(["Students", "Applications", "Offers", "Enrollments"]);
+    expect(within(firstRow).getAllByRole("cell").map((td) => td.getAttribute("data-label"))).toEqual(["Students", "Applications", "Offers", "Enrollments", "Conversions", "Conversion rate"]);
   });
 
   it("shows only the note when the agency has no staff, with the unassigned count in words (QA18-05)", () => {

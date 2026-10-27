@@ -3235,3 +3235,18 @@ Pinned by `apps/api/tests/test_nehn_010_training_reports.py` and `apps/web/tests
 | `GET /school/students/{id}/document-statuses` | 401 | 200, own school's students | 200, assigned students | 200, linked children | 403 |
 
 Out-of-scope students answer 404, not 403 (no existence leak). Pinned by `apps/api/tests/test_nehn_039_school_document_statuses.py`.
+### 2.217 Agent dashboard KPIs *(added 2026-10-27 — `DEC-SCOPE-306`, nehn-038)*
+
+No new permission or route. The new figures and the date filter follow AGN-018's gate and scope:
+
+- Agency members of an active agency only. A super admin, a counselor or anyone else gets 403; an anonymous caller gets 401. Both come
+  before any 422 on the dates.
+- A Master sees the whole agency. A staff member sees only their assigned students (`scope: "own"`, whatever the query says), and gets
+  no staff table and no commission.
+- Another agency's rows are never counted.
+
+| Route | Anonymous | Agency Master | Agency staff | super_admin, counselor, others |
+|---|---|---|---|---|
+| `GET /workflows/overseas/agent/crm/dashboard[?date_from&date_to]` | 401 | 200 (agency) | 200 (own) | 403 |
+
+Pinned by `apps/api/tests/test_nehn_038_agent_kpis.py` and `apps/web/tests/e2e/nehn-038-agent-kpis.spec.ts`.
