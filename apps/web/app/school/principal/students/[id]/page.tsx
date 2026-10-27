@@ -1,3 +1,4 @@
+import SchoolDocumentStatusesCard, { loadDocumentStatuses, type SchoolDocumentStatuses } from "@/components/SchoolDocumentStatusesCard";
 import FundingRecordsCard, { loadFundingRecords } from "@/components/FundingRecordsCard";
 import PortalShell from "@/components/PortalShell";
 import ReportDownloadButton from "@/components/ReportDownloadButton";
@@ -19,14 +20,16 @@ export default async function SchoolPrincipalStudentDetailPage({ params }: { par
   let student: Student;
   let scorecard: Scorecard | null;
   let funding: FundingRecord[] | null;
+  let documents: SchoolDocumentStatuses | null;
   try {
     // ENH-016 (§28, D9): the scorecard is read on its own; if it fails, the rest of the page still renders. ENH-020: so are the
     // funding support cases.
-    [user, student, scorecard, funding] = await Promise.all([
+    [user, student, scorecard, funding, documents] = await Promise.all([
       serverApi<User>("/api/v1/auth/me"),
       serverApi<Student>(`/api/v1/school/students/${id}`),
       serverApi<Scorecard>(`/api/v1/school/students/${id}/scorecard`).catch(() => null),
       loadFundingRecords(id),
+      loadDocumentStatuses(id),
     ]);
   } catch (e) {
     return (
@@ -52,6 +55,8 @@ export default async function SchoolPrincipalStudentDetailPage({ params }: { par
       </div>
       <div className="portal-content">{scorecard ? <StudentScorecard card={scorecard} /> : <SectionUnavailable title="Progress scorecard" />}</div>
       <div className="portal-content"><FundingRecordsCard records={funding} headingLevel={2} /></div>
+      {/* nehn-039: document statuses for this student's overseas applications (statuses only). */}
+      <div className="portal-content"><SchoolDocumentStatusesCard data={documents} /></div>
     </PortalShell>
   );
 }

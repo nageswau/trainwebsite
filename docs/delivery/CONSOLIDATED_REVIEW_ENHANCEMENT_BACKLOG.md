@@ -1672,6 +1672,9 @@ Risk is the risk of regression or of a wrong outcome.
 ### J. School / Institution (§21)
 
 #### `nehn-039` — School portal: allowed documents/statuses, application depth, bulk-upload reconfirmation
+- **Status (2026-10-27):** built in `worktree-nehn-039` (`DEC-SCOPE-307`, defaults D1-D7 `NEEDS_CONFIRMATION` pending CI-05/OD-13):
+  `GET /school/students/{id}/document-statuses` (checklist statuses of bridged applications, financial class hidden, out of scope
+  404, audited) and an "Overseas application documents" card on the four school student pages; bulk upload kept. No migration.
 - **Source:** §21 L561-577; §26 School (L804-809); actions 18 and 19.
 - **Business requirement:**
   - A dedicated login for the institution representative, limited to their students.
@@ -2066,7 +2069,7 @@ The order follows the PDF's priorities (§25 High, the §27 next-review focus an
 | Admin report template, report names, fields, filters, role access | nehn-010, 011, 016, 017 (fields); nehn-008 (per-role columns) | Pending, client |
 | Founder + Coordinator signature PNGs; final certificate design | nehn-032 | Pending, client |
 | Country images, university logos, icon style, logo copyright restrictions | nehn-034, 035, 036 | Pending, client (standard visuals allowed meanwhile, §26 L801) |
-| Phase-1 school functionality, bulk upload, school report fields, visibility | nehn-039 | Pending, client |
+| Phase-1 school functionality, bulk upload, school report fields, visibility | nehn-039 | Pending, client (defaults built, DEC-SCOPE-307) |
 | Agent performance KPIs | nehn-038 | Pending, client |
 | Razorpay live account and webhook | nehn-022 | Pending, client |
 
