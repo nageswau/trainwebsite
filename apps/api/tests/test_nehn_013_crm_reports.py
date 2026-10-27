@@ -171,7 +171,7 @@ async def test_pending_follow_ups_lists_open_overdue_ones_most_overdue_first(cli
         ("Priya Lead", tel.full_name, "Need fee details", 3), ("Priya Lead", tel.full_name, "Need fee details",
                                                                 (today_ist(now) - today_ist(now - timedelta(minutes=5))).days)]
     assert body["items"][0]["due"] == today_ist(now - timedelta(days=3)).isoformat()
-    assert body["totals"]["lead"] == "Total" and body["totals"]["overdue_days"] == ""
+    assert body["totals"]["lead"] == "Total (2)" and body["totals"]["overdue_days"] == ""  # QA-04: the Total row counts the list
     assert not any(k in item for item in body["items"] for k in ("mobile", "email"))
 
 

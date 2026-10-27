@@ -12,6 +12,8 @@ const EMPTY: Partial<Record<ReportKind, string>> = {
 };
 
 const show = (value: string | number | undefined) => (value === undefined || value === "" ? "—" : String(value));
+// nehn-013 QA-01: JSON drops a rate's ".0"; one decimal keeps the screen equal to the CSV and Excel.
+const cell = (key: string, value: string | number | undefined) => (key === "conversion_rate" && typeof value === "number" ? value.toFixed(1) : show(value));
 
 // tel-024 (DEC-SCOPE-109, EVID-019 §21): one management report -- a strip of report links (each report is its own address, so a view
 // can be shared and Back works), a plain GET filter form (no client JS), the table and its CSV. The columns, labels and options are the
@@ -38,13 +40,14 @@ export default function TelecallerReportView({ kind, report, error, params, base
   const cells = (row: ReportRow) => (
     <>
       <th scope="row">{show(row[first.key])}</th>
-      {rest.map((c) => <td key={c.key} data-label={c.label} className={typeof row[c.key] === "number" ? "num" : undefined}>{show(row[c.key])}</td>)}
+      {rest.map((c) => <td key={c.key} data-label={c.label} className={typeof row[c.key] === "number" ? "num" : undefined}>{cell(c.key, row[c.key])}</td>)}
     </>
   );
 
   return (
     <div className="action-card agent-reports">
-      <nav aria-label="Reports" className="report-tablist">
+      {/* nehn-013 QA-02: ten reports no longer fit one line at 1280px -- they wrap rather than hide behind a sideways scroll. */}
+      <nav aria-label="Reports" className="report-tablist wrap">
         {REPORT_TABS.map((t) => (
           <Link key={t.key} className="s360-tab" href={tabHref(basePath, t.key, params)} aria-current={t.key === kind ? "page" : undefined}>{t.label}</Link>
         ))}

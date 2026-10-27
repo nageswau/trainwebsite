@@ -1316,3 +1316,14 @@ half.
 | `nehn-037-AC4` | Counselor-only information never in a student payload (who recorded it) | `::test_the_counselor_schedules_an_interview_the_student_sees_it_and_is_told` (`recorded_by` absent) |
 | `nehn-037-AC5` | A counselor who is not assigned gets 403/404; the student cannot write | `::test_scope_and_roles`, `::test_agency_applications_the_counselor_writes_the_agency_reads_and_is_told` |
 | `nehn-037-I4/I6/I7` | Cap 20; closed application 409; notices and audit; unchanged save writes nothing | `::test_a_closed_application_refuses_writes_and_the_cap_holds`, `::test_an_unchanged_save_writes_nothing_and_a_note_change_is_not_announced`; migration `test_nehn_037_migration.py` |
+
+**Addendum, 2026-10-27 (`nehn-013`)** — CRM report gaps.
+
+| ID | Requirement / acceptance | Evidence |
+|---|---|---|
+| `nehn-013` | Requirement: §16 L405-419, §14 L304-305 → `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-013` → `PRODUCT_DECISION_REGISTER.md` `DEC-SCOPE-299` → design `docs/superpowers/specs/2026-10-27-nehn-013-crm-report-gaps-design.md`; `API_CONTRACT.md` §12GW, `RBAC_MATRIX.md` §2.210; no migration | R1–R10 defaults `NEEDS_CONFIRMATION` |
+| `nehn-013-AC1` | Funnel rows include Lost and Conversion rate, matching a hand-computed fixture; Total recomputed | `apps/api/tests/test_nehn_013_crm_reports.py::test_funnel_reports_append_lost_and_conversion_rate`, `::test_the_total_rate_is_recomputed_not_summed`, `::test_the_new_reports_export_as_csv_with_the_screen_columns` |
+| `nehn-013-AC2` | Counselor report groups by `owner_id` | `::test_the_counselor_report_groups_by_lead_owner`; e2e `nehn-013-crm-reports.spec.ts` |
+| `nehn-013-AC3` | Date report supports day / week / month | `::test_the_date_report_groups_by_ist_day_week_or_month_in_calendar_order`, `::test_the_date_report_defaults_to_days_and_refuses_an_unknown_grouping`; `nehn013.crmReports.test.tsx`; e2e |
+| `nehn-013-AC4` | Pending follow-ups lists open follow-ups with due < now, with days overdue | `::test_pending_follow_ups_lists_open_overdue_ones_most_overdue_first`, `::test_follow_ups_due_outside_the_range_are_not_counted`; e2e |
+| `nehn-013-neg` | A telecaller (non-manager) gets 403; scope is the caller's leads | `::test_a_telecaller_and_a_counselor_are_refused_the_new_reports`, `::test_follow_up_reports_are_scoped_to_the_callers_leads`; e2e |

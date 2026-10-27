@@ -4309,3 +4309,20 @@ students}, definitions: [{key, label, definition}]}}`. `Figure = {key, label, de
   time without offset or outside 2000–2100. Audit `overseas.application.interview` `{interview_id, action, fields, outcome}`.
 - `GET /workflows/overseas/student/interviews` → `{items: [... same fields without recorded_by, + application_code, university]}` — the
   signed-in overseas student's own applications only (max 200); other roles 403.
+
+## 12GW. CRM report gaps (nehn-013) — addendum, 2026-10-27
+
+`DEC-SCOPE-299`. No migration. Additive only: new `kind` values and one query parameter on the existing §12AC routes
+(`GET /telecaller/reports/{kind}`, `.csv`, `.xlsx`); every existing kind keeps its columns in order.
+
+- Funnel kinds `source`, `product`, `campaign` append `lost` ("Lost") and `conversion_rate` ("Conversion rate (%)", a number with 1
+  decimal; the `totals` row recomputes it from the totals).
+- `kind=counselor` — rows `{counselor, leads, counselling_done, enrolled, lost, conversion_rate}`: cohort leads with an owner, by owner.
+- `kind=date` — rows `{period, leads, connected, qualified, counselling, enrolled, lost, conversion_rate}` in calendar order. New query
+  parameter `group=day|week|month` (default `day`; IST; weeks start Monday; labels `2026-03-02`, `Week of 2026-03-02`, `March 2026`).
+  Any other value → 422 `"Choose day, week or month"`. Other kinds accept and ignore `group`; when set, the export audit lists it.
+- `kind=follow_ups` — rows `{telecaller, follow_ups, completed, open, overdue, cancelled}`: telecaller-side follow-ups on the caller's
+  leads due in the range, by the lead's telecaller.
+- `kind=pending_follow_ups` — rows `{lead, telecaller, due (IST date), reason (label), overdue_days}`: open follow-ups due in the range
+  and before now, most overdue first; `totals.overdue_days` is `""`.
+- Lead filters (`team`, `product_id`, `campaign_id`, `source`) apply to all four new kinds. Errors and order unchanged (403 → 404 → 422).

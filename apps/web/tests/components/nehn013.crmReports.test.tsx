@@ -31,7 +31,8 @@ describe("TelecallerReportView (nehn-013)", () => {
   it("adds the four reports as tabs after the existing six", () => {
     render(<TelecallerReportView kind="date" report={dateReport()} error="" params={{}} basePath={BASE} />);
     const links = within(screen.getByRole("navigation", { name: "Reports" })).getAllByRole("link");
-    expect(links.map((l) => l.textContent).slice(6)).toEqual(["Counselor", "Date-wise", "Follow-ups", "Pending Follow-ups"]);
+    // QA-03: "Follow-up Status" so the heading matches the report's (and its export's) title.
+    expect(links.map((l) => l.textContent).slice(6)).toEqual(["Counselor", "Date-wise", "Follow-up Status", "Pending Follow-ups"]);
     expect(links[7]).toHaveAttribute("aria-current", "page");
   });
 
@@ -45,10 +46,17 @@ describe("TelecallerReportView (nehn-013)", () => {
     expect(screen.queryByLabelText("Group by")).not.toBeInTheDocument();
   });
 
-  it("shows the conversion rate as a number column", () => {
+  it("shows the conversion rate with one decimal, as the CSV does (QA-01)", () => {
     render(<TelecallerReportView kind="date" report={dateReport()} error="" params={{}} basePath={BASE} />);
     const row = screen.getByRole("rowheader", { name: "March 2026" }).closest("tr")!;
-    expect(within(row).getAllByRole("cell").map((c) => c.textContent)).toEqual(["4", "25"]);
+    expect(within(row).getAllByRole("cell").map((c) => c.textContent)).toEqual(["4", "25.0"]);
+    const total = screen.getByRole("rowheader", { name: "Total" }).closest("tr")!;
+    expect(within(total).getAllByRole("cell").map((c) => c.textContent)).toEqual(["4", "25.0"]);
+  });
+
+  it("wraps the report tabs so none hides off the edge (QA-02)", () => {
+    render(<TelecallerReportView kind="date" report={dateReport()} error="" params={{}} basePath={BASE} />);
+    expect(screen.getByRole("navigation", { name: "Reports" })).toHaveClass("report-tablist", "wrap");
   });
 
   it.each([

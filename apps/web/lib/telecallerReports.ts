@@ -27,7 +27,7 @@ export const REPORT_TABS: { key: ReportKind; label: string }[] = [
   { key: "lost", label: "Lost Reasons" }, // ccrm-006 (D9)
   // nehn-013 (DEC-SCOPE-299)
   { key: "counselor", label: "Counselor" }, { key: "date", label: "Date-wise" },
-  { key: "follow_ups", label: "Follow-ups" }, { key: "pending_follow_ups", label: "Pending Follow-ups" },
+  { key: "follow_ups", label: "Follow-up Status" }, { key: "pending_follow_ups", label: "Pending Follow-ups" },
 ];
 // nehn-013 R6: the date-wise report's periods (the API refuses anything else with a 422).
 export const GROUPS = [{ value: "day", label: "Day" }, { value: "week", label: "Week" }, { value: "month", label: "Month" }];

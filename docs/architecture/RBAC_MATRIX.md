@@ -3133,3 +3133,13 @@ No grant logic runs in the web app beyond "is this key in my set"; nehn-005 rema
 
 Writes share the offers' entry (scope, row lock, swapped-counselor re-check, closed → 409). Pinned by
 `apps/api/tests/test_nehn_037_interviews.py`.
+
+### 2.210 CRM report gaps (`nehn-013`, `DEC-SCOPE-299`)
+
+| Route | Anonymous | telecaller_manager | it_admin / overseas_admin | super_admin | telecaller, counselor, other roles |
+|---|---|---|---|---|---|
+| `GET /telecaller/reports/{counselor,date,follow_ups,pending_follow_ups}` | 401 | 200 (own reports' leads) | 200 (own division) | 200 | 403 |
+| `GET /telecaller/reports/{kind}.csv`, `.xlsx` (same kinds) | 401 | 200 | 200 | 200 | 403 |
+
+Unchanged from §2.35 / §2.197: the `reports.telecaller` view / download grants decide; scope is the caller's Leads list. The pending list
+names leads (never mobile or email). Pinned by `apps/api/tests/test_nehn_013_crm_reports.py`.

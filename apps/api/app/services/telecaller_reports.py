@@ -201,13 +201,9 @@ def _count(stage: str | None):
     return func.count().filter(_reached() >= RANK[stage])
 
 
-def _range(f: Filters) -> tuple:
-    return day_range(f.date_from)[0], day_range(f.date_to)[1]
-
-
 def _lead_filters(user: User, f: Filters, anchor=Enquiry.created_at) -> list:
     """The caller's leads matching the filters, `anchor` (creation; a follow-up's due time) inside the range."""
-    start, end = _range(f)
+    start, end = day_range(f.date_from)[0], day_range(f.date_to)[1]
     where = [*lead_scope(user), anchor >= start, anchor < end]
     for column, value in ((Enquiry.division, f.team), (Enquiry.product_id, f.product_id), (Enquiry.campaign_id, f.campaign_id), (Enquiry.source, f.source)):
         if value is not None:
@@ -266,9 +262,9 @@ async def _follow_ups(db: AsyncSession, user: User, kind: str, f: Filters) -> li
     where = [*_lead_filters(user, f, LeadFollowUp.due_at), lead_pipeline.TELECALLER_FOLLOW_UP]
     base = select().select_from(LeadFollowUp).join(Enquiry, Enquiry.id == LeadFollowUp.lead_id)
     if kind == "follow_ups":
-        status, overdue = LeadFollowUp.status, (LeadFollowUp.status == "open") & (LeadFollowUp.due_at < now)
+        overdue = (LeadFollowUp.status == "open") & (LeadFollowUp.due_at < now)
         counts = [func.count().label(key) if state is None else
-                  func.count().filter(overdue if state == "overdue" else status == state).label(key) for key, _, state in FOLLOW_UPS]
+                  func.count().filter(overdue if state == "overdue" else LeadFollowUp.status == state).label(key) for key, _, state in FOLLOW_UPS]
         rows = (await db.execute(base.add_columns(Enquiry.telecaller_user_id, *counts).where(*where).group_by(Enquiry.telecaller_user_id))).all()
         people = await _names(db, User, {r[0] for r in rows}, User.full_name)
         return [{"telecaller": people.get(r[0], "Unassigned")} | dict(r._mapping) for r in rows]
@@ -308,7 +304,9 @@ async def report(db: AsyncSession, user: User, kind: str, f: Filters) -> dict:
     items = [{k: r[k] for k in (*labels, *count_keys) if k in r} for r in rows]
     if not spec.ordered:
         items.sort(key=lambda r: (-r[count_keys[0]], *(str(r[k]).lower() for k in labels)))
-    totals = {labels[0]: "Total", **{k: "" for k in labels[1:]}, **{k: "" if k in UNSUMMED else sum(r[k] for r in items) for k in count_keys}}
+    # QA-04: a list with nothing to sum (pending follow-ups) counts its rows instead
+    first = f"Total ({len(items)})" if all(k in UNSUMMED for k in count_keys) else "Total"
+    totals = {labels[0]: first, **{k: "" for k in labels[1:]}, **{k: "" if k in UNSUMMED else sum(r[k] for r in items) for k in count_keys}}
     if "conversion_rate" in count_keys:  # R2: each row's own rate; the Total row's from the totals, never a sum of rates
         for line in (*items, totals):
             line["conversion_rate"] = _rate(line)

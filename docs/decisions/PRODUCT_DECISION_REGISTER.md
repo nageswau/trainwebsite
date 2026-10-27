@@ -9996,3 +9996,20 @@ result (not on a note-only edit); the agency gets "Application details updated";
 student sees the whole entry except who recorded it. I9 times carry an offset, 2000–2100.
 **Numbering:** migration `0203_application_interviews`; API §12GT; RBAC §2.207.
 - **Feature ID authorized:** `nehn-037` (part 4). **Status:** built on `worktree-nehn-037`.
+
+### DEC-SCOPE-299 — CRM report gaps: lost, conversion rate, counselor-wise, date-wise and follow-up reports (`nehn-013`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-013` (§16 L405-419, §14 L304-305; `UNVERIFIED` backlog);
+design `docs/superpowers/specs/2026-10-27-nehn-013-crm-report-gaps-design.md`. Dependency `nehn-004` (xlsx) is done. The final report list
+and definitions still wait on the client CRM workflow document (CI-01, nehn-015).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** R1 Lost = the cohort's leads now in a loss stage
+(lost / not interested), so a reopened lead is not lost. R2 Conversion rate (%) = Enrolled ÷ Leads × 100, 1 decimal, and the Total row
+recomputes it. R3 the date anchor is the lead's creation date (as every cohort report). R4 Lost + Conversion rate are appended to the
+source, course and campaign reports (handover, telecaller and lost-reasons unchanged). R5 counselor report = leads by `owner_id`. R6
+date-wise report by IST day / week (Monday) / month of creation (`group`, default day), calendar order, empty periods omitted. R7
+follow-up status = telecaller-side follow-ups due in the range by the lead's telecaller (total, completed, open, overdue, cancelled). R8
+pending follow-ups = open ones due in the range and before now, with lead name, telecaller, due date, reason and days overdue (no mobile
+or email). R9 the lead filters apply to every new report. R10 access unchanged (`reports.telecaller` view / download); counselors' own
+view is not built.
+**Numbering:** no migration; API §12GW; RBAC §2.210.
+- **Feature ID authorized:** `nehn-013`. **Status:** built on `worktree-nehn-013`.

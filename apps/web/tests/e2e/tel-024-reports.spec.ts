@@ -78,21 +78,22 @@ test("a manager reads, filters and exports the telecaller reports; a telecaller 
   // Connected and Qualified (cumulative rule). Total row.
   await page.goto(`${BASE}?report=campaign&campaign_id=${campaign.id}`);
   await expect(page.getByRole("navigation", { name: "Reports" }).getByRole("link", { name: "Campaign" })).toHaveAttribute("aria-current", "page");
-  await expect(cells(page, new RegExp(`E2E Campaign ${stamp}`))).toHaveText(["3", "1", "1", "0", "0"]);
-  await expect(cells(page, /^Total/)).toHaveText(["3", "1", "1", "0", "0"]);
+  // nehn-013 (R4): Lost and Conversion rate appended.
+  await expect(cells(page, new RegExp(`E2E Campaign ${stamp}`))).toHaveText(["3", "1", "1", "0", "0", "0", "0.0"]);
+  await expect(cells(page, /^Total/)).toHaveText(["3", "1", "1", "0", "0", "0", "0.0"]);
 
   // The CSV is the same table.
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download CSV" }).click();
   const csv = readFileSync(await (await download).path(), "utf8");
-  expect(csv.replace(/^﻿/, "").split(/\r?\n/)[0]).toBe("Campaign,Leads,Connected,Qualified,Counselling,Enrolled");
-  expect(csv).toContain(`E2E Campaign ${stamp},3,1,1,0,0`);
+  expect(csv.replace(/^﻿/, "").split(/\r?\n/)[0]).toBe("Campaign,Leads,Connected,Qualified,Counselling,Enrolled,Lost,Conversion rate (%)");
+  expect(csv).toContain(`E2E Campaign ${stamp},3,1,1,0,0,0,0.0`);
   await expect(page.getByText("Report downloaded.")).toBeVisible();
 
   // The Lead Source link keeps the campaign filter.
   await page.getByRole("link", { name: "Lead Source" }).click();
   await expect(page).toHaveURL(new RegExp(`report=source.*campaign_id=${campaign.id}`));
-  await expect(cells(page, /^Instagram/)).toHaveText(["3", "1", "1", "0", "0"]);
+  await expect(cells(page, /^Instagram/)).toHaveText(["3", "1", "1", "0", "0", "0", "0.0"]);
 
   // The Telecaller report counts activity (D11: only explicit moves to Qualified): the call is the telecaller's; no lead filters.
   await page.getByRole("link", { name: "Telecaller", exact: true }).click();
