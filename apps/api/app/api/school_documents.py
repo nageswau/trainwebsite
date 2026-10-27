@@ -33,9 +33,7 @@ async def _student_in_scope(db: AsyncSession, user: User, student_id: UUID) -> S
         raise HTTPException(403, "School role required")
     try:
         return await _load_readable_student(db, user, student_id)
-    except HTTPException as exc:
-        if exc.status_code not in (403, 404):
-            raise
+    except HTTPException as exc:  # the loader's own 403 (other school, unassigned, unlinked) or 404
         logger.warning("school_document_statuses_refused", extra={"extra_fields": {"actor_id": str(user.id), "role": user.role, "student_id": str(student_id), "reason": exc.detail}})
         raise HTTPException(404, NOT_FOUND) from None
 
@@ -45,21 +43,21 @@ async def student_document_statuses(student_id: UUID, user: User = Depends(get_c
     student = await _student_in_scope(db, user, student_id)
     rows = (
         await db.execute(
-            select(OverseasApplication.id, University.name)
+            select(OverseasApplication.id, University.name, ApplicationChecklist.application_id.is_not(None))
             .join(University, University.id == OverseasApplication.university_id)
+            .outerjoin(ApplicationChecklist, ApplicationChecklist.application_id == OverseasApplication.id)
             .where(OverseasApplication.school_student_id == student.id)
             .order_by(OverseasApplication.created_at.desc(), OverseasApplication.id)
         )
     ).all()
-    with_checklist = set((await db.scalars(select(ApplicationChecklist.application_id).where(ApplicationChecklist.application_id.in_([a for a, _ in rows])))).all()) if rows else set()
     applications, item_count = [], 0
-    for application_id, university_name in rows:
+    for application_id, university_name, has_checklist in rows:
         items = [
             {"name": i["name"], "required": i["required"], "status": i["status"], "status_label": status_label(i["status"])}
-            for i in (await application_checklists.item_statuses(db, application_id) if application_id in with_checklist else [])
+            for i in await application_checklists.item_statuses(db, application_id)  # no checklist -> no items
             if i["sensitivity"] != HIDDEN_SENSITIVITY
         ]
-        applications.append({"application_id": application_id, "university_name": university_name, "has_checklist": application_id in with_checklist, "items": items})
+        applications.append({"application_id": application_id, "university_name": university_name, "has_checklist": has_checklist, "items": items})
         item_count += len(items)
 
     db.add(
