@@ -362,6 +362,35 @@ class Certificate(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(30), default="issued")
 
 
+class CertificateRule(Base, TimestampMixin):
+    """nehn-031 (DEC-SCOPE-297 W1): the eligibility thresholds, one row for the IT division (tel_settings' keyed-row idiom). The other
+    conditions stay fixed in code."""
+
+    __tablename__ = "certificate_rules"
+    __table_args__ = (
+        CheckConstraint("division = 'it'", name="ck_certificate_rules_division"),
+        CheckConstraint("min_progress_percent BETWEEN 0 AND 100 AND min_attendance_percent BETWEEN 0 AND 100", name="ck_certificate_rules_percent"),
+    )
+    division: Mapped[str] = mapped_column(String(20), primary_key=True, default="it")
+    min_progress_percent: Mapped[int] = mapped_column(Integer, default=100)
+    min_attendance_percent: Mapped[int] = mapped_column(Integer, default=75)
+    updated_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class CertificateRequest(Base, TimestampMixin):
+    """nehn-031 (DEC-SCOPE-297 W6): one per enrolment -- the batch trainer's recommendation (or not-ready flag), marked issued when the
+    coordinator issues the certificate."""
+
+    __tablename__ = "certificate_requests"
+    __table_args__ = (CheckConstraint("status IN ('recommended', 'not_ready', 'issued')", name="ck_certificate_requests_status"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    enrollment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enrollments.id", ondelete="CASCADE"), unique=True)
+    status: Mapped[str] = mapped_column(String(20))
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    recommended_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    certificate_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("certificates.id", ondelete="SET NULL"), nullable=True)
+
+
 # rec-003 (DEC-SCOPE-121 D1): CMP-000001. MAXVALUE keeps lpad from ever truncating a code; uq_companies_code is the backstop.
 COMPANY_CODE_SEQ = Sequence("company_code_seq", maxvalue=999999, metadata=Base.metadata)
 COMPANY_NAME_KEY_SQL = r"lower(regexp_replace(btrim(name), '\s+', ' ', 'g'))"

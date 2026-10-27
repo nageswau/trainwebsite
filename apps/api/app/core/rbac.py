@@ -72,22 +72,24 @@ ROLES: tuple[str, ...] = tuple(PERMISSIONS)
 # nehn-005 (DEC-SCOPE-281): the grant-based permission catalogue -- role x resource x action, held in `role_permissions` and checked by
 # `deps.require_permission`. It lists only resources whose routes are wired (P1); each later module slice adds its own resource. A key
 # is "<resource>.<action>"; anything not listed is denied.
-ACTIONS = ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "manage")
+ACTIONS = ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage")  # nehn-031 adds override, configure
 CATALOGUE: dict[str, dict] = {
     "payments": {"label": "Payments", "actions": ("view", "add")},
     "discounts": {"label": "Payment discounts", "actions": ("add",)},
     "reports.telecaller": {"label": "Telecaller reports", "actions": ("view", "download")},
-    "certificates": {"label": "Certificates", "actions": ("view",)},  # nehn-030: the coordinator portal's Certificates section
+    # nehn-030: the coordinator portal's Certificates section; nehn-031 (DEC-SCOPE-297): issuing, the eligibility override, thresholds.
+    "certificates": {"label": "Certificates", "actions": ("view", "issue", "override", "configure")},
 }
 # The day-one grants, equal to the inline checks they replace (P3): admin.ensure_admin and telecaller_reports' REPORT_ROLES.
 # super_admin holds every key implicitly and never has rows (P5). Migration 0196 seeds a frozen copy.
 _PAYMENT_ADMIN = ("payments.view", "payments.add", "discounts.add")
 _TELECALLER_REPORTS = ("reports.telecaller.view", "reports.telecaller.download")
 DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
-    "it_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,
+    "it_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure",),  # nehn-031 W2; migration 0204 seeds it
     "overseas_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,
     "telecaller_manager": _TELECALLER_REPORTS,
-    "coordinator": ("certificates.view",),  # nehn-030; migration 0201 seeds it
+    # nehn-030 (0201 seeds view); nehn-031 W3/W4 (0204 seeds issue, override): issuance is the coordinator's alone (DEC-ROLE-003).
+    "coordinator": ("certificates.view", "certificates.issue", "certificates.override"),
 }
 
 

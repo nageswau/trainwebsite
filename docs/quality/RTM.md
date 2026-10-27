@@ -1316,3 +1316,17 @@ half.
 | `nehn-037-AC4` | Counselor-only information never in a student payload (who recorded it) | `::test_the_counselor_schedules_an_interview_the_student_sees_it_and_is_told` (`recorded_by` absent) |
 | `nehn-037-AC5` | A counselor who is not assigned gets 403/404; the student cannot write | `::test_scope_and_roles`, `::test_agency_applications_the_counselor_writes_the_agency_reads_and_is_told` |
 | `nehn-037-I4/I6/I7` | Cap 20; closed application 409; notices and audit; unchanged save writes nothing | `::test_a_closed_application_refuses_writes_and_the_cap_holds`, `::test_an_unchanged_save_writes_nothing_and_a_note_change_is_not_announced`; migration `test_nehn_037_migration.py` |
+
+**Addendum, 2026-10-27 (`nehn-031`)** — Coordinator certificate workflow. Tests in `apps/api/tests/test_nehn_031_certificate_workflow.py`
+(`::`), `test_nehn_031_migration.py`, `apps/web/tests/components/nehn031CertificateWorkflow.test.tsx` and e2e
+`nehn-031-certificate-workflow.spec.ts`.
+
+| ID | Requirement / acceptance | Evidence |
+|---|---|---|
+| `nehn-031` | Requirement: PDF §11 L237-248, §10 L231 → backlog `nehn-031` → `DEC-ROLE-003` + `DEC-SCOPE-297` → design `docs/superpowers/specs/2026-10-27-nehn-031-coordinator-certificate-workflow-design.md` → API §12GU → RBAC §2.208 | — |
+| `nehn-031-AC1` | Only the coordinator issues; trainer and admin 403 | `::test_other_roles_cannot_issue`, `::test_coordinator_issues_an_eligible_learner`, `::test_revoking_the_issue_grant_closes_issuance`; `test_adm_006_certificates.py::test_nehn_031_batch_trainer_and_it_admin_no_longer_issue`; e2e |
+| `nehn-031-AC2` | Not eligible + override without the grant 403; with it a reason is required and audited | `::test_override_without_the_override_grant_is_403`, `::test_not_eligible_needs_override_and_a_reason`; vitest queue override; e2e |
+| `nehn-031-AC3` | Thresholds changed by admin apply to new evaluations | `::test_admin_threshold_change_applies_to_the_next_evaluation`; vitest rules panel; e2e |
+| `nehn-031-AC4` | Bulk issue of 30 creates 30 unique numbers and PDFs | `::test_bulk_issue_of_thirty_creates_thirty_unique_certificates`, `::test_bulk_reports_each_failure_and_issues_the_rest` |
+| `nehn-031-AC5` | The trainer's recommendation is visible in the queue | `::test_trainer_recommendation_is_visible_in_the_queue`, `::test_only_the_batch_trainer_recommends`; vitest trainer card + queue; e2e |
+| `nehn-031-AC6` | A duplicate issue is 409 | `::test_duplicate_issue_is_409`; e2e |

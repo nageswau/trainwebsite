@@ -393,6 +393,37 @@ MATERIAL_URL = r"^https?://\S+$"
 MATERIAL_TYPE = "^(link|document|video|recording|notes)$"
 
 
+class CertificateIssueIn(BaseModel):
+    """nehn-031 (DEC-SCOPE-297 W4): the single issue route's existing body, now typed and bounded."""
+
+    override: bool = False
+    override_reason: str | None = Field(default=None, max_length=1000)
+
+
+class CertificateBulkIssueIn(CertificateIssueIn):
+    model_config = ConfigDict(extra="forbid")
+    enrollment_ids: list[UUID] = Field(min_length=1, max_length=50)  # W8
+
+
+class CertificateRecommendIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["recommended", "not_ready"]
+    comment: str | None = Field(default=None, max_length=1000)
+
+    @model_validator(mode="after")
+    def _not_ready_needs_a_comment(self):
+        self.comment = (self.comment or "").strip() or None
+        if self.status == "not_ready" and not self.comment:
+            raise ValueError("Say why the learner is not ready")
+        return self
+
+
+class CertificateRulesIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    min_progress_percent: int = Field(ge=0, le=100)
+    min_attendance_percent: int = Field(ge=0, le=100)
+
+
 class LearningResourceCreate(BaseModel):
     batch_id: UUID
     title: str = Field(min_length=2, max_length=180)

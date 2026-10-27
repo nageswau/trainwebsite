@@ -70,7 +70,7 @@ def test_the_catalogue_names_the_pilot_resources_and_known_actions():
     assert set(rbac.CATALOGUE) == {"payments", "discounts", "reports.telecaller", "certificates"}  # nehn-030 added certificates
     for resource in rbac.CATALOGUE.values():
         assert set(resource["actions"]) <= set(rbac.ACTIONS)
-    assert rbac.ACTIONS == ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "manage")
+    assert rbac.ACTIONS == ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage")  # nehn-031
 
 
 def test_roles_are_the_29_existing_roles():
