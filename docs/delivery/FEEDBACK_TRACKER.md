@@ -73,7 +73,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-015 | Internal CRM | Internal CRM workflow reconciliation | Enhancement | Waiting — client input | Dev + Client | Wave 4 | Internal CRM workflow document (CI-01) |
 | nehn-016 | Placement | Nearing-completion list; recruiter read-only training progress | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | Recruiters see opted-in students only, or all? (OD-08); needs nehn-010 |
 | nehn-017 | HR | HR access to permitted progress, attendance and documents; HR reports | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | HR population and document types (OD-09); needs nehn-008 and nehn-010 |
-| nehn-018 | Student portal | Student feature access by enrolment and payment status | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Confirm the unlock rules: every feature opens at the first payment, editable by the IT admin (OD-06, DEC-SCOPE-303) |
+| nehn-018 | Student portal | Student feature access by enrolment and payment status | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Confirm the unlock rules: every feature opens at the first payment, editable by the IT admin (OD-06, DEC-SCOPE-304) |
 | nehn-019 | Payments | Discount ledger and complete receipt | Enhancement | Ready to start | Dev + Client | Wave 3 | Are receipts fixed once issued? |
 | nehn-020 | Payments | Retire student-facing invoices where not required | Enhancement | Waiting — decision | Client | Wave 3 | Is a GST/tax invoice legally required? (OD-11) |
 | nehn-021 | Payments | Discount and scholarship authority through a finance permission | Enhancement | Waiting — decision | Dev + Client | Wave 3 | Does the Overseas Admin keep discount rights? (OD-12) |
@@ -151,7 +151,7 @@ These items are built. Where a question was open, we used the recommended answer
 | OD-03 | Are per-user permission overrides needed this release? | nehn-007 | Open — built on the default (DEC-SCOPE-299) |
 | OD-04 | Permission unit (page or module), who edits grants, custom roles? | nehn-005 | Recommended answer in place: per module, Super Admin edits, no custom roles — please confirm |
 | OD-05 | Coordinator account model and duties; who may override certificate eligibility | nehn-030, 031 | Open |
-| OD-06 | Which student features unlock at which payment status | nehn-018 | Default built — confirm (DEC-SCOPE-303) |
+| OD-06 | Which student features unlock at which payment status | nehn-018 | Default built — confirm (DEC-SCOPE-304) |
 | OD-07 | Keyword scoring rule for descriptive answers | nehn-026 | Open |
 | OD-08 | Recruiter population: opted-in students only, or all? | nehn-016 | Open |
 | OD-09 | HR population and allowed document types | nehn-017 | Open |

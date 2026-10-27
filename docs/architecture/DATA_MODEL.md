@@ -2346,7 +2346,7 @@ version), `created_by_id` (FK users), timestamps. Partial unique index `uq_certi
 (`[{id, role, display_name, designation}]`, the versions drawn on the PDF); existing certificates keep NULL. Downgrade drops the column
 and the table; stored images stay in storage. The demo seed adds a generated stand-in signature for each empty slot.
 
-## Student access rules (`nehn-018`, `DEC-SCOPE-303`; migration `0209_student_access_rules`)
+## Student access rules (`nehn-018`, `DEC-SCOPE-304`; migration `0211_student_access_rules`)
 
 `student_access_rules` — one row per gated student feature: `feature` (PK; CHECK attendance, assignments, assessments, resources,
 live_classes, questions, feedback, certificates), `min_state` (CHECK registered, enrolled_pending_payment, partially_paid, fully_paid),

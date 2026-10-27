@@ -4418,9 +4418,9 @@ designation, active, active_from, active_to}`; the storage key is never returned
   signatures are not configured: <slots>" (per item in bulk) while a slot is empty. Issued certificates draw both signatures, names and
   designations and record `signatory_snapshot`. Response bodies unchanged.
 
-## 12HA. Student feature access by payment status (nehn-018) — addendum, 2026-10-27
+## 12HB. Student feature access by payment status (nehn-018) — addendum, 2026-10-27
 
-`DEC-SCOPE-303`. Migration `0209_student_access_rules`.
+`DEC-SCOPE-304`. Migration `0211_student_access_rules`.
 
 - `GET /workflows/it/student/access` (new) — it_student: `{state, features: [{key, label, unlocked, required_state}]}`. **403** other roles.
 - `GET /workflows/it/student-access/rules`, `PUT` (new) — `student_access.configure` (it_admin; super_admin implicit), else **403**.

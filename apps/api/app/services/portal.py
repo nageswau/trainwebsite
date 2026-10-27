@@ -1830,7 +1830,7 @@ async def _coordinator(db: AsyncSession, user: User, section: str):
 
 
 def _student_locks(result: dict | None, section: str, access: dict) -> dict | None:
-    """nehn-018 (DEC-SCOPE-303 AC1): a locked feature's section keeps its heading but no data, plus the `locked` block the page turns
+    """nehn-018 (DEC-SCOPE-304 AC1): a locked feature's section keeps its heading but no data, plus the `locked` block the page turns
     into "Complete payment to unlock". The dashboard stays open; only its upcoming-work rows (assignments) are withheld."""
     if result is None:
         return None

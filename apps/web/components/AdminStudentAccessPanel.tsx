@@ -11,7 +11,7 @@ function detailMessage(detail: unknown, fallback: string) {
   return fallback;
 }
 
-// nehn-018 (DEC-SCOPE-303 AC4): the IT admin sets, per student feature, the lowest payment state that unlocks it (`student_access.configure`).
+// nehn-018 (DEC-SCOPE-304 AC4): the IT admin sets, per student feature, the lowest payment state that unlocks it (`student_access.configure`).
 // The change applies to every student's next page or request; course information, fees and payment are never locked.
 export default function AdminStudentAccessPanel() {
   const [policy, setPolicy] = useState<StudentAccessRules | null>(null);

@@ -16,7 +16,7 @@ from app.services.integrations import send_notification
 from app.services.meetings import MeetingProviderError, create_provider_meeting
 
 router = APIRouter(prefix="/communications", tags=["communications"])
-PAID_LIVE_CLASSES = require_paid_feature("live_classes")  # nehn-018 (DEC-SCOPE-303)
+PAID_LIVE_CLASSES = require_paid_feature("live_classes")  # nehn-018 (DEC-SCOPE-304)
 
 
 @router.get("/messages/{other_user_id}")

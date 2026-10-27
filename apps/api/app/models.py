@@ -403,7 +403,7 @@ STUDENT_PAYMENT_STATES = ("registered", "enrolled_pending_payment", "partially_p
 
 
 class StudentAccessRule(Base, TimestampMixin):
-    """nehn-018 (DEC-SCOPE-303): the lowest payment state at which an IT student may use one feature -- one row per feature, the
+    """nehn-018 (DEC-SCOPE-304): the lowest payment state at which an IT student may use one feature -- one row per feature, the
     certificate_rules keyed-row idiom. A missing row means the default (services/student_access.py)."""
 
     __tablename__ = "student_access_rules"

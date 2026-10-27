@@ -1,4 +1,4 @@
-"""nehn-018 (DEC-SCOPE-303) -- which IT student features unlock at which payment state.
+"""nehn-018 (DEC-SCOPE-304) -- which IT student features unlock at which payment state.
 
 The state is derived from the student's own enrolments and IT payments on every call, never stored: a webhook that marks a payment
 paid unlocks the very next request (AC2). The policy is `student_access_rules`, also read on every call, so an admin's change applies

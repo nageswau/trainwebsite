@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import WorkflowPanel from "@/components/WorkflowPanel";
 import type { User } from "@/lib/types";
 
-// nehn-018 (DEC-SCOPE-303): the IT admin's Payments page carries the student access rules; the Course page's live classes take the
+// nehn-018 (DEC-SCOPE-304): the IT admin's Payments page carries the student access rules; the Course page's live classes take the
 // lock the page already knows. Pinned here because both live in WorkflowPanel's one render line (a merge once dropped them).
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }), useSearchParams: () => new URLSearchParams(), usePathname: () => "/it/admin/payments",

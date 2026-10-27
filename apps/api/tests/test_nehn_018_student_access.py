@@ -1,5 +1,5 @@
-"""nehn-018 -- student feature access by enrolment and payment status (DEC-SCOPE-303; spec
-docs/superpowers/specs/2026-10-27-nehn-018-student-payment-access-design.md, RBAC_MATRIX §2.214): the derived payment state, the
+"""nehn-018 -- student feature access by enrolment and payment status (DEC-SCOPE-304; spec
+docs/superpowers/specs/2026-10-27-nehn-018-student-payment-access-design.md, RBAC_MATRIX §2.215): the derived payment state, the
 admin-editable policy (AC4), `payment_required` on gated routes and the locked portal sections (AC1), unlock on the webhook (AC2) and
 a partially paid student getting exactly the policy (AC3)."""
 

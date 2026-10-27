@@ -10,7 +10,7 @@ import { serverApi } from "@/lib/api";
 import type { NavItem } from "@/lib/navigation";
 import { featureLock, withLocks, type StudentAccess } from "@/lib/studentAccess";
 
-// nehn-018 (DEC-SCOPE-303): a locked student feature shows "Complete payment to unlock" (AC1), the sidebar marks it, and the IT admin
+// nehn-018 (DEC-SCOPE-304): a locked student feature shows "Complete payment to unlock" (AC1), the sidebar marks it, and the IT admin
 // edits the policy (AC4).
 vi.mock("@/lib/api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");

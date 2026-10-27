@@ -437,7 +437,7 @@ StudentPaymentState = Literal["registered", "enrolled_pending_payment", "partial
 
 
 class StudentAccessRulesIn(BaseModel):
-    """nehn-018 (DEC-SCOPE-303): the whole policy -- every feature, each at a known state (a full replacement, never a partial one)."""
+    """nehn-018 (DEC-SCOPE-304): the whole policy -- every feature, each at a known state (a full replacement, never a partial one)."""
 
     model_config = ConfigDict(extra="forbid")
     rules: dict[StudentAccessFeature, StudentPaymentState]

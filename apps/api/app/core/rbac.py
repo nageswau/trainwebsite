@@ -82,7 +82,7 @@ CATALOGUE: dict[str, dict] = {
     "certificates": {"label": "Certificates", "actions": ("view", "issue", "override", "configure", "manage")},
     # nehn-008 (DEC-SCOPE-300): a report's financial columns (fees, payments, discounts, commission), in its JSON and downloads alike.
     "field.financial": {"label": "Financial columns", "actions": ("view",)},
-    # nehn-018 (DEC-SCOPE-303): which student features unlock at which payment state.
+    # nehn-018 (DEC-SCOPE-304): which student features unlock at which payment state.
     "student_access": {"label": "Student access rules", "actions": ("configure",)},
 }
 # The day-one grants, equal to the inline checks they replace (P3): admin.ensure_admin and telecaller_reports' REPORT_ROLES.
@@ -90,7 +90,7 @@ CATALOGUE: dict[str, dict] = {
 _PAYMENT_ADMIN = ("payments.view", "payments.add", "discounts.add")
 _TELECALLER_REPORTS = ("reports.telecaller.view", "reports.telecaller.download")
 DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
-    "it_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure", "student_access.configure"),  # nehn-031 W2 (0204); nehn-018 (0209)
+    "it_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure", "student_access.configure"),  # nehn-031 W2 (0204); nehn-018 (0211)
     "overseas_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,
     "telecaller_manager": _TELECALLER_REPORTS,
     # nehn-030 (0201 seeds view); nehn-031 W3/W4 (0204 seeds issue, override): issuance is the coordinator's alone (DEC-ROLE-003).
