@@ -10248,7 +10248,25 @@ grant hint; without `discounts.add` the form is hidden and the API answers 403. 
 scholarship concept. **Numbering:** no migration; API §12HG; RBAC §2.220.
 - **Feature ID authorized:** `nehn-021`. **Status:** built on `worktree-nehn-021`.
 
-### DEC-SCOPE-312 — Payment discount ledger and complete receipt (`nehn-019`)
+### DEC-SCOPE-312 — Recruiter nearing-completion list, placement report and read-only training progress (`nehn-016`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-016` (§12 L271-276, §5 L104-109, §14 L303/L307; `UNVERIFIED`
+backlog); design `docs/superpowers/specs/2026-10-28-nehn-016-recruiter-training-progress-design.md`. Dependencies nehn-009 (`DEC-SCOPE-303`)
+and nehn-010 (`DEC-SCOPE-305`) are merged; reuses nehn-010's calculator (`app/services/training_progress.py`).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** P1 (**OD-08**) the population is IT students in
+the placement pool only -- opted in (rec-010, `DEC-SCOPE-138`), not archived, active; a student who has not opted in is never shown, so the
+consent stands. P2 expected completion = the batch end date; "completing soon" = a counted seat ending today … today + N IST days, N 15 by
+default (1-365, the new `days` filter). P3 one row per student on their latest counted seat; dropped/withdrawn/pending/rejected seats never
+count; a placed student still appears. P4 progress, attendance %, assignments, assessments and certificate are the training reports'
+figures. P5 readiness = the stored `placement_profiles.readiness_status` ("preparation" when none) and the candidate status -- no new
+readiness rule. P6 no financial column anywhere. R1 two reports on the new resource `reports.placement`: `completing-soon` and
+`placement-students` (applications, interviews, offers, joined); grants seeded for placement_team, placement_manager and it_admin. R2 the
+read-only training panel `GET /recruiter/candidates/{id}/training` for the recruiter roles and super_admin; HR waits for nehn-017. R3 no
+recruiter-dashboard tile change (reached from a "Report library" nav item); no `batches(end_date)` index (small table).
+**Numbering:** migration `0212_placement_report_grants`; API §12HJ; RBAC §2.223.
+- **Feature ID authorized:** `nehn-016`. **Status:** built on `worktree-nehn-016`.
+
+### DEC-SCOPE-315 — Payment discount ledger and complete receipt (`nehn-019`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-019` (§7 "Payment Receipt" L157-166, "Discounts"
 L169-172; `UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-28-nehn-019-discount-ledger-complete-receipt-design.md`.
@@ -10263,5 +10281,5 @@ D7 student name, code, email and phone ("—" when missing); an agent deposit na
 100 % discount is allowed as before; the receipt appears only once the payment is paid. D9 authorization unchanged: another user's
 receipt stays **403** (the backlog's "404" is left `NEEDS_CONFIRMATION`). D10 the discount reason is internal: admin list only, not
 `/payments/mine`. D11 backfill: discount from the `payment.discount` audit rows, `paid_at` from the receipt's `issued_at`.
-**Numbering:** migration `0215_payment_discount_ledger`; API §12HJ; no RBAC change.
+**Numbering:** migration `0215_payment_discount_ledger`; API §12HM; no RBAC change.
 - **Feature ID authorized:** `nehn-019`. **Status:** built on `worktree-nehn-019`.

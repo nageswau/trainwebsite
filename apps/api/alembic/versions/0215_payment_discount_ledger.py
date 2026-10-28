@@ -1,9 +1,9 @@
 """nehn-019 -- payment discount ledger: `payments.discount_amount`, `discount_reason`, `discounted_by_id` and `paid_at`.
 
 Revision ID: 0215_payment_discount_ledger
-Revises: 0211_student_access_rules
+Revises: 0212_placement_report_grants
 
-docs/superpowers/specs/2026-10-28-nehn-019-discount-ledger-complete-receipt-design.md (DEC-SCOPE-312). 0001 builds a fresh database
+docs/superpowers/specs/2026-10-28-nehn-019-discount-ledger-complete-receipt-design.md (DEC-SCOPE-315). 0001 builds a fresh database
 from the current models, which already carry the columns, so each one is added only when missing. Backfill (D12), where derivable:
 the discount from the `payment.discount` audit rows (gross = the largest `original_amount`; reason and actor from the latest row),
 `paid_at` from the payment's receipt. `amount` (the net payable) is never changed. The downgrade drops the four columns.
@@ -14,7 +14,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0215_payment_discount_ledger"
-down_revision = "0211_student_access_rules"
+down_revision = "0212_placement_report_grants"
 branch_labels = None
 depends_on = None
 

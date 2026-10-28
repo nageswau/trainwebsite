@@ -1267,7 +1267,7 @@ async def discount_payment(payment_id: UUID, payload: dict, user: User = Depends
     if not (0 <= new_amount < float(item.amount)):
         raise HTTPException(422, f"Discounted amount must be between 0 and the current amount ({item.amount})")
     original_amount = float(item.amount)
-    # nehn-019 (DEC-SCOPE-312 D2): `amount` stays the net payable; the cumulative discount is recorded beside it, so the gross survives.
+    # nehn-019 (DEC-SCOPE-315 D2): `amount` stays the net payable; the cumulative discount is recorded beside it, so the gross survives.
     item.discount_amount = float(item.discount_amount or 0) + original_amount - new_amount
     item.discount_reason = reason
     item.discounted_by_id = user.id

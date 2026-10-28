@@ -1,5 +1,5 @@
-"""nehn-019 -- payment discount ledger and complete receipt (DEC-SCOPE-312; spec
-docs/superpowers/specs/2026-10-28-nehn-019-discount-ledger-complete-receipt-design.md, API §12HJ): a discount keeps the gross amount
+"""nehn-019 -- payment discount ledger and complete receipt (DEC-SCOPE-315; spec
+docs/superpowers/specs/2026-10-28-nehn-019-discount-ledger-complete-receipt-design.md, API §12HM): a discount keeps the gross amount
 (AC2), `paid_at` is recorded, the receipt shows every listed field (AC1) and "—" for what is unknown (AC3), and `amount` stays net (AC4).
 """
 

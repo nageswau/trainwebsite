@@ -3281,3 +3281,15 @@ The grant is checked first (`require_permission`); the division scope is then sk
 super admin creates. The UI follows: `/management/payments` and its sidebar link (finance tier, `payments.view`) and the Apply discount
 form (`discounts.add`). Pinned by `apps/api/tests/test_nehn_021_discount_authority.py` and
 `apps/web/tests/e2e/nehn-021-discount-authority.spec.ts`.
+
+### 2.223 Recruiter placement reports and training panel *(added 2026-10-28 — `DEC-SCOPE-312`, nehn-016)*
+
+| Route | Anonymous | super_admin | it_admin | placement_team | placement_manager | hr_team | other roles |
+|---|---|---|---|---|---|---|---|
+| `GET /reports/completing-soon`, `/reports/placement-students` (+ `.csv`, `.xlsx`) | 401 | 200 | 200 | 200 | 200 | 403 | 403 |
+| `GET /recruiter/candidates/{id}/training` | 401 | 200 | 403 | 200 | 200 | 403 | 403 |
+
+The reports follow the `reports.placement` grants (view / download; seeded by migration 0212 for placement_team, placement_manager and
+it_admin; super_admin implicit). Every holder reads the same rows -- opted-in, non-archived, active IT students (rec-010 consent); a role
+granted the resource later sees no rows until its own scope rule is written. No financial column; recruiters still have no
+`reports.training` grant. Pinned by `apps/api/tests/test_nehn_016_placement_reports.py` and `test_nehn_016_migration.py`.

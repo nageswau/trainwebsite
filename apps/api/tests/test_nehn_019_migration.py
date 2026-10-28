@@ -1,4 +1,4 @@
-"""nehn-019 -- migration 0215_payment_discount_ledger (DEC-SCOPE-312): the chain, the round trip and the backfill (D12), in a throwaway
+"""nehn-019 -- migration 0215_payment_discount_ledger (DEC-SCOPE-315): the chain, the round trip and the backfill (D12), in a throwaway
 database (the nehn-018 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -16,11 +16,11 @@ _spec = importlib.util.spec_from_file_location("_nehn_019_migration_0215", VERSI
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0215_payment_discount_ledger", "0211_student_access_rules"
+HEAD, BASE = "0215_payment_discount_ledger", "0212_placement_report_grants"
 COLUMNS = {"discount_amount", "discount_reason", "discounted_by_id", "paid_at"}
 
 
-def test_migration_chains_after_0211():
+def test_migration_chains_after_0212():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

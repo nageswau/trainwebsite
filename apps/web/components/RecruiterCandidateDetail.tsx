@@ -7,6 +7,7 @@ import RecruiterCalls from "@/components/RecruiterCalls";
 import RecruiterCandidateApplications from "@/components/RecruiterCandidateApplications";
 import RecruiterCandidateForm from "@/components/RecruiterCandidateForm";
 import RecruiterCandidateJourney from "@/components/RecruiterCandidateJourney";
+import RecruiterCandidateTraining from "@/components/RecruiterCandidateTraining";
 import RecruiterCandidateResumes from "@/components/RecruiterCandidateResumes";
 import RecruiterCandidateSkills from "@/components/RecruiterCandidateSkills";
 import RecruiterMessages from "@/components/RecruiterMessages";
@@ -104,6 +105,8 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
       <RecruiterCandidateSkills key={`skills-${candidate.id}-${archived}-${skillsVersion}`} candidateId={candidate.id} />
       {/* rec-036: lead → IT student → trained → recruiter candidate → placed (read only). */}
       <RecruiterCandidateJourney candidateId={candidate.id} />
+      {/* nehn-016: the student's training progress, read only -- the recruiter roles' (can_edit); HR's access is nehn-017's. */}
+      {candidate.can_edit && <RecruiterCandidateTraining candidateId={candidate.id} />}
       <RecruiterCandidateResumes candidateId={candidate.id} resumes={candidate.resumes} canUpload={canEdit} current={candidate}
         onUploaded={() => void reload()} onApplied={() => { void reload(); setSkillsVersion((n) => n + 1); }} />
       <RecruiterCandidateApplications candidateId={candidate.id} />

@@ -48,7 +48,7 @@ describe("FeePaymentPanel documents (nehn-020)", () => {
   });
 });
 
-// nehn-019 (DEC-SCOPE-312) AC5/AC3: a discounted fee shows original, discount and payable; a paid fee its paid date; the EMI plan its
+// nehn-019 (DEC-SCOPE-315) AC5/AC3: a discounted fee shows original, discount and payable; a paid fee its paid date; the EMI plan its
 // paid amount and balance; rows from before nehn-019 (no ledger fields) render unchanged.
 describe("FeePaymentPanel discount and balance (nehn-019)", () => {
   function serveRows(rows: unknown[], schedules: unknown[] = []) {

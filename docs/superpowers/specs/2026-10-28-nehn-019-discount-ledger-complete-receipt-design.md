@@ -1,7 +1,7 @@
 # nehn-019 — Payment discount ledger and complete receipt (design)
 
 **Source:** `CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` §`nehn-019` (§7 "Payment Receipt" L157-166, "Discounts" L169-172).
-**Decision:** `DEC-SCOPE-312`. **API:** `API_CONTRACT.md` §12HJ. **Migration:** `0215_payment_discount_ledger`.
+**Decision:** `DEC-SCOPE-315`. **API:** `API_CONTRACT.md` §12HM. **Migration:** `0215_payment_discount_ledger`.
 **Dependencies:** nehn-003 (private storage, #345) and nehn-020 (student invoices retired, #357) are merged.
 
 ## Intent
@@ -73,4 +73,4 @@ the AGN-011 paid/receipt tests, `test_nehn_003_private_storage`, `FeePaymentPane
    course/batch, balance, status). Tested through the PDF text (`rl_config.pageCompression=0`).
 5. RED/GREEN: the additive API fields.
 6. RED/GREEN: `FeePaymentPanel` shows the breakdown and the paid date (vitest).
-7. Docs: DEC-SCOPE-312, §12HJ, backlog status, tracker, RTM.
+7. Docs: DEC-SCOPE-315, §12HM, backlog status, tracker, RTM.

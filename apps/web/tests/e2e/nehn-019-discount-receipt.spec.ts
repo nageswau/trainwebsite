@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-// nehn-019 (DEC-SCOPE-312) AC2/AC5: the IT Admin discounts a fee through the "Apply discount" form; the gross survives beside the net
+// nehn-019 (DEC-SCOPE-315) AC2/AC5: the IT Admin discounts a fee through the "Apply discount" form; the gross survives beside the net
 // amount, and the student's fee card shows original, discount and payable, and a paid fee its paid date. Own throwaway student
 // (RAID.md I-06); no Razorpay call -- the paid fee is a manual payment.
 

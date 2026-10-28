@@ -19,7 +19,7 @@ type PaymentRow = {
   is_manual: boolean;
   emi_schedule_id: string | null;
   installment_no: number | null;
-  // nehn-019 (DEC-SCOPE-312): `amount` is the net payable; optional so a response without them renders as before (AC3).
+  // nehn-019 (DEC-SCOPE-315): `amount` is the net payable; optional so a response without them renders as before (AC3).
   gross_amount?: number;
   discount_amount?: number;
   paid_at?: string | null;
@@ -36,7 +36,7 @@ type EmiSchedule = {
   installments: { id: string; installment_no: number; amount: number; discount_amount?: number; due_date: string | null; status: string }[];
 };
 
-// The receipt's payment date is the India calendar day (DEC-SCOPE-312 D3), so the panel shows the same day.
+// The receipt's payment date is the India calendar day (DEC-SCOPE-315 D3), so the panel shows the same day.
 const paidOn = (paidAt: string) => `Paid on ${formatDate(paidAt, false, SCHOOL_TIME_ZONE)}`;
 
 function detailMessage(detail: unknown) {
