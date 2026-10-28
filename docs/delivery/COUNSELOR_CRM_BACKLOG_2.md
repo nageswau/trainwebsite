@@ -376,6 +376,7 @@ change this.
 - **Positive / negative / edge:** university with no applications → zero row or hidden (match existing); withdrawn application visa excluded (`NEEDS_CONFIRMATION` definitions).
 - **Regression risks:** ccrm-034 report tests, export column order consumers.
 - **Complexity:** medium. **Risk:** low.
+- **Status (2026-10-28):** built on `worktree-ccrm-052` (`DEC-SCOPE-321`; API §12HS; no migration; new columns appended to the export).
 
 ### `ccrm-053` — Counselor performance: Overseas Admin view, intake filter, Overseas/IT lead split
 

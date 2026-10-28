@@ -1437,3 +1437,11 @@ half.
 | `ccrm-044-AC3` | Student with neither link nor application counselor → 409 | `::test_student_with_neither_link_nor_application_counselor_gets_409_ac3` |
 | `ccrm-044-AC4` | Counselor cannot message a student outside their caseload (403) | `::test_counselor_cannot_message_a_student_outside_their_caseload_ac4`; e2e AC4 |
 | `ccrm-044-EDGE` | App counselor wins over link; csc-005 reassignment → new counselor; archived hidden from picker; counselor → staff unchanged | `::test_application_counselor_wins_over_the_linked_counselor`, `::test_reassigned_walk_in_reaches_the_new_counselor`, `::test_archived_walk_in_is_hidden_from_the_picker`, `::test_counselor_messaging_other_staff_is_unchanged` |
+| `ccrm-052` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-052` (Q9) → `DEC-SCOPE-321`; `API_CONTRACT.md` §12HS; RBAC §2.181 | D1–D4 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-052-AC1` | 2 visas approved / 1 refused show 2/1 (one bucket per application; withdrawn excluded) | `apps/api/tests/test_ccrm_052_university_report.py::test_visas_are_counted_once_per_application_first_match_wins_ac1` |
+| `ccrm-052-AC2` | Deposits counted once per application (counselor record or agency deposit; refunded excluded) | `::test_deposits_paid_counts_applications_once_ac2` |
+| `ccrm-052-AC3` | Filters apply to the new columns | `::test_filters_narrow_the_new_columns_ac3` |
+| `ccrm-052-AC4` | Export includes the new columns (appended) | `::test_the_export_appends_the_new_columns_ac4`; `test_ccrm_035_exports.py` header pin |
+| `ccrm-052-AC5` | Drill-down rows match the row's count; filters narrow it; paging | `::test_the_drill_down_lists_the_rows_applications_ac5`, `::test_the_drill_down_pages_by_100`; `ccrm-052-university-report.spec.ts` |
+| `ccrm-052-SEC` | Same readers only; 404 / 422; others 403, anonymous 401 | `::test_the_drill_down_refuses_bad_input`, `::test_everyone_else_is_refused_the_drill_down`, `::test_anonymous_is_refused_the_drill_down`; `test_ccrm_041_matrix.py` row |
+| `ccrm-052-UI` | University name links to its applications (filters kept); drill-down table, empty/error states, pager, phone width | `apps/web/tests/components/CrmUniversityApplications.test.tsx`, `ManagementCrmReports.test.tsx` (ccrm-052 case); e2e |

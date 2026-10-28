@@ -4646,3 +4646,17 @@ days on the day the students' agency records were created).
   "This student is not one of your students"; nothing is stored. Every other sender/recipient pair is unchanged.
 - Counselor Chat's student picker reads `GET /lookups/overseas-students` (counselor: caseload, archived excluded; ENH-031 shape) instead
   of the counselor's applications.
+## 12HS. University-wise report: deposits, visas and drill-down (ccrm-052) — addendum, 2026-10-28
+
+`DEC-SCOPE-321`. No migration; authorization unchanged (`partner`, `super_admin`, `overseas_admin`; others **403**; anonymous **401**).
+
+- `GET /management/crm-reports` — `universities.rows[]` and `universities.total` add `deposits_paid`, `visas_approved`,
+  `visas_refused`, `visas_pending` (integers; definitions added). Existing keys unchanged.
+- `GET /management/crm-reports/export?report=universities` — the four columns are appended ("Deposits paid", "Visas approved", "Visas
+  refused", "Visas pending"); the earlier column order is unchanged.
+- `GET /management/crm-reports/universities/{university_id}/applications` — new. The report's query params (`date_from`, `date_to`,
+  `counselor`, `country`, `university`, `course`, `intake`, same validation and **422**s) plus `page` (1–10000, default 1). Returns
+  `{university: {id, label}, items[], total, page, page_size: 100}`; `total` equals the university's row `applications` for the same
+  filters. Each item: `application_id`, `application_code`, `student_name`, `course` (title or null), `intake`, `stage`, `stage_label`,
+  `counselor` (name or null), `deposit_paid` (bool), `visa` (`approved | refused | pending | null`). Newest first. Unknown university
+  **404**. Read-only, not audited (as the report read).
