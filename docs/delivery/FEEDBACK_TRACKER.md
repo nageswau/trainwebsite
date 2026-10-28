@@ -72,7 +72,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-013 | Internal CRM | CRM reports: lost, conversion rate, counselor-wise, date-wise, pending follow-ups (DEC-SCOPE-301) | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Conversion-rate definition |
 | nehn-014 | Internal CRM | Lead notes and counselor lead actions — delivered by counselor CRM items ccrm-002 and ccrm-003 | Enhancement | Superseded | Dev | — | — |
 | nehn-015 | Internal CRM | Internal CRM workflow reconciliation | Enhancement | Waiting — client input | Dev + Client | Wave 4 | Internal CRM workflow document (CI-01); readiness matrix ready (`NEHN_015_CRM_DELTA_MATRIX.md`) |
-| nehn-016 | Placement | Nearing-completion list; recruiter read-only training progress | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | Recruiters see opted-in students only, or all? (OD-08); needs nehn-010 |
+| nehn-016 | Placement | Nearing-completion list; recruiter read-only training progress | Enhancement | Done — confirm defaults | Dev + Client | Wave 3 | Built for opted-in students only (OD-08, DEC-SCOPE-309); 15-day default window; readiness = the stored placement status |
 | nehn-017 | HR | HR access to permitted progress, attendance and documents; HR reports | Enhancement | Waiting — dependency | Dev + Client | Wave 3 | HR population and document types (OD-09); needs nehn-008 and nehn-010 |
 | nehn-018 | Student portal | Student feature access by enrolment and payment status | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Confirm the unlock rules: every feature opens at the first payment, editable by the IT admin (OD-06, DEC-SCOPE-304) |
 | nehn-019 | Payments | Discount ledger and complete receipt | Enhancement | Ready to start | Dev + Client | Wave 3 | Are receipts fixed once issued? |
@@ -154,7 +154,7 @@ These items are built. Where a question was open, we used the recommended answer
 | OD-05 | Coordinator account model and duties; who may override certificate eligibility | nehn-030, 031 | Open |
 | OD-06 | Which student features unlock at which payment status | nehn-018 | Default built — confirm (DEC-SCOPE-304) |
 | OD-07 | Keyword scoring rule for descriptive answers | nehn-026 | Open |
-| OD-08 | Recruiter population: opted-in students only, or all? | nehn-016 | Open |
+| OD-08 | Recruiter population: opted-in students only, or all? | nehn-016 | Recommended answer in place: opted-in students only (rec-010 consent) — please confirm |
 | OD-09 | HR population and allowed document types | nehn-017 | Open |
 | OD-10 | Mapping of the client's 10 overseas stages onto the portal's stages | nehn-033 | Open |
 | OD-11 | Is a GST/tax invoice legally required? | nehn-020 | Open |

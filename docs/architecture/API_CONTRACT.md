@@ -4520,3 +4520,25 @@ days on the day the students' agency records were created).
   except `pending_consent`/`rejected`. The numbers equal `GET /workflows/it/certificates/eligibility/{enrollment_id}`; no fee amount.
 - `GET /portal/it/trainer/student-progress` — now header-only (no rows); subtitle "Attendance, assignments, assessments, progress and
   certificate eligibility for each student in your batches."
+
+## 12HG. Recruiter placement reports and training panel (nehn-016) — addendum, 2026-10-28
+
+`DEC-SCOPE-309`. Migration `0212_placement_report_grants` (seed only).
+
+- Report library (§12HA) — two reports on the new resource `reports.placement` (view, download), read through the existing
+  `GET /reports`, `GET /reports/{id}`, `GET /reports/{id}.csv|.xlsx` (throttle, 10,000-row cap and the `report.export` audit row as
+  nehn-009). Rows are IT students in the placement pool only (opted in, not archived, active), one row per student on their latest
+  counted seat:
+  - `completing-soon` — columns `student_code, student, phone, email, course, batch, trainer, batch_ends, days_left, progress,
+    attendance_pct, readiness, candidate_status`; filters `days` (1-365, default 15: batch ends today … today + days, IST), `course_id`,
+    `batch_id`, `trainer_id`, `student`; by batch end, then name.
+  - `placement-students` — columns `student_code, student, email, course, batch_ends, progress, readiness, candidate_status,
+    applications, interviews, offers, joined`; filters `course_id`, `batch_id`, `student`; by name.
+  No column is financial; an unknown parameter (e.g. `include=fees`) is **422**. `days` joins the registry's standard filters
+  ("Completing within (days)"; outside 1-365 or not a whole number → **422**).
+- `GET /recruiter/candidates/{id}/training` (new) — placement_team, placement_manager, super_admin. **403** any other role (hr_team
+  included), **404** a candidate outside the pool or unknown, **422** a malformed id. Response `{student: bool, seats: [{course, batch,
+  trainer, starts, ends, status, progress, attendance_pct, attendance_marked, assignments_graded, assignments_total, assessments_passed,
+  assessments_total, certificate}], readiness: {readiness_status, resume_status, mock_interview_status, aptitude_status, available} |
+  null}`; seats latest end first, `pending_consent`/`rejected` left out; an external candidate → `{student: false, seats: [],
+  readiness: null}`. `Cache-Control: no-store`. The figures are the training reports' (`training_progress`). Read only, no write route.

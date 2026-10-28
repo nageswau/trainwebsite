@@ -75,7 +75,7 @@ def test_the_training_reports_resource_is_in_the_catalogue_and_seeded_to_it_admi
 def test_the_pilot_is_registered_with_every_standard_filter_but_recruiter():
     report = registry.REPORTS["enrollments"]
     assert report.resource == "reports.training"
-    assert set(report.filters) == set(registry.STANDARD) - {"recruiter_id"}
+    assert set(report.filters) == set(registry.STANDARD) - {"recruiter_id", "days"}  # nehn-016's `days` is the completing-soon window
 
 
 def test_register_refuses_a_duplicate_an_unknown_filter_or_an_unknown_resource():
@@ -100,7 +100,7 @@ async def test_the_catalogue_lists_the_report_for_a_role_holding_view(client, db
 
 
 async def test_the_catalogue_is_empty_for_a_role_without_the_grant(client, db_session):
-    await _as(client, db_session, "placement_team")
+    await _as(client, db_session, "hr_team")  # placement_team holds nehn-016's reports.placement
     response = await client.get(API)
     assert response.status_code == 200 and response.json() == {"items": []}
 

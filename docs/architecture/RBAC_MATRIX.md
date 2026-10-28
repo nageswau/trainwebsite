@@ -3259,3 +3259,15 @@ Pinned by `apps/api/tests/test_nehn_038_agent_kpis.py` and `apps/web/tests/e2e/n
 
 Read-only; the same `_require({"trainer", "it_admin"}, "it")` rule as the other trainer routes plus the `Batch.trainer_id` check. A
 trainer gets `fee_clear`, never the pending amount. Pinned by `apps/api/tests/test_nehn_028_batch_progress.py`.
+
+### 2.220 Recruiter placement reports and training panel *(added 2026-10-28 — `DEC-SCOPE-309`, nehn-016)*
+
+| Route | Anonymous | super_admin | it_admin | placement_team | placement_manager | hr_team | other roles |
+|---|---|---|---|---|---|---|---|
+| `GET /reports/completing-soon`, `/reports/placement-students` (+ `.csv`, `.xlsx`) | 401 | 200 | 200 | 200 | 200 | 403 | 403 |
+| `GET /recruiter/candidates/{id}/training` | 401 | 200 | 403 | 200 | 200 | 403 | 403 |
+
+The reports follow the `reports.placement` grants (view / download; seeded by migration 0212 for placement_team, placement_manager and
+it_admin; super_admin implicit). Every holder reads the same rows -- opted-in, non-archived, active IT students (rec-010 consent); a role
+granted the resource later sees no rows until its own scope rule is written. No financial column; recruiters still have no
+`reports.training` grant. Pinned by `apps/api/tests/test_nehn_016_placement_reports.py` and `test_nehn_016_migration.py`.
