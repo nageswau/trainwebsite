@@ -300,6 +300,8 @@ change this.
 - **Positive / negative / edge:** pending (unpaid) payment — allowed (proof of offline transfer) by default; deleted document → proof null.
 - **Regression risks:** payments/receipts tests, ccrm-039 finance, mgmt revenue reports (no read change).
 - **Complexity:** medium. **Risk:** high (money + migration).
+- **Status (2026-10-28):** built on `worktree-ccrm-049` (`DEC-SCOPE-326`; API §12HX; RBAC §2.229; migration `0216_payment_proof_documents`;
+  counselor outside the caseload 404, not 403 — `NEEDS_CONFIRMATION`).
 
 ### `ccrm-050` — Agent-Master commission on the Add/Edit University form
 

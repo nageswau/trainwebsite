@@ -120,6 +120,8 @@ MATRIX = [
     R("get", "/counselor/students/{student}/finance", cns=200, ovs_admin=200, **STUDENT),
     # ccrm-045 counselor document upload (§2.224)
     R("post", "/counselor/students/{student}/documents", {"document_type": "Passport"}, form=True, cns=201, ovs_admin=201, **STUDENT),
+    # ccrm-049 payment proof from the Finance tab (§2.229)
+    R("post", "/counselor/students/{student}/payments/{payment}/proof", form=True, cns=201, ovs_admin=201, **STUDENT),
     # ccrm-020 document requests (§2.180)
     R("get", "/counselor/students/{student}/document-requests", cns=200, ovs_admin=200, **STUDENT),
     R("post", "/counselor/students/{student}/document-requests", lambda w: {"due_date": day(5), "document_type": "CV"}, cns=201, ovs_admin=201, **STUDENT),

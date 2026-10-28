@@ -136,7 +136,7 @@ async function panel(tab: StudentTab, id: string, overview: StudentOverview, por
       );
     }
     case "finance":
-      return load<StudentFinance>(student360Url(id, "finance"), (data) => <OverseasStudentFinance finance={data} />);
+      return load<StudentFinance>(student360Url(id, "finance"), (data) => <OverseasStudentFinance studentId={id} finance={data} />);
     case "activities":
       return (
         <>

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import DepositReceiptUpload from "@/components/DepositReceiptUpload";
 import LocalTime from "@/components/LocalTime";
+import ReceiptUpload from "@/components/ReceiptUpload";
 import StudentDocumentDownload from "@/components/StudentDocumentDownload";
 import { money } from "@/lib/applicationOffers";
 import { formatCalendarDate } from "@/lib/formatDate";
@@ -28,7 +28,7 @@ function Row({ title, status, label, children }: { title: ReactNode; status: str
   );
 }
 
-function Payment({ p }: { p: StudentPayment }) {
+function Payment({ p, studentId }: { p: StudentPayment; studentId: string }) {
   return (
     <Row title={<strong>{p.description}</strong>} status={p.status} label={p.status_label}>
       <p>{money(p.currency, p.amount)}</p>
@@ -41,8 +41,21 @@ function Payment({ p }: { p: StudentPayment }) {
       {p.can_download && (p.invoice_no || p.receipt_no) && (
         <p style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {p.invoice_no && <StudentDocumentDownload id={p.id} name={`invoice ${p.invoice_no}`} url={paymentFile(p.id, "invoice")} text="Invoice" />}
-          {p.receipt_no && <StudentDocumentDownload id={p.id} name={`receipt ${p.receipt_no}`} url={paymentFile(p.id, "receipt")} text="Receipt" />}
+          {p.receipt_no && <StudentDocumentDownload id={p.id} name={`receipt ${p.receipt_no}`} url={paymentFile(p.id, "receipt")} text="System receipt" />}
         </p>
+      )}
+      {p.proof && (
+        <p className="muted">
+          Uploaded proof: {p.proof.name} {p.proof.can_download && <StudentDocumentDownload id={p.proof.id} name={p.proof.name} />}
+        </p>
+      )}
+      {p.can_upload_proof && (
+        <ReceiptUpload
+          url={`/api/v1/counselor/students/${encodeURIComponent(studentId)}/payments/${encodeURIComponent(p.id)}/proof`}
+          kind="Payment receipt"
+          subject={p.description}
+          replacing={p.proof !== null}
+        />
       )}
     </Row>
   );
@@ -73,26 +86,35 @@ function Deposit({ d }: { d: StudentDeposit }) {
           Receipt: {d.receipt.name} {d.receipt.can_download && <StudentDocumentDownload id={d.receipt.id} name={d.receipt.name} />}
         </p>
       )}
-      {d.can_upload && <DepositReceiptUpload applicationId={d.application_id} university={d.university} replacing={d.receipt !== null} />}
+      {d.can_upload && (
+        <ReceiptUpload
+          url={`/api/v1/workflows/overseas/applications/${encodeURIComponent(d.application_id)}/deposit/receipt`}
+          kind="Deposit receipt"
+          subject={d.university}
+          replacing={d.receipt !== null}
+        />
+      )}
     </Row>
   );
 }
 
 /** ccrm-039 (DEC-SCOPE-275): the student 360's finance tab -- read-only (F1). Fees and payments are recorded by the Overseas Admin,
  *  a deposit on its application. A download is offered only where its own route allows the reader (F5).
- *  ccrm-048 (DEC-SCOPE-322): the one write -- a counselor-recorded deposit's receipt, where `can_upload` says the reader may. */
-export default function OverseasStudentFinance({ finance }: { finance: StudentFinance }) {
+ *  ccrm-048 (DEC-SCOPE-322): a counselor-recorded deposit's receipt, where `can_upload` says the reader may.
+ *  ccrm-049 (DEC-SCOPE-326): a manual payment's receipt / proof, where `can_upload_proof` says so -- apart from the system receipt. */
+export default function OverseasStudentFinance({ studentId, finance }: { studentId: string; finance: StudentFinance }) {
   return (
     <>
       <p className="muted">
-        Fees are recorded by the Overseas Admin; a university deposit is recorded on its application, and a deposit&apos;s receipt can be uploaded here.
+        Fees are recorded by the Overseas Admin; a university deposit is recorded on its application, and a deposit&apos;s receipt can be uploaded
+        here, as can a manual payment&apos;s proof.
       </p>
       <section className="card" aria-labelledby="fin-payments">
         <h2 id="fin-payments">Fees and payments</h2>
         {finance.payments.length === 0 ? (
           <Empty>No fees or payments recorded for this student.</Empty>
         ) : (
-          <ul className="s360-list">{finance.payments.map((p) => <Payment key={p.id} p={p} />)}</ul>
+          <ul className="s360-list">{finance.payments.map((p) => <Payment key={p.id} p={p} studentId={studentId} />)}</ul>
         )}
       </section>
       <section className="card" aria-labelledby="fin-deposits">

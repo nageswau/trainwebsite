@@ -3335,3 +3335,13 @@ Applications tab shows "Add application" to the counselor only (not for an archi
 | `GET /overseas-admin/counselor-performance/{id}` | 401 | 403 | 403 | 200 (404 if not an overseas counselor) | 200 (same) | 403 |
 
 Read-only; the export is audited. Pinned by `apps/api/tests/test_ccrm_053_counselor_performance.py` and the ccrm-041 matrix rows.
+
+### 2.229 Payment receipt / proof upload on the student 360's Finance tab *(added 2026-10-28 — `DEC-SCOPE-326`, ccrm-049)*
+
+| Route | Anonymous | overseas counselor (student in caseload) | overseas counselor (outside caseload) | overseas_admin | super_admin, IT counselor, agent, overseas_student, other roles |
+|---|---|---|---|---|---|
+| `POST /counselor/students/{id}/payments/{pid}/proof` | 401 | 201 | 404 | 201 | 403 |
+
+The 360's gate (§2.168, `student_profiles.staff_student`: csc-001 caseload or the Overseas Admin; another student is a 404, never a 403),
+then the payment must be the student's (404) and manual (409), the student not archived (409). The Finance tab offers the control only
+where `can_upload_proof` is true. Pinned by `apps/api/tests/test_ccrm_049_payment_proof.py` and the ccrm-041 matrix row.

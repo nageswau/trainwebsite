@@ -8,26 +8,33 @@ API §12FF; RBAC §2.168.
 ccrm-040 (DEC-SCOPE-276) -- archive instead of delete: the student's counselor or the Overseas Admin archives, the Admin restores, both
 list archived students. API §12GC; RBAC §2.190.
 ccrm-045 (DEC-SCOPE-318) -- the 360's Documents tab uploads a document for the student, with or without an application. API §12HP;
-RBAC §2.224."""
+RBAC §2.224.
+ccrm-049 (DEC-SCOPE-326) -- the 360's Finance tab uploads a receipt / proof for one of the student's manual payments. API §12HX;
+RBAC §2.229."""
 
 import logging
+from collections.abc import Awaitable, Callable
 from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.agent_documents import APPLICATION_MISMATCH, OFFER_LETTER_NEEDS_APPLICATION
 from app.api.deps import get_current_user
 from app.api.workflows import _audit
 from app.core.database import get_db
-from app.models import OverseasApplication, StudentDocument, User
+from app.models import OverseasApplication, Payment, StudentDocument, User
 from app.schemas import AgentUploadDocumentType, CounselorStudentCreate, CounselorStudentUpdate, OverseasApplicationCounselorAssign, StudentArchiveCreate, StudentNoteCreate
+from app.services import agent_deposits, counselor_student_360, counselor_students, student_archive, student_notes, student_profiles
 from app.services import agent_documents as documents
 from app.services import application_outcomes as outcomes
-from app.services import counselor_student_360, counselor_students, student_archive, student_notes, student_profiles
 
 APPLICATION_NOT_YOURS = "Choose one of your own applications for this student"
+PAYMENT_NOT_FOUND = "Payment not found"
+ONLINE_PAYMENT = "An online payment already has its system receipt"
+PAYMENT_RECEIPT = "Payment receipt"  # ccrm-049: the document type of an uploaded payment proof
 
 logger = logging.getLogger("app.counselor_students")
 router = APIRouter(prefix="/counselor/students", tags=["counselor-students"])
@@ -158,6 +165,22 @@ async def upload_student_document(
         if user.role == "counselor" and application.counselor_id != user.id:  # the Overseas Admin any of the student's
             raise HTTPException(403, APPLICATION_NOT_YOURS)
         outcomes.refuse_closed(application)
+    item = await _store(db, user, student, file, document_type, label, application_id)
+    logger.info("counselor_document_uploaded", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "document_id": str(item.id), "document_type": document_type}})
+    return {
+        "document": {
+            "id": item.id, "name": label or item.original_filename or document_type, "document_type": document_type, "application_id": application_id,
+            "status": item.verification_status,
+        }
+    }  # fmt: skip
+
+
+async def _store(
+    db: AsyncSession, user: User, student: User, file: UploadFile, document_type: str, label: str | None, application_id: UUID | None = None,
+    attach: Callable[[StudentDocument], Awaitable[None]] | None = None,
+) -> StudentDocument:  # fmt: skip
+    """Store the file as a pending document of the student (AGN-009 G7/G8: sniffed type, 20 MB, server key). `attach(document)`, when
+    given, makes its further writes in the same transaction (ccrm-049); if anything fails nothing is written and the stored object goes too."""
     data, content_type, filename = await documents.read_upload(file)
     key = documents.store(data, content_type)
     try:
@@ -177,18 +200,40 @@ async def upload_student_document(
         await db.flush()
         documents.add_event(db, event="uploaded", actor=user, document=item, to_status="pending")
         await _audit(db, user, "document.upload", "student_document", item.id, {"document_type": document_type, "application_id": str(application_id) if application_id else None})
+        if attach is not None:
+            await attach(item)
         await db.commit()
     except Exception:  # nothing was written: the stored object goes too
         await db.rollback()
         documents.discard(key)
         raise
-    logger.info("counselor_document_uploaded", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "document_id": str(item.id), "document_type": document_type}})
-    return {
-        "document": {
-            "id": item.id, "name": label or filename or document_type, "document_type": document_type, "application_id": application_id,
-            "status": item.verification_status,
-        }
-    }  # fmt: skip
+    return item
+
+
+@router.post("/{student_id}/payments/{payment_id}/proof", status_code=201)
+async def upload_payment_proof(student_id: UUID, payment_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-049 (DEC-SCOPE-326): the Finance tab's "Upload / Replace receipt" on a payment -- a "Payment receipt" document of the student
+    linked as the payment's proof in one transaction. The 360's gate, then the archive, the payment (the student's, not an agency deposit:
+    404) and a manual one (a gateway payment has its system receipt: 409), all before the file is read. The payment row is locked so two
+    replaces serialise; its amount and status never move. A replaced proof stays one of the student's documents."""
+    student = await student_profiles.staff_student(db, user, student_id)
+    if await student_archive.is_archived(db, student.id):
+        raise HTTPException(409, student_archive.NO_NEW_APPLICATION)
+    stmt = select(Payment).where(Payment.id == payment_id, Payment.user_id == student.id, Payment.reference_type != agent_deposits.REFERENCE_TYPE)
+    payment = await db.scalar(stmt.with_for_update())
+    if payment is None:
+        raise HTTPException(404, PAYMENT_NOT_FOUND)
+    if payment.provider != "manual":
+        raise HTTPException(409, ONLINE_PAYMENT)
+    replaced = payment.proof_document_id is not None
+
+    async def attach(document: StudentDocument) -> None:
+        payment.proof_document_id = document.id
+        await _audit(db, user, "payment.proof_attached", "payment", payment.id, {"replaced": replaced, "document_id": str(document.id), "student_id": str(student.id)})
+
+    document = await _store(db, user, student, file, PAYMENT_RECEIPT, counselor_student_360.payment_description(payment), attach=attach)
+    logger.info("payment_proof_attached", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "payment_id": str(payment.id), "replaced": replaced}})
+    return {"payment": await counselor_student_360.payment_view(db, user, payment, document)}
 
 
 # ccrm-039 (DEC-SCOPE-275): the finance tab -- read-only, the same gate.

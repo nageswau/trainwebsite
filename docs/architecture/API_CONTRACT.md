@@ -4718,3 +4718,22 @@ days on the day the students' agency records were created).
 - `GET /overseas-admin/counselor-performance/{counselor_id}` — new. The `GET /counselor/performance` body for that counselor with the same
   filters, `counselor: {id, full_name, active}` set. Not an overseas counselor **404**.
 - Admin routes: `overseas_admin`, `super_admin`; others **403**; anonymous **401**.
+
+## 12HX. Payment receipt / proof upload on the student 360's Finance tab (ccrm-049) — addendum, 2026-10-28
+
+`DEC-SCOPE-326`. Migration `0216_payment_proof_documents` (`payments.proof_document_id`, nullable FK → `student_documents.id`,
+`ON DELETE SET NULL`).
+
+- `POST /counselor/students/{student_id}/payments/{payment_id}/proof` — **new**, `multipart/form-data`: `file` (PDF/JPEG/PNG sniffed from
+  the bytes, at most 20 MB, server-generated storage key — the AGN-009 upload rules). Stores a pending "Payment receipt" document of the
+  student (no application; label = the payment's description) and sets the payment's `proof_document_id` in one transaction, the payment
+  row locked; amount and status never change; a replaced proof stays one of the student's documents. **201**
+  `{"payment": <the finance tab's payment row>}`. Errors: **401**; **403** another role; **404** unknown student or a counselor outside
+  the caseload (the 360's gate), a payment that is not this student's or is an AGN-011 agency deposit ("Payment not found"); **409**
+  archived student, a gateway (non-manual) payment ("An online payment already has its system receipt"); **422** empty file; **413** too
+  large; **415** not a PDF/JPEG/PNG. Writes the `document.upload` and `payment.proof_attached` (`replaced`, `document_id`, `student_id`)
+  audit rows. The stored file is discarded if the transaction fails.
+- `GET /counselor/students/{student_id}/finance` — each payment gains (additive) `proof` (`{id, name, can_download}` or `null`) and
+  `can_upload_proof` (`true` for a manual payment of a non-archived student). The system `Receipt` (`receipt_no`) is unchanged.
+- `GET /portal/overseas/student/payments` — a new column `proof` ("Uploaded proof"): the proof's name and "download from Documents", or
+  empty; never a file key. The file is downloaded from the student's Documents.
