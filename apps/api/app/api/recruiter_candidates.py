@@ -14,6 +14,7 @@ from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, Respon
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.agent_reports import NO_STORE
 from app.api.bdm import LIMIT, OFFSET, SEARCH
 from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
@@ -37,6 +38,7 @@ from app.schemas import (
 from app.services import candidate_search, candidate_skills, course_skills
 from app.services import candidates as svc
 from app.services import resume_extraction as extraction
+from app.services.reports import placement as placement_reports
 from app.services.telecaller import _parse
 
 router = APIRouter(prefix="/recruiter/candidates", tags=["recruiter-candidates"])
@@ -133,6 +135,16 @@ async def get_journey(candidate_id: UUID, user: User = Depends(get_current_user)
     """rec-036 (CI7): lead → IT student → trained → recruiter candidate → placed, read only. Outside the pool is a 404 (R4)."""
     svc.require_reader(user)
     return await course_skills.journey(db, await svc.load(db, candidate_id))
+
+
+@router.get("/{candidate_id}/training")
+async def get_training(candidate_id: UUID, response: Response, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """nehn-016 (DEC-SCOPE-312): the student's training progress, read only -- recruiters, placement managers and super_admin (HR's
+    access is nehn-017's). Outside the pool is a 404 (R4); an external candidate has no training."""
+    if user.role not in svc.WRITERS:
+        raise HTTPException(403, "Your role cannot view training progress")
+    response.headers.update(NO_STORE)
+    return await placement_reports.candidate_training(db, await svc.load(db, candidate_id))
 
 
 @router.patch("/{candidate_id}", response_model=CandidateDetail)

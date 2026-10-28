@@ -87,6 +87,8 @@ ROWS = [
     R("post", "/recruiter/candidates/search", {"all": ["Java"]}, **allow(200, *READERS)),
     # rec-036 the candidate journey (§2.105)
     R("get", "/recruiter/candidates/{candidate}/journey", **allow(200, *READERS)),
+    # nehn-016 the candidate's training progress, read only (§2.223): the writers, never hr_team (nehn-017)
+    R("get", "/recruiter/candidates/{candidate}/training", **allow(200, *WRITERS)),
     # rec-011 candidate skills (§2.63): the master's roles
     R("get", "/recruiter/candidates/{candidates_cv}/skills", **allow(200, *READERS)),
     R("post", "/recruiter/candidates/{candidates_cv}/skills", {"skill": "MySQL", "level": "advanced"}, **allow(201, *WRITERS)),
