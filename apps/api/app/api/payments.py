@@ -4,18 +4,19 @@ import json
 import secrets
 from datetime import UTC, date, datetime
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
-from app.models import ApplicationDeposit, AuditLog, EMISchedule, Invoice, Payment, PaymentWebhookEvent, Receipt, User
+from app.models import ApplicationDeposit, AuditLog, Batch, EMISchedule, Enrollment, Invoice, Payment, PaymentWebhookEvent, Program, Receipt, User
 from app.services import agent_deposits
-from app.services.billing_documents import generate_invoice_pdf, generate_receipt_pdf
+from app.services.billing_documents import generate_invoice_pdf, generate_receipt_pdf, receipt_lines
 from app.services.payment import payments
 from app.services.storage import storage
 
@@ -24,6 +25,8 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 ADMIN_ROLES = {"super_admin", "it_admin", "overseas_admin"}
 STUDENT_ROLES = {"it_student", "overseas_student"}
 PAID_STATUSES = {"paid", "succeeded"}
+ENROLMENT_FEE_TYPES = ("enrollment_fee", "enrollment")
+IST = ZoneInfo("Asia/Kolkata")
 
 
 async def _ensure_invoice(db: AsyncSession, item: Payment, payer: User) -> Invoice:
@@ -49,14 +52,46 @@ async def _ensure_receipt(db: AsyncSession, item: Payment, payer: User) -> Recei
     if existing:
         return existing
     receipt_no = f"RCPT-{date.today():%Y}-{secrets.token_hex(4).upper()}"
-    student = await agent_deposits.receipt_student(db, item)  # AGN-011 AC5: None for every other payment, so their receipt is unchanged
-    file_url = generate_receipt_pdf(
-        receipt_no=receipt_no, payer_name=payer.full_name, amount=float(item.amount), currency=item.currency, issued_on=date.today(), reference_type=item.reference_type, student_name=student
-    )
+    file_url = generate_receipt_pdf(receipt_no=receipt_no, issued_on=date.today(), lines=await _receipt_lines(db, item, payer, receipt_no))
     receipt = Receipt(payment_id=item.id, user_id=item.user_id, division=item.division, receipt_no=receipt_no, amount=item.amount, currency=item.currency, file_url=file_url)
     db.add(receipt)
     await db.flush()
     return receipt
+
+
+async def _receipt_lines(db: AsyncSession, item: Payment, payer: User, receipt_no: str) -> list[tuple[str, str]]:
+    """nehn-019 (D5-D8): the receipt's context. An agent deposit is billed to the agent and names its student (AGN-011 AC5), so the
+    student contact lines are the payer's only for every other payment. Course/batch come from an enrolment fee's enrolment; the
+    balance is what is still unpaid on the payment's EMI plan (0 for a single payment once it is paid)."""
+    deposit_student = await agent_deposits.receipt_student(db, item)
+    student = None if deposit_student else payer
+    course = batch = None
+    if item.reference_type in ENROLMENT_FEE_TYPES and item.reference_id:
+        row = (
+            await db.execute(select(Program.title, Batch.name).join(Batch, Batch.program_id == Program.id).join(Enrollment, Enrollment.batch_id == Batch.id).where(Enrollment.id == item.reference_id))
+        ).first()
+        course, batch = row if row else (None, None)
+    balance = 0.0
+    if item.emi_schedule_id:
+        balance = float(await db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.emi_schedule_id == item.emi_schedule_id, Payment.status.not_in(PAID_STATUSES))) or 0)
+    return receipt_lines(
+        receipt_no=receipt_no,
+        payment_date=item.paid_at.astimezone(IST).date() if item.paid_at else None,
+        payer_name=payer.full_name,
+        currency=item.currency,
+        gross=item.gross_amount,
+        discount=float(item.discount_amount or 0),
+        paid=float(item.amount),
+        balance=balance,
+        status="Partially paid" if balance > 0 else "Paid",
+        reference_type=item.reference_type,
+        student_name=deposit_student or payer.full_name,
+        student_code=student.student_code if student else None,
+        email=student.email if student else None,
+        phone=student.phone if student else None,
+        course=course,
+        batch=batch,
+    )
 
 
 async def _lock_for_update(db: AsyncSession, item: Payment) -> Payment:
@@ -71,6 +106,7 @@ async def _mark_paid(db: AsyncSession, item: Payment, payer: User, *, source: st
     """The one move into `paid` (D2): the caller has checked the payment is not paid yet, under `_lock_for_update`. An agent deposit's
     payment then pays its deposit (AC2) -- `provider_amount` (paise, from the webhook) is cross-checked against the stored amount."""
     item.status = "paid"
+    item.paid_at = datetime.now(UTC)
     await _ensure_receipt(db, item, payer)
     if item.reference_type == agent_deposits.REFERENCE_TYPE:
         await agent_deposits.on_payment_paid(db, item, source=source, provider_amount=provider_amount)
@@ -91,6 +127,9 @@ async def mine(user: User = Depends(get_current_user), db: AsyncSession = Depend
             "id": x.id,
             "division": x.division,
             "amount": float(x.amount),
+            "gross_amount": x.gross_amount,
+            "discount_amount": float(x.discount_amount or 0),
+            "paid_at": x.paid_at,
             "currency": x.currency,
             "provider": x.provider,
             "status": x.status,
@@ -125,8 +164,19 @@ async def emi_schedule(user: User = Depends(get_current_user), db: AsyncSession 
             "total_amount": float(s.total_amount),
             "currency": s.currency,
             "installment_count": s.installment_count,
+            # nehn-019: net figures (what the instalments now ask for, after any discount)
+            "paid_amount": sum(float(p.amount) for p in by_schedule.get(s.id, []) if p.status in PAID_STATUSES),
+            "balance": sum(float(p.amount) for p in by_schedule.get(s.id, []) if p.status not in PAID_STATUSES),
             "installments": [
-                {"id": p.id, "installment_no": p.installment_no, "amount": float(p.amount), "due_date": p.due_date, "status": p.status}
+                {
+                    "id": p.id,
+                    "installment_no": p.installment_no,
+                    "amount": float(p.amount),
+                    "discount_amount": float(p.discount_amount or 0),
+                    "due_date": p.due_date,
+                    "status": p.status,
+                    "paid_at": p.paid_at,
+                }
                 for p in by_schedule.get(s.id, [])
             ],
         }

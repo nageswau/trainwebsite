@@ -10215,3 +10215,21 @@ worded server-side from the same criteria. V9 the certificate rule is one helper
 (one seat, `training_progress.seat`) and by this view (every seat, `training_progress.seats` over the same SQL builders).
 **Numbering:** no migration; API §12HF; RBAC §2.219.
 - **Feature ID authorized:** `nehn-028`. **Status:** built on `worktree-nehn-028`.
+
+### DEC-SCOPE-312 — Payment discount ledger and complete receipt (`nehn-019`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-019` (§7 "Payment Receipt" L157-166, "Discounts"
+L169-172; `UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-28-nehn-019-discount-ledger-complete-receipt-design.md`.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** D1 `payments.amount` stays the net payable
+(Razorpay, `pending_fee`, ledger and revenue unchanged); the discount is stored beside it (`discount_amount`, `discount_reason`,
+`discounted_by_id`) and the gross is derived (`amount + discount_amount`) rather than a stored `gross_amount`. D2 repeat discounts are
+cumulative; reason and actor are the latest; a reason is at most 500 characters (**422**). D3 `paid_at` is set by verify/webhook
+(`_mark_paid`) and by an admin-recorded paid payment; the receipt's payment date is its India calendar day. D4 **receipts are
+immutable once issued** -- never regenerated; older receipts keep the old layout. D5 balance = the unpaid net amounts of the payment's
+EMI plan (0 for a single paid payment); status "Paid" or "Partially paid". D6 course/batch from an enrolment fee's enrolment, else "—".
+D7 student name, code, email and phone ("—" when missing); an agent deposit names its student and shows no contact details. D8 a
+100 % discount is allowed as before; the receipt appears only once the payment is paid. D9 authorization unchanged: another user's
+receipt stays **403** (the backlog's "404" is left `NEEDS_CONFIRMATION`). D10 the discount reason is internal: admin list only, not
+`/payments/mine`. D11 backfill: discount from the `payment.discount` audit rows, `paid_at` from the receipt's `issued_at`.
+**Numbering:** migration `0215_payment_discount_ledger`; API §12HJ; no RBAC change.
+- **Feature ID authorized:** `nehn-019`. **Status:** built on `worktree-nehn-019`.

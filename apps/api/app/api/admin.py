@@ -360,10 +360,14 @@ async def payment_records(user: User = Depends(PAYMENTS_VIEW), db: AsyncSession 
             "division": p.division,
             "type": p.reference_type,
             "amount": float(p.amount),
+            "gross_amount": p.gross_amount,
+            "discount_amount": float(p.discount_amount or 0),
+            "discount_reason": p.discount_reason,
             "currency": p.currency,
             "provider": p.provider,
             "status": p.status,
             "due_date": p.due_date,
+            "paid_at": p.paid_at,
         }
         for p, target in rows
     ]
@@ -1208,6 +1212,7 @@ async def create_payment(payload: dict, user: User = Depends(PAYMENTS_ADD), db: 
     # generated in the same step rather than waiting for a webhook that will never arrive.
     await _ensure_invoice(db, item, target)
     if item.status in {"paid", "succeeded"}:
+        item.paid_at = datetime.now(UTC)  # nehn-019: the receipt's payment date
         await _ensure_receipt(db, item, target)
     db.add(AuditLog(user_id=user.id, action="payment.create", entity_type="payment", entity_id=str(item.id), metadata_json={"amount": float(item.amount), "division": item.division}))
     await db.commit()
@@ -1239,6 +1244,8 @@ async def discount_payment(payment_id: UUID, payload: dict, user: User = Depends
     reason = str(payload.get("reason") or "").strip()
     if not reason:
         raise HTTPException(422, "reason is required to discount a payment")
+    if len(reason) > 500:
+        raise HTTPException(422, "reason must be at most 500 characters")
     try:
         new_amount = float(payload["amount"])
     except (KeyError, TypeError, ValueError):
@@ -1246,6 +1253,10 @@ async def discount_payment(payment_id: UUID, payload: dict, user: User = Depends
     if not (0 <= new_amount < float(item.amount)):
         raise HTTPException(422, f"Discounted amount must be between 0 and the current amount ({item.amount})")
     original_amount = float(item.amount)
+    # nehn-019 (DEC-SCOPE-312 D2): `amount` stays the net payable; the cumulative discount is recorded beside it, so the gross survives.
+    item.discount_amount = float(item.discount_amount or 0) + original_amount - new_amount
+    item.discount_reason = reason
+    item.discounted_by_id = user.id
     item.amount = new_amount
     # The invoice already generated for this still-unpaid bill (PRD-PAY-003: one is
     # generated as soon as a Payment exists) now shows a stale, pre-discount amount --
@@ -1268,7 +1279,7 @@ async def discount_payment(payment_id: UUID, payload: dict, user: User = Depends
     )
     await db.commit()
     await db.refresh(item)
-    return {"id": item.id, "amount": float(item.amount), "status": item.status}
+    return {"id": item.id, "amount": float(item.amount), "status": item.status, "gross_amount": item.gross_amount, "discount_amount": float(item.discount_amount)}
 
 
 @router.post("/payments/emi-schedule", status_code=201)

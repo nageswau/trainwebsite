@@ -230,7 +230,7 @@ def test_certificates_receipts_and_invoices_are_written_through_storage(monkeypa
     written: list[tuple[str, str]] = []
     monkeypatch.setattr(storage, "write_bytes", lambda key, data, content_type: written.append((key, data[:5].decode())))
     cert = certificates.generate_certificate_pdf(certificate_no="CERT-NEHN-1", student_name="Ada", program_title="Python", issued_on=date(2026, 10, 26), verification_code="V1", signatories=[])
-    receipt = billing_documents.generate_receipt_pdf(receipt_no="RCT-NEHN-1", payer_name="Ada", amount=10, currency="INR", issued_on=date(2026, 10, 26), reference_type="course")
+    receipt = billing_documents.generate_receipt_pdf(receipt_no="RCT-NEHN-1", issued_on=date(2026, 10, 26), lines=[("Receipt No", "RCT-NEHN-1")])
     invoice = billing_documents.generate_invoice_pdf(invoice_no="INV-NEHN-1", payer_name="Ada", amount=10, currency="INR", issued_on=date(2026, 10, 26), reference_type="course")
     assert written == [("certificates/CERT-NEHN-1.pdf", "%PDF-"), ("receipts/RCT-NEHN-1.pdf", "%PDF-"), ("invoices/INV-NEHN-1.pdf", "%PDF-")]
     assert (cert, receipt, invoice) == ("/local-files/certificates/CERT-NEHN-1.pdf", "/local-files/receipts/RCT-NEHN-1.pdf", "/local-files/invoices/INV-NEHN-1.pdf")

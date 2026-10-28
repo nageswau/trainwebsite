@@ -4520,3 +4520,18 @@ days on the day the students' agency records were created).
   except `pending_consent`/`rejected`. The numbers equal `GET /workflows/it/certificates/eligibility/{enrollment_id}`; no fee amount.
 - `GET /portal/it/trainer/student-progress` — now header-only (no rows); subtitle "Attendance, assignments, assessments, progress and
   certificate eligibility for each student in your batches."
+
+## 12HJ. Payment discount ledger and complete receipt (nehn-019) — addendum, 2026-10-28
+
+`DEC-SCOPE-312`. Migration `0215_payment_discount_ledger` (`payments.discount_amount`, `discount_reason`, `discounted_by_id`,
+`paid_at`; backfilled where derivable). Additive only; no request changes; authorization unchanged.
+
+- `POST /admin/payments/{payment_id}/discount` — unchanged request; `amount` stays the net payable. Records the cumulative discount,
+  the reason and the admin. A reason over 500 characters is **422**. Response adds `gross_amount`, `discount_amount`.
+- `POST /admin/payments` — a payment created `paid`/`succeeded` records `paid_at`.
+- `GET /admin/payments` — each row adds `gross_amount`, `discount_amount`, `discount_reason`, `paid_at`.
+- `GET /payments/mine` — each row adds `gross_amount`, `discount_amount`, `paid_at` (never the reason).
+- `GET /payments/emi-schedule` — each schedule adds `paid_amount`, `balance` (net); each instalment adds `discount_amount`, `paid_at`.
+- `GET /payments/{payment_id}/receipt` — unchanged contract. A receipt generated from now on lists: receipt no, payment date, billed to,
+  student, student code, email, phone, course, batch, reference, gross amount, discount, amount paid, remaining balance, payment status
+  ("Paid" / "Partially paid"); "—" where unknown. Issued once, never regenerated.
