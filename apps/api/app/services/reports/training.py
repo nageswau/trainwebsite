@@ -10,7 +10,10 @@ exists.
 
 Definitions (nehn-010 C1-C6): a seat is *completed* at progress 100 and its completion date is the batch end; `pending_consent` /
 `rejected` never took the seat and `withdrawn` / `dropped` left it, so neither is *counted*; the attendance, assignment and assessment
-figures are `training_progress`'s, the same SQL certificate eligibility reads; revenue is the course seats' paid enrolment-fee payments."""
+figures are `training_progress`'s, the same SQL certificate eligibility reads; revenue is the course seats' paid enrolment-fee payments.
+
+nehn-011 (DEC-SCOPE-311): the course-wise report also carries the seats' unpaid (`pending`/`overdue`) enrolment fees, the attendance
+report takes `attendance_below`, and `dashboard_tiles` totals these reports for the admin dashboard, so a tile and its report agree."""
 
 from sqlalchemy import Select, and_, distinct, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,9 +21,12 @@ from sqlalchemy.orm import aliased
 
 from app.api.payments import PAID_STATUSES
 from app.models import Assignment, Batch, Certificate, Enrollment, Payment, Program, Submission, User
+from app.services import field_policy
 from app.services import training_progress as progress
+from app.services.accounts import UNPAID
 from app.services.management_it_revenue import ENROLMENT_REFERENCES
 from app.services.management_training import DROPPED, NOT_TAKEN
+from app.services.permissions import user_has_grant
 from app.services.reports.registry import Column, Filters, Report, register
 
 ALL_ROWS = {"super_admin", "it_admin"}
@@ -168,6 +174,9 @@ def _attendance(user: User, f: Filters):
         *(func.coalesce(att.c[status], 0).label(status) for status in ("present", "absent", "late", "excused")),
         progress.percent(att.c.attended, att.c.marked).label("attendance_pct"),
     ).outerjoin(att, and_(*_on_seat(att)))
+    if f.attendance_below:
+        # nehn-011 C4: at risk -- still on the course, a class marked, and the rounded % (the certificate check's) below the threshold.
+        stmt = stmt.where(counted, progress.percent(att.c.attended, att.c.marked) < f.attendance_below)
     return _narrow(stmt, f, enrolled_dates=False).order_by(func.lower(Program.title), func.lower(Batch.name), func.lower(Student.full_name), Enrollment.enrollment_code)
 
 
@@ -210,11 +219,15 @@ def _trainers(user: User, f: Filters):
 
 def _courses(user: User, f: Filters):
     """(g) per course: batches, seats by state, and the seats' paid enrolment fees (`financial`). `from`/`to` narrow the seats by
-    enrolment date; a course with a batch in scope still shows, with zeros."""
+    enrolment date; a course with a batch in scope still shows, with zeros. nehn-011: `pending_fees` (`financial`) are the same seats'
+    enrolment fees still owed."""
     batches = _batches(user, f)
-    paid = (
-        select(Payment.reference_id, func.sum(Payment.amount).label("amount"))
-        .where(Payment.status.in_(PAID_STATUSES), Payment.reference_type.in_(ENROLMENT_REFERENCES))
+    fees = (
+        select(
+            Payment.reference_id, func.sum(Payment.amount).filter(Payment.status.in_(PAID_STATUSES)).label("paid"),
+            func.sum(Payment.amount).filter(Payment.status.in_(UNPAID)).label("owed"),
+        )
+        .where(Payment.reference_type.in_(ENROLMENT_REFERENCES))
         .group_by(Payment.reference_id)
         .subquery()
     )
@@ -229,12 +242,12 @@ def _courses(user: User, f: Filters):
             func.count(Enrollment.id).filter(Enrollment.status.not_in(NOT_TAKEN)).label("enrolments"),
             func.count(Enrollment.id).filter(counted, Enrollment.progress_percent < 100).label("active"),
             func.count(Enrollment.id).filter(completed).label("completed"), func.count(Enrollment.id).filter(Enrollment.status.in_(DROPPED)).label("dropped"),
-            func.sum(paid.c.amount).label("revenue"),
+            func.sum(fees.c.paid).label("revenue"), func.sum(fees.c.owed).label("pending_fees"),
         )
         .select_from(batches)
         .join(Program, Program.id == batches.c.program_id)
         .outerjoin(Enrollment, and_(*seat_on))
-        .outerjoin(paid, paid.c.reference_id == Enrollment.id)
+        .outerjoin(fees, fees.c.reference_id == Enrollment.id)
         .group_by(Program.id, Program.title)
         .order_by(func.lower(Program.title), Program.id)
     )
@@ -323,7 +336,7 @@ ATTENDANCE = _training(
     "From/To: class date.",
     STUDENT_COLUMNS + (Column("marked", "Classes marked"), Column("present", "Present"), Column("absent", "Absent"), Column("late", "Late"),
                        Column("excused", "Excused"), Column("attendance_pct", "Attendance %")),
-    ("from", "to", *SEAT_FILTERS),
+    ("from", "to", *SEAT_FILTERS, "attendance_below"),
     _attendance,
 )
 TRAINERS = _training(
@@ -336,9 +349,39 @@ TRAINERS = _training(
 )
 COURSES = _training(
     "courses", "Course-wise report",
-    "Per course: batches, enrolments, active, completed and dropped students, and fees collected. From/To: enrolment date.",
+    "Per course: batches, enrolments, active, completed and dropped students, and fees collected and pending. From/To: enrolment date.",
     (Column("course", "Course"), Column("batches", "Batches"), Column("enrolments", "Enrolments"), Column("active", "Active"),
-     Column("completed", "Completed"), Column("dropped", "Dropped"), Column("revenue", "Revenue (INR)", "financial")),
+     Column("completed", "Completed"), Column("dropped", "Dropped"), Column("revenue", "Revenue (INR)", "financial"),
+     Column("pending_fees", "Fees pending (INR)", "financial")),
     ("from", "to", "course_id", "trainer_id"),
     _courses,
 )
+
+DASHBOARD_COURSES = 5  # nehn-011 C6 (QA-02: five, so a phone reaches the division tiles): the mini table is the report's first rows; its link opens the rest
+TILE_TOTALS = ("enrolments", "active", "completed", "dropped")
+
+
+async def dashboard_tiles(db: AsyncSession, user: User, *, threshold: int) -> dict:
+    """nehn-011 (DEC-SCOPE-311): the admin dashboard's training tiles, each a total of the unfiltered report it links to, in the caller's
+    scope (AC1): seat counts and fees from `courses`, at-risk = the `attendance` rows below `threshold`, the average progress of the
+    counted seats. The fee figures and columns need `field.financial.view` (AC3); without it they are left out, not zeroed."""
+    unfiltered = Filters()
+    courses = COURSES.query(user, unfiltered).subquery()
+    sums = (await db.execute(select(
+        func.count().label("courses"), *(func.coalesce(func.sum(courses.c[key]), 0).label(key) for key in (*TILE_TOTALS, "revenue", "pending_fees")),
+    ))).mappings().one()
+    at_risk = ATTENDANCE.query(user, Filters(attendance_below=threshold)).order_by(None).subquery()
+    average = await db.scalar(_seats(user, func.round(func.avg(Enrollment.progress_percent), 1)).where(counted))
+    rows = (await db.execute(COURSES.query(user, unfiltered).limit(DASHBOARD_COURSES))).mappings().all()
+    table = await field_policy.strip(db, user, {
+        "columns": [{"key": c.key, "label": c.label} for c in COURSES.columns],
+        "items": [{c.key: row[c.key] for c in COURSES.columns} for row in rows], "totals": None,
+    }, COURSES.classes)
+    tiles = {
+        **{key: sums[key] for key in TILE_TOTALS}, "average_progress": None if average is None else float(average),
+        "at_risk": await db.scalar(select(func.count()).select_from(at_risk)) or 0, "at_risk_threshold": threshold,
+        "courses": {"columns": table["columns"], "items": table["items"], "total": sums["courses"]},
+    }
+    if await user_has_grant(db, user, "field.financial", "view"):
+        tiles |= {"fees_collected": float(sums["revenue"]), "fees_pending": float(sums["pending_fees"])}
+    return tiles

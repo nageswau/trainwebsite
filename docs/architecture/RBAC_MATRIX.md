@@ -3259,3 +3259,13 @@ Pinned by `apps/api/tests/test_nehn_038_agent_kpis.py` and `apps/web/tests/e2e/n
 
 Read-only; the same `_require({"trainer", "it_admin"}, "it")` rule as the other trainer routes plus the `Batch.trainer_id` check. A
 trainer gets `fee_clear`, never the pending amount. Pinned by `apps/api/tests/test_nehn_028_batch_progress.py`.
+
+### 2.222 Admin dashboard training tiles *(added 2026-10-28 — `DEC-SCOPE-311`, nehn-011)*
+
+| Route / part | Anonymous | super_admin | it_admin | overseas_admin | other roles |
+|---|---|---|---|---|---|
+| `GET /admin/dashboard` | 401 | 200 | 200 | 200 | 403 |
+| its `training` block | — | yes | yes (`reports.training.view`) | no (no grant by default) | — |
+| its fee figures / fee columns | — | yes | only with `field.financial.view` | — | — |
+
+Rows follow the training reports' scope (super_admin and it_admin every seat). Pinned by `apps/api/tests/test_nehn_011_admin_dashboard.py`.
