@@ -10327,7 +10327,23 @@ instead of "has one of the student's applications" -- a superset, nobody loses a
 application with a current "Offer letter" document and offers its download.
 **Numbering:** no migration; API §12HP; RBAC §2.224.
 - **Feature ID authorized:** `ccrm-045`. **Status:** built on `worktree-ccrm-045`.
-### DEC-SCOPE-319 — University-wise report: deposits, visas and drill-down (`ccrm-052`)
+
+### DEC-SCOPE-319 — Intake Month+Year picker for lead, student profile and application (`ccrm-047`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-047` (owner requests A4 "Also add a fields of intake for a lead.", L5
+"Intake Options in Student Portal and Counsellor Login", answer Q8; `MEETING_TRANSCRIPT_REQUEST`-equivalent). Intake was free text.
+**Behaviour:** one shared picker (month Jan–Dec + year, this year to three years ahead) writes `"Mon YYYY"` (e.g. `Sep 2027`) into the
+existing columns: lead create (telecaller / manager `NewLeadForm` and the counselor walk-in lead) → `lead_qualifications.intake` (row
+created with the lead when an intake is given); the lead qualification edit; the student profile (student's own and staff) →
+`preferred_intake`; the student/counselor application create → `overseas_applications.intake`. A malformed **new** value is **422** (field
+`loc`); a legacy free-text value already stored displays as-is and survives unrelated saves. **Builder's defaults (owner pre-authorised
+recommended answers; `NEEDS_CONFIRMATION`):** I1 past months of the current year allowed; no year bound server-side (format only); I2
+intake on lead create only for an `overseas`-group product, else 422; I3 an application create that omits `intake` keeps the server
+default "Next intake" (API compatibility); I4 unchanged: application `PATCH`, agent application forms, the Overseas Admin school-student
+bridge, checklist templates, outcome `new_intake`, CSV lead import (tel-006) and ccrm-008 conversion (copies a legacy intake unchanged).
+**Numbering:** API §12HQ; no migration; no RBAC change.
+- **Feature ID authorized:** `ccrm-047`. **Status:** built on `worktree-ccrm-047`.
+### DEC-SCOPE-320 — University-wise report: deposits, visas and drill-down (`ccrm-052`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-052` (owner line A6 "university wise report for overseas admin", Q9 — no
 commission; `MEETING_TRANSCRIPT_REQUEST`-equivalent). Extends ccrm-034 (`DEC-SCOPE-267`) and its ccrm-035 export (`DEC-SCOPE-268`).
@@ -10338,5 +10354,5 @@ D1 a deposit is paid when the counselor's record is `paid_to_university`/`paid_v
 (refunded is not; mgmt-024 MF7), counted once per application; D2 one visa bucket per application, first match wins (any case
 approved → approved; else refused; else submitted / additional info requested / decision pending → pending); withdrawn applications
 are in no visa bucket; D3 a university with no matching applications is not listed (as before); D4 the drill-down is not exported.
-No commission. **Numbering:** API §12HQ; RBAC §2.181 gains the drill-down row; no migration.
+No commission. **Numbering:** API §12HR; RBAC §2.181 gains the drill-down row; no migration.
 - **Feature ID authorized:** `ccrm-052`. **Status:** built on `worktree-ccrm-052`.

@@ -4621,9 +4621,22 @@ days on the day the students' agency records were created).
   application (the tab's gate already proved the caseload).
 - `GET /portal/overseas/student/offer-letters` — also lists an application with a current "Offer letter" document; its `offer` column is
   the legacy URL or the document's name.
-## 12HQ. University-wise report: deposits, visas and drill-down (ccrm-052) — addendum, 2026-10-28
 
-`DEC-SCOPE-319`. No migration; authorization unchanged (`partner`, `super_admin`, `overseas_admin`; others **403**; anonymous **401**).
+## 12HQ. Intake month + year (ccrm-047) — addendum, 2026-10-28
+
+`DEC-SCOPE-319`. No migration; authorization unchanged. Format: `^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}$`; refusal
+**422** `{"detail": [{"loc": ["body", "<field>"], "msg": "Choose the intake month and year, like Sep 2027", ...}]}`.
+
+- `POST /telecaller/leads` (§tel-005) and `POST /counselor/walk-in-leads` (§12EO) — additive optional `intake`. Malformed → 422; given for
+  a product whose group is not `overseas` → 422 (`loc` `intake`); when given, the lead's qualification row is created with it (read back by
+  `GET .../qualification`).
+- `PUT /telecaller/leads/{id}/qualification` and the counselor equivalent (tel-009) — `intake` checked only when it changes.
+- `PUT /overseas/me/profile` and `PUT /counselor/students/{id}/profile` (ccrm-007) — `preferred_intake` checked only when it changes from
+  the stored value (a legacy value re-sent unchanged saves).
+- `POST /workflows/overseas/applications` — a sent `intake` must match; omitted keeps the default `"Next intake"`.
+## 12HR. University-wise report: deposits, visas and drill-down (ccrm-052) — addendum, 2026-10-28
+
+`DEC-SCOPE-320`. No migration; authorization unchanged (`partner`, `super_admin`, `overseas_admin`; others **403**; anonymous **401**).
 
 - `GET /management/crm-reports` — `universities.rows[]` and `universities.total` add `deposits_paid`, `visas_approved`,
   `visas_refused`, `visas_pending` (integers; definitions added). Existing keys unchanged.

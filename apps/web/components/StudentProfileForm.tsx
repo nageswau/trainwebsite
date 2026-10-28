@@ -2,6 +2,7 @@
 
 import { FormEvent, useRef, useState } from "react";
 
+import IntakePicker, { intakeProblem } from "@/components/IntakePicker";
 import LocalTime from "@/components/LocalTime";
 import { detailMessage, sendJson } from "@/lib/apiErrors";
 import {
@@ -43,6 +44,8 @@ export default function StudentProfileForm({ initial, url, countries, section }:
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (inFlight.current) return;
+    const intakeError = intakeProblem(profile.preferred_intake ?? "", initial.preferred_intake); // ccrm-047: a legacy value left as it was is fine
+    if (intakeError) return setMessage({ text: intakeError, failed: true });
     inFlight.current = true;
     setSaving(true);
     setMessage(null);
@@ -151,7 +154,7 @@ export default function StudentProfileForm({ initial, url, countries, section }:
             <label htmlFor="sp-level">Study level</label>
             <select id="sp-level" {...text("preferred_level")}><option value="">Not chosen</option>{Object.entries(COURSE_LEVELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
           </div>
-          <div className="field"><label htmlFor="sp-intake">Intake</label><input id="sp-intake" maxLength={40} placeholder="e.g. September 2027" {...text("preferred_intake")} /></div>
+          <IntakePicker id="sp-intake" label="Intake" value={profile.preferred_intake ?? ""} onChange={(v) => set("preferred_intake", v)} />
           <div className="field">
             <label htmlFor="sp-mode">Study mode</label>
             <select id="sp-mode" {...text("study_mode")}><option value="">Not chosen</option>{Object.entries(STUDY_MODES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>

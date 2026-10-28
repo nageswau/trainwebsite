@@ -589,13 +589,29 @@ class RecordingLinkUpdate(BaseModel):
     recording_status: str = Field(default="available", pattern="^(not_available|processing|available|failed)$")
 
 
+# ccrm-047: a newly entered intake is a month and a year ("Sep 2027"). A legacy free-text value already stored is accepted unchanged by
+# the services that save whole forms (lead qualification, student profile); only a changed value is checked there.
+INTAKE_FORMAT = re.compile(rf"(?:{'|'.join(COURSE_MONTHS)}) \d{{4}}")
+INTAKE_MESSAGE = "Choose the intake month and year, like Sep 2027"
+
+
+def is_intake(value: str) -> bool:
+    return INTAKE_FORMAT.fullmatch(value) is not None
+
+
+def _intake_format(value: str | None) -> str | None:
+    if value is not None and not is_intake(value):
+        raise PydanticCustomError("intake_format", INTAKE_MESSAGE)
+    return value
+
+
 class OverseasApplicationCreate(BaseModel):
     university_id: UUID
     course_id: UUID | None = None
     student_id: UUID | None = None
     counselor_id: UUID | None = None
     agent_id: UUID | None = None
-    intake: str = Field(default="Next intake", max_length=80)
+    intake: Annotated[str, Field(max_length=80), AfterValidator(_intake_format)] = "Next intake"  # ccrm-047: omitted keeps the default
     application_reference: str | None = Field(default=None, max_length=140)
     next_action: str | None = Field(default=None, max_length=5000)
 
@@ -7056,6 +7072,7 @@ class TelecallerLeadCreate(LeadContactFields):
     division: Literal["it", "overseas"] | None = None
     subject: LeadSubject = None
     message: BdmLeadNote = None
+    intake: Annotated[str | None, AfterValidator(_intake_format)] = None  # ccrm-047: the qualification's intake, overseas products only
 
 
 class LeadEnquiryCreate(BaseModel):
