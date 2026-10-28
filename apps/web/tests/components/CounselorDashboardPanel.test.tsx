@@ -17,6 +17,7 @@ const none: CounselorDashboardSection = { count: 0, more: false, items: [] };
 const data = (sections: Partial<CounselorDashboard["sections"]> = {}): CounselorDashboard => ({
   today: "2026-10-25",
   window_days: 14,
+  follow_up_days: 7,
   sections: Object.fromEntries(SECTIONS.map((s) => [s.key, sections[s.key] ?? none])) as CounselorDashboard["sections"],
 });
 const region = (name: RegExp) => screen.getByRole("region", { name });
@@ -67,6 +68,16 @@ describe("CounselorDashboardBoard", () => {
     render(<CounselorDashboardBoard data={data()} />);
     expect(screen.getByText(/due in the next 14 days/)).toBeTruthy();
   });
+
+  it("ccrm-042: follow-ups and tasks cover overdue and the next 7 days", () => {
+    render(<CounselorDashboardBoard data={data()} />);
+    for (const [name, empty] of [[/^Follow-ups due/, "No follow-ups in the next 7 days."], [/^Tasks due/, "No tasks due in the next 7 days."]] as const) {
+      const r = region(name);
+      expect(within(r).getByText("Overdue or due in the next 7 days, soonest first.")).toBeTruthy();
+      expect(within(r).getByText(empty)).toBeTruthy();
+    }
+    expect(screen.queryByRole("region", { name: /Overdue tasks/ })).toBeNull();
+  });
 });
 
 describe("CounselorDashboardPanel", () => {
@@ -74,7 +85,7 @@ describe("CounselorDashboardPanel", () => {
     api.mockResolvedValue(data());
     render(await CounselorDashboardPanel());
     expect(api).toHaveBeenCalledWith("/api/v1/counselor/dashboard");
-    expect(region(/Overdue tasks/)).toBeTruthy();
+    expect(region(/Tasks due/)).toBeTruthy();
   });
 
   it("keeps the page working when the endpoint fails", async () => {
