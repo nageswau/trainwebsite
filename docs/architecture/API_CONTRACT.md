@@ -4590,9 +4590,21 @@ days on the day the students' agency records were created).
   (key unchanged) now covers open tasks with `due_on <= today + 7`, ascending, `overdue` true when `due_on < today`. Each section keeps
   `{count, more, items[<=10]}`. The response adds `follow_up_days` (7).
 
-## 12HO. Intake month + year (ccrm-047) — addendum, 2026-10-28
+## 12HO. Counselor "My students": all students, Source filter and search (ccrm-043) — addendum, 2026-10-28
 
-`DEC-SCOPE-317`. No migration; authorization unchanged. Format: `^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}$`; refusal
+`DEC-SCOPE-317`. No migration; authorization unchanged (overseas counselor only, else **403**; anonymous **401**).
+
+- `GET /counselor/students` (§12EM) — now lists every `overseas_student` in the caller's caseload (csc-001 link ∪ the students of
+  applications with `counselor_id == me`), not archived, each once, ordered `linked_since` desc then `id`. Additive query params:
+  `source` ∈ `walk_in | lead_conversion | self_registered | agency` (anything else **422**); `q` (≤ 100 chars, else **422**) — literal,
+  case-insensitive substring of name / email / student code, or the phone's digits when the search is phone-shaped; blank = no filter.
+  `total` follows the filters. Each item adds `source`, `applications` (count of all the student's applications), `linked_since`
+  (earliest of the caller's link and the caller's first application) and `linked` (the csc-001 link is the caller's — only then do the
+  §12EN resend/edit routes apply). Existing item keys and `POST`/`PATCH` responses are unchanged.
+
+## 12HP. Intake month + year (ccrm-047) — addendum, 2026-10-28
+
+`DEC-SCOPE-318`. No migration; authorization unchanged. Format: `^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}$`; refusal
 **422** `{"detail": [{"loc": ["body", "<field>"], "msg": "Choose the intake month and year, like Sep 2027", ...}]}`.
 
 - `POST /telecaller/leads` (§tel-005) and `POST /counselor/walk-in-leads` (§12EO) — additive optional `intake`. Malformed → 422; given for

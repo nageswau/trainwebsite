@@ -10298,7 +10298,21 @@ is exposed as an additive `follow_up_days: 7`; D3 the `/counselor/tasks` page, c
 figures are unchanged. **Numbering:** API §12HN; no migration; no RBAC change.
 - **Feature ID authorized:** `ccrm-042`. **Status:** built on `worktree-ccrm-042`.
 
-### DEC-SCOPE-317 — Intake Month+Year picker for lead, student profile and application (`ccrm-047`)
+### DEC-SCOPE-317 — Counselor "My students": all students with a Source filter and search (`ccrm-043`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-043` (owner request 2026-10-28, answer Q10 "All my students + Source
+filter + search"; `MEETING_TRANSCRIPT_REQUEST`-equivalent). The Students page listed only walk-in links.
+**Behaviour:** `GET /counselor/students` lists the counselor's whole caseload (`visible_student_ids`: csc-001 link ∪ students of the
+counselor's applications), archived excluded (ccrm-040), each student once, with source, application count and since-when; `source`
+and `q` narrow it. The card is titled "My students". **Builder's defaults (owner pre-authorised recommended answers;
+`NEEDS_CONFIRMATION`):** D1 source is mutually exclusive, first match wins: `registration_source` `counselor_walk_in` → Walk-in,
+`lead_conversion` → Lead conversion, an `AgentStudent` row or agency application → Agency, else Self-registered (incl. legacy accounts
+without a source); D2 `applications` counts all the student's applications (as the 360 shows); D3 `linked_since` is the earliest of the
+link and the counselor's first application; D4 Edit/Resend stay only on the counselor's own pending walk-in links (csc-003); D5 the
+Overseas Admin view is unchanged. **Numbering:** API §12HO; no migration; no RBAC change.
+- **Feature ID authorized:** `ccrm-043`. **Status:** built on `worktree-ccrm-043`.
+
+### DEC-SCOPE-318 — Intake Month+Year picker for lead, student profile and application (`ccrm-047`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-047` (owner requests A4 "Also add a fields of intake for a lead.", L5
 "Intake Options in Student Portal and Counsellor Login", answer Q8; `MEETING_TRANSCRIPT_REQUEST`-equivalent). Intake was free text.
@@ -10311,5 +10325,5 @@ recommended answers; `NEEDS_CONFIRMATION`):** I1 past months of the current year
 intake on lead create only for an `overseas`-group product, else 422; I3 an application create that omits `intake` keeps the server
 default "Next intake" (API compatibility); I4 unchanged: application `PATCH`, agent application forms, the Overseas Admin school-student
 bridge, checklist templates, outcome `new_intake`, CSV lead import (tel-006) and ccrm-008 conversion (copies a legacy intake unchanged).
-**Numbering:** API §12HO; no migration; no RBAC change.
+**Numbering:** API §12HP; no migration; no RBAC change.
 - **Feature ID authorized:** `ccrm-047`. **Status:** built on `worktree-ccrm-047`.

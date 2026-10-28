@@ -122,6 +122,7 @@ change this.
   student whose application moved to another counselor drops off; legacy users without `registration_source` → Self-registered.
 - **Regression risks:** csc-001..005 tests on the walk-in card; ccrm-040 archive hiding; ccrm-041 route matrix (params only).
 - **Complexity:** medium. **Risk:** low.
+- **Status (2026-10-28):** built on `worktree-ccrm-043` (`DEC-SCOPE-317`; API §12HO; no migration; source D1 first-match rule).
 
 ### `ccrm-044` — Counselor chat with walk-in students (bug fix)
 
@@ -242,7 +243,7 @@ change this.
   conversion copies intake to profile.
 - **Regression risks:** tel-005 intake, tel-009 qualification form, ccrm-005 lead fields, ccrm-007 profile, agency application forms.
 - **Complexity:** medium. **Risk:** low.
-- **Status (2026-10-28):** built on `worktree-ccrm-047` (`DEC-SCOPE-317`; API §12HO; no migration; agent forms, CSV import and
+- **Status (2026-10-28):** built on `worktree-ccrm-047` (`DEC-SCOPE-318`; API §12HP; no migration; agent forms, CSV import and
   application `PATCH` unchanged — `NEEDS_CONFIRMATION`).
 
 ### `ccrm-048` — University deposit document upload on the Finance tab
