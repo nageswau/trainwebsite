@@ -4533,3 +4533,13 @@ days on the day the students' agency records were created).
   from 1 to 100"): counted seats with a class marked whose attendance % is below it. Any other report refuses it (**422**).
 - `GET /reports/courses` (and `.csv`/`.xlsx`) — new column `pending_fees` "Fees pending (INR)" (`financial`): the seats' enrolment-fee
   payments in `pending`/`overdue`.
+
+## 12HG. Discount authority (nehn-021) — addendum, 2026-10-28
+
+`DEC-SCOPE-309`. No migration; no new route; no request or response shape change.
+
+- `POST /admin/payments/{payment_id}/discount` (`discounts.add`) — a caller whose division is `global` (e.g. an accountant granted
+  `discounts.add`) may discount a payment of any division, like super_admin. it_admin / overseas_admin still get **403** "Wrong
+  division" outside their own. Without the grant: **403** "Admin role required" (unchanged). Reason required (**422**), new amount
+  below the current one (**422**), audited as `payment.discount` with the reason — all unchanged.
+- `GET /admin/payments` (`payments.view`) — a `global`-division holder lists every division; division staff their own (unchanged).

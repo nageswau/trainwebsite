@@ -10232,3 +10232,18 @@ course-wise mini table (the report's first rows; the field policy strips the fee
 No 60 s cache (the aggregates are grouped SQL). The existing dashboard keys keep their meaning.
 **Numbering:** no migration; API §12HI; RBAC §2.222.
 - **Feature ID authorized:** `nehn-011`. **Status:** built on `worktree-nehn-011`.
+
+### DEC-SCOPE-309 — Discount authority through the `discounts.add` grant (`nehn-021`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-021` (§7 L169-172; `UNVERIFIED` backlog); design
+`docs/superpowers/specs/2026-10-28-nehn-021-discount-authority-design.md`. Dependency nehn-005 (`DEC-SCOPE-281`) merged; the discount
+route was already on `require_permission("discounts", "add")` and its form already hidden without the grant (nehn-006).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** D1 a `global`-division grant holder (the
+accountant) discounts and lists payments of every division, like super_admin; it_admin/overseas_admin keep their own division. D2 no
+default-grant change, no migration: the accountant holds nothing until a super admin grants `payments.view` + `discounts.add`. D3
+overseas_admin **keeps** `discounts.add` (OD-12 open; one matrix click revokes it). D4 the finance roles get `/management/payments`
+(payments list + Apply discount) and a **Payments** sidebar link shown only with `payments.view`. D5 the finance roles see only Apply
+discount there -- creating dues and EMI plans stay division-scoped admin actions. D6 without `payments.view` the list is replaced by a
+grant hint; without `discounts.add` the form is hidden and the API answers 403. Not built: a discount cap or approval threshold; an IT
+scholarship concept. **Numbering:** no migration; API §12HG; RBAC §2.220.
+- **Feature ID authorized:** `nehn-021`. **Status:** built on `worktree-nehn-021`.

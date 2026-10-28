@@ -1018,6 +1018,11 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** the overseas_admin discount tests (if it loses access).
 - **Open questions:** does overseas_admin keep discount rights? Is an IT scholarship concept needed? Approval thresholds?
 - **Complexity:** small · **Risk:** low
+- **Status (2026-10-28):**
+  - Built on `worktree-nehn-021` (`DEC-SCOPE-309`; no migration; API §12HG; RBAC §2.220). AC1 met (no grant → 403, form and link
+    hidden). AC2 met (a global-division accountant granted `payments.view` + `discounts.add` discounts either division from
+    `/management/payments`). AC3 met (audited with the reason).
+  - overseas_admin keeps the grant until OD-12 is answered; caps/approval and IT scholarships are not built (`NEEDS_CONFIRMATION`).
 
 #### `nehn-022` — Razorpay test/live mode switch and go-live checklist
 - **Source:** §7 L153-156 ("switched from test mode to live mode after final verification").

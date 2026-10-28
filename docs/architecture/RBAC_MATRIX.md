@@ -3269,3 +3269,15 @@ trainer gets `fee_clear`, never the pending amount. Pinned by `apps/api/tests/te
 | its fee figures / fee columns | — | yes | only with `field.financial.view` | — | — |
 
 Rows follow the training reports' scope (super_admin and it_admin every seat). Pinned by `apps/api/tests/test_nehn_011_admin_dashboard.py`.
+
+### 2.220 Discount authority *(added 2026-10-28 — `DEC-SCOPE-309`, nehn-021)*
+
+| Route | Anonymous | super_admin | it_admin / overseas_admin (seeded grant) | accountant, partner (global; no grant by default) | trainer, placement_team, others |
+|---|---|---|---|---|---|
+| `POST /admin/payments/{id}/discount` | 401 | 200 any division | 200 own division, 403 other | 403; 200 any division once granted `discounts.add` | 403 |
+| `GET /admin/payments` | 401 | 200 all | 200 own division | 403; 200 all once granted `payments.view` | 403 |
+
+The grant is checked first (`require_permission`); the division scope is then skipped only for `global`-division callers, whom only a
+super admin creates. The UI follows: `/management/payments` and its sidebar link (finance tier, `payments.view`) and the Apply discount
+form (`discounts.add`). Pinned by `apps/api/tests/test_nehn_021_discount_authority.py` and
+`apps/web/tests/e2e/nehn-021-discount-authority.spec.ts`.

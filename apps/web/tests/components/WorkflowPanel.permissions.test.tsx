@@ -47,6 +47,21 @@ describe("nehn-006 WorkflowPanel payment forms follow the grants", () => {
     expect(screen.getByRole("heading", { name: "Apply discount" })).toBeInTheDocument();
   });
 
+  // nehn-021 (DEC-SCOPE-309 D5): the finance roles get only Apply discount on their Payments page, still behind discounts.add.
+  it.each(["accountant", "partner"])("offers the %s Apply discount with discounts.add, and nothing else", async (role) => {
+    vi.stubGlobal("fetch", granted(["payments.view", "discounts.add", "payments.add"]));
+    render(<WorkflowPanel user={{ ...itAdmin, role, division: "global" } as unknown as User} section="payments" />);
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/v1/auth/me/permissions", expect.anything()));
+    expect(screen.getByRole("heading", { name: "Apply discount" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Create payment due" })).toBeNull();
+  });
+
+  it("hides the accountant's Apply discount without discounts.add", async () => {
+    vi.stubGlobal("fetch", granted(["payments.view"]));
+    render(<WorkflowPanel user={{ ...itAdmin, role: "accountant", division: "global" } as unknown as User} section="payments" />);
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "Apply discount" })).toBeNull());
+  });
+
   it("does not ask on a page whose forms carry no permission", async () => {
     const fetchMock = granted([]);
     vi.stubGlobal("fetch", fetchMock);
