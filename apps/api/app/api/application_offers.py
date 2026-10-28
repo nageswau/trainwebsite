@@ -395,7 +395,7 @@ async def save_deposit(application_id: UUID, payload: DepositRecordSave, user: U
 
 @router.post("/{application_id}/deposit/receipt", status_code=201)
 async def upload_deposit_record_receipt(application_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """ccrm-048 (DEC-SCOPE-321): the Finance tab's "Upload / Replace receipt" -- a "Deposit receipt" document attached to the
+    """ccrm-048 (DEC-SCOPE-322): the Finance tab's "Upload / Replace receipt" -- a "Deposit receipt" document attached to the
     counselor's required deposit record in one transaction. Refused beside an AGN-011 deposit (409), for an archived student (409) and
     without a required record (422), before the file is read. A replaced receipt stays one of the student's documents."""
     item = await _writable(db, user, application_id, moves_stage=False)

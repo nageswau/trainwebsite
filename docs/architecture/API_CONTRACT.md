@@ -4622,9 +4622,48 @@ days on the day the students' agency records were created).
 - `GET /portal/overseas/student/offer-letters` — also lists an application with a current "Offer letter" document; its `offer` column is
   the legacy URL or the document's name.
 
-## 12HS. Deposit receipt upload on the student 360's Finance tab (ccrm-048) — addendum, 2026-10-28
+## 12HQ. Intake month + year (ccrm-047) — addendum, 2026-10-28
 
-`DEC-SCOPE-321`. No migration.
+`DEC-SCOPE-319`. No migration; authorization unchanged. Format: `^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}$`; refusal
+**422** `{"detail": [{"loc": ["body", "<field>"], "msg": "Choose the intake month and year, like Sep 2027", ...}]}`.
+
+- `POST /telecaller/leads` (§tel-005) and `POST /counselor/walk-in-leads` (§12EO) — additive optional `intake`. Malformed → 422; given for
+  a product whose group is not `overseas` → 422 (`loc` `intake`); when given, the lead's qualification row is created with it (read back by
+  `GET .../qualification`).
+- `PUT /telecaller/leads/{id}/qualification` and the counselor equivalent (tel-009) — `intake` checked only when it changes.
+- `PUT /overseas/me/profile` and `PUT /counselor/students/{id}/profile` (ccrm-007) — `preferred_intake` checked only when it changes from
+  the stored value (a legacy value re-sent unchanged saves).
+- `POST /workflows/overseas/applications` — a sent `intake` must match; omitted keeps the default `"Next intake"`.
+## 12HR. Counselor chat with walk-in students (ccrm-044) — addendum, 2026-10-28
+
+`DEC-SCOPE-320`. No migration; no new route.
+
+- `POST /workflows/overseas/student/counselor-chat` — the recipient is the counselor of the student's most recently updated application
+  that has one; when none has, the student's csc-001 linked counselor (`OverseasStudentCounselor`). **409** only when neither exists.
+  Request/response shapes unchanged.
+- `POST /communications/messages` — when the sender is a `counselor` and the recipient an `overseas_student`, the recipient must be in
+  the sender's caseload (`visible_student_ids`: csc-001 link ∪ students of applications with `counselor_id == me`), else **403**
+  "This student is not one of your students"; nothing is stored. Every other sender/recipient pair is unchanged.
+- Counselor Chat's student picker reads `GET /lookups/overseas-students` (counselor: caseload, archived excluded; ENH-031 shape) instead
+  of the counselor's applications.
+## 12HS. University-wise report: deposits, visas and drill-down (ccrm-052) — addendum, 2026-10-28
+
+`DEC-SCOPE-321`. No migration; authorization unchanged (`partner`, `super_admin`, `overseas_admin`; others **403**; anonymous **401**).
+
+- `GET /management/crm-reports` — `universities.rows[]` and `universities.total` add `deposits_paid`, `visas_approved`,
+  `visas_refused`, `visas_pending` (integers; definitions added). Existing keys unchanged.
+- `GET /management/crm-reports/export?report=universities` — the four columns are appended ("Deposits paid", "Visas approved", "Visas
+  refused", "Visas pending"); the earlier column order is unchanged.
+- `GET /management/crm-reports/universities/{university_id}/applications` — new. The report's query params (`date_from`, `date_to`,
+  `counselor`, `country`, `university`, `course`, `intake`, same validation and **422**s) plus `page` (1–10000, default 1). Returns
+  `{university: {id, label}, items[], total, page, page_size: 100}`; `total` equals the university's row `applications` for the same
+  filters. Each item: `application_id`, `application_code`, `student_name`, `course` (title or null), `intake`, `stage`, `stage_label`,
+  `counselor` (name or null), `deposit_paid` (bool), `visa` (`approved | refused | pending | null`). Newest first. Unknown university
+  **404**. Read-only, not audited (as the report read).
+
+## 12HT. Deposit receipt upload on the student 360's Finance tab (ccrm-048) — addendum, 2026-10-28
+
+`DEC-SCOPE-322`. No migration.
 
 - `POST /workflows/overseas/applications/{application_id}/deposit/receipt` — **new**, `multipart/form-data`: `file` (PDF/JPEG/PNG sniffed
   from the bytes, at most 20 MB, server-generated storage key — ccrm-025's deposit-receipt rules). Stores a "Deposit receipt" document on

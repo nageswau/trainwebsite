@@ -176,6 +176,6 @@ async def world(db, client) -> dict:
         "lead": lead.id, "call": call.id, "follow_up": follow_up.id, "message": message.id, "tel_template": tel_template.id, "lost_reason": lost_reason.id,
         "student": student.id, "lonely": lonely.id, "archived": archived.id, "app": app.id, "agency_app": agency_app.id, "held": held.id, "enrolled": enrolled.id,
         "record": record.id, "visa": visa.id, "template": template.id, "checklist_template": checklist_template.id, "agreement": agreement.id,
-        "letter": letter.id, "document": document.id, "enrol_doc": enrol_doc.id, "offer": offer["id"], "condition": condition["id"], "item": item["id"], "request": request["request"]["id"], "task": task["id"], "country": university.country_id,
+        "letter": letter.id, "document": document.id, "enrol_doc": enrol_doc.id, "offer": offer["id"], "condition": condition["id"], "item": item["id"], "request": request["request"]["id"], "task": task["id"], "country": university.country_id, "university": university.id,
     }  # fmt: skip
     return {"users": users, **{k: str(v) for k, v in ids.items()}, **{f"{k}_id": str(u.id) for k, u in users.items()}}

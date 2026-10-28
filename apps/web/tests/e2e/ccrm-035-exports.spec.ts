@@ -33,7 +33,8 @@ test("a partner exports a CRM report as CSV and Excel with the filters applied",
   await page.goto("/management/crm-reports");
   const csv = await download(page, "Export University performance", "Download CSV");
   expect(csv.file.suggestedFilename()).toMatch(/^crm-universities-\d{4}-\d{2}-\d{2}\.csv$/);
-  expect(firstLine(csv.body)).toBe("University,Applications,Students,Offers,Offer rate (%),Rejections,Acceptances,Enrolments");
+  // ccrm-052 appended the deposit and visa columns after the original ones.
+  expect(firstLine(csv.body)).toBe("University,Applications,Students,Offers,Offer rate (%),Rejections,Acceptances,Enrolments,Deposits paid,Visas approved,Visas refused,Visas pending");
   expect(csv.body.toString("utf-8").trimEnd().split(/\r?\n/).at(-1)).toMatch(/^Total,/);
   const xlsx = await download(page, "Export Application ageing", "Download Excel");
   expect(xlsx.file.suggestedFilename()).toMatch(/^crm-ageing-\d{4}-\d{2}-\d{2}\.xlsx$/);

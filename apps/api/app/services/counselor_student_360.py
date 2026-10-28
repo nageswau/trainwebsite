@@ -6,7 +6,7 @@ download keeps its own route's rule, so `can_download` mirrors `GET /workflows/o
 B3: history = the applications' status history (ccrm-016, staff view) + audit rows about the student + document uploads, reviews and
 replacements; field names only, never values.
 ccrm-039 (DEC-SCOPE-275): finance = the student's fees and payments, each application's university deposit and the refunds; read-only.
-ccrm-048 (DEC-SCOPE-321): a counselor deposit says whether its receipt may be uploaded from the tab (`can_upload`)."""
+ccrm-048 (DEC-SCOPE-322): a counselor deposit says whether its receipt may be uploaded from the tab (`can_upload`)."""
 
 from uuid import UUID
 
@@ -280,7 +280,7 @@ async def finance(db: AsyncSession, user: User, student: User) -> dict:
                 "source": "counselor", "required": record.required, "amount": money(record.amount), "currency": record.currency, "due_date": record.due_date,
                 "status": record.payment_status, "status_label": DEPOSIT_RECORD_LABELS[record.payment_status], "paid_on": record.paid_on, "refund": None,
                 "receipt": {"id": doc.id, "name": doc.document_label or doc.document_type, "can_download": admin or a.counselor_id == user.id} if doc else None,
-                # ccrm-048 (DEC-SCOPE-321): the upload route's rules -- a required record, the reader writes the application, it is open
+                # ccrm-048 (DEC-SCOPE-322): the upload route's rules -- a required record, the reader writes the application, it is open
                 "can_upload": record.required and (admin or a.counselor_id == user.id) and not outcomes.is_closed(a) and not archived,
             })  # fmt: skip
         elif deposit := agency.get(a.id):

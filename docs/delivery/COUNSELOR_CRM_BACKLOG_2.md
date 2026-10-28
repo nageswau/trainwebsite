@@ -151,6 +151,7 @@ change this.
   new counselor; archived student → hidden from picker.
 - **Regression risks:** `tests/test_i19_counselor_chat.py` (application path); messaging for other roles if the caseload check is broadened.
 - **Complexity:** small. **Risk:** medium (messaging authz).
+- **Status (2026-10-28):** built on `worktree-ccrm-044` (`DEC-SCOPE-320`; API §12HR; no migration; caseload check only for counselor → overseas student).
 
 ### `ccrm-045` — Counselor uploads student documents (incl. offer letter) without an application
 
@@ -243,6 +244,8 @@ change this.
   conversion copies intake to profile.
 - **Regression risks:** tel-005 intake, tel-009 qualification form, ccrm-005 lead fields, ccrm-007 profile, agency application forms.
 - **Complexity:** medium. **Risk:** low.
+- **Status (2026-10-28):** built on `worktree-ccrm-047` (`DEC-SCOPE-319`; API §12HQ; no migration; agent forms, CSV import and
+  application `PATCH` unchanged — `NEEDS_CONFIRMATION`).
 
 ### `ccrm-048` — University deposit document upload on the Finance tab
 
@@ -373,6 +376,7 @@ change this.
 - **Positive / negative / edge:** university with no applications → zero row or hidden (match existing); withdrawn application visa excluded (`NEEDS_CONFIRMATION` definitions).
 - **Regression risks:** ccrm-034 report tests, export column order consumers.
 - **Complexity:** medium. **Risk:** low.
+- **Status (2026-10-28):** built on `worktree-ccrm-052` (`DEC-SCOPE-321`; API §12HS; no migration; new columns appended to the export).
 
 ### `ccrm-053` — Counselor performance: Overseas Admin view, intake filter, Overseas/IT lead split
 

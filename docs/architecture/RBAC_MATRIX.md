@@ -2835,6 +2835,7 @@ inside the existing role scope (a counselor searching another counselor's code g
 | Route | `partner` | `super_admin` | `overseas_admin` | `accountant` | `counselor` | Others | Anonymous |
 |---|---|---|---|---|---|---|---|
 | `GET /management/crm-reports` | ✅ | ✅ | ✅ | `403` | `403` | `403` | `401` |
+| `GET /management/crm-reports/universities/{id}/applications` (ccrm-052, `DEC-SCOPE-321`) | ✅ | ✅ | ✅ | `403` | `403` | `403` | `401` |
 
 - Pages: `/management/crm-reports` (Command Center, Students pillar) and `/overseas/admin/crm-reports` (Overseas Admin sidebar; the page
   refuses other roles before calling the API). Pinned by `test_ccrm_034_reports.py::test_management_and_the_overseas_admin_read_the_reports`,
@@ -3305,7 +3306,7 @@ that student; the Overseas Admin to any of the student's. The student reads the 
 Offer Letters) at once. Download of a document without an application: the counselor's caseload. Pinned by
 `apps/api/tests/test_ccrm_045_counselor_upload.py` and the ccrm-041 matrix row.
 
-### 2.227 Deposit receipt upload on the student 360's Finance tab *(added 2026-10-28 — `DEC-SCOPE-321`, ccrm-048)*
+### 2.225 Deposit receipt upload on the student 360's Finance tab *(added 2026-10-28 — `DEC-SCOPE-322`, ccrm-048)*
 
 | Route | Anonymous | overseas counselor (their application) | overseas counselor (another's application) | overseas_admin | super_admin | IT counselor, agent, overseas_student, other roles |
 |---|---|---|---|---|---|---|

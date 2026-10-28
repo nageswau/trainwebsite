@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 import { signIn } from "./helpers/agency";
 
-// ccrm-048 (DEC-SCOPE-321) -- the counselor uploads the university deposit receipt from the student 360's Finance tab; the Overseas Admin
+// ccrm-048 (DEC-SCOPE-322) -- the counselor uploads the university deposit receipt from the student 360's Finance tab; the Overseas Admin
 // replaces it; the student sees it in their Documents and cannot call the route. Uses the seeded demo counselor's application (a required
 // deposit is recorded on it through ccrm-025's route first). Requires `python -m app.seed`.
 

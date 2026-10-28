@@ -1,4 +1,4 @@
-"""ccrm-048 (DEC-SCOPE-321) -- the deposit receipt is uploaded from the student 360's Finance tab: POST
+"""ccrm-048 (DEC-SCOPE-322) -- the deposit receipt is uploaded from the student 360's Finance tab: POST
 /workflows/overseas/applications/{id}/deposit/receipt (multipart) stores a "Deposit receipt" document and attaches it to the counselor's
 deposit record in one transaction. The counselor on their own application, the Overseas Admin on any; never beside an agency (AGN-011)
 deposit or on a deposit that is not required. `finance()` says where the control is offered (`can_upload`).

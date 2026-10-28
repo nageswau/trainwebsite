@@ -8,7 +8,7 @@ import { sendRequest } from "@/lib/apiErrors";
 
 type Props = { applicationId: string; university: string; replacing: boolean };
 
-// ccrm-048 (DEC-SCOPE-321): the Finance tab's deposit card -- the counselor (their application) or the Overseas Admin uploads the deposit
+// ccrm-048 (DEC-SCOPE-322): the Finance tab's deposit card -- the counselor (their application) or the Overseas Admin uploads the deposit
 // receipt; the route stores it and attaches it to the deposit record in one step. One upload at a time.
 export default function DepositReceiptUpload({ applicationId, university, replacing }: Props) {
   const router = useRouter();

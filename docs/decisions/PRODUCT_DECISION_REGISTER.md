@@ -10328,7 +10328,47 @@ application with a current "Offer letter" document and offers its download.
 **Numbering:** no migration; API §12HP; RBAC §2.224.
 - **Feature ID authorized:** `ccrm-045`. **Status:** built on `worktree-ccrm-045`.
 
-### DEC-SCOPE-321 — Deposit receipt upload on the student 360's Finance tab (`ccrm-048`)
+### DEC-SCOPE-319 — Intake Month+Year picker for lead, student profile and application (`ccrm-047`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-047` (owner requests A4 "Also add a fields of intake for a lead.", L5
+"Intake Options in Student Portal and Counsellor Login", answer Q8; `MEETING_TRANSCRIPT_REQUEST`-equivalent). Intake was free text.
+**Behaviour:** one shared picker (month Jan–Dec + year, this year to three years ahead) writes `"Mon YYYY"` (e.g. `Sep 2027`) into the
+existing columns: lead create (telecaller / manager `NewLeadForm` and the counselor walk-in lead) → `lead_qualifications.intake` (row
+created with the lead when an intake is given); the lead qualification edit; the student profile (student's own and staff) →
+`preferred_intake`; the student/counselor application create → `overseas_applications.intake`. A malformed **new** value is **422** (field
+`loc`); a legacy free-text value already stored displays as-is and survives unrelated saves. **Builder's defaults (owner pre-authorised
+recommended answers; `NEEDS_CONFIRMATION`):** I1 past months of the current year allowed; no year bound server-side (format only); I2
+intake on lead create only for an `overseas`-group product, else 422; I3 an application create that omits `intake` keeps the server
+default "Next intake" (API compatibility); I4 unchanged: application `PATCH`, agent application forms, the Overseas Admin school-student
+bridge, checklist templates, outcome `new_intake`, CSV lead import (tel-006) and ccrm-008 conversion (copies a legacy intake unchanged).
+**Numbering:** API §12HQ; no migration; no RBAC change.
+- **Feature ID authorized:** `ccrm-047`. **Status:** built on `worktree-ccrm-047`.
+### DEC-SCOPE-320 — Counselor chat with walk-in students (`ccrm-044`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-044` (List 2 item 7 "Counsellors are unable to access the chat functionality
+for students added through the Walk-in option"; `MEETING_TRANSCRIPT_REQUEST`-equivalent). **Behaviour:** the student's counselor-chat
+reaches the latest application's counselor, else the csc-001 linked counselor (409 only when neither); the counselor's picker lists their
+caseload (`/lookups/overseas-students`, archived excluded); a counselor's generic send to an overseas student outside their caseload is
+403. **Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** D1 the application counselor wins when it
+differs from the linked counselor; D2 the caseload check applies only to counselor → overseas-student sends (other staff flows unchanged);
+D3 reading a past conversation (`GET /communications/messages/{id}`) is not narrowed (it only returns messages the caller is party to);
+D4 an archived student is hidden from the picker but not blocked from a send. **Numbering:** API §12HR; no migration; no RBAC change.
+- **Feature ID authorized:** `ccrm-044`. **Status:** built on `worktree-ccrm-044`.
+### DEC-SCOPE-321 — University-wise report: deposits, visas and drill-down (`ccrm-052`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-052` (owner line A6 "university wise report for overseas admin", Q9 — no
+commission; `MEETING_TRANSCRIPT_REQUEST`-equivalent). Extends ccrm-034 (`DEC-SCOPE-267`) and its ccrm-035 export (`DEC-SCOPE-268`).
+**Behaviour:** the University performance report adds `deposits_paid`, `visas_approved`, `visas_refused`, `visas_pending` (rows and
+total; the export appends them after the existing columns); each university opens a drill-down of the applications behind its row
+(same filters, 100 a page, newest first). **Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):**
+D1 a deposit is paid when the counselor's record is `paid_to_university`/`paid_via_edusphere` or the agency deposit is `paid`/`remitted`
+(refunded is not; mgmt-024 MF7), counted once per application; D2 one visa bucket per application, first match wins (any case
+approved → approved; else refused; else submitted / additional info requested / decision pending → pending); withdrawn applications
+are in no visa bucket; D3 a university with no matching applications is not listed (as before); D4 the drill-down is not exported.
+No commission. **Numbering:** API §12HS; RBAC §2.181 gains the drill-down row; no migration.
+- **Feature ID authorized:** `ccrm-052`. **Status:** built on `worktree-ccrm-052`.
+
+### DEC-SCOPE-322 — Deposit receipt upload on the student 360's Finance tab (`ccrm-048`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-048` (owner line L1, request 2026-10-28, `MEETING_TRANSCRIPT_REQUEST`-equivalent);
 design `docs/superpowers/specs/2026-10-28-ccrm-048-deposit-receipt-upload-design.md`.
@@ -10340,5 +10380,5 @@ documents, as with `PUT /deposit` today. R5 the student is notified ("Deposit re
 that is not required shows no control (the card already says "No deposit is required."); no record = no card (unchanged); API 422. R7
 archived student or closed application: no control, API 409. R8 no antivirus scan (platform residual risk). ccrm-039 F1 ("read-only") is
 superseded for the deposit receipt only.
-**Numbering:** no migration; API §12HS; RBAC §2.227 (DEC-SCOPE-319/320, §12HQ/12HR, §2.225/2.226 left for the open ccrm-047 / ccrm-052 branches).
+**Numbering:** no migration; API §12HT; RBAC §2.225.
 - **Feature ID authorized:** `ccrm-048`. **Status:** built on `worktree-ccrm-048`.

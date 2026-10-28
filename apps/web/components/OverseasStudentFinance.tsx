@@ -80,7 +80,7 @@ function Deposit({ d }: { d: StudentDeposit }) {
 
 /** ccrm-039 (DEC-SCOPE-275): the student 360's finance tab -- read-only (F1). Fees and payments are recorded by the Overseas Admin,
  *  a deposit on its application. A download is offered only where its own route allows the reader (F5).
- *  ccrm-048 (DEC-SCOPE-321): the one write -- a counselor-recorded deposit's receipt, where `can_upload` says the reader may. */
+ *  ccrm-048 (DEC-SCOPE-322): the one write -- a counselor-recorded deposit's receipt, where `can_upload` says the reader may. */
 export default function OverseasStudentFinance({ finance }: { finance: StudentFinance }) {
   return (
     <>

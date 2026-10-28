@@ -105,7 +105,7 @@ describe("student 360 finance tab (ccrm-039)", () => {
   });
 });
 
-// ccrm-048 (DEC-SCOPE-321): the deposit receipt is uploaded from the deposit card.
+// ccrm-048 (DEC-SCOPE-322): the deposit receipt is uploaded from the deposit card.
 describe("deposit receipt upload on the finance tab (ccrm-048)", () => {
   const writable = (over: Partial<StudentDeposit> = {}): StudentFinance => ({ ...empty, deposits: [{ ...finance.deposits[0], receipt: null, can_upload: true, ...over }] });
   const pdf = () => new File(["%PDF-1.4"], "deposit.pdf", { type: "application/pdf" });

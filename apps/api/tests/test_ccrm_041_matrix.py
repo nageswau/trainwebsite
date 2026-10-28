@@ -184,7 +184,7 @@ MATRIX = [
     R("get", "/workflows/overseas/applications/{app}/deposit", **staff(200, student=200)),
     R("put", "/workflows/overseas/applications/{app}/deposit", lambda w: {"required": True, "payment_status": "pending", "amount": "3000", "currency": "GBP", "due_date": day(14)}, **staff(200)),
     R("post", "/workflows/overseas/applications/{app}/deposit-receipts", form=True, **staff(201)),
-    # ccrm-048 deposit receipt from the Finance tab (§2.227)
+    # ccrm-048 deposit receipt from the Finance tab (§2.225)
     R("post", "/workflows/overseas/applications/{app}/deposit/receipt", form=True, **staff(201)),
     # ccrm-026 visa lifecycle (§2.169)
     R("patch", "/workflows/overseas/visa/{visa}/lifecycle", {"expected_visa_status": "not_started", "visa_category": "Student"}, **staff(200)),
@@ -218,6 +218,7 @@ MATRIX = [
     R("get", "/counselor/exports/leads", **SELF),
     R("get", "/management/crm-reports", **MANAGEMENT),
     R("get", "/management/crm-reports/export?report=ageing", **MANAGEMENT),
+    R("get", "/management/crm-reports/universities/{university}/applications", **MANAGEMENT),  # ccrm-052 (§2.181)
     # ccrm-037 templates and the student message log (§2.187)
     R("get", "/counselor/templates", **STAFF_READ),
     R("get", "/counselor/templates/{template}/preview", **STAFF_READ),

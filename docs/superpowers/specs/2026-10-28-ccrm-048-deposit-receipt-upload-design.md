@@ -2,7 +2,7 @@
 
 Source: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` § `ccrm-048` (owner line L1: "add a document upload option next to the University
 Deposit section"). Owner pre-authorised the recommended answers; every default below is the builder's call (`NEEDS_CONFIRMATION`).
-Decision: `DEC-SCOPE-321`; API §12HS; RBAC §2.227 (318-320 / 12HQ-12HR / 2.225-2.226 left for the open ccrm-047 / ccrm-052 branches).
+Decision: `DEC-SCOPE-322`; API §12HT; RBAC §2.225.
 
 ## Intent
 
@@ -55,5 +55,5 @@ the deposit card when `can_upload`. The F1 banner is reworded: fees remain read-
 2. Update ccrm-039 finance tests (new key), ccrm-041 matrix row.
 3. Web RED: `OverseasStudentFinance.test.tsx` — button only when `can_upload`, label Upload vs Replace, posts multipart, error shown,
    refresh on success. GREEN: component + type.
-4. Docs: API_CONTRACT §12HS, RBAC §2.227, DEC-SCOPE-321.
+4. Docs: API_CONTRACT §12HT, RBAC §2.225, DEC-SCOPE-322.
 5. Playwright `e2e/ccrm-048-deposit-receipt-upload.spec.ts`; browser QA desktop/tablet/mobile.

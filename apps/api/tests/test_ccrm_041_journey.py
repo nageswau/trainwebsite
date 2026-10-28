@@ -82,7 +82,7 @@ async def test_the_appendix_b_journey(client, db_session, monkeypatch):
 
     # 2. Three applications, each its own record and code (ccrm-011), all counselled by the counselor.
     universities = [await mk_university(db_session) for _ in range(3)]
-    a, b, c = [(await ok(await client.post(APPS, headers=as_cns, json={"student_id": str(student.id), "university_id": str(u.id), "intake": "Fall 2027"}), 201))["id"] for u in universities]
+    a, b, c = [(await ok(await client.post(APPS, headers=as_cns, json={"student_id": str(student.id), "university_id": str(u.id), "intake": "Sep 2027"}), 201))["id"] for u in universities]
     rows = [await db_session.get(OverseasApplication, uuid.UUID(x)) for x in (a, b, c)]
     assert len({r.application_code for r in rows}) == 3 and {r.counselor_id for r in rows} == {counselor.id}
 
