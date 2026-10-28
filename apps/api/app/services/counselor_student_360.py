@@ -7,7 +7,7 @@ B3: history = the applications' status history (ccrm-016, staff view) + audit ro
 replacements; field names only, never values.
 ccrm-039 (DEC-SCOPE-275): finance = the student's fees and payments, each application's university deposit and the refunds; read-only.
 ccrm-048 (DEC-SCOPE-322): a counselor deposit says whether its receipt may be uploaded from the tab (`can_upload`).
-ccrm-049 (DEC-SCOPE-324): a payment carries the proof staff uploaded (`proof`) and whether one may be uploaded (`can_upload_proof`)."""
+ccrm-049 (DEC-SCOPE-326): a payment carries the proof staff uploaded (`proof`) and whether one may be uploaded (`can_upload_proof`)."""
 
 from uuid import UUID
 
@@ -255,7 +255,7 @@ def payment_row(p: Payment, invoice_no: str | None, receipt_no: str | None, *, a
         "id": p.id, "description": payment_description(p), "amount": money(p.amount), "currency": p.currency, "status": p.status,
         "status_label": PAYMENT_LABELS.get(p.status) or _humanize(p.status), "due_date": p.due_date, "created_at": p.created_at, "installment_no": p.installment_no,
         "invoice_no": invoice_no, "receipt_no": receipt_no, "can_download": admin,
-        # ccrm-049 (DEC-SCOPE-324): anyone past the 360's gate may download the proof -- the document route lets the Admin and a caseload
+        # ccrm-049 (DEC-SCOPE-326): anyone past the 360's gate may download the proof -- the document route lets the Admin and a caseload
         # counselor fetch an application-less student document (ccrm-045). The upload route's rules: a manual payment (a gateway one
         # has its system receipt), the student not archived.
         "proof": {"id": proof.id, "name": proof.document_label or proof.document_type, "can_download": True} if proof else None,

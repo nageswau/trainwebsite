@@ -178,7 +178,7 @@ describe("deposit receipt upload on the finance tab (ccrm-048)", () => {
   });
 });
 
-// ccrm-049 (DEC-SCOPE-324): a payment's receipt / proof is uploaded from its row on the "Fees and payments" card.
+// ccrm-049 (DEC-SCOPE-326): a payment's receipt / proof is uploaded from its row on the "Fees and payments" card.
 describe("payment proof upload on the finance tab (ccrm-049)", () => {
   const withPayment = (over: Partial<StudentPayment> = {}): StudentFinance => ({ ...empty, payments: [{ ...finance.payments[1], can_upload_proof: true, ...over }] });
   const pdf = () => new File(["%PDF-1.4"], "transfer.pdf", { type: "application/pdf" });

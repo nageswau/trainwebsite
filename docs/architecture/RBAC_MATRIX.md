@@ -3316,7 +3316,27 @@ The ccrm-025 deposit writers' rule (§2.170: `_writable` -- role, `_assigned_app
 agency-deposit refusals (409) and a required deposit record (422). The Finance tab offers the control only where `can_upload` is true.
 Pinned by `apps/api/tests/test_ccrm_048_deposit_receipt.py` and the ccrm-041 matrix row.
 
-### 2.226 Payment receipt / proof upload on the student 360's Finance tab *(added 2026-10-28 — `DEC-SCOPE-324`, ccrm-049)*
+### 2.227 Counselor creates applications for a student *(added 2026-10-28 — `DEC-SCOPE-324`, ccrm-046)*
+
+| Route | Anonymous | overseas counselor (student in caseload) | overseas counselor (other student) | overseas_admin | agent (own student) | overseas_student (self) | IT counselor, other roles |
+|---|---|---|---|---|---|---|---|
+| `POST /workflows/overseas/applications` | 401 | 201 | 403 | 201 | 201 | 201 | 403 |
+
+A counselor's application is always their own and direct: another `counselor_id` or any `agent_id` in the body is 403. The 360
+Applications tab shows "Add application" to the counselor only (not for an archived student). Pinned by
+`apps/api/tests/test_ccrm_046_counselor_applications.py`.
+### 2.228 Counselor performance for the Overseas Admin *(added 2026-10-28 — `DEC-SCOPE-325`, ccrm-053)*
+
+| Route | Anonymous | overseas counselor | IT counselor | overseas_admin | super_admin | other roles |
+|---|---|---|---|---|---|---|
+| `GET /counselor/performance` (unchanged, §2.183) | 401 | 200 (own only) | 403 | 403 | 403 | 403 |
+| `GET /overseas-admin/counselor-performance` | 401 | 403 | 403 | 200 | 200 | 403 |
+| `GET /overseas-admin/counselor-performance.csv` / `.xlsx` | 401 | 403 | 403 | 200 | 200 | 403 |
+| `GET /overseas-admin/counselor-performance/{id}` | 401 | 403 | 403 | 200 (404 if not an overseas counselor) | 200 (same) | 403 |
+
+Read-only; the export is audited. Pinned by `apps/api/tests/test_ccrm_053_counselor_performance.py` and the ccrm-041 matrix rows.
+
+### 2.229 Payment receipt / proof upload on the student 360's Finance tab *(added 2026-10-28 — `DEC-SCOPE-326`, ccrm-049)*
 
 | Route | Anonymous | overseas counselor (student in caseload) | overseas counselor (outside caseload) | overseas_admin | super_admin, IT counselor, agent, overseas_student, other roles |
 |---|---|---|---|---|---|

@@ -3,7 +3,7 @@
 Revision ID: 0216_payment_proof_documents
 Revises: 0215_payment_discount_ledger
 
-docs/superpowers/specs/2026-10-28-ccrm-049-payment-proof-upload-design.md (DEC-SCOPE-324). 0001 builds a fresh database from the current
+docs/superpowers/specs/2026-10-28-ccrm-049-payment-proof-upload-design.md (DEC-SCOPE-326). 0001 builds a fresh database from the current
 models, which already carry the column, so it is added only when missing. No backfill: no payment had a proof before. The downgrade
 drops the column (and with it the foreign key).
 """

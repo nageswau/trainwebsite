@@ -9,8 +9,8 @@ ccrm-040 (DEC-SCOPE-276) -- archive instead of delete: the student's counselor o
 list archived students. API §12GC; RBAC §2.190.
 ccrm-045 (DEC-SCOPE-318) -- the 360's Documents tab uploads a document for the student, with or without an application. API §12HP;
 RBAC §2.224.
-ccrm-049 (DEC-SCOPE-324) -- the 360's Finance tab uploads a receipt / proof for one of the student's manual payments. API §12HV;
-RBAC §2.226."""
+ccrm-049 (DEC-SCOPE-326) -- the 360's Finance tab uploads a receipt / proof for one of the student's manual payments. API §12HX;
+RBAC §2.229."""
 
 import logging
 from collections.abc import Awaitable, Callable
@@ -212,7 +212,7 @@ async def _store(
 
 @router.post("/{student_id}/payments/{payment_id}/proof", status_code=201)
 async def upload_payment_proof(student_id: UUID, payment_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """ccrm-049 (DEC-SCOPE-324): the Finance tab's "Upload / Replace receipt" on a payment -- a "Payment receipt" document of the student
+    """ccrm-049 (DEC-SCOPE-326): the Finance tab's "Upload / Replace receipt" on a payment -- a "Payment receipt" document of the student
     linked as the payment's proof in one transaction. The 360's gate, then the archive, the payment (the student's, not an agency deposit:
     404) and a manual one (a gateway payment has its system receipt: 409), all before the file is read. The payment row is locked so two
     replaces serialise; its amount and status never move. A replaced proof stays one of the student's documents."""

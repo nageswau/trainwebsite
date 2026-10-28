@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 import { signIn } from "./helpers/agency";
 
-// ccrm-049 (DEC-SCOPE-324) -- the counselor uploads a payment's receipt / proof from the student 360's Finance tab; the Overseas Admin
+// ccrm-049 (DEC-SCOPE-326) -- the counselor uploads a payment's receipt / proof from the student 360's Finance tab; the Overseas Admin
 // replaces it; the student sees it on their Payments page and in their Documents and cannot call the route. The Overseas Admin first
 // records a paid manual fee (with its system receipt) for the seeded demo counselor's student. Requires `python -m app.seed`.
 

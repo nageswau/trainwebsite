@@ -300,7 +300,7 @@ change this.
 - **Positive / negative / edge:** pending (unpaid) payment — allowed (proof of offline transfer) by default; deleted document → proof null.
 - **Regression risks:** payments/receipts tests, ccrm-039 finance, mgmt revenue reports (no read change).
 - **Complexity:** medium. **Risk:** high (money + migration).
-- **Status (2026-10-28):** built on `worktree-ccrm-049` (`DEC-SCOPE-324`; API §12HV; RBAC §2.226; migration `0216_payment_proof_documents`;
+- **Status (2026-10-28):** built on `worktree-ccrm-049` (`DEC-SCOPE-326`; API §12HX; RBAC §2.229; migration `0216_payment_proof_documents`;
   counselor outside the caseload 404, not 403 — `NEEDS_CONFIRMATION`).
 
 ### `ccrm-050` — Agent-Master commission on the Add/Edit University form
@@ -409,6 +409,7 @@ change this.
   legacy free-text intake not matching picker format excluded from intake filter (documented).
 - **Regression risks:** existing counselor performance tests, mgmt-018, ccrm-041 matrix (new admin route).
 - **Complexity:** medium. **Risk:** medium.
+- **Status (2026-10-28):** built on `worktree-ccrm-053` (`DEC-SCOPE-325`; API §12HW; RBAC §2.228; no migration — optional index deferred).
 
 ## 4. Out of scope (owner answers)
 

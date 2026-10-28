@@ -1,4 +1,4 @@
-"""ccrm-049 (DEC-SCOPE-324) -- a payment receipt / proof is uploaded from the student 360's Finance tab: POST
+"""ccrm-049 (DEC-SCOPE-326) -- a payment receipt / proof is uploaded from the student 360's Finance tab: POST
 /counselor/students/{id}/payments/{pid}/proof (multipart) stores a "Payment receipt" document of the student and links it as
 `payments.proof_document_id` in one transaction. The counselor for a student in their caseload, the Overseas Admin any; manual payments
 only; the system receipt is untouched. Spec: docs/superpowers/specs/2026-10-28-ccrm-049-payment-proof-upload-design.md."""

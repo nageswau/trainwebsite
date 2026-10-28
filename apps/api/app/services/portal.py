@@ -764,7 +764,7 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
             ({"sender": m.sender, "subject": m.subject, "received": m.received_at, "match": m.match_status} for m in rows),
         )
     if section == "payments":
-        # ccrm-049 (DEC-SCOPE-324): the proof staff uploaded, by name -- never its file key; the file is downloaded from Documents.
+        # ccrm-049 (DEC-SCOPE-326): the proof staff uploaded, by name -- never its file key; the file is downloaded from Documents.
         stmt = select(Payment, StudentDocument).outerjoin(StudentDocument, StudentDocument.id == Payment.proof_document_id)
         rows = (await db.execute(stmt.where(Payment.user_id == user.id, Payment.division == "overseas").order_by(Payment.created_at.desc()))).all()
         return _payload(

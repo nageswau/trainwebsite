@@ -2355,6 +2355,13 @@ async def create_overseas_application(payload: OverseasApplicationCreate, user: 
     student = await db.get(User, student_id)
     if not student or student.role != "overseas_student" or student.division != "overseas":
         raise HTTPException(422, "Valid overseas student is required")
+    if user.role == "counselor":
+        # ccrm-046 (DEC-SCOPE-324): only for a student in the caseload -- before the archive guard, so a stranger's archive state stays
+        # hidden -- and the application is the counselor's own and direct: no other counselor, no agent.
+        if not await counselor_students.is_visible_student(db, user, student_id):
+            raise HTTPException(403, "This student is not in your caseload")
+        if payload.counselor_id not in (None, user.id) or payload.agent_id:
+            raise HTTPException(403, "A counselor creates applications as their own counselor, without an agent")
     await student_archive.refuse_new_application(db, student_id)  # ccrm-040 (DEC-SCOPE-276 AR6)
     if user.role == "agent":
         linked = await db.scalar(select(AgentStudent.id).where(*student_scope(user), AgentStudent.student_id == student_id, AgentStudent.status == "active"))

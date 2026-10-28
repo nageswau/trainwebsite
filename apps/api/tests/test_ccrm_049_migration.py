@@ -1,4 +1,4 @@
-"""ccrm-049 -- migration 0216_payment_proof_documents (DEC-SCOPE-324): the chain and the round trip in a throwaway database (the
+"""ccrm-049 -- migration 0216_payment_proof_documents (DEC-SCOPE-326): the chain and the round trip in a throwaway database (the
 nehn-019 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util

@@ -1451,3 +1451,11 @@ half.
 | `ccrm-050-AC3` | Agent Master sees 10% after publish | `::test_ac3_ac4_the_master_sees_the_form_rate_after_publish_and_staff_never_do`; e2e test 1 |
 | `ccrm-050-AC4` | Agent staff never see it | `::test_ac3_ac4_...`; `test_dtu_001_agent_partners.py` (unchanged, green) |
 | `ccrm-050-EDGE` | Both rates → 422; inactive → 409; edit prefills; blank clears (audited); unchanged not audited | `::test_the_rate_is_validated_like_the_card`, `::test_an_inactive_university_keeps_the_409`, `::test_an_admin_edit_sets_keeps_and_clears_the_commission`; vitest prefill / clear / currency cases |
+| `ccrm-053` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-053` (Q7, Q7b) → `DEC-SCOPE-325`; `API_CONTRACT.md` §12HW; RBAC §2.228 | PF1–PF10 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-053-AC1` | Counselor sees own report with the intake filter | `apps/api/tests/test_ccrm_053_counselor_performance.py::test_the_intake_filter_narrows_the_lead_and_application_figures`; `CounselorTeamPerformance.test.tsx` (filters); `ccrm-053-counselor-performance.spec.ts` |
+| `ccrm-053-AC2` | Admin sees every overseas counselor with correct counts (zero rows listed; inactive only with activity) | `::test_the_admin_lists_every_overseas_counselor_with_their_figures`, `::test_an_inactive_counselor_is_listed_only_with_activity`; e2e |
+| `ccrm-053-AC3` | Overseas + IT leads = Leads | `::test_the_lead_split_sums_to_the_leads_total`, `::test_the_division_filter_narrows_the_lead_figures_only` |
+| `ccrm-053-AC4` | Intake narrows application figures (legacy text excluded) | `::test_the_intake_filter_narrows_the_lead_and_application_figures`, `::test_the_admin_list_takes_the_intake_and_division_filters` |
+| `ccrm-053-AC5` | Counselor cannot read another's figures | `::test_the_counselor_cannot_name_another_counselor`, `::test_everyone_else_is_refused_the_admin_routes`; `test_ccrm_041_matrix.py` rows |
+| `ccrm-053-AC6` | CSV matches the screen; audited | `::test_the_csv_matches_the_screen_and_is_audited`; e2e |
+| `ccrm-053-UI` | Admin page, links with filters, Total, export, detail page, empty/error/404 states, nav entry | `apps/web/tests/components/CounselorTeamPerformance.test.tsx`; e2e |

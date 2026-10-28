@@ -10398,7 +10398,39 @@ clear (as `DELETE .../agent-commission`), a blank rate on the form = `null`; C4 
 migration; no RBAC change (same editors and viewers as DEC-SCOPE-209).
 - **Feature ID authorized:** `ccrm-050`. **Status:** built on `worktree-ccrm-050`.
 
-### DEC-SCOPE-324 — Payment receipt / proof upload on the student 360's Finance tab (`ccrm-049`)
+### DEC-SCOPE-324 — Counselor creates and manages multiple applications for a student (`ccrm-046`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-046` (owner request 2026-10-28, `MEETING_TRANSCRIPT_REQUEST`-equivalent);
+design `docs/superpowers/specs/2026-10-28-ccrm-046-counselor-applications-design.md`.
+**Built:** the student 360's Applications tab gives the overseas counselor an "Add application" disclosure holding the existing apply
+form (country, university, course, ccrm-047 intake picker) for that student, repeatable. `POST /workflows/overseas/applications` as a
+counselor now refuses a student outside the caseload (`is_visible_student`) with **403**, checked before the archive guard, and refuses a
+body naming another counselor or any agent with **403** -- a counselor's application is their own and direct (security fix).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** A1 no Overseas Admin 360 UI (its API path is
+unchanged). A2 the course active/published rule is unchanged (none on the API); the form lists the public catalogue only. A3 a
+counselor-created application for an agency student is direct (no `agent_id`). A4 notifications as for a student-created application
+(the student's in-app "Application created").
+**Numbering:** no migration; API §12HV; RBAC §2.227.
+- **Feature ID authorized:** `ccrm-046`. **Status:** built on `worktree-ccrm-046`.
+
+### DEC-SCOPE-325 — Counselor performance: Overseas Admin view, intake filter, Overseas/IT lead split (`ccrm-053`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-053` (owner line A10 "counsellor performance ---> leads, overseas/it,
+students, intake(filter), visas, enrollments", Q7 counselor own + Overseas Admin all, Q7b split by `Enquiry.division`;
+`MEETING_TRANSCRIPT_REQUEST`-equivalent). Extends ccrm-036 (`DEC-SCOPE-269`); reuses mgmt-018 builders and ccrm-034 predicates.
+**Behaviour:** the counselor's report adds period figures Leads / Overseas leads / IT leads and takes `intake` ("Mon YYYY") and
+`division` (overseas | it) filters; the Overseas Admin gets `/overseas/admin/counselor-performance` — one row per overseas counselor, a
+Total row, CSV / Excel (audited), and each counselor's full report. **Builder's defaults (owner pre-authorised recommended answers;
+`NEEDS_CONFIRMATION`):** PF1 Leads = leads the counselor owns created in the period, Overseas + IT (so the split sums to the total);
+PF2 intake narrows lead figures (`LeadQualification.intake`) and application figures (`OverseasApplication.intake`) only — not the
+mgmt-018 figures, follow-ups or tasks; legacy free text never matches; PF3 division narrows the lead figures only; PF5 API routes under
+`/overseas-admin/counselor-performance`; PF6 Super Admin included; PF7 active overseas counselors always listed, an inactive one only
+with a non-zero figure; PF8 no revenue; PF10 the optional `ix_overseas_applications_counselor_id` is deferred (no migration).
+**Observation:** handover and owner change assign a lead only to a counselor of its own division, so an overseas counselor's IT leads
+are normally 0. **Numbering:** API §12HW; RBAC §2.228; no migration.
+- **Feature ID authorized:** `ccrm-053`. **Status:** built on `worktree-ccrm-053`.
+
+### DEC-SCOPE-326 — Payment receipt / proof upload on the student 360's Finance tab (`ccrm-049`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-049` (owner line L6, Q4, request 2026-10-28, `MEETING_TRANSCRIPT_REQUEST`-equivalent);
 design `docs/superpowers/specs/2026-10-28-ccrm-049-payment-proof-upload-design.md`.
@@ -10411,5 +10443,5 @@ transfer on a pending payment is allowed). P5 the proof is a "Payment receipt" `
 gate may download it (the document route's ccrm-045 rule for an application-less document). P7 audit `payment.proof_attached`; no student
 notification (not asked). P8 the student sees the file in Documents and its name in a new "Uploaded proof" column of the portal Payments
 page; the system receipt is labelled "System receipt" on the Finance tab. P9 no antivirus scan (platform residual risk).
-**Numbering:** migration 0216 (0212 was taken; 0213/0214 unused); API §12HV; RBAC §2.226.
+**Numbering:** migration 0216 (0212 was taken; 0213/0214 unused); API §12HX; RBAC §2.229 (DEC-SCOPE-324/325, §12HV/12HW taken by ccrm-046 / ccrm-053).
 - **Feature ID authorized:** `ccrm-049`. **Status:** built on `worktree-ccrm-049`.

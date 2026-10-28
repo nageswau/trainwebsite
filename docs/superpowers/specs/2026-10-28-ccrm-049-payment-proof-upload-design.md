@@ -1,7 +1,7 @@
 # ccrm-049 — Payment receipt / proof upload on the student 360's Finance tab (design)
 
 Source: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-049` (owner line L6, Q4). Follows ccrm-048 (deposit receipt, DEC-SCOPE-322).
-Decision `DEC-SCOPE-324`; API §12HV; RBAC §2.226.
+Decision `DEC-SCOPE-326`; API §12HX; RBAC §2.229.
 The owner asked the session to proceed on the backlog's recommended defaults; every default below is marked as such.
 
 ## Intent

@@ -8,7 +8,7 @@ import { sendRequest } from "@/lib/apiErrors";
 
 type Props = { url: string; kind: "Deposit receipt" | "Payment receipt"; subject: string; replacing: boolean };
 
-// The Finance tab's receipt upload -- ccrm-048 (DEC-SCOPE-322) a deposit's, ccrm-049 (DEC-SCOPE-324) a payment's proof. The route stores
+// The Finance tab's receipt upload -- ccrm-048 (DEC-SCOPE-322) a deposit's, ccrm-049 (DEC-SCOPE-326) a payment's proof. The route stores
 // the file as one of the student's documents and attaches it in one step. One upload at a time.
 export default function ReceiptUpload({ url, kind, subject, replacing }: Props) {
   const router = useRouter();
