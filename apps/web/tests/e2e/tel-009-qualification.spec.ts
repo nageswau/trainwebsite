@@ -62,7 +62,8 @@ test("a telecaller qualifies an overseas lead and the section follows the produc
   await section.getByLabel("City").fill("Chennai");
   await overseas.getByLabel("UG / Master's").selectOption("masters");
   await overseas.getByLabel("Preferred course").fill("MSc Data Science");
-  await overseas.getByLabel("Intake").fill("Sep 2027");
+  await overseas.getByLabel("Intake month").selectOption("Sep"); // ccrm-047: the month + year picker
+  await overseas.getByLabel("Intake year").selectOption("2027");
   await overseas.getByLabel("Academic percentage").fill("120");
   await section.getByRole("button", { name: "Save qualification" }).click();
   await expect(section.getByText("Enter a percentage from 0 to 100.")).toBeVisible();

@@ -17,7 +17,7 @@ function detailMessage(detail: unknown) {
 // existed generically and needed no backend change; this adds the missing student
 // picker (never a raw id typed by hand, same precedent as ADM-001-008/OVS-002/etc.) and
 // wires the reply action to it.
-// ccrm-044 (DEC-SCOPE-318): the picker searches the counselor's caseload (csc-001 walk-in links + own applications' students, archived
+// ccrm-044 (DEC-SCOPE-320): the picker searches the counselor's caseload (csc-001 walk-in links + own applications' students, archived
 // left out) instead of reading their applications, so a walk-in without an application can be picked too.
 const searchStudents = lookupSearch("overseas-students");
 

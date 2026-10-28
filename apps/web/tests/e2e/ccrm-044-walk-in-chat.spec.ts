@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { pickFromList } from "./helpers/pick";
 
-// ccrm-044 (DEC-SCOPE-318): the seeded walk-in (csc-001 link, no application) messages their counselor, who picks them in Counselor
+// ccrm-044 (DEC-SCOPE-320): the seeded walk-in (csc-001 link, no application) messages their counselor, who picks them in Counselor
 // Chat and replies; the student sees the reply. The counselor cannot send to a student outside their caseload.
 
 async function loginAs(page: Page, email: string, dashboardPath: string) {

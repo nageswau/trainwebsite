@@ -10312,7 +10312,38 @@ link and the counselor's first application; D4 Edit/Resend stay only on the coun
 Overseas Admin view is unchanged. **Numbering:** API §12HO; no migration; no RBAC change.
 - **Feature ID authorized:** `ccrm-043`. **Status:** built on `worktree-ccrm-043`.
 
-### DEC-SCOPE-318 — Counselor chat with walk-in students (`ccrm-044`)
+### DEC-SCOPE-318 — Counselor uploads student documents, with or without an application (`ccrm-045`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-045` (owner request 2026-10-28, `MEETING_TRANSCRIPT_REQUEST`-equivalent);
+design `docs/superpowers/specs/2026-10-28-ccrm-045-counselor-document-upload-design.md`.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** U1 the Overseas Admin gets the same upload
+control. U2 any of the student's applications the reader may write (the counselor's own, incl. agency applications per CC4; the Admin
+any); another student's application **422**, another counselor's **403**, a withdrawn / terminally decided one **409**. U3 no email or
+notification -- the document is visible in the student's Documents at once (no visibility flag). U4 no throttle (staff route; 20 MB cap).
+U5 a new upload is `pending` and not auto-linked to a checklist item (ccrm-019 linking unchanged). U6 no antivirus scan (platform-wide
+residual risk). U7 an "Offer letter" needs an application (AGN-010 O3). U8 an archived student **409**. Download: a counselor's
+document **without an application** follows the caseload (`is_visible_student`: csc-001 link or one of the student's applications)
+instead of "has one of the student's applications" -- a superset, nobody loses access. The student's Offer Letters page also lists an
+application with a current "Offer letter" document and offers its download.
+**Numbering:** no migration; API §12HP; RBAC §2.224.
+- **Feature ID authorized:** `ccrm-045`. **Status:** built on `worktree-ccrm-045`.
+
+### DEC-SCOPE-319 — Intake Month+Year picker for lead, student profile and application (`ccrm-047`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-047` (owner requests A4 "Also add a fields of intake for a lead.", L5
+"Intake Options in Student Portal and Counsellor Login", answer Q8; `MEETING_TRANSCRIPT_REQUEST`-equivalent). Intake was free text.
+**Behaviour:** one shared picker (month Jan–Dec + year, this year to three years ahead) writes `"Mon YYYY"` (e.g. `Sep 2027`) into the
+existing columns: lead create (telecaller / manager `NewLeadForm` and the counselor walk-in lead) → `lead_qualifications.intake` (row
+created with the lead when an intake is given); the lead qualification edit; the student profile (student's own and staff) →
+`preferred_intake`; the student/counselor application create → `overseas_applications.intake`. A malformed **new** value is **422** (field
+`loc`); a legacy free-text value already stored displays as-is and survives unrelated saves. **Builder's defaults (owner pre-authorised
+recommended answers; `NEEDS_CONFIRMATION`):** I1 past months of the current year allowed; no year bound server-side (format only); I2
+intake on lead create only for an `overseas`-group product, else 422; I3 an application create that omits `intake` keeps the server
+default "Next intake" (API compatibility); I4 unchanged: application `PATCH`, agent application forms, the Overseas Admin school-student
+bridge, checklist templates, outcome `new_intake`, CSV lead import (tel-006) and ccrm-008 conversion (copies a legacy intake unchanged).
+**Numbering:** API §12HQ; no migration; no RBAC change.
+- **Feature ID authorized:** `ccrm-047`. **Status:** built on `worktree-ccrm-047`.
+### DEC-SCOPE-320 — Counselor chat with walk-in students (`ccrm-044`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-044` (List 2 item 7 "Counsellors are unable to access the chat functionality
 for students added through the Walk-in option"; `MEETING_TRANSCRIPT_REQUEST`-equivalent). **Behaviour:** the student's counselor-chat
@@ -10321,5 +10352,5 @@ caseload (`/lookups/overseas-students`, archived excluded); a counselor's generi
 403. **Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** D1 the application counselor wins when it
 differs from the linked counselor; D2 the caseload check applies only to counselor → overseas-student sends (other staff flows unchanged);
 D3 reading a past conversation (`GET /communications/messages/{id}`) is not narrowed (it only returns messages the caller is party to);
-D4 an archived student is hidden from the picker but not blocked from a send. **Numbering:** API §12HP; no migration; no RBAC change.
+D4 an archived student is hidden from the picker but not blocked from a send. **Numbering:** API §12HR; no migration; no RBAC change.
 - **Feature ID authorized:** `ccrm-044`. **Status:** built on `worktree-ccrm-044`.

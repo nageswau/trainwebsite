@@ -151,7 +151,7 @@ change this.
   new counselor; archived student → hidden from picker.
 - **Regression risks:** `tests/test_i19_counselor_chat.py` (application path); messaging for other roles if the caseload check is broadened.
 - **Complexity:** small. **Risk:** medium (messaging authz).
-- **Status (2026-10-28):** built on `worktree-ccrm-044` (`DEC-SCOPE-318`; API §12HP; no migration; caseload check only for counselor → overseas student).
+- **Status (2026-10-28):** built on `worktree-ccrm-044` (`DEC-SCOPE-320`; API §12HR; no migration; caseload check only for counselor → overseas student).
 
 ### `ccrm-045` — Counselor uploads student documents (incl. offer letter) without an application
 
@@ -244,6 +244,8 @@ change this.
   conversion copies intake to profile.
 - **Regression risks:** tel-005 intake, tel-009 qualification form, ccrm-005 lead fields, ccrm-007 profile, agency application forms.
 - **Complexity:** medium. **Risk:** low.
+- **Status (2026-10-28):** built on `worktree-ccrm-047` (`DEC-SCOPE-319`; API §12HQ; no migration; agent forms, CSV import and
+  application `PATCH` unchanged — `NEEDS_CONFIRMATION`).
 
 ### `ccrm-048` — University deposit document upload on the Finance tab
 

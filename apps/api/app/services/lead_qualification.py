@@ -14,6 +14,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AuditLog, Country, Enquiry, LeadEnglishTest, LeadQualification, TelProduct, User
+from app.schemas import INTAKE_MESSAGE, is_intake
 from app.services.bdm_appointments import db_now, today_ist
 from app.services.lead_pipeline import invalid
 from app.services.telecaller_leads import read_only
@@ -93,6 +94,9 @@ async def replace(db: AsyncSession, user: User, lead: Enquiry, sent: dict) -> No
     changed = [f for f in applies if await current(f) != sent.get(f)]
     if not changed:
         return
+    intake = sent.get("intake")
+    if "intake" in changed and intake and not is_intake(intake):  # ccrm-047: a legacy intake left as it was still saves (AC6)
+        raise invalid("intake", INTAKE_MESSAGE, intake)
     country_id = sent.get("preferred_country_id")
     if "preferred_country_id" in changed and country_id and await db.get(Country, country_id) is None:
         raise invalid("preferred_country_id", COUNTRY_UNKNOWN, str(country_id))

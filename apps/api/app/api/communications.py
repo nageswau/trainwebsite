@@ -52,7 +52,7 @@ async def send_message(payload: dict, user: User = Depends(get_current_user), db
         raise HTTPException(404, "Recipient unavailable")
     if user.role != "super_admin" and recipient.division != user.division:
         raise HTTPException(403, "Cross-division messaging is not allowed")
-    # ccrm-044 (DEC-SCOPE-318): an overseas counselor writes only to the students in their caseload (csc-001 link or own application).
+    # ccrm-044 (DEC-SCOPE-320): an overseas counselor writes only to the students in their caseload (csc-001 link or own application).
     if user.role == "counselor" and recipient.role == "overseas_student" and not await is_visible_student(db, user, recipient.id):
         raise HTTPException(403, "This student is not one of your students")
     item = Message(

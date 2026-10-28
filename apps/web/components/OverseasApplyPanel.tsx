@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Country, University } from "@/lib/types";
 import ApplicationStatusHistory from "@/components/ApplicationStatusHistory";
+import IntakePicker, { intakeProblem } from "@/components/IntakePicker";
 
 type Course = { id: string; title: string; level: string; category: string; duration: string; tuition_fee: string; intake: string };
 type ApplicationRow = { id: string; university: string; reference: string | null; intake: string; status: string; next_action: string | null };
@@ -30,6 +31,7 @@ export default function OverseasApplyPanel() {
   const [universityId, setUniversityId] = useState("");
   const [courses, setCourses] = useState<Course[] | null>(null);
   const [courseId, setCourseId] = useState("");
+  const [intake, setIntake] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; failed: boolean } | null>(null);
   const [openHistoryId, setOpenHistoryId] = useState<string | null>(null);
@@ -83,16 +85,18 @@ export default function OverseasApplyPanel() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // ccrm-047: the intake is a month and a year; the server refuses any other shape
+    const intakeError = intake ? intakeProblem(intake) : "Choose the intake month and year.";
+    if (intakeError) return setMessage({ text: intakeError, failed: true });
     setBusy(true);
     setMessage(null);
-    const form = new FormData(event.currentTarget);
     const response = await fetch("/api/v1/workflows/overseas/applications", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         university_id: universityId,
         course_id: courseId || null,
-        intake: String(form.get("intake") || "Next intake"),
+        intake,
       }),
     });
     const data = await response.json().catch(() => ({}));
@@ -152,10 +156,7 @@ export default function OverseasApplyPanel() {
             </select>
           </div>
         )}
-        <div className="field">
-          <label htmlFor="apply-intake">Intake</label>
-          <input id="apply-intake" name="intake" defaultValue="Next intake" required />
-        </div>
+        <IntakePicker id="apply-intake" label="Intake" value={intake} onChange={setIntake} disabled={busy} required />
         <button className="btn small" disabled={busy || !universityId}>
           {busy ? "Submitting…" : "Submit interest"}
         </button>

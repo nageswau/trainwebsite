@@ -13,6 +13,7 @@ const EMPTY = {
   intake: null, academic_percentage: null, english_test_status: null, passport_status: null,
   preferred_country_id: null, preferred_country: null, study_mode: null, preferred_campus: null, academic_cgpa: null, backlogs: null, english_tests: [],
 };
+const NEXT_YEAR = String(new Date().getFullYear() + 1);
 const COUNTRIES = [{ id: "c-uk", name: "United Kingdom" }, { id: "c-ca", name: "Canada" }];
 const qual = (over: Partial<LeadQualification> = {}): LeadQualification => ({
   lead_id: "L1", product: { id: "p-uk", name: "UK", group: "overseas" }, product_group: "overseas", ...EMPTY, city: "Chennai",
@@ -61,12 +62,13 @@ describe("LeadQualificationForm (tel-009)", () => {
     expect(screen.queryByRole("group", { name: "IT training requirement" })).toBeNull();
     expect(within(overseas).getByText("UK")).toBeTruthy(); // destination = the lead's product, read-only (QF1)
     fireEvent.change(within(overseas).getByLabelText("UG / Master's"), { target: { value: "masters" } });
-    fireEvent.change(within(overseas).getByLabelText("Intake"), { target: { value: " Sep 2027 " } });
+    fireEvent.change(within(overseas).getByLabelText("Intake month"), { target: { value: "Sep" } }); // ccrm-047: the month + year picker
+    fireEvent.change(within(overseas).getByLabelText("Intake year"), { target: { value: NEXT_YEAR } });
     fireEvent.change(within(overseas).getByLabelText("Academic percentage"), { target: { value: "72.5" } });
     fireEvent.click(screen.getByRole("button", { name: "Save qualification" }));
     await waitFor(() => expect(puts()).toHaveLength(1));
     const body = JSON.parse(String(puts()[0][1].body));
-    expect(body).toMatchObject({ study_level: "masters", intake: "Sep 2027", academic_percentage: 72.5, city: "Chennai", current_org: null });
+    expect(body).toMatchObject({ study_level: "masters", intake: `Sep ${NEXT_YEAR}`, academic_percentage: 72.5, city: "Chennai", current_org: null });
     expect(body).not.toHaveProperty("preferred_mode");
     expect(await screen.findByText("Qualification saved.")).toBeTruthy();
     expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ city: "Chennai", qualification: null }));
@@ -203,5 +205,22 @@ describe("LeadQualificationForm (ccrm-005)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save qualification" }));
     await waitFor(() => expect(puts()).toHaveLength(1));
     expect(fetchMock.mock.calls.every(([url]) => !String(url).startsWith("/api/v1/telecaller"))).toBe(true);
+  });
+});
+
+describe("LeadQualificationForm intake (ccrm-047)", () => {
+  it("keeps a legacy intake on an unrelated save and refuses a half-chosen one", async () => {
+    getReply = () => res(qual({ intake: "Fall 2027 maybe" }));
+    render(<LeadQualificationForm leadId="L1" productId="p-uk" readOnly={false} onSaved={() => undefined} />);
+    await edit();
+    expect(screen.getByText(/Saved as “Fall 2027 maybe”/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Save qualification" }));
+    await waitFor(() => expect(puts()).toHaveLength(1));
+    expect(JSON.parse(String(puts()[0][1].body)).intake).toBe("Fall 2027 maybe");
+    await edit();
+    fireEvent.change(screen.getByLabelText("Intake month"), { target: { value: "Oct" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save qualification" }));
+    expect(await screen.findByText("Choose both the month and the year for the intake.")).toBeTruthy();
+    expect(puts()).toHaveLength(1);
   });
 });

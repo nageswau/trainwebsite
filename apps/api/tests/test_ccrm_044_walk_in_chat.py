@@ -1,4 +1,4 @@
-"""ccrm-044 (DEC-SCOPE-318) -- counselor chat with walk-in students. The student's counselor-chat resolves the counselor of their latest
+"""ccrm-044 (DEC-SCOPE-320) -- counselor chat with walk-in students. The student's counselor-chat resolves the counselor of their latest
 application, else their csc-001 linked counselor (409 only when neither exists); an overseas counselor's generic send to an overseas
 student is limited to their caseload (`visible_student_ids`), and the picker (`/lookups/overseas-students`) lists that caseload."""
 
