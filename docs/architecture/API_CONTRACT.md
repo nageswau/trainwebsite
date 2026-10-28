@@ -4634,3 +4634,15 @@ days on the day the students' agency records were created).
 - `PUT /overseas/me/profile` and `PUT /counselor/students/{id}/profile` (ccrm-007) — `preferred_intake` checked only when it changes from
   the stored value (a legacy value re-sent unchanged saves).
 - `POST /workflows/overseas/applications` — a sent `intake` must match; omitted keeps the default `"Next intake"`.
+
+## 12HR. Agent-Master commission on create / edit university (ccrm-050) — addendum, 2026-10-28
+
+`DEC-SCOPE-320`. No migration; no new route; viewers unchanged (dtu-001, `UniversityEnvelope` keeps `exclude_unset`).
+
+- `POST /partnership/universities` and `PATCH /partnership/universities/{id}` — additive optional `agent_commission`:
+  `{percent}` or `{amount, currency}`, optional `note` (≤300), the `AgentCommissionIn` rules (one rate; amount needs a currency; percent
+  0 < p ≤ 100) → **422** with `loc` `["body", "agent_commission", ...]`. `PATCH`: omitted = unchanged, `null` = clear, object = set.
+- Only super_admin / overseas_admin (overseas division) may send the key; anyone else (even `null`) → **403** `"Only a super admin or an
+  overseas admin can change the agent commission"`, nothing written. Inactive university `PATCH` → **409** (unchanged).
+- A change writes `university.agent_commission` `{before, after}` in the same transaction (as `PUT .../agent-commission`); the response's
+  `agent_commission` is present for viewers only.

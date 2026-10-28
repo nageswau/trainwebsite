@@ -3,6 +3,7 @@ import Link from "next/link";
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import PortalShell from "@/components/PortalShell";
 import UniversityForm from "@/components/UniversityForm";
+import { AGENT_COMMISSION_EDITORS } from "@/lib/agentCommission";
 import { serverApi } from "@/lib/api";
 import type { User } from "@/lib/types";
 import { CREATOR_ROLES, shellFor, UNIVERSITIES_PATH } from "@/lib/universities";
@@ -27,7 +28,7 @@ export default async function NewUniversityPage() {
           </div>
         </div>
         {CREATOR_ROLES.has(user.role) ? (
-          <UniversityForm />
+          <UniversityForm canEditAgentCommission={AGENT_COMMISSION_EDITORS.has(user.role)} />
         ) : (
           <p className="empty" role="status">Your role cannot add universities. Ask your partnership head.</p>
         )}

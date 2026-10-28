@@ -189,7 +189,7 @@ async def run(db: AsyncSession, user: User, batch: UniversityImportBatch, filled
             requirements=[],
             deadlines=[],
             scholarships=[],
-            **parsed.model_dump(exclude={"rankings", "duplicate_reason"}),
+            **parsed.model_dump(exclude={"rankings", "duplicate_reason", "agent_commission"}),
         )
         db.add(uni)
         svc.audit(db, user, "create", uni.id, {"code": code, "import_batch_id": str(batch.id)})

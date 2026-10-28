@@ -10343,3 +10343,19 @@ default "Next intake" (API compatibility); I4 unchanged: application `PATCH`, ag
 bridge, checklist templates, outcome `new_intake`, CSV lead import (tel-006) and ccrm-008 conversion (copies a legacy intake unchanged).
 **Numbering:** API §12HQ; no migration; no RBAC change.
 - **Feature ID authorized:** `ccrm-047`. **Status:** built on `worktree-ccrm-047`.
+
+### DEC-SCOPE-320 — Agent-Master commission on the Add/Edit University form (`ccrm-050`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-050` (owner lines A8 "while adding the university commission, the commision
+field should be available that is visible to only agent master", A9, answer Q5; `MEETING_TRANSCRIPT_REQUEST`-equivalent). Before: the dtu-001
+agent commission (DEC-SCOPE-209) could be set only from the university detail card, after create. **Behaviour:** `UniversityForm` (Add and
+Edit) shows an "Agent Master commission" fieldset (percentage **or** amount + currency, optional note) to super_admin / overseas_admin only;
+it is saved in the same request as the university (`POST` / `PATCH /partnership/universities` carry an optional `agent_commission` object,
+validated as `AgentCommissionIn`), audited `university.agent_commission` with `{before, after}` in the same transaction; prefilled on Edit.
+Any other caller sending the key (even `null`) is **403** before any write; partnership roles never see the fieldset; viewers are
+unchanged (agent Master, published + active only; never agent staff). **Builder's defaults (owner pre-authorised recommended answers;
+`NEEDS_CONFIRMATION`):** C1 same-request save, not a follow-up PUT; C2 refusal is 403, not ignore; C3 `PATCH` omitted = unchanged, `null` =
+clear (as `DELETE .../agent-commission`), a blank rate on the form = `null`; C4 an unchanged value is not audited, and the create audit's
+`fields` list omits it; C5 an inactive university stays 409 (UM10); C6 the CSV import (upc-005) cannot carry it. **Numbering:** API §12HR; no
+migration; no RBAC change (same editors and viewers as DEC-SCOPE-209).
+- **Feature ID authorized:** `ccrm-050`. **Status:** built on `worktree-ccrm-050`.
