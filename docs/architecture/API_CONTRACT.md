@@ -4660,3 +4660,21 @@ days on the day the students' agency records were created).
   filters. Each item: `application_id`, `application_code`, `student_name`, `course` (title or null), `intake`, `stage`, `stage_label`,
   `counselor` (name or null), `deposit_paid` (bool), `visa` (`approved | refused | pending | null`). Newest first. Unknown university
   **404**. Read-only, not audited (as the report read).
+
+## 12HT. Deposit receipt upload on the student 360's Finance tab (ccrm-048) — addendum, 2026-10-28
+
+`DEC-SCOPE-322`. No migration.
+
+- `POST /workflows/overseas/applications/{application_id}/deposit/receipt` — **new**, `multipart/form-data`: `file` (PDF/JPEG/PNG sniffed
+  from the bytes, at most 20 MB, server-generated storage key — ccrm-025's deposit-receipt rules). Stores a "Deposit receipt" document on
+  the application and sets the counselor deposit record's `receipt_document_id` (and `updated_by`) in one transaction; a replaced receipt
+  stays one of the student's documents. **201** `{"record": <GET /deposit's record>}`. Errors: **401**; **403** another role or another
+  counselor's application; **404** unknown application; **409** withdrawn / terminally decided application, archived agency record,
+  archived student, or an AGN-011 agency deposit; **422** no deposit record or `required=false` ("Record a required deposit on the
+  application first"), empty file; **413** too large; **415** not a PDF/JPEG/PNG. Also writes a status-history note ("Deposit receipt
+  uploaded." / "replaced."), the student's "Deposit receipt added" notice (and the agency side's, on an agency application), the
+  `document.upload` and `overseas.application.deposit_receipt` (`replaced`, `document_id`) audit rows. The stored file is discarded if
+  the transaction fails.
+- `GET /counselor/students/{student_id}/finance` — each deposit gains `can_upload` (additive): `true` only for a counselor-recorded,
+  required deposit on an open application of a non-archived student, for that application's counselor or the Overseas Admin; always
+  `false` on an agency deposit.

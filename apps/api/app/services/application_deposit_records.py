@@ -16,6 +16,7 @@ STATUS_LABELS = {"not_required": "Not required", "pending": "Pending", "paid_to_
 RECEIPT = "Deposit receipt"
 AGENCY_MANAGED = "The agency pays this deposit through EduSphere -- it is shown read-only"
 RECEIPT_MISMATCH = "Choose a deposit receipt uploaded for this application"
+NO_REQUIRED_DEPOSIT = "Record a required deposit on the application first"  # ccrm-048
 
 
 async def record_for(db: AsyncSession, application_id) -> ApplicationDepositRecord | None:

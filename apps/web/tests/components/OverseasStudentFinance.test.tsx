@@ -2,11 +2,16 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import OverseasStudentFinance from "@/components/OverseasStudentFinance";
+import type { StudentDeposit } from "@/lib/overseasStudent360";
 import { studentTab, type StudentFinance } from "@/lib/overseasStudent360";
+
+const refresh = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh, push: vi.fn() }) }));
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  refresh.mockReset();
 });
 
 const empty: StudentFinance = { payments: [], deposits: [], refunds: [] };
@@ -25,11 +30,12 @@ const finance: StudentFinance = {
     {
       application_id: "a1", application_code: "APP-1", university: "Alpha Uni", mine: true, source: "counselor", required: true, amount: "3000.00", currency: "GBP",
       due_date: "2026-12-01", status: "paid_to_university", status_label: "Paid directly to the university", paid_on: "2026-10-01", refund: null,
-      receipt: { id: "d1", name: "Deposit receipt", can_download: true },
+      receipt: { id: "d1", name: "Deposit receipt", can_download: true }, can_upload: false,
     },
     {
       application_id: "a2", application_code: "APP-2", university: "Gamma Uni", mine: false, source: "agency", required: true, amount: "50000.00", currency: "INR",
       due_date: null, status: "refunded", status_label: "Refunded", paid_on: "2026-09-01", refund: { amount: "45000.00", refunded_on: "2026-09-30", reason: "Visa refused" }, receipt: null,
+      can_upload: false,
     },
   ],
   refunds: [{ kind: "deposit", description: "University deposit — Gamma Uni", amount: "45000.00", currency: "INR", refunded_on: "2026-09-30", application_code: "APP-2" }],
@@ -96,5 +102,76 @@ describe("student 360 finance tab (ccrm-039)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Download receipt RCT-1" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/payments/p1/receipt");
+  });
+});
+
+// ccrm-048 (DEC-SCOPE-322): the deposit receipt is uploaded from the deposit card.
+describe("deposit receipt upload on the finance tab (ccrm-048)", () => {
+  const writable = (over: Partial<StudentDeposit> = {}): StudentFinance => ({ ...empty, deposits: [{ ...finance.deposits[0], receipt: null, can_upload: true, ...over }] });
+  const pdf = () => new File(["%PDF-1.4"], "deposit.pdf", { type: "application/pdf" });
+  const json = (body: unknown, status = 201) => Promise.resolve(new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }));
+
+  it("offers no upload where the reader may not upload (agency, not required, another counselor's)", () => {
+    render(<OverseasStudentFinance finance={finance} />);
+    expect(screen.queryByLabelText(/receipt file/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /upload receipt|replace receipt/i })).not.toBeInTheDocument();
+  });
+
+  it("no longer calls the whole tab read-only", () => {
+    render(<OverseasStudentFinance finance={empty} />);
+    expect(screen.queryByText(/^Read-only\./)).not.toBeInTheDocument();
+    expect(screen.getByText(/a deposit's receipt can be uploaded here/)).toBeInTheDocument();
+  });
+
+  it("uploads a receipt for a deposit without one, then refreshes", async () => {
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() => json({ record: {} }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<OverseasStudentFinance finance={writable({ application_id: "a 1" })} />);
+    const button = screen.getByRole("button", { name: "Upload receipt for Alpha Uni" });
+    fireEvent.change(screen.getByLabelText("Deposit receipt file for Alpha Uni"), { target: { files: [pdf()] } });
+    fireEvent.click(button);
+    expect(await screen.findByText("Receipt uploaded. The student can see it in their Documents.")).toBeInTheDocument();
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/v1/workflows/overseas/applications/a%201/deposit/receipt");
+    expect(init?.method).toBe("POST");
+    expect((init?.body as FormData).get("file")).toBeInstanceOf(File);
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it("says Replace when a receipt is already attached", () => {
+    render(<OverseasStudentFinance finance={writable({ receipt: { id: "d1", name: "Deposit receipt", can_download: true } })} />);
+    expect(screen.getByRole("button", { name: "Replace receipt for Alpha Uni" })).toBeInTheDocument();
+  });
+
+  it("asks for a file before sending anything", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<OverseasStudentFinance finance={writable()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Upload receipt for Alpha Uni" }));
+    expect(await screen.findByText("Choose a PDF, JPEG or PNG file first.")).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("shows the server's refusal and does not refresh", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => json({ detail: "Record a required deposit on the application first" }, 422)));
+    render(<OverseasStudentFinance finance={writable()} />);
+    fireEvent.change(screen.getByLabelText("Deposit receipt file for Alpha Uni"), { target: { files: [pdf()] } });
+    fireEvent.click(screen.getByRole("button", { name: "Upload receipt for Alpha Uni" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Record a required deposit on the application first");
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("sends one request for a double click", async () => {
+    let finish: (value: Response) => void = () => {};
+    const fetchMock = vi.fn(() => new Promise<Response>((resolve) => (finish = resolve)));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<OverseasStudentFinance finance={writable()} />);
+    fireEvent.change(screen.getByLabelText("Deposit receipt file for Alpha Uni"), { target: { files: [pdf()] } });
+    const button = screen.getByRole("button", { name: "Upload receipt for Alpha Uni" });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    finish(new Response(JSON.stringify({ record: {} }), { status: 201 }));
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
   });
 });
