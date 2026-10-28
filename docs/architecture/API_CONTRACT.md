@@ -4660,3 +4660,13 @@ days on the day the students' agency records were created).
   filters. Each item: `application_id`, `application_code`, `student_name`, `course` (title or null), `intake`, `stage`, `stage_label`,
   `counselor` (name or null), `deposit_paid` (bool), `visa` (`approved | refused | pending | null`). Newest first. Unknown university
   **404**. Read-only, not audited (as the report read).
+
+## 12HV. Counselor creates applications for a student (ccrm-046) — addendum, 2026-10-28
+
+`DEC-SCOPE-324`. No migration, no new route.
+
+- `POST /workflows/overseas/applications` — for the overseas **counselor** only: **403** "This student is not in your caseload" when
+  `student_id` is outside the caseload (csc-001 link or one of the student's applications), checked before the archive guard (so an
+  archived stranger is also 403, not 409); **403** when the body names another `counselor_id` or any `agent_id` (naming themselves is
+  accepted). Otherwise unchanged: `counselor_id` is the caller, `agent_id` null, stage `enquiry`, APP- code, **409** for a duplicate open
+  student + university + course or an archived student, **201** `{id, status}`. Student, Overseas Admin and agent behaviour unchanged.

@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import OverseasApplyPanel from "@/components/OverseasApplyPanel";
 
 // nehn-034 (DEC-SCOPE-286 C6): the apply form starts with a country choice that narrows the university list.
-const nav = vi.hoisted(() => ({ search: "" }));
+const nav = vi.hoisted(() => ({ search: "", refresh: vi.fn() }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: nav.refresh }),
   useSearchParams: () => new URLSearchParams(nav.search),
 }));
 
@@ -29,6 +29,7 @@ const universityOptions = () => Array.from((screen.getByLabelText("University") 
 
 beforeEach(() => {
   nav.search = "";
+  nav.refresh.mockClear();
   vi.stubGlobal("fetch", vi.fn((url: string) => respond(url)));
 });
 afterEach(() => {
@@ -109,5 +110,56 @@ describe("OverseasApplyPanel intake (ccrm-047)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Submit interest" }));
     expect(await screen.findByText("Choose both the month and the year for the intake.")).toBeTruthy();
     expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "POST")).toBe(false);
+  });
+});
+
+// ccrm-046 (DEC-SCOPE-324): on the student 360 the counselor applies for the student -- the form never reads the student's own list
+// and refreshes the page so the 360 Applications list and count show the new row.
+describe("OverseasApplyPanel for a counselor (ccrm-046)", () => {
+  const year = String(new Date().getFullYear() + 1);
+  const posts = () => vi.mocked(fetch).mock.calls.filter(([, init]) => init?.method === "POST");
+  const answer = (status: number, body: object) =>
+    vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => (init?.method === "POST" ? Promise.resolve(new Response(JSON.stringify(body), { status })) : respond(url))));
+
+  async function fillAndSubmit() {
+    fireEvent.change(await screen.findByLabelText("University"), { target: { value: "u2" } });
+    fireEvent.change(screen.getByLabelText("Intake month"), { target: { value: "Sep" } });
+    fireEvent.change(screen.getByLabelText("Intake year"), { target: { value: year } });
+    fireEvent.click(screen.getByRole("button", { name: "Create application" }));
+  }
+
+  it("sends the student id, skips the student's own list and refreshes the page", async () => {
+    answer(201, { id: "a1", status: "enquiry" });
+    render(<OverseasApplyPanel studentId="s-46" />);
+    await fillAndSubmit();
+    expect(await screen.findByText("Application created. It is listed below.")).toBeTruthy();
+    expect(JSON.parse(String(posts()[0][1]!.body))).toMatchObject({ student_id: "s-46", university_id: "u2", intake: `Sep ${year}` });
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/student/applications"))).toBe(false);
+    expect(nav.refresh).toHaveBeenCalled();
+    expect(screen.queryByText("Your applications")).toBeNull();
+    expect((screen.getByLabelText("University") as HTMLSelectElement).value).toBe(""); // ready for the next university
+  });
+
+  it("explains a duplicate open application in the counselor's words", async () => {
+    answer(409, { detail: "exists" });
+    render(<OverseasApplyPanel studentId="s-46" />);
+    await fillAndSubmit();
+    expect(await screen.findByText("This student already has an open application for this university and course.")).toBeTruthy();
+    expect(nav.refresh).not.toHaveBeenCalled();
+  });
+
+  it("shows the server's reason for a refusal", async () => {
+    answer(403, { detail: "This student is not in your caseload" });
+    render(<OverseasApplyPanel studentId="s-46" />);
+    await fillAndSubmit();
+    expect(await screen.findByText("This student is not in your caseload")).toBeTruthy();
+  });
+
+  it("recovers from a network failure instead of staying on Creating… (QA-01)", async () => {
+    vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => (init?.method === "POST" ? Promise.reject(new TypeError("Failed to fetch")) : respond(url))));
+    render(<OverseasApplyPanel studentId="s-46" />);
+    await fillAndSubmit();
+    expect(await screen.findByText("Unable to submit the application.")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Create application" }) as HTMLButtonElement).disabled).toBe(false);
   });
 });
