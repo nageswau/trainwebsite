@@ -4699,3 +4699,22 @@ days on the day the students' agency records were created).
   archived stranger is also 403, not 409); **403** when the body names another `counselor_id` or any `agent_id` (naming themselves is
   accepted). Otherwise unchanged: `counselor_id` is the caller, `agent_id` null, stage `enquiry`, APP- code, **409** for a duplicate open
   student + university + course or an archived student, **201** `{id, status}`. Student, Overseas Admin and agent behaviour unchanged.
+
+## 12HW. Counselor performance: Overseas Admin view, intake filter, Overseas/IT lead split (ccrm-053) — addendum, 2026-10-28
+
+`DEC-SCOPE-325`. No migration.
+
+- `GET /counselor/performance` — adds optional `intake` ("Mon YYYY", ccrm-047 format; else **422** "Choose the intake month and year,
+  like Sep 2027") and `division` (`overseas | it`; else **422**); an empty value is no filter. `period[]` gains `leads`, `leads_overseas`,
+  `leads_it` (first). The response adds `intake`, `division` (as applied) and `counselor` (null). Authorization unchanged (overseas
+  counselor only; any `counselor_id` sent is ignored).
+- `GET /overseas-admin/counselor-performance` — new. `from`, `to`, `intake`, `division` as above. Returns `{from, to, as_of, intake,
+  division, columns[{key,label,definition}], items[], totals}`; each item: `id`, `full_name`, `active`, `leads`, `leads_overseas`,
+  `leads_it`, `leads_assigned`, `calls`, `counseling_sessions`, `conversions`, `conversion_pct` (null when nothing assigned), `students`,
+  `applications`, `visas_pending`, `visas_approved`, `visas_refused`, `enrollments`; `totals` the same keys with `full_name: "Total"`.
+  `Cache-Control: no-store`.
+- `GET /overseas-admin/counselor-performance.csv` / `.xlsx` — new. The list's columns (labels as header), rows and Total row; one
+  `counselor_performance.export` audit row (`from`, `to`, `intake`, `division`, `rows`, `format`) committed before the file is returned.
+- `GET /overseas-admin/counselor-performance/{counselor_id}` — new. The `GET /counselor/performance` body for that counselor with the same
+  filters, `counselor: {id, full_name, active}` set. Not an overseas counselor **404**.
+- Admin routes: `overseas_admin`, `super_admin`; others **403**; anonymous **401**.

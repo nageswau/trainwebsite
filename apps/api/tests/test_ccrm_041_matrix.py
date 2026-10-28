@@ -214,6 +214,12 @@ MATRIX = [
     # ccrm-032 dashboard (§2.191), ccrm-036 performance (§2.183), ccrm-035 exports (§2.182), ccrm-034 reports (§2.181)
     R("get", "/counselor/dashboard", **SELF),
     R("get", "/counselor/performance", **SELF),
+    # ccrm-053 the Overseas Admin's counselor performance (§2.228); another division's counselor reads as missing
+    R("get", "/overseas-admin/counselor-performance", **ADMINS),
+    R("get", "/overseas-admin/counselor-performance.csv", **ADMINS),
+    R("get", "/overseas-admin/counselor-performance.xlsx", **ADMINS),
+    R("get", "/overseas-admin/counselor-performance/{cns_id}", **ADMINS),
+    R("get", "/overseas-admin/counselor-performance/{it_cns_id}", ovs_admin=404, super=404),
     R("get", "/counselor/exports/applications", **SELF),
     R("get", "/counselor/exports/leads", **SELF),
     R("get", "/management/crm-reports", **MANAGEMENT),
@@ -247,6 +253,7 @@ PREFIXES = (
     "/counselor/",
     "/overseas-admin/checklists",
     "/overseas-admin/reminder-rules",
+    "/overseas-admin/counselor-performance",
     "/overseas/me/",
     "/calendar/feeds/",
     "/management/crm-reports",

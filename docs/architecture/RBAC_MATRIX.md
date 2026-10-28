@@ -3325,3 +3325,13 @@ Pinned by `apps/api/tests/test_ccrm_048_deposit_receipt.py` and the ccrm-041 mat
 A counselor's application is always their own and direct: another `counselor_id` or any `agent_id` in the body is 403. The 360
 Applications tab shows "Add application" to the counselor only (not for an archived student). Pinned by
 `apps/api/tests/test_ccrm_046_counselor_applications.py`.
+### 2.228 Counselor performance for the Overseas Admin *(added 2026-10-28 — `DEC-SCOPE-325`, ccrm-053)*
+
+| Route | Anonymous | overseas counselor | IT counselor | overseas_admin | super_admin | other roles |
+|---|---|---|---|---|---|---|
+| `GET /counselor/performance` (unchanged, §2.183) | 401 | 200 (own only) | 403 | 403 | 403 | 403 |
+| `GET /overseas-admin/counselor-performance` | 401 | 403 | 403 | 200 | 200 | 403 |
+| `GET /overseas-admin/counselor-performance.csv` / `.xlsx` | 401 | 403 | 403 | 200 | 200 | 403 |
+| `GET /overseas-admin/counselor-performance/{id}` | 401 | 403 | 403 | 200 (404 if not an overseas counselor) | 200 (same) | 403 |
+
+Read-only; the export is audited. Pinned by `apps/api/tests/test_ccrm_053_counselor_performance.py` and the ccrm-041 matrix rows.
