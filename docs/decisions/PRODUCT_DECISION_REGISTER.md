@@ -10343,7 +10343,18 @@ default "Next intake" (API compatibility); I4 unchanged: application `PATCH`, ag
 bridge, checklist templates, outcome `new_intake`, CSV lead import (tel-006) and ccrm-008 conversion (copies a legacy intake unchanged).
 **Numbering:** API §12HQ; no migration; no RBAC change.
 - **Feature ID authorized:** `ccrm-047`. **Status:** built on `worktree-ccrm-047`.
-### DEC-SCOPE-320 — University-wise report: deposits, visas and drill-down (`ccrm-052`)
+### DEC-SCOPE-320 — Counselor chat with walk-in students (`ccrm-044`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-044` (List 2 item 7 "Counsellors are unable to access the chat functionality
+for students added through the Walk-in option"; `MEETING_TRANSCRIPT_REQUEST`-equivalent). **Behaviour:** the student's counselor-chat
+reaches the latest application's counselor, else the csc-001 linked counselor (409 only when neither); the counselor's picker lists their
+caseload (`/lookups/overseas-students`, archived excluded); a counselor's generic send to an overseas student outside their caseload is
+403. **Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** D1 the application counselor wins when it
+differs from the linked counselor; D2 the caseload check applies only to counselor → overseas-student sends (other staff flows unchanged);
+D3 reading a past conversation (`GET /communications/messages/{id}`) is not narrowed (it only returns messages the caller is party to);
+D4 an archived student is hidden from the picker but not blocked from a send. **Numbering:** API §12HR; no migration; no RBAC change.
+- **Feature ID authorized:** `ccrm-044`. **Status:** built on `worktree-ccrm-044`.
+### DEC-SCOPE-321 — University-wise report: deposits, visas and drill-down (`ccrm-052`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-052` (owner line A6 "university wise report for overseas admin", Q9 — no
 commission; `MEETING_TRANSCRIPT_REQUEST`-equivalent). Extends ccrm-034 (`DEC-SCOPE-267`) and its ccrm-035 export (`DEC-SCOPE-268`).
@@ -10354,5 +10365,5 @@ D1 a deposit is paid when the counselor's record is `paid_to_university`/`paid_v
 (refunded is not; mgmt-024 MF7), counted once per application; D2 one visa bucket per application, first match wins (any case
 approved → approved; else refused; else submitted / additional info requested / decision pending → pending); withdrawn applications
 are in no visa bucket; D3 a university with no matching applications is not listed (as before); D4 the drill-down is not exported.
-No commission. **Numbering:** API §12HR; RBAC §2.181 gains the drill-down row; no migration.
+No commission. **Numbering:** API §12HS; RBAC §2.181 gains the drill-down row; no migration.
 - **Feature ID authorized:** `ccrm-052`. **Status:** built on `worktree-ccrm-052`.

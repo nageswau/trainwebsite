@@ -66,6 +66,7 @@ from app.models import (
     Notification,
     OverseasApplication,
     OverseasCourse,
+    OverseasStudentCounselor,
     Payment,
     PlacementProfile,
     ProfileDocument,
@@ -2420,11 +2421,12 @@ async def send_counselor_message(payload: dict, user: User = Depends(get_current
     body = str(payload.get("body") or "").strip()
     if not body:
         raise HTTPException(422, "Message body is required")
+    # ccrm-044 (DEC-SCOPE-320): the latest application's counselor wins; a walk-in without one reaches their csc-001 linked counselor.
     counselor_id = await db.scalar(
         select(OverseasApplication.counselor_id)
         .where(OverseasApplication.student_id == user.id, OverseasApplication.counselor_id.is_not(None))
         .order_by(OverseasApplication.updated_at.desc())
-    )
+    ) or await db.scalar(select(OverseasStudentCounselor.counselor_user_id).where(OverseasStudentCounselor.student_user_id == user.id))
     if not counselor_id:
         raise HTTPException(409, "No counselor is assigned to your case yet")
     counselor = await db.get(User, counselor_id)
