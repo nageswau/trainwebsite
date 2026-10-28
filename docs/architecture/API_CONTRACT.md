@@ -4678,6 +4678,17 @@ days on the day the students' agency records were created).
 - `GET /counselor/students/{student_id}/finance` — each deposit gains `can_upload` (additive): `true` only for a counselor-recorded,
   required deposit on an open application of a non-archived student, for that application's counselor or the Overseas Admin; always
   `false` on an agency deposit.
+## 12HU. Agent-Master commission on create / edit university (ccrm-050) — addendum, 2026-10-28
+
+`DEC-SCOPE-323`. No migration; no new route; viewers unchanged (dtu-001, `UniversityEnvelope` keeps `exclude_unset`).
+
+- `POST /partnership/universities` and `PATCH /partnership/universities/{id}` — additive optional `agent_commission`:
+  `{percent}` or `{amount, currency}`, optional `note` (≤300), the `AgentCommissionIn` rules (one rate; amount needs a currency; percent
+  0 < p ≤ 100) → **422** with `loc` `["body", "agent_commission", ...]`. `PATCH`: omitted = unchanged, `null` = clear, object = set.
+- Only super_admin / overseas_admin (overseas division) may send the key; anyone else (even `null`) → **403** `"Only a super admin or an
+  overseas admin can change the agent commission"`, nothing written. Inactive university `PATCH` → **409** (unchanged).
+- A change writes `university.agent_commission` `{before, after}` in the same transaction (as `PUT .../agent-commission`); the response's
+  `agent_commission` is present for viewers only.
 
 ## 12HV. Counselor creates applications for a student (ccrm-046) — addendum, 2026-10-28
 

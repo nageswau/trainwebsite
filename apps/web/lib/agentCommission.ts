@@ -8,3 +8,18 @@ export function formatAgentCommission(c: AgentCommission | null | undefined): st
   if (c.percent) return `${c.percent}%`;
   return `${c.currency} ${Number(c.amount).toLocaleString("en-GB", { minimumFractionDigits: 2 })}`;
 }
+
+// ccrm-050: the editor's entry, shared by AgentCommissionCard and the Add/Edit University form (AgentCommissionFields).
+export type AgentCommissionDraft = { kind: "percent" | "fixed"; percent: string; amount: string; currency: string; note: string };
+export const agentCommissionDraft = (c: AgentCommission | null | undefined): AgentCommissionDraft => ({
+  kind: c && !c.percent && c.amount ? "fixed" : "percent", percent: c?.percent ?? "", amount: c?.amount ?? "", currency: c?.currency ?? "", note: c?.note ?? "",
+});
+// The API body ({percent} or {amount, currency}, plus a note), null when no rate is entered, or the message for an incomplete entry.
+export function agentCommissionBody(d: AgentCommissionDraft): { body: Record<string, string> | null } | { error: string } {
+  const rate = d.kind === "percent" ? d.percent.trim() : d.amount.trim();
+  if (!rate) return { body: null };
+  if (d.kind === "fixed" && !d.currency) return { error: "Choose the currency." };
+  const body: Record<string, string> = d.kind === "percent" ? { percent: rate } : { amount: rate, currency: d.currency };
+  if (d.note.trim()) body.note = d.note.trim();
+  return { body };
+}

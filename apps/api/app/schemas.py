@@ -8189,6 +8189,7 @@ class UniversityCreate(BaseModel):
     campuses: UniversityCampuses = None
     fee_structure: UniversityFeeStructure = None
     duplicate_reason: DuplicateReason = None
+    agent_commission: "AgentCommissionIn | None" = None  # ccrm-050: super_admin / overseas_admin only (anyone else sending the key: 403)
 
 
 class UniversityUpdate(BaseModel):
@@ -8217,6 +8218,7 @@ class UniversityUpdate(BaseModel):
     campuses: UniversityCampuses = None
     fee_structure: UniversityFeeStructure = None
     duplicate_reason: DuplicateReason = None
+    agent_commission: "AgentCommissionIn | None" = None  # ccrm-050: omitted = unchanged, null = clear (the DELETE), an object = set
 
 
 class UniversityAssign(BaseModel):
