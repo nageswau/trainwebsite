@@ -7,7 +7,7 @@ import { signInAsFreshCounselor } from "./helpers/counselor";
 // empty and an overdue task they add shows up -- exact, whatever else the shared stack DB holds.
 
 const SECTIONS = [
-  "New and not-contacted leads", "Today's appointments", "Calls logged today", "Follow-ups due", "Overdue tasks", "Leads without a next action",
+  "New and not-contacted leads", "Today's appointments", "Calls logged today", "Follow-ups due", "Tasks due", "Leads without a next action",
   "Students with pending documents", "Applications not ready", "Submitted, awaiting decision", "Offer deadlines and conditions",
   "Visa appointments and decisions", "Enrolment and arrival",
 ];
@@ -24,9 +24,9 @@ test("a fresh counselor sees every section empty, then their new lead and its fo
   for (const title of SECTIONS) {
     await expect(page.getByRole("region", { name: new RegExp(`^${title} 0$`) })).toBeVisible();
   }
-  await expect(page.getByText("No overdue tasks.")).toBeVisible();
+  await expect(page.getByText("No tasks due in the next 7 days.")).toBeVisible();
 
-  // A task due today is not overdue (ccrm-029 accepts no past due date); a walk-in lead with a follow-up later today shows up.
+  // A task due today is listed, not flagged overdue (ccrm-029 accepts no past due date); a walk-in lead with a follow-up later today shows up.
   const stamp = Date.now();
   expect((await page.request.post("/api/v1/counselor/tasks", { data: { title: `Chase passport ${stamp}`, due_on: today() } })).status()).toBe(201);
   const products = (await (await page.request.get("/api/v1/telecaller/products?group=overseas&active=true&limit=100")).json()).items;
@@ -39,7 +39,7 @@ test("a fresh counselor sees every section empty, then their new lead and its fo
   expect(fu.status(), await fu.text()).toBe(201);
 
   await page.reload();
-  await expect(page.getByRole("region", { name: /^Overdue tasks 0$/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: /^Tasks due 1$/ })).toBeVisible(); // ccrm-042: due this week
   const followUps = page.getByRole("region", { name: /^Follow-ups due 1$/ });
   const link = followUps.getByRole("link", { name: new RegExp(`Dash Lead ${stamp}`) });
   await expect(link).toBeVisible();
@@ -52,7 +52,7 @@ test("a fresh counselor sees every section empty, then their new lead and its fo
 
 test("the Overseas Admin's dashboard has no counselor sections and the API refuses them", async ({ page }) => {
   await signIn(page, "overseasadmin@edusphere.local", "Demo@123", "/overseas/admin/dashboard");
-  await expect(page.getByRole("region", { name: /^Overdue tasks/ })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: /^Tasks due/ })).toHaveCount(0);
   expect((await page.request.get("/api/v1/counselor/dashboard")).status()).toBe(403);
 });
 

@@ -10283,3 +10283,17 @@ receipt stays **403** (the backlog's "404" is left `NEEDS_CONFIRMATION`). D10 th
 `/payments/mine`. D11 backfill: discount from the `payment.discount` audit rows, `paid_at` from the receipt's `issued_at`.
 **Numbering:** migration `0215_payment_discount_ledger`; API §12HM; no RBAC change.
 - **Feature ID authorized:** `nehn-019`. **Status:** built on `worktree-nehn-019`.
+
+### DEC-SCOPE-316 — Counselor dashboard follow-ups and tasks: overdue + next 7 days (`ccrm-042`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-042` (owner request 2026-10-28, answer Q3 "Overdue + next 7 days";
+`MEETING_TRANSCRIPT_REQUEST`-equivalent). Bug: a new follow-up must be future-dated (`lead_follow_ups.check_due`) but the dashboard
+listed only follow-ups due before midnight IST today, so it stayed hidden until its day.
+**Behaviour:** the `follow_ups` section lists the open follow-ups on the counselor's leads with `due_at` before the start of
+(today IST + 8 days) -- overdue, today and the next 7 days -- soonest first, overdue flagged. The tasks section lists open tasks with
+`due_on <= today + 7`, soonest first, overdue (`due_on < today`) flagged. Done/cancelled never appear; lead scope (owner + division)
+and the overseas-counselor-only gate are unchanged. **Builder's defaults (owner pre-authorised recommended answers;
+`NEEDS_CONFIRMATION`):** D1 the response key `overdue_tasks` is kept for compatibility (the UI titles it "Tasks due"); D2 the window
+is exposed as an additive `follow_up_days: 7`; D3 the `/counselor/tasks` page, ccrm-036 performance and ccrm-031 escalation "overdue"
+figures are unchanged. **Numbering:** API §12HN; no migration; no RBAC change.
+- **Feature ID authorized:** `ccrm-042`. **Status:** built on `worktree-ccrm-042`.

@@ -13,13 +13,14 @@ const GRID = { display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, 
 const LIST = { listStyle: "none", padding: 0, margin: "8px 0 0" } as const;
 const ROW = { display: "flex", flexWrap: "wrap", gap: "4px 8px", alignItems: "baseline", padding: "8px 0", borderTop: "1px solid var(--line, #e5e7eb)" } as const;
 const HEAD = { margin: 0, fontSize: 17, display: "flex", gap: 8, alignItems: "center" } as const;
+const WEEK = new Set<CounselorDashboardKey>(["follow_ups", "overdue_tasks"]); // ccrm-042: overdue + the next `follow_up_days` days
 
 export const SECTIONS: { key: CounselorDashboardKey; title: string; empty: string; href: string }[] = [
   { key: "new_leads", title: "New and not-contacted leads", empty: "No new leads waiting.", href: `${BASE}/leads` },
   { key: "appointments_today", title: "Today's appointments", empty: "No appointments today.", href: `${BASE}/appointments` },
   { key: "calls_today", title: "Calls logged today", empty: "No calls logged today.", href: `${BASE}/leads` },
-  { key: "follow_ups", title: "Follow-ups due", empty: "No follow-ups due today.", href: `${BASE}/leads` },
-  { key: "overdue_tasks", title: "Overdue tasks", empty: "No overdue tasks.", href: `${BASE}/tasks` },
+  { key: "follow_ups", title: "Follow-ups due", empty: "No follow-ups in the next 7 days.", href: `${BASE}/leads` },
+  { key: "overdue_tasks", title: "Tasks due", empty: "No tasks due in the next 7 days.", href: `${BASE}/tasks` },
   { key: "no_next_action", title: "Leads without a next action", empty: "Every lead has a next action.", href: `${BASE}/leads` },
   { key: "pending_documents", title: "Students with pending documents", empty: "No documents pending.", href: `${BASE}/documents` },
   { key: "not_ready", title: "Applications not ready", empty: "No applications waiting on documents.", href: `${BASE}/applications` },
@@ -75,7 +76,11 @@ export function CounselorDashboardBoard({ data }: { data: CounselorDashboard }) 
           key={s.key}
           id={s.key}
           title={s.title}
-          note={s.key === "offers_due" ? `Offers, conditions and deposits due in the next ${data.window_days} days, or overdue.` : undefined}
+          note={
+            s.key === "offers_due"
+              ? `Offers, conditions and deposits due in the next ${data.window_days} days, or overdue.`
+              : WEEK.has(s.key) ? `Overdue or due in the next ${data.follow_up_days} days, soonest first.` : undefined
+          }
           empty={s.empty}
           href={s.href}
           data={data.sections[s.key]}

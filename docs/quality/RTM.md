@@ -1404,3 +1404,12 @@ half.
 | `nehn-019-AC3` | Existing payments render without errors ("—" for missing values) | `::test_a_plain_payment_without_enrolment_or_code_renders_with_dashes`; `test_nehn_019_migration.py::test_round_trip_with_backfill`; `FeePaymentPanel.test.tsx` "renders a row without ledger fields as before" |
 | `nehn-019-AC4` | `amount` stays net (checkout, `pending_fee`) | `::test_a_discount_keeps_the_gross_amount_and_records_reason_and_admin`; `test_nehn_018_student_access.py`, `test_agn_011_*` |
 | `nehn-019-AC5` | The fee panel shows original / discount / payable, paid date and the EMI balance | `FeePaymentPanel.test.tsx` (nehn-019 block); `::test_payment_responses_carry_the_ledger_fields`; browser QA |
+| `ccrm-042` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-042` (Q3) → `DEC-SCOPE-316`; `API_CONTRACT.md` §12HN; no RBAC change | D1–D3 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-042-AC1` | A follow-up due tomorrow appears right after it is created | `apps/api/tests/test_ccrm_042_dashboard_window.py::test_a_follow_up_added_for_tomorrow_shows_at_once_and_leaves_when_done`; `ccrm-042-dashboard-week.spec.ts` |
+| `ccrm-042-AC2` | A follow-up due in 8 days does not appear (start + 8 days exclusive) | `::test_follow_ups_cover_overdue_today_and_the_next_seven_days_soonest_first`; e2e "Too far out" |
+| `ccrm-042-AC3` | Overdue open follow-ups appear flagged | `::test_follow_ups_cover_overdue_today_and_the_next_seven_days_soonest_first`; `test_ccrm_032_dashboard.py::test_every_section_lists_only_the_counselors_own_live_work` |
+| `ccrm-042-AC4` | Sorted soonest first | same tests; e2e order check |
+| `ccrm-042-AC5` | Tasks follow the same window, overdue flagged | `::test_tasks_follow_the_same_window_with_overdue_flagged`; e2e "Tasks due 1" |
+| `ccrm-042-AC6` | Done/cancelled never appear | `::test_follow_ups_cover_...`, `::test_tasks_follow_...`; e2e complete → leaves |
+| `ccrm-042-AC7` | Another counselor's / handed-over lead's follow-ups never appear | `::test_another_counselors_and_handed_over_leads_follow_ups_never_show`; IT counselor/admin 403 in `test_ccrm_032_dashboard.py` |
+| `ccrm-042-UI` | Labels "Follow-ups due" / "Tasks due", window note, empty text "No follow-ups in the next 7 days." | `apps/web/tests/components/CounselorDashboardPanel.test.tsx` (ccrm-042 case) |

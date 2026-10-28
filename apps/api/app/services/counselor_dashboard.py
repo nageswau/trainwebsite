@@ -37,6 +37,7 @@ from app.visa_status import label as visa_label
 
 LIMIT = 10  # D6
 WINDOW_DAYS = 14  # D4: "approaching" = due within this many days (past-due included, flagged)
+FOLLOW_UP_DAYS = 7  # ccrm-042 (DEC-SCOPE-316): follow-ups and tasks = overdue + today + the next 7 days
 NOT_CONTACTED = ("new", "assigned", "first_call_pending")  # D10
 PAST_NEXT_ACTION = frozenset({"application_enrollment", "converted"})  # the counselor's link is in place (ccrm-003 MANUAL_BEFORE)
 VISA_WAITING = ("submitted", "additional_info_requested", "decision_pending")
@@ -105,6 +106,7 @@ async def dashboard(db: AsyncSession, user: User, now: datetime) -> dict:
     today = today_ist(now)
     start = datetime.combine(today, time.min, IST)
     end, horizon = start + timedelta(days=1), today + timedelta(days=WINDOW_DAYS)
+    week = today + timedelta(days=FOLLOW_UP_DAYS)  # ccrm-042: the last day the follow-ups and tasks sections cover
     leads = lead_handover.counselor_scope(user)
     s: dict = {}
 
@@ -140,14 +142,14 @@ async def dashboard(db: AsyncSession, user: User, now: datetime) -> dict:
         db,
         select(LeadFollowUp, Enquiry)
         .join(Enquiry, Enquiry.id == LeadFollowUp.lead_id)
-        .where(*leads, LeadFollowUp.status == "open", LeadFollowUp.due_at < end)
+        .where(*leads, LeadFollowUp.status == "open", LeadFollowUp.due_at < start + timedelta(days=FOLLOW_UP_DAYS + 1))
         .order_by(LeadFollowUp.due_at, LeadFollowUp.id),
         lambda f, e: _item(f.id, _lead_label(e), f.next_action or _human(f.reason), f.due_at, _lead_href(e.id), overdue=f.due_at < start),
     )
-    s["overdue_tasks"] = await _section(
+    s["overdue_tasks"] = await _section(  # ccrm-042: the key stays for compatibility; the section now also lists tasks due this week
         db,
-        select(CounselorTask).where(CounselorTask.counselor_user_id == user.id, CounselorTask.status == "open", CounselorTask.due_on < today).order_by(CounselorTask.due_on, CounselorTask.id),
-        lambda t: _item(t.id, t.title, _human(t.priority) + " priority", t.due_on, TASKS_URL, overdue=True),
+        select(CounselorTask).where(CounselorTask.counselor_user_id == user.id, CounselorTask.status == "open", CounselorTask.due_on <= week).order_by(CounselorTask.due_on, CounselorTask.id),
+        lambda t: _item(t.id, t.title, _human(t.priority) + " priority", t.due_on, TASKS_URL, overdue=t.due_on < today),
     )
     s["no_next_action"] = await _section(
         db,
@@ -247,4 +249,4 @@ async def dashboard(db: AsyncSession, user: User, now: datetime) -> dict:
             app.id, app, uni, owner, ("Confirm arrival" if app.status == "enrolled" else "Confirm enrolment") + (", course starts" if app.course_start_date else ""), app.course_start_date, today
         ),
     )
-    return {"today": today, "window_days": WINDOW_DAYS, "sections": s}
+    return {"today": today, "window_days": WINDOW_DAYS, "follow_up_days": FOLLOW_UP_DAYS, "sections": s}
