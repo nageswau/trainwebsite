@@ -50,6 +50,7 @@ export default function ReportView({ item, report, error, params, basePath }: {
     if (DATES.has(name)) return <>{label}<input id={id} className="input" type="date" name={name} defaultValue={value} /></>;
     if (name === "student") return <>{label}<input id={id} className="input" type="search" name={name} maxLength={100} defaultValue={value} placeholder="Code, name or email" /></>;
     if (name === "latest") return <>{label}<input id={id} className="input" type="number" name={name} min={1} max={1000} step={1} defaultValue={value} /></>;
+    if (name === "attendance_below") return <>{label}<input id={id} className="input" type="number" name={name} min={1} max={100} step={1} defaultValue={value} /></>;
     const choices: Choice[] = report?.options[PICKERS[name]] ?? [];
     return (
       <>

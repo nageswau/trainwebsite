@@ -21,12 +21,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import rbac
 from app.models import User
 
-STANDARD = ("from", "to", "course_id", "batch_id", "trainer_id", "recruiter_id", "student", "status", "latest", "completion_from", "completion_to")
+STANDARD = ("from", "to", "course_id", "batch_id", "trainer_id", "recruiter_id", "student", "status", "latest", "completion_from", "completion_to", "attendance_below")
 PAGING = ("page", "page_size")
 LABELS = {
     "from": "From", "to": "To", "course_id": "Course", "batch_id": "Batch", "trainer_id": "Trainer", "recruiter_id": "Recruiter",
     "student": "Student", "status": "Status", "latest": "Latest", "completion_from": "Completion from", "completion_to": "Completion to",
-    "page": "Page", "page_size": "Rows per page",
+    "attendance_below": "Attendance below %", "page": "Page", "page_size": "Rows per page",
 }
 DATES = {"from": "date_from", "to": "date_to", "completion_from": "completion_from", "completion_to": "completion_to"}
 IDS = ("course_id", "batch_id", "trainer_id", "recruiter_id")
@@ -61,6 +61,7 @@ class Filters:
     latest: int | None = None
     completion_from: date | None = None
     completion_to: date | None = None
+    attendance_below: int | None = None  # nehn-011 (DEC-SCOPE-311): seats on the course whose attendance % is below it
     given: dict[str, str] = field(default_factory=dict)  # the filters the caller set, as sent (the audit row records them)
 
 
@@ -144,6 +145,8 @@ def parse(report: Report, params: Iterable[tuple[str, str]]) -> tuple[Filters, i
             values[name] = value
         elif name == "latest":
             values[name] = _whole(name, value, 1, MAX_LATEST)
+        elif name == "attendance_below":
+            values[name] = _whole(name, value, 1, 100)
     for start, end in (("date_from", "date_to"), ("completion_from", "completion_to")):
         if values.get(start) and values.get(end) and values[start] > values[end]:
             first, last = (LABELS[k] for k, v in DATES.items() if v in (start, end))

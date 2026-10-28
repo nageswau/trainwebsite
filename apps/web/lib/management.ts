@@ -11,7 +11,8 @@ export type ManagementKpi = { id: string; key: string; label: string; value: num
 export type ManagementSnapshot = { as_of: string; kpis: ManagementKpi[] };
 
 export const MANAGEMENT_HOME = "/management";
-export const MANAGEMENT_ROLE_LABEL: Record<string, string> = { partner: "Partner", accountant: "Accountant", super_admin: "Super Administrator" };
+export const MANAGEMENT_PAYMENTS_NAV: NavItem = { label: "Payments", href: "/management/payments", resource: "payments" };
+export const MANAGEMENT_ROLE_LABEL: Record<string, string> ={ partner: "Partner", accountant: "Accountant", super_admin: "Super Administrator" };
 
 // mgmt-001 (MG8/MG9): the EVID-017 §33 pillars, plus Business Intelligence with §1's Strategy entries, each entry naming the item
 // that builds it and its tier. An entry gets its `href` when that item lands; until then it is listed as coming soon, never linked.
@@ -61,7 +62,9 @@ export function managementNavFor(tiers: ManagementTiers, pillars: ManagementPill
   const live = pillarsFor(tiers, pillars).flatMap((pillar) => pillar.entries.flatMap((entry) => (entry.href ? [{ label: entry.label, href: entry.href }] : [])));
   // mgmt-028 (MT14): a caller outside the operational tier (the accountant) has no To-do, so their own Management tasks link instead.
   const myTasks = tiers.operational ? [] : [MANAGEMENT_TASKS_NAV];
-  return [{ label: "Command Center", href: MANAGEMENT_HOME }, { label: "Management activity", href: MANAGEMENT_ACTIVITY }, ...live, ...myTasks];
+  // nehn-021 (DEC-SCOPE-309 D4): grant-driven, so not a pillar entry -- PortalShell drops it without `payments.view`.
+  const payments = tiers.finance ? [MANAGEMENT_PAYMENTS_NAV] : [];
+  return [{ label: "Command Center", href: MANAGEMENT_HOME }, { label: "Management activity", href: MANAGEMENT_ACTIVITY }, ...live, ...payments, ...myTasks];
 }
 
 // mgmt-002 (DEC-SCOPE-187 MA5-MA7): GET /management/activity. The API lists only the kinds the caller's tier may see and returns the
