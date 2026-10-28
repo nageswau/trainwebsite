@@ -10382,3 +10382,20 @@ archived student or closed application: no control, API 409. R8 no antivirus sca
 superseded for the deposit receipt only.
 **Numbering:** no migration; API §12HT; RBAC §2.225.
 - **Feature ID authorized:** `ccrm-048`. **Status:** built on `worktree-ccrm-048`.
+
+### DEC-SCOPE-323 — Counselor performance: Overseas Admin view, intake filter, Overseas/IT lead split (`ccrm-053`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-053` (owner line A10 "counsellor performance ---> leads, overseas/it,
+students, intake(filter), visas, enrollments", Q7 counselor own + Overseas Admin all, Q7b split by `Enquiry.division`;
+`MEETING_TRANSCRIPT_REQUEST`-equivalent). Extends ccrm-036 (`DEC-SCOPE-269`); reuses mgmt-018 builders and ccrm-034 predicates.
+**Behaviour:** the counselor's report adds period figures Leads / Overseas leads / IT leads and takes `intake` ("Mon YYYY") and
+`division` (overseas | it) filters; the Overseas Admin gets `/overseas/admin/counselor-performance` — one row per overseas counselor, a
+Total row, CSV / Excel (audited), and each counselor's full report. **Builder's defaults (owner pre-authorised recommended answers;
+`NEEDS_CONFIRMATION`):** PF1 Leads = leads the counselor owns created in the period, Overseas + IT (so the split sums to the total);
+PF2 intake narrows lead figures (`LeadQualification.intake`) and application figures (`OverseasApplication.intake`) only — not the
+mgmt-018 figures, follow-ups or tasks; legacy free text never matches; PF3 division narrows the lead figures only; PF5 API routes under
+`/overseas-admin/counselor-performance`; PF6 Super Admin included; PF7 active overseas counselors always listed, an inactive one only
+with a non-zero figure; PF8 no revenue; PF10 the optional `ix_overseas_applications_counselor_id` is deferred (no migration).
+**Observation:** handover and owner change assign a lead only to a counselor of its own division, so an overseas counselor's IT leads
+are normally 0. **Numbering:** API §12HU; RBAC §2.226; no migration.
+- **Feature ID authorized:** `ccrm-053`. **Status:** built on `worktree-ccrm-053`.

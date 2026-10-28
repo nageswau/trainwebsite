@@ -405,6 +405,7 @@ change this.
   legacy free-text intake not matching picker format excluded from intake filter (documented).
 - **Regression risks:** existing counselor performance tests, mgmt-018, ccrm-041 matrix (new admin route).
 - **Complexity:** medium. **Risk:** medium.
+- **Status (2026-10-28):** built on `worktree-ccrm-053` (`DEC-SCOPE-323`; API §12HU; RBAC §2.226; no migration — optional index deferred).
 
 ## 4. Out of scope (owner answers)
 

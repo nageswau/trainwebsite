@@ -3315,3 +3315,14 @@ Offer Letters) at once. Download of a document without an application: the couns
 The ccrm-025 deposit writers' rule (§2.170: `_writable` -- role, `_assigned_application` scope, row lock), plus the archived-student and
 agency-deposit refusals (409) and a required deposit record (422). The Finance tab offers the control only where `can_upload` is true.
 Pinned by `apps/api/tests/test_ccrm_048_deposit_receipt.py` and the ccrm-041 matrix row.
+
+### 2.226 Counselor performance for the Overseas Admin *(added 2026-10-28 — `DEC-SCOPE-323`, ccrm-053)*
+
+| Route | Anonymous | overseas counselor | IT counselor | overseas_admin | super_admin | other roles |
+|---|---|---|---|---|---|---|
+| `GET /counselor/performance` (unchanged, §2.183) | 401 | 200 (own only) | 403 | 403 | 403 | 403 |
+| `GET /overseas-admin/counselor-performance` | 401 | 403 | 403 | 200 | 200 | 403 |
+| `GET /overseas-admin/counselor-performance.csv` / `.xlsx` | 401 | 403 | 403 | 200 | 200 | 403 |
+| `GET /overseas-admin/counselor-performance/{id}` | 401 | 403 | 403 | 200 (404 if not an overseas counselor) | 200 (same) | 403 |
+
+Read-only; the export is audited. Pinned by `apps/api/tests/test_ccrm_053_counselor_performance.py` and the ccrm-041 matrix rows.

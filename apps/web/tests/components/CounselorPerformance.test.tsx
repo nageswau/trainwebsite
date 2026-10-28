@@ -13,14 +13,14 @@ import { elements } from "@/tests/helpers/elementTree";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), refresh: vi.fn(), push: vi.fn() }), redirect: vi.fn(), usePathname: () => "/overseas/counselor/reports" }));
 vi.mock("@/lib/api", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/api")>()), serverApi: vi.fn() }));
 
-const QUERY = { from: "2026-05-01", to: "2026-05-31" };
+const QUERY = { from: "2026-05-01", to: "2026-05-31", intake: "", division: "" };
 const counselor = { id: "c1", full_name: "Asha Rao", role: "counselor", division: "overseas" } as User;
 
 const figure = (key: string, value: number | null, unit: PerformanceFigure["unit"] = "count"): PerformanceFigure => ({ key, label: `L:${key}`, definition: `D:${key}`, unit, value });
 
 function report(over: Partial<CounselorPerformanceReport> = {}): CounselorPerformanceReport {
   return {
-    from: "2026-05-01", to: "2026-05-31", as_of: "2026-05-20T05:00:00Z",
+    from: "2026-05-01", to: "2026-05-31", as_of: "2026-05-20T05:00:00Z", intake: null, division: null,
     period: [figure("leads_assigned", 1250), figure("conversion_pct", 33.3, "percent"), figure("follow_up_completion_pct", null, "percent")],
     now: [figure("overdue_tasks", 2), figure("applications", 5)],
     applications: {

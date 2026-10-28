@@ -12409,13 +12409,58 @@ class CounselorPerformanceApplications(BaseModel):
     definitions: list[CrmReportDefinition]
 
 
+class CounselorPerformanceCounselor(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+
+
 class CounselorPerformanceOut(BaseModel):
     from_: date = Field(serialization_alias="from")
     to: date
     as_of: datetime
+    intake: str | None = None  # ccrm-053 PF2 / PF3: the filters applied
+    division: str | None = None
+    counselor: CounselorPerformanceCounselor | None = None  # ccrm-053: set on the Overseas Admin's read of one counselor
     period: list[CounselorPerformanceFigure]
     now: list[CounselorPerformanceFigure]
     applications: CounselorPerformanceApplications
+
+
+# ccrm-053 (DEC-SCOPE-323 PF7-PF9): GET /overseas-admin/counselor-performance -- one row per overseas counselor and a Total row; the
+# columns (labels and definitions) are the screen's and the export's.
+class CounselorPerformanceTeamTotals(BaseModel):
+    full_name: str
+    leads: int
+    leads_overseas: int
+    leads_it: int
+    leads_assigned: int
+    calls: int
+    counseling_sessions: int
+    conversions: int
+    conversion_pct: float | None
+    students: int
+    applications: int
+    visas_pending: int
+    visas_approved: int
+    visas_refused: int
+    enrollments: int
+
+
+class CounselorPerformanceTeamRow(CounselorPerformanceTeamTotals):
+    id: UUID
+    active: bool
+
+
+class CounselorPerformanceTeamOut(BaseModel):
+    from_: date = Field(serialization_alias="from")
+    to: date
+    as_of: datetime
+    intake: str | None
+    division: str | None
+    columns: list[CrmReportDefinition]
+    items: list[CounselorPerformanceTeamRow]
+    totals: CounselorPerformanceTeamTotals
 
 
 # mgmt-017 (spec TR1-TR16): the training dashboard. A share or average is null when there is nothing to divide (never a fabricated 0).
