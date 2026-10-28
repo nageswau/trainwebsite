@@ -10445,3 +10445,21 @@ notification (not asked). P8 the student sees the file in Documents and its name
 page; the system receipt is labelled "System receipt" on the Finance tab. P9 no antivirus scan (platform residual risk).
 **Numbering:** migration 0216 (0212 was taken; 0213/0214 unused); API §12HX; RBAC §2.229 (DEC-SCOPE-324/325, §12HV/12HW taken by ccrm-046 / ccrm-053).
 - **Feature ID authorized:** `ccrm-049`. **Status:** built on `worktree-ccrm-049`.
+
+### DEC-SCOPE-327 — Course-level agent-Master commission, overriding the university's (`ccrm-051`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-051` (owner line A8, answers Q5 "Also on Add Course form" / Q6 course
+overrides university; `MEETING_TRANSCRIPT_REQUEST`-equivalent); design `docs/superpowers/specs/2026-10-28-ccrm-051-course-agent-commission-design.md`.
+Extends DEC-SCOPE-209 (dtu-001) and DEC-SCOPE-323 (ccrm-050). **Behaviour:** `overseas_courses` gains `agent_commission_percent / _amount /
+_currency / _note` (the university's CHECKs). The Add / Edit course form shows an "Agent Master commission" fieldset to super_admin /
+overseas_admin only; `POST` / `PATCH /partnership/universities/{id}/courses[/{course_id}]` take an optional `agent_commission`
+(`AgentCommissionIn`) saved in the course write's transaction and audited `university_course.agent_commission` with `{university_id, before,
+after}`. Any other caller sending the key (even `null`) is **403** before any write. Course payloads carry `agent_commission` for its viewers
+only; the agent Master's partner-university detail gives each course `agent_commission_effective` = the course's value, else the
+university's, with `source` ("course" | "university"), or `null`. Agent staff, partnership roles and public endpoints never get either key.
+U2's course `commission_*` is untouched. **Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** CA1 403,
+not ignore, for a non-editor sending the key; CA2 `PATCH` omitted = unchanged, `null` = clear (the university's value applies again); CA3 the
+effective value carries the source row's note; CA4 the downgrade refuses while any course agent commission exists (0157's rule); CA5 the
+course CSV import cannot carry it; CA6 the list column on the Master's university list stays the university's value. **Numbering:** migration
+0217; API §12HY; RBAC §2.230.
+- **Feature ID authorized:** `ccrm-051`. **Status:** built on `worktree-ccrm-051`.

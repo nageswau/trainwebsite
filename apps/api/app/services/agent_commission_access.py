@@ -3,7 +3,9 @@ university (DT2). Not upc-016's university commission: `partnership_access` stay
 so every other caller's payload has no `agent_commission` key at all."""
 
 from app.core.rbac import agent_denial_reason, is_agent_staff
-from app.models import University, User
+from app.models import OverseasCourse, University, User
+
+AGENT_COMMISSION_REFUSAL = "Only a super admin or an overseas admin can change the agent commission"
 
 
 def can_edit_agent_commission(user: User) -> bool:
@@ -20,16 +22,25 @@ def _money(value) -> str | None:
     return None if value is None else f"{value:.2f}"
 
 
-def agent_commission_out(uni: University) -> dict | None:
-    if uni.agent_commission_percent is None and uni.agent_commission_amount is None:
+def agent_commission_out(row: University | OverseasCourse) -> dict | None:
+    """A university's or (ccrm-051) a course's own value; None when it has none."""
+    if row.agent_commission_percent is None and row.agent_commission_amount is None:
         return None
     return {
-        "percent": _money(uni.agent_commission_percent),
-        "amount": _money(uni.agent_commission_amount),
-        "currency": uni.agent_commission_currency,
-        "note": uni.agent_commission_note,
+        "percent": _money(row.agent_commission_percent),
+        "amount": _money(row.agent_commission_amount),
+        "currency": row.agent_commission_currency,
+        "note": row.agent_commission_note,
     }
 
 
-def with_agent_commission(user: User, uni: University, payload: dict) -> dict:
-    return {**payload, "agent_commission": agent_commission_out(uni)} if can_view_agent_commission(user) else payload
+def effective_agent_commission(course: OverseasCourse, uni: University) -> dict | None:
+    """ccrm-051 (DEC-SCOPE-327): the course's value overrides the university's; `source` says which one applies."""
+    for source, row in (("course", course), ("university", uni)):
+        if (value := agent_commission_out(row)) is not None:
+            return {**value, "source": source}
+    return None
+
+
+def with_agent_commission(user: User, row: University | OverseasCourse, payload: dict) -> dict:
+    return {**payload, "agent_commission": agent_commission_out(row)} if can_view_agent_commission(user) else payload

@@ -33,7 +33,8 @@ test("Master sees the Agent commission on Partner Universities after an admin se
   await expect(page.getByRole("columnheader", { name: "Agent commission" })).toBeVisible();
   await expect(masterRow).toContainText("13.50%");
   await masterRow.getByRole("button", { name: "University of Manchester" }).click();
-  await expect(page.getByRole("region", { name: "Partner university" }).getByText("Agent commission", { exact: true })).toBeVisible();
+  // The university's own field (ccrm-051 adds a same-named column to the course table).
+  await expect(page.getByRole("region", { name: "Partner university" }).getByRole("term").filter({ hasText: "Agent commission" })).toBeVisible();
 
   // Staff of the same agency: the same page, no commission column and no commission field.
   const created = await page.request.post("/api/v1/workflows/overseas/agent/team/staff", { data: { full_name: "Dtu Staff", email: staffEmail } });

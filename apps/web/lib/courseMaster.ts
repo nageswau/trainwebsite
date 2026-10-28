@@ -1,6 +1,7 @@
 // upc-017 (DEC-SCOPE-147): the §16 course master -- types, value lists, words, URLs and the "Courses & Programs" menu's query helpers.
 // The API is the gate: it leaves `commission` out of every course for the non-commission roles (U2) and refuses them setting it. Nothing
 // here filters for security.
+import type { AgentCommission } from "@/lib/agentCommission";
 import type { Page } from "@/lib/apiErrors";
 import { universityUrl } from "@/lib/universities";
 
@@ -20,6 +21,7 @@ export type Course = {
   campus: string | null; fee_text: string | null; intake_text: string | null; // dtu-001
   icon: string | null; // nehn-036: a lib/courseIcons key; null = automatic (from the category)
   commission?: CourseCommission | null; // present for the commission roles only
+  agent_commission?: AgentCommission | null; // ccrm-051: present for super_admin / overseas_admin only; null = the university's applies
   permissions: { can_edit: boolean };
 };
 export type CoursePage = Page<Course> & { can_edit: boolean };

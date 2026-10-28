@@ -37,8 +37,8 @@ from app.schemas import (
     UniversityUpdate,
 )
 from app.services import partnership_universities as svc
-from app.services.agent_commission_access import agent_commission_out, can_edit_agent_commission
 from app.services import university_search
+from app.services.agent_commission_access import AGENT_COMMISSION_REFUSAL, agent_commission_out, can_edit_agent_commission
 
 router = APIRouter(prefix="/partnership/universities", tags=["partnership-universities"])
 Primary, Backup = aliased(User), aliased(User)
@@ -223,9 +223,6 @@ async def update_university(university_id: UUID, payload: UniversityUpdate, user
     if commission_changed:
         _log_agent_commission(user, uni, payload.agent_commission)
     return {"university": await svc.detail_out(db, user, uni, team)}
-
-
-AGENT_COMMISSION_REFUSAL = "Only a super admin or an overseas admin can change the agent commission"
 
 
 def _require_agent_commission_editor(user: User, payload: UniversityCreate | UniversityUpdate, route: str) -> None:

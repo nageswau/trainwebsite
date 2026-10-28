@@ -3345,3 +3345,15 @@ Read-only; the export is audited. Pinned by `apps/api/tests/test_ccrm_053_counse
 The 360's gate (§2.168, `student_profiles.staff_student`: csc-001 caseload or the Overseas Admin; another student is a 404, never a 403),
 then the payment must be the student's (404) and manual (409), the student not archived (409). The Finance tab offers the control only
 where `can_upload_proof` is true. Pinned by `apps/api/tests/test_ccrm_049_payment_proof.py` and the ccrm-041 matrix row.
+
+### 2.230 Course-level agent-Master commission *(added 2026-10-28 — `DEC-SCOPE-327`, ccrm-051)*
+
+| Action | super_admin | overseas_admin (overseas) | partnership_head / _manager (course writers) | agency Master | agency staff, anonymous, other roles |
+|---|---|---|---|---|---|
+| Send `agent_commission` on course `POST` / `PATCH` | allowed | allowed | 403 (even `null`) | — (no route) | as the course route (401/403) |
+| See a course's own `agent_commission` (partnership course reads) | yes | yes | key absent | — | key absent |
+| See `agent_commission_effective` per course (partner-university detail) | — | — | — | yes (published university) | key absent |
+
+The course write gates (§2.100 upc-017 CO1: read 403, university 404, write 403/409) run first; the agent commission gate follows, before
+any write. Same editors and viewers as DEC-SCOPE-209 (`agent_commission_access`); U2's course `commission` gate is unchanged. Pinned by
+`apps/api/tests/test_ccrm_051_course_agent_commission.py` and the upc-033 commission sweep.

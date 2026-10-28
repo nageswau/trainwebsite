@@ -64,17 +64,19 @@ async def course_options(university_id: UUID, user: User = Depends(get_current_u
 @router.post("/universities/{university_id}/courses", status_code=201)
 async def create_course(university_id: UUID, payload: CourseIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     uni = await svc.writable_university(db, user, university_id, "course_create")
+    svc.require_agent_commission_editor(user, payload.model_fields_set, "course_create")
     # The commission gate applies only when the field is sent: a non-commission role creates without ever naming it (CO2).
-    values = svc.stored(user, payload.model_dump(exclude=set() if "commission" in payload.model_fields_set else {"commission"}))
+    values = svc.stored(user, payload.model_dump(exclude={"agent_commission"} | (set() if "commission" in payload.model_fields_set else {"commission"})))
     await svc.check_values(db, uni, values)
     course = OverseasCourse(university_id=uni.id, tuition_fee="", intake="", **values)
     svc.derive_texts(course, set(values))
     db.add(course)
     await db.flush()
     svc.record(db, user, course, "create", changed=sorted(k for k, v in values.items() if v not in (None, "", [])))
+    agent_commission = svc.apply_agent_commission(db, user, course, payload.agent_commission)
     await onboarding.activate_if_complete(db, user, uni)  # upc-027 OB8: the first active course can complete the checklist
     await db.commit()
-    svc.log("university_course_created", user, course)
+    svc.log("university_course_created", user, course, agent_commission=agent_commission)
     return await _one(db, user, course)
 
 
@@ -82,7 +84,8 @@ async def create_course(university_id: UUID, payload: CourseIn, user: User = Dep
 async def update_course(university_id: UUID, course_id: UUID, payload: CourseUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Only the fields sent; an equal value is not a change. Deactivating keeps every application's course (CO11)."""
     uni = await svc.writable_university(db, user, university_id, "course_update")
-    changes = svc.stored(user, payload.model_dump(exclude_unset=True))
+    svc.require_agent_commission_editor(user, payload.model_fields_set, "course_update")
+    changes = svc.stored(user, payload.model_dump(exclude_unset=True, exclude={"agent_commission"}))
     course = await svc.load(db, uni.id, course_id)
     changed = sorted(k for k, v in changes.items() if getattr(course, k) != v)
     if changed:
@@ -92,8 +95,14 @@ async def update_course(university_id: UUID, course_id: UUID, payload: CourseUpd
         svc.derive_texts(course, set(changed))
         svc.record(db, user, course, "update", changed=changed)
         await onboarding.activate_if_complete(db, user, uni)  # upc-027 OB8: reactivating a course can complete the checklist
+    # ccrm-051: omitted = unchanged, null = clear; audited on its own (before/after) when the value changes.
+    agent_commission = "agent_commission" in payload.model_fields_set and svc.apply_agent_commission(db, user, course, payload.agent_commission)
+    if changed or agent_commission:
         await db.commit()
+    if changed:
         svc.log("university_course_updated", user, course, fields=svc.field_names(changed))
+    if agent_commission:
+        svc.log("university_course_agent_commission_updated" if payload.agent_commission else "university_course_agent_commission_cleared", user, course)
     return await _one(db, user, course)
 
 

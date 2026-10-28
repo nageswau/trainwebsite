@@ -47,7 +47,7 @@ def parse_row(cells: dict[str, str]) -> dict | str:
         else:
             values[field] = _choice(field, value)
     try:
-        state = CourseIn.model_validate(values).model_dump(exclude={"commission"})
+        state = CourseIn.model_validate(values).model_dump(exclude={"commission", "agent_commission"})  # ccrm-051: never imported
         svc.check_rules(state)
     except ValidationError as exc:
         return validation_message(exc)
