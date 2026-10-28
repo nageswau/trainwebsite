@@ -6,20 +6,28 @@ ccrm-010 (DEC-SCOPE-241) -- internal notes on a student (the counselling history
 ccrm-009 (DEC-SCOPE-253) -- the student 360's read-only tabs (overview, documents, activities, history), counselor and Overseas Admin.
 API §12FF; RBAC §2.168.
 ccrm-040 (DEC-SCOPE-276) -- archive instead of delete: the student's counselor or the Overseas Admin archives, the Admin restores, both
-list archived students. API §12GC; RBAC §2.190."""
+list archived students. API §12GC; RBAC §2.190.
+ccrm-045 (DEC-SCOPE-318) -- the 360's Documents tab uploads a document for the student, with or without an application. API §12HP;
+RBAC §2.224."""
 
 import logging
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.agent_documents import APPLICATION_MISMATCH, OFFER_LETTER_NEEDS_APPLICATION
 from app.api.deps import get_current_user
+from app.api.workflows import _audit
 from app.core.database import get_db
-from app.models import User
-from app.schemas import CounselorStudentCreate, CounselorStudentUpdate, OverseasApplicationCounselorAssign, StudentArchiveCreate, StudentNoteCreate
+from app.models import OverseasApplication, StudentDocument, User
+from app.schemas import AgentUploadDocumentType, CounselorStudentCreate, CounselorStudentUpdate, OverseasApplicationCounselorAssign, StudentArchiveCreate, StudentNoteCreate
+from app.services import agent_documents as documents
+from app.services import application_outcomes as outcomes
 from app.services import counselor_student_360, counselor_students, student_archive, student_notes, student_profiles
+
+APPLICATION_NOT_YOURS = "Choose one of your own applications for this student"
 
 logger = logging.getLogger("app.counselor_students")
 router = APIRouter(prefix="/counselor/students", tags=["counselor-students"])
@@ -123,6 +131,64 @@ async def student_overview(student_id: UUID, user: User = Depends(get_current_us
 async def student_documents(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     student = await student_profiles.staff_student(db, user, student_id)
     return await counselor_student_360.documents(db, user, student)
+
+
+@router.post("/{student_id}/documents", status_code=201)
+async def upload_student_document(
+    student_id: UUID,
+    document_type: AgentUploadDocumentType = Form(...),
+    document_label: str | None = Form(None, max_length=200),
+    application_id: UUID | None = Form(None),
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """ccrm-045: the tab's gate first (another student 404, another role 403), then the archive, the type and the application rules,
+    and only then the file (AGN-009 G7/G8: sniffed type, 20 MB, server key). Always visible to the student; pending until reviewed."""
+    student = await student_profiles.staff_student(db, user, student_id)
+    if await student_archive.is_archived(db, student.id):
+        raise HTTPException(409, student_archive.NO_NEW_APPLICATION)
+    label = documents.clean_label(document_type, document_label)
+    if document_type == documents.OFFER_LETTER and application_id is None:
+        raise HTTPException(422, OFFER_LETTER_NEEDS_APPLICATION)
+    if application_id is not None:
+        application = await db.get(OverseasApplication, application_id)
+        if application is None or application.student_id != student.id:
+            raise HTTPException(422, APPLICATION_MISMATCH)
+        if user.role == "counselor" and application.counselor_id != user.id:  # the Overseas Admin any of the student's
+            raise HTTPException(403, APPLICATION_NOT_YOURS)
+        outcomes.refuse_closed(application)
+    data, content_type, filename = await documents.read_upload(file)
+    key = documents.store(data, content_type)
+    try:
+        item = StudentDocument(
+            student_id=student.id,
+            application_id=application_id,
+            document_type=document_type,
+            document_label=label,
+            file_url=key,
+            verification_status="pending",
+            original_filename=filename,
+            content_type=content_type,
+            file_size=len(data),
+            uploaded_by_user_id=user.id,
+        )
+        db.add(item)
+        await db.flush()
+        documents.add_event(db, event="uploaded", actor=user, document=item, to_status="pending")
+        await _audit(db, user, "document.upload", "student_document", item.id, {"document_type": document_type, "application_id": str(application_id) if application_id else None})
+        await db.commit()
+    except Exception:  # nothing was written: the stored object goes too
+        await db.rollback()
+        documents.discard(key)
+        raise
+    logger.info("counselor_document_uploaded", extra={"extra_fields": {"actor_id": str(user.id), "student_id": str(student.id), "document_id": str(item.id), "document_type": document_type}})
+    return {
+        "document": {
+            "id": item.id, "name": label or filename or document_type, "document_type": document_type, "application_id": application_id,
+            "status": item.verification_status,
+        }
+    }  # fmt: skip
 
 
 # ccrm-039 (DEC-SCOPE-275): the finance tab -- read-only, the same gate.

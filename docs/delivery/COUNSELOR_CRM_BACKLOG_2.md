@@ -243,7 +243,7 @@ change this.
   conversion copies intake to profile.
 - **Regression risks:** tel-005 intake, tel-009 qualification form, ccrm-005 lead fields, ccrm-007 profile, agency application forms.
 - **Complexity:** medium. **Risk:** low.
-- **Status (2026-10-28):** built on `worktree-ccrm-047` (`DEC-SCOPE-318`; API §12HP; no migration; agent forms, CSV import and
+- **Status (2026-10-28):** built on `worktree-ccrm-047` (`DEC-SCOPE-319`; API §12HQ; no migration; agent forms, CSV import and
   application `PATCH` unchanged — `NEEDS_CONFIRMATION`).
 
 ### `ccrm-048` — University deposit document upload on the Finance tab

@@ -1423,7 +1423,7 @@ half.
 | `ccrm-043-AC7` | Another counselor's students are never listed | `::test_another_counselors_list_has_only_theirs`; `::test_other_roles_are_403`; `::test_anonymous_is_401` |
 | `ccrm-043-EDGE` | Phone-digit search, literal `%`, invalid source/long q → 422, listed once, moved application drops off, legacy → Self-registered | `::test_search_matches_name_email_and_phone_digits_literally`, `::test_an_unknown_source_is_422`, `::test_a_student_whose_application_moves_to_another_counselor_drops_off` |
 | `ccrm-043-UI` | "My students" card: source badge, application count, since; filter bar; filtered empty state; Edit/Resend only on own linked rows | `apps/web/tests/components/CounselorWalkInStudents.test.tsx` (ccrm-043 cases) |
-| `ccrm-047` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-047` (Q8, A4, L5) → `DEC-SCOPE-318`; `API_CONTRACT.md` §12HP; no RBAC change | I1–I4 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-047` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-047` (Q8, A4, L5) → `DEC-SCOPE-319`; `API_CONTRACT.md` §12HQ; no RBAC change | I1–I4 defaults `NEEDS_CONFIRMATION` |
 | `ccrm-047-AC1` | Telecaller creates a lead with intake "Sep 2027" → stored, shown on lead detail | `apps/api/tests/test_ccrm_047_intake.py::test_a_telecaller_lead_keeps_its_intake_and_the_lead_detail_shows_it`, `::test_a_counselor_walk_in_lead_keeps_its_intake`; `NewLeadForm.intake.test.tsx`; `ccrm-047-intake-picker.spec.ts` AC1 |
 | `ccrm-047-AC2` | Student sets preferred intake via picker | `::test_the_student_sets_a_preferred_intake`; `StudentProfileForm.test.tsx` (ccrm-047) |
 | `ccrm-047-AC3` | Counselor edits student intake | `::test_the_counselor_edits_the_students_intake`; e2e AC3 |
