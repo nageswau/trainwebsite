@@ -151,6 +151,7 @@ change this.
   new counselor; archived student → hidden from picker.
 - **Regression risks:** `tests/test_i19_counselor_chat.py` (application path); messaging for other roles if the caseload check is broadened.
 - **Complexity:** small. **Risk:** medium (messaging authz).
+- **Status (2026-10-28):** built on `worktree-ccrm-044` (`DEC-SCOPE-320`; API §12HR; no migration; caseload check only for counselor → overseas student).
 
 ### `ccrm-045` — Counselor uploads student documents (incl. offer letter) without an application
 
@@ -326,7 +327,7 @@ change this.
 - **Positive / negative / edge:** both percent and amount → 422 (existing check constraint); inactive university — 409 rule kept on edit.
 - **Regression risks:** dtu-001 tests, upc-033 commission sweep, partnership university CRUD.
 - **Complexity:** small. **Risk:** medium (confidential commercial data).
-- **Status (2026-10-28):** built on `worktree-ccrm-050` (`DEC-SCOPE-320`; API §12HR; no migration; same-request save, 403 for any other
+- **Status (2026-10-28):** built on `worktree-ccrm-050` (`DEC-SCOPE-322`; API §12HT; no migration; same-request save, 403 for any other
   caller sending the key — `NEEDS_CONFIRMATION`).
 
 ### `ccrm-051` — Course-level agent-Master commission (overrides university)
@@ -377,6 +378,7 @@ change this.
 - **Positive / negative / edge:** university with no applications → zero row or hidden (match existing); withdrawn application visa excluded (`NEEDS_CONFIRMATION` definitions).
 - **Regression risks:** ccrm-034 report tests, export column order consumers.
 - **Complexity:** medium. **Risk:** low.
+- **Status (2026-10-28):** built on `worktree-ccrm-052` (`DEC-SCOPE-321`; API §12HS; no migration; new columns appended to the export).
 
 ### `ccrm-053` — Counselor performance: Overseas Admin view, intake filter, Overseas/IT lead split
 

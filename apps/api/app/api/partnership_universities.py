@@ -229,7 +229,7 @@ AGENT_COMMISSION_REFUSAL = "Only a super admin or an overseas admin can change t
 
 
 def _require_agent_commission_editor(user: User, payload: UniversityCreate | UniversityUpdate, route: str) -> None:
-    """ccrm-050 (DEC-SCOPE-320): the form's `agent_commission` key -- even null -- is a 403 for anyone but its editors, before any write."""
+    """ccrm-050 (DEC-SCOPE-322): the form's `agent_commission` key -- even null -- is a 403 for anyone but its editors, before any write."""
     if "agent_commission" in payload.model_fields_set and not can_edit_agent_commission(user):
         svc.log("university_write_refused", user, "-", route=f"{route}.agent_commission")
         raise HTTPException(403, AGENT_COMMISSION_REFUSAL)

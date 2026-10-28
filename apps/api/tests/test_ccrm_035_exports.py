@@ -57,7 +57,7 @@ async def test_management_roles_export_a_report_with_its_total_and_the_export_is
     assert response.headers["cache-control"] == "private, no-store"
     assert 'filename="crm-universities-' in response.headers["content-disposition"] and response.headers["content-disposition"].endswith(f'.{fmt}"')
     rows = rows_of(response)
-    assert rows[0] == ["University", "Applications", "Students", "Offers", "Offer rate (%)", "Rejections", "Acceptances", "Enrolments"]
+    assert rows[0] == ["University", "Applications", "Students", "Offers", "Offer rate (%)", "Rejections", "Acceptances", "Enrolments", "Deposits paid", "Visas approved", "Visas refused", "Visas pending"]  # ccrm-052 appended
     assert rows[1][:5] == [university.name, "2", "1", "2", "100.0"]  # students and applications counted separately
     assert rows[-1][:3] == ["Total", "2", "1"] and len(rows) == 3
     [audit] = await audits(db_session, actor)

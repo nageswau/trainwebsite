@@ -1,4 +1,4 @@
-"""ccrm-050 (DEC-SCOPE-320): the agent-Master commission on the Add/Edit University form -- an optional `agent_commission` object on
+"""ccrm-050 (DEC-SCOPE-322): the agent-Master commission on the Add/Edit University form -- an optional `agent_commission` object on
 POST / PATCH /partnership/universities, for super_admin / overseas_admin only (403 for anyone else, even null), one transaction, audited
 with before/after like the dtu-001 PUT."""
 
