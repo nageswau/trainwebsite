@@ -151,6 +151,7 @@ change this.
   new counselor; archived student → hidden from picker.
 - **Regression risks:** `tests/test_i19_counselor_chat.py` (application path); messaging for other roles if the caseload check is broadened.
 - **Complexity:** small. **Risk:** medium (messaging authz).
+- **Status (2026-10-28):** built on `worktree-ccrm-044` (`DEC-SCOPE-318`; API §12HP; no migration; caseload check only for counselor → overseas student).
 
 ### `ccrm-045` — Counselor uploads student documents (incl. offer letter) without an application
 

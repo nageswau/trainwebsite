@@ -1,9 +1,9 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import SearchableSelect from "@/components/SearchableSelect";
+import { lookupSearch } from "@/lib/lookups";
 
-type ApplicationRow = { id: string; student_id: string; student: string };
 type ConversationMessage = { id: string; sender_id: string; recipient_id: string; body: string; created_at: string };
 
 function detailMessage(detail: unknown) {
@@ -17,29 +17,16 @@ function detailMessage(detail: unknown) {
 // existed generically and needed no backend change; this adds the missing student
 // picker (never a raw id typed by hand, same precedent as ADM-001-008/OVS-002/etc.) and
 // wires the reply action to it.
+// ccrm-044 (DEC-SCOPE-318): the picker searches the counselor's caseload (csc-001 walk-in links + own applications' students, archived
+// left out) instead of reading their applications, so a walk-in without an application can be picked too.
+const searchStudents = lookupSearch("overseas-students");
+
 export default function CounselorChatPanel({ userId }: { userId: string }) {
-  const [students, setStudents] = useState<ApplicationRow[] | null>(null);
   const [selectedId, setSelectedId] = useState("");
   const [messages, setMessages] = useState<ConversationMessage[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/v1/portal/overseas/counselor/applications")
-      .then((res) => (res.ok ? res.json() : { rows: [] }))
-      .then((data) => setStudents(data.rows || []))
-      .catch(() => setStudents([]));
-  }, []);
-
-  const uniqueStudents = useMemo(() => {
-    const seen = new Set<string>();
-    return (students || []).filter((row) => {
-      if (seen.has(row.student_id)) return false;
-      seen.add(row.student_id);
-      return true;
-    });
-  }, [students]);
 
   function loadConversation(studentId: string) {
     setSelectedId(studentId);
@@ -77,20 +64,10 @@ export default function CounselorChatPanel({ userId }: { userId: string }) {
     }
   }
 
-  if (students === null) {
-    return (
-      <div className="action-card">
-        <h3>Reply to a student</h3>
-        <p className="muted">Loading your assigned students…</p>
-      </div>
-    );
-  }
-
   return (
     <div className="action-card">
       <h3>Reply to a student</h3>
-      <SearchableSelect id="counselor-chat-student" label="Student" noun="student" options={uniqueStudents.map((row) => ({ id: row.student_id, label: row.student }))} onChange={(option) => loadConversation(option?.id ?? "")} />
-      {!uniqueStudents.length && <p className="muted">No students are assigned to you yet.</p>}
+      <SearchableSelect id="counselor-chat-student" label="Student" noun="student" search={searchStudents} onChange={(option) => loadConversation(option?.id ?? "")} />
       {selectedId && (
         <>
           {messages === null ? (

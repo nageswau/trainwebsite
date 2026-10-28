@@ -12,6 +12,7 @@ from app.core.identifiers import uuid_reference
 from app.models import Attendance, AuditLog, Batch, Enrollment, LiveSession, Message, Notification, User
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import LiveSessionCancel, LiveSessionUpdate, MeetingCreate, RecordingLinkUpdate
+from app.services.counselor_students import is_visible_student
 from app.services.integrations import send_notification
 from app.services.meetings import MeetingProviderError, create_provider_meeting
 
@@ -51,6 +52,9 @@ async def send_message(payload: dict, user: User = Depends(get_current_user), db
         raise HTTPException(404, "Recipient unavailable")
     if user.role != "super_admin" and recipient.division != user.division:
         raise HTTPException(403, "Cross-division messaging is not allowed")
+    # ccrm-044 (DEC-SCOPE-318): an overseas counselor writes only to the students in their caseload (csc-001 link or own application).
+    if user.role == "counselor" and recipient.role == "overseas_student" and not await is_visible_student(db, user, recipient.id):
+        raise HTTPException(403, "This student is not one of your students")
     item = Message(
         division=recipient.division if user.division == "global" else user.division,
         sender_id=user.id,

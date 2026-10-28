@@ -4601,3 +4601,16 @@ days on the day the students' agency records were created).
   `total` follows the filters. Each item adds `source`, `applications` (count of all the student's applications), `linked_since`
   (earliest of the caller's link and the caller's first application) and `linked` (the csc-001 link is the caller's — only then do the
   §12EN resend/edit routes apply). Existing item keys and `POST`/`PATCH` responses are unchanged.
+
+## 12HP. Counselor chat with walk-in students (ccrm-044) — addendum, 2026-10-28
+
+`DEC-SCOPE-318`. No migration; no new route.
+
+- `POST /workflows/overseas/student/counselor-chat` — the recipient is the counselor of the student's most recently updated application
+  that has one; when none has, the student's csc-001 linked counselor (`OverseasStudentCounselor`). **409** only when neither exists.
+  Request/response shapes unchanged.
+- `POST /communications/messages` — when the sender is a `counselor` and the recipient an `overseas_student`, the recipient must be in
+  the sender's caseload (`visible_student_ids`: csc-001 link ∪ students of applications with `counselor_id == me`), else **403**
+  "This student is not one of your students"; nothing is stored. Every other sender/recipient pair is unchanged.
+- Counselor Chat's student picker reads `GET /lookups/overseas-students` (counselor: caseload, archived excluded; ENH-031 shape) instead
+  of the counselor's applications.

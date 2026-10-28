@@ -10311,3 +10311,15 @@ without a source); D2 `applications` counts all the student's applications (as t
 link and the counselor's first application; D4 Edit/Resend stay only on the counselor's own pending walk-in links (csc-003); D5 the
 Overseas Admin view is unchanged. **Numbering:** API §12HO; no migration; no RBAC change.
 - **Feature ID authorized:** `ccrm-043`. **Status:** built on `worktree-ccrm-043`.
+
+### DEC-SCOPE-318 — Counselor chat with walk-in students (`ccrm-044`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-044` (List 2 item 7 "Counsellors are unable to access the chat functionality
+for students added through the Walk-in option"; `MEETING_TRANSCRIPT_REQUEST`-equivalent). **Behaviour:** the student's counselor-chat
+reaches the latest application's counselor, else the csc-001 linked counselor (409 only when neither); the counselor's picker lists their
+caseload (`/lookups/overseas-students`, archived excluded); a counselor's generic send to an overseas student outside their caseload is
+403. **Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** D1 the application counselor wins when it
+differs from the linked counselor; D2 the caseload check applies only to counselor → overseas-student sends (other staff flows unchanged);
+D3 reading a past conversation (`GET /communications/messages/{id}`) is not narrowed (it only returns messages the caller is party to);
+D4 an archived student is hidden from the picker but not blocked from a send. **Numbering:** API §12HP; no migration; no RBAC change.
+- **Feature ID authorized:** `ccrm-044`. **Status:** built on `worktree-ccrm-044`.
