@@ -34,7 +34,7 @@ test("Overseas Admin adds a university with a 10% agent commission; Master sees 
   const fieldset = page.getByRole("group", { name: "Agent Master commission" });
   await expect(fieldset).toBeVisible();
   await fillUniversity(page, name);
-  await fieldset.getByLabel("Percent").fill("10");
+  await fieldset.getByLabel("Percent", { exact: true }).fill("10");
   await fieldset.getByLabel("Note").fill("Standard agent rate");
   const [created] = await Promise.all([
     page.waitForResponse((r) => r.url().endsWith("/api/v1/partnership/universities") && r.request().method() === "POST"),
@@ -48,7 +48,7 @@ test("Overseas Admin adds a university with a 10% agent commission; Master sees 
   await expect(card).toContainText("10.00%");
 
   await page.goto(`/partnership/universities/${uni.id}/edit`);
-  await expect(page.getByRole("group", { name: "Agent Master commission" }).getByLabel("Percent")).toHaveValue("10.00");
+  await expect(page.getByRole("group", { name: "Agent Master commission" }).getByLabel("Percent", { exact: true })).toHaveValue("10.00");
 
   expect((await page.request.post(`/api/v1/partnership/universities/${uni.id}/publish`)).status()).toBe(200);
   const masterPage = await (await browser.newContext()).newPage();
@@ -76,7 +76,7 @@ test("a partnership head never sees the fieldset and the API refuses the key (AC
   await page.goto("/partnership/universities/new");
   await expect(page.getByLabel("University name (required)")).toBeVisible();
   await expect(page.getByRole("group", { name: "Agent Master commission" })).toHaveCount(0);
-  await expect(page.getByLabel("Percent")).toHaveCount(0);
+  await expect(page.getByLabel("Percent", { exact: true })).toHaveCount(0);
 
   const country = (await (await page.request.get("/api/v1/lookups/countries?q=United Kingdom")).json()).items[0].id;
   const refused = await page.request.post("/api/v1/partnership/universities", {
