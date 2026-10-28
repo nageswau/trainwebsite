@@ -48,7 +48,7 @@ async def test_overseas_admin_still_cannot_create_an_it_counselor(client, db_ses
 # Every counselor-admitting overseas route (workflows.py's 14 plus the 9 role-only gates). A nil id is enough: the division gate
 # refuses before any row is read, so no fixture rows are needed. Bodies are valid, so FastAPI's own 422 can't mask the gate.
 OVERSEAS_ROUTES = [
-    ("POST", "/api/v1/workflows/overseas/applications", {"student_id": str(ZERO), "university_id": str(ZERO), "intake": "Fall 2027"}),
+    ("POST", "/api/v1/workflows/overseas/applications", {"student_id": str(ZERO), "university_id": str(ZERO), "intake": "Sep 2027"}),
     ("GET", "/api/v1/workflows/overseas/applications", None),
     ("PATCH", f"/api/v1/workflows/overseas/applications/{ZERO}", {"status": "enquiry"}),
     ("POST", f"/api/v1/workflows/overseas/applications/{ZERO}/advance", {"to_status": "eligibility_evaluation"}),
@@ -180,7 +180,7 @@ async def test_application_counselor_must_be_an_overseas_counselor(client, db_se
     bad = {"it_counselor": (await make_user(db_session, "counselor", "it")).id, "overseas_admin": (await make_user(db_session, "overseas_admin", "overseas")).id, "unknown": uuid.uuid4()}[target]
     good = await make_user(db_session, "counselor", "overseas")
     await login(client, await make_user(db_session, "overseas_admin", "overseas"))
-    body = {"student_id": str(student.id), "university_id": str(university.id), "intake": "Fall 2027"}
+    body = {"student_id": str(student.id), "university_id": str(university.id), "intake": "Sep 2027"}
     refused = await client.post("/api/v1/workflows/overseas/applications", json={**body, "counselor_id": str(bad)})
     assert refused.status_code == 422, refused.text
     assert refused.json()["detail"] == "Choose an overseas counselor"

@@ -199,7 +199,7 @@ async def test_scope_and_roles(db_session, world):
 @pytest.mark.asyncio
 async def test_a_rejected_application_frees_the_slot_for_a_new_one(db_session, world):  # O3
     app = world["direct_app"]
-    payload = {"student_id": str(world["direct_student"].id), "university_id": str(app.university_id), "intake": "Fall 2028"}
+    payload = {"student_id": str(world["direct_student"].id), "university_id": str(app.university_id), "intake": "Sep 2028"}
     async with client_for(world["counselor"].email) as c:
         assert (await c.post(CREATE, json=payload)).status_code == 409
         assert (await c.post(OUTCOME.format(app.id), json={"outcome": "rejected", "reason": "x"})).status_code == 200

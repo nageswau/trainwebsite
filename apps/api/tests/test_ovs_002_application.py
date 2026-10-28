@@ -93,7 +93,7 @@ async def test_student_submits_application_and_it_enters_the_enquiry_stage(clien
     university = await _make_university(db_session)
 
     await _login(client, student.email)
-    response = await client.post("/api/v1/workflows/overseas/applications", json={"university_id": str(university.id), "intake": "Fall 2027"})
+    response = await client.post("/api/v1/workflows/overseas/applications", json={"university_id": str(university.id), "intake": "Sep 2027"})
     assert response.status_code == 201
     body = response.json()
     assert body["status"] == "enquiry"

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 
+import IntakePicker, { intakeProblem } from "@/components/IntakePicker";
 import LeadContactFields, { CONTACT_KEYS, EMPTY_CONTACT, contactValue, type ContactKey } from "@/components/LeadContactFields";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import { isRequestBody, sendJson } from "@/lib/apiErrors";
@@ -33,7 +34,7 @@ const REQUIRED = [["name", "student name"], ["phone", "mobile number"], ["produc
 const listed = (items: string[]) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} and ${items.at(-1)}` : items[0]);
 const EMPTY: Record<string, string> = {
   ...Object.fromEntries(TEXT_FIELDS.map(({ key }) => [key, ""])),
-  product_id: "", campaign_id: "", source: "", priority: "warm", division: "", subject: "", message: "", ...EMPTY_CONTACT,
+  product_id: "", campaign_id: "", source: "", priority: "warm", division: "", subject: "", message: "", intake: "", ...EMPTY_CONTACT,
 };
 
 function NoticeLine({ notice }: { notice: Notice }) {
@@ -141,7 +142,7 @@ export default function NewLeadForm({ basePath, apiBase = LEADS_URL, initial, te
   const set = (key: string, value: string) => setValues((v) => ({ ...v, [key]: value }));
 
   function chooseProduct(id: string) {
-    setValues((v) => ({ ...v, product_id: id, campaign_id: "", division: team ?? "" }));
+    setValues((v) => ({ ...v, product_id: id, campaign_id: "", division: team ?? "", intake: "" })); // ccrm-047: the intake is per product
   }
 
   function chooseCampaign(id: string) {
@@ -175,6 +176,8 @@ export default function NewLeadForm({ basePath, apiBase = LEADS_URL, initial, te
     const missing: string[] = REQUIRED.filter(([key]) => !values[key].trim()).map(([, label]) => label);
     if (product && !product.team && !values.division) missing.push("division");
     if (missing.length) return setNotice({ text: `Enter the ${listed(missing)}.`, failed: true }); // QA-02
+    const intakeError = intakeProblem(values.intake);
+    if (intakeError) return setNotice({ text: intakeError, failed: true });
     if (sending.current) return;
     sending.current = true;
     const payload: Record<string, string | number | boolean | null> = { priority: values.priority };
@@ -237,6 +240,8 @@ export default function NewLeadForm({ basePath, apiBase = LEADS_URL, initial, te
               </select>
             </div>
           )}
+          {/* ccrm-047: an overseas-study lead's intake goes to its qualification; IT and other products have none */}
+          {product?.group === "overseas" && <IntakePicker id="new-intake" label="Intake" value={values.intake} disabled={busy} onChange={(v) => set("intake", v)} />}
           <div className="field">
             <label htmlFor="new-campaign_id">Campaign</label>
             <select id="new-campaign_id" value={values.campaign_id} disabled={busy || !values.product_id} onChange={(e) => chooseCampaign(e.target.value)}>
