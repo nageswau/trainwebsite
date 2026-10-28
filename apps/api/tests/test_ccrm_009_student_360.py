@@ -110,7 +110,7 @@ async def test_documents_are_current_versions_with_download_only_where_allowed(c
     assert docs[str(mine.id)]["can_download"] is True and docs[str(mine.id)]["status_label"] == "Pending review"
     assert docs[str(mine.id)]["application_code"] == world["own"].application_code
     assert docs[str(theirs.id)]["can_download"] is False  # V1: the download route refuses another counselor's application
-    assert docs[str(loose.id)]["can_download"] is True  # no application: allowed because the counselor has one of the student's
+    assert docs[str(loose.id)]["can_download"] is True  # no application: the student is in the counselor's caseload (ccrm-045)
     overview = (await client.get(url(student.id, "overview"))).json()
     assert overview["counts"]["documents_to_review"] == 2  # pending + under_review
 

@@ -66,10 +66,12 @@ from app.services import application_outcomes as outcomes
 from app.services import applications as job_applications
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
 from app.services.agent_dashboard import headline_counts
+from app.services.agent_documents import OFFER_LETTER
 from app.services.agent_orgs import org_masters, org_member_ids
 from app.services.agent_students import application_scope, student_scope
 from app.services.application_filters import ApplicationFilters
 from app.services.application_offers import TYPE_LABELS as OFFER_TYPE_LABELS
+from app.services.application_offers import document_view as offer_document_view
 from app.services.offers import status_label as offer_status_label
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
 from app.visa_status import label as visa_status_label
@@ -691,6 +693,18 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
             ),
         )
     if section == "offer-letters":
+        # ccrm-045 (DEC-SCOPE-318): the newest current "Offer letter" document of each application (uploaded by the counselor, the
+        # Overseas Admin or the agency; an offer's `offer_document_id` is one of them) -- the page's download card fetches the file.
+        letters = {
+            d.application_id: d
+            for d in (
+                await db.scalars(
+                    select(StudentDocument)
+                    .where(StudentDocument.student_id == user.id, StudentDocument.application_id.in_(app_ids), StudentDocument.document_type == OFFER_LETTER, StudentDocument.archived_at.is_(None))
+                    .order_by(StudentDocument.created_at)  # ascending, so the newest wins
+                )
+            ).all()
+        } if app_ids else {}  # fmt: skip
         return _payload(
             "Offer Letters",
             "Conditional and unconditional offers.",
@@ -701,11 +715,11 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
                     "status": a.status,
                     "offer_type": OFFER_TYPE_LABELS.get(a.offer_type),
                     "offer_deadline": a.offer_deadline.isoformat() if a.offer_deadline else None,
-                    "offer": a.offer_letter_url,
+                    "offer": a.offer_letter_url or (offer_document_view(letters[a.id])["name"] if a.id in letters else None),
                     "next_action": a.next_action,
                 }
                 for a, u in applications
-                if a.offer_letter_url or counts_as_offer(a)  # nehn-001 (ccrm-023 OF1)
+                if a.offer_letter_url or counts_as_offer(a) or a.id in letters  # nehn-001 (ccrm-023 OF1); ccrm-045
             ),
         )
     if section == "visa-status":
