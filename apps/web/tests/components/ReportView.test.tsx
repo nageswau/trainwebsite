@@ -71,6 +71,13 @@ describe("ReportView (nehn-009)", () => {
     expect((screen.getByLabelText("Student") as HTMLInputElement).value).toBe("asha");
   });
 
+  it("offers the attendance report's 'Attendance below %' as a 1-100 number, kept from the address (nehn-011)", () => {
+    const attendance = { ...ITEM, id: "attendance", filters: ["from", "to", "attendance_below"] };
+    render(<ReportView item={attendance} report={report({ id: "attendance" })} error="" params={{ attendance_below: "75" }} basePath={BASE} />);
+    const input = screen.getByLabelText("Attendance below %") as HTMLInputElement;
+    expect([input.type, input.min, input.max, input.value]).toEqual(["number", "1", "100", "75"]);
+  });
+
   it("shows the rows with labelled cells, a dash for an empty value, and the downloads", () => {
     render(<ReportView item={ITEM} report={report()} error="" params={{ status: "active" }} basePath={BASE} />);
     const table = screen.getByRole("table");

@@ -10215,3 +10215,20 @@ worded server-side from the same criteria. V9 the certificate rule is one helper
 (one seat, `training_progress.seat`) and by this view (every seat, `training_progress.seats` over the same SQL builders).
 **Numbering:** no migration; API §12HF; RBAC §2.219.
 - **Feature ID authorized:** `nehn-028`. **Status:** built on `worktree-nehn-028`.
+
+### DEC-SCOPE-311 — Admin dashboard training tiles (`nehn-011`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-011` (§14 L289-295; `UNVERIFIED` backlog); design
+`docs/superpowers/specs/2026-10-28-nehn-011-admin-dashboard-tiles-design.md`. Builds on the nehn-010 reports (`DEC-SCOPE-305`). The
+client's admin report template (CI-02) has not arrived.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** C1 enrolments / active / completed / dropped
+are the column totals of the unfiltered course-wise report. C2 completed links to `completions` (same count). C3 average progress is the
+mean progress of counted seats (1 dp; "—" when none) and links to `student-courses`. C4 at risk = a counted seat with a class marked and
+attendance below the certificate rule's `min_attendance_percent` (nehn-031, default 75; nehn-028's `at_risk`); the attendance report
+gains the filter `attendance_below` (1-100) and the tile opens it pre-filtered. C5 course fees collected / pending are totals of the
+course-wise report's `revenue` and its new `pending_fees` column (`pending`/`overdue` enrolment fees), both `financial`. C6 a five-row
+course-wise mini table (the report's first rows; the field policy strips the fee columns). C7 the block appears only for a caller holding
+`reports.training.view` (super_admin, it_admin; not overseas_admin by default) and the fee figures only with `field.financial.view`.
+No 60 s cache (the aggregates are grouped SQL). The existing dashboard keys keep their meaning.
+**Numbering:** no migration; API §12HI; RBAC §2.222.
+- **Feature ID authorized:** `nehn-011`. **Status:** built on `worktree-nehn-011`.
