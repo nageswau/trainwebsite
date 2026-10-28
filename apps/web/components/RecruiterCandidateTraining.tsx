@@ -51,12 +51,14 @@ export default function RecruiterCandidateTraining({ candidateId }: { candidateI
           {training.seats.length === 0 ? (
             <p className="muted" style={{ fontSize: 13 }}>No course enrolments yet.</p>
           ) : (
-            <div className="table-scroll" tabIndex={0} role="region" aria-label="Training progress by course">
+            <div className="table-scroll candidate-training" tabIndex={0} role="region" aria-label="Training progress by course">
               <table className="table compact stack">
                 <caption className="visually-hidden">Training progress</caption>
                 <thead>
                   <tr>
-                    {["Course", "Batch", "Trainer", "Batch ends", "Status", "Progress", "Attendance", "Assignments graded", "Assessments passed", "Certificate"].map(
+                    {/* QA16-01: the batch sits under the course and the headers are short, so every column fits the card on a desktop; the
+                        cells carry "graded" / "passed". */}
+                    {["Course", "Trainer", "Ends", "Status", "Progress", "Attendance", "Assignments", "Assessments", "Certificate"].map(
                       (label) => <th key={label} scope="col">{label}</th>,
                     )}
                   </tr>
@@ -64,15 +66,14 @@ export default function RecruiterCandidateTraining({ candidateId }: { candidateI
                 <tbody>
                   {training.seats.map((s) => (
                     <tr key={`${s.course}-${s.batch}`}>
-                      <th scope="row">{s.course}</th>
-                      <td data-label="Batch">{s.batch}</td>
+                      <th scope="row">{s.course}<br /><span className="muted" style={{ fontWeight: 400 }}>{s.batch}</span></th>
                       <td data-label="Trainer">{s.trainer ?? "—"}</td>
                       <td data-label="Batch ends" className="nowrap">{formatCalendarDate(s.ends)}</td>
                       <td data-label="Status">{statusLabel(s.status)}</td>
                       <td data-label="Progress" className="num">{pct(s.progress)}</td>
                       <td data-label="Attendance" className="num">{pct(s.attendance_pct)}</td>
-                      <td data-label="Assignments graded" className="num">{s.assignments_graded} / {s.assignments_total}</td>
-                      <td data-label="Assessments passed" className="num">{s.assessments_passed} / {s.assessments_total}</td>
+                      <td data-label="Assignments" className="nowrap">{s.assignments_graded} / {s.assignments_total} graded</td>
+                      <td data-label="Assessments" className="nowrap">{s.assessments_passed} / {s.assessments_total} passed</td>
                       <td data-label="Certificate">{statusLabel(s.certificate)}</td>
                     </tr>
                   ))}

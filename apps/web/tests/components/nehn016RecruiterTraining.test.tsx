@@ -64,7 +64,11 @@ describe("RecruiterCandidateTraining (nehn-016)", () => {
     expect(rows[0].textContent).toContain("PFS-Oct");
     expect(rows[0].textContent).toContain("60%");
     expect(rows[0].textContent).toContain("75%");
-    expect(rows[0].textContent).toContain("1 / 2");
+    expect(rows[0].textContent).toContain("1 / 2 graded");
+    expect(rows[0].textContent).toContain("0 / 1 passed");
+    expect(within(table).getAllByRole("columnheader").map((h) => h.textContent)).toEqual([
+      "Course", "Trainer", "Ends", "Status", "Progress", "Attendance", "Assignments", "Assessments", "Certificate",
+    ]);  // QA16-01: few and short enough to fit a desktop card
     expect(rows[0].textContent).toContain("Not issued");
     expect(rows[1].textContent).toContain("—");  // no attendance marked is "—", never 0 %
     expect(rows[1].textContent).toContain("Dropped");

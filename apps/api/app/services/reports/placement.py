@@ -22,6 +22,7 @@ from app.services.reports.training import CERTIFICATE, STUDENT_COLUMNS, Student,
 ROWS = {"placement_team", "placement_manager", "it_admin", "super_admin"}
 DEFAULT_DAYS = 15  # "complete their course within the next 15 days" (§12 L274); the `days` filter changes it
 READINESS_DEFAULT = "preparation"  # a student with no placement profile reads as the model default (as /workflows does)
+NO_PROFILE = {"readiness_status": READINESS_DEFAULT, "resume_status": "pending", "mock_interview_status": "pending", "aptitude_status": "pending", "available": False}
 Later, LaterBatch = aliased(Enrollment), aliased(Batch)
 TODAY = cast(func.timezone("Asia/Kolkata", func.now()), Date)  # the database clock, as an IST calendar day
 POOL = [
@@ -158,11 +159,5 @@ async def candidate_training(db: AsyncSession, candidate: Candidate) -> dict:
         .order_by(Batch.end_date.desc(), func.lower(Batch.name), Enrollment.id)
     )
     profile = await db.scalar(select(PlacementProfile).where(PlacementProfile.student_id == student_id))
-    readiness = {
-        "readiness_status": profile.readiness_status if profile else READINESS_DEFAULT,
-        "resume_status": profile.resume_status if profile else "pending",
-        "mock_interview_status": profile.mock_interview_status if profile else "pending",
-        "aptitude_status": profile.aptitude_status if profile else "pending",
-        "available": bool(profile and profile.available),
-    }
+    readiness = {key: getattr(profile, key) for key in NO_PROFILE} if profile else dict(NO_PROFILE)
     return {"student": True, "seats": [dict(row._mapping) for row in rows], "readiness": readiness}
