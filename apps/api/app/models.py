@@ -2670,6 +2670,17 @@ class Payment(Base, TimestampMixin):
     installment_no: Mapped[int | None] = mapped_column(Integer, nullable=True)
     checkout_idempotency_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
     checkout_provider_order_id: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    # nehn-019 (DEC-SCOPE-315, migration 0215): `amount` stays the net payable; the discount is recorded beside it, so the gross
+    # amount is `amount + discount_amount` (derived, never stored twice). Reason/actor are the latest discount's; `paid_at` is set
+    # by `payments._mark_paid` and an admin-recorded paid payment.
+    discount_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0, server_default="0")
+    discount_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    discounted_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    @property
+    def gross_amount(self) -> float:
+        return float(self.amount) + float(self.discount_amount or 0)
 
 
 class Invoice(Base, TimestampMixin):

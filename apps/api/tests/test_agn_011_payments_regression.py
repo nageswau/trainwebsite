@@ -9,14 +9,14 @@ from datetime import date
 from pathlib import Path
 
 import pytest
-from pdf_text import pdf_text
 from sqlalchemy import func, select
 
 from app.core.config import settings
 from app.models import Payment, Receipt
-from app.services.billing_documents import generate_receipt_pdf
+from app.services.billing_documents import generate_receipt_pdf, receipt_lines
 from tests.agn001_helpers import client_for, mk_user
 from tests.agn011_helpers import KEY_SECRET, captured, deposit_world, mk_deposit, mk_deposit_payment, razorpay_on, reload, signed
+from tests.nehn019_helpers import receipt_rows
 
 WEBHOOK = "/api/v1/payments/webhooks/razorpay"
 
@@ -106,12 +106,18 @@ async def test_admin_cannot_create_or_discount_a_deposit_payment(db_session):
     assert (await reload(db_session, Payment, payment.id)).amount == deposit.amount
 
 
-def _pdf(url: str) -> str:
-    return pdf_text((Path(settings.local_upload_dir) / url.removeprefix("/local-files/")).read_bytes())
+def _rows(url: str) -> dict[str, str]:
+    return receipt_rows((Path(settings.local_upload_dir) / url.removeprefix("/local-files/")).read_bytes())
 
 
-def test_receipt_draws_the_student_only_when_given():
-    common = {"payer_name": "Asha Master", "amount": 50000.0, "currency": "INR", "issued_on": date(2026, 10, 2), "reference_type": "agent_deposit"}
-    with_student = _pdf(generate_receipt_pdf(receipt_no=f"RCPT-T-{uuid.uuid4().hex[:6]}", student_name="Ravi <b>Kumar</b>", **common))
-    assert "Billed to: Asha Master" in with_student and "Student: Ravi <b>Kumar</b>" in with_student
-    assert "Student:" not in _pdf(generate_receipt_pdf(receipt_no=f"RCPT-T-{uuid.uuid4().hex[:6]}", **common))
+def test_receipt_draws_payer_and_student_as_literal_text():
+    """nehn-019: every receipt has a Student row now ("—" when unknown); names are drawn literally, never as markup."""
+    common = {"payer_name": "Asha Master", "currency": "INR", "gross": 50000.0, "discount": 0, "paid": 50000.0, "balance": 0, "status": "Paid", "reference_type": "agent_deposit"}
+
+    def receipt(**student) -> dict[str, str]:
+        no = f"RCPT-T-{uuid.uuid4().hex[:6]}"
+        return _rows(generate_receipt_pdf(receipt_no=no, issued_on=date(2026, 10, 2), lines=receipt_lines(receipt_no=no, payment_date=None, **common, **student)))
+
+    with_student = receipt(student_name="Ravi <b>Kumar</b>")
+    assert (with_student["Billed to"], with_student["Student"]) == ("Asha Master", "Ravi <b>Kumar</b>")
+    assert receipt()["Student"] == "—"
