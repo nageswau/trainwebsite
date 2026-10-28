@@ -145,7 +145,7 @@ async def test_a_fresh_counselor_sees_every_section_empty(db_session):
         r = await c.get(URL)
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["today"] == day(0).isoformat() and body["window_days"] == 14
+    assert body["today"] == day(0).isoformat() and body["window_days"] == 14 and body["follow_up_days"] == 7
     assert set(body["sections"]) == {
         "new_leads",
         "appointments_today",
@@ -173,11 +173,12 @@ async def test_every_section_lists_only_the_counselors_own_live_work(db_session,
     s = body["sections"]
     assert ids(body, "new_leads") == {str(w["new"].id), str(w["pending"].id)}
     assert ids(body, "no_next_action") == {str(w["bare"].id)}  # not-contacted leads show above, closed and linked ones never
-    assert ids(body, "follow_ups") == {str(w["fu_today"].id), str(w["fu_late"].id)}
+    # ccrm-042: overdue, today and the next 7 days (fu_later is +2 days)
+    assert ids(body, "follow_ups") == {str(w["fu_today"].id), str(w["fu_late"].id), str(w["fu_later"].id)}
     late = next(i for i in s["follow_ups"]["items"] if i["id"] == str(w["fu_late"].id))
     assert late["overdue"] is True and late["href"] == f"/overseas/counselor/leads/{w['planned'].id}"
-    assert [i["id"] for i in s["follow_ups"]["items"]] == [str(w["fu_late"].id), str(w["fu_today"].id)]  # soonest first
-    assert ids(body, "overdue_tasks") == {str(w["late_task"].id)}
+    assert [i["id"] for i in s["follow_ups"]["items"]] == [str(w["fu_late"].id), str(w["fu_today"].id), str(w["fu_later"].id)]  # soonest first
+    assert ids(body, "overdue_tasks") == {str(w["late_task"].id), str(w["today_task"].id)}
     assert ids(body, "calls_today") == {str(w["call"].id)}
     assert [i["id"] for i in s["appointments_today"]["items"]] == [str(w["student_appt"].id), str(w["appt"].id)]  # by time
     assert s["appointments_today"]["items"][0]["href"] == f"/overseas/counselor/students/{w['s1'].id}"

@@ -4580,3 +4580,12 @@ days on the day the students' agency records were created).
 - `GET /payments/{payment_id}/receipt` — unchanged contract. A receipt generated from now on lists: receipt no, payment date, billed to,
   student, student code, email, phone, course, batch, reference, gross amount, discount, amount paid, remaining balance, payment status
   ("Paid" / "Partially paid"); "—" where unknown. Issued once, never regenerated.
+
+## 12HN. Counselor dashboard follow-ups and tasks window (ccrm-042) — addendum, 2026-10-28
+
+`DEC-SCOPE-316`. No migration; no request changes; authorization unchanged (overseas counselor only, else **403**).
+
+- `GET /counselor/dashboard` (§12GD) — `sections.follow_ups` now covers open follow-ups on the caller's leads due before the start of
+  (today IST + 8 days): overdue, today and the next 7 days, `due_at` ascending, `overdue` true when due before today. `sections.overdue_tasks`
+  (key unchanged) now covers open tasks with `due_on <= today + 7`, ascending, `overdue` true when `due_on < today`. Each section keeps
+  `{count, more, items[<=10]}`. The response adds `follow_up_days` (7).
