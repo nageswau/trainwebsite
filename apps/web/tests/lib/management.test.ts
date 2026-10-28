@@ -76,6 +76,16 @@ describe("mgmt-001 pillars (§33, MG8/MG9)", () => {
   });
 });
 
+describe("nehn-021 Payments entry (DEC-SCOPE-309 D4)", () => {
+  const payments = { label: "Payments", href: "/management/payments", resource: "payments" };
+
+  it("gives the finance tier a Payments link that follows the payments.view grant", () => {
+    expect(managementNavFor(ACCOUNTANT)).toContainEqual(payments);
+    expect(managementNavFor(PARTNER)).toContainEqual(payments);
+    expect(managementNavFor(SUPER_ADMIN)).not.toContainEqual(payments); // the super admin has /admin/payments
+  });
+});
+
 describe("mgmt-012 marketing entries (MK14)", () => {
   it("links the finance tier to the ROI page and the super admin to its lead figures", () => {
     const roi = { label: "Marketing budget & ROI", href: "/management/marketing" };

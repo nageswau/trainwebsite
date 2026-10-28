@@ -134,6 +134,11 @@ PAYMENTS_ADD = require_permission("payments", "add", ADMIN_REQUIRED)
 DISCOUNTS_ADD = require_permission("discounts", "add", ADMIN_REQUIRED)
 
 
+def _every_division(user: User) -> bool:
+    """nehn-021 (DEC-SCOPE-309 D1): a global-division grant holder (e.g. the accountant) has no division to be scoped to, like super_admin."""
+    return user.role == "super_admin" or user.division == "global"
+
+
 def _reject_supplied_password(payload: dict, actor: User, route: str, field: str) -> None:
     """ENH-003 / DEC-SCOPE-019: an admin never supplies or knows a credential for an account they
     provision -- the user sets their own via the emailed link. Logged as a WARNING (actor and route
@@ -349,7 +354,7 @@ async def companies(user: User = Depends(ensure_admin), db: AsyncSession = Depen
 @router.get("/payments")
 async def payment_records(user: User = Depends(PAYMENTS_VIEW), db: AsyncSession = Depends(get_db)):
     stmt = select(Payment, User).join(User, User.id == Payment.user_id)
-    if user.role != "super_admin":
+    if not _every_division(user):
         stmt = stmt.where(Payment.division == user.division)
     rows = (await db.execute(stmt.order_by(Payment.created_at.desc()).limit(1000))).all()
     return [
@@ -1230,7 +1235,7 @@ async def discount_payment(payment_id: UUID, payload: dict, user: User = Depends
     item = await db.get(Payment, payment_id)
     if not item:
         raise HTTPException(404, "Payment not found")
-    if user.role != "super_admin" and item.division != user.division:
+    if not _every_division(user) and item.division != user.division:
         raise HTTPException(403, "Wrong division")
     if item.reference_type == "agent_deposit":  # AGN-011: the deposit's amount is the agency's, read at its checkout
         raise HTTPException(409, "An agent deposit's amount is set on its application")

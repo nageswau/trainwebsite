@@ -382,13 +382,16 @@ function createUserRoleOptions(user: User) {
   return options(roles);
 }
 
+// nehn-021 (DEC-SCOPE-309 D5): the admins' Payments page and the finance roles' (/management/payments) share this form.
+const DISCOUNT_SPEC: ActionSpec = { title: "Apply discount", description: "Lowers a still-unpaid fee -- never a paid one. Requires a written reason.", endpoint: "/api/v1/admin/payments/:payment_id/discount", success: "Discount applied.", permission: "discounts.add", pathFields: ["payment_id"], fields: [{ name: "payment_id", label: "Payment reference", type: "text", required: true }, { name: "amount", label: "New (discounted) amount", type: "number", required: true }, { name: "reason", label: "Reason", type: "textarea", required: true }] };
+
 function adminSpecs(user: User, section: string): ActionSpec[] {
   if (["users", "students", "trainers", "counselors", "staff"].includes(section)) return [{ title: "Create user", endpoint: "/api/v1/admin/users", success: "User created.", describeSuccess: data => welcomeLinkFeedback("User created.", data), announcesUserChange: true, fields: [{ name: "full_name", label: "Full name", required: true }, { name: "email", label: "Email", required: true }, { name: "phone", label: "Phone" }, { name: "division", label: "Division", type: "select", required: true, defaultValue: user.division === "global" ? "it" : user.division, options: createUserDivisionOptions(user) }, { name: "role", label: "Role", type: "select", required: true, options: createUserRoleOptions(user) }] }];
   if (section === "programs") return [{ title: "Create program", endpoint: "/api/v1/admin/programs", success: "Program created.", fields: [{ name: "slug", label: "Slug", required: true }, { name: "category", label: "Category", required: true }, { name: "title", label: "Title", required: true }, { name: "summary", label: "Summary", type: "textarea" }, { name: "duration", label: "Duration", required: true }, { name: "fees", label: "Fees", type: "number", required: true }, { name: "eligibility", label: "Eligibility", type: "textarea" }, { name: "curriculum", label: "Curriculum (comma separated)", parse: "list" }] }];
   // "batches" is handled by AdminBatchCreatePanel (ADM-003) -- see showBatchCreate below.
   if (section === "payments") return [
     { title: "Create payment due", endpoint: "/api/v1/admin/payments", success: "Payment due created.", permission: "payments.add", fields: [{ name: "user_id", label: "User reference", type: "text", required: true }, { name: "reference_type", label: "Fee type", defaultValue: "service_fee" }, { name: "amount", label: "Amount", type: "number", required: true }, { name: "currency", label: "Currency", defaultValue: "INR" }, { name: "provider", label: "Provider", type: "select", defaultValue: "razorpay", options: options(["razorpay", "manual"]) }, { name: "status", label: "Status", type: "select", defaultValue: "pending", options: options(["pending", "paid"]) }, { name: "due_date", label: "Due date", type: "date" }] },
-    { title: "Apply discount", description: "Lowers a still-unpaid fee -- never a paid one. Requires a written reason.", endpoint: "/api/v1/admin/payments/:payment_id/discount", success: "Discount applied.", permission: "discounts.add", pathFields: ["payment_id"], fields: [{ name: "payment_id", label: "Payment reference", type: "text", required: true }, { name: "amount", label: "New (discounted) amount", type: "number", required: true }, { name: "reason", label: "Reason", type: "textarea", required: true }] },
+    DISCOUNT_SPEC,
   ];
   // "leads" is handled by AdminLeadManagementPanel (ADM-002) -- see showLeadManagement below.
   // RAID.md I-32 / upc-003: "universities" links to the University Master (UniversityMasterLink)
@@ -410,6 +413,7 @@ function specsFor(user: User, section: string): ActionSpec[] {
   if (user.role === "trainer") return trainerSpecs(section);
   if (["placement_team", "hr_team"].includes(user.role)) return placementSpecs(section);
   if (user.role === "agent") return agentSpecs(section);
+  if (["partner", "accountant"].includes(user.role)) return section === "payments" ? [DISCOUNT_SPEC] : []; // nehn-021: discounts only
   // tel-016: an IT counselor works leads only (tel-017 C1) -- the overseas student appointment forms would only ever 403 for them.
   if (user.role === "counselor" && user.division === "it") return [];
   if (["counselor", "university_rep"].includes(user.role)) return overseasOperationsSpecs(user.role, section);
