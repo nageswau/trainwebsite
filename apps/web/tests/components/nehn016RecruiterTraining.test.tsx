@@ -7,7 +7,7 @@ import type { CandidateTraining } from "@/lib/candidateTraining";
 import { RECRUITER_MANAGER_NAV, RECRUITER_NAV } from "@/lib/navigation";
 import type { CatalogueItem, Report } from "@/lib/reports";
 
-// nehn-016 (DEC-SCOPE-309): the recruiter's Report library link, the "Completing within (days)" filter, and the read-only training panel
+// nehn-016 (DEC-SCOPE-312): the recruiter's Report library link, the "Completing within (days)" filter, and the read-only training panel
 // on the candidate page -- its seats, the "—" for no attendance, readiness, the external candidate, and the load error with Retry.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 

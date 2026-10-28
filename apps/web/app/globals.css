@@ -573,3 +573,5 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 /* nehn-016 QA16-01: the recruiter's training table keeps every column inside the candidate card on a desktop. */
 @media (min-width: 641px) { .candidate-training .table th, .candidate-training .table td { padding: 12px 10px; } }
 .material-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}.material-list li{padding:14px;display:grid;gap:8px}.material-list h4{margin:0;overflow-wrap:anywhere}.material-meta{margin:0;font-size:13px;overflow-wrap:anywhere}
+/* nehn-011 (DEC-SCOPE-311): the admin dashboard's training tiles are links to their reports. */
+.training-tiles{margin-bottom:24px}.training-tiles h3{margin-top:0}.training-tiles a.metric{color:var(--ink);text-decoration:none;display:block}.training-tiles a.metric:hover,.training-tiles a.metric:focus-visible{border-color:var(--blue);background:var(--soft)}.training-tiles a.metric small{display:block;margin-top:4px}

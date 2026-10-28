@@ -18,7 +18,7 @@ export const REPORTS_API = "/api/v1/reports";
 export const FILTER_LABELS: Record<string, string> = {
   days: "Completing within (days)", // nehn-016
   from: "From", to: "To", course_id: "Course", batch_id: "Batch", trainer_id: "Trainer", recruiter_id: "Recruiter", student: "Student",
-  status: "Status", latest: "Latest", completion_from: "Completion from", completion_to: "Completion to",
+  status: "Status", latest: "Latest", completion_from: "Completion from", completion_to: "Completion to", attendance_below: "Attendance below %",
 };
 
 /** The address's values for the report's declared filters and the page (anything else, empty or repeated, is ignored). */

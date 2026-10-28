@@ -1,4 +1,4 @@
-// nehn-016 (DEC-SCOPE-309): a candidate's training progress, read only -- each course seat with the certificate criteria, and readiness.
+// nehn-016 (DEC-SCOPE-312): a candidate's training progress, read only -- each course seat with the certificate criteria, and readiness.
 import { CANDIDATES_URL } from "@/lib/recruiterCandidates";
 
 export type TrainingSeat = {

@@ -1,4 +1,4 @@
-"""nehn-016 -- migration 0212_placement_report_grants (DEC-SCOPE-309): the chain, the seed and the round trip, in a throwaway database
+"""nehn-016 -- migration 0212_placement_report_grants (DEC-SCOPE-312): the chain, the seed and the round trip, in a throwaway database
 (the nehn-009 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util

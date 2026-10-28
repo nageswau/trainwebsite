@@ -1,4 +1,4 @@
-"""nehn-016 (DEC-SCOPE-309) -- the recruiter's placement reports in the nehn-009 registry (`completing-soon`, `placement-students`, resource
+"""nehn-016 (DEC-SCOPE-312) -- the recruiter's placement reports in the nehn-009 registry (`completing-soon`, `placement-students`, resource
 `reports.placement`) and the read-only training panel on the recruiter candidate page (`GET /recruiter/candidates/{id}/training`).
 Population (P1, OD-08 builder's default): opted-in, non-archived IT students only. Every fixture is dated from today (IST) and every read is
 narrowed to the fixture's own course: the test database is shared and never truncated."""

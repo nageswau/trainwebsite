@@ -7,7 +7,7 @@ import { formatCalendarDate } from "@/lib/formatDate";
 
 const pct = (value: number | null) => (value === null ? "—" : `${value}%`);
 
-/** nehn-016 (DEC-SCOPE-309): the student's training progress for the recruiter -- course, batch, dates, status, progress, attendance (as
+/** nehn-016 (DEC-SCOPE-312): the student's training progress for the recruiter -- course, batch, dates, status, progress, attendance (as
  *  certificate eligibility counts it; "—" when nothing is marked), assignments, assessments, the certificate and placement readiness.
  *  Read only; on a phone the table stacks into labelled blocks. */
 export default function RecruiterCandidateTraining({ candidateId }: { candidateId: string }) {

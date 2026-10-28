@@ -85,7 +85,7 @@ def test_the_pack_is_registered_under_the_training_resource():
     for report_id in PACK:
         report = registry.REPORTS[report_id]
         assert report.resource == "reports.training" and "recruiter_id" not in report.filters
-    assert registry.REPORTS["courses"].classes == {"revenue": "financial"}
+    assert registry.REPORTS["courses"].classes == {"revenue": "financial", "pending_fees": "financial"}  # nehn-011 adds pending_fees
     assert all(not registry.REPORTS[r].classes for r in PACK if r != "courses")
     assert "field.financial.view" not in rbac.DEFAULT_GRANTS["it_admin"] + rbac.DEFAULT_GRANTS["trainer"]
 
@@ -191,9 +191,9 @@ async def test_g_course_wise_report_with_revenue_for_super_admin(client, db_sess
     f = await _fixture(db_session)
     await _as(client, db_session, "super_admin")
     row = (await _read(client, "courses", course_id=str(f["program"].id)))["items"]
-    assert row == [{"course": f["program"].title, "batches": 2, "enrolments": 4, "active": 2, "completed": 1, "dropped": 1, "revenue": 1500.0}]
+    assert row == [{"course": f["program"].title, "batches": 2, "enrolments": 4, "active": 2, "completed": 1, "dropped": 1, "revenue": 1500.0, "pending_fees": 1000.0}]
     none_enrolled = (await _read(client, "courses", course_id=str(f["program"].id), **{"from": "2021-01-01"}))["items"]
-    assert none_enrolled == [{"course": f["program"].title, "batches": 2, "enrolments": 0, "active": 0, "completed": 0, "dropped": 0, "revenue": None}]
+    assert none_enrolled == [{"course": f["program"].title, "batches": 2, "enrolments": 0, "active": 0, "completed": 0, "dropped": 0, "revenue": None, "pending_fees": None}]
 
 
 # --- access (AC3, AC4) -------------------------------------------------------------------------------------------------------------

@@ -84,7 +84,7 @@ CATALOGUE: dict[str, dict] = {
     "field.financial": {"label": "Financial columns", "actions": ("view",)},
     # nehn-009 (DEC-SCOPE-303): the report library's training reports (the `enrollments` pilot; nehn-010 adds the rest).
     "reports.training": {"label": "Training reports", "actions": ("view", "download")},
-    # nehn-016 (DEC-SCOPE-309): the recruiter's placement reports -- students completing soon and the student placement report.
+    # nehn-016 (DEC-SCOPE-312): the recruiter's placement reports -- students completing soon and the student placement report.
     "reports.placement": {"label": "Placement reports", "actions": ("view", "download")},
     # nehn-018 (DEC-SCOPE-304): which student features unlock at which payment state.
     "student_access": {"label": "Student access rules", "actions": ("configure",)},

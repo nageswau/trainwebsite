@@ -4521,9 +4521,32 @@ days on the day the students' agency records were created).
 - `GET /portal/it/trainer/student-progress` — now header-only (no rows); subtitle "Attendance, assignments, assessments, progress and
   certificate eligibility for each student in your batches."
 
-## 12HG. Recruiter placement reports and training panel (nehn-016) — addendum, 2026-10-28
+## 12HI. Admin dashboard training tiles (nehn-011) — addendum, 2026-10-28
 
-`DEC-SCOPE-309`. Migration `0212_placement_report_grants` (seed only).
+`DEC-SCOPE-311`. No migration. Additive only.
+
+- `GET /admin/dashboard` (unchanged gate `ensure_admin`; every existing key unchanged) — adds `training` when the caller holds
+  `reports.training.view`: `{enrolments, active, completed, dropped, average_progress (number|null), at_risk, at_risk_threshold,
+  courses: {columns: [{key, label}], items: [...], total}}`, plus `fees_collected` and `fees_pending` only with `field.financial.view`
+  (otherwise absent, and the course table has no `revenue`/`pending_fees`). Each figure is a total of the unfiltered report it links to.
+- `GET /reports/attendance` — new filter `attendance_below` (whole number 1-100; else **422** "Attendance below % must be a whole number
+  from 1 to 100"): counted seats with a class marked whose attendance % is below it. Any other report refuses it (**422**).
+- `GET /reports/courses` (and `.csv`/`.xlsx`) — new column `pending_fees` "Fees pending (INR)" (`financial`): the seats' enrolment-fee
+  payments in `pending`/`overdue`.
+
+## 12HG. Discount authority (nehn-021) — addendum, 2026-10-28
+
+`DEC-SCOPE-309`. No migration; no new route; no request or response shape change.
+
+- `POST /admin/payments/{payment_id}/discount` (`discounts.add`) — a caller whose division is `global` (e.g. an accountant granted
+  `discounts.add`) may discount a payment of any division, like super_admin. it_admin / overseas_admin still get **403** "Wrong
+  division" outside their own. Without the grant: **403** "Admin role required" (unchanged). Reason required (**422**), new amount
+  below the current one (**422**), audited as `payment.discount` with the reason — all unchanged.
+- `GET /admin/payments` (`payments.view`) — a `global`-division holder lists every division; division staff their own (unchanged).
+
+## 12HJ. Recruiter placement reports and training panel (nehn-016) — addendum, 2026-10-28
+
+`DEC-SCOPE-312`. Migration `0212_placement_report_grants` (seed only).
 
 - Report library (§12HA) — two reports on the new resource `reports.placement` (view, download), read through the existing
   `GET /reports`, `GET /reports/{id}`, `GET /reports/{id}.csv|.xlsx` (throttle, 10,000-row cap and the `report.export` audit row as

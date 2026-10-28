@@ -1,4 +1,4 @@
-"""nehn-016 (DEC-SCOPE-309): the recruiter's read-only view of training -- (1) students completing soon, (2) the student placement report,
+"""nehn-016 (DEC-SCOPE-312): the recruiter's read-only view of training -- (1) students completing soon, (2) the student placement report,
 both in the nehn-009 registry under `reports.placement`, and (3) the training panel on the recruiter candidate page.
 
 Population (P1, OD-08 builder's default): IT students in the placement pool only -- the candidate linked to the student opted in (rec-010,

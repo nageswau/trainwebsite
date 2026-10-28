@@ -3,7 +3,7 @@
 Revision ID: 0212_placement_report_grants
 Revises: 0211_student_access_rules
 
-docs/superpowers/specs/2026-10-28-nehn-016-recruiter-training-progress-design.md (DEC-SCOPE-309). Seed only: SEED is a frozen copy of the
+docs/superpowers/specs/2026-10-28-nehn-016-recruiter-training-progress-design.md (DEC-SCOPE-312). Seed only: SEED is a frozen copy of the
 new `rbac.DEFAULT_GRANTS` keys at this revision -- recruiters, placement managers and IT admins (rows = opted-in IT students). A row that
 is already there (re-run) is left alone. No existing row changes. The downgrade deletes every `reports.placement` grant and override.
 """

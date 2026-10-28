@@ -1,6 +1,6 @@
 # nehn-016 — Nearing-completion list and recruiter read-only training progress (design)
 
-Decision: `DEC-SCOPE-309` · API §12HG · RBAC §2.220 · migration `0212_placement_report_grants` (seed only).
+Decision: `DEC-SCOPE-312` · API §12HJ · RBAC §2.223 · migration `0212_placement_report_grants` (seed only).
 Source: `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` §E `nehn-016` (DERIVED_BLUEPRINT over the ORIGINAL_REQUIREMENT lines
 §12 L271-276, §5 L104-109, §14 L303/L307). Dependencies nehn-004/005/008/009/010 are merged (FEEDBACK_TRACKER "Done — confirm defaults").
 

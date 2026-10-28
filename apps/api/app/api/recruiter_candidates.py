@@ -139,7 +139,7 @@ async def get_journey(candidate_id: UUID, user: User = Depends(get_current_user)
 
 @router.get("/{candidate_id}/training")
 async def get_training(candidate_id: UUID, response: Response, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """nehn-016 (DEC-SCOPE-309): the student's training progress, read only -- recruiters, placement managers and super_admin (HR's
+    """nehn-016 (DEC-SCOPE-312): the student's training progress, read only -- recruiters, placement managers and super_admin (HR's
     access is nehn-017's). Outside the pool is a 404 (R4); an external candidate has no training."""
     if user.role not in svc.WRITERS:
         raise HTTPException(403, "Your role cannot view training progress")
