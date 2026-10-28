@@ -18,7 +18,7 @@ from typing import NoReturn
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import and_, exists, func, or_, select, union
+from sqlalchemy import and_, case, exists, func, or_, select, union, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.identifiers import unique_student_code
@@ -247,22 +247,54 @@ async def assign_counselor(db: AsyncSession, admin: User, student_id: UUID, coun
     return {**result, "changed": True}
 
 
-async def page(db: AsyncSession, counselor: User, limit: int, offset: int) -> dict:
-    """The counselor's linked students, newest link first, with ENH-003's set-up status (`None` once the student has a password).
-    ccrm-040 (DEC-SCOPE-276 AR5): archived students are listed on their own page instead."""
-    from app.services.student_archive import not_archived  # it imports this module
+def _source():
+    """ccrm-043 (DEC-SCOPE-316): how the student arrived, first match wins -- the account's `registration_source`, else agency (an
+    `AgentStudent` row or an agency application), else self-registered (incl. legacy accounts without a source)."""
+    registered = User.profile["registration_source"].as_string()
+    agency = or_(
+        exists().where(AgentStudent.student_id == User.id),
+        exists().where(OverseasApplication.student_id == User.id, or_(OverseasApplication.agent_id.is_not(None), OverseasApplication.agent_student_id.is_not(None))),
+    )
+    return case((registered == "counselor_walk_in", "walk_in"), (registered == "lead_conversion", "lead_conversion"), (agency, "agency"), else_="self_registered")
 
-    mine = (OverseasStudentCounselor.counselor_user_id == counselor.id) & not_archived(OverseasStudentCounselor.student_user_id)
-    total = await db.scalar(select(func.count()).select_from(OverseasStudentCounselor).where(mine))
-    students = (
-        await db.scalars(
-            select(User)
-            .join(OverseasStudentCounselor, OverseasStudentCounselor.student_user_id == User.id)
-            .where(mine)
-            .order_by(OverseasStudentCounselor.created_at.desc(), OverseasStudentCounselor.id)
+
+async def page(db: AsyncSession, counselor: User, limit: int, offset: int, source: str | None = None, q: str | None = None) -> dict:
+    """ccrm-043 (DEC-SCOPE-316): every student of the counselor (csc-001 link ∪ the students of their applications), each once, newest
+    first by since when they are the counselor's, with ENH-003's set-up status (`None` once the student has a password), how they arrived,
+    their application count and whether the walk-in link is the caller's (only then can csc-003 resend or edit). `source` and `q` (a literal
+    substring of name/email/code, or the phone's digits) narrow it. ccrm-040 (DEC-SCOPE-276 AR5): archived students are listed on their
+    own page instead."""
+    from app.api.lookups import _pattern as like_pattern
+    from app.services.counselor_search import _digits_pattern, _matches  # both import this module
+    from app.services.student_archive import not_archived
+
+    reached = union_all(
+        select(OverseasStudentCounselor.student_user_id.label("student_id"), OverseasStudentCounselor.created_at.label("since")).where(OverseasStudentCounselor.counselor_user_id == counselor.id),
+        select(OverseasApplication.student_id, OverseasApplication.created_at).where(OverseasApplication.counselor_id == counselor.id, OverseasApplication.student_id.is_not(None)),
+    ).subquery()
+    mine = select(reached.c.student_id, func.min(reached.c.since).label("since")).group_by(reached.c.student_id).subquery()
+    source_of = _source().label("source")
+    conditions = [User.role == "overseas_student", not_archived(User.id)]
+    if source:
+        conditions.append(source_of == source)
+    pattern = like_pattern(q)
+    if pattern:
+        text = (q or "").strip()
+        conditions.append(_matches(pattern, _digits_pattern(text), (User.full_name, User.email, User.student_code), (User.phone,)))
+    total = await db.scalar(select(func.count()).select_from(User).join(mine, mine.c.student_id == User.id).where(*conditions))
+    applications = select(func.count()).where(OverseasApplication.student_id == User.id).correlate(User).scalar_subquery()
+    link = OverseasStudentCounselor
+    rows = (
+        await db.execute(
+            select(User, mine.c.since, source_of, applications.label("applications"), link.id.is_not(None).label("linked"))
+            .join(mine, mine.c.student_id == User.id)
+            .outerjoin(link, (link.student_user_id == User.id) & (link.counselor_user_id == counselor.id))
+            .where(*conditions)
+            .order_by(mine.c.since.desc(), User.id)
             .limit(limit)
             .offset(offset)
         )
     ).all()
-    statuses = await provisioning_statuses(db, [s.id for s in students])
-    return {"items": [student_out(s, statuses.get(s.id)) for s in students], "total": total or 0, "limit": limit, "offset": offset}
+    statuses = await provisioning_statuses(db, [row.User.id for row in rows])
+    items = [student_out(row.User, statuses.get(row.User.id)) | {"source": row.source, "applications": row.applications, "linked_since": row.since, "linked": row.linked} for row in rows]
+    return {"items": items, "total": total or 0, "limit": limit, "offset": offset}

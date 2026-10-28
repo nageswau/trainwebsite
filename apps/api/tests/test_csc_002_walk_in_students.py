@@ -205,7 +205,7 @@ async def test_the_list_is_the_counselors_own_linked_students_newest_first_with_
     body = response.json()
     assert (body["total"], body["limit"], body["offset"]) == (2, 20, 0)
     assert [(s["full_name"], s["setup"]) for s in body["items"]] == [("Second Walk-in", "pending_setup"), ("First Walk-in", None)]
-    assert body["items"][0] == second | {"setup": "pending_setup"}
+    assert body["items"][0].items() >= (second | {"setup": "pending_setup"}).items()  # ccrm-043 adds source, applications, linked_since, linked
 
 
 @pytest.mark.asyncio

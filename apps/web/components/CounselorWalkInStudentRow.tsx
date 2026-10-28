@@ -4,11 +4,20 @@ import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { staffFailure } from "@/lib/agentStaff";
+import { formatDate } from "@/lib/formatDate";
 import { sendJson } from "@/lib/apiErrors";
 
 export const WALK_IN_URL = "/api/v1/counselor/students";
 
-export type WalkInStudent = { id: string; full_name: string; email: string; phone: string | null; student_code: string | null; setup: "pending_setup" | "link_expired" | null };
+// ccrm-043 (DEC-SCOPE-316): the API's `source` values, in the filter's order.
+export const SOURCE_LABEL = { walk_in: "Walk-in", lead_conversion: "Lead conversion", self_registered: "Self-registered", agency: "Agency" } as const;
+
+// ccrm-043 (DEC-SCOPE-316): the list adds how the student arrived, their application count, since when they are mine and whether the
+// walk-in link is mine (only then can the row resend or edit -- csc-003). A create/edit response carries none of these.
+export type WalkInStudent = {
+  id: string; full_name: string; email: string; phone: string | null; student_code: string | null; setup: "pending_setup" | "link_expired" | null;
+  source?: keyof typeof SOURCE_LABEL; applications?: number; linked_since?: string; linked?: boolean;
+};
 
 const SETUP_LABEL = { pending_setup: "Set-up pending", link_expired: "Link expired" } as const;
 
@@ -22,7 +31,7 @@ export default function CounselorWalkInStudentRow({ student, onChanged }: { stud
   const inFlight = useRef(false);
   const returnFocus = useRef(false);
   const editId = `walk-in-edit-${student.id}`;
-  const pending = student.setup !== null;
+  const pending = student.setup !== null && student.linked !== false;
 
   useEffect(() => {
     if (!editing && returnFocus.current) {
@@ -82,6 +91,9 @@ export default function CounselorWalkInStudentRow({ student, onChanged }: { stud
         <span>{student.email}</span>
         {student.student_code && <span className="muted">Student ID {student.student_code}</span>}
         <span className="badge">{student.setup ? SETUP_LABEL[student.setup] : "Active"}</span>
+        {student.source && <span className="badge">{SOURCE_LABEL[student.source]}</span>}
+        {student.applications !== undefined && <span className="muted">{student.applications === 1 ? "1 application" : `${student.applications} applications`}</span>}
+        {student.linked_since && <span className="muted">Since {formatDate(student.linked_since)}</span>}
         {/* ccrm-009 (DEC-SCOPE-253): the student 360. */}
         <Link href={`/overseas/counselor/students/${encodeURIComponent(student.id)}`} aria-label={`Open ${student.full_name}`}>Open</Link>
         {/* ccrm-010 (DEC-SCOPE-241): the student's internal notes. */}
