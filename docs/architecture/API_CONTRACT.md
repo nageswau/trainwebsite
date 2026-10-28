@@ -4634,3 +4634,15 @@ days on the day the students' agency records were created).
 - `PUT /overseas/me/profile` and `PUT /counselor/students/{id}/profile` (ccrm-007) — `preferred_intake` checked only when it changes from
   the stored value (a legacy value re-sent unchanged saves).
 - `POST /workflows/overseas/applications` — a sent `intake` must match; omitted keeps the default `"Next intake"`.
+## 12HR. Counselor chat with walk-in students (ccrm-044) — addendum, 2026-10-28
+
+`DEC-SCOPE-320`. No migration; no new route.
+
+- `POST /workflows/overseas/student/counselor-chat` — the recipient is the counselor of the student's most recently updated application
+  that has one; when none has, the student's csc-001 linked counselor (`OverseasStudentCounselor`). **409** only when neither exists.
+  Request/response shapes unchanged.
+- `POST /communications/messages` — when the sender is a `counselor` and the recipient an `overseas_student`, the recipient must be in
+  the sender's caseload (`visible_student_ids`: csc-001 link ∪ students of applications with `counselor_id == me`), else **403**
+  "This student is not one of your students"; nothing is stored. Every other sender/recipient pair is unchanged.
+- Counselor Chat's student picker reads `GET /lookups/overseas-students` (counselor: caseload, archived excluded; ENH-031 shape) instead
+  of the counselor's applications.
