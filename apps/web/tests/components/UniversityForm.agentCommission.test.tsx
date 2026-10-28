@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import UniversityForm from "@/components/UniversityForm";
 import type { University } from "@/lib/universities";
 
-// ccrm-050 (DEC-SCOPE-322): the agent-Master commission fieldset on Add/Edit University, for super_admin / overseas_admin only.
+// ccrm-050 (DEC-SCOPE-323): the agent-Master commission fieldset on Add/Edit University, for super_admin / overseas_admin only.
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push, refresh: vi.fn() }) }));
 

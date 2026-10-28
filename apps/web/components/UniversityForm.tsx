@@ -33,7 +33,7 @@ import {
 // field; anything else is one alert. The entry is never cleared on an error, and a double click sends one request.
 // upc-004 (§26): while the name or country is being entered, the master is searched for the same name + country (advisory; UD6). A save
 // into one is a 409 with the same panel; a head / super_admin may add it anyway with a reason (UD2).
-// ccrm-050 (DEC-SCOPE-322): with canEditAgentCommission (super_admin / overseas_admin) the agent-Master commission is entered here too and
+// ccrm-050 (DEC-SCOPE-323): with canEditAgentCommission (super_admin / overseas_admin) the agent-Master commission is entered here too and
 // sent in the same request -- a blank rate is null (none on create, cleared on edit). Without it the key is never sent.
 type RankingRow = { key: number; system: string; other_name: string; year: string; rank: string };
 type Errors = Record<string, string>;

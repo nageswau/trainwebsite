@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { registerApprovedAgency } from "./helpers/agency";
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// ccrm-050 (DEC-SCOPE-322): the Overseas Admin enters the agent-Master commission on Add University (one save) and sees it prefilled on
+// ccrm-050 (DEC-SCOPE-323): the Overseas Admin enters the agent-Master commission on Add University (one save) and sees it prefilled on
 // Edit; an agency Master reads it once the university is published. A partnership head never sees the fieldset and the API refuses the
 // key (403). Requires the stack seeded with `python -m app.seed`. Unique names per run (shared E2E DB).
 

@@ -3305,3 +3305,13 @@ ccrm-007's `staff_student` gate, like the other 360 routes (§2.168). A counselo
 that student; the Overseas Admin to any of the student's. The student reads the document in their Documents (and an offer letter in
 Offer Letters) at once. Download of a document without an application: the counselor's caseload. Pinned by
 `apps/api/tests/test_ccrm_045_counselor_upload.py` and the ccrm-041 matrix row.
+
+### 2.225 Deposit receipt upload on the student 360's Finance tab *(added 2026-10-28 — `DEC-SCOPE-322`, ccrm-048)*
+
+| Route | Anonymous | overseas counselor (their application) | overseas counselor (another's application) | overseas_admin | super_admin | IT counselor, agent, overseas_student, other roles |
+|---|---|---|---|---|---|---|
+| `POST /workflows/overseas/applications/{id}/deposit/receipt` | 401 | 201 | 403 | 201 | 201 | 403 |
+
+The ccrm-025 deposit writers' rule (§2.170: `_writable` -- role, `_assigned_application` scope, row lock), plus the archived-student and
+agency-deposit refusals (409) and a required deposit record (422). The Finance tab offers the control only where `can_upload` is true.
+Pinned by `apps/api/tests/test_ccrm_048_deposit_receipt.py` and the ccrm-041 matrix row.
