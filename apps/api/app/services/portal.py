@@ -764,12 +764,14 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
             ({"sender": m.sender, "subject": m.subject, "received": m.received_at, "match": m.match_status} for m in rows),
         )
     if section == "payments":
-        rows = (await db.scalars(select(Payment).where(Payment.user_id == user.id, Payment.division == "overseas").order_by(Payment.created_at.desc()))).all()
+        # ccrm-049 (DEC-SCOPE-324): the proof staff uploaded, by name -- never its file key; the file is downloaded from Documents.
+        stmt = select(Payment, StudentDocument).outerjoin(StudentDocument, StudentDocument.id == Payment.proof_document_id)
+        rows = (await db.execute(stmt.where(Payment.user_id == user.id, Payment.division == "overseas").order_by(Payment.created_at.desc()))).all()
         return _payload(
             "Payments",
             "Service and application payment records.",
-            (("id", "Payment reference"), ("type", "Type"), ("amount", "Amount"), ("provider", "Provider"), ("status", "Status")),
-            ({"id": p.id, "type": p.reference_type, "amount": f"{p.currency} {float(p.amount):,.2f}", "provider": p.provider, "status": p.status} for p in rows),
+            (("id", "Payment reference"), ("type", "Type"), ("amount", "Amount"), ("provider", "Provider"), ("status", "Status"), ("proof", "Uploaded proof")),
+            ({"id": p.id, "type": p.reference_type, "amount": f"{p.currency} {float(p.amount):,.2f}", "provider": p.provider, "status": p.status, "proof": _proof_text(d)} for p, d in rows),
         )
     if section == "appointments":
         rows = (await db.scalars(select(Appointment).where(Appointment.student_id == user.id, Appointment.division == "overseas").order_by(Appointment.scheduled_at.desc()))).all()
@@ -792,6 +794,11 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
         # ccrm-022 SD6: never a document's file key -- its Download button is on the Documents page (the audited route).
         rows = [{"name": d.document_type, "url": "Download from Documents"} for d in documents] + [{"name": f"Offer letter - {u.name}", "url": a.offer_letter_url} for a, u in applications if a.offer_letter_url]
         return _payload("Downloads", "Verified documents and offer letters.", (("name", "Document"), ("url", "Download")), rows)
+
+
+def _proof_text(document: StudentDocument | None) -> str:
+    """ccrm-049: the Payments page's "Uploaded proof" cell -- the document's name, downloaded from Documents (the audited route)."""
+    return f"{document.document_label or document.document_type} — download from Documents" if document else ""
 
 
 def _paid_per_currency(commissions) -> str:

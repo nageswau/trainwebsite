@@ -10397,3 +10397,19 @@ clear (as `DELETE .../agent-commission`), a blank rate on the form = `null`; C4 
 `fields` list omits it; C5 an inactive university stays 409 (UM10); C6 the CSV import (upc-005) cannot carry it. **Numbering:** API §12HU; no
 migration; no RBAC change (same editors and viewers as DEC-SCOPE-209).
 - **Feature ID authorized:** `ccrm-050`. **Status:** built on `worktree-ccrm-050`.
+
+### DEC-SCOPE-324 — Payment receipt / proof upload on the student 360's Finance tab (`ccrm-049`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-049` (owner line L6, Q4, request 2026-10-28, `MEETING_TRANSCRIPT_REQUEST`-equivalent);
+design `docs/superpowers/specs/2026-10-28-ccrm-049-payment-proof-upload-design.md`.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** P1 one new route under the 360
+(`/counselor/students/{id}/payments/{pid}/proof`) serves the counselor and the Overseas Admin. P2 a counselor outside the caseload gets
+**404**, not the backlog's "403" (AC4): every 360 route answers 404 so a student's existence is not disclosed (ccrm-041 matrix `STUDENT`).
+P3 manual payments only (`provider = manual`); a gateway payment has its system receipt → 409. P4 any payment status (proof of an offline
+transfer on a pending payment is allowed). P5 the proof is a "Payment receipt" `StudentDocument` (no application, pending) linked by
+`payments.proof_document_id` (`ON DELETE SET NULL`); a replaced proof stays one of the student's documents. P6 whoever passes the 360's
+gate may download it (the document route's ccrm-045 rule for an application-less document). P7 audit `payment.proof_attached`; no student
+notification (not asked). P8 the student sees the file in Documents and its name in a new "Uploaded proof" column of the portal Payments
+page; the system receipt is labelled "System receipt" on the Finance tab. P9 no antivirus scan (platform residual risk).
+**Numbering:** migration 0216 (0212 was taken; 0213/0214 unused); API §12HV; RBAC §2.226.
+- **Feature ID authorized:** `ccrm-049`. **Status:** built on `worktree-ccrm-049`.

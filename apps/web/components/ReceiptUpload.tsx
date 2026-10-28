@@ -6,11 +6,11 @@ import { useId, useRef, useState } from "react";
 import { FILE_ACCEPT } from "@/lib/agentDocuments";
 import { sendRequest } from "@/lib/apiErrors";
 
-type Props = { applicationId: string; university: string; replacing: boolean };
+type Props = { url: string; kind: "Deposit receipt" | "Payment receipt"; subject: string; replacing: boolean };
 
-// ccrm-048 (DEC-SCOPE-322): the Finance tab's deposit card -- the counselor (their application) or the Overseas Admin uploads the deposit
-// receipt; the route stores it and attaches it to the deposit record in one step. One upload at a time.
-export default function DepositReceiptUpload({ applicationId, university, replacing }: Props) {
+// The Finance tab's receipt upload -- ccrm-048 (DEC-SCOPE-322) a deposit's, ccrm-049 (DEC-SCOPE-324) a payment's proof. The route stores
+// the file as one of the student's documents and attaches it in one step. One upload at a time.
+export default function ReceiptUpload({ url, kind, subject, replacing }: Props) {
   const router = useRouter();
   const inputId = useId();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -28,7 +28,7 @@ export default function DepositReceiptUpload({ applicationId, university, replac
     setMessage(null);
     const form = new FormData();
     form.append("file", file);
-    const outcome = await sendRequest(`/api/v1/workflows/overseas/applications/${encodeURIComponent(applicationId)}/deposit/receipt`, { method: "POST", body: form });
+    const outcome = await sendRequest(url, { method: "POST", body: form });
     inFlight.current = false;
     setBusy(false);
     if (!outcome.ok) return setMessage({ text: outcome.message, failed: true });
@@ -46,12 +46,12 @@ export default function DepositReceiptUpload({ applicationId, university, replac
       )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
         <label htmlFor={inputId} className="visually-hidden">
-          Deposit receipt file for {university}
+          {kind} file for {subject}
         </label>
         <input id={inputId} ref={fileInput} type="file" accept={FILE_ACCEPT} style={{ maxWidth: "100%" }} />
         <button type="button" className="btn small" disabled={busy} onClick={upload}>
           {busy ? "Uploading…" : action}
-          <span className="visually-hidden"> for {university}</span>
+          <span className="visually-hidden"> for {subject}</span>
         </button>
       </div>
       <p className="muted" style={{ margin: 0 }}>PDF, JPEG or PNG, up to 20 MB.</p>

@@ -2677,6 +2677,9 @@ class Payment(Base, TimestampMixin):
     discount_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     discounted_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # ccrm-049 (DEC-SCOPE-324, migration 0216): the receipt / proof staff uploaded for a manual payment -- a "Payment receipt" document
+    # of the student, distinct from the system `Receipt` PDF. A deleted document leaves no proof.
+    proof_document_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL"), nullable=True)
 
     @property
     def gross_amount(self) -> float:

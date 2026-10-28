@@ -24,6 +24,7 @@ from app.models import (
     OverseasApplication,
     OverseasStudentArchive,
     OverseasStudentCounselor,
+    Payment,
     TelecallerProfile,
     TelMessageTemplate,
     User,
@@ -141,6 +142,9 @@ async def world(db, client) -> dict:
     checklist_template = await _add(db, DocumentChecklistTemplate(name=uniq("C41 "), kind="visa", country_id=university.country_id, gate_mode="warn", version=1))
     await _add(db, DocumentChecklistTemplateItem(template_id=checklist_template.id, position=1, document_type="Passport", required=True, allowed_statuses=["pending", "verified"]))
     agreement = await _current_agreement(db, "data_processing")
+    # ccrm-049: a manual fee of the direct student, for the Finance tab's payment proof upload (committed with the rest: an open insert
+    # would hold the student's row against the routes that lock it)
+    payment = await _add(db, Payment(user_id=student.id, division="overseas", reference_type="service_fee", amount=1500, currency="GBP", provider="manual", status="pending", is_manual=True))
     await db.commit()
     letter = await mk_doc(db, student=student, application=app, document_type="Offer letter")
     document = await mk_doc(db, student=student, application=app, document_type="Passport")
@@ -175,7 +179,7 @@ async def world(db, client) -> dict:
     ids = {
         "lead": lead.id, "call": call.id, "follow_up": follow_up.id, "message": message.id, "tel_template": tel_template.id, "lost_reason": lost_reason.id,
         "student": student.id, "lonely": lonely.id, "archived": archived.id, "app": app.id, "agency_app": agency_app.id, "held": held.id, "enrolled": enrolled.id,
-        "record": record.id, "visa": visa.id, "template": template.id, "checklist_template": checklist_template.id, "agreement": agreement.id,
+        "record": record.id, "payment": payment.id, "visa": visa.id, "template": template.id, "checklist_template": checklist_template.id, "agreement": agreement.id,
         "letter": letter.id, "document": document.id, "enrol_doc": enrol_doc.id, "offer": offer["id"], "condition": condition["id"], "item": item["id"], "request": request["request"]["id"], "task": task["id"], "country": university.country_id, "university": university.id,
     }  # fmt: skip
     return {"users": users, **{k: str(v) for k, v in ids.items()}, **{f"{k}_id": str(u.id) for k, u in users.items()}}

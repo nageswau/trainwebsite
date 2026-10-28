@@ -6,7 +6,8 @@ download keeps its own route's rule, so `can_download` mirrors `GET /workflows/o
 B3: history = the applications' status history (ccrm-016, staff view) + audit rows about the student + document uploads, reviews and
 replacements; field names only, never values.
 ccrm-039 (DEC-SCOPE-275): finance = the student's fees and payments, each application's university deposit and the refunds; read-only.
-ccrm-048 (DEC-SCOPE-322): a counselor deposit says whether its receipt may be uploaded from the tab (`can_upload`)."""
+ccrm-048 (DEC-SCOPE-322): a counselor deposit says whether its receipt may be uploaded from the tab (`can_upload`).
+ccrm-049 (DEC-SCOPE-324): a payment carries the proof staff uploaded (`proof`) and whether one may be uploaded (`can_upload_proof`)."""
 
 from uuid import UUID
 
@@ -244,9 +245,29 @@ def _humanize(value: str) -> str:
     return value.replace("_", " ").capitalize()
 
 
-def _payment_description(p: Payment) -> str:
+def payment_description(p: Payment) -> str:
     text = _humanize(p.reference_type)
     return f"{text} (instalment {p.installment_no})" if p.installment_no else text
+
+
+def payment_row(p: Payment, invoice_no: str | None, receipt_no: str | None, *, admin: bool, proof: StudentDocument | None, archived: bool) -> dict:
+    return {
+        "id": p.id, "description": payment_description(p), "amount": money(p.amount), "currency": p.currency, "status": p.status,
+        "status_label": PAYMENT_LABELS.get(p.status) or _humanize(p.status), "due_date": p.due_date, "created_at": p.created_at, "installment_no": p.installment_no,
+        "invoice_no": invoice_no, "receipt_no": receipt_no, "can_download": admin,
+        # ccrm-049 (DEC-SCOPE-324): anyone past the 360's gate may download the proof -- the document route lets the Admin and a caseload
+        # counselor fetch an application-less student document (ccrm-045). The upload route's rules: a manual payment (a gateway one
+        # has its system receipt), the student not archived.
+        "proof": {"id": proof.id, "name": proof.document_label or proof.document_type, "can_download": True} if proof else None,
+        "can_upload_proof": p.provider == "manual" and not archived,
+    }  # fmt: skip
+
+
+async def payment_view(db: AsyncSession, user: User, p: Payment, proof: StudentDocument) -> dict:
+    """ccrm-049: one payment row after its proof was attached (the upload route refuses an archived student, so `archived` is false)."""
+    invoice_no = await db.scalar(select(Invoice.invoice_no).where(Invoice.payment_id == p.id))
+    receipt_no = await db.scalar(select(Receipt.receipt_no).where(Receipt.payment_id == p.id))
+    return payment_row(p, invoice_no, receipt_no, admin=user.role == "overseas_admin", proof=proof, archived=False)
 
 
 async def finance(db: AsyncSession, user: User, student: User) -> dict:
@@ -268,6 +289,7 @@ async def finance(db: AsyncSession, user: User, student: User) -> dict:
     records = {r.application_id: r for r in (await db.scalars(select(ApplicationDepositRecord).where(ApplicationDepositRecord.application_id.in_(ids)))).all()}
     agency = {d.application_id: d for d in (await db.scalars(select(ApplicationDeposit).where(ApplicationDeposit.application_id.in_(ids)))).all()}
     receipt_ids = [r.receipt_document_id for r in records.values() if r.receipt_document_id]
+    receipt_ids += [p.proof_document_id for p, *_ in payments if p.proof_document_id]  # ccrm-049: the payments' proofs too
     receipts = {d.id: d for d in (await db.scalars(select(StudentDocument).where(StudentDocument.id.in_(receipt_ids)))).all()}
     archived = await student_archive.is_archived(db, student.id)
 
@@ -294,20 +316,13 @@ async def finance(db: AsyncSession, user: User, student: User) -> dict:
                 refunds.append({"kind": "deposit", "description": f"University deposit — {university}", "amount": refund["amount"], "currency": deposit.currency, "refunded_on": refund["refunded_on"], "application_code": a.application_code})  # fmt: skip
     # F6: a gateway refund has no date of its own; the payment's last update is when it was marked refunded
     refunds += [
-        {"kind": "payment", "description": _payment_description(p), "amount": money(p.amount), "currency": p.currency, "refunded_on": p.updated_at.date(), "application_code": None}
+        {"kind": "payment", "description": payment_description(p), "amount": money(p.amount), "currency": p.currency, "refunded_on": p.updated_at.date(), "application_code": None}
         for p, *_ in payments
         if p.status == "refunded"
     ]  # fmt: skip
     refunds.sort(key=lambda r: r["refunded_on"], reverse=True)
     return {
-        "payments": [
-            {
-                "id": p.id, "description": _payment_description(p), "amount": money(p.amount), "currency": p.currency, "status": p.status,
-                "status_label": PAYMENT_LABELS.get(p.status) or _humanize(p.status), "due_date": p.due_date, "created_at": p.created_at, "installment_no": p.installment_no,
-                "invoice_no": invoice_no, "receipt_no": receipt_no, "can_download": admin,
-            }
-            for p, invoice_no, receipt_no in payments
-        ],
+        "payments": [payment_row(p, invoice_no, receipt_no, admin=admin, proof=receipts.get(p.proof_document_id), archived=archived) for p, invoice_no, receipt_no in payments],
         "deposits": deposits,
         "refunds": refunds,
     }  # fmt: skip

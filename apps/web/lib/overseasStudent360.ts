@@ -120,6 +120,8 @@ export type StudentPayment = {
   invoice_no: string | null;
   receipt_no: string | null;
   can_download: boolean;
+  proof: { id: string; name: string; can_download: boolean } | null; // ccrm-049: the receipt / proof staff uploaded
+  can_upload_proof: boolean; // ccrm-049: the reader may upload / replace it from the Finance tab
 };
 
 export type StudentDeposit = {

@@ -3315,3 +3315,13 @@ Offer Letters) at once. Download of a document without an application: the couns
 The ccrm-025 deposit writers' rule (§2.170: `_writable` -- role, `_assigned_application` scope, row lock), plus the archived-student and
 agency-deposit refusals (409) and a required deposit record (422). The Finance tab offers the control only where `can_upload` is true.
 Pinned by `apps/api/tests/test_ccrm_048_deposit_receipt.py` and the ccrm-041 matrix row.
+
+### 2.226 Payment receipt / proof upload on the student 360's Finance tab *(added 2026-10-28 — `DEC-SCOPE-324`, ccrm-049)*
+
+| Route | Anonymous | overseas counselor (student in caseload) | overseas counselor (outside caseload) | overseas_admin | super_admin, IT counselor, agent, overseas_student, other roles |
+|---|---|---|---|---|---|
+| `POST /counselor/students/{id}/payments/{pid}/proof` | 401 | 201 | 404 | 201 | 403 |
+
+The 360's gate (§2.168, `student_profiles.staff_student`: csc-001 caseload or the Overseas Admin; another student is a 404, never a 403),
+then the payment must be the student's (404) and manual (409), the student not archived (409). The Finance tab offers the control only
+where `can_upload_proof` is true. Pinned by `apps/api/tests/test_ccrm_049_payment_proof.py` and the ccrm-041 matrix row.
