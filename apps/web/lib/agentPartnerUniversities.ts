@@ -26,6 +26,8 @@ export type PartnerCourse = {
   intake_text: string | null;
   tuition_fee: string | number | null;
   intake: string | null;
+  // ccrm-051: for a Master only -- the course's own commission, else the university's; `source` says which. null = neither is set.
+  agent_commission_effective?: (AgentCommission & { source: "course" | "university" }) | null;
 };
 export type PartnerUniversityDetail = PartnerUniversity & {
   website: string | null;

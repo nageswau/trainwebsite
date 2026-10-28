@@ -8,7 +8,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Country, OverseasCourse, University, User
-from app.services.agent_commission_access import with_agent_commission
+from app.services.agent_commission_access import can_view_agent_commission, effective_agent_commission, with_agent_commission
 from app.services.partnership_universities import public_visible
 
 COURSE_KEYS = ("id", "title", "level", "category", "duration", "campus", "fee_text", "intake_text", "tuition_fee", "intake")
@@ -19,6 +19,12 @@ def _row(user: User, uni: University, country: Country, course_count: int) -> di
         "id": uni.id, "slug": uni.slug, "name": uni.name, "logo_url": uni.logo_url, "city": uni.city, "campuses": uni.campuses or [],
         "country": {"id": country.id, "name": country.name, "iso2": country.iso2}, "course_count": course_count,
     })
+
+
+def _course(user: User, uni: University, course: OverseasCourse) -> dict:
+    """ccrm-051 (DEC-SCOPE-327): a Master also gets the commission that applies to the course -- its own, else the university's."""
+    row = {k: getattr(course, k) for k in COURSE_KEYS}
+    return {**row, "agent_commission_effective": effective_agent_commission(course, uni)} if can_view_agent_commission(user) else row
 
 
 async def page(db: AsyncSession, user: User, *, q: str | None, country: UUID | None, limit: int, offset: int) -> dict:
@@ -42,6 +48,6 @@ async def detail(db: AsyncSession, user: User, university_id: UUID) -> dict:
     body = {
         **_row(user, uni, country, len(cs)),
         "website": uni.website, "overview": uni.overview, "fee_structure": uni.fee_structure, "deadlines": uni.deadlines, "scholarships": uni.scholarships,
-        "courses": [{k: getattr(c, k) for k in COURSE_KEYS} for c in cs],
+        "courses": [_course(user, uni, c) for c in cs],
     }
     return {"university": body}

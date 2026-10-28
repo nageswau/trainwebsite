@@ -93,6 +93,8 @@ export default function AgentPartnerUniversitiesPanel({ memberRole }: { memberRo
   if (selected) {
     const website = safeWebsite(detail?.website);
     const showCommission = memberRole === "master" && !!detail && "agent_commission" in detail;
+    // ccrm-051: per course, the commission that applies (the course's own, else the university's) and where it comes from.
+    const showCourseCommission = memberRole === "master" && !!detail && detail.courses.some((c) => "agent_commission_effective" in c);
     return (
       <section aria-label="Partner university">
         <p><button type="button" className="btn" onClick={() => open(null)}>Back to partner universities</button></p>
@@ -120,12 +122,15 @@ export default function AgentPartnerUniversitiesPanel({ memberRole }: { memberRo
             ) : (
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th>Course</th><th>Level</th><th>Campus</th><th>Fee</th><th>Intake</th></tr></thead>
+                  <thead><tr><th>Course</th><th>Level</th><th>Campus</th><th>Fee</th><th>Intake</th>{showCourseCommission ? <th>Agent commission</th> : null}</tr></thead>
                   <tbody>
                     {detail.courses.map((c) => (
                       <tr key={c.id}>
                         <td>{c.title}</td><td>{text(c.level)}</td><td>{text(c.campus)}</td>
                         <td>{text(c.fee_text ?? c.tuition_fee)}</td><td>{text(c.intake_text ?? c.intake)}</td>
+                        {showCourseCommission ? (
+                          <td>{c.agent_commission_effective ? `${formatAgentCommission(c.agent_commission_effective)} (${c.agent_commission_effective.source})` : "—"}</td>
+                        ) : null}
                       </tr>
                     ))}
                   </tbody>

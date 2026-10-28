@@ -203,14 +203,15 @@ async def test_overseas_admin_maintains_courses_but_never_sees_or_sets_commissio
     await login(client, admin)
     listed = await client.get(courses_url(uni["id"]))
     assert listed.status_code == 200 and listed.json()["can_edit"] is True
-    assert all("commission" not in item for item in listed.json()["items"]) and "commission" not in listed.text
+    # U2's `commission` never reaches them; ccrm-051's separate `agent_commission` does (DEC-SCOPE-209 viewer), hence the quoted key.
+    assert all("commission" not in item for item in listed.json()["items"]) and '"commission"' not in listed.text
     refused = await client.post(courses_url(uni["id"]), json=course_body(commission={"percent": "5"}))
     assert refused.status_code == 403
     created = await client.post(courses_url(uni["id"]), json=course_body())
     assert created.status_code == 201 and "commission" not in created.json()["course"]
     assert (await client.patch(courses_url(uni["id"], created.json()["course"]["id"]), json={"commission": None})).status_code == 403
     menu = await client.get(MENU)
-    assert menu.status_code == 200 and "commission" not in menu.text
+    assert menu.status_code == 200 and '"commission"' not in menu.text
     await login(client, head)
     assert all("commission" in item for item in (await client.get(courses_url(uni["id"]))).json()["items"])
     assert "commission" in COMMISSION_FIELDS

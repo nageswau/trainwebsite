@@ -17,7 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.identifiers import normalize_key
 from app.models import AuditLog, OverseasCourse, Scholarship, University, User
+from app.schemas import AgentCommissionIn
 from app.services import partnership_universities as unis
+from app.services.agent_commission_access import AGENT_COMMISSION_REFUSAL, agent_commission_out, can_edit_agent_commission, with_agent_commission
 from app.services.partnership_access import can_see_commission, strip_commission
 
 logger = logging.getLogger("app.partnership")
@@ -63,6 +65,28 @@ def stored(user: User, values: dict) -> dict:
     if values.get("scholarship_ids") is not None:
         values["scholarship_ids"] = [str(i) for i in values["scholarship_ids"]]
     return values
+
+
+def require_agent_commission_editor(user: User, sent: set[str], route: str) -> None:
+    """ccrm-051 (DEC-SCOPE-327): the form's `agent_commission` key -- even null -- is a 403 for anyone but its editors, before any write."""
+    if "agent_commission" in sent and not can_edit_agent_commission(user):
+        logger.info("university_course_write_refused", extra={"extra_fields": {"actor_id": str(user.id), "route": f"{route}.agent_commission"}})
+        raise HTTPException(403, AGENT_COMMISSION_REFUSAL)
+
+
+def apply_agent_commission(db: AsyncSession, user: User, course: OverseasCourse, payload: AgentCommissionIn | None) -> bool:
+    """Sets (None: clears) the four columns in the route's transaction; a change is audited with its old and new values (DEC-SCOPE-209
+    §6, as the university's). True when the value changed."""
+    before = agent_commission_out(course)
+    course.agent_commission_percent = payload.percent if payload else None
+    course.agent_commission_amount = payload.amount if payload else None
+    course.agent_commission_currency = payload.currency if payload else None
+    course.agent_commission_note = payload.note if payload else None
+    after = agent_commission_out(course)
+    if before == after:
+        return False
+    record(db, user, course, "agent_commission", before=before, after=after)
+    return True
 
 
 def _scholarship_filter(uni: University):
@@ -148,7 +172,7 @@ def course_out(user: User, course: OverseasCourse, scholarships: dict, can_edit:
         else {"percent": _money(course.commission_percent), "amount": _money(course.commission_amount), "currency": course.commission_currency},
         "permissions": {"can_edit": can_edit},
     }
-    return strip_commission(user, payload)
+    return with_agent_commission(user, course, strip_commission(user, payload))  # ccrm-051: the agent commission for its viewers only
 
 
 async def courses_out(db: AsyncSession, user: User, rows: list[OverseasCourse], editable: set[UUID]) -> list[dict]:

@@ -75,6 +75,28 @@ describe("AgentPartnerUniversitiesPanel", () => {
     expect(screen.queryByText("Agent commission")).toBeNull();
     expect(screen.queryByText("13.00%")).toBeNull();
   });
+  it("shows a Master each course's effective commission with its source (ccrm-051)", async () => {
+    const own = { ...course, agent_commission_effective: { percent: "12.00", amount: null, currency: null, note: null, source: "course" } };
+    const fallback = { ...course, id: "k2", title: "MBA", agent_commission_effective: { ...commission, source: "university" } };
+    const none = { ...course, id: "k3", title: "BSc Nursing", agent_commission_effective: null };
+    vi.stubGlobal("fetch", route({ items: [item], total: 1 }, detail({ agent_commission: commission, courses: [own, fallback, none] })));
+    render(<AgentPartnerUniversitiesPanel memberRole="master" />);
+    fireEvent.click(await screen.findByRole("button", { name: "University of South Wales" }));
+    expect(await screen.findByRole("columnheader", { name: "Agent commission" })).toBeTruthy();
+    const cell = (title: string) => screen.getByText(title).closest("tr")!.lastElementChild!.textContent;
+    expect(cell("MSc Data Science")).toBe("12.00% (course)");
+    expect(cell("MBA")).toBe("13.00% (university)");
+    expect(cell("BSc Nursing")).toBe("—");
+  });
+  it("has no course commission column for staff, even if a course carries it", async () => {
+    const own = { ...course, agent_commission_effective: { percent: "12.00", amount: null, currency: null, note: null, source: "course" } };
+    vi.stubGlobal("fetch", route({ items: [item], total: 1 }, detail({ courses: [own] })));
+    render(<AgentPartnerUniversitiesPanel memberRole="staff" />);
+    fireEvent.click(await screen.findByRole("button", { name: "University of South Wales" }));
+    expect(await screen.findByText("MSc Data Science")).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "Agent commission" })).toBeNull();
+    expect(screen.queryByText(/12\.00%/)).toBeNull();
+  });
   it("shows an alert when the list cannot be loaded", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => res({ detail: "boom" }, 500)));
     render(<AgentPartnerUniversitiesPanel memberRole="master" />);

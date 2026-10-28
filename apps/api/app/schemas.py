@@ -11052,6 +11052,7 @@ class CourseIn(BaseModel):
     icon: CourseIcon | None = None
     active: bool = True
     commission: CourseCommissionIn | None = None
+    agent_commission: AgentCommissionIn | None = None  # ccrm-051: super_admin / overseas_admin only (anyone else sending the key: 403)
 
 
 class CourseUpdate(BaseModel):
@@ -11079,6 +11080,7 @@ class CourseUpdate(BaseModel):
     icon: CourseIcon | None = None
     active: bool | None = None
     commission: CourseCommissionIn | None = None
+    agent_commission: AgentCommissionIn | None = None  # ccrm-051: omitted = unchanged, null = clear (the university's applies), object = set
 
 # rec-013 (DEC-SCOPE-151): the Find Candidates expression and filters. FS1: skills come as chips (never a typed query), FS4 caps the
 # size, FS5 the filters (experience in months, salary in INR per year), F3 the availability bands. Labels live in the web client.

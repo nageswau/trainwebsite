@@ -4737,3 +4737,19 @@ days on the day the students' agency records were created).
   `can_upload_proof` (`true` for a manual payment of a non-archived student). The system `Receipt` (`receipt_no`) is unchanged.
 - `GET /portal/overseas/student/payments` — a new column `proof` ("Uploaded proof"): the proof's name and "download from Documents", or
   empty; never a file key. The file is downloaded from the student's Documents.
+
+## 12HY. Course-level agent-Master commission, overriding the university's (ccrm-051) — addendum, 2026-10-28
+
+`DEC-SCOPE-327`. Migration `0217_course_agent_commission` (`overseas_courses.agent_commission_percent / _amount / _currency / _note`,
+nullable, the university's CHECKs). No new route.
+
+- `POST /partnership/universities/{id}/courses` and `PATCH .../courses/{course_id}` — additive optional `agent_commission` (the §12HU
+  `AgentCommissionIn` shape and **422** rules). `PATCH`: omitted = unchanged, `null` = clear, object = set. Only super_admin / overseas_admin
+  (overseas division) may send the key; anyone else (even `null`) → **403** `"Only a super admin or an overseas admin can change the agent
+  commission"`, nothing written (after the existing read / write gates). A change writes `university_course.agent_commission`
+  `{university_id, before, after}` in the same transaction; the course create / update audit `fields` never name it.
+- Every course payload of the partnership course routes (`.../courses`, `/partnership/courses`, `/universities/{id}/view`) carries
+  `agent_commission` (`{percent, amount, currency, note}` or `null`) for super_admin / overseas_admin only; the key is absent for others.
+- `GET /workflows/overseas/agent/crm/partner-universities/{id}` — for an agency Master only, each course gains `agent_commission_effective`:
+  `{percent, amount, currency, note, source: "course" | "university"}` (the course's value, else the university's) or `null` when neither is
+  set. Agent staff get no key. Public course endpoints are unchanged (never carry either key).

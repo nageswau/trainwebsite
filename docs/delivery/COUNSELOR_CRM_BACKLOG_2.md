@@ -356,6 +356,8 @@ change this.
 - **Positive / negative / edge:** clearing course value reverts to fallback; university unset + course unset → "—".
 - **Regression risks:** upc-033 sweep, course master tests, public catalogue snapshot tests.
 - **Complexity:** medium. **Risk:** high (confidential commercial data + migration).
+- **Status (2026-10-28):** built on `worktree-ccrm-051` (`DEC-SCOPE-327`; API §12HY; RBAC §2.230; migration `0217_course_agent_commission`
+  — the backlog's 0213 number was taken; 403 for any other caller sending the key, downgrade refuses with data — `NEEDS_CONFIRMATION`).
 
 ### `ccrm-052` — University-wise report: deposits, visas and drill-down
 
