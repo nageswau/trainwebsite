@@ -1423,7 +1423,7 @@ half.
 | `ccrm-043-AC7` | Another counselor's students are never listed | `::test_another_counselors_list_has_only_theirs`; `::test_other_roles_are_403`; `::test_anonymous_is_401` |
 | `ccrm-043-EDGE` | Phone-digit search, literal `%`, invalid source/long q → 422, listed once, moved application drops off, legacy → Self-registered | `::test_search_matches_name_email_and_phone_digits_literally`, `::test_an_unknown_source_is_422`, `::test_a_student_whose_application_moves_to_another_counselor_drops_off` |
 | `ccrm-043-UI` | "My students" card: source badge, application count, since; filter bar; filtered empty state; Edit/Resend only on own linked rows | `apps/web/tests/components/CounselorWalkInStudents.test.tsx` (ccrm-043 cases) |
-| `ccrm-052` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-052` (Q9) → `DEC-SCOPE-318`; `API_CONTRACT.md` §12HP; RBAC §2.181 | D1–D4 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-052` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-052` (Q9) → `DEC-SCOPE-319`; `API_CONTRACT.md` §12HQ; RBAC §2.181 | D1–D4 defaults `NEEDS_CONFIRMATION` |
 | `ccrm-052-AC1` | 2 visas approved / 1 refused show 2/1 (one bucket per application; withdrawn excluded) | `apps/api/tests/test_ccrm_052_university_report.py::test_visas_are_counted_once_per_application_first_match_wins_ac1` |
 | `ccrm-052-AC2` | Deposits counted once per application (counselor record or agency deposit; refunded excluded) | `::test_deposits_paid_counts_applications_once_ac2` |
 | `ccrm-052-AC3` | Filters apply to the new columns | `::test_filters_narrow_the_new_columns_ac3` |

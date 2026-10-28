@@ -10312,7 +10312,22 @@ link and the counselor's first application; D4 Edit/Resend stay only on the coun
 Overseas Admin view is unchanged. **Numbering:** API §12HO; no migration; no RBAC change.
 - **Feature ID authorized:** `ccrm-043`. **Status:** built on `worktree-ccrm-043`.
 
-### DEC-SCOPE-318 — University-wise report: deposits, visas and drill-down (`ccrm-052`)
+### DEC-SCOPE-318 — Counselor uploads student documents, with or without an application (`ccrm-045`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-045` (owner request 2026-10-28, `MEETING_TRANSCRIPT_REQUEST`-equivalent);
+design `docs/superpowers/specs/2026-10-28-ccrm-045-counselor-document-upload-design.md`.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** U1 the Overseas Admin gets the same upload
+control. U2 any of the student's applications the reader may write (the counselor's own, incl. agency applications per CC4; the Admin
+any); another student's application **422**, another counselor's **403**, a withdrawn / terminally decided one **409**. U3 no email or
+notification -- the document is visible in the student's Documents at once (no visibility flag). U4 no throttle (staff route; 20 MB cap).
+U5 a new upload is `pending` and not auto-linked to a checklist item (ccrm-019 linking unchanged). U6 no antivirus scan (platform-wide
+residual risk). U7 an "Offer letter" needs an application (AGN-010 O3). U8 an archived student **409**. Download: a counselor's
+document **without an application** follows the caseload (`is_visible_student`: csc-001 link or one of the student's applications)
+instead of "has one of the student's applications" -- a superset, nobody loses access. The student's Offer Letters page also lists an
+application with a current "Offer letter" document and offers its download.
+**Numbering:** no migration; API §12HP; RBAC §2.224.
+- **Feature ID authorized:** `ccrm-045`. **Status:** built on `worktree-ccrm-045`.
+### DEC-SCOPE-319 — University-wise report: deposits, visas and drill-down (`ccrm-052`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-052` (owner line A6 "university wise report for overseas admin", Q9 — no
 commission; `MEETING_TRANSCRIPT_REQUEST`-equivalent). Extends ccrm-034 (`DEC-SCOPE-267`) and its ccrm-035 export (`DEC-SCOPE-268`).
@@ -10323,5 +10338,5 @@ D1 a deposit is paid when the counselor's record is `paid_to_university`/`paid_v
 (refunded is not; mgmt-024 MF7), counted once per application; D2 one visa bucket per application, first match wins (any case
 approved → approved; else refused; else submitted / additional info requested / decision pending → pending); withdrawn applications
 are in no visa bucket; D3 a university with no matching applications is not listed (as before); D4 the drill-down is not exported.
-No commission. **Numbering:** API §12HP; RBAC §2.181 gains the drill-down row; no migration.
+No commission. **Numbering:** API §12HQ; RBAC §2.181 gains the drill-down row; no migration.
 - **Feature ID authorized:** `ccrm-052`. **Status:** built on `worktree-ccrm-052`.
