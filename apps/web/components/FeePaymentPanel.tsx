@@ -166,7 +166,7 @@ export default function FeePaymentPanel() {
               {row.discount_amount && row.gross_amount ? (
                 <>
                   <p className="muted" style={{ fontSize: 13 }}>Original {row.currency} {row.gross_amount.toLocaleString()} · Discount {row.currency} {row.discount_amount.toLocaleString()}</p>
-                  <p style={{ fontSize: 13 }}>Payable {row.currency} {row.amount.toLocaleString()}{row.due_date ? ` · due ${formatCalendarDate(row.due_date)}` : ""}</p>
+                  <p style={{ fontSize: 13 }}>{["paid", "succeeded"].includes(row.status) ? "Amount paid" : "Payable"} {row.currency} {row.amount.toLocaleString()}{row.due_date ? ` · due ${formatCalendarDate(row.due_date)}` : ""}</p>
                 </>
               ) : (
                 <p className="muted" style={{ fontSize: 13 }}>{row.currency} {row.amount.toLocaleString()}{row.due_date ? ` · due ${formatCalendarDate(row.due_date)}` : ""}</p>

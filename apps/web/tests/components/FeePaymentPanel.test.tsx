@@ -67,6 +67,13 @@ describe("FeePaymentPanel discount and balance (nehn-019)", () => {
     expect(screen.getByText(/^Payable INR 9,000/)).toBeInTheDocument();
   });
 
+  it("says 'Amount paid', not 'Payable', on a paid discounted fee (QA19-01)", async () => {
+    serveRows([{ ...ROW, status: "paid", amount: 9000, gross_amount: 10000, discount_amount: 1000, paid_at: "2026-10-28T05:00:00Z" }]);
+    render(<FeePaymentPanel />);
+    expect(await screen.findByText("Amount paid INR 9,000")).toBeInTheDocument();
+    expect(screen.queryByText(/Payable/)).toBeNull();
+  });
+
   it("shows the paid date in India time", async () => {
     serveRows([{ ...ROW, status: "paid", gross_amount: 1000, discount_amount: 0, paid_at: "2026-10-27T20:00:00Z" }]);
     render(<FeePaymentPanel />);
