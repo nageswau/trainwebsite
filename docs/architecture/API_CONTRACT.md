@@ -4580,3 +4580,23 @@ days on the day the students' agency records were created).
 - `GET /payments/{payment_id}/receipt` — unchanged contract. A receipt generated from now on lists: receipt no, payment date, billed to,
   student, student code, email, phone, course, batch, reference, gross amount, discount, amount paid, remaining balance, payment status
   ("Paid" / "Partially paid"); "—" where unknown. Issued once, never regenerated.
+
+## 12HN. Counselor document upload on the student 360 (ccrm-045) — addendum, 2026-10-28
+
+`DEC-SCOPE-316`. No migration.
+
+- `POST /counselor/students/{student_id}/documents` — **new**, `multipart/form-data`: `document_type` (Passport, Academic certificates,
+  Transcripts, English test, CV, SOP, LOR, Financial documents, Other, Offer letter), `document_label` (only and required for Other, 2-80
+  characters), `application_id` (optional; required for Offer letter), `file` (PDF/JPEG/PNG sniffed from the bytes, at most 20 MB,
+  image metadata stripped, server-generated storage key). **201** `{"document": {id, name, document_type, application_id, status}}`
+  (`status` `pending`). Errors: **403** another role, **404** a student outside the counselor's caseload, **409** archived student or a
+  withdrawn / terminally decided application, **403** another counselor's application, **422** label / type / application rules (another
+  student's application, offer letter without one), empty or unreadable image, **413** too large, **415** not a PDF/JPEG/PNG. Writes the
+  document, an `uploaded` document event and a `document.upload` audit row (uploader, type, application) in one transaction; the stored
+  file is discarded if it fails.
+- `GET /workflows/overseas/documents/{document_id}/download` — a counselor's document without an application: allowed when the student
+  is in the counselor's caseload (was: when the counselor has one of the student's applications). Other rules unchanged.
+- `GET /counselor/students/{student_id}/documents` — `can_download` is `true` for the counselor on every document without an
+  application (the tab's gate already proved the caseload).
+- `GET /portal/overseas/student/offer-letters` — also lists an application with a current "Offer letter" document; its `offer` column is
+  the legacy URL or the document's name.

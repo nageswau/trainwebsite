@@ -10283,3 +10283,19 @@ receipt stays **403** (the backlog's "404" is left `NEEDS_CONFIRMATION`). D10 th
 `/payments/mine`. D11 backfill: discount from the `payment.discount` audit rows, `paid_at` from the receipt's `issued_at`.
 **Numbering:** migration `0215_payment_discount_ledger`; API §12HM; no RBAC change.
 - **Feature ID authorized:** `nehn-019`. **Status:** built on `worktree-nehn-019`.
+
+### DEC-SCOPE-316 — Counselor uploads student documents, with or without an application (`ccrm-045`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-045` (owner request 2026-10-28, `MEETING_TRANSCRIPT_REQUEST`-equivalent);
+design `docs/superpowers/specs/2026-10-28-ccrm-045-counselor-document-upload-design.md`.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** U1 the Overseas Admin gets the same upload
+control. U2 any of the student's applications the reader may write (the counselor's own, incl. agency applications per CC4; the Admin
+any); another student's application **422**, another counselor's **403**, a withdrawn / terminally decided one **409**. U3 no email or
+notification -- the document is visible in the student's Documents at once (no visibility flag). U4 no throttle (staff route; 20 MB cap).
+U5 a new upload is `pending` and not auto-linked to a checklist item (ccrm-019 linking unchanged). U6 no antivirus scan (platform-wide
+residual risk). U7 an "Offer letter" needs an application (AGN-010 O3). U8 an archived student **409**. Download: a counselor's
+document **without an application** follows the caseload (`is_visible_student`: csc-001 link or one of the student's applications)
+instead of "has one of the student's applications" -- a superset, nobody loses access. The student's Offer Letters page also lists an
+application with a current "Offer letter" document and offers its download.
+**Numbering:** no migration; API §12HN; RBAC §2.224.
+- **Feature ID authorized:** `ccrm-045`. **Status:** built on `worktree-ccrm-045`.

@@ -3293,3 +3293,14 @@ The reports follow the `reports.placement` grants (view / download; seeded by mi
 it_admin; super_admin implicit). Every holder reads the same rows -- opted-in, non-archived, active IT students (rec-010 consent); a role
 granted the resource later sees no rows until its own scope rule is written. No financial column; recruiters still have no
 `reports.training` grant. Pinned by `apps/api/tests/test_nehn_016_placement_reports.py` and `test_nehn_016_migration.py`.
+
+### 2.224 Counselor document upload on the student 360 *(added 2026-10-28 — `DEC-SCOPE-316`, ccrm-045)*
+
+| Route | Anonymous | overseas counselor (student in caseload) | overseas counselor (other student) | overseas_admin | super_admin | IT counselor, agent, overseas_student, other roles |
+|---|---|---|---|---|---|---|
+| `POST /counselor/students/{id}/documents` | 401 | 201 | 404 | 201 | 403 | 403 |
+
+ccrm-007's `staff_student` gate, like the other 360 routes (§2.168). A counselor may tie the upload only to their own application of
+that student; the Overseas Admin to any of the student's. The student reads the document in their Documents (and an offer letter in
+Offer Letters) at once. Download of a document without an application: the counselor's caseload. Pinned by
+`apps/api/tests/test_ccrm_045_counselor_upload.py` and the ccrm-041 matrix row.

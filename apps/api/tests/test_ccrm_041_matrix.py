@@ -29,7 +29,7 @@ class Row:
     method: str
     path: str
     body: object = None  # a dict / callable(world) -> dict, sent as JSON
-    form: bool = False  # a multipart upload of one PDF
+    form: bool = False  # a multipart upload of one PDF (`body`, when given, is its form fields)
     cells: dict = field(default_factory=dict)
 
     @property
@@ -118,6 +118,8 @@ MATRIX = [
     R("get", "/counselor/students/{student}/notes", cns=200, ovs_admin=200, **STUDENT),
     R("post", "/counselor/students/{student}/notes", {"body": "Shortlist sent"}, cns=201, ovs_admin=201, **STUDENT),
     R("get", "/counselor/students/{student}/finance", cns=200, ovs_admin=200, **STUDENT),
+    # ccrm-045 counselor document upload (§2.224)
+    R("post", "/counselor/students/{student}/documents", {"document_type": "Passport"}, form=True, cns=201, ovs_admin=201, **STUDENT),
     # ccrm-020 document requests (§2.180)
     R("get", "/counselor/students/{student}/document-requests", cns=200, ovs_admin=200, **STUDENT),
     R("post", "/counselor/students/{student}/document-requests", lambda w: {"due_date": day(5), "document_type": "CV"}, cns=201, ovs_admin=201, **STUDENT),
@@ -297,6 +299,8 @@ async def _call(client, row: Row, w: dict, role: str):
     kwargs = {"headers": headers(user)}
     if row.form:
         kwargs["files"] = {"file": ("c41.pdf", PDF, "application/pdf")}
+        if row.body is not None:  # ccrm-045: the upload's form fields
+            kwargs["data"] = row.body
     elif row.method not in ("get", "delete"):
         body = row.body(w) if callable(row.body) else row.body
         if body is not None:

@@ -141,15 +141,15 @@ async def documents(db: AsyncSession, user: User, student: User) -> dict:
         )
     ).all()
     admin = user.role == "overseas_admin"  # staff_student already admitted only the overseas division's admin
-    # The download route's counselor rule: the document's application is theirs, or (no application) any of the student's is.
-    has_own = admin or bool(await db.scalar(select(OverseasApplication.id).where(OverseasApplication.student_id == student.id, OverseasApplication.counselor_id == user.id).limit(1)))
+    # The download route's counselor rule: the document's application is theirs, or (no application, ccrm-045) the student is in their
+    # caseload -- which staff_student has already checked.
     return {
         "items": [
             {
                 "id": d.id, "document_type": d.document_type, "document_label": d.document_label, "application_code": code,
                 "status": d.verification_status, "status_label": DOCUMENT_STATUS_LABELS.get(d.verification_status, d.verification_status),
                 "expiry_date": d.expiry_date, "reviewer": reviewer, "reviewed_at": d.reviewed_at, "uploaded_at": d.created_at,
-                "can_download": admin or (owner == user.id if d.application_id else has_own),
+                "can_download": admin or not d.application_id or owner == user.id,
             }
             for d, code, owner, reviewer in rows
         ]
