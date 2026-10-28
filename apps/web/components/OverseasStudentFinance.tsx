@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import DepositReceiptUpload from "@/components/DepositReceiptUpload";
 import LocalTime from "@/components/LocalTime";
 import StudentDocumentDownload from "@/components/StudentDocumentDownload";
 import { money } from "@/lib/applicationOffers";
@@ -72,17 +73,19 @@ function Deposit({ d }: { d: StudentDeposit }) {
           Receipt: {d.receipt.name} {d.receipt.can_download && <StudentDocumentDownload id={d.receipt.id} name={d.receipt.name} />}
         </p>
       )}
+      {d.can_upload && <DepositReceiptUpload applicationId={d.application_id} university={d.university} replacing={d.receipt !== null} />}
     </Row>
   );
 }
 
 /** ccrm-039 (DEC-SCOPE-275): the student 360's finance tab -- read-only (F1). Fees and payments are recorded by the Overseas Admin,
- *  a deposit on its application. A download is offered only where its own route allows the reader (F5). */
+ *  a deposit on its application. A download is offered only where its own route allows the reader (F5).
+ *  ccrm-048 (DEC-SCOPE-321): the one write -- a counselor-recorded deposit's receipt, where `can_upload` says the reader may. */
 export default function OverseasStudentFinance({ finance }: { finance: StudentFinance }) {
   return (
     <>
       <p className="muted">
-        Read-only. Fees are recorded by the Overseas Admin; a university deposit is recorded on its application.
+        Fees are recorded by the Overseas Admin; a university deposit is recorded on its application, and a deposit&apos;s receipt can be uploaded here.
       </p>
       <section className="card" aria-labelledby="fin-payments">
         <h2 id="fin-payments">Fees and payments</h2>

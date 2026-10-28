@@ -169,6 +169,8 @@ async def world(db, client) -> dict:
     task = await _ok(await client.post(f"{API}/counselor/tasks", headers=as_cns, json={"title": "Call the student", "due_on": today().isoformat()}))
     await _ok(await client.post(APPS.format(held.id) + "/outcome", headers=as_cns, json={
         "outcome": "on_hold", "reason": "Waiting for funds", "review_date": (today() + timedelta(days=10)).isoformat(), "hold_owner_id": str(cns.id)}), 200)  # fmt: skip
+    # ccrm-048: a required deposit on the direct application, for the Finance tab's receipt upload
+    await _ok(await client.put(APPS.format(app.id) + "/deposit", headers=as_cns, json={"required": True, "payment_status": "pending", "amount": "3000", "currency": "GBP"}), 200)
 
     ids = {
         "lead": lead.id, "call": call.id, "follow_up": follow_up.id, "message": message.id, "tel_template": tel_template.id, "lost_reason": lost_reason.id,

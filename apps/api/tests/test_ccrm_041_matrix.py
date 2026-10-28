@@ -184,6 +184,8 @@ MATRIX = [
     R("get", "/workflows/overseas/applications/{app}/deposit", **staff(200, student=200)),
     R("put", "/workflows/overseas/applications/{app}/deposit", lambda w: {"required": True, "payment_status": "pending", "amount": "3000", "currency": "GBP", "due_date": day(14)}, **staff(200)),
     R("post", "/workflows/overseas/applications/{app}/deposit-receipts", form=True, **staff(201)),
+    # ccrm-048 deposit receipt from the Finance tab (§2.227)
+    R("post", "/workflows/overseas/applications/{app}/deposit/receipt", form=True, **staff(201)),
     # ccrm-026 visa lifecycle (§2.169)
     R("patch", "/workflows/overseas/visa/{visa}/lifecycle", {"expected_visa_status": "not_started", "visa_category": "Student"}, **staff(200)),
     # ccrm-027 enrolment (§2.176), ccrm-028 arrival (§2.179)

@@ -9,6 +9,7 @@ queue and the last one wins; the other side is told (CC5). Spec: docs/superpower
 """
 
 import logging
+from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime
 from uuid import UUID
 
@@ -50,6 +51,7 @@ from app.services import application_enrollment as enrollment
 from app.services import application_offers as offers
 from app.services import application_outcomes as outcomes
 from app.services import offer_conditions as conditions
+from app.services import student_archive
 from app.services.agent_applications import ARCHIVED, OFFER_DOCUMENT_MISMATCH, OFFER_LETTERS_SHOWN, STALE
 
 logger = logging.getLogger("app.application_offers")
@@ -137,6 +139,12 @@ async def upload_condition_evidence(application_id: UUID, file: UploadFile = Fil
 
 async def _upload(db: AsyncSession, user: User, application_id: UUID, file: UploadFile, document_type: str) -> dict:
     item = await _writable(db, user, application_id, moves_stage=False)
+    return {"document": offers.document_view(await _store(db, user, item, file, document_type))}
+
+
+async def _store(db: AsyncSession, user: User, item: OverseasApplication, file: UploadFile, document_type: str, attach: Callable[[StudentDocument], Awaitable[None]] | None = None) -> StudentDocument:
+    """Store the file as a document of the (locked, writable) application. `attach(document)`, when given, makes its further writes in
+    the same transaction (ccrm-048); if anything fails nothing is written and the stored object goes too."""
     if item.student_id is None and item.agent_student_id is None:
         raise HTTPException(422, NO_OWNER)
     data, content_type, filename = await documents.read_upload(file)
@@ -158,13 +166,15 @@ async def _upload(db: AsyncSession, user: User, application_id: UUID, file: Uplo
         await db.flush()
         documents.add_event(db, event="uploaded", actor=user, document=document, to_status="pending")
         await _audit(db, user, "document.upload", "student_document", document.id, {"application_id": str(item.id), "document_type": document_type})
+        if attach is not None:
+            await attach(document)
         await db.commit()
     except Exception:  # nothing was written: the stored object goes too
         await db.rollback()
         documents.discard(key)
         raise
     logger.info("application_document_uploaded", extra={"extra_fields": {"application_id": str(item.id), "document_id": str(document.id), "document_type": document_type, "actor_id": str(user.id)}})
-    return {"document": offers.document_view(document)}
+    return document
 
 
 @router.post("/{application_id}/offers", status_code=201)
@@ -381,6 +391,40 @@ async def save_deposit(application_id: UUID, payload: DepositRecordSave, user: U
     await db.commit()
     logger.info("application_deposit_recorded", extra={"extra_fields": {"application_id": str(item.id), "payment_status": record.payment_status, "actor_id": str(user.id)}})
     return {"record": await deposits.view(db, item.id), "changed": True}
+
+
+@router.post("/{application_id}/deposit/receipt", status_code=201)
+async def upload_deposit_record_receipt(application_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """ccrm-048 (DEC-SCOPE-321): the Finance tab's "Upload / Replace receipt" -- a "Deposit receipt" document attached to the
+    counselor's required deposit record in one transaction. Refused beside an AGN-011 deposit (409), for an archived student (409) and
+    without a required record (422), before the file is read. A replaced receipt stays one of the student's documents."""
+    item = await _writable(db, user, application_id, moves_stage=False)
+    if item.student_id is not None and await student_archive.is_archived(db, item.student_id):
+        raise HTTPException(409, student_archive.NO_NEW_APPLICATION)
+    if await deposits.agency_deposit(db, item.id) is not None:
+        raise HTTPException(409, deposits.AGENCY_MANAGED)
+    record = await deposits.record_for(db, item.id)
+    if record is None or not record.required:
+        raise HTTPException(422, deposits.NO_REQUIRED_DEPOSIT)
+    replaced = record.receipt_document_id is not None
+
+    async def attach(document: StudentDocument) -> None:
+        record.receipt_document_id = document.id
+        record.updated_by_id = user.id
+        note = "Deposit receipt replaced." if replaced else "Deposit receipt uploaded."
+        db.add(
+            ApplicationStatusHistory(
+                application_id=item.id, from_status=item.status, to_status=item.status, from_sub_status=item.sub_status, to_sub_status=item.sub_status,
+                next_action=item.next_action, notes=note, changed_by_id=user.id,
+            )
+        )  # fmt: skip
+        await _tell_student(db, item, "Deposit receipt added", "A receipt was added to the university deposit on your application.")
+        await agency_notices.offer_changed(db, item, user, "Deposit receipt added")
+        await _audit(db, user, "overseas.application.deposit_receipt", "overseas_application", item.id, {"replaced": replaced, "document_id": str(document.id)})
+
+    await _store(db, user, item, file, deposits.RECEIPT, attach)
+    logger.info("application_deposit_receipt_attached", extra={"extra_fields": {"application_id": str(item.id), "replaced": replaced, "actor_id": str(user.id)}})
+    return {"record": await deposits.view(db, item.id)}
 
 
 @router.get("/{application_id}/enrollment")

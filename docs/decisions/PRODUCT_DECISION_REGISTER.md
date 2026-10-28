@@ -10327,3 +10327,18 @@ instead of "has one of the student's applications" -- a superset, nobody loses a
 application with a current "Offer letter" document and offers its download.
 **Numbering:** no migration; API §12HP; RBAC §2.224.
 - **Feature ID authorized:** `ccrm-045`. **Status:** built on `worktree-ccrm-045`.
+
+### DEC-SCOPE-321 — Deposit receipt upload on the student 360's Finance tab (`ccrm-048`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-048` (owner line L1, request 2026-10-28, `MEETING_TRANSCRIPT_REQUEST`-equivalent);
+design `docs/superpowers/specs/2026-10-28-ccrm-048-deposit-receipt-upload-design.md`.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** R1 one new route uploads and attaches in a single
+transaction (not upload + `PUT /deposit`, which would echo every field back). R2 only a counselor-recorded (ccrm-025) deposit that is
+required; the agency (AGN-011) deposit stays read-only (409). R3 the application's counselor or the Overseas Admin (super_admin keeps the
+workflow access every ccrm item kept). R4 a replaced receipt is not archived or made a ccrm-021 version -- it stays one of the student's
+documents, as with `PUT /deposit` today. R5 the student is notified ("Deposit receipt added"); history note and audit row. R6 a deposit
+that is not required shows no control (the card already says "No deposit is required."); no record = no card (unchanged); API 422. R7
+archived student or closed application: no control, API 409. R8 no antivirus scan (platform residual risk). ccrm-039 F1 ("read-only") is
+superseded for the deposit receipt only.
+**Numbering:** no migration; API §12HS; RBAC §2.227 (DEC-SCOPE-319/320, §12HQ/12HR, §2.225/2.226 left for the open ccrm-047 / ccrm-052 branches).
+- **Feature ID authorized:** `ccrm-048`. **Status:** built on `worktree-ccrm-048`.

@@ -5,7 +5,8 @@ V1: the page shows ALL the student's applications, current documents and history
 download keeps its own route's rule, so `can_download` mirrors `GET /workflows/overseas/documents/{id}/download` for a counselor.
 B3: history = the applications' status history (ccrm-016, staff view) + audit rows about the student + document uploads, reviews and
 replacements; field names only, never values.
-ccrm-039 (DEC-SCOPE-275): finance = the student's fees and payments, each application's university deposit and the refunds; read-only."""
+ccrm-039 (DEC-SCOPE-275): finance = the student's fees and payments, each application's university deposit and the refunds; read-only.
+ccrm-048 (DEC-SCOPE-321): a counselor deposit says whether its receipt may be uploaded from the tab (`can_upload`)."""
 
 from uuid import UUID
 
@@ -36,9 +37,8 @@ from app.models import (
     University,
     User,
 )  # fmt: skip
-from app.services import agent_deposits
+from app.services import agent_deposits, overseas_consents, student_archive
 from app.services import application_outcomes as outcomes
-from app.services import overseas_consents, student_archive
 from app.services.agent_applications import stage_label
 from app.services.application_deposit_records import STATUS_LABELS as DEPOSIT_RECORD_LABELS
 from app.services.application_offers import money
@@ -269,6 +269,7 @@ async def finance(db: AsyncSession, user: User, student: User) -> dict:
     agency = {d.application_id: d for d in (await db.scalars(select(ApplicationDeposit).where(ApplicationDeposit.application_id.in_(ids)))).all()}
     receipt_ids = [r.receipt_document_id for r in records.values() if r.receipt_document_id]
     receipts = {d.id: d for d in (await db.scalars(select(StudentDocument).where(StudentDocument.id.in_(receipt_ids)))).all()}
+    archived = await student_archive.is_archived(db, student.id)
 
     deposits, refunds = [], []
     for a, university, *_ in apps:
@@ -279,13 +280,15 @@ async def finance(db: AsyncSession, user: User, student: User) -> dict:
                 "source": "counselor", "required": record.required, "amount": money(record.amount), "currency": record.currency, "due_date": record.due_date,
                 "status": record.payment_status, "status_label": DEPOSIT_RECORD_LABELS[record.payment_status], "paid_on": record.paid_on, "refund": None,
                 "receipt": {"id": doc.id, "name": doc.document_label or doc.document_type, "can_download": admin or a.counselor_id == user.id} if doc else None,
+                # ccrm-048 (DEC-SCOPE-321): the upload route's rules -- a required record, the reader writes the application, it is open
+                "can_upload": record.required and (admin or a.counselor_id == user.id) and not outcomes.is_closed(a) and not archived,
             })  # fmt: skip
         elif deposit := agency.get(a.id):
             refund = {"amount": money(deposit.refund_amount), "refunded_on": deposit.refunded_at, "reason": deposit.refund_reason} if deposit.refunded_at else None
             deposits.append(base | {
                 "source": "agency", "required": deposit.required, "amount": money(deposit.amount), "currency": deposit.currency, "due_date": deposit.due_date,
                 "status": deposit.status, "status_label": AGENCY_DEPOSIT_LABELS[deposit.status], "paid_on": deposit.paid_at.date() if deposit.paid_at else None,
-                "refund": refund, "receipt": None,
+                "refund": refund, "receipt": None, "can_upload": False,
             })  # fmt: skip
             if refund:
                 refunds.append({"kind": "deposit", "description": f"University deposit — {university}", "amount": refund["amount"], "currency": deposit.currency, "refunded_on": refund["refunded_on"], "application_code": a.application_code})  # fmt: skip

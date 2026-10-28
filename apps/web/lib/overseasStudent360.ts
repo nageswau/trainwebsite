@@ -137,6 +137,7 @@ export type StudentDeposit = {
   paid_on: string | null;
   refund: { amount: string; refunded_on: string; reason: string } | null;
   receipt: { id: string; name: string; can_download: boolean } | null;
+  can_upload: boolean; // ccrm-048: the reader may upload / replace the receipt from the Finance tab
 };
 
 export type StudentRefund = {
