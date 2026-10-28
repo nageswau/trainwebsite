@@ -1413,3 +1413,11 @@ half.
 | `ccrm-042-AC6` | Done/cancelled never appear | `::test_follow_ups_cover_...`, `::test_tasks_follow_...`; e2e complete → leaves |
 | `ccrm-042-AC7` | Another counselor's / handed-over lead's follow-ups never appear | `::test_another_counselors_and_handed_over_leads_follow_ups_never_show`; IT counselor/admin 403 in `test_ccrm_032_dashboard.py` |
 | `ccrm-042-UI` | Labels "Follow-ups due" / "Tasks due", window note, empty text "No follow-ups in the next 7 days." | `apps/web/tests/components/CounselorDashboardPanel.test.tsx` (ccrm-042 case) |
+| `ccrm-047` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-047` (Q8, A4, L5) → `DEC-SCOPE-317`; `API_CONTRACT.md` §12HO; no RBAC change | I1–I4 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-047-AC1` | Telecaller creates a lead with intake "Sep 2027" → stored, shown on lead detail | `apps/api/tests/test_ccrm_047_intake.py::test_a_telecaller_lead_keeps_its_intake_and_the_lead_detail_shows_it`, `::test_a_counselor_walk_in_lead_keeps_its_intake`; `NewLeadForm.intake.test.tsx`; `ccrm-047-intake-picker.spec.ts` AC1 |
+| `ccrm-047-AC2` | Student sets preferred intake via picker | `::test_the_student_sets_a_preferred_intake`; `StudentProfileForm.test.tsx` (ccrm-047) |
+| `ccrm-047-AC3` | Counselor edits student intake | `::test_the_counselor_edits_the_students_intake`; e2e AC3 |
+| `ccrm-047-AC4` | Application intake via picker | `::test_an_application_intake_must_be_a_month_and_year`; `OverseasApplyPanel.test.tsx` (ccrm-047); e2e AC4; `ovs-002-application.spec.ts` |
+| `ccrm-047-AC5` | "September next year" (new) → 422 | `::test_a_malformed_lead_intake_is_422_and_creates_nothing`, `::test_a_new_qualification_intake_must_be_a_month_and_year`, profile and application tests |
+| `ccrm-047-AC6` | Legacy free-text displays; unrelated edit does not fail | `::test_a_legacy_qualification_intake_survives_an_unrelated_save`, `::test_a_legacy_profile_intake_survives_an_unrelated_save`; `IntakePicker.test.tsx`, `LeadQualificationForm.test.tsx`, `StudentProfileForm.test.tsx` legacy cases |
+| `ccrm-047-EDGE` | IT lead → intake hidden / 422; omitted application intake keeps "Next intake"; conversion copies intake | `::test_an_it_lead_cannot_carry_an_intake`, `::test_an_application_without_an_intake_keeps_the_server_default`; `test_ccrm_008_convert.py` (unchanged, green) |

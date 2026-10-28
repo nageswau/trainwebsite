@@ -87,3 +87,27 @@ describe("OverseasApplyPanel country step", () => {
     expect(universityOptions()).toHaveLength(4);
   });
 });
+
+describe("OverseasApplyPanel intake (ccrm-047)", () => {
+  it("submits the intake chosen with the month + year picker", async () => {
+    const year = String(new Date().getFullYear() + 1);
+    render(<OverseasApplyPanel />);
+    fireEvent.change(await screen.findByLabelText("University"), { target: { value: "u1" } });
+    fireEvent.change(screen.getByLabelText("Intake month"), { target: { value: "Jan" } });
+    fireEvent.change(screen.getByLabelText("Intake year"), { target: { value: year } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit interest" }));
+    const fetchMock = vi.mocked(fetch);
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "POST")).toBe(true));
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST")!;
+    expect(JSON.parse(String(post[1]!.body))).toMatchObject({ university_id: "u1", intake: `Jan ${year}` });
+  });
+
+  it("asks for both parts of the intake before submitting", async () => {
+    render(<OverseasApplyPanel />);
+    fireEvent.change(await screen.findByLabelText("University"), { target: { value: "u1" } });
+    fireEvent.change(screen.getByLabelText("Intake month"), { target: { value: "Jan" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit interest" }));
+    expect(await screen.findByText("Choose both the month and the year for the intake.")).toBeTruthy();
+    expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "POST")).toBe(false);
+  });
+});

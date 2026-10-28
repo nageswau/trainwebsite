@@ -4589,3 +4589,16 @@ days on the day the students' agency records were created).
   (today IST + 8 days): overdue, today and the next 7 days, `due_at` ascending, `overdue` true when due before today. `sections.overdue_tasks`
   (key unchanged) now covers open tasks with `due_on <= today + 7`, ascending, `overdue` true when `due_on < today`. Each section keeps
   `{count, more, items[<=10]}`. The response adds `follow_up_days` (7).
+
+## 12HO. Intake month + year (ccrm-047) — addendum, 2026-10-28
+
+`DEC-SCOPE-317`. No migration; authorization unchanged. Format: `^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}$`; refusal
+**422** `{"detail": [{"loc": ["body", "<field>"], "msg": "Choose the intake month and year, like Sep 2027", ...}]}`.
+
+- `POST /telecaller/leads` (§tel-005) and `POST /counselor/walk-in-leads` (§12EO) — additive optional `intake`. Malformed → 422; given for
+  a product whose group is not `overseas` → 422 (`loc` `intake`); when given, the lead's qualification row is created with it (read back by
+  `GET .../qualification`).
+- `PUT /telecaller/leads/{id}/qualification` and the counselor equivalent (tel-009) — `intake` checked only when it changes.
+- `PUT /overseas/me/profile` and `PUT /counselor/students/{id}/profile` (ccrm-007) — `preferred_intake` checked only when it changes from
+  the stored value (a legacy value re-sent unchanged saves).
+- `POST /workflows/overseas/applications` — a sent `intake` must match; omitted keeps the default `"Next intake"`.

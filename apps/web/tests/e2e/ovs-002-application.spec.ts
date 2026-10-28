@@ -22,6 +22,9 @@ async function pickUnappliedUniversity(card: import("@playwright/test").Locator)
   const candidate = optionLabels.find((label) => label !== "Select a university…" && !appliedNames.some((name) => label.startsWith(name.trim())));
   if (!candidate) throw new Error("No unapplied university available to pick in this seed dataset");
   await select.selectOption({ label: candidate });
+  // ccrm-047: the intake is a required month + year
+  await card.getByLabel("Intake month").selectOption("Sep");
+  await card.getByLabel("Intake year").selectOption(String(new Date().getFullYear() + 1));
   return candidate;
 }
 

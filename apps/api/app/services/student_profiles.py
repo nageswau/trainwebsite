@@ -8,11 +8,12 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi import HTTPException
+from fastapi.exceptions import RequestValidationError
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AuditLog, Country, OverseasStudentEnglishTest, OverseasStudentProfile, OverseasStudentQualification, User
-from app.schemas import StudentProfileSave
+from app.schemas import INTAKE_MESSAGE, StudentProfileSave, is_intake
 from app.services.counselor_students import STUDENT_NOT_FOUND, is_visible_student
 
 NOT_ALLOWED = "Only an overseas counselor or the Overseas Admin can see student profiles"
@@ -94,7 +95,13 @@ def _as_saved(profile, qualifications, tests) -> dict:
 
 
 async def save(db: AsyncSession, actor: User, student: User, payload: StudentProfileSave) -> dict:
-    """Commits."""
+    """Commits. ccrm-047: a changed intake must be a month and year; a legacy one left as it was still saves (AC6). `write` does not
+    check it, so ccrm-008's conversion copies a lead's legacy intake unchanged."""
+    intake = payload.preferred_intake
+    if intake and not is_intake(intake):
+        saved = await db.scalar(select(OverseasStudentProfile.preferred_intake).where(OverseasStudentProfile.student_user_id == student.id))
+        if intake != saved:
+            raise RequestValidationError([{"type": "value_error", "loc": ("body", "preferred_intake"), "msg": INTAKE_MESSAGE, "input": intake}])
     profile = await write(db, actor, student.id, payload)
     await db.commit()
     await db.refresh(profile)

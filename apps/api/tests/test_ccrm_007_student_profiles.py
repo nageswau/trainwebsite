@@ -54,7 +54,7 @@ def full_body(country_id) -> dict:
         "preferred_country_ids": [str(country_id)],
         "preferred_course": "MSc Computer Science",
         "preferred_level": "PG",
-        "preferred_intake": "September 2027",
+        "preferred_intake": "Sep 2027",
         "study_mode": "full_time",
         "budget_min": "1500000",
         "budget_max": "2500000",
@@ -267,7 +267,7 @@ async def test_the_student_portal_profile_section_reads_the_structured_profile(c
     await login(client, world["student"].email)
     rows = {r["field"]: r["value"] for r in (await client.get("/api/v1/portal/overseas/student/profile")).json()["rows"]}
     assert rows["Highest qualification"] == "Bachelor's degree — B.Tech CSE"
-    assert rows["Preferred countries"] == world["uk"].name and rows["Preferred intake"] == "September 2027"
+    assert rows["Preferred countries"] == world["uk"].name and rows["Preferred intake"] == "Sep 2027"
     assert rows["English test"] == "IELTS 7.5 (taken)"
 
 

@@ -152,3 +152,29 @@ describe("DataTable student_profile cell (ccrm-007)", () => {
     expect(screen.queryByRole("link", { name: "Profile for No Login" })).not.toBeInTheDocument();
   });
 });
+
+describe("StudentProfileForm intake (ccrm-047)", () => {
+  it("sets the intake with the month + year picker", async () => {
+    const year = String(new Date().getFullYear() + 2);
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) => Promise.resolve(res(saved({ ...profile(), ...JSON.parse(String(init?.body)) }))));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<StudentProfileForm initial={profile()} url={URL} countries={COUNTRIES} section="preferences" />);
+    expect(screen.getByLabelText("Intake month")).toHaveValue("Sep");
+    fireEvent.change(screen.getByLabelText("Intake month"), { target: { value: "Feb" } });
+    fireEvent.change(screen.getByLabelText("Intake year"), { target: { value: year } });
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+    await screen.findByText("Profile saved.");
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]!.body)).preferred_intake).toBe(`Feb ${year}`);
+  });
+
+  it("keeps a legacy intake and refuses a half-chosen one without saving", async () => {
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) => Promise.resolve(res(saved({ ...profile(), ...JSON.parse(String(init?.body)) }))));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<StudentProfileForm initial={profile({ preferred_intake: "September 2027" })} url={URL} countries={COUNTRIES} section="preferences" />);
+    expect(screen.getByText(/Saved as “September 2027”/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Intake month"), { target: { value: "Oct" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+    expect(await screen.findByText("Choose both the month and the year for the intake.")).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
