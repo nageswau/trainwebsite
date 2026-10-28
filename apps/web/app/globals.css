@@ -568,6 +568,7 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 /* nehn-028: the trainer's progress table spans the action grid; a dropped/withdrawn row is greyed; flags never wrap mid-word. */
 .action-grid > .trainer-progress { grid-column: 1 / -1; }
 .trainer-progress .check{display:flex;align-items:center;gap:6px;font-weight:600;align-self:end;min-height:44px}
-.trainer-progress-table th[scope=row]{text-align:left;min-width:10rem;background:none;text-transform:none;letter-spacing:normal;font-size:13px;color:var(--ink)} /* QA28-02: a row header, not a column header */.trainer-progress-table .status{white-space:nowrap;display:inline-block}
+.hr-student-table th[scope=row] a{color:var(--blue);text-decoration:underline;text-underline-offset:2px}.hr-student-table .nowrap{white-space:nowrap}/* nehn-017 QA17-03/05 */
+.trainer-progress-table th[scope=row],.hr-student-table th[scope=row]/* nehn-017 QA17-01/03 */{text-align:left;min-width:10rem;background:none;text-transform:none;letter-spacing:normal;font-size:13px;color:var(--ink)} /* QA28-02: a row header, not a column header */.trainer-progress-table .status{white-space:nowrap;display:inline-block}
 .trainer-progress-table tr.inactive{opacity:.6}.trainer-progress-details ul{margin:6px 0 10px;padding-left:18px}
 .material-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}.material-list li{padding:14px;display:grid;gap:8px}.material-list h4{margin:0;overflow-wrap:anywhere}.material-meta{margin:0;font-size:13px;overflow-wrap:anywhere}

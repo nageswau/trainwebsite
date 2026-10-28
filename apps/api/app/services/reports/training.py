@@ -4,7 +4,7 @@
 client's admin report template arrives.
 
 Scope (which rows): super_admin and it_admin every enrolment (the roles `/admin/enrollments` serves); a trainer the batches they train,
-in every report. Any other role that is granted `reports.training.view` sees no rows until its own scope rule is written (deny by
+in every report; HR (nehn-017) the seats of the HR population (services/hr_students). Any other role that is granted `reports.training.view` sees no rows until its own scope rule is written (deny by
 default). A filter only narrows the scope: a trainer naming another trainer, batch or course gets an empty result, never a hint that it
 exists.
 
@@ -18,6 +18,7 @@ from sqlalchemy.orm import aliased
 
 from app.api.payments import PAID_STATUSES
 from app.models import Assignment, Batch, Certificate, Enrollment, Payment, Program, Submission, User
+from app.services import hr_students
 from app.services import training_progress as progress
 from app.services.management_it_revenue import ENROLMENT_REFERENCES
 from app.services.management_training import DROPPED, NOT_TAKEN
@@ -32,11 +33,19 @@ SEAT_FILTERS = ("course_id", "batch_id", "trainer_id", "student", "status")
 
 
 def _scope(user: User) -> list:
+    """The caller's batches. HR (nehn-017 H1): a batch holding a seat of the HR population; `_seats` keeps HR rows to those seats."""
     if user.role in ALL_ROWS:
         return []
     if user.role == "trainer":
         return [Batch.trainer_id == user.id]
+    if user.role in hr_students.HR_ROLES:
+        seat = aliased(Enrollment)
+        return [Batch.id.in_(select(seat.batch_id).where(seat.student_id.in_(hr_students.population())))]
     return [false()]
+
+
+def _seat_scope(user: User) -> list:
+    return _scope(user) + ([Enrollment.student_id.in_(hr_students.population())] if user.role in hr_students.HR_ROLES else [])
 
 
 def _narrow(stmt: Select, f: Filters, *, enrolled_dates: bool = True) -> Select:
@@ -69,7 +78,7 @@ def _seats(user: User, *columns) -> Select:
         .join(Batch, Batch.id == Enrollment.batch_id)
         .join(Program, Program.id == Batch.program_id)
         .outerjoin(Trainer, Trainer.id == Batch.trainer_id)
-        .where(*_scope(user))
+        .where(*_seat_scope(user))
     )
 
 
@@ -263,8 +272,8 @@ async def _options(db: AsyncSession, user: User) -> dict:
     }
 
 
-def _training(id: str, title: str, description: str, columns: tuple[Column, ...], filters: tuple[str, ...], query) -> Report:
-    return register(Report(id=id, title=title, description=description, resource="reports.training", columns=columns, filters=filters,
+def _training(id: str, title: str, description: str, columns: tuple[Column, ...], filters: tuple[str, ...], query, resource: str = "reports.training") -> Report:
+    return register(Report(id=id, title=title, description=description, resource=resource, columns=columns, filters=filters,
                            query=query, options=_options))
 
 
@@ -341,4 +350,22 @@ COURSES = _training(
      Column("completed", "Completed"), Column("dropped", "Dropped"), Column("revenue", "Revenue (INR)", "financial")),
     ("from", "to", "course_id", "trainer_id"),
     _courses,
+)
+
+# nehn-017 (DEC-SCOPE-310): HR's reports -- the student-wise, completions and attendance reports over the HR population, each gated by the
+# grant for its data (`student_progress`, `attendance`), so revoking one removes its report. No financial column; payments are never read.
+HR_PROGRESS = _training(
+    "hr-progress", "HR student progress",
+    "Per student per course: status, progress, attendance, assignments, assessments and the certificate. From/To: enrolment date.",
+    STUDENT_COURSES.columns, STUDENT_COURSES.filters, _student_courses, "student_progress",
+)
+HR_COMPLETIONS = _training(
+    "hr-completions", "HR completions",
+    "Students who completed a course (progress 100%) whose batch ends in the completion period, with attendance and certificate.",
+    COMPLETIONS.columns, COMPLETIONS.filters, _completions, "student_progress",
+)
+HR_ATTENDANCE = _training(
+    "hr-attendance", "HR attendance",
+    "Per student per batch: classes marked, present, absent, late, excused and the attendance %. From/To: class date.",
+    ATTENDANCE.columns, ATTENDANCE.filters, _attendance, "attendance",
 )

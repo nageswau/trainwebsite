@@ -10215,3 +10215,20 @@ worded server-side from the same criteria. V9 the certificate rule is one helper
 (one seat, `training_progress.seat`) and by this view (every seat, `training_progress.seats` over the same SQL builders).
 **Numbering:** no migration; API §12HF; RBAC §2.219.
 - **Feature ID authorized:** `nehn-028`. **Status:** built on `worktree-nehn-028`.
+
+### DEC-SCOPE-310 — HR access to permitted student progress, attendance and documents; HR reports (`nehn-017`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-017` (§13 L277-286, §5 L116-121, §15 L337-347; `UNVERIFIED`
+backlog); design `docs/superpowers/specs/2026-10-28-nehn-017-hr-student-access-design.md`. Builds on nehn-005 (grants), nehn-007
+(overrides), nehn-008 (field policy), nehn-010 (training reports) and nehn-003 (private serving).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`, OD-09):** H1 the HR population is the active
+placement pool -- `it_student`, IT division, not withdrawn from placement (the people HR's Candidate Database already lists; overseas
+students excluded). H2 HR opens a student document only when its type (trimmed, lower-cased) is `resume`, `cv`, `curriculum vitae`,
+`portfolio`, `certificate` or `certificates`; every other type is closed (absent from the list, **403** on download). H3 three new
+catalogue resources, one per kind of data -- `student_progress`, `attendance`, `student_documents` (view, download) -- held by hr_team
+by default (migration 0212); revoking one hides its block and its report. H4 seats exclude `pending_consent`/`rejected`; completed =
+counted seat at progress 100. HR reports are `hr-progress`, `hr-completions` (`student_progress`) and `hr-attendance` (`attendance`):
+the training pack's columns over the HR population, no financial column. HR's Placement Reports exclusion is removed (counts only).
+The recruiter requirements module still bars HR (Q-28) -- an open question for the client.
+**Numbering:** migration `0212_hr_student_grants`; API §12HH; RBAC §2.221.
+- **Feature ID authorized:** `nehn-017`. **Status:** built on `worktree-nehn-017`.
