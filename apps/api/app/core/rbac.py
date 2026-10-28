@@ -84,6 +84,8 @@ CATALOGUE: dict[str, dict] = {
     "field.financial": {"label": "Financial columns", "actions": ("view",)},
     # nehn-009 (DEC-SCOPE-303): the report library's training reports (the `enrollments` pilot; nehn-010 adds the rest).
     "reports.training": {"label": "Training reports", "actions": ("view", "download")},
+    # nehn-016 (DEC-SCOPE-312): the recruiter's placement reports -- students completing soon and the student placement report.
+    "reports.placement": {"label": "Placement reports", "actions": ("view", "download")},
     # nehn-018 (DEC-SCOPE-304): which student features unlock at which payment state.
     "student_access": {"label": "Student access rules", "actions": ("configure",)},
     # nehn-017 (DEC-SCOPE-310 H3): HR's read-only student views and HR reports -- one resource per kind of data, so each switches off alone.
@@ -96,9 +98,14 @@ CATALOGUE: dict[str, dict] = {
 _PAYMENT_ADMIN = ("payments.view", "payments.add", "discounts.add")
 _TELECALLER_REPORTS = ("reports.telecaller.view", "reports.telecaller.download")
 _TRAINING_REPORTS = ("reports.training.view", "reports.training.download")  # nehn-009 (migration 0210 seeds it); a trainer's rows are own batches
+_PLACEMENT_REPORTS = ("reports.placement.view", "reports.placement.download")  # nehn-016 (migration 0212 seeds it); rows = opted-in students
 DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
-    "it_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure", "student_access.configure") + _TRAINING_REPORTS,  # nehn-031 W2 (0204); nehn-018 (0211)
+    "it_admin": (
+        _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure", "student_access.configure") + _TRAINING_REPORTS + _PLACEMENT_REPORTS
+    ),  # nehn-031 W2 (0204); nehn-018 (0211); nehn-016 (0212)
     "trainer": _TRAINING_REPORTS,
+    "placement_team": _PLACEMENT_REPORTS,
+    "placement_manager": _PLACEMENT_REPORTS,
     "overseas_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,
     "telecaller_manager": _TELECALLER_REPORTS,
     # nehn-030 (0201 seeds view); nehn-031 W3/W4 (0204 seeds issue, override): issuance is the coordinator's alone (DEC-ROLE-003).
@@ -106,7 +113,7 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     # nehn-008 F3 (migration 0207 seeds it): today's partnership commission readers (upc-001 U2), so no report changes on day one.
     "partnership_manager": ("field.financial.view",),
     "partnership_head": ("field.financial.view",),
-    # nehn-017 (migration 0212 seeds it): HR reads the active placement pool's progress, attendance and allowed documents.
+    # nehn-017 (migration 0213 seeds it): HR reads the active placement pool's progress, attendance and allowed documents.
     "hr_team": tuple(f"{resource}.{action}" for resource in ("student_progress", "attendance", "student_documents") for action in ("view", "download")),
 }
 

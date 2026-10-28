@@ -4521,9 +4521,54 @@ days on the day the students' agency records were created).
 - `GET /portal/it/trainer/student-progress` — now header-only (no rows); subtitle "Attendance, assignments, assessments, progress and
   certificate eligibility for each student in your batches."
 
+## 12HI. Admin dashboard training tiles (nehn-011) — addendum, 2026-10-28
+
+`DEC-SCOPE-311`. No migration. Additive only.
+
+- `GET /admin/dashboard` (unchanged gate `ensure_admin`; every existing key unchanged) — adds `training` when the caller holds
+  `reports.training.view`: `{enrolments, active, completed, dropped, average_progress (number|null), at_risk, at_risk_threshold,
+  courses: {columns: [{key, label}], items: [...], total}}`, plus `fees_collected` and `fees_pending` only with `field.financial.view`
+  (otherwise absent, and the course table has no `revenue`/`pending_fees`). Each figure is a total of the unfiltered report it links to.
+- `GET /reports/attendance` — new filter `attendance_below` (whole number 1-100; else **422** "Attendance below % must be a whole number
+  from 1 to 100"): counted seats with a class marked whose attendance % is below it. Any other report refuses it (**422**).
+- `GET /reports/courses` (and `.csv`/`.xlsx`) — new column `pending_fees` "Fees pending (INR)" (`financial`): the seats' enrolment-fee
+  payments in `pending`/`overdue`.
+
+## 12HG. Discount authority (nehn-021) — addendum, 2026-10-28
+
+`DEC-SCOPE-309`. No migration; no new route; no request or response shape change.
+
+- `POST /admin/payments/{payment_id}/discount` (`discounts.add`) — a caller whose division is `global` (e.g. an accountant granted
+  `discounts.add`) may discount a payment of any division, like super_admin. it_admin / overseas_admin still get **403** "Wrong
+  division" outside their own. Without the grant: **403** "Admin role required" (unchanged). Reason required (**422**), new amount
+  below the current one (**422**), audited as `payment.discount` with the reason — all unchanged.
+- `GET /admin/payments` (`payments.view`) — a `global`-division holder lists every division; division staff their own (unchanged).
+
+## 12HJ. Recruiter placement reports and training panel (nehn-016) — addendum, 2026-10-28
+
+`DEC-SCOPE-312`. Migration `0212_placement_report_grants` (seed only).
+
+- Report library (§12HA) — two reports on the new resource `reports.placement` (view, download), read through the existing
+  `GET /reports`, `GET /reports/{id}`, `GET /reports/{id}.csv|.xlsx` (throttle, 10,000-row cap and the `report.export` audit row as
+  nehn-009). Rows are IT students in the placement pool only (opted in, not archived, active), one row per student on their latest
+  counted seat:
+  - `completing-soon` — columns `student_code, student, phone, email, course, batch, trainer, batch_ends, days_left, progress,
+    attendance_pct, readiness, candidate_status`; filters `days` (1-365, default 15: batch ends today … today + days, IST), `course_id`,
+    `batch_id`, `trainer_id`, `student`; by batch end, then name.
+  - `placement-students` — columns `student_code, student, email, course, batch_ends, progress, readiness, candidate_status,
+    applications, interviews, offers, joined`; filters `course_id`, `batch_id`, `student`; by name.
+  No column is financial; an unknown parameter (e.g. `include=fees`) is **422**. `days` joins the registry's standard filters
+  ("Completing within (days)"; outside 1-365 or not a whole number → **422**).
+- `GET /recruiter/candidates/{id}/training` (new) — placement_team, placement_manager, super_admin. **403** any other role (hr_team
+  included), **404** a candidate outside the pool or unknown, **422** a malformed id. Response `{student: bool, seats: [{course, batch,
+  trainer, starts, ends, status, progress, attendance_pct, attendance_marked, assignments_graded, assignments_total, assessments_passed,
+  assessments_total, certificate}], readiness: {readiness_status, resume_status, mock_interview_status, aptitude_status, available} |
+  null}`; seats latest end first, `pending_consent`/`rejected` left out; an external candidate → `{student: false, seats: [],
+  readiness: null}`. `Cache-Control: no-store`. The figures are the training reports' (`training_progress`). Read only, no write route.
+
 ## 12HH. HR student access and HR reports (nehn-017) — addendum, 2026-10-28
 
-`DEC-SCOPE-310`. Migration `0212_hr_student_grants` (seed only). Every route: grant (**403**), then hr_team/super_admin scope (**403**
+`DEC-SCOPE-310`. Migration `0213_hr_student_grants` (seed only). Every route: grant (**403**), then hr_team/super_admin scope (**403**
 for any other role, even with the key), then the student (**404** outside the HR population). Responses are `Cache-Control: no-store`.
 
 - `GET /hr/students?q=&page=` (new) — `student_progress.view`. `{items: [{id, student_code, full_name, courses, completed}], total, page,

@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import crm_exports
 from app.api.deps import get_current_user, require_permission
 from app.api.lookups import _pattern as like_pattern
+from app.api.workflows import _certificate_rules
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code, uuid_reference
@@ -101,6 +102,7 @@ from app.services.agent_applications import open_clause, owned, with_owner
 from app.services.agent_network import APPLICATION_FILTERS, org_applications, org_counts, org_money, org_students
 from app.services.agent_orgs import ensure_agent_org, lock_org, org_masters, set_org_status, transition_org
 from app.services.bdm_appointments import db_now, today_ist
+from app.services.permissions import user_has_grant
 from app.services.provisioning import (
     IssuedWelcome,
     deliver_welcome_link,
@@ -112,6 +114,7 @@ from app.services.provisioning import (
     user_ids_with_status,
 )
 from app.services.provisioning import flush_unique_email as _flush_unique_email
+from app.services.reports import training as training_reports
 from app.services.storage import storage
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -132,6 +135,11 @@ async def ensure_admin(user: User = Depends(get_current_user)):
 PAYMENTS_VIEW = require_permission("payments", "view", ADMIN_REQUIRED)
 PAYMENTS_ADD = require_permission("payments", "add", ADMIN_REQUIRED)
 DISCOUNTS_ADD = require_permission("discounts", "add", ADMIN_REQUIRED)
+
+
+def _every_division(user: User) -> bool:
+    """nehn-021 (DEC-SCOPE-309 D1): a global-division grant holder (e.g. the accountant) has no division to be scoped to, like super_admin."""
+    return user.role == "super_admin" or user.division == "global"
 
 
 def _reject_supplied_password(payload: dict, actor: User, route: str, field: str) -> None:
@@ -263,7 +271,7 @@ async def dashboard(user: User = Depends(ensure_admin), db: AsyncSession = Depen
         uq = uq.where(User.division == user.division)
         eq = eq.where(Enquiry.division == user.division)
         rq = rq.where(Payment.division == user.division)
-    return {
+    body = {
         "users": await db.scalar(uq),
         "enquiries": await db.scalar(eq),
         "revenue": float(await db.scalar(rq) or 0),
@@ -273,6 +281,12 @@ async def dashboard(user: User = Depends(ensure_admin), db: AsyncSession = Depen
         # ENH-003: admin-provisioned accounts whose 72-hour set-password link expired unused.
         "expired_welcome_links": len(await user_ids_with_status(db, user, "link_expired")),
     }
+    # nehn-011 (DEC-SCOPE-311): the training tiles, for a caller who may read the training reports they total (not overseas_admin by
+    # default); at-risk uses the certificate rule's attendance threshold.
+    if await user_has_grant(db, user, "reports.training", "view"):
+        threshold = (await _certificate_rules(db))["min_attendance_percent"]
+        body["training"] = await training_reports.dashboard_tiles(db, user, threshold=threshold)
+    return body
 
 
 @router.get("/users")
@@ -349,7 +363,7 @@ async def companies(user: User = Depends(ensure_admin), db: AsyncSession = Depen
 @router.get("/payments")
 async def payment_records(user: User = Depends(PAYMENTS_VIEW), db: AsyncSession = Depends(get_db)):
     stmt = select(Payment, User).join(User, User.id == Payment.user_id)
-    if user.role != "super_admin":
+    if not _every_division(user):
         stmt = stmt.where(Payment.division == user.division)
     rows = (await db.execute(stmt.order_by(Payment.created_at.desc()).limit(1000))).all()
     return [
@@ -1230,7 +1244,7 @@ async def discount_payment(payment_id: UUID, payload: dict, user: User = Depends
     item = await db.get(Payment, payment_id)
     if not item:
         raise HTTPException(404, "Payment not found")
-    if user.role != "super_admin" and item.division != user.division:
+    if not _every_division(user) and item.division != user.division:
         raise HTTPException(403, "Wrong division")
     if item.reference_type == "agent_deposit":  # AGN-011: the deposit's amount is the agency's, read at its checkout
         raise HTTPException(409, "An agent deposit's amount is set on its application")

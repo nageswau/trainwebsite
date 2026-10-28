@@ -3260,6 +3260,40 @@ Pinned by `apps/api/tests/test_nehn_038_agent_kpis.py` and `apps/web/tests/e2e/n
 Read-only; the same `_require({"trainer", "it_admin"}, "it")` rule as the other trainer routes plus the `Batch.trainer_id` check. A
 trainer gets `fee_clear`, never the pending amount. Pinned by `apps/api/tests/test_nehn_028_batch_progress.py`.
 
+### 2.222 Admin dashboard training tiles *(added 2026-10-28 — `DEC-SCOPE-311`, nehn-011)*
+
+| Route / part | Anonymous | super_admin | it_admin | overseas_admin | other roles |
+|---|---|---|---|---|---|
+| `GET /admin/dashboard` | 401 | 200 | 200 | 200 | 403 |
+| its `training` block | — | yes | yes (`reports.training.view`) | no (no grant by default) | — |
+| its fee figures / fee columns | — | yes | only with `field.financial.view` | — | — |
+
+Rows follow the training reports' scope (super_admin and it_admin every seat). Pinned by `apps/api/tests/test_nehn_011_admin_dashboard.py`.
+
+### 2.220 Discount authority *(added 2026-10-28 — `DEC-SCOPE-309`, nehn-021)*
+
+| Route | Anonymous | super_admin | it_admin / overseas_admin (seeded grant) | accountant, partner (global; no grant by default) | trainer, placement_team, others |
+|---|---|---|---|---|---|
+| `POST /admin/payments/{id}/discount` | 401 | 200 any division | 200 own division, 403 other | 403; 200 any division once granted `discounts.add` | 403 |
+| `GET /admin/payments` | 401 | 200 all | 200 own division | 403; 200 all once granted `payments.view` | 403 |
+
+The grant is checked first (`require_permission`); the division scope is then skipped only for `global`-division callers, whom only a
+super admin creates. The UI follows: `/management/payments` and its sidebar link (finance tier, `payments.view`) and the Apply discount
+form (`discounts.add`). Pinned by `apps/api/tests/test_nehn_021_discount_authority.py` and
+`apps/web/tests/e2e/nehn-021-discount-authority.spec.ts`.
+
+### 2.223 Recruiter placement reports and training panel *(added 2026-10-28 — `DEC-SCOPE-312`, nehn-016)*
+
+| Route | Anonymous | super_admin | it_admin | placement_team | placement_manager | hr_team | other roles |
+|---|---|---|---|---|---|---|---|
+| `GET /reports/completing-soon`, `/reports/placement-students` (+ `.csv`, `.xlsx`) | 401 | 200 | 200 | 200 | 200 | 403 | 403 |
+| `GET /recruiter/candidates/{id}/training` | 401 | 200 | 403 | 200 | 200 | 403 | 403 |
+
+The reports follow the `reports.placement` grants (view / download; seeded by migration 0212 for placement_team, placement_manager and
+it_admin; super_admin implicit). Every holder reads the same rows -- opted-in, non-archived, active IT students (rec-010 consent); a role
+granted the resource later sees no rows until its own scope rule is written. No financial column; recruiters still have no
+`reports.training` grant. Pinned by `apps/api/tests/test_nehn_016_placement_reports.py` and `test_nehn_016_migration.py`.
+
 ### 2.221 HR student access and HR reports *(added 2026-10-28 — `DEC-SCOPE-310`, nehn-017)*
 
 | Route | Anonymous | super_admin | hr_team (default grants) | hr_team, key revoked | other roles (even with the key) |
@@ -3271,4 +3305,4 @@ trainer gets `fee_clear`, never the pending amount. Pinned by `apps/api/tests/te
 | `GET /portal/it/hr/reports` | 401 | 200 | 200 | — | 403 |
 
 New catalogue resources `student_progress`, `attendance`, `student_documents` (view, download); hr_team holds all six keys by default
-(migration 0212). Read-only. Pinned by `apps/api/tests/test_nehn_017_hr_student_access.py` and `test_nehn_017_migration.py`.
+(migration 0213). Read-only. Pinned by `apps/api/tests/test_nehn_017_hr_student_access.py` and `test_nehn_017_migration.py`.

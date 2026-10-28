@@ -10216,6 +10216,56 @@ worded server-side from the same criteria. V9 the certificate rule is one helper
 **Numbering:** no migration; API §12HF; RBAC §2.219.
 - **Feature ID authorized:** `nehn-028`. **Status:** built on `worktree-nehn-028`.
 
+### DEC-SCOPE-311 — Admin dashboard training tiles (`nehn-011`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-011` (§14 L289-295; `UNVERIFIED` backlog); design
+`docs/superpowers/specs/2026-10-28-nehn-011-admin-dashboard-tiles-design.md`. Builds on the nehn-010 reports (`DEC-SCOPE-305`). The
+client's admin report template (CI-02) has not arrived.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** C1 enrolments / active / completed / dropped
+are the column totals of the unfiltered course-wise report. C2 completed links to `completions` (same count). C3 average progress is the
+mean progress of counted seats (1 dp; "—" when none) and links to `student-courses`. C4 at risk = a counted seat with a class marked and
+attendance below the certificate rule's `min_attendance_percent` (nehn-031, default 75; nehn-028's `at_risk`); the attendance report
+gains the filter `attendance_below` (1-100) and the tile opens it pre-filtered. C5 course fees collected / pending are totals of the
+course-wise report's `revenue` and its new `pending_fees` column (`pending`/`overdue` enrolment fees), both `financial`. C6 a five-row
+course-wise mini table (the report's first rows; the field policy strips the fee columns). C7 the block appears only for a caller holding
+`reports.training.view` (super_admin, it_admin; not overseas_admin by default) and the fee figures only with `field.financial.view`.
+No 60 s cache (the aggregates are grouped SQL). The existing dashboard keys keep their meaning.
+**Numbering:** no migration; API §12HI; RBAC §2.222.
+- **Feature ID authorized:** `nehn-011`. **Status:** built on `worktree-nehn-011`.
+
+### DEC-SCOPE-309 — Discount authority through the `discounts.add` grant (`nehn-021`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-021` (§7 L169-172; `UNVERIFIED` backlog); design
+`docs/superpowers/specs/2026-10-28-nehn-021-discount-authority-design.md`. Dependency nehn-005 (`DEC-SCOPE-281`) merged; the discount
+route was already on `require_permission("discounts", "add")` and its form already hidden without the grant (nehn-006).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** D1 a `global`-division grant holder (the
+accountant) discounts and lists payments of every division, like super_admin; it_admin/overseas_admin keep their own division. D2 no
+default-grant change, no migration: the accountant holds nothing until a super admin grants `payments.view` + `discounts.add`. D3
+overseas_admin **keeps** `discounts.add` (OD-12 open; one matrix click revokes it). D4 the finance roles get `/management/payments`
+(payments list + Apply discount) and a **Payments** sidebar link shown only with `payments.view`. D5 the finance roles see only Apply
+discount there -- creating dues and EMI plans stay division-scoped admin actions. D6 without `payments.view` the list is replaced by a
+grant hint; without `discounts.add` the form is hidden and the API answers 403. Not built: a discount cap or approval threshold; an IT
+scholarship concept. **Numbering:** no migration; API §12HG; RBAC §2.220.
+- **Feature ID authorized:** `nehn-021`. **Status:** built on `worktree-nehn-021`.
+
+### DEC-SCOPE-312 — Recruiter nearing-completion list, placement report and read-only training progress (`nehn-016`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-016` (§12 L271-276, §5 L104-109, §14 L303/L307; `UNVERIFIED`
+backlog); design `docs/superpowers/specs/2026-10-28-nehn-016-recruiter-training-progress-design.md`. Dependencies nehn-009 (`DEC-SCOPE-303`)
+and nehn-010 (`DEC-SCOPE-305`) are merged; reuses nehn-010's calculator (`app/services/training_progress.py`).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** P1 (**OD-08**) the population is IT students in
+the placement pool only -- opted in (rec-010, `DEC-SCOPE-138`), not archived, active; a student who has not opted in is never shown, so the
+consent stands. P2 expected completion = the batch end date; "completing soon" = a counted seat ending today … today + N IST days, N 15 by
+default (1-365, the new `days` filter). P3 one row per student on their latest counted seat; dropped/withdrawn/pending/rejected seats never
+count; a placed student still appears. P4 progress, attendance %, assignments, assessments and certificate are the training reports'
+figures. P5 readiness = the stored `placement_profiles.readiness_status` ("preparation" when none) and the candidate status -- no new
+readiness rule. P6 no financial column anywhere. R1 two reports on the new resource `reports.placement`: `completing-soon` and
+`placement-students` (applications, interviews, offers, joined); grants seeded for placement_team, placement_manager and it_admin. R2 the
+read-only training panel `GET /recruiter/candidates/{id}/training` for the recruiter roles and super_admin; HR waits for nehn-017. R3 no
+recruiter-dashboard tile change (reached from a "Report library" nav item); no `batches(end_date)` index (small table).
+**Numbering:** migration `0212_placement_report_grants`; API §12HJ; RBAC §2.223.
+- **Feature ID authorized:** `nehn-016`. **Status:** built on `worktree-nehn-016`.
+
 ### DEC-SCOPE-310 — HR access to permitted student progress, attendance and documents; HR reports (`nehn-017`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-017` (§13 L277-286, §5 L116-121, §15 L337-347; `UNVERIFIED`
@@ -10226,9 +10276,9 @@ placement pool -- `it_student`, IT division, not withdrawn from placement (the p
 students excluded). H2 HR opens a student document only when its type (trimmed, lower-cased) is `resume`, `cv`, `curriculum vitae`,
 `portfolio`, `certificate` or `certificates`; every other type is closed (absent from the list, **403** on download). H3 three new
 catalogue resources, one per kind of data -- `student_progress`, `attendance`, `student_documents` (view, download) -- held by hr_team
-by default (migration 0212); revoking one hides its block and its report. H4 seats exclude `pending_consent`/`rejected`; completed =
+by default (migration 0213); revoking one hides its block and its report. H4 seats exclude `pending_consent`/`rejected`; completed =
 counted seat at progress 100. HR reports are `hr-progress`, `hr-completions` (`student_progress`) and `hr-attendance` (`attendance`):
 the training pack's columns over the HR population, no financial column. HR's Placement Reports exclusion is removed (counts only).
 The recruiter requirements module still bars HR (Q-28) -- an open question for the client.
-**Numbering:** migration `0212_hr_student_grants`; API §12HH; RBAC §2.221.
+**Numbering:** migration `0213_hr_student_grants`; API §12HH; RBAC §2.221.
 - **Feature ID authorized:** `nehn-017`. **Status:** built on `worktree-nehn-017`.
