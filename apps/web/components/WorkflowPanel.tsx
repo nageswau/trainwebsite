@@ -434,7 +434,7 @@ export default function WorkflowPanel({ user, section, liveClassesLock = null }:
   // AGN-009 (DEC-SCOPE-052): the agent Documents page is AgentDocumentsSection (PortalPage) -- upload, review, requests, history.
   const showDocuments = section === "documents" && user.role === "overseas_student";
   const showDocumentDownload = user.role === "overseas_student" && section === "documents";
-  const showOfferLetterDownload = user.role === "overseas_student" && section === "offer-letters"; // ccrm-045 (DEC-SCOPE-316)
+  const showOfferLetterDownload = user.role === "overseas_student" && section === "offer-letters"; // ccrm-045 (DEC-SCOPE-318)
   const showCounselorDocumentReview = user.role === "counselor" && section === "documents";
   const showVisaChecklist = user.role === "overseas_student" && section === "visa-status";
   const showCounselorVisa = user.role === "counselor" && section === "visa";

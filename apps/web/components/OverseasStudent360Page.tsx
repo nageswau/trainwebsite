@@ -117,7 +117,7 @@ async function panel(tab: StudentTab, id: string, overview: StudentOverview, por
       return (
         <>
           <CounselorDocumentRequestsPanel studentId={id} applications={applications} />
-          {/* ccrm-045 (DEC-SCOPE-316): an upload on the student's behalf, tied to the same applications or to none */}
+          {/* ccrm-045 (DEC-SCOPE-318): an upload on the student's behalf, tied to the same applications or to none */}
           {!overview.archive && <CounselorDocumentUpload studentId={id} applications={applications} />}
           {await load<{ items: StudentDocumentRow[] }>(student360Url(id, "documents"), (data) => <DocumentsPanel items={data.items} />)}
         </>

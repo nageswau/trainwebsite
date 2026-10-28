@@ -90,6 +90,8 @@ change this.
   >10 items → `more=true`.
 - **Regression risks:** ccrm-032 dashboard tests asserting "today only"; ccrm-041 matrix unaffected; `/counselor/tasks` page unchanged.
 - **Complexity:** small. **Risk:** low.
+- **Status (2026-10-28):** built on `worktree-ccrm-042` (`DEC-SCOPE-316`; API §12HN; no migration; response key `overdue_tasks`
+  kept, titled "Tasks due").
 
 ### `ccrm-043` — Counselor "My students" list with Source filter and search
 
@@ -120,6 +122,7 @@ change this.
   student whose application moved to another counselor drops off; legacy users without `registration_source` → Self-registered.
 - **Regression risks:** csc-001..005 tests on the walk-in card; ccrm-040 archive hiding; ccrm-041 route matrix (params only).
 - **Complexity:** medium. **Risk:** low.
+- **Status (2026-10-28):** built on `worktree-ccrm-043` (`DEC-SCOPE-317`; API §12HO; no migration; source D1 first-match rule).
 
 ### `ccrm-044` — Counselor chat with walk-in students (bug fix)
 

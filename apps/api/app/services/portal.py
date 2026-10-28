@@ -693,7 +693,7 @@ async def _overseas_student(db: AsyncSession, user: User, section: str):
             ),
         )
     if section == "offer-letters":
-        # ccrm-045 (DEC-SCOPE-316): the newest current "Offer letter" document of each application (uploaded by the counselor, the
+        # ccrm-045 (DEC-SCOPE-318): the newest current "Offer letter" document of each application (uploaded by the counselor, the
         # Overseas Admin or the agency; an offer's `offer_document_id` is one of them) -- the page's download card fetches the file.
         letters = {
             d.application_id: d

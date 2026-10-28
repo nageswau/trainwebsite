@@ -3294,7 +3294,7 @@ it_admin; super_admin implicit). Every holder reads the same rows -- opted-in, n
 granted the resource later sees no rows until its own scope rule is written. No financial column; recruiters still have no
 `reports.training` grant. Pinned by `apps/api/tests/test_nehn_016_placement_reports.py` and `test_nehn_016_migration.py`.
 
-### 2.224 Counselor document upload on the student 360 *(added 2026-10-28 — `DEC-SCOPE-316`, ccrm-045)*
+### 2.224 Counselor document upload on the student 360 *(added 2026-10-28 — `DEC-SCOPE-318`, ccrm-045)*
 
 | Route | Anonymous | overseas counselor (student in caseload) | overseas counselor (other student) | overseas_admin | super_admin | IT counselor, agent, overseas_student, other roles |
 |---|---|---|---|---|---|---|

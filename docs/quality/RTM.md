@@ -1404,3 +1404,22 @@ half.
 | `nehn-019-AC3` | Existing payments render without errors ("—" for missing values) | `::test_a_plain_payment_without_enrolment_or_code_renders_with_dashes`; `test_nehn_019_migration.py::test_round_trip_with_backfill`; `FeePaymentPanel.test.tsx` "renders a row without ledger fields as before" |
 | `nehn-019-AC4` | `amount` stays net (checkout, `pending_fee`) | `::test_a_discount_keeps_the_gross_amount_and_records_reason_and_admin`; `test_nehn_018_student_access.py`, `test_agn_011_*` |
 | `nehn-019-AC5` | The fee panel shows original / discount / payable, paid date and the EMI balance | `FeePaymentPanel.test.tsx` (nehn-019 block); `::test_payment_responses_carry_the_ledger_fields`; browser QA |
+| `ccrm-042` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-042` (Q3) → `DEC-SCOPE-316`; `API_CONTRACT.md` §12HN; no RBAC change | D1–D3 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-042-AC1` | A follow-up due tomorrow appears right after it is created | `apps/api/tests/test_ccrm_042_dashboard_window.py::test_a_follow_up_added_for_tomorrow_shows_at_once_and_leaves_when_done`; `ccrm-042-dashboard-week.spec.ts` |
+| `ccrm-042-AC2` | A follow-up due in 8 days does not appear (start + 8 days exclusive) | `::test_follow_ups_cover_overdue_today_and_the_next_seven_days_soonest_first`; e2e "Too far out" |
+| `ccrm-042-AC3` | Overdue open follow-ups appear flagged | `::test_follow_ups_cover_overdue_today_and_the_next_seven_days_soonest_first`; `test_ccrm_032_dashboard.py::test_every_section_lists_only_the_counselors_own_live_work` |
+| `ccrm-042-AC4` | Sorted soonest first | same tests; e2e order check |
+| `ccrm-042-AC5` | Tasks follow the same window, overdue flagged | `::test_tasks_follow_the_same_window_with_overdue_flagged`; e2e "Tasks due 1" |
+| `ccrm-042-AC6` | Done/cancelled never appear | `::test_follow_ups_cover_...`, `::test_tasks_follow_...`; e2e complete → leaves |
+| `ccrm-042-AC7` | Another counselor's / handed-over lead's follow-ups never appear | `::test_another_counselors_and_handed_over_leads_follow_ups_never_show`; IT counselor/admin 403 in `test_ccrm_032_dashboard.py` |
+| `ccrm-042-UI` | Labels "Follow-ups due" / "Tasks due", window note, empty text "No follow-ups in the next 7 days." | `apps/web/tests/components/CounselorDashboardPanel.test.tsx` (ccrm-042 case) |
+| `ccrm-043` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-043` (Q10) → `DEC-SCOPE-317`; `API_CONTRACT.md` §12HO; no RBAC change | D1–D5 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-043-AC1` | A self-registered student with my application is listed as Self-registered | `apps/api/tests/test_ccrm_043_my_students.py::test_every_student_of_mine_is_listed_once_with_its_source_ac1_to_ac4_and_ac6_ac7`; `ccrm-043-my-students.spec.ts` |
+| `ccrm-043-AC2` | A walk-in is listed as Walk-in | same test; e2e |
+| `ccrm-043-AC3` | A converted lead is listed as Lead conversion | same test |
+| `ccrm-043-AC4` | An agency student with my application is listed as Agency | same test |
+| `ccrm-043-AC5` | The Source filter narrows the list and the total | `::test_the_source_filter_narrows_and_the_total_follows_ac5`; e2e filter |
+| `ccrm-043-AC6` | Archived students are excluded | `::test_every_student_of_mine_...` |
+| `ccrm-043-AC7` | Another counselor's students are never listed | `::test_another_counselors_list_has_only_theirs`; `::test_other_roles_are_403`; `::test_anonymous_is_401` |
+| `ccrm-043-EDGE` | Phone-digit search, literal `%`, invalid source/long q → 422, listed once, moved application drops off, legacy → Self-registered | `::test_search_matches_name_email_and_phone_digits_literally`, `::test_an_unknown_source_is_422`, `::test_a_student_whose_application_moves_to_another_counselor_drops_off` |
+| `ccrm-043-UI` | "My students" card: source badge, application count, since; filter bar; filtered empty state; Edit/Resend only on own linked rows | `apps/web/tests/components/CounselorWalkInStudents.test.tsx` (ccrm-043 cases) |

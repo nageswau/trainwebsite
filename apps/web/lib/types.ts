@@ -62,7 +62,7 @@ export type CounselorDashboardSection = { count: number; more: boolean; items: C
 export type CounselorDashboardKey =
   | "new_leads" | "appointments_today" | "calls_today" | "follow_ups" | "overdue_tasks" | "no_next_action"
   | "pending_documents" | "not_ready" | "awaiting_decision" | "offers_due" | "visa" | "enrolment";
-export type CounselorDashboard = { today: string; window_days: number; sections: Record<CounselorDashboardKey, CounselorDashboardSection> };
+export type CounselorDashboard = { today: string; window_days: number; follow_up_days: number; sections: Record<CounselorDashboardKey, CounselorDashboardSection> };
 
 // --- AGN-018 agency dashboard (DEC-SCOPE-062; spec §5.3): one shape for Masters and staff, Master-only fields null for staff ---
 export type CurrencyTotal = { currency: string; count: number; amount: number };

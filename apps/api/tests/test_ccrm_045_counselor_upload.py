@@ -1,4 +1,4 @@
-"""ccrm-045 (DEC-SCOPE-316) -- the counselor (and the Overseas Admin) upload a document on the student 360's Documents tab, with or
+"""ccrm-045 (DEC-SCOPE-318) -- the counselor (and the Overseas Admin) upload a document on the student 360's Documents tab, with or
 without an application; the student sees it at once. POST /counselor/students/{id}/documents (multipart). An unattached document
 follows the counselor's caseload for download; an offer letter uploaded against an application is listed on the student's Offer Letters.
 Spec: docs/superpowers/specs/2026-10-28-ccrm-045-counselor-document-upload-design.md."""

@@ -8,7 +8,7 @@ import { sendRequest } from "@/lib/apiErrors";
 
 type Props = { studentId: string; applications: { id: string; label: string }[] };
 
-// ccrm-045 (DEC-SCOPE-316): the student 360's Documents tab -- the counselor / Overseas Admin uploads a document for the student, with or
+// ccrm-045 (DEC-SCOPE-318): the student 360's Documents tab -- the counselor / Overseas Admin uploads a document for the student, with or
 // without one of their applications; the student sees it at once. An offer letter belongs to an application. One upload at a time.
 export default function CounselorDocumentUpload({ studentId, applications }: Props) {
   const router = useRouter();

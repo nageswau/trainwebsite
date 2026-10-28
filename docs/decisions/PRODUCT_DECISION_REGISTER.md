@@ -10284,7 +10284,35 @@ receipt stays **403** (the backlog's "404" is left `NEEDS_CONFIRMATION`). D10 th
 **Numbering:** migration `0215_payment_discount_ledger`; API §12HM; no RBAC change.
 - **Feature ID authorized:** `nehn-019`. **Status:** built on `worktree-nehn-019`.
 
-### DEC-SCOPE-316 — Counselor uploads student documents, with or without an application (`ccrm-045`)
+### DEC-SCOPE-316 — Counselor dashboard follow-ups and tasks: overdue + next 7 days (`ccrm-042`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-042` (owner request 2026-10-28, answer Q3 "Overdue + next 7 days";
+`MEETING_TRANSCRIPT_REQUEST`-equivalent). Bug: a new follow-up must be future-dated (`lead_follow_ups.check_due`) but the dashboard
+listed only follow-ups due before midnight IST today, so it stayed hidden until its day.
+**Behaviour:** the `follow_ups` section lists the open follow-ups on the counselor's leads with `due_at` before the start of
+(today IST + 8 days) -- overdue, today and the next 7 days -- soonest first, overdue flagged. The tasks section lists open tasks with
+`due_on <= today + 7`, soonest first, overdue (`due_on < today`) flagged. Done/cancelled never appear; lead scope (owner + division)
+and the overseas-counselor-only gate are unchanged. **Builder's defaults (owner pre-authorised recommended answers;
+`NEEDS_CONFIRMATION`):** D1 the response key `overdue_tasks` is kept for compatibility (the UI titles it "Tasks due"); D2 the window
+is exposed as an additive `follow_up_days: 7`; D3 the `/counselor/tasks` page, ccrm-036 performance and ccrm-031 escalation "overdue"
+figures are unchanged. **Numbering:** API §12HN; no migration; no RBAC change.
+- **Feature ID authorized:** `ccrm-042`. **Status:** built on `worktree-ccrm-042`.
+
+### DEC-SCOPE-317 — Counselor "My students": all students with a Source filter and search (`ccrm-043`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-043` (owner request 2026-10-28, answer Q10 "All my students + Source
+filter + search"; `MEETING_TRANSCRIPT_REQUEST`-equivalent). The Students page listed only walk-in links.
+**Behaviour:** `GET /counselor/students` lists the counselor's whole caseload (`visible_student_ids`: csc-001 link ∪ students of the
+counselor's applications), archived excluded (ccrm-040), each student once, with source, application count and since-when; `source`
+and `q` narrow it. The card is titled "My students". **Builder's defaults (owner pre-authorised recommended answers;
+`NEEDS_CONFIRMATION`):** D1 source is mutually exclusive, first match wins: `registration_source` `counselor_walk_in` → Walk-in,
+`lead_conversion` → Lead conversion, an `AgentStudent` row or agency application → Agency, else Self-registered (incl. legacy accounts
+without a source); D2 `applications` counts all the student's applications (as the 360 shows); D3 `linked_since` is the earliest of the
+link and the counselor's first application; D4 Edit/Resend stay only on the counselor's own pending walk-in links (csc-003); D5 the
+Overseas Admin view is unchanged. **Numbering:** API §12HO; no migration; no RBAC change.
+- **Feature ID authorized:** `ccrm-043`. **Status:** built on `worktree-ccrm-043`.
+
+### DEC-SCOPE-318 — Counselor uploads student documents, with or without an application (`ccrm-045`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-045` (owner request 2026-10-28, `MEETING_TRANSCRIPT_REQUEST`-equivalent);
 design `docs/superpowers/specs/2026-10-28-ccrm-045-counselor-document-upload-design.md`.
@@ -10297,5 +10325,5 @@ residual risk). U7 an "Offer letter" needs an application (AGN-010 O3). U8 an ar
 document **without an application** follows the caseload (`is_visible_student`: csc-001 link or one of the student's applications)
 instead of "has one of the student's applications" -- a superset, nobody loses access. The student's Offer Letters page also lists an
 application with a current "Offer letter" document and offers its download.
-**Numbering:** no migration; API §12HN; RBAC §2.224.
+**Numbering:** no migration; API §12HP; RBAC §2.224.
 - **Feature ID authorized:** `ccrm-045`. **Status:** built on `worktree-ccrm-045`.

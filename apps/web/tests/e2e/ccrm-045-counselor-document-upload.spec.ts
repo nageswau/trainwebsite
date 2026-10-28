@@ -3,7 +3,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { signIn } from "./helpers/agency";
 import { E2E_PASSWORD, createAndActivate } from "./helpers/welcome";
 
-// ccrm-045 (DEC-SCOPE-316) -- the counselor uploads a passport for a walk-in student with no application and an offer letter against
+// ccrm-045 (DEC-SCOPE-318) -- the counselor uploads a passport for a walk-in student with no application and an offer letter against
 // an application, from the student 360's Documents tab; the student sees both at once (Documents, Offer Letters) and can download them.
 // Requires the stack running with `python -m app.seed` applied; the spec makes its own counselor and student.
 

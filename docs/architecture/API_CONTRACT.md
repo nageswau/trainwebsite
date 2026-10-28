@@ -4581,9 +4581,30 @@ days on the day the students' agency records were created).
   student, student code, email, phone, course, batch, reference, gross amount, discount, amount paid, remaining balance, payment status
   ("Paid" / "Partially paid"); "—" where unknown. Issued once, never regenerated.
 
-## 12HN. Counselor document upload on the student 360 (ccrm-045) — addendum, 2026-10-28
+## 12HN. Counselor dashboard follow-ups and tasks window (ccrm-042) — addendum, 2026-10-28
 
-`DEC-SCOPE-316`. No migration.
+`DEC-SCOPE-316`. No migration; no request changes; authorization unchanged (overseas counselor only, else **403**).
+
+- `GET /counselor/dashboard` (§12GD) — `sections.follow_ups` now covers open follow-ups on the caller's leads due before the start of
+  (today IST + 8 days): overdue, today and the next 7 days, `due_at` ascending, `overdue` true when due before today. `sections.overdue_tasks`
+  (key unchanged) now covers open tasks with `due_on <= today + 7`, ascending, `overdue` true when `due_on < today`. Each section keeps
+  `{count, more, items[<=10]}`. The response adds `follow_up_days` (7).
+
+## 12HO. Counselor "My students": all students, Source filter and search (ccrm-043) — addendum, 2026-10-28
+
+`DEC-SCOPE-317`. No migration; authorization unchanged (overseas counselor only, else **403**; anonymous **401**).
+
+- `GET /counselor/students` (§12EM) — now lists every `overseas_student` in the caller's caseload (csc-001 link ∪ the students of
+  applications with `counselor_id == me`), not archived, each once, ordered `linked_since` desc then `id`. Additive query params:
+  `source` ∈ `walk_in | lead_conversion | self_registered | agency` (anything else **422**); `q` (≤ 100 chars, else **422**) — literal,
+  case-insensitive substring of name / email / student code, or the phone's digits when the search is phone-shaped; blank = no filter.
+  `total` follows the filters. Each item adds `source`, `applications` (count of all the student's applications), `linked_since`
+  (earliest of the caller's link and the caller's first application) and `linked` (the csc-001 link is the caller's — only then do the
+  §12EN resend/edit routes apply). Existing item keys and `POST`/`PATCH` responses are unchanged.
+
+## 12HP. Counselor document upload on the student 360 (ccrm-045) — addendum, 2026-10-28
+
+`DEC-SCOPE-318`. No migration.
 
 - `POST /counselor/students/{student_id}/documents` — **new**, `multipart/form-data`: `document_type` (Passport, Academic certificates,
   Transcripts, English test, CV, SOP, LOR, Financial documents, Other, Offer letter), `document_label` (only and required for Other, 2-80

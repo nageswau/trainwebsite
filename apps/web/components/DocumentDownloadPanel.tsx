@@ -18,7 +18,7 @@ function detailMessage(detail: unknown) {
 // STU-007's certificates. This exchanges a document's id for a real download URL via
 // GET .../documents/{id}/download, verified server-side as belonging to the requesting
 // student, rather than trusting the stored value directly.
-// ccrm-045 (DEC-SCOPE-316): `type` narrows the list (the Offer Letters page shows only offer letters) under its own title and empty text.
+// ccrm-045 (DEC-SCOPE-318): `type` narrows the list (the Offer Letters page shows only offer letters) under its own title and empty text.
 export default function DocumentDownloadPanel({ type, title = "Your Documents", empty = "Upload a document above to see it listed here." }: { type?: string; title?: string; empty?: string } = {}) {
   const [rows, setRows] = useState<DocumentRow[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);

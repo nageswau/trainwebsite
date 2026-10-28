@@ -2,7 +2,7 @@
 
 Source: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-045` (owner request 2026-10-28, `MEETING_TRANSCRIPT_REQUEST`-equivalent).
 The owner pre-authorised the backlog's recommended defaults for this session; every default below is the builder's call and stays
-`NEEDS_CONFIRMATION` in `DEC-SCOPE-316`.
+`NEEDS_CONFIRMATION` in `DEC-SCOPE-318`.
 
 ## Intent
 
@@ -68,4 +68,4 @@ No migration, no visibility flag, no change to the generic `POST /overseas/docum
 4. Matrix row in `test_ccrm_041_matrix.py`.
 5. Frontend: vitest for `CounselorDocumentUpload` and `DocumentDownloadPanel` filter; wire into the 360 page and WorkflowPanel.
 6. Playwright e2e `ccrm-045-counselor-upload.spec.ts`.
-7. Docs: DEC-SCOPE-316, API §12HN, RBAC §2.224, backlog status line.
+7. Docs: DEC-SCOPE-318, API §12HP, RBAC §2.224, backlog status line.

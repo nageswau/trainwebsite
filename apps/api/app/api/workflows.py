@@ -3020,7 +3020,7 @@ async def download_student_document(document_id: UUID, user: User = Depends(get_
         elif user.role == "counselor":
             if item.application_id:
                 await _assigned_application(db, user, item.application_id)
-            # ccrm-045 (DEC-SCOPE-316): no application -- the counselor's caseload (csc-001 link or one of the student's applications)
+            # ccrm-045 (DEC-SCOPE-318): no application -- the counselor's caseload (csc-001 link or one of the student's applications)
             elif item.student_id is None or not await counselor_students.is_visible_student(db, user, item.student_id):
                 raise HTTPException(403, "Document is outside your assigned scope")
         elif user.role == "agent" and not await in_scope(db, user, item.id):  # AGN-009: safe for an agency-only document

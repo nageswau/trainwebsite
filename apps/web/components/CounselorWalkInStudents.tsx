@@ -5,22 +5,31 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { staffFailure } from "@/lib/agentStaff";
 import { isPage, sendJson, type Page } from "@/lib/apiErrors";
 
-import CounselorWalkInStudentRow, { WALK_IN_URL as URL, type WalkInStudent } from "./CounselorWalkInStudentRow";
+import CounselorWalkInStudentRow, { SOURCE_LABEL, WALK_IN_URL as URL, type WalkInStudent } from "./CounselorWalkInStudentRow";
 
 const PAGE_SIZE = 20;
 
 // csc-002 (DEC-SCOPE-227): a student who walks into the office gets a login from their counselor. The student sets their own password
 // from the emailed link (the counselor never sees it) and is in the counselor's caseload at once (csc-001), e.g. for Schedule appointment.
 // csc-003 (DEC-SCOPE-228): each pending row can resend the link or fix the details (CounselorWalkInStudentRow).
+// ccrm-043 (DEC-SCOPE-317): the list is all the counselor's students (walk-ins and the students of their applications), filtered by
+// source at once and by the search on submit; a filter change returns to the first page.
 export default function CounselorWalkInStudents() {
   const [data, setData] = useState<Page<WalkInStudent> | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [offset, setOffset] = useState(0);
+  const [source, setSource] = useState("");
+  const [q, setQ] = useState("");
+  const [typed, setTyped] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
+  const filtered = source !== "" || q !== "";
 
-  const load = useCallback((at: number) => {
+  const load = useCallback((at: number, bySource: string, text: string) => {
     setLoadFailed(false);
-    fetch(`${URL}?limit=${PAGE_SIZE}&offset=${at}`)
+    const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(at) });
+    if (bySource) params.set("source", bySource);
+    if (text) params.set("q", text);
+    fetch(`${URL}?${params}`)
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
       .then((body: unknown) => {
         if (!isPage<WalkInStudent>(body)) throw new Error("not a page");
@@ -30,26 +39,49 @@ export default function CounselorWalkInStudents() {
   }, []);
 
   useEffect(() => {
-    load(offset);
-  }, [load, offset]);
+    load(offset, source, q);
+  }, [load, offset, source, q]);
 
-  const reload = () => load(offset);
+  const reload = () => load(offset, source, q);
+
+  function filter(nextSource: string, nextQ: string) {
+    setOffset(0);
+    setSource(nextSource);
+    setQ(nextQ);
+  }
+
+  function search(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    filter(source, typed.trim());
+  }
 
   return (
     <div className="action-card">
-      <h3>Walk-in students</h3>
-      <p className="muted" style={{ fontSize: 13 }}>Create a login for a student who came to the office. They receive an email to set their password, and they are added to your students.</p>
+      <h3>My students</h3>
+      <p className="muted" style={{ fontSize: 13 }}>Your walk-in students, converted leads and the students of the applications assigned to you.</p>
+      <form role="search" aria-label="Filter my students" onSubmit={search} style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 8, marginBottom: 12 }}>
+        <div className="field" style={{ flex: "1 1 200px", marginBottom: 0 }}><label htmlFor="my-students-q">Search</label><input id="my-students-q" type="search" value={typed} onChange={(e) => setTyped(e.target.value)} maxLength={100} placeholder="Name, email or phone" autoComplete="off" /></div>
+        <div className="field" style={{ flex: "0 1 180px", marginBottom: 0 }}>
+          <label htmlFor="my-students-source">Source</label>
+          <select id="my-students-source" value={source} onChange={(e) => filter(e.target.value, q)}>
+            <option value="">All sources</option>
+            {Object.entries(SOURCE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </div>
+        <button className="btn secondary small">Search</button>
+        {(filtered || typed !== "") && <button type="button" className="btn secondary small" onClick={() => { setTyped(""); filter("", ""); }}>Clear</button>}
+      </form>
       {/* csc-003: row results (resend, edit) are announced here; always mounted, styled only while it has something to say. */}
       <div className={notice ? "form-message" : undefined} role="status" aria-live="polite" style={notice ? { marginBottom: 8, overflowWrap: "anywhere" } : undefined}>{notice}</div>
       {loadFailed ? (
         <>
-          <p className="form-error" role="alert">Unable to load your walk-in students.</p>
+          <p className="form-error" role="alert">Unable to load your students.</p>
           <button type="button" className="btn secondary small" onClick={reload}>Retry</button>
         </>
       ) : data === null ? (
-        <p className="muted" aria-busy="true">Loading your walk-in students…</p>
+        <p className="muted" aria-busy="true">Loading your students…</p>
       ) : data.items.length === 0 ? (
-        <p className="muted">No walk-in students yet. Add one below.</p>
+        <p className="muted">{filtered ? "No students match these filters." : "No students yet. Add a walk-in student below."}</p>
       ) : (
         <ul style={{ paddingLeft: 0, listStyle: "none" }}>
           {data.items.map((s) => (
@@ -65,7 +97,7 @@ export default function CounselorWalkInStudents() {
         </ul>
       )}
       {data !== null && data.total > PAGE_SIZE && (
-        <nav aria-label="Walk-in student pages" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <nav aria-label="Student pages" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 12 }}>
           <span className="muted" style={{ fontSize: 13 }}>Showing {data.offset + 1}–{data.offset + data.items.length} of {data.total}</span>
           <button type="button" className="btn secondary small" aria-label="Previous page" disabled={data.offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}>Previous</button>
           <button type="button" className="btn secondary small" aria-label="Next page" disabled={data.offset + data.items.length >= data.total} onClick={() => setOffset(offset + PAGE_SIZE)}>Next</button>
