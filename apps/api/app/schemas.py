@@ -12162,11 +12162,42 @@ class CrmUniversityTotal(CrmCounts):
     rejections: int
     acceptances: int
     enrollments: int
+    deposits_paid: int  # ccrm-052
+    visas_approved: int
+    visas_refused: int
+    visas_pending: int
 
 
 class CrmUniversityRow(CrmUniversityTotal):
     university_id: UUID
     label: str
+
+
+# ccrm-052: the applications behind one university's row, a page at a time; `total` is the row's Applications.
+class CrmUniversityRef(BaseModel):
+    id: UUID
+    label: str
+
+
+class CrmUniversityApplication(BaseModel):
+    application_id: UUID
+    application_code: str
+    student_name: str | None
+    course: str | None
+    intake: str
+    stage: str
+    stage_label: str
+    counselor: str | None
+    deposit_paid: bool
+    visa: Literal["approved", "refused", "pending"] | None
+
+
+class CrmUniversityApplicationsOut(BaseModel):
+    university: CrmUniversityRef
+    items: list[CrmUniversityApplication]
+    total: int
+    page: int
+    page_size: int
 
 
 class CrmVisaTotal(CrmCounts):

@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import ExportButtons from "@/components/ExportButtons";
-import { crmExportUrl, hasCrmFilters, percentText, type CrmDefinition, type CrmFilterKey, type CrmFilters, type CrmReports } from "@/lib/managementCrmReports";
+import { crmExportUrl, crmUniversityHref, hasCrmFilters, percentText, type CrmDefinition, type CrmFilterKey, type CrmFilters, type CrmReports } from "@/lib/managementCrmReports";
 
 // The backlog's filters in its order (§13: no team filter, CC3): the query key, the label, the choices list and the "none" choice.
 const SELECTS: { key: CrmFilterKey; label: string; options: keyof CrmReports["options"]; none?: string }[] = [
@@ -26,10 +26,11 @@ function fields(definitions: CrmDefinition[], keys: string[], format: Record<str
   }));
 }
 
-/** One report: its heading, how it is counted, and a table with a total row and its export (ccrm-035) -- or its empty state. */
-function Report<Total, Row extends Total>({ id, title, empty, rowHeader, firstColumn, definitions, rows, total, columns, exportUrl }: {
-  id: string; title: string; empty: string; rowHeader: string; firstColumn: (row: Row) => string; definitions: CrmDefinition[];
-  rows: Row[]; total: Total; columns: Column<Total>[]; exportUrl: string;
+/** One report: its heading, how it is counted, and a table with a total row and its export (ccrm-035) -- or its empty state. A row
+ * with a `rowHref` names itself as a link to its detail (ccrm-052). */
+function Report<Total, Row extends Total>({ id, title, empty, rowHeader, firstColumn, rowHref, definitions, rows, total, columns, exportUrl }: {
+  id: string; title: string; empty: string; rowHeader: string; firstColumn: (row: Row) => string; rowHref?: (row: Row) => string;
+  definitions: CrmDefinition[]; rows: Row[]; total: Total; columns: Column<Total>[]; exportUrl: string;
 }) {
   const heading = `${id}-heading`;
   return (
@@ -60,7 +61,7 @@ function Report<Total, Row extends Total>({ id, title, empty, rowHeader, firstCo
             <tbody>
               {rows.map((row) => (
                 <tr key={firstColumn(row)}>
-                  <th scope="row">{firstColumn(row)}</th>
+                  <th scope="row">{rowHref ? <Link href={rowHref(row)}>{firstColumn(row)}</Link> : firstColumn(row)}</th>
                   {columns.map((c) => <td key={c.key}>{c.cell(row)}</td>)}
                 </tr>
               ))}
@@ -126,8 +127,12 @@ export default function ManagementCrmReports({ data, error, filters, home }: { d
           />
           <Report
             id="crm-universities" exportUrl={crmExportUrl("universities", filters)} title="University performance" empty="No applications match these filters." rowHeader="University"
-            firstColumn={(r) => r.label} definitions={data.universities.definitions} rows={data.universities.rows} total={data.universities.total}
-            columns={fields(data.universities.definitions, ["applications", "students", "offers", "offer_rate", "rejections", "acceptances", "enrollments"], percent)}
+            firstColumn={(r) => r.label} rowHref={(r) => crmUniversityHref(home, r.university_id, filters)}
+            definitions={data.universities.definitions} rows={data.universities.rows} total={data.universities.total}
+            columns={fields(data.universities.definitions, [
+              "applications", "students", "offers", "offer_rate", "rejections", "acceptances", "enrollments",
+              "deposits_paid", "visas_approved", "visas_refused", "visas_pending", // ccrm-052
+            ], percent)}
           />
           <Report
             id="crm-visa" exportUrl={crmExportUrl("visa", filters)} title="Visa outcomes" empty="No visa cases match these filters." rowHeader="Destination"

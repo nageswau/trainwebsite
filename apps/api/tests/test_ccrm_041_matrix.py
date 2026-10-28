@@ -214,6 +214,7 @@ MATRIX = [
     R("get", "/counselor/exports/leads", **SELF),
     R("get", "/management/crm-reports", **MANAGEMENT),
     R("get", "/management/crm-reports/export?report=ageing", **MANAGEMENT),
+    R("get", "/management/crm-reports/universities/{university}/applications", **MANAGEMENT),  # ccrm-052 (§2.181)
     # ccrm-037 templates and the student message log (§2.187)
     R("get", "/counselor/templates", **STAFF_READ),
     R("get", "/counselor/templates/{template}/preview", **STAFF_READ),

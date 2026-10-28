@@ -22,9 +22,9 @@ const reports: CrmReports = {
     total: { applications: 4, students: 3, bands, oldest_days: 70 },
   },
   universities: {
-    definitions: [def("applications", "Applications"), def("students", "Students"), def("offers", "Offers"), def("offer_rate", "Offer rate"), def("rejections", "Rejections"), def("acceptances", "Acceptances"), def("enrollments", "Enrolments")],
-    rows: [{ university_id: "u1", label: "Leeds", applications: 4, students: 4, offers: 3, offer_rate: 75, rejections: 1, acceptances: 1, enrollments: 1 }],
-    total: { applications: 4, students: 4, offers: 3, offer_rate: 75, rejections: 1, acceptances: 1, enrollments: 1 },
+    definitions: [def("applications", "Applications"), def("students", "Students"), def("offers", "Offers"), def("offer_rate", "Offer rate"), def("rejections", "Rejections"), def("acceptances", "Acceptances"), def("enrollments", "Enrolments"), def("deposits_paid", "Deposits paid"), def("visas_approved", "Visas approved"), def("visas_refused", "Visas refused"), def("visas_pending", "Visas pending")],
+    rows: [{ university_id: "u1", label: "Leeds", applications: 4, students: 4, offers: 3, offer_rate: 75, rejections: 1, acceptances: 1, enrollments: 1, deposits_paid: 2, visas_approved: 2, visas_refused: 1, visas_pending: 0 }],
+    total: { applications: 4, students: 4, offers: 3, offer_rate: 75, rejections: 1, acceptances: 1, enrollments: 1, deposits_paid: 2, visas_approved: 2, visas_refused: 1, visas_pending: 0 },
   },
   visa: { definitions: [def("applications", "Visa cases"), def("students", "Students")], rows: [], total: { applications: 0, students: 0, submitted: 0, pending: 0, approved: 0, refused: 0, enrolled: 0 } },
   readiness: {
@@ -75,6 +75,18 @@ describe("ccrm-034 ManagementCrmReports", () => {
     expect(screen.queryByRole("link", { name: "Clear filters" })).toBeNull();
     rerender(<ManagementCrmReports data={reports} error="" filters={{ ...EMPTY_CRM_FILTERS, intake: "Fall 2027" }} home={ADMIN_CRM_REPORTS_HOME} />);
     expect(screen.getByRole("link", { name: "Clear filters" }).getAttribute("href")).toBe(ADMIN_CRM_REPORTS_HOME);
+  });
+
+  // ccrm-052: deposits and visas per university, and each university opens its applications with the filters kept.
+  it("shows deposits and visas per university and links each one to its applications", () => {
+    render(<ManagementCrmReports data={reports} error="" filters={{ ...EMPTY_CRM_FILTERS, intake: "Fall 2027" }} home={ADMIN_CRM_REPORTS_HOME} />);
+    const perf = screen.getByRole("table", { name: "University performance" });
+    expect(within(perf).getAllByRole("columnheader").map((c) => c.textContent).slice(-4)).toEqual(["Deposits paid", "Visas approved", "Visas refused", "Visas pending"]);
+    const leeds = within(perf).getByRole("row", { name: /Leeds/ });
+    expect(within(leeds).getAllByRole("cell").map((c) => c.textContent).slice(-4)).toEqual(["2", "2", "1", "0"]);
+    expect(within(leeds).getByRole("link", { name: "Leeds" }).getAttribute("href")).toBe(`${ADMIN_CRM_REPORTS_HOME}/universities/u1?intake=Fall+2027`);
+    expect(within(perf).queryByRole("link", { name: "Total" })).toBeNull();
+    expect(within(screen.getByRole("table", { name: "Application ageing" })).queryByRole("link")).toBeNull();
   });
 
   // ccrm-035 (DEC-SCOPE-268 E2): each report with rows exports its own table with the applied filters; an empty one offers nothing.
