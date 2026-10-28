@@ -10,7 +10,7 @@ import {
 import { PORTAL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
-// ccrm-053 (DEC-SCOPE-323, PF5-PF7): the Overseas Admin's counselor performance -- every overseas counselor. Super Admin passes too (PF6);
+// ccrm-053 (DEC-SCOPE-325, PF5-PF7): the Overseas Admin's counselor performance -- every overseas counselor. Super Admin passes too (PF6);
 // anyone else gets the access card; unauthenticated users are redirected by the middleware.
 
 export default async function AdminCounselorPerformancePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {

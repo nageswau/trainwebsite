@@ -8189,6 +8189,7 @@ class UniversityCreate(BaseModel):
     campuses: UniversityCampuses = None
     fee_structure: UniversityFeeStructure = None
     duplicate_reason: DuplicateReason = None
+    agent_commission: "AgentCommissionIn | None" = None  # ccrm-050: super_admin / overseas_admin only (anyone else sending the key: 403)
 
 
 class UniversityUpdate(BaseModel):
@@ -8217,6 +8218,7 @@ class UniversityUpdate(BaseModel):
     campuses: UniversityCampuses = None
     fee_structure: UniversityFeeStructure = None
     duplicate_reason: DuplicateReason = None
+    agent_commission: "AgentCommissionIn | None" = None  # ccrm-050: omitted = unchanged, null = clear (the DELETE), an object = set
 
 
 class UniversityAssign(BaseModel):
@@ -12427,7 +12429,7 @@ class CounselorPerformanceOut(BaseModel):
     applications: CounselorPerformanceApplications
 
 
-# ccrm-053 (DEC-SCOPE-323 PF7-PF9): GET /overseas-admin/counselor-performance -- one row per overseas counselor and a Total row; the
+# ccrm-053 (DEC-SCOPE-325 PF7-PF9): GET /overseas-admin/counselor-performance -- one row per overseas counselor and a Total row; the
 # columns (labels and definitions) are the screen's and the export's.
 class CounselorPerformanceTeamTotals(BaseModel):
     full_name: str

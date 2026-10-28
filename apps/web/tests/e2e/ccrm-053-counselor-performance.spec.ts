@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { signIn } from "./helpers/agency";
 
-// ccrm-053 (DEC-SCOPE-323, PF1-PF10): the counselor's Overseas/IT lead split and intake / division filters, and the Overseas Admin's
+// ccrm-053 (DEC-SCOPE-325, PF1-PF10): the counselor's Overseas/IT lead split and intake / division filters, and the Overseas Admin's
 // counselor performance list, its export and each counselor's report. Seeded demo accounts; the shared stack DB also holds backend-test
 // rows, so the checks are relational (split sums, CSV = screen, row = report), never fixed numbers.
 

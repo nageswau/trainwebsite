@@ -6,6 +6,7 @@ import { accessUnavailable } from "@/components/AccessUnavailable";
 import CounselorDocumentRequestsPanel from "@/components/CounselorDocumentRequestsPanel";
 import CounselorDocumentUpload from "@/components/CounselorDocumentUpload";
 import LocalTime from "@/components/LocalTime";
+import OverseasApplyPanel from "@/components/OverseasApplyPanel";
 import OverseasStudentFinance from "@/components/OverseasStudentFinance";
 import OverseasStudentJourney from "@/components/OverseasStudentJourney";
 import PortalShell from "@/components/PortalShell";
@@ -99,7 +100,18 @@ async function panel(tab: StudentTab, id: string, overview: StudentOverview, por
     case "overview":
       return <OverviewPanel overview={overview} />;
     case "applications":
-      return <ApplicationsPanel applications={overview.applications} />;
+      return (
+        <>
+          {/* ccrm-046 (DEC-SCOPE-324): the counselor applies on the student's behalf, as often as needed; the API checks the caseload */}
+          {portal === "counselor" && !overview.archive && (
+            <details style={{ marginBottom: 16 }}>
+              <summary className="btn small">Add application</summary>
+              <OverseasApplyPanel studentId={id} />
+            </details>
+          )}
+          <ApplicationsPanel applications={overview.applications} />
+        </>
+      );
     case "academic":
     case "preferences":
     case "english":

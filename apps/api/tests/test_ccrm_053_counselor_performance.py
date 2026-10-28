@@ -1,4 +1,4 @@
-"""ccrm-053 (DEC-SCOPE-323, PF1-PF10) -- counselor performance: the Overseas/IT lead split and the intake and lead-division filters on the
+"""ccrm-053 (DEC-SCOPE-325, PF1-PF10) -- counselor performance: the Overseas/IT lead split and the intake and lead-division filters on the
 counselor's own report (GET /counselor/performance), and the Overseas Admin's list of every overseas counselor, its CSV / xlsx and the
 per-counselor report (GET /overseas-admin/counselor-performance[.csv|.xlsx|/{id}]).
 

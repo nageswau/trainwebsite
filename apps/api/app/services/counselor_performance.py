@@ -4,7 +4,7 @@ revenue), then their lead follow-up completion and tasks; the "now" figures and 
 ccrm-034's predicates (P7, P8). Read-only and not audited (P9); only counts, percentages and stage names leave.
 Spec: docs/superpowers/specs/2026-10-25-ccrm-036-counselor-performance-design.md.
 
-ccrm-053 (DEC-SCOPE-323, PF1-PF10): the counselor's leads split by division (Overseas / IT), the intake filter (lead figures by the lead's
+ccrm-053 (DEC-SCOPE-325, PF1-PF10): the counselor's leads split by division (Overseas / IT), the intake filter (lead figures by the lead's
 qualification intake, application figures by the application's) and the lead-division filter; and `team`, every overseas counselor's
 figures for the Overseas Admin -- one grouped query per figure family, never a loop per counselor (PF9).
 Spec: docs/superpowers/specs/2026-10-28-ccrm-053-counselor-performance-admin-design.md."""

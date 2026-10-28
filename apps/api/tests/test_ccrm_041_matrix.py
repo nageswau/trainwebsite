@@ -214,7 +214,7 @@ MATRIX = [
     # ccrm-032 dashboard (§2.191), ccrm-036 performance (§2.183), ccrm-035 exports (§2.182), ccrm-034 reports (§2.181)
     R("get", "/counselor/dashboard", **SELF),
     R("get", "/counselor/performance", **SELF),
-    # ccrm-053 the Overseas Admin's counselor performance (§2.226); another division's counselor reads as missing
+    # ccrm-053 the Overseas Admin's counselor performance (§2.228); another division's counselor reads as missing
     R("get", "/overseas-admin/counselor-performance", **ADMINS),
     R("get", "/overseas-admin/counselor-performance.csv", **ADMINS),
     R("get", "/overseas-admin/counselor-performance.xlsx", **ADMINS),

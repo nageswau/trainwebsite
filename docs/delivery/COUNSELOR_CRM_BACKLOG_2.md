@@ -327,6 +327,8 @@ change this.
 - **Positive / negative / edge:** both percent and amount → 422 (existing check constraint); inactive university — 409 rule kept on edit.
 - **Regression risks:** dtu-001 tests, upc-033 commission sweep, partnership university CRUD.
 - **Complexity:** small. **Risk:** medium (confidential commercial data).
+- **Status (2026-10-28):** built on `worktree-ccrm-050` (`DEC-SCOPE-323`; API §12HU; no migration; same-request save, 403 for any other
+  caller sending the key — `NEEDS_CONFIRMATION`).
 
 ### `ccrm-051` — Course-level agent-Master commission (overrides university)
 
@@ -405,7 +407,7 @@ change this.
   legacy free-text intake not matching picker format excluded from intake filter (documented).
 - **Regression risks:** existing counselor performance tests, mgmt-018, ccrm-041 matrix (new admin route).
 - **Complexity:** medium. **Risk:** medium.
-- **Status (2026-10-28):** built on `worktree-ccrm-053` (`DEC-SCOPE-323`; API §12HU; RBAC §2.226; no migration — optional index deferred).
+- **Status (2026-10-28):** built on `worktree-ccrm-053` (`DEC-SCOPE-325`; API §12HW; RBAC §2.228; no migration — optional index deferred).
 
 ## 4. Out of scope (owner answers)
 

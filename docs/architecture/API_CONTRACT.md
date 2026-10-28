@@ -4678,10 +4678,31 @@ days on the day the students' agency records were created).
 - `GET /counselor/students/{student_id}/finance` — each deposit gains `can_upload` (additive): `true` only for a counselor-recorded,
   required deposit on an open application of a non-archived student, for that application's counselor or the Overseas Admin; always
   `false` on an agency deposit.
+## 12HU. Agent-Master commission on create / edit university (ccrm-050) — addendum, 2026-10-28
 
-## 12HU. Counselor performance: Overseas Admin view, intake filter, Overseas/IT lead split (ccrm-053) — addendum, 2026-10-28
+`DEC-SCOPE-323`. No migration; no new route; viewers unchanged (dtu-001, `UniversityEnvelope` keeps `exclude_unset`).
 
-`DEC-SCOPE-323`. No migration.
+- `POST /partnership/universities` and `PATCH /partnership/universities/{id}` — additive optional `agent_commission`:
+  `{percent}` or `{amount, currency}`, optional `note` (≤300), the `AgentCommissionIn` rules (one rate; amount needs a currency; percent
+  0 < p ≤ 100) → **422** with `loc` `["body", "agent_commission", ...]`. `PATCH`: omitted = unchanged, `null` = clear, object = set.
+- Only super_admin / overseas_admin (overseas division) may send the key; anyone else (even `null`) → **403** `"Only a super admin or an
+  overseas admin can change the agent commission"`, nothing written. Inactive university `PATCH` → **409** (unchanged).
+- A change writes `university.agent_commission` `{before, after}` in the same transaction (as `PUT .../agent-commission`); the response's
+  `agent_commission` is present for viewers only.
+
+## 12HV. Counselor creates applications for a student (ccrm-046) — addendum, 2026-10-28
+
+`DEC-SCOPE-324`. No migration, no new route.
+
+- `POST /workflows/overseas/applications` — for the overseas **counselor** only: **403** "This student is not in your caseload" when
+  `student_id` is outside the caseload (csc-001 link or one of the student's applications), checked before the archive guard (so an
+  archived stranger is also 403, not 409); **403** when the body names another `counselor_id` or any `agent_id` (naming themselves is
+  accepted). Otherwise unchanged: `counselor_id` is the caller, `agent_id` null, stage `enquiry`, APP- code, **409** for a duplicate open
+  student + university + course or an archived student, **201** `{id, status}`. Student, Overseas Admin and agent behaviour unchanged.
+
+## 12HW. Counselor performance: Overseas Admin view, intake filter, Overseas/IT lead split (ccrm-053) — addendum, 2026-10-28
+
+`DEC-SCOPE-325`. No migration.
 
 - `GET /counselor/performance` — adds optional `intake` ("Mon YYYY", ccrm-047 format; else **422** "Choose the intake month and year,
   like Sep 2027") and `division` (`overseas | it`; else **422**); an empty value is no filter. `period[]` gains `leads`, `leads_overseas`,

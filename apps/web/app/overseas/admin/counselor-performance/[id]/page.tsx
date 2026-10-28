@@ -12,7 +12,7 @@ import {
 import { PORTAL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
-// ccrm-053 (DEC-SCOPE-323, PF5, PF6): one overseas counselor's own report (ccrm-036), read by the Overseas Admin with the list's filters.
+// ccrm-053 (DEC-SCOPE-325, PF5, PF6): one overseas counselor's own report (ccrm-036), read by the Overseas Admin with the list's filters.
 // An id that is not an overseas counselor is the API's 404, said in words with the way back.
 const NOT_FOUND = "This counselor was not found. They may not be an overseas counselor.";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

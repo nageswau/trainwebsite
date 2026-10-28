@@ -14,7 +14,7 @@ function cell(row: TeamFigures, key: keyof TeamFigures) {
   return formatCount(value as number);
 }
 
-// ccrm-053 (DEC-SCOPE-323, PF7-PF9): every overseas counselor's figures for the Overseas Admin -- the filter form, one row per counselor
+// ccrm-053 (DEC-SCOPE-325, PF7-PF9): every overseas counselor's figures for the Overseas Admin -- the filter form, one row per counselor
 // (the name opens that counselor's own report with the same filters), the Total row, the definitions and the CSV / Excel of the screen.
 export default function CounselorTeamPerformance({ data, error, query }: { data: TeamPerformance | null; error: string; query: PerformanceQuery }) {
   const period = { from: data?.from ?? query.from, to: data?.to ?? query.to };

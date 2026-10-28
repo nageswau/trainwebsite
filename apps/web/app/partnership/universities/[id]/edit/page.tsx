@@ -3,6 +3,7 @@ import Link from "next/link";
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import PortalShell from "@/components/PortalShell";
 import UniversityForm from "@/components/UniversityForm";
+import { AGENT_COMMISSION_EDITORS } from "@/lib/agentCommission";
 import { serverApi } from "@/lib/api";
 import type { User } from "@/lib/types";
 import { shellFor, type University, universityPath } from "@/lib/universities";
@@ -28,7 +29,7 @@ export default async function EditUniversityPage({ params }: { params: Promise<{
           </div>
         </div>
         {university.permissions.can_edit ? (
-          <UniversityForm university={university} />
+          <UniversityForm university={university} canEditAgentCommission={"agent_commission" in university && AGENT_COMMISSION_EDITORS.has(user.role)} />
         ) : (
           <p className="empty" role="status">
             {university.active ? "Only the university's partnership managers can edit it." : "Reactivate this university before editing it."}{" "}

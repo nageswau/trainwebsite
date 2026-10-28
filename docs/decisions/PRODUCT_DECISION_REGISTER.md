@@ -10382,8 +10382,38 @@ archived student or closed application: no control, API 409. R8 no antivirus sca
 superseded for the deposit receipt only.
 **Numbering:** no migration; API §12HT; RBAC §2.225.
 - **Feature ID authorized:** `ccrm-048`. **Status:** built on `worktree-ccrm-048`.
+### DEC-SCOPE-323 — Agent-Master commission on the Add/Edit University form (`ccrm-050`)
 
-### DEC-SCOPE-323 — Counselor performance: Overseas Admin view, intake filter, Overseas/IT lead split (`ccrm-053`)
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-050` (owner lines A8 "while adding the university commission, the commision
+field should be available that is visible to only agent master", A9, answer Q5; `MEETING_TRANSCRIPT_REQUEST`-equivalent). Before: the dtu-001
+agent commission (DEC-SCOPE-209) could be set only from the university detail card, after create. **Behaviour:** `UniversityForm` (Add and
+Edit) shows an "Agent Master commission" fieldset (percentage **or** amount + currency, optional note) to super_admin / overseas_admin only;
+it is saved in the same request as the university (`POST` / `PATCH /partnership/universities` carry an optional `agent_commission` object,
+validated as `AgentCommissionIn`), audited `university.agent_commission` with `{before, after}` in the same transaction; prefilled on Edit.
+Any other caller sending the key (even `null`) is **403** before any write; partnership roles never see the fieldset; viewers are
+unchanged (agent Master, published + active only; never agent staff). **Builder's defaults (owner pre-authorised recommended answers;
+`NEEDS_CONFIRMATION`):** C1 same-request save, not a follow-up PUT; C2 refusal is 403, not ignore; C3 `PATCH` omitted = unchanged, `null` =
+clear (as `DELETE .../agent-commission`), a blank rate on the form = `null`; C4 an unchanged value is not audited, and the create audit's
+`fields` list omits it; C5 an inactive university stays 409 (UM10); C6 the CSV import (upc-005) cannot carry it. **Numbering:** API §12HU; no
+migration; no RBAC change (same editors and viewers as DEC-SCOPE-209).
+- **Feature ID authorized:** `ccrm-050`. **Status:** built on `worktree-ccrm-050`.
+
+### DEC-SCOPE-324 — Counselor creates and manages multiple applications for a student (`ccrm-046`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-046` (owner request 2026-10-28, `MEETING_TRANSCRIPT_REQUEST`-equivalent);
+design `docs/superpowers/specs/2026-10-28-ccrm-046-counselor-applications-design.md`.
+**Built:** the student 360's Applications tab gives the overseas counselor an "Add application" disclosure holding the existing apply
+form (country, university, course, ccrm-047 intake picker) for that student, repeatable. `POST /workflows/overseas/applications` as a
+counselor now refuses a student outside the caseload (`is_visible_student`) with **403**, checked before the archive guard, and refuses a
+body naming another counselor or any agent with **403** -- a counselor's application is their own and direct (security fix).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** A1 no Overseas Admin 360 UI (its API path is
+unchanged). A2 the course active/published rule is unchanged (none on the API); the form lists the public catalogue only. A3 a
+counselor-created application for an agency student is direct (no `agent_id`). A4 notifications as for a student-created application
+(the student's in-app "Application created").
+**Numbering:** no migration; API §12HV; RBAC §2.227.
+- **Feature ID authorized:** `ccrm-046`. **Status:** built on `worktree-ccrm-046`.
+
+### DEC-SCOPE-325 — Counselor performance: Overseas Admin view, intake filter, Overseas/IT lead split (`ccrm-053`)
 
 - **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-053` (owner line A10 "counsellor performance ---> leads, overseas/it,
 students, intake(filter), visas, enrollments", Q7 counselor own + Overseas Admin all, Q7b split by `Enquiry.division`;
@@ -10397,5 +10427,5 @@ mgmt-018 figures, follow-ups or tasks; legacy free text never matches; PF3 divis
 `/overseas-admin/counselor-performance`; PF6 Super Admin included; PF7 active overseas counselors always listed, an inactive one only
 with a non-zero figure; PF8 no revenue; PF10 the optional `ix_overseas_applications_counselor_id` is deferred (no migration).
 **Observation:** handover and owner change assign a lead only to a counselor of its own division, so an overseas counselor's IT leads
-are normally 0. **Numbering:** API §12HU; RBAC §2.226; no migration.
+are normally 0. **Numbering:** API §12HW; RBAC §2.228; no migration.
 - **Feature ID authorized:** `ccrm-053`. **Status:** built on `worktree-ccrm-053`.

@@ -1,7 +1,7 @@
 """ccrm-036 (DEC-SCOPE-269, P1-P9): the overseas counselor's own performance report. Their own figures only -- the request names no
 counselor, so there is nothing to tamper with. Read-only and not audited (P9).
 
-ccrm-053 (DEC-SCOPE-323, PF2-PF6): the intake and lead-division filters on both reports, and the Overseas Admin's routes -- every overseas
+ccrm-053 (DEC-SCOPE-325, PF2-PF6): the intake and lead-division filters on both reports, and the Overseas Admin's routes -- every overseas
 counselor (`admin_router`), its CSV / xlsx (audited, committed before the file is returned) and one counselor's report. The counselor's
 own route still names nobody: any `counselor_id` it is sent is ignored (PF4)."""
 

@@ -4,7 +4,7 @@ import { counselingQuery } from "@/lib/managementCounseling";
 // ccrm-036 (DEC-SCOPE-269, P1-P9): GET /counselor/performance -- the overseas counselor's own figures for an IST period (the period
 // figures are mgmt-018's, without revenue) and their caseload now. The API decides access and every figure; a null percentage has nothing
 // to divide. The period lives in the address (`counselingQuery`, the management counseling page's parser).
-// ccrm-053 (DEC-SCOPE-323, PF1-PF9): the intake ("Sep 2027") and lead-division filters live in the address too; the Overseas Admin reads
+// ccrm-053 (DEC-SCOPE-325, PF1-PF9): the intake ("Sep 2027") and lead-division filters live in the address too; the Overseas Admin reads
 // every overseas counselor (`ADMIN_PERFORMANCE_API`) and one counselor's report (`…/{id}`).
 export const PERFORMANCE_HOME = "/overseas/counselor/reports";
 export const PERFORMANCE_API = "/api/v1/counselor/performance";

@@ -1,8 +1,8 @@
 # ccrm-053 — Counselor performance: Overseas Admin view, intake filter, Overseas/IT lead split (design)
 
 NO-ASSUMPTION MODE. Source: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` §3 `ccrm-053`; owner answers Q7, Q7b (2026-10-28,
-`MEETING_TRANSCRIPT_REQUEST`-equivalent). Builds on ccrm-036 (`DEC-SCOPE-269`) and mgmt-018. Decision: `DEC-SCOPE-323`. API §12HU,
-RBAC §2.226. The owner asked this session to proceed with the recommended answers; every "my call" below is a default, not an approval.
+`MEETING_TRANSCRIPT_REQUEST`-equivalent). Builds on ccrm-036 (`DEC-SCOPE-269`) and mgmt-018. Decision: `DEC-SCOPE-325`. API §12HW,
+RBAC §2.228. The owner asked this session to proceed with the recommended answers; every "my call" below is a default, not an approval.
 
 ## Intent
 

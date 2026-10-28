@@ -2,8 +2,10 @@
 import { useRouter } from "next/navigation";
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 
+import AgentCommissionFields from "@/components/AgentCommissionFields";
 import SearchableSelect from "@/components/SearchableSelect";
 import UniversityMatchList from "@/components/UniversityMatchList";
+import { agentCommissionBody, agentCommissionDraft } from "@/lib/agentCommission";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import { formOptional as optional, formText as text } from "@/lib/telecaller";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
@@ -31,6 +33,8 @@ import {
 // field; anything else is one alert. The entry is never cleared on an error, and a double click sends one request.
 // upc-004 (§26): while the name or country is being entered, the master is searched for the same name + country (advisory; UD6). A save
 // into one is a 409 with the same panel; a head / super_admin may add it anyway with a reason (UD2).
+// ccrm-050 (DEC-SCOPE-323): with canEditAgentCommission (super_admin / overseas_admin) the agent-Master commission is entered here too and
+// sent in the same request -- a blank rate is null (none on create, cleared on edit). Without it the key is never sent.
 type RankingRow = { key: number; system: string; other_name: string; year: string; rank: string };
 type Errors = Record<string, string>;
 const MAX_RANKINGS = 10;
@@ -71,7 +75,7 @@ function Select({ id, name, value, words, blank, invalid }: { id: string; name: 
   );
 }
 
-export default function UniversityForm({ university }: { university?: University }) {
+export default function UniversityForm({ university, canEditAgentCommission = false }: { university?: University; canEditAgentCommission?: boolean }) {
   const router = useRouter();
   const editing = university !== undefined;
   const sending = useRef(false);
@@ -85,6 +89,7 @@ export default function UniversityForm({ university }: { university?: University
   const [countryId, setCountryId] = useState(university?.country.id ?? "");
   const [existing, setExisting] = useState<UniversityMatchPage | null>(null);
   const [duplicate, setDuplicate] = useState<UniversityDuplicate | null>(null);
+  const [commission, setCommission] = useState(() => agentCommissionDraft(university?.agent_commission));
   const focus = useFocusAfterRender();
 
   useEffect(() => {
@@ -113,6 +118,12 @@ export default function UniversityForm({ university }: { university?: University
     event.preventDefault();
     if (sending.current) return;
     const form = new FormData(event.currentTarget);
+    const entry = canEditAgentCommission ? agentCommissionBody(commission) : null;
+    if (entry && "error" in entry) {
+      setErrors({ agent_commission: entry.error });
+      setMessage("Check the highlighted fields.");
+      return;
+    }
     const body = {
       name: text(form, "name"), country_id: text(form, "country_id"), city: text(form, "city"),
       institution_type: text(form, "institution_type"), ownership_type: optional(form, "ownership_type"), state_region: optional(form, "state_region"),
@@ -125,6 +136,7 @@ export default function UniversityForm({ university }: { university?: University
       overview: text(form, "overview"), eligibility: text(form, "eligibility"),
       rankings: rankings.map((r) => ({ system: r.system, other_name: r.system === "Other" ? r.other_name.trim() || null : null, year: Number(r.year), rank: r.rank.trim() })),
       ...(duplicate?.can_override ? { duplicate_reason: text(form, "duplicate_reason") } : {}),
+      ...(entry ? { agent_commission: entry.body } : {}),
     };
     sending.current = true;
     setBusy(true);
@@ -296,6 +308,14 @@ export default function UniversityForm({ university }: { university?: University
             </button>
           )}
         </fieldset>
+        {canEditAgentCommission && (
+          <fieldset style={{ border: 0, padding: 0, margin: 0, display: "grid", gap: 10 }} aria-describedby={errors.agent_commission ? "uni-agent_commission-error" : "uni-agent_commission-hint"}>
+            <legend style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>Agent Master commission</legend>
+            <small id="uni-agent_commission-hint" className="muted">What EduSphere pays an agent Master for this university; only an agent Master sees it, once published. Leave the rate blank for none.</small>
+            <AgentCommissionFields draft={commission} onChange={setCommission} />
+            <ErrorText id="uni-agent_commission-error" error={errors.agent_commission} />
+          </fieldset>
+        )}
       </fieldset>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
         <button className="btn" type="submit" disabled={busy || (duplicate !== null && !duplicate.can_override)}>
