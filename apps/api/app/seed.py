@@ -155,6 +155,7 @@ async def main():
         us["counselor"].profile = {"demo": True, "specialisms": ["UK", "Germany", "Ireland"]}
         # csc-001 (DEC-SCOPE-226): a walk-in student who belongs to the demo counselor before any application.
         walk_in = await user(db, "student.walkin@edusphere.local", "Vikram Walk-in", "overseas_student", "overseas")
+        walk_in.profile = {**(walk_in.profile or {}), "registration_source": "counselor_walk_in"}  # ccrm-043: listed as Walk-in, as csc-002 creates them
         if not await db.scalar(select(OverseasStudentCounselor.id).where(OverseasStudentCounselor.student_user_id == walk_in.id)):
             db.add(OverseasStudentCounselor(student_user_id=walk_in.id, counselor_user_id=us["counselor"].id, assigned_by_user_id=us["counselor"].id))
         us["university_rep"].profile = {"demo": True, "university": "University Partner Demo"}

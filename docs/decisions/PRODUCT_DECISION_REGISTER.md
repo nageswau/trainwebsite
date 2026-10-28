@@ -10297,3 +10297,17 @@ and the overseas-counselor-only gate are unchanged. **Builder's defaults (owner 
 is exposed as an additive `follow_up_days: 7`; D3 the `/counselor/tasks` page, ccrm-036 performance and ccrm-031 escalation "overdue"
 figures are unchanged. **Numbering:** API §12HN; no migration; no RBAC change.
 - **Feature ID authorized:** `ccrm-042`. **Status:** built on `worktree-ccrm-042`.
+
+### DEC-SCOPE-317 — Counselor "My students": all students with a Source filter and search (`ccrm-043`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-043` (owner request 2026-10-28, answer Q10 "All my students + Source
+filter + search"; `MEETING_TRANSCRIPT_REQUEST`-equivalent). The Students page listed only walk-in links.
+**Behaviour:** `GET /counselor/students` lists the counselor's whole caseload (`visible_student_ids`: csc-001 link ∪ students of the
+counselor's applications), archived excluded (ccrm-040), each student once, with source, application count and since-when; `source`
+and `q` narrow it. The card is titled "My students". **Builder's defaults (owner pre-authorised recommended answers;
+`NEEDS_CONFIRMATION`):** D1 source is mutually exclusive, first match wins: `registration_source` `counselor_walk_in` → Walk-in,
+`lead_conversion` → Lead conversion, an `AgentStudent` row or agency application → Agency, else Self-registered (incl. legacy accounts
+without a source); D2 `applications` counts all the student's applications (as the 360 shows); D3 `linked_since` is the earliest of the
+link and the counselor's first application; D4 Edit/Resend stay only on the counselor's own pending walk-in links (csc-003); D5 the
+Overseas Admin view is unchanged. **Numbering:** API §12HO; no migration; no RBAC change.
+- **Feature ID authorized:** `ccrm-043`. **Status:** built on `worktree-ccrm-043`.

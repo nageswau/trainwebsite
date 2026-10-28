@@ -9,6 +9,7 @@ ccrm-040 (DEC-SCOPE-276) -- archive instead of delete: the student's counselor o
 list archived students. API §12GC; RBAC §2.190."""
 
 import logging
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -23,12 +24,17 @@ from app.services import counselor_student_360, counselor_students, student_arch
 logger = logging.getLogger("app.counselor_students")
 router = APIRouter(prefix="/counselor/students", tags=["counselor-students"])
 admin_router = APIRouter(prefix="/admin/users", tags=["counselor-students"])
+StudentSource = Literal["walk_in", "lead_conversion", "self_registered", "agency"]  # ccrm-043: the list's Source filter
 
 
 @router.get("")
-async def list_students(limit: int = Query(20, ge=1, le=50), offset: int = Query(0, ge=0), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def list_students(
+    limit: int = Query(20, ge=1, le=50), offset: int = Query(0, ge=0), source: StudentSource | None = None, q: str | None = Query(None, max_length=100),
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+):  # fmt: skip
+    """ccrm-043 (DEC-SCOPE-317): all the counselor's students; `source` and `q` narrow the list (API §12HO)."""
     counselor_students.require_overseas_counselor(user)
-    return await counselor_students.page(db, user, limit, offset)
+    return await counselor_students.page(db, user, limit, offset, source, q)
 
 
 @router.get("/archived")
