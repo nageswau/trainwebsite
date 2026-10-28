@@ -4521,6 +4521,19 @@ days on the day the students' agency records were created).
 - `GET /portal/it/trainer/student-progress` — now header-only (no rows); subtitle "Attendance, assignments, assessments, progress and
   certificate eligibility for each student in your batches."
 
+## 12HI. Admin dashboard training tiles (nehn-011) — addendum, 2026-10-28
+
+`DEC-SCOPE-311`. No migration. Additive only.
+
+- `GET /admin/dashboard` (unchanged gate `ensure_admin`; every existing key unchanged) — adds `training` when the caller holds
+  `reports.training.view`: `{enrolments, active, completed, dropped, average_progress (number|null), at_risk, at_risk_threshold,
+  courses: {columns: [{key, label}], items: [...], total}}`, plus `fees_collected` and `fees_pending` only with `field.financial.view`
+  (otherwise absent, and the course table has no `revenue`/`pending_fees`). Each figure is a total of the unfiltered report it links to.
+- `GET /reports/attendance` — new filter `attendance_below` (whole number 1-100; else **422** "Attendance below % must be a whole number
+  from 1 to 100"): counted seats with a class marked whose attendance % is below it. Any other report refuses it (**422**).
+- `GET /reports/courses` (and `.csv`/`.xlsx`) — new column `pending_fees` "Fees pending (INR)" (`financial`): the seats' enrolment-fee
+  payments in `pending`/`overdue`.
+
 ## 12HG. Discount authority (nehn-021) — addendum, 2026-10-28
 
 `DEC-SCOPE-309`. No migration; no new route; no request or response shape change.

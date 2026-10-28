@@ -613,6 +613,11 @@ Risk is the risk of regression or of a wrong outcome.
 - **Edge cases:** an empty system shows zeros, not errors.
 - **Regression risks:** existing dashboard consumers (management, e2e).
 - **Open questions:** the at-risk threshold (75%, the same as eligibility?); the exact tile list per the client template.
+- **Status (2026-10-28):** built on `worktree-nehn-011` (`DEC-SCOPE-311`; API §12HI; RBAC §2.222; no migration). The tiles are totals
+  of the nehn-010 reports they link to. Builder's defaults: at risk = below the certificate rule's attendance threshold (default 75),
+  via the attendance report's new `attendance_below` filter; fees collected / pending come from the course-wise report (new `pending_fees`
+  financial column); a five-row course-wise table; the tiles show on the Super Admin and IT Admin dashboards (not overseas admin); no
+  cache. The tile list stays provisional until the client template.
 - **Complexity:** small · **Risk:** low
 
 ### D. Internal CRM (§16, §23)
