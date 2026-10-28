@@ -10397,3 +10397,18 @@ clear (as `DELETE .../agent-commission`), a blank rate on the form = `null`; C4 
 `fields` list omits it; C5 an inactive university stays 409 (UM10); C6 the CSV import (upc-005) cannot carry it. **Numbering:** API §12HU; no
 migration; no RBAC change (same editors and viewers as DEC-SCOPE-209).
 - **Feature ID authorized:** `ccrm-050`. **Status:** built on `worktree-ccrm-050`.
+
+### DEC-SCOPE-324 — Counselor creates and manages multiple applications for a student (`ccrm-046`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-046` (owner request 2026-10-28, `MEETING_TRANSCRIPT_REQUEST`-equivalent);
+design `docs/superpowers/specs/2026-10-28-ccrm-046-counselor-applications-design.md`.
+**Built:** the student 360's Applications tab gives the overseas counselor an "Add application" disclosure holding the existing apply
+form (country, university, course, ccrm-047 intake picker) for that student, repeatable. `POST /workflows/overseas/applications` as a
+counselor now refuses a student outside the caseload (`is_visible_student`) with **403**, checked before the archive guard, and refuses a
+body naming another counselor or any agent with **403** -- a counselor's application is their own and direct (security fix).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** A1 no Overseas Admin 360 UI (its API path is
+unchanged). A2 the course active/published rule is unchanged (none on the API); the form lists the public catalogue only. A3 a
+counselor-created application for an agency student is direct (no `agent_id`). A4 notifications as for a student-created application
+(the student's in-app "Application created").
+**Numbering:** no migration; API §12HV; RBAC §2.227.
+- **Feature ID authorized:** `ccrm-046`. **Status:** built on `worktree-ccrm-046`.
