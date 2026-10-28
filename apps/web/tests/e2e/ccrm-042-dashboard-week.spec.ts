@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { signInAsFreshCounselor } from "./helpers/counselor";
 
-// ccrm-042 (DEC-SCOPE-313; AC1-AC6): the counselor dashboard's follow-ups and tasks cover overdue + the next 7 days, soonest first. A
+// ccrm-042 (DEC-SCOPE-316; AC1-AC6): the counselor dashboard's follow-ups and tasks cover overdue + the next 7 days, soonest first. A
 // fresh counselor owns nothing, so the counts are exact whatever else the shared stack DB holds.
 
 const DAY = 86_400_000;

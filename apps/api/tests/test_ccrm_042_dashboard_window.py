@@ -1,4 +1,4 @@
-"""ccrm-042 (DEC-SCOPE-313; AC1-AC7): the counselor dashboard's follow-ups and tasks sections cover overdue + today + the next 7 days
+"""ccrm-042 (DEC-SCOPE-316; AC1-AC7): the counselor dashboard's follow-ups and tasks sections cover overdue + today + the next 7 days
 (India time), soonest first, overdue flagged -- so a follow-up added now (always future-dated) shows on the next load. Backlog:
 docs/delivery/COUNSELOR_CRM_BACKLOG_2.md `ccrm-042`."""
 

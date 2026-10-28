@@ -37,7 +37,7 @@ from app.visa_status import label as visa_label
 
 LIMIT = 10  # D6
 WINDOW_DAYS = 14  # D4: "approaching" = due within this many days (past-due included, flagged)
-FOLLOW_UP_DAYS = 7  # ccrm-042 (DEC-SCOPE-313): follow-ups and tasks = overdue + today + the next 7 days
+FOLLOW_UP_DAYS = 7  # ccrm-042 (DEC-SCOPE-316): follow-ups and tasks = overdue + today + the next 7 days
 NOT_CONTACTED = ("new", "assigned", "first_call_pending")  # D10
 PAST_NEXT_ACTION = frozenset({"application_enrollment", "converted"})  # the counselor's link is in place (ccrm-003 MANUAL_BEFORE)
 VISA_WAITING = ("submitted", "additional_info_requested", "decision_pending")

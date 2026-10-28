@@ -90,6 +90,8 @@ change this.
   >10 items → `more=true`.
 - **Regression risks:** ccrm-032 dashboard tests asserting "today only"; ccrm-041 matrix unaffected; `/counselor/tasks` page unchanged.
 - **Complexity:** small. **Risk:** low.
+- **Status (2026-10-28):** built on `worktree-ccrm-042` (`DEC-SCOPE-316`; API §12HN; no migration; response key `overdue_tasks`
+  kept, titled "Tasks due").
 
 ### `ccrm-043` — Counselor "My students" list with Source filter and search
 
