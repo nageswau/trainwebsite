@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Script from "next/script";
 
-import { formatCalendarDate } from "@/lib/formatDate";
+import { SCHOOL_TIME_ZONE, formatCalendarDate, formatDate } from "@/lib/formatDate";
 import { newIdempotencyKey } from "@/lib/idempotencyKey";
 import { openRazorpayCheckout } from "@/lib/razorpayCheckout";
 import PaymentModeBanner from "./PaymentModeBanner";
@@ -19,6 +19,10 @@ type PaymentRow = {
   is_manual: boolean;
   emi_schedule_id: string | null;
   installment_no: number | null;
+  // nehn-019 (DEC-SCOPE-315): `amount` is the net payable; optional so a response without them renders as before (AC3).
+  gross_amount?: number;
+  discount_amount?: number;
+  paid_at?: string | null;
 };
 
 type EmiSchedule = {
@@ -27,8 +31,13 @@ type EmiSchedule = {
   total_amount: number;
   currency: string;
   installment_count: number;
-  installments: { id: string; installment_no: number; amount: number; due_date: string | null; status: string }[];
+  paid_amount?: number;
+  balance?: number;
+  installments: { id: string; installment_no: number; amount: number; discount_amount?: number; due_date: string | null; status: string }[];
 };
+
+// The receipt's payment date is the India calendar day (DEC-SCOPE-315 D3), so the panel shows the same day.
+const paidOn = (paidAt: string) => `Paid on ${formatDate(paidAt, false, SCHOOL_TIME_ZONE)}`;
 
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
@@ -154,7 +163,15 @@ export default function FeePaymentPanel() {
             <div className="card" key={row.id}>
               <span className="badge">{row.status}</span>
               <h4 style={{ marginTop: 10 }}>{row.reference_type}{row.installment_no ? ` — Installment ${row.installment_no}` : ""}</h4>
-              <p className="muted" style={{ fontSize: 13 }}>{row.currency} {row.amount.toLocaleString()}{row.due_date ? ` · due ${formatCalendarDate(row.due_date)}` : ""}</p>
+              {row.discount_amount && row.gross_amount ? (
+                <>
+                  <p className="muted" style={{ fontSize: 13 }}>Original {row.currency} {row.gross_amount.toLocaleString()} · Discount {row.currency} {row.discount_amount.toLocaleString()}</p>
+                  <p style={{ fontSize: 13 }}>{["paid", "succeeded"].includes(row.status) ? "Amount paid" : "Payable"} {row.currency} {row.amount.toLocaleString()}{row.due_date ? ` · due ${formatCalendarDate(row.due_date)}` : ""}</p>
+                </>
+              ) : (
+                <p className="muted" style={{ fontSize: 13 }}>{row.currency} {row.amount.toLocaleString()}{row.due_date ? ` · due ${formatCalendarDate(row.due_date)}` : ""}</p>
+              )}
+              {row.paid_at && <p className="muted" style={{ fontSize: 13 }}>{paidOn(row.paid_at)}</p>}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                 {["pending", "overdue"].includes(row.status) && (
                   <button className="btn small" disabled={busyId === row.id} onClick={() => payNow(row)}>
@@ -184,10 +201,16 @@ export default function FeePaymentPanel() {
               <p className="muted" style={{ fontSize: 13 }}>
                 {schedule.reference_type} — {schedule.currency} {schedule.total_amount.toLocaleString()} across {schedule.installment_count} installments
               </p>
+              {schedule.balance !== undefined && schedule.paid_amount !== undefined && (
+                <p style={{ fontSize: 13 }}>
+                  Paid {schedule.currency} {schedule.paid_amount.toLocaleString()} · Remaining balance {schedule.currency} {schedule.balance.toLocaleString()}
+                </p>
+              )}
               <ul className="list-clean">
                 {schedule.installments.map((i) => (
                   <li key={i.id}>
                     Installment {i.installment_no}: {schedule.currency} {i.amount.toLocaleString()}
+                    {i.discount_amount ? ` (${schedule.currency} ${i.discount_amount.toLocaleString()} discount applied)` : ""}
                     {i.due_date ? ` · due ${formatCalendarDate(i.due_date)}` : ""} — <span className="badge">{i.status}</span>
                   </li>
                 ))}

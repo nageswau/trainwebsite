@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 import pytest_asyncio
-from pdf_text import pdf_text
 from sqlalchemy import select
 
 from app.core.config import settings
@@ -15,6 +14,7 @@ from app.models import ApplicationDeposit, Payment, Receipt
 from tests.agn001_helpers import client_for
 from tests.agn008_helpers import APPS
 from tests.agn011_helpers import KEY_SECRET, audits, captured, deposit_url, deposit_world, mk_deposit, mk_deposit_payment, razorpay_on, reload, signed
+from tests.nehn019_helpers import receipt_rows
 
 WEBHOOK = "/api/v1/payments/webhooks/razorpay"
 
@@ -33,8 +33,8 @@ async def _deliver(client, order_id: str, amount_paise: int = 5_000_000, **kw):
     return await client.post(WEBHOOK, content=raw, headers=headers), raw, headers
 
 
-def _receipt_text(receipt: Receipt) -> str:
-    return pdf_text((Path(settings.local_upload_dir) / receipt.file_url.removeprefix("/local-files/")).read_bytes())
+def _receipt_rows(receipt: Receipt) -> dict[str, str]:
+    return receipt_rows((Path(settings.local_upload_dir) / receipt.file_url.removeprefix("/local-files/")).read_bytes())
 
 
 @pytest.mark.asyncio
@@ -46,8 +46,9 @@ async def test_a_signed_webhook_marks_payment_and_deposit_paid_once_with_a_recei
     [audit] = await audits(db_session, "overseas.application.deposit_paid", world["app"].id)
     assert audit.user_id == world["staff"]["user"].id and audit.metadata_json == {"payment_id": str(world["payment"].id), "source": "webhook"}
     receipt = await db_session.scalar(select(Receipt).where(Receipt.payment_id == world["payment"].id))
-    text = _receipt_text(receipt)
-    assert f"Billed to: {world['staff']['user'].full_name}" in text and f"Student: {world['record'].full_name}" in text
+    rows = _receipt_rows(receipt)
+    assert (rows["Billed to"], rows["Student"]) == (world["staff"]["user"].full_name, world["record"].full_name)
+    assert rows["Student code"] == rows["Email"] == "—"  # nehn-019: the agent's own contact details are not the student's
 
     replay = await client.post(WEBHOOK, content=raw, headers=headers)
     assert replay.json()["status"] == "already_processed"
