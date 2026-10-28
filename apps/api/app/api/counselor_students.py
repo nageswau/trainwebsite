@@ -32,7 +32,7 @@ async def list_students(
     limit: int = Query(20, ge=1, le=50), offset: int = Query(0, ge=0), source: StudentSource | None = None, q: str | None = Query(None, max_length=100),
     user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):  # fmt: skip
-    """ccrm-043 (DEC-SCOPE-316): all the counselor's students; `source` and `q` narrow the list (API §12HN)."""
+    """ccrm-043 (DEC-SCOPE-317): all the counselor's students; `source` and `q` narrow the list (API §12HO)."""
     counselor_students.require_overseas_counselor(user)
     return await counselor_students.page(db, user, limit, offset, source, q)
 

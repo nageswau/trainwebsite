@@ -60,4 +60,4 @@ ccrm-041 matrix (no new route).
 2. RED/GREEN vitest `CounselorWalkInStudents.test.tsx` (title, source/applications/linked-since, filter URL, empty-filter state,
    Edit only when linked) → component.
 3. Playwright `tests/e2e/ccrm-043-my-students.spec.ts` (desktop/mobile, filter + search).
-4. Docs: API §12HN, DEC-SCOPE-316, RBAC §2.149 note.
+4. Docs: API §12HO, DEC-SCOPE-317, RBAC §2.149 note.

@@ -248,7 +248,7 @@ async def assign_counselor(db: AsyncSession, admin: User, student_id: UUID, coun
 
 
 def _source():
-    """ccrm-043 (DEC-SCOPE-316): how the student arrived, first match wins -- the account's `registration_source`, else agency (an
+    """ccrm-043 (DEC-SCOPE-317): how the student arrived, first match wins -- the account's `registration_source`, else agency (an
     `AgentStudent` row or an agency application), else self-registered (incl. legacy accounts without a source)."""
     registered = User.profile["registration_source"].as_string()
     agency = or_(
@@ -259,7 +259,7 @@ def _source():
 
 
 async def page(db: AsyncSession, counselor: User, limit: int, offset: int, source: str | None = None, q: str | None = None) -> dict:
-    """ccrm-043 (DEC-SCOPE-316): every student of the counselor (csc-001 link ∪ the students of their applications), each once, newest
+    """ccrm-043 (DEC-SCOPE-317): every student of the counselor (csc-001 link ∪ the students of their applications), each once, newest
     first by since when they are the counselor's, with ENH-003's set-up status (`None` once the student has a password), how they arrived,
     their application count and whether the walk-in link is the caller's (only then can csc-003 resend or edit). `source` and `q` (a literal
     substring of name/email/code, or the phone's digits) narrow it. ccrm-040 (DEC-SCOPE-276 AR5): archived students are listed on their

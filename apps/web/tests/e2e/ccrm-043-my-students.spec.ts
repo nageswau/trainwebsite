@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 import { signInAsFreshCounselor } from "./helpers/counselor";
 
-// ccrm-043 (DEC-SCOPE-316) -- the counselor's "My students" card lists a walk-in and a self-registered student whose application is
+// ccrm-043 (DEC-SCOPE-317) -- the counselor's "My students" card lists a walk-in and a self-registered student whose application is
 // assigned to them, each with its source; the Source filter and the search narrow the list, and Clear brings both back. Requires the
 // stack running with `python -m app.seed` applied. The spec makes its own counselor and students, so no seeded record changes.
 

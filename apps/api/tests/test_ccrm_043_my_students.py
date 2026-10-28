@@ -1,4 +1,4 @@
-"""ccrm-043 (DEC-SCOPE-316) -- GET /counselor/students lists ALL the counselor's students (csc-001 link ∪ the students of the counselor's
+"""ccrm-043 (DEC-SCOPE-317) -- GET /counselor/students lists ALL the counselor's students (csc-001 link ∪ the students of the counselor's
 applications), not archived, each once, with how the student arrived (`source`), the student's application count and since when the
 counselor has had them; `source` and `q` narrow the list."""
 

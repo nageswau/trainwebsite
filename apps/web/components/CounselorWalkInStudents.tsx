@@ -12,7 +12,7 @@ const PAGE_SIZE = 20;
 // csc-002 (DEC-SCOPE-227): a student who walks into the office gets a login from their counselor. The student sets their own password
 // from the emailed link (the counselor never sees it) and is in the counselor's caseload at once (csc-001), e.g. for Schedule appointment.
 // csc-003 (DEC-SCOPE-228): each pending row can resend the link or fix the details (CounselorWalkInStudentRow).
-// ccrm-043 (DEC-SCOPE-316): the list is all the counselor's students (walk-ins and the students of their applications), filtered by
+// ccrm-043 (DEC-SCOPE-317): the list is all the counselor's students (walk-ins and the students of their applications), filtered by
 // source at once and by the search on submit; a filter change returns to the first page.
 export default function CounselorWalkInStudents() {
   const [data, setData] = useState<Page<WalkInStudent> | null>(null);

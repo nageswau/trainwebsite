@@ -120,7 +120,7 @@ describe("CounselorWalkInStudents (csc-002)", () => {
     expect(mock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
   });
 
-  // ccrm-043 (DEC-SCOPE-316): all my students, with how they arrived, filterable by source and searchable.
+  // ccrm-043 (DEC-SCOPE-317): all my students, with how they arrived, filterable by source and searchable.
   it("is titled My students and shows each student's source, applications and since when", async () => {
     const mine = { ...student(1, null), source: "agency", applications: 2, linked_since: "2026-10-01T09:00:00Z", linked: false };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res(page([mine]))));

@@ -1413,3 +1413,13 @@ half.
 | `ccrm-042-AC6` | Done/cancelled never appear | `::test_follow_ups_cover_...`, `::test_tasks_follow_...`; e2e complete → leaves |
 | `ccrm-042-AC7` | Another counselor's / handed-over lead's follow-ups never appear | `::test_another_counselors_and_handed_over_leads_follow_ups_never_show`; IT counselor/admin 403 in `test_ccrm_032_dashboard.py` |
 | `ccrm-042-UI` | Labels "Follow-ups due" / "Tasks due", window note, empty text "No follow-ups in the next 7 days." | `apps/web/tests/components/CounselorDashboardPanel.test.tsx` (ccrm-042 case) |
+| `ccrm-043` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-043` (Q10) → `DEC-SCOPE-317`; `API_CONTRACT.md` §12HO; no RBAC change | D1–D5 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-043-AC1` | A self-registered student with my application is listed as Self-registered | `apps/api/tests/test_ccrm_043_my_students.py::test_every_student_of_mine_is_listed_once_with_its_source_ac1_to_ac4_and_ac6_ac7`; `ccrm-043-my-students.spec.ts` |
+| `ccrm-043-AC2` | A walk-in is listed as Walk-in | same test; e2e |
+| `ccrm-043-AC3` | A converted lead is listed as Lead conversion | same test |
+| `ccrm-043-AC4` | An agency student with my application is listed as Agency | same test |
+| `ccrm-043-AC5` | The Source filter narrows the list and the total | `::test_the_source_filter_narrows_and_the_total_follows_ac5`; e2e filter |
+| `ccrm-043-AC6` | Archived students are excluded | `::test_every_student_of_mine_...` |
+| `ccrm-043-AC7` | Another counselor's students are never listed | `::test_another_counselors_list_has_only_theirs`; `::test_other_roles_are_403`; `::test_anonymous_is_401` |
+| `ccrm-043-EDGE` | Phone-digit search, literal `%`, invalid source/long q → 422, listed once, moved application drops off, legacy → Self-registered | `::test_search_matches_name_email_and_phone_digits_literally`, `::test_an_unknown_source_is_422`, `::test_a_student_whose_application_moves_to_another_counselor_drops_off` |
+| `ccrm-043-UI` | "My students" card: source badge, application count, since; filter bar; filtered empty state; Edit/Resend only on own linked rows | `apps/web/tests/components/CounselorWalkInStudents.test.tsx` (ccrm-043 cases) |

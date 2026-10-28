@@ -9,10 +9,10 @@ import { sendJson } from "@/lib/apiErrors";
 
 export const WALK_IN_URL = "/api/v1/counselor/students";
 
-// ccrm-043 (DEC-SCOPE-316): the API's `source` values, in the filter's order.
+// ccrm-043 (DEC-SCOPE-317): the API's `source` values, in the filter's order.
 export const SOURCE_LABEL = { walk_in: "Walk-in", lead_conversion: "Lead conversion", self_registered: "Self-registered", agency: "Agency" } as const;
 
-// ccrm-043 (DEC-SCOPE-316): the list adds how the student arrived, their application count, since when they are mine and whether the
+// ccrm-043 (DEC-SCOPE-317): the list adds how the student arrived, their application count, since when they are mine and whether the
 // walk-in link is mine (only then can the row resend or edit -- csc-003). A create/edit response carries none of these.
 export type WalkInStudent = {
   id: string; full_name: string; email: string; phone: string | null; student_code: string | null; setup: "pending_setup" | "link_expired" | null;
