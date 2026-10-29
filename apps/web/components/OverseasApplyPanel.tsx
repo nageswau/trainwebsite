@@ -26,7 +26,9 @@ function detailMessage(status: number, detail: unknown, onBehalf: boolean) {
 // (the 360 lists the applications) and a refresh shows the new row there; the form stays for the next university or course.
 export default function OverseasApplyPanel({ studentId }: { studentId?: string } = {}) {
   const router = useRouter();
-  const countrySlug = useSearchParams().get("country");
+  const params = useSearchParams();
+  const countrySlug = params.get("country");
+  const universitySlug = params.get("university"); // nehn-035 (DEC-SCOPE-331 L9): a university card's Apply preselects it and its country
   const [universities, setUniversities] = useState<University[] | null>(null);
   const [countries, setCountries] = useState<Country[]>([]);
   const [countryId, setCountryId] = useState("");
@@ -43,7 +45,15 @@ export default function OverseasApplyPanel({ studentId }: { studentId?: string }
     let cancelled = false;
     fetch("/api/v1/public/universities")
       .then((res) => (res.ok ? res.json() : []))
-      .then((data) => !cancelled && setUniversities(data))
+      .then((data: University[]) => {
+        if (cancelled) return;
+        setUniversities(data);
+        const chosen = data.find((u) => u.slug === universitySlug);
+        if (chosen) {
+          setUniversityId(chosen.id);
+          setCountryId(chosen.country_id);
+        }
+      })
       .catch(() => !cancelled && setUniversities([]));
     if (!studentId) {
       fetch("/api/v1/portal/overseas/student/applications")
@@ -57,13 +67,13 @@ export default function OverseasApplyPanel({ studentId }: { studentId?: string }
         if (cancelled) return;
         const offered = data.filter((c) => (c.university_count ?? 0) > 0);
         setCountries(offered);
-        setCountryId(offered.find((c) => c.slug === countrySlug)?.id ?? "");
+        setCountryId((current) => offered.find((c) => c.slug === countrySlug)?.id ?? current);
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [countrySlug, studentId]);
+  }, [countrySlug, universitySlug, studentId]);
 
   function chooseCountry(id: string) {
     setCountryId(id);

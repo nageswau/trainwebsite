@@ -3368,3 +3368,13 @@ any write. Same editors and viewers as DEC-SCOPE-209 (`agent_commission_access`)
 The bulk question route's rules apply unchanged: an assessment a student has started is locked (409). Students never see a Draft
 assessment (TRN-006-AC02), so imported questions stay hidden until the trainer publishes. Pinned by
 `apps/api/tests/test_nehn_025_question_import.py`.
+
+### 2.234 University logo upload *(added 2026-10-29 — `DEC-SCOPE-331`, nehn-035)*
+
+| Action | super_admin | overseas_admin | partnership_head | partnership_manager | anonymous | other roles |
+|---|---|---|---|---|---|---|
+| `PUT /partnership/universities/{id}/logo` | allowed | allowed | own team's / unassigned universities | own universities | 401 | 403 |
+| `GET /public/university-logos/{name}` | allowed | allowed | allowed | allowed | allowed (public by design) | allowed |
+
+The upload follows the university `PATCH` gate exactly (`can_edit` + scope, §2.46 upc-003; inactive 409). Logos are public artwork, so the
+read takes no session; it serves only server-made names under one fixed prefix. Pinned by `apps/api/tests/test_nehn_035_university_logos.py`.

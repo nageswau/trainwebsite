@@ -10483,3 +10483,20 @@ existing assessment (the create form already defaults to Draft) rather than crea
 template; Q4 no images in questions, CSV accepted; Q5 keywords / explanation are accepted but not stored until nehn-026 adds the columns;
 Q6 no server idempotency key on commit (the UI disables the button while importing). **Numbering:** no migration; API §12IB; RBAC §2.233.
 - **Feature ID authorized:** `nehn-025`. **Status:** built on `worktree-nehn-025`.
+
+### DEC-SCOPE-331 — University logo upload and richer university cards (`nehn-035`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-035` (action 16; §17 L486-492 "University Selection", L475
+"University icons/logos/images – Required"; §26 L798-800); design `docs/superpowers/specs/2026-10-29-nehn-035-university-logos-design.md`.
+Depends on DEC-SCOPE-279 (nehn-003 `university_logo` policy, `public/` prefix). **Behaviour:** `PUT /partnership/universities/{id}/logo`
+(multipart) lets anyone who may edit that university (`can_edit` + scope) upload a PNG / JPEG / WebP logo of at most 1 MB and 32-2048 px per
+side; the declared type must match the magic bytes; PNG/JPEG metadata is stripped. The file goes to `public/university-logos/<hex>.<ext>`
+through `StorageService` and `logo_url` becomes `/api/v1/public/university-logos/<name>`, served publicly (both storage modes, `nosniff`,
+immutable cache). The previous uploaded logo is deleted after the commit; bundled / `https://` logos are never touched. Audit
+`university.logo`. The public university list gains `programs_count` (active courses) and `country_name / _slug / _iso2`. Catalogue cards
+show the country flag + name beside the city, "N programs", View details and Apply (→ the student apply form with the university
+preselected; logged out → login → back), and the catalogue gets a Country filter. **Builder's defaults (`NEEDS_CONFIRMATION`):** L2 SVG
+refused, not sanitised; L7 Apply hidden for a university with 0 programs ("Programs coming soon"); L1 upload only after the university is
+saved; L10 a form hint asks for a logo the organisation may use — formal copyright guidance (CI-04) still awaited from the client.
+**Numbering:** no migration; API §12IC; RBAC §2.234.
+- **Feature ID authorized:** `nehn-035`. **Status:** built on `worktree-nehn-035`.
