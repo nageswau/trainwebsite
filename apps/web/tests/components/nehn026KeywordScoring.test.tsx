@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import QuestionImportPanel from "@/components/QuestionImportPanel";
 import TeacherWorkspaceActions from "@/components/TeacherWorkspaceActions";
 
-// nehn-026 (DEC-SCOPE-331): the trainer types keywords on a written-answer question, and the grading card shows the keyword
+// nehn-026 (DEC-SCOPE-333): the trainer types keywords on a written-answer question, and the grading card shows the keyword
 // suggestion -- matched / missing keywords, the score pre-filled and still editable.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 

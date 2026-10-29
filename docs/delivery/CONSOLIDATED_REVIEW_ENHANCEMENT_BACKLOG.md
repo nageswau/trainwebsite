@@ -1226,7 +1226,7 @@ Risk is the risk of regression or of a wrong outcome.
 - **Open questions:** threshold %, partial credit, synonym support, stemming, and stuffing mitigation, or keep it trainer-reviewed only?
 - **Complexity:** medium · **Risk:** medium
 - **Status (2026-10-29):**
-  - Built on `worktree-nehn-026` (`DEC-SCOPE-331`; migration `0218_assessment_keyword_scoring`; API §12IC; RBAC §2.234). AC1-AC4 met.
+  - Built on `worktree-nehn-026` (`DEC-SCOPE-333`; migration `0218_assessment_keyword_scoring`; API §12IE; RBAC §2.236). AC1-AC4 met.
   - Builder's defaults (`NEEDS_CONFIRMATION`, D-09 §4 still open): ≥80% matched → full marks, below → proportional; `|` synonyms, no
     weights; whole-word match with an `s`/`es` plural rule; the score is a suggestion and results stay trainer-reviewed (stuffing
     mitigation); text questions only.
@@ -1598,6 +1598,12 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** the dtu-001/PUB-023 university displays; the `logo_url` validator tests.
 - **Open questions:** allow SVG? Copyright restrictions on logos? Is Apply allowed on universities with no programs?
 - **Complexity:** medium · **Risk:** low
+- **Status (2026-10-29):**
+  - Built on `worktree-nehn-035` (`DEC-SCOPE-331`; no migration; API §12IC; RBAC §2.234). AC1-AC5 met: `PUT .../universities/{id}/logo`
+    (nehn-003 `university_logo` policy, 32-2048 px, public prefix, served by `GET /public/university-logos/{name}`); cards show flag +
+    country + city, "N programs", View details and Apply; logged-out Apply → login → apply form preselected; Country filter.
+  - Open questions took the builder's defaults: SVG refused (not sanitised); Apply hidden at 0 programs ("Programs coming soon"); upload
+    only after the university is saved; copyright guidance is a form hint until the client's CI-04 answer.
 
 #### `nehn-036` — Course/program icons (optional)
 - **Source:** §17 L476, L493-495; §26 L803; action 17 (**Optional**).

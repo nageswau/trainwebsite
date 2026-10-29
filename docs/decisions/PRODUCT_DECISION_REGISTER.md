@@ -10484,7 +10484,24 @@ template; Q4 no images in questions, CSV accepted; Q5 keywords / explanation are
 Q6 no server idempotency key on commit (the UI disables the button while importing). **Numbering:** no migration; API §12IB; RBAC §2.233.
 - **Feature ID authorized:** `nehn-025`. **Status:** built on `worktree-nehn-025`.
 
-### DEC-SCOPE-331 — Keyword-based auto-scoring suggestion for written answers (`nehn-026`)
+### DEC-SCOPE-331 — University logo upload and richer university cards (`nehn-035`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-035` (action 16; §17 L486-492 "University Selection", L475
+"University icons/logos/images – Required"; §26 L798-800); design `docs/superpowers/specs/2026-10-29-nehn-035-university-logos-design.md`.
+Depends on DEC-SCOPE-279 (nehn-003 `university_logo` policy, `public/` prefix). **Behaviour:** `PUT /partnership/universities/{id}/logo`
+(multipart) lets anyone who may edit that university (`can_edit` + scope) upload a PNG / JPEG / WebP logo of at most 1 MB and 32-2048 px per
+side; the declared type must match the magic bytes; PNG/JPEG metadata is stripped. The file goes to `public/university-logos/<hex>.<ext>`
+through `StorageService` and `logo_url` becomes `/api/v1/public/university-logos/<name>`, served publicly (both storage modes, `nosniff`,
+immutable cache). The previous uploaded logo is deleted after the commit; bundled / `https://` logos are never touched. Audit
+`university.logo`. The public university list gains `programs_count` (active courses) and `country_name / _slug / _iso2`. Catalogue cards
+show the country flag + name beside the city, "N programs", View details and Apply (→ the student apply form with the university
+preselected; logged out → login → back), and the catalogue gets a Country filter. **Builder's defaults (`NEEDS_CONFIRMATION`):** L2 SVG
+refused, not sanitised; L7 Apply hidden for a university with 0 programs ("Programs coming soon"); L1 upload only after the university is
+saved; L10 a form hint asks for a logo the organisation may use — formal copyright guidance (CI-04) still awaited from the client.
+**Numbering:** no migration; API §12IC; RBAC §2.234.
+- **Feature ID authorized:** `nehn-035`. **Status:** built on `worktree-nehn-035`.
+
+### DEC-SCOPE-333 — Keyword-based auto-scoring suggestion for written answers (`nehn-026`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-026` (§9 "Evaluation" L209-213, `MEETING_TRANSCRIPT_REQUEST`:
 "final scoring rules should be confirmed before implementation"); `CLIENT_QUESTIONS.md` D-09 §4 (an ~80% keyword threshold discussed
@@ -10501,5 +10518,5 @@ Student payloads keep their field whitelists — keywords never reach a student 
 weights, `|` synonyms; K2 case-insensitive, order-independent, whole-word phrase match with a trailing `s`/`es` plural rule, no other
 stemming or NLP; K3 ≥ 80% matched → full marks, below → proportional (2 dp), one global constant; K4 trainer-reviewed: results are never
 auto-published (also the keyword-stuffing mitigation); K5 text questions only, file answers never scored; K6 matched keywords are computed on
-read (attempted questions are locked). **Numbering:** migration 0218; API §12IC; RBAC §2.234.
+read (attempted questions are locked). **Numbering:** migration 0218; API §12IE; RBAC §2.236.
 - **Feature ID authorized:** `nehn-026`. **Status:** built on `worktree-nehn-026`.

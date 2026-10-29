@@ -4,7 +4,7 @@
 - **Evidence:** §9 "Evaluation" L209-213 (`MEETING_TRANSCRIPT_REQUEST`: "final scoring rules should be confirmed before implementation");
   `CLIENT_QUESTIONS.md` D-09 §4 (~80% order-independent keyword threshold discussed informally; **open**).
 - **Dependency:** nehn-025 (merged, PR #395) — its template already carries the `keywords` column.
-- **Numbering:** `DEC-SCOPE-331`; migration `0218_assessment_keyword_scoring`; API §12IC; RBAC §2.234.
+- **Numbering:** `DEC-SCOPE-333`; migration `0218_assessment_keyword_scoring`; API §12IE; RBAC §2.236.
 
 ## Intent
 

@@ -6,7 +6,7 @@ structured log. Lists are {items, total, limit, offset}, ordered by name then id
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,7 +37,7 @@ from app.schemas import (
     UniversityUpdate,
 )
 from app.services import partnership_universities as svc
-from app.services import university_search
+from app.services import university_logos, university_search
 from app.services.agent_commission_access import AGENT_COMMISSION_REFUSAL, agent_commission_out, can_edit_agent_commission
 
 router = APIRouter(prefix="/partnership/universities", tags=["partnership-universities"])
@@ -202,6 +202,7 @@ async def update_university(university_id: UUID, payload: UniversityUpdate, user
     overridden = 0
     if {"name", "country_id"} & set(changed):  # upc-004 UD3
         overridden = await svc.check_duplicates(db, user, changes.get("name", uni.name), changes.get("country_id", uni.country_id), payload.duplicate_reason, uni.id)
+    old_logo = uni.logo_url
     for key in changed:
         setattr(uni, key, changes[key])
     if payload.rankings is not None:
@@ -218,10 +219,31 @@ async def update_university(university_id: UUID, payload: UniversityUpdate, user
         svc.audit(db, user, "duplicate_override", uni.id, {"match_count": overridden, "reason": payload.duplicate_reason})
     commission_changed = "agent_commission" in payload.model_fields_set and _apply_agent_commission(db, user, uni, payload.agent_commission)
     await db.commit()
+    if "logo_url" in changed:  # nehn-035 (DEC-SCOPE-331 L4): an uploaded logo replaced or cleared in the form
+        await university_logos.drop_unused(db, old_logo)
     if changed:
         svc.log("university_updated", user, uni.id, fields=changed)
     if commission_changed:
         _log_agent_commission(user, uni, payload.agent_commission)
+    return {"university": await svc.detail_out(db, user, uni, team)}
+
+
+@router.put("/{university_id}/logo", response_model=UniversityEnvelope, response_model_exclude_unset=True)
+async def upload_logo(university_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """nehn-035 (DEC-SCOPE-331 L1-L4): the editing rule (`can_edit` + scope); the stored file replaces `logo_url`, and the previous upload
+    is dropped only once the new URL is committed (the new file is dropped if the commit fails)."""
+    uni, team = await _locked(db, user, university_id, "can_edit", "logo")
+    data, content_type = await university_logos.read_logo(file)
+    old_url, new_url = uni.logo_url, university_logos.store(data, content_type)
+    uni.logo_url = new_url
+    svc.audit(db, user, "logo", uni.id, {"content_type": content_type, "size": len(data), "replaced": old_url is not None})
+    try:
+        await db.commit()
+    except Exception:
+        university_logos.delete(new_url)
+        raise
+    await university_logos.drop_unused(db, old_url)
+    svc.log("university_logo_uploaded", user, uni.id, content_type=content_type, size=len(data))
     return {"university": await svc.detail_out(db, user, uni, team)}
 
 

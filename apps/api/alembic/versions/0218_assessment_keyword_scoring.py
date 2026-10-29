@@ -3,7 +3,7 @@
 Revision ID: 0218_assessment_keyword_scoring
 Revises: 0217_course_agent_commission
 
-docs/superpowers/specs/2026-10-29-nehn-026-keyword-auto-scoring-design.md (DEC-SCOPE-331). Additive: keywords default to `[]`, the answer
+docs/superpowers/specs/2026-10-29-nehn-026-keyword-auto-scoring-design.md (DEC-SCOPE-333). Additive: keywords default to `[]`, the answer
 columns are nullable (NULL = not scored yet), no backfill. 0001 builds a fresh database from the current models, so every step is guarded.
 downgrade() refuses while any question has keywords, so a rollback never silently drops an answer key.
 """

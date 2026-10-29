@@ -81,6 +81,22 @@ describe("OverseasApplyPanel country step", () => {
     expect(universityOptions()).toHaveLength(4);
   });
 
+  // nehn-035 (DEC-SCOPE-331 L9): a university card's Apply sends ?university=<slug>
+  it("preselects the university and its country from ?university=<slug>", async () => {
+    nav.search = "university=toronto";
+    render(<OverseasApplyPanel />);
+    await waitFor(() => expect((screen.getByLabelText("University") as HTMLSelectElement).value).toBe("u3"));
+    await waitFor(() => expect((screen.getByLabelText("Country") as HTMLSelectElement).value).toBe("ca"));
+    expect((screen.getByRole("button", { name: "Submit interest" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("ignores an unknown ?university= slug", async () => {
+    nav.search = "university=atlantis";
+    render(<OverseasApplyPanel />);
+    expect(((await screen.findByLabelText("University")) as HTMLSelectElement).value).toBe("");
+    expect((screen.getByLabelText("Country") as HTMLSelectElement).value).toBe("");
+  });
+
   it("still lets the student apply when the country list fails to load", async () => {
     vi.stubGlobal("fetch", vi.fn((url: string) => (url === "/api/v1/public/countries" ? Promise.resolve(new Response("", { status: 500 })) : respond(url))));
     render(<OverseasApplyPanel />);

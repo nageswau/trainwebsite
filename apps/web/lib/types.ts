@@ -2,7 +2,8 @@ import type { PaymentLock } from "./studentAccess";
 
 export type Program = { id:string; slug:string; category:string; title:string; summary:string; duration:string; eligibility:string; fees:number; certification:string; curriculum:string[]; placement_assistance:string; trainer_name:string };
 export type Country = { id:string; slug:string; name:string; iso2?:string|null; overview:string; tuition:string; living_expenses:string; visa_process:string[]; work_opportunities:string; post_study_work:string; pr_opportunities:string; faq:{question:string;answer:string}[]; university_count?:number };
-export type University = { id:string; country_id:string; slug:string; name:string; city:string; overview:string; eligibility:string; requirements:string[]; deadlines:string[]; scholarships:string[]; logo_url?:string|null; campuses?:string[]|null; fee_structure?:string|null };
+export type University = { id:string; country_id:string; slug:string; name:string; city:string; overview:string; eligibility:string; requirements:string[]; deadlines:string[]; scholarships:string[]; logo_url?:string|null; campuses?:string[]|null; fee_structure?:string|null;
+  programs_count?:number; country_name?:string|null; country_slug?:string|null; country_iso2?:string|null }; // nehn-035 (DEC-SCOPE-331 L6): the public list only
 // AGN-023 (DEC-SCOPE-090 H11): the overseas Students/Applications list filters; `counselors` is the Overseas Admin's only.
 export type FilterOption = { value: string; label: string };
 // ccrm-012 (DEC-SCOPE-246 QS6): country / university / intake / stage / sub-status / created-date filters; options from the caller's own

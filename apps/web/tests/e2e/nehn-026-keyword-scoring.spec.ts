@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// nehn-026 -- keyword auto-scoring of written answers (DEC-SCOPE-331). Needs the stack with `python -m app.seed` applied; the demo
+// nehn-026 -- keyword auto-scoring of written answers (DEC-SCOPE-333). Needs the stack with `python -m app.seed` applied; the demo
 // student must be enrolled in the trainer's first batch. AC1 4 of 5 keywords -> full suggested marks; AC2 the trainer override;
 // AC3 nothing the student receives carries the keywords; AC4 a question without keywords stays manual.
 const BASE = "/api/v1/workflows/it/trainer/assessments";

@@ -4,6 +4,7 @@ docs/superpowers/specs/2026-09-23-enh-025-student-master-fields-design.md §5). 
 
 JPEG = "image/jpeg"
 PNG = "image/png"
+WEBP = "image/webp"
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 # Dropped: APP1 (EXIF/XMP, incl. GPS), APP3-APP13 (incl. APP13 Photoshop/IPTC), APP15, COM. Kept: APP0 (JFIF),
 # APP2 (ICC colour profile) and APP14 (Adobe colour transform) -- they carry no personal data and dropping
@@ -21,6 +22,37 @@ def detect_image_type(data: bytes) -> str | None:
         return JPEG
     if data.startswith(_PNG_SIGNATURE):
         return PNG
+    return None
+
+
+_JPEG_SOF = {*range(0xC0, 0xC4), *range(0xC5, 0xC8), *range(0xC9, 0xCC), *range(0xCD, 0xD0)}
+
+
+def image_size(data: bytes, content_type: str) -> tuple[int, int] | None:
+    """nehn-035 (DEC-SCOPE-331 L2): (width, height) read from a PNG, JPEG or WebP header without decoding pixels; None when unreadable."""
+    if content_type == PNG:
+        if len(data) < 24 or data[12:16] != b"IHDR":
+            return None
+        return int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
+    if content_type == JPEG:
+        i = 2
+        while i + 9 <= len(data) and data[i] == 0xFF:
+            marker = data[i + 1]
+            if marker in _JPEG_SOF:
+                return int.from_bytes(data[i + 7 : i + 9], "big"), int.from_bytes(data[i + 5 : i + 7], "big")
+            if marker in (0xD9, 0xDA):
+                return None
+            i += 2 + int.from_bytes(data[i + 2 : i + 4], "big")
+        return None
+    if content_type == WEBP and len(data) >= 30:
+        kind = data[12:16]
+        if kind == b"VP8X":
+            return 1 + int.from_bytes(data[24:27], "little"), 1 + int.from_bytes(data[27:30], "little")
+        if kind == b"VP8 ":
+            return int.from_bytes(data[26:28], "little") & 0x3FFF, int.from_bytes(data[28:30], "little") & 0x3FFF
+        if kind == b"VP8L":
+            bits = int.from_bytes(data[21:25], "little")
+            return 1 + (bits & 0x3FFF), 1 + ((bits >> 14) & 0x3FFF)
     return None
 
 

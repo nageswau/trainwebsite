@@ -33,7 +33,7 @@ nehn-031,Certificates,"Coordinator certificate workflow: eligibility, recommend,
 nehn-032,Certificates,Certificate signatures (Founder + Coordinator) and designation,Enhancement,Done — confirm defaults,Dev + Client,Wave 3,"Upload the signature PNGs and confirm the builder defaults (DEC-SCOPE-302 S1-S9); final certificate design (CI-03)"
 nehn-033,Overseas,Overseas student Overview / Progress page,Enhancement,Waiting — decision,Dev + Client,Wave 2 · next review,Mapping of the client's 10 stages onto the portal's stages (OD-10)
 nehn-034,Overseas,Country cards with flags and university count,Enhancement,Done — confirm defaults,Dev + Client,Wave 2 · next review,"Custom country images, if wanted (CI-04)"
-nehn-035,Overseas,University logo upload and richer university cards,Enhancement,Ready to start,Dev + Client,Wave 2 · next review,Logo usage and copyright guidance (CI-04)
+nehn-035,Overseas,University logo upload and richer university cards,Enhancement,Done — confirm defaults,Dev + Client,Wave 2 · next review,Logo usage and copyright guidance (CI-04)
 nehn-036,Overseas,Course and program icons (optional),Enhancement,Done — confirm defaults,Dev,Wave 4,Confirm icons are wanted this cycle (§2)
 nehn-037,Overseas,"Counselor tools — document requests, checklist, scholarship and notes delivered by counselor CRM items ccrm-010, 013, 018, 019, 020; admission interviews built (DEC-SCOPE-296)",Enhancement,Done — confirm defaults,Dev + Client,Wave 4,Are admission interviews needed?
 nehn-038,Agent portal,Agent performance dashboard: remaining KPIs,Enhancement,Done — confirm defaults,Dev + Client,Wave 4,"Confirm the KPI list and definitions (CI-06; DEC-SCOPE-306 D1-D6)"

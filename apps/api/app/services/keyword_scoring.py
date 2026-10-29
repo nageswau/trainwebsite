@@ -1,4 +1,4 @@
-"""nehn-026: the keyword score of a written answer (DEC-SCOPE-331 K1-K3; the rule is a builder's default, NEEDS_CONFIRMATION -- D-09 §4).
+"""nehn-026: the keyword score of a written answer (DEC-SCOPE-333 K1-K3; the rule is a builder's default, NEEDS_CONFIRMATION -- D-09 §4).
 
 A keyword is one or more words; `|` separates synonyms (`loop|iteration`), any of which counts. Matching is case-insensitive,
 order-independent and whole-word: both sides are casefolded and every non-letter/digit is a word break, a keyword's words must appear
