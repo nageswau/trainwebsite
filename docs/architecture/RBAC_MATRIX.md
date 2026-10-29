@@ -3378,3 +3378,14 @@ assessment (TRN-006-AC02), so imported questions stay hidden until the trainer p
 
 The upload follows the university `PATCH` gate exactly (`can_edit` + scope, §2.46 upc-003; inactive 409). Logos are public artwork, so the
 read takes no session; it serves only server-made names under one fixed prefix. Pinned by `apps/api/tests/test_nehn_035_university_logos.py`.
+
+### 2.236 Keyword-based auto-scoring for written answers *(added 2026-10-29 — `DEC-SCOPE-333`, nehn-026)*
+
+| Action | trainer (IT) | it_admin (IT) | super_admin | it_student | other roles / divisions | anonymous |
+|---|---|---|---|---|---|---|
+| Set / read a question's keywords | own batch's assessments only (403 otherwise) | any assessment | any assessment | never (no route returns them) | 403 | 401 |
+| See the keyword breakdown of an attempt | own batch only (403 otherwise) | any | any | never | 403 | 401 |
+| Override a keyword score (grade PATCH) | own batch only | any | any | 403 | 403 | 401 |
+
+Keywords are the answer key: every student payload keeps its explicit field whitelist. Pinned by
+`apps/api/tests/test_nehn_026_keyword_scoring.py`.

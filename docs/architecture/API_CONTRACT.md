@@ -4789,3 +4789,22 @@ nullable, the university's CHECKs). No new route.
   unchanged.
 - `GET /public/universities` — each row gains `programs_count` (active overseas courses), `country_name`, `country_slug`, `country_iso2`.
   Other routes returning `UniversityOut` carry the defaults (`0` / `null`).
+
+## 12IE. Keyword-based auto-scoring for written answers (nehn-026) — addendum, 2026-10-29
+
+`DEC-SCOPE-333`. Migration `0218_assessment_keyword_scoring` (`assessment_questions.keywords` JSON NOT NULL default `[]`;
+`assessment_answers.auto_score` NUMERIC(10,2) NULL, `score_source` VARCHAR(10) NULL). All changes are additive.
+
+- `AssessmentQuestionIn` (single `POST .../questions`, bulk `.../questions/bulk`, nehn-025 import) gains `keywords: string[]` (default
+  `[]`; trimmed, blanks dropped; ≤30 entries, each ≤100 chars; `|` separates synonyms). **422** when keywords are set on a non-`text`
+  question ("Keywords can only be set on a written-answer (text) question").
+- `GET /workflows/it/trainer/assessments/{id}/questions` — each question adds `keywords`.
+- `POST .../questions/import` — preview questions add `keywords`; a filled `keywords` cell is saved (comma separated). Row errors: keywords on
+  a non-text row, more than 30 keywords, a keyword over 100 characters. The unsaved-columns warning now names only `explanation`.
+- `POST /workflows/it/assessment-attempts/{id}/submit` — response unchanged. A text answer to a keyword question is scored ≥80% matched →
+  full marks, else proportional; the attempt stays `submitted` when any text/file question exists (unchanged).
+- `GET /workflows/it/trainer/assessment-attempts/{id}` — each answer adds `auto_score` (number | null), `score_source`
+  (`mcq | keyword | trainer | null`), `keywords` (string[]), `matched_keywords` (string[]), `match_percent` (number | null when no keywords).
+- `PATCH /workflows/it/trainer/assessment-attempts/{id}` — request unchanged; a per-answer score different from the stored one sets
+  `score_source = "trainer"`; the `assessment.attempt_grade` audit metadata adds `overrides` (keyword answers whose suggestion was replaced).
+- Student routes (`POST .../attempts`, submit, `GET .../student/learning`) never include `keywords`, `auto_score` or `matched_keywords`.

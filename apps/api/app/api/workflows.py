@@ -178,6 +178,7 @@ from app.services.agent_students import application_scope, student_scope
 from app.services.agent_visa import VISA_CASE_STAGES, VISA_DECIDED, VISA_DECISION_DISCLAIMER, VISA_ENROLLED, VISA_OFFER_NEEDED, ChecklistGateRefused, sync_from_stage, update_case
 from app.services.bdm_appointments import db_now
 from app.services.certificates import active_signatories, generate_certificate_pdf, require_signatories, signatory_snapshot
+from app.services.keyword_scoring import score_answer
 from app.services.storage import storage
 from app.services.tabular import MAX_BYTES as TABULAR_MAX_BYTES
 from app.services.tabular import XLSX_TYPE, TabularError, read_tabular, to_xlsx
@@ -1290,7 +1291,7 @@ async def import_assessment_questions(
     questions, errors, warnings = question_import.parse_rows(rows)
     body = {
         "total_rows": len(rows),
-        "questions": [{"row": number, **question.model_dump(include={"question_type", "prompt", "options", "correct_answers", "max_score"})} for number, question in questions],
+        "questions": [{"row": number, **question.model_dump(include={"question_type", "prompt", "options", "correct_answers", "max_score", "keywords"})} for number, question in questions],
         "errors": errors,
         "warnings": warnings,
         "created": 0,
@@ -1325,6 +1326,7 @@ async def trainer_assessment_questions(assessment_id: UUID, user: User = Depends
             "max_score": q.max_score,
             "position": q.position,
             "required": q.required,
+            "keywords": q.keywords or [],
         }
         for q in rows
     ]
@@ -1380,18 +1382,21 @@ async def submit_assessment(attempt_id: UUID, payload: AssessmentSubmitIn, user:
         if not question:
             raise HTTPException(422, f"Question {question_id} is not part of this assessment")
         raw = answer_in.value
-        answer_score = None
+        answer_score = auto_score = source = None
         if question.question_type == "mcq_single":
-            answer_score = float(question.max_score if str(raw) in {str(x) for x in question.correct_answers} else 0)
-            score += answer_score
+            answer_score, source = float(question.max_score if str(raw) in {str(x) for x in question.correct_answers} else 0), "mcq"
         elif question.question_type == "mcq_multiple":
             selected = {str(x) for x in (raw if isinstance(raw, list) else [raw])}
             correct = {str(x) for x in question.correct_answers}
-            answer_score = float(question.max_score if selected == correct else 0)
-            score += answer_score
+            answer_score, source = float(question.max_score if selected == correct else 0), "mcq"
         else:
+            # nehn-026 K4: a keyword score is only a suggestion -- the attempt still waits for the trainer, who can override it.
             manual = True
-        db.add(AssessmentAnswer(attempt_id=attempt.id, question_id=question.id, answer={"value": raw}, score=answer_score))
+            if question.question_type == "text" and question.keywords:
+                answer_score = auto_score = score_answer(raw, question.keywords, question.max_score).score
+                source = "keyword"
+        score += answer_score or 0
+        db.add(AssessmentAnswer(attempt_id=attempt.id, question_id=question.id, answer={"value": raw}, score=answer_score, auto_score=auto_score, score_source=source))
     possible = float(sum(q.max_score for q in questions) or 1)
     percentage = round(score * 100 / possible, 2)
     attempt.submitted_at = datetime.now(UTC)
@@ -1462,6 +1467,16 @@ async def assessment_attempt_detail(attempt_id: UUID, user: User = Depends(get_c
     qmap = {q.id: q for q in questions}
     auto_types = {"mcq_single", "mcq_multiple"}
     answers_sorted = sorted(answers, key=lambda a: qmap[a.question_id].position if a.question_id in qmap else 0)
+
+    def keyword_breakdown(answer: AssessmentAnswer) -> dict:
+        """nehn-026 K6: which keywords the answer hit, worked out again here (an attempted question can no longer change)."""
+        question = qmap.get(answer.question_id)
+        keywords = (question.keywords or []) if question and question.question_type == "text" else []
+        if not keywords:
+            return {"keywords": [], "matched_keywords": [], "match_percent": None}
+        result = score_answer(answer.answer.get("value") if isinstance(answer.answer, dict) else None, keywords, question.max_score)
+        return {"keywords": keywords, "matched_keywords": result.matched, "match_percent": result.percent}
+
     return {
         "id": attempt.id,
         "assessment": assessment.title,
@@ -1481,6 +1496,9 @@ async def assessment_attempt_detail(attempt_id: UUID, user: User = Depends(get_c
                 "value": answer.answer.get("value") if isinstance(answer.answer, dict) else None,
                 "auto_graded": (qmap[answer.question_id].question_type if answer.question_id in qmap else "") in auto_types,
                 "score": float(answer.score) if answer.score is not None else None,
+                "auto_score": float(answer.auto_score) if answer.auto_score is not None else None,
+                "score_source": answer.score_source,
+                **keyword_breakdown(answer),
             }
             for answer in answers_sorted
         ],
@@ -1508,6 +1526,7 @@ async def grade_assessment_attempt(attempt_id: UUID, payload: AssessmentGradeIn,
     questions = (await db.scalars(select(AssessmentQuestion).where(AssessmentQuestion.id.in_(qids)))).all() if qids else []
     qmap = {q.id: q for q in questions}
     possible = float(sum(q.max_score for q in questions) or assessment.max_score or 1)
+    overrides: list[dict] = []
     if payload.score is not None:
         if payload.score > possible:
             raise HTTPException(422, f"Score must be between 0 and {possible:g}")
@@ -1520,6 +1539,11 @@ async def grade_assessment_attempt(attempt_id: UUID, payload: AssessmentGradeIn,
                 maximum = qmap[answer.question_id].max_score
                 if supplied < 0 or supplied > maximum:
                     raise HTTPException(422, f"Answer score must be between 0 and {maximum}")
+                if answer.score is None or float(answer.score) != supplied:
+                    # nehn-026 AC2: the trainer's mark replaces a keyword suggestion; the suggestion itself is kept and audited.
+                    if answer.score_source == "keyword":
+                        overrides.append({"answer_id": str(answer.id), "auto_score": float(answer.auto_score), "score": float(supplied)})
+                    answer.score_source = "trainer"
                 answer.score = supplied
             total += float(answer.score or 0)
     percentage = round(total * 100 / possible, 2)
@@ -1530,7 +1554,7 @@ async def grade_assessment_attempt(attempt_id: UUID, payload: AssessmentGradeIn,
     attempt.status = "graded"
     attempt.graded_at = datetime.now(UTC)
     student = await db.get(User, attempt.student_id)
-    await _audit(db, user, "assessment.attempt_grade", "assessment_attempt", attempt.id, {"score": total})
+    await _audit(db, user, "assessment.attempt_grade", "assessment_attempt", attempt.id, {"score": total, "overrides": overrides})
     if student:
         await _notify_user(db, student, "Assessment result published", f"Your result for {assessment.title} is {percentage}% ({attempt.grade}).", "/it/student/examinations")
     await db.commit()

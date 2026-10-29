@@ -133,6 +133,7 @@ from app.partnership_onboarding import NOTE_MAX as ONBOARDING_NOTE_MAX
 from app.partnership_onboarding import STATUSES as ONBOARDING_STATUSES
 from app.partnership_stages import STAGE_KEYS as PARTNERSHIP_STAGE_KEYS
 from app.services.agent_visa import VISA_CASE_STAGES
+from app.services.keyword_scoring import MAX_KEYWORD_LENGTH, MAX_KEYWORDS
 from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
 from app.tel_sources import TEL_SOURCES
 
@@ -531,6 +532,24 @@ class AssessmentQuestionIn(BaseModel):
     max_score: int = Field(default=1, ge=1, le=10000)
     position: int = Field(default=1, ge=1)
     required: bool = True
+    # nehn-026: the answer key of a written-answer question, never sent to a student. `|` separates synonyms (keyword_scoring).
+    keywords: list[str] = Field(default_factory=list)
+
+    @field_validator("keywords")
+    @classmethod
+    def _trim_keywords(cls, value: list[str]) -> list[str]:
+        keywords = [keyword.strip() for keyword in value if keyword.strip()]
+        if len(keywords) > MAX_KEYWORDS:
+            raise PydanticCustomError("keywords", f"At most {MAX_KEYWORDS} keywords")
+        if any(len(keyword) > MAX_KEYWORD_LENGTH for keyword in keywords):
+            raise PydanticCustomError("keywords", f"Each keyword can be at most {MAX_KEYWORD_LENGTH} characters")
+        return keywords
+
+    @model_validator(mode="after")
+    def _keywords_need_a_written_answer(self) -> "AssessmentQuestionIn":
+        if self.keywords and self.question_type != "text":
+            raise PydanticCustomError("keywords", "Keywords can only be set on a written-answer (text) question")
+        return self
 
 
 class AssessmentAnswerIn(BaseModel):
