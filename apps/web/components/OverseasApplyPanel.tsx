@@ -28,7 +28,7 @@ export default function OverseasApplyPanel({ studentId }: { studentId?: string }
   const router = useRouter();
   const params = useSearchParams();
   const countrySlug = params.get("country");
-  const universitySlug = params.get("university"); // nehn-035 (DEC-SCOPE-328 L9): a university card's Apply preselects it and its country
+  const universitySlug = params.get("university"); // nehn-035 (DEC-SCOPE-331 L9): a university card's Apply preselects it and its country
   const [universities, setUniversities] = useState<University[] | null>(null);
   const [countries, setCountries] = useState<Country[]>([]);
   const [countryId, setCountryId] = useState("");

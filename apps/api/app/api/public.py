@@ -180,7 +180,7 @@ async def universities(country: str | None = None, q: str | None = None, db: Asy
     if q:
         stmt = stmt.where(or_(University.name.ilike(f"%{q}%"), University.city.ilike(f"%{q}%")))
     rows = (await db.execute(stmt.order_by(University.name))).all()
-    # nehn-035 (DEC-SCOPE-328 L6): each card's active programs, in one grouped query, and its country.
+    # nehn-035 (DEC-SCOPE-331 L6): each card's active programs, in one grouped query, and its country.
     counted = select(OverseasCourse.university_id, func.count()).where(OverseasCourse.university_id.in_([u.id for u, _ in rows]), OverseasCourse.active.is_(True))
     counts = {uid: n for uid, n in (await db.execute(counted.group_by(OverseasCourse.university_id))).all()}
     return [UniversityOut.model_validate(u).model_copy(update={"programs_count": counts.get(u.id, 0), "country_name": c.name, "country_slug": c.slug, "country_iso2": c.iso2}) for u, c in rows]
@@ -188,7 +188,7 @@ async def universities(country: str | None = None, q: str | None = None, db: Asy
 
 @router.get("/university-logos/{name}")
 async def university_logo(name: str):
-    """nehn-035 (DEC-SCOPE-328 L3): an uploaded logo, public by design, in either storage mode. Only server-made names are read, under one
+    """nehn-035 (DEC-SCOPE-331 L3): an uploaded logo, public by design, in either storage mode. Only server-made names are read, under one
     fixed prefix; the type comes from the server-chosen extension. Names are never reused, so the file can be cached for good."""
     match = university_logos.LOGO_NAME.fullmatch(name)
     if match is None:

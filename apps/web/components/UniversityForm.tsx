@@ -40,7 +40,7 @@ type RankingRow = { key: number; system: string; other_name: string; year: strin
 type Errors = Record<string, string>;
 const MAX_RANKINGS = 10;
 const SEARCH_DELAY_MS = 400;
-// nehn-035 (DEC-SCOPE-328 L1-L2): editing only (the route needs a saved university). The nehn-003 `university_logo` rule is checked here
+// nehn-035 (DEC-SCOPE-331 L1-L2): editing only (the route needs a saved university). The nehn-003 `university_logo` rule is checked here
 // first so an obvious mismatch never uploads; the server re-checks the bytes and the size in pixels.
 const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const LOGO_MAX_BYTES = 1024 * 1024;

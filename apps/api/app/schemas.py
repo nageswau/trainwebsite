@@ -2637,7 +2637,7 @@ class UniversityOut(BaseModel):
     logo_url: str | None = None
     campuses: list | None = None
     fee_structure: str | None = None
-    # nehn-035 (DEC-SCOPE-328 L6): the public list's card fields; that route sets them (not columns), every other route keeps the defaults.
+    # nehn-035 (DEC-SCOPE-331 L6): the public list's card fields; that route sets them (not columns), every other route keeps the defaults.
     programs_count: int = 0
     country_name: str | None = None
     country_slug: str | None = None
@@ -8116,7 +8116,7 @@ UniversityShort = _university_str(120)
 UniversityWebsite = Annotated[_university_str(300), BeforeValidator(_bdm_website_prefix)]
 UniversityOffice = _university_str(1000, multiline=True)
 # dtu-001: a stored logo path (the upload route) or an https URL; nothing else, so no script/data URL reaches an <img src>.
-# nehn-035 (DEC-SCOPE-328 L5): or a logo uploaded through PUT .../logo, so the form can re-send it.
+# nehn-035 (DEC-SCOPE-331 L5): or a logo uploaded through PUT .../logo, so the form can re-send it.
 LogoUrl = Annotated[
     str | None,
     Field(max_length=500, pattern=r"^(/universities/logos/[a-z0-9-]+\.(png|svg|jpg|jpeg|webp)|/api/v1/public/university-logos/[0-9a-f]{32}\.(png|jpg|webp)|https://\S+)$"),

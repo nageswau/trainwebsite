@@ -1,4 +1,4 @@
-"""nehn-035 (DEC-SCOPE-328): university logo upload (L1-L5) and the public catalogue's richer card payload (L6)."""
+"""nehn-035 (DEC-SCOPE-331): university logo upload (L1-L5) and the public catalogue's richer card payload (L6)."""
 
 import struct
 import uuid

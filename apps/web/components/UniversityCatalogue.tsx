@@ -6,7 +6,7 @@ import CountryFlag from "./CountryFlag";
 import UniversityLogo from "./UniversityLogo";
 import type {University} from "@/lib/types";
 
-// nehn-035 (DEC-SCOPE-328 L7, L8): each card adds the country (flag + name) beside the city, "N programs", View details and Apply, and
+// nehn-035 (DEC-SCOPE-331 L7, L8): each card adds the country (flag + name) beside the city, "N programs", View details and Apply, and
 // the controls a Country filter. Apply opens the student's apply form with the university preselected (logged out: login first, then
 // back); it is hidden while the university lists no programs, and not prefetched (signed out, that would only fetch a login redirect).
 function programs(count: number) {

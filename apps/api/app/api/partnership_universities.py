@@ -219,7 +219,7 @@ async def update_university(university_id: UUID, payload: UniversityUpdate, user
         svc.audit(db, user, "duplicate_override", uni.id, {"match_count": overridden, "reason": payload.duplicate_reason})
     commission_changed = "agent_commission" in payload.model_fields_set and _apply_agent_commission(db, user, uni, payload.agent_commission)
     await db.commit()
-    if "logo_url" in changed:  # nehn-035 (DEC-SCOPE-328 L4): an uploaded logo replaced or cleared in the form
+    if "logo_url" in changed:  # nehn-035 (DEC-SCOPE-331 L4): an uploaded logo replaced or cleared in the form
         await university_logos.drop_unused(db, old_logo)
     if changed:
         svc.log("university_updated", user, uni.id, fields=changed)
@@ -230,7 +230,7 @@ async def update_university(university_id: UUID, payload: UniversityUpdate, user
 
 @router.put("/{university_id}/logo", response_model=UniversityEnvelope, response_model_exclude_unset=True)
 async def upload_logo(university_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """nehn-035 (DEC-SCOPE-328 L1-L4): the editing rule (`can_edit` + scope); the stored file replaces `logo_url`, and the previous upload
+    """nehn-035 (DEC-SCOPE-331 L1-L4): the editing rule (`can_edit` + scope); the stored file replaces `logo_url`, and the previous upload
     is dropped only once the new URL is committed (the new file is dropped if the commit fails)."""
     uni, team = await _locked(db, user, university_id, "can_edit", "logo")
     data, content_type = await university_logos.read_logo(file)

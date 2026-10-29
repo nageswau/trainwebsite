@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import UniversityForm from "@/components/UniversityForm";
 import type { University } from "@/lib/universities";
 
-// nehn-035 (DEC-SCOPE-328 L1, L5): an editor uploads the logo from the edit form; the stored URL fills the Logo URL field (so Save keeps it).
+// nehn-035 (DEC-SCOPE-331 L1, L5): an editor uploads the logo from the edit form; the stored URL fills the Logo URL field (so Save keeps it).
 const push = vi.fn();
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push, refresh }) }));

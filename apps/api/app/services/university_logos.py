@@ -1,4 +1,4 @@
-"""nehn-035 (DEC-SCOPE-328 L2-L4): uploaded university logos -- checked against the nehn-003 `university_logo` policy (PNG, JPEG, WebP,
+"""nehn-035 (DEC-SCOPE-331 L2-L4): uploaded university logos -- checked against the nehn-003 `university_logo` policy (PNG, JPEG, WebP,
 1 MB; never SVG), sized from the header, stripped of metadata, stored under the public prefix, and dropped when replaced."""
 
 import re

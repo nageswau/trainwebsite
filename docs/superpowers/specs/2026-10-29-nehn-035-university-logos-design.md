@@ -1,7 +1,7 @@
 # nehn-035 — University logo upload and richer university cards (design)
 
 - **Feature:** `nehn-035` (backlog `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` §nehn-035; action 16; §17 L486-492, §26 L798-800).
-- **Decision:** `DEC-SCOPE-328`. **API:** §12HZ. **RBAC:** §2.231. **Migration:** none (reuses `universities.logo_url`).
+- **Decision:** `DEC-SCOPE-331`. **API:** §12IC. **RBAC:** §2.234. **Migration:** none (reuses `universities.logo_url`).
 - **Dependency:** `nehn-003` (merged, PR #345) — its `university_logo` upload policy and its `public/` storage prefix.
 
 ## Existing behaviour (discovery)

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import UniversityCatalogue from "@/components/UniversityCatalogue";
 import type { University } from "@/lib/types";
 
-// nehn-035 (DEC-SCOPE-328 L7, L8): richer cards (country, city, programs, View details, Apply) and a country filter.
+// nehn-035 (DEC-SCOPE-331 L7, L8): richer cards (country, city, programs, View details, Apply) and a country filter.
 const base = { requirements: [], deadlines: [], scholarships: [], overview: "An overview.", eligibility: "65%" };
 const UNIVERSITIES: University[] = [
   { ...base, id: "u1", country_id: "gb", slug: "oxford", name: "Oxford University", city: "Oxford", logo_url: "/api/v1/public/university-logos/abc.png", programs_count: 3, country_name: "United Kingdom", country_slug: "united-kingdom", country_iso2: "GB" },

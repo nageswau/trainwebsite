@@ -81,7 +81,7 @@ describe("OverseasApplyPanel country step", () => {
     expect(universityOptions()).toHaveLength(4);
   });
 
-  // nehn-035 (DEC-SCOPE-328 L9): a university card's Apply sends ?university=<slug>
+  // nehn-035 (DEC-SCOPE-331 L9): a university card's Apply sends ?university=<slug>
   it("preselects the university and its country from ?university=<slug>", async () => {
     nav.search = "university=toronto";
     render(<OverseasApplyPanel />);

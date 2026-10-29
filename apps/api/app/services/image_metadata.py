@@ -29,7 +29,7 @@ _JPEG_SOF = {*range(0xC0, 0xC4), *range(0xC5, 0xC8), *range(0xC9, 0xCC), *range(
 
 
 def image_size(data: bytes, content_type: str) -> tuple[int, int] | None:
-    """nehn-035 (DEC-SCOPE-328 L2): (width, height) read from a PNG, JPEG or WebP header without decoding pixels; None when unreadable."""
+    """nehn-035 (DEC-SCOPE-331 L2): (width, height) read from a PNG, JPEG or WebP header without decoding pixels; None when unreadable."""
     if content_type == PNG:
         if len(data) < 24 or data[12:16] != b"IHDR":
             return None

@@ -1,6 +1,6 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
 
-// nehn-035 (DEC-SCOPE-328) -- university logo upload and richer catalogue cards. Requires the seeded stack (University of Manchester is
+// nehn-035 (DEC-SCOPE-331) -- university logo upload and richer catalogue cards. Requires the seeded stack (University of Manchester is
 // published with courses; RWTH Aachen is in Germany). The public pages are ISR (revalidate 60), so a new logo is polled for.
 
 const LOGO = Buffer.from(
