@@ -3368,3 +3368,14 @@ any write. Same editors and viewers as DEC-SCOPE-209 (`agent_commission_access`)
 The bulk question route's rules apply unchanged: an assessment a student has started is locked (409). Students never see a Draft
 assessment (TRN-006-AC02), so imported questions stay hidden until the trainer publishes. Pinned by
 `apps/api/tests/test_nehn_025_question_import.py`.
+
+### 2.234 Keyword-based auto-scoring for written answers *(added 2026-10-29 — `DEC-SCOPE-331`, nehn-026)*
+
+| Action | trainer (IT) | it_admin (IT) | super_admin | it_student | other roles / divisions | anonymous |
+|---|---|---|---|---|---|---|
+| Set / read a question's keywords | own batch's assessments only (403 otherwise) | any assessment | any assessment | never (no route returns them) | 403 | 401 |
+| See the keyword breakdown of an attempt | own batch only (403 otherwise) | any | any | never | 403 | 401 |
+| Override a keyword score (grade PATCH) | own batch only | any | any | 403 | 403 | 401 |
+
+Keywords are the answer key: every student payload keeps its explicit field whitelist. Pinned by
+`apps/api/tests/test_nehn_026_keyword_scoring.py`.

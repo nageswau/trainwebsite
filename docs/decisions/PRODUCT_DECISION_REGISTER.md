@@ -10483,3 +10483,23 @@ existing assessment (the create form already defaults to Draft) rather than crea
 template; Q4 no images in questions, CSV accepted; Q5 keywords / explanation are accepted but not stored until nehn-026 adds the columns;
 Q6 no server idempotency key on commit (the UI disables the button while importing). **Numbering:** no migration; API §12IB; RBAC §2.233.
 - **Feature ID authorized:** `nehn-025`. **Status:** built on `worktree-nehn-025`.
+
+### DEC-SCOPE-331 — Keyword-based auto-scoring suggestion for written answers (`nehn-026`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-026` (§9 "Evaluation" L209-213, `MEETING_TRANSCRIPT_REQUEST`:
+"final scoring rules should be confirmed before implementation"); `CLIENT_QUESTIONS.md` D-09 §4 (an ~80% keyword threshold discussed
+informally — **still open**); design `docs/superpowers/specs/2026-10-29-nehn-026-keyword-auto-scoring-design.md`. Depends on nehn-025
+(DEC-SCOPE-330), whose template already carries the `keywords` column. **Behaviour:** a `text` question may carry `keywords` (≤30, each
+≤100 chars; `|` joins synonyms). On submit, a text answer to such a question gets `auto_score` = `score` and `score_source = "keyword"`
+(MCQ answers get `"mcq"`); questions without keywords stay manual. The attempt still ends `submitted` (awaiting the trainer) whenever it has
+a text or file question — a keyword score is a suggestion included in the provisional total and pre-filled in the grading form. The
+trainer's attempt detail adds `score_source`, `auto_score`, `keywords`, `matched_keywords`, `match_percent`; a trainer score that differs
+from the stored one sets `score_source = "trainer"` (the suggestion is kept) and the `assessment.attempt_grade` audit gains
+`overrides: [{answer_id, auto_score, score}]`. The nehn-025 import now saves `keywords` (comma separated; a row error on a non-text row).
+Student payloads keep their field whitelists — keywords never reach a student (pinned by test).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION` — the D-09 §4 rule is the client's call):** K1 no
+weights, `|` synonyms; K2 case-insensitive, order-independent, whole-word phrase match with a trailing `s`/`es` plural rule, no other
+stemming or NLP; K3 ≥ 80% matched → full marks, below → proportional (2 dp), one global constant; K4 trainer-reviewed: results are never
+auto-published (also the keyword-stuffing mitigation); K5 text questions only, file answers never scored; K6 matched keywords are computed on
+read (attempted questions are locked). **Numbering:** migration 0218; API §12IC; RBAC §2.234.
+- **Feature ID authorized:** `nehn-026`. **Status:** built on `worktree-nehn-026`.
