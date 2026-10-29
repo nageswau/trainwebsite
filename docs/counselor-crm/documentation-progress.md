@@ -1,0 +1,125 @@
+# Overseas Counselor CRM Documentation — Progress Tracker
+
+| | |
+|---|---|
+| Code baseline | `main` @ `045d8c40` (S1 discovery). Record any later `main` used for browser work here, with the affected features re-checked. |
+| Stack used for browser work | `cnsdocs` compose project from worktree `.claude/worktrees/cns-docs` (branch `docs/counselor-crm-user-guide`). Web http://localhost:3050, api :8050, Mailpit 127.0.0.1:8029 via untracked `docker-compose.docs.yml`. Untracked `.env` per plan S2.1. Owner approved Claude starting, seeding, resetting and snapshotting this stack only (2026-10-29). **Not started yet.** |
+| Docs branch | `docs/counselor-crm-user-guide` (from `main` @ `045d8c40`) |
+| Day 1 (D3 calendar) | _not set — recorded when S5 runs; S9 must run on or after Day 1 + 3_ |
+| Last session | S1 Master planning — 2026-10-29 |
+| Next session | S2 — Environment, capture tooling, admin set-up (creates the Docs personas) |
+
+**Column values:** Code Reviewed YES / PARTIAL / NO (YES at S1 = reviewed from source at `045d8c40`, evidence in `discovery/`) · Browser Verified YES / PARTIAL / NO · Screenshot YES / NO / N/A · Documented YES / DRAFT / NO · Reviewed PASSED / FAILED / NO.
+
+A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Reviewed = PASSED.
+
+**Totals (after S1):** 85 features · 85 code-reviewed · 0 browser-verified · 0 documented · 0 COMPLETE.
+
+| ID | Module | Feature | Session | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
+|---|---|---|---|---|---|---|---|---|
+| DOC-CNS-AUTH-001 | Account access | Sign in to the Overseas portal | S3 | YES | NO | NO | NO | NO |
+| DOC-CNS-AUTH-002 | Account access | Set your first password from the welcome email | S3 | YES | NO | NO | NO | NO |
+| DOC-CNS-AUTH-003 | Account access | Forgot / reset your password | S3 | YES | NO | NO | NO | NO |
+| DOC-CNS-AUTH-004 | Account access | Change your password | S3 | YES | NO | NO | NO | NO |
+| DOC-CNS-AUTH-005 | Account access | My profile | S3 | YES | NO | NO | NO | NO |
+| DOC-CNS-AUTH-006 | Account access | Sign out, ended sessions, deactivated account | S3 | YES | NO | NO | NO | NO |
+| DOC-CNS-NAV-001 | Navigation | Portal tour: 15-item sidebar, top bar, mobile menu | S3 | YES | NO | NO | NO | NO |
+| DOC-CNS-DASH-001 | Dashboard | Counselor dashboard (action tiles + application table) | S9 | YES | NO | NO | NO | NO |
+| DOC-CNS-SRCH-001 | Dashboard | Quick search | S9 | YES | NO | NO | NO | NO |
+| DOC-CNS-LEAD-001 | Leads | My leads list | S4 | YES | NO | NO | NO | NO |
+| DOC-CNS-LEAD-002 | Leads | Record a new walk-in lead | S4 | YES | NO | NO | NO | NO |
+| DOC-CNS-LEAD-003 | Leads | Lead detail page layout | S4 | YES | NO | NO | NO | NO |
+| DOC-CNS-LEAD-004 | Leads | Lead details: view and edit contact, consent, referral | S4 | YES | NO | NO | NO | NO |
+| DOC-CNS-LEAD-005 | Leads | Next action | S4 | YES | NO | NO | NO | NO |
+| DOC-CNS-LEAD-006 | Leads | Change stage, record loss, close a lead | S4 | YES | NO | NO | NO | NO |
+| DOC-CNS-LEAD-007 | Leads | Lead qualification | S4 | YES | NO | NO | NO | NO |
+| DOC-CNS-LEAD-008 | Leads | Return a lead to the telecaller | S4 | YES | NO | NO | NO | NO |
+| DOC-CNS-LEAD-009 | Leads | Student and milestones panel (read only) | S4 | YES | NO | NO | NO | NO |
+| DOC-CNS-CONV-001 | Conversion | Convert a lead to a new student | S4 | YES | NO | NO | NO | NO |
+| DOC-CNS-CONV-002 | Conversion | Link / unlink an existing student account | S4 | YES | NO | NO | NO | NO |
+| DOC-CNS-ACT-001 | Activity | Log a call | S5 | YES | NO | NO | NO | NO |
+| DOC-CNS-ACT-002 | Activity | Record a WhatsApp message | S5 | YES | NO | NO | NO | NO |
+| DOC-CNS-ACT-003 | Activity | Email a lead | S5 | YES | NO | NO | NO | NO |
+| DOC-CNS-ACT-004 | Activity | Log a meeting | S5 | YES | NO | NO | NO | NO |
+| DOC-CNS-ACT-005 | Activity | Lead notes | S5 | YES | NO | NO | NO | NO |
+| DOC-CNS-ACT-006 | Activity | Lead activity timeline | S5 | YES | NO | NO | NO | NO |
+| DOC-CNS-CHAT-001 | Chat | Counselor Chat with students | S5 | YES | NO | NO | NO | NO |
+| DOC-CNS-FUP-001 | Follow-ups | Follow-ups on a lead | S5 | YES | NO | NO | NO | NO |
+| DOC-CNS-FUP-002 | Follow-ups | Overdue follow-ups on the Tasks page | S9 | YES | NO | NO | NO | NO |
+| DOC-CNS-FUP-003 | Follow-ups | Automatic reminders (what triggers them, where they show) | S9 | YES | NO | NO | NO | NO |
+| DOC-CNS-TASK-001 | Tasks | My tasks | S5 | YES | NO | NO | NO | NO |
+| DOC-CNS-CAL-001 | Calendar | Appointments page and lead appointments | S5 | YES | NO | NO | NO | NO |
+| DOC-CNS-CAL-002 | Calendar | Calendar and iCal feed | S5 | YES | NO | NO | NO | NO |
+| DOC-CNS-REP-001 | Reports | My performance | S9 | YES | NO | NO | NO | NO |
+| DOC-CNS-UNI-001 | Universities | Partner universities list | S8 | YES | NO | NO | NO | NO |
+| DOC-CNS-UNI-002 | Universities | University 360 view (incl. course commission display) | S8 | YES | NO | NO | NO | NO |
+| DOC-CNS-STU-001 | Students | Students page: Application Tracking table and filters | S6 | YES | NO | NO | NO | NO |
+| DOC-CNS-STU-002 | Students | My students card (Source filter, search) | S6 | YES | NO | NO | NO | NO |
+| DOC-CNS-STU-003 | Students | Add a walk-in student / edit pending / resend link | S6 | YES | NO | NO | NO | NO |
+| DOC-CNS-STU-004 | Students | Student 360: header, tabs, Overview | S6 | YES | NO | NO | NO | NO |
+| DOC-CNS-STU-005 | Students | Structured profile (Academic / Preferences / English) | S6 | YES | NO | NO | NO | NO |
+| DOC-CNS-STU-006 | Students | Internal student notes | S6 | YES | NO | NO | NO | NO |
+| DOC-CNS-STU-007 | Students | Activities and History tabs | S6 | YES | NO | NO | NO | NO |
+| DOC-CNS-STU-008 | Students | Archive a student / Archived Students | S10 | YES | NO | NO | NO | NO |
+| DOC-CNS-STU-009 | Students | Overseas consent (read only for staff) | S10 | YES | NO | NO | NO | NO |
+| DOC-CNS-STU-010 | Students | When a student or application is reassigned to you | S6 | YES | NO | NO | NO | NO |
+| DOC-CNS-APP-001 | Applications | Add an application from the 360 | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-APP-002 | Applications | Intake Month YYYY picker | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-APP-003 | Applications | Applications tab list (EduSphere ID) | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-APP-004 | Applications | Advance an application's stage | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-APP-005 | Applications | Sub-status and the Ready-for-Submission gate | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-APP-006 | Applications | Journey stage | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-APP-007 | Applications | Record an outcome / resume | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-APP-008 | Applications | Application details (fields and dates) | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-APP-009 | Applications | Application status history | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-APP-010 | Applications | Agency vs direct applications | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-OFR-001 | Offers | Record, close or decide an offer | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-OFR-002 | Offers | Offer conditions | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-OFR-003 | Offers | Admission interviews | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-DOC-001 | Documents | Application document checklist | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-DOC-002 | Documents | Documents page and document status | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-DOC-003 | Documents | Request documents from the student | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-DOC-004 | Documents | Upload a document for the student (incl. offer letter) | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-VISA-001 | Visa | Start and track a visa case | S8 | YES | NO | NO | NO | NO |
+| DOC-CNS-FIN-001 | Finance | University deposit record | S8 | YES | NO | NO | NO | NO |
+| DOC-CNS-FIN-002 | Finance | Finance tab: fees, payments, deposits, refunds | S8 | YES | NO | NO | NO | NO |
+| DOC-CNS-FIN-003 | Finance | Upload a deposit receipt / payment proof | S8 | YES | NO | NO | NO | NO |
+| DOC-CNS-ARR-001 | Arrival | Confirm enrolment (agency commission note) | S8 | YES | NO | NO | NO | NO |
+| DOC-CNS-ARR-002 | Arrival | Arrival and orientation | S8 | YES | NO | NO | NO | NO |
+| DOC-CNS-HO-001 | Handoffs | A telecaller hands a lead to you | S4 | YES | NO | NO | NO | NO |
+| DOC-CNS-HO-002 | Handoffs | A website enquiry becomes your lead | S4 | YES | NO | NO | NO | NO |
+| DOC-CNS-HO-003 | Handoffs | Agency students and applications | S6 | YES | NO | NO | NO | NO |
+| DOC-CNS-HO-004 | Handoffs | Self-registered students | S6 | YES | NO | NO | NO | NO |
+| DOC-CNS-ADM-001 | Admin: accounts | Create a counselor account | S2 | YES | NO | NO | NO | NO |
+| DOC-CNS-ADM-002 | Admin: accounts | Manage counselor users: set-up status, re-send link, edit, deactivate | S2 | YES | NO | NO | NO | NO |
+| DOC-CNS-ADM-003 | Admin: accounts | Assign / change a student's counselor (with reason) | S6 | YES | NO | NO | NO | NO |
+| DOC-CNS-ADM-004 | Admin: accounts | Assign / change an application's counselor (with reason) | S6 | YES | NO | NO | NO | NO |
+| DOC-CNS-ESC-001 | Admin: escalation | Counselor tasks (admin view) | S9 | YES | NO | NO | NO | NO |
+| DOC-CNS-ESC-002 | Admin: escalation | Overdue by counselor and the escalation notice | S9 | YES | NO | NO | NO | NO |
+| DOC-CNS-PERF-001 | Admin: performance | Team performance | S9 | YES | NO | NO | NO | NO |
+| DOC-CNS-PERF-002 | Admin: performance | One counselor's report | S9 | YES | NO | NO | NO | NO |
+| DOC-CNS-CFG-001 | Admin: config | Document checklist templates | S2 | YES | NO | NO | NO | NO |
+| DOC-CNS-CFG-002 | Admin: config | Reminder rules and Run now | S2 | YES | NO | NO | NO | NO |
+| DOC-CNS-CFG-003 | Admin: config | Counselor message templates | S2 | YES | NO | NO | NO | NO |
+| DOC-CNS-CFG-004 | Admin: config | Archived students: admin restore | S10 | YES | NO | NO | NO | NO |
+
+## Unresolved items
+| # | Item | Owner / session |
+|---|---|---|
+| U1 | Product findings P1–P22 (analysis §12) — code-read candidates; confirm or drop in the covering session, then owner decides fixes. | Sessions / Owner |
+| U2 | ~40 default-based decisions (appendix 04 §3) — documented as built (D4); owner to confirm separately. | Owner |
+| U3 | Browser-only unknowns in analysis §11 (dashboard Status cell, walk-in lead initial stage, timeline wording, reminder email, SA view of /overseas/admin/users, unassigned agency application notice, lost-reason owner). | S4 / S6 / S9 |
+| U4 | Escalation threshold and expiry-job timing must be re-read in S9 before relying on the Day 1 + 3 rule. | S9 |
+| U5 | `shoot.ts` / `signIn` portal change also exists on the unmerged telecaller/BDM doc branches — keep the same shape to avoid conflicts. | S2 |
+
+## Discovered functionality (outside the 85 IDs)
+| Item | Where | Note |
+|---|---|---|
+| School Applications | counselor sidebar item 8 | Not covered by discovery; check in S3 what an Overseas counselor sees. |
+| Management tasks | counselor sidebar item 15 (`/account/management-tasks`) | Shared page; mention in NAV-001 only. |
+| Lead owner change by admin | API only (P15) | No UI — not a doc feature. |
+
+## Session log
+| Session | Date | Commit | Summary |
+|---|---|---|---|
+| S1 | 2026-10-29 | (this commit) | Four discovery appendices; owner answers D1–D7; analysis (85 features in 24 modules, findings P1–P22), plan (S2–S12), tracker, screenshot-index skeleton. |
