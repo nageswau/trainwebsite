@@ -533,17 +533,22 @@ class AssessmentQuestionIn(BaseModel):
     position: int = Field(default=1, ge=1)
     required: bool = True
     # nehn-026: the answer key of a written-answer question, never sent to a student. `|` separates synonyms (keyword_scoring).
-    keywords: list[Annotated[str, Field(max_length=MAX_KEYWORD_LENGTH)]] = Field(default_factory=list, max_length=MAX_KEYWORDS)
+    keywords: list[str] = Field(default_factory=list)
 
     @field_validator("keywords")
     @classmethod
     def _trim_keywords(cls, value: list[str]) -> list[str]:
-        return [keyword.strip() for keyword in value if keyword.strip()]
+        keywords = [keyword.strip() for keyword in value if keyword.strip()]
+        if len(keywords) > MAX_KEYWORDS:
+            raise PydanticCustomError("keywords", f"At most {MAX_KEYWORDS} keywords")
+        if any(len(keyword) > MAX_KEYWORD_LENGTH for keyword in keywords):
+            raise PydanticCustomError("keywords", f"Each keyword can be at most {MAX_KEYWORD_LENGTH} characters")
+        return keywords
 
     @model_validator(mode="after")
     def _keywords_need_a_written_answer(self) -> "AssessmentQuestionIn":
         if self.keywords and self.question_type != "text":
-            raise ValueError("Keywords can only be set on a written-answer (text) question")
+            raise PydanticCustomError("keywords", "Keywords can only be set on a written-answer (text) question")
         return self
 
 

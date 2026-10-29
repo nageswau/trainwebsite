@@ -118,7 +118,7 @@ async def test_keywords_are_refused_on_non_text_questions(db_session, client, ki
     _, _, assessment, *_ = await _world(db_session, client)
     response = await client.post(f"{BASE}/{assessment.id}/questions", json={"question_type": kind, "prompt": "Nope", "keywords": ["x"], **extra})
     assert response.status_code == 422
-    assert "written-answer" in response.text
+    assert response.json()["detail"][0]["msg"] == "Keywords can only be set on a written-answer (text) question"  # QA-01: no "Value error, "
 
 
 @pytest.mark.asyncio
@@ -127,6 +127,9 @@ async def test_too_many_or_too_long_keywords_are_refused(db_session, client):
     many = await client.post(f"{BASE}/{assessment.id}/questions", json={"question_type": "text", "prompt": "Many", "keywords": [f"k{n}" for n in range(31)]})
     long = await client.post(f"{BASE}/{assessment.id}/questions", json={"question_type": "text", "prompt": "Long", "keywords": ["x" * 101]})
     assert many.status_code == 422 and long.status_code == 422
+    # QA-02: the messages name the keywords, not a bare "String should have at most 100 characters"
+    assert many.json()["detail"][0]["msg"] == "At most 30 keywords"
+    assert long.json()["detail"][0]["msg"] == "Each keyword can be at most 100 characters"
 
 
 # --- AC1 / AC4: submit ---------------------------------------------------------------------------------------------------------
