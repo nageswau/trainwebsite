@@ -3378,3 +3378,13 @@ assessment (TRN-006-AC02), so imported questions stay hidden until the trainer p
 
 The upload follows the university `PATCH` gate exactly (`can_edit` + scope, §2.46 upc-003; inactive 409). Logos are public artwork, so the
 read takes no session; it serves only server-made names under one fixed prefix. Pinned by `apps/api/tests/test_nehn_035_university_logos.py`.
+
+### 2.235 Overseas student Progress page *(added 2026-10-29 — `DEC-SCOPE-332`, nehn-033)*
+
+| Action | overseas_student | counselor | overseas_admin | agent / agency staff | university_rep | other roles | anonymous |
+|---|---|---|---|---|---|---|---|
+| `GET /overseas/me/progress` | own applications only | 403 | 403 | 403 | 403 | 403 | 401 |
+| `/overseas/student/progress` page | allowed | Access unavailable | Access unavailable | Access unavailable | Access unavailable | Access unavailable | → login |
+
+Nothing in the request names a record, so there is no cross-student path (the queries are keyed on the caller's id). The response never
+carries the visa refusal reason, outcome reasons, file keys or counselor notes. Pinned by `apps/api/tests/test_nehn_033_progress_api.py`.

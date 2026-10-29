@@ -4789,3 +4789,16 @@ nullable, the university's CHECKs). No new route.
   unchanged.
 - `GET /public/universities` — each row gains `programs_count` (active overseas courses), `country_name`, `country_slug`, `country_iso2`.
   Other routes returning `UniversityOut` carry the defaults (`0` / `null`).
+
+## 12ID. Overseas student Overview / Progress (nehn-033) — addendum, 2026-10-29
+
+`DEC-SCOPE-332`. No migration; read-only.
+
+- `GET /overseas/me/progress` — session required (**401**); role `overseas_student` in the overseas division, else **403**. Takes no
+  parameters; every row is the caller's own. Returns `{applications, missing_documents, next_actions}`:
+  - `applications[]`: `id, application_code, university, intake, current {key, label}, closed, note, steps[] {key, label, state}` with
+    `state` one of `done | current | upcoming | not_reached | stopped`; live applications first, each group newest first.
+  - `missing_documents[]`: `name, source ("Document request" | "Admission checklist" | "Visa checklist"), application_code, university,
+    status_label, due_date, overdue, upload_url ("/overseas/student/documents")`.
+  - `next_actions[]`: `text, href | null`.
+- `GET /portal/overseas/student/progress` — the section header only (`title "Progress"`, no columns or rows).

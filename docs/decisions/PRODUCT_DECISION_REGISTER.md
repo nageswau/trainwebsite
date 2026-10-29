@@ -10500,3 +10500,25 @@ refused, not sanitised; L7 Apply hidden for a university with 0 programs ("Progr
 saved; L10 a form hint asks for a logo the organisation may use — formal copyright guidance (CI-04) still awaited from the client.
 **Numbering:** no migration; API §12IC; RBAC §2.234.
 - **Feature ID authorized:** `nehn-035`. **Status:** built on `worktree-nehn-035`.
+
+### DEC-SCOPE-332 — Overseas student Overview / Progress page (`nehn-033`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-033` (§18 L497-517, §17 L470 "Track overall application
+progress", action 14; `MEETING_TRANSCRIPT_REQUEST`-derived); design `docs/superpowers/specs/2026-10-29-nehn-033-overseas-progress-design.md`.
+Depends on nehn-001 (offer predicate), ccrm-014/015/017/019/020/023/025/026 (all merged). **Behaviour:** a read-only "Progress" page at
+`/overseas/student/progress` (nav entry after Dashboard) built from `GET /overseas/me/progress` (overseas_student only). Per application
+a 9-step stepper derived on every read (`app/overseas_progress.py`, never stored, no migration): Application submitted (`enquiry`) →
+Application under review (`eligibility_evaluation`) → University selected (`university_selection`) → Offer processing (`university_selection`
++ `submitted_on`, legacy `university_review`) → Offer, named by `offer_type` (Conditional / Unconditional / Pathway offer / Offer received)
+→ Documentation pending / completed (visa checklist all verified) → Visa processing (visa case `appointment_booked`..`decision_pending`) →
+Visa decision: Approved / Rejected / Withdrawn → Final outcome (Enrolled, Visa rejected, Withdrawn, Rejected, Offer declined, Did not
+arrive, Cancelled). A closed application stops at the step it reached (`withdrawn`: the status history's `from_status`); later steps read
+Not reached. Missing documents: open ccrm-020 requests, required ccrm-019 checklist items needing an upload (not those awaiting review;
+an item with an open request is listed once, as the request) and visa checklist items not uploaded / to re-upload -- each links to
+Documents. Next actions: "Upload N missing documents", the counselor's `next_action`, an undecided active offer, a pending required
+deposit, booking the visa appointment, the visa office's additional-information request. Never the refusal reason, outcome reasons, file
+keys or notes. **Claude's calls under "proceed with recommended answers" (`NEEDS_CONFIRMATION`, OD-10):** M1 the backlog's proposed mapping
+as above; M2 the client's two offer stages are one step named by the offer type (only the current `offer_type` is stored); M3 no
+counselor / agent reuse (they have ccrm-017 / AGN-015). **Numbering:** no migration; API §12ID; RBAC §2.235 (DEC-SCOPE-328/329, §12HZ/12IA
+and §2.231/2.232 are left to the siblings that pencilled them).
+- **Feature ID authorized:** `nehn-033`. **Status:** built on `worktree-nehn-033`.
