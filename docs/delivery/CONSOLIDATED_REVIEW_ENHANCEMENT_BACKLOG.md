@@ -1225,6 +1225,11 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** assessment grading, attempt status (`graded` vs pending manual).
 - **Open questions:** threshold %, partial credit, synonym support, stemming, and stuffing mitigation, or keep it trainer-reviewed only?
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-29):**
+  - Built on `worktree-nehn-026` (`DEC-SCOPE-333`; migration `0218_assessment_keyword_scoring`; API §12IE; RBAC §2.236). AC1-AC4 met.
+  - Builder's defaults (`NEEDS_CONFIRMATION`, D-09 §4 still open): ≥80% matched → full marks, below → proportional; `|` synonyms, no
+    weights; whole-word match with an `s`/`es` plural rule; the score is a suggestion and results stay trainer-reviewed (stuffing
+    mitigation); text questions only.
 
 #### `nehn-027` — Trainer learning materials: file upload and manage
 - **Source:** §10 "Upload course materials", "Upload documents/videos/links", "Manage batch-specific resources", "Manage learning resources" (L223-225, L230).

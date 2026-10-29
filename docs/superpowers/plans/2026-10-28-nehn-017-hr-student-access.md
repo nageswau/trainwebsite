@@ -5,7 +5,7 @@ reason), GREEN, refactor. Focused tests only; the full regression runs in its ow
 
 | # | Task | Files | Test first |
 |---|---|---|---|
-| 1 | Catalogue + default grants (H3) and the seed migration 0218 | `core/rbac.py`, `alembic/versions/0218_hr_student_grants.py` | `tests/test_nehn_017_hr_student_access.py::test_catalogue_and_defaults`, migration SEED == DEFAULT_GRANTS |
+| 1 | Catalogue + default grants (H3) and the seed migration 0219 | `core/rbac.py`, `alembic/versions/0219_hr_student_grants.py` | `tests/test_nehn_017_hr_student_access.py::test_catalogue_and_defaults`, migration SEED == DEFAULT_GRANTS |
 | 2 | Population helper (H1) and the Candidate Database section reading it | `services/hr_students.py`, `services/portal.py` | population includes active and excludes withdrawn and overseas students; the existing portal candidate tests |
 | 3 | HR scope in training reports + the three HR reports | `services/reports/training.py` | catalogue for HR lists exactly the 3; rows are population only; CSV header has no payment, fee or discount; a trainer/admin regression (nehn-010 suite) |
 | 4 | HR student API (list, detail, document download + audit) | `api/hr_students.py`, `main.py` router | the AC1/AC2/AC4/AC5 cases |

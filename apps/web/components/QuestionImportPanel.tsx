@@ -10,7 +10,7 @@ const BASE = "/api/v1/workflows/it/trainer/assessments";
 const TYPE_LABEL: Record<string, string> = { mcq_single: "Single choice", mcq_multiple: "Multiple choice", text: "Written answer", file: "File response" };
 
 type ImportAssessment = { id: string; title: string; batch: string; status: string; attempt_count: number };
-type PreviewQuestion = { row: number; question_type: string; prompt: string; options: string[]; correct_answers: string[]; max_score: number };
+type PreviewQuestion = { row: number; question_type: string; prompt: string; options: string[]; correct_answers: string[]; keywords: string[]; max_score: number };
 type RowNote = { row: number | null; message: string };
 type Preview = { total_rows: number; questions: PreviewQuestion[]; errors: RowNote[]; warnings: RowNote[]; created: number };
 type Props = { assessments: ImportAssessment[]; loading: boolean; onImported: () => void | Promise<void> };
@@ -100,7 +100,7 @@ export default function QuestionImportPanel({ assessments, loading, onImported }
                       <td data-label="Type">{TYPE_LABEL[item.question_type] ?? item.question_type}</td>
                       <td data-label="Question" style={{ whiteSpace: "pre-wrap" }}>{item.prompt}</td>
                       <td data-label="Options">{item.options.map((option, index) => `${index + 1}. ${option}`).join(" · ")}</td>
-                      <td data-label="Correct">{item.correct_answers.join(", ")}</td>
+                      <td data-label="Correct">{item.keywords.length ? `Keywords: ${item.keywords.join(", ")}` : item.correct_answers.join(", ")}</td>
                       <td data-label="Marks">{item.max_score}</td>
                     </tr>
                   ))}

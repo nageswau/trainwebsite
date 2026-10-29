@@ -4790,9 +4790,41 @@ nullable, the university's CHECKs). No new route.
 - `GET /public/universities` — each row gains `programs_count` (active overseas courses), `country_name`, `country_slug`, `country_iso2`.
   Other routes returning `UniversityOut` carry the defaults (`0` / `null`).
 
+## 12ID. Overseas student Overview / Progress (nehn-033) — addendum, 2026-10-29
+
+`DEC-SCOPE-332`. No migration; read-only.
+
+- `GET /overseas/me/progress` — session required (**401**); role `overseas_student` in the overseas division, else **403**. Takes no
+  parameters; every row is the caller's own. Returns `{applications, missing_documents, next_actions}`:
+  - `applications[]`: `id, application_code, university, intake, current {key, label}, closed, note, steps[] {key, label, state}` with
+    `state` one of `done | current | upcoming | not_reached | stopped`; live applications first, each group newest first.
+  - `missing_documents[]`: `name, source ("Document request" | "Admission checklist" | "Visa checklist"), application_code, university,
+    status_label, due_date, overdue, upload_url ("/overseas/student/documents")`.
+  - `next_actions[]`: `text, href | null`.
+- `GET /portal/overseas/student/progress` — the section header only (`title "Progress"`, no columns or rows).
+
+## 12IE. Keyword-based auto-scoring for written answers (nehn-026) — addendum, 2026-10-29
+
+`DEC-SCOPE-333`. Migration `0218_assessment_keyword_scoring` (`assessment_questions.keywords` JSON NOT NULL default `[]`;
+`assessment_answers.auto_score` NUMERIC(10,2) NULL, `score_source` VARCHAR(10) NULL). All changes are additive.
+
+- `AssessmentQuestionIn` (single `POST .../questions`, bulk `.../questions/bulk`, nehn-025 import) gains `keywords: string[]` (default
+  `[]`; trimmed, blanks dropped; ≤30 entries, each ≤100 chars; `|` separates synonyms). **422** when keywords are set on a non-`text`
+  question ("Keywords can only be set on a written-answer (text) question").
+- `GET /workflows/it/trainer/assessments/{id}/questions` — each question adds `keywords`.
+- `POST .../questions/import` — preview questions add `keywords`; a filled `keywords` cell is saved (comma separated). Row errors: keywords on
+  a non-text row, more than 30 keywords, a keyword over 100 characters. The unsaved-columns warning now names only `explanation`.
+- `POST /workflows/it/assessment-attempts/{id}/submit` — response unchanged. A text answer to a keyword question is scored ≥80% matched →
+  full marks, else proportional; the attempt stays `submitted` when any text/file question exists (unchanged).
+- `GET /workflows/it/trainer/assessment-attempts/{id}` — each answer adds `auto_score` (number | null), `score_source`
+  (`mcq | keyword | trainer | null`), `keywords` (string[]), `matched_keywords` (string[]), `match_percent` (number | null when no keywords).
+- `PATCH /workflows/it/trainer/assessment-attempts/{id}` — request unchanged; a per-answer score different from the stored one sets
+  `score_source = "trainer"`; the `assessment.attempt_grade` audit metadata adds `overrides` (keyword answers whose suggestion was replaced).
+- Student routes (`POST .../attempts`, submit, `GET .../student/learning`) never include `keywords`, `auto_score` or `matched_keywords`.
+
 ## 12HH. HR student access and HR reports (nehn-017) — addendum, 2026-10-28
 
-`DEC-SCOPE-310`. Migration `0218_hr_student_grants` (seed only). Every route: grant (**403**), then hr_team/super_admin scope (**403**
+`DEC-SCOPE-310`. Migration `0219_hr_student_grants` (seed only). Every route: grant (**403**), then hr_team/super_admin scope (**403**
 for any other role, even with the key), then the student (**404** outside the HR population). Responses are `Cache-Control: no-store`.
 
 - `GET /hr/students?q=&page=` (new) — `student_progress.view`. `{items: [{id, student_code, full_name, courses, completed}], total, page,

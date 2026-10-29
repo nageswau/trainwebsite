@@ -11,8 +11,10 @@ import re
 import openpyxl
 from openpyxl.styles import Font
 from openpyxl.worksheet.datavalidation import DataValidation
+from pydantic import ValidationError
 
 from app.schemas import AssessmentQuestionIn
+from app.services.keyword_scoring import KEYWORD_THRESHOLD_PERCENT, MAX_KEYWORDS
 
 TYPES = ("mcq_single", "mcq_multiple", "text", "file")
 OPTION_COLUMNS = tuple(f"option_{n}" for n in range(1, 7))
@@ -28,7 +30,13 @@ REFERENCE = (
     ("option_1 … option_6", "For MCQs", "The answer choices; a multiple-choice question needs at least 2. Leave them empty for text and file questions.", "HyperText Markup Language"),
     ("correct", "For MCQs", "The number of the right option, e.g. 2; for mcq_multiple list every right option, e.g. 1,3. Empty for text and file questions.", "1,3"),
     ("marks", "No", "Whole number from 1 to 10,000; empty means 1", "2"),
-    ("keywords", "No", "Reserved for keyword scoring of written answers; not used yet", ""),
+    (
+        "keywords",
+        "No",
+        f"Text questions only: up to {MAX_KEYWORDS} keywords separated by commas; put synonyms together with | (loop|iteration). An answer "
+        f"with {KEYWORD_THRESHOLD_PERCENT}% of them gets a suggested full score (fewer: in proportion) that you review before publishing.",
+        "for loop, loop|iteration",
+    ),
     ("explanation", "No", "Reserved for an answer explanation; not used yet", ""),
 )
 EXAMPLES = (
@@ -132,7 +140,11 @@ def _question(values: dict[str, str]) -> AssessmentQuestionIn | str:
     marks = values.get("marks", "") or "1"
     if not marks.isdigit() or not 1 <= int(marks) <= MAX_MARKS:
         return "Marks must be a whole number from 1 to 10,000"
-    return AssessmentQuestionIn(question_type=kind, prompt=prompt, options=list(filled.values()), correct_answers=[filled[n] for n in chosen], max_score=int(marks))
+    keywords = values.get("keywords", "").split(",")  # nehn-026: the schema trims them and owns the keyword rules and their messages
+    try:
+        return AssessmentQuestionIn(question_type=kind, prompt=prompt, options=list(filled.values()), correct_answers=[filled[n] for n in chosen], max_score=int(marks), keywords=keywords)
+    except ValidationError as error:
+        return error.errors()[0]["msg"]
 
 
 def parse_rows(rows: list[tuple[int, dict[str, str]]]) -> tuple[list[tuple[int, AssessmentQuestionIn]], list[dict], list[dict]]:
@@ -150,8 +162,8 @@ def parse_rows(rows: list[tuple[int, dict[str, str]]]) -> tuple[list[tuple[int, 
         if key and key in first_seen:
             warnings.append({"row": number, "message": f"Repeats the question in row {first_seen[key]}"})
         first_seen.setdefault(key, number)
-        unsaved += bool(values.get("keywords") or values.get("explanation"))
+        unsaved += bool(values.get("explanation"))
     if unsaved:
         fill = "row fills" if unsaved == 1 else "rows fill"
-        warnings.append({"row": None, "message": f"The keywords and explanation columns are not saved yet; {unsaved} {fill} them in."})
+        warnings.append({"row": None, "message": f"The explanation column is not saved yet; {unsaved} {fill} it in."})
     return questions, errors, warnings

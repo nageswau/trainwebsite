@@ -113,7 +113,7 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     # nehn-008 F3 (migration 0207 seeds it): today's partnership commission readers (upc-001 U2), so no report changes on day one.
     "partnership_manager": ("field.financial.view",),
     "partnership_head": ("field.financial.view",),
-    # nehn-017 (migration 0218 seeds it): HR reads the active placement pool's progress, attendance and allowed documents.
+    # nehn-017 (migration 0219 seeds it): HR reads the active placement pool's progress, attendance and allowed documents.
     "hr_team": tuple(f"{resource}.{action}" for resource in ("student_progress", "attendance", "student_documents") for action in ("view", "download")),
 }
 

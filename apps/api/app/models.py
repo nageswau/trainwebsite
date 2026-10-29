@@ -279,6 +279,7 @@ class AssessmentQuestion(Base, TimestampMixin):
     max_score: Mapped[int] = mapped_column(Integer, default=1)
     position: Mapped[int] = mapped_column(Integer, default=1)
     required: Mapped[bool] = mapped_column(Boolean, default=True)
+    keywords: Mapped[list] = mapped_column(JSON, default=list, server_default="[]")  # nehn-026: text questions only; never sent to students
 
 
 class AssessmentAttempt(Base, TimestampMixin):
@@ -306,6 +307,9 @@ class AssessmentAnswer(Base, TimestampMixin):
     answer: Mapped[dict] = mapped_column(JSON, default=dict)
     score: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # nehn-026: the keyword suggestion (kept after a trainer override) and who set `score` -- mcq | keyword | trainer; NULL = not scored yet
+    auto_score: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    score_source: Mapped[str | None] = mapped_column(String(10), nullable=True)
     __table_args__ = (UniqueConstraint("attempt_id", "question_id", name="uq_attempt_question_answer"),)
 
 

@@ -10501,6 +10501,48 @@ saved; L10 a form hint asks for a logo the organisation may use — formal copyr
 **Numbering:** no migration; API §12IC; RBAC §2.234.
 - **Feature ID authorized:** `nehn-035`. **Status:** built on `worktree-nehn-035`.
 
+### DEC-SCOPE-332 — Overseas student Overview / Progress page (`nehn-033`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-033` (§18 L497-517, §17 L470 "Track overall application
+progress", action 14; `MEETING_TRANSCRIPT_REQUEST`-derived); design `docs/superpowers/specs/2026-10-29-nehn-033-overseas-progress-design.md`.
+Depends on nehn-001 (offer predicate), ccrm-014/015/017/019/020/023/025/026 (all merged). **Behaviour:** a read-only "Progress" page at
+`/overseas/student/progress` (nav entry after Dashboard) built from `GET /overseas/me/progress` (overseas_student only). Per application
+a 9-step stepper derived on every read (`app/overseas_progress.py`, never stored, no migration): Application submitted (`enquiry`) →
+Application under review (`eligibility_evaluation`) → University selected (`university_selection`) → Offer processing (`university_selection`
++ `submitted_on`, legacy `university_review`) → Offer, named by `offer_type` (Conditional / Unconditional / Pathway offer / Offer received)
+→ Documentation pending / completed (visa checklist all verified) → Visa processing (visa case `appointment_booked`..`decision_pending`) →
+Visa decision: Approved / Rejected / Withdrawn → Final outcome (Enrolled, Visa rejected, Withdrawn, Rejected, Offer declined, Did not
+arrive, Cancelled). A closed application stops at the step it reached (`withdrawn`: the status history's `from_status`); later steps read
+Not reached. Missing documents: open ccrm-020 requests, required ccrm-019 checklist items needing an upload (not those awaiting review;
+an item with an open request is listed once, as the request) and visa checklist items not uploaded / to re-upload -- each links to
+Documents. Next actions: "Upload N missing documents", the counselor's `next_action`, an undecided active offer, a pending required
+deposit, booking the visa appointment, the visa office's additional-information request. Never the refusal reason, outcome reasons, file
+keys or notes. **Claude's calls under "proceed with recommended answers" (`NEEDS_CONFIRMATION`, OD-10):** M1 the backlog's proposed mapping
+as above; M2 the client's two offer stages are one step named by the offer type (only the current `offer_type` is stored); M3 no
+counselor / agent reuse (they have ccrm-017 / AGN-015). **Numbering:** no migration; API §12ID; RBAC §2.235 (DEC-SCOPE-328/329, §12HZ/12IA
+and §2.231/2.232 are left to the siblings that pencilled them).
+- **Feature ID authorized:** `nehn-033`. **Status:** built on `worktree-nehn-033`.
+
+### DEC-SCOPE-333 — Keyword-based auto-scoring suggestion for written answers (`nehn-026`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-026` (§9 "Evaluation" L209-213, `MEETING_TRANSCRIPT_REQUEST`:
+"final scoring rules should be confirmed before implementation"); `CLIENT_QUESTIONS.md` D-09 §4 (an ~80% keyword threshold discussed
+informally — **still open**); design `docs/superpowers/specs/2026-10-29-nehn-026-keyword-auto-scoring-design.md`. Depends on nehn-025
+(DEC-SCOPE-330), whose template already carries the `keywords` column. **Behaviour:** a `text` question may carry `keywords` (≤30, each
+≤100 chars; `|` joins synonyms). On submit, a text answer to such a question gets `auto_score` = `score` and `score_source = "keyword"`
+(MCQ answers get `"mcq"`); questions without keywords stay manual. The attempt still ends `submitted` (awaiting the trainer) whenever it has
+a text or file question — a keyword score is a suggestion included in the provisional total and pre-filled in the grading form. The
+trainer's attempt detail adds `score_source`, `auto_score`, `keywords`, `matched_keywords`, `match_percent`; a trainer score that differs
+from the stored one sets `score_source = "trainer"` (the suggestion is kept) and the `assessment.attempt_grade` audit gains
+`overrides: [{answer_id, auto_score, score}]`. The nehn-025 import now saves `keywords` (comma separated; a row error on a non-text row).
+Student payloads keep their field whitelists — keywords never reach a student (pinned by test).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION` — the D-09 §4 rule is the client's call):** K1 no
+weights, `|` synonyms; K2 case-insensitive, order-independent, whole-word phrase match with a trailing `s`/`es` plural rule, no other
+stemming or NLP; K3 ≥ 80% matched → full marks, below → proportional (2 dp), one global constant; K4 trainer-reviewed: results are never
+auto-published (also the keyword-stuffing mitigation); K5 text questions only, file answers never scored; K6 matched keywords are computed on
+read (attempted questions are locked). **Numbering:** migration 0218; API §12IE; RBAC §2.236.
+- **Feature ID authorized:** `nehn-026`. **Status:** built on `worktree-nehn-026`.
+
 ### DEC-SCOPE-310 — HR access to permitted student progress, attendance and documents; HR reports (`nehn-017`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-017` (§13 L277-286, §5 L116-121, §15 L337-347; `UNVERIFIED`
@@ -10511,9 +10553,9 @@ placement pool -- `it_student`, IT division, not withdrawn from placement (the p
 students excluded). H2 HR opens a student document only when its type (trimmed, lower-cased) is `resume`, `cv`, `curriculum vitae`,
 `portfolio`, `certificate` or `certificates`; every other type is closed (absent from the list, **403** on download). H3 three new
 catalogue resources, one per kind of data -- `student_progress`, `attendance`, `student_documents` (view, download) -- held by hr_team
-by default (migration 0218); revoking one hides its block and its report. H4 seats exclude `pending_consent`/`rejected`; completed =
+by default (migration 0219); revoking one hides its block and its report. H4 seats exclude `pending_consent`/`rejected`; completed =
 counted seat at progress 100. HR reports are `hr-progress`, `hr-completions` (`student_progress`) and `hr-attendance` (`attendance`):
 the training pack's columns over the HR population, no financial column. HR's Placement Reports exclusion is removed (counts only).
 The recruiter requirements module still bars HR (Q-28) -- an open question for the client.
-**Numbering:** migration `0218_hr_student_grants`; API §12HH; RBAC §2.221.
+**Numbering:** migration `0219_hr_student_grants`; API §12HH; RBAC §2.221.
 - **Feature ID authorized:** `nehn-017`. **Status:** built on `worktree-nehn-017`.
