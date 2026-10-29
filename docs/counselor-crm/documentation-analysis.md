@@ -246,7 +246,7 @@ About 170 to 200 PNGs: at least one per step, plus "what each role sees" variant
 - What the **School Applications** and **Management tasks** sidebar items show to an Overseas counselor. Both are recorded as discovered functionality.
 
 ## 12. Product Findings and Open Questions (owner)
-Documented as built, in neutral wording. These are code-read candidates; each is confirmed or dropped in the browser session that covers it.
+Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 was confirmed in the browser in S2; each is confirmed or dropped in the browser session that covers it.
 
 | # | Finding | Evidence | Docs impact |
 |---|---|---|---|
@@ -272,6 +272,7 @@ Documented as built, in neutral wording. These are code-read candidates; each is
 | P20 | A telecaller handover sends no direct notice; it relies on the "New lead assigned" reminder rule | `lead_handover.py:46` | HO-001 |
 | P21 | The 360 has no Visa tab and no document-review action; counselors cannot download invoices/receipts on Finance; any caseload counselor can upload a payment proof | appendix 02 VISA/DOC/FIN | VISA-001, DOC-002, FIN-002/003 |
 | P22 | A counselor-created application for an agency student is always direct | `workflows.py:2435` | APP-001, APP-010 |
+| P23 | (Found in S2, browser) The Overseas Admin's **Manage users** table is 716 px wide inside a 500 px panel at 1440 px: the Status badge is clipped and the Action column is off-screen; acting on a row scrolls the name out of view | `/overseas/admin/users`, `AdminUserManagementPanel.tsx` | ADM-002 |
 
 **Default-based behaviours (owner D4).** About 40 counselor decisions are builder defaults marked NEEDS_CONFIRMATION or UNVERIFIED, not owner-approved (appendix 04 §3, column "Authority"). Manual pages describe them as built, with no warning banners. The owner reviews that list separately.
 

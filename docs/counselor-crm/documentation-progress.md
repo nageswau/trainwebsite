@@ -3,17 +3,17 @@
 | | |
 |---|---|
 | Code baseline | `main` @ `045d8c40` (S1 discovery). Record any later `main` used for browser work here, with the affected features re-checked. |
-| Stack used for browser work | `cnsdocs` compose project from worktree `.claude/worktrees/cns-docs` (branch `docs/counselor-crm-user-guide`). Web http://localhost:3050, api :8050, Mailpit 127.0.0.1:8029 via untracked `docker-compose.docs.yml`. Untracked `.env` per plan S2.1. Owner approved Claude starting, seeding, resetting and snapshotting this stack only (2026-10-29). **Not started yet.** |
+| Stack used for browser work | `cnsdocs` compose project from worktree `.claude/worktrees/cns-docs` (branch `docs/counselor-crm-user-guide`). Web http://localhost:3050, api :8050, Mailpit 127.0.0.1:8029 via untracked `docker-compose.docs.yml`. Untracked `.env` per plan S2.1. Owner approved Claude starting, seeding, resetting and snapshotting this stack only (2026-10-29). Started 2026-10-30 (S2) at `045d8c40`; seeded; snapshots `after-seed`, `after-s2` in the session scratchpad. |
 | Docs branch | `docs/counselor-crm-user-guide` (from `main` @ `045d8c40`) |
 | Day 1 (D3 calendar) | _not set — recorded when S5 runs; S9 must run on or after Day 1 + 3_ |
-| Last session | S1 Master planning — 2026-10-29 |
-| Next session | S2 — Environment, capture tooling, admin set-up (creates the Docs personas) |
+| Last session | S2 Environment, tooling, admin set-up — 2026-10-30 |
+| Next session | S3 — Account access and navigation (Docs Counselor A/B/C set passwords from Mailpit) |
 
 **Column values:** Code Reviewed YES / PARTIAL / NO (YES at S1 = reviewed from source at `045d8c40`, evidence in `discovery/`) · Browser Verified YES / PARTIAL / NO · Screenshot YES / NO / N/A · Documented YES / DRAFT / NO · Reviewed PASSED / FAILED / NO.
 
 A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Reviewed = PASSED.
 
-**Totals (after S1):** 85 features · 85 code-reviewed · 0 browser-verified · 0 documented · 0 COMPLETE.
+**Totals (after S2):** 85 features · 85 code-reviewed · 3 browser-verified (+2 partial) · 3 documented (+2 draft) · 0 COMPLETE.
 
 | ID | Module | Feature | Session | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|---|
@@ -90,17 +90,17 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | DOC-CNS-HO-002 | Handoffs | A website enquiry becomes your lead | S4 | YES | NO | NO | NO | NO |
 | DOC-CNS-HO-003 | Handoffs | Agency students and applications | S6 | YES | NO | NO | NO | NO |
 | DOC-CNS-HO-004 | Handoffs | Self-registered students | S6 | YES | NO | NO | NO | NO |
-| DOC-CNS-ADM-001 | Admin: accounts | Create a counselor account | S2 | YES | NO | NO | NO | NO |
-| DOC-CNS-ADM-002 | Admin: accounts | Manage counselor users: set-up status, re-send link, edit, deactivate | S2 | YES | NO | NO | NO | NO |
+| DOC-CNS-ADM-001 | Admin: accounts | Create a counselor account | S2 | YES | YES | YES | YES | NO |
+| DOC-CNS-ADM-002 | Admin: accounts | Manage counselor users: set-up status, re-send link, edit, deactivate | S2 | YES | PARTIAL | YES | DRAFT | NO |
 | DOC-CNS-ADM-003 | Admin: accounts | Assign / change a student's counselor (with reason) | S6 | YES | NO | NO | NO | NO |
 | DOC-CNS-ADM-004 | Admin: accounts | Assign / change an application's counselor (with reason) | S6 | YES | NO | NO | NO | NO |
 | DOC-CNS-ESC-001 | Admin: escalation | Counselor tasks (admin view) | S9 | YES | NO | NO | NO | NO |
 | DOC-CNS-ESC-002 | Admin: escalation | Overdue by counselor and the escalation notice | S9 | YES | NO | NO | NO | NO |
 | DOC-CNS-PERF-001 | Admin: performance | Team performance | S9 | YES | NO | NO | NO | NO |
 | DOC-CNS-PERF-002 | Admin: performance | One counselor's report | S9 | YES | NO | NO | NO | NO |
-| DOC-CNS-CFG-001 | Admin: config | Document checklist templates | S2 | YES | NO | NO | NO | NO |
-| DOC-CNS-CFG-002 | Admin: config | Reminder rules and Run now | S2 | YES | NO | NO | NO | NO |
-| DOC-CNS-CFG-003 | Admin: config | Counselor message templates | S2 | YES | NO | NO | NO | NO |
+| DOC-CNS-CFG-001 | Admin: config | Document checklist templates | S2 | YES | YES | YES | YES | NO |
+| DOC-CNS-CFG-002 | Admin: config | Reminder rules and Run now | S2 | YES | PARTIAL | YES | DRAFT | NO |
+| DOC-CNS-CFG-003 | Admin: config | Counselor message templates | S2 | YES | YES | YES | YES | NO |
 | DOC-CNS-CFG-004 | Admin: config | Archived students: admin restore | S10 | YES | NO | NO | NO | NO |
 
 ## Unresolved items
@@ -110,7 +110,11 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | U2 | ~40 default-based decisions (appendix 04 §3) — documented as built (D4); owner to confirm separately. | Owner |
 | U3 | Browser-only unknowns in analysis §11 (dashboard Status cell, walk-in lead initial stage, timeline wording, reminder email, SA view of /overseas/admin/users, unassigned agency application notice, lost-reason owner). | S4 / S6 / S9 |
 | U4 | Escalation threshold and expiry-job timing must be re-read in S9 before relying on the Day 1 + 3 rule. | S9 |
-| U5 | `shoot.ts` / `signIn` portal change also exists on the unmerged telecaller/BDM doc branches — keep the same shape to avoid conflicts. | S2 |
+| U5 | `shoot.ts` changes (COUNSELOR_ROOT, `#calendar-feed-url` mask, "Demo super admin" mask, `signIn(..., portal)`) are on this branch only; the telecaller/BDM doc branches have not changed shoot.ts, so whichever merges second takes these. | Merge time |
+| U6 | ADM-002 deactivate/reactivate steps and the deactivated sign-in message are captured in S10 (Docs Counselor C). | S10 |
+| U7 | CFG-002 **Run reminders now** and populated Recent reminders are captured in S9. | S9 |
+| U8 | 13 forward links in the S2 admin pages point to pages written in S3–S9 (file names fixed in plan §Planned file names); link check is expected to list them until then. | S3–S9 |
+| U9 | Docs University + Docs MSc Data Science / Docs MBA (commission 10% / 12%) moved from S2 to S7 prep (University Master add → publish → add courses). | S7 |
 
 ## Discovered functionality (outside the 85 IDs)
 | Item | Where | Note |
@@ -118,8 +122,11 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | School Applications | counselor sidebar item 8 | Not covered by discovery; check in S3 what an Overseas counselor sees. |
 | Management tasks | counselor sidebar item 15 (`/account/management-tasks`) | Shared page; mention in NAV-001 only. |
 | Lead owner change by admin | API only (P15) | No UI — not a doc feature. |
+| Manage users table overflow | `/overseas/admin/users` at 1440 px | Table 716 px inside a 500 px panel: Status badge clipped, Action column off-screen; acting on a row scrolls the name out of view. Recorded as product finding P23. |
+| Admin sign-in demo card | `/admin/login` | Titled "Demo super admin" (not "Demo accounts"), so the old `shoot()` mask missed it; mask extended in S2. |
 
 ## Session log
 | Session | Date | Commit | Summary |
 |---|---|---|---|
-| S1 | 2026-10-29 | (this commit) | Four discovery appendices; owner answers D1–D7; analysis (85 features in 24 modules, findings P1–P22), plan (S2–S12), tracker, screenshot-index skeleton. |
+| S1 | 2026-10-29 | d77592f3 | Four discovery appendices; owner answers D1–D7; analysis (85 features in 24 modules, findings P1–P22), plan (S2–S12), tracker, screenshot-index skeleton. |
+| S2 | 2026-10-30 | (this commit) | cnsdocs stack (3050/8050/8029) up from 045d8c40; shoot.ts COUNSELOR_ROOT + feed-URL and "Demo super admin" masks + signIn portal; build-pdfs counselor mode; OA created Docs Counselor A/B/C, Docs Telecaller, Docs UK admission checklist, Docs offer update template; 21 PNGs; ADM-001, CFG-001, CFG-003 documented, ADM-002 and CFG-002 draft (finish in S10/S9); P4 confirmed; P23 found. |

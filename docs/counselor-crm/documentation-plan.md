@@ -115,6 +115,19 @@ docs/counselor-crm/
 apps/web/tests/doc-capture/counselor/   (capture specs, test-only)
 ```
 
+### Planned file names (S2 pages already link to these)
+| Doc ID | File |
+|---|---|
+| AUTH-002 | `user-manual/account-access/auth-002-first-password.md` |
+| CHAT-001 | `user-manual/chat/chat-001-counselor-chat.md` |
+| FUP-003 | `user-manual/follow-ups/fup-003-automatic-reminders.md` |
+| APP-005 | `user-manual/applications/app-005-sub-status-ready-gate.md` |
+| DOC-001 | `user-manual/documents/doc-001-application-checklist.md` |
+| ADM-003 / ADM-004 | `admin-manual/accounts/adm-003-student-counselor.md`, `adm-004-application-counselor.md` |
+| ESC-001 / ESC-002 | `admin-manual/escalation/esc-001-counselor-tasks-admin.md`, `esc-002-overdue-escalation.md` |
+
+Other files follow `<module-code>-<NNN>-<short-name>.md` in the module folder.
+
 Image links:
 - From a manual feature file: `../../screenshots/<module>/<file>.png`.
 - From a role guide: `../screenshots/<module>/<file>.png`.
@@ -184,21 +197,21 @@ To iterate on one session, restore the `pg_dump` snapshot from the end of the pr
 - [x] Four parallel discovery passes: leads and workday, students and Student 360, access/admin/handoffs, test data/tooling/decisions.
 - [x] Owner answers D1–D7. Wrote `documentation-analysis.md`, this plan, `documentation-progress.md`, the `screenshot-index.md` skeleton and the `discovery/` appendices.
 
-### S2 — Environment, capture tooling, admin set-up (creates personas)
+### S2 — Environment, capture tooling, admin set-up (creates personas) — DONE 2026-10-30
 Features: ADM-001, ADM-002 (create/edit/re-send; deactivate is in S10), CFG-001, CFG-002 (view/edit rules; Run now is in S9), CFG-003 (5).
-- [ ] **S2.1 Stack.**
+- [x] **S2.1 Stack.**
   - Worktree `.claude/worktrees/cns-docs`; run `docker compose -p cnsdocs -f docker-compose.yml -f docker-compose.docs.yml`.
   - The untracked `docker-compose.docs.yml` adds Mailpit on `127.0.0.1:8029:8025`.
   - The untracked `.env` is the repo `.env` with `WEB_PORT=3050`, `API_PORT=8050`, `FRONTEND_URL=http://localhost:3050`, `SMTP_HOST=mailpit`, `SMTP_PORT=1025`, `SMTP_USE_TLS=false`, no SMTP credentials, `SMTP_FROM_EMAIL=no-reply@edusphere.local`, `ENVIRONMENT=development`. Make sure the Zoho Mail API is **not** configured (ENH-032), so mail goes to SMTP/Mailpit.
   - The worker and beat must run. Seed from `045d8c40`.
   - Scratchpad scripts: `docs-env.sh` (DOCS_BASE_URL, DOCS_MAILPIT_URL, DOCS_PASSWORD from the seed, a random DOCS_TEST_PASSWORD) and `reset-stack.sh`.
-- [ ] **S2.2 Tooling (test-only).**
+- [x] **S2.2 Tooling (test-only).**
   - Add `export const COUNSELOR_ROOT` to `apps/web/tests/doc-capture/shoot.ts`.
   - Extend `signIn()` with an optional portal (`/admin/login`), keeping the default unchanged. This is the same shape as the telecaller/BDM branches, to ease later merges.
   - Add a set-password matcher to `mailLink`, a `#calendar-feed-url` mask, and a `counselor` mode in `docs/tooling/build-pdfs.mjs`.
   - Prove the Agent and School specs still list (`--list`).
-- [ ] **S2.3** Masking check on `account-access/01-overseas-login.png` and `admin-login.png`.
-- [ ] **S2.4 Standard loop.**
+- [x] **S2.3** Masking check on `account-access/01-overseas-login.png` and `admin-login.png`.
+- [x] **S2.4 Standard loop.**
   - As the Overseas Admin:
     - create **Docs Counselor A/B/C** (ADM-001), including a duplicate-email error;
     - edit B and re-send the link from Users (ADM-002);
@@ -206,8 +219,10 @@ Features: ADM-001, ADM-002 (create/edit/re-send; deactivate is in S10), CFG-001,
     - view the reminder rules (CFG-002);
     - create a **Docs message template** (CFG-003).
   - As the Super Admin: show the create-user Division default (P4, shot only; cancel without saving).
-  - Setup only, not documented features: create **Docs Telecaller** (Overseas), and **Docs University** with **Docs MSc Data Science** and **Docs MBA**, with commission 10% / 12% (owner D5).
-- [ ] **S2.5** Snapshot `after-s2`.
+  - Setup only, not documented features: create **Docs Telecaller** (Overseas, Employee ID `DOCS-TEL-1`, manager Lakshmi).
+  - **Moved to S7 prep (2026-10-30):** **Docs University** with **Docs MSc Data Science** and **Docs MBA**, commission 10% / 12% (owner D5), via University Master (`/partnership/universities/new` → publish → add courses). Counselors only see published (catalogue-visible) universities.
+  - S2 notes: `/admin/login` lands on `/admin` (no trailing slash); its demo card is titled "Demo super admin" — `shoot()` now masks it. Restoring a snapshot must restart `web` after `api` is healthy (scratchpad `restore-snap.sh`).
+- [x] **S2.5** Snapshot `after-s2`.
 
 ### S3 — Account access and navigation
 Features: AUTH-001..006, NAV-001 (7).
@@ -255,6 +270,7 @@ Features: STU-001..007, STU-010, HO-003, HO-004, ADM-003, ADM-004 (12).
 
 ### S7 — Applications, offers, documents
 Features: APP-001..010, OFR-001..003, DOC-001..004 (17).
+- [ ] **S7 prep (setup only):** as the Overseas Admin, add **Docs University** (United Kingdom, so the S2 checklist matches; agent commission 10%), publish it, add **Docs MSc Data Science** (PG, course commission 12%) and **Docs MBA** (PG).
 - [ ] Standard loop.
   - On Docs Converted Student: add application A1 (Docs University / Docs MSc Data Science, intake picker) (APP-001..003).
   - Checklist from the Docs template (DOC-001). Request documents due tomorrow (DOC-003). Upload a document (DOC-004). Documents page (DOC-002, P21).
