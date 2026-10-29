@@ -4753,3 +4753,19 @@ nullable, the university's CHECKs). No new route.
 - `GET /workflows/overseas/agent/crm/partner-universities/{id}` — for an agency Master only, each course gains `agent_commission_effective`:
   `{percent, amount, currency, note, source: "course" | "university"}` (the course's value, else the university's) or `null` when neither is
   set. Agent staff get no key. Public course endpoints are unchanged (never carry either key).
+
+## 12HZ. University logo upload and richer university cards (nehn-035) — addendum, 2026-10-29
+
+`DEC-SCOPE-328`. No migration (reuses `universities.logo_url`).
+
+- `PUT /partnership/universities/{id}/logo` — multipart `file`. The `PATCH` rule (session → **401**; `can_edit` + scope → **403**; unknown
+  id **404**; inactive **409**). Then the nehn-003 `university_logo` policy: size 1 B-1 MB else **413**; type PNG / JPEG / WebP and matching
+  magic bytes else **415** (SVG is always 415); width and height 32-2048 px, read from the header, else **422**. Stores the file, sets
+  `logo_url` to `/api/v1/public/university-logos/<32 hex>.<png|jpg|webp>`, audits `university.logo` `{content_type, size, replaced}` and
+  returns `UniversityEnvelope` (as `PATCH`). The previous uploaded logo is deleted after the commit.
+- `GET /public/university-logos/{name}` — no session. `name` must be `<32 lowercase hex>.<png|jpg|webp>`, else **404**; a missing file is
+  **404**. `Content-Type` from the extension, `X-Content-Type-Options: nosniff`, `Cache-Control: public, max-age=31536000, immutable`.
+- `logo_url` (university create / `PATCH`) additionally accepts the uploaded shape above; everything else it accepted or refused is
+  unchanged.
+- `GET /public/universities` — each row gains `programs_count` (active overseas courses), `country_name`, `country_slug`, `country_iso2`.
+  Other routes returning `UniversityOut` carry the defaults (`0` / `null`).

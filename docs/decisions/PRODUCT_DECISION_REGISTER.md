@@ -10463,3 +10463,20 @@ effective value carries the source row's note; CA4 the downgrade refuses while a
 course CSV import cannot carry it; CA6 the list column on the Master's university list stays the university's value. **Numbering:** migration
 0217; API §12HY; RBAC §2.230.
 - **Feature ID authorized:** `ccrm-051`. **Status:** built on `worktree-ccrm-051`.
+
+### DEC-SCOPE-328 — University logo upload and richer university cards (`nehn-035`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-035` (action 16; §17 L486-492 "University Selection", L475
+"University icons/logos/images – Required"; §26 L798-800); design `docs/superpowers/specs/2026-10-29-nehn-035-university-logos-design.md`.
+Depends on DEC-SCOPE-279 (nehn-003 `university_logo` policy, `public/` prefix). **Behaviour:** `PUT /partnership/universities/{id}/logo`
+(multipart) lets anyone who may edit that university (`can_edit` + scope) upload a PNG / JPEG / WebP logo of at most 1 MB and 32-2048 px per
+side; the declared type must match the magic bytes; PNG/JPEG metadata is stripped. The file goes to `public/university-logos/<hex>.<ext>`
+through `StorageService` and `logo_url` becomes `/api/v1/public/university-logos/<name>`, served publicly (both storage modes, `nosniff`,
+immutable cache). The previous uploaded logo is deleted after the commit; bundled / `https://` logos are never touched. Audit
+`university.logo`. The public university list gains `programs_count` (active courses) and `country_name / _slug / _iso2`. Catalogue cards
+show the country flag + name beside the city, "N programs", View details and Apply (→ the student apply form with the university
+preselected; logged out → login → back), and the catalogue gets a Country filter. **Builder's defaults (`NEEDS_CONFIRMATION`):** L2 SVG
+refused, not sanitised; L7 Apply hidden for a university with 0 programs ("Programs coming soon"); L1 upload only after the university is
+saved; L10 a form hint asks for a logo the organisation may use — formal copyright guidance (CI-04) still awaited from the client.
+**Numbering:** no migration; API §12HZ; RBAC §2.231.
+- **Feature ID authorized:** `nehn-035`. **Status:** built on `worktree-nehn-035`.

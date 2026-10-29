@@ -29,7 +29,7 @@ from app.models import (
     WebinarRegistration,
 )
 from app.schemas import CareerPathOut, CountryOut, EnquiryIn, ProgramOut, RealProjectOut, SocialProofOut, TestimonialOut, UniversityOut, WebinarRegistrationIn
-from app.services import lead_intake, social_proof, upload_policy
+from app.services import lead_intake, social_proof, university_logos, upload_policy
 from app.services.partnership_universities import public_visible
 from app.services.storage import storage
 from app.worker import sync_enquiry_to_crm_task
@@ -174,12 +174,31 @@ async def country(slug: str, db: AsyncSession = Depends(get_db)):
 
 @router.get("/universities", response_model=list[UniversityOut])
 async def universities(country: str | None = None, q: str | None = None, db: AsyncSession = Depends(get_db)):
-    stmt = select(University).join(Country).where(*public_visible())
+    stmt = select(University, Country).join(Country).where(*public_visible())
     if country:
         stmt = stmt.where(Country.slug == country)
     if q:
         stmt = stmt.where(or_(University.name.ilike(f"%{q}%"), University.city.ilike(f"%{q}%")))
-    return (await db.scalars(stmt.order_by(University.name))).all()
+    rows = (await db.execute(stmt.order_by(University.name))).all()
+    # nehn-035 (DEC-SCOPE-328 L6): each card's active programs, in one grouped query, and its country.
+    counted = select(OverseasCourse.university_id, func.count()).where(OverseasCourse.university_id.in_([u.id for u, _ in rows]), OverseasCourse.active.is_(True))
+    counts = {uid: n for uid, n in (await db.execute(counted.group_by(OverseasCourse.university_id))).all()}
+    return [UniversityOut.model_validate(u).model_copy(update={"programs_count": counts.get(u.id, 0), "country_name": c.name, "country_slug": c.slug, "country_iso2": c.iso2}) for u, c in rows]
+
+
+@router.get("/university-logos/{name}")
+async def university_logo(name: str):
+    """nehn-035 (DEC-SCOPE-328 L3): an uploaded logo, public by design, in either storage mode. Only server-made names are read, under one
+    fixed prefix; the type comes from the server-chosen extension. Names are never reused, so the file can be cached for good."""
+    match = university_logos.LOGO_NAME.fullmatch(name)
+    if match is None:
+        raise HTTPException(404, "Logo not found")
+    try:
+        data = storage.read_bytes(f"{university_logos.LOGO_PREFIX}/{name}")
+    except Exception:
+        raise HTTPException(404, "Logo not found") from None
+    headers = {"Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff"}
+    return Response(content=data, media_type=university_logos.LOGO_TYPES[match.group(1)], headers=headers)
 
 
 @router.get("/universities/{slug}")

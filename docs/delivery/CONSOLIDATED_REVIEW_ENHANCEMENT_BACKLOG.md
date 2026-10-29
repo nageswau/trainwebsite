@@ -1589,6 +1589,12 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** the dtu-001/PUB-023 university displays; the `logo_url` validator tests.
 - **Open questions:** allow SVG? Copyright restrictions on logos? Is Apply allowed on universities with no programs?
 - **Complexity:** medium · **Risk:** low
+- **Status (2026-10-29):**
+  - Built on `worktree-nehn-035` (`DEC-SCOPE-328`; no migration; API §12HZ; RBAC §2.231). AC1-AC5 met: `PUT .../universities/{id}/logo`
+    (nehn-003 `university_logo` policy, 32-2048 px, public prefix, served by `GET /public/university-logos/{name}`); cards show flag +
+    country + city, "N programs", View details and Apply; logged-out Apply → login → apply form preselected; Country filter.
+  - Open questions took the builder's defaults: SVG refused (not sanitised); Apply hidden at 0 programs ("Programs coming soon"); upload
+    only after the university is saved; copyright guidance is a form hint until the client's CI-04 answer.
 
 #### `nehn-036` — Course/program icons (optional)
 - **Source:** §17 L476, L493-495; §26 L803; action 17 (**Optional**).

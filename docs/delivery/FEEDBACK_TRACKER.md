@@ -46,6 +46,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-023 Attendance corrections | The trainer is notified in-app and by instant email (no daily digest). The student is notified of the decision, with the reviewer's comment. |
 | nehn-029 Live classes | Reschedule or cancel only before the class starts. The Zoho or Google Meet meeting is updated by hand for now (the trainer is reminded). Students are notified. |
 | nehn-034 Country cards | A country with no universities yet shows "Coming soon" instead of being hidden. Standard flags until the client supplies country images. |
+| nehn-035 University logos | Logos are uploaded as PNG, JPEG or WebP (SVG is refused for safety). "Apply" is hidden on a university with no programs yet. Please share any logo-usage or copyright rules (CI-04). |
 | nehn-036 Course icons | A curated set of 13 subject icons, chosen automatically from the course category, overridable per course. No upload. |
 | nehn-040 Student ID | Every student, including agency students without a login, has a Student ID that admin and agency screens can search. No Agent ID, as decided on 15 Sep 2026. |
 | nehn-012 Lead list export | Lead lists filter by creation date (India time) and counselor. Admins and telecaller managers download the filtered list as Excel, with contact details; telecallers and counselors do not. One row per lead. Each download is recorded and limited to 30 per 10 minutes. |
@@ -91,7 +92,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-032 | Certificates | Certificate signatures (Founder + Coordinator) and designation | Enhancement | Done — confirm defaults | Dev + Client | Wave 3 | Upload the signature PNGs and confirm the builder defaults (DEC-SCOPE-302 S1-S9); final certificate design (CI-03) |
 | nehn-033 | Overseas | Overseas student Overview / Progress page | Enhancement | Waiting — decision | Dev + Client | Wave 2 · next review | Mapping of the client's 10 stages onto the portal's stages (OD-10) |
 | nehn-034 | Overseas | Country cards with flags and university count | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 · next review | Custom country images, if wanted (CI-04) |
-| nehn-035 | Overseas | University logo upload and richer university cards | Enhancement | Ready to start | Dev + Client | Wave 2 · next review | Logo usage and copyright guidance (CI-04) |
+| nehn-035 | Overseas | University logo upload and richer university cards | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 · next review | Logo usage and copyright guidance (CI-04) |
 | nehn-036 | Overseas | Course and program icons (optional) | Enhancement | Done — confirm defaults | Dev | Wave 4 | Confirm icons are wanted this cycle (§2) |
 | nehn-037 | Overseas | Counselor tools — document requests, checklist, scholarship and notes delivered by counselor CRM items ccrm-010, 013, 018, 019, 020; admission interviews built (DEC-SCOPE-296) | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Are admission interviews needed? |
 | nehn-038 | Agent portal | Agent performance dashboard: remaining KPIs | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Confirm the KPI list and definitions (CI-06; DEC-SCOPE-306 D1-D6) |
@@ -120,7 +121,7 @@ These items are built. Where a question was open, we used the recommended answer
 | A13 | Coordinator certificate workflow | Dev, High | nehn-030, 031 | Waiting — decision (OD-05) |
 | A14 | Overseas Student Overview / Progress | Dev, High | nehn-033, 001 | Waiting — decision (OD-10); offer fix done |
 | A15 | Country icons, flags, images | Dev, High | nehn-034 | Done — confirm defaults |
-| A16 | University logos, icons, images | Dev, High | nehn-035 | Ready to start — logo guidance welcome (CI-04) |
+| A16 | University logos, icons, images | Dev, High | nehn-035 | Done — confirm defaults (logo guidance welcome, CI-04) |
 | A17 | Course/program icons | Dev, Optional | nehn-036 | Done — confirm defaults |
 | A18 | School/Institution login | Dev | nehn-039 | Done — school logins in place; remaining detail in nehn-039 |
 | A19 | Confirm Phase-1 bulk school upload | Client + Dev, next review | nehn-039 | Waiting — client input (CI-05, OD-13); bulk upload is already built |

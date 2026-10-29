@@ -3357,3 +3357,13 @@ where `can_upload_proof` is true. Pinned by `apps/api/tests/test_ccrm_049_paymen
 The course write gates (§2.100 upc-017 CO1: read 403, university 404, write 403/409) run first; the agent commission gate follows, before
 any write. Same editors and viewers as DEC-SCOPE-209 (`agent_commission_access`); U2's course `commission` gate is unchanged. Pinned by
 `apps/api/tests/test_ccrm_051_course_agent_commission.py` and the upc-033 commission sweep.
+
+### 2.231 University logo upload *(added 2026-10-29 — `DEC-SCOPE-328`, nehn-035)*
+
+| Action | super_admin | overseas_admin | partnership_head | partnership_manager | anonymous | other roles |
+|---|---|---|---|---|---|---|
+| `PUT /partnership/universities/{id}/logo` | allowed | allowed | own team's / unassigned universities | own universities | 401 | 403 |
+| `GET /public/university-logos/{name}` | allowed | allowed | allowed | allowed | allowed (public by design) | allowed |
+
+The upload follows the university `PATCH` gate exactly (`can_edit` + scope, §2.46 upc-003; inactive 409). Logos are public artwork, so the
+read takes no session; it serves only server-made names under one fixed prefix. Pinned by `apps/api/tests/test_nehn_035_university_logos.py`.
