@@ -224,14 +224,14 @@ Features: ADM-001, ADM-002 (create/edit/re-send; deactivate is in S10), CFG-001,
   - S2 notes: `/admin/login` lands on `/admin` (no trailing slash); its demo card is titled "Demo super admin" — `shoot()` now masks it. Restoring a snapshot must restart `web` after `api` is healthy (scratchpad `restore-snap.sh`).
 - [x] **S2.5** Snapshot `after-s2`.
 
-### S3 — Account access and navigation
+### S3 — Account access and navigation — DONE 2026-10-30
 Features: AUTH-001..006, NAV-001 (7).
-- [ ] Standard loop.
+- [x] Standard loop.
   - Docs Counselor A/B/C set their passwords from Mailpit links (AUTH-002); C sets one too so they can be deactivated later.
   - Sign in at /overseas/login, forgot/reset password, change password, My profile, sign out.
   - Sidebar tour, plus the 390 px menu without Sign out (P18).
   - The deactivated-login message is captured in S10 and added to AUTH-006 then.
-- [ ] Snapshot `after-s3`.
+- [x] Snapshot `after-s3`.
 
 ### S4 — Leads and handoffs (lead side)
 Features: HO-001, HO-002, LEAD-001..009, CONV-001, CONV-002 (13).

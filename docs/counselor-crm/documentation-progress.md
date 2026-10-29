@@ -6,24 +6,24 @@
 | Stack used for browser work | `cnsdocs` compose project from worktree `.claude/worktrees/cns-docs` (branch `docs/counselor-crm-user-guide`). Web http://localhost:3050, api :8050, Mailpit 127.0.0.1:8029 via untracked `docker-compose.docs.yml`. Untracked `.env` per plan S2.1. Owner approved Claude starting, seeding, resetting and snapshotting this stack only (2026-10-29). Started 2026-10-30 (S2) at `045d8c40`; seeded; snapshots `after-seed`, `after-s2` in the session scratchpad. |
 | Docs branch | `docs/counselor-crm-user-guide` (from `main` @ `045d8c40`) |
 | Day 1 (D3 calendar) | _not set — recorded when S5 runs; S9 must run on or after Day 1 + 3_ |
-| Last session | S2 Environment, tooling, admin set-up — 2026-10-30 |
-| Next session | S3 — Account access and navigation (Docs Counselor A/B/C set passwords from Mailpit) |
+| Last session | S3 Account access and navigation — 2026-10-30 |
+| Next session | S4 — Leads and handoffs (Docs Telecaller sets password, hands leads to Docs Counselor A) |
 
 **Column values:** Code Reviewed YES / PARTIAL / NO (YES at S1 = reviewed from source at `045d8c40`, evidence in `discovery/`) · Browser Verified YES / PARTIAL / NO · Screenshot YES / NO / N/A · Documented YES / DRAFT / NO · Reviewed PASSED / FAILED / NO.
 
 A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Reviewed = PASSED.
 
-**Totals (after S2):** 85 features · 85 code-reviewed · 3 browser-verified (+2 partial) · 3 documented (+2 draft) · 0 COMPLETE.
+**Totals (after S3):** 85 features · 85 code-reviewed · 9 browser-verified (+3 partial) · 9 documented (+3 draft) · 0 COMPLETE.
 
 | ID | Module | Feature | Session | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|---|
-| DOC-CNS-AUTH-001 | Account access | Sign in to the Overseas portal | S3 | YES | NO | NO | NO | NO |
-| DOC-CNS-AUTH-002 | Account access | Set your first password from the welcome email | S3 | YES | NO | NO | NO | NO |
-| DOC-CNS-AUTH-003 | Account access | Forgot / reset your password | S3 | YES | NO | NO | NO | NO |
-| DOC-CNS-AUTH-004 | Account access | Change your password | S3 | YES | NO | NO | NO | NO |
-| DOC-CNS-AUTH-005 | Account access | My profile | S3 | YES | NO | NO | NO | NO |
-| DOC-CNS-AUTH-006 | Account access | Sign out, ended sessions, deactivated account | S3 | YES | NO | NO | NO | NO |
-| DOC-CNS-NAV-001 | Navigation | Portal tour: 15-item sidebar, top bar, mobile menu | S3 | YES | NO | NO | NO | NO |
+| DOC-CNS-AUTH-001 | Account access | Sign in to the Overseas portal | S3 | YES | YES | YES | YES | NO |
+| DOC-CNS-AUTH-002 | Account access | Set your first password from the welcome email | S3 | YES | YES | YES | YES | NO |
+| DOC-CNS-AUTH-003 | Account access | Forgot / reset your password | S3 | YES | YES | YES | YES | NO |
+| DOC-CNS-AUTH-004 | Account access | Change your password | S3 | YES | YES | YES | YES | NO |
+| DOC-CNS-AUTH-005 | Account access | My profile | S3 | YES | YES | YES | YES | NO |
+| DOC-CNS-AUTH-006 | Account access | Sign out, ended sessions, deactivated account | S3 | YES | PARTIAL | YES | DRAFT | NO |
+| DOC-CNS-NAV-001 | Navigation | Portal tour: 15-item sidebar, top bar, mobile menu | S3 | YES | YES | YES | YES | NO |
 | DOC-CNS-DASH-001 | Dashboard | Counselor dashboard (action tiles + application table) | S9 | YES | NO | NO | NO | NO |
 | DOC-CNS-SRCH-001 | Dashboard | Quick search | S9 | YES | NO | NO | NO | NO |
 | DOC-CNS-LEAD-001 | Leads | My leads list | S4 | YES | NO | NO | NO | NO |
@@ -111,15 +111,15 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | U3 | Browser-only unknowns in analysis §11 (dashboard Status cell, walk-in lead initial stage, timeline wording, reminder email, SA view of /overseas/admin/users, unassigned agency application notice, lost-reason owner). | S4 / S6 / S9 |
 | U4 | Escalation threshold and expiry-job timing must be re-read in S9 before relying on the Day 1 + 3 rule. | S9 |
 | U5 | `shoot.ts` changes (COUNSELOR_ROOT, `#calendar-feed-url` mask, "Demo super admin" mask, `signIn(..., portal)`) are on this branch only; the telecaller/BDM doc branches have not changed shoot.ts, so whichever merges second takes these. | Merge time |
-| U6 | ADM-002 deactivate/reactivate steps and the deactivated sign-in message are captured in S10 (Docs Counselor C). | S10 |
+| U6 | ADM-002 deactivate/reactivate steps and the deactivated sign-in message (AUTH-006) are captured in S10 (Docs Counselor C). | S10 |
 | U7 | CFG-002 **Run reminders now** and populated Recent reminders are captured in S9. | S9 |
-| U8 | 13 forward links in the S2 admin pages point to pages written in S3–S9 (file names fixed in plan §Planned file names); link check is expected to list them until then. | S3–S9 |
+| U8 | Forward links (12 after S3) in the S2 admin pages point to pages written in S3–S9 (file names fixed in plan §Planned file names); link check is expected to list them until then. | S3–S9 |
 | U9 | Docs University + Docs MSc Data Science / Docs MBA (commission 10% / 12%) moved from S2 to S7 prep (University Master add → publish → add courses). | S7 |
 
 ## Discovered functionality (outside the 85 IDs)
 | Item | Where | Note |
 |---|---|---|
-| School Applications | counselor sidebar item 8 | Not covered by discovery; check in S3 what an Overseas counselor sees. |
+| School Applications | counselor sidebar item 8 | S3: opens "School-Linked Overseas Applications" (start an Overseas application for a School student by Student ID); noted in NAV-001 only, outside the 85 IDs. |
 | Management tasks | counselor sidebar item 15 (`/account/management-tasks`) | Shared page; mention in NAV-001 only. |
 | Lead owner change by admin | API only (P15) | No UI — not a doc feature. |
 | Manage users table overflow | `/overseas/admin/users` at 1440 px | Table 716 px inside a 500 px panel: Status badge clipped, Action column off-screen; acting on a row scrolls the name out of view. Recorded as product finding P23. |
@@ -130,3 +130,4 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 |---|---|---|---|
 | S1 | 2026-10-29 | d77592f3 | Four discovery appendices; owner answers D1–D7; analysis (85 features in 24 modules, findings P1–P22), plan (S2–S12), tracker, screenshot-index skeleton. |
 | S2 | 2026-10-30 | (this commit) | cnsdocs stack (3050/8050/8029) up from 045d8c40; shoot.ts COUNSELOR_ROOT + feed-URL and "Demo super admin" masks + signIn portal; build-pdfs counselor mode; OA created Docs Counselor A/B/C, Docs Telecaller, Docs UK admission checklist, Docs offer update template; 21 PNGs; ADM-001, CFG-001, CFG-003 documented, ADM-002 and CFG-002 draft (finish in S10/S9); P4 confirmed; P23 found. |
+| S3 | 2026-10-30 | (this commit) | Docs Counselor A/B/C set passwords from Mailpit; AUTH-001..005 + NAV-001 documented, AUTH-006 draft (deactivated sign-in in S10); 27 PNGs incl. 390 px menu; all 15 sidebar headings verified; P18 confirmed with workaround (My profile → public header Logout); wrong-portal message captured. |

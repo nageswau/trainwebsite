@@ -246,7 +246,7 @@ About 170 to 200 PNGs: at least one per step, plus "what each role sees" variant
 - What the **School Applications** and **Management tasks** sidebar items show to an Overseas counselor. Both are recorded as discovered functionality.
 
 ## 12. Product Findings and Open Questions (owner)
-Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 was confirmed in the browser in S2; each is confirmed or dropped in the browser session that covers it.
+Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 was confirmed in the browser in S2 and P18 in S3; each is confirmed or dropped in the browser session that covers it.
 
 | # | Finding | Evidence | Docs impact |
 |---|---|---|---|
@@ -267,7 +267,7 @@ Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 w
 | P15 | Changing a lead's counselor (owner + reason, ccrm-003 A7 / ccrm-033) is API-only: no admin screen | `AdminLeadManagementPanel.tsx` | ADM README |
 | P16 | Archive gaps: the archived list shows only csc-001-linked students; only the linked counselor can archive; profile edits and document requests still work on an archived student | `student_archive.py:49,119` | STU-008 |
 | P17 | The 360 "Counselor" field shows only the csc-001 link ("Not assigned" for the application counselor). The My students application count includes other counselors' applications | `counselor_student_360.py:105`, `counselor_students.py:280` | STU-004, STU-002 |
-| P18 | Below 980 px there is no Sign out (no sidebar, and the mobile menu has no item for it) | `globals.css:12`, `PortalShell.tsx` | NAV-001, AUTH-006 |
+| P18 | Below 980 px there is no Sign out (no sidebar, and the mobile menu has no item for it). **Confirmed S3**; workaround: menu → My profile → public header **Logout** | `globals.css:12`, `PortalShell.tsx` | NAV-001, AUTH-006 |
 | P19 | Deactivating a counselor has no guard or handover; their work stays on the inactive account | `admin.py:839` | ADM-002 |
 | P20 | A telecaller handover sends no direct notice; it relies on the "New lead assigned" reminder rule | `lead_handover.py:46` | HO-001 |
 | P21 | The 360 has no Visa tab and no document-review action; counselors cannot download invoices/receipts on Finance; any caseload counselor can upload a payment proof | appendix 02 VISA/DOC/FIN | VISA-001, DOC-002, FIN-002/003 |
