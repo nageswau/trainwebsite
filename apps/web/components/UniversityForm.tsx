@@ -1,9 +1,10 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 
 import AgentCommissionFields from "@/components/AgentCommissionFields";
 import SearchableSelect from "@/components/SearchableSelect";
+import UniversityLogo from "@/components/UniversityLogo";
 import UniversityMatchList from "@/components/UniversityMatchList";
 import { agentCommissionBody, agentCommissionDraft } from "@/lib/agentCommission";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
@@ -39,6 +40,11 @@ type RankingRow = { key: number; system: string; other_name: string; year: strin
 type Errors = Record<string, string>;
 const MAX_RANKINGS = 10;
 const SEARCH_DELAY_MS = 400;
+// nehn-035 (DEC-SCOPE-331 L1-L2): editing only (the route needs a saved university). The nehn-003 `university_logo` rule is checked here
+// first so an obvious mismatch never uploads; the server re-checks the bytes and the size in pixels.
+const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const LOGO_MAX_BYTES = 1024 * 1024;
+const LOGO_RULE = "Choose a PNG, JPEG or WebP image of at most 1 MB.";
 
 
 function fieldErrors(detail: unknown): Errors | null {
@@ -90,6 +96,9 @@ export default function UniversityForm({ university, canEditAgentCommission = fa
   const [existing, setExisting] = useState<UniversityMatchPage | null>(null);
   const [duplicate, setDuplicate] = useState<UniversityDuplicate | null>(null);
   const [commission, setCommission] = useState(() => agentCommissionDraft(university?.agent_commission));
+  const [logoUrl, setLogoUrl] = useState(university?.logo_url ?? "");
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoMessage, setLogoMessage] = useState<{ text: string; failed: boolean } | null>(null);
   const focus = useFocusAfterRender();
 
   useEffect(() => {
@@ -113,6 +122,36 @@ export default function UniversityForm({ university, canEditAgentCommission = fa
 
   const updateRanking = (key: number, change: Partial<RankingRow>) => setRankings((rows) => rows.map((r) => (r.key === key ? { ...r, ...change } : r)));
   const invalid = (name: string) => (errors[name] ? { "aria-invalid": true as const, "aria-describedby": `uni-${name}-error` } : {});
+
+  async function uploadLogo(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file || !editing) return;
+    if (!LOGO_TYPES.includes(file.type) || file.size > LOGO_MAX_BYTES) {
+      setLogoMessage({ text: LOGO_RULE, failed: true });
+      input.value = "";
+      return;
+    }
+    const body = new FormData();
+    body.append("file", file);
+    setLogoBusy(true);
+    setLogoMessage(null);
+    try {
+      const response = await fetch(`${universityUrl(university.id)}/logo`, { method: "PUT", body });
+      const data = await response.json().catch(() => null);
+      if (response.ok && data?.university) {
+        setLogoUrl(data.university.logo_url ?? "");
+        setLogoMessage({ text: "Logo uploaded.", failed: false });
+      } else {
+        setLogoMessage({ text: detailMessage(data?.detail, "The logo could not be uploaded. Try again."), failed: true });
+      }
+    } catch {
+      setLogoMessage({ text: "The logo could not be uploaded. Check your connection and try again.", failed: true });
+    } finally {
+      setLogoBusy(false);
+      input.value = "";
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -254,8 +293,24 @@ export default function UniversityForm({ university, canEditAgentCommission = fa
           <small id="uni-programs-hint" className="muted">Separate areas with commas (up to 20).</small>
         </Field>
         <Field id="uni-logo_url" label="Logo URL" error={errors.logo_url}>
-          <input id="uni-logo_url" name="logo_url" maxLength={500} placeholder="/universities/logos/example.png or https://…" defaultValue={u?.logo_url ?? ""} {...invalid("logo_url")} />
+          <input id="uni-logo_url" name="logo_url" maxLength={500} placeholder="/universities/logos/example.png or https://…" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} {...invalid("logo_url")} />
         </Field>
+        <div className="field">
+          {editing ? (
+            <>
+              <label htmlFor="uni-logo_file">Upload a logo</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <UniversityLogo name={name.trim() || university.name} logoUrl={logoUrl.trim() || null} size={64} />
+                <input id="uni-logo_file" type="file" accept={LOGO_TYPES.join(",")} onChange={uploadLogo} disabled={logoBusy} aria-describedby="uni-logo_file-hint" />
+              </div>
+              <small id="uni-logo_file-hint" className="muted">PNG, JPEG or WebP, up to 1 MB and 32–2048 px on each side (SVG is not accepted). It is saved straight away. Upload only a logo the university allows you to use.</small>
+              {logoBusy && <p role="status" style={{ margin: "4px 0 0" }}>Uploading…</p>}
+              {logoMessage && <p role={logoMessage.failed ? "alert" : "status"} className={logoMessage.failed ? "field-error" : "muted"} style={{ margin: "4px 0 0", ...(logoMessage.failed ? { color: "var(--red)" } : {}) }}>{logoMessage.text}</p>}
+            </>
+          ) : (
+            <p className="muted" style={{ margin: 0 }}>Save the university first, then upload its logo here.</p>
+          )}
+        </div>
         <Field id="uni-campuses" label="Campuses" error={errors.campuses}>
           <textarea id="uni-campuses" name="campuses" rows={3} aria-describedby="uni-campuses-hint" defaultValue={u?.campuses?.join("\n") ?? ""} {...invalid("campuses")} />
           <small id="uni-campuses-hint" className="muted">One campus per line (up to 20).</small>

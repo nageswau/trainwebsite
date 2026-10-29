@@ -1188,6 +1188,10 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** the bulk question API tests.
 - **Open questions:** all-or-nothing vs partial import? Do assignments use the template too? Are image questions needed?
 - **Complexity:** medium · **Risk:** low
+- **Status (2026-10-29):**
+  - Built on `worktree-nehn-025` (`DEC-SCOPE-330`; no migration; API §12IB; RBAC §2.233). AC1-AC4 met.
+  - Builder's defaults (`NEEDS_CONFIRMATION`): all-or-nothing import; imports fill an existing (Draft) assessment; no assignments from the
+    template; no images; keywords / explanation accepted but not stored until nehn-026.
 
 #### `nehn-026` — Keyword-based auto-scoring for descriptive answers
 - **Source:** §9 "Evaluation" (L209-213: "final scoring rules should be confirmed before implementation"); `CLIENT_QUESTIONS.md` D-09 §4 (an ~80% keyword threshold was discussed informally; **open**).
@@ -1589,6 +1593,12 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** the dtu-001/PUB-023 university displays; the `logo_url` validator tests.
 - **Open questions:** allow SVG? Copyright restrictions on logos? Is Apply allowed on universities with no programs?
 - **Complexity:** medium · **Risk:** low
+- **Status (2026-10-29):**
+  - Built on `worktree-nehn-035` (`DEC-SCOPE-331`; no migration; API §12IC; RBAC §2.234). AC1-AC5 met: `PUT .../universities/{id}/logo`
+    (nehn-003 `university_logo` policy, 32-2048 px, public prefix, served by `GET /public/university-logos/{name}`); cards show flag +
+    country + city, "N programs", View details and Apply; logged-out Apply → login → apply form preselected; Country filter.
+  - Open questions took the builder's defaults: SVG refused (not sanitised); Apply hidden at 0 programs ("Programs coming soon"); upload
+    only after the university is saved; copyright guidance is a form hint until the client's CI-04 answer.
 
 #### `nehn-036` — Course/program icons (optional)
 - **Source:** §17 L476, L493-495; §26 L803; action 17 (**Optional**).
