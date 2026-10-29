@@ -103,7 +103,7 @@ def test_the_reports_are_registered_under_the_placement_resource_without_financi
     for role in ("placement_team", "placement_manager", "it_admin"):
         assert {"reports.placement.view", "reports.placement.download"} <= set(rbac.DEFAULT_GRANTS[role])
         assert "field.financial.view" not in rbac.DEFAULT_GRANTS[role]
-    assert "hr_team" not in rbac.DEFAULT_GRANTS
+    assert not [key for key in rbac.DEFAULT_GRANTS.get("hr_team", ()) if key.startswith("reports.placement.")]  # nehn-017: HR holds its own keys only
 
 
 def test_days_is_a_whole_number_from_1_to_365():

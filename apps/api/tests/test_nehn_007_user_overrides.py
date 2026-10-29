@@ -55,7 +55,7 @@ async def test_a_deny_removes_one_permission_for_that_user_only(client, db_sessi
 @pytest.mark.asyncio
 async def test_an_allow_grants_one_user_a_permission_their_role_lacks(client, db_session):
     root = await _user(db_session, "super_admin")
-    allowed, other = await _user(db_session, "hr_team"), await _user(db_session, "hr_team")
+    allowed, other = await _user(db_session, "counselor"), await _user(db_session, "counselor")  # nehn-017: hr_team now holds grants
     assert (await client.get(f"{API}/admin/payments", headers=_headers(allowed))).status_code == 403
     assert (await _put(client, root, allowed, _override("payments.view", "allow"))).status_code == 200
     assert (await client.get(f"{API}/admin/payments", headers=_headers(allowed))).status_code == 200
@@ -75,7 +75,7 @@ async def test_a_deny_closes_the_portal_payments_section(client, db_session):
 
 @pytest.mark.asyncio
 async def test_an_expired_override_stops_applying_without_action(client, db_session):
-    root, user = await _user(db_session, "super_admin"), await _user(db_session, "hr_team")
+    root, user = await _user(db_session, "super_admin"), await _user(db_session, "counselor")
     assert (await _put(client, root, user, _override("payments.view", "allow", expires_at=_later(hours=1)))).status_code == 200
     assert await permissions.user_has_grant(db_session, user, "payments", "view")
     row = await db_session.scalar(select(UserPermissionOverride).where(UserPermissionOverride.user_id == user.id))
@@ -154,7 +154,7 @@ async def test_endpoints_need_a_session(client):
 
 @pytest.mark.asyncio
 async def test_validation(client, db_session):
-    root, user = await _user(db_session, "super_admin"), await _user(db_session, "hr_team")
+    root, user = await _user(db_session, "super_admin"), await _user(db_session, "counselor")
     h = _headers(root)
     missing = f"{API}/admin/users/{uuid.uuid4()}/permissions"
     assert (await client.get(missing, headers=h)).status_code == 404

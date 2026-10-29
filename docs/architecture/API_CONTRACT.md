@@ -4821,3 +4821,20 @@ nullable, the university's CHECKs). No new route.
 - `PATCH /workflows/it/trainer/assessment-attempts/{id}` — request unchanged; a per-answer score different from the stored one sets
   `score_source = "trainer"`; the `assessment.attempt_grade` audit metadata adds `overrides` (keyword answers whose suggestion was replaced).
 - Student routes (`POST .../attempts`, submit, `GET .../student/learning`) never include `keywords`, `auto_score` or `matched_keywords`.
+
+## 12HH. HR student access and HR reports (nehn-017) — addendum, 2026-10-28
+
+`DEC-SCOPE-310`. Migration `0219_hr_student_grants` (seed only). Every route: grant (**403**), then hr_team/super_admin scope (**403**
+for any other role, even with the key), then the student (**404** outside the HR population). Responses are `Cache-Control: no-store`.
+
+- `GET /hr/students?q=&page=` (new) — `student_progress.view`. `{items: [{id, student_code, full_name, courses, completed}], total, page,
+  page_size: 25}` by name; `q` (≤ 100 chars, **422** longer) matches the Student ID exactly or the name/email in part.
+- `GET /hr/students/{id}` (new) — `student_progress.view`. `{student: {id, student_code, full_name}, seats: [{course, batch, trainer,
+  status, progress, completed, certificate, attendance?: {marked, present, absent, late, excused, attendance_pct}}], documents?: [{id,
+  document_type, original_filename, uploaded_at}], can: {attendance, documents, download}}`. `attendance` needs `attendance.view`,
+  `documents` needs `student_documents.view` (left out otherwise). No fee, payment or discount field; no `file_url`.
+- `GET /hr/students/{id}/documents/{document_id}/download` (new) — `student_documents.download`. `{url, expires_in}` (a short-lived
+  URL, nehn-003). **404** a document of another student; **403** a closed type. Audited (`hr.student_document_download`), committed first.
+- `GET /reports` / `/reports/{id}[.csv|.xlsx]` — new report ids `hr-progress`, `hr-completions` (`student_progress.view`/`.download`) and
+  `hr-attendance` (`attendance.view`/`.download`); rows are the HR population's seats.
+- `GET /portal/it/hr/reports` — now **200** (Placement Reports summary) for hr_team; was 404.

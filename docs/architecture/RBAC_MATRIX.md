@@ -3399,3 +3399,16 @@ carries the visa refusal reason, outcome reasons, file keys or counselor notes. 
 
 Keywords are the answer key: every student payload keeps its explicit field whitelist. Pinned by
 `apps/api/tests/test_nehn_026_keyword_scoring.py`.
+
+### 2.221 HR student access and HR reports *(added 2026-10-28 — `DEC-SCOPE-310`, nehn-017)*
+
+| Route | Anonymous | super_admin | hr_team (default grants) | hr_team, key revoked | other roles (even with the key) |
+|---|---|---|---|---|---|
+| `GET /hr/students`, `GET /hr/students/{id}` | 401 | 200 | 200 (HR population; 404 outside it) | 403 (`student_progress.view`) | 403 |
+| `GET /hr/students/{id}/documents/{doc}/download` | 401 | 200 | 200 allowed type, 403 closed type | 403 (`student_documents.download`) | 403 |
+| `GET /reports/hr-progress`, `/reports/hr-completions` | 401 | 200 (all rows) | 200 (HR population) | 403 (`student_progress.*`) | by grant; rows by role scope |
+| `GET /reports/hr-attendance` | 401 | 200 (all rows) | 200 (HR population) | 403 (`attendance.*`) | by grant; rows by role scope |
+| `GET /portal/it/hr/reports` | 401 | 200 | 200 | — | 403 |
+
+New catalogue resources `student_progress`, `attendance`, `student_documents` (view, download); hr_team holds all six keys by default
+(migration 0219). Read-only. Pinned by `apps/api/tests/test_nehn_017_hr_student_access.py` and `test_nehn_017_migration.py`.

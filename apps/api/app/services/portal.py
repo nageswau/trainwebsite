@@ -61,7 +61,7 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.services import application_filters, counselor_students, document_access, permissions, student_access, student_archive, student_profiles
+from app.services import application_filters, counselor_students, document_access, hr_students, permissions, student_access, student_archive, student_profiles
 from app.services import application_outcomes as outcomes
 from app.services import applications as job_applications
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
@@ -982,7 +982,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 await db.execute(
                     select(User, PlacementProfile)
                     .outerjoin(PlacementProfile, PlacementProfile.student_id == User.id)
-                    .where(User.role == "it_student", User.division == "it", or_(PlacementProfile.id.is_(None), PlacementProfile.withdrawn.is_(False)))
+                    .where(*hr_students.in_pool(User, PlacementProfile))  # nehn-017 H1: also the HR population
                 )
             ).all()
             return _payload(
@@ -1081,13 +1081,13 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                     for o, a, j, s in rows
                 ),
             )
-        if section == "reports" and user.role == "placement_team":
+        if section == "reports":
             # RPT-001: same gap as IT Admin's own "reports" fix above -- `PORTAL_NAV
             # ["it/placement"]` lists "Reports" but no handler existed. Named scope:
             # "employer job activity, placement outcomes" -- derived from real Job/
-            # JobApplication/JobOffer rows, never fabricated. Excludes `hr_team`, which
-            # shares this outer role block for every other section -- not named in
-            # `RPT-001-AC03`'s RBAC scope, so deliberately not extended to it here.
+            # JobApplication/JobOffer rows, never fabricated. nehn-017 (DEC-SCOPE-310):
+            # `hr_team` gets it too (counts only, nothing financial); HR's student
+            # reports are the report library's hr-* reports.
             job_rows = (await db.execute(select(Job, Company).join(Company, Company.id == Job.company_id).order_by(Company.name))).all()
             offers = (await db.scalars(select(JobOffer))).all()
             applications_count = await db.scalar(select(func.count()).select_from(JobApplication)) or 0

@@ -18,8 +18,8 @@ Added two real, data-derived report handlers in `services/portal.py`:
 Both deliberately exclude roles outside `RPT-001-AC03`'s named RBAC scope
 ("IT Admin, Placement Team") -- `overseas_admin`'s own "Reports" link is left 404ing
 (that's `RPT-002`'s unscheduled scope, not invented here), and `hr_team` (which shares
-every other section in the same outer role block as Placement Team) does not get this
-handler either, confirmed directly rather than assumed.
+every other section in the same outer role block as Placement Team) did not get this
+handler either -- until nehn-017 (DEC-SCOPE-310) extended it to HR.
 """
 
 import uuid
@@ -165,11 +165,12 @@ async def test_placement_team_reports_renders_real_job_activity_instead_of_404in
 
 
 @pytest.mark.asyncio
-async def test_hr_team_cannot_reach_the_placement_reports_handler(db_session, client):
+async def test_hr_team_reaches_the_placement_reports_handler(db_session, client):
+    # nehn-017 (DEC-SCOPE-310): the backlog removes HR's exclusion -- HR gets the same counts-only summary (was a 404).
     hr = await _create_user(db_session, role="hr_team", division="it")
     await _login(client, hr.email, "it")
     response = await client.get("/api/v1/portal/it/hr/reports")
-    assert response.status_code == 404
+    assert response.status_code == 200 and response.json()["title"] == "Placement Reports"
 
 
 @pytest.mark.asyncio

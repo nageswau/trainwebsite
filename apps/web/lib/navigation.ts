@@ -11,6 +11,7 @@ const PAGE_RESOURCE: Record<string, string> = {
   "/it/admin/payments": "payments", "/overseas/admin/payments": "payments",
   "/it/admin/telecaller-reports": "reports.telecaller", "/overseas/admin/telecaller-reports": "reports.telecaller",
   "/telecaller/manager/reports": "reports.telecaller", "/it/coordinator/certificates": "certificates",
+  "/it/hr/students": "student_progress", // nehn-017
 };
 const withResources = (nav: NavItem[]): NavItem[] => nav.map((item) => (PAGE_RESOURCE[item.href] ? { ...item, resource: PAGE_RESOURCE[item.href] } : item));
 
@@ -277,7 +278,8 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
   "it/student": ["dashboard","profile","course","attendance","assignments","projects","examinations","certificates","feedback","questions","fees","interview-schedule","placement-status","job-applications","downloads","support"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/student/${x}`})),
   "it/trainer": withTasks([...["dashboard","attendance","assignments","assessments","materials","live-sessions","student-progress","questions","support"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/trainer/${x}`})),{label:"Report library",href:"/it/trainer/report-library"}]), // nehn-009
   "it/placement": withTasks([...["dashboard","candidates","company-requirements","interviews","offers","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/placement/${x}`})),{label:"Recruiter Workspace",href:"/recruiter/dashboard"}]), // rec-001: the way back
-  "it/hr": withTasks([...["dashboard","job-requirements","shortlists","candidates","interviews"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/hr/${x}`})),{label:"Candidate Master",href:"/recruiter/candidates"},{label:"Find Candidates",href:"/recruiter/find-candidates"},{label:"Talent Pools",href:"/recruiter/pools"}]), // rec-009 / rec-013 / rec-015: read only
+  // nehn-017 (DEC-SCOPE-310): Students (read-only progress, attendance, allowed documents), Reports and the Report library (HR reports).
+  "it/hr": withResources(withTasks([...["dashboard","job-requirements","shortlists","candidates","interviews","students","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/hr/${x}`})),{label:"Report library",href:"/it/hr/report-library"},{label:"Candidate Master",href:"/recruiter/candidates"},{label:"Find Candidates",href:"/recruiter/find-candidates"},{label:"Talent Pools",href:"/recruiter/pools"}])), // rec-009 / rec-013 / rec-015: read only
   // nehn-030 (DEC-SCOPE-293 C3): the IT coordinator's certificate portal.
   "it/coordinator": withResources(withTasks(["dashboard","certificates"].map(x=>({label:x.replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/coordinator/${x}`})))),
   // bdm-001: "BDMs" is written out -- the generated label would read "Bdms".

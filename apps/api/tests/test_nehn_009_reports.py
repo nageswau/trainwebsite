@@ -101,7 +101,7 @@ async def test_the_catalogue_lists_the_report_for_a_role_holding_view(client, db
 
 
 async def test_the_catalogue_is_empty_for_a_role_without_the_grant(client, db_session):
-    await _as(client, db_session, "hr_team")  # placement_team holds nehn-016's reports.placement
+    await _as(client, db_session, "it_student")  # placement_team holds nehn-016's reports.placement, hr_team nehn-017's HR reports
     response = await client.get(API)
     assert response.status_code == 200 and response.json() == {"items": []}
 
