@@ -263,8 +263,8 @@ async def test_the_import_refuses_keywords_on_non_text_rows_and_too_many_keyword
     ]
     errors = (await _import(client, assessment.id, _xlsx(rows))).json()["errors"]
     assert errors == [
-        {"row": 2, "message": "Keywords can only be set on a text question"},
-        {"row": 3, "message": "Keywords can only be set on a text question"},
-        {"row": 4, "message": "At most 30 keywords, separated by commas"},
+        {"row": 2, "message": "Keywords can only be set on a written-answer (text) question"},
+        {"row": 3, "message": "Keywords can only be set on a written-answer (text) question"},
+        {"row": 4, "message": "At most 30 keywords"},
         {"row": 5, "message": "Each keyword can be at most 100 characters"},
     ]

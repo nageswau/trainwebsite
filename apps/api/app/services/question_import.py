@@ -11,9 +11,10 @@ import re
 import openpyxl
 from openpyxl.styles import Font
 from openpyxl.worksheet.datavalidation import DataValidation
+from pydantic import ValidationError
 
 from app.schemas import AssessmentQuestionIn
-from app.services.keyword_scoring import KEYWORD_THRESHOLD_PERCENT, MAX_KEYWORD_LENGTH, MAX_KEYWORDS
+from app.services.keyword_scoring import KEYWORD_THRESHOLD_PERCENT, MAX_KEYWORDS
 
 TYPES = ("mcq_single", "mcq_multiple", "text", "file")
 OPTION_COLUMNS = tuple(f"option_{n}" for n in range(1, 7))
@@ -139,14 +140,11 @@ def _question(values: dict[str, str]) -> AssessmentQuestionIn | str:
     marks = values.get("marks", "") or "1"
     if not marks.isdigit() or not 1 <= int(marks) <= MAX_MARKS:
         return "Marks must be a whole number from 1 to 10,000"
-    keywords = [keyword.strip() for keyword in values.get("keywords", "").split(",") if keyword.strip()]  # nehn-026
-    if keywords and kind != "text":
-        return "Keywords can only be set on a text question"
-    if len(keywords) > MAX_KEYWORDS:
-        return f"At most {MAX_KEYWORDS} keywords, separated by commas"
-    if any(len(keyword) > MAX_KEYWORD_LENGTH for keyword in keywords):
-        return f"Each keyword can be at most {MAX_KEYWORD_LENGTH} characters"
-    return AssessmentQuestionIn(question_type=kind, prompt=prompt, options=list(filled.values()), correct_answers=[filled[n] for n in chosen], max_score=int(marks), keywords=keywords)
+    keywords = values.get("keywords", "").split(",")  # nehn-026: the schema trims them and owns the keyword rules and their messages
+    try:
+        return AssessmentQuestionIn(question_type=kind, prompt=prompt, options=list(filled.values()), correct_answers=[filled[n] for n in chosen], max_score=int(marks), keywords=keywords)
+    except ValidationError as error:
+        return error.errors()[0]["msg"]
 
 
 def parse_rows(rows: list[tuple[int, dict[str, str]]]) -> tuple[list[tuple[int, AssessmentQuestionIn]], list[dict], list[dict]]:
