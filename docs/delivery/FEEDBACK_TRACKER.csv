@@ -24,7 +24,7 @@ nehn-022,Payments,Razorpay test/live mode switch and go-live runbook,Enhancement
 nehn-023,Attendance,Attendance correction usability and notifications,Enhancement,Done — confirm defaults,Dev,Wave 4,Confirm notification channel (§2)
 nehn-024,Assignments,Direct file upload for assignment submissions,Enhancement,Ready to start,Dev + Client,Wave 2,Multiple files per submission? Keep link submissions?
 nehn-025,Assessments,Trainer question upload from a standard Excel template,Enhancement,Done — confirm defaults,Dev,Wave 2,—
-nehn-026,Assessments,Keyword-based auto-scoring for descriptive answers,Enhancement,Waiting — decision,Dev + Client,Wave 4,Keyword scoring rule (OD-07); needs nehn-025
+nehn-026,Assessments,Keyword-based auto-scoring for descriptive answers,Enhancement,Done — confirm defaults,Dev + Client,Wave 4,Keyword scoring rule (OD-07) — builder default 80% / proportional; confirm
 nehn-027,Trainer portal,Learning materials: file upload and manage,Enhancement,Ready to start,Dev + Client,Wave 4,"Video uploads, or links only?"
 nehn-028,Trainer portal,Per-student progress view for trainers,Enhancement,Done — confirm defaults,Dev + Client,Wave 4,"Should progress % be computed from the criteria? Dropped students hidden or greyed? (DEC-SCOPE-308)"
 nehn-029,Trainer portal,Live class reschedule and cancel,Enhancement,Done — confirm defaults,Dev,Wave 4,Confirm meeting provider is updated by hand for now (§2)

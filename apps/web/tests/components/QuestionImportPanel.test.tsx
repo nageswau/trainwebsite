@@ -9,8 +9,8 @@ const assessments = [
   { id: "a1", title: "Module 1 Quiz", batch: "Batch A", status: "draft", attempt_count: 0 },
   { id: "a2", title: "Final Test", batch: "Batch A", status: "scheduled", attempt_count: 3 },
 ];
-const question = { row: 2, question_type: "mcq_multiple", prompt: "Pick the even numbers", options: ["1", "2", "3", "4"], correct_answers: ["2", "4"], max_score: 2 };
-const clean = { total_rows: 1, questions: [question], errors: [], warnings: [{ row: null, message: "The keywords and explanation columns are not saved yet; 1 row fills them in." }], created: 0 };
+const question = { row: 2, question_type: "mcq_multiple", prompt: "Pick the even numbers", options: ["1", "2", "3", "4"], correct_answers: ["2", "4"], keywords: [], max_score: 2 };
+const clean = { total_rows: 1, questions: [question], errors: [], warnings: [{ row: null, message: "The explanation column is not saved yet; 1 row fills it in." }], created: 0 };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
 function setup(responses: Response[]) {
@@ -47,7 +47,7 @@ describe("QuestionImportPanel", () => {
     expect(table.className).toBe("table compact stack"); // QA25-01: without compact the 650px min-width pushes values off a phone
     const cells = within(table).getAllByRole("cell").map(cell => cell.textContent);
     expect(cells).toEqual(["2", "Multiple choice", "Pick the even numbers", "1. 1 · 2. 2 · 3. 3 · 4. 4", "2, 4", "2"]);
-    expect(screen.getByText(/keywords and explanation columns are not saved yet/)).toBeTruthy();
+    expect(screen.getByText(/explanation column is not saved yet/)).toBeTruthy();
     expect(fetchMock.mock.calls[0][0]).toBe(`${BASE}/a1/questions/import`);
 
     fireEvent.click(screen.getByRole("button", { name: "Import 1 question" }));

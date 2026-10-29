@@ -47,7 +47,11 @@ type Assessment = {
   attempt_count: number;
 };
 type Attempt = { id: string; assessment: string; student: string; status: string; max_score: number };
-type AttemptAnswer = { id: string; question_id: string; prompt: string; question_type: string; max_score: number; value: string | string[] | null; auto_graded: boolean; score: number | null };
+type AttemptAnswer = {
+  id: string; question_id: string; prompt: string; question_type: string; max_score: number; value: string | string[] | null; auto_graded: boolean; score: number | null;
+  // nehn-026: the keyword suggestion; score_source is mcq | keyword | trainer, null until scored
+  auto_score: number | null; score_source: string | null; keywords: string[]; matched_keywords: string[]; match_percent: number | null;
+};
 type AttemptDetail = { id: string; assessment: string; student: string; status: string; feedback: string | null; answers: AttemptAnswer[] };
 type Session = { id: string; title: string; batch: string; provider: string; recording_status: string };
 type QuestionReply = { id: string; author_id: string; body: string; created_at: string };
@@ -55,6 +59,16 @@ type Question = { id: string; student: string; batch: string; subject: string; b
 type TeacherContext = { batches: Batch[]; students: Student[]; enrollments: Enrollment[] };
 
 const emptyContext: TeacherContext = { batches: [], students: [], enrollments: [] };
+
+const commaList = (value: FormDataEntryValue | null) => String(value || "").split(",").map(item => item.trim()).filter(Boolean);
+
+function scoreLabel(answer: AttemptAnswer) {
+  if (answer.auto_graded) return `Auto-graded · ${answer.score ?? 0}/${answer.max_score}`;
+  if (!answer.keywords.length) return `Max ${answer.max_score}`;
+  const matched = `${answer.match_percent}% matched`;
+  if (answer.score_source === "trainer") return `Trainer score · keyword suggestion ${answer.auto_score}/${answer.max_score} · ${matched}`;
+  return `Keyword score · ${answer.score ?? 0}/${answer.max_score} · ${matched}`;
+}
 
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
@@ -364,13 +378,15 @@ export default function TeacherWorkspaceActions({ section }: { section: string }
       })()}
     </Card>
     <Card title="Add question">
-      <form className="form" onSubmit={event => { const form = new FormData(event.currentTarget); const reference = String(form.get("assessment")); void submit(event, `/api/v1/workflows/it/trainer/assessments/${reference}/questions`, "POST", { question_type: form.get("question_type"), prompt: form.get("prompt"), options: String(form.get("options") || "").split(",").map(value => value.trim()).filter(Boolean), correct_answers: String(form.get("answers") || "").split(",").map(value => value.trim()).filter(Boolean), max_score: Number(form.get("score")), position: Number(form.get("position")) }, "Question added."); }}>
+      <form className="form" onSubmit={event => { const form = new FormData(event.currentTarget); const reference = String(form.get("assessment")); void submit(event, `/api/v1/workflows/it/trainer/assessments/${reference}/questions`, "POST", { question_type: form.get("question_type"), prompt: form.get("prompt"), options: commaList(form.get("options")), correct_answers: commaList(form.get("answers")), keywords: commaList(form.get("keywords")), max_score: Number(form.get("score")), position: Number(form.get("position")) }, "Question added."); }}>
         <Field controlId="question-assessment" label="Assessment"><select name="assessment" required><option value="">Select assessment</option>{assessments.map(item => <option key={item.id} value={item.id} disabled={item.attempt_count > 0}>{item.title} · {item.batch}{item.attempt_count > 0 ? " · locked, already attempted" : ""}</option>)}</select></Field>
         {assessments.some(item => item.attempt_count > 0) && <p className="muted" style={{ fontSize: 13 }}>Assessments a student has already started can no longer take new questions -- create a new assessment instead.</p>}
         <Field controlId="question-type" label="Question type"><select name="question_type"><option value="mcq_single">Single choice</option><option value="mcq_multiple">Multiple choice</option><option value="text">Written answer</option><option value="file">File response</option></select></Field>
         <Field controlId="question-prompt" label="Question" full><textarea name="prompt" required /></Field>
         <Field controlId="question-options" label="Options, comma separated"><input name="options" /></Field>
         <Field controlId="question-answers" label="Correct answers, comma separated"><input name="answers" /></Field>
+        <Field controlId="question-keywords" label="Keywords (written answers only), comma separated"><input name="keywords" placeholder="for loop, loop|iteration" aria-describedby="question-keywords-hint" /></Field>
+        <p id="question-keywords-hint" className="muted" style={{ fontSize: 13 }}>Optional. Join synonyms with | . An answer containing 80% of the keywords gets a suggested full score (fewer: in proportion); you review it before publishing the grade. Students never see the keywords.</p>
         <Field controlId="question-score" label="Score"><input name="score" type="number" min="1" defaultValue="1" /></Field>
         <Field controlId="question-position" label="Position"><input name="position" type="number" min="1" defaultValue="1" /></Field>
         {!assessments.length && <p id="assessment-empty" className="muted">{loading ? "Loading assessments…" : "Create an assessment before adding questions."}</p>}
@@ -407,12 +423,18 @@ export default function TeacherWorkspaceActions({ section }: { section: string }
               <div className="qa-item" key={answer.id}>
                 <div className="qa-item-head">
                   <strong>{answer.prompt}</strong>
-                  <span className="muted" style={{ fontSize: 12 }}>{answer.auto_graded ? `Auto-graded · ${answer.score ?? 0}/${answer.max_score}` : `Max ${answer.max_score}`}</span>
+                  <span className="muted" style={{ fontSize: 12 }}>{scoreLabel(answer)}</span>
                 </div>
                 {Array.isArray(answer.value) ? <blockquote className="answer-text">{answer.value.join(", ")}</blockquote>
                   : answer.question_type === "file" && typeof answer.value === "string" && answer.value ? <p style={{ margin: "8px 0 0" }}><a className="btn small secondary" href={answer.value} target="_blank" rel="noreferrer">Open submitted file</a></p>
                   : answer.value ? <blockquote className="answer-text">{String(answer.value)}</blockquote>
                   : <p className="muted answer-empty">Nothing was submitted.</p>}
+                {answer.keywords.length > 0 && (
+                  <p className="muted" style={{ fontSize: 13, margin: "6px 0 0" }}>
+                    <span>Matched: {answer.matched_keywords.join(", ") || "none"}</span>
+                    {answer.matched_keywords.length < answer.keywords.length && <><br /><span>Missing: {answer.keywords.filter(keyword => !answer.matched_keywords.includes(keyword)).join(", ")}</span></>}
+                  </p>
+                )}
                 {!answer.auto_graded && (
                   <Field controlId={`answer-score-${answer.id}`} label={`Score (of ${answer.max_score})`}>
                     <input name={`answer_score_${answer.id}`} type="number" min="0" max={answer.max_score} defaultValue={answer.score ?? ""} />

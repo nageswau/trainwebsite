@@ -83,7 +83,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-023 | Attendance | Attendance correction usability and notifications | Enhancement | Done — confirm defaults | Dev | Wave 4 | Confirm notification channel (§2) |
 | nehn-024 | Assignments | Direct file upload for assignment submissions | Enhancement | Ready to start | Dev + Client | Wave 2 | Multiple files per submission? Keep link submissions? |
 | nehn-025 | Assessments | Trainer question upload from a standard Excel template | Enhancement | Done — confirm defaults | Dev | Wave 2 | — |
-| nehn-026 | Assessments | Keyword-based auto-scoring for descriptive answers | Enhancement | Waiting — decision | Dev + Client | Wave 4 | Keyword scoring rule (OD-07); needs nehn-025 |
+| nehn-026 | Assessments | Keyword-based auto-scoring for descriptive answers | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Keyword scoring rule (OD-07) — builder default 80% / proportional; confirm |
 | nehn-027 | Trainer portal | Learning materials: file upload and manage | Enhancement | Ready to start | Dev + Client | Wave 4 | Video uploads, or links only? |
 | nehn-028 | Trainer portal | Per-student progress view for trainers | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Should progress % be computed from the criteria? Dropped students hidden or greyed? (DEC-SCOPE-308) |
 | nehn-029 | Trainer portal | Live class reschedule and cancel | Enhancement | Done — confirm defaults | Dev | Wave 4 | Confirm meeting provider is updated by hand for now (§2) |
@@ -154,7 +154,7 @@ These items are built. Where a question was open, we used the recommended answer
 | OD-04 | Permission unit (page or module), who edits grants, custom roles? | nehn-005 | Recommended answer in place: per module, Super Admin edits, no custom roles — please confirm |
 | OD-05 | Coordinator account model and duties; who may override certificate eligibility | nehn-030, 031 | Open |
 | OD-06 | Which student features unlock at which payment status | nehn-018 | Default built — confirm (DEC-SCOPE-304) |
-| OD-07 | Keyword scoring rule for descriptive answers | nehn-026 | Open |
+| OD-07 | Keyword scoring rule for descriptive answers | nehn-026 | Open — builder default built (DEC-SCOPE-333): ≥80% full marks, else proportional; trainer-reviewed |
 | OD-08 | Recruiter population: opted-in students only, or all? | nehn-016 | Recommended answer in place: opted-in students only (rec-010 consent) — please confirm |
 | OD-09 | HR population and allowed document types | nehn-017 | Open |
 | OD-10 | Mapping of the client's 10 overseas stages onto the portal's stages | nehn-033 | Open — built with the backlog's proposed mapping (DEC-SCOPE-332), awaiting client confirmation |
