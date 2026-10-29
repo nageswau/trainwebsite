@@ -90,7 +90,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-030 | Certificates | IT Coordinator role and account model | Enhancement | Waiting — decision | Dev + Client | Wave 3 | Coordinator account model and duties (OD-05) |
 | nehn-031 | Certificates | Coordinator certificate workflow: eligibility, recommend, issue, override | Enhancement | Done — confirm defaults | Dev + Client | Wave 3 | Confirm the builder defaults (DEC-SCOPE-297 W1-W9): coordinator overrides, global thresholds, recommendation optional (OD-05) |
 | nehn-032 | Certificates | Certificate signatures (Founder + Coordinator) and designation | Enhancement | Done — confirm defaults | Dev + Client | Wave 3 | Upload the signature PNGs and confirm the builder defaults (DEC-SCOPE-302 S1-S9); final certificate design (CI-03) |
-| nehn-033 | Overseas | Overseas student Overview / Progress page | Enhancement | Waiting — decision | Dev + Client | Wave 2 · next review | Mapping of the client's 10 stages onto the portal's stages (OD-10) |
+| nehn-033 | Overseas | Overseas student Overview / Progress page | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 · next review | Confirm the stage mapping built from the backlog's proposal (OD-10, DEC-SCOPE-332 M1-M3) |
 | nehn-034 | Overseas | Country cards with flags and university count | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 · next review | Custom country images, if wanted (CI-04) |
 | nehn-035 | Overseas | University logo upload and richer university cards | Enhancement | Done — confirm defaults | Dev + Client | Wave 2 · next review | Logo usage and copyright guidance (CI-04) |
 | nehn-036 | Overseas | Course and program icons (optional) | Enhancement | Done — confirm defaults | Dev | Wave 4 | Confirm icons are wanted this cycle (§2) |
@@ -119,7 +119,7 @@ These items are built. Where a question was open, we used the recommended answer
 | A11 | Founder + Coordinator signatures | Dev, High | nehn-032 | Done — PNGs to upload (CI-03) |
 | A12 | Provide signature PNGs | Client, required | CI-03 | Waiting — client input |
 | A13 | Coordinator certificate workflow | Dev, High | nehn-030, 031 | Waiting — decision (OD-05) |
-| A14 | Overseas Student Overview / Progress | Dev, High | nehn-033, 001 | Waiting — decision (OD-10); offer fix done |
+| A14 | Overseas Student Overview / Progress | Dev, High | nehn-033, 001 | Done — confirm defaults (OD-10 mapping); offer fix done |
 | A15 | Country icons, flags, images | Dev, High | nehn-034 | Done — confirm defaults |
 | A16 | University logos, icons, images | Dev, High | nehn-035 | Done — confirm defaults (logo guidance welcome, CI-04) |
 | A17 | Course/program icons | Dev, Optional | nehn-036 | Done — confirm defaults |
@@ -157,7 +157,7 @@ These items are built. Where a question was open, we used the recommended answer
 | OD-07 | Keyword scoring rule for descriptive answers | nehn-026 | Open — builder default built (DEC-SCOPE-333): ≥80% full marks, else proportional; trainer-reviewed |
 | OD-08 | Recruiter population: opted-in students only, or all? | nehn-016 | Recommended answer in place: opted-in students only (rec-010 consent) — please confirm |
 | OD-09 | HR population and allowed document types | nehn-017 | Open |
-| OD-10 | Mapping of the client's 10 overseas stages onto the portal's stages | nehn-033 | Open |
+| OD-10 | Mapping of the client's 10 overseas stages onto the portal's stages | nehn-033 | Open — built with the backlog's proposed mapping (DEC-SCOPE-332), awaiting client confirmation |
 | OD-11 | Is a GST/tax invoice legally required? | nehn-020 | Open |
 | OD-12 | Does the Overseas Admin keep discount rights? | nehn-021 | Open |
 | OD-13 | Bulk school upload: keep, hide or restrict? | nehn-039 | Open |
