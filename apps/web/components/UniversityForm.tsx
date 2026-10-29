@@ -1,9 +1,12 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 
+import AgentCommissionFields from "@/components/AgentCommissionFields";
 import SearchableSelect from "@/components/SearchableSelect";
+import UniversityLogo from "@/components/UniversityLogo";
 import UniversityMatchList from "@/components/UniversityMatchList";
+import { agentCommissionBody, agentCommissionDraft } from "@/lib/agentCommission";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import { formOptional as optional, formText as text } from "@/lib/telecaller";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
@@ -31,10 +34,17 @@ import {
 // field; anything else is one alert. The entry is never cleared on an error, and a double click sends one request.
 // upc-004 (§26): while the name or country is being entered, the master is searched for the same name + country (advisory; UD6). A save
 // into one is a 409 with the same panel; a head / super_admin may add it anyway with a reason (UD2).
+// ccrm-050 (DEC-SCOPE-323): with canEditAgentCommission (super_admin / overseas_admin) the agent-Master commission is entered here too and
+// sent in the same request -- a blank rate is null (none on create, cleared on edit). Without it the key is never sent.
 type RankingRow = { key: number; system: string; other_name: string; year: string; rank: string };
 type Errors = Record<string, string>;
 const MAX_RANKINGS = 10;
 const SEARCH_DELAY_MS = 400;
+// nehn-035 (DEC-SCOPE-331 L1-L2): editing only (the route needs a saved university). The nehn-003 `university_logo` rule is checked here
+// first so an obvious mismatch never uploads; the server re-checks the bytes and the size in pixels.
+const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const LOGO_MAX_BYTES = 1024 * 1024;
+const LOGO_RULE = "Choose a PNG, JPEG or WebP image of at most 1 MB.";
 
 
 function fieldErrors(detail: unknown): Errors | null {
@@ -71,7 +81,7 @@ function Select({ id, name, value, words, blank, invalid }: { id: string; name: 
   );
 }
 
-export default function UniversityForm({ university }: { university?: University }) {
+export default function UniversityForm({ university, canEditAgentCommission = false }: { university?: University; canEditAgentCommission?: boolean }) {
   const router = useRouter();
   const editing = university !== undefined;
   const sending = useRef(false);
@@ -85,6 +95,10 @@ export default function UniversityForm({ university }: { university?: University
   const [countryId, setCountryId] = useState(university?.country.id ?? "");
   const [existing, setExisting] = useState<UniversityMatchPage | null>(null);
   const [duplicate, setDuplicate] = useState<UniversityDuplicate | null>(null);
+  const [commission, setCommission] = useState(() => agentCommissionDraft(university?.agent_commission));
+  const [logoUrl, setLogoUrl] = useState(university?.logo_url ?? "");
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoMessage, setLogoMessage] = useState<{ text: string; failed: boolean } | null>(null);
   const focus = useFocusAfterRender();
 
   useEffect(() => {
@@ -109,10 +123,46 @@ export default function UniversityForm({ university }: { university?: University
   const updateRanking = (key: number, change: Partial<RankingRow>) => setRankings((rows) => rows.map((r) => (r.key === key ? { ...r, ...change } : r)));
   const invalid = (name: string) => (errors[name] ? { "aria-invalid": true as const, "aria-describedby": `uni-${name}-error` } : {});
 
+  async function uploadLogo(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file || !editing) return;
+    if (!LOGO_TYPES.includes(file.type) || file.size > LOGO_MAX_BYTES) {
+      setLogoMessage({ text: LOGO_RULE, failed: true });
+      input.value = "";
+      return;
+    }
+    const body = new FormData();
+    body.append("file", file);
+    setLogoBusy(true);
+    setLogoMessage(null);
+    try {
+      const response = await fetch(`${universityUrl(university.id)}/logo`, { method: "PUT", body });
+      const data = await response.json().catch(() => null);
+      if (response.ok && data?.university) {
+        setLogoUrl(data.university.logo_url ?? "");
+        setLogoMessage({ text: "Logo uploaded.", failed: false });
+      } else {
+        setLogoMessage({ text: detailMessage(data?.detail, "The logo could not be uploaded. Try again."), failed: true });
+      }
+    } catch {
+      setLogoMessage({ text: "The logo could not be uploaded. Check your connection and try again.", failed: true });
+    } finally {
+      setLogoBusy(false);
+      input.value = "";
+    }
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (sending.current) return;
     const form = new FormData(event.currentTarget);
+    const entry = canEditAgentCommission ? agentCommissionBody(commission) : null;
+    if (entry && "error" in entry) {
+      setErrors({ agent_commission: entry.error });
+      setMessage("Check the highlighted fields.");
+      return;
+    }
     const body = {
       name: text(form, "name"), country_id: text(form, "country_id"), city: text(form, "city"),
       institution_type: text(form, "institution_type"), ownership_type: optional(form, "ownership_type"), state_region: optional(form, "state_region"),
@@ -125,6 +175,7 @@ export default function UniversityForm({ university }: { university?: University
       overview: text(form, "overview"), eligibility: text(form, "eligibility"),
       rankings: rankings.map((r) => ({ system: r.system, other_name: r.system === "Other" ? r.other_name.trim() || null : null, year: Number(r.year), rank: r.rank.trim() })),
       ...(duplicate?.can_override ? { duplicate_reason: text(form, "duplicate_reason") } : {}),
+      ...(entry ? { agent_commission: entry.body } : {}),
     };
     sending.current = true;
     setBusy(true);
@@ -242,8 +293,24 @@ export default function UniversityForm({ university }: { university?: University
           <small id="uni-programs-hint" className="muted">Separate areas with commas (up to 20).</small>
         </Field>
         <Field id="uni-logo_url" label="Logo URL" error={errors.logo_url}>
-          <input id="uni-logo_url" name="logo_url" maxLength={500} placeholder="/universities/logos/example.png or https://…" defaultValue={u?.logo_url ?? ""} {...invalid("logo_url")} />
+          <input id="uni-logo_url" name="logo_url" maxLength={500} placeholder="/universities/logos/example.png or https://…" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} {...invalid("logo_url")} />
         </Field>
+        <div className="field">
+          {editing ? (
+            <>
+              <label htmlFor="uni-logo_file">Upload a logo</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <UniversityLogo name={name.trim() || university.name} logoUrl={logoUrl.trim() || null} size={64} />
+                <input id="uni-logo_file" type="file" accept={LOGO_TYPES.join(",")} onChange={uploadLogo} disabled={logoBusy} aria-describedby="uni-logo_file-hint" />
+              </div>
+              <small id="uni-logo_file-hint" className="muted">PNG, JPEG or WebP, up to 1 MB and 32–2048 px on each side (SVG is not accepted). It is saved straight away. Upload only a logo the university allows you to use.</small>
+              {logoBusy && <p role="status" style={{ margin: "4px 0 0" }}>Uploading…</p>}
+              {logoMessage && <p role={logoMessage.failed ? "alert" : "status"} className={logoMessage.failed ? "field-error" : "muted"} style={{ margin: "4px 0 0", ...(logoMessage.failed ? { color: "var(--red)" } : {}) }}>{logoMessage.text}</p>}
+            </>
+          ) : (
+            <p className="muted" style={{ margin: 0 }}>Save the university first, then upload its logo here.</p>
+          )}
+        </div>
         <Field id="uni-campuses" label="Campuses" error={errors.campuses}>
           <textarea id="uni-campuses" name="campuses" rows={3} aria-describedby="uni-campuses-hint" defaultValue={u?.campuses?.join("\n") ?? ""} {...invalid("campuses")} />
           <small id="uni-campuses-hint" className="muted">One campus per line (up to 20).</small>
@@ -296,6 +363,14 @@ export default function UniversityForm({ university }: { university?: University
             </button>
           )}
         </fieldset>
+        {canEditAgentCommission && (
+          <fieldset style={{ border: 0, padding: 0, margin: 0, display: "grid", gap: 10 }} aria-describedby={errors.agent_commission ? "uni-agent_commission-error" : "uni-agent_commission-hint"}>
+            <legend style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>Agent Master commission</legend>
+            <small id="uni-agent_commission-hint" className="muted">What EduSphere pays an agent Master for this university; only an agent Master sees it, once published. Leave the rate blank for none.</small>
+            <AgentCommissionFields draft={commission} onChange={setCommission} />
+            <ErrorText id="uni-agent_commission-error" error={errors.agent_commission} />
+          </fieldset>
+        )}
       </fieldset>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
         <button className="btn" type="submit" disabled={busy || (duplicate !== null && !duplicate.can_override)}>

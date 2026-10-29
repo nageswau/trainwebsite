@@ -4,7 +4,9 @@ import type { ReactNode } from "react";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import CounselorDocumentRequestsPanel from "@/components/CounselorDocumentRequestsPanel";
+import CounselorDocumentUpload from "@/components/CounselorDocumentUpload";
 import LocalTime from "@/components/LocalTime";
+import OverseasApplyPanel from "@/components/OverseasApplyPanel";
 import OverseasStudentFinance from "@/components/OverseasStudentFinance";
 import OverseasStudentJourney from "@/components/OverseasStudentJourney";
 import PortalShell from "@/components/PortalShell";
@@ -98,7 +100,18 @@ async function panel(tab: StudentTab, id: string, overview: StudentOverview, por
     case "overview":
       return <OverviewPanel overview={overview} />;
     case "applications":
-      return <ApplicationsPanel applications={overview.applications} />;
+      return (
+        <>
+          {/* ccrm-046 (DEC-SCOPE-324): the counselor applies on the student's behalf, as often as needed; the API checks the caseload */}
+          {portal === "counselor" && !overview.archive && (
+            <details style={{ marginBottom: 16 }}>
+              <summary className="btn small">Add application</summary>
+              <OverseasApplyPanel studentId={id} />
+            </details>
+          )}
+          <ApplicationsPanel applications={overview.applications} />
+        </>
+      );
     case "academic":
     case "preferences":
     case "english":
@@ -116,12 +129,14 @@ async function panel(tab: StudentTab, id: string, overview: StudentOverview, por
       return (
         <>
           <CounselorDocumentRequestsPanel studentId={id} applications={applications} />
+          {/* ccrm-045 (DEC-SCOPE-318): an upload on the student's behalf, tied to the same applications or to none */}
+          {!overview.archive && <CounselorDocumentUpload studentId={id} applications={applications} />}
           {await load<{ items: StudentDocumentRow[] }>(student360Url(id, "documents"), (data) => <DocumentsPanel items={data.items} />)}
         </>
       );
     }
     case "finance":
-      return load<StudentFinance>(student360Url(id, "finance"), (data) => <OverseasStudentFinance finance={data} />);
+      return load<StudentFinance>(student360Url(id, "finance"), (data) => <OverseasStudentFinance studentId={id} finance={data} />);
     case "activities":
       return (
         <>

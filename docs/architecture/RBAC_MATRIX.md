@@ -2835,6 +2835,7 @@ inside the existing role scope (a counselor searching another counselor's code g
 | Route | `partner` | `super_admin` | `overseas_admin` | `accountant` | `counselor` | Others | Anonymous |
 |---|---|---|---|---|---|---|---|
 | `GET /management/crm-reports` | ✅ | ✅ | ✅ | `403` | `403` | `403` | `401` |
+| `GET /management/crm-reports/universities/{id}/applications` (ccrm-052, `DEC-SCOPE-321`) | ✅ | ✅ | ✅ | `403` | `403` | `403` | `401` |
 
 - Pages: `/management/crm-reports` (Command Center, Students pillar) and `/overseas/admin/crm-reports` (Overseas Admin sidebar; the page
   refuses other roles before calling the API). Pinned by `test_ccrm_034_reports.py::test_management_and_the_overseas_admin_read_the_reports`,
@@ -3294,6 +3295,90 @@ it_admin; super_admin implicit). Every holder reads the same rows -- opted-in, n
 granted the resource later sees no rows until its own scope rule is written. No financial column; recruiters still have no
 `reports.training` grant. Pinned by `apps/api/tests/test_nehn_016_placement_reports.py` and `test_nehn_016_migration.py`.
 
+### 2.224 Counselor document upload on the student 360 *(added 2026-10-28 — `DEC-SCOPE-318`, ccrm-045)*
+
+| Route | Anonymous | overseas counselor (student in caseload) | overseas counselor (other student) | overseas_admin | super_admin | IT counselor, agent, overseas_student, other roles |
+|---|---|---|---|---|---|---|
+| `POST /counselor/students/{id}/documents` | 401 | 201 | 404 | 201 | 403 | 403 |
+
+ccrm-007's `staff_student` gate, like the other 360 routes (§2.168). A counselor may tie the upload only to their own application of
+that student; the Overseas Admin to any of the student's. The student reads the document in their Documents (and an offer letter in
+Offer Letters) at once. Download of a document without an application: the counselor's caseload. Pinned by
+`apps/api/tests/test_ccrm_045_counselor_upload.py` and the ccrm-041 matrix row.
+
+### 2.225 Deposit receipt upload on the student 360's Finance tab *(added 2026-10-28 — `DEC-SCOPE-322`, ccrm-048)*
+
+| Route | Anonymous | overseas counselor (their application) | overseas counselor (another's application) | overseas_admin | super_admin | IT counselor, agent, overseas_student, other roles |
+|---|---|---|---|---|---|---|
+| `POST /workflows/overseas/applications/{id}/deposit/receipt` | 401 | 201 | 403 | 201 | 201 | 403 |
+
+The ccrm-025 deposit writers' rule (§2.170: `_writable` -- role, `_assigned_application` scope, row lock), plus the archived-student and
+agency-deposit refusals (409) and a required deposit record (422). The Finance tab offers the control only where `can_upload` is true.
+Pinned by `apps/api/tests/test_ccrm_048_deposit_receipt.py` and the ccrm-041 matrix row.
+
+### 2.227 Counselor creates applications for a student *(added 2026-10-28 — `DEC-SCOPE-324`, ccrm-046)*
+
+| Route | Anonymous | overseas counselor (student in caseload) | overseas counselor (other student) | overseas_admin | agent (own student) | overseas_student (self) | IT counselor, other roles |
+|---|---|---|---|---|---|---|---|
+| `POST /workflows/overseas/applications` | 401 | 201 | 403 | 201 | 201 | 201 | 403 |
+
+A counselor's application is always their own and direct: another `counselor_id` or any `agent_id` in the body is 403. The 360
+Applications tab shows "Add application" to the counselor only (not for an archived student). Pinned by
+`apps/api/tests/test_ccrm_046_counselor_applications.py`.
+### 2.228 Counselor performance for the Overseas Admin *(added 2026-10-28 — `DEC-SCOPE-325`, ccrm-053)*
+
+| Route | Anonymous | overseas counselor | IT counselor | overseas_admin | super_admin | other roles |
+|---|---|---|---|---|---|---|
+| `GET /counselor/performance` (unchanged, §2.183) | 401 | 200 (own only) | 403 | 403 | 403 | 403 |
+| `GET /overseas-admin/counselor-performance` | 401 | 403 | 403 | 200 | 200 | 403 |
+| `GET /overseas-admin/counselor-performance.csv` / `.xlsx` | 401 | 403 | 403 | 200 | 200 | 403 |
+| `GET /overseas-admin/counselor-performance/{id}` | 401 | 403 | 403 | 200 (404 if not an overseas counselor) | 200 (same) | 403 |
+
+Read-only; the export is audited. Pinned by `apps/api/tests/test_ccrm_053_counselor_performance.py` and the ccrm-041 matrix rows.
+
+### 2.229 Payment receipt / proof upload on the student 360's Finance tab *(added 2026-10-28 — `DEC-SCOPE-326`, ccrm-049)*
+
+| Route | Anonymous | overseas counselor (student in caseload) | overseas counselor (outside caseload) | overseas_admin | super_admin, IT counselor, agent, overseas_student, other roles |
+|---|---|---|---|---|---|
+| `POST /counselor/students/{id}/payments/{pid}/proof` | 401 | 201 | 404 | 201 | 403 |
+
+The 360's gate (§2.168, `student_profiles.staff_student`: csc-001 caseload or the Overseas Admin; another student is a 404, never a 403),
+then the payment must be the student's (404) and manual (409), the student not archived (409). The Finance tab offers the control only
+where `can_upload_proof` is true. Pinned by `apps/api/tests/test_ccrm_049_payment_proof.py` and the ccrm-041 matrix row.
+
+### 2.230 Course-level agent-Master commission *(added 2026-10-28 — `DEC-SCOPE-327`, ccrm-051)*
+
+| Action | super_admin | overseas_admin (overseas) | partnership_head / _manager (course writers) | agency Master | agency staff, anonymous, other roles |
+|---|---|---|---|---|---|
+| Send `agent_commission` on course `POST` / `PATCH` | allowed | allowed | 403 (even `null`) | — (no route) | as the course route (401/403) |
+| See a course's own `agent_commission` (partnership course reads) | yes | yes | key absent | — | key absent |
+| See `agent_commission_effective` per course (partner-university detail) | — | — | — | yes (published university) | key absent |
+
+The course write gates (§2.100 upc-017 CO1: read 403, university 404, write 403/409) run first; the agent commission gate follows, before
+any write. Same editors and viewers as DEC-SCOPE-209 (`agent_commission_access`); U2's course `commission` gate is unchanged. Pinned by
+`apps/api/tests/test_ccrm_051_course_agent_commission.py` and the upc-033 commission sweep.
+
+### 2.233 Trainer question upload from a standard Excel template *(added 2026-10-29 — `DEC-SCOPE-330`, nehn-025)*
+
+| Action | trainer (IT) | it_admin (IT) | super_admin | it_student, other roles / divisions | anonymous |
+|---|---|---|---|---|---|
+| Download the question template | allowed | allowed | allowed | 403 | 401 |
+| Import (dry run or commit) into an assessment | own batch's assessments only (403 otherwise) | any assessment | any assessment | 403 | 401 |
+
+The bulk question route's rules apply unchanged: an assessment a student has started is locked (409). Students never see a Draft
+assessment (TRN-006-AC02), so imported questions stay hidden until the trainer publishes. Pinned by
+`apps/api/tests/test_nehn_025_question_import.py`.
+
+### 2.234 University logo upload *(added 2026-10-29 — `DEC-SCOPE-331`, nehn-035)*
+
+| Action | super_admin | overseas_admin | partnership_head | partnership_manager | anonymous | other roles |
+|---|---|---|---|---|---|---|
+| `PUT /partnership/universities/{id}/logo` | allowed | allowed | own team's / unassigned universities | own universities | 401 | 403 |
+| `GET /public/university-logos/{name}` | allowed | allowed | allowed | allowed | allowed (public by design) | allowed |
+
+The upload follows the university `PATCH` gate exactly (`can_edit` + scope, §2.46 upc-003; inactive 409). Logos are public artwork, so the
+read takes no session; it serves only server-made names under one fixed prefix. Pinned by `apps/api/tests/test_nehn_035_university_logos.py`.
+
 ### 2.221 HR student access and HR reports *(added 2026-10-28 — `DEC-SCOPE-310`, nehn-017)*
 
 | Route | Anonymous | super_admin | hr_team (default grants) | hr_team, key revoked | other roles (even with the key) |
@@ -3305,4 +3390,4 @@ granted the resource later sees no rows until its own scope rule is written. No 
 | `GET /portal/it/hr/reports` | 401 | 200 | 200 | — | 403 |
 
 New catalogue resources `student_progress`, `attendance`, `student_documents` (view, download); hr_team holds all six keys by default
-(migration 0216). Read-only. Pinned by `apps/api/tests/test_nehn_017_hr_student_access.py` and `test_nehn_017_migration.py`.
+(migration 0218). Read-only. Pinned by `apps/api/tests/test_nehn_017_hr_student_access.py` and `test_nehn_017_migration.py`.

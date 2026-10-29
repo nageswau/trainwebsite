@@ -1,9 +1,10 @@
+import { redirect } from "next/navigation";
+
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 import CounselorPerformance from "@/components/CounselorPerformance";
 import PortalShell from "@/components/PortalShell";
 import { ApiError, serverApi } from "@/lib/api";
-import { PERFORMANCE_UNAVAILABLE, performanceUrl, type CounselorPerformanceReport } from "@/lib/counselorPerformance";
-import { counselingQuery } from "@/lib/managementCounseling";
+import { PERFORMANCE_HOME, PERFORMANCE_UNAVAILABLE, errorText, performanceQuery, performanceUrl, type CounselorPerformanceReport } from "@/lib/counselorPerformance";
 import { PORTAL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
@@ -12,7 +13,10 @@ import type { User } from "@/lib/types";
 const REFUSED = "Only an overseas counselor has a performance report";
 
 export default async function CounselorReportsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const query = counselingQuery(await searchParams);
+  const search = await searchParams;
+  const query = performanceQuery(search);
+  // ccrm-053: the form sends "All" filters as empty values; drop them from the address.
+  if (Object.values(search).some((value) => value === "")) redirect(performanceUrl(query, PERFORMANCE_HOME));
   let user: User;
   try {
     user = await serverApi<User>("/api/v1/auth/me");
@@ -26,7 +30,7 @@ export default async function CounselorReportsPage({ searchParams }: { searchPar
     data = await serverApi<CounselorPerformanceReport>(performanceUrl(query));
   } catch (e) {
     if (e instanceof ApiError && (e.status === 401 || e.status === 403)) return accessUnavailable(e);
-    error = e instanceof ApiError && e.status === 422 && typeof e.message === "string" && !e.message.startsWith("[object") ? e.message : PERFORMANCE_UNAVAILABLE;
+    error = errorText(e, PERFORMANCE_UNAVAILABLE);
   }
   return (
     <PortalShell nav={PORTAL_NAV["overseas/counselor"]} roleLabel="Counselor" userName={user.full_name}>

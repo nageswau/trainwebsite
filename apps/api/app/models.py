@@ -1814,12 +1814,18 @@ COURSE_CHECKS = {
     "ck_overseas_courses_commission_amount": "(commission_amount IS NULL) = (commission_currency IS NULL) AND (commission_amount IS NULL OR commission_amount > 0)",
     "ck_overseas_courses_commission_currency": _one_of("commission_currency", COURSE_CURRENCIES),
 }
+# ccrm-051 (DEC-SCOPE-327): the agent-Master commission per course (overrides the university's) -- the university CHECKs on these columns.
+# Its own constant: COURSE_CHECKS is pinned by 0132's copy. Migration 0217 repeats these (test_ccrm_051_migration).
+COURSE_AGENT_COMMISSION_CHECKS = {
+    name.replace("ck_universities_", "ck_overseas_courses_"): sql for name, sql in UNIVERSITY_AGENT_COMMISSION_CHECKS.items()
+}
 
 
 class OverseasCourse(Base, TimestampMixin):
     __tablename__ = "overseas_courses"
     __table_args__ = (
         *(CheckConstraint(sql, name=name) for name, sql in COURSE_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in COURSE_AGENT_COMMISSION_CHECKS.items()),
         CheckConstraint(_one_of("icon", COURSE_ICONS), name="ck_overseas_courses_icon"),  # nehn-036 (0197)
         Index("ix_overseas_courses_university_level", "university_id", "level"),
     )
@@ -1851,6 +1857,10 @@ class OverseasCourse(Base, TimestampMixin):
     fee_text: Mapped[str | None] = mapped_column(String(300), nullable=True)
     intake_text: Mapped[str | None] = mapped_column(String(200), nullable=True)
     icon: Mapped[str | None] = mapped_column(String(20), nullable=True)  # nehn-036: a COURSE_ICONS key; NULL = automatic
+    agent_commission_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)  # ccrm-051: NULL = the university's
+    agent_commission_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    agent_commission_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    agent_commission_note: Mapped[str | None] = mapped_column(String(300), nullable=True)
 
 
 class CourseImportBatch(Base, TimestampMixin):
@@ -2677,6 +2687,9 @@ class Payment(Base, TimestampMixin):
     discount_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     discounted_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # ccrm-049 (DEC-SCOPE-326, migration 0216): the receipt / proof staff uploaded for a manual payment -- a "Payment receipt" document
+    # of the student, distinct from the system `Receipt` PDF. A deleted document leaves no proof.
+    proof_document_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL"), nullable=True)
 
     @property
     def gross_amount(self) -> float:

@@ -1404,3 +1404,66 @@ half.
 | `nehn-019-AC3` | Existing payments render without errors ("—" for missing values) | `::test_a_plain_payment_without_enrolment_or_code_renders_with_dashes`; `test_nehn_019_migration.py::test_round_trip_with_backfill`; `FeePaymentPanel.test.tsx` "renders a row without ledger fields as before" |
 | `nehn-019-AC4` | `amount` stays net (checkout, `pending_fee`) | `::test_a_discount_keeps_the_gross_amount_and_records_reason_and_admin`; `test_nehn_018_student_access.py`, `test_agn_011_*` |
 | `nehn-019-AC5` | The fee panel shows original / discount / payable, paid date and the EMI balance | `FeePaymentPanel.test.tsx` (nehn-019 block); `::test_payment_responses_carry_the_ledger_fields`; browser QA |
+| `ccrm-042` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-042` (Q3) → `DEC-SCOPE-316`; `API_CONTRACT.md` §12HN; no RBAC change | D1–D3 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-042-AC1` | A follow-up due tomorrow appears right after it is created | `apps/api/tests/test_ccrm_042_dashboard_window.py::test_a_follow_up_added_for_tomorrow_shows_at_once_and_leaves_when_done`; `ccrm-042-dashboard-week.spec.ts` |
+| `ccrm-042-AC2` | A follow-up due in 8 days does not appear (start + 8 days exclusive) | `::test_follow_ups_cover_overdue_today_and_the_next_seven_days_soonest_first`; e2e "Too far out" |
+| `ccrm-042-AC3` | Overdue open follow-ups appear flagged | `::test_follow_ups_cover_overdue_today_and_the_next_seven_days_soonest_first`; `test_ccrm_032_dashboard.py::test_every_section_lists_only_the_counselors_own_live_work` |
+| `ccrm-042-AC4` | Sorted soonest first | same tests; e2e order check |
+| `ccrm-042-AC5` | Tasks follow the same window, overdue flagged | `::test_tasks_follow_the_same_window_with_overdue_flagged`; e2e "Tasks due 1" |
+| `ccrm-042-AC6` | Done/cancelled never appear | `::test_follow_ups_cover_...`, `::test_tasks_follow_...`; e2e complete → leaves |
+| `ccrm-042-AC7` | Another counselor's / handed-over lead's follow-ups never appear | `::test_another_counselors_and_handed_over_leads_follow_ups_never_show`; IT counselor/admin 403 in `test_ccrm_032_dashboard.py` |
+| `ccrm-042-UI` | Labels "Follow-ups due" / "Tasks due", window note, empty text "No follow-ups in the next 7 days." | `apps/web/tests/components/CounselorDashboardPanel.test.tsx` (ccrm-042 case) |
+| `ccrm-043` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-043` (Q10) → `DEC-SCOPE-317`; `API_CONTRACT.md` §12HO; no RBAC change | D1–D5 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-043-AC1` | A self-registered student with my application is listed as Self-registered | `apps/api/tests/test_ccrm_043_my_students.py::test_every_student_of_mine_is_listed_once_with_its_source_ac1_to_ac4_and_ac6_ac7`; `ccrm-043-my-students.spec.ts` |
+| `ccrm-043-AC2` | A walk-in is listed as Walk-in | same test; e2e |
+| `ccrm-043-AC3` | A converted lead is listed as Lead conversion | same test |
+| `ccrm-043-AC4` | An agency student with my application is listed as Agency | same test |
+| `ccrm-043-AC5` | The Source filter narrows the list and the total | `::test_the_source_filter_narrows_and_the_total_follows_ac5`; e2e filter |
+| `ccrm-043-AC6` | Archived students are excluded | `::test_every_student_of_mine_...` |
+| `ccrm-043-AC7` | Another counselor's students are never listed | `::test_another_counselors_list_has_only_theirs`; `::test_other_roles_are_403`; `::test_anonymous_is_401` |
+| `ccrm-043-EDGE` | Phone-digit search, literal `%`, invalid source/long q → 422, listed once, moved application drops off, legacy → Self-registered | `::test_search_matches_name_email_and_phone_digits_literally`, `::test_an_unknown_source_is_422`, `::test_a_student_whose_application_moves_to_another_counselor_drops_off` |
+| `ccrm-043-UI` | "My students" card: source badge, application count, since; filter bar; filtered empty state; Edit/Resend only on own linked rows | `apps/web/tests/components/CounselorWalkInStudents.test.tsx` (ccrm-043 cases) |
+| `ccrm-047` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-047` (Q8, A4, L5) → `DEC-SCOPE-319`; `API_CONTRACT.md` §12HQ; no RBAC change | I1–I4 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-047-AC1` | Telecaller creates a lead with intake "Sep 2027" → stored, shown on lead detail | `apps/api/tests/test_ccrm_047_intake.py::test_a_telecaller_lead_keeps_its_intake_and_the_lead_detail_shows_it`, `::test_a_counselor_walk_in_lead_keeps_its_intake`; `NewLeadForm.intake.test.tsx`; `ccrm-047-intake-picker.spec.ts` AC1 |
+| `ccrm-047-AC2` | Student sets preferred intake via picker | `::test_the_student_sets_a_preferred_intake`; `StudentProfileForm.test.tsx` (ccrm-047) |
+| `ccrm-047-AC3` | Counselor edits student intake | `::test_the_counselor_edits_the_students_intake`; e2e AC3 |
+| `ccrm-047-AC4` | Application intake via picker | `::test_an_application_intake_must_be_a_month_and_year`; `OverseasApplyPanel.test.tsx` (ccrm-047); e2e AC4; `ovs-002-application.spec.ts` |
+| `ccrm-047-AC5` | "September next year" (new) → 422 | `::test_a_malformed_lead_intake_is_422_and_creates_nothing`, `::test_a_new_qualification_intake_must_be_a_month_and_year`, profile and application tests |
+| `ccrm-047-AC6` | Legacy free-text displays; unrelated edit does not fail | `::test_a_legacy_qualification_intake_survives_an_unrelated_save`, `::test_a_legacy_profile_intake_survives_an_unrelated_save`; `IntakePicker.test.tsx`, `LeadQualificationForm.test.tsx`, `StudentProfileForm.test.tsx` legacy cases |
+| `ccrm-047-EDGE` | IT lead → intake hidden / 422; omitted application intake keeps "Next intake"; conversion copies intake | `::test_an_it_lead_cannot_carry_an_intake`, `::test_an_application_without_an_intake_keeps_the_server_default`; `test_ccrm_008_convert.py` (unchanged, green) |
+| `ccrm-044` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-044` (List 2 item 7) → `DEC-SCOPE-320`; `API_CONTRACT.md` §12HR; no RBAC change | D1–D4 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-044-AC1` | Counselor sees a walk-in (no application) in the picker and sends a message | `apps/api/tests/test_ccrm_044_walk_in_chat.py::test_counselor_sees_a_walk_in_in_the_picker_and_messages_them_ac1`; `CounselorChatPanel.test.tsx`; `ccrm-044-walk-in-chat.spec.ts` |
+| `ccrm-044-AC2` | Walk-in student's chat reaches the linked counselor | `::test_walk_in_student_reaches_the_linked_counselor_ac2`; e2e |
+| `ccrm-044-AC3` | Student with neither link nor application counselor → 409 | `::test_student_with_neither_link_nor_application_counselor_gets_409_ac3` |
+| `ccrm-044-AC4` | Counselor cannot message a student outside their caseload (403) | `::test_counselor_cannot_message_a_student_outside_their_caseload_ac4`; e2e AC4 |
+| `ccrm-044-EDGE` | App counselor wins over link; csc-005 reassignment → new counselor; archived hidden from picker; counselor → staff unchanged | `::test_application_counselor_wins_over_the_linked_counselor`, `::test_reassigned_walk_in_reaches_the_new_counselor`, `::test_archived_walk_in_is_hidden_from_the_picker`, `::test_counselor_messaging_other_staff_is_unchanged` |
+| `ccrm-052` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-052` (Q9) → `DEC-SCOPE-321`; `API_CONTRACT.md` §12HS; RBAC §2.181 | D1–D4 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-052-AC1` | 2 visas approved / 1 refused show 2/1 (one bucket per application; withdrawn excluded) | `apps/api/tests/test_ccrm_052_university_report.py::test_visas_are_counted_once_per_application_first_match_wins_ac1` |
+| `ccrm-052-AC2` | Deposits counted once per application (counselor record or agency deposit; refunded excluded) | `::test_deposits_paid_counts_applications_once_ac2` |
+| `ccrm-052-AC3` | Filters apply to the new columns | `::test_filters_narrow_the_new_columns_ac3` |
+| `ccrm-052-AC4` | Export includes the new columns (appended) | `::test_the_export_appends_the_new_columns_ac4`; `test_ccrm_035_exports.py` header pin |
+| `ccrm-052-AC5` | Drill-down rows match the row's count; filters narrow it; paging | `::test_the_drill_down_lists_the_rows_applications_ac5`, `::test_the_drill_down_pages_by_100`; `ccrm-052-university-report.spec.ts` |
+| `ccrm-052-SEC` | Same readers only; 404 / 422; others 403, anonymous 401 | `::test_the_drill_down_refuses_bad_input`, `::test_everyone_else_is_refused_the_drill_down`, `::test_anonymous_is_refused_the_drill_down`; `test_ccrm_041_matrix.py` row |
+| `ccrm-052-UI` | University name links to its applications (filters kept); drill-down table, empty/error states, pager, phone width | `apps/web/tests/components/CrmUniversityApplications.test.tsx`, `ManagementCrmReports.test.tsx` (ccrm-052 case); e2e |
+| `ccrm-050` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-050` (Q5, A8, A9) → `DEC-SCOPE-323`; `API_CONTRACT.md` §12HU; no RBAC change | C1–C6 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-050-AC1` | Overseas Admin creates a university with 10% → stored + audited | `apps/api/tests/test_ccrm_050_form_commission.py::test_ac1_an_admin_creates_a_university_with_its_agent_commission`; `UniversityForm.agentCommission.test.tsx`; `ccrm-050-university-form-commission.spec.ts` test 1 |
+| `ccrm-050-AC2` | Partnership roles never see the fieldset; API rejects the key (403) | `::test_ac2_a_partnership_head_creating_with_the_field_is_403_and_nothing_is_created`, `::test_ac2_the_assigned_manager_and_head_editing_with_the_field_are_403_and_nothing_changes`; vitest "is not shown"; e2e test 2 |
+| `ccrm-050-AC3` | Agent Master sees 10% after publish | `::test_ac3_ac4_the_master_sees_the_form_rate_after_publish_and_staff_never_do`; e2e test 1 |
+| `ccrm-050-AC4` | Agent staff never see it | `::test_ac3_ac4_...`; `test_dtu_001_agent_partners.py` (unchanged, green) |
+| `ccrm-050-EDGE` | Both rates → 422; inactive → 409; edit prefills; blank clears (audited); unchanged not audited | `::test_the_rate_is_validated_like_the_card`, `::test_an_inactive_university_keeps_the_409`, `::test_an_admin_edit_sets_keeps_and_clears_the_commission`; vitest prefill / clear / currency cases |
+| `ccrm-051` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-051` (Q5, Q6, A8) → `DEC-SCOPE-327`; `API_CONTRACT.md` §12HY; RBAC §2.230 | CA1–CA6 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-051-AC1` | Course 12% overrides university 10% for the agent Master | `apps/api/tests/test_ccrm_051_course_agent_commission.py::test_ac1_ac2_the_master_sees_each_courses_effective_commission_with_its_source`; `AgentPartnerUniversitiesPanel.test.tsx` (ccrm-051); `ccrm-051-course-agent-commission.spec.ts` |
+| `ccrm-051-AC2` | Course unset → 10% "(university)"; neither set → "—"; clearing reverts | `::test_ac1_ac2_...`, `::test_clearing_the_course_value_falls_back_and_neither_set_is_null`; panel vitest; e2e |
+| `ccrm-051-AC3` | Public course APIs never include it | `::test_ac3_public_course_apis_never_carry_it`; `test_upc_033_commission_sweep.py` (public endpoints) |
+| `ccrm-051-AC4` | Partnership roles never see it; sending it is 403 (even null) | `::test_ac4_partnership_roles_sending_the_field_are_403_and_never_see_it`, `::test_an_overseas_admin_outside_overseas_is_refused`; `CourseForm.agentCommission.test.tsx` "is hidden" |
+| `ccrm-051-AC5` | Audit (before/after) on change; none when unchanged | `::test_an_admin_adds_a_course_with_its_agent_commission`, `::test_ac5_an_edit_sets_keeps_and_clears_with_an_audit_per_change` |
+| `ccrm-051-AC6` | Migration up/down clean; downgrade refuses with data | `apps/api/tests/test_ccrm_051_migration.py` |
+| `ccrm-051-UI` | Course form fieldset (create / prefill / clear / currency), own ids beside the card, course fact row, Master column, phone width | `apps/web/tests/components/CourseForm.agentCommission.test.tsx`; e2e |
+| `ccrm-053` | Requirement: `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-053` (Q7, Q7b) → `DEC-SCOPE-325`; `API_CONTRACT.md` §12HW; RBAC §2.228 | PF1–PF10 defaults `NEEDS_CONFIRMATION` |
+| `ccrm-053-AC1` | Counselor sees own report with the intake filter | `apps/api/tests/test_ccrm_053_counselor_performance.py::test_the_intake_filter_narrows_the_lead_and_application_figures`; `CounselorTeamPerformance.test.tsx` (filters); `ccrm-053-counselor-performance.spec.ts` |
+| `ccrm-053-AC2` | Admin sees every overseas counselor with correct counts (zero rows listed; inactive only with activity) | `::test_the_admin_lists_every_overseas_counselor_with_their_figures`, `::test_an_inactive_counselor_is_listed_only_with_activity`; e2e |
+| `ccrm-053-AC3` | Overseas + IT leads = Leads | `::test_the_lead_split_sums_to_the_leads_total`, `::test_the_division_filter_narrows_the_lead_figures_only` |
+| `ccrm-053-AC4` | Intake narrows application figures (legacy text excluded) | `::test_the_intake_filter_narrows_the_lead_and_application_figures`, `::test_the_admin_list_takes_the_intake_and_division_filters` |
+| `ccrm-053-AC5` | Counselor cannot read another's figures | `::test_the_counselor_cannot_name_another_counselor`, `::test_everyone_else_is_refused_the_admin_routes`; `test_ccrm_041_matrix.py` rows |
+| `ccrm-053-AC6` | CSV matches the screen; audited | `::test_the_csv_matches_the_screen_and_is_audited`; e2e |
+| `ccrm-053-UI` | Admin page, links with filters, Total, export, detail page, empty/error/404 states, nav entry | `apps/web/tests/components/CounselorTeamPerformance.test.tsx`; e2e |

@@ -23,6 +23,7 @@ from app.schemas import (
     CapitalSharesIn,
     CapitalSharesOut,
     CrmReportsOut,
+    CrmUniversityApplicationsOut,
     DepartmentCreate,
     DepartmentOut,
     DepartmentPage,
@@ -234,6 +235,30 @@ async def crm_report_export(
 
     return await crm_exports.export(db, user, entity_type="crm_report", key=report, fmt=format, filters=given, filename=f"crm-{report}-{today}",
                                     sheet_name=f"CRM {report}", build=build)
+
+
+@router.get("/crm-reports/universities/{university_id}/applications", response_model=CrmUniversityApplicationsOut)
+async def crm_university_applications(
+    university_id: UUID,
+    page: int = Query(1, ge=1, le=10_000),
+    date_from: date | None = None,
+    date_to: date | None = None,
+    counselor: str | None = Query(None, max_length=36),
+    country: UUID | None = None,
+    university: UUID | None = None,
+    course: UUID | None = None,
+    intake: str | None = Query(None, max_length=80),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """ccrm-052: the applications behind one university's row of the ccrm-034 university report, for the same roles and filters --
+    student, course, intake, stage, counselor, deposit paid and visa outcome. Read-only; an unknown university is a 404."""
+    require_crm_reports(user)
+    filters = _crm_filters(date_from, date_to, counselor, country, university, course, intake)
+    body = await management_crm_reports.university_applications(db, filters, university_id, page)
+    if body is None:
+        raise HTTPException(404, "University not found")
+    return body
 
 
 def _operational(user: User) -> User:

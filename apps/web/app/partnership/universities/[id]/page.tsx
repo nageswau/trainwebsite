@@ -174,7 +174,7 @@ export default async function UniversityPage({ params }: { params: Promise<{ id:
           <UniversityTimeline key={`timeline|${u.pipeline.changed_at}`} universityId={u.id} expected={u.expected} canEdit={u.permissions.can_edit_timeline} initial={milestones}
             probability={u.probability} canOverride={u.permissions.can_move_stage} />
           <UniversityContacts universityId={u.id} contacts={contacts.items} roles={roles} canEdit={u.permissions.can_edit_contacts} />
-          <UniversityCourses universityId={u.id} page={courses} options={courseOptions} canSetCommission={COMMISSION_ROLES.has(user.role)} />
+          <UniversityCourses universityId={u.id} page={courses} options={courseOptions} canSetCommission={COMMISSION_ROLES.has(user.role)} canEditAgentCommission={AGENT_COMMISSION_EDITORS.has(user.role)} />
           {performance && (
             <section className="action-card wide" aria-labelledby="uni-opportunities">
               <h3 id="uni-opportunities">Student opportunities this month</h3>

@@ -19,7 +19,10 @@ type Counts = { applications: number; students: number };
 export type AgeingBands = { d0_7: number; d8_14: number; d15_30: number; d31_60: number; d61_plus: number };
 export type AgeingTotal = Counts & { bands: AgeingBands; oldest_days: number | null };
 export type AgeingRow = AgeingTotal & { stage: string; stage_label: string; sub_status: string | null; sub_status_label: string };
-export type UniversityTotal = Counts & { offers: number; offer_rate: number | null; rejections: number; acceptances: number; enrollments: number };
+export type UniversityTotal = Counts & {
+  offers: number; offer_rate: number | null; rejections: number; acceptances: number; enrollments: number;
+  deposits_paid: number; visas_approved: number; visas_refused: number; visas_pending: number; // ccrm-052
+}; // prettier-ignore
 export type UniversityRow = UniversityTotal & { university_id: string; label: string };
 export type VisaTotal = Counts & { submitted: number; pending: number; approved: number; refused: number; enrolled: number };
 export type VisaRow = VisaTotal & { country_id: string; label: string };
@@ -76,6 +79,25 @@ export const crmReportsUrl = (filters: CrmFilters) => withQuery(CRM_REPORTS_API,
 export const crmExportUrl = (report: string, filters: CrmFilters) => withQuery(`${CRM_REPORTS_API}/export`, filters, { report });
 /** The page's own address for these filters -- only the set ones, so a link is short and shareable. */
 export const crmReportsHref = (home: string, filters: CrmFilters) => withQuery(home, filters);
+
+// ccrm-052: the applications behind one university's row -- the report's filters, 100 a page (the API's), newest first.
+export type CrmUniversityApplication = {
+  application_id: string; application_code: string; student_name: string | null; course: string | null; intake: string; stage: string;
+  stage_label: string; counselor: string | null; deposit_paid: boolean; visa: "approved" | "refused" | "pending" | null;
+}; // prettier-ignore
+export type CrmUniversityApplications = { university: { id: string; label: string }; items: CrmUniversityApplication[]; total: number; page: number; page_size: number };
+export const CRM_UNIVERSITY_NOT_FOUND = "That university is not in the reports.";
+const pageQuery = (page: number): Record<string, string> => (page > 1 ? { page: String(page) } : {});
+export const crmUniversityApplicationsUrl = (university: string, filters: CrmFilters, page: number) =>
+  withQuery(`${CRM_REPORTS_API}/universities/${university}/applications`, filters, pageQuery(page));
+export const crmUniversityHref = (home: string, university: string, filters: CrmFilters, page = 1) => withQuery(`${home}/universities/${university}`, filters, pageQuery(page));
+export const isUuid = (value: string) => UUID_SHAPE.test(value);
+
+/** The drill-down page from the address; anything but a whole number from 1 is the first page. */
+export function crmPage(search: Record<string, string | string[] | undefined>): number {
+  const value = search.page;
+  return typeof value === "string" && /^[1-9]\d{0,3}$/.test(value) ? Number(value) : 1;
+}
 
 export function percentText(value: number | null): string {
   return value === null ? "—" : `${value}%`;

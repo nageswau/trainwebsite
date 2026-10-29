@@ -589,13 +589,29 @@ class RecordingLinkUpdate(BaseModel):
     recording_status: str = Field(default="available", pattern="^(not_available|processing|available|failed)$")
 
 
+# ccrm-047: a newly entered intake is a month and a year ("Sep 2027"). A legacy free-text value already stored is accepted unchanged by
+# the services that save whole forms (lead qualification, student profile); only a changed value is checked there.
+INTAKE_FORMAT = re.compile(rf"(?:{'|'.join(COURSE_MONTHS)}) \d{{4}}")
+INTAKE_MESSAGE = "Choose the intake month and year, like Sep 2027"
+
+
+def is_intake(value: str) -> bool:
+    return INTAKE_FORMAT.fullmatch(value) is not None
+
+
+def _intake_format(value: str | None) -> str | None:
+    if value is not None and not is_intake(value):
+        raise PydanticCustomError("intake_format", INTAKE_MESSAGE)
+    return value
+
+
 class OverseasApplicationCreate(BaseModel):
     university_id: UUID
     course_id: UUID | None = None
     student_id: UUID | None = None
     counselor_id: UUID | None = None
     agent_id: UUID | None = None
-    intake: str = Field(default="Next intake", max_length=80)
+    intake: Annotated[str, Field(max_length=80), AfterValidator(_intake_format)] = "Next intake"  # ccrm-047: omitted keeps the default
     application_reference: str | None = Field(default=None, max_length=140)
     next_action: str | None = Field(default=None, max_length=5000)
 
@@ -2621,6 +2637,11 @@ class UniversityOut(BaseModel):
     logo_url: str | None = None
     campuses: list | None = None
     fee_structure: str | None = None
+    # nehn-035 (DEC-SCOPE-331 L6): the public list's card fields; that route sets them (not columns), every other route keeps the defaults.
+    programs_count: int = 0
+    country_name: str | None = None
+    country_slug: str | None = None
+    country_iso2: str | None = None
     model_config = {"from_attributes": True}
 
 
@@ -7056,6 +7077,7 @@ class TelecallerLeadCreate(LeadContactFields):
     division: Literal["it", "overseas"] | None = None
     subject: LeadSubject = None
     message: BdmLeadNote = None
+    intake: Annotated[str | None, AfterValidator(_intake_format)] = None  # ccrm-047: the qualification's intake, overseas products only
 
 
 class LeadEnquiryCreate(BaseModel):
@@ -8094,7 +8116,11 @@ UniversityShort = _university_str(120)
 UniversityWebsite = Annotated[_university_str(300), BeforeValidator(_bdm_website_prefix)]
 UniversityOffice = _university_str(1000, multiline=True)
 # dtu-001: a stored logo path (the upload route) or an https URL; nothing else, so no script/data URL reaches an <img src>.
-LogoUrl = Annotated[str | None, Field(max_length=500, pattern=r"^(/universities/logos/[a-z0-9-]+\.(png|svg|jpg|jpeg|webp)|https://\S+)$")]
+# nehn-035 (DEC-SCOPE-331 L5): or a logo uploaded through PUT .../logo, so the form can re-send it.
+LogoUrl = Annotated[
+    str | None,
+    Field(max_length=500, pattern=r"^(/universities/logos/[a-z0-9-]+\.(png|svg|jpg|jpeg|webp)|/api/v1/public/university-logos/[0-9a-f]{32}\.(png|jpg|webp)|https://\S+)$"),
+]
 UniversityCampuses = Annotated[list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]] | None, Field(max_length=20)]
 UniversityFeeStructure = Annotated[str | None, Field(max_length=4000)]
 UniversityBody = Annotated[str, BeforeValidator(_bdm_newlines), StringConstraints(strip_whitespace=True, max_length=5000), AfterValidator(_university_body)]
@@ -8172,6 +8198,7 @@ class UniversityCreate(BaseModel):
     campuses: UniversityCampuses = None
     fee_structure: UniversityFeeStructure = None
     duplicate_reason: DuplicateReason = None
+    agent_commission: "AgentCommissionIn | None" = None  # ccrm-050: super_admin / overseas_admin only (anyone else sending the key: 403)
 
 
 class UniversityUpdate(BaseModel):
@@ -8200,6 +8227,7 @@ class UniversityUpdate(BaseModel):
     campuses: UniversityCampuses = None
     fee_structure: UniversityFeeStructure = None
     duplicate_reason: DuplicateReason = None
+    agent_commission: "AgentCommissionIn | None" = None  # ccrm-050: omitted = unchanged, null = clear (the DELETE), an object = set
 
 
 class UniversityAssign(BaseModel):
@@ -11033,6 +11061,7 @@ class CourseIn(BaseModel):
     icon: CourseIcon | None = None
     active: bool = True
     commission: CourseCommissionIn | None = None
+    agent_commission: AgentCommissionIn | None = None  # ccrm-051: super_admin / overseas_admin only (anyone else sending the key: 403)
 
 
 class CourseUpdate(BaseModel):
@@ -11060,6 +11089,7 @@ class CourseUpdate(BaseModel):
     icon: CourseIcon | None = None
     active: bool | None = None
     commission: CourseCommissionIn | None = None
+    agent_commission: AgentCommissionIn | None = None  # ccrm-051: omitted = unchanged, null = clear (the university's applies), object = set
 
 # rec-013 (DEC-SCOPE-151): the Find Candidates expression and filters. FS1: skills come as chips (never a typed query), FS4 caps the
 # size, FS5 the filters (experience in months, salary in INR per year), F3 the availability bands. Labels live in the web client.
@@ -12162,11 +12192,42 @@ class CrmUniversityTotal(CrmCounts):
     rejections: int
     acceptances: int
     enrollments: int
+    deposits_paid: int  # ccrm-052
+    visas_approved: int
+    visas_refused: int
+    visas_pending: int
 
 
 class CrmUniversityRow(CrmUniversityTotal):
     university_id: UUID
     label: str
+
+
+# ccrm-052: the applications behind one university's row, a page at a time; `total` is the row's Applications.
+class CrmUniversityRef(BaseModel):
+    id: UUID
+    label: str
+
+
+class CrmUniversityApplication(BaseModel):
+    application_id: UUID
+    application_code: str
+    student_name: str | None
+    course: str | None
+    intake: str
+    stage: str
+    stage_label: str
+    counselor: str | None
+    deposit_paid: bool
+    visa: Literal["approved", "refused", "pending"] | None
+
+
+class CrmUniversityApplicationsOut(BaseModel):
+    university: CrmUniversityRef
+    items: list[CrmUniversityApplication]
+    total: int
+    page: int
+    page_size: int
 
 
 class CrmVisaTotal(CrmCounts):
@@ -12361,13 +12422,58 @@ class CounselorPerformanceApplications(BaseModel):
     definitions: list[CrmReportDefinition]
 
 
+class CounselorPerformanceCounselor(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+
+
 class CounselorPerformanceOut(BaseModel):
     from_: date = Field(serialization_alias="from")
     to: date
     as_of: datetime
+    intake: str | None = None  # ccrm-053 PF2 / PF3: the filters applied
+    division: str | None = None
+    counselor: CounselorPerformanceCounselor | None = None  # ccrm-053: set on the Overseas Admin's read of one counselor
     period: list[CounselorPerformanceFigure]
     now: list[CounselorPerformanceFigure]
     applications: CounselorPerformanceApplications
+
+
+# ccrm-053 (DEC-SCOPE-325 PF7-PF9): GET /overseas-admin/counselor-performance -- one row per overseas counselor and a Total row; the
+# columns (labels and definitions) are the screen's and the export's.
+class CounselorPerformanceTeamTotals(BaseModel):
+    full_name: str
+    leads: int
+    leads_overseas: int
+    leads_it: int
+    leads_assigned: int
+    calls: int
+    counseling_sessions: int
+    conversions: int
+    conversion_pct: float | None
+    students: int
+    applications: int
+    visas_pending: int
+    visas_approved: int
+    visas_refused: int
+    enrollments: int
+
+
+class CounselorPerformanceTeamRow(CounselorPerformanceTeamTotals):
+    id: UUID
+    active: bool
+
+
+class CounselorPerformanceTeamOut(BaseModel):
+    from_: date = Field(serialization_alias="from")
+    to: date
+    as_of: datetime
+    intake: str | None
+    division: str | None
+    columns: list[CrmReportDefinition]
+    items: list[CounselorPerformanceTeamRow]
+    totals: CounselorPerformanceTeamTotals
 
 
 # mgmt-017 (spec TR1-TR16): the training dashboard. A share or average is null when there is nothing to divide (never a fabricated 0).

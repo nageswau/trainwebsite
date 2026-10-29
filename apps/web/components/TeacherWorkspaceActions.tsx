@@ -6,6 +6,7 @@ import BatchRosterPanel from "./BatchRosterPanel";
 import CourseMaterialsPanel from "./CourseMaterialsPanel";
 import LiveClassesPanel from "./LiveClassesPanel";
 import LiveSessionManagePanel from "./LiveSessionManagePanel";
+import QuestionImportPanel from "./QuestionImportPanel";
 import SupportTicketQueuePanel from "./SupportTicketQueuePanel";
 import TrainerProgressPanel from "./TrainerProgressPanel";
 import { formatSize } from "@/lib/agentDocuments";
@@ -376,6 +377,7 @@ export default function TeacherWorkspaceActions({ section }: { section: string }
         <button className="btn" disabled={busy || loading || !assessments.length} aria-describedby={!assessments.length ? "assessment-empty" : undefined}>Add question</button>
       </form>
     </Card>
+    <QuestionImportPanel assessments={assessments} loading={loading} onImported={load} />
     <Card title="Grade written attempt">
       <Field controlId="attempt-submission" label="Submitted attempt">
         <select value={gradingAttemptId} onChange={event => setGradingAttemptId(event.target.value)} required>

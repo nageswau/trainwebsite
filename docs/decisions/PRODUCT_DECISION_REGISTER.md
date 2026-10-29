@@ -10284,6 +10284,223 @@ receipt stays **403** (the backlog's "404" is left `NEEDS_CONFIRMATION`). D10 th
 **Numbering:** migration `0215_payment_discount_ledger`; API §12HM; no RBAC change.
 - **Feature ID authorized:** `nehn-019`. **Status:** built on `worktree-nehn-019`.
 
+### DEC-SCOPE-316 — Counselor dashboard follow-ups and tasks: overdue + next 7 days (`ccrm-042`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-042` (owner request 2026-10-28, answer Q3 "Overdue + next 7 days";
+`MEETING_TRANSCRIPT_REQUEST`-equivalent). Bug: a new follow-up must be future-dated (`lead_follow_ups.check_due`) but the dashboard
+listed only follow-ups due before midnight IST today, so it stayed hidden until its day.
+**Behaviour:** the `follow_ups` section lists the open follow-ups on the counselor's leads with `due_at` before the start of
+(today IST + 8 days) -- overdue, today and the next 7 days -- soonest first, overdue flagged. The tasks section lists open tasks with
+`due_on <= today + 7`, soonest first, overdue (`due_on < today`) flagged. Done/cancelled never appear; lead scope (owner + division)
+and the overseas-counselor-only gate are unchanged. **Builder's defaults (owner pre-authorised recommended answers;
+`NEEDS_CONFIRMATION`):** D1 the response key `overdue_tasks` is kept for compatibility (the UI titles it "Tasks due"); D2 the window
+is exposed as an additive `follow_up_days: 7`; D3 the `/counselor/tasks` page, ccrm-036 performance and ccrm-031 escalation "overdue"
+figures are unchanged. **Numbering:** API §12HN; no migration; no RBAC change.
+- **Feature ID authorized:** `ccrm-042`. **Status:** built on `worktree-ccrm-042`.
+
+### DEC-SCOPE-317 — Counselor "My students": all students with a Source filter and search (`ccrm-043`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-043` (owner request 2026-10-28, answer Q10 "All my students + Source
+filter + search"; `MEETING_TRANSCRIPT_REQUEST`-equivalent). The Students page listed only walk-in links.
+**Behaviour:** `GET /counselor/students` lists the counselor's whole caseload (`visible_student_ids`: csc-001 link ∪ students of the
+counselor's applications), archived excluded (ccrm-040), each student once, with source, application count and since-when; `source`
+and `q` narrow it. The card is titled "My students". **Builder's defaults (owner pre-authorised recommended answers;
+`NEEDS_CONFIRMATION`):** D1 source is mutually exclusive, first match wins: `registration_source` `counselor_walk_in` → Walk-in,
+`lead_conversion` → Lead conversion, an `AgentStudent` row or agency application → Agency, else Self-registered (incl. legacy accounts
+without a source); D2 `applications` counts all the student's applications (as the 360 shows); D3 `linked_since` is the earliest of the
+link and the counselor's first application; D4 Edit/Resend stay only on the counselor's own pending walk-in links (csc-003); D5 the
+Overseas Admin view is unchanged. **Numbering:** API §12HO; no migration; no RBAC change.
+- **Feature ID authorized:** `ccrm-043`. **Status:** built on `worktree-ccrm-043`.
+
+### DEC-SCOPE-318 — Counselor uploads student documents, with or without an application (`ccrm-045`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-045` (owner request 2026-10-28, `MEETING_TRANSCRIPT_REQUEST`-equivalent);
+design `docs/superpowers/specs/2026-10-28-ccrm-045-counselor-document-upload-design.md`.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** U1 the Overseas Admin gets the same upload
+control. U2 any of the student's applications the reader may write (the counselor's own, incl. agency applications per CC4; the Admin
+any); another student's application **422**, another counselor's **403**, a withdrawn / terminally decided one **409**. U3 no email or
+notification -- the document is visible in the student's Documents at once (no visibility flag). U4 no throttle (staff route; 20 MB cap).
+U5 a new upload is `pending` and not auto-linked to a checklist item (ccrm-019 linking unchanged). U6 no antivirus scan (platform-wide
+residual risk). U7 an "Offer letter" needs an application (AGN-010 O3). U8 an archived student **409**. Download: a counselor's
+document **without an application** follows the caseload (`is_visible_student`: csc-001 link or one of the student's applications)
+instead of "has one of the student's applications" -- a superset, nobody loses access. The student's Offer Letters page also lists an
+application with a current "Offer letter" document and offers its download.
+**Numbering:** no migration; API §12HP; RBAC §2.224.
+- **Feature ID authorized:** `ccrm-045`. **Status:** built on `worktree-ccrm-045`.
+
+### DEC-SCOPE-319 — Intake Month+Year picker for lead, student profile and application (`ccrm-047`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-047` (owner requests A4 "Also add a fields of intake for a lead.", L5
+"Intake Options in Student Portal and Counsellor Login", answer Q8; `MEETING_TRANSCRIPT_REQUEST`-equivalent). Intake was free text.
+**Behaviour:** one shared picker (month Jan–Dec + year, this year to three years ahead) writes `"Mon YYYY"` (e.g. `Sep 2027`) into the
+existing columns: lead create (telecaller / manager `NewLeadForm` and the counselor walk-in lead) → `lead_qualifications.intake` (row
+created with the lead when an intake is given); the lead qualification edit; the student profile (student's own and staff) →
+`preferred_intake`; the student/counselor application create → `overseas_applications.intake`. A malformed **new** value is **422** (field
+`loc`); a legacy free-text value already stored displays as-is and survives unrelated saves. **Builder's defaults (owner pre-authorised
+recommended answers; `NEEDS_CONFIRMATION`):** I1 past months of the current year allowed; no year bound server-side (format only); I2
+intake on lead create only for an `overseas`-group product, else 422; I3 an application create that omits `intake` keeps the server
+default "Next intake" (API compatibility); I4 unchanged: application `PATCH`, agent application forms, the Overseas Admin school-student
+bridge, checklist templates, outcome `new_intake`, CSV lead import (tel-006) and ccrm-008 conversion (copies a legacy intake unchanged).
+**Numbering:** API §12HQ; no migration; no RBAC change.
+- **Feature ID authorized:** `ccrm-047`. **Status:** built on `worktree-ccrm-047`.
+### DEC-SCOPE-320 — Counselor chat with walk-in students (`ccrm-044`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-044` (List 2 item 7 "Counsellors are unable to access the chat functionality
+for students added through the Walk-in option"; `MEETING_TRANSCRIPT_REQUEST`-equivalent). **Behaviour:** the student's counselor-chat
+reaches the latest application's counselor, else the csc-001 linked counselor (409 only when neither); the counselor's picker lists their
+caseload (`/lookups/overseas-students`, archived excluded); a counselor's generic send to an overseas student outside their caseload is
+403. **Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** D1 the application counselor wins when it
+differs from the linked counselor; D2 the caseload check applies only to counselor → overseas-student sends (other staff flows unchanged);
+D3 reading a past conversation (`GET /communications/messages/{id}`) is not narrowed (it only returns messages the caller is party to);
+D4 an archived student is hidden from the picker but not blocked from a send. **Numbering:** API §12HR; no migration; no RBAC change.
+- **Feature ID authorized:** `ccrm-044`. **Status:** built on `worktree-ccrm-044`.
+### DEC-SCOPE-321 — University-wise report: deposits, visas and drill-down (`ccrm-052`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-052` (owner line A6 "university wise report for overseas admin", Q9 — no
+commission; `MEETING_TRANSCRIPT_REQUEST`-equivalent). Extends ccrm-034 (`DEC-SCOPE-267`) and its ccrm-035 export (`DEC-SCOPE-268`).
+**Behaviour:** the University performance report adds `deposits_paid`, `visas_approved`, `visas_refused`, `visas_pending` (rows and
+total; the export appends them after the existing columns); each university opens a drill-down of the applications behind its row
+(same filters, 100 a page, newest first). **Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):**
+D1 a deposit is paid when the counselor's record is `paid_to_university`/`paid_via_edusphere` or the agency deposit is `paid`/`remitted`
+(refunded is not; mgmt-024 MF7), counted once per application; D2 one visa bucket per application, first match wins (any case
+approved → approved; else refused; else submitted / additional info requested / decision pending → pending); withdrawn applications
+are in no visa bucket; D3 a university with no matching applications is not listed (as before); D4 the drill-down is not exported.
+No commission. **Numbering:** API §12HS; RBAC §2.181 gains the drill-down row; no migration.
+- **Feature ID authorized:** `ccrm-052`. **Status:** built on `worktree-ccrm-052`.
+
+### DEC-SCOPE-322 — Deposit receipt upload on the student 360's Finance tab (`ccrm-048`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-048` (owner line L1, request 2026-10-28, `MEETING_TRANSCRIPT_REQUEST`-equivalent);
+design `docs/superpowers/specs/2026-10-28-ccrm-048-deposit-receipt-upload-design.md`.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** R1 one new route uploads and attaches in a single
+transaction (not upload + `PUT /deposit`, which would echo every field back). R2 only a counselor-recorded (ccrm-025) deposit that is
+required; the agency (AGN-011) deposit stays read-only (409). R3 the application's counselor or the Overseas Admin (super_admin keeps the
+workflow access every ccrm item kept). R4 a replaced receipt is not archived or made a ccrm-021 version -- it stays one of the student's
+documents, as with `PUT /deposit` today. R5 the student is notified ("Deposit receipt added"); history note and audit row. R6 a deposit
+that is not required shows no control (the card already says "No deposit is required."); no record = no card (unchanged); API 422. R7
+archived student or closed application: no control, API 409. R8 no antivirus scan (platform residual risk). ccrm-039 F1 ("read-only") is
+superseded for the deposit receipt only.
+**Numbering:** no migration; API §12HT; RBAC §2.225.
+- **Feature ID authorized:** `ccrm-048`. **Status:** built on `worktree-ccrm-048`.
+### DEC-SCOPE-323 — Agent-Master commission on the Add/Edit University form (`ccrm-050`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-050` (owner lines A8 "while adding the university commission, the commision
+field should be available that is visible to only agent master", A9, answer Q5; `MEETING_TRANSCRIPT_REQUEST`-equivalent). Before: the dtu-001
+agent commission (DEC-SCOPE-209) could be set only from the university detail card, after create. **Behaviour:** `UniversityForm` (Add and
+Edit) shows an "Agent Master commission" fieldset (percentage **or** amount + currency, optional note) to super_admin / overseas_admin only;
+it is saved in the same request as the university (`POST` / `PATCH /partnership/universities` carry an optional `agent_commission` object,
+validated as `AgentCommissionIn`), audited `university.agent_commission` with `{before, after}` in the same transaction; prefilled on Edit.
+Any other caller sending the key (even `null`) is **403** before any write; partnership roles never see the fieldset; viewers are
+unchanged (agent Master, published + active only; never agent staff). **Builder's defaults (owner pre-authorised recommended answers;
+`NEEDS_CONFIRMATION`):** C1 same-request save, not a follow-up PUT; C2 refusal is 403, not ignore; C3 `PATCH` omitted = unchanged, `null` =
+clear (as `DELETE .../agent-commission`), a blank rate on the form = `null`; C4 an unchanged value is not audited, and the create audit's
+`fields` list omits it; C5 an inactive university stays 409 (UM10); C6 the CSV import (upc-005) cannot carry it. **Numbering:** API §12HU; no
+migration; no RBAC change (same editors and viewers as DEC-SCOPE-209).
+- **Feature ID authorized:** `ccrm-050`. **Status:** built on `worktree-ccrm-050`.
+
+### DEC-SCOPE-324 — Counselor creates and manages multiple applications for a student (`ccrm-046`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-046` (owner request 2026-10-28, `MEETING_TRANSCRIPT_REQUEST`-equivalent);
+design `docs/superpowers/specs/2026-10-28-ccrm-046-counselor-applications-design.md`.
+**Built:** the student 360's Applications tab gives the overseas counselor an "Add application" disclosure holding the existing apply
+form (country, university, course, ccrm-047 intake picker) for that student, repeatable. `POST /workflows/overseas/applications` as a
+counselor now refuses a student outside the caseload (`is_visible_student`) with **403**, checked before the archive guard, and refuses a
+body naming another counselor or any agent with **403** -- a counselor's application is their own and direct (security fix).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** A1 no Overseas Admin 360 UI (its API path is
+unchanged). A2 the course active/published rule is unchanged (none on the API); the form lists the public catalogue only. A3 a
+counselor-created application for an agency student is direct (no `agent_id`). A4 notifications as for a student-created application
+(the student's in-app "Application created").
+**Numbering:** no migration; API §12HV; RBAC §2.227.
+- **Feature ID authorized:** `ccrm-046`. **Status:** built on `worktree-ccrm-046`.
+
+### DEC-SCOPE-325 — Counselor performance: Overseas Admin view, intake filter, Overseas/IT lead split (`ccrm-053`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-053` (owner line A10 "counsellor performance ---> leads, overseas/it,
+students, intake(filter), visas, enrollments", Q7 counselor own + Overseas Admin all, Q7b split by `Enquiry.division`;
+`MEETING_TRANSCRIPT_REQUEST`-equivalent). Extends ccrm-036 (`DEC-SCOPE-269`); reuses mgmt-018 builders and ccrm-034 predicates.
+**Behaviour:** the counselor's report adds period figures Leads / Overseas leads / IT leads and takes `intake` ("Mon YYYY") and
+`division` (overseas | it) filters; the Overseas Admin gets `/overseas/admin/counselor-performance` — one row per overseas counselor, a
+Total row, CSV / Excel (audited), and each counselor's full report. **Builder's defaults (owner pre-authorised recommended answers;
+`NEEDS_CONFIRMATION`):** PF1 Leads = leads the counselor owns created in the period, Overseas + IT (so the split sums to the total);
+PF2 intake narrows lead figures (`LeadQualification.intake`) and application figures (`OverseasApplication.intake`) only — not the
+mgmt-018 figures, follow-ups or tasks; legacy free text never matches; PF3 division narrows the lead figures only; PF5 API routes under
+`/overseas-admin/counselor-performance`; PF6 Super Admin included; PF7 active overseas counselors always listed, an inactive one only
+with a non-zero figure; PF8 no revenue; PF10 the optional `ix_overseas_applications_counselor_id` is deferred (no migration).
+**Observation:** handover and owner change assign a lead only to a counselor of its own division, so an overseas counselor's IT leads
+are normally 0. **Numbering:** API §12HW; RBAC §2.228; no migration.
+- **Feature ID authorized:** `ccrm-053`. **Status:** built on `worktree-ccrm-053`.
+
+### DEC-SCOPE-326 — Payment receipt / proof upload on the student 360's Finance tab (`ccrm-049`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-049` (owner line L6, Q4, request 2026-10-28, `MEETING_TRANSCRIPT_REQUEST`-equivalent);
+design `docs/superpowers/specs/2026-10-28-ccrm-049-payment-proof-upload-design.md`.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** P1 one new route under the 360
+(`/counselor/students/{id}/payments/{pid}/proof`) serves the counselor and the Overseas Admin. P2 a counselor outside the caseload gets
+**404**, not the backlog's "403" (AC4): every 360 route answers 404 so a student's existence is not disclosed (ccrm-041 matrix `STUDENT`).
+P3 manual payments only (`provider = manual`); a gateway payment has its system receipt → 409. P4 any payment status (proof of an offline
+transfer on a pending payment is allowed). P5 the proof is a "Payment receipt" `StudentDocument` (no application, pending) linked by
+`payments.proof_document_id` (`ON DELETE SET NULL`); a replaced proof stays one of the student's documents. P6 whoever passes the 360's
+gate may download it (the document route's ccrm-045 rule for an application-less document). P7 audit `payment.proof_attached`; no student
+notification (not asked). P8 the student sees the file in Documents and its name in a new "Uploaded proof" column of the portal Payments
+page; the system receipt is labelled "System receipt" on the Finance tab. P9 no antivirus scan (platform residual risk).
+**Numbering:** migration 0216 (0212 was taken; 0213/0214 unused); API §12HX; RBAC §2.229 (DEC-SCOPE-324/325, §12HV/12HW taken by ccrm-046 / ccrm-053).
+- **Feature ID authorized:** `ccrm-049`. **Status:** built on `worktree-ccrm-049`.
+
+### DEC-SCOPE-327 — Course-level agent-Master commission, overriding the university's (`ccrm-051`)
+
+- **Source:** `docs/delivery/COUNSELOR_CRM_BACKLOG_2.md` `ccrm-051` (owner line A8, answers Q5 "Also on Add Course form" / Q6 course
+overrides university; `MEETING_TRANSCRIPT_REQUEST`-equivalent); design `docs/superpowers/specs/2026-10-28-ccrm-051-course-agent-commission-design.md`.
+Extends DEC-SCOPE-209 (dtu-001) and DEC-SCOPE-323 (ccrm-050). **Behaviour:** `overseas_courses` gains `agent_commission_percent / _amount /
+_currency / _note` (the university's CHECKs). The Add / Edit course form shows an "Agent Master commission" fieldset to super_admin /
+overseas_admin only; `POST` / `PATCH /partnership/universities/{id}/courses[/{course_id}]` take an optional `agent_commission`
+(`AgentCommissionIn`) saved in the course write's transaction and audited `university_course.agent_commission` with `{university_id, before,
+after}`. Any other caller sending the key (even `null`) is **403** before any write. Course payloads carry `agent_commission` for its viewers
+only; the agent Master's partner-university detail gives each course `agent_commission_effective` = the course's value, else the
+university's, with `source` ("course" | "university"), or `null`. Agent staff, partnership roles and public endpoints never get either key.
+U2's course `commission_*` is untouched. **Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** CA1 403,
+not ignore, for a non-editor sending the key; CA2 `PATCH` omitted = unchanged, `null` = clear (the university's value applies again); CA3 the
+effective value carries the source row's note; CA4 the downgrade refuses while any course agent commission exists (0157's rule); CA5 the
+course CSV import cannot carry it; CA6 the list column on the Master's university list stays the university's value. **Numbering:** migration
+0217; API §12HY; RBAC §2.230.
+- **Feature ID authorized:** `ccrm-051`. **Status:** built on `worktree-ccrm-051`.
+
+### DEC-SCOPE-330 — Trainer question upload from a standard Excel template (`nehn-025`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-025` (§9 "Trainer Assessment Upload" L199-208, §10 L222,
+action 10; `ORIGINAL_REQUIREMENT`-derived backlog); design `docs/superpowers/specs/2026-10-29-nehn-025-excel-question-import-design.md`.
+First consumer of DEC-SCOPE-282's `read_tabular` (nehn-004). **Behaviour:** `GET /workflows/it/trainer/assessments/question-template.xlsx`
+gives a header-only `Questions` sheet (`type, question, option_1..option_6, correct, marks, keywords, explanation`; a type drop-down) and
+an `Instructions` sheet (column reference, worked examples, "images are not supported"). `POST .../assessments/{id}/questions/import`
+(multipart `file`, `.xlsx` or `.csv`, 1 MB, 500 rows) is a dry run by default: every row is checked and the preview lists the parsed
+questions, one error per bad row (by sheet row number) and warnings (a repeated question; filled keywords / explanation columns).
+`?commit=true` re-checks the same file and creates every question in one transaction after the assessment's existing ones (audit
+`assessment.questions_import` `{count, format}`) — or nothing, with 422, if any row has an error. Questions are stored exactly as the
+single / bulk routes store them (`correct` option numbers become the option texts), so imported MCQs auto-grade like typed ones. Scope is
+the bulk route's: trainer on their own batch's assessment, it_admin any (super_admin passes `_require`); 409 once a student has started an
+attempt. The trainer's Assessments section gains an "Import questions from Excel" card (template → check → preview → import).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** Q1 all-or-nothing import; Q2 the import fills an
+existing assessment (the create form already defaults to Draft) rather than creating one; Q3 assignments are not generated from the
+template; Q4 no images in questions, CSV accepted; Q5 keywords / explanation are accepted but not stored until nehn-026 adds the columns;
+Q6 no server idempotency key on commit (the UI disables the button while importing). **Numbering:** no migration; API §12IB; RBAC §2.233.
+- **Feature ID authorized:** `nehn-025`. **Status:** built on `worktree-nehn-025`.
+
+### DEC-SCOPE-331 — University logo upload and richer university cards (`nehn-035`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-035` (action 16; §17 L486-492 "University Selection", L475
+"University icons/logos/images – Required"; §26 L798-800); design `docs/superpowers/specs/2026-10-29-nehn-035-university-logos-design.md`.
+Depends on DEC-SCOPE-279 (nehn-003 `university_logo` policy, `public/` prefix). **Behaviour:** `PUT /partnership/universities/{id}/logo`
+(multipart) lets anyone who may edit that university (`can_edit` + scope) upload a PNG / JPEG / WebP logo of at most 1 MB and 32-2048 px per
+side; the declared type must match the magic bytes; PNG/JPEG metadata is stripped. The file goes to `public/university-logos/<hex>.<ext>`
+through `StorageService` and `logo_url` becomes `/api/v1/public/university-logos/<name>`, served publicly (both storage modes, `nosniff`,
+immutable cache). The previous uploaded logo is deleted after the commit; bundled / `https://` logos are never touched. Audit
+`university.logo`. The public university list gains `programs_count` (active courses) and `country_name / _slug / _iso2`. Catalogue cards
+show the country flag + name beside the city, "N programs", View details and Apply (→ the student apply form with the university
+preselected; logged out → login → back), and the catalogue gets a Country filter. **Builder's defaults (`NEEDS_CONFIRMATION`):** L2 SVG
+refused, not sanitised; L7 Apply hidden for a university with 0 programs ("Programs coming soon"); L1 upload only after the university is
+saved; L10 a form hint asks for a logo the organisation may use — formal copyright guidance (CI-04) still awaited from the client.
+**Numbering:** no migration; API §12IC; RBAC §2.234.
+- **Feature ID authorized:** `nehn-035`. **Status:** built on `worktree-nehn-035`.
+
 ### DEC-SCOPE-310 — HR access to permitted student progress, attendance and documents; HR reports (`nehn-017`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-017` (§13 L277-286, §5 L116-121, §15 L337-347; `UNVERIFIED`
@@ -10294,9 +10511,9 @@ placement pool -- `it_student`, IT division, not withdrawn from placement (the p
 students excluded). H2 HR opens a student document only when its type (trimmed, lower-cased) is `resume`, `cv`, `curriculum vitae`,
 `portfolio`, `certificate` or `certificates`; every other type is closed (absent from the list, **403** on download). H3 three new
 catalogue resources, one per kind of data -- `student_progress`, `attendance`, `student_documents` (view, download) -- held by hr_team
-by default (migration 0216); revoking one hides its block and its report. H4 seats exclude `pending_consent`/`rejected`; completed =
+by default (migration 0218); revoking one hides its block and its report. H4 seats exclude `pending_consent`/`rejected`; completed =
 counted seat at progress 100. HR reports are `hr-progress`, `hr-completions` (`student_progress`) and `hr-attendance` (`attendance`):
 the training pack's columns over the HR population, no financial column. HR's Placement Reports exclusion is removed (counts only).
 The recruiter requirements module still bars HR (Q-28) -- an open question for the client.
-**Numbering:** migration `0216_hr_student_grants`; API §12HH; RBAC §2.221.
+**Numbering:** migration `0218_hr_student_grants`; API §12HH; RBAC §2.221.
 - **Feature ID authorized:** `nehn-017`. **Status:** built on `worktree-nehn-017`.

@@ -26,7 +26,7 @@ test("university list is searchable and links to a detail page with its courses 
   // (RAID.md I-07), which is not a defect in this feature.
   await page.getByPlaceholder(/Search university/).fill("University of Manchester");
   await expect(page.getByRole("heading", { name: "University of Manchester" })).toBeVisible();
-  await page.getByRole("link", { name: "University profile" }).click();
+  await page.getByRole("link", { name: "View details for University of Manchester" }).click(); // nehn-035: was "University profile"
   await expect(page.getByRole("heading", { name: "University of Manchester" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Courses" })).toBeVisible();
 });

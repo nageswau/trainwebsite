@@ -10,20 +10,25 @@ from uuid import UUID
 
 from sqlalchemy import ColumnElement, Date, Integer, Select, and_, case, cast, distinct, exists, func, literal, or_, select, type_coerce
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.application_checklists import COMPLETE
 from app.application_outcome import TERMINAL
 from app.application_sub_status import SUB_STATUSES
 from app.application_sub_status import label as sub_status_label
 from app.models import (
+    AgentStudent,
     ApplicationChecklist,
     ApplicationChecklistItem,
     ApplicationChecklistItemDocument,
+    ApplicationDepositRecord,
     ApplicationOffer,
     Country,
     Enquiry,
     LeadQualification,
     OverseasApplication,
+    OverseasCourse,
+    SchoolStudent,
     StudentDocument,
     University,
     User,
@@ -66,6 +71,11 @@ DEFINITIONS: dict[str, tuple[tuple[str, str, str], ...]] = {
         ("rejections", "Rejections", "Applications with the Rejected outcome."),
         ("acceptances", "Acceptances", "Applications with an offer the student accepted."),
         ("enrollments", "Enrolments", "Applications with the enrolment confirmed."),
+        # ccrm-052: appended, so the export keeps its earlier column order.
+        ("deposits_paid", "Deposits paid", "Applications whose university deposit is paid: recorded by the counselor as paid to the university or via EduSphere, or paid (or remitted) by the agency. A refunded deposit is not counted."),
+        ("visas_approved", "Visas approved", "Applications with a visa approved. Withdrawn applications are not counted in the visa columns."),
+        ("visas_refused", "Visas refused", "Applications with a visa refused and none approved."),
+        ("visas_pending", "Visas pending", "Applications with a visa submitted, additional information requested or decision pending, and no decision yet."),
     ),
     "visa": (
         ("applications", "Visa cases", "Applications in the period that have a visa case, by destination country."),
@@ -174,11 +184,32 @@ def _rate(part: int, whole: int) -> float | None:
     return round(100 * part / whole, 1) if whole else None
 
 
+def _visa_case(*where) -> ColumnElement:
+    return exists().where(VisaCase.application_id == A.id, *where)
+
+
+# ccrm-052 D1: a paid deposit, from either record (an application has at most one of each, never both); the agency side is the funnel's
+# own Deposit predicate (mgmt-024 MF7: paid or remitted, not refunded).
+DEPOSIT_PAID = or_(
+    management_metrics.FUNNEL_COUNTS["deposit"],
+    exists().where(ApplicationDepositRecord.application_id == A.id, ApplicationDepositRecord.payment_status.in_(("paid_to_university", "paid_via_edusphere"))),
+)
+# ccrm-052 D2: each application in at most one visa bucket, first match wins (approved, refused, pending); withdrawn ones in none.
+_LIVE = A.status != WITHDRAWN
+_APPROVED, _REFUSED = _visa_case(VisaCase.visa_status == "approved"), _visa_case(VisaCase.visa_status == "refused")
+VISA_BUCKETS = {
+    "approved": and_(_LIVE, _APPROVED),
+    "refused": and_(_LIVE, ~_APPROVED, _REFUSED),
+    "pending": and_(_LIVE, ~_APPROVED, ~_REFUSED, _visa_case(VisaCase.visa_status.in_(VISA_PENDING))),
+}
+
+
 async def _universities(db: AsyncSession, f: ReportFilters) -> dict:
     accepted = exists().where(ApplicationOffer.application_id == A.id, ApplicationOffer.decision == "accepted")
     measures = {
         "applications": func.count(), "students": STUDENTS, "offers": func.count().filter(OFFER), "rejections": func.count().filter(A.outcome == "rejected"),
-        "acceptances": func.count().filter(accepted), "enrollments": func.count().filter(CONFIRMED),
+        "acceptances": func.count().filter(accepted), "enrollments": func.count().filter(CONFIRMED), "deposits_paid": func.count().filter(DEPOSIT_PAID),
+        **{f"visas_{bucket}": func.count().filter(rule) for bucket, rule in VISA_BUCKETS.items()},
     }  # fmt: skip
     keys = [University.id.label("university_id"), University.name.label("label")]
     rows, total = await _report(db, f, keys, measures, joins=[(University, University.id == A.university_id, False)])
@@ -186,6 +217,41 @@ async def _universities(db: AsyncSession, f: ReportFilters) -> dict:
         r["offer_rate"] = _rate(r["offers"], r["applications"])
     rows.sort(key=lambda r: (-r["applications"], r["label"].lower(), str(r["university_id"])))
     return {"rows": rows, "total": total}
+
+
+DRILL_PAGE_SIZE = 100
+
+
+async def university_applications(db: AsyncSession, f: ReportFilters, university_id: UUID, page: int) -> dict | None:
+    """ccrm-052: the applications behind one university's row -- the same filters, so `total` is the row's Applications. Newest first,
+    `DRILL_PAGE_SIZE` a page. None when there is no such university."""
+    label = await db.scalar(select(University.name).where(University.id == university_id))
+    if label is None:
+        return None
+    mine = A.university_id == university_id
+    total = await db.scalar(_scoped(select(func.count()).select_from(A).where(mine), f))
+    student, linked, counselor = aliased(User), aliased(User), aliased(User)
+    # R3's person: the user, else the agency record's account (a linked student's name is their account's), else the record or school student.
+    name = func.coalesce(student.full_name, linked.full_name, AgentStudent.full_name, SchoolStudent.full_name)
+    visa = case(*((rule, literal(bucket)) for bucket, rule in VISA_BUCKETS.items()), else_=None)
+    columns = (
+        A.id.label("application_id"), A.application_code, name.label("student_name"), OverseasCourse.title.label("course"), A.intake,
+        A.status.label("stage"), counselor.full_name.label("counselor"), DEPOSIT_PAID.label("deposit_paid"), visa.label("visa"),
+    )  # fmt: skip
+    stmt = (
+        select(*columns)
+        .select_from(A)
+        .outerjoin(student, student.id == A.student_id)
+        .outerjoin(AgentStudent, AgentStudent.id == A.agent_student_id)
+        .outerjoin(linked, linked.id == AgentStudent.student_id)
+        .outerjoin(SchoolStudent, SchoolStudent.id == A.school_student_id)
+        .outerjoin(OverseasCourse, OverseasCourse.id == A.course_id)
+        .outerjoin(counselor, counselor.id == A.counselor_id)
+        .where(mine)
+    )
+    stmt = _scoped(stmt, f).order_by(A.created_at.desc(), A.id).offset((page - 1) * DRILL_PAGE_SIZE).limit(DRILL_PAGE_SIZE)
+    items = [{**r._mapping, "stage_label": stage_label(r.stage)} for r in await db.execute(stmt)]
+    return {"university": {"id": university_id, "label": label}, "items": items, "total": total, "page": page, "page_size": DRILL_PAGE_SIZE}
 
 
 async def _visa(db: AsyncSession, f: ReportFilters) -> dict:

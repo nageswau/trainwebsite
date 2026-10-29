@@ -29,7 +29,7 @@ class Row:
     method: str
     path: str
     body: object = None  # a dict / callable(world) -> dict, sent as JSON
-    form: bool = False  # a multipart upload of one PDF
+    form: bool = False  # a multipart upload of one PDF (`body`, when given, is its form fields)
     cells: dict = field(default_factory=dict)
 
     @property
@@ -118,6 +118,10 @@ MATRIX = [
     R("get", "/counselor/students/{student}/notes", cns=200, ovs_admin=200, **STUDENT),
     R("post", "/counselor/students/{student}/notes", {"body": "Shortlist sent"}, cns=201, ovs_admin=201, **STUDENT),
     R("get", "/counselor/students/{student}/finance", cns=200, ovs_admin=200, **STUDENT),
+    # ccrm-045 counselor document upload (§2.224)
+    R("post", "/counselor/students/{student}/documents", {"document_type": "Passport"}, form=True, cns=201, ovs_admin=201, **STUDENT),
+    # ccrm-049 payment proof from the Finance tab (§2.229)
+    R("post", "/counselor/students/{student}/payments/{payment}/proof", form=True, cns=201, ovs_admin=201, **STUDENT),
     # ccrm-020 document requests (§2.180)
     R("get", "/counselor/students/{student}/document-requests", cns=200, ovs_admin=200, **STUDENT),
     R("post", "/counselor/students/{student}/document-requests", lambda w: {"due_date": day(5), "document_type": "CV"}, cns=201, ovs_admin=201, **STUDENT),
@@ -182,6 +186,8 @@ MATRIX = [
     R("get", "/workflows/overseas/applications/{app}/deposit", **staff(200, student=200)),
     R("put", "/workflows/overseas/applications/{app}/deposit", lambda w: {"required": True, "payment_status": "pending", "amount": "3000", "currency": "GBP", "due_date": day(14)}, **staff(200)),
     R("post", "/workflows/overseas/applications/{app}/deposit-receipts", form=True, **staff(201)),
+    # ccrm-048 deposit receipt from the Finance tab (§2.225)
+    R("post", "/workflows/overseas/applications/{app}/deposit/receipt", form=True, **staff(201)),
     # ccrm-026 visa lifecycle (§2.169)
     R("patch", "/workflows/overseas/visa/{visa}/lifecycle", {"expected_visa_status": "not_started", "visa_category": "Student"}, **staff(200)),
     # ccrm-027 enrolment (§2.176), ccrm-028 arrival (§2.179)
@@ -210,10 +216,17 @@ MATRIX = [
     # ccrm-032 dashboard (§2.191), ccrm-036 performance (§2.183), ccrm-035 exports (§2.182), ccrm-034 reports (§2.181)
     R("get", "/counselor/dashboard", **SELF),
     R("get", "/counselor/performance", **SELF),
+    # ccrm-053 the Overseas Admin's counselor performance (§2.228); another division's counselor reads as missing
+    R("get", "/overseas-admin/counselor-performance", **ADMINS),
+    R("get", "/overseas-admin/counselor-performance.csv", **ADMINS),
+    R("get", "/overseas-admin/counselor-performance.xlsx", **ADMINS),
+    R("get", "/overseas-admin/counselor-performance/{cns_id}", **ADMINS),
+    R("get", "/overseas-admin/counselor-performance/{it_cns_id}", ovs_admin=404, super=404),
     R("get", "/counselor/exports/applications", **SELF),
     R("get", "/counselor/exports/leads", **SELF),
     R("get", "/management/crm-reports", **MANAGEMENT),
     R("get", "/management/crm-reports/export?report=ageing", **MANAGEMENT),
+    R("get", "/management/crm-reports/universities/{university}/applications", **MANAGEMENT),  # ccrm-052 (§2.181)
     # ccrm-037 templates and the student message log (§2.187)
     R("get", "/counselor/templates", **STAFF_READ),
     R("get", "/counselor/templates/{template}/preview", **STAFF_READ),
@@ -242,6 +255,7 @@ PREFIXES = (
     "/counselor/",
     "/overseas-admin/checklists",
     "/overseas-admin/reminder-rules",
+    "/overseas-admin/counselor-performance",
     "/overseas/me/",
     "/calendar/feeds/",
     "/management/crm-reports",
@@ -297,6 +311,8 @@ async def _call(client, row: Row, w: dict, role: str):
     kwargs = {"headers": headers(user)}
     if row.form:
         kwargs["files"] = {"file": ("c41.pdf", PDF, "application/pdf")}
+        if row.body is not None:  # ccrm-045: the upload's form fields
+            kwargs["data"] = row.body
     elif row.method not in ("get", "delete"):
         body = row.body(w) if callable(row.body) else row.body
         if body is not None:

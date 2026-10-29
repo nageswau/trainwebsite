@@ -2,6 +2,7 @@
 
 import { type FormEvent, useEffect, useId, useState } from "react";
 
+import IntakePicker, { intakeProblem } from "@/components/IntakePicker";
 import { EnglishTestRow } from "@/components/StudentProfileForm";
 import { detailMessage, sendJson } from "@/lib/apiErrors";
 import { fieldErrors } from "@/lib/bdmTravel";
@@ -128,6 +129,8 @@ export default function LeadQualificationForm({ leadId, url = qualificationUrl(l
     const local: Record<string, string> = {};
     for (const field of applicable(q)) {
       const text = (draft[field.key] ?? "").trim();
+      const intakeError = field.kind === "intake" ? intakeProblem(text, q.intake) : null; // ccrm-047: a legacy value left as it was is fine
+      if (intakeError) local[field.key] = intakeError;
       if (field.kind !== "number") body[field.key] = text || null;
       else if (!text) body[field.key] = null;
       else {
@@ -176,6 +179,14 @@ export default function LeadQualificationForm({ leadId, url = qualificationUrl(l
           </div>
           {error}
         </fieldset>
+      );
+    }
+    if (field.kind === "intake") {
+      return (
+        <div key={field.key} style={{ display: "grid", gap: 4 }}>
+          <IntakePicker id={fieldId(field.key)} label={field.label} value={value} disabled={busy} onChange={(v) => set(field.key, v)} />
+          {error}
+        </div>
       );
     }
     return (

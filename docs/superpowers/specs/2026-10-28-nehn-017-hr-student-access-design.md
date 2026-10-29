@@ -1,6 +1,6 @@
 # nehn-017 — HR access to permitted student progress, attendance and documents, plus HR reports (design)
 
-Decision: `DEC-SCOPE-310` · API §12HH · RBAC §2.221 · migration `0216_hr_student_grants` (seed only).
+Decision: `DEC-SCOPE-310` · API §12HH · RBAC §2.221 · migration `0218_hr_student_grants` (seed only).
 Source: `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` §E `nehn-017` (DERIVED_BLUEPRINT over the ORIGINAL_REQUIREMENT
 §13 L277-286, §5 L116-121, §15 L337-347). Dependencies nehn-003 (private serving), nehn-005 (permission engine), nehn-008 (field
 policy) and nehn-010 (training reports) are merged.
@@ -30,7 +30,7 @@ document storage. No change to the student's own document routes.
   - `attendance` (view, download): the attendance block on a student and the `hr-attendance` report.
   - `student_documents` (view, download): the allowed-type document list and its downloads.
 
-  `hr_team` holds all six keys by default (migration 0216 seeds them). No other role gets a default grant. super_admin holds every key
+  `hr_team` holds all six keys by default (migration 0218 seeds them). No other role gets a default grant. super_admin holds every key
   implicitly.
 - **H4 Seats shown.** A seat is shown when its status is counted or dropped. `pending_consent` and `rejected` never took the seat and
   are not shown (nehn-010 C2). *Completed* means a counted seat with progress ≥ 100 (C1).

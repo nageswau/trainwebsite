@@ -1,7 +1,9 @@
 "use client";
 import { type FormEvent, type ReactNode, useState } from "react";
 
+import AgentCommissionFields from "@/components/AgentCommissionFields";
 import CourseIcon from "@/components/CourseIcon";
+import { agentCommissionBody, agentCommissionDraft } from "@/lib/agentCommission";
 import { sendJson, type SendOutcome } from "@/lib/apiErrors";
 import { COURSE_ICONS, ICON_LABELS } from "@/lib/courseIcons";
 import { type Course, type CourseOptions, coursesUrl, CURRENCIES, ENGLISH_TESTS, LEVELS, MONTHS, scoreProblem } from "@/lib/courseMaster";
@@ -9,6 +11,9 @@ import { type Course, type CourseOptions, coursesUrl, CURRENCIES, ENGLISH_TESTS,
 // upc-017 (§16): one form for a new course and for editing one -- the 14 fields. An edit sends only what changed; a legacy level
 // ("Masters") is shown as it is and only replaced when another level is chosen (CO3). The commission block is for the commission roles
 // only (U2; the API refuses everyone else). `noValidate`: the form's own messages are the ones read out.
+// ccrm-051 (DEC-SCOPE-327): with canEditAgentCommission (super_admin / overseas_admin) the agent-Master commission -- a separate figure that
+// overrides the university's for this course -- is entered here too. A new course sends it only when a rate is entered; an edit only
+// when it changed (a blank rate is null: the university's value applies again). Without the prop the key is never sent.
 type RateKind = "none" | "percent" | "amount";
 const TEXTS = { entry_requirements: "Entry requirements", application_process: "Application process" } as const;
 const PAIRS = [["tuition_amount", "tuition_currency", "tuition fee"], ["application_fee", "application_fee_currency", "application fee"]] as const;
@@ -59,10 +64,19 @@ function problem(v: Values, rate: ReturnType<typeof startRate>, canSetCommission
   return null;
 }
 
+/** ccrm-051: the agent commission's own range (the API's AgentCommissionIn), so its message names it instead of a bare 422. */
+function agentRateProblem(rate: Record<string, string> | null): string | null {
+  const value = rate?.percent ?? rate?.amount;
+  if (value === undefined) return null;
+  if (!MONEY.test(value) || !(Number(value) > 0)) return "Enter a rate above 0 with at most two decimal places.";
+  if (rate?.percent !== undefined && Number(value) > 100) return "The percentage cannot be above 100.";
+  return null;
+}
+
 const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
 
-export default function CourseForm({ universityId, options, course = null, canSetCommission, label, onSaved, onCancel }: {
-  universityId: string; options: CourseOptions; course?: Course | null; canSetCommission: boolean; label: string;
+export default function CourseForm({ universityId, options, course = null, canSetCommission, canEditAgentCommission = false, label, onSaved, onCancel }: {
+  universityId: string; options: CourseOptions; course?: Course | null; canSetCommission: boolean; canEditAgentCommission?: boolean; label: string;
   onSaved: (message: string) => void; onCancel: () => void;
 }) {
   const start = startValues(course);
@@ -72,13 +86,14 @@ export default function CourseForm({ universityId, options, course = null, canSe
   const [active, setActive] = useState(course?.active ?? true);
   const rateStart = startRate(course);
   const [rate, setRate] = useState(rateStart);
+  const [agentCommission, setAgentCommission] = useState(() => agentCommissionDraft(course?.agent_commission));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const prefix = course ? `course-${course.id}` : `course-new-${universityId}`;
   const set = (key: keyof Values) => (e: { target: { value: string } }) => setValues((v) => ({ ...v, [key]: e.target.value }));
   const legacyLevel = course && !(LEVELS as readonly string[]).includes(course.level) ? course.level : null;
 
-  function body(): Record<string, unknown> {
+  function body(agentRate: Record<string, string> | null): Record<string, unknown> {
     const out: Record<string, unknown> = {};
     for (const key of Object.keys(start) as (keyof Values)[]) {
       const value = values[key].trim() || null; // blank = no value (an edit sends null to clear it)
@@ -91,6 +106,10 @@ export default function CourseForm({ universityId, options, course = null, canSe
     if (canSetCommission && rateKey(rate) !== rateKey(rateStart)) {
       out.commission = rate.kind === "none" ? null : rate.kind === "percent" ? { percent: rate.percent.trim() } : { amount: rate.amount.trim(), currency: rate.currency };
     }
+    if (canEditAgentCommission) {
+      const before = course ? agentCommissionBody(agentCommissionDraft(course.agent_commission)) : { body: null };
+      if (JSON.stringify(agentRate) !== JSON.stringify("body" in before ? before.body : null)) out.agent_commission = agentRate;
+    }
     return out;
   }
 
@@ -99,7 +118,11 @@ export default function CourseForm({ universityId, options, course = null, canSe
     if (busy) return;
     const wrong = problem(values, rate, canSetCommission);
     if (wrong) return setError(wrong);
-    const payload = body();
+    const agentEntry = canEditAgentCommission ? agentCommissionBody(agentCommission) : { body: null };
+    if ("error" in agentEntry) return setError(`Agent Master commission: ${agentEntry.error}`);
+    const agentWrong = agentRateProblem(agentEntry.body);
+    if (agentWrong) return setError(`Agent Master commission: ${agentWrong}`);
+    const payload = body(agentEntry.body);
     if (course && Object.keys(payload).length === 0) return onSaved("No changes to save.");
     setError(null);
     setBusy(true);
@@ -231,6 +254,15 @@ export default function CourseForm({ universityId, options, course = null, canSe
                 ))}
               </div>
             )}
+          </fieldset>
+        )}
+        {canEditAgentCommission && (
+          <fieldset style={{ ...plain, display: "grid", gap: 8 }} aria-describedby={`${prefix}-agent-commission-hint`}>
+            <legend style={{ fontWeight: 700, marginBottom: 6 }}>Agent Master commission</legend>
+            <small id={`${prefix}-agent-commission-hint`} className="muted">
+              What EduSphere pays an agent Master for this course; it overrides the university&apos;s. Leave the rate blank to use the university&apos;s.
+            </small>
+            <AgentCommissionFields draft={agentCommission} onChange={setAgentCommission} idPrefix={`${prefix}-agent-commission`} />
           </fieldset>
         )}
         <label style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>

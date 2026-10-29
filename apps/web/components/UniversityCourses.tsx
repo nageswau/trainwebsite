@@ -6,13 +6,15 @@ import { useState } from "react";
 import CourseForm from "@/components/CourseForm";
 import CourseIcon from "@/components/CourseIcon";
 import CourseImportPanel from "@/components/CourseImportPanel";
+import { formatAgentCommission } from "@/lib/agentCommission";
 import { commissionText, type Course, type CourseOptions, type CoursePage, COURSES_PATH, englishText, moneyText } from "@/lib/courseMaster";
 import { dateText } from "@/lib/universityAgreements";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // upc-017 (§16): a university's courses & programmes on its master page -- "counselors know exactly what each partner university offers".
 // Every reader sees the list (inactive ones marked, CO11); writers add, edit and import (CO1). The commission row appears only when the
-// API sent it, which it does for the commission roles alone (U2). Every success re-reads the page (router.refresh).
+// API sent it, which it does for the commission roles alone (U2). Every success re-reads the page (router.refresh). ccrm-051: a course's
+// own agent-Master commission is shown when the API sent one (super_admin / overseas_admin only); they also set it on the course form.
 function facts(c: Course): [string, string | null][] {
   return [
     ["Category", c.category],
@@ -27,11 +29,12 @@ function facts(c: Course): [string, string | null][] {
     ["Deadline", c.deadline && dateText(c.deadline)],
     ["Scholarships", c.scholarships.map((s) => `${s.title} (${s.amount})`).join(", ") || null],
     ...("commission" in c ? [["Commission (restricted)", commissionText(c.commission)] as [string, string]] : []),
+    ...(c.agent_commission ? [["Agent Master commission", formatAgentCommission(c.agent_commission)] as [string, string]] : []),
   ];
 }
 
-export default function UniversityCourses({ universityId, page, options, canSetCommission }: {
-  universityId: string; page: CoursePage; options: CourseOptions | null; canSetCommission: boolean;
+export default function UniversityCourses({ universityId, page, options, canSetCommission, canEditAgentCommission = false }: {
+  universityId: string; page: CoursePage; options: CourseOptions | null; canSetCommission: boolean; canEditAgentCommission?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState<string | null>(null); // "new", "import", "<id>", or null
@@ -68,7 +71,7 @@ export default function UniversityCourses({ universityId, page, options, canSetC
                 ])}
               </dl>
               {canWrite && c.permissions.can_edit && (open === c.id ? (
-                <CourseForm universityId={universityId} options={options} course={c} canSetCommission={canSetCommission} label={`Edit ${c.title}`} onSaved={done} onCancel={() => show(null)} />
+                <CourseForm universityId={universityId} options={options} course={c} canSetCommission={canSetCommission} canEditAgentCommission={canEditAgentCommission} label={`Edit ${c.title}`} onSaved={done} onCancel={() => show(null)} />
               ) : (
                 <div className="actions">
                   <button type="button" className="btn ghost small" onClick={() => show(c.id)}>Edit<span className="visually-hidden"> {c.title}</span></button>
@@ -82,7 +85,7 @@ export default function UniversityCourses({ universityId, page, options, canSetC
         <p className="muted">Showing {page.items.length} of {page.total}. <Link href={COURSES_PATH}>All courses &amp; programmes</Link></p>
       )}
       {canWrite && open === "new" && (
-        <CourseForm universityId={universityId} options={options} canSetCommission={canSetCommission} label="New course" onSaved={done} onCancel={() => show(null)} />
+        <CourseForm universityId={universityId} options={options} canSetCommission={canSetCommission} canEditAgentCommission={canEditAgentCommission} label="New course" onSaved={done} onCancel={() => show(null)} />
       )}
       {canWrite && open === "import" && <CourseImportPanel universityId={universityId} />}
       {canWrite && open !== "new" && (

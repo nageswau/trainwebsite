@@ -4581,9 +4581,218 @@ days on the day the students' agency records were created).
   student, student code, email, phone, course, batch, reference, gross amount, discount, amount paid, remaining balance, payment status
   ("Paid" / "Partially paid"); "—" where unknown. Issued once, never regenerated.
 
+## 12HN. Counselor dashboard follow-ups and tasks window (ccrm-042) — addendum, 2026-10-28
+
+`DEC-SCOPE-316`. No migration; no request changes; authorization unchanged (overseas counselor only, else **403**).
+
+- `GET /counselor/dashboard` (§12GD) — `sections.follow_ups` now covers open follow-ups on the caller's leads due before the start of
+  (today IST + 8 days): overdue, today and the next 7 days, `due_at` ascending, `overdue` true when due before today. `sections.overdue_tasks`
+  (key unchanged) now covers open tasks with `due_on <= today + 7`, ascending, `overdue` true when `due_on < today`. Each section keeps
+  `{count, more, items[<=10]}`. The response adds `follow_up_days` (7).
+
+## 12HO. Counselor "My students": all students, Source filter and search (ccrm-043) — addendum, 2026-10-28
+
+`DEC-SCOPE-317`. No migration; authorization unchanged (overseas counselor only, else **403**; anonymous **401**).
+
+- `GET /counselor/students` (§12EM) — now lists every `overseas_student` in the caller's caseload (csc-001 link ∪ the students of
+  applications with `counselor_id == me`), not archived, each once, ordered `linked_since` desc then `id`. Additive query params:
+  `source` ∈ `walk_in | lead_conversion | self_registered | agency` (anything else **422**); `q` (≤ 100 chars, else **422**) — literal,
+  case-insensitive substring of name / email / student code, or the phone's digits when the search is phone-shaped; blank = no filter.
+  `total` follows the filters. Each item adds `source`, `applications` (count of all the student's applications), `linked_since`
+  (earliest of the caller's link and the caller's first application) and `linked` (the csc-001 link is the caller's — only then do the
+  §12EN resend/edit routes apply). Existing item keys and `POST`/`PATCH` responses are unchanged.
+
+## 12HP. Counselor document upload on the student 360 (ccrm-045) — addendum, 2026-10-28
+
+`DEC-SCOPE-318`. No migration.
+
+- `POST /counselor/students/{student_id}/documents` — **new**, `multipart/form-data`: `document_type` (Passport, Academic certificates,
+  Transcripts, English test, CV, SOP, LOR, Financial documents, Other, Offer letter), `document_label` (only and required for Other, 2-80
+  characters), `application_id` (optional; required for Offer letter), `file` (PDF/JPEG/PNG sniffed from the bytes, at most 20 MB,
+  image metadata stripped, server-generated storage key). **201** `{"document": {id, name, document_type, application_id, status}}`
+  (`status` `pending`). Errors: **403** another role, **404** a student outside the counselor's caseload, **409** archived student or a
+  withdrawn / terminally decided application, **403** another counselor's application, **422** label / type / application rules (another
+  student's application, offer letter without one), empty or unreadable image, **413** too large, **415** not a PDF/JPEG/PNG. Writes the
+  document, an `uploaded` document event and a `document.upload` audit row (uploader, type, application) in one transaction; the stored
+  file is discarded if it fails.
+- `GET /workflows/overseas/documents/{document_id}/download` — a counselor's document without an application: allowed when the student
+  is in the counselor's caseload (was: when the counselor has one of the student's applications). Other rules unchanged.
+- `GET /counselor/students/{student_id}/documents` — `can_download` is `true` for the counselor on every document without an
+  application (the tab's gate already proved the caseload).
+- `GET /portal/overseas/student/offer-letters` — also lists an application with a current "Offer letter" document; its `offer` column is
+  the legacy URL or the document's name.
+
+## 12HQ. Intake month + year (ccrm-047) — addendum, 2026-10-28
+
+`DEC-SCOPE-319`. No migration; authorization unchanged. Format: `^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}$`; refusal
+**422** `{"detail": [{"loc": ["body", "<field>"], "msg": "Choose the intake month and year, like Sep 2027", ...}]}`.
+
+- `POST /telecaller/leads` (§tel-005) and `POST /counselor/walk-in-leads` (§12EO) — additive optional `intake`. Malformed → 422; given for
+  a product whose group is not `overseas` → 422 (`loc` `intake`); when given, the lead's qualification row is created with it (read back by
+  `GET .../qualification`).
+- `PUT /telecaller/leads/{id}/qualification` and the counselor equivalent (tel-009) — `intake` checked only when it changes.
+- `PUT /overseas/me/profile` and `PUT /counselor/students/{id}/profile` (ccrm-007) — `preferred_intake` checked only when it changes from
+  the stored value (a legacy value re-sent unchanged saves).
+- `POST /workflows/overseas/applications` — a sent `intake` must match; omitted keeps the default `"Next intake"`.
+## 12HR. Counselor chat with walk-in students (ccrm-044) — addendum, 2026-10-28
+
+`DEC-SCOPE-320`. No migration; no new route.
+
+- `POST /workflows/overseas/student/counselor-chat` — the recipient is the counselor of the student's most recently updated application
+  that has one; when none has, the student's csc-001 linked counselor (`OverseasStudentCounselor`). **409** only when neither exists.
+  Request/response shapes unchanged.
+- `POST /communications/messages` — when the sender is a `counselor` and the recipient an `overseas_student`, the recipient must be in
+  the sender's caseload (`visible_student_ids`: csc-001 link ∪ students of applications with `counselor_id == me`), else **403**
+  "This student is not one of your students"; nothing is stored. Every other sender/recipient pair is unchanged.
+- Counselor Chat's student picker reads `GET /lookups/overseas-students` (counselor: caseload, archived excluded; ENH-031 shape) instead
+  of the counselor's applications.
+## 12HS. University-wise report: deposits, visas and drill-down (ccrm-052) — addendum, 2026-10-28
+
+`DEC-SCOPE-321`. No migration; authorization unchanged (`partner`, `super_admin`, `overseas_admin`; others **403**; anonymous **401**).
+
+- `GET /management/crm-reports` — `universities.rows[]` and `universities.total` add `deposits_paid`, `visas_approved`,
+  `visas_refused`, `visas_pending` (integers; definitions added). Existing keys unchanged.
+- `GET /management/crm-reports/export?report=universities` — the four columns are appended ("Deposits paid", "Visas approved", "Visas
+  refused", "Visas pending"); the earlier column order is unchanged.
+- `GET /management/crm-reports/universities/{university_id}/applications` — new. The report's query params (`date_from`, `date_to`,
+  `counselor`, `country`, `university`, `course`, `intake`, same validation and **422**s) plus `page` (1–10000, default 1). Returns
+  `{university: {id, label}, items[], total, page, page_size: 100}`; `total` equals the university's row `applications` for the same
+  filters. Each item: `application_id`, `application_code`, `student_name`, `course` (title or null), `intake`, `stage`, `stage_label`,
+  `counselor` (name or null), `deposit_paid` (bool), `visa` (`approved | refused | pending | null`). Newest first. Unknown university
+  **404**. Read-only, not audited (as the report read).
+
+## 12HT. Deposit receipt upload on the student 360's Finance tab (ccrm-048) — addendum, 2026-10-28
+
+`DEC-SCOPE-322`. No migration.
+
+- `POST /workflows/overseas/applications/{application_id}/deposit/receipt` — **new**, `multipart/form-data`: `file` (PDF/JPEG/PNG sniffed
+  from the bytes, at most 20 MB, server-generated storage key — ccrm-025's deposit-receipt rules). Stores a "Deposit receipt" document on
+  the application and sets the counselor deposit record's `receipt_document_id` (and `updated_by`) in one transaction; a replaced receipt
+  stays one of the student's documents. **201** `{"record": <GET /deposit's record>}`. Errors: **401**; **403** another role or another
+  counselor's application; **404** unknown application; **409** withdrawn / terminally decided application, archived agency record,
+  archived student, or an AGN-011 agency deposit; **422** no deposit record or `required=false` ("Record a required deposit on the
+  application first"), empty file; **413** too large; **415** not a PDF/JPEG/PNG. Also writes a status-history note ("Deposit receipt
+  uploaded." / "replaced."), the student's "Deposit receipt added" notice (and the agency side's, on an agency application), the
+  `document.upload` and `overseas.application.deposit_receipt` (`replaced`, `document_id`) audit rows. The stored file is discarded if
+  the transaction fails.
+- `GET /counselor/students/{student_id}/finance` — each deposit gains `can_upload` (additive): `true` only for a counselor-recorded,
+  required deposit on an open application of a non-archived student, for that application's counselor or the Overseas Admin; always
+  `false` on an agency deposit.
+## 12HU. Agent-Master commission on create / edit university (ccrm-050) — addendum, 2026-10-28
+
+`DEC-SCOPE-323`. No migration; no new route; viewers unchanged (dtu-001, `UniversityEnvelope` keeps `exclude_unset`).
+
+- `POST /partnership/universities` and `PATCH /partnership/universities/{id}` — additive optional `agent_commission`:
+  `{percent}` or `{amount, currency}`, optional `note` (≤300), the `AgentCommissionIn` rules (one rate; amount needs a currency; percent
+  0 < p ≤ 100) → **422** with `loc` `["body", "agent_commission", ...]`. `PATCH`: omitted = unchanged, `null` = clear, object = set.
+- Only super_admin / overseas_admin (overseas division) may send the key; anyone else (even `null`) → **403** `"Only a super admin or an
+  overseas admin can change the agent commission"`, nothing written. Inactive university `PATCH` → **409** (unchanged).
+- A change writes `university.agent_commission` `{before, after}` in the same transaction (as `PUT .../agent-commission`); the response's
+  `agent_commission` is present for viewers only.
+
+## 12HV. Counselor creates applications for a student (ccrm-046) — addendum, 2026-10-28
+
+`DEC-SCOPE-324`. No migration, no new route.
+
+- `POST /workflows/overseas/applications` — for the overseas **counselor** only: **403** "This student is not in your caseload" when
+  `student_id` is outside the caseload (csc-001 link or one of the student's applications), checked before the archive guard (so an
+  archived stranger is also 403, not 409); **403** when the body names another `counselor_id` or any `agent_id` (naming themselves is
+  accepted). Otherwise unchanged: `counselor_id` is the caller, `agent_id` null, stage `enquiry`, APP- code, **409** for a duplicate open
+  student + university + course or an archived student, **201** `{id, status}`. Student, Overseas Admin and agent behaviour unchanged.
+
+## 12HW. Counselor performance: Overseas Admin view, intake filter, Overseas/IT lead split (ccrm-053) — addendum, 2026-10-28
+
+`DEC-SCOPE-325`. No migration.
+
+- `GET /counselor/performance` — adds optional `intake` ("Mon YYYY", ccrm-047 format; else **422** "Choose the intake month and year,
+  like Sep 2027") and `division` (`overseas | it`; else **422**); an empty value is no filter. `period[]` gains `leads`, `leads_overseas`,
+  `leads_it` (first). The response adds `intake`, `division` (as applied) and `counselor` (null). Authorization unchanged (overseas
+  counselor only; any `counselor_id` sent is ignored).
+- `GET /overseas-admin/counselor-performance` — new. `from`, `to`, `intake`, `division` as above. Returns `{from, to, as_of, intake,
+  division, columns[{key,label,definition}], items[], totals}`; each item: `id`, `full_name`, `active`, `leads`, `leads_overseas`,
+  `leads_it`, `leads_assigned`, `calls`, `counseling_sessions`, `conversions`, `conversion_pct` (null when nothing assigned), `students`,
+  `applications`, `visas_pending`, `visas_approved`, `visas_refused`, `enrollments`; `totals` the same keys with `full_name: "Total"`.
+  `Cache-Control: no-store`.
+- `GET /overseas-admin/counselor-performance.csv` / `.xlsx` — new. The list's columns (labels as header), rows and Total row; one
+  `counselor_performance.export` audit row (`from`, `to`, `intake`, `division`, `rows`, `format`) committed before the file is returned.
+- `GET /overseas-admin/counselor-performance/{counselor_id}` — new. The `GET /counselor/performance` body for that counselor with the same
+  filters, `counselor: {id, full_name, active}` set. Not an overseas counselor **404**.
+- Admin routes: `overseas_admin`, `super_admin`; others **403**; anonymous **401**.
+
+## 12HX. Payment receipt / proof upload on the student 360's Finance tab (ccrm-049) — addendum, 2026-10-28
+
+`DEC-SCOPE-326`. Migration `0216_payment_proof_documents` (`payments.proof_document_id`, nullable FK → `student_documents.id`,
+`ON DELETE SET NULL`).
+
+- `POST /counselor/students/{student_id}/payments/{payment_id}/proof` — **new**, `multipart/form-data`: `file` (PDF/JPEG/PNG sniffed from
+  the bytes, at most 20 MB, server-generated storage key — the AGN-009 upload rules). Stores a pending "Payment receipt" document of the
+  student (no application; label = the payment's description) and sets the payment's `proof_document_id` in one transaction, the payment
+  row locked; amount and status never change; a replaced proof stays one of the student's documents. **201**
+  `{"payment": <the finance tab's payment row>}`. Errors: **401**; **403** another role; **404** unknown student or a counselor outside
+  the caseload (the 360's gate), a payment that is not this student's or is an AGN-011 agency deposit ("Payment not found"); **409**
+  archived student, a gateway (non-manual) payment ("An online payment already has its system receipt"); **422** empty file; **413** too
+  large; **415** not a PDF/JPEG/PNG. Writes the `document.upload` and `payment.proof_attached` (`replaced`, `document_id`, `student_id`)
+  audit rows. The stored file is discarded if the transaction fails.
+- `GET /counselor/students/{student_id}/finance` — each payment gains (additive) `proof` (`{id, name, can_download}` or `null`) and
+  `can_upload_proof` (`true` for a manual payment of a non-archived student). The system `Receipt` (`receipt_no`) is unchanged.
+- `GET /portal/overseas/student/payments` — a new column `proof` ("Uploaded proof"): the proof's name and "download from Documents", or
+  empty; never a file key. The file is downloaded from the student's Documents.
+
+## 12HY. Course-level agent-Master commission, overriding the university's (ccrm-051) — addendum, 2026-10-28
+
+`DEC-SCOPE-327`. Migration `0217_course_agent_commission` (`overseas_courses.agent_commission_percent / _amount / _currency / _note`,
+nullable, the university's CHECKs). No new route.
+
+- `POST /partnership/universities/{id}/courses` and `PATCH .../courses/{course_id}` — additive optional `agent_commission` (the §12HU
+  `AgentCommissionIn` shape and **422** rules). `PATCH`: omitted = unchanged, `null` = clear, object = set. Only super_admin / overseas_admin
+  (overseas division) may send the key; anyone else (even `null`) → **403** `"Only a super admin or an overseas admin can change the agent
+  commission"`, nothing written (after the existing read / write gates). A change writes `university_course.agent_commission`
+  `{university_id, before, after}` in the same transaction; the course create / update audit `fields` never name it.
+- Every course payload of the partnership course routes (`.../courses`, `/partnership/courses`, `/universities/{id}/view`) carries
+  `agent_commission` (`{percent, amount, currency, note}` or `null`) for super_admin / overseas_admin only; the key is absent for others.
+- `GET /workflows/overseas/agent/crm/partner-universities/{id}` — for an agency Master only, each course gains `agent_commission_effective`:
+  `{percent, amount, currency, note, source: "course" | "university"}` (the course's value, else the university's) or `null` when neither is
+  set. Agent staff get no key. Public course endpoints are unchanged (never carry either key).
+
+## 12IB. Trainer question upload from a standard Excel template (nehn-025) — addendum, 2026-10-29
+
+`DEC-SCOPE-330`. No migration.
+
+- `GET /workflows/it/trainer/assessments/question-template.xlsx` — trainer / it_admin (IT division) → **200**
+  `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `attachment; filename="question-template.xlsx"`. 401 signed out,
+  403 any other role.
+- `POST /workflows/it/trainer/assessments/{id}/questions/import?commit=false|true` — multipart `file` (`.xlsx` or `.csv`).
+  - Gates, in order: 401; 403 role / division; 404 unknown assessment; 403 another trainer's batch; **409** a student has started an
+    attempt; then the file: **415** not `.xlsx`/`.csv` or macro-enabled, **413** over 1 MB, **422** unreadable file, unknown / repeated /
+    missing (`type`, `question`) columns, more than 500 rows, or `"The file has no questions"` — each a string `detail` (messages joined
+    with `; `).
+  - Columns: `type` (`mcq_single|mcq_multiple|text|file`, case-insensitive), `question` (2-10,000 chars), `option_1`..`option_6`,
+    `correct` (option numbers, e.g. `2` or `1,3`), `marks` (whole number 1-10,000, default 1), `keywords`, `explanation` (accepted, not stored).
+  - Dry run (default) → **200** `{total_rows, questions: [{row, question_type, prompt, options, correct_answers, max_score}], errors: [{row,
+    message}], warnings: [{row | null, message}], created: 0}`. Nothing is written.
+  - `commit=true` with no row errors → **201**, same body with `created` = the number written; positions continue after the current
+    highest; one `assessment.questions_import` audit row `{count, format}`. With row errors → **422** `"N row(s) has/have errors -- fix them
+    and upload the file again. Nothing was imported."`; nothing is written.
+
+## 12IC. University logo upload and richer university cards (nehn-035) — addendum, 2026-10-29
+
+`DEC-SCOPE-331`. No migration (reuses `universities.logo_url`).
+
+- `PUT /partnership/universities/{id}/logo` — multipart `file`. The `PATCH` rule (session → **401**; `can_edit` + scope → **403**; unknown
+  id **404**; inactive **409**). Then the nehn-003 `university_logo` policy: size 1 B-1 MB else **413**; type PNG / JPEG / WebP and matching
+  magic bytes else **415** (SVG is always 415); width and height 32-2048 px, read from the header, else **422**. Stores the file, sets
+  `logo_url` to `/api/v1/public/university-logos/<32 hex>.<png|jpg|webp>`, audits `university.logo` `{content_type, size, replaced}` and
+  returns `UniversityEnvelope` (as `PATCH`). The previous uploaded logo is deleted after the commit.
+- `GET /public/university-logos/{name}` — no session. `name` must be `<32 lowercase hex>.<png|jpg|webp>`, else **404**; a missing file is
+  **404**. `Content-Type` from the extension, `X-Content-Type-Options: nosniff`, `Cache-Control: public, max-age=31536000, immutable`.
+- `logo_url` (university create / `PATCH`) additionally accepts the uploaded shape above; everything else it accepted or refused is
+  unchanged.
+- `GET /public/universities` — each row gains `programs_count` (active overseas courses), `country_name`, `country_slug`, `country_iso2`.
+  Other routes returning `UniversityOut` carry the defaults (`0` / `null`).
+
 ## 12HH. HR student access and HR reports (nehn-017) — addendum, 2026-10-28
 
-`DEC-SCOPE-310`. Migration `0216_hr_student_grants` (seed only). Every route: grant (**403**), then hr_team/super_admin scope (**403**
+`DEC-SCOPE-310`. Migration `0218_hr_student_grants` (seed only). Every route: grant (**403**), then hr_team/super_admin scope (**403**
 for any other role, even with the key), then the student (**404** outside the HR population). Responses are `Cache-Control: no-store`.
 
 - `GET /hr/students?q=&page=` (new) — `student_progress.view`. `{items: [{id, student_code, full_name, courses, completed}], total, page,

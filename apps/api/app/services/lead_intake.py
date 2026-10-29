@@ -16,7 +16,7 @@ from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lead_stages import label as stage_label
-from app.models import AuditLog, Enquiry, LeadEnquiry, TelCampaign, TelProduct, User
+from app.models import AuditLog, Enquiry, LeadEnquiry, LeadQualification, TelCampaign, TelProduct, User
 from app.notifications.phone import normalise_phone
 from app.schemas import EnquiryIn, LeadContactFields, LeadEnquiryCreate, LeadImportRow, TelecallerLeadCreate
 from app.services import lead_distribution, lead_handover, lead_pipeline
@@ -28,6 +28,7 @@ DUPLICATE = "Lead already exists."
 MATCH_LIMIT = 5  # R2
 ENQUIRY_LIMIT = 5
 TEAM_LABEL = {"it": "IT", "overseas": "Overseas"}
+INTAKE_OVERSEAS_ONLY = "The intake is asked for overseas study leads only"
 
 
 def identity(phone: str | None, email: str | None) -> tuple[str | None, str | None]:
@@ -124,6 +125,8 @@ async def create_lead(db: AsyncSession, user: User, payload: TelecallerLeadCreat
     division = lead_team(product, payload.division or (user.division if walk_in else None))
     if walk_in and division != user.division:
         raise HTTPException(422, f"Walk-in leads are for the {TEAM_LABEL[user.division]} team")
+    if payload.intake and product.product_group != "overseas":  # ccrm-047: the qualification asks the intake of overseas leads only
+        raise lead_pipeline.invalid("intake", INTAKE_OVERSEAS_ONLY, payload.intake)
     if payload.campaign_id:
         campaign = await _campaign(db, payload.campaign_id)
         if campaign.product_id != product.id:
@@ -148,6 +151,8 @@ async def create_lead(db: AsyncSession, user: User, payload: TelecallerLeadCreat
                    telecaller_user_id=user.id if assigned else None, owner_id=user.id if walk_in else None)
     db.add(lead)
     await db.flush()
+    if payload.intake:
+        db.add(LeadQualification(lead_id=lead.id, intake=payload.intake, updated_by_user_id=user.id))
     if assigned:
         await lead_pipeline.apply_event(db, lead, "assigned", user)
     else:

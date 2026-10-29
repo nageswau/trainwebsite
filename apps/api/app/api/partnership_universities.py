@@ -6,7 +6,7 @@ structured log. Lists are {items, total, limit, offset}, ordered by name then id
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,8 +37,8 @@ from app.schemas import (
     UniversityUpdate,
 )
 from app.services import partnership_universities as svc
-from app.services.agent_commission_access import agent_commission_out, can_edit_agent_commission
-from app.services import university_search
+from app.services import university_logos, university_search
+from app.services.agent_commission_access import AGENT_COMMISSION_REFUSAL, agent_commission_out, can_edit_agent_commission
 
 router = APIRouter(prefix="/partnership/universities", tags=["partnership-universities"])
 Primary, Backup = aliased(User), aliased(User)
@@ -116,10 +116,11 @@ async def create_university(payload: UniversityCreate, user: User = Depends(get_
     """UM5/UM8: a head, overseas_admin or super_admin adds a university; it starts internal (not public). Any country, internal ISO rows
     included -- publishing is what needs a catalogue country (UM6)."""
     svc.require_creator(user)
+    _require_agent_commission_editor(user, payload, "create")
     await svc.country_or_422(db, payload.country_id)
     overridden = await svc.check_duplicates(db, user, payload.name, payload.country_id, payload.duplicate_reason)  # upc-004 UD2
     code = await svc.next_code(db)
-    values = payload.model_dump(exclude={"rankings", "duplicate_reason"})
+    values = payload.model_dump(exclude={"rankings", "duplicate_reason", "agent_commission"})
     values["campuses"] = values.get("campuses") or []
     uni = University(university_code=code, slug=await svc.free_slug(db, payload.name, code), catalogue_visible=False, requirements=[], deadlines=[], scholarships=[], **values)
     db.add(uni)
@@ -129,12 +130,15 @@ async def create_university(payload: UniversityCreate, user: User = Depends(get_
         await db.rollback()
         raise HTTPException(409, "Another university with this name was just added. Try again.") from None
     await svc.replace_rankings(db, uni, payload.rankings)
+    commission_changed = _apply_agent_commission(db, user, uni, payload.agent_commission)
     sent = sorted(k for k, v in values.items() if v not in (None, "", []))
     svc.audit(db, user, "create", uni.id, {"code": code, "fields": sent + (["rankings"] if payload.rankings else [])})
     if overridden:
         svc.audit(db, user, "duplicate_override", uni.id, {"match_count": overridden, "reason": payload.duplicate_reason})
     await db.commit()
     svc.log("university_created", user, uni.id, code=code, duplicate_override=bool(overridden))
+    if commission_changed:
+        _log_agent_commission(user, uni, payload.agent_commission)
     return {"university": await svc.detail_out(db, user, uni)}
 
 
@@ -188,8 +192,9 @@ async def _locked(db: AsyncSession, user: User, university_id: UUID, action: str
 async def update_university(university_id: UUID, payload: UniversityUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """AC1/AC4: only the fields sent; a value equal to the stored one is not a change (no audit). A published university stays
     publishable (UM6), so it cannot lose its overview or move to an internal country."""
+    _require_agent_commission_editor(user, payload, "update")
     uni, team = await _locked(db, user, university_id, "can_edit", "update")
-    changes = payload.model_dump(exclude_unset=True, exclude={"rankings", "duplicate_reason"})
+    changes = payload.model_dump(exclude_unset=True, exclude={"rankings", "duplicate_reason", "agent_commission"})
     if "campuses" in changes:
         changes["campuses"] = changes["campuses"] or []  # dtu-001: the column reads as a list
     changed = sorted(k for k, v in changes.items() if getattr(uni, k) != v)
@@ -197,6 +202,7 @@ async def update_university(university_id: UUID, payload: UniversityUpdate, user
     overridden = 0
     if {"name", "country_id"} & set(changed):  # upc-004 UD3
         overridden = await svc.check_duplicates(db, user, changes.get("name", uni.name), changes.get("country_id", uni.country_id), payload.duplicate_reason, uni.id)
+    old_logo = uni.logo_url
     for key in changed:
         setattr(uni, key, changes[key])
     if payload.rankings is not None:
@@ -211,34 +217,76 @@ async def update_university(university_id: UUID, payload: UniversityUpdate, user
         svc.audit(db, user, "update", uni.id, {"fields": changed})
     if overridden:
         svc.audit(db, user, "duplicate_override", uni.id, {"match_count": overridden, "reason": payload.duplicate_reason})
+    commission_changed = "agent_commission" in payload.model_fields_set and _apply_agent_commission(db, user, uni, payload.agent_commission)
     await db.commit()
+    if "logo_url" in changed:  # nehn-035 (DEC-SCOPE-331 L4): an uploaded logo replaced or cleared in the form
+        await university_logos.drop_unused(db, old_logo)
     if changed:
         svc.log("university_updated", user, uni.id, fields=changed)
+    if commission_changed:
+        _log_agent_commission(user, uni, payload.agent_commission)
     return {"university": await svc.detail_out(db, user, uni, team)}
+
+
+@router.put("/{university_id}/logo", response_model=UniversityEnvelope, response_model_exclude_unset=True)
+async def upload_logo(university_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """nehn-035 (DEC-SCOPE-331 L1-L4): the editing rule (`can_edit` + scope); the stored file replaces `logo_url`, and the previous upload
+    is dropped only once the new URL is committed (the new file is dropped if the commit fails)."""
+    uni, team = await _locked(db, user, university_id, "can_edit", "logo")
+    data, content_type = await university_logos.read_logo(file)
+    old_url, new_url = uni.logo_url, university_logos.store(data, content_type)
+    uni.logo_url = new_url
+    svc.audit(db, user, "logo", uni.id, {"content_type": content_type, "size": len(data), "replaced": old_url is not None})
+    try:
+        await db.commit()
+    except Exception:
+        university_logos.delete(new_url)
+        raise
+    await university_logos.drop_unused(db, old_url)
+    svc.log("university_logo_uploaded", user, uni.id, content_type=content_type, size=len(data))
+    return {"university": await svc.detail_out(db, user, uni, team)}
+
+
+def _require_agent_commission_editor(user: User, payload: UniversityCreate | UniversityUpdate, route: str) -> None:
+    """ccrm-050 (DEC-SCOPE-323): the form's `agent_commission` key -- even null -- is a 403 for anyone but its editors, before any write."""
+    if "agent_commission" in payload.model_fields_set and not can_edit_agent_commission(user):
+        svc.log("university_write_refused", user, "-", route=f"{route}.agent_commission")
+        raise HTTPException(403, AGENT_COMMISSION_REFUSAL)
 
 
 async def _locked_for_agent_commission(db: AsyncSession, user: User, university_id: UUID) -> University:
     if not can_edit_agent_commission(user):
-        raise HTTPException(403, "Only a super admin or an overseas admin can change the agent commission")
+        raise HTTPException(403, AGENT_COMMISSION_REFUSAL)
     uni = await svc.load(db, university_id, lock=True)
     if not uni.active:  # UM10: inactive is read-only
         raise HTTPException(409, "This university is inactive, so its agent commission cannot be changed")
     return uni
 
 
-async def _store_agent_commission(db: AsyncSession, user: User, uni: University, payload: AgentCommissionIn | None) -> dict:
+def _apply_agent_commission(db: AsyncSession, user: User, uni: University, payload: AgentCommissionIn | None) -> bool:
+    """Sets (None: clears) the four columns in the caller's transaction and audits a change; True when the value changed."""
     before = agent_commission_out(uni)
     uni.agent_commission_percent = payload.percent if payload else None
     uni.agent_commission_amount = payload.amount if payload else None
     uni.agent_commission_currency = payload.currency if payload else None
     uni.agent_commission_note = payload.note if payload else None
     after = agent_commission_out(uni)
-    if before != after:
-        # Spec §6 (DEC-SCOPE-209): unlike other audits (ids and field names only) this one stores the old and new values.
-        svc.audit(db, user, "agent_commission", uni.id, {"before": before, "after": after})
+    if before == after:
+        return False
+    # Spec §6 (DEC-SCOPE-209): unlike other audits (ids and field names only) this one stores the old and new values.
+    svc.audit(db, user, "agent_commission", uni.id, {"before": before, "after": after})
+    return True
+
+
+def _log_agent_commission(user: User, uni: University, payload: AgentCommissionIn | None) -> None:
+    svc.log("university_agent_commission_updated" if payload else "university_agent_commission_cleared", user, uni.id)
+
+
+async def _store_agent_commission(db: AsyncSession, user: User, uni: University, payload: AgentCommissionIn | None) -> dict:
+    changed = _apply_agent_commission(db, user, uni, payload)
     await db.commit()
-    if before != after:
-        svc.log("university_agent_commission_updated" if payload else "university_agent_commission_cleared", user, uni.id)
+    if changed:
+        _log_agent_commission(user, uni, payload)
     return {"university": await svc.detail_out(db, user, uni)}
 
 

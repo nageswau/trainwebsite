@@ -5,7 +5,9 @@ V1: the page shows ALL the student's applications, current documents and history
 download keeps its own route's rule, so `can_download` mirrors `GET /workflows/overseas/documents/{id}/download` for a counselor.
 B3: history = the applications' status history (ccrm-016, staff view) + audit rows about the student + document uploads, reviews and
 replacements; field names only, never values.
-ccrm-039 (DEC-SCOPE-275): finance = the student's fees and payments, each application's university deposit and the refunds; read-only."""
+ccrm-039 (DEC-SCOPE-275): finance = the student's fees and payments, each application's university deposit and the refunds; read-only.
+ccrm-048 (DEC-SCOPE-322): a counselor deposit says whether its receipt may be uploaded from the tab (`can_upload`).
+ccrm-049 (DEC-SCOPE-326): a payment carries the proof staff uploaded (`proof`) and whether one may be uploaded (`can_upload_proof`)."""
 
 from uuid import UUID
 
@@ -36,9 +38,8 @@ from app.models import (
     University,
     User,
 )  # fmt: skip
-from app.services import agent_deposits
+from app.services import agent_deposits, overseas_consents, student_archive
 from app.services import application_outcomes as outcomes
-from app.services import overseas_consents, student_archive
 from app.services.agent_applications import stage_label
 from app.services.application_deposit_records import STATUS_LABELS as DEPOSIT_RECORD_LABELS
 from app.services.application_offers import money
@@ -141,15 +142,15 @@ async def documents(db: AsyncSession, user: User, student: User) -> dict:
         )
     ).all()
     admin = user.role == "overseas_admin"  # staff_student already admitted only the overseas division's admin
-    # The download route's counselor rule: the document's application is theirs, or (no application) any of the student's is.
-    has_own = admin or bool(await db.scalar(select(OverseasApplication.id).where(OverseasApplication.student_id == student.id, OverseasApplication.counselor_id == user.id).limit(1)))
+    # The download route's counselor rule: the document's application is theirs, or (no application, ccrm-045) the student is in their
+    # caseload -- which staff_student has already checked.
     return {
         "items": [
             {
                 "id": d.id, "document_type": d.document_type, "document_label": d.document_label, "application_code": code,
                 "status": d.verification_status, "status_label": DOCUMENT_STATUS_LABELS.get(d.verification_status, d.verification_status),
                 "expiry_date": d.expiry_date, "reviewer": reviewer, "reviewed_at": d.reviewed_at, "uploaded_at": d.created_at,
-                "can_download": admin or (owner == user.id if d.application_id else has_own),
+                "can_download": admin or not d.application_id or owner == user.id,
             }
             for d, code, owner, reviewer in rows
         ]
@@ -244,9 +245,29 @@ def _humanize(value: str) -> str:
     return value.replace("_", " ").capitalize()
 
 
-def _payment_description(p: Payment) -> str:
+def payment_description(p: Payment) -> str:
     text = _humanize(p.reference_type)
     return f"{text} (instalment {p.installment_no})" if p.installment_no else text
+
+
+def payment_row(p: Payment, invoice_no: str | None, receipt_no: str | None, *, admin: bool, proof: StudentDocument | None, archived: bool) -> dict:
+    return {
+        "id": p.id, "description": payment_description(p), "amount": money(p.amount), "currency": p.currency, "status": p.status,
+        "status_label": PAYMENT_LABELS.get(p.status) or _humanize(p.status), "due_date": p.due_date, "created_at": p.created_at, "installment_no": p.installment_no,
+        "invoice_no": invoice_no, "receipt_no": receipt_no, "can_download": admin,
+        # ccrm-049 (DEC-SCOPE-326): anyone past the 360's gate may download the proof -- the document route lets the Admin and a caseload
+        # counselor fetch an application-less student document (ccrm-045). The upload route's rules: a manual payment (a gateway one
+        # has its system receipt), the student not archived.
+        "proof": {"id": proof.id, "name": proof.document_label or proof.document_type, "can_download": True} if proof else None,
+        "can_upload_proof": p.provider == "manual" and not archived,
+    }  # fmt: skip
+
+
+async def payment_view(db: AsyncSession, user: User, p: Payment, proof: StudentDocument) -> dict:
+    """ccrm-049: one payment row after its proof was attached (the upload route refuses an archived student, so `archived` is false)."""
+    invoice_no = await db.scalar(select(Invoice.invoice_no).where(Invoice.payment_id == p.id))
+    receipt_no = await db.scalar(select(Receipt.receipt_no).where(Receipt.payment_id == p.id))
+    return payment_row(p, invoice_no, receipt_no, admin=user.role == "overseas_admin", proof=proof, archived=False)
 
 
 async def finance(db: AsyncSession, user: User, student: User) -> dict:
@@ -268,7 +289,9 @@ async def finance(db: AsyncSession, user: User, student: User) -> dict:
     records = {r.application_id: r for r in (await db.scalars(select(ApplicationDepositRecord).where(ApplicationDepositRecord.application_id.in_(ids)))).all()}
     agency = {d.application_id: d for d in (await db.scalars(select(ApplicationDeposit).where(ApplicationDeposit.application_id.in_(ids)))).all()}
     receipt_ids = [r.receipt_document_id for r in records.values() if r.receipt_document_id]
+    receipt_ids += [p.proof_document_id for p, *_ in payments if p.proof_document_id]  # ccrm-049: the payments' proofs too
     receipts = {d.id: d for d in (await db.scalars(select(StudentDocument).where(StudentDocument.id.in_(receipt_ids)))).all()}
+    archived = await student_archive.is_archived(db, student.id)
 
     deposits, refunds = [], []
     for a, university, *_ in apps:
@@ -279,32 +302,27 @@ async def finance(db: AsyncSession, user: User, student: User) -> dict:
                 "source": "counselor", "required": record.required, "amount": money(record.amount), "currency": record.currency, "due_date": record.due_date,
                 "status": record.payment_status, "status_label": DEPOSIT_RECORD_LABELS[record.payment_status], "paid_on": record.paid_on, "refund": None,
                 "receipt": {"id": doc.id, "name": doc.document_label or doc.document_type, "can_download": admin or a.counselor_id == user.id} if doc else None,
+                # ccrm-048 (DEC-SCOPE-322): the upload route's rules -- a required record, the reader writes the application, it is open
+                "can_upload": record.required and (admin or a.counselor_id == user.id) and not outcomes.is_closed(a) and not archived,
             })  # fmt: skip
         elif deposit := agency.get(a.id):
             refund = {"amount": money(deposit.refund_amount), "refunded_on": deposit.refunded_at, "reason": deposit.refund_reason} if deposit.refunded_at else None
             deposits.append(base | {
                 "source": "agency", "required": deposit.required, "amount": money(deposit.amount), "currency": deposit.currency, "due_date": deposit.due_date,
                 "status": deposit.status, "status_label": AGENCY_DEPOSIT_LABELS[deposit.status], "paid_on": deposit.paid_at.date() if deposit.paid_at else None,
-                "refund": refund, "receipt": None,
+                "refund": refund, "receipt": None, "can_upload": False,
             })  # fmt: skip
             if refund:
                 refunds.append({"kind": "deposit", "description": f"University deposit — {university}", "amount": refund["amount"], "currency": deposit.currency, "refunded_on": refund["refunded_on"], "application_code": a.application_code})  # fmt: skip
     # F6: a gateway refund has no date of its own; the payment's last update is when it was marked refunded
     refunds += [
-        {"kind": "payment", "description": _payment_description(p), "amount": money(p.amount), "currency": p.currency, "refunded_on": p.updated_at.date(), "application_code": None}
+        {"kind": "payment", "description": payment_description(p), "amount": money(p.amount), "currency": p.currency, "refunded_on": p.updated_at.date(), "application_code": None}
         for p, *_ in payments
         if p.status == "refunded"
     ]  # fmt: skip
     refunds.sort(key=lambda r: r["refunded_on"], reverse=True)
     return {
-        "payments": [
-            {
-                "id": p.id, "description": _payment_description(p), "amount": money(p.amount), "currency": p.currency, "status": p.status,
-                "status_label": PAYMENT_LABELS.get(p.status) or _humanize(p.status), "due_date": p.due_date, "created_at": p.created_at, "installment_no": p.installment_no,
-                "invoice_no": invoice_no, "receipt_no": receipt_no, "can_download": admin,
-            }
-            for p, invoice_no, receipt_no in payments
-        ],
+        "payments": [payment_row(p, invoice_no, receipt_no, admin=admin, proof=receipts.get(p.proof_document_id), archived=archived) for p, invoice_no, receipt_no in payments],
         "deposits": deposits,
         "refunds": refunds,
     }  # fmt: skip
