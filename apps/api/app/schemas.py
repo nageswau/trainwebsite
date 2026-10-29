@@ -133,6 +133,7 @@ from app.partnership_onboarding import NOTE_MAX as ONBOARDING_NOTE_MAX
 from app.partnership_onboarding import STATUSES as ONBOARDING_STATUSES
 from app.partnership_stages import STAGE_KEYS as PARTNERSHIP_STAGE_KEYS
 from app.services.agent_visa import VISA_CASE_STAGES
+from app.services.keyword_scoring import MAX_KEYWORD_LENGTH, MAX_KEYWORDS
 from app.tel_content_kinds import ASSET_KINDS as TEL_ASSET_KINDS
 from app.tel_sources import TEL_SOURCES
 
@@ -531,6 +532,19 @@ class AssessmentQuestionIn(BaseModel):
     max_score: int = Field(default=1, ge=1, le=10000)
     position: int = Field(default=1, ge=1)
     required: bool = True
+    # nehn-026: the answer key of a written-answer question, never sent to a student. `|` separates synonyms (keyword_scoring).
+    keywords: list[Annotated[str, Field(max_length=MAX_KEYWORD_LENGTH)]] = Field(default_factory=list, max_length=MAX_KEYWORDS)
+
+    @field_validator("keywords")
+    @classmethod
+    def _trim_keywords(cls, value: list[str]) -> list[str]:
+        return [keyword.strip() for keyword in value if keyword.strip()]
+
+    @model_validator(mode="after")
+    def _keywords_need_a_written_answer(self) -> "AssessmentQuestionIn":
+        if self.keywords and self.question_type != "text":
+            raise ValueError("Keywords can only be set on a written-answer (text) question")
+        return self
 
 
 class AssessmentAnswerIn(BaseModel):

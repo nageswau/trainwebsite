@@ -150,9 +150,9 @@ async def test_ac1_twenty_mixed_questions_preview_with_no_errors_and_write_nothi
     body = response.json()
     assert body["total_rows"] == 20 and body["errors"] == [] and body["created"] == 0 and len(body["questions"]) == 20
     first = body["questions"][0]
-    assert first == {"row": 2, "question_type": "mcq_single", "prompt": "Q1: What is 1 + 1?", "options": ["1", "2", "3", "4"], "correct_answers": ["2"], "max_score": 2}
+    assert first == {"row": 2, "question_type": "mcq_single", "prompt": "Q1: What is 1 + 1?", "options": ["1", "2", "3", "4"], "correct_answers": ["2"], "max_score": 2, "keywords": []}
     assert body["questions"][8]["correct_answers"] == ["2", "4"]
-    assert body["questions"][14] == {"row": 16, "question_type": "text", "prompt": "Q15: Explain √15 and π in தமிழ்", "options": [], "correct_answers": [], "max_score": 5}
+    assert body["questions"][14] == {"row": 16, "question_type": "text", "prompt": "Q15: Explain √15 and π in தமிழ்", "options": [], "correct_answers": [], "max_score": 5, "keywords": []}
     assert body["questions"][19]["question_type"] == "mcq_single"  # the type is not case-sensitive
     assert await _question_count(db_session, assessment.id) == 0
 
@@ -254,7 +254,7 @@ async def test_duplicates_and_unsaved_columns_are_warnings_not_errors(db_session
     assert body["errors"] == []
     assert body["warnings"] == [
         {"row": 3, "message": "Repeats the question in row 2"},
-        {"row": None, "message": "The keywords and explanation columns are not saved yet; 2 rows fill them in."},
+        {"row": None, "message": "The explanation column is not saved yet; 1 row fills it in."},
     ]
 
 
