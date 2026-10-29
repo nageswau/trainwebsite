@@ -10266,6 +10266,24 @@ recruiter-dashboard tile change (reached from a "Report library" nav item); no `
 **Numbering:** migration `0212_placement_report_grants`; API §12HJ; RBAC §2.223.
 - **Feature ID authorized:** `nehn-016`. **Status:** built on `worktree-nehn-016`.
 
+### DEC-SCOPE-315 — Payment discount ledger and complete receipt (`nehn-019`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-019` (§7 "Payment Receipt" L157-166, "Discounts"
+L169-172; `UNVERIFIED` backlog); design `docs/superpowers/specs/2026-10-28-nehn-019-discount-ledger-complete-receipt-design.md`.
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** D1 `payments.amount` stays the net payable
+(Razorpay, `pending_fee`, ledger and revenue unchanged); the discount is stored beside it (`discount_amount`, `discount_reason`,
+`discounted_by_id`) and the gross is derived (`amount + discount_amount`) rather than a stored `gross_amount`. D2 repeat discounts are
+cumulative; reason and actor are the latest; a reason is at most 500 characters (**422**). D3 `paid_at` is set by verify/webhook
+(`_mark_paid`) and by an admin-recorded paid payment; the receipt's payment date is its India calendar day. D4 **receipts are
+immutable once issued** -- never regenerated; older receipts keep the old layout. D5 balance = the unpaid net amounts of the payment's
+EMI plan (0 for a single paid payment); status "Paid" or "Partially paid". D6 course/batch from an enrolment fee's enrolment, else "—".
+D7 student name, code, email and phone ("—" when missing); an agent deposit names its student and shows no contact details. D8 a
+100 % discount is allowed as before; the receipt appears only once the payment is paid. D9 authorization unchanged: another user's
+receipt stays **403** (the backlog's "404" is left `NEEDS_CONFIRMATION`). D10 the discount reason is internal: admin list only, not
+`/payments/mine`. D11 backfill: discount from the `payment.discount` audit rows, `paid_at` from the receipt's `issued_at`.
+**Numbering:** migration `0215_payment_discount_ledger`; API §12HM; no RBAC change.
+- **Feature ID authorized:** `nehn-019`. **Status:** built on `worktree-nehn-019`.
+
 ### DEC-SCOPE-310 — HR access to permitted student progress, attendance and documents; HR reports (`nehn-017`)
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-017` (§13 L277-286, §5 L116-121, §15 L337-347; `UNVERIFIED`
@@ -10276,9 +10294,9 @@ placement pool -- `it_student`, IT division, not withdrawn from placement (the p
 students excluded). H2 HR opens a student document only when its type (trimmed, lower-cased) is `resume`, `cv`, `curriculum vitae`,
 `portfolio`, `certificate` or `certificates`; every other type is closed (absent from the list, **403** on download). H3 three new
 catalogue resources, one per kind of data -- `student_progress`, `attendance`, `student_documents` (view, download) -- held by hr_team
-by default (migration 0213); revoking one hides its block and its report. H4 seats exclude `pending_consent`/`rejected`; completed =
+by default (migration 0216); revoking one hides its block and its report. H4 seats exclude `pending_consent`/`rejected`; completed =
 counted seat at progress 100. HR reports are `hr-progress`, `hr-completions` (`student_progress`) and `hr-attendance` (`attendance`):
 the training pack's columns over the HR population, no financial column. HR's Placement Reports exclusion is removed (counts only).
 The recruiter requirements module still bars HR (Q-28) -- an open question for the client.
-**Numbering:** migration `0213_hr_student_grants`; API §12HH; RBAC §2.221.
+**Numbering:** migration `0216_hr_student_grants`; API §12HH; RBAC §2.221.
 - **Feature ID authorized:** `nehn-017`. **Status:** built on `worktree-nehn-017`.

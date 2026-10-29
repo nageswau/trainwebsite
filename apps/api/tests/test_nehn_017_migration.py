@@ -1,4 +1,4 @@
-"""nehn-017 -- migration 0213_hr_student_grants (DEC-SCOPE-310 H3): the chain, the seed and the round trip, in a throwaway database
+"""nehn-017 -- migration 0216_hr_student_grants (DEC-SCOPE-310 H3): the chain, the seed and the round trip, in a throwaway database
 (the nehn-009 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,15 +13,15 @@ from app.core import rbac
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_nehn_017_migration_0213", VERSIONS / "0213_hr_student_grants.py")
+_spec = importlib.util.spec_from_file_location("_nehn_017_migration_0216", VERSIONS / "0216_hr_student_grants.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0213_hr_student_grants", "0212_placement_report_grants"
+HEAD, BASE = "0216_hr_student_grants", "0215_payment_discount_ledger"
 RESOURCES = "('student_progress', 'attendance', 'student_documents')"
 
 
-def test_migration_chains_after_0212():
+def test_migration_chains_after_0215():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

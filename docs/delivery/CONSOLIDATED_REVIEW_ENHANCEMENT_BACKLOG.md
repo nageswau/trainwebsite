@@ -949,6 +949,9 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** payment and webhook tests; the discount audit tests; `pending_fee` used by certificate eligibility (must use the net figures).
 - **Open questions:** are receipts immutable once issued? Should a 0-amount receipt be issued?
 - **Complexity:** medium · **Risk:** medium
+- **Status (2026-10-28):** built on `worktree-nehn-019` (`DEC-SCOPE-315`; API §12HM; migration `0215_payment_discount_ledger`). The
+  builder's defaults: `amount` stays net and the gross is derived; receipts are immutable once issued; a 0-amount receipt is issued
+  only when the payment is marked paid; another student's receipt stays 403.
 
 #### `nehn-020` — Retire student-facing invoices where not required
 - **Source:** §7 L167-168 ("invoice functionality can be removed where not required").

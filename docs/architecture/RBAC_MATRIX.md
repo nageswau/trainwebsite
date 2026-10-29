@@ -3305,4 +3305,4 @@ granted the resource later sees no rows until its own scope rule is written. No 
 | `GET /portal/it/hr/reports` | 401 | 200 | 200 | — | 403 |
 
 New catalogue resources `student_progress`, `attendance`, `student_documents` (view, download); hr_team holds all six keys by default
-(migration 0213). Read-only. Pinned by `apps/api/tests/test_nehn_017_hr_student_access.py` and `test_nehn_017_migration.py`.
+(migration 0216). Read-only. Pinned by `apps/api/tests/test_nehn_017_hr_student_access.py` and `test_nehn_017_migration.py`.

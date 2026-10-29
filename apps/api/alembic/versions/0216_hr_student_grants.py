@@ -1,7 +1,7 @@
 """nehn-017 -- HR's student grants: `student_progress`, `attendance` and `student_documents` (view, download) for hr_team.
 
-Revision ID: 0213_hr_student_grants
-Revises: 0212_placement_report_grants
+Revision ID: 0216_hr_student_grants
+Revises: 0215_payment_discount_ledger
 
 docs/superpowers/specs/2026-10-28-nehn-017-hr-student-access-design.md (DEC-SCOPE-310 H3). Seed only: SEED is a frozen copy of the new
 `rbac.DEFAULT_GRANTS["hr_team"]` keys at this revision. A row that is already there (re-run) is left alone; no existing row changes. The
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0213_hr_student_grants"
-down_revision = "0212_placement_report_grants"
+revision = "0216_hr_student_grants"
+down_revision = "0215_payment_discount_ledger"
 branch_labels = None
 depends_on = None
 
