@@ -148,6 +148,7 @@ from app.services import (
     interviews,
     offers,
     permissions,
+    question_import,
     student_access,
     student_archive,
     student_document_requests,
@@ -178,7 +179,8 @@ from app.services.agent_visa import VISA_CASE_STAGES, VISA_DECIDED, VISA_DECISIO
 from app.services.bdm_appointments import db_now
 from app.services.certificates import active_signatories, generate_certificate_pdf, require_signatories, signatory_snapshot
 from app.services.storage import storage
-from app.services.tabular import XLSX_TYPE, to_xlsx
+from app.services.tabular import MAX_BYTES as TABULAR_MAX_BYTES
+from app.services.tabular import XLSX_TYPE, TabularError, read_tabular, to_xlsx
 from app.visa_status import DECISIONS as VISA_DECISIONS
 from app.visa_status import FIRST_OF_STAGE as VISA_FIRST_OF_STAGE
 from app.visa_status import label as visa_status_label
@@ -1260,6 +1262,52 @@ async def add_assessment_questions_bulk(assessment_id: UUID, payload: list[Asses
     await _audit(db, user, "assessment.questions_bulk_create", "assessment", assessment.id, {"count": len(items)})
     await db.commit()
     return {"created": len(items), "ids": [item.id for item in items]}
+
+
+@router.get("/it/trainer/assessments/question-template.xlsx")
+async def assessment_question_template(user: User = Depends(get_current_user)):
+    """nehn-025: the standard question template (a header-only Questions sheet, then Instructions)."""
+    _require(user, {"trainer", "it_admin"}, "it")
+    return Response(content=question_import.template_xlsx(), media_type=XLSX_TYPE, headers={"Content-Disposition": 'attachment; filename="question-template.xlsx"'})
+
+
+@router.post("/it/trainer/assessments/{assessment_id}/questions/import")
+async def import_assessment_questions(
+    assessment_id: UUID, response: Response, file: UploadFile = File(...), commit: bool = False, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """nehn-025: the filled template, checked row by row. The default is a dry run (the preview); `commit=true` re-checks the same file and
+    creates every question in one transaction, after the assessment's existing ones -- or nothing, if any row has an error."""
+    _require(user, {"trainer", "it_admin"}, "it")
+    assessment, _ = await _trainer_assessment(db, user, assessment_id)
+    await _assert_no_attempts_yet(db, assessment.id)
+    filename = file.filename or ""
+    try:
+        rows = read_tabular(filename, await file.read(TABULAR_MAX_BYTES + 1), required=question_import.REQUIRED, known=question_import.COLUMNS, max_rows=question_import.MAX_ROWS)
+    except TabularError as error:
+        raise HTTPException(error.status_code, "; ".join(error.messages)) from None
+    if not rows:
+        raise HTTPException(422, "The file has no questions")
+    questions, errors, warnings = question_import.parse_rows(rows)
+    body = {
+        "total_rows": len(rows),
+        "questions": [{"row": number, **question.model_dump(include={"question_type", "prompt", "options", "correct_answers", "max_score"})} for number, question in questions],
+        "errors": errors,
+        "warnings": warnings,
+        "created": 0,
+    }
+    if not commit:
+        return body
+    if errors:
+        rows_have = "1 row has" if len(errors) == 1 else f"{len(errors)} rows have"
+        raise HTTPException(422, f"{rows_have} errors -- fix them and upload the file again. Nothing was imported.")
+    last = await db.scalar(select(func.max(AssessmentQuestion.position)).where(AssessmentQuestion.assessment_id == assessment.id)) or 0
+    db.add_all(AssessmentQuestion(assessment_id=assessment.id, **question.model_dump(exclude={"position"}), position=last + n) for n, (_, question) in enumerate(questions, start=1))
+    kind = filename.lower().rsplit(".", 1)[-1]  # read_tabular has already refused anything but xlsx / csv
+    await _audit(db, user, "assessment.questions_import", "assessment", assessment.id, {"count": len(questions), "format": kind})
+    await db.commit()
+    logger.info("assessment %s: %d questions imported from a %s file", assessment.id, len(questions), kind)
+    response.status_code = 201
+    return {**body, "created": len(questions)}
 
 
 @router.get("/it/trainer/assessments/{assessment_id}/questions")

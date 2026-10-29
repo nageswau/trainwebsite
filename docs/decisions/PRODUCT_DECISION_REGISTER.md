@@ -10463,3 +10463,23 @@ effective value carries the source row's note; CA4 the downgrade refuses while a
 course CSV import cannot carry it; CA6 the list column on the Master's university list stays the university's value. **Numbering:** migration
 0217; API §12HY; RBAC §2.230.
 - **Feature ID authorized:** `ccrm-051`. **Status:** built on `worktree-ccrm-051`.
+
+### DEC-SCOPE-330 — Trainer question upload from a standard Excel template (`nehn-025`)
+
+- **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-025` (§9 "Trainer Assessment Upload" L199-208, §10 L222,
+action 10; `ORIGINAL_REQUIREMENT`-derived backlog); design `docs/superpowers/specs/2026-10-29-nehn-025-excel-question-import-design.md`.
+First consumer of DEC-SCOPE-282's `read_tabular` (nehn-004). **Behaviour:** `GET /workflows/it/trainer/assessments/question-template.xlsx`
+gives a header-only `Questions` sheet (`type, question, option_1..option_6, correct, marks, keywords, explanation`; a type drop-down) and
+an `Instructions` sheet (column reference, worked examples, "images are not supported"). `POST .../assessments/{id}/questions/import`
+(multipart `file`, `.xlsx` or `.csv`, 1 MB, 500 rows) is a dry run by default: every row is checked and the preview lists the parsed
+questions, one error per bad row (by sheet row number) and warnings (a repeated question; filled keywords / explanation columns).
+`?commit=true` re-checks the same file and creates every question in one transaction after the assessment's existing ones (audit
+`assessment.questions_import` `{count, format}`) — or nothing, with 422, if any row has an error. Questions are stored exactly as the
+single / bulk routes store them (`correct` option numbers become the option texts), so imported MCQs auto-grade like typed ones. Scope is
+the bulk route's: trainer on their own batch's assessment, it_admin any (super_admin passes `_require`); 409 once a student has started an
+attempt. The trainer's Assessments section gains an "Import questions from Excel" card (template → check → preview → import).
+**Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`):** Q1 all-or-nothing import; Q2 the import fills an
+existing assessment (the create form already defaults to Draft) rather than creating one; Q3 assignments are not generated from the
+template; Q4 no images in questions, CSV accepted; Q5 keywords / explanation are accepted but not stored until nehn-026 adds the columns;
+Q6 no server idempotency key on commit (the UI disables the button while importing). **Numbering:** no migration; API §12IB; RBAC §2.233.
+- **Feature ID authorized:** `nehn-025`. **Status:** built on `worktree-nehn-025`.

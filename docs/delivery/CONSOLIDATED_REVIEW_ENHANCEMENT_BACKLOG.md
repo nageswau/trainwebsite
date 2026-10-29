@@ -1188,6 +1188,10 @@ Risk is the risk of regression or of a wrong outcome.
 - **Regression risks:** the bulk question API tests.
 - **Open questions:** all-or-nothing vs partial import? Do assignments use the template too? Are image questions needed?
 - **Complexity:** medium · **Risk:** low
+- **Status (2026-10-29):**
+  - Built on `worktree-nehn-025` (`DEC-SCOPE-330`; no migration; API §12IB; RBAC §2.233). AC1-AC4 met.
+  - Builder's defaults (`NEEDS_CONFIRMATION`): all-or-nothing import; imports fill an existing (Draft) assessment; no assignments from the
+    template; no images; keywords / explanation accepted but not stored until nehn-026.
 
 #### `nehn-026` — Keyword-based auto-scoring for descriptive answers
 - **Source:** §9 "Evaluation" (L209-213: "final scoring rules should be confirmed before implementation"); `CLIENT_QUESTIONS.md` D-09 §4 (an ~80% keyword threshold was discussed informally; **open**).

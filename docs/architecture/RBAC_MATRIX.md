@@ -3357,3 +3357,14 @@ where `can_upload_proof` is true. Pinned by `apps/api/tests/test_ccrm_049_paymen
 The course write gates (§2.100 upc-017 CO1: read 403, university 404, write 403/409) run first; the agent commission gate follows, before
 any write. Same editors and viewers as DEC-SCOPE-209 (`agent_commission_access`); U2's course `commission` gate is unchanged. Pinned by
 `apps/api/tests/test_ccrm_051_course_agent_commission.py` and the upc-033 commission sweep.
+
+### 2.233 Trainer question upload from a standard Excel template *(added 2026-10-29 — `DEC-SCOPE-330`, nehn-025)*
+
+| Action | trainer (IT) | it_admin (IT) | super_admin | it_student, other roles / divisions | anonymous |
+|---|---|---|---|---|---|
+| Download the question template | allowed | allowed | allowed | 403 | 401 |
+| Import (dry run or commit) into an assessment | own batch's assessments only (403 otherwise) | any assessment | any assessment | 403 | 401 |
+
+The bulk question route's rules apply unchanged: an assessment a student has started is locked (409). Students never see a Draft
+assessment (TRN-006-AC02), so imported questions stay hidden until the trainer publishes. Pinned by
+`apps/api/tests/test_nehn_025_question_import.py`.
