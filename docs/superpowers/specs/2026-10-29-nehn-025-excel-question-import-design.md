@@ -2,6 +2,7 @@
 
 - **Source:** `docs/delivery/CONSOLIDATED_REVIEW_ENHANCEMENT_BACKLOG.md` `nehn-025` (§9 L199-208, §10 L222, action 10).
 - **Depends on:** nehn-004 (`services/tabular.read_tabular`, merged in PR #349).
+- **Numbering:** `DEC-SCOPE-330`; API §12IB; RBAC §2.233; no migration.
 - **Gate:** feature-ID authorised by the owner's feature prompt; builder's defaults below are `NEEDS_CONFIRMATION`.
 
 ## Goal

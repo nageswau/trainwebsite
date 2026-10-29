@@ -81,7 +81,7 @@ These items are built. Where a question was open, we used the recommended answer
 | nehn-022 | Payments | Razorpay test/live mode switch and go-live runbook | Enhancement | Done — confirm defaults | Dev + Client | Before go-live | Razorpay live account and webhook (CI-07); who runs the live ₹1 check |
 | nehn-023 | Attendance | Attendance correction usability and notifications | Enhancement | Done — confirm defaults | Dev | Wave 4 | Confirm notification channel (§2) |
 | nehn-024 | Assignments | Direct file upload for assignment submissions | Enhancement | Ready to start | Dev + Client | Wave 2 | Multiple files per submission? Keep link submissions? |
-| nehn-025 | Assessments | Trainer question upload from a standard Excel template | Enhancement | Ready to start | Dev | Wave 2 | — |
+| nehn-025 | Assessments | Trainer question upload from a standard Excel template | Enhancement | Done — confirm defaults | Dev | Wave 2 | — |
 | nehn-026 | Assessments | Keyword-based auto-scoring for descriptive answers | Enhancement | Waiting — decision | Dev + Client | Wave 4 | Keyword scoring rule (OD-07); needs nehn-025 |
 | nehn-027 | Trainer portal | Learning materials: file upload and manage | Enhancement | Ready to start | Dev + Client | Wave 4 | Video uploads, or links only? |
 | nehn-028 | Trainer portal | Per-student progress view for trainers | Enhancement | Done — confirm defaults | Dev + Client | Wave 4 | Should progress % be computed from the criteria? Dropped students hidden or greyed? (DEC-SCOPE-308) |
@@ -114,7 +114,7 @@ These items are built. Where a question was open, we used the recommended answer
 | A07 | Configure CRM roles, statuses, assignment | Dev | nehn-015 | Waiting — client input (CI-01) |
 | A08 | Direct assignment file upload | Dev, High | nehn-003, 024 | Ready to start — private storage done; upload screen next |
 | A09 | Assignment text submission | Dev, High | — | Done — already in the portal |
-| A10 | Trainer Excel question upload | Dev, High | nehn-004, 025 | Ready to start — Excel reader done; upload screen next |
+| A10 | Trainer Excel question upload | Dev, High | nehn-004, 025 | Done — confirm defaults (nehn-025 upload screen built) |
 | A11 | Founder + Coordinator signatures | Dev, High | nehn-032 | Done — PNGs to upload (CI-03) |
 | A12 | Provide signature PNGs | Client, required | CI-03 | Waiting — client input |
 | A13 | Coordinator certificate workflow | Dev, High | nehn-030, 031 | Waiting — decision (OD-05) |
