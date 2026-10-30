@@ -120,6 +120,7 @@ apps/web/tests/doc-capture/counselor/   (capture specs, test-only)
 |---|---|
 | AUTH-002 | `user-manual/account-access/auth-002-first-password.md` |
 | CHAT-001 | `user-manual/chat/chat-001-counselor-chat.md` |
+| FUP-002 | `user-manual/follow-ups/fup-002-overdue-follow-ups.md` |
 | FUP-003 | `user-manual/follow-ups/fup-003-automatic-reminders.md` |
 | APP-005 | `user-manual/applications/app-005-sub-status-ready-gate.md` |
 | DOC-001 | `user-manual/documents/doc-001-application-checklist.md` |
@@ -245,14 +246,15 @@ Features: HO-001, HO-002, LEAD-001..009, CONV-001, CONV-002 (13).
 - [x] Snapshot `after-s4`.
 - S4 as run: Chen came via auto-distribution (no manager step); Esha (not Chen) was returned; CONV-002 used a walk-in student "Docs Divya Student" with Divya's email (linked, then unlinked, so Divya is at Follow-up). Lead ids are in `DOCS_CNS_FILE`.
 
-### S5 — Activity, chat, follow-ups, tasks, calendar (= Day 1)
+### S5 — Activity, chat, follow-ups, tasks, calendar (= Day 1) — DONE 2026-10-30
 Features: ACT-001..006, CHAT-001, FUP-001, TASK-001, CAL-001, CAL-002 (11).
-- [ ] Standard loop.
+- [x] Standard loop.
   - On Divya: call, WhatsApp record, email (lands in Mailpit), meeting, note, timeline (ACT-001..006).
   - Counselor Chat with Docs Converted Student (CHAT-001).
   - Follow-ups due today and **tomorrow** (FUP-001). Tasks due today, tomorrow and +7 days; complete one, cancel one (TASK-001, P10).
   - Appointments page and the no-show text (CAL-001, P8). Calendar page and feed URL, which is **masked** (CAL-002).
-- [ ] Record "Day 1 = <date>" in the progress file. Snapshot `after-s5`.
+- [x] Record "Day 1 = <date>" in the progress file. Snapshot `after-s5`.
+- S5 as run: appointments are booked by the telecaller on the telecaller's own leads (Esha + new Farah/Gita/Hari); one open appointment per lead; 60-minute slots can't overlap. CAP-000002 (Farah, 31 Oct 13:00) was left **Scheduled** for the S9 no-show. Day 1 = 2026-10-30.
 
 ### S6 — Students and the Student 360
 Features: STU-001..007, STU-010, HO-003, HO-004, ADM-003, ADM-004 (12).
@@ -291,7 +293,8 @@ Features: VISA-001, FIN-001..003, ARR-001, ARR-002, UNI-001, UNI-002 (8).
 
 ### S9 — Time-based states, dashboards, admin oversight (≥ 3 days after S5)
 Features: FUP-002, FUP-003, ESC-001, ESC-002, DASH-001, SRCH-001, REP-001, PERF-001, PERF-002 (9). Also the CFG-002 **Run now** step.
-- [ ] Confirm the date is ≥ Day 1 + 3, and that the 00:05/00:10 jobs have run (expired offer on A1, overdue document request).
+- [ ] Confirm the date is ≥ Day 1 + 3 (2026-11-02), and that the 00:05/00:10 jobs have run (expired offer on A1, overdue document request).
+- [ ] CAL-001: **Mark no-show** on CAP-000002 (P8 text). TASK-001: the Overseas Admin gives Counselor A a task ("Given by" row, status-only).
 - [ ] Standard loop.
   - As the Overseas Admin: **Run now** on the reminder rules (CFG-002 step), counselor tasks (ESC-001), overdue by counselor + escalation notice (ESC-002), team performance A vs B (PERF-001), one counselor (PERF-002).
   - As Counselor A: overdue follow-ups on Tasks (FUP-002); reminder results and where they appear (FUP-003, P1); dashboard tiles and "View all" (DASH-001, P6); quick search (SRCH-001, P7); My performance (REP-001, P9).

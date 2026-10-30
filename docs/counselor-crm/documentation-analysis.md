@@ -246,7 +246,7 @@ About 170 to 200 PNGs: at least one per step, plus "what each role sees" variant
 - What the **School Applications** and **Management tasks** sidebar items show to an Overseas counselor. Both are recorded as discovered functionality.
 
 ## 12. Product Findings and Open Questions (owner)
-Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 was confirmed in the browser in S2, P18 in S3 and P2 in S4; each is confirmed or dropped in the browser session that covers it.
+Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 was confirmed in the browser in S2, P18 in S3, P2 in S4 and P10 in S5; each is confirmed or dropped in the browser session that covers it.
 
 | # | Finding | Evidence | Docs impact |
 |---|---|---|---|
@@ -259,7 +259,7 @@ Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 w
 | P7 | Quick-search application hits open a filtered list, not the application. The results text shows a literal "--" | `counselor_search.py:117`, `CounselorQuickSearch.tsx:76` | SRCH-001 |
 | P8 | Appointment no-show success text reads "Appointment no show." | `LeadAppointmentCard.tsx:58` | CAL-001 |
 | P9 | My performance counts IT and Overseas leads together; My leads shows only one division | `counselor_performance.py:32` | REP-001 |
-| P10 | Cancelled tasks vanish (the UI has a band, but the API never returns them) | `counselor_tasks.py:28` | TASK-001 |
+| P10 | **Confirmed S5.** Cancelled tasks vanish (the UI has a band, but the API never returns them) | `counselor_tasks.py:28` | TASK-001 |
 | P11 | The counselor cannot book a lead appointment from the lead page; "Counselling Scheduled" can be set without one | `leadStages.ts:47` | LEAD-006, CAL-001 |
 | P12 | Student notification after an advance shows the raw stage code (e.g. `visa_documentation`) | `workflows.py:2730` | APP-004 |
 | P13 | Agency enrolment: the Enrolment panel lets a counselor confirm, while advance/sub-status say "Only the agency's Master confirms enrollment" | `application_offers.py:445`, `workflows.py:202` | ARR-001, APP-010 |
@@ -272,6 +272,9 @@ Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 w
 | P20 | A telecaller handover sends no direct notice; it relies on the "New lead assigned" reminder rule | `lead_handover.py:46` | HO-001 |
 | P21 | The 360 has no Visa tab and no document-review action; counselors cannot download invoices/receipts on Finance; any caseload counselor can upload a payment proof | appendix 02 VISA/DOC/FIN | VISA-001, DOC-002, FIN-002/003 |
 | P22 | A counselor-created application for an agency student is always direct | `workflows.py:2435` | APP-001, APP-010 |
+| P24 | (S5, browser) After **Cancel it** on a follow-up, the item shows Cancelled but its reason form stays open | `FollowUpItem.tsx` | FUP-001 |
+| P25 | (S5, browser) "First contact" reminder tasks were created for every handed-over lead and stay open after the lead is closed (Bilal) or returned (Esha) | `counselor_reminders.py` first_contact | TASK-001, FUP-003 |
+| P26 | (S5, browser) Counselor Chat empty state shows a literal "--": "No messages yet -- send the first one below." | `CounselorChatPanel.tsx` | CHAT-001 |
 | P23 | (Found in S2, browser) The Overseas Admin's **Manage users** table is 716 px wide inside a 500 px panel at 1440 px: the Status badge is clipped and the Action column is off-screen; acting on a row scrolls the name out of view | `/overseas/admin/users`, `AdminUserManagementPanel.tsx` | ADM-002 |
 
 **Default-based behaviours (owner D4).** About 40 counselor decisions are builder defaults marked NEEDS_CONFIRMATION or UNVERIFIED, not owner-approved (appendix 04 §3, column "Authority"). Manual pages describe them as built, with no warning banners. The owner reviews that list separately.

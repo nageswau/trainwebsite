@@ -5,15 +5,15 @@
 | Code baseline | `main` @ `045d8c40` (S1 discovery). Record any later `main` used for browser work here, with the affected features re-checked. |
 | Stack used for browser work | `cnsdocs` compose project from worktree `.claude/worktrees/cns-docs` (branch `docs/counselor-crm-user-guide`). Web http://localhost:3050, api :8050, Mailpit 127.0.0.1:8029 via untracked `docker-compose.docs.yml`. Untracked `.env` per plan S2.1. Owner approved Claude starting, seeding, resetting and snapshotting this stack only (2026-10-29). Started 2026-10-30 (S2) at `045d8c40`; seeded; snapshots `after-seed`, `after-s2` in the session scratchpad. |
 | Docs branch | `docs/counselor-crm-user-guide` (from `main` @ `045d8c40`) |
-| Day 1 (D3 calendar) | _not set — recorded when S5 runs; S9 must run on or after Day 1 + 3_ |
-| Last session | S4 Leads and handoffs — 2026-10-30 |
-| Next session | S5 — Activity, chat, follow-ups, tasks, calendar (= Day 1 of the D3 calendar) |
+| Day 1 (D3 calendar) | **2026-10-30** (S5). S9 must run on or after **2026-11-02**. |
+| Last session | S5 Activity, chat, follow-ups, tasks, calendar — 2026-10-30 (Day 1) |
+| Next session | S6 — Students and the Student 360 (any day; S9 not before 2026-11-02) |
 
 **Column values:** Code Reviewed YES / PARTIAL / NO (YES at S1 = reviewed from source at `045d8c40`, evidence in `discovery/`) · Browser Verified YES / PARTIAL / NO · Screenshot YES / NO / N/A · Documented YES / DRAFT / NO · Reviewed PASSED / FAILED / NO.
 
 A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Reviewed = PASSED.
 
-**Totals (after S4):** 85 features · 85 code-reviewed · 21 browser-verified (+4 partial) · 21 documented (+4 draft) · 0 COMPLETE.
+**Totals (after S5):** 85 features · 85 code-reviewed · 31 browser-verified (+5 partial) · 31 documented (+5 draft) · 0 COMPLETE.
 
 | ID | Module | Feature | Session | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|---|
@@ -37,19 +37,19 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | DOC-CNS-LEAD-009 | Leads | Student and milestones panel (read only) | S4 | YES | PARTIAL | YES | DRAFT | NO |
 | DOC-CNS-CONV-001 | Conversion | Convert a lead to a new student | S4 | YES | YES | YES | YES | NO |
 | DOC-CNS-CONV-002 | Conversion | Link / unlink an existing student account | S4 | YES | YES | YES | YES | NO |
-| DOC-CNS-ACT-001 | Activity | Log a call | S5 | YES | NO | NO | NO | NO |
-| DOC-CNS-ACT-002 | Activity | Record a WhatsApp message | S5 | YES | NO | NO | NO | NO |
-| DOC-CNS-ACT-003 | Activity | Email a lead | S5 | YES | NO | NO | NO | NO |
-| DOC-CNS-ACT-004 | Activity | Log a meeting | S5 | YES | NO | NO | NO | NO |
-| DOC-CNS-ACT-005 | Activity | Lead notes | S5 | YES | NO | NO | NO | NO |
-| DOC-CNS-ACT-006 | Activity | Lead activity timeline | S5 | YES | NO | NO | NO | NO |
-| DOC-CNS-CHAT-001 | Chat | Counselor Chat with students | S5 | YES | NO | NO | NO | NO |
-| DOC-CNS-FUP-001 | Follow-ups | Follow-ups on a lead | S5 | YES | NO | NO | NO | NO |
+| DOC-CNS-ACT-001 | Activity | Log a call | S5 | YES | YES | YES | YES | NO |
+| DOC-CNS-ACT-002 | Activity | Record a WhatsApp message | S5 | YES | YES | YES | YES | NO |
+| DOC-CNS-ACT-003 | Activity | Email a lead | S5 | YES | YES | YES | YES | NO |
+| DOC-CNS-ACT-004 | Activity | Log a meeting | S5 | YES | YES | YES | YES | NO |
+| DOC-CNS-ACT-005 | Activity | Lead notes | S5 | YES | YES | YES | YES | NO |
+| DOC-CNS-ACT-006 | Activity | Lead activity timeline | S5 | YES | YES | YES | YES | NO |
+| DOC-CNS-CHAT-001 | Chat | Counselor Chat with students | S5 | YES | YES | YES | YES | NO |
+| DOC-CNS-FUP-001 | Follow-ups | Follow-ups on a lead | S5 | YES | YES | YES | YES | NO |
 | DOC-CNS-FUP-002 | Follow-ups | Overdue follow-ups on the Tasks page | S9 | YES | NO | NO | NO | NO |
 | DOC-CNS-FUP-003 | Follow-ups | Automatic reminders (what triggers them, where they show) | S9 | YES | NO | NO | NO | NO |
-| DOC-CNS-TASK-001 | Tasks | My tasks | S5 | YES | NO | NO | NO | NO |
-| DOC-CNS-CAL-001 | Calendar | Appointments page and lead appointments | S5 | YES | NO | NO | NO | NO |
-| DOC-CNS-CAL-002 | Calendar | Calendar and iCal feed | S5 | YES | NO | NO | NO | NO |
+| DOC-CNS-TASK-001 | Tasks | My tasks | S5 | YES | YES | YES | YES | NO |
+| DOC-CNS-CAL-001 | Calendar | Appointments page and lead appointments | S5 | YES | PARTIAL | YES | DRAFT | NO |
+| DOC-CNS-CAL-002 | Calendar | Calendar and iCal feed | S5 | YES | YES | YES | YES | NO |
 | DOC-CNS-REP-001 | Reports | My performance | S9 | YES | NO | NO | NO | NO |
 | DOC-CNS-UNI-001 | Universities | Partner universities list | S8 | YES | NO | NO | NO | NO |
 | DOC-CNS-UNI-002 | Universities | University 360 view (incl. course commission display) | S8 | YES | NO | NO | NO | NO |
@@ -113,8 +113,9 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | U5 | `shoot.ts` changes (COUNSELOR_ROOT, `#calendar-feed-url` mask, "Demo super admin" mask, `signIn(..., portal)`) are on this branch only; the telecaller/BDM doc branches have not changed shoot.ts, so whichever merges second takes these. | Merge time |
 | U6 | ADM-002 deactivate/reactivate steps and the deactivated sign-in message (AUTH-006) are captured in S10 (Docs Counselor C). | S10 |
 | U7 | CFG-002 **Run reminders now** and populated Recent reminders are captured in S9. | S9 |
-| U8 | Forward links (12 after S3) in the S2 admin pages point to pages written in S3–S9 (file names fixed in plan §Planned file names); link check is expected to list them until then. | S3–S9 |
+| U8 | Forward links (16 after S5, all to S6–S9 pages) in the S2 admin pages point to pages written in S3–S9 (file names fixed in plan §Planned file names); link check is expected to list them until then. | S3–S9 |
 | U10 | LEAD-009 milestone rows and the Converted badge need an application/enrolment (S7–S8). | S7/S8 |
+| U11 | CAL-001 **Mark no-show** on CAP-000002 (Docs Lead Farah, 31 Oct 13:00) and the P8 text; TASK-001 admin-given task ("Given by") — both in S9. | S9 |
 | U9 | Docs University + Docs MSc Data Science / Docs MBA (commission 10% / 12%) moved from S2 to S7 prep (University Master add → publish → add courses). | S7 |
 
 ## Discovered functionality (outside the 85 IDs)
@@ -135,3 +136,4 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | S2 | 2026-10-30 | (this commit) | cnsdocs stack (3050/8050/8029) up from 045d8c40; shoot.ts COUNSELOR_ROOT + feed-URL and "Demo super admin" masks + signIn portal; build-pdfs counselor mode; OA created Docs Counselor A/B/C, Docs Telecaller, Docs UK admission checklist, Docs offer update template; 21 PNGs; ADM-001, CFG-001, CFG-003 documented, ADM-002 and CFG-002 draft (finish in S10/S9); P4 confirmed; P23 found. |
 | S3 | 2026-10-30 | (this commit) | Docs Counselor A/B/C set passwords from Mailpit; AUTH-001..005 + NAV-001 documented, AUTH-006 draft (deactivated sign-in in S10); 27 PNGs incl. 390 px menu; all 15 sidebar headings verified; P18 confirmed with workaround (My profile → public header Logout); wrong-portal message captured. |
 | S4 | 2026-10-30 | (this commit) | Docs Telecaller password; telecaller created Asha/Bilal/Esha and handed them to Counselor A; website enquiry Chen auto-assigned and handed over; Counselor A walk-in Divya, duplicate panel, next action, Qualified, details, qualification, convert Asha, close Bilal (lost reason), return Esha, link/unlink Divya. 37 PNGs; 12 documented + LEAD-009 draft; P2 confirmed. |
+| S5 | 2026-10-30 | (this commit) | Day 1. Telecaller added Farah/Gita/Hari and booked CAP-000001..4 with Counselor A (one open appointment per lead; 60-min slots can't overlap); on Divya: 2 calls, WhatsApp record, email (delivered to Mailpit), meeting, note, follow-ups (2 open due 31 Oct + Chen 31 Oct 12:00, 1 done, 1 rescheduled, 1 cancelled); tasks (SOP checklist due 31 Oct open, pipeline review +7, 1 done, 1 cancelled); chat to Asha; calendar feed created (URL masked); CAP-000001 completed, CAP-000003 confirmed, CAP-000004 cancelled. 27 PNGs; 10 documented + CAL-001 draft; P10 confirmed; P24–P26 found. |

@@ -89,3 +89,30 @@ Capture settings: Chromium, 1440 × 900, light, `deviceScaleFactor` 1, locale `e
 | `conversion/06-linked.png` | DOC-CNS-CONV-002 | Counselor | Student linked (element shot) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
 | `conversion/07-unlink-confirm.png` | DOC-CNS-CONV-002 | Counselor | Confirm unlink (element shot) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
 | `conversion/08-search-already-linked.png` | DOC-CNS-CONV-002 | Counselor | Search: Asha's student already linked to another lead | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `activity/01-log-call-form.png` | DOC-CNS-ACT-001 | Counselor | Log call form, Connected – Interested (element shot) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `activity/02-log-call-follow-up-required.png` | DOC-CNS-ACT-001 | Counselor | Call Back Requested adds the required follow-up (element shot) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `activity/03-calls-list.png` | DOC-CNS-ACT-001 | Counselor | Calls list (element shot) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `activity/04-whatsapp-composer.png` | DOC-CNS-ACT-002 | Counselor | WhatsApp composer, custom message (element shot) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `activity/05-whatsapp-did-you-send.png` | DOC-CNS-ACT-002 | Counselor | Did you send it in WhatsApp? (element shot) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `activity/06-email-composer.png` | DOC-CNS-ACT-003 | Counselor | Email composer (element shot) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `activity/07-messages-list.png` | DOC-CNS-ACT-003 | Counselor | Email sent + WhatsApp sent records (element shot) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `activity/08-record-meeting.png` | DOC-CNS-ACT-004 | Counselor | Record meeting, In person (element shot) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `activity/09-meetings-list.png` | DOC-CNS-ACT-004 | Counselor | Meetings list (element shot) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `activity/10-notes.png` | DOC-CNS-ACT-005 | Counselor | Lead notes (element shot) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `activity/11-activity-timeline.png` | DOC-CNS-ACT-006 | Counselor | Activity timeline after all actions (element shot) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `chat/01-chat-no-messages.png` | DOC-CNS-CHAT-001 | Counselor | Student chosen, no messages yet (element shot) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `chat/02-chat-sent.png` | DOC-CNS-CHAT-001 | Counselor | Reply sent (element shot) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `chat/03-chat-history-table.png` | DOC-CNS-CHAT-001 | Counselor | Counselor Chat page | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `follow-ups/01-add-follow-up.png` | DOC-CNS-FUP-001 | Counselor | Add follow-up due tomorrow 11:00 (element shot) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `follow-ups/02-follow-ups-list.png` | DOC-CNS-FUP-001 | Counselor | Open, rescheduled, cancelled (form left open, P24) and done (element shot) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `tasks/01-my-tasks-empty.png` | DOC-CNS-TASK-001 | Counselor | My tasks before adding (first-contact reminder tasks present) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `tasks/02-add-task.png` | DOC-CNS-TASK-001 | Counselor | Add a task, About = Divya (element shot) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `tasks/03-task-past-date.png` | DOC-CNS-TASK-001 | Counselor | Past due date refused (element shot) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `tasks/04-cancel-task-confirm.png` | DOC-CNS-TASK-001 | Counselor | Cancel task confirmation | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `tasks/05-my-tasks-bands.png` | DOC-CNS-TASK-001 | Counselor | Upcoming and Done bands (fullPage) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `calendar/01-lead-appointments.png` | DOC-CNS-CAL-001 | Counselor | Four telecaller-booked appointments, first one started | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `calendar/02-appointment-completed.png` | DOC-CNS-CAL-001 | Counselor | CAP-000001 completed | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `calendar/04-cancel-appointment.png` | DOC-CNS-CAL-001 | Counselor | Cancel with reason (Hari) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `calendar/05-calendar-feed-off.png` | DOC-CNS-CAL-002 | Counselor | Calendar feed off | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `calendar/06-calendar-feed-link.png` | DOC-CNS-CAL-002 | Counselor | Link created; feed URL MASKED | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `calendar/08-lead-appointments-after.png` | DOC-CNS-CAL-001 | Counselor | Confirmed / completed / cancelled / scheduled (fullPage) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
