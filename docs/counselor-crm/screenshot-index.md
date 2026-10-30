@@ -182,3 +182,22 @@ Capture settings: Chromium, 1440 × 900, light, `deviceScaleFactor` 1, locale `e
 | `documents/06-document-requests.png` | DOC-CNS-DOC-003 | Counselor | document requests | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
 | `documents/07-upload-document-form.png` | DOC-CNS-DOC-004 | Counselor | upload document form | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
 | `documents/08-uploaded.png` | DOC-CNS-DOC-004 | Counselor | uploaded | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `visa/01-visa-page.png` | DOC-CNS-VISA-001 | Counselor | visa page | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `visa/02-start-visa-case.png` | DOC-CNS-VISA-001 | Counselor | start visa case | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `visa/03-visa-case-submitted-form.png` | DOC-CNS-VISA-001 | Counselor | visa case submitted form | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `visa/04-record-decision.png` | DOC-CNS-VISA-001 | Counselor | record decision | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `visa/05-visa-approved.png` | DOC-CNS-VISA-001 | Counselor | visa approved | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `finance/01-record-deposit.png` | DOC-CNS-FIN-001 | Counselor | record deposit | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `finance/02-deposit-recorded.png` | DOC-CNS-FIN-001 | Counselor | deposit recorded | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `finance/03-finance-tab.png` | DOC-CNS-FIN-002 | Counselor | finance tab | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `finance/04-receipts-uploaded.png` | DOC-CNS-FIN-003 | Counselor | receipts uploaded | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `arrival/01-confirm-enrolment-form.png` | DOC-CNS-ARR-001 | Counselor | confirm enrolment form | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `arrival/02-confirm-enrolment-step.png` | DOC-CNS-ARR-001 | Counselor | confirm enrolment step | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `arrival/03-enrolment-confirmed.png` | DOC-CNS-ARR-001 | Counselor | enrolment confirmed | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `arrival/04-record-arrival.png` | DOC-CNS-ARR-002 | Counselor | record arrival | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `arrival/05-arrival-saved.png` | DOC-CNS-ARR-002 | Counselor | arrival saved | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `arrival/06-agency-enrolment-form.png` | DOC-CNS-ARR-001 / DOC-CNS-APP-010 | Counselor | agency enrolment form | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `universities/01-partner-universities.png` | DOC-CNS-UNI-001 | Counselor | partner universities | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `universities/02-search.png` | DOC-CNS-UNI-001 | Counselor | search | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `universities/03-university-360.png` | DOC-CNS-UNI-002 | Counselor | university 360 | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `universities/04-university-360-full.png` | DOC-CNS-UNI-002 | Counselor | university 360 full | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |

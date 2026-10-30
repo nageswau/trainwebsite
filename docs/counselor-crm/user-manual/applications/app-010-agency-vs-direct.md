@@ -13,7 +13,7 @@ Counselors assigned to agency applications.
 | Advance stage, sub-status, outcome | Yes | Yes (agency is notified) |
 | Details, offers, conditions, interviews | Yes | Yes |
 | University deposit | Record it | Read only (the agency pays) |
-| Confirm enrolment | Yes | VERIFICATION REQUIRED (S8) |
+| Confirm enrolment | Yes | The **Enrolment** panel offers it, although stage changes say only the agency's Master confirms enrolment |
 | Condition owner **Agent** | — | Available |
 
 ## Prerequisites

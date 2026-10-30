@@ -287,13 +287,14 @@ Features: APP-001..010, OFR-001..003, DOC-001..004 (17).
 - [x] Snapshot `after-s7`.
 - S7 as run: specs `cns-s7a-university-setup` (set-up) and `cns-s7b-applications`; sample PDFs from `DOCS_FILES_DIR` (scratchpad `files/`). Uploads must be tied to the application to appear in Document Verification (P28). For S8: A2 (Docs Walk-in Student, Docs MBA) has an accepted unconditional offer with deposit GBP 3,000 due +20 days; Ananya's agency application is on Counselor A for the P13 check.
 
-### S8 — Visa, finance, arrival, universities
+### S8 — Visa, finance, arrival, universities — DONE 2026-10-30
 Features: VISA-001, FIN-001..003, ARR-001, ARR-002, UNI-001, UNI-002 (8).
-- [ ] Standard loop.
+- [x] Standard loop.
   - On A2: deposit record (FIN-001), Finance tab (FIN-002), deposit receipt / payment proof upload (FIN-003), visa case lifecycle (VISA-001), confirm enrolment (ARR-001), arrival and orientation (ARR-002).
   - Agency enrolment message vs panel on the agency application (P13): shot only, **do not confirm**.
   - Universities list and University 360 with the Docs course commission (UNI-001/002).
-- [ ] Snapshot `after-s8`.
+- [x] Snapshot `after-s8`.
+- S8 as run: spec needs `DOCS_WALKIN_ID` (users.id of Docs Walk-in Student) for the admin fee; the visa case needs its checklist documents Verified first.
 
 ### S9 — Time-based states, dashboards, admin oversight (≥ 3 days after S5)
 Features: FUP-002, FUP-003, ESC-001, ESC-002, DASH-001, SRCH-001, REP-001, PERF-001, PERF-002 (9). Also the CFG-002 **Run now** step.

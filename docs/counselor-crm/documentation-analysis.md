@@ -246,7 +246,7 @@ About 170 to 200 PNGs: at least one per step, plus "what each role sees" variant
 - What the **School Applications** and **Management tasks** sidebar items show to an Overseas counselor. Both are recorded as discovered functionality.
 
 ## 12. Product Findings and Open Questions (owner)
-Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 was confirmed in the browser in S2, P18 in S3, P2 in S4 and P10 in S5; each is confirmed or dropped in the browser session that covers it.
+Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 was confirmed in the browser in S2, P18 in S3, P2 in S4, P10 in S5 and P13 in S8; each is confirmed or dropped in the browser session that covers it.
 
 | # | Finding | Evidence | Docs impact |
 |---|---|---|---|
@@ -262,7 +262,7 @@ Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 w
 | P10 | **Confirmed S5.** Cancelled tasks vanish (the UI has a band, but the API never returns them) | `counselor_tasks.py:28` | TASK-001 |
 | P11 | The counselor cannot book a lead appointment from the lead page; "Counselling Scheduled" can be set without one | `leadStages.ts:47` | LEAD-006, CAL-001 |
 | P12 | Student notification after an advance shows the raw stage code (e.g. `visa_documentation`) | `workflows.py:2730` | APP-004 |
-| P13 | Agency enrolment: the Enrolment panel lets a counselor confirm, while advance/sub-status say "Only the agency's Master confirms enrollment" | `application_offers.py:445`, `workflows.py:202` | ARR-001, APP-010 |
+| P13 | **Confirmed S8 (form opens; not submitted).** Agency enrolment: the Enrolment panel lets a counselor confirm, while advance/sub-status say "Only the agency's Master confirms enrollment" | `application_offers.py:445`, `workflows.py:202` | ARR-001, APP-010 |
 | P14 | Evaluate Applications cards show no EduSphere ID or intake; there is no counselor screen to change an existing intake | `CounselorEvaluationPanel.tsx:19`, `applicationDetails.ts:11` | APP-002, APP-008 |
 | P15 | Changing a lead's counselor (owner + reason, ccrm-003 A7 / ccrm-033) is API-only: no admin screen | `AdminLeadManagementPanel.tsx` | ADM README |
 | P16 | Archive gaps: the archived list shows only csc-001-linked students; only the linked counselor can archive; profile edits and document requests still work on an archived student | `student_archive.py:49,119` | STU-008 |
@@ -275,7 +275,7 @@ Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 w
 | P24 | (S5, browser) After **Cancel it** on a follow-up, the item shows Cancelled but its reason form stays open | `FollowUpItem.tsx` | FUP-001 |
 | P25 | (S5, browser) "First contact" reminder tasks were created for every handed-over lead and stay open after the lead is closed (Bilal) or returned (Esha) | `counselor_reminders.py` first_contact | TASK-001, FUP-003 |
 | P26 | (S5, browser) Counselor Chat empty state shows a literal "--": "No messages yet -- send the first one below." | `CounselorChatPanel.tsx` | CHAT-001 |
-| P27 | (S6, browser) The counselor's **Application Tracking** table shows the raw stage key in **Status** (e.g. `university_review`) | `portal.py` counselor students section | STU-001, APP-004 |
+| P27 | (S6, browser) The counselor's **Application Tracking** table shows the raw stage key in **Status** (e.g. `university_review`); the University 360 applications table does too (`offer`, `enrolled`) | `portal.py` counselor students section, `UniversityView.tsx` | STU-001, APP-004, UNI-002 |
 | P28 | (S7, browser) A document uploaded as "Not tied to an application" never appears in the counselor's Document Verification queue (it lists only documents of the counselor's applications), so the counselor can't review it | `portal.py` documents section | DOC-002, DOC-004 |
 | P29 | (S7, browser) An application with the legacy status "University review" (seeded agency application) offers **every** stage in **Advance to**, including Enquiry | `CounselorEvaluationPanel.tsx` (`STAGES.indexOf` = -1) | APP-004, APP-010 |
 | P30 | (S7, browser) The **Evaluate Applications** cards are about 240 px wide at 1440 px; checklist rows are clipped at the right (badges, Unlink) | `CounselorEvaluationPanel.tsx` layout | DOC-001, APP-004 |
