@@ -6,14 +6,14 @@
 | Stack used for browser work | `cnsdocs` compose project from worktree `.claude/worktrees/cns-docs` (branch `docs/counselor-crm-user-guide`). Web http://localhost:3050, api :8050, Mailpit 127.0.0.1:8029 via untracked `docker-compose.docs.yml`. Untracked `.env` per plan S2.1. Owner approved Claude starting, seeding, resetting and snapshotting this stack only (2026-10-29). Started 2026-10-30 (S2) at `045d8c40`; seeded; snapshots `after-seed`, `after-s2` in the session scratchpad. |
 | Docs branch | `docs/counselor-crm-user-guide` (from `main` @ `045d8c40`) |
 | Day 1 (D3 calendar) | **2026-10-30** (S5). S9 must run on or after **2026-11-02**. |
-| Last session | S5 Activity, chat, follow-ups, tasks, calendar — 2026-10-30 (Day 1) |
-| Next session | S6 — Students and the Student 360 (any day; S9 not before 2026-11-02) |
+| Last session | S6 Students and the Student 360 — 2026-10-30 |
+| Next session | S7 — Docs University set-up, applications, offers, documents (any day; S9 not before 2026-11-02) |
 
 **Column values:** Code Reviewed YES / PARTIAL / NO (YES at S1 = reviewed from source at `045d8c40`, evidence in `discovery/`) · Browser Verified YES / PARTIAL / NO · Screenshot YES / NO / N/A · Documented YES / DRAFT / NO · Reviewed PASSED / FAILED / NO.
 
 A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Reviewed = PASSED.
 
-**Totals (after S5):** 85 features · 85 code-reviewed · 31 browser-verified (+5 partial) · 31 documented (+5 draft) · 0 COMPLETE.
+**Totals (after S6):** 85 features · 85 code-reviewed · 43 browser-verified (+5 partial) · 43 documented (+5 draft) · 0 COMPLETE.
 
 | ID | Module | Feature | Session | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|---|
@@ -53,16 +53,16 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | DOC-CNS-REP-001 | Reports | My performance | S9 | YES | NO | NO | NO | NO |
 | DOC-CNS-UNI-001 | Universities | Partner universities list | S8 | YES | NO | NO | NO | NO |
 | DOC-CNS-UNI-002 | Universities | University 360 view (incl. course commission display) | S8 | YES | NO | NO | NO | NO |
-| DOC-CNS-STU-001 | Students | Students page: Application Tracking table and filters | S6 | YES | NO | NO | NO | NO |
-| DOC-CNS-STU-002 | Students | My students card (Source filter, search) | S6 | YES | NO | NO | NO | NO |
-| DOC-CNS-STU-003 | Students | Add a walk-in student / edit pending / resend link | S6 | YES | NO | NO | NO | NO |
-| DOC-CNS-STU-004 | Students | Student 360: header, tabs, Overview | S6 | YES | NO | NO | NO | NO |
-| DOC-CNS-STU-005 | Students | Structured profile (Academic / Preferences / English) | S6 | YES | NO | NO | NO | NO |
-| DOC-CNS-STU-006 | Students | Internal student notes | S6 | YES | NO | NO | NO | NO |
-| DOC-CNS-STU-007 | Students | Activities and History tabs | S6 | YES | NO | NO | NO | NO |
+| DOC-CNS-STU-001 | Students | Students page: Application Tracking table and filters | S6 | YES | YES | YES | YES | NO |
+| DOC-CNS-STU-002 | Students | My students card (Source filter, search) | S6 | YES | YES | YES | YES | NO |
+| DOC-CNS-STU-003 | Students | Add a walk-in student / edit pending / resend link | S6 | YES | YES | YES | YES | NO |
+| DOC-CNS-STU-004 | Students | Student 360: header, tabs, Overview | S6 | YES | YES | YES | YES | NO |
+| DOC-CNS-STU-005 | Students | Structured profile (Academic / Preferences / English) | S6 | YES | YES | YES | YES | NO |
+| DOC-CNS-STU-006 | Students | Internal student notes | S6 | YES | YES | YES | YES | NO |
+| DOC-CNS-STU-007 | Students | Activities and History tabs | S6 | YES | YES | YES | YES | NO |
 | DOC-CNS-STU-008 | Students | Archive a student / Archived Students | S10 | YES | NO | NO | NO | NO |
 | DOC-CNS-STU-009 | Students | Overseas consent (read only for staff) | S10 | YES | NO | NO | NO | NO |
-| DOC-CNS-STU-010 | Students | When a student or application is reassigned to you | S6 | YES | NO | NO | NO | NO |
+| DOC-CNS-STU-010 | Students | When a student or application is reassigned to you | S6 | YES | YES | YES | YES | NO |
 | DOC-CNS-APP-001 | Applications | Add an application from the 360 | S7 | YES | NO | NO | NO | NO |
 | DOC-CNS-APP-002 | Applications | Intake Month YYYY picker | S7 | YES | NO | NO | NO | NO |
 | DOC-CNS-APP-003 | Applications | Applications tab list (EduSphere ID) | S7 | YES | NO | NO | NO | NO |
@@ -88,12 +88,12 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | DOC-CNS-ARR-002 | Arrival | Arrival and orientation | S8 | YES | NO | NO | NO | NO |
 | DOC-CNS-HO-001 | Handoffs | A telecaller hands a lead to you | S4 | YES | YES | YES | YES | NO |
 | DOC-CNS-HO-002 | Handoffs | A website enquiry becomes your lead | S4 | YES | YES | YES | YES | NO |
-| DOC-CNS-HO-003 | Handoffs | Agency students and applications | S6 | YES | NO | NO | NO | NO |
-| DOC-CNS-HO-004 | Handoffs | Self-registered students | S6 | YES | NO | NO | NO | NO |
+| DOC-CNS-HO-003 | Handoffs | Agency students and applications | S6 | YES | YES | YES | YES | NO |
+| DOC-CNS-HO-004 | Handoffs | Self-registered students | S6 | YES | YES | YES | YES | NO |
 | DOC-CNS-ADM-001 | Admin: accounts | Create a counselor account | S2 | YES | YES | YES | YES | NO |
 | DOC-CNS-ADM-002 | Admin: accounts | Manage counselor users: set-up status, re-send link, edit, deactivate | S2 | YES | PARTIAL | YES | DRAFT | NO |
-| DOC-CNS-ADM-003 | Admin: accounts | Assign / change a student's counselor (with reason) | S6 | YES | NO | NO | NO | NO |
-| DOC-CNS-ADM-004 | Admin: accounts | Assign / change an application's counselor (with reason) | S6 | YES | NO | NO | NO | NO |
+| DOC-CNS-ADM-003 | Admin: accounts | Assign / change a student's counselor (with reason) | S6 | YES | YES | YES | YES | NO |
+| DOC-CNS-ADM-004 | Admin: accounts | Assign / change an application's counselor (with reason) | S6 | YES | YES | YES | YES | NO |
 | DOC-CNS-ESC-001 | Admin: escalation | Counselor tasks (admin view) | S9 | YES | NO | NO | NO | NO |
 | DOC-CNS-ESC-002 | Admin: escalation | Overdue by counselor and the escalation notice | S9 | YES | NO | NO | NO | NO |
 | DOC-CNS-PERF-001 | Admin: performance | Team performance | S9 | YES | NO | NO | NO | NO |
@@ -113,7 +113,7 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | U5 | `shoot.ts` changes (COUNSELOR_ROOT, `#calendar-feed-url` mask, "Demo super admin" mask, `signIn(..., portal)`) are on this branch only; the telecaller/BDM doc branches have not changed shoot.ts, so whichever merges second takes these. | Merge time |
 | U6 | ADM-002 deactivate/reactivate steps and the deactivated sign-in message (AUTH-006) are captured in S10 (Docs Counselor C). | S10 |
 | U7 | CFG-002 **Run reminders now** and populated Recent reminders are captured in S9. | S9 |
-| U8 | Forward links (16 after S5, all to S6–S9 pages) in the S2 admin pages point to pages written in S3–S9 (file names fixed in plan §Planned file names); link check is expected to list them until then. | S3–S9 |
+| U8 | Forward links (13 after S6, all to S7–S9 pages) in the S2 admin pages point to pages written in S3–S9 (file names fixed in plan §Planned file names); link check is expected to list them until then. | S3–S9 |
 | U10 | LEAD-009 milestone rows and the Converted badge need an application/enrolment (S7–S8). | S7/S8 |
 | U11 | CAL-001 **Mark no-show** on CAP-000002 (Docs Lead Farah, 31 Oct 13:00) and the P8 text; TASK-001 admin-given task ("Given by") — both in S9. | S9 |
 | U9 | Docs University + Docs MSc Data Science / Docs MBA (commission 10% / 12%) moved from S2 to S7 prep (University Master add → publish → add courses). | S7 |
@@ -127,6 +127,8 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | Manage users table overflow | `/overseas/admin/users` at 1440 px | Table 716 px inside a 500 px panel: Status badge clipped, Action column off-screen; acting on a row scrolls the name out of view. Recorded as product finding P23. |
 | Website enquiries auto-distributed | HO-002 | With no distribution rules, the website lead was still assigned automatically to an active Overseas telecaller (Docs Telecaller); the counselor walk-in got Imran. The manager's unassigned queue was not needed. |
 | Public enquiry email validation | `/overseas/contact` | `.test` email addresses are rejected ("We could not submit your enquiry…"); the website lead uses `docs.lead.chen@example.com`. |
+| Public registration email validation | `/overseas/register` | Like the enquiry form, uses an `example.com` address for the self-registered Docs student. |
+| Converted lead's qualification copied to the profile | STU-005 | Asha's lead qualification became Qualification 1 on her profile. |
 | Admin sign-in demo card | `/admin/login` | Titled "Demo super admin" (not "Demo accounts"), so the old `shoot()` mask missed it; mask extended in S2. |
 
 ## Session log
@@ -137,3 +139,4 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | S3 | 2026-10-30 | (this commit) | Docs Counselor A/B/C set passwords from Mailpit; AUTH-001..005 + NAV-001 documented, AUTH-006 draft (deactivated sign-in in S10); 27 PNGs incl. 390 px menu; all 15 sidebar headings verified; P18 confirmed with workaround (My profile → public header Logout); wrong-portal message captured. |
 | S4 | 2026-10-30 | (this commit) | Docs Telecaller password; telecaller created Asha/Bilal/Esha and handed them to Counselor A; website enquiry Chen auto-assigned and handed over; Counselor A walk-in Divya, duplicate panel, next action, Qualified, details, qualification, convert Asha, close Bilal (lost reason), return Esha, link/unlink Divya. 37 PNGs; 12 documented + LEAD-009 draft; P2 confirmed. |
 | S5 | 2026-10-30 | (this commit) | Day 1. Telecaller added Farah/Gita/Hari and booked CAP-000001..4 with Counselor A (one open appointment per lead; 60-min slots can't overlap); on Divya: 2 calls, WhatsApp record, email (delivered to Mailpit), meeting, note, follow-ups (2 open due 31 Oct + Chen 31 Oct 12:00, 1 done, 1 rescheduled, 1 cancelled); tasks (SOP checklist due 31 Oct open, pipeline review +7, 1 done, 1 cancelled); chat to Asha; calendar feed created (URL masked); CAP-000001 completed, CAP-000003 confirmed, CAP-000004 cancelled. 27 PNGs; 10 documented + CAL-001 draft; P10 confirmed; P24–P26 found. |
+| S6 | 2026-10-30 | (this commit) | Self-registered student (example.com); Counselor A added Docs Walk-in Student + Docs Pending Walk-in (edit, resend, duplicate); Asha 360 profile (academic/preferences/IELTS), 2 notes; OA moved Ananya's agency application Ritika → Counselor A (reason), assigned the self-registered student to A, moved the walk-in student A → B → A with reasons; SA has no counsellor column. 30 PNGs; 12 documented; P27 found. |

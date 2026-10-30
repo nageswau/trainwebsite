@@ -124,6 +124,7 @@ apps/web/tests/doc-capture/counselor/   (capture specs, test-only)
 | FUP-003 | `user-manual/follow-ups/fup-003-automatic-reminders.md` |
 | APP-005 | `user-manual/applications/app-005-sub-status-ready-gate.md` |
 | DOC-001 | `user-manual/documents/doc-001-application-checklist.md` |
+| APP-010 | `user-manual/applications/app-010-agency-vs-direct.md` |
 | ADM-003 / ADM-004 | `admin-manual/accounts/adm-003-student-counselor.md`, `adm-004-application-counselor.md` |
 | ESC-001 / ESC-002 | `admin-manual/escalation/esc-001-counselor-tasks-admin.md`, `esc-002-overdue-escalation.md` |
 
@@ -256,9 +257,9 @@ Features: ACT-001..006, CHAT-001, FUP-001, TASK-001, CAL-001, CAL-002 (11).
 - [x] Record "Day 1 = <date>" in the progress file. Snapshot `after-s5`.
 - S5 as run: appointments are booked by the telecaller on the telecaller's own leads (Esha + new Farah/Gita/Hari); one open appointment per lead; 60-minute slots can't overlap. CAP-000002 (Farah, 31 Oct 13:00) was left **Scheduled** for the S9 no-show. Day 1 = 2026-10-30.
 
-### S6 — Students and the Student 360
+### S6 — Students and the Student 360 — DONE 2026-10-30
 Features: STU-001..007, STU-010, HO-003, HO-004, ADM-003, ADM-004 (12).
-- [ ] Standard loop.
+- [x] Standard loop.
   - As Counselor A: add walk-in **Docs Walk-in Student** and **Docs Pending Walk-in** (left pending); edit pending, resend (STU-003).
   - Students page / Application Tracking (STU-001); My students with the Source filter (STU-002, P17).
   - Student 360 Overview (STU-004), structured profile (STU-005), notes (STU-006), Activities/History (STU-007).
@@ -269,7 +270,8 @@ Features: STU-001..007, STU-010, HO-003, HO-004, ADM-003, ADM-004 (12).
     - change Docs Walk-in Student's counselor A → B with a reason, then back (ADM-003).
   - Counselor-side view of each reassignment (STU-010).
   - Super Admin: the counselor column is absent (shot for the "What each role sees" table).
-- [ ] Snapshot `after-s6`.
+- [x] Snapshot `after-s6`.
+- S6 as run: self-registered student uses `docs.self.student@example.com`; Ananya's seeded agency application moved from Ritika to Counselor A (its 360 now in A's caseload). Long 360 tabs are element shots of `main` (full-page shots repeat the sticky sidebar).
 
 ### S7 — Applications, offers, documents
 Features: APP-001..010, OFR-001..003, DOC-001..004 (17).

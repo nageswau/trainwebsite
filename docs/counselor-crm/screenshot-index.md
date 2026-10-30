@@ -116,3 +116,33 @@ Capture settings: Chromium, 1440 × 900, light, `deviceScaleFactor` 1, locale `e
 | `calendar/05-calendar-feed-off.png` | DOC-CNS-CAL-002 | Counselor | Calendar feed off | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
 | `calendar/06-calendar-feed-link.png` | DOC-CNS-CAL-002 | Counselor | Link created; feed URL MASKED | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
 | `calendar/08-lead-appointments-after.png` | DOC-CNS-CAL-001 | Counselor | Confirmed / completed / cancelled / scheduled (fullPage) | `counselor/cns-s5-activity.capture.ts` | 2026-10-30 (Day 1) | |
+| `handoffs/06-student-self-registration.png` | DOC-CNS-HO-004 | Visitor | Create Overseas account filled (password masked) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/01-application-tracking.png` | DOC-CNS-STU-001 | Counselor | Application Tracking with Ananya's agency application (Status raw key, P27) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/02-application-filters.png` | DOC-CNS-STU-001 | Counselor | Application filter bar (element shot) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/03-my-students.png` | DOC-CNS-STU-002 | Counselor | My students before admin assignments (element shot) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/04-my-students-source-walk-in.png` | DOC-CNS-STU-002 | Counselor | Source = Walk-in (element shot) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/05-my-students-search.png` | DOC-CNS-STU-002 | Counselor | Search Asha (element shot) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/06-add-walk-in-student.png` | DOC-CNS-STU-003 | Counselor | Add a walk-in student filled (element shot) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/07-walk-in-student-created.png` | DOC-CNS-STU-003 | Counselor | Account created message (element shot) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/08-walk-in-duplicate-email.png` | DOC-CNS-STU-003 | Counselor | Email already exists (element shot) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/09-edit-pending-walk-in.png` | DOC-CNS-STU-003 | Counselor | Edit pending walk-in row (element shot) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/10-resend-link.png` | DOC-CNS-STU-003 | Counselor | New set-password link emailed (element shot) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/11-student-360-overview.png` | DOC-CNS-STU-004 | Counselor | Asha 360 Overview (viewport) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/12-student-360-overview-full.png` | DOC-CNS-STU-004 | Counselor | Asha 360 Overview (element shot of main) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/13-profile-academic.png` | DOC-CNS-STU-005 | Counselor | Academic tab saved (element shot of main) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/14-profile-preferences.png` | DOC-CNS-STU-005 | Counselor | Preferences tab saved (element shot of main) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/15-profile-english.png` | DOC-CNS-STU-005 | Counselor | English tab with IELTS (element shot of main) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/16-profile-page.png` | DOC-CNS-STU-005 | Counselor | Profile page | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/17-student-notes.png` | DOC-CNS-STU-006 | Counselor | Notes page with 2 notes | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/18-tab-activities.png` | DOC-CNS-STU-007 | Counselor | Activities tab (element shot of main) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/19-tab-history.png` | DOC-CNS-STU-007 | Counselor | History tab | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/20-my-students-after-assignment.png` | DOC-CNS-STU-002 / DOC-CNS-STU-010 / DOC-CNS-HO-004 | Counselor | My students incl. Self-registered and Agency (element shot) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/21-my-students-agency.png` | DOC-CNS-STU-002 / DOC-CNS-HO-003 | Counselor | Source = Agency (element shot) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/22-history-counselor-reassigned.png` | DOC-CNS-STU-010 | Counselor | Walk-in student History: two Counselor assigned entries with reasons | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `students/23-counselor-b-after-move-back.png` | DOC-CNS-STU-010 | Counselor B | Counselor B's My students empty after the move back (element shot) | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `admin/12-change-application-counsellor.png` | DOC-CNS-ADM-004 / DOC-CNS-HO-003 | Overseas Admin | Change counsellor Ritika to Docs Counselor A with reason | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `admin/13-application-counsellor-changed.png` | DOC-CNS-ADM-004 | Overseas Admin | Docs Counselor A assigned | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `admin/14-assign-student-counsellor.png` | DOC-CNS-ADM-003 / DOC-CNS-HO-004 | Overseas Admin | Assign counsellor (self-registered), reason optional | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `admin/15-change-student-counsellor-needs-reason.png` | DOC-CNS-ADM-003 | Overseas Admin | Change to B; Save disabled until a reason | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `admin/16-student-counsellor-changed.png` | DOC-CNS-ADM-003 | Overseas Admin | Docs Counselor B assigned | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `admin/17-super-admin-users-no-counsellor-column.png` | DOC-CNS-ADM-003 | Super Admin | /overseas/admin/users without EduSphere counsellor column | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |

@@ -275,6 +275,7 @@ Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 w
 | P24 | (S5, browser) After **Cancel it** on a follow-up, the item shows Cancelled but its reason form stays open | `FollowUpItem.tsx` | FUP-001 |
 | P25 | (S5, browser) "First contact" reminder tasks were created for every handed-over lead and stay open after the lead is closed (Bilal) or returned (Esha) | `counselor_reminders.py` first_contact | TASK-001, FUP-003 |
 | P26 | (S5, browser) Counselor Chat empty state shows a literal "--": "No messages yet -- send the first one below." | `CounselorChatPanel.tsx` | CHAT-001 |
+| P27 | (S6, browser) The counselor's **Application Tracking** table shows the raw stage key in **Status** (e.g. `university_review`) | `portal.py` counselor students section | STU-001, APP-004 |
 | P23 | (Found in S2, browser) The Overseas Admin's **Manage users** table is 716 px wide inside a 500 px panel at 1440 px: the Status badge is clipped and the Action column is off-screen; acting on a row scrolls the name out of view | `/overseas/admin/users`, `AdminUserManagementPanel.tsx` | ADM-002 |
 
 **Default-based behaviours (owner D4).** About 40 counselor decisions are builder defaults marked NEEDS_CONFIRMATION or UNVERIFIED, not owner-approved (appendix 04 §3, column "Authority"). Manual pages describe them as built, with no warning banners. The owner reviews that list separately.
