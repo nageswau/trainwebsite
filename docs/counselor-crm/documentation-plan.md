@@ -125,6 +125,7 @@ apps/web/tests/doc-capture/counselor/   (capture specs, test-only)
 | APP-005 | `user-manual/applications/app-005-sub-status-ready-gate.md` |
 | DOC-001 | `user-manual/documents/doc-001-application-checklist.md` |
 | APP-010 | `user-manual/applications/app-010-agency-vs-direct.md` |
+| FIN-001 | `user-manual/finance/fin-001-deposit.md` |
 | ADM-003 / ADM-004 | `admin-manual/accounts/adm-003-student-counselor.md`, `adm-004-application-counselor.md` |
 | ESC-001 / ESC-002 | `admin-manual/escalation/esc-001-counselor-tasks-admin.md`, `esc-002-overdue-escalation.md` |
 
@@ -273,17 +274,18 @@ Features: STU-001..007, STU-010, HO-003, HO-004, ADM-003, ADM-004 (12).
 - [x] Snapshot `after-s6`.
 - S6 as run: self-registered student uses `docs.self.student@example.com`; Ananya's seeded agency application moved from Ritika to Counselor A (its 360 now in A's caseload). Long 360 tabs are element shots of `main` (full-page shots repeat the sticky sidebar).
 
-### S7 — Applications, offers, documents
+### S7 — Applications, offers, documents — DONE 2026-10-30
 Features: APP-001..010, OFR-001..003, DOC-001..004 (17).
-- [ ] **S7 prep (setup only):** as the Overseas Admin, add **Docs University** (United Kingdom, so the S2 checklist matches; agent commission 10%), publish it, add **Docs MSc Data Science** (PG, course commission 12%) and **Docs MBA** (PG).
-- [ ] Standard loop.
+- [x] **S7 prep (setup only):** as the Overseas Admin, add **Docs University** (United Kingdom, so the S2 checklist matches; agent commission 10%), publish it, add **Docs MSc Data Science** (PG, course commission 12%) and **Docs MBA** (PG).
+- [x] Standard loop.
   - On Docs Converted Student: add application A1 (Docs University / Docs MSc Data Science, intake picker) (APP-001..003).
   - Checklist from the Docs template (DOC-001). Request documents due tomorrow (DOC-003). Upload a document (DOC-004). Documents page (DOC-002, P21).
   - Show the Ready-for-Submission block, then satisfy it (APP-005). Advance stages (APP-004, P12). Application details (APP-008, P14). Journey stage (APP-006). History (APP-009).
   - On Docs Walk-in Student: add application A2 (Docs MBA) and record an outcome / resume (APP-007).
   - Agency vs direct on the seeded agency application (APP-010, P22).
   - On A1: record an offer with expiry **tomorrow**, plus conditions and an interview (OFR-001..003). On A2: an offer with expiry +30 days, accepted (needed by S8).
-- [ ] Snapshot `after-s7`.
+- [x] Snapshot `after-s7`.
+- S7 as run: specs `cns-s7a-university-setup` (set-up) and `cns-s7b-applications`; sample PDFs from `DOCS_FILES_DIR` (scratchpad `files/`). Uploads must be tied to the application to appear in Document Verification (P28). For S8: A2 (Docs Walk-in Student, Docs MBA) has an accepted unconditional offer with deposit GBP 3,000 due +20 days; Ananya's agency application is on Counselor A for the P13 check.
 
 ### S8 — Visa, finance, arrival, universities
 Features: VISA-001, FIN-001..003, ARR-001, ARR-002, UNI-001, UNI-002 (8).
@@ -296,6 +298,7 @@ Features: VISA-001, FIN-001..003, ARR-001, ARR-002, UNI-001, UNI-002 (8).
 ### S9 — Time-based states, dashboards, admin oversight (≥ 3 days after S5)
 Features: FUP-002, FUP-003, ESC-001, ESC-002, DASH-001, SRCH-001, REP-001, PERF-001, PERF-002 (9). Also the CFG-002 **Run now** step.
 - [ ] Confirm the date is ≥ Day 1 + 3 (2026-11-02), and that the 00:05/00:10 jobs have run (expired offer on A1, overdue document request).
+- [ ] OFR-001: A1 offer shows **Expired** (deadline 31 Oct). OFR-002: mark the A1 condition **Met** with `docs-evidence.pdf`. DOC-003: English test request shows **Overdue**.
 - [ ] CAL-001: **Mark no-show** on CAP-000002 (P8 text). TASK-001: the Overseas Admin gives Counselor A a task ("Given by" row, status-only).
 - [ ] Standard loop.
   - As the Overseas Admin: **Run now** on the reminder rules (CFG-002 step), counselor tasks (ESC-001), overdue by counselor + escalation notice (ESC-002), team performance A vs B (PERF-001), one counselor (PERF-002).

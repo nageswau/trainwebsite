@@ -6,14 +6,14 @@
 | Stack used for browser work | `cnsdocs` compose project from worktree `.claude/worktrees/cns-docs` (branch `docs/counselor-crm-user-guide`). Web http://localhost:3050, api :8050, Mailpit 127.0.0.1:8029 via untracked `docker-compose.docs.yml`. Untracked `.env` per plan S2.1. Owner approved Claude starting, seeding, resetting and snapshotting this stack only (2026-10-29). Started 2026-10-30 (S2) at `045d8c40`; seeded; snapshots `after-seed`, `after-s2` in the session scratchpad. |
 | Docs branch | `docs/counselor-crm-user-guide` (from `main` @ `045d8c40`) |
 | Day 1 (D3 calendar) | **2026-10-30** (S5). S9 must run on or after **2026-11-02**. |
-| Last session | S6 Students and the Student 360 — 2026-10-30 |
-| Next session | S7 — Docs University set-up, applications, offers, documents (any day; S9 not before 2026-11-02) |
+| Last session | S7 Applications, offers, documents — 2026-10-30 |
+| Next session | S8 — Visa, finance, arrival, universities (any day; S9 not before 2026-11-02) |
 
 **Column values:** Code Reviewed YES / PARTIAL / NO (YES at S1 = reviewed from source at `045d8c40`, evidence in `discovery/`) · Browser Verified YES / PARTIAL / NO · Screenshot YES / NO / N/A · Documented YES / DRAFT / NO · Reviewed PASSED / FAILED / NO.
 
 A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Reviewed = PASSED.
 
-**Totals (after S6):** 85 features · 85 code-reviewed · 43 browser-verified (+5 partial) · 43 documented (+5 draft) · 0 COMPLETE.
+**Totals (after S7):** 85 features · 85 code-reviewed · 57 browser-verified (+8 partial) · 57 documented (+8 draft) · 0 COMPLETE.
 
 | ID | Module | Feature | Session | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|---|
@@ -63,23 +63,23 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | DOC-CNS-STU-008 | Students | Archive a student / Archived Students | S10 | YES | NO | NO | NO | NO |
 | DOC-CNS-STU-009 | Students | Overseas consent (read only for staff) | S10 | YES | NO | NO | NO | NO |
 | DOC-CNS-STU-010 | Students | When a student or application is reassigned to you | S6 | YES | YES | YES | YES | NO |
-| DOC-CNS-APP-001 | Applications | Add an application from the 360 | S7 | YES | NO | NO | NO | NO |
-| DOC-CNS-APP-002 | Applications | Intake Month YYYY picker | S7 | YES | NO | NO | NO | NO |
-| DOC-CNS-APP-003 | Applications | Applications tab list (EduSphere ID) | S7 | YES | NO | NO | NO | NO |
-| DOC-CNS-APP-004 | Applications | Advance an application's stage | S7 | YES | NO | NO | NO | NO |
-| DOC-CNS-APP-005 | Applications | Sub-status and the Ready-for-Submission gate | S7 | YES | NO | NO | NO | NO |
-| DOC-CNS-APP-006 | Applications | Journey stage | S7 | YES | NO | NO | NO | NO |
-| DOC-CNS-APP-007 | Applications | Record an outcome / resume | S7 | YES | NO | NO | NO | NO |
-| DOC-CNS-APP-008 | Applications | Application details (fields and dates) | S7 | YES | NO | NO | NO | NO |
-| DOC-CNS-APP-009 | Applications | Application status history | S7 | YES | NO | NO | NO | NO |
-| DOC-CNS-APP-010 | Applications | Agency vs direct applications | S7 | YES | NO | NO | NO | NO |
-| DOC-CNS-OFR-001 | Offers | Record, close or decide an offer | S7 | YES | NO | NO | NO | NO |
-| DOC-CNS-OFR-002 | Offers | Offer conditions | S7 | YES | NO | NO | NO | NO |
-| DOC-CNS-OFR-003 | Offers | Admission interviews | S7 | YES | NO | NO | NO | NO |
-| DOC-CNS-DOC-001 | Documents | Application document checklist | S7 | YES | NO | NO | NO | NO |
-| DOC-CNS-DOC-002 | Documents | Documents page and document status | S7 | YES | NO | NO | NO | NO |
-| DOC-CNS-DOC-003 | Documents | Request documents from the student | S7 | YES | NO | NO | NO | NO |
-| DOC-CNS-DOC-004 | Documents | Upload a document for the student (incl. offer letter) | S7 | YES | NO | NO | NO | NO |
+| DOC-CNS-APP-001 | Applications | Add an application from the 360 | S7 | YES | YES | YES | YES | NO |
+| DOC-CNS-APP-002 | Applications | Intake Month YYYY picker | S7 | YES | YES | YES | YES | NO |
+| DOC-CNS-APP-003 | Applications | Applications tab list (EduSphere ID) | S7 | YES | YES | YES | YES | NO |
+| DOC-CNS-APP-004 | Applications | Advance an application's stage | S7 | YES | YES | YES | YES | NO |
+| DOC-CNS-APP-005 | Applications | Sub-status and the Ready-for-Submission gate | S7 | YES | YES | YES | YES | NO |
+| DOC-CNS-APP-006 | Applications | Journey stage | S7 | YES | YES | YES | YES | NO |
+| DOC-CNS-APP-007 | Applications | Record an outcome / resume | S7 | YES | YES | YES | YES | NO |
+| DOC-CNS-APP-008 | Applications | Application details (fields and dates) | S7 | YES | YES | YES | YES | NO |
+| DOC-CNS-APP-009 | Applications | Application status history | S7 | YES | YES | YES | YES | NO |
+| DOC-CNS-APP-010 | Applications | Agency vs direct applications | S7 | YES | PARTIAL | YES | DRAFT | NO |
+| DOC-CNS-OFR-001 | Offers | Record, close or decide an offer | S7 | YES | PARTIAL | YES | DRAFT | NO |
+| DOC-CNS-OFR-002 | Offers | Offer conditions | S7 | YES | PARTIAL | YES | DRAFT | NO |
+| DOC-CNS-OFR-003 | Offers | Admission interviews | S7 | YES | YES | YES | YES | NO |
+| DOC-CNS-DOC-001 | Documents | Application document checklist | S7 | YES | YES | YES | YES | NO |
+| DOC-CNS-DOC-002 | Documents | Documents page and document status | S7 | YES | YES | YES | YES | NO |
+| DOC-CNS-DOC-003 | Documents | Request documents from the student | S7 | YES | YES | YES | YES | NO |
+| DOC-CNS-DOC-004 | Documents | Upload a document for the student (incl. offer letter) | S7 | YES | YES | YES | YES | NO |
 | DOC-CNS-VISA-001 | Visa | Start and track a visa case | S8 | YES | NO | NO | NO | NO |
 | DOC-CNS-FIN-001 | Finance | University deposit record | S8 | YES | NO | NO | NO | NO |
 | DOC-CNS-FIN-002 | Finance | Finance tab: fees, payments, deposits, refunds | S8 | YES | NO | NO | NO | NO |
@@ -113,9 +113,10 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | U5 | `shoot.ts` changes (COUNSELOR_ROOT, `#calendar-feed-url` mask, "Demo super admin" mask, `signIn(..., portal)`) are on this branch only; the telecaller/BDM doc branches have not changed shoot.ts, so whichever merges second takes these. | Merge time |
 | U6 | ADM-002 deactivate/reactivate steps and the deactivated sign-in message (AUTH-006) are captured in S10 (Docs Counselor C). | S10 |
 | U7 | CFG-002 **Run reminders now** and populated Recent reminders are captured in S9. | S9 |
-| U8 | Forward links (13 after S6, all to S7–S9 pages) in the S2 admin pages point to pages written in S3–S9 (file names fixed in plan §Planned file names); link check is expected to list them until then. | S3–S9 |
+| U8 | Forward links (10 after S7, all to S8–S9 pages) in the S2 admin pages point to pages written in S3–S9 (file names fixed in plan §Planned file names); link check is expected to list them until then. | S3–S9 |
 | U10 | LEAD-009 milestone rows and the Converted badge need an application/enrolment (S7–S8). | S7/S8 |
 | U11 | CAL-001 **Mark no-show** on CAP-000002 (Docs Lead Farah, 31 Oct 13:00) and the P8 text; TASK-001 admin-given task ("Given by") — both in S9. | S9 |
+| U12 | OFR-001 automatic **Expired** (A1 offer deadline 31 Oct; 00:10 IST job) and the overdue English test request (due 31 Oct) — S9. OFR-002 mark a condition **Met** with evidence — S9. APP-010 agency enrolment check (P13) — S8. | S8/S9 |
 | U9 | Docs University + Docs MSc Data Science / Docs MBA (commission 10% / 12%) moved from S2 to S7 prep (University Master add → publish → add courses). | S7 |
 
 ## Discovered functionality (outside the 85 IDs)
@@ -140,3 +141,4 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | S4 | 2026-10-30 | (this commit) | Docs Telecaller password; telecaller created Asha/Bilal/Esha and handed them to Counselor A; website enquiry Chen auto-assigned and handed over; Counselor A walk-in Divya, duplicate panel, next action, Qualified, details, qualification, convert Asha, close Bilal (lost reason), return Esha, link/unlink Divya. 37 PNGs; 12 documented + LEAD-009 draft; P2 confirmed. |
 | S5 | 2026-10-30 | (this commit) | Day 1. Telecaller added Farah/Gita/Hari and booked CAP-000001..4 with Counselor A (one open appointment per lead; 60-min slots can't overlap); on Divya: 2 calls, WhatsApp record, email (delivered to Mailpit), meeting, note, follow-ups (2 open due 31 Oct + Chen 31 Oct 12:00, 1 done, 1 rescheduled, 1 cancelled); tasks (SOP checklist due 31 Oct open, pipeline review +7, 1 done, 1 cancelled); chat to Asha; calendar feed created (URL masked); CAP-000001 completed, CAP-000003 confirmed, CAP-000004 cancelled. 27 PNGs; 10 documented + CAL-001 draft; P10 confirmed; P24–P26 found. |
 | S6 | 2026-10-30 | (this commit) | Self-registered student (example.com); Counselor A added Docs Walk-in Student + Docs Pending Walk-in (edit, resend, duplicate); Asha 360 profile (academic/preferences/IELTS), 2 notes; OA moved Ananya's agency application Ritika → Counselor A (reason), assigned the self-registered student to A, moved the walk-in student A → B → A with reasons; SA has no counsellor column. 30 PNGs; 12 documented; P27 found. |
+| S7 | 2026-10-30 | (this commit) | S7a: OA created + published Docs University (UK, 10 %) with Docs MSc Data Science (12 %) and Docs MBA. S7b: A1 Asha MSc DS Sep 2027 (APP-000003): uploads tied to A1, Passport/Transcripts verified, English test request due 31 Oct (open), SOP request cancelled, checklist from template, gate blocked then passed (English test/SOP not required), Ready for submission → Submitted → Offer, conditional offer deadline 31 Oct + condition + interview 31 Oct, details, history; A2 walk-in MBA: on hold → resume → unconditional offer accepted. 36 PNGs; 14 documented + 3 draft; P28–P30 found. |

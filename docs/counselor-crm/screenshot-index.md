@@ -146,3 +146,39 @@ Capture settings: Chromium, 1440 × 900, light, `deviceScaleFactor` 1, locale `e
 | `admin/15-change-student-counsellor-needs-reason.png` | DOC-CNS-ADM-003 | Overseas Admin | Change to B; Save disabled until a reason | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
 | `admin/16-student-counsellor-changed.png` | DOC-CNS-ADM-003 | Overseas Admin | Docs Counselor B assigned | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
 | `admin/17-super-admin-users-no-counsellor-column.png` | DOC-CNS-ADM-003 | Super Admin | /overseas/admin/users without EduSphere counsellor column | `counselor/cns-s6-students.capture.ts` | 2026-10-30 | |
+| `applications/01-add-application-form.png` | DOC-CNS-APP-001 / DOC-CNS-APP-002 | Counselor | add application form | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/02-application-created.png` | DOC-CNS-APP-001 | Counselor | application created | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/03-application-duplicate.png` | DOC-CNS-APP-001 | Counselor | application duplicate | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/04-applications-tab.png` | DOC-CNS-APP-003 | Counselor | applications tab | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/05-journey-stage.png` | DOC-CNS-APP-006 | Counselor | journey stage | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/06-applications-tab-after.png` | DOC-CNS-APP-003 | Counselor | applications tab after | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/07-advance-stage.png` | DOC-CNS-APP-004 | Counselor | advance stage (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/08-advanced.png` | DOC-CNS-APP-004 | Counselor | advanced (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/09-ready-for-submission-blocked.png` | DOC-CNS-APP-005 | Counselor | ready for submission blocked (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/09b-ready-for-submission.png` | DOC-CNS-APP-005 | Counselor | ready for submission (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/10-record-outcome-on-hold.png` | DOC-CNS-APP-007 | Counselor | record outcome on hold (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/11-on-hold.png` | DOC-CNS-APP-007 | Counselor | on hold (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/11b-resume-reason.png` | DOC-CNS-APP-007 | Counselor | resume reason (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/12-resumed.png` | DOC-CNS-APP-007 | Counselor | resumed (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/13-application-details-form.png` | DOC-CNS-APP-008 | Counselor | application details form (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/14-application-details.png` | DOC-CNS-APP-008 | Counselor | application details (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/15-status-history.png` | DOC-CNS-APP-009 | Counselor | status history (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/16-agency-application-card.png` | DOC-CNS-APP-010 | Counselor | agency application card (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `applications/17-agency-application-360.png` | DOC-CNS-APP-010 | Counselor | agency application 360 | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `offers/01-record-offer-form.png` | DOC-CNS-OFR-001 | Counselor | record offer form (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `offers/02-offer-recorded.png` | DOC-CNS-OFR-001 | Counselor | offer recorded (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `offers/03-offer-condition-form.png` | DOC-CNS-OFR-002 | Counselor | offer condition form (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `offers/04-offer-conditions.png` | DOC-CNS-OFR-002 | Counselor | offer conditions (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `offers/05-interviews.png` | DOC-CNS-OFR-003 | Counselor | interviews (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `offers/06-interview-result-too-early.png` | DOC-CNS-OFR-003 | Counselor | interview result too early (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `offers/07-offer-accepted.png` | DOC-CNS-OFR-001 | Counselor | offer accepted (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `documents/01-checklist-template-match.png` | DOC-CNS-DOC-001 | Counselor | checklist template match (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `documents/02-checklist.png` | DOC-CNS-DOC-001 | Counselor | checklist (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `documents/02b-checklist-complete.png` | DOC-CNS-DOC-001 | Counselor | checklist complete (element shot of the Evaluate card) | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `documents/03-document-verification.png` | DOC-CNS-DOC-002 | Counselor | document verification | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `documents/03b-document-verification-after.png` | DOC-CNS-DOC-002 | Counselor | document verification after | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `documents/04-review-document.png` | DOC-CNS-DOC-002 | Counselor | review document | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `documents/05-request-document-form.png` | DOC-CNS-DOC-003 | Counselor | request document form | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `documents/06-document-requests.png` | DOC-CNS-DOC-003 | Counselor | document requests | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `documents/07-upload-document-form.png` | DOC-CNS-DOC-004 | Counselor | upload document form | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
+| `documents/08-uploaded.png` | DOC-CNS-DOC-004 | Counselor | uploaded | `counselor/cns-s7b-applications.capture.ts` | 2026-10-30 | |
