@@ -21,6 +21,8 @@ Select **Add interview**. Enter the **Date and time**, **Mode** (**Online**, **I
 ### Step 2 — Record the result after the interview
 Select **Edit interview** and set **Result** to **Passed** or **Not successful**. You can only do this once the interview date has passed; before then you can only mark it **Cancelled**.
 ![Result refused before the interview date](../../screenshots/offers/06-interview-result-too-early.png)
+After the interview date, choose **Passed** (or **Not successful**) and select **Save interview**.
+![Interview result recorded](../../screenshots/offers/09-interview-passed.png)
 
 ## Fields
 | Field | Description | Required | Example |

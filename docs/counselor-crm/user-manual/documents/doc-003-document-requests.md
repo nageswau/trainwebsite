@@ -29,6 +29,8 @@ Select **Send request**. **Request sent to the student.** appears. The student i
 ### Step 3 — Track requests
 Each request shows its status (**Open**, **Uploaded**, **Cancelled**, or **Overdue** once past due), the due date, the application, who requested it and the note. Select **Cancel request** to withdraw an open one. **Request for {name} cancelled.** appears.
 ![Document requests: one open, one cancelled](../../screenshots/documents/06-document-requests.png)
+Once the due date passes, an open request shows **Overdue**, and the "Document request overdue" reminder creates a task for you.
+![Overdue request](../../screenshots/documents/09-request-overdue.png)
 
 ## Fields
 | Field | Description | Required | Example |

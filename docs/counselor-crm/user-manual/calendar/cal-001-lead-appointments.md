@@ -26,7 +26,8 @@ Select **Confirm**. **Appointment confirmed.** appears.
 Once the start time has passed, **Mark completed** and **Mark no-show** appear. For a completed session, add **Outcome notes (optional)** and select **Mark completed**. **Appointment completed.** appears.
 ![Appointment completed](../../screenshots/calendar/02-appointment-completed.png)
 
-VERIFICATION REQUIRED: **Mark no-show** is captured in session S9 (an appointment booked for a later day).
+Select **Mark no-show** when the lead didn't attend. The message reads **Appointment no show.**
+![Appointment marked no-show](../../screenshots/calendar/03-appointment-no-show.png)
 
 ### Step 4 — Reschedule or cancel
 - **Reschedule**: choose a **New date and time (IST)** and an optional reason, then **Save new time**.
@@ -51,7 +52,7 @@ The status changes on the card and in **History**. Your calendar feed updates to
 ## Validation Messages
 | Message | When |
 |---|---|
-| Appointment confirmed. / Appointment completed. / Appointment cancelled. | Success |
+| Appointment confirmed. / Appointment completed. / Appointment cancelled. / Appointment no show. | Success |
 | Add a reason for cancelling. | No reason |
 | Choose the new date and time. / Choose a time in the future | Reschedule time missing or past |
 | The counselor already has an appointment at this time. Busy: {time} | Overlapping booking (seen by the telecaller) |

@@ -299,15 +299,15 @@ Features: VISA-001, FIN-001..003, ARR-001, ARR-002, UNI-001, UNI-002 (8).
 - [x] Snapshot `after-s8`.
 - S8 as run: spec needs `DOCS_WALKIN_ID` (users.id of Docs Walk-in Student) for the admin fee; the visa case needs its checklist documents Verified first.
 
-### S9 — Time-based states, dashboards, admin oversight (≥ 3 days after S5)
+### S9 — Time-based states, dashboards, admin oversight — DONE 2026-10-30 (dates prepared by SQL, owner instruction)
 Features: FUP-002, FUP-003, ESC-001, ESC-002, DASH-001, SRCH-001, REP-001, PERF-001, PERF-002 (9). Also the CFG-002 **Run now** step.
-- [ ] Confirm the date is ≥ Day 1 + 3 (2026-11-02), and that the 00:05/00:10 jobs have run (expired offer on A1, overdue document request).
-- [ ] OFR-001: A1 offer shows **Expired** (deadline 31 Oct). OFR-002: mark the A1 condition **Met** with `docs-evidence.pdf`. DOC-003: English test request shows **Overdue**.
-- [ ] CAL-001: **Mark no-show** on CAP-000002 (P8 text). TASK-001: the Overseas Admin gives Counselor A a task ("Given by" row, status-only).
-- [ ] Standard loop.
+- [x] Confirm the date is ≥ Day 1 + 3 (2026-11-02), and that the 00:05/00:10 jobs have run (expired offer on A1, overdue document request).
+- [x] OFR-001: A1 offer shows **Expired** (deadline 31 Oct). OFR-002: mark the A1 condition **Met** with `docs-evidence.pdf`. DOC-003: English test request shows **Overdue**.
+- [x] CAL-001: **Mark no-show** on CAP-000002 (P8 text). TASK-001: the Overseas Admin gives Counselor A a task ("Given by" row, status-only).
+- [x] Standard loop.
   - As the Overseas Admin: **Run now** on the reminder rules (CFG-002 step), counselor tasks (ESC-001), overdue by counselor + escalation notice (ESC-002), team performance A vs B (PERF-001), one counselor (PERF-002).
   - As Counselor A: overdue follow-ups on Tasks (FUP-002); reminder results and where they appear (FUP-003, P1); dashboard tiles and "View all" (DASH-001, P6); quick search (SRCH-001, P7); My performance (REP-001, P9).
-- [ ] Snapshot `after-s9`.
+- [x] Snapshot `after-s9`.
 
 ### S10 — Lifecycle: archive, consent, restore, deactivate
 Features: STU-008, STU-009, CFG-004 (3). Also adds the deactivate steps to ADM-002 and the deactivated-login message to AUTH-006.

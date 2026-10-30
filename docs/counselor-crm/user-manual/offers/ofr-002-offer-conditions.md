@@ -25,6 +25,10 @@ Select **Add condition**. Enter the **Condition** text, the **Owner** (**Student
 ### Step 3 — Update a condition
 Select **Update condition** and set the **Status**: **Open**, **Met**, **Waived** or **Failed**. Attach **Evidence** (pick a document or upload one) before marking it **Met**. Add a **Note** when it is **Waived** or **Failed**.
 
+![Updating a condition to Met with evidence](../../screenshots/offers/10-condition-met-form.png)
+**Condition updated.** appears and the condition shows **Met**.
+![Condition met](../../screenshots/offers/11-condition-met.png)
+
 When every condition is met, a banner says "All conditions satisfied — the university may now issue an unconditional offer." with a **Record unconditional offer** shortcut.
 
 ## Fields

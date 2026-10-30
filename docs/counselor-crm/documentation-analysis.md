@@ -246,18 +246,18 @@ About 170 to 200 PNGs: at least one per step, plus "what each role sees" variant
 - What the **School Applications** and **Management tasks** sidebar items show to an Overseas counselor. Both are recorded as discovered functionality.
 
 ## 12. Product Findings and Open Questions (owner)
-Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 was confirmed in the browser in S2, P18 in S3, P2 in S4, P10 in S5 and P13 in S8; each is confirmed or dropped in the browser session that covers it.
+Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 was confirmed in the browser in S2, P18 in S3, P2 in S4, P10 in S5, P13 in S8 and P1/P3/P7/P8 in S9; each is confirmed or dropped in the browser session that covers it.
 
 | # | Finding | Evidence | Docs impact |
 |---|---|---|---|
-| P1 | Reminder notifications have no counselor inbox: no Notifications item or page for counselors | `counselor_reminders.py:189`, `navigation.ts:292` | FUP-003 |
+| P1 | **Confirmed S9 (DB: 4 notices for Docs Counselor A, no page).** Reminder notifications have no counselor inbox: no Notifications item or page for counselors | `counselor_reminders.py:189`, `navigation.ts:292` | FUP-003 |
 | P2 | **Confirmed S4.** "Return to telecaller" is offered on closed leads. Returning one clears the owner but stays closed, and keeps no reason in history. The form says "goes back to Follow-up" | `lead_handover.py:124`, `lead_stages.py:53`, `CounselorLeadDetail.tsx:96` | LEAD-008 |
-| P3 | Super Admin opening counselor Leads or Dashboard gets load errors, not an access message | `portal.py:43`, `counselor_dashboard.py:19` | NAV-001, admin README |
+| P3 | **Confirmed S9.** Super Admin opening counselor Leads or Dashboard gets load errors, not an access message | `portal.py:43`, `counselor_dashboard.py:19` | NAV-001, admin README |
 | P4 | Super Admin create-user defaults Division to IT. A counselor created that way cannot sign in at /overseas/login | `WorkflowPanel.tsx:389` | ADM-001 |
 | P5 | Counselor messages say "Ask a telecaller manager…" and "A manager can reopen it…" | `AdminLeadStage.tsx:136`, `lead_follow_ups.py:32` | LEAD-006, FUP-001 |
 | P6 | Dashboard "View all" links open the unfiltered My leads list. My leads has a Priority filter but no Priority column | `CounselorDashboardPanel.tsx:20`, `CounselorLeadsPanel.tsx:75` | DASH-001, LEAD-001 |
-| P7 | Quick-search application hits open a filtered list, not the application. The results text shows a literal "--" | `counselor_search.py:117`, `CounselorQuickSearch.tsx:76` | SRCH-001 |
-| P8 | Appointment no-show success text reads "Appointment no show." | `LeadAppointmentCard.tsx:58` | CAL-001 |
+| P7 | **Confirmed S9.** Quick-search application hits open a filtered list, not the application. The results text shows a literal "--" | `counselor_search.py:117`, `CounselorQuickSearch.tsx:76` | SRCH-001 |
+| P8 | **Confirmed S9.** Appointment no-show success text reads "Appointment no show." | `LeadAppointmentCard.tsx:58` | CAL-001 |
 | P9 | My performance counts IT and Overseas leads together; My leads shows only one division | `counselor_performance.py:32` | REP-001 |
 | P10 | **Confirmed S5.** Cancelled tasks vanish (the UI has a band, but the API never returns them) | `counselor_tasks.py:28` | TASK-001 |
 | P11 | The counselor cannot book a lead appointment from the lead page; "Counselling Scheduled" can be set without one | `leadStages.ts:47` | LEAD-006, CAL-001 |
@@ -279,6 +279,7 @@ Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 w
 | P28 | (S7, browser) A document uploaded as "Not tied to an application" never appears in the counselor's Document Verification queue (it lists only documents of the counselor's applications), so the counselor can't review it | `portal.py` documents section | DOC-002, DOC-004 |
 | P29 | (S7, browser) An application with the legacy status "University review" (seeded agency application) offers **every** stage in **Advance to**, including Enquiry | `CounselorEvaluationPanel.tsx` (`STAGES.indexOf` = -1) | APP-004, APP-010 |
 | P30 | (S7, browser) The **Evaluate Applications** cards are about 240 px wide at 1440 px; checklist rows are clipped at the right (badges, Unlink) | `CounselorEvaluationPanel.tsx` layout | DOC-001, APP-004 |
+| P31 | (S9, browser + DB) The "Overdue work escalated" notice is created for the Overseas Admin, but the Overseas Admin portal has no notifications page or dashboard list to show it | `counselor_reminders.py` escalate, `navigation.ts` overseas/admin | ESC-002 |
 | P23 | (Found in S2, browser) The Overseas Admin's **Manage users** table is 716 px wide inside a 500 px panel at 1440 px: the Status badge is clipped and the Action column is off-screen; acting on a row scrolls the name out of view | `/overseas/admin/users`, `AdminUserManagementPanel.tsx` | ADM-002 |
 
 **Default-based behaviours (owner D4).** About 40 counselor decisions are builder defaults marked NEEDS_CONFIRMATION or UNVERIFIED, not owner-approved (appendix 04 §3, column "Authority"). Manual pages describe them as built, with no warning banners. The owner reviews that list separately.
@@ -286,7 +287,7 @@ Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 w
 **Owner answers recorded for this set (2026-10-29):**
 - **D1** Docs personas plus a `demo-accounts.md` mapping.
 - **D2** Scope: Overseas counselor plus the admin side; IT counselors out.
-- **D3** Time-dependent states are captured on real later days, and reminders/escalation use the Overseas Admin's **Run now**. No SQL back-dating.
+- **D3** Time-dependent states are captured on real later days, and reminders/escalation use the Overseas Admin's **Run now**. No SQL back-dating. **Changed by the owner on 2026-10-30:** S9 states were prepared by moving dates back in the cnsdocs database; affected screenshots are marked "state prepared by data setup".
 - **D4** Default-based behaviours are documented as built and listed here only.
 - **D5** Commission fields are shown with Docs test values only.
 - **D6** The `cnsdocs` stack (3050/8050/8029) may be started, seeded, reset and snapshotted by Claude.

@@ -33,8 +33,12 @@ Tasks are grouped in bands by IST day: **Overdue**, **Today**, **Upcoming** and 
 ![Cancel task confirmation](../../screenshots/tasks/04-cancel-task-confirm.png)
 ![My tasks with Upcoming and Done bands](../../screenshots/tasks/05-my-tasks-bands.png)
 
+### Tasks the Overseas Admin gives you
+A task the Overseas Admin adds for you shows "Given by {name}". You can **Mark done** or **Cancel task**, but not edit it.
+![Task given by the Overseas Admin, and a reminder task](../../screenshots/tasks/07-task-given-by-admin.png)
+
 ### Reminder tasks
-Tasks such as **First contact: LD-000003** are created automatically by the reminder rules, for example when a lead is handed to you. See [Automatic reminders](../follow-ups/fup-003-automatic-reminders.md).
+Tasks such as **First contact: LD-000003** or **Chase overdue document: English test** are created automatically by the reminder rules, for example when a lead is handed to you. See [Automatic reminders](../follow-ups/fup-003-automatic-reminders.md).
 
 ## Fields
 | Field | Description | Required | Example |

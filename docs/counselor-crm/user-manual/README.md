@@ -18,15 +18,15 @@ How an Overseas counselor works in EduSphere: from the first conversation with a
 ## Your day
 | Page | What it covers |
 |---|---|
-| Counselor dashboard *(coming — S9)* | Action tiles |
-| Quick search *(coming — S9)* | Find a lead, student or application |
+| [Counselor dashboard](dashboard/dash-001-dashboard.md) | Action sections |
+| [Quick search](dashboard/srch-001-quick-search.md) | Find a lead, student or application |
 | [My tasks](tasks/task-001-my-tasks.md) | Your to-do list and reminder tasks |
-| Overdue follow-ups *(coming — S9)* | Follow-ups past due |
-| Automatic reminders *(coming — S9)* | What the reminder rules create for you |
+| [Overdue follow-ups](follow-ups/fup-002-overdue-follow-ups.md) | Follow-ups past due |
+| [Automatic reminders](follow-ups/fup-003-automatic-reminders.md) | What the reminder rules create for you |
 | [Lead appointments](calendar/cal-001-lead-appointments.md) | Counselling sessions telecallers book with you |
 | [Calendar and iCal feed](calendar/cal-002-calendar-feed.md) | Appointments in your own calendar |
 | [Counselor Chat](chat/chat-001-counselor-chat.md) | Messages with your students |
-| My performance *(coming — S9)* | Your own figures |
+| [My performance](reports/rep-001-my-performance.md) | Your own figures |
 
 ## Leads
 | Page | What it covers |

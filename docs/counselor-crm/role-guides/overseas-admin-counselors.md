@@ -16,7 +16,8 @@ You run the counselor team: you create counselors, decide who handles which stud
 - **Assign new work:**
   - New agency applications arrive unassigned. Filter **Applications** by **Counsellor = Not assigned** and [assign a counselor](../admin-manual/accounts/adm-004-application-counselor.md).
   - Self-registered students need a counselor too: [assign on Users](../admin-manual/accounts/adm-003-student-counselor.md).
-- **Overdue work:** the escalation notice and the counselor tasks view (coming in S9) show who is behind.
+- **Overdue work:** check [Overdue by counselor](../admin-manual/escalation/esc-002-overdue-escalation.md) on **Counselor tasks**, and [give a counselor a task](../admin-manual/escalation/esc-001-counselor-tasks-admin.md) when needed.
+- **Monthly:** compare counselors on [Team performance](../admin-manual/performance/perf-001-team-performance.md).
 
 ## When things change
 | Situation | What to do |

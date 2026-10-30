@@ -40,7 +40,9 @@ Select **Save offer**.
 ### Step 4 — Close an offer
 **Close offer** marks it **Withdrawn by university** or **Expired**, with a reason. The offer stays in the history and the application keeps its stage. **Record new offer** adds a replacement; the old one becomes **Superseded**.
 
-VERIFICATION REQUIRED: the automatic **Expired** status, set by the nightly job after the offer deadline, is captured in session S9.
+Each night (00:10 IST) EduSphere marks a current offer whose deadline has passed without a decision as **Expired**, with the reason "Offer deadline {date} passed without a decision". The application keeps its stage; select **Record offer** to record a new one.
+![Offer expired](../../screenshots/offers/08-offer-expired.png)
+(The expired state in this screenshot was prepared by moving the test deadline back in the documentation database.)
 
 ## Fields
 | Field | Description | Required | Example |

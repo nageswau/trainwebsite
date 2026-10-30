@@ -9,11 +9,12 @@ You guide students from their first conversation to their first week at a univer
 - The sidebar takes you everywhere: [Portal tour](../user-manual/navigation/nav-001-portal-tour.md). On a phone, sign out from **My profile** → **Logout**: [Sign out](../user-manual/account-access/auth-006-sign-out.md).
 
 ## A typical day
-1. **Start on Tasks.** [My tasks](../user-manual/tasks/task-001-my-tasks.md) shows what is overdue, due today and upcoming, including reminder tasks such as "First contact".
-2. **Confirm today's appointments.** Use [Lead appointments](../user-manual/calendar/cal-001-lead-appointments.md), and keep them in your own calendar with the [calendar feed](../user-manual/calendar/cal-002-calendar-feed.md).
-3. **Work your leads.** Open each lead from [My leads](../user-manual/leads/lead-001-my-leads.md).
-4. **Move applications forward.** Use **Evaluate Applications** on the **Students** page ([Advance stage](../user-manual/applications/app-004-advance-stage.md)).
-5. **Clear the document queue.** Review documents in [Document Verification](../user-manual/documents/doc-002-documents-and-status.md).
+1. **Start on the dashboard.** The [Counselor dashboard](../user-manual/dashboard/dash-001-dashboard.md) lists overdue follow-ups and tasks first; [Quick search](../user-manual/dashboard/srch-001-quick-search.md) finds anyone.
+2. **Then Tasks.** [My tasks](../user-manual/tasks/task-001-my-tasks.md) shows what is overdue, due today and upcoming, including reminder tasks such as "First contact".
+3. **Confirm today's appointments.** Use [Lead appointments](../user-manual/calendar/cal-001-lead-appointments.md), and keep them in your own calendar with the [calendar feed](../user-manual/calendar/cal-002-calendar-feed.md).
+4. **Work your leads.** Open each lead from [My leads](../user-manual/leads/lead-001-my-leads.md).
+5. **Move applications forward.** Use **Evaluate Applications** on the **Students** page ([Advance stage](../user-manual/applications/app-004-advance-stage.md)).
+6. **Clear the document queue.** Review documents in [Document Verification](../user-manual/documents/doc-002-documents-and-status.md).
 
 ## Workflow 1: from handover to student account
 | Step | Page |

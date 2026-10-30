@@ -31,7 +31,10 @@ Scroll to **Recent reminders** to see what the rules have created (When · Rule 
 ![Recent reminders, empty](../../screenshots/config/07-recent-reminders-empty.png)
 
 ### Step 4 — Run reminders now
-VERIFICATION REQUIRED (captured in session S9, when there are overdue items). The rules run every day at 08:15 IST. **Run reminders now** runs them immediately. Running it again never sends the same reminder twice.
+The rules run every day at 08:15 IST. Select **Run reminders now** to run them immediately; the result says, for example, **9 new reminders · 0 already sent.** Running it again never sends the same reminder twice. **Recent reminders** then lists each reminder with when it ran, the rule, what it is about, the task it created and how many people were told.
+![Run reminders now](../../screenshots/config/11-run-reminders-now.png)
+![Recent reminders after a run](../../screenshots/config/12-recent-reminders.png)
+(The overdue items in these two screenshots were prepared by moving test dates back in the documentation database.)
 
 ## The rules
 | Rule | Creates | Days setting | Range | Can remind the student |
@@ -54,6 +57,7 @@ Students are reminded only on direct applications, through the channels they opt
 | Message | When |
 |---|---|
 | Saved. | The rule was saved |
+| {n} new reminders · {m} already sent. | After **Run reminders now** |
 | Choose a whole number from {min} to {max} | The number is outside the rule's range |
 
 ## Common Errors

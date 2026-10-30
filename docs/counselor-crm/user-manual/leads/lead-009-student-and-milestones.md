@@ -21,7 +21,10 @@ After [conversion](../conversion/conv-001-convert-to-student.md) or [linking](..
 ### Step 2 — Follow the milestones
 As the student's applications move on, each milestone is listed with its kind, label, status, reference and time. When the student enrols, the panel shows a **Converted** badge and the lead's stage becomes **Converted** automatically.
 
-VERIFICATION REQUIRED: milestone rows and the **Converted** badge are captured once applications exist (S7–S8).
+For example: "Overseas application · Docs University — Offer · 30 Oct 2026".
+![Milestones with an application](../../screenshots/leads/24-milestones-with-application.png)
+
+VERIFICATION REQUIRED: the **Converted** badge (a lead whose student has enrolled) was not captured.
 
 ## Expected Result
 You can tell from the lead whether the student has applied or enrolled.

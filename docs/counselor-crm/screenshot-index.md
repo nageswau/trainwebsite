@@ -201,3 +201,35 @@ Capture settings: Chromium, 1440 × 900, light, `deviceScaleFactor` 1, locale `e
 | `universities/02-search.png` | DOC-CNS-UNI-001 | Counselor | search | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
 | `universities/03-university-360.png` | DOC-CNS-UNI-002 | Counselor | university 360 | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
 | `universities/04-university-360-full.png` | DOC-CNS-UNI-002 | Counselor | university 360 full | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `config/11-run-reminders-now.png` | DOC-CNS-CFG-002 | Overseas Admin | 9 new reminders · 0 already sent · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `config/12-recent-reminders.png` | DOC-CNS-CFG-002 / DOC-CNS-ESC-002 | Overseas Admin | Recent reminders with escalations (element shot) · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `escalation/01-counselor-tasks.png` | DOC-CNS-ESC-001 | Overseas Admin | Counselor tasks page · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `escalation/02-add-task-for-counselor.png` | DOC-CNS-ESC-001 | Overseas Admin | Add a task for Docs Counselor A (element shot) | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `escalation/03-counselor-tasks-overdue.png` | DOC-CNS-ESC-001 | Overseas Admin | Show = Overdue · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `escalation/04-overdue-by-counselor.png` | DOC-CNS-ESC-002 | Overseas Admin | Overdue by counselor (element shot) · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `escalation/06-super-admin-counselor-tasks.png` | DOC-CNS-ESC-001 | Super Admin | Counselor tasks opened by address (Overseas Admin sidebar) | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `escalation/07-super-admin-performance.png` | DOC-CNS-PERF-001 | Super Admin | Counselor performance opened by address | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `escalation/08-super-admin-counselor-leads.png` | DOC-CNS-NAV-001 (P3) | Super Admin | Counselor My leads: Unable to load your leads. | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `escalation/09-super-admin-counselor-dashboard.png` | DOC-CNS-NAV-001 (P3) | Super Admin | Counselor dashboard: sections unavailable | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `performance/01-team-performance.png` | DOC-CNS-PERF-001 | Overseas Admin | Team performance, this month | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `performance/02-team-performance-full.png` | DOC-CNS-PERF-001 | Overseas Admin | Team performance with definitions (element shot) | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `performance/03-counselor-report.png` | DOC-CNS-PERF-002 | Overseas Admin | Docs Counselor A report (element shot) | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `dashboard/01-dashboard.png` | DOC-CNS-DASH-001 | Counselor | Dashboard top · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `dashboard/02-dashboard-full.png` | DOC-CNS-DASH-001 | Counselor | Dashboard all sections (element shot) · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `dashboard/03-follow-ups-due-overdue.png` | DOC-CNS-DASH-001 | Counselor | Follow-ups due with Overdue tags (element shot) · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `dashboard/04-quick-search-results.png` | DOC-CNS-SRCH-001 | Counselor | Search Asha: lead, student, application (element shot) | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `dashboard/05-quick-search-nothing.png` | DOC-CNS-SRCH-001 | Counselor | No matches (element shot) | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `dashboard/06-quick-search-application-opens.png` | DOC-CNS-SRCH-001 | Counselor | Application hit opens filtered Application Tracking (P7) | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `tasks/06-my-tasks-overdue.png` | DOC-CNS-TASK-001 / DOC-CNS-FUP-002 | Counselor | My tasks with Overdue band (element shot) · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `tasks/07-task-given-by-admin.png` | DOC-CNS-TASK-001 / DOC-CNS-FUP-003 | Counselor | Given by Overseas Administrator; Chase overdue document reminder task | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `follow-ups/03-overdue-follow-ups.png` | DOC-CNS-FUP-002 | Counselor | Overdue follow-ups · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `offers/08-offer-expired.png` | DOC-CNS-OFR-001 | Counselor | A1 offer Expired (element shot) · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `offers/09-interview-passed.png` | DOC-CNS-OFR-003 | Counselor | Interview result Passed (element shot) · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `offers/10-condition-met-form.png` | DOC-CNS-OFR-002 | Counselor | Update condition: Met + evidence (element shot) | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `offers/11-condition-met.png` | DOC-CNS-OFR-002 | Counselor | Condition updated (element shot) | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `documents/09-request-overdue.png` | DOC-CNS-DOC-003 | Counselor | English test request Overdue (element shot) · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `leads/24-milestones-with-application.png` | DOC-CNS-LEAD-009 | Counselor | Milestone row for the application (element shot) | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `calendar/03-appointment-no-show.png` | DOC-CNS-CAL-001 | Counselor | CAP-000002 no-show (Appointment no show.) · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `reports/01-my-performance.png` | DOC-CNS-REP-001 | Counselor | My performance top | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `reports/02-my-performance-full.png` | DOC-CNS-REP-001 | Counselor | My performance full (element shot) | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `reports/03-my-performance-overseas.png` | DOC-CNS-REP-001 | Counselor | Lead division = Overseas | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |

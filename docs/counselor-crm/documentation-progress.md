@@ -5,15 +5,15 @@
 | Code baseline | `main` @ `045d8c40` (S1 discovery). Record any later `main` used for browser work here, with the affected features re-checked. |
 | Stack used for browser work | `cnsdocs` compose project from worktree `.claude/worktrees/cns-docs` (branch `docs/counselor-crm-user-guide`). Web http://localhost:3050, api :8050, Mailpit 127.0.0.1:8029 via untracked `docker-compose.docs.yml`. Untracked `.env` per plan S2.1. Owner approved Claude starting, seeding, resetting and snapshotting this stack only (2026-10-29). Started 2026-10-30 (S2) at `045d8c40`; seeded; snapshots `after-seed`, `after-s2` in the session scratchpad. |
 | Docs branch | `docs/counselor-crm-user-guide` (from `main` @ `045d8c40`) |
-| Day 1 (D3 calendar) | **2026-10-30** (S5). S9 must run on or after **2026-11-02**. |
-| Last session | S11 Guides and supporting pages (early) — 2026-10-30 |
-| Next session | S9 — Time-based states, dashboards, admin oversight (**not before 2026-11-02**); S10 lifecycle can run first |
+| Day 1 (D3 calendar) | **2026-10-30** (S5). **Owner changed D3 on 2026-10-30:** instead of waiting, open Day-1 items were moved 4 days back by SQL in the cnsdocs database (follow-ups, tasks, A1 offer deadline, English test request, interview, CAP-000002) and the offer/document expiry jobs were run by hand; snapshot `s9-prepared`. Screenshots of those states say "state prepared by data setup". |
+| Last session | S9 Time-based states, dashboards, admin oversight — 2026-10-30 |
+| Next session | S10 — Lifecycle: archive, consent, restore, deactivate (then refresh S11, S12 review) |
 
 **Column values:** Code Reviewed YES / PARTIAL / NO (YES at S1 = reviewed from source at `045d8c40`, evidence in `discovery/`) · Browser Verified YES / PARTIAL / NO · Screenshot YES / NO / N/A · Documented YES / DRAFT / NO · Reviewed PASSED / FAILED / NO.
 
 A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Reviewed = PASSED.
 
-**Totals (after S8):** 85 features · 85 code-reviewed · 66 browser-verified (+7 partial) · 66 documented (+7 draft) · 0 COMPLETE.
+**Totals (after S9):** 85 features · 85 code-reviewed · 79 browser-verified + documented · 3 partial/draft (LEAD-009 Converted badge; AUTH-006 and ADM-002 deactivation) · 3 not started (STU-008, STU-009, CFG-004 in S10) · 0 COMPLETE (Reviewed in S12).
 
 | ID | Module | Feature | Session | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|---|
@@ -24,8 +24,8 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | DOC-CNS-AUTH-005 | Account access | My profile | S3 | YES | YES | YES | YES | NO |
 | DOC-CNS-AUTH-006 | Account access | Sign out, ended sessions, deactivated account | S3 | YES | PARTIAL | YES | DRAFT | NO |
 | DOC-CNS-NAV-001 | Navigation | Portal tour: 15-item sidebar, top bar, mobile menu | S3 | YES | YES | YES | YES | NO |
-| DOC-CNS-DASH-001 | Dashboard | Counselor dashboard (action tiles + application table) | S9 | YES | NO | NO | NO | NO |
-| DOC-CNS-SRCH-001 | Dashboard | Quick search | S9 | YES | NO | NO | NO | NO |
+| DOC-CNS-DASH-001 | Dashboard | Counselor dashboard (action tiles + application table) | S9 | YES | YES | YES | YES | NO |
+| DOC-CNS-SRCH-001 | Dashboard | Quick search | S9 | YES | YES | YES | YES | NO |
 | DOC-CNS-LEAD-001 | Leads | My leads list | S4 | YES | YES | YES | YES | NO |
 | DOC-CNS-LEAD-002 | Leads | Record a new walk-in lead | S4 | YES | YES | YES | YES | NO |
 | DOC-CNS-LEAD-003 | Leads | Lead detail page layout | S4 | YES | YES | YES | YES | NO |
@@ -45,12 +45,12 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | DOC-CNS-ACT-006 | Activity | Lead activity timeline | S5 | YES | YES | YES | YES | NO |
 | DOC-CNS-CHAT-001 | Chat | Counselor Chat with students | S5 | YES | YES | YES | YES | NO |
 | DOC-CNS-FUP-001 | Follow-ups | Follow-ups on a lead | S5 | YES | YES | YES | YES | NO |
-| DOC-CNS-FUP-002 | Follow-ups | Overdue follow-ups on the Tasks page | S9 | YES | NO | NO | NO | NO |
-| DOC-CNS-FUP-003 | Follow-ups | Automatic reminders (what triggers them, where they show) | S9 | YES | NO | NO | NO | NO |
+| DOC-CNS-FUP-002 | Follow-ups | Overdue follow-ups on the Tasks page | S9 | YES | YES | YES | YES | NO |
+| DOC-CNS-FUP-003 | Follow-ups | Automatic reminders (what triggers them, where they show) | S9 | YES | YES | YES | YES | NO |
 | DOC-CNS-TASK-001 | Tasks | My tasks | S5 | YES | YES | YES | YES | NO |
-| DOC-CNS-CAL-001 | Calendar | Appointments page and lead appointments | S5 | YES | PARTIAL | YES | DRAFT | NO |
+| DOC-CNS-CAL-001 | Calendar | Appointments page and lead appointments | S5 | YES | YES | YES | YES | NO |
 | DOC-CNS-CAL-002 | Calendar | Calendar and iCal feed | S5 | YES | YES | YES | YES | NO |
-| DOC-CNS-REP-001 | Reports | My performance | S9 | YES | NO | NO | NO | NO |
+| DOC-CNS-REP-001 | Reports | My performance | S9 | YES | YES | YES | YES | NO |
 | DOC-CNS-UNI-001 | Universities | Partner universities list | S8 | YES | YES | YES | YES | NO |
 | DOC-CNS-UNI-002 | Universities | University 360 view (incl. course commission display) | S8 | YES | YES | YES | YES | NO |
 | DOC-CNS-STU-001 | Students | Students page: Application Tracking table and filters | S6 | YES | YES | YES | YES | NO |
@@ -73,8 +73,8 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | DOC-CNS-APP-008 | Applications | Application details (fields and dates) | S7 | YES | YES | YES | YES | NO |
 | DOC-CNS-APP-009 | Applications | Application status history | S7 | YES | YES | YES | YES | NO |
 | DOC-CNS-APP-010 | Applications | Agency vs direct applications | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-OFR-001 | Offers | Record, close or decide an offer | S7 | YES | PARTIAL | YES | DRAFT | NO |
-| DOC-CNS-OFR-002 | Offers | Offer conditions | S7 | YES | PARTIAL | YES | DRAFT | NO |
+| DOC-CNS-OFR-001 | Offers | Record, close or decide an offer | S7 | YES | YES | YES | YES | NO |
+| DOC-CNS-OFR-002 | Offers | Offer conditions | S7 | YES | YES | YES | YES | NO |
 | DOC-CNS-OFR-003 | Offers | Admission interviews | S7 | YES | YES | YES | YES | NO |
 | DOC-CNS-DOC-001 | Documents | Application document checklist | S7 | YES | YES | YES | YES | NO |
 | DOC-CNS-DOC-002 | Documents | Documents page and document status | S7 | YES | YES | YES | YES | NO |
@@ -94,12 +94,12 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | DOC-CNS-ADM-002 | Admin: accounts | Manage counselor users: set-up status, re-send link, edit, deactivate | S2 | YES | PARTIAL | YES | DRAFT | NO |
 | DOC-CNS-ADM-003 | Admin: accounts | Assign / change a student's counselor (with reason) | S6 | YES | YES | YES | YES | NO |
 | DOC-CNS-ADM-004 | Admin: accounts | Assign / change an application's counselor (with reason) | S6 | YES | YES | YES | YES | NO |
-| DOC-CNS-ESC-001 | Admin: escalation | Counselor tasks (admin view) | S9 | YES | NO | NO | NO | NO |
-| DOC-CNS-ESC-002 | Admin: escalation | Overdue by counselor and the escalation notice | S9 | YES | NO | NO | NO | NO |
-| DOC-CNS-PERF-001 | Admin: performance | Team performance | S9 | YES | NO | NO | NO | NO |
-| DOC-CNS-PERF-002 | Admin: performance | One counselor's report | S9 | YES | NO | NO | NO | NO |
+| DOC-CNS-ESC-001 | Admin: escalation | Counselor tasks (admin view) | S9 | YES | YES | YES | YES | NO |
+| DOC-CNS-ESC-002 | Admin: escalation | Overdue by counselor and the escalation notice | S9 | YES | YES | YES | YES | NO |
+| DOC-CNS-PERF-001 | Admin: performance | Team performance | S9 | YES | YES | YES | YES | NO |
+| DOC-CNS-PERF-002 | Admin: performance | One counselor's report | S9 | YES | YES | YES | YES | NO |
 | DOC-CNS-CFG-001 | Admin: config | Document checklist templates | S2 | YES | YES | YES | YES | NO |
-| DOC-CNS-CFG-002 | Admin: config | Reminder rules and Run now | S2 | YES | PARTIAL | YES | DRAFT | NO |
+| DOC-CNS-CFG-002 | Admin: config | Reminder rules and Run now | S2 | YES | YES | YES | YES | NO |
 | DOC-CNS-CFG-003 | Admin: config | Counselor message templates | S2 | YES | YES | YES | YES | NO |
 | DOC-CNS-CFG-004 | Admin: config | Archived students: admin restore | S10 | YES | NO | NO | NO | NO |
 
@@ -113,7 +113,7 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | U5 | `shoot.ts` changes (COUNSELOR_ROOT, `#calendar-feed-url` mask, "Demo super admin" mask, `signIn(..., portal)`) are on this branch only; the telecaller/BDM doc branches have not changed shoot.ts, so whichever merges second takes these. | Merge time |
 | U6 | ADM-002 deactivate/reactivate steps and the deactivated sign-in message (AUTH-006) are captured in S10 (Docs Counselor C). | S10 |
 | U7 | CFG-002 **Run reminders now** and populated Recent reminders are captured in S9. | S9 |
-| U8 | Forward links (9 after S8, all to S9 pages) in the S2 admin pages point to pages written in S3–S9 (file names fixed in plan §Planned file names); link check is expected to list them until then. | S3–S9 |
+| U8 | Forward links — none after S9 in the S2 admin pages point to pages written in S3–S9 (file names fixed in plan §Planned file names); link check is expected to list them until then. | S3–S9 |
 | U10 | LEAD-009 milestone rows and the Converted badge need an application/enrolment (S7–S8). | S7/S8 |
 | U11 | CAL-001 **Mark no-show** on CAP-000002 (Docs Lead Farah, 31 Oct 13:00) and the P8 text; TASK-001 admin-given task ("Given by") — both in S9. | S9 |
 | U12 | OFR-001 automatic **Expired** (A1 offer deadline 31 Oct; 00:10 IST job) and the overdue English test request (due 31 Oct) — S9. OFR-002 mark a condition **Met** with evidence — S9. APP-010/P13 checked in S8 (counselor gets the Confirm enrolment form on an agency application; not submitted). | S8/S9 |
@@ -133,6 +133,7 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | Converted lead's qualification copied to the profile | STU-005 | Asha's lead qualification became Qualification 1 on her profile. |
 | Visa checklist gate | VISA-001 | A visa case can't move past preparation until every visa checklist document is uploaded and Verified ("Cannot advance past the checklist stage -- not yet verified: …"). |
 | Enrolment before visa | ARR-001 | Enrolment can be confirmed with no visa decision. |
+| Escalation notice has no page | ESC-002 | The Overseas Admin received the "Overdue work escalated" notification (DB), but the Overseas Admin portal has no notifications page or dashboard notice list (P31). |
 | Admin sign-in demo card | `/admin/login` | Titled "Demo super admin" (not "Demo accounts"), so the old `shoot()` mask missed it; mask extended in S2. |
 
 ## Session log
@@ -147,3 +148,4 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | S7 | 2026-10-30 | (this commit) | S7a: OA created + published Docs University (UK, 10 %) with Docs MSc Data Science (12 %) and Docs MBA. S7b: A1 Asha MSc DS Sep 2027 (APP-000003): uploads tied to A1, Passport/Transcripts verified, English test request due 31 Oct (open), SOP request cancelled, checklist from template, gate blocked then passed (English test/SOP not required), Ready for submission → Submitted → Offer, conditional offer deadline 31 Oct + condition + interview 31 Oct, details, history; A2 walk-in MBA: on hold → resume → unconditional offer accepted. 36 PNGs; 14 documented + 3 draft; P28–P30 found. |
 | S8 | 2026-10-30 | (this commit) | OA created a manual INR 15,000 fee for the walk-in student; A2: deposit GBP 3,000 Pending, payment proof + deposit receipt uploaded; passport (tied to A2) + offer letter verified; visa case Passport+Offer letter → Preparing → Appointment booked → Submitted → Decision pending → Approved; enrolment confirmed; arrival + orientation saved. Ananya advanced to Offer and the Enrolment form opened (P13 confirmed, not submitted). Universities list + Docs University 360 (no commission shown). 19 PNGs; 8 documented, APP-010 completed. |
 | S11 | 2026-10-30 | (this commit) | Written early (owner choice): user-manual/README, admin-manual/README (Super Admin differences), role guides (counselor, Overseas Admin, Super Admin), demo-accounts, FAQ, troubleshooting. To be refreshed after S9/S10. |
+| S9 | 2026-10-30 | (this commit) | Owner instruction: Day-1 items back-dated 4 days by SQL + expiry jobs run by hand. OA Run reminders now (9 new: 8 escalations + document-overdue task), counselor tasks (+ task given to A), overdue by counselor, team + one-counselor performance; counselor dashboard, quick search (P7 confirmed), tasks/overdue follow-ups, expired offer, condition met on A2, interview passed, request overdue, milestone row, CAP-000002 no-show (P8 confirmed), My performance; SA checks (P3 confirmed). 32 PNGs; 9 new pages + 7 drafts completed; READMEs/role guides linked; P1 confirmed (DB), P31 found. |

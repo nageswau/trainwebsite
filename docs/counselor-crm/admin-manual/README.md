@@ -13,10 +13,10 @@ For the **Overseas Admin**, who creates counselors, assigns students and applica
 ## Oversight
 | Page | What it covers |
 |---|---|
-| Counselor tasks (admin view) *(coming — S9)* | Every counselor's tasks; giving a counselor a task |
-| Overdue by counselor and the escalation notice *(coming — S9)* | Who is behind |
-| Team performance *(coming — S9)* | Counselors compared |
-| One counselor's report *(coming — S9)* | One counselor in detail |
+| [Counselor tasks (admin view)](escalation/esc-001-counselor-tasks-admin.md) | Every counselor's tasks; giving a counselor a task |
+| [Overdue by counselor and the escalation notice](escalation/esc-002-overdue-escalation.md) | Who is behind |
+| [Team performance](performance/perf-001-team-performance.md) | Counselors compared |
+| [One counselor's report](performance/perf-002-counselor-report.md) | One counselor in detail |
 
 ## Configuration
 | Page | What it covers |
@@ -31,12 +31,12 @@ For the **Overseas Admin**, who creates counselors, assigns students and applica
 |---|---|
 | Creating a counselor | On **Users**, **Division** starts on **it**; choose **overseas** or the counselor can't use the Overseas portal ([details](accounts/adm-001-create-counselor.md)) |
 | Assigning counselors to students or applications | Not available: no **EduSphere counsellor** column, and the server refuses |
-| Counselor tasks, performance, checklists, reminder rules, message templates † | Open by address only (not in the Super Admin sidebar); the page shows the Overseas Admin's sidebar |
-| Counselor workspace pages (Leads, Dashboard) † | Open, but show load errors instead of an access message |
+| Counselor tasks, performance, checklists, reminder rules, message templates | Open by address only (not in the Super Admin sidebar); the page shows the Overseas Admin's sidebar |
+| Counselor workspace pages (Leads, Dashboard) | Open, but show "Unable to load your leads." / "Dashboard sections are unavailable right now." instead of an access message |
 | Archived students / restore † | Refused ("Overseas Administrator role required") |
-| Escalation notices † | Not received; only Overseas Admins are told |
+| Escalation notices | Not received; only Overseas Admins are told (and they have no notifications page either) |
 
-† From the code; checked in the browser in sessions S9–S10.
+† From the code; checked in the browser in session S10.
 
 ## Things to know
 - **Moving a lead between counselors** isn't possible from any screen. A counselor can return a lead to its telecaller, who can hand it to another counselor.
