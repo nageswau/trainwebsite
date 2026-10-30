@@ -233,16 +233,17 @@ Features: AUTH-001..006, NAV-001 (7).
   - The deactivated-login message is captured in S10 and added to AUTH-006 then.
 - [x] Snapshot `after-s3`.
 
-### S4 — Leads and handoffs (lead side)
+### S4 — Leads and handoffs (lead side) — DONE 2026-10-30
 Features: HO-001, HO-002, LEAD-001..009, CONV-001, CONV-002 (13).
-- [ ] Standard loop.
+- [x] Standard loop.
   - As Docs Telecaller, hand **Docs Lead Asha** and **Docs Lead Bilal** to Docs Counselor A (HO-001).
   - Submit a public website enquiry → **Docs Lead Chen** (HO-002); the Overseas Admin assigns it if needed.
   - As Counselor A: record walk-in lead **Docs Lead Divya** (LEAD-002); list (LEAD-001); detail, details edit, next action (LEAD-003..005).
   - Stages: move Asha to Qualified; close Bilal as Not Interested with a reason (LEAD-006, P5); qualification (LEAD-007).
   - Return Chen to the telecaller (LEAD-008; also show P2 on Bilal without submitting); milestones panel (LEAD-009).
   - Convert Asha → **Docs Converted Student** (CONV-001); link/unlink an existing student on Divya (CONV-002).
-- [ ] Snapshot `after-s4`.
+- [x] Snapshot `after-s4`.
+- S4 as run: Chen came via auto-distribution (no manager step); Esha (not Chen) was returned; CONV-002 used a walk-in student "Docs Divya Student" with Divya's email (linked, then unlinked, so Divya is at Follow-up). Lead ids are in `DOCS_CNS_FILE`.
 
 ### S5 — Activity, chat, follow-ups, tasks, calendar (= Day 1)
 Features: ACT-001..006, CHAT-001, FUP-001, TASK-001, CAL-001, CAL-002 (11).

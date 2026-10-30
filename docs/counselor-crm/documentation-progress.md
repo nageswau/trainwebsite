@@ -6,14 +6,14 @@
 | Stack used for browser work | `cnsdocs` compose project from worktree `.claude/worktrees/cns-docs` (branch `docs/counselor-crm-user-guide`). Web http://localhost:3050, api :8050, Mailpit 127.0.0.1:8029 via untracked `docker-compose.docs.yml`. Untracked `.env` per plan S2.1. Owner approved Claude starting, seeding, resetting and snapshotting this stack only (2026-10-29). Started 2026-10-30 (S2) at `045d8c40`; seeded; snapshots `after-seed`, `after-s2` in the session scratchpad. |
 | Docs branch | `docs/counselor-crm-user-guide` (from `main` @ `045d8c40`) |
 | Day 1 (D3 calendar) | _not set — recorded when S5 runs; S9 must run on or after Day 1 + 3_ |
-| Last session | S3 Account access and navigation — 2026-10-30 |
-| Next session | S4 — Leads and handoffs (Docs Telecaller sets password, hands leads to Docs Counselor A) |
+| Last session | S4 Leads and handoffs — 2026-10-30 |
+| Next session | S5 — Activity, chat, follow-ups, tasks, calendar (= Day 1 of the D3 calendar) |
 
 **Column values:** Code Reviewed YES / PARTIAL / NO (YES at S1 = reviewed from source at `045d8c40`, evidence in `discovery/`) · Browser Verified YES / PARTIAL / NO · Screenshot YES / NO / N/A · Documented YES / DRAFT / NO · Reviewed PASSED / FAILED / NO.
 
 A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Reviewed = PASSED.
 
-**Totals (after S3):** 85 features · 85 code-reviewed · 9 browser-verified (+3 partial) · 9 documented (+3 draft) · 0 COMPLETE.
+**Totals (after S4):** 85 features · 85 code-reviewed · 21 browser-verified (+4 partial) · 21 documented (+4 draft) · 0 COMPLETE.
 
 | ID | Module | Feature | Session | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|---|
@@ -26,17 +26,17 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | DOC-CNS-NAV-001 | Navigation | Portal tour: 15-item sidebar, top bar, mobile menu | S3 | YES | YES | YES | YES | NO |
 | DOC-CNS-DASH-001 | Dashboard | Counselor dashboard (action tiles + application table) | S9 | YES | NO | NO | NO | NO |
 | DOC-CNS-SRCH-001 | Dashboard | Quick search | S9 | YES | NO | NO | NO | NO |
-| DOC-CNS-LEAD-001 | Leads | My leads list | S4 | YES | NO | NO | NO | NO |
-| DOC-CNS-LEAD-002 | Leads | Record a new walk-in lead | S4 | YES | NO | NO | NO | NO |
-| DOC-CNS-LEAD-003 | Leads | Lead detail page layout | S4 | YES | NO | NO | NO | NO |
-| DOC-CNS-LEAD-004 | Leads | Lead details: view and edit contact, consent, referral | S4 | YES | NO | NO | NO | NO |
-| DOC-CNS-LEAD-005 | Leads | Next action | S4 | YES | NO | NO | NO | NO |
-| DOC-CNS-LEAD-006 | Leads | Change stage, record loss, close a lead | S4 | YES | NO | NO | NO | NO |
-| DOC-CNS-LEAD-007 | Leads | Lead qualification | S4 | YES | NO | NO | NO | NO |
-| DOC-CNS-LEAD-008 | Leads | Return a lead to the telecaller | S4 | YES | NO | NO | NO | NO |
-| DOC-CNS-LEAD-009 | Leads | Student and milestones panel (read only) | S4 | YES | NO | NO | NO | NO |
-| DOC-CNS-CONV-001 | Conversion | Convert a lead to a new student | S4 | YES | NO | NO | NO | NO |
-| DOC-CNS-CONV-002 | Conversion | Link / unlink an existing student account | S4 | YES | NO | NO | NO | NO |
+| DOC-CNS-LEAD-001 | Leads | My leads list | S4 | YES | YES | YES | YES | NO |
+| DOC-CNS-LEAD-002 | Leads | Record a new walk-in lead | S4 | YES | YES | YES | YES | NO |
+| DOC-CNS-LEAD-003 | Leads | Lead detail page layout | S4 | YES | YES | YES | YES | NO |
+| DOC-CNS-LEAD-004 | Leads | Lead details: view and edit contact, consent, referral | S4 | YES | YES | YES | YES | NO |
+| DOC-CNS-LEAD-005 | Leads | Next action | S4 | YES | YES | YES | YES | NO |
+| DOC-CNS-LEAD-006 | Leads | Change stage, record loss, close a lead | S4 | YES | YES | YES | YES | NO |
+| DOC-CNS-LEAD-007 | Leads | Lead qualification | S4 | YES | YES | YES | YES | NO |
+| DOC-CNS-LEAD-008 | Leads | Return a lead to the telecaller | S4 | YES | YES | YES | YES | NO |
+| DOC-CNS-LEAD-009 | Leads | Student and milestones panel (read only) | S4 | YES | PARTIAL | YES | DRAFT | NO |
+| DOC-CNS-CONV-001 | Conversion | Convert a lead to a new student | S4 | YES | YES | YES | YES | NO |
+| DOC-CNS-CONV-002 | Conversion | Link / unlink an existing student account | S4 | YES | YES | YES | YES | NO |
 | DOC-CNS-ACT-001 | Activity | Log a call | S5 | YES | NO | NO | NO | NO |
 | DOC-CNS-ACT-002 | Activity | Record a WhatsApp message | S5 | YES | NO | NO | NO | NO |
 | DOC-CNS-ACT-003 | Activity | Email a lead | S5 | YES | NO | NO | NO | NO |
@@ -86,8 +86,8 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | DOC-CNS-FIN-003 | Finance | Upload a deposit receipt / payment proof | S8 | YES | NO | NO | NO | NO |
 | DOC-CNS-ARR-001 | Arrival | Confirm enrolment (agency commission note) | S8 | YES | NO | NO | NO | NO |
 | DOC-CNS-ARR-002 | Arrival | Arrival and orientation | S8 | YES | NO | NO | NO | NO |
-| DOC-CNS-HO-001 | Handoffs | A telecaller hands a lead to you | S4 | YES | NO | NO | NO | NO |
-| DOC-CNS-HO-002 | Handoffs | A website enquiry becomes your lead | S4 | YES | NO | NO | NO | NO |
+| DOC-CNS-HO-001 | Handoffs | A telecaller hands a lead to you | S4 | YES | YES | YES | YES | NO |
+| DOC-CNS-HO-002 | Handoffs | A website enquiry becomes your lead | S4 | YES | YES | YES | YES | NO |
 | DOC-CNS-HO-003 | Handoffs | Agency students and applications | S6 | YES | NO | NO | NO | NO |
 | DOC-CNS-HO-004 | Handoffs | Self-registered students | S6 | YES | NO | NO | NO | NO |
 | DOC-CNS-ADM-001 | Admin: accounts | Create a counselor account | S2 | YES | YES | YES | YES | NO |
@@ -114,6 +114,7 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | U6 | ADM-002 deactivate/reactivate steps and the deactivated sign-in message (AUTH-006) are captured in S10 (Docs Counselor C). | S10 |
 | U7 | CFG-002 **Run reminders now** and populated Recent reminders are captured in S9. | S9 |
 | U8 | Forward links (12 after S3) in the S2 admin pages point to pages written in S3–S9 (file names fixed in plan §Planned file names); link check is expected to list them until then. | S3–S9 |
+| U10 | LEAD-009 milestone rows and the Converted badge need an application/enrolment (S7–S8). | S7/S8 |
 | U9 | Docs University + Docs MSc Data Science / Docs MBA (commission 10% / 12%) moved from S2 to S7 prep (University Master add → publish → add courses). | S7 |
 
 ## Discovered functionality (outside the 85 IDs)
@@ -123,6 +124,8 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | Management tasks | counselor sidebar item 15 (`/account/management-tasks`) | Shared page; mention in NAV-001 only. |
 | Lead owner change by admin | API only (P15) | No UI — not a doc feature. |
 | Manage users table overflow | `/overseas/admin/users` at 1440 px | Table 716 px inside a 500 px panel: Status badge clipped, Action column off-screen; acting on a row scrolls the name out of view. Recorded as product finding P23. |
+| Website enquiries auto-distributed | HO-002 | With no distribution rules, the website lead was still assigned automatically to an active Overseas telecaller (Docs Telecaller); the counselor walk-in got Imran. The manager's unassigned queue was not needed. |
+| Public enquiry email validation | `/overseas/contact` | `.test` email addresses are rejected ("We could not submit your enquiry…"); the website lead uses `docs.lead.chen@example.com`. |
 | Admin sign-in demo card | `/admin/login` | Titled "Demo super admin" (not "Demo accounts"), so the old `shoot()` mask missed it; mask extended in S2. |
 
 ## Session log
@@ -131,3 +134,4 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | S1 | 2026-10-29 | d77592f3 | Four discovery appendices; owner answers D1–D7; analysis (85 features in 24 modules, findings P1–P22), plan (S2–S12), tracker, screenshot-index skeleton. |
 | S2 | 2026-10-30 | (this commit) | cnsdocs stack (3050/8050/8029) up from 045d8c40; shoot.ts COUNSELOR_ROOT + feed-URL and "Demo super admin" masks + signIn portal; build-pdfs counselor mode; OA created Docs Counselor A/B/C, Docs Telecaller, Docs UK admission checklist, Docs offer update template; 21 PNGs; ADM-001, CFG-001, CFG-003 documented, ADM-002 and CFG-002 draft (finish in S10/S9); P4 confirmed; P23 found. |
 | S3 | 2026-10-30 | (this commit) | Docs Counselor A/B/C set passwords from Mailpit; AUTH-001..005 + NAV-001 documented, AUTH-006 draft (deactivated sign-in in S10); 27 PNGs incl. 390 px menu; all 15 sidebar headings verified; P18 confirmed with workaround (My profile → public header Logout); wrong-portal message captured. |
+| S4 | 2026-10-30 | (this commit) | Docs Telecaller password; telecaller created Asha/Bilal/Esha and handed them to Counselor A; website enquiry Chen auto-assigned and handed over; Counselor A walk-in Divya, duplicate panel, next action, Qualified, details, qualification, convert Asha, close Bilal (lost reason), return Esha, link/unlink Divya. 37 PNGs; 12 documented + LEAD-009 draft; P2 confirmed. |

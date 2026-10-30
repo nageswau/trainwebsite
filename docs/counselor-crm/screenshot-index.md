@@ -52,3 +52,40 @@ Capture settings: Chromium, 1440 × 900, light, `deviceScaleFactor` 1, locale `e
 | `navigation/07-mobile-menu-open.png` | DOC-CNS-NAV-001 | Counselor | 390 px menu top | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `navigation/08-mobile-menu-end.png` | DOC-CNS-NAV-001 | Counselor | 390 px menu bottom — no Sign out (P18) | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `navigation/09-mobile-profile-public-menu.png` | DOC-CNS-AUTH-006 / NAV-001 | Counselor | 390 px My profile: public header Logout (P18 workaround) | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
+| `handoffs/01-telecaller-assign-counselor.png` | DOC-CNS-HO-001 | Telecaller | Assign to counselor form, Docs Counselor A chosen | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `handoffs/02-telecaller-handed-over.png` | DOC-CNS-HO-001 | Telecaller | Handed over to Docs Counselor A; lead read-only | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `handoffs/03-website-enquiry-form.png` | DOC-CNS-HO-002 | Visitor | Overseas contact form filled (Docs Lead Chen, example.com email) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `handoffs/04-website-enquiry-sent.png` | DOC-CNS-HO-002 | Visitor | Enquiry received message | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `handoffs/05-website-lead-in-telecaller-list.png` | DOC-CNS-HO-002 | Telecaller | Chen auto-assigned to Docs Telecaller (no rules) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/01-my-leads.png` | DOC-CNS-LEAD-001 | Counselor | My leads: 5 leads incl. walk-in Divya | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/02-my-leads-filter-priority.png` | DOC-CNS-LEAD-001 | Counselor | Priority = Hot | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/03-my-leads-no-match.png` | DOC-CNS-LEAD-001 | Counselor | Stage = Lost: No leads match these filters. | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/04-my-leads-after-work.png` | DOC-CNS-LEAD-001 | Counselor | After S4: Divya Follow-up, Chen Assigned, Bilal Not Interested, Asha Application/Enrollment | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/05-new-walk-in-lead-empty.png` | DOC-CNS-LEAD-002 | Counselor | New walk-in lead form (source preset Walk-in) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/06-new-walk-in-lead-filled.png` | DOC-CNS-LEAD-002 | Counselor | Divya filled (element shot) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/07-new-walk-in-lead-duplicate.png` | DOC-CNS-LEAD-002 | Counselor | Lead already exists panel (Asha's mobile) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/08-lead-detail-top.png` | DOC-CNS-LEAD-003 | Counselor | Asha detail top | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/09-lead-detail-full.png` | DOC-CNS-LEAD-003 | Counselor | Asha detail full page (fullPage) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/10-next-action-past-date.png` | DOC-CNS-LEAD-005 | Counselor | Past due date refused (stale stage error above) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/11-next-action-saved.png` | DOC-CNS-LEAD-005 | Counselor | Next action saved | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/12-change-stage-qualified.png` | DOC-CNS-LEAD-006 | Counselor | Change stage to Qualified | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/13-stage-needs-next-action.png` | DOC-CNS-LEAD-006 | Counselor | Set a next action and its due date first | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/14-stage-updated.png` | DOC-CNS-LEAD-006 | Counselor | Stage updated (Qualified) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/15-close-not-interested.png` | DOC-CNS-LEAD-006 | Counselor | Bilal: Not Interested, Fees / budget, lost to (element shot) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/16-closed-lead.png` | DOC-CNS-LEAD-006 | Counselor | Closed lead with lost-reason line | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/17-lead-details-edit.png` | DOC-CNS-LEAD-004 | Counselor | Edit details (element shot) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/18-lead-details-saved.png` | DOC-CNS-LEAD-004 | Counselor | Details saved (element shot) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/19-qualification-edit.png` | DOC-CNS-LEAD-007 | Counselor | Qualification form (element shot) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/20-qualification-saved.png` | DOC-CNS-LEAD-007 | Counselor | Qualification saved (element shot) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/21-return-to-telecaller.png` | DOC-CNS-LEAD-008 | Counselor | Return form with reason (Esha) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/21b-returned.png` | DOC-CNS-LEAD-008 | Counselor | Lead returned to the telecaller | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/22-return-offered-on-closed-lead.png` | DOC-CNS-LEAD-008 | Counselor | P2: Return offered on closed Bilal (not submitted) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `leads/23-student-and-milestones.png` | DOC-CNS-LEAD-009 | Counselor | Linked student, no application yet (element shot) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `conversion/01-convert-hint-not-qualified.png` | DOC-CNS-CONV-001 | Counselor | Move the lead to Qualified hint (element shot) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `conversion/02-convert-form.png` | DOC-CNS-CONV-001 | Counselor | Convert form prefilled (element shot) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `conversion/03-converted.png` | DOC-CNS-CONV-001 | Counselor | Student account created; linked | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `conversion/04-link-suggestion.png` | DOC-CNS-CONV-002 | Counselor | Suggested match Docs Divya Student (element shot) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `conversion/05-link-confirm.png` | DOC-CNS-CONV-002 | Counselor | Confirm link (element shot) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `conversion/06-linked.png` | DOC-CNS-CONV-002 | Counselor | Student linked (element shot) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `conversion/07-unlink-confirm.png` | DOC-CNS-CONV-002 | Counselor | Confirm unlink (element shot) | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |
+| `conversion/08-search-already-linked.png` | DOC-CNS-CONV-002 | Counselor | Search: Asha's student already linked to another lead | `counselor/cns-s4b-leads.capture.ts` | 2026-10-30 | |

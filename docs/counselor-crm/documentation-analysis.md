@@ -246,12 +246,12 @@ About 170 to 200 PNGs: at least one per step, plus "what each role sees" variant
 - What the **School Applications** and **Management tasks** sidebar items show to an Overseas counselor. Both are recorded as discovered functionality.
 
 ## 12. Product Findings and Open Questions (owner)
-Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 was confirmed in the browser in S2 and P18 in S3; each is confirmed or dropped in the browser session that covers it.
+Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 was confirmed in the browser in S2, P18 in S3 and P2 in S4; each is confirmed or dropped in the browser session that covers it.
 
 | # | Finding | Evidence | Docs impact |
 |---|---|---|---|
 | P1 | Reminder notifications have no counselor inbox: no Notifications item or page for counselors | `counselor_reminders.py:189`, `navigation.ts:292` | FUP-003 |
-| P2 | "Return to telecaller" is offered on closed leads. Returning one clears the owner but stays closed, and keeps no reason in history. The form says "goes back to Follow-up" | `lead_handover.py:124`, `lead_stages.py:53`, `CounselorLeadDetail.tsx:96` | LEAD-008 |
+| P2 | **Confirmed S4.** "Return to telecaller" is offered on closed leads. Returning one clears the owner but stays closed, and keeps no reason in history. The form says "goes back to Follow-up" | `lead_handover.py:124`, `lead_stages.py:53`, `CounselorLeadDetail.tsx:96` | LEAD-008 |
 | P3 | Super Admin opening counselor Leads or Dashboard gets load errors, not an access message | `portal.py:43`, `counselor_dashboard.py:19` | NAV-001, admin README |
 | P4 | Super Admin create-user defaults Division to IT. A counselor created that way cannot sign in at /overseas/login | `WorkflowPanel.tsx:389` | ADM-001 |
 | P5 | Counselor messages say "Ask a telecaller manager…" and "A manager can reopen it…" | `AdminLeadStage.tsx:136`, `lead_follow_ups.py:32` | LEAD-006, FUP-001 |
