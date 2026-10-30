@@ -246,7 +246,7 @@ About 170 to 200 PNGs: at least one per step, plus "what each role sees" variant
 - What the **School Applications** and **Management tasks** sidebar items show to an Overseas counselor. Both are recorded as discovered functionality.
 
 ## 12. Product Findings and Open Questions (owner)
-Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 was confirmed in the browser in S2, P18 in S3, P2 in S4, P10 in S5, P13 in S8 and P1/P3/P7/P8 in S9; each is confirmed or dropped in the browser session that covers it.
+Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 was confirmed in the browser in S2, P18 in S3, P2 in S4, P10 in S5, P13 in S8, P1/P3/P7/P8 in S9 and P16 (part)/P19 in S10; each is confirmed or dropped in the browser session that covers it.
 
 | # | Finding | Evidence | Docs impact |
 |---|---|---|---|
@@ -265,10 +265,10 @@ Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 w
 | P13 | **Confirmed S8 (form opens; not submitted).** Agency enrolment: the Enrolment panel lets a counselor confirm, while advance/sub-status say "Only the agency's Master confirms enrollment" | `application_offers.py:445`, `workflows.py:202` | ARR-001, APP-010 |
 | P14 | Evaluate Applications cards show no EduSphere ID or intake; there is no counselor screen to change an existing intake | `CounselorEvaluationPanel.tsx:19`, `applicationDetails.ts:11` | APP-002, APP-008 |
 | P15 | Changing a lead's counselor (owner + reason, ccrm-003 A7 / ccrm-033) is API-only: no admin screen | `AdminLeadManagementPanel.tsx` | ADM README |
-| P16 | Archive gaps: the archived list shows only csc-001-linked students; only the linked counselor can archive; profile edits and document requests still work on an archived student | `student_archive.py:49,119` | STU-008 |
+| P16 | **Partly confirmed S10:** the document-request form is still offered on an archived student (upload and Add application are hidden). Archive gaps: the archived list shows only csc-001-linked students; only the linked counselor can archive; profile edits and document requests still work on an archived student | `student_archive.py:49,119` | STU-008 |
 | P17 | The 360 "Counselor" field shows only the csc-001 link ("Not assigned" for the application counselor). The My students application count includes other counselors' applications | `counselor_student_360.py:105`, `counselor_students.py:280` | STU-004, STU-002 |
 | P18 | Below 980 px there is no Sign out (no sidebar, and the mobile menu has no item for it). **Confirmed S3**; workaround: menu → My profile → public header **Logout** | `globals.css:12`, `PortalShell.tsx` | NAV-001, AUTH-006 |
-| P19 | Deactivating a counselor has no guard or handover; their work stays on the inactive account | `admin.py:839` | ADM-002 |
+| P19 | **Confirmed S10** (deactivated at once, no confirm step). Deactivating a counselor has no guard or handover; their work stays on the inactive account | `admin.py:839` | ADM-002 |
 | P20 | A telecaller handover sends no direct notice; it relies on the "New lead assigned" reminder rule | `lead_handover.py:46` | HO-001 |
 | P21 | The 360 has no Visa tab and no document-review action; counselors cannot download invoices/receipts on Finance; any caseload counselor can upload a payment proof | appendix 02 VISA/DOC/FIN | VISA-001, DOC-002, FIN-002/003 |
 | P22 | A counselor-created application for an agency student is always direct | `workflows.py:2435` | APP-001, APP-010 |
@@ -280,6 +280,7 @@ Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 w
 | P29 | (S7, browser) An application with the legacy status "University review" (seeded agency application) offers **every** stage in **Advance to**, including Enquiry | `CounselorEvaluationPanel.tsx` (`STAGES.indexOf` = -1) | APP-004, APP-010 |
 | P30 | (S7, browser) The **Evaluate Applications** cards are about 240 px wide at 1440 px; checklist rows are clipped at the right (badges, Unlink) | `CounselorEvaluationPanel.tsx` layout | DOC-001, APP-004 |
 | P31 | (S9, browser + DB) The "Overdue work escalated" notice is created for the Overseas Admin, but the Overseas Admin portal has no notifications page or dashboard list to show it | `counselor_reminders.py` escalate, `navigation.ts` overseas/admin | ESC-002 |
+| P32 | (S10, browser) A **Converted** lead still shows its open (overdue) follow-ups and the "No next action set. Add one before moving the lead to an open stage." prompt | `CounselorLeadDetail.tsx`, `lead_handover.py` permissions | LEAD-009, FUP-001 |
 | P23 | (Found in S2, browser) The Overseas Admin's **Manage users** table is 716 px wide inside a 500 px panel at 1440 px: the Status badge is clipped and the Action column is off-screen; acting on a row scrolls the name out of view | `/overseas/admin/users`, `AdminUserManagementPanel.tsx` | ADM-002 |
 
 **Default-based behaviours (owner D4).** About 40 counselor decisions are builder defaults marked NEEDS_CONFIRMATION or UNVERIFIED, not owner-approved (appendix 04 §3, column "Authority"). Manual pages describe them as built, with no warning banners. The owner reviews that list separately.

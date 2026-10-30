@@ -23,7 +23,8 @@ You run the counselor team: you create counselors, decide who handles which stud
 | Situation | What to do |
 |---|---|
 | A counselor goes on leave | Change the counselor of their students and applications, with a reason ([students](../admin-manual/accounts/adm-003-student-counselor.md), [applications](../admin-manual/accounts/adm-004-application-counselor.md)) |
-| A counselor leaves | Reassign their work first, then [deactivate](../admin-manual/accounts/adm-002-manage-counselor-users.md). Deactivation doesn't move work |
+| A counselor leaves | Reassign their work first, then [deactivate](../admin-manual/accounts/adm-002-manage-counselor-users.md). Deactivation is immediate and doesn't move work |
+| A finished student was archived by mistake | [Restore them](../admin-manual/config/cfg-004-archived-students.md) |
 | A lead must move to another counselor | No screen for this: the counselor returns it to the telecaller, who hands it to the new counselor |
 | A closed application must be reopened | Only you can reopen it |
 | A visa decision was recorded wrongly | Only you can correct it |

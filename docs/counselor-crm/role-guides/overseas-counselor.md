@@ -47,6 +47,7 @@ You guide students from their first conversation to their first week at a univer
 | Upload receipts, check fees | [Finance tab](../user-manual/finance/fin-002-finance-tab.md) · [Upload a receipt](../user-manual/finance/fin-003-upload-receipt.md) |
 | Run the visa case to a decision | [Visa case](../user-manual/visa/visa-001-visa-case.md) |
 | Confirm enrolment, then arrival and orientation | [Enrolment](../user-manual/arrival/arr-001-confirm-enrolment.md) · [Arrival](../user-manual/arrival/arr-002-arrival.md) |
+| Archive the student when everything is closed | [Archive](../user-manual/students/stu-008-archive.md) |
 
 ## Rules worth remembering
 - An open stage needs a **next action** first.

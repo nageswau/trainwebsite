@@ -309,21 +309,21 @@ Features: FUP-002, FUP-003, ESC-001, ESC-002, DASH-001, SRCH-001, REP-001, PERF-
   - As Counselor A: overdue follow-ups on Tasks (FUP-002); reminder results and where they appear (FUP-003, P1); dashboard tiles and "View all" (DASH-001, P6); quick search (SRCH-001, P7); My performance (REP-001, P9).
 - [x] Snapshot `after-s9`.
 
-### S10 — Lifecycle: archive, consent, restore, deactivate
+### S10 — Lifecycle: archive, consent, restore, deactivate — DONE 2026-10-30
 Features: STU-008, STU-009, CFG-004 (3). Also adds the deactivate steps to ADM-002 and the deactivated-login message to AUTH-006.
-- [ ] Standard loop.
+- [x] Standard loop.
   - Docs Walk-in Student accepts consent on their dashboard; counselor view (STU-009).
   - Counselor A archives Docs Walk-in Student; Archived Students list (STU-008, P16).
   - The Overseas Admin restores them (CFG-004); the Super Admin refusal shot.
   - The Overseas Admin deactivates **Docs Counselor C** (ADM-002, P19); C's sign-in attempt (AUTH-006).
-- [ ] Snapshot `after-s10`.
+- [x] Snapshot `after-s10`.
 
 ### S11 — Guides and supporting pages — DONE 2026-10-30 (before S9/S10, owner choice)
 - [x] `user-manual/README.md` and `admin-manual/README.md`. The admin README includes Super Admin differences and P3/P4/P15.
 - [x] Role guides: `overseas-counselor.md` (day-in-the-life, workflows 1–4), `overseas-admin-counselors.md`, `super-admin-counselors.md`.
 - [x] `demo-accounts.md` (D1), `faq.md`, `troubleshooting.md` (built from Common Errors and P-findings).
 - [x] Link check.
-- [ ] **After S9 and S10:** turn the *(coming)* rows in both READMEs into links; remove the † marks and "VERIFICATION REQUIRED" in the Super Admin guide and admin README once checked; add dashboard/escalation steps to the role guides.
+- [x] **After S9 and S10:** turn the *(coming)* rows in both READMEs into links; remove the † marks and "VERIFICATION REQUIRED" in the Super Admin guide and admin README once checked; add dashboard/escalation steps to the role guides.
 
 ### S12 — Final review and PDFs
 - [ ] Parallel reviewers: accuracy against code, screenshots/secrets, style/terminology, links/structure. Fix all findings.

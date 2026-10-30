@@ -24,7 +24,11 @@ As the student's applications move on, each milestone is listed with its kind, l
 For example: "Overseas application · Docs University — Offer · 30 Oct 2026".
 ![Milestones with an application](../../screenshots/leads/24-milestones-with-application.png)
 
-VERIFICATION REQUIRED: the **Converted** badge (a lead whose student has enrolled) was not captured.
+When the linked student's enrolment is confirmed, EduSphere marks the lead **Converted** (within about 15 minutes). The panel shows the **Converted** badge and "Overseas application · {university} — Enrolled".
+![Converted lead](../../screenshots/leads/25-milestones-converted.png)
+![The converted lead page](../../screenshots/leads/26-converted-lead.png)
+
+Note: a converted lead still shows its open follow-ups and the "No next action set" prompt. Mark old follow-ups done or cancel them yourself.
 
 ## Expected Result
 You can tell from the lead whether the student has applied or enrolled.

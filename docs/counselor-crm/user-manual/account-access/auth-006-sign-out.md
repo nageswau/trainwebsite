@@ -28,7 +28,8 @@ If you open a counselor page while signed out, you are sent to the **Overseas Ed
 ![Sign-in page after opening the dashboard while signed out](../../screenshots/account-access/15-signed-out-redirect.png)
 
 ### Deactivated account
-VERIFICATION REQUIRED (captured in session S10). When an Overseas Admin deactivates your account, your next action in the portal fails, and signing in shows **Invalid credentials**. Forgot-password sends no email to an inactive account.
+When an Overseas Admin deactivates your account, signing in shows **Invalid credentials**, the same message as a wrong password. Forgot-password sends no email to an inactive account. Ask your Overseas Admin to reactivate you.
+![Sign-in refused for a deactivated account](../../screenshots/account-access/19-deactivated-sign-in.png)
 
 ## Expected Result
 Your session ends, and nobody using the same browser can open your workspace without signing in.

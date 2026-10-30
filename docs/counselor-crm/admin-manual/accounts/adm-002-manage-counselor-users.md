@@ -34,7 +34,11 @@ If you select **Re-send link** again within a minute, you see **A link was just 
 ![Wait before re-sending message](../../screenshots/admin/10-resend-link-too-soon.png)
 
 ### Step 4 — Deactivate or reactivate a counselor
-VERIFICATION REQUIRED. This is captured in session S10 with a dedicated test counselor. From code: **Deactivate** → **Confirm deactivate** shows "{name} deactivated."; **Reactivate** shows "{name} reactivated.". Any change to active/inactive cancels open set-password links. Deactivation does **not** move the counselor's leads, students, applications or tasks to anyone else.
+Select **Deactivate** in the counselor's row. For a counselor it happens straight away, with no confirmation: **{name} deactivated.** appears and **Status** shows **Inactive**. (For some other roles with open work, EduSphere first warns and asks you to **Confirm deactivate**.)
+![Counselor deactivated](../../screenshots/admin/19-deactivated.png)
+A deactivated counselor can't sign in ("Invalid credentials"). Select **Reactivate** to restore access; **{name} reactivated.** appears.
+![Counselor reactivated](../../screenshots/admin/20-reactivated.png)
+Any change to active or inactive cancels open set-password links. Deactivation does **not** move the counselor's leads, students, applications or tasks to anyone else, so reassign them first.
 
 ## Fields
 | Field | Description | Required | Example |

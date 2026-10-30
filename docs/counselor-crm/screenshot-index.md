@@ -233,3 +233,19 @@ Capture settings: Chromium, 1440 × 900, light, `deviceScaleFactor` 1, locale `e
 | `reports/01-my-performance.png` | DOC-CNS-REP-001 | Counselor | My performance top | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
 | `reports/02-my-performance-full.png` | DOC-CNS-REP-001 | Counselor | My performance full (element shot) | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
 | `reports/03-my-performance-overseas.png` | DOC-CNS-REP-001 | Counselor | Lead division = Overseas | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `students/24-student-consent-card.png` | DOC-CNS-STU-009 | Student | Your consent card on the student dashboard (element shot) | `counselor/cns-s10-lifecycle.capture.ts` | 2026-10-30 | |
+| `students/25-consent-given.png` | DOC-CNS-STU-009 | Counselor | Consent given (v1) on the 360 (element shot) | `counselor/cns-s10-lifecycle.capture.ts` | 2026-10-30 | |
+| `students/26-consent-not-given.png` | DOC-CNS-STU-009 | Counselor | Not yet given (element shot) | `counselor/cns-s10-lifecycle.capture.ts` | 2026-10-30 | |
+| `students/27-archive-refused-open-application.png` | DOC-CNS-STU-008 | Counselor | Archive refused: open application APP-000003 (element shot) | `counselor/cns-s10-lifecycle.capture.ts` | 2026-10-30 | |
+| `students/28-archive-student-form.png` | DOC-CNS-STU-008 | Counselor | Archive this student with a reason (element shot) | `counselor/cns-s10-lifecycle.capture.ts` | 2026-10-30 | |
+| `students/29-archived-banner.png` | DOC-CNS-STU-008 | Counselor | Archived badge and banner | `counselor/cns-s10-lifecycle.capture.ts` | 2026-10-30 | |
+| `students/30-archived-students-list.png` | DOC-CNS-STU-008 | Counselor | Archived students page | `counselor/cns-s10-lifecycle.capture.ts` | 2026-10-30 | |
+| `students/31-history-archived-restored.png` | DOC-CNS-STU-008 / DOC-CNS-CFG-004 | Counselor | History: Archived, then Restored | `counselor/cns-s10-lifecycle.capture.ts` | 2026-10-30 | |
+| `config/13-archived-students-admin.png` | DOC-CNS-CFG-004 | Overseas Admin | Archived students (admin) | `counselor/cns-s10-lifecycle.capture.ts` | 2026-10-30 | |
+| `config/14-student-restored.png` | DOC-CNS-CFG-004 | Overseas Admin | Student restored | `counselor/cns-s10-lifecycle.capture.ts` | 2026-10-30 | |
+| `config/15-super-admin-archived-refused.png` | DOC-CNS-CFG-004 | Super Admin | Access unavailable: Overseas Administrator role required | `counselor/cns-s10-lifecycle.capture.ts` | 2026-10-30 | |
+| `admin/19-deactivated.png` | DOC-CNS-ADM-002 | Overseas Admin | Docs Counselor C deactivated (no confirm step, P19) | `counselor/cns-s10-lifecycle.capture.ts` | 2026-10-30 | |
+| `admin/20-reactivated.png` | DOC-CNS-ADM-002 | Overseas Admin | Docs Counselor C reactivated | `counselor/cns-s10-lifecycle.capture.ts` | 2026-10-30 | |
+| `account-access/19-deactivated-sign-in.png` | DOC-CNS-AUTH-006 | Counselor C | Invalid credentials for a deactivated account | `counselor/cns-s10-lifecycle.capture.ts` | 2026-10-30 | |
+| `leads/25-milestones-converted.png` | DOC-CNS-LEAD-009 | Counselor | Converted badge, application Enrolled (element shot) | `counselor/cns-s10b-converted-lead.capture.ts` | 2026-10-30 | conversion sweep run by hand |
+| `leads/26-converted-lead.png` | DOC-CNS-LEAD-009 | Counselor | Lead at Converted (still shows open follow-up, P32) | `counselor/cns-s10b-converted-lead.capture.ts` | 2026-10-30 | |

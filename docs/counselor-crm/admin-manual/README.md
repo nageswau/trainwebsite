@@ -24,7 +24,7 @@ For the **Overseas Admin**, who creates counselors, assigns students and applica
 | [Document checklist templates](config/cfg-001-checklist-templates.md) | Required documents and the Ready-for-Submission gate |
 | [Reminder rules](config/cfg-002-reminder-rules.md) | Automatic tasks and notices |
 | [Counselor message templates](config/cfg-003-message-templates.md) | WhatsApp and email starters |
-| Archived students: restore *(coming — S10)* | Bring back an archived student |
+| [Archived students: restore](config/cfg-004-archived-students.md) | Bring back an archived student |
 
 ## Super Admin: what is different
 | Topic | Super Admin |
@@ -33,14 +33,12 @@ For the **Overseas Admin**, who creates counselors, assigns students and applica
 | Assigning counselors to students or applications | Not available: no **EduSphere counsellor** column, and the server refuses |
 | Counselor tasks, performance, checklists, reminder rules, message templates | Open by address only (not in the Super Admin sidebar); the page shows the Overseas Admin's sidebar |
 | Counselor workspace pages (Leads, Dashboard) | Open, but show "Unable to load your leads." / "Dashboard sections are unavailable right now." instead of an access message |
-| Archived students / restore † | Refused ("Overseas Administrator role required") |
+| Archived students / restore | Refused ("Overseas Administrator role required") |
 | Escalation notices | Not received; only Overseas Admins are told (and they have no notifications page either) |
-
-† From the code; checked in the browser in session S10.
 
 ## Things to know
 - **Moving a lead between counselors** isn't possible from any screen. A counselor can return a lead to its telecaller, who can hand it to another counselor.
-- **Deactivating a counselor** doesn't move their leads, students, applications or tasks. Reassign students and applications before or after deactivating.
+- **Deactivating a counselor** happens at once, with no warning, and doesn't move their leads, students, applications or tasks. Reassign students and applications before or after deactivating.
 - **New agency applications** arrive with no counselor and nobody is alerted. Filter Application Tracking by **Counsellor = Not assigned** every day.
 - The **Manage users** table is wider than its panel at normal desktop widths; scroll it sideways to reach the buttons.
 

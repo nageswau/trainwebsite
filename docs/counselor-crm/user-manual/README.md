@@ -57,8 +57,8 @@ How an Overseas counselor works in EduSphere: from the first conversation with a
 | [Structured profile](students/stu-005-profile.md) | Academic, preferences, English tests |
 | [Internal student notes](students/stu-006-notes.md) | Counselling history |
 | [Activities and History](students/stu-007-activities-history.md) | Appointments, communication, audit trail |
-| Archive a student *(coming — S10)* | Hide a finished student |
-| Overseas consent *(coming — S10)* | What the student agreed to |
+| [Archive a student](students/stu-008-archive.md) | Hide a finished student |
+| [Overseas consent](students/stu-009-consent.md) | What the student agreed to |
 | [When a student is reassigned to you](students/stu-010-reassignment.md) | Admin moves |
 | [Agency students](handoffs/ho-003-agency-students.md) · [Self-registered students](handoffs/ho-004-self-registered.md) | Other ways students arrive |
 
