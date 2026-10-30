@@ -6,7 +6,7 @@
 | Stack used for browser work | `cnsdocs` compose project from worktree `.claude/worktrees/cns-docs` (branch `docs/counselor-crm-user-guide`). Web http://localhost:3050, api :8050, Mailpit 127.0.0.1:8029 via untracked `docker-compose.docs.yml`. Untracked `.env` per plan S2.1. Owner approved Claude starting, seeding, resetting and snapshotting this stack only (2026-10-29). Started 2026-10-30 (S2) at `045d8c40`; seeded; snapshots `after-seed`, `after-s2` in the session scratchpad. |
 | Docs branch | `docs/counselor-crm-user-guide` (from `main` @ `045d8c40`) |
 | Day 1 (D3 calendar) | **2026-10-30** (S5). S9 must run on or after **2026-11-02**. |
-| Last session | S8 Visa, finance, arrival, universities — 2026-10-30 |
+| Last session | S11 Guides and supporting pages (early) — 2026-10-30 |
 | Next session | S9 — Time-based states, dashboards, admin oversight (**not before 2026-11-02**); S10 lifecycle can run first |
 
 **Column values:** Code Reviewed YES / PARTIAL / NO (YES at S1 = reviewed from source at `045d8c40`, evidence in `discovery/`) · Browser Verified YES / PARTIAL / NO · Screenshot YES / NO / N/A · Documented YES / DRAFT / NO · Reviewed PASSED / FAILED / NO.
@@ -117,6 +117,7 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | U10 | LEAD-009 milestone rows and the Converted badge need an application/enrolment (S7–S8). | S7/S8 |
 | U11 | CAL-001 **Mark no-show** on CAP-000002 (Docs Lead Farah, 31 Oct 13:00) and the P8 text; TASK-001 admin-given task ("Given by") — both in S9. | S9 |
 | U12 | OFR-001 automatic **Expired** (A1 offer deadline 31 Oct; 00:10 IST job) and the overdue English test request (due 31 Oct) — S9. OFR-002 mark a condition **Met** with evidence — S9. APP-010/P13 checked in S8 (counselor gets the Confirm enrolment form on an agency application; not submitted). | S8/S9 |
+| U13 | S11 written before S9/S10: READMEs list S9/S10 pages as *(coming)*; Super Admin rows marked † (code only) until checked in S9/S10. | S9/S10 |
 | U9 | Docs University + Docs MSc Data Science / Docs MBA (commission 10% / 12%) moved from S2 to S7 prep (University Master add → publish → add courses). | S7 |
 
 ## Discovered functionality (outside the 85 IDs)
@@ -145,3 +146,4 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | S6 | 2026-10-30 | (this commit) | Self-registered student (example.com); Counselor A added Docs Walk-in Student + Docs Pending Walk-in (edit, resend, duplicate); Asha 360 profile (academic/preferences/IELTS), 2 notes; OA moved Ananya's agency application Ritika → Counselor A (reason), assigned the self-registered student to A, moved the walk-in student A → B → A with reasons; SA has no counsellor column. 30 PNGs; 12 documented; P27 found. |
 | S7 | 2026-10-30 | (this commit) | S7a: OA created + published Docs University (UK, 10 %) with Docs MSc Data Science (12 %) and Docs MBA. S7b: A1 Asha MSc DS Sep 2027 (APP-000003): uploads tied to A1, Passport/Transcripts verified, English test request due 31 Oct (open), SOP request cancelled, checklist from template, gate blocked then passed (English test/SOP not required), Ready for submission → Submitted → Offer, conditional offer deadline 31 Oct + condition + interview 31 Oct, details, history; A2 walk-in MBA: on hold → resume → unconditional offer accepted. 36 PNGs; 14 documented + 3 draft; P28–P30 found. |
 | S8 | 2026-10-30 | (this commit) | OA created a manual INR 15,000 fee for the walk-in student; A2: deposit GBP 3,000 Pending, payment proof + deposit receipt uploaded; passport (tied to A2) + offer letter verified; visa case Passport+Offer letter → Preparing → Appointment booked → Submitted → Decision pending → Approved; enrolment confirmed; arrival + orientation saved. Ananya advanced to Offer and the Enrolment form opened (P13 confirmed, not submitted). Universities list + Docs University 360 (no commission shown). 19 PNGs; 8 documented, APP-010 completed. |
+| S11 | 2026-10-30 | (this commit) | Written early (owner choice): user-manual/README, admin-manual/README (Super Admin differences), role guides (counselor, Overseas Admin, Super Admin), demo-accounts, FAQ, troubleshooting. To be refreshed after S9/S10. |

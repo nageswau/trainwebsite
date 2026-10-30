@@ -126,6 +126,9 @@ apps/web/tests/doc-capture/counselor/   (capture specs, test-only)
 | DOC-001 | `user-manual/documents/doc-001-application-checklist.md` |
 | APP-010 | `user-manual/applications/app-010-agency-vs-direct.md` |
 | FIN-001 | `user-manual/finance/fin-001-deposit.md` |
+| DASH-001 / SRCH-001 / REP-001 | `user-manual/dashboard/dash-001-dashboard.md`, `user-manual/dashboard/srch-001-quick-search.md`, `user-manual/reports/rep-001-my-performance.md` |
+| STU-008 / STU-009 | `user-manual/students/stu-008-archive.md`, `user-manual/students/stu-009-consent.md` |
+| PERF-001 / PERF-002 / CFG-004 | `admin-manual/performance/perf-001-team-performance.md`, `admin-manual/performance/perf-002-counselor-report.md`, `admin-manual/config/cfg-004-archived-students.md` |
 | ADM-003 / ADM-004 | `admin-manual/accounts/adm-003-student-counselor.md`, `adm-004-application-counselor.md` |
 | ESC-001 / ESC-002 | `admin-manual/escalation/esc-001-counselor-tasks-admin.md`, `esc-002-overdue-escalation.md` |
 
@@ -315,11 +318,12 @@ Features: STU-008, STU-009, CFG-004 (3). Also adds the deactivate steps to ADM-0
   - The Overseas Admin deactivates **Docs Counselor C** (ADM-002, P19); C's sign-in attempt (AUTH-006).
 - [ ] Snapshot `after-s10`.
 
-### S11 — Guides and supporting pages
-- [ ] `user-manual/README.md` and `admin-manual/README.md`. The admin README includes Super Admin differences and P3/P4/P15.
-- [ ] Role guides: `overseas-counselor.md` (day-in-the-life, workflows 1–4), `overseas-admin-counselors.md`, `super-admin-counselors.md`.
-- [ ] `demo-accounts.md` (D1), `faq.md`, `troubleshooting.md` (built from Common Errors and P-findings).
-- [ ] Link check.
+### S11 — Guides and supporting pages — DONE 2026-10-30 (before S9/S10, owner choice)
+- [x] `user-manual/README.md` and `admin-manual/README.md`. The admin README includes Super Admin differences and P3/P4/P15.
+- [x] Role guides: `overseas-counselor.md` (day-in-the-life, workflows 1–4), `overseas-admin-counselors.md`, `super-admin-counselors.md`.
+- [x] `demo-accounts.md` (D1), `faq.md`, `troubleshooting.md` (built from Common Errors and P-findings).
+- [x] Link check.
+- [ ] **After S9 and S10:** turn the *(coming)* rows in both READMEs into links; remove the † marks and "VERIFICATION REQUIRED" in the Super Admin guide and admin README once checked; add dashboard/escalation steps to the role guides.
 
 ### S12 — Final review and PDFs
 - [ ] Parallel reviewers: accuracy against code, screenshots/secrets, style/terminology, links/structure. Fix all findings.
