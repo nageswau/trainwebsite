@@ -49,3 +49,8 @@ graphify-out/cache/
 graphify-out/manifest.json
 graphify-out/.graphify_*
 graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
+# graphify write-then-swap temp files; on Windows the swap can fall back to a copy and leave them behind (a ~100 MB
+# .graph.tmp.json was committed by accident in PR #405)
+graphify-out/.graph.tmp.json
+graphify-out/*.tmp
+graphify-out/.gfy-*
