@@ -7,8 +7,10 @@ import type { BrowserContext, Locator, Page } from "@playwright/test";
 const ROOT = path.resolve(__dirname, "../../../../docs/screenshots");
 // School CRM set (docs/school-crm/documentation-plan.md S2.2): pass `root: SCHOOL_ROOT` to shoot().
 export const SCHOOL_ROOT = path.resolve(__dirname, "../../../../docs/school-crm/screenshots");
+// Overseas Counselor CRM set (docs/counselor-crm/documentation-plan.md S2.2): pass `root: COUNSELOR_ROOT` to shoot().
+export const COUNSELOR_ROOT = path.resolve(__dirname, "../../../../docs/counselor-crm/screenshots");
 
-// Every capture masks password inputs and the dev-only "Demo accounts" card (it prints the demo password).
+// Every capture masks password inputs and the dev-only "Demo accounts" / "Demo super admin" cards (they print the demo password).
 // `center`: scroll that element to the middle of the viewport first (messages below a long form).
 // `element`: capture just that element (a long form card), not the viewport -- note it in the screenshot index.
 export async function shoot(
@@ -22,8 +24,11 @@ export async function shoot(
   // Also masks the dev-only reset link on the forgot-password page (it carries a live reset token).
   const mask = [
     page.locator('input[type="password"]'),
-    page.locator(".card", { hasText: "Demo accounts" }),
+    // /admin/login titles its card "Demo super admin" (Counselor CRM S2.3).
+    page.locator(".card", { hasText: /Demo (accounts|super admin)/ }),
     page.getByText("Development only", { exact: false }),
+    // The counselor's iCal feed URL carries a live feed token (Counselor CRM S2.2).
+    page.locator("#calendar-feed-url"),
     ...(opts.mask ?? []),
   ];
   await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => {});
@@ -70,8 +75,15 @@ export async function toTop(locator: Locator, offset = 80) {
   await locator.first().evaluate((el, off) => window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - off, behavior: "instant" }), offset);
 }
 
-export async function signIn(page: Page, email: string, kind: "seed" | "test" = "seed", landing = /\/overseas\/(agent|admin)\//) {
-  await page.goto("/overseas/login");
+// `portal`: the sign-in page; Super Admin and the global manager roles use "/admin/login" (Counselor CRM S2.2).
+export async function signIn(
+  page: Page,
+  email: string,
+  kind: "seed" | "test" = "seed",
+  landing = /\/overseas\/(agent|admin)\//,
+  portal = "/overseas/login",
+) {
+  await page.goto(portal);
   await page.fill("#login-email", email);
   await page.fill("#login-password", password(kind));
   await page.click("button:has-text('Sign in securely')");
