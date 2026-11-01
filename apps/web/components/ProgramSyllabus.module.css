@@ -1,0 +1,122 @@
+/* PUB-025 (DEC-SCOPE-334): the public syllabus on a course page. */
+.modules {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.module {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.module summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  font-weight: 800;
+  list-style: none;
+}
+
+.module summary::-webkit-details-marker {
+  display: none;
+}
+
+.module summary::after {
+  margin-left: auto;
+  color: var(--blue);
+  content: "+";
+  content: "+" / ""; /* decorative: screen readers already hear the expanded state */
+  font-size: 20px;
+  line-height: 1;
+}
+
+.module[open] summary::after {
+  content: "−";
+  content: "−" / "";
+}
+
+.module summary:focus-visible {
+  outline: 3px solid var(--blue2);
+  outline-offset: 2px;
+  border-radius: 14px;
+}
+
+.moduleNumber {
+  display: grid;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #e8f1ff;
+  color: var(--blue);
+  font-size: 13px;
+  place-items: center;
+}
+
+.moduleTitle {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.topicCount {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.module ul {
+  margin: 0;
+  padding: 0 16px 14px 62px;
+}
+
+.module li {
+  padding: 4px 0;
+  color: var(--ink);
+}
+
+.download {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 8px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px;
+  background: var(--soft);
+}
+
+.download p {
+  margin: 4px 0 0;
+}
+
+.fileMark {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  place-items: center;
+}
+
+@media (max-width: 640px) {
+  .download {
+    grid-template-columns: auto 1fr;
+  }
+
+  .download :global(.btn) {
+    grid-column: 1 / -1;
+  }
+
+  .module ul {
+    padding-left: 32px;
+  }
+}

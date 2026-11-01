@@ -158,6 +158,24 @@ class Program(Base, TimestampMixin):
     placement_assistance: Mapped[str] = mapped_column(Text)
     trainer_name: Mapped[str] = mapped_column(String(160))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # PUB-025 (DEC-SCOPE-334): an optional card image, and ONE syllabus source -- "manual" (modules), "link" (Drive/https) or "pdf".
+    image_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    syllabus_source: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    syllabus_modules: Mapped[list] = mapped_column(JSON, default=list)
+    syllabus_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    syllabus_pdf_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    __table_args__ = (CheckConstraint("syllabus_source IS NULL OR syllabus_source IN ('manual', 'link', 'pdf')", name="ck_programs_syllabus_source"),)
+
+    @property
+    def syllabus(self) -> dict | None:
+        """PUB-025 S1: the public view of the ONE active source, or None (the page then falls back to the curriculum list)."""
+        if self.syllabus_source == "manual" and self.syllabus_modules:
+            return {"source": "manual", "modules": self.syllabus_modules}
+        if self.syllabus_source == "link" and self.syllabus_url:
+            return {"source": "link", "url": self.syllabus_url}
+        if self.syllabus_source == "pdf" and self.syllabus_pdf_url:
+            return {"source": "pdf", "url": self.syllabus_pdf_url}
+        return None
 
 
 class Batch(Base, TimestampMixin):

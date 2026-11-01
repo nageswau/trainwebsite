@@ -4838,3 +4838,24 @@ for any other role, even with the key), then the student (**404** outside the HR
 - `GET /reports` / `/reports/{id}[.csv|.xlsx]` — new report ids `hr-progress`, `hr-completions` (`student_progress.view`/`.download`) and
   `hr-attendance` (`attendance.view`/`.download`); rows are the HR population's seats.
 - `GET /portal/it/hr/reports` — now **200** (Placement Reports summary) for hr_team; was 404.
+
+## 12IF. IT course card image and syllabus (PUB-025) — addendum, 2026-11-01
+
+`DEC-SCOPE-334`. Migration `0220_program_syllabus_image` (`programs.image_url`, `syllabus_source` (`manual|link|pdf|NULL`, CHECK),
+`syllabus_modules` JSON default `[]`, `syllabus_url`, `syllabus_pdf_url`). Additive.
+
+- `GET /public/programs`, `GET /public/programs/{slug}`, `GET /public/home` `programs[]` — each program adds `image_url` (string | null) and
+  `syllabus`: `{source: "manual", modules: [{title, topics[]}]}` | `{source: "link" | "pdf", url}` | `null`.
+- `GET /public/program-files/{name}` (new, **no auth**) — `name` = 32 hex + `.png|.jpg|.webp|.pdf`. **200** only while an active program
+  uses it as `image_url` or as its current PDF syllabus; **404** otherwise. `X-Content-Type-Options: nosniff`, `Cache-Control: public,
+  max-age=3600`; a PDF adds `Content-Disposition: inline; filename="<slug>-syllabus.pdf"`.
+- Admin (all `it_admin`/`super_admin`; **401** without a session, **403** other roles, **404** unknown program). Each returns
+  `{id, slug, title, image_url, syllabus}`:
+  - `GET /admin/programs/{id}/media`.
+  - `PUT /admin/programs/{id}/syllabus` — JSON `{source: "manual", modules}` | `{source: "link", url}` | `{source: null}`. **422** for
+    `source: "pdf"` (use the upload), an unknown source, no/blank modules or titles, over-limit modules/topics, a non-`https://` or
+    >500-char link. Clears the other sources; a PDF let go is deleted after commit. Audit `program.syllabus`.
+  - `PUT /admin/programs/{id}/syllabus/pdf` — multipart `file`, `application/pdf` with PDF magic bytes, ≤10 MB (**413**/**415**).
+    Sets `source = "pdf"`, replaces the previous PDF (deleted after commit). Audit `program.syllabus`.
+  - `PUT /admin/programs/{id}/image` — multipart `file`, PNG/JPEG/WebP ≤2 MB (**413**/**415**), 120–4096 px each side (**422**);
+    metadata stripped (PNG/JPEG). Replaces the previous image. `DELETE /admin/programs/{id}/image` removes it. Audit `program.image`.

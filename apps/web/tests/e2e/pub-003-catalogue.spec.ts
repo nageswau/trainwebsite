@@ -26,7 +26,7 @@ test("category tabs filter the catalogue and preserve the selected state in the 
 
 test("opening a program shows full detail: curriculum, duration, fees, certification, trainer (PUB-003-AC01)", async ({ page }) => {
   await page.goto("/it/programs");
-  await page.locator(".card.hover").first().getByRole("link", { name: /View Curriculum/i }).click();
+  await page.locator(".card.hover").first().getByRole("link", { name: /View Details/i }).click();
   await expect(page.getByRole("heading", { name: "Curriculum" })).toBeVisible();
   await expect(page.getByText("Duration")).toBeVisible();
   await expect(page.getByText("Fees")).toBeVisible();
@@ -39,7 +39,7 @@ test("program detail generates per-page SEO metadata, not the generic fallback (
   await page.goto("/it/programs");
   const firstTitle = (await page.locator(".card.hover h3").first().textContent())?.trim();
   expect(firstTitle).toBeTruthy();
-  await page.locator(".card.hover").first().getByRole("link", { name: /View Curriculum/i }).click();
+  await page.locator(".card.hover").first().getByRole("link", { name: /View Details/i }).click();
   await expect(page).toHaveTitle(`${firstTitle} | EduSphere`);
 });
 

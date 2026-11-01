@@ -7,7 +7,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Literal
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, Response, UploadFile
 from fastapi.exceptions import RequestValidationError
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import delete, func, or_, select
@@ -90,6 +90,7 @@ from app.services import (
     management_access,
     management_audit,
     partnership_lifecycle,
+    program_media,
     recruiter_lifecycle,
     telecaller_lifecycle,
 )
@@ -953,6 +954,97 @@ async def update_program(program_id: UUID, payload: dict, user: User = Depends(e
     db.add(AuditLog(user_id=user.id, action="program.update", entity_type="program", entity_id=str(item.id), metadata_json=payload))
     await db.commit()
     return {"ok": True}
+
+
+# PUB-025 (DEC-SCOPE-334): a course's card image (S3) and its ONE syllabus source (S1). IT administrators only, like the rest of /programs.
+def _require_it_admin(user: User) -> None:
+    if user.role not in {"super_admin", "it_admin"}:
+        raise HTTPException(403, "IT administrator required")
+
+
+async def _program_for_media(db: AsyncSession, user: User, program_id: UUID) -> Program:
+    _require_it_admin(user)
+    item = await db.get(Program, program_id, with_for_update=True)
+    if not item:
+        raise HTTPException(404, "Program not found")
+    return item
+
+
+async def _commit_media(db: AsyncSession, new_url: str | None, old_urls: list[str | None]) -> None:
+    """Commit; on failure drop the just-stored file (nothing points at it), on success drop the files the course let go."""
+    try:
+        await db.commit()
+    except Exception:
+        program_media.delete(new_url)
+        raise
+    for url in old_urls:
+        if url and url != new_url:
+            program_media.delete(url)
+
+
+@router.get("/programs/{program_id}/media")
+async def program_media_detail(program_id: UUID, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+    _require_it_admin(user)
+    item = await db.get(Program, program_id)
+    if not item:
+        raise HTTPException(404, "Program not found")
+    return program_media.media_out(item)
+
+
+@router.put("/programs/{program_id}/syllabus")
+async def put_program_syllabus(program_id: UUID, payload: dict = Body(...), user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+    """S1: `{"source": "manual", "modules": [...]}`, `{"source": "link", "url": "https://..."}` or `{"source": null}` (no syllabus).
+    A PDF is set with PUT .../syllabus/pdf. Whatever is set replaces the other sources; a PDF let go is deleted after the commit."""
+    item = await _program_for_media(db, user, program_id)
+    source = payload.get("source")
+    if source not in ("manual", "link", None):
+        raise HTTPException(422, "source must be manual, link or null (upload a PDF with PUT /syllabus/pdf)")
+    modules = program_media.clean_modules(payload.get("modules")) if source == "manual" else []
+    url = program_media.clean_link(payload.get("url")) if source == "link" else None
+    old_pdf = item.syllabus_pdf_url
+    item.syllabus_source, item.syllabus_modules, item.syllabus_url, item.syllabus_pdf_url = source, modules, url, None
+    db.add(AuditLog(user_id=user.id, action="program.syllabus", entity_type="program", entity_id=str(item.id),
+                    metadata_json={"source": source, "modules": len(modules), "pdf_removed": old_pdf is not None}))
+    await _commit_media(db, None, [old_pdf])
+    await db.refresh(item)
+    return program_media.media_out(item)
+
+
+@router.put("/programs/{program_id}/syllabus/pdf")
+async def put_program_syllabus_pdf(program_id: UUID, file: UploadFile = File(...), user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+    item = await _program_for_media(db, user, program_id)
+    program_media.check_pdf(file)
+    old_pdf, new_pdf = item.syllabus_pdf_url, program_media.store_pdf(file)
+    item.syllabus_source, item.syllabus_modules, item.syllabus_url, item.syllabus_pdf_url = "pdf", [], None, new_pdf
+    db.add(AuditLog(user_id=user.id, action="program.syllabus", entity_type="program", entity_id=str(item.id),
+                    metadata_json={"source": "pdf", "replaced": old_pdf is not None}))
+    await _commit_media(db, new_pdf, [old_pdf])
+    await db.refresh(item)
+    return program_media.media_out(item)
+
+
+@router.put("/programs/{program_id}/image")
+async def put_program_image(program_id: UUID, file: UploadFile = File(...), user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+    item = await _program_for_media(db, user, program_id)
+    data, content_type = await program_media.read_image(file)
+    old_url, new_url = item.image_url, program_media.store_bytes(data, content_type)
+    item.image_url = new_url
+    db.add(AuditLog(user_id=user.id, action="program.image", entity_type="program", entity_id=str(item.id),
+                    metadata_json={"content_type": content_type, "size": len(data), "replaced": old_url is not None}))
+    await _commit_media(db, new_url, [old_url])
+    await db.refresh(item)
+    return program_media.media_out(item)
+
+
+@router.delete("/programs/{program_id}/image")
+async def delete_program_image(program_id: UUID, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+    item = await _program_for_media(db, user, program_id)
+    old_url = item.image_url
+    item.image_url = None
+    db.add(AuditLog(user_id=user.id, action="program.image", entity_type="program", entity_id=str(item.id), metadata_json={"removed": old_url is not None}))
+    await _commit_media(db, None, [old_url])
+    await db.refresh(item)
+    return program_media.media_out(item)
 
 
 # rec-036 (DEC-SCOPE-179 CI1): a program's skill tags. `skill-options` is the editor's picker (it_admin cannot read the Skills Master).

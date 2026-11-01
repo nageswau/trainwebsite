@@ -29,7 +29,7 @@ from app.models import (
     WebinarRegistration,
 )
 from app.schemas import CareerPathOut, CountryOut, EnquiryIn, ProgramOut, RealProjectOut, SocialProofOut, TestimonialOut, UniversityOut, WebinarRegistrationIn
-from app.services import lead_intake, social_proof, university_logos, upload_policy
+from app.services import lead_intake, program_media, social_proof, university_logos, upload_policy
 from app.services.partnership_universities import public_visible
 from app.services.storage import storage
 from app.worker import sync_enquiry_to_crm_task
@@ -70,6 +70,26 @@ async def program(slug: str, db: AsyncSession = Depends(get_db)):
     if not x:
         raise HTTPException(404, "Program not found")
     return x
+
+
+@router.get("/program-files/{name}")
+async def program_file(name: str, db: AsyncSession = Depends(get_db)):
+    """PUB-025 (DEC-SCOPE-334 S2/S3): a course's uploaded card image or syllabus PDF -- public, no enquiry gate -- served only while an
+    active course shows it. Only server-made names under one fixed prefix are read; the type comes from the server-chosen extension."""
+    match = program_media.FILE_NAME.fullmatch(name)
+    if match is None:
+        raise HTTPException(404, "File not found")
+    owner = await program_media.owner_of(db, program_media.URL_PREFIX + name)
+    if owner is None:
+        raise HTTPException(404, "File not found")
+    try:
+        data = storage.read_bytes(f"{program_media.PREFIX}/{name}")
+    except Exception:
+        raise HTTPException(404, "File not found") from None
+    headers = {"Cache-Control": "public, max-age=3600", "X-Content-Type-Options": "nosniff"}
+    if match.group(1) == "pdf":
+        headers["Content-Disposition"] = f'inline; filename="{owner.slug}-syllabus.pdf"'
+    return Response(content=data, media_type=program_media.TYPES[match.group(1)], headers=headers)
 
 
 @router.get("/career-paths", response_model=list[CareerPathOut])

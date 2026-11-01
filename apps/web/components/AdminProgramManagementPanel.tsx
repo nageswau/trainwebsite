@@ -3,12 +3,14 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import ProgramMediaEditor from "@/components/ProgramMediaEditor";
 import ProgramSkillsEditor from "@/components/ProgramSkillsEditor";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 type AdminProgramRow = { id: string; slug: string; category: string; title: string; duration: string; fees: number; active: boolean };
 
 const skillsButtonId = (programId: string) => `program-skills-${programId}`;
+const mediaButtonId = (programId: string) => `program-media-${programId}`;
 
 function matches(p: AdminProgramRow, query: string) {
   const normalized = query.trim().toLowerCase();
@@ -33,6 +35,7 @@ export default function AdminProgramManagementPanel() {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ id: string; text: string; failed: boolean } | null>(null);
   const [skillsFor, setSkillsFor] = useState<string | null>(null); // rec-036: the program whose Skills editor is open
+  const [mediaFor, setMediaFor] = useState<string | null>(null); // PUB-025: the program whose image/syllabus editor is open (one editor at a time)
   const focusAfterRender = useFocusAfterRender();
 
   useEffect(() => {
@@ -52,11 +55,17 @@ export default function AdminProgramManagementPanel() {
     setQuery(text);
     // rec-036 QA36-02: an editor never stays open for a program the search has hidden.
     if (skillsFor && !programs?.some((p) => p.id === skillsFor && matches(p, text))) setSkillsFor(null);
+    if (mediaFor && !programs?.some((p) => p.id === mediaFor && matches(p, text))) setMediaFor(null);
   }
 
   function closeSkills(programId: string) {
     setSkillsFor(null);
     focusAfterRender(skillsButtonId(programId)); // QA36-01: back to the row the editor belonged to
+  }
+
+  function closeMedia(programId: string) {
+    setMediaFor(null);
+    focusAfterRender(mediaButtonId(programId));
   }
 
   async function toggleActive(row: AdminProgramRow, confirmCascade: boolean) {
@@ -132,8 +141,12 @@ export default function AdminProgramManagementPanel() {
                         {busyId === row.id ? "Saving…" : confirmingId === row.id ? "Confirm deactivate" : row.active ? "Deactivate" : "Reactivate"}
                       </button>
                       <button type="button" id={skillsButtonId(row.id)} className="btn secondary small" aria-expanded={skillsFor === row.id}
-                        aria-label={`Skills for ${row.title}`} onClick={() => setSkillsFor(skillsFor === row.id ? null : row.id)}>
+                        aria-label={`Skills for ${row.title}`} onClick={() => { setMediaFor(null); setSkillsFor(skillsFor === row.id ? null : row.id); }}>
                         Skills
+                      </button>
+                      <button type="button" id={mediaButtonId(row.id)} className="btn secondary small" aria-expanded={mediaFor === row.id}
+                        aria-label={`Image and syllabus for ${row.title}`} onClick={() => { setSkillsFor(null); setMediaFor(mediaFor === row.id ? null : row.id); }}>
+                        Image &amp; syllabus
                       </button>
                     </div>
                     {message?.id === row.id && (
@@ -151,6 +164,15 @@ export default function AdminProgramManagementPanel() {
                           as wide as it (100cqw = the scrolling wrap's visible width), so it is never cut off however far the table is scrolled. */}
                       <div style={{ position: "sticky", left: 0, width: "min(40rem, calc(100cqw - 32px))" }}>
                         <ProgramSkillsEditor programId={row.id} programTitle={row.title} onClose={() => closeSkills(row.id)} />
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                {mediaFor === row.id && (
+                  <tr>
+                    <td colSpan={5}>
+                      <div style={{ position: "sticky", left: 0, width: "min(44rem, calc(100cqw - 32px))" }}>
+                        <ProgramMediaEditor programId={row.id} programTitle={row.title} onClose={() => closeMedia(row.id)} />
                       </div>
                     </td>
                   </tr>

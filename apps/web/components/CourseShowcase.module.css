@@ -1,0 +1,135 @@
+/* PUB-025: the /it home "Explore Our Courses" grid. */
+
+/* The hero's "Explore Courses" link jumps here; keep the heading clear of the sticky site header. */
+.section {
+  scroll-margin-top: 88px;
+}
+
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.heading h2 {
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: flex;
+  overflow: hidden;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: 0 4px 18px rgb(15 40 80 / 4%);
+  transition: transform .2s, box-shadow .2s;
+}
+
+.card:hover,
+.card:focus-within {
+  box-shadow: var(--shadow);
+  transform: translateY(-3px);
+}
+
+/* Flex, not grid: a grid row grows to the image's natural height and spills over the text below. */
+.media {
+  display: flex;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  height: 180px;
+  flex: none;
+  background: linear-gradient(135deg, var(--course-accent, var(--blue)), color-mix(in srgb, var(--course-accent, var(--blue)) 55%, #071b38));
+}
+
+.media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tile {
+  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 48px;
+  font-weight: 900;
+  letter-spacing: -.06em;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 20px 22px 22px;
+}
+
+.category {
+  margin-bottom: 8px;
+  color: var(--course-accent, var(--blue));
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.body h3 {
+  margin-bottom: 8px;
+}
+
+.body p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-bottom: 18px;
+  color: var(--muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.link {
+  align-self: flex-start;
+  margin-top: auto;
+  color: var(--blue);
+  font-weight: 800;
+}
+
+.link:hover,
+.link:focus-visible {
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+
+  .card:hover,
+  .card:focus-within {
+    transform: none;
+  }
+}
+
+@media (max-width: 980px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

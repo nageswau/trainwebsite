@@ -1,6 +1,9 @@
 import type { PaymentLock } from "./studentAccess";
 
-export type Program = { id:string; slug:string; category:string; title:string; summary:string; duration:string; eligibility:string; fees:number; certification:string; curriculum:string[]; placement_assistance:string; trainer_name:string };
+export type Program = { id:string; slug:string; category:string; title:string; summary:string; duration:string; eligibility:string; fees:number; certification:string; curriculum:string[]; placement_assistance:string; trainer_name:string; image_url?:string|null; syllabus?:ProgramSyllabus|null };
+// PUB-025 (DEC-SCOPE-334 S1): a course shows ONE syllabus source, or none (then its curriculum list).
+export type SyllabusModule = { title:string; topics:string[] };
+export type ProgramSyllabus = { source:"manual"; modules:SyllabusModule[] } | { source:"link"|"pdf"; url:string };
 export type Country = { id:string; slug:string; name:string; iso2?:string|null; overview:string; tuition:string; living_expenses:string; visa_process:string[]; work_opportunities:string; post_study_work:string; pr_opportunities:string; faq:{question:string;answer:string}[]; university_count?:number };
 export type University = { id:string; country_id:string; slug:string; name:string; city:string; overview:string; eligibility:string; requirements:string[]; deadlines:string[]; scholarships:string[]; logo_url?:string|null; campuses?:string[]|null; fee_structure?:string|null;
   programs_count?:number; country_name?:string|null; country_slug?:string|null; country_iso2?:string|null }; // nehn-035 (DEC-SCOPE-331 L6): the public list only

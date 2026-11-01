@@ -117,6 +117,8 @@ The priority is a suggestion only; the owner sets the order.
   - a downloadable syllabus PDF;
   - a clear "next batch starts" date and mode.
 - **Open questions:** where syllabi are stored, and whether downloading one should require an enquiry (lead capture).
+- **Update 2026-11-01:** the syllabus part is built as `PUB-025` (DEC-SCOPE-334): one source per course (typed modules, a Drive/https
+  link, or an uploaded PDF), no enquiry gate, plus an optional course card image. The "next batch starts" date and mode remain open.
 
 #### `psb-011` — Verified placement / outcome statistics
 - **Why:** 360digrii gives no numbers. EduSphere's own `/public/home` had **fake hard-coded stats**, which PUB-022 removed (SP3).

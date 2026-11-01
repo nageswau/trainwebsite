@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
 
+import { programVisual } from "@/lib/programVisuals";
 import type { Program } from "@/lib/types";
 
 import styles from "./ProgramCatalogue.module.css";
@@ -15,16 +16,6 @@ const feeFormatter = new Intl.NumberFormat("en-IN", {
   currency: "INR",
   maximumFractionDigits: 0,
 });
-
-const categoryVisuals: Record<string, { accent: string; mark: string }> = {
-  "Software Development": { accent: "#0878d1", mark: "</>" },
-  Data: { accent: "#6d4bd3", mark: "01" },
-  SAP: { accent: "#007f72", mark: "SAP" },
-  Cloud: { accent: "#15865e", mark: "CLD" },
-  "Artificial Intelligence": { accent: "#8450cc", mark: "AI" },
-  "Cyber Security": { accent: "#d05b3f", mark: "SEC" },
-  DevOps: { accent: "#26708e", mark: "OPS" },
-};
 
 type SortOption = "title-asc" | "fee-asc" | "fee-desc" | "duration-asc";
 
@@ -84,11 +75,18 @@ function FactIcon({ kind }: { kind: "duration" | "certificate" | "placement" }) 
 }
 
 function ProgramCard({ program, index }: { program: Program; index: number }) {
-  const visual = categoryVisuals[program.category] ?? { accent: "#0755b9", mark: "EDU" };
+  const visual = programVisual(program.category);
   const accentStyle = { "--program-accent": visual.accent } as CSSProperties;
 
   return (
     <article className={`card hover ${styles.programCard}`} style={accentStyle}>
+      {program.image_url ? (
+        // PUB-025 S3: an uploaded card image replaces the generated tile; the title below names the course, so the image is decorative.
+        <div className={styles.courseImage}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- served by the API, sized by CSS */}
+          <img src={program.image_url} alt="" loading="lazy" />
+        </div>
+      ) : (
       <div className={styles.courseVisual} aria-hidden="true">
         <div className={styles.visualTopline}>
           <span>EduSphere Learning Track</span>
@@ -101,6 +99,7 @@ function ProgramCard({ program, index }: { program: Program; index: number }) {
           ))}
         </div>
       </div>
+      )}
 
       <div className={styles.cardBody}>
         <span className={styles.categoryPill}>{program.category}</span>
@@ -128,7 +127,7 @@ function ProgramCard({ program, index }: { program: Program; index: number }) {
             <data value={program.fees}>{feeFormatter.format(Number(program.fees))}</data>
           </div>
           <Link className={styles.exploreLink} href={`/it/programs/${program.slug}`}>
-            View Curriculum <span aria-hidden="true">↗</span>
+            View Details <span aria-hidden="true">→</span>
           </Link>
         </div>
       </div>
