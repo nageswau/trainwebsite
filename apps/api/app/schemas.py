@@ -2493,6 +2493,8 @@ class ProgramOut(BaseModel):
     curriculum: list
     placement_assistance: str
     trainer_name: str
+    image_url: str | None = None  # PUB-025 S3
+    syllabus: dict | None = None  # PUB-025 S1: {source: manual, modules} | {source: link|pdf, url} | None
     model_config = {"from_attributes": True}
 
 

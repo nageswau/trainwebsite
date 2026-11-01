@@ -326,6 +326,20 @@
   padding: 19px 21px 20px;
 }
 
+/* PUB-025 S3: an uploaded card image, the same height as the generated tile. */
+.courseImage {
+  overflow: hidden;
+  height: 174px;
+  background: #e8eef6;
+}
+
+.courseImage img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .courseVisual::before,
 .courseVisual::after {
   position: absolute;

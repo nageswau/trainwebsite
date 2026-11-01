@@ -10559,3 +10559,30 @@ the training pack's columns over the HR population, no financial column. HR's Pl
 The recruiter requirements module still bars HR (Q-28) -- an open question for the client.
 **Numbering:** migration `0219_hr_student_grants`; API §12HH; RBAC §2.221.
 - **Feature ID authorized:** `nehn-017`. **Status:** built on `worktree-nehn-017`.
+
+### DEC-SCOPE-334 — IT course card image and syllabus: manual, Drive link or PDF (`PUB-025`, closes `psb-010` syllabus gap)
+
+- **Source:** owner request 2026-11-01 ("verify the current IT courses page and make sure it is similar to
+  https://www.eduspherecourses.in/#courses-section — not exact but similar. Also syllabus can be entered manually, drive link or upload pdf"),
+  `MEETING_TRANSCRIPT_REQUEST`-level owner instruction; reference site = `UX_REFERENCE` only. `docs/delivery/PUBLIC_SITE_BACKLOG.md`
+  `psb-010` (syllabus download gap, NEEDS_CONFIRMATION until now).
+- **UX audit of the reference (fetched 2026-11-01):** the homepage "Explore Our Courses" section shows 6 cards, each a course photo, title,
+  1–2-line description and "View Details →"; no filters, price, duration or syllabus on the cards. The per-course pages are rendered by
+  JavaScript and returned only "Loading course..." to a static fetch, so their syllabus presentation could **not** be inspected and was not
+  copied. EduSphere's `/it/programs` already exceeds the reference (tabs, search, sort, fees, duration); the gaps were the course photo, the
+  homepage grid and any syllabus beyond a flat topic list.
+- **Owner answers (2026-11-01):**
+  - **S1 — one source per course.** Admin picks *manual* (modules, each with topic lines), *link* (Google Drive or any `https://` URL) or
+    *pdf* (upload). Setting one clears the others; a PDF the course stops using is deleted. With no source the course page keeps showing the
+    existing `curriculum` list.
+  - **S1a — manual = modules with topics** (≤40 modules, title ≤160 chars, ≤40 topics each ≤300 chars), shown as expandable sections.
+  - **S2 — no lead gate.** The PDF/link opens directly (new tab); "Enquire about next batch" stays next to it.
+  - **S3 — optional card image** per course (PNG/JPEG/WebP, ≤2 MB, 120–4096 px, metadata stripped); without one the generated category
+    tile stays. The `/it` home "Latest programs" block becomes an "Explore Our Courses" grid (`#courses-section`, ≤6 cards, image/tile,
+    title, summary, "View Details →"); the hero button "Browse Programs" becomes "Explore Courses" (anchors to the grid); the catalogue
+    card link "View Curriculum ↗" becomes "View Details →".
+- **Defaults taken (NEEDS_CONFIRMATION if the owner disagrees):** any https host is accepted for links (not only Google Drive); PDF ≤10 MB;
+  uploaded files are served only while an active course uses them (a deactivated course's files 404); IT administrators
+  (`it_admin`, `super_admin`) only, like the rest of course management.
+- **Numbering:** migration `0220_program_syllabus_image`; API §12IF; RBAC §2.237.
+- **Feature ID authorized:** `PUB-025`. **Status:** built on `feature/pub-025`.

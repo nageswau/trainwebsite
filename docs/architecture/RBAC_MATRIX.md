@@ -3412,3 +3412,16 @@ Keywords are the answer key: every student payload keeps its explicit field whit
 
 New catalogue resources `student_progress`, `attendance`, `student_documents` (view, download); hr_team holds all six keys by default
 (migration 0219). Read-only. Pinned by `apps/api/tests/test_nehn_017_hr_student_access.py` and `test_nehn_017_migration.py`.
+
+### 2.237 IT course card image and syllabus *(added 2026-11-01 — `DEC-SCOPE-334`, PUB-025)*
+
+| Route | Anonymous | super_admin | it_admin | overseas_admin, trainer, it_student, other roles |
+|---|---|---|---|---|
+| `GET /public/programs[/{slug}]` (`image_url`, `syllabus`) | 200 | 200 | 200 | 200 |
+| `GET /public/program-files/{name}` | 200 while an active course uses the file, else 404 | same | same | same |
+| `GET /admin/programs/{id}/media` | 401 | 200 | 200 | 403 |
+| `PUT /admin/programs/{id}/syllabus`, `PUT .../syllabus/pdf` | 401 | 200 | 200 | 403 |
+| `PUT /admin/programs/{id}/image`, `DELETE .../image` | 401 | 200 | 200 | 403 |
+
+The syllabus is public with no enquiry gate (S2). Inline `User.role` check, like the other `/admin/programs` routes. Pinned by
+`apps/api/tests/test_pub_025_program_syllabus.py`.
