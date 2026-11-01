@@ -1,4 +1,4 @@
-# Public Website — Improvement Backlog (`psb-002` … `psb-019`)
+# Public Website — Improvement Backlog (`psb-002` … `psb-020`)
 
 NO-ASSUMPTION MODE. Prepared 2026-10-14 at the owner's request ("move the remaining items into backlog"). **No code was written or changed for these items.**
 
@@ -18,6 +18,7 @@ Every item therefore needs its own clarifying questions, a Decision ID and the u
 | `PUB-023` | Country flags, phase 1: public country/course pages, agent partner universities, partnership admin lists, country picker options | `DEC-SCOPE-222` (no migration, API 12EJ) | branch `feature/pub-023` (built; e2e and full suite: owner) |
 | `PUB-024` | The three office addresses (Bengaluru, Hyderabad, Tadepalligudem) with Google Maps directions links on `/contact`, `/it/contact` and `/overseas/contact` | `DEC-SCOPE-223` (no migration, no API change) | branch `feature/pub-024` |
 | `psb-002` … `psb-019` | Below | — | Not started |
+| `psb-020` | EduSphere's own job vacancies on the careers page, kept apart from client placement requirements | — | Not started (added 2026-11-01) |
 
 ## Items
 
@@ -189,3 +190,31 @@ The priority is a suggestion only; the owner sets the order.
   - BDM organisation detail; the generic `admin/[module]` country column;
   - the agent dashboard, commission report and report filters; the visa checklist.
 - **Not in scope:** native `<select>` dropdowns and free-text country fields (F5).
+
+### E. Owner requests
+
+#### `psb-020` — EduSphere's own vacancies ("Work at EduSphere")
+- **Source:** the owner asked on 2026-11-01, in a Claude Code session, whether `/it/careers` lists EduSphere openings or third-party requirements, then asked for this backlog item. Evidence class: `MEETING_TRANSCRIPT_REQUEST`. Not approved as scope.
+- **EduSphere today** (checked on `main` @ `045d8c40`):
+  - **`/it/careers` lists third-party requirements only.** `apps/web/app/it/careers/page.tsx` renders `GET /api/v1/public/jobs` (`apps/api/app/api/public.py:217`). That endpoint returns every `Job` in `JOB_OPEN_STATUSES` (`models.py:674`) that hasn't passed its closing date, across all divisions.
+  - **Every `Job` belongs to a `Company`.** The page copy says "Browse active employer opportunities" and "New jobs appear here when the placement or HR team publishes a requirement".
+  - **Three ways to create a `Job`:**
+    - the staff form `POST /workflows/it/jobs` (`placement_team`, `hr_team`, `it_admin`, `super_admin`; live immediately as `requirement_received`);
+    - the recruiter requirement `POST /recruiter/requirements` (starts `new`, not public until moved to an open status);
+    - the employer draft `POST /employer/jobs` (starts `new`).
+  - **Only workaround today:** create a requirement for a company named "EduSphere". It then counts in recruitment figures (open positions, recruiter KPIs, management recruitment) alongside client requirements.
+  - **Public applications go nowhere visible.** An application from the careers page (`POST /public/jobs/{id}/apply`) is stored as a `CareerApplication` (`models.py:4737`). No staff API or screen reads that table. Only the applicant can see it, via the tracking-code lookup (`GET /public/career-applications/{code}`). Enrolled students who apply after signing in create a `JobApplication`, which the recruiter pipeline does show. This gap affects client jobs today too, so it may need its own item or a fix inside this one.
+- **Gap:**
+  - a way to post an internal vacancy that never enters recruitment metrics or the recruiter pipeline;
+  - a public listing that shows it (on `/it/careers` with a label, or on its own page);
+  - an internal screen where the right staff can review applicants and change their status.
+- **Open questions** (`NEEDS_CONFIRMATION`):
+  1. Where should vacancies appear: a new page such as `/careers` or `/work-with-us`, a separate section or tab on `/it/careers`, or mixed into the same list with an "EduSphere" badge? Do vacancies cover both divisions (IT and Overseas)?
+  2. Who posts and manages vacancies: `super_admin` only, `hr_team`, or a new internal-HR role? (`hr_team` today is the IT placement HR role.)
+  3. Who sees and processes applicants, and which statuses do they move through (e.g. submitted → shortlisted → interview → offer → hired / rejected)?
+  4. Which fields does a vacancy need? Title, department, location, employment type, experience, salary (shown or hidden), description, closing date; anything else?
+  5. What should applicants submit? Resume upload already exists (`/public/career-upload`, `career_resume` policy). Are a cover note, phone and consent text enough?
+  6. Should applicants or staff get email notifications (Zoho Mail, ENH-032)?
+  7. Should the existing gap — public client-job applications that no staff screen reads — be fixed here or as a separate item?
+  8. Data retention for unsuccessful applicants' resumes (privacy/consent)?
+- **Dependencies:** none hard. Feature ID continues the `PUB-0xx` series (next free number to be checked on `main`), plus its own `DEC-SCOPE` number.
