@@ -47,7 +47,14 @@ const TELECALLER_BOOKS = () => [
 const BDM_BOOKS = () => [
   { file: "EduSphere-BDM-CRM-Documentation-Plan", title: "EduSphere Overseas BDM CRM — Documentation Analysis and Plan", subtitle: "Scope, features, roles, product findings and capture sessions (planning stage, not browser-verified)", pages: ["documentation-analysis.md", "documentation-plan.md"], tocDepth: 2, dateLabel: "Planned" },
 ];
+const CNS_UM = ["account-access", "navigation", "dashboard", "tasks", "follow-ups", "calendar", "chat", "reports", "handoffs", "leads", "activity",
+  "conversion", "students", "applications", "offers", "documents", "visa", "finance", "arrival", "universities"];
+const CNS_AM = ["accounts", "escalation", "performance", "config"];
 const COUNSELOR_BOOKS = () => [
+  { file: "EduSphere-Counselor-CRM-User-Manual", title: "EduSphere Overseas Counselor CRM — User Manual", subtitle: "For Overseas counselors: leads, students, applications, offers, visa, finance and arrival", pages: ["user-manual/README.md", ...CNS_UM.flatMap((d) => md(`user-manual/${d}`))] },
+  { file: "EduSphere-Counselor-CRM-Admin-Manual", title: "EduSphere Overseas Counselor CRM — Administrator Manual", subtitle: "For Overseas Admins and Super Admins", pages: ["admin-manual/README.md", ...CNS_AM.flatMap((d) => md(`admin-manual/${d}`))] },
+  { file: "EduSphere-Counselor-CRM-Role-Guides", title: "EduSphere Overseas Counselor CRM — Role Quick-Start Guides", subtitle: "Counselor · Overseas Admin · Super Admin", pages: ["role-guides/overseas-counselor.md", "role-guides/overseas-admin-counselors.md", "role-guides/super-admin-counselors.md", "demo-accounts.md"] },
+  { file: "EduSphere-Counselor-CRM-FAQ-and-Troubleshooting", title: "EduSphere Overseas Counselor CRM — FAQ and Troubleshooting", subtitle: "Answers and fixes based on verified behaviour", pages: ["faq.md", "troubleshooting.md"] },
   { file: "EduSphere-Counselor-CRM-Documentation-Plan", title: "EduSphere Overseas Counselor CRM — Documentation Analysis and Plan", subtitle: "Scope, features, roles, product findings and capture sessions (planning stage, not browser-verified)", pages: ["documentation-analysis.md", "documentation-plan.md"], tocDepth: 2, dateLabel: "Planned" },
 ];
 const BOOKS = SCHOOL ? SCHOOL_BOOKS() : TELECALLER ? TELECALLER_BOOKS() : BDM ? BDM_BOOKS() : COUNSELOR ? COUNSELOR_BOOKS() : AGENT_BOOKS();

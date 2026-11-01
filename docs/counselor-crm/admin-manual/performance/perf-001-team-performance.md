@@ -18,7 +18,7 @@ Sidebar **Counselor performance**.
 Set **From** / **To** (the default is this month), optionally **Intake** and **Lead division**, then select **Show**.
 
 ### Step 2 — Read the table
-**Overseas counselors' performance** has one row per counselor and a **TOTAL** row. The columns are:
+**Overseas counselors** has one row per counselor and a **Total** row. The columns are:
 - Leads, Overseas leads, IT leads, Leads assigned;
 - Calls, Counseling sessions, Conversions, Conversion %;
 - Students, Applications;

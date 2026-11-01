@@ -30,7 +30,7 @@ When a student moves to another counselor, they disappear from your lists, unles
 Your lists always reflect the current assignment.
 
 ## Common Errors
-**Problem:** You weren't told about a new student. **Cause:** EduSphere creates in-app notices ("Student assigned to you", "Application assigned to you"), but counselors have no notifications page. **Resolution:** Check **My students** and **Application Tracking** regularly.
+**Problem:** You can't find the notice in EduSphere. **Cause:** Notices such as "Student assigned to you" and "Application assigned to you" are emailed to you, but counselors have no notifications page in the portal. **Resolution:** Check your email, **My students** and **Application Tracking**.
 
 ## Related Features
 - [My students](stu-002-my-students.md)

@@ -23,7 +23,7 @@ In **Year**, pick this year or one of the next three.
 ![Intake picker on the Add application form](../../screenshots/applications/01-add-application-form.png)
 
 ## Expected Result
-The intake is saved as "{Mon} {YYYY}" and shown as, for example, **Intake September 2027** on the application.
+The intake is saved as "{Mon} {YYYY}" and shown as, for example, **Intake Sep 2027** on the application.
 
 ## Validation Messages
 | Message | When |
@@ -33,7 +33,7 @@ The intake is saved as "{Mon} {YYYY}" and shown as, for example, **Intake Septem
 | Saved as "{value}". Choose a month and year to replace it. | An older free-text intake is shown |
 
 ## Common Errors
-**Problem:** You need to change the intake of an existing application. **Cause:** There is no counselor screen for it. **Resolution:** Ask the Overseas Admin.
+**Problem:** You need to change the intake of an existing application. **Cause:** There is no intake edit except through a deferral. **Resolution:** If the university defers the student, **Record outcome** → **Deferred** → **New intake** replaces it (see [Record an outcome](app-007-outcome.md)).
 
 ## Related Features
 - [Add an application](app-001-add-application.md)

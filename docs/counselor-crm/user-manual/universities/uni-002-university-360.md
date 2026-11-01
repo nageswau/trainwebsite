@@ -36,6 +36,8 @@ You have what you need to advise a student on this university.
 | No applications for this university yet. | None of your students applied |
 
 ## Common Errors
+**Problem:** The heading reads "DUDocs University". **Cause:** For a university without a logo, the logo's initials are printed in front of the name. **Resolution:** Read the name without the initials.
+
 **Problem:** The application **Status** shows codes such as `offer` or `enrolled`. **Cause:** This table shows the internal status. **Resolution:** Read the stage on the application itself.
 
 ## Tips

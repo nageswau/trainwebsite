@@ -44,7 +44,7 @@ The record appears under **Messages** as "WhatsApp sent – {date} – {time}" w
 | WhatsApp send recorded. | Recorded |
 | Message deleted. | You deleted a record |
 | This template was made for another product. Check the text before sending. | Template for a different product |
-| This lead has no WhatsApp or mobile number | No number on the lead |
+| No WhatsApp or mobile number on this lead. | No number on the lead (**Send WhatsApp** is disabled) |
 | Only today's messages can be deleted | Deleting an older record |
 
 ## Common Errors

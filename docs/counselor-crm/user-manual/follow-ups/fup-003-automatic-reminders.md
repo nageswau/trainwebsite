@@ -8,7 +8,7 @@ Know which reminders EduSphere creates for you automatically and where they show
 Overseas counselors. The Overseas Admin sets the rules ([Reminder rules](../../admin-manual/config/cfg-002-reminder-rules.md)).
 
 ## Prerequisites
-None. The rules run every day at 08:15 IST.
+None. Most rules run every day at 08:15 IST; the **New lead assigned** task is created as soon as a lead is handed to you.
 
 ## How to Access
 Sidebar **Tasks**, and the **Tasks due** section of the dashboard.
@@ -33,7 +33,7 @@ These rules only create an in-app **notice**:
 - Offer condition due.
 - Visa appointment approaching.
 
-The counselor portal has **no notifications page**, so these notices aren't visible to you. Check deadlines on the dashboard sections **Offer deadlines and conditions** and **Visa appointments and decisions**.
+These notices are **emailed** to you (and sent by WhatsApp or SMS if you turned those on in [My profile](../account-access/auth-005-my-profile.md)), but the counselor portal has **no notifications page**, so they don't appear inside EduSphere. Check deadlines on the dashboard sections **Offer deadlines and conditions** and **Visa appointments and decisions** as well.
 
 ## Expected Result
 Each reminder is created once, even if the rules run again.

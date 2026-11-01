@@ -45,7 +45,7 @@ EduSphere asks: "Confirm enrolment? The application becomes Enrolled; on an agen
 
 ## Expected Result
 - The student is notified ("Enrolment confirmed").
-- A linked lead becomes **Converted**.
+- A linked lead becomes **Converted** within about 15 minutes.
 - On an agency application, the agency commission is estimated.
 
 ## Validation Messages

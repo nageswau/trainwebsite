@@ -34,13 +34,13 @@ No. Telecallers book them; you confirm them and record the outcome. See [Lead ap
 On **Students** (or **Applications**) → **Evaluate Applications**. The 360 Applications tab only lists applications. See [Advance stage](user-manual/applications/app-004-advance-stage.md).
 
 **Why can't I mark an application Ready for submission?**
-Every required checklist document must be **Verified** or marked **Not required**. See [Sub-status and the gate](user-manual/applications/app-005-sub-status-ready-gate.md).
+Every required checklist document must be **Verified** (or **Approved**, for a CV or SOP) or marked **Not required**. See [Sub-status and the gate](user-manual/applications/app-005-sub-status-ready-gate.md).
 
 **How do I mark an application Enrolled?**
 With **Enrolment** → **Confirm enrolment** and the confirmation document. **Advance stage** never offers Enrolled. See [Confirm enrolment](user-manual/arrival/arr-001-confirm-enrolment.md).
 
 **Can I change an application's intake?**
-Not from the counselor screens; ask the Overseas Admin.
+Only when the university defers the student: **Record outcome** → **Deferred** → **New intake** replaces it. There is no other intake edit on the counselor screens.
 
 **Who can reopen a closed application or correct a visa decision?**
 Only the Overseas Admin.
@@ -54,7 +54,7 @@ No; the Overseas Admin records fees. You can upload payment proof and deposit re
 
 ## Reminders and tasks
 **Where do reminder notices show?**
-Reminder **tasks** appear on **Tasks**. Counselors have no notifications page, so notice-only reminders don't show anywhere in the counselor portal. See [Reminder rules](admin-manual/config/cfg-002-reminder-rules.md).
+Reminder **tasks** appear on **Tasks**. Notices are emailed to you (and sent by WhatsApp/SMS if you opted in); counselors have no notifications page, so they don't appear inside the portal. See [Reminder rules](admin-manual/config/cfg-002-reminder-rules.md).
 
 **Where did my cancelled task go?**
 Cancelled tasks aren't listed. Mark tasks done instead if you may need them later. See [My tasks](user-manual/tasks/task-001-my-tasks.md).

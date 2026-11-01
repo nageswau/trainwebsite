@@ -39,6 +39,9 @@ Use **Counselor** (All counselors or one) and **Show**: Open and recently done, 
 | Priority | High, Medium, Low | Yes | High |
 | About (optional) | That counselor's lead, student or application | No | Docs Walk-in Student |
 
+## Expected Result
+The task appears on the counselor's **My tasks** and in this list, and counts in the summary line and in **Overdue by counselor** once it is overdue.
+
 ## Validation Messages
 | Message | When |
 |---|---|

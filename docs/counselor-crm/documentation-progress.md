@@ -6,102 +6,102 @@
 | Stack used for browser work | `cnsdocs` compose project from worktree `.claude/worktrees/cns-docs` (branch `docs/counselor-crm-user-guide`). Web http://localhost:3050, api :8050, Mailpit 127.0.0.1:8029 via untracked `docker-compose.docs.yml`. Untracked `.env` per plan S2.1. Owner approved Claude starting, seeding, resetting and snapshotting this stack only (2026-10-29). Started 2026-10-30 (S2) at `045d8c40`; seeded; snapshots `after-seed`, `after-s2` in the session scratchpad. |
 | Docs branch | `docs/counselor-crm-user-guide` (from `main` @ `045d8c40`) |
 | Day 1 (D3 calendar) | **2026-10-30** (S5). **Owner changed D3 on 2026-10-30:** instead of waiting, open Day-1 items were moved 4 days back by SQL in the cnsdocs database (follow-ups, tasks, A1 offer deadline, English test request, interview, CAP-000002) and the offer/document expiry jobs were run by hand; snapshot `s9-prepared`. Screenshots of those states say "state prepared by data setup". |
-| Last session | S10 Lifecycle — 2026-10-30 |
-| Next session | S12 — Final review and PDFs |
+| Last session | S12 Final review and PDFs — 2026-11-01 |
+| Next session | — (set complete; re-check when `main` moves) |
 
 **Column values:** Code Reviewed YES / PARTIAL / NO (YES at S1 = reviewed from source at `045d8c40`, evidence in `discovery/`) · Browser Verified YES / PARTIAL / NO · Screenshot YES / NO / N/A · Documented YES / DRAFT / NO · Reviewed PASSED / FAILED / NO.
 
 A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES, Screenshot = YES (or N/A), Documented = YES and Reviewed = PASSED.
 
-**Totals (after S10):** 85 features · 85 code-reviewed · **85 browser-verified + documented** · 0 COMPLETE (Reviewed in S12).
+**Totals (after S12):** 85 features · 85 code-reviewed · 85 browser-verified · 85 documented · 85 reviewed PASSED · **85 COMPLETE**. See [documentation-review-report.md](documentation-review-report.md).
 
 | ID | Module | Feature | Session | Code Reviewed | Browser Verified | Screenshot | Documented | Reviewed |
 |---|---|---|---|---|---|---|---|---|
-| DOC-CNS-AUTH-001 | Account access | Sign in to the Overseas portal | S3 | YES | YES | YES | YES | NO |
-| DOC-CNS-AUTH-002 | Account access | Set your first password from the welcome email | S3 | YES | YES | YES | YES | NO |
-| DOC-CNS-AUTH-003 | Account access | Forgot / reset your password | S3 | YES | YES | YES | YES | NO |
-| DOC-CNS-AUTH-004 | Account access | Change your password | S3 | YES | YES | YES | YES | NO |
-| DOC-CNS-AUTH-005 | Account access | My profile | S3 | YES | YES | YES | YES | NO |
-| DOC-CNS-AUTH-006 | Account access | Sign out, ended sessions, deactivated account | S3 | YES | YES | YES | YES | NO |
-| DOC-CNS-NAV-001 | Navigation | Portal tour: 15-item sidebar, top bar, mobile menu | S3 | YES | YES | YES | YES | NO |
-| DOC-CNS-DASH-001 | Dashboard | Counselor dashboard (action tiles + application table) | S9 | YES | YES | YES | YES | NO |
-| DOC-CNS-SRCH-001 | Dashboard | Quick search | S9 | YES | YES | YES | YES | NO |
-| DOC-CNS-LEAD-001 | Leads | My leads list | S4 | YES | YES | YES | YES | NO |
-| DOC-CNS-LEAD-002 | Leads | Record a new walk-in lead | S4 | YES | YES | YES | YES | NO |
-| DOC-CNS-LEAD-003 | Leads | Lead detail page layout | S4 | YES | YES | YES | YES | NO |
-| DOC-CNS-LEAD-004 | Leads | Lead details: view and edit contact, consent, referral | S4 | YES | YES | YES | YES | NO |
-| DOC-CNS-LEAD-005 | Leads | Next action | S4 | YES | YES | YES | YES | NO |
-| DOC-CNS-LEAD-006 | Leads | Change stage, record loss, close a lead | S4 | YES | YES | YES | YES | NO |
-| DOC-CNS-LEAD-007 | Leads | Lead qualification | S4 | YES | YES | YES | YES | NO |
-| DOC-CNS-LEAD-008 | Leads | Return a lead to the telecaller | S4 | YES | YES | YES | YES | NO |
-| DOC-CNS-LEAD-009 | Leads | Student and milestones panel (read only) | S4 | YES | YES | YES | YES | NO |
-| DOC-CNS-CONV-001 | Conversion | Convert a lead to a new student | S4 | YES | YES | YES | YES | NO |
-| DOC-CNS-CONV-002 | Conversion | Link / unlink an existing student account | S4 | YES | YES | YES | YES | NO |
-| DOC-CNS-ACT-001 | Activity | Log a call | S5 | YES | YES | YES | YES | NO |
-| DOC-CNS-ACT-002 | Activity | Record a WhatsApp message | S5 | YES | YES | YES | YES | NO |
-| DOC-CNS-ACT-003 | Activity | Email a lead | S5 | YES | YES | YES | YES | NO |
-| DOC-CNS-ACT-004 | Activity | Log a meeting | S5 | YES | YES | YES | YES | NO |
-| DOC-CNS-ACT-005 | Activity | Lead notes | S5 | YES | YES | YES | YES | NO |
-| DOC-CNS-ACT-006 | Activity | Lead activity timeline | S5 | YES | YES | YES | YES | NO |
-| DOC-CNS-CHAT-001 | Chat | Counselor Chat with students | S5 | YES | YES | YES | YES | NO |
-| DOC-CNS-FUP-001 | Follow-ups | Follow-ups on a lead | S5 | YES | YES | YES | YES | NO |
-| DOC-CNS-FUP-002 | Follow-ups | Overdue follow-ups on the Tasks page | S9 | YES | YES | YES | YES | NO |
-| DOC-CNS-FUP-003 | Follow-ups | Automatic reminders (what triggers them, where they show) | S9 | YES | YES | YES | YES | NO |
-| DOC-CNS-TASK-001 | Tasks | My tasks | S5 | YES | YES | YES | YES | NO |
-| DOC-CNS-CAL-001 | Calendar | Appointments page and lead appointments | S5 | YES | YES | YES | YES | NO |
-| DOC-CNS-CAL-002 | Calendar | Calendar and iCal feed | S5 | YES | YES | YES | YES | NO |
-| DOC-CNS-REP-001 | Reports | My performance | S9 | YES | YES | YES | YES | NO |
-| DOC-CNS-UNI-001 | Universities | Partner universities list | S8 | YES | YES | YES | YES | NO |
-| DOC-CNS-UNI-002 | Universities | University 360 view (incl. course commission display) | S8 | YES | YES | YES | YES | NO |
-| DOC-CNS-STU-001 | Students | Students page: Application Tracking table and filters | S6 | YES | YES | YES | YES | NO |
-| DOC-CNS-STU-002 | Students | My students card (Source filter, search) | S6 | YES | YES | YES | YES | NO |
-| DOC-CNS-STU-003 | Students | Add a walk-in student / edit pending / resend link | S6 | YES | YES | YES | YES | NO |
-| DOC-CNS-STU-004 | Students | Student 360: header, tabs, Overview | S6 | YES | YES | YES | YES | NO |
-| DOC-CNS-STU-005 | Students | Structured profile (Academic / Preferences / English) | S6 | YES | YES | YES | YES | NO |
-| DOC-CNS-STU-006 | Students | Internal student notes | S6 | YES | YES | YES | YES | NO |
-| DOC-CNS-STU-007 | Students | Activities and History tabs | S6 | YES | YES | YES | YES | NO |
-| DOC-CNS-STU-008 | Students | Archive a student / Archived Students | S10 | YES | YES | YES | YES | NO |
-| DOC-CNS-STU-009 | Students | Overseas consent (read only for staff) | S10 | YES | YES | YES | YES | NO |
-| DOC-CNS-STU-010 | Students | When a student or application is reassigned to you | S6 | YES | YES | YES | YES | NO |
-| DOC-CNS-APP-001 | Applications | Add an application from the 360 | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-APP-002 | Applications | Intake Month YYYY picker | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-APP-003 | Applications | Applications tab list (EduSphere ID) | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-APP-004 | Applications | Advance an application's stage | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-APP-005 | Applications | Sub-status and the Ready-for-Submission gate | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-APP-006 | Applications | Journey stage | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-APP-007 | Applications | Record an outcome / resume | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-APP-008 | Applications | Application details (fields and dates) | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-APP-009 | Applications | Application status history | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-APP-010 | Applications | Agency vs direct applications | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-OFR-001 | Offers | Record, close or decide an offer | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-OFR-002 | Offers | Offer conditions | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-OFR-003 | Offers | Admission interviews | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-DOC-001 | Documents | Application document checklist | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-DOC-002 | Documents | Documents page and document status | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-DOC-003 | Documents | Request documents from the student | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-DOC-004 | Documents | Upload a document for the student (incl. offer letter) | S7 | YES | YES | YES | YES | NO |
-| DOC-CNS-VISA-001 | Visa | Start and track a visa case | S8 | YES | YES | YES | YES | NO |
-| DOC-CNS-FIN-001 | Finance | University deposit record | S8 | YES | YES | YES | YES | NO |
-| DOC-CNS-FIN-002 | Finance | Finance tab: fees, payments, deposits, refunds | S8 | YES | YES | YES | YES | NO |
-| DOC-CNS-FIN-003 | Finance | Upload a deposit receipt / payment proof | S8 | YES | YES | YES | YES | NO |
-| DOC-CNS-ARR-001 | Arrival | Confirm enrolment (agency commission note) | S8 | YES | YES | YES | YES | NO |
-| DOC-CNS-ARR-002 | Arrival | Arrival and orientation | S8 | YES | YES | YES | YES | NO |
-| DOC-CNS-HO-001 | Handoffs | A telecaller hands a lead to you | S4 | YES | YES | YES | YES | NO |
-| DOC-CNS-HO-002 | Handoffs | A website enquiry becomes your lead | S4 | YES | YES | YES | YES | NO |
-| DOC-CNS-HO-003 | Handoffs | Agency students and applications | S6 | YES | YES | YES | YES | NO |
-| DOC-CNS-HO-004 | Handoffs | Self-registered students | S6 | YES | YES | YES | YES | NO |
-| DOC-CNS-ADM-001 | Admin: accounts | Create a counselor account | S2 | YES | YES | YES | YES | NO |
-| DOC-CNS-ADM-002 | Admin: accounts | Manage counselor users: set-up status, re-send link, edit, deactivate | S2 | YES | YES | YES | YES | NO |
-| DOC-CNS-ADM-003 | Admin: accounts | Assign / change a student's counselor (with reason) | S6 | YES | YES | YES | YES | NO |
-| DOC-CNS-ADM-004 | Admin: accounts | Assign / change an application's counselor (with reason) | S6 | YES | YES | YES | YES | NO |
-| DOC-CNS-ESC-001 | Admin: escalation | Counselor tasks (admin view) | S9 | YES | YES | YES | YES | NO |
-| DOC-CNS-ESC-002 | Admin: escalation | Overdue by counselor and the escalation notice | S9 | YES | YES | YES | YES | NO |
-| DOC-CNS-PERF-001 | Admin: performance | Team performance | S9 | YES | YES | YES | YES | NO |
-| DOC-CNS-PERF-002 | Admin: performance | One counselor's report | S9 | YES | YES | YES | YES | NO |
-| DOC-CNS-CFG-001 | Admin: config | Document checklist templates | S2 | YES | YES | YES | YES | NO |
-| DOC-CNS-CFG-002 | Admin: config | Reminder rules and Run now | S2 | YES | YES | YES | YES | NO |
-| DOC-CNS-CFG-003 | Admin: config | Counselor message templates | S2 | YES | YES | YES | YES | NO |
-| DOC-CNS-CFG-004 | Admin: config | Archived students: admin restore | S10 | YES | YES | YES | YES | NO |
+| DOC-CNS-AUTH-001 | Account access | Sign in to the Overseas portal | S3 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-AUTH-002 | Account access | Set your first password from the welcome email | S3 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-AUTH-003 | Account access | Forgot / reset your password | S3 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-AUTH-004 | Account access | Change your password | S3 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-AUTH-005 | Account access | My profile | S3 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-AUTH-006 | Account access | Sign out, ended sessions, deactivated account | S3 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-NAV-001 | Navigation | Portal tour: 15-item sidebar, top bar, mobile menu | S3 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-DASH-001 | Dashboard | Counselor dashboard (action tiles + application table) | S9 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-SRCH-001 | Dashboard | Quick search | S9 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-LEAD-001 | Leads | My leads list | S4 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-LEAD-002 | Leads | Record a new walk-in lead | S4 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-LEAD-003 | Leads | Lead detail page layout | S4 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-LEAD-004 | Leads | Lead details: view and edit contact, consent, referral | S4 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-LEAD-005 | Leads | Next action | S4 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-LEAD-006 | Leads | Change stage, record loss, close a lead | S4 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-LEAD-007 | Leads | Lead qualification | S4 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-LEAD-008 | Leads | Return a lead to the telecaller | S4 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-LEAD-009 | Leads | Student and milestones panel (read only) | S4 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-CONV-001 | Conversion | Convert a lead to a new student | S4 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-CONV-002 | Conversion | Link / unlink an existing student account | S4 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-ACT-001 | Activity | Log a call | S5 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-ACT-002 | Activity | Record a WhatsApp message | S5 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-ACT-003 | Activity | Email a lead | S5 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-ACT-004 | Activity | Log a meeting | S5 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-ACT-005 | Activity | Lead notes | S5 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-ACT-006 | Activity | Lead activity timeline | S5 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-CHAT-001 | Chat | Counselor Chat with students | S5 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-FUP-001 | Follow-ups | Follow-ups on a lead | S5 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-FUP-002 | Follow-ups | Overdue follow-ups on the Tasks page | S9 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-FUP-003 | Follow-ups | Automatic reminders (what triggers them, where they show) | S9 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-TASK-001 | Tasks | My tasks | S5 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-CAL-001 | Calendar | Appointments page and lead appointments | S5 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-CAL-002 | Calendar | Calendar and iCal feed | S5 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-REP-001 | Reports | My performance | S9 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-UNI-001 | Universities | Partner universities list | S8 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-UNI-002 | Universities | University 360 view (incl. course commission display) | S8 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-STU-001 | Students | Students page: Application Tracking table and filters | S6 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-STU-002 | Students | My students card (Source filter, search) | S6 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-STU-003 | Students | Add a walk-in student / edit pending / resend link | S6 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-STU-004 | Students | Student 360: header, tabs, Overview | S6 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-STU-005 | Students | Structured profile (Academic / Preferences / English) | S6 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-STU-006 | Students | Internal student notes | S6 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-STU-007 | Students | Activities and History tabs | S6 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-STU-008 | Students | Archive a student / Archived Students | S10 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-STU-009 | Students | Overseas consent (read only for staff) | S10 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-STU-010 | Students | When a student or application is reassigned to you | S6 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-APP-001 | Applications | Add an application from the 360 | S7 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-APP-002 | Applications | Intake Month YYYY picker | S7 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-APP-003 | Applications | Applications tab list (EduSphere ID) | S7 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-APP-004 | Applications | Advance an application's stage | S7 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-APP-005 | Applications | Sub-status and the Ready-for-Submission gate | S7 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-APP-006 | Applications | Journey stage | S7 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-APP-007 | Applications | Record an outcome / resume | S7 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-APP-008 | Applications | Application details (fields and dates) | S7 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-APP-009 | Applications | Application status history | S7 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-APP-010 | Applications | Agency vs direct applications | S7 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-OFR-001 | Offers | Record, close or decide an offer | S7 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-OFR-002 | Offers | Offer conditions | S7 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-OFR-003 | Offers | Admission interviews | S7 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-DOC-001 | Documents | Application document checklist | S7 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-DOC-002 | Documents | Documents page and document status | S7 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-DOC-003 | Documents | Request documents from the student | S7 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-DOC-004 | Documents | Upload a document for the student (incl. offer letter) | S7 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-VISA-001 | Visa | Start and track a visa case | S8 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-FIN-001 | Finance | University deposit record | S8 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-FIN-002 | Finance | Finance tab: fees, payments, deposits, refunds | S8 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-FIN-003 | Finance | Upload a deposit receipt / payment proof | S8 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-ARR-001 | Arrival | Confirm enrolment (agency commission note) | S8 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-ARR-002 | Arrival | Arrival and orientation | S8 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-HO-001 | Handoffs | A telecaller hands a lead to you | S4 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-HO-002 | Handoffs | A website enquiry becomes your lead | S4 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-HO-003 | Handoffs | Agency students and applications | S6 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-HO-004 | Handoffs | Self-registered students | S6 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-ADM-001 | Admin: accounts | Create a counselor account | S2 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-ADM-002 | Admin: accounts | Manage counselor users: set-up status, re-send link, edit, deactivate | S2 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-ADM-003 | Admin: accounts | Assign / change a student's counselor (with reason) | S6 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-ADM-004 | Admin: accounts | Assign / change an application's counselor (with reason) | S6 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-ESC-001 | Admin: escalation | Counselor tasks (admin view) | S9 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-ESC-002 | Admin: escalation | Overdue by counselor and the escalation notice | S9 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-PERF-001 | Admin: performance | Team performance | S9 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-PERF-002 | Admin: performance | One counselor's report | S9 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-CFG-001 | Admin: config | Document checklist templates | S2 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-CFG-002 | Admin: config | Reminder rules and Run now | S2 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-CFG-003 | Admin: config | Counselor message templates | S2 | YES | YES | YES | YES | PASSED |
+| DOC-CNS-CFG-004 | Admin: config | Archived students: admin restore | S10 | YES | YES | YES | YES | PASSED |
 
 ## Unresolved items
 | # | Item | Owner / session |
@@ -151,3 +151,4 @@ A feature is **COMPLETE** only when Code Reviewed = YES, Browser Verified = YES,
 | S9 | 2026-10-30 | (this commit) | Owner instruction: Day-1 items back-dated 4 days by SQL + expiry jobs run by hand. OA Run reminders now (9 new: 8 escalations + document-overdue task), counselor tasks (+ task given to A), overdue by counselor, team + one-counselor performance; counselor dashboard, quick search (P7 confirmed), tasks/overdue follow-ups, expired offer, condition met on A2, interview passed, request overdue, milestone row, CAP-000002 no-show (P8 confirmed), My performance; SA checks (P3 confirmed). 32 PNGs; 9 new pages + 7 drafts completed; READMEs/role guides linked; P1 confirmed (DB), P31 found. |
 | S10 | 2026-10-30 | (this commit) | Self-registered student gave consent; Counselor A archive refused for Asha (open APP-000003), archived the enrolled walk-in student; Archived students; SA refused; OA restored; Docs Counselor C deactivated (no confirm, P19 confirmed) → Invalid credentials → reactivated. 14 PNGs; STU-008, STU-009, CFG-004 documented; ADM-002, AUTH-006 completed; S11 guides refreshed. P16 partly confirmed. |
 | S10b | 2026-10-30 | (this commit) | Linked Docs Divya Student to LD-000007, application → Offer → enrolment confirmed, tel-018 conversion sweep run by hand → lead Converted; LEAD-009 completed; P32 found. |
+| S12 | 2026-11-01 | (this commit) | 3 parallel reviewers (2 accuracy, 1 screenshots/secrets) + structure check; all findings fixed (notices are emailed; intake via Deferred; outcome fields; gate; admin details; 12 smaller). 2 re-captures, 5 PNGs removed; all 85 PASSED/COMPLETE; review report; PDFs built. |

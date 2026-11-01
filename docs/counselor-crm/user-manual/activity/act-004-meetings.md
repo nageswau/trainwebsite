@@ -27,7 +27,7 @@ Select **Save meeting**. **Meeting recorded.** appears and the meeting is listed
 |---|---|---|---|
 | Meeting date and time (IST) | When it took place | Yes | today 07:00 |
 | Mode | In person, Online, Phone | Yes | In person |
-| Notes | What was discussed | Yes | Walk-in counselling with Divya and her father… |
+| Notes | What was discussed; up to 2000 characters | Yes | Walk-in counselling with Divya and her father… |
 
 ## Expected Result
 The meeting appears under **Meetings** and in the [activity timeline](act-006-activity-timeline.md). Meetings can't be edited or deleted.

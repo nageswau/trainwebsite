@@ -325,8 +325,8 @@ Features: STU-008, STU-009, CFG-004 (3). Also adds the deactivate steps to ADM-0
 - [x] Link check.
 - [x] **After S9 and S10:** turn the *(coming)* rows in both READMEs into links; remove the † marks and "VERIFICATION REQUIRED" in the Super Admin guide and admin README once checked; add dashboard/escalation steps to the role guides.
 
-### S12 — Final review and PDFs
-- [ ] Parallel reviewers: accuracy against code, screenshots/secrets, style/terminology, links/structure. Fix all findings.
-- [ ] Duplicate-screenshot check. Set Reviewed = PASSED/FAILED; mark COMPLETE.
-- [ ] `documentation-review-report.md` (findings, P1–P22 status, partial features, owner items).
-- [ ] PDFs: `node docs/tooling/build-pdfs.mjs counselor` → `docs/counselor-crm/pdf/`.
+### S12 — Final review and PDFs — DONE 2026-11-01
+- [x] Parallel reviewers: accuracy against code, screenshots/secrets, style/terminology, links/structure. Fix all findings.
+- [x] Duplicate-screenshot check. Set Reviewed = PASSED/FAILED; mark COMPLETE.
+- [x] `documentation-review-report.md` (findings, P1–P22 status, partial features, owner items).
+- [x] PDFs: `node docs/tooling/build-pdfs.mjs counselor` → `docs/counselor-crm/pdf/`.

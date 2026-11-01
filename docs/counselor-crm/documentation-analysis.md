@@ -250,7 +250,7 @@ Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 w
 
 | # | Finding | Evidence | Docs impact |
 |---|---|---|---|
-| P1 | **Confirmed S9 (DB: 4 notices for Docs Counselor A, no page).** Reminder notifications have no counselor inbox: no Notifications item or page for counselors | `counselor_reminders.py:189`, `navigation.ts:292` | FUP-003 |
+| P1 | **Confirmed S9; corrected S12:** reminder notices are created and **emailed** to the counselor (and WhatsApp/SMS if opted in), but the counselor portal has no Notifications page, so they never appear in EduSphere | `counselor_reminders.py:189`, `navigation.ts:292`, `notification_deliveries` | FUP-003 |
 | P2 | **Confirmed S4.** "Return to telecaller" is offered on closed leads. Returning one clears the owner but stays closed, and keeps no reason in history. The form says "goes back to Follow-up" | `lead_handover.py:124`, `lead_stages.py:53`, `CounselorLeadDetail.tsx:96` | LEAD-008 |
 | P3 | **Confirmed S9.** Super Admin opening counselor Leads or Dashboard gets load errors, not an access message | `portal.py:43`, `counselor_dashboard.py:19` | NAV-001, admin README |
 | P4 | Super Admin create-user defaults Division to IT. A counselor created that way cannot sign in at /overseas/login | `WorkflowPanel.tsx:389` | ADM-001 |
@@ -269,7 +269,7 @@ Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 w
 | P17 | The 360 "Counselor" field shows only the csc-001 link ("Not assigned" for the application counselor). The My students application count includes other counselors' applications | `counselor_student_360.py:105`, `counselor_students.py:280` | STU-004, STU-002 |
 | P18 | Below 980 px there is no Sign out (no sidebar, and the mobile menu has no item for it). **Confirmed S3**; workaround: menu → My profile → public header **Logout** | `globals.css:12`, `PortalShell.tsx` | NAV-001, AUTH-006 |
 | P19 | **Confirmed S10** (deactivated at once, no confirm step). Deactivating a counselor has no guard or handover; their work stays on the inactive account | `admin.py:839` | ADM-002 |
-| P20 | A telecaller handover sends no direct notice; it relies on the "New lead assigned" reminder rule | `lead_handover.py:46` | HO-001 |
+| P20 | A telecaller handover itself sends nothing; the counselor hears of it through the **New lead assigned** rule (task + emailed notice), so with that rule off a handover arrives silently | `lead_handover.py:46` | HO-001 |
 | P21 | The 360 has no Visa tab and no document-review action; counselors cannot download invoices/receipts on Finance; any caseload counselor can upload a payment proof | appendix 02 VISA/DOC/FIN | VISA-001, DOC-002, FIN-002/003 |
 | P22 | A counselor-created application for an agency student is always direct | `workflows.py:2435` | APP-001, APP-010 |
 | P24 | (S5, browser) After **Cancel it** on a follow-up, the item shows Cancelled but its reason form stays open | `FollowUpItem.tsx` | FUP-001 |
@@ -279,8 +279,9 @@ Documented as built, in neutral wording. P1–P22 are code-read candidates; P4 w
 | P28 | (S7, browser) A document uploaded as "Not tied to an application" never appears in the counselor's Document Verification queue (it lists only documents of the counselor's applications), so the counselor can't review it | `portal.py` documents section | DOC-002, DOC-004 |
 | P29 | (S7, browser) An application with the legacy status "University review" (seeded agency application) offers **every** stage in **Advance to**, including Enquiry | `CounselorEvaluationPanel.tsx` (`STAGES.indexOf` = -1) | APP-004, APP-010 |
 | P30 | (S7, browser) The **Evaluate Applications** cards are about 240 px wide at 1440 px; checklist rows are clipped at the right (badges, Unlink) | `CounselorEvaluationPanel.tsx` layout | DOC-001, APP-004 |
-| P31 | (S9, browser + DB) The "Overdue work escalated" notice is created for the Overseas Admin, but the Overseas Admin portal has no notifications page or dashboard list to show it | `counselor_reminders.py` escalate, `navigation.ts` overseas/admin | ESC-002 |
+| P31 | (S9, browser + DB) The "Overdue work escalated" notice is emailed to each Overseas Admin, but the Overseas Admin portal has no notifications page or dashboard list to show it | `counselor_reminders.py` escalate, `navigation.ts` overseas/admin | ESC-002 |
 | P32 | (S10, browser) A **Converted** lead still shows its open (overdue) follow-ups and the "No next action set. Add one before moving the lead to an open stage." prompt | `CounselorLeadDetail.tsx`, `lead_handover.py` permissions | LEAD-009, FUP-001 |
+| P33 | (S12, browser) The counselor's University 360 heading prints the logo initials before the name when there is no logo ("DUDocs University") | `UniversityView.tsx` | UNI-002 |
 | P23 | (Found in S2, browser) The Overseas Admin's **Manage users** table is 716 px wide inside a 500 px panel at 1440 px: the Status badge is clipped and the Action column is off-screen; acting on a row scrolls the name out of view | `/overseas/admin/users`, `AdminUserManagementPanel.tsx` | ADM-002 |
 
 **Default-based behaviours (owner D4).** About 40 counselor decisions are builder defaults marked NEEDS_CONFIRMATION or UNVERIFIED, not owner-approved (appendix 04 §3, column "Authority"). Manual pages describe them as built, with no warning banners. The owner reviews that list separately.

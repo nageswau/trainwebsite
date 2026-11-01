@@ -34,7 +34,7 @@ For the **Overseas Admin**, who creates counselors, assigns students and applica
 | Counselor tasks, performance, checklists, reminder rules, message templates | Open by address only (not in the Super Admin sidebar); the page shows the Overseas Admin's sidebar |
 | Counselor workspace pages (Leads, Dashboard) | Open, but show "Unable to load your leads." / "Dashboard sections are unavailable right now." instead of an access message |
 | Archived students / restore | Refused ("Overseas Administrator role required") |
-| Escalation notices | Not received; only Overseas Admins are told (and they have no notifications page either) |
+| Escalation notices | Not received; only Overseas Admins are told (by email; the admin portal has no notifications page) |
 
 ## Things to know
 - **Moving a lead between counselors** isn't possible from any screen. A counselor can return a lead to its telecaller, who can hand it to another counselor.

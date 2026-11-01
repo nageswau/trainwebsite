@@ -16,6 +16,9 @@ The Super Admin governs both divisions, but most counselor work is the Overseas 
 | Receive the overdue-work escalation notice | Overseas Admins only |
 | Work in the counselor workspace (Leads, Dashboard) | Counselors; the pages open for you but show "Unable to load your leads." / "Dashboard sections are unavailable right now." |
 
+![Counselor Leads page as seen by the Super Admin](../screenshots/escalation/08-super-admin-counselor-leads.png)
+![Counselor dashboard as seen by the Super Admin](../screenshots/escalation/09-super-admin-counselor-dashboard.png)
+
 ![Super Admin users table without the counsellor column](../screenshots/admin/17-super-admin-users-no-counsellor-column.png)
 
 ## Related

@@ -53,6 +53,9 @@ The rules run every day at 08:15 IST. Select **Run reminders now** to run them i
 
 Students are reminded only on direct applications, through the channels they opted in to. Agency partners keep their own deadline reminders.
 
+## Expected Result
+Counselors get the tasks and notices the rules describe, once per item. Every reminder is listed in **Recent reminders**.
+
 ## Validation Messages
 | Message | When |
 |---|---|
@@ -61,7 +64,7 @@ Students are reminded only on direct applications, through the channels they opt
 | Choose a whole number from {min} to {max} | The number is outside the rule's range |
 
 ## Common Errors
-**Problem:** A counselor says they never see reminder notices. **Cause:** The counselor portal has no Notifications page. Reminder **tasks** appear on the counselor's **Tasks** page, but notices have nowhere to show. **Resolution:** Rely on the task-creating rules (**Task + notice**) for work counselors must act on.
+**Problem:** A counselor says they never see reminder notices in EduSphere. **Cause:** The counselor portal has no Notifications page. Notices are emailed (and sent by WhatsApp/SMS if the counselor opted in), but they don't appear in the portal; reminder **tasks** appear on the counselor's **Tasks** page. **Resolution:** Rely on the **Task + notice** rules for work counselors must act on.
 
 ## Tips
 - Turning a rule off stops new reminders; it does not delete tasks already created.

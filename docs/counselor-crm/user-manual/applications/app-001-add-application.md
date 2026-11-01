@@ -58,7 +58,7 @@ The application appears on the **Applications** tab and in your **Application Tr
 **Problem:** You applied for an agency student, but the new application isn't an agency application. **Cause:** Applications created by a counselor are always direct (no agent).
 
 ## Tips
-- You can't change an application's intake later from the counselor screens, so choose carefully.
+- The intake can only be changed later by recording the outcome **Deferred** with a **New intake** (see [Record an outcome](app-007-outcome.md)), so choose carefully.
 
 ## Related Features
 - [Applications tab list](app-003-applications-tab.md)

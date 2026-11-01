@@ -30,9 +30,9 @@ You run the counselor team: you create counselors, decide who handles which stud
 | A visa decision was recorded wrongly | Only you can correct it |
 
 ## Things counselors will ask you
-- To change an application's intake: there is no counselor screen for it.
+- To change an application's intake: only possible by recording the outcome **Deferred** with a **New intake**.
 - To unlink a converted lead's student: only an admin can.
-- Why they don't see reminder notices: counselors have no notifications page; rely on the task-creating rules.
+- Why they don't see reminder notices in EduSphere: notices go by email only (counselors have no notifications page); rely on the task-creating rules.
 
 ## Related
 [Admin manual index](../admin-manual/README.md) · [Counselor role guide](overseas-counselor.md) · [Troubleshooting](../troubleshooting.md)

@@ -38,8 +38,8 @@ Select **Change counsellor** and pick the new counselor. **Reason for the change
 | Reason (optional) / Reason for the change | Why; required when replacing a counselor | When changing | Balancing caseloads this week. |
 
 ## Expected Result
-- The student moves to the new counselor's **My students**, and the previous counselor no longer sees them.
-- Both counselors get an in-app notice.
+- The student moves to the new counselor's **My students**. The previous counselor keeps seeing them while any of the student's applications is still assigned to them, so reassign those applications too ([ADM-004](adm-004-application-counselor.md)).
+- Both counselors get a notice by email (counselors have no notifications page in the portal).
 - The reason is shown in the student's **History**.
 
 ## Validation Messages

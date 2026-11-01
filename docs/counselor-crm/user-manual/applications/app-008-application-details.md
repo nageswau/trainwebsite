@@ -46,7 +46,7 @@ The dates drive reminders, for example "Application deadline approaching" and "U
 | A scholarship amount is recorded only when the scholarship is awarded | Amount without Awarded |
 
 ## Common Errors
-**Problem:** You can't change the intake here. **Cause:** Intake isn't one of these fields. **Resolution:** Ask the Overseas Admin.
+**Problem:** You can't change the intake here. **Cause:** Intake isn't one of these fields. **Resolution:** When the university defers the student, record the outcome **Deferred** with a **New intake** ([Record an outcome](app-007-outcome.md)).
 
 ## Related Features
 - [Reminder rules (admin)](../../admin-manual/config/cfg-002-reminder-rules.md)

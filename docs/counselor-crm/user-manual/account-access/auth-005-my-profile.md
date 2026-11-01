@@ -23,7 +23,7 @@ Change **Full name** or **Phone**, then select **Save changes**. **Your profile 
 ![Your profile was updated](../../screenshots/account-access/13-my-profile-saved.png)
 
 ### Step 3 — Choose notification channels (optional)
-Under **Notifications** → **Send me updates by**, **Email** and **In-app** are always on. Tick **WhatsApp** or **SMS** to also get messages at your phone number, then select **Save notification settings**. Turning on WhatsApp or SMS means you agree to receive these messages; you can turn them off here at any time.
+Under **Notifications** → **Send me updates by**, **Email** and **In-app** are always on. Tick **WhatsApp** or **SMS** to also get messages at your phone number, then select **Save notification settings**. Turning on WhatsApp or SMS means you agree to receive these messages; you can turn them off here at any time. The WhatsApp and SMS boxes can only be ticked once a valid mobile number (a 10-digit Indian mobile number, or an international number starting with +) is saved in **Phone**.
 
 ## Fields
 | Field | Description | Required | Example |

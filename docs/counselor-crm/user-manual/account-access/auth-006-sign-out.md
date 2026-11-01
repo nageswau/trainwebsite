@@ -25,7 +25,7 @@ Open the menu (☰) and select **My profile**. In the website header, select **L
 
 ### Step 3 — After signing out
 If you open a counselor page while signed out, you are sent to the **Overseas Education Portal** sign-in page. After you sign in, you return to the page you asked for.
-![Sign-in page after opening the dashboard while signed out](../../screenshots/account-access/15-signed-out-redirect.png)
+![Sign-in page after opening the dashboard while signed out](../../screenshots/account-access/01-overseas-login.png)
 
 ### Deactivated account
 When an Overseas Admin deactivates your account, signing in shows **Invalid credentials**, the same message as a wrong password. Forgot-password sends no email to an inactive account. Ask your Overseas Admin to reactivate you.

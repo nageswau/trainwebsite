@@ -28,10 +28,11 @@ Once the start time has passed, **Mark completed** and **Mark no-show** appear. 
 
 Select **Mark no-show** when the lead didn't attend. The message reads **Appointment no show.**
 ![Appointment marked no-show](../../screenshots/calendar/03-appointment-no-show.png)
+(This screenshot was taken later than the next two, on an appointment whose date was moved back in the documentation database, so CAP-000002 still shows as Scheduled in them.)
 
 ### Step 4 — Reschedule or cancel
 - **Reschedule**: choose a **New date and time (IST)** and an optional reason, then **Save new time**.
-- **Cancel appointment**: enter the **Reason for cancelling** and confirm. **Appointment cancelled.** appears.
+- **Cancel**: enter the **Reason for cancelling**, then select **Cancel appointment**. **Appointment cancelled.** appears.
 
 ![Cancel appointment](../../screenshots/calendar/04-cancel-appointment.png)
 ![Appointments after confirming, completing and cancelling](../../screenshots/calendar/08-lead-appointments-after.png)
@@ -52,7 +53,7 @@ The status changes on the card and in **History**. Your calendar feed updates to
 ## Validation Messages
 | Message | When |
 |---|---|
-| Appointment confirmed. / Appointment completed. / Appointment cancelled. / Appointment no show. | Success |
+| Appointment confirmed. / Appointment rescheduled. / Appointment completed. / Appointment cancelled. / Appointment no show. | Success |
 | Add a reason for cancelling. | No reason |
 | Choose the new date and time. / Choose a time in the future | Reschedule time missing or past |
 | The counselor already has an appointment at this time. Busy: {time} | Overlapping booking (seen by the telecaller) |

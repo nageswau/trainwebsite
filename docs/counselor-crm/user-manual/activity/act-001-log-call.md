@@ -19,7 +19,7 @@ Select **Log call**. Choose the **Outcome (required)**. **Call date and time (IS
 ![Log call form](../../screenshots/activity/01-log-call-form.png)
 
 ### Step 2 — Add a follow-up when the outcome needs one
-For **Connected – Follow-up Required** and **Call Back Requested**, the form adds **Next follow-up (required for this outcome)**: **Follow-up due (IST, required)**, **Follow-up reason** and **Next action**. For other outcomes you can tick **Add a next follow-up**.
+For **Connected – Follow-up Required** and **Call Back Requested**, the form adds **Next follow-up (required for this outcome)**: **Follow-up due (IST, required)**, **Follow-up reason** and **Next action**. For other outcomes, except Not Interested, Wrong Number, Already Joined Elsewhere and Not Eligible, you can tick **Add a next follow-up**.
 ![Call Back Requested asks for the next follow-up](../../screenshots/activity/02-log-call-follow-up-required.png)
 
 ### Step 3 — Save

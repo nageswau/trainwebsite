@@ -8,7 +8,7 @@ Decide which counselor handles an application, including agency applications tha
 The Overseas Admin. The Super Admin can't assign counselors.
 
 ## Prerequisites
-The application is open (not withdrawn or enrolled).
+The application is open (not enrolled, withdrawn, or closed by an outcome such as Rejected or Visa refused).
 
 ## How to Access
 Sidebar **Applications** (or **Students**). The page title is **Application Tracking**, and the **EduSphere counsellor** column has the controls.
@@ -36,7 +36,7 @@ Select **Assign counsellor** or **Change counsellor**, pick the counselor in **E
 | Message | When |
 |---|---|
 | {counselor} assigned. | Success |
-| This application is closed | Withdrawn or enrolled |
+| This application is closed | Enrolled or closed by an outcome |
 | Choose an active overseas counselor | Invalid counselor |
 | Only the Overseas Admin can assign a counselor | Any other role |
 

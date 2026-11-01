@@ -18,6 +18,7 @@ Sidebar **Tasks** (page **My tasks**) → **Overdue follow-ups** at the bottom. 
 ### Step 1 — Open the list
 Each overdue follow-up shows "{Lead ID} · {name}" and "Was due {date and time} · {reason}".
 ![Overdue follow-ups](../../screenshots/follow-ups/03-overdue-follow-ups.png)
+![My tasks with the Overdue band and, below, the overdue follow-ups](../../screenshots/tasks/06-my-tasks-overdue.png)
 
 ### Step 2 — Act on it
 Select the lead to open it, then mark the follow-up **Done**, **Reschedule** it or cancel it (see [Follow-ups on a lead](fup-001-follow-ups.md)).

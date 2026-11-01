@@ -28,9 +28,9 @@ Select **Update sub-status**. **Sub-status updated to {label}. The student has b
 ![Ready for submission accepted](../../screenshots/applications/09b-ready-for-submission.png)
 
 ### The Ready-for-Submission gate
-When you choose **Ready for submission**, every required document on the [checklist](../documents/doc-001-application-checklist.md) must be complete. A document is complete when it is **Verified** or marked **Not required**. The checklist template decides what happens otherwise:
+When you choose **Ready for submission**, every required document on the [checklist](../documents/doc-001-application-checklist.md) must be complete. A document is complete when it is **Verified** (or **Approved**, for a CV or SOP) or marked **Not required**. The checklist template decides what happens otherwise:
 - **Block until complete:** the change is refused: "Ready for Submission needs every required checklist document complete", followed by the missing items (for example "English test — Missing").
-- **Warn (override with a reason):** "Some required checklist documents are not complete -- give an override reason to continue". Enter an **Override reason** and select **Override and update**. The reason is kept in the status history. This is also what happens when no template matches.
+- **Warn (override with a reason):** "Some required checklist documents are not complete -- give an override reason to continue". Enter an **Override reason** and select **Override and update**. The reason is kept in the status history. An empty checklist (no matching template) uses Warn, but only for required items you added yourself; if no template matches and no checklist was created, the gate doesn't check anything.
 
 ![Blocked: English test and SOP missing](../../screenshots/applications/09-ready-for-submission-blocked.png)
 

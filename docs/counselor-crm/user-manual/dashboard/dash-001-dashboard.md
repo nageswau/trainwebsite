@@ -16,7 +16,7 @@ Sidebar **Dashboard** (page title **Counselor Dashboard**).
 
 ## Steps
 ### Step 1 — Read the action sections
-Below [Quick search](srch-001-quick-search.md), twelve sections each show a count and up to 10 items, soonest first:
+Below [Quick search](srch-001-quick-search.md), twelve sections each show a count and up to 10 items (dated work soonest first; new leads and today's calls newest first):
 - New and not-contacted leads.
 - Today's appointments.
 - Calls logged today.

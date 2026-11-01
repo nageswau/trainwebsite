@@ -38,7 +38,7 @@ The student receives the email, and the email shows under **Messages** and in th
 | Email queued for sending. | Accepted |
 | This email was not delivered. Check the lead's email address and send it again. | Delivery failed |
 | The mail server didn't accept it yet. It will be retried automatically. | Temporary delay |
-| This lead has no email address | No email on the lead |
+| No email address on this lead. | No email on the lead (**Send email** is disabled) |
 | Email is not set up. Ask an administrator to configure SMTP. | Email isn't configured |
 
 ## Common Errors

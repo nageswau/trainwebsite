@@ -8,7 +8,7 @@ Track a student's visa from preparation to decision: checklist, appointment, sub
 The counselor assigned to the application.
 
 ## Prerequisites
-- The student has an application with an offer.
+- An agency application must be at **Offer** or later; a direct application can start a visa case at any stage.
 - The documents on the visa checklist are uploaded and **Verified** before the case can move past preparation (see [Documents page](../documents/doc-002-documents-and-status.md)).
 
 ## How to Access

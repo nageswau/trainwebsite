@@ -25,7 +25,7 @@ A past due date is refused (**Check the highlighted fields.**).
 ![Past due date refused](../../screenshots/tasks/03-task-past-date.png)
 
 ### Step 3 — Work the list
-Tasks are grouped in bands by IST day: **Overdue**, **Today**, **Upcoming** and **Done (last 7 days)**. Each shows its title, due date, priority badge and what it is about. The **About** link opens the lead or student.
+Tasks are grouped in bands by IST day: **Overdue**, **Today**, **Upcoming** and **Done (last 7 days)**. Each shows its title, due date, priority badge and what it is about. The **About** link opens the lead, the student's notes, or **Application Tracking** for an application.
 - **Mark done** moves a task to **Done**; **Reopen** brings it back.
 - **Edit** changes your own tasks.
 - **Cancel task** asks "Cancel this task? It can't be reopened."; confirm with **Yes, cancel it**, or **Keep it**.
@@ -57,6 +57,7 @@ Your tasks show in the right band and on your dashboard's **Tasks due** tile.
 | Task added. | Success |
 | Give the title (2-200 characters) | Title too short or long |
 | Check the highlighted fields. / The due date can't be in the past | Past date |
+| Choose a due date from today up to two years ahead | Due date more than two years ahead |
 | You can change only the status of a task someone else gave you | Editing an admin's task |
 | This task was cancelled; it can't be changed | Cancelled task |
 

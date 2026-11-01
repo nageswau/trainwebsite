@@ -29,7 +29,6 @@ Capture settings: Chromium, 1440 × 900, light, `deviceScaleFactor` 1, locale `e
 | `account-access/02-login-invalid-credentials.png` | DOC-CNS-AUTH-001 | Counselor | Invalid credentials | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `account-access/03-set-password-page.png` | DOC-CNS-AUTH-002 | Counselor | Choose a new password (welcome link) | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `account-access/04-set-password-too-short.png` | DOC-CNS-AUTH-002 | Counselor | Browser min-length tooltip (10 chars) | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
-| `account-access/05-after-set-password-login.png` | DOC-CNS-AUTH-002 | Counselor | Back on sign-in after setting password | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `account-access/06-set-password-link-used.png` | DOC-CNS-AUTH-002 | Counselor | Reset token is invalid or expired (reused link) | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `account-access/07-signed-in-dashboard.png` | DOC-CNS-AUTH-001 | Counselor | Landing on Counselor Dashboard (empty) | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `account-access/08-change-password-page.png` | DOC-CNS-AUTH-004 | Counselor | Change password page | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
@@ -39,14 +38,12 @@ Capture settings: Chromium, 1440 × 900, light, `deviceScaleFactor` 1, locale `e
 | `account-access/12-my-profile.png` | DOC-CNS-AUTH-005 | Counselor | Your profile (public header) | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `account-access/13-my-profile-saved.png` | DOC-CNS-AUTH-005 | Counselor | Your profile was updated. | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `account-access/14-sidebar-footer-sign-out.png` | DOC-CNS-AUTH-006 | Counselor | Full sidebar incl. footer buttons (element shot) | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
-| `account-access/15-signed-out-redirect.png` | DOC-CNS-AUTH-006 | — | Dashboard opened while signed out → sign-in (?next) | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `account-access/16-forgot-password.png` | DOC-CNS-AUTH-003 | — | Reset your password page | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `account-access/17-forgot-password-sent.png` | DOC-CNS-AUTH-003 | — | Anti-enumeration confirmation | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `account-access/18-wrong-portal.png` | DOC-CNS-AUTH-001 | Counselor | Counselor at Administration sign-in → wrong-portal message; demo card masked | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `navigation/01-sidebar.png` | DOC-CNS-NAV-001 | Counselor | Sidebar (element shot) | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `navigation/02-topbar.png` | DOC-CNS-NAV-001 | Counselor | Top bar (element shot) | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `navigation/03-school-applications.png` | DOC-CNS-NAV-001 | Counselor | School-Linked Overseas Applications (empty) | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
-| `navigation/04-counselor-chat.png` | DOC-CNS-NAV-001 / CHAT-001 | Counselor | Counselor Chat empty (for S5) | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `navigation/05-management-tasks.png` | DOC-CNS-NAV-001 | Counselor | Management tasks (public layout) | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `navigation/06-mobile-dashboard.png` | DOC-CNS-NAV-001 | Counselor | 390 px dashboard | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
 | `navigation/07-mobile-menu-open.png` | DOC-CNS-NAV-001 | Counselor | 390 px menu top | `counselor/cns-s3-account-access.capture.ts` | 2026-10-30 | |
@@ -195,7 +192,7 @@ Capture settings: Chromium, 1440 × 900, light, `deviceScaleFactor` 1, locale `e
 | `arrival/02-confirm-enrolment-step.png` | DOC-CNS-ARR-001 | Counselor | confirm enrolment step | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
 | `arrival/03-enrolment-confirmed.png` | DOC-CNS-ARR-001 | Counselor | enrolment confirmed | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
 | `arrival/04-record-arrival.png` | DOC-CNS-ARR-002 | Counselor | record arrival | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
-| `arrival/05-arrival-saved.png` | DOC-CNS-ARR-002 | Counselor | arrival saved | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
+| `arrival/05-arrival-saved.png` | DOC-CNS-ARR-002 | Counselor | Arrival and orientation panel with saved arrival (element shot, re-captured S12) | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
 | `arrival/06-agency-enrolment-form.png` | DOC-CNS-ARR-001 / DOC-CNS-APP-010 | Counselor | agency enrolment form | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
 | `universities/01-partner-universities.png` | DOC-CNS-UNI-001 | Counselor | partner universities | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
 | `universities/02-search.png` | DOC-CNS-UNI-001 | Counselor | search | `counselor/cns-s8-visa-finance-arrival.capture.ts` | 2026-10-30 | |
@@ -205,10 +202,8 @@ Capture settings: Chromium, 1440 × 900, light, `deviceScaleFactor` 1, locale `e
 | `config/12-recent-reminders.png` | DOC-CNS-CFG-002 / DOC-CNS-ESC-002 | Overseas Admin | Recent reminders with escalations (element shot) · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
 | `escalation/01-counselor-tasks.png` | DOC-CNS-ESC-001 | Overseas Admin | Counselor tasks page · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
 | `escalation/02-add-task-for-counselor.png` | DOC-CNS-ESC-001 | Overseas Admin | Add a task for Docs Counselor A (element shot) | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
-| `escalation/03-counselor-tasks-overdue.png` | DOC-CNS-ESC-001 | Overseas Admin | Show = Overdue · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `escalation/03-counselor-tasks-overdue.png` | DOC-CNS-ESC-001 | Overseas Admin | Show = Overdue applied (re-captured S12) · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
 | `escalation/04-overdue-by-counselor.png` | DOC-CNS-ESC-002 | Overseas Admin | Overdue by counselor (element shot) · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
-| `escalation/06-super-admin-counselor-tasks.png` | DOC-CNS-ESC-001 | Super Admin | Counselor tasks opened by address (Overseas Admin sidebar) | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
-| `escalation/07-super-admin-performance.png` | DOC-CNS-PERF-001 | Super Admin | Counselor performance opened by address | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
 | `escalation/08-super-admin-counselor-leads.png` | DOC-CNS-NAV-001 (P3) | Super Admin | Counselor My leads: Unable to load your leads. | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
 | `escalation/09-super-admin-counselor-dashboard.png` | DOC-CNS-NAV-001 (P3) | Super Admin | Counselor dashboard: sections unavailable | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
 | `performance/01-team-performance.png` | DOC-CNS-PERF-001 | Overseas Admin | Team performance, this month | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
@@ -220,7 +215,7 @@ Capture settings: Chromium, 1440 × 900, light, `deviceScaleFactor` 1, locale `e
 | `dashboard/04-quick-search-results.png` | DOC-CNS-SRCH-001 | Counselor | Search Asha: lead, student, application (element shot) | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
 | `dashboard/05-quick-search-nothing.png` | DOC-CNS-SRCH-001 | Counselor | No matches (element shot) | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
 | `dashboard/06-quick-search-application-opens.png` | DOC-CNS-SRCH-001 | Counselor | Application hit opens filtered Application Tracking (P7) | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
-| `tasks/06-my-tasks-overdue.png` | DOC-CNS-TASK-001 / DOC-CNS-FUP-002 | Counselor | My tasks with Overdue band (element shot) · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
+| `tasks/06-my-tasks-overdue.png` | DOC-CNS-TASK-001 / DOC-CNS-FUP-002 | Counselor | My tasks with Overdue band (full main) · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
 | `tasks/07-task-given-by-admin.png` | DOC-CNS-TASK-001 / DOC-CNS-FUP-003 | Counselor | Given by Overseas Administrator; Chase overdue document reminder task | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
 | `follow-ups/03-overdue-follow-ups.png` | DOC-CNS-FUP-002 | Counselor | Overdue follow-ups · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |
 | `offers/08-offer-expired.png` | DOC-CNS-OFR-001 | Counselor | A1 offer Expired (element shot) · state prepared by data setup | `counselor/cns-s9-time-dashboards.capture.ts` | 2026-10-30 | |

@@ -16,7 +16,7 @@ Sidebar **Message templates**.
 
 ## Steps
 ### Step 1 — Fill in Create template
-Choose the **Channel** (**WhatsApp** or **Email**), enter a **Template name** and write the **Message**. Use placeholders for the student's and the application's details; they are filled in when the counselor uses the template. The counter shows how many of the 1000 characters you have used.
+Choose the **Channel** (**WhatsApp** or **Email**), enter a **Template name** and write the **Message**. Use placeholders for the student's and the application's details; they are filled in when the counselor uses the template. The counter shows how many characters you have used (1000 for WhatsApp, 5000 for Email). Email templates also need a **Subject**.
 ![Create template form filled in](../../screenshots/config/08-message-template-filled.png)
 
 ### Step 2 — Create it
@@ -32,7 +32,8 @@ In **Templates**, filter with **Show** (**All channels**, **WhatsApp**, **Email*
 |---|---|---|---|
 | Channel | WhatsApp or Email | Yes | WhatsApp |
 | Template name | Name counselors pick from | Yes | Docs offer update |
-| Message | Up to 1000 characters, with placeholders | Yes | Hi {name}, good news: {university} has made you an offer… |
+| Subject | Email only | For Email | Good news about your application |
+| Message | Up to 1000 characters (WhatsApp) or 5000 (Email), with placeholders | Yes | Hi {name}, good news: {university} has made you an offer… |
 
 **Placeholders:** `{name}` (the student), `{university}`, `{course}`, `{intake}`, `{application_deadline}`, `{offer_deadline}` (from the application the message is about), `{counselor}` (the sender).
 

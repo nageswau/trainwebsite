@@ -48,7 +48,7 @@ You own the lead. The telecaller can still view it, and any follow-ups they had 
 | No other active counselor in this division. | Telecaller | No counselor to choose |
 
 ## Common Errors
-**Problem:** You weren't told about a new lead. **Cause:** A handover sends no message of its own; you hear about it only through the **New lead assigned** reminder (a task, if that reminder rule is on). **Resolution:** Check **Leads** and **Tasks** each morning.
+**Problem:** You can't find a notice about a new lead in EduSphere. **Cause:** The handover itself sends nothing; the **New lead assigned** reminder rule (on by default) creates a "First contact" task and emails you a notice. The counselor portal has no notifications page. **Resolution:** Check **Leads**, **Tasks** and your email each morning.
 
 ## Tips
 - Leads keep their telecaller. If the lead isn't ready for counselling, you can [return it](../leads/lead-008-return-to-telecaller.md).

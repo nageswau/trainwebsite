@@ -25,7 +25,7 @@ Type a **New password** of at least 10 characters. If it is too short, your brow
 
 ### Step 3 — Save it
 Select **Reset password**. You are taken to the **Overseas Education Portal** sign-in page. Sign in with your email and the new password.
-![Sign-in page after setting the password](../../screenshots/account-access/05-after-set-password-login.png)
+![Sign-in page after setting the password](../../screenshots/account-access/01-overseas-login.png)
 
 ## Fields
 | Field | Description | Required | Example |

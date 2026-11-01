@@ -35,7 +35,7 @@ When everything required is complete, the summary shows "documents completed on 
 ![Checklist complete](../../screenshots/documents/02b-checklist-complete.png)
 
 ## Expected Result
-The checklist controls the [Ready-for-Submission gate](../applications/app-005-sub-status-ready-gate.md). An item counts as complete when its document is **Verified** or it is marked **Not required**.
+The checklist controls the [Ready-for-Submission gate](../applications/app-005-sub-status-ready-gate.md). An item counts as complete when its document is **Verified** (or **Approved**, for a CV or SOP) or it is marked **Not required**.
 
 ## Validation Messages
 | Message | When |

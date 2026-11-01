@@ -24,7 +24,7 @@ Use **Stage**, **Priority**, **Lead date from** and **Lead date to**. The list u
 ![No leads match these filters](../../screenshots/leads/03-my-leads-no-match.png)
 
 ### Step 3 — Download
-Select **Download CSV** or **Download Excel** to export every lead matching the filters. The file has Lead ID, Name, Interest, Stage, Priority, Source, Telecaller and Lead date. It never contains phone numbers or emails.
+Select **Download CSV** or **Download Excel** to export the leads matching the filters (up to 5,000 rows). The file has Lead ID, Name, Interest, Stage, Priority, Source, Telecaller and Lead date. It never contains phone numbers or emails.
 
 ## Fields
 | Column / filter | Description |

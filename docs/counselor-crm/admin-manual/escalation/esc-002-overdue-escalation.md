@@ -25,14 +25,14 @@ Select **View tasks** to see that counselor's tasks.
 ![Overdue by counselor](../../screenshots/escalation/04-overdue-by-counselor.png)
 
 ### Step 2 — The escalation notice
-When the reminder rules run (daily at 08:15 IST, or **Run reminders now**), each item overdue past the threshold creates an "Overdue work escalated" notice for every active Overseas Admin, once per item. These appear in **Recent reminders** as "Overdue work escalation".
+When the reminder rules run (daily at 08:15 IST, or **Run reminders now**), each item overdue past the threshold creates an "Overdue work escalated" notice for every active Overseas Admin, once per item. The notice is sent by email. These appear in **Recent reminders** as "Overdue work escalation".
 ![Recent reminders with escalations](../../screenshots/config/12-recent-reminders.png)
 
 ## Expected Result
 You can follow up with the counselor, give them a task, or reassign their students.
 
 ## Common Errors
-**Problem:** You never see the "Overdue work escalated" notice. **Cause:** The notice is created, but the Overseas Admin portal has no notifications page to show it. **Resolution:** Check **Overdue by counselor** and **Recent reminders** instead.
+**Problem:** You can't find the "Overdue work escalated" notice in EduSphere. **Cause:** The notice is emailed to each Overseas Admin, but the Overseas Admin portal has no notifications page to show it. **Resolution:** Check your email, and **Overdue by counselor** and **Recent reminders** here.
 
 ## Tips
 - Overdue work of a deactivated counselor is escalated too, so reassign it.
