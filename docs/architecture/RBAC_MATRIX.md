@@ -3552,6 +3552,18 @@ No route and no grant change. The leave policy rides on the existing certificate
 (IT); changed only by a `certificates.configure` holder (IT Admin; a trainer gets 403). Marking stays trainer (own batch, else 403) or
 IT Admin (any). Pinned by `apps/api/tests/test_itc_021_attendance_policy.py`.
 
+### 2.250 Student resume versions and access log *(added 2026-11-02 — `DEC-SCOPE-350`, itc-026)*
+
+| Route | Anonymous | it_student | counselor (IT) | it_admin | hr_team / super_admin | other roles |
+|---|---|---|---|---|---|---|
+| `GET/POST /it/me/resumes`, `GET …/{version}/file` | 401 | 200/201 own | 403 | 403 | 403 | 403 |
+| `GET/POST /counselor/it/students/{id}/resumes`, `GET …/{version}/file` | 401 | 403 | 200/201 linked; 404 other | 403 | 403 | 403 |
+| `GET/POST /admin/it/students/{id}/resumes`, `GET …/{version}/file` | 401 | 403 | 403 | 200/201; 404 not an IT student | 403 | 403 |
+| `GET /hr/students/{id}/resumes`, `GET …/{version}/file` | 401 | 403 | 403 | 403 | 200 `hr` versions (grants `student_documents.view` / `.download`); 404 outside the population or `private`; no POST (405) | 403 |
+| `GET/PUT /admin/it/resume-settings` | 401 | 403 | 403 | 200 | 403 | 403 |
+
+No new grant keys (HR reuses nehn-017's). Inline checks (`api/student_resumes.py` → `services/student_resumes.py` `student_for`,
+`hr_download_student`, `require_admin`; `it_student_profiles.staff_student`). Pinned by `apps/api/tests/test_itc_026_student_resumes.py`.
 ### 2.251 IT student notes *(added 2026-11-02 — `DEC-SCOPE-351`, itc-028)*
 
 | Route / page | Anonymous | counselor (IT) | trainer | hr_team | it_admin | it_student | every other role |

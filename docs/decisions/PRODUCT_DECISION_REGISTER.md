@@ -10936,6 +10936,31 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0232_attendance_leave_policy`; API §12IU; RBAC §2.249 (no grant change).
 - **Feature ID authorized:** `itc-021`. **Status:** built on `worktree-itc-021`.
 
+### DEC-SCOPE-350 — Student resume upload with versions, staff upload and access log (`itc-026`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-026` (PDF §5 upload rules, §4 "Resume & documents", §10 "Secure file
+  storage … log access", §12 AC3; PDF classified `UNVERIFIED`). Owner Q-01 (2026-11-01): all phases approved for build in waves;
+  dependency itc-003 merged (PR #410). The owner said to proceed with the recommended answers, so the calls below are the builder's
+  (`NEEDS_CONFIRMATION`). Design: `docs/superpowers/specs/2026-11-02-itc-026-student-resumes-design.md`.
+- **Decisions (builder's calls):**
+  - **R1 — Q-22:** a separate `student_resumes` table, not rec-009 `CandidateResume` — the recruiter pool stays the student's own
+    opt-in (rec-010).
+  - **R2 — Q-23:** malware scanning deferred (no scanner; "where supported"). Mitigation: type by bytes, attachment-only downloads with
+    `nosniff` and a sandbox CSP, private storage.
+  - **R3:** the type is decided by the bytes — PDF, legacy DOC (OLE2), DOCX (ZIP with `word/document.xml`); a renamed `.exe` is 415.
+  - **R4:** the IT Admin sets the limit in whole MB, 1–10 (one-row `student_resume_settings`; default 5 MB). Over it → 413 naming the
+    limit. Lowering it never touches stored versions.
+  - **R5:** versions are append-only (`unique(student, version)`, student row locked for numbering); a failed write deletes its file.
+  - **R6:** each version records `uploaded_by` and `visibility` — `hr` (default) or `private` (student and IT staff only); immutable.
+  - **R7:** every download (student, counselor, IT Admin, HR) commits an `it.resume.download` audit row before the file is sent;
+    uploads write `it.resume.upload`. No file name or content is logged.
+  - **R8 — AuthZ:** the student (own); the itc-003 counselor (linked students); the IT Admin (any IT student); HR (nehn-017 population,
+    `student_documents.view`/`.download`, `hr` versions only, no upload). Other roles 403; out of scope 404.
+  - **R9 — UI:** a Resume card on the student's Profile, the counselor/IT Admin student record (itc-012) and, read-only, the HR student
+    page; "Resume upload limit" on the IT Admin's Students section.
+- **Not changed:** `profile_documents` (STU-011) and the nehn-017 HR document routes. HR review tasks are itc-027.
+- **Numbering:** migration `0235_student_resumes` (`student_resumes`, `student_resume_settings`); API §12IV; RBAC §2.250.
+- **Feature ID authorized:** `itc-026`. **Status:** built on `worktree-itc-026`.
 ### DEC-SCOPE-351 — Internal vs student-visible IT student notes (`itc-028`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-028 (PDF §2 access rule, §9, §10 field-level visibility; PDF classified

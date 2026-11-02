@@ -4,9 +4,11 @@ import { Fragment } from "react";
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 import HrDocumentDownload from "@/components/HrDocumentDownload";
 import PortalShell from "@/components/PortalShell";
+import StudentResumeCard from "@/components/StudentResumeCard";
 import { ApiError, serverApi } from "@/lib/api";
 import { classesParts, HR_STUDENTS_API, HR_STUDENTS_PATH, percent, statusLabel, type HrStudentDetail } from "@/lib/hrStudents";
 import { PORTAL_NAV } from "@/lib/navigation";
+import { studentResumesUrl } from "@/lib/studentResumes";
 import type { User } from "@/lib/types";
 
 const WITHHELD = "Not available to your role.";
@@ -104,6 +106,7 @@ export default async function HrStudentPage({ id }: { id: string }) {
                 </ul>
               )}
             </div>
+            {detail.documents && <StudentResumeCard url={studentResumesUrl("hr", detail.student.id)} canDownload={detail.can.download} hrView description="Resume versions the student has shared with HR, newest first." />}
           </>
         )}
       </div>
