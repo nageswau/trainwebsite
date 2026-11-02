@@ -4929,9 +4929,26 @@ leads owned by an IT counselor). All routes **401** without a session.
   performance); the lead's `next_action_overdue` is `false`; no "Missed follow-up" alert. The "Follow-up due" alert still fires.
 - "Assigned to Counselor" is not a stage: clients derive it from `counselor` on an open lead.
 
-## 12IK. Merge duplicate leads (itc-007) — addendum, 2026-11-02
+## 12IK. Lead distribution by source and workload (itc-006) — addendum, 2026-11-02
 
-`DEC-SCOPE-339`. Migration `0224_lead_merge`. RBAC §2.240.
+`DEC-SCOPE-339`. Migration `0224_tel_source_workload` (`tel_distribution_rules.source` + kind `source`, unique per team + source;
+`tel_settings.distribution_strategy`, default `round_robin`). Additive.
+
+- `POST /telecaller/distribution-rules` — `kind` also accepts `"source"`; body adds `source` (one of the 13 lead sources, else 422).
+  A source rule with no source → 422 `Choose a source`; with a product or city → 422 `A source rule has no product or city`; a product or
+  city rule with a source → 422 `A product rule has no source` / `A city rule has no source`; a second rule for the same team + source →
+  409 `This team already has a rule for this source`. A telecaller on the other team stays 422.
+- `GET /telecaller/distribution-rules` — `kind` filter also accepts `source`; each item adds `source` (string | null).
+- `GET /telecaller/distribution-strategy` — telecaller manager / super admin (others 403, signed out 401):
+  `{items: [{team, team_label, strategy: "round_robin" | "workload", editable}]}`, one per team.
+- `PUT /telecaller/distribution-strategy/{team}` — body `{strategy}` (extra keys 422). 200 with the item; 404 unknown team; 403 unless
+  one of the manager's direct reports is on the team (super admin: any). Audited `telecaller.strategy_update` `{from, to}`.
+- Side effect on every intake (website, BDM, manager, CSV import): order source → product → city → team strategy. `lead.assign` audit
+  metadata adds `rule_id` when a rule matched; methods add `source_rule` and `workload`.
+
+## 12IL. Merge duplicate leads (itc-007) — addendum, 2026-11-02
+
+`DEC-SCOPE-340`. Migration `0225_lead_merge`. RBAC §2.241.
 
 - `GET /telecaller/leads/{id}/merge-preview?victim=LD-…` and `GET /admin/leads/{id}/merge-preview?victim=LD-…` → **200**
   `{survivor, victim, moved}`: each side `{id, lead_code, status, status_label, name, email, phone, whatsapp_number, city, state,

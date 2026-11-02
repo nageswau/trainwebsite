@@ -196,6 +196,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium (large if fully configurable). **Risk:** medium.
 
 #### itc-006: Auto-assign by source and workload
+- **Status:** built as `DEC-SCOPE-339` (migration `0224`, API §12IK, RBAC §2.240). Precedence fixed as source → product → city → team strategy (Q-06 recommended answer).
 - **Business requirement:** §9 "Auto-assign new leads using configurable rules such as source, course, location, or workload"; §3 step 2.
 - **Existing behavior:** `lead_distribution.py:1-106` applies a product (course) rule, then a city rule, then round-robin, then the unassigned queue. There are no source or workload rules.
 - **Expected behavior:**
@@ -225,7 +226,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** medium.
 
 #### itc-007: Merge duplicate leads
-- **Status:** built as `DEC-SCOPE-339` (migration `0224_lead_merge`, API §12IK, RBAC §2.240); design
+- **Status:** built as `DEC-SCOPE-340` (migration `0225_lead_merge`, API §12IL, RBAC §2.241); design
   `docs/superpowers/specs/2026-11-02-itc-007-merge-duplicate-leads-design.md`. Q-07 answered by Claude's call M1 (managers and admins only),
   `NEEDS_CONFIRMATION`.
 - **Business requirement:** §9 "let authorized users merge duplicates"; §3 step 1.
@@ -1211,7 +1212,7 @@ That makes about 24 migrations. They must be linear (`0220` onward), so assign e
 | Q-03 | Generalise `overseas_student_counselors` and overseas notes, or create IT-specific tables? One counselor per student or per enrolment? **Link part ANSWERED 2026-11-01 (owner): a new IT-only table `it_student_counselors` following the csc-001 pattern; the overseas code is untouched.** **Scope ANSWERED: one counselor per student** (unique per student; a second enrolment keeps the same counselor; IT admin reassigns with a reason). Still open: the notes table for itc-028. | 003/028 |
 | Q-04 | Should "Assigned to Counselor" be a stored stage or a derived badge? | 004 |
 | Q-05 | Configurable statuses: labels, order and enable only, or fully admin-defined states? | 005 |
-| Q-06 | Precedence of the source, product, city and workload rules | 006 |
+| Q-06 | Precedence of the source, product, city and workload rules **Built with the recommended answer (owner: proceed with recommended answers), DEC-SCOPE-339: fixed source → product → city → team strategy; configurable precedence still open.** | 006 |
 | Q-07 | Who may merge leads: managers only, or telecallers too? | 007 |
 | Q-08 | Counseling: one record per lead, or one per session? | 010 |
 | Q-09 | Onboarding checklist: reuse the ccrm-018/019 engine? What items does it contain? | 011 |

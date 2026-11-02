@@ -1,4 +1,4 @@
-"""itc-007 -- migration 0224_lead_merge (DEC-SCOPE-339): `enquiries.merged_at` / `merged_by_user_id` and their CHECK. Round trip in a
+"""itc-007 -- migration 0225_lead_merge (DEC-SCOPE-340): `enquiries.merged_at` / `merged_by_user_id` and their CHECK. Round trip in a
 throwaway database built from scratch (the upc-001 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -14,18 +14,18 @@ from app.core.config import settings
 from app.models import Enquiry
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_itc_007_migration_0223", VERSIONS / "0224_lead_merge.py")
+_spec = importlib.util.spec_from_file_location("_itc_007_migration_0225", VERSIONS / "0225_lead_merge.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD = "0224_lead_merge"
-BASE = "0223_lead_nurture_stage"
+HEAD = "0225_lead_merge"
+BASE = "0224_tel_source_workload"
 CHECK = "ck_enquiries_merged"
 COLUMNS = "SELECT column_name FROM information_schema.columns WHERE table_name = 'enquiries' AND column_name LIKE 'merged%' ORDER BY 1"
 CHECKS = f"SELECT conname FROM pg_constraint WHERE conname = '{CHECK}'"
 
 
-def test_migration_chains_after_0223_and_is_the_single_head():
+def test_migration_chains_after_0224_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

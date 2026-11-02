@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import LeadMergeForm from "@/components/LeadMergeForm";
 
-// itc-007 (DEC-SCOPE-339): Merge a duplicate -- compare by Lead ID, pick the values to keep, merge; the API's refusals are shown.
+// itc-007 (DEC-SCOPE-340): Merge a duplicate -- compare by Lead ID, pick the values to keep, merge; the API's refusals are shown.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const URL = "/api/v1/telecaller/leads/S1";
 const side = (over: Record<string, unknown>) => ({

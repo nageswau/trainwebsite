@@ -59,7 +59,7 @@ export function telHref(phone: string | null): string | null {
 export const moveStage = (id: string, target: string, reason: string, closure: Closure = {}): Promise<SendOutcome> =>
   sendJson(leadUrl(id, "/stage"), "POST", { to_stage: target, ...(reason ? { reason } : {}), ...closure });
 
-// itc-007 (DEC-SCOPE-339): the merge form's comparison. `MERGE_FIELDS` mirror the API's (services/lead_merge.py FIELDS).
+// itc-007 (DEC-SCOPE-340): the merge form's comparison. `MERGE_FIELDS` mirror the API's (services/lead_merge.py FIELDS).
 export const MERGE_FIELDS = [
   { key: "name", label: "Student name" }, { key: "email", label: "Email" }, { key: "phone", label: "Mobile number" },
   { key: "whatsapp_number", label: "WhatsApp number" }, { key: "city", label: "City" }, { key: "state", label: "State" },

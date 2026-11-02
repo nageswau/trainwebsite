@@ -1,9 +1,9 @@
 """itc-007 -- merge duplicate leads: enquiries.merged_at / merged_by_user_id.
 
-Revision ID: 0224_lead_merge
-Revises: 0223_lead_nurture_stage
+Revision ID: 0225_lead_merge
+Revises: 0224_tel_source_workload
 
-docs/superpowers/specs/2026-11-02-itc-007-merge-duplicate-leads-design.md (DEC-SCOPE-339). Two nullable columns (every existing lead keeps
+docs/superpowers/specs/2026-11-02-itc-007-merge-duplicate-leads-design.md (DEC-SCOPE-340). Two nullable columns (every existing lead keeps
 NULLs: never merged) and a CHECK: both set or neither, and only on a Duplicate. 0001 builds a fresh database from the current models,
 which already carry them, so every step is guarded (0221's idiom). The downgrade drops them.
 """
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0224_lead_merge"
-down_revision = "0223_lead_nurture_stage"
+revision = "0225_lead_merge"
+down_revision = "0224_tel_source_workload"
 branch_labels = None
 depends_on = None
 
