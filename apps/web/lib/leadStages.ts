@@ -23,16 +23,25 @@ export const CLOSED_STAGES = [
   ["duplicate", "Duplicate"], // ccrm-006 D2/D3
 ] as const;
 
-export const STAGES: readonly (readonly [string, string])[] = [...OPEN_STAGES, ...CLOSED_STAGES];
+// itc-004 (DEC-SCOPE-338 N2): open, but outside the linear ORDER (PARKED_STAGES in lead_stages.py)
+export const NURTURE = "nurture";
+const PARKED_STAGES = [[NURTURE, "Nurture"]] as const;
+
+export const STAGES: readonly (readonly [string, string])[] = [...OPEN_STAGES, ...PARKED_STAGES, ...CLOSED_STAGES];
 const LABELS: Record<string, string> = Object.fromEntries(STAGES);
 const ORDER: string[] = OPEN_STAGES.map(([key]) => key);
-const MANUAL = ["qualified", "interested", "follow_up"];
+const MANUAL = ["qualified", "interested", "follow_up", NURTURE];
 const CLOSED: string[] = CLOSED_STAGES.map(([key]) => key);
 export const REOPEN_TO = "follow_up";
 
 /** A key no longer in the catalogue (history after a future change) is shown as stored. */
 export const stageLabel = (stage: string) => LABELS[stage] ?? stage;
 export const isClosed = (stage: string) => CLOSED.includes(stage);
+
+/** itc-004 N1 (Q-04): "Assigned to Counselor" is derived, not a stage -- an open lead (not closed, not converted) with a counselor. */
+export const ASSIGNED_TO_COUNSELOR = "Assigned to Counselor";
+export const assignedToCounselor = (lead: { status: string; counselor: unknown }) =>
+  !!lead.counselor && !isClosed(lead.status) && lead.status !== "converted";
 
 /** The stages a person may move a lead to from `current` (spec §4 D2/D3). A closed lead only reopens to Follow-up, and only for a
  *  manager or admin (`canReopen`). Manual moves stop at Application/Enrollment; nothing moves a Converted lead. */
@@ -65,6 +74,7 @@ export type LeadClosureFields = {
 export const LOST_REASONS_URL = "/api/v1/telecaller/lost-reasons";
 export type LostReason = { id: string; name: string; active: boolean; sort_order: number };
 
-/** Closed outcomes and reopening need a reason (D1); ccrm-006 D5: not when the close carries its structured reason instead. */
+/** Closed outcomes and reopening need a reason (D1); ccrm-006 D5: not when the close carries its structured reason instead.
+ *  itc-004 N3: so does parking a lead in Nurture. */
 export const needsReason = (current: string, target: string) =>
-  isClosed(current) || (isClosed(target) && !isLoss(target) && target !== "duplicate");
+  isClosed(current) || target === NURTURE || (isClosed(target) && !isLoss(target) && target !== "duplicate");

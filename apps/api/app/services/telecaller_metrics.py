@@ -30,7 +30,7 @@ from app.models import (
 from app.services.bdm_activities import day_range
 from app.services.bdm_appointments import today_ist
 from app.services.lead_calls import NOT_CONNECTED
-from app.services.lead_pipeline import TELECALLER_FOLLOW_UP
+from app.services.lead_pipeline import TELECALLER_FOLLOW_UP, follow_up_overdue
 from app.services.telecaller_leads import PRIORITY_CHANGE
 from app.services.telecaller_targets import effective_targets
 
@@ -249,7 +249,7 @@ async def tiles(db: AsyncSession, user_id: UUID, team: str, now: datetime) -> di
         "connected": flow["connected_calls"],
         "not_connected": flow["not_connected"],
         "converted": flow["converted_leads"],
-        "overdue": await db.scalar(_own_open_follow_ups(user_id).where(LeadFollowUp.due_at < now)) + await db.scalar(
+        "overdue": await db.scalar(_own_open_follow_ups(user_id).where(follow_up_overdue(now))) + await db.scalar(  # itc-004 N5
             select(func.count()).select_from(Enquiry).where(
                 *_own_open(user_id), Enquiry.status == "first_call_pending", Enquiry.stage_changed_at < now - await _not_contacted_after(db, team))),
         "daily_target": {"achieved": flow["calls"], "target": daily_calls["value"]},

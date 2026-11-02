@@ -10,7 +10,7 @@ import ProductOptions from "@/components/TelecallerProductOptions";
 import type { Page } from "@/lib/apiErrors";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import LocalTime from "@/components/LocalTime";
-import { STAGES } from "@/lib/leadStages";
+import { ASSIGNED_TO_COUNSELOR, STAGES, assignedToCounselor } from "@/lib/leadStages";
 import { pageOffset } from "@/lib/telecaller";
 import { activeCampaigns, activeProducts, getPage, type Campaign, type Product } from "@/lib/telecallerCatalogue";
 import { FOLLOW_UP_FILTERS, LEAD_LIST_FILTERS, LEADS_URL, PRIORITIES, PRIORITY_LABEL, type LeadListFilter, type TelecallerLead } from "@/lib/telecallerLeads";
@@ -152,7 +152,8 @@ export default function TelecallerLeadTable({ basePath, showTelecaller = false, 
                     <td>{lead.product?.name ?? lead.subject}</td>
                     <td>
                       {lead.status_label}
-                      {lead.counselor && <div className="muted" style={{ fontSize: 13 }}>With counselor</div>} {/* QA-01: handed over (D1) */}
+                      {/* QA-01: handed over (D1); itc-004 N1: the PDF's derived "Assigned to Counselor" */}
+                      {assignedToCounselor(lead) && <div className="muted" style={{ fontSize: 13 }}>{ASSIGNED_TO_COUNSELOR}</div>}
                     </td>
                     <td>{PRIORITY_LABEL[lead.priority] ?? lead.priority}</td>
                     {showTelecaller && <td>{lead.telecaller ? lead.telecaller.full_name : <span className="muted">Unassigned</span>}</td>}

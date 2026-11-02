@@ -10,7 +10,7 @@ import LeadClosure from "@/components/LeadClosure";
 import { CREATED_FILTERS, RANGE_REVERSED, reversed, validDay } from "@/components/LeadCreatedRange";
 import LeadExport from "@/components/LeadExport";
 import { sendJson, sendRequest, type Page } from "@/lib/apiErrors";
-import { stageLabel, type LeadClosureFields } from "@/lib/leadStages";
+import { ASSIGNED_TO_COUNSELOR, assignedToCounselor, stageLabel, type LeadClosureFields } from "@/lib/leadStages";
 import { pageOffset } from "@/lib/telecaller";
 import { SOURCE_LABEL, getPage } from "@/lib/telecallerCatalogue";
 
@@ -201,6 +201,7 @@ export default function AdminLeadManagementPanel() {
                     <td>{row.crm_sync_status === "failed" ? <span className="form-error">Failed</span> : row.crm_sync_status}</td>
                     <td>
                       {stageLabel(row.status)}
+                      {assignedToCounselor(row) && <div className="muted" style={{ fontSize: 13 }}>{ASSIGNED_TO_COUNSELOR}</div>} {/* itc-004 N1 */}
                       <LeadClosure lead={row} />
                       <LeadStageHistory key={row.status} lead={row} />
                     </td>
