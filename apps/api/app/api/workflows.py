@@ -142,6 +142,7 @@ from app.services import (
     application_checklists,
     applications,
     appointment_invites,
+    audit_changes,
     counselor_students,
     course_skills,
     document_access,
@@ -709,8 +710,12 @@ async def mark_attendance(payload: AttendanceBulkIn, user: User = Depends(get_cu
         raise HTTPException(409, "The live class on this date was cancelled; attendance cannot be marked for it")
     for item in payload.records:
         student_id = item.student_id
-        current = await db.scalar(select(Attendance).where(Attendance.student_id == student_id, Attendance.batch_id == batch_id, Attendance.session_date == session_date))
+        # itc-001: the row is locked so its old values are exact; an overwrite that changes something gets its own audit row (Q-02).
+        current = await db.scalar(select(Attendance).where(Attendance.student_id == student_id, Attendance.batch_id == batch_id, Attendance.session_date == session_date).with_for_update())
         if current:
+            audit_changes.audit_change(db, user, "attendance.update", "attendance", current.id, {"status": current.status, "notes": current.notes},
+                                       {"status": item.status, "notes": item.notes},
+                                       metadata={"batch_id": str(batch_id), "student_id": str(student_id), "session_date": session_date.isoformat()})
             current.status = item.status
             current.notes = item.notes
         else:
