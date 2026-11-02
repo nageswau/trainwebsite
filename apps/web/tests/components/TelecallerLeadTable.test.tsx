@@ -169,6 +169,15 @@ describe("TelecallerLeadTable source, last-contact and next-follow-up filters (i
     expect(screen.getByLabelText("Source").querySelectorAll("option")).toHaveLength(14); // "All sources" + the 13 EVID-019 sources
   });
 
+  it("keeps the first of two quick changes made before the URL catches up (QA8-01)", async () => {
+    render(<TelecallerLeadTable basePath="/telecaller/leads" />);
+    await screen.findByRole("link", { name: "Lead 1" });
+    // the mocked search params never change here, as in the browser between a push and the next render
+    fireEvent.change(screen.getByLabelText("Last contact from"), { target: { value: "2026-10-01" } });
+    fireEvent.change(screen.getByLabelText("Last contact to"), { target: { value: "2026-10-20" } });
+    expect(Object.fromEntries(pushedQuery())).toEqual({ last_contact_from: "2026-10-01", last_contact_to: "2026-10-20" });
+  });
+
   it("says so for a reversed range without asking the API, and ignores values the API would refuse", async () => {
     search = "last_contact_from=2026-10-21&last_contact_to=2026-10-20";
     render(<TelecallerLeadTable basePath="/telecaller/leads" />);

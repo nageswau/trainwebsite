@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import LeadCreatedRange, { CREATED_FILTERS, RANGE_REVERSED, reversed, validDay } from "@/components/LeadCreatedRange";
@@ -77,15 +77,20 @@ export default function TelecallerLeadTable({ basePath, showTelecaller = false, 
     return () => controller.abort();
   }, []);
 
+  // QA8-01: the query last pushed, so a second change made before the URL catches up builds on the first instead of dropping it
+  const pending = useRef(params.toString());
+  useEffect(() => { pending.current = params.toString(); }, [params]);
+
   /** A new filter or search starts again from the first page; only the pager passes an offset. */
   function go(changes: Record<string, string>, nextOffset = 0) {
-    const next = new URLSearchParams(params.toString());
+    const next = new URLSearchParams(pending.current);
     for (const [key, value] of Object.entries(changes)) {
       if (value) next.set(key, value);
       else next.delete(key);
     }
     if (nextOffset > 0) next.set("offset", String(nextOffset));
     else next.delete("offset");
+    pending.current = next.toString();
     router.push(next.size ? `${pathname}?${next}` : pathname, { scroll: false });
   }
 
