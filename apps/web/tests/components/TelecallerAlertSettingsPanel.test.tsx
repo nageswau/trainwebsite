@@ -7,7 +7,7 @@ import { NOT_COMPLETED } from "@/lib/apiErrors";
 // tel-020 (DEC-SCOPE-111 AL1, AL11; API §12AE): the manager's alert thresholds, one card per team.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const row = (team: string, label: string, over: Record<string, unknown> = {}) => ({
-  team, team_label: label, not_contacted_hours: 24, hot_pending_hours: 4, updated_at: "2026-10-07T05:00:00Z", updated_by: null, ...over,
+  team, team_label: label, not_contacted_hours: 24, hot_pending_hours: 4, escalate_after_hours: 0, updated_at: "2026-10-07T05:00:00Z", updated_by: null, ...over,
 });
 const settings = { items: [row("it", "IT"), row("overseas", "Overseas")] };
 
@@ -48,7 +48,7 @@ describe("TelecallerAlertSettingsPanel", () => {
     expect(await within(it).findByText("Saved. Alerts use the new thresholds from the next check (within 15 minutes).")).toBeInTheDocument();
     const put = calls.find((c) => c.init?.method === "PUT")!;
     expect(put.url).toBe("/api/v1/telecaller/settings/it");
-    expect(JSON.parse(String(put.init!.body))).toEqual({ not_contacted_hours: 12, hot_pending_hours: 2 });
+    expect(JSON.parse(String(put.init!.body))).toEqual({ not_contacted_hours: 12, hot_pending_hours: 2, escalate_after_hours: 0 });
     expect(within(it).getByText(/Last changed by Mona Manager/)).toBeInTheDocument();
   });
 
@@ -68,6 +68,46 @@ describe("TelecallerAlertSettingsPanel", () => {
     const it = await screen.findByRole("region", { name: "IT team" });
     const input = within(it).getByLabelText("Lead not contacted after (hours)");
     for (const value of ["0", "169", ""]) {
+      fireEvent.change(input, { target: { value } });
+      fireEvent.click(within(it).getByRole("button", { name: "Save IT thresholds" }));
+      expect(input).toBeInvalid();
+    }
+    expect(calls.filter((c) => c.init?.method === "PUT")).toHaveLength(0);
+  });
+
+  // itc-009 (DEC-SCOPE-342; API §12IN): the follow-up escalation hours, 0 = off.
+  it("shows the escalation hours, off by default, with what 0 means", async () => {
+    serve();
+    render(<TelecallerAlertSettingsPanel />);
+    const it = await screen.findByRole("region", { name: "IT team" });
+    const input = within(it).getByLabelText("Escalate overdue follow-ups after (hours)");
+    expect(input).toHaveValue(0);
+    expect(input).toHaveAccessibleDescription(/0 turns escalation off/);
+  });
+
+  it("saves the escalation hours with the thresholds, and 0 is allowed", async () => {
+    const calls = serve();
+    render(<TelecallerAlertSettingsPanel />);
+    const it = await screen.findByRole("region", { name: "IT team" });
+    const input = within(it).getByLabelText("Escalate overdue follow-ups after (hours)");
+    fireEvent.change(input, { target: { value: "24" } });
+    fireEvent.click(within(it).getByRole("button", { name: "Save IT thresholds" }));
+    await within(it).findByText(/^Saved\./);
+    expect(input).toHaveValue(24);
+    fireEvent.change(input, { target: { value: "0" } });
+    expect(input).toBeValid();
+    fireEvent.click(within(it).getByRole("button", { name: "Save IT thresholds" }));
+    await waitFor(() => expect(calls.filter((c) => c.init?.method === "PUT")).toHaveLength(2));
+    const bodies = calls.filter((c) => c.init?.method === "PUT").map((c) => JSON.parse(String(c.init!.body)).escalate_after_hours);
+    expect(bodies).toEqual([24, 0]);
+  });
+
+  it("an out-of-range escalation entry is stopped by the form", async () => {
+    const calls = serve();
+    render(<TelecallerAlertSettingsPanel />);
+    const it = await screen.findByRole("region", { name: "IT team" });
+    const input = within(it).getByLabelText("Escalate overdue follow-ups after (hours)");
+    for (const value of ["-1", "169", "", "1.5"]) {
       fireEvent.change(input, { target: { value } });
       fireEvent.click(within(it).getByRole("button", { name: "Save IT thresholds" }));
       expect(input).toBeInvalid();

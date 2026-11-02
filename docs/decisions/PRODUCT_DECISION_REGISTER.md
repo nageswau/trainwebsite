@@ -10754,3 +10754,27 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0225_lead_merge` (`enquiries.merged_at`, `merged_by_user_id`, CHECK `ck_enquiries_merged`); API §12IM;
   RBAC §2.241.
 - **Feature ID authorized:** `itc-007`. **Status:** built on `worktree-itc-007`.
+
+### DEC-SCOPE-342 — Overdue follow-up escalation for the IT team (`itc-009`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-009 (source PDF §9 "Alert the owner when a follow-up is overdue; optionally
+  escalate after a configurable period", §3 step 3; PDF classified `UNVERIFIED`). Owner Q-01 (2026-11-01): all phases approved for build in
+  waves. Dependencies itc-002 (`DEC-SCOPE-336`) and itc-004 (`DEC-SCOPE-338`) are built. The owner said to proceed with the recommended
+  answers, so the calls below are the builder's and stay `NEEDS_CONFIRMATION`. Design:
+  `docs/superpowers/specs/2026-11-02-itc-009-follow-up-escalation-design.md`.
+- **Decisions (builder's calls):**
+  - **E1 — setting.** `tel_settings.escalate_after_hours`, whole hours 0-168 per team; **0 = off and the default for both teams** (opt-in:
+    deploying changes nothing). Same editors as the tel-020 thresholds (telecaller manager, super admin). Optional on PUT.
+  - **E2 — scope.** A telecaller's follow-up (any team) → the telecaller's reporting manager; an inactive manager → the team's active
+    division admins (`it_admin` / `overseas_admin`). An IT counselor's follow-up (created by a counselor, IT lead) → every active IT admin.
+    Overseas counselor follow-ups stay with ccrm-031.
+  - **E3 — once.** `lead_follow_ups.escalated_at`, claimed by a conditional UPDATE in the notices' savepoint. Only open follow-ups, never on
+    a Nurture lead. No recipient → left unclaimed for the next run.
+  - **E4 — flood guard.** Only follow-ups that crossed the threshold in the last 24 h escalate (tel-020 AL10's rule).
+  - **E5 — notice.** itc-002's `it.followup.overdue` (confirms that catalogue row): fixed preview-safe text, in-app + consented channels.
+    Manager link `/telecaller/manager/leads/{id}`; admins get no link (no admin lead page).
+  - **E6 — where it shows.** New Notifications pages for the telecaller manager (`/telecaller/manager/notifications`, with the unread badge
+    there) and the IT admin (`/it/admin/notifications`, header-only portal section): before this neither role had an in-app list.
+  - **E7 — beat.** `itc009-escalations`, every 15 minutes.
+- **Numbering:** migration `0226_follow_up_escalation`; API §12IN; RBAC §2.242.
+- **Feature ID authorized:** `itc-009`. **Status:** built on `worktree-itc-009`.
