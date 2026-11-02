@@ -59,11 +59,11 @@ from app.schemas import (
     AgentNetworkStudentPage,
     AgentOrgDetailOut,
     BatchCreate,
+    LeadMergeIn,
     LeadNoteIn,
     LeadNoteOut,
     LeadNotePage,
     LeadStageHistoryPage,
-    LeadMergeIn,
     LeadStageMove,
     LeadTimelinePage,
     ProgramSkillsUpdate,
@@ -608,19 +608,15 @@ def _merge_filters(user: User) -> list:
 async def lead_merge_preview(lead_id: UUID, victim: str = Query(min_length=1, max_length=20), user: User = Depends(ensure_admin),
                              db: AsyncSession = Depends(get_db)):
     """itc-007: the admin's merge comparison (as /telecaller/leads/{id}/merge-preview)."""
-    found = await lead_merge.find_victim(db, lead_id, victim.strip().upper(), _merge_filters(user))
-    return await lead_merge.preview(db, lead_id, found)
+    return await lead_merge.preview(db, lead_id, victim.strip().upper(), _merge_filters(user))
 
 
 @router.post("/leads/{lead_id}/merge")
 async def lead_merge_into(lead_id: UUID, payload: LeadMergeIn, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
     """itc-007 (DEC-SCOPE-338): the admin's merge of the victim into this lead (as /telecaller/leads/{id}/merge)."""
-    filters = _merge_filters(user)
-    found = await lead_merge.find_victim(db, lead_id, payload.victim, filters)
-    survivor, victim = await lead_merge.lock_pair(db, lead_id, found.id, filters)
-    moved = await lead_merge.merge(db, user, survivor, victim, payload.use_victim, payload.reason)
+    out = await lead_merge.merge_by_code(db, user, lead_id, payload.victim, payload.use_victim, payload.reason, _merge_filters(user))
     await db.commit()
-    return {"id": lead_id, "victim_id": victim.id, "victim_code": victim.lead_code, "moved": moved}
+    return out
 
 
 @router.get("/leads/{lead_id}/stage-history", response_model=LeadStageHistoryPage)

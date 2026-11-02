@@ -58,7 +58,11 @@ describe("LeadMergeForm", () => {
     // an empty field here is filled from the duplicate: no choice offered
     const cityRow = within(table).getByRole("row", { name: /City/ });
     expect(within(cityRow).queryByRole("radio")).toBeNull();
-    expect(screen.getByText(/2 calls/)).toBeTruthy();
+    // browser QA-02: "Label: count", never "1 enquiries"
+    expect(screen.getByText("Moves to this lead: Calls: 2, Follow-ups: 1, Enquiries: 1.")).toBeTruthy();
+    // browser QA-01: on a phone each cell stacks under its column's label
+    expect(table.className).toContain("stack");
+    expect(within(nameRow).getAllByRole("cell").map((td) => td.getAttribute("data-label"))).toEqual(["This lead (LD-000001)", "Duplicate (LD-000002)"]);
   });
 
   it("sends the fields picked from the duplicate and reports the merge", async () => {

@@ -74,7 +74,9 @@ export default function LeadMergeForm({ url, leadCode, onMerged }: { url: string
       </button>
     );
   }
-  const moved = preview ? MERGE_MOVED.filter(([key]) => preview.moved[key] > 0).map(([key, label]) => `${preview.moved[key]} ${label.toLowerCase()}`) : [];
+  const moved = preview ? MERGE_MOVED.filter(([key]) => preview.moved[key] > 0).map(([key, label]) => `${label}: ${preview.moved[key]}`) : []; // QA-02
+  const mineLabel = `This lead (${preview?.survivor.lead_code})`;
+  const theirsLabel = `Duplicate (${preview?.victim.lead_code})`;
   const pick = (field: MergeField, fromVictim: boolean) =>
     setUseVictim((fields) => (fromVictim ? [...fields.filter((f) => f !== field), field] : fields.filter((f) => f !== field)));
 
@@ -96,13 +98,14 @@ export default function LeadMergeForm({ url, leadCode, onMerged }: { url: string
       {preview && (
         <>
           <div style={{ overflowX: "auto" }}>
-            <table className="table compact">
+            {/* browser QA-01: `.stack` -- on a phone each cell stacks under its column's label instead of squeezing to one character */}
+            <table className="table compact stack">
               <caption style={{ textAlign: "left", fontWeight: 600 }}>Compare the two leads</caption>
               <thead>
                 <tr>
                   <th scope="col">Field</th>
-                  <th scope="col">This lead ({preview.survivor.lead_code})</th>
-                  <th scope="col">Duplicate ({preview.victim.lead_code})</th>
+                  <th scope="col">{mineLabel}</th>
+                  <th scope="col">{theirsLabel}</th>
                 </tr>
               </thead>
               <tbody>
@@ -121,15 +124,17 @@ export default function LeadMergeForm({ url, leadCode, onMerged }: { url: string
                   return (
                     <tr key={key}>
                       <th scope="row">{label}</th>
-                      <td>{cell(mine, false)}{!choice && empty(mine) && !empty(theirs) && <span className="muted" style={{ fontSize: 12 }}> (filled from the duplicate)</span>}</td>
-                      <td>{cell(theirs, true)}</td>
+                      <td data-label={mineLabel}>
+                        {cell(mine, false)}{!choice && empty(mine) && !empty(theirs) && <span className="muted" style={{ fontSize: 12 }}> (filled from the duplicate)</span>}
+                      </td>
+                      <td data-label={theirsLabel}>{cell(theirs, true)}</td>
                     </tr>
                   );
                 })}
                 <tr>
                   <th scope="row">Stage</th>
-                  <td>{preview.survivor.status_label}</td>
-                  <td>{preview.victim.status_label} → Duplicate</td>
+                  <td data-label={mineLabel}>{preview.survivor.status_label}</td>
+                  <td data-label={theirsLabel}>{preview.victim.status_label} → Duplicate</td>
                 </tr>
               </tbody>
             </table>

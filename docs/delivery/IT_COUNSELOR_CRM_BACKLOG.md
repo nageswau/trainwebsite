@@ -225,6 +225,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** medium.
 
 #### itc-007: Merge duplicate leads
+- **Status:** built as `DEC-SCOPE-339` (migration `0224_lead_merge`, API §12IK, RBAC §2.240); design
+  `docs/superpowers/specs/2026-11-02-itc-007-merge-duplicate-leads-design.md`. Q-07 answered by Claude's call M1 (managers and admins only),
+  `NEEDS_CONFIRMATION`.
 - **Business requirement:** §9 "let authorized users merge duplicates"; §3 step 1.
 - **Existing behavior:**
   - Duplicates are blocked at intake; "Add enquiry to this lead" exists (`LeadEnquiry`).

@@ -10682,3 +10682,25 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
     (per-team configurable labels).
 - **Numbering:** migration `0223_lead_nurture_stage`; API §12IJ; RBAC unchanged (stage moves keep the existing owner/manager rules).
 - **Feature ID authorized:** `itc-004`. **Status:** built on `worktree-itc-004`.
+
+### DEC-SCOPE-339 — Merge duplicate leads (`itc-007`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-007` (PDF §9 "let authorized users merge duplicates", §3 step 1). Scope
+  approved by the owner 2026-11-01 (backlog Q-01: all phases, built in waves). Depends on itc-001 (DEC-SCOPE-335, merged). Design
+  `docs/superpowers/specs/2026-11-02-itc-007-merge-duplicate-leads-design.md`.
+- **Behaviour:** a manager picks the lead that stays (its page) and enters the duplicate's Lead ID; a side-by-side preview shows both
+  leads and the counts that will move. The merge moves the duplicate's calls, follow-ups, notes, messages, meetings, appointments,
+  further enquiries and counselor tasks to the survivor, keeps the duplicate's own enquiry as a further enquiry, fills the survivor's
+  empty fields and qualification answers from the duplicate (fill-empty-only; a picked field takes the duplicate's value), repoints leads
+  closed as a duplicate of it, and closes the duplicate as Duplicate of the survivor (stage history event `merge`), merged and read only.
+  One `lead.merge` audit row on the survivor holds the moved counts and itc-001's `changes` (PII as `"changed"`); the survivor's timeline
+  reads "Merged from LD-…".
+- **Claude's calls under "proceed with recommended answers" (`NEEDS_CONFIRMATION`):** M1 (Q-07) managers (telecaller manager, super_admin)
+  and division admins (it_admin / overseas_admin) merge; telecallers do not. M2 the survivor keeps its stage, priority, telecaller and
+  counselor. M3 when both leads have an open appointment, the survivor's stays and the duplicate's is cancelled ("Lead merged") and moved.
+  M4 the duplicate's stage history and audit rows stay on it. M5 a merged lead is read only for everyone (no reopen, stage, contact,
+  qualification or admin edit: 409); notes stay allowed (ccrm-002 N1). M6 no unmerge. M7 a duplicate linked to a student (or at
+  Application/Enrollment / Converted) cannot be merged away (409); merge the other way.
+- **Numbering:** migration `0224_lead_merge` (`enquiries.merged_at`, `merged_by_user_id`, CHECK `ck_enquiries_merged`); API §12IK;
+  RBAC §2.240.
+- **Feature ID authorized:** `itc-007`. **Status:** built on `worktree-itc-007`.

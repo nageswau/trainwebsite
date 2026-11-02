@@ -62,8 +62,8 @@ def _empty(value) -> bool:
     return value is None or value == ""
 
 
-async def find_victim(db: AsyncSession, survivor_id: UUID, code: str, filters: list) -> Enquiry:
-    """The victim by Lead ID within the caller's scope (404 otherwise); itself 422; another team 409."""
+async def find_pair(db: AsyncSession, survivor_id: UUID, code: str, filters: list) -> tuple[Enquiry, Enquiry]:
+    """The survivor and the victim (by Lead ID), both within the caller's scope (404 otherwise); itself 422; another team 409."""
     survivor = await db.scalar(select(Enquiry).where(Enquiry.id == survivor_id, *filters))
     if survivor is None:
         raise HTTPException(404, lead_pipeline.LEAD_NOT_FOUND)
@@ -74,7 +74,7 @@ async def find_victim(db: AsyncSession, survivor_id: UUID, code: str, filters: l
         raise lead_pipeline.invalid("victim", VICTIM_SELF, code)
     if victim.division != survivor.division:
         raise HTTPException(409, OTHER_TEAM)
-    return victim
+    return survivor, victim
 
 
 def check(survivor: Enquiry, victim: Enquiry) -> None:
@@ -106,9 +106,9 @@ def _side(lead: Enquiry) -> dict:
     return {"id": lead.id, "lead_code": lead.lead_code, "status": lead.status, "status_label": label(lead.status), **{field: getattr(lead, field) for field in FIELDS}}
 
 
-async def preview(db: AsyncSession, survivor_id: UUID, victim: Enquiry) -> dict:
+async def preview(db: AsyncSession, survivor_id: UUID, code: str, filters: list) -> dict:
     """The merge form's comparison: both leads side by side and what would move. Read only."""
-    survivor = await db.get(Enquiry, survivor_id)
+    survivor, victim = await find_pair(db, survivor_id, code, filters)
     check(survivor, victim)
     return {"survivor": _side(survivor), "victim": _side(victim), "moved": await _counts(db, victim.id)}
 
@@ -130,6 +130,14 @@ async def _merge_qualification(db: AsyncSession, actor: User, survivor: Enquiry,
             mine.updated_by_user_id = actor.id
     if await db.scalar(select(func.count()).select_from(LeadEnglishTest).where(LeadEnglishTest.lead_id == survivor.id)) == 0:
         await db.execute(update(LeadEnglishTest).where(LeadEnglishTest.lead_id == victim.id).values(lead_id=survivor.id).execution_options(synchronize_session=False))
+
+
+async def merge_by_code(db: AsyncSession, actor: User, survivor_id: UUID, code: str, use_victim: list[str], reason: str | None, filters: list) -> dict:
+    """Both merge routes: find, lock, merge. The route commits. Returns the route's body."""
+    _, found = await find_pair(db, survivor_id, code, filters)
+    survivor, victim = await lock_pair(db, survivor_id, found.id, filters)
+    moved = await merge(db, actor, survivor, victim, use_victim, reason)
+    return {"id": survivor_id, "victim_id": victim.id, "victim_code": victim.lead_code, "moved": moved}
 
 
 async def merge(db: AsyncSession, actor: User, survivor: Enquiry, victim: Enquiry, use_victim: list[str], reason: str | None) -> dict:

@@ -273,20 +273,15 @@ def _merge_scope(user: User) -> list:
 async def merge_preview(lead_id: UUID, victim: str = Query(min_length=1, max_length=20), user: User = Depends(get_current_user),
                         db: AsyncSession = Depends(get_db)):
     """itc-007: the merge form's side-by-side comparison of this lead and the victim (its Lead ID), and the counts that would move."""
-    filters = _merge_scope(user)
-    found = await lead_merge.find_victim(db, lead_id, victim.strip().upper(), filters)
-    return await lead_merge.preview(db, lead_id, found)
+    return await lead_merge.preview(db, lead_id, victim.strip().upper(), _merge_scope(user))
 
 
 @router.post("/leads/{lead_id}/merge")
 async def merge(lead_id: UUID, payload: LeadMergeIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """itc-007 (DEC-SCOPE-339): merge the victim into this lead -- both in the manager's scope, same team, both open (spec)."""
-    filters = _merge_scope(user)
-    found = await lead_merge.find_victim(db, lead_id, payload.victim, filters)
-    survivor, victim = await lead_merge.lock_pair(db, lead_id, found.id, filters)
-    moved = await lead_merge.merge(db, user, survivor, victim, payload.use_victim, payload.reason)
+    out = await lead_merge.merge_by_code(db, user, lead_id, payload.victim, payload.use_victim, payload.reason, _merge_scope(user))
     await db.commit()
-    return {"id": lead_id, "victim_id": victim.id, "victim_code": victim.lead_code, "moved": moved}
+    return out
 
 
 @router.get("/leads/{lead_id}/stage-history", response_model=LeadStageHistoryPage)
