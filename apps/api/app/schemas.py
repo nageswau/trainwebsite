@@ -7288,7 +7288,7 @@ class TelDistributionRuleCreate(BaseModel):
     kind: Literal["product", "city", "source"]
     product_id: UUID | None = None
     city: BdmOrgShort = None
-    source: TelSource | None = None  # itc-006 (DEC-SCOPE-337): a source rule's lead source
+    source: TelSource | None = None  # itc-006 (DEC-SCOPE-338): a source rule's lead source
     telecaller_user_id: UUID
 
 
@@ -7328,7 +7328,7 @@ class TelDistributionRulePage(BaseModel):
 
 
 class TelStrategyUpdate(BaseModel):
-    """itc-006 (DEC-SCOPE-337 D3): who gets a new lead that no rule matched."""
+    """itc-006 (DEC-SCOPE-338 D3): who gets a new lead that no rule matched."""
     model_config = ConfigDict(extra="forbid")
     strategy: Literal["round_robin", "workload"]
 

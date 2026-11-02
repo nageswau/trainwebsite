@@ -10637,7 +10637,7 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0221_notification_event_type`; API §12IH; RBAC §2.238.
 - **Feature ID authorized:** `itc-002`. **Status:** built on `feature/itc-002`.
 
-### DEC-SCOPE-337 — Auto-assign new leads by source and workload (`itc-006`)
+### DEC-SCOPE-338 — Auto-assign new leads by source and workload (`itc-006`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-006 (source PDF §9 "Auto-assign new leads using configurable rules such as
   source, course, location, or workload", §3 step 2; PDF classified `UNVERIFIED`). Owner Q-01 (2026-11-01): all phases approved for build
@@ -10660,5 +10660,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
     No new grant; `it_admin` still has no telecaller-distribution access.
 - **Also fixed (blocking a fresh stack):** migration `0221_notification_event_type` (itc-002) now adds its columns and index only when
   missing, because 0001 builds a fresh database from the current models.
-- **Numbering:** migration `0222_tel_source_workload`; API §12II; RBAC §2.239.
+- **Numbering:** migration `0223_tel_source_workload`; API §12IJ; RBAC §2.240.
 - **Feature ID authorized:** `itc-006`. **Status:** built on `worktree-itc-006`.

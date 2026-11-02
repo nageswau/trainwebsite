@@ -4890,9 +4890,9 @@ index `ix_notifications_user_read_created`). Additive.
   Razorpay webhook) creates one `it.fee.payment_received` notice. Its text is fixed and contains no amount. Delivery is in-app and by
   email, plus WhatsApp/SMS only if the student opted in. A rolled-back write sends nothing.
 
-## 12II. Lead distribution by source and workload (itc-006) — addendum, 2026-11-02
+## 12IJ. Lead distribution by source and workload (itc-006) — addendum, 2026-11-02
 
-`DEC-SCOPE-337`. Migration `0222_tel_source_workload` (`tel_distribution_rules.source` + kind `source`, unique per team + source;
+`DEC-SCOPE-338`. Migration `0223_tel_source_workload` (`tel_distribution_rules.source` + kind `source`, unique per team + source;
 `tel_settings.distribution_strategy`, default `round_robin`). Additive.
 
 - `POST /telecaller/distribution-rules` — `kind` also accepts `"source"`; body adds `source` (one of the 13 lead sources, else 422).

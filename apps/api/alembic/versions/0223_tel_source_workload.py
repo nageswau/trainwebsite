@@ -1,9 +1,9 @@
 """itc-006 -- distribution by lead source and the team's workload strategy.
 
-Revision ID: 0222_tel_source_workload
-Revises: 0221_notification_event_type
+Revision ID: 0223_tel_source_workload
+Revises: 0222_it_student_counselors
 
-DEC-SCOPE-337. `tel_distribution_rules` gains `source` (one of the 13 lead sources, frozen below) and the `source` kind; `tel_settings`
+DEC-SCOPE-338. `tel_distribution_rules` gains `source` (one of the 13 lead sources, frozen below) and the `source` kind; `tel_settings`
 gains `distribution_strategy` (every existing team keeps `round_robin`, today's behaviour). 0001 builds a fresh database from the current
 models, so each column and index is added only when missing and each CHECK is dropped and re-created. The downgrade refuses while source
 rules exist (they would be lost silently), else restores the tel-007 shape.
@@ -11,8 +11,8 @@ rules exist (they would be lost silently), else restores the tel-007 shape.
 
 from alembic import op
 
-revision = "0222_tel_source_workload"
-down_revision = "0221_notification_event_type"
+revision = "0223_tel_source_workload"
+down_revision = "0222_it_student_counselors"
 branch_labels = None
 depends_on = None
 

@@ -3435,7 +3435,7 @@ The syllabus is public with no enquiry gate (S2). Inline `User.role` check, like
 
 No grant changes. A recipient sees only their own notices, as before. Pinned by `apps/api/tests/test_itc_002_notify.py`.
 
-### 2.239 Lead distribution by source and workload *(added 2026-11-02 — `DEC-SCOPE-337`, itc-006)*
+### 2.240 Lead distribution by source and workload *(added 2026-11-02 — `DEC-SCOPE-338`, itc-006)*
 
 | Route | Anonymous | telecaller_manager | super_admin | every other role (incl. it_admin, telecaller) |
 |---|---|---|---|---|

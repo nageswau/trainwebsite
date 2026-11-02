@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// itc-006 (DEC-SCOPE-337): a telecaller manager adds a source rule, a website enquiry from that source goes straight to the rule's
+// itc-006 (DEC-SCOPE-338): a telecaller manager adds a source rule, a website enquiry from that source goes straight to the rule's
 // telecaller (AC1, AC4), and the IT team's "When no rule matches" setting is switched to the fewest open leads and back. The source
 // is unique per team on a shared database, so super_admin first clears any leftover rule for it, and the run deletes its own.
 const SOURCE = "exhibition_event";

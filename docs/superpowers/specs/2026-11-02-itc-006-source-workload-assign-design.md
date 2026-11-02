@@ -1,6 +1,6 @@
 # itc-006 — Auto-assign by source and workload (design + plan)
 
-**Feature:** `itc-006` (`docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md`), wave W1. **Decision:** DEC-SCOPE-337. **Dependencies:** none.
+**Feature:** `itc-006` (`docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md`), wave W1. **Decision:** DEC-SCOPE-338. **Dependencies:** none.
 **Authority:** owner Q-01 (2026-11-01) approved all phases in waves; Q-06 (rule precedence) was open, and the owner's standing
 instruction for this session is to proceed with the recommended answer. The recommended answer is recorded below as the build
 default and stays reversible (`NEEDS_CONFIRMATION` for configurable precedence).
@@ -24,7 +24,7 @@ Rules map one match to one telecaller (`tel_distribution_rules`, unique per team
 | D5 | Audit: `lead.assign` metadata keeps `from/to/method` and adds `rule_id` when a rule matched (AC4). New methods: `source_rule`, `workload`. |
 | D6 | Strategy AuthZ: `telecaller_manager` with at least one direct report on that team, or `super_admin` (backlog: "manager or admin of the same team"); others 403, unknown team 404. No new grant; `it_admin` keeps no access to telecaller distribution (unchanged). Rule AuthZ unchanged (tel-007 DI3/AC5). |
 
-## API (additive; API §12II)
+## API (additive; API §12IJ)
 - `POST /telecaller/distribution-rules`: `kind` gains `"source"`, body gains `source` (one of the 13). Shape errors 422
   (`Choose a source`, `A source rule has no product or city`); duplicate (team, source) 409 like the others. A telecaller on the other
   team stays 422 (existing `assignee`).
@@ -32,7 +32,7 @@ Rules map one match to one telecaller (`tel_distribution_rules`, unique per team
 - `GET /telecaller/distribution-strategy` → `{items: [{team, team_label, strategy, editable}]}` (any telecaller manager / super_admin).
 - `PUT /telecaller/distribution-strategy/{team}` `{strategy}` → 200 item; audited `telecaller.strategy_update` with from/to.
 
-## DB (migration 0222, data-preserving)
+## DB (migration 0223, data-preserving)
 - `tel_distribution_rules.source VARCHAR(30) NULL`; kind CHECK → `('product','city','source')`; shape CHECK gains the source arm;
   `uq_tel_distribution_rules_source (team, source) WHERE kind='source'`; source CHECK against the frozen 13.
 - `tel_settings.distribution_strategy VARCHAR(20) NOT NULL DEFAULT 'round_robin'` + CHECK.
@@ -59,11 +59,11 @@ Rules map one match to one telecaller (`tel_distribution_rules`, unique per team
 | UI | `TelecallerRulesPanel.test.tsx` (source), `TelecallerStrategyPanel.test.tsx`, e2e `itc-006-distribution.spec.ts` |
 
 ## Plan (TDD, small tasks)
-1. Model + migration 0222 + update pinned shape tests (tel-007/tel-020 migration tests).
+1. Model + migration 0223 + update pinned shape tests (tel-007/tel-020 migration tests).
 2. Service: source rule, strategy, workload, `rule_id` in audit (RED tests first).
 3. API: rule create/list with source; strategy GET/PUT (RED tests first).
 4. Web: lib types/labels; rules panel source option; strategy panel; timeline labels (vitest first).
-5. Docs: DEC-SCOPE-337, API §12II, RBAC §2.239, RTM, backlog status.
+5. Docs: DEC-SCOPE-338, API §12IJ, RBAC §2.240, RTM, backlog status.
 6. Docker QA (browser + Playwright e2e), fixes, simplify, verify, merge.
 
 ## Regression risks

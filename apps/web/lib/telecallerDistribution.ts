@@ -26,7 +26,7 @@ export function ruleMatch(rule: Pick<Rule, "kind" | "product" | "city" | "source
   return rule.kind === "product" ? `Product: ${rule.product?.name ?? ""}${rule.product && !rule.product.active ? " (inactive)" : ""}` : `City: ${rule.city}`;
 }
 
-// itc-006 (DEC-SCOPE-337 D3): who gets a new lead that no rule matched.
+// itc-006 (DEC-SCOPE-338 D3): who gets a new lead that no rule matched.
 export type Strategy = "round_robin" | "workload";
 export type TeamStrategy = { team: TelecallerTeam; team_label: string; strategy: Strategy; editable: boolean };
 export const STRATEGY_URL = "/api/v1/telecaller/distribution-strategy";
