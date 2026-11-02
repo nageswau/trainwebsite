@@ -4890,6 +4890,28 @@ index `ix_notifications_user_read_created`). Additive.
   Razorpay webhook) creates one `it.fee.payment_received` notice. Its text is fixed and contains no amount. Delivery is in-app and by
   email, plus WhatsApp/SMS only if the student opted in. A rolled-back write sends nothing.
 
+## 12II. Counselor ↔ IT student ownership link (itc-003) — addendum, 2026-11-02
+
+`DEC-SCOPE-337`. Migration `0222_it_student_counselors` (one row per IT student, unique `student_user_id`; backfilled from linked IT
+leads owned by an IT counselor). All routes **401** without a session.
+
+- `GET /counselor/it/students?q=&limit=50&offset=0` (IT counselor only; **403** anyone else, an overseas counselor included) →
+  `{items: [{id, student_code, full_name, email, phone, linked_since}], total, limit, offset}`, newest link first; `q` (≤100) is a literal
+  substring of name, email or Student ID; `limit` 1–100 (**422** outside).
+- `GET /counselor/it/students/{id}` (IT counselor only) → one item as above; **404** unless the student is linked to the caller.
+- `PUT /admin/it/students/{id}/counselor` (IT Admin only; **403** anyone else, super_admin included) body `{counselor_id, reason?}`
+  (`reason` ≤500, trimmed) → `{id, counselor_id, counselor_name, changed}`. **404** not an IT student; **422** not an active IT counselor
+  ("Choose an active IT counselor") or a replacement without a reason ("Give a reason for the reassignment"). The same counselor →
+  `changed: false`, nothing written. Audit `it.student.counselor_assign` `{from_counselor_id, to_counselor_id, reason?}`; in-app notices
+  "Student assigned to you" / "Student reassigned" (with the reason, `action_url` `/it/counselor/students`) plus consented channels.
+- `GET /lookups/it-counselors?q=&limit=20` (IT Admin only) → `{items: [{id, label, detail: null}], truncated}`, active IT counselors.
+- Side effects (no contract change): `POST /counselor/leads/{id}/student-link` and `POST /admin/leads/{id}/conversion` on an IT lead owned
+  by an IT counselor link that counselor to a student who has none (audit `it.student.counselor_link` `{counselor_id, lead_id}`);
+  `DELETE` of either removes the link while it still points at the lead owner.
+- Portal (additive): `GET /portal/it/admin/students` rows gain `counselor`, `counselor_id`, `assign` and the column type
+  `assign_it_student_counselor`; `GET /portal/it/counselor/students` ("My Students") is new; `GET /portal/it/student/dashboard` gains the
+  metric "Your counselor" (name or "Not assigned yet").
+
 ## 12IJ. Lead distribution by source and workload (itc-006) — addendum, 2026-11-02
 
 `DEC-SCOPE-338`. Migration `0223_tel_source_workload` (`tel_distribution_rules.source` + kind `source`, unique per team + source;

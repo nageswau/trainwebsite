@@ -135,6 +135,8 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** the counselor is deactivated (tel-025 pattern: block, or reassign first); a student enrolled in two IT programmes (one counselor per student, not per enrolment; `NEEDS_CONFIRMATION`, Q-03).
 - **Regression risks:** csc-001…005 tests if the table is generalised.
 - **Complexity:** medium. **Risk:** medium.
+- **Update 2026-11-02:** built as `DEC-SCOPE-337` (migration `0222_it_student_counselors`, API §12II, RBAC §2.239); design
+  `docs/superpowers/specs/2026-11-02-itc-003-it-student-counselor-link-design.md`. Calls C1–C5 there are `NEEDS_CONFIRMATION`.
 
 ### Phase 1: Core CRM (PDF Phase 1)
 
