@@ -82,6 +82,7 @@ from app.services import (
     audit_changes,
     bdm_lifecycle,
     course_skills,
+    fee_accounts,
     lead_appointments,
     lead_handover,
     lead_list,
@@ -386,6 +387,8 @@ async def payment_records(user: User = Depends(PAYMENTS_VIEW), db: AsyncSession 
             "status": p.status,
             "due_date": p.due_date,
             "paid_at": p.paid_at,
+            "payment_mode": p.payment_mode,  # itc-013
+            "provider_reference": p.provider_reference,
         }
         for p, target in rows
     ]
@@ -1326,6 +1329,9 @@ async def create_payment(payload: dict, user: User = Depends(PAYMENTS_ADD), db: 
 
     due = date.fromisoformat(payload["due_date"]) if payload.get("due_date") else None
     is_manual = payload.get("provider", "manual") == "manual"
+    payment_mode = payload.get("payment_mode") or None
+    if payment_mode is not None and payment_mode not in fee_accounts.OFFLINE_MODES:  # itc-013: razorpay is the gateway's to record
+        raise HTTPException(422, f"payment_mode must be one of: {', '.join(fee_accounts.OFFLINE_MODES)}")
     item = Payment(
         user_id=target.id,
         division=target.division,
@@ -1338,6 +1344,7 @@ async def create_payment(payload: dict, user: User = Depends(PAYMENTS_ADD), db: 
         status=payload.get("status", "pending"),
         due_date=due,
         is_manual=is_manual,
+        payment_mode=payment_mode,
     )
     db.add(item)
     await db.flush()

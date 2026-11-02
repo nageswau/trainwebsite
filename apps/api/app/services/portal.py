@@ -61,7 +61,7 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.services import application_filters, counselor_students, document_access, hr_students, it_student_counselors, permissions, student_access, student_archive, student_profiles
+from app.services import application_filters, counselor_students, document_access, fee_accounts, hr_students, it_student_counselors, permissions, student_access, student_archive, student_profiles
 from app.services import application_outcomes as outcomes
 from app.services import applications as job_applications
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
@@ -1742,12 +1742,14 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
         if section == "enrollments":
             stmt = select(Enrollment, User, Batch).join(User, User.id == Enrollment.student_id).join(Batch, Batch.id == Enrollment.batch_id)
             rows = (await db.execute(stmt.order_by(Enrollment.created_at.desc()).limit(500))).all()
+            fees = await fee_accounts.balance_for(db, [e.id for e, _, _ in rows])  # itc-013: one query for the page
             return _payload(
                 "Enrolments",
                 "Review and approve or reject student enrolments (ADM-005).",
-                (("id", "reference"), ("student", "Student"), ("batch", "Batch"), ("enrollment_code", "Enrolment code"), ("status", "Status")),
-                ({"id": e.id, "student": s.full_name, "batch": b.name, "enrollment_code": e.enrollment_code, "status": e.status} for e, s, b in rows),
-            )
+                (("id", "reference"), ("student", "Student"), ("batch", "Batch"), ("enrollment_code", "Enrolment code"), ("status", "Status"), ("fee_balance", "Fee balance")),
+                ({"id": e.id, "student": s.full_name, "batch": b.name, "enrollment_code": e.enrollment_code, "status": e.status,
+                  "fee_balance": _fee_balance(fees[e.id]["balance"] if fees[e.id]["state"] != "not_billed" else None)} for e, s, b in rows),
+            )  # fmt: skip
         if section == "universities":
             rows = (await db.scalars(select(University).order_by(University.name))).all()
             return _payload(
@@ -1792,6 +1794,11 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             )
 
 
+def _fee_balance(balance: float | None) -> str:
+    """itc-013: a fee account's balance as a table cell; None when nothing was ever billed."""
+    return "Not billed" if balance is None else f"INR {balance:,.2f}"
+
+
 def _routed(user: User, *columns):
     """CNS-001 / tel-017: the leads routed to this counselor (`Enquiry.owner_id`), in the counselor's own division only."""
     return select(*columns).where(Enquiry.division == user.division, Enquiry.owner_id == user.id)
@@ -1821,14 +1828,16 @@ async def _it_counselor(db: AsyncSession, user: User, section: str):
         return _leads_payload(await _routed_leads(db, user))
     if section == "students":  # itc-003 (DEC-SCOPE-337): the IT students linked to this counselor
         mine = await it_student_counselors.page(db, user, 500, 0)
+        balances = await fee_accounts.student_balances(db, [s["id"] for s in mine["items"]])  # itc-013: two queries for the page
         return _payload(
             "My Students",
             "IT students you are the counselor for.",
             # itc-012 (DEC-SCOPE-345): each row links the student's record (profile, emergency contact, enrolment dates)
-            (("student_code", "Student ID"), ("name", "Name"), ("email", "Email"), ("phone", "Phone"), ("since", "Your student since"), ("profile", "", "student_profile")),
+            (("student_code", "Student ID"), ("name", "Name"), ("email", "Email"), ("phone", "Phone"), ("since", "Your student since"), ("fee_balance", "Fee balance"),
+             ("profile", "", "student_profile")),
             ({"id": s["id"], "student_code": s["student_code"], "name": s["full_name"], "email": s["email"], "phone": s["phone"], "since": today_ist(s["linked_since"]).isoformat(),
-              "profile": f"/it/counselor/students/{s['id']}/profile"} for s in mine["items"]),  # fmt: skip
-        )
+              "fee_balance": _fee_balance(balances[s["id"]]), "profile": f"/it/counselor/students/{s['id']}/profile"} for s in mine["items"]),
+        )  # fmt: skip
     if section == "appointments":  # tel-016 AP14: header only -- the page's panel reads /counselor/appointments
         return _payload("Appointments", "Counselling appointments booked for your leads.")
     total = await db.scalar(_routed(user, func.count()))

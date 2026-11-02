@@ -72,6 +72,8 @@ def receipt_lines(
     phone: str | None = None,
     course: str | None = None,
     batch: str | None = None,
+    payment_mode: str | None = None,
+    transaction_reference: str | None = None,
 ) -> list[tuple[str, str]]:
     """nehn-019 AC1/AC3: every field the receipt lists, in order, with "—" for a value that is not known (and for no discount)."""
 
@@ -92,6 +94,8 @@ def receipt_lines(
         ("Gross amount", money(gross)),
         ("Discount", money(discount) if discount else DASH),
         ("Amount paid", money(paid)),
+        ("Payment mode", payment_mode or DASH),  # itc-013 AC4
+        ("Transaction reference", transaction_reference or DASH),
         ("Remaining balance", money(balance)),
         ("Payment status", status),
     ]
