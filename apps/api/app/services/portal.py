@@ -61,7 +61,7 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.services import application_filters, counselor_students, document_access, hr_students, permissions, student_access, student_archive, student_profiles
+from app.services import application_filters, counselor_students, document_access, hr_students, it_student_counselors, permissions, student_access, student_archive, student_profiles
 from app.services import application_outcomes as outcomes
 from app.services import applications as job_applications
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
@@ -168,6 +168,7 @@ async def _it_student(db: AsyncSession, user: User, section: str):
         )
         due = await _safe(db, lambda: db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.user_id == user.id, Payment.status.in_(["pending", "overdue"]))), None)
         applied_jobs = await _safe(db, lambda: db.scalar(select(func.count()).select_from(JobApplication).where(JobApplication.student_id == user.id)), None)
+        counselor = (await it_student_counselors.counselors_of(db, [user.id])).get(user.id)  # itc-003: the student's own link only
         upcoming_assignments: list[Assignment] = []
         if batch_ids:
             fetched = await _safe(
@@ -185,6 +186,7 @@ async def _it_student(db: AsyncSession, user: User, section: str):
                 {"label": "Pending fee", "value": f"INR {float(due):,.0f}" if due is not None else "Unavailable"},
                 {"label": "Applied jobs", "value": applied_jobs if applied_jobs is not None else "Unavailable"},
                 {"label": "Enrollments", "value": len(enrollments)},
+                {"label": "Your counselor", "value": counselor.full_name if counselor else "Not assigned yet"},
             ),
             ({"label": "View assignments", "href": "/it/student/assignments"}, {"label": "Open course", "href": "/it/student/course"}, {"label": "Get support", "href": "/it/student/support"}),
         )
@@ -1613,6 +1615,13 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                     row |= {"counselor": name or "Not assigned", "counselor_id": str(counselor_id) if counselor_id else None, "assign": row["id"], "notes": f"/overseas/admin/students/{row['id']}/notes"}
                     row["profile"] = f"/overseas/admin/students/{row['id']}/profile"  # ccrm-007
                     row["open"] = f"/overseas/admin/students/{row['id']}"  # ccrm-009: the student 360
+            if section == "students" and division == "it" and user.role == "it_admin":
+                # itc-003 (DEC-SCOPE-337): each IT student's counselor and the IT Admin's assign/change control (csc-005's, IT picker).
+                counselors = await it_student_counselors.counselors_of(db, [u.id for u in rows])
+                columns += [("counselor", "EduSphere counsellor"), ("assign", "", "assign_it_student_counselor")]
+                for row in table:
+                    counselor = counselors.get(row["id"])
+                    row |= {"counselor": counselor.full_name if counselor else "Not assigned", "counselor_id": str(counselor.id) if counselor else None, "assign": row["id"]}
             return _payload(section.title(), "Role-scoped user administration.", columns, table)
         if section == "agents" and (division == "overseas" or user.role == "super_admin"):
             # AGT-001: Overseas Admin's own approve/reject queue -- the generic
@@ -1787,11 +1796,19 @@ def _leads_payload(rows: list[Enquiry]):
 
 async def _it_counselor(db: AsyncSession, user: User, section: str):
     """tel-017 (DEC-SCOPE-076 C1): an IT counselor works leads only -- Dashboard, My Leads and (tel-016) Appointments; tel-018 adds the
-    student link. Every overseas section stays the overseas counselor's, so anything else is a 404 here."""
-    if section not in {"dashboard", "leads", "appointments"}:
+    student link; itc-003 (DEC-SCOPE-337) My Students. Every overseas section stays the overseas counselor's, so anything else is a 404."""
+    if section not in {"dashboard", "leads", "appointments", "students"}:
         return None
     if section == "leads":
         return _leads_payload(await _routed_leads(db, user))
+    if section == "students":  # itc-003 (DEC-SCOPE-337): the IT students linked to this counselor
+        mine = await it_student_counselors.page(db, user, 500, 0)
+        return _payload(
+            "My Students",
+            "IT students you are the counselor for.",
+            (("student_code", "Student ID"), ("name", "Name"), ("email", "Email"), ("phone", "Phone"), ("since", "Your student since")),
+            ({"id": s["id"], "student_code": s["student_code"], "name": s["full_name"], "email": s["email"], "phone": s["phone"], "since": s["linked_since"]} for s in mine["items"]),
+        )
     if section == "appointments":  # tel-016 AP14: header only -- the page's panel reads /counselor/appointments
         return _payload("Appointments", "Counselling appointments booked for your leads.")
     total = await db.scalar(_routed(user, func.count()))

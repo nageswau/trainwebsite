@@ -32,6 +32,11 @@ function renderCell(column: Column, row: Row) {
     if (!row.assign) return null;
     return <AssignCounselorButton applicationId={String(row.id)} currentId={(row.counselor_id as string | null) ?? null} url={`/api/v1/admin/users/${encodeURIComponent(String(row.id))}/counselor`} />;
   }
+  // itc-003 (DEC-SCOPE-337): the IT Admin's Students page -- an IT student's counselor, picked from the IT counselors.
+  if (column.type === "assign_it_student_counselor") {
+    if (!row.assign) return null;
+    return <AssignCounselorButton applicationId={String(row.id)} currentId={(row.counselor_id as string | null) ?? null} lookup="it-counselors" url={`/api/v1/admin/it/students/${encodeURIComponent(String(row.id))}/counselor`} />;
+  }
   // ccrm-009 (DEC-SCOPE-253): the student 360 page (null for a student with no login, and for staff rows).
   if (column.type === "student_360") {
     if (!row[column.key]) return null;

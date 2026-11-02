@@ -10586,3 +10586,26 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   (`it_admin`, `super_admin`) only, like the rest of course management.
 - **Numbering:** migration `0220_program_syllabus_image`; API §12IF; RBAC §2.237.
 - **Feature ID authorized:** `PUB-025`. **Status:** built on `feature/pub-025`.
+
+### DEC-SCOPE-337 — Counselor ↔ IT student ownership link (`itc-003`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-003` (PDF cover "one student record shared", §2, §7, §12 AC4/6;
+  `UNVERIFIED` source, build approved in waves by the owner's Q-01 answer 2026-11-01); design
+  `docs/superpowers/specs/2026-11-02-itc-003-it-student-counselor-link-design.md`. No dependencies.
+- **Owner answers (Q-03, 2026-11-01):** a new IT-only table `it_student_counselors` following csc-001; the overseas code is untouched;
+  **one counselor per student** (a second enrolment keeps the same counselor; the IT Admin reassigns with a reason).
+- **Behaviour:** the lead's student link (counselor or admin; itc-011's conversion will reuse it) gives an IT student the lead owner as
+  counselor when the owner is an IT counselor and the student has none yet (audit `it.student.counselor_link`); undoing a mistaken link
+  removes it while it still points at the lead owner. `PUT /admin/it/students/{id}/counselor` (csc-005 / ccrm-033 rules: swap only, a
+  reason to replace, same counselor = `changed: false`, audit `it.student.counselor_assign` with from/to/reason, both counselors told).
+  The IT counselor's `GET /counselor/it/students[/{id}]` and Students page list only their linked students (anyone else's id → 404); the
+  IT Admin's Students page shows each student's counselor with the assign/change control (`GET /lookups/it-counselors` picker); the IT
+  student's dashboard shows a "Your counselor" tile (name only).
+- **Claude's calls under "proceed with recommended answers" (`NEEDS_CONFIRMATION`):** C1 IT Admin only reassigns (not super_admin —
+  csc-005 C13 precedent); C2 migration backfills existing linked IT leads owned by an IT counselor; C3 unlink removes the auto link only
+  while it points at the lead owner; C4 the student sees only the counselor's name; C5 a counselor deactivation is not blocked (the admin
+  reassigns; tel-025-style blocking left open). Audit before/after uses today's `AuditLog` metadata (itc-001's helper not required);
+  notices use today's `Notification` + `queue_deliveries` (itc-002's event type not required).
+- **Numbering:** migration `0222_it_student_counselors` (0221 is pencilled by itc-002); API §12II; RBAC §2.240 (DEC-SCOPE-335/336,
+  §12IG/12IH and §2.238/2.239 are left to itc-001/itc-002).
+- **Feature ID authorized:** `itc-003`. **Status:** built on `worktree-itc-003`.

@@ -2130,6 +2130,19 @@ class OverseasStudentCounselor(Base, TimestampMixin):
     assigned_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+class ItStudentCounselor(Base, TimestampMixin):
+    """itc-003 (DEC-SCOPE-337, Q-03): the IT counselor an IT student belongs to -- at most one per student (not per enrolment). Set by the
+    lead's student link (`lead_handover.link_student`) and moved by the IT Admin with a reason (`services/it_student_counselors.py`).
+    The IT twin of `OverseasStudentCounselor`; the overseas table is untouched."""
+
+    __tablename__ = "it_student_counselors"
+    __table_args__ = (UniqueConstraint("student_user_id", name="uq_it_student_counselors_student"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    student_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    counselor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
+    assigned_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
 class OverseasStudentArchive(Base, TimestampMixin):
     """ccrm-040 (DEC-SCOPE-276 AR4): an archived overseas student -- hidden from the staff working lists with their applications, never
     deleted. `created_at` is the archive time; a restore deletes the row (the audit log keeps the history)."""

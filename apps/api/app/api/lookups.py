@@ -177,6 +177,24 @@ async def overseas_counselors(
     return await _page(db, stmt, limit, lambda row: {"id": row[0].id, "label": row[0].full_name, "detail": None}, "overseas-counselors", user)
 
 
+@router.get("/it-counselors")
+async def it_counselors(
+    q: str | None = Query(None, max_length=100),
+    limit: int = Query(20, ge=1, le=50),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """itc-003 (DEC-SCOPE-337): the IT Admin's Assign counsellor picker for an IT student -- active IT counselors by name (name + id)."""
+    if user.role != "it_admin" or user.division != "it":  # the reassignment is the IT Admin's only (not super_admin, csc-005 C13)
+        raise HTTPException(403, FORBIDDEN)
+    stmt = select(User).where(User.role == "counselor", User.division == "it", User.active.is_(True))
+    pattern = _pattern(q)
+    if pattern:
+        stmt = stmt.where(_like(User.full_name, pattern))
+    stmt = stmt.order_by(User.full_name, User.id)
+    return await _page(db, stmt, limit, lambda row: {"id": row[0].id, "label": row[0].full_name, "detail": None}, "it-counselors", user)
+
+
 @router.get("/overseas-applications")
 async def overseas_applications(
     q: str | None = Query(None, max_length=100),

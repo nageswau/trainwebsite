@@ -11,7 +11,8 @@ import { lookupSearch, type PickOption } from "@/lib/lookups";
 // is no "none" choice. The picker is a type-ahead over the active overseas counselors (lookups/overseas-counselors, so the 500-row
 // /admin/users cap cannot hide anyone); the server re-checks every rule.
 // csc-005 (DEC-SCOPE-230): `url` points the same picker at a student's counselor (PUT /admin/users/{id}/counselor); default: the application.
-export default function AssignCounselorButton({ applicationId, currentId, url }: { applicationId: string; currentId: string | null; url?: string }) {
+// itc-003 (DEC-SCOPE-337): `lookup` searches the IT counselors instead, for the IT Admin's IT student (PUT /admin/it/students/{id}/counselor).
+export default function AssignCounselorButton({ applicationId, currentId, url, lookup = "overseas-counselors" }: { applicationId: string; currentId: string | null; url?: string; lookup?: "overseas-counselors" | "it-counselors" }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<PickOption | null>(null);
@@ -24,7 +25,7 @@ export default function AssignCounselorButton({ applicationId, currentId, url }:
   const trimmed = reason.trim();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const fieldRef = useRef<HTMLDivElement>(null);
-  const search = useMemo(() => lookupSearch("overseas-counselors"), []);
+  const search = useMemo(() => lookupSearch(lookup), [lookup]);
   const refocusButton = useRef(false);
   const refocusField = useRef(false);
   const selectId = `assign-counselor-${applicationId}`;
