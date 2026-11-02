@@ -85,6 +85,28 @@ describe("LeadCounseling (itc-010)", () => {
     await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) => url === "/w/c1" && init?.method === "PATCH")).toBe(true));
   });
 
+  it("QA10-02: the form takes focus, Escape closes it and focus returns to Record counseling", async () => {
+    render(<LeadCounseling listUrl="/l" writeUrl={(id) => `/w${id ? `/${id}` : ""}`} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Record counseling" }));
+    const form = await screen.findByRole("form", { name: "Record counseling" });
+    await waitFor(() => expect(document.activeElement).toBe(within(form).getByLabelText("Outcome (required)")));
+    fireEvent.keyDown(document.activeElement as Element, { key: "Escape" });
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Record counseling" })));
+  });
+
+  it("QA10-01: a negative fee and a past date are both flagged before sending", async () => {
+    render(<LeadCounseling listUrl="/l" writeUrl={(id) => `/w${id ? `/${id}` : ""}`} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Record counseling" }));
+    const form = await screen.findByRole("form", { name: "Record counseling" });
+    fireEvent.change(within(form).getByLabelText("Outcome (required)"), { target: { value: "interested" } });
+    fireEvent.change(within(form).getByLabelText("Course fee quoted (₹)"), { target: { value: "-5" } });
+    fireEvent.change(within(form).getByLabelText("Expected joining date"), { target: { value: "2020-01-01" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save counseling" }));
+    expect(await within(form).findByText("The fee can't be negative")).toBeTruthy();
+    expect(within(form).getByText("The date can't be before today")).toBeTruthy();
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "POST")).toBe(false);
+  });
+
   it("maps blanks to null and back", () => {
     expect(counselingBody(counselingValues())).toMatchObject({ recommended_product_id: null, fee_quoted: null, objection_ids: [], outcome: "" });
     expect(counselingValues(record()).fee_quoted).toBe("45000.00");

@@ -12,6 +12,7 @@ import {
   isCounselingRecord, listUrl, type CounselingRecord, type CounselingValues, type Ref,
 } from "@/lib/leadCounseling";
 import { activeProducts, getPage, readAll } from "@/lib/telecallerCatalogue";
+import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 const TEXT = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
 type WriteUrl = (recordId?: string) => string;
@@ -53,7 +54,14 @@ function CounselingForm({ url, record, onSaved, onCancel }: { url: WriteUrl; rec
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!v.outcome) return setErrors({ outcome: "Choose the counseling outcome" });
+    // QA10-01: the checks the browser can make, all at once (the API repeats them; a kept past date is not re-checked)
+    const found: Record<string, string> = {};
+    if (!v.outcome) found.outcome = "Choose the counseling outcome";
+    if (v.fee_quoted.trim() !== "" && Number(v.fee_quoted) < 0) found.fee_quoted = "The fee can't be negative";
+    for (const key of ["expected_joining_date", "next_follow_up"] as const) {
+      if (v[key] && v[key] !== (record?.[key] ?? "") && v[key] < todayIst()) found[key] = "The date can't be before today";
+    }
+    if (Object.keys(found).length) return setErrors(found);
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
@@ -73,7 +81,7 @@ function CounselingForm({ url, record, onSaved, onCancel }: { url: WriteUrl; rec
       <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))" }}>
         <div className="field">
           <label htmlFor={fid("outcome")}>Outcome (required)</label>
-          <select id={fid("outcome")} value={v.outcome} disabled={busy} aria-required="true" onChange={set("outcome")} {...invalid("outcome")}>
+          <select id={fid("outcome")} value={v.outcome} disabled={busy} aria-required="true" autoFocus onChange={set("outcome")} {...invalid("outcome")}>
             <option value="">Choose…</option>
             {OUTCOMES.map((o) => <option key={o} value={o}>{OUTCOME_LABEL[o]}</option>)}
           </select>
@@ -114,7 +122,7 @@ function CounselingForm({ url, record, onSaved, onCancel }: { url: WriteUrl; rec
         </div>
       </div>
       <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }} {...invalid("objection_ids")}>
-        <legend>Objections</legend>
+        <legend style={{ fontWeight: 700 }}>Objections</legend>
         {failed && <p className="form-error" role="alert">Unable to load the course and objection lists.</p>}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px" }}>
           {objections.map((o) => (
@@ -186,6 +194,12 @@ export default function LeadCounseling({ listUrl: url, writeUrl, onChanged }: { 
   const [editing, setEditing] = useState<CounselingRecord | "new" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const reload = () => setVersion((n) => n + 1);
+  const focus = useFocusAfterRender();
+  const recordButtonId = `${useId()}-record`;
+  function close() { // QA10-02: keyboard focus goes back to the button that opened the form
+    setEditing(null);
+    focus(recordButtonId);
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -195,7 +209,7 @@ export default function LeadCounseling({ listUrl: url, writeUrl, onChanged }: { 
   }, [url, version]);
 
   function saved(text: string) {
-    setEditing(null);
+    close();
     setNotice(text);
     reload();
     onChanged?.();
@@ -206,13 +220,13 @@ export default function LeadCounseling({ listUrl: url, writeUrl, onChanged }: { 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
         <h3 id="lead-counseling-heading" style={{ margin: 0 }}>Counseling</h3>
         {writeUrl && editing === null && (
-          <button type="button" className="btn secondary small" onClick={() => { setEditing("new"); setNotice(null); }}>Record counseling</button>
+          <button id={recordButtonId} type="button" className="btn secondary small" onClick={() => { setEditing("new"); setNotice(null); }}>Record counseling</button>
         )}
       </div>
       <div role="status" aria-live="polite">{notice && <p className="form-message" style={{ margin: "6px 0 0", fontSize: 13 }}>{notice}</p>}</div>
       {writeUrl && editing !== null && (
         <CounselingForm key={editing === "new" ? "new" : editing.id} url={writeUrl} record={editing === "new" ? undefined : editing} onSaved={saved}
-          onCancel={() => setEditing(null)} />
+          onCancel={close} />
       )}
       {failed ? (
         <div>
