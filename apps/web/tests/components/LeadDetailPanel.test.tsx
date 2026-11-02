@@ -344,7 +344,7 @@ describe("LeadDetailPanel (tel-008)", () => {
   });
 });
 
-// itc-007 (DEC-SCOPE-338): merge a duplicate -- a manager on an open lead only; a merged lead says where it went and offers no control.
+// itc-007 (DEC-SCOPE-339): merge a duplicate -- a manager on an open lead only; a merged lead says where it went and offers no control.
 describe("LeadDetailPanel merge (itc-007)", () => {
   it("offers Merge a duplicate to a manager on an open lead only", async () => {
     render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen />);

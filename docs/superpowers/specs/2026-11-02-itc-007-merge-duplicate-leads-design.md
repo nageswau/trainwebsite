@@ -2,7 +2,7 @@
 
 **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-007` (PDF §9 "let authorized users merge duplicates", §3 step 1;
 `UNVERIFIED` source, build approved in waves by the owner's Q-01 answer 2026-11-01). **Dependency:** itc-001 (merged, PR #408).
-**Decision:** `DEC-SCOPE-338`. API §12IJ, RBAC §2.240, migration `0223_lead_merge`.
+**Decision:** `DEC-SCOPE-339`. API §12IK, RBAC §2.240, migration `0224_lead_merge`.
 
 ## Intent
 Duplicates are blocked at intake (tel-005), but older rows, imports and edits still leave two leads for one person. Closing one as
@@ -54,11 +54,11 @@ Timeline/metrics/reports that count leads (the victim is closed `duplicate`, as 
 index; tests asserting exact `admin_out` keys (additive `merged_at` only).
 
 ## Plan (TDD, small steps)
-1. Migration `0223_lead_merge` + model columns + CHECKs; migration test.
+1. Migration `0224_lead_merge` + model columns + CHECKs; migration test.
 2. `services/lead_merge.py`: `preview`, `merge` (locks, refusals, moves, fill, close, audit). Tests per rule.
 3. Routes: `/telecaller/leads/{id}/merge-preview|merge` and `/admin/leads/{id}/merge-preview|merge`. Route tests (RBAC, 404/409/422).
 4. Read-only guard for merged leads (reopen, stage, PATCH, qualification, admin PATCH).
 5. Timeline `merge` row (API + web label).
 6. Web: `LeadMergeForm` + wiring on the manager detail page and the admin row; `merged_at` read-only display. Vitest tests.
 7. Playwright e2e for the manager merge.
-8. Docs: DEC-SCOPE-338, API §12IJ, RBAC §2.240, backlog status.
+8. Docs: DEC-SCOPE-339, API §12IK, RBAC §2.240, backlog status.

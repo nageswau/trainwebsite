@@ -20,7 +20,7 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.lead_stages import CLOSED
+from app.lead_stages import CLOSED, NURTURE
 from app.models import (
     LEAD_APPOINTMENT_OPEN,
     TEL_SETTING_DEFAULTS,
@@ -213,7 +213,8 @@ def _own_open(team: str) -> list:
 async def send_telecaller_alerts(db: AsyncSession, *, now: datetime) -> dict[str, int]:
     counts = {"created": 0, "duplicate": 0, "failed": 0}
     await _each(db, counts, _follow_ups(now - MISSED_AFTER, now + DUE_AHEAD), LeadFollowUp.id, follow_up_due)
-    await _each(db, counts, _follow_ups(now - MISSED_AFTER - MISSED_LOOKBACK, now - MISSED_AFTER), LeadFollowUp.id, follow_up_missed)
+    missed = _follow_ups(now - MISSED_AFTER - MISSED_LOOKBACK, now - MISSED_AFTER).where(Enquiry.status != NURTURE)  # itc-004 N5
+    await _each(db, counts, missed, LeadFollowUp.id, follow_up_missed)
     await _each(db, counts, _appointments(now, now + HOUR_BEFORE), Appointment.id, appointment_hour)
     local = now.astimezone(INDIA)
     if local.time() >= EVENING:

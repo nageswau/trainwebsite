@@ -5,15 +5,30 @@ caller locked with `locked_lead` (or `bdm_leads.locked_for_admin`), so concurren
 commits -- the route owns the transaction. Logs carry ids, stage keys and the event, never the reason text."""
 
 import logging
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
 from fastapi import HTTPException
 from fastapi.exceptions import RequestValidationError
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, exists, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
-from app.lead_stages import CLOSED, COUNSELOR_CLOSED, COUNSELOR_MANUAL, EVENTS, LOSS_STAGES, MANUAL, MANUAL_BEFORE, ORDER, REOPEN_TO, STAGE_LABELS, label
+from app.lead_stages import (
+    CLOSED,
+    COUNSELOR_CLOSED,
+    COUNSELOR_MANUAL,
+    EVENTS,
+    LOSS_STAGES,
+    MANUAL,
+    MANUAL_BEFORE,
+    NURTURE,
+    ORDER,
+    REOPEN_TO,
+    STAGE_LABELS,
+    label,
+)
 from app.models import (
     LEAD_APPOINTMENT_OPEN,
     Appointment,
@@ -39,6 +54,7 @@ CLOSED_REOPEN_ONLY = "A closed lead can only be reopened to Follow-up"
 REOPEN_FORBIDDEN = "Only a manager can reopen a closed lead"
 REASON_CLOSED = "Add a reason for closing the lead"
 REASON_REOPEN = "Add a reason for reopening the lead"
+REASON_NURTURE = "Add a reason for moving the lead to Nurture"
 NEXT_ACTION_REQUIRED = "Set a next action and its due date first"  # ccrm-003 A2
 # ccrm-006 (DEC-SCOPE-264): the closure details each target takes, and their refusals
 CLOSURE_FIELDS = {"duplicate": ("duplicate_of",), **{stage: ("lost_reason_id", "lost_to") for stage in LOSS_STAGES}}
@@ -51,13 +67,21 @@ LOST_REASON_REQUIRED = "Choose why the lead was lost"
 LOST_REASON_INACTIVE = "Choose an active lost reason"
 FOLLOW_UPS_CLOSED = "Lead closed"  # tel-011 F4: the cancel reason on follow-ups a closing move cancelled
 APPOINTMENTS_CLOSED = FOLLOW_UPS_CLOSED  # tel-016 AP15: and on the counselling appointment it cancelled
-LEAD_MERGED = "This lead was merged into another lead, so it can't be changed"  # itc-007 (DEC-SCOPE-338)
+LEAD_MERGED = "This lead was merged into another lead, so it can't be changed"  # itc-007 (DEC-SCOPE-339)
 
 Kind = Literal["telecaller", "manager", "counselor"]
 
 # ccrm-003 A5: a counselor's follow-up is never the telecaller's work -- every telecaller-side follow-up list, count and alert filters on
 # this. Here (models-only imports) so the telecaller metrics and alerts can use it without an import cycle.
 TELECALLER_FOLLOW_UP = LeadFollowUp.created_by_user_id.not_in(select(User.id).where(User.role == "counselor"))
+# itc-004 (DEC-SCOPE-339 N5): a parked (Nurture) lead's follow-ups are never overdue. An alias, so it never correlates with a caller's join.
+_FOLLOWED = aliased(Enquiry)
+_NOT_PARKED = ~exists().where(_FOLLOWED.id == LeadFollowUp.lead_id, _FOLLOWED.status == NURTURE)
+
+
+def follow_up_overdue(now: datetime):
+    """An open follow-up past its due time, on a lead that is not parked -- every overdue list, count, filter and report uses this."""
+    return (LeadFollowUp.status == "open") & (LeadFollowUp.due_at < now) & _NOT_PARKED
 
 
 def invalid(field: str, msg: str, value) -> RequestValidationError:
@@ -172,13 +196,15 @@ async def person_move(db: AsyncSession, lead: Enquiry, actor: User, kind: Kind, 
     manual, closed = (COUNSELOR_MANUAL, COUNSELOR_CLOSED) if kind == "counselor" else (MANUAL, CLOSED)
     if to_stage not in manual and to_stage not in closed:
         raise invalid("to_stage", STAGE_SYSTEM, to_stage)
-    if current == "converted" or (to_stage in manual and ORDER.index(current) >= MANUAL_BEFORE):
+    if current == "converted" or (to_stage in manual and current in ORDER and ORDER.index(current) >= MANUAL_BEFORE):  # Nurture: before it
         raise invalid("to_stage", STAGE_PAST, to_stage)
     structured = closure is not None or to_stage == "duplicate"  # D6 spares only the loss reason of a call-logged close
     values, default_reason = await _resolve_closure(db, lead, to_stage, sent) if structured else ({}, None)
     reason = reason or default_reason
     if to_stage in CLOSED and reason is None:
         raise invalid("reason", REASON_CLOSED, reason)
+    if to_stage == NURTURE and reason is None:  # itc-004 N3
+        raise invalid("reason", REASON_NURTURE, reason)
     if kind == "counselor" and to_stage not in CLOSED:
         for field in ("next_action", "next_action_due"):
             if getattr(lead, field) is None:

@@ -1,10 +1,38 @@
 import { describe, expect, it } from "vitest";
 
-import { STAGES, counselorTargets, isClosed, needsReason, personTargets, stageLabel } from "@/lib/leadStages";
+import { STAGES, assignedToCounselor, counselorTargets, isClosed, needsReason, personTargets, stageLabel } from "@/lib/leadStages";
+
+describe("leadStages (itc-004, DEC-SCOPE-338)", () => {
+  it("adds the open Nurture stage, a telecaller target that needs a reason (N2, N3)", () => {
+    expect(stageLabel("nurture")).toBe("Nurture");
+    expect(isClosed("nurture")).toBe(false);
+    expect(STAGES.map(([key]) => key)).toContain("nurture");
+    expect(personTargets("interested", false)).toContain("nurture");
+    expect(personTargets("application_enrollment", true)).not.toContain("nurture");
+    expect(personTargets("converted", true)).toEqual([]);
+    expect(counselorTargets("qualified")).not.toContain("nurture");
+    expect(needsReason("interested", "nurture")).toBe(true);
+  });
+
+  it("re-activates a Nurture lead through the manual stages, without a reason (N4)", () => {
+    expect(personTargets("nurture", false)).toEqual(["qualified", "interested", "follow_up", "not_interested", "not_eligible", "wrong_number", "no_response", "lost", "duplicate"]);
+    expect(counselorTargets("nurture")).toContain("follow_up");
+    expect(needsReason("nurture", "follow_up")).toBe(false);
+  });
+
+  it("derives Assigned to Counselor from an open lead with a counselor (N1)", () => {
+    const counselor = { id: "c1", full_name: "Kiran" };
+    expect(assignedToCounselor({ status: "interested", counselor })).toBe(true);
+    expect(assignedToCounselor({ status: "nurture", counselor })).toBe(true);
+    expect(assignedToCounselor({ status: "interested", counselor: null })).toBe(false);
+    expect(assignedToCounselor({ status: "lost", counselor })).toBe(false);
+    expect(assignedToCounselor({ status: "converted", counselor })).toBe(false);
+  });
+});
 
 describe("leadStages (tel-004)", () => {
   it("lists 11 open stages and 6 closed outcomes with source labels (ccrm-006: Duplicate, Wrong Number shown as Invalid Contact)", () => {
-    expect(STAGES).toHaveLength(17);
+    expect(STAGES).toHaveLength(18); // itc-004: + Nurture
     expect(stageLabel("wrong_number")).toBe("Invalid Contact");
     expect(isClosed("duplicate")).toBe(true);
     expect(stageLabel("first_call_pending")).toBe("First Call Pending");
@@ -16,7 +44,7 @@ describe("leadStages (tel-004)", () => {
 
   it("offers only manual stages and closed outcomes on an open lead, never a system stage", () => {
     const targets = personTargets("contacted", true);
-    expect(targets).toEqual(["qualified", "interested", "follow_up", "not_interested", "not_eligible", "wrong_number", "no_response", "lost", "duplicate"]);
+    expect(targets).toEqual(["qualified", "interested", "follow_up", "nurture", "not_interested", "not_eligible", "wrong_number", "no_response", "lost", "duplicate"]);
     expect(personTargets("qualified", false)).not.toContain("qualified");
     for (const system of ["new", "assigned", "first_call_pending", "contacted", "counselling_scheduled", "counselling_completed", "application_enrollment", "converted"]) {
       expect(targets).not.toContain(system);

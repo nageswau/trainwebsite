@@ -280,7 +280,7 @@ async def merge_preview(lead_id: UUID, victim: str = Query(min_length=1, max_len
 
 @router.post("/leads/{lead_id}/merge")
 async def merge(lead_id: UUID, payload: LeadMergeIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """itc-007 (DEC-SCOPE-338): merge the victim into this lead -- both in the manager's scope, same team, both open (spec)."""
+    """itc-007 (DEC-SCOPE-339): merge the victim into this lead -- both in the manager's scope, same team, both open (spec)."""
     filters = _merge_scope(user)
     found = await lead_merge.find_victim(db, lead_id, payload.victim, filters)
     survivor, victim = await lead_merge.lock_pair(db, lead_id, found.id, filters)

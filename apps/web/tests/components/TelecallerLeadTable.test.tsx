@@ -129,7 +129,7 @@ describe("TelecallerLeadTable (tel-008)", () => {
     render(<TelecallerLeadTable basePath="/telecaller/leads" />);
     const link = await screen.findByRole("link", { name: "Lead 9" });
     expect(link.style.textDecoration).toBe("underline");
-    expect((link.closest("tr") as HTMLElement).textContent).toContain("With counselor");
+    expect((link.closest("tr") as HTMLElement).textContent).toContain("Assigned to Counselor"); // itc-004 N1: the PDF's name
   });
 
   it("pages with Previous / Next through the URL", async () => {
