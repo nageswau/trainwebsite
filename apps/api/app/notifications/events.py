@@ -38,6 +38,8 @@ EVENTS: dict[str, Event] = {
     "it.training.at_risk": Event("enrollment", "Attendance or progress alert", "Attendance or progress needs attention. Open EduSphere for the details."),
     "it.resume.uploaded": Event("resume", "Resume uploaded", "A resume was uploaded. Open EduSphere to review it."),
     "it.placement.updated": Event("student", "Placement status updated", "Your placement status was updated. Open EduSphere to see it."),
+    # itc-028 (DEC-SCOPE-351 N8): a staff note was shared with the student -- never the note's text
+    "it.student.update_shared": Event("student_note", "New update for you", "An update was shared with you. Open EduSphere to read it."),
 }
 
 # itc-025 (DEC-SCOPE-348): "a summary of what changed" from a FIXED vocabulary of field names -- never the values (dates, trainer names,

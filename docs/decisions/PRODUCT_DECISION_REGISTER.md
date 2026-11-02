@@ -10935,3 +10935,24 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   `counted()`, the policy read as a scalar subquery — no query added). L8 `excluded` with only leave marked → no % ("—").
 - **Numbering:** migration `0232_attendance_leave_policy`; API §12IU; RBAC §2.249 (no grant change).
 - **Feature ID authorized:** `itc-021`. **Status:** built on `worktree-itc-021`.
+
+### DEC-SCOPE-351 — Internal vs student-visible IT student notes (`itc-028`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-028 (PDF §2 access rule, §9, §10 field-level visibility; PDF classified
+  `UNVERIFIED`). Owner Q-01 (2026-11-01): all phases approved for build in waves. Dependency itc-003 (`DEC-SCOPE-337`) is built. The
+  owner said to proceed with the recommended answers, so the calls below are the builder's and `NEEDS_CONFIRMATION`. Design:
+  `docs/superpowers/specs/2026-11-02-itc-028-it-student-notes-design.md`.
+- **Decisions (builder's calls):**
+  - **N1 — Q-03 notes part:** a new IT-only table `it_student_notes`; the overseas notes (ccrm-010) are untouched.
+  - **N2 — writers/readers:** IT counselor (linked students), HR (`student_progress.view` + nehn-017 pool), trainer (students seated in
+    their batch), IT Admin (any IT student). Not super_admin / placement / overseas roles (itc-003 C1 precedent).
+  - **N3 —** staff in scope read every note on the student, whoever wrote it (one shared record); only the student is restricted.
+  - **N4 —** a note starts internal and is append-only (no edit/delete): the backlog's "editing a shared note" edge case is answered by
+    writing a new note.
+  - **N5 —** only an explicit visibility action changes who sees a note — its author or the IT Admin; audited before/after; un-sharing a
+    mistaken share is allowed; the UI confirms first.
+  - **N6 — Q-27:** no second approver.
+  - **N7 —** the student's `GET /it/me/updates` returns their own shared notes with allow-listed fields only.
+  - **N8 —** sharing sends the student one fixed-text notice (`it.student.update_shared`), never the note text; un-sharing is silent.
+- **Numbering:** migration `0234_it_student_notes` (on itc-021's `0232`); API §12IW; RBAC §2.251 (itc-021 took 349 / §12IU / §2.249; 350 / §12IV / §2.250 left to itc-026, in flight).
+- **Feature ID authorized:** `itc-028`. **Status:** built on `worktree-itc-028`.

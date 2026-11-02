@@ -2104,6 +2104,26 @@ class StudentNoteCreate(BaseModel):
         return value
 
 
+class ItStudentNoteCreate(BaseModel):
+    """itc-028 (DEC-SCOPE-351, N4): a note on an IT student. It always starts internal -- `visibility` here is refused (extra="forbid"),
+    so only the explicit share route (`ItStudentNoteVisibility`) can show a note to the student."""
+
+    model_config = {"extra": "forbid"}
+    body: str = Field(max_length=4000)
+
+    @field_validator("body")
+    @classmethod
+    def body_not_blank(cls, value: str) -> str:
+        return StudentNoteCreate.body_not_blank(value)
+
+
+class ItStudentNoteVisibility(BaseModel):
+    """itc-028 (N5): the explicit "share with student" / "stop sharing" action."""
+
+    model_config = {"extra": "forbid"}
+    visibility: Literal["internal", "student"]
+
+
 # ccrm-007 (DEC-SCOPE-249): the structured overseas student profile. A save replaces the whole profile and its rows (P5): an omitted
 # field is stored as null, an omitted list as empty. Server-owned fields (student, author, ids) are refused by `extra="forbid"`.
 PROFILE_TEXT_LIMITS = {

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import type { CertificateRules } from "@/lib/certificates";
 
@@ -9,6 +10,7 @@ import type { CertificateRules } from "@/lib/certificates";
 
 type ProgressRow = {
   enrollment_id: string;
+  student_id: string;
   student_code: string | null;
   student: string;
   enrollment_code: string;
@@ -176,7 +178,9 @@ export default function TrainerProgressPanel({ batches, loading = false, refresh
                         <td>
                           <button type="button" className="btn small secondary" aria-expanded={expanded} aria-controls={expanded ? detailsId : undefined} aria-label={`Details for ${row.student}`} onClick={() => setOpen(expanded ? null : row.enrollment_id)}>
                             {expanded ? "Hide" : "Details"}
-                          </button>
+                          </button>{" "}
+                          {/* itc-028 (DEC-SCOPE-351): the student's notes (the page moves an IT Admin to their own portal) */}
+                          <Link className="btn small secondary" href={`/it/trainer/students/${encodeURIComponent(row.student_id)}/notes`} aria-label={`Notes for ${row.student}`}>Notes</Link>
                         </td>
                       </tr>
                       {expanded && (
