@@ -32,7 +32,7 @@ def test_models_match_the_migration():
     from app.models import TelDistributionRule, TelRoundRobinCursor
 
     rules = TelDistributionRule.__table__
-    assert {c.name for c in rules.columns} == {"id", "team", "kind", "product_id", "city", "telecaller_user_id", "created_at", "updated_at"}
+    assert {c.name for c in rules.columns} == {"id", "team", "kind", "product_id", "city", "telecaller_user_id", "created_at", "updated_at", "source"}  # itc-006: + source
     assert rules.c.product_id.nullable and rules.c.city.nullable and not rules.c.telecaller_user_id.nullable
     names = {i.name for i in rules.indexes} | {c.name for c in rules.constraints}
     assert {

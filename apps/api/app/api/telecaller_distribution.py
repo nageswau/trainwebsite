@@ -16,7 +16,7 @@ from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
 from app.lead_stages import label
-from app.models import AuditLog, Enquiry, TelDistributionRule, TelecallerProfile, TelProduct, User
+from app.models import AuditLog, Enquiry, TelDistributionRule, TelecallerProfile, TelProduct, TelSetting, User
 from app.schemas import (
     TelDistributionRuleCreate,
     TelDistributionRuleOut,
@@ -25,16 +25,20 @@ from app.schemas import (
     TelLeadAssign,
     TelLeadAssignOut,
     TelQueueLeadPage,
+    TelStrategyOut,
+    TelStrategyPage,
+    TelStrategyUpdate,
 )
 from app.services import lead_distribution, lead_pipeline
-from app.services.telecaller import TEAM_LABEL, person_ref, require_manager
+from app.services.telecaller import TEAM_LABEL, TEAMS, person_ref, require_manager
 from app.services.telecaller_catalogue import flush_unique
 
 router = APIRouter(prefix="/telecaller", tags=["telecaller-distribution"])
 
 RULE_NOT_FOUND = "Rule not found"
-DUPLICATE = {"product": "This team already has a rule for this product", "city": "This team already has a rule for this city"}
-INDEX = {"product": "uq_tel_distribution_rules_product", "city": "uq_tel_distribution_rules_city"}
+DUPLICATE = {"product": "This team already has a rule for this product", "city": "This team already has a rule for this city",
+             "source": "This team already has a rule for this source"}
+INDEX = {"product": "uq_tel_distribution_rules_product", "city": "uq_tel_distribution_rules_city", "source": "uq_tel_distribution_rules_source"}
 
 
 # --- rules (DI3, D6) -----------------------------------------------------------------------------------------------------------
@@ -49,7 +53,7 @@ def _rule_rows():
 
 def _rule_out(actor: User, rule: TelDistributionRule, tel: User, product: TelProduct | None, manager_id: UUID) -> dict:
     return {
-        "id": rule.id, "team": rule.team, "kind": rule.kind, "city": rule.city, "telecaller": person_ref(tel),
+        "id": rule.id, "team": rule.team, "kind": rule.kind, "city": rule.city, "source": rule.source, "telecaller": person_ref(tel),
         "product": {"id": product.id, "name": product.name, "active": product.active} if product else None,
         "editable": actor.role == "super_admin" or manager_id == actor.id,
     }
@@ -60,6 +64,14 @@ async def _rule_one(db: AsyncSession, actor: User, rule_id: UUID) -> dict:
 
 
 async def _check_match(db: AsyncSession, data: TelDistributionRuleCreate) -> None:
+    if data.kind == "source":  # itc-006
+        if data.source is None:
+            raise HTTPException(422, "Choose a source")
+        if data.product_id is not None or data.city is not None:
+            raise HTTPException(422, "A source rule has no product or city")
+        return
+    if data.source is not None:
+        raise HTTPException(422, f"A {data.kind} rule has no source")
     if data.kind == "product":
         if data.product_id is None:
             raise HTTPException(422, "Choose a product")
@@ -99,7 +111,7 @@ def _audit(db: AsyncSession, actor: User, action: str, rule: TelDistributionRule
 @router.get("/distribution-rules", response_model=TelDistributionRulePage)
 async def rules(
     team: Literal["it", "overseas"] | None = None,
-    kind: Literal["product", "city"] | None = None,
+    kind: Literal["product", "city", "source"] | None = None,
     telecaller_user_id: UUID | None = None,
     limit: int = LIMIT,
     offset: int = OFFSET,
@@ -112,7 +124,7 @@ async def rules(
         (TelDistributionRule.team, team), (TelDistributionRule.kind, kind), (TelDistributionRule.telecaller_user_id, telecaller_user_id)) if value]
     stmt = _rule_rows().where(*filters)
     total = await db.scalar(select(func.count()).select_from(stmt.subquery()))
-    order = (TelDistributionRule.team, TelDistributionRule.kind, func.lower(func.coalesce(TelProduct.name, TelDistributionRule.city)), TelDistributionRule.id)
+    order = (TelDistributionRule.team, TelDistributionRule.kind, func.lower(func.coalesce(TelProduct.name, TelDistributionRule.city, TelDistributionRule.source)), TelDistributionRule.id)
     rows = (await db.execute(stmt.order_by(*order).limit(limit).offset(offset))).all()
     return {"items": [_rule_out(user, *row) for row in rows], "total": total or 0, "limit": limit, "offset": offset}
 
@@ -122,7 +134,7 @@ async def create_rule(payload: TelDistributionRuleCreate, user: User = Depends(g
     require_manager(user)
     await _check_match(db, payload)
     await lead_distribution.assignee(db, user, payload.telecaller_user_id, payload.team)
-    rule = TelDistributionRule(team=payload.team, kind=payload.kind, product_id=payload.product_id, city=payload.city,
+    rule = TelDistributionRule(team=payload.team, kind=payload.kind, product_id=payload.product_id, city=payload.city, source=payload.source,
                                telecaller_user_id=payload.telecaller_user_id)
     db.add(rule)
     await flush_unique(db, INDEX[payload.kind], DUPLICATE[payload.kind])
@@ -154,6 +166,46 @@ async def delete_rule(rule_id: UUID, user: User = Depends(get_current_user), db:
     await db.delete(rule)
     await db.commit()
     return Response(status_code=204)
+
+
+# --- the team's fallback strategy (itc-006, DEC-SCOPE-337 D3/D6) ---------------------------------------------------------------
+async def _my_teams(db: AsyncSession, user: User) -> set[str]:
+    """D6: the teams a manager may set -- those their direct reports are on (super_admin: both)."""
+    if user.role == "super_admin":
+        return set(TEAMS)
+    return set(await db.scalars(select(TelecallerProfile.team).where(TelecallerProfile.reporting_manager_user_id == user.id).distinct()))
+
+
+def _strategy_out(row: TelSetting, mine: set[str]) -> dict:
+    return {"team": row.team, "team_label": TEAM_LABEL[row.team], "strategy": row.distribution_strategy, "editable": row.team in mine}
+
+
+@router.get("/distribution-strategy", response_model=TelStrategyPage)
+async def strategies(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Every manager reads both teams (as the rules); `editable` says which they may change."""
+    require_manager(user)
+    mine = await _my_teams(db, user)
+    return {"items": [_strategy_out(row, mine) for row in await db.scalars(select(TelSetting).order_by(TelSetting.team))]}
+
+
+@router.put("/distribution-strategy/{team}", response_model=TelStrategyOut)
+async def set_strategy(team: str, payload: TelStrategyUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """An idempotent replace (200). 404 for an unknown team, 403 unless one of the manager's reports is on it. The row lock serialises
+    two managers saving at once; the next intake reads the new value."""
+    require_manager(user)
+    row = await db.scalar(select(TelSetting).where(TelSetting.team == team).with_for_update()) if team in TEAMS else None
+    if row is None:
+        raise HTTPException(404, "Team not found")
+    mine = await _my_teams(db, user)
+    if team not in mine:
+        raise HTTPException(403, "You can only change the strategy of a team your telecallers are on")
+    before = row.distribution_strategy
+    row.distribution_strategy = payload.strategy
+    db.add(AuditLog(user_id=user.id, action="telecaller.strategy_update", entity_type="tel_settings", entity_id=team,
+                    metadata_json={"from": before, "to": payload.strategy}))
+    out = _strategy_out(row, mine)
+    await db.commit()
+    return out
 
 
 # --- the queue, the team's leads and manual assignment (DI4, D3) -------------------------------------------------------------------

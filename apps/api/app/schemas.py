@@ -7285,9 +7285,10 @@ class TelDistributionRuleCreate(BaseModel):
     """The service checks the shape (a product rule names a product, a city rule a city), the product and the telecaller."""
     model_config = ConfigDict(extra="forbid")
     team: Literal["it", "overseas"]
-    kind: Literal["product", "city"]
+    kind: Literal["product", "city", "source"]
     product_id: UUID | None = None
     city: BdmOrgShort = None
+    source: TelSource | None = None  # itc-006 (DEC-SCOPE-337): a source rule's lead source
     telecaller_user_id: UUID
 
 
@@ -7314,6 +7315,7 @@ class TelDistributionRuleOut(BaseModel):
     kind: str
     product: TelRuleProduct | None
     city: str | None
+    source: str | None
     telecaller: TelRuleTelecaller
     editable: bool
 
@@ -7323,6 +7325,23 @@ class TelDistributionRulePage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class TelStrategyUpdate(BaseModel):
+    """itc-006 (DEC-SCOPE-337 D3): who gets a new lead that no rule matched."""
+    model_config = ConfigDict(extra="forbid")
+    strategy: Literal["round_robin", "workload"]
+
+
+class TelStrategyOut(BaseModel):
+    team: str
+    team_label: str
+    strategy: str
+    editable: bool
+
+
+class TelStrategyPage(BaseModel):
+    items: list[TelStrategyOut]
 
 
 class TelQueueProduct(BaseModel):

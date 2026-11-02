@@ -66,14 +66,15 @@ async def test_rules_apply_in_order(db_session):
 async def test_assignment_moves_the_stage_and_is_audited(db_session):
     manager = await make_tl_manager(db_session)
     tel, town = await make_telecaller(db_session, manager), city()
-    await rule(db_session, tel, city_name=town)
+    matched = await rule(db_session, tel, city_name=town)
     row = await lead(db_session, city_name=town)
     assert await lead_distribution.distribute(db_session, row) == "city_rule"
     await db_session.commit()
     assert row.status == "assigned"
     assert await _history(db_session, row) == [("new", "assigned", "assigned", None)]  # the system moved it
     [audit] = await _audits(db_session, row)
-    assert audit.user_id is None and audit.metadata_json == {"from": None, "to": str(tel.id), "method": "city_rule"}
+    # itc-006 AC4: the audit row also names the matched rule
+    assert audit.user_id is None and audit.metadata_json == {"from": None, "to": str(tel.id), "method": "city_rule", "rule_id": str(matched.id)}
 
 
 # --- AC3: a deactivated telecaller is skipped -----------------------------------------------------------------------------
