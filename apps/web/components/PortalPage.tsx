@@ -16,7 +16,7 @@ const agentTasks=key==="overseas/agent"&&section==="tasks";
 // shows the section-unavailable state; a 401 from it is an expired session, so the access-unavailable card.
 const agentNotifications=key==="overseas/agent"&&section==="notifications";
 // itc-002 (DEC-SCOPE-336): the IT student's own notifications -- the same list read, mounted under the header-only payload.
-const itStudentNotifications=(key==="it/student"||key==="it/admin"/* itc-009 */)&&section==="notifications";
+const itStudentNotifications=(key==="it/student"||key==="it/admin"/* itc-009 */||key==="it/counselor"/* itc-025 */)&&section==="notifications";
 // AGN-019 (DEC-SCOPE-066 P7): Staff Performance reads its own API (AgentPerformanceSection), behind the same portal-payload gate.
 const agentPerformance=key==="overseas/agent"&&section==="performance";
 // dtu-001: Partner Universities reads its own API (AgentPartnerUniversitiesPanel); the payload is header-only and still gates the page.
@@ -77,6 +77,6 @@ const main=data?.locked?<LockedSection data={data} lock={data.locked}/>:agentApp
 :key==="it/trainer"&&section==="student-progress"?<PortalSection data={data} table={false}/>
 // itc-020 (DEC-SCOPE-344): header-only payload; the week of classes reads /it/timetable (the IT Admin also keeps the weekly slots).
 :division==="it"&&section==="timetable"?<PortalSection data={data} table={false} lead={role==="admin"?<AdminTimetablePanel/>:<TimetableCalendar/>}/>
-:itStudentNotifications?<PortalSection data={data} table={false} lead={notices===null?<SectionUnavailable title="Notifications"/>:<div className="card"><SchoolNotificationList notifications={notices} localTime readBeforeOpen emptyText={key==="it/admin"?"No notifications yet. Overdue follow-ups escalated to you appear here.":"No notifications yet. Payment receipts and updates about your course appear here."}/></div>}/>
+:itStudentNotifications?<PortalSection data={data} table={false} lead={notices===null?<SectionUnavailable title="Notifications"/>:<div className="card"><SchoolNotificationList notifications={notices} localTime readBeforeOpen emptyText={key==="it/admin"?"No notifications yet. Overdue follow-ups escalated to you appear here.":key==="it/counselor"?"No notifications yet. Batch and timetable changes of your students appear here.":"No notifications yet. Payment receipts and updates about your course appear here."}/></div>}/>
 :<PortalSection data={data}/>;
 return <PortalShell nav={key==="it/student"?withLocks(nav,access):agent?withBadge(agentNavFor(nav,user.agent_member_role,user.agent_permissions),AGENT_NOTIFICATIONS_HREF,user.role==="agent"?unread:null):nav} roleLabel={agent&&user.agent_member_role==="staff"?"Agency Staff":labels[key]||role} userName={user.full_name} studentCode={role==="student"?user.student_code:null}>{/* AGN-003 browser QA-07: Back/Forward re-asks the server, so revoked permissions apply. */}{agent&&<RefreshOnHistoryNav/>}{main}{teacherWorkspace?<TeacherWorkspaceActions section={section}/>:agentNotifications||itStudentNotifications||data?.locked?null:<WorkflowPanel user={user} section={section} liveClassesLock={featureLock(access,"live_classes")}/>}</PortalShell>}

@@ -80,6 +80,7 @@ from app.schemas import (
 from app.services import (
     agent_kyc,
     audit_changes,
+    batch_notices,
     bdm_lifecycle,
     course_skills,
     lead_appointments,
@@ -1212,6 +1213,7 @@ async def update_batch(batch_id: UUID, payload: dict, user: User = Depends(ensur
         if not trainer or trainer.role != "trainer" or trainer.division != "it":
             raise HTTPException(422, "Valid IT trainer is required")
     allowed = {"trainer_id", "name", "start_date", "end_date", "schedule", "timezone", "capacity", "enrollment_open", "mode", "status"}
+    before = {key: getattr(item, key) for key in batch_notices.BATCH_FIELDS}
     for key, value in payload.items():
         if key not in allowed:
             continue
@@ -1221,6 +1223,9 @@ async def update_batch(batch_id: UUID, payload: dict, user: User = Depends(ensur
             value = uuid_reference(value, "trainer reference", required=False)
         setattr(item, key, value)
     db.add(AuditLog(user_id=user.id, action="batch.update", entity_type="batch", entity_id=str(item.id), metadata_json={k: v for k, v in payload.items() if k in allowed}))
+    # itc-025 (DEC-SCOPE-346): a real change of what students see (not capacity/enrolment-open/status) tells them and their counselors
+    if changed := [label for key, label in batch_notices.BATCH_FIELDS.items() if getattr(item, key) != before[key]]:
+        await batch_notices.notify_batch_change(db, item.id, changed, action_url=batch_notices.COURSE_URL)
     await db.commit()
     return {"id": item.id, "status": item.status, "capacity": item.capacity}
 
@@ -1259,7 +1264,8 @@ async def update_enrollment(enrollment_id: UUID, payload: dict, user: User = Dep
     if not item:
         raise HTTPException(404, "Enrollment not found")
     target_batch = uuid_reference(payload.get("batch_id"), "batch reference") if "batch_id" in payload else None
-    if target_batch and target_batch != item.batch_id:
+    moved = bool(target_batch and target_batch != item.batch_id)
+    if moved:
         target = await db.scalar(select(Batch).where(Batch.id == target_batch).with_for_update())
         if not target or not target.enrollment_open:
             raise HTTPException(409, "Target batch is unavailable")
@@ -1276,6 +1282,9 @@ async def update_enrollment(enrollment_id: UUID, payload: dict, user: User = Dep
         if key in payload:
             setattr(item, key, payload[key])
     db.add(AuditLog(user_id=user.id, action="enrollment.update", entity_type="enrollment", entity_id=str(item.id), metadata_json=payload))
+    if moved and item.status != "rejected":  # itc-025 (DEC-SCOPE-346): the moved student and their counselor only; the record is the new batch
+        student = await db.get(User, item.student_id)
+        await batch_notices.notify_batch_change(db, item.batch_id, ["batch"], action_url=batch_notices.COURSE_URL, students=[student])
     await db.commit()
     return {"id": item.id, "batch_id": item.batch_id, "status": item.status, "progress_percent": item.progress_percent}
 

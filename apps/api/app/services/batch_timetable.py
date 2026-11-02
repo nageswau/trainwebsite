@@ -16,9 +16,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AuditLog, Batch, BatchTimetableCancellation, BatchTimetableSlot, Enrollment, ItStudentCounselor, LiveSession, Program, User
-from app.notifications.events import notify
 from app.schemas import TimetableCancelIn, TimetableSlotIn
 from app.services import student_access
+from app.services.batch_notices import notify_batch_change
 
 logger = logging.getLogger("app.batch_timetable")
 
@@ -97,6 +97,11 @@ async def _refuse_overlap(db: AsyncSession, batch: Batch, data: TimetableSlotIn,
         raise HTTPException(409, f"The trainer already teaches {other} at that time")
 
 
+async def _notify_timetable(db: AsyncSession, batch: Batch, change: str) -> None:
+    """itc-025 (DEC-SCOPE-346): the batch's active students (itc-002 notice) and their linked IT counselors."""
+    await notify_batch_change(db, batch.id, [change], action_url=STUDENT_URL)
+
+
 def _audit(user: User, action: str, batch: Batch, slot_id: UUID, meta: dict) -> AuditLog:
     return AuditLog(user_id=user.id, action=action, entity_type="batch", entity_id=str(batch.id), metadata_json={"slot_id": str(slot_id), **meta})
 
@@ -107,6 +112,7 @@ async def create_slot(db: AsyncSession, user: User, batch: Batch, data: Timetabl
     db.add(slot)
     await db.flush()
     db.add(_audit(user, "batch.timetable.create", batch, slot.id, {"weekday": slot.weekday, "mode": slot.mode}))
+    await _notify_timetable(db, batch, "timetable")
     return slot
 
 
@@ -118,6 +124,7 @@ async def update_slot(db: AsyncSession, user: User, batch: Batch, slot_id: UUID,
         for field in changed:
             setattr(slot, field, getattr(data, field))
         db.add(_audit(user, "batch.timetable.update", batch, slot.id, {"changed": changed}))
+        await _notify_timetable(db, batch, "timetable")
     return slot
 
 
@@ -125,6 +132,7 @@ async def delete_slot(db: AsyncSession, user: User, batch: Batch, slot_id: UUID)
     slot = await _slot(db, batch, slot_id)
     await db.delete(slot)  # its cancellations go with it (ON DELETE CASCADE)
     db.add(_audit(user, "batch.timetable.delete", batch, slot_id, {"weekday": slot.weekday}))
+    await _notify_timetable(db, batch, "timetable")
 
 
 async def cancel_class(db: AsyncSession, user: User, batch: Batch, slot_id: UUID, data: TimetableCancelIn) -> BatchTimetableCancellation:
@@ -139,8 +147,7 @@ async def cancel_class(db: AsyncSession, user: User, batch: Batch, slot_id: UUID
     row = BatchTimetableCancellation(slot_id=slot.id, occurs_on=day, reason=data.reason, cancelled_by_user_id=user.id)
     db.add(row)
     db.add(_audit(user, "batch.timetable.cancel", batch, slot.id, {"occurs_on": day.isoformat()}))
-    students = await db.scalars(select(User).join(Enrollment, Enrollment.student_id == User.id).where(Enrollment.batch_id == batch.id, Enrollment.status == "active"))
-    await notify(db, students, "it.batch.changed", batch.id, action_url=STUDENT_URL)  # itc-002: fixed text; counselors are itc-025
+    await _notify_timetable(db, batch, "cancelled_class")  # fixed text: the reason stays in EduSphere
     logger.info("timetable_class_cancelled", extra={"extra_fields": {"batch_id": str(batch.id), "slot_id": str(slot.id), "occurs_on": day.isoformat()}})
     return row
 

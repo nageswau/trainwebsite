@@ -3513,3 +3513,13 @@ Inline checks (`services/batch_timetable.py` `require_editor`, `_scoped_batches`
 
 The emergency contact is personal data (C1, Q-11 `NEEDS_CONFIRMATION`): no trainer/HR route, no export, audit field names only. No grant
 changes. Pinned by `apps/api/tests/test_itc_012_*.py`.
+
+### 2.246 Batch change notifications *(added 2026-11-02 — `DEC-SCOPE-346`, itc-025)*
+
+| Route / page | Anonymous | counselor (IT) | every other role |
+|---|---|---|---|
+| `GET /portal/it/counselor/notifications`, `/it/counselor/notifications` (page) | 401 / sign-in | 200 (own notices) | 404 / access card (as every IT counselor section) |
+
+No grant changes: the batch, enrolment and timetable writes keep their existing guards (IT Admin / Super Admin). Recipients are derived
+server-side (the batch's active students and their linked IT counselors); notices carry fixed text and field labels only. Pinned by
+`apps/api/tests/test_itc_025_batch_notices.py`.

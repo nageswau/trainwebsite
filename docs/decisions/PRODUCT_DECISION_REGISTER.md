@@ -10841,3 +10841,23 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - **C5 — no super_admin.** As itc-003 C1.
 - **Numbering:** migration `0229_it_student_profiles`; API §12IQ; RBAC §2.245.
 - **Feature ID authorized:** `itc-012`. **Status:** built on `worktree-itc-012`.
+
+### DEC-SCOPE-346 — Batch, course and timetable change notifications (`itc-025`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-025 (source PDF §7 row "Course/batch/timetable changed"; PDF classified
+  `UNVERIFIED`). Owner Q-01 (2026-11-01): all phases approved for build in waves. Dependencies itc-002 (`DEC-SCOPE-336`), itc-003
+  (`DEC-SCOPE-337`) and itc-020 (`DEC-SCOPE-344`) are built. The owner said to proceed with the recommended answers, so the calls below
+  are the builder's and stay `NEEDS_CONFIRMATION`. Design: `docs/superpowers/specs/2026-11-02-itc-025-batch-change-notices-design.md`.
+- **Decisions (builder's calls):**
+  - **C1 — what notifies.** IT Admin batch edits of name, start/end date, trainer, schedule, time zone or mode; a weekly timetable slot
+    added, changed or removed; a single class cancelled; an enrolment moved to another batch. Capacity, enrolment-open and status do not
+    notify (a cancelled-batch notice is `NEEDS_CONFIRMATION`). Live-session edits keep their nehn-029 notices (students only).
+  - **C2 — who.** The batch's `active` students (the itc-020 / nehn-029 rule) and their itc-003 IT counselors; a transfer tells only the
+    moved student and their counselor. One notice per person per change (itc-002 dedupe); a no-op save sends nothing.
+  - **C3 — the summary.** The itc-002 notice text stays fixed; "Changed: trainer, start date." is appended from a fixed label list
+    (`CHANGE_LABELS`). No values (dates, trainer names, cancel reasons) reach a notice, email or SMS.
+  - **C4 — counselor event.** `it.batch.student_changed` ("Student's batch updated", link `/it/counselor/timetable`); the student keeps
+    `it.batch.changed` (link `/it/student/course`, or `/it/student/timetable` for timetable changes).
+  - **C5 — counselor inbox.** The IT counselor gets a Notifications page (the shared list), as itc-009 gave the IT admin.
+- **Numbering:** no migration; API §12IR; RBAC §2.246.
+- **Feature ID authorized:** `itc-025`. **Status:** built on `worktree-itc-025`.

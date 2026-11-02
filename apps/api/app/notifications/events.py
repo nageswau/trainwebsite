@@ -7,7 +7,7 @@ no free text, so an amount, score, note or HR comment can never reach an in-app 
 """
 
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -33,19 +33,39 @@ EVENTS: dict[str, Event] = {
     "it.fee.payment_received": Event("payment", "Payment received", "Your payment was received. Open EduSphere to view your receipt."),
     "it.fee.payment_due": Event("payment", "Fee payment due", "A fee payment is due. Open EduSphere for the details."),
     "it.batch.changed": Event("batch", "Course or batch updated", "Your course, batch or timetable was updated. Open EduSphere to see what changed."),
+    # itc-025 (DEC-SCOPE-346): the linked IT counselor's copy of a batch change of one or more of their students
+    "it.batch.student_changed": Event("batch", "Student's batch updated", "The course, batch or timetable of your student was updated. Open EduSphere to see what changed."),
     "it.training.at_risk": Event("enrollment", "Attendance or progress alert", "Attendance or progress needs attention. Open EduSphere for the details."),
     "it.resume.uploaded": Event("resume", "Resume uploaded", "A resume was uploaded. Open EduSphere to review it."),
     "it.placement.updated": Event("student", "Placement status updated", "Your placement status was updated. Open EduSphere to see it."),
 }
 
+# itc-025 (DEC-SCOPE-346): "a summary of what changed" from a FIXED vocabulary of field names -- never the values (dates, trainer names,
+# reasons), so the preview-safe rule above still holds.
+CHANGE_LABELS: dict[str, str] = {
+    "name": "batch name",
+    "start_date": "start date",
+    "end_date": "end date",
+    "trainer": "trainer",
+    "timetable": "timetable",
+    "timezone": "time zone",
+    "mode": "mode",
+    "cancelled_class": "cancelled class",
+    "batch": "batch",
+}
 
-async def notify(db: AsyncSession, recipients: Iterable[User | None], event_type: str, entity_id: UUID | str, *, action_url: str | None = None) -> list[Notification]:
+
+async def notify(db: AsyncSession, recipients: Iterable[User | None], event_type: str, entity_id: UUID | str, *, action_url: str | None = None, changes: Sequence[str] = ()) -> list[Notification]:
     """One in-app notice per recipient plus queued email and opted-in WhatsApp/SMS, published only when the caller's transaction
     commits (a rollback sends nothing). Missing and deactivated recipients are skipped, and a (recipient, event, record) already
-    notified in this transaction is not notified again. Bulk: one insert per table and one preference query for the whole batch."""
+    notified in this transaction is not notified again. Bulk: one insert per table and one preference query for the whole batch.
+    `changes` (itc-025) appends "Changed: <labels>." from `CHANGE_LABELS`; an unknown key is refused like an unknown event."""
     event = EVENTS.get(event_type)
     if event is None:
         raise ValueError(f"Unknown notification event: {event_type}")
+    if unknown := [key for key in changes if key not in CHANGE_LABELS]:
+        raise ValueError(f"Unknown change label: {unknown}")
+    body = f"{event.body} Changed: {', '.join(CHANGE_LABELS[key] for key in changes)}." if changes else event.body
     entity = str(entity_id)
     seen: set = db.sync_session.info.setdefault(NOTIFIED_KEY, set())
     targets: list[User] = []
@@ -56,7 +76,7 @@ async def notify(db: AsyncSession, recipients: Iterable[User | None], event_type
         targets.append(user)
     if not targets:
         return []
-    notes = [Notification(user_id=u.id, title=event.title, body=event.body, read=False, action_url=action_url, event_type=event_type, entity_type=event.entity_type, entity_id=entity) for u in targets]
+    notes = [Notification(user_id=u.id, title=event.title, body=body, read=False, action_url=action_url, event_type=event_type, entity_type=event.entity_type, entity_id=entity) for u in targets]
     db.add_all(notes)
     await db.flush()
     prefs = {p.user_id: p for p in await db.scalars(select(NotificationPreference).where(NotificationPreference.user_id.in_([u.id for u in targets])))}
