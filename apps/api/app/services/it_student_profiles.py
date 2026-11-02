@@ -37,9 +37,7 @@ async def staff_student(db: AsyncSession, user: User, student_id: UUID, *, porta
     """`portal` is the route's ("counselor" or "admin"): the IT counselor on theirs sees only linked students, the IT Admin on theirs any
     IT student. Another role is 403; a student outside the scope is the same 404 as a missing one (no disclosure)."""
     admin = portal == "admin"
-    if admin and (user.role != "it_admin" or user.division != "it"):
-        raise HTTPException(403, STAFF_ONLY)
-    if not admin and (user.role != "counselor" or user.division != "it"):
+    if (user.role, user.division) != ("it_admin" if admin else "counselor", "it"):
         raise HTTPException(403, STAFF_ONLY)
     stmt = select(User).where(User.id == student_id, User.role == "it_student")
     if not admin:
@@ -61,7 +59,8 @@ def _enrollment_out(enrollment: Enrollment, batch: Batch, program: Program) -> d
 
 
 async def read(db: AsyncSession, student: User) -> dict:
-    """The page's shape; an unsaved profile reads as empty (`exists: false`). Enrolments newest first, with effective values."""
+    """The page's shape; an unsaved profile reads as empty (`exists: false`). Enrolments newest first, with effective values.
+    `populate_existing`: after a save in the same session the rows still hold `func.now()` and pre-save values -- reload them."""
     profile = await db.get(ItStudentProfile, student.id, populate_existing=True)
     out = {field: getattr(profile, field, None) for field in FIELDS} | {"exists": profile is not None}
     author = await db.get(User, profile.updated_by_user_id) if profile and profile.updated_by_user_id else None

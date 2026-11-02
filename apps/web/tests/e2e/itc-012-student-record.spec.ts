@@ -43,7 +43,7 @@ test("the student adds an emergency contact; the counselor sees it and overrides
   await page.getByLabel("Relation").fill("Father");
   await page.getByLabel("Emergency contact phone").fill("call me");
   await page.getByRole("button", { name: "Save details" }).click();
-  await expect(page.getByRole("alert")).toContainText("Emergency contact phone");
+  await expect(page.locator(".form-error[role=alert]")).toContainText("Emergency contact phone"); // not Next's route announcer
   await page.getByLabel("Emergency contact phone").fill("+91 98765 43210");
   await page.getByRole("button", { name: "Save details" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Details saved." })).toBeVisible();
@@ -61,12 +61,17 @@ test("the student adds an emergency contact; the counselor sees it and overrides
   await expect(page.getByLabel("Emergency contact name")).toHaveValue(contact);
   const editor = page.getByRole("group", { name: /^Dates for / }).first();
   await editor.getByLabel("Start date").fill("2031-01-05");
+  await editor.getByRole("button", { name: "Save dates" }).click();
+  await expect(editor.locator(".form-error")).toContainText("The end date cannot be before the start date"); // after the batch's end
+  await editor.getByLabel("End date").fill("2031-06-30");
   await editor.getByLabel("Delivery mode").selectOption("Offline");
   await editor.getByRole("button", { name: "Save dates" }).click();
   await expect(editor.getByText("Dates saved.")).toBeVisible();
   await expect(page.getByRole("table", { name: "Enrolments" })).toContainText("Set for this student");
   await editor.getByRole("button", { name: "Use batch dates" }).click(); // leave the seeded enrolment as it was
   await expect(editor.getByText("Dates saved.")).toBeVisible();
+  await page.goto(`/it/admin/students/${student.id}/profile`); // QA-01: another portal's address sends the counselor to their own
+  await page.waitForURL(`**/it/counselor/students/${student.id}/profile`);
   await page.request.post("/api/v1/auth/logout");
 
   // − A trainer has no route to the record (no emergency contact).

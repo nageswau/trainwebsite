@@ -38,13 +38,19 @@ export default async function ItStudentProfilePage({ portal, id }: { portal: key
   let user: User;
   let data: ItStudentProfileResponse;
   try {
-    [user, data] = await Promise.all([serverApi<User>("/api/v1/auth/me"), serverApi<ItStudentProfileResponse>(itStudentProfileUrl(portal, id))]);
+    user = await serverApi<User>("/api/v1/auth/me");
+  } catch (e) {
+    return accessUnavailable(e, "/it/login");
+  }
+  // QA-01: the two portals call different APIs, so an IT Admin on the counselor address (or the reverse) moves to their own first.
+  const own = user.role === "it_admin" ? "admin" : user.role === "counselor" && user.division === "it" ? "counselor" : null;
+  if (own && own !== portal) redirect(`/it/${own}/students/${encodeURIComponent(id)}/profile`);
+  try {
+    data = await serverApi<ItStudentProfileResponse>(itStudentProfileUrl(portal, id));
   } catch (e) {
     if (e instanceof ApiError && (e.status === 404 || e.status === 422)) notFound(); // a malformed id is not found, too
     return accessUnavailable(e, "/it/login");
   }
-  const own = user.role === "it_admin" ? "admin" : "counselor";
-  if (own !== portal) redirect(`/it/${own}/students/${encodeURIComponent(id)}/profile`);
   return (
     <PortalShell nav={PORTAL_NAV[nav] ?? []} roleLabel={roleLabel} userName={user.full_name}>
       <div className="portal-content">
