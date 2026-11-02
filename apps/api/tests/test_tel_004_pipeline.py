@@ -170,4 +170,4 @@ async def test_manager_reopens_to_follow_up_with_a_reason(db_session):
 
 
 def test_catalogue_has_eleven_open_stages_and_six_closed():
-    assert len(STAGES) == 17 and len(CLOSED) == 6  # ccrm-006 added Duplicate
+    assert len(STAGES) == 18 and len(CLOSED) == 6  # ccrm-006 added Duplicate; itc-004 the parked Nurture (outside ORDER)

@@ -33,7 +33,8 @@ def test_model_matches_the_migration():
     from app.lead_stages import STAGES
     from app.models import LEAD_CLOSURE_CHECKS, LEAD_STATUS_CHECK, Enquiry, LeadLostReason
 
-    assert _migration.STAGES == STAGES and _migration.STATUS_CHECK == LEAD_STATUS_CHECK
+    # itc-004 (DEC-SCOPE-338) added Nurture in 0223, whose own test now pins the full catalogue and the status CHECK
+    assert _migration.STAGES == tuple(s for s in STAGES if s != "nurture")
     assert _migration.CLOSURE_CHECKS == LEAD_CLOSURE_CHECKS
     checks = {c.name: str(c.sqltext) for c in Enquiry.__table__.constraints if isinstance(c, sa.CheckConstraint)}
     assert checks["ck_enquiries_status"] == LEAD_STATUS_CHECK and set(LEAD_CLOSURE_CHECKS) <= set(checks)

@@ -1,5 +1,6 @@
 """tel-004 (DEC-SCOPE-081, spec §2): the EVID-019 §19 lead pipeline -- 11 ordered stages and 5 closed outcomes (ccrm-006: 6), with the system
-events that move a lead. `services/lead_pipeline.py` is the only writer; migration 0081 keeps a frozen copy of STAGES."""
+events that move a lead. `services/lead_pipeline.py` is the only writer; migration 0081 keeps a frozen copy of STAGES. itc-004 (DEC-SCOPE-338)
+adds the parked Nurture stage: open, but outside the linear ORDER (migration 0223)."""
 
 OPEN_STAGES = (
     ("new", "New Lead"),
@@ -22,11 +23,14 @@ CLOSED_STAGES = (
     ("lost", "Lost"),
     ("duplicate", "Duplicate"),  # ccrm-006 D2/D3: closed against the surviving lead (`enquiries.duplicate_of_id`)
 )
-STAGE_LABELS = dict(OPEN_STAGES + CLOSED_STAGES)
+# itc-004 N2: an open stage outside ORDER, so funnel ranks and event chains never read parking a lead as progress; never overdue (N5)
+NURTURE = "nurture"
+PARKED_STAGES = ((NURTURE, "Nurture"),)
+STAGE_LABELS = dict(OPEN_STAGES + PARKED_STAGES + CLOSED_STAGES)
 STAGES = tuple(STAGE_LABELS)
 ORDER = tuple(key for key, _ in OPEN_STAGES)
 CLOSED = frozenset(key for key, _ in CLOSED_STAGES)
-MANUAL = frozenset({"qualified", "interested", "follow_up"})  # T13: the telecaller's own moves (plus the closed outcomes)
+MANUAL = frozenset({"qualified", "interested", "follow_up", NURTURE})  # T13: the telecaller's own moves (plus the closed outcomes); itc-004 N3
 # ccrm-003 (DEC-SCOPE-243, CC8 / A1): the counselor's own moves -- these open stages and these closed outcomes only
 COUNSELOR_MANUAL = frozenset({"qualified", "follow_up", "counselling_scheduled", "counselling_completed"})
 COUNSELOR_CLOSED = frozenset({"not_interested", "not_eligible", "lost"})
@@ -45,12 +49,12 @@ EVENTS: dict[str, tuple[frozenset[str], str]] = {
     "assigned": (frozenset({"new"}), "assigned"),
     "call_unconnected": (frozenset({"new", "assigned"}), "first_call_pending"),
     "call_connected": (frozenset({"new", "assigned", "first_call_pending"}), "contacted"),
-    "appointment_booked": (_through("follow_up"), "counselling_scheduled"),
+    "appointment_booked": (_through("follow_up") | {NURTURE}, "counselling_scheduled"),  # itc-004 N4: this, the link and a return re-activate Nurture
     "appointment_completed": (_through("counselling_scheduled"), "counselling_completed"),
     "appointment_released": (frozenset({"counselling_scheduled"}), "follow_up"),  # tel-016 AP3: a no-show or a cancel
-    "student_linked": (_through("counselling_completed"), "application_enrollment"),
+    "student_linked": (_through("counselling_completed") | {NURTURE}, "application_enrollment"),
     "student_unlinked": (frozenset({"application_enrollment", "converted"}), "follow_up"),  # tel-018 HO2: only the admin unlinks a converted lead
-    "returned": (_through("counselling_completed"), "follow_up"),  # tel-018 HO4: Follow-up included, so every return is in the history
+    "returned": (_through("counselling_completed") | {NURTURE}, "follow_up"),  # tel-018 HO4: Follow-up included, so every return is in the history
     "converted": (frozenset({"application_enrollment"}), "converted"),
 }
 
