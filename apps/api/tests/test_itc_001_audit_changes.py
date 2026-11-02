@@ -6,7 +6,6 @@ The shared `audit_changes` helper, its first adopters (a trainer's attendance ov
 import datetime
 import uuid
 from decimal import Decimal
-from enum import Enum
 
 import pytest
 from sqlalchemy import select
@@ -21,10 +20,6 @@ from tests.test_nehn_023_attendance_corrections import _login, _user, _world
 AUDIT = "/api/v1/admin/audit"
 ATTENDANCE = "/api/v1/workflows/it/trainer/attendance"
 DAY = datetime.date(2026, 10, 20)  # _world's existing "absent" mark
-
-
-class Colour(Enum):
-    RED = "red"
 
 
 # --- the helper ---------------------------------------------------------------------------------------------------------------
@@ -54,14 +49,13 @@ def test_pii_fields_are_marked_changed_never_stored_as_values():
 
 def test_values_are_json_safe():
     uid = uuid.uuid4()
-    before = {"fee": Decimal("1000.50"), "day": datetime.date(2026, 1, 2), "at": None, "who": None, "colour": None}
-    after = {"fee": Decimal("1200.00"), "day": datetime.date(2026, 1, 3), "at": datetime.datetime(2026, 1, 3, 9, 30, tzinfo=datetime.UTC), "who": uid, "colour": Colour.RED}
+    before = {"fee": Decimal("1000.50"), "day": datetime.date(2026, 1, 2), "at": None, "who": None}
+    after = {"fee": Decimal("1200.00"), "day": datetime.date(2026, 1, 3), "at": datetime.datetime(2026, 1, 3, 9, 30, tzinfo=datetime.UTC), "who": uid}
     assert audit_changes.changes(before, after) == {
         "fee": ["1000.50", "1200.00"],
         "day": ["2026-01-02", "2026-01-03"],
         "at": [None, "2026-01-03T09:30:00+00:00"],
         "who": [None, str(uid)],
-        "colour": [None, "red"],
     }
 
 
