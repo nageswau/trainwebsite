@@ -10659,3 +10659,26 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0222_it_student_counselors` (on itc-002's `0221_notification_event_type`); API §12II; RBAC §2.239
   (DEC-SCOPE-335/336, §12IG/12IH and §2.238 are itc-001/itc-002's).
 - **Feature ID authorized:** `itc-003`. **Status:** built on `worktree-itc-003`.
+
+### DEC-SCOPE-338 — Lead stages "Assigned to Counselor" and "Nurture" (`itc-004`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-004` (PDF §3 lead status examples). Scope approved by the owner 2026-11-01
+  (backlog Q-01: all phases, built in waves). Q-04 is open; design `docs/superpowers/specs/2026-11-02-itc-004-nurture-assigned-to-counselor-design.md`.
+- **Decisions (builder defaults, NEEDS_CONFIRMATION if the owner disagrees):**
+  - **N1 — Assigned to Counselor is derived (Q-04)**, not a stored stage: an open lead (not closed, not converted) with a counselor shows
+    "Assigned to Counselor" under its stage in the telecaller and admin lead lists (replacing tel-018's "With counselor" note). No API/DB change.
+  - **N2 — `nurture` ("Nurture")** is a stored open stage outside the linear `ORDER`, so funnel ranks and event chains never read parking
+    as progress. Every team on the shared pipeline (IT and overseas).
+  - **N3 —** the telecaller, their manager and the admin move an open lead before the student link to Nurture; **a reason is required**.
+    The counselor's own list (ccrm-003 CC8) is unchanged.
+  - **N4 — re-activation:** a manual move to Qualified / Interested / Follow-up, or the `appointment_booked`, `student_linked` and
+    `returned` events. Calls do not move it; a Nurture lead can be handed over; no overseas one-step conversion until re-activated.
+  - **N5 — never overdue:** its open follow-ups are kept and still get the "due" reminder, but are not in any overdue list, count, flag,
+    filter, report column, dashboard tile or the tel-020 "missed" alert; `next_action_overdue` is false.
+  - **N6 —** the existing stage filters accept `nurture`. **N7 —** the move is a `LeadStageHistory` row (actor, time, reason).
+  - **N8 —** a converted or linked lead → Nurture is the endpoint's existing **422** past-the-link refusal (the backlog's "409" is not used,
+    to keep one contract).
+  - **N9 —** the PDF's IT display names (Contact Attempted, Connected, Course Interested, Unreachable) are deferred to **itc-005**
+    (per-team configurable labels).
+- **Numbering:** migration `0223_lead_nurture_stage`; API §12IJ; RBAC unchanged (stage moves keep the existing owner/manager rules).
+- **Feature ID authorized:** `itc-004`. **Status:** built on `worktree-itc-004`.

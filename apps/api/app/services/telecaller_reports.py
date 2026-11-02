@@ -262,7 +262,7 @@ async def _follow_ups(db: AsyncSession, user: User, kind: str, f: Filters) -> li
     where = [*_lead_filters(user, f, LeadFollowUp.due_at), lead_pipeline.TELECALLER_FOLLOW_UP]
     base = select().select_from(LeadFollowUp).join(Enquiry, Enquiry.id == LeadFollowUp.lead_id)
     if kind == "follow_ups":
-        overdue = (LeadFollowUp.status == "open") & (LeadFollowUp.due_at < now)
+        overdue = lead_pipeline.follow_up_overdue(now)  # itc-004 N5: never on a Nurture lead
         counts = [func.count().label(key) if state is None else
                   func.count().filter(overdue if state == "overdue" else LeadFollowUp.status == state).label(key) for key, _, state in FOLLOW_UPS]
         rows = (await db.execute(base.add_columns(Enquiry.telecaller_user_id, *counts).where(*where).group_by(Enquiry.telecaller_user_id))).all()

@@ -13,7 +13,7 @@ from sqlalchemy import exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.lead_stages import CLOSED, MANUAL_BEFORE, ORDER, STAGES
+from app.lead_stages import CLOSED, MANUAL_BEFORE, NURTURE, ORDER, STAGES
 from app.models import LEAD_PRIORITIES, AuditLog, Batch, Enquiry, Enrollment, Notification, OverseasApplication, University, User, VisaCase
 from app.notifications.dispatch import queue_deliveries
 from app.services import application_filters, bdm_leads, counselor_students, it_student_counselors, lead_appointments, lead_pipeline, telecaller_alerts
@@ -48,7 +48,7 @@ async def handover(db: AsyncSession, user: User, lead: Enquiry, counselor_id: UU
     of its division. The stage stays; open follow-ups are cancelled -- the telecaller no longer works the lead (T19)."""
     if lead.status in CLOSED:
         raise HTTPException(409, HANDOVER_CLOSED)
-    if ORDER.index(lead.status) >= MANUAL_BEFORE:  # Application/Enrollment onwards: the counselor's link is in place
+    if lead.status in ORDER and ORDER.index(lead.status) >= MANUAL_BEFORE:  # Application/Enrollment onwards (Nurture is before it)
         raise HTTPException(409, HANDOVER_PAST)
     counselor = await lead_appointments.lock_counselor(db, counselor_id, lead.division)
     if lead.owner_id == counselor.id:
@@ -271,8 +271,9 @@ async def detail(db: AsyncSession, lead_id: UUID, filters: list) -> dict:
 
 
 async def next_action_out(db: AsyncSession, lead: Enquiry) -> dict:
-    """ccrm-003 A2/A3: overdue = an open lead whose due date is before today in IST."""
-    overdue = lead.next_action_due is not None and lead.status not in CLOSED and lead.next_action_due < today_ist(await db_now(db))
+    """ccrm-003 A2/A3: overdue = an open lead whose due date is before today in IST; itc-004 N5: never a Nurture lead."""
+    active = lead.status not in CLOSED and lead.status != NURTURE
+    overdue = lead.next_action_due is not None and active and lead.next_action_due < today_ist(await db_now(db))
     return {"next_action": lead.next_action, "next_action_due": lead.next_action_due, "next_action_overdue": overdue}
 
 

@@ -72,7 +72,7 @@ test("the Stage filter lists the pipeline by label", async ({ page }) => {
   await signInAsItAdmin(page);
   await page.goto("/it/admin/leads");
   const stage = page.getByLabel("Stage", { exact: true });
-  await expect(stage.locator("option")).toHaveCount(18); // All stages + 17 (ccrm-006: Duplicate)
+  await expect(stage.locator("option")).toHaveCount(19); // All stages + 18 (ccrm-006: Duplicate; itc-004: Nurture)
   await stage.selectOption({ label: "First Call Pending" });
   await expect(page).toHaveURL(/status=first_call_pending/);
 });

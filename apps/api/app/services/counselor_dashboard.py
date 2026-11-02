@@ -10,7 +10,7 @@ from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application_outcome import TERMINAL
-from app.lead_stages import CLOSED, STAGE_LABELS
+from app.lead_stages import CLOSED, NURTURE, STAGE_LABELS
 from app.models import (
     LEAD_APPOINTMENT_OPEN,
     AgentStudent,
@@ -144,7 +144,8 @@ async def dashboard(db: AsyncSession, user: User, now: datetime) -> dict:
         .join(Enquiry, Enquiry.id == LeadFollowUp.lead_id)
         .where(*leads, LeadFollowUp.status == "open", LeadFollowUp.due_at < start + timedelta(days=FOLLOW_UP_DAYS + 1))
         .order_by(LeadFollowUp.due_at, LeadFollowUp.id),
-        lambda f, e: _item(f.id, _lead_label(e), f.next_action or _human(f.reason), f.due_at, _lead_href(e.id), overdue=f.due_at < start),
+        lambda f, e: _item(f.id, _lead_label(e), f.next_action or _human(f.reason), f.due_at, _lead_href(e.id),
+                           overdue=f.due_at < start and e.status != NURTURE),  # itc-004 N5
     )
     s["overdue_tasks"] = await _section(  # ccrm-042: the key stays for compatibility; the section now also lists tasks due this week
         db,

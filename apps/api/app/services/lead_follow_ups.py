@@ -17,7 +17,7 @@ from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.lead_stages import CLOSED
+from app.lead_stages import CLOSED, NURTURE
 from app.lead_stages import label as stage_label
 from app.models import AuditLog, Enquiry, LeadCall, LeadFollowUp, TelProduct, User
 from app.schemas import LeadFollowUpCreate
@@ -77,7 +77,7 @@ async def _last_calls(db: AsyncSession, lead_ids: set[UUID]) -> dict[UUID, dict]
 def _out(user: User, now: datetime, last_calls: dict, fu: LeadFollowUp, lead: Enquiry, product: TelProduct | None, caller, creator, completer) -> dict:
     return {
         "id": fu.id, "due_at": fu.due_at, "reason": fu.reason, "notes": fu.notes, "next_action": fu.next_action, "status": fu.status,
-        "overdue": fu.status == "open" and fu.due_at < now,  # F1
+        "overdue": fu.status == "open" and fu.due_at < now and lead.status != NURTURE,  # F1; itc-004 N5
         "lead": {
             "id": lead.id, "lead_code": lead.lead_code, "name": lead.name, "priority": lead.priority, "status": lead.status,
             "status_label": stage_label(lead.status), "product": None if product is None else {"id": product.id, "name": product.name},
@@ -101,7 +101,7 @@ def in_day(day: date):
 
 
 def overdue(now: datetime):
-    return IS_OPEN & (LeadFollowUp.due_at < now)
+    return lead_pipeline.follow_up_overdue(now)  # itc-004 N5: never on a Nurture lead
 
 
 async def list_page(db: AsyncSession, user: User, scope: list, view: str, day: date, now: datetime, limit: int, offset: int,

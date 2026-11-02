@@ -49,10 +49,14 @@ def test_model_matches_the_migration():
     spec = importlib.util.spec_from_file_location("_ccrm_006_migration_0186", VERSIONS / "0186_lead_loss_capture.py")
     later = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(later)
-    assert _migration.STAGES == later.OLD_STAGES and STAGES == later.STAGES
-    assert LEAD_STATUS_CHECK == later.STATUS_CHECK
+    # itc-004: 0223 added `nurture` -- it starts from 0186's list, and the live catalogue is that list plus Nurture
+    spec = importlib.util.spec_from_file_location("_itc_004_migration_0223", VERSIONS / "0223_lead_nurture_stage.py")
+    latest = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(latest)
+    assert _migration.STAGES == later.OLD_STAGES and later.STAGES == latest.OLD_STAGES and STAGES == latest.STAGES
+    assert LEAD_STATUS_CHECK == latest.STATUS_CHECK
     checks = {c.name: str(c.sqltext) for c in Enquiry.__table__.constraints if isinstance(c, sa.CheckConstraint)}
-    assert checks["ck_enquiries_status"] == later.STATUS_CHECK
+    assert checks["ck_enquiries_status"] == latest.STATUS_CHECK
     table = LeadStageHistory.__table__
     assert {"id", "lead_id", "from_stage", "to_stage", "event", "actor_user_id", "reason", "position", "created_at"} == {c.name for c in table.columns}
     assert table.c.actor_user_id.nullable and table.c.reason.nullable and not table.c.event.nullable

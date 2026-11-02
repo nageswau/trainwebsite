@@ -167,6 +167,8 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** a Nurture lead whose follow-up is due; a returned-to-telecaller lead (tel-018).
 - **Regression risks:** **high-touch shared module**. This affects the overseas telecaller and BDM lead flows and the tel-026 route matrix tests.
 - **Complexity:** medium. **Risk:** medium.
+- **Built (2026-11-02):** `DEC-SCOPE-338` — Q-04 answered by builder default (derived badge, NEEDS_CONFIRMATION); (c) the IT display
+  names moved to itc-005; the "−" case is the existing 422.
 
 #### itc-005: Admin-configurable lead and student status labels
 - **Business requirement:** §3 "Statuses should be configurable by an administrator. Status changes should record who changed them and when."

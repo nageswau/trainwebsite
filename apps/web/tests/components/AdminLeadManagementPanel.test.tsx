@@ -198,7 +198,7 @@ describe("AdminLeadManagementPanel (ADM-002, bdm-017 spec §6, tel-003 spec §5)
     fireEvent.click(within(tr).getByRole("button", { name: "Change stage for Lead w1" }));
     const select = within(tr).getByLabelText("New stage for Lead w1");
     const options = within(select).getAllByRole("option").map((o) => o.getAttribute("value"));
-    expect(options).toEqual(["", "qualified", "interested", "follow_up", "not_interested", "not_eligible", "wrong_number", "no_response", "lost", "duplicate"]);
+    expect(options).toEqual(["", "qualified", "interested", "follow_up", "nurture", "not_interested", "not_eligible", "wrong_number", "no_response", "lost", "duplicate"]);
     fetchMock.mockImplementationOnce(() => Promise.resolve(res({ ok: true })));
     fireEvent.change(select, { target: { value: "qualified" } });
     fireEvent.click(within(tr).getByRole("button", { name: "Save" }));
@@ -293,5 +293,18 @@ describe("AdminLeadManagementPanel (ADM-002, bdm-017 spec §6, tel-003 spec §5)
     expect(fetchMock.mock.calls.map(([u]) => String(u))).toContain("/api/v1/admin/leads/w1/notes?limit=50&offset=0");
     fireEvent.click(within(tr).getByRole("button", { name: "History for Lead w1" }));
     expect(within(tr).queryByRole("list", { name: "History for Lead w1" })).toBeNull();
+  });
+});
+
+describe("AdminLeadManagementPanel (itc-004, DEC-SCOPE-338 N1)", () => {
+  it("shows Assigned to Counselor under the stage of an open lead with a counselor, never on a closed one", async () => {
+    const kiran = { id: "c1", full_name: "Kiran" };
+    leadsPage = () => Promise.resolve(res(pageOf([row("a1", { status: "nurture", counselor: kiran }), row("a2", { status: "lost", counselor: kiran }), row("a3")])));
+    render(<AdminLeadManagementPanel />);
+    const open = await tableRow("Lead a1");
+    expect(open.textContent).toContain("Nurture");
+    expect(open.textContent).toContain("Assigned to Counselor");
+    expect((await tableRow("Lead a2")).textContent).not.toContain("Assigned to Counselor");
+    expect((await tableRow("Lead a3")).textContent).not.toContain("Assigned to Counselor");
   });
 });
