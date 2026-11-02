@@ -3426,7 +3426,7 @@ New catalogue resources `student_progress`, `attendance`, `student_documents` (v
 The syllabus is public with no enquiry gate (S2). Inline `User.role` check, like the other `/admin/programs` routes. Pinned by
 `apps/api/tests/test_pub_025_program_syllabus.py`.
 
-### 2.239 Notification event type and record link *(added 2026-11-02 — `DEC-SCOPE-336`, itc-002)*
+### 2.238 Notification event type and record link *(added 2026-11-02 — `DEC-SCOPE-336`, itc-002)*
 
 | Route | Anonymous | it_student | every other signed-in role |
 |---|---|---|---|

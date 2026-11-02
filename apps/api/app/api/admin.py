@@ -78,6 +78,7 @@ from app.schemas import (
 )
 from app.services import (
     agent_kyc,
+    audit_changes,
     bdm_lifecycle,
     course_skills,
     lead_appointments,
@@ -569,6 +570,8 @@ async def update_lead(lead_id: UUID, payload: dict, user: User = Depends(ensure_
     """tel-004 (T25): `status` is a stage move through the pipeline, as a manager (reason required for a closed outcome or a reopen); the
     same stage is a no-op so a resend with `owner_id` still works. The audit row names the values, never the reason text."""
     x = await lead_rules.locked_for_admin(db, user, lead_id)
+    tracked = [f for f in ("status", "owner_id") if f in payload]
+    before = {f: getattr(x, f) for f in tracked}  # itc-001: read under the row lock, so the old values are exact
     if "status" in payload and payload["status"] != x.status:
         try:
             move = LeadStageMove.model_validate({"to_stage": payload["status"], "reason": payload.get("reason"),
@@ -585,7 +588,9 @@ async def update_lead(lead_id: UUID, payload: dict, user: User = Depends(ensure_
             from app.services import counselor_reminders  # noqa: PLC0415 -- ccrm-030 RM1; a module import breaks the services' import order
 
             await counselor_reminders.first_contact(db, x)
-    audited = {f: payload[f] for f in ("status", "owner_id") if f in payload}
+    audited = {f: payload[f] for f in tracked}
+    if changed := audit_changes.changes(before, {f: getattr(x, f) for f in tracked}):
+        audited["changes"] = changed
     db.add(AuditLog(user_id=user.id, action="lead.update", entity_type="enquiry", entity_id=str(x.id), metadata_json=audited))
     await db.commit()
     return {"ok": True}
@@ -1494,9 +1499,16 @@ async def audit(
             "id": x.id, "user_id": x.user_id, "action": x.action, "entity_type": x.entity_type, "entity_id": x.entity_id, "outcome": x.outcome,
             "metadata": x.metadata_json, "created_at": x.created_at,
             "actor": {"id": who.id, "full_name": who.full_name, "email": who.email, "division": who.division} if who else None,
+            "changes": _field_changes(x.metadata_json),
         }
         for x, who in rows
     ]
+
+
+def _field_changes(metadata: dict | None) -> dict | None:
+    """itc-001: the `{field: [old, new]}` diff `audit_changes` writes; older rows' list-shaped `changes` (targets, school marks) are not it."""
+    changes = (metadata or {}).get("changes")
+    return changes if isinstance(changes, dict) and changes else None
 
 
 @router.post("/audit/export", status_code=201)

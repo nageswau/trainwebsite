@@ -10587,6 +10587,25 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0220_program_syllabus_image`; API §12IF; RBAC §2.237.
 - **Feature ID authorized:** `PUB-025`. **Status:** built on `feature/pub-025`.
 
+### DEC-SCOPE-335 — Field-change audit with before and after values (`itc-001`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-001` (PDF §4 "previous value, new value", §9, §12 AC9). Scope approved by the
+  owner 2026-11-01 (backlog Q-01: all phases, built in waves); Q-02 answered by the owner 2026-11-01: one audit row per student whose
+  attendance value actually changed, none for unchanged students.
+- **Decisions (builder defaults, NEEDS_CONFIRMATION if the owner disagrees):**
+  - **F1 — shared helper** `services/audit_changes.py` (`changes`, `audit_change`): only changed fields, `{field: [old, new]}`, written in the
+    caller's transaction; nothing when nothing changed. `management_audit.record` is unchanged (its tiers keep their own rules).
+  - **F2 — personal data** is recorded as `"changed"`, never as values: field names `phone`, `email`, `notes`, `remarks`, `reason` and names
+    ending in `_<one of them>`.
+  - **F3 — first adopters:** the trainer attendance overwrite (`attendance.update`, one row per changed student) and the admin lead
+    stage/owner PATCH (`changes` added to the existing `lead.update` row). Fee, resume and HR-stage changes adopt the helper in their own
+    items (itc-013, itc-021, itc-027, …).
+  - **F4 — blank equals null** (browser QA-01: the attendance form sends `""` for an empty note).
+  - **F5 — viewer:** the Audit log page gains a "Changes" column with a native disclosure ("N fields changed" → `field: old → new`, or
+    "changed (value hidden)"); "—" when a row has none.
+- **Numbering:** no migration; API §12IG; RBAC unchanged (the audit viewer's existing grants).
+- **Feature ID authorized:** `itc-001`. **Status:** built on `worktree-itc-001`.
+
 ### DEC-SCOPE-336 — Notification event type and record link (`itc-002`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-002 (source PDF classified `UNVERIFIED`; the PDF itself is not in the
@@ -10615,5 +10634,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
     a **Notifications** section (`/it/student/notifications`), which is never fee-locked.
 - **Not changed:** the existing IT notices that put scores or free text in the body (assignment review, assessment result) are left as
   they are. They belong to the items that own those events.
-- **Numbering:** migration `0221_notification_event_type`; API §12IH; RBAC §2.239.
+- **Numbering:** migration `0221_notification_event_type`; API §12IH; RBAC §2.238.
 - **Feature ID authorized:** `itc-002`. **Status:** built on `feature/itc-002`.

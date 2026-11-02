@@ -30,7 +30,7 @@ Decision: `DEC-SCOPE-336`. Dependencies: none.
 3. API additive fields (same file).
 4. Payment emitter: paid manual payment → one typed notice; pending → none; overseas → none; second receipt call → no duplicate.
 5. Portal section + nav + PortalPage + list filter (vitest + backend portal test).
-6. Docs: decision register, API contract §12IH, RBAC §2.239 (no grant change), backlog status.
+6. Docs: decision register, API contract §12IH, RBAC §2.238 (no grant change), backlog status.
 
 ## Regression risks
 `test_enh_014_*`, `test_not_001_*`, payment/receipt tests (nehn-019), every page that renders `SchoolNotificationList`

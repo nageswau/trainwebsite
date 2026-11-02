@@ -1,12 +1,34 @@
 import Link from "next/link";
 
-import { actorHistoryHref, AUDIT_DIVISIONS, AUDIT_PAGE_SIZE, auditHref, entityHistoryHref, type AuditFilters, type AuditRow } from "@/lib/auditLog";
+import {
+  actorHistoryHref, AUDIT_DIVISIONS, AUDIT_PAGE_SIZE, auditHref, entityHistoryHref, type AuditChanges, type AuditFilters, type AuditRow, type AuditValue,
+} from "@/lib/auditLog";
 import { formatDateTimeIn, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 
 // nehn-042 (DEC-SCOPE-289 A7/A8): the admin Audit log -- a GET form (refresh, back and a shared link keep the filters), the matching
 // rows newest first, and Previous/Next. `rows` is one more than a page when a next page exists (lib/auditLog `auditUrl`), and null when
 // the read failed or the filters were refused; the form stays so they can be corrected. An entity reference opens that entity's whole
 // history and an actor's name everything they did. Metadata is not shown (it may hold personal data); times are India time (IST).
+// itc-001: only the field diff is, in a native disclosure -- the API never stores a personal-data field's values ("changed").
+const shownValue = (value: AuditValue) => (value === null || value === "" ? "(empty)" : String(value));
+
+function Changes({ changes }: { changes: AuditChanges | null | undefined }) {
+  const fields = Object.entries(changes ?? {});
+  if (fields.length === 0) return <>—</>;
+  return (
+    <details>
+      <summary>{fields.length} {fields.length === 1 ? "field" : "fields"} changed</summary>
+      <ul aria-label="Changed fields" style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+        {fields.map(([field, change]) => (
+          <li key={field}>
+            {field}: {change === "changed" ? "changed (value hidden)" : `${shownValue(change[0])} → ${shownValue(change[1])}`}
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 export default function AdminAuditLog({ base, rows, error, filters, showDivision }: {
   base: string; rows: AuditRow[] | null; error: string; filters: AuditFilters; showDivision: boolean;
 }) {
@@ -50,7 +72,7 @@ export default function AdminAuditLog({ base, rows, error, filters, showDivision
         <>
           <div className="table-wrap">
             <table className="table stack compact" aria-label="Audit log">
-              <thead><tr><th scope="col">When</th><th scope="col">Done by</th><th scope="col">Action</th><th scope="col">Entity</th><th scope="col">Entity reference</th><th scope="col">Outcome</th></tr></thead>
+              <thead><tr><th scope="col">When</th><th scope="col">Done by</th><th scope="col">Action</th><th scope="col">Entity</th><th scope="col">Entity reference</th><th scope="col">Outcome</th><th scope="col">Changes</th></tr></thead>
               <tbody>
                 {shown.map((row) => (
                   <tr key={row.id}>
@@ -65,6 +87,7 @@ export default function AdminAuditLog({ base, rows, error, filters, showDivision
                       {row.entity_id ? <Link href={entityHistoryHref(base, row.entity_type, row.entity_id)}>{row.entity_id}</Link> : "—"}
                     </td>
                     <td data-label="Outcome">{row.outcome}</td>
+                    <td data-label="Changes" style={{ overflowWrap: "anywhere" }}><Changes changes={row.changes} /></td>
                   </tr>
                 ))}
               </tbody>
