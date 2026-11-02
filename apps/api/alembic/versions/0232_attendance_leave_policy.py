@@ -1,7 +1,7 @@
 """itc-021 -- attendance: who marked it, the day's live session, and the approved-leave % policy.
 
-Revision ID: 0233_attendance_leave_policy
-Revises: 0230_payment_mode
+Revision ID: 0232_attendance_leave_policy
+Revises: 0231_trainer_profiles
 
 DEC-SCOPE-349. `attendance` gains `marked_by_id` (users) and `session_id` (live_sessions, ON DELETE SET NULL), both nullable: rows
 marked before this revision keep NULL ("not recorded") rather than a guessed marker or session. `certificate_rules` gains
@@ -12,8 +12,8 @@ The status values are unchanged ("excused" is labelled "Approved leave"), so no 
 
 from alembic import op
 
-revision = "0233_attendance_leave_policy"
-down_revision = "0230_payment_mode"
+revision = "0232_attendance_leave_policy"
+down_revision = "0231_trainer_profiles"
 branch_labels = None
 depends_on = None
 

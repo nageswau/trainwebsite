@@ -16,9 +16,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AuditLog, Batch, BatchTimetableCancellation, BatchTimetableSlot, Enrollment, ItStudentCounselor, LiveSession, Program, User
-from app.notifications.events import notify
 from app.schemas import TimetableCancelIn, TimetableSlotIn
 from app.services import student_access
+from app.services.batch_notices import notify_batch_change
 
 logger = logging.getLogger("app.batch_timetable")
 
@@ -107,6 +107,7 @@ async def create_slot(db: AsyncSession, user: User, batch: Batch, data: Timetabl
     db.add(slot)
     await db.flush()
     db.add(_audit(user, "batch.timetable.create", batch, slot.id, {"weekday": slot.weekday, "mode": slot.mode}))
+    await notify_batch_change(db, batch.id, ["timetable"], action_url=STUDENT_URL)  # itc-025: students + their counselors
     return slot
 
 
@@ -118,6 +119,7 @@ async def update_slot(db: AsyncSession, user: User, batch: Batch, slot_id: UUID,
         for field in changed:
             setattr(slot, field, getattr(data, field))
         db.add(_audit(user, "batch.timetable.update", batch, slot.id, {"changed": changed}))
+        await notify_batch_change(db, batch.id, ["timetable"], action_url=STUDENT_URL)  # itc-025: students + their counselors
     return slot
 
 
@@ -125,6 +127,7 @@ async def delete_slot(db: AsyncSession, user: User, batch: Batch, slot_id: UUID)
     slot = await _slot(db, batch, slot_id)
     await db.delete(slot)  # its cancellations go with it (ON DELETE CASCADE)
     db.add(_audit(user, "batch.timetable.delete", batch, slot_id, {"weekday": slot.weekday}))
+    await notify_batch_change(db, batch.id, ["timetable"], action_url=STUDENT_URL)  # itc-025: students + their counselors
 
 
 async def cancel_class(db: AsyncSession, user: User, batch: Batch, slot_id: UUID, data: TimetableCancelIn) -> BatchTimetableCancellation:
@@ -139,8 +142,7 @@ async def cancel_class(db: AsyncSession, user: User, batch: Batch, slot_id: UUID
     row = BatchTimetableCancellation(slot_id=slot.id, occurs_on=day, reason=data.reason, cancelled_by_user_id=user.id)
     db.add(row)
     db.add(_audit(user, "batch.timetable.cancel", batch, slot.id, {"occurs_on": day.isoformat()}))
-    students = await db.scalars(select(User).join(Enrollment, Enrollment.student_id == User.id).where(Enrollment.batch_id == batch.id, Enrollment.status == "active"))
-    await notify(db, students, "it.batch.changed", batch.id, action_url=STUDENT_URL)  # itc-002: fixed text; counselors are itc-025
+    await notify_batch_change(db, batch.id, ["cancelled_class"], action_url=STUDENT_URL)  # itc-025: the reason stays in EduSphere
     logger.info("timetable_class_cancelled", extra={"extra_fields": {"batch_id": str(batch.id), "slot_id": str(slot.id), "occurs_on": day.isoformat()}})
     return row
 

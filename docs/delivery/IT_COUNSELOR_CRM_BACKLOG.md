@@ -608,6 +608,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 ### Phase 3: Training (PDF Phase 3)
 
 #### itc-019: Faculty profiles and student faculty view
+- **Status:** built as `DEC-SCOPE-347` (migration `0231_trainer_profiles`, API §12IS, RBAC §2.247); design
+  `docs/superpowers/specs/2026-11-02-itc-019-faculty-profiles-design.md`. Open points answered by Claude's calls F1-F8 (email/phone
+  hidden by default, private photo with signed links, active enrolments only), `NEEDS_CONFIRMATION`.
 - **Business requirement:** §4 "Faculty & batch"; §6 "Faculty details … configurable to protect personal details".
 - **Existing behavior:** `Program.trainer_name` (free text) and `Batch.trainer_id` only. There is no profile, and students see no faculty.
 - **Expected behavior:** a trainer profile with designation, expertise, photo (optional), bio, office hours, a contact route (email, phone, in-app only) and per-field visibility toggles. Students see the profile of each of their batches' trainers.
@@ -661,7 +664,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** large. **Risk:** medium.
 
 #### itc-021: Attendance with approved leave, percentage policy, session link and audited corrections
-- **Status:** built as `DEC-SCOPE-349` (migration `0233_attendance_leave_policy`, API §12IU, RBAC §2.249). Q-19 built with the
+- **Status:** built as `DEC-SCOPE-349` (migration `0232_attendance_leave_policy`, API §12IU, RBAC §2.249). Q-19 built with the
   recommended answers (owner: proceed with recommended answers): approved leave is the existing `excused` value relabelled; policy
   default "counts as attended" (no figure changes on deploy); a policy change applies to later reads and eligibility checks, issued
   certificates keep their snapshot — all `NEEDS_CONFIRMATION`.
@@ -805,6 +808,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** a transfer between batches with different counselors.
 - **Regression risks:** `admin.py` batch tests.
 - **Complexity:** small. **Risk:** low.
+- **Status:** built as `DEC-SCOPE-348` (no migration, API §12IT, RBAC §2.248). Summary = fixed field labels appended to the itc-002 text (no values); counselors get `it.batch.student_changed` and an IT counselor Notifications page.
 
 ### Phase 4: HR and placement (PDF Phase 4)
 

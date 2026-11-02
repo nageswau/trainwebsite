@@ -9,7 +9,7 @@ with the recommended answers below (owner: "proceed with recommended answers"), 
 
 | Class | Item |
 |---|---|
-| MUST CHANGE | `services/training_progress.py` (the shared attendance SQL: `ATTENDED` hard-codes excused); `models.Attendance` (+`marked_by_id`, `session_id`), `models.CertificateRule` (+`leave_policy`); `api/workflows.py` `mark_attendance`, `review_attendance_correction`, certificate rules GET/PUT; `schemas.CertificateRulesIn`; `services/management_training.py` (its own `ATTENDED` copy); `services/portal.py` (two Python/SQL copies of the attended set); `services/reports/training.py`, `services/reports/placement.py`, `api/hr_students.py` (denominator); new migration `0233`; FE `TrainerWorkflowForm.tsx`, `AttendanceCorrectionPanel.tsx`, `AdminCertificatePanel.tsx`, `lib/certificates.ts`, `lib/hrStudents.ts` |
+| MUST CHANGE | `services/training_progress.py` (the shared attendance SQL: `ATTENDED` hard-codes excused); `models.Attendance` (+`marked_by_id`, `session_id`), `models.CertificateRule` (+`leave_policy`); `api/workflows.py` `mark_attendance`, `review_attendance_correction`, certificate rules GET/PUT; `schemas.CertificateRulesIn`; `services/management_training.py` (its own `ATTENDED` copy); `services/portal.py` (two Python/SQL copies of the attended set); `services/reports/training.py`, `services/reports/placement.py`, `api/hr_students.py` (denominator); new migration `0232`; FE `TrainerWorkflowForm.tsx`, `AttendanceCorrectionPanel.tsx`, `AdminCertificatePanel.tsx`, `lib/certificates.ts`, `lib/hrStudents.ts` |
 | MAY CHANGE | report column label "Excused" → "Approved leave" (IT reports only); `TrainerProgressPanel` (reads the rules, unchanged shape) |
 | SHOULD NOT CHANGE | School attendance (`SchoolAttendance`, `lib/attendance.ts`, `ATTENDANCE_STATUSES` in models — a different module whose "excused" is its own); skills attendance; `management_audit` |
 | HIGH REGRESSION RISK | certificate eligibility (nehn-031), batch progress (nehn-028), training reports (nehn-010/011), management training KPIs (mgmt-017), HR student view (nehn-017), placement reports (nehn-016), student portal (stu-006) — all read the attended/marked figures |
@@ -51,7 +51,7 @@ with the recommended answers below (owner: "proceed with recommended answers"), 
 
 ## Plan (TDD, small tasks)
 
-1. Test file `tests/test_itc_021_attendance_policy.py` (RED) → migration `0233_attendance_leave_policy` + model columns.
+1. Test file `tests/test_itc_021_attendance_policy.py` (RED) → migration `0232_attendance_leave_policy` + model columns.
 2. `training_progress.attended/counted/policy`, `attendance().counted`; switch callers (reports, placement, hr_students,
    management_training, portal) → GREEN; rerun nehn-010/028/031, mgmt-017, stu-006, nehn-017, nehn-016 tests.
 3. `mark_attendance` (marked_by, session link) and `review_attendance_correction` (audit + marked_by).

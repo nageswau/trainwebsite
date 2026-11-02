@@ -29,7 +29,7 @@ def percent(part, whole, places: int = 2) -> ColumnElement:
 
 def leave_policy() -> ColumnElement:
     """itc-021 (L2/L7): the configured approved-leave policy as a scalar subquery, so every reader of the % shares one definition and
-    none gains a query; 'attended' (the rule before 0233) when no rule row exists."""
+    none gains a query; 'attended' (the rule before 0232) when no rule row exists."""
     return func.coalesce(select(CertificateRule.leave_policy).where(CertificateRule.division == "it").scalar_subquery(), "attended")
 
 

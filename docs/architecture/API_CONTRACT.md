@@ -5075,9 +5075,47 @@ leads owned by an IT counselor). All routes **401** without a session.
 - Receipt PDF: new lines "Payment mode", "Transaction reference" (after "Amount paid"); an enrolment fee's balance is the account's.
 - Portal: `it/admin/enrollments` and `it/counselor/students` gain a `fee_balance` column (`INR 1,234.00` or `Not billed`).
 
+## 12IS. Faculty profiles and student faculty view (itc-019) — addendum, 2026-11-02
+
+`DEC-SCOPE-347`. Migration `0231_trainer_profiles`. RBAC §2.247.
+
+- Profile body (PUT replaces all fields; unknown fields → **422**) `{designation? ≤120, expertise: string[] ≤12 × ≤60 (trimmed, blanks
+  and case-insensitive repeats dropped), bio? ≤2000, office_hours? ≤160, contact_route "in_app"|"email"|"phone", show_email,
+  show_phone, show_photo, show_bio, show_office_hours}`; blank strings are null. `contact_route` email/phone needs that `show_*` true and
+  the value on the account → **422**.
+- Editor view `{trainer_id, name, …all fields, account_email, account_phone, photo_url}` (defaults when no profile yet: email/phone
+  hidden, the rest shown, route `in_app`). `photo_url` is a signed link (15 min) or null.
+- `GET/PUT /it/trainer/profile` (trainer, own) → **200** editor view. `PUT /it/trainer/profile/photo` (multipart `file`) → **200**;
+  `DELETE /it/trainer/profile/photo` → **200**. Photo: purpose `trainer_photo` — wrong type or bytes → **415**, over 2 MB → **413**,
+  outside 120–4096 px or unreadable → **422**. The replaced file is deleted. Audited `trainer.profile.update` (changed field names) and
+  `trainer.profile.photo` (`removed`, `replaced`).
+- `GET/PUT /it/trainers/{trainer_id}/profile`, `PUT/DELETE …/photo` (IT Admin, Super Admin) → the same; not an IT trainer → **404**.
+- `GET /it/student/faculty` (it_student) → **200** `{items: [{batch_id, batch, program, faculty | null}]}`, one per active enrolment's
+  batch (`faculty` null when the batch has no trainer). `GET /it/faculty/{trainer_id}` (it_student) → **200** faculty, **404** unless the
+  trainer teaches one of the student's active batches. Faculty `{trainer_id, name, designation, expertise, contact_route}` plus `bio`,
+  `office_hours`, `photo_url`, `email`, `phone` **only when shown** (hidden keys are absent); a route whose channel is not in the response
+  reads `in_app`.
+- `GET /portal/it/trainer/profile` → header-only payload "Faculty Profile". `GET /portal/it/student/course` rows gain `trainer` (name, or
+  "Not assigned yet").
+## 12IT. Batch, course and timetable change notifications (itc-025) — addendum, 2026-11-02
+
+`DEC-SCOPE-348`. No migration; no request or response change on existing routes (the notices are a side effect in the same transaction;
+a rollback sends nothing).
+
+- `PATCH /admin/batches/{id}` — a real change of `name`, `start_date`, `end_date`, `trainer_id`, `schedule`, `timezone` or `mode` sends
+  `it.batch.changed` to each `active` student of the batch and `it.batch.student_changed` to each distinct linked IT counselor (itc-003).
+  An identical value, or `capacity` / `enrollment_open` / `status` alone, sends nothing.
+- `POST|PUT|DELETE /it/batches/{id}/timetable[/{slot_id}]` — same recipients (summary `timetable`); a PUT with no difference sends
+  nothing. `POST …/{slot_id}/cancellations` — students as before, plus their counselors (summary `cancelled class`; never the reason).
+- `PATCH /admin/enrollments/{id}` with a different `batch_id` — the moved student and their counselor only; the record is the new batch
+  (summary `batch`). Same batch: nothing. A rejected enrolment: nothing.
+- Notice body = the itc-002 fixed text + ` Changed: <labels>.` from the fixed list (batch name, start date, end date, trainer, timetable,
+  time zone, mode, cancelled class, batch). `entity_type` `batch`, `entity_id` the batch id.
+- `GET /portal/it/counselor/notifications` — new header-only section for the IT counselor (PortalPage mounts `GET /workflows/notifications`).
+
 ## 12IU. Attendance approved-leave policy, marker and session link (itc-021) — addendum, 2026-11-02
 
-`DEC-SCOPE-349`. Migration `0233_attendance_leave_policy`. Additive; no route added.
+`DEC-SCOPE-349`. Migration `0232_attendance_leave_policy`. Additive; no route added.
 
 - `GET /workflows/it/certificates/rules` → gains `leave_policy` (`attended | excluded | absent`). `PUT` accepts optional `leave_policy`
   (same values; anything else 422); omitted keeps the stored value. The response and the `certificate_rules.update` audit

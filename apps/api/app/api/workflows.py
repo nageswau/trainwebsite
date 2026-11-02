@@ -1574,7 +1574,7 @@ async def grade_assessment_attempt(attempt_id: UUID, payload: AssessmentGradeIn,
 
 CAN_ISSUE_CERTIFICATES = require_permission("certificates", "issue", "You do not have permission to issue certificates")  # nehn-031 W3
 CAN_CONFIGURE_CERTIFICATES = require_permission("certificates", "configure", "You do not have permission to change certificate rules")
-# nehn-031 W1: the thresholds before 0204; itc-021 L2: the leave policy before 0233
+# nehn-031 W1: the thresholds before 0204; itc-021 L2: the leave policy before 0232
 DEFAULT_CERTIFICATE_RULES = {"min_progress_percent": 100, "min_attendance_percent": 75, "leave_policy": "attended"}
 CERTIFICATE_QUEUE_EXCLUDED = ("pending_consent", "rejected", "withdrawn", "dropped")  # never seated, or left the course
 
@@ -1748,7 +1748,7 @@ async def update_certificate_rules(
         rule = CertificateRule(division="it")
         db.add(rule)
     rule.min_progress_percent, rule.min_attendance_percent, rule.updated_by_id = payload.min_progress_percent, payload.min_attendance_percent, user.id
-    # itc-021 (DEC-SCOPE-349 L2): a body without the leave policy (the pre-0233 client) keeps the stored one.
+    # itc-021 (DEC-SCOPE-349 L2): a body without the leave policy (the pre-0232 client) keeps the stored one.
     rule.leave_policy = payload.leave_policy or before["leave_policy"]
     after = {**payload.model_dump(), "leave_policy": rule.leave_policy}
     await _audit(db, user, "certificate_rules.update", "certificate_rules", "it", {"before": before, "after": after})
