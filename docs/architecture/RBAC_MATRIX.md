@@ -3468,3 +3468,13 @@ No grant changes. Pinned by `apps/api/tests/test_itc_006_api.py`.
 | `POST /admin/leads/{id}/merge` | 401 | 403 | 403 | 200 / 404 / 409 / 422 | 200 / 404 / 409 / 422 | 403 |
 
 Inline checks (`lead_pipeline.scope`, `ensure_admin`, `services/lead_merge.py`). Pinned by `apps/api/tests/test_itc_007_lead_merge.py`.
+
+### 2.242 Batch timetable and session calendar *(added 2026-11-02 — `DEC-SCOPE-342`, itc-020)*
+
+| Route | Anonymous | it_admin / super_admin | trainer | it_student | IT counselor | other roles |
+|---|---|---|---|---|---|---|
+| `GET/POST /it/batches/{id}/timetable`, `PUT/DELETE …/{slot_id}`, `POST …/{slot_id}/cancellations` | 401 | 200 / 201 / 204 / 404 / 409 / 422 | 403 | 403 | 403 | 403 (coordinator, overseas_admin included) |
+| `GET /it/timetable` | 401 | 200 all batches | 200 own batches | 200 actively enrolled batches (no cancelled classes) | 200 linked students' batches (no join links) | 403 |
+| `GET /it/timetable?batch_id=` out of scope | 401 | 404 unknown | 404 | 404 | 404 | 403 |
+
+Inline checks (`services/batch_timetable.py` `require_editor`, `_scoped_batches`). Pinned by `apps/api/tests/test_itc_020_timetable.py`.

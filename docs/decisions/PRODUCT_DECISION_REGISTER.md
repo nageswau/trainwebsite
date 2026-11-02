@@ -10754,3 +10754,22 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0225_lead_merge` (`enquiries.merged_at`, `merged_by_user_id`, CHECK `ck_enquiries_merged`); API §12IM;
   RBAC §2.241.
 - **Feature ID authorized:** `itc-007`. **Status:** built on `worktree-itc-007`.
+
+### DEC-SCOPE-342 — Batch timetable and session calendar (`itc-020`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-020` (PDF §4 "timetable, class link/room, session calendar", §6, §8 Faculty
+  "Today's classes"). Scope approved by the owner 2026-11-01 (backlog Q-01: all phases, built in waves). No dependencies. Design
+  `docs/superpowers/specs/2026-11-02-itc-020-batch-timetable-design.md`.
+- **Behaviour:** the IT Admin keeps each batch's weekly slots (day, start, end, online/in person, room, class link, topic) on the new
+  Timetable page; slots that overlap in one batch, or for one trainer across batches whose dates intersect, are refused (409). A single
+  future class can be cancelled with a reason: the batch's active students are notified (itc-002 `it.batch.changed`) and no longer see
+  it; staff see it as cancelled with the reason. Students, trainers, IT counselors and the admin get a week-by-week calendar (IST) of the
+  classes, computed from the slots inside the batch dates, with the batches' existing live sessions merged in.
+- **Claude's calls under "proceed with recommended answers" (`NEEDS_CONFIRMATION`):** T1 (Q-18a) classes are computed from the slots, not
+  stored as `LiveSession` rows; live sessions are shown alongside, so `LiveSession.room` is not added. T2 (Q-18b) no holiday calendar: the
+  admin cancels single classes. T3 (Q-18c) overlap = same weekday, intersecting times, intersecting batch dates; same batch or same
+  trainer → 409; a later batch-trainer change is not re-checked. T4 only IT Admin and Super Admin edit (the certificate coordinator has
+  no batch grants). T5 no "restore" of a cancelled class. T6 the iCal feed is deferred (backlog "optional"). T7 `batches.schedule` free
+  text is untouched. T8 an IT counselor sees no join link; a student whose live classes are locked sees no join link.
+- **Numbering:** migration `0226_batch_timetable` (`batch_timetable_slots`, `batch_timetable_cancellations`); API §12IN; RBAC §2.242.
+- **Feature ID authorized:** `itc-020`. **Status:** built on `worktree-itc-020`.

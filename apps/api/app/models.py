@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -19,6 +19,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    Time,
     UniqueConstraint,
     Uuid,
     false,
@@ -206,6 +207,40 @@ class Enrollment(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(30), default="active")
     progress_percent: Mapped[int] = mapped_column(Integer, default=0)
     __table_args__ = (UniqueConstraint("student_id", "batch_id", name="uq_enrollment_student_batch"),)
+
+
+class BatchTimetableSlot(Base, TimestampMixin):
+    """itc-020 (DEC-SCOPE-342): one weekly class of a batch -- `weekday` 0=Mon..6=Sun, local times in the batch's timezone. Dated
+    classes are computed from these rows (`services/batch_timetable.py`), never stored (T1)."""
+
+    __tablename__ = "batch_timetable_slots"
+    __table_args__ = (
+        CheckConstraint("weekday BETWEEN 0 AND 6", name="ck_batch_timetable_slots_weekday"),
+        CheckConstraint("end_time > start_time", name="ck_batch_timetable_slots_times"),
+        CheckConstraint("mode IN ('online', 'offline')", name="ck_batch_timetable_slots_mode"),
+        CheckConstraint("mode = 'online' OR room IS NOT NULL", name="ck_batch_timetable_slots_room"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("batches.id", ondelete="CASCADE"), index=True)
+    weekday: Mapped[int] = mapped_column(SmallInteger)
+    start_time: Mapped[time] = mapped_column(Time)
+    end_time: Mapped[time] = mapped_column(Time)
+    mode: Mapped[str] = mapped_column(String(10))
+    room: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    meeting_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    topic: Mapped[str | None] = mapped_column(String(160), nullable=True)
+
+
+class BatchTimetableCancellation(Base, TimestampMixin):
+    """itc-020 (DEC-SCOPE-342): one cancelled class -- a slot on one date. Students no longer see it; staff see it with the reason."""
+
+    __tablename__ = "batch_timetable_cancellations"
+    __table_args__ = (UniqueConstraint("slot_id", "occurs_on", name="uq_batch_timetable_cancellations_slot_day"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    slot_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("batch_timetable_slots.id", ondelete="CASCADE"))
+    occurs_on: Mapped[date] = mapped_column(Date)
+    reason: Mapped[str] = mapped_column(Text)
+    cancelled_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
 class Agreement(Base, TimestampMixin):

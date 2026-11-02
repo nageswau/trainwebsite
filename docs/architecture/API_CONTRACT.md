@@ -4976,3 +4976,29 @@ leads owned by an IT counselor). All routes **401** without a session.
   `PATCH /admin/leads/{id}` on it are **409** ("This lead was merged into another lead, so it can't be changed").
 - `GET /telecaller/leads/{id}/timeline` (and the admin/counselor readers of the same service) gains kind `merge` (`from_value` = the merged
   Lead ID).
+
+## 12IN. Batch timetable and session calendar (itc-020) — addendum, 2026-11-02
+
+`DEC-SCOPE-342`. Migration `0226_batch_timetable`. RBAC §2.242.
+
+- Slot body `{weekday 0–6 (0 = Monday), start_time "HH:MM", end_time "HH:MM", mode "online"|"offline", room?, meeting_url?, topic?}`:
+  local times in the batch's timezone; `end_time > start_time`; `offline` needs a `room` (≤120); `meeting_url` must be `http(s)://…`
+  (≤500); `topic` ≤160; blank strings are null. Any breach → **422**.
+- `GET /it/batches/{id}/timetable` → **200** `{batch_id, items: [slot]}`, slot `{id, batch_id, weekday, day, start_time, end_time, mode,
+  room, meeting_url, topic}` (sorted by day, then start).
+- `POST /it/batches/{id}/timetable` → **201** slot. `PUT /it/batches/{id}/timetable/{slot_id}` (replaces) → **200** slot.
+  `DELETE /it/batches/{id}/timetable/{slot_id}` → **204** (its cancellations go with it). Unknown batch, or a slot of another batch →
+  **404**. A slot whose weekday and times intersect another slot of the same batch, or a slot of another batch with the same trainer
+  whose dates intersect → **409** (the detail names the clash). Audited `batch.timetable.create|update|delete` (ids + changed field names).
+- `POST /it/batches/{id}/timetable/{slot_id}/cancellations` `{occurs_on: date, reason (3–500)}` → **201** `{slot_id, occurs_on, reason}`.
+  Not a class date of the slot within the batch dates, or before today (batch timezone) → **422**; already cancelled → **409**. Audited
+  `batch.timetable.cancel`; each active student of the batch gets the itc-002 notice `it.batch.changed` (fixed text, link
+  `/it/student/timetable`).
+- `GET /it/timetable?from=&to=&batch_id=` → **200** `{from, to, can_edit, items}`: inclusive dates, default today…today+13 (IST); more than
+  62 days or `to < from` → **422**. Items `{id, kind "class"|"live_session", slot_id, batch_id, batch, program, date, starts_at, ends_at,
+  mode, room, meeting_url, topic, status "scheduled"|"cancelled", cancel_reason}`, sorted by `starts_at`; classes are computed from the
+  slots inside the batch dates, and the batches' `LiveSession`s in the window are merged in. Scope: `it_student` → batches with an active
+  enrolment, cancelled items omitted, `meeting_url` null while the nehn-018 `live_classes` feature is locked; `trainer` → own batches; IT
+  `counselor` → batches of their itc-003 students' active enrolments, `meeting_url` always null; `it_admin`/`super_admin` → all. Any other
+  role → **403**; a `batch_id` outside the caller's scope → **404**.
+- `GET /portal/it/{student|trainer|counselor|admin}/timetable` → header-only payload "Timetable" (the page reads the routes above).
