@@ -32,11 +32,12 @@ def _json_value(value):
 
 
 def changes(before: dict, after: dict) -> dict:
-    """`{field: [old, new]}` for each field whose value differs (a field missing on one side counts as None); `{}` when nothing changed."""
+    """`{field: [old, new]}` for each field whose value differs; `{}` when nothing changed. A field missing on one side, None and ""
+    are all the same empty value (QA-01: a form sends "" for an empty note)."""
     diff: dict = {}
     for field in dict.fromkeys([*before, *after]):
         old, new = before.get(field), after.get(field)
-        if old != new:
+        if old != new and not (old in (None, "") and new in (None, "")):
             diff[field] = "changed" if _is_pii(field) else [_json_value(old), _json_value(new)]
     return diff
 

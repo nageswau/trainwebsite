@@ -38,6 +38,12 @@ def test_no_change_is_an_empty_diff():
     assert audit_changes.changes({"status": "absent"}, {"status": "absent"}) == {}
 
 
+def test_blank_and_none_are_the_same_empty_value():
+    """Browser QA-01: the attendance form sends "" for an empty note, so a re-save over a null note is not a change."""
+    assert audit_changes.changes({"notes": None, "owner_id": ""}, {"notes": "", "owner_id": None}) == {}
+    assert audit_changes.changes({"status": None}, {"status": "present"}) == {"status": [None, "present"]}
+
+
 def test_pii_fields_are_marked_changed_never_stored_as_values():
     before = {"phone": "9000000001", "email": "a@x.in", "notes": "old note", "parent_phone": "1", "reason": "r1", "status": "a"}
     after = {"phone": "9000000002", "email": "b@x.in", "notes": "new note", "parent_phone": "2", "reason": "r2", "status": "a"}
