@@ -277,6 +277,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** the IST day boundary.
 - **Regression risks:** `test_tel_017/021/024` metric tests.
 - **Complexity:** small. **Risk:** low.
+- **Built (2026-11-02):** `DEC-SCOPE-340` — tiles and report share `flow_counts_by_user`; Appendix B's qualified "(or later)" not adopted (one definition); calls F1-F4/T1-T3 NEEDS_CONFIRMATION.
 
 #### itc-009: Overdue follow-up escalation for the IT team
 - **Business requirement:** §9 "Alert the owner when a follow-up is overdue; optionally escalate after a configurable period"; §3 step 3.

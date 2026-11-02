@@ -4945,3 +4945,15 @@ leads owned by an IT counselor). All routes **401** without a session.
   one of the manager's direct reports is on the team (super admin: any). Audited `telecaller.strategy_update` `{from, to}`.
 - Side effect on every intake (website, BDM, manager, CSV import): order source → product → city → team strategy. `lead.assign` audit
   metadata adds `rule_id` when a rule matched; methods add `source_rule` and `workload`.
+
+## 12IL. Lead list filters and telecaller dashboard tiles (itc-008) — addendum, 2026-11-02
+
+`DEC-SCOPE-340`. No migration; RBAC unchanged. Additive.
+
+- `GET /telecaller/leads` and `GET /telecaller/leads.xlsx` — new query params: `source` (a lead source key, else 422),
+  `last_contact_from`, `last_contact_to`, `next_follow_up_from`, `next_follow_up_to` (YYYY-MM-DD, India-time days, inclusive; a malformed
+  date or a from after its to → 422). Each is ANDed with the caller's scope. The `crm.export` audit `filters` names them.
+- `GET /telecaller/dashboard` — `tiles` adds `contact_rate` (number | null, % to one decimal), `qualified` (int) and `handovers` (int),
+  all for today (IST).
+- `GET /telecaller/reports/telecaller` (+ `.csv`, `.xlsx`) — columns append `contact_rate` "Contact rate (%)" (number | null per row;
+  the Total row is Σreached ÷ Σcalled) and `handovers` "Handovers" (summed).
