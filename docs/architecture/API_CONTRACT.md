@@ -5074,9 +5074,32 @@ leads owned by an IT counselor). All routes **401** without a session.
   `GET /payments/mine` rows gain `payment_mode` and `provider_reference`.
 - Receipt PDF: new lines "Payment mode", "Transaction reference" (after "Amount paid"); an enrolment fee's balance is the account's.
 - Portal: `it/admin/enrollments` and `it/counselor/students` gain a `fee_balance` column (`INR 1,234.00` or `Not billed`).
-## 12IS. Batch, course and timetable change notifications (itc-025) — addendum, 2026-11-02
 
-`DEC-SCOPE-347`. No migration; no request or response change on existing routes (the notices are a side effect in the same transaction;
+## 12IS. Faculty profiles and student faculty view (itc-019) — addendum, 2026-11-02
+
+`DEC-SCOPE-347`. Migration `0231_trainer_profiles`. RBAC §2.247.
+
+- Profile body (PUT replaces all fields; unknown fields → **422**) `{designation? ≤120, expertise: string[] ≤12 × ≤60 (trimmed, blanks
+  and case-insensitive repeats dropped), bio? ≤2000, office_hours? ≤160, contact_route "in_app"|"email"|"phone", show_email,
+  show_phone, show_photo, show_bio, show_office_hours}`; blank strings are null. `contact_route` email/phone needs that `show_*` true and
+  the value on the account → **422**.
+- Editor view `{trainer_id, name, …all fields, account_email, account_phone, photo_url}` (defaults when no profile yet: email/phone
+  hidden, the rest shown, route `in_app`). `photo_url` is a signed link (15 min) or null.
+- `GET/PUT /it/trainer/profile` (trainer, own) → **200** editor view. `PUT /it/trainer/profile/photo` (multipart `file`) → **200**;
+  `DELETE /it/trainer/profile/photo` → **200**. Photo: purpose `trainer_photo` — wrong type or bytes → **415**, over 2 MB → **413**,
+  outside 120–4096 px or unreadable → **422**. The replaced file is deleted. Audited `trainer.profile.update` (changed field names) and
+  `trainer.profile.photo` (`removed`, `replaced`).
+- `GET/PUT /it/trainers/{trainer_id}/profile`, `PUT/DELETE …/photo` (IT Admin, Super Admin) → the same; not an IT trainer → **404**.
+- `GET /it/student/faculty` (it_student) → **200** `{items: [{batch_id, batch, program, faculty | null}]}`, one per active enrolment's
+  batch (`faculty` null when the batch has no trainer). `GET /it/faculty/{trainer_id}` (it_student) → **200** faculty, **404** unless the
+  trainer teaches one of the student's active batches. Faculty `{trainer_id, name, designation, expertise, contact_route}` plus `bio`,
+  `office_hours`, `photo_url`, `email`, `phone` **only when shown** (hidden keys are absent); a route whose channel is not in the response
+  reads `in_app`.
+- `GET /portal/it/trainer/profile` → header-only payload "Faculty Profile". `GET /portal/it/student/course` rows gain `trainer` (name, or
+  "Not assigned yet").
+## 12IT. Batch, course and timetable change notifications (itc-025) — addendum, 2026-11-02
+
+`DEC-SCOPE-348`. No migration; no request or response change on existing routes (the notices are a side effect in the same transaction;
 a rollback sends nothing).
 
 - `PATCH /admin/batches/{id}` — a real change of `name`, `start_date`, `end_date`, `trainer_id`, `schedule`, `timezone` or `mode` sends

@@ -1,4 +1,4 @@
-"""itc-025 (DEC-SCOPE-347) -- a batch date/trainer/timetable change or a student transfer notifies the affected students and their linked
+"""itc-025 (DEC-SCOPE-348) -- a batch date/trainer/timetable change or a student transfer notifies the affected students and their linked
 IT counselors (one notice each, AC1), with a fixed-vocabulary summary of what changed; a no-op save sends nothing (AC2)."""
 
 import datetime as dt

@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// itc-025 (DEC-SCOPE-347): the IT Admin changes a batch's schedule; its active student and the student's IT counselor are each told
+// itc-025 (DEC-SCOPE-348): the IT Admin changes a batch's schedule; its active student and the student's IT counselor are each told
 // once, with a "Changed: timetable." summary, and the counselor's new Notifications page opens the counselor timetable. A fresh batch,
 // student and counselor are created per run, so reruns on one database never collide.
 test.describe.configure({ timeout: 150_000 });

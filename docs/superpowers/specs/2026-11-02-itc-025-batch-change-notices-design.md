@@ -1,9 +1,9 @@
 # itc-025 — Batch, course and timetable change notifications (design)
 
-**Decision:** DEC-SCOPE-347. **Backlog:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` §itc-025 (source §7 row "Course/batch/timetable
+**Decision:** DEC-SCOPE-348. **Backlog:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` §itc-025 (source §7 row "Course/batch/timetable
 changed"; source PDF `UNVERIFIED`, owner Q-01 approved all phases for build in waves). **Dependencies (all merged on `main`):** itc-002
-(typed `notify()`), itc-003 (`ItStudentCounselor`), itc-020 (timetable service). **Migration:** none. **API:** §12IS (additive: a new
-portal section only). **RBAC:** §2.247 (no grant change).
+(typed `notify()`), itc-003 (`ItStudentCounselor`), itc-020 (timetable service). **Migration:** none. **API:** §12IT (additive: a new
+portal section only). **RBAC:** §2.248 (no grant change).
 
 ## 1. Requirement (backlog, verbatim intent)
 A batch date, trainer or timetable change, or a student transfer, notifies the affected students and their linked counselors, with a
@@ -65,4 +65,4 @@ summary of what changed.
 3. Timetable emitters — API tests: slot create/edit/delete notify students + counselor; unchanged edit → none; cancel → counselor too.
 4. Transfer emitter — API test: transfer notifies only the moved student + their counselor (record = new batch); same batch → none.
 5. Counselor Notifications page — API test (section 200 for IT counselor) + vitest (nav item, list mounted, empty state).
-6. Docs: DEC-SCOPE-347, API §12IS, RBAC §2.247, backlog status line.
+6. Docs: DEC-SCOPE-348, API §12IT, RBAC §2.248, backlog status line.

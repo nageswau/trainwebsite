@@ -10874,7 +10874,25 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   discount approval (itc-014); refunds (itc-015); tax.
 - **Numbering:** migration `0230_payment_mode`; API §12IR; RBAC §2.246.
 - **Feature ID authorized:** `itc-013`. **Status:** built on `worktree-itc-013`.
-### DEC-SCOPE-347 — Batch, course and timetable change notifications (`itc-025`)
+
+### DEC-SCOPE-347 — Faculty profiles and student faculty view (`itc-019`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-019` (PDF §4 "Faculty & batch: photo, designation, expertise,
+  contact/office hours"; §6 "Faculty details … configurable to protect personal details"). Scope approved by the owner 2026-11-01
+  (backlog Q-01: all phases, built in waves). No dependencies. Design `docs/superpowers/specs/2026-11-02-itc-019-faculty-profiles-design.md`.
+- **Behaviour:** a trainer keeps a faculty profile (designation, expertise tags, bio, office hours, optional photo, preferred contact
+  route in-app / email / phone) and chooses which details students see. The IT Admin can edit any IT trainer's profile from the Trainers
+  page. A student sees, on the Course page, the profile of the trainer of each batch they are actively enrolled in; another trainer's
+  profile is 404. Hidden details are never sent to a student (left out of the response, not blanked). The photo goes through the upload
+  policy (PNG/JPEG/WebP, ≤2 MB, 120–4096 px, magic bytes, metadata stripped) and is served only by short-lived signed links.
+- **Claude's calls under "proceed with recommended answers" (`NEEDS_CONFIRMATION`):** F1 email and phone are hidden by default; bio,
+  office hours and photo shown by default. F2 email and phone come from the user account (not stored twice). F3 "in-app" contact points
+  students to the existing Questions page. F4 only active enrolments open a profile (as itc-020). F5 the photo is private storage +
+  signed links. F6 the IT Admin may edit any trainer's profile. F7 `programs.trainer_name` free text is untouched. F8 no counselor, HR or
+  public faculty view (itc-029 later).
+- **Numbering:** migration `0231_trainer_profiles` (`trainer_profiles`); API §12IS; RBAC §2.247.
+- **Feature ID authorized:** `itc-019`. **Status:** built on `worktree-itc-019`.
+### DEC-SCOPE-348 — Batch, course and timetable change notifications (`itc-025`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-025 (source PDF §7 row "Course/batch/timetable changed"; PDF classified
   `UNVERIFIED`). Owner Q-01 (2026-11-01): all phases approved for build in waves. Dependencies itc-002 (`DEC-SCOPE-336`), itc-003
@@ -10891,5 +10909,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - **C4 — counselor event.** `it.batch.student_changed` ("Student's batch updated", link `/it/counselor/timetable`); the student keeps
     `it.batch.changed` (link `/it/student/course`, or `/it/student/timetable` for timetable changes).
   - **C5 — counselor inbox.** The IT counselor gets a Notifications page (the shared list), as itc-009 gave the IT admin.
-- **Numbering:** no migration; API §12IS; RBAC §2.247.
+- **Numbering:** no migration; API §12IT; RBAC §2.248.
 - **Feature ID authorized:** `itc-025`. **Status:** built on `worktree-itc-025`.

@@ -33,14 +33,14 @@ EVENTS: dict[str, Event] = {
     "it.fee.payment_received": Event("payment", "Payment received", "Your payment was received. Open EduSphere to view your receipt."),
     "it.fee.payment_due": Event("payment", "Fee payment due", "A fee payment is due. Open EduSphere for the details."),
     "it.batch.changed": Event("batch", "Course or batch updated", "Your course, batch or timetable was updated. Open EduSphere to see what changed."),
-    # itc-025 (DEC-SCOPE-347): the linked IT counselor's copy of a batch change of one or more of their students
+    # itc-025 (DEC-SCOPE-348): the linked IT counselor's copy of a batch change of one or more of their students
     "it.batch.student_changed": Event("batch", "Student's batch updated", "The course, batch or timetable of your student was updated. Open EduSphere to see what changed."),
     "it.training.at_risk": Event("enrollment", "Attendance or progress alert", "Attendance or progress needs attention. Open EduSphere for the details."),
     "it.resume.uploaded": Event("resume", "Resume uploaded", "A resume was uploaded. Open EduSphere to review it."),
     "it.placement.updated": Event("student", "Placement status updated", "Your placement status was updated. Open EduSphere to see it."),
 }
 
-# itc-025 (DEC-SCOPE-347): "a summary of what changed" from a FIXED vocabulary of field names -- never the values (dates, trainer names,
+# itc-025 (DEC-SCOPE-348): "a summary of what changed" from a FIXED vocabulary of field names -- never the values (dates, trainer names,
 # reasons), so the preview-safe rule above still holds.
 CHANGE_LABELS: dict[str, str] = {
     "name": "batch name",

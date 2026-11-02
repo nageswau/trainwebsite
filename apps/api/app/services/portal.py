@@ -207,6 +207,8 @@ async def _it_student(db: AsyncSession, user: User, section: str):
     if section == "timetable":
         return _payload("Timetable", "Your upcoming classes: day, time, room or link.")  # itc-020 (DEC-SCOPE-344): header only -- the page's panel reads /it/timetable
     if section == "course":
+        trainer_ids = {b.trainer_id for _, b, _ in enrollments if b.trainer_id}
+        trainers = dict((await db.execute(select(User.id, User.full_name).where(User.id.in_(trainer_ids)))).all()) if trainer_ids else {}
         # "Available batches" (STU-001) and "Live classes" (STU-003) used to be dumped
         # here as unclickable text-panel strings -- both now have real interactive
         # components (BatchSlotPicker, LiveClassesPanel) rendered alongside this
@@ -215,9 +217,11 @@ async def _it_student(db: AsyncSession, user: User, section: str):
         return _payload(
             "Course Enrolled",
             "Your fixed schedule, live classes, provider recordings, and progress.",
-            (("enrollment_id", "Enrollment reference"), ("program", "Program"), ("batch", "Batch"), ("schedule", "Schedule"), ("progress", "Progress"), ("status", "Status")),
+            # itc-019 (DEC-SCOPE-347): the batch's trainer by name; the My faculty card (GET /it/student/faculty) shows the profile.
+            (("enrollment_id", "Enrollment reference"), ("program", "Program"), ("batch", "Batch"), ("trainer", "Trainer"), ("schedule", "Schedule"), ("progress", "Progress"), ("status", "Status")),
             (
-                {"batch_id": e.batch_id, "enrollment_id": e.enrollment_code, "program": p.title, "batch": b.name, "schedule": b.schedule, "progress": f"{e.progress_percent}%", "status": e.status}
+                {"batch_id": e.batch_id, "enrollment_id": e.enrollment_code, "program": p.title, "batch": b.name, "trainer": trainers.get(b.trainer_id, "Not assigned yet"),
+                 "schedule": b.schedule, "progress": f"{e.progress_percent}%", "status": e.status}
                 for e, b, p in enrollments
             ),
         )
@@ -454,6 +458,8 @@ async def _it_student(db: AsyncSession, user: User, section: str):
 async def _trainer(db: AsyncSession, user: User, section: str):
     batches = (await db.scalars(select(Batch).where(Batch.trainer_id == user.id).order_by(Batch.start_date.desc()))).all()
     batch_ids = [b.id for b in batches]
+    if section == "profile":
+        return _payload("Faculty Profile", "What your students see about you -- you choose which details are shown.")  # itc-019: header only
     if section == "timetable":
         return _payload("Timetable", "Classes of the batches you teach.")  # itc-020 (DEC-SCOPE-344): header only -- the page's panel reads /it/timetable
     if section == "dashboard":
@@ -1822,7 +1828,7 @@ async def _it_counselor(db: AsyncSession, user: User, section: str):
     student link; itc-003 (DEC-SCOPE-337) My Students. Every overseas section stays the overseas counselor's, so anything else is a 404."""
     if section not in {"dashboard", "leads", "appointments", "students", "timetable", "notifications"}:
         return None
-    if section == "notifications":  # itc-025 (DEC-SCOPE-347): header only -- PortalPage mounts the shared list (GET /workflows/notifications)
+    if section == "notifications":  # itc-025 (DEC-SCOPE-348): header only -- PortalPage mounts the shared list (GET /workflows/notifications)
         return _payload("Notifications", "Your own notifications, including batch and timetable changes of your students.")
     if section == "timetable":
         return _payload("Timetable", "Classes of your students' batches.")  # itc-020 (DEC-SCOPE-344): header only -- the page's panel reads /it/timetable

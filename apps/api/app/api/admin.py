@@ -1226,7 +1226,7 @@ async def update_batch(batch_id: UUID, payload: dict, user: User = Depends(ensur
             value = uuid_reference(value, "trainer reference", required=False)
         setattr(item, key, value)
     db.add(AuditLog(user_id=user.id, action="batch.update", entity_type="batch", entity_id=str(item.id), metadata_json={k: v for k, v in payload.items() if k in allowed}))
-    # itc-025 (DEC-SCOPE-347): a real change of what students see (not capacity/enrolment-open/status) tells them and their counselors
+    # itc-025 (DEC-SCOPE-348): a real change of what students see (not capacity/enrolment-open/status) tells them and their counselors
     if changed := [label for key, label in batch_notices.BATCH_FIELDS.items() if getattr(item, key) != before[key]]:
         await batch_notices.notify_batch_change(db, item.id, changed, action_url=batch_notices.COURSE_URL)
     await db.commit()
@@ -1285,7 +1285,7 @@ async def update_enrollment(enrollment_id: UUID, payload: dict, user: User = Dep
         if key in payload:
             setattr(item, key, payload[key])
     db.add(AuditLog(user_id=user.id, action="enrollment.update", entity_type="enrollment", entity_id=str(item.id), metadata_json=payload))
-    if moved and item.status != "rejected":  # itc-025 (DEC-SCOPE-347): the moved student and their counselor only; the record is the new batch
+    if moved and item.status != "rejected":  # itc-025 (DEC-SCOPE-348): the moved student and their counselor only; the record is the new batch
         student = await db.get(User, item.student_id)
         await batch_notices.notify_batch_change(db, item.batch_id, ["batch"], action_url=batch_notices.COURSE_URL, students=[student])
     await db.commit()
