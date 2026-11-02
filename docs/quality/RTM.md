@@ -1491,3 +1491,10 @@ half.
 | `itc-006-AC4` | Each assignment's audit row names the rule | `::test_audit_names_the_rule`; `test_tel_007_distribution.py::test_assignment_moves_the_stage_and_is_audited` |
 | `itc-006-N` | A rule to an overseas telecaller for the IT team → 422; strategy roles | `test_itc_006_api.py::test_source_rule_for_other_team_telecaller_is_422`, `::test_strategy_roles` |
 | `itc-006-E` | All eligible inactive → unassigned; migration safe and reversible | `::test_workload_with_nobody_eligible_leaves_unassigned`; `test_itc_006_migration.py` |
+
+| `itc-009` | Requirement: `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-009` → `DEC-SCOPE-342`; `API_CONTRACT.md` §12IN; migration 0226; RBAC §2.243 | Builder calls E1-E7 `NEEDS_CONFIRMATION` |
+| `itc-009-AC1` | Escalation fires exactly once after the threshold | `apps/api/tests/test_itc_009_escalation.py::test_overdue_past_the_threshold_escalates_to_the_manager_exactly_once`, `::test_inside_the_threshold_nothing_escalates`; browser QA (manager Notifications) |
+| `itc-009-AC2` | Completing the follow-up stops it | `::test_a_completed_follow_up_never_escalates` |
+| `itc-009-AC3` | Threshold 0 disables escalation | `::test_zero_hours_turns_escalation_off_for_that_team`; `test_itc_009_settings.py`; `TelecallerAlertSettingsPanel.test.tsx` (itc-009); e2e `itc-009-escalation-settings.spec.ts` |
+| `itc-009-N` | Nurture leads never escalate; overseas counselor follow-ups left to ccrm-031 | `::test_a_nurture_lead_never_escalates`, `::test_an_overseas_counselor_follow_up_is_left_to_ccrm_031` |
+| `itc-009-E` | Inactive manager → division admin; IT counselor → IT admins; no recipient → retried; flood guard; preview has no phone; migration round trip | `::test_an_inactive_manager_falls_back_to_the_division_admins`, `::test_an_it_counselor_follow_up_escalates_to_the_it_admins`, `::test_no_recipient_leaves_the_follow_up_unclaimed_for_a_later_run`, `::test_a_follow_up_older_than_the_guard_window_is_not_escalated`; `test_itc_009_migration.py`; `Itc009Notifications.test.tsx` |

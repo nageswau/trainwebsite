@@ -279,6 +279,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** small. **Risk:** low.
 
 #### itc-009: Overdue follow-up escalation for the IT team
+- **Status:** built as `DEC-SCOPE-342` (migration `0226`, API §12IN, RBAC §2.243). Escalation is opt-in (0 h = off by default); manager and IT admin Notifications pages added so the alert has a list to appear in.
 - **Business requirement:** §9 "Alert the owner when a follow-up is overdue; optionally escalate after a configurable period"; §3 step 3.
 - **Existing behavior:**
   - Telecaller alerts (Follow-up Due, Missed Follow-up, …) go to the telecaller only (`telecaller_alerts.py`).

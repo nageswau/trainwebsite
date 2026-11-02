@@ -6825,7 +6825,9 @@ class TelTargetEffectiveOut(BaseModel):
 
 
 # tel-020 (DEC-SCOPE-111 AL1, AL11; API §12AE): a team's alert thresholds, whole hours 1-168 (a string or a fraction is refused).
-TEL_SETTING_FIELD_LABELS = {"not_contacted_hours": "Lead not contacted after (hours)", "hot_pending_hours": "Hot lead pending after (hours)"}
+# itc-009 (DEC-SCOPE-342; API §12IN): `escalate_after_hours`, 0-168 (0 = off), optional so a two-field client keeps the stored value.
+TEL_SETTING_FIELD_LABELS = {"not_contacted_hours": "Lead not contacted after (hours)", "hot_pending_hours": "Hot lead pending after (hours)",
+                            "escalate_after_hours": "Escalate overdue follow-ups after (hours)"}
 TelSettingHours = Annotated[StrictInt, Field(ge=1, le=168)]
 
 
@@ -6833,6 +6835,7 @@ class TelSettingsUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     not_contacted_hours: TelSettingHours
     hot_pending_hours: TelSettingHours
+    escalate_after_hours: Annotated[StrictInt, Field(ge=0, le=168)] = 0  # dumped with exclude_unset: omitted = unchanged
 
 
 class TelSettingsOut(BaseModel):
@@ -6840,6 +6843,7 @@ class TelSettingsOut(BaseModel):
     team_label: str
     not_contacted_hours: int
     hot_pending_hours: int
+    escalate_after_hours: int
     updated_at: datetime
     updated_by: TelTargetPerson | None
 

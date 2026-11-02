@@ -3089,6 +3089,7 @@ class LeadFollowUp(Base, TimestampMixin):
     completed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # itc-009: escalated once, never again
 
 
 # tel-010 (DEC-SCOPE-096): the EVID-019 §5 call types (CL1) and the 13 selectable outcomes (L226-L250; "Converted" is computed, T5).
@@ -3681,18 +3682,21 @@ TEL_STRATEGIES = ("round_robin", "workload")  # itc-006 D3; migration 0224 keeps
 class TelSetting(Base, TimestampMixin):
     """tel-020 (DEC-SCOPE-111, T14): a team's alert thresholds -- Lead Not Contacted and Hot Lead Pending, in whole hours. One row per team,
     seeded; any telecaller manager edits both (AL11) and the beat reads them on every run (AC4).
-    itc-006 (DEC-SCOPE-339 D3): `distribution_strategy` -- who gets a new lead no rule matched: in turn, or the fewest open leads."""
+    itc-006 (DEC-SCOPE-339 D3): `distribution_strategy` -- who gets a new lead no rule matched: in turn, or the fewest open leads.
+    itc-009 (DEC-SCOPE-342): `escalate_after_hours` -- how overdue a follow-up gets before its owner's manager hears of it; 0 = off."""
 
     __tablename__ = "tel_settings"
     __table_args__ = (
         CheckConstraint("team IN ('it', 'overseas')", name="ck_tel_settings_team"),
         *(CheckConstraint(f"{col} BETWEEN 1 AND {TEL_SETTING_MAX_HOURS}", name=f"ck_tel_settings_{col}") for col in TEL_SETTING_DEFAULTS),
         CheckConstraint(f"distribution_strategy IN ({', '.join(repr(s) for s in TEL_STRATEGIES)})", name="ck_tel_settings_distribution_strategy"),
+        CheckConstraint(f"escalate_after_hours BETWEEN 0 AND {TEL_SETTING_MAX_HOURS}", name="ck_tel_settings_escalate_after_hours"),
     )
     team: Mapped[str] = mapped_column(String(20), primary_key=True)
     not_contacted_hours: Mapped[int] = mapped_column(Integer, default=TEL_SETTING_DEFAULTS["not_contacted_hours"])
     hot_pending_hours: Mapped[int] = mapped_column(Integer, default=TEL_SETTING_DEFAULTS["hot_pending_hours"])
     distribution_strategy: Mapped[str] = mapped_column(String(20), default="round_robin", server_default=text("'round_robin'"))
+    escalate_after_hours: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))  # itc-009: 0 = escalation off
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 

@@ -4945,3 +4945,16 @@ leads owned by an IT counselor). All routes **401** without a session.
   one of the manager's direct reports is on the team (super admin: any). Audited `telecaller.strategy_update` `{from, to}`.
 - Side effect on every intake (website, BDM, manager, CSV import): order source → product → city → team strategy. `lead.assign` audit
   metadata adds `rule_id` when a rule matched; methods add `source_rule` and `workload`.
+
+## 12IN. Overdue follow-up escalation (itc-009) — addendum, 2026-11-02
+
+`DEC-SCOPE-342`. Migration `0226_follow_up_escalation` (`tel_settings.escalate_after_hours` 0-168, default 0;
+`lead_follow_ups.escalated_at`). Additive.
+
+- `GET /telecaller/settings` — each item adds `escalate_after_hours` (int, 0 = off).
+- `PUT /telecaller/settings/{team}` — body may add `escalate_after_hours` (StrictInt 0-168; a string, fraction, null or out-of-range value
+  → 422 `Escalate overdue follow-ups after (hours): …`). Omitted keeps the stored value. The `tel.settings.update` audit `from`/`to` carry
+  all three fields.
+- `GET /portal/it/admin/notifications` — IT admin only (others 404 as any unknown section): header-only payload; the page reads
+  `GET /workflows/notifications`.
+- Beat `itc009-escalations` (900 s): notices of event `it.followup.overdue`, entity `lead_follow_up`.
