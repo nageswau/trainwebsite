@@ -6,15 +6,15 @@ import CreateJumpLink from "@/components/CreateJumpLink";
 import TelecallerRuleRow from "@/components/TelecallerRuleRow";
 import { sendJson, type Page } from "@/lib/apiErrors";
 import { TEAM_LABEL, pageOffset, type TelecallerTeam, type TelecallerTeamRow } from "@/lib/telecaller";
-import { CATALOGUE_PAGE_SIZE, activeProducts, getPage, type Product } from "@/lib/telecallerCatalogue";
-import { RULES_URL, assignTargets, myReports, ruleMatch, type Rule } from "@/lib/telecallerDistribution";
+import { CATALOGUE_PAGE_SIZE, SOURCES, SOURCE_LABEL, activeProducts, getPage, type Product } from "@/lib/telecallerCatalogue";
+import { RULES_URL, assignTargets, myReports, ruleMatch, type Rule, type RuleKind } from "@/lib/telecallerDistribution";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { toneClass, type Feedback } from "@/lib/welcomeLink";
 
 const FEEDBACK_ID = "rule-create-feedback";
 const TEAMS: TelecallerTeam[] = ["it", "overseas"];
 
-// tel-007 (T11, DI3): the manager's distribution rules. A create form (team, product or city, an active report on that team) and the
+// tel-007 (T11, DI3): the manager's distribution rules. A create form (team, source (itc-006) / product / city, an active report on that team) and the
 // list (team filter in the URL, loading / error+Retry / empty / pager). Every manager sees every rule; only rules for their own reports
 // can be changed or deleted -- the API decides.
 export default function TelecallerRulesPanel() {
@@ -25,7 +25,7 @@ export default function TelecallerRulesPanel() {
   const [pickersFailed, setPickersFailed] = useState(false);
   const [version, setVersion] = useState(0);
   const [team, setTeam] = useState<TelecallerTeam>("it");
-  const [kind, setKind] = useState<"product" | "city">("product");
+  const [kind, setKind] = useState<RuleKind>("product");
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -68,9 +68,9 @@ export default function TelecallerRulesPanel() {
     const formEl = event.currentTarget;
     const form = new FormData(formEl);
     const telecaller = String(form.get("telecaller_user_id") ?? "");
-    const body = kind === "product"
-      ? { team, kind, product_id: String(form.get("product_id") ?? ""), telecaller_user_id: telecaller }
-      : { team, kind, city: String(form.get("city") ?? "").trim(), telecaller_user_id: telecaller };
+    const match = kind === "product" ? { product_id: String(form.get("product_id") ?? "") }
+      : kind === "source" ? { source: String(form.get("source") ?? "") } : { city: String(form.get("city") ?? "").trim() };
+    const body = { team, kind, ...match, telecaller_user_id: telecaller };
     inFlight.current = true;
     setBusy(true);
     const outcome = await sendJson(RULES_URL, "POST", body);
@@ -101,12 +101,21 @@ export default function TelecallerRulesPanel() {
         </div>
         <div className="field">
           <label htmlFor="rule-kind">Rule type (required)</label>
-          <select id="rule-kind" value={kind} onChange={(e) => setKind(e.target.value as "product" | "city")} disabled={busy}>
+          <select id="rule-kind" value={kind} onChange={(e) => setKind(e.target.value as RuleKind)} disabled={busy}>
+            <option value="source">Source</option>
             <option value="product">Product</option>
             <option value="city">City</option>
           </select>
         </div>
-        {kind === "product" ? (
+        {kind === "source" ? (
+          <div className="field">
+            <label htmlFor="rule-source">Source (required)</label>
+            <select id="rule-source" name="source" required defaultValue="" disabled={busy}>
+              <option value="" disabled>Choose a source</option>
+              {SOURCES.map((s) => <option key={s} value={s}>{SOURCE_LABEL[s]}</option>)}
+            </select>
+          </div>
+        ) : kind === "product" ? (
           <div className="field">
             <label htmlFor="rule-product">Product (required)</label>
             <select key={team} id="rule-product" name="product_id" required defaultValue="" disabled={busy || !teamProducts.length}>
@@ -138,8 +147,8 @@ export default function TelecallerRulesPanel() {
       <div className="action-card wide telecaller-list" aria-busy={data === null && !loadFailed}>
         <h3>Rules</h3>
         <p className="muted" style={{ fontSize: 13 }}>
-          A new lead goes to the telecaller of its product rule, else of its city rule, else to the next active telecaller of its team in turn.
-          If nobody is available it waits in the unassigned queue. A rule whose telecaller is inactive is skipped.
+          A new lead goes to the telecaller of its source rule, else of its product rule, else of its city rule, else as its team&apos;s
+          &ldquo;When no rule matches&rdquo; setting says. If nobody is available it waits in the unassigned queue. A rule whose telecaller is inactive is skipped.
         </p>
         <CreateJumpLink targetId="rule-team" label="Create rule" />
         <div className="field" style={{ maxWidth: 240 }}>
@@ -158,7 +167,7 @@ export default function TelecallerRulesPanel() {
         ) : data === null ? (
           <p className="muted" role="status">Loading rules…</p>
         ) : data.items.length === 0 ? (
-          <p className="empty" role="status">{filter ? `No rules for the ${TEAM_LABEL[filter]} team.` : "No rules yet. Every new lead goes round robin until you add one."}</p>
+          <p className="empty" role="status">{filter ? `No rules for the ${TEAM_LABEL[filter]} team.` : "No rules yet. Every new lead follows its team\u2019s \u201cWhen no rule matches\u201d setting until you add one."}</p>
         ) : (
           <>
             <div className="table-wrap" role="region" aria-label="Rules" tabIndex={0}>

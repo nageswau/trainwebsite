@@ -84,6 +84,25 @@ describe("TelecallerRulesPanel", () => {
     expect(JSON.parse(String(post.init!.body))).toEqual({ team: "it", kind: "city", city: "Hyderabad", telecaller_user_id: "u1" });
   });
 
+  it("creates a source rule (itc-006) and names it in the list", async () => {
+    const insta = { ...hyd, id: "r3", kind: "source" as const, city: null, source: "instagram" };
+    expect(ruleMatch(insta)).toBe("Source: Instagram");
+    const calls = serve([insta], () => res(insta, 201));
+    render(<TelecallerRulesPanel />);
+    expect(await within(await screen.findByRole("table")).findByText("Source: Instagram")).toBeTruthy();
+    const picker = screen.getByLabelText("Telecaller (required)");
+    await waitFor(() => expect(within(picker).getAllByRole("option").length).toBe(3));
+    fireEvent.change(screen.getByLabelText("Rule type (required)"), { target: { value: "source" } });
+    const source = screen.getByLabelText("Source (required)");
+    expect(within(source).getAllByRole("option").map((o) => o.textContent)).toContain("Exhibition/Event");
+    fireEvent.change(source, { target: { value: "instagram" } });
+    fireEvent.change(picker, { target: { value: "u1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create rule" }));
+    expect(await screen.findByText("Created Source: Instagram.")).toBeTruthy();
+    const post = calls.find((c) => c.init?.method === "POST")!;
+    expect(JSON.parse(String(post.init!.body))).toEqual({ team: "it", kind: "source", source: "instagram", telecaller_user_id: "u1" });
+  });
+
   it("narrows products and telecallers to the chosen team", async () => {
     serve([]);
     render(<TelecallerRulesPanel />);
