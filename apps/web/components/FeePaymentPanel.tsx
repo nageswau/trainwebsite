@@ -6,6 +6,7 @@ import Script from "next/script";
 import { SCHOOL_TIME_ZONE, formatCalendarDate, formatDate } from "@/lib/formatDate";
 import { newIdempotencyKey } from "@/lib/idempotencyKey";
 import { openRazorpayCheckout } from "@/lib/razorpayCheckout";
+import FeeAccountSummary from "./FeeAccountSummary";
 import PaymentModeBanner from "./PaymentModeBanner";
 
 type PaymentRow = {
@@ -23,7 +24,17 @@ type PaymentRow = {
   gross_amount?: number;
   discount_amount?: number;
   paid_at?: string | null;
+  // itc-013 (DEC-SCOPE-344): how a paid fee was paid and its transaction reference; optional, as above.
+  payment_mode?: string | null;
+  provider_reference?: string | null;
 };
+
+const MODE_LABELS: Record<string, string> = { cash: "Cash", upi: "UPI", card: "Card", bank_transfer: "Bank transfer", cheque: "Cheque", razorpay: "Razorpay" };
+
+function paidBy(row: PaymentRow) {
+  const parts = [row.payment_mode ? `Paid by ${MODE_LABELS[row.payment_mode] ?? row.payment_mode}` : null, row.provider_reference ? `Ref ${row.provider_reference}` : null].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
+}
 
 type EmiSchedule = {
   id: string;
@@ -50,7 +61,8 @@ function detailMessage(detail: unknown) {
 // UX gap fixed for ADM-001/003/005/007. This replaces it with a Pay Now action per pending
 // row, receipt downloads (PRD-PAY-003, signed URLs -- STU-007's download pattern; nehn-020: no invoice for students),
 // and the EMI installment timeline (PRD-STU-011).
-export default function FeePaymentPanel() {
+// itc-013: `feeAccounts` leads with the IT student's fee summary per enrolment (the overseas student's Payments page has no fee account).
+export default function FeePaymentPanel({ feeAccounts = false }: { feeAccounts?: boolean }) {
   const [rows, setRows] = useState<PaymentRow[] | null>(null);
   const [schedules, setSchedules] = useState<EmiSchedule[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -155,6 +167,7 @@ export default function FeePaymentPanel() {
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
       <h3>Fee Payments</h3>
       <PaymentModeBanner />
+      {feeAccounts && <FeeAccountSummary />}
       {rows.length === 0 ? (
         <p className="muted">No payment records yet.</p>
       ) : (
@@ -172,6 +185,7 @@ export default function FeePaymentPanel() {
                 <p className="muted" style={{ fontSize: 13 }}>{row.currency} {row.amount.toLocaleString()}{row.due_date ? ` · due ${formatCalendarDate(row.due_date)}` : ""}</p>
               )}
               {row.paid_at && <p className="muted" style={{ fontSize: 13 }}>{paidOn(row.paid_at)}</p>}
+              {["paid", "succeeded"].includes(row.status) && paidBy(row) && <p className="muted" style={{ fontSize: 13, overflowWrap: "anywhere" }}>{paidBy(row)}</p>}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                 {["pending", "overdue"].includes(row.status) && (
                   <button className="btn small" disabled={busyId === row.id} onClick={() => payNow(row)}>

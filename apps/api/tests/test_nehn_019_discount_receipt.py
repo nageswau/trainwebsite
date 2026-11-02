@@ -160,6 +160,8 @@ def test_receipt_lines_show_every_field_and_a_dash_for_unknown_values():
         "Gross amount": "INR 30,000.00",
         "Discount": "INR 3,000.00",
         "Amount paid": "INR 13,500.00",
+        "Payment mode": "—",  # itc-013 AC4: not recorded for this payment
+        "Transaction reference": "—",
         "Remaining balance": "INR 13,500.00",
         "Payment status": "Partially paid",
     }
@@ -210,6 +212,8 @@ async def test_a_discounted_partially_paid_emi_enrolment_receipt_shows_every_fie
         "Gross amount": "INR 15,000.00",
         "Discount": "INR 3,000.00",
         "Amount paid": "INR 12,000.00",
+        "Payment mode": "—",  # itc-013 AC4
+        "Transaction reference": "—",
         "Remaining balance": "INR 15,000.00",  # the unpaid second instalment
         "Payment status": "Partially paid",
     }
