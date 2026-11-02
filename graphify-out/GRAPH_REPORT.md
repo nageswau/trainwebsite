@@ -1,17 +1,17 @@
-# Graph Report - edusphere  (2026-11-01)
+# Graph Report - itc-001  (2026-11-02)
 
 ## Corpus Check
-- 5291 files · ~6,455,905 words
+- 5230 files · ~6,138,043 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 34 file(s) not represented in the graph (top: (none) 12, .css 5, .csv 4)
+- Unclassified: 33 file(s) not represented in the graph (top: (none) 13, .css 6, .csv 4)
 
 ## Summary
-- 58175 nodes · 183140 edges · 1450 communities (1218 shown, 232 thin omitted)
-- Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 22799 edges (avg confidence: 0.94)
+- 58243 nodes · 184875 edges · 1572 communities (1249 shown, 323 thin omitted)
+- Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 22504 edges (avg confidence: 0.94)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `9e819081`
+- Built from commit: `ac59af06`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -19,73 +19,73 @@
 - schemas.py
 - serverApi
 - OverseasStudent360Page.tsx
-- sqlalchemy
+- sqlalchemy_dialects
 - ccrm-036 — Counselor's own performance report (design)
-- formatCalendarDate
-- test_rec_006_migration.py
+- managementLedger.ts
 - pytest
-- PortalPage.tsx
-- bdmAppointments.ts
-- AgentStaffActivity
-- paid
-- managementDiscussions.ts
+- uuid
+- PortalPage
+- bdmOrganizations.ts
+- agent_team.py
+- CounselorTeamPerformance.test.tsx
+- formatDate.ts
 - partnership/universities/[id]/page.tsx
-- Base
+- Job
 - test_adm_003_batch_creation.py
 - bdmDailyReports.ts
-- db_now
-- bdm_context
-- recruiterCompanies.ts
-- mk_doc
-- partnership_metrics.py
+- User
+- BdmMeetingRequest
+- sendRequest
+- agn001_helpers.py
+- test_upc_018_funnel.py
 - client_for
-- Status: COMPLETE
+- AgentOrg
 - StudentMasterFields
 - agentApplications.ts
-- services/partnership_events.py
+- RecruiterInterviewItem.tsx
 - bdm-010 — BDM Travel Requests, Approval, Modes, Costs, Expenses — Design
 - field_validator
-- bdmOrganizations.ts
+- bdmActivities.ts
 - API Contract
-- RTM section: ENH/AGN/BDM addenda
-- upload_files
-- Student360Panels.tsx
-- OverseasApplication
+- Status: COMPLETE
+- StudentDocument
+- activityFeedback.ts
+- ApplicationStatusHistory
 - BdmOrganization
-- dispatch.py
-- services/recruiter_revenue.py
+- publish_all
+- school_transfers.py
 - Group 14 — 15 September 2026: business-facing Student ID
 - workflows.py
 - test_agn_006_migration.py
-- University
+- test_upc_004_migration.py
 - TelecallerReportView.tsx
 - ApplicationDeposit
 - documentChecklists.ts
 - services/management_discussions.py
-- TimestampMixin
-- recruiterRevenue.ts
+- Program
+- RecruiterRequirementCandidates.tsx
 - source
-- bdm018_helpers.py
+- test_bdm_019_admin.py
 - Student profile and journey timeline
-- _operations
+- Review Focus
 - Screen / Route / Flow Catalogue
-- shoot.ts
-- test_agn_007_shortlist.py
+- ref_node_fs
+- test_agn_007_schema.py
 - RecruiterFindCandidates.tsx
-- telecallerMessages.ts
-- services/partnership_tasks.py
+- fieldErrors
+- services/telecaller_lifecycle.py
 - recruiterShares.ts
 - recruiterCandidates.ts
 - models.py
 - test_enh_029_bulk_onboarding.py
 - test_rec_022_offers.py
 - DEC-SCOPE-051 — Commission is Master-only: Revenue on the Master dashboard and agency commission reports (AGN-014)
-- services/agent_reports.py
+- test_agn_020_reports.py
 - test_enh_020_funding_records.py
 - services/bdm_travel.py
 - activateWithToken
 - School CRM Documentation Analysis
-- load
+- Candidate
 - bdm_with_org
 - app_services_agent_dashboard
 - managementCrmReports.ts
@@ -93,59 +93,59 @@
 - work
 - welcome.ts
 - _sql
-- test_mgmt_021_agents.py
+- agn004_helpers.py
 - login
 - nehn-009 — Report framework: registry, standard filters, JSON/CSV/xlsx, audited (design)
-- AgentNetworkRecords.tsx
-- bdm-001 — BDM and BDM Manager Roles, BDM Profile, Account Provisioning — Design
+- writeFailure
+- Operational tier access (require_management -> operational tier)
 - bdm_with_org
 - Enhancement Backlog — School Portal User Lifecycle & Academic Team Completion
 - Super Admin and the School Screens
 - world
 - Master Feature Catalogue
 - test_ccrm_004_counselor_activities.py
-- viewerTimeZone
-- mk_university
+- AgentApplicationDeposit.tsx
+- enrolled
 - test_mgmt_005_auto_lines.py
 - EVID-017 Management Functionalities source
 - Record a student's career preferences
 - Notification
-- services/university_meetings.py
-- services/bdm_metrics.py
+- BdmAppointmentReason
+- bdm-023 — Management dashboard: implementation plan
 - ENH-014 — Multi-Channel Notifications (WhatsApp / SMS), Slice 1 — Design
 - test_bdm_002_schemas.py
-- test_tel_021_metrics.py
-- DEC-SCOPE-024 — Parent account linked to children across multiple schools (ENH-008)
+- PortalLoading
+- 2026-09-19-enh-004-student-promotion.md
 - RBAC Matrix
 - PRD Open Items
 - AgentStudentTimeline.tsx
 - tel-005 exploratory QA — 2026-10-06
-- services/management_meetings.py
-- management_metrics.py
+- api/management_meetings.py
+- Management & Business Command Center Backlog (mgmt-001..034)
 - test_rec_012_resume_extract.py
-- test_mgmt_026_kpis.py
-- test_tel_011_follow_ups.py
-- bdm001_helpers.py
+- test_rec_035_management.py
+- recruiterDrives.ts
+- test_bdm_011_links.py
 - Agent CRM — Engineering Enhancement Backlog (`ang-001` … `ang-022`)
 - AgentReportsPanel.tsx
 - upload_policy.py
 - school_skills.py
-- SchoolCareerRecord
+- ENH-018 — School Activity Feedback — Design
 - Client Questions
 - college_business
-- services/recruiter_meetings.py
+- RecruiterMeetingItem.tsx
 - CounselorEvaluationPanel.tsx
 - Recruiter CRM Engineering Enhancement Backlog (rec-001..rec-038)
-- services/recruiter_companies.py
+- Company
 - skills_world
-- _school
+- test_enh_004_student_promotion.py
 - test_agn_017_events.py
-- ccrm041_helpers.py
+- Base
 - school-crm/user-manual/README.md
-- test_enh_024_skill_india.py
-- advance_to
+- portfolio.py
+- istInputToIso
 - test_ccrm_053_counselor_performance.py
-- test_bdm_016_metrics.py
+- india_today
 - cms.py
 - SchoolStaffAssignment
 - bdm-008 Follow-ups and Tasks Design
@@ -153,21 +153,21 @@
 - test_enh_023_tier_change.py
 - partnershipCalendar.ts
 - EduSphere School CRM User Manual
-- test_bdm_019_admin.py
+- test_agn_022_network.py
 - test_rec_009_candidates.py
 - Agent CRM Troubleshooting
 - test_rec_017_tracking.py
-- Discovery: School Coordinator portal (role `school_coordinator`)
+- SchoolAccountInvite
 - profile
-- test_bdm_001_profiles.py
+- bdm001_helpers.py
 - mk_application
 - app_api_school_analytics
 - parse.py
-- school_bulk.py
+- File Structure
 - hash_password
-- TelecallerTargetsPanel.tsx
+- TelecallerLeadPages.tsx
 - tel-003 Lead Record Design
-- log_activity
+- test_upc_026_migration.py
 - test_visa_001_checklist.py
 - queue_deliveries
 - world
@@ -175,7 +175,7 @@
 - app_services_recruiter_calls
 - CounselorLeadDetail.tsx
 - test_enh_006_change_password.py
-- BdmAppointment
+- test_bdm_025_deactivate.py
 - test_tel_019_bdm.py
 - EduSphere School CRM — User Manual
 - test_ccrm_005_lead_fields.py
@@ -183,9 +183,9 @@
 - University Partnership CRM Backlog (upc-001..033)
 - test_rec_020_interviews.py
 - test_upc_011_calendar.py
-- pytest_asyncio
-- channel
-- UniversityContact
+- test_agn_010_offer.py
+- bdm-001 — BDM and BDM Manager Roles, BDM Profile, Account Provisioning — Design
+- test_upc_017_courses.py
 - app_services_bdm
 - test_trn_003_live_sessions.py
 - telecaller_alerts.py
@@ -194,19 +194,19 @@
 - test_nehn_009_reports.py
 - test_tel_010_calls.py
 - CandidateSkill
-- StudentDocument
-- amount
+- ccrm-022 — Sensitive documents and access logging (design)
+- rec-031 — Revenue / commercial tracking (track only): design
 - test_enh_003_first_time_provisioning.py
 - test_enh_021_certificate.py
-- rec-001 — Recruiter scope for `placement_team` + new `placement_manager` (design)
-- UniversityAgreement
-- bdmTargets.ts
+- rec-002 — Recruiter catalogues (design)
+- University
+- global-dashboard/page.tsx
 - test_tel_020_alerts.py
-- certificates.py
-- test_enh_004_student_promotion.py
-- clean_free_text
+- CertificateSignatory
+- test_bdm_012_reminders.py
+- test_bdm_010_schemas.py
 - test_tel_026_matrix.py
-- management_crm_reports.py
+- mk_university
 - student_application
 - test_pub_023_country_flags.py
 - StorageService
@@ -214,65 +214,65 @@
 - test_upc_009_meetings.py
 - as_role
 - Telecaller CRM — Engineering Enhancement Backlog (`tel-001` … `tel-026`)
-- salaries.py
+- mgmt034_helpers.py
 - router
 - test_role_assignments.py
 - login
 - Consolidated Review Enhancement Backlog (nehn-001..043)
 - c_url
-- job_descriptions.py
+- test_bdm_005_schemas.py
 - test_rec_013_find_candidates.py
 - app_notifications_phone
 - bdm_reminders.py
 - test_nehn_033_progress_mapper.py
-- india_today
-- recruiterPools.ts
-- nehn-011 — Admin dashboard: enrolments, student progress, course-wise and fee tiles (design)
-- services/university_documents.py
-- test_ccrm_030_reminders.py
-- test_bdm_014_my_day.py
-- _application_date
+- url
+- model_validator
+- ensure_admin
+- test_mgmt_026_kpis.py
+- plural
+- test_bdm_023_dashboard.py
+- record
 - test_mgmt_026_plans.py
 - Agent Deposits workspace (Paid/Remitted/Refunded/Awaiting payment/All)
 - bdm-023 — Management dashboard: overview + alerts (design)
 - make_user
-- make_tl_manager
+- test_tel_001_provisioning.py
 - test_bdm_004_catalogue.py
 - UserRoleAssignment
 - make_school
 - as_user
 - pickFromList
 - public.py
-- services/partnership_universities.py
-- services/university_visits.py
-- services/partnership_calendar.py
+- linked_bdm_organizations
+- services/university_meetings.py
+- test_upc_027_onboarding.py
 - test_rec_030_contracts.py
-- mk_record
+- pytest_asyncio
 - test_upc_031_reports.py
 - docs/user-manual/README.md
-- test_mgmt_015_partner_capital.py
+- test_enh_011_schemas.py
 - LeadStageHistory
 - services/partnership_targets.py
-- days
-- pdf.py
+- nehn-016 — Nearing-completion list and recruiter read-only training progress (design)
+- pdf_text
 - PUB-023 — Country flags (phase 1) — Design
 - Track and cancel transfer requests
 - app_services_agent_network
 - test_enh_014_twilio.py
-- partnershipComms.ts
+- partnerCapital.ts
 - test_tel_013_messages.py
 - test_rec_025_calls.py
 - Alembic migrations
 - School CRM: Overseas Admin and Super Admin screens that manage schools (source discovery)
 - Application Status Table AGT-002
 - 3. Items
-- newIdempotencyKey
+- pdf.py
 - test_enh_001_academic_year.py
 - AuditLog
 - Agency Team Page
 - app_services_partnership_access
 - BDM CRM user-guide discovery: Overseas BDM portal (Agent / School BDM)
-- outcome
+- partner_capital.py
 - test_rec_024_follow_ups.py
 - create
 - test_enh_007_profile_self_service.py
@@ -285,22 +285,22 @@
 - test_nehn_029_live_session_manage.py
 - 3. Feature Inventory
 - test_tel_025_deactivate.py
-- Agent CRM Demo — 45-Minute Script {#p-agent-crm-02-demo-script}
+- AccountProfilePage.test.tsx
 - test_pub_022_cms.py
 - Attendance
 - test_upc_024_search.py
-- Review Focus
-- Overseas BDM CRM: account access, admin provisioning and lifecycle, travel approvals, touchpoints (source discovery)
-- test_agn_001_org_admin.py
+- AGN-017 Notifications Plan
+- overseas
+- Architecture Decision Records
 - test_rec_031_revenue.py
-- recruiterMessages.ts
-- day_range
-- candidate_search.py
+- monthly_review.py
+- telecaller_metrics.py
+- talent_pools.py
 - test_stu_001_enrollment.py
 - AgentTaskForm.tsx
 - test_enh_020_schemas.py
 - test_tel_022_targets.py
-- TelProduct
+- TimestampMixin
 - partnershipReports.ts
 - QuestionImportPanel.tsx
 - test_nehn_035_university_logos.py
@@ -309,19 +309,19 @@
 - bdm-005 — MoU tracking: design
 - 2026-10-03-bdm-009-activity-log-design.md
 - test_rec_026_messages.py
-- Payment
+- test_pub_025_program_syllabus.py
 - services/university_comms.py
 - app_services_agent_applications
 - test_sec_002_gdpr_data_requests.py
 - test_agt_004_commission_payout.py
-- test_bdm_001_reset_portal.py
+- test_mgmt_008_recruitment_revenue.py
 - Architecture Baseline (As-Built)
 - test_nehn_025_question_import.py
 - security.py
-- bdmPerformance.ts
+- BdmPerformance.test.tsx
 - TeacherWorkspaceActions.tsx
 - ccrm-011 — Business IDs for overseas applications (design)
-- SchoolAccountInvite
+- investments.py
 - test_bdm_017_schemas.py
 - test_rec_036_it_integration.py
 - test_rec_006_api.py
@@ -331,33 +331,33 @@
 - SCH screens
 - test_mgmt_006_abroad_revenue.py
 - Digital Portfolio overview
-- test_enh_030_mark.py
+- ENH-013a — Student 360° View / Career Passport — Design
 - test_zoho_meeting_integration.py
-- SchoolStudentTransferRequest
+- enh005_helpers.py
 - test_upc_029_global_dashboard.py
 - test_nehn_016_placement_reports.py
 - Integration Contracts
 - test_sch_007_parent_portal.py
-- SchoolAttendanceRecord
-- Architecture Decision Records
+- test_enh_030_schemas.py
+- EduSphere CLAUDE.md Constitution
 - School CRM — Specialist portals discovery (Academic Team, Career Counselor, Psychometric Team, Student 360°, Digital Portfolio)
 - test_mgmt_007_it_revenue.py
 - test_grade_assessment_attempts.py
 - test_rec_033_performance.py
 - Agent CRM Documentation Analysis
-- School CRM user-guide discovery: Account access + Principal / Teacher / Parent portals
-- test_ccrm_029_counselor_tasks.py
+- PART 1 — ACCOUNT ACCESS (all school-side roles)
+- test_ccrm_030_reminders.py
 - BDM CRM — Engineering Enhancement Backlog (`bdm-001` … `bdm-025`)
 - test_bdm_003_migration.py
-- total
-- make_head
+- School
+- make_pm
 - Scope Delta
-- normalise_phone
+- overseas_applications
 - Feature records
 - Status History Timeline
 - as_role
 - applicationOffers.ts
-- test_mgmt_028_tasks.py
+- services/management_meetings.py
 - management_counseling.py
 - tel-010 — Call logging (design)
 - skills.ts
@@ -377,13 +377,13 @@
 - RecruiterResumeExtraction.tsx
 - test_rec_003_companies.py
 - Prompt Index
-- test_rec_012_resume_extraction_api.py
+- experience_months
 - test_ccrm_031_escalation.py
-- Agent CRM Documentation Plan
+- test_mgmt_029_meetings.py
 - test_rec_001_migration.py
 - test_rec_005_pipeline.py
 - test_uni_001_university_rep_portal.py
-- deposit_checkout
+- RecruiterRequirementMatches.tsx
 - Business Requirements Document (BRD) — EduSphere UK
 - test_nehn_005_permissions.py
 - main
@@ -391,15 +391,15 @@
 - Overseas Education Portal Sign-In
 - PUB screens
 - Release Backlog
-- dataclasses
+- score_answer
 - Feature records
-- bdmManagerDashboard.ts
+- BdmMyDay.tsx
 - test_mgmt_012_marketing.py
-- RecCandidateSource
-- test_mgmt_016_funnel.py
+- tests
+- services/recruiter_companies.py (load_scoped, permissions, audit)
 - test_ccrm_008_convert.py
 - Delivery Sequence
-- TestimonialManager.tsx
+- TestimonialManager
 - test_nehn_008_field_policy.py
 - test_mgmt_017_training.py
 - §1 Role bundles
@@ -408,7 +408,7 @@
 - salaries.ts
 - test_mgmt_011_salaries.py
 - test_mgmt_022_schools.py
-- test_ccrm_041_matrix.py
+- test_ccrm_026_visa_lifecycle.py
 - ApplicationDetailsPanel.tsx
 - build-pdfs.mjs
 - as_user
@@ -420,40 +420,40 @@
 - test_i19_counselor_chat.py
 - RecruiterCandidateSkills.tsx
 - worker.py
-- test_upc_023_expected.py
+- test_ccrm_029_counselor_tasks.py
 - test_bdm_018_migration.py
 - test_mgmt_014_investments.py
-- ENH-004 — Student Promotion to Next Academic Year / Grade — Design
-- services/applications.py status engine (single writer)
+- ENH-004 Student Promotion Design
+- services/candidate_search.py (resolve_terms, filters, facets, page)
 - test_upc_032_reassign.py
 - Enquiry
 - ApplicationInterviewsPanel.tsx
-- bdm-015 — Daily activity report (derived + note + submit) — design
+- tel-022 — Daily + monthly telecaller targets (design)
 - as_role
 - test_tel_013_migration.py
-- dtu-001 — Direct Tie-ups university load + agent commission — design
+- test_upc_008_migration.py
 - 7. JavaScript Performance
 - test_agn_013_migration.py
 - test_upc_015_alerts.py
 - test_upc_005_import.py
 - ENH-005 — final browser verification (2026-09-21)
 - vercel-react-best-practices Skill
-- Appointment
-- investments.ts
-- File Structure
-- make_pm
+- LeadAppointmentCreate
+- isCalendarDate
+- bdmPerformance.ts
+- test_rec_011_candidate_skills.py
 - test_sch_team_account_activation.py
 - React Composition Patterns (compiled AGENTS)
 - test_bdm_009_migration.py
 - test_stu_005_support_tickets.py
-- agent_visa.py
+- update_case
 - 16 Documentation Modules
 - Responsive No-Horizontal-Overflow Check
 - Approval Gates
-- counselorMessages.ts
+- Review Focus
 - Discovery: BDM Manager portal (role `bdm_manager`)
 - api/application_offers.py
-- test_agn_011_checkout.py
+- DEC-SCOPE-038 — Multi-tenant Agent CRM: agent organisation as tenant, Master accounts (AGN-001)
 - recruiter_skills.py
 - test_tel_002_products.py
 - bdm-002 Organization CRM Core Design
@@ -475,19 +475,19 @@
 - test_tel_002_campaigns.py
 - mk_user
 - UX Reference Gaps
-- Review Focus
+- 2026-10-13-mgmt-006-abroad-revenue.md
 - mgmt-027 — Discussions & decisions — implementation plan
 - Next.js Best Practices Skill
 - Assign a psychometric assessment
-- recruiterTimeline.ts
-- _gate
+- leadTimeline.ts
+- AgentStudentCounselingSave
 - test_ovs_002_application.py
 - Self-Hosting Next.js
-- PART 1 — ACCOUNT ACCESS (all school-side roles)
-- with_server.py
+- AGN-010 — Offer details (Step 6) — design
+- .claude/skills/webapp-testing/scripts/with_server.py
 - test_rec_002_campaigns.py
 - test_ovs_006_scholarships.py
-- enh-029-bulk-school-onboarding.spec.ts
+- coordinator
 - 7.14 School (added 2026-09-14, propagated from `DEC-SCOPE-009`; role structure superseded
 - Staff Performance Page
 - test_upc_030_view.py
@@ -496,27 +496,27 @@
 - ADM screens
 - Review Focus
 - test_stu_007_certificate_download.py
-- mk_active_org
+- uniq
 - test_mgmt_030_health.py
-- 3. Feature Inventory
-- formatDate
+- test_ccrm_002_migration.py
+- SchoolStudentDetailPanel.tsx
 - EMP screens
 - Reference Implementation Findings — External Source Code
 - EduSphere Agent CRM — Documentation Analysis (Phase 1)
 - test_bdm_010_migration.py
 - test_tel_015_timeline.py
 - View and claim commissions (DOC-COMM-001)
-- activate_if_complete
+- IT Counselor CRM — Enhancement Backlog (itc-001 … itc-033)
 - Code items
 - test_adm_002_lead_management.py
 - test_bdm_015_migration.py
-- test_nehn_041_student_search.py
-- Metadata
-- readRange
+- test_ccrm_017_student_journey.py
+- Next.js Best Practices
+- Issues
 - test_agn_016_migration.py
 - dtu-001 Direct Tie-ups design
-- test_rec_034_by_recruiter.py
-- test_rec_037_reassign.py
+- test_dtu_001_access.py
+- employer/dashboard/page.tsx
 - FastAPI Skill
 - Test preparation (IELTS / SAT)
 - test_bdm_004_migration.py
@@ -531,7 +531,7 @@
 - test_rec_029_drives.py
 - marketing.ts
 - Parallel & Intercepting Routes
-- nehn-023 — Attendance correction usability and notifications (design + plan)
+- AttendanceCorrectionPanel.tsx
 - Implementation Plan
 - Product Requirements Document (PRD) — EduSphere UK
 - 7. Functional requirements
@@ -540,12 +540,12 @@
 - Application Status Sidebar Filters
 - Next.js Metadata Guide
 - Split Combined Hook Computations
-- test_cns_001_counselor_workspace.py
+- AgentStudentRecordCreate
 - test_adm_008_hr_shortlists.py
 - test_bdm_016_migration.py
-- application_interviews.py
-- today_ist
-- test_agn_011_schemas.py
+- test_ccrm_035_exports.py
+- File map
+- 5. Backend
 - mgmt-032 — Monthly Business Review: exploratory QA (2026-10-14)
 - bdms/[id]/page.tsx
 - test_stu_011_profile_documents.py
@@ -553,24 +553,24 @@
 - Approve, reject, suspend or reinstate agencies
 - Playwright Chromium stand-in for Browser Use
 - Issues
-- formatDateTimeIn
-- Next.js Best Practices
+- student_archive.py
+- test_csc_004_walk_in_leads.py
 - "Access unavailable" messages
 - Promote or hold back students for the new academic year
-- test_agn_012_schemas.py
+- pydantic
 - Run the visa case
 - OVS screens
 - User Flow Map
 - Self-Hosting Next.js
 - 0132_university_courses.py
 - upc-029 Global partnership dashboard Implementation Plan
-- check
+- test_bdm_004_schemas.py
 - ManagementTelecalling.test.tsx
-- test_bdm_006_migration.py
+- AgentApprovalPanel.tsx
 - test_visa_003_status.py
 - test_rec_028_meetings.py
-- test_visa_002_interview_prep.py
-- verified
+- 2. Enhancement items
+- AGN-016 — Agent Tasks & Follow-ups — Design
 - test_sch_001_school_portal_access.py
 - SocialProofStrip.tsx
 - 1. Behaviour
@@ -580,15 +580,15 @@
 - ValidationInfo
 - 5. Re-render Optimization
 - assigned
-- test_rec_032_dashboard.py
+- test_mgmt_031_home.py
 - test_pub_005_gallery_management.py
-- Coverage Gaps
+- Test Catalogue Audit
 - 7.5 Admin (incl. CRM, Overseas Admin)
 - User Stories
 - test_trn_002_batch_roster.py
 - Findings
 - tel-012 Content Library Implementation Plan
-- AgentPerformancePanel.test.tsx
+- AgentPerformancePanel.tsx
 - Edit a school profile and its partnership tier
 - Create school staff accounts and their school portfolio
 - Give feedback on a completed EduSphere activity
@@ -610,23 +610,23 @@
 - JavaScript Micro-Optimization
 - test_tel_014_delivery.py
 - test_sch_002_bulk_roster_upload.py
-- recruiter_follow_ups table (migration 0116)
-- SEO / Social Media — Backlog (`OPS-SEO-01` … `07`, `seo-001` … `seo-012`)
+- services/applications.py status engine (single writer)
+- test_nehn_012_lead_list.py
 - test_agn_008_migration.py
-- ENH-032 — Send app email through the Zoho Mail API (HTTPS) — design
+- test_rec_021_migration.py
 - Deposit Record
 - test_nehn_004_xlsx_exports.py
 - 7.3 Student
 - test_bdm_005_migration.py
 - Review Focus
-- Complete = file the report
+- test_upc_018_performance_api.py
 - package.json
 - test_rec_007_requirements.py
 - unique_student_code
-- AgentStudent
-- EduSphere School CRM — Documentation Analysis (Phase 1)
+- OverseasApplication
+- 3. Feature Inventory
 - test_rec_015_talent_pools.py
-- test_nehn_007_user_overrides.py
+- _headers
 - test_stu_004_submissions.py
 - Career Counselor dashboard
 - AGN-006_BROWSER_QA_2026-10-02.md
@@ -639,12 +639,12 @@
 - Agent deposits — remittance and refund
 - Commission amounts and payouts
 - test_stu_002_dashboard.py
-- 0056_agent_shortlist.py
+- AgentUniversityUpdate
 - 2026-10-05-tel-001-telecaller-roles.md
 - Issues
 - schools
 - Partner Schools list
-- LiveSession
+- communications.py
 - Upload a result as Draft
 - Bulk entry: results (CSV)
 - Sign in to the School portals
@@ -661,7 +661,7 @@
 - Set a student's career goal
 - Find and create skills batches
 - Edit, close or reopen a skills batch
-- test_nehn_026_keyword_scoring.py
+- docker-compose.yml
 - Principal dashboard
 - Teacher dashboard
 - Record a Skill India certification
@@ -686,24 +686,24 @@
 - Set staff permissions
 - test_emp_001_employer_registration.py
 - test_bdm_025_migration.py
-- test_agn_021_activity.py
-- CounselorCalendarFeed.tsx
-- `recruiter_messages`
+- tel-009 Lead Qualification Form Design
+- report_range
+- channel
 - test_tel_009_qualification.py
 - Start an overseas application for a school student
 - tel-006 CSV Lead Import Implementation Plan
-- ledger.py
+- not_counted
 - tabular.py
 - test_nehn_028_batch_progress.py
-- ConsentRecord
+- Enrollment
 - enquiry
 - RecruiterSkillsPanel.test.tsx
 - Super Admin access to agency screens
 - Re-send a set-password link
 - RecruiterComparisonPanel.tsx
-- Invoice
+- test_ccrm_052_university_report.py
 - CoordinatorCertificateQueue.tsx
-- Font Optimization
+- test_mgmt_024_applications.py
 - Portfolio progress
 - 3. Server-Side Performance
 - Foreign language classes
@@ -712,7 +712,7 @@
 - My profile and notification settings
 - Sign out and session expiry
 - Offer Record (conditional/unconditional)
-- AGT screens
+- StudentSearch.tsx
 - 7.2 Public Website
 - School Coordinator dashboard
 - Re-send a set-password link
@@ -725,7 +725,7 @@
 - Record or edit assessment results
 - Bulk entry: assessments (CSV)
 - Download the school report (PDF)
-- test_nehn_019_discount_receipt.py
+- Review Focus
 - Edit an application
 - Application detail page
 - Change status or withdraw
@@ -755,16 +755,16 @@
 - Attach an assessment report
 - RecruiterApplicationOffer.tsx
 - TelecallerLeadImportPanel.test.tsx
-- RecruiterCandidateJourney.tsx
+- RegisterForm
 - nehn-026 — Keyword-based auto-scoring for descriptive answers (design)
 - Source Gaps
 - PDF: EduSphere Agent CRM - User Manual (For Agency Masters and Agency Staff)
-- reset_password
+- register
 - WorkflowPanel.tsx
 - bdm-011 Trip-appointment linking browser QA
 - 0120_recruiter_messages.py
 - Agency Universities Screen
-- test_bdm_008_migration.py
+- CandidateDetailPage
 - bdm-013 BDM Calendar Plan
 - services/calendar_feeds.py
 - Agency dashboard (Staff)
@@ -780,19 +780,19 @@
 - test_ovs_004_status_tracking.py
 - API §12BA Recruiter calls (rec-025)
 - 8. Non-functional requirements (NFRs)
-- alembic_config
+- pathlib
 - React Best Practices
 - test_adm_014_super_admin_console.py
-- test_bdm_001_migration.py
+- agentKyc.ts
 - bdm-006 — Appointments (types per BDM type, status lifecycle, reschedule) — Design
-- university_performance
+- test_nehn_024_submission_files.py
 - 0072_bdm_meeting_reports.py
 - 3. Design
-- SchoolActivityFeedback
+- school_feedback.py
 - test_adm_012_roles_permissions.py
 - test_bdm_009_schemas.py
 - EduSphere — Feedback Tracker for the Next Review
-- test_rec_027_timeline.py
+- BrandLogoLink
 - File Conventions
 - services/university_timeline.py + GET /partnership/universities/{id}/timeline
 - 0102_rec_catalogues.py
@@ -812,24 +812,24 @@
 - 2. Bottom-up effort re-estimate
 - test_pub_003_catalogue.py
 - test_pub_004_webinars.py
-- skillFixtures.ts
+- ProgramMediaEditor.tsx
 - test_rpt_001_reporting.py
-- put_student_photo
-- _performance
+- bdm-004 — Organization pipelines per BDM type + stage history — Design
+- local_files
 - 0184_enrollment_confirmation.py
 - React Composition Patterns
-- OfferDecisionSet
-- test_emp_002_job_posting.py
+- test_trn_005_assignment_edit.py
+- test_upc_019_ledger_api.py
 - Data Model Contract
-- test_trn_009_questions.py
-- test_ovs_005_documents.py
-- uploadFile
+- AdminCertificateSignaturesPanel.tsx
+- AGN-007 — Agent Student University Shortlist and Agency University Database — Design
+- ProfileDocumentUpload
 - AGN-013 — Exploratory browser QA (independent pass 2, 2026-10-02)
-- Issues
-- Issues
+- test_staff_performance_of_an_agency_with_no_staff_is_empty
+- bdmTasks.ts
 - bdm-022 Agent performance browser QA
 - test_sch_school_staff_provisioning.py
-- School CRM Demo — 45-Minute Script {#p-school-crm-02-demo-script}
+- Review Focus
 - Add one student
 - React.cache
 - json
@@ -841,27 +841,27 @@
 - sendJson
 - test_emp_003_candidate_search.py
 - vitest
-- ProgramCatalogue.tsx
-- rec-038 — Recruiter CRM permission matrix + cross-role 403/404 sweep (design)
-- NewLeadForm.test.tsx
+- File map
+- test_nehn_027_learning_material_files.py
+- NewLeadForm
 - test_adm_007_placement.py
 - mgmt-004-ledger.spec.ts
 - Available Tools
 - Issues
-- test_enh_027_migration.py
+- ChangePasswordForm
 - nehn-005-permission-engine.spec.ts
-- API §12BS Find Candidates — skill AND/OR search, filters, facets (rec-013)
-- test_agn_008_schemas.py
+- AdminTelecallerLifecycle.test.tsx
+- Placement Officer & Business Development CRM — Enhancement Backlog (pob-001 … pob-030)
 - React Composition Patterns
 - test_tel_012_render.py
 - Sections
 - Error Handling
-- to_xlsx
-- test_nehn_003_private_storage.py
-- SchoolSkillBatchHeader.tsx
-- AGN-007 — Agency Universities and Student Shortlist: Browser QA (2026-10-02)
-- test_enh_030_migration.py
-- _export
+- ccrm-035 — Export of CRM reports and the counselor's own lists (design)
+- Add assessments and record scores
+- test_rec_028_migration.py
+- AgentShortlistUniversityPicker.tsx
+- calendar_ics.py
+- test_adm_006_certificates.py
 - tel-013 WhatsApp Exploratory QA
 - Quick-start guide: Agency Master
 - Quick-start guide: Agency Staff
@@ -870,7 +870,7 @@
 - 1. Eliminating Waterfalls
 - 2. Bundle Size Optimization
 - Upload a document (DOC-DOC-002)
-- test_bdm_024_hierarchy.py
+- bdm024_helpers.py
 - AdminLeadManagementPanel.test.tsx
 - Domain-specific
 - app/layout.tsx
@@ -879,62 +879,62 @@
 - 7.7 Overseas Education (core)
 - test_sch_009_test_prep_language.py
 - AgentShortlistForm.test.tsx
-- nehn-032 — Certificate digital signatures (Founder + Coordinator) and designation
-- upc-007 — Partnership stage engine + history + Kanban (design + plan)
+- test_nehn_021_discount_authority.py
+- duplicate
 - tel-024 Reports Exploratory QA
 - Backlog Gap Analysis
 - bdm-024 BDM performance browser QA
 - ENH-011 — Browser QA and fixes (2026-09-22)
-- nehn-043 — Feedback tracker for the next review (design)
+- nehn-018 — Student feature access by enrolment and payment status (design)
 - tel-009 Qualification Form Plan
 - nehn-006-permission-matrix.spec.ts
 - 0182_lead_data_fields.py
-- bdm-022 Agent performance drill-down — implementation plan
+- bdm-022 — Agent performance drill-down (design)
 - FastAPI Other Tools Reference
 - test_tel_004_migration.py
 - test_adm_009_resources_oversight.py
-- OverseasCourse
+- test_dtu_001_load.py
 - BdmPerformancePages.test.tsx
 - 0138_offer_management.py
 - nehn-039 — School portal: document statuses, application depth, bulk-upload reconfirmation (design)
 - rec-016 Requirement Matching Plan
-- bdm-009 — BDM Activity Log (call / WhatsApp / email / visit / meeting / other) — Design
-- School CRM Demo — UAT Checklist {#p-school-crm-03-uat-checklist}
+- users
+- test_pub_022_migration.py
 - test_tel_005_intake.py
-- Functions
+- test_trn_006_assessments.py
 - 0066_bdm_organizations.py
 - Web Application Testing
 - Agent CRM Documentation — Final Review Report (Phase 9 / S11)
-- AgentReportTable.test.tsx
+- AgentReportTable.tsx
 - test_tel_001_account_lock.py
-- can_see_commission
-- Test Catalogue Audit
+- strip_commission
+- test_trn_007_grading.py
 - School CRM — Frequently Asked Questions
-- nehn-019 — Payment discount ledger and complete receipt (design)
+- test_upc_015_alerts_api.py
 - 0114_job_requirements.py
 - test_health.py
 - bdm-010 — Browser QA, pass 1 (2026-10-03)
-- AgentReportFilters.test.tsx
+- ResetPasswordForm
 - School CRM Administrator Manual
 - Document Review Status Lifecycle (Pending/Verified/Rejected/Changes required)
-- Add, replace or remove a student photo
+- Upload the roster in bulk (CSV)
 - Next.js Error Handling Guide
-- Image Optimization
-- rec-013 — Find Candidates: skill AND/OR search, synonyms, filters, facets, result cards (design)
-- Scripts
-- Upload Document Form
+- MGMT-024_EXPLORATORY_QA_2026-10-13.md
+- services/skills.py (normalise, resolve)
+- AGN-020 — Agency reports (7 new + Commission) and CSV export — design
+- nehn-028 — Trainer per-student progress view (design)
 - Phase 3 review notes (folded into the tasks above)
-- Quick-start guide: Overseas Admin (school management)
+- Task 2: Roles, schemas and `services/bdm.py`
 - Async Params and SearchParams
 - mgmt-002 — Management audit trail ("who did what") — design
-- upc-017 — Course / program master (design + plan)
-- application_options
-- row
-- ENH-015 — Reports & Downloads (slice 1) — Design
+- 3. Components
+- Task 2: Backend service + CMS + public routes
+- upc-019-commission-ledger.spec.ts
+- test_adm_010_consent_oversight.py
 - Frontend Design
-- bdm-003 — Type-specific organization profiles (Agent / School / College)
-- 0046_agent_orgs.py
-- management_agents.py
+- test_bdm_002_migration.py
+- 0150_management_ledger.py
+- test_ccrm_010_migration.py
 - mgmt-024-applications.spec.ts
 - Common Causes and Fixes
 - Agent CRM — Frequently Asked Questions
@@ -946,19 +946,19 @@
 - test_tel_005_public.py
 - bdm-014 — My Day: implementation plan
 - nehn-010 — Training reports pack: student, trainer, course, completion, attendance (design)
-- Test commands (used by every task)
-- placement_pool.py
+- test_csc_001_migration.py
+- account.py
 - Upload a result as Draft (DOC-SCH-ACAD-002)
 - Claude Usage / Cache / Token-Efficient Testing
 - Next.js Bundling Guide
-- nehn-033 — Overseas student Overview / Progress page (design)
-- bdm-007 — Appointment outcome + meeting report (design)
-- AdminChecklistTemplatesPanel
+- test_rpt_002_overseas_reporting.py
+- 2026-10-05-bdm-007-meeting-reports-design.md
+- ccrm-018 — Document checklist templates — design
 - 0049_agent_students_crm.py
-- AssignmentSubmissionPanel
-- AdminBdmRow.test.tsx
-- School CRM Documentation — Final Review Report (S12)
-- test_nehn_022_razorpay_mode.py
+- AssignmentSubmissionPanel.tsx
+- AgentUniversitiesPanel.tsx
+- test_tel_010_migration.py
+- config.py
 - Sections
 - React Best Practices
 - 0179_application_fields.py
@@ -967,32 +967,32 @@
 - Report library
 - 8. Advanced Patterns
 - file-response-assessment-question.spec.ts
-- UniversityImportPanel.test.tsx
+- nehn-028-trainer-progress.spec.ts
 - bdm-018 School onboarding handover browser QA
 - ENH-007 — Browser QA Evidence, 2026-09-22
-- SchoolSkillBatchesPanel.tsx
+- test_trn_008_attendance.py
 - tel-008 — Exploratory browser QA — 2026-10-06
 - tel-026 — exploratory QA (2026-10-07)
 - ccrm-028 — Arrival and orientation tracking (design)
-- _AgentStudentRecordFields
+- AgentApprovalPanel
 - dtu-001 Direct Tie-ups Plan
 - 0070_bdm_appointments.py
-- 4. Design
+- test_upc_020_migration.py
 - DOC-RPT-001 Agency reports
 - Accessibility Rules
 - Deployment Decision Guide
 - Scripts (next/script)
-- secrets
+- AdminBdmHandover.test.tsx
 - test_sch_011_entitlements.py
 - ci-proxy.mjs
 - enh-021-internship.spec.ts
 - telecallerPerformance.ts
-- SchoolSkillAttendance.tsx
-- tel-022 — Daily + monthly telecaller targets (design)
-- headers
-- student_progress_report
-- Directives
-- Detection Rules
+- PUB-022_QA_2026-10-14.md
+- TelTargetSet
+- test_upc_033_matrix.py
+- test_ccrm_003_migration.py
+- Review Focus
+- Verify and publish results
 - Web Interface Guidelines
 - Feature Dependency Map
 - rec-012 — Resume text + rule-based skill extraction (design)
@@ -1002,13 +1002,13 @@
 - bdm-013 — Browser QA: BDM calendar (2026-10-06)
 - bdm-014 — Browser QA: My Day (2026-10-07)
 - bdm-015 — Browser QA (2026-10-07)
-- test_bdm_007_migration.py
+- 3. Design
 - bdm-019 — Browser QA (2026-10-07)
 - bdm-024 — Browser QA (2026-10-07)
-- Runtime Selection
+- AGENTS.md
 - rec-003 Exploratory QA
-- rec-029 Campus recruitment drives — exploratory browser QA (2026-10-11)
-- test_ccrm_001_dashboard_tiles.py
+- REC-029_EXPLORATORY_QA_2026-10-11.md
+- has_permission
 - tel-005 Exploratory QA
 - tel-013 — exploratory browser QA (2026-10-07)
 - AL13 lifecycle move sends no per-lead alert
@@ -1016,27 +1016,27 @@
 - candidate_resumes.extracted_text/extraction_json (migration 0135)
 - Responsive Rules
 - rec-032-dashboard.spec.ts
-- School CRM Demo — Preparation Checklist {#p-school-crm-01-prep-checklist}
+- Tasks (TDD: RED → GREEN → REFACTOR per task)
 - Runtime Selection
 - Use Activity Component for Show/Hide
 - Avoid Duplicate Serialization in RSC Props
 - Parallel Data Fetching with Component Composition
 - csc-003 — Counselor resends the link and fixes details on a pending walk-in account (design)
 - mgmt-030 — Business health score: exploratory QA (2026-10-14)
-- ccrm-017 — Student journey stage for direct students (design)
-- AgentApplicationEnrollment
-- ccrm-046 — Counselor creates and manages multiple applications for a student (design)
+- test_ccrm_037_migration.py
+- test_ccrm_041_journey.py
+- sys
 - nehn-017 — HR access to permitted student progress, attendance and documents, plus HR reports (design)
-- UserPermissionOverrideIn
+- tel-023-performance.spec.ts
 - 0119_recruiter_meetings.py
 - 0133_interview_management.py
-- test_agn_001_prefix.py
+- create_user
 - async-cheap-condition-before-await.md
 - Prefer Statically Analyzable Paths
-- Task 3b: Close the tenant-escalation path in `PATCH /auth/me` (**needs the user's approval first**)
+- Test Rewrite Plan
 - UX Reference Register
 - test_sch_004_career_guidance.py
-- test_sch_005_psychometric_assessment.py
+- 2026-10-05-bdm-017-lead-attribution.md
 - bdm-019 Agent handover browser QA
 - bdm-020 — browser QA log (2026-10-06)
 - bdm-022 — Browser QA (2026-10-07)
@@ -1057,14 +1057,14 @@
 - Animate SVG Wrapper Instead of SVG Element
 - Use React DOM Resource Hints
 - Use after() for Non-Blocking Operations
-- test_tel_019_migration.py
+- 2026-10-05-bdm-004-organization-pipelines-design.md
 - enh-013-student-360.spec.ts
-- LiveSessionManagePanel.test.tsx
-- AgentReportsPanel.test.tsx
+- LiveSessionManagePanel
+- MeetingRequestForm
 - Role / Action Matrix
 - _safe_cell
 - Use useTransition Over Manual Loading States
-- rec-014 Resume full-text search — implementation plan
+- CandidateSearch
 - nehn-021-discount-authority.spec.ts
 - Edu Circle Icon Mark
 - agency.ts
@@ -1097,20 +1097,20 @@
 - bdm-002 — Browser QA, first pass (2026-10-03)
 - 6. User journeys / state machines
 - ENH-008 — independent exploratory browser QA (2026-09-22)
-- Spec deviations (recorded in the spec's §11 in Task 8)
+- AGN-008 — Agent Applications: Create, Edit, View and Change Status, With Application ID, Submission Date and Deadlines; Staff Sidebar Filters — Design
 - 0069_bdm_org_profiles.py
 - @playwright/test
-- MessagesSection
-- AgentApplicationDeposit.test.tsx
-- path
+- _store
+- AgentApplicationDetail
+- upc-033-commission-visibility.spec.ts
 - Overseas BDM CRM User Documentation — Implementation Plan (Phase 2)
 - location
-- rec-037-recruiter-reassign.spec.ts
+- upc-032-manager-reassign.spec.ts
 - students/__init__.py
 - trainers/__init__.py
 - entrypoint.sh
 - next-env.d.ts
-- setup.ts
+- ref_testing_library_jest_dom_vitest
 - architecture-avoid-boolean-props.md
 - architecture-compound-components.md
 - patterns-children-over-render-props.md
@@ -1197,15 +1197,15 @@
 - app_services_agent_tasks
 - app_services_bdm_pipeline
 - app_services_provisioning
-- rec-029-drives.spec.ts
+- PartnerCapital.test.tsx
 - upc-027-partner-onboarding.spec.ts
-- 5. Dependency graph and sequencing
-- Feature CNS-001
-- rec-032 — Recruiter dashboard + quick actions + one-click skill search (design)
+- bdm-010-travel.spec.ts
+- Scaling Strategy
+- Review Focus
 - 0186_lead_loss_capture.py
 - test_tel_007_intake.py
 - rec-034 — Recruiter/BDM performance per recruiter (design)
-- csc-001 — Student → counselor link (design)
+- bdm-007 — Appointment outcome + meeting report (design)
 - API requirements-dev.txt
 - apps_web_components_schoolchildoverview_formatdate
 - apps_web_lib_commissionterms_currencies
@@ -1224,171 +1224,175 @@
 - EVID-013 School Partnership Model brochure
 - DEC-SCOPE-078
 - bdm-002 Organization CRM
-- ENH-018 -- school activity feedback…
+- ENH-011 Skills Tracker Plan
 - web_app_controls
 - web_app_globals
 - web_components_programcatalogue_module
-- DocumentReview
+- ccrm-030 — Counselor reminder and trigger engine (design)
 - test_migration_0030_backfills_preexisting_school_student_via_downgrade_upgrade_cycle
-- before
-- SchoolSkillBatchesPanel.test.tsx
-- mgmt-020-bdm-dashboards.spec.ts
-- ENH-014 Multi-Channel Notifications Plan
+- nehn-035-university-logos.spec.ts
+- 0105_university_master.py
+- 0139_recruiter_contracts.py
 - test_adm_001_admin_crud.py
 - rec-021 Interview feedback — exploratory browser QA (2026-10-11)
 - Review focus
-- tel-025 — Telecaller deactivation, team move and bulk reassignment — design
+- Task 2: Route, gate, schemas, dates (security and contract)
 - rec-033 — Recruiter performance dashboard (design)
-- 0047_agent_org_staff.py
+- safeNextPath
 - rec-035 — Management dashboard, recruiter business view (design)
 - upc-030-university-view.spec.ts
-- 3. Decisions and questions
-- csc-002 — Counselor creates a walk-in student account; the welcome email is sent (design)
+- REC-035_EXPLORATORY_QA_2026-10-11.md
+- File Structure
 - STU-001 — Trainer/batch slot enrolment
 - ccrm-031 — Overdue escalation to the Overseas Admin (design)
 - nehn-029 — Live class reschedule and cancel (design)
 - tel-019-meeting-requests.spec.ts
-- Competitor Insights: Creative Brief Input
+- rec-025 Recruiter Call Logging Implementation Plan
 - graphify reference: query, path, explain
 - Option A - DigitalOcean App Platform
 - bdm-025 Deactivation and Portfolio Handover Plan
-- QA Report: Study in Dubai test creatives
+- rec-036 — IT-training ↔ recruiter integration (design)
 - mgmt-012 — Marketing budget, spend & ROI — exploratory QA, 2026-10-13
 - TelecallerAssignmentPanel.test.tsx
 - Deduplicate Global Event Listeners
-- Extract to Memoized Components
-- 0078_enquiry_lead_record.py
-- AdminUserManagementPanel.test.tsx
-- AgentApplicationEnrollment.test.tsx
+- ccrm-014 — Application sub-status (CC1) — design
+- ccrm-040 — Archive instead of delete; overseas consent capture — design
+- nehn-020 — Retire student-facing invoices (design)
+- 0098_bdm_agent_link.py
 - ENH-031 — Searchable reference pickers: design
 - rec-022 — Offer management (design)
 - TRN-001 — My Batches
 - 2026-10-28-nehn-017-hr-student-access.md
-- mgmt-005 — Automatic ledger sources — design
+- 0140_joining_management.py
 - ccrm-039 — Student finance tab on the counselor's student 360 (design)
 - 2. Decisions (ML1–ML16)
 - 0003_operational_workflows.py
 - 0109_university_duplicates.py
 - 0176_document_status.py
-- AgentApplicationOffer.test.tsx
-- AgentApplicationVisa.test.tsx
-- Angle Writer
-- Audience Builder
-- Brand Reader
-- Budget Pacer
-- Buyer Language Miner
-- Catalog & Commerce
-- Competitor Ad Teardown
-- Copy Formulas
+- 0154_salaries.py
+- rec-011 — Candidate skill profile (plan)
+- InvestmentCreate
+- AgentApplicationEnrollment
+- CapitalSharesForm
+- enh-027-psychometric-results.spec.ts
+- enh-030-daily-attendance.spec.ts
+- upc-009-university-meetings.spec.ts
+- upc-029-global-dashboard.spec.ts
+- nehn-040 — Student ID coverage and lookup (design + plan)
 - ENH-021 / ENH-026 — Browser QA record (2026-09-28)
-- Creative Director
-- Daily Auditor
-- Fatigue Detector
-- Lead-Gen Builder
-- Media Buyer
-- Pain to Promise
-- Performance Analyst
-- Pixel & Conversions
+- 0037_school_skills.py
+- 0073_bdm_pipeline.py
+- 0076_tel_catalogue.py
+- 0079_bdm_mous.py
+- 0101_country_master.py
+- 0107_candidates.py
+- 0115_university_visits.py
+- 0122_candidate_skills.py
 - 0190_overdue_escalation.py
-- 6. Execution plan — waves, parallel lanes, same-session bundles
-- payments.py
-- AGN-015 — Exploratory browser QA (first pass, 2026-10-03)
+- 0126_partnership_tasks.py
+- Payment
+- AgentShortlistPanel.tsx
 - mgmt-011 — Salary management + employee cost ratio — exploratory browser QA (2026-10-12)
-- 6. Frontend
-- rec-007 — Job Requirement (`jobs` extension) (design)
-- upc-003 — Global University Master (design + plan)
-- ccrm-010 — Internal notes on an overseas student (counselling history) (design)
+- 0127_university_agreements.py
+- 0129_university_commission_terms.py
+- _columns
+- 0153_management_tasks.py
 - ccrm-009 — Counselor student 360 page (design)
-- bdm
 - Overseas BDM CRM Documentation — Progress Tracker
-- ccrm-013 — Application fields and counselor-editable dates (design)
-- ccrm-004 — Counselor activity logging on leads (design)
+- 0157_direct_tieups.py
+- telecallerCalls.ts
 - mgmt-006 — Abroad Education revenue dashboard — exploratory browser QA (2026-10-13)
 - mgmt-013 Accounts dashboard — exploratory browser QA (2026-10-12)
 - mgmt-017 — Training dashboard: exploratory QA (2026-10-13)
-- ccrm-043 — Counselor "My students" with Source filter and search (design)
+- 0158_social_proof.py
 - ccrm-052 — University-wise report: deposits, visas and drill-down (design)
-- ccrm-053 — Counselor performance: Overseas Admin view, intake filter, Overseas/IT lead split (design)
-- VISA screens
-- Creative Review v1: EduSphere test ads vs live competitor ads
-- v2 QA: Canva-built FB ad + Reel (2026-10-27)
-- Suspense Boundaries
+- 0160_management_plans.py
+- 0161_management_meetings.py
+- .__table_args__
+- LeadStageMove
+- MarketingBudgetsIn
 - 0185_document_sensitivity.py
-- _require_report_reader
-- Departments
+- AgentApplicationCreatePanel.test.tsx
+- AgentRegistrationStatus.test.tsx
 - next-best-practices/SKILL.md
-- API §12U Lead messages — WhatsApp click-to-chat (tel-013)
+- AgentTaskForm.test.tsx
 - API §12AY Recruiter follow-ups (rec-024)
 - trn-007-grading.spec.ts
 - bdm-011 — Exploratory browser QA (2026-10-06)
 - bdm-025 — Exploratory browser QA, pass 1 (no code changes) — 2026-10-06
 - agn-006-counseling.spec.ts
-- Review Focus
+- UniversityDocuments.test.tsx
 - mgmt-028 — Management to-do + staff "Management tasks" — design
-- mgmt-017 — Training & trainer dashboard (design)
-- User
-- csc-005 — Overseas Admin views and reassigns a student's counselor (design)
-- make_telecaller
+- Salaries.test.tsx
+- AuditLog
+- assign_student_counselor
+- make_tl_manager
 - agn-015-student-journey.spec.ts
 - ccrm-008 — Convert lead to student (one click, prefilled) — design
 - rec-036 exploratory QA — 2026-10-11
 - nehn-007-user-overrides.spec.ts
-- ccrm-033 — Reassignment with a logged reason (design + plan)
+- upc-003-university-master.spec.ts
 - api/[...path]/route.ts
-- nehn-022 — Razorpay test/live mode switch and go-live checklist (design)
-- nehn-036 — Course/program icons (design)
-- nehn-041 — Unified admin/operations student search (design + plan)
+- mode
+- CourseIn
+- upc-010-university-visits.spec.ts
 - tel-022-targets.spec.ts
-- ccrm-047 — Intake Month+Year picker (design)
+- LeadQualificationForm.tsx
 - graphify reference: add a URL and watch a folder
 - graphify reference: commit hook and native CLAUDE.md integration
-- Skills Audit: Study in Dubai ad production test
+- upc-014-university-agreements.spec.ts
 - 0064_application_deposits.py
-- SchoolSkillEnrolments
+- upc-031-partnership-reports.spec.ts
 - nehn-032-certificate-signatures.spec.ts
-- AGN-014 — Browser QA (first pass, 2026-10-02)
+- MVP_FEATURES.md
 - Issues
 - AGN-021 — View Staff Activity: Browser QA (2026-10-01)
 - mgmt-001 — exploratory QA (2026-10-12)
-- enh-028-bulk-entry.spec.ts
+- ref_node_fs_promises
 - bdm-016 — Browser QA (2026-10-07)
 - mgmt-007 — IT Training revenue dashboard — exploratory browser QA (2026-10-13)
 - nehn-018-student-payment-access.spec.ts
 - mgmt-022 — Exploratory QA (School dashboard + school money), 2026-10-14
-- bdm-023 — Management dashboard: browser QA (2026-10-07)
+- IT Division
 - mgmt-004 — Management ledger — exploratory browser QA (2026-10-12)
 - detailMessage
-- ccrm-003 — Counselor lead actions: stage, next action, follow-ups (design + plan)
+- telecallerFollowUps.ts
 - ccrm-012 — Counselor quick search and list filters (design)
-- nehn-042 — Audit log search and filters (design)
+- AGN-012 — Browser QA (first pass, 2026-10-02)
 - ccrm-049 — Payment receipt / proof upload on the student 360's Finance tab (design)
 - Frontend Architecture and Design Analysis
 - pending.md
 - nehn-024-submission-files.spec.ts
-- MCP and Integration Status
+- ccrm-002 — Lead notes (design + plan)
 - .dispatch
-- Next.js Font Optimization Guide
-- test_tables_match_the_model
+- 0004_uuid_identifiers.py
+- 0041_student_master_fields.py
 - ccrm-022-sensitive-documents.spec.ts
 - server-hoist-static-io.md
 - RAID Log (Risks, Assumptions, Issues, Dependencies)
 - mgmt-003 — Business snapshot: exploratory QA (2026-10-12)
-- 7.8 Visa
-- bdm-008 — Exploratory browser QA and Playwright (2026-10-06)
+- 0051_school_bulk_uploads.py
+- 0068_bdm_trips.py
 - ENH-009 — browser QA record (2026-09-22)
 - ENH-027 — Browser QA record (2026-09-28)
-- mgmt-034 — Confidentiality + permission sweep: exploratory QA (2026-10-14)
-- rec-004 Company contacts — Implementation Plan
-- 3. Current state (verified on `origin/main` @ b47e7a80)
-- reel-script.md
-- storyboard.md
+- mgmt-033 Drill-down Navigation QA
+- RecContactIn
+- 0084_bdm_onboarding.py
+- 0093_bdm_meeting_requests.py
+- 0106_rec_companies.py
+- 0108_university_contacts.py
+- 0111_university_pipeline.py
+- 0116_recruiter_follow_ups.py
+- 0118_recruiter_calls.py
 - graphify reference: GitHub clone and cross-repo merge
 - EduSphere School CRM — Administrator Manual
+- 0124_university_documents.py
 - CLAUDE.md
 - extraction-spec.md
 - bdm-crm/screenshot-index.md
 - 2026-10-19-csc-001-student-counselor-link.md
 - 2026-10-22-ccrm-014-application-sub-status.md
+- 0134_application_screenings.py
 - app
 - app_api
 - app_api_agent_students
@@ -1449,34 +1453,120 @@
 - apps_web_lib_commissionledger_currencies
 - apps_web_lib_coursemaster_currencies
 - pdf_text
+- 0144_commission_receipts.py
+- 0145_university_onboarding.py
+- 0148_recruitment_drives.py
+- 0151_investments.py
+- 0152_management_discussions.py
+- 0155_finance_balances.py
+- 0156_marketing_budgets.py
+- 0159_partner_capital.py
+- 0170_application_outcomes.py
+- 0171_application_offers.py
+- 0173_checklist_templates.py
+- 0177_visa_lifecycle.py
+- 0178_offer_decisions_deposits.py
+- 0180_application_checklists.py
+- 0188_student_document_requests.py
+- 0204_certificate_workflow.py
+- BdmDailyReportOut
+- CounselorStudentUpdate
+- 4. Backend units
+- Decimal
+- employer-register/page.tsx
 - i18n.ts
 - services/counselor_reminders.py
+- accept/page.tsx
+- BatchRosterPanel.tsx
+- TrainerWorkflowForm.tsx
+- mgmt-006-abroad-revenue.spec.ts
+- rec-038-recruiter-access.spec.ts
+- AGN-024 — Agent signup KYC documents: verification evidence (2026-10-17)
+- mgmt-003 — Business snapshot + `management_metrics` foundation (design)
+- 0044_skill_india_certification.py
+- 0052_agent_staff_permissions.py
+- 0057_agent_applications.py
+- 0059_agent_tasks.py
+- 0062_agent_offer_details.py
+- 0077_bdm_tasks_followups.py
+- 0081_lead_stage_pipeline.py
+- 0097_lead_message_email.py
+- 0112_company_pipeline.py
+- 0128_university_milestones.py
+- 0143_university_probability.py
+- 0146_interview_feedback.py
+- 0147_recruiter_revenue.py
+- 0162_school_values.py
+- 0166_application_codes.py
+- 0168_application_sub_status.py
+- 0172_status_history_reason.py
+- 0175_counselor_tasks.py
+- 0183_offer_conditions.py
+- 0189_counselor_reminders.py
+- 0203_application_interviews.py
 - fastapi_staticfiles
 - starlette_exceptions
+- 0215_payment_discount_ledger.py
+- FinanceBalancesIn
+- BdmDailyReportSubmit
+- MeetingRequestCreate
+- PartnershipMapTotals
+- _salary_money
+- SchoolDocumentStatusesOut
+- nehn-017-hr-students.spec.ts
+- nehn-031-certificate-workflow.spec.ts
+- rec-019-shares.spec.ts
+- 7.10 Payments
+- 7.12 Notifications
+- ENH-013 — Browser QA and fixes (2026-09-23)
+- mgmt-031 — Partner home dashboard: exploratory QA (2026-10-14)
+- AgentDocumentRequestCreate
+- GlobalEducationPipelineOut
+- rec-013-find-candidates.spec.ts
+- bdm-012 Appointment reminders browser QA
+- _candidate_email
+- _contract_fee
+- _enquiry_date
+- _lead_appt_link
+- _linkedin
+- _places
+- _revenue_amount
+- _share_pct
+- _reassign_reason
+- _target_values
+- alembic
+- ref_next_headers
+- ref_next_image
+- ref_next_link
+- ref_next_navigation
+- ref_next_script
+- ref_next_server
+- ref_react_dom_server
+- ref_vitest_config
 
 ## God Nodes (most connected - your core abstractions)
-1. `User` - 3715 edges
-2. `AuditLog` - 1303 edges
+1. `User` - 3724 edges
+2. `AuditLog` - 1320 edges
 3. `client_for()` - 967 edges
 4. `sendJson()` - 712 edges
-5. `vitest` - 640 edges
+5. `vitest` - 642 edges
 6. `serverApi()` - 631 edges
-7. `react` - 547 edges
-8. `OverseasApplication` - 545 edges
-9. `accessUnavailable()` - 531 edges
-10. `@testing-library/react` - 487 edges
+7. `PortalShell()` - 620 edges
+8. `react` - 549 edges
+9. `OverseasApplication` - 545 edges
+10. `accessUnavailable()` - 532 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Task 4: Migrated Master (real 0046 backfill) and the §6 matrix rows` --references--> `_backfill()`  [INFERRED]
-  docs/superpowers/plans/2026-10-02-agn-014-commission-master-reports.md → apps/api/alembic/versions/0046_agent_orgs.py
 - `2.3 BDM list (`web/components/AdminBdmPanel.tsx`, `AdminBdmRow.tsx`)` --references--> `ensure_admin()`  [INFERRED]
   docs/bdm-crm/discovery/03-access-admin-touchpoints.md → apps/api/app/api/admin.py
-- `Global Constraints` --references--> `ensure_admin()`  [INFERRED]
-  docs/superpowers/plans/2026-10-06-bdm-025-deactivation-handover.md → apps/api/app/api/admin.py
 - `Global Constraints` --references--> `ensure_admin()`  [INFERRED]
   docs/superpowers/plans/2026-10-06-tel-003-lead-record.md → apps/api/app/api/admin.py
 - `Builder's calls (the owner pre-authorised recommended defaults for this session)` --references--> `ensure_admin()`  [INFERRED]
   docs/superpowers/specs/2026-10-22-ccrm-002-lead-notes-design.md → apps/api/app/api/admin.py
+- `Post-merge verification (2026-10-01, merged build `a1ae9f4`, `agn004` images rebuilt 04:28/04:29 UTC)` --references--> `users()`  [INFERRED]
+  docs/quality/AGN-004_BROWSER_QA_2026-10-01.md → apps/api/app/api/admin.py
+- `1. Scope` --references--> `users()`  [INFERRED]
+  docs/superpowers/specs/2026-10-02-agn-008-agent-applications-design.md → apps/api/app/api/admin.py
 
 ## Import Cycles
 - 3-file cycle: `apps/api/app/services/partnership_tasks.py -> apps/api/app/services/university_visits.py -> apps/api/app/services/partnership_universities.py -> apps/api/app/services/partnership_tasks.py`
@@ -1648,251 +1738,251 @@
 - **Partnership metric dashboards reconciling figures** — docs_superpowers_specs_2026_10_09_upc_018_student_funnel_performance_design_upc_018_student_opportunity_funnel_university_performance_design, docs_superpowers_specs_2026_10_09_upc_021_partnership_targets_design_upc_021_monthly_partnership_targets_vs_actual_design, docs_superpowers_specs_2026_10_10_upc_022_partnership_dashboard_design_upc_022_partnership_manager_dashboard_design, docs_superpowers_specs_2026_10_10_upc_029_global_partnership_dashboard_design_upc_029_complete_global_partnership_dashboard_design, docs_superpowers_specs_2026_10_10_upc_028_partnership_health_design_upc_028_partnership_health_score_design [INFERRED 0.85]
 - **Vercel server-side performance rules** — _agents_skills_vercel_react_best_practices_rules_server_after_nonblocking_rule, _agents_skills_vercel_react_best_practices_rules_server_cache_lru_rule, _agents_skills_vercel_react_best_practices_rules_server_cache_react_rule, _agents_skills_vercel_react_best_practices_rules_server_dedup_props_rule, _agents_skills_vercel_react_best_practices_rules_server_hoist_static_io_rule, _agents_skills_vercel_react_best_practices_rules_server_no_shared_module_state_rule, _agents_skills_vercel_react_best_practices_rules_server_parallel_fetching_rule, _agents_skills_vercel_react_best_practices_rules_server_parallel_nested_fetching_rule, _agents_skills_vercel_react_best_practices_rules_server_serialization_rule [INFERRED 0.85]
 
-## Communities (1450 total, 232 thin omitted)
+## Communities (1572 total, 323 thin omitted)
 
 ### Community 0 - "schemas.py"
 Cohesion: 0.00
-Nodes (1527): AsyncSession, get, UUID, school_activity(), mgmt-004 (spec ML1-ML16): the management ledger routes. Finance tier only…, mgmt-029 (spec MM1-MM14): management meetings + minutes chain. `router` is the…, _area_state(), _averages() (+1519 more)
+Nodes (894): _performers(), upc-009 (DEC-SCOPE-145, spec MG1/MG4/MG9): university meeting values -- the §7…, AbroadRevenueBreakdown, AbroadRevenueKind, AbroadRevenueOut, AbroadRevenueRow, AccountsBalances, AccountsHead (+886 more)
 
 ### Community 1 - "serverApi"
 Cohesion: 0.01
-Nodes (805): metadata, MyManagementDecisionsPage(), NEXT, MyManagementTasksPage(), AccountPasswordPage(), metadata, NEXT, AdminTravelApprovalsPage() (+797 more)
+Nodes (895): AccountPasswordPage(), metadata, NEXT, NEXT, AdminTravelApprovalsPage(), SuperAdminBdmsPage(), columns(), getRows() (+887 more)
 
 ### Community 2 - "OverseasStudent360Page.tsx"
 Cohesion: 0.01
-Nodes (175): Test caveats, Validation, EmployerDashboardPage(), EmployerProfile, Page(), Page(), AgentStudentProfileCard(), qualificationText() (+167 more)
+Nodes (227): Page(), Page(), Page(), Page(), Page(), Page(), Page(), Page() (+219 more)
 
-### Community 3 - "sqlalchemy"
-Cohesion: 0.00
-Nodes (202): alembic, _is_uuid(), _quoted(), upgrade(), _derive_grade_level(), upgrade(), Column, _timestamps() (+194 more)
+### Community 3 - "sqlalchemy_dialects"
+Cohesion: 0.02
+Nodes (6): _derive_grade_level(), upgrade(), _inspector(), upgrade(), upgrade(), sqlalchemy_dialects
 
 ### Community 4 - "ccrm-036 — Counselor's own performance report (design)"
 Cohesion: 0.25
 Nodes (7): Alternatives considered, API (§12FV), ccrm-036 — Counselor's own performance report (design), Regression risks, Requirement (backlog, verbatim scope), Security (Phase 3), Tests
 
-### Community 5 - "formatCalendarDate"
-Cohesion: 0.01
-Nodes (358): Careers(), ManagementDrillPage(), message(), ManagementFunnelPage(), ManagementHealthPage(), LedgerEntryPage(), ManagementLedgerPage(), Scholarships() (+350 more)
-
-### Community 6 - "test_rec_006_migration.py"
-Cohesion: 0.04
-Nodes (65): do_run_migrations(), run_async_migrations(), run_migrations_online(), _config(), isolated_db(), fixture, parametrize, rec-006 -- migration 0104_skills_master (spec §2; AC1). Round trip, seed and… (+57 more)
-
-### Community 7 - "pytest"
-Cohesion: 0.01
-Nodes (632): alembic_script, get_settings(), model_validator, Settings, isolated_db(), asyncio, fixture, AGN-024 -- migration 0164_agent_org_kyc (DEC-SCOPE-224). Round trip and the… (+624 more)
-
-### Community 8 - "PortalPage.tsx"
-Cohesion: 0.01
-Nodes (194): AdminStudentAccessPanel(), save(), detailMessage(), AdminTrainingPanel(), AdminTrainingTiles(), rupees(), show(), TrainingTiles (+186 more)
-
-### Community 9 - "bdmAppointments.ts"
-Cohesion: 0.01
-Nodes (540): BdmAppointmentPage(), BdmAppointmentActions(), act(), refetch(), reload(), DONE, Group, BdmAppointmentDetail() (+532 more)
-
-### Community 10 - "AgentStaffActivity"
-Cohesion: 0.09
-Nodes (26): AgentStaffActivity(), LoadFailed, activityLabel(), Task 4: Staff Activity shows counseling saves (AC06, C7), AGN-021 View Staff Activity Implementation Plan, File Structure, Global Constraints, Self-review (done while writing) (+18 more)
-
-### Community 11 - "paid"
-Cohesion: 0.06
-Nodes (35): on_payment_paid(), payment_available(), §4.5 (AC2): the paid hook's deposit step. The caller (`payments._mark_paid`)…, AC6: both keys are needed to open a Razorpay order…, paid(), AGN-011 Deposit collection through Razorpay — Implementation Plan, Global constraints, Review focus (+27 more)
-
-### Community 12 - "managementDiscussions.ts"
+### Community 5 - "managementLedger.ts"
 Cohesion: 0.02
-Nodes (208): metadata, NEXT, DiscussionPage(), ManagementDiscussionsPage(), hasStarted(), MeetingPage(), ADMIN_ROLES, AdminCounselorTasksPage() (+200 more)
+Nodes (230): ManagementDrillPage(), message(), LedgerCategoriesPage(), EditLedgerEntryPage(), LedgerEntryPage(), NOTICES, NewLedgerEntryPage(), ManagementLedgerPage() (+222 more)
+
+### Community 6 - "pytest"
+Cohesion: 0.03
+Nodes (101): alembic_config, parametrize, bdm-001 browser QA-05 (owner, 2026-10-02): a BDM manager's set-password link…, test_set_password_url_by_role(), _config(), isolated_db(), fixture, bdm-007 -- migration 0072_bdm_meeting_reports (spec §4). Isolated database per… (+93 more)
+
+### Community 7 - "uuid"
+Cohesion: 0.01
+Nodes (481): alembic_script, _has_table(), upgrade(), _config(), asyncio, AGN-015 -- migration 0067_audit_entity_index (spec §6): one additive index, no…, test_chains_after_0066_and_is_the_single_head(), test_index_exists_in_the_shared_database() (+473 more)
+
+### Community 8 - "PortalPage"
+Cohesion: 0.01
+Nodes (229): Test caveats, Validation, Page(), Page(), Page(), Page(), Page(), Page() (+221 more)
+
+### Community 9 - "bdmOrganizations.ts"
+Cohesion: 0.01
+Nodes (368): BdmAppointmentPage(), AdminSchoolCreatePanel(), submit(), detailMessage(), Prefill, prefillOf(), AdminSchoolOnboarding(), Action (+360 more)
+
+### Community 10 - "agent_team.py"
+Cohesion: 0.04
+Nodes (118): _commit_staff_change(), create_staff_login(), deactivate(), deactivate_staff_login(), _deliver(), edit_staff(), invite(), _locked_active_org() (+110 more)
+
+### Community 11 - "CounselorTeamPerformance.test.tsx"
+Cohesion: 0.03
+Nodes (118): AdminCounselorPerformancePage(), NO_SHARE, PerformanceFilters(), Tiles(), cell(), CounselorTeamPerformance(), IntakeFilter(), COUNTS (+110 more)
+
+### Community 12 - "formatDate.ts"
+Cohesion: 0.01
+Nodes (356): Message(), metadata, MyManagementDecisionsPage(), NEXT, Message(), metadata, MyManagementTasksPage(), NEXT (+348 more)
 
 ### Community 13 - "partnership/universities/[id]/page.tsx"
 Cohesion: 0.01
-Nodes (592): AgreementsPage(), CommercialTermsPage(), CoursesPage(), STATUSES, DocumentsPage(), countryRows(), dayText(), GlobalDashboardPage() (+584 more)
+Nodes (534): Detail, UniversityPage(), AgreementsPage(), CommercialTermsPage(), CoursesPage(), STATUSES, DocumentsPage(), Choice() (+526 more)
 
-### Community 14 - "Base"
+### Community 14 - "Job"
 Cohesion: 0.01
-Nodes (681): APPLICATION_STATUSES, downgrade(), upgrade(), create_employer_job(), get_employer_profile(), _job_out(), list_employer_interviews(), list_employer_jobs() (+673 more)
+Nodes (579): APPLICATION_STATUSES, create_employer_job(), get_employer_profile(), _job_out(), list_employer_interviews(), list_employer_jobs(), list_shared_profiles(), list_shortlist() (+571 more)
 
 ### Community 15 - "test_adm_003_batch_creation.py"
 Cohesion: 0.36
 Nodes (16): _batch_payload(), _create_admin(), _create_program(), _create_trainer(), _login(), asyncio, ADM-003 -- Batch creation and trainer assignment. The base codebase's…, ADM-003-AC02: capacity exceeding 20 rejected. (+8 more)
 
 ### Community 16 - "bdmDailyReports.ts"
-Cohesion: 0.14
-Nodes (22): BdmDailyReport(), reread(), saveComment(), submit(), COMMENT_MAX, commentUrl(), DailyCount, DailyReport (+14 more)
+Cohesion: 0.11
+Nodes (29): BdmDailyReport(), reread(), saveComment(), submit(), COMMENT_MAX, commentUrl(), DailyCount, DailyReport (+21 more)
 
-### Community 17 - "db_now"
+### Community 17 - "User"
 Cohesion: 0.01
-Nodes (512): counselor_report(), _export(), Filters, my_performance(), AsyncSession, get, Response, UUID (+504 more)
+Nodes (641): organization_activities(), V5: every BDM's activities on the organization, for anyone who can read it (out…, my_dashboard(), AsyncSession, get, _counselor(), P1: the overseas counselor only -- checked before the filters, so everyone else…, export() (+633 more)
 
-### Community 18 - "bdm_context"
-Cohesion: 0.02
-Nodes (223): book_appointment(), cancel_appointment(), _check_overlap(), complete_appointment(), confirm_appointment(), _contact_of(), create_appointment(), _envelope() (+215 more)
+### Community 18 - "BdmMeetingRequest"
+Cohesion: 0.05
+Nodes (81): accept_request(), _deciding(), decline_request(), file_request(), get_request(), inbox(), my_requests(), AsyncSession (+73 more)
 
-### Community 19 - "recruiterCompanies.ts"
+### Community 19 - "sendRequest"
 Cohesion: 0.01
-Nodes (284): HrShortlistPanel(), JobRow, ShortlistRow, bodyOf(), CHECKS, Draft, draftOf(), money() (+276 more)
+Nodes (351): submit(), ApplicationArrivalPanel(), load(), ArrivalForm(), save(), FormProps, Props, DetailList() (+343 more)
 
-### Community 20 - "mk_doc"
+### Community 20 - "agn001_helpers.py"
 Cohesion: 0.02
-Nodes (263): mk_doc(), AGN-009 test helpers: an agency with a Master, two staff (one with Verify), a…, `record` -> an AGN-009 row (agent_student_id, plus student_id when the record…, assign_audits(), assign_world(), fresh(), history_notes(), notices() (+255 more)
+Nodes (295): expire_offers(), D3: the current offer of an application at stage `offer` (no outcome, or…, AGN-003 test helpers: an agency student with an application and one document…, mk_school_student(), AGN-008 test helpers: an agency with staff, a student with no login, a linked…, A School-affiliated student (no login) for a DEC-SCOPE-018 bridged row --…, AGN-009 test helpers: an agency with a Master, two staff (one with Verify), a…, case_of() (+287 more)
 
-### Community 21 - "partnership_metrics.py"
-Cohesion: 0.03
-Nodes (100): ranking(), PF7/PF8: the ranked rows (active universities in scope that are partners or…, upc-009 (DEC-SCOPE-145): a meeting with a university (§7). Never deleted:…, UniversityMeeting, add_months(), The months a plan can be created for: this IST month up to 12 ahead., window(), _assignees() (+92 more)
+### Community 21 - "test_upc_018_funnel.py"
+Cohesion: 0.17
+Nodes (31): mk_paid_deposit(), A deposit captured through a paid payment, then moved to `status` with the…, _counts(), asyncio, upc-018 -- the §17/§18 funnel counts (spec PF2-PF4, Appendix B F3/F5-F9;…, EVID-020 §17: 45 interested -> 12 applications -> 8 offers -> 5 visa approvals…, test_applications_created_in_the_period_of_every_owner_kind(), test_constant_query_count() (+23 more)
 
 ### Community 22 - "client_for"
 Cohesion: 0.02
-Nodes (291): client_for(), A separate ASGI client with its own cookie jar, so two users can be in flight…, mk_school_student(), A School-affiliated student (no login) for a DEC-SCOPE-018 bridged row --…, case_of(), count_cases(), mk_case(), AGN-012 test helpers: the AGN-009 world (a Master, a Verify staff member who is… (+283 more)
+Nodes (269): client_for(), A separate ASGI client with its own cookie jar, so two users can be in flight…, asyncio, parametrize, AGN-004 G2/G3 -- staff keep AGN-002's reach: Team and Commissions stay Master-…, test_me_reports_the_member_role(), test_overseas_admin_cannot_approve_a_staff_user(), test_staff_are_refused_master_only_pages() (+261 more)
 
-### Community 23 - "Status: COMPLETE"
-Cohesion: 0.05
-Nodes (123): ADM-001 Admin users/programs management, ADM-002 Admin leads, ADM-003 Admin batches (capacity<=20), ADM-004 Admin user directory filters, ADM-005 Admin enrolment approve/reject, ADM-006 Certificate issuance, ADM-007 Placement candidates/jobs, ADM-008 HR Team workspace (+115 more)
+### Community 23 - "AgentOrg"
+Cohesion: 0.04
+Nodes (92): _audit(), _doc(), list_kyc_documents(), my_registration(), _own_master_org(), AsyncSession, get, post (+84 more)
 
 ### Community 24 - "StudentMasterFields"
-Cohesion: 0.03
-Nodes (105): CareerPreferencesUpdate, CareerRecordFields, CareerRecordUpdate, _clean_list(), The four career fields a Career Counsellor may write (DEC-SCOPE-029 item 2).…, All ten ENH-025 value fields, validated at the API boundary. Only keys the…, ENH-026 body fields shared by create and update. extra="forbid" (A10): ids,…, PATCH body. `expected_status` is an optional precondition (spec §5.1 step 5):… (+97 more)
+Cohesion: 0.04
+Nodes (74): CareerPreferencesUpdate, The four career fields a Career Counsellor may write (DEC-SCOPE-029 item 2).…, All ten ENH-025 value fields, validated at the API boundary. Only keys the…, StudentMasterFields, _msg(), parametrize, ENH-025 -- StudentMasterFields / CareerPreferencesUpdate boundary rules (spec…, test_career_update_accepts_only_its_four_fields() (+66 more)
 
 ### Community 25 - "agentApplications.ts"
-Cohesion: 0.03
-Nodes (91): AgentApplicationDetail(), editFailed(), failed(), reload(), saved(), sectionSaved(), Props, AgentApplicationEditForm() (+83 more)
+Cohesion: 0.04
+Nodes (92): AgentApplicationCreatePanel(), submit(), OPTIONAL, Props, AgentApplicationEditForm(), FIELDS, Key, Props (+84 more)
 
-### Community 26 - "services/partnership_events.py"
-Cohesion: 0.11
-Nodes (43): add_event(), cancel_event(), edit_event(), get_event(), AsyncSession, get, patch, post (+35 more)
+### Community 26 - "RecruiterInterviewItem.tsx"
+Cohesion: 0.05
+Nodes (80): RecruiterApplicationInterviews(), ContactOption, RecruiterInterviewForm(), send(), submit(), Values, Failure, failureOf() (+72 more)
 
 ### Community 27 - "bdm-010 — BDM Travel Requests, Approval, Modes, Costs, Expenses — Design"
-Cohesion: 0.10
-Nodes (20): bdm-010 BDM Travel Design Spec, 10. Documentation (updated in the same change), 11. Completion gates, 12.1 API and interface design, 12. Revision 2 — skill reviews (2026-10-03), 1. Scope, 3. Decisions, 4.1 `bdm_trips` (+12 more)
+Cohesion: 0.11
+Nodes (18): 10. Documentation (updated in the same change), 11. Completion gates, 12.1 API and interface design, 12.3 Security and hardening — threat model, 12. Revision 2 — skill reviews (2026-10-03), 1. Scope, 3. Decisions, 4.1 `bdm_trips` (+10 more)
 
 ### Community 28 - "field_validator"
-Cohesion: 0.04
-Nodes (19): _career_notes(), _clean_multiline_text(), _funding_notes(), FundingRecordFields, _InternshipFields, _no_control_characters(), csc-002/003: trimmed and lower-cased (the users column is compared as stored);…, SCH-004's own rule, unchanged (any value, str() then strip, no length cap) --… (+11 more)
+Cohesion: 0.01
+Nodes (166): The stored code for a review route's input (a pre-0174 outcome maps to its new…, review_status(), AgentApplicationCreate, AgentApplicationEnrollment, _AgentApplicationFields, AgentApplicationOffer, AgentApplicationStatus, AgentApplicationUpdate (+158 more)
 
-### Community 29 - "bdmOrganizations.ts"
-Cohesion: 0.02
-Nodes (165): BdmActivityCounts(), BdmActivityDay(), read(), BdmActivityForm(), body(), submit(), ContactOption, Draft (+157 more)
+### Community 29 - "bdmActivities.ts"
+Cohesion: 0.04
+Nodes (100): BdmActivityCounts(), BdmActivityDay(), read(), BdmActivityForm(), body(), submit(), ContactOption, Draft (+92 more)
 
 ### Community 30 - "API Contract"
 Cohesion: 0.01
-Nodes (272): Country Flags Asset Folder (PUB-023), DEC-SCOPE-222, flag-icons 7.5.0, Migration 0101 (country codes), DEC-SCOPE-116, DEC-SCOPE-173, DEC-SCOPE-175, DEC-SCOPE-177 (+264 more)
+Nodes (288): DEC-SCOPE-222, DEC-SCOPE-074, DEC-SCOPE-116, DEC-SCOPE-173, DEC-SCOPE-175, DEC-SCOPE-177, DEC-SCOPE-179, DEC-SCOPE-181 (+280 more)
 
-### Community 31 - "RTM section: ENH/AGN/BDM addenda"
-Cohesion: 0.05
-Nodes (127): ENH-004, DEC-SCOPE-046, Module AUTH Account access, EVID-014 School CRM.md, EVID-015 Agent CRM Functionalities.md, EVID-016 BDM Functionalities.md, AGN-001 Agency Master accounts, AGN-002 Agency staff & session versioning (+119 more)
-
-### Community 32 - "upload_files"
+### Community 31 - "Status: COMPLETE"
 Cohesion: 0.03
-Nodes (170): audit_actions(), events_of(), upload_files(), asyncio, fixture, parametrize, AGN-009 -- the existing document routes with an agency-only document…, `AgentStudent.student_id == None` compiles to IS NULL: a staff member assigned… (+162 more)
+Nodes (249): ENH-004, EVID-014 School CRM.md, EVID-015 Agent CRM Functionalities.md, EVID-016 BDM Functionalities.md, PRD Open Item 55: Zoho recurring live classes, ADM-001 Admin users/programs management, ADM-002 Admin leads, ADM-003 Admin batches (capacity<=20) (+241 more)
 
-### Community 33 - "Student360Panels.tsx"
-Cohesion: 0.01
-Nodes (255): PORTAL, SchoolAcademicTeamStudent360Page(), PORTAL, SchoolCareerCounselorStudent360Page(), PORTAL, SchoolCoordinatorStudent360Page(), PORTAL, SchoolParentChild360Page() (+247 more)
+### Community 32 - "StudentDocument"
+Cohesion: 0.03
+Nodes (195): OverseasStudentArchive, ccrm-040 (DEC-SCOPE-276 AR4): an archived overseas student -- hidden from the…, StudentDocument, expire_documents(), AsyncSession, Marks every current document whose expiry date is before `today`; returns how…, audit_actions(), events_of() (+187 more)
 
-### Community 34 - "OverseasApplication"
-Cohesion: 0.02
-Nodes (239): _audit(), change_status(), change_sub_status(), create_application(), get_application(), list_applications(), _locked(), _log() (+231 more)
+### Community 33 - "activityFeedback.ts"
+Cohesion: 0.04
+Nodes (55): ActivityFeedbackDetails(), ActivityFeedbackForm(), submit(), countText(), FIELD_LABELS, fieldError(), FieldName, FormError (+47 more)
+
+### Community 34 - "ApplicationStatusHistory"
+Cohesion: 0.03
+Nodes (145): _audit(), change_status(), change_sub_status(), create_application(), get_application(), list_applications(), _locked(), _log() (+137 more)
 
 ### Community 35 - "BdmOrganization"
 Cohesion: 0.01
-Nodes (404): _alerts(), _appointments(), _count(), manager_dashboard(), AsyncSession, datetime, get, Select (+396 more)
+Nodes (660): book_appointment(), cancel_appointment(), _check_overlap(), complete_appointment(), confirm_appointment(), _contact_of(), create_appointment(), _envelope() (+652 more)
 
-### Community 36 - "dispatch.py"
-Cohesion: 0.04
-Nodes (94): candidate_messages(), company_messages(), list_templates(), preview_template(), AsyncSession, get, post, UUID (+86 more)
+### Community 36 - "publish_all"
+Cohesion: 0.29
+Nodes (8): _discard_when_root_rolls_back(), publish_all(), _publish_when_root_commits(), SQLAlchemy also dispatches this for a SAVEPOINT release, when the session is…, Publish in order and stop at the first broker failure: this runs synchronously…, Also dispatched per SAVEPOINT; a root rollback with a savepoint open dispatches…, listens_for, Session
 
-### Community 37 - "services/recruiter_revenue.py"
-Cohesion: 0.06
-Nodes (87): cancel_invoice(), company_revenue(), create_invoice(), list_invoices(), AsyncSession, get, post, put (+79 more)
+### Community 37 - "school_transfers.py"
+Cohesion: 0.05
+Nodes (82): admin_list_transfer_requests(), _admin_out(), _admin_rows_stmt(), admin_student_transfer_history(), _approve(), approve_transfer_request(), _audit(), cancel_transfer_request() (+74 more)
 
 ### Community 38 - "Group 14 — 15 September 2026: business-facing Student ID"
-Cohesion: 0.03
-Nodes (220): Feature AGN-013, Feature bdm-001, Feature bdm-002, Feature bdm-003, Feature bdm-004, Feature bdm-005, Feature bdm-007, Feature bdm-008 (+212 more)
+Cohesion: 0.04
+Nodes (191): Feature AGN-013, Feature bdm-001, Feature bdm-002, Feature bdm-003, Feature bdm-004, Feature bdm-005, Feature bdm-007, Feature bdm-008 (+183 more)
 
 ### Community 39 - "workflows.py"
 Cohesion: 0.02
-Nodes (287): _allowed(), The file behind an authorised `stored_files` row: a presigned redirect in S3…, serve_stored_file(), accept_agreement(), add_agent_student(), add_assessment_question(), add_assessment_questions_bulk(), add_document() (+279 more)
+Nodes (296): _allowed(), The file behind an authorised `stored_files` row: a presigned redirect in S3…, serve_stored_file(), accept_agreement(), add_agent_student(), add_assessment_question(), add_assessment_questions_bulk(), add_document() (+288 more)
 
 ### Community 40 - "test_agn_006_migration.py"
-Cohesion: 0.24
-Nodes (8): _has_table(), isolated_db(), fixture, AGN-006 -- migration 0055_agent_student_counseling (spec §4, AC09): single head…, A fresh database at 0054 with one agent and one agency student with no login., _sql(), test_downgrade_refuses_while_counseling_records_exist(), test_round_trip_keeps_existing_rows()
+Cohesion: 0.21
+Nodes (10): _has_table(), isolated_db(), asyncio, fixture, AGN-006 -- migration 0055_agent_student_counseling (spec §4, AC09): single head…, A fresh database at 0054 with one agent and one agency student with no login., _sql(), test_downgrade_refuses_while_counseling_records_exist() (+2 more)
 
-### Community 41 - "University"
-Cohesion: 0.04
-Nodes (92): Country, upc-003 (U5): the single source of truth for every institution.…, University, The §25 search fields and filters as query parameters; every one only narrows.…, UniversityFilterQuery, UniversitySearchQuery, Select, _rows_stmt() (+84 more)
+### Community 41 - "test_upc_004_migration.py"
+Cohesion: 0.15
+Nodes (11): isolated_db(), asyncio, fixture, upc-004 -- migration 0109_university_duplicates and the name key (spec §2). The…, A fresh database at 0108 holding two same-named universities in one country and…, test_columns_and_indexes_exist_in_the_shared_database(), test_link_check_holds_and_downgrade_refuses_while_linked(), test_migration_chains_after_0108_and_there_is_a_single_head() (+3 more)
 
 ### Community 42 - "TelecallerReportView.tsx"
 Cohesion: 0.15
 Nodes (22): cell(), EMPTY, show(), TelecallerReportView(), csvUrl(), FILTERS, GROUPS, LEAD_FILTERS (+14 more)
 
 ### Community 43 - "ApplicationDeposit"
-Cohesion: 0.07
-Nodes (83): ApplicationDeposit, DATA_MODEL.md #7.2, PRD-PAY-003: generated when a Payment reaches…, AGN-011 / DEC-SCOPE-058 (EVID-015 §5 Step 7): the university deposit on an…, Receipt, audits(), captured(), count_deposit_payments(), deposit_url() (+75 more)
+Cohesion: 0.05
+Nodes (109): ApplicationDeposit, AGN-011 / DEC-SCOPE-058 (EVID-015 §5 Step 7): the university deposit on an…, _attributed(), payments(), IR11: the counted IT payment lines of one course, one batch or none, newest…, IR4: `lines()` with each line's batch and course. Every join is on a primary…, audits(), captured() (+101 more)
 
 ### Community 44 - "documentChecklists.ts"
 Cohesion: 0.05
-Nodes (70): Status, STATUSES, submit(), Act, AddItemForm(), ApplicationChecklistPanel(), act(), load() (+62 more)
+Nodes (70): AdminChecklistTemplatesPanel(), cancel(), openEditor(), editId(), Status, STATUSES, Act, AddItemForm() (+62 more)
 
 ### Community 45 - "services/management_discussions.py"
 Cohesion: 0.07
 Nodes (79): add_attachment(), change_discussion(), create_discussion(), discussion_options(), download_attachment(), download_my_attachment(), _file(), get_discussion() (+71 more)
 
-### Community 46 - "TimestampMixin"
-Cohesion: 0.02
-Nodes (278): _authorized(), download_document(), list_students(), AsyncSession, get, Response, UUID, A short-lived URL for one allowed-type document (nehn-003 private serving). A… (+270 more)
-
-### Community 47 - "recruiterRevenue.ts"
+### Community 46 - "Program"
 Cohesion: 0.03
-Nodes (112): day(), details(), GLYPH, RecruiterCompanyContract(), conflicted(), reload(), saved(), STATE (+104 more)
+Nodes (161): dashboard(), _authorized(), download_document(), list_students(), AsyncSession, get, Response, UUID (+153 more)
+
+### Community 47 - "RecruiterRequirementCandidates.tsx"
+Cohesion: 0.05
+Nodes (60): HrShortlistPanel(), JobRow, ShortlistRow, bodyOf(), CHECKS, Draft, draftOf(), money() (+52 more)
 
 ### Community 48 - "source"
-Cohesion: 0.04
-Nodes (43): source(), post(), PDF, post(), How to complete it when CI-01 arrives, Known candidate deltas (from the code, before CI-01), nehn-015 — Internal CRM delta matrix (readiness template), Open questions for the client (carried from the backlog) (+35 more)
+Cohesion: 0.02
+Nodes (125): _backfill_phones(), _normalise_phone(), tel-003 -- enquiries become leads: the LD-000001 Lead ID and the EVID-019 §2…, Batched by id; ids only, never a phone, in anything logged., upgrade(), leads(), enquiries(), source() (+117 more)
 
-### Community 49 - "bdm018_helpers.py"
-Cohesion: 0.05
-Nodes (103): audits(), notices(), pending_request(), queue_item(), bdm-018 test builders, on top of bdm-002/005's. Unique values per call: the…, bdm-005's world for a School organization, plus an Overseas Admin; with a…, A world whose organization has a pending request; the Overseas Admin is signed…, request() (+95 more)
+### Community 49 - "test_bdm_019_admin.py"
+Cohesion: 0.04
+Nodes (138): audits(), notices(), pending_request(), queue_item(), bdm-018 test builders, on top of bdm-002/005's. Unique values per call: the…, bdm-005's world for a School organization, plus an Overseas Admin; with a…, A world whose organization has a pending request; the Overseas Admin is signed…, request() (+130 more)
 
 ### Community 50 - "Student profile and journey timeline"
 Cohesion: 0.02
-Nodes (93): PRD Open Item 73: School partner provisioning (resolved), Common Errors, Expected Result, Fields, How to Access, Prerequisites, Programme areas (12), Purpose (+85 more)
+Nodes (125): Quick-start guide Principal, Common Errors, Expected Result, Fields, How to Access, Prerequisites, Programme areas (12), Purpose (+117 more)
 
-### Community 51 - "_operations"
-Cohesion: 0.02
-Nodes (108): portal(), AsyncSession, get, Request, problem(), Decimal, ccrm-013 (DEC-SCOPE-256): an application's university-side fields and the…, F3/F4 on the row as it will be saved (not just the payload): a fee or amount… (+100 more)
+### Community 51 - "Review Focus"
+Cohesion: 0.33
+Nodes (5): Global Constraints, Review Focus, Task 1: IT counselor creation + overseas division gates, Task 4: Playwright + docs, tel-017 IT Counselor Implementation Plan
 
 ### Community 52 - "Screen / Route / Flow Catalogue"
 Cohesion: 0.02
-Nodes (147): DEC-SCOPE-118, DEC-SCOPE-178, API §12AK Recruiter catalogues (rec-002), API §12AL Partnership roles (upc-001), API §12AN Global University Master (upc-003), API §12AO Recruiter company master (rec-003), API §12AQ University contacts + relationship strength (upc-006), API §12AT Partnership stage engine + Kanban (upc-007) (+139 more)
+Nodes (154): DEC-SCOPE-118, DEC-SCOPE-178, API §12AL Partnership roles (upc-001), API §12AN Global University Master (upc-003), API §12AQ University contacts + relationship strength (upc-006), API §12AT Partnership stage engine + Kanban (upc-007), API §12AX University visits + approval (upc-010), API §12BD Candidate + Requirement tracking (rec-017) (+146 more)
 
-### Community 53 - "shoot.ts"
+### Community 53 - "ref_node_fs"
 Cohesion: 0.02
-Nodes (89): reporters, school(), act(), AGENCIES, email(), orgCard(), register(), run (+81 more)
+Nodes (92): reporters, act(), AGENCIES, orgCard(), register(), run, activate(), addStaff() (+84 more)
 
-### Community 54 - "test_agn_007_shortlist.py"
-Cohesion: 0.15
-Nodes (27): shortlist(), asyncio, fixture, AGN-007 -- invisible to other agencies and to /public; races; staff activity…, test_concurrent_adds_never_pass_the_cap(), test_delete_university_racing_an_add_never_orphans(), test_other_agencys_university_id_reads_as_not_found(), test_public_never_shows_agency_universities_or_entries() (+19 more)
+### Community 54 - "test_agn_007_schema.py"
+Cohesion: 0.06
+Nodes (63): AgentStudentShortlistEntry, AGN-007 / DEC-SCOPE-049: one university on an agency student's shortlist. The…, mk_catalogue(), AGN-007 test helpers: a catalogue university with two courses, a second…, shortlist(), asyncio, fixture, AGN-007 -- invisible to other agencies and to /public; races; staff activity… (+55 more)
 
 ### Community 55 - "RecruiterFindCandidates.tsx"
-Cohesion: 0.07
-Nodes (47): Card(), Failure, RecruiterFindCandidates(), go(), replaceTerm(), submit(), Results(), Shortlisted (+39 more)
+Cohesion: 0.05
+Nodes (79): Card(), Failure, RecruiterFindCandidates(), go(), replaceTerm(), submit(), Results(), Shortlisted (+71 more)
 
-### Community 56 - "telecallerMessages.ts"
-Cohesion: 0.04
-Nodes (64): target(), _one_line(), tel-014 E6: a subject is one header line -- CR/LF become spaces (header…, EmailComposer(), choose(), send(), LeadMessages(), MessageItem() (+56 more)
-
-### Community 57 - "services/partnership_tasks.py"
+### Community 56 - "fieldErrors"
 Cohesion: 0.06
-Nodes (75): cancel(), catalogue(), complete(), create_task(), list_tasks(), AsyncSession, get, patch (+67 more)
+Nodes (55): BookCounsellingForm(), book(), refuse(), EMPTY, ORDER, REQUIRED, CounselorAppointmentsPanel(), LeadAppointmentCard() (+47 more)
+
+### Community 57 - "services/telecaller_lifecycle.py"
+Cohesion: 0.08
+Nodes (56): deactivate(), deactivate_manager(), handover(), move_team(), open_work(), AsyncSession, get, post (+48 more)
 
 ### Community 58 - "recruiterShares.ts"
 Cohesion: 0.07
-Nodes (47): EmployerSharedProfilesPanel(), Notice, Profile(), save(), RecruiterShareDialog(), submit(), DELIVERY, RecruiterShares() (+39 more)
+Nodes (53): EmployerSharedProfilesPanel(), Notice, Profile(), save(), RecruiterShareDialog(), submit(), ShareCandidate, DELIVERY (+45 more)
 
 ### Community 59 - "recruiterCandidates.ts"
-Cohesion: 0.07
-Nodes (39): money(), RecruiterCandidateDetail(), reload(), toggleArchive(), Notice, Props, RecruiterCandidateForm(), submit() (+31 more)
+Cohesion: 0.06
+Nodes (48): money(), RecruiterCandidateDetail(), reload(), toggleArchive(), DuplicatePanel(), Notice, Props, RecruiterCandidateForm() (+40 more)
 
 ### Community 60 - "models.py"
 Cohesion: 0.01
-Nodes (613): AGN-008 -- an agency's applications for its students, with or without a login…, AGN-018 -- the agency dashboard: one read-only aggregate (DEC-SCOPE-062; spec…, AGN-011 -- an agency application's deposit, paid through EduSphere Razorpay…, _open_request_of(), AGN-009 -- an agency's documents for its students, with or without a login…, The caller's open request for this student, locked (after the student: the lock…, AGN-024 (DEC-SCOPE-224): KYC documents of a self-registered agency.…, AGN-019 -- staff performance and the student funnel: one read-only Master-only… (+605 more)
+Nodes (499): _generate_unique_codes(), upgrade(), _generate_code(), upgrade(), _fill(), upgrade(), AGN-008 -- an agency's applications for its students, with or without a login…, AGN-018 -- the agency dashboard: one read-only aggregate (DEC-SCOPE-062; spec… (+491 more)
 
 ### Community 61 - "test_enh_029_bulk_onboarding.py"
 Cohesion: 0.15
@@ -1903,80 +1993,80 @@ Cohesion: 0.12
 Nodes (55): _app_status(), _offer(), asyncio, parametrize, rec-022 -- offer management (spec §1-§3; AC1-AC3; DEC-SCOPE-155 OF1-OF10). The…, QA-01: the form shows these messages as they are, so they must not be…, QA-04: the "My offers" card (GET /workflows/it/student/offers) supersedes the…, _record() (+47 more)
 
 ### Community 63 - "DEC-SCOPE-051 — Commission is Master-only: Revenue on the Master dashboard and agency commission reports (AGN-014)"
-Cohesion: 0.04
-Nodes (72): Feature AGN-014, DEC-SCOPE-051 — Commission is Master-only: Revenue on the Master dashboard and agency commission reports (AGN-014), EVID-015, AGN-002 Agent Staff Logins Plan, AGN-002 Agent Staff Logins Implementation Plan, Deviations from the spec / existing tests (record in the RTM), Migration 0047_agent_org_staff, users.session_version sv claim ends sessions on reset/deactivate (+64 more)
+Cohesion: 0.03
+Nodes (98): Feature AGN-014, DEC-SCOPE-051 — Commission is Master-only: Revenue on the Master dashboard and agency commission reports (AGN-014), AGN-021 Staff activity, DEC-SCOPE-046, R-12 Audit-log retention undecided, R-13 Missing composite audit_logs index, EVID-015, AGN-002 Agent Staff Logins Plan (+90 more)
 
-### Community 64 - "services/agent_reports.py"
-Cohesion: 0.04
-Nodes (115): _application_stmt(), _application_where(), _applications(), Column, _counted(), _countries(), _created_between(), _day() (+107 more)
+### Community 64 - "test_agn_020_reports.py"
+Cohesion: 0.09
+Nodes (55): _day(), parse_filters(), Exception, Spec §5.1 step 6. `kind` is already known to be valid. Member codes resolve…, A query parameter the report cannot use. The route turns it into FastAPI's 422…, ReportInputError, counts(), load_user() (+47 more)
 
 ### Community 65 - "test_enh_020_funding_records.py"
-Cohesion: 0.08
-Nodes (73): ENH-020 (DEC-SCOPE-045) -- School CRM.md §21 financial support / loan…, SchoolFundingRecord, _advance_to(), _app_loggers_enabled(), _client_for(), _count(), _create(), _denied() (+65 more)
+Cohesion: 0.05
+Nodes (103): create_funding_record(), _deny(), _fields_or_422(), list_counselor_funding_records(), list_student_funding_records(), _locked_student(), _notify_parents(), AsyncSession (+95 more)
 
 ### Community 66 - "services/bdm_travel.py"
-Cohesion: 0.02
-Nodes (263): comment_report(), _member(), my_report(), AsyncSession, get, post, put, UUID (+255 more)
+Cohesion: 0.03
+Nodes (163): deactivate(), deactivate_manager(), handover(), portfolio(), AsyncSession, get, post, UUID (+155 more)
 
 ### Community 67 - "activateWithToken"
 Cohesion: 0.02
-Nodes (74): batch(), activity(), overseasTelecaller(), adminActivateStudent(), adminActivateStudent(), activateWithToken(), setup(), titles() (+66 more)
+Nodes (78): staffPage(), adminActivateStudent(), itAdmin(), overseasAdmin(), signIn(), activateWithToken(), setup(), deactivateAsAdmin() (+70 more)
 
 ### Community 68 - "School CRM Documentation Analysis"
 Cohesion: 0.02
-Nodes (131): Create school + seed Coordinator, Tier Downgrade Confirmation, Tier Upgrade, Valid Until Date, School Onboarding CSV Template, Transfer Approval, Transfer Request Queue, School Activity Feedback (+123 more)
+Nodes (122): Create school + seed Coordinator, Tier Downgrade Confirmation, Tier Upgrade, Valid Until Date, School Onboarding CSV Template, No Staff Portfolio Warning, Transfer Approval, Transfer Request Queue (+114 more)
 
-### Community 69 - "load"
-Cohesion: 0.06
-Nodes (72): apply_resume(), archive_candidate(), _body(), create_candidate(), download_resume(), duplicate_check(), extract_resume(), get_candidate() (+64 more)
+### Community 69 - "Candidate"
+Cohesion: 0.01
+Nodes (455): rec-019 (S9): the company's response on a Portal item; another company's item…, rec-019 (S7, S8): the resume version shared, audited before any byte leaves., respond_to_shared_profile(), shared_profile_resume(), list_skills(), get, apply_resume(), archive_candidate() (+447 more)
 
 ### Community 70 - "bdm_with_org"
-Cohesion: 0.04
-Nodes (140): BdmActivity, bdm-009 (DEC-SCOPE-069): one call, WhatsApp, email, visit, meeting or other…, day_counts(), day_filters(), AC3, reused by bdm-015: one query over the same filters as the list, for the…, crm_payload(), The CRM webhook body (INTEGRATION_CONTRACTS.md §1); tel-003 adds `lead_code`…, _run() (+132 more)
+Cohesion: 0.03
+Nodes (194): _day(), delete_activity(), log_activity(), my_activities(), _owned(), AsyncSession, delete, get (+186 more)
 
 ### Community 72 - "managementCrmReports.ts"
-Cohesion: 0.07
-Nodes (59): ManagementCrmReportsPage(), ManagementCrmUniversityPage(), AdminCrmReportsPage(), ADMIN_ROLES, AdminCrmUniversityPage(), COLUMNS, CrmUniversityApplications(), crmUniversityError() (+51 more)
+Cohesion: 0.06
+Nodes (45): AGEING_BANDS, Column, count(), fields(), ManagementCrmReports(), Report(), SELECTS, ADMIN_CRM_REPORTS_HOME (+37 more)
 
 ### Community 73 - "services/counselor_messages.py"
 Cohesion: 0.05
-Nodes (85): _body(), create_template(), list_templates(), preview_template(), AsyncSession, get, patch, post (+77 more)
+Nodes (81): create_template(), preview_template(), AsyncSession, get, post, UUID, Sample values and the caller's own name; an inactive template is 404 to a…, MT2: the template with the student's and the application's values -- scope… (+73 more)
 
 ### Community 74 - "work"
-Cohesion: 0.16
-Nodes (13): work(), 1. Source and intent, 2. Decisions (recommended answers, `NEEDS_CONFIRMATION` at sign-off — registered as DEC-SCOPE-171), 3. API, 4. Web, 5. Tests, 6. QA evidence (2026-10-10, isolated stack `upc032`, `localhost:13232`), upc-032 — Partnership manager deactivation + bulk reassignment (design) (+5 more)
+Cohesion: 0.13
+Nodes (17): RecruiterAdminRow, RecruiterTeamMemberRow, RecruiterTeamRow, work(), 1. Source and intent, 2. Decisions (recommended answers, `NEEDS_CONFIRMATION` at sign-off — registered as DEC-SCOPE-171), 3. API, 4. Web (+9 more)
 
 ### Community 75 - "welcome.ts"
-Cohesion: 0.02
-Nodes (25): staffPage(), createApplication(), manchesterId(), newPage(), newPage(), onboardSchoolWithCoordinator(), createSchool(), studentRow() (+17 more)
+Cohesion: 0.01
+Nodes (24): PDF, Notice, TILES, ROWS, onboardSchoolWithCoordinator(), provisionSchool(), signIn(), Staff (+16 more)
 
 ### Community 76 - "_sql"
 Cohesion: 0.01
-Nodes (388): tel-007 (D2): the last telecaller a team's round robin chose. Locked FOR UPDATE…, TelRoundRobinCursor, parametrize, ENH-025 -- migration 0039 and the new SchoolStudent columns (spec §2, AC3/AC4)., test_derive_section_is_conservative(), isolated_db(), _migration_seed_again(), asyncio (+380 more)
+Nodes (297): isolated_db(), _migration_seed_again(), asyncio, fixture, parametrize, rec-002 -- migration 0102_rec_catalogues (spec §3; AC1). Round trip, seed and…, The seed statements on their own, as a fresh database built by 0001 would run…, AC1: the shared test database was upgraded to head, so every seed value is… (+289 more)
 
-### Community 77 - "test_mgmt_021_agents.py"
-Cohesion: 0.04
-Nodes (124): deactivate(), AGN-002's deactivation shape: the membership and the login both off., dashboard_world(), app(), mk_commission(), mk_place(), AGN-018 fixture: one agency (Master + three staff) and a noise agency, with…, A university in its own country, both named (mk_university names every one… (+116 more)
+### Community 77 - "agn004_helpers.py"
+Cohesion: 0.03
+Nodes (122): mk_staff(), AGN-004 test helpers. Staff are inserted directly with AGN-002's data shape…, `can_view_reports`: AGN-003 (DEC-SCOPE-044 P1) -- Reports is off for staff…, mk_place(), A university in its own country, both named (mk_university names every one…, funnel(), performance_world(), AGN-019 fixture: AGN-018's dashboard world plus the funnel's awkward cases… (+114 more)
 
 ### Community 78 - "login"
-Cohesion: 0.02
-Nodes (323): PersonalStatementUpdate, login(), mk_request(), mk_result(), mk_school(), mk_staff(), mk_student(), mk_user() (+315 more)
+Cohesion: 0.01
+Nodes (403): ENH-030 -- one School student's daily class attendance…, SchoolAttendanceRecord, PortfolioEntryCreate, login(), mk_school(), mk_staff(), mk_user(), A school with a coordinator, teacher, principal, `students` students (the first… (+395 more)
 
 ### Community 79 - "nehn-009 — Report framework: registry, standard filters, JSON/CSV/xlsx, audited (design)"
-Cohesion: 0.14
-Nodes (13): Select(), 1. Intent, 2. Pilot report (builder's default), 3.1 Registry (`services/reports/registry.py`), 3.2 Standard filters, 3.3 Scope (rows) — the pilot, 3.4 Endpoints (`api/reports.py`, prefix `/api/v1/reports`), 3.5 Permissions (nehn-005) and migration (+5 more)
+Cohesion: 0.29
+Nodes (6): 1. Intent, 2. Pilot report (builder's default), 4. Web, 5. Acceptance criteria → tests, 6. Risks, nehn-009 — Report framework: registry, standard filters, JSON/CSV/xlsx, audited (design)
 
-### Community 80 - "AgentNetworkRecords.tsx"
-Cohesion: 0.02
-Nodes (103): AgentNetworkPanel(), Loaded, Tab, TABS, AgentNetworkRecords(), ApplicationTable(), Kind, Loaded (+95 more)
+### Community 80 - "writeFailure"
+Cohesion: 0.07
+Nodes (44): PartnershipTaskForm(), submit(), ruleField(), META_LINK, PartnershipTaskItem(), act(), TEXT, ASSIGNEE_CHOICES (+36 more)
 
-### Community 81 - "bdm-001 — BDM and BDM Manager Roles, BDM Profile, Account Provisioning — Design"
-Cohesion: 0.05
-Nodes (39): mgmt-008 Recruitment revenue plan, management_recruitment_revenue service, mgmt-008 — implementation plan, mgmt-017 — Training & trainer dashboard (plan), mgmt-018 Counseling dashboard plan, telecaller_metrics.first_conversions() refactor, mgmt-019 Telecalling dashboard plan, Operational tier access (require_management -> operational tier) (+31 more)
+### Community 81 - "Operational tier access (require_management -> operational tier)"
+Cohesion: 0.11
+Nodes (16): ManagementAgentsOut, ManagementTrainingOut, RecruitmentRevenueOut, TelecallingOut, mgmt-008 Recruitment revenue plan, management_recruitment_revenue service, mgmt-008 — implementation plan, mgmt-017 — Training & trainer dashboard (plan) (+8 more)
 
 ### Community 82 - "bdm_with_org"
-Cohesion: 0.03
-Nodes (177): appt_payload(), audits(), bdm_with_org(), create_appt(), future(), move_to_past(), bdm-006 test builders. Unique per call: the shared test database is never…, A logged-in BDM of `bdm_type` with one organization assigned to them. (+169 more)
+Cohesion: 0.05
+Nodes (120): appt_payload(), audits(), bdm_with_org(), create_appt(), future(), move_to_past(), bdm-006 test builders. Unique per call: the shared test database is never…, A logged-in BDM of `bdm_type` with one organization assigned to them. (+112 more)
 
 ### Community 83 - "Enhancement Backlog — School Portal User Lifecycle & Academic Team Completion"
 Cohesion: 0.04
@@ -1984,7 +2074,7 @@ Nodes (130): ENH-016 -- School & Edusphere analytics dashboards…, Enhancement 
 
 ### Community 84 - "Super Admin and the School Screens"
 Cohesion: 0.02
-Nodes (137): Overseas Admin role, Agreement MoU Reference, Board Field, Common Errors, Create a School and its Coordinator, Expected Result, Fields, How to Access (+129 more)
+Nodes (147): Overseas Admin role, Agreement MoU Reference, Board Field, Common Errors, Create a School and its Coordinator, Expected Result, Fields, How to Access (+139 more)
 
 ### Community 85 - "world"
 Cohesion: 0.05
@@ -1996,23 +2086,23 @@ Nodes (98): AgentCommission, AgentOrg / AgentOrgMember, AgentStudent, AgentUnive
 
 ### Community 87 - "test_ccrm_004_counselor_activities.py"
 Cohesion: 0.10
-Nodes (68): action_url(), at(), body(), book(), book_url(), make_counselor(), tel-016 test builders. Every value is unique per call: the test database is…, A whole-minute UTC instant `days` + `hours` from now (unique per test via a… (+60 more)
+Nodes (69): action_url(), at(), body(), book(), book_url(), make_counselor(), tel-016 test builders. Every value is unique per call: the test database is…, A whole-minute UTC instant `days` + `hours` from now (unique per test via a… (+61 more)
 
-### Community 88 - "viewerTimeZone"
-Cohesion: 0.07
-Nodes (39): AgentApplicationDeposit(), downloadReceipt(), pay(), say(), verify(), Note, Props, AgentApplicationDepositForm() (+31 more)
+### Community 88 - "AgentApplicationDeposit.tsx"
+Cohesion: 0.09
+Nodes (29): AgentApplicationDeposit(), downloadReceipt(), pay(), say(), verify(), Note, Props, AgentApplicationDepositForm() (+21 more)
 
-### Community 89 - "mk_university"
-Cohesion: 0.04
-Nodes (140): band(), funnel_counts(), health(), health_score(), ist_range(), The inclusive IST days as a half-open instant range., F3 and F5-F9 per university over the inclusive IST days. One grouped query per…, HS7: Excellent >= 80, Good 60-79, Needs attention < 60. (+132 more)
+### Community 89 - "enrolled"
+Cohesion: 0.14
+Nodes (43): currency_sums(), Σ Expected per currency over the counted rows, optionally only those enrolled…, _one(), asyncio, upc-019 -- Commission Expected (spec CL1-CL8, AC1). Each test builds a fresh…, _rows(), test_ac1_fifteen_percent_of_18000_gbp_is_2700_gbp(), test_cl1_tuition_paid_is_not_tracked() (+35 more)
 
 ### Community 90 - "test_mgmt_005_auto_lines.py"
 Cohesion: 0.14
-Nodes (55): BdmTripExpense, bdm-010 (T7): one itemized INR expense line on an approved trip. No receipt…, a_month(), ist(), ledger(), lines_of(), month_param(), paid_commission() (+47 more)
+Nodes (54): a_month(), ist(), ledger(), lines_of(), month_param(), paid_commission(), paid_payment(), asyncio (+46 more)
 
 ### Community 91 - "EVID-017 Management Functionalities source"
-Cohesion: 0.03
-Nodes (123): DEC-SCOPE-207, Feature mgmt-012, API §12DU Marketing budget, spend & ROI (mgmt-012), agent_commission_access service (view/edit roles), 1. Intent, 3. API, 5. Error handling, 6. Testing (+115 more)
+Cohesion: 0.02
+Nodes (150): agent_commission_access service (view/edit roles), management_access.can_view_university_commission, MR1-MR12 abroad revenue decisions, Country/University/Intake/Agency breakdowns with Unattributed row (MR5), mgmt-007 IT Training revenue dashboard design, Payment->Enrollment->Batch->Program attribution (IR4), IR1-IR12 IT revenue decisions, GET /management/revenue/it/payments drill-down (+142 more)
 
 ### Community 92 - "Record a student's career preferences"
 Cohesion: 0.14
@@ -2020,235 +2110,235 @@ Nodes (14): Common Errors, Expected Result, Fields, How to Access, Prerequisites
 
 ### Community 93 - "Notification"
 Cohesion: 0.04
-Nodes (70): Notification, NotificationDelivery, Publish queued/retrying rows nobody picked up (broker outage, lost message)…, sweep_stale_deliveries(), outbox(), asyncio, fixture, _queued() (+62 more)
+Nodes (85): _deliver_password_reset(), ENH-032 E8 / I1: runs as a background task after the response, in its own…, Notification, NotificationDelivery, datetime, Publish queued/retrying rows nobody picked up (broker outage, lost message)…, sweep_stale_deliveries(), document_label() (+77 more)
 
-### Community 94 - "services/university_meetings.py"
-Cohesion: 0.07
-Nodes (74): cancel_meeting(), complete_meeting(), edit_meeting(), get_meeting(), list_meetings(), _now(), AsyncSession, datetime (+66 more)
+### Community 94 - "BdmAppointmentReason"
+Cohesion: 0.06
+Nodes (51): BdmAppointmentCreate, BdmAppointmentEnvelope, BdmAppointmentEventOut, BdmAppointmentOrgRef, BdmAppointmentOut, BdmAppointmentPermissions, BdmAppointmentReason, BdmAppointmentReschedule (+43 more)
 
-### Community 95 - "services/bdm_metrics.py"
-Cohesion: 0.05
-Nodes (67): _active_schools(), _activities(), agent_performance(), _appointments_fixed(), _attributed(), _completed(), _contacted(), build() (+59 more)
+### Community 95 - "bdm-023 — Management dashboard: implementation plan"
+Cohesion: 0.25
+Nodes (7): bdm-023 — Management dashboard: implementation plan, Phase 3 review notes (API / frontend / security), Task 1 — API: `GET /bdm/manager/dashboard`, Task 2 — Web lib + component, Task 3 — Page + nav, Task 4 — E2E, Task 5 — Docs
 
 ### Community 96 - "ENH-014 — Multi-Channel Notifications (WhatsApp / SMS), Slice 1 — Design"
-Cohesion: 0.07
-Nodes (31): post_optional_webhook(), sync_crm_enquiry(), sms(), Global Constraints, Review Focus, Task 2: Public intake + phone validator + CRM payload (AC2, edge), Task 5: E2E, Task 6: Docs (+23 more)
+Cohesion: 0.12
+Nodes (16): 11. Regression risks, 12. Plan-time refinements (2026-09-30), 13. Traceability, 1. Problem, 2. Goals and non-goals, 3. Decisions confirmed in-session (2026-09-30), 4. Data model — migration `0046_notification_channels` (renamed `0050_notification_channels` on the 2026-10-01 merges with `main`, chained after `0049_agent_students_crm`; content unchanged), 5.1 `GET /api/v1/account/notification-preferences` (+8 more)
 
 ### Community 97 - "test_bdm_002_schemas.py"
-Cohesion: 0.19
-Nodes (23): BdmOrganizationCreate, spec §5.1 / C13: type, name, city and >=1 contact are required. Server-owned…, messages(), org(), parametrize, ValidationError, bdm-002 -- request models (spec §5.1, §12.3 input validation)., Simplify review A1: the https:// prefix must count toward the 255 limit (it… (+15 more)
+Cohesion: 0.05
+Nodes (68): _bdm_contacts(), BdmContactIn, BdmContactOut, BdmContactUpdate, BdmOrganizationAssign, BdmOrganizationCreate, BdmOrganizationEnvelope, BdmOrganizationOut (+60 more)
 
-### Community 98 - "test_tel_021_metrics.py"
-Cohesion: 0.12
-Nodes (55): daily_activity(), §14 / T27: the 13 counts for one IST day (today: the snapshot is as of now)., dashboard(), parametrize, mgmt-019 -- the company-wide Telecalling dashboard (EVID-017 §14, spec…, TC14: staff names and counts only., AC1 and TC12, over every telecaller in the shared database., row_of() (+47 more)
+### Community 98 - "PortalLoading"
+Cohesion: 0.09
+Nodes (27): Loading(), Loading(), Loading(), Loading(), Loading(), Loading(), Loading(), Loading() (+19 more)
 
-### Community 99 - "DEC-SCOPE-024 — Parent account linked to children across multiple schools (ENH-008)"
-Cohesion: 0.04
-Nodes (48): ENH-002, ENH-006, ENH-007, ENH-008, ENH-010, DEC-SCOPE-020 — Student promotion to the next academic year / grade (ENH-004), DEC-SCOPE-021 — Self-service change password for an authenticated user (ENH-006), DEC-SCOPE-022 — Student school transfer, coordinator-requested and admin-approved (ENH-005) (+40 more)
+### Community 99 - "2026-09-19-enh-004-student-promotion.md"
+Cohesion: 0.06
+Nodes (31): ENH-002, ENH-006, ENH-007, ENH-008, ENH-010, DEC-SCOPE-020 — Student promotion to the next academic year / grade (ENH-004), DEC-SCOPE-021 — Self-service change password for an authenticated user (ENH-006), DEC-SCOPE-022 — Student school transfer, coordinator-requested and admin-approved (ENH-005) (+23 more)
 
 ### Community 100 - "RBAC Matrix"
 Cohesion: 0.05
-Nodes (114): RBAC Matrix, Deny-by-default enforcement principle, GATE-08 approval (user, 2026-09-01), docs/architecture/DATA_MODEL.md, Role: accountant, Role: counselor, Role: overseas_admin, Role: partner (+106 more)
+Nodes (116): RBAC Matrix, Deny-by-default enforcement principle, GATE-08 approval (user, 2026-09-01), docs/architecture/DATA_MODEL.md, Role: accountant, Role: counselor, Role: overseas_admin, Role: partner (+108 more)
 
 ### Community 101 - "PRD Open Items"
 Cohesion: 0.02
 Nodes (94): ADM-012, ADR-012, AGN-023, BRD Open Items (items 1-23), DEC-DATA-003, DEC-NOT-001 notification channels, DEC-PAY-002, DEC-ROLE-005 (+86 more)
 
 ### Community 102 - "AgentStudentTimeline.tsx"
-Cohesion: 0.09
-Nodes (34): AgentStudentJourney(), GLYPH, Steps(), AgentStudentTimeline(), summary(), currentStep(), Failure, failureOf() (+26 more)
+Cohesion: 0.08
+Nodes (36): AgentStudentJourney(), GLYPH, Steps(), AgentStudentTimeline(), summary(), currentStep(), Failure, failureOf() (+28 more)
 
 ### Community 103 - "tel-005 exploratory QA — 2026-10-06"
 Cohesion: 0.40
 Nodes (4): Issues, Re-test after merging tel-007 (main @ `6a3e7722`), Scenarios covered, tel-005 exploratory QA — 2026-10-06
 
-### Community 104 - "services/management_meetings.py"
-Cohesion: 0.08
-Nodes (63): add_decision(), add_task(), change_meeting(), create_meeting(), get_meeting(), list_meetings(), meeting_options(), my_meetings() (+55 more)
+### Community 104 - "api/management_meetings.py"
+Cohesion: 0.09
+Nodes (46): add_decision(), add_task(), change_meeting(), create_meeting(), get_meeting(), list_meetings(), meeting_options(), my_meetings() (+38 more)
 
-### Community 105 - "management_metrics.py"
-Cohesion: 0.05
-Nodes (112): _abroad_students(), _active_students(), _choices(), _count(), _ist_start(), partner_companies(), _plan_counts(), datetime (+104 more)
+### Community 105 - "Management & Business Command Center Backlog (mgmt-001..034)"
+Cohesion: 0.06
+Nodes (93): DEC-SCOPE-186 Management scope M1-M14 (EXPLICIT_APPROVAL), DEC-SCOPE-187, DEC-SCOPE-189, DEC-SCOPE-190, DEC-SCOPE-191, DEC-SCOPE-192, Feature mgmt-004, Feature mgmt-005 (+85 more)
 
 ### Community 106 - "test_rec_012_resume_extract.py"
-Cohesion: 0.05
-Nodes (76): certifications(), _docx_text(), experience_months(), ExtractError, _hit(), _index(), industries(), job_titles() (+68 more)
-
-### Community 107 - "test_mgmt_026_kpis.py"
-Cohesion: 0.07
-Nodes (77): plan_actuals(), PN6: the live actual of each count KPI in `keys` -- one SELECT, bounded by the…, _at(), _backdate_applications(), _day(), _partner(), asyncio, datetime (+69 more)
-
-### Community 108 - "test_tel_011_follow_ups.py"
-Cohesion: 0.22
-Nodes (32): audit_actions(), create(), fu_url(), lead(), lead_url(), asyncio, parametrize, tel-011 -- follow-ups on a lead (spec §3; DEC-SCOPE-094 F1-F10): create, the… (+24 more)
-
-### Community 109 - "bdm001_helpers.py"
 Cohesion: 0.06
-Nodes (102): bdm-001 test builders. Every value is unique per call: the test database is…, act(), bdm_pair(), make_trip(), bdm-010 test builders. Unique values per call: the test database is shared and…, A manager and one BDM reporting to them, created through the admin API. Leaves…, sign_in(), trip_body() (+94 more)
+Nodes (64): certifications(), _docx_text(), ExtractError, _hit(), _index(), industries(), job_titles(), match_skills() (+56 more)
+
+### Community 107 - "test_rec_035_management.py"
+Cohesion: 0.11
+Nodes (53): _at(), _backdate_applications(), _day(), _partner(), asyncio, datetime, parametrize, _quiet_day() (+45 more)
+
+### Community 108 - "recruiterDrives.ts"
+Cohesion: 0.09
+Nodes (44): DriveCandidateList(), Notice, RecruiterDriveDetail(), RecruiterDriveForm(), submit(), Pager(), RecruiterDrives(), collegeOption() (+36 more)
+
+### Community 109 - "test_bdm_011_links.py"
+Cohesion: 0.06
+Nodes (101): act(), bdm_pair(), make_trip(), bdm-010 test builders. Unique values per call: the test database is shared and…, A manager and one BDM reporting to them, created through the admin API. Leaves…, sign_in(), trip_body(), bdm_trip() (+93 more)
 
 ### Community 110 - "Agent CRM — Engineering Enhancement Backlog (`ang-001` … `ang-022`)"
-Cohesion: 0.07
-Nodes (66): 1. Source coverage audit (section by section), 2. Backlog summary, 3. Questions — all answered 2026-09-28 (`DEC-SCOPE-035` D5–D21), 4. Backlog items, app/api/admin.py agents_router, agent_branches table, AgentCommission (AGT-003/004), Agent CRM — Engineering Enhancement Backlog (`ang-001` … `ang-022`) (+58 more)
+Cohesion: 0.04
+Nodes (96): 0. What already exists (verified in code, not assumed), 1. Source coverage audit (section by section), 2. Backlog summary, 3. Questions — all answered 2026-09-28 (`DEC-SCOPE-035` D5–D21), 4. Backlog items, 6.1 Ground rules, 6.2 Conflict-avoidance rules (apply to every lane), 6.3 Waves (+88 more)
 
 ### Community 111 - "AgentReportsPanel.tsx"
-Cohesion: 0.11
-Nodes (34): ALL, Draft, FieldError, ReportField, AgentReportsPanel(), load(), onKeyDown(), open() (+26 more)
+Cohesion: 0.08
+Nodes (43): AgentReportFilters(), ALL, Draft, FieldError, ReportField, AgentReportsPanel(), load(), onKeyDown() (+35 more)
 
 ### Community 112 - "upload_policy.py"
 Cohesion: 0.14
 Nodes (18): check(), check_upload(), _default(), Policy, policy_for(), PolicyError, Exception, nehn-003 (DEC-SCOPE-279 PS4): per-purpose upload limits and allowed types,… (+10 more)
 
 ### Community 113 - "school_skills.py"
-Cohesion: 0.06
-Nodes (88): alembic_migration, alembic_operations, _audit(), _batch_in_portfolio(), _batch_out(), create_skill_assessment(), create_skill_batch(), create_skill_session() (+80 more)
+Cohesion: 0.08
+Nodes (72): _audit(), _batch_in_portfolio(), _batch_out(), create_skill_assessment(), create_skill_batch(), create_skill_session(), _detail(), enrol_students() (+64 more)
 
-### Community 114 - "SchoolCareerRecord"
-Cohesion: 0.09
-Nodes (55): SCH-004 -- Career Guidance & Counselling. Net-new, `DATA_MODEL.md` §6.17. No…, SchoolCareerRecord, _audits(), _client_for(), _create(), _held(), _new(), _patch_url() (+47 more)
+### Community 114 - "ENH-018 — School Activity Feedback — Design"
+Cohesion: 0.25
+Nodes (8): 10. Regression risks, 1. Problem, 2. Goals and non-goals, 4. Data model, 6. Security, 8. Acceptance criteria, 9. Tests (written before code, per task), ENH-018 — School Activity Feedback — Design
 
 ### Community 115 - "Client Questions"
 Cohesion: 0.03
-Nodes (121): 10. Delivery / Timeline, 10. Reopen bulk school/student data upload deferral (`DEC-SCOPE-009`) — template-first workflow, 11. ~~`School CRM.md`'s individual student/parent/teacher login model vs `DEC-SCOPE-009`~~ — RESOLVED 2026-09-14, 12. ~~Who acts on behalf of a School-affiliated or Agent-referred student, now that neither gets a login~~ — RESOLVED 2026-09-14, 13. ~~Reopen `DEC-SCOPE-009`'s school-side role structure~~ — RESOLVED 2026-09-14 — Principal/Coordinator/Teacher/Parent, 14. ~~Which internal EduSphere role(s) manage school-affiliated student data~~ — RESOLVED 2026-09-14, 15. ~~School partner record and role-account provisioning mechanism~~ — RESOLVED 2026-09-14, 16. ~~Academic results/marks module scope~~ — RESOLVED 2026-09-14 (+113 more)
+Nodes (97): Feature PAY-001, API §10 Notifications, Payments (system-facing, NOT-*, PAY-001), 10. Delivery / Timeline, 10. Reopen bulk school/student data upload deferral (`DEC-SCOPE-009`) — template-first workflow, 11. ~~`School CRM.md`'s individual student/parent/teacher login model vs `DEC-SCOPE-009`~~ — RESOLVED 2026-09-14, 12. ~~Who acts on behalf of a School-affiliated or Agent-referred student, now that neither gets a login~~ — RESOLVED 2026-09-14, 13. ~~Reopen `DEC-SCOPE-009`'s school-side role structure~~ — RESOLVED 2026-09-14 — Principal/Coordinator/Teacher/Parent, 14. ~~Which internal EduSphere role(s) manage school-affiliated student data~~ — RESOLVED 2026-09-14 (+89 more)
 
 ### Community 116 - "college_business"
-Cohesion: 0.06
-Nodes (35): college_business(), One SELECT of scalar subqueries over `S` -- a constant query count whatever the…, bdm-024 Performance + Master View Implementation Plan, GET /bdm/manager/hierarchy master view, bdm_performance service (BDM x organization grain), Global Constraints, Not-tracked label (tracked:false, value:null), Review Focus (+27 more)
+Cohesion: 0.07
+Nodes (28): college_business(), AsyncSession, One SELECT of scalar subqueries over `S` -- a constant query count whatever the…, bdm-024 Performance + Master View Implementation Plan, GET /bdm/manager/hierarchy master view, bdm_performance service (BDM x organization grain), Global Constraints, Not-tracked label (tracked:false, value:null) (+20 more)
 
-### Community 117 - "services/recruiter_meetings.py"
-Cohesion: 0.06
-Nodes (78): cancel_meeting(), company_meetings(), get_meeting(), list_meetings(), AsyncSession, get, patch, post (+70 more)
+### Community 117 - "RecruiterMeetingItem.tsx"
+Cohesion: 0.07
+Nodes (47): RecruiterCompanyMeetings(), ContactOption, Person, RecruiterMeetingForm(), send(), submit(), sameSet(), Values (+39 more)
 
 ### Community 118 - "CounselorEvaluationPanel.tsx"
-Cohesion: 0.07
-Nodes (41): ApplicationOutcomeForm(), submit(), Props, ApplicationStatusHistory(), ApplicationSubStatusForm(), submit(), Props, ApplicationRow (+33 more)
+Cohesion: 0.06
+Nodes (46): ApplicationOutcomeForm(), submit(), Props, ApplicationStatusHistory(), ApplicationSubStatusForm(), submit(), Props, ApplicationRow (+38 more)
 
 ### Community 119 - "Recruiter CRM Engineering Enhancement Backlog (rec-001..rec-038)"
 Cohesion: 0.06
 Nodes (95): DEC-SCOPE-171, DEC-SCOPE-176, DEC-SCOPE-180, DEC-SCOPE-182, Appendix B metric, tile, KPI and facet definitions, BDM MoU pattern (BdmMou + BdmMouEvent), BDM organisation pattern (ORG sequence, contacts, assignment history), candidates table (+87 more)
 
-### Community 120 - "services/recruiter_companies.py"
-Cohesion: 0.02
-Nodes (308): admin_recruiters(), _admin_row(), _body(), campaigns(), _check_dates(), create_campaign(), create_value(), _duplicate() (+300 more)
+### Community 120 - "Company"
+Cohesion: 0.01
+Nodes (431): candidate_calls(), company_calls(), delete_call(), log_call(), AsyncSession, delete, get, patch (+423 more)
 
 ### Community 121 - "skills_world"
 Cohesion: 0.06
-Nodes (98): client(), move_student_directly(), Stand-in for the transfer (which does not exist yet in Task 4's tests): a…, create_batch(), enrol(), Shared builders for the ENH-011 database tests…, School A (2 students; the parent is linked to the first; the teacher is…, skills_world() (+90 more)
+Nodes (95): client(), create_batch(), enrol(), Shared builders for the ENH-011 database tests…, School A (2 students; the parent is linked to the first; the teacher is…, skills_world(), _batch_with_two(), asyncio (+87 more)
 
-### Community 122 - "_school"
-Cohesion: 0.19
-Nodes (46): _events(), future_years(), _history(), _item(), _login(), _promote(), asyncio, Factory for ACTIVE academic years dated far in the future, so they win… (+38 more)
+### Community 122 - "test_enh_004_student_promotion.py"
+Cohesion: 0.07
+Nodes (99): Advance the grade number inside a free-text label ("Grade 8-A" -> "Grade 9-A").…, _swap_grade_label(), ENH-004 append-only ledger of a student's grade/academic-year transitions…, SchoolStudentGradeHistory, _app_loggers_enabled(), _decide(), _events(), future_years() (+91 more)
 
 ### Community 123 - "test_agn_017_events.py"
-Cohesion: 0.07
-Nodes (80): all_text(), channels_of(), notices(), AGN-017 test helpers. The tests' world is AGN-008's `agency_world` (Master, two…, The user's notifications, newest first (fresh from the database). Rows only --…, Every notification title and body in the database, for 'never appears anywhere'…, set_org_status(), titled() (+72 more)
+Cohesion: 0.04
+Nodes (116): all_text(), channels_of(), deactivate(), notices(), AGN-017 test helpers. The tests' world is AGN-008's `agency_world` (Master, two…, The user's notifications, newest first (fresh from the database). Rows only --…, AGN-002's deactivation shape: the membership and the login both off., Every notification title and body in the database, for 'never appears anywhere'… (+108 more)
 
-### Community 124 - "ccrm041_helpers.py"
-Cohesion: 0.08
-Nodes (51): create_template(), _get(), get_template(), list_templates(), AsyncSession, post, put, UUID (+43 more)
+### Community 124 - "Base"
+Cohesion: 0.04
+Nodes (86): do_run_migrations(), run_async_migrations(), run_migrations_online(), downgrade(), upgrade(), add_interview(), list_interviews(), my_interviews() (+78 more)
 
 ### Community 125 - "school-crm/user-manual/README.md"
-Cohesion: 0.08
-Nodes (20): Sign out and session expiry (DOC-SCH-AUTH-007), No Sign out in phone/narrow-window menu, Session expiry (~60 min absolute), Access unavailable screen, Access unavailable messages (DOC-SCH-AUTH-008), Find your way around (DOC-SCH-AUTH-009), Portal sidebar navigation, School activity (EduSphere event) (+12 more)
+Cohesion: 0.09
+Nodes (17): Sign out and session expiry (DOC-SCH-AUTH-007), No Sign out in phone/narrow-window menu, Session expiry (~60 min absolute), Access unavailable screen, Access unavailable messages (DOC-SCH-AUTH-008), Find your way around (DOC-SCH-AUTH-009), Portal sidebar navigation, School activity (EduSphere event) (+9 more)
 
-### Community 126 - "test_enh_024_skill_india.py"
+### Community 126 - "portfolio.py"
+Cohesion: 0.03
+Nodes (134): _can_edit_portfolio(), _cert_audit(), delete_certificate(), get_certificate(), AsyncSession, delete, get, UUID (+126 more)
+
+### Community 127 - "istInputToIso"
 Cohesion: 0.04
-Nodes (92): _cert_audit(), create_portfolio_entry(), delete_portfolio_entry(), _entry_out(), _entry_service_key(), _load_portfolio_entry(), AsyncSession, delete (+84 more)
-
-### Community 127 - "advance_to"
-Cohesion: 0.07
-Nodes (32): advance_to(), move(), AsyncSession, Checks, then changes the stage and writes the history row. Returns whether the…, upc-014 AG10 (the bdm-005 idiom): move a locked university forward to `stage`…, PS1/PS6: Lost is a flag with a reason on top of the kept stage; reopen clears…, _record(), set_lost() (+24 more)
+Nodes (88): earliestInput(), start(), earliestInput(), followUpNotesOnTheirField(), GRID, LEGEND, RecruiterCallForm(), check() (+80 more)
 
 ### Community 128 - "test_ccrm_053_counselor_performance.py"
 Cohesion: 0.06
-Nodes (85): add(), application(), follow_up(), me(), datetime, parametrize, ccrm-036 (DEC-SCOPE-269, P1-P9) -- GET /counselor/performance: the overseas…, read() (+77 more)
+Nodes (87): add(), application(), follow_up(), me(), datetime, parametrize, ccrm-036 (DEC-SCOPE-269, P1-P9) -- GET /counselor/performance: the overseas…, read() (+79 more)
 
-### Community 129 - "test_bdm_016_metrics.py"
+### Community 129 - "india_today"
 Cohesion: 0.04
-Nodes (131): BdmTarget, bdm-016 (DEC-SCOPE-103): a manager-set monthly target for one KPI of one BDM.…, month_range(), monthly_counts(), An IST calendar month (`month` is its first day) as a half-open instant range., One SELECT of scalar subqueries for the BDM's IST month; none for a month that…, a_past_day(), activity() (+123 more)
+Nodes (125): daily_counts(), month_range(), monthly_counts(), UUID, One SELECT of scalar subqueries for the BDM's IST day -- a constant query count…, An IST calendar month (`month` is its first day) as a half-open instant range., One SELECT of scalar subqueries for the BDM's IST month; none for a month that…, india_today() (+117 more)
 
 ### Community 130 - "cms.py"
 Cohesion: 0.12
 Nodes (49): _audit(), create_event(), create_gallery_item(), create_post(), create_testimonial(), delete_testimonial(), delete_testimonial_photo(), _editable_testimonial() (+41 more)
 
 ### Community 131 - "SchoolStaffAssignment"
-Cohesion: 0.15
-Nodes (46): School-staff portfolio assignment (`DEC-SCOPE-013`) -- scopes an…, SchoolStaffAssignment, _add_academic_team_member(), _create_school_with_coordinator(), _login(), asyncio, parametrize, SCH-006 -- Academic Results module (Draft -> Verified -> Published). Academic… (+38 more)
+Cohesion: 0.12
+Nodes (53): School-staff portfolio assignment (`DEC-SCOPE-013`) -- scopes an…, SchoolStaffAssignment, _add_academic_team_member(), _create_school_with_coordinator(), _login(), asyncio, parametrize, SCH-006 -- Academic Results module (Draft -> Verified -> Published). Academic… (+45 more)
 
 ### Community 132 - "bdm-008 Follow-ups and Tasks Design"
 Cohesion: 0.03
-Nodes (71): API addendum bdm-011: trip ↔ appointment linking, itinerary, productivity, travel report, DEC-SCOPE-079, DEC-SCOPE-092, DEC-SCOPE-097, Feature bdm-011, API §13 Traceability check, DEC-SCOPE-102, bdm-008 Follow-ups and Tasks Design (+63 more)
+Nodes (71): API addendum bdm-011: trip ↔ appointment linking, itinerary, productivity, travel report, API addendum bdm-025: BDM deactivation and portfolio handover, DEC-SCOPE-075, DEC-SCOPE-079, DEC-SCOPE-082, DEC-SCOPE-092, DEC-SCOPE-097, Feature bdm-006 (+63 more)
 
 ### Community 133 - "test_ccrm_021_document_status.py"
-Cohesion: 0.12
-Nodes (44): DocumentEvent, AGN-009 (DEC-SCOPE-052): a document's history, one row per event, append-only.…, _doc(), _events(), _file(), asyncio, parametrize, ccrm-021 (DEC-SCOPE-251) -- the fixed document status list, review metadata,… (+36 more)
+Cohesion: 0.09
+Nodes (60): Why a counselor / admin may not set `status` on a document of this type (S2,…, review_refusal(), _doc(), _events(), _file(), asyncio, parametrize, ccrm-021 (DEC-SCOPE-251) -- the fixed document status list, review metadata,… (+52 more)
 
 ### Community 134 - "test_enh_023_tier_change.py"
-Cohesion: 0.13
-Nodes (49): activity(), attendance(), change_tier(), denials(), grandfathered(), notices_for(), asyncio, ENH-023 (DEC-SCOPE-030) -- tier changes and grandfathered work against a real… (+41 more)
+Cohesion: 0.14
+Nodes (47): activity(), attendance(), change_tier(), denials(), grandfathered(), notices_for(), asyncio, ENH-023 (DEC-SCOPE-030) -- tier changes and grandfathered work against a real… (+39 more)
 
 ### Community 135 - "partnershipCalendar.ts"
 Cohesion: 0.02
-Nodes (250): BdmCalendarPage(), Search, BdmManagerCalendarPage(), Read, Search, ManagementMeetingsPage(), headingFor(), PartnershipCalendarPage() (+242 more)
+Nodes (219): BdmCalendarPage(), Search, BdmManagerCalendarPage(), Read, Search, ManagementMeetingsPage(), headingFor(), PartnershipCalendarPage() (+211 more)
 
 ### Community 136 - "EduSphere School CRM User Manual"
 Cohesion: 0.03
-Nodes (90): Student Roster, Activity Feedback across schools, Create a school and its Coordinator, Create school staff accounts and their school portfolio, Edit a school profile and its partnership tier, EduSphere School CRM Administrator Manual, Onboard several schools by CSV, Partner Schools list (+82 more)
+Nodes (88): Student Roster, Activity Feedback across schools, Create a school and its Coordinator, Create school staff accounts and their school portfolio, Edit a school profile and its partnership tier, EduSphere School CRM Administrator Manual, Onboard several schools by CSV, Partner Schools list (+80 more)
 
-### Community 137 - "test_bdm_019_admin.py"
-Cohesion: 0.06
-Nodes (85): network_world(), AGN-022 fixture: AGN-018's dashboard world (hand counts in agn018_helpers),…, agency(), agent_queue_item(), link_agent(), pending_agent(), bdm-019 test builders, on top of bdm-005/018's and AGN-001's. Unique values per…, An Agent organization with a pending request and an active agency to link; the… (+77 more)
+### Community 137 - "test_agn_022_network.py"
+Cohesion: 0.15
+Nodes (37): network_world(), _admin(), _item(), asyncio, parametrize, AGN-022 -- Overseas Admin agent network oversight (DEC-SCOPE-064; spec §8)., Characterisation: AGN-022 reuses AGN-001's suspend/reinstate unchanged; this…, _reads() (+29 more)
 
 ### Community 138 - "test_rec_009_candidates.py"
-Cohesion: 0.08
-Nodes (68): deliver_recruiter_email(), UUID, next_code(), as_recruiter(), body(), create(), mail(), mobile() (+60 more)
+Cohesion: 0.07
+Nodes (81): target(), as_recruiter(), body(), create(), mail(), mobile(), asyncio, parametrize (+73 more)
 
 ### Community 139 - "Agent CRM Troubleshooting"
 Cohesion: 0.02
-Nodes (86): Razorpay deposit payments, "A student with this email or phone already exists in your agency", Admin: "A refund cannot exceed the paid amount", Admin: "Access unavailable — Workspace not found" (Super Admin), Agent CRM Troubleshooting, "Agent registration is pending approval", "An application for this university/course already exists", "Commission cannot be claimed in its current status" (+78 more)
+Nodes (94): Agency-state gate (rbac.py), Blocked member, Razorpay deposit payments, STAFF_PERMISSIONS (can_verify_documents, can_view_reports), DOC-AUTH-003 Access unavailable states, P5 No notification on agency approval/rejection, "A student with this email or phone already exists in your agency", Admin: "A refund cannot exceed the paid amount" (+86 more)
 
 ### Community 140 - "test_rec_017_tracking.py"
-Cohesion: 0.09
-Nodes (80): from_legacy(), A legacy PATCH value or a new key -> the new key; None when it is neither., _add(), _candidate(), _move(), asyncio, parametrize, rec-017 -- candidate + requirement tracking (spec §2-§4; AC1, AC2; DEC-… (+72 more)
+Cohesion: 0.07
+Nodes (98): from_legacy(), A legacy PATCH value or a new key -> the new key; None when it is neither., _add(), _candidate(), _move(), asyncio, parametrize, rec-017 -- candidate + requirement tracking (spec §2-§4; AC1, AC2; DEC-… (+90 more)
 
-### Community 141 - "Discovery: School Coordinator portal (role `school_coordinator`)"
+### Community 141 - "SchoolAccountInvite"
 Cohesion: 0.04
-Nodes (45): 10. Team (invite Principal/Teacher/Parent; activate/deactivate) — `/school/coordinator/team`, 11. Reports — `/school/coordinator/reports`, 12. Global Education — `/school/coordinator/global-education`, 13. Entitlements — `/school/coordinator/entitlements`, 14. Notifications — `/school/coordinator/notifications`, 15. Endpoint inventory used by the coordinator portal (≈49), 16. As-built oddities a product owner should know (not fixed), 17. VERIFICATION REQUIRED (cannot be confirmed from code) (+37 more)
+Nodes (72): Coordinator-issued invite for Principal/Teacher/Parent accounts (SCH-003,…, SchoolAccountInvite, _csv(), asyncio, fixture, ENH-025 -- bulk upload + template carry the new columns (spec §3.3, AC1/2/5/6)., _students(), test_all_new_columns_load() (+64 more)
 
 ### Community 142 - "profile"
-Cohesion: 0.07
-Nodes (39): ProfileUpdate, profile(), `ccrm-007` — Structured overseas student profile, Global Constraints, Task 1: Backend — fix explicit-null `full_name` crash, Task 2: Backend — characterize the existing full_name/phone update path, Task 3: Frontend — `ProfileForm` happy path, Task 4: Frontend — `ProfileForm` error states (+31 more)
+Cohesion: 0.03
+Nodes (78): patch, update_me(), ProfileUpdate, test_models_match_the_migration(), profile(), `ccrm-007` — Structured overseas student profile, Global Constraints, Task 1: Backend — fix explicit-null `full_name` crash (+70 more)
 
-### Community 143 - "test_bdm_001_profiles.py"
-Cohesion: 0.08
-Nodes (64): bdm_payload(), create_bdm(), _bdm(), _loggers_enabled(), _patch(), _profile(), asyncio, fixture (+56 more)
+### Community 143 - "bdm001_helpers.py"
+Cohesion: 0.12
+Nodes (47): bdm_payload(), create_bdm(), bdm-001 test builders. Every value is unique per call: the test database is…, _bdm(), _loggers_enabled(), _patch(), _profile(), asyncio (+39 more)
 
 ### Community 144 - "mk_application"
-Cohesion: 0.03
-Nodes (138): application_steps(), Spec §4, steps 5-9, from the application's own columns, its deposit and its…, _steps(), student_steps(), _visa_state(), count_rows(), mk_application(), AGN-008 test helpers: an agency with staff, a student with no login, a linked… (+130 more)
+Cohesion: 0.04
+Nodes (111): DocumentEvent, AGN-009 (DEC-SCOPE-052): a document's history, one row per event, append-only.…, application_steps(), Spec §4, steps 5-9, from the application's own columns, its deposit and its…, _steps(), student_steps(), _visa_state(), mk_application() (+103 more)
 
 ### Community 146 - "parse.py"
 Cohesion: 0.06
 Nodes (72): bullets(), category_of(), _cells(), city_of_campus(), clean(), clean_name(), _col_letter(), _commission_text() (+64 more)
 
-### Community 147 - "school_bulk.py"
-Cohesion: 0.02
-Nodes (180): bulk_template_language(), bulk_template_psychometric(), bulk_template_results(), bulk_template_test_prep(), bulk_upload_language(), bulk_upload_psychometric(), bulk_upload_results(), bulk_upload_test_prep() (+172 more)
+### Community 147 - "File Structure"
+Cohesion: 0.04
+Nodes (71): CareerRecordFields, CareerRecordUpdate, _clean_list(), _clean_multiline_text(), _iso_date_or_none(), PsychometricResultFields, ENH-026 body fields shared by create and update. extra="forbid" (A10): ids,…, PATCH body. `expected_status` is an optional precondition (spec §5.1 step 5):… (+63 more)
 
 ### Community 148 - "hash_password"
-Cohesion: 0.11
-Nodes (48): _bootstrap_one(), main(), One-off production admin bootstrap -- NOT part of the app's normal startup path…, Returns (message, was_configured) -- was_configured is True whenever this…, hash_password(), asyncio, test_overseas_admin_schools_portal_section_includes_school_code_and_branch(), _create_overseas_admin() (+40 more)
+Cohesion: 0.13
+Nodes (44): hash_password(), asyncio, test_overseas_admin_schools_portal_section_includes_school_code_and_branch(), _create_overseas_admin(), _create_school(), _load_backfill_migration(), _login(), asyncio (+36 more)
 
-### Community 149 - "TelecallerTargetsPanel.tsx"
-Cohesion: 0.03
-Nodes (105): RecruiterManagementPage(), ROLES, TelecallerDashboardPage(), MANAGER_ROLES, TelecallerReportActivityPage(), FIELD, LISTS, RecruiterManagementPanel() (+97 more)
+### Community 149 - "TelecallerLeadPages.tsx"
+Cohesion: 0.02
+Nodes (136): TelecallerDashboardPage(), MyFollowUpsPage(), MyLeadPage(), NewLeadPage(), MyLeadsPage(), TeamFollowUpsPage(), TeamLeadPage(), NewTeamLeadPage() (+128 more)
 
 ### Community 150 - "tel-003 Lead Record Design"
-Cohesion: 0.03
-Nodes (68): DEC-SCOPE-084, DEC-SCOPE-088, DEC-SCOPE-093, DEC-SCOPE-094, Feature tel-005, Feature tel-008, Feature tel-009, Feature tel-011 (+60 more)
+Cohesion: 0.04
+Nodes (61): DEC-SCOPE-084, DEC-SCOPE-088, Feature tel-005, Feature tel-008, API §12H Lead pipeline (tel-004), API §12I Telecaller content library (tel-012), API §12J Telecaller lead workspace (tel-008), API §12K Lead distribution (tel-007) (+53 more)
 
-### Community 151 - "log_activity"
+### Community 151 - "test_upc_026_migration.py"
 Cohesion: 0.07
-Nodes (55): _day(), delete_activity(), log_activity(), my_activities(), organization_activities(), _owned(), AsyncSession, delete (+47 more)
+Nodes (45): _agreement(), isolated_db(), fixture, UUID, upc-014 -- migration 0127_university_agreements (spec §2). Round trip,…, test_downgrade_refuses_while_agreements_exist(), test_migration_chains_after_0126_and_there_is_a_single_head(), test_round_trip_and_constraints() (+37 more)
 
 ### Community 152 - "test_visa_001_checklist.py"
 Cohesion: 0.48
@@ -2256,31 +2346,31 @@ Nodes (16): _create_user(), _login(), _make_application(), _make_university(), _
 
 ### Community 153 - "queue_deliveries"
 Cohesion: 0.04
-Nodes (111): _build_export(), _notify_student(), NotificationPreference, ENH-014 (DEC-NOT-001 2026-09-30, D4): opt-in to WhatsApp and SMS. No row means…, deliver(), AsyncSession, queue_deliveries(), `channels` (admin /communications/notify only) narrows the allowed set; it can… (+103 more)
+Nodes (111): _build_export(), _preferences_out(), put_notification_preferences(), put, NotificationPreference, ENH-014 (DEC-NOT-001 2026-09-30, D4): opt-in to WhatsApp and SMS. No row means…, deliver(), enqueue() (+103 more)
 
 ### Community 154 - "world"
-Cohesion: 0.07
-Nodes (86): batches_of(), csv_bytes(), Shared builders for the ENH-028 bulk data-entry tests…, A school in the member's portfolio (its first student has a linked parent) plus…, result_row(), upload(), world(), _app_loggers_enabled() (+78 more)
+Cohesion: 0.08
+Nodes (77): mk_student(), batches_of(), csv_bytes(), Shared builders for the ENH-028 bulk data-entry tests…, A school in the member's portfolio (its first student has a linked parent) plus…, result_row(), upload(), world() (+69 more)
 
 ### Community 155 - "Feature Acceptance Criteria"
 Cohesion: 0.02
 Nodes (82): ADM-001 — User/course/batch administration, ADM-002 — CRM-linked enquiry/lead management, ADM-003 — Batch creation and trainer assignment, ADM-004 — Directory management: Students, Trainers, Employers, ADM-005 — Enrolment review and approval, ADM-006 — Certificate administration, ADM-007 — Placement Team workspace, ADM-008 — HR Team workspace (+74 more)
 
 ### Community 157 - "CounselorLeadDetail.tsx"
-Cohesion: 0.01
-Nodes (267): AdminLeadFilters(), LEAD_FILTERS, LeadFilter, Organization, Staff, AdminLeadManagementPanel(), AdminLeadRow, PRIORITY_LABEL (+259 more)
+Cohesion: 0.02
+Nodes (149): adminMove(), Lead, LeadStageControl(), close(), save(), LeadStageHistory(), Message, useLostReasons() (+141 more)
 
 ### Community 158 - "test_enh_006_change_password.py"
-Cohesion: 0.13
-Nodes (49): _make_user(), _password_is(), asyncio, parametrize, ENH-006 / DEC-SCOPE-021 -- self-service change password (authenticated). Spec:…, Insert denied change-password audit rows, each back-dated by the given number…, _rows(), _seed_failures() (+41 more)
+Cohesion: 0.17
+Nodes (41): _make_user(), _password_is(), asyncio, parametrize, ENH-006 / DEC-SCOPE-021 -- self-service change password (authenticated). Spec:…, Insert denied change-password audit rows, each back-dated by the given number…, _rows(), _seed_failures() (+33 more)
 
-### Community 159 - "BdmAppointment"
-Cohesion: 0.06
-Nodes (121): BdmAppointment, BdmAssignmentHistory, bdm-006 (DEC-SCOPE-068): a BDM's meeting at an organization (§2). The contact…, bdm-025 (DEC-SCOPE-082): one row per organization, appointment or task that…, appointment(), deliveries(), ist(), mou() (+113 more)
+### Community 159 - "test_bdm_025_deactivate.py"
+Cohesion: 0.09
+Nodes (74): BdmAssignmentHistory, bdm-025 (DEC-SCOPE-082): one row per organization, appointment or task that…, appt(), as_super(), audit_rows(), deactivate(), fresh(), history() (+66 more)
 
 ### Community 160 - "test_tel_019_bdm.py"
-Cohesion: 0.11
-Nodes (60): accept_body(), accept_url(), at(), bdm_with_org(), body(), decline_url(), file_request(), tel-019 test builders. Every value is unique per call: the test database is… (+52 more)
+Cohesion: 0.13
+Nodes (54): accept_body(), accept_url(), at(), bdm_with_org(), body(), decline_url(), file_request(), tel-019 test builders. Every value is unique per call: the test database is… (+46 more)
 
 ### Community 161 - "EduSphere School CRM — User Manual"
 Cohesion: 0.03
@@ -2296,35 +2386,35 @@ Nodes (34): allocate(), (points per skill, experience points, location points). 
 
 ### Community 164 - "University Partnership CRM Backlog (upc-001..033)"
 Cohesion: 0.02
-Nodes (143): commission(), PartnershipMenuCard(), APPROVAL_GATES GATE-09, University Partnership CRM Backlog (upc-001..033), EVID-020 University Partnership CRM source (DERIVED_BLUEPRINT), Phase 3 review notes (applied to this plan), upc-030 University 360 view — implementation plan, migration 0128_university_milestones (+135 more)
+Nodes (136): PartnershipMenuCard(), APPROVAL_GATES GATE-09, University Partnership CRM Backlog (upc-001..033), EVID-020 University Partnership CRM source (DERIVED_BLUEPRINT), migration 0128_university_milestones, Automatic delayed-milestone highlight, upc-008 Expected timeline + milestone tracker (design), UniversityMilestone model (+128 more)
 
 ### Community 165 - "test_rec_020_interviews.py"
 Cohesion: 0.13
 Nodes (53): _app_status(), _at(), _interview(), _move(), published(), asyncio, fixture, parametrize (+45 more)
 
 ### Community 166 - "test_upc_011_calendar.py"
-Cohesion: 0.15
-Nodes (43): at(), day(), keys(), meeting(), _owned(), asyncio, upc-011 -- the §9 calendar and overlap warnings (spec CL1, CL8-CL12; AC1, AC2,…, E1: an event touching two windows appears in each; its own detail sees overlaps… (+35 more)
-
-### Community 167 - "pytest_asyncio"
-Cohesion: 0.08
-Nodes (65): history_of(), offer_audits(), offer_body(), offer_url(), offer_world(), AGN-010 test helpers: AGN-008's agency world plus one application and its offer…, A valid conditional offer; `None` values are sent as JSON null, so pass a key…, (history rows, audit rows) for the application -- a refused request leaves both… (+57 more)
-
-### Community 168 - "channel"
-Cohesion: 0.08
-Nodes (29): channel(), API §12BC Recruiter message templates, WhatsApp and email (rec-026), API §12BH University calls, message templates, WhatsApp and email (upc-012), C.0 Agent vs School (vs College) differences in this part, C.1 Appointments list — `/bdm/appointments`, C.2 Book appointment — `/bdm/appointments/new`, C.3 Appointment detail — `/bdm/appointments/[id]`, C.4 Follow-ups and tasks — `/bdm/follow-ups` (+21 more)
-
-### Community 169 - "UniversityContact"
 Cohesion: 0.11
-Nodes (46): add_contact(), contact_roles(), delete_contact(), list_contacts(), _locked_university(), AsyncSession, delete, get (+38 more)
+Nodes (51): at(), day(), keys(), meeting(), _owned(), asyncio, upc-011 -- the §9 calendar and overlap warnings (spec CL1, CL8-CL12; AC1, AC2,…, E1: an event touching two windows appears in each; its own detail sees overlaps… (+43 more)
+
+### Community 167 - "test_agn_010_offer.py"
+Cohesion: 0.11
+Nodes (45): history_of(), offer_audits(), offer_body(), offer_url(), offer_world(), AGN-010 test helpers: AGN-008's agency world plus one application and its offer…, A valid conditional offer; `None` values are sent as JSON null, so pass a key…, (history rows, audit rows) for the application -- a refused request leaves both… (+37 more)
+
+### Community 168 - "bdm-001 — BDM and BDM Manager Roles, BDM Profile, Account Provisioning — Design"
+Cohesion: 0.05
+Nodes (49): apply_profile_update(), flush_profile(), locked_active_manager(), _parse(), parse_profile_create(), parse_profile_update(), AsyncSession, BaseModel (+41 more)
+
+### Community 169 - "test_upc_017_courses.py"
+Cohesion: 0.12
+Nodes (42): _audits(), _published(), asyncio, parametrize, ccrm-051 (DEC-SCOPE-327): the agent-Master commission per course -- an optional…, A published university as overseas_admin (the client stays signed in as them)., test_ac1_ac2_the_master_sees_each_courses_effective_commission_with_its_source(), test_ac3_public_course_apis_never_carry_it() (+34 more)
 
 ### Community 171 - "test_trn_003_live_sessions.py"
 Cohesion: 0.41
 Nodes (11): _create_batch_with_session(), _create_trainer(), _login(), asyncio, TRN-003 -- Upcoming sessions and live-class join. `GET /communications/it/live-…, TRN-003-AC02: no join link set yet -- shown as such, not a broken response., test_a_not_yet_joinable_session_is_represented_cleanly_not_an_error(), test_a_role_outside_self_is_rejected() (+3 more)
 
 ### Community 172 - "telecaller_alerts.py"
-Cohesion: 0.13
-Nodes (43): Alert, appointment_hour(), appointment_tomorrow(), _appointments(), _each(), _event(), follow_up_due(), follow_up_missed() (+35 more)
+Cohesion: 0.09
+Nodes (53): tel-020 (DEC-SCOPE-111, T14): a team's alert thresholds -- Lead Not Contacted…, TelSetting, Alert, appointment_hour(), appointment_tomorrow(), _appointments(), _each(), _event() (+45 more)
 
 ### Community 173 - "RPT screens"
 Cohesion: 0.07
@@ -2332,7 +2422,7 @@ Nodes (35): DEC-SCOPE-020, DEC-SCOPE-022, DEC-SCOPE-030, DEC-SCOPE-033, DEC-SCOP
 
 ### Community 174 - "RAID Log"
 Cohesion: 0.02
-Nodes (110): A-01 Complexity day convention, A-02 2.0x overlay multiplier, A-03 Provider setup effort, A-04 MVP slice Wave 0+1, AGN-018 Agency dashboard, AGN-019 Staff performance, AGN-021 Staff activity, D-01 Zoho account decision (+102 more)
+Nodes (108): A-01 Complexity day convention, A-02 2.0x overlay multiplier, A-03 Provider setup effort, A-04 MVP slice Wave 0+1, AGN-018 Agency dashboard, AGN-019 Staff performance, D-01 Zoho account decision, D-02 Razorpay credentials (+100 more)
 
 ### Community 175 - "test_nehn_009_reports.py"
 Cohesion: 0.05
@@ -2343,64 +2433,64 @@ Cohesion: 0.17
 Nodes (45): ago(), call_url(), calls_url(), events(), field_error(), lead(), log(), asyncio (+37 more)
 
 ### Community 177 - "CandidateSkill"
-Cohesion: 0.10
-Nodes (42): add_skill(), _body(), change_status(), list_skills(), AsyncSession, delete, get, patch (+34 more)
+Cohesion: 0.13
+Nodes (36): add_skill(), _body(), change_status(), AsyncSession, delete, patch, post, UUID (+28 more)
 
-### Community 178 - "StudentDocument"
-Cohesion: 0.04
-Nodes (118): add_checklist_item(), create_checklist(), get_checklist(), link_checklist_document(), mark_checklist_item(), AsyncSession, delete, get (+110 more)
+### Community 178 - "ccrm-022 — Sensitive documents and access logging (design)"
+Cohesion: 0.22
+Nodes (8): _named(), Whether a (free-text) document type names one of `names` as whole words: "QA…, ccrm-022 — Sensitive documents and access logging (design), Changes, Decisions, Reviews (Phase 3), Tests, What exists (verified on `origin/main` @ `475269c6`)
 
-### Community 179 - "amount"
-Cohesion: 0.04
-Nodes (48): amount(), DEC-SCOPE-110, BRD Open Items, 7.9 Agent, PRD-AGT-001 — Agent self-registration, PRD-AGT-002 — Referred-student roster and status, PRD-AGT-003 — Commission accrual visibility, PRD-AGT-004 — Commission payout request and approval (+40 more)
+### Community 179 - "rec-031 — Revenue / commercial tracking (track only): design"
+Cohesion: 0.22
+Nodes (8): 1. Decisions (RV1–RV10, UNVERIFIED), 2. Data (migration 0147), 3. API (§12CQ), 4. UI, 5. Tests, 6. Out of scope, 7. QA evidence (2026-10-11), rec-031 — Revenue / commercial tracking (track only): design
 
 ### Community 180 - "test_enh_003_first_time_provisioning.py"
 Cohesion: 0.07
-Nodes (87): verify_password(), PasswordResetToken, _admin_client(), _age_welcome_tokens(), _app_loggers_enabled(), _configure_smtp(), _create_payload(), _delivery_setup() (+79 more)
+Nodes (86): PasswordResetToken, _admin_client(), _age_welcome_tokens(), _app_loggers_enabled(), _configure_smtp(), _create_payload(), _delivery_setup(), _email() (+78 more)
 
 ### Community 181 - "test_enh_021_certificate.py"
 Cohesion: 0.08
 Nodes (53): _chunk(), jpeg_bytes(), png_bytes(), ENH-025 byte builders: minimal, structurally valid JPEG/PNG files with and…, _segment(), _client_for(), _downloads(), _held() (+45 more)
 
-### Community 182 - "rec-001 — Recruiter scope for `placement_team` + new `placement_manager` (design)"
-Cohesion: 0.03
-Nodes (79): DEC-SCOPE-119, Feature rec-006, API §12AM Recruiter Skills Master (rec-006), API §12AZ JD management (rec-008), Migration 0100_recruiter_profiles, rec-001 Recruiter Roles Plan, Migration 0102_rec_catalogues, rec-002 Recruiter Catalogues Plan (+71 more)
+### Community 182 - "rec-002 — Recruiter catalogues (design)"
+Cohesion: 0.04
+Nodes (55): API §12AZ JD management (rec-008), Migration 0100_recruiter_profiles, rec-001 Recruiter Roles Plan, Migration 0102_rec_catalogues, rec-002 Recruiter Catalogues Plan, Migration 0104_skills_master, Migration 0117_job_descriptions, rec-008 JD Management Plan (+47 more)
 
-### Community 183 - "UniversityAgreement"
-Cohesion: 0.03
-Nodes (154): AgreementType, agreement_options(), create_agreement(), get_agreement(), list_agreements(), _locked(), menu_agreements(), move_agreement() (+146 more)
+### Community 183 - "University"
+Cohesion: 0.01
+Nodes (767): AgreementType, global_dashboard(), AsyncSession, get, The columns and pipeline are now; the funnel and commission cover the period…, list_milestones(), AsyncSession, get (+759 more)
 
-### Community 184 - "bdmTargets.ts"
+### Community 184 - "global-dashboard/page.tsx"
 Cohesion: 0.02
-Nodes (125): Loading(), Loading(), Loading(), ManagerMemberTargetsPage(), Loading(), ManagerTargetsPage(), Loading(), Loading() (+117 more)
+Nodes (140): ManagementUniversitiesPage(), ExpectedPartnershipsPage(), Search, Column(), countryRows(), dayText(), GlobalDashboardPage(), Search (+132 more)
 
 ### Community 185 - "test_tel_020_alerts.py"
-Cohesion: 0.07
-Nodes (63): tel-020 (DEC-SCOPE-111, T14): a team's alert thresholds -- Lead Not Contacted…, TelSetting, appointment(), deliveries(), follow_up(), ist(), mk_lead(), notes() (+55 more)
-
-### Community 186 - "certificates.py"
-Cohesion: 0.08
-Nodes (40): list_signatories(), _out(), preview_certificate(), AsyncSession, get, patch, post, UploadFile (+32 more)
-
-### Community 187 - "test_enh_004_student_promotion.py"
-Cohesion: 0.08
-Nodes (40): Advance the grade number inside a free-text label ("Grade 8-A" -> "Grade 9-A").…, _swap_grade_label(), _app_loggers_enabled(), _decide(), _history_url(), _isolated_migration_database(), fixture, parametrize (+32 more)
-
-### Community 188 - "clean_free_text"
 Cohesion: 0.05
-Nodes (14): ApplicationArrivalSave, ApplicationEnrollmentSave, ChecklistTemplateItemIn, clean_free_text(), _condition_text(), _intake(), OfferConditionUpdate, _profile_text() (+6 more)
+Nodes (79): appointment(), deliveries(), follow_up(), ist(), mk_lead(), notes(), asyncio, datetime (+71 more)
+
+### Community 186 - "CertificateSignatory"
+Cohesion: 0.05
+Nodes (54): _audit(), list_signatories(), _out(), preview_certificate(), AsyncSession, get, patch, post (+46 more)
+
+### Community 187 - "test_bdm_012_reminders.py"
+Cohesion: 0.17
+Nodes (42): appointment(), deliveries(), ist(), mou(), datetime, bdm-012 test builders. Rows are inserted directly with dates in 2033, so other…, reminders(), run() (+34 more)
+
+### Community 188 - "test_bdm_010_schemas.py"
+Cohesion: 0.09
+Nodes (41): BdmTripCreate, BdmTripExpenseCreate, BdmTripExpenseOut, BdmTripExpenseUpdate, BdmTripOut, BdmTripPage, BdmTripReject, BdmTripRow (+33 more)
 
 ### Community 189 - "test_tel_026_matrix.py"
-Cohesion: 0.09
-Nodes (29): _call(), _csv(), _fill(), _mobile(), _operations(), asyncio, parametrize, R() (+21 more)
+Cohesion: 0.05
+Nodes (43): at(), operations(), `GET /counselor/leads/{lead}/render?x=1` -> `GET /counselor/leads/{}/render`:…, Every registered operation as a placeholder template ("METHOD /path/{}")., G1: a route added to the counselor CRM surface without a matrix row (or a stale…, _template(), test_every_counselor_crm_route_has_a_row(), _call() (+35 more)
 
-### Community 190 - "management_crm_reports.py"
-Cohesion: 0.10
-Nodes (40): _caseload(), P7 / P8: every application of this counselor (PF2: of the intake), by stage and…, _ageing(), _by_intake(), _created(), _days(), _forecast(), _incomplete_required() (+32 more)
+### Community 190 - "mk_university"
+Cohesion: 0.13
+Nodes (40): band(), health_score(), HS7: Excellent >= 80, Good 60-79, Needs attention < 60., HS5/HS6: the 0-100 score and each factor's points (None when untracked or…, mk_university(), _call(), _factor(), _health() (+32 more)
 
 ### Community 191 - "student_application"
-Cohesion: 0.09
-Nodes (68): EmployerProfile, EMP-001 -- DATA_MODEL.md #5.2, net-new. `registration_status` exists but is…, rec-017 test builders: since migration 0121 every job application belongs to a…, Added to the session and flushed (the caller commits). `status` is a rec-017…, student_application(), _create_employer(), _create_job(), _create_student() (+60 more)
+Cohesion: 0.16
+Nodes (43): Added to the session and flushed (the caller commits). `status` is a rec-017…, student_application(), _create_employer(), _create_job(), _create_student(), _login(), asyncio, EMP-004 -- Interview scheduling and shortlist. Net-new: `POST… (+35 more)
 
 ### Community 192 - "test_pub_023_country_flags.py"
 Cohesion: 0.13
@@ -2408,11 +2498,11 @@ Nodes (36): _listed(), asyncio, nehn-034 (DEC-SCOPE-286): the country cards' uni
 
 ### Community 193 - "StorageService"
 Cohesion: 0.08
-Nodes (27): nehn-035 (DEC-SCOPE-331 L3): an uploaded logo, public by design, in either…, university_logo(), nehn-003 PS1: one S3 client for every call, pointed at `S3_ENDPOINT_URL` when…, A short-lived link to one object. Locally it is a signed API route (PS2), never…, The key a `presign_download` token was issued for, or None when it is forged,…, nehn-003 PS6: copy an upload in chunks (S3 multipart or a local file), never…, Resolve a key under the storage root. Keys are server-generated, but a read or…, The local file behind `key` for streaming, or None when it is missing or… (+19 more)
+Nodes (28): nehn-035 (DEC-SCOPE-331 L3): an uploaded logo, public by design, in either…, university_logo(), nehn-003 PS1: one S3 client for every call, pointed at `S3_ENDPOINT_URL` when…, A short-lived link to one object. Locally it is a signed API route (PS2), never…, The key a `presign_download` token was issued for, or None when it is forged,…, nehn-003 PS6: copy an upload in chunks (S3 multipart or a local file), never…, Resolve a key under the storage root. Keys are server-generated, but a read or…, The local file behind `key` for streaming, or None when it is missing or… (+20 more)
 
 ### Community 194 - "can_edit"
-Cohesion: 0.04
-Nodes (50): can_edit(), 1. Owner answers (2026-10-06, in-session, `EXPLICIT_APPROVAL`), 2. Scope, 3. Data — migration `0084_bdm_onboarding` (additive), 6. Frontend, 7. Security, 8. Tests, bdm-018 — School onboarding handover + `schools` link (design) (+42 more)
+Cohesion: 0.05
+Nodes (46): can_edit(), advance_to(), upc-014 AG10 (the bdm-005 idiom): move a locked university forward to `stage`…, 1. Intent, 2. Decisions taken (owner said "proceed with the recommended answers"), 3. Data (migration `0112_company_pipeline`), 4. Backend, 6. Security (+38 more)
 
 ### Community 195 - "test_upc_009_meetings.py"
 Cohesion: 0.16
@@ -2426,21 +2516,21 @@ Nodes (64): as_role(), product(), tel-012 test builders. Every value is unique p
 Cohesion: 0.23
 Nodes (35): Role: telecaller, 1. Source coverage audit (section by section), 2. Backlog summary, 3.2 Item-level questions (asked one at a time when the item starts; `NEEDS_CONFIRMATION` until then), 3. Decisions and questions, 4. Backlog items, Appendix B — Metric, tile, KPI and alert definitions, Role: telecaller_manager (+27 more)
 
-### Community 198 - "salaries.py"
-Cohesion: 0.04
-Nodes (93): Department, SM1/SM2: the managed department list. A deactivated department keeps its months., SM3: one department's salary totals for one month (`month` is its 1st day), in…, SalaryMonthTotal, change_department(), create_department(), department_out(), departments() (+85 more)
+### Community 198 - "mgmt034_helpers.py"
+Cohesion: 0.05
+Nodes (59): _add(), month_key(), _ok(), plant_finance(), plant_partner_only(), mgmt-034 test builders: one fixture "world" for the management permission…, Partner-only data (M2/M3/M13): an investment, a capital entry and a university…, Finance data (M13): an approved manual income line and a department salary… (+51 more)
 
 ### Community 199 - "router"
-Cohesion: 0.18
-Nodes (12): page(), props, res(), router(), Review Focus, Task 1: Endpoint skeleton — access control and response shape, Task 2: Stage rules, per-student rows and the §19 allowlist, Task 4: Web types and the two presentational components (+4 more)
+Cohesion: 0.15
+Nodes (14): page(), props, res(), router(), ENH-017 Global Education Pipeline Implementation Plan, Global Constraints, Review Focus, Task 1: Endpoint skeleton — access control and response shape (+6 more)
 
 ### Community 200 - "test_role_assignments.py"
-Cohesion: 0.11
-Nodes (33): Deny-by-default: 403 unless the caller holds an active assignment in one of…, Deny-by-default: 403 unless the caller holds an active, usable assignment in…, require_division(), _dependency(), require_role(), _dependency(), get_active_assignments(), has_permission() (+25 more)
+Cohesion: 0.17
+Nodes (25): Deny-by-default: 403 unless the caller holds an active assignment in one of…, Deny-by-default: 403 unless the caller holds an active, usable assignment in…, require_division(), _dependency(), require_role(), _dependency(), get_active_assignments(), AsyncSession (+17 more)
 
 ### Community 201 - "login"
-Cohesion: 0.02
-Nodes (271): BdmAppointmentEvent, bdm-006: one row per status transition (and creation: from_status NULL).…, AsyncSession, Adds one audit row to the caller's session (no commit, MA10). Field names…, record(), _value(), login(), make_manager() (+263 more)
+Cohesion: 0.03
+Nodes (189): check_profile(), _profile_error(), spec §5.2 (AC2, AC6): the keys the effective org_type accepts -- by presence,…, login(), make_manager(), create_org(), make_bdm(), org_payload() (+181 more)
 
 ### Community 202 - "Consolidated Review Enhancement Backlog (nehn-001..043)"
 Cohesion: 0.07
@@ -2450,53 +2540,53 @@ Nodes (64): AGN-010 agent-side offer predicate fix, Consolidated Review Enhancem
 Cohesion: 0.07
 Nodes (95): apply_overseas(), c_url(), enrol(), handover(), handover_url(), make_student(), tel-018 test builders. Every value is unique per call: the test database is…, a_url() (+87 more)
 
-### Community 204 - "job_descriptions.py"
+### Community 204 - "test_bdm_005_schemas.py"
 Cohesion: 0.08
-Nodes (47): create_jd(), download_jd(), get_jd(), AsyncSession, get, post, put, UploadFile (+39 more)
+Nodes (36): BdmMouCreate, BdmMouEnvelope, BdmMouEventOut, BdmMouEventPage, BdmMouOut, BdmMouPage, BdmMouRow, BdmMouUpdate (+28 more)
 
 ### Community 205 - "test_rec_013_find_candidates.py"
-Cohesion: 0.12
-Nodes (43): CandidateResume, rec-009 (AC4): one uploaded resume version, append-only. The current resume is…, _ids(), asyncio, parametrize, rec-013 -- Find Candidates (spec §1-§4, §6; DEC-SCOPE-151 FS1-FS12): skill AND…, One test's skills and candidates, written straight to the database., Spec §6: 10k pool candidates with 3 skills each, written in a transaction that… (+35 more)
+Cohesion: 0.13
+Nodes (41): _ids(), asyncio, parametrize, rec-013 -- Find Candidates (spec §1-§4, §6; DEC-SCOPE-151 FS1-FS12): skill AND…, One test's skills and candidates, written straight to the database., Spec §6: 10k pool candidates with 3 skills each, written in a transaction that…, _search(), test_a_non_opted_in_student_and_an_archived_candidate_are_never_returned() (+33 more)
 
 ### Community 207 - "bdm_reminders.py"
 Cohesion: 0.06
-Nodes (77): Any, upc-008 (DEC-SCOPE-143, MS2): a university's recorded dates for one §6…, UniversityMilestone, _appointment_reminders(), _appointments(), _chunks(), clean(), _clock() (+69 more)
+Nodes (71): Any, upc-008 (DEC-SCOPE-143, MS2): a university's recorded dates for one §6…, UniversityMilestone, _appointment_reminders(), _appointments(), _chunks(), clean(), _clock() (+63 more)
 
 ### Community 208 - "test_nehn_033_progress_mapper.py"
-Cohesion: 0.16
-Nodes (21): _closing(), _position(), progress(), nehn-033 (DEC-SCOPE-332): an overseas student's Progress stepper -- the…, `reached`: for a withdrawn application, the stage it was withdrawn from (its…, parametrize, nehn-033 (DEC-SCOPE-332): the student's Progress stepper -- the pure mapping in…, run() (+13 more)
+Cohesion: 0.25
+Nodes (16): parametrize, nehn-033 (DEC-SCOPE-332): the student's Progress stepper -- the pure mapping in…, run(), states(), test_a_terminal_outcome_closes_the_application(), test_a_withdrawn_application_stops_at_the_step_it_reached(), test_a_withdrawn_application_without_history_stops_at_the_first_step(), test_a_withdrawn_visa_decision_closes_the_application() (+8 more)
 
-### Community 209 - "india_today"
-Cohesion: 0.06
-Nodes (109): apply(), india_today(), current(), _client(), AsyncClient, asyncio, parametrize, upc-007 -- who may move, mark lost, reopen and read (spec PS5, PS6, PS8; N1,… (+101 more)
+### Community 209 - "url"
+Cohesion: 0.05
+Nodes (118): _client(), AsyncClient, asyncio, parametrize, upc-007 -- who may move, mark lost, reopen and read (spec PS5, PS6, PS8; N1,…, test_an_inactive_university_is_read_only(), test_backup_manager_moves(), test_head_moves_team_universities_but_not_another_teams() (+110 more)
 
-### Community 210 - "recruiterPools.ts"
-Cohesion: 0.12
-Nodes (34): SkillChips(), RecruiterTalentPool(), RecruiterTalentPoolForm(), submit(), termCount(), RecruiterTalentPools(), distinctTerms(), unknownSkill() (+26 more)
+### Community 210 - "model_validator"
+Cohesion: 0.02
+Nodes (68): BdmTargetSheet, BdmTargetsPut, BdmTargetTeam, CandidateCreate, _CandidateFields, CandidateUpdate, CertificateRecommendIn, check_pool_rule() (+60 more)
 
-### Community 211 - "nehn-011 — Admin dashboard: enrolments, student progress, course-wise and fee tiles (design)"
-Cohesion: 0.12
-Nodes (14): metric(), mgmt-010 — Expense dashboard — implementation plan, Reviews folded in (Phase 3), Tasks, 4. UI, API (additive), Builder's calls (each `NEEDS_CONFIRMATION` until the client template), Frontend (+6 more)
+### Community 211 - "ensure_admin"
+Cohesion: 0.03
+Nodes (69): ensure_admin(), metric(), bdm-025 Deactivation + Portfolio Handover Implementation Plan, Global Constraints, Review Focus, mgmt-010 — Expense dashboard — implementation plan, Reviews folded in (Phase 3), Tasks (+61 more)
 
-### Community 212 - "services/university_documents.py"
-Cohesion: 0.07
-Nodes (68): download_document(), list_documents(), menu_documents(), _page(), AsyncSession, get, Kind, patch (+60 more)
+### Community 212 - "test_mgmt_026_kpis.py"
+Cohesion: 0.13
+Nodes (34): plan_actuals(), PN6: the live actual of each count KPI in `keys` -- one SELECT, bounded by the…, active_year(), add(), apply(), batch(), candidate(), enrol() (+26 more)
 
-### Community 213 - "test_ccrm_030_reminders.py"
-Cohesion: 0.22
-Nodes (34): day(), default_rules(), direct_app(), fired(), notes(), asyncio, fixture, ccrm-030 (DEC-SCOPE-270, RM1-RM10): the counselor reminder rules fire once on… (+26 more)
+### Community 213 - "plural"
+Cohesion: 0.09
+Nodes (28): BdmOrganizationSchoolActivity(), reload(), count(), GlobalEducationFunnel(), pct(), GlobalEducationStudentTable(), Props, Averages() (+20 more)
 
-### Community 214 - "test_bdm_014_my_day.py"
-Cohesion: 0.28
-Nodes (22): archive(), insert_appt(), insert_mou(), insert_trip(), my_day(), asyncio, parametrize, time (+14 more)
+### Community 214 - "test_bdm_023_dashboard.py"
+Cohesion: 0.05
+Nodes (106): bdm_logs(), create_task(), insert_task(), ist_day(), listed(), bdm-008 test builders (on bdm-006's). Unique per call: the shared test database…, A row the API can't create (a past due date, a done / cancelled state, an `mou`…, Capture `app.bdm`. alembic/env.py's fileConfig() disables loggers that already… (+98 more)
 
-### Community 215 - "_application_date"
-Cohesion: 0.06
-Nodes (17): _AgentApplicationFields, _application_date(), ApplicationDetailsUpdate, ApplicationOfferCreate, DepositRecordSave, _not_future(), Catches typed-year slips (0202, 20226) before they reach a deadline list., Server-owned fields (agent, student, status, university on edit) are not… (+9 more)
+### Community 215 - "record"
+Cohesion: 0.10
+Nodes (25): ccrm-026 (DEC-SCOPE-254): a counselor's / Overseas Admin's partial change to a…, VisaLifecycleUpdate, _check_document(), _history(), _hold_owner(), latest(), _note(), AsyncSession (+17 more)
 
 ### Community 216 - "test_mgmt_026_plans.py"
-Cohesion: 0.12
-Nodes (56): add_months(), as_user(), audits(), clear(), far_month(), free_month(), key(), located() (+48 more)
+Cohesion: 0.19
+Nodes (37): add_months(), as_user(), audits(), clear(), far_month(), free_month(), key(), located() (+29 more)
 
 ### Community 217 - "Agent Deposits workspace (Paid/Remitted/Refunded/Awaiting payment/All)"
 Cohesion: 0.05
@@ -2504,87 +2594,87 @@ Nodes (59): Agency lifecycle: pending -> approved/rejected -> suspended -> reins
 
 ### Community 218 - "bdm-023 — Management dashboard: overview + alerts (design)"
 Cohesion: 0.08
-Nodes (26): pending_filter(), 1. Dashboard: `/bdm/manager/dashboard` (landing page), Migration 0099_tel_settings, tel-020 Alerts Plan, telecaller_alerts service + beat task, Telecaller settings API (12AE), bdm-023 Management Dashboard Design, 1. Dependencies (hard-stop check, 2026-10-07) (+18 more)
+Nodes (24): Migration 0099_tel_settings, tel-020 Alerts Plan, telecaller_alerts service + beat task, Telecaller settings API (12AE), bdm-023 Management Dashboard Design, 1. Dependencies (hard-stop check, 2026-10-07), 2. Scope, 3. Decisions (recommended defaults) (+16 more)
 
 ### Community 219 - "make_user"
-Cohesion: 0.04
-Nodes (137): email(), make_user(), conversion(), asyncio, parametrize, bdm-001 browser QA-07: a sign-in at the wrong portal names the right one (BDMs…, test_a_wrong_password_never_reveals_the_portal(), test_wrong_portal_names_the_right_sign_in() (+129 more)
+Cohesion: 0.03
+Nodes (201): AsyncSession, Adds one audit row to the caller's session (no commit, MA10). Field names…, record(), _value(), make_user(), conversion(), student_email(), asyncio (+193 more)
 
-### Community 220 - "make_tl_manager"
-Cohesion: 0.06
-Nodes (78): create_telecaller(), make_tl_manager(), tel-001 test builders, on top of bdm-001's. Every value is unique per call: the…, tel_payload(), caseload(), lead_body(), mobile(), product() (+70 more)
+### Community 220 - "test_tel_001_provisioning.py"
+Cohesion: 0.08
+Nodes (58): create_telecaller(), tel-001 test builders, on top of bdm-001's. Every value is unique per call: the…, tel_payload(), asyncio, parametrize, tel-001 AC3 -- a telecaller signs in at its team's portal; any other portal…, test_manager_signs_in_only_at_admin(), test_telecaller_signs_in_only_at_its_team_portal() (+50 more)
 
 ### Community 222 - "UserRoleAssignment"
-Cohesion: 0.03
-Nodes (199): _audit(), _doc(), list_kyc_documents(), my_registration(), _own_master_org(), AsyncSession, get, post (+191 more)
+Cohesion: 0.04
+Nodes (148): client_ip(), Request, The caller's IP address as seen behind the proxies (AGN-024 K11, DEC-…, Division-aware role assignment, per DATA_MODEL.md §1.1. Separates identity…, UserRoleAssignment, membership(), org_of(), AGN-024: an agent signup now carries the three KYC documents (DEC-SCOPE-224 K1). (+140 more)
 
 ### Community 223 - "make_school"
-Cohesion: 0.04
-Nodes (164): _has_statement(), portfolio_started_ids(), Select, D11: at least one portfolio entry, or a non-blank personal statement. Profile…, Non-withdrawn ENH-011 enrolment statuses per module and student -- the input…, §27 for one school over the services its tier includes: delivered (used > 0 or…, skill_statuses(), utilization() (+156 more)
+Cohesion: 0.05
+Nodes (134): SCH-005 -- Psychometric Assessment. Net-new, `DATA_MODEL.md` §6.18., SchoolPsychometricRecord, login(), make_school(), make_student(), make_university(), ENH-016 test builders. Every school/user/student gets a random suffix, so tests…, A school plus one account per school role (linked by profile.school_id) and one… (+126 more)
 
 ### Community 224 - "as_user"
 Cohesion: 0.08
-Nodes (78): as_user(), exports(), lead(), names(), asyncio, parametrize, nehn-012 (DEC-SCOPE-298): the admin and telecaller lead lists' India-time date…, sheet() (+70 more)
+Nodes (91): as_user(), date_world(), follow_up_world(), funnel_world(), ist(), parametrize, nehn-013 (DEC-SCOPE-301, spec docs/superpowers/specs/2026-10-27-nehn-013-crm-…, Six leads on one campaign: 1 enrolled, 2 lost (lost + not interested), 3 open… (+83 more)
 
 ### Community 225 - "pickFromList"
-Cohesion: 0.04
-Nodes (19): PDF, PDF, studentWithApplication(), studentWithApplication(), applicationAtOffer(), applicationAtOffer(), addTask(), agencyApplication() (+11 more)
+Cohesion: 0.03
+Nodes (18): PDF, PDF, studentWithApplication(), studentWithApplication(), applicationAtOffer(), applicationAtOffer(), addTask(), agencyApplication() (+10 more)
 
 ### Community 226 - "public.py"
-Cohesion: 0.10
-Nodes (53): career_path(), career_paths(), career_upload(), countries(), country(), _country_out(), events(), gallery() (+45 more)
+Cohesion: 0.05
+Nodes (84): career_path(), career_paths(), career_upload(), countries(), country(), _country_out(), create_enquiry(), events() (+76 more)
 
-### Community 227 - "services/partnership_universities.py"
-Cohesion: 0.03
-Nodes (149): put, EX2-EX4: set (0-100, with a reason) or clear (null) the manual override; the…, set_probability(), list_milestones(), AsyncSession, get, patch, UUID (+141 more)
+### Community 227 - "linked_bdm_organizations"
+Cohesion: 0.12
+Nodes (19): linked_bdm_organizations(), UD11: the BDM organizations linked to this university, as text (partnership…, name_key(), Global Constraints, Review Focus, Task 1: Key + model + migration, Task 2: Service + duplicates endpoint, Task 3: Create/PATCH blocking + override (+11 more)
 
-### Community 228 - "services/university_visits.py"
-Cohesion: 0.06
-Nodes (98): approvals(), approve(), book(), apply(), close(), complete(), _decide(), edit_visit() (+90 more)
+### Community 228 - "services/university_meetings.py"
+Cohesion: 0.01
+Nodes (388): admin_bdms(), _admin_row(), bdm_managers(), me(), _paged(), _profiles(), AsyncSession, get (+380 more)
 
-### Community 229 - "services/partnership_calendar.py"
-Cohesion: 0.11
-Nodes (38): calendar_employees(), AsyncSession, get, UUID, CL9: whose calendar this caller may open., read_calendar(), PartnershipEventParticipant, MG6/MG7: one university contact or one EduSphere employee per row. A deleted… (+30 more)
+### Community 229 - "test_upc_027_onboarding.py"
+Cohesion: 0.16
+Nodes (36): _csv(), import_url(), asyncio, upc-017 -- course CSV import, per university (spec §1 CO14, Q-21)., test_file_problems_and_roles(), test_rows_are_created_duplicate_or_invalid_with_a_reason(), test_template_lists_the_columns_without_commission(), test_the_same_key_replays_and_a_new_key_creates_nothing_new() (+28 more)
 
 ### Community 230 - "test_rec_030_contracts.py"
 Cohesion: 0.27
 Nodes (25): c_url(), _company(), _move(), asyncio, parametrize, rec-030 -- recruiter contracts / MoU (spec §1-§3; DEC-SCOPE-156 CT1-CT10):…, Positive scenario: Signed needs the contract document (AC3); skipping…, _setup() (+17 more)
 
-### Community 231 - "mk_record"
+### Community 231 - "pytest_asyncio"
 Cohesion: 0.03
-Nodes (155): mk_record(), agency_world(), due(), mk_task(), datetime, AGN-016 test helpers: tasks built directly (the API under test builds them in…, A due time relative to now (default: a day ahead)., agency() (+147 more)
+Nodes (154): mk_record(), agency_world(), due(), mk_task(), datetime, AGN-016 test helpers: tasks built directly (the API under test builds them in…, A due time relative to now (default: a day ahead)., agency() (+146 more)
 
 ### Community 232 - "test_upc_031_reports.py"
-Cohesion: 0.21
-Nodes (25): _agreement(), asyncio, parametrize, upc-031 -- GET /partnership/reports/{kind}(.csv) (spec RP1-RP14). Each report…, _team(), test_a_manager_sees_only_their_universities(), test_a_manager_without_a_profile_is_refused(), test_agreements_for_super_admin_equal_the_menu_list() (+17 more)
+Cohesion: 0.18
+Nodes (28): _keys(), test_revoking_the_role_grant_removes_commission_from_screen_and_files_until_restored(), test_the_json_columns_equal_the_download_columns_for_every_reader_and_kind(), _agreement(), asyncio, parametrize, upc-031 -- GET /partnership/reports/{kind}(.csv) (spec RP1-RP14). Each report…, _team() (+20 more)
 
 ### Community 233 - "docs/user-manual/README.md"
 Cohesion: 0.11
 Nodes (5): Agency Master role (up to 3 active Masters per agency), Master-only actions (assign/archive students, confirm enrollment, reject docs, commissions), Staff assigned-student scope, Application stage workflow (Enquiry to Enrolled), Staff optional permissions (Verify documents, View reports)
 
-### Community 234 - "test_mgmt_015_partner_capital.py"
-Cohesion: 0.12
-Nodes (35): account(), add(), audit_rows(), monthly_profit(), partner_client(), asyncio, parametrize, mgmt-015 -- partner capital accounts: `services/partner_capital.py` and… (+27 more)
+### Community 234 - "test_enh_011_schemas.py"
+Cohesion: 0.11
+Nodes (34): _check_dates(), SkillAssessmentCreate, SkillAssessmentOut, SkillAssessmentScoresOut, SkillAttendanceIn, SkillAttendanceOut, SkillBatchCreate, SkillBatchDetail (+26 more)
 
 ### Community 235 - "LeadStageHistory"
 Cohesion: 0.08
-Nodes (74): apply(), LeadStageHistory, tel-004 (DEC-SCOPE-081, spec §3): one row per lead stage change. Append-only.…, history_url(), lead(), tel-004 test builders. Every value is unique per call: the test database is…, stage_url(), field_error() (+66 more)
+Nodes (74): apply(), LeadStageHistory, tel-004 (DEC-SCOPE-081, spec §3): one row per lead stage change. Append-only.…, apply_event(), Spec §2: move the lead if it is in the event's from-set; otherwise (already…, history_url(), lead(), tel-004 test builders. Every value is unique per call: the test database is… (+66 more)
 
 ### Community 236 - "services/partnership_targets.py"
-Cohesion: 0.05
-Nodes (85): copy_targets(), _current_month(), my_targets(), AsyncSession, get, post, put, UUID (+77 more)
+Cohesion: 0.03
+Nodes (140): comment_report(), _member(), my_report(), AsyncSession, get, post, put, UUID (+132 more)
 
-### Community 237 - "days"
-Cohesion: 0.14
-Nodes (13): health(), get, Liveness: process is up. Does not check dependencies., Readiness: dependencies (database, and Redis if configured) are reachable., readiness(), days(), 2. Definitions (builder's defaults), 3. Reports (new resource `reports.placement`) (+5 more)
+### Community 237 - "nehn-016 — Nearing-completion list and recruiter read-only training progress (design)"
+Cohesion: 0.36
+Nodes (7): days(), 2. Definitions (builder's defaults), 3. Reports (new resource `reports.placement`), 5. Web, 6. Acceptance criteria → tests, 7. Risks, nehn-016 — Nearing-completion list and recruiter read-only training progress (design)
 
-### Community 238 - "pdf.py"
-Cohesion: 0.06
-Nodes (71): _block(), _build(), _cell(), _devanagari_style(), _empty(), _grid(), _humanize(), _inr() (+63 more)
+### Community 238 - "pdf_text"
+Cohesion: 0.12
+Nodes (38): _build(), Spec §5.1: title block, the §30 management figures, the §29 grade-wise table., Spec §5.2: the SCH-007 overview the reader already sees, section by section.…, render_progress_report(), render_school_summary(), _decode(), pdf_pages(), pdf_text() (+30 more)
 
 ### Community 239 - "PUB-023 — Country flags (phase 1) — Design"
-Cohesion: 0.13
-Nodes (13): CountryOut, 10. Risks, 1. Intent, 2. Owner answers (`DEC-SCOPE-222`), 4. Assets, 5. API changes, 8. Documentation and traceability, 9. Rollout (+5 more)
+Cohesion: 0.20
+Nodes (9): CountryOut, 10. Risks, 1. Intent, 2. Owner answers (`DEC-SCOPE-222`), 4. Assets, 5. API changes, 8. Documentation and traceability, 9. Rollout (+1 more)
 
 ### Community 240 - "Track and cancel transfer requests"
 Cohesion: 0.04
@@ -2594,9 +2684,9 @@ Nodes (54): Admin transfer review, Common Errors, Expected Result, Fields, How t
 Cohesion: 0.13
 Nodes (31): configured(), _json_object(), plain(), portal_link(), _post(), AsyncClient, Response, ENH-014 (spec §6.4; DEC-NOT-001 2026-09-30 D2, D13): Twilio WhatsApp + SMS over… (+23 more)
 
-### Community 243 - "partnershipComms.ts"
-Cohesion: 0.07
-Nodes (28): UniversityCalls(), ContactRef, UniversityMessages(), CALLS_URL, COMMS_READERS, contactTarget(), historyUrl(), LIST_LIMIT (+20 more)
+### Community 243 - "partnerCapital.ts"
+Cohesion: 0.13
+Nodes (30): CapitalEntryForm(), submit(), Figure(), money(), PartnerCapital(), CAPITAL_API, CAPITAL_FIGURES, CAPITAL_HOME (+22 more)
 
 ### Community 244 - "test_tel_013_messages.py"
 Cohesion: 0.15
@@ -2611,24 +2701,24 @@ Cohesion: 0.06
 Nodes (33): Alembic migrations, migration 0066_bdm_organizations, migration 0070_bdm_appointments, migration 0072_bdm_meeting_reports, migration 0082_bdm_assignment_history, migration 0088_bdm_appointment_trip, migration 0099_tel_settings, migration 0106_rec_companies (+25 more)
 
 ### Community 247 - "School CRM: Overseas Admin and Super Admin screens that manage schools (source discovery)"
-Cohesion: 0.05
-Nodes (38): 0.1 Sidebar (Overseas Admin), 0.2 Sidebar (Super Admin), 0.3 Middleware (sign-in gate), 0.5 Generic `DataTable` controls (apply to the Schools / School Staff / School Applications tables), 0. How these screens are wired (shared mechanics), 10. Admin-side endpoints with NO UI (as-built gaps), 11. Counts, 12. Test data needed to demonstrate (+30 more)
+Cohesion: 0.07
+Nodes (26): 10. Admin-side endpoints with NO UI (as-built gaps), 11. Counts, 12. Test data needed to demonstrate, 13. Suggested screenshots (sequence-feature-step), 14. Top unknowns and decisions for the product owner (VERIFICATION REQUIRED), 1. Feature: Partner Schools list (view all schools), 2. Feature: Create a school and seed its School Coordinator, 3. Feature: Edit school profile and change the partnership tier (entitlements) (+18 more)
 
 ### Community 248 - "Application Status Table AGT-002"
 Cohesion: 0.06
 Nodes (52): Screenshot: Students List (Agency Master), Student Card with Status and Login Badges, Students List Screen, Agency Staff Assigned-Only Student Scope, Screenshot: Students List (Agency Staff), Add Student Form, Screenshot: Add Student Form, Email and Phone Inline Validation (+44 more)
 
 ### Community 249 - "3. Items"
-Cohesion: 0.04
-Nodes (50): 1. Owner answers, 3. Items, 4. Out of scope (owner answers), 5. Traceability: spec → items, 6. Build order, 7. Superseded items, `ccrm-002` — Lead notes *(supersedes nehn-014 part 1)*, `ccrm-003` — Counselor lead actions: stage, next action, follow-ups *(supersedes nehn-014 part 2)* (+42 more)
-
-### Community 250 - "newIdempotencyKey"
 Cohesion: 0.03
-Nodes (82): BulkColumnReference(), DataPrivacyPanel(), submit(), RequestResult, detailMessage(), EmiSchedule, FeePaymentPanel(), downloadReceipt() (+74 more)
+Nodes (83): outcome(), 1. Owner answers, 3. Items, 4. Out of scope (owner answers), 5. Traceability: spec → items, 6. Build order, 7. Superseded items, `ccrm-002` — Lead notes *(supersedes nehn-014 part 1)* (+75 more)
+
+### Community 250 - "pdf.py"
+Cohesion: 0.10
+Nodes (34): _block(), _cell(), _devanagari_style(), _empty(), _grid(), _humanize(), _inr(), _p() (+26 more)
 
 ### Community 251 - "test_enh_001_academic_year.py"
-Cohesion: 0.09
-Nodes (45): AcademicYear, Global, admin-managed academic-year calendar (ENH-001, DEC-DATA-004). No…, _create_admin_and_login(), _create_school_with_coordinator(), asyncio, parametrize, ENH-001 -- Academic-Year foundation model…, Review finding fix: `str(payload.get("label", ""))` used to silently coerce a… (+37 more)
+Cohesion: 0.10
+Nodes (41): _create_admin_and_login(), _create_school_with_coordinator(), asyncio, parametrize, ENH-001 -- Academic-Year foundation model…, Review finding fix: `str(payload.get("label", ""))` used to silently coerce a…, Review finding fix: this endpoint used to write a…, Review finding fix: `date.fromisoformat(...)` only had `(KeyError, ValueError)`… (+33 more)
 
 ### Community 252 - "AuditLog"
 Cohesion: 0.08
@@ -2640,27 +2730,27 @@ Nodes (51): Commissions table screenshot, Commissions role-scoped table, Role-sc
 
 ### Community 255 - "BDM CRM user-guide discovery: Overseas BDM portal (Agent / School BDM)"
 Cohesion: 0.04
-Nodes (46): local(), 0.1 Master Agent-BDM vs School-BDM difference table (summary; detail is in each part), A1.2 Sidebar (BDM_NAV, `web/lib/navigation.ts:72-81`), A1.3 Profile — `/bdm/profile` (`web/app/bdm/profile/page.tsx:10-31`), A1.4 Generic account pages (shell footer), A2.1 Header, A2.2 Sections (common to every type), A2.3 Overview tiles — Agent vs School (`api/api/bdm_my_day.py:31-48,92-122`) (+38 more)
+Nodes (54): local(), 0.1 Master Agent-BDM vs School-BDM difference table (summary; detail is in each part), A1.1 Gate, sign-in, role pill, A1.2 Sidebar (BDM_NAV, `web/lib/navigation.ts:72-81`), A1.3 Profile — `/bdm/profile` (`web/app/bdm/profile/page.tsx:10-31`), A1.4 Generic account pages (shell footer), A2.1 Header, A2.2 Sections (common to every type) (+46 more)
 
-### Community 256 - "outcome"
-Cohesion: 0.07
-Nodes (33): outcome(), `ccrm-015` — Application exception outcomes, `ccrm-016` — Status history with author and reason, 1. Decisions (UNVERIFIED defaults), 2. Data, 3. API (§12AY), 4. Web, 5. Tests (+25 more)
+### Community 256 - "partner_capital.py"
+Cohesion: 0.13
+Nodes (32): PartnerCapitalEntry, PartnerShare, mgmt-015 (CP2-CP4): one capital movement of a partner. Never edited or deleted:…, mgmt-015 (CP5): a partner's profit share % and capital commitment from the…, _active_partners(), add_entry(), _add_months(), _audit_value() (+24 more)
 
 ### Community 257 - "test_rec_024_follow_ups.py"
 Cohesion: 0.26
 Nodes (26): _company(), _create(), fu_url(), _job(), asyncio, rec-024 -- recruiter follow-ups (spec §1-§3; DEC-SCOPE-131 FU1-FU10): create,…, Written straight to the database -- the only way to have one already due (the…, soon() (+18 more)
 
 ### Community 258 - "create"
-Cohesion: 0.05
-Nodes (116): _audits(), asyncio, parametrize, ccrm-050 (DEC-SCOPE-323): the agent-Master commission on the Add/Edit…, test_a_create_without_the_field_has_no_commission_and_no_commission_audit(), test_ac1_an_admin_creates_a_university_with_its_agent_commission(), test_ac2_a_partnership_head_creating_with_the_field_is_403_and_nothing_is_created(), test_ac2_the_assigned_manager_and_head_editing_with_the_field_are_403_and_nothing_changes() (+108 more)
+Cohesion: 0.11
+Nodes (59): _audits(), asyncio, parametrize, ccrm-050 (DEC-SCOPE-323): the agent-Master commission on the Add/Edit…, test_a_create_without_the_field_has_no_commission_and_no_commission_audit(), test_ac1_an_admin_creates_a_university_with_its_agent_commission(), test_ac2_a_partnership_head_creating_with_the_field_is_403_and_nothing_is_created(), test_ac2_the_assigned_manager_and_head_editing_with_the_field_are_403_and_nothing_changes() (+51 more)
 
 ### Community 259 - "test_enh_007_profile_self_service.py"
 Cohesion: 0.12
-Nodes (28): _make_user(), asyncio, parametrize, ENH-007 -- Profile self-service, cross-role completion audit. Spec:…, Unit test: full_name_is_a_real_name rejects both null and whitespace-only, each…, Unit test: Pydantic validator accepts valid full_name., Unit test: Omitting full_name (not sending the key) is allowed., Integration test: PATCH /auth/me rejects explicit null with 422, not 500. (+20 more)
+Nodes (29): _make_user(), asyncio, parametrize, ENH-007 -- Profile self-service, cross-role completion audit. Spec:…, Unit test: full_name_is_a_real_name rejects both null and whitespace-only, each…, Unit test: Pydantic validator accepts valid full_name., Unit test: Omitting full_name (not sending the key) is allowed., Integration test: PATCH /auth/me rejects explicit null with 422, not 500. (+21 more)
 
 ### Community 260 - "services/counselor_tasks.py"
 Cohesion: 0.07
-Nodes (66): change_task(), create_task(), get_task(), list_tasks(), overdue_by_counselor(), AsyncSession, get, patch (+58 more)
+Nodes (68): change_task(), create_task(), get_task(), list_tasks(), overdue_by_counselor(), AsyncSession, get, patch (+60 more)
 
 ### Community 261 - "Psychometric Team dashboard"
 Cohesion: 0.05
@@ -2668,7 +2758,7 @@ Nodes (50): Common Errors, Expected Result, Fields, How to Access, Parent dashbo
 
 ### Community 262 - "test_enh_032_zoho_mail.py"
 Cohesion: 0.02
-Nodes (183): datetime, UUID, ENH-014 (spec §6.5): the worker side. Claim one queued delivery atomically,…, Exactly the email paths that existed inline before ENH-014 (AC12): school SMTP…, Plain values read before any network call, so no transaction is held open while…, _send(), _send_email(), _Snapshot (+175 more)
+Nodes (178): UUID, Exactly the email paths that existed inline before ENH-014 (AC12): school SMTP…, Plain values read before any network call, so no transaction is held open while…, _send(), _send_email(), _Snapshot, main(), ENH-032 / DEC-SCOPE-225: send one plain "EduSphere test email" through the… (+170 more)
 
 ### Community 263 - "Role: it_admin"
 Cohesion: 0.17
@@ -2679,8 +2769,8 @@ Cohesion: 0.07
 Nodes (27): Common Problems, Daily Workflows, Dashboard, Login, Main Activities, Menus Available, Quick-start guide: School Coordinator, Related Features (+19 more)
 
 ### Community 265 - "University Partnership CRM — Engineering Enhancement Backlog (upc-001 … upc-033)"
-Cohesion: 0.13
-Nodes (46): Role: public, University Partnership CRM — Engineering Enhancement Backlog (upc-001 … upc-033), U5 universities master with catalogue_visible flag, DEC-SCOPE-005 EduSphere pays agent commission, U8 Funnel computed from existing FKs only (Leads/Counselling/Eligible not tracked), partnership_head role, partnership_manager role, services/partnership_metrics.py (single source of truth, owned by upc-018) (+38 more)
+Cohesion: 0.09
+Nodes (58): DEC-SCOPE-115, DEC-SCOPE-174, DEC-SCOPE-185, Role: public, University Partnership CRM — Engineering Enhancement Backlog (upc-001 … upc-033), U5 universities master with catalogue_visible flag, U2 Commission visible only to super_admin + partnership roles (+partner via M3), stripped server-side, DEC-SCOPE-005 EduSphere pays agent commission (+50 more)
 
 ### Community 266 - "test_nehn_029_live_session_manage.py"
 Cohesion: 0.22
@@ -2694,69 +2784,69 @@ Nodes (43): 1.1 What the BDM CRM is, 1.2 Agent BDM vs School BDM (appendix 01 §
 Cohesion: 0.13
 Nodes (45): add(), audit_rows(), call(), follow_up(), fresh(), lead_appt(), post(), tel-025 test builders. Rows are inserted directly (a closed lead, a handed-over… (+37 more)
 
-### Community 269 - "Agent CRM Demo — 45-Minute Script {#p-agent-crm-02-demo-script}"
-Cohesion: 0.05
-Nodes (40): 10. Reports and performance, 1. Account access, 2. Agency approval and oversight (Overseas Admin), 3. Dashboard, 4. Team and staff (Master), 5. Students and universities, 6. Applications, 7. Documents (+32 more)
+### Community 269 - "AccountProfilePage.test.tsx"
+Cohesion: 0.10
+Nodes (27): AccountProfilePage(), metadata, Channel, channelsOf(), Choice, NEXT, NotificationPreferencesForm(), finish() (+19 more)
 
 ### Community 270 - "test_pub_022_cms.py"
 Cohesion: 0.13
 Nodes (47): as_role(), body(), create(), login(), make_user(), png_bytes(), asyncio, parametrize (+39 more)
 
 ### Community 271 - "Attendance"
-Cohesion: 0.21
-Nodes (35): Attendance, AttendanceCorrection, _emails(), _login(), _notes(), asyncio, parametrize, nehn-023 -- attendance correction usability and notifications. AC1 the student… (+27 more)
+Cohesion: 0.10
+Nodes (57): Attendance, AttendanceCorrection, audit_change(), changes(), _is_pii(), _json_value(), AsyncSession, A JSON-safe value: dates and datetimes as ISO 8601, anything else non-primitive… (+49 more)
 
 ### Community 272 - "test_upc_024_search.py"
 Cohesion: 0.13
 Nodes (46): country(), course(), head_in(), mk(), names(), asyncio, parametrize, upc-024 -- Global university search (spec §2 SR1-SR16, §5 AC1-AC10; DEC-… (+38 more)
 
-### Community 273 - "Review Focus"
-Cohesion: 0.05
-Nodes (39): Migration 0065_agent_notifications, DEC-SCOPE-060/061 Student journey (renumbered), Migration 0067_audit_entity_index, bdm-002 Organization CRM Core — Implementation Plan, bdm_organizations tables / migration 0066_bdm_organizations, DEC-SCOPE-060 Organization CRM, bdm-002 Organization CRM Plan, Write lock order org, contacts, user (+31 more)
-
-### Community 274 - "Overseas BDM CRM: account access, admin provisioning and lifecycle, travel approvals, touchpoints (source discovery)"
+### Community 273 - "AGN-017 Notifications Plan"
 Cohesion: 0.07
-Nodes (27): 0.2 Common refusal card, 0. Shared mechanics, 1.1 Signed-out redirects (middleware), 1.2 `/bdm/sign-in` (chooser), 1.3 Login pages and the login API, 1.4 Welcome / set-password link (first sign-in), 1.5 Forgot password, change password, sign out, sessions, 1.6 Profile: `/bdm/profile` versus the generic `/account/profile` (+19 more)
+Nodes (31): Channels in-app + email only (no WhatsApp/SMS), Daily deadline reminders Celery beat, DEC-SCOPE-059 Agent notifications, notifications.dedupe_key partial unique idempotency, AGN-017 Notifications Plan, ENH-014 email queue (queue_deliveries), Migration 0065_agent_notifications, Notifications page and unread badge (+23 more)
 
-### Community 275 - "test_agn_001_org_admin.py"
-Cohesion: 0.15
-Nodes (37): membership(), org_of(), AGN-024: an agent signup now carries the three KYC documents (DEC-SCOPE-224 K1)., register_agent(), _admin(), _audits(), asyncio, parametrize (+29 more)
+### Community 274 - "overseas"
+Cohesion: 0.03
+Nodes (66): overseas(), 0.1 Roles involved, 0.2 Common refusal card, 0. Shared mechanics, 1.1 Signed-out redirects (middleware), 1.2 `/bdm/sign-in` (chooser), 1.3 Login pages and the login API, 1.4 Welcome / set-password link (first sign-in) (+58 more)
+
+### Community 275 - "Architecture Decision Records"
+Cohesion: 0.07
+Nodes (32): ADR-001 — Application stack: Next.js + TypeScript, FastAPI, PostgreSQL, ADR-002 Modular monolith, ADR-002 — Architecture style: modular monolith, ADR-002a Microservices (alternative), ADR-002a — Microservices architecture, ADR-003 DigitalOcean, ADR-003 — Cloud provider: DigitalOcean, ADR-003a AWS (alternative) (+24 more)
 
 ### Community 276 - "test_rec_031_revenue.py"
 Cohesion: 0.17
 Nodes (37): _contract(), _field(), _hire(), _invoice(), _number(), _pay(), asyncio, parametrize (+29 more)
 
-### Community 277 - "recruiterMessages.ts"
-Cohesion: 0.08
-Nodes (28): RecruiterMessages(), Source, kindText(), Preview, PreviewState, RecruiterTemplateFields(), activeTemplates, BODY_LIMIT (+20 more)
+### Community 277 - "monthly_review.py"
+Cohesion: 0.14
+Nodes (31): generate_review(), post, Response, MR4: drafts a finished month (201) or recomputes a draft's figures, keeping its…, MonthlyReview, MR2: one review per IST month (`month` is its 1st). `snapshot` is frozen when…, label(), check_finished() (+23 more)
 
-### Community 278 - "day_range"
-Cohesion: 0.02
-Nodes (173): activity(), dashboard(), _export_performance(), _performance(), performance_csv(), performance_report(), performance_xlsx(), AsyncSession (+165 more)
+### Community 278 - "telecaller_metrics.py"
+Cohesion: 0.05
+Nodes (75): appointments_today(), _appointments_today(), _as_of(), _audit(), _became_mine(), _by_actor(), conversions_by_user(), day_targets() (+67 more)
 
-### Community 279 - "candidate_search.py"
-Cohesion: 0.07
-Nodes (69): create_pool(), list_pools(), pool_candidates(), AsyncSession, get, patch, post, UUID (+61 more)
+### Community 279 - "talent_pools.py"
+Cohesion: 0.12
+Nodes (39): create_pool(), list_pools(), pool_candidates(), AsyncSession, get, patch, post, UUID (+31 more)
 
 ### Community 280 - "test_stu_001_enrollment.py"
 Cohesion: 0.32
 Nodes (18): _create_program_and_batch(), _create_student(), _login_as(), asyncio, STU-001 -- Trainer/batch slot enrolment (DEC-WF-002). Covers capacity-aware…, RAID.md I-26: `create_enrollment` already 409s on a repeat booking of the same…, The exclusion above is scoped to the caller's own enrolments -- it must never…, Enrolling used to create nothing billable at all -- 'Fees' stayed empty until… (+10 more)
 
 ### Community 281 - "AgentTaskForm.tsx"
-Cohesion: 0.11
-Nodes (37): AgentTaskCard(), cancelId(), doneId(), editId(), AgentTaskForm(), submit(), Props, AgentTasksPanel() (+29 more)
+Cohesion: 0.13
+Nodes (34): AgentTaskCard(), cancelId(), doneId(), editId(), StatusPill(), AgentTaskForm(), submit(), Props (+26 more)
 
 ### Community 282 - "test_enh_020_schemas.py"
-Cohesion: 0.05
-Nodes (68): create_funding_record(), _deny(), _fields_or_422(), list_counselor_funding_records(), list_student_funding_records(), _locked_student(), _notify_parents(), AsyncSession (+60 more)
+Cohesion: 0.17
+Nodes (23): funding_transition_allowed(), FundingRecordCreate, FundingRecordUpdate, POST body. Every case starts at `required`, so `status` is not a field (spec…, PATCH body, presence-aware (`model_fields_set`). `expected_status` is the…, _create(), _message(), parametrize (+15 more)
 
 ### Community 283 - "test_tel_022_targets.py"
 Cohesion: 0.18
 Nodes (34): _by_kpi(), _effective(), _far_day(), _far_month(), _next_month(), asyncio, parametrize, tel-022 -- telecaller targets API (spec §5; AC1-AC8; DEC-SCOPE-080 G1-G4). The… (+26 more)
 
-### Community 284 - "TelProduct"
-Cohesion: 0.03
-Nodes (193): campaigns(), _page(), TelSource, Active first, then the newest start, then name., asset_link(), assets(), _body(), create_script() (+185 more)
+### Community 284 - "TimestampMixin"
+Cohesion: 0.01
+Nodes (415): _matching(), _body(), list_templates(), patch, ccrm-037 (DEC-SCOPE-273, API §12FZ, RBAC §2.187): the Overseas Admin's message…, Counselors always get the active templates only, whatever they ask; the…, Every rule is re-checked on the merged row; the channel is fixed., update_template() (+407 more)
 
 ### Community 285 - "partnershipReports.ts"
 Cohesion: 0.16
@@ -2783,20 +2873,20 @@ Cohesion: 0.11
 Nodes (18): 10. Tests (written before the code, per task), 11. Regression risks, 12. Completion gates, 1. Scope, 2. Approaches considered, 3. Decisions (owner answers 2026-10-06), 4. Catalogue, 5.2 `bdm_mou_events` (model `BdmMouEvent`, append-only) (+10 more)
 
 ### Community 291 - "2026-10-03-bdm-009-activity-log-design.md"
-Cohesion: 0.10
-Nodes (26): Approach A flat module with live counts, Audit rows without note or contact name, bdm-015 daily report (extends editable gate), bdm_activities table (migration 0071), Activity channels and direction rule (V2, V6), V10 200 activities per BDM per day cap, day_counts() reusable counting function, DEC-SCOPE-069 (+18 more)
+Cohesion: 0.20
+Nodes (12): bdm-009 BDM Activity Log — Implementation Plan, Global Constraints, Approach A flat module with live counts, Audit rows without note or contact name, bdm-015 daily report (extends editable gate), bdm_activities table (migration 0071), Activity channels and direction rule (V2, V6), V10 200 activities per BDM per day cap (+4 more)
 
 ### Community 292 - "test_rec_026_messages.py"
 Cohesion: 0.18
 Nodes (35): _candidate(), _company(), _contact(), email(), asyncio, fixture, parametrize, rec-026 -- recruiter message templates, WhatsApp and email (spec §1-§3; DEC-… (+27 more)
 
-### Community 293 - "Payment"
-Cohesion: 0.20
-Nodes (32): Payment, PaymentWebhookEvent, DATA_MODEL.md #7.2, INTEGRATION_CONTRACTS.md #2: every inbound webhook is…, _create_user(), _login(), asyncio, PAY-001/STU-010 -- Payment gateway integration, fee…, The client-side confirmation gap found live: a successful test payment left… (+24 more)
+### Community 293 - "test_pub_025_program_syllabus.py"
+Cohesion: 0.16
+Nodes (31): delete(), file_name(), Best effort; only for a file `store_*` wrote., _admin(), program(), _public(), asyncio, fixture (+23 more)
 
 ### Community 294 - "services/university_comms.py"
-Cohesion: 0.05
-Nodes (79): _body(), create_template(), _history(), list_templates(), log_call(), preview_template(), AsyncSession, get (+71 more)
+Cohesion: 0.03
+Nodes (162): _body(), create_template(), _history(), list_templates(), log_call(), preview_template(), AsyncSession, get (+154 more)
 
 ### Community 296 - "test_sec_002_gdpr_data_requests.py"
 Cohesion: 0.39
@@ -2806,41 +2896,41 @@ Nodes (14): _create_user(), _login(), asyncio, SEC-002 -- GDPR self-service expo
 Cohesion: 0.40
 Nodes (20): _claimed_commission(), _create_agent(), _create_overseas_admin(), _create_user(), _login(), _make_application(), _make_university(), asyncio (+12 more)
 
-### Community 298 - "test_bdm_001_reset_portal.py"
-Cohesion: 0.39
-Nodes (7): asyncio, parametrize, bdm-001 -- reset-password names the sign-in portal for a BDM manager (spec…, test_forgot_password_reset_also_names_the_portal(), test_invalid_link_is_still_the_generic_400(), test_login_portal_is_admin_only_for_a_manager(), _token()
+### Community 298 - "test_mgmt_008_recruitment_revenue.py"
+Cohesion: 0.16
+Nodes (31): recruiter_payment(), a_month(), approved_income(), dashboard(), kind(), money(), month_param(), asyncio (+23 more)
 
 ### Community 299 - "Architecture Baseline (As-Built)"
 Cohesion: 0.06
 Nodes (43): Architecture Baseline (As-Built), API client layer, app/api/[...path]/route.ts transparent proxy, Authentication, Authorization / RBAC, Background jobs, Business logic placement, Celery worker + beat (app/worker.py) (+35 more)
 
 ### Community 300 - "test_nehn_025_question_import.py"
-Cohesion: 0.33
-Nodes (31): _assessment(), _batch(), _import(), _login(), asyncio, parametrize, _question_count(), nehn-025 -- trainer question upload from a standard Excel template. `GET… (+23 more)
+Cohesion: 0.16
+Nodes (54): _assessment(), _batch(), _import(), _login(), asyncio, parametrize, _question_count(), nehn-025 -- trainer question upload from a standard Excel template. `GET… (+46 more)
 
 ### Community 301 - "security.py"
 Cohesion: 0.11
-Nodes (26): create_token(), AGN-002: `sv` is the user's session version at issue time;…, _legacy_token(), asyncio, AGN-002 -- session version (spec §5, E1): a bumped users.session_version ends…, A token minted the way every token was before AGN-002: no `sv` claim., test_a_token_without_sv_still_works(), test_bumping_the_version_ends_access_and_refresh() (+18 more)
+Nodes (26): create_token(), decode_token(), AGN-002: `sv` is the user's session version at issue time;…, _legacy_token(), asyncio, AGN-002 -- session version (spec §5, E1): a bumped users.session_version ends…, A token minted the way every token was before AGN-002: no `sv` claim., test_a_token_without_sv_still_works() (+18 more)
 
-### Community 302 - "bdmPerformance.ts"
-Cohesion: 0.08
-Nodes (30): BdmHierarchy(), Chain(), plural(), BdmPerformanceTable(), NOTE, BDM_TYPES, BdmPerformance, BdmType (+22 more)
+### Community 302 - "BdmPerformance.test.tsx"
+Cohesion: 0.12
+Nodes (19): BdmHierarchy(), Chain(), plural(), BdmPerformanceFigures(), cell(), FigureRow, shown(), ChainStep (+11 more)
 
 ### Community 303 - "TeacherWorkspaceActions.tsx"
-Cohesion: 0.06
-Nodes (35): Batch, Enrollment, Student, TrainerContext, detailMessage(), SupportTicketQueuePanel(), act(), TicketRow (+27 more)
+Cohesion: 0.08
+Nodes (33): detailMessage(), SupportTicketQueuePanel(), act(), TicketRow, Assessment, Attempt, AttemptAnswer, AttemptDetail (+25 more)
 
 ### Community 304 - "ccrm-011 — Business IDs for overseas applications (design)"
 Cohesion: 0.25
 Nodes (7): Behaviour, ccrm-011 — Business IDs for overseas applications (design), Decisions, Intent, Migration, Non-goals, Tests
 
-### Community 305 - "SchoolAccountInvite"
-Cohesion: 0.18
-Nodes (27): Coordinator-issued invite for Principal/Teacher/Parent accounts (SCH-003,…, SchoolAccountInvite, _csv(), asyncio, fixture, ENH-025 -- bulk upload + template carry the new columns (spec §3.3, AC1/2/5/6)., _students(), test_all_new_columns_load() (+19 more)
+### Community 305 - "investments.py"
+Cohesion: 0.15
+Nodes (29): Investment, mgmt-014 (§23): money EduSphere invested and what it returned. Never deleted: a…, _audit_value(), _check_partner(), _code(), create(), _filters(), get() (+21 more)
 
 ### Community 306 - "test_bdm_017_schemas.py"
-Cohesion: 0.30
-Nodes (17): BdmLeadCreate, body(), messages(), parametrize, bdm-017 -- lead and conversion bodies (spec §4, §5). Pure schema tests; no…, test_acknowledge_duplicate_is_a_strict_bool(), test_blank_optional_fields_become_none(), test_conversion_body_takes_one_trimmed_lowered_email_and_nothing_else() (+9 more)
+Cohesion: 0.18
+Nodes (25): AdminLeadConversionIn, BdmLeadCreate, BdmLeadOut, BdmLeadPage, The student account's email, typed by the admin and matched exactly (never…, body(), messages(), parametrize (+17 more)
 
 ### Community 307 - "test_rec_036_it_integration.py"
 Cohesion: 0.19
@@ -2852,63 +2942,63 @@ Nodes (40): _audits(), _category(), _manager(), _n(), asyncio, parametrize, rec-
 
 ### Community 309 - "_export"
 Cohesion: 0.10
-Nodes (34): _export(), export_report(), export_report_xlsx(), _export_wait(), _invalid(), _log(), AsyncSession, Filters (+26 more)
+Nodes (27): _cell(), _export(), export_report(), export_report_xlsx(), _export_wait(), _invalid(), _log(), AsyncSession (+19 more)
 
 ### Community 310 - "test_upc_013_timeline.py"
-Cohesion: 0.06
-Nodes (94): upc-007 (spec PS9): one row per stage move, Lost or Reopen. Append-only.…, upc-012 (UC6-UC9): a WhatsApp (the row is the manager's confirmation) or an…, UniversityMessage, UniversityStageHistory, deliver_university_email(), UUID, add(), contact() (+86 more)
+Cohesion: 0.08
+Nodes (76): add(), contact(), contact_url(), contacts_url(), _owned(), asyncio, parametrize, upc-006 -- university contacts + relationship strength (spec §3; AC1-AC3, P1,… (+68 more)
 
 ### Community 311 - "What You Must Do When Invoked"
-Cohesion: 0.07
-Nodes (26): For /graphify add and --watch, For /graphify query, For the commit hook and native CLAUDE.md integration, For --update and --cluster-only, /graphify, Honesty Rules, Interpreter guard for subcommands, Part A - Structural extraction for code files (+18 more)
+Cohesion: 0.06
+Nodes (32): count(), path(), OFFICES, For /graphify add and --watch, For /graphify query, For the commit hook and native CLAUDE.md integration, For --update and --cluster-only, /graphify (+24 more)
 
 ### Community 312 - "SCH screens"
 Cohesion: 0.08
-Nodes (39): DEC-SCOPE-011, DEC-SCOPE-014, DEC-SCOPE-015, DEC-SCOPE-016, Feature SCH-001, Feature SCH-002, Feature SCH-003, Feature SCH-004 (+31 more)
+Nodes (38): DEC-SCOPE-014, DEC-SCOPE-015, DEC-SCOPE-016, Feature SCH-001, Feature SCH-002, Feature SCH-003, Feature SCH-004, Feature SCH-005 (+30 more)
 
 ### Community 313 - "test_mgmt_006_abroad_revenue.py"
-Cohesion: 0.20
-Nodes (36): a_month(), assert_reconciles(), breakdown(), dashboard(), expense(), kind(), minus(), month_param() (+28 more)
+Cohesion: 0.19
+Nodes (38): a_month(), assert_reconciles(), breakdown(), dashboard(), expense(), kind(), linked_application(), minus() (+30 more)
 
 ### Community 314 - "Digital Portfolio overview"
 Cohesion: 0.06
 Nodes (41): View Partnership Entitlements (DOC-SCH-ENT-001), Common Errors, Expected Result, Fields, How to Access, Partnership Tier (Platinum/Bronze), Partnership tiers explained, Prerequisites (+33 more)
 
-### Community 315 - "test_enh_030_mark.py"
+### Community 315 - "ENH-013a — Student 360° View / Career Passport — Design"
 Cohesion: 0.09
-Nodes (52): _app_loggers_enabled(), _joined(), _mark_audits(), _marks(), asyncio, datetime, fixture, parametrize (+44 more)
+Nodes (24): data(), row(), empty(), view(), Task 1: PDF renderer, 10. Acceptance criteria, 13. Documentation deliverables, 1. Problem (+16 more)
 
 ### Community 316 - "test_zoho_meeting_integration.py"
-Cohesion: 0.14
-Nodes (27): RegistrationRequest, create_google_meet(), create_provider_meeting(), create_zoho_meeting(), _google_access_token(), _google_join_url(), MeetingProviderError, MeetingResult (+19 more)
+Cohesion: 0.17
+Nodes (25): create_google_meet(), create_provider_meeting(), create_zoho_meeting(), _google_access_token(), _google_join_url(), MeetingProviderError, MeetingResult, datetime (+17 more)
 
-### Community 317 - "SchoolStudentTransferRequest"
-Cohesion: 0.05
-Nodes (77): ENH-005 -- a coordinator's request to move a student to another school, and…, SchoolStudentTransferRequest, _parent_notification_html(), _approve(), _fresh(), asyncio, Re-read one row from the database. `populate_existing` refreshes just that…, _second_world() (+69 more)
+### Community 317 - "enh005_helpers.py"
+Cohesion: 0.04
+Nodes (117): ENH-005 -- a coordinator's request to move a student to another school, and…, SchoolStudentTransferRequest, _parent_notification_html(), mk_request(), mk_result(), move_student_directly(), Shared builders for the ENH-005 database tests…, Stand-in for the transfer (which does not exist yet in Task 4's tests): a… (+109 more)
 
 ### Community 318 - "test_upc_029_global_dashboard.py"
-Cohesion: 0.08
-Nodes (47): column_of(), _by_count(), global_figures(), GD3-GD13 for the caller's scope now: active universities, Lost/Closed in the…, dashboard(), kpis(), _next_month(), parametrize (+39 more)
+Cohesion: 0.11
+Nodes (38): dashboard(), kpis(), _next_month(), parametrize, mgmt-023 -- GET /management/universities, the §19 University partnership…, test_a_bad_period_is_422(), test_each_kpi_follows_its_definition(), test_expected_lists_next_month_and_counts_the_windows() (+30 more)
 
 ### Community 319 - "test_nehn_016_placement_reports.py"
 Cohesion: 0.17
 Nodes (33): candidate_for_student(), The student's candidate: the linked one; else an unlinked candidate with their…, _as(), _batch(), _fixture(), _names(), _pool(), parametrize (+25 more)
 
 ### Community 320 - "Integration Contracts"
-Cohesion: 0.11
-Nodes (16): PaymentService, 0. Document control, 1. CRM webhook (Zoho), 2. Payment gateway (Razorpay only), 3. Live-class providers (Zoho Meeting default, Google Meet retained), 4. Notifications (Twilio WhatsApp, Email provider — unnamed, SMS provider — unnamed), 5. Object storage (DigitalOcean Spaces), 5A. School — no new provider (confirmed, 2026-09-14) (+8 more)
+Cohesion: 0.13
+Nodes (14): 0. Document control, 1. CRM webhook (Zoho), 3. Live-class providers (Zoho Meeting default, Google Meet retained), 4. Notifications (Twilio WhatsApp, Email provider — unnamed, SMS provider — unnamed), 5. Object storage (DigitalOcean Spaces), 5A. School — no new provider (confirmed, 2026-09-14), 6. Cross-cutting integration rules, 7. Unresolved provider choices carried forward (not decided here) (+6 more)
 
 ### Community 321 - "test_sch_007_parent_portal.py"
-Cohesion: 0.17
-Nodes (33): drain(), Run every captured delivery (including re-enqueued retries, countdown ignored)…, _channels(), _publish_result(), asyncio, ENH-014 Task 8 -- existing triggers deliver on opted-in channels (AC04-AC06,…, test_a_parent_who_did_not_opt_in_gets_email_only(), test_admin_notify_queues_only_opted_in_channels() (+25 more)
+Cohesion: 0.18
+Nodes (31): _channels(), _publish_result(), asyncio, ENH-014 Task 8 -- existing triggers deliver on opted-in channels (AC04-AC06,…, test_a_parent_who_did_not_opt_in_gets_email_only(), test_admin_notify_queues_only_opted_in_channels(), test_it_triggers_follow_preferences_including_the_former_email_only_calls(), test_password_reset_stays_inline_and_email_only() (+23 more)
 
-### Community 322 - "SchoolAttendanceRecord"
+### Community 322 - "test_enh_030_schemas.py"
 Cohesion: 0.10
-Nodes (31): daily_attendance_summary(), Spec §5.3 / C1 / C3: the student's 30 most recent records at their CURRENT…, _attendance(), ENH-030's module, imported at call time for the same reason as `_skills()`:…, ENH-030 -- one School student's daily class attendance…, SchoolAttendanceRecord, A repeated pick is one pick (order kept)., SchoolAttendanceIn (+23 more)
+Nodes (29): AttendanceBulkIn, _distinct_tags(), UUID, D3: 1-100 distinct leads to one telecaller, all or nothing., A repeated pick is one pick (order kept)., SchoolAttendanceIn, SchoolAttendanceRosterOut, SchoolAttendanceRosterStudent (+21 more)
 
-### Community 323 - "Architecture Decision Records"
-Cohesion: 0.02
-Nodes (101): Backend conventions, Product Decision Register, AGENTS.md repo instructions, Documentation and completion, Handoff expectations, pending.md handoff log, Read before working, Repository map (+93 more)
+### Community 323 - "EduSphere CLAUDE.md Constitution"
+Cohesion: 0.07
+Nodes (37): Product Decision Register, AGENTS.md repo instructions, pending.md handoff log, AGENTS traceability chain, Approval gates, Canva UX reference DAHRWCa0RLw, Coding, Completion (+29 more)
 
 ### Community 324 - "School CRM — Specialist portals discovery (Academic Team, Career Counselor, Psychometric Team, Student 360°, Digital Portfolio)"
 Cohesion: 0.06
@@ -2928,71 +3018,71 @@ Nodes (33): _application(), _company(), _entered(), _ist_day(), _job(), _job_mov
 
 ### Community 328 - "Agent CRM Documentation Analysis"
 Cohesion: 0.02
-Nodes (117): Agency Master, Agency Staff, Agency-state gate (rbac.py), Agent CRM Documentation Analysis, agn017-daily-reminders beat job, AGN-006, AGN-007, AGN-008 (+109 more)
+Nodes (142): Agency Master, Agency Staff, Agent CRM Documentation Analysis, agn017-daily-reminders beat job, AGN-006, AGN-007, AGN-008, AGN-009 (+134 more)
 
-### Community 329 - "School CRM user-guide discovery: Account access + Principal / Teacher / Parent portals"
-Cohesion: 0.07
-Nodes (26): 2.1 Dashboard — `/school/principal/dashboard` (sidebar "Dashboard"), 2.2 Reports — `/school/principal/reports` (sidebar "Reports"), 2.3 Global Education — `/school/principal/global-education` (sidebar "Global Education"), 2.4 Feedback — `/school/principal/feedback` (sidebar "Feedback"), 2.5 Entitlements — `/school/principal/entitlements` (sidebar "Entitlements"), 2.6 Notifications — `/school/principal/notifications` (sidebar "Notifications"), 2.7 Student page (journey) — `/school/principal/students/[id]`, 2.8 Student 360° — `/school/principal/students/[id]/360` (+18 more)
+### Community 329 - "PART 1 — ACCOUNT ACCESS (all school-side roles)"
+Cohesion: 0.05
+Nodes (43): accepted(), 1.10 Session / auth mechanism, 1.11 Deactivated / inactive accounts, 1.12 Opening another role's URL / signed-out access, 1.13 Parent with children in multiple schools (ENH-008), 1.1 Roles and how accounts come to exist, 1.2 Sign in — `/overseas/login`, 1.3 Role → landing page (+35 more)
 
-### Community 330 - "test_ccrm_029_counselor_tasks.py"
-Cohesion: 0.03
-Nodes (130): mk_lead(), mk_university(), ccrm-012 test world: two overseas counselors, each with direct applications in…, search_world(), _ids(), asyncio, fixture, parametrize (+122 more)
+### Community 330 - "test_ccrm_030_reminders.py"
+Cohesion: 0.06
+Nodes (93): mk_lead(), mk_university(), ccrm-012 test world: two overseas counselors, each with direct applications in…, search_world(), _ids(), asyncio, fixture, parametrize (+85 more)
 
 ### Community 331 - "BDM CRM — Engineering Enhancement Backlog (`bdm-001` … `bdm-025`)"
-Cohesion: 0.28
-Nodes (32): ReportPreview(), SchoolKpiBoard(), 4. Backlog items, bdm-001 — BDM + BDM Manager roles, BDM profile, account provisioning, bdm-002 — Organization CRM core (common fields, contacts, assignment, scope), bdm-004 — Organization pipelines per BDM type + stage history, bdm-005 — MoU tracking, bdm-006 — Appointments (types per BDM type, status lifecycle, reschedule) (+24 more)
+Cohesion: 0.14
+Nodes (49): PUB-002 / INTEGRATION_CONTRACTS.md §1 outbox pattern. The Enquiry row is…, sync_enquiry_to_crm_task(), A public enquiry's CRM sync ran before an email on the same worker process and…, test_a_crm_sync_run_leaves_no_connection_that_breaks_the_next_email_task(), 1. Source coverage audit (section by section), 2. Backlog summary, 4. Backlog items, bdm-001 — BDM + BDM Manager roles, BDM profile, account provisioning (+41 more)
 
 ### Community 332 - "test_bdm_003_migration.py"
 Cohesion: 0.17
 Nodes (17): _insert(), isolated_db(), _migration(), _model_checks(), asyncio, fixture, bdm-003 -- migration 0069_bdm_org_profiles (spec §4; cut as 0068, re-chained…, 0001 builds BASE from the current models (columns already there), so go up,… (+9 more)
 
-### Community 333 - "total"
-Cohesion: 0.08
-Nodes (26): furthest_stage(), The most advanced modelled visa stage across a student's cases; "In progress"…, visa_stage_label(), total(), test_visa_stage_label_rules(), ENH-017 — School-visible Global Education pipeline (addendum, 2026-09-29, `DEC-SCOPE-036`), Review Focus, 6.2 §29 grade comparison (D5) (+18 more)
+### Community 333 - "School"
+Cohesion: 0.02
+Nodes (253): AsyncSession, get, UUID, school_activity(), portfolio_completion(), Collection, ENH-012's completion percentage, extracted unchanged from `portfolio_payload`…, _area_state() (+245 more)
 
-### Community 334 - "make_head"
-Cohesion: 0.04
-Nodes (122): PartnershipTarget, upc-021 (DEC-SCOPE-146): a head-set monthly target for one §21 KPI of one…, test_partnership_refusals_match(), asyncio, upc-001 AC3 / PU1 -- a manager signs in at /overseas/login, a head at…, test_head_signs_in_only_at_admin(), test_manager_signs_in_only_at_overseas(), _try() (+114 more)
+### Community 334 - "make_pm"
+Cohesion: 0.08
+Nodes (65): _actuals(), _assign(), _date_assignments(), _date_moves(), _meeting(), _owned(), asyncio, datetime (+57 more)
 
 ### Community 335 - "Scope Delta"
 Cohesion: 0.02
-Nodes (100): DEC-INFRA-001, DEC-ARCH-001 — Architecture style, DEC-ENV-001 — Dev / UAT / Prod environment boundaries, DEC-INFRA-001 — Production cloud / hosting, DEC-INFRA-002 — Production topology on DigitalOcean (edusphere.org.uk go-live), DEC-TECH-001 — Application stack, Group 8 — Technology / Cloud, C-01 — Admin CRM: included vs excluded (+92 more)
+Nodes (102): DEC-ARCH-001, DEC-INFRA-001, DEC-ARCH-001 — Architecture style, DEC-ENV-001 — Dev / UAT / Prod environment boundaries, DEC-INFRA-001 — Production cloud / hosting, DEC-INFRA-002 — Production topology on DigitalOcean (edusphere.org.uk go-live), DEC-SCOPE-007 — Internal Meeting/Recording Platform, DEC-TECH-001 — Application stack (+94 more)
 
-### Community 336 - "normalise_phone"
-Cohesion: 0.07
-Nodes (33): create_data_request(), download_data_request_export(), get_data_request(), get_notification_preferences(), get_placement_pool(), _out(), _preferences_out(), put_notification_preferences() (+25 more)
+### Community 336 - "overseas_applications"
+Cohesion: 0.14
+Nodes (29): _allow(), countries(), it_job_applications(), _join(), _like(), _link_wait_seconds(), mask_email(), overseas_applications() (+21 more)
 
 ### Community 337 - "Feature records"
 Cohesion: 0.05
-Nodes (36): Dependency order, Feature file template (every feature), Feature records, File structure (created across sessions), Module ACAD — Academic Team (`user-manual/academic-team/`, shots → `academic-team/`), Module ACT — Activities, attendance & feedback (`user-manual/activities/`, shots → `activities/`), Module AUTH — Account access & navigation (`user-manual/account-access/`, shots → `account-access/`), Module CAR — Career Counselor (`user-manual/career-counselor/`, shots → `career-counselor/`) (+28 more)
+Nodes (37): Dependency order, Feature file template (every feature), Feature records, File structure (created across sessions), Global Constraints, Module ACAD — Academic Team (`user-manual/academic-team/`, shots → `academic-team/`), Module ACT — Activities, attendance & feedback (`user-manual/activities/`, shots → `activities/`), Module AUTH — Account access & navigation (`user-manual/account-access/`, shots → `account-access/`) (+29 more)
 
 ### Community 338 - "Status History Timeline"
-Cohesion: 0.20
-Nodes (14): Change Application Status (screenshot), Application Status Change, Status History Timeline, Withdraw Application Confirm (screenshot), Application Withdrawal (irreversible), Inline Confirmation Pattern, Visa Stage Skip Confirm (screenshot), Visa Stage Skip Confirmation (+6 more)
+Cohesion: 0.12
+Nodes (22): Edit Application Form (screenshot), University Immutable After Create, Application Detail Saved (screenshot), Application Detail Panel, Change Application Status (screenshot), Application Status Change, Status History Timeline, Withdraw Application Confirm (screenshot) (+14 more)
 
 ### Community 339 - "as_role"
 Cohesion: 0.03
-Nodes (202): portal_password_url(), An admin-created account has an unusable password; give it the test password so…, sign_in_as_created(), add(), ago(), application(), checklist(), lead() (+194 more)
+Nodes (176): verify_password(), email(), An admin-created account has an unusable password; give it the test password so…, sign_in_as_created(), add(), ago(), application(), checklist() (+168 more)
 
 ### Community 340 - "applicationOffers.ts"
 Cohesion: 0.05
-Nodes (70): ApplicationDepositPanel(), load(), PAID, Props, today(), ApplicationOffersPanel(), load(), saved() (+62 more)
+Nodes (75): ApplicationDepositPanel(), load(), DepositForm(), submit(), PAID, Props, RecordView(), openReceipt() (+67 more)
 
-### Community 341 - "test_mgmt_028_tasks.py"
-Cohesion: 0.17
-Nodes (31): band_of(), The Sunday of today's Monday-Sunday week., The task's band; `None` for a task completed before the 7-day window., week_end(), as_user(), body(), create(), notes_for() (+23 more)
+### Community 341 - "services/management_meetings.py"
+Cohesion: 0.06
+Nodes (73): change_task(), create_task(), get_task(), AsyncSession, patch, post, UUID, A partial change; nothing changed = nothing recorded. The owner hears about a… (+65 more)
 
 ### Community 342 - "management_counseling.py"
-Cohesion: 0.08
-Nodes (55): _instants(), datetime, The inclusive IST dates as a half-open instant range (the bdm_metrics builders'…, _figures(), _follow_ups(), _lead_values(), _leads(), overseas_counselor() (+47 more)
+Cohesion: 0.05
+Nodes (78): counselor_report(), _export(), Filters, my_performance(), AsyncSession, get, Response, UUID (+70 more)
 
 ### Community 343 - "tel-010 — Call logging (design)"
 Cohesion: 0.05
 Nodes (41): DEC-SCOPE-095, DEC-SCOPE-098, Feature tel-016, Feature tel-019, API §12Q Lead counselling appointments (tel-016), API §12S BDM meeting requests (tel-019), tel-016 Lead Appointment Booking Plan, bdm_meeting_requests table/service (+33 more)
 
 ### Community 344 - "skills.ts"
-Cohesion: 0.16
-Nodes (20): ACTION_LABEL, attendanceText(), ENROLMENT_CLASS, ENROLMENT_LABEL, ENROLMENT_STATUSES, fieldErrors(), MODULE_LABEL, send() (+12 more)
+Cohesion: 0.05
+Nodes (72): alertFor(), SchoolSkillAlert(), SkillAlertState, AttendanceRoster(), save(), SchoolSkillAttendance(), addSession(), sessionLabel() (+64 more)
 
 ### Community 345 - "test_enh_027_psychometric_results.py"
 Cohesion: 0.22
@@ -3003,36 +3093,36 @@ Cohesion: 0.33
 Nodes (5): Acceptance criteria → tests, Builder's defaults (`NEEDS_CONFIRMATION`), Goal, nehn-025 — Trainer question upload from a standard Excel template (design), Regression risks
 
 ### Community 347 - "test_upc_010_visits.py"
-Cohesion: 0.21
-Nodes (36): act(), _approved(), _contact(), day(), _owned(), plan(), asyncio, parametrize (+28 more)
+Cohesion: 0.19
+Nodes (38): VS12: the university's contacts to meet. Deleting the contact (PII) removes it…, UniversityVisitContact, act(), _approved(), _contact(), day(), _owned(), plan() (+30 more)
 
 ### Community 348 - "test_upc_020_tasks.py"
 Cohesion: 0.20
 Nodes (35): _completed_visit(), move(), open_tasks(), asyncio, upc-020 -- auto-generated tasks (Q-22: TK4-TK7, TK16) and the university's Next…, test_a_stage_without_a_rule_creates_nothing(), test_ac1_proposal_sent_creates_follow_up_on_proposal_for_the_primary_manager(), test_e1_reentering_a_stage_keeps_one_open_auto_task() (+27 more)
 
 ### Community 349 - "AgentCommission"
-Cohesion: 0.23
-Nodes (32): AgentCommission, _create_agent(), _create_counselor(), _create_overseas_admin(), _create_user(), _login(), _make_application(), _make_university() (+24 more)
+Cohesion: 0.05
+Nodes (101): AgentCommission, count_rows(), Rows of `model` for one application: audit rows by entity id, the rest…, confirm_enrollment(), PUT the confirmation with `client` (already signed in) and return the response;…, _assert_still_withdrawn(), asyncio, fixture (+93 more)
 
 ### Community 350 - "test_enh_022_tier_enforcement.py"
-Cohesion: 0.15
-Nodes (44): activity(), activity_count(), bridged_application(), denials(), asyncio, parametrize, ENH-022 (DEC-SCOPE-027) -- per-route tier enforcement against a real database.…, test_attendance_uses_the_stored_activity_type() (+36 more)
+Cohesion: 0.09
+Nodes (58): alembic_migration, alembic_operations, _render_upgrade(), test_at_most_one_pending_request_per_student_is_a_partial_unique_index(), test_table_shape_matches_the_spec(), test_the_migration_is_additive_only(), test_the_migration_renders_the_same_table_index_and_checks(), _names() (+50 more)
 
 ### Community 351 - "test_mgmt_010_expenses.py"
-Cohesion: 0.10
-Nodes (47): a_month(), approved_expense(), dashboard(), delta(), head(), login_back(), month_param(), not_counted() (+39 more)
+Cohesion: 0.14
+Nodes (39): a_month(), approved_expense(), dashboard(), delta(), head(), login_back(), month_param(), asyncio (+31 more)
 
 ### Community 352 - "test_nehn_018_student_access.py"
-Cohesion: 0.07
-Nodes (50): nehn-018 (DEC-SCOPE-304): the lowest payment state at which an IT student may…, StudentAccessRule, nehn-018 (DEC-SCOPE-304 AC1): a locked feature's section keeps its heading but…, _student_locks(), lock(), locked_features(), policy(), AsyncSession (+42 more)
+Cohesion: 0.16
+Nodes (27): student_state(), _batch(), _payment_required(), asyncio, fixture, parametrize, nehn-018 -- student feature access by enrolment and payment status (DEC-…, A fresh IT student; enrolled (unless `enrollment_status` is None) with one IT… (+19 more)
 
 ### Community 353 - "test_mgmt_033_drill.py"
-Cohesion: 0.20
-Nodes (32): linked_application(), An application with unique country, university and intake names, owned by an…, a_month(), assert_adds_up(), audit_rows(), drill(), it_payment(), money() (+24 more)
+Cohesion: 0.23
+Nodes (28): a_month(), assert_adds_up(), audit_rows(), drill(), it_payment(), money(), month_param(), asyncio (+20 more)
 
 ### Community 354 - "CourseMaterialsPanel.tsx"
-Cohesion: 0.09
-Nodes (27): Batch, call(), CourseMaterialsPanel(), edit(), load(), move(), publish(), run() (+19 more)
+Cohesion: 0.13
+Nodes (19): Batch, call(), CourseMaterialsPanel(), edit(), load(), move(), publish(), run() (+11 more)
 
 ### Community 355 - "test_mgmt_013_accounts.py"
 Cohesion: 0.14
@@ -3047,55 +3137,55 @@ Cohesion: 0.08
 Nodes (36): Reports - Students tab (agency master), Agent CRM Reports Screen (8-tab), Report From/To + Staff/Country/Status filters with Apply, Reports - Applications tab, Reports - Universities tab, Reports - Countries tab, Reports - Intakes tab, Reports - Staff performance tab (+28 more)
 
 ### Community 358 - "RecruiterResumeExtraction.tsx"
-Cohesion: 0.14
-Nodes (28): Props, RecruiterResumeExtraction(), save(), shown(), resumeUrl(), SkillLevel, applyBody, ApplyResult (+20 more)
+Cohesion: 0.12
+Nodes (32): Props, RecruiterCandidateResumes(), Props, RecruiterResumeExtraction(), save(), shown(), resumeUrl(), SkillLevel (+24 more)
 
 ### Community 359 - "test_rec_003_companies.py"
-Cohesion: 0.22
-Nodes (28): _audits(), _create(), _name(), asyncio, parametrize, rec-003 -- the recruiter company master (spec §4-§5; AC1-AC7; DEC-SCOPE-121…, A manager with one logged-in recruiter., _source() (+20 more)
+Cohesion: 0.11
+Nodes (43): CompanyAssignmentHistory, rec-003: one row per change of a company's recruiter. Append-only;…, _audits(), _create(), _name(), asyncio, parametrize, rec-003 -- the recruiter company master (spec §4-§5; AC1-AC7; DEC-SCOPE-121… (+35 more)
 
 ### Community 360 - "Prompt Index"
 Cohesion: 0.07
 Nodes (26): GATE-09 Coding gate, 11 — Implementation Plan and Release Backlog, Delivery docs (IMPLEMENTATION_PLAN, RELEASE_BACKLOG, DEPENDENCY_PLAN, RAID, CHANGE_CONTROL), Re-estimate; no historical timelines, 12 — Foundation Scaffold, FND-* foundation features, 13 — One Feature Development Loop, One approved Feature ID per loop (+18 more)
 
-### Community 361 - "test_rec_012_resume_extraction_api.py"
-Cohesion: 0.25
-Nodes (25): _pdf(), _extracted(), asyncio, parametrize, rec-012 -- extract a resume's suggestions and apply the chosen ones (spec §1,…, _skill_id(), test_a_docx_yields_skills_and_three_years(), test_a_scanned_pdf_reports_no_text() (+17 more)
+### Community 361 - "experience_months"
+Cohesion: 0.07
+Nodes (27): experience_months(), The total experience in months: the first figure next to the word "experience",…, 1. Section-by-section coverage of the source, 3.1 Must be sequential, 3.2 Can run independently (no shared hot files or dependencies with each other), 3.3 Touch common files and modules, 3.4 Require a migration, 3.5 Implement first (+19 more)
 
 ### Community 362 - "test_ccrm_031_escalation.py"
-Cohesion: 0.26
-Nodes (22): day(), default_rules(), escalated(), mk_follow_up(), mk_task(), notices(), asyncio, fixture (+14 more)
+Cohesion: 0.24
+Nodes (23): day(), default_rules(), escalated(), mk_follow_up(), mk_task(), notices(), asyncio, fixture (+15 more)
 
-### Community 363 - "Agent CRM Documentation Plan"
-Cohesion: 0.06
-Nodes (33): Agent CRM Documentation Plan, Doc capture tooling (playwright.docs.config.ts, shoot.ts), Session S10 Role guides, FAQ, troubleshooting, indexes, Session S1 Master planning, Session S2 Environment and capture tooling, Session S3 Team and staff, Session S4 Students and universities, Session S5 Applications core and tasks (+25 more)
+### Community 363 - "test_mgmt_029_meetings.py"
+Cohesion: 0.25
+Nodes (26): as_user(), at(), body(), create(), held(), notes_for(), asyncio, mgmt-029 -- management meetings + minutes chain (spec MM1-MM14; AC: a meeting's… (+18 more)
 
 ### Community 364 - "test_rec_001_migration.py"
 Cohesion: 0.16
 Nodes (18): _add_user(), _config(), isolated_db(), _migration_upgrade_again(), asyncio, fixture, rec-001 -- migration 0100_recruiter_profiles (spec §3). Round trip, backfill…, AC5: existing placement_team users keep working with a profile that has no… (+10 more)
 
 ### Community 365 - "test_rec_005_pipeline.py"
-Cohesion: 0.23
-Nodes (32): apply_event(), P2/P3: move the locked company if it is in the event's from-set; otherwise…, _company(), _history(), _locked(), _move(), asyncio, parametrize (+24 more)
+Cohesion: 0.24
+Nodes (30): _company(), _history(), _locked(), _move(), asyncio, parametrize, rec-005 -- the company B2B pipeline (spec §2/§4; AC1-AC4; DEC-SCOPE-127 P1-P8).…, _team() (+22 more)
 
 ### Community 366 - "test_uni_001_university_rep_portal.py"
 Cohesion: 0.46
 Nodes (15): _create_rep(), _create_user(), _login(), _make_university(), asyncio, UNI-001 -- University Representative portal. Most of the confirmed scope…, test_a_blank_update_message_is_rejected(), test_non_rep_role_cannot_post_a_university_update() (+7 more)
 
-### Community 367 - "deposit_checkout"
-Cohesion: 0.10
-Nodes (33): _abandon(), _admin_item(), _admin_locked(), deposit_checkout(), deposit_receipt(), list_deposits(), AsyncSession, get (+25 more)
+### Community 367 - "RecruiterRequirementMatches.tsx"
+Cohesion: 0.14
+Nodes (20): criteriaText(), MatchItem(), Notice, RecruiterRequirementMatches(), WeightsForm(), submit(), experienceLabel(), BreakdownItem (+12 more)
 
 ### Community 368 - "Business Requirements Document (BRD) — EduSphere UK"
 Cohesion: 0.08
 Nodes (24): 0. Document control, 10. Reporting needs, 11. Integration needs (business level), 12. Privacy / compliance obligations, 13. Operational / support expectations, 14. Assumptions explicitly approved, 15. Dependencies, 16. Risks (+16 more)
 
 ### Community 369 - "test_nehn_005_permissions.py"
-Cohesion: 0.12
-Nodes (43): nehn-005 (DEC-SCOPE-281 P8): one grant -- `role` may `action` on `resource`…, RolePermission, nehn-005 (DEC-SCOPE-281): revoking `reports.telecaller.download` refuses both…, test_telecaller_xlsx_needs_the_download_grant_as_the_csv_does(), _headers(), asyncio, parametrize, nehn-005 -- the permission engine: role x resource x action grants in… (+35 more)
+Cohesion: 0.13
+Nodes (22): nehn-005 (DEC-SCOPE-281 P8): one grant -- `role` may `action` on `resource`…, RolePermission, has_grant(), Deny by default: a key outside the catalogue is refused for everyone,…, asyncio, parametrize, nehn-005 -- the permission engine: role x resource x action grants in…, test_a_change_is_audited_with_before_and_after() (+14 more)
 
 ### Community 370 - "main"
-Cohesion: 0.07
+Cohesion: 0.06
 Nodes (9): accept_invite(), activate(), api_login(), attempt(), main(), ENH-025 browser QA against the isolated enh025 stack (http://localhost:3025).…, record(), os (+1 more)
 
 ### Community 371 - "Security Controls"
@@ -3114,53 +3204,49 @@ Nodes (24): Feature PUB-001, Feature PUB-002, Feature PUB-003, Feature PUB-004, 
 Cohesion: 0.12
 Nodes (15): 0. Source-of-truth note (a correction surfaced in this pass), 0a. Addendum, 2026-09-14 — School Portal (Wave 4, 6 net-new features), 1. Wave 0 — Foundation (6 features), 2. Wave 1 — MVP / domestic core loop (20 features), 3. Wave 2 — Domestic depth + Overseas/Visa core (29 features), 4. Wave 3 — Employer breadth, Agent, remaining depth (13 features), 4A. Wave 4 — School Portal (6 features, net-new domain, addendum 2026-09-14), 5. Unscheduled — 10 `BLOCKED` features (not authorized to build) (+7 more)
 
-### Community 375 - "dataclasses"
+### Community 375 - "score_answer"
 Cohesion: 0.09
-Nodes (29): keyword_breakdown(), AssessmentQuestionIn, _contains(), KeywordScore, nehn-026: the keyword score of a written answer (DEC-SCOPE-333 K1-K3; the rule…, _same(), score_answer(), _words() (+21 more)
+Nodes (30): keyword_breakdown(), AssessmentQuestionIn, _contains(), KeywordScore, nehn-026: the keyword score of a written answer (DEC-SCOPE-333 K1-K3; the rule…, _same(), score_answer(), _words() (+22 more)
 
 ### Community 376 - "Feature records"
 Cohesion: 0.07
 Nodes (30): `admin-manual/`, Feature records, `manager-manual/activity/`, `manager-manual/appointments/`, `manager-manual/daily-reports/`, `manager-manual/dashboard/`, `manager-manual/meeting-requests/`, `manager-manual/navigation/` (+22 more)
 
-### Community 377 - "bdmManagerDashboard.ts"
-Cohesion: 0.11
-Nodes (28): ALERT_HEAD, BdmManagerDashboard(), HEAD, LINK, LIST, ROW, alertHref(), alertListHref() (+20 more)
+### Community 377 - "BdmMyDay.tsx"
+Cohesion: 0.06
+Nodes (52): ALERT_HEAD, BdmManagerDashboard(), HEAD, LINK, LIST, ROW, BdmMyDay(), empty() (+44 more)
 
 ### Community 378 - "test_mgmt_012_marketing.py"
-Cohesion: 0.18
-Nodes (37): Decimal, K7 (MK9): (revenue − spend) ÷ spend × 100, half-up to one decimal; none without…, roi(), a_month(), as_user(), at(), expense(), lead() (+29 more)
+Cohesion: 0.19
+Nodes (36): K7 (MK9): (revenue − spend) ÷ spend × 100, half-up to one decimal; none without…, roi(), a_month(), as_user(), at(), expense(), lead(), month_param() (+28 more)
 
-### Community 379 - "RecCandidateSource"
-Cohesion: 0.06
-Nodes (59): rec-029 (DEC-SCOPE-178): a campus drive of one company at one college -- a BDM…, RecCandidateSource, RecruitmentDrive, add(), allow(), _bdm(), core(), make_candidate() (+51 more)
-
-### Community 380 - "test_mgmt_016_funnel.py"
-Cohesion: 0.15
-Nodes (30): add(), as_role(), build(), appointment(), call(), convert(), lead(), by_value() (+22 more)
+### Community 380 - "services/recruiter_companies.py (load_scoped, permissions, audit)"
+Cohesion: 0.09
+Nodes (26): API §12AO Recruiter company master (rec-003), API §12AU Company B2B pipeline (rec-005), Migration 0106_rec_companies, rec-003 Company Master Plan, services/recruiter_companies.py (load_scoped, permissions, audit), services/company_pipeline.py (apply_event, board), Migration 0112_company_pipeline, rec-005 Company Pipeline Plan (+18 more)
 
 ### Community 381 - "test_ccrm_008_convert.py"
-Cohesion: 0.19
-Nodes (30): OverseasStudentProfile, OverseasStudentQualification, ccrm-007 (DEC-SCOPE-249): one per overseas student user -- personal, passport,…, ccrm-007: one qualification on a student profile, in the order entered…, _body(), _capture(), convert(), _fresh() (+22 more)
+Cohesion: 0.21
+Nodes (28): OverseasStudentProfile, ccrm-007 (DEC-SCOPE-249): one per overseas student user -- personal, passport,…, _body(), _capture(), convert(), _fresh(), _lead(), _phone() (+20 more)
 
 ### Community 382 - "Delivery Sequence"
 Cohesion: 0.12
 Nodes (15): Wave 0 Foundation (6 features), Wave 4 School Portal (SCH-001..006), Cross-wave note on parallelization, Delivery Sequence, Unscheduled (10 `BLOCKED` features — resequence only after PRD confirmation), Wave 0 Foundation (4), Wave 1 Domestic core loop (23), Wave 2 Domestic depth + Overseas (24) (+7 more)
 
-### Community 383 - "TestimonialManager.tsx"
+### Community 383 - "TestimonialManager"
 Cohesion: 0.14
 Nodes (27): RatingBadgeForm(), save(), TestimonialManager(), begin(), open(), remove(), removePhoto(), save() (+19 more)
 
 ### Community 384 - "test_nehn_008_field_policy.py"
-Cohesion: 0.09
-Nodes (29): AsyncSession, The payload without the columns the user may not view: gone from `columns`,…, strip(), has_grant(), Deny by default: a key outside the catalogue is refused for everyone,…, _csv_header(), _deny(), _keys() (+21 more)
+Cohesion: 0.10
+Nodes (23): AsyncSession, The payload without the columns the user may not view: gone from `columns`,…, strip(), _csv_header(), _deny(), _payload(), parametrize, nehn-008 (DEC-SCOPE-300) -- the field (column) policy: a report's tagged… (+15 more)
 
 ### Community 385 - "test_mgmt_017_training.py"
-Cohesion: 0.18
-Nodes (23): as_role(), assessment(), attempt(), batch(), enrol(), joined(), kpis(), mark() (+15 more)
+Cohesion: 0.20
+Nodes (21): as_role(), assessment(), attempt(), batch(), enrol(), kpis(), mark(), program() (+13 more)
 
 ### Community 386 - "§1 Role bundles"
-Cohesion: 0.18
-Nodes (26): Division isolation (it / overseas / global), Support-staff impersonation not designed, Privileged-write audit trail (AuditLog in same transaction), Role: academic_team, Role: career_counselor, Role: edusphere_school_manager, Role: psychometric_team, Role: school_coordinator (+18 more)
+Cohesion: 0.19
+Nodes (25): Division isolation (it / overseas / global), Support-staff impersonation not designed, Privileged-write audit trail (AuditLog in same transaction), Role: academic_team, Role: career_counselor, Role: edusphere_school_manager, Role: psychometric_team, Role: school_coordinator (+17 more)
 
 ### Community 387 - "Feature records"
 Cohesion: 0.06
@@ -3171,48 +3257,48 @@ Cohesion: 0.06
 Nodes (30): bdm-007 — Independent exploratory QA, pass 1 (2026-10-05), Coverage, Fix verification (2026-10-05, `5661490b`), Issues, QA7-01 — Low — An empty card appears between "Meeting report" and "History" after completion, QA7-02 — Medium — After the edit window closes on an open page, the page keeps offering edits and says it is still editable, QA7-03 — Low — After "Reload" the "changed elsewhere" error and its Reload button stay on screen, QA7-04 — Low — `?status=outcome_pending` without `date_from=` hides older pending meetings; leaving the filter keeps From empty (+22 more)
 
 ### Community 389 - "salaries.ts"
-Cohesion: 0.14
-Nodes (26): MONEY_FIELDS, SalaryGrid(), change(), save(), Department, DEPARTMENTS_API, draftFrom(), FIELD_LABEL (+18 more)
+Cohesion: 0.18
+Nodes (20): MONEY_FIELDS, SalaryGrid(), change(), save(), draftFrom(), FIELD_LABEL, ratioText(), rowErrors() (+12 more)
 
 ### Community 390 - "test_mgmt_011_salaries.py"
-Cohesion: 0.18
-Nodes (35): a_month(), approved_income(), as_user(), department(), mine(), put(), asyncio, parametrize (+27 more)
+Cohesion: 0.23
+Nodes (30): a_month(), approved_income(), as_user(), department(), mine(), put(), asyncio, parametrize (+22 more)
 
 ### Community 391 - "test_mgmt_022_schools.py"
-Cohesion: 0.14
-Nodes (33): build(), portfolio_completion(), Collection, ENH-012's completion percentage, extracted unchanged from `portfolio_payload`…, today(), ENH-016 Task 1 -- ENH-012's completion formula as a pure helper, so the…, test_each_component_weighs_the_same_and_unknown_sections_are_ignored(), test_empty_portfolio_is_zero() (+25 more)
+Cohesion: 0.22
+Nodes (24): today(), as_role(), built_school(), mgmt-022 -- GET /management/schools (the §18 school dashboard), PATCH…, An accountant's School projects income tagged with `school`, approved by a…, One school worked out by hand: 3 students, 1 teacher, 2 parents (one by link…, read(), row() (+16 more)
 
-### Community 392 - "test_ccrm_041_matrix.py"
-Cohesion: 0.08
-Nodes (27): today(), at(), _call(), day(), _fill(), operations(), asyncio, parametrize (+19 more)
+### Community 392 - "test_ccrm_026_visa_lifecycle.py"
+Cohesion: 0.21
+Nodes (24): _case(), _patch(), asyncio, fixture, ccrm-026 (DEC-SCOPE-254, VC1-VC4) -- the counselor records the full visa…, Move a case through `statuses`, each from the previous one., test_a_decided_case_is_locked_and_only_the_admin_corrects_it(), test_a_stale_expected_status_is_409_and_an_identical_save_writes_nothing() (+16 more)
 
 ### Community 393 - "ApplicationDetailsPanel.tsx"
-Cohesion: 0.14
-Nodes (26): RecordView(), openReceipt(), ApplicationDetailsPanel(), load(), submit(), Props, shown(), OfferItem() (+18 more)
+Cohesion: 0.21
+Nodes (18): ApplicationDetailsPanel(), load(), submit(), Props, shown(), ApplicationDetails, changedFields(), CURRENCIES (+10 more)
 
 ### Community 394 - "build-pdfs.mjs"
 Cohesion: 0.07
-Nodes (30): 6.10 Use React DOM Resource Hints, 6.11 Use useTransition Over Manual Loading States, 6.1 Animate SVG Wrapper Instead of SVG Element, 6.2 CSS content-visibility for Long Lists, 6.3 Hoist Static JSX Elements, 6.4 Optimize SVG Precision, 6.5 Prevent Hydration Mismatch Without Flickering, 6.6 Suppress Expected Hydration Mismatches (+22 more)
+Nodes (29): 6.10 Use React DOM Resource Hints, 6.1 Animate SVG Wrapper Instead of SVG Element, 6.2 CSS content-visibility for Long Lists, 6.3 Hoist Static JSX Elements, 6.4 Optimize SVG Precision, 6.5 Prevent Hydration Mismatch Without Flickering, 6.6 Suppress Expected Hydration Mismatches, 6.7 Use Activity Component for Show/Hide (+21 more)
 
 ### Community 395 - "as_user"
-Cohesion: 0.10
-Nodes (65): as_user(), category(), create(), entry_body(), post(), program(), asyncio, parametrize (+57 more)
+Cohesion: 0.19
+Nodes (35): as_user(), category(), create(), entry_body(), post(), program(), asyncio, parametrize (+27 more)
 
 ### Community 396 - "UserPermissionOverrides.tsx"
 Cohesion: 0.09
-Nodes (26): Draft, Effect, fromDay(), LINK, Loaded, NO_OVERRIDE, Override, pad() (+18 more)
+Nodes (25): Draft, Effect, fromDay(), LINK, Loaded, NO_OVERRIDE, Override, pad() (+17 more)
 
 ### Community 397 - "test_agn_012_migration.py"
 Cohesion: 0.18
 Nodes (14): _config(), isolated_db(), asyncio, fixture, parametrize, AGN-012 -- migration 0063_agent_visa_details (spec §3). Round trip and…, A fresh database at 0062 with one application and one legacy visa case., _sql() (+6 more)
 
 ### Community 398 - "test_mgmt_032_monthly_review.py"
-Cohesion: 0.24
-Nodes (25): approved_entry(), An accountant's entry, submitted and (unless `approve=False`) approved by a…, as_user(), fresh_month(), generated(), key(), ok(), asyncio (+17 more)
+Cohesion: 0.27
+Nodes (23): as_user(), fresh_month(), generated(), key(), ok(), asyncio, parametrize, mgmt-032 -- the Monthly Business Review (EVID-017 §32, spec MR1-MR14;… (+15 more)
 
 ### Community 399 - "bdm-018 School Onboarding Handover Design"
-Cohesion: 0.07
-Nodes (30): DEC-SCOPE-107, Feature bdm-019, API §12AA Agent onboarding handover (bdm-019), bdm-018 School Onboarding Handover Design, DEC-SCOPE-085, Live School Stages 9-14, Migration 0084_bdm_onboarding, BDM Onboarding Request Table (+22 more)
+Cohesion: 0.05
+Nodes (44): DEC-SCOPE-107, Feature bdm-019, API §12AA Agent onboarding handover (bdm-019), DEC-SCOPE-086, bdm-018 School Onboarding Handover Design, DEC-SCOPE-085, Live School Stages 9-14, Migration 0084_bdm_onboarding (+36 more)
 
 ### Community 400 - "School summary"
 Cohesion: 0.07
@@ -3228,55 +3314,55 @@ Nodes (23): Notice, RecruiterCandidateSkills(), done(), run(), SkillFormCard(), 
 
 ### Community 403 - "worker.py"
 Cohesion: 0.03
-Nodes (92): datetime, Republish queued/retrying emails nobody picked up (touching `updated_at`); a…, sweep_stale_recruiter_emails(), datetime, Republish queued/retrying emails nobody picked up (touching `updated_at`); a…, sweep_stale_student_emails(), The beat task's entry point: its own session, today's India date., run_offer_expiry() (+84 more)
+Nodes (84): datetime, E5, as `delivery.sweep_stale_deliveries`: republish queued/retrying emails…, sweep_stale_lead_emails(), datetime, Republish queued/retrying emails nobody picked up (touching `updated_at`); a…, sweep_stale_university_emails(), The beat task's entry point: its own session, the current time., run_daily_reminders() (+76 more)
 
-### Community 404 - "test_upc_023_expected.py"
-Cohesion: 0.16
-Nodes (29): _get(), _ids(), _next_month(), asyncio, parametrize, upc-023 -- GET /partnership/expected (spec §2 EX1, EX5-EX12, §4; AC1, AC2).…, AC1: 10 universities × 80% = 8 expected partnerships (the source's example)., E1-E3 over IST dates; `all` lists every dated row, overdue included; month-end… (+21 more)
+### Community 404 - "test_ccrm_029_counselor_tasks.py"
+Cohesion: 0.26
+Nodes (24): as_(), day(), field_error(), asyncio, ccrm-029 (DEC-SCOPE-250, T1-T8): counselor tasks -- the counselor's own tasks,…, stored(), test_a_past_due_task_stays_editable(), test_admin_creates_for_a_counselor_who_is_notified() (+16 more)
 
 ### Community 405 - "test_bdm_018_migration.py"
-Cohesion: 0.12
-Nodes (27): _config(), isolated_db(), _migration(), asyncio, fixture, UUID, bdm-018 -- migration 0084_bdm_onboarding (spec §3). Round trip and the…, A fresh database at BASE with one user, one School and two organizations. (+19 more)
+Cohesion: 0.13
+Nodes (26): _config(), isolated_db(), _migration(), asyncio, fixture, UUID, bdm-018 -- migration 0084_bdm_onboarding (spec §3). Round trip and the…, A fresh database at BASE with one user, one School and two organizations. (+18 more)
 
 ### Community 406 - "test_mgmt_014_investments.py"
-Cohesion: 0.20
-Nodes (34): Decimal, MI7 (Appendix B I1): (actual - amount) / amount x 100, to 2 decimals; unknown…, roi(), a_day(), audit_rows(), body(), create(), page() (+26 more)
+Cohesion: 0.29
+Nodes (28): a_day(), audit_rows(), body(), create(), page(), partner_client(), asyncio, parametrize (+20 more)
 
-### Community 407 - "ENH-004 — Student Promotion to Next Academic Year / Grade — Design"
-Cohesion: 0.10
-Nodes (22): 10. Acceptance criteria (local IDs), 11. Regression risks and test plan (written before code), 12. Documentation deliverables, 13. Open items (`NEEDS_CONFIRMATION`, not decided here), 14.2 Checked and unchanged, 14.3 Reported, not changed (outside ENH-004), 14.4 Tests (all written before the code they cover), 14. Security review (2026-09-19) (+14 more)
+### Community 407 - "ENH-004 Student Promotion Design"
+Cohesion: 0.40
+Nodes (6): Coordinator own-school scoping, DEC-ROLE-004 school students never log in, DEC-SCOPE-020 Student promotion, ENH-004 Student Promotion Design, Promote/hold-back single and bulk, StudentGradeHistory table
 
-### Community 408 - "services/applications.py status engine (single writer)"
-Cohesion: 0.05
-Nodes (43): notice(), rec-017 Candidate + Requirement Tracking Design, candidate_for_student create-or-link (A3), DEC-SCOPE-136 (rec-017, A1-A4 UNVERIFIED), job_application_status_history table (migration 0121), Legacy application status mapping (A1), services/applications.py status engine (single writer), university_stage_history table (+35 more)
+### Community 408 - "services/candidate_search.py (resolve_terms, filters, facets, page)"
+Cohesion: 0.08
+Nodes (29): notice(), candidate_for_student create-or-link (A3), candidate_consents table (migration 0123), PlacementPoolCard UI, services/placement_pool.py (opt_in, opt_out, employer_visible), candidates.pool_filter (external + opted-in, R11), Experience/location/availability facets (FS7), services/candidate_search.py (resolve_terms, filters, facets, page) (+21 more)
 
 ### Community 409 - "test_upc_032_reassign.py"
-Cohesion: 0.22
-Nodes (31): upc-003 (§27): append-only; one row per manager slot that changed (primary or…, UniversityAssignmentHistory, _deactivate(), _owners(), asyncio, parametrize, UUID, upc-032 -- partnership manager deactivation + bulk reassignment (spec §2… (+23 more)
+Cohesion: 0.24
+Nodes (29): _deactivate(), _owners(), asyncio, parametrize, UUID, upc-032 -- partnership manager deactivation + bulk reassignment (spec §2…, n universities created by the signed-in caller, then owned directly (the assign…, A head with two managers; signed in as the head. (+21 more)
 
 ### Community 410 - "Enquiry"
 Cohesion: 0.01
-Nodes (610): admin_bdms(), _admin_row(), bdm_managers(), add_lead(), organization_leads(), AsyncSession, get, post (+602 more)
+Nodes (569): _lead_query(), TelSource, The admin lead list's filters, shared by the list and its Excel twin…, add_lead(), organization_leads(), AsyncSession, get, post (+561 more)
 
 ### Community 411 - "ApplicationInterviewsPanel.tsx"
-Cohesion: 0.17
-Nodes (24): ApplicationInterviewsPanel(), load(), open(), submit(), Editing, InterviewSummary(), OUTCOME_CLASS, Props (+16 more)
+Cohesion: 0.15
+Nodes (28): ApplicationInterviewsPanel(), load(), open(), submit(), Editing, InterviewSummary(), OUTCOME_CLASS, Props (+20 more)
 
-### Community 412 - "bdm-015 — Daily activity report (derived + note + submit) — design"
-Cohesion: 0.06
-Nodes (35): DEC-SCOPE-099, DEC-SCOPE-103, Feature bdm-015, Feature bdm-016, API §12G Telecaller targets (tel-022), API §12T BDM daily activity report (bdm-015), API §12W BDM monthly targets (bdm-016), tel-022 Telecaller Targets Design (+27 more)
+### Community 412 - "tel-022 — Daily + monthly telecaller targets (design)"
+Cohesion: 0.05
+Nodes (44): DEC-SCOPE-099, DEC-SCOPE-103, Feature bdm-015, Feature bdm-016, API §12G Telecaller targets (tel-022), API §12T BDM daily activity report (bdm-015), API §12W BDM monthly targets (bdm-016), tel-022 Telecaller Targets Design (+36 more)
 
 ### Community 413 - "as_role"
-Cohesion: 0.07
-Nodes (78): emp(), as_role(), make_recruiter(), profile_of(), rec-001 test builders, on top of bdm-001's. Every value is unique per call: the…, A recruiter with a profile written directly (the backfill shape when `manager`…, Fresh from the database (the API wrote it in another session) without expiring…, rec_payload() (+70 more)
+Cohesion: 0.06
+Nodes (106): emp(), as_role(), make_pm(), make_recruiter(), profile_of(), rec-001 test builders, on top of bdm-001's. Every value is unique per call: the…, A recruiter with a profile written directly (the backfill shape when `manager`…, Fresh from the database (the API wrote it in another session) without expiring… (+98 more)
 
 ### Community 414 - "test_tel_013_migration.py"
 Cohesion: 0.16
 Nodes (19): base_db(), _config(), fixture, tel-013 -- migration 0095_lead_messages (spec §2). The round trip runs in a…, _sql(), test_downgrade_drops_the_table(), test_downgrade_to_0094_has_no_table(), test_migration_chains_after_0094_and_there_is_one_head() (+11 more)
 
-### Community 415 - "dtu-001 — Direct Tie-ups university load + agent commission — design"
-Cohesion: 0.13
-Nodes (15): overview(), `psb-008` — Fill country-page gaps (partly built), 10. Rollout, 1. Evidence and intent, 2. Owner answers, 3. Data model — migration `0157_direct_tieups`, 4.1 Files, 4.3 Defaults and inferences (each flagged in the review CSV) (+7 more)
+### Community 415 - "test_upc_008_migration.py"
+Cohesion: 0.09
+Nodes (23): isolated_db(), asyncio, fixture, parametrize, dtu-001 -- migration 0157_direct_tieups (spec §3). Round trip runs in a…, test_check_constraints_reject_invalid_agent_commissions(), test_columns_exist_in_the_shared_database(), test_downgrade_refuses_while_an_agent_commission_exists() (+15 more)
 
 ### Community 416 - "7. JavaScript Performance"
 Cohesion: 0.13
@@ -3295,32 +3381,32 @@ Cohesion: 0.37
 Nodes (20): _csv(), _head(), _ok(), asyncio, parametrize, upc-005 -- University CSV import (spec §1 IM1-IM12; AC1-AC5)., _tag(), test_a_file_with_a_bom_and_crlf_imports() (+12 more)
 
 ### Community 420 - "ENH-005 — final browser verification (2026-09-21)"
-Cohesion: 0.08
-Nodes (22): ENH-005 — browser QA record (2026-09-21), Findings, Method and environment (read this before trusting the results), Observations, not defects of ENH-005 (recorded, not changed), Open items (must be decided or done; not hidden), Regression runs on this branch, Third pass (2026-09-21, after the D1 fix; report only, nothing was changed in this pass), 1. Filing cap and hourly throttle are raceable — VALID, fixed (+14 more)
+Cohesion: 0.11
+Nodes (16): ENH-005 — browser QA record (2026-09-21), Findings, Method and environment (read this before trusting the results), Observations, not defects of ENH-005 (recorded, not changed), Open items (must be decided or done; not hidden), Regression runs on this branch, Third pass (2026-09-21, after the D1 fix; report only, nothing was changed in this pass), Baseline comparison for AC-18 (2026-09-21) (+8 more)
 
 ### Community 421 - "vercel-react-best-practices Skill"
 Cohesion: 0.18
 Nodes (28): React Best Practices Compiled Guide (AGENTS.md), React Best Practices (compiled AGENTS), React Best Practices README, Advanced Patterns, Bundle Size Optimization (CRITICAL), Client-Side Data Fetching, React Rule Sections, Eliminating Waterfalls (CRITICAL) (+20 more)
 
-### Community 422 - "Appointment"
-Cohesion: 0.05
-Nodes (97): _act(), book(), booking_options(), cancel(), complete(), confirm(), lead_appointments(), my_appointments() (+89 more)
+### Community 422 - "LeadAppointmentCreate"
+Cohesion: 0.40
+Nodes (5): LeadAppointmentCancel, LeadAppointmentCreate, LeadAppointmentReschedule, The type must fit the lead's division and the counselor must be one of its…, Task 2: Service + booking routes (telecaller)
 
-### Community 423 - "investments.ts"
-Cohesion: 0.13
-Nodes (29): filterBy(), InvestmentForm(), submit(), InvestmentRegister(), EMPTY_INVESTMENT_FORM, filterQuery(), Investment, INVESTMENT_STATUS_LABEL (+21 more)
+### Community 423 - "isCalendarDate"
+Cohesion: 0.03
+Nodes (109): SecurityLogsPage(), ItAdminAuditLogPage(), ManagementApplicationsPage(), ManagementBdmPage(), ManagementInvestmentPage(), NO_FILTERS, ManagementInvestmentsPage(), OverseasAdminAuditLogPage() (+101 more)
 
-### Community 424 - "File Structure"
-Cohesion: 0.08
-Nodes (24): test_models_match_the_migration(), P14 (Review Focus 5): \\r\\n and \\r become \\n before the length check; \\n is…, test_multiline_rule(), bdm-003 Type-specific Organization Profiles Implementation Plan, File Structure, Global Constraints, Review Focus, Self-Review (done while writing) (+16 more)
+### Community 424 - "bdmPerformance.ts"
+Cohesion: 0.12
+Nodes (23): BDM_TYPES, BdmPerformance, bdmPerformanceUrl(), BdmType, HIERARCHY_PATH, HierarchyBdm, HierarchyOrganization, HierarchyType (+15 more)
 
-### Community 425 - "make_pm"
+### Community 425 - "test_rec_011_candidate_skills.py"
 Cohesion: 0.18
-Nodes (36): make_pm(), _add(), _candidate(), asyncio, parametrize, rec-011 -- a candidate's skills (spec §1-§4, §7 AC1-AC5; DEC-SCOPE-137…, _recruiter_with_candidate(), skills_url() (+28 more)
+Nodes (35): _add(), _candidate(), asyncio, parametrize, rec-011 -- a candidate's skills (spec §1-§4, §7 AC1-AC5; DEC-SCOPE-137…, _recruiter_with_candidate(), skills_url(), test_a_candidate_outside_the_pool_or_unknown_is_404() (+27 more)
 
 ### Community 426 - "test_sch_team_account_activation.py"
-Cohesion: 0.10
-Nodes (39): _create_school_with_roles(), _login(), asyncio, SCH-003 addendum -- Coordinator activate/deactivate for their own school's…, Final-review Finding 2: an orphaned school_parent account -- zero…, test_a_parent_linked_only_at_another_school_is_neither_listed_nor_manageable_here(), test_a_parent_with_a_link_at_this_school_appears_in_team_and_can_be_toggled(), test_a_parent_with_no_link_but_matching_stale_profile_still_appears_in_team_and_can_be_toggled() (+31 more)
+Cohesion: 0.13
+Nodes (32): _create_school_with_roles(), _login(), asyncio, SCH-003 addendum -- Coordinator activate/deactivate for their own school's…, Final-review Finding 2: an orphaned school_parent account -- zero…, test_a_parent_linked_only_at_another_school_is_neither_listed_nor_manageable_here(), test_a_parent_with_a_link_at_this_school_appears_in_team_and_can_be_toggled(), test_a_parent_with_no_link_but_matching_stale_profile_still_appears_in_team_and_can_be_toggled() (+24 more)
 
 ### Community 427 - "React Composition Patterns (compiled AGENTS)"
 Cohesion: 0.21
@@ -3334,41 +3420,41 @@ Nodes (13): _activity(), _config(), isolated_db(), asyncio, fixture, bdm-009 -- 
 Cohesion: 0.44
 Nodes (13): SupportTicket, _create_user(), _login(), asyncio, STU-005 -- Support ticket. `POST /workflows/support` and `GET…, test_a_student_cannot_act_on_a_support_ticket_even_their_own(), test_a_student_never_sees_another_students_ticket(), test_resolving_a_ticket_notifies_the_student_who_raised_it() (+5 more)
 
-### Community 430 - "agent_visa.py"
-Cohesion: 0.06
-Nodes (40): OverseasApplicationUpdate, checklist_status(), ChecklistGateRefused, load_case(), AsyncSession, HTTPException, UUID, AGN-012 -- the visa case of an agency's application (DEC-SCOPE-057;… (+32 more)
+### Community 430 - "update_case"
+Cohesion: 0.05
+Nodes (46): checklist_status(), ChecklistGateRefused, load_case(), AsyncSession, HTTPException, UUID, §4.2 checks 2-9 (the route did entry and check 1, under the application row…, VISA-001-AC02's 422, carrying how many items blocked it so the route can log a… (+38 more)
 
 ### Community 431 - "16 Documentation Modules"
 Cohesion: 0.10
 Nodes (21): Feature file template, 16 Documentation Modules, Module ACAD, Module ACT, Module AUTH, Module CAR, Module DASH, Module ENT (+13 more)
 
 ### Community 432 - "Responsive No-Horizontal-Overflow Check"
-Cohesion: 0.03
-Nodes (83): Issues found (all caused by mgmt-024, all in scope), mgmt-024 — Applications funnel dashboard — exploratory browser QA (2026-10-13), QA24-01 Shareable filter URL redirect, QA24-02 Funnel filters grid, QA24-03 Less than 1% share text, QA24-04 Funnel note margin, Scenarios (first pass), mgmt-025 Recruitment Dashboard QA (+75 more)
+Cohesion: 0.08
+Nodes (39): Issues, mgmt-026 — Exploratory browser QA (2026-10-14), QA-01 Optimistic plan item tick, Revenue KPI PN7 partner-only, mgmt-027 Discussions & Decisions QA, Checked and passing (after the fixes), mgmt-027 — Discussions & decisions — exploratory browser QA (2026-10-12), QA-01 Double-submit discussion in-flight guard (+31 more)
 
 ### Community 433 - "Approval Gates"
 Cohesion: 0.07
-Nodes (36): Approval Gates, GATE-01 — Evidence Audit, GATE-02 — Product Decisions, GATE-03 — BRD, GATE-04 — PRD, GATE-05 — Feature Catalogue, GATE-06 — UX / Screen Catalogue, GATE-07 — Architecture (+28 more)
+Nodes (33): Approval Gates, GATE-01 — Evidence Audit, GATE-02 — Product Decisions, GATE-03 — BRD, GATE-04 — PRD, GATE-05 — Feature Catalogue, GATE-06 — UX / Screen Catalogue, GATE-07 — Architecture (+25 more)
 
-### Community 434 - "counselorMessages.ts"
-Cohesion: 0.10
-Nodes (22): ReplyForm(), submit(), COUNSELOR_LIBRARY, LIST_LIMIT, loadTemplates, Ref, replyUrl(), StudentApplicationRef (+14 more)
+### Community 434 - "Review Focus"
+Cohesion: 0.09
+Nodes (25): Staff refused on every commission route, agent_tasks table and migration, AGN-016 Tasks & Follow-ups Implementation Plan, Decisions T1-T8 (AGN-016), AGN-016 Tasks and Follow-ups Plan, Agent dashboard Pending actions KPI, Review Focus, AGN-004 student_scope() scope helper (+17 more)
 
 ### Community 435 - "Discovery: BDM Manager portal (role `bdm_manager`)"
 Cohesion: 0.07
-Nodes (26): 0.1 Account, sign-in and landing, 0.3 Authorization model (as built), 0.4 Type specifics in manager pages [OVS], 0.5 Shared list idioms, 0. Cross-cutting facts (read first), 10. Daily reports: `/bdm/manager/daily-reports` and `/[bdmId]`, 11. MoUs: `/bdm/manager/mous`, 12. Meeting requests: `/bdm/manager/meeting-requests` (+18 more)
+Nodes (27): 0.1 Account, sign-in and landing, 0.3 Authorization model (as built), 0.4 Type specifics in manager pages [OVS], 0.5 Shared list idioms, 0. Cross-cutting facts (read first), 10. Daily reports: `/bdm/manager/daily-reports` and `/[bdmId]`, 11. MoUs: `/bdm/manager/mous`, 12. Meeting requests: `/bdm/manager/meeting-requests` (+19 more)
 
 ### Community 436 - "api/application_offers.py"
 Cohesion: 0.03
-Nodes (134): add_condition(), close_offer(), _condition_result(), _current_offer(), decide_offer(), get_arrival(), get_deposit(), get_enrollment() (+126 more)
+Nodes (160): add_checklist_item(), create_checklist(), get_checklist(), link_checklist_document(), mark_checklist_item(), AsyncSession, delete, get (+152 more)
 
-### Community 437 - "test_agn_011_checkout.py"
-Cohesion: 0.17
-Nodes (26): checkout_url(), deposit_payments(), razorpay_off(), key(), asyncio, parametrize, AGN-011 -- the deposit checkout (spec §4.4; AC1, AC3, AC6): scope, the stored…, QA11-04: an attempt the provider refused opened no order (nothing could be… (+18 more)
+### Community 437 - "DEC-SCOPE-038 — Multi-tenant Agent CRM: agent organisation as tenant, Master accounts (AGN-001)"
+Cohesion: 0.06
+Nodes (71): DEC-DATA-003 — Business-facing unique Student ID format and scope, DEC-ROLE-003 — "Coordinator" role and certificate-issuance authority, DEC-ROLE-004 — Student login scope: EduSphere-direct students only *(added on review, direct, DEC-ROLE-005 — Internal EduSphere actor for school-affiliated student data management, DEC-ROLE-006 — Five specialized internal School-domain roles; results/career-guidance/, DEC-ROLE-007 — Academic results Draft→Verified→Published gate: verify/publish actor, DEC-SCOPE-009 — School/Institution Portal access model, DEC-SCOPE-010 — Reopen DEC-SCOPE-009's bulk-upload deferral (template-first bulk student and results upload) (+63 more)
 
 ### Community 438 - "recruiter_skills.py"
-Cohesion: 0.05
-Nodes (103): put, Replaces the tags. A new tag reaches the program's opted-in certificate holders…, set_program_skills(), add_alias(), add_related(), _audit(), _body(), categories() (+95 more)
+Cohesion: 0.07
+Nodes (82): add_alias(), add_related(), _audit(), _body(), categories(), _category_out(), _check_tags(), create_category() (+74 more)
 
 ### Community 439 - "test_tel_002_products.py"
 Cohesion: 0.23
@@ -3379,12 +3465,12 @@ Cohesion: 0.10
 Nodes (26): bdm_organizations table, AC6 Last/Next Meeting null until bdm-006, POST /bdm/organizations/{id}/archive|restore, POST /bdm/organizations/{id}/assign, bdm_organization_contacts table, BdmOrganizationDetail component, BdmOrganizationForm (BdmOrganizationFields + BdmContactFields), api/bdm_organizations.py /bdm/organizations (+18 more)
 
 ### Community 441 - "agentShortlist.ts"
-Cohesion: 0.06
-Nodes (65): editId(), removeId(), ShortlistCard(), AgentShortlistForm(), chooseUniversity(), submit(), Field, json() (+57 more)
+Cohesion: 0.11
+Nodes (39): AgentShortlistForm(), chooseUniversity(), submit(), Field, json(), loadAgency(), loadOptions(), loadStatic() (+31 more)
 
 ### Community 442 - "UserPermissionOverride"
-Cohesion: 0.13
-Nodes (28): all_keys(), parse_key(), reports.telecaller.view" -> ("reports.telecaller", "view"). Raises ValueError…, nehn-007 (DEC-SCOPE-299): one user's allow or deny of one catalogue key, on top…, UserPermissionOverride, _active(), active_overrides(), _key() (+20 more)
+Cohesion: 0.15
+Nodes (26): put, replace_user_permissions(), _user_out(), all_keys(), nehn-007 (DEC-SCOPE-299): one user's allow or deny of one catalogue key, on top…, UserPermissionOverride, _active(), active_overrides() (+18 more)
 
 ### Community 443 - "test_bdm_017_migration.py"
 Cohesion: 0.20
@@ -3403,8 +3489,8 @@ Cohesion: 0.38
 Nodes (13): _create_admin(), _create_enrollment(), _login(), asyncio, ADM-005 -- Enrolment review and approval. `API_CONTRACT.md` explicitly…, ADM-005-AC02: rejected enrolment does not silently proceed to active., test_a_non_admin_cannot_approve_or_reject_enrollments(), test_admin_approves_an_enrollment_and_it_becomes_active() (+5 more)
 
 ### Community 447 - "api/counselor_students.py"
-Cohesion: 0.02
-Nodes (175): my_dashboard(), AsyncSession, get, add_note(), archive_student(), assign_student_counselor(), create_student(), list_archived() (+167 more)
+Cohesion: 0.18
+Nodes (28): add_note(), archive_student(), create_student(), list_archived(), list_notes(), list_students(), AsyncSession, get (+20 more)
 
 ### Community 448 - "test_ovs_003_eligibility.py"
 Cohesion: 0.51
@@ -3415,8 +3501,8 @@ Cohesion: 0.29
 Nodes (24): _add(), _company(), _name(), _primary(), asyncio, parametrize, rec-004 -- company contacts (spec §1-§3; DEC-SCOPE-125 C1-C7). Names are unique…, _role() (+16 more)
 
 ### Community 450 - "recruiterDashboard.ts"
-Cohesion: 0.13
-Nodes (22): RecruiterDashboardTiles(), RecruiterQuickActions(), RecruiterRecruiterFilter(), RecruiterSkillSearch(), CREATORS, DASHBOARD_PATH, DASHBOARD_URL, DashboardTiles (+14 more)
+Cohesion: 0.14
+Nodes (20): RecruiterDashboardTiles(), RecruiterQuickActions(), RecruiterSkillSearch(), CREATORS, DASHBOARD_PATH, DASHBOARD_URL, DashboardTiles, FIND_CANDIDATES_PATH (+12 more)
 
 ### Community 451 - "SchoolPromotionPanel.test.tsx"
 Cohesion: 0.10
@@ -3439,36 +3525,36 @@ Cohesion: 0.25
 Nodes (22): _as(), _create(), _name(), _product(), asyncio, parametrize, tel-002 -- the campaign list API (spec §4; AC2, AC3, AC4, AC5; DEC-SCOPE-074…, P4: deactivating a product leaves its campaign alone; that campaign stays… (+14 more)
 
 ### Community 457 - "mk_user"
-Cohesion: 0.02
-Nodes (406): OverseasStudentCounselor, csc-001 (DEC-SCOPE-226, W3): the counselor an overseas student belongs to…, catalogue_country(), Country, One seed/countries.json row. upc-002: on a fresh database migration 0101 has…, derive(), _rank(), ccrm-017 (DEC-SCOPE-258, J1-J4): a direct overseas student's journey stage --… (+398 more)
+Cohesion: 0.01
+Nodes (446): OverseasStudentCounselor, csc-001 (DEC-SCOPE-226, W3): the counselor an overseas student belongs to…, catalogue_country(), Country, One seed/countries.json row. upc-002: on a fresh database migration 0101 has…, login(), mk_user(), mk_application() (+438 more)
 
 ### Community 458 - "UX Reference Gaps"
 Cohesion: 0.10
 Nodes (21): 1. Accessibility determination, 2. Access log, 3. Two different designs behind two different URLs — not yet reconciled, 4. Other designs found in the same connected team (not inspected — logged for completeness), 5. Design `DAHRWCa0RLw` — "OneCampus ERP — Customer-Friendly Responsive UX", 6. Design `DAHRCNYnu6g` — "EduSphere UK Responsive UX Prototype - Revised and Complete", 7. What this audit does NOT claim, Canva design DAHRCNYnu6g EduSphere UK Responsive UX Prototype (+13 more)
 
-### Community 459 - "Review Focus"
-Cohesion: 0.04
-Nodes (44): can_view_university_commission (partner only), mgmt-006 — Abroad Education revenue dashboard — implementation plan, Phase 3 review notes (applied to the tasks above), Finance tier access (can_view_finance), ledger.lines() frozen read-only source, mgmt-007 — IT Training revenue dashboard — implementation plan, Tasks, MarketingBudget model (migration 0156_marketing_budgets) (+36 more)
+### Community 459 - "2026-10-13-mgmt-006-abroad-revenue.md"
+Cohesion: 0.12
+Nodes (15): can_view_university_commission (partner only), mgmt-006 — Abroad Education revenue dashboard — implementation plan, Phase 3 review notes (applied to the tasks above), Finance tier access (can_view_finance), ledger.lines() frozen read-only source, mgmt-007 — IT Training revenue dashboard — implementation plan, Tasks, MarketingBudget model (migration 0156_marketing_budgets) (+7 more)
 
 ### Community 460 - "mgmt-027 — Discussions & decisions — implementation plan"
 Cohesion: 0.09
 Nodes (23): GET /management/me self read, Management tiers (partner-only, finance, operational), MG6 partner count with FOR UPDATE lock, mgmt-001 Partner/Accountant Roles Plan, MA8 /admin/audit hides finance and partner-only mgmt rows, services/management_audit.py (record, activity), mgmt-002 Management Audit Trail Plan, services/ledger.py (categories, entries, approval) (+15 more)
 
 ### Community 461 - "Next.js Best Practices Skill"
-Cohesion: 0.12
-Nodes (23): Next.js Debug Tricks, Next.js Debug Tricks Guide, Next Dev Server MCP Endpoint, Next.js MCP Endpoint, Rebuild Specific Routes, Next.js Directives, Next.js Directives Guide, 'use cache' (+15 more)
+Cohesion: 0.10
+Nodes (27): Next.js Debug Tricks, Next.js Debug Tricks Guide, Next Dev Server MCP Endpoint, Next.js MCP Endpoint, Rebuild Specific Routes, Next.js Directives, Next.js Directives Guide, 'use cache' (+19 more)
 
 ### Community 462 - "Assign a psychometric assessment"
 Cohesion: 0.14
 Nodes (14): Assign a psychometric assessment, Common Errors, Expected Result, Fields, How to Access, Prerequisites, Purpose, Related Features (+6 more)
 
-### Community 463 - "recruiterTimeline.ts"
-Cohesion: 0.14
-Nodes (21): RecruiterTimeline(), duration(), EXCERPT, meetingTypeLabel(), candidateTimelineUrl(), compact(), companyTimelineUrl(), CONTRACT_TITLE (+13 more)
+### Community 463 - "leadTimeline.ts"
+Cohesion: 0.05
+Nodes (57): RecruiterTimeline(), UniversityActivity(), milestoneKind, statusText(), actorName(), APPOINTMENT_TYPE, appointmentTitle(), assignmentTitle() (+49 more)
 
-### Community 464 - "_gate"
-Cohesion: 0.02
-Nodes (254): get_dashboard(), AsyncSession, get, Response, _audit(), cancel_request(), create_request(), document_history() (+246 more)
+### Community 464 - "AgentStudentCounselingSave"
+Cohesion: 0.12
+Nodes (17): AgentStudentCounselingSave, AGN-006 (DEC-SCOPE-048 C1-C5, EVID-015 §5 Step 2): the whole counseling record,…, parametrize, AGN-006 -- AgentStudentCounselingSave (spec §5.1): normalisation, the budget…, test_an_amount_alone_defaults_to_inr_and_a_numeric_string_is_accepted(), test_counseling_completed_is_required(), test_invalid_input_is_refused(), test_omitted_fields_dump_as_null() (+9 more)
 
 ### Community 465 - "test_ovs_002_application.py"
 Cohesion: 0.41
@@ -3478,13 +3564,13 @@ Nodes (13): _create_overseas_student(), _login(), _make_course(), _make_universi
 Cohesion: 0.09
 Nodes (22): Build-time vs Runtime, Docker Compose, Docker Deployment, Dockerfile, Environment Variables, Health Check Endpoint, Image Optimization, ISR and Cache Handlers (+14 more)
 
-### Community 467 - "PART 1 — ACCOUNT ACCESS (all school-side roles)"
-Cohesion: 0.07
-Nodes (29): accepted(), 1.10 Session / auth mechanism, 1.11 Deactivated / inactive accounts, 1.12 Opening another role's URL / signed-out access, 1.13 Parent with children in multiple schools (ENH-008), 1.1 Roles and how accounts come to exist, 1.2 Sign in — `/overseas/login`, 1.3 Role → landing page (+21 more)
+### Community 467 - "AGN-010 — Offer details (Step 6) — design"
+Cohesion: 0.22
+Nodes (9): downloadUrl(), 1. Requirement and acceptance, 3. Data (migration `0062_agent_offer_details`), 5. Offers count, 6. Web, 7. Security, 8. Acceptance criteria, 9. Out of scope (+1 more)
 
-### Community 468 - "with_server.py"
-Cohesion: 0.12
-Nodes (21): Frontend Design Skill License (Apache 2.0), Frontend Design Skill, Design Principles, Brainstorm-Explore-Plan-Critique-Build Process, Design Restraint and Self-Critique, Ground Design in the Subject, Restraint and Self-Critique, Apache License 2.0 (+13 more)
+### Community 468 - ".claude/skills/webapp-testing/scripts/with_server.py"
+Cohesion: 0.10
+Nodes (25): Frontend Design Skill License (Apache 2.0), Frontend Design Skill, Design Principles, Brainstorm-Explore-Plan-Critique-Build Process, Design Restraint and Self-Critique, Ground Design in the Subject, Restraint and Self-Critique, Apache License 2.0 (+17 more)
 
 ### Community 469 - "test_rec_002_campaigns.py"
 Cohesion: 0.26
@@ -3494,9 +3580,9 @@ Nodes (20): _create(), _manager(), _name(), asyncio, parametrize, rec-002 -- rec
 Cohesion: 0.37
 Nodes (14): ScholarshipApplication, _create_overseas_student(), _login(), _make_scholarship(), asyncio, OVS-006 -- Scholarship listing and application. `GET /public/scholarships` and…, test_apply_requires_authentication(), test_duplicate_application_to_the_same_scholarship_is_rejected() (+6 more)
 
-### Community 471 - "enh-029-bulk-school-onboarding.spec.ts"
-Cohesion: 0.07
-Nodes (19): coordinator(), threeRows, unique, COORDINATOR_GRANTS, SUPER, SCH-001 — School Portal role-based access (Principal/Coordinator/Teacher/Parent), Global Constraints, nehn-032 Certificate Signatures Implementation Plan (+11 more)
+### Community 471 - "coordinator"
+Cohesion: 0.15
+Nodes (13): coordinator(), SCH-001 — School Portal role-based access (Principal/Coordinator/Teacher/Parent), Parent (`school_parent`), Principal (`school_principal`), School Coordinator (`school_coordinator`) — **write access; distinctly named to avoid colliding, School **[new — net-new build, no equivalent role exists in the base codebase; propagated from `DEC-SCOPE-009` 2026-09-14, role structure superseded by `DEC-SCOPE-011` 2026-09-14]**, Teacher (`school_teacher`) — **distinctly named; not `DEC-ROLE-002`'s Trainer/Teacher**, which, Acceptance criteria (testable) (+5 more)
 
 ### Community 472 - "7.14 School (added 2026-09-14, propagated from `DEC-SCOPE-009`; role structure superseded"
 Cohesion: 0.12
@@ -3530,21 +3616,21 @@ Nodes (9): Global Constraints, Review Focus, Task 1: Migration + model + detail 
 Cohesion: 0.35
 Nodes (13): _create_admin(), _create_student(), _issue_certificate(), _login(), asyncio, STU-007 -- Certificate download (PRD-STU-008). Issuance (`ADM-006`) and the…, STU-007-AC02: before eligibility is met, no `Certificate` row exists at all --…, test_admin_can_download_any_certificate() (+5 more)
 
-### Community 480 - "mk_active_org"
-Cohesion: 0.02
-Nodes (291): Ensure a UserRoleAssignment row exists for `user`'s primary (division, role).…, _sync_role_assignment(), AgentOrg, AgentOrgMember, AGN-001 / DEC-SCOPE-038: an agent company -- a separate tenant. Its `status` is…, AGN-001: a user's membership of exactly one agent organisation, for good…, admin_rows(), Overseas Admin's Agent deposits rows (§4.7), newest paid first. Agency: the… (+283 more)
+### Community 480 - "uniq"
+Cohesion: 0.03
+Nodes (219): mk_active_org(), An approved agent who is M001 of an active organisation., uniq(), mk_staff(), AGN-002 test helpers: a staff member inserted directly (the API path is tested…, agency_document(), A student linked to the agency's Master, an application referred by that…, mk_commission() (+211 more)
 
 ### Community 481 - "test_mgmt_030_health.py"
+Cohesion: 0.19
+Nodes (21): rag(), BH9: green ≥ 70, amber 40-69, red < 40., assert_recomputes(), factor(), _ist_month(), asyncio, parametrize, mgmt-030 -- GET /management/health, the §30 business health score (EVID-017… (+13 more)
+
+### Community 482 - "test_ccrm_002_migration.py"
 Cohesion: 0.09
-Nodes (39): _clamp(), expense_score(), growth_score(), margin_score(), rag(), BH5/BH6: (score, growth %) for a month-on-month change; −10% → 0, flat → 50,…, BH5 H2: −20% → 0, 0% → 40, 15% → 70, 30% → 100., BH5 H11: −100% → 0, 0% → 50, +100% → 100. (+31 more)
+Nodes (22): isolated_db(), asyncio, fixture, ccrm-002 -- migration 0167_lead_notes (DEC-SCOPE-242). Round trip and the…, A fresh database at 0166_application_codes., _tables(), test_body_length_is_checked_and_downgrade_refuses_while_notes_exist(), test_migration_chains_after_0166_and_is_the_single_head() (+14 more)
 
-### Community 482 - "3. Feature Inventory"
-Cohesion: 0.12
-Nodes (17): 3. Feature Inventory, ACAD — Academic Team (7), ACT — Activities, attendance & feedback (5), AUTH — Account access & navigation (9), CAR — Career Counselor (11), DASH — Dashboards (7), ENT — Partnership entitlements (2), NOTIF — Notifications (2) (+9 more)
-
-### Community 483 - "formatDate"
-Cohesion: 0.01
-Nodes (233): Loading(), DashboardPayload, SchoolCoordinatorStudentDetailPage(), SchoolParentChildPage(), SchoolPrincipalStudentDetailPage(), Student, AdminSchoolTransferPanel(), onFailure() (+225 more)
+### Community 483 - "SchoolStudentDetailPanel.tsx"
+Cohesion: 0.02
+Nodes (163): AccountPrivacyPage(), choose(), AdminSchoolTransferPanel(), onFailure(), AdminTransferRow(), close(), decide(), onKeyDown() (+155 more)
 
 ### Community 484 - "EMP screens"
 Cohesion: 0.11
@@ -3559,8 +3645,8 @@ Cohesion: 0.10
 Nodes (19): 10. Required Screenshots, 11. Required Test Data, 12.1 Cannot be confirmed from code, 12.2 As-built behaviour the product owner should know about (documented as-is, not changed), 12. Unknown Workflows Requiring Browser Verification, 1.1 What the Agent CRM is, 1.2 Technology (verified), 1.3 Authentication (verified) (+11 more)
 
 ### Community 487 - "test_bdm_010_migration.py"
-Cohesion: 0.20
-Nodes (13): _config(), isolated_db(), asyncio, fixture, bdm-010 -- migration 0068_bdm_trips (spec §4; AC10). Round trip and the…, A fresh database at 0067 with one user (the trip owner)., _sql(), test_checks_hold_and_downgrade_refuses_while_trips_exist() (+5 more)
+Cohesion: 0.22
+Nodes (12): _config(), isolated_db(), asyncio, fixture, bdm-010 -- migration 0068_bdm_trips (spec §4; AC10). Round trip and the…, A fresh database at 0067 with one user (the trip owner)., _sql(), test_checks_hold_and_downgrade_refuses_while_trips_exist() (+4 more)
 
 ### Community 488 - "test_tel_015_timeline.py"
 Cohesion: 0.16
@@ -3570,13 +3656,13 @@ Nodes (36): admin_url(), assign(), call(), items(), new_lead(), asyncio, tel-015
 Cohesion: 0.14
 Nodes (21): Application detail page (DOC-APP-004), Application status history, Withdrawn application read-only, Application deposit, Deposit statuses (Not required/Awaiting/Paid/Remitted/Refunded), Deposit and payment (DOC-APP-007), Payment attempt lock and 10/hour limit, Razorpay checkout (+13 more)
 
-### Community 490 - "activate_if_complete"
-Cohesion: 0.13
-Nodes (28): get_onboarding(), AsyncSession, get, patch, UUID, The ten §29 items in source order with their status, and the derived overall…, One item's status, owner, due date and / or note (null clears); returns the…, update_onboarding_item() (+20 more)
+### Community 490 - "IT Counselor CRM — Enhancement Backlog (itc-001 … itc-033)"
+Cohesion: 0.08
+Nodes (23): 0. What already exists (summary of the audit), 1. Section-by-section coverage of the source, 2. Enhancement items, 3.1 Must be sequential (chains), 3.2 Can run independently (no shared hot files and no dependency between them), 3.4 Require a migration, 3.5 Implement first, 3. Enhancement dependency graph (+15 more)
 
 ### Community 491 - "Code items"
-Cohesion: 0.12
-Nodes (14): robots(), sitemap(), Code items, `seo-001` — Remove the silent example.com fallback (P0, 0–30), `seo-002` — Metadata base, canonical, OG/Twitter, unique per-page titles (P1, 0–30), `seo-004` — Heading hygiene (P1, 0–30), `seo-005` — Remove public placeholder copy; publish legal pages (P1, 0–30), `seo-006` — Dynamic sitemap (P1, 0–30) (+6 more)
+Cohesion: 0.06
+Nodes (29): robots(), sitemap(), Code items, Evidence, KPIs (baseline 2026-10-19; targets set after the day-30 baseline), Messaging guardrails (apply to every content item, post and ad), Ops / config items (no business code), `OPS-SEO-01` — Set the production site URL (P0) (+21 more)
 
 ### Community 492 - "test_adm_002_lead_management.py"
 Cohesion: 0.34
@@ -3586,17 +3672,17 @@ Nodes (14): _create_admin(), _create_enquiry(), _login(), asyncio, ADM-002 -- CR
 Cohesion: 0.21
 Nodes (12): _config(), isolated_db(), asyncio, fixture, bdm-015 -- migration 0094_bdm_daily_reports (spec §4). The round trip and the…, A fresh database at BASE with one BDM user., _report(), _sql() (+4 more)
 
-### Community 494 - "test_nehn_041_student_search.py"
-Cohesion: 0.19
-Nodes (27): _code(), _digits(), _ids(), asyncio, parametrize, nehn-041 (DEC-SCOPE-291 S1-S9) -- GET /search/students: one box across the…, Ten digits no other test row holds, so a phone search is exact even on the…, _search() (+19 more)
+### Community 494 - "test_ccrm_017_student_journey.py"
+Cohesion: 0.17
+Nodes (20): derive(), _rank(), ccrm-017 (DEC-SCOPE-258, J1-J4): a direct overseas student's journey stage --…, (stage, best application or None, note). J3: the furthest live application, a…, steps(), app(), asyncio, parametrize (+12 more)
 
-### Community 495 - "Metadata"
-Cohesion: 0.09
-Nodes (22): generateMetadata(), Avoid Duplicate Fetches, Basic OG Image, Custom Fonts, Dynamic Metadata, Dynamic OG Image, File Naming, Important Rules (+14 more)
+### Community 495 - "Next.js Best Practices"
+Cohesion: 0.04
+Nodes (49): generateMetadata(), After Response, Common Examples, Functions, Generate Functions, Navigation, Navigation Hooks (Client), Request/Response (+41 more)
 
-### Community 496 - "readRange"
-Cohesion: 0.12
-Nodes (15): readRange(), AGN-019 — Exploratory browser QA (first pass, 2026-10-03), Fixes after the first pass (2026-10-03, re-verified in the browser on the rebuilt stack), Issues, Not AGN-019 (pre-existing), QA19-01 — A bad date in the address leaves the page stuck on an error the user cannot clear (Medium), QA19-02 — Date error messages use a format the user never sees, and the ordering message lands on From (Low), QA19-03 — Tablet: the staff table hides two columns behind a horizontal scroll (Low–Medium) (+7 more)
+### Community 496 - "Issues"
+Cohesion: 0.15
+Nodes (12): AGN-019 — Exploratory browser QA (first pass, 2026-10-03), Fixes after the first pass (2026-10-03, re-verified in the browser on the rebuilt stack), Issues, Not AGN-019 (pre-existing), QA19-02 — Date error messages use a format the user never sees, and the ordering message lands on From (Low), QA19-03 — Tablet: the staff table hides two columns behind a horizontal scroll (Low–Medium), QA19-04 — Desktop: the "Show funnel for" select spans the full card width (Low, cosmetic), QA19-05 — The end of an update is not announced to screen-reader users (Low, accessibility) (+4 more)
 
 ### Community 497 - "test_agn_016_migration.py"
 Cohesion: 0.22
@@ -3606,13 +3692,13 @@ Nodes (11): _insert(), isolated_db(), asyncio, fixture, AGN-016 -- migration 005
 Cohesion: 0.10
 Nodes (20): DEC-SCOPE-209, DEC-SCOPE-210, Feature dtu-001, Feature PUB-022, API §12DW Direct Tie-ups & agent commission (dtu-001), API §12DX Homepage social proof (PUB-022), dtu-001 Direct Tie-ups design, University-level agent commission (DT2/DT3) (+12 more)
 
-### Community 499 - "test_rec_034_by_recruiter.py"
+### Community 499 - "test_dtu_001_access.py"
 Cohesion: 0.17
-Nodes (41): _application(), _before(), _call(), _company(), _contact(), _contract(), _figures(), _interview() (+33 more)
+Nodes (22): _agent(), asyncio, parametrize, dtu-001 (DEC-SCOPE-209 §5): the agent commission reaches only super_admin,…, Signs in as super_admin and leaves that session on the client; returns the…, Stage move and probability (partnership_pipeline / partnership_expected) return…, R7: a UniversityEnvelope route without exclude_unset would emit…, test_a_master_of_a_pending_or_suspended_org_does_not_view() (+14 more)
 
-### Community 500 - "test_rec_037_reassign.py"
-Cohesion: 0.25
-Nodes (27): _col(), _companies(), _deactivate(), _follow_up(), asyncio, parametrize, UUID, rec-037 -- recruiter deactivation + bulk reassignment (spec §2 RC1-RC15;… (+19 more)
+### Community 500 - "employer/dashboard/page.tsx"
+Cohesion: 0.14
+Nodes (19): EmployerDashboardPage(), EmployerProfile, Candidate, EmployerCandidateSearchPanel(), CandidateOption, detailMessage(), EmployerInterviewsPanel(), load() (+11 more)
 
 ### Community 501 - "FastAPI Skill"
 Cohesion: 0.14
@@ -3635,20 +3721,20 @@ Cohesion: 0.17
 Nodes (17): _config(), _leads(), legacy_db(), asyncio, fixture, parametrize, tel-003 -- migration 0078_enquiry_lead_record (spec §3; AC1, AC4, AC5, L1, L2).…, A fresh database at 0077_bdm_tasks_followups (the real pre-tel-003 shape)… (+9 more)
 
 ### Community 506 - "AgentCommissionReportPanel.tsx"
-Cohesion: 0.14
-Nodes (22): AgentCommissionReportPanel(), apply(), load(), Failure, Field, FIELD_LABEL, money(), NONE (+14 more)
+Cohesion: 0.09
+Nodes (36): AgentCommissionReportPanel(), apply(), load(), Breakdown(), Failure, Field, FIELD_LABEL, money() (+28 more)
 
 ### Community 507 - "PublicShell"
 Cohesion: 0.02
-Nodes (129): Frontend conventions, AccountProfilePage(), metadata, NEXT, Contact(), ITContact(), ITPage(), services (+121 more)
+Nodes (138): Frontend conventions, Contact(), FAQ(), Gallery(), AboutIT(), BusinessServices(), CareerPaths(), CareerPathDetail() (+130 more)
 
 ### Community 508 - "compilerOptions"
 Cohesion: 0.11
 Nodes (18): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+10 more)
 
 ### Community 509 - "ReportView.tsx"
-Cohesion: 0.12
-Nodes (26): ALL, cellClass(), DATES, PICKERS, ReportLibraryList(), ReportView(), show(), today() (+18 more)
+Cohesion: 0.10
+Nodes (33): AdminTrainingPanel(), AdminTrainingTiles(), rupees(), show(), TrainingTiles, ALL, cellClass(), DATES (+25 more)
 
 ### Community 510 - "FastAPI Streaming Reference"
 Cohesion: 0.12
@@ -3659,20 +3745,20 @@ Cohesion: 0.25
 Nodes (26): _body(), _college(), _create(), _loc(), asyncio, parametrize, rec-029 -- campus recruitment drives (spec §1-§3; AC1, AC2; DEC-SCOPE-178…, A recruiter signed in, their company (XYZ Technologies) and `requirements` live… (+18 more)
 
 ### Community 513 - "marketing.ts"
-Cohesion: 0.17
-Nodes (21): MarketingBudgetForm(), save(), Cells(), count(), MarketingDashboard(), BudgetDraft, budgetErrors(), budgetsBody() (+13 more)
+Cohesion: 0.16
+Nodes (23): MarketingBudgetForm(), save(), Cells(), count(), MarketingDashboard(), BudgetDraft, budgetErrors(), budgetsBody() (+15 more)
 
 ### Community 514 - "Parallel & Intercepting Routes"
 Cohesion: 0.11
 Nodes (17): 1. Missing `default.tsx` → 404 on Refresh, 2. Modal Persists After Navigation, 3. Nested Parallel Routes Need Defaults Too, 4. Intercepted Route Shows Wrong Content, 5. TypeScript Errors with `params`, Common Gotchas, Complete Example: Photo Gallery Modal, File Structure (+9 more)
 
-### Community 515 - "nehn-023 — Attendance correction usability and notifications (design + plan)"
-Cohesion: 0.29
-Nodes (6): Acceptance → tests, Current state (verified 2026-10-26), Decisions (D1, D2 and D5 are my calls under "proceed with recommended answers"; recorded as DEC-SCOPE-284), Intent, nehn-023 — Attendance correction usability and notifications (design + plan), Review (Phase 3)
+### Community 515 - "AttendanceCorrectionPanel.tsx"
+Cohesion: 0.16
+Nodes (15): AttendanceCorrectionPanel(), load(), submit(), day(), detailMessage(), label(), Row, STATUSES (+7 more)
 
 ### Community 516 - "Implementation Plan"
-Cohesion: 0.11
-Nodes (17): 0. Document control, 10. Release / UAT criteria, 1. What this re-estimate is built from, and what it is not, 3. Foundation milestone (Wave 0 — blocks everything else), 4. MVP / release milestones, 5. Migration / data tasks, 6. Provider blockers, 7. UX/content blockers (+9 more)
+Cohesion: 0.12
+Nodes (16): 0. Document control, 10. Release / UAT criteria, 1. What this re-estimate is built from, and what it is not, 3. Foundation milestone (Wave 0 — blocks everything else), 4. MVP / release milestones, 6. Provider blockers, 7. UX/content blockers, 8. Risks (+8 more)
 
 ### Community 517 - "Product Requirements Document (PRD) — EduSphere UK"
 Cohesion: 0.11
@@ -3680,7 +3766,7 @@ Nodes (18): 0. Document control, 10. Notifications (see also §7.12), 11. Integr
 
 ### Community 518 - "7. Functional requirements"
 Cohesion: 0.11
-Nodes (18): 7.10 Payments, 7.11 LMS, 7.12 Notifications, 7.13 Reporting, 7.1 Identity & Access (cross-cutting), 7. Functional requirements, PRD-AUTH-001 — Authenticated login, single identity across domestic and Overseas, PRD-AUTH-002 — Role-based access control (+10 more)
+Nodes (19): 7.11 LMS, 7.13 Reporting, 7.1 Identity & Access (cross-cutting), 7.8 Visa, 7.9 Agent, 7. Functional requirements, PRD-AGT-001 — Agent self-registration, PRD-AGT-002 — Referred-student roster and status (+11 more)
 
 ### Community 519 - "bdm-008 Follow-ups exploratory QA pass 2"
 Cohesion: 0.12
@@ -3695,16 +3781,16 @@ Cohesion: 0.11
 Nodes (23): Applications Workspace Page (Agent) (screenshot), Application Status Sidebar Filters, Agent Applications Workspace, Create Application Form, Create Application Future Submitted Date Validation (screenshot), Submitted Date Not In Future Rule, Create Application Success (screenshot), Create Application Duplicate Error (screenshot) (+15 more)
 
 ### Community 522 - "Next.js Metadata Guide"
-Cohesion: 0.14
-Nodes (17): Next.js Async Patterns, Async cookies() and headers(), Async params/searchParams, Async Params and SearchParams, Next.js Async Patterns Guide, Next Async API Codemod, Next.js Functions Guide, Generate Functions (generateStaticParams, generateMetadata) (+9 more)
+Cohesion: 0.10
+Nodes (23): Next.js Async Patterns, Async cookies() and headers(), Async params/searchParams, Async Params and SearchParams, Next.js Async Patterns Guide, Next Async API Codemod, Next.js Functions, Next.js Functions Guide (+15 more)
 
 ### Community 523 - "Split Combined Hook Computations"
-Cohesion: 0.18
-Nodes (17): Use toSorted() Instead of sort() for Immutability, Immutable State Updates, Prevent Hydration Mismatch Without Flickering, SSR Hydration Mismatch, Suppress Expected Hydration Mismatches, Defer State Reads to Usage Point, Narrow Effect Dependencies, useEffect Dependencies (+9 more)
+Cohesion: 0.12
+Nodes (25): Use toSorted() Instead of sort() for Immutability, Immutable State Updates, Hoist Static JSX Elements, React Compiler, Prevent Hydration Mismatch Without Flickering, SSR Hydration Mismatch, Suppress Expected Hydration Mismatches, Defer State Reads to Usage Point (+17 more)
 
-### Community 524 - "test_cns_001_counselor_workspace.py"
-Cohesion: 0.40
-Nodes (12): _create_user(), _login(), _make_application(), _make_university(), asyncio, CNS-001 -- Counselor workspace [base]. `PORTAL_NAV`'s Counselor workspace lists…, test_counselor_can_schedule_an_appointment_for_their_own_assigned_student(), test_counselor_cannot_schedule_an_appointment_for_a_student_not_assigned_to_them() (+4 more)
+### Community 524 - "AgentStudentRecordCreate"
+Cohesion: 0.13
+Nodes (18): AgentStudentAssign, AgentStudentRecordCreate, AgentStudentRecordUpdate, SM4: the whole month; rows left out are removed., Omitted = unchanged; null clears an optional field; the name cannot be cleared., AGN-004 D4: a Master assigns a student to an active staff member of the agency,…, _record_name(), SalaryMonthIn (+10 more)
 
 ### Community 525 - "test_adm_008_hr_shortlists.py"
 Cohesion: 0.40
@@ -3714,25 +3800,25 @@ Nodes (14): _create_job(), _create_staff(), _create_student(), _login(), asyncio
 Cohesion: 0.21
 Nodes (12): _config(), isolated_db(), asyncio, fixture, bdm-016 -- migration 0096_bdm_targets (spec §4). The round trip and the…, A fresh database at BASE with one BDM user., _sql(), _target() (+4 more)
 
-### Community 527 - "application_interviews.py"
-Cohesion: 0.14
-Nodes (27): add_interview(), list_interviews(), my_interviews(), problem(), AsyncSession, get, patch, post (+19 more)
+### Community 527 - "test_ccrm_035_exports.py"
+Cohesion: 0.19
+Nodes (20): audits(), fixture, parametrize, ccrm-035 (DEC-SCOPE-268, E1-E9; §13 export, §16, AC 11) -- CSV and xlsx export…, The file as rows of text, whichever format it is., rows_of(), test_a_list_over_the_cap_is_refused(), test_ageing_bands_are_one_column_each() (+12 more)
 
-### Community 528 - "today_ist"
-Cohesion: 0.02
-Nodes (172): calendar(), _org(), AsyncSession, get, UUID, K3: a BDM reads their own; a manager names a BDM who reports to them;…, _whose(), _appointments_today() (+164 more)
+### Community 528 - "File map"
+Cohesion: 0.06
+Nodes (44): BdmTaskAppointmentRef, BdmTaskBucketCounts, BdmTaskCounts, BdmTaskCreate, BdmTaskOrgRef, BdmTaskOut, BdmTaskPage, BdmTaskPermissions (+36 more)
 
-### Community 529 - "test_agn_011_schemas.py"
-Cohesion: 0.12
-Nodes (22): AgentDepositSave, DepositRefund, DepositRemit, The agency's deposit on an application (§4.2). Currency (INR, D1) and status…, Overseas Admin records that EduSphere finance remitted the deposit to the…, Overseas Admin records the one refund (D3). The paid-amount ceiling is checked…, StudentEnglishTestIn, parametrize (+14 more)
+### Community 529 - "5. Backend"
+Cohesion: 0.10
+Nodes (21): PartnershipAdminPage, PartnershipHeadPage, PartnershipMeOut, PartnershipProfileCreate, PartnershipProfileUpdate, PartnershipTeamPage, spec §5.2 / TL6: team, Employee ID and reporting manager, all required; nothing…, Omitted = unchanged. An explicit null for any key fails (all three are required… (+13 more)
 
 ### Community 530 - "mgmt-032 — Monthly Business Review: exploratory QA (2026-10-14)"
 Cohesion: 0.33
 Nodes (6): QA32-01: the worker imports nothing before the task body, so the task must load…, test_the_beat_task_runs_in_a_fresh_worker_process(), First pass — results, Fixes (Phase 6) and re-verification, Issues found, mgmt-032 — Monthly Business Review: exploratory QA (2026-10-14)
 
 ### Community 531 - "bdms/[id]/page.tsx"
-Cohesion: 0.19
-Nodes (34): BdmHierarchyPage(), BdmPerformanceBdmPage(), Search, BdmPerformancePage(), Search, BdmPerformanceTypePage(), Search, PerformanceFilters() (+26 more)
+Cohesion: 0.32
+Nodes (22): BdmHierarchyPage(), BdmPerformanceBdmPage(), Search, BdmPerformancePage(), Search, BdmPerformanceTypePage(), Search, PerformanceFilters() (+14 more)
 
 ### Community 532 - "test_stu_011_profile_documents.py"
 Cohesion: 0.32
@@ -3747,20 +3833,20 @@ Cohesion: 0.12
 Nodes (17): Approve, reject, suspend or reinstate agencies, Common Errors, Expected Result, Fields, How to Access, Prerequisites, Purpose, Related Features (+9 more)
 
 ### Community 535 - "Playwright Chromium stand-in for Browser Use"
-Cohesion: 0.12
-Nodes (17): Playwright Chromium stand-in for Browser Use, bdm012-reminders beat task (every 5 min), bdm-012 feature, bdm-012 Appointment reminders browser QA, bdm-014 feature, QA14-OBS-1: Trip link URL read too early (tooling artifact), QA14-OBS-2: Screenshot caught loading skeleton (tooling artifact), bdm-014 My Day browser QA (+9 more)
+Cohesion: 0.14
+Nodes (14): Playwright Chromium stand-in for Browser Use, bdm-014 feature, QA14-OBS-1: Trip link URL read too early (tooling artifact), QA14-OBS-2: Screenshot caught loading skeleton (tooling artifact), bdm-014 My Day browser QA, bdm-015 feature, QA15-01: Whitespace-only manager comment passes required, QA15-02: Daily report grid today off-screen on phone (+6 more)
 
 ### Community 536 - "Issues"
 Cohesion: 0.12
 Nodes (17): Issues, QA10-02 — Focus is lost after adding an expense, and the save isn't announced · Medium (accessibility), QA10-03 — Reject form stays open after the trip changed, and the 409 wording is awkward · Medium, QA10-04 — A malformed trip link shows "Travel is not available right now" · Medium, QA10-05 — The empty-state link isn't recognisable as a link · Medium (accessibility, WCAG 1.4.1), QA10-06 — An unreachable API gives a generic error, loses focus, and shows no progress · Low, QA10-07 — Date-rule errors appear only at the bottom of the form · Low, QA10-08 — A 5- or 6-digit year reaches the API and shows raw validator text · Low (+9 more)
 
-### Community 537 - "formatDateTimeIn"
-Cohesion: 0.02
-Nodes (133): AdminAuditLog(), AdminAuditLogPage(), AgentApplicationOffer(), download(), Props, AgentDocumentCard(), download(), replace() (+125 more)
+### Community 537 - "student_archive.py"
+Cohesion: 0.23
+Nodes (20): archive(), archive_out(), _counselor_id(), is_archived(), page(), permissions(), AsyncSession, UUID (+12 more)
 
-### Community 538 - "Next.js Best Practices"
-Cohesion: 0.11
-Nodes (18): Async Patterns, Bundling, Data Patterns, Debug Tricks, Directives, Error Handling, File Conventions, Font Optimization (+10 more)
+### Community 538 - "test_csc_004_walk_in_leads.py"
+Cohesion: 0.24
+Nodes (19): body(), mail(), mobile(), no_crm(), asyncio, fixture, parametrize, csc-004 (DEC-SCOPE-229; W1, W2, W4, W5) -- an overseas counselor creates a… (+11 more)
 
 ### Community 539 - ""Access unavailable" messages"
 Cohesion: 0.12
@@ -3770,9 +3856,9 @@ Nodes (17): "Access unavailable" messages, Common Errors, Expected Result, Field
 Cohesion: 0.12
 Nodes (17): Common Errors, Expected Result, Fields, How to Access, Prerequisites, Promote or hold back students for the new academic year, Purpose, Related Features (+9 more)
 
-### Community 541 - "test_agn_012_schemas.py"
-Cohesion: 0.11
-Nodes (19): AgentVisaStart, AgentVisaUpdate, V6: named agency document types only (an "Other" document has no fixed type to…, Start a case. There is no stage field: a case always starts at `checklist`…, A partial update: an absent key is unchanged, an explicit null clears a date.…, _visa_checklist(), check_dates(), A stage outside the list (the seed's legacy `not_started`) counts as before… (+11 more)
+### Community 541 - "pydantic"
+Cohesion: 0.05
+Nodes (50): AgentTaskCreate, AgentTaskUpdate, AgentVisaStart, BdmDeactivate, BdmHandover, BdmManagerDeactivate, BdmManagerOption, BdmManagerRow (+42 more)
 
 ### Community 542 - "Run the visa case"
 Cohesion: 0.12
@@ -3798,17 +3884,17 @@ Nodes (14): _columns(), _currency(), downgrade(), parse_intakes(), _parse_legacy
 Cohesion: 0.15
 Nodes (13): Weighted forecast fold (partnership_metrics), upc-023 Expected Partnerships Plan, PUT /partnership/universities/{id}/probability override, Global Constraints, global_figures fold + GET /partnership/global-dashboard, Review Focus, Task 1: Fold + reads + GET /partnership/global-dashboard, Task 2: Web lib + page + nav (+5 more)
 
-### Community 548 - "check"
-Cohesion: 0.08
-Nodes (18): _candidate_text(), _ledger_text(), _mgmt_meeting_text(), _pick(), Agenda and minutes keep their line breaks; blank means none. No control…, Trimmed, required, capped, no control characters; each failure names the field…, Trimmed with inner spaces collapsed (services/skills.normalise, so the lower()…, A UUID chosen from a list; a malformed one reads as a sentence, not a pydantic… (+10 more)
+### Community 548 - "test_bdm_004_schemas.py"
+Cohesion: 0.03
+Nodes (74): _bdm_lead_text(), BdmLostIn, BdmOrgPipelineOut, BdmPersonRef, BdmPipelineItem, BdmPipelineLost, BdmPipelineStageCount, BdmPipelineStepOut (+66 more)
 
 ### Community 549 - "ManagementTelecalling.test.tsx"
-Cohesion: 0.07
-Nodes (44): ManagementRecruitmentPage(), ManagementTelecallingPage(), kpiText(), ManagementRecruitment(), count(), FigureCells(), ManagementTelecalling(), placementRateText() (+36 more)
+Cohesion: 0.08
+Nodes (46): ManagementRecruitmentPage(), ManagementTelecallingPage(), kpiText(), ManagementRecruitment(), count(), FigureCells(), FigureHeaders(), ManagementTelecalling() (+38 more)
 
-### Community 550 - "test_bdm_006_migration.py"
-Cohesion: 0.17
-Nodes (10): isolated_db(), asyncio, fixture, bdm-006 -- migration 0070_bdm_appointments (spec §4). Round trip and the…, A fresh database at 0069_bdm_org_profiles with one bdm user, one organization…, _sql(), test_constraints_hold_and_downgrade_refuses_while_appointments_exist(), test_models_match_the_migration() (+2 more)
+### Community 550 - "AgentApprovalPanel.tsx"
+Cohesion: 0.13
+Nodes (16): Action, DONE, LABEL, Master, Org, Page, RESULT, Status (+8 more)
 
 ### Community 551 - "test_visa_003_status.py"
 Cohesion: 0.51
@@ -3818,13 +3904,13 @@ Nodes (12): _create_user(), _login(), _make_application(), _make_university(), a
 Cohesion: 0.30
 Nodes (25): _company(), _contact(), m_url(), asyncio, rec-028 -- company meetings (spec §1-§3; DEC-SCOPE-134 MT1-MT10): schedule,…, Moves the start into the past -- the only way to record an outcome in a test…, _schedule(), soon() (+17 more)
 
-### Community 553 - "test_visa_002_interview_prep.py"
-Cohesion: 0.43
-Nodes (14): _create_user(), _login(), _make_application(), _make_university(), _make_visa_case(), asyncio, VISA-002 -- Visa interview preparation. `API_CONTRACT.md` #7 names a dedicated…, test_a_different_student_never_sees_another_students_case() (+6 more)
+### Community 553 - "2. Enhancement items"
+Cohesion: 0.10
+Nodes (21): 2. Enhancement items, hrc-018: Configurable matching engine with explanations, hrc-020: Saved searches and restricted export, hrc-021: Candidate status model alignment, hrc-022: External candidate portal identity and self-service, hrc-024: Candidate routing rules and unassigned queue, hrc-025: New Website Registrations workspace, hrc-026: Application record completion (+13 more)
 
-### Community 554 - "verified"
-Cohesion: 0.02
-Nodes (103): agent_permissions(), The effective permissions an agency member's portal shows (GET /auth/me); None…, nearest_deadline(), The earliest deadline that is today or later; if none is upcoming, the most…, verified(), done(), visa(), application() (+95 more)
+### Community 554 - "AGN-016 — Agent Tasks & Follow-ups — Design"
+Cohesion: 0.09
+Nodes (24): done(), 10. Acceptance criteria, 11. Regression risks, 1. Decisions (T1–T8), 2. Data model — table `agent_tasks` (migration `0059_agent_tasks`), 3. API — `/api/v1/workflows/overseas/agent/crm/tasks`, 4. Transactions, concurrency, scope, 5. Audit, activity, logging (+16 more)
 
 ### Community 555 - "test_sch_001_school_portal_access.py"
 Cohesion: 0.32
@@ -3832,47 +3918,47 @@ Nodes (16): _create_school_with_roles(), _login(), asyncio, SCH-001 -- School Po
 
 ### Community 556 - "SocialProofStrip.tsx"
 Cohesion: 0.15
-Nodes (19): SocialProofStrip(), SocialProofView(), Stars(), asOfLabel(), initials(), RatingBadge, SocialProof, SocialProofDivision (+11 more)
+Nodes (20): HomePage(), SocialProofStrip(), SocialProofView(), Stars(), asOfLabel(), initials(), RatingBadge, SocialProof (+12 more)
 
 ### Community 557 - "1. Behaviour"
-Cohesion: 0.05
-Nodes (42): testimonials(), featured(), photo_url(), public_out(), public_testimonials(), published_badge(), AsyncSession, Versioned by a digest of the storage key (never the key itself), so a replaced… (+34 more)
+Cohesion: 0.06
+Nodes (33): photo_url(), Versioned by a digest of the storage key (never the key itself), so a replaced…, leave_no_social_proof_behind(), fixture, The test DB may back a demo stack: nothing a test publishes may outlive it…, Task 1: Migration 0158 + models + seed, 1. Behaviour, 2. Response (+25 more)
 
 ### Community 558 - "test_agn_017_migration.py"
-Cohesion: 0.19
-Nodes (13): _config(), _indexdefs(), isolated_db(), asyncio, fixture, AGN-017 AC10 -- migration 0065_agent_notifications (spec §5): one nullable…, A fresh database at 0064 with one notification., _sql() (+5 more)
+Cohesion: 0.23
+Nodes (11): _config(), _indexdefs(), isolated_db(), asyncio, fixture, AGN-017 AC10 -- migration 0065_agent_notifications (spec §5): one nullable…, A fresh database at 0064 with one notification., _sql() (+3 more)
 
 ### Community 559 - "upc-022-partnership-dashboard.spec.ts"
-Cohesion: 0.16
-Nodes (9): annual(), rupees(), istToday(), region(), send(), setUp(), superAdmin(), tile() (+1 more)
+Cohesion: 0.36
+Nodes (7): istToday(), region(), send(), setUp(), superAdmin(), tile(), value()
 
 ### Community 560 - "Data Patterns"
 Cohesion: 0.12
 Nodes (15): Avoiding Data Waterfalls, Client Component Data Fetching, Data Patterns, Decision Tree, Option 1: Pass from Server Component (Preferred), Option 2: Fetch on Mount (When Necessary), Option 3: Server Action for Reads (Works But Not Ideal), Pattern 1: Server Components (Preferred for Reads) (+7 more)
 
 ### Community 561 - "ValidationInfo"
-Cohesion: 0.08
-Nodes (13): _bdm_plain_text(), On `reason`, so a form can show the 422 on its field. A bad `probability` is…, The Employee ID's rule for every profile text (no control characters); blank…, Omitted = unchanged (the default is not validated); a sent null is refused., bdm-001's text rule (no control characters; blank -> None) with this item's…, Catalogue text (overview, eligibility) sits in NOT NULL columns, so blank stays…, bdm-002's rules with this module's labels: no control characters (a line break…, _rec_company_name() (+5 more)
+Cohesion: 0.03
+Nodes (54): _bdm_appt_optional(), _bdm_appt_reason(), _bdm_appt_text(), _bdm_newlines(), _bdm_org_mandatory(), _bdm_org_optional(), _bdm_org_required(), _bdm_org_text() (+46 more)
 
 ### Community 562 - "5. Re-render Optimization"
 Cohesion: 0.12
 Nodes (16): 5.10 Subscribe to Derived State, 5.11 Use Functional setState Updates, 5.12 Use Lazy State Initialization, 5.13 Use Transitions for Non-Urgent Updates, 5.14 Use useDeferredValue for Expensive Derived Renders, 5.15 Use useRef for Transient Values, 5.1 Calculate Derived State During Rendering, 5.2 Defer State Reads to Usage Point (+8 more)
 
 ### Community 563 - "assigned"
-Cohesion: 0.09
-Nodes (24): assigned(), 3.1.a Assessments table — `web/components/SchoolPsychometricRecordsPanel.tsx`, 3.1 Psychometric Team Dashboard — `/school/psychometric-team/dashboard`, 3.2 Psychometric Team Student 360° — `/school/psychometric-team/students/[id]/360`, 3. PSYCHOMETRIC TEAM portal, 12.1 Cannot be confirmed from code, 12.2 As-built behaviour the product owner should know about, 12. Unknown Workflows Requiring Browser Verification (+16 more)
+Cohesion: 0.06
+Nodes (37): assigned(), 3.1.a Assessments table — `web/components/SchoolPsychometricRecordsPanel.tsx`, 3.1 Psychometric Team Dashboard — `/school/psychometric-team/dashboard`, 3.2 Psychometric Team Student 360° — `/school/psychometric-team/students/[id]/360`, 3. PSYCHOMETRIC TEAM portal, 1. Owner answers (2026-10-06, `EXPLICIT_APPROVAL`) and recorded defaults, 2. Distribution order (`services/lead_distribution.distribute`), 3. Data model (migration `0085_tel_distribution`) (+29 more)
 
-### Community 564 - "test_rec_032_dashboard.py"
-Cohesion: 0.23
-Nodes (24): _application(), _company(), _entered(), _fresh_recruiter(), _job(), _month_start(), _now(), asyncio (+16 more)
+### Community 564 - "test_mgmt_031_home.py"
+Cohesion: 0.26
+Nodes (19): as_user(), get(), last_complete_month(), asyncio, parametrize, mgmt-031 -- GET /management/home, the §31 partner home (EVID-017 §31/§2, spec…, HM7 / QA31-01: the calendar's first five of today, and today's total (the panel…, HM2 / AC: no money key anywhere in the response -- not even null. (+11 more)
 
 ### Community 565 - "test_pub_005_gallery_management.py"
 Cohesion: 0.33
 Nodes (15): GalleryItem, _create_admin(), _create_super_admin(), _login(), asyncio, PUB-005 -- News and gallery (CMS-managed). News (`BlogPost`) already had full…, test_admin_cannot_create_a_gallery_item_in_another_division(), test_admin_creates_a_gallery_item_in_their_own_division() (+7 more)
 
-### Community 566 - "Coverage Gaps"
-Cohesion: 0.10
-Nodes (18): 1. Total-domain gap — Overseas Education (`OVS-*`, `VISA-*`, `AGT-*`, `CNS-001`, `UNI-001`), 1A. Total-domain gap — School (`SCH-001`–`006`) — addendum, 2026-09-14, 2. Employer domain (`EMP-*`), 3. Integration adapters — confirmed providers with zero prior coverage, 4. UAT — Overseas/Agent/Counselor journeys, 5. NFR-status gaps — do not assert an unconfirmed target as a hard gate, 6. RBAC/resource-scope boundary gaps identified beyond §1, 7. What this gap list intentionally does not do (+10 more)
+### Community 566 - "Test Catalogue Audit"
+Cohesion: 0.06
+Nodes (33): 1. Total-domain gap — Overseas Education (`OVS-*`, `VISA-*`, `AGT-*`, `CNS-001`, `UNI-001`), 1A. Total-domain gap — School (`SCH-001`–`006`) — addendum, 2026-09-14, 2. Employer domain (`EMP-*`), 3. Integration adapters — confirmed providers with zero prior coverage, 4. UAT — Overseas/Agent/Counselor journeys, 5. NFR-status gaps — do not assert an unconfirmed target as a hard gate, 6. RBAC/resource-scope boundary gaps identified beyond §1, 7. What this gap list intentionally does not do (+25 more)
 
 ### Community 567 - "7.5 Admin (incl. CRM, Overseas Admin)"
 Cohesion: 0.14
@@ -3894,9 +3980,9 @@ Nodes (16): Findings, QA-01 — Medium — a long unbroken name hides every othe
 Cohesion: 0.04
 Nodes (44): services/bdm_tasks.py task service, BdmTasksPanel web component, Daily 200 manual task cap per BDM, DEC-SCOPE-075 BDM follow-ups decision, Migration 0077_bdm_tasks_followups, bdm-008 Follow-ups and Tasks Plan, Migration 0084_bdm_onboarding, Migration 0076_tel_catalogue (+36 more)
 
-### Community 572 - "AgentPerformancePanel.test.tsx"
-Cohesion: 0.12
-Nodes (18): AgentPerformancePanel(), apply(), load(), AgentFunnel, AgentPerformance, AgentPerformanceCounts, AgentPerformanceRow, FunnelStage (+10 more)
+### Community 572 - "AgentPerformancePanel.tsx"
+Cohesion: 0.07
+Nodes (41): AgentDashboardBoard(), Breakdown(), Group(), percent(), StaffTable(), Choice, choices(), COLUMNS (+33 more)
 
 ### Community 573 - "Edit a school profile and its partnership tier"
 Cohesion: 0.12
@@ -3975,28 +4061,28 @@ Cohesion: 0.19
 Nodes (15): Version and Minimize localStorage Data, Avoid Layout Thrashing, Cache Repeated Function Calls, Module-level Map cache, Cache Property Access in Loops, Cache Storage API Calls, Combine Multiple Array Iterations, Early Return from Functions (+7 more)
 
 ### Community 592 - "test_tel_014_delivery.py"
-Cohesion: 0.08
-Nodes (45): ccrm-037 (MT4-MT8): a message between a counselor and an overseas student,…, StudentMessage, deliver_lead_email(), UUID, deliver_student_email(), UUID, _lead_email_html(), lead_email_message() (+37 more)
+Cohesion: 0.05
+Nodes (64): deliver_lead_email(), UUID, deliver_student_email(), datetime, UUID, Republish queued/retrying emails nobody picked up (touching `updated_at`); a…, sweep_stale_student_emails(), deliver_university_email() (+56 more)
 
 ### Community 593 - "test_sch_002_bulk_roster_upload.py"
 Cohesion: 0.44
 Nodes (15): _create_school_with_coordinator(), _csv_bytes(), _login(), asyncio, SCH-002 -- School Coordinator bulk student roster upload (template-download-…, test_a_bad_row_is_rejected_without_blocking_the_rest_of_the_batch(), test_a_coordinator_cannot_fetch_another_schools_batch_report(), test_a_row_can_assign_an_existing_teacher_at_the_same_school() (+7 more)
 
-### Community 594 - "recruiter_follow_ups table (migration 0116)"
-Cohesion: 0.08
-Nodes (25): rec-024 Recruiter Follow-ups Design, Daily follow-up list computed on read (FU1/FU2), DEC-SCOPE-131 (rec-024, FU1-FU10 UNVERIFIED), next_follow_up_at derived field (FU9), recruiter_follow_ups table (migration 0116), rec-028 Company Meetings Design, DEC-SCOPE-134 (rec-028, MT1-MT10 UNVERIFIED), meeting_scheduled pipeline event (MT8) (+17 more)
+### Community 594 - "services/applications.py status engine (single writer)"
+Cohesion: 0.04
+Nodes (49): rec-017 Candidate + Requirement Tracking Design, DEC-SCOPE-136 (rec-017, A1-A4 UNVERIFIED), job_application_status_history table (migration 0121), Legacy application status mapping (A1), services/applications.py status engine (single writer), rec-024 Recruiter Follow-ups Design, Daily follow-up list computed on read (FU1/FU2), DEC-SCOPE-131 (rec-024, FU1-FU10 UNVERIFIED) (+41 more)
 
-### Community 595 - "SEO / Social Media — Backlog (`OPS-SEO-01` … `07`, `seo-001` … `seo-012`)"
-Cohesion: 0.12
-Nodes (15): Evidence, KPIs (baseline 2026-10-19; targets set after the day-30 baseline), Messaging guardrails (apply to every content item, post and ad), Ops / config items (no business code), `OPS-SEO-01` — Set the production site URL (P0), `OPS-SEO-02` — GA4 measurement ID, `OPS-SEO-03` — `www` TLS and single redirect, `OPS-SEO-04` — Google Search Console and Bing Webmaster Tools (+7 more)
+### Community 595 - "test_nehn_012_lead_list.py"
+Cohesion: 0.30
+Nodes (19): exports(), lead(), names(), asyncio, parametrize, nehn-012 (DEC-SCOPE-298): the admin and telecaller lead lists' India-time date…, sheet(), tag() (+11 more)
 
 ### Community 596 - "test_agn_008_migration.py"
 Cohesion: 0.19
 Nodes (11): isolated_db(), asyncio, fixture, parametrize, AGN-008 -- migration 0057_agent_applications (spec §4). Round trip and…, A fresh database at 0056 with one agency student and one application for a…, _sql(), test_downgrade_refuses_to_lose_agn008_data() (+3 more)
 
-### Community 597 - "ENH-032 — Send app email through the Zoho Mail API (HTTPS) — design"
-Cohesion: 0.22
-Nodes (8): 1. Purpose, 2. Owner answers (2026-10-17), 5.2 Static checks, 5.3 Live check on dev (after the owner adds the credentials), 5. Testing, 6. Setup and docs to update, 7. Acceptance criteria (draft), ENH-032 — Send app email through the Zoho Mail API (HTTPS) — design
+### Community 597 - "test_rec_021_migration.py"
+Cohesion: 0.14
+Nodes (18): _application(), isolated_db(), fixture, UUID, rec-018 -- migration 0134_application_screenings (spec §1). Round trip,…, _row(), test_migration_chains_and_is_the_single_head(), test_models_match_the_migration() (+10 more)
 
 ### Community 598 - "Deposit Record"
 Cohesion: 0.23
@@ -4015,40 +4101,40 @@ Cohesion: 0.20
 Nodes (15): _config(), isolated_db(), _migration(), _mou(), asyncio, fixture, UUID, bdm-005 -- migration 0079_bdm_mous (spec §5; AC2 backstop, AC7 index). Round… (+7 more)
 
 ### Community 602 - "Review Focus"
-Cohesion: 0.04
-Nodes (45): DEC-SCOPE-074, DEC-SCOPE-078 bdm-005 MoU tracking, API §12D Telecaller catalogue (tel-002), API §12I Telecaller content library (tel-012), bdm-005 MoU Tracking Implementation Plan, bdm_mous and bdm_mou_events tables, BdmOrganizationMou card and BdmMouForm, D28 pipeline advance_to on Signed (+37 more)
+Cohesion: 0.09
+Nodes (21): DEC-SCOPE-078 bdm-005 MoU tracking, bdm-005 MoU Tracking Implementation Plan, bdm_mous and bdm_mou_events tables, BdmOrganizationMou card and BdmMouForm, D28 pipeline advance_to on Signed, Derived Expired status IST today, Global Constraints, MoU 9-status catalogue (+13 more)
 
-### Community 603 - "Complete = file the report"
-Cohesion: 0.15
-Nodes (13): bdm_pipeline_events append-only history table, Lost and Revive flow, Migration 0072/0073 bdm_pipeline, GET /bdm/pipeline per-stage counts view, Stage catalogue (app/bdm_stages.py), 409 stage_changed retry handling, POST /bdm/organizations/{id}/stage, bdm_meeting_reports and bdm_tasks tables (+5 more)
+### Community 603 - "test_upc_018_performance_api.py"
+Cohesion: 0.20
+Nodes (19): _activity(), _ids(), asyncio, parametrize, upc-018 -- GET /partnership/performance and…, PF6: manager = primary/backup; head = team + unowned; super_admin and…, PF7/PF8: enrolled then applications; idle partners listed, idle non-partners…, _set() (+11 more)
 
 ### Community 604 - "package.json"
-Cohesion: 0.03
-Nodes (56): compat, config, dependencies, next, react, react-dom, devDependencies, eslint (+48 more)
+Cohesion: 0.04
+Nodes (53): compat, config, dependencies, next, react, react-dom, devDependencies, eslint (+45 more)
 
 ### Community 605 - "test_rec_007_requirements.py"
-Cohesion: 0.13
-Nodes (47): _company(), _create(), _history(), asyncio, rec-007 -- the Job Requirement (spec §2-§5; AC1-AC5; DEC-SCOPE-129 J1-J7).…, A manager with one logged-in recruiter who owns one company., _set_status(), _skill() (+39 more)
+Cohesion: 0.10
+Nodes (61): _create_student(), _login(), asyncio, EMP-002 -- Job posting. Net-new: no endpoint let the Employer role (EMP-001)…, _register_employer(), _register_payload(), test_a_new_posting_starts_as_a_draft_not_visible_to_students(), test_a_published_job_past_its_closing_date_is_not_shown_as_open_even_if_never_closed() (+53 more)
 
 ### Community 606 - "unique_student_code"
-Cohesion: 0.16
-Nodes (30): generate_student_code(), AsyncSession, 8-character uppercase alphanumeric business-facing Student ID…, Generate a student_code guaranteed unique for every mapped column given (e.g.…, unique_student_code(), _login(), asyncio, SCH-008 -- Student Journey Timeline (narrow version): a chronological list of… (+22 more)
+Cohesion: 0.03
+Nodes (121): create_school(), _fit(), _provision_school(), A value longer than its column is a 422 that names the field, never a database…, SCH-003's School + seed Coordinator, shared by `create_school` and ENH-029's…, Same shape as _school_out(), batched across many schools in O(1) queries…, _school_outs_batch(), _valid_email() (+113 more)
 
-### Community 607 - "AgentStudent"
+### Community 607 - "OverseasApplication"
 Cohesion: 0.01
-Nodes (335): _authorize(), agent_students(), _report_date(), agent_may(), is_agent_staff(), AGN-002 (DEC-SCOPE-040 S1/S2): a staff member of an agent organisation. Staff…, AGN-003 (DEC-SCOPE-044 P1/P2): whether the caller may use an optional §6 row.…, AgentStudent (+327 more)
+Nodes (975): bdm-025 (DEC-SCOPE-082) -- bdm_assignment_history.…, upgrade(), applications(), get_dashboard(), AsyncSession, get, Response, _audit() (+967 more)
 
-### Community 608 - "EduSphere School CRM — Documentation Analysis (Phase 1)"
-Cohesion: 0.09
-Nodes (22): 10. Required Screenshots, 11. Required Test Data, 1.1 What the School CRM is, 1.2 Technology (verified), 1.3 Authentication (verified, details in appendix 01 §1.10), 1.4 Partnership tiers (cross-cutting), 1. Application Overview, 2. Module Inventory (+14 more)
+### Community 608 - "3. Feature Inventory"
+Cohesion: 0.05
+Nodes (42): 10. Required Screenshots, 11. Required Test Data, 12.1 Cannot be confirmed from code, 12.2 As-built behaviour the product owner should know about, 12. Unknown Workflows Requiring Browser Verification, 1.1 What the School CRM is, 1.2 Technology (verified), 1.3 Authentication (verified, details in appendix 01 §1.10) (+34 more)
 
 ### Community 609 - "test_rec_015_talent_pools.py"
 Cohesion: 0.30
 Nodes (19): _create(), _ids(), _members(), _pool(), asyncio, parametrize, rec-015 -- talent pools (spec §1-§3; DEC-SCOPE-159 P1-P8): a manager-defined…, test_a_deactivated_skill_is_unavailable_and_matches_nobody() (+11 more)
 
-### Community 610 - "test_nehn_007_user_overrides.py"
-Cohesion: 0.32
-Nodes (18): _later(), _override(), _path(), _put(), asyncio, parametrize, nehn-007 -- per-user permission overrides: effective = (role grants + active…, test_a_change_is_audited_and_a_no_op_writes_nothing() (+10 more)
+### Community 610 - "_headers"
+Cohesion: 0.21
+Nodes (30): nehn-005 (DEC-SCOPE-281): revoking `reports.telecaller.download` refuses both…, test_telecaller_xlsx_needs_the_download_grant_as_the_csv_does(), _headers(), test_catalogue_endpoint(), test_super_admin_grants_cannot_be_reduced(), _user(), asyncio, parametrize (+22 more)
 
 ### Community 611 - "test_stu_004_submissions.py"
 Cohesion: 0.36
@@ -4063,11 +4149,11 @@ Cohesion: 0.22
 Nodes (10): AGN-006 — Agent Student Counseling Record: Browser QA (2026-10-02, first pass), AGN-006 feature under QA, Checklist, Findings, Fix pass (owner: "fix 3 issues", 2026-10-02) — commit `d05fc15`, QA6-01 — Section heading smaller than its labels (Minor), QA6-02 — Expired session shows "Not authenticated" (Medium), QA6-03 — Archived while editing: message not actionable in place (Minor) (+2 more)
 
 ### Community 614 - "Bundling"
-Cohesion: 0.20
-Nodes (9): Bundle Analysis, Bundling, Common Problematic Packages, CSS Imports, Error Signs, ESM/CommonJS Issues, Migrating from Webpack to Turbopack, Polyfills (+1 more)
+Cohesion: 0.13
+Nodes (14): Bundle Analysis, Bundling, Common Problematic Packages, CSS Imports, Error Signs, Error Signs, ESM/CommonJS Issues, Migrating from Webpack to Turbopack (+6 more)
 
 ### Community 615 - "nehn028TrainerProgress.test.tsx"
-Cohesion: 0.11
+Cohesion: 0.10
 Nodes (15): attendance(), COLUMNS, errorText(), label(), LEFT, Progress, ProgressRow, SortKey (+7 more)
 
 ### Community 616 - "Quick Reference"
@@ -4095,12 +4181,12 @@ Cohesion: 0.13
 Nodes (15): Commission amounts and payouts, Common Errors, Expected Result, Fields, How to Access, Prerequisites, Purpose, Related Features (+7 more)
 
 ### Community 622 - "test_stu_002_dashboard.py"
-Cohesion: 0.21
-Nodes (13): _create_student(), _login(), asyncio, STU-002 -- Student dashboard. Covers: the dashboard aggregates…, STU-002-AC02, exercised for real: force the payments-due query to raise and…, Direct unit coverage of the resilience mechanism itself: a failure inside…, test_dashboard_aggregates_required_widgets(), test_dashboard_requires_authentication() (+5 more)
+Cohesion: 0.16
+Nodes (16): STU-002-AC02: a failed data source for one dashboard widget must not block the…, _safe(), _create_student(), _login(), asyncio, STU-002 -- Student dashboard. Covers: the dashboard aggregates…, STU-002-AC02, exercised for real: force the payments-due query to raise and…, Direct unit coverage of the resilience mechanism itself: a failure inside… (+8 more)
 
-### Community 623 - "0056_agent_shortlist.py"
-Cohesion: 0.43
-Nodes (6): assert_no_rows(), _audit_columns(), downgrade(), Column, _tables(), upgrade()
+### Community 623 - "AgentUniversityUpdate"
+Cohesion: 0.12
+Nodes (18): assert_no_rows(), _audit_columns(), downgrade(), Column, _tables(), upgrade(), AgentUniversityCreate, _AgentUniversityFields (+10 more)
 
 ### Community 624 - "2026-10-05-tel-001-telecaller-roles.md"
 Cohesion: 0.11
@@ -4111,16 +4197,16 @@ Cohesion: 0.14
 Nodes (14): AGN-018 — Exploratory browser QA (first pass, 2026-10-03), AGN-018 feature under QA, Evidence files (session scratchpad, not committed), Issues, Not reproducible black-box (covered by component tests), QA18-01 — Sidebar "Add" does nothing the second time (High), QA18-02 Mobile menu marks two items as current page (a11y), QA18-03 — Tile links are not visually links (Low–Medium, accessibility) (+6 more)
 
 ### Community 626 - "schools"
-Cohesion: 0.02
-Nodes (138): ((school title, body), (admin title, body)) for a change that moved the tier…, _tier_notices(), The School->Overseas bridge's first step (D4): every partner school, for the…, schools(), _cumulative_services(), _entitlement_denial(), _grandfathers(), _minimum_tier() (+130 more)
+Cohesion: 0.04
+Nodes (79): ((school title, body), (admin title, body)) for a change that moved the tier…, _tier_notices(), The School->Overseas bridge's first step (D4): every partner school, for the…, schools(), _entitlement_denial(), _grandfathers(), _minimum_tier(), ENH-023 / DEC-SCOPE-030: (direction, gained keys, lost keys). Built only from… (+71 more)
 
 ### Community 627 - "Partner Schools list"
 Cohesion: 0.13
 Nodes (15): Common Errors, Expected Result, Fields, How to Access, Partner Schools list, Prerequisites, Purpose, Related Features (+7 more)
 
-### Community 628 - "LiveSession"
-Cohesion: 0.09
-Nodes (48): LiveSession, _create_batch_with_session(), _create_trainer(), _login(), asyncio, User-requested join-experience fix…, test_live_sessions_meeting_column_is_declared_as_a_join_type(), test_meeting_cell_falls_back_to_the_plain_meeting_url_when_no_host_url_exists() (+40 more)
+### Community 628 - "communications.py"
+Cohesion: 0.06
+Nodes (71): _batch_zone(), cancel_live_session(), conversation(), create_live_session(), list_live_sessions(), _manageable_session(), notify(), _notify_students() (+63 more)
 
 ### Community 629 - "Upload a result as Draft"
 Cohesion: 0.13
@@ -4186,9 +4272,9 @@ Nodes (15): Common Errors, Expected Result, Fields, Find and create skills batch
 Cohesion: 0.13
 Nodes (15): Common Errors, Edit, close or reopen a skills batch, Expected Result, Fields, How to Access, Prerequisites, Purpose, Related Features (+7 more)
 
-### Community 645 - "test_nehn_026_keyword_scoring.py"
-Cohesion: 0.26
-Nodes (23): _answers(), _batch(), _login(), asyncio, parametrize, nehn-026 -- keyword-based auto-scoring of written answers. AC1 keywords [a..e]…, A trainer's scheduled assessment: a keyword text question (10 marks), a plain…, _submit() (+15 more)
+### Community 645 - "docker-compose.yml"
+Cohesion: 0.11
+Nodes (14): service api-test, service web-test, docker-compose.override.yml (Caddy), service caddy, service api, service beat, service postgres, service redis (+6 more)
 
 ### Community 646 - "Principal dashboard"
 Cohesion: 0.13
@@ -4286,17 +4372,17 @@ Nodes (14): _payload(), asyncio, EMP-001 -- Employer registration. Net-new: no E
 Cohesion: 0.20
 Nodes (13): _config(), isolated_db(), asyncio, fixture, bdm-025 -- migration 0082_bdm_assignment_history (spec §4). Round trip and the…, A fresh database at 0081 (tel-004) with one user., _row(), _sql() (+5 more)
 
-### Community 670 - "test_agn_021_activity.py"
-Cohesion: 0.32
-Nodes (17): activity(), _agency(), asyncio, parametrize, AGN-021 -- a Master views one staff member's student-journey activity (spec…, _row(), test_agent_application_actions_appear_with_the_no_login_student(), test_agent_visa_actions_appear_without_the_decision() (+9 more)
+### Community 670 - "tel-009 Lead Qualification Form Design"
+Cohesion: 0.10
+Nodes (20): DEC-SCOPE-093, DEC-SCOPE-094, Feature tel-009, Feature tel-011, API §12O Lead qualification (tel-009), API §12P Lead follow-ups (tel-011), bdm_tasks table, tel-009 Lead Qualification Form Design (+12 more)
 
-### Community 671 - "CounselorCalendarFeed.tsx"
-Cohesion: 0.22
-Nodes (10): CounselorCalendarFeed(), run(), CALENDAR_FEED_API, CALENDAR_HOME, CalendarFeedStatus, REGENERATE_PROMPT, REVOKE_PROMPT, OFF (+2 more)
+### Community 671 - "report_range"
+Cohesion: 0.11
+Nodes (18): An optional inclusive range of UTC days (AGN-014 R3; reused by AGN-019). Call…, _report_date(), report_range(), 5.1 Routes — `apps/api/app/api/agent_reports.py` (new), 5.2 Service — `apps/api/app/services/agent_reports.py` (new), 5.3 Schema — `schemas.py` (additive), 5.4 CSV, 5.5 Audit, throttle, transactions, races, performance (+10 more)
 
-### Community 672 - "`recruiter_messages`"
-Cohesion: 0.07
-Nodes (30): can_feedback(), feedback(), rec-025 Recruiter Call Logging Design, DEC-SCOPE-133 (rec-025, CA1-CA9 UNVERIFIED), Contact last_contacted_at computed on read (CA7), Contact-xor-candidate party CHECK (CA2), recruiter_calls table (migration 0118), Same-day call edit/delete rule (CA4) (+22 more)
+### Community 672 - "channel"
+Cohesion: 0.04
+Nodes (65): _one_line(), tel-014 E6: a subject is one header line -- CR/LF become spaces (header…, UniversityContactOut, channel(), API §12BC Recruiter message templates, WhatsApp and email (rec-026), API §12BH University calls, message templates, WhatsApp and email (upc-012), Phase 3 review notes (applied to the tasks above), rec-026 — implementation plan (+57 more)
 
 ### Community 673 - "test_tel_009_qualification.py"
 Cohesion: 0.26
@@ -4307,28 +4393,28 @@ Cohesion: 0.12
 Nodes (16): Common Errors, Expected Result, Fields, How to Access, Prerequisites, Purpose, Related Features, Start an overseas application for a school student (+8 more)
 
 ### Community 675 - "tel-006 CSV Lead Import Implementation Plan"
-Cohesion: 0.09
-Nodes (22): BDM_ONBOARDING_CHECKS constraint dict, Duplicate lead detection by mobile/email, LeadEnquiry model, Migration 0086_lead_enquiries, tel-005 Lead Intake Plan, DEC-SCOPE-091 CSV import decision, lead_intake.import_row, LeadImportBatch model (+14 more)
+Cohesion: 0.08
+Nodes (24): BDM_ONBOARDING_CHECKS constraint dict, Duplicate lead detection by mobile/email, LeadEnquiry model, Migration 0086_lead_enquiries, tel-005 Lead Intake Plan, DEC-SCOPE-091 CSV import decision, Global Constraints, lead_intake.import_row (+16 more)
 
-### Community 676 - "ledger.py"
-Cohesion: 0.04
-Nodes (108): approve_entry(), change_category(), change_entry(), create_category(), create_entry(), _decide(), download_receipt(), get_entry() (+100 more)
+### Community 676 - "not_counted"
+Cohesion: 0.08
+Nodes (26): not_counted(), 1. Intent, 2. Decisions (ME1–ME10), 3. API, 4. Components, 5. Error handling, 6. Testing, mgmt-010 — Expense dashboard — design (+18 more)
 
 ### Community 677 - "tabular.py"
-Cohesion: 0.10
-Nodes (40): _cell(), _check_archive(), _check_header(), _csv_lines(), _day(), Exception, The shared spreadsheet helper: `to_xlsx`, a one-sheet writer over the same…, The cell's XML and its display text (for the column width). (+32 more)
+Cohesion: 0.07
+Nodes (59): _cell(), _check_archive(), _check_header(), _column(), _csv_lines(), _day(), Exception, The shared spreadsheet helper: `to_xlsx`, a one-sheet writer over the same… (+51 more)
 
 ### Community 678 - "test_nehn_028_batch_progress.py"
 Cohesion: 0.35
 Nodes (21): _batch(), asyncio, parametrize, nehn-028 -- the trainer's per-student progress view (DEC-SCOPE-308; spec…, _row(), _student(), test_an_empty_batch(), test_another_trainers_batch_is_403() (+13 more)
 
-### Community 679 - "ConsentRecord"
-Cohesion: 0.17
-Nodes (27): ConsentRecord, STU-009 -- DATA_MODEL.md §3.4. `created_at` (via TimestampMixin) is the…, _create_agreement(), _create_batch(), _create_user(), _login(), asyncio, ADM-010 -- Agreement/consent oversight. Promoted out of `Unscheduled/BLOCKED`… (+19 more)
+### Community 679 - "Enrollment"
+Cohesion: 0.08
+Nodes (62): Enrollment, _create_batch(), _create_student(), _create_trainer(), _login(), asyncio, RAID.md I-18 sub-item 3: a question could previously be added to an assessment…, _setup_assessment() (+54 more)
 
 ### Community 680 - "enquiry"
-Cohesion: 0.27
-Nodes (12): enquiry(), asyncio, tel-003 -- the Lead ID and the new columns' defaults on the shared database…, Review focus 1: lpad would cut LD-1234567 to LD-123456; format('%6s') only pads., L3 + review focus 4: the validator re-derives phone_normalized whenever phone…, test_a_direct_insert_gets_a_lead_code_and_the_defaults(), test_a_source_outside_the_list_is_refused_by_the_database(), test_the_code_expression_never_truncates_past_six_digits() (+4 more)
+Cohesion: 0.05
+Nodes (41): enquiry(), asyncio, tel-003 -- the Lead ID and the new columns' defaults on the shared database…, Review focus 1: lpad would cut LD-1234567 to LD-123456; format('%6s') only pads., L3 + review focus 4: the validator re-derives phone_normalized whenever phone…, test_a_direct_insert_gets_a_lead_code_and_the_defaults(), test_a_source_outside_the_list_is_refused_by_the_database(), test_the_code_expression_never_truncates_past_six_digits() (+33 more)
 
 ### Community 681 - "RecruiterSkillsPanel.test.tsx"
 Cohesion: 0.16
@@ -4343,20 +4429,20 @@ Cohesion: 0.14
 Nodes (14): Common Errors, Expected Result, Fields, How to Access, Prerequisites, Purpose, Re-send a set-password link, Related Features (+6 more)
 
 ### Community 684 - "RecruiterComparisonPanel.tsx"
-Cohesion: 0.17
-Nodes (18): cells(), FIELD, FIGURES, RecruiterComparisonPanel(), start(), STARTS, value(), Comparison (+10 more)
+Cohesion: 0.18
+Nodes (19): cells(), FIELD, FIGURES, RecruiterComparisonPanel(), start(), STARTS, value(), Comparison (+11 more)
 
-### Community 685 - "Invoice"
-Cohesion: 0.38
-Nodes (12): Invoice, DATA_MODEL.md #7.2, PRD-PAY-003: generated when a Payment is created (billed)., _login(), _paid_with_invoice(), asyncio, parametrize, nehn-020 (DEC-SCOPE-290): students get the receipt, not an invoice. The invoice…, test_a_student_gets_no_invoice_for_their_own_payment() (+4 more)
+### Community 685 - "test_ccrm_052_university_report.py"
+Cohesion: 0.27
+Nodes (18): add(), agency_deposit(), application(), counselor_deposit(), drill(), parametrize, ccrm-052 (spec docs/superpowers/specs/2026-10-28-ccrm-052-university-report-…, test_anonymous_is_refused_the_drill_down() (+10 more)
 
 ### Community 686 - "CoordinatorCertificateQueue.tsx"
-Cohesion: 0.08
-Nodes (32): AdminCertificatePanel(), save(), detailMessage(), AdminCertificateSignaturesPanel(), detailMessage(), SignatureSlot(), save(), SLOTS (+24 more)
+Cohesion: 0.14
+Nodes (16): CoordinatorCertificateQueue(), issue(), load(), detailMessage(), IssueResult, plural(), Queue, QueueItem (+8 more)
 
-### Community 687 - "Font Optimization"
-Cohesion: 0.18
-Nodes (11): Common Mistakes, Display Strategy, Don't Use Manual Font Links, Font in Specific Components, Font Optimization, Font Weights and Styles, Google Fonts, Local Fonts (+3 more)
+### Community 687 - "test_mgmt_024_applications.py"
+Cohesion: 0.26
+Nodes (17): add(), application(), deposit(), document(), funnel(), parametrize, mgmt-024 -- the Applications funnel (§20, Appendix B "Funnels", spec MF1-MF18;…, test_bad_filter_values_are_422() (+9 more)
 
 ### Community 688 - "Portfolio progress"
 Cohesion: 0.14
@@ -4387,12 +4473,12 @@ Cohesion: 0.14
 Nodes (14): Common Errors, Expected Result, Fields, How to Access, Prerequisites, Purpose, Related Features, Sign out and session expiry (+6 more)
 
 ### Community 695 - "Offer Record (conditional/unconditional)"
-Cohesion: 0.12
-Nodes (19): Edit Application Form (screenshot), University Immutable After Create, Application Detail Saved (screenshot), Application Detail Panel, Withdrawn Application Read-Only (screenshot), Withdrawn Read-Only State, Offer Conditions Required Validation (screenshot), Conditional Offer Conditions Required (+11 more)
+Cohesion: 0.24
+Nodes (11): Offer Conditions Required Validation (screenshot), Conditional Offer Conditions Required, Offer Form Filled (screenshot), Offer Record (conditional/unconditional), Offer Saved (screenshot), Visa Case Start Form (screenshot), Visa Case, Visa Checklist Stage (screenshot) (+3 more)
 
-### Community 696 - "AGT screens"
-Cohesion: 0.11
-Nodes (22): Feature AGN-001, Feature AGN-004, Feature AGN-007, Feature AGN-008, Feature AGN-018, Feature AGN-019, Feature AGT-001, Feature AGT-002 (+14 more)
+### Community 696 - "StudentSearch.tsx"
+Cohesion: 0.17
+Nodes (15): ProgramOption, StudentSearch(), ROLE_KINDS, STUDENT_KINDS, STUDENT_SEARCH_MAX, STUDENT_SEARCH_MIN, StudentGroup, StudentHit (+7 more)
 
 ### Community 697 - "7.2 Public Website"
 Cohesion: 0.18
@@ -4442,9 +4528,9 @@ Nodes (14): Bulk entry: assessments (CSV), Common Errors, Expected Result, Field
 Cohesion: 0.14
 Nodes (14): Common Errors, Download the school report (PDF), Expected Result, Fields, How to Access, Prerequisites, Purpose, Related Features (+6 more)
 
-### Community 709 - "test_nehn_019_discount_receipt.py"
-Cohesion: 0.21
-Nodes (19): _mark_paid(), The one move into `paid` (D2): the caller has checked the payment is not paid…, nehn-019: read a receipt PDF back as its label/value table., After the "Receipt" and "Issued:" lines, labels and values alternate; the…, receipt_rows(), _discount(), _enrolment(), asyncio (+11 more)
+### Community 709 - "Review Focus"
+Cohesion: 0.11
+Nodes (16): Global Constraints, ManagementPlan + ManagementPlanItem (migration 0160_management_plans), mgmt-026 Next month plan + target vs actual — Implementation Plan, PLAN_KPIS catalogue + plan_actuals (IST month window), Revenue KPI partner only (PN7), Review Focus, Task 2: KPI catalogue, Task 3: Service + routes (+8 more)
 
 ### Community 710 - "Edit an application"
 Cohesion: 0.14
@@ -4511,12 +4597,12 @@ Cohesion: 0.13
 Nodes (15): Common Errors, Enrol students and change their status, Expected Result, Fields, How to Access, Prerequisites, Purpose, Related Features (+7 more)
 
 ### Community 726 - "test_enh_028_schemas.py"
-Cohesion: 0.17
-Nodes (17): _result_key(), BulkResultRow, _marks(), _error(), parametrize, ENH-028 -- per-row validation of bulk CSV rows (spec §6). Every value arrives…, test_a_valid_result_row_parses_numbers_and_blanks(), test_language_bounds() (+9 more)
+Cohesion: 0.08
+Nodes (34): _psychometric_key(), _result_key(), BulkLanguageRow, BulkPsychometricRow, BulkResultRow, BulkTestPrepRow, _marks(), The single create's fields plus the ENH-027 result fields; list cells are… (+26 more)
 
 ### Community 727 - "B.3 Organisation detail — `/bdm/organizations/[id]`"
 Cohesion: 0.10
-Nodes (20): B.0 Scope rules that apply to every organisation route, B.1 Organisations list — `/bdm/organizations`, B.2.1 Organisation fields (`web/components/BdmOrganizationFields.tsx:33-131`; server `api/schemas.py:3926-4029`), B.2.2 Type profile ("<Group> details" fieldset) — `web/components/BdmOrganizationProfileFields.tsx:333-415`, B.2.3 Contacts on create — `web/components/BdmContactFields.tsx`, B.2.4 Save / duplicate, B.2 Add organisation — `/bdm/organizations/new`, B.3.1 Header, details, archive (+12 more)
+Nodes (21): B.0 Scope rules that apply to every organisation route, B.1 Organisations list — `/bdm/organizations`, B.2.1 Organisation fields (`web/components/BdmOrganizationFields.tsx:33-131`; server `api/schemas.py:3926-4029`), B.2.2 Type profile ("<Group> details" fieldset) — `web/components/BdmOrganizationProfileFields.tsx:333-415`, B.2.3 Contacts on create — `web/components/BdmContactFields.tsx`, B.2.4 Save / duplicate, B.2 Add organisation — `/bdm/organizations/new`, B.3.1 Header, details, archive (+13 more)
 
 ### Community 728 - "7.4 Trainer"
 Cohesion: 0.18
@@ -4527,44 +4613,44 @@ Cohesion: 0.14
 Nodes (14): Add sessions and take batch attendance, Common Errors, Expected Result, Fields, How to Access, Prerequisites, Purpose, Related Features (+6 more)
 
 ### Community 730 - "career-counselor.md"
-Cohesion: 0.08
-Nodes (43): Career Counselor Role, Common Problems, Daily Workflows, Dashboard, Login, Main Activities, Menus Available, Quick-start guide: Career Counselor (+35 more)
+Cohesion: 0.12
+Nodes (32): Career Counselor Role, Common Problems, Daily Workflows, Dashboard, Login, Main Activities, Menus Available, Quick-start guide: Career Counselor (+24 more)
 
 ### Community 731 - "Sessions"
 Cohesion: 0.12
 Nodes (16): Dependency order, S10 — Manager oversight — run ≥ 5 days after S5, S11 — Lifecycle (runs last), S12 — Role guides, FAQ, troubleshooting, indexes, demo accounts, PDFs, S13 — Final review, S1 — Master planning — DONE 2026-10-17, S2 — Environment, capture tooling, admin provisioning (creates personas), S3 — Account access and navigation (+8 more)
 
 ### Community 732 - "require_permission"
-Cohesion: 0.06
-Nodes (33): nehn-005 (DEC-SCOPE-281): deny-by-default 403 unless the caller's role holds…, require_permission(), _dependency(), test_require_permission_refuses_a_key_outside_the_catalogue_at_import(), deny(), nehn-005 — Permission engine: implementation plan, Phase 3 review notes (folded in), Tasks (TDD: red → green → refactor) (+25 more)
+Cohesion: 0.05
+Nodes (40): nehn-005 (DEC-SCOPE-281): deny-by-default 403 unless the caller's role holds…, require_permission(), _dependency(), parse_key(), reports.telecaller.view" -> ("reports.telecaller", "view"). Raises ValueError…, test_require_permission_refuses_a_key_outside_the_catalogue_at_import(), test_the_seed_is_a_frozen_copy_of_the_new_default_grants(), test_the_seed_is_a_frozen_copy_of_the_new_default_grants() (+32 more)
 
 ### Community 733 - "test_agn_009_migration.py"
 Cohesion: 0.20
 Nodes (11): isolated_db(), asyncio, fixture, parametrize, AGN-009 -- migration 0058_agent_documents (spec §3). Round trip and downgrade…, A fresh database at 0057 with one student document (a student with an account)…, _sql(), test_a_document_needs_an_owner() (+3 more)
 
 ### Community 734 - "_owned"
-Cohesion: 0.05
-Nodes (131): ag_url(), body(), course(), create_owned(), day(), india(), make(), move() (+123 more)
+Cohesion: 0.09
+Nodes (84): ag_url(), body(), course(), create_owned(), day(), india(), make(), move() (+76 more)
 
 ### Community 735 - "tel-017 — Counselor role in the IT division + IT counselor workspace (design)"
-Cohesion: 0.15
-Nodes (14): API §12E IT counselor (tel-017), tel-017 IT Counselor Workspace Design, 1. Understanding, 2. Approaches, 3. Design, 4. Acceptance criteria (testable), 5. Risks, 6. Tests (+6 more)
+Cohesion: 0.18
+Nodes (12): API §12E IT counselor (tel-017), tel-017 IT Counselor Workspace Design, 1. Understanding, 2. Approaches, 4. Acceptance criteria (testable), 5. Risks, 6. Tests, IT Division Counselor Role (+4 more)
 
 ### Community 736 - "Attach an assessment report"
-Cohesion: 0.15
-Nodes (13): Attach an assessment report, Common Errors, Expected Result, Fields, How to Access, Purpose, Related Features, Step 1 — Enter the report address (+5 more)
+Cohesion: 0.14
+Nodes (14): Attach an assessment report, Common Errors, Expected Result, Fields, How to Access, Prerequisites, Purpose, Related Features (+6 more)
 
 ### Community 737 - "RecruiterApplicationOffer.tsx"
-Cohesion: 0.05
-Nodes (63): Failure, FileUpload(), submit(), JoiningForm(), submit(), JoiningSection(), JoiningValues, MOVE_HINT (+55 more)
+Cohesion: 0.06
+Nodes (66): Failure, Field(), FileUpload(), submit(), JoiningForm(), submit(), JoiningSection(), JoiningValues (+58 more)
 
 ### Community 738 - "TelecallerLeadImportPanel.test.tsx"
-Cohesion: 0.18
-Nodes (9): campaign(), CAMPAIGNS, formOf(), keyOf(), posts(), product(), ready(), REPORT (+1 more)
+Cohesion: 0.10
+Nodes (16): review(), campaign(), CAMPAIGNS, formOf(), keyOf(), posts(), product(), ready() (+8 more)
 
-### Community 739 - "RecruiterCandidateJourney.tsx"
+### Community 739 - "RegisterForm"
 Cohesion: 0.19
-Nodes (14): plural(), RecruiterCandidateJourney(), stages(), pct(), RecruiterCandidateTraining(), CandidateJourney, candidateJourneyUrl(), isCandidateJourney() (+6 more)
+Nodes (11): ITRegister(), OverseasRegister(), AgentRegistrationStatus(), reupload(), detail(), RegisterForm(), submit(), checkKycFile() (+3 more)
 
 ### Community 740 - "nehn-026 — Keyword-based auto-scoring for descriptive answers (design)"
 Cohesion: 0.15
@@ -4578,29 +4664,29 @@ Nodes (12): G-01 Approved Canva quotation missing, G-01 — "Approved previous C
 Cohesion: 0.15
 Nodes (13): PDF: EduSphere Agent CRM - User Manual (For Agency Masters and Agency Staff), User Manual section: Account access, User Manual section: Applications, User Manual section: Dashboard, User Manual section: Documents, User Manual section: Notifications, User Manual section: Reports, User Manual section: Staff Performance (+5 more)
 
-### Community 743 - "reset_password"
-Cohesion: 0.05
-Nodes (60): change_password(), _change_password_wait_seconds(), forgot_password(), AsyncSession, post, Seconds this user must wait before another change-password attempt; 0 means…, reset_password(), close() (+52 more)
+### Community 743 - "register"
+Cohesion: 0.03
+Nodes (113): _agent_signup_wait_seconds(), change_password(), _change_password_wait_seconds(), _check_form_origin(), _check_form_size(), forgot_password(), _is_json(), login() (+105 more)
 
 ### Community 744 - "WorkflowPanel.tsx"
 Cohesion: 0.01
-Nodes (183): AdminForgotPassword(), dynamic, AdminResetPassword(), BdmSignInPage(), dynamic, dynamic, TelecallerSignInPage(), AdminBatchCreatePanel() (+175 more)
+Nodes (247): AdminLogin(), dynamic, dynamic, ITLogin(), dynamic, OverseasLogin(), AdminBatchCreatePanel(), submit() (+239 more)
 
 ### Community 745 - "bdm-011 Trip-appointment linking browser QA"
 Cohesion: 0.15
 Nodes (13): Migration 0088_bdm_appointment_trip, bdm-011 feature, QA11-01: Deep link does not scroll to trip appointments, QA11-02: Itinerary status hidden at 375px, QA11-03: Total header centred, QA11-04: Organization names not styled as links, bdm-011 Trip-appointment linking browser QA, bdm-013 feature (+5 more)
 
 ### Community 746 - "0120_recruiter_messages.py"
-Cohesion: 0.25
-Nodes (5): rec-026 -- recruiter_message_templates (+ 12 seeds, one per EVID-018 §19 kind)…, Each seed is inserted only when no template of its channel has its name (case-…, seed_statements(), upgrade(), stamps()
+Cohesion: 0.10
+Nodes (12): rec-026 -- recruiter_message_templates (+ 12 seeds, one per EVID-018 §19 kind)…, Each seed is inserted only when no template of its channel has its name (case-…, seed_statements(), upgrade(), stamps(), upc-012 -- partnership_message_templates, university_calls and…, upgrade(), stamps() (+4 more)
 
 ### Community 747 - "Agency Universities Screen"
 Cohesion: 0.13
 Nodes (16): Staff sees only assigned students' documents, no verify, Agency Universities Screen, Empty state: no universities yet, Universities Empty Screenshot, Add University Form, Name is required validation, University Validation Screenshot, University Form Screenshot (+8 more)
 
-### Community 748 - "test_bdm_008_migration.py"
-Cohesion: 0.23
-Nodes (11): _config(), isolated_db(), fixture, bdm-008 -- migration 0077_bdm_tasks_followups (spec §4). Isolated database per…, A fresh database at 0076 whose bdm_tasks is put back to 0072's shape (0001's…, _sql(), test_chains_after_0076_and_is_on_the_single_chain(), test_constraints_hold() (+3 more)
+### Community 748 - "CandidateDetailPage"
+Cohesion: 0.16
+Nodes (12): RecruiterCandidatePage(), RecruiterNewCandidatePage(), RecruiterCandidatesPage(), RecruiterTalentPoolPage(), RecruiterTalentPoolsPage(), Back(), CandidateDetailPage(), CandidateListPage() (+4 more)
 
 ### Community 749 - "bdm-013 BDM Calendar Plan"
 Cohesion: 0.15
@@ -4608,7 +4694,7 @@ Nodes (13): BdmCalendar view component, DEC-SCOPE-079 BDM calendar decision, GET
 
 ### Community 750 - "services/calendar_feeds.py"
 Cohesion: 0.10
-Nodes (40): _counselor(), feed(), issue(), AsyncSession, delete, get, post, revoke() (+32 more)
+Nodes (37): _counselor(), feed(), issue(), AsyncSession, delete, get, post, revoke() (+29 more)
 
 ### Community 751 - "Agency dashboard (Staff)"
 Cohesion: 0.15
@@ -4639,8 +4725,8 @@ Cohesion: 0.24
 Nodes (12): Prefer Statically Analyzable Paths, Statically analyzable import/file paths, Avoid Barrel File Imports, next.config optimizePackageImports, Conditional Module Loading, Defer Non-Critical Third-Party Libraries, Dynamic Imports for Heavy Components, next/dynamic (+4 more)
 
 ### Community 758 - "graphify reference: extra exports and benchmark"
-Cohesion: 0.22
-Nodes (8): graphify reference: extra exports and benchmark, Step 6b - Wiki (only if --wiki flag), Step 7 - Neo4j export (only if --neo4j or --neo4j-push flag), Step 7a - FalkorDB export (only if --falkordb or --falkordb-push flag), Step 7b - SVG export (only if --svg flag), Step 7c - GraphML export (only if --graphml flag), Step 7d - MCP server (only if --mcp flag), Step 8 - Token reduction benchmark (only if total_words > 5000)
+Cohesion: 0.25
+Nodes (7): graphify reference: extra exports and benchmark, Step 6b - Wiki (only if --wiki flag), Step 7 - Neo4j export (only if --neo4j or --neo4j-push flag), Step 7a - FalkorDB export (only if --falkordb or --falkordb-push flag), Step 7b - SVG export (only if --svg flag), Step 7c - GraphML export (only if --graphml flag), Step 8 - Token reduction benchmark (only if total_words > 5000)
 
 ### Community 759 - "Architecture"
 Cohesion: 0.10
@@ -4651,8 +4737,8 @@ Cohesion: 0.17
 Nodes (11): Acceptance criteria (testable), Anti-goals, Backend (small, additive), Builder's defaults (owner pre-authorised recommended answers; each `NEEDS_CONFIRMATION`), Design, Goals, Intent, nehn-006 — Admin permission-matrix UI, permission-driven navigation and page guard (design) (+3 more)
 
 ### Community 761 - "test_ovs_004_status_tracking.py"
-Cohesion: 0.45
-Nodes (11): _create_user(), _login(), _make_application(), _make_university(), asyncio, OVS-004 -- Application status tracking and notifications. The notification side…, test_a_different_student_cannot_view_the_status(), test_a_notification_send_failure_never_blocks_the_status_write() (+3 more)
+Cohesion: 0.36
+Nodes (13): drain(), Run every captured delivery (including re-enqueued retries, countdown ignored)…, _create_user(), _login(), _make_application(), _make_university(), asyncio, OVS-004 -- Application status tracking and notifications. The notification side… (+5 more)
 
 ### Community 762 - "API §12BA Recruiter calls (rec-025)"
 Cohesion: 0.24
@@ -4662,9 +4748,9 @@ Nodes (10): API §12BA Recruiter calls (rec-025), API §12BB Recruiter company m
 Cohesion: 0.20
 Nodes (10): 8. Non-functional requirements (NFRs), NFR-A11Y-001 — Accessibility standard, NFR-AUDIT-001 — Audit trail for approval actions, NFR-PERF-001 — Response time target, NFR-PRIV-001 — GDPR: consent and self-service export/delete, NFR-REL-001 — Uptime/availability target, NFR-RESP-001 — Responsive design (mobile/tablet/desktop), NFR-SCALE-001 — Scalability goal (+2 more)
 
-### Community 764 - "alembic_config"
-Cohesion: 0.03
-Nodes (67): alembic_config, isolated_db(), asyncio, fixture, parametrize, AGN-004 -- migration 0049_agent_students_crm (spec §4, AC12; re-chained after…, A fresh database migrated to AGN-002's 0047, with one agency (org + Master) and…, _run() (+59 more)
+### Community 764 - "pathlib"
+Cohesion: 0.04
+Nodes (55): isolated_db(), asyncio, fixture, parametrize, AGN-004 -- migration 0049_agent_students_crm (spec §4, AC12; re-chained after…, A fresh database migrated to AGN-002's 0047, with one agency (org + Master) and…, _run(), _sql() (+47 more)
 
 ### Community 765 - "React Best Practices"
 Cohesion: 0.20
@@ -4674,45 +4760,45 @@ Nodes (9): 4.1 Deduplicate Global Event Listeners, 4.2 Use Passive Event Listene
 Cohesion: 0.44
 Nodes (11): _create_user(), _login(), asyncio, ADM-014 -- Super Admin cross-division console. Most of this feature already…, test_a_division_admin_never_sees_the_other_divisions_users(), test_a_non_admin_role_cannot_export_the_audit_log(), test_audit_export_requires_authentication(), test_it_admin_cannot_export_the_audit_log() (+3 more)
 
-### Community 767 - "test_bdm_001_migration.py"
-Cohesion: 0.21
-Nodes (10): isolated_db(), asyncio, fixture, bdm-001 -- migration 0061_bdm_profiles (spec §4). Round trip and the downgrade…, A fresh database at 0060 with one bdm_manager and one other user., _sql(), test_constraints_hold_and_downgrade_refuses_while_profiles_exist(), test_model_matches_the_migration() (+2 more)
+### Community 767 - "agentKyc.ts"
+Cohesion: 0.18
+Nodes (13): Registration, AgentKycDoc, KYC_ACCEPT, KYC_DOCS, KYC_MAX_BYTES, KycDocBase, KycDocSpec, KycDocType (+5 more)
 
 ### Community 768 - "bdm-006 — Appointments (types per BDM type, status lifecycle, reschedule) — Design"
-Cohesion: 0.10
-Nodes (19): 10. Documentation (same change), 11. Completion gates, 12.1 API and interface design, 12. Revision 2 — skill reviews (2026-10-03), 13. Revision 3 — plan refinements (2026-10-03), 1. Scope, 2. Approaches considered, 3. Decisions (owner, in-session, 2026-10-03, `EXPLICIT_APPROVAL`) (+11 more)
+Cohesion: 0.08
+Nodes (23): 10. Documentation (same change), 11. Completion gates, 12.1 API and interface design, 12. Revision 2 — skill reviews (2026-10-03), 13. Revision 3 — plan refinements (2026-10-03), 1. Scope, 2. Approaches considered, 4.1 Catalogues (`models.py`, after `BDM_CONTACT_ROLES`) (+15 more)
 
-### Community 769 - "university_performance"
-Cohesion: 0.19
-Nodes (19): commission_by_university(), commission_sums(), _health(), _partner(), performance(), AsyncSession, get, UUID (+11 more)
+### Community 769 - "test_nehn_024_submission_files.py"
+Cohesion: 0.33
+Nodes (15): nehn-024 (DEC-SCOPE-292 F1): a stored file attached to an assignment…, SubmissionFile, asyncio, nehn-024 -- direct file upload for assignment submissions (DEC-SCOPE-292; spec…, test_a_file_already_on_another_submission_cannot_be_reused(), test_a_file_that_is_not_yours_or_not_a_submission_upload_cannot_be_attached(), test_a_link_only_submission_still_works_and_lists_no_files(), test_only_the_student_their_trainer_and_admins_can_download() (+7 more)
 
 ### Community 770 - "0072_bdm_meeting_reports.py"
 Cohesion: 0.36
 Nodes (7): _create_tables(), _in(), Column, bdm-007 (DEC-SCOPE-070): meeting reports, a minimal task table (bdm-008 extends…, _timestamps(), upgrade(), _uuid()
 
 ### Community 771 - "3. Design"
-Cohesion: 0.14
-Nodes (13): 1. Owner answers (2026-10-23, clarifying prompt), 2. Existing behaviour (verified on `a97dd75f`), 3.1 Data — `application_offers` (new), 3.2 Mirror, 3.3 Service `services/application_offers.py` (no commits), 3.4 API, 3.5 nehn-001 (folded in), 3.6 Web (+5 more)
+Cohesion: 0.15
+Nodes (12): 1. Owner answers (2026-10-23, clarifying prompt), 2. Existing behaviour (verified on `a97dd75f`), 3.1 Data — `application_offers` (new), 3.2 Mirror, 3.3 Service `services/application_offers.py` (no commits), 3.5 nehn-001 (folded in), 3.6 Web, 3.7 Non-goals (+4 more)
 
-### Community 772 - "SchoolActivityFeedback"
-Cohesion: 0.16
-Nodes (20): admin_list_activity_feedback(), _feedback_out(), list_school_activity_feedback(), _participation(), AsyncSession, get, HTTPException, post (+12 more)
+### Community 772 - "school_feedback.py"
+Cohesion: 0.07
+Nodes (53): admin_list_activity_feedback(), _feedback_out(), list_school_activity_feedback(), _participation(), AsyncSession, get, HTTPException, post (+45 more)
 
 ### Community 773 - "test_adm_012_roles_permissions.py"
 Cohesion: 0.42
 Nodes (11): _create_user(), _login(), asyncio, ADM-012 -- Roles/permission administration. Promoted out of…, test_it_admin_sees_the_real_permission_bundle_enforced_per_role(), test_no_write_endpoint_exists_to_edit_permissions_the_unconfirmed_half_is_not_built(), test_non_admin_role_is_rejected(), test_overseas_admin_has_no_roles_section_it_admin_only_per_the_confirmed_ac() (+3 more)
 
 ### Community 774 - "test_bdm_009_schemas.py"
-Cohesion: 0.20
-Nodes (17): activity_direction_error(), BdmActivityCreate, V6, shared by the create schema and the service's PATCH check (which sees the…, V1-V6. Owner, contact name and timestamps are server-owned (`extra="forbid"` →…, check_direction(), body(), parametrize, bdm-009 -- request schemas (spec §5.1; AC1, AC2, V6). (+9 more)
+Cohesion: 0.10
+Nodes (33): activity_direction_error(), BdmActivityCreate, BdmActivityDayCounts, BdmActivityDayPage, BdmActivityOut, BdmActivityPage, BdmActivityUpdate, V6, shared by the create schema and the service's PATCH check (which sees the… (+25 more)
 
 ### Community 775 - "EduSphere — Feedback Tracker for the Next Review"
 Cohesion: 0.22
 Nodes (8): 1. Summary, 2. Please confirm at the review, 3. Backlog items, 4. Review action items (1–25), 5. Client inputs still required, 6. Decisions still open, 7. Evidence for Done rows, EduSphere — Feedback Tracker for the Next Review
 
-### Community 776 - "test_rec_027_timeline.py"
-Cohesion: 0.33
-Nodes (18): _company(), asyncio, rec-027 -- the company timeline and the candidate timeline (spec §1-§2;…, soon(), summary(), _team(), test_a_call_then_a_whatsapp_read_newest_first_with_actor_and_summary(), test_a_deleted_call_is_excluded() (+10 more)
+### Community 776 - "BrandLogoLink"
+Cohesion: 0.30
+Nodes (7): AdminForgotPassword(), AdminResetPassword(), ITForgotPassword(), OverseasForgotPassword(), BrandLogoLink(), ForgotPasswordForm(), { push }
 
 ### Community 777 - "File Conventions"
 Cohesion: 0.17
@@ -4747,16 +4833,16 @@ Cohesion: 0.33
 Nodes (7): _check(), CheckConstraint, Column, upc-009 -- University meetings. Revision ID: 0130_university_meetings Revises:…, _timestamp(), upgrade(), _user_fk()
 
 ### Community 785 - "nehn031CertificateWorkflow.test.tsx"
-Cohesion: 0.16
-Nodes (11): progress(), CONTEXT, CRITERIA, json(), PROGRESS, renderCard(), Routes, RULES (+3 more)
+Cohesion: 0.17
+Nodes (12): AdminCertificatePanel(), save(), detailMessage(), CertificateRules, CONTEXT, CRITERIA, json(), PROGRESS (+4 more)
 
 ### Community 786 - "Issues"
 Cohesion: 0.17
 Nodes (11): bdm-003 — Exploratory browser QA (first pass, no code changed), Evidence files (scratchpad, not committed), Fix pass (owner: "Yes fix", 2026-10-03), Issues, QA3-01 — URL-only profile filter narrows the list with no visible control, QA3-02 — An invalid Board in the URL shows "Unable to load organizations.", QA3-03 — Tabs in pasted Address / Courses are refused (Info, by design), QA3-04 — A type change over entered details takes two saves (Info, by design) (+3 more)
 
 ### Community 787 - "University Master (universities columns, migration 0105)"
-Cohesion: 0.05
-Nodes (41): can_see_commission helper (U2, PU9), DEC-SCOPE-118 (U0-U15 + PU1-PU11), partnership_head role (global division), partnership_manager role (overseas division), PARTNERSHIP_MENU 19 entries live-flag (PU8), partnership_profiles table (migration 0103), services/partnership.py (partnership_context, require_head, team_filter), upc-002 Country Master Design (+33 more)
+Cohesion: 0.03
+Nodes (69): can_see_commission helper (U2, PU9), DEC-SCOPE-118 (U0-U15 + PU1-PU11), partnership_head role (global division), partnership_manager role (overseas division), PARTNERSHIP_MENU 19 entries live-flag (PU8), partnership_profiles table (migration 0103), services/partnership.py (partnership_context, require_head, team_filter), upc-002 Country Master Design (+61 more)
 
 ### Community 788 - "Open a funding support case"
 Cohesion: 0.14
@@ -4775,36 +4861,36 @@ Cohesion: 0.38
 Nodes (12): _create_admin(), _create_student(), _login(), asyncio, ADM-004 -- Directory management: Students, Trainers, Employers. `GET/PATCH…, ADM-004-AC02: role/division/email/password_hash are not directory-editable…, test_admin_edits_directory_detail_fields(), test_directory_edit_never_writes_a_field_outside_the_allowlist() (+4 more)
 
 ### Community 792 - "ApplicationEnrollmentPanel.tsx"
-Cohesion: 0.19
-Nodes (15): ApplicationEnrollmentPanel(), load(), EnrollmentForm(), check(), save(), FormProps, Props, APPLICATION_URL() (+7 more)
+Cohesion: 0.18
+Nodes (16): ApplicationEnrollmentPanel(), load(), EnrollmentForm(), check(), save(), FormProps, Props, APPLICATION_URL() (+8 more)
 
 ### Community 793 - "2. Bottom-up effort re-estimate"
 Cohesion: 0.20
 Nodes (10): 2.1 Raw feature-build effort (from approved complexity tags), 2.1a School (Wave 4) raw effort — addendum, 2026-09-14, 2.2 What the raw feature-build figure leaves out, 2.3 Integration/provider setup buffer (flat addition, not multiplied), 2.3a School provider buffer — addendum, 2026-09-14, 2.4 Resulting effort figures, 2.4a Resulting School (Wave 4) effort figure — addendum, 2026-09-14, 2.5 Calendar-time scenarios — illustrative only, NOT a commitment (+2 more)
 
 ### Community 794 - "test_pub_003_catalogue.py"
-Cohesion: 0.12
-Nodes (19): asyncio, PUB-003 -- Course catalogue and detail., test_program_detail_404_for_unknown_slug_not_a_broken_page(), test_program_detail_returns_full_fields(), test_programs_category_filter_only_returns_matching_category(), test_programs_endpoints_require_no_authentication(), test_programs_list_is_public_and_returns_full_detail_fields(), test_programs_search_query_matches_title_or_summary() (+11 more)
+Cohesion: 0.29
+Nodes (10): asyncio, PUB-003 -- Course catalogue and detail., test_program_detail_404_for_unknown_slug_not_a_broken_page(), test_program_detail_returns_full_fields(), test_programs_category_filter_only_returns_matching_category(), test_programs_endpoints_require_no_authentication(), test_programs_list_is_public_and_returns_full_detail_fields(), test_programs_search_query_matches_title_or_summary() (+2 more)
 
 ### Community 795 - "test_pub_004_webinars.py"
 Cohesion: 0.19
 Nodes (18): PUB-004: reuses the existing Event model (division-aware, already seeded with…, WebinarRegistration, _make_overseas_event(), asyncio, OVS-007 -- Events and workshops (Overseas division). The registration endpoint…, test_anyone_can_register_for_an_overseas_event_with_no_authentication(), test_overseas_event_is_visible_in_the_division_scoped_listing(), test_registration_for_a_past_overseas_event_is_rejected() (+10 more)
 
-### Community 796 - "skillFixtures.ts"
-Cohesion: 0.23
-Nodes (13): refresh, SESSION, withSession(), refresh, refresh, refresh, SPEECH, withAssessment() (+5 more)
+### Community 796 - "ProgramMediaEditor.tsx"
+Cohesion: 0.18
+Nodes (15): detailMessage(), DraftModule, EMPTY_MODULE, Media, ProgramMediaEditor(), load(), saveSyllabus(), send() (+7 more)
 
 ### Community 797 - "test_rpt_001_reporting.py"
 Cohesion: 0.42
 Nodes (12): _create_user(), _login(), asyncio, RPT-001 -- Domestic/Employer reporting. Neither the existing `GET…, test_a_non_admin_role_cannot_view_it_reports(), test_hr_team_reaches_the_placement_reports_handler(), test_it_admin_reports_renders_a_real_funnel_instead_of_404ing(), test_it_admin_reports_shows_an_honest_zero_not_a_fabrication_when_a_course_has_no_enrollments() (+4 more)
 
-### Community 798 - "put_student_photo"
-Cohesion: 0.20
-Nodes (18): _career_out(), _coordinator_student(), _counselor_student(), delete_student_photo(), _discard(), get_career_preferences(), get_student_photo(), put_student_photo() (+10 more)
+### Community 798 - "bdm-004 — Organization pipelines per BDM type + stage history — Design"
+Cohesion: 0.12
+Nodes (16): 10. Tests (written before the code, per task), 12. Documentation (updated in the same change), 13. Completion gates, 1. Scope, 3. Decisions (owner answers 2026-10-05, `EXPLICIT_APPROVAL`, recorded in `DEC-SCOPE-070`), 4. Catalogue — new `app/bdm_stages.py`, 5.1 `bdm_organizations` (additive; no row is rewritten except by the column default), 5.3 Migration rules (the `0069` pattern) (+8 more)
 
-### Community 799 - "_performance"
-Cohesion: 0.21
-Nodes (17): dashboard(), _export_performance(), management(), _performance(), performance_by_recruiter(), performance_csv(), performance_xlsx(), AsyncSession (+9 more)
+### Community 799 - "local_files"
+Cohesion: 0.19
+Nodes (15): download(), local_files(), _local_response(), _overseas_document(), AsyncSession, get, UUID, ccrm-022 SD5: the key is (or was) an overseas student document's file -- in… (+7 more)
 
 ### Community 800 - "0184_enrollment_confirmation.py"
 Cohesion: 0.48
@@ -4814,27 +4900,27 @@ Nodes (6): downgrade(), _in(), _inspector(), ccrm-027 -- enrolment confirmation:
 Cohesion: 0.18
 Nodes (10): 1. Component Architecture (HIGH), 2. State Management (MEDIUM), 3. Implementation Patterns (MEDIUM), 4. React 19 APIs (MEDIUM), Full Compiled Document, How to Use, Quick Reference, React Composition Patterns (+2 more)
 
-### Community 802 - "OfferDecisionSet"
-Cohesion: 0.12
-Nodes (12): OfferDecisionSet, _profile_not_future(), Accepted or declined (`expired` is the daily job's). The date defaults to…, ccrm-007's rule (today, by name); ccrm-025 renamed it -- as `_not_future` it…, test_a_decision_is_accepted_or_declined_and_a_decline_needs_a_reason(), Review Focus, Task 1: Fix the shadowed `_not_future`, Task 2: Model + migration (+4 more)
+### Community 802 - "test_trn_005_assignment_edit.py"
+Cohesion: 0.35
+Nodes (14): _create_assignment(), _create_batch(), _create_trainer(), _login(), asyncio, timedelta, TRN-005 -- Assignment create and edit. Create (`POST…, TRN-005-AC02: editing after submissions exist does not invalidate work already… (+6 more)
 
-### Community 803 - "test_emp_002_job_posting.py"
-Cohesion: 0.32
-Nodes (16): _create_student(), _login(), asyncio, EMP-002 -- Job posting. Net-new: no endpoint let the Employer role (EMP-001)…, _register_employer(), _register_payload(), test_a_new_posting_starts_as_a_draft_not_visible_to_students(), test_a_published_job_past_its_closing_date_is_not_shown_as_open_even_if_never_closed() (+8 more)
+### Community 803 - "test_upc_019_ledger_api.py"
+Cohesion: 0.39
+Nodes (14): _ledger(), ledger_url(), asyncio, upc-019 -- the commission ledger API (spec §3; AC1-AC3, P1, N1; CL9-CL14): read…, P1: a lump-sum receipt for the January intake., A university with one enrolled application counted at 15% of GBP 18,000 (AC1)., receipt_body(), test_a_receipt_in_another_currency_gets_its_own_line_and_overpayment_shows_negative() (+6 more)
 
 ### Community 804 - "Data Model Contract"
 Cohesion: 0.18
 Nodes (11): BDM CRM entities (organizations, appointments, meeting reports, assignment history), Data Model Contract, EmployerProfile, GATE-08 Approval, Management finance entities (investments, salaries, finance balances, marketing budgets, partner capital), Country / University / OverseasCourse / Scholarship, Placement domain (Company, Job, JobApplication, Interview, JobOffer), Recruiter CRM entities (companies, contacts, job requirements, interviews, offers, talent pools) (+3 more)
 
-### Community 805 - "test_trn_009_questions.py"
-Cohesion: 0.44
-Nodes (12): _create_batch(), _create_student(), _create_trainer(), _login(), asyncio, TRN-009 -- Q&A response (PRD-TRN-010). DATA_MODEL.md §4.8 describes…, test_non_student_role_cannot_raise_a_question(), test_only_the_assigned_trainer_can_reply() (+4 more)
+### Community 805 - "AdminCertificateSignaturesPanel.tsx"
+Cohesion: 0.20
+Nodes (12): AdminCertificateSignaturesPanel(), detailMessage(), SignatureSlot(), save(), SLOTS, CertificateCriteria, CertificateSignatory, SignatoryRole (+4 more)
 
-### Community 806 - "test_ovs_005_documents.py"
-Cohesion: 0.41
-Nodes (16): _create_user(), _login(), _make_application(), _make_document(), _make_university(), asyncio, OVS-005 -- Document upload against checklist. Upload (`POST…, test_a_different_student_cannot_download_the_document() (+8 more)
+### Community 806 - "AGN-007 — Agent Student University Shortlist and Agency University Database — Design"
+Cohesion: 0.13
+Nodes (15): 10. Regression risks, 11. Documentation to update (AGN convention), 2. Scope, 4.1 `agent_universities`, 4.2 `agent_student_shortlist_entries`, 4. Data model — migration `0056_agent_shortlist` (provisional; `down_revision` = the real head at execution), 5.1 Agency universities — `/api/v1/workflows/overseas/agent/crm/universities`, 5.2 Shortlist — `/api/v1/workflows/overseas/agent/crm/students/{student_id}/shortlist` (+7 more)
 
-### Community 807 - "uploadFile"
+### Community 807 - "ProfileDocumentUpload"
 Cohesion: 0.18
 Nodes (14): detailMessage(), ProfileDocumentRow, ProfileDocumentUpload(), download(), load(), submit(), AssessmentForm(), start() (+6 more)
 
@@ -4842,13 +4928,13 @@ Nodes (14): detailMessage(), ProfileDocumentRow, ProfileDocumentUpload(), downlo
 Cohesion: 0.18
 Nodes (9): AGN-013 — Browser QA (first pass, 2026-10-02), AGN-013 feature under QA, Findings, Not covered in this pass, AGN-013 — Exploratory browser QA (independent pass 2, 2026-10-02), Fix pass (2026-10-02, owner: "fix the issues") — commit `194e564`, Results by check, Screenshots (+1 more)
 
-### Community 809 - "Issues"
-Cohesion: 0.18
-Nodes (10): AGN-020 — Exploratory browser QA (first pass, 2026-10-03), Issues, Observations (not AGN-020 defects), QA20-01 — Medium — Mobile: the Applications report's stacked rows cut values off, QA20-02 — Low — Server field errors use API parameter names, QA20-03 — Low — A refused filter from the address shows a different value in its control, QA20-04 — Low — Staff performance has no empty state for an agency without staff, QA20-05 — Low — Two "Clear filters" buttons when filters match nothing (+2 more)
+### Community 809 - "test_staff_performance_of_an_agency_with_no_staff_is_empty"
+Cohesion: 0.14
+Nodes (13): Browser QA20-04: no staff and nothing unassigned -> no rows (the panel shows…, test_staff_performance_of_an_agency_with_no_staff_is_empty(), AGN-020 — Exploratory browser QA (first pass, 2026-10-03), Fix pass (2026-10-03, `d46e1189`) and re-check, Issues, Observations (not AGN-020 defects), QA20-01 — Medium — Mobile: the Applications report's stacked rows cut values off, QA20-02 — Low — Server field errors use API parameter names (+5 more)
 
-### Community 810 - "Issues"
-Cohesion: 0.18
-Nodes (10): bdm-008 — Independent exploratory QA, pass 2 (2026-10-06), Coverage, Issues, Not issues (checked), QA8B-01 — A server error is reported as "This item changed elsewhere", QA8B-02 — Expired session: wrong message, no way back to sign-in, QA8B-04 — The "Marked done." notice and its links outlive the context, QA8B-05 — Manager's BDM filter is invisible after a reload or a shared link (+2 more)
+### Community 810 - "bdmTasks.ts"
+Cohesion: 0.05
+Nodes (71): BdmAppointmentReasonForm(), BdmOrganizationTasks(), BdmTaskForm(), submit(), BdmTaskItem(), act(), META_LINK, TEXT (+63 more)
 
 ### Community 811 - "bdm-022 Agent performance browser QA"
 Cohesion: 0.18
@@ -4858,33 +4944,33 @@ Nodes (11): Migration 0096_bdm_targets, bdm-016 feature, QA16-01: Non-UUID bdmId
 Cohesion: 0.53
 Nodes (8): _create_admin_and_schools(), _login(), asyncio, SCH-004/005/006 provisioning -- Overseas Admin/Super Admin creates an…, test_admin_adds_a_school_to_an_existing_members_portfolio(), test_an_unsupported_role_is_rejected(), test_overseas_admin_creates_an_academic_team_account_with_a_portfolio(), test_school_coordinator_cannot_create_specialized_role_accounts()
 
-### Community 813 - "School CRM Demo — 45-Minute Script {#p-school-crm-02-demo-script}"
-Cohesion: 0.12
-Nodes (17): Close (2 min), Do not show during the demo, If something goes wrong, Opening (2 min), Part 10 — Network oversight (4 min) · Overseas Admin, Part 1 — Partner onboarding (5 min) · Overseas Admin, Part 2 — The school at a glance (5 min) · Coordinator, Part 3 — Team, activities and the partnership (5 min) · Coordinator (+9 more)
+### Community 813 - "Review Focus"
+Cohesion: 0.14
+Nodes (14): NotificationUnreadCount, AGN-017 (DEC-SCOPE-059 N7): the caller's own unread notifications, for the nav…, AGN-017 — Agent Notifications + Deadline Reminders Implementation Plan, Global Constraints, Review Focus, Self-review, Task 11: E2E spec (run in browser validation, not in the lite pass), Task 12: Docs and traceability (+6 more)
 
 ### Community 814 - "Add one student"
-Cohesion: 0.02
-Nodes (128): Common Errors, Expected Result, Fields, How to Access, Prerequisites, Purpose, Related Features, Step 1 — Open the roster (+120 more)
+Cohesion: 0.03
+Nodes (77): Add one student, Common Errors, Expected Result, Fields, How to Access, Prerequisites, Purpose, Related Features (+69 more)
 
 ### Community 815 - "React.cache"
 Cohesion: 0.24
 Nodes (10): Authenticate Server Actions Like API Routes, Server Actions (use server), LRUCache (lru-cache), Cross-Request LRU Caching, React.cache(), Per-Request Deduplication with React.cache(), Module-level Static I/O, Hoist Static I/O to Module Level (+2 more)
 
 ### Community 816 - "json"
-Cohesion: 0.07
-Nodes (33): downgrade(), _in(), _manager_data(), tel-012 -- tel_scripts, tel_assets, tel_message_templates (seeded with the…, One INSERT per template, skipped when that (channel, lower(name)) exists; one…, seed_statements(), _timestamps(), upgrade() (+25 more)
+Cohesion: 0.06
+Nodes (37): downgrade(), _in(), _manager_data(), tel-012 -- tel_scripts, tel_assets, tel_message_templates (seeded with the…, One INSERT per template, skipped when that (channel, lower(name)) exists; one…, seed_statements(), _timestamps(), upgrade() (+29 more)
 
 ### Community 817 - "tel-021-dashboard.spec.ts"
 Cohesion: 0.25
 Nodes (3): account(), IST_DAY, setup()
 
 ### Community 818 - "ENH-015 — Browser QA record (2026-09-29)"
-Cohesion: 0.22
-Nodes (8): ENH-015 — Browser QA record (2026-09-29), Final browser verification (2026-09-30, at `48e9db5`; no source code changed), Findings, Fix pass and browser re-test (2026-09-30), Observations — pre-existing, not introduced by ENH-015 (recorded, not in scope for the fix pass without a decision), Passed checks (summary), Second fix pass (2026-09-30, `398e240`), Third fix pass (2026-09-30) — the two decisions
+Cohesion: 0.20
+Nodes (9): Completion verification (2026-09-30, at `d38dff6`; every item re-run fresh), ENH-015 — Browser QA record (2026-09-29), Final browser verification (2026-09-30, at `48e9db5`; no source code changed), Findings, Fix pass and browser re-test (2026-09-30), Observations — pre-existing, not introduced by ENH-015 (recorded, not in scope for the fix pass without a decision), Passed checks (summary), Second fix pass (2026-09-30, `398e240`) (+1 more)
 
 ### Community 819 - "SchoolStudent"
 Cohesion: 0.01
-Nodes (411): get_portfolio(), portfolio_payload(), _profile_complete(), get, No `response_model` -- matches `student_timeline()`'s own convention for a…, The portfolio body for an already scope-checked student -- extracted unchanged…, _create_result(), academic_team_progress() (+403 more)
+Nodes (399): daily_attendance_summary(), Spec §5.3 / C1 / C3: the student's 30 most recent records at their CURRENT…, bulk_template_language(), bulk_template_psychometric(), bulk_template_results(), bulk_template_test_prep(), _create_language(), _create_psychometric() (+391 more)
 
 ### Community 820 - "Review Focus"
 Cohesion: 0.22
@@ -4896,7 +4982,7 @@ Nodes (16): attendance_roster(), _check_date(), _enrolled_on(), mark_daily_atten
 
 ### Community 822 - "sendJson"
 Cohesion: 0.01
-Nodes (778): PartnershipProfilePage(), AdminAgentDepositsPanel(), DONE, openerId(), Tab, TABS, AdminBdmCreateForm(), submit() (+770 more)
+Nodes (768): GET, PartnershipProfilePage(), TelecallerManagerAssignmentPage(), TelecallerManagerBrochuresPage(), TelecallerManagerCampaignsPage(), TelecallerManagerDistributionPage(), TelecallerManagerImportsPage(), TelecallerManagerLostReasonsPage() (+760 more)
 
 ### Community 823 - "test_emp_003_candidate_search.py"
 Cohesion: 0.44
@@ -4904,19 +4990,19 @@ Nodes (13): _create_candidate(), _create_employer(), _login(), asyncio, EMP-003 
 
 ### Community 824 - "vitest"
 Cohesion: 0.01
-Nodes (512): GET, Loading(), submit(), AgentTasksBlock(), CurrentAgreement, BdmOrganizationAgentPerformance(), reload(), number() (+504 more)
+Nodes (545): Loading(), PORTAL, SchoolAcademicTeamStudent360Page(), Loading(), PORTAL, SchoolCareerCounselorStudent360Page(), Loading(), PORTAL (+537 more)
 
-### Community 825 - "ProgramCatalogue.tsx"
-Cohesion: 0.19
-Nodes (10): CatalogueState, categoryVisuals, durationInWeeks(), feeFormatter, apps_web_components_programcatalogue_module, ProgramCatalogue(), applyState(), clearControls() (+2 more)
+### Community 825 - "File map"
+Cohesion: 0.14
+Nodes (13): parse_page(), number(), The codebase's `Page` convention (limit/offset), parsed after authorization so…, AGN-020 Agency Reports Implementation Plan, File map, Global Constraints, Review Focus, Task 11: Playwright spec and documentation (+5 more)
 
-### Community 826 - "rec-038 — Recruiter CRM permission matrix + cross-role 403/404 sweep (design)"
-Cohesion: 0.18
-Nodes (12): DEC-SCOPE-115, DEC-SCOPE-174, DEC-SCOPE-185, U2 Commission visible only to super_admin + partnership roles (+partner via M3), stripped server-side, partnership_access.strip_commission serializer helper, upc-033 Permission matrix + commission-stripping sweep, 1. What the item asks for, 2. Decisions (recommended answers, applied under the owner's standing build-session instruction; `NEEDS_CONFIRMATION` at sign-off) (+4 more)
+### Community 826 - "test_nehn_027_learning_material_files.py"
+Cohesion: 0.35
+Nodes (13): _batch(), _downloads(), _publish_file(), asyncio, nehn-027 -- trainer learning materials: file upload and manage (DEC-SCOPE-294;…, test_anonymous_is_refused(), test_create_needs_exactly_one_source_and_an_own_unattached_file(), test_edit_reorder_and_soft_delete() (+5 more)
 
-### Community 827 - "NewLeadForm.test.tsx"
-Cohesion: 0.11
-Nodes (12): DuplicateMatch, body(), calls(), campaigns, products, push, create(), IST_DAY (+4 more)
+### Community 827 - "NewLeadForm"
+Cohesion: 0.05
+Nodes (29): contactValue(), DuplicatePanel(), addEnquiry(), listed(), NewLeadForm(), submit(), NoticeLine(), WALK_IN_LEADS_URL (+21 more)
 
 ### Community 828 - "test_adm_007_placement.py"
 Cohesion: 0.47
@@ -4927,28 +5013,28 @@ Cohesion: 0.50
 Nodes (3): month, officeRentExpenses(), rupees()
 
 ### Community 830 - "Available Tools"
-Cohesion: 0.15
-Nodes (12): Available Tools, Debug Tricks, Example: Get Errors, `get_errors`, `get_logs`, `get_page_metadata`, `get_project_metadata`, `get_routes` (+4 more)
+Cohesion: 0.20
+Nodes (10): Available Tools, Example: Get Errors, `get_errors`, `get_logs`, `get_page_metadata`, `get_project_metadata`, `get_routes`, `get_server_action_by_id` (+2 more)
 
 ### Community 831 - "Issues"
 Cohesion: 0.20
 Nodes (10): Issues, QA13-03 — Medium — expired session shows "Not authenticated" with no way to sign in, QA13-04 — Low (accessibility) — opening the form drops focus, QA13-05 — Low — Cancel keeps the abandoned input, QA13-06 — Low — other actions stay live while the enrollment confirmation is open, QA13-07 — Low — correction mode shows the values twice, QA13-08 — Low — server-error message gives no next step, QA13-09 — Low — the 422 message does not name the field (+2 more)
 
-### Community 832 - "test_enh_027_migration.py"
-Cohesion: 0.25
-Nodes (5): asyncio, ENH-027 -- migration 0045 and the new SchoolPsychometricRecord columns (spec…, test_migration_follows_enh024_and_is_the_single_head(), test_model_declares_the_ten_nullable_columns(), test_new_columns_exist_and_are_nullable()
+### Community 832 - "ChangePasswordForm"
+Cohesion: 0.20
+Nodes (8): ChangePasswordForm(), finish(), submit(), message(), NEXT, VISUALLY_HIDDEN, waitLabel(), renderForm()
 
 ### Community 833 - "nehn-005-permission-engine.spec.ts"
 Cohesion: 0.32
 Nodes (5): asSuper(), managerWithALead(), REPORTS, setGrants(), SUPER
 
-### Community 834 - "API §12BS Find Candidates — skill AND/OR search, filters, facets (rec-013)"
-Cohesion: 0.32
-Nodes (8): API §12BS Find Candidates — skill AND/OR search, filters, facets (rec-013), API §12BV Resume full-text search on Find Candidates (rec-014), rec-013 addendum: Find Candidates, rec-014 addendum: Resume search on Find Candidates, DEC-SCOPE-151, DEC-SCOPE-154, Feature REC-013, Feature REC-014
+### Community 834 - "AdminTelecallerLifecycle.test.tsx"
+Cohesion: 0.16
+Nodes (12): managers, Mock, mount(), moved, NONE, OPEN, postOf(), posts() (+4 more)
 
-### Community 835 - "test_agn_008_schemas.py"
-Cohesion: 0.21
-Nodes (15): AgentApplicationCreate, AgentApplicationUpdate, Omitted = unchanged; null clears an optional field; intake cannot be cleared;…, parametrize, AGN-008 spec §5.4 -- request schemas: forbid extras, trim, bounds, date sanity,…, test_create_forbids_server_owned_fields(), test_create_needs_an_intake_of_1_to_80(), test_create_trims_and_blanks_become_none() (+7 more)
+### Community 835 - "Placement Officer & Business Development CRM — Enhancement Backlog (pob-001 … pob-030)"
+Cohesion: 0.14
+Nodes (13): 1. Section-by-section coverage of the source, 3.1 Must be sequential, 3.2 Can run independently, 3.3 Touch common files and modules, 3.4 Require a migration, 3.5 Implement first, 3.6 Overlap with the other backlogs (build once), 3. Enhancement dependency graph (+5 more)
 
 ### Community 836 - "React Composition Patterns"
 Cohesion: 0.20
@@ -4966,29 +5052,29 @@ Nodes (9): 1. Eliminating Waterfalls (async), 2. Bundle Size Optimization (bundl
 Cohesion: 0.17
 Nodes (11): Auth Errors, Error Boundaries, Error Handling, Error Hierarchy, `error.tsx`, `global-error.tsx`, Not Found, `not-found.tsx` (+3 more)
 
-### Community 840 - "to_xlsx"
-Cohesion: 0.10
-Nodes (26): _column(), The header (the on-screen labels), the items, then a summary's Total row --…, 0 -> A, 25 -> Z, 26 -> AA., to_xlsx(), ccrm-035 (DEC-SCOPE-268 E1, E8): the standard-library xlsx writer -- one sheet,…, Each row as [(cell type, text)] in column order., _sheet(), test_a_long_or_unsafe_sheet_name_is_made_valid() (+18 more)
+### Community 840 - "ccrm-035 — Export of CRM reports and the counselor's own lists (design)"
+Cohesion: 0.25
+Nodes (6): ccrm-035 — Export of CRM reports and the counselor's own lists (design), Requirement (backlog, verbatim scope), Security review (Phase 3), Tests, UI, LogRecord
 
-### Community 841 - "test_nehn_003_private_storage.py"
-Cohesion: 0.23
-Nodes (15): _key(), asyncio, nehn-003 -- private, S3-compatible storage with per-purpose upload policy (DEC-…, QA-01: a .txt profile document opened in a new tab (as under the old static…, test_a_download_token_is_not_a_session(), test_a_local_presigned_link_is_signed_short_lived_and_scoped_to_its_key(), test_a_private_key_is_404_on_local_files_without_a_session(), test_a_stored_local_files_url_still_resolves_for_a_signed_in_user() (+7 more)
+### Community 841 - "Add assessments and record scores"
+Cohesion: 0.14
+Nodes (14): Add assessments and record scores, Common Errors, Expected Result, Fields, How to Access, Prerequisites, Purpose, Related Features (+6 more)
 
-### Community 842 - "SchoolSkillBatchHeader.tsx"
-Cohesion: 0.23
-Nodes (14): alertFor(), SchoolSkillBatchForm(), submit(), Draft, draftOf(), SchoolSkillBatchHeader(), save(), stopEditing() (+6 more)
+### Community 842 - "test_rec_028_migration.py"
+Cohesion: 0.24
+Nodes (12): rec-028 (MT5): one company contact or one recruiter per row; replaced as a set…, RecruiterMeetingParticipant, isolated_db(), _meeting(), fixture, UUID, rec-028 -- migration 0119_recruiter_meetings (spec §2). Round trip and…, _setup() (+4 more)
 
-### Community 843 - "AGN-007 — Agency Universities and Student Shortlist: Browser QA (2026-10-02)"
-Cohesion: 0.33
-Nodes (5): AGN-007 — Agency Universities and Student Shortlist: Browser QA (2026-10-02), AGN-007 feature under QA, Pass 1 — exploratory (at `121f188`, no code changed during the pass), Pass 2 — final verification (after merging `main` @ `8f0000d` (AGN-006) at `27efed8`), Pass 3 — verification-before-completion run (at `46fc620`, script `f07_verify.py`)
+### Community 843 - "AgentShortlistUniversityPicker.tsx"
+Cohesion: 0.24
+Nodes (8): AgentShortlistUniversityPicker(), matches(), optionLabel(), AGN-007 — Agency Universities and Student Shortlist: Browser QA (2026-10-02), AGN-007 feature under QA, Pass 1 — exploratory (at `121f188`, no code changed during the pass), Pass 2 — final verification (after merging `main` @ `8f0000d` (AGN-006) at `27efed8`), Pass 3 — verification-before-completion run (at `46fc620`, script `f07_verify.py`)
 
-### Community 844 - "test_enh_030_migration.py"
-Cohesion: 0.33
-Nodes (5): _parents(), asyncio, ENH-030 -- migration 0048 (spec §4, AC13): single head, create-table only,…, test_migration_follows_0047_and_is_the_single_head(), test_table_matches_the_model()
+### Community 844 - "calendar_ics.py"
+Cohesion: 0.29
+Nodes (12): all_day_event(), calendar(), event(), _fold(), _lines(), datetime, ccrm-038 (DEC-SCOPE-274 CA2, CA5): RFC 5545 text for the appointment invites…, Split before 75 octets (74 after the first line, which starts with a space),… (+4 more)
 
-### Community 845 - "_export"
-Cohesion: 0.22
-Nodes (15): _export(), export_report(), export_report_xlsx(), _log(), AsyncSession, get, Response, Ids, the kind and which filters were set -- never their values, never a name. (+7 more)
+### Community 845 - "test_adm_006_certificates.py"
+Cohesion: 0.46
+Nodes (12): _create_admin(), _create_enrollment(), _create_student(), _login(), asyncio, ADM-006 -- Certificate administration. Issuance (`POST…, test_admin_certificates_directory_lists_issued_certificates(), test_certificate_issuance_requires_authentication() (+4 more)
 
 ### Community 846 - "tel-013 WhatsApp Exploratory QA"
 Cohesion: 0.20
@@ -5022,9 +5108,9 @@ Nodes (7): 2.1 Avoid Barrel File Imports, 2.2 Conditional Module Loading, 2.3 De
 Cohesion: 0.38
 Nodes (10): File content-based type check, Upload a document (DOC-DOC-002), Document types, Document upload (PDF/JPEG/PNG, 20 MB), Image metadata stripping, 500 uploads per 24h rate limit, Request a document (DOC-DOC-006), Document request (Additional) (+2 more)
 
-### Community 854 - "test_bdm_024_hierarchy.py"
-Cohesion: 0.31
-Nodes (14): career_done(), add(), bdm(), node(), panel(), asyncio, bdm-024 (DEC-SCOPE-113 P10/P11) -- GET /bdm/manager/hierarchy: the §6 master…, Column sums of chain counts (None stays None, revenue strings stay strings). (+6 more)
+### Community 854 - "bdm024_helpers.py"
+Cohesion: 0.07
+Nodes (69): appt(), backdate_org(), career_done(), lead(), link(), pay(), perf_world(), datetime (+61 more)
 
 ### Community 855 - "AdminLeadManagementPanel.test.tsx"
 Cohesion: 0.15
@@ -5035,8 +5121,8 @@ Cohesion: 0.15
 Nodes (13): Agent deposits through Razorpay (`AGN-011`, `DEC-SCOPE-058`, 2026-10-02), Cross-cutting (applies to every domain), Domain-specific, Employer domain (new, external-party access), Explicitly out of scope for this outline, File uploads (general), GDPR / data protection, Notifications / CRM webhook (+5 more)
 
 ### Community 857 - "app/layout.tsx"
-Cohesion: 0.25
-Nodes (7): apps_web_app_controls, apps_web_app_globals, metadata, Analytics(), gaInlineScript(), gtagCalls(), ref_next_script
+Cohesion: 0.27
+Nodes (8): apps_web_app_controls, apps_web_app_globals, metadata, RootLayout(), Analytics(), gaInlineScript(), gtagCalls(), Task 7: UI foundations, create-flow feedback, reset-page recovery, Super Admin table/tile
 
 ### Community 858 - "Feature Questions"
 Cohesion: 0.29
@@ -5055,16 +5141,16 @@ Cohesion: 0.46
 Nodes (14): _add_academic_team_member(), _create_school_with_coordinator(), _login(), asyncio, SCH-009 -- Test Preparation (IELTS/SAT) and Foreign Language Classes modules.…, test_academic_team_member_outside_portfolio_cannot_write(), test_academic_team_starts_language_classes(), test_academic_team_starts_test_prep_and_notifies_parent() (+6 more)
 
 ### Community 862 - "AgentShortlistForm.test.tsx"
-Cohesion: 0.20
-Nodes (11): agency, catalogue, countries, detail, detail2, pickAgencyAndSave(), props, res() (+3 more)
+Cohesion: 0.09
+Nodes (23): resetCatalogueCache(), onCancel(), agency, catalogue, countries, detail, detail2, pickAgencyAndSave() (+15 more)
 
-### Community 863 - "nehn-032 — Certificate digital signatures (Founder + Coordinator) and designation"
-Cohesion: 0.18
-Nodes (10): signatory_snapshot(), Task 3: Issue uses signatories + seed, API, Builder's defaults (S1–S9, `NEEDS_CONFIRMATION`), Data, Goals / non-goals / anti-goals, Intent, nehn-032 — Certificate digital signatures (Founder + Coordinator) and designation (+2 more)
+### Community 863 - "test_nehn_021_discount_authority.py"
+Cohesion: 0.38
+Nodes (12): Put the role's grants back exactly as they were, whatever the test did., _restored(), _discount(), _payment(), asyncio, parametrize, nehn-021 -- discount authority through the `discounts.add` grant (DEC-…, test_a_granted_accountant_discounts_either_division_and_is_audited() (+4 more)
 
-### Community 864 - "upc-007 — Partnership stage engine + history + Kanban (design + plan)"
-Cohesion: 0.06
-Nodes (32): duplicate(), ccrm-006 Lead stages + loss capture — implementation plan, Head/super_admin duplicate override with reason (UD2), universities.name_key duplicate key (normalised name + country), upc-005 University CSV Import Design, 2. Data (migration `0113_university_imports`), 3. API (§12AV), 4. Web (+24 more)
+### Community 864 - "duplicate"
+Cohesion: 0.22
+Nodes (9): duplicate(), itc-007: Merge duplicate leads, API, ccrm-006 — Lead stage additions and structured loss capture (design), Data, Decisions (defaults), Intent, Out of scope (+1 more)
 
 ### Community 865 - "tel-024 Reports Exploratory QA"
 Cohesion: 0.22
@@ -5082,9 +5168,9 @@ Nodes (9): bdm-023 feature, QA23-01: Same-day follow-ups in random order, QA23-0
 Cohesion: 0.22
 Nodes (8): ENH-011 — Browser QA and fixes (2026-09-22), Final browser verification (2026-09-22, HEAD `86f91e1`, no source changed), Findings and resolution, Full Playwright suite (2026-09-22, HEAD `40d8590`), Harness notes (not app defects), Observations (by design, for review), Passed in the first pass (unchanged by the fixes), Targeted Playwright run after QA-14 (2026-09-22)
 
-### Community 869 - "nehn-043 — Feedback tracker for the next review (design)"
-Cohesion: 0.25
-Nodes (7): Done, Acceptance criteria (from the backlog), Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`), Intent, nehn-043 — Feedback tracker for the next review (design), Non-goals, Verification
+### Community 869 - "nehn-018 — Student feature access by enrolment and payment status (design)"
+Cohesion: 0.11
+Nodes (16): Done, access(), Acceptance criteria (from the backlog), Builder's defaults (owner pre-authorised recommended answers; `NEEDS_CONFIRMATION`), Intent, nehn-043 — Feedback tracker for the next review (design), Non-goals, Verification (+8 more)
 
 ### Community 870 - "tel-009 Qualification Form Plan"
 Cohesion: 0.22
@@ -5098,9 +5184,9 @@ Nodes (3): IT_ADMIN, IT_ADMIN_SEED, SUPER
 Cohesion: 0.33
 Nodes (7): downgrade(), _in(), lead_columns(), Column, qual_columns(), ccrm-005 -- the spec §3 lead fields: contact preference, enquiry date,…, upgrade()
 
-### Community 873 - "bdm-022 Agent performance drill-down — implementation plan"
-Cohesion: 0.25
-Nodes (7): College business tracking service and route, bdm-021 College Business Tracking Plan, Agent performance read-only GET route, bdm-022 Agent performance drill-down — implementation plan, DEC-SCOPE-110 agent performance decision, Phase 3 review notes (folded in), Tasks
+### Community 873 - "bdm-022 — Agent performance drill-down (design)"
+Cohesion: 0.13
+Nodes (15): BdmAgentPerformanceOut, College business tracking service and route, bdm-021 College Business Tracking Plan, Agent performance read-only GET route, bdm-022 Agent performance drill-down — implementation plan, DEC-SCOPE-110 agent performance decision, Phase 3 review notes (folded in), Tasks (+7 more)
 
 ### Community 874 - "FastAPI Other Tools Reference"
 Cohesion: 0.25
@@ -5111,44 +5197,44 @@ Cohesion: 0.21
 Nodes (13): _config(), legacy_db(), fixture, tel-004 -- migration 0081_lead_stage_pipeline (spec §3; PL1, AC7). The legacy…, A fresh database at 0080_tel_targets (the real pre-tel-004 shape) holding one…, _sql(), test_clean_downgrade_restores_the_legacy_status(), test_downgrade_refuses_after_a_real_stage_change() (+5 more)
 
 ### Community 876 - "test_adm_009_resources_oversight.py"
-Cohesion: 0.42
-Nodes (9): _create_user(), _login(), asyncio, ADM-009 -- Resources/recordings oversight. Promoted out of…, test_a_batch_with_no_resources_is_an_honest_empty_state(), test_it_admin_sees_resources_across_batches_they_do_not_personally_manage(), test_non_admin_role_is_rejected(), test_overseas_admin_has_no_resources_section_batches_are_it_only() (+1 more)
+Cohesion: 0.38
+Nodes (10): _create_batch_with_resource(), _create_user(), _login(), asyncio, ADM-009 -- Resources/recordings oversight. Promoted out of…, test_a_batch_with_no_resources_is_an_honest_empty_state(), test_it_admin_sees_resources_across_batches_they_do_not_personally_manage(), test_non_admin_role_is_rejected() (+2 more)
 
-### Community 877 - "OverseasCourse"
-Cohesion: 0.04
-Nodes (120): create_course(), list_courses(), menu_courses(), _one(), AsyncSession, get, patch, post (+112 more)
+### Community 877 - "test_dtu_001_load.py"
+Cohesion: 0.18
+Nodes (27): _commission(), _commission_tuple(), _empty(), load(), main(), _data(), gb_visible(), _hidden_country() (+19 more)
 
 ### Community 878 - "BdmPerformancePages.test.tsx"
-Cohesion: 0.16
-Nodes (10): BdmPerformanceFigures(), cell(), FigureRow, shown(), FIGURE_COLUMNS, Figures, allText(), figures (+2 more)
+Cohesion: 0.14
+Nodes (10): BdmPerformanceTable(), NOTE, Filters, Performance, TYPE_LABEL, typePath(), allText(), figures (+2 more)
 
 ### Community 879 - "0138_offer_management.py"
 Cohesion: 0.33
 Nodes (3): _inspect(), rec-022 -- offer management: job_offers gains position / letter file / creator,…, upgrade()
 
 ### Community 880 - "nehn-039 — School portal: document statuses, application depth, bulk-upload reconfirmation (design)"
-Cohesion: 0.29
-Nodes (6): Interface, nehn-039 — School portal: document statuses, application depth, bulk-upload reconfirmation (design), Non-goals, Tests, UI, Why
+Cohesion: 0.25
+Nodes (7): Builder's defaults (D1–D7, `NEEDS_CONFIRMATION`), Interface, nehn-039 — School portal: document statuses, application depth, bulk-upload reconfirmation (design), Non-goals, Tests, UI, Why
 
 ### Community 881 - "rec-016 Requirement Matching Plan"
 Cohesion: 0.25
 Nodes (9): DEC-SCOPE-159 (P1-P8), rec-015 Talent Pools Plan, resolve_terms(strict=False), TalentPool model (migration 0141), matching.allocate (largest remainder weights), DEC-SCOPE-157 (M1-M8), GET /recruiter/requirements/{id}/matches, rec-016 Requirement Matching Plan (+1 more)
 
-### Community 882 - "bdm-009 — BDM Activity Log (call / WhatsApp / email / visit / meeting / other) — Design"
-Cohesion: 0.10
-Nodes (21): whatsapp(), call(), Appendix A — Field-level source traceability (every source line), Appendix B — Metric, tile, KPI and alert definitions, B.1 Activity metrics (M-rows) — bdm-015 daily report, reused by 016/023/024, B.2 My Day and type-dashboard tiles (T-rows) — bdm-014, B.3 KPI catalogue for targets (K-rows) — bdm-016 (fixed per type, monthly, D21), B.4 Manager dashboard (T-M, AL) — bdm-023 (team scope; super_admin all) (+13 more)
+### Community 882 - "users"
+Cohesion: 0.03
+Nodes (69): assert_no_staff(), _columns(), _constraints(), downgrade(), Names of the table's unique + check constraints (offline SQL generation assumes…, upgrade(), users(), whatsapp() (+61 more)
 
-### Community 883 - "School CRM Demo — UAT Checklist {#p-school-crm-03-uat-checklist}"
-Cohesion: 0.13
-Nodes (15): 10. Psychometric Team, 11. Student 360°, reports and partnership, 12. Notifications and parent, 1. School administration (Overseas Admin), 2. Account access (all roles), 3. Dashboards, 4. Students and team (Coordinator), 5. Transfers (+7 more)
+### Community 883 - "test_pub_022_migration.py"
+Cohesion: 0.21
+Nodes (12): isolated_db(), asyncio, fixture, parametrize, PUB-022 -- migration 0158_social_proof (spec §3). Round trip runs in a…, test_badge_checks(), test_migration_chains_after_0157_and_is_the_single_head(), test_round_trip_unpublishes_existing_rows() (+4 more)
 
 ### Community 884 - "test_tel_005_intake.py"
 Cohesion: 0.20
 Nodes (27): audits(), body(), existing(), mail(), mobile(), product(), asyncio, tel-005 -- manual lead creation, the duplicate panel, the duplicate check and… (+19 more)
 
-### Community 885 - "Functions"
-Cohesion: 0.20
-Nodes (9): After Response, Common Examples, Functions, Generate Functions, Navigation, Navigation Hooks (Client), Request/Response, Server Functions (+1 more)
+### Community 885 - "test_trn_006_assessments.py"
+Cohesion: 0.36
+Nodes (12): _create_batch(), _create_student(), _create_trainer(), _login(), asyncio, TRN-006 -- Assessment create and edit. Create already existed (`POST…, TRN-006-AC02: a Draft assessment must not appear in the student's own list at…, test_assessment_edit_requires_authentication() (+4 more)
 
 ### Community 886 - "0066_bdm_organizations.py"
 Cohesion: 0.43
@@ -5162,29 +5248,29 @@ Nodes (7): Best Practices, Common Pitfall, Decision Tree: Choosing Your Approach
 Cohesion: 0.25
 Nodes (7): 1. Scripted checks, 2. Documentation findings (all FIXED), 3. Product findings for the owner (as-built behaviour, not changed), 4. Coverage of the review checklist, 5. Completion status, 6. Reproducibility, Agent CRM Documentation — Final Review Report (Phase 9 / S11)
 
-### Community 889 - "AgentReportTable.test.tsx"
-Cohesion: 0.29
-Nodes (6): AgentReportTable(), cellClass(), show(), AgentReport, AgentReportCell, summary
+### Community 889 - "AgentReportTable.tsx"
+Cohesion: 0.20
+Nodes (7): AgentReportTable(), cellClass(), show(), AgentReport, AgentReportCell, renderTable(), summary
 
 ### Community 890 - "test_tel_001_account_lock.py"
 Cohesion: 0.47
 Nodes (9): asyncio, tel-001 TL8: PATCH /auth/me is locked to the phone for a telecaller; every…, _stored(), _telecaller(), test_other_roles_can_still_change_their_name(), test_telecaller_invalid_phone_is_422(), test_telecaller_name_change_is_refused(), test_telecaller_profile_change_is_refused() (+1 more)
 
-### Community 891 - "can_see_commission"
-Cohesion: 0.03
-Nodes (66): can_see_commission(), upc-001 (DEC-SCOPE-118 PU9, backlog U2): who may see university commission data…, The payload as this user may see it: unchanged for a commission role, otherwise…, strip_commission(), parametrize, upc-001 PU9 / U2 -- who may see university commission data, and the new roles'…, test_commission_roles_see_commission(), test_every_other_role_does_not() (+58 more)
+### Community 891 - "strip_commission"
+Cohesion: 0.04
+Nodes (50): The payload as this user may see it: unchanged for a commission role, otherwise…, strip_commission(), commission(), parametrize, test_strip_commission_keeps_them_for_commission_roles(), test_strip_commission_removes_commission_fields_for_other_roles(), Phase 3 review notes (applied to this plan), upc-030 University 360 view — implementation plan (+42 more)
 
-### Community 892 - "Test Catalogue Audit"
-Cohesion: 0.13
-Nodes (15): 0. Headline numbers, 10. Missing BOLA/IDOR/resource-scope checks (explicitly requested audit), 11. Accessibility, integration, UAT, performance/reliability gaps (explicitly requested audits), 12. Total scope-coverage gap — the Overseas Education domain, 13. Traceability check, 1. Certificate public-verification conflict (explicitly requested audit), 2. Public content auth conflict (explicitly requested audit), 3. Payment/provider webhook authentication semantics (explicitly requested audit) (+7 more)
+### Community 892 - "test_trn_007_grading.py"
+Cohesion: 0.40
+Nodes (12): _create_batch_assignment_submission(), _create_trainer(), _login(), asyncio, TRN-007 -- Submission review and grading. `PATCH…, TRN-007-AC02: overwrites the prior grade with an audit trail, not a duplicate…, test_grading_a_nonexistent_submission_404s(), test_grading_requires_authentication() (+4 more)
 
 ### Community 893 - "School CRM — Frequently Asked Questions"
 Cohesion: 0.25
 Nodes (8): Accounts and access, Administrators, EduSphere specialists, Notifications, Partnership tiers, Results, reports and records, School CRM — Frequently Asked Questions, Students and team (School Coordinator)
 
-### Community 894 - "nehn-019 — Payment discount ledger and complete receipt (design)"
-Cohesion: 0.22
-Nodes (8): Acceptance criteria, API (additive only), Design (builder's calls, marked as such: the user asked to proceed with the recommended answers), Goals, Intent, nehn-019 — Payment discount ledger and complete receipt (design), Non-goals and anti-goals, Regression risks
+### Community 894 - "test_upc_015_alerts_api.py"
+Cohesion: 0.28
+Nodes (11): note(), asyncio, parametrize, upc-015 -- GET /partnership/alerts (DEC-SCOPE-164 AL12, AL13; spec §6 AC8): the…, test_a_manager_sees_only_their_own_alerts_newest_first_with_the_unread_count(), test_anonymous_is_401(), test_bad_parameters_are_422(), test_other_roles_and_a_manager_without_a_profile_are_403() (+3 more)
 
 ### Community 895 - "0114_job_requirements.py"
 Cohesion: 0.33
@@ -5198,89 +5284,89 @@ Nodes (5): asyncio, test_health_liveness_reports_ok(), test_health_readiness_rep
 Cohesion: 0.20
 Nodes (9): QA13-04 Opening the form drops focus (a11y), bdm-010 — Browser QA, pass 1 (2026-10-03), BDM-010 feature under QA, Checked and passing, Notes on the harness (not product issues), Playwright (`bdm-010-travel.spec.ts`; `bdm-001-bdm-profile.spec.ts` as its neighbour), QA10-01 — In-app notices are stored but never shown · Medium, QA10-02 Focus lost after adding expense (a11y) (+1 more)
 
-### Community 898 - "AgentReportFilters.test.tsx"
-Cohesion: 0.24
-Nodes (8): AgentReportFilters(), apply(), AgentReportOptions, empty, master, options, renderFilters(), tab()
+### Community 898 - "ResetPasswordForm"
+Cohesion: 0.23
+Nodes (6): ITResetPassword(), OverseasResetPassword(), message(), ResetPasswordForm(), submit(), { push }
 
 ### Community 899 - "School CRM Administrator Manual"
 Cohesion: 0.18
 Nodes (15): sadm-002 Create a school and its Coordinator, sadm-003 Edit school profile and partnership tier, sadm-004 Bulk onboard schools by CSV, sadm-005 Create school staff accounts, sadm-006 School applications, sadm-007 Review transfers, sadm-008 School Analytics, sadm-009 Activity Feedback (+7 more)
 
 ### Community 900 - "Document Review Status Lifecycle (Pending/Verified/Rejected/Changes required)"
-Cohesion: 0.13
-Nodes (19): Create Application Form Filled (screenshot), No-Login Student Badge, Document Review Status Lifecycle (Pending/Verified/Rejected/Changes required), Documents Pending Screenshot, Documents Workspace (Agent Portal), Pending Review List, Documents Uploaded Screenshot, Uploaded Documents List with status chips and actions (+11 more)
+Cohesion: 0.07
+Nodes (34): Create Application Form Filled (screenshot), No-Login Student Badge, Document Review Status Lifecycle (Pending/Verified/Rejected/Changes required), Documents Pending Screenshot, Documents Workspace (Agent Portal), Pending Review List, Request a Document Form, Upload Document Form (+26 more)
 
-### Community 901 - "Add, replace or remove a student photo"
-Cohesion: 0.13
-Nodes (15): Add, replace or remove a student photo, Common Errors, Expected Result, Fields, How to Access, Prerequisites, Purpose, Related Features (+7 more)
+### Community 901 - "Upload the roster in bulk (CSV)"
+Cohesion: 0.06
+Nodes (33): Common Errors, Expected Result, Fields, How to Access, Prerequisites, Purpose, Related Features, Roster CSV template (+25 more)
 
 ### Community 902 - "Next.js Error Handling Guide"
 Cohesion: 0.29
 Nodes (7): Next.js Error Handling, Error Boundaries error.tsx, Next.js Error Handling Guide, error.tsx Boundary, global-error.tsx, Server Action Navigation API Gotcha (redirect throws), not-found.tsx
 
-### Community 903 - "Image Optimization"
-Cohesion: 0.20
-Nodes (9): Always Use next/image, Blur Placeholder, Common Mistakes, Image Optimization, Priority Loading, Remote Images Configuration, Required Props, Responsive Images (+1 more)
+### Community 903 - "MGMT-024_EXPLORATORY_QA_2026-10-13.md"
+Cohesion: 0.17
+Nodes (12): Issues found (all caused by mgmt-024, all in scope), mgmt-024 — Applications funnel dashboard — exploratory browser QA (2026-10-13), QA24-01 Shareable filter URL redirect, QA24-02 Funnel filters grid, QA24-03 Less than 1% share text, QA24-04 Funnel note margin, Scenarios (first pass), mgmt-025 Recruitment Dashboard QA (+4 more)
 
-### Community 904 - "rec-013 — Find Candidates: skill AND/OR search, synonyms, filters, facets, result cards (design)"
-Cohesion: 0.06
-Nodes (31): FindCandidatesPage(), DEC-SCOPE-125, Feature rec-004, API §12AS Company contacts (rec-004), company_contacts table (migration 0110), Inline RBAC on User.role (no require_* deps), rec-004 Company Contacts Plan, services/company_pipeline.py (apply_event, board) (+23 more)
+### Community 904 - "services/skills.py (normalise, resolve)"
+Cohesion: 0.16
+Nodes (14): DEC-SCOPE-119, Feature rec-006, API §12AM Recruiter Skills Master (rec-006), rec-006 Skills Master Plan, services/skills.py (normalise, resolve), services/telecaller._parse body parser, POST /recruiter/skills/{id}/merge, Migration 0135_resume_extraction (+6 more)
 
-### Community 905 - "Scripts"
-Cohesion: 0.20
-Nodes (9): Don't Put Script in Head, Google Analytics, Google Tag Manager, Inline Scripts Need ID, Loading Strategies, Other Third-Party Scripts, Quick Reference, Scripts (+1 more)
+### Community 905 - "AGN-020 — Agency reports (7 new + Commission) and CSV export — design"
+Cohesion: 0.15
+Nodes (12): 10. Out of scope, 11. Documentation, 12. Design reviews (2026-10-03, at the owner's request), 1. Requirement and acceptance, 2. Decisions (`DEC-SCOPE-067`, answered by the owner 2026-10-03), 4.2 List reports (one row per record; 50 per page on screen), 4.3 Summary reports (one row per group + a Total row; no paging), 4.4 Data minimisation (+4 more)
 
-### Community 906 - "Upload Document Form"
-Cohesion: 0.13
-Nodes (15): Request a Document Form, Upload Document Form, Other document type requires Description, Upload Form Other Type Screenshot, Upload Other Description Required Screenshot, Document uploaded, waiting for review banner, Upload Success Screenshot, Only PDF/JPEG/PNG accepted error (+7 more)
+### Community 906 - "nehn-028 — Trainer per-student progress view (design)"
+Cohesion: 0.18
+Nodes (11): _criteria(), The certificate rule over one seat's figures -- shared by eligibility and the…, Acceptance criteria (from the backlog), Decisions (builder's calls, `NEEDS_CONFIRMATION` where marked), Goals, Intent, nehn-028 — Trainer per-student progress view (design), Non-goals (+3 more)
 
 ### Community 907 - "Phase 3 review notes (folded into the tasks above)"
 Cohesion: 0.33
 Nodes (5): API, Frontend, mgmt-013 Accounts dashboard — implementation plan, Phase 3 review notes (folded into the tasks above), Security
 
-### Community 908 - "Quick-start guide: Overseas Admin (school management)"
-Cohesion: 0.20
-Nodes (10): Common Problems, Daily Workflows, Dashboard, Login, Main Activities, Menus Available, Quick-start guide: Overseas Admin (school management), Related Features (+2 more)
+### Community 908 - "Task 2: Roles, schemas and `services/bdm.py`"
+Cohesion: 0.26
+Nodes (12): BdmAdminPage, BdmManagerPage, BdmMeOut, BdmProfileCreate, BdmProfileOut, BdmProfileUpdate, BdmTeamPage, spec §5.2: type, Employee ID and reporting manager are required (B8); the three… (+4 more)
 
 ### Community 909 - "Async Params and SearchParams"
 Cohesion: 0.20
 Nodes (9): Async Cookies and Headers, Async Params and SearchParams, Async Patterns, generateMetadata, Migration Codemod, Pages and Layouts, Route Handlers, SearchParams (+1 more)
 
 ### Community 910 - "mgmt-002 — Management audit trail ("who did what") — design"
-Cohesion: 0.33
-Nodes (5): 1. Intent, 2. Decisions (MA1–MA11), 4. Error handling, 5. Testing, mgmt-002 — Management audit trail ("who did what") — design
+Cohesion: 0.29
+Nodes (6): 1. Intent, 2. Decisions (MA1–MA11), 3. Components, 4. Error handling, 5. Testing, mgmt-002 — Management audit trail ("who did what") — design
 
-### Community 911 - "upc-017 — Course / program master (design + plan)"
-Cohesion: 0.20
-Nodes (9): 1. Decisions (recommended defaults), 2. Data model — migration `0132_university_courses`, 3. Backend, 4. Frontend, 5. Acceptance criteria, 6. Tasks (TDD, in order), 7. Regression set (lite), 8. QA (Phase 5, 2026-10-09, `upc017` stack on :13017) (+1 more)
-
-### Community 912 - "application_options"
+### Community 911 - "3. Components"
 Cohesion: 0.17
-Nodes (11): application_options(), MF14: the dropdown choices -- only values present on applications (staff: those…, Alternatives considered, API (§12FT), ccrm-034 — Management CRM reports (design), Frontend, Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers), Regression risks (+3 more)
+Nodes (11): CapitalAccountOut, CapitalEntryCreate, CapitalEntryOut, CapitalFigures, CapitalOut, CapitalShareOut, CapitalShareRow, CapitalSharesIn (+3 more)
 
-### Community 913 - "row"
-Cohesion: 0.03
-Nodes (26): slug(), ADMIN, createEnrolledApplicationForDemoAgent(), createClaimedCommissionForDemoAgent(), itAdmin(), overseasAdmin(), signIn(), row() (+18 more)
+### Community 912 - "Task 2: Backend service + CMS + public routes"
+Cohesion: 0.18
+Nodes (11): RatingBadgeIn, RatingBadgeManageOut, RatingBadgeOut, Public shape. PUB-022: `photo_url` is the public streaming route, never the…, PATCH: only the fields sent change; `division` cannot move. Only `context` may…, SocialProofOut, TestimonialIn, TestimonialManageOut (+3 more)
 
-### Community 914 - "ENH-015 — Reports & Downloads (slice 1) — Design"
-Cohesion: 0.13
-Nodes (15): 10. Acceptance criteria (local IDs), 11. Security review (`security-and-hardening`, 2026-09-29), 12. Regression risks, 13. Test plan (written before code), 14. Documentation deliverables, 2. Goals and non-goals, 4.1 Module layout, 4. Architecture (+7 more)
+### Community 913 - "upc-019-commission-ledger.spec.ts"
+Cohesion: 0.27
+Nodes (7): createEnrolledApplicationForDemoAgent(), createClaimedCommissionForDemoAgent(), confirmEnrollment(), apiLogin(), call(), day(), setUp()
+
+### Community 914 - "test_adm_010_consent_oversight.py"
+Cohesion: 0.39
+Nodes (11): _create_agreement(), _create_batch(), _create_user(), _login(), asyncio, ADM-010 -- Agreement/consent oversight. Promoted out of `Unscheduled/BLOCKED`…, test_consent_oversight_never_500s_regardless_of_agreement_state(), test_consent_oversight_requires_authentication() (+3 more)
 
 ### Community 915 - "Frontend Design"
 Cohesion: 0.29
 Nodes (6): Design principles, Frontend Design, Ground it in the subject, More on writing in design, Process: brainstorm, explore, plan, critique, build, critique again, Restraint and self-critique
 
-### Community 916 - "bdm-003 — Type-specific organization profiles (Agent / School / College)"
-Cohesion: 0.42
-Nodes (9): bdm-003 — Type-specific organization profiles (Agent / School / College), BDM-003 Browser QA, DEC-SCOPE-065, QA3-01 URL-only profile filter, QA3-02 Invalid Board in URL error, QA3-03 Tabs refused in pasted fields, QA3-04 Type change takes two saves, QA3-05 Staff count server-only validation (+1 more)
+### Community 916 - "test_bdm_002_migration.py"
+Cohesion: 0.23
+Nodes (9): isolated_db(), asyncio, fixture, bdm-002 -- migration 0066_bdm_organizations (spec §4). Round trip and the…, A fresh database at 0065 with one bdm user., _sql(), test_constraints_hold_and_downgrade_refuses_while_organizations_exist(), test_round_trip_keeps_users_identical_and_drops_the_sequence() (+1 more)
 
-### Community 917 - "0046_agent_orgs.py"
-Cohesion: 0.13
-Nodes (16): _backfill(), _pick(), _prefix_base(), D10: each agent without a membership becomes M001 of its own organisation;…, upgrade(), _in(), Column, mgmt-004 -- management ledger: ledger_categories, ledger_entries,… (+8 more)
+### Community 917 - "0150_management_ledger.py"
+Cohesion: 0.39
+Nodes (6): _in(), Column, mgmt-004 -- management ledger: ledger_categories, ledger_entries,…, _timestamps(), upgrade(), _user()
 
-### Community 918 - "management_agents.py"
-Cohesion: 0.30
-Nodes (13): _counts(), dashboard(), _grouped(), _money(), AsyncSession, datetime, Decimal, UUID (+5 more)
+### Community 918 - "test_ccrm_010_migration.py"
+Cohesion: 0.20
+Nodes (11): isolated_db(), asyncio, fixture, ccrm-010 -- migration 0169_overseas_student_notes (DEC-SCOPE-241). Round trip…, A fresh database at 0168_application_sub_status., _tables(), test_downgrade_refuses_while_notes_exist(), test_migration_chains_after_0168_and_is_the_single_head() (+3 more)
 
 ### Community 919 - "mgmt-024-applications.spec.ts"
 Cohesion: 0.50
@@ -5326,13 +5412,13 @@ Nodes (6): bdm-014 — My Day: implementation plan, Task 1 — API: `GET /bdm/my
 Cohesion: 0.25
 Nodes (7): 1. Intent, 2. Definitions (builder's defaults), 3. Shared calculator (`services/training_progress.py`), 4. Reports (resource `reports.training`, scope as the pilot), 5. Acceptance criteria → tests, 6. Risks, nehn-010 — Training reports pack: student, trainer, course, completion, attendance (design)
 
-### Community 930 - "Test commands (used by every task)"
-Cohesion: 0.22
-Nodes (9): Task 0: Pre-flight (numbering and stack), Task 10: End-to-end spec, Task 11: Documentation and traceability, Task 12: Verification (lite set) and evidence, Task 2: Agency universities API (list, create, edit, delete), Task 4: Isolation, /public, concurrency, staff activity, Task 5: §6 matrix rows and the Universities portal section, Task 9: Shortlist panel in the student detail view (+1 more)
+### Community 930 - "test_csc_001_migration.py"
+Cohesion: 0.20
+Nodes (11): isolated_db(), asyncio, fixture, csc-001 -- migration 0165_overseas_student_counselors (DEC-SCOPE-226). Round…, A fresh database at 0164_agent_org_kyc., _tables(), test_migration_chains_after_0164_and_is_the_single_head(), test_model_matches_the_migration() (+3 more)
 
-### Community 931 - "placement_pool.py"
-Cohesion: 0.09
-Nodes (39): _client_ip(), opt_in_placement_pool(), opt_out_placement_pool(), post, Request, CandidateConsent, rec-010 (AC4): one opt-in or opt-out of the placement candidate pool by the…, employer_visible() (+31 more)
+### Community 931 - "account.py"
+Cohesion: 0.04
+Nodes (103): _client_ip(), create_data_request(), download_data_request_export(), get_data_request(), get_notification_preferences(), get_placement_pool(), opt_in_placement_pool(), opt_out_placement_pool() (+95 more)
 
 ### Community 932 - "Upload a result as Draft (DOC-SCH-ACAD-002)"
 Cohesion: 0.39
@@ -5346,37 +5432,37 @@ Nodes (6): .claude-cache, Claude Pro, Claude Usage / Cache / Token-Efficient Tes
 Cohesion: 0.40
 Nodes (6): Next.js Bundling, Bundle Analysis, Next.js Bundling Guide, Server-Incompatible Packages, transpilePackages for ESM/CJS, Webpack to Turbopack Migration
 
-### Community 935 - "nehn-033 — Overseas student Overview / Progress page (design)"
+### Community 935 - "test_rpt_002_overseas_reporting.py"
+Cohesion: 0.44
+Nodes (11): _create_user(), _login(), _make_university(), asyncio, RPT-002 -- Overseas reporting. Tester feedback (2026-09-04, WhatsApp, RAID.md…, test_a_non_overseas_admin_role_cannot_view_this_report(), test_reports_never_fabricates_a_commission_for_an_agent_with_none(), test_reports_renders_instead_of_404ing_with_a_full_funnel_including_honest_zeros() (+3 more)
+
+### Community 936 - "2026-10-05-bdm-007-meeting-reports-design.md"
+Cohesion: 0.25
+Nodes (9): bdm-006 appointments module, Outcome pending flag and filter, bdm_meeting_reports table, Minimal bdm_tasks table, POST appointments/{id}/complete contract change, DEC-SCOPE-070, Follow-up sync (one per appointment), Legacy report backfill migration 0072 (+1 more)
+
+### Community 937 - "ccrm-018 — Document checklist templates — design"
 Cohesion: 0.22
-Nodes (8): Acceptance criteria, API, Goals / non-goals, Intent, Missing documents (student-level, live applications only), nehn-033 — Overseas student Overview / Progress page (design), Next actions (in order), Stage mapping (9 steps; `NEEDS_CONFIRMATION`, OD-10)
-
-### Community 936 - "bdm-007 — Appointment outcome + meeting report (design)"
-Cohesion: 0.07
-Nodes (31): bdm-006 appointments module, Outcome pending flag and filter, Derived 8-value agent status (S4), Approach A stage column plus history table, bdm_pipeline_events history table, DEC-SCOPE-071, Lost flag on top of stage (S5), Move rules S6 (forward/backward/stale) (+23 more)
-
-### Community 937 - "AdminChecklistTemplatesPanel"
-Cohesion: 0.15
-Nodes (12): AdminChecklistTemplatesPanel(), cancel(), openEditor(), editId(), 1. Intent, 2. Owner answers, 3. Data model (migration `0173_checklist_templates`, after ccrm-016's `0172_status_history_reason`), 4. Resolution (acceptance) (+4 more)
+Nodes (8): 1. Intent, 2. Owner answers, 3. Data model (migration `0173_checklist_templates`, after ccrm-016's `0172_status_history_reason`), 4. Resolution (acceptance), 6. Web, 7. Risks, 8. QA log (2026-10-23), ccrm-018 — Document checklist templates — design
 
 ### Community 938 - "0049_agent_students_crm.py"
 Cohesion: 0.43
 Nodes (7): _check_constraints(), _columns(), downgrade(), _indexes(), AGN-004 -- students with no login on agent_students. Revision ID:…, _refuse_if(), upgrade()
 
-### Community 939 - "AssignmentSubmissionPanel"
-Cohesion: 0.19
-Nodes (10): AssignmentSubmissionPanel(), addFiles(), drop(), submit(), detailMessage(), typeOf(), Call, res() (+2 more)
+### Community 939 - "AssignmentSubmissionPanel.tsx"
+Cohesion: 0.10
+Nodes (23): ACCEPT, AssignmentRow, AssignmentSubmissionPanel(), addFiles(), drop(), submit(), detailMessage(), HINTS (+15 more)
 
-### Community 940 - "AdminBdmRow.test.tsx"
-Cohesion: 0.15
-Nodes (8): deactivated, managerPage, NOTHING_OPEN, patchBody(), patches(), res(), route(), row
+### Community 940 - "AgentUniversitiesPanel.tsx"
+Cohesion: 0.16
+Nodes (11): AgentUniversitiesPanel(), closeConfirm(), closeForm(), remove(), Editing, LINK_STYLE, AgentUniversityCard(), deleteId() (+3 more)
 
-### Community 941 - "School CRM Documentation — Final Review Report (S12)"
-Cohesion: 0.25
-Nodes (7): 1. Scripted checks, 2. Documentation findings (all FIXED), 3. Product findings for the owner (as-built behaviour, not changed), 4. Coverage of the review checklist, 5. Completion status, 6. Reproducibility, School CRM Documentation — Final Review Report (S12)
+### Community 941 - "test_tel_010_migration.py"
+Cohesion: 0.26
+Nodes (10): base_db(), _config(), fixture, tel-010 -- migration 0092_lead_calls (spec §3). The round trip runs in a…, _sql(), test_downgrade_drops_the_table(), test_downgrade_to_0091_has_no_table(), test_migration_chains_after_0091_and_there_is_one_head() (+2 more)
 
-### Community 942 - "test_nehn_022_razorpay_mode.py"
-Cohesion: 0.22
-Nodes (17): build(), asyncio, parametrize, nehn-022 (DEC-SCOPE-283): RAZORPAY_MODE=test|live, checked at startup against…, _sign_in(), test_live_mode_accepts_complete_live_keys(), test_live_mode_needs_every_live_value(), test_live_mode_with_test_keys_refuses_to_start() (+9 more)
+### Community 942 - "config.py"
+Cohesion: 0.04
+Nodes (59): get_settings(), model_validator, Settings, asyncio, parametrize, app.services.mailer -- real SMTP sending for School invite emails (added…, test_logo_is_embedded_inline_not_linked_to_frontend_url(), test_returns_failed_with_reason_when_smtp_raises() (+51 more)
 
 ### Community 943 - "Sections"
 Cohesion: 0.33
@@ -5410,9 +5496,9 @@ Nodes (5): 8.1 Do Not Put Effect Events in Dependency Arrays, 8.2 Initialize App
 Cohesion: 0.33
 Nodes (3): ref_fs, ref_os, ref_path
 
-### Community 951 - "UniversityImportPanel.test.tsx"
-Cohesion: 0.11
-Nodes (8): cell(), EMPTY, HISTORY, keyOf(), posts(), REPORT, api(), atRiskLearner()
+### Community 951 - "nehn-028-trainer-progress.spec.ts"
+Cohesion: 0.20
+Nodes (3): cell(), api(), atRiskLearner()
 
 ### Community 952 - "bdm-018 School onboarding handover browser QA"
 Cohesion: 0.33
@@ -5422,9 +5508,9 @@ Nodes (6): Migration 0084_bdm_onboarding, bdm-018 feature, QA18-01: 500 on reque
 Cohesion: 0.33
 Nodes (5): Disposition, ENH-007 — Browser QA Evidence, 2026-09-22, Findings, Pass 1 — confirmatory (shared local Chrome), Pass 2 — adversarial/exploratory (isolated Chrome instance)
 
-### Community 954 - "SchoolSkillBatchesPanel.tsx"
-Cohesion: 0.23
-Nodes (11): SchoolSkillAlert(), SkillAlertState, query(), SchoolSkillBatchesPanel(), load(), Draft, FIELD_ORDER, dateRange() (+3 more)
+### Community 954 - "test_trn_008_attendance.py"
+Cohesion: 0.47
+Nodes (11): _create_batch_with_students(), _create_trainer(), _login(), asyncio, TRN-008 -- Attendance marking. `POST /workflows/it/trainer/attendance` already…, test_attendance_marking_requires_authentication(), test_duplicate_student_in_the_same_submission_is_rejected(), test_marking_attendance_for_a_non_enrolled_student_is_rejected() (+3 more)
 
 ### Community 955 - "tel-008 — Exploratory browser QA — 2026-10-06"
 Cohesion: 0.33
@@ -5438,9 +5524,9 @@ Nodes (5): As-built observations recorded in RBAC §2.41 (not defects), Findings
 Cohesion: 0.25
 Nodes (7): 1. Requirement (backlog), 2. Existing behaviour (verified on main @ 8979c06f), 3. Decisions (defaults, `NEEDS_CONFIRMATION`), 4. Design, 5. Acceptance criteria (tests), 6. Regression risks, ccrm-028 — Arrival and orientation tracking (design)
 
-### Community 958 - "_AgentStudentRecordFields"
-Cohesion: 0.07
-Nodes (19): _AgentStudentRecordFields, _is_mobile(), The mobile rule (ENH-025; agency student phones too, AGN-005 QA5-01): 7-20 of…, AGN-004 (DEC-SCOPE-042, EVID-015 §5 Step 1): a student with no login. Server-…, AGN-004 — Browser QA, 2026-10-01, AGN-004 feature under QA, Assign action (2026-10-01, commits `666c7f4`, `4f30c4e`; web image rebuilt 05:29 UTC), Evidence after the fixes (+11 more)
+### Community 958 - "AgentApprovalPanel"
+Cohesion: 0.03
+Nodes (69): UserOut, AgentApprovalPanel(), act(), showTab(), AgentTeamPanel(), deactivate(), invite(), master (+61 more)
 
 ### Community 959 - "dtu-001 Direct Tie-ups Plan"
 Cohesion: 0.47
@@ -5450,9 +5536,9 @@ Nodes (6): University-level agent commission (super_admin, overseas_admin, agent
 Cohesion: 0.38
 Nodes (5): _in(), Column, bdm-006 -- bdm_appointments + bdm_appointment_events +…, upgrade(), _uuid()
 
-### Community 961 - "4. Design"
-Cohesion: 0.14
-Nodes (13): 1. Purpose, 2. Owner answers (2026-10-17), 4.1 Data — migration `0164_agent_org_kyc`, 4.2 Signup — `POST /api/v1/auth/register`, 4.3 Registration form — `RegisterForm.tsx`, 4.4 Agent registration status (pending agent), 4.7 Security, privacy, RBAC, 4.8 Out of scope / NEEDS_CONFIRMATION (not built in AGN-024) (+5 more)
+### Community 961 - "test_upc_020_migration.py"
+Cohesion: 0.17
+Nodes (11): isolated_db(), asyncio, fixture, upc-020 -- migration 0126_partnership_tasks (spec §2) and the Q-22 rule…, §19's twelve titles in source order; Q-22 rules only name catalogue stages,…, A fresh database at 0125., test_migration_chains_after_0125_and_is_the_single_head(), test_model_matches_the_migration() (+3 more)
 
 ### Community 962 - "DOC-RPT-001 Agency reports"
 Cohesion: 0.40
@@ -5470,9 +5556,9 @@ Nodes (6): Deployment Decision Guide, AWS ECS Fargate, DEC-INFRA-001 Infrastruct
 Cohesion: 0.60
 Nodes (5): Scripts (next/script), Google Analytics / Tag Manager integration, Inline Scripts Need ID, Script Loading Strategies, next/script component
 
-### Community 966 - "secrets"
-Cohesion: 0.19
-Nodes (7): _generate_unique_codes(), upgrade(), _generate_code(), upgrade(), _fill(), upgrade(), secrets
+### Community 966 - "AdminBdmHandover.test.tsx"
+Cohesion: 0.20
+Nodes (10): bdms, Mock, mount(), NONE, OPEN, postBody(), posts(), res() (+2 more)
 
 ### Community 967 - "test_sch_011_entitlements.py"
 Cohesion: 0.44
@@ -5487,32 +5573,32 @@ Cohesion: 0.29
 Nodes (3): ctx, PDF, unique
 
 ### Community 970 - "telecallerPerformance.ts"
-Cohesion: 0.04
-Nodes (27): FIELD, SortHeader(), TelecallerPerformancePanel(), ariaSort(), COUNT_COLUMNS, CountKey, csvFilename(), nextDir() (+19 more)
+Cohesion: 0.18
+Nodes (21): FIELD, SortHeader(), TelecallerPerformancePanel(), ariaSort(), COUNT_COLUMNS, CountKey, csvFilename(), nextDir() (+13 more)
 
-### Community 971 - "SchoolSkillAttendance.tsx"
-Cohesion: 0.22
-Nodes (9): AttendanceRoster(), save(), SchoolSkillAttendance(), addSession(), sessionLabel(), SchoolSkillScores(), ScoreGrid(), SkillAction (+1 more)
+### Community 971 - "PUB-022_QA_2026-10-14.md"
+Cohesion: 0.17
+Nodes (11): Final review (opus, 2026-10-14), Not run (owner), Owner follow-ups after merge, PUB-022 final review fixes, PUB-022 QA — Homepage social proof (2026-10-14), Social proof strip and rating badge, Unseeded DB pre-existing test failures, Web (vitest / tsc / eslint, in the `web-test` container) (+3 more)
 
-### Community 972 - "tel-022 — Daily + monthly telecaller targets (design)"
-Cohesion: 0.15
-Nodes (13): 10. Browser QA log (Phase 5, Edge via CDP, stack `tel022` web :3092 / api :8092, 2026-10-06), 1. Authority, 2. KPIs (Appendix B K1–K6), 3. Data — `tel_targets` (append-only history, one row per value), 4. Resolution (`services/telecaller_targets.py`, the single function tel-021 will call), 5. API (router `api/telecaller_targets.py`, mounted under `/api/v1`; inline role checks per the 2026-09-28 convention), 7. Acceptance criteria (testable), 8. Security (+5 more)
+### Community 972 - "TelTargetSet"
+Cohesion: 0.20
+Nodes (9): The scope shape (team xor user) and the date rules are checked in…, TelTargetEffectiveOut, TelTargetSet, TelTargetSetOut, tel-022 implementation plan, 5. API (router `api/telecaller_targets.py`, mounted under `/api/v1`; inline role checks per the 2026-09-28 convention), `GET /telecaller/targets/effective?user_id=&team=&date=` → `TelTargetEffectiveOut`, `GET /telecaller/targets` → `TelTargetPage {items,total,limit,offset}` (history) (+1 more)
 
-### Community 973 - "headers"
-Cohesion: 0.08
-Nodes (46): headers(), _keys(), _leaks(), asyncio, parametrize, upc-033 -- the commission sweep, the confidentiality net for EVID-020 line 1129…, AC2 / PX8: the sweep covers every serializer that includes commission., AC2 / U2: every non-commission role, every endpoint, any status: no commission… (+38 more)
+### Community 973 - "test_upc_033_matrix.py"
+Cohesion: 0.07
+Nodes (34): _keys(), _leaks(), asyncio, parametrize, upc-033 -- the commission sweep, the confidentiality net for EVID-020 line 1129…, AC2 / PX8: the sweep covers every serializer that includes commission., AC2 / U2: every non-commission role, every endpoint, any status: no commission…, PX6: the control -- each planted commission value is visible where its item… (+26 more)
 
-### Community 974 - "student_progress_report"
-Cohesion: 0.23
-Nodes (12): _log_generated(), _pdf_response(), AsyncSession, get, Response, UUID, The SCH-007 overview of one student as a PDF (D6): same loader, so the same…, Render, or a generic 500. Only the exception *type* is logged: its message… (+4 more)
+### Community 974 - "test_ccrm_003_migration.py"
+Cohesion: 0.20
+Nodes (10): _columns(), isolated_db(), asyncio, fixture, ccrm-003 -- migration 0169_lead_next_action (DEC-SCOPE-243):…, A fresh database at 0168_application_sub_status., test_columns_exist_in_the_shared_database(), test_migration_chains_after_0168_and_is_the_single_head() (+2 more)
 
-### Community 975 - "Directives"
-Cohesion: 0.29
-Nodes (6): Directives, Next.js Directive, React Directives, `'use cache'`, `'use client'`, `'use server'`
+### Community 975 - "Review Focus"
+Cohesion: 0.18
+Nodes (11): AgentOffer, OfferLetterOption, AGN-010 Offer details Implementation Plan, Global Constraints, Review Focus, Task 1: Columns, constraints, migration, Task 3: Offer letter document type, Task 4: Offers counts on the agent pages (+3 more)
 
-### Community 976 - "Detection Rules"
-Cohesion: 0.29
-Nodes (6): 1. Async Client Components Are Invalid, 2. Non-Serializable Props to Client Components, 3. Server Actions Are the Exception, Detection Rules, Quick Reference, RSC Boundaries
+### Community 976 - "Verify and publish results"
+Cohesion: 0.18
+Nodes (11): Common Errors, Expected Result, Fields, How to Access, Prerequisites, Purpose, Related Features, Tips (+3 more)
 
 ### Community 977 - "Web Interface Guidelines"
 Cohesion: 0.40
@@ -5527,8 +5613,8 @@ Cohesion: 0.22
 Nodes (8): 1. Answers (2026-10-09), 2. Data (migration `0135_resume_extraction`), 4. API (§12BR), prefix `/api/v1/recruiter/candidates/{candidate_id}/resume/{version}`, 6. Acceptance criteria, 7. Tests, 8. Risks, DEC-SCOPE-150 (EX1-EX10 UNVERIFIED), rec-012 — Resume text + rule-based skill extraction (design)
 
 ### Community 980 - "ActivityFeedbackCreate"
-Cohesion: 0.36
-Nodes (11): ActivityFeedbackCreate, parametrize, test_blank_feedback_is_rejected_not_stored(), test_length_limits(), test_minimal_valid_body_and_optional_fields_default_to_none(), test_nul_and_bidi_overrides_are_rejected(), test_score_bounds_are_inclusive(), test_scores_are_strict_integers_from_one_to_five() (+3 more)
+Cohesion: 0.14
+Nodes (24): ActivityFeedbackCreate, ActivityFeedbackOut, AdminActivityFeedbackOut, AdminFeedbackPage, SchoolFeedbackActivity, SchoolFeedbackPage, parametrize, test_blank_feedback_is_rejected_not_stored() (+16 more)
 
 ### Community 981 - "AGN-022 — Exploratory browser QA (first pass, 2026-10-03)"
 Cohesion: 0.40
@@ -5550,9 +5636,9 @@ Nodes (4): bdm-014 — Browser QA: My Day (2026-10-07), Coverage (20 requested a
 Cohesion: 0.40
 Nodes (4): bdm-015 — Browser QA (2026-10-07), Findings, Fixes (test-first) and pass 2, Pass 1 — exploratory (no code changed)
 
-### Community 986 - "test_bdm_007_migration.py"
-Cohesion: 0.26
-Nodes (10): _config(), isolated_db(), fixture, bdm-007 -- migration 0072_bdm_meeting_reports (spec §4). Isolated database per…, A fresh database at 0071 whose 0072 tables were dropped (0001's create_all…, _sql(), test_backfill_is_idempotent_and_the_round_trip_keeps_appointments(), test_chains_after_0071_and_is_the_single_head() (+2 more)
+### Community 986 - "3. Design"
+Cohesion: 0.18
+Nodes (10): 1. Owner answers (2026-10-25, clarifying prompt), 2. Existing behaviour (verified on `6941d5dc`), 3.1 Data — `application_offer_conditions` (new), 3.2 Service `services/offer_conditions.py` (no commits), 3.3 API, 3.5 Non-goals, 3. Design, 4. Acceptance criteria (+2 more)
 
 ### Community 987 - "bdm-019 — Browser QA (2026-10-07)"
 Cohesion: 0.40
@@ -5562,21 +5648,21 @@ Nodes (4): bdm-019 — Browser QA (2026-10-07), Issues, Pass 1 — independent e
 Cohesion: 0.40
 Nodes (4): bdm-024 — Browser QA (2026-10-07), First pass (independent, no code changes), Fixes (test-first) and re-check, Issues found
 
-### Community 989 - "Runtime Selection"
-Cohesion: 0.29
-Nodes (6): Detection, Edge Runtime, Node.js Runtime (Default), Runtime Selection, Use Node.js Runtime by Default, When to Use Each
+### Community 989 - "AGENTS.md"
+Cohesion: 0.20
+Nodes (9): Backend conventions, Documentation and completion, Handoff expectations, Read before working, Repository map, Running the project, Scope, Sources of truth and traceability (+1 more)
 
 ### Community 990 - "rec-003 Exploratory QA"
 Cohesion: 0.50
 Nodes (5): QA-02 companies list squeezed at 390 px, QA-04 BDM empty sidebar on companies, QA-05 RecCampaignPage total limit offset regression, rec-003 Exploratory QA, RecCampaignPage
 
-### Community 991 - "rec-029 Campus recruitment drives — exploratory browser QA (2026-10-11)"
-Cohesion: 0.40
-Nodes (5): Automated evidence, Checks (after the fixes): all passed, First pass (no code changed): 3 issues found, rec-029 Campus recruitment drives — exploratory browser QA (2026-10-11), Setup
+### Community 991 - "REC-029_EXPLORATORY_QA_2026-10-11.md"
+Cohesion: 0.18
+Nodes (10): QA30-02 Breakdown table stacking on phones, QA32-03 Figure tables hidden on phones, Automated evidence, Checks (after the fixes): all passed, Drive funnel attended not above registered AC2, First pass (no code changed): 3 issues found, QA29-01 Drive form grid alignment, QA29-03 Drive candidates stacked on phone (+2 more)
 
-### Community 992 - "test_ccrm_001_dashboard_tiles.py"
-Cohesion: 0.47
-Nodes (11): mk_app(), mk_case(), mk_doc(), asyncio, ccrm-001 (DEC-SCOPE-238) -- the counselor's and Overseas Admin's "Awaiting…, test_another_counselors_applications_are_not_counted(), test_awaiting_documents_counts_pending_documents_at_university_selection(), test_awaiting_documents_counts_undecided_visa_cases_with_unverified_checklist_items() (+3 more)
+### Community 992 - "has_permission"
+Cohesion: 0.27
+Nodes (9): has_permission(), test_rbac_bundles(), test_coordinator_is_an_it_role_with_only_the_certificate_bundle(), test_it_admin_domain(), test_student_cannot_admin(), test_super_admin(), test_has_permission_unchanged_for_existing_roles(), test_roles_have_coarse_bundles() (+1 more)
 
 ### Community 993 - "tel-005 Exploratory QA"
 Cohesion: 0.40
@@ -5602,9 +5688,9 @@ Nodes (5): Extract suggests, Apply writes (AC2, EX6/EX7), candidate_resumes.extr
 Cohesion: 0.40
 Nodes (5): Baseline rule (applies to every screen unless overridden below), NFR-RESP-001 (confirmed current), Responsive Rules, Screen categories with distinctive responsive needs, What is NOT specified here (open items, do not invent)
 
-### Community 1000 - "School CRM Demo — Preparation Checklist {#p-school-crm-01-prep-checklist}"
-Cohesion: 0.17
-Nodes (11): Accounts to have ready, After the demo, Before you start, School CRM Demo — Preparation Checklist {#p-school-crm-01-prep-checklist}, Step 1 — Schools (10 min, Overseas Admin), Step 2 — Specialist staff (10 min, Overseas Admin), Step 3 — Coordinator sets up (5 min), Step 4 — Team (10 min, Platinum Coordinator) (+3 more)
+### Community 1000 - "Tasks (TDD: RED → GREEN → REFACTOR per task)"
+Cohesion: 0.20
+Nodes (9): AgentStaffRowOut, nehn-038 — Agent KPIs: implementation plan, Phase 3 review notes, T1 — Backend KPIs (no date filter), T3 — Regression, T4 — Frontend, T5 — e2e, T6 — Docs (+1 more)
 
 ### Community 1001 - "Runtime Selection"
 Cohesion: 0.67
@@ -5630,25 +5716,25 @@ Nodes (6): Builder's calls (owner: proceed with recommended answers), csc-003 �
 Cohesion: 0.40
 Nodes (5): False positives (not defects), Issues found and fixed, mgmt-030 — Business health score: exploratory QA (2026-10-14), Not changed (observed, out of scope), Scenarios
 
-### Community 1007 - "ccrm-017 — Student journey stage for direct students (design)"
-Cohesion: 0.29
-Nodes (6): ccrm-017 — Student journey stage for direct students (design), Contract, Decisions (builder's defaults, all `NEEDS_CONFIRMATION` — owner asked for an autonomous run with recommended answers), Intent, Non-goals, Tests
+### Community 1007 - "test_ccrm_037_migration.py"
+Cohesion: 0.27
+Nodes (9): _exists(), isolated_db(), fixture, UUID, ccrm-037 -- migration 0191_student_messages (DEC-SCOPE-273). The round trip and…, test_migration_chains_after_0190_and_is_the_single_head(), test_models_match_the_migration(), test_round_trip_checks_and_the_downgrade_refuses_while_history_exists() (+1 more)
 
-### Community 1008 - "AgentApplicationEnrollment"
-Cohesion: 0.24
-Nodes (7): AgentApplicationEnrollment, AGN-013 (DEC-SCOPE-054): confirm or correct an application's enrollment.…, parametrize, AGN-013 -- the enrollment body: required date and expected status, bounded…, test_minimal_body_and_blank_student_id_is_none(), test_rejected(), test_student_id_and_notes_are_trimmed()
-
-### Community 1009 - "ccrm-046 — Counselor creates and manages multiple applications for a student (design)"
+### Community 1008 - "test_ccrm_041_journey.py"
 Cohesion: 0.29
-Nodes (6): Behaviour, Calls made without the owner (NEEDS_CONFIRMATION defaults), ccrm-046 — Counselor creates and manages multiple applications for a student (design), Intent, Non-goals, Tests
+Nodes (8): day(), ok(), asyncio, ccrm-041 -- the Appendix B sample journey through the counselor CRM's routes…, Everything one application shows: its row, offers, checklist, decision record…, snapshot(), test_the_appendix_b_journey(), titles()
+
+### Community 1009 - "sys"
+Cohesion: 0.22
+Nodes (9): Country Flags Asset Folder (PUB-023), flag-icons 7.5.0, Migration 0101 (country codes), ast, iso_codes(), main(), PUB-023 (DEC-SCOPE-222): every ISO country code that migration 0101 creates…, The codes in 0101's `_BY_REGION` literal, read with ast (the migration is never… (+1 more)
 
 ### Community 1010 - "nehn-017 — HR access to permitted student progress, attendance and documents, plus HR reports (design)"
-Cohesion: 0.33
-Nodes (5): 1. Intent, 4. Frontend, 5. Acceptance criteria → tests, 6. Risks, nehn-017 — HR access to permitted student progress, attendance and documents, plus HR reports (design)
+Cohesion: 0.29
+Nodes (6): 1. Intent, 2. Builder's defaults (NEEDS_CONFIRMATION, OD-09), 4. Frontend, 5. Acceptance criteria → tests, 6. Risks, nehn-017 — HR access to permitted student progress, attendance and documents, plus HR reports (design)
 
-### Community 1011 - "UserPermissionOverrideIn"
-Cohesion: 0.18
-Nodes (7): _bdm_appt_minute(), _interview_time(), datetime, nehn-037 I9: an instant with an offset, inside 2000-2100., nehn-007 (DEC-SCOPE-299): one allow/deny of a catalogue key for one user. The…, R-A7: compare what the UI shows -- seconds and microseconds are dropped; stored…, UserPermissionOverrideIn
+### Community 1011 - "tel-023-performance.spec.ts"
+Cohesion: 0.27
+Nodes (6): create(), IST_DAY, lead(), rowOf(), setup(), table()
 
 ### Community 1012 - "0119_recruiter_meetings.py"
 Cohesion: 0.33
@@ -5658,17 +5744,17 @@ Nodes (3): _checks(), rec-028 -- recruiter_meetings + recruiter_meeting_particip
 Cohesion: 0.33
 Nodes (3): _inspect(), rec-020 -- interview management: interviews gains code / round / status /…, upgrade()
 
-### Community 1014 - "test_agn_001_prefix.py"
-Cohesion: 0.24
-Nodes (9): derive_prefix_base(), pick_prefix(), D5: the first three Latin letters, uppercased, padded with X; no Latin letters…, D5 collision rule: the base if free, else the lowest free base+N for N >= 2., parametrize, test_member_code_is_zero_padded(), test_pick_prefix_takes_the_lowest_free_suffix_from_2(), test_pick_prefix_uses_the_base_when_free() (+1 more)
+### Community 1014 - "create_user"
+Cohesion: 0.02
+Nodes (162): create_school_staff(), create_user(), create_welcome_link(), ENH-003 / DEC-SCOPE-019: an admin never supplies or knows a credential for an…, ENH-003 / DEC-SCOPE-019 Re-send. Only for accounts that never set a password (a…, _reject_supplied_password(), update_user(), _deliver() (+154 more)
 
 ### Community 1016 - "Prefer Statically Analyzable Paths"
 Cohesion: 0.50
 Nodes (3): File-System Paths, Import Paths, Prefer Statically Analyzable Paths
 
-### Community 1017 - "Task 3b: Close the tenant-escalation path in `PATCH /auth/me` (**needs the user's approval first**)"
-Cohesion: 0.25
-Nodes (11): _patch_profile(), UUID, test_a_profile_update_that_echoes_the_unchanged_school_id_still_works(), test_a_profile_update_that_echoes_the_unchanged_university_id_still_works(), test_a_refused_profile_update_applies_no_partial_change(), test_a_university_rep_cannot_re_point_their_own_university_via_profile_update(), test_a_user_with_no_school_cannot_acquire_one_via_profile_update(), test_a_user_with_no_university_cannot_acquire_one_via_profile_update() (+3 more)
+### Community 1017 - "Test Rewrite Plan"
+Cohesion: 0.20
+Nodes (10): 1. Worked example — certificate public verification (`API-238`/`239`/`240`), 2. Worked example — public-content auth template fix (pattern, applies to all 13 cases in `TEST_CATALOG_AUDIT.md` §2), 3. Worked example — idempotency template fix (pattern, applies to 107 `API Functional` cases), 4. New test cases — Overseas Education domain (total coverage gap, `TEST_CATALOG_AUDIT.md` §12), 4A. New test cases — School domain (total coverage gap, added 2026-09-14, `DEC-SCOPE-011`/`012`/`DEC-ROLE-006`), 5. New test cases — GDPR, commission audit trail, division-aware identity, 6. New test cases — integration adapters (confirmed providers, zero prior coverage), 7. RETIRE / MERGE actions summary (+2 more)
 
 ### Community 1018 - "UX Reference Register"
 Cohesion: 0.50
@@ -5678,9 +5764,9 @@ Nodes (3): Meeting UX principle, UX-REF-001, UX Reference Register
 Cohesion: 0.51
 Nodes (10): _add_career_counselor(), _create_school_with_coordinator(), _login(), asyncio, SCH-004 -- Career Guidance & Counselling module. Career Counselor (new role)…, test_a_coordinator_never_sees_another_schools_career_records(), test_a_counselor_outside_the_students_portfolio_cannot_write(), test_an_unsupported_record_type_is_rejected() (+2 more)
 
-### Community 1020 - "test_sch_005_psychometric_assessment.py"
-Cohesion: 0.49
-Nodes (10): _add_psychometric_team_member(), _create_school_with_coordinator(), _login(), asyncio, SCH-005 -- Psychometric Assessment module. Psychometric Team (new role) assigns…, test_a_member_outside_the_students_portfolio_cannot_write(), test_coordinator_reads_but_cannot_write(), test_non_psychometric_team_cannot_write() (+2 more)
+### Community 1020 - "2026-10-05-bdm-017-lead-attribution.md"
+Cohesion: 0.33
+Nodes (8): Admin lead to student conversion link, BDM leads API (list and create), CRM sync of BDM leads unchanged payload, DEC-SCOPE-072, Duplicate email warn and acknowledge (L8), enquiries BDM attribution columns (migration 0074), BdmOrganizationLeads, BdmLeadForm, AdminLeadManagementPanel, Partial unique index one lead per user (L9)
 
 ### Community 1021 - "bdm-019 Agent handover browser QA"
 Cohesion: 0.50
@@ -5758,33 +5844,33 @@ Nodes (3): Animate SVG Wrapper Instead of SVG Element, Optimize SVG Precision, S
 Cohesion: 0.67
 Nodes (3): Use React DOM Resource Hints, React DOM Resource Hints (preload/preconnect/prefetchDNS), Use defer or async on Script Tags
 
-### Community 1041 - "test_tel_019_migration.py"
-Cohesion: 0.29
-Nodes (9): base_db(), _config(), fixture, tel-019 -- migration 0093_bdm_meeting_requests (spec §2). The round trip runs…, _sql(), test_migration_chains_after_0092_and_there_is_one_head(), test_model_matches_the_migration(), test_upgrade_creates_the_table_and_its_rules_and_the_downgrade_is_guarded() (+1 more)
+### Community 1041 - "2026-10-05-bdm-004-organization-pipelines-design.md"
+Cohesion: 0.27
+Nodes (9): Derived 8-value agent status (S4), Approach A stage column plus history table, bdm_pipeline_events history table, DEC-SCOPE-071, Lost flag on top of stage (S5), Move rules S6 (forward/backward/stale), bdm_organizations.pipeline_stage and lost flag, Per-type stage catalogue (bdm_stages.py) (+1 more)
 
-### Community 1043 - "LiveSessionManagePanel.test.tsx"
-Cohesion: 0.16
-Nodes (17): errorText(), LiveSessionManagePanel(), cancel(), load(), reschedule(), send(), Mode, Result (+9 more)
+### Community 1043 - "LiveSessionManagePanel"
+Cohesion: 0.46
+Nodes (8): errorText(), LiveSessionManagePanel(), cancel(), load(), reschedule(), send(), toZoneInput(), zoneOf()
 
-### Community 1044 - "AgentReportsPanel.test.tsx"
-Cohesion: 0.20
-Nodes (5): options, res(), route(), router, names()
+### Community 1044 - "MeetingRequestForm"
+Cohesion: 0.10
+Nodes (20): MeetingRequestForm(), refuse(), send(), requestBody(), options, res(), route(), router (+12 more)
 
 ### Community 1045 - "Role / Action Matrix"
-Cohesion: 0.09
-Nodes (23): Agent (`agent`), Counselor (`counselor`) **[base]** — internal case-management staff, distinct from Agent, Employer **[new — net-new build, no equivalent role exists in the base codebase]**, Global, HR Team (`hr_team`) **[base]**, IT Admin (`it_admin`), IT Division, Open questions this matrix surfaces (+15 more)
+Cohesion: 0.17
+Nodes (12): Agent (`agent`), Counselor (`counselor`) **[base]** — internal case-management staff, distinct from Agent, Employer **[new — net-new build, no equivalent role exists in the base codebase]**, Global, Open questions this matrix surfaces, Overseas Admin (`overseas_admin`), Overseas Division, Role / Action Matrix (+4 more)
 
 ### Community 1046 - "_safe_cell"
-Cohesion: 0.03
-Nodes (78): Stored text (a coordinator-typed name) must not run as a formula when the…, _safe_cell(), AGN-002 (DEC-SCOPE-040 S1): commissions are Master-only; an agency's staff are…, _require_agent_master(), The Total column: money summed; share % summed (0 when none is set, so AC1's…, totals(), known(), test_ac1_shares_not_totalling_100_are_flagged_by_the_total() (+70 more)
+Cohesion: 0.04
+Nodes (59): _backfill(), _pick(), _prefix_base(), D10: each agent without a membership becomes M001 of its own organisation;…, upgrade(), Stored text (a coordinator-typed name) must not run as a formula when the…, _safe_cell(), itc-012: IT student record completion (+51 more)
 
 ### Community 1047 - "Use useTransition Over Manual Loading States"
 Cohesion: 0.22
 Nodes (9): Defer Non-Critical Work with requestIdleCallback, Use useTransition Over Manual Loading States, useTransition / startTransition, Use Transitions for Non-Urgent Updates, startTransition, Use useDeferredValue for Expensive Derived Renders, useDeferredValue, Use useRef for Transient Values (+1 more)
 
-### Community 1048 - "rec-014 Resume full-text search — implementation plan"
-Cohesion: 0.20
-Nodes (9): rec-014 (DEC-SCOPE-154, FT4): whitespace collapsed; blank is no text search., _resume_text(), rec-014 Resume full-text search — implementation plan, Review notes (Phase 3), Task 1 — Data, Task 2 — Schema, Task 4 — Web, Task 5 — Docs (+1 more)
+### Community 1048 - "CandidateSearch"
+Cohesion: 0.09
+Nodes (32): CandidateSearch, `all` = every one of these skills (AND); each `any` group = at least one of its…, _between(), _current(), facets(), bands(), filters(), page() (+24 more)
 
 ### Community 1049 - "nehn-021-discount-authority.spec.ts"
 Cohesion: 0.38
@@ -5796,7 +5882,7 @@ Nodes (3): App Icon, Edu Circle Icon Mark, Favicon
 
 ### Community 1053 - "agency.ts"
 Cohesion: 0.02
-Nodes (45): review(), adminAct(), signIn(), adminActivate(), ADMIN, LABELS, PDF, PDF (+37 more)
+Nodes (48): adminAct(), signIn(), adminActivate(), createApplication(), manchesterId(), ADMIN, newPage(), newPage() (+40 more)
 
 ### Community 1054 - "rec-006 Skills Master Exploratory QA"
 Cohesion: 0.67
@@ -5854,9 +5940,9 @@ Nodes (6): 6.1 Domestic admissions handoff (evidence-backed, not independently r
 Cohesion: 0.33
 Nodes (5): Coverage (20 requested areas), ENH-008 — independent exploratory browser QA (2026-09-22), Findings, Method and environment (read this before trusting the results), Re-run and regression notes
 
-### Community 1083 - "Spec deviations (recorded in the spec's §11 in Task 8)"
-Cohesion: 0.22
-Nodes (9): VisaChecklistItem, VisaDecision, Spec deviations (recorded in the spec's §11 in Task 8), Task 1: Visa rules module and request schemas (pure), Task 2: Migration `0063_agent_visa_details` and model columns, Task 4: Authorization, concurrency and unchanged existing behavior, Task 5: Frontend visa helpers and types, Task 7: Browser spec (written now; run in the browser-validation phase) (+1 more)
+### Community 1083 - "AGN-008 — Agent Applications: Create, Edit, View and Change Status, With Application ID, Submission Date and Deadlines; Staff Sidebar Filters — Design"
+Cohesion: 0.06
+Nodes (37): visa(), AGN-012 — Visa for agent-managed applications: Implementation Plan, Global Constraints, Spec deviations (recorded in the spec's §11 in Task 8), Task 1: Visa rules module and request schemas (pure), Task 2: Migration `0063_agent_visa_details` and model columns, Task 4: Authorization, concurrency and unchanged existing behavior, Task 7: Browser spec (written now; run in the browser-validation phase) (+29 more)
 
 ### Community 1084 - "0069_bdm_org_profiles.py"
 Cohesion: 0.50
@@ -5864,31 +5950,31 @@ Nodes (3): _present(), bdm-003 -- type-specific organization profiles: twelve nu
 
 ### Community 1085 - "@playwright/test"
 Cohesion: 0.01
-Nodes (18): PDF, LABELS, rupees(), sum(), FIGURES, KPIS, PACK, signIn() (+10 more)
+Nodes (23): PDF, day(), reMark(), LABELS, rupees(), sum(), FIGURES, KPIS (+15 more)
 
-### Community 1086 - "MessagesSection"
-Cohesion: 0.22
-Nodes (9): MessagesSection(), API (§12FZ), ccrm-037 — Counselor communication templates and student/application message log (design), Frontend, Recommended defaults (`NEEDS_CONFIRMATION`; the owner asked for an autonomous run with recommended answers) — `DEC-SCOPE-273`, Regression risks, Requirement (backlog, verbatim scope), Security (Phase 3) (+1 more)
+### Community 1086 - "_store"
+Cohesion: 0.31
+Nodes (9): AgentUploadDocumentType, UploadFile, ccrm-045: the tab's gate first (another student 404, another role 403), then…, Store the file as a pending document of the student (AGN-009 G7/G8: sniffed…, ccrm-049 (DEC-SCOPE-326): the Finance tab's "Upload / Replace receipt" on a…, _store(), upload_payment_proof(), attach() (+1 more)
 
-### Community 1088 - "AgentApplicationDeposit.test.tsx"
-Cohesion: 0.24
-Nodes (5): DEPOSIT, detail(), Handler, json(), serve()
+### Community 1088 - "AgentApplicationDetail"
+Cohesion: 0.06
+Nodes (32): AgentApplicationDetail(), editFailed(), failed(), reload(), saved(), sectionSaved(), VisaDetails, DEPOSIT (+24 more)
 
-### Community 1089 - "path"
-Cohesion: 0.05
-Nodes (24): control(), createPeople(), People, superAdmin(), step(), ROWS, count(), path() (+16 more)
+### Community 1089 - "upc-033-commission-visibility.spec.ts"
+Cohesion: 0.52
+Nodes (6): day(), expectNoCommission(), expectNoSecrets(), post(), setUp(), signIn()
 
 ### Community 1090 - "Overseas BDM CRM User Documentation — Implementation Plan (Phase 2)"
 Cohesion: 0.29
 Nodes (6): Feature file template, File structure, Global Constraints, Overseas BDM CRM User Documentation — Implementation Plan (Phase 2), Review Focus, Self-review (S1)
 
 ### Community 1091 - "location"
-Cohesion: 0.06
-Nodes (40): location(), A "Location:" line as written, else the first known city named., Online(), 1. Owner answers (2026-10-07), 2. Data (migration 0091), 3. API (§12Q), 6. Tests, tel-016 — Counselor appointment booking for leads (design) (+32 more)
+Cohesion: 0.05
+Nodes (42): location(), A "Location:" line as written, else the first known city named., RecruiterFindCandidatesPage(), FindCandidatesPage(), rec-013 Find Candidates — implementation plan, Tasks, 1. Owner answers (2026-10-07), 2. Data (migration 0091) (+34 more)
 
-### Community 1092 - "rec-037-recruiter-reassign.spec.ts"
-Cohesion: 0.23
-Nodes (9): group(), deactivateAsAdmin(), post(), setUp(), signIn(), deactivateAsAdmin(), post(), setUp() (+1 more)
+### Community 1092 - "upc-032-manager-reassign.spec.ts"
+Cohesion: 0.80
+Nodes (4): deactivateAsAdmin(), post(), setUp(), signIn()
 
 ### Community 1174 - "0136_partnership_events.py"
 Cohesion: 0.43
@@ -5903,24 +5989,28 @@ Cohesion: 0.50
 Nodes (3): Coverage, Issues, MGMT-019 — Telecalling dashboard: exploratory QA (2026-10-13)
 
 ### Community 1177 - "0142_profile_shares.py"
-Cohesion: 0.06
-Nodes (32): _columns(), downgrade(), Column, Fresh Column objects per call: a Column can be attached to one table only., upgrade(), downgrade(), _in(), _inspect() (+24 more)
+Cohesion: 0.27
+Nodes (7): _fk(), Column, ForeignKey, rec-019 -- profile sharing: profile_shares and profile_share_items. Revision…, _tables(), _timestamps(), upgrade()
+
+### Community 1188 - "PartnerCapital.test.tsx"
+Cohesion: 0.25
+Nodes (7): Capital, account(), ARJUN, capital(), MEERA, QUERY, refresh
 
 ### Community 1189 - "upc-027-partner-onboarding.spec.ts"
 Cohesion: 0.31
 Nodes (8): apiLogin(), day(), ITEMS, PDF, send(), setUp(), signAgreement(), signIn()
 
-### Community 1190 - "5. Dependency graph and sequencing"
-Cohesion: 0.40
-Nodes (5): 5.1 Must be sequential, 5.2 Can run independently (separate worktrees, after their prerequisites), 5.4 Migrations, 5.5 Implement first, 5. Dependency graph and sequencing
+### Community 1190 - "bdm-010-travel.spec.ts"
+Cohesion: 0.28
+Nodes (6): createPeople(), createTrip(), People, superAdmin(), today(), 5.1 `GET /school/attendance?date=YYYY-MM-DD` — the teacher's roster for a day
 
-### Community 1191 - "Feature CNS-001"
-Cohesion: 0.27
-Nodes (10): API §9 Overseas Staff (CNS-001, UNI-001), Feature CNS-001, Feature UNI-001, SCR-CNS-001 /overseas/counselor (Dashboard), SCR-CNS-002 /overseas/counselor/students, SCR-CNS-003 /overseas/counselor/appointments, SCR-UNI-001 /overseas/university (Dashboard), SCR-UNI-002 /overseas/university/applications/[id] (+2 more)
+### Community 1191 - "Scaling Strategy"
+Cohesion: 0.22
+Nodes (8): ADR-010 Concurrency-driven scaling, No confirmed RPS/concurrency target exists — this is an open item, not filled in with an invented number, No confirmed RPS/concurrency target (open item), Scaling Strategy, What actually drives load in this system (derived from confirmed features, not invented), What must happen before real capacity numbers can be set, What this document does NOT do, Why "10,000+ users" is the wrong number to design against
 
-### Community 1192 - "rec-032 — Recruiter dashboard + quick actions + one-click skill search (design)"
-Cohesion: 0.20
-Nodes (9): 1. Sources and authority, 2. Intent, 3. Recommended defaults (DB1–DB10, UNVERIFIED), 4. Tiles (Appendix B, as built), 5. API — `GET /api/v1/recruiter/dashboard?recruiter=<uuid>`, 7. Errors, security, performance, 8. Tests, 9. Plan (small tasks, TDD) (+1 more)
+### Community 1192 - "Review Focus"
+Cohesion: 0.22
+Nodes (9): Global Constraints, mgmt-032 Monthly Business Review Implementation Plan, Review Focus, Task 1: model + migration, Task 2: service + routes, Task 3: PDF + worker, Task 4: web lib + list page, Task 5: review page + editor (+1 more)
 
 ### Community 1193 - "0186_lead_loss_capture.py"
 Cohesion: 0.43
@@ -5934,69 +6024,65 @@ Nodes (10): _assignment(), _body(), no_crm(), asyncio, fixture, parametrize, tel
 Cohesion: 0.20
 Nodes (9): 1. Sources and authority, 2. Intent, 3. Recommended defaults (BP1–BP8, UNVERIFIED), 4. Figures (Appendix B, as built; period [start, end) in IST), 5. API — `GET /api/v1/recruiter/performance/by-recruiter?from&to&recruiter`, 6. Web, 7. Security, 8. Tests (+1 more)
 
-### Community 1196 - "csc-001 — Student → counselor link (design)"
-Cohesion: 0.20
-Nodes (9): Backlog deviation (recorded, builder's call), csc-001 — Student → counselor link (design), Edge cases, Intent, Migration, Not changed (SHOULD NOT CHANGE), Security, Tests (+1 more)
-
-### Community 1220 - "ENH-018 -- school activity feedback…"
-Cohesion: 0.31
-Nodes (9): ENH-018 -- school activity feedback…, ENH-011 Skills Tracker Plan, DEC-SCOPE-026, ENH-011 School Skills Tracker, ENH-011 School Skills Tracker Implementation Plan, Migration 0035 skills tracker, ENH-018 School Activity Feedback Plan, school_activity_feedback table (+1 more)
-
-### Community 1224 - "DocumentReview"
+### Community 1196 - "bdm-007 — Appointment outcome + meeting report (design)"
 Cohesion: 0.22
-Nodes (7): DocumentReview, ccrm-021 (DEC-SCOPE-251): a counselor's / Overseas Admin's review. A missing…, ccrm-021 — Document status model, expiry and versions (design), Changes, Intent, Reviews (Phase 3), Tests
+Nodes (9): 10. Regression risks, 11. Testing (lite only; the owner runs the full suites), 1. Goal, 2. Scope, 3. Owner decisions (2026-10-05, in-session, `EXPLICIT_APPROVAL`), 6. Transactions, concurrency, failure, 7. Security (security-and-hardening review), 9. Acceptance criteria (testable) (+1 more)
+
+### Community 1220 - "ENH-011 Skills Tracker Plan"
+Cohesion: 0.50
+Nodes (5): ENH-011 Skills Tracker Plan, DEC-SCOPE-026, ENH-011 School Skills Tracker, ENH-011 School Skills Tracker Implementation Plan, Migration 0035 skills tracker
+
+### Community 1224 - "ccrm-030 — Counselor reminder and trigger engine (design)"
+Cohesion: 0.22
+Nodes (8): API (§12FW), ccrm-030 — Counselor reminder and trigger engine (design), Data, Intent, Out of scope, Rules (RM1 — catalogue and defaults), Tests, UI
 
 ### Community 1225 - "test_migration_0030_backfills_preexisting_school_student_via_downgrade_upgrade_cycle"
 Cohesion: 0.36
 Nodes (7): Review finding fix (BLOCKER): this test used to run `command.downgrade` for…, test_migration_0030_backfills_preexisting_school_student_via_downgrade_upgrade_cycle(), _exec(), _on_maintenance_db(), _inner(), _query(), _run()
 
-### Community 1226 - "before"
-Cohesion: 0.25
-Nodes (3): before(), LOGO, manchester()
+### Community 1227 - "0105_university_master.py"
+Cohesion: 0.36
+Nodes (7): _columns(), downgrade(), _inspector(), Column, upc-003 -- Global University Master: code, master fields, ownership, publish…, Fresh Column objects per call: a Column binds to one table., upgrade()
 
-### Community 1227 - "SchoolSkillBatchesPanel.test.tsx"
-Cohesion: 0.22
-Nodes (3): LAKE, push, SUN
-
-### Community 1229 - "ENH-014 Multi-Channel Notifications Plan"
-Cohesion: 0.22
-Nodes (9): Feature PAY-001, API §10 Notifications, Payments (system-facing, NOT-*, PAY-001), DEC-NOT-001, ENH-014 Multi-Channel Notifications Plan, Queue deliveries after commit, Celery send with retry, E.164 normalisation, India default +91, notification_preferences table and API, app/notifications package (phone, dispatch, twilio, delivery) (+1 more)
+### Community 1229 - "0139_recruiter_contracts.py"
+Cohesion: 0.36
+Nodes (6): _document(), _in_list(), Column, rec-030 -- recruiter contracts / MoU: recruiter_contracts and…, _tables(), upgrade()
 
 ### Community 1230 - "test_adm_001_admin_crud.py"
 Cohesion: 0.41
 Nodes (15): _create_active_batch(), _create_admin(), _create_program(), _create_trainer(), _login(), asyncio, ADM-001 -- User/course/batch administration. The base codebase already had…, test_a_non_admin_cannot_manage_users_or_programs() (+7 more)
 
 ### Community 1231 - "rec-021 Interview feedback — exploratory browser QA (2026-10-11)"
-Cohesion: 0.40
-Nodes (5): Automated evidence, Checks (second pass, after the fix): 23 / 23 passed, First pass (no code changed): 21 checks passed, 1 issue found, rec-021 Interview feedback — exploratory browser QA (2026-10-11), Setup
+Cohesion: 0.29
+Nodes (7): rec-021 Interview Feedback QA, Automated evidence, Checks (second pass, after the fix): 23 / 23 passed, First pass (no code changed): 21 checks passed, 1 issue found, QA21-01 Feedback textarea overflow, rec-021 Interview feedback — exploratory browser QA (2026-10-11), Setup
 
 ### Community 1232 - "Review focus"
-Cohesion: 0.22
-Nodes (8): Global constraints, rec-009 Candidate master — Implementation Plan, Review focus, Task 1: Migration + models + schemas, Task 2: Service + candidate routes, Task 3: Resumes, Task 5: Create form + detail page + resume card, Task 6: E2E + docs
+Cohesion: 0.20
+Nodes (9): Global constraints, rec-009 Candidate master — Implementation Plan, Review focus, Task 1: Migration + models + schemas, Task 2: Service + candidate routes, Task 3: Resumes, Task 4: Web lib + list page + nav, Task 5: Create form + detail page + resume card (+1 more)
 
-### Community 1233 - "tel-025 — Telecaller deactivation, team move and bulk reassignment — design"
-Cohesion: 0.22
-Nodes (9): tel-025 Telecaller Lifecycle Design, 1. Owner answers, 2. API (`api/telecaller_lifecycle.py`, prefix `/admin`), 3. Service (`services/telecaller_lifecycle.py`), 4. Frontend, 5. Acceptance criteria → tests, 7. Risks, DEC-SCOPE-104 (tel-025 LC1-LC4) (+1 more)
+### Community 1233 - "Task 2: Route, gate, schemas, dates (security and contract)"
+Cohesion: 0.29
+Nodes (8): AgentFunnelOut, AgentPerformanceCountsOut, AgentPerformanceOut, AgentPerformanceRowOut, AGN-019 (DEC-SCOPE-066 P3): distinct students who reached each stage or a later…, AGN-018's G3 column definitions over the date cohort (P5), plus that cohort's…, Master only. No ids, emails or phones: codes and names only (as…, Task 2: Route, gate, schemas, dates (security and contract)
 
 ### Community 1234 - "rec-033 — Recruiter performance dashboard (design)"
 Cohesion: 0.22
 Nodes (8): 1. Sources and authority, 2. Intent, 3. Recommended defaults (PF1–PF9, UNVERIFIED), 4. Figures (Appendix B, as built; period [start, end)), 5. API — `GET /api/v1/recruiter/performance?from&to&recruiter`, 7. Security, 8. Tests, rec-033 — Recruiter performance dashboard (design)
 
-### Community 1235 - "0047_agent_org_staff.py"
-Cohesion: 0.43
-Nodes (6): assert_no_staff(), _columns(), _constraints(), downgrade(), Names of the table's unique + check constraints (offline SQL generation assumes…, upgrade()
+### Community 1235 - "safeNextPath"
+Cohesion: 0.46
+Nodes (4): BdmSignInPage(), TelecallerSignInPage(), safeNextPath(), renderWith()
 
 ### Community 1236 - "rec-035 — Management dashboard, recruiter business view (design)"
 Cohesion: 0.22
 Nodes (8): 1. Sources and authority, 2. Intent, 3. Recommended defaults (MG1–MG8, UNVERIFIED), 4. API — `GET /api/v1/recruiter/management?from&to`, 5. Web, 6. Security, 7. Tests and plan, rec-035 — Management dashboard, recruiter business view (design)
 
-### Community 1239 - "3. Decisions and questions"
-Cohesion: 0.50
-Nodes (4): 3.1 Answered in-session 2026-09-28 (`EXPLICIT_APPROVAL`, recorded as `DEC-SCOPE-055`), 3.2 Item questions — all answered 2026-09-28 (`DEC-SCOPE-055` D10–D29), 3.3 Definition questions from the field-level trace — answered 2026-09-28 (`DEC-SCOPE-055` D30–D32), 3. Decisions and questions
+### Community 1239 - "REC-035_EXPLORATORY_QA_2026-10-11.md"
+Cohesion: 0.25
+Nodes (7): Issues, MG2 Selected Joined equal rec-033 totals, QA35-01 At a glance card heading, rec-035 — Exploratory QA (2026-10-11), Scenarios, QA-12 Performance 32767-parameter limit, rec-033 Recruiter Performance
 
-### Community 1240 - "csc-002 — Counselor creates a walk-in student account; the welcome email is sent (design)"
-Cohesion: 0.22
-Nodes (8): API, Builder's calls (owner said: proceed with recommended answers), csc-002 — Counselor creates a walk-in student account; the welcome email is sent (design), `GET /counselor/students?limit=20&offset=0` → 200, Intent, Not changed, Security, Tests
+### Community 1240 - "File Structure"
+Cohesion: 0.25
+Nodes (8): File Structure, Task 10: Web — `lib/agentStudents.ts` and `AgentStudentForm`, Task 12: Playwright spec (Master flows), Task 13: Documentation and traceability, Task 14: Verification sweep (evidence only — no completion claim), Task 2: Migration round trip and guards, Task 8: Backend checkpoint (targeted regression, no completion claim), Task 9: Web — types, navigation, PortalPage (G2 frontend, identical to AGN-002)
 
 ### Community 1241 - "STU-001 — Trainer/batch slot enrolment"
 Cohesion: 0.50
@@ -6014,9 +6100,9 @@ Nodes (8): API (additive; no existing contract changes), Builder's calls (`NEEDS
 Cohesion: 0.47
 Nodes (4): accounts(), at11(), fileRequest(), signIn()
 
-### Community 1245 - "Competitor Insights: Creative Brief Input"
-Cohesion: 0.22
-Nodes (8): 1. Offer status: "Job Guarantee OR 50% Fee Back", 2. Competitor advertising strategy (n = 322 Dubai-destination ads, `07` §2), 3. White space EduSphere can own (`07`), 4. Student pain points and objections (`08`, organic comments in `04`/`05`), 5. Hooks used in this test (all 🟢; no proof document needed beyond the counselling-service description), 6. Audiences to test later (hypotheses from `08` §4; verify in Ads Manager, nothing was created), 7. Engagement opportunities, Competitor Insights: Creative Brief Input
+### Community 1245 - "rec-025 Recruiter Call Logging Implementation Plan"
+Cohesion: 0.25
+Nodes (7): Global Constraints, rec-025 Recruiter Call Logging Implementation Plan, Review Focus, Task 1: Model + migration, Task 3: PATCH / DELETE (AC3), Task 4: Web lib + components, Task 5: E2E + docs
 
 ### Community 1246 - "graphify reference: query, path, explain"
 Cohesion: 0.33
@@ -6030,9 +6116,9 @@ Nodes (6): DEC-ARCH-001 (modular monolith), DEC-INFRA-002 (Droplet + Managed Pos
 Cohesion: 0.50
 Nodes (4): BdmAssignmentHistory append-only table, Migration 0082_bdm_assignment_history, PATCH refusals use 422 not 409, bdm-025 Deactivation and Portfolio Handover Plan
 
-### Community 1249 - "QA Report: Study in Dubai test creatives"
-Cohesion: 0.22
-Nodes (8): 1. File inventory (all exist; verified by reading them back), 2. Reel: ffmpeg-skill delivery check (`scripts/check.py instagram-reel.mp4 --platform reels --content`), 3. Audio ↔ subtitle synchronisation (faster-whisper `tiny.en`, offline, word timestamps), 4. Canva MCP candidate: rejected, 5. Checklist, 6. Open items before any real publishing (owner: EduSphere), 7. Reproduce, QA Report: Study in Dubai test creatives
+### Community 1249 - "rec-036 — IT-training ↔ recruiter integration (design)"
+Cohesion: 0.25
+Nodes (7): 1. Recommended defaults (Q-11, Q-13, edge cases), 2. Data, 3. Backend, 5. Security, 6. Tests, Journey shape, rec-036 — IT-training ↔ recruiter integration (design)
 
 ### Community 1250 - "mgmt-012 — Marketing budget, spend & ROI — exploratory QA, 2026-10-13"
 Cohesion: 0.33
@@ -6046,41 +6132,41 @@ Nodes (7): Call, nav, omar, page(), ravi, res(), serve()
 Cohesion: 0.32
 Nodes (8): Deduplicate Global Event Listeners, Use Passive Event Listeners for Scrolling Performance, SWR Automatic Deduplication, Use SWR for Automatic Deduplication, useSWR, Client-Side Data and Event Patterns, SWR (stale-while-revalidate library), useSWRSubscription
 
-### Community 1253 - "Extract to Memoized Components"
-Cohesion: 0.36
-Nodes (8): Hoist Static JSX Elements, React Compiler, Extract to Memoized Components, React.memo Memoization, useMemo Hook, Extract Default Non-primitive Parameter Value from Memoized Component to Constant, Don't Define Components Inside Components, Do not wrap a simple expression with a primitive result type in useMemo
+### Community 1253 - "ccrm-014 — Application sub-status (CC1) — design"
+Cohesion: 0.25
+Nodes (7): Alternatives rejected, ccrm-014 — Application sub-status (CC1) — design, Design, Mapping (SS1), Owner answers, Requirement, Risks
 
-### Community 1254 - "0078_enquiry_lead_record.py"
-Cohesion: 0.32
-Nodes (6): _backfill_phones(), _normalise_phone(), tel-003 -- enquiries become leads: the LD-000001 Lead ID and the EVID-019 §2…, Batched by id; ids only, never a phone, in anything logged., upgrade(), Task 1: Model columns + migration 0077 (AC1, AC4, AC5, L2)
+### Community 1254 - "ccrm-040 — Archive instead of delete; overseas consent capture — design"
+Cohesion: 0.25
+Nodes (7): API (§12GC), Archive rules, ccrm-040 — Archive instead of delete; overseas consent capture — design, Consent rules, Existing behaviour (verified on main @ cdc5b25d), Plan, Tests
 
-### Community 1255 - "AdminUserManagementPanel.test.tsx"
-Cohesion: 0.36
-Nodes (7): base, json(), listFor(), { refresh }, renderPanel(), stubFetch(), users
+### Community 1255 - "nehn-020 — Retire student-facing invoices (design)"
+Cohesion: 0.25
+Nodes (7): Acceptance criteria (testable), Current state (verified 2026-10-26), Design (builder's calls), Intent, nehn-020 — Retire student-facing invoices (design), Out of scope, Review notes (Phase 3)
 
-### Community 1256 - "AgentApplicationEnrollment.test.tsx"
+### Community 1256 - "0098_bdm_agent_link.py"
 Cohesion: 0.43
-Nodes (7): api(), confirmWith(), detail(), enrolled, json(), mount(), openAndFill()
+Nodes (5): _checks(), _columns(), _inspector(), bdm-019 -- agent onboarding handover: the Agent Organization link and agent…, upgrade()
 
 ### Community 1257 - "ENH-031 — Searchable reference pickers: design"
 Cohesion: 0.25
 Nodes (8): 1. Requirement and evidence, 2. Decisions (owner's answers, in-session 2026-09-29), 4. Component: `SearchableSelect`, 6. Unchanged, 7. Acceptance criteria, 8. Testing, 9. Traceability, ENH-031 — Searchable reference pickers: design
 
 ### Community 1258 - "rec-022 — Offer management (design)"
-Cohesion: 0.25
-Nodes (8): rec-022 Offer Management Design, 2. Data (`0138`), 3. API (§12BW), 4. Web, 5. Tests, 7. Security review (Phase 3), DEC-SCOPE-155 (OF1-OF10 UNVERIFIED), rec-022 — Offer management (design)
+Cohesion: 0.29
+Nodes (7): rec-022 Offer Management Design, 3. API (§12BW), 4. Web, 5. Tests, 7. Security review (Phase 3), DEC-SCOPE-155 (OF1-OF10 UNVERIFIED), rec-022 — Offer management (design)
 
-### Community 1261 - "mgmt-005 — Automatic ledger sources — design"
-Cohesion: 0.25
-Nodes (7): 1. Intent, 2. Decisions (MA1–MA12), 3. Data, 4. Components, 5. Error handling, 6. Testing, mgmt-005 — Automatic ledger sources — design
+### Community 1261 - "0140_joining_management.py"
+Cohesion: 0.52
+Nodes (6): downgrade(), _in(), _inspect(), rec-023 -- joining management: job_offers gains the EVID-018 §17 joining…, _replace_event_check(), upgrade()
 
 ### Community 1262 - "ccrm-039 — Student finance tab on the counselor's student 360 (design)"
 Cohesion: 0.25
 Nodes (7): Acceptance, API, ccrm-039 — Student finance tab on the counselor's student 360 (design), Intent, Non-goals, Open questions from the backlog → recommended defaults (`NEEDS_CONFIRMATION`, owner's standing "proceed with recommended answers"), UI
 
 ### Community 1263 - "2. Decisions (ML1–ML16)"
-Cohesion: 0.29
-Nodes (6): 1. Intent, 2. Decisions (ML1–ML16), 3. Data (migration `0150_management_ledger`), 5. Error handling, 6. Testing, mgmt-004 — Management ledger: categories, manual income/expense, approval, tags — design
+Cohesion: 0.25
+Nodes (7): 1. Intent, 2. Decisions (ML1–ML16), 3. Data (migration `0150_management_ledger`), 4. Components, 5. Error handling, 6. Testing, mgmt-004 — Management ledger: categories, manual income/expense, approval, tags — design
 
 ### Community 1264 - "0003_operational_workflows.py"
 Cohesion: 0.43
@@ -6094,133 +6180,117 @@ Nodes (5): _backfill(), _inspector(), upc-004 -- duplicate key on universities +
 Cohesion: 0.48
 Nodes (6): downgrade(), _has_check(), _has_column(), _in(), ccrm-021 -- document status list, expiry and versions: student_documents CHECK…, upgrade()
 
-### Community 1267 - "AgentApplicationOffer.test.tsx"
+### Community 1267 - "0154_salaries.py"
+Cohesion: 0.43
+Nodes (5): Column, mgmt-011 -- salary management: `departments` (+ seed) and…, _timestamps(), upgrade(), _user()
+
+### Community 1268 - "rec-011 — Candidate skill profile (plan)"
+Cohesion: 0.33
+Nodes (6): CandidateSkillCreate, CandidateSkillStatusChange, CandidateSkillUpdate, PATCH: omitted = unchanged; a null experience or last-used year clears it,…, SK5: `skill` is text resolved through the Skills Master (a name or an alias). A…, rec-011 — Candidate skill profile (plan)
+
+### Community 1269 - "InvestmentCreate"
+Cohesion: 0.29
+Nodes (7): InvestmentCreate, InvestmentOut, InvestmentPageOut, InvestmentUpdate, MI2/MI4. Whether `investor_user_id` names an active partner is checked in the…, MI10: only the fields sent change. A required field sent as null fails its own…, 3. Components
+
+### Community 1270 - "AgentApplicationEnrollment"
+Cohesion: 0.48
+Nodes (6): AgentApplicationEnrollment(), cancel(), save(), show(), start(), submit()
+
+### Community 1271 - "CapitalSharesForm"
 Cohesion: 0.38
-Nodes (5): detail(), json(), LETTER, OFFER, serve()
+Nodes (7): CapitalSharesForm(), submit(), sharesBody(), sharesProblem(), mgmt-015 Partner capital accounts plan, mgmt-015 — Partner capital accounts — implementation plan, PartnerCapitalEntry + PartnerShare (migration 0159_partner_capital)
 
-### Community 1269 - "Angle Writer"
-Cohesion: 0.29
-Nodes (6): Angle Writer, Doctrine, Good output looks like, Guardrails, Run it, When to use
+### Community 1275 - "upc-029-global-dashboard.spec.ts"
+Cohesion: 0.43
+Nodes (4): istToday(), send(), setUp(), superAdmin()
 
-### Community 1270 - "Audience Builder"
+### Community 1276 - "nehn-040 — Student ID coverage and lookup (design + plan)"
 Cohesion: 0.29
-Nodes (6): Audience Builder, Doctrine, Good output looks like, Guardrails, Run it, When to use
-
-### Community 1271 - "Brand Reader"
-Cohesion: 0.29
-Nodes (6): Brand Reader, Doctrine, Good output looks like, Guardrails, Run it, When to use
-
-### Community 1272 - "Budget Pacer"
-Cohesion: 0.29
-Nodes (6): Budget Pacer, Doctrine, Good output looks like, Guardrails, Run it, When to use
-
-### Community 1273 - "Buyer Language Miner"
-Cohesion: 0.29
-Nodes (6): Buyer Language Miner, Doctrine, Good output looks like, Guardrails, Run it, When to use
-
-### Community 1274 - "Catalog & Commerce"
-Cohesion: 0.29
-Nodes (6): Catalog & Commerce, Doctrine, Good output looks like, Guardrails, Run it, When to use
-
-### Community 1275 - "Competitor Ad Teardown"
-Cohesion: 0.29
-Nodes (6): Competitor Ad Teardown, Doctrine, Good output looks like, Guardrails, Run it, When to use
-
-### Community 1276 - "Copy Formulas"
-Cohesion: 0.29
-Nodes (6): Copy Formulas, Doctrine, Good output looks like, Guardrails, Run it, When to use
+Nodes (6): Acceptance criteria, Builder's calls (`NEEDS_CONFIRMATION`), Changes, Intent, nehn-040 — Student ID coverage and lookup (design + plan), Regression risks
 
 ### Community 1277 - "ENH-021 / ENH-026 — Browser QA record (2026-09-28)"
+Cohesion: 0.33
+Nodes (5): Completion verification (fresh evidence, `cc3626d`), ENH-021 / ENH-026 — Browser QA record (2026-09-28), Final verification pass and fixes (same day, stack rebuilt from `58a9ed2`), Findings and resolution, Re-test after the fix pass (rebuilt `api`/`web`, same isolated browser)
+
+### Community 1278 - "0037_school_skills.py"
+Cohesion: 0.53
+Nodes (4): Column, _timestamps(), upgrade(), _user()
+
+### Community 1279 - "0073_bdm_pipeline.py"
 Cohesion: 0.40
-Nodes (4): Completion verification (fresh evidence, `cc3626d`), ENH-021 / ENH-026 — Browser QA record (2026-09-28), Final verification pass and fixes (same day, stack rebuilt from `58a9ed2`), Re-test after the fix pass (rebuilt `api`/`web`, same isolated browser)
+Nodes (3): _present(), bdm-004 -- organization pipelines: pipeline_stage + Lost on bdm_organizations,…, upgrade()
 
-### Community 1278 - "Creative Director"
-Cohesion: 0.29
-Nodes (6): Creative Director, Doctrine, Good output looks like, Guardrails, Run it, When to use
+### Community 1280 - "0076_tel_catalogue.py"
+Cohesion: 0.40
+Nodes (4): tel-002 -- tel_products (seeded with the 18 EVID-019 §3 values) and…, One INSERT per seed row, skipped when that (group, lower(name)) already exists., seed_statements(), upgrade()
 
-### Community 1279 - "Daily Auditor"
-Cohesion: 0.29
-Nodes (6): Daily Auditor, Doctrine, Good output looks like, Guardrails, Run it, When to use
+### Community 1281 - "0079_bdm_mous.py"
+Cohesion: 0.47
+Nodes (4): _in_list(), bdm-005 -- MoU tracking: bdm_mous and bdm_mou_events. Revision ID:…, _tables(), upgrade()
 
-### Community 1280 - "Fatigue Detector"
-Cohesion: 0.29
-Nodes (6): Doctrine, Fatigue Detector, Good output looks like, Guardrails, Run it, When to use
+### Community 1282 - "0101_country_master.py"
+Cohesion: 0.47
+Nodes (4): _inspector(), upc-002 -- country master: ISO 3166-1 alpha-2 code, region, catalogue…, slug_for(), upgrade()
 
-### Community 1281 - "Lead-Gen Builder"
-Cohesion: 0.29
-Nodes (6): Doctrine, Good output looks like, Guardrails, Lead-Gen Builder, Run it, When to use
+### Community 1283 - "0107_candidates.py"
+Cohesion: 0.53
+Nodes (4): Column, _text(), upgrade(), _uuid()
 
-### Community 1282 - "Media Buyer"
-Cohesion: 0.29
-Nodes (6): Doctrine, Good output looks like, Guardrails, Media Buyer, Run it, When to use
-
-### Community 1283 - "Pain to Promise"
-Cohesion: 0.29
-Nodes (6): Doctrine, Good output looks like, Guardrails, Pain to Promise, Run it, When to use
-
-### Community 1284 - "Performance Analyst"
-Cohesion: 0.29
-Nodes (6): Doctrine, Good output looks like, Guardrails, Performance Analyst, Run it, When to use
-
-### Community 1285 - "Pixel & Conversions"
-Cohesion: 0.29
-Nodes (6): Doctrine, Good output looks like, Guardrails, Pixel & Conversions, Run it, When to use
+### Community 1284 - "0115_university_visits.py"
+Cohesion: 0.40
+Nodes (4): Column, upc-010 -- University visits + approval. Revision ID: 0115_university_visits…, upgrade(), _user_fk()
 
 ### Community 1286 - "0190_overdue_escalation.py"
 Cohesion: 0.70
 Nodes (4): downgrade(), _key_check(), _replace_check(), upgrade()
 
-### Community 1287 - "6. Execution plan — waves, parallel lanes, same-session bundles"
-Cohesion: 0.29
-Nodes (7): 6.1 Ground rules, 6.2 Conflict-avoidance rules (apply to every lane), 6.3 Waves, 6.4 Why each bundle, and why each pair can run in parallel, 6.5 Never run in parallel, 6.6 Single-lane fallback (one session at a time), 6. Execution plan — waves, parallel lanes, same-session bundles
+### Community 1287 - "0126_partnership_tasks.py"
+Cohesion: 0.40
+Nodes (4): Column, upc-020 -- Partnership tasks + follow-ups. Revision ID: 0126_partnership_tasks…, upgrade(), _user_fk()
 
-### Community 1288 - "payments.py"
-Cohesion: 0.05
-Nodes (59): checkout(), download_invoice(), download_receipt(), emi_schedule(), _ensure_invoice(), _ensure_receipt(), _lock_for_update(), mine() (+51 more)
+### Community 1288 - "Payment"
+Cohesion: 0.03
+Nodes (151): checkout(), download_invoice(), download_receipt(), emi_schedule(), _ensure_receipt(), _lock_for_update(), _mark_paid(), mine() (+143 more)
 
-### Community 1289 - "AGN-015 — Exploratory browser QA (first pass, 2026-10-03)"
-Cohesion: 0.29
-Nodes (6): AGN-015 — Exploratory browser QA (first pass, 2026-10-03), AGN-015 feature under QA, Fix pass (2026-10-03, after merging `main` @ `c5cdc8a`), Issues, Results by check, Test-environment notes (not product defects)
+### Community 1289 - "AgentShortlistPanel.tsx"
+Cohesion: 0.18
+Nodes (15): editId(), removeId(), ShortlistCard(), AgentShortlistPanel(), closeConfirm(), closeForm(), remove(), Editing (+7 more)
 
 ### Community 1290 - "mgmt-011 — Salary management + employee cost ratio — exploratory browser QA (2026-10-12)"
 Cohesion: 0.29
 Nodes (6): First pass (no code changes), Issues, mgmt-011 — Salary management + employee cost ratio — exploratory browser QA (2026-10-12), Not defects, Playwright, Setup
 
-### Community 1291 - "6. Frontend"
-Cohesion: 0.29
-Nodes (7): 6.1 Navigation — `apps/web/lib/navigation.ts`, 6.2 Page — `apps/web/components/PortalPage.tsx`, 6.2a `apps/web/components/AgentPerformanceSection.tsx` (new, server), 6.3 `apps/web/lib/agentPerformance.ts` (new), 6.4 `apps/web/components/AgentPerformancePanel.tsx` (new, client), 6.5 Dashboard link — `apps/web/components/AgentDashboardPanel.tsx`, 6. Frontend
+### Community 1291 - "0127_university_agreements.py"
+Cohesion: 0.47
+Nodes (4): fk(), _in(), upc-014 -- university_agreements + university_agreement_events +…, upgrade()
 
-### Community 1292 - "rec-007 — Job Requirement (`jobs` extension) (design)"
-Cohesion: 0.29
-Nodes (7): 2. Transitions, 3. Data (`0114_job_requirements`), 4. Scope and permissions (`services/recruiter_requirements.py`, the rec-003 inline pattern), 5. API (§12AW) — `/api/v1/recruiter/requirements`, 6. Web, 7. Acceptance criteria, rec-007 — Job Requirement (`jobs` extension) (design)
+### Community 1292 - "0129_university_commission_terms.py"
+Cohesion: 0.40
+Nodes (3): fk(), upc-016 -- university_commission_terms: §15 commercial / commission terms…, upgrade()
 
-### Community 1293 - "upc-003 — Global University Master (design + plan)"
-Cohesion: 0.29
-Nodes (7): 1. Decisions (recommended defaults), 2. Data model — migration `0105_university_master`, 3. Backend, 5. Acceptance criteria, 6. Tasks (TDD, in order), 7. Regression set (lite), upc-003 — Global University Master (design + plan)
+### Community 1293 - "_columns"
+Cohesion: 0.47
+Nodes (5): _columns(), downgrade(), Column, Fresh Column objects per call: a Column can be attached to one table only., upgrade()
 
-### Community 1294 - "ccrm-010 — Internal notes on an overseas student (counselling history) (design)"
-Cohesion: 0.29
-Nodes (6): Builder's calls (owner: proceed with recommended answers), ccrm-010 — Internal notes on an overseas student (counselling history) (design), Data — `overseas_student_notes` (append-only), Intent, Security review (Phase 3), Tests
+### Community 1294 - "0153_management_tasks.py"
+Cohesion: 0.47
+Nodes (4): _in(), Column, upgrade(), _user()
 
 ### Community 1295 - "ccrm-009 — Counselor student 360 page (design)"
-Cohesion: 0.29
-Nodes (6): Acceptance, ccrm-009 — Counselor student 360 page (design), Intent, Non-goals, Owner answers (2026-10-24), UI
-
-### Community 1296 - "bdm"
-Cohesion: 0.03
-Nodes (6): PDF, Notice, TILES, bdm(), lines(), post()
+Cohesion: 0.25
+Nodes (7): Acceptance, API (all `GET`, read-only, under `/api/v1/counselor/students/{id}`), ccrm-009 — Counselor student 360 page (design), Intent, Non-goals, Owner answers (2026-10-24), UI
 
 ### Community 1297 - "Overseas BDM CRM Documentation — Progress Tracker"
 Cohesion: 0.40
 Nodes (4): Discovered functionality (outside the IDs), Overseas BDM CRM Documentation — Progress Tracker, Session log, Unresolved items
 
-### Community 1298 - "ccrm-013 — Application fields and counselor-editable dates (design)"
-Cohesion: 0.29
-Nodes (6): Calls (F1–F9, recommended defaults), ccrm-013 — Application fields and counselor-editable dates (design), Intent, Non-goals, Tests, What is built
+### Community 1298 - "0157_direct_tieups.py"
+Cohesion: 0.47
+Nodes (4): _add(), _inspector(), dtu-001 -- Direct Tie-ups: catalogue logo / campuses / fee block, course texts,…, upgrade()
 
-### Community 1299 - "ccrm-004 — Counselor activity logging on leads (design)"
-Cohesion: 0.29
-Nodes (6): Authorisation, ccrm-004 — Counselor activity logging on leads (design), Goals, Intent, Non-goals, Regression risks
+### Community 1299 - "telecallerCalls.ts"
+Cohesion: 0.09
+Nodes (36): CallLogForm(), check(), send(), submit(), LEGEND, Values, CallItem(), remove() (+28 more)
 
 ### Community 1300 - "mgmt-006 — Abroad Education revenue dashboard — exploratory browser QA (2026-10-13)"
 Cohesion: 0.40
@@ -6234,53 +6304,49 @@ Nodes (4): Issues found and fixed, mgmt-013 Accounts dashboard — exploratory b
 Cohesion: 0.40
 Nodes (4): Issues, mgmt-017 — Training dashboard: exploratory QA (2026-10-13), Re-check after the fix, Scenarios
 
-### Community 1303 - "ccrm-043 — Counselor "My students" with Source filter and search (design)"
-Cohesion: 0.29
-Nodes (6): Acceptance criteria (backlog AC1–AC7 + edges), ccrm-043 — Counselor "My students" with Source filter and search (design), Intent, Plan, Regression risks, Security
+### Community 1303 - "0158_social_proof.py"
+Cohesion: 0.47
+Nodes (4): _columns(), _inspector(), PUB-022 -- homepage social proof: testimonial…, upgrade()
 
 ### Community 1304 - "ccrm-052 — University-wise report: deposits, visas and drill-down (design)"
-Cohesion: 0.29
-Nodes (6): Behaviour, ccrm-052 — University-wise report: deposits, visas and drill-down (design), Defaults (`NEEDS_CONFIRMATION`), Intent, Non-goals, Plan (TDD)
+Cohesion: 0.13
+Nodes (12): Behaviour, ccrm-052 — University-wise report: deposits, visas and drill-down (design), Defaults (`NEEDS_CONFIRMATION`), Intent, Non-goals, Plan (TDD), Acceptance criteria, ccrm-053 — Counselor performance: Overseas Admin view, intake filter, Overseas/IT lead split (design) (+4 more)
 
-### Community 1305 - "ccrm-053 — Counselor performance: Overseas Admin view, intake filter, Overseas/IT lead split (design)"
-Cohesion: 0.29
-Nodes (6): Acceptance criteria, ccrm-053 — Counselor performance: Overseas Admin view, intake filter, Overseas/IT lead split (design), Decisions (PF1–PF10), Intent, Non-goals, Screens
+### Community 1305 - "0160_management_plans.py"
+Cohesion: 0.53
+Nodes (4): Column, _stamps(), upgrade(), _user()
 
-### Community 1306 - "VISA screens"
-Cohesion: 0.29
-Nodes (7): Feature VISA-001, Feature VISA-002, Feature VISA-003, SCR-VISA-001 /overseas/applications/[id]/visa (Checklist), SCR-VISA-002 /overseas/applications/[id]/visa/prep, SCR-VISA-003 /overseas/applications/[id]/visa/status, VISA screens
+### Community 1306 - "0161_management_meetings.py"
+Cohesion: 0.47
+Nodes (4): _in(), Column, upgrade(), _user()
 
-### Community 1307 - "Creative Review v1: EduSphere test ads vs live competitor ads"
-Cohesion: 0.29
-Nodes (6): 1. Scores, 2. Measured colour and brightness (pixel analysis, downscaled frames), 3. Findings, 4. Predicted performance (hypotheses to test, not results), 5. v2 changes recommended, Creative Review v1: EduSphere test ads vs live competitor ads
-
-### Community 1308 - "v2 QA: Canva-built FB ad + Reel (2026-10-27)"
-Cohesion: 0.29
-Nodes (6): Before / after (same rubric and pixel method as `../creative-review.md`), Checks (tools, not judgement), Files, Open items (unchanged from v1 unless noted), Sources, v2 QA: Canva-built FB ad + Reel (2026-10-27)
-
-### Community 1309 - "Suspense Boundaries"
+### Community 1307 - ".__table_args__"
 Cohesion: 0.33
-Nodes (6): Next.js Functions, Navigation Hooks (useRouter, usePathname, useSearchParams), Suspense Boundaries, usePathname CSR bailout, useSearchParams requires Suspense, useSearchParams Suspense Requirement
+Nodes (5): test_models_match_the_migration(), directive, Task 1: Migration 0076 and the model, 4. Data model — migration `0044_skill_india_certification`, 11. Regression risks
+
+### Community 1308 - "LeadStageMove"
+Cohesion: 0.33
+Nodes (4): CounselorLeadStageMove, LeadStageMove, ccrm-003 A1/A2: tel-004's move plus the next action, applied before the stage…, tel-004 — Lead pipeline: implementation plan
+
+### Community 1309 - "MarketingBudgetsIn"
+Cohesion: 0.40
+Nodes (5): MarketingBudgetIn, MarketingBudgetsIn, MarketingOut, MK4: the whole month; channels left out have no budget., 4. Components
 
 ### Community 1310 - "0185_document_sensitivity.py"
 Cohesion: 0.47
 Nodes (4): _backfill(), A whole-word, case-insensitive pattern (`~*`); a space in a name matches any…, upgrade(), _words()
 
-### Community 1311 - "_require_report_reader"
-Cohesion: 0.33
-Nodes (6): D5. A dependency, so a wrong role is 403 before a malformed id is 422 -- and…, _require_report_reader(), 6.1 `GET /api/v1/school/reports/school-summary`, 6.2 `GET /api/v1/school/students/{student_id}/progress-report`, 6.3 Shared response rules, 6. Endpoints
-
-### Community 1312 - "Departments"
+### Community 1311 - "AgentApplicationCreatePanel.test.tsx"
 Cohesion: 0.47
-Nodes (5): Departments(), add(), rename(), write(), mgmt-011 — Salary management + employee cost ratio — implementation plan
+Nodes (4): json(), page(), stub(), students
 
 ### Community 1313 - "next-best-practices/SKILL.md"
-Cohesion: 0.12
-Nodes (13): Basic Usage, Dynamic Route Handlers, Environment Behavior, GET Handler Conflicts with page.tsx, Request Helpers, Response Helpers, Route Handlers, Supported Methods (+5 more)
+Cohesion: 0.03
+Nodes (62): Debug Tricks, Rebuild Specific Routes (Next.js 16+), Directives, Next.js Directive, React Directives, `'use cache'`, `'use client'`, `'use server'` (+54 more)
 
-### Community 1314 - "API §12U Lead messages — WhatsApp click-to-chat (tel-013)"
-Cohesion: 0.33
-Nodes (6): DEC-SCOPE-100, DEC-SCOPE-106, Feature tel-013, Feature tel-014, API §12U Lead messages — WhatsApp click-to-chat (tel-013), API §12Z Lead messages — email to a lead (tel-014)
+### Community 1314 - "AgentTaskForm.test.tsx"
+Cohesion: 0.40
+Nodes (4): apps, res(), saved, stub()
 
 ### Community 1315 - "API §12AY Recruiter follow-ups (rec-024)"
 Cohesion: 0.40
@@ -6298,29 +6364,29 @@ Nodes (5): bdm-011 — Exploratory browser QA (2026-10-06), Findings, Fix pass (
 Cohesion: 0.33
 Nodes (5): 1. Automated evidence, 2. Coverage of the 20 requested areas, 3. Findings, 4. Fix pass (2026-10-06, test-first, each test seen failing first), bdm-025 — Exploratory browser QA, pass 1 (no code changes) — 2026-10-06
 
-### Community 1320 - "Review Focus"
-Cohesion: 0.33
-Nodes (5): Global Constraints, Review Focus, Task 3: Web — wire the three surfaces, Task 4: e2e + documentation, tel-015 Lead Timeline Implementation Plan
+### Community 1320 - "UniversityDocuments.test.tsx"
+Cohesion: 0.09
+Nodes (20): TimelineKind, doc(), person, refresh, version(), Global Constraints, Review Focus, Task 2: Web — `lib/leadTimeline.ts` + `LeadTimeline` component (+12 more)
 
 ### Community 1321 - "mgmt-028 — Management to-do + staff "Management tasks" — design"
-Cohesion: 0.33
-Nodes (5): 1. Intent, 3. Data (migration `0153_management_tasks`), 5. Error handling, 6. Testing, mgmt-028 — Management to-do + staff "Management tasks" — design
+Cohesion: 0.29
+Nodes (6): 1. Intent, 2. Decisions (MT1–MT14), 3. Data (migration `0153_management_tasks`), 5. Error handling, 6. Testing, mgmt-028 — Management to-do + staff "Management tasks" — design
 
-### Community 1322 - "mgmt-017 — Training & trainer dashboard (design)"
-Cohesion: 0.33
-Nodes (6): Architecture, Decisions (TR1–TR16), mgmt-017 — Training & trainer dashboard (design), Testing, UI, What the data supports (verified in code)
+### Community 1322 - "Salaries.test.tsx"
+Cohesion: 0.47
+Nodes (4): blankRow(), month(), refresh, row()
 
-### Community 1323 - "User"
-Cohesion: 0.01
-Nodes (749): act_on_agent_org(), add_school_staff_portfolio(), _admin_lead(), applications(), approve_agent(), approve_commission_payout(), approve_enrollment(), audit() (+741 more)
+### Community 1323 - "AuditLog"
+Cohesion: 0.02
+Nodes (206): act_on_agent_org(), add_school_staff_portfolio(), _admin_lead(), approve_agent(), approve_commission_payout(), approve_enrollment(), audit(), _audit_network_read() (+198 more)
 
-### Community 1324 - "csc-005 — Overseas Admin views and reassigns a student's counselor (design)"
-Cohesion: 0.33
-Nodes (5): Admin view, Builder's calls (owner: proceed with recommended answers), csc-005 — Overseas Admin views and reassigns a student's counselor (design), Intent, Tests
+### Community 1324 - "assign_student_counselor"
+Cohesion: 0.18
+Nodes (9): assign_student_counselor(), put, csc-005: AGN-023's assign body (swap only); the same counselor is `changed:…, csc-005 — Admin reassigns a student's counselor (plan), Admin view, Builder's calls (owner: proceed with recommended answers), csc-005 — Overseas Admin views and reassigns a student's counselor (design), Intent (+1 more)
 
-### Community 1325 - "make_telecaller"
-Cohesion: 0.06
-Nodes (91): distribute(), next_in_turn(), D2: the first candidate (in id order) after the cursor, wrapping; a cursor that…, Spec §2 for a new, unassigned lead (already flushed). Returns the method, or…, make_telecaller(), city(), lead(), only_eligible() (+83 more)
+### Community 1325 - "make_tl_manager"
+Cohesion: 0.05
+Nodes (131): distribute(), next_in_turn(), D2: the first candidate (in id order) after the cursor, wrapping; a cursor that…, Spec §2 for a new, unassigned lead (already flushed). Returns the method, or…, daily_activity(), §14 / T27: the 13 counts for one IST day (today: the snapshot is as of now)., make_tl_manager(), make_telecaller() (+123 more)
 
 ### Community 1327 - "ccrm-008 — Convert lead to student (one click, prefilled) — design"
 Cohesion: 0.33
@@ -6334,33 +6400,25 @@ Nodes (5): First pass (no code changes), Fixes (Phase 6, TDD), Issues, Re-test, 
 Cohesion: 0.32
 Nodes (5): asSuper(), clearOverrides(), IT_ADMIN, itAdminId(), SUPER
 
-### Community 1330 - "ccrm-033 — Reassignment with a logged reason (design + plan)"
-Cohesion: 0.33
-Nodes (5): 1. Owner answers (2026-10-25, clarifying-question prompt), 2. Existing behaviour (verified on `origin/main` @ `1b703ac2`), 4. Phase 3 review notes, 5. Plan (TDD, focused tests), ccrm-033 — Reassignment with a logged reason (design + plan)
-
 ### Community 1331 - "api/[...path]/route.ts"
 Cohesion: 0.29
 Nodes (5): DELETE, GET, PATCH, POST, PUT
 
-### Community 1332 - "nehn-022 — Razorpay test/live mode switch and go-live checklist (design)"
-Cohesion: 0.33
-Nodes (5): Goals (the backlog's acceptance criteria), Intent, nehn-022 — Razorpay test/live mode switch and go-live checklist (design), Non-goals and anti-goals, Regression risks
-
-### Community 1333 - "nehn-036 — Course/program icons (design)"
-Cohesion: 0.33
-Nodes (5): Acceptance criteria, Intent, nehn-036 — Course/program icons (design), Non-goals, Risks
-
-### Community 1334 - "nehn-041 — Unified admin/operations student search (design + plan)"
-Cohesion: 0.33
-Nodes (5): Acceptance criteria, Evidence (2026-10-26, isolated stack), Intent, nehn-041 — Unified admin/operations student search (design + plan), Plan (TDD, one slice at a time)
-
-### Community 1335 - "tel-022-targets.spec.ts"
+### Community 1332 - "mode"
 Cohesion: 0.14
-Nodes (6): tomorrow(), IST_DAY, setup(), accounts(), superAdmin(), 1. Decisions (recommended defaults)
+Nodes (12): mode(), nehn-022 (DEC-SCOPE-283): the gateway mode only (never a key), so payment…, Open questions (`NEEDS_CONFIRMATION`), Razorpay go-live runbook (`nehn-022`, `DEC-SCOPE-283`), Steps, What the application enforces, Builder's defaults (`NEEDS_CONFIRMATION`), Goals (the backlog's acceptance criteria) (+4 more)
 
-### Community 1336 - "ccrm-047 — Intake Month+Year picker (design)"
-Cohesion: 0.33
-Nodes (5): Acceptance (from backlog), ccrm-047 — Intake Month+Year picker (design), Intent, Non-goals, Risks
+### Community 1333 - "CourseIn"
+Cohesion: 0.07
+Nodes (30): AgentCommissionOut, CourseIn, CourseUpdate, CO10: the §16 fields; country and university come from the university., PATCH: omitted = unchanged; null clears an optional field and fails a required…, PATCH: omitted = unchanged; an explicit null on a required field fails its non-…, dtu-001 (DEC-SCOPE-209): EduSphere -> agent Master, per university. Present…, UniversityDetail (+22 more)
+
+### Community 1334 - "upc-010-university-visits.spec.ts"
+Cohesion: 0.40
+Nodes (3): setUp(), superAdmin(), today
+
+### Community 1336 - "LeadQualificationForm.tsx"
+Cohesion: 0.04
+Nodes (84): AgentStudentProfileCard(), qualificationText(), testText(), INTAKE, IntakePicker(), intakeProblem(), isIntake(), MONTH_KEYS (+76 more)
 
 ### Community 1337 - "graphify reference: add a URL and watch a folder"
 Cohesion: 0.50
@@ -6370,21 +6428,21 @@ Nodes (3): For /graphify add, For --watch, graphify reference: add a URL and wat
 Cohesion: 0.50
 Nodes (3): For git commit hook, For native CLAUDE.md integration, graphify reference: commit hook and native CLAUDE.md integration
 
-### Community 1339 - "Skills Audit: Study in Dubai ad production test"
-Cohesion: 0.33
-Nodes (5): 1. Inventory, 2. Capability classification, 3. Skills actually applied in this test, 4. Missing dependencies (summary), Skills Audit: Study in Dubai ad production test
+### Community 1339 - "upc-014-university-agreements.spec.ts"
+Cohesion: 0.40
+Nodes (3): PDF, setUp(), signIn()
 
 ### Community 1340 - "0064_application_deposits.py"
 Cohesion: 0.50
 Nodes (3): AGN-011 -- application deposits collected through Razorpay (DEC-SCOPE-058).…, _tables(), upgrade()
 
-### Community 1341 - "SchoolSkillEnrolments"
-Cohesion: 0.50
-Nodes (3): plural(), SchoolSkillEnrolments(), enrol()
+### Community 1341 - "upc-031-partnership-reports.spec.ts"
+Cohesion: 0.53
+Nodes (4): istToday(), send(), setUp(), signIn()
 
-### Community 1343 - "AGN-014 — Browser QA (first pass, 2026-10-02)"
-Cohesion: 0.40
-Nodes (4): AGN-014 — Browser QA (first pass, 2026-10-02), AGN-014 feature under QA, Issues, Results by check
+### Community 1343 - "MVP_FEATURES.md"
+Cohesion: 0.33
+Nodes (5): Explicitly NOT in the proposed MVP (would need separate confirmation to pull forward), MVP Features, Recommended MVP (Wave 0 + Wave 1, 27 features) - proposed, unconfirmed, Recommended MVP (proposed — Wave 0 + Wave 1, 27 features), What this recommendation does NOT do
 
 ### Community 1344 - "Issues"
 Cohesion: 0.33
@@ -6398,10 +6456,6 @@ Nodes (4): AGN-021 feature under QA, AGN-021 — View Staff Activity: Browser QA
 Cohesion: 0.50
 Nodes (3): Issues, mgmt-001 — exploratory QA (2026-10-12), Result
 
-### Community 1347 - "enh-028-bulk-entry.spec.ts"
-Cohesion: 0.12
-Nodes (5): names, unique, bothFormats(), download(), ref_node_fs_promises
-
 ### Community 1348 - "bdm-016 — Browser QA (2026-10-07)"
 Cohesion: 0.40
 Nodes (4): bdm-016 — Browser QA (2026-10-07), Findings, Pass 1 — exploratory (no code changed), Pass 2 — fixes (TDD) and re-check
@@ -6410,41 +6464,37 @@ Nodes (4): bdm-016 — Browser QA (2026-10-07), Findings, Pass 1 — exploratory
 Cohesion: 0.50
 Nodes (3): Issues found and fixed, mgmt-007 — IT Training revenue dashboard — exploratory browser QA (2026-10-13), Scenarios
 
-### Community 1350 - "nehn-018-student-payment-access.spec.ts"
-Cohesion: 0.50
-Nodes (3): restore(), api(), unpaidLearner()
-
 ### Community 1351 - "mgmt-022 — Exploratory QA (School dashboard + school money), 2026-10-14"
 Cohesion: 0.50
 Nodes (3): Issues, mgmt-022 — Exploratory QA (School dashboard + school money), 2026-10-14, Scenarios
 
-### Community 1352 - "bdm-023 — Management dashboard: browser QA (2026-10-07)"
-Cohesion: 0.40
-Nodes (4): bdm-023 — Management dashboard: browser QA (2026-10-07), Issues found, Pass 1 — independent exploratory QA (no code changes), Pass 2 — after fixes
+### Community 1352 - "IT Division"
+Cohesion: 0.33
+Nodes (6): HR Team (`hr_team`) **[base]**, IT Admin (`it_admin`), IT Division, Placement Team (`placement_team`) **[base]**, Student (`it_student`), Trainer (`trainer`) — "Teacher" is the same role, per `DEC-ROLE-002`
 
 ### Community 1353 - "mgmt-004 — Management ledger — exploratory browser QA (2026-10-12)"
 Cohesion: 0.40
 Nodes (4): Covered, Issues, mgmt-004 — Management ledger — exploratory browser QA (2026-10-12), Not in scope / observations
 
 ### Community 1354 - "detailMessage"
-Cohesion: 0.01
-Nodes (223): ActivityFeedbackDetails(), ActivityFeedbackForm(), submit(), countText(), FIELD_LABELS, fieldError(), FieldName, FormError (+215 more)
+Cohesion: 0.02
+Nodes (207): AgentDocumentCard(), replace(), reviewed(), Note, Panel, statusClass(), AgentDocumentHistory(), AgentDocumentRequestForm() (+199 more)
 
-### Community 1355 - "ccrm-003 — Counselor lead actions: stage, next action, follow-ups (design + plan)"
-Cohesion: 0.40
-Nodes (4): ccrm-003 — Counselor lead actions: stage, next action, follow-ups (design + plan), Intent, Non-goals, Plan (TDD, focused tests)
+### Community 1355 - "telecallerFollowUps.ts"
+Cohesion: 0.09
+Nodes (28): FollowUpForm(), send(), submit(), Values, FollowUpItem(), act(), TEXT, ACTION_MAX (+20 more)
 
 ### Community 1356 - "ccrm-012 — Counselor quick search and list filters (design)"
 Cohesion: 0.40
 Nodes (4): ccrm-012 — Counselor quick search and list filters (design), Intent, Non-goals, Regression risks
 
-### Community 1357 - "nehn-042 — Audit log search and filters (design)"
-Cohesion: 0.40
-Nodes (4): Acceptance criteria, Intent, nehn-042 — Audit log search and filters (design), Non-goals
+### Community 1357 - "AGN-012 — Browser QA (first pass, 2026-10-02)"
+Cohesion: 0.33
+Nodes (5): AGN-012 — Browser QA (first pass, 2026-10-02), AGN-012 feature under QA, Findings, Not covered in this pass, Results by check
 
 ### Community 1358 - "ccrm-049 — Payment receipt / proof upload on the student 360's Finance tab (design)"
-Cohesion: 0.40
-Nodes (4): Acceptance (tests), ccrm-049 — Payment receipt / proof upload on the student 360's Finance tab (design), Intent, Non-goals
+Cohesion: 0.33
+Nodes (5): Acceptance (tests), ccrm-049 — Payment receipt / proof upload on the student 360's Finance tab (design), Decisions, Intent, Non-goals
 
 ### Community 1359 - "Frontend Architecture and Design Analysis"
 Cohesion: 0.40
@@ -6458,21 +6508,21 @@ Nodes (4): RAID I-12 University Rep Offer Letters fix (UNI-001), RAID I-13 HR jo
 Cohesion: 0.70
 Nodes (4): cookieHeader(), createFileAssignment(), loginAs(), openSubmission()
 
-### Community 1362 - "MCP and Integration Status"
-Cohesion: 0.40
-Nodes (4): 1. Status, 2. What this means for the test, 3. Exact commands to close the gaps (run only after approval), MCP and Integration Status
+### Community 1362 - "ccrm-002 — Lead notes (design + plan)"
+Cohesion: 0.33
+Nodes (5): Builder's calls (the owner pre-authorised recommended defaults for this session), ccrm-002 — Lead notes (design + plan), Intent, Plan, Tests (written first)
 
 ### Community 1363 - ".dispatch"
-Cohesion: 0.10
-Nodes (26): Request, Response, db_session(), _disable_schema_autocreate(), _fresh_engine_pool_per_test(), lead_emails_enqueued(), fixture, tel-014: likewise for lead emails -- every published lead_messages id, as… (+18 more)
+Cohesion: 0.17
+Nodes (17): Request, Response, db_session(), _disable_schema_autocreate(), _fresh_engine_pool_per_test(), lead_emails_enqueued(), fixture, tel-014: likewise for lead emails -- every published lead_messages id, as… (+9 more)
 
-### Community 1364 - "Next.js Font Optimization Guide"
-Cohesion: 0.50
-Nodes (4): Next.js Font Optimization Guide, next/font/google, next/font/local, Tailwind Font Variable Integration
+### Community 1364 - "0004_uuid_identifiers.py"
+Cohesion: 0.60
+Nodes (3): _is_uuid(), _quoted(), upgrade()
 
-### Community 1365 - "test_tables_match_the_model"
+### Community 1365 - "0041_student_master_fields.py"
 Cohesion: 0.50
-Nodes (3): asyncio, test_tables_match_the_model(), Task 1: Migration 0052 and model
+Nodes (3): _derive_section(), ENH-025 -- Student Master fields on school_students, class details on the…, upgrade()
 
 ### Community 1368 - "RAID Log (Risks, Assumptions, Issues, Dependencies)"
 Cohesion: 0.50
@@ -6482,13 +6532,13 @@ Nodes (4): Assumptions, Dependencies (external to engineering effort), RAID Log 
 Cohesion: 0.50
 Nodes (3): Coverage, Issues, mgmt-003 — Business snapshot: exploratory QA (2026-10-12)
 
-### Community 1370 - "7.8 Visa"
+### Community 1370 - "0051_school_bulk_uploads.py"
 Cohesion: 0.50
-Nodes (4): 7.8 Visa, PRD-VISA-001 — Visa checklist and documentation, PRD-VISA-002 — Interview preparation, PRD-VISA-003 — Approval status tracking
+Nodes (3): Column, _timestamps(), upgrade()
 
-### Community 1371 - "bdm-008 — Exploratory browser QA and Playwright (2026-10-06)"
+### Community 1371 - "0068_bdm_trips.py"
 Cohesion: 0.50
-Nodes (3): bdm-008 — Exploratory browser QA and Playwright (2026-10-06), Coverage (final run: 15 / 15 scenarios pass, 0 page errors), Playwright (`--workers=1`, against this stack)
+Nodes (3): Column, _timestamps(), upgrade()
 
 ### Community 1372 - "ENH-009 — browser QA record (2026-09-22)"
 Cohesion: 0.50
@@ -6498,29 +6548,193 @@ Nodes (3): ENH-009 — browser QA record (2026-09-22), Findings, Method and envi
 Cohesion: 0.50
 Nodes (3): ENH-027 — Browser QA record (2026-09-28), Findings and resolution, Re-test after the fix pass (rebuilt `web`, same isolated browser)
 
-### Community 1374 - "mgmt-034 — Confidentiality + permission sweep: exploratory QA (2026-10-14)"
-Cohesion: 0.50
-Nodes (4): After the fix, First pass — results, Issues, mgmt-034 — Confidentiality + permission sweep: exploratory QA (2026-10-14)
+### Community 1374 - "mgmt-033 Drill-down Navigation QA"
+Cohesion: 0.15
+Nodes (12): Operational vs business tier health factors, mgmt-033 Drill-down Navigation QA, Drill-down chains abroad IT recruitment, QA33-01 Paging past the end message, QA33-04 Drill-down audit label, After the fix, CS1 University commission hidden from accountant, First pass — results (+4 more)
 
-### Community 1375 - "rec-004 Company contacts — Implementation Plan"
-Cohesion: 0.50
-Nodes (3): Global Constraints, rec-004 Company contacts — Implementation Plan, Review Focus
+### Community 1375 - "RecContactIn"
+Cohesion: 0.14
+Nodes (13): PATCH: omitted = unchanged, null = clear; a sent null on name / is_primary /…, RecContactIn, RecContactList, RecContactOut, RecContactUpdate, Global Constraints, rec-004 Company contacts — Implementation Plan, Review Focus (+5 more)
 
-### Community 1376 - "3. Current state (verified on `origin/main` @ b47e7a80)"
-Cohesion: 0.67
-Nodes (3): 3.1 Why email fails today (dev droplet, 2026-10-17), 3.3 Zoho Mail API (docs, 2026-10-17), 3. Current state (verified on `origin/main` @ b47e7a80)
+### Community 1376 - "0084_bdm_onboarding.py"
+Cohesion: 0.50
+Nodes (3): _inspector(), bdm-018 -- school onboarding handover: bdm_onboarding_requests and…, upgrade()
+
+### Community 1378 - "0106_rec_companies.py"
+Cohesion: 0.50
+Nodes (3): _inspect(), rec-003 -- the company master: recruiter lead columns on `companies`, the CMP-…, upgrade()
+
+### Community 1379 - "0108_university_contacts.py"
+Cohesion: 0.50
+Nodes (3): _inspector(), upc-006 -- University contacts + relationship strength. Revision ID:…, upgrade()
+
+### Community 1380 - "0111_university_pipeline.py"
+Cohesion: 0.50
+Nodes (3): _inspector(), upc-007 -- partnership stage engine: stored stage, Lost flag, stage history.…, upgrade()
 
 ### Community 1384 - "EduSphere School CRM — Administrator Manual"
 Cohesion: 0.33
 Nodes (6): EduSphere School CRM — Administrator Manual, Monitoring, School staff and logins, Schools, Students across schools, Super Admin
+
+### Community 1385 - "0124_university_documents.py"
+Cohesion: 0.50
+Nodes (3): fk(), upc-026 -- university_documents + university_document_versions: the §28…, upgrade()
+
+### Community 1454 - "0148_recruitment_drives.py"
+Cohesion: 0.50
+Nodes (3): _fk(), ForeignKey, upgrade()
+
+### Community 1455 - "0151_investments.py"
+Cohesion: 0.50
+Nodes (3): Column, upgrade(), _user_fk()
+
+### Community 1456 - "0152_management_discussions.py"
+Cohesion: 0.50
+Nodes (3): Column, upgrade(), _user()
+
+### Community 1457 - "0155_finance_balances.py"
+Cohesion: 0.50
+Nodes (3): Column, upgrade(), _user()
+
+### Community 1458 - "0156_marketing_budgets.py"
+Cohesion: 0.50
+Nodes (3): Column, upgrade(), _user()
+
+### Community 1459 - "0159_partner_capital.py"
+Cohesion: 0.50
+Nodes (3): Column, upgrade(), _user_fk()
+
+### Community 1460 - "0170_application_outcomes.py"
+Cohesion: 0.60
+Nodes (3): _in(), _inspector(), upgrade()
+
+### Community 1461 - "0171_application_offers.py"
+Cohesion: 0.60
+Nodes (3): _in(), _missing(), upgrade()
+
+### Community 1462 - "0173_checklist_templates.py"
+Cohesion: 0.60
+Nodes (3): _in(), _missing(), upgrade()
+
+### Community 1463 - "0177_visa_lifecycle.py"
+Cohesion: 0.60
+Nodes (3): _columns(), _in(), upgrade()
+
+### Community 1464 - "0178_offer_decisions_deposits.py"
+Cohesion: 0.50
+Nodes (3): _inspect(), ccrm-025 -- the student's decision on an offer (application_offers.decision /…, upgrade()
+
+### Community 1465 - "0180_application_checklists.py"
+Cohesion: 0.60
+Nodes (3): _in(), _inspect(), upgrade()
+
+### Community 1466 - "0188_student_document_requests.py"
+Cohesion: 0.60
+Nodes (3): _has_check(), _has_column(), upgrade()
+
+### Community 1467 - "0204_certificate_workflow.py"
+Cohesion: 0.50
+Nodes (3): Column, _timestamps(), upgrade()
+
+### Community 1468 - "BdmDailyReportOut"
+Cohesion: 0.40
+Nodes (5): BdmDailyReportGrid, BdmDailyReportOut, `status` draft = a live preview (nothing stored); submitted = the snapshot…, 5. API (`app/api/bdm_daily_reports.py`, prefix `/bdm`), Transactions and races
+
+### Community 1469 - "CounselorStudentUpdate"
+Cohesion: 0.40
+Nodes (4): CounselorStudentUpdate, csc-003 (DEC-SCOPE-228, W6): fixing a pending walk-in account -- create's…, csc-003 — Resend link and fix pending details (plan), `PATCH /counselor/students/{id}` → 200
+
+### Community 1470 - "4. Backend units"
+Cohesion: 0.40
+Nodes (5): LeadEmailCreate, LeadWhatsAppCreate, tel-013: WA4 the template is optional; WA1 the text as sent (tel-012's limit)., tel-014 (DEC-SCOPE-106): EM4 the template is optional; E6 tel-012's email…, 4. Backend units
+
+### Community 1471 - "Decimal"
+Cohesion: 0.40
+Nodes (5): _ledger_amount(), Decimal, QA-01: the form shows these words as they are. The column is Numeric(14, 2)., _rec_offer_salary(), _school_value()
+
+### Community 1472 - "employer-register/page.tsx"
+Cohesion: 0.50
+Nodes (4): EmployerRegisterPage(), EmployerRegisterForm(), submit(), message()
 
 ### Community 1473 - "i18n.ts"
 Cohesion: 0.60
 Nodes (3): DEFAULT_LOCALE, SUPPORTED_LOCALES, SupportedLocale
 
 ### Community 1474 - "services/counselor_reminders.py"
-Cohesion: 0.04
-Nodes (115): BaseModel, post, put, RM10: the daily job, now -- the same de-duplication, so a second run creates…, ReminderRuleIn, run_now(), update_rule(), cancel_request() (+107 more)
+Cohesion: 0.05
+Nodes (82): list_rules(), AsyncSession, BaseModel, get, post, put, RM10: the daily job, now -- the same de-duplication, so a second run creates…, recent() (+74 more)
+
+### Community 1475 - "accept/page.tsx"
+Cohesion: 0.50
+Nodes (4): SchoolInviteAcceptPage(), message(), SchoolInviteAcceptForm(), submit()
+
+### Community 1476 - "BatchRosterPanel.tsx"
+Cohesion: 0.40
+Nodes (4): Batch, Enrollment, Student, TrainerContext
+
+### Community 1477 - "TrainerWorkflowForm.tsx"
+Cohesion: 0.60
+Nodes (4): Context, errorMessage(), TrainerWorkflowForm(), submit()
+
+### Community 1481 - "AGN-024 — Agent signup KYC documents: verification evidence (2026-10-17)"
+Cohesion: 0.40
+Nodes (4): AGN-024 — Agent signup KYC documents: verification evidence (2026-10-17), Before the final-review fixes (controller run, 2026-10-17), Empirical client-IP header check (K11), Not run
+
+### Community 1482 - "mgmt-003 — Business snapshot + `management_metrics` foundation (design)"
+Cohesion: 0.40
+Nodes (4): 1. What the item asks for, 3. Decisions (recommended answers to Q-03, applied under the owner's standing build-session instruction; `UNVERIFIED`), 5. Tests, mgmt-003 — Business snapshot + `management_metrics` foundation (design)
+
+### Community 1507 - "FinanceBalancesIn"
+Cohesion: 0.50
+Nodes (4): AccountsOut, FinanceBalancesIn, AD8: the month's three hand-entered figures; null = not entered, and all three…, 4. Components
+
+### Community 1508 - "BdmDailyReportSubmit"
+Cohesion: 0.50
+Nodes (3): BdmDailyReportSubmit, R4: the optional end-of-day note. Counts, owner and times are server-owned…, bdm-015 — Daily activity report — implementation plan
+
+### Community 1509 - "MeetingRequestCreate"
+Cohesion: 0.50
+Nodes (4): MeetingRequestCreate, MeetingRequestDecline, MR7: what the telecaller knows. The BDM type follows from the request type…, Task 3: Schemas + service + telecaller routes
+
+### Community 1510 - "PartnershipMapTotals"
+Cohesion: 0.67
+Nodes (4): PartnershipMapCountry, PartnershipMapTotals, upc-025: Appendix B G1 (partner), G2 (in progress), G3 (target) and the…, 3. Backend
+
+### Community 1511 - "_salary_money"
+Cohesion: 0.50
+Nodes (4): SM3: rupees, 0 or more, at most 2 decimals, within Numeric(14, 2)., AD7: cash/bank may be an overdraft -- the salary money rules on the magnitude,…, _salary_money(), _signed_money()
+
+### Community 1512 - "SchoolDocumentStatusesOut"
+Cohesion: 0.50
+Nodes (3): nehn-039: `GET /school/students/{student_id}/document-statuses`, applications…, SchoolDocumentStatusesOut, nehn-039 implementation plan
+
+### Community 1519 - "7.10 Payments"
+Cohesion: 0.50
+Nodes (4): 7.10 Payments, PRD-PAY-001 — Fee/EMI payment via Razorpay, PRD-PAY-002 — Multi-currency handling, PRD-PAY-003 — Invoice/receipt generation
+
+### Community 1520 - "7.12 Notifications"
+Cohesion: 0.50
+Nodes (4): 7.12 Notifications, PRD-NOT-001 — Email notifications, PRD-NOT-002 — WhatsApp notifications via Twilio, PRD-NOT-003 — SMS notifications (retained)
+
+### Community 1521 - "ENH-013 — Browser QA and fixes (2026-09-23)"
+Cohesion: 0.50
+Nodes (3): ENH-013 — Browser QA and fixes (2026-09-23), Harness notes (not product defects), What passed in the QA pass (unchanged by the fixes)
+
+### Community 1522 - "mgmt-031 — Partner home dashboard: exploratory QA (2026-10-14)"
+Cohesion: 0.50
+Nodes (4): First pass — results, Fixes (Phase 6) and re-verification, Issues found, mgmt-031 — Partner home dashboard: exploratory QA (2026-10-14)
+
+### Community 1549 - "AgentDocumentRequestCreate"
+Cohesion: 0.67
+Nodes (3): AgentDocumentRequestCreate, AGN-009 (G4): ask one of the agency's students for an additional document.…, Task 4: Requests and list views
+
+### Community 1550 - "GlobalEducationPipelineOut"
+Cohesion: 0.67
+Nodes (3): GlobalEducationPipelineOut, 6.1 Queries (all parameterised SQLAlchemy; no ORM rows of overseas models), 6. Endpoint
+
+### Community 1552 - "bdm-012 Appointment reminders browser QA"
+Cohesion: 0.67
+Nodes (3): bdm012-reminders beat task (every 5 min), bdm-012 feature, bdm-012 Appointment reminders browser QA
 
 ## Ambiguous Edges - Review These
 - `2026-10-06-bdm-005-mou-tracking.md` → `DEC-SCOPE-074`  [AMBIGUOUS]
@@ -6543,9 +6757,9 @@ Nodes (115): BaseModel, post, put, RM10: the daily job, now -- the same de-dupli
   docs/superpowers/plans/2026-10-06-bdm-008-follow-ups.md · relation: conceptually_related_to
 
 ## Knowledge Gaps
-- **9880 isolated node(s):** `ReportKind`, `Chain`, `entrypoint.sh script`, `NEXT`, `metadata` (+9875 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 19808 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **232 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **9751 isolated node(s):** `ReportKind`, `Chain`, `entrypoint.sh script`, `NEXT`, `metadata` (+9746 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 19444 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **323 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_

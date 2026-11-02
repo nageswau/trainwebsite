@@ -10,9 +10,12 @@ export type AuditFilters = {
   actor: string; action: string; entity_type: string; entity_id: string; division: string; date_from: string; date_to: string; offset: number;
 };
 export type AuditActor = { id: string; full_name: string; email: string; division: string };
+// itc-001: each changed field as [old, new], or "changed" for a personal-data field whose values are never stored.
+export type AuditValue = string | number | boolean | null;
+export type AuditChanges = Record<string, readonly [AuditValue, AuditValue] | "changed">;
 export type AuditRow = {
   id: string; user_id: string | null; actor: AuditActor | null; action: string; entity_type: string; entity_id: string | null; outcome: string;
-  created_at: string;
+  created_at: string; changes?: AuditChanges | null;
 };
 
 const TEXT_KEYS = ["actor", "action", "entity_type", "entity_id", "division", "date_from", "date_to"] as const;

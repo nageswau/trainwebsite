@@ -70,3 +70,24 @@ describe("AdminAuditLog (nehn-042)", () => {
     expect(screen.queryByRole("navigation", { name: "Audit log pages" })).toBeNull();
   });
 });
+
+describe("AdminAuditLog changes (itc-001)", () => {
+  it("shows each changed field's old and new value in a Changes expander", () => {
+    const changes = { status: ["absent", "present"], owner_id: [null, "u-2"], notes: "changed" } as const;
+    render(<AdminAuditLog base={BASE} rows={[row(1, { changes })]} error="" filters={none} showDivision={false} />);
+    const table = screen.getByRole("table", { name: "Audit log" });
+    expect(within(table).getByRole("columnheader", { name: "Changes" })).toBeTruthy();
+    const summary = within(table).getByText("3 fields changed");
+    expect(summary.tagName).toBe("SUMMARY");
+    const list = within(summary.closest("details") as HTMLElement).getByRole("list", { name: "Changed fields" });
+    const items = within(list).getAllByRole("listitem").map((li) => li.textContent);
+    expect(items).toEqual(["status: absent → present", "owner_id: (empty) → u-2", "notes: changed (value hidden)"]);
+  });
+
+  it("says one field in the singular and shows a dash when a row has no changes", () => {
+    render(<AdminAuditLog base={BASE} rows={[row(1, { changes: { status: ["a", "b"] } }), row(2, { changes: null }), row(3)]} error="" filters={none} showDivision={false} />);
+    expect(screen.getByText("1 field changed")).toBeTruthy();
+    const cells = screen.getAllByRole("cell").filter((c) => c.getAttribute("data-label") === "Changes");
+    expect(cells.map((c) => c.textContent)).toEqual(["1 field changedstatus: a → b", "—", "—"]);
+  });
+});
