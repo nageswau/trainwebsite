@@ -36,7 +36,12 @@ export const LEADS_URL = "/api/v1/telecaller/leads";
 export const DUPLICATE_CHECK_URL = `${LEADS_URL}/duplicate-check`;
 export const leadUrl = (id: string, suffix = "") => `${LEADS_URL}/${encodeURIComponent(id)}${suffix}`;
 // tel-011 F9: follow_up; nehn-012: the created range
-export const LEAD_LIST_FILTERS = ["status", "priority", "product_id", "campaign_id", "follow_up", "created_from", "created_to"] as const;
+// itc-008: source, last-contact and next-follow-up ranges (India-time days, inclusive)
+export const LAST_CONTACT_FILTERS = ["last_contact_from", "last_contact_to"] as const;
+export const NEXT_FOLLOW_UP_FILTERS = ["next_follow_up_from", "next_follow_up_to"] as const;
+export const LEAD_LIST_FILTERS = [
+  "status", "priority", "product_id", "campaign_id", "follow_up", "created_from", "created_to", "source", ...LAST_CONTACT_FILTERS, ...NEXT_FOLLOW_UP_FILTERS,
+] as const;
 export type LeadListFilter = (typeof LEAD_LIST_FILTERS)[number];
 export const FOLLOW_UP_FILTERS = [{ key: "today", label: "Due today" }, { key: "overdue", label: "Overdue" }] as const;
 
@@ -59,7 +64,7 @@ export function telHref(phone: string | null): string | null {
 export const moveStage = (id: string, target: string, reason: string, closure: Closure = {}): Promise<SendOutcome> =>
   sendJson(leadUrl(id, "/stage"), "POST", { to_stage: target, ...(reason ? { reason } : {}), ...closure });
 
-// itc-007 (DEC-SCOPE-340): the merge form's comparison. `MERGE_FIELDS` mirror the API's (services/lead_merge.py FIELDS).
+// itc-007 (DEC-SCOPE-341): the merge form's comparison. `MERGE_FIELDS` mirror the API's (services/lead_merge.py FIELDS).
 export const MERGE_FIELDS = [
   { key: "name", label: "Student name" }, { key: "email", label: "Email" }, { key: "phone", label: "Mobile number" },
   { key: "whatsapp_number", label: "WhatsApp number" }, { key: "city", label: "City" }, { key: "state", label: "State" },

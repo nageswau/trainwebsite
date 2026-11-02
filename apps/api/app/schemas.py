@@ -6867,7 +6867,7 @@ class LeadStageMove(BaseModel):
         return {"duplicate_of": self.duplicate_of, "lost_reason_id": self.lost_reason_id, "lost_to": self.lost_to}
 
 
-# itc-007 (DEC-SCOPE-340): the lead fields a merge may take from the victim (services/lead_merge.py FIELDS repeats them)
+# itc-007 (DEC-SCOPE-341): the lead fields a merge may take from the victim (services/lead_merge.py FIELDS repeats them)
 LeadMergeField = Literal["name", "email", "phone", "whatsapp_number", "city", "state", "qualification", "passing_year", "institution"]
 
 

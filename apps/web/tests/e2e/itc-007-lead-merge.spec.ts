@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// itc-007 (DEC-SCOPE-340): merge a duplicate lead. super_admin (a manager on /telecaller, every lead in scope, so tel-007's distribution
+// itc-007 (DEC-SCOPE-341): merge a duplicate lead. super_admin (a manager on /telecaller, every lead in scope, so tel-007's distribution
 // never moves the leads out of view) opens one of two fresh website leads, compares the other by Lead ID, keeps the duplicate's name and
 // merges: the duplicate's enquiry shows on this lead's activity with "Merged from", and the duplicate's page is read only.
 test.describe.configure({ timeout: 120_000 });

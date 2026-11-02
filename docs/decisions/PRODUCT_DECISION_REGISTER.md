@@ -10707,7 +10707,33 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0224_tel_source_workload`; API §12IK; RBAC §2.240.
 - **Feature ID authorized:** `itc-006`. **Status:** built on `worktree-itc-006`.
 
-### DEC-SCOPE-340 — Merge duplicate leads (`itc-007`)
+### DEC-SCOPE-340 — Lead list filters and telecaller dashboard tiles (`itc-008`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-008 (PDF §11 lead list "source, last contact, next follow-up", §8 Telecaller
+  dashboard "contact rate, qualified leads, handovers", §12 AC10; Appendix B; PDF classified `UNVERIFIED`). Owner Q-01 (2026-11-01): all
+  phases approved for build in waves; itc-008 has no dependency. The owner said to proceed with the recommended answers, so the calls
+  below are the builder's (`NEEDS_CONFIRMATION`). Design: `docs/superpowers/specs/2026-11-02-itc-008-lead-filters-telecaller-tiles-design.md`.
+- **Decisions (builder's calls):**
+  - **F1 —** `source` filter on `/telecaller/leads` (+ `.xlsx`), one of the 13 lead sources (else 422), as the admin list already has.
+  - **F2 — Last contact** = the later of the lead's latest logged call and latest message (the Excel column's definition);
+    `last_contact_from/to`, India-time days inclusive. A never-contacted lead matches no range.
+  - **F3 — Next follow-up** = the earliest **open** follow-up (any author; the Excel column's definition); `next_follow_up_from/to`.
+    "Next follow-up = tomorrow" is from = to = tomorrow.
+  - **F4 —** a reversed range is 422 (`The start date must be on or before the end date`); filters only narrow the caller's scope (T23);
+    the Excel audit row names the new filters (dates/keys only).
+  - **T1 — Contact rate** = distinct leads the telecaller reached (≥1 call whose outcome is not busy / no answer / switched off / wrong
+    number — tel-021 D2; there is no literal `connected` outcome) ÷ distinct leads they called, in the period, % to one decimal; no call →
+    null, shown "—". **T2 — Qualified** = tel-021 D11 (moves to Qualified by the telecaller) — Appendix B's "(or later)" is not adopted,
+    so the tile and the report's existing column agree. **T3 — Handovers** = `lead.handover` events whose actor is the telecaller (a
+    manager's handover counts for the manager, as every flow count is by actor).
+  - **R1 —** the Telecaller Report appends "Contact rate (%)" and "Handovers" (existing columns untouched); its Total rate is
+    Σreached ÷ Σcalled over the rows. Tiles and report read the same `flow_counts_by_user`, so they agree for the same day (AC2).
+  - **QA8-01 —** the lead list builds each URL change on the last pushed query, so two quick changes (from, then to) both stay.
+- **Not in scope:** Last contact / Next follow-up columns in the on-screen table; the admin list's new filters.
+- **Numbering:** no migration; API §12IL; RBAC unchanged.
+- **Feature ID authorized:** `itc-008`. **Status:** built on `worktree-itc-008`.
+
+### DEC-SCOPE-341 — Merge duplicate leads (`itc-007`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-007` (PDF §9 "let authorized users merge duplicates", §3 step 1). Scope
   approved by the owner 2026-11-01 (backlog Q-01: all phases, built in waves). Depends on itc-001 (DEC-SCOPE-335, merged). Design
@@ -10725,6 +10751,6 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   M4 the duplicate's stage history and audit rows stay on it. M5 a merged lead is read only for everyone (no reopen, stage, contact,
   qualification or admin edit: 409); notes stay allowed (ccrm-002 N1). M6 no unmerge. M7 a duplicate linked to a student (or at
   Application/Enrollment / Converted) cannot be merged away (409); merge the other way.
-- **Numbering:** migration `0225_lead_merge` (`enquiries.merged_at`, `merged_by_user_id`, CHECK `ck_enquiries_merged`); API §12IL;
+- **Numbering:** migration `0225_lead_merge` (`enquiries.merged_at`, `merged_by_user_id`, CHECK `ck_enquiries_merged`); API §12IM;
   RBAC §2.241.
 - **Feature ID authorized:** `itc-007`. **Status:** built on `worktree-itc-007`.

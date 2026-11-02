@@ -1,4 +1,4 @@
-"""itc-007 (DEC-SCOPE-340, API §12IL, RBAC §2.241): merge a duplicate lead into the lead that stays. The shared test database is never
+"""itc-007 (DEC-SCOPE-341, API §12IM, RBAC §2.241): merge a duplicate lead into the lead that stays. The shared test database is never
 truncated: every assertion is about rows the test made."""
 
 import uuid

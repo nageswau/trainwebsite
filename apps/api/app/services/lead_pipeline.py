@@ -67,7 +67,7 @@ LOST_REASON_REQUIRED = "Choose why the lead was lost"
 LOST_REASON_INACTIVE = "Choose an active lost reason"
 FOLLOW_UPS_CLOSED = "Lead closed"  # tel-011 F4: the cancel reason on follow-ups a closing move cancelled
 APPOINTMENTS_CLOSED = FOLLOW_UPS_CLOSED  # tel-016 AP15: and on the counselling appointment it cancelled
-LEAD_MERGED = "This lead was merged into another lead, so it can't be changed"  # itc-007 (DEC-SCOPE-340)
+LEAD_MERGED = "This lead was merged into another lead, so it can't be changed"  # itc-007 (DEC-SCOPE-341)
 
 Kind = Literal["telecaller", "manager", "counselor"]
 

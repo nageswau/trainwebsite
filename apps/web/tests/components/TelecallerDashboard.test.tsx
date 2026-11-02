@@ -11,7 +11,7 @@ afterEach(cleanup);
 
 const TILES = {
   new_leads: 4, calls_today: { done: 65, to_do: 12 }, follow_ups_due: 3, hot_leads: 2, appointments: 1, connected: 40, not_connected: 25,
-  converted: 0, overdue: 5, daily_target: { achieved: 65, target: 80 },
+  converted: 0, overdue: 5, daily_target: { achieved: 65, target: 80 }, contact_rate: 60, qualified: 4, handovers: 2,
 };
 const KPIS = ["calls", "connected_calls", "qualified_leads", "follow_ups", "counselling_appointments", "conversions"];
 const zeros = Object.fromEntries(ACTIVITY.map((a) => [a.key, 0])) as TelecallerActivity["counts"];
@@ -21,14 +21,24 @@ const activity = (over: Partial<TelecallerActivity> = {}): TelecallerActivity =>
 });
 
 describe("TelecallerDashboardTiles (tel-021 §1)", () => {
-  it("shows the ten tiles in the source's order with their figures", () => {
+  it("shows the ten tiles in the source's order, then itc-008's three, with their figures", () => {
     render(<TelecallerDashboardTiles tiles={TILES} />);
     const tiles = within(screen.getByRole("list", { name: "Today at a glance" })).getAllByRole("listitem");
     expect(tiles.map((t) => t.querySelector("span")!.textContent)).toEqual([
-      "New Leads", "Calls Today", "Follow-ups Due", "Hot Leads", "Appointments", "Connected", "Not Connected", "Converted", "Overdue", "Daily Target"]);
+      "New Leads", "Calls Today", "Follow-ups Due", "Hot Leads", "Appointments", "Connected", "Not Connected", "Converted", "Overdue", "Daily Target",
+      "Contact Rate", "Qualified", "Handovers"]);
+    expect(within(tiles[10]).getByText("60.0%")).toBeInTheDocument(); // JSON drops ".0"; one decimal, as the report
+    expect(within(tiles[11]).getByText("4")).toBeInTheDocument();
+    expect(within(tiles[12]).getByText("2")).toBeInTheDocument();
     expect(within(tiles[1]).getByText("65 / 12")).toBeInTheDocument();
     expect(within(tiles[9]).getByText("65 / 80")).toBeInTheDocument();
     expect(within(tiles[7]).getByText("0")).toBeInTheDocument(); // zeros, never "no data"
+  });
+
+  it("shows no contact rate as a dash, not 0% (itc-008 T1: no calls today)", () => {
+    render(<TelecallerDashboardTiles tiles={{ ...TILES, contact_rate: null }} />);
+    const rate = within(screen.getByRole("list", { name: "Today at a glance" })).getAllByRole("listitem")[10];
+    expect(within(rate).getByText("—")).toBeInTheDocument();
   });
 
   it("says so when the figures could not be loaded", () => {

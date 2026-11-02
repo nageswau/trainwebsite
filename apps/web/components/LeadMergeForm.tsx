@@ -8,7 +8,7 @@ import { MERGE_FIELDS, MERGE_MOVED, type MergeField, type MergePreview } from "@
 const empty = (value: unknown) => value === null || value === undefined || value === "";
 const shown = (value: unknown) => (empty(value) ? <span className="muted">—</span> : String(value));
 
-/** itc-007 (DEC-SCOPE-340): "Merge a duplicate" -- a manager (or admin) enters the duplicate's Lead ID, compares the two leads side by
+/** itc-007 (DEC-SCOPE-341): "Merge a duplicate" -- a manager (or admin) enters the duplicate's Lead ID, compares the two leads side by
  *  side, picks which values to keep where both have one (an empty value here is always filled from the duplicate), and merges it into
  *  this lead. `url` is this lead's API path (telecaller or admin); the API decides scope and every rule and its refusals are shown. */
 export default function LeadMergeForm({ url, leadCode, onMerged }: { url: string; leadCode: string; onMerged: (victimCode: string) => void }) {

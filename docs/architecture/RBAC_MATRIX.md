@@ -3458,7 +3458,7 @@ The IT student reads only their own counselor's name (dashboard tile). Inline ro
 
 No grant changes. Pinned by `apps/api/tests/test_itc_006_api.py`.
 
-### 2.241 Merge duplicate leads *(added 2026-11-02 — `DEC-SCOPE-340`, itc-007)*
+### 2.241 Merge duplicate leads *(added 2026-11-02 — `DEC-SCOPE-341`, itc-007)*
 
 | Route | Anonymous | telecaller | telecaller_manager | it_admin / overseas_admin | super_admin | other roles |
 |---|---|---|---|---|---|---|

@@ -138,13 +138,24 @@ async def _by_actor(db: AsyncSession, actor, user_ids: list[UUID], *where) -> di
     return _group(await db.execute(select(actor, func.count()).where(actor.in_(user_ids), *where).group_by(actor)))
 
 
+def contact_rate(reached: int, called: int) -> float | None:
+    """itc-008 T1 (Appendix B): leads reached ÷ leads called, as a % to one decimal; no lead called → None (not 0%)."""
+    return round(reached * 100 / called, 1) if called else None
+
+
 async def flow_counts_by_user(db: AsyncSession, user_ids: list[UUID], start: datetime, end: datetime) -> dict[UUID, dict]:
     """Every count that is a number of events in [start, end), for several telecallers at once -- one grouped query per count, so a
-    report over a whole team costs the same as one telecaller (tel-024 R3). Users with no events get zeros."""
+    report over a whole team costs the same as one telecaller (tel-024 R3). Users with no events get zeros.
+    itc-008: the distinct leads called / reached (≥1 connected call, D2) ride on the calls query; handovers are `lead.handover` rows
+    by the user (T3)."""
     ids = list(user_ids)
-    calls = {key: (total, missed) for key, total, missed in await db.execute(
-        select(LeadCall.caller_user_id, func.count(), func.count().filter(LeadCall.outcome.in_(NOT_CONNECTED)))
+    lead = LeadCall.lead_id.distinct()
+    calls = {key: rest for key, *rest in await db.execute(
+        select(LeadCall.caller_user_id, func.count(), func.count().filter(LeadCall.outcome.in_(NOT_CONNECTED)), func.count(lead),
+               func.count(lead).filter(LeadCall.outcome.not_in(NOT_CONNECTED)))
         .where(LeadCall.caller_user_id.in_(ids), *_in(LeadCall.occurred_at, start, end)).group_by(LeadCall.caller_user_id))}
+    handovers = await _by_actor(db, AuditLog.user_id, ids, AuditLog.action == "lead.handover", AuditLog.entity_type == "enquiry",
+                                *_in(AuditLog.created_at, start, end))
     counselor = await _by_actor(db, Appointment.booked_by_user_id, ids, Appointment.lead_id.is_not(None), *_in(Appointment.created_at, start, end))
     bdm = await _by_actor(db, BdmMeetingRequest.requester_user_id, ids, *_in(BdmMeetingRequest.created_at, start, end))
     completed = await _by_actor(db, LeadFollowUp.completed_by_user_id, ids, *_in(LeadFollowUp.completed_at, start, end))
@@ -153,8 +164,9 @@ async def flow_counts_by_user(db: AsyncSession, user_ids: list[UUID], start: dat
     converted = await conversions_by_user(db, ids, start, end)
     out = {}
     for user_id in ids:
-        total, missed = calls.get(user_id, (0, 0))
+        total, missed, called, reached = calls.get(user_id, (0, 0, 0, 0))
         out[user_id] = {
+            "called_leads": called, "reached_leads": reached, "handovers": handovers.get(user_id, 0),
             "calls": total, "connected_calls": total - missed, "not_connected": missed,
             "follow_ups_completed": completed.get(user_id, 0),
             "counselor_appointments": counselor.get(user_id, 0), "bdm_appointments": bdm.get(user_id, 0),
@@ -232,7 +244,7 @@ async def _not_contacted_after(db: AsyncSession, team: str) -> timedelta:
 
 
 async def tiles(db: AsyncSession, user_id: UUID, team: str, now: datetime) -> dict:
-    """§1: the ten tiles for today (Appendix B B1-B10)."""
+    """§1: the ten tiles for today (Appendix B B1-B10), then itc-008's contact rate, qualified and handovers."""
     today = today_ist(now)
     start, end = day_range(today)
     flow = await flow_counts(db, user_id, start, end)
@@ -253,6 +265,10 @@ async def tiles(db: AsyncSession, user_id: UUID, team: str, now: datetime) -> di
             select(func.count()).select_from(Enquiry).where(
                 *_own_open(user_id), Enquiry.status == "first_call_pending", Enquiry.stage_changed_at < now - await _not_contacted_after(db, team))),
         "daily_target": {"achieved": flow["calls"], "target": daily_calls["value"]},
+        # itc-008 T1-T3: the Telecaller Report's own figures for today (AC2)
+        "contact_rate": contact_rate(flow["reached_leads"], flow["called_leads"]),
+        "qualified": flow["qualified_leads"],
+        "handovers": flow["handovers"],
     }
 
 

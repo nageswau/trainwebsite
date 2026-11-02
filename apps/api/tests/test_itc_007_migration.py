@@ -1,4 +1,4 @@
-"""itc-007 -- migration 0225_lead_merge (DEC-SCOPE-340): `enquiries.merged_at` / `merged_by_user_id` and their CHECK. Round trip in a
+"""itc-007 -- migration 0225_lead_merge (DEC-SCOPE-341): `enquiries.merged_at` / `merged_by_user_id` and their CHECK. Round trip in a
 throwaway database built from scratch (the upc-001 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util

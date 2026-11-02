@@ -1,4 +1,4 @@
-"""itc-007 (DEC-SCOPE-340): merge a duplicate lead (the victim) into the lead that stays (the survivor).
+"""itc-007 (DEC-SCOPE-341): merge a duplicate lead (the victim) into the lead that stays (the survivor).
 
 The route gives both leads' scope filters; the victim is found by its Lead ID inside that scope (anything else reads as missing, 404), so a
 merge never shows a lead the caller could not already see. Both rows are locked FOR UPDATE in id order, so two merges of a crossing pair

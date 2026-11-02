@@ -4946,9 +4946,21 @@ leads owned by an IT counselor). All routes **401** without a session.
 - Side effect on every intake (website, BDM, manager, CSV import): order source → product → city → team strategy. `lead.assign` audit
   metadata adds `rule_id` when a rule matched; methods add `source_rule` and `workload`.
 
-## 12IL. Merge duplicate leads (itc-007) — addendum, 2026-11-02
+## 12IL. Lead list filters and telecaller dashboard tiles (itc-008) — addendum, 2026-11-02
 
-`DEC-SCOPE-340`. Migration `0225_lead_merge`. RBAC §2.241.
+`DEC-SCOPE-340`. No migration; RBAC unchanged. Additive.
+
+- `GET /telecaller/leads` and `GET /telecaller/leads.xlsx` — new query params: `source` (a lead source key, else 422),
+  `last_contact_from`, `last_contact_to`, `next_follow_up_from`, `next_follow_up_to` (YYYY-MM-DD, India-time days, inclusive; a malformed
+  date or a from after its to → 422). Each is ANDed with the caller's scope. The `crm.export` audit `filters` names them.
+- `GET /telecaller/dashboard` — `tiles` adds `contact_rate` (number | null, % to one decimal), `qualified` (int) and `handovers` (int),
+  all for today (IST).
+- `GET /telecaller/reports/telecaller` (+ `.csv`, `.xlsx`) — columns append `contact_rate` "Contact rate (%)" (number | null per row;
+  the Total row is Σreached ÷ Σcalled) and `handovers` "Handovers" (summed).
+
+## 12IM. Merge duplicate leads (itc-007) — addendum, 2026-11-02
+
+`DEC-SCOPE-341`. Migration `0225_lead_merge`. RBAC §2.241.
 
 - `GET /telecaller/leads/{id}/merge-preview?victim=LD-…` and `GET /admin/leads/{id}/merge-preview?victim=LD-…` → **200**
   `{survivor, victim, moved}`: each side `{id, lead_code, status, status_label, name, email, phone, whatsapp_number, city, state,

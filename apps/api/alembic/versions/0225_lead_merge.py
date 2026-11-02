@@ -3,7 +3,7 @@
 Revision ID: 0225_lead_merge
 Revises: 0224_tel_source_workload
 
-docs/superpowers/specs/2026-11-02-itc-007-merge-duplicate-leads-design.md (DEC-SCOPE-340). Two nullable columns (every existing lead keeps
+docs/superpowers/specs/2026-11-02-itc-007-merge-duplicate-leads-design.md (DEC-SCOPE-341). Two nullable columns (every existing lead keeps
 NULLs: never merged) and a CHECK: both set or neither, and only on a Duplicate. 0001 builds a fresh database from the current models,
 which already carry them, so every step is guarded (0221's idiom). The downgrade drops them.
 """

@@ -23,19 +23,28 @@ COLUMNS = (
 )  # fmt: skip
 
 
-def filters(created_from: date | None, created_to: date | None, owner_id: UUID | None) -> list:
-    """Inclusive India-time calendar days on `created_at` (half-open instants, so the index is used) and the assigned counselor. A
-    reversed range is 422; the typed query parameters already refuse a malformed date or id."""
-    if created_from and created_to and created_from > created_to:
+def _days(column, first: date | None, last: date | None) -> list:
+    """Inclusive India-time calendar days on `column` as half-open instants. A reversed range is 422; the typed query parameters already
+    refuse a malformed date."""
+    if first and last and first > last:
         raise HTTPException(422, DATE_ORDER)
-    clauses = []
-    if created_from:
-        clauses.append(Enquiry.created_at >= day_range(created_from)[0])
-    if created_to:
-        clauses.append(Enquiry.created_at < day_range(created_to)[1])
-    if owner_id:
-        clauses.append(Enquiry.owner_id == owner_id)
-    return clauses
+    return ([column >= day_range(first)[0]] if first else []) + ([column < day_range(last)[1]] if last else [])
+
+
+def filters(created_from: date | None, created_to: date | None, owner_id: UUID | None) -> list:
+    """Created days (`created_at`, so the index is used) and the assigned counselor."""
+    return _days(Enquiry.created_at, created_from, created_to) + ([Enquiry.owner_id == owner_id] if owner_id else [])
+
+
+def contact_filters(last_contact_from: date | None, last_contact_to: date | None, next_follow_up_from: date | None,
+                    next_follow_up_to: date | None) -> list:  # fmt: skip
+    """itc-008 F2/F3: the days of `table`'s Last contact (the later of the latest call and message) and Next follow-up (the earliest open
+    one). A lead with neither has no day, so it matches no range. Correlated reads on the (lead_id, time) indexes."""
+    calls = select(func.max(LeadCall.occurred_at)).where(LeadCall.lead_id == Enquiry.id).scalar_subquery()
+    messages = select(func.max(LeadMessage.sent_at)).where(LeadMessage.lead_id == Enquiry.id).scalar_subquery()
+    due = select(func.min(LeadFollowUp.due_at)).where(LeadFollowUp.lead_id == Enquiry.id, LeadFollowUp.status == "open").scalar_subquery()
+    # GREATEST skips a NULL side
+    return _days(func.greatest(calls, messages), last_contact_from, last_contact_to) + _days(due, next_follow_up_from, next_follow_up_to)
 
 
 def audited(q: str | None, **values) -> dict:

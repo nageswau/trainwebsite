@@ -37,6 +37,7 @@ from app.schemas import (
     TelecallerManagerPage,
     TelecallerMeOut,
     TelecallerTeamPage,
+    TelSource,
 )
 from app.services import lead_follow_ups, lead_intake, lead_list, lead_merge, lead_notes, lead_pipeline, lead_qualification, telecaller_leads
 from app.services.bdm_appointments import db_now, today_ist
@@ -112,23 +113,32 @@ async def _lead_query(
     owner_id: UUID | None = None,
     created_from: date | None = None,
     created_to: date | None = None,
+    source: TelSource | None = None,
+    last_contact_from: date | None = None,
+    last_contact_to: date | None = None,
+    next_follow_up_from: date | None = None,
+    next_follow_up_to: date | None = None,
     q: str | None = SEARCH,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """My Leads' scope and filters, shared by the list and the manager's Excel twin (nehn-012). Every filter is ANDed with the scope, so
     it can only narrow; `q` is a literal substring of the Lead ID, name, email, phone or WhatsApp number. tel-011 F9: `follow_up`.
-    nehn-012: India-time created days and the counselor (`owner_id`)."""
+    nehn-012: India-time created days and the counselor (`owner_id`). itc-008: the source, and the last-contact and next-follow-up days."""
     _, filters = lead_pipeline.scope(user)
-    for column, value in ((Enquiry.status, status), (Enquiry.priority, priority), (Enquiry.product_id, product_id), (Enquiry.campaign_id, campaign_id)):
+    for column, value in ((Enquiry.status, status), (Enquiry.priority, priority), (Enquiry.product_id, product_id), (Enquiry.campaign_id, campaign_id),
+                          (Enquiry.source, source)):
         if value:
             filters.append(column == value)
     if follow_up:
         filters.append(lead_follow_ups.due_filter(follow_up, await db_now(db)))
     filters += lead_list.filters(created_from, created_to, owner_id)
+    filters += lead_list.contact_filters(last_contact_from, last_contact_to, next_follow_up_from, next_follow_up_to)
     filters += _matching(like_pattern(q), *telecaller_leads.SEARCHED)
     audited = lead_list.audited(q, status=status, priority=priority, product_id=product_id, campaign_id=campaign_id, follow_up=follow_up,
-                                owner_id=owner_id, created_from=created_from, created_to=created_to)  # fmt: skip
+                                owner_id=owner_id, created_from=created_from, created_to=created_to, source=source,
+                                last_contact_from=last_contact_from, last_contact_to=last_contact_to,
+                                next_follow_up_from=next_follow_up_from, next_follow_up_to=next_follow_up_to)  # fmt: skip
     return {"user": user, "where": filters, "audited": audited}
 
 
@@ -278,7 +288,7 @@ async def merge_preview(lead_id: UUID, victim: str = Query(min_length=1, max_len
 
 @router.post("/leads/{lead_id}/merge")
 async def merge(lead_id: UUID, payload: LeadMergeIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """itc-007 (DEC-SCOPE-340): merge the victim into this lead -- both in the manager's scope, same team, both open (spec)."""
+    """itc-007 (DEC-SCOPE-341): merge the victim into this lead -- both in the manager's scope, same team, both open (spec)."""
     out = await lead_merge.merge_by_code(db, user, lead_id, payload.victim, payload.use_victim, payload.reason, _merge_scope(user))
     await db.commit()
     return out

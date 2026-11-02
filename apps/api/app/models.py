@@ -2809,7 +2809,7 @@ LEAD_CLOSURE_CHECKS = {
     "ck_enquiries_lost_reason": f"lost_reason_id IS NULL OR {_LOSS_SQL}",
     "ck_enquiries_lost_to": f"lost_to IS NULL OR ({_LOSS_SQL} AND length(lost_to) BETWEEN 1 AND {LEAD_LOST_TO_MAX})",
 }
-# itc-007 (DEC-SCOPE-340): a merged lead is closed as a Duplicate of its survivor, with who merged it and when.
+# itc-007 (DEC-SCOPE-341): a merged lead is closed as a Duplicate of its survivor, with who merged it and when.
 LEAD_MERGED_CHECK = "(merged_at IS NULL) = (merged_by_user_id IS NULL) AND (merged_at IS NULL OR status = 'duplicate')"
 
 
@@ -2903,7 +2903,7 @@ class Enquiry(Base, TimestampMixin):
     duplicate_of_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"), nullable=True)
     lost_reason_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("lead_lost_reasons.id", ondelete="RESTRICT"), nullable=True)
     lost_to: Mapped[str | None] = mapped_column(String(LEAD_LOST_TO_MAX), nullable=True)
-    # itc-007 (DEC-SCOPE-340): set when this lead was merged into `duplicate_of_id`; a merged lead is read only (never reopened)
+    # itc-007 (DEC-SCOPE-341): set when this lead was merged into `duplicate_of_id`; a merged lead is read only (never reopened)
     merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     merged_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
 

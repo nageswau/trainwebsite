@@ -2,7 +2,7 @@
 
 **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-007` (PDF §9 "let authorized users merge duplicates", §3 step 1;
 `UNVERIFIED` source, build approved in waves by the owner's Q-01 answer 2026-11-01). **Dependency:** itc-001 (merged, PR #408).
-**Decision:** `DEC-SCOPE-340`. API §12IL, RBAC §2.241, migration `0225_lead_merge`.
+**Decision:** `DEC-SCOPE-341`. API §12IM, RBAC §2.241, migration `0225_lead_merge`.
 
 ## Intent
 Duplicates are blocked at intake (tel-005), but older rows, imports and edits still leave two leads for one person. Closing one as
@@ -61,4 +61,4 @@ index; tests asserting exact `admin_out` keys (additive `merged_at` only).
 5. Timeline `merge` row (API + web label).
 6. Web: `LeadMergeForm` + wiring on the manager detail page and the admin row; `merged_at` read-only display. Vitest tests.
 7. Playwright e2e for the manager merge.
-8. Docs: DEC-SCOPE-340, API §12IL, RBAC §2.241, backlog status.
+8. Docs: DEC-SCOPE-341, API §12IM, RBAC §2.241, backlog status.
