@@ -57,7 +57,7 @@ lead links the same student (impossible today: one lead per student, `uq_enquiri
 4. API router `api/it_student_counselors.py` + lookup; tests for 200/403/404/422/changed:false/notices/audit.
 5. Portal: admin Students column, counselor Students section, student dashboard tile; nav entry; tests.
 6. Web: `AssignCounselorButton` `lookup` prop, DataTable column type `assign_it_student_counselor`; vitest.
-7. Docs: DEC-SCOPE-337, API §12II, RBAC §2.240, backlog status. Playwright spec + browser QA.
+7. Docs: DEC-SCOPE-337, API §12II, RBAC §2.239, backlog status. Playwright spec + browser QA.
 
 ## Regression risks
 

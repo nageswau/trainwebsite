@@ -1,5 +1,5 @@
 """itc-003 (DEC-SCOPE-337) -- the IT student -> counselor link: the IT counselor's own students (list and one; anything else is 404) and
-the IT Admin's reassignment (csc-005 / ccrm-033 rules). API_CONTRACT.md §12II; RBAC_MATRIX.md §2.240."""
+the IT Admin's reassignment (csc-005 / ccrm-033 rules). API_CONTRACT.md §12II; RBAC_MATRIX.md §2.239."""
 
 import logging
 from uuid import UUID

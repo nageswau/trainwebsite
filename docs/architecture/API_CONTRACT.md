@@ -4860,6 +4860,36 @@ for any other role, even with the key), then the student (**404** outside the HR
   - `PUT /admin/programs/{id}/image` — multipart `file`, PNG/JPEG/WebP ≤2 MB (**413**/**415**), 120–4096 px each side (**422**);
     metadata stripped (PNG/JPEG). Replaces the previous image. `DELETE /admin/programs/{id}/image` removes it. Audit `program.image`.
 
+## 12IG. Field-change audit: before and after values (itc-001) — addendum, 2026-11-02
+
+`DEC-SCOPE-335`. No migration (uses `audit_logs.metadata_json`). Authorization unchanged.
+
+- `GET /admin/audit` — each row adds `changes` (additive): `{field: [old, new] | "changed"}` or `null`. `"changed"` stands for a
+  personal-data field (phone, email, notes, remarks, reason, or a name ending in `_phone`, `_email`, … ), whose values are never stored.
+  Only the dict shape written by `services/audit_changes` is surfaced; older rows that keep a list under `metadata.changes` (BDM and
+  partnership targets, school attendance) return `null`. `metadata` itself is unchanged.
+- `POST /workflows/it/trainer/attendance` — when a mark overwrites an existing one and its status or note changes, one extra audit row per
+  such student: `action = "attendance.update"`, `entity_type = "attendance"`, `entity_id` = the attendance row, `metadata = {batch_id,
+  student_id, session_date, changes}`. An unchanged or first-time mark writes none (Q-02). The `attendance.bulk_mark` row is unchanged.
+  The existing row is read `FOR UPDATE`, so the old value is exact under concurrent marking.
+- `PATCH /admin/leads/{id}` — the existing `lead.update` row adds `changes` (`status`, `owner_id`) only when one of them actually changed.
+- A blank string and `null` are the same empty value (no change between them). Everything is written in the request's transaction, so a
+  rollback leaves no audit row.
+
+## 12IH. Notification event type and record link (itc-002) — addendum, 2026-11-02
+
+`DEC-SCOPE-336`. Migration `0221_notification_event_type` (`notifications.event_type`, `entity_type` and `entity_id`, all nullable, plus
+index `ix_notifications_user_read_created`). Additive.
+
+- `GET /workflows/notifications` — each item adds `event_type` (string | null, a key of `app/notifications/events.py` `EVENTS`, e.g.
+  `it.fee.payment_received`), `entity_type` (string | null, e.g. `payment`) and `entity_id` (string | null). Older notices return null for
+  all three. Auth and scope are unchanged: the caller's own newest 100 notices.
+- `GET /portal/it/student/notifications` (new section) — returns the header-only payload `{title: "Notifications", rows: []}` for an
+  `it_student`. The page lists the notices from the read above. The section is never fee-locked.
+- Side effect: issuing a new receipt to an `it_student` (`POST /admin/payments` with a paid status, or `POST /payments/{id}/verify` / the
+  Razorpay webhook) creates one `it.fee.payment_received` notice. Its text is fixed and contains no amount. Delivery is in-app and by
+  email, plus WhatsApp/SMS only if the student opted in. A rolled-back write sends nothing.
+
 ## 12II. Counselor ↔ IT student ownership link (itc-003) — addendum, 2026-11-02
 
 `DEC-SCOPE-337`. Migration `0222_it_student_counselors` (one row per IT student, unique `student_user_id`; backfilled from linked IT

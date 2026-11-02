@@ -3324,7 +3324,11 @@ class RealProject(Base, TimestampMixin):
 class Notification(Base, TimestampMixin):
     __tablename__ = "notifications"
     # AGN-017 (DEC-SCOPE-059 N6): only scheduled reminders set `dedupe_key`; the partial unique index makes a repeat run a no-op.
-    __table_args__ = (Index("ux_notifications_dedupe_key", "dedupe_key", unique=True, postgresql_where=text("dedupe_key IS NOT NULL")),)
+    # itc-002 (DEC-SCOPE-336): the inbox index serves GET /workflows/notifications and the unread count.
+    __table_args__ = (
+        Index("ux_notifications_dedupe_key", "dedupe_key", unique=True, postgresql_where=text("dedupe_key IS NOT NULL")),
+        Index("ix_notifications_user_read_created", "user_id", "read", "created_at"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
     title: Mapped[str] = mapped_column(String(180))
@@ -3332,6 +3336,10 @@ class Notification(Base, TimestampMixin):
     read: Mapped[bool] = mapped_column(Boolean, default=False)
     action_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     dedupe_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # itc-002: set only by app.notifications.events.notify (an EVENTS key and the record it is about); older notices stay NULL.
+    event_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    entity_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    entity_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
 
 class NotificationDelivery(Base, TimestampMixin):

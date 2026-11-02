@@ -10587,6 +10587,56 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0220_program_syllabus_image`; API §12IF; RBAC §2.237.
 - **Feature ID authorized:** `PUB-025`. **Status:** built on `feature/pub-025`.
 
+### DEC-SCOPE-335 — Field-change audit with before and after values (`itc-001`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-001` (PDF §4 "previous value, new value", §9, §12 AC9). Scope approved by the
+  owner 2026-11-01 (backlog Q-01: all phases, built in waves); Q-02 answered by the owner 2026-11-01: one audit row per student whose
+  attendance value actually changed, none for unchanged students.
+- **Decisions (builder defaults, NEEDS_CONFIRMATION if the owner disagrees):**
+  - **F1 — shared helper** `services/audit_changes.py` (`changes`, `audit_change`): only changed fields, `{field: [old, new]}`, written in the
+    caller's transaction; nothing when nothing changed. `management_audit.record` is unchanged (its tiers keep their own rules).
+  - **F2 — personal data** is recorded as `"changed"`, never as values: field names `phone`, `email`, `notes`, `remarks`, `reason` and names
+    ending in `_<one of them>`.
+  - **F3 — first adopters:** the trainer attendance overwrite (`attendance.update`, one row per changed student) and the admin lead
+    stage/owner PATCH (`changes` added to the existing `lead.update` row). Fee, resume and HR-stage changes adopt the helper in their own
+    items (itc-013, itc-021, itc-027, …).
+  - **F4 — blank equals null** (browser QA-01: the attendance form sends `""` for an empty note).
+  - **F5 — viewer:** the Audit log page gains a "Changes" column with a native disclosure ("N fields changed" → `field: old → new`, or
+    "changed (value hidden)"); "—" when a row has none.
+- **Numbering:** no migration; API §12IG; RBAC unchanged (the audit viewer's existing grants).
+- **Feature ID authorized:** `itc-001`. **Status:** built on `worktree-itc-001`.
+
+### DEC-SCOPE-336 — Notification event type and record link (`itc-002`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-002 (source PDF classified `UNVERIFIED`; the PDF itself is not in the
+  repo). Owner Q-01 (2026-11-01): all five phases are approved for build in waves, W0 first (itc-001/002/003). itc-002 has no dependency.
+  For this item the owner said to proceed with the recommended answers, so the calls below are the builder's and are open to correction.
+- **Decisions (builder's calls):**
+  - **N1 — storage.** `notifications` gains nullable `event_type` (≤80), `entity_type` (≤50) and `entity_id` (≤80, a string like
+    `audit_logs.entity_id`), plus the inbox index `(user_id, read, created_at)`, which did not exist before. Existing rows keep NULLs.
+  - **N2 — catalogue with fixed text.** `app/notifications/events.py` `EVENTS` maps each dotted type to its record type and a fixed,
+    preview-safe title and body. Callers cannot pass free text, so no amount, score, note or HR comment reaches a preview (§7, last line).
+    A test lints the catalogue for digits, currency and placeholders. Only `it.fee.payment_received` is emitted today. The other rows
+    (`it.lead.assigned`, `it.followup.overdue`, `it.fee.payment_due`, `it.batch.changed`, `it.training.at_risk`, `it.resume.uploaded`,
+    `it.placement.updated`) are `NEEDS_CONFIRMATION` against the PDF's §7 table. The item that first emits each one
+    (itc-009/016/023/025/026/027) confirms or renames it.
+  - **N3 — `notify(db, recipients, event_type, entity_id, *, action_url)`.** Writes one in-app notice per recipient and queues email plus
+    any opted-in WhatsApp/SMS, using the existing ENH-014 outbox: delivery happens after the root commit, and a rollback sends nothing.
+    Missing or deactivated recipients are skipped. A (recipient, event, record) is notified at most once per transaction. Batch fan-out
+    costs one preference query and one insert per table. An unknown type raises `ValueError`.
+  - **N4 — API.** `GET /workflows/notifications` items add `event_type`, `entity_type` and `entity_id` (additive, null on older notices).
+    No new route and no grant change.
+  - **N5 — first emitter.** When a *new* receipt is issued for an `it_student` (manual "paid" record, Razorpay verify or webhook), the
+    student gets `it.fee.payment_received` ("Payment received — Open EduSphere to view your receipt"), linked to the payment, with
+    `action_url` `/it/student/fees`. Overseas students, agents and re-issued receipts are unchanged.
+  - **N6 — screens.** The shared notification list gains a "Type" filter. It is client-side over the newest 100, and appears only when a
+    typed notice is present, so the agent, school, BDM and telecaller lists look the same until they get typed notices. IT students get
+    a **Notifications** section (`/it/student/notifications`), which is never fee-locked.
+- **Not changed:** the existing IT notices that put scores or free text in the body (assignment review, assessment result) are left as
+  they are. They belong to the items that own those events.
+- **Numbering:** migration `0221_notification_event_type`; API §12IH; RBAC §2.238.
+- **Feature ID authorized:** `itc-002`. **Status:** built on `feature/itc-002`.
+
 ### DEC-SCOPE-337 — Counselor ↔ IT student ownership link (`itc-003`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-003` (PDF cover "one student record shared", §2, §7, §12 AC4/6;
@@ -10606,6 +10656,6 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   while it points at the lead owner; C4 the student sees only the counselor's name; C5 a counselor deactivation is not blocked (the admin
   reassigns; tel-025-style blocking left open). Audit before/after uses today's `AuditLog` metadata (itc-001's helper not required);
   notices use today's `Notification` + `queue_deliveries` (itc-002's event type not required).
-- **Numbering:** migration `0222_it_student_counselors` (0221 is pencilled by itc-002); API §12II; RBAC §2.240 (DEC-SCOPE-335/336,
-  §12IG/12IH and §2.238/2.239 are left to itc-001/itc-002).
+- **Numbering:** migration `0222_it_student_counselors` (on itc-002's `0221_notification_event_type`); API §12II; RBAC §2.239
+  (DEC-SCOPE-335/336, §12IG/12IH and §2.238 are itc-001/itc-002's).
 - **Feature ID authorized:** `itc-003`. **Status:** built on `worktree-itc-003`.

@@ -3426,7 +3426,16 @@ New catalogue resources `student_progress`, `attendance`, `student_documents` (v
 The syllabus is public with no enquiry gate (S2). Inline `User.role` check, like the other `/admin/programs` routes. Pinned by
 `apps/api/tests/test_pub_025_program_syllabus.py`.
 
-### 2.240 Counselor ↔ IT student ownership link *(added 2026-11-02 — `DEC-SCOPE-337`, itc-003)*
+### 2.238 Notification event type and record link *(added 2026-11-02 — `DEC-SCOPE-336`, itc-002)*
+
+| Route | Anonymous | it_student | every other signed-in role |
+|---|---|---|---|
+| `GET /workflows/notifications` (adds `event_type`, `entity_type`, `entity_id`) | 401 | 200, own notices only | 200, own notices only |
+| `GET /portal/it/student/notifications` | 401 | 200 (header-only, never fee-locked) | the portal's existing role gate |
+
+No grant changes. A recipient sees only their own notices, as before. Pinned by `apps/api/tests/test_itc_002_notify.py`.
+
+### 2.239 Counselor ↔ IT student ownership link *(added 2026-11-02 — `DEC-SCOPE-337`, itc-003)*
 
 | Route | Anonymous | IT counselor | it_admin | super_admin, overseas counselor, overseas_admin, it_student, other roles |
 |---|---|---|---|---|

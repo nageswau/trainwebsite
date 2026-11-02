@@ -1,7 +1,7 @@
 """itc-003 -- the IT student -> counselor link: it_student_counselors.
 
 Revision ID: 0222_it_student_counselors
-Revises: 0220_program_syllabus_image
+Revises: 0221_notification_event_type
 
 docs/superpowers/specs/2026-11-02-itc-003-it-student-counselor-link-design.md (DEC-SCOPE-337). Additive: no existing row changes. 0001
 builds a fresh database from the current models, which already carry the table, so it is created only when missing (0165's idiom).
@@ -15,7 +15,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0222_it_student_counselors"
-down_revision = "0220_program_syllabus_image"
+down_revision = "0221_notification_event_type"
 branch_labels = None
 depends_on = None
 
