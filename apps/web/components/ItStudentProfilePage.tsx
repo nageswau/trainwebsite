@@ -4,9 +4,11 @@ import { notFound, redirect } from "next/navigation";
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import ItStudentProfileForm from "@/components/ItStudentProfileForm";
 import PortalShell from "@/components/PortalShell";
+import StudentResumeCard from "@/components/StudentResumeCard";
 import { ApiError, serverApi } from "@/lib/api";
 import { itEnrollmentsUrl, itStudentProfileUrl, MY_IT_PROFILE_URL, type ItStudentProfileResponse } from "@/lib/itStudentProfile";
 import { PORTAL_NAV } from "@/lib/navigation";
+import { studentResumesUrl } from "@/lib/studentResumes";
 import type { User } from "@/lib/types";
 
 const PORTALS = {
@@ -59,6 +61,9 @@ export default async function ItStudentProfilePage({ portal, id }: { portal: key
         {data.student.student_code && <p className="muted">Student ID {data.student.student_code}</p>}
         <div className="card">
           <ItStudentProfileForm initial={data} url={itStudentProfileUrl(portal, id)} enrollmentsUrl={itEnrollmentsUrl(portal, id)} />
+        </div>
+        <div style={{ marginTop: 16 }}>
+          <StudentResumeCard url={studentResumesUrl(portal, id)} description="Upload a resume on the student's behalf. Each upload is a new version; earlier ones are kept." />
         </div>
       </div>
     </PortalShell>

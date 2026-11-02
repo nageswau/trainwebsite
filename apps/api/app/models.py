@@ -2594,6 +2594,46 @@ class ProfileDocument(Base, TimestampMixin):
     file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
+# itc-026 (DEC-SCOPE-350): migration 0235 repeats these. R6: `hr` -- HR may open the version; `private` -- student and IT staff only.
+STUDENT_RESUME_VISIBILITIES = ("hr", "private")
+STUDENT_RESUME_MAX_BYTES_CEILING = 10 * 1024 * 1024
+
+
+class StudentResume(Base):
+    """itc-026 (R1, R5): one uploaded resume version of an IT student, append-only. The current resume is the highest version. Separate
+    from rec-009 `CandidateResume` (Q-22): the recruiter pool is the student's own opt-in."""
+
+    __tablename__ = "student_resumes"
+    __table_args__ = (
+        UniqueConstraint("student_user_id", "version", name="uq_student_resumes_version"),
+        CheckConstraint(f"visibility IN ({', '.join(repr(v) for v in STUDENT_RESUME_VISIBILITIES)})", name="ck_student_resumes_visibility"),
+        CheckConstraint("version >= 1", name="ck_student_resumes_version"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    student_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    version: Mapped[int] = mapped_column(Integer)
+    storage_key: Mapped[str] = mapped_column(String(300))
+    content_type: Mapped[str] = mapped_column(String(120))
+    file_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    visibility: Mapped[str] = mapped_column(String(10), default="hr")
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class StudentResumeSetting(Base, TimestampMixin):
+    """itc-026 (R4): the IT Admin's resume size limit -- one row (`id = 1`); no row means the 5 MB default."""
+
+    __tablename__ = "student_resume_settings"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_student_resume_settings_one_row"),
+        CheckConstraint(f"max_bytes BETWEEN 1048576 AND {STUDENT_RESUME_MAX_BYTES_CEILING}", name="ck_student_resume_settings_max_bytes"),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    max_bytes: Mapped[int] = mapped_column(Integer)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
 class VisaCase(Base, TimestampMixin):
     __tablename__ = "visa_cases"
     __table_args__ = (

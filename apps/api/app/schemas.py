@@ -15002,3 +15002,10 @@ class ItEnrollmentOverridePatch(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     delivery_mode: Literal[IT_DELIVERY_MODES] | None = None
+
+
+class StudentResumeSettingsIn(BaseModel):
+    """itc-026 (DEC-SCOPE-350 R4): the resume size limit in whole MB, 1 to 10."""
+
+    model_config = {"extra": "forbid"}
+    max_mb: StrictInt = Field(ge=1, le=10)

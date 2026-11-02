@@ -5129,6 +5129,25 @@ a rollback sends nothing).
   training KPIs, `/portal/it/student/dashboard|attendance`) = attended / counted under the policy; "classes marked" stays the row count.
   `/portal/it/student/attendance` rows show `approved leave` for an excused row.
 
+## 12IV. Student resume versions, staff upload and access log (itc-026) — addendum, 2026-11-02
+
+`DEC-SCOPE-350`. Migration `0235_student_resumes`. RBAC §2.250.
+
+- Version `{version, file_name, content_type, size_bytes, visibility "hr"|"private", uploaded_by {id, full_name} | null,
+  uploaded_by_role, created_at}`. List `{items: Version[] newest first, max_bytes, can_upload}`.
+- `GET/POST /it/me/resumes`, `GET /it/me/resumes/{version}/file` (it_student, own).
+- `GET/POST /counselor/it/students/{id}/resumes`, `GET …/resumes/{version}/file` (IT counselor, itc-003 linked students; else 404).
+- `GET/POST /admin/it/students/{id}/resumes`, `GET …/resumes/{version}/file` (IT Admin; not an IT student → 404).
+- `GET /hr/students/{id}/resumes` (`student_documents.view`), `GET …/resumes/{version}/file` (`student_documents.download`) — HR
+  (hr_team, super_admin) in the nehn-017 population; `hr` versions only (`can_upload: false`); a `private` version is 404.
+- `POST` multipart `file` + form `visibility` (default `hr`) → **201** Version. Empty → **422**; over the limit → **413** "The resume must
+  be at most N MB"; not PDF/DOC/DOCX by its bytes → **415**; bad visibility → **422**. Audited `it.resume.upload` (version, type, size,
+  visibility, role).
+- `…/file` → **200** the bytes, `Content-Disposition: attachment; filename="resume-<student code>-v<n>.<ext>"`, `Cache-Control:
+  private, no-store`, `nosniff`, sandbox CSP; **404** unknown version or missing file. The `it.resume.download` audit row (version,
+  role) commits first.
+- `GET /admin/it/resume-settings` → `{max_mb, max_bytes, min_mb: 1, max_mb_ceiling: 10}`; `PUT {max_mb: int 1..10}` (unknown fields
+  **422**) → the same; IT Admin only, else **403**. Audited `it.resume.settings_update` (`changes.max_mb` [old, new]).
 ## 12IW. Internal vs student-visible IT student notes (itc-028) — addendum, 2026-11-02
 
 `DEC-SCOPE-351`. Migration `0234_it_student_notes` (new table `it_student_notes`; nothing existing changes). Design:

@@ -852,6 +852,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** an admin lowers the limit below the existing files (existing files kept); a .doc file (legacy binary).
 - **Regression risks:** profile documents and the nehn-017 HR document access.
 - **Complexity:** medium. **Risk:** medium.
+- **Status:** built as `DEC-SCOPE-350` (migration `0235`, API §12IV, RBAC §2.250). Q-22: own `student_resumes` table (R1); Q-23: malware scan deferred (R2) — both builder's calls, `NEEDS_CONFIRMATION`.
 
 #### itc-027: HR resume-review task, assignment rule, HR stages and HR workspace
 - **Business requirement:** §5 steps 2–6 and HR stages; §4 "HR / Placement"; §3 step 10; §8 HR dashboard; §11 HR workspace; §12 AC3/AC4; PDF Phase 4 exit condition.
