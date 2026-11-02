@@ -205,6 +205,11 @@ class Enrollment(Base, TimestampMixin):
     slot_locked: Mapped[bool] = mapped_column(Boolean, default=True)
     status: Mapped[str] = mapped_column(String(30), default="active")
     progress_percent: Mapped[int] = mapped_column(Integer, default=0)
+    # itc-012 (DEC-SCOPE-345): per-student overrides; NULL means "the batch's" (`batches.start_date/end_date/mode`). Nothing copies the
+    # batch here, so a batch change never overwrites an override.
+    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    delivery_mode: Mapped[str | None] = mapped_column(String(30), nullable=True)
     __table_args__ = (UniqueConstraint("student_id", "batch_id", name="uq_enrollment_student_batch"),)
 
 
@@ -2141,6 +2146,24 @@ class ItStudentCounselor(Base, TimestampMixin):
     student_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
     counselor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
     assigned_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+
+
+class ItStudentProfile(Base, TimestampMixin):
+    """itc-012 (DEC-SCOPE-345): the IT student's structured record -- personal details and the emergency contact (personal data: never
+    logged or exported; read by the student, their itc-003 counselor and the IT Admin only, C1). Edited by `services/it_student_profiles.py`.
+    The legacy `users.profile` JSON (education, skills) is untouched."""
+
+    __tablename__ = "it_student_profiles"
+    student_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), primary_key=True)
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    address: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    qualification: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    graduation_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    emergency_contact_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    emergency_contact_relation: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    emergency_contact_phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
 class OverseasStudentArchive(Base, TimestampMixin):

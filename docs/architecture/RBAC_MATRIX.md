@@ -3479,3 +3479,15 @@ Inline checks (`lead_pipeline.scope`, `ensure_admin`, `services/lead_merge.py`).
 
 Recipients are resolved server-side (reporting manager, else division admins; IT admins for IT counselor follow-ups); a user only ever
 reads their own notices (`/workflows/notifications`, unchanged). No grant changes. Pinned by `apps/api/tests/test_itc_009_*.py`.
+
+### 2.245 IT student record *(added 2026-11-02 — `DEC-SCOPE-345`, itc-012)*
+
+| Route / page | Anonymous | it_student | counselor (IT) | it_admin | every other role (trainer, hr_team, placement_team, super_admin, overseas) |
+|---|---|---|---|---|---|
+| `GET/PATCH /it/me/profile` | 401 | own | 403 | 403 | 403 |
+| `GET/PATCH /counselor/it/students/{id}/profile`, `PATCH …/enrollments/{eid}` | 401 | 403 | linked student 200, else 404 | 403 | 403 |
+| `GET/PATCH /admin/it/students/{id}/profile`, `PATCH …/enrollments/{eid}` | 401 | 403 | 403 | 200 (IT students; else 404) | 403 |
+| `/it/{counselor,admin}/students/{id}/profile` (pages) | sign-in | access card | own scope | any IT student | access card |
+
+The emergency contact is personal data (C1, Q-11 `NEEDS_CONFIRMATION`): no trainer/HR route, no export, audit field names only. No grant
+changes. Pinned by `apps/api/tests/test_itc_012_*.py`.
