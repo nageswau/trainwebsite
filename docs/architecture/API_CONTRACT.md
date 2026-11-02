@@ -4859,3 +4859,17 @@ for any other role, even with the key), then the student (**404** outside the HR
     Sets `source = "pdf"`, replaces the previous PDF (deleted after commit). Audit `program.syllabus`.
   - `PUT /admin/programs/{id}/image` — multipart `file`, PNG/JPEG/WebP ≤2 MB (**413**/**415**), 120–4096 px each side (**422**);
     metadata stripped (PNG/JPEG). Replaces the previous image. `DELETE /admin/programs/{id}/image` removes it. Audit `program.image`.
+
+## 12IH. Notification event type and record link (itc-002) — addendum, 2026-11-02
+
+`DEC-SCOPE-336`. Migration `0221_notification_event_type` (`notifications.event_type`, `entity_type` and `entity_id`, all nullable, plus
+index `ix_notifications_user_read_created`). Additive.
+
+- `GET /workflows/notifications` — each item adds `event_type` (string | null, a key of `app/notifications/events.py` `EVENTS`, e.g.
+  `it.fee.payment_received`), `entity_type` (string | null, e.g. `payment`) and `entity_id` (string | null). Older notices return null for
+  all three. Auth and scope are unchanged: the caller's own newest 100 notices.
+- `GET /portal/it/student/notifications` (new section) — returns the header-only payload `{title: "Notifications", rows: []}` for an
+  `it_student`. The page lists the notices from the read above. The section is never fee-locked.
+- Side effect: issuing a new receipt to an `it_student` (`POST /admin/payments` with a paid status, or `POST /payments/{id}/verify` / the
+  Razorpay webhook) creates one `it.fee.payment_received` notice. Its text is fixed and contains no amount. Delivery is in-app and by
+  email, plus WhatsApp/SMS only if the student opted in. A rolled-back write sends nothing.
