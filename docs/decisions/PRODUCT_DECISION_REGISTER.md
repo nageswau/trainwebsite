@@ -10606,6 +10606,37 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** no migration; API §12IG; RBAC unchanged (the audit viewer's existing grants).
 - **Feature ID authorized:** `itc-001`. **Status:** built on `worktree-itc-001`.
 
+### DEC-SCOPE-336 — Notification event type and record link (`itc-002`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-002 (source PDF classified `UNVERIFIED`; the PDF itself is not in the
+  repo). Owner Q-01 (2026-11-01): all five phases are approved for build in waves, W0 first (itc-001/002/003). itc-002 has no dependency.
+  For this item the owner said to proceed with the recommended answers, so the calls below are the builder's and are open to correction.
+- **Decisions (builder's calls):**
+  - **N1 — storage.** `notifications` gains nullable `event_type` (≤80), `entity_type` (≤50) and `entity_id` (≤80, a string like
+    `audit_logs.entity_id`), plus the inbox index `(user_id, read, created_at)`, which did not exist before. Existing rows keep NULLs.
+  - **N2 — catalogue with fixed text.** `app/notifications/events.py` `EVENTS` maps each dotted type to its record type and a fixed,
+    preview-safe title and body. Callers cannot pass free text, so no amount, score, note or HR comment reaches a preview (§7, last line).
+    A test lints the catalogue for digits, currency and placeholders. Only `it.fee.payment_received` is emitted today. The other rows
+    (`it.lead.assigned`, `it.followup.overdue`, `it.fee.payment_due`, `it.batch.changed`, `it.training.at_risk`, `it.resume.uploaded`,
+    `it.placement.updated`) are `NEEDS_CONFIRMATION` against the PDF's §7 table. The item that first emits each one
+    (itc-009/016/023/025/026/027) confirms or renames it.
+  - **N3 — `notify(db, recipients, event_type, entity_id, *, action_url)`.** Writes one in-app notice per recipient and queues email plus
+    any opted-in WhatsApp/SMS, using the existing ENH-014 outbox: delivery happens after the root commit, and a rollback sends nothing.
+    Missing or deactivated recipients are skipped. A (recipient, event, record) is notified at most once per transaction. Batch fan-out
+    costs one preference query and one insert per table. An unknown type raises `ValueError`.
+  - **N4 — API.** `GET /workflows/notifications` items add `event_type`, `entity_type` and `entity_id` (additive, null on older notices).
+    No new route and no grant change.
+  - **N5 — first emitter.** When a *new* receipt is issued for an `it_student` (manual "paid" record, Razorpay verify or webhook), the
+    student gets `it.fee.payment_received` ("Payment received — Open EduSphere to view your receipt"), linked to the payment, with
+    `action_url` `/it/student/fees`. Overseas students, agents and re-issued receipts are unchanged.
+  - **N6 — screens.** The shared notification list gains a "Type" filter. It is client-side over the newest 100, and appears only when a
+    typed notice is present, so the agent, school, BDM and telecaller lists look the same until they get typed notices. IT students get
+    a **Notifications** section (`/it/student/notifications`), which is never fee-locked.
+- **Not changed:** the existing IT notices that put scores or free text in the body (assignment review, assessment result) are left as
+  they are. They belong to the items that own those events.
+- **Numbering:** migration `0221_notification_event_type`; API §12IH; RBAC §2.238.
+- **Feature ID authorized:** `itc-002`. **Status:** built on `feature/itc-002`.
+
 ### DEC-SCOPE-338 — Lead stages "Assigned to Counselor" and "Nurture" (`itc-004`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-004` (PDF §3 lead status examples). Scope approved by the owner 2026-11-01

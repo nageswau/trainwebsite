@@ -1,5 +1,7 @@
 "use client";
 
+import { useId, useState } from "react";
+
 import LocalTime from "./LocalTime";
 import { formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 
@@ -8,7 +10,11 @@ import { formatDate, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 // school, and until this existed no coordinator screen could show those notices. The Parent page is deliberately left as it was.
 // It is a list, not a table (AC-24: the new screens render no table), in the same `.link-list` rows the transfers screen uses, so it also
 // stacks on a phone without a scroll container.
-export type NotificationItem = { id: string; title: string; body: string; read: boolean; action_url: string | null; created_at: string };
+// itc-002 (DEC-SCOPE-336): a catalogued notice also names its event type and the record it is about (null on older notices).
+export type NotificationItem = {
+  id: string; title: string; body: string; read: boolean; action_url: string | null; created_at: string;
+  event_type?: string | null; entity_type?: string | null; entity_id?: string | null;
+};
 
 const READ_WAIT_MS = 1500;
 
@@ -30,10 +36,29 @@ export default function SchoolNotificationList({
   localTime?: boolean;
   readBeforeOpen?: boolean;
 }) {
+  const filterId = useId();
+  const [type, setType] = useState("");
   if (notifications.length === 0) return <p className="muted">{emptyText}</p>;
+  // itc-002: the Type filter appears only once a typed notice is present; a type's title is fixed by the catalogue, so it names the option.
+  const types = new Map<string, string>();
+  for (const n of notifications) if (n.event_type && !types.has(n.event_type)) types.set(n.event_type, n.title);
+  const shown = type ? notifications.filter((n) => n.event_type === type) : notifications;
   return (
+    <>
+    {types.size > 0 && (
+      <form className="form filter-bar" aria-label="Filter notifications" onSubmit={(event) => event.preventDefault()} style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "end", marginBottom: 12 }}>
+        <div className="field">
+          <label htmlFor={filterId}>Type</label>
+          <select id={filterId} value={type} onChange={(event) => setType(event.target.value)}>
+            <option value="">All</option>
+            {[...types].sort((a, b) => a[1].localeCompare(b[1])).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+        </div>
+        {type && <p className="muted" role="status">Showing {shown.length} of {notifications.length}</p>}
+      </form>
+    )}
     <ul className="link-list" role="list" aria-label="Notifications">
-      {notifications.map((n) => (
+      {shown.map((n) => (
         <li key={n.id}>
           <div className="who">
             <strong>{n.title}{!n.read && <> <span className="badge">new</span></>}</strong>
@@ -68,5 +93,6 @@ export default function SchoolNotificationList({
         </li>
       ))}
     </ul>
+    </>
   );
 }

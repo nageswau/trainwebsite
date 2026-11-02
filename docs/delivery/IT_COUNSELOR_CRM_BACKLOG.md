@@ -84,6 +84,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** small. **Risk:** low.
 
 #### itc-002: Notification event type and record link
+- **Status:** built as `DEC-SCOPE-336` (migration `0221`, API §12IH, RBAC §2.238). The event catalogue rows other than `it.fee.payment_received` are still `NEEDS_CONFIRMATION` against §7.
 - **Business requirement:** §4 "Notifications & audit: event type, recipient, channel, sent/read status, timestamp, … record link"; §7.
 - **Existing behavior:** `Notification` (`models.py:3293`) has recipient, title, body, `read` and `action_url`, but no event type or entity. Deliveries are in `NotificationDelivery` (3306), sent through the outbox (`dispatch.py:26`).
 - **Expected behavior:** add `event_type` (dotted, e.g. `it.resume.uploaded`) and `entity_type`/`entity_id`. Add a helper `notify(db, recipients, event_type, entity, title, body_safe)` that queues in-app plus consented channels. The body is preview-safe: no amounts, scores, notes or HR comments; just "Your placement status was updated — open EduSphere".

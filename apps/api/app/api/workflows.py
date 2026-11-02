@@ -3800,7 +3800,11 @@ async def update_commission_amount(commission_id: UUID, payload: CommissionAmoun
 @router.get("/notifications")
 async def notifications(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     rows = (await db.scalars(select(Notification).where(Notification.user_id == user.id).order_by(Notification.created_at.desc()).limit(100))).all()
-    return [{"id": x.id, "title": x.title, "body": x.body, "read": x.read, "action_url": x.action_url, "created_at": x.created_at} for x in rows]
+    # itc-002 (DEC-SCOPE-336): event_type / entity_type / entity_id are additive -- null on notices that predate the catalogue.
+    return [
+        {"id": x.id, "title": x.title, "body": x.body, "read": x.read, "action_url": x.action_url, "created_at": x.created_at, "event_type": x.event_type, "entity_type": x.entity_type, "entity_id": x.entity_id}
+        for x in rows
+    ]
 
 
 @router.get("/notifications/unread-count", response_model=NotificationUnreadCount)
