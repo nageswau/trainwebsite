@@ -13,7 +13,6 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.workflows import _notify_user
-from app.lead_stages import CLOSED
 from app.models import LEAD_APPOINTMENT_OPEN, Appointment, AuditLog, Enquiry, LeadFollowUp, TelDistributionRule, TelecallerProfile, User
 from app.services import lead_distribution
 from app.services.lead_pipeline import TELECALLER_FOLLOW_UP
@@ -25,7 +24,7 @@ logger = logging.getLogger("app.telecaller")
 TARGET_REQUIRED = "Choose who takes over this telecaller's open leads"
 TARGET_INVALID = "Choose an active telecaller of the same team"
 MANAGER_TARGET_INVALID = "Choose another active telecaller manager"
-FINISHED = ("converted", *sorted(CLOSED))  # LC2: a closed or converted lead keeps its telecaller (history and credit, AC2)
+FINISHED = lead_distribution.FINISHED  # LC2: a closed or converted lead keeps its telecaller (history and credit, AC2)
 
 
 def _plural(n: int, singular: str, plural: str | None = None) -> str:
