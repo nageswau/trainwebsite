@@ -100,17 +100,10 @@ async def accounts(db: AsyncSession, enrollments: list[Enrollment]) -> list[dict
     if not enrollments:
         return []
     ids = [e.id for e in enrollments]
-    names = dict(
-        (eid, (course, batch))
-        for eid, course, batch in (
-            await db.execute(select(Enrollment.id, Program.title, Batch.name).join(Batch, Batch.id == Enrollment.batch_id).join(Program, Program.id == Batch.program_id).where(Enrollment.id.in_(ids)))
-        ).all()
-    )
+    stmt = select(Enrollment.id, Program.title, Batch.name).join(Batch, Batch.id == Enrollment.batch_id).join(Program, Program.id == Batch.program_id).where(Enrollment.id.in_(ids))
+    names = {eid: (course, batch) for eid, course, batch in (await db.execute(stmt)).all()}  # an enrolment always has a batch and course
     figures = await balance_for(db, ids)
-    return [
-        {"enrollment_id": e.id, "enrollment_code": e.enrollment_code, "course": names.get(e.id, (None, None))[0], "batch": names.get(e.id, (None, None))[1], "currency": "INR", **figures[e.id]}
-        for e in enrollments
-    ]
+    return [{"enrollment_id": e.id, "enrollment_code": e.enrollment_code, "course": names[e.id][0], "batch": names[e.id][1], "currency": "INR", **figures[e.id]} for e in enrollments]
 
 
 async def account(db: AsyncSession, enrollment: Enrollment) -> dict:
@@ -147,8 +140,9 @@ async def record_payment(db: AsyncSession, actor: User, enrollment: Enrollment, 
             await db.delete(stale)
             await db.flush()
         await _ensure_invoice(db, bill, payer)
-        paid = Payment(user_id=bill.user_id, division="it", reference_type=bill.reference_type, reference_id=enrollment.id, amount=amount, currency=bill.currency,
-                       provider="manual", status="pending", is_manual=True, due_date=bill.due_date)  # fmt: skip
+        paid = Payment(
+            user_id=bill.user_id, division="it", reference_type=bill.reference_type, reference_id=enrollment.id, amount=amount, currency=bill.currency, due_date=bill.due_date
+        )  # marked paid just below, like a whole bill
         db.add(paid)
         await db.flush()
         await _ensure_invoice(db, paid, payer)

@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.admin import PAYMENTS_ADD, _every_division
 from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.core.identifiers import uuid_reference
 from app.models import Enrollment, ItStudentCounselor, User
 from app.services import fee_accounts, permissions
 
@@ -75,8 +76,9 @@ async def my_fee_accounts(user: User = Depends(get_current_user), db: AsyncSessi
 
 
 @router.post("/enrollments/{enrollment_id}/payments", status_code=201)
-async def record_payment(enrollment_id: UUID, payload: RecordPayment, user: User = Depends(PAYMENTS_ADD), db: AsyncSession = Depends(get_db)):
-    enrollment = await _enrollment(db, enrollment_id)
+async def record_payment(enrollment_id: str, payload: RecordPayment, user: User = Depends(PAYMENTS_ADD), db: AsyncSession = Depends(get_db)):
+    # QA13-02: the reference is typed into the Payments form, so a typo gets a plain message rather than the UUID parser's
+    enrollment = await _enrollment(db, uuid_reference(enrollment_id, "enrolment reference"))
     if not _in_it(user):
         raise HTTPException(404, NOT_FOUND)
     paid = await fee_accounts.record_payment(db, user, enrollment, float(payload.amount), payload.payment_mode, payload.provider_reference or None)

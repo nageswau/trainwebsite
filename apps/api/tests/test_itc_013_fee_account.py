@@ -190,6 +190,8 @@ async def test_recording_needs_the_payments_add_grant_and_an_it_enrolment(client
         assert (await client.post(record_url(enrollment), json={"amount": 10, "payment_mode": "cash"})).status_code == status, role
     await as_admin(client, db_session)
     assert (await client.post(f"{API}/it/enrollments/{uuid.uuid4()}/payments", json={"amount": 10, "payment_mode": "cash"})).status_code == 404
+    typo = await client.post(f"{API}/it/enrollments/not-a-reference/payments", json={"amount": 10, "payment_mode": "cash"})
+    assert (typo.status_code, typo.json()["detail"]) == (422, "A valid enrolment reference is required")  # QA13-02: a plain message
     assert (await figures(db_session, enrollment))["balance"] == 45000.0
 
 

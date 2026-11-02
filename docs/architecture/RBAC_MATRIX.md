@@ -3491,3 +3491,14 @@ reads their own notices (`/workflows/notifications`, unchanged). No grant change
 | `POST/PATCH /telecaller/counseling-objections` | 401 | 403 | 403 | manager / super_admin; telecaller 403 | 403 |
 
 No grant changes. Pinned by `apps/api/tests/test_itc_010_counseling.py`.
+
+### 2.244 Per-enrolment fee account *(added 2026-11-02 — `DEC-SCOPE-344`, itc-013)*
+
+| Route | Anonymous | it_student | counselor (IT) | `payments.view` / `payments.add` holder in IT or every division | holder in overseas | every other role |
+|---|---|---|---|---|---|---|
+| `GET /it/enrollments/{id}/fee-account` | 401 | own, else 404 | linked student, else 404 | view: any | 404 | 403 |
+| `GET /it/student/fee-accounts` | 401 | own | 403 | 403 | 403 | 403 |
+| `POST /it/enrollments/{id}/payments` | 401 | 403 | 403 | add: any IT enrolment | 404 | 403 |
+
+No grant changes (seed: it_admin and overseas_admin hold `payments.view/add`; super_admin everything). Pinned by
+`apps/api/tests/test_itc_013_fee_account.py`.

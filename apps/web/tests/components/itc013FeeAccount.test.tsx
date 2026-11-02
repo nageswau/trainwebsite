@@ -2,6 +2,13 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import FeePaymentPanel from "@/components/FeePaymentPanel";
+import WorkflowPanel from "@/components/WorkflowPanel";
+import { clearPermissions } from "@/lib/usePermissions";
+import type { User } from "@/lib/types";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }), useSearchParams: () => new URLSearchParams(), usePathname: () => "/it/admin/payments",
+}));
 
 // itc-013 (DEC-SCOPE-344): the IT student's Fees page leads with a fee summary per enrolment; a paid fee card names its mode and
 // transaction reference (AC4). The overseas student's Payments page (same panel) never asks for IT fee accounts.
@@ -64,6 +71,17 @@ describe("Fee summary (itc-013)", () => {
     serve([ACCOUNT]);
     render(<FeePaymentPanel feeAccounts />);
     expect(await screen.findByText("Paid by UPI · Ref UPI-123")).toBeInTheDocument();
+  });
+
+  it("lets the IT admin record a payment in rupees and paise, with a named mode (QA13-01)", async () => {
+    clearPermissions();
+    vi.stubGlobal("fetch", vi.fn(async () => json({ role: "it_admin", permissions: ["payments.view", "payments.add"] })));
+    const admin = { id: "u1", email: "a@example.local", full_name: "Ira", role: "it_admin", division: "it" } as unknown as User;
+    render(<WorkflowPanel user={admin} section="payments" />);
+    expect(await screen.findByRole("heading", { name: "Record enrolment payment" })).toBeInTheDocument();
+    const amount = screen.getByLabelText("Amount paid");
+    expect(amount).toHaveAttribute("step", "0.01");
+    expect(within(screen.getByLabelText("Payment mode", { selector: "#Record\\ enrolment\\ payment-payment_mode" })).getByRole("option", { name: "Bank transfer" })).toBeInTheDocument();
   });
 
   it("is not loaded for the overseas student's payments", async () => {

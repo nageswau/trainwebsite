@@ -419,6 +419,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** low.
 
 #### itc-013: Per-enrolment fee account (payable, paid, balance, mode, receipt reference)
+- **Status:** built as `DEC-SCOPE-344` (migration `0228_payment_mode`, API §12IP, RBAC §2.244). Q-12/Q-13 built with the recommended
+  answers (owner: proceed with recommended answers): tax 0 (GST still open); computed account, no overpayment (a payment may not exceed
+  the oldest owed bill).
 - **Business requirement:** §6 fee dashboard; §4 "Fee & payment"; §9 "Recalculate balance after each confirmed payment, refund, or approved fee adjustment"; §12 AC5.
 - **Existing behavior:**
   - The course fee is `Program.fees`. Enrolling creates one pending `enrollment_fee` Payment (`workflows.py:535`).
@@ -1223,8 +1226,8 @@ That makes about 24 migrations. They must be linear (`0220` onward), so assign e
 | Q-09 | Onboarding checklist: reuse the ccrm-018/019 engine? What items does it contain? | 011 |
 | Q-10 | Does counselor conversion skip the student consent step (`pending_consent`)? What if the email belongs to an existing overseas student? | 011 |
 | Q-11 | Which roles may see the emergency contact? | 012 |
-| Q-12 | GST: included in the course fee, added on top, or out of scope? | 013 |
-| Q-13 | Fee account: a stored table or computed? How are overpayments handled? | 013 |
+| Q-12 | GST: included in the course fee, added on top, or out of scope? **Built with the recommended answer (owner: proceed with recommended answers), DEC-SCOPE-344: out of scope for now, `tax` = 0; still open.** | 013 |
+| Q-13 | Fee account: a stored table or computed? How are overpayments handled? **Built with the recommended answer, DEC-SCOPE-344: computed from `Payment`; a recorded payment may not exceed the oldest owed bill, so no overpayment is created.** | 013 |
 | Q-14 | Discount: keep the direct grant (nehn-021), or add maker-checker? | 014 |
 | Q-15 | Refunds: manual only, or the Razorpay refund API? Do refunds reduce reported revenue? | 015 |
 | Q-16 | Reminder schedule (days before and after due) and channels | 016 |

@@ -5010,3 +5010,19 @@ leads owned by an IT counselor). All routes **401** without a session.
 - `GET/POST /telecaller/counseling-objections`, `PATCH /telecaller/counseling-objections/{id}` — the lost-reason list contract (ccrm-006):
   `{id, name, active, sort_order}`; a duplicate name (case-insensitive) is 409.
 - Lead timeline: new kind `counseling` (`event` `created | updated`, `to_value` = the outcome).
+
+## 12IP. Per-enrolment fee account (itc-013) — addendum, 2026-11-02
+
+`DEC-SCOPE-344`. Migration `0228_payment_mode`. Additive.
+
+- `GET /it/enrollments/{id}/fee-account` → `{enrollment_id, enrollment_code, course, batch, currency, course_fee, discount_approved, tax,
+  total_payable, paid_confirmed, credits, balance, state}` (numbers; `state` = `not_billed | enrolled_pending_payment | partially_paid |
+  fully_paid`). The student (own), the IT counselor (linked student), a `payments.view` holder in IT; out of reach 404; no access 403.
+- `GET /it/student/fee-accounts` → a list of the same, the IT student's own enrolments (newest first). Any other role 403.
+- `POST /it/enrollments/{id}/payments` → 201 `{payment: {id, amount, status, payment_mode, provider_reference}, account}`. Body:
+  `amount` (decimal > 0, 2 places), `payment_mode` (`cash | upi | card | bank_transfer | cheque`), `provider_reference` (≤ 160, trimmed).
+  `payments.add` in IT (403 without the grant, 404 outside IT); nothing owed 409; more than the oldest owed bill 422. Not idempotent.
+- `POST /admin/payments` accepts optional `payment_mode` (the five offline modes; others 422). `GET /admin/payments` and
+  `GET /payments/mine` rows gain `payment_mode` and `provider_reference`.
+- Receipt PDF: new lines "Payment mode", "Transaction reference" (after "Amount paid"); an enrolment fee's balance is the account's.
+- Portal: `it/admin/enrollments` and `it/counselor/students` gain a `fee_balance` column (`INR 1,234.00` or `Not billed`).

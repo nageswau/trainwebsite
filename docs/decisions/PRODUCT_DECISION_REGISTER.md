@@ -10804,3 +10804,36 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
     timeline shows it as a `counseling` entry. **C11 —** internal: never shown to students; logs carry ids and field names only.
 - **Numbering:** migration `0227_lead_counseling_records`; API §12IO; RBAC §2.243.
 - **Feature ID authorized:** `itc-010`. **Status:** built on `worktree-itc-010`.
+
+### DEC-SCOPE-344 — Per-enrolment fee account (`itc-013`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-013 (PDF §6 fee dashboard, §4 "Fee & payment", §9 "Recalculate balance
+  after each confirmed payment …", §12 AC5; PDF classified `UNVERIFIED`). Owner Q-01 (2026-11-01): all phases approved for build in
+  waves; dependency itc-001 merged (PR #408). The owner said to proceed with the recommended answers, so the calls below are the
+  builder's (`NEEDS_CONFIRMATION`). Design: `docs/superpowers/specs/2026-11-02-itc-013-fee-account-design.md`.
+- **Decisions (builder's calls):**
+  - **F1 — Q-13:** the fee account is **computed** from `Payment` (no `fee_accounts` table, so it cannot drift): an enrolment's rows are
+    its IT `enrollment_fee`/`enrollment` payments in `pending | overdue | paid | succeeded`. `course_fee` = Σ(amount + discount_amount);
+    `discount_approved` = Σ discount_amount; `total_payable` = course_fee − discount + tax; `paid_confirmed` = Σ amount of paid/succeeded;
+    `balance` = total_payable − paid_confirmed − credits. One definition, `services/fee_accounts.balance_for` (one grouped query).
+  - **F2 — Q-12:** `tax` is always 0 (GST stays `NEEDS_CONFIRMATION`, `PRD_OPEN_ITEMS.md` item 12). **F3 —** `credits` is 0 until
+    itc-015 (refunds/adjustments); a negative balance would then show as a credit.
+  - **F4 — overpayment (Q-13):** a recorded payment may not exceed the oldest owed bill (by due date, then age), so none can be created.
+  - **F5 — part payment:** recording less than the bill splits it — the bill keeps the rest (invoice reissued; a stale Razorpay order on
+    it is cleared so that order cannot settle the smaller bill) and a new paid row holds the payment (invoice + receipt). Gross is
+    preserved, so `course_fee` never moves. The bill rows are locked, so recordings and a gateway confirmation serialise.
+  - **F6 — mode:** `Payment.payment_mode` ∈ cash, upi, card, bank_transfer, cheque, razorpay; staff record the offline five, only the
+    gateway's own confirmation sets `razorpay`. Migration backfills `razorpay` on paid gateway rows only; other old rows stay unknown.
+  - **F7 — receipt:** gains "Payment mode" and "Transaction reference"; an enrolment fee's "Remaining balance" is the account balance.
+  - **F8 — state:** `not_billed` (no fee row — a legacy enrolment), `enrolled_pending_payment`, `partially_paid`, `fully_paid`; it
+    agrees with `student_access` (which sums the same owed rows per student).
+  - **F9 — AuthZ:** read by the student (own), the IT counselor (linked students, itc-003), a `payments.view` holder in IT / every
+    division; record needs `payments.add` in IT. Out of reach 404; no access 403. Audit `it.fee.payment_recorded` (itc-001 diff of
+    `balance`, payment id, mode). Notifications carry no amounts (the itc-002 receipt notice is unchanged).
+  - **F10 — UI:** the IT student's Fees page leads with a fee summary per enrolment; paid fee cards name mode and reference; the IT
+    Admin's Payments page gains "Record enrolment payment" and the mode/reference on "Create payment due"; the IT Admin's Enrolments
+    and the IT counselor's My Students tables gain "Fee balance".
+- **Not changed:** EMI plans (an EMI plan made for an enrolment beside its enrolment bill is still double-billed, as before — itc-016);
+  discount approval (itc-014); refunds (itc-015); tax.
+- **Numbering:** migration `0228_payment_mode`; API §12IP; RBAC §2.244.
+- **Feature ID authorized:** `itc-013`. **Status:** built on `worktree-itc-013`.

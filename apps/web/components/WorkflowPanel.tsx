@@ -69,6 +69,8 @@ type Field = {
   placeholder?: string;
   defaultValue?: string | number | boolean;
   parse?: "number" | "list" | "boolean";
+  step?: string; // itc-013 QA13-01: a number input's step ("0.01" for an amount in rupees and paise); the browser default is 1
+
 };
 
 type ActionSpec = {
@@ -148,7 +150,7 @@ function ActionForm({ spec }: { spec: ActionSpec }) {
   return <div className="action-card"><div><h3>{spec.title}</h3>{spec.description && <p className="muted">{spec.description}</p>}</div><form className="form" onSubmit={submit}>
     <div className="form-grid">{spec.fields.map(field => field.type === "lookup" && field.lookup ? <SearchableSelect key={field.name} id={`${spec.title}-${field.name}`} label={field.label} name={field.name} required={field.required} noun={field.lookup.noun} minChars={field.lookup.minChars} search={lookupSearch(field.lookup.name, field.lookup.params)}/> : <div className={`field${field.type === "textarea" ? " full" : ""}`} key={field.name}>
       <label htmlFor={`${spec.title}-${field.name}`}>{field.label}</label>
-      {field.type === "textarea" ? <textarea id={`${spec.title}-${field.name}`} name={field.name} required={field.required} placeholder={field.placeholder} defaultValue={String(field.defaultValue ?? "")}/> : field.type === "select" ? <select id={`${spec.title}-${field.name}`} name={field.name} required={field.required} defaultValue={String(field.defaultValue ?? "")}><option value="">Select</option>{field.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : field.type === "checkbox" ? <input id={`${spec.title}-${field.name}`} name={field.name} type="checkbox" defaultChecked={Boolean(field.defaultValue)}/> : <input id={`${spec.title}-${field.name}`} name={field.name} type={field.type || "text"} required={field.required} placeholder={field.placeholder} defaultValue={String(field.defaultValue ?? "")}/>} 
+      {field.type === "textarea" ? <textarea id={`${spec.title}-${field.name}`} name={field.name} required={field.required} placeholder={field.placeholder} defaultValue={String(field.defaultValue ?? "")}/> : field.type === "select" ? <select id={`${spec.title}-${field.name}`} name={field.name} required={field.required} defaultValue={String(field.defaultValue ?? "")}><option value="">Select</option>{field.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : field.type === "checkbox" ? <input id={`${spec.title}-${field.name}`} name={field.name} type="checkbox" defaultChecked={Boolean(field.defaultValue)}/> : <input id={`${spec.title}-${field.name}`} name={field.name} type={field.type || "text"} step={field.step} required={field.required} placeholder={field.placeholder} defaultValue={String(field.defaultValue ?? "")}/>} 
     </div>)}</div>
     {feedback && <div className={toneClass[feedback.tone]} role={feedback.tone === "error" ? "alert" : "status"} aria-live={feedback.tone === "error" ? "assertive" : "polite"}>{feedback.text}</div>}
     <button className="btn" disabled={busy}>{busy ? "Saving…" : spec.title}</button>
@@ -394,7 +396,7 @@ const RECORD_FEE_PAYMENT_SPEC: ActionSpec = {
     const account = data.account as { balance?: number } | undefined;
     return { text: typeof account?.balance === "number" ? `Payment recorded. Remaining balance INR ${account.balance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}.` : "Payment recorded.", tone: "success" };
   },
-  fields: [{ name: "enrollment_id", label: "Enrolment reference", type: "text", required: true }, { name: "amount", label: "Amount paid", type: "number", required: true }, { name: "payment_mode", label: "Payment mode", type: "select", required: true, options: PAYMENT_MODE_OPTIONS }, { name: "provider_reference", label: "Transaction reference" }],
+  fields: [{ name: "enrollment_id", label: "Enrolment reference", type: "text", required: true }, { name: "amount", label: "Amount paid", type: "number", step: "0.01", required: true }, { name: "payment_mode", label: "Payment mode", type: "select", required: true, options: PAYMENT_MODE_OPTIONS }, { name: "provider_reference", label: "Transaction reference" }],
 };
 
 function adminSpecs(user: User, section: string): ActionSpec[] {
