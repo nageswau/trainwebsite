@@ -492,6 +492,46 @@ class CertificateRule(Base, TimestampMixin):
     updated_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
+class ItRiskThreshold(Base, TimestampMixin):
+    """itc-023 (DEC-SCOPE-352 R1): one programme's at-risk thresholds. NULL turns a criterion off; no row (or all off) = not monitored.
+    `min_sessions`: the attendance-% criterion waits for that many counted sessions (the first week)."""
+
+    __tablename__ = "it_risk_thresholds"
+    __table_args__ = (
+        CheckConstraint("min_attendance_percent BETWEEN 0 AND 100 AND min_assessment_percent BETWEEN 0 AND 100", name="ck_it_risk_thresholds_percent"),
+        CheckConstraint("max_consecutive_absences BETWEEN 1 AND 60 AND min_sessions BETWEEN 1 AND 60", name="ck_it_risk_thresholds_counts"),
+    )
+    program_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("programs.id", ondelete="CASCADE"), primary_key=True)
+    min_attendance_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    min_assessment_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_consecutive_absences: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    min_sessions: Mapped[int] = mapped_column(Integer, default=3, server_default=text("3"))
+    updated_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class StudentRiskFlag(Base, TimestampMixin):
+    """itc-023 (R4): one at-risk episode of an enrolment -- raised by the daily sweep, `cleared_at` set when it ends (`clear_reason`
+    'recovered', or 'stopped' when the enrolment/programme left monitoring). At most one open flag per enrolment (partial unique index),
+    so two sweeps can never both raise one. The figures are the last check's."""
+
+    __tablename__ = "student_risk_flags"
+    __table_args__ = (
+        Index("uq_student_risk_flags_open", "enrollment_id", unique=True, postgresql_where=text("cleared_at IS NULL")),
+        CheckConstraint("clear_reason IS NULL OR clear_reason IN ('recovered', 'stopped')", name="ck_student_risk_flags_clear_reason"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    enrollment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enrollments.id", ondelete="CASCADE"), index=True)
+    student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
+    batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("batches.id"), index=True)
+    reasons: Mapped[list] = mapped_column(JSON, default=list)
+    attendance_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+    assessment_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+    consecutive_absences: Mapped[int] = mapped_column(Integer, default=0)
+    raised_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    cleared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    clear_reason: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+
 STUDENT_ACCESS_FEATURES = ("attendance", "assignments", "assessments", "resources", "live_classes", "questions", "feedback", "certificates")
 STUDENT_PAYMENT_STATES = ("registered", "enrolled_pending_payment", "partially_paid", "fully_paid")  # lowest first
 

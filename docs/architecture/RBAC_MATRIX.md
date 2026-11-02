@@ -3575,3 +3575,8 @@ No new grant keys (HR reuses nehn-017's). Inline checks (`api/student_resumes.py
 AC1 leak net: `apps/api/tests/test_itc_028_it_student_notes.py::test_an_internal_note_never_reaches_any_student_response_or_notification`
 calls every parameter-less API GET and every IT student portal section as the student and asserts no internal note text appears (with a
 positive control), and checks every notification of the student.
+### 2.252 At-risk thresholds and flags *(added 2026-11-02 — `DEC-SCOPE-352`, itc-023)*
+
+No grant change. Thresholds: read and changed by `it_admin` (IT) only; any other role 403. Flags (`GET /it/at-risk`): `it_admin` (IT) any
+student; IT `counselor` only their itc-003 linked students; `trainer` only students of batches they teach; students and every other
+role 403. A reader outside the scope gets an empty list (no disclosure). Pinned by `apps/api/tests/test_itc_023_at_risk.py`.

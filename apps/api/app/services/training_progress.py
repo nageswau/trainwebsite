@@ -106,6 +106,19 @@ def passed(student_id: UUID | None = None, batch_id: UUID | None = None) -> Subq
     return (stmt.where(Assessment.batch_id == batch_id) if batch_id else stmt).subquery()
 
 
+def assessment_average(batch_id: UUID) -> Subquery:
+    """itc-023 (DEC-SCOPE-352 R3): (student_id, average) -- the mean of each student's best graded attempt % over the batch's counted
+    assessments they have a graded attempt for (an assessment never graded for them is not averaged in)."""
+    best = (
+        select(AssessmentAttempt.student_id, func.max(AssessmentAttempt.percentage).label("best"))
+        .join(Assessment, Assessment.id == AssessmentAttempt.assessment_id)
+        .where(Assessment.batch_id == batch_id, Assessment.status.in_(COUNTED_ASSESSMENTS), AssessmentAttempt.status == "graded", AssessmentAttempt.percentage.is_not(None))
+        .group_by(AssessmentAttempt.student_id, AssessmentAttempt.assessment_id)
+        .subquery()
+    )
+    return select(best.c.student_id, func.round(func.avg(best.c.best), 2).label("average")).group_by(best.c.student_id).subquery()
+
+
 async def seat(db: AsyncSession, student_id: UUID, batch_id: UUID) -> dict:
     """One seat's figures: attendance_percent (None when nothing is marked), assignments graded/total, assessments passed/total."""
     att, done, tasks, won, tests = attendance(student_id, batch_id), graded(student_id, batch_id), assignments(batch_id), passed(student_id, batch_id), assessments(batch_id)

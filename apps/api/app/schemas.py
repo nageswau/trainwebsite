@@ -14995,6 +14995,16 @@ class ItStudentProfilePatch(BaseModel):
         return value
 
 
+class ItRiskThresholdIn(BaseModel):
+    """itc-023 (DEC-SCOPE-352 R1): one programme's at-risk thresholds -- the whole set each time; null turns a criterion off."""
+
+    model_config = ConfigDict(extra="forbid")
+    min_attendance_percent: int | None = Field(default=None, ge=0, le=100)
+    min_assessment_percent: int | None = Field(default=None, ge=0, le=100)
+    max_consecutive_absences: int | None = Field(default=None, ge=1, le=60)
+    min_sessions: int = Field(default=3, ge=1, le=60)
+
+
 class ItEnrollmentOverridePatch(BaseModel):
     """A null clears the override (the batch's value applies again)."""
 

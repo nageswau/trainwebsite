@@ -466,8 +466,10 @@ async def _trainer(db: AsyncSession, user: User, section: str):
         return _payload("Faculty Profile", "What your students see about you -- you choose which details are shown.")  # itc-019: header only
     if section == "timetable":
         return _payload("Timetable", "Classes of the batches you teach.")  # itc-020 (DEC-SCOPE-344): header only -- the page's panel reads /it/timetable
+    if section == "notifications":  # itc-023 (DEC-SCOPE-352): header only -- PortalPage mounts the shared list (GET /workflows/notifications)
+        return _payload("Notifications", "Your own notifications, including students of your batches who are at risk.")
     if section == "dashboard":
-        assignments = await db.scalar(select(func.count()).select_from(Assignment).where(Assignment.batch_id.in_(batch_ids))) if batch_ids else 0
+        assignments =await db.scalar(select(func.count()).select_from(Assignment).where(Assignment.batch_id.in_(batch_ids))) if batch_ids else 0
         pending = (
             await db.scalar(select(func.count()).select_from(Submission).join(Assignment).where(Assignment.batch_id.in_(batch_ids), Submission.status.in_(["submitted", "resubmitted"])))
             if batch_ids
@@ -1489,6 +1491,8 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             # itc-009 (DEC-SCOPE-342): header only -- PortalPage mounts the shared notification list (GET /workflows/notifications), where
             # an IT counselor's overdue follow-up (or one whose telecaller manager is inactive) is escalated.
             return _payload("Notifications", "Your own notifications, including overdue follow-ups escalated to you.")
+        if section == "at-risk" and user.role == "it_admin":  # itc-023 (DEC-SCOPE-352): header only -- the panels read /admin/it/risk-thresholds and /it/at-risk
+            return _payload("At Risk", "Thresholds per programme, and the students the daily check flagged.")
         if section == "reports" and user.role in {"it_admin", "super_admin"}:
             # RPT-001: `PORTAL_NAV["it/admin"]` lists "Reports" but no handler existed at
             # all -- confirmed directly, same 404 bug class `CNS-001`/`UNI-001` found for
