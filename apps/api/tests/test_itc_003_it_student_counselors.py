@@ -2,6 +2,8 @@
 lead's student link, removed with a mistaken link, moved by the IT Admin with a reason (csc-005 / ccrm-033 rules), and read by the IT
 counselor (only their own students; anything else is 404) and by the student (their own counselor's name)."""
 
+import re
+
 import pytest
 from sqlalchemy import func, select
 
@@ -232,6 +234,7 @@ async def test_the_portal_shows_the_counselor_to_admin_counselor_and_student(cli
     await as_user(client, counselor)
     mine = (await client.get("/api/v1/portal/it/counselor/students")).json()
     assert mine["title"] == "My Students" and [r["name"] for r in mine["rows"]] == [student.full_name]
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", mine["rows"][0]["since"])  # QA-02: the IST date, not a raw timestamp
 
     await as_user(client, student)
     tiles = {m["label"]: m["value"] for m in (await client.get("/api/v1/portal/it/student/dashboard")).json()["metrics"]}

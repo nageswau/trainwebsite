@@ -42,7 +42,8 @@ test("the IT Admin assigns and moves an IT student's counselor; the counselor an
   const student = await createUser(page, "it_student", studentName, `itc003-s-${stamp}@example.local`);
 
   await page.goto("/it/admin/students");
-  const row = page.locator("tr", { hasText: studentName });
+  // The admin table's row (its first cell is the id); the page's workflow panel below lists the student too.
+  const row = page.locator("tr", { has: page.getByRole("cell", { name: student.id, exact: true }) });
   await expect(row).toContainText("Not assigned");
   await pick(page, row, "Assign counsellor", c1Name);
   await expect(row).toContainText(c1Name);
@@ -60,7 +61,8 @@ test("the IT Admin assigns and moves an IT student's counselor; the counselor an
   await signIn(page, c2.email, E2E_PASSWORD, "/it/counselor/dashboard");
   await page.getByRole("navigation").getByRole("link", { name: "Students" }).click();
   await expect(page.getByRole("heading", { name: "My Students" })).toBeVisible();
-  await expect(page.locator("tr", { hasText: studentName })).toBeVisible();
+  await expect(page.locator("tr", { hasText: studentName })).toContainText(/\d{4}-\d{2}-\d{2}/); // QA-02: the date, not a timestamp
+  await expect(page.getByText("Evaluate Applications")).toHaveCount(0); // QA-03: no overseas application panel
   await page.request.post("/api/v1/auth/logout");
   await signIn(page, c1.email, E2E_PASSWORD, "/it/counselor/dashboard");
   await page.goto("/it/counselor/students");

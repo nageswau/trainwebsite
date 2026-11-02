@@ -9,7 +9,7 @@ import logging
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AuditLog, Enquiry, ItStudentCounselor, Notification, User
@@ -111,7 +111,7 @@ async def page(db: AsyncSession, counselor: User, limit: int, offset: int, patte
     """The counselor's IT students, newest link first; `pattern` (a literal ILIKE pattern) narrows by name, email or Student ID."""
     stmt = _mine(counselor)
     if pattern:
-        stmt = stmt.where(User.full_name.ilike(pattern, escape="\\") | User.email.ilike(pattern, escape="\\") | User.student_code.ilike(pattern, escape="\\"))
+        stmt = stmt.where(or_(*(column.ilike(pattern, escape="\\") for column in (User.full_name, User.email, User.student_code))))
     total = await db.scalar(select(func.count()).select_from(stmt.subquery()))
     rows = (await db.execute(stmt.order_by(ItStudentCounselor.created_at.desc(), User.id).limit(limit).offset(offset))).all()
     return {"items": [_out(student, since) for student, since in rows], "total": total or 0, "limit": limit, "offset": offset}

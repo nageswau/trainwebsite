@@ -72,6 +72,7 @@ from app.services.agent_students import application_scope, student_scope
 from app.services.application_filters import ApplicationFilters
 from app.services.application_offers import TYPE_LABELS as OFFER_TYPE_LABELS
 from app.services.application_offers import document_view as offer_document_view
+from app.services.bdm_appointments import today_ist
 from app.services.offers import status_label as offer_status_label
 from app.services.provisioning import provisioning_statuses, user_ids_with_status
 from app.visa_status import label as visa_status_label
@@ -1807,7 +1808,7 @@ async def _it_counselor(db: AsyncSession, user: User, section: str):
             "My Students",
             "IT students you are the counselor for.",
             (("student_code", "Student ID"), ("name", "Name"), ("email", "Email"), ("phone", "Phone"), ("since", "Your student since")),
-            ({"id": s["id"], "student_code": s["student_code"], "name": s["full_name"], "email": s["email"], "phone": s["phone"], "since": s["linked_since"]} for s in mine["items"]),
+            ({"id": s["id"], "student_code": s["student_code"], "name": s["full_name"], "email": s["email"], "phone": s["phone"], "since": today_ist(s["linked_since"]).isoformat()} for s in mine["items"]),
         )
     if section == "appointments":  # tel-016 AP14: header only -- the page's panel reads /counselor/appointments
         return _payload("Appointments", "Counselling appointments booked for your leads.")
