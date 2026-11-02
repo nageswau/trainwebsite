@@ -604,6 +604,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 ### Phase 3: Training (PDF Phase 3)
 
 #### itc-019: Faculty profiles and student faculty view
+- **Status:** built as `DEC-SCOPE-345` (migration `0229_trainer_profiles`, API §12IQ, RBAC §2.245); design
+  `docs/superpowers/specs/2026-11-02-itc-019-faculty-profiles-design.md`. Open points answered by Claude's calls F1-F8 (email/phone
+  hidden by default, private photo with signed links, active enrolments only), `NEEDS_CONFIRMATION`.
 - **Business requirement:** §4 "Faculty & batch"; §6 "Faculty details … configurable to protect personal details".
 - **Existing behavior:** `Program.trainer_name` (free text) and `Batch.trainer_id` only. There is no profile, and students see no faculty.
 - **Expected behavior:** a trainer profile with designation, expertise, photo (optional), bio, office hours, a contact route (email, phone, in-app only) and per-field visibility toggles. Students see the profile of each of their batches' trainers.

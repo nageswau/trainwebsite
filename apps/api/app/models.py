@@ -243,6 +243,29 @@ class BatchTimetableCancellation(Base, TimestampMixin):
     cancelled_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+TRAINER_CONTACT_ROUTES = ("in_app", "email", "phone")
+
+
+class TrainerProfile(Base, TimestampMixin):
+    """itc-019 (DEC-SCOPE-345): what a trainer shows their students. Email and phone stay on the user account; the `show_*` flags decide
+    what a student response may carry (F1: email/phone hidden by default). `photo_key` is a private storage key (signed links only)."""
+
+    __tablename__ = "trainer_profiles"
+    __table_args__ = (CheckConstraint("contact_route IN ('in_app', 'email', 'phone')", name="ck_trainer_profiles_contact_route"),)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    designation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    expertise: Mapped[list] = mapped_column(JSON, default=list)
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    office_hours: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    contact_route: Mapped[str] = mapped_column(String(10), default="in_app")
+    show_email: Mapped[bool] = mapped_column(Boolean, default=False)
+    show_phone: Mapped[bool] = mapped_column(Boolean, default=False)
+    show_photo: Mapped[bool] = mapped_column(Boolean, default=True)
+    show_bio: Mapped[bool] = mapped_column(Boolean, default=True)
+    show_office_hours: Mapped[bool] = mapped_column(Boolean, default=True)
+    photo_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
 class Agreement(Base, TimestampMixin):
     __tablename__ = "agreements"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)

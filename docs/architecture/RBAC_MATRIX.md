@@ -3501,3 +3501,15 @@ No grant changes. Pinned by `apps/api/tests/test_itc_010_counseling.py`.
 | `GET /it/timetable?batch_id=` out of scope | 401 | 404 unknown | 404 | 404 | 404 | 403 |
 
 Inline checks (`services/batch_timetable.py` `require_editor`, `_scoped_batches`). Pinned by `apps/api/tests/test_itc_020_timetable.py`.
+
+### 2.245 Faculty profiles and student faculty view *(added 2026-11-02 — `DEC-SCOPE-345`, itc-019)*
+
+| Route | Anonymous | it_admin / super_admin | trainer | it_student | other roles |
+|---|---|---|---|---|---|
+| `GET/PUT /it/trainer/profile`, `PUT/DELETE …/photo` | 401 | 403 | 200 own / 413 / 415 / 422 | 403 | 403 |
+| `GET/PUT /it/trainers/{id}/profile`, `PUT/DELETE …/photo` | 401 | 200 / 404 not an IT trainer / 413 / 415 / 422 | 403 | 403 | 403 |
+| `GET /it/student/faculty` | 401 | 403 | 403 | 200 actively enrolled batches (hidden fields absent) | 403 |
+| `GET /it/faculty/{trainer_id}` | 401 | 403 | 403 | 200 own batches' trainer; 404 any other | 403 |
+
+Inline checks (`api/trainer_profiles.py` → `services/trainer_profiles.py` `require_role`, `trainer_or_404`, `faculty_member`,
+`public_view`). Pinned by `apps/api/tests/test_itc_019_faculty_profiles.py`.

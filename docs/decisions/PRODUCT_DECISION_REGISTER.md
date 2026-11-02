@@ -10823,3 +10823,21 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   text is untouched. T8 an IT counselor sees no join link; a student whose live classes are locked sees no join link.
 - **Numbering:** migration `0228_batch_timetable` (`batch_timetable_slots`, `batch_timetable_cancellations`); API §12IP; RBAC §2.244.
 - **Feature ID authorized:** `itc-020`. **Status:** built on `worktree-itc-020`.
+
+### DEC-SCOPE-345 — Faculty profiles and student faculty view (`itc-019`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-019` (PDF §4 "Faculty & batch: photo, designation, expertise,
+  contact/office hours"; §6 "Faculty details … configurable to protect personal details"). Scope approved by the owner 2026-11-01
+  (backlog Q-01: all phases, built in waves). No dependencies. Design `docs/superpowers/specs/2026-11-02-itc-019-faculty-profiles-design.md`.
+- **Behaviour:** a trainer keeps a faculty profile (designation, expertise tags, bio, office hours, optional photo, preferred contact
+  route in-app / email / phone) and chooses which details students see. The IT Admin can edit any IT trainer's profile from the Trainers
+  page. A student sees, on the Course page, the profile of the trainer of each batch they are actively enrolled in; another trainer's
+  profile is 404. Hidden details are never sent to a student (left out of the response, not blanked). The photo goes through the upload
+  policy (PNG/JPEG/WebP, ≤2 MB, 120–4096 px, magic bytes, metadata stripped) and is served only by short-lived signed links.
+- **Claude's calls under "proceed with recommended answers" (`NEEDS_CONFIRMATION`):** F1 email and phone are hidden by default; bio,
+  office hours and photo shown by default. F2 email and phone come from the user account (not stored twice). F3 "in-app" contact points
+  students to the existing Questions page. F4 only active enrolments open a profile (as itc-020). F5 the photo is private storage +
+  signed links. F6 the IT Admin may edit any trainer's profile. F7 `programs.trainer_name` free text is untouched. F8 no counselor, HR or
+  public faculty view (itc-029 later).
+- **Numbering:** migration `0229_trainer_profiles` (`trainer_profiles`); API §12IQ; RBAC §2.245.
+- **Feature ID authorized:** `itc-019`. **Status:** built on `worktree-itc-019`.

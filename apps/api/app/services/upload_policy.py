@@ -48,6 +48,7 @@ POLICIES: dict[str, Policy] = {
     "career_resume": Policy(5 * MB, frozenset({PDF, DOC, DOCX})),
     "program_image": Policy(2 * MB, frozenset({PNG, WEBP, JPEG})),  # PUB-025: course card image
     "program_syllabus": Policy(10 * MB, frozenset({PDF})),  # PUB-025: course syllabus PDF
+    "trainer_photo": Policy(2 * MB, frozenset({PNG, WEBP, JPEG})),  # itc-019: faculty profile photo
 }
 
 

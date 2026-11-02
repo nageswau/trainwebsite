@@ -641,6 +641,38 @@ class TimetableCancelIn(BaseModel):
         return value.strip() if isinstance(value, str) else value
 
 
+class TrainerProfileIn(BaseModel):
+    """itc-019 (DEC-SCOPE-345): a trainer profile, replaced whole by PUT. Email and phone come from the account; `show_*` decide what
+    students see. A contact route must use a channel the trainer shows (checked against the account in the service)."""
+
+    model_config = ConfigDict(extra="forbid")
+    designation: str | None = Field(default=None, max_length=120)
+    expertise: list[Annotated[str, Field(max_length=60)]] = Field(default_factory=list, max_length=12)
+    bio: str | None = Field(default=None, max_length=2000)
+    office_hours: str | None = Field(default=None, max_length=160)
+    contact_route: Literal["in_app", "email", "phone"] = "in_app"
+    show_email: bool = False
+    show_phone: bool = False
+    show_photo: bool = True
+    show_bio: bool = True
+    show_office_hours: bool = True
+
+    @field_validator("designation", "bio", "office_hours", mode="before")
+    @classmethod
+    def _blank(cls, value):
+        return (value.strip() or None) if isinstance(value, str) else value
+
+    @field_validator("expertise")
+    @classmethod
+    def _tags(cls, value: list[str]) -> list[str]:
+        """Trimmed; blanks and case-insensitive repeats dropped, first spelling kept."""
+        seen: dict[str, str] = {}
+        for tag in (t.strip() for t in value):
+            if tag and tag.casefold() not in seen:
+                seen[tag.casefold()] = tag
+        return list(seen.values())
+
+
 class RecordingLinkUpdate(BaseModel):
     recording_url: str = Field(max_length=500)
     recording_external_id: str | None = Field(default=None, max_length=200)
