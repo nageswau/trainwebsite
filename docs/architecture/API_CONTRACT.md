@@ -5037,9 +5037,31 @@ leads owned by an IT counselor). All routes **401** without a session.
   role → **403**; a `batch_id` outside the caller's scope → **404**.
 - `GET /portal/it/{student|trainer|counselor|admin}/timetable` → header-only payload "Timetable" (the page reads the routes above).
 
-## 12IQ. Faculty profiles and student faculty view (itc-019) — addendum, 2026-11-02
+## 12IQ. IT student record (itc-012) — addendum, 2026-11-02
 
-`DEC-SCOPE-345`. Migration `0229_trainer_profiles`. RBAC §2.245.
+`DEC-SCOPE-345`. Migration `0229_it_student_profiles` (table `it_student_profiles`, PK `student_user_id`; nullable
+`enrollments.start_date`, `end_date`, `delivery_mode`). Additive; downgrade refuses while profiles or overrides exist.
+
+- `GET /it/me/profile`, `PATCH /it/me/profile` — the IT student only (403 otherwise).
+- `GET|PATCH /counselor/it/students/{id}/profile` — the IT counselor, linked students only (itc-003); other roles 403; an unlinked or
+  non-IT student 404.
+- `GET|PATCH /admin/it/students/{id}/profile` — the IT Admin, any IT student; other roles 403; a non-IT student 404.
+- `PATCH /counselor/it/students/{id}/enrollments/{enrollment_id}` and `PATCH /admin/it/students/{id}/enrollments/{enrollment_id}` — body
+  `{start_date?, end_date?, delivery_mode?}` (`Online|Offline|Hybrid`; `null` clears the override). An enrolment of another student 404;
+  an effective end before the effective start 422 (`loc: body.end_date`). Audit `it.enrollment.dates_update` with before/after.
+- Profile PATCH body (all optional, `extra` forbidden, only sent fields change, blank text clears): `date_of_birth` (1900..today),
+  `address` ≤300, `city` ≤80, `qualification` ≤120, `graduation_year` 1950..this year + 6, `emergency_contact_name` ≤120,
+  `emergency_contact_relation` ≤60, `emergency_contact_phone` (7-20 digits/spaces/+-(), ≥7 digits). Audit `it.student_profile.update`
+  with `{fields, role}` only (no values).
+- Response (GET and PATCH): `{student: {id, full_name, student_code}, profile: {…fields, exists, updated_at, updated_by_name},
+  enrollments: [{id, enrollment_code, program, batch, status, start_date, end_date, delivery_mode, start_date_override,
+  end_date_override, delivery_mode_override, batch_start_date, batch_end_date, batch_mode}]}` — effective value = override, else batch.
+- `GET /portal/it/counselor/students` and `GET /portal/it/admin/students` — each row adds `profile` (the page link), column type
+  `student_profile`.
+
+## 12IR. Faculty profiles and student faculty view (itc-019) — addendum, 2026-11-02
+
+`DEC-SCOPE-346`. Migration `0230_trainer_profiles`. RBAC §2.246.
 
 - Profile body (PUT replaces all fields; unknown fields → **422**) `{designation? ≤120, expertise: string[] ≤12 × ≤60 (trimmed, blanks
   and case-insensitive repeats dropped), bio? ≤2000, office_hours? ≤160, contact_route "in_app"|"email"|"phone", show_email,

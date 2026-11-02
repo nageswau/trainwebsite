@@ -6,7 +6,7 @@ import MyFaculty from "@/components/MyFaculty";
 import TrainerProfileForm from "@/components/TrainerProfileForm";
 import { type OwnProfile, OWN_PROFILE_API, studentPreview } from "@/lib/faculty";
 
-// itc-019 (DEC-SCOPE-345): the trainer's own profile editor, the IT Admin's picker, and the student's My faculty card.
+// itc-019 (DEC-SCOPE-346): the trainer's own profile editor, the IT Admin's picker, and the student's My faculty card.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
 const own = (over: Partial<OwnProfile> = {}): OwnProfile => ({

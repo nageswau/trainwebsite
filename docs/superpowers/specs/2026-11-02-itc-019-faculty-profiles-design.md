@@ -2,7 +2,7 @@
 
 **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-019 (classification `UNVERIFIED` PDF §4 "Faculty & batch: photo, designation,
 expertise, contact/office hours"; §6 "Faculty details … configurable to protect personal details"; owner-approved for build in waves by
-Q-01, 2026-11-01). **Decision:** `DEC-SCOPE-345`. **Dependencies:** none (backlog). Feeds itc-018 (faculty card) and itc-024.
+Q-01, 2026-11-01). **Decision:** `DEC-SCOPE-346`. **Dependencies:** none (backlog). Feeds itc-018 (faculty card) and itc-024.
 Open points answered with the recommended calls F1–F8 below (owner: "proceed with recommended answers"), each `NEEDS_CONFIRMATION`.
 
 ## Intent
@@ -14,7 +14,7 @@ trainer a profile they control (with per-field privacy) and shows each student t
 
 1. **Table** `trainer_profiles` (`user_id` PK → users ON DELETE CASCADE, `designation` ≤120, `expertise` JSON list, `bio` text,
    `office_hours` ≤160, `contact_route` `in_app|email|phone`, `show_email`, `show_phone`, `show_photo`, `show_bio`, `show_office_hours`
-   booleans, `photo_key` ≤255, timestamps). CHECK on `contact_route`. Migration `0229_trainer_profiles` (additive, guarded; the downgrade
+   booleans, `photo_key` ≤255, timestamps). CHECK on `contact_route`. Migration `0230_trainer_profiles` (additive, guarded; the downgrade
    refuses while a profile exists).
 2. **Edit own** (trainer) — `GET /it/trainer/profile` (the full profile, with the account email/phone it may show, defaults when no row),
    `PUT /it/trainer/profile` (replace all fields; upsert), `PUT /it/trainer/profile/photo` (multipart `file`), `DELETE
@@ -62,8 +62,8 @@ Office-hours booking, trainer ratings, counselor or public faculty pages, itc-01
 
 ## Plan (TDD)
 
-1. Model + migration 0229 + migration test.
+1. Model + migration 0230 + migration test.
 2. `services/trainer_profiles.py`: schema validation, `public_view` (AC1), upsert + audit, photo set/remove, student scope — pytest first.
 3. `api/trainer_profiles.py` routes + course payload column — pytest for 200/403/404/413/415/422 and AC1/AC2/+/−/E.
 4. Web: `lib/faculty.ts`, `TrainerProfileForm`, `MyFacultyCard`, PortalPage + nav wiring — vitest first.
-5. Docs: DEC-SCOPE-345, API §12IQ, RBAC §2.245, RTM, backlog status. Playwright spec + browser QA.
+5. Docs: DEC-SCOPE-346, API §12IR, RBAC §2.246, RTM, backlog status. Playwright spec + browser QA.

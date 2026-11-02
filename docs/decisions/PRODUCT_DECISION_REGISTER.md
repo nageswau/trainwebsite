@@ -10824,7 +10824,25 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0228_batch_timetable` (`batch_timetable_slots`, `batch_timetable_cancellations`); API §12IP; RBAC §2.244.
 - **Feature ID authorized:** `itc-020`. **Status:** built on `worktree-itc-020`.
 
-### DEC-SCOPE-345 — Faculty profiles and student faculty view (`itc-019`)
+### DEC-SCOPE-345 — IT student record completion (`itc-012`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-012 (source PDF §4 "Student / Enrollment: personal details, emergency
+  contact, start/end dates, delivery mode, enrollment documents, status"; PDF classified `UNVERIFIED`). Owner Q-01 (2026-11-01): all phases
+  approved for build in waves. Dependency itc-003 (`DEC-SCOPE-337`) is built. Q-11 (who sees the emergency contact) is unanswered; the
+  owner said to proceed with the recommended answers, so the calls below are the builder's and stay `NEEDS_CONFIRMATION`. Design:
+  `docs/superpowers/specs/2026-11-02-itc-012-it-student-record-design.md`.
+- **Decisions (builder's calls):**
+  - **C1 — visibility (Q-11).** The structured profile, emergency contact included, is read and edited by the student, their itc-003 IT
+    counselor and the IT Admin only. Trainers, HR, placement, overseas roles and super_admin have no route (403). Not in any export; audit
+    rows name the changed fields only; logs carry ids only.
+  - **C2 — student edits.** The student edits every profile field; the enrolment date and mode overrides are staff-only.
+  - **C3 — delivery modes.** The override is `Online` / `Offline` / `Hybrid`; NULL follows the batch's free-text `mode`.
+  - **C4 — documents checklist deferred.** It is defined "from itc-011's template" and itc-011 is not built; not in itc-012's AC.
+  - **C5 — no super_admin.** As itc-003 C1.
+- **Numbering:** migration `0229_it_student_profiles`; API §12IQ; RBAC §2.245.
+- **Feature ID authorized:** `itc-012`. **Status:** built on `worktree-itc-012`.
+
+### DEC-SCOPE-346 — Faculty profiles and student faculty view (`itc-019`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-019` (PDF §4 "Faculty & batch: photo, designation, expertise,
   contact/office hours"; §6 "Faculty details … configurable to protect personal details"). Scope approved by the owner 2026-11-01
@@ -10839,5 +10857,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   students to the existing Questions page. F4 only active enrolments open a profile (as itc-020). F5 the photo is private storage +
   signed links. F6 the IT Admin may edit any trainer's profile. F7 `programs.trainer_name` free text is untouched. F8 no counselor, HR or
   public faculty view (itc-029 later).
-- **Numbering:** migration `0229_trainer_profiles` (`trainer_profiles`); API §12IQ; RBAC §2.245.
+- **Numbering:** migration `0230_trainer_profiles` (`trainer_profiles`); API §12IR; RBAC §2.246.
 - **Feature ID authorized:** `itc-019`. **Status:** built on `worktree-itc-019`.

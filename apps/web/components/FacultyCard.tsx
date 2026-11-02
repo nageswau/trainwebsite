@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import type { FacultyView } from "@/lib/faculty";
 
-/** itc-019 (DEC-SCOPE-345): one trainer as a student sees them. Every optional field is only present when the trainer shows it. Plain
+/** itc-019 (DEC-SCOPE-346): one trainer as a student sees them. Every optional field is only present when the trainer shows it. Plain
  *  text throughout (the bio is never rendered as HTML). Data-only props, so it renders in server and client components alike. */
 export default function FacultyCard({ faculty }: { faculty: FacultyView }) {
   const initials = faculty.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");

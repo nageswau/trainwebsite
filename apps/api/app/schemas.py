@@ -642,7 +642,7 @@ class TimetableCancelIn(BaseModel):
 
 
 class TrainerProfileIn(BaseModel):
-    """itc-019 (DEC-SCOPE-345): a trainer profile, replaced whole by PUT. Email and phone come from the account; `show_*` decide what
+    """itc-019 (DEC-SCOPE-346): a trainer profile, replaced whole by PUT. Email and phone come from the account; `show_*` decide what
     students see. A contact route must use a channel the trainer shows (checked against the account in the service)."""
 
     model_config = ConfigDict(extra="forbid")
@@ -14928,3 +14928,56 @@ class SchoolDocumentStatusesOut(BaseModel):
 
     student_id: UUID
     applications: list[SchoolDocumentStatusApplication]
+
+
+# itc-012 (DEC-SCOPE-345): the IT student record. PATCH bodies: only the fields sent change; a blank text clears its field.
+IT_PROFILE_TEXT_LIMITS = {"address": 300, "city": 80, "qualification": 120, "emergency_contact_name": 120, "emergency_contact_relation": 60, "emergency_contact_phone": 40}
+IT_DELIVERY_MODES = ("Online", "Offline", "Hybrid")  # C3
+
+
+class ItStudentProfilePatch(BaseModel):
+    model_config = {"extra": "forbid"}
+    date_of_birth: date | None = None
+    address: str | None = None
+    city: str | None = None
+    qualification: str | None = None
+    graduation_year: int | None = None
+    emergency_contact_name: str | None = None
+    emergency_contact_relation: str | None = None
+    emergency_contact_phone: str | None = None
+
+    @field_validator(*IT_PROFILE_TEXT_LIMITS)
+    @classmethod
+    def _text(cls, value, info):
+        return clean_free_text(value, IT_PROFILE_TEXT_LIMITS[info.field_name])
+
+    @field_validator("emergency_contact_phone")
+    @classmethod
+    def _phone(cls, value):
+        if value is not None and not _is_mobile(value):
+            raise PydanticCustomError("invalid_phone", "Enter a phone number of 7–20 digits, spaces, +, -, ( or ) with at least 7 digits")
+        return value
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def _birth(cls, value):
+        if value is not None and value.year < 1900:
+            raise PydanticCustomError("birth_range", "Enter a date of birth after 1900")
+        return _profile_not_future(value, "The date of birth")
+
+    @field_validator("graduation_year")
+    @classmethod
+    def _year(cls, value):
+        latest = date.today().year + 6
+        if value is not None and not 1950 <= value <= latest:
+            raise PydanticCustomError("year_range", "Enter a graduation year from 1950 to {latest}", {"latest": latest})
+        return value
+
+
+class ItEnrollmentOverridePatch(BaseModel):
+    """A null clears the override (the batch's value applies again)."""
+
+    model_config = {"extra": "forbid"}
+    start_date: date | None = None
+    end_date: date | None = None
+    delivery_mode: Literal[IT_DELIVERY_MODES] | None = None

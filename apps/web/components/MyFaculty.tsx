@@ -6,7 +6,7 @@ import FacultyCard from "./FacultyCard";
 import { sendRequest } from "@/lib/apiErrors";
 import { MY_FACULTY_API, type MyFacultyItem } from "@/lib/faculty";
 
-/** itc-019 (DEC-SCOPE-345): the student's "My faculty" card on the Course page -- the trainer of each batch they are actively enrolled
+/** itc-019 (DEC-SCOPE-346): the student's "My faculty" card on the Course page -- the trainer of each batch they are actively enrolled
  *  in, as much as each trainer chooses to show. */
 export default function MyFaculty() {
   const [items, setItems] = useState<MyFacultyItem[] | null>(null);

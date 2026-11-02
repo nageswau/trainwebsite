@@ -1,4 +1,4 @@
-"""itc-019 (DEC-SCOPE-345) -- trainer profiles (trainer edits own, IT Admin edits any) and the student faculty view: hidden fields are
+"""itc-019 (DEC-SCOPE-346) -- trainer profiles (trainer edits own, IT Admin edits any) and the student faculty view: hidden fields are
 never serialised (AC1), the photo goes through the upload policy (AC2), a student sees only their own active batches' trainers (404)."""
 
 import datetime as dt

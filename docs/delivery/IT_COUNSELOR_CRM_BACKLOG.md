@@ -417,6 +417,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** a student with two enrolments.
 - **Regression risks:** the IT portal profile section (`portal.py:191`).
 - **Complexity:** medium. **Risk:** low.
+- **Status:** built as `DEC-SCOPE-345` (migration `0229`, API §12IQ, RBAC §2.245). Emergency contact visible to the student, their IT counselor and the IT Admin only (Q-11 call C1, `NEEDS_CONFIRMATION`); the enrolment documents checklist is deferred until itc-011's template exists (C4).
 
 #### itc-013: Per-enrolment fee account (payable, paid, balance, mode, receipt reference)
 - **Business requirement:** §6 fee dashboard; §4 "Fee & payment"; §9 "Recalculate balance after each confirmed payment, refund, or approved fee adjustment"; §12 AC5.
@@ -604,7 +605,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 ### Phase 3: Training (PDF Phase 3)
 
 #### itc-019: Faculty profiles and student faculty view
-- **Status:** built as `DEC-SCOPE-345` (migration `0229_trainer_profiles`, API §12IQ, RBAC §2.245); design
+- **Status:** built as `DEC-SCOPE-346` (migration `0230_trainer_profiles`, API §12IR, RBAC §2.246); design
   `docs/superpowers/specs/2026-11-02-itc-019-faculty-profiles-design.md`. Open points answered by Claude's calls F1-F8 (email/phone
   hidden by default, private photo with signed links, active enrolments only), `NEEDS_CONFIRMATION`.
 - **Business requirement:** §4 "Faculty & batch"; §6 "Faculty details … configurable to protect personal details".

@@ -3502,7 +3502,19 @@ No grant changes. Pinned by `apps/api/tests/test_itc_010_counseling.py`.
 
 Inline checks (`services/batch_timetable.py` `require_editor`, `_scoped_batches`). Pinned by `apps/api/tests/test_itc_020_timetable.py`.
 
-### 2.245 Faculty profiles and student faculty view *(added 2026-11-02 — `DEC-SCOPE-345`, itc-019)*
+### 2.245 IT student record *(added 2026-11-02 — `DEC-SCOPE-345`, itc-012)*
+
+| Route / page | Anonymous | it_student | counselor (IT) | it_admin | every other role (trainer, hr_team, placement_team, super_admin, overseas) |
+|---|---|---|---|---|---|
+| `GET/PATCH /it/me/profile` | 401 | own | 403 | 403 | 403 |
+| `GET/PATCH /counselor/it/students/{id}/profile`, `PATCH …/enrollments/{eid}` | 401 | 403 | linked student 200, else 404 | 403 | 403 |
+| `GET/PATCH /admin/it/students/{id}/profile`, `PATCH …/enrollments/{eid}` | 401 | 403 | 403 | 200 (IT students; else 404) | 403 |
+| `/it/{counselor,admin}/students/{id}/profile` (pages) | sign-in | access card | own scope | any IT student | access card |
+
+The emergency contact is personal data (C1, Q-11 `NEEDS_CONFIRMATION`): no trainer/HR route, no export, audit field names only. No grant
+changes. Pinned by `apps/api/tests/test_itc_012_*.py`.
+
+### 2.246 Faculty profiles and student faculty view *(added 2026-11-02 — `DEC-SCOPE-346`, itc-019)*
 
 | Route | Anonymous | it_admin / super_admin | trainer | it_student | other roles |
 |---|---|---|---|---|---|

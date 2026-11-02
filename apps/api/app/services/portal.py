@@ -217,7 +217,7 @@ async def _it_student(db: AsyncSession, user: User, section: str):
         return _payload(
             "Course Enrolled",
             "Your fixed schedule, live classes, provider recordings, and progress.",
-            # itc-019 (DEC-SCOPE-345): the batch's trainer by name; the My faculty card (GET /it/student/faculty) shows the profile.
+            # itc-019 (DEC-SCOPE-346): the batch's trainer by name; the My faculty card (GET /it/student/faculty) shows the profile.
             (("enrollment_id", "Enrollment reference"), ("program", "Program"), ("batch", "Batch"), ("trainer", "Trainer"), ("schedule", "Schedule"), ("progress", "Progress"), ("status", "Status")),
             (
                 {"batch_id": e.batch_id, "enrollment_id": e.enrollment_code, "program": p.title, "batch": b.name, "trainer": trainers.get(b.trainer_id, "Not assigned yet"),
@@ -1637,10 +1637,11 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             if section == "students" and division == "it" and user.role == "it_admin":
                 # itc-003 (DEC-SCOPE-337): each IT student's counselor and the IT Admin's assign/change control (csc-005's, IT picker).
                 counselors = await it_student_counselors.counselors_of(db, [u.id for u in rows])
-                columns += [("counselor", "EduSphere counsellor"), ("assign", "", "assign_it_student_counselor")]
+                columns += [("counselor", "EduSphere counsellor"), ("assign", "", "assign_it_student_counselor"), ("profile", "", "student_profile")]
                 for row in table:
                     counselor = counselors.get(row["id"])
                     row |= {"counselor": counselor.full_name if counselor else "Not assigned", "counselor_id": str(counselor.id) if counselor else None, "assign": row["id"]}
+                    row["profile"] = f"/it/admin/students/{row['id']}/profile"  # itc-012
             return _payload(section.title(), "Role-scoped user administration.", columns, table)
         if section == "agents" and (division == "overseas" or user.role == "super_admin"):
             # AGT-001: Overseas Admin's own approve/reject queue -- the generic
@@ -1829,8 +1830,10 @@ async def _it_counselor(db: AsyncSession, user: User, section: str):
         return _payload(
             "My Students",
             "IT students you are the counselor for.",
-            (("student_code", "Student ID"), ("name", "Name"), ("email", "Email"), ("phone", "Phone"), ("since", "Your student since")),
-            ({"id": s["id"], "student_code": s["student_code"], "name": s["full_name"], "email": s["email"], "phone": s["phone"], "since": today_ist(s["linked_since"]).isoformat()} for s in mine["items"]),
+            # itc-012 (DEC-SCOPE-345): each row links the student's record (profile, emergency contact, enrolment dates)
+            (("student_code", "Student ID"), ("name", "Name"), ("email", "Email"), ("phone", "Phone"), ("since", "Your student since"), ("profile", "", "student_profile")),
+            ({"id": s["id"], "student_code": s["student_code"], "name": s["full_name"], "email": s["email"], "phone": s["phone"], "since": today_ist(s["linked_since"]).isoformat(),
+              "profile": f"/it/counselor/students/{s['id']}/profile"} for s in mine["items"]),  # fmt: skip
         )
     if section == "appointments":  # tel-016 AP14: header only -- the page's panel reads /counselor/appointments
         return _payload("Appointments", "Counselling appointments booked for your leads.")

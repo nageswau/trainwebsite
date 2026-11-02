@@ -2,7 +2,7 @@ import { deflateSync } from "node:zlib";
 
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
-// itc-019 (DEC-SCOPE-345): the seeded trainer (Meera Iyer) fills in her faculty profile with a photo, keeps her email hidden, and the
+// itc-019 (DEC-SCOPE-346): the seeded trainer (Meera Iyer) fills in her faculty profile with a photo, keeps her email hidden, and the
 // seeded student (Arjun Rao, actively enrolled in her batch) sees it on the Course page -- without the hidden details. The IT Admin opens
 // the same profile from the Trainers page. The profile is reset at the end so reruns start from the same state.
 test.describe.configure({ timeout: 120_000 });
