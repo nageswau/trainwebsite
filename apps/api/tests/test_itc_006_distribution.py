@@ -1,4 +1,4 @@
-"""itc-006 (DEC-SCOPE-338) -- services/lead_distribution.py: the source rule (first) and the team's workload strategy.
+"""itc-006 (DEC-SCOPE-339) -- services/lead_distribution.py: the source rule (first) and the team's workload strategy.
 
 Pools are narrowed with `only_eligible` inside an uncommitted transaction that each test rolls back (the shared database is never
 truncated); the strategy is switched the same way, so no test leaves a team on `workload`."""

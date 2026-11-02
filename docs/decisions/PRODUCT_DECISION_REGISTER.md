@@ -10660,7 +10660,7 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   (DEC-SCOPE-335/336, §12IG/12IH and §2.238 are itc-001/itc-002's).
 - **Feature ID authorized:** `itc-003`. **Status:** built on `worktree-itc-003`.
 
-### DEC-SCOPE-338 — Auto-assign new leads by source and workload (`itc-006`)
+### DEC-SCOPE-339 — Auto-assign new leads by source and workload (`itc-006`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-006 (source PDF §9 "Auto-assign new leads using configurable rules such as
   source, course, location, or workload", §3 step 2; PDF classified `UNVERIFIED`). Owner Q-01 (2026-11-01): all phases approved for build
@@ -10681,5 +10681,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - **D6 — AuthZ.** Rules: unchanged (tel-007 DI3/AC5; a rule to another team's telecaller is 422). Strategy: any telecaller manager or
     super admin reads both teams; only a manager with a direct report on the team (or a super admin) changes it (403), unknown team 404.
     No new grant; `it_admin` still has no telecaller-distribution access.
-- **Numbering:** migration `0223_tel_source_workload`; API §12IJ; RBAC §2.240.
+- **Numbering:** migration `0224_tel_source_workload`; API §12IK; RBAC §2.240.
 - **Feature ID authorized:** `itc-006`. **Status:** built on `worktree-itc-006`.

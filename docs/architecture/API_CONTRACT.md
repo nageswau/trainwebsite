@@ -4912,9 +4912,9 @@ leads owned by an IT counselor). All routes **401** without a session.
   `assign_it_student_counselor`; `GET /portal/it/counselor/students` ("My Students") is new; `GET /portal/it/student/dashboard` gains the
   metric "Your counselor" (name or "Not assigned yet").
 
-## 12IJ. Lead distribution by source and workload (itc-006) — addendum, 2026-11-02
+## 12IK. Lead distribution by source and workload (itc-006) — addendum, 2026-11-02
 
-`DEC-SCOPE-338`. Migration `0223_tel_source_workload` (`tel_distribution_rules.source` + kind `source`, unique per team + source;
+`DEC-SCOPE-339`. Migration `0224_tel_source_workload` (`tel_distribution_rules.source` + kind `source`, unique per team + source;
 `tel_settings.distribution_strategy`, default `round_robin`). Additive.
 
 - `POST /telecaller/distribution-rules` — `kind` also accepts `"source"`; body adds `source` (one of the 13 lead sources, else 422).

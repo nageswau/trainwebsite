@@ -1,6 +1,6 @@
 """tel-007 (DEC-SCOPE-087, spec §2/§4): who a lead goes to -- the team's product rule, then its city rule, then round robin among the
 team's active telecallers; otherwise the unassigned queue (T11, T18). Manual (re)assignment shares `assign` and `assignee`.
-itc-006 (DEC-SCOPE-338): a source rule is tried first, and the team's strategy may replace round robin with the fewest open leads.
+itc-006 (DEC-SCOPE-339): a source rule is tried first, and the team's strategy may replace round robin with the fewest open leads.
 
 Functions only; nothing here commits -- the route owns the transaction. Logs and audit rows carry ids and the method, never a lead's
 name, phone or city."""

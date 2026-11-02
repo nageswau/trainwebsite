@@ -168,7 +168,7 @@ async def delete_rule(rule_id: UUID, user: User = Depends(get_current_user), db:
     return Response(status_code=204)
 
 
-# --- the team's fallback strategy (itc-006, DEC-SCOPE-338 D3/D6) ---------------------------------------------------------------
+# --- the team's fallback strategy (itc-006, DEC-SCOPE-339 D3/D6) ---------------------------------------------------------------
 async def _my_teams(db: AsyncSession, user: User) -> set[str]:
     """D6: the teams a manager may set -- those their direct reports are on (super_admin: both)."""
     if user.role == "super_admin":

@@ -5,7 +5,7 @@ import { sendJson } from "@/lib/apiErrors";
 import { STRATEGY_LABEL, STRATEGY_URL, type Strategy, type TeamStrategy } from "@/lib/telecallerDistribution";
 import { toneClass, type Feedback } from "@/lib/welcomeLink";
 
-// itc-006 (DEC-SCOPE-338 D3/D6): each team's "When no rule matches" setting -- round robin or the fewest open leads. Every manager sees
+// itc-006 (DEC-SCOPE-339 D3/D6): each team's "When no rule matches" setting -- round robin or the fewest open leads. Every manager sees
 // both teams; only a manager with telecallers on a team (or a super admin) may change it -- the API decides and `editable` mirrors it.
 function TeamCard({ initial }: { initial: TeamStrategy }) {
   const [saved, setSaved] = useState(initial.strategy);

@@ -1,4 +1,4 @@
-"""itc-006 -- migration 0223_tel_source_workload: chain, constraints, the refused downgrade and a round trip, in a throwaway database
+"""itc-006 -- migration 0224_tel_source_workload: chain, constraints, the refused downgrade and a round trip, in a throwaway database
 (the tel-001 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -15,15 +15,15 @@ from tests.test_tel_001_migration import _config, _sql
 from tests.test_tel_007_migration import _user
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_itc_006_migration_0223", VERSIONS / "0223_tel_source_workload.py")
+_spec = importlib.util.spec_from_file_location("_itc_006_migration_0224", VERSIONS / "0224_tel_source_workload.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0222_it_student_counselors", "0223_tel_source_workload"
+BASE, HEAD = "0223_lead_nurture_stage", "0224_tel_source_workload"
 RULE = "INSERT INTO tel_distribution_rules (id, team, kind, product_id, city, source, telecaller_user_id) VALUES (:id, 'it', :kind, NULL, :city, :source, :user)"
 
 
-def test_migration_chains_after_0222_and_keeps_the_sources_in_step():
+def test_migration_chains_after_0223_and_keeps_the_sources_in_step():
     from app.models import TEL_STRATEGIES
     from app.tel_sources import TEL_SOURCES
 
@@ -40,7 +40,7 @@ def isolated_db():
     _sql(original, f'CREATE DATABASE "{name}"', autocommit=True)
     try:
         settings.database_url = url
-        command.upgrade(cfg, HEAD)  # 0001's create_all already holds today's shape: 0223 must be a no-op on top of it
+        command.upgrade(cfg, HEAD)  # 0001's create_all already holds today's shape: 0224 must be a no-op on top of it
         yield {"cfg": cfg, "url": url}
     finally:
         settings.database_url = original

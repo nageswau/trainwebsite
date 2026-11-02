@@ -3540,7 +3540,7 @@ class TelDistributionRule(Base, TimestampMixin):
     """tel-007 (DEC-SCOPE-087, T11): a manager's routing rule for one team -- a product or a city sends new leads to one telecaller.
     The telecaller's team, role and active state span tables, so `services/lead_distribution.py` checks them on write and again at
     distribution time (an inactive telecaller's rule is skipped). Deleted, not deactivated, to stop it (audited).
-    itc-006 (DEC-SCOPE-338): a `source` rule matches one of the 13 lead sources and is tried before product and city."""
+    itc-006 (DEC-SCOPE-339): a `source` rule matches one of the 13 lead sources and is tried before product and city."""
 
     __tablename__ = "tel_distribution_rules"
     __table_args__ = (
@@ -3675,13 +3675,13 @@ class TelTarget(Base, TimestampMixin):
 
 TEL_SETTING_DEFAULTS = {"not_contacted_hours": 24, "hot_pending_hours": 4}  # DEC-SCOPE-111 AL1; migration 0099 seeds both teams with them
 TEL_SETTING_MAX_HOURS = 168
-TEL_STRATEGIES = ("round_robin", "workload")  # itc-006 D3; migration 0223 keeps a frozen copy
+TEL_STRATEGIES = ("round_robin", "workload")  # itc-006 D3; migration 0224 keeps a frozen copy
 
 
 class TelSetting(Base, TimestampMixin):
     """tel-020 (DEC-SCOPE-111, T14): a team's alert thresholds -- Lead Not Contacted and Hot Lead Pending, in whole hours. One row per team,
     seeded; any telecaller manager edits both (AL11) and the beat reads them on every run (AC4).
-    itc-006 (DEC-SCOPE-338 D3): `distribution_strategy` -- who gets a new lead no rule matched: in turn, or the fewest open leads."""
+    itc-006 (DEC-SCOPE-339 D3): `distribution_strategy` -- who gets a new lead no rule matched: in turn, or the fewest open leads."""
 
     __tablename__ = "tel_settings"
     __table_args__ = (

@@ -1,4 +1,4 @@
-"""itc-006 (DEC-SCOPE-338, API §12IJ) -- source rules on the distribution-rule routes and the team's fallback strategy.
+"""itc-006 (DEC-SCOPE-339, API §12IK) -- source rules on the distribution-rule routes and the team's fallback strategy.
 
 A source is unique per team and the shared database is never truncated, so every source rule a test creates is deleted in `finally`,
 and every strategy change is put back to round robin."""

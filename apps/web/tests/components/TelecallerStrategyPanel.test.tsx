@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import TelecallerStrategyPanel from "@/components/TelecallerStrategyPanel";
 
-// itc-006 (DEC-SCOPE-338 D3/D6): each team's fallback when no rule matches -- round robin or the fewest open leads.
+// itc-006 (DEC-SCOPE-339 D3/D6): each team's fallback when no rule matches -- round robin or the fewest open leads.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const it_ = { team: "it", team_label: "IT", strategy: "round_robin", editable: true };
 const os = { team: "overseas", team_label: "Overseas", strategy: "workload", editable: false };

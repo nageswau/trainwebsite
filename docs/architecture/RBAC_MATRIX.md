@@ -3448,7 +3448,7 @@ No grant changes. A recipient sees only their own notices, as before. Pinned by 
 The IT student reads only their own counselor's name (dashboard tile). Inline role checks (`services/it_student_counselors.py`,
 `api/lookups.py`). Pinned by `apps/api/tests/test_itc_003_it_student_counselors.py`.
 
-### 2.240 Lead distribution by source and workload *(added 2026-11-02 — `DEC-SCOPE-338`, itc-006)*
+### 2.240 Lead distribution by source and workload *(added 2026-11-02 — `DEC-SCOPE-339`, itc-006)*
 
 | Route | Anonymous | telecaller_manager | super_admin | every other role (incl. it_admin, telecaller) |
 |---|---|---|---|---|
