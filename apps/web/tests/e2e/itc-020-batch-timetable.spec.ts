@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
-// itc-020 (DEC-SCOPE-342): the IT Admin adds a weekly slot to the seeded PY-FS-AUG-2026 batch (today's weekday, so it is in this week's
+// itc-020 (DEC-SCOPE-344): the IT Admin adds a weekly slot to the seeded PY-FS-AUG-2026 batch (today's weekday, so it is in this week's
 // calendar), the enrolled student sees the class, the admin cancels it with a reason, and then the student no longer sees it while the
 // batch's trainer sees it as cancelled. The slot is removed again at the end, so reruns on one database do not hit the overlap rule.
 test.describe.configure({ timeout: 120_000 });

@@ -1,4 +1,4 @@
-// itc-020 (DEC-SCOPE-342): the batch timetable -- weekly slots (IT Admin) and the calendar of dated classes every IT role reads.
+// itc-020 (DEC-SCOPE-344): the batch timetable -- weekly slots (IT Admin) and the calendar of dated classes every IT role reads.
 // Times are shown in IST: batches run on Asia/Kolkata (the API's default), and live sessions arrive in UTC.
 
 export const TIMETABLE_API = "/api/v1/it/timetable";

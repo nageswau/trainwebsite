@@ -1,4 +1,4 @@
-"""itc-020 (DEC-SCOPE-342): the batch timetable -- weekly slots edited by the IT Admin, single classes cancelled, and the calendar of dated
+"""itc-020 (DEC-SCOPE-344): the batch timetable -- weekly slots edited by the IT Admin, single classes cancelled, and the calendar of dated
 classes every IT role reads (`occurrences`).
 
 Classes are COMPUTED from the slots over a bounded window (T1); nothing is materialised, so editing a slot moves every future class at

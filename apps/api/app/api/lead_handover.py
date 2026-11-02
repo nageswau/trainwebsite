@@ -23,6 +23,10 @@ from app.schemas import (
     CounselorLeadStageMove,
     CounselorLeadUpdate,
     CounselorStudentCreate,
+    LeadCounselingIn,
+    LeadCounselingOut,
+    LeadCounselingPage,
+    LeadCounselingUpdate,
     LeadHandoverIn,
     LeadMeetingIn,
     LeadMeetingOut,
@@ -39,7 +43,9 @@ from app.schemas import (
 from app.services import (
     bdm_leads,
     counselor_students,
+    it_student_counselors,
     lead_conversion,
+    lead_counseling,
     lead_handover,
     lead_meetings,
     lead_notes,
@@ -153,6 +159,36 @@ async def lead_meeting_add(lead_id: UUID, payload: LeadMeetingIn, user: User = D
     """LG3: append-only; a closed lead is 409, another counselor's lead 404. Not idempotent (a retry records a second meeting)."""
     lead = await lead_pipeline.locked_lead(db, lead_id, *lead_handover.counselor_scope(user))
     return await lead_meetings.add(db, user, lead, payload, await db_now(db))
+
+
+@counselor_router.get("/{lead_id}/counseling", response_model=LeadCounselingPage)
+async def counseling_list(lead_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """itc-010 (DEC-SCOPE-343): the counseling sessions of a lead handed to this counselor, newest first. Any counselor reads their own
+    lead's (an overseas lead has none); only an IT counselor writes."""
+    await _counselor_lead(db, user, lead_id)
+    return await lead_counseling.page(db, lead_id, limit, offset)
+
+
+@counselor_router.post("/{lead_id}/counseling", response_model=LeadCounselingOut, status_code=201)
+async def counseling_add(lead_id: UUID, payload: LeadCounselingIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """C7: not a counselor or not IT 403, another counselor's lead 404, a closed lead 409, C9 422. Not idempotent (a retry is a second
+    session)."""
+    filters = lead_handover.counselor_scope(user)
+    it_student_counselors.require_it_counselor(user, lead_counseling.IT_ONLY)
+    lead = await lead_pipeline.locked_lead(db, lead_id, *filters)
+    record_id = await lead_counseling.create(db, user, lead, payload)
+    return await lead_counseling.one(db, lead_id, record_id)
+
+
+@counselor_router.patch("/{lead_id}/counseling/{record_id}", response_model=LeadCounselingOut)
+async def counseling_edit(lead_id: UUID, record_id: UUID, payload: LeadCounselingUpdate, user: User = Depends(get_current_user),
+                          db: AsyncSession = Depends(get_db)):
+    """C7: the lead's current IT counselor edits any of its sessions; a record of another lead is 404."""
+    filters = lead_handover.counselor_scope(user)
+    it_student_counselors.require_it_counselor(user, lead_counseling.IT_ONLY)
+    lead = await lead_pipeline.locked_lead(db, lead_id, *filters)
+    await lead_counseling.update(db, user, lead, record_id, payload.model_dump(exclude_unset=True))
+    return await lead_counseling.one(db, lead_id, record_id)
 
 
 @counselor_router.post("/{lead_id}/stage")

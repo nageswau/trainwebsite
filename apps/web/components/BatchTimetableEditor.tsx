@@ -8,7 +8,7 @@ import { DAYS, EMPTY_SLOT, type Slot, slotBody, type SlotInput, slotInput, slots
 
 type BatchOption = { id: string; name: string; program: string };
 
-/** itc-020 (DEC-SCOPE-342): the IT Admin's Timetable page -- pick a batch, keep its weekly slots, and see (and cancel) the classes they
+/** itc-020 (DEC-SCOPE-344): the IT Admin's Timetable page -- pick a batch, keep its weekly slots, and see (and cancel) the classes they
  *  produce. Every rule (overlaps, rooms, links) is the API's; its refusal is shown next to the form. */
 export default function AdminTimetablePanel() {
   const [batches, setBatches] = useState<BatchOption[] | null>(null);

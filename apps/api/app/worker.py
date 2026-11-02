@@ -173,6 +173,15 @@ def send_telecaller_alerts_task():
 
 
 @celery.task
+def escalate_overdue_follow_ups_task():
+    """itc-009 (DEC-SCOPE-342): every 15 minutes via beat. Once per follow-up (lead_follow_ups.escalated_at), so a rerun or an overlapping
+    run escalates nothing twice."""
+    from app.services.follow_up_escalations import run_follow_up_escalations
+
+    return _run_with_fresh_pool(run_follow_up_escalations)
+
+
+@celery.task
 def send_partnership_alerts_task():
     """upc-015 (DEC-SCOPE-164 AL3): every IST hour via beat, acting from 09:00 IST. Idempotent per alert (notifications.dedupe_key), so the
     later runs of the day create nothing new and a worker restart during the day still sends that day's alerts."""
@@ -265,6 +274,7 @@ celery.conf.beat_schedule = {
     "tel018-conversion-sweep": {"task": "app.worker.sweep_lead_conversions_task", "schedule": 900.0},
     "tel014-sweep-stale-lead-emails": {"task": "app.worker.sweep_stale_lead_emails_task", "schedule": 300.0},
     "tel020-alerts": {"task": "app.worker.send_telecaller_alerts_task", "schedule": 900.0},
+    "itc009-escalations": {"task": "app.worker.escalate_overdue_follow_ups_task", "schedule": 900.0},
     "rec026-sweep-stale-recruiter-emails": {"task": "app.worker.sweep_stale_recruiter_emails_task", "schedule": 300.0},
     "upc012-sweep-stale-university-emails": {"task": "app.worker.sweep_stale_university_emails_task", "schedule": 300.0},
     "ccrm037-sweep-stale-student-emails": {"task": "app.worker.sweep_stale_student_emails_task", "schedule": 300.0},

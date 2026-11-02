@@ -5,7 +5,7 @@ import AdminTimetablePanel from "@/components/BatchTimetableEditor";
 import TimetableCalendar from "@/components/TimetableCalendar";
 import { addDays, byDay, mondayOf, type Occurrence, slotBody, todayIst } from "@/lib/timetable";
 
-// itc-020 (DEC-SCOPE-342): the week of classes every IT role reads, and the IT Admin's weekly-slot editor.
+// itc-020 (DEC-SCOPE-344): the week of classes every IT role reads, and the IT Admin's weekly-slot editor.
 const res = (body: unknown, status = 200) => new Response(status === 204 ? null : JSON.stringify(body), { status });
 const NOW = new Date("2026-11-04T06:00:00Z"); // Wednesday 4 Nov 2026, 11:30 IST
 

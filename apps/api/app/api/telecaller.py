@@ -21,6 +21,7 @@ from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
 from app.models import LEAD_PRIORITIES, AuditLog, Enquiry, TelecallerProfile, User
 from app.schemas import (
+    LeadCounselingPage,
     LeadEnquiryCreate,
     LeadMergeIn,
     LeadNoteIn,
@@ -39,7 +40,7 @@ from app.schemas import (
     TelecallerTeamPage,
     TelSource,
 )
-from app.services import lead_follow_ups, lead_intake, lead_list, lead_merge, lead_notes, lead_pipeline, lead_qualification, telecaller_leads
+from app.services import lead_counseling, lead_follow_ups, lead_intake, lead_list, lead_merge, lead_notes, lead_pipeline, lead_qualification, telecaller_leads
 from app.services.bdm_appointments import db_now, today_ist
 from app.services.lead_timeline import page as timeline_page
 from app.services.telecaller import admin_team_filter, parse_self_update, person_ref, profile_out, require_manager, team_filter, telecaller_context
@@ -231,6 +232,13 @@ async def lead_note_add(lead_id: UUID, payload: LeadNoteIn, user: User = Depends
     """ccrm-002 N1: the telecaller writes after the handover too (a note changes no lead state, so tel-008 D1 does not apply)."""
     await _lead_in_scope(db, user, lead_id)
     return await lead_notes.add(db, user, lead_id, payload.body)
+
+
+@router.get("/leads/{lead_id}/counseling", response_model=LeadCounselingPage)
+async def lead_counseling_list(lead_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """itc-010 (DEC-SCOPE-343 C8): the counselor's sessions on a lead in scope, read only -- a returned lead keeps them."""
+    await _lead_in_scope(db, user, lead_id)
+    return await lead_counseling.page(db, lead_id, limit, offset)
 
 
 @router.get("/leads/{lead_id}/qualification")

@@ -1,9 +1,9 @@
 """itc-020 -- batch timetable: weekly slots and single-class cancellations.
 
-Revision ID: 0226_batch_timetable
-Revises: 0225_lead_merge
+Revision ID: 0228_batch_timetable
+Revises: 0227_lead_counseling_records
 
-docs/superpowers/specs/2026-11-02-itc-020-batch-timetable-design.md (DEC-SCOPE-342). Two new tables; nothing existing changes (the free
+docs/superpowers/specs/2026-11-02-itc-020-batch-timetable-design.md (DEC-SCOPE-344). Two new tables; nothing existing changes (the free
 text `batches.schedule` stays). 0001 builds a fresh database from the current models, which already carry them, so the upgrade is guarded
 (0222's idiom). The downgrade refuses while a timetable exists, so it never silently drops one.
 """
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0226_batch_timetable"
-down_revision = "0225_lead_merge"
+revision = "0228_batch_timetable"
+down_revision = "0227_lead_counseling_records"
 branch_labels = None
 depends_on = None
 
@@ -65,7 +65,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {SLOTS} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0226: batch timetables exist (itc-020)")
+        raise RuntimeError("Cannot downgrade 0228: batch timetables exist (itc-020)")
     op.drop_table(CANCELLATIONS)
     op.drop_index("ix_batch_timetable_slots_batch_id", table_name=SLOTS)
     op.drop_table(SLOTS)

@@ -3469,7 +3469,30 @@ No grant changes. Pinned by `apps/api/tests/test_itc_006_api.py`.
 
 Inline checks (`lead_pipeline.scope`, `ensure_admin`, `services/lead_merge.py`). Pinned by `apps/api/tests/test_itc_007_lead_merge.py`.
 
-### 2.242 Batch timetable and session calendar *(added 2026-11-02 — `DEC-SCOPE-342`, itc-020)*
+### 2.242 Overdue follow-up escalation *(added 2026-11-02 — `DEC-SCOPE-342`, itc-009)*
+
+| Route / page | Anonymous | telecaller_manager | super_admin | it_admin | every other role |
+|---|---|---|---|---|---|
+| `GET/PUT /telecaller/settings` (`escalate_after_hours`) | 401 | 200 | 200 | 403 | 403 |
+| `GET /portal/it/admin/notifications` | 401 | 404 | 404 | 200 | 404 |
+| `/telecaller/manager/notifications` (page) | sign-in | own notices | role-required card | role-required card | role-required card |
+
+Recipients are resolved server-side (reporting manager, else division admins; IT admins for IT counselor follow-ups); a user only ever
+reads their own notices (`/workflows/notifications`, unchanged). No grant changes. Pinned by `apps/api/tests/test_itc_009_*.py`.
+
+### 2.243 IT counseling record *(added 2026-11-02 — `DEC-SCOPE-343`, itc-010)*
+
+| Route | Anonymous | counselor (IT) | counselor (overseas) | telecaller / telecaller_manager / super_admin | every other role |
+|---|---|---|---|---|---|
+| `GET /counselor/leads/{id}/counseling` | 401 | own handed-over lead, else 404 | own lead, else 404 | 403 | 403 |
+| `POST /counselor/leads/{id}/counseling`, `PATCH …/{record_id}` | 401 | own open lead (closed 409), else 404 | 403 | 403 | 403 |
+| `GET /telecaller/leads/{id}/counseling` | 401 | 403 | 403 | tel-004 scope, else 404 | 403 |
+| `GET /telecaller/counseling-objections` | 401 | active only | active only | telecaller active only; manager / super_admin all | it_admin, overseas_admin active only; others 403 |
+| `POST/PATCH /telecaller/counseling-objections` | 401 | 403 | 403 | manager / super_admin; telecaller 403 | 403 |
+
+No grant changes. Pinned by `apps/api/tests/test_itc_010_counseling.py`.
+
+### 2.244 Batch timetable and session calendar *(added 2026-11-02 — `DEC-SCOPE-344`, itc-020)*
 
 | Route | Anonymous | it_admin / super_admin | trainer | it_student | IT counselor | other roles |
 |---|---|---|---|---|---|---|

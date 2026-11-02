@@ -6,10 +6,15 @@ import { toneClass, type Feedback } from "@/lib/welcomeLink";
 
 // tel-020 (DEC-SCOPE-111 AL1, AL11; API §12AE): each team's alert thresholds. The API checks every rule (whole hours 1-168, who may save);
 // the inputs only mirror the range. The beat reads the values on its next run (AC4).
+// itc-009 (DEC-SCOPE-342; API §12IN): the follow-up escalation hours, 0-168, where 0 turns escalation off.
 export const SETTINGS_URL = "/api/v1/telecaller/settings";
 const FIELDS = [
-  { key: "not_contacted_hours", label: "Lead not contacted after (hours)", hint: "Alert when a lead is still waiting for its first connected call." },
-  { key: "hot_pending_hours", label: "Hot lead pending after (hours)", hint: "Alert when a hot lead has had no call for this long." },
+  { key: "not_contacted_hours", label: "Lead not contacted after (hours)", hint: "Alert when a lead is still waiting for its first connected call. 1–168.", min: 1 },
+  { key: "hot_pending_hours", label: "Hot lead pending after (hours)", hint: "Alert when a hot lead has had no call for this long. 1–168.", min: 1 },
+  {
+    key: "escalate_after_hours", label: "Escalate overdue follow-ups after (hours)", min: 0,
+    hint: "Tell the telecaller's manager (or the division admin) once when a follow-up is this overdue. 0 turns escalation off. 0–168.",
+  },
 ] as const;
 type Key = (typeof FIELDS)[number]["key"];
 type TeamSettings = Record<Key, number> & { team: string; team_label: string; updated_at: string; updated_by: { id: string; full_name: string } | null };
@@ -21,7 +26,7 @@ const changedText = (row: TeamSettings) =>
 
 function TeamCard({ initial }: { initial: TeamSettings }) {
   const [row, setRow] = useState(initial);
-  const [values, setValues] = useState<Record<Key, string>>({ not_contacted_hours: String(initial.not_contacted_hours), hot_pending_hours: String(initial.hot_pending_hours) });
+  const [values, setValues] = useState(() => Object.fromEntries(FIELDS.map((f) => [f.key, String(initial[f.key])])) as Record<Key, string>);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const inFlight = useRef(false);
@@ -52,9 +57,9 @@ function TeamCard({ initial }: { initial: TeamSettings }) {
         {FIELDS.map((f) => (
           <div className="field" key={f.key}>
             <label htmlFor={`${id}-${f.key}`}>{f.label}</label>
-            <input id={`${id}-${f.key}`} type="number" inputMode="numeric" min={1} max={168} step={1} required disabled={busy}
+            <input id={`${id}-${f.key}`} type="number" inputMode="numeric" min={f.min} max={168} step={1} required disabled={busy}
                    aria-describedby={`${id}-${f.key}-hint`} value={values[f.key]} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} />
-            <p id={`${id}-${f.key}-hint`} className="muted">{f.hint} 1–168.</p>
+            <p id={`${id}-${f.key}-hint`} className="muted">{f.hint}</p>
           </div>
         ))}
         <p className="muted">{changedText(row)}</p>

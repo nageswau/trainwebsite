@@ -3,12 +3,13 @@ import { Suspense } from "react";
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
-import { TELECALLER_MANAGER_NAV } from "@/lib/navigation";
+import { telecallerManagerNav } from "@/lib/telecallerNav";
 import type { User } from "@/lib/types";
 
 // tel-002: the shell behind /telecaller/manager/products and /campaigns. Managers and super_admin edit the catalogue; the role check only
 // spares other roles a screen that can only fail -- the API enforces who may write.
 export default async function TelecallerCataloguePage({ title, intro, eyebrow = "Settings", children }: { title: string; intro: string; eyebrow?: string; children: React.ReactNode }) {
+  const nav = telecallerManagerNav(); // itc-009: the unread count on Notifications (never rejects)
   let user: User;
   try {
     user = await serverApi<User>("/api/v1/auth/me");
@@ -17,7 +18,7 @@ export default async function TelecallerCataloguePage({ title, intro, eyebrow = 
   }
   if (!["telecaller_manager", "super_admin"].includes(user.role)) return accessDenied(user, "Telecaller manager role required");
   return (
-    <PortalShell nav={TELECALLER_MANAGER_NAV} roleLabel={user.role === "super_admin" ? "Super Administrator" : "Telecaller Manager"} userName={user.full_name}>
+    <PortalShell nav={await nav} roleLabel={user.role === "super_admin" ? "Super Administrator" : "Telecaller Manager"} userName={user.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>

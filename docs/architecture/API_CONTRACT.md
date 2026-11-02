@@ -4977,9 +4977,43 @@ leads owned by an IT counselor). All routes **401** without a session.
 - `GET /telecaller/leads/{id}/timeline` (and the admin/counselor readers of the same service) gains kind `merge` (`from_value` = the merged
   Lead ID).
 
-## 12IN. Batch timetable and session calendar (itc-020) — addendum, 2026-11-02
+## 12IN. Overdue follow-up escalation (itc-009) — addendum, 2026-11-02
 
-`DEC-SCOPE-342`. Migration `0226_batch_timetable`. RBAC §2.242.
+`DEC-SCOPE-342`. Migration `0226_follow_up_escalation` (`tel_settings.escalate_after_hours` 0-168, default 0;
+`lead_follow_ups.escalated_at`). Additive.
+
+- `GET /telecaller/settings` — each item adds `escalate_after_hours` (int, 0 = off).
+- `PUT /telecaller/settings/{team}` — body may add `escalate_after_hours` (StrictInt 0-168; a string, fraction, null or out-of-range value
+  → 422 `Escalate overdue follow-ups after (hours): …`). Omitted keeps the stored value. The `tel.settings.update` audit `from`/`to` carry
+  all three fields.
+- `GET /portal/it/admin/notifications` — IT admin only (others 404 as any unknown section): header-only payload; the page reads
+  `GET /workflows/notifications`.
+- Beat `itc009-escalations` (900 s): notices of event `it.followup.overdue`, entity `lead_follow_up`.
+
+## 12IO. IT counseling record (itc-010) — addendum, 2026-11-02
+
+`DEC-SCOPE-343`. Migration `0227_lead_counseling_records`. Additive.
+
+- `GET /counselor/leads/{id}/counseling?limit&offset` — `{items, total, limit, offset}`, newest first. The lead's counselor (tel-018
+  scope); out of scope 404.
+- `POST /counselor/leads/{id}/counseling` → 201 record. Body: `outcome` (required: `interested | needs_time | not_interested | enrolled`),
+  `recommended_product_id` (an active IT `TelProduct`), `objection_ids` (≤ 20 active objections), `objection_notes` (≤ 1000),
+  `fee_quoted` (decimal ≥ 0, 2 places), `expected_joining_date` and `next_follow_up` (today IST or later), `decision_maker`
+  (`self | parent | spouse | employer | other`), `notes` (≤ 4000). Blank text is null. Not an IT counselor 403; closed lead 409;
+  invalid 422 on the field. Not idempotent.
+- `PATCH /counselor/leads/{id}/counseling/{record_id}` → 200 record. Fields sent replace the stored ones (`objection_ids` the whole set);
+  `outcome: null` is 422; the C9 checks apply to changed values only; a record of another lead 404.
+- `GET /telecaller/leads/{id}/counseling` — the same page, read only, for a lead in the tel-004 scope.
+- Record: `id, recommended_product {id, name} | null, objections [{id, name}], objection_notes, fee_quoted (string) | null,
+  expected_joining_date, decision_maker, outcome, next_follow_up, notes, author {id, full_name}, updated_by {id, full_name}, created_at,
+  updated_at`.
+- `GET/POST /telecaller/counseling-objections`, `PATCH /telecaller/counseling-objections/{id}` — the lost-reason list contract (ccrm-006):
+  `{id, name, active, sort_order}`; a duplicate name (case-insensitive) is 409.
+- Lead timeline: new kind `counseling` (`event` `created | updated`, `to_value` = the outcome).
+
+## 12IP. Batch timetable and session calendar (itc-020) — addendum, 2026-11-02
+
+`DEC-SCOPE-344`. Migration `0228_batch_timetable`. RBAC §2.244.
 
 - Slot body `{weekday 0–6 (0 = Monday), start_time "HH:MM", end_time "HH:MM", mode "online"|"offline", room?, meeting_url?, topic?}`:
   local times in the batch's timezone; `end_time > start_time`; `offline` needs a `room` (≤120); `meeting_url` must be `http(s)://…`

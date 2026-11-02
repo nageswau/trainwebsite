@@ -57,7 +57,7 @@ beforeEach(() => {
     if (reply[`${method} ${tail}`]) return Promise.resolve(reply[`${method} ${tail}`]());
     if (tail === "/link-suggestions") return Promise.resolve(res({ items: [asha] }));
     if (tail.startsWith("/link-suggestions?q=")) return Promise.resolve(res({ items: [taken] }));
-    if (["/timeline", "/notes", "/follow-ups", "/calls", "/messages", "/meetings"].some((t) => tail.startsWith(t))) return Promise.resolve(res(pageOf([])));
+    if (["/timeline", "/notes", "/follow-ups", "/calls", "/messages", "/meetings", "/counseling"].some((t) => tail.startsWith(t))) return Promise.resolve(res(pageOf([])));
     if (tail === "/qualification") return Promise.resolve(res(qualification)); // ccrm-005's section
     if (url === "/api/v1/public/countries") return Promise.resolve(res([]));
     if (url.startsWith("/api/v1/counselor/leads?")) return Promise.resolve(res(pageOf([detail()])));

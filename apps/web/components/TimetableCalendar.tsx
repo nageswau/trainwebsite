@@ -5,7 +5,7 @@ import { type FormEvent, useCallback, useEffect, useId, useState } from "react";
 import { sendJson, sendRequest } from "@/lib/apiErrors";
 import { addDays, byDay, dayLabel, mondayOf, type Occurrence, slotsUrl, TIMETABLE_API, type TimetableFeed, timeRange, todayIst } from "@/lib/timetable";
 
-/** itc-020 (DEC-SCOPE-342): one week of classes, grouped by day, for every IT role. The API scopes what each role sees (a student never
+/** itc-020 (DEC-SCOPE-344): one week of classes, grouped by day, for every IT role. The API scopes what each role sees (a student never
  *  sees a cancelled class; a counselor gets no join link). When the API says `can_edit`, a future class can be cancelled with a reason.
  *  `batchId` narrows the week to one batch; `refreshKey` reloads it after the admin edits the timetable. */
 export default function TimetableCalendar({ batchId, refreshKey = 0 }: { batchId?: string; refreshKey?: number }) {

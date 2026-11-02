@@ -1,4 +1,4 @@
-"""itc-020 -- migration 0226_batch_timetable (DEC-SCOPE-342): the slot and cancellation tables. Round trip in a throwaway database built
+"""itc-020 -- migration 0228_batch_timetable (DEC-SCOPE-344): the slot and cancellation tables. Round trip in a throwaway database built
 from scratch (the upc-001 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,17 +13,17 @@ from app.core.config import settings
 from app.models import BatchTimetableCancellation, BatchTimetableSlot
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_itc_020_migration_0226", VERSIONS / "0226_batch_timetable.py")
+_spec = importlib.util.spec_from_file_location("_itc_020_migration_0228", VERSIONS / "0228_batch_timetable.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD = "0226_batch_timetable"
-BASE = "0225_lead_merge"
+HEAD = "0228_batch_timetable"
+BASE = "0227_lead_counseling_records"
 TABLES = "SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'batch_timetable%' ORDER BY 1"
 CHECKS = "SELECT conname FROM pg_constraint WHERE conname LIKE 'ck_batch_timetable_slots_%' ORDER BY 1"
 
 
-def test_migration_chains_after_0225_and_is_the_single_head():
+def test_migration_chains_after_0227_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

@@ -10755,7 +10755,57 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   RBAC §2.241.
 - **Feature ID authorized:** `itc-007`. **Status:** built on `worktree-itc-007`.
 
-### DEC-SCOPE-342 — Batch timetable and session calendar (`itc-020`)
+### DEC-SCOPE-342 — Overdue follow-up escalation for the IT team (`itc-009`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-009 (source PDF §9 "Alert the owner when a follow-up is overdue; optionally
+  escalate after a configurable period", §3 step 3; PDF classified `UNVERIFIED`). Owner Q-01 (2026-11-01): all phases approved for build in
+  waves. Dependencies itc-002 (`DEC-SCOPE-336`) and itc-004 (`DEC-SCOPE-338`) are built. The owner said to proceed with the recommended
+  answers, so the calls below are the builder's and stay `NEEDS_CONFIRMATION`. Design:
+  `docs/superpowers/specs/2026-11-02-itc-009-follow-up-escalation-design.md`.
+- **Decisions (builder's calls):**
+  - **E1 — setting.** `tel_settings.escalate_after_hours`, whole hours 0-168 per team; **0 = off and the default for both teams** (opt-in:
+    deploying changes nothing). Same editors as the tel-020 thresholds (telecaller manager, super admin). Optional on PUT.
+  - **E2 — scope.** A telecaller's follow-up (any team) → the telecaller's reporting manager; an inactive manager → the team's active
+    division admins (`it_admin` / `overseas_admin`). An IT counselor's follow-up (created by a counselor, IT lead) → every active IT admin.
+    Overseas counselor follow-ups stay with ccrm-031.
+  - **E3 — once.** `lead_follow_ups.escalated_at`, claimed by a conditional UPDATE in the notices' savepoint. Only open follow-ups, never on
+    a Nurture lead. No recipient → left unclaimed for the next run.
+  - **E4 — flood guard.** Only follow-ups that crossed the threshold in the last 24 h escalate (tel-020 AL10's rule).
+  - **E5 — notice.** itc-002's `it.followup.overdue` (confirms that catalogue row): fixed preview-safe text, in-app + consented channels.
+    Manager link `/telecaller/manager/leads/{id}`; admins get no link (no admin lead page).
+  - **E6 — where it shows.** New Notifications pages for the telecaller manager (`/telecaller/manager/notifications`, with the unread badge
+    there) and the IT admin (`/it/admin/notifications`, header-only portal section): before this neither role had an in-app list.
+  - **E7 — beat.** `itc009-escalations`, every 15 minutes.
+- **Numbering:** migration `0226_follow_up_escalation`; API §12IN; RBAC §2.242.
+- **Feature ID authorized:** `itc-009`. **Status:** built on `worktree-itc-009`.
+
+### DEC-SCOPE-343 — IT counseling record (`itc-010`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-010 (PDF §4 "Counseling: career goal, current skills, recommended course,
+  counselor notes, objections, course fee quoted, expected joining date, decision-maker, counseling outcome"; §3 step 5; PDF classified
+  `UNVERIFIED`). Owner Q-01 (2026-11-01): all phases approved for build in waves; itc-010 has no dependency. The owner said to proceed
+  with the recommended answers, so the calls below are the builder's (`NEEDS_CONFIRMATION`). Design:
+  `docs/superpowers/specs/2026-11-02-itc-010-it-counseling-record-design.md`.
+- **Decisions (builder's calls):**
+  - **C1 — Q-08:** one record per counseling session (append); each can be edited later (PATCH), keeping the author and recording the editor.
+  - **C2 —** career goal and current skills stay on the qualification card (`career_objective`, `it_skill_level`); the record holds the
+    recommended IT course, objections (a managed list + free text), fee quoted (₹, ≥ 0), expected joining date, decision-maker (self,
+    parent, spouse, employer, other), outcome (interested, needs time, not interested, enrolled), next follow-up date and notes.
+  - **C3 —** only the outcome is required. **C4 —** the next follow-up date is stored, not turned into a follow-up. **C5 —** "Enrolled"
+    never moves the stage or converts (itc-011).
+  - **C6 —** objections: `lead_counseling_objections`, the lost-reason catalogue rules (telecaller managers and super admin write;
+    catalogue readers see active rows); seeded with six defaults when empty.
+  - **C7 — AuthZ:** writes by the lead's current owner counselor, who must be an IT counselor (403); out of scope 404; a closed lead 409;
+    a record of another lead 404. **C8 —** reads: the counselor (same scope) and the telecaller / manager / super admin (tel-004 scope);
+    a returned lead keeps its records.
+  - **C9 —** an active IT course (an overseas or inactive one is 422), active objections, and dates today (IST) or later are checked only
+    for values that are set or changed, so a stored value that has since gone inactive or past still saves.
+  - **C10 —** each save writes `lead_counseling.create` / `.update` (ids, outcome, itc-001 diff with notes as "changed"); the lead
+    timeline shows it as a `counseling` entry. **C11 —** internal: never shown to students; logs carry ids and field names only.
+- **Numbering:** migration `0227_lead_counseling_records`; API §12IO; RBAC §2.243.
+- **Feature ID authorized:** `itc-010`. **Status:** built on `worktree-itc-010`.
+
+### DEC-SCOPE-344 — Batch timetable and session calendar (`itc-020`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-020` (PDF §4 "timetable, class link/room, session calendar", §6, §8 Faculty
   "Today's classes"). Scope approved by the owner 2026-11-01 (backlog Q-01: all phases, built in waves). No dependencies. Design
@@ -10771,5 +10821,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   trainer → 409; a later batch-trainer change is not re-checked. T4 only IT Admin and Super Admin edit (the certificate coordinator has
   no batch grants). T5 no "restore" of a cancelled class. T6 the iCal feed is deferred (backlog "optional"). T7 `batches.schedule` free
   text is untouched. T8 an IT counselor sees no join link; a student whose live classes are locked sees no join link.
-- **Numbering:** migration `0226_batch_timetable` (`batch_timetable_slots`, `batch_timetable_cancellations`); API §12IN; RBAC §2.242.
+- **Numbering:** migration `0228_batch_timetable` (`batch_timetable_slots`, `batch_timetable_cancellations`); API §12IP; RBAC §2.244.
 - **Feature ID authorized:** `itc-020`. **Status:** built on `worktree-itc-020`.

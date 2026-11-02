@@ -1,4 +1,4 @@
-"""itc-020 (DEC-SCOPE-342) -- the batch timetable: weekly slots (IT Admin), the trainer/batch overlap rule (409, T3), single-class
+"""itc-020 (DEC-SCOPE-344) -- the batch timetable: weekly slots (IT Admin), the trainer/batch overlap rule (409, T3), single-class
 cancellation with the student notice, and the calendar feed scoped per role (student, trainer, IT counselor, admin)."""
 
 import datetime as dt

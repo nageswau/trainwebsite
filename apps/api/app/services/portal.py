@@ -205,7 +205,7 @@ async def _it_student(db: AsyncSession, user: User, section: str):
             ),
         )
     if section == "timetable":
-        return _payload("Timetable", "Your upcoming classes: day, time, room or link.")  # itc-020 (DEC-SCOPE-342): header only -- the page's panel reads /it/timetable
+        return _payload("Timetable", "Your upcoming classes: day, time, room or link.")  # itc-020 (DEC-SCOPE-344): header only -- the page's panel reads /it/timetable
     if section == "course":
         # "Available batches" (STU-001) and "Live classes" (STU-003) used to be dumped
         # here as unclickable text-panel strings -- both now have real interactive
@@ -455,7 +455,7 @@ async def _trainer(db: AsyncSession, user: User, section: str):
     batches = (await db.scalars(select(Batch).where(Batch.trainer_id == user.id).order_by(Batch.start_date.desc()))).all()
     batch_ids = [b.id for b in batches]
     if section == "timetable":
-        return _payload("Timetable", "Classes of the batches you teach.")  # itc-020 (DEC-SCOPE-342): header only -- the page's panel reads /it/timetable
+        return _payload("Timetable", "Classes of the batches you teach.")  # itc-020 (DEC-SCOPE-344): header only -- the page's panel reads /it/timetable
     if section == "dashboard":
         assignments = await db.scalar(select(func.count()).select_from(Assignment).where(Assignment.batch_id.in_(batch_ids))) if batch_ids else 0
         pending = (
@@ -1475,6 +1475,10 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                     {"label": "Expired welcome links", "value": len(await user_ids_with_status(db, user, "link_expired"))},
                 ),
             )
+        if section == "notifications" and user.role == "it_admin":
+            # itc-009 (DEC-SCOPE-342): header only -- PortalPage mounts the shared notification list (GET /workflows/notifications), where
+            # an IT counselor's overdue follow-up (or one whose telecaller manager is inactive) is escalated.
+            return _payload("Notifications", "Your own notifications, including overdue follow-ups escalated to you.")
         if section == "reports" and user.role in {"it_admin", "super_admin"}:
             # RPT-001: `PORTAL_NAV["it/admin"]` lists "Reports" but no handler existed at
             # all -- confirmed directly, same 404 bug class `CNS-001`/`UNI-001` found for
@@ -1722,7 +1726,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 ({"id": p.id, "title": p.title, "duration": p.duration, "fees": float(p.fees), "active": p.active} for p in rows),
             )
         if section == "timetable" and user.role in {"it_admin", "super_admin"}:
-            return _payload("Timetable", "Weekly class slots per batch, and the calendar they produce.")  # itc-020 (DEC-SCOPE-342): header only -- the page's panel reads /it/timetable
+            return _payload("Timetable", "Weekly class slots per batch, and the calendar they produce.")  # itc-020 (DEC-SCOPE-344): header only -- the page's panel reads /it/timetable
         if section == "batches":
             rows = (await db.execute(select(Batch, Program).join(Program, Program.id == Batch.program_id).order_by(Batch.start_date.desc()))).all()
             counts = dict((await db.execute(select(Enrollment.batch_id, func.count()).group_by(Enrollment.batch_id))).all())
@@ -1811,7 +1815,7 @@ async def _it_counselor(db: AsyncSession, user: User, section: str):
     if section not in {"dashboard", "leads", "appointments", "students", "timetable"}:
         return None
     if section == "timetable":
-        return _payload("Timetable", "Classes of your students' batches.")  # itc-020 (DEC-SCOPE-342): header only -- the page's panel reads /it/timetable
+        return _payload("Timetable", "Classes of your students' batches.")  # itc-020 (DEC-SCOPE-344): header only -- the page's panel reads /it/timetable
     if section == "leads":
         return _leads_payload(await _routed_leads(db, user))
     if section == "students":  # itc-003 (DEC-SCOPE-337): the IT students linked to this counselor

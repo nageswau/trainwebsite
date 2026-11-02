@@ -1,5 +1,5 @@
-"""itc-020 (DEC-SCOPE-342) -- the batch timetable: weekly slots (IT Admin), single-class cancellation (IT Admin) and the calendar of
-dated classes (every IT role, scoped). API_CONTRACT.md §12IN; RBAC_MATRIX.md §2.242."""
+"""itc-020 (DEC-SCOPE-344) -- the batch timetable: weekly slots (IT Admin), single-class cancellation (IT Admin) and the calendar of
+dated classes (every IT role, scoped). API_CONTRACT.md §12IP; RBAC_MATRIX.md §2.244."""
 
 from datetime import date
 from uuid import UUID

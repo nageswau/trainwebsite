@@ -1,7 +1,7 @@
 # itc-020 — Batch timetable and session calendar (design + plan)
 
 **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-020 (classification `UNVERIFIED` PDF §4 "timetable, class link/room, session
-calendar", §6, §8 Faculty "Today's classes"; owner-approved for build in waves by Q-01, 2026-11-01). **Decision:** `DEC-SCOPE-342`.
+calendar", §6, §8 Faculty "Today's classes"; owner-approved for build in waves by Q-01, 2026-11-01). **Decision:** `DEC-SCOPE-344`.
 **Dependencies:** none (backlog). Blocks itc-021 (session link), itc-024, itc-025. Q-18 is open; built with the recommended answers
 below (owner: "proceed with recommended answers"), each `NEEDS_CONFIRMATION`.
 
@@ -17,7 +17,7 @@ produces in one calendar for every role that needs it.
    in the batch's timezone), `mode` `online|offline`, `room` (≤120), `meeting_url` (≤500, http/https), `topic` (≤160), timestamps).
    CHECKs: weekday range, `end_time > start_time`, mode values, offline ⇒ room. **Table** `batch_timetable_cancellations` (`id`,
    `slot_id` → slots ON DELETE CASCADE, `occurs_on` date, `reason` text, `cancelled_by_user_id`, timestamps; UNIQUE (`slot_id`,
-   `occurs_on`)). Migration `0226_batch_timetable` (additive; downgrade drops both).
+   `occurs_on`)). Migration `0228_batch_timetable` (additive; downgrade drops both).
 2. **Edit (IT Admin, Super Admin)** — `GET/POST /it/batches/{id}/timetable`, `PUT/DELETE /it/batches/{id}/timetable/{slot_id}` (PUT replaces the whole slot):
    unknown batch/slot → 404; other roles → 403; validation → 422; a slot overlapping another slot of the same batch on the same weekday,
    or a slot of **another batch with the same trainer** whose date range overlaps → **409** naming the clash. The batch row (and the
@@ -57,10 +57,10 @@ iCal, holidays, recurring exceptions other than single-class cancel.
 
 ## Plan (TDD)
 
-1. Models + migration 0226 + migration test (upgrade, CHECKs, cascade, downgrade).
+1. Models + migration 0228 + migration test (upgrade, CHECKs, cascade, downgrade).
 2. `services/batch_timetable.py`: `validate`, `overlaps`, `occurrences(slots, cancellations, batches, window)` — unit tests for IST
    occurrences, mid-week batch end, cancellations.
 3. `api/batch_timetable.py`: CRUD + cancel + feed; tests for 200/201/204/403/404/409/422, scope per role, notice + audit.
 4. Portal payload headers for `timetable` in student/trainer/IT counselor/admin; nav entries.
 5. Web: `lib/timetable.ts`, `TimetableCalendar`, `BatchTimetableEditor`, PortalPage wiring; vitest.
-6. Docs: DEC-SCOPE-342, API §12IN, RBAC §2.242, RTM, backlog status. Playwright spec + browser QA.
+6. Docs: DEC-SCOPE-344, API §12IP, RBAC §2.244, RTM, backlog status. Playwright spec + browser QA.

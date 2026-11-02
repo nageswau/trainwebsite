@@ -119,6 +119,7 @@ export const BDM_SIGN_IN = "/bdm/sign-in";
 // /overseas, managers at /admin). Later tel items add their pages here.
 // tel-008: My Leads (telecaller) and Leads (manager).
 export const TELECALLER_NOTIFICATIONS_HREF = "/telecaller/notifications"; // tel-020: the §20 alerts
+export const TELECALLER_MANAGER_NOTIFICATIONS_HREF = "/telecaller/manager/notifications"; // itc-009: escalated overdue follow-ups
 export const TELECALLER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/telecaller/dashboard" }, { label: "My Leads", href: "/telecaller/leads" },
   { label: "Follow-ups", href: "/telecaller/follow-ups" }, // tel-011
@@ -137,9 +138,11 @@ export const TELECALLER_MANAGER_NAV: NavItem[] = withResources([
   { label: "Performance", href: "/telecaller/manager/performance" }, // tel-023
   { label: "Reports", href: "/telecaller/manager/reports" }, // tel-024
   { label: "Alert settings", href: "/telecaller/manager/alerts" }, // tel-020
+  { label: "Notifications", href: TELECALLER_MANAGER_NOTIFICATIONS_HREF }, // itc-009
   { label: "Products", href: "/telecaller/manager/products" },
   { label: "Campaigns", href: "/telecaller/manager/campaigns" },
   { label: "Lost reasons", href: "/telecaller/manager/lost-reasons" }, // ccrm-006
+  { label: "Counseling objections", href: "/telecaller/manager/counseling-objections" }, // itc-010
   // tel-012: the content library telecallers work from.
   { label: "Scripts", href: "/telecaller/manager/scripts" }, { label: "Templates", href: "/telecaller/manager/templates" },
   { label: "Brochures", href: "/telecaller/manager/brochures" },
@@ -287,7 +290,7 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
   // itc-003 (DEC-SCOPE-337) Students (the IT students linked to the counselor).
   "it/counselor": withTasks(["dashboard","leads","appointments","students","timetable"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/counselor/${x}`}))),
   // nehn-041 (DEC-SCOPE-291 S10): "Student search" in the three admin portals (also SUPER_ADMIN_NAV); PortalShell adds a header box for it.
-  "it/admin": withResources(withTasks([...["dashboard","users","students","trainers","counselors","employers","programs","batches","timetable","enrollments","certificates","resources","consent","payments","roles","leads","support","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/admin/${x}`})),{label:"Student search",href:"/it/admin/student-search"},{label:"Audit Log",href:"/it/admin/audit-log"},{label:"Testimonials",href:"/it/admin/testimonials"},{label:"BDMs",href:"/it/admin/bdms"},{label:"Telecallers",href:"/it/admin/telecallers"},{label:"Telecaller Performance",href:"/it/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/it/admin/telecaller-reports"},{label:"Report library",href:"/it/admin/report-library"},{label:"Recruiter Staff",href:"/it/admin/recruiter-staff"},{label:"Recruiter Performance",href:"/recruiter/manager/performance"},{label:"Recruiter Management Dashboard",href:"/recruiter/manager/business"}])),
+  "it/admin": withResources(withTasks([...["dashboard","users","students","trainers","counselors","employers","programs","batches","timetable","enrollments","certificates","resources","consent","payments","roles","leads","support","reports","notifications"/* itc-009 */].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/admin/${x}`})),{label:"Student search",href:"/it/admin/student-search"},{label:"Audit Log",href:"/it/admin/audit-log"},{label:"Testimonials",href:"/it/admin/testimonials"},{label:"BDMs",href:"/it/admin/bdms"},{label:"Telecallers",href:"/it/admin/telecallers"},{label:"Telecaller Performance",href:"/it/admin/telecaller-performance"},{label:"Telecaller Reports",href:"/it/admin/telecaller-reports"},{label:"Report library",href:"/it/admin/report-library"},{label:"Recruiter Staff",href:"/it/admin/recruiter-staff"},{label:"Recruiter Performance",href:"/recruiter/manager/performance"},{label:"Recruiter Management Dashboard",href:"/recruiter/manager/business"}])),
   "overseas/student": ["dashboard","progress","profile","explore-countries","applications","documents","offer-letters","visa-status","scholarships","university-communication","payments","appointments","counselor-chat","downloads"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/student/${x}`})),
   // upc-030 (DEC-SCOPE-161): Universities (the 360 view) for the overseas counselor; University Profile for the university rep.
   "overseas/counselor": withTasks(["dashboard","tasks","students","leads","documents","applications","universities","school-applications","visa","appointments","calendar","counselor-chat","reports","archived-students"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/overseas/counselor/${x}`}))), // ccrm-038: Calendar is its own page (DEC-SCOPE-274); ccrm-040: Archived Students too (DEC-SCOPE-276)

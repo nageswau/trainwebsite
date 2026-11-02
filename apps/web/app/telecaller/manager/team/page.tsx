@@ -5,13 +5,14 @@ import PortalShell from "@/components/PortalShell";
 import TelecallerTeamTable from "@/components/TelecallerTeamTable";
 import { serverApi } from "@/lib/api";
 import type { Page } from "@/lib/apiErrors";
-import { TELECALLER_MANAGER_NAV } from "@/lib/navigation";
 import { PAGE_SIZE, pageOffset, type TelecallerTeamRow } from "@/lib/telecaller";
+import { telecallerManagerNav } from "@/lib/telecallerNav";
 import type { User } from "@/lib/types";
 
 // tel-001 (AC4, T23): exactly the telecallers who report to this manager (the API scopes it). The offset lives in the URL.
 export default async function TelecallerManagerTeamPage({ searchParams }: { searchParams: Promise<{ offset?: string }> }) {
   const offset = pageOffset((await searchParams).offset);
+  const nav = telecallerManagerNav(); // itc-009: the sign-in landing shows the unread escalations (never rejects)
   let user: User, team: Page<TelecallerTeamRow>;
   try {
     [user, team] = await Promise.all([
@@ -22,7 +23,7 @@ export default async function TelecallerManagerTeamPage({ searchParams }: { sear
     return accessUnavailable(e, "/admin/login");
   }
   return (
-    <PortalShell nav={TELECALLER_MANAGER_NAV} roleLabel="Telecaller Manager" userName={user.full_name}>
+    <PortalShell nav={await nav} roleLabel="Telecaller Manager" userName={user.full_name}>
       <div className="portal-content">
         <div className="portal-title">
           <div>

@@ -210,7 +210,7 @@ class Enrollment(Base, TimestampMixin):
 
 
 class BatchTimetableSlot(Base, TimestampMixin):
-    """itc-020 (DEC-SCOPE-342): one weekly class of a batch -- `weekday` 0=Mon..6=Sun, local times in the batch's timezone. Dated
+    """itc-020 (DEC-SCOPE-344): one weekly class of a batch -- `weekday` 0=Mon..6=Sun, local times in the batch's timezone. Dated
     classes are computed from these rows (`services/batch_timetable.py`), never stored (T1)."""
 
     __tablename__ = "batch_timetable_slots"
@@ -232,7 +232,7 @@ class BatchTimetableSlot(Base, TimestampMixin):
 
 
 class BatchTimetableCancellation(Base, TimestampMixin):
-    """itc-020 (DEC-SCOPE-342): one cancelled class -- a slot on one date. Students no longer see it; staff see it with the reason."""
+    """itc-020 (DEC-SCOPE-344): one cancelled class -- a slot on one date. Students no longer see it; staff see it with the reason."""
 
     __tablename__ = "batch_timetable_cancellations"
     __table_args__ = (UniqueConstraint("slot_id", "occurs_on", name="uq_batch_timetable_cancellations_slot_day"),)
@@ -3130,6 +3130,7 @@ class LeadFollowUp(Base, TimestampMixin):
     completed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # itc-009: escalated once, never again
 
 
 # tel-010 (DEC-SCOPE-096): the EVID-019 §5 call types (CL1) and the 13 selectable outcomes (L226-L250; "Converted" is computed, T5).
@@ -3206,6 +3207,65 @@ class LeadMeeting(Base):
     mode: Mapped[str] = mapped_column(String(40))
     notes: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# itc-010 (DEC-SCOPE-343): the IT counseling record. Migration 0227 repeats LEAD_COUNSELING_CHECKS (test_itc_010_migration).
+COUNSELING_DECISION_MAKERS = ("self", "parent", "spouse", "employer", "other")
+COUNSELING_OUTCOMES = ("interested", "needs_time", "not_interested", "enrolled")
+COUNSELING_NOTES_MAX, COUNSELING_OBJECTION_NOTES_MAX, COUNSELING_OBJECTION_NAME_MAX = 4000, 1000, 120
+LEAD_COUNSELING_CHECKS = {
+    "ck_lead_counseling_records_decision_maker": "decision_maker IS NULL OR decision_maker IN ({})".format(", ".join(repr(v) for v in COUNSELING_DECISION_MAKERS)),
+    "ck_lead_counseling_records_outcome": "outcome IN ({})".format(", ".join(repr(v) for v in COUNSELING_OUTCOMES)),
+    "ck_lead_counseling_records_fee": "fee_quoted IS NULL OR fee_quoted >= 0",
+    "ck_lead_counseling_records_notes": f"notes IS NULL OR length(notes) <= {COUNSELING_NOTES_MAX}",
+    "ck_lead_counseling_records_objection_notes": f"objection_notes IS NULL OR length(objection_notes) <= {COUNSELING_OBJECTION_NOTES_MAX}",
+}
+
+
+class LeadCounselingObjection(Base, TimestampMixin):
+    """itc-010 (C6): the managed list a counseling session's objections are picked from -- the lost-reason catalogue pattern. Never
+    deleted: deactivating hides it from the picker while past sessions keep it."""
+
+    __tablename__ = "lead_counseling_objections"
+    __table_args__ = (
+        CheckConstraint(f"length(name) BETWEEN 1 AND {COUNSELING_OBJECTION_NAME_MAX}", name="ck_lead_counseling_objections_name"),
+        Index("uq_lead_counseling_objections_name", text("lower(name)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(COUNSELING_OBJECTION_NAME_MAX))
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+
+
+class LeadCounselingRecord(Base, TimestampMixin):
+    """itc-010 (DEC-SCOPE-343, C1): one counseling session an IT counselor held with a lead. Career goal and current skills are the
+    lead's qualification (C2). Internal: never shown to the student; the notes are never logged (C11)."""
+
+    __tablename__ = "lead_counseling_records"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in LEAD_COUNSELING_CHECKS.items()),
+        Index("ix_lead_counseling_records_lead_created", "lead_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
+    author_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    recommended_product_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_products.id", ondelete="RESTRICT"), nullable=True)
+    objection_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fee_quoted: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    expected_joining_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    decision_maker: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    outcome: Mapped[str] = mapped_column(String(20))
+    next_follow_up: Mapped[date | None] = mapped_column(Date, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class LeadCounselingRecordObjection(Base):
+    """itc-010: the objections picked for one session (the set is replaced whole on an edit)."""
+
+    __tablename__ = "lead_counseling_record_objections"
+    record_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("lead_counseling_records.id", ondelete="CASCADE"), primary_key=True)
+    objection_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("lead_counseling_objections.id", ondelete="RESTRICT"), primary_key=True)
 
 
 # Migration 0095 repeats LEAD_MESSAGE_CHECKS (test_tel_013_migration asserts they stay identical).
@@ -3722,18 +3782,21 @@ TEL_STRATEGIES = ("round_robin", "workload")  # itc-006 D3; migration 0224 keeps
 class TelSetting(Base, TimestampMixin):
     """tel-020 (DEC-SCOPE-111, T14): a team's alert thresholds -- Lead Not Contacted and Hot Lead Pending, in whole hours. One row per team,
     seeded; any telecaller manager edits both (AL11) and the beat reads them on every run (AC4).
-    itc-006 (DEC-SCOPE-339 D3): `distribution_strategy` -- who gets a new lead no rule matched: in turn, or the fewest open leads."""
+    itc-006 (DEC-SCOPE-339 D3): `distribution_strategy` -- who gets a new lead no rule matched: in turn, or the fewest open leads.
+    itc-009 (DEC-SCOPE-342): `escalate_after_hours` -- how overdue a follow-up gets before its owner's manager hears of it; 0 = off."""
 
     __tablename__ = "tel_settings"
     __table_args__ = (
         CheckConstraint("team IN ('it', 'overseas')", name="ck_tel_settings_team"),
         *(CheckConstraint(f"{col} BETWEEN 1 AND {TEL_SETTING_MAX_HOURS}", name=f"ck_tel_settings_{col}") for col in TEL_SETTING_DEFAULTS),
         CheckConstraint(f"distribution_strategy IN ({', '.join(repr(s) for s in TEL_STRATEGIES)})", name="ck_tel_settings_distribution_strategy"),
+        CheckConstraint(f"escalate_after_hours BETWEEN 0 AND {TEL_SETTING_MAX_HOURS}", name="ck_tel_settings_escalate_after_hours"),
     )
     team: Mapped[str] = mapped_column(String(20), primary_key=True)
     not_contacted_hours: Mapped[int] = mapped_column(Integer, default=TEL_SETTING_DEFAULTS["not_contacted_hours"])
     hot_pending_hours: Mapped[int] = mapped_column(Integer, default=TEL_SETTING_DEFAULTS["hot_pending_hours"])
     distribution_strategy: Mapped[str] = mapped_column(String(20), default="round_robin", server_default=text("'round_robin'"))
+    escalate_after_hours: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))  # itc-009: 0 = escalation off
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
