@@ -1484,3 +1484,10 @@ half.
 | `itc-004-AC2` | Nurture excluded from overdue; included in a Nurture filter | `::test_a_nurture_leads_past_due_follow_up_is_in_no_overdue_list_count_flag_or_filter`, `::test_a_nurture_leads_next_action_is_never_overdue`, `::test_a_nurture_follow_up_still_reminds_when_due_but_is_never_missed`, `::test_the_stage_route_takes_nurture_and_refuses_it_without_a_reason`; e2e (Stage filter) |
 | `itc-004-AC3` | History records actor, time and reason | `::test_a_telecaller_moves_a_lead_to_nurture_with_a_reason_recorded_with_actor_and_time` |
 | `itc-004-E` | Reason required; converted/linked → 422; counselor cannot choose it; re-activation by move and events; migration round trip | `::test_a_linked_or_converted_lead_cannot_move_to_nurture`, `::test_a_counselor_cannot_choose_nurture_but_can_reactivate_a_nurture_lead`, `::test_events_from_nurture`, `::test_a_nurture_lead_is_reactivated_by_a_manual_move_without_a_reason`; `test_itc_004_migration.py` |
+
+| `itc-006-AC1` | A source rule wins over the product (and city) rule | `apps/api/tests/test_itc_006_distribution.py::test_source_rule_wins_over_product_and_city`; e2e `itc-006-distribution.spec.ts` |
+| `itc-006-AC2` | Workload picks the telecaller with the fewest open leads | `::test_workload_picks_fewest_open_leads`, `::test_workload_ties_go_in_turn`; `TelecallerStrategyPanel.test.tsx` |
+| `itc-006-AC3` | Inactive telecallers are never picked | `::test_workload_skips_inactive`, `::test_inactive_source_rule_falls_through` |
+| `itc-006-AC4` | Each assignment's audit row names the rule | `::test_audit_names_the_rule`; `test_tel_007_distribution.py::test_assignment_moves_the_stage_and_is_audited` |
+| `itc-006-N` | A rule to an overseas telecaller for the IT team → 422; strategy roles | `test_itc_006_api.py::test_source_rule_for_other_team_telecaller_is_422`, `::test_strategy_roles` |
+| `itc-006-E` | All eligible inactive → unassigned; migration safe and reversible | `::test_workload_with_nobody_eligible_leaves_unassigned`; `test_itc_006_migration.py` |

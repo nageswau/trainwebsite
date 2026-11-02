@@ -25,6 +25,10 @@ describe("timelineEntry", () => {
   it("names assignments, unassignments and reassignments", () => {
     expect(timelineEntry(row({ kind: "assignment", to_value: "t1", to_label: "Tara", event: "round_robin" }))).toMatchObject({
       title: "Assigned to Tara", meta: ["Round robin"] });
+    // itc-006: the source rule and workload methods, and the city rule's real key
+    for (const [event, label] of [["source_rule", "Source rule"], ["workload", "Fewest open leads"], ["city_rule", "City rule"]]) {
+      expect(timelineEntry(row({ kind: "assignment", to_value: "t1", to_label: "Tara", event })).meta).toEqual([label]);
+    }
     expect(timelineEntry(row({ kind: "assignment", from_value: "t1", from_label: "Tara", to_value: "t2", to_label: "Ravi", event: "manual" })).title)
       .toBe("Reassigned from Tara to Ravi");
     expect(timelineEntry(row({ kind: "assignment", from_value: "t1", from_label: "Tara", event: "team_move" }))).toMatchObject({

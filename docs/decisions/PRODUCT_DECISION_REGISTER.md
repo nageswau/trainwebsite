@@ -10682,3 +10682,27 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
     (per-team configurable labels).
 - **Numbering:** migration `0223_lead_nurture_stage`; API §12IJ; RBAC unchanged (stage moves keep the existing owner/manager rules).
 - **Feature ID authorized:** `itc-004`. **Status:** built on `worktree-itc-004`.
+
+### DEC-SCOPE-339 — Auto-assign new leads by source and workload (`itc-006`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-006 (source PDF §9 "Auto-assign new leads using configurable rules such as
+  source, course, location, or workload", §3 step 2; PDF classified `UNVERIFIED`). Owner Q-01 (2026-11-01): all phases approved for build
+  in waves; itc-006 has no dependency. Q-06 (rule precedence) was open; the owner said to proceed with the recommended answers, so the
+  calls below are the builder's and are open to correction. Design: `docs/superpowers/specs/2026-11-02-itc-006-source-workload-assign-design.md`.
+- **Decisions (builder's calls):**
+  - **D1 — precedence (Q-06).** Fixed: T18 guard (a product without a team → queue) → **source rule** → product rule → city rule → the
+    team's fallback strategy → unassigned queue. Configurable precedence stays `NEEDS_CONFIRMATION`.
+  - **D2 — source rule.** `tel_distribution_rules.kind = 'source'` with `source` one of the 13 fixed lead sources (`app/tel_sources.py`);
+    one telecaller per (team, source), like product and city rules. Campaigns route through their product (no campaign rule).
+  - **D3 — strategy.** `tel_settings.distribution_strategy` ∈ {`round_robin` (default — every existing team keeps today's behaviour),
+    `workload`}.
+  - **D4 — workload.** The team's eligible telecallers (role telecaller, active, on the team) with the fewest open leads (any status
+    except converted and the closed outcomes — tel-025's "open work"); ties go to the next tied telecaller after the round-robin cursor,
+    which then moves. The cursor row lock serialises concurrent intakes, so counts are read after the previous intake committed.
+  - **D5 — audit.** `lead.assign` metadata keeps `from`, `to`, `method` and adds `rule_id` when a rule matched (AC4). New methods
+    `source_rule` and `workload`; the lead timeline labels them (and `city_rule`, which had no label).
+  - **D6 — AuthZ.** Rules: unchanged (tel-007 DI3/AC5; a rule to another team's telecaller is 422). Strategy: any telecaller manager or
+    super admin reads both teams; only a manager with a direct report on the team (or a super admin) changes it (403), unknown team 404.
+    No new grant; `it_admin` still has no telecaller-distribution access.
+- **Numbering:** migration `0224_tel_source_workload`; API §12IK; RBAC §2.240.
+- **Feature ID authorized:** `itc-006`. **Status:** built on `worktree-itc-006`.

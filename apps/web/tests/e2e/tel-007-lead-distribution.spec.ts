@@ -80,7 +80,7 @@ test("rules, distribution on intake and reassignment from the Lead assignment pa
   await expect(page.getByText(`Created City: ${town}.`)).toBeVisible();
   await page.getByRole("button", { name: `Change telecaller for City: ${town}` }).click();
   await page.getByLabel(`New telecaller for City: ${town}`).selectOption({ label: `E2E Dist B ${stamp}` });
-  await page.getByRole("button", { name: "Save" }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText(`City: ${town} now goes to E2E Dist B ${stamp}.`)).toBeVisible();
   await page.getByRole("button", { name: `Delete City: ${town}` }).click();
   await page.getByRole("button", { name: "Confirm delete" }).click();

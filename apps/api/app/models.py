@@ -3539,18 +3539,23 @@ class TelCampaign(Base, TimestampMixin):
 class TelDistributionRule(Base, TimestampMixin):
     """tel-007 (DEC-SCOPE-087, T11): a manager's routing rule for one team -- a product or a city sends new leads to one telecaller.
     The telecaller's team, role and active state span tables, so `services/lead_distribution.py` checks them on write and again at
-    distribution time (an inactive telecaller's rule is skipped). Deleted, not deactivated, to stop it (audited)."""
+    distribution time (an inactive telecaller's rule is skipped). Deleted, not deactivated, to stop it (audited).
+    itc-006 (DEC-SCOPE-339): a `source` rule matches one of the 13 lead sources and is tried before product and city."""
 
     __tablename__ = "tel_distribution_rules"
     __table_args__ = (
         CheckConstraint("team IN ('it', 'overseas')", name="ck_tel_distribution_rules_team"),
-        CheckConstraint("kind IN ('product', 'city')", name="ck_tel_distribution_rules_kind"),
+        CheckConstraint("kind IN ('product', 'city', 'source')", name="ck_tel_distribution_rules_kind"),
         CheckConstraint(
-            "(kind = 'product' AND product_id IS NOT NULL AND city IS NULL) OR (kind = 'city' AND city IS NOT NULL AND product_id IS NULL)",
+            "(kind = 'product' AND product_id IS NOT NULL AND city IS NULL AND source IS NULL)"
+            " OR (kind = 'city' AND city IS NOT NULL AND product_id IS NULL AND source IS NULL)"
+            " OR (kind = 'source' AND source IS NOT NULL AND product_id IS NULL AND city IS NULL)",
             name="ck_tel_distribution_rules_shape",
         ),
+        CheckConstraint(f"source IS NULL OR source IN ({', '.join(repr(s) for s in TEL_SOURCES)})", name="ck_tel_distribution_rules_source"),
         Index("uq_tel_distribution_rules_product", "team", "product_id", unique=True, postgresql_where=text("kind = 'product'")),
         Index("uq_tel_distribution_rules_city", "team", text("lower(city)"), unique=True, postgresql_where=text("kind = 'city'")),
+        Index("uq_tel_distribution_rules_source", "team", "source", unique=True, postgresql_where=text("kind = 'source'")),
         Index("ix_tel_distribution_rules_telecaller", "telecaller_user_id"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -3558,6 +3563,7 @@ class TelDistributionRule(Base, TimestampMixin):
     kind: Mapped[str] = mapped_column(String(10))
     product_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_products.id"), nullable=True)
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    source: Mapped[str | None] = mapped_column(String(30), nullable=True)
     telecaller_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
@@ -3669,20 +3675,24 @@ class TelTarget(Base, TimestampMixin):
 
 TEL_SETTING_DEFAULTS = {"not_contacted_hours": 24, "hot_pending_hours": 4}  # DEC-SCOPE-111 AL1; migration 0099 seeds both teams with them
 TEL_SETTING_MAX_HOURS = 168
+TEL_STRATEGIES = ("round_robin", "workload")  # itc-006 D3; migration 0224 keeps a frozen copy
 
 
 class TelSetting(Base, TimestampMixin):
     """tel-020 (DEC-SCOPE-111, T14): a team's alert thresholds -- Lead Not Contacted and Hot Lead Pending, in whole hours. One row per team,
-    seeded; any telecaller manager edits both (AL11) and the beat reads them on every run (AC4)."""
+    seeded; any telecaller manager edits both (AL11) and the beat reads them on every run (AC4).
+    itc-006 (DEC-SCOPE-339 D3): `distribution_strategy` -- who gets a new lead no rule matched: in turn, or the fewest open leads."""
 
     __tablename__ = "tel_settings"
     __table_args__ = (
         CheckConstraint("team IN ('it', 'overseas')", name="ck_tel_settings_team"),
         *(CheckConstraint(f"{col} BETWEEN 1 AND {TEL_SETTING_MAX_HOURS}", name=f"ck_tel_settings_{col}") for col in TEL_SETTING_DEFAULTS),
+        CheckConstraint(f"distribution_strategy IN ({', '.join(repr(s) for s in TEL_STRATEGIES)})", name="ck_tel_settings_distribution_strategy"),
     )
     team: Mapped[str] = mapped_column(String(20), primary_key=True)
     not_contacted_hours: Mapped[int] = mapped_column(Integer, default=TEL_SETTING_DEFAULTS["not_contacted_hours"])
     hot_pending_hours: Mapped[int] = mapped_column(Integer, default=TEL_SETTING_DEFAULTS["hot_pending_hours"])
+    distribution_strategy: Mapped[str] = mapped_column(String(20), default="round_robin", server_default=text("'round_robin'"))
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
