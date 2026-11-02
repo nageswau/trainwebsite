@@ -10778,3 +10778,29 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - **E7 — beat.** `itc009-escalations`, every 15 minutes.
 - **Numbering:** migration `0226_follow_up_escalation`; API §12IN; RBAC §2.242.
 - **Feature ID authorized:** `itc-009`. **Status:** built on `worktree-itc-009`.
+
+### DEC-SCOPE-343 — IT counseling record (`itc-010`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-010 (PDF §4 "Counseling: career goal, current skills, recommended course,
+  counselor notes, objections, course fee quoted, expected joining date, decision-maker, counseling outcome"; §3 step 5; PDF classified
+  `UNVERIFIED`). Owner Q-01 (2026-11-01): all phases approved for build in waves; itc-010 has no dependency. The owner said to proceed
+  with the recommended answers, so the calls below are the builder's (`NEEDS_CONFIRMATION`). Design:
+  `docs/superpowers/specs/2026-11-02-itc-010-it-counseling-record-design.md`.
+- **Decisions (builder's calls):**
+  - **C1 — Q-08:** one record per counseling session (append); each can be edited later (PATCH), keeping the author and recording the editor.
+  - **C2 —** career goal and current skills stay on the qualification card (`career_objective`, `it_skill_level`); the record holds the
+    recommended IT course, objections (a managed list + free text), fee quoted (₹, ≥ 0), expected joining date, decision-maker (self,
+    parent, spouse, employer, other), outcome (interested, needs time, not interested, enrolled), next follow-up date and notes.
+  - **C3 —** only the outcome is required. **C4 —** the next follow-up date is stored, not turned into a follow-up. **C5 —** "Enrolled"
+    never moves the stage or converts (itc-011).
+  - **C6 —** objections: `lead_counseling_objections`, the lost-reason catalogue rules (telecaller managers and super admin write;
+    catalogue readers see active rows); seeded with six defaults when empty.
+  - **C7 — AuthZ:** writes by the lead's current owner counselor, who must be an IT counselor (403); out of scope 404; a closed lead 409;
+    a record of another lead 404. **C8 —** reads: the counselor (same scope) and the telecaller / manager / super admin (tel-004 scope);
+    a returned lead keeps its records.
+  - **C9 —** an active IT course (an overseas or inactive one is 422), active objections, and dates today (IST) or later are checked only
+    for values that are set or changed, so a stored value that has since gone inactive or past still saves.
+  - **C10 —** each save writes `lead_counseling.create` / `.update` (ids, outcome, itc-001 diff with notes as "changed"); the lead
+    timeline shows it as a `counseling` entry. **C11 —** internal: never shown to students; logs carry ids and field names only.
+- **Numbering:** migration `0227_lead_counseling_records`; API §12IO; RBAC §2.243.
+- **Feature ID authorized:** `itc-010`. **Status:** built on `worktree-itc-010`.

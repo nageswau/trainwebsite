@@ -7,6 +7,7 @@ import { LeadStageControl } from "@/components/AdminLeadStage";
 import BdmConfirm from "@/components/BdmConfirm";
 import LeadCalls from "@/components/LeadCalls";
 import LeadClosure from "@/components/LeadClosure";
+import LeadCounseling from "@/components/LeadCounseling";
 import LeadContactFields, { contactChanges, contactDraft, contactRows } from "@/components/LeadContactFields";
 import LeadFollowUps from "@/components/LeadFollowUps";
 import LeadMeetings from "@/components/LeadMeetings";
@@ -19,6 +20,7 @@ import LeadTimeline from "@/components/LeadTimeline";
 import { staffFailure } from "@/lib/agentStaff";
 import { isRequestBody, sendJson, sendRequest, type SendOutcome } from "@/lib/apiErrors";
 import { formatCalendarDate } from "@/lib/formatDate";
+import { counselorCounselingUrl } from "@/lib/leadCounseling";
 import { counselorLeadUrl, counselorMoveStage, type CounselorLeadDetail as Detail, type StudentSuggestion } from "@/lib/leadHandover";
 import { counselorTargets, stageLabel } from "@/lib/leadStages";
 import { SOURCE_LABEL } from "@/lib/telecallerCatalogue";
@@ -395,6 +397,11 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
           <LeadMessages leadId={lead.id} whatsappTo={lead.whatsapp_to} email={lead.email} canWrite={lead.permissions.activity} api={COUNSELOR_MESSAGE_API}
             onChanged={reloadActivity} />
           <LeadMeetings leadId={lead.id} canWrite={lead.permissions.activity} onChanged={reloadActivity} />
+          {/* itc-010 (DEC-SCOPE-343): the IT counseling record; a closed lead keeps its sessions, read only */}
+          {lead.division === "it" && (
+            <LeadCounseling listUrl={counselorCounselingUrl(lead.id)} writeUrl={lead.permissions.activity ? (recordId) => counselorCounselingUrl(lead.id, recordId) : null}
+              onChanged={reloadActivity} />
+          )}
         </>
       )}
 

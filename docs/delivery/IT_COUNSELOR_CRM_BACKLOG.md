@@ -344,6 +344,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** the lead is returned to the telecaller after counseling (the record stays and is read-only).
 - **Regression risks:** low (additive).
 - **Complexity:** medium. **Risk:** low.
+- **Built (2026-11-02):** `DEC-SCOPE-343` (migration `0227`, API §12IO, RBAC §2.243) — Q-08 answered by builder default (one record per
+  session, editable); career goal / current skills stay on the qualification card; objections list managed like lost reasons; all
+  NEEDS_CONFIRMATION.
 
 #### itc-011: One-step IT conversion (lead → student → enrolment → fee plan → onboarding)
 - **Business requirement:** §3 step 6; §9 "On conversion, preserve lead history and create student/enrollment records without re-entering data"; §12 AC2; PDF Phase 1 exit condition.
@@ -1216,7 +1219,7 @@ That makes about 24 migrations. They must be linear (`0220` onward), so assign e
 | Q-05 | Configurable statuses: labels, order and enable only, or fully admin-defined states? | 005 |
 | Q-06 | Precedence of the source, product, city and workload rules **Built with the recommended answer (owner: proceed with recommended answers), DEC-SCOPE-339: fixed source → product → city → team strategy; configurable precedence still open.** | 006 |
 | Q-07 | Who may merge leads: managers only, or telecallers too? | 007 |
-| Q-08 | Counseling: one record per lead, or one per session? | 010 |
+| Q-08 | Counseling: one record per lead, or one per session? **Built with the recommended answer (owner: proceed with recommended answers), DEC-SCOPE-343: one record per session, each editable.** | 010 |
 | Q-09 | Onboarding checklist: reuse the ccrm-018/019 engine? What items does it contain? | 011 |
 | Q-10 | Does counselor conversion skip the student consent step (`pending_consent`)? What if the email belongs to an existing overseas student? | 011 |
 | Q-11 | Which roles may see the emergency contact? | 012 |

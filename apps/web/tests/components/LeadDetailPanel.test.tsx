@@ -54,6 +54,7 @@ beforeEach(() => {
     }
     if (url.startsWith("/api/v1/telecaller/leads/L1/messages")) return Promise.resolve(res(pageOf([]))); // tel-013's section
     if (url.startsWith("/api/v1/telecaller/leads/L1/notes")) return Promise.resolve(res(pageOf([]))); // ccrm-002's section
+    if (url.startsWith("/api/v1/telecaller/leads/L1/counseling")) return Promise.resolve(res(pageOf([]))); // itc-010 section
     if (url.startsWith("/api/v1/telecaller/templates")) return Promise.resolve(res(pageOf([])));
     if (init?.method === "PATCH") return Promise.resolve(patchReply(JSON.parse(String(init.body))));
     if (init?.method === "POST") return Promise.resolve(res({ id: "L1", status: "qualified", status_label: "Qualified", stage_changed_at: "x" }));

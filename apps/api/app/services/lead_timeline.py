@@ -132,6 +132,10 @@ def _sources(lead_id: UUID) -> list:
         # itc-007: "Merged from LD-…" -- the merged lead's activity itself is on this lead now (it moved), so it lists in its own kinds
         _branch(AuditLog.id, "merge", AuditLog.created_at, actor=AuditLog.user_id, from_value=meta["victim_code"].as_string())
         .where(*_audits(lead_id, "lead.merge")),
+        # itc-010 C10: a counseling session saved or edited -- its outcome; the Counseling section shows the whole record
+        _branch(AuditLog.id, "counseling", AuditLog.created_at, actor=AuditLog.user_id, to_value=meta["outcome"].as_string(),
+                event=case((AuditLog.action == "lead_counseling.create", "created"), else_="updated"))
+        .where(*_audits(lead_id, "lead_counseling.create", "lead_counseling.update")),
         # TM3: the linked student's records, read live (an unlink removes them)
         _branch(Enrollment.id, "milestone", Enrollment.created_at, to_value=Batch.name, event="enrollment", subject=Enrollment.enrollment_code,
                 status=Enrollment.status).join(Batch, Batch.id == Enrollment.batch_id).where(Enrollment.student_id == student),
