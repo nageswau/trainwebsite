@@ -4957,3 +4957,24 @@ leads owned by an IT counselor). All routes **401** without a session.
   all for today (IST).
 - `GET /telecaller/reports/telecaller` (+ `.csv`, `.xlsx`) — columns append `contact_rate` "Contact rate (%)" (number | null per row;
   the Total row is Σreached ÷ Σcalled) and `handovers` "Handovers" (summed).
+
+## 12IO. IT counseling record (itc-010) — addendum, 2026-11-02
+
+`DEC-SCOPE-343`. Migration `0227_lead_counseling_records`. Additive.
+
+- `GET /counselor/leads/{id}/counseling?limit&offset` — `{items, total, limit, offset}`, newest first. The lead's counselor (tel-018
+  scope); out of scope 404.
+- `POST /counselor/leads/{id}/counseling` → 201 record. Body: `outcome` (required: `interested | needs_time | not_interested | enrolled`),
+  `recommended_product_id` (an active IT `TelProduct`), `objection_ids` (≤ 20 active objections), `objection_notes` (≤ 1000),
+  `fee_quoted` (decimal ≥ 0, 2 places), `expected_joining_date` and `next_follow_up` (today IST or later), `decision_maker`
+  (`self | parent | spouse | employer | other`), `notes` (≤ 4000). Blank text is null. Not an IT counselor 403; closed lead 409;
+  invalid 422 on the field. Not idempotent.
+- `PATCH /counselor/leads/{id}/counseling/{record_id}` → 200 record. Fields sent replace the stored ones (`objection_ids` the whole set);
+  `outcome: null` is 422; the C9 checks apply to changed values only; a record of another lead 404.
+- `GET /telecaller/leads/{id}/counseling` — the same page, read only, for a lead in the tel-004 scope.
+- Record: `id, recommended_product {id, name} | null, objections [{id, name}], objection_notes, fee_quoted (string) | null,
+  expected_joining_date, decision_maker, outcome, next_follow_up, notes, author {id, full_name}, updated_by {id, full_name}, created_at,
+  updated_at`.
+- `GET/POST /telecaller/counseling-objections`, `PATCH /telecaller/counseling-objections/{id}` — the lost-reason list contract (ccrm-006):
+  `{id, name, active, sort_order}`; a duplicate name (case-insensitive) is 409.
+- Lead timeline: new kind `counseling` (`event` `created | updated`, `to_value` = the outcome).

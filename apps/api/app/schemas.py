@@ -59,6 +59,10 @@ from app.models import (
     CAPITAL_ENTRY_KINDS,
     CONTACT_CHANNELS,
     CONTACT_PREFERENCES,
+    COUNSELING_DECISION_MAKERS,
+    COUNSELING_NOTES_MAX,
+    COUNSELING_OBJECTION_NOTES_MAX,
+    COUNSELING_OUTCOMES,
     COUNSELOR_TASK_STATUSES,
     COUNTRY_REGIONS,
     COURSE_CURRENCIES,
@@ -7177,7 +7181,7 @@ class LeadTimelineRow(BaseModel):
 
     id: UUID
     kind: Literal["created", "enquiry", "stage", "priority", "assignment", "handover", "student_link", "call", "message", "follow_up",
-                  "appointment", "milestone", "note", "meeting"]
+                  "appointment", "milestone", "note", "meeting", "counseling"]
     at: datetime
     actor: LeadStageActor | None
     from_value: str
@@ -7241,6 +7245,73 @@ class LeadMeetingOut(BaseModel):
 
 class LeadMeetingPage(BaseModel):
     items: list[LeadMeetingOut]
+    total: int
+    limit: int
+    offset: int
+
+
+# --- itc-010 (DEC-SCOPE-343): the IT counseling record ---------------------------------------------------------------------------------
+CounselingNotes = Annotated[str, StringConstraints(strip_whitespace=True, max_length=COUNSELING_NOTES_MAX)]
+CounselingObjectionNotes = Annotated[str, StringConstraints(strip_whitespace=True, max_length=COUNSELING_OBJECTION_NOTES_MAX)]
+CounselingFee = Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=2)]
+CounselingObjectionIds = Annotated[list[UUID], Field(max_length=20)]
+
+
+class LeadCounselingIn(BaseModel):
+    """C3: only the outcome is required. Blank text is none. The rules that need the database (an active IT course, active objections,
+    dates today or later in IST) are the service's (C9)."""
+
+    model_config = ConfigDict(extra="forbid")
+    recommended_product_id: UUID | None = None
+    objection_ids: CounselingObjectionIds = []
+    objection_notes: CounselingObjectionNotes | None = None
+    fee_quoted: CounselingFee | None = None
+    expected_joining_date: date | None = None
+    decision_maker: Literal[COUNSELING_DECISION_MAKERS] | None = None
+    outcome: Literal[COUNSELING_OUTCOMES]
+    next_follow_up: date | None = None
+    notes: CounselingNotes | None = None
+
+
+class LeadCounselingUpdate(BaseModel):
+    """Omitted = unchanged; a value sent replaces the stored one (`objection_ids` the whole set). `outcome` cannot be null (422 on it)."""
+
+    model_config = ConfigDict(extra="forbid")
+    recommended_product_id: UUID | None = None
+    objection_ids: CounselingObjectionIds | None = None
+    objection_notes: CounselingObjectionNotes | None = None
+    fee_quoted: CounselingFee | None = None
+    expected_joining_date: date | None = None
+    decision_maker: Literal[COUNSELING_DECISION_MAKERS] | None = None
+    outcome: Literal[COUNSELING_OUTCOMES] = None  # type: ignore[assignment]  # an explicit null is validated, so it is a 422
+    next_follow_up: date | None = None
+    notes: CounselingNotes | None = None
+
+
+class LeadCounselingRef(BaseModel):
+    id: UUID
+    name: str
+
+
+class LeadCounselingOut(BaseModel):
+    id: UUID
+    recommended_product: LeadCounselingRef | None
+    objections: list[LeadCounselingRef]
+    objection_notes: str | None
+    fee_quoted: Decimal | None
+    expected_joining_date: date | None
+    decision_maker: str | None
+    outcome: str
+    next_follow_up: date | None
+    notes: str | None
+    author: LeadStageActor
+    updated_by: LeadStageActor
+    created_at: datetime
+    updated_at: datetime
+
+
+class LeadCounselingPage(BaseModel):
+    items: list[LeadCounselingOut]
     total: int
     limit: int
     offset: int

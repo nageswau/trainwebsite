@@ -3167,6 +3167,65 @@ class LeadMeeting(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# itc-010 (DEC-SCOPE-343): the IT counseling record. Migration 0227 repeats LEAD_COUNSELING_CHECKS (test_itc_010_migration).
+COUNSELING_DECISION_MAKERS = ("self", "parent", "spouse", "employer", "other")
+COUNSELING_OUTCOMES = ("interested", "needs_time", "not_interested", "enrolled")
+COUNSELING_NOTES_MAX, COUNSELING_OBJECTION_NOTES_MAX, COUNSELING_OBJECTION_NAME_MAX = 4000, 1000, 120
+LEAD_COUNSELING_CHECKS = {
+    "ck_lead_counseling_records_decision_maker": "decision_maker IS NULL OR decision_maker IN ({})".format(", ".join(repr(v) for v in COUNSELING_DECISION_MAKERS)),
+    "ck_lead_counseling_records_outcome": "outcome IN ({})".format(", ".join(repr(v) for v in COUNSELING_OUTCOMES)),
+    "ck_lead_counseling_records_fee": "fee_quoted IS NULL OR fee_quoted >= 0",
+    "ck_lead_counseling_records_notes": f"notes IS NULL OR length(notes) <= {COUNSELING_NOTES_MAX}",
+    "ck_lead_counseling_records_objection_notes": f"objection_notes IS NULL OR length(objection_notes) <= {COUNSELING_OBJECTION_NOTES_MAX}",
+}
+
+
+class LeadCounselingObjection(Base, TimestampMixin):
+    """itc-010 (C6): the managed list a counseling session's objections are picked from -- the lost-reason catalogue pattern. Never
+    deleted: deactivating hides it from the picker while past sessions keep it."""
+
+    __tablename__ = "lead_counseling_objections"
+    __table_args__ = (
+        CheckConstraint(f"length(name) BETWEEN 1 AND {COUNSELING_OBJECTION_NAME_MAX}", name="ck_lead_counseling_objections_name"),
+        Index("uq_lead_counseling_objections_name", text("lower(name)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(COUNSELING_OBJECTION_NAME_MAX))
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+
+
+class LeadCounselingRecord(Base, TimestampMixin):
+    """itc-010 (DEC-SCOPE-343, C1): one counseling session an IT counselor held with a lead. Career goal and current skills are the
+    lead's qualification (C2). Internal: never shown to the student; the notes are never logged (C11)."""
+
+    __tablename__ = "lead_counseling_records"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in LEAD_COUNSELING_CHECKS.items()),
+        Index("ix_lead_counseling_records_lead_created", "lead_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
+    author_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    recommended_product_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_products.id", ondelete="RESTRICT"), nullable=True)
+    objection_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fee_quoted: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    expected_joining_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    decision_maker: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    outcome: Mapped[str] = mapped_column(String(20))
+    next_follow_up: Mapped[date | None] = mapped_column(Date, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class LeadCounselingRecordObjection(Base):
+    """itc-010: the objections picked for one session (the set is replaced whole on an edit)."""
+
+    __tablename__ = "lead_counseling_record_objections"
+    record_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("lead_counseling_records.id", ondelete="CASCADE"), primary_key=True)
+    objection_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("lead_counseling_objections.id", ondelete="RESTRICT"), primary_key=True)
+
+
 # Migration 0095 repeats LEAD_MESSAGE_CHECKS (test_tel_013_migration asserts they stay identical).
 LEAD_MESSAGE_CHECKS = {
     "ck_lead_messages_channel": "channel IN ('whatsapp', 'email')",

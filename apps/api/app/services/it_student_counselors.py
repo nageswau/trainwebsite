@@ -26,9 +26,9 @@ LINKED, ASSIGNED = "it.student.counselor_link", "it.student.counselor_assign"
 STUDENTS_URL = "/it/counselor/students"
 
 
-def require_it_counselor(user: User) -> None:
+def require_it_counselor(user: User, message: str = IT_COUNSELOR_ONLY) -> None:
     if user.role != "counselor" or user.division != "it":
-        raise HTTPException(403, IT_COUNSELOR_ONLY)
+        raise HTTPException(403, message)
 
 
 def _is_it_counselor(user: User | None) -> bool:
