@@ -1,4 +1,4 @@
-// itc-019 (DEC-SCOPE-346): trainer profiles and the student faculty view. API_CONTRACT.md §12IR.
+// itc-019 (DEC-SCOPE-347): trainer profiles and the student faculty view. API_CONTRACT.md §12IS.
 
 export const OWN_PROFILE_API = "/api/v1/it/trainer/profile";
 export const MY_FACULTY_API = "/api/v1/it/student/faculty";

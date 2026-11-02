@@ -1,6 +1,6 @@
-"""itc-019 (DEC-SCOPE-346) -- trainer profiles: the trainer's own (`/it/trainer/profile`), any trainer's for the IT Admin
-(`/it/trainers/{id}/profile`), and the student faculty view (`/it/student/faculty`, `/it/faculty/{id}`). API_CONTRACT.md §12IR;
-RBAC_MATRIX.md §2.246."""
+"""itc-019 (DEC-SCOPE-347) -- trainer profiles: the trainer's own (`/it/trainer/profile`), any trainer's for the IT Admin
+(`/it/trainers/{id}/profile`), and the student faculty view (`/it/student/faculty`, `/it/faculty/{id}`). API_CONTRACT.md §12IS;
+RBAC_MATRIX.md §2.247."""
 
 from uuid import UUID
 

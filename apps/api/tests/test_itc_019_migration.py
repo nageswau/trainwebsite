@@ -1,4 +1,4 @@
-"""itc-019 -- migration 0230_trainer_profiles (DEC-SCOPE-346): the trainer profile table. Round trip in a throwaway database built from
+"""itc-019 -- migration 0231_trainer_profiles (DEC-SCOPE-347): the trainer profile table. Round trip in a throwaway database built from
 scratch (the upc-001 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,16 +13,16 @@ from app.core.config import settings
 from app.models import TrainerProfile
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_itc_019_migration_0230", VERSIONS / "0230_trainer_profiles.py")
+_spec = importlib.util.spec_from_file_location("_itc_019_migration_0231", VERSIONS / "0231_trainer_profiles.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD = "0230_trainer_profiles"
-BASE = "0229_it_student_profiles"
+HEAD = "0231_trainer_profiles"
+BASE = "0230_payment_mode"
 TABLES = "SELECT table_name FROM information_schema.tables WHERE table_name = 'trainer_profiles'"
 
 
-def test_migration_chains_after_0229_and_is_the_single_head():
+def test_migration_chains_after_0230_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

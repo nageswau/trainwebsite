@@ -1,4 +1,4 @@
-"""itc-019 (DEC-SCOPE-346): trainer profiles and the student faculty view.
+"""itc-019 (DEC-SCOPE-347): trainer profiles and the student faculty view.
 
 A trainer edits their own profile; the IT Admin may edit any trainer's (F6). A student sees the trainers of the batches they hold an
 ACTIVE enrolment in (F4) -- any other trainer is 404. `public_view` is the only serializer a student response uses: a field the trainer

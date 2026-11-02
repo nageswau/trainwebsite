@@ -642,7 +642,7 @@ class TimetableCancelIn(BaseModel):
 
 
 class TrainerProfileIn(BaseModel):
-    """itc-019 (DEC-SCOPE-346): a trainer profile, replaced whole by PUT. Email and phone come from the account; `show_*` decide what
+    """itc-019 (DEC-SCOPE-347): a trainer profile, replaced whole by PUT. Email and phone come from the account; `show_*` decide what
     students see. A contact route must use a channel the trainer shows (checked against the account in the service)."""
 
     model_config = ConfigDict(extra="forbid")

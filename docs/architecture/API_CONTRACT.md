@@ -5059,9 +5059,25 @@ leads owned by an IT counselor). All routes **401** without a session.
 - `GET /portal/it/counselor/students` and `GET /portal/it/admin/students` — each row adds `profile` (the page link), column type
   `student_profile`.
 
-## 12IR. Faculty profiles and student faculty view (itc-019) — addendum, 2026-11-02
+## 12IR. Per-enrolment fee account (itc-013) — addendum, 2026-11-02
 
-`DEC-SCOPE-346`. Migration `0230_trainer_profiles`. RBAC §2.246.
+`DEC-SCOPE-346`. Migration `0230_payment_mode`. Additive.
+
+- `GET /it/enrollments/{id}/fee-account` → `{enrollment_id, enrollment_code, course, batch, currency, course_fee, discount_approved, tax,
+  total_payable, paid_confirmed, credits, balance, state}` (numbers; `state` = `not_billed | enrolled_pending_payment | partially_paid |
+  fully_paid`). The student (own), the IT counselor (linked student), a `payments.view` holder in IT; out of reach 404; no access 403.
+- `GET /it/student/fee-accounts` → a list of the same, the IT student's own enrolments (newest first). Any other role 403.
+- `POST /it/enrollments/{id}/payments` → 201 `{payment: {id, amount, status, payment_mode, provider_reference}, account}`. Body:
+  `amount` (decimal > 0, 2 places), `payment_mode` (`cash | upi | card | bank_transfer | cheque`), `provider_reference` (≤ 160, trimmed).
+  `payments.add` in IT (403 without the grant, 404 outside IT); nothing owed 409; more than the oldest owed bill 422. Not idempotent.
+- `POST /admin/payments` accepts optional `payment_mode` (the five offline modes; others 422). `GET /admin/payments` and
+  `GET /payments/mine` rows gain `payment_mode` and `provider_reference`.
+- Receipt PDF: new lines "Payment mode", "Transaction reference" (after "Amount paid"); an enrolment fee's balance is the account's.
+- Portal: `it/admin/enrollments` and `it/counselor/students` gain a `fee_balance` column (`INR 1,234.00` or `Not billed`).
+
+## 12IS. Faculty profiles and student faculty view (itc-019) — addendum, 2026-11-02
+
+`DEC-SCOPE-347`. Migration `0231_trainer_profiles`. RBAC §2.247.
 
 - Profile body (PUT replaces all fields; unknown fields → **422**) `{designation? ≤120, expertise: string[] ≤12 × ≤60 (trimmed, blanks
   and case-insensitive repeats dropped), bio? ≤2000, office_hours? ≤160, contact_route "in_app"|"email"|"phone", show_email,

@@ -75,7 +75,7 @@ const main=data?.locked?<LockedSection data={data} lock={data.locked}/>:agentApp
 :key==="overseas/student"&&section==="progress"?<PortalSection data={data} table={false} lead={<OverseasProgress/>}/>
 // nehn-028 (DEC-SCOPE-308): header-only -- the progress table is the first card of the trainer actions below.
 :key==="it/trainer"&&section==="student-progress"?<PortalSection data={data} table={false}/>
-// itc-019 (DEC-SCOPE-346): the trainer edits their faculty profile; the IT Admin edits any trainer's above the Trainers table; the
+// itc-019 (DEC-SCOPE-347): the trainer edits their faculty profile; the IT Admin edits any trainer's above the Trainers table; the
 // student's Course page leads with My faculty (GET /it/student/faculty).
 :key==="it/trainer"&&section==="profile"?<PortalSection data={data} table={false} lead={<TrainerProfileForm/>}/>
 :key==="it/admin"&&section==="trainers"?<PortalSection data={data} lead={<AdminFacultyProfiles/>}/>

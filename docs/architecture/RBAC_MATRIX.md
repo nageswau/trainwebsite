@@ -3514,7 +3514,18 @@ Inline checks (`services/batch_timetable.py` `require_editor`, `_scoped_batches`
 The emergency contact is personal data (C1, Q-11 `NEEDS_CONFIRMATION`): no trainer/HR route, no export, audit field names only. No grant
 changes. Pinned by `apps/api/tests/test_itc_012_*.py`.
 
-### 2.246 Faculty profiles and student faculty view *(added 2026-11-02 — `DEC-SCOPE-346`, itc-019)*
+### 2.246 Per-enrolment fee account *(added 2026-11-02 — `DEC-SCOPE-346`, itc-013)*
+
+| Route | Anonymous | it_student | counselor (IT) | `payments.view` / `payments.add` holder in IT or every division | holder in overseas | every other role |
+|---|---|---|---|---|---|---|
+| `GET /it/enrollments/{id}/fee-account` | 401 | own, else 404 | linked student, else 404 | view: any | 404 | 403 |
+| `GET /it/student/fee-accounts` | 401 | own | 403 | 403 | 403 | 403 |
+| `POST /it/enrollments/{id}/payments` | 401 | 403 | 403 | add: any IT enrolment | 404 | 403 |
+
+No grant changes (seed: it_admin and overseas_admin hold `payments.view/add`; super_admin everything). Pinned by
+`apps/api/tests/test_itc_013_fee_account.py`.
+
+### 2.247 Faculty profiles and student faculty view *(added 2026-11-02 — `DEC-SCOPE-347`, itc-019)*
 
 | Route | Anonymous | it_admin / super_admin | trainer | it_student | other roles |
 |---|---|---|---|---|---|

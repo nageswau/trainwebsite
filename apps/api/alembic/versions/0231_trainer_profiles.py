@@ -1,9 +1,9 @@
 """itc-019 -- trainer profiles (designation, expertise, bio, office hours, contact route, per-field visibility, photo key).
 
-Revision ID: 0230_trainer_profiles
-Revises: 0229_it_student_profiles
+Revision ID: 0231_trainer_profiles
+Revises: 0230_payment_mode
 
-docs/superpowers/specs/2026-11-02-itc-019-faculty-profiles-design.md (DEC-SCOPE-346). One new table; nothing existing changes (the free
+docs/superpowers/specs/2026-11-02-itc-019-faculty-profiles-design.md (DEC-SCOPE-347). One new table; nothing existing changes (the free
 text `programs.trainer_name` stays). 0001 builds a fresh database from the current models, which already carry it, so the upgrade is
 guarded (0222's idiom). The downgrade refuses while a profile exists, so it never silently drops one.
 """
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0230_trainer_profiles"
-down_revision = "0229_it_student_profiles"
+revision = "0231_trainer_profiles"
+down_revision = "0230_payment_mode"
 branch_labels = None
 depends_on = None
 
@@ -46,5 +46,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(f"SELECT 1 FROM {TABLE} LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0230: trainer profiles exist (itc-019)")
+        raise RuntimeError("Cannot downgrade 0231: trainer profiles exist (itc-019)")
     op.drop_table(TABLE)

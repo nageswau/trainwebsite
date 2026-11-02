@@ -10,7 +10,7 @@ type Notice = { text: string; failed: boolean } | null;
 const VISIBILITY = [["show_photo", "photo"], ["show_bio", "bio"], ["show_office_hours", "office hours"], ["show_email", "email"], ["show_phone", "phone"]] as const;
 const ROUTES: [ContactRoute, string][] = [["in_app", "In the app (the Questions page)"], ["email", "Email"], ["phone", "Phone"]];
 
-/** itc-019 (DEC-SCOPE-346): a trainer's faculty profile -- what students see and which details stay private. `api` is the trainer's
+/** itc-019 (DEC-SCOPE-347): a trainer's faculty profile -- what students see and which details stay private. `api` is the trainer's
  *  own route by default; the IT Admin passes `/it/trainers/{id}/profile`. The preview applies the same rules the API applies. */
 export default function TrainerProfileForm({ api = OWN_PROFILE_API }: { api?: string }) {
   const [profile, setProfile] = useState<OwnProfile | null>(null);

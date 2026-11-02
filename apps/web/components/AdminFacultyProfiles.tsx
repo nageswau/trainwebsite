@@ -7,7 +7,7 @@ import { trainerProfileApi } from "@/lib/faculty";
 
 type Trainer = { id: string; name: string };
 
-/** itc-019 (DEC-SCOPE-346, F6): the IT Admin edits any IT trainer's faculty profile from the Trainers page. */
+/** itc-019 (DEC-SCOPE-347, F6): the IT Admin edits any IT trainer's faculty profile from the Trainers page. */
 export default function AdminFacultyProfiles() {
   const [trainers, setTrainers] = useState<Trainer[] | null>(null);
   const [failed, setFailed] = useState(false);

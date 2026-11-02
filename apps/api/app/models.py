@@ -252,7 +252,7 @@ TRAINER_CONTACT_ROUTES = ("in_app", "email", "phone")
 
 
 class TrainerProfile(Base, TimestampMixin):
-    """itc-019 (DEC-SCOPE-346): what a trainer shows their students. Email and phone stay on the user account; the `show_*` flags decide
+    """itc-019 (DEC-SCOPE-347): what a trainer shows their students. Email and phone stay on the user account; the `show_*` flags decide
     what a student response may carry (F1: email/phone hidden by default). `photo_key` is a private storage key (signed links only)."""
 
     __tablename__ = "trainer_profiles"
@@ -2778,8 +2778,14 @@ class EMISchedule(Base, TimestampMixin):
     created_by_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+# itc-013 (DEC-SCOPE-346, migration 0230 repeats it): how a payment was made, shown on the receipt. Staff record the offline ones;
+# `razorpay` is set only by the gateway's own confirmation.
+PAYMENT_MODES = ("cash", "upi", "card", "bank_transfer", "cheque", "razorpay")
+
+
 class Payment(Base, TimestampMixin):
     __tablename__ = "payments"
+    __table_args__ = (CheckConstraint(_in("payment_mode", PAYMENT_MODES), name="ck_payments_payment_mode"),)
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
     division: Mapped[str] = mapped_column(String(30), index=True)
@@ -2806,6 +2812,7 @@ class Payment(Base, TimestampMixin):
     # ccrm-049 (DEC-SCOPE-326, migration 0216): the receipt / proof staff uploaded for a manual payment -- a "Payment receipt" document
     # of the student, distinct from the system `Receipt` PDF. A deleted document leaves no proof.
     proof_document_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("student_documents.id", ondelete="SET NULL"), nullable=True)
+    payment_mode: Mapped[str | None] = mapped_column(String(20), nullable=True)  # itc-013: PAYMENT_MODES; None = not recorded
 
     @property
     def gross_amount(self) -> float:
