@@ -143,3 +143,41 @@ describe("TelecallerLeadTable (tel-008)", () => {
     expect(pushedQuery().get("offset")).toBeNull();
   });
 });
+
+describe("TelecallerLeadTable source, last-contact and next-follow-up filters (itc-008)", () => {
+  it("round-trips every new filter through the URL to the API (AC1)", async () => {
+    search = "source=instagram&last_contact_from=2026-10-01&last_contact_to=2026-10-20&next_follow_up_from=2026-11-03&next_follow_up_to=2026-11-03";
+    render(<TelecallerLeadTable basePath="/telecaller/leads" />);
+    await screen.findByRole("link", { name: "Lead 1" });
+    expect(Object.fromEntries(new URLSearchParams(leadCalls()[0].split("?")[1]))).toEqual({
+      source: "instagram", last_contact_from: "2026-10-01", last_contact_to: "2026-10-20", next_follow_up_from: "2026-11-03",
+      next_follow_up_to: "2026-11-03", limit: "50", offset: "0",
+    });
+    expect((screen.getByLabelText("Source") as HTMLSelectElement).value).toBe("instagram");
+    expect((screen.getByLabelText("Last contact from") as HTMLInputElement).value).toBe("2026-10-01");
+    expect((screen.getByLabelText("Next follow-up to") as HTMLInputElement).value).toBe("2026-11-03");
+  });
+
+  it("puts a chosen source and date in the URL from the first page", async () => {
+    search = "offset=50";
+    render(<TelecallerLeadTable basePath="/telecaller/leads" />);
+    await screen.findByRole("link", { name: "Lead 1" });
+    fireEvent.change(screen.getByLabelText("Source"), { target: { value: "walk_in" } });
+    expect(Object.fromEntries(pushedQuery())).toEqual({ source: "walk_in" });
+    fireEvent.change(screen.getByLabelText("Next follow-up from"), { target: { value: "2026-11-03" } });
+    expect(pushedQuery().get("next_follow_up_from")).toBe("2026-11-03");
+    expect(screen.getByLabelText("Source").querySelectorAll("option")).toHaveLength(14); // "All sources" + the 13 EVID-019 sources
+  });
+
+  it("says so for a reversed range without asking the API, and ignores values the API would refuse", async () => {
+    search = "last_contact_from=2026-10-21&last_contact_to=2026-10-20";
+    render(<TelecallerLeadTable basePath="/telecaller/leads" />);
+    expect(await screen.findByText("Choose a start date on or before the end date.")).toBeTruthy();
+    expect(leadCalls()).toEqual([]);
+    cleanup();
+    search = "source=carrier_pigeon&next_follow_up_to=tomorrow&status=new";
+    render(<TelecallerLeadTable basePath="/telecaller/leads" />);
+    await screen.findByRole("link", { name: "Lead 1" });
+    expect(Object.fromEntries(new URLSearchParams(leadCalls()[0].split("?")[1]))).toEqual({ status: "new", limit: "50", offset: "0" });
+  });
+});

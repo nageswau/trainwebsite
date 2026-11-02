@@ -5,6 +5,8 @@ export type KpiProgress = { kpi: string; achieved: number; target: number | null
 export type DashboardTiles = {
   new_leads: number; calls_today: { done: number; to_do: number }; follow_ups_due: number; hot_leads: number; appointments: number;
   connected: number; not_connected: number; converted: number; overdue: number; daily_target: { achieved: number; target: number | null };
+  // itc-008 T1-T3: a % to one decimal (null = no call today), and two counts -- the Telecaller Report's own figures
+  contact_rate: number | null; qualified: number; handovers: number;
 };
 export type DashboardAppointment = {
   kind: "counselling" | "bdm"; id: string; code: string; title: string; scheduled_at: string; status: string; lead_id: string | null;
@@ -30,6 +32,10 @@ export const TILES: { key: keyof DashboardTiles; label: string; hint: string }[]
   { key: "converted", label: "Converted", hint: "Leads converted today" },
   { key: "overdue", label: "Overdue", hint: "Missed calls / follow-ups" },
   { key: "daily_target", label: "Daily Target", hint: "Calls vs target" },
+  // itc-008 (§8 Telecaller dashboard): appended, never reordered
+  { key: "contact_rate", label: "Contact Rate", hint: "Leads reached / leads called today" },
+  { key: "qualified", label: "Qualified", hint: "Leads you qualified today" },
+  { key: "handovers", label: "Handovers", hint: "Leads you handed to a counselor today" },
 ];
 
 // EVID-019 §14, in the source's order (Appendix B D1-D13).
@@ -58,6 +64,7 @@ export function tileValue(tiles: DashboardTiles, key: keyof DashboardTiles): str
   const value = tiles[key];
   if (key === "calls_today") return `${tiles.calls_today.done} / ${tiles.calls_today.to_do}`;
   if (key === "daily_target") return progressText(tiles.daily_target.achieved, tiles.daily_target.target);
+  if (key === "contact_rate") return tiles.contact_rate === null ? "—" : `${tiles.contact_rate.toFixed(1)}%`; // one decimal, as the report
   return String(value);
 }
 
