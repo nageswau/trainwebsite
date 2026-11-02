@@ -7,8 +7,6 @@ DEC-SCOPE-336. Three nullable columns on `notifications` (every existing row kee
 the inbox index `(user_id, read, created_at)` that GET /workflows/notifications and the unread count read. The downgrade drops both.
 """
 
-import sqlalchemy as sa
-
 from alembic import op
 
 revision = "0221_notification_event_type"
@@ -20,10 +18,11 @@ INDEX = "ix_notifications_user_read_created"
 
 
 def upgrade() -> None:
-    op.add_column("notifications", sa.Column("event_type", sa.String(80), nullable=True))
-    op.add_column("notifications", sa.Column("entity_type", sa.String(50), nullable=True))
-    op.add_column("notifications", sa.Column("entity_id", sa.String(80), nullable=True))
-    op.create_index(INDEX, "notifications", ["user_id", "read", "created_at"])
+    # 0001 builds a fresh database from the current models, which already carry these columns and the index: add each only when missing
+    op.execute("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS event_type VARCHAR(80)")
+    op.execute("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS entity_type VARCHAR(50)")
+    op.execute("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS entity_id VARCHAR(80)")
+    op.execute(f'CREATE INDEX IF NOT EXISTS {INDEX} ON notifications (user_id, "read", created_at)')
 
 
 def downgrade() -> None:
