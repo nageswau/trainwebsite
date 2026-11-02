@@ -9,8 +9,9 @@ import BdmConfirm from "@/components/BdmConfirm";
 import LeadClosure from "@/components/LeadClosure";
 import { CREATED_FILTERS, RANGE_REVERSED, reversed, validDay } from "@/components/LeadCreatedRange";
 import LeadExport from "@/components/LeadExport";
+import LeadMergeForm from "@/components/LeadMergeForm";
 import { sendJson, sendRequest, type Page } from "@/lib/apiErrors";
-import { ASSIGNED_TO_COUNSELOR, assignedToCounselor, stageLabel, type LeadClosureFields } from "@/lib/leadStages";
+import { ASSIGNED_TO_COUNSELOR, assignedToCounselor, isClosed, stageLabel, type LeadClosureFields } from "@/lib/leadStages";
 import { pageOffset } from "@/lib/telecaller";
 import { SOURCE_LABEL, getPage } from "@/lib/telecallerCatalogue";
 
@@ -22,6 +23,7 @@ type AdminLeadRow = {
   // tel-003 (spec §4): the lead record; each object is null when unset
   lead_code: string; priority: "hot" | "warm" | "cold"; product: { id: string; name: string } | null; campaign: { id: string; name: string } | null;
   telecaller: Ref | null; counselor: Ref | null;
+  merged_at?: string | null; // itc-007
 } & LeadClosureFields; // ccrm-006
 type RowMessage = { id: string; text: string; failed: boolean };
 
@@ -209,7 +211,16 @@ export default function AdminLeadManagementPanel() {
                       <LeadConversion row={row} onChanged={replace} onMessage={setMessage} />
                     </td>
                     <td>
-                      <LeadStageControl lead={row} onMessage={setMessage} onChanged={(status, closure) => replace({ ...row, status, ...closure })} />
+                      {/* itc-007: a merged lead is read only (the API refuses a reopen); an open lead can take a duplicate in */}
+                      {!row.merged_at && (
+                        <LeadStageControl lead={row} onMessage={setMessage} onChanged={(status, closure) => replace({ ...row, status, ...closure })} />
+                      )}
+                      {!row.merged_at && !isClosed(row.status) && (
+                        <div style={{ marginTop: 6 }}>
+                          <LeadMergeForm url={`${LEADS_URL}/${encodeURIComponent(row.id)}`} leadCode={row.lead_code}
+                            onMerged={(code) => { setMessage({ id: row.id, text: `${code} was merged into this lead.`, failed: false }); setVersion((v) => v + 1); }} />
+                        </div>
+                      )}
                       {message?.id === row.id && (
                         <div className={message.failed ? "form-error" : "form-message"} role="status" aria-live="polite" style={{ marginTop: 6, fontSize: 13 }}>
                           {message.text}

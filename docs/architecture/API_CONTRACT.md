@@ -4957,3 +4957,22 @@ leads owned by an IT counselor). All routes **401** without a session.
   all for today (IST).
 - `GET /telecaller/reports/telecaller` (+ `.csv`, `.xlsx`) — columns append `contact_rate` "Contact rate (%)" (number | null per row;
   the Total row is Σreached ÷ Σcalled) and `handovers` "Handovers" (summed).
+
+## 12IM. Merge duplicate leads (itc-007) — addendum, 2026-11-02
+
+`DEC-SCOPE-341`. Migration `0225_lead_merge`. RBAC §2.241.
+
+- `GET /telecaller/leads/{id}/merge-preview?victim=LD-…` and `GET /admin/leads/{id}/merge-preview?victim=LD-…` → **200**
+  `{survivor, victim, moved}`: each side `{id, lead_code, status, status_label, name, email, phone, whatsapp_number, city, state,
+  qualification, passing_year, institution}`; `moved` `{calls, follow_ups, notes, messages, meetings, appointments, enquiries, tasks}`
+  (`enquiries` counts the duplicate's own enquiry). Read only.
+- `POST /telecaller/leads/{id}/merge` and `POST /admin/leads/{id}/merge`, body `{victim: "LD-…", use_victim?: [field…], reason?}`
+  (`extra` forbidden; `use_victim` ⊆ the fields above, else **422**) → **200** `{id, victim_id, victim_code, moved}`.
+- Refusals, before any write: either lead outside the caller's scope (telecaller T23 scope; admin's division) or an unknown Lead ID →
+  **404**; the lead itself → **422** at `victim`; another team/division → **409**; either lead closed → **409**; the duplicate linked to a
+  student or at Application/Enrollment / Converted → **409**; a telecaller → **403** ("Only a manager can merge leads").
+- Lead responses gain `merged_at` (additive; null unless merged). A merged lead's `read_only` is `true` for every role, and
+  `POST /telecaller/leads/{id}/stage`, `PATCH /telecaller/leads/{id}`, `PUT /telecaller/leads/{id}/qualification` and
+  `PATCH /admin/leads/{id}` on it are **409** ("This lead was merged into another lead, so it can't be changed").
+- `GET /telecaller/leads/{id}/timeline` (and the admin/counselor readers of the same service) gains kind `merge` (`from_value` = the merged
+  Lead ID).
