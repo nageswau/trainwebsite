@@ -417,6 +417,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** a student with two enrolments.
 - **Regression risks:** the IT portal profile section (`portal.py:191`).
 - **Complexity:** medium. **Risk:** low.
+- **Status:** built as `DEC-SCOPE-345` (migration `0229`, API §12IQ, RBAC §2.245). Emergency contact visible to the student, their IT counselor and the IT Admin only (Q-11 call C1, `NEEDS_CONFIRMATION`); the enrolment documents checklist is deferred until itc-011's template exists (C4).
 
 #### itc-013: Per-enrolment fee account (payable, paid, balance, mode, receipt reference)
 - **Business requirement:** §6 fee dashboard; §4 "Fee & payment"; §9 "Recalculate balance after each confirmed payment, refund, or approved fee adjustment"; §12 AC5.
