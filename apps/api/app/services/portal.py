@@ -361,6 +361,10 @@ async def _it_student(db: AsyncSession, user: User, section: str):
             (("id", "Question reference"), ("batch", "Batch"), ("subject", "Subject"), ("status", "Status")),
             ({"id": t.id, "batch": batches_by_id.get(t.batch_id, "-"), "subject": t.subject, "status": f"{reply_counts.get(t.id, 0)} repl{'y' if reply_counts.get(t.id, 0) == 1 else 'ies'}" if reply_counts.get(t.id) else "Awaiting reply"} for t in threads),
         )
+    if section == "notifications":
+        # itc-002 (DEC-SCOPE-336): header only -- PortalPage mounts the shared notification list (GET /workflows/notifications). Not a
+        # SECTION_FEATURES entry, so it is never fee-locked.
+        return _payload("Notifications", "Your own notifications. Open one to go to the record it is about.")
     if section == "fees":
         rows = (await db.scalars(select(Payment).where(Payment.user_id == user.id, Payment.division == "it").order_by(Payment.created_at.desc()))).all()
         return _payload(

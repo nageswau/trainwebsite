@@ -21,25 +21,36 @@ from app.models import Notification, NotificationDelivery, NotificationPreferenc
 logger = logging.getLogger(__name__)
 
 PENDING_KEY = "enh014_pending_deliveries"
+NOTIFIED_KEY = "itc002_notified"  # (recipient, event, entity) already notified in this transaction -- see events.notify
 
 
 async def queue_deliveries(db: AsyncSession, notification: Notification, recipient: User, *, context: dict | None = None, channels: list[str] | None = None) -> list[NotificationDelivery]:
     """`channels` (admin /communications/notify only) narrows the allowed set; it can never add an un-opted-in channel."""
     await db.flush()  # the notification needs its id
-    pref = await db.get(NotificationPreference, recipient.id)
-    allowed = ["email"] + [c for c, on in (("whatsapp", pref and pref.whatsapp_opt_in), ("sms", pref and pref.sms_opt_in)) if on]
+    allowed = allowed_channels(await db.get(NotificationPreference, recipient.id))
     chosen = allowed if channels is None else [c for c in allowed if c in channels]
     rows = [NotificationDelivery(notification_id=notification.id, channel=c, status="queued", attempt_count=0, context=context) for c in chosen]
+    await add_pending(db, rows)
+    return rows
+
+
+def allowed_channels(pref: NotificationPreference | None) -> list[str]:
+    """Email always; WhatsApp/SMS only when the recipient opted in (D4)."""
+    return ["email"] + [c for c, on in (("whatsapp", pref and pref.whatsapp_opt_in), ("sms", pref and pref.sms_opt_in)) if on]
+
+
+async def add_pending(db: AsyncSession, rows: list[NotificationDelivery]) -> None:
+    """Write queued deliveries and remember them for the root commit's publish (itc-002's bulk `notify` shares this)."""
     db.add_all(rows)
     await db.flush()
     db.sync_session.info.setdefault(PENDING_KEY, []).extend(r.id for r in rows)
-    return rows
 
 
 @event.listens_for(Session, "after_commit")
 def _publish_when_root_commits(session: Session) -> None:
     """SQLAlchemy also dispatches this for a SAVEPOINT release, when the session is still inside the savepoint."""
     if not session.in_nested_transaction():
+        session.info.pop(NOTIFIED_KEY, None)
         publish_all(session.info.pop(PENDING_KEY, []), "after_commit")
 
 
@@ -61,6 +72,7 @@ def _discard_when_root_rolls_back(session: Session) -> None:
     nested) and once more for the root, which is the one that discards."""
     if not session.in_nested_transaction():
         session.info.pop(PENDING_KEY, None)
+        session.info.pop(NOTIFIED_KEY, None)
 
 
 # QAF-01: the socket timeouts below don't cover resolving the broker's hostname (~4-8 s when DNS for `redis` fails), and

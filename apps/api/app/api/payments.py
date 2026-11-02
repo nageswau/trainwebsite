@@ -15,6 +15,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.models import ApplicationDeposit, AuditLog, Batch, EMISchedule, Enrollment, Invoice, Payment, PaymentWebhookEvent, Program, Receipt, User
+from app.notifications.events import notify
 from app.services import agent_deposits
 from app.services.billing_documents import generate_invoice_pdf, generate_receipt_pdf, receipt_lines
 from app.services.payment import payments
@@ -27,6 +28,7 @@ STUDENT_ROLES = {"it_student", "overseas_student"}
 PAID_STATUSES = {"paid", "succeeded"}
 ENROLMENT_FEE_TYPES = ("enrollment_fee", "enrollment")
 IST = ZoneInfo("Asia/Kolkata")
+IT_STUDENT_FEES_URL = "/it/student/fees"  # itc-002: where an IT student finds their receipts
 
 
 async def _ensure_invoice(db: AsyncSession, item: Payment, payer: User) -> Invoice:
@@ -56,6 +58,9 @@ async def _ensure_receipt(db: AsyncSession, item: Payment, payer: User) -> Recei
     receipt = Receipt(payment_id=item.id, user_id=item.user_id, division=item.division, receipt_no=receipt_no, amount=item.amount, currency=item.currency, file_url=file_url)
     db.add(receipt)
     await db.flush()
+    if payer.role == "it_student":
+        # itc-002: only a NEW receipt notifies (this function is idempotent); the fixed text carries no amount.
+        await notify(db, [payer], "it.fee.payment_received", item.id, action_url=IT_STUDENT_FEES_URL)
     return receipt
 
 
