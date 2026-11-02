@@ -54,7 +54,9 @@ HANDOVER = (("handed_over", "Handed over", None), ("counselling_done", "Counsell
 LOSSES = (("leads", "Leads", None), *((stage, label(stage), stage) for stage in LOSS_STAGES))
 NO_REASON = "No reason recorded"  # D6: a call-logged close, or a lead closed before ccrm-006
 ACTIVITY = (("calls", "Calls", "calls"), ("connected", "Connected", "connected_calls"), ("qualified", "Qualified", "qualified_leads"),
-            ("appointments", "Appointments", "new_appointments"), ("conversions", "Conversions", "converted_leads"))
+            ("appointments", "Appointments", "new_appointments"), ("conversions", "Conversions", "converted_leads"),
+            # itc-008 R1: the dashboard's T1/T3, appended, never reordered
+            ("contact_rate", "Contact rate (%)", None), ("handovers", "Handovers", "handovers"))  # the rate is not a count: see _telecallers
 
 
 @dataclass(frozen=True)
@@ -80,7 +82,7 @@ REPORTS = {
     "pending_follow_ups": Report("Pending Follow-ups Report", (("lead", "Lead"), ("telecaller", "Telecaller"), ("due", "Due date"), ("reason", "Reason")),
                                  (("overdue_days", "Days overdue", None),)),
 }
-UNSUMMED = frozenset({"conversion_rate", "overdue_days"})  # a Total row recomputes a rate and leaves days overdue blank
+UNSUMMED = frozenset({"conversion_rate", "overdue_days", "contact_rate"})  # a Total row recomputes a rate and leaves days overdue blank
 LEAD_FILTERS = ("product_id", "campaign_id", "source")  # cohort reports only; the telecaller report is per actor, not per lead
 
 
@@ -286,8 +288,10 @@ async def _telecallers(db: AsyncSession, user: User, f: Filters) -> list[dict]:
         select(User.id, User.full_name, User.active).join(TelecallerProfile, TelecallerProfile.user_id == User.id).where(User.role == "telecaller", *where)
     )).all()
     counts = await telecaller_metrics.flow_counts_by_user(db, [p.id for p in people], day_range(f.date_from)[0], day_range(f.date_to)[1])
-    return [{"telecaller": name if active else f"{name} (inactive)"} | {key: counts[i][source] for key, _, source in ACTIVITY}
-            for i, name, active in people]
+    # itc-008: the leads called / reached ride along (not columns) so the Total row's contact rate is Σreached ÷ Σcalled
+    return [{"telecaller": name if active else f"{name} (inactive)", "called_leads": counts[i]["called_leads"], "reached_leads": counts[i]["reached_leads"],
+             "contact_rate": telecaller_metrics.contact_rate(counts[i]["reached_leads"], counts[i]["called_leads"])}
+            | {key: counts[i][source] for key, _, source in ACTIVITY if source} for i, name, active in people]
 
 
 async def report(db: AsyncSession, user: User, kind: str, f: Filters) -> dict:
@@ -310,6 +314,8 @@ async def report(db: AsyncSession, user: User, kind: str, f: Filters) -> dict:
     if "conversion_rate" in count_keys:  # R2: each row's own rate; the Total row's from the totals, never a sum of rates
         for line in (*items, totals):
             line["conversion_rate"] = _rate(line)
+    if "contact_rate" in count_keys:  # itc-008 R1: each row's own rate; the Total row's from the summed leads
+        totals["contact_rate"] = telecaller_metrics.contact_rate(sum(r["reached_leads"] for r in rows), sum(r["called_leads"] for r in rows))
     return {
         "kind": kind, "title": spec.title, "date_from": f.date_from, "date_to": f.date_to,
         "columns": [{"key": k, "label": h} for k, h in spec.labels] + [{"key": k, "label": h} for k, h, _ in spec.counts],

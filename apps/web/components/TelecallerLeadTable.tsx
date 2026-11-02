@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import LeadCreatedRange, { RANGE_REVERSED, reversed, validDay } from "@/components/LeadCreatedRange";
+import LeadCreatedRange, { CREATED_FILTERS, RANGE_REVERSED, reversed, validDay } from "@/components/LeadCreatedRange";
 import LeadExport from "@/components/LeadExport";
 import ProductOptions from "@/components/TelecallerProductOptions";
 import type { Page } from "@/lib/apiErrors";
@@ -12,8 +12,14 @@ import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import LocalTime from "@/components/LocalTime";
 import { ASSIGNED_TO_COUNSELOR, STAGES, assignedToCounselor } from "@/lib/leadStages";
 import { pageOffset } from "@/lib/telecaller";
-import { activeCampaigns, activeProducts, getPage, type Campaign, type Product } from "@/lib/telecallerCatalogue";
-import { FOLLOW_UP_FILTERS, LEAD_LIST_FILTERS, LEADS_URL, PRIORITIES, PRIORITY_LABEL, type LeadListFilter, type TelecallerLead } from "@/lib/telecallerLeads";
+import { activeCampaigns, activeProducts, getPage, SOURCE_LABEL, type Campaign, type Product } from "@/lib/telecallerCatalogue";
+import {
+  FOLLOW_UP_FILTERS, LAST_CONTACT_FILTERS, LEAD_LIST_FILTERS, LEADS_URL, NEXT_FOLLOW_UP_FILTERS, PRIORITIES, PRIORITY_LABEL, type LeadListFilter,
+  type TelecallerLead,
+} from "@/lib/telecallerLeads";
+
+const RANGES = [CREATED_FILTERS, LAST_CONTACT_FILTERS, NEXT_FOLLOW_UP_FILTERS] as const;
+const DAY_FILTERS: readonly string[] = RANGES.flat();
 
 const PAGE_SIZE = 50;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -24,7 +30,8 @@ function validFilter(key: LeadListFilter, value: string): string {
   if (key === "priority") return PRIORITIES.some((p) => p.key === value) ? value : "";
   if (key === "product_id" || key === "campaign_id") return UUID.test(value) ? value : "";
   if (key === "follow_up") return FOLLOW_UP_FILTERS.some((f) => f.key === value) ? value : "";
-  if (key === "created_from" || key === "created_to") return validDay(value);
+  if (key === "source") return Object.hasOwn(SOURCE_LABEL, value) ? value : "";
+  if (DAY_FILTERS.includes(key)) return validDay(value);
   return value;
 }
 
@@ -43,7 +50,7 @@ export default function TelecallerLeadTable({ basePath, showTelecaller = false, 
   const exportUrl = `${LEADS_URL}.xlsx?${request}`; // nehn-012: the same filters, every page
   request.set("limit", String(PAGE_SIZE));
   request.set("offset", String(offset));
-  const requestUrl = reversed(filters) ? null : `${LEADS_URL}?${request}`;
+  const requestUrl = RANGES.some((keys) => reversed(filters, keys)) ? null : `${LEADS_URL}?${request}`;
   const filtered = !!query || Object.values(filters).some(Boolean);
 
   const [data, setData] = useState<Page<TelecallerLead> | null>(null);
@@ -70,15 +77,20 @@ export default function TelecallerLeadTable({ basePath, showTelecaller = false, 
     return () => controller.abort();
   }, []);
 
+  // QA8-01: the query last pushed, so a second change made before the URL catches up builds on the first instead of dropping it
+  const pending = useRef(params.toString());
+  useEffect(() => { pending.current = params.toString(); }, [params]);
+
   /** A new filter or search starts again from the first page; only the pager passes an offset. */
   function go(changes: Record<string, string>, nextOffset = 0) {
-    const next = new URLSearchParams(params.toString());
+    const next = new URLSearchParams(pending.current);
     for (const [key, value] of Object.entries(changes)) {
       if (value) next.set(key, value);
       else next.delete(key);
     }
     if (nextOffset > 0) next.set("offset", String(nextOffset));
     else next.delete("offset");
+    pending.current = next.toString();
     router.push(next.size ? `${pathname}?${next}` : pathname, { scroll: false });
   }
 
@@ -111,7 +123,12 @@ export default function TelecallerLeadTable({ basePath, showTelecaller = false, 
         {select("product_id", "Product", "All products", <ProductOptions products={products} />)}
         {select("campaign_id", "Campaign", "All campaigns", campaigns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>))}
         {select("follow_up", "Due follow-up", "Any", FOLLOW_UP_FILTERS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>))}
+        {select("source", "Source", "All sources", Object.entries(SOURCE_LABEL).map(([key, label]) => <option key={key} value={key}>{label}</option>))}
         <LeadCreatedRange idPrefix="tel-lead" values={filters} onChange={(key, value) => go({ [key]: value })} />
+        <LeadCreatedRange idPrefix="tel-lead" values={filters} onChange={(key, value) => go({ [key]: value })}
+          keys={LAST_CONTACT_FILTERS} labels={["Last contact from", "Last contact to"]} />
+        <LeadCreatedRange idPrefix="tel-lead" values={filters} onChange={(key, value) => go({ [key]: value })}
+          keys={NEXT_FOLLOW_UP_FILTERS} labels={["Next follow-up from", "Next follow-up to"]} />
       </div>
       {requestUrl === null ? (
         <p className="form-error" role="status" style={{ marginTop: 12 }}>{RANGE_REVERSED}</p>

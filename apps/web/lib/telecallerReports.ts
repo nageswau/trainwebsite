@@ -4,7 +4,7 @@
 export type ReportKind =
   | "source" | "product" | "telecaller" | "handover" | "campaign" | "lost" | "counselor" | "date" | "follow_ups" | "pending_follow_ups";
 export type ReportColumn = { key: string; label: string };
-export type ReportRow = Record<string, string | number>;
+export type ReportRow = Record<string, string | number | null>; // itc-008: null = no contact rate
 export type ReportOptions = {
   teams: string[];
   sources: { key: string; label: string }[];

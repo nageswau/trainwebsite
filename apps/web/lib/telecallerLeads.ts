@@ -35,7 +35,12 @@ export const LEADS_URL = "/api/v1/telecaller/leads";
 export const DUPLICATE_CHECK_URL = `${LEADS_URL}/duplicate-check`;
 export const leadUrl = (id: string, suffix = "") => `${LEADS_URL}/${encodeURIComponent(id)}${suffix}`;
 // tel-011 F9: follow_up; nehn-012: the created range
-export const LEAD_LIST_FILTERS = ["status", "priority", "product_id", "campaign_id", "follow_up", "created_from", "created_to"] as const;
+// itc-008: source, last-contact and next-follow-up ranges (India-time days, inclusive)
+export const LAST_CONTACT_FILTERS = ["last_contact_from", "last_contact_to"] as const;
+export const NEXT_FOLLOW_UP_FILTERS = ["next_follow_up_from", "next_follow_up_to"] as const;
+export const LEAD_LIST_FILTERS = [
+  "status", "priority", "product_id", "campaign_id", "follow_up", "created_from", "created_to", "source", ...LAST_CONTACT_FILTERS, ...NEXT_FOLLOW_UP_FILTERS,
+] as const;
 export type LeadListFilter = (typeof LEAD_LIST_FILTERS)[number];
 export const FOLLOW_UP_FILTERS = [{ key: "today", label: "Due today" }, { key: "overdue", label: "Overdue" }] as const;
 
