@@ -65,7 +65,7 @@ describe("HrDocumentDownload (nehn-017)", () => {
 
 describe("classesParts (nehn-017 QA17-02, QA17-05)", () => {
   it("names each status and the classes marked, as parts a narrow cell wraps between", () => {
-    expect(classesParts({ marked: 12, present: 10, late: 0, excused: 0, absent: 2, attendance_pct: 83.33 })).toEqual(["Present 10", "Late 0", "Excused 0", "Absent 2 (12 marked)"]);
+    expect(classesParts({ marked: 12, present: 10, late: 0, excused: 0, absent: 2, attendance_pct: 83.33 })).toEqual(["Present 10", "Late 0", "Approved leave 0", "Absent 2 (12 marked)"]);
   });
   it("says none were marked instead of zeros", () => {
     expect(classesParts({ marked: 0, present: 0, late: 0, excused: 0, absent: 0, attendance_pct: null })).toEqual(["No classes marked yet"]);

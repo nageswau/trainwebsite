@@ -5112,3 +5112,19 @@ a rollback sends nothing).
 - Notice body = the itc-002 fixed text + ` Changed: <labels>.` from the fixed list (batch name, start date, end date, trainer, timetable,
   time zone, mode, cancelled class, batch). `entity_type` `batch`, `entity_id` the batch id.
 - `GET /portal/it/counselor/notifications` — new header-only section for the IT counselor (PortalPage mounts `GET /workflows/notifications`).
+
+## 12IU. Attendance approved-leave policy, marker and session link (itc-021) — addendum, 2026-11-02
+
+`DEC-SCOPE-349`. Migration `0232_attendance_leave_policy`. Additive; no route added.
+
+- `GET /workflows/it/certificates/rules` → gains `leave_policy` (`attended | excluded | absent`). `PUT` accepts optional `leave_policy`
+  (same values; anything else 422); omitted keeps the stored value. The response and the `certificate_rules.update` audit
+  `before`/`after` carry it. Every embedded `rules` object (eligibility `criteria.rules`, batch progress `rules`, a certificate's
+  `criteria_snapshot.rules`) gains the key.
+- `POST /workflows/it/trainer/attendance`: body unchanged. Each written row records `marked_by_id` (the caller) and `session_id` (the
+  date's single non-cancelled live session, else null). Status values unchanged; `excused` is displayed as "Approved leave".
+- `PATCH /workflows/it/attendance-corrections/{id}` approved: also writes `attendance.update` (`changes.status = [old, new]`,
+  `correction_id`) and sets the row's `marked_by_id` to the reviewer. Response unchanged.
+- Every attendance % (eligibility, `/it/batches/{id}/progress`, training reports a/d/e/f, placement reports, HR student view, management
+  training KPIs, `/portal/it/student/dashboard|attendance`) = attended / counted under the policy; "classes marked" stays the row count.
+  `/portal/it/student/attendance` rows show `approved leave` for an excused row.

@@ -22,11 +22,11 @@ from app.models import (
     Program,
     User,
 )
+from app.services import training_progress
 from app.services.bdm_performance import _instants
 
 NOT_TAKEN = ("pending_consent", "rejected")  # TR3: never took the seat
 DROPPED = ("withdrawn", "dropped")  # TR10: left it (set by an admin's enrolment edit)
-ATTENDED = ("present", "late", "excused")  # TR8: the certificate rule's attended statuses
 
 # (key, label, definition), in §12 order.
 KPIS = (
@@ -34,7 +34,7 @@ KPIS = (
     ("active_batches", "Active batches", "Batches running now."),
     ("students", "Students", "Students who took a seat in a batch running in the period."),
     ("trainers", "Trainers", "Active trainer accounts."),
-    ("attendance_pct", "Attendance", "Classes attended (present, late or excused) out of attendance marked in the period."),
+    ("attendance_pct", "Attendance", "Classes attended (present or late; approved leave as the leave policy sets) out of attendance counted in the period."),
     ("completion_pct", "Completion", "Seats in the period's batches whose course progress reached 100%."),
     ("dropouts", "Dropouts", "Students withdrawn or dropped from a batch running in the period."),
     ("assessments", "Assessments", "Assessments scheduled in the period."),
@@ -90,7 +90,7 @@ async def dashboard(db: AsyncSession, start: date, end: date, now: datetime) -> 
         func.count(Enrollment.id).filter(counted, Enrollment.progress_percent >= 100), func.count(Enrollment.id).filter(Enrollment.status.in_(DROPPED)),
         func.avg(Enrollment.progress_percent).filter(counted),
     ).select_from(Batch).outerjoin(Enrollment, Enrollment.batch_id == Batch.id).where(in_period))  # fmt: skip
-    attendance = await _rolled(db, _by_trainer(func.count(), func.count().filter(Attendance.status.in_(ATTENDED)))
+    attendance = await _rolled(db, _by_trainer(func.count().filter(training_progress.counted()), func.count().filter(training_progress.attended()))
                                .join(Attendance, Attendance.batch_id == Batch.id)
                                .where(in_period, Attendance.session_date >= start, Attendance.session_date <= end))  # fmt: skip
     feedback = await _rolled(db, _by_trainer(func.avg(CourseFeedback.rating), func.count()).join(CourseFeedback, CourseFeedback.batch_id == Batch.id).where(in_period))

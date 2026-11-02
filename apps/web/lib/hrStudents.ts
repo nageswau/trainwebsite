@@ -22,7 +22,7 @@ export const percent = (value: number | null | undefined) => (value === null || 
 
 /** QA17-02: each status named, not "10 / 0 / 0 / 2 of 12". QA17-05: the parts, so a narrow cell wraps between them, never inside one. */
 export const classesParts = (a: HrAttendance) =>
-  a.marked === 0 ? ["No classes marked yet"] : [`Present ${a.present}`, `Late ${a.late}`, `Excused ${a.excused}`, `Absent ${a.absent} (${a.marked} marked)`];
+  a.marked === 0 ? ["No classes marked yet"] : [`Present ${a.present}`, `Late ${a.late}`, `Approved leave ${a.excused}`, `Absent ${a.absent} (${a.marked} marked)`];
 
 export const statusLabel = (status: string) => status.replaceAll("_", " ").replace(/^\w/, (c) => c.toUpperCase());
 

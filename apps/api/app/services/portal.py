@@ -64,6 +64,7 @@ from app.models import (
 from app.services import application_filters, counselor_students, document_access, fee_accounts, hr_students, it_student_counselors, permissions, student_access, student_archive, student_profiles
 from app.services import application_outcomes as outcomes
 from app.services import applications as job_applications
+from app.services import training_progress as progress
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
 from app.services.agent_dashboard import headline_counts
 from app.services.agent_documents import OFFER_LETTER
@@ -163,10 +164,9 @@ async def _it_student(db: AsyncSession, user: User, section: str):
     ).all()
     batch_ids = [enrollment.batch_id for enrollment, _, _ in enrollments]
     if section == "dashboard":
-        total = await _safe(db, lambda: db.scalar(select(func.count()).select_from(Attendance).where(Attendance.student_id == user.id)), None)
-        present = await _safe(
-            db, lambda: db.scalar(select(func.count()).select_from(Attendance).where(Attendance.student_id == user.id, Attendance.status.in_(["present", "late", "excused"]))), None
-        )
+        # itc-021 (DEC-SCOPE-349 L7): the shared attended/counted definitions, so the dashboard % follows the leave policy.
+        total = await _safe(db, lambda: db.scalar(select(func.count().filter(progress.counted())).where(Attendance.student_id == user.id)), None)
+        present = await _safe(db, lambda: db.scalar(select(func.count().filter(progress.attended())).where(Attendance.student_id == user.id)), None)
         due = await _safe(db, lambda: db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.user_id == user.id, Payment.status.in_(["pending", "overdue"]))), None)
         applied_jobs = await _safe(db, lambda: db.scalar(select(func.count()).select_from(JobApplication).where(JobApplication.student_id == user.id)), None)
         counselor = (await it_student_counselors.counselors_of(db, [user.id])).get(user.id)  # itc-003: the student's own link only
@@ -245,8 +245,10 @@ async def _it_student(db: AsyncSession, user: User, section: str):
         # Attendance row is simply absent from `rows` here, never synthesized as
         # "absent" -- there is no scheduled-session calendar independent of marking
         # to diff against, so omission already is the not-yet-recorded state.
-        attendance_total = len(rows)
-        attendance_present = sum(1 for a, _ in rows if a.status in ("present", "late", "excused"))
+        # itc-021 (L7): the % over all of the student's rows from the shared definitions (it follows the leave policy).
+        attendance_present, attendance_total = (
+            await db.execute(select(func.count().filter(progress.attended()), func.count().filter(progress.counted())).where(Attendance.student_id == user.id))
+        ).one()
         attendance_percent = round(attendance_present * 100 / attendance_total) if attendance_total else None
         progress_percent = enrollments[0][0].progress_percent if enrollments else None
         blockers = []
@@ -259,7 +261,7 @@ async def _it_student(db: AsyncSession, user: User, section: str):
             "Session records, course completion, and outstanding work.",
             # nehn-023: no "Record reference" (UUID) column -- the student picks the row in AttendanceCorrectionPanel instead.
             (("batch", "Batch"), ("date", "Date"), ("status", "Status"), ("notes", "Notes")),
-            ({"batch": b.name, "date": a.session_date, "status": a.status, "notes": a.notes} for a, b in rows),
+            ({"batch": b.name, "date": a.session_date, "status": progress.shown_status(a.status), "notes": a.notes} for a, b in rows),
             (
                 {"label": "Attendance", "value": f"{attendance_percent}%" if attendance_percent is not None else "No sessions recorded yet"},
                 {"label": "Course progress", "value": f"{progress_percent}%" if progress_percent is not None else "Not enrolled"},
@@ -507,8 +509,8 @@ async def _trainer(db: AsyncSession, user: User, section: str):
             "Student Attendance",
             "Mark attendance and review corrections.",
             (("student", "Student"), ("batch", "Batch"), ("date", "Date"), ("status", "Status")),
-            ({"student": s.full_name, "batch": b.name, "date": a.session_date, "status": a.status} for a, s, b in rows),
-            panels=({"title": "Pending corrections", "items": [f"{s.full_name} / {b.name} / {a.session_date} / {a.status} → {c.requested_status} / {c.reason}" for c, a, s, b in corrections]},),
+            ({"student": s.full_name, "batch": b.name, "date": a.session_date, "status": progress.shown_status(a.status)} for a, s, b in rows),
+            panels=({"title": "Pending corrections", "items": [f"{s.full_name} / {b.name} / {a.session_date} / {progress.shown_status(a.status)} → {progress.shown_status(c.requested_status)} / {c.reason}" for c, a, s, b in corrections]},),
         )
     if section == "assignments":
         rows = (await db.execute(select(Assignment, Batch).join(Batch, Batch.id == Assignment.batch_id).where(Batch.trainer_id == user.id).order_by(Assignment.due_date.desc()))).all()

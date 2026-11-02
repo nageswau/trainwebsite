@@ -12,6 +12,7 @@ import TrainerProgressPanel from "./TrainerProgressPanel";
 import { formatSize } from "@/lib/agentDocuments";
 import { type CertificateCriteria, criteriaSummary } from "@/lib/certificates";
 import { formatDate } from "@/lib/formatDate";
+import { IT_ATTENDANCE_STATUSES, itAttendanceLabel } from "@/lib/itAttendance";
 
 type Batch = { id: string; name: string; schedule: string; capacity: number };
 type Student = { id: string; name: string; batch_id: string };
@@ -76,7 +77,6 @@ function detailMessage(detail: unknown) {
   return "The operation could not be completed.";
 }
 
-const statusLabel = (status: string) => status.charAt(0).toUpperCase() + status.slice(1);
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return <div className="action-card"><h3>{title}</h3>{children}</div>;
@@ -220,7 +220,7 @@ export default function TeacherWorkspaceActions({ section }: { section: string }
       }}>
         <Field controlId="attendance-batch" label="Batch"><select value={batch} onChange={event => setBatch(event.target.value)} required><option value="">Select batch</option>{batchOptions}</select></Field>
         <Field controlId="attendance-session-date" label="Session date"><input name="session_date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required /></Field>
-        {students.length ? <div className="table-wrap"><table className="table"><thead><tr><th scope="col">Learner</th><th scope="col">Status</th><th scope="col">Notes</th></tr></thead><tbody>{students.map(student => <tr key={student.id}><th scope="row">{student.name}</th><td><select aria-label={`${student.name} status`} name={`status_${student.id}`} defaultValue="present"><option value="present">Present</option><option value="absent">Absent</option><option value="late">Late</option><option value="excused">Excused</option></select></td><td><input aria-label={`${student.name} notes`} name={`notes_${student.id}`} placeholder="Optional note" /></td></tr>)}</tbody></table></div> : <p id="attendance-empty" className="muted">{loading ? "Loading active learners…" : "No active learners in this batch."}</p>}
+        {students.length ? <div className="table-wrap"><table className="table"><thead><tr><th scope="col">Learner</th><th scope="col">Status</th><th scope="col">Notes</th></tr></thead><tbody>{students.map(student => <tr key={student.id}><th scope="row">{student.name}</th><td><select aria-label={`${student.name} status`} name={`status_${student.id}`} defaultValue="present">{IT_ATTENDANCE_STATUSES.map(status => <option key={status} value={status}>{itAttendanceLabel(status)}</option>)}</select></td><td><input aria-label={`${student.name} notes`} name={`notes_${student.id}`} placeholder="Optional note" /></td></tr>)}</tbody></table></div> : <p id="attendance-empty" className="muted">{loading ? "Loading active learners…" : "No active learners in this batch."}</p>}
         <button className="btn" disabled={busy || loading || !batch || !students.length} aria-describedby={!students.length ? "attendance-empty" : undefined}>Save attendance</button>
       </form>
     </Card>
@@ -231,7 +231,7 @@ export default function TeacherWorkspaceActions({ section }: { section: string }
         return <li key={item.id} className="card" style={{ padding: 16 }}>
           <strong>{item.student}</strong>
           <p className="muted" style={{ margin: "4px 0" }}>{item.batch} · {date}</p>
-          <p style={{ margin: "4px 0" }}>{statusLabel(item.current_status)} → {statusLabel(item.requested_status)}</p>
+          <p style={{ margin: "4px 0" }}>{itAttendanceLabel(item.current_status)} → {itAttendanceLabel(item.requested_status)}</p>
           <p style={{ margin: "4px 0 12px" }}>{item.reason}</p>
           <form className="form" aria-label={`Review correction for ${item.student}, ${date}`} onSubmit={event => {
             const status = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value;

@@ -4,11 +4,10 @@ import { FormEvent, Fragment, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { formatDate } from "@/lib/formatDate";
+import { IT_ATTENDANCE_STATUSES as STATUSES, itAttendanceLabel as label } from "@/lib/itAttendance";
 
 type Row = { id: string; batch: string; session_date: string; status: string; correction_pending: boolean };
 
-const STATUSES = ["present", "absent", "late", "excused"];
-const label = (status: string) => status.charAt(0).toUpperCase() + status.slice(1);
 const day = (value: string) => formatDate(value, false, "UTC"); // a session date, not a moment: never shift it by zone
 
 function detailMessage(detail: unknown) {

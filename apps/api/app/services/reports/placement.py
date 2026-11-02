@@ -62,7 +62,7 @@ def _completing_soon(user: User, f: Filters):
             user, Student.student_code.label("student_code"), Student.full_name.label("student"), Student.phone.label("phone"),
             Student.email.label("email"), Program.title.label("course"), Batch.name.label("batch"), Trainer.full_name.label("trainer"),
             Batch.end_date.label("batch_ends"), (Batch.end_date - TODAY).label("days_left"), Enrollment.progress_percent.label("progress"),
-            progress.percent(att.c.attended, att.c.marked).label("attendance_pct"), READINESS, Candidate.status.label("candidate_status"),
+            progress.percent(att.c.attended, att.c.counted).label("attendance_pct"), READINESS, Candidate.status.label("candidate_status"),
         )
         .outerjoin(att, and_(*_on_seat(att)))
         .where(Batch.end_date >= TODAY, Batch.end_date <= TODAY + days)
@@ -142,7 +142,7 @@ async def candidate_training(db: AsyncSession, candidate: Candidate) -> dict:
         select(
             Program.title.label("course"), Batch.name.label("batch"), Trainer.full_name.label("trainer"), Batch.start_date.label("starts"),
             Batch.end_date.label("ends"), Enrollment.status.label("status"), Enrollment.progress_percent.label("progress"),
-            progress.percent(att.c.attended, att.c.marked).label("attendance_pct"), func.coalesce(att.c.marked, 0).label("attendance_marked"),
+            progress.percent(att.c.attended, att.c.counted).label("attendance_pct"), func.coalesce(att.c.marked, 0).label("attendance_marked"),
             func.coalesce(done.c.graded, 0).label("assignments_graded"), func.coalesce(tasks.c.total, 0).label("assignments_total"),
             func.coalesce(won.c.passed, 0).label("assessments_passed"), func.coalesce(tests.c.total, 0).label("assessments_total"), CERTIFICATE,
         )

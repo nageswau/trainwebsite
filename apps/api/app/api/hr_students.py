@@ -100,7 +100,7 @@ async def student_detail(student_id: UUID, response: Response, user: User = Depe
                     att.c.absent,
                     att.c.late,
                     att.c.excused,
-                    progress.percent(att.c.attended, att.c.marked).label("attendance_pct"),
+                    progress.percent(att.c.attended, att.c.counted).label("attendance_pct"),
                 )
                 .select_from(Enrollment)
                 .join(Batch, Batch.id == Enrollment.batch_id)

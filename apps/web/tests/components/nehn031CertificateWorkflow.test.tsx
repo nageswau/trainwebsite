@@ -10,7 +10,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: 
 // nehn-031 (DEC-ROLE-003, DEC-SCOPE-297): the trainer recommends, the coordinator issues from a queue (singly or in bulk, with a
 // reason when overriding), the admin sets the thresholds.
 const BASE = "/api/v1/workflows/it/certificates";
-const RULES = { min_progress_percent: 100, min_attendance_percent: 75 };
+const RULES = { min_progress_percent: 100, min_attendance_percent: 75, leave_policy: "attended" };
 const CRITERIA = { progress_percent: 70, attendance_percent: 80, assignments_graded: 1, assignments_total: 2, assessments_passed: 0, assessments_total: 1, pending_fee: 0, rules: RULES };
 const CONTEXT = { batches: [{ id: "b1", name: "Batch A", schedule: "Mon", capacity: 20 }], students: [], enrollments: [{ id: "e1", student_id: "s1", student: "Asha Rao", batch_id: "b1", batch: "Batch A", enrollment_code: "EDU-1", progress_percent: 70 }] };
 const item = (id: string, student: string, eligible: boolean, recommendation: unknown = null) => ({
@@ -194,7 +194,7 @@ describe("admin certificate rules panel", () => {
     fireEvent.change(progress, { target: { value: "90" } });
     fireEvent.click(screen.getByRole("button", { name: "Save rules" }));
     expect(await screen.findByText("Certificate rules saved. They apply to the next eligibility check.")).toBeInTheDocument();
-    expect(bodyOf(mock, "PUT", `${BASE}/rules`)).toEqual({ min_progress_percent: 90, min_attendance_percent: 75 });
+    expect(bodyOf(mock, "PUT", `${BASE}/rules`)).toEqual({ min_progress_percent: 90, min_attendance_percent: 75, leave_policy: "attended" });
     expect(screen.queryByRole("button", { name: "Issue certificate" })).toBeNull();
   });
 

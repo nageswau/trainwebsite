@@ -1,5 +1,8 @@
+import type { LeavePolicy } from "@/lib/itAttendance";
+
 // nehn-031 (DEC-SCOPE-297): the certificate eligibility returned by `GET /workflows/it/certificates/eligibility/{id}` and the queue.
-export type CertificateRules = { min_progress_percent: number; min_attendance_percent: number };
+// itc-021: `leave_policy` is how approved leave counts in the attendance % (lib/itAttendance LEAVE_POLICIES).
+export type CertificateRules = { min_progress_percent: number; min_attendance_percent: number; leave_policy: LeavePolicy };
 export type CertificateCriteria = {
   eligible: boolean;
   progress_percent: number;
