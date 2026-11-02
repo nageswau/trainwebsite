@@ -120,7 +120,7 @@ def _student_courses(user: User, f: Filters):
     stmt = (
         _seats(
             user, *SEAT, Enrollment.enrolled_on.label("enrolled_on"), Enrollment.status.label("status"), Enrollment.progress_percent.label("progress"),
-            progress.percent(att.c.attended, att.c.marked).label("attendance_pct"),
+            progress.percent(att.c.attended, att.c.counted).label("attendance_pct"),
             func.coalesce(done.c.graded, 0).label("assignments_graded"), func.coalesce(tasks.c.total, 0).label("assignments_total"),
             func.coalesce(won.c.passed, 0).label("assessments_passed"), func.coalesce(tests.c.total, 0).label("assessments_total"), CERTIFICATE,
         )
@@ -167,7 +167,7 @@ def _completions(user: User, f: Filters):
     att = progress.attendance()
     stmt = (
         _seats(user, *SEAT, Batch.end_date.label("batch_ends"), Enrollment.progress_percent.label("progress"),
-               progress.percent(att.c.attended, att.c.marked).label("attendance_pct"), CERTIFICATE)
+               progress.percent(att.c.attended, att.c.counted).label("attendance_pct"), CERTIFICATE)
         .outerjoin(att, and_(*_on_seat(att)))
         .where(completed)
     )
@@ -180,11 +180,11 @@ def _attendance(user: User, f: Filters):
     stmt = _seats(
         user, *SEAT, func.coalesce(att.c.marked, 0).label("marked"),
         *(func.coalesce(att.c[status], 0).label(status) for status in ("present", "absent", "late", "excused")),
-        progress.percent(att.c.attended, att.c.marked).label("attendance_pct"),
+        progress.percent(att.c.attended, att.c.counted).label("attendance_pct"),
     ).outerjoin(att, and_(*_on_seat(att)))
     if f.attendance_below:
         # nehn-011 C4: at risk -- still on the course, a class marked, and the rounded % (the certificate check's) below the threshold.
-        stmt = stmt.where(counted, progress.percent(att.c.attended, att.c.marked) < f.attendance_below)
+        stmt = stmt.where(counted, progress.percent(att.c.attended, att.c.counted) < f.attendance_below)
     return _narrow(stmt, f, enrolled_dates=False).order_by(func.lower(Program.title), func.lower(Batch.name), func.lower(Student.full_name), Enrollment.enrollment_code)
 
 
@@ -194,7 +194,7 @@ def _trainers(user: User, f: Filters):
     seats = (
         select(
             batches.c.trainer_id, func.count(distinct(batches.c.id)).label("batches"), func.count(distinct(Enrollment.student_id)).filter(counted).label("students"),
-            func.sum(att.c.attended).label("attended"), func.sum(att.c.marked).label("marked"),
+            func.sum(att.c.attended).label("attended"), func.sum(att.c.counted).label("counted"),
             func.avg(Enrollment.progress_percent).filter(counted).label("progress"),
         )
         .select_from(batches)
@@ -215,7 +215,7 @@ def _trainers(user: User, f: Filters):
     )
     return (
         select(
-            Trainer.full_name.label("trainer"), seats.c.batches, seats.c.students, progress.percent(seats.c.attended, seats.c.marked).label("attendance_pct"),
+            Trainer.full_name.label("trainer"), seats.c.batches, seats.c.students, progress.percent(seats.c.attended, seats.c.counted).label("attendance_pct"),
             func.round(seats.c.progress, 1).label("average_progress"), func.coalesce(pending.c.pending, 0).label("pending_grading"),
         )
         .select_from(seats)
@@ -340,10 +340,10 @@ COMPLETIONS = _training(
 )
 ATTENDANCE = _training(
     "attendance", "Attendance",
-    "Per student per batch: classes marked, present, absent, late, excused and the attendance % (as certificate eligibility counts it). "
+    "Per student per batch: classes marked, present, absent, late, approved leave and the attendance % (as certificate eligibility counts it). "
     "From/To: class date.",
     STUDENT_COLUMNS + (Column("marked", "Classes marked"), Column("present", "Present"), Column("absent", "Absent"), Column("late", "Late"),
-                       Column("excused", "Excused"), Column("attendance_pct", "Attendance %")),
+                       Column("excused", "Approved leave"), Column("attendance_pct", "Attendance %")),
     ("from", "to", *SEAT_FILTERS, "attendance_below"),
     _attendance,
 )
@@ -379,7 +379,7 @@ HR_COMPLETIONS = _training(
 )
 HR_ATTENDANCE = _training(
     "hr-attendance", "HR attendance",
-    "Per student per batch: classes marked, present, absent, late, excused and the attendance %. From/To: class date.",
+    "Per student per batch: classes marked, present, absent, late, approved leave and the attendance %. From/To: class date.",
     ATTENDANCE.columns, ATTENDANCE.filters, _attendance, "attendance",
 )
 

@@ -82,7 +82,7 @@ async def test_coordinator_issues_an_eligible_learner(client, db_session):
     assert response.status_code == 201, response.text
     certificate = await db_session.scalar(select(Certificate).where(Certificate.enrollment_id == enrollment.id))
     assert certificate.approved_by_id == coordinator.id and certificate.criteria_snapshot["eligible"] is True
-    assert certificate.criteria_snapshot["rules"] == {"min_progress_percent": 100, "min_attendance_percent": 75}
+    assert certificate.criteria_snapshot["rules"] == {"min_progress_percent": 100, "min_attendance_percent": 75, "leave_policy": "attended"}
 
 
 @pytest.mark.asyncio
@@ -153,7 +153,7 @@ async def test_admin_threshold_change_applies_to_the_next_evaluation(client, db_
         response = await client.put(f"{BASE}/rules", json={"min_progress_percent": 80, "min_attendance_percent": 75})
         assert response.status_code == 200 and response.json()["min_progress_percent"] == 80
         audit = await db_session.scalar(select(AuditLog).where(AuditLog.action == "certificate_rules.update", AuditLog.user_id == admin.id))
-        assert audit.metadata_json["after"] == {"min_progress_percent": 80, "min_attendance_percent": 75}
+        assert audit.metadata_json["after"] == {"min_progress_percent": 80, "min_attendance_percent": 75, "leave_policy": "attended"}
 
         eligibility = (await client.get(f"{BASE}/eligibility/{enrollment.id}")).json()
         assert eligibility["eligible"] is True and eligibility["rules"]["min_progress_percent"] == 80

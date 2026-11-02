@@ -7,13 +7,18 @@ and `_certificate_eligibility` reads one seat's figures from the same SQL -- the
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import Numeric, Subquery, case, cast, func, select
+from sqlalchemy import Numeric, Subquery, and_, case, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
-from app.models import Assessment, AssessmentAttempt, Assignment, Attendance, Submission
+from app.models import Assessment, AssessmentAttempt, Assignment, Attendance, CertificateRule, Submission
 
-ATTENDED = ("present", "late", "excused")  # the certificate rule's attended statuses (mgmt-017 TR8)
+LEAVE = "excused"  # itc-021 (DEC-SCOPE-349 L1): the stored value of "Approved leave"
+
+
+def shown_status(status: str) -> str:
+    """itc-021 L1: an IT attendance status as the portal tables print it ("excused" reads "approved leave")."""
+    return "approved leave" if status == LEAVE else status
 COUNTED_ASSESSMENTS = ("scheduled", "open", "closed", "published")
 
 
@@ -22,12 +27,29 @@ def percent(part, whole, places: int = 2) -> ColumnElement:
     return case((func.coalesce(whole, 0) > 0, func.round(cast(func.coalesce(part, 0), Numeric) * 100 / whole, places)))
 
 
+def leave_policy() -> ColumnElement:
+    """itc-021 (L2/L7): the configured approved-leave policy as a scalar subquery, so every reader of the % shares one definition and
+    none gains a query; 'attended' (the rule before 0233) when no rule row exists."""
+    return func.coalesce(select(CertificateRule.leave_policy).where(CertificateRule.division == "it").scalar_subquery(), "attended")
+
+
+def attended() -> ColumnElement:
+    """An attendance row counted as attended: present or late, and approved leave when the policy says so (mgmt-017 TR8)."""
+    return or_(Attendance.status.in_(("present", "late")), and_(Attendance.status == LEAVE, leave_policy() == "attended"))
+
+
+def counted() -> ColumnElement:
+    """An attendance row in the % denominator: every row, except approved leave under the 'excluded' policy."""
+    return or_(Attendance.status != LEAVE, leave_policy() != "excluded")
+
+
 def attendance(student_id: UUID | None = None, batch_id: UUID | None = None, date_from: date | None = None, date_to: date | None = None) -> Subquery:
-    """(student_id, batch_id, marked, present, absent, late, excused, attended) per seat with any attendance marked."""
+    """(student_id, batch_id, marked, present, absent, late, excused, attended, counted) per seat with any attendance marked. The % is
+    attended / counted; `marked` stays the rows marked (the "classes marked" figure)."""
     stmt = select(
         Attendance.student_id, Attendance.batch_id, func.count().label("marked"),
         *(func.count().filter(Attendance.status == status).label(status) for status in ("present", "absent", "late", "excused")),
-        func.count().filter(Attendance.status.in_(ATTENDED)).label("attended"),
+        func.count().filter(attended()).label("attended"), func.count().filter(counted()).label("counted"),
     ).group_by(Attendance.student_id, Attendance.batch_id)
     if student_id:
         stmt = stmt.where(Attendance.student_id == student_id)
@@ -90,7 +112,7 @@ async def seat(db: AsyncSession, student_id: UUID, batch_id: UUID) -> dict:
     row = (
         await db.execute(
             select(
-                percent(select(att.c.attended).scalar_subquery(), select(att.c.marked).scalar_subquery()).label("attendance_percent"),
+                percent(select(att.c.attended).scalar_subquery(), select(att.c.counted).scalar_subquery()).label("attendance_percent"),
                 func.coalesce(select(done.c.graded).scalar_subquery(), 0).label("assignments_graded"),
                 func.coalesce(select(tasks.c.total).scalar_subquery(), 0).label("assignments_total"),
                 func.coalesce(select(won.c.passed).scalar_subquery(), 0).label("assessments_passed"),
@@ -111,7 +133,7 @@ async def seats(db: AsyncSession, batch_id: UUID, student_ids: list[UUID]) -> di
     tests = await db.scalar(select(assessments(batch_id).c.total)) or 0
     marks = {
         student_id: (marked, pct)
-        for student_id, marked, pct in await db.execute(select(att.c.student_id, att.c.marked, percent(att.c.attended, att.c.marked)).where(att.c.student_id.in_(student_ids)))
+        for student_id, marked, pct in await db.execute(select(att.c.student_id, att.c.marked, percent(att.c.attended, att.c.counted)).where(att.c.student_id.in_(student_ids)))
     }
     graded_by = dict((await db.execute(select(done.c.student_id, done.c.graded).where(done.c.student_id.in_(student_ids)))).all())
     passed_by = dict((await db.execute(select(won.c.student_id, won.c.passed).where(won.c.student_id.in_(student_ids)))).all())

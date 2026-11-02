@@ -280,8 +280,11 @@ class Attendance(Base, TimestampMixin):
     student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
     batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("batches.id"), index=True)
     session_date: Mapped[date] = mapped_column(Date, index=True)
-    status: Mapped[str] = mapped_column(String(20))
+    status: Mapped[str] = mapped_column(String(20))  # itc-021 (DEC-SCOPE-349 L1): "excused" is shown as "Approved leave"
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # itc-021 (L4/L5): who last set the status (NULL on rows marked before 0233) and the day's single live session, when there is one.
+    marked_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    session_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("live_sessions.id", ondelete="SET NULL"), nullable=True, index=True)
     __table_args__ = (UniqueConstraint("student_id", "batch_id", "session_date", name="uq_attendance_student_batch_date"),)
 
 
@@ -445,6 +448,10 @@ class CertificateSignatory(Base, TimestampMixin):
     created_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
+# itc-021 (DEC-SCOPE-349 L2): how approved leave ("excused") counts in the attendance %: as attended, left out, or as absent.
+LEAVE_POLICIES = ("attended", "excluded", "absent")
+
+
 class CertificateRule(Base, TimestampMixin):
     """nehn-031 (DEC-SCOPE-297 W1): the eligibility thresholds, one row for the IT division (tel_settings' keyed-row idiom). The other
     conditions stay fixed in code."""
@@ -453,10 +460,12 @@ class CertificateRule(Base, TimestampMixin):
     __table_args__ = (
         CheckConstraint("division = 'it'", name="ck_certificate_rules_division"),
         CheckConstraint("min_progress_percent BETWEEN 0 AND 100 AND min_attendance_percent BETWEEN 0 AND 100", name="ck_certificate_rules_percent"),
+        CheckConstraint(f"leave_policy IN ({', '.join(repr(p) for p in LEAVE_POLICIES)})", name="ck_certificate_rules_leave_policy"),
     )
     division: Mapped[str] = mapped_column(String(20), primary_key=True, default="it")
     min_progress_percent: Mapped[int] = mapped_column(Integer, default=100)
     min_attendance_percent: Mapped[int] = mapped_column(Integer, default=75)
+    leave_policy: Mapped[str] = mapped_column(String(20), default="attended", server_default=text("'attended'"))  # itc-021 L2
     updated_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 

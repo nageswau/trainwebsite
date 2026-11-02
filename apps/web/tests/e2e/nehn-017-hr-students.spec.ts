@@ -51,7 +51,7 @@ test.describe("nehn-017 HR student access", () => {
     await expect(courses.locator("tbody td[data-label='Attendance'] .nowrap").first()).toHaveCSS("white-space", "nowrap"); // QA17-05
     // QA17-06: the cell still wraps between the parts -- the whole table fits its card, nothing clipped
     expect(await page.locator(".table-wrap").first().evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
-    await expect(courses.locator("tbody td[data-label='Attendance']").first()).toContainText(/Present \d+ · Late \d+ · Excused \d+ · Absent \d+|No classes marked yet/);
+    await expect(courses.locator("tbody td[data-label='Attendance']").first()).toContainText(/Present \d+ · Late \d+ · Approved leave \d+ · Absent \d+|No classes marked yet/);
     await expect(page.locator("main")).not.toContainText(/fee|payment|discount|₹|INR/i);
 
     await expect(page.getByText(`${tag}-cv.pdf`)).toBeVisible();
@@ -76,7 +76,7 @@ test.describe("nehn-017 HR student access", () => {
     await page.locator("main").getByRole("link", { name: "HR attendance", exact: true }).click();
     await page.waitForURL("**report=hr-attendance");
     await expect(page.locator("thead th")).toHaveText([
-      "Student code", "Student", "Course", "Batch", "Trainer", "Classes marked", "Present", "Absent", "Late", "Excused", "Attendance %",
+      "Student code", "Student", "Course", "Batch", "Trainer", "Classes marked", "Present", "Absent", "Late", "Approved leave", "Attendance %",
     ]);
     const [csv] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download CSV" }).click()]);
     expect(csv.suggestedFilename()).toMatch(/^hr-attendance-\d{4}-\d{2}-\d{2}\.csv$/);

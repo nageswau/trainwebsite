@@ -705,9 +705,12 @@ async def mark_attendance(payload: AttendanceBulkIn, user: User = Depends(get_cu
     # nehn-029: a date whose live classes were all cancelled takes no attendance; a date with no live session is unaffected.
     zone = ZoneInfo(batch.timezone or "Asia/Kolkata")
     day_starts = datetime.combine(session_date, time.min, zone)
-    day_statuses = set((await db.scalars(select(LiveSession.status).where(LiveSession.batch_id == batch_id, LiveSession.starts_at >= day_starts, LiveSession.starts_at < day_starts + timedelta(days=1)))).all())
-    if day_statuses == {"cancelled"}:
+    day_sessions = (await db.execute(select(LiveSession.id, LiveSession.status).where(LiveSession.batch_id == batch_id, LiveSession.starts_at >= day_starts, LiveSession.starts_at < day_starts + timedelta(days=1)))).all()
+    if day_sessions and all(status == "cancelled" for _, status in day_sessions):
         raise HTTPException(409, "The live class on this date was cancelled; attendance cannot be marked for it")
+    # itc-021 (DEC-SCOPE-349 L5): the day's single live class, when there is exactly one; none or several leave the link empty.
+    held = [session_id for session_id, status in day_sessions if status != "cancelled"]
+    session_id = held[0] if len(held) == 1 else None
     for item in payload.records:
         student_id = item.student_id
         # itc-001: the row is locked so its old values are exact; an overwrite that changes something gets its own audit row (Q-02).
@@ -716,10 +719,9 @@ async def mark_attendance(payload: AttendanceBulkIn, user: User = Depends(get_cu
             audit_changes.audit_change(db, user, "attendance.update", "attendance", current.id, {"status": current.status, "notes": current.notes},
                                        {"status": item.status, "notes": item.notes},
                                        metadata={"batch_id": str(batch_id), "student_id": str(student_id), "session_date": session_date.isoformat()})
-            current.status = item.status
-            current.notes = item.notes
+            current.status, current.notes, current.marked_by_id, current.session_id = item.status, item.notes, user.id, session_id
         else:
-            db.add(Attendance(student_id=student_id, batch_id=batch_id, session_date=session_date, status=item.status, notes=item.notes))
+            db.add(Attendance(student_id=student_id, batch_id=batch_id, session_date=session_date, status=item.status, notes=item.notes, marked_by_id=user.id, session_id=session_id))
     await _audit(db, user, "attendance.bulk_mark", "batch", batch_id, {"session_date": session_date.isoformat(), "records": len(payload.records)})
     await db.commit()
     return {"ok": True, "records": len(payload.records)}
@@ -781,7 +783,11 @@ async def review_attendance_correction(correction_id: UUID, payload: AttendanceC
     item.reviewed_by_id = user.id
     item.review_notes = payload.review_notes
     if decision == "approved" and attendance:
-        attendance.status = item.requested_status
+        # itc-021 (DEC-SCOPE-349 L6): the correction's overwrite is audited like a re-mark, and the reviewer becomes the marker.
+        audit_changes.audit_change(db, user, "attendance.update", "attendance", attendance.id, {"status": attendance.status}, {"status": item.requested_status},
+                                   metadata={"batch_id": str(attendance.batch_id), "student_id": str(attendance.student_id),
+                                             "session_date": attendance.session_date.isoformat(), "correction_id": str(item.id)})
+        attendance.status, attendance.marked_by_id = item.requested_status, user.id
     await _audit(db, user, "attendance.correction_review", "attendance_correction", item.id, {"status": decision})
     student = await db.get(User, item.student_id)
     if student and student.active and attendance and batch:
@@ -1568,7 +1574,8 @@ async def grade_assessment_attempt(attempt_id: UUID, payload: AssessmentGradeIn,
 
 CAN_ISSUE_CERTIFICATES = require_permission("certificates", "issue", "You do not have permission to issue certificates")  # nehn-031 W3
 CAN_CONFIGURE_CERTIFICATES = require_permission("certificates", "configure", "You do not have permission to change certificate rules")
-DEFAULT_CERTIFICATE_RULES = {"min_progress_percent": 100, "min_attendance_percent": 75}  # nehn-031 W1: the thresholds before 0204
+# nehn-031 W1: the thresholds before 0204; itc-021 L2: the leave policy before 0233
+DEFAULT_CERTIFICATE_RULES = {"min_progress_percent": 100, "min_attendance_percent": 75, "leave_policy": "attended"}
 CERTIFICATE_QUEUE_EXCLUDED = ("pending_consent", "rejected", "withdrawn", "dropped")  # never seated, or left the course
 
 
@@ -1577,7 +1584,7 @@ async def _certificate_rules(db: AsyncSession) -> dict:
     rule = await db.get(CertificateRule, "it")
     if not rule:
         return dict(DEFAULT_CERTIFICATE_RULES)
-    return {"min_progress_percent": rule.min_progress_percent, "min_attendance_percent": rule.min_attendance_percent}
+    return {"min_progress_percent": rule.min_progress_percent, "min_attendance_percent": rule.min_attendance_percent, "leave_policy": rule.leave_policy}
 
 
 def _criteria(enrollment: Enrollment, seat: dict, pending_fee: float, rules: dict) -> dict:
@@ -1741,7 +1748,9 @@ async def update_certificate_rules(
         rule = CertificateRule(division="it")
         db.add(rule)
     rule.min_progress_percent, rule.min_attendance_percent, rule.updated_by_id = payload.min_progress_percent, payload.min_attendance_percent, user.id
-    after = payload.model_dump()
+    # itc-021 (DEC-SCOPE-349 L2): a body without the leave policy (the pre-0233 client) keeps the stored one.
+    rule.leave_policy = payload.leave_policy or before["leave_policy"]
+    after = {**payload.model_dump(), "leave_policy": rule.leave_policy}
     await _audit(db, user, "certificate_rules.update", "certificate_rules", "it", {"before": before, "after": after})
     await db.commit()
     return after

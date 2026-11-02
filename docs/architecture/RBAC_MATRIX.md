@@ -3524,3 +3524,9 @@ changes. Pinned by `apps/api/tests/test_itc_012_*.py`.
 
 No grant changes (seed: it_admin and overseas_admin hold `payments.view/add`; super_admin everything). Pinned by
 `apps/api/tests/test_itc_013_fee_account.py`.
+
+### 2.249 Attendance approved-leave policy *(added 2026-11-02 — `DEC-SCOPE-349`, itc-021)*
+
+No route and no grant change. The leave policy rides on the existing certificate rules: read by `it_admin`, `coordinator`, `trainer`
+(IT); changed only by a `certificates.configure` holder (IT Admin; a trainer gets 403). Marking stays trainer (own batch, else 403) or
+IT Admin (any). Pinned by `apps/api/tests/test_itc_021_attendance_policy.py`.

@@ -10874,3 +10874,27 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   discount approval (itc-014); refunds (itc-015); tax.
 - **Numbering:** migration `0230_payment_mode`; API §12IR; RBAC §2.246.
 - **Feature ID authorized:** `itc-013`. **Status:** built on `worktree-itc-013`.
+
+### DEC-SCOPE-349 — Attendance with approved leave, percentage policy, session link and audited corrections (`itc-021`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-021` (PDF §4 "present/absent/late/approved leave … attendance correction
+  history", §6 "calculation policy configurable for approved leave"). Scope approved by the owner 2026-11-01 (backlog Q-01: all phases,
+  built in waves). Dependencies itc-001 (`DEC-SCOPE-335`) and itc-020 (`DEC-SCOPE-344`) are merged. Design
+  `docs/superpowers/specs/2026-11-02-itc-021-attendance-leave-policy-design.md`.
+- **Behaviour:** IT attendance's "excused" is shown as **Approved leave** on every IT screen (trainer register, student sessions and
+  correction choices, trainer correction queue, HR view, training reports, student portal). The IT Admin sets on the Certificate rules
+  panel how approved leave counts: as attended (default — the rule before), left out of the percentage, or as absent. The attendance %
+  follows that one setting everywhere (certificate eligibility, batch progress, training and placement reports, the HR view, management
+  training KPIs, the student portal). Each attendance row records who last set it and the date's live session; an approved correction is
+  audited with the old and new status (itc-001), like a trainer's re-mark.
+- **Claude's calls under "proceed with recommended answers" (Q-19, `NEEDS_CONFIRMATION`):** L1 approved leave **is** the existing
+  `excused` value (stored/API value unchanged; label only; the School module's own "Excused" untouched). L2 policy
+  `certificate_rules.leave_policy` `attended | excluded | absent`, default `attended`; edited with `certificates.configure`; audited in
+  the existing `certificate_rules.update` row; a PUT without it keeps the stored value. L3 retroactive: the % is computed live, so a
+  change applies to every later read and eligibility check; issued certificates keep their snapshot (which now records the policy).
+  L4 `attendance.marked_by_id`: set on mark, re-mark and approved correction; earlier rows stay NULL. L5 `attendance.session_id`: the
+  date's single non-cancelled live session (none/several → NULL); itc-020's computed classes have no id to link. L6 approved correction
+  → `attendance.update` with `{status: [old, new]}` and `correction_id`. L7 one SQL definition (`training_progress.attended()` /
+  `counted()`, the policy read as a scalar subquery — no query added). L8 `excluded` with only leave marked → no % ("—").
+- **Numbering:** migration `0233_attendance_leave_policy`; API §12IU; RBAC §2.249 (no grant change).
+- **Feature ID authorized:** `itc-021`. **Status:** built on `worktree-itc-021`.

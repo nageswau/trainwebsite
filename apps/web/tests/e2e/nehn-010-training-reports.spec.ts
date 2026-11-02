@@ -28,7 +28,7 @@ test.describe("nehn-010 training reports", () => {
     await page.locator("main").getByRole("link", { name: "Attendance", exact: true }).click();
     await page.waitForURL("**report=attendance");
     await expect(page.locator("thead th")).toHaveText([
-      "Student code", "Student", "Course", "Batch", "Trainer", "Classes marked", "Present", "Absent", "Late", "Excused", "Attendance %",
+      "Student code", "Student", "Course", "Batch", "Trainer", "Classes marked", "Present", "Absent", "Late", "Approved leave", "Attendance %",
     ]);
     await page.getByText("Filters", { exact: true }).click();
     await page.fill("#report-student", "arjun rao");

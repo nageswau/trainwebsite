@@ -80,7 +80,7 @@ async def test_own_trainer_sees_the_batch(client, db_session):
     assert response.status_code == 200
     body = response.json()
     assert body["batch"]["id"] == str(batch.id) and body["batch"]["name"] == batch.name and body["batch"]["program"].startswith("N028 Programme")
-    assert body["rules"] == {"min_progress_percent": 100, "min_attendance_percent": 75}
+    assert body["rules"] == {"min_progress_percent": 100, "min_attendance_percent": 75, "leave_policy": "attended"}
     row = _row(body, enrollment)
     student = await db_session.get(User, enrollment.student_id)
     assert row["student"] == "Asha Rao" and row["student_id"] == str(student.id) and row["student_code"] == student.student_code

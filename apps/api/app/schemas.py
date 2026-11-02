@@ -427,6 +427,7 @@ class CertificateRulesIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     min_progress_percent: int = Field(ge=0, le=100)
     min_attendance_percent: int = Field(ge=0, le=100)
+    leave_policy: Literal["attended", "excluded", "absent"] | None = None  # itc-021: omitted keeps the stored policy
 
 
 class CertificateSignatoryUpdate(BaseModel):

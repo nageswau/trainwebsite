@@ -5074,3 +5074,19 @@ leads owned by an IT counselor). All routes **401** without a session.
   `GET /payments/mine` rows gain `payment_mode` and `provider_reference`.
 - Receipt PDF: new lines "Payment mode", "Transaction reference" (after "Amount paid"); an enrolment fee's balance is the account's.
 - Portal: `it/admin/enrollments` and `it/counselor/students` gain a `fee_balance` column (`INR 1,234.00` or `Not billed`).
+
+## 12IU. Attendance approved-leave policy, marker and session link (itc-021) — addendum, 2026-11-02
+
+`DEC-SCOPE-349`. Migration `0233_attendance_leave_policy`. Additive; no route added.
+
+- `GET /workflows/it/certificates/rules` → gains `leave_policy` (`attended | excluded | absent`). `PUT` accepts optional `leave_policy`
+  (same values; anything else 422); omitted keeps the stored value. The response and the `certificate_rules.update` audit
+  `before`/`after` carry it. Every embedded `rules` object (eligibility `criteria.rules`, batch progress `rules`, a certificate's
+  `criteria_snapshot.rules`) gains the key.
+- `POST /workflows/it/trainer/attendance`: body unchanged. Each written row records `marked_by_id` (the caller) and `session_id` (the
+  date's single non-cancelled live session, else null). Status values unchanged; `excused` is displayed as "Approved leave".
+- `PATCH /workflows/it/attendance-corrections/{id}` approved: also writes `attendance.update` (`changes.status = [old, new]`,
+  `correction_id`) and sets the row's `marked_by_id` to the reviewer. Response unchanged.
+- Every attendance % (eligibility, `/it/batches/{id}/progress`, training reports a/d/e/f, placement reports, HR student view, management
+  training KPIs, `/portal/it/student/dashboard|attendance`) = attended / counted under the policy; "classes marked" stays the row count.
+  `/portal/it/student/attendance` rows show `approved leave` for an excused row.

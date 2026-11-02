@@ -661,6 +661,10 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** large. **Risk:** medium.
 
 #### itc-021: Attendance with approved leave, percentage policy, session link and audited corrections
+- **Status:** built as `DEC-SCOPE-349` (migration `0233_attendance_leave_policy`, API §12IU, RBAC §2.249). Q-19 built with the
+  recommended answers (owner: proceed with recommended answers): approved leave is the existing `excused` value relabelled; policy
+  default "counts as attended" (no figure changes on deploy); a policy change applies to later reads and eligibility checks, issued
+  certificates keep their snapshot — all `NEEDS_CONFIRMATION`.
 - **Business requirement:** §4 "present/absent/late/approved leave … attendance correction history"; §6 "calculation policy configurable for approved leave".
 - **Existing behavior:**
   - The statuses are present, absent, late and excused.
