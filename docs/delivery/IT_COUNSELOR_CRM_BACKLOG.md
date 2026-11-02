@@ -629,6 +629,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** small. **Risk:** low.
 
 #### itc-020: Batch timetable and session calendar
+- **Status:** built as `DEC-SCOPE-344` (migration `0228_batch_timetable`, API §12IP, RBAC §2.244); design
+  `docs/superpowers/specs/2026-11-02-itc-020-batch-timetable-design.md`. Q-18 answered by Claude's calls T1-T3 (computed classes,
+  no holiday calendar, same-batch/same-trainer overlap → 409), `NEEDS_CONFIRMATION`.
 - **Business requirement:** §4 "timetable, class link/room, session calendar"; §6; §8 Faculty "Today's classes".
 - **Existing behavior:** `Batch.schedule` is free text (160 characters). `LiveSession` has dated online sessions with meeting links (`models.py:4309`). There is no recurring timetable or room, and `portal.py:236` states there is "no scheduled-session calendar".
 - **Expected behavior:** a batch timetable of weekly slots (day, start, end, mode, room or link, topic). It generates or links session occurrences (reusing `LiveSession` for online slots; Q-18), and shows a calendar view for students, trainers and counselors.

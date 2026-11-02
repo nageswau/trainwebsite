@@ -1,7 +1,7 @@
 import math
 import re
 import unicodedata
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
@@ -598,6 +598,41 @@ class LiveSessionUpdate(BaseModel):
 
 
 class LiveSessionCancel(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def _strip(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+
+class TimetableSlotIn(BaseModel):
+    """itc-020 (DEC-SCOPE-344): one weekly class -- 0=Mon..6=Sun, local times in the batch's timezone. POST creates, PUT replaces."""
+
+    weekday: int = Field(ge=0, le=6)
+    start_time: time
+    end_time: time
+    mode: Literal["online", "offline"]
+    room: str | None = Field(default=None, max_length=120)
+    meeting_url: str | None = Field(default=None, max_length=500, pattern=r"^https?://\S+$")
+    topic: str | None = Field(default=None, max_length=160)
+
+    @field_validator("room", "meeting_url", "topic", mode="before")
+    @classmethod
+    def _blank(cls, value):
+        return (value.strip() or None) if isinstance(value, str) else value
+
+    @model_validator(mode="after")
+    def _consistent(self):
+        if self.end_time <= self.start_time:
+            raise ValueError("The class must end after it starts")
+        if self.mode == "offline" and not self.room:
+            raise ValueError("An in-person class needs a room")
+        return self
+
+
+class TimetableCancelIn(BaseModel):
+    occurs_on: date
     reason: str = Field(min_length=3, max_length=500)
 
     @field_validator("reason", mode="before")

@@ -18,6 +18,8 @@ describe("tel-017 IT counselor navigation", () => {
       { label: "Dashboard", href: "/it/counselor/dashboard" },
       { label: "Leads", href: "/it/counselor/leads" },
       { label: "Appointments", href: "/it/counselor/appointments" },
+      { label: "Students", href: "/it/counselor/students" }, // itc-003 (DEC-SCOPE-337)
+      { label: "Timetable", href: "/it/counselor/timetable" }, // itc-020 (DEC-SCOPE-344)
       { label: "Management tasks", href: "/account/management-tasks" }, // mgmt-028 (MT14)
     ]);
   });
