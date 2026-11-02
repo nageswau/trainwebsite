@@ -1,4 +1,4 @@
-"""itc-025 (DEC-SCOPE-346): a batch, course or timetable change, or a student transfer, tells the affected IT students and their linked
+"""itc-025 (DEC-SCOPE-347): a batch, course or timetable change, or a student transfer, tells the affected IT students and their linked
 IT counselors (itc-003) -- one notice each (itc-002 dedupes per recipient, event and batch in the transaction), with a summary of the
 changed fields from the fixed `CHANGE_LABELS` vocabulary. Never commits: the caller's transaction publishes, a rollback sends nothing."""
 

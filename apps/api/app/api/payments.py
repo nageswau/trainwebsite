@@ -16,7 +16,7 @@ from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.models import ApplicationDeposit, AuditLog, Batch, EMISchedule, Enrollment, Invoice, Payment, PaymentWebhookEvent, Program, Receipt, User
 from app.notifications.events import notify
-from app.services import agent_deposits
+from app.services import agent_deposits, fee_accounts
 from app.services.billing_documents import generate_invoice_pdf, generate_receipt_pdf, receipt_lines
 from app.services.payment import payments
 from app.services.storage import storage
@@ -77,7 +77,10 @@ async def _receipt_lines(db: AsyncSession, item: Payment, payer: User, receipt_n
         ).first()
         course, batch = row if row else (None, None)
     balance = 0.0
-    if item.emi_schedule_id:
+    if item.division == "it" and item.reference_type in fee_accounts.FEE_REFERENCES and item.reference_id:
+        # itc-013: an enrolment fee's balance is its fee account's (DEC-SCOPE-346), whatever bill this payment settled
+        balance = (await fee_accounts.balance_for(db, [item.reference_id]))[item.reference_id]["balance"]
+    elif item.emi_schedule_id:
         balance = float(await db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.emi_schedule_id == item.emi_schedule_id, Payment.status.not_in(PAID_STATUSES))) or 0)
     return receipt_lines(
         receipt_no=receipt_no,
@@ -96,6 +99,8 @@ async def _receipt_lines(db: AsyncSession, item: Payment, payer: User, receipt_n
         phone=student.phone if student else None,
         course=course,
         batch=batch,
+        payment_mode=fee_accounts.MODE_LABELS.get(item.payment_mode or ""),
+        transaction_reference=item.provider_reference,
     )
 
 
@@ -112,6 +117,8 @@ async def _mark_paid(db: AsyncSession, item: Payment, payer: User, *, source: st
     payment then pays its deposit (AC2) -- `provider_amount` (paise, from the webhook) is cross-checked against the stored amount."""
     item.status = "paid"
     item.paid_at = datetime.now(UTC)
+    if item.provider == "razorpay":  # itc-013: the gateway's own confirmation is the only source of this mode
+        item.payment_mode = "razorpay"
     await _ensure_receipt(db, item, payer)
     if item.reference_type == agent_deposits.REFERENCE_TYPE:
         await agent_deposits.on_payment_paid(db, item, source=source, provider_amount=provider_amount)
@@ -141,6 +148,8 @@ async def mine(user: User = Depends(get_current_user), db: AsyncSession = Depend
             "due_date": x.due_date,
             "reference_type": x.reference_type,
             "is_manual": x.is_manual,
+            "payment_mode": x.payment_mode,  # itc-013
+            "provider_reference": x.provider_reference,
             "emi_schedule_id": x.emi_schedule_id,
             "installment_no": x.installment_no,
         }

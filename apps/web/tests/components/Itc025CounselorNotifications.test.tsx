@@ -5,7 +5,7 @@ import PortalPage from "@/components/PortalPage";
 import { ApiError, serverApi } from "@/lib/api";
 import { PORTAL_NAV, type NavItem } from "@/lib/navigation";
 
-// itc-025 (DEC-SCOPE-346): a batch, course or timetable change of an IT counselor's student reaches the counselor's own Notifications
+// itc-025 (DEC-SCOPE-347): a batch, course or timetable change of an IT counselor's student reaches the counselor's own Notifications
 // page -- the shared list (GET /workflows/notifications), with no workflow panel, as itc-002 (student) and itc-009 (IT admin) did.
 vi.mock("@/lib/api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");

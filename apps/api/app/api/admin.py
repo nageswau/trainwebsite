@@ -83,6 +83,7 @@ from app.services import (
     batch_notices,
     bdm_lifecycle,
     course_skills,
+    fee_accounts,
     lead_appointments,
     lead_handover,
     lead_list,
@@ -387,6 +388,8 @@ async def payment_records(user: User = Depends(PAYMENTS_VIEW), db: AsyncSession 
             "status": p.status,
             "due_date": p.due_date,
             "paid_at": p.paid_at,
+            "payment_mode": p.payment_mode,  # itc-013
+            "provider_reference": p.provider_reference,
         }
         for p, target in rows
     ]
@@ -1223,7 +1226,7 @@ async def update_batch(batch_id: UUID, payload: dict, user: User = Depends(ensur
             value = uuid_reference(value, "trainer reference", required=False)
         setattr(item, key, value)
     db.add(AuditLog(user_id=user.id, action="batch.update", entity_type="batch", entity_id=str(item.id), metadata_json={k: v for k, v in payload.items() if k in allowed}))
-    # itc-025 (DEC-SCOPE-346): a real change of what students see (not capacity/enrolment-open/status) tells them and their counselors
+    # itc-025 (DEC-SCOPE-347): a real change of what students see (not capacity/enrolment-open/status) tells them and their counselors
     if changed := [label for key, label in batch_notices.BATCH_FIELDS.items() if getattr(item, key) != before[key]]:
         await batch_notices.notify_batch_change(db, item.id, changed, action_url=batch_notices.COURSE_URL)
     await db.commit()
@@ -1282,7 +1285,7 @@ async def update_enrollment(enrollment_id: UUID, payload: dict, user: User = Dep
         if key in payload:
             setattr(item, key, payload[key])
     db.add(AuditLog(user_id=user.id, action="enrollment.update", entity_type="enrollment", entity_id=str(item.id), metadata_json=payload))
-    if moved and item.status != "rejected":  # itc-025 (DEC-SCOPE-346): the moved student and their counselor only; the record is the new batch
+    if moved and item.status != "rejected":  # itc-025 (DEC-SCOPE-347): the moved student and their counselor only; the record is the new batch
         student = await db.get(User, item.student_id)
         await batch_notices.notify_batch_change(db, item.batch_id, ["batch"], action_url=batch_notices.COURSE_URL, students=[student])
     await db.commit()
@@ -1335,6 +1338,9 @@ async def create_payment(payload: dict, user: User = Depends(PAYMENTS_ADD), db: 
 
     due = date.fromisoformat(payload["due_date"]) if payload.get("due_date") else None
     is_manual = payload.get("provider", "manual") == "manual"
+    payment_mode = payload.get("payment_mode") or None
+    if payment_mode is not None and payment_mode not in fee_accounts.OFFLINE_MODES:  # itc-013: razorpay is the gateway's to record
+        raise HTTPException(422, f"payment_mode must be one of: {', '.join(fee_accounts.OFFLINE_MODES)}")
     item = Payment(
         user_id=target.id,
         division=target.division,
@@ -1347,6 +1353,7 @@ async def create_payment(payload: dict, user: User = Depends(PAYMENTS_ADD), db: 
         status=payload.get("status", "pending"),
         due_date=due,
         is_manual=is_manual,
+        payment_mode=payment_mode,
     )
     db.add(item)
     await db.flush()
