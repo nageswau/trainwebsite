@@ -4,7 +4,7 @@ readers see active rows. The catalogue is global (T17), so there is no row scope
 
 Bodies are untyped dicts parsed by services/telecaller._parse, so a 422 is one sentence naming the field (the tel-001 idiom)."""
 
-from typing import Literal
+from typing import Literal, NamedTuple
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException
@@ -199,9 +199,17 @@ async def update_campaign(campaign_id: UUID, payload: dict = Body(...), user: Us
 
 # --- named lists: lost reasons (ccrm-006, DEC-SCOPE-264 D8) and counseling objections (itc-010, DEC-SCOPE-343 C6) ------------------------
 # Same shape and rules: name + active + sort order; managers write; a rename keeps the id; never deleted (deactivating hides it).
-NamedList = tuple  # (model, unique index, noun, audit prefix, entity type)
-LOST_REASONS: NamedList = (LeadLostReason, LOST_REASON_NAME_INDEX, "lost reason", "telecaller.lost_reason", "lead_lost_reason")
-OBJECTIONS: NamedList = (LeadCounselingObjection, OBJECTION_NAME_INDEX, "objection", "telecaller.counseling_objection", "lead_counseling_objection")
+class NamedList(NamedTuple):
+    model: type[LeadLostReason] | type[LeadCounselingObjection]
+    name_index: str  # the case-insensitive unique name index
+    noun: str  # "Lost reason" -- the 404 wording
+    a_noun: str  # "A lost reason" -- the duplicate-name wording
+    action: str  # audit action prefix
+    entity: str  # audit entity type
+
+
+LOST_REASONS = NamedList(LeadLostReason, LOST_REASON_NAME_INDEX, "Lost reason", "A lost reason", "telecaller.lost_reason", "lead_lost_reason")
+OBJECTIONS = NamedList(LeadCounselingObjection, OBJECTION_NAME_INDEX, "Objection", "An objection", "telecaller.counseling_objection", "lead_counseling_objection")
 
 
 def _named_out(row) -> dict:
@@ -209,36 +217,34 @@ def _named_out(row) -> dict:
 
 
 async def _named_page(kind: NamedList, db: AsyncSession, user: User, active: bool | None, q: str | None, limit: int, offset: int) -> dict:
-    model = kind[0]
+    model = kind.model
     require_reader(user)
     filters = active_filters(user, model.active, active) + _matching(like_pattern(q), model.name)
     return await _page(db, select(model).where(*filters), (model.sort_order, func.lower(model.name), model.id), limit, offset, _named_out)
 
 
 async def _named_create(kind: NamedList, db: AsyncSession, user: User, payload) -> dict:
-    model, index, noun, prefix, entity = kind
     require_manager(user)
     data = _body(LeadLostReasonCreate, payload)
     sort_order = data.sort_order
     if sort_order is None:
-        sort_order = min((await db.scalar(select(func.max(model.sort_order))) or 0) + 1, 9999)
-    row = model(name=data.name, sort_order=sort_order, active=True)
+        sort_order = min((await db.scalar(select(func.max(kind.model.sort_order))) or 0) + 1, 9999)
+    row = kind.model(name=data.name, sort_order=sort_order, active=True)
     db.add(row)
-    await flush_unique(db, index, f"A{'n' if noun[0] in 'aeiou' else ''} {noun} named “{data.name}” already exists")
-    audit(db, user, f"{prefix}_create", entity, row.id, ["name", "sort_order"])
+    await flush_unique(db, kind.name_index, f"{kind.a_noun} named “{data.name}” already exists")
+    audit(db, user, f"{kind.action}_create", kind.entity, row.id, ["name", "sort_order"])
     out = _named_out(row)
     await db.commit()
     return out
 
 
 async def _named_update(kind: NamedList, db: AsyncSession, user: User, row_id: UUID, payload) -> dict:
-    model, index, noun, prefix, entity = kind
     require_manager(user)
-    row = await _locked(db, model, row_id, noun.capitalize())
+    row = await _locked(db, kind.model, row_id, kind.noun)
     fields = apply_changes(row, _body(LeadLostReasonUpdate, payload).model_dump(exclude_unset=True))
-    await flush_unique(db, index, f"A{'n' if noun[0] in 'aeiou' else ''} {noun} named “{row.name}” already exists")
+    await flush_unique(db, kind.name_index, f"{kind.a_noun} named “{row.name}” already exists")
     if fields:
-        audit(db, user, f"{prefix}_update", entity, row.id, fields)
+        audit(db, user, f"{kind.action}_update", kind.entity, row.id, fields)
     out = _named_out(row)
     await db.commit()
     return out
