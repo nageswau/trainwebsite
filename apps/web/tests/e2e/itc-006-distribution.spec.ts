@@ -90,6 +90,10 @@ test("a source rule routes a website enquiry, and the team strategy switches to 
   for (const width of [820, 390]) {
     await page.setViewportSize({ width, height: 900 });
     expect(await noSideScroll(page)).toBe(true);
+    // QA-02: the short team settings stay above the long rules list on narrow screens
+    const [cardTop, listTop] = await Promise.all([page.getByRole("region", { name: "IT team" }), page.getByRole("region", { name: "Rules" })]
+      .map(async (l) => (await l.boundingBox())!.y));
+    expect(cardTop).toBeLessThan(listTop);
   }
 
   // Clean up this run's source rule from the list.

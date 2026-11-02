@@ -35,7 +35,7 @@ function TeamCard({ initial }: { initial: TeamStrategy }) {
   }
 
   return (
-    <section className="action-card" aria-labelledby={`${id}-title`}>
+    <section className="action-card telecaller-strategy" aria-labelledby={`${id}-title`}>
       <form className="form" onSubmit={save} aria-describedby={`${id}-feedback`}>
         <h3 id={`${id}-title`}>{initial.team_label} team</h3>
         <div className="field">
