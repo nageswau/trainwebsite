@@ -1,7 +1,7 @@
 # itc-013 — Per-enrolment fee account: design and plan
 
 Source: `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` §itc-013. Dependency itc-001 merged (PR #408). Owner direction (Q-01 log):
-"proceed with recommended answers" — the answers below are the builder's calls, recorded as `DEC-SCOPE-344`.
+"proceed with recommended answers" — the answers below are the builder's calls, recorded as `DEC-SCOPE-346`.
 
 ## Open questions taken with the recommended answer
 - **Q-12 (GST):** out of scope until confirmed. `tax` is part of the account and is always `0`; `NEEDS_CONFIRMATION`.
@@ -37,7 +37,7 @@ division). Under a row lock on the enrolment's owed rows, the oldest-due owed ro
 - `payment_mode` ∈ cash, upi, card, bank_transfer, cheque (razorpay is set only by the gateway). Audit via itc-001 `audit_change`.
 
 ## Payment mode and receipt (AC4)
-- Mig `0228`: `payments.payment_mode` nullable + CHECK (6 values); backfill `razorpay` on paid gateway rows.
+- Mig `0230`: `payments.payment_mode` nullable + CHECK (6 values); backfill `razorpay` on paid gateway rows.
 - `_mark_paid` sets `razorpay` for a gateway payment; `POST /admin/payments` accepts an optional validated `payment_mode`.
 - Receipt PDF gains "Payment mode" and "Transaction reference"; an enrolment-fee receipt's remaining balance is the account balance.
 - `/payments/mine` and `/admin/payments` gain `payment_mode`, `provider_reference` (additive).
@@ -61,7 +61,7 @@ Payment readers (ledger, management IT revenue, bdm metrics, reports): a split k
 normal `enrollment_fee` row, so revenue counts it once. Webhook/verify unchanged except `payment_mode`. nehn-018/019/021 tests.
 
 ## Tasks (TDD)
-1. Migration 0228 + model column + CHECK; migration test.
+1. Migration 0230 + model column + CHECK; migration test.
 2. `fee_accounts.balance_for`/`account` + unit tests (45k → 20k → 25k; pending razorpay; discount after partial; legacy; agreement
    with `student_access`).
 3. Record-payment endpoint + tests (split, full, over-amount 422, wrong mode 422, grant 403, other division 403, audit row).
@@ -69,4 +69,4 @@ normal `enrollment_fee` row, so revenue counts it once. Webhook/verify unchanged
 5. Payment mode on `_mark_paid`, `create_payment`, `/payments/mine`, `/admin/payments`; receipt lines + balance.
 6. Portal columns (counselor students, admin enrollments).
 7. FE: `FeeAccountSummary`, `FeePaymentPanel` mount, WorkflowPanel specs; vitest.
-8. Playwright e2e; docs (DEC-SCOPE-344, API §12IP, RBAC §2.244, RTM, backlog status).
+8. Playwright e2e; docs (DEC-SCOPE-346, API §12IR, RBAC §2.246, RTM, backlog status).

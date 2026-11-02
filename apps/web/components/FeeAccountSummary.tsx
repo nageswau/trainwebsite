@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-// itc-013 (DEC-SCOPE-344): an IT student's fee account per enrolment -- computed by the API from confirmed payments only, so a pending
+// itc-013 (DEC-SCOPE-346): an IT student's fee account per enrolment -- computed by the API from confirmed payments only, so a pending
 // online payment never lowers the balance. Tax is shown as the API sends it (0 until GST is confirmed, Q-12).
 export type FeeAccount = {
   enrollment_id: string;

@@ -5011,9 +5011,57 @@ leads owned by an IT counselor). All routes **401** without a session.
   `{id, name, active, sort_order}`; a duplicate name (case-insensitive) is 409.
 - Lead timeline: new kind `counseling` (`event` `created | updated`, `to_value` = the outcome).
 
-## 12IP. Per-enrolment fee account (itc-013) — addendum, 2026-11-02
+## 12IP. Batch timetable and session calendar (itc-020) — addendum, 2026-11-02
 
-`DEC-SCOPE-344`. Migration `0228_payment_mode`. Additive.
+`DEC-SCOPE-344`. Migration `0228_batch_timetable`. RBAC §2.244.
+
+- Slot body `{weekday 0–6 (0 = Monday), start_time "HH:MM", end_time "HH:MM", mode "online"|"offline", room?, meeting_url?, topic?}`:
+  local times in the batch's timezone; `end_time > start_time`; `offline` needs a `room` (≤120); `meeting_url` must be `http(s)://…`
+  (≤500); `topic` ≤160; blank strings are null. Any breach → **422**.
+- `GET /it/batches/{id}/timetable` → **200** `{batch_id, items: [slot]}`, slot `{id, batch_id, weekday, day, start_time, end_time, mode,
+  room, meeting_url, topic}` (sorted by day, then start).
+- `POST /it/batches/{id}/timetable` → **201** slot. `PUT /it/batches/{id}/timetable/{slot_id}` (replaces) → **200** slot.
+  `DELETE /it/batches/{id}/timetable/{slot_id}` → **204** (its cancellations go with it). Unknown batch, or a slot of another batch →
+  **404**. A slot whose weekday and times intersect another slot of the same batch, or a slot of another batch with the same trainer
+  whose dates intersect → **409** (the detail names the clash). Audited `batch.timetable.create|update|delete` (ids + changed field names).
+- `POST /it/batches/{id}/timetable/{slot_id}/cancellations` `{occurs_on: date, reason (3–500)}` → **201** `{slot_id, occurs_on, reason}`.
+  Not a class date of the slot within the batch dates, or before today (batch timezone) → **422**; already cancelled → **409**. Audited
+  `batch.timetable.cancel`; each active student of the batch gets the itc-002 notice `it.batch.changed` (fixed text, link
+  `/it/student/timetable`).
+- `GET /it/timetable?from=&to=&batch_id=` → **200** `{from, to, can_edit, items}`: inclusive dates, default today…today+13 (IST); more than
+  62 days or `to < from` → **422**. Items `{id, kind "class"|"live_session", slot_id, batch_id, batch, program, date, starts_at, ends_at,
+  mode, room, meeting_url, topic, status "scheduled"|"cancelled", cancel_reason}`, sorted by `starts_at`; classes are computed from the
+  slots inside the batch dates, and the batches' `LiveSession`s in the window are merged in. Scope: `it_student` → batches with an active
+  enrolment, cancelled items omitted, `meeting_url` null while the nehn-018 `live_classes` feature is locked; `trainer` → own batches; IT
+  `counselor` → batches of their itc-003 students' active enrolments, `meeting_url` always null; `it_admin`/`super_admin` → all. Any other
+  role → **403**; a `batch_id` outside the caller's scope → **404**.
+- `GET /portal/it/{student|trainer|counselor|admin}/timetable` → header-only payload "Timetable" (the page reads the routes above).
+
+## 12IQ. IT student record (itc-012) — addendum, 2026-11-02
+
+`DEC-SCOPE-345`. Migration `0229_it_student_profiles` (table `it_student_profiles`, PK `student_user_id`; nullable
+`enrollments.start_date`, `end_date`, `delivery_mode`). Additive; downgrade refuses while profiles or overrides exist.
+
+- `GET /it/me/profile`, `PATCH /it/me/profile` — the IT student only (403 otherwise).
+- `GET|PATCH /counselor/it/students/{id}/profile` — the IT counselor, linked students only (itc-003); other roles 403; an unlinked or
+  non-IT student 404.
+- `GET|PATCH /admin/it/students/{id}/profile` — the IT Admin, any IT student; other roles 403; a non-IT student 404.
+- `PATCH /counselor/it/students/{id}/enrollments/{enrollment_id}` and `PATCH /admin/it/students/{id}/enrollments/{enrollment_id}` — body
+  `{start_date?, end_date?, delivery_mode?}` (`Online|Offline|Hybrid`; `null` clears the override). An enrolment of another student 404;
+  an effective end before the effective start 422 (`loc: body.end_date`). Audit `it.enrollment.dates_update` with before/after.
+- Profile PATCH body (all optional, `extra` forbidden, only sent fields change, blank text clears): `date_of_birth` (1900..today),
+  `address` ≤300, `city` ≤80, `qualification` ≤120, `graduation_year` 1950..this year + 6, `emergency_contact_name` ≤120,
+  `emergency_contact_relation` ≤60, `emergency_contact_phone` (7-20 digits/spaces/+-(), ≥7 digits). Audit `it.student_profile.update`
+  with `{fields, role}` only (no values).
+- Response (GET and PATCH): `{student: {id, full_name, student_code}, profile: {…fields, exists, updated_at, updated_by_name},
+  enrollments: [{id, enrollment_code, program, batch, status, start_date, end_date, delivery_mode, start_date_override,
+  end_date_override, delivery_mode_override, batch_start_date, batch_end_date, batch_mode}]}` — effective value = override, else batch.
+- `GET /portal/it/counselor/students` and `GET /portal/it/admin/students` — each row adds `profile` (the page link), column type
+  `student_profile`.
+
+## 12IR. Per-enrolment fee account (itc-013) — addendum, 2026-11-02
+
+`DEC-SCOPE-346`. Migration `0230_payment_mode`. Additive.
 
 - `GET /it/enrollments/{id}/fee-account` → `{enrollment_id, enrollment_code, course, batch, currency, course_fee, discount_approved, tax,
   total_payable, paid_confirmed, credits, balance, state}` (numbers; `state` = `not_billed | enrolled_pending_payment | partially_paid |

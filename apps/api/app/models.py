@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -19,6 +19,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    Time,
     UniqueConstraint,
     Uuid,
     false,
@@ -205,7 +206,46 @@ class Enrollment(Base, TimestampMixin):
     slot_locked: Mapped[bool] = mapped_column(Boolean, default=True)
     status: Mapped[str] = mapped_column(String(30), default="active")
     progress_percent: Mapped[int] = mapped_column(Integer, default=0)
+    # itc-012 (DEC-SCOPE-345): per-student overrides; NULL means "the batch's" (`batches.start_date/end_date/mode`). Nothing copies the
+    # batch here, so a batch change never overwrites an override.
+    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    delivery_mode: Mapped[str | None] = mapped_column(String(30), nullable=True)
     __table_args__ = (UniqueConstraint("student_id", "batch_id", name="uq_enrollment_student_batch"),)
+
+
+class BatchTimetableSlot(Base, TimestampMixin):
+    """itc-020 (DEC-SCOPE-344): one weekly class of a batch -- `weekday` 0=Mon..6=Sun, local times in the batch's timezone. Dated
+    classes are computed from these rows (`services/batch_timetable.py`), never stored (T1)."""
+
+    __tablename__ = "batch_timetable_slots"
+    __table_args__ = (
+        CheckConstraint("weekday BETWEEN 0 AND 6", name="ck_batch_timetable_slots_weekday"),
+        CheckConstraint("end_time > start_time", name="ck_batch_timetable_slots_times"),
+        CheckConstraint("mode IN ('online', 'offline')", name="ck_batch_timetable_slots_mode"),
+        CheckConstraint("mode = 'online' OR room IS NOT NULL", name="ck_batch_timetable_slots_room"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("batches.id", ondelete="CASCADE"), index=True)
+    weekday: Mapped[int] = mapped_column(SmallInteger)
+    start_time: Mapped[time] = mapped_column(Time)
+    end_time: Mapped[time] = mapped_column(Time)
+    mode: Mapped[str] = mapped_column(String(10))
+    room: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    meeting_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    topic: Mapped[str | None] = mapped_column(String(160), nullable=True)
+
+
+class BatchTimetableCancellation(Base, TimestampMixin):
+    """itc-020 (DEC-SCOPE-344): one cancelled class -- a slot on one date. Students no longer see it; staff see it with the reason."""
+
+    __tablename__ = "batch_timetable_cancellations"
+    __table_args__ = (UniqueConstraint("slot_id", "occurs_on", name="uq_batch_timetable_cancellations_slot_day"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    slot_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("batch_timetable_slots.id", ondelete="CASCADE"))
+    occurs_on: Mapped[date] = mapped_column(Date)
+    reason: Mapped[str] = mapped_column(Text)
+    cancelled_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
 class Agreement(Base, TimestampMixin):
@@ -2143,6 +2183,24 @@ class ItStudentCounselor(Base, TimestampMixin):
     assigned_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+class ItStudentProfile(Base, TimestampMixin):
+    """itc-012 (DEC-SCOPE-345): the IT student's structured record -- personal details and the emergency contact (personal data: never
+    logged or exported; read by the student, their itc-003 counselor and the IT Admin only, C1). Edited by `services/it_student_profiles.py`.
+    The legacy `users.profile` JSON (education, skills) is untouched."""
+
+    __tablename__ = "it_student_profiles"
+    student_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), primary_key=True)
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    address: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    qualification: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    graduation_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    emergency_contact_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    emergency_contact_relation: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    emergency_contact_phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
 class OverseasStudentArchive(Base, TimestampMixin):
     """ccrm-040 (DEC-SCOPE-276 AR4): an archived overseas student -- hidden from the staff working lists with their applications, never
     deleted. `created_at` is the archive time; a restore deletes the row (the audit log keeps the history)."""
@@ -2697,7 +2755,7 @@ class EMISchedule(Base, TimestampMixin):
     created_by_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
-# itc-013 (DEC-SCOPE-344, migration 0228 repeats it): how a payment was made, shown on the receipt. Staff record the offline ones;
+# itc-013 (DEC-SCOPE-346, migration 0230 repeats it): how a payment was made, shown on the receipt. Staff record the offline ones;
 # `razorpay` is set only by the gateway's own confirmation.
 PAYMENT_MODES = ("cash", "upi", "card", "bank_transfer", "cheque", "razorpay")
 

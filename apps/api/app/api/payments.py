@@ -78,7 +78,7 @@ async def _receipt_lines(db: AsyncSession, item: Payment, payer: User, receipt_n
         course, batch = row if row else (None, None)
     balance = 0.0
     if item.division == "it" and item.reference_type in fee_accounts.FEE_REFERENCES and item.reference_id:
-        # itc-013: an enrolment fee's balance is its fee account's (DEC-SCOPE-344), whatever bill this payment settled
+        # itc-013: an enrolment fee's balance is its fee account's (DEC-SCOPE-346), whatever bill this payment settled
         balance = (await fee_accounts.balance_for(db, [item.reference_id]))[item.reference_id]["balance"]
     elif item.emi_schedule_id:
         balance = float(await db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.emi_schedule_id == item.emi_schedule_id, Payment.status.not_in(PAID_STATUSES))) or 0)

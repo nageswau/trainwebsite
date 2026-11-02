@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Browser, type Page } from "@playwright/test";
 
-// itc-013 (DEC-SCOPE-344): an enrolled IT student owes the course fee; the IT Admin records a part payment (UPI, with its reference) and
+// itc-013 (DEC-SCOPE-346): an enrolled IT student owes the course fee; the IT Admin records a part payment (UPI, with its reference) and
 // then the rest (cash) on the Payments page; the balance follows each payment on the Enrolments page and on the student's Fees page,
 // whose paid fee cards name their mode and reference. A fresh student per run, so it repeats on one database.
 

@@ -24,7 +24,7 @@ type PaymentRow = {
   gross_amount?: number;
   discount_amount?: number;
   paid_at?: string | null;
-  // itc-013 (DEC-SCOPE-344): how a paid fee was paid and its transaction reference; optional, as above.
+  // itc-013 (DEC-SCOPE-346): how a paid fee was paid and its transaction reference; optional, as above.
   payment_mode?: string | null;
   provider_reference?: string | null;
 };

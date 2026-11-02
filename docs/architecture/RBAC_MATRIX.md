@@ -3492,7 +3492,29 @@ reads their own notices (`/workflows/notifications`, unchanged). No grant change
 
 No grant changes. Pinned by `apps/api/tests/test_itc_010_counseling.py`.
 
-### 2.244 Per-enrolment fee account *(added 2026-11-02 — `DEC-SCOPE-344`, itc-013)*
+### 2.244 Batch timetable and session calendar *(added 2026-11-02 — `DEC-SCOPE-344`, itc-020)*
+
+| Route | Anonymous | it_admin / super_admin | trainer | it_student | IT counselor | other roles |
+|---|---|---|---|---|---|---|
+| `GET/POST /it/batches/{id}/timetable`, `PUT/DELETE …/{slot_id}`, `POST …/{slot_id}/cancellations` | 401 | 200 / 201 / 204 / 404 / 409 / 422 | 403 | 403 | 403 | 403 (coordinator, overseas_admin included) |
+| `GET /it/timetable` | 401 | 200 all batches | 200 own batches | 200 actively enrolled batches (no cancelled classes) | 200 linked students' batches (no join links) | 403 |
+| `GET /it/timetable?batch_id=` out of scope | 401 | 404 unknown | 404 | 404 | 404 | 403 |
+
+Inline checks (`services/batch_timetable.py` `require_editor`, `_scoped_batches`). Pinned by `apps/api/tests/test_itc_020_timetable.py`.
+
+### 2.245 IT student record *(added 2026-11-02 — `DEC-SCOPE-345`, itc-012)*
+
+| Route / page | Anonymous | it_student | counselor (IT) | it_admin | every other role (trainer, hr_team, placement_team, super_admin, overseas) |
+|---|---|---|---|---|---|
+| `GET/PATCH /it/me/profile` | 401 | own | 403 | 403 | 403 |
+| `GET/PATCH /counselor/it/students/{id}/profile`, `PATCH …/enrollments/{eid}` | 401 | 403 | linked student 200, else 404 | 403 | 403 |
+| `GET/PATCH /admin/it/students/{id}/profile`, `PATCH …/enrollments/{eid}` | 401 | 403 | 403 | 200 (IT students; else 404) | 403 |
+| `/it/{counselor,admin}/students/{id}/profile` (pages) | sign-in | access card | own scope | any IT student | access card |
+
+The emergency contact is personal data (C1, Q-11 `NEEDS_CONFIRMATION`): no trainer/HR route, no export, audit field names only. No grant
+changes. Pinned by `apps/api/tests/test_itc_012_*.py`.
+
+### 2.246 Per-enrolment fee account *(added 2026-11-02 — `DEC-SCOPE-346`, itc-013)*
 
 | Route | Anonymous | it_student | counselor (IT) | `payments.view` / `payments.add` holder in IT or every division | holder in overseas | every other role |
 |---|---|---|---|---|---|---|

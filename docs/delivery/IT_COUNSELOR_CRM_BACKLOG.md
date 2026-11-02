@@ -417,9 +417,10 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** a student with two enrolments.
 - **Regression risks:** the IT portal profile section (`portal.py:191`).
 - **Complexity:** medium. **Risk:** low.
+- **Status:** built as `DEC-SCOPE-345` (migration `0229`, API §12IQ, RBAC §2.245). Emergency contact visible to the student, their IT counselor and the IT Admin only (Q-11 call C1, `NEEDS_CONFIRMATION`); the enrolment documents checklist is deferred until itc-011's template exists (C4).
 
 #### itc-013: Per-enrolment fee account (payable, paid, balance, mode, receipt reference)
-- **Status:** built as `DEC-SCOPE-344` (migration `0228_payment_mode`, API §12IP, RBAC §2.244). Q-12/Q-13 built with the recommended
+- **Status:** built as `DEC-SCOPE-346` (migration `0230_payment_mode`, API §12IR, RBAC §2.246). Q-12/Q-13 built with the recommended
   answers (owner: proceed with recommended answers): tax 0 (GST still open); computed account, no overpayment (a payment may not exceed
   the oldest owed bill).
 - **Business requirement:** §6 fee dashboard; §4 "Fee & payment"; §9 "Recalculate balance after each confirmed payment, refund, or approved fee adjustment"; §12 AC5.
@@ -632,6 +633,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** small. **Risk:** low.
 
 #### itc-020: Batch timetable and session calendar
+- **Status:** built as `DEC-SCOPE-344` (migration `0228_batch_timetable`, API §12IP, RBAC §2.244); design
+  `docs/superpowers/specs/2026-11-02-itc-020-batch-timetable-design.md`. Q-18 answered by Claude's calls T1-T3 (computed classes,
+  no holiday calendar, same-batch/same-trainer overlap → 409), `NEEDS_CONFIRMATION`.
 - **Business requirement:** §4 "timetable, class link/room, session calendar"; §6; §8 Faculty "Today's classes".
 - **Existing behavior:** `Batch.schedule` is free text (160 characters). `LiveSession` has dated online sessions with meeting links (`models.py:4309`). There is no recurring timetable or room, and `portal.py:236` states there is "no scheduled-session calendar".
 - **Expected behavior:** a batch timetable of weekly slots (day, start, end, mode, room or link, topic). It generates or links session occurrences (reusing `LiveSession` for online slots; Q-18), and shows a calendar view for students, trainers and counselors.
@@ -1226,8 +1230,8 @@ That makes about 24 migrations. They must be linear (`0220` onward), so assign e
 | Q-09 | Onboarding checklist: reuse the ccrm-018/019 engine? What items does it contain? | 011 |
 | Q-10 | Does counselor conversion skip the student consent step (`pending_consent`)? What if the email belongs to an existing overseas student? | 011 |
 | Q-11 | Which roles may see the emergency contact? | 012 |
-| Q-12 | GST: included in the course fee, added on top, or out of scope? **Built with the recommended answer (owner: proceed with recommended answers), DEC-SCOPE-344: out of scope for now, `tax` = 0; still open.** | 013 |
-| Q-13 | Fee account: a stored table or computed? How are overpayments handled? **Built with the recommended answer, DEC-SCOPE-344: computed from `Payment`; a recorded payment may not exceed the oldest owed bill, so no overpayment is created.** | 013 |
+| Q-12 | GST: included in the course fee, added on top, or out of scope? **Built with the recommended answer (owner: proceed with recommended answers), DEC-SCOPE-346: out of scope for now, `tax` = 0; still open.** | 013 |
+| Q-13 | Fee account: a stored table or computed? How are overpayments handled? **Built with the recommended answer, DEC-SCOPE-346: computed from `Payment`; a recorded payment may not exceed the oldest owed bill, so no overpayment is created.** | 013 |
 | Q-14 | Discount: keep the direct grant (nehn-021), or add maker-checker? | 014 |
 | Q-15 | Refunds: manual only, or the Razorpay refund API? Do refunds reduce reported revenue? | 015 |
 | Q-16 | Reminder schedule (days before and after due) and channels | 016 |

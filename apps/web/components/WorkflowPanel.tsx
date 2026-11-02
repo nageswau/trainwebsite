@@ -387,7 +387,7 @@ function createUserRoleOptions(user: User) {
 // nehn-021 (DEC-SCOPE-309 D5): the admins' Payments page and the finance roles' (/management/payments) share this form.
 const DISCOUNT_SPEC: ActionSpec = { title: "Apply discount", description: "Lowers a still-unpaid fee -- never a paid one. Requires a written reason.", endpoint: "/api/v1/admin/payments/:payment_id/discount", success: "Discount applied.", permission: "discounts.add", pathFields: ["payment_id"], fields: [{ name: "payment_id", label: "Payment reference", type: "text", required: true }, { name: "amount", label: "New (discounted) amount", type: "number", required: true }, { name: "reason", label: "Reason", type: "textarea", required: true }] };
 
-// itc-013 (DEC-SCOPE-344): how an offline payment was made; `razorpay` is recorded only by the gateway itself.
+// itc-013 (DEC-SCOPE-346): how an offline payment was made; `razorpay` is recorded only by the gateway itself.
 const PAYMENT_MODE_OPTIONS = [{ value: "cash", label: "Cash" }, { value: "upi", label: "UPI" }, { value: "card", label: "Card" }, { value: "bank_transfer", label: "Bank transfer" }, { value: "cheque", label: "Cheque" }];
 const RECORD_FEE_PAYMENT_SPEC: ActionSpec = {
   title: "Record enrolment payment", description: "A part or full offline payment against an enrolment's fee (the reference is on the Enrolments page). The balance updates at once and a receipt is issued.",

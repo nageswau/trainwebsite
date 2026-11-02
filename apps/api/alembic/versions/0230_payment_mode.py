@@ -1,9 +1,9 @@
 """itc-013 -- per-enrolment fee account: the payment mode.
 
-Revision ID: 0228_payment_mode
-Revises: 0227_lead_counseling_records
+Revision ID: 0230_payment_mode
+Revises: 0229_it_student_profiles
 
-DEC-SCOPE-344. `payments` gains `payment_mode` (nullable; one of MODES), shown with the transaction reference on the receipt. Only a
+DEC-SCOPE-346. `payments` gains `payment_mode` (nullable; one of MODES), shown with the transaction reference on the receipt. Only a
 confirmed gateway payment is known to have been made through Razorpay, so only those rows are backfilled; every other existing row
 keeps an unknown (NULL) mode rather than a guessed one. The fee account itself is computed from `payments` (Q-13), so it needs no table.
 0001 builds a fresh database from the current models, so the column is added only when missing and the CHECK is dropped and re-created.
@@ -12,8 +12,8 @@ The column only ever holds the mode, so the downgrade drops it.
 
 from alembic import op
 
-revision = "0228_payment_mode"
-down_revision = "0227_lead_counseling_records"
+revision = "0230_payment_mode"
+down_revision = "0229_it_student_profiles"
 branch_labels = None
 depends_on = None
 

@@ -204,6 +204,8 @@ async def _it_student(db: AsyncSession, user: User, section: str):
                 {"field": "Skills", "value": ", ".join(user.profile.get("skills", []))},
             ),
         )
+    if section == "timetable":
+        return _payload("Timetable", "Your upcoming classes: day, time, room or link.")  # itc-020 (DEC-SCOPE-344): header only -- the page's panel reads /it/timetable
     if section == "course":
         # "Available batches" (STU-001) and "Live classes" (STU-003) used to be dumped
         # here as unclickable text-panel strings -- both now have real interactive
@@ -452,6 +454,8 @@ async def _it_student(db: AsyncSession, user: User, section: str):
 async def _trainer(db: AsyncSession, user: User, section: str):
     batches = (await db.scalars(select(Batch).where(Batch.trainer_id == user.id).order_by(Batch.start_date.desc()))).all()
     batch_ids = [b.id for b in batches]
+    if section == "timetable":
+        return _payload("Timetable", "Classes of the batches you teach.")  # itc-020 (DEC-SCOPE-344): header only -- the page's panel reads /it/timetable
     if section == "dashboard":
         assignments = await db.scalar(select(func.count()).select_from(Assignment).where(Assignment.batch_id.in_(batch_ids))) if batch_ids else 0
         pending = (
@@ -1627,10 +1631,11 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             if section == "students" and division == "it" and user.role == "it_admin":
                 # itc-003 (DEC-SCOPE-337): each IT student's counselor and the IT Admin's assign/change control (csc-005's, IT picker).
                 counselors = await it_student_counselors.counselors_of(db, [u.id for u in rows])
-                columns += [("counselor", "EduSphere counsellor"), ("assign", "", "assign_it_student_counselor")]
+                columns += [("counselor", "EduSphere counsellor"), ("assign", "", "assign_it_student_counselor"), ("profile", "", "student_profile")]
                 for row in table:
                     counselor = counselors.get(row["id"])
                     row |= {"counselor": counselor.full_name if counselor else "Not assigned", "counselor_id": str(counselor.id) if counselor else None, "assign": row["id"]}
+                    row["profile"] = f"/it/admin/students/{row['id']}/profile"  # itc-012
             return _payload(section.title(), "Role-scoped user administration.", columns, table)
         if section == "agents" and (division == "overseas" or user.role == "super_admin"):
             # AGT-001: Overseas Admin's own approve/reject queue -- the generic
@@ -1721,6 +1726,8 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 (("id", "reference"), ("title", "Program"), ("duration", "Duration"), ("fees", "Fees"), ("active", "Active")),
                 ({"id": p.id, "title": p.title, "duration": p.duration, "fees": float(p.fees), "active": p.active} for p in rows),
             )
+        if section == "timetable" and user.role in {"it_admin", "super_admin"}:
+            return _payload("Timetable", "Weekly class slots per batch, and the calendar they produce.")  # itc-020 (DEC-SCOPE-344): header only -- the page's panel reads /it/timetable
         if section == "batches":
             rows = (await db.execute(select(Batch, Program).join(Program, Program.id == Batch.program_id).order_by(Batch.start_date.desc()))).all()
             counts = dict((await db.execute(select(Enrollment.batch_id, func.count()).group_by(Enrollment.batch_id))).all())
@@ -1813,8 +1820,10 @@ def _leads_payload(rows: list[Enquiry]):
 async def _it_counselor(db: AsyncSession, user: User, section: str):
     """tel-017 (DEC-SCOPE-076 C1): an IT counselor works leads only -- Dashboard, My Leads and (tel-016) Appointments; tel-018 adds the
     student link; itc-003 (DEC-SCOPE-337) My Students. Every overseas section stays the overseas counselor's, so anything else is a 404."""
-    if section not in {"dashboard", "leads", "appointments", "students"}:
+    if section not in {"dashboard", "leads", "appointments", "students", "timetable"}:
         return None
+    if section == "timetable":
+        return _payload("Timetable", "Classes of your students' batches.")  # itc-020 (DEC-SCOPE-344): header only -- the page's panel reads /it/timetable
     if section == "leads":
         return _leads_payload(await _routed_leads(db, user))
     if section == "students":  # itc-003 (DEC-SCOPE-337): the IT students linked to this counselor
@@ -1823,9 +1832,11 @@ async def _it_counselor(db: AsyncSession, user: User, section: str):
         return _payload(
             "My Students",
             "IT students you are the counselor for.",
-            (("student_code", "Student ID"), ("name", "Name"), ("email", "Email"), ("phone", "Phone"), ("since", "Your student since"), ("fee_balance", "Fee balance")),
+            # itc-012 (DEC-SCOPE-345): each row links the student's record (profile, emergency contact, enrolment dates)
+            (("student_code", "Student ID"), ("name", "Name"), ("email", "Email"), ("phone", "Phone"), ("since", "Your student since"), ("fee_balance", "Fee balance"),
+             ("profile", "", "student_profile")),
             ({"id": s["id"], "student_code": s["student_code"], "name": s["full_name"], "email": s["email"], "phone": s["phone"], "since": today_ist(s["linked_since"]).isoformat(),
-              "fee_balance": _fee_balance(balances[s["id"]])} for s in mine["items"]),
+              "fee_balance": _fee_balance(balances[s["id"]]), "profile": f"/it/counselor/students/{s['id']}/profile"} for s in mine["items"]),
         )  # fmt: skip
     if section == "appointments":  # tel-016 AP14: header only -- the page's panel reads /counselor/appointments
         return _payload("Appointments", "Counselling appointments booked for your leads.")

@@ -1,4 +1,4 @@
-"""itc-013 (DEC-SCOPE-344) -- the per-enrolment fee account, computed from `Payment` (Q-13: no stored table, so it cannot drift).
+"""itc-013 (DEC-SCOPE-346) -- the per-enrolment fee account, computed from `Payment` (Q-13: no stored table, so it cannot drift).
 
 An enrolment's fee rows are its IT `enrollment_fee` payments that bill something (failed or cancelled attempts bill nothing). From them,
 in one grouped query (`balance_for`, fixed query count for list pages):

@@ -1,4 +1,4 @@
-"""itc-013 (DEC-SCOPE-344) -- the per-enrolment fee account: one computed definition (`services/fee_accounts.py`, Q-13), staff recording
+"""itc-013 (DEC-SCOPE-346) -- the per-enrolment fee account: one computed definition (`services/fee_accounts.py`, Q-13), staff recording
 a partial or full offline payment with its mode and transaction reference, the receipt carrying both, and who may read an account
 (the student their own, the IT counselor their linked students, a `payments.view` holder in IT)."""
 

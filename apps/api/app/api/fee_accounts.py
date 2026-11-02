@@ -1,6 +1,6 @@
-"""itc-013 (DEC-SCOPE-344) -- the per-enrolment fee account: read by the student (their own), the IT counselor (their linked students,
+"""itc-013 (DEC-SCOPE-346) -- the per-enrolment fee account: read by the student (their own), the IT counselor (their linked students,
 itc-003) and a `payments.view` holder in IT; an offline payment recorded by a `payments.add` holder in IT. A record outside the caller's
-reach is 404; a role with no access at all is 403. API_CONTRACT.md §12IP; RBAC_MATRIX.md §2.244."""
+reach is 404; a role with no access at all is 403. API_CONTRACT.md §12IR; RBAC_MATRIX.md §2.246."""
 
 from decimal import Decimal
 from typing import Annotated, Literal

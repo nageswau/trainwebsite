@@ -10,7 +10,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }), useSearchParams: () => new URLSearchParams(), usePathname: () => "/it/admin/payments",
 }));
 
-// itc-013 (DEC-SCOPE-344): the IT student's Fees page leads with a fee summary per enrolment; a paid fee card names its mode and
+// itc-013 (DEC-SCOPE-346): the IT student's Fees page leads with a fee summary per enrolment; a paid fee card names its mode and
 // transaction reference (AC4). The overseas student's Payments page (same panel) never asks for IT fee accounts.
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const ACCOUNT = {
