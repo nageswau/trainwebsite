@@ -38,9 +38,10 @@ def _policy(purpose: str, file: UploadFile) -> None:
         raise HTTPException(refused.status_code, refused.detail) from None
 
 
-async def read_image(file: UploadFile) -> tuple[bytes, str]:
-    """The image's bytes (metadata stripped where we can) and type, or 413/415 from the policy, 422 for an unreadable or out-of-range size."""
-    _policy("program_image", file)
+async def read_image(file: UploadFile, purpose: str = "program_image") -> tuple[bytes, str]:
+    """The image's bytes (metadata stripped where we can) and type, or 413/415 from the policy, 422 for an unreadable or out-of-range size.
+    itc-019 reuses it for the trainer photo (`purpose="trainer_photo"`)."""
+    _policy(purpose, file)
     content_type = str(file.content_type)
     data = await file.read()
     size = image_size(data, content_type)
