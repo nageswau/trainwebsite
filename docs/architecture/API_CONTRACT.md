@@ -5097,3 +5097,18 @@ leads owned by an IT counselor). All routes **401** without a session.
   reads `in_app`.
 - `GET /portal/it/trainer/profile` → header-only payload "Faculty Profile". `GET /portal/it/student/course` rows gain `trainer` (name, or
   "Not assigned yet").
+## 12IT. Batch, course and timetable change notifications (itc-025) — addendum, 2026-11-02
+
+`DEC-SCOPE-348`. No migration; no request or response change on existing routes (the notices are a side effect in the same transaction;
+a rollback sends nothing).
+
+- `PATCH /admin/batches/{id}` — a real change of `name`, `start_date`, `end_date`, `trainer_id`, `schedule`, `timezone` or `mode` sends
+  `it.batch.changed` to each `active` student of the batch and `it.batch.student_changed` to each distinct linked IT counselor (itc-003).
+  An identical value, or `capacity` / `enrollment_open` / `status` alone, sends nothing.
+- `POST|PUT|DELETE /it/batches/{id}/timetable[/{slot_id}]` — same recipients (summary `timetable`); a PUT with no difference sends
+  nothing. `POST …/{slot_id}/cancellations` — students as before, plus their counselors (summary `cancelled class`; never the reason).
+- `PATCH /admin/enrollments/{id}` with a different `batch_id` — the moved student and their counselor only; the record is the new batch
+  (summary `batch`). Same batch: nothing. A rejected enrolment: nothing.
+- Notice body = the itc-002 fixed text + ` Changed: <labels>.` from the fixed list (batch name, start date, end date, trainer, timetable,
+  time zone, mode, cancelled class, batch). `entity_type` `batch`, `entity_id` the batch id.
+- `GET /portal/it/counselor/notifications` — new header-only section for the IT counselor (PortalPage mounts `GET /workflows/notifications`).

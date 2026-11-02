@@ -804,6 +804,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** a transfer between batches with different counselors.
 - **Regression risks:** `admin.py` batch tests.
 - **Complexity:** small. **Risk:** low.
+- **Status:** built as `DEC-SCOPE-348` (no migration, API §12IT, RBAC §2.248). Summary = fixed field labels appended to the itc-002 text (no values); counselors get `it.batch.student_changed` and an IT counselor Notifications page.
 
 ### Phase 4: HR and placement (PDF Phase 4)
 

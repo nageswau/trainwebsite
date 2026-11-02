@@ -3536,3 +3536,12 @@ No grant changes (seed: it_admin and overseas_admin hold `payments.view/add`; su
 
 Inline checks (`api/trainer_profiles.py` → `services/trainer_profiles.py` `require_role`, `trainer_or_404`, `faculty_member`,
 `public_view`). Pinned by `apps/api/tests/test_itc_019_faculty_profiles.py`.
+### 2.248 Batch change notifications *(added 2026-11-02 — `DEC-SCOPE-348`, itc-025)*
+
+| Route / page | Anonymous | counselor (IT) | every other role |
+|---|---|---|---|
+| `GET /portal/it/counselor/notifications`, `/it/counselor/notifications` (page) | 401 / sign-in | 200 (own notices) | 404 / access card (as every IT counselor section) |
+
+No grant changes: the batch, enrolment and timetable writes keep their existing guards (IT Admin / Super Admin). Recipients are derived
+server-side (the batch's active students and their linked IT counselors); notices carry fixed text and field labels only. Pinned by
+`apps/api/tests/test_itc_025_batch_notices.py`.

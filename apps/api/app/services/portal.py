@@ -1826,8 +1826,10 @@ def _leads_payload(rows: list[Enquiry]):
 async def _it_counselor(db: AsyncSession, user: User, section: str):
     """tel-017 (DEC-SCOPE-076 C1): an IT counselor works leads only -- Dashboard, My Leads and (tel-016) Appointments; tel-018 adds the
     student link; itc-003 (DEC-SCOPE-337) My Students. Every overseas section stays the overseas counselor's, so anything else is a 404."""
-    if section not in {"dashboard", "leads", "appointments", "students", "timetable"}:
+    if section not in {"dashboard", "leads", "appointments", "students", "timetable", "notifications"}:
         return None
+    if section == "notifications":  # itc-025 (DEC-SCOPE-348): header only -- PortalPage mounts the shared list (GET /workflows/notifications)
+        return _payload("Notifications", "Your own notifications, including batch and timetable changes of your students.")
     if section == "timetable":
         return _payload("Timetable", "Classes of your students' batches.")  # itc-020 (DEC-SCOPE-344): header only -- the page's panel reads /it/timetable
     if section == "leads":
