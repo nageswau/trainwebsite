@@ -29,7 +29,8 @@ TABLE = "it_student_counselors"
 def test_migration_is_the_single_head():
     assert _migration.revision == HEAD
     script = ScriptDirectory.from_config(_config())
-    assert script.get_heads() == [HEAD]
+    # itc-006's 0223 now follows this revision: still one head, and this revision is in its chain
+    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
 
 
 def test_model_matches_the_migration():
