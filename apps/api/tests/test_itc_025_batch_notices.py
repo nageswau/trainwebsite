@@ -99,6 +99,8 @@ async def test_a_no_op_or_admin_only_save_sends_nothing(client, db_session):
     same = {"name": batch.name, "start_date": batch.start_date.isoformat(), "schedule": batch.schedule, "trainer_id": str(batch.trainer_id)}
     assert (await client.patch(f"/api/v1/admin/batches/{batch.id}", json=same)).status_code == 200
     assert (await client.patch(f"/api/v1/admin/batches/{batch.id}", json={"capacity": 15, "enrollment_open": False})).status_code == 200
+    refused = await client.patch(f"/api/v1/admin/batches/{batch.id}", json={"schedule": "Sat 9-11 am", "trainer_id": str(uuid.uuid4())})
+    assert refused.status_code == 422  # an invalid edit changes nothing and tells nobody
     assert await count(db_session, kids, STUDENT_EVENT) == 0 and await count(db_session, advisers, COUNSELOR_EVENT) == 0
 
 
