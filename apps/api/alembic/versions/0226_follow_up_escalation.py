@@ -1,7 +1,7 @@
 """itc-009 -- overdue follow-up escalation.
 
 Revision ID: 0226_follow_up_escalation
-Revises: 0224_tel_source_workload
+Revises: 0225_lead_merge
 
 DEC-SCOPE-342. `tel_settings` gains `escalate_after_hours` (0-168 whole hours; every existing team starts at 0 = off, so nothing changes
 until a manager opts in) and `lead_follow_ups` gains `escalated_at`, the once-only marker. The existing partial index
@@ -12,7 +12,7 @@ missing and the CHECK is dropped and re-created. Both columns are new and only e
 from alembic import op
 
 revision = "0226_follow_up_escalation"
-down_revision = "0224_tel_source_workload"
+down_revision = "0225_lead_merge"
 branch_labels = None
 depends_on = None
 

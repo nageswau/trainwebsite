@@ -6871,6 +6871,20 @@ class LeadStageMove(BaseModel):
         return {"duplicate_of": self.duplicate_of, "lost_reason_id": self.lost_reason_id, "lost_to": self.lost_to}
 
 
+# itc-007 (DEC-SCOPE-341): the lead fields a merge may take from the victim (services/lead_merge.py FIELDS repeats them)
+LeadMergeField = Literal["name", "email", "phone", "whatsapp_number", "city", "state", "qualification", "passing_year", "institution"]
+
+
+class LeadMergeIn(BaseModel):
+    """itc-007: merge the `victim` (its Lead ID) into the lead of the path. `use_victim` names the fields that take the victim's value even
+    where this lead has one (an empty field is always filled from the victim); `reason` is kept in the victim's stage history."""
+
+    model_config = ConfigDict(extra="forbid")
+    victim: Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True, min_length=1, max_length=20)]
+    use_victim: list[LeadMergeField] = Field(default_factory=list, max_length=9)
+    reason: BdmPipelineNote = None
+
+
 class LeadStageOut(BaseModel):
     id: UUID
     status: str
@@ -7181,7 +7195,7 @@ class LeadTimelineRow(BaseModel):
 
     id: UUID
     kind: Literal["created", "enquiry", "stage", "priority", "assignment", "handover", "student_link", "call", "message", "follow_up",
-                  "appointment", "milestone", "note", "meeting"]
+                  "appointment", "milestone", "note", "meeting", "merge"]
     at: datetime
     actor: LeadStageActor | None
     from_value: str

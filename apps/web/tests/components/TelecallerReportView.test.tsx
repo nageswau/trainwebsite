@@ -113,3 +113,18 @@ describe("TelecallerReportView (tel-024 §21)", () => {
     expect(screen.queryByRole("button", { name: "Download CSV" })).toBeNull();
   });
 });
+
+describe("Telecaller Report contact rate and handovers (itc-008 R1)", () => {
+  it("shows a rate to one decimal and a telecaller with no calls as a dash, never 'null'", () => {
+    const columns = [{ key: "telecaller", label: "Telecaller" }, { key: "contact_rate", label: "Contact rate (%)" }, { key: "handovers", label: "Handovers" }];
+    render(<TelecallerReportView kind="telecaller" error="" params={{}} basePath={BASE} report={report({
+      kind: "telecaller", title: "Telecaller Report", columns,
+      items: [{ telecaller: "Asha", contact_rate: 50, handovers: 2 }, { telecaller: "Idle", contact_rate: null, handovers: 0 }],
+      totals: { telecaller: "Total", contact_rate: 50, handovers: 2 },
+    })} />);
+    const [asha, idle] = within(screen.getByRole("table")).getAllByRole("row").slice(1, 3);
+    expect(within(asha).getByText("50.0")).toBeInTheDocument();
+    expect(idle).toHaveTextContent("Idle—0");
+    expect(screen.queryByText("null")).toBeNull();
+  });
+});

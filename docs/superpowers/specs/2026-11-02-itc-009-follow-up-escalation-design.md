@@ -3,7 +3,7 @@
 Source: `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` §itc-009 (business requirement §9 "Alert the owner when a follow-up is overdue;
 optionally escalate after a configurable period"; §3 step 3). Dependencies: itc-002 (`notifications/events.notify`, event
 `it.followup.overdue`, migration 0221) and itc-004 (Nurture stage, `lead_pipeline.follow_up_overdue`) — both on main.
-Decision: DEC-SCOPE-342. API §12IN. RBAC §2.243. Migration `0226_follow_up_escalation`.
+Decision: DEC-SCOPE-342. API §12IN. RBAC §2.242. Migration `0226_follow_up_escalation`.
 
 The user asked for autonomous execution with recommended answers; every choice below marked **(our call)** is recorded in
 DEC-SCOPE-342 as `NEEDS_CONFIRMATION` until a client confirms it.
@@ -72,4 +72,4 @@ No change to tel-020 alert kinds, ccrm-031, the notification centre, or follow-u
    inside threshold → none; older than the guard → none.
 4. Worker beat entry + task.
 5. Frontend panel field + vitest; e2e spec on the alerts page.
-6. Docs: DEC-SCOPE-342, API §12IN, RBAC §2.243, RTM, backlog status.
+6. Docs: DEC-SCOPE-342, API §12IN, RBAC §2.242, RTM, backlog status.

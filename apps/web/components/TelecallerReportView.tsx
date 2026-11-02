@@ -11,9 +11,11 @@ const EMPTY: Partial<Record<ReportKind, string>> = {
   pending_follow_ups: "No overdue follow-ups in this range.", // nehn-013
 };
 
-const show = (value: string | number | undefined) => (value === undefined || value === "" ? "—" : String(value));
+// itc-008: a null (no contact rate: no lead called) reads "—" too
+const show = (value: string | number | null | undefined) => (value === undefined || value === null || value === "" ? "—" : String(value));
 // nehn-013 QA-01: JSON drops a rate's ".0"; one decimal keeps the screen equal to the CSV and Excel.
-const cell = (key: string, value: string | number | undefined) => (key === "conversion_rate" && typeof value === "number" ? value.toFixed(1) : show(value));
+const RATES = new Set(["conversion_rate", "contact_rate"]);
+const cell = (key: string, value: string | number | null | undefined) => (RATES.has(key) && typeof value === "number" ? value.toFixed(1) : show(value));
 
 // tel-024 (DEC-SCOPE-109, EVID-019 §21): one management report -- a strip of report links (each report is its own address, so a view
 // can be shared and Back works), a plain GET filter form (no client JS), the table and its CSV. The columns, labels and options are the

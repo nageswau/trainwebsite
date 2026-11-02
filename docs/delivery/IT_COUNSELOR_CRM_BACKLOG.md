@@ -226,6 +226,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** medium.
 
 #### itc-007: Merge duplicate leads
+- **Status:** built as `DEC-SCOPE-341` (migration `0225_lead_merge`, API §12IM, RBAC §2.241); design
+  `docs/superpowers/specs/2026-11-02-itc-007-merge-duplicate-leads-design.md`. Q-07 answered by Claude's call M1 (managers and admins only),
+  `NEEDS_CONFIRMATION`.
 - **Business requirement:** §9 "let authorized users merge duplicates"; §3 step 1.
 - **Existing behavior:**
   - Duplicates are blocked at intake; "Add enquiry to this lead" exists (`LeadEnquiry`).
@@ -277,9 +280,10 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** the IST day boundary.
 - **Regression risks:** `test_tel_017/021/024` metric tests.
 - **Complexity:** small. **Risk:** low.
+- **Built (2026-11-02):** `DEC-SCOPE-340` — tiles and report share `flow_counts_by_user`; Appendix B's qualified "(or later)" not adopted (one definition); calls F1-F4/T1-T3 NEEDS_CONFIRMATION.
 
 #### itc-009: Overdue follow-up escalation for the IT team
-- **Status:** built as `DEC-SCOPE-342` (migration `0226`, API §12IN, RBAC §2.243). Escalation is opt-in (0 h = off by default); manager and IT admin Notifications pages added so the alert has a list to appear in.
+- **Status:** built as `DEC-SCOPE-342` (migration `0226`, API §12IN, RBAC §2.242). Escalation is opt-in (0 h = off by default); manager and IT admin Notifications pages added so the alert has a list to appear in.
 - **Business requirement:** §9 "Alert the owner when a follow-up is overdue; optionally escalate after a configurable period"; §3 step 3.
 - **Existing behavior:**
   - Telecaller alerts (Follow-up Due, Missed Follow-up, …) go to the telecaller only (`telecaller_alerts.py`).

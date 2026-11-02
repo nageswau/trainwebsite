@@ -26,11 +26,13 @@ SEARCHED = (Enquiry.lead_code, Enquiry.name, Enquiry.email, Enquiry.phone, Enqui
 
 
 def read_only(user: User, lead: Enquiry) -> bool:
-    """D1 / T19: once a counselor is assigned (`owner_id`), the telecaller keeps read access only; a manager still acts."""
-    return user.role == "telecaller" and lead.owner_id is not None
+    """D1 / T19: once a counselor is assigned (`owner_id`), the telecaller keeps read access only; a manager still acts. itc-007: a merged
+    lead is read only for everyone."""
+    return lead.merged_at is not None or (user.role == "telecaller" and lead.owner_id is not None)
 
 
 def require_writable(user: User, lead: Enquiry) -> None:
+    lead_pipeline.require_not_merged(lead)  # itc-007: before the handover rule, for every role
     if read_only(user, lead):
         logger.warning("lead_write_refused", extra={"extra_fields": {"actor_id": str(user.id), "lead_id": str(lead.id), "status": 403}})
         raise HTTPException(403, HANDED_OVER)

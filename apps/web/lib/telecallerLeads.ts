@@ -13,6 +13,7 @@ export type TelecallerLead = {
   status: string; status_label: string; source: string; priority: Priority; created_at: string; stage_changed_at: string;
   product: { id: string; name: string } | null; campaign: { id: string; name: string } | null; telecaller: PersonRef | null; counselor: PersonRef | null;
   read_only: boolean;
+  merged_at?: string | null; // itc-007: set when this lead was merged into `duplicate_of` (read only)
 } & LeadContact & LeadClosureFields;
 // ccrm-005 (DEC-SCOPE-260, LF1/LF5): the spec §3 contact, consent and referral fields of every lead. `marketing_opt_in` null = not asked.
 export type LeadContact = {
@@ -35,7 +36,12 @@ export const LEADS_URL = "/api/v1/telecaller/leads";
 export const DUPLICATE_CHECK_URL = `${LEADS_URL}/duplicate-check`;
 export const leadUrl = (id: string, suffix = "") => `${LEADS_URL}/${encodeURIComponent(id)}${suffix}`;
 // tel-011 F9: follow_up; nehn-012: the created range
-export const LEAD_LIST_FILTERS = ["status", "priority", "product_id", "campaign_id", "follow_up", "created_from", "created_to"] as const;
+// itc-008: source, last-contact and next-follow-up ranges (India-time days, inclusive)
+export const LAST_CONTACT_FILTERS = ["last_contact_from", "last_contact_to"] as const;
+export const NEXT_FOLLOW_UP_FILTERS = ["next_follow_up_from", "next_follow_up_to"] as const;
+export const LEAD_LIST_FILTERS = [
+  "status", "priority", "product_id", "campaign_id", "follow_up", "created_from", "created_to", "source", ...LAST_CONTACT_FILTERS, ...NEXT_FOLLOW_UP_FILTERS,
+] as const;
 export type LeadListFilter = (typeof LEAD_LIST_FILTERS)[number];
 export const FOLLOW_UP_FILTERS = [{ key: "today", label: "Due today" }, { key: "overdue", label: "Overdue" }] as const;
 
@@ -57,6 +63,20 @@ export function telHref(phone: string | null): string | null {
 /** tel-004's telecaller stage route ({to_stage, reason}); LeadStageControl calls it on the lead detail. */
 export const moveStage = (id: string, target: string, reason: string, closure: Closure = {}): Promise<SendOutcome> =>
   sendJson(leadUrl(id, "/stage"), "POST", { to_stage: target, ...(reason ? { reason } : {}), ...closure });
+
+// itc-007 (DEC-SCOPE-341): the merge form's comparison. `MERGE_FIELDS` mirror the API's (services/lead_merge.py FIELDS).
+export const MERGE_FIELDS = [
+  { key: "name", label: "Student name" }, { key: "email", label: "Email" }, { key: "phone", label: "Mobile number" },
+  { key: "whatsapp_number", label: "WhatsApp number" }, { key: "city", label: "City" }, { key: "state", label: "State" },
+  { key: "qualification", label: "Qualification" }, { key: "passing_year", label: "Passing year" }, { key: "institution", label: "College/University" },
+] as const;
+export type MergeField = (typeof MERGE_FIELDS)[number]["key"];
+type MergeSide = { id: string; lead_code: string; status: string; status_label: string } & Record<MergeField, string | number | null>;
+export const MERGE_MOVED = [
+  ["calls", "Calls"], ["follow_ups", "Follow-ups"], ["notes", "Notes"], ["messages", "Messages"], ["meetings", "Meetings"],
+  ["appointments", "Appointments"], ["enquiries", "Enquiries"], ["tasks", "Counselor tasks"],
+] as const;
+export type MergePreview = { survivor: MergeSide; victim: MergeSide; moved: Record<(typeof MERGE_MOVED)[number][0], number> };
 
 // tel-009 (DEC-SCOPE-093, spec §3-§4): the qualification form. The API decides which fields apply (QD2); these lists only lay out the form.
 export type ProductGroup = "it" | "overseas" | "other";

@@ -59,6 +59,7 @@ from app.schemas import (
     AgentNetworkStudentPage,
     AgentOrgDetailOut,
     BatchCreate,
+    LeadMergeIn,
     LeadNoteIn,
     LeadNoteOut,
     LeadNotePage,
@@ -84,6 +85,7 @@ from app.services import (
     lead_appointments,
     lead_handover,
     lead_list,
+    lead_merge,
     lead_notes,
     lead_pipeline,
     lead_timeline,
@@ -570,6 +572,7 @@ async def update_lead(lead_id: UUID, payload: dict, user: User = Depends(ensure_
     """tel-004 (T25): `status` is a stage move through the pipeline, as a manager (reason required for a closed outcome or a reopen); the
     same stage is a no-op so a resend with `owner_id` still works. The audit row names the values, never the reason text."""
     x = await lead_rules.locked_for_admin(db, user, lead_id)
+    lead_pipeline.require_not_merged(x)  # itc-007: a merged lead is read only
     tracked = [f for f in ("status", "owner_id") if f in payload]
     before = {f: getattr(x, f) for f in tracked}  # itc-001: read under the row lock, so the old values are exact
     if "status" in payload and payload["status"] != x.status:
@@ -594,6 +597,26 @@ async def update_lead(lead_id: UUID, payload: dict, user: User = Depends(ensure_
     db.add(AuditLog(user_id=user.id, action="lead.update", entity_type="enquiry", entity_id=str(x.id), metadata_json=audited))
     await db.commit()
     return {"ok": True}
+
+
+def _merge_filters(user: User) -> list:
+    """itc-007: an admin merges within their division (super_admin: every division); a lead elsewhere reads as missing (404)."""
+    return [] if user.role == "super_admin" else [Enquiry.division == user.division]
+
+
+@router.get("/leads/{lead_id}/merge-preview")
+async def lead_merge_preview(lead_id: UUID, victim: str = Query(min_length=1, max_length=20), user: User = Depends(ensure_admin),
+                             db: AsyncSession = Depends(get_db)):
+    """itc-007: the admin's merge comparison (as /telecaller/leads/{id}/merge-preview)."""
+    return await lead_merge.preview(db, lead_id, victim.strip().upper(), _merge_filters(user))
+
+
+@router.post("/leads/{lead_id}/merge")
+async def lead_merge_into(lead_id: UUID, payload: LeadMergeIn, user: User = Depends(ensure_admin), db: AsyncSession = Depends(get_db)):
+    """itc-007 (DEC-SCOPE-338): the admin's merge of the victim into this lead (as /telecaller/leads/{id}/merge)."""
+    out = await lead_merge.merge_by_code(db, user, lead_id, payload.victim, payload.use_victim, payload.reason, _merge_filters(user))
+    await db.commit()
+    return out
 
 
 @router.get("/leads/{lead_id}/stage-history", response_model=LeadStageHistoryPage)

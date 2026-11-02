@@ -18,15 +18,16 @@ _spec = importlib.util.spec_from_file_location("_itc_009_migration_0226", VERSIO
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0224_tel_source_workload", "0226_follow_up_escalation"
+BASE, HEAD = "0225_lead_merge", "0226_follow_up_escalation"
 COLUMNS = "SELECT table_name, column_name FROM information_schema.columns WHERE (table_name, column_name) IN (('tel_settings', 'escalate_after_hours'), ('lead_follow_ups', 'escalated_at')) ORDER BY 1"
 
 
-def test_migration_chains_after_0224_and_keeps_the_limit_in_step():
+def test_migration_chains_after_0225_and_keeps_the_limit_in_step():
     from app.models import TEL_SETTING_MAX_HOURS
 
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
-    assert HEAD in {r.revision for r in ScriptDirectory.from_config(_config()).walk_revisions()}
+    script = ScriptDirectory.from_config(_config())
+    assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}
     assert _migration.MAX_HOURS == TEL_SETTING_MAX_HOURS
 
 

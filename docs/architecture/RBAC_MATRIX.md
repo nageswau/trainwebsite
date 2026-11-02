@@ -3458,7 +3458,18 @@ The IT student reads only their own counselor's name (dashboard tile). Inline ro
 
 No grant changes. Pinned by `apps/api/tests/test_itc_006_api.py`.
 
-### 2.243 Overdue follow-up escalation *(added 2026-11-02 — `DEC-SCOPE-342`, itc-009)*
+### 2.241 Merge duplicate leads *(added 2026-11-02 — `DEC-SCOPE-341`, itc-007)*
+
+| Route | Anonymous | telecaller | telecaller_manager | it_admin / overseas_admin | super_admin | other roles |
+|---|---|---|---|---|---|---|
+| `GET /telecaller/leads/{id}/merge-preview` | 401 | 403 | 200 both in T23 scope, else 404 | 403 | 200 | 403 |
+| `POST /telecaller/leads/{id}/merge` | 401 | 403 | 200 / 404 / 409 / 422 | 403 | 200 / 404 / 409 / 422 | 403 |
+| `GET /admin/leads/{id}/merge-preview` | 401 | 403 | 403 | 200 own division, else 404 | 200 | 403 |
+| `POST /admin/leads/{id}/merge` | 401 | 403 | 403 | 200 / 404 / 409 / 422 | 200 / 404 / 409 / 422 | 403 |
+
+Inline checks (`lead_pipeline.scope`, `ensure_admin`, `services/lead_merge.py`). Pinned by `apps/api/tests/test_itc_007_lead_merge.py`.
+
+### 2.242 Overdue follow-up escalation *(added 2026-11-02 — `DEC-SCOPE-342`, itc-009)*
 
 | Route / page | Anonymous | telecaller_manager | super_admin | it_admin | every other role |
 |---|---|---|---|---|---|
