@@ -4,7 +4,7 @@ readers see active rows. The catalogue is global (T17), so there is no row scope
 
 Bodies are untyped dicts parsed by services/telecaller._parse, so a 422 is one sentence naming the field (the tel-001 idiom)."""
 
-from typing import Literal
+from typing import Literal, NamedTuple
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException
@@ -15,7 +15,7 @@ from app.api.bdm import LIMIT, OFFSET, SEARCH, _matching
 from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
-from app.models import LeadLostReason, Program, TelCampaign, TelProduct, User
+from app.models import LeadCounselingObjection, LeadLostReason, Program, TelCampaign, TelProduct, User
 from app.schemas import (
     TEL_CATALOGUE_FIELD_LABELS,
     LeadLostReasonCreate,
@@ -36,6 +36,7 @@ from app.services.telecaller import _parse, require_manager
 from app.services.telecaller_catalogue import (
     CAMPAIGN_NAME_INDEX,
     LOST_REASON_NAME_INDEX,
+    OBJECTION_NAME_INDEX,
     PRODUCT_NAME_INDEX,
     active_filters,
     active_program,
@@ -196,9 +197,57 @@ async def update_campaign(campaign_id: UUID, payload: dict = Body(...), user: Us
     return out
 
 
-# --- lost reasons (ccrm-006, DEC-SCOPE-264 D8) --------------------------------------------------------------------------------------
-def _reason_out(row: LeadLostReason) -> dict:
+# --- named lists: lost reasons (ccrm-006, DEC-SCOPE-264 D8) and counseling objections (itc-010, DEC-SCOPE-343 C6) ------------------------
+# Same shape and rules: name + active + sort order; managers write; a rename keeps the id; never deleted (deactivating hides it).
+class NamedList(NamedTuple):
+    model: type[LeadLostReason] | type[LeadCounselingObjection]
+    name_index: str  # the case-insensitive unique name index
+    noun: str  # "Lost reason" -- the 404 wording
+    a_noun: str  # "A lost reason" -- the duplicate-name wording
+    action: str  # audit action prefix
+    entity: str  # audit entity type
+
+
+LOST_REASONS = NamedList(LeadLostReason, LOST_REASON_NAME_INDEX, "Lost reason", "A lost reason", "telecaller.lost_reason", "lead_lost_reason")
+OBJECTIONS = NamedList(LeadCounselingObjection, OBJECTION_NAME_INDEX, "Objection", "An objection", "telecaller.counseling_objection", "lead_counseling_objection")
+
+
+def _named_out(row) -> dict:
     return {"id": row.id, "name": row.name, "active": row.active, "sort_order": row.sort_order}
+
+
+async def _named_page(kind: NamedList, db: AsyncSession, user: User, active: bool | None, q: str | None, limit: int, offset: int) -> dict:
+    model = kind.model
+    require_reader(user)
+    filters = active_filters(user, model.active, active) + _matching(like_pattern(q), model.name)
+    return await _page(db, select(model).where(*filters), (model.sort_order, func.lower(model.name), model.id), limit, offset, _named_out)
+
+
+async def _named_create(kind: NamedList, db: AsyncSession, user: User, payload) -> dict:
+    require_manager(user)
+    data = _body(LeadLostReasonCreate, payload)
+    sort_order = data.sort_order
+    if sort_order is None:
+        sort_order = min((await db.scalar(select(func.max(kind.model.sort_order))) or 0) + 1, 9999)
+    row = kind.model(name=data.name, sort_order=sort_order, active=True)
+    db.add(row)
+    await flush_unique(db, kind.name_index, f"{kind.a_noun} named “{data.name}” already exists")
+    audit(db, user, f"{kind.action}_create", kind.entity, row.id, ["name", "sort_order"])
+    out = _named_out(row)
+    await db.commit()
+    return out
+
+
+async def _named_update(kind: NamedList, db: AsyncSession, user: User, row_id: UUID, payload) -> dict:
+    require_manager(user)
+    row = await _locked(db, kind.model, row_id, kind.noun)
+    fields = apply_changes(row, _body(LeadLostReasonUpdate, payload).model_dump(exclude_unset=True))
+    await flush_unique(db, kind.name_index, f"{kind.a_noun} named “{row.name}” already exists")
+    if fields:
+        audit(db, user, f"{kind.action}_update", kind.entity, row.id, fields)
+    out = _named_out(row)
+    await db.commit()
+    return out
 
 
 @router.get("/lost-reasons", response_model=LeadLostReasonPage)
@@ -211,38 +260,39 @@ async def lost_reasons(
     db: AsyncSession = Depends(get_db),
 ):
     """The list a Lost / Not Interested close picks from, in the manager's order; readers other than managers see active rows only."""
-    require_reader(user)
-    filters = active_filters(user, LeadLostReason.active, active) + _matching(like_pattern(q), LeadLostReason.name)
-    stmt = select(LeadLostReason).where(*filters)
-    order = (LeadLostReason.sort_order, func.lower(LeadLostReason.name), LeadLostReason.id)
-    return await _page(db, stmt, order, limit, offset, _reason_out)
+    return await _named_page(LOST_REASONS, db, user, active, q, limit, offset)
 
 
 @router.post("/lost-reasons", response_model=LeadLostReasonOut, status_code=201)
 async def create_lost_reason(payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    require_manager(user)
-    data = _body(LeadLostReasonCreate, payload)
-    sort_order = data.sort_order
-    if sort_order is None:
-        sort_order = min((await db.scalar(select(func.max(LeadLostReason.sort_order))) or 0) + 1, 9999)
-    row = LeadLostReason(name=data.name, sort_order=sort_order, active=True)
-    db.add(row)
-    await flush_unique(db, LOST_REASON_NAME_INDEX, f"A lost reason named “{data.name}” already exists")
-    audit(db, user, "telecaller.lost_reason_create", "lead_lost_reason", row.id, ["name", "sort_order"])
-    out = _reason_out(row)
-    await db.commit()
-    return out
+    return await _named_create(LOST_REASONS, db, user, payload)
 
 
 @router.patch("/lost-reasons/{reason_id}", response_model=LeadLostReasonOut)
 async def update_lost_reason(reason_id: UUID, payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Renaming keeps the id, so closed leads keep their reason; deactivating only hides it from the picker."""
-    require_manager(user)
-    row = await _locked(db, LeadLostReason, reason_id, "Lost reason")
-    fields = apply_changes(row, _body(LeadLostReasonUpdate, payload).model_dump(exclude_unset=True))
-    await flush_unique(db, LOST_REASON_NAME_INDEX, f"A lost reason named “{row.name}” already exists")
-    if fields:
-        audit(db, user, "telecaller.lost_reason_update", "lead_lost_reason", row.id, fields)
-    out = _reason_out(row)
-    await db.commit()
-    return out
+    return await _named_update(LOST_REASONS, db, user, reason_id, payload)
+
+
+@router.get("/counseling-objections", response_model=LeadLostReasonPage)
+async def counseling_objections(
+    active: bool | None = None,
+    q: str | None = SEARCH,
+    limit: int = LIMIT,
+    offset: int = OFFSET,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """itc-010 C6: the objections a counseling session picks from; readers other than managers see active rows only."""
+    return await _named_page(OBJECTIONS, db, user, active, q, limit, offset)
+
+
+@router.post("/counseling-objections", response_model=LeadLostReasonOut, status_code=201)
+async def create_counseling_objection(payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _named_create(OBJECTIONS, db, user, payload)
+
+
+@router.patch("/counseling-objections/{objection_id}", response_model=LeadLostReasonOut)
+async def update_counseling_objection(objection_id: UUID, payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """A rename keeps the id, so past sessions keep the objection; deactivating only hides it from the picker."""
+    return await _named_update(OBJECTIONS, db, user, objection_id, payload)

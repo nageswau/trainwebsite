@@ -4990,6 +4990,53 @@ leads owned by an IT counselor). All routes **401** without a session.
   `GET /workflows/notifications`.
 - Beat `itc009-escalations` (900 s): notices of event `it.followup.overdue`, entity `lead_follow_up`.
 
+## 12IO. IT counseling record (itc-010) — addendum, 2026-11-02
+
+`DEC-SCOPE-343`. Migration `0227_lead_counseling_records`. Additive.
+
+- `GET /counselor/leads/{id}/counseling?limit&offset` — `{items, total, limit, offset}`, newest first. The lead's counselor (tel-018
+  scope); out of scope 404.
+- `POST /counselor/leads/{id}/counseling` → 201 record. Body: `outcome` (required: `interested | needs_time | not_interested | enrolled`),
+  `recommended_product_id` (an active IT `TelProduct`), `objection_ids` (≤ 20 active objections), `objection_notes` (≤ 1000),
+  `fee_quoted` (decimal ≥ 0, 2 places), `expected_joining_date` and `next_follow_up` (today IST or later), `decision_maker`
+  (`self | parent | spouse | employer | other`), `notes` (≤ 4000). Blank text is null. Not an IT counselor 403; closed lead 409;
+  invalid 422 on the field. Not idempotent.
+- `PATCH /counselor/leads/{id}/counseling/{record_id}` → 200 record. Fields sent replace the stored ones (`objection_ids` the whole set);
+  `outcome: null` is 422; the C9 checks apply to changed values only; a record of another lead 404.
+- `GET /telecaller/leads/{id}/counseling` — the same page, read only, for a lead in the tel-004 scope.
+- Record: `id, recommended_product {id, name} | null, objections [{id, name}], objection_notes, fee_quoted (string) | null,
+  expected_joining_date, decision_maker, outcome, next_follow_up, notes, author {id, full_name}, updated_by {id, full_name}, created_at,
+  updated_at`.
+- `GET/POST /telecaller/counseling-objections`, `PATCH /telecaller/counseling-objections/{id}` — the lost-reason list contract (ccrm-006):
+  `{id, name, active, sort_order}`; a duplicate name (case-insensitive) is 409.
+- Lead timeline: new kind `counseling` (`event` `created | updated`, `to_value` = the outcome).
+
+## 12IP. Batch timetable and session calendar (itc-020) — addendum, 2026-11-02
+
+`DEC-SCOPE-344`. Migration `0228_batch_timetable`. RBAC §2.244.
+
+- Slot body `{weekday 0–6 (0 = Monday), start_time "HH:MM", end_time "HH:MM", mode "online"|"offline", room?, meeting_url?, topic?}`:
+  local times in the batch's timezone; `end_time > start_time`; `offline` needs a `room` (≤120); `meeting_url` must be `http(s)://…`
+  (≤500); `topic` ≤160; blank strings are null. Any breach → **422**.
+- `GET /it/batches/{id}/timetable` → **200** `{batch_id, items: [slot]}`, slot `{id, batch_id, weekday, day, start_time, end_time, mode,
+  room, meeting_url, topic}` (sorted by day, then start).
+- `POST /it/batches/{id}/timetable` → **201** slot. `PUT /it/batches/{id}/timetable/{slot_id}` (replaces) → **200** slot.
+  `DELETE /it/batches/{id}/timetable/{slot_id}` → **204** (its cancellations go with it). Unknown batch, or a slot of another batch →
+  **404**. A slot whose weekday and times intersect another slot of the same batch, or a slot of another batch with the same trainer
+  whose dates intersect → **409** (the detail names the clash). Audited `batch.timetable.create|update|delete` (ids + changed field names).
+- `POST /it/batches/{id}/timetable/{slot_id}/cancellations` `{occurs_on: date, reason (3–500)}` → **201** `{slot_id, occurs_on, reason}`.
+  Not a class date of the slot within the batch dates, or before today (batch timezone) → **422**; already cancelled → **409**. Audited
+  `batch.timetable.cancel`; each active student of the batch gets the itc-002 notice `it.batch.changed` (fixed text, link
+  `/it/student/timetable`).
+- `GET /it/timetable?from=&to=&batch_id=` → **200** `{from, to, can_edit, items}`: inclusive dates, default today…today+13 (IST); more than
+  62 days or `to < from` → **422**. Items `{id, kind "class"|"live_session", slot_id, batch_id, batch, program, date, starts_at, ends_at,
+  mode, room, meeting_url, topic, status "scheduled"|"cancelled", cancel_reason}`, sorted by `starts_at`; classes are computed from the
+  slots inside the batch dates, and the batches' `LiveSession`s in the window are merged in. Scope: `it_student` → batches with an active
+  enrolment, cancelled items omitted, `meeting_url` null while the nehn-018 `live_classes` feature is locked; `trainer` → own batches; IT
+  `counselor` → batches of their itc-003 students' active enrolments, `meeting_url` always null; `it_admin`/`super_admin` → all. Any other
+  role → **403**; a `batch_id` outside the caller's scope → **404**.
+- `GET /portal/it/{student|trainer|counselor|admin}/timetable` → header-only payload "Timetable" (the page reads the routes above).
+
 ## 12IQ. IT student record (itc-012) — addendum, 2026-11-02
 
 `DEC-SCOPE-345`. Migration `0229_it_student_profiles` (table `it_student_profiles`, PK `student_user_id`; nullable

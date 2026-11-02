@@ -204,6 +204,8 @@ async def _it_student(db: AsyncSession, user: User, section: str):
                 {"field": "Skills", "value": ", ".join(user.profile.get("skills", []))},
             ),
         )
+    if section == "timetable":
+        return _payload("Timetable", "Your upcoming classes: day, time, room or link.")  # itc-020 (DEC-SCOPE-344): header only -- the page's panel reads /it/timetable
     if section == "course":
         # "Available batches" (STU-001) and "Live classes" (STU-003) used to be dumped
         # here as unclickable text-panel strings -- both now have real interactive
@@ -452,6 +454,8 @@ async def _it_student(db: AsyncSession, user: User, section: str):
 async def _trainer(db: AsyncSession, user: User, section: str):
     batches = (await db.scalars(select(Batch).where(Batch.trainer_id == user.id).order_by(Batch.start_date.desc()))).all()
     batch_ids = [b.id for b in batches]
+    if section == "timetable":
+        return _payload("Timetable", "Classes of the batches you teach.")  # itc-020 (DEC-SCOPE-344): header only -- the page's panel reads /it/timetable
     if section == "dashboard":
         assignments = await db.scalar(select(func.count()).select_from(Assignment).where(Assignment.batch_id.in_(batch_ids))) if batch_ids else 0
         pending = (
@@ -1722,6 +1726,8 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
                 (("id", "reference"), ("title", "Program"), ("duration", "Duration"), ("fees", "Fees"), ("active", "Active")),
                 ({"id": p.id, "title": p.title, "duration": p.duration, "fees": float(p.fees), "active": p.active} for p in rows),
             )
+        if section == "timetable" and user.role in {"it_admin", "super_admin"}:
+            return _payload("Timetable", "Weekly class slots per batch, and the calendar they produce.")  # itc-020 (DEC-SCOPE-344): header only -- the page's panel reads /it/timetable
         if section == "batches":
             rows = (await db.execute(select(Batch, Program).join(Program, Program.id == Batch.program_id).order_by(Batch.start_date.desc()))).all()
             counts = dict((await db.execute(select(Enrollment.batch_id, func.count()).group_by(Enrollment.batch_id))).all())
@@ -1807,8 +1813,10 @@ def _leads_payload(rows: list[Enquiry]):
 async def _it_counselor(db: AsyncSession, user: User, section: str):
     """tel-017 (DEC-SCOPE-076 C1): an IT counselor works leads only -- Dashboard, My Leads and (tel-016) Appointments; tel-018 adds the
     student link; itc-003 (DEC-SCOPE-337) My Students. Every overseas section stays the overseas counselor's, so anything else is a 404."""
-    if section not in {"dashboard", "leads", "appointments", "students"}:
+    if section not in {"dashboard", "leads", "appointments", "students", "timetable"}:
         return None
+    if section == "timetable":
+        return _payload("Timetable", "Classes of your students' batches.")  # itc-020 (DEC-SCOPE-344): header only -- the page's panel reads /it/timetable
     if section == "leads":
         return _leads_payload(await _routed_leads(db, user))
     if section == "students":  # itc-003 (DEC-SCOPE-337): the IT students linked to this counselor

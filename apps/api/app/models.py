@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -19,6 +19,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    Time,
     UniqueConstraint,
     Uuid,
     false,
@@ -211,6 +212,40 @@ class Enrollment(Base, TimestampMixin):
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     delivery_mode: Mapped[str | None] = mapped_column(String(30), nullable=True)
     __table_args__ = (UniqueConstraint("student_id", "batch_id", name="uq_enrollment_student_batch"),)
+
+
+class BatchTimetableSlot(Base, TimestampMixin):
+    """itc-020 (DEC-SCOPE-344): one weekly class of a batch -- `weekday` 0=Mon..6=Sun, local times in the batch's timezone. Dated
+    classes are computed from these rows (`services/batch_timetable.py`), never stored (T1)."""
+
+    __tablename__ = "batch_timetable_slots"
+    __table_args__ = (
+        CheckConstraint("weekday BETWEEN 0 AND 6", name="ck_batch_timetable_slots_weekday"),
+        CheckConstraint("end_time > start_time", name="ck_batch_timetable_slots_times"),
+        CheckConstraint("mode IN ('online', 'offline')", name="ck_batch_timetable_slots_mode"),
+        CheckConstraint("mode = 'online' OR room IS NOT NULL", name="ck_batch_timetable_slots_room"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("batches.id", ondelete="CASCADE"), index=True)
+    weekday: Mapped[int] = mapped_column(SmallInteger)
+    start_time: Mapped[time] = mapped_column(Time)
+    end_time: Mapped[time] = mapped_column(Time)
+    mode: Mapped[str] = mapped_column(String(10))
+    room: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    meeting_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    topic: Mapped[str | None] = mapped_column(String(160), nullable=True)
+
+
+class BatchTimetableCancellation(Base, TimestampMixin):
+    """itc-020 (DEC-SCOPE-344): one cancelled class -- a slot on one date. Students no longer see it; staff see it with the reason."""
+
+    __tablename__ = "batch_timetable_cancellations"
+    __table_args__ = (UniqueConstraint("slot_id", "occurs_on", name="uq_batch_timetable_cancellations_slot_day"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    slot_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("batch_timetable_slots.id", ondelete="CASCADE"))
+    occurs_on: Mapped[date] = mapped_column(Date)
+    reason: Mapped[str] = mapped_column(Text)
+    cancelled_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
 class Agreement(Base, TimestampMixin):
@@ -3195,6 +3230,65 @@ class LeadMeeting(Base):
     mode: Mapped[str] = mapped_column(String(40))
     notes: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# itc-010 (DEC-SCOPE-343): the IT counseling record. Migration 0227 repeats LEAD_COUNSELING_CHECKS (test_itc_010_migration).
+COUNSELING_DECISION_MAKERS = ("self", "parent", "spouse", "employer", "other")
+COUNSELING_OUTCOMES = ("interested", "needs_time", "not_interested", "enrolled")
+COUNSELING_NOTES_MAX, COUNSELING_OBJECTION_NOTES_MAX, COUNSELING_OBJECTION_NAME_MAX = 4000, 1000, 120
+LEAD_COUNSELING_CHECKS = {
+    "ck_lead_counseling_records_decision_maker": "decision_maker IS NULL OR decision_maker IN ({})".format(", ".join(repr(v) for v in COUNSELING_DECISION_MAKERS)),
+    "ck_lead_counseling_records_outcome": "outcome IN ({})".format(", ".join(repr(v) for v in COUNSELING_OUTCOMES)),
+    "ck_lead_counseling_records_fee": "fee_quoted IS NULL OR fee_quoted >= 0",
+    "ck_lead_counseling_records_notes": f"notes IS NULL OR length(notes) <= {COUNSELING_NOTES_MAX}",
+    "ck_lead_counseling_records_objection_notes": f"objection_notes IS NULL OR length(objection_notes) <= {COUNSELING_OBJECTION_NOTES_MAX}",
+}
+
+
+class LeadCounselingObjection(Base, TimestampMixin):
+    """itc-010 (C6): the managed list a counseling session's objections are picked from -- the lost-reason catalogue pattern. Never
+    deleted: deactivating hides it from the picker while past sessions keep it."""
+
+    __tablename__ = "lead_counseling_objections"
+    __table_args__ = (
+        CheckConstraint(f"length(name) BETWEEN 1 AND {COUNSELING_OBJECTION_NAME_MAX}", name="ck_lead_counseling_objections_name"),
+        Index("uq_lead_counseling_objections_name", text("lower(name)"), unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(COUNSELING_OBJECTION_NAME_MAX))
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+
+
+class LeadCounselingRecord(Base, TimestampMixin):
+    """itc-010 (DEC-SCOPE-343, C1): one counseling session an IT counselor held with a lead. Career goal and current skills are the
+    lead's qualification (C2). Internal: never shown to the student; the notes are never logged (C11)."""
+
+    __tablename__ = "lead_counseling_records"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in LEAD_COUNSELING_CHECKS.items()),
+        Index("ix_lead_counseling_records_lead_created", "lead_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"))
+    author_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    updated_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    recommended_product_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("tel_products.id", ondelete="RESTRICT"), nullable=True)
+    objection_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fee_quoted: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    expected_joining_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    decision_maker: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    outcome: Mapped[str] = mapped_column(String(20))
+    next_follow_up: Mapped[date | None] = mapped_column(Date, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class LeadCounselingRecordObjection(Base):
+    """itc-010: the objections picked for one session (the set is replaced whole on an edit)."""
+
+    __tablename__ = "lead_counseling_record_objections"
+    record_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("lead_counseling_records.id", ondelete="CASCADE"), primary_key=True)
+    objection_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("lead_counseling_objections.id", ondelete="RESTRICT"), primary_key=True)
 
 
 # Migration 0095 repeats LEAD_MESSAGE_CHECKS (test_tel_013_migration asserts they stay identical).

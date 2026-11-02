@@ -10779,6 +10779,51 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0226_follow_up_escalation`; API §12IN; RBAC §2.242.
 - **Feature ID authorized:** `itc-009`. **Status:** built on `worktree-itc-009`.
 
+### DEC-SCOPE-343 — IT counseling record (`itc-010`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-010 (PDF §4 "Counseling: career goal, current skills, recommended course,
+  counselor notes, objections, course fee quoted, expected joining date, decision-maker, counseling outcome"; §3 step 5; PDF classified
+  `UNVERIFIED`). Owner Q-01 (2026-11-01): all phases approved for build in waves; itc-010 has no dependency. The owner said to proceed
+  with the recommended answers, so the calls below are the builder's (`NEEDS_CONFIRMATION`). Design:
+  `docs/superpowers/specs/2026-11-02-itc-010-it-counseling-record-design.md`.
+- **Decisions (builder's calls):**
+  - **C1 — Q-08:** one record per counseling session (append); each can be edited later (PATCH), keeping the author and recording the editor.
+  - **C2 —** career goal and current skills stay on the qualification card (`career_objective`, `it_skill_level`); the record holds the
+    recommended IT course, objections (a managed list + free text), fee quoted (₹, ≥ 0), expected joining date, decision-maker (self,
+    parent, spouse, employer, other), outcome (interested, needs time, not interested, enrolled), next follow-up date and notes.
+  - **C3 —** only the outcome is required. **C4 —** the next follow-up date is stored, not turned into a follow-up. **C5 —** "Enrolled"
+    never moves the stage or converts (itc-011).
+  - **C6 —** objections: `lead_counseling_objections`, the lost-reason catalogue rules (telecaller managers and super admin write;
+    catalogue readers see active rows); seeded with six defaults when empty.
+  - **C7 — AuthZ:** writes by the lead's current owner counselor, who must be an IT counselor (403); out of scope 404; a closed lead 409;
+    a record of another lead 404. **C8 —** reads: the counselor (same scope) and the telecaller / manager / super admin (tel-004 scope);
+    a returned lead keeps its records.
+  - **C9 —** an active IT course (an overseas or inactive one is 422), active objections, and dates today (IST) or later are checked only
+    for values that are set or changed, so a stored value that has since gone inactive or past still saves.
+  - **C10 —** each save writes `lead_counseling.create` / `.update` (ids, outcome, itc-001 diff with notes as "changed"); the lead
+    timeline shows it as a `counseling` entry. **C11 —** internal: never shown to students; logs carry ids and field names only.
+- **Numbering:** migration `0227_lead_counseling_records`; API §12IO; RBAC §2.243.
+- **Feature ID authorized:** `itc-010`. **Status:** built on `worktree-itc-010`.
+
+### DEC-SCOPE-344 — Batch timetable and session calendar (`itc-020`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-020` (PDF §4 "timetable, class link/room, session calendar", §6, §8 Faculty
+  "Today's classes"). Scope approved by the owner 2026-11-01 (backlog Q-01: all phases, built in waves). No dependencies. Design
+  `docs/superpowers/specs/2026-11-02-itc-020-batch-timetable-design.md`.
+- **Behaviour:** the IT Admin keeps each batch's weekly slots (day, start, end, online/in person, room, class link, topic) on the new
+  Timetable page; slots that overlap in one batch, or for one trainer across batches whose dates intersect, are refused (409). A single
+  future class can be cancelled with a reason: the batch's active students are notified (itc-002 `it.batch.changed`) and no longer see
+  it; staff see it as cancelled with the reason. Students, trainers, IT counselors and the admin get a week-by-week calendar (IST) of the
+  classes, computed from the slots inside the batch dates, with the batches' existing live sessions merged in.
+- **Claude's calls under "proceed with recommended answers" (`NEEDS_CONFIRMATION`):** T1 (Q-18a) classes are computed from the slots, not
+  stored as `LiveSession` rows; live sessions are shown alongside, so `LiveSession.room` is not added. T2 (Q-18b) no holiday calendar: the
+  admin cancels single classes. T3 (Q-18c) overlap = same weekday, intersecting times, intersecting batch dates; same batch or same
+  trainer → 409; a later batch-trainer change is not re-checked. T4 only IT Admin and Super Admin edit (the certificate coordinator has
+  no batch grants). T5 no "restore" of a cancelled class. T6 the iCal feed is deferred (backlog "optional"). T7 `batches.schedule` free
+  text is untouched. T8 an IT counselor sees no join link; a student whose live classes are locked sees no join link.
+- **Numbering:** migration `0228_batch_timetable` (`batch_timetable_slots`, `batch_timetable_cancellations`); API §12IP; RBAC §2.244.
+- **Feature ID authorized:** `itc-020`. **Status:** built on `worktree-itc-020`.
+
 ### DEC-SCOPE-345 — IT student record completion (`itc-012`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-012 (source PDF §4 "Student / Enrollment: personal details, emergency

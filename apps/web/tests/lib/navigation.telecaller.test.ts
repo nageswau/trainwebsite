@@ -20,6 +20,7 @@ describe("tel-001 navigation", () => {
       "/telecaller/manager/imports", "/telecaller/manager/targets", "/telecaller/manager/performance", "/telecaller/manager/reports", "/telecaller/manager/alerts",
       "/telecaller/manager/notifications", // itc-009: escalated overdue follow-ups, after Alert settings
       "/telecaller/manager/products", "/telecaller/manager/campaigns", "/telecaller/manager/lost-reasons",
+      "/telecaller/manager/counseling-objections", // itc-010
       "/telecaller/manager/scripts",
       "/telecaller/manager/templates", "/telecaller/manager/brochures",
       "/account/management-tasks", // mgmt-028 (MT14)

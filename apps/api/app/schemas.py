@@ -1,7 +1,7 @@
 import math
 import re
 import unicodedata
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
@@ -59,6 +59,10 @@ from app.models import (
     CAPITAL_ENTRY_KINDS,
     CONTACT_CHANNELS,
     CONTACT_PREFERENCES,
+    COUNSELING_DECISION_MAKERS,
+    COUNSELING_NOTES_MAX,
+    COUNSELING_OBJECTION_NOTES_MAX,
+    COUNSELING_OUTCOMES,
     COUNSELOR_TASK_STATUSES,
     COUNTRY_REGIONS,
     COURSE_CURRENCIES,
@@ -594,6 +598,41 @@ class LiveSessionUpdate(BaseModel):
 
 
 class LiveSessionCancel(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def _strip(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+
+class TimetableSlotIn(BaseModel):
+    """itc-020 (DEC-SCOPE-344): one weekly class -- 0=Mon..6=Sun, local times in the batch's timezone. POST creates, PUT replaces."""
+
+    weekday: int = Field(ge=0, le=6)
+    start_time: time
+    end_time: time
+    mode: Literal["online", "offline"]
+    room: str | None = Field(default=None, max_length=120)
+    meeting_url: str | None = Field(default=None, max_length=500, pattern=r"^https?://\S+$")
+    topic: str | None = Field(default=None, max_length=160)
+
+    @field_validator("room", "meeting_url", "topic", mode="before")
+    @classmethod
+    def _blank(cls, value):
+        return (value.strip() or None) if isinstance(value, str) else value
+
+    @model_validator(mode="after")
+    def _consistent(self):
+        if self.end_time <= self.start_time:
+            raise ValueError("The class must end after it starts")
+        if self.mode == "offline" and not self.room:
+            raise ValueError("An in-person class needs a room")
+        return self
+
+
+class TimetableCancelIn(BaseModel):
+    occurs_on: date
     reason: str = Field(min_length=3, max_length=500)
 
     @field_validator("reason", mode="before")
@@ -7195,7 +7234,7 @@ class LeadTimelineRow(BaseModel):
 
     id: UUID
     kind: Literal["created", "enquiry", "stage", "priority", "assignment", "handover", "student_link", "call", "message", "follow_up",
-                  "appointment", "milestone", "note", "meeting", "merge"]
+                  "appointment", "milestone", "note", "meeting", "merge", "counseling"]
     at: datetime
     actor: LeadStageActor | None
     from_value: str
@@ -7259,6 +7298,73 @@ class LeadMeetingOut(BaseModel):
 
 class LeadMeetingPage(BaseModel):
     items: list[LeadMeetingOut]
+    total: int
+    limit: int
+    offset: int
+
+
+# --- itc-010 (DEC-SCOPE-343): the IT counseling record ---------------------------------------------------------------------------------
+CounselingNotes = Annotated[str, StringConstraints(strip_whitespace=True, max_length=COUNSELING_NOTES_MAX)]
+CounselingObjectionNotes = Annotated[str, StringConstraints(strip_whitespace=True, max_length=COUNSELING_OBJECTION_NOTES_MAX)]
+CounselingFee = Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=2)]
+CounselingObjectionIds = Annotated[list[UUID], Field(max_length=20)]
+
+
+class LeadCounselingIn(BaseModel):
+    """C3: only the outcome is required. Blank text is none. The rules that need the database (an active IT course, active objections,
+    dates today or later in IST) are the service's (C9)."""
+
+    model_config = ConfigDict(extra="forbid")
+    recommended_product_id: UUID | None = None
+    objection_ids: CounselingObjectionIds = []
+    objection_notes: CounselingObjectionNotes | None = None
+    fee_quoted: CounselingFee | None = None
+    expected_joining_date: date | None = None
+    decision_maker: Literal[COUNSELING_DECISION_MAKERS] | None = None
+    outcome: Literal[COUNSELING_OUTCOMES]
+    next_follow_up: date | None = None
+    notes: CounselingNotes | None = None
+
+
+class LeadCounselingUpdate(BaseModel):
+    """Omitted = unchanged; a value sent replaces the stored one (`objection_ids` the whole set). `outcome` cannot be null (422 on it)."""
+
+    model_config = ConfigDict(extra="forbid")
+    recommended_product_id: UUID | None = None
+    objection_ids: CounselingObjectionIds | None = None
+    objection_notes: CounselingObjectionNotes | None = None
+    fee_quoted: CounselingFee | None = None
+    expected_joining_date: date | None = None
+    decision_maker: Literal[COUNSELING_DECISION_MAKERS] | None = None
+    outcome: Literal[COUNSELING_OUTCOMES] = None  # type: ignore[assignment]  # an explicit null is validated, so it is a 422
+    next_follow_up: date | None = None
+    notes: CounselingNotes | None = None
+
+
+class LeadCounselingRef(BaseModel):
+    id: UUID
+    name: str
+
+
+class LeadCounselingOut(BaseModel):
+    id: UUID
+    recommended_product: LeadCounselingRef | None
+    objections: list[LeadCounselingRef]
+    objection_notes: str | None
+    fee_quoted: Decimal | None
+    expected_joining_date: date | None
+    decision_maker: str | None
+    outcome: str
+    next_follow_up: date | None
+    notes: str | None
+    author: LeadStageActor
+    updated_by: LeadStageActor
+    created_at: datetime
+    updated_at: datetime
+
+
+class LeadCounselingPage(BaseModel):
+    items: list[LeadCounselingOut]
     total: int
     limit: int
     offset: int

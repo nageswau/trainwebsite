@@ -8,11 +8,17 @@ import { CATALOGUE_PAGE_SIZE, getPage } from "@/lib/telecallerCatalogue";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { toneClass, type Feedback } from "@/lib/welcomeLink";
 
-const FEEDBACK_ID = "lost-reason-feedback";
+/** A managed name list: its endpoint and how it reads ("lost reason" / "Lost reasons"). itc-010 reuses it for counseling objections. */
+export type NamedList = { url: string; singular: string; plural: string; empty: string };
+const LOST_REASONS: NamedList = {
+  url: LOST_REASONS_URL, singular: "lost reason", plural: "lost reasons",
+  empty: "No lost reasons yet. Leads can't be closed as Lost or Not Interested until one exists.",
+};
+const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 // ccrm-006 (DEC-SCOPE-264, D8): the reasons a Lost / Not Interested close picks from -- create, rename / reorder, deactivate and
 // reactivate (never delete: closed leads keep their reason). tel-002's products page layout; the API decides who may write.
-export default function LostReasonsPanel() {
+export default function LostReasonsPanel({ list = LOST_REASONS }: { list?: NamedList }) {
   const [data, setData] = useState<Page<LostReason> | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [version, setVersion] = useState(0);
@@ -22,14 +28,16 @@ export default function LostReasonsPanel() {
   const [notice, setNotice] = useState<string | null>(null);
   const inFlight = useRef(false); // a double click must not POST twice
   const focus = useFocusAfterRender();
+  const slug = list.singular.replace(/\s+/g, "-");
+  const feedbackId = `${slug}-feedback`;
 
   useEffect(() => {
     const controller = new AbortController();
     setLoadFailed(false);
     const query = new URLSearchParams({ limit: String(CATALOGUE_PAGE_SIZE), offset: String(offset) });
-    getPage<LostReason>(`${LOST_REASONS_URL}?${query}`, controller.signal).then(setData).catch(() => controller.signal.aborted || setLoadFailed(true));
+    getPage<LostReason>(`${list.url}?${query}`, controller.signal).then(setData).catch(() => controller.signal.aborted || setLoadFailed(true));
     return () => controller.abort();
-  }, [offset, version]);
+  }, [list.url, offset, version]);
   const reload = () => setVersion((v) => v + 1);
 
   async function create(event: React.FormEvent<HTMLFormElement>) {
@@ -39,7 +47,7 @@ export default function LostReasonsPanel() {
     const formEl = event.currentTarget;
     const name = formText(new FormData(formEl), "name");
     setBusy(true);
-    const outcome = await sendJson(LOST_REASONS_URL, "POST", { name });
+    const outcome = await sendJson(list.url, "POST", { name });
     inFlight.current = false;
     setBusy(false);
     if (outcome.ok) {
@@ -49,45 +57,45 @@ export default function LostReasonsPanel() {
     } else {
       setFeedback({ text: outcome.message, tone: "error" });
     }
-    focus(FEEDBACK_ID);
+    focus(feedbackId);
   }
 
   return (
     <>
-      <form className="action-card form" onSubmit={create} aria-describedby={FEEDBACK_ID}>
-        <h3>Create lost reason</h3>
-        <div className="field"><label htmlFor="lost-reason-name">Name (required)</label><input id="lost-reason-name" name="name" required maxLength={120} disabled={busy} /></div>
-        <button className="btn" disabled={busy}>{busy ? "Creating…" : "Create lost reason"}</button>
-        <div id={FEEDBACK_ID} tabIndex={-1} className={feedback ? toneClass[feedback.tone] : undefined} role="status" aria-live="polite" style={{ marginTop: 8, overflowWrap: "anywhere" }}>
+      <form className="action-card form" onSubmit={create} aria-describedby={feedbackId}>
+        <h3>Create {list.singular}</h3>
+        <div className="field"><label htmlFor={`${slug}-name`}>Name (required)</label><input id={`${slug}-name`} name="name" required maxLength={120} disabled={busy} /></div>
+        <button className="btn" disabled={busy}>{busy ? "Creating…" : `Create ${list.singular}`}</button>
+        <div id={feedbackId} tabIndex={-1} className={feedback ? toneClass[feedback.tone] : undefined} role="status" aria-live="polite" style={{ marginTop: 8, overflowWrap: "anywhere" }}>
           {feedback?.text}
         </div>
       </form>
       <div className="action-card wide telecaller-list" aria-busy={data === null && !loadFailed}>
-        <h3>Lost reasons</h3>
+        <h3>{capital(list.plural)}</h3>
         <div className={notice ? "form-message" : undefined} role="status" aria-live="polite" style={notice ? { marginBottom: 8 } : undefined}>{notice}</div>
         {loadFailed ? (
           <>
-            <p className="form-error" role="alert">Unable to load lost reasons.</p>
+            <p className="form-error" role="alert">Unable to load {list.plural}.</p>
             <button type="button" className="btn secondary small" onClick={reload}>Retry</button>
           </>
         ) : data === null ? (
-          <p className="muted" role="status">Loading lost reasons…</p>
+          <p className="muted" role="status">Loading {list.plural}…</p>
         ) : data.items.length === 0 ? (
-          <p className="empty" role="status">No lost reasons yet. Leads can&apos;t be closed as Lost or Not Interested until one exists.</p>
+          <p className="empty" role="status">{list.empty}</p>
         ) : (
           <>
-            <div className="table-wrap" role="region" aria-label="Lost reasons" tabIndex={0}>
+            <div className="table-wrap" role="region" aria-label={capital(list.plural)} tabIndex={0}>
               <table>
                 <thead>
                   <tr><th scope="col">Name</th><th scope="col">Order</th><th scope="col">Status</th><th scope="col"><span className="visually-hidden">Actions</span></th></tr>
                 </thead>
                 <tbody>
-                  {data.items.map((r) => <LostReasonRow key={r.id} row={r} onChanged={(text) => { setNotice(text); reload(); }} />)}
+                  {data.items.map((r) => <NamedRow key={r.id} list={list} slug={slug} row={r} onChanged={(text) => { setNotice(text); reload(); }} />)}
                 </tbody>
               </table>
             </div>
             {data.total > CATALOGUE_PAGE_SIZE && (
-              <nav aria-label="Lost reason pages" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
+              <nav aria-label={`${capital(list.singular)} pages`} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
                 <span className="muted" style={{ fontSize: 13 }}>Showing {data.offset + 1}–{data.offset + data.items.length} of {data.total}</span>
                 <button type="button" className="btn secondary small" aria-label="Previous page" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - CATALOGUE_PAGE_SIZE))}>Previous</button>
                 <button type="button" className="btn secondary small" aria-label="Next page" disabled={data.offset + data.items.length >= data.total} onClick={() => setOffset(offset + CATALOGUE_PAGE_SIZE)}>Next</button>
@@ -100,18 +108,18 @@ export default function LostReasonsPanel() {
   );
 }
 
-function LostReasonRow({ row, onChanged }: { row: LostReason; onChanged: (notice: string) => void }) {
+function NamedRow({ list, slug, row, onChanged }: { list: NamedList; slug: string; row: LostReason; onChanged: (notice: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const focus = useFocusAfterRender();
-  const id = (name: string) => `lost-reason-${name}-${row.id}`;
+  const id = (name: string) => `${slug}-${name}-${row.id}`;
   // Browser QA-02 (tel-002's row idiom): a toggle reloads the list; once this row comes back with its new status, focus its new button.
   const toggleFocus = useRef(false);
   useEffect(() => {
-    if (toggleFocus.current) document.getElementById(`lost-reason-toggle-${row.id}`)?.focus();
+    if (toggleFocus.current) document.getElementById(`${slug}-toggle-${row.id}`)?.focus();
     toggleFocus.current = false;
-  }, [row.active, row.id]);
+  }, [row.active, row.id, slug]);
 
   function close() {
     setEditing(false);
@@ -122,7 +130,7 @@ function LostReasonRow({ row, onChanged }: { row: LostReason; onChanged: (notice
   async function patch(body: Record<string, unknown>, notice: string) {
     setError(null);
     setBusy(true);
-    const outcome = await sendJson(`${LOST_REASONS_URL}/${row.id}`, "PATCH", body);
+    const outcome = await sendJson(`${list.url}/${row.id}`, "PATCH", body);
     setBusy(false);
     if (!outcome.ok) {
       setError(outcome.message);
@@ -145,7 +153,7 @@ function LostReasonRow({ row, onChanged }: { row: LostReason; onChanged: (notice
       <tr>
         <td colSpan={4}>
           <form className="form" onSubmit={save} onKeyDown={(e) => { if (e.key === "Escape") close(); }}>
-            <div className="field"><label htmlFor={id("name")}>Reason name (required)</label><input id={id("name")} name="name" defaultValue={row.name} required maxLength={120} autoFocus disabled={busy} /></div>
+            <div className="field"><label htmlFor={id("name")}>{capital(list.singular.split(" ").pop() ?? "")} name (required)</label><input id={id("name")} name="name" defaultValue={row.name} required maxLength={120} autoFocus disabled={busy} /></div>
             <div className="field"><label htmlFor={id("order")}>Order (required)</label><input id={id("order")} name="sort_order" type="number" inputMode="numeric" min={0} max={9999} step={1} defaultValue={row.sort_order} required disabled={busy} /></div>
             <div id={id("error")} tabIndex={-1} className={error ? "form-error" : undefined} role="alert">{error}</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

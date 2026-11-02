@@ -14,6 +14,7 @@ READERS = frozenset({"telecaller", "telecaller_manager", "super_admin", "it_admi
 FIXED_TEAM_RULE = {"it": "IT products always route to the IT team", "overseas": "Overseas products always route to the Overseas team"}
 PRODUCT_NAME_INDEX, CAMPAIGN_NAME_INDEX = "uq_tel_products_group_name", "uq_tel_campaigns_name"
 LOST_REASON_NAME_INDEX = "uq_lead_lost_reasons_name"  # ccrm-006
+OBJECTION_NAME_INDEX = "uq_lead_counseling_objections_name"  # itc-010
 
 
 def require_reader(user: User) -> None:

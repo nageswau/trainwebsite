@@ -1,7 +1,7 @@
 """itc-012 -- the IT student record: it_student_profiles, and enrolment start/end date and delivery-mode overrides.
 
 Revision ID: 0229_it_student_profiles
-Revises: 0226_follow_up_escalation
+Revises: 0228_batch_timetable
 
 docs/superpowers/specs/2026-11-02-itc-012-it-student-record-design.md (DEC-SCOPE-345). Additive: a new table and three nullable columns,
 no existing row changes (a NULL override means "the batch's"). 0001 builds a fresh database from the current models, which already carry
@@ -15,7 +15,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0229_it_student_profiles"
-down_revision = "0226_follow_up_escalation"
+down_revision = "0228_batch_timetable"
 branch_labels = None
 depends_on = None
 

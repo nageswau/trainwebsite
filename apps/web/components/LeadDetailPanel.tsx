@@ -6,6 +6,7 @@ import { LeadStageControl } from "@/components/AdminLeadStage";
 import LeadAppointmentsSection from "@/components/LeadAppointmentsSection";
 import LeadCalls from "@/components/LeadCalls";
 import LeadClosure from "@/components/LeadClosure";
+import LeadCounseling from "@/components/LeadCounseling";
 import LeadContactFields, { contactChanges, contactDraft, contactRows } from "@/components/LeadContactFields";
 import LeadFollowUps from "@/components/LeadFollowUps";
 import LeadHandoverForm from "@/components/LeadHandoverForm";
@@ -331,6 +332,9 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
           reloadActivity(); // tel-015: every appointment change is on the timeline, a stage move or not
           if (status !== lead.status) setLead((l) => ({ ...l, status, status_label: label }));
         }} />
+
+      {/* itc-010 (C8): the IT counselor's sessions, read only on the telecaller side -- a returned lead keeps them */}
+      {lead.division === "it" && <LeadCounseling listUrl={leadUrl(lead.id, "/counseling")} writeUrl={null} />}
 
       {lead.milestones && <LeadMilestones milestones={lead.milestones} status={lead.status} />}
 
