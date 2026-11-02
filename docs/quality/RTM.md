@@ -1479,3 +1479,9 @@ half.
 | `itc-001-AC3` | PII fields are never stored as values | `::test_pii_fields_are_marked_changed_never_stored_as_values`; attendance note → `"changed"`; e2e `itc-001-audit-changes.spec.ts` (note text absent) |
 | `itc-001-AC4` | Viewer shows actor, timestamp and diff | `::test_admin_audit_returns_changes_only_in_the_field_diff_shape`; `apps/web/tests/components/AdminAuditLog.test.tsx` (itc-001); e2e desktop + phone |
 | `itc-001-E` | Decimal/date serialisation; rollback leaves no row; non-admin 403 | `::test_values_are_json_safe`, `::test_a_rollback_leaves_no_audit_row`, `::test_a_non_admin_still_gets_403`; e2e |
+| `itc-006-AC1` | A source rule wins over the product (and city) rule | `apps/api/tests/test_itc_006_distribution.py::test_source_rule_wins_over_product_and_city`; e2e `itc-006-distribution.spec.ts` |
+| `itc-006-AC2` | Workload picks the telecaller with the fewest open leads | `::test_workload_picks_fewest_open_leads`, `::test_workload_ties_go_in_turn`; `TelecallerStrategyPanel.test.tsx` |
+| `itc-006-AC3` | Inactive telecallers are never picked | `::test_workload_skips_inactive`, `::test_inactive_source_rule_falls_through` |
+| `itc-006-AC4` | Each assignment's audit row names the rule | `::test_audit_names_the_rule`; `test_tel_007_distribution.py::test_assignment_moves_the_stage_and_is_audited` |
+| `itc-006-N` | A rule to an overseas telecaller for the IT team → 422; strategy roles | `test_itc_006_api.py::test_source_rule_for_other_team_telecaller_is_422`, `::test_strategy_roles` |
+| `itc-006-E` | All eligible inactive → unassigned; migration safe and reversible | `::test_workload_with_nobody_eligible_leaves_unassigned`; `test_itc_006_migration.py` |

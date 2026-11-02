@@ -3434,3 +3434,13 @@ The syllabus is public with no enquiry gate (S2). Inline `User.role` check, like
 | `GET /portal/it/student/notifications` | 401 | 200 (header-only, never fee-locked) | the portal's existing role gate |
 
 No grant changes. A recipient sees only their own notices, as before. Pinned by `apps/api/tests/test_itc_002_notify.py`.
+
+### 2.239 Lead distribution by source and workload *(added 2026-11-02 — `DEC-SCOPE-337`, itc-006)*
+
+| Route | Anonymous | telecaller_manager | super_admin | every other role (incl. it_admin, telecaller) |
+|---|---|---|---|---|
+| `POST/GET /telecaller/distribution-rules` (source kind) | 401 | as tel-007 (own reports only for writes) | any | 403 |
+| `GET /telecaller/distribution-strategy` | 401 | 200, both teams (`editable` per team) | 200 | 403 |
+| `PUT /telecaller/distribution-strategy/{team}` | 401 | 200 if a direct report is on the team, else 403 | 200 | 403 |
+
+No grant changes. Pinned by `apps/api/tests/test_itc_006_api.py`.
