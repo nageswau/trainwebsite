@@ -129,6 +129,9 @@ def _sources(lead_id: UUID) -> list:
         # ccrm-004 LG3: a counselor's meeting -- the mode and an excerpt of the notes
         _branch(LeadMeeting.id, "meeting", LeadMeeting.occurred_at, actor=LeadMeeting.author_user_id, from_value=LeadMeeting.mode,
                 reason=_excerpt(LeadMeeting.notes)).where(LeadMeeting.lead_id == lead_id),
+        # itc-007: "Merged from LD-…" -- the merged lead's activity itself is on this lead now (it moved), so it lists in its own kinds
+        _branch(AuditLog.id, "merge", AuditLog.created_at, actor=AuditLog.user_id, from_value=meta["victim_code"].as_string())
+        .where(*_audits(lead_id, "lead.merge")),
         # itc-010 C10: a counseling session saved or edited -- its outcome; the Counseling section shows the whole record
         _branch(AuditLog.id, "counseling", AuditLog.created_at, actor=AuditLog.user_id, to_value=meta["outcome"].as_string(),
                 event=case((AuditLog.action == "lead_counseling.create", "created"), else_="updated"))

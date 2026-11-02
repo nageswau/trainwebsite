@@ -10,7 +10,7 @@ import type { PersonRef } from "@/lib/telecallerLeads";
 
 export type TimelineKind =
   | "created" | "enquiry" | "stage" | "priority" | "assignment" | "handover" | "student_link" | "call" | "message" | "follow_up" | "appointment"
-  | "milestone" | "note" | "meeting" | "counseling";
+  | "milestone" | "note" | "meeting" | "merge" | "counseling";
 export type TimelineRow = {
   id: string; kind: TimelineKind; at: string; actor: PersonRef | null; from_value: string; from_label: string; to_value: string; to_label: string;
   reason: string | null; event?: string | null; subject?: string | null; status?: string | null; duration_seconds?: number | null;
@@ -115,6 +115,8 @@ export function timelineEntry(row: TimelineRow): TimelineEntry {
       return { ...base, badge: "Note", tone: TONE.owner, title: "Note added" };
     case "meeting": // ccrm-004 (LG3): the mode and an excerpt of the notes; the Meetings section shows the whole text
       return { ...base, badge: "Meeting", tone: TONE.contact, title: `${row.from_value} meeting` };
+    case "merge": // itc-007: the merged lead's activity lists under its own kinds; this row says where it came from
+      return { ...base, badge: "Merge", tone: TONE.owner, title: `Merged from ${row.from_value}` };
     case "counseling": // itc-010 (C10): the outcome; the Counseling section shows the whole session
       return { ...base, badge: "Counseling", tone: TONE.contact,
         title: `Counseling ${row.event === "updated" ? "updated" : "recorded"}: ${OUTCOME_LABEL[row.to_value] ?? humanise(row.to_value)}` };

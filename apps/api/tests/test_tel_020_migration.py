@@ -32,7 +32,7 @@ def test_model_matches_the_migration():
 
     table = TelSetting.__table__
     assert {c.name for c in table.columns} == {"team", "not_contacted_hours", "hot_pending_hours", "updated_by_user_id", "created_at", "updated_at",
-                                              "distribution_strategy"}  # itc-006
+                                              "distribution_strategy", "escalate_after_hours"}  # itc-006, itc-009
     assert [c.name for c in table.primary_key.columns] == ["team"] and table.c.updated_by_user_id.nullable
     assert {"ck_tel_settings_team", "ck_tel_settings_not_contacted_hours", "ck_tel_settings_hot_pending_hours"} <= {c.name for c in table.constraints}
     assert TEL_SETTING_DEFAULTS == {"not_contacted_hours": 24, "hot_pending_hours": 4} == _migration.DEFAULTS

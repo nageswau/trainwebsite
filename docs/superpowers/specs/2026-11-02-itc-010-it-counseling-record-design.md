@@ -1,6 +1,6 @@
 # itc-010 — IT counseling record (design + plan)
 
-**Status:** built under `DEC-SCOPE-343` (migration `0227_lead_counseling_records`, API §12IO, RBAC §2.244).
+**Status:** built under `DEC-SCOPE-343` (migration `0227_lead_counseling_records`, API §12IO, RBAC §2.243).
 **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` §itc-010 (PDF §4 "Counseling", §3 step 5). Classification `UNVERIFIED` source;
 Q-01 answered by the owner (all phases in waves). The owner's standing instruction is "proceed with recommended answers", so every open
 choice below is a **builder call, `NEEDS_CONFIRMATION`**.
@@ -55,7 +55,7 @@ dashboard) read it later. Telecallers and their managers can read it on the lead
 2. Service + counselor routes: create/list/patch with validation, scope, 403/404/409/422, audit + timeline (RED API tests first).
 3. Telecaller read route + objections catalogue routes (RED tests first).
 4. Web: lib types, `LeadCounseling` component + vitest, wire into both detail pages, objections page + nav, timeline label.
-5. Docs: decision register DEC-SCOPE-343, API §12IO, RBAC §2.244, RTM, backlog status.
+5. Docs: decision register DEC-SCOPE-343, API §12IO, RBAC §2.243, RTM, backlog status.
 6. Browser QA (Playwright e2e for the counselor flow and the telecaller read-only view).
 
 ## Regression risks

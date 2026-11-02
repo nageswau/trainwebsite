@@ -1,4 +1,5 @@
 """tel-020 (DEC-SCOPE-111 AL1, AL11; API §12AE): each team's alert thresholds -- Lead Not Contacted and Hot Lead Pending, in whole hours.
+itc-009 (DEC-SCOPE-342; API §12IN) adds the follow-up escalation hours (0 = off), optional on PUT.
 Any telecaller manager or super_admin reads and sets both teams (the tel-022 G3 rule for team defaults); every other role is 403. The beat
 reads the rows on every run, so a change applies from the next run (AC4).
 
@@ -40,11 +41,11 @@ async def set_settings(team: str, payload: dict = Body(...), user: User = Depend
         raise HTTPException(404, "Team not found")
     data = _parse(TelSettingsUpdate, payload, "The request body must be an object", TEL_SETTING_FIELD_LABELS)
     before = {f: getattr(row, f) for f in FIELDS}
-    for field, value in data.model_dump().items():
+    for field, value in data.model_dump(exclude_unset=True).items():  # itc-009: an omitted escalate_after_hours keeps its value
         setattr(row, field, value)
     row.updated_by_user_id = user.id
     db.add(AuditLog(user_id=user.id, action="tel.settings.update", entity_type="tel_settings", entity_id=team,
-                    metadata_json={"from": before, "to": data.model_dump()}))
+                    metadata_json={"from": before, "to": {f: getattr(row, f) for f in FIELDS}}))
     await db.commit()
     await db.refresh(row)
     return await _out(db, row)

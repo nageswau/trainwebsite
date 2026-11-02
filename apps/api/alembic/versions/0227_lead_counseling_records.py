@@ -1,7 +1,7 @@
 """itc-010 -- the IT counseling record: lead_counseling_objections, lead_counseling_records, lead_counseling_record_objections.
 
 Revision ID: 0227_lead_counseling_records
-Revises: 0224_tel_source_workload
+Revises: 0226_follow_up_escalation
 
 docs/superpowers/specs/2026-11-02-itc-010-it-counseling-record-design.md (DEC-SCOPE-343). Additive: no existing row changes. 0001 builds a
 fresh database from the current models, which already carry the tables, so each is created only when missing (0186's idiom); the
@@ -16,7 +16,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0227_lead_counseling_records"
-down_revision = "0224_tel_source_workload"
+down_revision = "0226_follow_up_escalation"
 branch_labels = None
 depends_on = None
 

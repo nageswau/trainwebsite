@@ -14,7 +14,7 @@ URL = "/api/v1/telecaller/settings"
 
 
 async def reset_settings(db) -> None:
-    await db.execute(update(TelSetting).values(**TEL_SETTING_DEFAULTS, updated_by_user_id=None))
+    await db.execute(update(TelSetting).values(**TEL_SETTING_DEFAULTS, escalate_after_hours=0, updated_by_user_id=None))
     await db.commit()
 
 
@@ -46,7 +46,8 @@ async def test_a_manager_sets_a_team_and_it_is_audited(client, db_session, resto
     assert (row.not_contacted_hours, row.hot_pending_hours, row.updated_by_user_id) == (12, 2, manager.id)
     audit = await db_session.scalar(select(AuditLog).where(AuditLog.action == "tel.settings.update", AuditLog.user_id == manager.id))
     assert audit.entity_id == "overseas" and audit.metadata_json == {
-        "from": {"not_contacted_hours": 24, "hot_pending_hours": 4}, "to": {"not_contacted_hours": 12, "hot_pending_hours": 2}}
+        "from": {"not_contacted_hours": 24, "hot_pending_hours": 4, "escalate_after_hours": 0},
+        "to": {"not_contacted_hours": 12, "hot_pending_hours": 2, "escalate_after_hours": 0}}  # itc-009: the third field rides along
     assert [i["not_contacted_hours"] for i in (await client.get(URL)).json()["items"]] == [24, 12]  # the other team is untouched
     await reset_settings(db_session)
 

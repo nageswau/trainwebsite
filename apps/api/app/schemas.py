@@ -6829,7 +6829,9 @@ class TelTargetEffectiveOut(BaseModel):
 
 
 # tel-020 (DEC-SCOPE-111 AL1, AL11; API §12AE): a team's alert thresholds, whole hours 1-168 (a string or a fraction is refused).
-TEL_SETTING_FIELD_LABELS = {"not_contacted_hours": "Lead not contacted after (hours)", "hot_pending_hours": "Hot lead pending after (hours)"}
+# itc-009 (DEC-SCOPE-342; API §12IN): `escalate_after_hours`, 0-168 (0 = off), optional so a two-field client keeps the stored value.
+TEL_SETTING_FIELD_LABELS = {"not_contacted_hours": "Lead not contacted after (hours)", "hot_pending_hours": "Hot lead pending after (hours)",
+                            "escalate_after_hours": "Escalate overdue follow-ups after (hours)"}
 TelSettingHours = Annotated[StrictInt, Field(ge=1, le=168)]
 
 
@@ -6837,6 +6839,7 @@ class TelSettingsUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     not_contacted_hours: TelSettingHours
     hot_pending_hours: TelSettingHours
+    escalate_after_hours: Annotated[StrictInt, Field(ge=0, le=168)] = 0  # dumped with exclude_unset: omitted = unchanged
 
 
 class TelSettingsOut(BaseModel):
@@ -6844,6 +6847,7 @@ class TelSettingsOut(BaseModel):
     team_label: str
     not_contacted_hours: int
     hot_pending_hours: int
+    escalate_after_hours: int
     updated_at: datetime
     updated_by: TelTargetPerson | None
 
@@ -6869,6 +6873,20 @@ class LeadStageMove(BaseModel):
 
     def closure(self) -> dict:
         return {"duplicate_of": self.duplicate_of, "lost_reason_id": self.lost_reason_id, "lost_to": self.lost_to}
+
+
+# itc-007 (DEC-SCOPE-341): the lead fields a merge may take from the victim (services/lead_merge.py FIELDS repeats them)
+LeadMergeField = Literal["name", "email", "phone", "whatsapp_number", "city", "state", "qualification", "passing_year", "institution"]
+
+
+class LeadMergeIn(BaseModel):
+    """itc-007: merge the `victim` (its Lead ID) into the lead of the path. `use_victim` names the fields that take the victim's value even
+    where this lead has one (an empty field is always filled from the victim); `reason` is kept in the victim's stage history."""
+
+    model_config = ConfigDict(extra="forbid")
+    victim: Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True, min_length=1, max_length=20)]
+    use_victim: list[LeadMergeField] = Field(default_factory=list, max_length=9)
+    reason: BdmPipelineNote = None
 
 
 class LeadStageOut(BaseModel):
@@ -7181,7 +7199,7 @@ class LeadTimelineRow(BaseModel):
 
     id: UUID
     kind: Literal["created", "enquiry", "stage", "priority", "assignment", "handover", "student_link", "call", "message", "follow_up",
-                  "appointment", "milestone", "note", "meeting", "counseling"]
+                  "appointment", "milestone", "note", "meeting", "merge", "counseling"]
     at: datetime
     actor: LeadStageActor | None
     from_value: str

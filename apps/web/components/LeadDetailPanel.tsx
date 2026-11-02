@@ -10,13 +10,14 @@ import LeadCounseling from "@/components/LeadCounseling";
 import LeadContactFields, { contactChanges, contactDraft, contactRows } from "@/components/LeadContactFields";
 import LeadFollowUps from "@/components/LeadFollowUps";
 import LeadHandoverForm from "@/components/LeadHandoverForm";
+import LeadMergeForm from "@/components/LeadMergeForm";
 import LeadMessages from "@/components/LeadMessages";
 import LeadMilestones from "@/components/LeadMilestones";
 import LeadQualificationForm from "@/components/LeadQualificationForm";
 import LeadNotes from "@/components/LeadNotes";
 import LeadTimeline from "@/components/LeadTimeline";
 import ProductOptions from "@/components/TelecallerProductOptions";
-import { isRequestBody, sendJson, type Page } from "@/lib/apiErrors";
+import { isRequestBody, sendJson, sendRequest, type Page } from "@/lib/apiErrors";
 import LocalTime from "@/components/LocalTime";
 import { isClosed, stageLabel } from "@/lib/leadStages";
 import type { TimelineRow } from "@/lib/leadTimeline";
@@ -174,6 +175,16 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
   // tel-018 HO4: a workable lead before the student link; a manager (never read-only) may also change the counselor
   const canHandover = !lead.read_only && !isClosed(lead.status) && !["application_enrollment", "converted"].includes(lead.status);
   const [handoverNotice, setHandoverNotice] = useState<Notice>(null);
+  // itc-007 (Q-07): a manager merges a duplicate into an open lead; the merge moves activity here, so the lead and timeline are re-read
+  const canMerge = canReopen && !lead.read_only && !isClosed(lead.status);
+  const [mergeNotice, setMergeNotice] = useState<Notice>(null);
+  async function merged(victimCode: string) {
+    const outcome = await sendRequest(leadUrl(lead.id), { method: "GET" });
+    if (outcome.ok && isRequestBody(outcome.data)) setLead(outcome.data as unknown as TelecallerLeadDetail);
+    setMergeNotice({ text: `${victimCode} was merged into this lead.`, failed: false });
+    setFollowUpsVersion((n) => n + 1);
+    reloadActivity();
+  }
 
   const reloadActivity = () => setActivityVersion((n) => n + 1);
   const stageChanged = (status: string) => {
@@ -208,8 +219,12 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
         <h2 style={{ margin: "4px 0" }}>{lead.name}</h2>
         <p className="muted" style={{ margin: 0 }}>Stage: <strong>{lead.status_label}</strong> · Priority: <strong>{PRIORITY_LABEL[lead.priority] ?? lead.priority}</strong></p>
         <LeadClosure lead={lead} />
-        {/* D1 / QA-05: a manager still acts on a handed-over lead, but sees that the counselor has it */}
-        {(lead.read_only || lead.counselor) && (
+        {/* itc-007: a merged lead is read only for everyone; its activity is on the lead it was merged into */}
+        {lead.merged_at ? (
+          <p className="form-message" role="note" style={{ marginTop: 8 }}>
+            {`This lead was merged into ${lead.duplicate_of?.lead_code ?? "another lead"}. You can view it but not change it.`}
+          </p>
+        ) : (lead.read_only || lead.counselor) && ( /* D1 / QA-05: a manager still acts on a handed-over lead, but sees that the counselor has it */
           <p className="form-message" role="note" style={{ marginTop: 8 }}>
             {`This lead is with the counselor${lead.counselor ? `, ${lead.counselor.full_name}` : ""}.`}
             {lead.read_only && " You can view it but not change it."}
@@ -246,6 +261,8 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
       </div>
       )}
       <NoticeLine notice={handoverNotice} />
+      {canMerge && <LeadMergeForm url={leadUrl(lead.id)} leadCode={lead.lead_code} onMerged={(code) => void merged(code)} />}
+      <NoticeLine notice={mergeNotice} />
 
       {!lead.read_only && (
         <form onSubmit={savePriority}>

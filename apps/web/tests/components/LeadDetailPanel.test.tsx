@@ -344,3 +344,28 @@ describe("LeadDetailPanel (tel-008)", () => {
     expect(within(activity).queryByText(/Follow-up → Follow-up/)).toBeNull();
   });
 });
+
+// itc-007 (DEC-SCOPE-341): merge a duplicate -- a manager on an open lead only; a merged lead says where it went and offers no control.
+describe("LeadDetailPanel merge (itc-007)", () => {
+  it("offers Merge a duplicate to a manager on an open lead only", async () => {
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen />);
+    expect(await screen.findByRole("button", { name: "Merge a duplicate into LD-000042" })).toBeTruthy();
+    cleanup();
+    render(<LeadDetailPanel initial={detail()} timeline={pageOf([])} canReopen={false} />); // a telecaller
+    await screen.findByText("No follow-ups yet.");
+    expect(screen.queryByRole("button", { name: /Merge a duplicate/ })).toBeNull();
+    cleanup();
+    render(<LeadDetailPanel initial={detail({ status: "lost", status_label: "Lost" })} timeline={pageOf([])} canReopen />);
+    await screen.findByText("No follow-ups yet.");
+    expect(screen.queryByRole("button", { name: /Merge a duplicate/ })).toBeNull();
+  });
+
+  it("a merged lead names the lead it was merged into and offers no control", async () => {
+    render(<LeadDetailPanel initial={detail({ status: "duplicate", status_label: "Duplicate", read_only: true, merged_at: "2026-11-02T06:00:00Z",
+      duplicate_of: { id: "S1", lead_code: "LD-000007" } })} timeline={pageOf([])} canReopen />);
+    expect(screen.getByText("This lead was merged into LD-000007. You can view it but not change it.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Change stage/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Merge a duplicate/ })).toBeNull();
+    expect(screen.queryByText(/This lead is with the counselor/)).toBeNull();
+  });
+});

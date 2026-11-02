@@ -10733,6 +10733,52 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** no migration; API §12IL; RBAC unchanged.
 - **Feature ID authorized:** `itc-008`. **Status:** built on `worktree-itc-008`.
 
+### DEC-SCOPE-341 — Merge duplicate leads (`itc-007`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-007` (PDF §9 "let authorized users merge duplicates", §3 step 1). Scope
+  approved by the owner 2026-11-01 (backlog Q-01: all phases, built in waves). Depends on itc-001 (DEC-SCOPE-335, merged). Design
+  `docs/superpowers/specs/2026-11-02-itc-007-merge-duplicate-leads-design.md`.
+- **Behaviour:** a manager picks the lead that stays (its page) and enters the duplicate's Lead ID; a side-by-side preview shows both
+  leads and the counts that will move. The merge moves the duplicate's calls, follow-ups, notes, messages, meetings, appointments,
+  further enquiries and counselor tasks to the survivor, keeps the duplicate's own enquiry as a further enquiry, fills the survivor's
+  empty fields and qualification answers from the duplicate (fill-empty-only; a picked field takes the duplicate's value), repoints leads
+  closed as a duplicate of it, and closes the duplicate as Duplicate of the survivor (stage history event `merge`), merged and read only.
+  One `lead.merge` audit row on the survivor holds the moved counts and itc-001's `changes` (PII as `"changed"`); the survivor's timeline
+  reads "Merged from LD-…".
+- **Claude's calls under "proceed with recommended answers" (`NEEDS_CONFIRMATION`):** M1 (Q-07) managers (telecaller manager, super_admin)
+  and division admins (it_admin / overseas_admin) merge; telecallers do not. M2 the survivor keeps its stage, priority, telecaller and
+  counselor. M3 when both leads have an open appointment, the survivor's stays and the duplicate's is cancelled ("Lead merged") and moved.
+  M4 the duplicate's stage history and audit rows stay on it. M5 a merged lead is read only for everyone (no reopen, stage, contact,
+  qualification or admin edit: 409); notes stay allowed (ccrm-002 N1). M6 no unmerge. M7 a duplicate linked to a student (or at
+  Application/Enrollment / Converted) cannot be merged away (409); merge the other way.
+- **Numbering:** migration `0225_lead_merge` (`enquiries.merged_at`, `merged_by_user_id`, CHECK `ck_enquiries_merged`); API §12IM;
+  RBAC §2.241.
+- **Feature ID authorized:** `itc-007`. **Status:** built on `worktree-itc-007`.
+
+### DEC-SCOPE-342 — Overdue follow-up escalation for the IT team (`itc-009`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-009 (source PDF §9 "Alert the owner when a follow-up is overdue; optionally
+  escalate after a configurable period", §3 step 3; PDF classified `UNVERIFIED`). Owner Q-01 (2026-11-01): all phases approved for build in
+  waves. Dependencies itc-002 (`DEC-SCOPE-336`) and itc-004 (`DEC-SCOPE-338`) are built. The owner said to proceed with the recommended
+  answers, so the calls below are the builder's and stay `NEEDS_CONFIRMATION`. Design:
+  `docs/superpowers/specs/2026-11-02-itc-009-follow-up-escalation-design.md`.
+- **Decisions (builder's calls):**
+  - **E1 — setting.** `tel_settings.escalate_after_hours`, whole hours 0-168 per team; **0 = off and the default for both teams** (opt-in:
+    deploying changes nothing). Same editors as the tel-020 thresholds (telecaller manager, super admin). Optional on PUT.
+  - **E2 — scope.** A telecaller's follow-up (any team) → the telecaller's reporting manager; an inactive manager → the team's active
+    division admins (`it_admin` / `overseas_admin`). An IT counselor's follow-up (created by a counselor, IT lead) → every active IT admin.
+    Overseas counselor follow-ups stay with ccrm-031.
+  - **E3 — once.** `lead_follow_ups.escalated_at`, claimed by a conditional UPDATE in the notices' savepoint. Only open follow-ups, never on
+    a Nurture lead. No recipient → left unclaimed for the next run.
+  - **E4 — flood guard.** Only follow-ups that crossed the threshold in the last 24 h escalate (tel-020 AL10's rule).
+  - **E5 — notice.** itc-002's `it.followup.overdue` (confirms that catalogue row): fixed preview-safe text, in-app + consented channels.
+    Manager link `/telecaller/manager/leads/{id}`; admins get no link (no admin lead page).
+  - **E6 — where it shows.** New Notifications pages for the telecaller manager (`/telecaller/manager/notifications`, with the unread badge
+    there) and the IT admin (`/it/admin/notifications`, header-only portal section): before this neither role had an in-app list.
+  - **E7 — beat.** `itc009-escalations`, every 15 minutes.
+- **Numbering:** migration `0226_follow_up_escalation`; API §12IN; RBAC §2.242.
+- **Feature ID authorized:** `itc-009`. **Status:** built on `worktree-itc-009`.
+
 ### DEC-SCOPE-343 — IT counseling record (`itc-010`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-010 (PDF §4 "Counseling: career goal, current skills, recommended course,
@@ -10756,5 +10802,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
     for values that are set or changed, so a stored value that has since gone inactive or past still saves.
   - **C10 —** each save writes `lead_counseling.create` / `.update` (ids, outcome, itc-001 diff with notes as "changed"); the lead
     timeline shows it as a `counseling` entry. **C11 —** internal: never shown to students; logs carry ids and field names only.
-- **Numbering:** migration `0227_lead_counseling_records`; API §12IO; RBAC §2.244.
+- **Numbering:** migration `0227_lead_counseling_records`; API §12IO; RBAC §2.243.
 - **Feature ID authorized:** `itc-010`. **Status:** built on `worktree-itc-010`.
