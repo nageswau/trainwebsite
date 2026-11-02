@@ -4875,3 +4875,20 @@ for any other role, even with the key), then the student (**404** outside the HR
 - `PATCH /admin/leads/{id}` — the existing `lead.update` row adds `changes` (`status`, `owner_id`) only when one of them actually changed.
 - A blank string and `null` are the same empty value (no change between them). Everything is written in the request's transaction, so a
   rollback leaves no audit row.
+
+## 12IJ. Lead stage "Nurture" and the derived "Assigned to Counselor" (itc-004) — addendum, 2026-11-02
+
+`DEC-SCOPE-338`. Migration `0223_lead_nurture_stage` (the `ck_enquiries_status` CHECK gains `nurture`). Authorization unchanged.
+
+- The lead stage enum (`status`, `to_stage`, every `?status=` / `?stage=` filter) gains `nurture` (label "Nurture"), additive. It is open
+  and outside the linear pipeline order.
+- `POST /telecaller/leads/{id}/stage` and `PATCH /admin/leads/{id}` — `nurture` is a manual target for a telecaller, manager or admin from
+  any open stage before Application/Enrollment; it needs `reason` (**422** at `reason`, "Add a reason for moving the lead to Nurture").
+  From Application/Enrollment or Converted it is the existing **422** at `to_stage`. A counselor choosing it is the existing **422**
+  ("This stage is set by the system"). From Nurture, the existing manual targets apply (no reason needed).
+- System events: booking a counselling appointment, the student link and a counselor's return move a Nurture lead as from an early stage;
+  calls do not move it.
+- Overdue: a Nurture lead's follow-ups are never `overdue` (`GET /telecaller/follow-ups?view=overdue` and its counts, each follow-up's
+  `overdue`, `GET /telecaller/leads?follow_up=overdue`, the dashboard `overdue` tile, the follow-ups report, the counselor dashboard and
+  performance); the lead's `next_action_overdue` is `false`; no "Missed follow-up" alert. The "Follow-up due" alert still fires.
+- "Assigned to Counselor" is not a stage: clients derive it from `counselor` on an open lead.
