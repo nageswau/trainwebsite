@@ -736,6 +736,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** large. **Risk:** medium.
 
 #### itc-023: At-risk thresholds and alerts
+- **Status:** built as `DEC-SCOPE-352` (migration `0236_it_at_risk`, API §12IX, RBAC §2.252). Q-21 built with the recommended
+  answers (per-programme thresholds, opt-in, min sessions 3; the certificate `at_risk` kept separate) — `NEEDS_CONFIRMATION`; the
+  itc-022 remediation trigger is deferred until itc-022 exists.
 - **Business requirement:** §6 "Flag students when attendance or assessment performance falls below administrator-defined thresholds"; §9 "reminders for … attendance or assessment concerns".
 - **Existing behavior:** `at_risk` means attendance below the **certificate** threshold, read-only (`workflows.py:1708`). There is no assessment criterion, no separate threshold and no alerts.
 - **Expected behavior:**

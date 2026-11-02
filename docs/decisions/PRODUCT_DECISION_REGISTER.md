@@ -10981,3 +10981,26 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   - **N8 —** sharing sends the student one fixed-text notice (`it.student.update_shared`), never the note text; un-sharing is silent.
 - **Numbering:** migration `0234_it_student_notes` (on itc-021's `0232`); API §12IW; RBAC §2.251 (itc-021 took 349 / §12IU / §2.249; 350 / §12IV / §2.250 left to itc-026, in flight).
 - **Feature ID authorized:** `itc-028`. **Status:** built on `worktree-itc-028`.
+### DEC-SCOPE-352 — At-risk thresholds and alerts (`itc-023`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-023` (PDF §6 "Flag students when attendance or assessment performance falls
+  below administrator-defined thresholds", §9 "reminders for … attendance or assessment concerns"). Scope approved by the owner
+  2026-11-01 (backlog Q-01: all phases, built in waves). Dependencies itc-002 (`DEC-SCOPE-336`), itc-003 and itc-021 (`DEC-SCOPE-349`)
+  are merged; itc-022 (optional, the remediation plan) is not built. Design `docs/superpowers/specs/2026-11-02-itc-023-at-risk-alerts-design.md`.
+- **Behaviour:** the IT Admin sets at-risk thresholds per programme on a new **At Risk** page: minimum attendance % (after a minimum
+  number of sessions), minimum assessment average % and a number of absences in a row; each can be off. Every day at 07:00 IST the
+  active students of monitored programmes are checked. A student who crosses a threshold is flagged, and the student (a supportive,
+  generic message), their trainer and their IT counselor are notified once; when the student is back on track the flag closes and all
+  three are notified once. The flag and its history show on the student record (360); the IT Admin's dashboard and At Risk page, the IT
+  counselor's dashboard and the trainer's dashboard list the open flags in the reader's scope. Trainers gain a Notifications page.
+- **Claude's calls under "proceed with recommended answers" (Q-21, `NEEDS_CONFIRMATION`):** R1 thresholds per programme, each criterion
+  nullable (off); no row = not monitored, so nothing is flagged on deploy; `min_sessions` default 3 (the first-week edge). R2 the
+  certificate batch-progress `at_risk` column keeps its certificate-threshold meaning; the new flag is separate. R3 attendance % =
+  itc-021's attended/counted (leave policy applies); assessment = mean of the best graded attempt % per counted assessment; absences =
+  the trailing run of `absent` marks (late/leave/present end it). R4 one row per episode, one open flag per enrolment (partial unique
+  index). R5 a change of reasons while flagged is silent; a flag whose enrolment stops being active or whose programme stops being
+  monitored closes silently (`stopped`). R6 recipients student/trainer/itc-003 counselor; the IT Admin is not alerted. R7 Celery beat
+  `itc023-at-risk` 01:30 UTC. R8 readers: IT Admin all, IT counselor linked students, trainer own batches, others 403. R9 the
+  remediation trigger waits for itc-022.
+- **Numbering:** migration `0236_it_at_risk`; API §12IX; RBAC §2.252.
+- **Feature ID authorized:** `itc-023`. **Status:** built on `worktree-itc-023`.

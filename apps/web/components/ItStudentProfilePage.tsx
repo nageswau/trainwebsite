@@ -6,6 +6,7 @@ import ItStudentProfileForm from "@/components/ItStudentProfileForm";
 import PortalShell from "@/components/PortalShell";
 import StudentResumeCard from "@/components/StudentResumeCard";
 import { ApiError, serverApi } from "@/lib/api";
+import { formatRiskDate, riskReasonLabels, studentRiskUrl, type RiskFlag } from "@/lib/itAtRisk";
 import { itEnrollmentsUrl, itStudentProfileUrl, MY_IT_PROFILE_URL, type ItStudentProfileResponse } from "@/lib/itStudentProfile";
 import { PORTAL_NAV } from "@/lib/navigation";
 import { studentResumesUrl } from "@/lib/studentResumes";
@@ -59,6 +60,7 @@ export default async function ItStudentProfilePage({ portal, id }: { portal: key
         <p><Link href={back}>← Back to {backLabel}</Link></p>
         <h1>Student record: {data.student.full_name}</h1>
         {data.student.student_code && <p className="muted">Student ID {data.student.student_code}</p>}
+        <StudentRiskCard studentId={data.student.id} />
         <div className="card">
           <ItStudentProfileForm initial={data} url={itStudentProfileUrl(portal, id)} enrollmentsUrl={itEnrollmentsUrl(portal, id)} />
         </div>
@@ -67,5 +69,42 @@ export default async function ItStudentProfilePage({ portal, id }: { portal: key
         </div>
       </div>
     </PortalShell>
+  );
+}
+
+/** itc-023 (DEC-SCOPE-352): the student's at-risk flag (open first) and its history, as of the last daily check. */
+async function StudentRiskCard({ studentId }: { studentId: string }) {
+  let flags: RiskFlag[];
+  try {
+    flags = await serverApi<RiskFlag[]>(studentRiskUrl(studentId));
+  } catch {
+    return <div className="card" role="status" style={{ marginBottom: 16 }}>The at-risk status could not be loaded. Refresh the page to try again.</div>;
+  }
+  const open = flags.find((f) => f.cleared_at === null);
+  const past = flags.filter((f) => f.cleared_at !== null);
+  return (
+    <section className="card" aria-labelledby="student-risk-heading" style={{ marginBottom: 16 }}>
+      <h3 id="student-risk-heading" style={{ fontSize: 18, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        At-risk status <span className={open ? "status error" : "status"}>{open ? "At risk" : "Not at risk"}</span>
+      </h3>
+      {open ? (
+        <p style={{ margin: 0 }}>Flagged on {formatRiskDate(open.raised_at)} in {open.program} ({open.batch.name}): {riskReasonLabels(open).join(", ")}.</p>
+      ) : (
+        <p className="muted" style={{ margin: 0 }}>Not at risk at the last daily check.</p>
+      )}
+      {past.length > 0 && (
+        <details style={{ marginTop: 12 }}>
+          <summary>Earlier flags ({past.length})</summary>
+          <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
+            {past.map((f) => (
+              <li key={f.id}>
+                {formatRiskDate(f.raised_at)} – {formatRiskDate(f.cleared_at as string)}: {riskReasonLabels(f).join(", ")}
+                {f.clear_reason === "stopped" ? " (monitoring stopped)" : " (back on track)"}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </section>
   );
 }

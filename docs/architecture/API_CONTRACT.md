@@ -5167,3 +5167,20 @@ a rollback sends nothing).
 - `GET /portal/it/student/updates` — new header-only section; `GET /portal/it/counselor/students` and `/portal/it/admin/students` rows
   gain a `notes` link column (`student_notes`).
 - Errors: an out-of-scope or missing student is the same 404 (no disclosure); a role with no notes scope 403; malformed UUID 422.
+## 12IX. At-risk thresholds and flags (itc-023) — addendum, 2026-11-02
+
+`DEC-SCOPE-352`. Migration `0236_it_at_risk` (tables `it_risk_thresholds`, `student_risk_flags`). Additive.
+
+- `GET /admin/it/risk-thresholds` (IT Admin) → every programme, by title: `{program_id, program, active, min_attendance_percent,
+  min_assessment_percent, max_consecutive_absences, min_sessions, monitored, updated_at}`; a programme without a row reads all-null,
+  `min_sessions` 3, `monitored: false`.
+- `PUT /admin/it/risk-thresholds/{program_id}` (IT Admin) body `{min_attendance_percent?: 0-100|null, min_assessment_percent?: 0-100|null,
+  max_consecutive_absences?: 1-60|null, min_sessions?: 1-60 (default 3)}` (the whole set; extra keys 422) → the row as above. 404
+  unknown programme; 403 any other role. Audited `it.risk_thresholds.update` with before/after (itc-001).
+- `GET /it/at-risk?student_id=&history=false` → open flags (and cleared ones with `history=true`), open first then newest, at most 200:
+  `{id, student{id, full_name, student_code}, program, batch{id, name}, reasons[attendance|assessment|absences], attendance_percent,
+  assessment_percent, consecutive_absences, raised_at, cleared_at, clear_reason (recovered|stopped|null), profile_url}`. Scope: IT
+  Admin all; IT counselor their itc-003 students; trainer their batches (`profile_url` null); anyone else 403.
+- Portal: `/portal/it/admin/at-risk` and `/portal/it/trainer/notifications` (headers only).
+- Notifications (itc-002 catalogue): `it.training.at_risk` (trainer, counselor), `it.training.check_in` (student), `it.training.back_on_track`
+  (all three); entity = the enrolment; fixed text, no figures.

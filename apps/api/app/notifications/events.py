@@ -35,7 +35,11 @@ EVENTS: dict[str, Event] = {
     "it.batch.changed": Event("batch", "Course or batch updated", "Your course, batch or timetable was updated. Open EduSphere to see what changed."),
     # itc-025 (DEC-SCOPE-348): the linked IT counselor's copy of a batch change of one or more of their students
     "it.batch.student_changed": Event("batch", "Student's batch updated", "The course, batch or timetable of your student was updated. Open EduSphere to see what changed."),
-    "it.training.at_risk": Event("enrollment", "Attendance or progress alert", "Attendance or progress needs attention. Open EduSphere for the details."),
+    # itc-023 (DEC-SCOPE-352 R6): staff (trainer, counselor) get `at_risk`; the student a separate supportive, generic `check_in`; a
+    # clearing is `back_on_track` for all three. No figure or reason is ever in the text.
+    "it.training.at_risk": Event("enrollment", "Student at risk", "A student's attendance or progress needs attention. Open EduSphere for the details."),
+    "it.training.check_in": Event("enrollment", "Let's get you back on track", "Your trainer and counselor are here to help with your course. Open EduSphere to see your attendance and progress."),
+    "it.training.back_on_track": Event("enrollment", "Back on track", "Attendance and progress are back on track. Open EduSphere for the details."),
     "it.resume.uploaded": Event("resume", "Resume uploaded", "A resume was uploaded. Open EduSphere to review it."),
     "it.placement.updated": Event("student", "Placement status updated", "Your placement status was updated. Open EduSphere to see it."),
     # itc-028 (DEC-SCOPE-351 N8): a staff note was shared with the student -- never the note's text
