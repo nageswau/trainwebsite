@@ -19,11 +19,24 @@ depends_on = None
 INDEX = "ix_notifications_user_read_created"
 
 
+COLUMNS = (
+    sa.Column("event_type", sa.String(80), nullable=True),
+    sa.Column("entity_type", sa.String(50), nullable=True),
+    sa.Column("entity_id", sa.String(80), nullable=True),
+)
+
+
 def upgrade() -> None:
-    op.add_column("notifications", sa.Column("event_type", sa.String(80), nullable=True))
-    op.add_column("notifications", sa.Column("entity_type", sa.String(50), nullable=True))
-    op.add_column("notifications", sa.Column("entity_id", sa.String(80), nullable=True))
-    op.create_index(INDEX, "notifications", ["user_id", "read", "created_at"])
+    # 0001 builds a fresh database from the current models, which already carry these, so every step is guarded (0220's idiom; found
+    # by itc-003: a fresh database stopped at this revision with "column event_type already exists").
+    inspector = None if op.get_context().as_sql else sa.inspect(op.get_bind())
+    existing = set() if inspector is None else {c["name"] for c in inspector.get_columns("notifications")}
+    for column in COLUMNS:
+        if column.name not in existing:
+            op.add_column("notifications", column)
+    indexes = set() if inspector is None else {i["name"] for i in inspector.get_indexes("notifications")}
+    if INDEX not in indexes:
+        op.create_index(INDEX, "notifications", ["user_id", "read", "created_at"])
 
 
 def downgrade() -> None:

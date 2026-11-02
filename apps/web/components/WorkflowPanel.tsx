@@ -452,7 +452,8 @@ export default function WorkflowPanel({ user, section, liveClassesLock = null }:
   const showOverseasApply = user.role === "overseas_student" && section === "applications";
   const showScholarshipApply = user.role === "overseas_student" && section === "scholarships";
   const showFeePayment = (user.role === "it_student" && section === "fees") || (user.role === "overseas_student" && section === "payments");
-  const showCounselorEvaluation = user.role === "counselor" && ["applications", "students"].includes(section);
+  // itc-003 QA-03: the IT counselor's Students page (its linked IT students) has no overseas applications to evaluate.
+  const showCounselorEvaluation = user.role === "counselor" && user.division === "overseas" && ["applications", "students"].includes(section);
   const showCounselorChat = user.role === "counselor" && section === "counselor-chat";
   // csc-002 (DEC-SCOPE-227): an overseas counselor creates a walk-in student's login on their Students page.
   const showCounselorWalkIn = user.role === "counselor" && user.division === "overseas" && section === "students";

@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.lead_stages import CLOSED, MANUAL_BEFORE, NURTURE, ORDER, STAGES
 from app.models import LEAD_PRIORITIES, AuditLog, Batch, Enquiry, Enrollment, Notification, OverseasApplication, University, User, VisaCase
 from app.notifications.dispatch import queue_deliveries
-from app.services import application_filters, bdm_leads, counselor_students, lead_appointments, lead_pipeline, telecaller_alerts
+from app.services import application_filters, bdm_leads, counselor_students, it_student_counselors, lead_appointments, lead_pipeline, telecaller_alerts
 from app.services.bdm_appointments import db_now, today_ist
 
 logger = logging.getLogger("app.leads")
@@ -161,6 +161,8 @@ async def link_student(db: AsyncSession, user: User, lead: Enquiry, match) -> No
     lead.converted_user_id, lead.converted_at, lead.converted_by_user_id = student.id, now, user.id
     bdm_leads.audit_conversion(db, user, lead, "lead.convert", student.id)
     with db.no_autoflush:  # the link is flushed at the commit, where `commit_link` turns the unique-student race into 409
+        # itc-003: the IT student gets the lead owner as their counselor (the student row is locked above, so no race with a reassign)
+        await it_student_counselors.link_on_conversion(db, user, lead, student.id)
         await sync_conversion(db, lead)
 
 
@@ -185,6 +187,7 @@ async def unlink_student(db: AsyncSession, user: User, lead: Enquiry, *, admin: 
         raise HTTPException(409, UNLINK_CONVERTED)
     await lead_pipeline.apply_event(db, lead, "student_unlinked", user)
     bdm_leads.audit_conversion(db, user, lead, "lead.unconvert", lead.converted_user_id)
+    await it_student_counselors.unlink_on_unconversion(db, lead, lead.converted_user_id)
     lead.converted_user_id = lead.converted_at = lead.converted_by_user_id = None
 
 

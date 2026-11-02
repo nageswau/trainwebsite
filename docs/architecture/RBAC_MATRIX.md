@@ -3434,3 +3434,16 @@ The syllabus is public with no enquiry gate (S2). Inline `User.role` check, like
 | `GET /portal/it/student/notifications` | 401 | 200 (header-only, never fee-locked) | the portal's existing role gate |
 
 No grant changes. A recipient sees only their own notices, as before. Pinned by `apps/api/tests/test_itc_002_notify.py`.
+
+### 2.239 Counselor ↔ IT student ownership link *(added 2026-11-02 — `DEC-SCOPE-337`, itc-003)*
+
+| Route | Anonymous | IT counselor | it_admin | super_admin, overseas counselor, overseas_admin, it_student, other roles |
+|---|---|---|---|---|
+| `GET /counselor/it/students` | 401 | 200 (own linked students) | 403 | 403 |
+| `GET /counselor/it/students/{id}` | 401 | 200 own linked student, else 404 | 403 | 403 |
+| `PUT /admin/it/students/{id}/counselor` | 401 | 403 | 200 / 404 / 422 | 403 |
+| `GET /lookups/it-counselors` | 401 | 403 | 200 | 403 |
+| `GET /portal/it/counselor/students` | 401 | 200 (own linked students) | — | — |
+
+The IT student reads only their own counselor's name (dashboard tile). Inline role checks (`services/it_student_counselors.py`,
+`api/lookups.py`). Pinned by `apps/api/tests/test_itc_003_it_student_counselors.py`.

@@ -1,7 +1,7 @@
 """itc-004 -- the parked Nurture lead stage in the `enquiries` status CHECK.
 
 Revision ID: 0223_lead_nurture_stage
-Revises: 0221_notification_event_type
+Revises: 0222_it_student_counselors
 
 DEC-SCOPE-338 (N2). No existing row changes: the CHECK is widened. The stage list repeats app.lead_stages (test_itc_004_migration).
 0001 builds a fresh database from the current models, so the CHECK is replaced with the same text there. The downgrade moves Nurture
@@ -11,7 +11,7 @@ leads to Follow-up (where a manual re-activation would put them) so the old CHEC
 from alembic import op
 
 revision = "0223_lead_nurture_stage"
-down_revision = "0221_notification_event_type"
+down_revision = "0222_it_student_counselors"
 branch_labels = None
 depends_on = None
 
