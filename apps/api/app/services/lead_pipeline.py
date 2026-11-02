@@ -51,6 +51,7 @@ LOST_REASON_REQUIRED = "Choose why the lead was lost"
 LOST_REASON_INACTIVE = "Choose an active lost reason"
 FOLLOW_UPS_CLOSED = "Lead closed"  # tel-011 F4: the cancel reason on follow-ups a closing move cancelled
 APPOINTMENTS_CLOSED = FOLLOW_UPS_CLOSED  # tel-016 AP15: and on the counselling appointment it cancelled
+LEAD_MERGED = "This lead was merged into another lead, so it can't be changed"  # itc-007 (DEC-SCOPE-338)
 
 Kind = Literal["telecaller", "manager", "counselor"]
 
@@ -84,7 +85,13 @@ async def locked_lead(db: AsyncSession, lead_id: UUID, *filters) -> Enquiry:
     return lead
 
 
-async def _record(db: AsyncSession, lead: Enquiry, to_stage: str, event: str, actor_id: UUID | None, reason: str | None) -> None:
+def require_not_merged(lead: Enquiry) -> None:
+    """itc-007 (AC2): a merged lead is read only -- never reopened, moved or edited (its activity is on the survivor). 409."""
+    if lead.merged_at is not None:
+        raise HTTPException(409, LEAD_MERGED)
+
+
+async def record_stage(db: AsyncSession, lead: Enquiry, to_stage: str, event: str, actor_id: UUID | None, reason: str | None) -> None:
     from_stage = lead.status
     lead.status, lead.stage_changed_at = to_stage, await db.scalar(select(func.now()))
     db.add(LeadStageHistory(lead_id=lead.id, from_stage=from_stage, to_stage=to_stage, event=event, actor_user_id=actor_id, reason=reason))
@@ -99,7 +106,7 @@ async def apply_event(db: AsyncSession, lead: Enquiry, event: str, actor: User |
     sources, to_stage = EVENTS[event]
     if lead.status not in sources:
         return False
-    await _record(db, lead, to_stage, event, actor.id if actor else None, reason)
+    await record_stage(db, lead, to_stage, event, actor.id if actor else None, reason)
     return True
 
 
@@ -145,6 +152,7 @@ async def person_move(db: AsyncSession, lead: Enquiry, actor: User, kind: Kind, 
     chooses from their own list, and an open target needs the lead's next action and its due date (the route applies any sent first).
     ccrm-006 (D3-D7): a person's stage dialog sends `closure` (even all-empty) -- Duplicate then needs the surviving lead, Lost / Not
     Interested a reason from the list; a call-logged close (tel-010) sends none and keeps its old rules (D6). A reopen clears them."""
+    require_not_merged(lead)
     current = lead.status
     if to_stage not in STAGE_LABELS:
         raise invalid("to_stage", STAGE_UNKNOWN, to_stage)
@@ -158,7 +166,7 @@ async def person_move(db: AsyncSession, lead: Enquiry, actor: User, kind: Kind, 
             raise invalid("to_stage", CLOSED_REOPEN_ONLY, to_stage)
         if reason is None:
             raise invalid("reason", REASON_REOPEN, reason)
-        await _record(db, lead, to_stage, "reopen", actor.id, reason)
+        await record_stage(db, lead, to_stage, "reopen", actor.id, reason)
         lead.duplicate_of_id = lead.lost_reason_id = lead.lost_to = None  # D7; after the stage, so one flush satisfies the closure CHECKs
         return
     manual, closed = (COUNSELOR_MANUAL, COUNSELOR_CLOSED) if kind == "counselor" else (MANUAL, CLOSED)
@@ -175,7 +183,7 @@ async def person_move(db: AsyncSession, lead: Enquiry, actor: User, kind: Kind, 
         for field in ("next_action", "next_action_due"):
             if getattr(lead, field) is None:
                 raise invalid(field, NEXT_ACTION_REQUIRED, None)
-    await _record(db, lead, to_stage, "manual", actor.id, reason)
+    await record_stage(db, lead, to_stage, "manual", actor.id, reason)
     for field, value in values.items():  # after the stage (as the reopen above)
         setattr(lead, field, value)
     if to_stage in CLOSED:

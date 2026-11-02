@@ -8,7 +8,7 @@ from datetime import date
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -22,6 +22,7 @@ from app.core.database import get_db
 from app.models import LEAD_PRIORITIES, AuditLog, Enquiry, TelecallerProfile, User
 from app.schemas import (
     LeadEnquiryCreate,
+    LeadMergeIn,
     LeadNoteIn,
     LeadNoteOut,
     LeadNotePage,
@@ -37,7 +38,7 @@ from app.schemas import (
     TelecallerMeOut,
     TelecallerTeamPage,
 )
-from app.services import lead_follow_ups, lead_intake, lead_list, lead_notes, lead_pipeline, lead_qualification, telecaller_leads
+from app.services import lead_follow_ups, lead_intake, lead_list, lead_merge, lead_notes, lead_pipeline, lead_qualification, telecaller_leads
 from app.services.bdm_appointments import db_now, today_ist
 from app.services.lead_timeline import page as timeline_page
 from app.services.telecaller import admin_team_filter, parse_self_update, person_ref, profile_out, require_manager, team_filter, telecaller_context
@@ -258,6 +259,34 @@ async def change_stage(lead_id: UUID, payload: LeadStageMove, user: User = Depen
     out = lead_pipeline.stage_out(lead)
     await db.commit()
     return out
+
+
+def _merge_scope(user: User) -> list:
+    """itc-007 (Q-07): a manager or super_admin, within their T23 scope; a telecaller is 403."""
+    kind, filters = lead_pipeline.scope(user)
+    if kind != "manager":
+        raise HTTPException(403, lead_merge.MANAGER_ONLY)
+    return filters
+
+
+@router.get("/leads/{lead_id}/merge-preview")
+async def merge_preview(lead_id: UUID, victim: str = Query(min_length=1, max_length=20), user: User = Depends(get_current_user),
+                        db: AsyncSession = Depends(get_db)):
+    """itc-007: the merge form's side-by-side comparison of this lead and the victim (its Lead ID), and the counts that would move."""
+    filters = _merge_scope(user)
+    found = await lead_merge.find_victim(db, lead_id, victim.strip().upper(), filters)
+    return await lead_merge.preview(db, lead_id, found)
+
+
+@router.post("/leads/{lead_id}/merge")
+async def merge(lead_id: UUID, payload: LeadMergeIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """itc-007 (DEC-SCOPE-338): merge the victim into this lead -- both in the manager's scope, same team, both open (spec)."""
+    filters = _merge_scope(user)
+    found = await lead_merge.find_victim(db, lead_id, payload.victim, filters)
+    survivor, victim = await lead_merge.lock_pair(db, lead_id, found.id, filters)
+    moved = await lead_merge.merge(db, user, survivor, victim, payload.use_victim, payload.reason)
+    await db.commit()
+    return {"id": lead_id, "victim_id": victim.id, "victim_code": victim.lead_code, "moved": moved}
 
 
 @router.get("/leads/{lead_id}/stage-history", response_model=LeadStageHistoryPage)

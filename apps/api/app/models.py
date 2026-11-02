@@ -2809,6 +2809,8 @@ LEAD_CLOSURE_CHECKS = {
     "ck_enquiries_lost_reason": f"lost_reason_id IS NULL OR {_LOSS_SQL}",
     "ck_enquiries_lost_to": f"lost_to IS NULL OR ({_LOSS_SQL} AND length(lost_to) BETWEEN 1 AND {LEAD_LOST_TO_MAX})",
 }
+# itc-007 (DEC-SCOPE-338): a merged lead is closed as a Duplicate of its survivor, with who merged it and when.
+LEAD_MERGED_CHECK = "(merged_at IS NULL) = (merged_by_user_id IS NULL) AND (merged_at IS NULL OR status = 'duplicate')"
 
 
 class LeadLostReason(Base, TimestampMixin):
@@ -2842,6 +2844,7 @@ class Enquiry(Base, TimestampMixin):
         *(CheckConstraint(sql, name=name) for name, sql in (LEAD_CHECKS | LEAD_FIELD_CHECKS | LEAD_CLOSURE_CHECKS).items()),
         CheckConstraint(LEAD_STATUS_CHECK, name="ck_enquiries_status"),
         CheckConstraint(f"next_action IS NULL OR length(next_action) BETWEEN 1 AND {LEAD_NEXT_ACTION_MAX}", name="ck_enquiries_next_action_len"),
+        CheckConstraint(LEAD_MERGED_CHECK, name="ck_enquiries_merged"),  # itc-007; migration 0223 repeats it
         UniqueConstraint("lead_code", name="uq_enquiries_lead_code"),
         Index("ix_enquiries_bdm_org_created", "bdm_organization_id", "created_at"),
         Index("uq_enquiries_converted_user", "converted_user_id", unique=True, postgresql_where=text("converted_user_id IS NOT NULL")),
@@ -2900,6 +2903,9 @@ class Enquiry(Base, TimestampMixin):
     duplicate_of_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id", ondelete="RESTRICT"), nullable=True)
     lost_reason_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("lead_lost_reasons.id", ondelete="RESTRICT"), nullable=True)
     lost_to: Mapped[str | None] = mapped_column(String(LEAD_LOST_TO_MAX), nullable=True)
+    # itc-007 (DEC-SCOPE-338): set when this lead was merged into `duplicate_of_id`; a merged lead is read only (never reopened)
+    merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    merged_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
 
     @validates("phone")
     def _derive_phone_normalized(self, _key: str, phone: str | None) -> str | None:

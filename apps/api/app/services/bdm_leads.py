@@ -152,6 +152,7 @@ def admin_out(row) -> dict:
         "duplicate_of": _ref(x.duplicate_of_id, lead_code=survivor_code),
         "lost_reason": _ref(x.lost_reason_id, name=lost_reason_name),
         "lost_to": x.lost_to,
+        "merged_at": x.merged_at,  # itc-007: set on a lead merged into `duplicate_of` (read only)
     }
 
 
