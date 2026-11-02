@@ -43,6 +43,8 @@ export default async function HrStudentPage({ id }: { id: string }) {
                 <h2>{detail.student.full_name}</h2>
                 <p className="muted">Read only. Progress, completion and attendance are the training records; a course is completed at 100% progress.</p>
               </div>
+              {/* itc-028 (DEC-SCOPE-351): HR's notes on the student -- internal unless HR shares one with them */}
+              <Link className="btn small secondary" href={`/it/hr/students/${encodeURIComponent(detail.student.id)}/notes`}>Notes</Link>
             </div>
             <div className="action-card">
               <h3>Courses</h3>

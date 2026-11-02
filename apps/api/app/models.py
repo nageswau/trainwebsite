@@ -2215,6 +2215,24 @@ class ItStudentCounselor(Base, TimestampMixin):
     assigned_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+class ItStudentNote(Base, TimestampMixin):
+    """itc-028 (DEC-SCOPE-351, N1): a staff note on an IT student (counselor, HR, trainer or IT Admin). Append-only; `internal` until its
+    author or the IT Admin shares it (`services/it_student_notes.py`). Only `student` notes reach the student (GET /it/me/updates).
+    The IT twin of `OverseasStudentNote`; the overseas table is untouched."""
+
+    __tablename__ = "it_student_notes"
+    __table_args__ = (
+        CheckConstraint("visibility IN ('internal', 'student')", name="ck_it_student_notes_visibility"),
+        Index("ix_it_student_notes_student_created", "student_user_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    student_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    author_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    body: Mapped[str] = mapped_column(Text)
+    visibility: Mapped[str] = mapped_column(String(10), default="internal", server_default="internal")
+    shared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class ItStudentProfile(Base, TimestampMixin):
     """itc-012 (DEC-SCOPE-345): the IT student's structured record -- personal details and the emergency contact (personal data: never
     logged or exported; read by the student, their itc-003 counselor and the IT Admin only, C1). Edited by `services/it_student_profiles.py`.

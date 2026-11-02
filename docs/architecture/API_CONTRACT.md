@@ -5128,3 +5128,23 @@ a rollback sends nothing).
 - Every attendance % (eligibility, `/it/batches/{id}/progress`, training reports a/d/e/f, placement reports, HR student view, management
   training KPIs, `/portal/it/student/dashboard|attendance`) = attended / counted under the policy; "classes marked" stays the row count.
   `/portal/it/student/attendance` rows show `approved leave` for an excused row.
+
+## 12IW. Internal vs student-visible IT student notes (itc-028) — addendum, 2026-11-02
+
+`DEC-SCOPE-351`. Migration `0234_it_student_notes` (new table `it_student_notes`; nothing existing changes). Design:
+`docs/superpowers/specs/2026-11-02-itc-028-it-student-notes-design.md`.
+
+- `GET /it/students/{student_id}/notes?limit=1..100 (20)&offset>=0` — staff in scope (RBAC §2.251) → `{student{id, full_name,
+  student_code}, items[], total, limit, offset}`; item = `{id, body, visibility, author_name, author_role, created_at, shared_at,
+  can_change_visibility}`, newest first, every author's notes (N3).
+- `POST /it/students/{student_id}/notes` `{body}` (1–4000 chars after trim; `extra="forbid"`, so `visibility` is refused) → **201**, the
+  note, always `internal`.
+- `PUT /it/students/{student_id}/notes/{note_id}/visibility` `{visibility: "internal"|"student"}` → the note + `changed`. Author or IT
+  Admin only (403). Another student's / unknown note → 404. A change writes audit `it.student_note.visibility` (entity
+  `it_student_note`, `changes.visibility = [before, after]`, `student_id`; never the body); sharing sets `shared_at` and sends the student
+  one `it.student.update_shared` notice (fixed text, `action_url=/it/student/updates`); same value → `changed: false`, nothing written.
+- `GET /it/me/updates?limit&offset` — IT student only (403 otherwise) → page of the caller's own `student` notes, newest share first,
+  items **allow-listed** to `{id, body, author_name, author_role, shared_at}`.
+- `GET /portal/it/student/updates` — new header-only section; `GET /portal/it/counselor/students` and `/portal/it/admin/students` rows
+  gain a `notes` link column (`student_notes`).
+- Errors: an out-of-scope or missing student is the same 404 (no disclosure); a role with no notes scope 403; malformed UUID 422.

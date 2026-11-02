@@ -3551,3 +3551,15 @@ server-side (the batch's active students and their linked IT counselors); notice
 No route and no grant change. The leave policy rides on the existing certificate rules: read by `it_admin`, `coordinator`, `trainer`
 (IT); changed only by a `certificates.configure` holder (IT Admin; a trainer gets 403). Marking stays trainer (own batch, else 403) or
 IT Admin (any). Pinned by `apps/api/tests/test_itc_021_attendance_policy.py`.
+
+### 2.251 IT student notes *(added 2026-11-02 — `DEC-SCOPE-351`, itc-028)*
+
+| Route / page | Anonymous | counselor (IT) | trainer | hr_team | it_admin | it_student | every other role |
+|---|---|---|---|---|---|---|---|
+| `GET/POST /it/students/{id}/notes`, `/it/{portal}/students/[id]/notes` | 401 / sign-in | linked students (itc-003); else 404 | students seated in a batch they teach; else 404 | `student_progress.view` + nehn-017 pool; else 403 / 404 | any IT student | 403 / access card | 403 / access card (incl. super_admin, placement, overseas) |
+| `PUT /it/students/{id}/notes/{note}/visibility` | 401 | own notes (in scope) | own notes (in scope) | own notes (in scope) | any note | 403 | 403 |
+| `GET /it/me/updates`, `/it/student/updates` | 401 / sign-in | 403 | 403 | 403 | 403 | 200 (own shared notes only) | 403 |
+
+AC1 leak net: `apps/api/tests/test_itc_028_it_student_notes.py::test_an_internal_note_never_reaches_any_student_response_or_notification`
+calls every parameter-less API GET and every IT student portal section as the student and asserts no internal note text appears (with a
+positive control), and checks every notification of the student.

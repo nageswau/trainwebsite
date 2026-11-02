@@ -923,6 +923,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** editing a shared note (re-share?).
 - **Regression risks:** ccrm-010 tests if the table is generalised.
 - **Complexity:** medium. **Risk:** high.
+- **Status:** built as `DEC-SCOPE-351` (migration `0234_it_student_notes`, API §12IW, RBAC §2.251). A new IT-only table; staff notes start internal, the author or IT Admin shares (audited, no second approver), the student reads Updates.
 
 ### Phase 5: Views, lifecycle and reports (PDF Phase 5)
 
