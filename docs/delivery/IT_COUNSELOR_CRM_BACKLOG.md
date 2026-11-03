@@ -769,6 +769,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** medium.
 
 #### itc-024: Trainer dashboard and workspace widgets
+- **Status:** built as `DEC-SCOPE-355` (no migration, API §12JA, RBAC §2.255). Appendix B's attendance completion adopted with
+  "held" = started; today's classes, assessment completion and the whole-dashboard batch filter are Claude's calls under Q-21
+  (`NEEDS_CONFIRMATION`).
 - **Business requirement:** §8 Faculty; §11 Faculty workspace.
 - **Existing behavior:** `portal.py:448` shows batch count, assignments, upcoming sessions and pending reviews. Today's classes, attendance-completion %, assessment completion and at-risk count are missing.
 - **Expected behavior:** add those 4 widgets, filterable by batch.

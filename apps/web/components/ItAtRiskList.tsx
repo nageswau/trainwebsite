@@ -7,10 +7,12 @@ import { AT_RISK_URL, formatRiskDate, riskReasonLabels, type RiskFlag } from "@/
 
 /** itc-023 (DEC-SCOPE-352): the students the daily check flagged, within the reader's own scope (the API scopes it). Dashboards and the
  *  IT Admin's At Risk page. */
-export default function ItAtRiskList({ emptyText = "No students are at risk right now." }: { emptyText?: string }) {
+export default function ItAtRiskList({ emptyText = "No students are at risk right now.", batchId }: { emptyText?: string; batchId?: string | null }) {
   const [flags, setFlags] = useState<RiskFlag[] | null>(null);
   const [failed, setFailed] = useState(false);
   const id = useId();
+  // itc-024 (DEC-SCOPE-355 W5): the trainer dashboard narrowed to one batch shows that batch's students only (its tile agrees).
+  const shown = flags && batchId ? flags.filter((flag) => flag.batch.id === batchId) : flags;
 
   useEffect(() => {
     let cancelled = false;
@@ -28,9 +30,9 @@ export default function ItAtRiskList({ emptyText = "No students are at risk righ
       <h3 id={`${id}-title`} style={{ fontSize: 18 }}>Students at risk</h3>
       {failed ? (
         <p className="form-error" role="alert" style={{ margin: 0 }}>Unable to load the at-risk students. Refresh the page to try again.</p>
-      ) : flags === null ? (
+      ) : shown === null ? (
         <p className="muted" role="status" style={{ margin: 0 }}>Loading at-risk students…</p>
-      ) : flags.length === 0 ? (
+      ) : shown.length === 0 ? (
         <p className="muted" style={{ margin: 0 }}>{emptyText}</p>
       ) : (
         <div className="table-wrap">
@@ -39,7 +41,7 @@ export default function ItAtRiskList({ emptyText = "No students are at risk righ
               <tr><th scope="col">Student</th><th scope="col">Programme / batch</th><th scope="col">Why</th><th scope="col">Since</th></tr>
             </thead>
             <tbody>
-              {flags.map((flag) => (
+              {shown.map((flag) => (
                 <tr key={flag.id}>
                   <td>
                     {flag.profile_url ? <Link href={flag.profile_url}>{flag.student.full_name}</Link> : flag.student.full_name}

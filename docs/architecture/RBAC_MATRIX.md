@@ -3580,3 +3580,9 @@ positive control), and checks every notification of the student.
 No grant change. Thresholds: read and changed by `it_admin` (IT) only; any other role 403. Flags (`GET /it/at-risk`): `it_admin` (IT) any
 student; IT `counselor` only their itc-003 linked students; `trainer` only students of batches they teach; students and every other
 role 403. A reader outside the scope gets an empty list (no disclosure). Pinned by `apps/api/tests/test_itc_023_at_risk.py`.
+
+### 2.255 Trainer dashboard widgets *(added 2026-11-03 — `DEC-SCOPE-355`, itc-024)*
+
+No grant change. `GET /portal/it/trainer/dashboard` stays `trainer` (IT) only (role/division gate; others 403). Every figure reads only
+batches with `trainer_id` = the caller; the `batch` filter accepts only those (another trainer's batch is a 422 indistinguishable
+from an unknown id). Pinned by `apps/api/tests/test_itc_024_trainer_dashboard.py`.

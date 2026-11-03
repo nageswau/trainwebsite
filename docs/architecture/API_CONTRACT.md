@@ -5184,3 +5184,17 @@ a rollback sends nothing).
 - Portal: `/portal/it/admin/at-risk` and `/portal/it/trainer/notifications` (headers only).
 - Notifications (itc-002 catalogue): `it.training.at_risk` (trainer, counselor), `it.training.check_in` (student), `it.training.back_on_track`
   (all three); entity = the enrolment; fixed text, no figures.
+
+## 12JA. Trainer dashboard widgets and batch filter (itc-024) — addendum, 2026-11-03
+
+`DEC-SCOPE-355`. No migration. Additive.
+
+- `GET /portal/it/trainer/dashboard?batch=<uuid>` — `batch` optional. `metrics` keeps its first four tiles (Assigned batches,
+  Assignments, Upcoming sessions, Pending reviews) and adds `Today's classes` (int), `Attendance completion` (`"50% (1/2)"` or `"—"`),
+  `Assessment completion` (same format) and `At-risk students` (int). `panels` gains `{title: "Today's classes", items: [string],
+  empty: "No classes today"}` (each item `HH:MM–HH:MM · batch · topic · Attendance marked|Attendance not marked|Not started`). New key
+  `batch_filter: {value: uuid|null, options: [{value, label}]}` (the trainer's own batches). With `batch`, every figure, the panel and
+  `rows` are that batch's only.
+- 422 `"Choose one of your batches"` — `batch` not a UUID, or not a batch the trainer teaches (another trainer's and a non-existent id
+  read the same). 422 `"The batch filter applies to the trainer dashboard only"` — `batch` on any other role or section.
+- Panels (every portal payload): optional `empty` string, shown when `items` is empty.
