@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { activateWithToken } from "./helpers/welcome";
 
-// itc-029 (DEC-SCOPE-359): the IT student 360. A counselor opens their student from My Students and sees every section, a note added
+// itc-029 (DEC-SCOPE-360): the IT student 360. A counselor opens their student from My Students and sees every section, a note added
 // on the Notes page shows on the 360 straight away (AC1); HR opens the same student's 360 from its student page without the fee section
 // (Q-28); another counselor gets a not-found page (AC2). Throwaway accounts (the shared stack DB is never clean).
 

@@ -48,7 +48,7 @@ export default async function HrStudentPage({ id }: { id: string }) {
               </div>
               {/* itc-028 (DEC-SCOPE-351): HR's notes on the student -- internal unless HR shares one with them */}
               <div className="actions">
-                {/* itc-029 (DEC-SCOPE-359): the student 360 (HR's sections only) */}
+                {/* itc-029 (DEC-SCOPE-360): the student 360 (HR's sections only) */}
                 <Link className="btn small secondary" href={`/it/hr/students/${encodeURIComponent(detail.student.id)}/360`}>360 view</Link>{" "}
                 <Link className="btn small secondary" href={`/it/hr/students/${encodeURIComponent(detail.student.id)}/notes`}>Notes</Link>
               </div>

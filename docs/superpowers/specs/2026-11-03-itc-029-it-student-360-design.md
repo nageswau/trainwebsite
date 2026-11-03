@@ -1,7 +1,7 @@
 # itc-029 — IT student 360 for counselor, HR and admin (design)
 
 **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-029 (classification `UNVERIFIED` PDF §6/§11/§12, owner-approved for build in
-waves by Q-01, 2026-11-01). **Decision:** `DEC-SCOPE-359`. **Dependencies (all merged on `main`):** itc-003 (counselor link), itc-013
+waves by Q-01, 2026-11-01). **Decision:** `DEC-SCOPE-360`. **Dependencies (all merged on `main`):** itc-003 (counselor link), itc-013
 (fee account), itc-021 (attendance policy), itc-023 (risk flags), itc-026 (resumes), itc-027 (HR review), itc-028 (notes). itc-022
 (computed progress, structured trainer feedback) is **not** built; its sections use today's data (S6). **Q-28 is unanswered**; the
 builder's call is S3 (`NEEDS_CONFIRMATION`).

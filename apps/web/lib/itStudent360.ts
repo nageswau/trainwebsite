@@ -4,9 +4,9 @@ import type { RiskReason } from "@/lib/itAtRisk";
 import type { ItStudentNote } from "@/lib/itStudentNotes";
 import type { StudentResumeVersion } from "@/lib/studentResumes";
 
-// itc-029 (DEC-SCOPE-359): the IT student 360 -- GET /it/students/{id}/360 for the IT counselor (linked students), HR (the placement pool)
+// itc-029 (DEC-SCOPE-360): the IT student 360 -- GET /it/students/{id}/360 for the IT counselor (linked students), HR (the placement pool)
 // and the IT Admin (any IT student), and the lead's timeline on .../360/lead-timeline. A section the reader may not see is left out of
-// the response (HR: no fee, profile, lead, risk or notifications). API_CONTRACT §12JE.
+// the response (HR: no fee, profile, lead, risk or notifications). API_CONTRACT §12JF.
 
 export const PORTALS = {
   counselor: { roleLabel: "Counselor", back: "/it/counselor/students", backLabel: "my students" },

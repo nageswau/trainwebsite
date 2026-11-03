@@ -1,4 +1,4 @@
-"""itc-029 (DEC-SCOPE-359): the IT student 360 for the IT counselor, HR and the IT Admin (spec 2026-11-03-itc-029-it-student-360-design.md).
+"""itc-029 (DEC-SCOPE-360): the IT student 360 for the IT counselor, HR and the IT Admin (spec 2026-11-03-itc-029-it-student-360-design.md).
 
 Read only, no table of its own: each section is read live from its own record through that feature's reader (AC1), with batched queries
 so the count is fixed whatever the number of enrolments (AC3). Scope (S1) is itc-028's: the IT counselor their itc-003 students, HR the

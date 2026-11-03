@@ -1,5 +1,5 @@
-"""itc-029 (DEC-SCOPE-359) -- the IT student 360 on /it/students/{id}/360 (the scope and the section allow-list are the caller's role,
-services/it_student_360). API_CONTRACT.md §12JE; RBAC_MATRIX.md §2.259. Read only, never cached (AC1)."""
+"""itc-029 (DEC-SCOPE-360) -- the IT student 360 on /it/students/{id}/360 (the scope and the section allow-list are the caller's role,
+services/it_student_360). API_CONTRACT.md §12JF; RBAC_MATRIX.md §2.260. Read only, never cached (AC1)."""
 
 from uuid import UUID
 

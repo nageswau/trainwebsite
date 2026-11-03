@@ -31,6 +31,7 @@ export type ItEnrollment = {
   batch_start_date: string;
   batch_end_date: string;
   batch_mode: string;
+  lifecycle?: { stage: string; stage_label: string }; // itc-031: the derived stage (the student's own: the safe subset)
 };
 
 export type ItStudentProfileResponse = {

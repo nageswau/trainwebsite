@@ -16,7 +16,7 @@ function ownPortal(user: User): Portal360 | null {
   return null;
 }
 
-/** itc-029 (DEC-SCOPE-359): /it/counselor/students/[id], /it/admin/students/[id] and /it/hr/students/[id]/360. The API is the gate, the
+/** itc-029 (DEC-SCOPE-360): /it/counselor/students/[id], /it/admin/students/[id] and /it/hr/students/[id]/360. The API is the gate, the
  *  scope and the section allow-list -- a student outside the reader's scope is a 404, another role a 403 card -- and each reader stays in
  *  their own portal (itc-028's pattern). Rendered on the server per request, so every section is the source record as it is now (AC1). */
 export default async function ItStudent360Page({ portal, id }: { portal: Portal360; id: string }) {
