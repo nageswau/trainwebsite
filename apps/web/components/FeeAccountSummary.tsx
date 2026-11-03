@@ -22,7 +22,52 @@ export type FeeAccount = {
   state: "not_billed" | "enrolled_pending_payment" | "partially_paid" | "fully_paid";
   // itc-018 (DEC-SCOPE-353): the oldest owed bill, null when nothing is owed; optional so an older response renders as before.
   next_due?: { amount: number; due_date: string | null } | null;
+  // itc-016 (DEC-SCOPE-358): the fee rows by due date, `overdue` derived by the API (IST), with the reminders sent; optional, as above.
+  installments?: FeeInstallment[];
 };
+
+export type FeeReminder = { kind: "due_soon" | "overdue"; offset_days: number; sent_on: string };
+export type FeeInstallment = {
+  id: string;
+  installment_no: number | null;
+  amount: number;
+  due_date: string | null;
+  status: "pending" | "paid";
+  overdue: boolean;
+  reminders: FeeReminder[];
+};
+
+const days = (n: number) => `${n} day${n === 1 ? "" : "s"}`;
+const reminderLabel = (r: FeeReminder) => `${r.kind === "overdue" ? `${days(r.offset_days)} overdue` : `${days(r.offset_days)} before due`} on ${formatCalendarDate(r.sent_on)}`;
+
+function InstallmentList({ currency, items }: { currency: string; items: FeeInstallment[] }) {
+  return (
+    <>
+      <h5 style={{ margin: "14px 0 6px", fontSize: 14 }}>Installments</h5>
+      <ul aria-label="Installments" className="list-clean" style={{ display: "grid", gap: 8, margin: 0 }}>
+        {items.map((i) => {
+          const [label, tone] = i.status === "paid" ? ["Paid", "status"] : i.overdue ? ["Overdue", "status error"] : ["Due", "status pending"];
+          return (
+            <li key={i.id} style={{ fontSize: 13 }}>
+              <span style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <span>
+                  {[i.installment_no ? `Installment ${i.installment_no}` : null, money(currency, i.amount), i.due_date ? `due ${formatCalendarDate(i.due_date)}` : "no due date set"]
+                    .filter(Boolean).join(" · ")}
+                </span>
+                <span className={tone}>{label}</span>
+              </span>
+              {i.reminders.length > 0 ? (
+                <span className="muted" style={{ display: "block" }}>Reminders sent: {i.reminders.map(reminderLabel).join("; ")}</span>
+              ) : i.status === "pending" ? (
+                <span className="muted" style={{ display: "block" }}>No reminder sent yet</span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+}
 
 const STATE_LABELS: Record<FeeAccount["state"], string> = {
   not_billed: "No fee billed",
@@ -74,6 +119,7 @@ export function FeeAccountCard({ account }: { account: FeeAccount }) {
           )}
         </dl>
       )}
+      {account.installments && account.installments.length > 0 && <InstallmentList currency={account.currency} items={account.installments} />}
     </div>
   );
 }

@@ -3608,3 +3608,9 @@ from an unknown id). Pinned by `apps/api/tests/test_itc_024_trainer_dashboard.py
 No grant change. The call preference is self-only (any signed-in user, no id in the path; nobody sets another's). The IT student record
 shows it read-only to the routes that already read that record (the itc-003 counselor for linked students, the IT Admin). The resume
 scan adds no access path. Pinned by `apps/api/tests/test_itc_033_call_preference.py` and `test_itc_033_malware_scan.py`.
+### 2.258 Fee reminders *(added 2026-11-03 — `DEC-SCOPE-358`, itc-016)*
+
+No grant change. `GET/PUT /admin/it/fee-reminder-settings` are `it_admin` (IT) only (role/division gate; others 403). The reminder
+history rides the itc-013 fee-account read gate (§2.246): the student their own, the linked IT counselor, a `payments.view` holder in
+IT; another student's account stays 404. The daily job is a system task (no caller). Pinned by
+`apps/api/tests/test_itc_016_fee_reminders.py`.

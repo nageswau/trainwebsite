@@ -191,6 +191,15 @@ def flag_at_risk_students_task():
 
 
 @celery.task
+def send_fee_reminders_task():
+    """itc-016 (DEC-SCOPE-358 F6): daily at 08:30 IST via beat. Once per (installment, rule, IST day) (fee_reminder_log's unique key), so a
+    rerun or an overlapping run reminds nobody twice."""
+    from app.services.fee_reminders import run_fee_reminders
+
+    return _run_with_fresh_pool(run_fee_reminders)
+
+
+@celery.task
 def send_partnership_alerts_task():
     """upc-015 (DEC-SCOPE-164 AL3): every IST hour via beat, acting from 09:00 IST. Idempotent per alert (notifications.dedupe_key), so the
     later runs of the day create nothing new and a worker restart during the day still sends that day's alerts."""
@@ -285,6 +294,7 @@ celery.conf.beat_schedule = {
     "tel020-alerts": {"task": "app.worker.send_telecaller_alerts_task", "schedule": 900.0},
     "itc009-escalations": {"task": "app.worker.escalate_overdue_follow_ups_task", "schedule": 900.0},
     "itc023-at-risk": {"task": "app.worker.flag_at_risk_students_task", "schedule": crontab(hour=1, minute=30)},  # UTC 01:30 = 07:00 IST
+    "itc016-fee-reminders": {"task": "app.worker.send_fee_reminders_task", "schedule": crontab(hour=3, minute=0)},  # UTC 03:00 = 08:30 IST
     "rec026-sweep-stale-recruiter-emails": {"task": "app.worker.sweep_stale_recruiter_emails_task", "schedule": 300.0},
     "upc012-sweep-stale-university-emails": {"task": "app.worker.sweep_stale_university_emails_task", "schedule": 300.0},
     "ccrm037-sweep-stale-student-emails": {"task": "app.worker.sweep_stale_student_emails_task", "schedule": 300.0},
