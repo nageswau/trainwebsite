@@ -55,6 +55,8 @@ async def _build_export(db: AsyncSession, user: User) -> dict:
             "sms": bool(pref and pref.sms_opt_in),
             "whatsapp_opted_in_at": pref.whatsapp_opted_in_at.isoformat() if pref and pref.whatsapp_opted_in_at else None,
             "sms_opted_in_at": pref.sms_opted_in_at.isoformat() if pref and pref.sms_opted_in_at else None,
+            "calls": _calls_allowed(pref),
+            "calls_opted_out_at": pref.calls_opted_out_at.isoformat() if pref and pref.calls_opted_out_at else None,
         },
     }
 
@@ -77,8 +79,15 @@ def _retention_hold_reason(consents: list, payments: list) -> str | None:
 CONSENT_TEXT_VERSION = "enh014-v1"
 
 
+def _calls_allowed(pref: NotificationPreference | None) -> bool:
+    """itc-033 (DEC-SCOPE-357 C1): calls are allowed unless the user opted out; no row means allowed."""
+    return not (pref and pref.calls_opt_out)
+
+
 def _preferences_out(pref: NotificationPreference | None, user: User) -> NotificationPreferencesOut:
-    return NotificationPreferencesOut(whatsapp=bool(pref and pref.whatsapp_opt_in), sms=bool(pref and pref.sms_opt_in), phone_valid=normalise_phone(user.phone) is not None)
+    return NotificationPreferencesOut(
+        whatsapp=bool(pref and pref.whatsapp_opt_in), sms=bool(pref and pref.sms_opt_in), calls=_calls_allowed(pref), phone_valid=normalise_phone(user.phone) is not None
+    )
 
 
 @router.get("/notification-preferences", response_model=NotificationPreferencesOut)
@@ -89,10 +98,12 @@ async def get_notification_preferences(user: User = Depends(get_current_user), d
 @router.put("/notification-preferences", response_model=NotificationPreferencesOut)
 async def put_notification_preferences(payload: NotificationPreferencesIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     current = await db.get(NotificationPreference, user.id)
-    before = {"whatsapp": bool(current and current.whatsapp_opt_in), "sms": bool(current and current.sms_opt_in)}
-    after = {"whatsapp": payload.whatsapp, "sms": payload.sms}
-    # Only a false->true change needs a number: a user whose phone was cleared can still turn channels off.
-    if any(after[c] and not before[c] for c in after) and normalise_phone(user.phone) is None:
+    before = {"whatsapp": bool(current and current.whatsapp_opt_in), "sms": bool(current and current.sms_opt_in), "calls": _calls_allowed(current)}
+    # itc-033 C2: `calls` omitted keeps the stored choice
+    after = {"whatsapp": payload.whatsapp, "sms": payload.sms, "calls": before["calls"] if payload.calls is None else payload.calls}
+    # Only a false->true change of a messaging channel needs a number: a user whose phone was cleared can still turn channels off.
+    # Calls are a permission, not a delivery channel, so they never need one (itc-033 C1).
+    if any(after[c] and not before[c] for c in ("whatsapp", "sms")) and normalise_phone(user.phone) is None:
         raise HTTPException(422, "Add a valid mobile number to your profile first")
     now = datetime.now(UTC)
 
@@ -106,6 +117,9 @@ async def put_notification_preferences(payload: NotificationPreferencesIn, user:
         "sms_opt_in": after["sms"],
         "whatsapp_opted_in_at": since("whatsapp", current.whatsapp_opted_in_at if current else None),
         "sms_opted_in_at": since("sms", current.sms_opted_in_at if current else None),
+        "calls_opt_out": not after["calls"],
+        # the opt-out time is kept while the user stays opted out, like the opt-in times above
+        "calls_opted_out_at": None if after["calls"] else (current.calls_opted_out_at if current and current.calls_opt_out else now),
     }
     await db.execute(insert(NotificationPreference).values(user_id=user.id, **values).on_conflict_do_update(index_elements=[NotificationPreference.user_id], set_={**values, "updated_at": now}))
     if after != before:

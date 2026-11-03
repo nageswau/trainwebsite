@@ -31,7 +31,7 @@ async def test_export_includes_notification_preferences(db_session):
 @pytest.mark.asyncio
 async def test_export_without_a_row_reports_both_off(db_session):
     user = await make_user(db_session)
-    assert (await _build_export(db_session, user))["notification_preferences"] == {"whatsapp": False, "sms": False, "whatsapp_opted_in_at": None, "sms_opted_in_at": None}
+    assert (await _build_export(db_session, user))["notification_preferences"] == {"whatsapp": False, "sms": False, "whatsapp_opted_in_at": None, "sms_opted_in_at": None, "calls": True, "calls_opted_out_at": None}
 
 
 @pytest.mark.asyncio

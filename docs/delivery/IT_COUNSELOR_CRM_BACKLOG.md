@@ -1084,6 +1084,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **+/−/E:** per decision.
 - **Regression risks:** telecaller calling rules if call consent blocks calling.
 - **Complexity:** medium. **Risk:** medium.
+- **Status:** built as `DEC-SCOPE-357` (migration `0239_call_preference`, API §12JC, RBAC §2.257); design `docs/superpowers/specs/2026-11-03-itc-033-consent-retention-scan-design.md`. Calls opt-out on the profile (allowed by default), shown to the counselor and IT Admin; resume scan behind `CLAMAV_HOST` (fail closed); retention periods drafted in `docs/architecture/DATA_RETENTION_POLICY.md` (all `NEEDS_CONFIRMATION`, no purge job); lead do-not-call deferred.
 
 ---
 

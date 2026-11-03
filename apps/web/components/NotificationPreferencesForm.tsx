@@ -9,14 +9,15 @@ import { isNotificationPreferences, type NotificationPreferences } from "@/lib/t
 // ENH-014 (spec §7): WhatsApp/SMS opt-in. Consent is deliberate, so toggles never autosave -- the user presses Save.
 // Same patterns as ProfileForm: a ref guards double submits, "Saving…" is announced but visually hidden, focus returns
 // to the button after a save. Server-side validation is the source of truth (a 422 message is shown as-is).
-// The PUT body must carry exactly these two fields (the server rejects extras).
-const channelsOf = (p: { whatsapp: boolean; sms: boolean }) => ({ whatsapp: p.whatsapp, sms: p.sms });
+// The PUT body must carry exactly these fields (the server rejects extras). itc-033 (DEC-SCOPE-357) added `calls`: a permission,
+// not a delivery channel, so it never needs a valid phone.
+const channelsOf = (p: Choice) => ({ whatsapp: p.whatsapp, sms: p.sms, calls: p.calls });
 const NEXT = encodeURIComponent("/account/profile");
 const HINT_ID = "notification-phone-hint";
 const SAVE_FAILED = "Couldn't save your settings. Check your connection and try again.";
 
 type Channel = "whatsapp" | "sms";
-type Choice = Record<Channel, boolean>;
+type Choice = Record<Channel | "calls", boolean>;
 
 export default function NotificationPreferencesForm({ initial, phone }: { initial: NotificationPreferences; phone: string | null }) {
   const [saved, setSaved] = useState(initial);
@@ -32,7 +33,7 @@ export default function NotificationPreferencesForm({ initial, phone }: { initia
   useEffect(() => {
     setSaved(initial);
     setDraft(channelsOf(initial));
-  }, [initial.whatsapp, initial.sms, initial.phone_valid]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initial.whatsapp, initial.sms, initial.calls, initial.phone_valid]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (focusTick) saveButton.current?.focus();
@@ -136,6 +137,25 @@ export default function NotificationPreferencesForm({ initial, phone }: { initia
           </p>
         )}
         <p className="field-hint">By turning on WhatsApp or SMS you agree to receive these messages from EduSphere. You can turn them off here at any time.</p>
+      </fieldset>
+      <fieldset className="form-section">
+        <legend>Phone calls</legend>
+        <label className="pf-check" htmlFor="notify-calls">
+          <input
+            id="notify-calls"
+            type="checkbox"
+            checked={draft.calls}
+            disabled={busy}
+            aria-describedby="notify-calls-hint"
+            onChange={(e) => setDraft((d) => ({ ...d, calls: e.target.checked }))}
+          />
+          <span>
+            Phone calls from our team{" "}
+            <span id="notify-calls-hint" className="field-hint">
+              Counselors and staff may call you about your course. Untick this if you&apos;d rather not be called.
+            </span>
+          </span>
+        </label>
       </fieldset>
       {message && <FormMessage message={message} />}
       {signedOut && (
