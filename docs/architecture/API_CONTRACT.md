@@ -5197,3 +5197,17 @@ a rollback sends nothing).
   online slot, `Not scheduled yet` with no slots; never a URL). Columns `Starts`, `Ends`, `Mode`, `Room or link` are added; none removed.
 - **Changed:** `GET /payments/{payment_id}/receipt` by a caller who neither owns the payment nor administers its division → `404
   "Payment not found"` (was `403 "Payment belongs to another user"`), the same answer as an unknown id.
+
+## 12JA. Trainer dashboard widgets and batch filter (itc-024) — addendum, 2026-11-03
+
+`DEC-SCOPE-355`. No migration. Additive.
+
+- `GET /portal/it/trainer/dashboard?batch=<uuid>` — `batch` optional. `metrics` keeps its first four tiles (Assigned batches,
+  Assignments, Upcoming sessions, Pending reviews) and adds `Today's classes` (int), `Attendance completion` (`"50% (1/2)"` or `"—"`),
+  `Assessment completion` (same format) and `At-risk students` (int). `panels` gains `{title: "Today's classes", items: [string],
+  empty: "No classes today"}` (each item `HH:MM–HH:MM · batch · topic · Attendance marked|Attendance not marked|Not started`). New key
+  `batch_filter: {value: uuid|null, options: [{value, label}]}` (the trainer's own batches). With `batch`, every figure, the panel and
+  `rows` are that batch's only.
+- 422 `"Choose one of your batches"` — `batch` not a UUID, or not a batch the trainer teaches (another trainer's and a non-existent id
+  read the same). 422 `"The batch filter applies to the trainer dashboard only"` — `batch` on any other role or section.
+- Panels (every portal payload): optional `empty` string, shown when `items` is empty.

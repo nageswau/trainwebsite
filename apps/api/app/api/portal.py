@@ -26,6 +26,7 @@ async def portal(
     sub_status: str | None = None,
     created_from: str | None = Query(None, alias="from"),
     created_to: str | None = Query(None, alias="to"),
+    batch: str | None = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -62,7 +63,10 @@ async def portal(
         db, user, section, agency, counselor, repeated, country=country, university=university, intake=intake, stage=stage, sub_status=sub_status,
         created_from=created_from, created_to=created_to,
     )
-    payload = await section_payload(db, user, section, filters=filters)
+    # itc-024 (DEC-SCOPE-355 W5): the trainer dashboard's batch filter; like the filters above, refused (not ignored) anywhere else.
+    if batch is not None and (user.role != "trainer" or section != "dashboard"):
+        raise HTTPException(422, "The batch filter applies to the trainer dashboard only")
+    payload = await section_payload(db, user, section, filters=filters, batch=batch)
     if payload is None:
         raise HTTPException(404, "Workspace not found")
     return payload

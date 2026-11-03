@@ -23,10 +23,13 @@ export type ApplicationFilterKey = (typeof APPLICATION_FILTER_KEYS)[number];
 export type PortalPayload = {
   title:string; subtitle:string; metrics:{label:string;value:string|number}[];
   actions:{label:string;href:string}[]; columns:{key:string;label:string;type?:string}[];
-  rows:Record<string, unknown>[]; panels:{title:string;items:string[]}[];
+  rows:Record<string, unknown>[]; panels:{title:string;items:string[];empty?:string}[]; // itc-024: `empty` -- shown when `items` is empty
   filters?: ApplicationFilterState;
+  batch_filter?: BatchFilter; // itc-024 (DEC-SCOPE-355 W5): the trainer dashboard's batch filter
   locked?: PaymentLock; // nehn-018 (DEC-SCOPE-304): a student section the payment state does not unlock -- no data, the lock instead
 };
+// itc-024 (DEC-SCOPE-355 W5): the chosen batch (null = all) and the trainer's own batches to choose from.
+export type BatchFilter = { value: string | null; options: { value: string; label: string }[] };
 // AGN-003 (DEC-SCOPE-044): an agency member's effective optional permissions (GET /auth/me; a Master gets both true).
 export type AgentPermissions = { can_verify_documents: boolean; can_view_reports: boolean };
 export type User = {id:string; email:string; full_name:string; role:string; division:string; phone?:string; student_code?:string|null; profile:Record<string,unknown>; agent_member_role?:"master"|"staff"|null; agent_permissions?:AgentPermissions|null};

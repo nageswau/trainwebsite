@@ -3587,3 +3587,9 @@ No grant change. The IT student reads only their own fee accounts and course row
 payer, or an admin of the payment's division (`super_admin` any); any other caller now gets 404 (was 403), so a payment id outside the
 caller's scope is not disclosed. Meeting links are never in the course payload (the Timetable's live-classes lock still gates them).
 Pinned by `apps/api/tests/test_itc_018_student_fee_summary.py`.
+
+### 2.255 Trainer dashboard widgets *(added 2026-11-03 — `DEC-SCOPE-355`, itc-024)*
+
+No grant change. `GET /portal/it/trainer/dashboard` stays `trainer` (IT) only (role/division gate; others 403). Every figure reads only
+batches with `trainer_id` = the caller; the `batch` filter accepts only those (another trainer's batch is a 422 indistinguishable
+from an unknown id). Pinned by `apps/api/tests/test_itc_024_trainer_dashboard.py`.
