@@ -1,5 +1,6 @@
 // itc-032 (DEC-SCOPE-369): the management IT reports -- six read-only tabs with the same five filters (API §12JO). The filters live in
 // the address (a GET form), so refresh, Back and a shared link keep the view; anything unknown in the address is dropped here.
+import { isCalendarDate } from "@/lib/formatDate";
 import { inr } from "@/lib/itAccounts";
 
 const IT_REPORTS_API = "/api/v1/management/it/reports";
@@ -28,12 +29,19 @@ export function itReport(value: string | string[] | undefined, allowed: ItReport
   return allowed[0] ?? null;
 }
 
-/** The filters from the page's search params: known keys only, one value each; a negative or malformed offset reads as 0. */
+const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isId = (value: string) => UUID_SHAPE.test(value);
+const WELL_FORMED: Partial<Record<FilterKey, (value: string) => boolean>> = {
+  program_id: isId, batch_id: isId, owner_id: isId, date_from: isCalendarDate, date_to: isCalendarDate,
+};
+
+/** The filters from the page's search params: known keys only, one value each; a negative or malformed offset reads as 0. A malformed id or
+ * an impossible date only comes from a hand-edited address and is dropped too (QA-01), so the API's only 422s are its own worded ones. */
 export function itReportParams(search: Record<string, string | string[] | undefined>): ItReportParams {
   const out: ItReportParams = {};
   for (const key of FILTERS) {
     const value = search[key];
-    if (typeof value === "string" && value) out[key] = value;
+    if (typeof value === "string" && value && (WELL_FORMED[key]?.(value) ?? true)) out[key] = value;
   }
   const offset = Number.parseInt(typeof search.offset === "string" ? search.offset : "", 10);
   if (offset > 0) out.offset = offset;

@@ -37,13 +37,18 @@ const funnel = (over: Partial<ItReportPage> = {}): ItReportPage => ({
 
 describe("itReports helpers (itc-032)", () => {
   it("keeps the five filters, builds the API and export addresses and picks an allowed report", () => {
-    const params = itReportParams({ program_id: "c1", owner_id: "o1", status: "new", date_from: "2026-10-01", offset: "50", junk: "x" });
-    expect(params).toEqual({ program_id: "c1", owner_id: "o1", status: "new", date_from: "2026-10-01", offset: 50 });
-    expect(itReportUrl("funnel", params)).toBe("/api/v1/management/it/reports/funnel?limit=50&offset=50&program_id=c1&owner_id=o1&date_from=2026-10-01&status=new");
-    expect(itReportExportUrl("funnel", params)).toBe("/api/v1/management/it/reports/funnel/export?program_id=c1&owner_id=o1&date_from=2026-10-01&status=new");
+    const [c1, o1] = ["11111111-2222-4333-8444-555555555555", "66666666-7777-4888-9999-000000000000"];
+    const params = itReportParams({ program_id: c1, owner_id: o1, status: "new", date_from: "2026-10-01", offset: "50", junk: "x" });
+    expect(params).toEqual({ program_id: c1, owner_id: o1, status: "new", date_from: "2026-10-01", offset: 50 });
+    expect(itReportUrl("funnel", params)).toBe(`/api/v1/management/it/reports/funnel?limit=50&offset=50&program_id=${c1}&owner_id=${o1}&date_from=2026-10-01&status=new`);
+    expect(itReportExportUrl("funnel", params)).toBe(`/api/v1/management/it/reports/funnel/export?program_id=${c1}&owner_id=${o1}&date_from=2026-10-01&status=new`);
     expect(itReport("activity", ["revenue"])).toBe("revenue");  // the accountant asks for a tab they may not open: their first
     expect(itReport("training", ["funnel", "training"])).toBe("training");
     expect(itReportParams({ offset: "-3" })).toEqual({});
+    // QA-01: a malformed id or date only comes from a hand-edited address; dropped, so the API's only 422s are its worded ones
+    expect(itReportParams({ program_id: "not-a-uuid", batch_id: "1", owner_id: "x", date_from: "2026-13-45", date_to: "yesterday", status: "new" })).toEqual({ status: "new" });
+    const id = "0b5f8c1e-2a3d-4e5f-8a9b-1c2d3e4f5a6b";
+    expect(itReportParams({ program_id: id, date_to: "2026-10-31" })).toEqual({ program_id: id, date_to: "2026-10-31" });
   });
 
   it("carries course, batch, owner and dates across tabs, and the status only within its family", () => {

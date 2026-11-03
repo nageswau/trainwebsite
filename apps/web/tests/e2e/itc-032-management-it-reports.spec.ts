@@ -37,12 +37,16 @@ test("management IT reports: figures tie out, filters carry across tabs, roles a
   expect(registered.ok(), await registered.text()).toBeTruthy();
   const student = await api(browser, email, STUDENT_PASSWORD);
   expect((await student.post("/api/v1/workflows/it/enrollments", { data: { batch_id: batchId } })).status()).toBe(201);
+  // the seat is taken once the student accepts the agreement (pending consent is not an enrolment in these reports)
+  const agreement = await (await student.get("/api/v1/workflows/it/student/agreements/current")).json();
+  expect((await student.post(`/api/v1/workflows/it/student/agreements/${agreement.id}/accept`)).ok()).toBeTruthy();
   const { enrollment_id: eid, total_payable: fee, course } = ((await (await student.get("/api/v1/it/student/fee-accounts")).json()) as Account[])[0];
   const admin = await api(browser, "itadmin@edusphere.local");
   const part = Math.min(1000, fee / 2);
   expect((await admin.post(`/api/v1/it/enrollments/${eid}/payments`, { data: { amount: part, payment_mode: "upi", provider_reference: `E2E32-${Date.now()}` } })).status()).toBe(201);
-  const enrolmentCode = ((await (await admin.get(`/api/v1/management/it/reports/revenue?limit=200`)).json()) as { items: { enrollment_code: string; collected: number }[] })
-    .items.find((i) => i.collected === part)?.enrollment_code;
+  const enrolmentCode = ((await (await admin.get(`/api/v1/management/it/reports/revenue?limit=200`)).json()) as { items: { enrollment_code: string; collected: number; course: string }[] })
+    .items.find((i) => i.collected === part && i.course === course)?.enrollment_code;
+  expect(enrolmentCode).toBeTruthy();
 
   // --- the IT Admin: Revenue, filtered by the course ---
   await signIn(page, "/it/login", "itadmin@edusphere.local", "/it/admin/dashboard");
@@ -52,11 +56,11 @@ test("management IT reports: figures tie out, filters carry across tabs, roles a
   await expect(page.getByRole("navigation", { name: "IT reports" }).getByRole("link")).toHaveCount(6);
   await page.getByRole("navigation", { name: "IT reports" }).getByRole("link", { name: "Revenue & outstanding" }).click();
   await page.waitForURL(/report=revenue/);
-  await page.getByLabel("Course").selectOption({ label: course });
+  await page.getByLabel("Course", { exact: true }).selectOption({ label: course });
   await page.getByRole("button", { name: "Apply" }).click();
   await page.waitForURL(/program_id=/);
-  await expect(page.getByLabel("Course")).toHaveValue(/.+/);  // the filter survives the reload
-  if (enrolmentCode) await expect(page.getByRole("row", { name: new RegExp(enrolmentCode) })).toContainText(rupees(part));
+  await expect(page.getByLabel("Course", { exact: true })).toHaveValue(/.+/);  // the filter survives the reload
+  await expect(page.getByRole("row", { name: new RegExp(enrolmentCode!) })).toContainText(rupees(part));
   await page.getByText("What these figures mean").click();
   await expect(page.getByText(/Positive balances of those enrolments that are active/)).toBeVisible();
 
