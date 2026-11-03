@@ -2,7 +2,7 @@
 records on every read so it can never disagree with them (AC3). Nothing stores the current stage.
 
 Components (L2), each from its own record:
-- fee       the itc-013 account: not billed -> enrolled, then fee_pending / partially_paid / paid
+- fee       the itc-013 account: not billed -> none (the stage reads enrolled), then fee_pending / partially_paid / paid
 - training  seated (active/completed) and the effective start date reached (IST) -> training_active; an open itc-023 flag -> at_risk;
             status `completed` or an issued certificate for the enrolment -> completed
 - placement only on the student's newest seated enrolment (HR review and applications are per student): an application `joined` ->
@@ -43,7 +43,7 @@ SAFE = {"at_risk": "training_active"}  # L8: the student never sees "At risk"
 OVERRIDABLE = ("not_placed", "closed")
 ENDED = ("rejected", "withdrawn", "dropped")
 SEATED = ("active", "completed")
-FEE_STAGES = {"not_billed": "enrolled", "enrolled_pending_payment": "fee_pending", "partially_paid": "partially_paid", "fully_paid": "paid"}
+FEE_STAGES = {"enrolled_pending_payment": "fee_pending", "partially_paid": "partially_paid", "fully_paid": "paid"}  # not billed: no fee component
 HR_STAGES = {
     "resume_received": "resume_submitted", "under_review": "hr_screening", "changes_requested": "hr_screening", "screening": "hr_screening",
     "interview_ready": "interview", "completed": "interview",
@@ -71,7 +71,7 @@ def _stage(status: str, override: str | None, c: dict) -> str:
         return "placed"
     if override == "not_placed":
         return "not_placed"
-    return c["placement"] or c["training"] or c["fee"]
+    return c["placement"] or c["training"] or c["fee"] or "enrolled"
 
 
 async def _placement(db: AsyncSession, student_ids: set[UUID]) -> dict[UUID, str]:
@@ -115,7 +115,7 @@ async def derive_many(db: AsyncSession, enrollment_ids: list[UUID]) -> dict[UUID
             training = "completed"
         elif r.status in SEATED and r.start <= today:
             training = "at_risk" if r.id in flagged else "training_active"
-        c = {"fee": FEE_STAGES[fees[r.id]["state"]], "training": training, "placement": placement.get(r.student_id) if newest.get(r.student_id) == r.id else None}
+        c = {"fee": FEE_STAGES.get(fees[r.id]["state"]), "training": training, "placement": placement.get(r.student_id) if newest.get(r.student_id) == r.id else None}
         out[r.id] = {"stage": _stage(r.status, r.lifecycle_override, c), "components": c}
     return out
 

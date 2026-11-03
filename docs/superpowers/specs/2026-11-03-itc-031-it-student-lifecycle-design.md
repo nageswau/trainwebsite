@@ -30,7 +30,8 @@ HIGH REGRESSION RISK: every hooked writer (a failure in the history writer would
   `resume_submitted`, `hr_screening`, `interview`, `placed`, `not_placed`, `closed`. Labels are served by the API (`stage_label`) so
   itc-005 can rename them in one place.
 - **L2 Components** (computed per enrolment, shown beside the stage so concurrent states stay visible):
-  - fee: not billed → `enrolled`; `enrolled_pending_payment` → `fee_pending`; `partially_paid`; `fully_paid` → `paid`.
+  - fee: not billed → none (the card says "Not billed"; the stage falls back to `enrolled`); `enrolled_pending_payment` →
+    `fee_pending`; `partially_paid`; `fully_paid` → `paid`.
   - training: seated (`active`/`completed`) and effective start ≤ today (IST) → `training_active`; an open risk flag → `at_risk`;
     status `completed` or an issued certificate for the enrolment → `completed`; otherwise none.
   - placement (the student's newest seated enrolment only — HR and applications are per student): any application `joined` → `placed`;

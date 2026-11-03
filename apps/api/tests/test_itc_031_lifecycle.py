@@ -118,6 +118,13 @@ async def test_the_fee_track_moves_enrolled_fee_pending_partially_paid_paid(db_s
     assert await stage(db_session, enrollment) == "paid"
 
 
+async def test_an_unbilled_enrolment_has_no_fee_component_but_reads_enrolled(db_session):
+    """QA31-01: "Not billed" is no fee state -- the component is empty (the card says "Not billed"), the stage still reads Enrolled."""
+    enrollment = await enrolled(db_session, fee=None, start=PAST)
+    assert await components(db_session, enrollment) == {"fee": None, "training": "training_active", "placement": None}
+    assert await stage(db_session, await enrolled(db_session, fee=None)) == "enrolled"
+
+
 async def test_a_pending_consent_enrolment_follows_the_fee_track(db_session):
     assert await stage(db_session, await enrolled(db_session, status="pending_consent")) == "fee_pending"
 
