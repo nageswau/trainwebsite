@@ -11,7 +11,7 @@ same list, so each figure ties out to its rows by construction (AC1). The five f
 counselor), the date range on the cohort's anchor, and status (a lead stage, or the itc-031 lifecycle stage derived on read). Nothing is
 stored; the figures are itc-013's fee account, itc-021's attendance rule and itc-031's stage. No student or lead name leaves."""
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import date
 from uuid import UUID
@@ -158,10 +158,6 @@ def _ist(moment) -> str | None:
     return moment.astimezone(fee_accounts.INDIA).date().isoformat() if moment else None
 
 
-def _sorted_groups(groups: dict, key) -> list[dict]:
-    return sorted(groups.values(), key=key)
-
-
 # --- the lead cohort: funnel and conversions ----------------------------------------------------------------------------------------
 Owner, Actor, Student, Counselor = aliased(User), aliased(User), aliased(User), aliased(User)
 
@@ -224,7 +220,7 @@ async def funnel(db: AsyncSession, f: Filters) -> dict:
     by_stage = [{"stage": s, "label": labels.get(s, s), "count": stages[s]} for s in order if stages[s]]
     return {
         "totals": {"leads": len(rows), **counts, "by_stage": by_stage},
-        "groups": _sorted_groups(groups, lambda g: (g["course"].lower(), -g["leads"], g["source"].lower())),
+        "groups": sorted(groups.values(), key=lambda g: (g["course"].lower(), -g["leads"], g["source"].lower())),
         "rows": [_lead_item(r, labels) for r in rows],
     }
 
@@ -242,7 +238,7 @@ async def conversions(db: AsyncSession, f: Filters) -> dict:
     items = [{**_lead_item(r, labels), "days_to_convert": (r.converted_at - r.created_at).days} for r in sorted(converted, key=lambda r: r.converted_at, reverse=True)]
     return {
         "totals": {"leads": len(rows), "converted": len(converted), "conversion_pct": _pct(len(converted), len(rows))},
-        "groups": _sorted_groups(groups, lambda g: (-g["converted"], g["course"].lower())),
+        "groups": sorted(groups.values(), key=lambda g: (-g["converted"], g["course"].lower())),
         "rows": items,
     }
 
@@ -284,7 +280,7 @@ async def activity(db: AsyncSession, f: Filters) -> dict:
         })  # fmt: skip
     return {
         "totals": {"events": len(rows), **totals},
-        "groups": _sorted_groups(groups, lambda g: (-(g["calls"] + g["follow_ups"] + g["conversions"]), g["staff"].lower())),
+        "groups": sorted(groups.values(), key=lambda g: (-(g["calls"] + g["follow_ups"] + g["conversions"]), g["staff"].lower())),
         "rows": items,
     }
 
@@ -362,7 +358,7 @@ async def revenue(db: AsyncSession, f: Filters) -> dict:
         g.update({k: _money(g[k]) for k in money})
     return {
         "totals": {"enrolments": len(items), **{k: _money(sum(i[k] for i in items)) for k in money}},
-        "groups": _sorted_groups(groups, lambda g: g["course"].lower()),
+        "groups": sorted(groups.values(), key=lambda g: g["course"].lower()),
         "rows": items,
     }
 
@@ -392,7 +388,7 @@ async def training(db: AsyncSession, f: Filters) -> dict:
     return {
         "totals": {"enrolments": len(items), "attended": attended, "counted": counted, "attendance_pct": _pct(attended, counted), "completed": completed,
                    "completion_pct": _pct(completed, len(items))},
-        "groups": _sorted_groups(groups, lambda g: g["course"].lower()),
+        "groups": sorted(groups.values(), key=lambda g: g["course"].lower()),
         "rows": items,
     }  # fmt: skip
 
@@ -406,17 +402,19 @@ def _outcome(d: dict) -> str:
 async def placement(db: AsyncSession, f: Filters) -> dict:
     rows, derived = await _enrolments(db, f)
     labels = await it_status_labels.labels(db, "lifecycle")
-    items = [{**_seat_item(r, labels[derived[r.id]["stage"]]), "outcome": _outcome(derived[r.id])} for r in rows]
-    for item in items:
-        item["outcome_label"] = labels.get(item["outcome"], NOT_STARTED)
-        item.update({o: int(item["outcome"] == o) for o in OUTCOMES})
-    groups = _by_course(rows, items, OUTCOMES)
-    for item in items:
-        for o in OUTCOMES:
-            del item[o]
+    items = []
+    for r in rows:
+        outcome = _outcome(derived[r.id])
+        items.append({**_seat_item(r, labels[derived[r.id]["stage"]]), "outcome": outcome, "outcome_label": labels.get(outcome, NOT_STARTED)})
+    groups = _by_course(rows, items, ())
+    counts: dict = defaultdict(Counter)
+    for r, item in zip(rows, items, strict=True):
+        counts[r.program_id][item["outcome"]] += 1
+    for program_id, g in groups.items():
+        g.update({o: counts[program_id][o] for o in OUTCOMES})
     return {
         "totals": {"enrolments": len(items), **{o: sum(g[o] for g in groups.values()) for o in OUTCOMES}},
-        "groups": _sorted_groups(groups, lambda g: g["course"].lower()),
+        "groups": sorted(groups.values(), key=lambda g: g["course"].lower()),
         "rows": items,
     }
 

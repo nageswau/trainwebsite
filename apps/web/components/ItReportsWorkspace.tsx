@@ -60,10 +60,10 @@ export default function ItReportsWorkspace({ report, tabs, page, error, params, 
   const batches = (o?.batches ?? []).filter((b) => !params.program_id || b.program_id === params.program_id).map((b) => ({ value: b.id, label: b.name }));
   const dates = { date_from: params.date_from ?? page?.filters.date_from ?? "", date_to: params.date_to ?? page?.filters.date_to ?? "" };
   const drill = (row: ItReportRow) => {
-    const narrowed = report === "activity" ? { owner_id: row.owner_id } : { program_id: row.program_id };
-    const value = Object.values(narrowed)[0];
-    if (typeof value !== "string") return null;
-    return <Link href={itReportHref(basePath, report, { ...params, ...narrowed } as ItReportParams, report)}>Show rows<span className="visually-hidden"> for {String(row[GROUP_COLUMNS[report][0].key])}</span></Link>;
+    const key = report === "activity" ? "owner_id" : "program_id";  // a staff row narrows to that person, a course row to that course
+    const value = row[key];
+    if (typeof value !== "string") return null;  // "No course" / an unknown actor: nothing to narrow to
+    return <Link href={itReportHref(basePath, report, { ...params, [key]: value }, report)}>Show rows<span className="visually-hidden"> for {String(row[GROUP_COLUMNS[report][0].key])}</span></Link>;
   };
   const byStage = page && report === "funnel" ? (page.totals.by_stage as { stage: string; label: string; count: number }[]) : [];
 
