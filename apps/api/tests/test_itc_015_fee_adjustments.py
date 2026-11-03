@@ -105,7 +105,7 @@ async def test_a_write_off_clears_what_is_owed_and_no_more(client, db_session):
     "body, message",
     [
         ({"kind": "refund", "amount": 5000.01, "payment_mode": "cash"}, "at most"),  # the - case: never more than the credit (so than paid)
-        ({"kind": "refund", "amount": 100}, "payment_mode"),  # a refund says how the money went back
+        ({"kind": "refund", "amount": 100}, "payment mode"),  # a refund says how the money went back
         ({"kind": "refund", "amount": 100, "payment_mode": "razorpay"}, None),  # Q-15: manual only
         ({"kind": "credit_note", "amount": 40000.01}, "at most"),  # never more than is still payable
         ({"kind": "credit_note", "amount": 0}, None),
@@ -122,6 +122,14 @@ async def test_an_invalid_adjustment_is_refused_and_changes_nothing(client, db_s
     if message:
         assert message in response.text
     assert await figures(db_session, enrollment) == before
+
+
+@pytest.mark.asyncio
+async def test_a_refund_without_a_mode_gets_a_plain_message(client, db_session):
+    """QA15-01: the form shows `detail` as is, so it must read as a sentence, not a validator's 'Value error, ...'."""
+    _, enrollment, _ = await paid_in_full(client, db_session, 1000)
+    response = await adjust(client, enrollment, kind="refund", amount=1)
+    assert (response.status_code, response.json()["detail"]) == (422, "Choose how the refund was paid (payment mode)")
 
 
 @pytest.mark.asyncio

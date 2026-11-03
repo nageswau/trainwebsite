@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FeeAccountCard, type FeeAccount } from "@/components/FeeAccountSummary";
+import FeePaymentPanel from "@/components/FeePaymentPanel";
 import WorkflowPanel from "@/components/WorkflowPanel";
 import { clearPermissions } from "@/lib/usePermissions";
 import type { User } from "@/lib/types";
@@ -66,6 +67,15 @@ describe("Fee account adjustments (itc-015)", () => {
     render(<FeeAccountCard account={{ ...ACCOUNT, adjustments: undefined, refunded: undefined }} />);
     expect(screen.queryByText("Refunded")).toBeNull();
     expect(screen.queryByRole("list", { name: "Credits and refunds" })).toBeNull();
+  });
+
+  it("explains a corrected payment on the student's payment list instead of calling it paid (QA15-02)", async () => {
+    const reversed = { id: "p9", amount: 32500, currency: "INR", provider: "manual", status: "reversed", due_date: null, reference_type: "enrollment_fee", is_manual: true,
+      emi_schedule_id: null, installment_no: null, paid_at: "2026-11-03T05:00:00Z", payment_mode: "cash", provider_reference: "TYPO-1" };
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => (url === "/api/v1/payments/mine" ? json([reversed]) : url === "/api/v1/payments/mode" ? json({ mode: "test" }) : json([]))));
+    render(<FeePaymentPanel />);
+    expect(await screen.findByText("Corrected — replaced by a new payment with its own receipt")).toBeInTheDocument();
+    expect(screen.queryByText(/^Paid on/)).toBeNull();
   });
 
   it("gives the IT admin with payments.refund the adjustment and correction forms", async () => {

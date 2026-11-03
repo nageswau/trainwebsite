@@ -10,7 +10,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,12 +50,6 @@ class RecordAdjustment(BaseModel):
     reason: Reason
     payment_mode: OfflineMode | None = None
     reference: Reference | None = None
-
-    @model_validator(mode="after")
-    def _refund_says_how(self):
-        if self.kind == "refund" and self.payment_mode is None:
-            raise ValueError("payment_mode is required for a refund (how the money went back)")
-        return self
 
 
 class CorrectPayment(RecordPayment):
@@ -154,6 +148,8 @@ async def _it_enrollment(db: AsyncSession, user: User, enrollment_id: str) -> En
 @router.post("/enrollments/{enrollment_id}/adjustments", status_code=201)
 async def record_adjustment(enrollment_id: str, payload: RecordAdjustment, user: User = Depends(PAYMENTS_REFUND), db: AsyncSession = Depends(get_db)):
     """itc-015: a credit note, write-off or refund (services/fee_adjustments.py)."""
+    if payload.kind == "refund" and payload.payment_mode is None:  # QA15-01: a plain sentence, not the validator's "Value error, ..."
+        raise HTTPException(422, "Choose how the refund was paid (payment mode)")
     enrollment = await _it_enrollment(db, user, enrollment_id)
     item = await fee_adjustments.record(db, user, enrollment, payload.kind, float(payload.amount), payload.reason, payload.payment_mode, payload.reference or None)
     await it_lifecycle.sync(db, [enrollment.id], actor=user, cause="fee")
