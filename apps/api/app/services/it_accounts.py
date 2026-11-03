@@ -89,6 +89,11 @@ def _fee_rows() -> list:
     return [Payment.division == "it", Payment.reference_type.in_(fee_accounts.FEE_REFERENCES)]
 
 
+def _named(stmt):
+    """The rows' enrolment named: its batch, course and student (joins on primary keys; `stmt` already joins `Enrollment`)."""
+    return stmt.join(Batch, Batch.id == Enrollment.batch_id).join(Program, Program.id == Batch.program_id).join(User, User.id == Enrollment.student_id)
+
+
 def _money(value) -> float:
     return round(float(value or 0), 2)
 
@@ -140,13 +145,8 @@ async def collections(db: AsyncSession, f: Filters, limit: int, offset: int) -> 
 
 
 async def outstanding(db: AsyncSession, f: Filters, limit: int, offset: int) -> dict:
-    stmt = (
-        select(Enrollment.id, Enrollment.enrollment_code, User.id, User.full_name, User.student_code, Program.id, Program.title, Batch.name)
-        .join(Batch, Batch.id == Enrollment.batch_id)
-        .join(Program, Program.id == Batch.program_id)
-        .join(User, User.id == Enrollment.student_id)
-        .where(Enrollment.status == ACTIVE, *_scope(f))
-    )
+    stmt = _named(select(Enrollment.id, Enrollment.enrollment_code, User.id, User.full_name, User.student_code, Program.id, Program.title, Batch.name).select_from(Enrollment))
+    stmt = stmt.where(Enrollment.status == ACTIVE, *_scope(f))
     enrolments = (await db.execute(stmt)).all()
     ids = [row[0] for row in enrolments]
     figures = await fee_accounts.balance_for(db, ids)
@@ -166,7 +166,7 @@ async def outstanding(db: AsyncSession, f: Filters, limit: int, offset: int) -> 
         overdue, next_due = owed.get(eid, (0.0, None))
         if fig["state"] == "not_billed" or fig["balance"] <= 0:
             continue
-        if f.state == "overdue" and overdue <= 0 or f.state in ("enrolled_pending_payment", "partially_paid") and fig["state"] != f.state:
+        if (f.state == "overdue" and overdue <= 0) or (f.state in ("enrolled_pending_payment", "partially_paid") and fig["state"] != f.state):
             continue
         items.append({
             "enrollment_id": eid, "enrollment_code": code, "student_id": student_id, "student_name": name, "student_code": student_code,
@@ -190,15 +190,7 @@ async def overdue(db: AsyncSession, f: Filters, limit: int, offset: int) -> dict
     where = [*_fee_rows(), Payment.status.in_(fee_accounts.OWED), Payment.amount > 0, Payment.due_date < today, Enrollment.status == ACTIVE, *_scope(f)]
 
     def base(*cols):
-        return (
-            select(*cols)
-            .select_from(Payment)
-            .join(Enrollment, Enrollment.id == Payment.reference_id)
-            .join(Batch, Batch.id == Enrollment.batch_id)
-            .join(Program, Program.id == Batch.program_id)
-            .join(User, User.id == Enrollment.student_id)
-            .where(*where)
-        )
+        return _named(select(*cols).select_from(Payment).join(Enrollment, Enrollment.id == Payment.reference_id)).where(*where)
 
     stmt = base(
         Payment.id, Payment.installment_no, Payment.amount, Payment.due_date, Enrollment.id.label("enrollment_id"), Enrollment.enrollment_code,
@@ -223,16 +215,7 @@ async def receipts(db: AsyncSession, f: Filters, limit: int, offset: int) -> dic
     where = [*_fee_rows(), day >= f.date_from, day <= f.date_to, *_scope(f), *([Payment.payment_mode == f.mode] if f.mode else [])]
 
     def base(*cols):
-        return (
-            select(*cols)
-            .select_from(Receipt)
-            .join(Payment, Payment.id == Receipt.payment_id)
-            .join(Enrollment, Enrollment.id == Payment.reference_id)
-            .join(Batch, Batch.id == Enrollment.batch_id)
-            .join(Program, Program.id == Batch.program_id)
-            .join(User, User.id == Enrollment.student_id)
-            .where(*where)
-        )
+        return _named(select(*cols).select_from(Receipt).join(Payment, Payment.id == Receipt.payment_id).join(Enrollment, Enrollment.id == Payment.reference_id)).where(*where)
 
     stmt = base(
         Receipt.receipt_no, day.label("issued_on"), User.full_name, User.student_code, Enrollment.enrollment_code, Program.title, Batch.name,
@@ -254,15 +237,7 @@ async def adjustments(db: AsyncSession, f: Filters, limit: int, offset: int) -> 
     where = [day >= f.date_from, day <= f.date_to, *_scope(f), *([FeeAdjustment.kind == f.kind] if f.kind else [])]
 
     def base(*cols):
-        return (
-            select(*cols)
-            .select_from(FeeAdjustment)
-            .join(Enrollment, Enrollment.id == FeeAdjustment.enrollment_id)
-            .join(Batch, Batch.id == Enrollment.batch_id)
-            .join(Program, Program.id == Batch.program_id)
-            .join(User, User.id == Enrollment.student_id)
-            .where(*where)
-        )
+        return _named(select(*cols).select_from(FeeAdjustment).join(Enrollment, Enrollment.id == FeeAdjustment.enrollment_id)).where(*where)
 
     stmt = base(
         FeeAdjustment.document_no, day.label("created_on"), FeeAdjustment.kind, User.full_name, User.student_code, Enrollment.enrollment_code, Program.title,
