@@ -44,6 +44,10 @@ EVENTS: dict[str, Event] = {
     "it.placement.updated": Event("student", "Placement status updated", "Your placement status was updated. Open EduSphere to see it."),
     # itc-028 (DEC-SCOPE-351 N8): a staff note was shared with the student -- never the note's text
     "it.student.update_shared": Event("student_note", "New update for you", "An update was shared with you. Open EduSphere to read it."),
+    # itc-027 (DEC-SCOPE-354 H8): `it.resume.uploaded` (above) goes to the HR owner and the counselor, `it.placement.updated` to the
+    # student on a stage move; the counselor's copy of that move and the HR owner's (re)assignment are these two. Never a stage or note.
+    "it.hr_review.updated": Event("hr_review_task", "HR review updated", "HR updated the resume review of your student. Open EduSphere to see it."),
+    "it.hr_review.assigned": Event("hr_review_task", "Resume review assigned", "A resume review was assigned to you. Open EduSphere to start it."),
 }
 
 # itc-025 (DEC-SCOPE-348): "a summary of what changed" from a FIXED vocabulary of field names -- never the values (dates, trainer names,
