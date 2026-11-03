@@ -3621,8 +3621,16 @@ No grant change. The lifecycle read uses the IT student record's scope (`it_stud
 linked students (others 404), the IT Admin for any IT student; every other role 403. Only the IT Admin sets or clears the hand-set
 "Not placed" / "Closed" (no counselor route). The student reads their own stage on `/it/me/profile` as the safe subset (no "At risk"
 wording, no history). Pinned by `apps/api/tests/test_itc_031_lifecycle_api.py`.
+### 2.260 IT student 360 *(added 2026-11-03 — `DEC-SCOPE-360`, itc-029)*
 
-### 2.260 One-step IT conversion and the onboarding checklist *(added 2026-11-03 — `DEC-SCOPE-360`, itc-011)*
+No grant change. One read route with a per-role section allow-list: IT `counselor` — their itc-003 linked students (404 otherwise), every
+section; `it_admin` (IT) — any IT student, every section; `hr_team` with `student_progress.view` — the nehn-017 placement pool (404
+outside it), only contact, courses (attendance % only with `attendance.view`), feedback, `hr`-visible resumes, HR stage and notes — never
+fee, the itc-012 profile/emergency contact, the lead, risk flags or notifications (Q-28, `NEEDS_CONFIRMATION`). `trainer`, students,
+overseas roles, `placement_team` and `super_admin` 403. The lead timeline route is the counselor's and the IT Admin's only. Pinned by
+`apps/api/tests/test_itc_029_it_student_360.py`.
+
+### 2.261 One-step IT conversion and the onboarding checklist *(added 2026-11-03 — `DEC-SCOPE-361`, itc-011)*
 
 No grant change. `/counselor/leads/{id}/convert-it` (GET options, POST convert): the lead's owner IT counselor only — another
 counselor's lead 404 (tel-018 scope), an overseas counselor or any other role 403. `/admin/leads/{id}/convert-it`: the IT Admin only

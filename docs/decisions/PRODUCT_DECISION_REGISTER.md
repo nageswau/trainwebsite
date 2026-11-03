@@ -11129,8 +11129,25 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   Dashboards and reports are itc-032; label renames are itc-005.
 - **Numbering:** migration `0241_enrollment_lifecycle` (on itc-016's `0240_fee_reminders`); API §12JE; RBAC §2.259.
 - **Feature ID authorized:** `itc-031`. **Status:** built on `worktree-itc-031`.
+### DEC-SCOPE-360 — IT student 360 for counselor, HR and admin (`itc-029`)
 
-### DEC-SCOPE-360 — One-step IT conversion: lead → student → enrolment → fee plan → onboarding (`itc-011`)
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-029` (PDF §6 counselor view, §11 screen "Lead/student 360° profile",
+  §12 AC4/AC6). Scope approved by the owner 2026-11-01 (backlog Q-01: all phases, built in waves). Dependencies itc-003
+  (`DEC-SCOPE-337`), itc-013 (`DEC-SCOPE-346`), itc-021, itc-023 (`DEC-SCOPE-352`), itc-026 (`DEC-SCOPE-350`), itc-027
+  (`DEC-SCOPE-354`) and itc-028 (`DEC-SCOPE-351`) are merged. Design `docs/superpowers/specs/2026-11-03-itc-029-it-student-360-design.md`.
+- **Behaviour:** one read-only page per reader — `/it/counselor/students/[id]`, `/it/admin/students/[id]`, `/it/hr/students/[id]/360` —
+  showing contact, the lead history (pre-conversion timeline), courses with progress and attendance, fees, risk flags, recent graded
+  feedback, resume versions and HR stage, notes and the notices sent. Each section is read live from its own record (no copy, no cache),
+  so an update shows on the next read. Opened from My Students / Students ("Open") and HR's student page ("360 view").
+- **Claude's calls under "proceed with recommended answers" (`NEEDS_CONFIRMATION`):** S1 a trainer gets no 360 (backlog roles only).
+  S2 one role-scoped route `/it/students/{id}/360` (itc-028's pattern) instead of the backlog's `/counselor/it/students/{id}/360`.
+  S3 (Q-28) HR's 360 omits fee, the itc-012 profile, the lead, risk and notifications — HR's existing rules (nehn-017 "nothing financial",
+  itc-012 C1, itc-023 R8). S4 notifications show title and event, never the body. S5 reading a 360 is not audited. S6 until itc-022,
+  progress % is the trainer-entered figure and "trainer feedback" is graded assignment/assessment feedback.
+- **Numbering:** no migration; API §12JF; RBAC §2.260.
+- **Feature ID authorized:** `itc-029`. **Status:** built on `worktree-itc-029`.
+
+### DEC-SCOPE-361 — One-step IT conversion: lead → student → enrolment → fee plan → onboarding (`itc-011`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-011` (PDF §3 step 6, §9 "create student/enrollment records without
   re-entering data", §12 AC2; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-01). Dependencies itc-003
@@ -11151,5 +11168,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   student, staff) is 409 without naming it. C5 a phone-only lead needs an email typed in. C6 fee 0 bills nothing. C7 at most 12
   installments, each > 0, due today or later (IST), summing to the fee. C8 `Idempotency-Key` required, scoped to the lead. C9 the IT
   Admin, not super_admin. C10 a non-convertible stage is 409.
-- **Numbering:** migration `0243_it_conversion` (on itc-031's `0241_enrollment_lifecycle`); API §12JF; RBAC §2.260.
+- **Numbering:** migration `0243_it_conversion` (on itc-031's `0241_enrollment_lifecycle`); API §12JG; RBAC §2.261.
 - **Feature ID authorized:** `itc-011`. **Status:** built on `worktree-itc-011`.

@@ -47,7 +47,11 @@ export default async function HrStudentPage({ id }: { id: string }) {
                 <p className="muted">Read only. Progress, completion and attendance are the training records; a course is completed at 100% progress.</p>
               </div>
               {/* itc-028 (DEC-SCOPE-351): HR's notes on the student -- internal unless HR shares one with them */}
-              <Link className="btn small secondary" href={`/it/hr/students/${encodeURIComponent(detail.student.id)}/notes`}>Notes</Link>
+              <div className="actions">
+                {/* itc-029 (DEC-SCOPE-360): the student 360 (HR's sections only) */}
+                <Link className="btn small secondary" href={`/it/hr/students/${encodeURIComponent(detail.student.id)}/360`}>360 view</Link>{" "}
+                <Link className="btn small secondary" href={`/it/hr/students/${encodeURIComponent(detail.student.id)}/notes`}>Notes</Link>
+              </div>
             </div>
             {/* itc-027 (DEC-SCOPE-354): the resume review, when this HR user owns it */}
             <HrReviewCard studentId={detail.student.id} />
