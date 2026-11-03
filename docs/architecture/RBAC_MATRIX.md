@@ -3621,3 +3621,12 @@ No grant change. The lifecycle read uses the IT student record's scope (`it_stud
 linked students (others 404), the IT Admin for any IT student; every other role 403. Only the IT Admin sets or clears the hand-set
 "Not placed" / "Closed" (no counselor route). The student reads their own stage on `/it/me/profile` as the safe subset (no "At risk"
 wording, no history). Pinned by `apps/api/tests/test_itc_031_lifecycle_api.py`.
+
+### 2.260 One-step IT conversion and the onboarding checklist *(added 2026-11-03 — `DEC-SCOPE-360`, itc-011)*
+
+No grant change. `/counselor/leads/{id}/convert-it` (GET options, POST convert): the lead's owner IT counselor only — another
+counselor's lead 404 (tel-018 scope), an overseas counselor or any other role 403. `/admin/leads/{id}/convert-it`: the IT Admin only
+(403 for every other role, super_admin included — csc-005 C13); a lead of another division 403. `/it/enrollments/{id}/onboarding`
+(GET): the student (own; another student's 404), the student's itc-003 IT counselor (unlinked 404), the IT Admin; PATCH `…/{item_id}`:
+the counselor or the IT Admin (the student 403). The welcome token is never returned; duplicate-email refusals name no account. Pinned
+by `apps/api/tests/test_itc_011_conversion.py`.

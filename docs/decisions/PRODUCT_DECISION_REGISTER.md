@@ -11129,3 +11129,27 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   Dashboards and reports are itc-032; label renames are itc-005.
 - **Numbering:** migration `0241_enrollment_lifecycle` (on itc-016's `0240_fee_reminders`); API §12JE; RBAC §2.259.
 - **Feature ID authorized:** `itc-031`. **Status:** built on `worktree-itc-031`.
+
+### DEC-SCOPE-360 — One-step IT conversion: lead → student → enrolment → fee plan → onboarding (`itc-011`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-011` (PDF §3 step 6, §9 "create student/enrollment records without
+  re-entering data", §12 AC2; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-01). Dependencies itc-003
+  (`DEC-SCOPE-337`), itc-010 (`DEC-SCOPE-343`) and itc-013 (`DEC-SCOPE-346`) are merged. The owner said to proceed with the recommended
+  answers, so Q-09 / Q-10 below are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-03-itc-011-it-one-step-conversion-design.md`.
+- **Behaviour:** the lead's owner IT counselor (or the IT Admin, from the leads table) converts a Qualified-to-Counselling-Completed IT
+  lead in one request and one transaction: a new IT student account (csc-002 rules: no password, set-password link mailed after the
+  commit, Student ID, mail budget) or a chosen existing IT student; the tel-018 link (lead → Application/Enrollment, itc-003 counselor =
+  lead owner); the enrolment (`POST /it/enrollments`' rules, moved to `services/it_enrollments.seat`); the itc-013 fee rows (one bill, or
+  one per installment); the onboarding checklist copied from the IT template; the itc-031 first lifecycle row; an audit row. The dialog
+  is prefilled from the lead and the latest counseling record (fee quoted, recommended course's batches first). A retry with the same
+  `Idempotency-Key` answers from the stored conversion and creates nothing; any failure rolls everything back.
+- **Claude's calls (`NEEDS_CONFIRMATION`):** C1 (Q-09) a small IT onboarding template (5 seeded neutral items, no editor yet) and a
+  per-enrolment checklist ticked by the student's IT counselor or the IT Admin; ccrm-018/019 (application-scoped) is not reused. C2
+  (Q-10) consent is not skipped: the enrolment starts `pending_consent`; the lead becomes Converted when the student accepts the
+  agreement (tel-018 sync). C3 "link existing" enrols the chosen active IT student (no mail). C4 an email of any other account (overseas
+  student, staff) is 409 without naming it. C5 a phone-only lead needs an email typed in. C6 fee 0 bills nothing. C7 at most 12
+  installments, each > 0, due today or later (IST), summing to the fee. C8 `Idempotency-Key` required, scoped to the lead. C9 the IT
+  Admin, not super_admin. C10 a non-convertible stage is 409.
+- **Numbering:** migration `0243_it_conversion` (on itc-031's `0241_enrollment_lifecycle`); API §12JF; RBAC §2.260.
+- **Feature ID authorized:** `itc-011`. **Status:** built on `worktree-itc-011`.
