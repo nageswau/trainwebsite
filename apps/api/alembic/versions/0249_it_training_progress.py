@@ -1,7 +1,7 @@
 """itc-022 -- programme modules/topics, topic completions, the computed-progress formula, remediation plans, the progress override reason.
 
-Revision ID: 0247_it_training_progress
-Revises: 0246_fee_adjustments
+Revision ID: 0249_it_training_progress
+Revises: 0248_accounts_grants
 
 docs/superpowers/specs/2026-11-03-itc-022-modules-progress-remediation-design.md (DEC-SCOPE-365). Five new tables and one nullable column;
 no existing row changes and no data moves (P1: the IT Admin copies the syllabus into a plan). 0001 builds a fresh database from the
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0247_it_training_progress"
-down_revision = "0246_fee_adjustments"
+revision = "0249_it_training_progress"
+down_revision = "0248_accounts_grants"
 branch_labels = None
 depends_on = None
 

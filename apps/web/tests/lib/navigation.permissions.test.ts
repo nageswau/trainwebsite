@@ -7,7 +7,9 @@ const tagged = (nav: NavItem[]) => nav.filter((item) => item.resource).map((item
 
 describe("nehn-006 permission-driven navigation", () => {
   it("tags only the items whose page a catalogue resource gates", () => {
-    expect(tagged(PORTAL_NAV["it/admin"])).toEqual([["/it/admin/payments", "payments"], ["/it/admin/telecaller-reports", "reports.telecaller"]]);
+    expect(tagged(PORTAL_NAV["it/admin"])).toEqual([
+      ["/it/admin/payments", "payments"], ["/it/admin/accounts", "payments"], ["/it/admin/telecaller-reports", "reports.telecaller"], // itc-017: Accounts
+    ]);
     expect(tagged(PORTAL_NAV["overseas/admin"])).toEqual([["/overseas/admin/payments", "payments"], ["/overseas/admin/telecaller-reports", "reports.telecaller"]]);
     expect(tagged(PORTAL_NAV["it/coordinator"])).toEqual([["/it/coordinator/certificates", "certificates"]]);
     expect(tagged(TELECALLER_MANAGER_NAV)).toEqual([["/telecaller/manager/reports", "reports.telecaller"]]);
@@ -20,8 +22,9 @@ describe("nehn-006 permission-driven navigation", () => {
     const nav = PORTAL_NAV["it/admin"];
     const filtered = navForPermissions(nav, ["reports.telecaller.view", "payments.add"]);
     expect(filtered.map((item) => item.href)).not.toContain("/it/admin/payments");
+    expect(filtered.map((item) => item.href)).not.toContain("/it/admin/accounts"); // itc-017: also behind payments.view
     expect(filtered.map((item) => item.href)).toContain("/it/admin/telecaller-reports");
-    expect(filtered).toHaveLength(nav.length - 1);
+    expect(filtered).toHaveLength(nav.length - 2);
   });
 
   it("leaves the nav as it is while the set is unknown", () => {

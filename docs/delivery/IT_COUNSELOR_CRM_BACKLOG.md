@@ -564,6 +564,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** low.
 
 #### itc-017: Accounts role, workspace and collection reports
+- **Status:** built as `DEC-SCOPE-368` (migration `0248_accounts_grants`, API §12JN, RBAC §2.268); design
+  `docs/superpowers/specs/2026-11-03-itc-017-accounts-workspace-design.md`. Q-17 built with the recommended answer (the global
+  `accountant` with default IT payment grants; routes `/it/admin/accounts` and `/management/it-accounts`), `NEEDS_CONFIRMATION`.
 - **Business requirement:** §2 Accounts/Finance; §8 Accounts dashboard; §11 Accounts workspace.
 - **Existing behavior:**
   - The `accountant` role exists (`rbac.py:64`) but has no default payment grants (a super admin must grant them).
@@ -717,7 +720,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** high.
 
 #### itc-022: Modules, labs, computed progress, trainer feedback and remediation
-- **Status:** built as `DEC-SCOPE-365` (migration `0247_it_training_progress`, API §12JK, RBAC §2.265). Q-20 built with the recommended
+- **Status:** built as `DEC-SCOPE-365` (migration `0249_it_training_progress`, API §12JK, RBAC §2.265). Q-20 built with the recommended
   answers (no data migration — "Copy from syllabus"; weights per programme summing to 100; computed only with weights and topics) —
   `NEEDS_CONFIRMATION`. Trainer feedback reuses itc-028 notes (no `trainer_feedback` table).
 - **Business requirement:** §4 "Training progress: module/topic, … practical/lab completion, trainer feedback, overall progress %, risk flag, remediation plan"; §6.
@@ -1081,6 +1084,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **+/−/E:** a date range spanning a fiscal year.
 - **Regression risks:** the `test_mgmt_*` tests.
 - **Complexity:** medium. **Risk:** medium.
+- **Status:** built as `DEC-SCOPE-369` (no migration, API §12JO, RBAC §2.269); design `docs/superpowers/specs/2026-11-03-itc-032-management-it-reports-design.md`. Six tabs over two cohorts (IT leads
+  created, IT enrolments enrolled in the range) plus team activity, the five filters by one rule each, definitions on the page, totals = Σ
+  groups = Σ rows, audited injection-safe CSV; the accountant reads Revenue only. R1–R6 calls `NEEDS_CONFIRMATION`.
 
 #### itc-033: Consent, retention and malware-scan decisions
 - **Business requirement:** §10 "Consent and communication preferences for calls, email, SMS, and WhatsApp"; "Backup and recovery process, retention rules"; "follow applicable Indian privacy and data-protection requirements" (DPDP Act 2023); §5 "scan uploads for malware where supported".

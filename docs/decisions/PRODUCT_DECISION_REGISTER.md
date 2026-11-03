@@ -11259,7 +11259,7 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   P7 `lab` is an assignment type. P8 trainer feedback reuses itc-028 notes (no `trainer_feedback` table). P9 remediation plans: active
   enrolment only (AC3), owner = batch trainer / IT counselor / IT Admin, closed is final, students see their own; no notification.
   P10 the student's view on the Course page.
-- **Numbering:** migration `0247_it_training_progress`; API §12JK; RBAC §2.265.
+- **Numbering:** migration `0249_it_training_progress`; API §12JK; RBAC §2.265.
 - **Feature ID authorized:** `itc-022`. **Status:** built on `worktree-itc-022`.
 
 ### DEC-SCOPE-367 — IT counselor dashboard and workspace (`itc-030`)
@@ -11282,3 +11282,45 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   enrolment. C6 Q-29 verified: the IT counselor nav has no overseas Tasks link (only the shared Management tasks page) — no change.
 - **Numbering:** no migration; API §12JM; RBAC §2.267 (365/366 left to in-flight itc-022/itc-017).
 - **Feature ID authorized:** `itc-030`. **Status:** built on `worktree-itc-030`.
+### DEC-SCOPE-368 — Accounts role, workspace and collection reports (`itc-017`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-017` (PDF §2 Accounts/Finance, §8 Accounts dashboard, §11 Accounts
+  workspace, §12 AC10; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-01: all phases, built in waves).
+  Dependencies itc-013 (`DEC-SCOPE-346`), itc-015 (`DEC-SCOPE-364`) and itc-016 (`DEC-SCOPE-358`) are merged. The owner said to proceed
+  with the recommended answers, so Q-17 and F1–F9 below are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-03-itc-017-accounts-workspace-design.md`.
+- **Behaviour:** an IT accounts workspace with five read-only reports over IT enrolment fees — collections by IST day / month / course,
+  outstanding per active enrolment (with the overdue part and a per-course summary), overdue installments (with reminders sent), the
+  receipts register and refunds & adjustments — each filtered by course, batch, date range and status, paginated, and exported as
+  injection-safe CSV (every export audited `it.accounts.export`, filters only). Recording payments, refunds and corrections stays on the
+  student's fee account (itc-013/015).
+- **Builder's calls:** F1 (Q-17) "Accounts" is the existing global `accountant`; migration seeds `payments.view`, `payments.add`,
+  `payments.refund` for it (not `discounts.*`). F2 (Q-17) routes `/it/admin/accounts` (IT Admin) and `/management/it-accounts` (finance
+  tier), both hidden without `payments.view`. F3 readers: a `payments.view` holder in IT / every division; anyone else 403. F4 a
+  collection is a paid/succeeded IT enrolment-fee row dated on the IST day of `paid_at`; a reversed payment is not one; refunds are not
+  netted. F5 outstanding = Σ positive `fee_accounts.balance_for` balances of `active` enrolments. F6 date range defaults to this IST month,
+  at most 366 days. F7 CSV up to 10,000 rows through `_safe_cell`. F8 index `ix_payments_paid_at`. F9 student names and Student IDs are
+  shown, no contact details.
+- **Numbering:** migration `0248_accounts_grants`; API §12JN; RBAC §2.268.
+- **Feature ID authorized:** `itc-017`. **Status:** built on `worktree-itc-017`.
+
+### DEC-SCOPE-369 — Management IT reports and dashboard filters (`itc-032`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-032` (PDF §8 Management dashboard, §12 AC10; PDF classified
+  `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-01: all phases, built in waves). Dependencies itc-013, itc-017,
+  itc-023, itc-027, itc-031 (and itc-005) are merged. The owner said to proceed with the recommended answers, so R1–R6 below are **the
+  builder's calls (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-03-itc-032-management-it-reports-design.md`.
+- **Behaviour:** six read-only IT reports — lead funnel by course and source, conversions by course, revenue / collections / outstanding,
+  attendance and completion, placement outcomes, team activity — each with the same five filters (course, batch, owner, date range,
+  status), a written definition for every figure, totals that equal the sum of the groups and of the drill-down rows (AC1), and an
+  injection-safe CSV of the rows (audited `management.it_reports.export`, filters only).
+- **Builder's calls:** R1 two cohorts — IT leads (not merged) created in the range; IT enrolments (seat taken) enrolled in the range —
+  plus activity events at a time in the range; the funnel is the cohort's current-stage distribution. R2 one rule per filter: course
+  through the lead's product / the enrolment's batch; a batch narrows lead reports to its course; owner = lead owner / event actor /
+  the student's IT counselor; status = a lead stage on lead reports, the itc-031 lifecycle stage on enrolment reports (the other family →
+  422); range defaults to this IST month, at most 366 days (a financial year or a range across 31 March counts whole). R3 the figure
+  definitions in the design (Appendix B where it speaks). R4 operational reports: partner, super_admin, IT Admin; revenue: partner or an
+  itc-017 accounts reader; the accountant sees Revenue only. R5 CSV ≤ 10,000 rows through `_safe_cell`. R6 `/management/it-reports` and
+  `/it/admin/management-reports`. No student or lead names, emails or phones (mgmt-007 IR11 precedent).
+- **Numbering:** no migration; API §12JO; RBAC §2.269.
+- **Feature ID authorized:** `itc-032`. **Status:** built on `feature/itc-032`.

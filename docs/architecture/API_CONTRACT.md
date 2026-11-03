@@ -5387,7 +5387,7 @@ full_name} | null, decided_at, decision_note, own}` (`own`: the caller made it).
 
 ## 12JK. Modules, labs, computed progress, remediation (itc-022) — addendum, 2026-11-03
 
-`DEC-SCOPE-365`. Migration `0247_it_training_progress`. Additive: existing payloads gain fields only.
+`DEC-SCOPE-365`. Migration `0249_it_training_progress`. Additive: existing payloads gain fields only.
 
 - `GET /admin/it/progress-plans` — IT Admin. 200 `[{program_id, program, active, modules, topics, weights|null, computed}]`.
 - `GET /admin/it/progress-plans/{program_id}` — IT Admin. 200 `{program_id, program, modules:[{id, title, topics:[{id, title}]}],
@@ -5437,3 +5437,36 @@ unchanged).
   is not in that course", "The owner filter is for the IT Admin" (a counselor sending `owner`), "Choose an IT counselor" (an owner
   that is not an IT counselor).
 - `GET /portal/it/admin/counselor-dashboard` — IT Admin header-only section (the page's board reads the endpoint above).
+## 12JN. IT accounts workspace reports (itc-017) — addendum, 2026-11-03
+
+`DEC-SCOPE-368`. Migration `0248_accounts_grants`. Additive; read-only.
+
+- `GET /it/accounts/reports/{report}` — `report` ∈ `collections | outstanding | overdue | receipts | adjustments` (else 404). Gate:
+  `payments.view` in the IT division or every division (it_admin, accountant, super_admin); anyone else 403 "You do not have access to
+  IT accounts". Query: `program_id?`, `batch_id?` (unknown 422 "Choose a course/batch from the list"; a batch outside the course 422),
+  `date_from?`/`date_to?` (IST days; default this month to today; from after to 422; over 366 days 422; used by collections, receipts,
+  adjustments), `group` (`day | month | course`, collections), `mode` (cash, upi, card, bank_transfer, cheque, razorpay; collections,
+  receipts), `kind` (credit_note, write_off, refund, reversal; adjustments), `state` (`enrolled_pending_payment | partially_paid |
+  overdue`; outstanding), `limit` 1–200 (default 50), `offset` ≥ 0. 200 `{report, items, total, limit, offset, totals, filters,
+  courses: [{id, title}], batches: [{id, name, program_id}]}` (+ `by_course` on outstanding). `totals` cover the whole filtered list:
+  collections `{payments, amount}`; outstanding `{enrolments, balance, overdue_amount}`; overdue `{installments, amount}`; receipts
+  `{receipts, amount}` (a reversed payment's receipt is listed, not summed); adjustments `{count, credit_note, write_off, refund, reversal}`.
+- `GET /it/accounts/reports/{report}/export` — same gate and filters; `text/csv` attachment `it-<report>-<IST date>.csv` with every
+  matching row (over 10,000 → 422). Text cells neutralise formula prefixes. Audited `it.accounts.export` `{report, filters, rows}`.
+
+## 12JO. Management IT reports (itc-032) — addendum, 2026-11-03
+
+`DEC-SCOPE-369`. No migration. Additive; read-only.
+
+- `GET /management/it/reports` — 200 `{reports: [{key, label}]}`: the reports the caller may open, in tab order; none → 403.
+- `GET /management/it/reports/{report}` — `report` ∈ `funnel | conversions | revenue | training | placement | activity` (else 404).
+  Gate: operational reports — partner, super_admin, it_admin (IT); revenue — partner, or `payments.view` in IT / every division
+  (it_admin, accountant, super_admin); anyone else 403 "You do not have access to this IT report"; anonymous 401. Query: `program_id?`,
+  `batch_id?` (unknown 422 "Choose a course/batch from the list"; a batch outside the course 422), `owner_id?` (not a lead owner, caller,
+  converter, follow-up completer or IT counselor → 422 "Choose an owner from the list"), `date_from?`/`date_to?` (IST days; default this
+  month to today; from after to 422; over 366 days 422), `status?` (a lead stage on funnel/conversions/activity, an IT lifecycle stage on
+  revenue/training/placement; else 422 "Choose a status from the list"), `limit` 1–200 (50), `offset` ≥ 0. 200 `{report, totals, groups,
+  items, total, limit, offset, filters, definitions: [{key, label, definition}], options: {courses, batches, owners: [{id, name}],
+  statuses: [{value, label}]}}`. `totals` cover the whole filtered report and equal Σ `groups`; `total` is the drill-down row count.
+- `GET /management/it/reports/{report}/export` — same gate and filters; `text/csv` attachment `it-<report>-<IST date>.csv` with every
+  row (over 10,000 → 422). Text cells neutralise formula prefixes. Audited `management.it_reports.export` `{report, filters, rows}`.

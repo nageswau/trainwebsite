@@ -613,7 +613,7 @@ class TopicCompletion(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-REMEDIATION_STATUSES = ("open", "in_progress", "completed", "cancelled")  # migration 0247 freezes a copy
+REMEDIATION_STATUSES = ("open", "in_progress", "completed", "cancelled")  # migration 0249 freezes a copy
 
 
 class RemediationPlan(Base, TimestampMixin):
@@ -3088,6 +3088,7 @@ class Payment(Base, TimestampMixin):
     __table_args__ = (
         CheckConstraint(_in("payment_mode", PAYMENT_MODES), name="ck_payments_payment_mode"),
         Index("ix_payments_status_due_date", "status", "due_date"),  # itc-016 (0240): the daily fee-reminder sweep
+        Index("ix_payments_paid_at", "paid_at"),  # itc-017 (0248): the accounts workspace's collection reports
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)

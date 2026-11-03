@@ -1,4 +1,4 @@
-"""itc-022 -- migration 0247_it_training_progress (DEC-SCOPE-365): programme modules/topics, topic completions, the progress formula,
+"""itc-022 -- migration 0249_it_training_progress (DEC-SCOPE-365): programme modules/topics, topic completions, the progress formula,
 remediation plans and the enrolment override reason. Round trip in a throwaway database (the upc-001 pattern); no existing row changes."""
 
 import importlib.util
@@ -13,11 +13,11 @@ from app.core.config import settings
 from app.models import Enrollment, ItProgressFormula, RemediationPlan
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_itc_022_migration_0247", VERSIONS / "0247_it_training_progress.py")
+_spec = importlib.util.spec_from_file_location("_itc_022_migration_0249", VERSIONS / "0249_it_training_progress.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD = "0247_it_training_progress"
+HEAD = "0249_it_training_progress"
 BASE = _migration.down_revision
 TABLES = ("it_progress_formulas", "program_modules", "program_topics", "remediation_plans", "topic_completions")
 PRESENT = "SELECT table_name FROM information_schema.tables WHERE table_name IN (" + ", ".join(f"'{t}'" for t in TABLES) + ") ORDER BY 1"

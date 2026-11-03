@@ -20,6 +20,8 @@ DOWNLOAD_REFUSED = "You don't have permission to download telecaller reports"  #
 # The oracle: who passed each pilot route's inline role check before nehn-005 (admin.ensure_admin, telecaller_reports.REPORT_ROLES).
 OLD_ADMIN = {"super_admin", "it_admin", "overseas_admin"}
 OLD_REPORTS = {"telecaller_manager", "super_admin", "it_admin", "overseas_admin"}
+# itc-017 (DEC-SCOPE-368 F1, migration 0248): the accountant holds the payment grants by default -- not `discounts.add`.
+PAYMENT_HOLDERS = OLD_ADMIN | {"accountant"}
 DIVISION = {
     "it_admin": "it",
     "it_student": "it",
@@ -82,8 +84,9 @@ def test_roles_are_the_29_existing_roles():
 
 def test_the_default_grants_reproduce_the_old_inline_sets():
     holders = lambda key: {role for role, keys in rbac.DEFAULT_GRANTS.items() if key in keys} | {"super_admin"}  # noqa: E731
-    for key in ("payments.view", "payments.add", "discounts.add"):
-        assert holders(key) == OLD_ADMIN
+    for key in ("payments.view", "payments.add"):
+        assert holders(key) == PAYMENT_HOLDERS
+    assert holders("discounts.add") == OLD_ADMIN
     for key in ("reports.telecaller.view", "reports.telecaller.download"):
         assert holders(key) == OLD_REPORTS
     assert "super_admin" not in rbac.DEFAULT_GRANTS  # implicit, never rows
@@ -140,7 +143,8 @@ async def test_seed_equivalence_for_every_role(client, db_session, role):
     ]
     for method, url, body, allowed in admin_calls:
         response = await client.request(method, url, json=body, headers=h)
-        expected = allowed if role in OLD_ADMIN else 403
+        holders = OLD_ADMIN if url.endswith("/discount") else PAYMENT_HOLDERS
+        expected = allowed if role in holders else 403
         assert response.status_code == expected, f"{role} {method} {url}: {response.status_code} {response.text[:200]}"
         if expected == 403:
             assert response.json()["detail"] == ADMIN_REQUIRED
@@ -193,6 +197,8 @@ async def test_revoking_download_keeps_the_json_report(client, db_session):
 async def test_a_grant_to_a_new_role_opens_the_route_for_it(client, db_session):
     root, accountant = await _user(db_session, "super_admin"), await _user(db_session, "accountant")
     async with _restored(db_session, "accountant"):
+        # itc-017: the accountant now holds payments.view by default, so the role starts here with none
+        await client.put(f"{API}/admin/roles/accountant/permissions", json={"permissions": []}, headers=_headers(root))
         assert (await client.get(f"{API}/admin/payments", headers=_headers(accountant))).status_code == 403
         await client.put(f"{API}/admin/roles/accountant/permissions", json={"permissions": ["payments.view"]}, headers=_headers(root))
         assert (await client.get(f"{API}/admin/payments", headers=_headers(accountant))).status_code == 200

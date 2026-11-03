@@ -12,6 +12,9 @@ export type ManagementSnapshot = { as_of: string; kpis: ManagementKpi[] };
 
 export const MANAGEMENT_HOME = "/management";
 export const MANAGEMENT_PAYMENTS_NAV: NavItem = { label: "Payments", href: "/management/payments", resource: "payments" };
+// itc-017 (DEC-SCOPE-368 F2): the IT fee accounts workspace, grant-driven like Payments.
+export const MANAGEMENT_IT_ACCOUNTS_NAV: NavItem = { label: "IT fee accounts", href: "/management/it-accounts", resource: "payments" };
+export const MANAGEMENT_IT_REPORTS_NAV: NavItem = { label: "IT reports", href: "/management/it-reports" };
 export const MANAGEMENT_ROLE_LABEL: Record<string, string> ={ partner: "Partner", accountant: "Accountant", super_admin: "Super Administrator" };
 
 // mgmt-001 (MG8/MG9): the EVID-017 §33 pillars, plus Business Intelligence with §1's Strategy entries, each entry naming the item
@@ -25,7 +28,7 @@ const fin = (label: string, item: string): ManagementEntry => ({ label, item, ti
 const own = (label: string, item: string): ManagementEntry => ({ label, item, tier: "partner_only" });
 
 export const MANAGEMENT_PILLARS: ManagementPillar[] = [
-  { title: "Students", entries: [{ ...op("Student funnel", "mgmt-016"), href: "/management/funnel" }, { ...op("Training", "mgmt-017"), href: "/management/training" }, { ...op("Counseling", "mgmt-018"), href: "/management/counseling" }, { ...op("Applications", "mgmt-024"), href: "/management/applications" }, { ...op("CRM reports", "ccrm-034"), href: "/management/crm-reports" }, { ...op("Recruitment", "mgmt-025"), href: "/management/recruitment" }] },
+  { title: "Students", entries: [{ ...op("Student funnel", "mgmt-016"), href: "/management/funnel" }, { ...op("Training", "mgmt-017"), href: "/management/training" }, { ...op("Counseling", "mgmt-018"), href: "/management/counseling" }, { ...op("Applications", "mgmt-024"), href: "/management/applications" }, { ...op("CRM reports", "ccrm-034"), href: "/management/crm-reports" }, { ...op("Recruitment", "mgmt-025"), href: "/management/recruitment" }, { ...op("IT reports", "itc-032"), href: "/management/it-reports" }] },
   { title: "Sales", entries: [{ ...op("BDM", "mgmt-020"), href: "/management/bdm" }, { ...op("Leads & calls", "mgmt-019"), href: "/management/telecalling" }, { ...fin("Marketing budget & ROI", "mgmt-012"), href: "/management/marketing" }, { ...op("Marketing leads", "mgmt-012"), href: "/management/marketing#marketing-leads" }] },
   {
     title: "Finance",
@@ -63,7 +66,10 @@ export function managementNavFor(tiers: ManagementTiers, pillars: ManagementPill
   // mgmt-028 (MT14): a caller outside the operational tier (the accountant) has no To-do, so their own Management tasks link instead.
   const myTasks = tiers.operational ? [] : [MANAGEMENT_TASKS_NAV];
   // nehn-021 (DEC-SCOPE-309 D4): grant-driven, so not a pillar entry -- PortalShell drops it without `payments.view`.
-  const payments = tiers.finance ? [MANAGEMENT_PAYMENTS_NAV] : [];
+  const payments = tiers.finance ? [MANAGEMENT_PAYMENTS_NAV, MANAGEMENT_IT_ACCOUNTS_NAV] : [];
+  // itc-032 (DEC-SCOPE-369 R4/R6): the IT reports are an operational pillar entry; a finance-only caller (the accountant) reads their Revenue
+  // tab, so the link is added for them here (the page opens the first report the API lists for the caller).
+  if (!tiers.operational && tiers.finance) payments.push(MANAGEMENT_IT_REPORTS_NAV);
   return [{ label: "Command Center", href: MANAGEMENT_HOME }, { label: "Management activity", href: MANAGEMENT_ACTIVITY }, ...live, ...payments, ...myTasks];
 }
 

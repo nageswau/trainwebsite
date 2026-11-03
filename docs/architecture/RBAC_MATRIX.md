@@ -3677,3 +3677,17 @@ No new grant. `GET /counselor/it/dashboard`: role `counselor` in division `it` r
 linked to them — the request names no lead or student, so there is nothing to tamper with; `owner` is 422 for them); `it_admin` in
 `it` reads every IT counselor's book and may narrow by `owner`. An overseas counselor, trainer, HR, student or any other role 403;
 anonymous 401. Read only, not audited. Pinned by `apps/api/tests/test_itc_030_it_counselor_dashboard.py`.
+### 2.268 IT accounts workspace *(added 2026-11-03 — `DEC-SCOPE-368`, itc-017)*
+
+The global `accountant` gains default grants `payments.view`, `payments.add`, `payments.refund` (migration 0248; a super admin may still
+remove them). The `/it/accounts/reports/*` routes need `payments.view` and the IT division or every division: it_admin, accountant and
+super_admin read; counselor, trainer, student and overseas_admin 403; anonymous 401. The accountant still never sees university
+commission (unchanged). Pinned by `apps/api/tests/test_itc_017_accounts.py` and `test_itc_017_migration.py`.
+
+### 2.269 Management IT reports *(added 2026-11-03 — `DEC-SCOPE-369`, itc-032)*
+
+No new grant. `/management/it/reports/*`: funnel, conversions, activity, training and placement are read by the operational management
+tier (partner, super_admin) and the IT Admin; revenue by a partner or an itc-017 accounts reader (`payments.view` in IT / every division:
+it_admin, accountant, super_admin). The accountant is refused every operational report (403). Counselor, telecaller, trainer, student and
+overseas_admin 403 everywhere; anonymous 401. Rows carry no student or lead names or contact details; the accountant still never sees
+university commission (unchanged). Pinned by `apps/api/tests/test_itc_032_management_it_reports.py`.
