@@ -16,12 +16,12 @@ from app.lead_stages import NURTURE, ORDER, STAGES
 from app.models import Batch, Enquiry, Enrollment, HrReviewTask, ItStudentCounselor, LeadFollowUp, Program, StudentRiskFlag, TelProduct, User
 from app.services import application_filters, fee_accounts, hr_reviews, it_status_labels, lead_handover
 from app.services.bdm_appointments import IST, today_ist
+from app.services.counselor_dashboard import LIMIT, _item, _section  # ccrm-032's widget shape: the count of the statement its items come from (AC1)
 
 FORBIDDEN = "Only an IT counselor or the IT Admin has this dashboard"
 BATCH_OUTSIDE = "The batch is not in that course"
 OWNER_ADMIN_ONLY = "The owner filter is for the IT Admin"
 CHOOSE_COUNSELOR = "Choose an IT counselor"
-LIMIT = 10
 PIPELINE = (*(s for s in ORDER if s != "converted"), NURTURE)  # the open stages a counselor still works
 CONVERTIBLE = tuple(s for s in ORDER if lead_handover.convertible_stage(s))  # itc-011: Qualified .. Counselling Completed
 RISK_REASONS = {"attendance": "Low attendance", "assessment": "Low assessment score", "absences": "Consecutive absences"}
@@ -83,11 +83,11 @@ def _in_range(column, s: _Scope) -> list:
     return out
 
 
-def _leads(s: _Scope, *, stage: bool = True) -> list:
+def _leads(s: _Scope) -> list:
     where = [Enquiry.division == "it", Enquiry.merged_at.is_(None), Enquiry.owner_id == s.owner if s.owner else Enquiry.owner_id.is_not(None)]
     if s.lead_program:
         where.append(Enquiry.product_id.in_(select(TelProduct.id).where(TelProduct.program_id == s.lead_program)))
-    if stage and s.stage:
+    if s.stage:
         where.append(Enquiry.status == s.stage)
     return where
 
@@ -113,17 +113,6 @@ def _lead_href(s: _Scope, lead_id: UUID) -> str:
 
 def _student_href(s: _Scope, student_id: UUID) -> str:
     return f"/it/admin/students/{student_id}" if s.admin else f"/it/counselor/students/{student_id}"
-
-
-def _item(id_, label: str, detail: str, when, href: str, overdue: bool = False) -> dict:
-    return {"id": id_, "label": label, "detail": detail, "date": when, "overdue": overdue, "href": href}
-
-
-async def _section(db: AsyncSession, stmt, to_item) -> dict:
-    """AC1: the figure is the full count of the very statement the list reads."""
-    count = await db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
-    rows = (await db.execute(stmt.limit(LIMIT))).all()
-    return {"count": count, "more": count > LIMIT, "items": [to_item(*row) for row in rows]}
 
 
 # --- the widgets ----------------------------------------------------------------------------------------------------------------------
@@ -168,7 +157,13 @@ async def _lead_widgets(db: AsyncSession, s: _Scope, labels: dict[str, str], now
 
 
 def _enrolled_on(s: _Scope) -> list:
-    return [c for c in ((Enrollment.enrolled_on >= s.start) if s.start else None, (Enrollment.enrolled_on <= s.end) if s.end else None) if c is not None]
+    """The date range on the enrolment's own (calendar) date."""
+    out = []
+    if s.start:
+        out.append(Enrollment.enrolled_on >= s.start)
+    if s.end:
+        out.append(Enrollment.enrolled_on <= s.end)
+    return out
 
 
 async def _student_widgets(db: AsyncSession, s: _Scope) -> dict:
