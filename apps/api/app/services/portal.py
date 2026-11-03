@@ -1589,6 +1589,8 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             return _payload("Notifications", "Your own notifications, including overdue follow-ups escalated to you.")
         if section == "at-risk" and user.role == "it_admin":  # itc-023 (DEC-SCOPE-352): header only -- the panels read /admin/it/risk-thresholds and /it/at-risk
             return _payload("At Risk", "Thresholds per programme, and the students the daily check flagged.")
+        if section == "progress-plans" and user.role == "it_admin":  # itc-022 (DEC-SCOPE-365): header only -- the panel reads /admin/it/progress-plans
+            return _payload("Progress Plans", "Modules and topics per programme, and how each student's overall progress is worked out.")
         if section == "hr-reviews" and user.role == "it_admin":  # itc-027 (DEC-SCOPE-354): header only -- the panels read /admin/it/hr-*
             return _payload("HR Reviews", "Resume reviews by HR: reassign an owner, and choose each programme's HR reviewer.")
         if section == "status-labels" and user.role == "it_admin":  # itc-005 (DEC-SCOPE-362): header only -- the panel reads /admin/it/status-labels

@@ -717,6 +717,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** high.
 
 #### itc-022: Modules, labs, computed progress, trainer feedback and remediation
+- **Status:** built as `DEC-SCOPE-365` (migration `0247_it_training_progress`, API §12JK, RBAC §2.265). Q-20 built with the recommended
+  answers (no data migration — "Copy from syllabus"; weights per programme summing to 100; computed only with weights and topics) —
+  `NEEDS_CONFIRMATION`. Trainer feedback reuses itc-028 notes (no `trainer_feedback` table).
 - **Business requirement:** §4 "Training progress: module/topic, … practical/lab completion, trainer feedback, overall progress %, risk flag, remediation plan"; §6.
 - **Existing behavior:**
   - The curriculum is JSON only.

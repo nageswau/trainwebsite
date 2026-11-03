@@ -372,7 +372,7 @@ class AssignmentCreate(BaseModel):
     description: str = Field(default="", max_length=10000)
     due_date: datetime
     max_score: int = Field(default=100, ge=1, le=10000)
-    assignment_type: str = Field(default="assignment", pattern="^(assignment|project)$")
+    assignment_type: str = Field(default="assignment", pattern="^(assignment|project|lab)$")
     submission_type: str = Field(default="text_or_file", pattern="^(text|file|text_or_file)$")
     published: bool = True
 
@@ -385,7 +385,7 @@ class AssignmentUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=10000)
     due_date: datetime | None = None
     max_score: int | None = Field(default=None, ge=1, le=10000)
-    assignment_type: str | None = Field(default=None, pattern="^(assignment|project)$")
+    assignment_type: str | None = Field(default=None, pattern="^(assignment|project|lab)$")
     submission_type: str | None = Field(default=None, pattern="^(text|file|text_or_file)$")
     published: bool | None = None
 
@@ -494,6 +494,13 @@ class LearningResourceUpdate(BaseModel):
 
 class EnrollmentProgressUpdate(BaseModel):
     progress_percent: int = Field(ge=0, le=100)
+    # itc-022 (DEC-SCOPE-365 P5): required when the programme computes progress -- the figure then overrides the computed one
+    reason: str | None = Field(default=None, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def _blank_reason_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
 
 
 class SubmissionGradeIn(BaseModel):
@@ -15121,3 +15128,67 @@ class ItStatusLabelIn(BaseModel):
     label: str = Field(min_length=1, max_length=60)
     sort_order: int = Field(ge=0, le=9999)
     enabled: bool
+
+
+# --- itc-022 (DEC-SCOPE-365): progress plans, topic completions, remediation plans --------------------------------------------------
+class ProgressTopicIn(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    id: UUID | None = None
+    title: str = Field(min_length=1, max_length=200)
+
+
+class ProgressModuleIn(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    id: UUID | None = None
+    title: str = Field(min_length=1, max_length=200)
+    topics: list[ProgressTopicIn] = Field(default_factory=list, max_length=50)
+
+
+class ProgressWeightsIn(BaseModel):
+    """P3: integers 0-100 that must sum to 100 (the backlog's negative case: otherwise 422)."""
+
+    model_config = ConfigDict(extra="forbid")
+    topics: int = Field(ge=0, le=100)
+    assignments: int = Field(ge=0, le=100)
+    assessments: int = Field(ge=0, le=100)
+
+    @model_validator(mode="after")
+    def _sum_is_100(self):
+        if self.topics + self.assignments + self.assessments != 100:
+            raise ValueError("The weights must add up to 100")
+        return self
+
+
+class ProgressPlanIn(BaseModel):
+    """P2: the whole plan each time -- modules/topics with an id are kept, new ones created, missing ones deleted. `weights` null = manual."""
+
+    model_config = ConfigDict(extra="forbid")
+    modules: list[ProgressModuleIn] = Field(default_factory=list, max_length=30)
+    weights: ProgressWeightsIn | None = None
+
+
+class TopicCompletionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    enrollment_ids: list[UUID] = Field(min_length=1, max_length=500)
+    completed: bool
+
+
+class RemediationPlanIn(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    actions: str = Field(min_length=1, max_length=2000)
+    due_date: date
+    owner_user_id: UUID | None = None  # None = the caller
+
+
+class RemediationPlanPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    actions: str | None = Field(default=None, min_length=1, max_length=2000)
+    due_date: date | None = None
+    owner_user_id: UUID | None = None
+    status: Literal["open", "in_progress", "completed", "cancelled"] | None = None
+
+    @model_validator(mode="after")
+    def _something(self):
+        if not self.model_fields_set:
+            raise ValueError("Nothing to change")
+        return self

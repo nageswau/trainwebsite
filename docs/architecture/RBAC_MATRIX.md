@@ -3662,6 +3662,15 @@ Recording an adjustment or a correction needs it plus the IT division (or every 
 overseas_admin 403, anonymous 401. Reading an adjustment's document follows the itc-013 fee-account gate (another student's 404). No
 deletion or edit route exists. Pinned by `apps/api/tests/test_itc_015_fee_adjustments.py`.
 
+### 2.265 Modules, computed progress and remediation plans *(added 2026-11-03 — `DEC-SCOPE-365`, itc-022)*
+
+No new grant. Progress plans: `it_admin` in `it` only (everyone else 403). Topic completion and the progress override: the batch's
+`trainer` or `it_admin`/`super_admin` (another trainer 403, as nehn-028); only active enrolments of that batch (422). Remediation plans:
+read — the batch trainer (seated students), the student's itc-003 IT counselor, `it_admin` (the itc-028 scope, HR excluded: 403); out of
+scope is 404; create/edit — the batch trainer or `it_admin`; the plan's owner may change only its status. The student reads their own
+progress and plans (allow-listed fields: no override reason, owner id, flag id or audit). Every write audited before/after (itc-001).
+Pinned by `apps/api/tests/test_itc_022_training_progress.py`.
+
 ### 2.267 IT counselor dashboard *(added 2026-11-03 — `DEC-SCOPE-367`, itc-030)*
 
 No new grant. `GET /counselor/it/dashboard`: role `counselor` in division `it` reads only their own book (leads they own, students

@@ -150,6 +150,7 @@ from app.services import (
     interviews,
     it_enrollments,
     it_lifecycle,
+    it_progress,
     offers,
     permissions,
     question_import,
@@ -840,6 +841,7 @@ async def create_assignment(payload: AssignmentCreate, user: User = Depends(get_
     db.add(assignment)
     await db.flush()
     await _audit(db, user, "assignment.create", "assignment", assignment.id, {"batch_id": batch_id})
+    await it_progress.refresh(db, batch_id)  # itc-022 P4: a computed programme's progress follows the change
     await db.commit()
     await db.refresh(assignment)
     return {"id": assignment.id, "title": assignment.title, "due_date": assignment.due_date}
@@ -862,6 +864,7 @@ async def update_assignment(assignment_id: UUID, payload: AssignmentUpdate, user
     # (STU-004), never recomputed from the assignment's current due_date on read, so
     # already-submitted work is never retroactively invalidated or re-flagged by an edit.
     await _audit(db, user, "assignment.update", "assignment", assignment.id, changes)
+    await it_progress.refresh(db, batch.id)  # itc-022 P4: a computed programme's progress follows the change
     await db.commit()
     return {"id": assignment.id, "title": assignment.title, "due_date": assignment.due_date, "published": assignment.published}
 
@@ -1032,10 +1035,28 @@ async def update_enrollment_progress(enrollment_id: UUID, payload: EnrollmentPro
     batch = await db.get(Batch, item.batch_id)
     if user.role == "trainer" and (not batch or batch.trainer_id != user.id):
         raise HTTPException(403, "Enrollment is outside your assigned batches")
-    item.progress_percent = payload.progress_percent
-    await _audit(db, user, "enrollment.progress_update", "enrollment", item.id, {"progress_percent": item.progress_percent})
+    if batch and await it_progress.is_computed(db, batch):  # itc-022 P5: on a computed programme the figure is an audited override
+        await it_progress.override(db, user, item, batch, payload.progress_percent, payload.reason)
+    else:
+        item.progress_percent = payload.progress_percent
+        await _audit(db, user, "enrollment.progress_update", "enrollment", item.id, {"progress_percent": item.progress_percent})
     await db.commit()
-    return {"id": item.id, "progress_percent": item.progress_percent}
+    return {"id": item.id, "progress_percent": item.progress_percent, "override_reason": item.progress_override_reason}
+
+
+@router.delete("/it/trainer/enrollments/{enrollment_id}/progress/override")
+async def clear_enrollment_progress_override(enrollment_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """itc-022 P5: drop the override -- the computed figure applies again at once (audited before/after)."""
+    _require(user, {"trainer", "it_admin"}, "it")
+    item = await db.get(Enrollment, enrollment_id)
+    batch = await db.get(Batch, item.batch_id) if item else None
+    if not item or not batch:
+        raise HTTPException(404, "Enrollment not found")
+    if user.role == "trainer" and batch.trainer_id != user.id:
+        raise HTTPException(403, "Enrollment is outside your assigned batches")
+    await it_progress.clear_override(db, user, item, batch)
+    await db.commit()
+    return {"id": item.id, "progress_percent": item.progress_percent, "override_reason": None}
 
 
 @router.get("/it/trainer/submissions")
@@ -1103,6 +1124,7 @@ async def grade_submission(submission_id: UUID, payload: SubmissionGradeIn, user
     await _audit(db, user, "assignment.grade", "submission", submission.id, {"score": payload.score})
     if student:
         await _notify_user(db, student, "Assignment reviewed", f"{assignment.title} has been reviewed. Score: {payload.score}/{assignment.max_score}.", "/it/student/assignments")
+    await it_progress.refresh(db, batch.id)  # itc-022 P4: a computed programme's progress follows the change
     await db.commit()
     return {"id": submission.id, "status": submission.status, "score": submission.score}
 
@@ -1132,6 +1154,7 @@ async def create_assessment(payload: AssessmentCreate, user: User = Depends(get_
     db.add(assessment)
     await db.flush()
     await _audit(db, user, "assessment.create", "assessment", assessment.id, {"batch_id": batch_id})
+    await it_progress.refresh(db, batch_id)  # itc-022 P4: a computed programme's progress follows the change
     await db.commit()
     await db.refresh(assessment)
     return {"id": assessment.id, "title": assessment.title, "scheduled_at": assessment.scheduled_at, "status": assessment.status}
@@ -1154,6 +1177,7 @@ async def update_assessment(assessment_id: UUID, payload: AssessmentUpdate, user
     # since publishing an assessment is just one more field, the same way TRN-005's
     # Assignment.published is a plain PATCH-able boolean rather than its own endpoint.
     await _audit(db, user, "assessment.update", "assessment", assessment.id, changes)
+    await it_progress.refresh(db, batch.id)  # itc-022 P4: a computed programme's progress follows the change
     await db.commit()
     return {"id": assessment.id, "title": assessment.title, "status": assessment.status}
 
@@ -1406,6 +1430,8 @@ async def submit_assessment(attempt_id: UUID, payload: AssessmentSubmitIn, user:
     attempt.status = "submitted" if manual else "graded"
     attempt.graded_at = None if manual else datetime.now(UTC)
     await _audit(db, user, "assessment.attempt_submit", "assessment_attempt", attempt.id, {"auto_graded": not manual})
+    if not manual:
+        await it_progress.refresh(db, await db.scalar(select(Assessment.batch_id).where(Assessment.id == attempt.assessment_id)))  # itc-022 P4
     await db.commit()
     return {"id": attempt.id, "status": attempt.status, "score": float(attempt.score), "percentage": float(attempt.percentage), "grade": attempt.grade}
 
@@ -1557,6 +1583,7 @@ async def grade_assessment_attempt(attempt_id: UUID, payload: AssessmentGradeIn,
     await _audit(db, user, "assessment.attempt_grade", "assessment_attempt", attempt.id, {"score": total, "overrides": overrides})
     if student:
         await _notify_user(db, student, "Assessment result published", f"Your result for {assessment.title} is {percentage}% ({attempt.grade}).", "/it/student/examinations")
+    await it_progress.refresh(db, assessment.batch_id)  # itc-022 P4: a computed programme's progress follows the change
     await db.commit()
     return {"id": attempt.id, "status": attempt.status, "score": total, "percentage": percentage, "grade": attempt.grade}
 
@@ -1698,6 +1725,8 @@ async def batch_progress(batch_id: UUID, user: User = Depends(get_current_user),
         )
         issued = set(await db.scalars(select(Certificate.enrollment_id).where(Certificate.enrollment_id.in_([e.id for e in enrollments]))))
     program = await db.get(Program, batch.program_id)
+    figures = await it_progress.components(db, batch, enrollments, seats)  # itc-022: topics, labs and the computed % (additive)
+    computed = await it_progress.is_computed(db, batch)
     students = []
     for enrollment, student in rows:
         seat = seats[student.id]
@@ -1710,10 +1739,12 @@ async def batch_progress(batch_id: UUID, user: User = Depends(get_current_user),
             "assignments_submitted": submitted.get(student.id, 0), "assignments_graded": c["assignments_graded"], "assignments_total": c["assignments_total"],
             "assessments_passed": c["assessments_passed"], "assessments_total": c["assessments_total"],
             "fee_clear": not c["pending_fee"], "eligible": c["eligible"], "reasons": _progress_reasons(c), "certificate_issued": enrollment.id in issued,
+            "override_reason": enrollment.progress_override_reason if computed else None, **figures.get(enrollment.id, {}),
         })
     return {
         "batch": {"id": batch.id, "name": batch.name, "program": program.title if program else None, "start_date": batch.start_date, "end_date": batch.end_date},
         "rules": rules,
+        "progress_mode": "computed" if computed else "manual",
         "students": students,
     }
 

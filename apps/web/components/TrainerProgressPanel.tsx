@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import type { CertificateRules } from "@/lib/certificates";
+import { sendRequest } from "@/lib/apiErrors";
+import { progressOverrideUrl } from "@/lib/itProgress";
+import RemediationPlans from "./RemediationPlans";
 
 // nehn-028 (DEC-SCOPE-308; docs/superpowers/specs/2026-10-27-nehn-028-trainer-progress-view-design.md): one batch's students against the
 // certificate criteria, from `GET /workflows/it/batches/{id}/progress` -- the eligibility endpoint's own numbers, so nothing is
@@ -28,8 +31,15 @@ type ProgressRow = {
   eligible: boolean;
   reasons: string[];
   certificate_issued: boolean;
+  // itc-022 (DEC-SCOPE-365): additive -- topics and labs, the formula's figure and an override's reason (computed programmes only)
+  override_reason?: string | null;
+  computed_percent?: number | null;
+  topics_completed?: number;
+  topics_total?: number;
+  labs_graded?: number;
+  labs_total?: number;
 };
-type Progress = { rules: CertificateRules; students: ProgressRow[] };
+type Progress = { rules: CertificateRules; students: ProgressRow[]; progress_mode?: "computed" | "manual" };
 type SortKey = "student" | "attendance" | "assignments" | "assessments" | "progress" | "eligible";
 
 const LEFT = new Set(["dropped", "withdrawn"]);
@@ -67,6 +77,8 @@ export default function TrainerProgressPanel({ batches, loading = false, refresh
   const [showLeft, setShowLeft] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" } | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [clearing, setClearing] = useState("");
+  const [clearError, setClearError] = useState("");
   const selected = batches.some(item => item.id === batch) ? batch : batches[0]?.id ?? "";
 
   useEffect(() => {
@@ -110,6 +122,15 @@ export default function TrainerProgressPanel({ batches, loading = false, refresh
 
   function changeSort(key: SortKey) {
     setSort(previous => (previous?.key === key ? { key, direction: previous.direction === "asc" ? "desc" : "asc" } : { key, direction: "asc" }));
+  }
+
+  async function restoreComputed(row: ProgressRow) {
+    setClearing(row.enrollment_id);
+    setClearError("");
+    const outcome = await sendRequest(`${progressOverrideUrl(row.enrollment_id)}/override`, { method: "DELETE" });
+    setClearing("");
+    if (!outcome.ok) return setClearError(outcome.message || "The override could not be removed.");
+    setAttempt(value => value + 1);
   }
 
   function pickBatch(id: string) {
@@ -171,7 +192,10 @@ export default function TrainerProgressPanel({ batches, loading = false, refresh
                         </td>
                         <td title="Submitted / graded / total">{`${row.assignments_submitted} / ${row.assignments_graded} / ${row.assignments_total}`}</td>
                         <td title="Passed / total">{`${row.assessments_passed} / ${row.assessments_total}`}</td>
-                        <td>{`${row.progress_percent}%`}</td>
+                        <td>
+                          {`${row.progress_percent}%`}{" "}
+                          {data.progress_mode === "computed" && (row.override_reason ? <span className="status pending">Override</span> : <span className="status">Computed</span>)}
+                        </td>
                         <td>
                           {row.certificate_issued ? <span className="status">Certificate issued</span> : row.eligible ? <span className="status">Eligible</span> : <span className="status error">Not eligible</span>}
                         </td>
@@ -191,7 +215,18 @@ export default function TrainerProgressPanel({ batches, loading = false, refresh
                                 <li>{row.attendance_sessions ? `Attendance: ${attendance(row)} of ${row.attendance_sessions} ${row.attendance_sessions === 1 ? "session" : "sessions"} recorded (needs ${data.rules.min_attendance_percent}%)` : `Attendance: no session recorded yet (needs ${data.rules.min_attendance_percent}%)`}</li>
                                 <li>Assignments: {row.assignments_submitted} submitted, {row.assignments_graded} graded, of {row.assignments_total}</li>
                                 <li>Assessments: {row.assessments_passed} passed of {row.assessments_total}</li>
+                                {!!row.labs_total && <li>Labs: {row.labs_graded} graded of {row.labs_total}</li>}
+                                {!!row.topics_total && <li>Topics: {row.topics_completed} of {row.topics_total} completed</li>}
                                 <li>Progress: {row.progress_percent}% (needs {data.rules.min_progress_percent}%)</li>
+                                {data.progress_mode === "computed" && row.override_reason && (
+                                  <li>
+                                    Set by hand: “{row.override_reason}”{row.computed_percent != null ? ` — worked out it would be ${row.computed_percent}%` : ""}.{" "}
+                                    <button type="button" className="btn small ghost" disabled={clearing === row.enrollment_id} onClick={() => void restoreComputed(row)}>
+                                      {clearing === row.enrollment_id ? "Switching…" : "Use worked-out figure"}
+                                    </button>
+                                    {clearError && clearing === "" && <span className="form-error" role="alert"> {clearError}</span>}
+                                  </li>
+                                )}
                                 <li>Fee: {row.fee_clear ? "clear" : "payment pending"}</li>
                               </ul>
                               {row.certificate_issued ? <p className="muted">A certificate has been issued.</p> : row.reasons.length ? (
@@ -200,6 +235,7 @@ export default function TrainerProgressPanel({ batches, loading = false, refresh
                                   <ul>{row.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>
                                 </>
                               ) : <p className="muted">Meets every certificate criterion.</p>}
+                              {row.status === "active" && <RemediationPlans studentId={row.student_id} enrollmentId={row.enrollment_id} />}
                             </div>
                           </td>
                         </tr>
