@@ -942,6 +942,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 ### Phase 5: Views, lifecycle and reports (PDF Phase 5)
 
 #### itc-029: IT student 360 for counselor, HR and admin
+- **Status:** built as `DEC-SCOPE-360` (no migration, API §12JF, RBAC §2.260). One role-scoped read `/it/students/{id}/360`; Q-28 HR
+  omits fee, profile, lead, risk and notifications; trainers get no 360; progress/feedback use today's data until itc-022 — builder's
+  calls, `NEEDS_CONFIRMATION`.
 - **Business requirement:** §11 "Lead/student 360° profile: contact details, timeline, course, notes, documents, fee, attendance, progress, HR stage, notifications"; §6 counselor view; §12 AC4/AC6.
 - **Existing behavior:** the IT lead detail has a timeline and notes. `HrStudentPage` shows read-only training. There is no combined IT 360 (`counselor_student_360.py` is overseas-only).
 - **Expected behavior:** `/it/counselor/students/[id]` (and the same component for HR and admin, with per-role sections) shows:
