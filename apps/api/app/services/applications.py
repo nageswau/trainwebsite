@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import APPLICATION_STATUSES, AuditLog, Candidate, Company, Job, JobApplication, JobApplicationStatusHistory, Notification, RecCandidateSource, User
 from app.notifications.dispatch import queue_deliveries
-from app.services import candidates, company_pipeline
+from app.services import candidates, company_pipeline, it_lifecycle
 from app.services import recruiter_requirements as requirements
 from app.services.recruiter import ROLE
 
@@ -75,7 +75,11 @@ def _record(db: AsyncSession, actor: User | None, application: JobApplication, t
 async def change_status(db: AsyncSession, actor: User | None, application: JobApplication, target: str, note: str | None = None) -> str:
     """Validated move + history; returns the previous status. The caller locked the row."""
     check_transition(application.status, target)
-    return _record(db, actor, application, target, note)
+    previous = _record(db, actor, application, target, note)
+    if application.student_id is not None:  # itc-031: an EduSphere student's Interview / Placed stage
+        await db.flush()
+        await it_lifecycle.sync_students(db, [application.student_id], actor=actor, cause="placement")
+    return previous
 
 
 def follow(db: AsyncSession, actor: User | None, application: JobApplication, target: str, note: str | None = None) -> bool:

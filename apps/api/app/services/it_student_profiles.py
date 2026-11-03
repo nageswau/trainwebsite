@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AuditLog, Batch, Enrollment, ItStudentCounselor, ItStudentProfile, NotificationPreference, Program, User
 from app.schemas import ItEnrollmentOverridePatch, ItStudentProfilePatch
+from app.services import it_lifecycle
 from app.services.audit_changes import audit_change
 
 STUDENTS_ONLY = "Only an IT student has this profile"
@@ -48,18 +49,19 @@ async def staff_student(db: AsyncSession, user: User, student_id: UUID, *, porta
     return student
 
 
-def _enrollment_out(enrollment: Enrollment, batch: Batch, program: Program) -> dict:
+def _enrollment_out(enrollment: Enrollment, batch: Batch, program: Program, lifecycle: dict) -> dict:
     return {
         "id": enrollment.id, "enrollment_code": enrollment.enrollment_code, "program": program.title, "batch": batch.name, "status": enrollment.status,
         "start_date": enrollment.start_date or batch.start_date, "end_date": enrollment.end_date or batch.end_date,
         "delivery_mode": enrollment.delivery_mode or batch.mode,
         "start_date_override": enrollment.start_date, "end_date_override": enrollment.end_date, "delivery_mode_override": enrollment.delivery_mode,
-        "batch_start_date": batch.start_date, "batch_end_date": batch.end_date, "batch_mode": batch.mode,
+        "batch_start_date": batch.start_date, "batch_end_date": batch.end_date, "batch_mode": batch.mode, "lifecycle": lifecycle,
     }  # fmt: skip
 
 
-async def read(db: AsyncSession, student: User) -> dict:
-    """The page's shape; an unsaved profile reads as empty (`exists: false`). Enrolments newest first, with effective values.
+async def read(db: AsyncSession, student: User, *, safe: bool = False) -> dict:
+    """The page's shape; an unsaved profile reads as empty (`exists: false`). Enrolments newest first, with effective values and the
+    itc-031 lifecycle stage (`safe` for the student's own: DEC-SCOPE-359 L8).
     `populate_existing`: after a save in the same session the rows still hold `func.now()` and pre-save values -- reload them."""
     profile = await db.get(ItStudentProfile, student.id, populate_existing=True)
     out = {field: getattr(profile, field, None) for field in FIELDS} | {"exists": profile is not None}
@@ -74,10 +76,11 @@ async def read(db: AsyncSession, student: User) -> dict:
     ).all()  # fmt: skip
     # itc-033 (DEC-SCOPE-357 C3): the student's own "phone calls" choice, read-only here (no row = allowed)
     calls_opt_out = await db.scalar(select(NotificationPreference.calls_opt_out).where(NotificationPreference.user_id == student.id))
+    lifecycle = await it_lifecycle.views_for(db, [e.id for e, _, _ in rows], safe=safe)
     return {
         "student": {"id": student.id, "full_name": student.full_name, "student_code": student.student_code, "calls_allowed": not calls_opt_out},
         "profile": out,
-        "enrollments": [_enrollment_out(*row) for row in rows],
+        "enrollments": [_enrollment_out(*row, lifecycle[row[0].id]) for row in rows],
     }
 
 
@@ -101,7 +104,7 @@ async def save(db: AsyncSession, actor: User, student: User, payload: ItStudentP
     profile.updated_at = func.now()
     db.add(AuditLog(user_id=actor_id, action=UPDATED, entity_type="user", entity_id=str(student_id), metadata_json={"fields": changed, "role": actor_role}))
     await db.commit()
-    return await read(db, student)
+    return await read(db, student, safe=actor_id == student_id)
 
 
 async def save_enrollment(db: AsyncSession, actor: User, student: User, enrollment_id: UUID, payload: ItEnrollmentOverridePatch) -> dict:

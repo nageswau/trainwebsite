@@ -196,6 +196,10 @@ class Batch(Base, TimestampMixin):
     program = relationship("Program")
 
 
+# itc-031 (DEC-SCOPE-359 L9): the enrolment statuses in use (was free text). Migration 0241 repeats them (test_itc_031_migration).
+ENROLLMENT_STATUSES = ("pending_consent", "active", "rejected", "withdrawn", "dropped", "completed")
+
+
 class Enrollment(Base, TimestampMixin):
     __tablename__ = "enrollments"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -211,7 +215,30 @@ class Enrollment(Base, TimestampMixin):
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     delivery_mode: Mapped[str | None] = mapped_column(String(30), nullable=True)
-    __table_args__ = (UniqueConstraint("student_id", "batch_id", name="uq_enrollment_student_batch"),)
+    # itc-031 (DEC-SCOPE-359 L4): the only hand-set lifecycle facts -- "not_placed" or "closed" -- set by the IT Admin with a reason. The stage
+    # itself is never stored: services/it_lifecycle.py derives it from the source records on every read.
+    lifecycle_override: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    lifecycle_override_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    __table_args__ = (
+        UniqueConstraint("student_id", "batch_id", name="uq_enrollment_student_batch"),
+        CheckConstraint("status IN (" + ", ".join(f"'{s}'" for s in ENROLLMENT_STATUSES) + ")", name="ck_enrollments_status"),
+        CheckConstraint("lifecycle_override IS NULL OR lifecycle_override IN ('not_placed', 'closed')", name="ck_enrollments_lifecycle_override"),
+    )
+
+
+class EnrollmentLifecycleHistory(Base):
+    """itc-031 (DEC-SCOPE-359 L6): append-only lifecycle transitions of an enrolment, written by `it_lifecycle.sync` when the derived stage
+    differs from the last row (`from_stage` NULL = the first row). `actor_user_id` NULL = the system. Never read back as the current stage."""
+
+    __tablename__ = "enrollment_lifecycle_history"
+    __table_args__ = (Index("ix_enrollment_lifecycle_history_enrollment", "enrollment_id", "created_at"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    enrollment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enrollments.id", ondelete="CASCADE"))
+    from_stage: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    to_stage: Mapped[str] = mapped_column(String(20))
+    cause: Mapped[str] = mapped_column(String(20))
+    actor_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class BatchTimetableSlot(Base, TimestampMixin):

@@ -16,7 +16,7 @@ from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.models import ApplicationDeposit, AuditLog, Batch, EMISchedule, Enrollment, Invoice, Payment, PaymentWebhookEvent, Program, Receipt, User
 from app.notifications.events import notify
-from app.services import agent_deposits, fee_accounts
+from app.services import agent_deposits, fee_accounts, it_lifecycle
 from app.services.billing_documents import generate_invoice_pdf, generate_receipt_pdf, receipt_lines
 from app.services.payment import payments
 from app.services.storage import storage
@@ -122,6 +122,9 @@ async def _mark_paid(db: AsyncSession, item: Payment, payer: User, *, source: st
     await _ensure_receipt(db, item, payer)
     if item.reference_type == agent_deposits.REFERENCE_TYPE:
         await agent_deposits.on_payment_paid(db, item, source=source, provider_amount=provider_amount)
+    elif item.division == "it" and item.reference_type in ENROLMENT_FEE_TYPES and item.reference_id is not None:  # itc-031: the fee stage moves
+        await db.flush()
+        await it_lifecycle.sync(db, [item.reference_id], actor=payer if source == "verify" else None, cause="fee")
 
 
 @router.get("/mode")

@@ -15048,6 +15048,28 @@ class ItEnrollmentOverridePatch(BaseModel):
     delivery_mode: Literal[IT_DELIVERY_MODES] | None = None
 
 
+IT_LIFECYCLE_STAGES = (
+    "enrolled", "fee_pending", "partially_paid", "paid", "training_active", "at_risk", "completed",
+    "resume_submitted", "hr_screening", "interview", "placed", "not_placed", "closed",
+)  # fmt: skip
+
+
+class ItLifecycleOverrideIn(BaseModel):
+    """itc-031 (DEC-SCOPE-359 L4): the IT Admin's hand-set stage. Any stage name is accepted here so a derived one gets the 409 that says
+    why; only "not_placed" and "closed" are stored. A null clears the override. Setting one needs a reason."""
+
+    model_config = {"extra": "forbid"}
+    stage: Literal[IT_LIFECYCLE_STAGES] | None
+    reason: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def _reason_when_set(self):
+        self.reason = (self.reason or "").strip() or None
+        if self.stage is not None and (self.reason is None or len(self.reason) < 3):
+            raise ValueError("Give a reason of at least 3 characters")
+        return self
+
+
 class StudentResumeSettingsIn(BaseModel):
     """itc-026 (DEC-SCOPE-350 R4): the resume size limit in whole MB, 1 to 10."""
 

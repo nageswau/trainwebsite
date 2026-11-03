@@ -35,7 +35,7 @@ from app.models import (
 )
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import ItConversionIn
-from app.services import bdm_leads, counselor_students, fee_accounts, it_enrollments, lead_handover
+from app.services import bdm_leads, counselor_students, fee_accounts, it_enrollments, it_lifecycle, lead_handover
 from app.services.bdm_appointments import db_now, today_ist
 from app.services.lead_pipeline import invalid
 from app.services.provisioning import IssuedWelcome
@@ -184,6 +184,7 @@ async def convert(db: AsyncSession, actor: User, lead: Enquiry, payload: ItConve
     await lead_handover.link_student(db, actor, lead, User.id == student_id)
     enrollment, batch = await it_enrollments.seat(db, student, payload.batch_id)
     rows = await _bill(db, student, enrollment, payload)
+    await it_lifecycle.sync(db, [enrollment.id], actor=actor, cause="enrolment")  # itc-031: the first history row, as POST /it/enrollments
     items = await _checklist(db, enrollment)
     row = ItConversion(lead_id=lead.id, idempotency_key=key, actor_user_id=actor.id, student_user_id=student_id, enrollment_id=enrollment.id,
                        created_account=issued is not None)  # fmt: skip

@@ -15,6 +15,7 @@ from app.models import (
     Batch,
     Enquiry,
     Enrollment,
+    EnrollmentLifecycleHistory,
     ItConversion,
     ItOnboardingItem,
     ItOnboardingTemplateItem,
@@ -104,6 +105,8 @@ async def test_one_request_makes_the_student_enrolment_fee_and_checklist(client,
     fees = (await db_session.scalars(select(Payment).where(Payment.reference_id == enrollment.id))).all()
     assert [(float(p.amount), p.status, p.reference_type, p.division) for p in fees] == [(45000.0, "pending", "enrollment_fee", "it")]
     assert body["fee_account"]["total_payable"] == 45000.0 and body["fee_account"]["balance"] == 45000.0
+    # itc-031: the enrolment's first lifecycle history row, as `POST /it/enrollments` writes it
+    assert await _count(db_session, EnrollmentLifecycleHistory, EnrollmentLifecycleHistory.enrollment_id == enrollment.id) == 1
     labels = list(await db_session.scalars(select(ItOnboardingTemplateItem.label).where(ItOnboardingTemplateItem.active.is_(True)).order_by(ItOnboardingTemplateItem.position)))
     assert labels and [i["label"] for i in body["checklist"]] == labels and not any(i["done"] for i in body["checklist"])
     # tel-018 link + itc-003 counselor; the lead waits at Application/Enrollment until the student consents (C2)

@@ -1,7 +1,7 @@
 """itc-011 -- the one-step IT conversion: the onboarding checklist template (seeded), each enrolment's checklist and the conversion log.
 
 Revision ID: 0243_it_conversion
-Revises: 0240_fee_reminders
+Revises: 0241_enrollment_lifecycle
 
 docs/superpowers/specs/2026-11-03-itc-011-it-one-step-conversion-design.md (C1, C8). Three new tables; no existing row changes. 0001
 builds a fresh database from the current models, which already carry the tables, so each step is guarded (0222's idiom) and the five
@@ -16,7 +16,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0243_it_conversion"
-down_revision = "0240_fee_reminders"
+down_revision = "0241_enrollment_lifecycle"
 branch_labels = None
 depends_on = None
 
