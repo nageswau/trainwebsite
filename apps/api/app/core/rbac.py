@@ -105,6 +105,8 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "it_admin": (
         _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure", "student_access.configure") + _TRAINING_REPORTS + _PLACEMENT_REPORTS + ("discounts.approve", "payments.refund")
     ),  # nehn-031 W2 (0204); nehn-018 (0211); nehn-016 (0212); itc-014 (0245); itc-015 (0246)
+    # itc-017 (DEC-SCOPE-367 F1, Q-17; migration 0248 seeds it): "Accounts" is the global accountant -- reads, records and refunds fees.
+    "accountant": ("payments.view", "payments.add", "payments.refund"),
     "trainer": _TRAINING_REPORTS,
     "placement_team": _PLACEMENT_REPORTS,
     "placement_manager": _PLACEMENT_REPORTS,
