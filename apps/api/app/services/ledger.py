@@ -25,6 +25,7 @@ from app.models import (
     BdmTrip,
     BdmTripExpense,
     Department,
+    FeeAdjustment,
     LedgerCategory,
     LedgerEntry,
     LedgerEntryEvent,
@@ -443,7 +444,19 @@ def lines():
         description=func.concat("Salaries · ", Department.name),
         created_at=SalaryMonthTotal.created_at,
     ).join(Department, Department.id == SalaryMonthTotal.department_id).where(salary_cost > 0)
-    return union_all(manual, payments, commissions, trips, recruiter, universities, salaries).subquery("ledger_lines")
+    refunds = _auto(  # itc-015 (DEC-SCOPE-364, Q-15): an IT fee refund is negative IT income on its IST day
+        "fee_refund",
+        id=FeeAdjustment.id,
+        entry_date=ist_day(FeeAdjustment.created_at),
+        kind="income",
+        vertical=literal("it", String),
+        label=literal("IT training", String),
+        amount=-FeeAdjustment.amount,
+        currency=literal(CURRENCY, String),
+        description=func.concat("Fee refund · ", FeeAdjustment.document_no),
+        created_at=FeeAdjustment.created_at,
+    ).where(FeeAdjustment.kind == "refund")
+    return union_all(manual, payments, commissions, trips, recruiter, universities, salaries, refunds).subquery("ledger_lines")
 
 
 async def lines_totals(db: AsyncSession, table, where: list) -> dict:

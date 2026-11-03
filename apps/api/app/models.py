@@ -3112,6 +3112,39 @@ class FeeDiscountRequest(Base, TimestampMixin):
     decision_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
+# itc-015 (DEC-SCOPE-364, migration 0246 repeats them): credit notes and write-offs lower what an enrolment owes, a refund pays a credit
+# back out, a reversal replaces a mistyped manual payment. A refund names how the money went back (the offline modes; Q-15 manual only).
+FEE_ADJUSTMENT_KINDS = ("credit_note", "write_off", "refund", "reversal")
+REFUND_MODES = ("cash", "upi", "card", "bank_transfer", "cheque")
+
+
+class FeeAdjustment(Base):
+    """itc-015 (F1/F2): one immutable fee-ledger line of an enrolment -- never updated or deleted. `applied_amount` is the part of a credit
+    note / write-off that lowered owed bills (the rest is a credit). The recorder is the approver until maker-checker (Q-14)."""
+
+    __tablename__ = "fee_adjustments"
+    __table_args__ = (
+        CheckConstraint(f"kind IN ({', '.join(repr(k) for k in FEE_ADJUSTMENT_KINDS)})", name="ck_fee_adjustments_kind"),
+        CheckConstraint("amount > 0", name="ck_fee_adjustments_amount"),
+        CheckConstraint("applied_amount >= 0 AND applied_amount <= amount", name="ck_fee_adjustments_applied"),
+        CheckConstraint(_in("payment_mode", REFUND_MODES), name="ck_fee_adjustments_mode"),
+        Index("uq_fee_adjustments_reversal", "payment_id", unique=True, postgresql_where=text("kind = 'reversal'")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    enrollment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enrollments.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(20))
+    amount: Mapped[float] = mapped_column(Numeric(12, 2))
+    applied_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0, server_default="0")
+    reason: Mapped[str] = mapped_column(String(500))
+    payment_mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    reference: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    payment_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("payments.id"), nullable=True)
+    replacement_payment_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("payments.id"), nullable=True)
+    document_no: Mapped[str | None] = mapped_column(String(40), nullable=True, unique=True)
+    approved_by_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Invoice(Base, TimestampMixin):
     """DATA_MODEL.md #7.2, PRD-PAY-003: generated when a Payment is created (billed)."""
 

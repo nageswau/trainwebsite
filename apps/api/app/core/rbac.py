@@ -72,9 +72,10 @@ ROLES: tuple[str, ...] = tuple(PERMISSIONS)
 # nehn-005 (DEC-SCOPE-281): the grant-based permission catalogue -- role x resource x action, held in `role_permissions` and checked by
 # `deps.require_permission`. It lists only resources whose routes are wired (P1); each later module slice adds its own resource. A key
 # is "<resource>.<action>"; anything not listed is denied.
-ACTIONS = ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage")  # nehn-031 adds override, configure
+ACTIONS = ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage", "refund")  # nehn-031 adds override, configure
 CATALOGUE: dict[str, dict] = {
-    "payments": {"label": "Payments", "actions": ("view", "add")},
+    # itc-015 (DEC-SCOPE-364): `refund` -- an IT enrolment's credit notes, write-offs, refunds and payment corrections (migration 0246).
+    "payments": {"label": "Payments", "actions": ("view", "add", "refund")},
     # itc-014 (DEC-SCOPE-363): `approve` -- decides another person's discount request (maker-checker); never one's own.
     "discounts": {"label": "Payment discounts", "actions": ("add", "approve")},
     "reports.telecaller": {"label": "Telecaller reports", "actions": ("view", "download")},
@@ -102,8 +103,8 @@ _TRAINING_REPORTS = ("reports.training.view", "reports.training.download")  # ne
 _PLACEMENT_REPORTS = ("reports.placement.view", "reports.placement.download")  # nehn-016 (migration 0212 seeds it); rows = opted-in students
 DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "it_admin": (
-        _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure", "student_access.configure") + _TRAINING_REPORTS + _PLACEMENT_REPORTS + ("discounts.approve",)
-    ),  # nehn-031 W2 (0204); nehn-018 (0211); nehn-016 (0212); itc-014 (0245)
+        _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure", "student_access.configure") + _TRAINING_REPORTS + _PLACEMENT_REPORTS + ("discounts.approve", "payments.refund")
+    ),  # nehn-031 W2 (0204); nehn-018 (0211); nehn-016 (0212); itc-014 (0245); itc-015 (0246)
     "trainer": _TRAINING_REPORTS,
     "placement_team": _PLACEMENT_REPORTS,
     "placement_manager": _PLACEMENT_REPORTS,

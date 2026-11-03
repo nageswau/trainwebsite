@@ -258,7 +258,7 @@ async def test_installments_cost_a_fixed_number_of_queries(db_session):
         await fee_accounts.accounts(db_session, enrolments)
     finally:
         event.remove(sync_engine, "before_cursor_execute", listener)
-    assert len(queries) == 3  # itc-018 pins the same count: the history rides the installments query
+    assert len(queries) == 4  # itc-018 pins the same count: the history rides the installments query; itc-015 adds the adjustments query
 
 
 @pytest.mark.asyncio

@@ -184,7 +184,9 @@ export default function FeePaymentPanel({ feeAccounts = false }: { feeAccounts?:
               ) : (
                 <p className="muted" style={{ fontSize: 13 }}>{row.currency} {row.amount.toLocaleString()}{row.due_date ? ` · due ${formatCalendarDate(row.due_date)}` : ""}</p>
               )}
-              {row.paid_at && <p className="muted" style={{ fontSize: 13 }}>{paidOn(row.paid_at)}</p>}
+              {row.status === "reversed" ? ( // itc-015 (QA15-02): a mistyped payment kept on file, replaced by its correction
+                <p className="muted" style={{ fontSize: 13 }}>Corrected — replaced by a new payment with its own receipt</p>
+              ) : row.paid_at && <p className="muted" style={{ fontSize: 13 }}>{paidOn(row.paid_at)}</p>}
               {["paid", "succeeded"].includes(row.status) && paidBy(row) && <p className="muted" style={{ fontSize: 13, overflowWrap: "anywhere" }}>{paidBy(row)}</p>}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                 {["pending", "overdue"].includes(row.status) && (

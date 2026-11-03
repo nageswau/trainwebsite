@@ -5365,3 +5365,22 @@ full_name} | null, decided_at, decision_note, own}` (`own`: the caller made it).
   (a new `Payment.status` value, seen in `/payments/mine` and `/admin/payments`; never payable). Already decided → 409; more than is
   now owed → 409 (the request stays pending). Audit `it.fee.discount_approved` with old/new figures.
 - `POST /it/discount-requests/{id}/reject` — body `{note (1–500)}` → `{request}`. Already decided → 409. Audit `it.fee.discount_rejected`.
+
+## 12JJ. Refunds, adjustments and payment correction (itc-015) — addendum, 2026-11-03
+
+`DEC-SCOPE-364`. Migration `0246_fee_adjustments`. Additive.
+
+- `POST /it/enrollments/{id}/adjustments` — `payments.refund`, IT division (or every division). Body `{kind: credit_note | write_off |
+  refund, amount (> 0, 2 dp), reason (1–500), payment_mode? (cash, upi, card, bank_transfer, cheque; required for a refund, else 422
+  "Choose how the refund was paid (payment mode)"), reference? (≤ 160)}`. 201 `{adjustment, account}` (`account` = §12IR shape).
+  Refusals, nothing written: nothing billed 409; a credit note over what is still payable, a write-off over the balance owed, a refund
+  over the credit (or with no credit) 422 naming the maximum; an unknown enrolment 404, a typed non-UUID 422.
+- `POST /it/enrollments/{id}/payments/{payment_id}/correction` — same gate. Body `{amount, payment_mode, provider_reference?, reason}`.
+  201 `{payment (the replacement), account}`. Another enrolment's payment 404; already corrected, unpaid, or paid through the gateway
+  409; nothing changed, or an amount above the reopened bill 422 (rolled back whole).
+- `GET /it/fee-adjustments/{id}/document` — `{url, expires_in}` (signed PDF); the itc-013 read gate (student own, linked IT counselor,
+  `payments.view` in IT), otherwise 404 / 403; a reversal has no document (404).
+- `GET /it/enrollments/{id}/fee-account`, `GET /it/student/fee-accounts` — each account gains `refunded` and `adjustments: [{id, kind,
+  amount, reason, payment_mode, reference, document_no, created_at}]`; `credits` now counts credit notes and write-offs. A corrected
+  payment reads `status: "reversed"` in `/payments/mine`; a bill a credit covered whole reads `waived`.
+- `GET /management/ledger` (`include=auto`) — a new automatic `source: "fee_refund"` line (IT income, negative amount).

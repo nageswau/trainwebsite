@@ -11212,3 +11212,27 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   notifications (none carry amounts).
 - **Numbering:** migration `0245_fee_discount_requests` (on itc-005's `0244_it_status_labels`); API §12JI; RBAC §2.263.
 - **Feature ID authorized:** `itc-014`. **Status:** built on `worktree-itc-014`.
+
+### DEC-SCOPE-364 — Refunds, adjustments and payment correction on the IT fee account (`itc-015`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-015` (PDF §4 "refund/adjustment", §6 "approved credits/refunds", §2
+  Accounts "record payments and refunds"; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-01).
+  Dependencies itc-001 (`DEC-SCOPE-335`) and itc-013 (`DEC-SCOPE-346`) are merged; itc-014 is needed only for a shared approval engine,
+  which is not used. The owner said to proceed with the recommended answers, so Q-14 / Q-15 below are **the builder's calls
+  (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-03-itc-015-fee-adjustments-design.md`.
+- **Behaviour:** an immutable `fee_adjustments` ledger per enrolment. A `payments.refund` holder in IT records a credit note (lowers the
+  owed bills, latest due first; a bill covered whole becomes `waived`; the rest is a credit), a write-off (at most the balance owed) or
+  a refund (at most the credit, so never more than paid; mode required), each with reason, approver, mode/reference and a PDF (CN-/WO-/RF-).
+  A mistyped manual payment is corrected through a reversal: the original row is kept and marked `reversed`, its bill is reopened and
+  the corrected payment recorded on it (new receipt). The itc-013 account gains `refunded` and `adjustments`;
+  `balance = total_payable − paid_confirmed − credits + refunded` (still one query). Every write is audited (balance before/after; a
+  correction's old and new amount, mode and reference).
+- **Claude's calls (`NEEDS_CONFIRMATION`):** C1 (Q-15) manual refunds only, no Razorpay refund API. C2 (Q-15) refunds reduce reported
+  revenue: a `fee_refund` line of minus the amount in `ledger.lines()` and the IT revenue dashboard, on its IST day; credit notes move no
+  cash so do not. C3 (Q-14) no maker-checker for adjustments: the recorder is the approver (itc-014's maker-checker covers discount requests only). C4 `credits` = credit notes + write-offs; a refund is a
+  separate `refunded` figure (the backlog's "₹5,000 back after a batch change" = a credit note then a refund). C5 a correction may not
+  exceed the reopened bill (record a second payment for more); a gateway payment is corrected by a credit note and a refund. C6 a
+  corrected payment's revenue moves to the correction day. C7 the reason is shown to the student. C8 the path is `/it/enrollments/…`
+  (Q-17, the accounts route, is open); the list rides the fee account response.
+- **Numbering:** migration `0246_fee_adjustments` (on itc-014's `0245_fee_discount_requests`); API §12JJ; RBAC §2.264.
+- **Feature ID authorized:** `itc-015`. **Status:** built on `worktree-itc-015`.

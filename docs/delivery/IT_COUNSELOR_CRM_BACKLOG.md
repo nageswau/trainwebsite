@@ -500,6 +500,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** medium.
 
 #### itc-015: Refunds, adjustments and payment correction
+- **Status:** built as `DEC-SCOPE-364` (migration `0246_fee_adjustments`, API §12JJ, RBAC §2.264); design
+  `docs/superpowers/specs/2026-11-03-itc-015-fee-adjustments-design.md`. Q-15 built with the recommended answers (manual refunds only;
+  refunds reduce IT revenue) and Q-14 without maker-checker (the recorder approves), all `NEEDS_CONFIRMATION`.
 - **Business requirement:** §4 "refund/adjustment"; §6 "approved credits/refunds"; §2 Accounts "record payments and refunds".
 - **Existing behavior:** refunds exist only for overseas `ApplicationDeposit`. IT Payment has no refunded status, credit lines or edit endpoint.
 - **Expected behavior:**

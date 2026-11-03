@@ -405,13 +405,36 @@ const RECORD_FEE_PAYMENT_SPEC: ActionSpec = {
   fields: [{ name: "enrollment_id", label: "Enrolment reference", type: "text", required: true }, { name: "amount", label: "Amount paid", type: "number", step: "0.01", required: true }, { name: "payment_mode", label: "Payment mode", type: "select", required: true, options: PAYMENT_MODE_OPTIONS }, { name: "provider_reference", label: "Transaction reference" }],
 };
 
+// itc-015 (DEC-SCOPE-364): credit notes, write-offs and refunds, and the correction of a mistyped manual payment (`payments.refund`).
+const feeBalanceText = (prefix: string, data: Record<string, unknown>) => {
+  const account = data.account as { balance?: number } | undefined;
+  if (typeof account?.balance !== "number") return prefix;
+  const value = Math.abs(account.balance).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+  return `${prefix} ${account.balance < 0 ? `Credit on the account INR ${value}` : `Remaining balance INR ${value}`}.`;
+};
+const FEE_ADJUSTMENT_SPEC: ActionSpec = {
+  title: "Record fee adjustment", description: "A credit note or write-off lowers what the student owes; a refund pays a credit back (record a credit note first). The reason is shown to the student.",
+  endpoint: "/api/v1/it/enrollments/:enrollment_id/adjustments", success: "Adjustment recorded.", permission: "payments.refund", pathFields: ["enrollment_id"],
+  describeSuccess: data => {
+    const adjustment = data.adjustment as { document_no?: string } | undefined;
+    return { text: feeBalanceText(adjustment?.document_no ? `Adjustment ${adjustment.document_no} recorded.` : "Adjustment recorded.", data), tone: "success" };
+  },
+  fields: [{ name: "enrollment_id", label: "Enrolment reference", type: "text", required: true }, { name: "kind", label: "Adjustment type", type: "select", required: true, options: [{ value: "credit_note", label: "Credit note" }, { value: "write_off", label: "Write-off" }, { value: "refund", label: "Refund" }] }, { name: "amount", label: "Adjustment amount", type: "number", step: "0.01", required: true }, { name: "reason", label: "Reason (shown to the student)", type: "textarea", required: true }, { name: "payment_mode", label: "Refunded by (refunds only)", type: "select", options: PAYMENT_MODE_OPTIONS }, { name: "reference", label: "Refund transaction reference" }],
+};
+const CORRECT_PAYMENT_SPEC: ActionSpec = {
+  title: "Correct a recorded payment", description: "Fixes a mistyped amount, mode or reference of a manual payment. The original stays on file as reversed and a corrected payment with a new receipt replaces it.",
+  endpoint: "/api/v1/it/enrollments/:enrollment_id/payments/:payment_id/correction", success: "Payment corrected.", permission: "payments.refund", pathFields: ["enrollment_id", "payment_id"],
+  describeSuccess: data => ({ text: feeBalanceText("Payment corrected.", data), tone: "success" }),
+  fields: [{ name: "enrollment_id", label: "Enrolment reference", type: "text", required: true }, { name: "payment_id", label: "Payment reference to correct", type: "text", required: true }, { name: "amount", label: "Correct amount", type: "number", step: "0.01", required: true }, { name: "payment_mode", label: "Correct payment mode", type: "select", required: true, options: PAYMENT_MODE_OPTIONS }, { name: "provider_reference", label: "Correct transaction reference" }, { name: "reason", label: "Reason for the correction", type: "textarea", required: true }],
+};
+
 function adminSpecs(user: User, section: string): ActionSpec[] {
   if (["users", "students", "trainers", "counselors", "staff"].includes(section)) return [{ title: "Create user", endpoint: "/api/v1/admin/users", success: "User created.", describeSuccess: data => welcomeLinkFeedback("User created.", data), announcesUserChange: true, fields: [{ name: "full_name", label: "Full name", required: true }, { name: "email", label: "Email", required: true }, { name: "phone", label: "Phone" }, { name: "division", label: "Division", type: "select", required: true, defaultValue: user.division === "global" ? "it" : user.division, options: createUserDivisionOptions(user) }, { name: "role", label: "Role", type: "select", required: true, options: createUserRoleOptions(user) }] }];
   if (section === "programs") return [{ title: "Create program", endpoint: "/api/v1/admin/programs", success: "Program created.", fields: [{ name: "slug", label: "Slug", required: true }, { name: "category", label: "Category", required: true }, { name: "title", label: "Title", required: true }, { name: "summary", label: "Summary", type: "textarea" }, { name: "duration", label: "Duration", required: true }, { name: "fees", label: "Fees", type: "number", required: true }, { name: "eligibility", label: "Eligibility", type: "textarea" }, { name: "curriculum", label: "Curriculum (comma separated)", parse: "list" }] }];
   // "batches" is handled by AdminBatchCreatePanel (ADM-003) -- see showBatchCreate below.
   if (section === "payments") return [
     { title: "Create payment due", endpoint: "/api/v1/admin/payments", success: "Payment due created.", permission: "payments.add", fields: [{ name: "user_id", label: "User reference", type: "text", required: true }, { name: "reference_type", label: "Fee type", defaultValue: "service_fee" }, { name: "amount", label: "Amount", type: "number", required: true }, { name: "currency", label: "Currency", defaultValue: "INR" }, { name: "provider", label: "Provider", type: "select", defaultValue: "razorpay", options: options(["razorpay", "manual"]) }, { name: "status", label: "Status", type: "select", defaultValue: "pending", options: options(["pending", "paid"]) }, { name: "payment_mode", label: "Payment mode (when paid)", type: "select", options: PAYMENT_MODE_OPTIONS }, { name: "provider_reference", label: "Transaction reference" }, { name: "due_date", label: "Due date", type: "date" }] },
-    ...(["it", "global"].includes(user.division) || user.role === "super_admin" ? [RECORD_FEE_PAYMENT_SPEC] : []), // itc-013: IT enrolments only
+    ...(["it", "global"].includes(user.division) || user.role === "super_admin" ? [RECORD_FEE_PAYMENT_SPEC, FEE_ADJUSTMENT_SPEC, CORRECT_PAYMENT_SPEC] : []), // itc-013/015: IT enrolments only
     DISCOUNT_SPEC,
   ];
   // "leads" is handled by AdminLeadManagementPanel (ADM-002) -- see showLeadManagement below.

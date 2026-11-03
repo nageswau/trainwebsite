@@ -11,10 +11,10 @@ from typing import cast
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import and_, case, func, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Batch, Enrollment, LedgerEntry, Payment, Program, Receipt
+from app.models import Batch, Enrollment, FeeAdjustment, LedgerEntry, Payment, Program, Receipt
 from app.services import ledger
 from app.services.management_expenses import financial_year_start, head_of, month_key, next_month
 
@@ -39,16 +39,18 @@ def period_range(month_start: date, period: str) -> tuple[date, date]:
 
 
 def _attributed(table):
-    """IR4: `lines()` with each line's batch and course. Every join is on a primary key, and only the matching source joins."""
+    """IR4: `lines()` with each line's batch and course. Every join is on a primary key, and only the matching source joins. itc-015: a fee
+    refund (negative) through its enrolment, as an enrolment fee."""
     c = table.c
     batch_id = func.coalesce(Enrollment.batch_id, LedgerEntry.batch_id)
     joined = (
         table.outerjoin(Payment, and_(c.source == "payment", Payment.id == c.id))
-        .outerjoin(Enrollment, and_(Payment.reference_type.in_(ENROLMENT_REFERENCES), Enrollment.id == Payment.reference_id))
+        .outerjoin(FeeAdjustment, and_(c.source == "fee_refund", FeeAdjustment.id == c.id))
+        .outerjoin(Enrollment, or_(and_(Payment.reference_type.in_(ENROLMENT_REFERENCES), Enrollment.id == Payment.reference_id), Enrollment.id == FeeAdjustment.enrollment_id))
         .outerjoin(LedgerEntry, and_(c.source == "manual", LedgerEntry.id == c.id))
         .outerjoin(Batch, Batch.id == batch_id)
     )
-    income_kind = case((c.source == "manual", "manual"), (Payment.reference_type.in_(ENROLMENT_REFERENCES), "enrolment_fees"), else_="other_fees")
+    income_kind = case((c.source == "manual", "manual"), (Payment.reference_type.in_(ENROLMENT_REFERENCES), "enrolment_fees"), (c.source == "fee_refund", "enrolment_fees"), else_="other_fees")
     return joined, batch_id, func.coalesce(Batch.program_id, LedgerEntry.program_id), income_kind
 
 
@@ -161,9 +163,9 @@ async def payments(db: AsyncSession, month_start: date, period: str, *, program_
     c = table.c
     joined, _, _, income_kind = _attributed(table)
     scope = Batch.program_id == program_id if program_id is not None else Enrollment.batch_id == batch_id if batch_id is not None else Enrollment.id.is_(None)
-    where = [*_in_period(c, start, end), c.counted, c.source == "payment", scope]
+    where = [*_in_period(c, start, end), c.counted, c.source.in_(("payment", "fee_refund")), scope]  # itc-015: refunds listed, so the rows add up
     total = await db.scalar(select(func.count()).select_from(joined).where(*where))
-    kind = case((income_kind == "enrolment_fees", "Enrolment fee"), else_="Other IT fee")
+    kind = case((c.source == "fee_refund", "Fee refund"), (income_kind == "enrolment_fees", "Enrolment fee"), else_="Other IT fee")
     rows = await db.execute(
         select(
             c.id,

@@ -4,18 +4,22 @@ An enrolment's fee rows are its IT `enrollment_fee` payments that bill something
 bill still counts, at 0). From them,
 in one grouped query (`balance_for`, fixed query count for list pages):
 
-    course_fee = sum(amount + discount_amount)          the gross billed
+    course_fee = sum(amount + discount_amount)          the gross billed (+ what credits took off bills, itc-015)
     discount_approved = sum(discount_amount)            nehn-021's discount and itc-014's approved requests
     tax = 0                                             Q-12: GST is NEEDS_CONFIRMATION
     total_payable = course_fee - discount_approved + tax
     paid_confirmed = sum(amount) of paid/succeeded rows
-    credits = 0                                         refunds and adjustments arrive with itc-015
-    balance = total_payable - paid_confirmed - credits
+    credits = credit notes + write-offs                 itc-015 (DEC-SCOPE-364 F1)
+    refunded = refunds                                  itc-015: a refund pays a credit back out
+    balance = total_payable - paid_confirmed - credits + refunded
 
 `student_access` sums the same owed rows per student, so the account and the access state agree. Staff record an offline payment with
 `record_payment` (no commit): never more than the oldest owed bill, so an overpayment cannot be created; a part payment splits that bill.
 
 itc-016 (DEC-SCOPE-358): each account also lists its installments (the same rows) with a derived `overdue` and the reminders sent.
+
+itc-015 (DEC-SCOPE-364): a credit note or write-off lowers the owed bills (`services/fee_adjustments.py`); a bill it covers whole is
+`waived` (amount 0, still billed so its gross and discount count). A corrected payment is `reversed` and bills nothing.
 """
 
 import logging
@@ -24,10 +28,10 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, literal, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Batch, Enrollment, FeeReminderLog, Invoice, Payment, Program, User
+from app.models import Batch, Enrollment, FeeAdjustment, FeeReminderLog, Invoice, Payment, Program, User
 from app.services.audit_changes import audit_change
 
 logger = logging.getLogger("app.fee_accounts")
@@ -35,7 +39,8 @@ logger = logging.getLogger("app.fee_accounts")
 FEE_REFERENCES = ("enrollment_fee", "enrollment")  # the seed's legacy rows say `enrollment` (management_it_revenue)
 PAID = ("paid", "succeeded")
 OWED = ("pending", "overdue")
-WAIVED = "waived"  # itc-014: a bill an approved discount brought to 0 -- still billed (its gross and discount count), never owed or payable
+WAIVED = "waived"  # itc-014 / itc-015: a bill an approved discount or a credit brought to 0 -- still billed (its gross and discount count), never owed or payable
+CREDITS = ("credit_note", "write_off")  # itc-015: the adjustments that lower what is owed
 OFFLINE_MODES = ("cash", "upi", "card", "bank_transfer", "cheque")  # `razorpay` is set only by the gateway's confirmation
 MODE_LABELS = {"cash": "Cash", "upi": "UPI", "card": "Card", "bank_transfer": "Bank transfer", "cheque": "Cheque", "razorpay": "Razorpay"}
 NOTHING_OWED = "Nothing is owed on this enrolment"
@@ -60,32 +65,39 @@ def _state(billed: bool, paid: float, balance: float) -> str:
     return "partially_paid" if paid > 0 else "enrolled_pending_payment"
 
 
-def _figures(billed: bool, gross: float, discount: float, paid: float) -> dict:
-    tax = credits = 0.0
-    total_payable = gross - discount + tax
-    balance = total_payable - paid - credits
+def _figures(billed: bool, gross: float, discount: float, paid: float, credits: float, applied: float, refunded: float) -> dict:
+    tax = 0.0
+    course_fee = round(gross + applied, 2)
+    total_payable = round(course_fee - discount + tax, 2)
+    balance = round(total_payable - paid - credits + refunded, 2)
     return {
-        "course_fee": gross, "discount_approved": discount, "tax": tax, "total_payable": total_payable, "paid_confirmed": paid,
-        "credits": credits, "balance": balance, "state": _state(billed, paid, balance),
+        "course_fee": course_fee, "discount_approved": discount, "tax": tax, "total_payable": total_payable, "paid_confirmed": paid,
+        "credits": credits, "refunded": refunded, "balance": balance, "state": _state(billed, paid, balance),
     }  # fmt: skip
 
 
 async def balance_for(db: AsyncSession, enrollment_ids: list[UUID]) -> dict[UUID, dict]:
-    """Every requested enrolment's figures (an unbilled one included), in one query."""
+    """Every requested enrolment's figures (an unbilled one included), in one query: its fee rows UNION ALL its adjustments (itc-015)."""
     if not enrollment_ids:
         return {}
-    stmt = (
-        select(
-            Payment.reference_id,
-            func.sum(Payment.amount + Payment.discount_amount),
-            func.sum(Payment.discount_amount),
-            func.sum(case((Payment.status.in_(PAID), Payment.amount), else_=0)),
-        )
-        .where(*_fee_rows(enrollment_ids))
-        .group_by(Payment.reference_id)
-    )
-    totals = {ref: (float(gross), float(discount), float(paid)) for ref, gross, discount, paid in (await db.execute(stmt)).all()}
-    return {eid: _figures(eid in totals, *totals.get(eid, (0.0, 0.0, 0.0))) for eid in enrollment_ids}
+    zero = literal(0)
+    bills = select(
+        Payment.reference_id.label("eid"), (Payment.amount + Payment.discount_amount).label("gross"), Payment.discount_amount.label("discount"),
+        case((Payment.status.in_(PAID), Payment.amount), else_=0).label("paid"), zero.label("credits"), zero.label("applied"), zero.label("refunded"),
+        literal(1).label("bills"),
+    ).where(*_fee_rows(enrollment_ids))  # fmt: skip
+    adjustments = select(
+        FeeAdjustment.enrollment_id, zero, zero, zero, case((FeeAdjustment.kind.in_(CREDITS), FeeAdjustment.amount), else_=0), FeeAdjustment.applied_amount,
+        case((FeeAdjustment.kind == "refund", FeeAdjustment.amount), else_=0), zero,
+    ).where(FeeAdjustment.enrollment_id.in_(enrollment_ids))  # fmt: skip
+    u = union_all(bills, adjustments).subquery()
+    sums = [func.sum(col) for col in (u.c.gross, u.c.discount, u.c.paid, u.c.credits, u.c.applied, u.c.refunded, u.c.bills)]
+    totals = {eid: [float(v) for v in values] for eid, *values in (await db.execute(select(u.c.eid, *sums).group_by(u.c.eid))).all()}
+    out = {}
+    for eid in enrollment_ids:
+        *money, billed_rows = totals.get(eid, [0.0] * 7)
+        out[eid] = _figures(billed_rows > 0, *money)
+    return out
 
 
 async def student_balances(db: AsyncSession, student_ids: list[UUID]) -> dict[UUID, float | None]:
@@ -131,9 +143,24 @@ async def _installments(db: AsyncSession, enrollment_ids: list[UUID]) -> dict[UU
     return out
 
 
+def adjustment_out(a: FeeAdjustment) -> dict:
+    """itc-015: one adjustment as every reader of the account sees it (the reason is written for the student to read)."""
+    return {"id": a.id, "kind": a.kind, "amount": float(a.amount), "reason": a.reason, "payment_mode": a.payment_mode, "reference": a.reference,
+            "document_no": a.document_no, "created_at": a.created_at}  # fmt: skip
+
+
+async def _adjustments(db: AsyncSession, enrollment_ids: list[UUID]) -> dict[UUID, list[dict]]:
+    stmt = select(FeeAdjustment).where(FeeAdjustment.enrollment_id.in_(enrollment_ids)).order_by(FeeAdjustment.created_at, FeeAdjustment.id)
+    out: dict[UUID, list[dict]] = {}
+    for a in (await db.scalars(stmt)).all():
+        out.setdefault(a.enrollment_id, []).append(adjustment_out(a))
+    return out
+
+
 async def accounts(db: AsyncSession, enrollments: list[Enrollment]) -> list[dict]:
-    """The full account (figures, the course and batch names, the installments, the next amount due) of each enrolment, in three queries.
-    itc-018 (DEC-SCOPE-353 F1): `next_due` is the first owed installment, in `record_payment`'s order -- the next amount the student owes."""
+    """The full account (figures, the course and batch names, the installments, the next amount due, the adjustments) of each enrolment,
+    in four queries. itc-018 (DEC-SCOPE-353 F1): `next_due` is the first owed installment, in `record_payment`'s order -- the next amount
+    the student owes."""
     if not enrollments:
         return []
     ids = [e.id for e in enrollments]
@@ -141,12 +168,14 @@ async def accounts(db: AsyncSession, enrollments: list[Enrollment]) -> list[dict
     names = {eid: (course, batch) for eid, course, batch in (await db.execute(stmt)).all()}  # an enrolment always has a batch and course
     figures = await balance_for(db, ids)
     installments = await _installments(db, ids)
+    adjustments = await _adjustments(db, ids)
     out = []
     for e in enrollments:
         rows = installments.get(e.id, [])
         owed = next((i for i in rows if i["status"] == "pending"), None)
         out.append({"enrollment_id": e.id, "enrollment_code": e.enrollment_code, "course": names[e.id][0], "batch": names[e.id][1], "currency": "INR",
-                    **figures[e.id], "next_due": owed and {"amount": owed["amount"], "due_date": owed["due_date"]}, "installments": rows})  # fmt: skip
+                    **figures[e.id], "next_due": owed and {"amount": owed["amount"], "due_date": owed["due_date"]}, "installments": rows,
+                    "adjustments": adjustments.get(e.id, [])})  # fmt: skip
     return out
 
 
@@ -154,15 +183,15 @@ async def account(db: AsyncSession, enrollment: Enrollment) -> dict:
     return (await accounts(db, [enrollment]))[0]
 
 
-async def record_payment(db: AsyncSession, actor: User, enrollment: Enrollment, amount: float, mode: str, reference: str | None) -> Payment:
-    """No commit. Pays the oldest owed bill (by due date, then age) under a row lock, so two recordings and a gateway confirmation of
-    the same bill serialise. The whole bill: it becomes paid. Part of it: the bill keeps the rest (its invoice is reissued and a stale
+async def record_payment(db: AsyncSession, actor: User, enrollment: Enrollment, amount: float, mode: str, reference: str | None, *, bill_id: UUID | None = None) -> Payment:
+    """No commit. Pays the oldest owed bill (by due date, then age; itc-015: or the bill `bill_id`, a correction's reopened bill) under a
+    row lock, so two recordings and a gateway confirmation of the same bill serialise. The whole bill: it becomes paid. Part of it: the bill keeps the rest (its invoice is reissued and a stale
     online checkout is cleared, so an old order cannot settle the smaller bill) and a new paid row holds this payment."""
     from app.api.payments import _ensure_invoice, _ensure_receipt  # noqa: PLC0415 -- the payments API imports this module's readers
 
     stmt = (
         select(Payment)
-        .where(*_fee_rows([enrollment.id]), Payment.status.in_(OWED), Payment.user_id == enrollment.student_id)
+        .where(*_fee_rows([enrollment.id]), Payment.status.in_(OWED), Payment.user_id == enrollment.student_id, *([Payment.id == bill_id] if bill_id else []))
         .order_by(Payment.due_date.asc().nulls_last(), Payment.created_at, Payment.id)
         .with_for_update()
     )

@@ -100,7 +100,7 @@ async def test_accounts_reads_many_enrolments_in_a_fixed_number_of_queries(db_se
         assert all(a["next_due"] is not None for a in got)
         return len(queries)
 
-    assert await count_for(1) == await count_for(4) == 3
+    assert await count_for(1) == await count_for(4) == 4  # itc-015: + the adjustments query
 
 
 # --- AC2: another student's receipt is 404 ------------------------------------------------------------------------------------------
