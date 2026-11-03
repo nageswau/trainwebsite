@@ -1,4 +1,4 @@
-"""itc-015 -- migration 0244_fee_adjustments: chain, the CHECKs, one reversal per payment, the `payments.refund` grant and a round trip,
+"""itc-015 -- migration 0245_fee_adjustments: chain, the CHECKs, one reversal per payment, the `payments.refund` grant and a round trip,
 in a throwaway database (the tel-001 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -14,11 +14,11 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_itc_015_migration_0244", VERSIONS / "0244_fee_adjustments.py")
+_spec = importlib.util.spec_from_file_location("_itc_015_migration_0245", VERSIONS / "0245_fee_adjustments.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = _migration.down_revision, "0244_fee_adjustments"
+BASE, HEAD = _migration.down_revision, "0245_fee_adjustments"
 TABLE = "SELECT table_name FROM information_schema.tables WHERE table_name = 'fee_adjustments'"
 GRANT = "SELECT role FROM role_permissions WHERE resource = 'payments' AND action = 'refund' ORDER BY 1"
 

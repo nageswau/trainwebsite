@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }), useSearchParams: () => new URLSearchParams(), usePathname: () => "/it/admin/payments",
 }));
 
-// itc-015 (DEC-SCOPE-362): the fee account shows what was refunded and lists its credit notes, write-offs, refunds and corrections, each
+// itc-015 (DEC-SCOPE-363): the fee account shows what was refunded and lists its credit notes, write-offs, refunds and corrections, each
 // with its document; the IT admin's Payments page records adjustments and corrects a mistyped payment (`payments.refund`).
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const ACCOUNT: FeeAccount = {

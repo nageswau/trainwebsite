@@ -194,6 +194,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** overseas labels are unaffected.
 - **Regression risks:** every serializer that emits stage labels.
 - **Complexity:** medium (large if fully configurable). **Risk:** medium.
+- **Status:** built as `DEC-SCOPE-362` (migration `0244_it_status_labels`, API §12JH, RBAC §2.262); design
+  `docs/superpowers/specs/2026-11-03-itc-005-configurable-status-labels-design.md`. Q-05 builder default: labels, order and on/off of
+  the fixed states; turning off a state in use is allowed (in-use count shown). `NEEDS_CONFIRMATION`.
 
 #### itc-006: Auto-assign by source and workload
 - **Status:** built as `DEC-SCOPE-339` (migration `0224`, API §12IK, RBAC §2.240). Precedence fixed as source → product → city → team strategy (Q-06 recommended answer).
@@ -495,7 +498,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** medium.
 
 #### itc-015: Refunds, adjustments and payment correction
-- **Status:** built as `DEC-SCOPE-362` (migration `0244_fee_adjustments`, API §12JH, RBAC §2.262); design
+- **Status:** built as `DEC-SCOPE-363` (migration `0245_fee_adjustments`, API §12JI, RBAC §2.263); design
   `docs/superpowers/specs/2026-11-03-itc-015-fee-adjustments-design.md`. Q-15 built with the recommended answers (manual refunds only;
   refunds reduce IT revenue) and Q-14 without maker-checker (the recorder approves), all `NEEDS_CONFIRMATION`.
 - **Business requirement:** §4 "refund/adjustment"; §6 "approved credits/refunds"; §2 Accounts "record payments and refunds".

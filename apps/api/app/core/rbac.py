@@ -74,7 +74,7 @@ ROLES: tuple[str, ...] = tuple(PERMISSIONS)
 # is "<resource>.<action>"; anything not listed is denied.
 ACTIONS = ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage", "refund")  # nehn-031 adds override, configure
 CATALOGUE: dict[str, dict] = {
-    # itc-015 (DEC-SCOPE-362): `refund` -- an IT enrolment's credit notes, write-offs, refunds and payment corrections (migration 0244).
+    # itc-015 (DEC-SCOPE-363): `refund` -- an IT enrolment's credit notes, write-offs, refunds and payment corrections (migration 0245).
     "payments": {"label": "Payments", "actions": ("view", "add", "refund")},
     "discounts": {"label": "Payment discounts", "actions": ("add",)},
     "reports.telecaller": {"label": "Telecaller reports", "actions": ("view", "download")},
@@ -103,7 +103,7 @@ _PLACEMENT_REPORTS = ("reports.placement.view", "reports.placement.download")  #
 DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "it_admin": (
         _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure", "student_access.configure") + _TRAINING_REPORTS + _PLACEMENT_REPORTS + ("payments.refund",)
-    ),  # nehn-031 W2 (0204); nehn-018 (0211); nehn-016 (0212); itc-015 (0244)
+    ),  # nehn-031 W2 (0204); nehn-018 (0211); nehn-016 (0212); itc-015 (0245)
     "trainer": _TRAINING_REPORTS,
     "placement_team": _PLACEMENT_REPORTS,
     "placement_manager": _PLACEMENT_REPORTS,

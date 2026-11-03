@@ -3639,9 +3639,16 @@ counselor's lead 404 (tel-018 scope), an overseas counselor or any other role 40
 the counselor or the IT Admin (the student 403). The welcome token is never returned; duplicate-email refusals name no account. Pinned
 by `apps/api/tests/test_itc_011_conversion.py`.
 
-### 2.262 Refunds, adjustments and payment correction *(added 2026-11-03 — `DEC-SCOPE-362`, itc-015)*
+### 2.262 IT status labels *(added 2026-11-03 — `DEC-SCOPE-362`, itc-005)*
 
-New grant `payments.refund` (catalogue action `refund`), seeded for `it_admin` by migration 0244; super_admin holds it implicitly.
+No grant change. `GET /it/status-labels`: every IT staff role (division `it`, not `it_student`) and super_admin; students, other divisions'
+roles 403. `GET /admin/it/status-labels` and `PUT /admin/it/status-labels/{kind}/{code}`: the IT Admin (`it_admin`, division `it`) only —
+super_admin and every other role 403. The page `/it/admin/status-labels` is in the IT Admin nav only. Pinned by
+`apps/api/tests/test_itc_005_status_labels.py`.
+
+### 2.263 Refunds, adjustments and payment correction *(added 2026-11-03 — `DEC-SCOPE-363`, itc-015)*
+
+New grant `payments.refund` (catalogue action `refund`), seeded for `it_admin` by migration 0245; super_admin holds it implicitly.
 Recording an adjustment or a correction needs it plus the IT division (or every division) — trainer, counselor, student and
 overseas_admin 403, anonymous 401. Reading an adjustment's document follows the itc-013 fee-account gate (another student's 404). No
 deletion or edit route exists. Pinned by `apps/api/tests/test_itc_015_fee_adjustments.py`.

@@ -1,4 +1,4 @@
-"""itc-015 (DEC-SCOPE-362) -- refunds, adjustments and payment correction on an IT enrolment's fee account (`services/fee_accounts.py`).
+"""itc-015 (DEC-SCOPE-363) -- refunds, adjustments and payment correction on an IT enrolment's fee account (`services/fee_accounts.py`).
 
 Every write here is a new immutable `FeeAdjustment` row; nothing is updated in place or deleted (no such route exists):
 - a **credit note** lowers what is owed -- the owed bills, latest due first (a bill covered whole becomes `waived`); what no bill

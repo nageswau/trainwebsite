@@ -8,7 +8,7 @@ in one grouped query (`balance_for`, fixed query count for list pages):
     tax = 0                                             Q-12: GST is NEEDS_CONFIRMATION
     total_payable = course_fee - discount_approved + tax
     paid_confirmed = sum(amount) of paid/succeeded rows
-    credits = credit notes + write-offs                 itc-015 (DEC-SCOPE-362 F1)
+    credits = credit notes + write-offs                 itc-015 (DEC-SCOPE-363 F1)
     refunded = refunds                                  itc-015: a refund pays a credit back out
     balance = total_payable - paid_confirmed - credits + refunded
 
@@ -17,7 +17,7 @@ in one grouped query (`balance_for`, fixed query count for list pages):
 
 itc-016 (DEC-SCOPE-358): each account also lists its installments (the same rows) with a derived `overdue` and the reminders sent.
 
-itc-015 (DEC-SCOPE-362): a credit note or write-off lowers the owed bills (`services/fee_adjustments.py`); a bill it covers whole is
+itc-015 (DEC-SCOPE-363): a credit note or write-off lowers the owed bills (`services/fee_adjustments.py`); a bill it covers whole is
 `waived` (amount 0, still billed so its gross and discount count). A corrected payment is `reversed` and bills nothing.
 """
 

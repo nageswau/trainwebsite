@@ -2,7 +2,7 @@
 
 Source: `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` §itc-015. Dependencies itc-001 (PR #408) and itc-013 (PR #419) merged; itc-014 is
 a dependency only "if a shared approval engine is used" — none is used here. Owner direction (Q-01 log): "proceed with recommended
-answers"; the calls below are the builder's, recorded as `DEC-SCOPE-362`, every one `NEEDS_CONFIRMATION`.
+answers"; the calls below are the builder's, recorded as `DEC-SCOPE-363`, every one `NEEDS_CONFIRMATION`.
 
 ## Open questions taken with the recommended answer
 - **Q-15 (gateway):** manual only. No Razorpay refund API call; a refund records how the money went back (cash, UPI, card, bank
@@ -22,7 +22,7 @@ answers"; the calls below are the builder's, recorded as `DEC-SCOPE-362`, every 
 - **F3 (API path):** `/it/enrollments/{id}/…`, matching itc-013, rather than the backlog's `/accounts/…` (Q-17, the accounts route, is
   still open). The list is part of the fee account response (`adjustments`), so every reader of the account sees it.
 
-## Data (`fee_adjustments`, migration `0244_fee_adjustments` on `0243_it_conversion`)
+## Data (`fee_adjustments`, migration `0245_fee_adjustments` on `0243_it_conversion`)
 | Column | Notes |
 |---|---|
 | id, enrollment_id (FK), created_at | |
@@ -61,7 +61,7 @@ rows bill nothing. A second grouped query sums the adjustments.
   reference (AC3); `it_lifecycle.sync` follows (itc-031). Credit notes, write-offs and refunds get a PDF (`generate_receipt_pdf`'s
   label/value layout, titled "Credit note" / "Write-off" / "Refund receipt").
 
-## API (API_CONTRACT §12JH, RBAC §2.262)
+## API (API_CONTRACT §12JI, RBAC §2.263)
 - `POST /it/enrollments/{id}/adjustments` `{kind, amount, reason, payment_mode?, reference?}` → 201 `{adjustment, account}` —
   `payments.refund`, IT division (or every division).
 - `POST /it/enrollments/{id}/payments/{payment_id}/correction` `{amount, payment_mode, provider_reference?, reason}` → 201
@@ -89,4 +89,4 @@ Razorpay refund API; maker-checker (itc-014); accounts workspace refunds list (i
 5. Document endpoint + access tests.
 6. Ledger `fee_refund` line + IT revenue attribution — tests.
 7. FE: `FeeAccountCard` additions, WorkflowPanel specs; vitest.
-8. Playwright e2e; docs (DEC-SCOPE-362, API §12JH, RBAC §2.262, backlog status).
+8. Playwright e2e; docs (DEC-SCOPE-363, API §12JI, RBAC §2.263, backlog status).

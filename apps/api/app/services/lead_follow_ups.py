@@ -79,7 +79,7 @@ def _out(user: User, now: datetime, last_calls: dict, fu: LeadFollowUp, lead: En
         "id": fu.id, "due_at": fu.due_at, "reason": fu.reason, "notes": fu.notes, "next_action": fu.next_action, "status": fu.status,
         "overdue": fu.status == "open" and fu.due_at < now and lead.status != NURTURE,  # F1; itc-004 N5
         "lead": {
-            "id": lead.id, "lead_code": lead.lead_code, "name": lead.name, "priority": lead.priority, "status": lead.status,
+            "id": lead.id, "lead_code": lead.lead_code, "name": lead.name, "priority": lead.priority, "status": lead.status, "division": lead.division,
             "status_label": stage_label(lead.status), "product": None if product is None else {"id": product.id, "name": product.name},
             "telecaller": _person(caller), "last_call": last_calls.get(lead.id),
         },

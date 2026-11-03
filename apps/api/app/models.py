@@ -3088,7 +3088,7 @@ class FeeReminderLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-# itc-015 (DEC-SCOPE-362, migration 0244 repeats them): credit notes and write-offs lower what an enrolment owes, a refund pays a credit
+# itc-015 (DEC-SCOPE-363, migration 0245 repeats them): credit notes and write-offs lower what an enrolment owes, a refund pays a credit
 # back out, a reversal replaces a mistyped manual payment. A refund names how the money went back (the offline modes; Q-15 manual only).
 FEE_ADJUSTMENT_KINDS = ("credit_note", "write_off", "refund", "reversal")
 REFUND_MODES = ("cash", "upi", "card", "bank_transfer", "cheque")
@@ -3216,6 +3216,29 @@ class LeadLostReason(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(LEAD_LOST_REASON_NAME_MAX))
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+
+
+IT_STATUS_LABEL_MAX = 60
+
+
+class ItStatusLabel(Base, TimestampMixin):
+    """itc-005 (DEC-SCOPE-362 S1-S3): the IT team's override of one fixed status -- its label, order and (only for states a person
+    chooses, S4) whether it is offered. No row = the code default. `kind` is `lead` (lead_stages) or `lifecycle` (it_lifecycle)."""
+
+    __tablename__ = "it_status_labels"
+    __table_args__ = (
+        CheckConstraint("team = 'it'", name="ck_it_status_labels_team"),
+        CheckConstraint("kind IN ('lead', 'lifecycle')", name="ck_it_status_labels_kind"),
+        CheckConstraint(f"length(label) BETWEEN 1 AND {IT_STATUS_LABEL_MAX}", name="ck_it_status_labels_label"),
+        CheckConstraint("sort_order BETWEEN 0 AND 9999", name="ck_it_status_labels_sort_order"),
+    )
+    team: Mapped[str] = mapped_column(String(20), primary_key=True, default="it")
+    kind: Mapped[str] = mapped_column(String(20), primary_key=True)
+    code: Mapped[str] = mapped_column(String(40), primary_key=True)
+    label: Mapped[str] = mapped_column(String(IT_STATUS_LABEL_MAX))
+    sort_order: Mapped[int] = mapped_column(Integer)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
 class Enquiry(Base, TimestampMixin):

@@ -404,7 +404,7 @@ const RECORD_FEE_PAYMENT_SPEC: ActionSpec = {
   fields: [{ name: "enrollment_id", label: "Enrolment reference", type: "text", required: true }, { name: "amount", label: "Amount paid", type: "number", step: "0.01", required: true }, { name: "payment_mode", label: "Payment mode", type: "select", required: true, options: PAYMENT_MODE_OPTIONS }, { name: "provider_reference", label: "Transaction reference" }],
 };
 
-// itc-015 (DEC-SCOPE-362): credit notes, write-offs and refunds, and the correction of a mistyped manual payment (`payments.refund`).
+// itc-015 (DEC-SCOPE-363): credit notes, write-offs and refunds, and the correction of a mistyped manual payment (`payments.refund`).
 const feeBalanceText = (prefix: string, data: Record<string, unknown>) => {
   const account = data.account as { balance?: number } | undefined;
   if (typeof account?.balance !== "number") return prefix;
