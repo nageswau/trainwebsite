@@ -3,7 +3,7 @@
 Source: `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` §itc-031 (PDF §3 student lifecycle; PDF classified `UNVERIFIED`). Scope approved by the
 owner 2026-11-01 (backlog Q-01). Dependencies itc-013 (`DEC-SCOPE-346`), itc-023 (`DEC-SCOPE-352`) and itc-027 (`DEC-SCOPE-354`) are
 merged. Q-30 is open; the owner said to proceed with the recommended answers, so L1–L9 below are **the builder's calls
-(`NEEDS_CONFIRMATION`)**. Decision `DEC-SCOPE-358`.
+(`NEEDS_CONFIRMATION`)**. Decision `DEC-SCOPE-359`.
 
 ## 1. What exists (Graphify discovery)
 

@@ -2,7 +2,7 @@
 
 Design: `docs/superpowers/specs/2026-11-03-itc-031-it-student-lifecycle-design.md`. TDD per task (RED → GREEN → refactor).
 
-1. **Migration + model** — `0240_enrollment_lifecycle` on `0239_call_preference`: `enrollment_lifecycle_history`; enrolment
+1. **Migration + model** — `0241_enrollment_lifecycle` on `0240_fee_reminders` (itc-016): `enrollment_lifecycle_history`; enrolment
    `lifecycle_override` (+ CHECK) and `lifecycle_override_reason`; `ck_enrollments_status` NOT VALID, validated when clean.
    Test `test_itc_031_migration.py`.
 2. **Derivation** — `services/it_lifecycle.py`: `STAGES`, `LABELS`, `derive_many`, `safe`. Tests `test_itc_031_lifecycle.py`
@@ -14,4 +14,4 @@ Design: `docs/superpowers/specs/2026-11-03-itc-031-it-student-lifecycle-design.m
    Tests `test_itc_031_lifecycle_api.py` (scope 404, counselor override 403, Placed 409, not_placed/closed + history + audit).
 5. **Web** — `ItLifecycleCard` (badge, components, history list, admin override form) on the 360; student safe badge.
    Vitest `Itc031Lifecycle.test.tsx`; e2e `itc-031-lifecycle.spec.ts`.
-6. **Docs** — DEC-SCOPE-358, API §12JD, RBAC §2.258, backlog status.
+6. **Docs** — DEC-SCOPE-359, API §12JE, RBAC §2.259, backlog status.

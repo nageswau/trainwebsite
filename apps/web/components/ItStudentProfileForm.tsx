@@ -103,7 +103,7 @@ export default function ItStudentProfileForm({ initial, url, enrollmentsUrl }: {
                   <tr key={e.id}>
                     <td data-label="Programme">{e.program}</td>
                     <td data-label="Batch">{e.batch}</td>
-                    {/* itc-031 (DEC-SCOPE-358): the derived stage; the student's own view never says "At risk" (the API's safe subset) */}
+                    {/* itc-031 (DEC-SCOPE-359): the derived stage; the student's own view never says "At risk" (the API's safe subset) */}
                     <td data-label="Status">{e.lifecycle ? <span className={stageTone(e.lifecycle.stage)}>{e.lifecycle.stage_label}</span> : "-"}</td>
                     <td data-label="Start">{formatCalendarDate(e.start_date)}</td>
                     <td data-label="End">{formatCalendarDate(e.end_date)}</td>

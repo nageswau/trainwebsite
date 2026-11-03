@@ -1,4 +1,4 @@
-"""itc-031 (DEC-SCOPE-358) -- the derived lifecycle stage of an IT enrolment (`services/it_lifecycle.py`): each component computed from
+"""itc-031 (DEC-SCOPE-359) -- the derived lifecycle stage of an IT enrolment (`services/it_lifecycle.py`): each component computed from
 its source record (fee account, enrolment dates, risk flag, certificate, HR review, job application), the display precedence (L3), the
 two hand-set facts (L4) and the history writer (L6: a row with actor and time when the stage changes, none when it does not)."""
 

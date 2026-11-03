@@ -8,7 +8,7 @@ import {
   CAUSE_LABELS, COMPONENT_LABELS, lifecycleOverrideUrl, OVERRIDE_CHOICES, stageTone, type LifecycleEnrollment, type LifecycleResponse,
 } from "@/lib/itLifecycle";
 
-// itc-031 (DEC-SCOPE-358): the 360's lifecycle card -- each enrolment's derived stage, its fee / training / placement components (so
+// itc-031 (DEC-SCOPE-359): the 360's lifecycle card -- each enrolment's derived stage, its fee / training / placement components (so
 // concurrent states stay visible) and its history. The IT Admin may also set "Not placed" or "Closed" with a reason, or clear it.
 export default function ItLifecycleCard({ initial, studentId, canOverride }: { initial: LifecycleResponse; studentId: string; canOverride: boolean }) {
   const [data, setData] = useState(initial);

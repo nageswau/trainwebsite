@@ -19,7 +19,7 @@ const base: LifecycleEnrollment = {
 const data = (e: Partial<LifecycleEnrollment> = {}): LifecycleResponse => ({ enrollments: [{ ...base, ...e }] });
 const ok = (body: object) => new Response(JSON.stringify(body), { status: 200 });
 
-describe("itc-031 lifecycle card (DEC-SCOPE-358)", () => {
+describe("itc-031 lifecycle card (DEC-SCOPE-359)", () => {
   it("shows the stage, the concurrent components and the history with actor and cause", () => {
     render(<ItLifecycleCard initial={data()} studentId={STUDENT} canOverride={false} />);
     expect(screen.getByTestId("lifecycle-stage")).toHaveTextContent("Training active");

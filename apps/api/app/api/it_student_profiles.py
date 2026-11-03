@@ -57,7 +57,7 @@ def _staff_routes(router: APIRouter, portal: str) -> None:
 
     @router.get("/{student_id}/lifecycle")
     async def get_lifecycle(student_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-        """itc-031 (DEC-SCOPE-358 L8): each enrolment's derived stage, components, override and history."""
+        """itc-031 (DEC-SCOPE-359 L8): each enrolment's derived stage, components, override and history."""
         return await it_lifecycle.staff_lifecycle(db, await profiles.staff_student(db, user, student_id, portal=portal))
 
 
@@ -68,7 +68,7 @@ _staff_routes(admin_router, "admin")
 @admin_router.put("/{student_id}/enrollments/{enrollment_id}/lifecycle-override")
 async def save_lifecycle_override(student_id: UUID, enrollment_id: UUID, payload: ItLifecycleOverrideIn, user: User = Depends(get_current_user),
                                   db: AsyncSession = Depends(get_db)):  # fmt: skip
-    """itc-031 (DEC-SCOPE-358 L4): the IT Admin sets "not_placed" or "closed" (with a reason) or clears it (null)."""
+    """itc-031 (DEC-SCOPE-359 L4): the IT Admin sets "not_placed" or "closed" (with a reason) or clears it (null)."""
     out = await it_lifecycle.set_override(db, user, await profiles.staff_student(db, user, student_id, portal="admin"), enrollment_id, payload)
     _log("it_lifecycle_override_saved", user, student_id)
     return out

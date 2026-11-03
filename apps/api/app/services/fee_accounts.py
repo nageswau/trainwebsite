@@ -13,17 +13,20 @@ in one grouped query (`balance_for`, fixed query count for list pages):
 
 `student_access` sums the same owed rows per student, so the account and the access state agree. Staff record an offline payment with
 `record_payment` (no commit): never more than the oldest owed bill, so an overpayment cannot be created; a part payment splits that bill.
+
+itc-016 (DEC-SCOPE-358): each account also lists its installments (the same rows) with a derived `overdue` and the reminders sent.
 """
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Batch, Enrollment, Invoice, Payment, Program, User
+from app.models import Batch, Enrollment, FeeReminderLog, Invoice, Payment, Program, User
 from app.services.audit_changes import audit_change
 
 logger = logging.getLogger("app.fee_accounts")
@@ -35,6 +38,7 @@ OFFLINE_MODES = ("cash", "upi", "card", "bank_transfer", "cheque")  # `razorpay`
 MODE_LABELS = {"cash": "Cash", "upi": "UPI", "card": "Card", "bank_transfer": "Bank transfer", "cheque": "Cheque", "razorpay": "Razorpay"}
 NOTHING_OWED = "Nothing is owed on this enrolment"
 RECORDED = "it.fee.payment_recorded"
+INDIA = ZoneInfo("Asia/Kolkata")
 
 
 def _fee_rows(enrollment_ids):
@@ -95,33 +99,53 @@ async def student_balances(db: AsyncSession, student_ids: list[UUID]) -> dict[UU
     return out
 
 
-async def _next_due(db: AsyncSession, enrollment_ids: list[UUID]) -> dict[UUID, dict]:
-    """itc-018 (DEC-SCOPE-353 F1): each enrolment's oldest owed bill, in `record_payment`'s order -- the next amount the student owes."""
+def india_today() -> date:
+    """itc-016 (F1): fee due dates are India calendar days."""
+    return datetime.now(INDIA).date()
+
+
+async def _installments(db: AsyncSession, enrollment_ids: list[UUID]) -> dict[UUID, list[dict]]:
+    """itc-016 (F1/F7): each enrolment's fee rows in `record_payment`'s order (due date, then age), with the reminders sent for each, in
+    one query. `overdue` is derived (owed and due before today, IST); status is `paid` or `pending` (a legacy stored `overdue` reads as
+    pending + overdue)."""
     stmt = (
-        select(Payment.reference_id, Payment.amount, Payment.due_date)
-        .where(*_fee_rows(enrollment_ids), Payment.status.in_(OWED), Payment.amount > 0)
-        .order_by(Payment.due_date.asc().nulls_last(), Payment.created_at, Payment.id)
-    )
-    out: dict = {}  # keyed by `reference_id`, never null here (filtered by `_fee_rows`)
-    for ref, amount, due_date in (await db.execute(stmt)).all():
-        out.setdefault(ref, {"amount": float(amount), "due_date": due_date})
+        select(Payment.id, Payment.reference_id, Payment.installment_no, Payment.amount, Payment.due_date, Payment.status,
+               FeeReminderLog.kind, FeeReminderLog.offset_days, FeeReminderLog.reminder_date)
+        .outerjoin(FeeReminderLog, FeeReminderLog.payment_id == Payment.id)
+        .where(*_fee_rows(enrollment_ids), Payment.amount > 0)
+        .order_by(Payment.due_date.asc().nulls_last(), Payment.created_at, Payment.id, FeeReminderLog.reminder_date, FeeReminderLog.created_at)
+    )  # fmt: skip
+    today, out, seen = india_today(), {}, {}
+    for r in (await db.execute(stmt)).all():  # keyed by `reference_id`, never null here (filtered by `_fee_rows`)
+        if (item := seen.get(r.id)) is None:
+            owed = r.status in OWED
+            item = seen[r.id] = {
+                "id": r.id, "installment_no": r.installment_no, "amount": float(r.amount), "due_date": r.due_date, "status": "pending" if owed else "paid",
+                "overdue": owed and r.due_date is not None and r.due_date < today, "reminders": [],
+            }  # fmt: skip
+            out.setdefault(r.reference_id, []).append(item)
+        if r.kind is not None:
+            item["reminders"].append({"kind": r.kind, "offset_days": r.offset_days, "sent_on": r.reminder_date})
     return out
 
 
 async def accounts(db: AsyncSession, enrollments: list[Enrollment]) -> list[dict]:
-    """The full account (figures, the course and batch names, the next amount due) of each enrolment, in three queries."""
+    """The full account (figures, the course and batch names, the installments, the next amount due) of each enrolment, in three queries.
+    itc-018 (DEC-SCOPE-353 F1): `next_due` is the first owed installment, in `record_payment`'s order -- the next amount the student owes."""
     if not enrollments:
         return []
     ids = [e.id for e in enrollments]
     stmt = select(Enrollment.id, Program.title, Batch.name).join(Batch, Batch.id == Enrollment.batch_id).join(Program, Program.id == Batch.program_id).where(Enrollment.id.in_(ids))
     names = {eid: (course, batch) for eid, course, batch in (await db.execute(stmt)).all()}  # an enrolment always has a batch and course
     figures = await balance_for(db, ids)
-    due = await _next_due(db, ids)
-    return [
-        {"enrollment_id": e.id, "enrollment_code": e.enrollment_code, "course": names[e.id][0], "batch": names[e.id][1], "currency": "INR", **figures[e.id],
-         "next_due": due.get(e.id)}
-        for e in enrollments
-    ]  # fmt: skip
+    installments = await _installments(db, ids)
+    out = []
+    for e in enrollments:
+        rows = installments.get(e.id, [])
+        owed = next((i for i in rows if i["status"] == "pending"), None)
+        out.append({"enrollment_id": e.id, "enrollment_code": e.enrollment_code, "course": names[e.id][0], "batch": names[e.id][1], "currency": "INR",
+                    **figures[e.id], "next_due": owed and {"amount": owed["amount"], "due_date": owed["due_date"]}, "installments": rows})  # fmt: skip
+    return out
 
 
 async def account(db: AsyncSession, enrollment: Enrollment) -> dict:

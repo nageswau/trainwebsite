@@ -15025,7 +15025,7 @@ IT_LIFECYCLE_STAGES = (
 
 
 class ItLifecycleOverrideIn(BaseModel):
-    """itc-031 (DEC-SCOPE-358 L4): the IT Admin's hand-set stage. Any stage name is accepted here so a derived one gets the 409 that says
+    """itc-031 (DEC-SCOPE-359 L4): the IT Admin's hand-set stage. Any stage name is accepted here so a derived one gets the 409 that says
     why; only "not_placed" and "closed" are stored. A null clears the override. Setting one needs a reason."""
 
     model_config = {"extra": "forbid"}

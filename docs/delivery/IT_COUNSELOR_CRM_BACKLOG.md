@@ -521,6 +521,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** high.
 
 #### itc-016: Overdue marking and fee reminders
+- **Status:** built as `DEC-SCOPE-358` (migration `0240_fee_reminders`, API §12JD, RBAC §2.258). Q-16 built with the recommended answers (3 days before; 1/7/14 after; derived overdue; IT Admin sets the schedule), `NEEDS_CONFIRMATION`; no holiday calendar (E).
 - **Business requirement:** §6 "paid/unpaid/overdue status, and reminder history"; §9 "Send reminders for upcoming/overdue installments".
 - **Existing behavior:** nothing sets `status="overdue"`. The accounts dashboard derives late from `due_date < today` (`accounts.py:98`). No reminder beat job and no reminder history exist.
 - **Expected behavior:** a daily beat job (`itc016-fee-reminders`, 08:30 IST):
@@ -1028,7 +1029,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** concurrent stages (Training Active and Fee Pending at the same time). The display precedence needs a rule (Q-30).
 - **Regression risks:** **touches every IT service**; implement late.
 - **Complexity:** large. **Risk:** high.
-- **Status:** built as `DEC-SCOPE-358` (migration `0240_enrollment_lifecycle`, API §12JD, RBAC §2.258); design `docs/superpowers/specs/2026-11-03-itc-031-it-student-lifecycle-design.md`. Derived stage per enrolment with fee/training/placement components, history written by the fee, gateway, enrolment, certificate, HR review and application writers plus the daily sweep; lifecycle card on the student record; IT Admin sets only Not placed / Closed; the student sees a safe stage; enrolment status CHECK. Q-30 calls `NEEDS_CONFIRMATION`; dashboards/reports deferred to itc-032.
+- **Status:** built as `DEC-SCOPE-359` (migration `0241_enrollment_lifecycle`, API §12JE, RBAC §2.259); design `docs/superpowers/specs/2026-11-03-itc-031-it-student-lifecycle-design.md`. Derived stage per enrolment with fee/training/placement components, history written by the fee, gateway, enrolment, certificate, HR review and application writers plus the daily sweep; lifecycle card on the student record; IT Admin sets only Not placed / Closed; the student sees a safe stage; enrolment status CHECK. Q-30 calls `NEEDS_CONFIRMATION`; dashboards/reports deferred to itc-032.
 
 #### itc-032: Management IT reports and dashboard filters
 - **Business requirement:** §8 Management dashboard; §12 AC10.

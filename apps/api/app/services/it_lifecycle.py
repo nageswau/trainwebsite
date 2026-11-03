@@ -1,4 +1,4 @@
-"""itc-031 (DEC-SCOPE-358; backlog §itc-031, PDF §3 student lifecycle) -- one lifecycle stage per IT enrolment, derived from the source
+"""itc-031 (DEC-SCOPE-359; backlog §itc-031, PDF §3 student lifecycle) -- one lifecycle stage per IT enrolment, derived from the source
 records on every read so it can never disagree with them (AC3). Nothing stores the current stage.
 
 Components (L2), each from its own record:

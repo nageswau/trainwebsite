@@ -1,9 +1,9 @@
 """itc-031 -- the unified IT student lifecycle: history table, override columns and the enrolment status CHECK.
 
-Revision ID: 0240_enrollment_lifecycle
-Revises: 0239_call_preference
+Revision ID: 0241_enrollment_lifecycle
+Revises: 0240_fee_reminders
 
-DEC-SCOPE-358 L4/L6/L9. `enrollment_lifecycle_history` holds the transitions `services/it_lifecycle.py` writes (the stage itself is never
+DEC-SCOPE-359 L4/L6/L9. `enrollment_lifecycle_history` holds the transitions `services/it_lifecycle.py` writes (the stage itself is never
 stored). `enrollments.lifecycle_override` (+ reason) holds the IT Admin's "not_placed"/"closed". `ck_enrollments_status` turns the free-text
 status into the six values in use: it is added NOT VALID and validated only when no row breaks it, so existing data is never rewritten and
 an unexpected legacy value still upgrades (new writes are checked either way). 0001 builds a fresh database from the current models, so
@@ -12,8 +12,8 @@ every object is created only when missing. Downgrade drops exactly what this add
 
 from alembic import op
 
-revision = "0240_enrollment_lifecycle"
-down_revision = "0239_call_preference"
+revision = "0241_enrollment_lifecycle"
+down_revision = "0240_fee_reminders"
 branch_labels = None
 depends_on = None
 

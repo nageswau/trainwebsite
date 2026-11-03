@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Browser, type Page } from "@playwright/test";
 
-// itc-031 (DEC-SCOPE-358): a fresh IT learner enrols (Fee pending); the IT Admin records a part payment (Partially paid) and then the
+// itc-031 (DEC-SCOPE-359): a fresh IT learner enrols (Fee pending); the IT Admin records a part payment (Partially paid) and then the
 // rest (Paid) -- each move appears on the student record's lifecycle card with its history, actor and cause (AC1, AC2, the "+" case).
 // A derived stage cannot be set by hand (Placed -> 409, the "-" case); the IT Admin sets Closed with a reason and clears it again. The
 // student sees their stage on their own record. A fresh student per run, so it repeats on one database.

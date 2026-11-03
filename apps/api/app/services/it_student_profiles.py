@@ -61,7 +61,7 @@ def _enrollment_out(enrollment: Enrollment, batch: Batch, program: Program, life
 
 async def read(db: AsyncSession, student: User, *, safe: bool = False) -> dict:
     """The page's shape; an unsaved profile reads as empty (`exists: false`). Enrolments newest first, with effective values and the
-    itc-031 lifecycle stage (`safe` for the student's own: DEC-SCOPE-358 L8).
+    itc-031 lifecycle stage (`safe` for the student's own: DEC-SCOPE-359 L8).
     `populate_existing`: after a save in the same session the rows still hold `func.now()` and pre-save values -- reload them."""
     profile = await db.get(ItStudentProfile, student.id, populate_existing=True)
     out = {field: getattr(profile, field, None) for field in FIELDS} | {"exists": profile is not None}

@@ -1,4 +1,4 @@
-"""itc-031 (DEC-SCOPE-358) -- the lifecycle over HTTP and from its writers: the 360's lifecycle read (linked counselor, IT Admin; scope 404,
+"""itc-031 (DEC-SCOPE-359) -- the lifecycle over HTTP and from its writers: the 360's lifecycle read (linked counselor, IT Admin; scope 404,
 other roles 403), the IT Admin's override (only Not placed / Closed, reason, audit, history), the enrolment payloads (staff full, student
 safe), the admin enrolment PATCH status check, and the history written by the fee, gateway, enrolment, HR, application and daily writers
 (AC1 the stage moves with its source record, AC2 history shows actor and time)."""

@@ -196,7 +196,7 @@ class Batch(Base, TimestampMixin):
     program = relationship("Program")
 
 
-# itc-031 (DEC-SCOPE-358 L9): the enrolment statuses in use (was free text). Migration 0240 repeats them (test_itc_031_migration).
+# itc-031 (DEC-SCOPE-359 L9): the enrolment statuses in use (was free text). Migration 0241 repeats them (test_itc_031_migration).
 ENROLLMENT_STATUSES = ("pending_consent", "active", "rejected", "withdrawn", "dropped", "completed")
 
 
@@ -215,7 +215,7 @@ class Enrollment(Base, TimestampMixin):
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     delivery_mode: Mapped[str | None] = mapped_column(String(30), nullable=True)
-    # itc-031 (DEC-SCOPE-358 L4): the only hand-set lifecycle facts -- "not_placed" or "closed" -- set by the IT Admin with a reason. The stage
+    # itc-031 (DEC-SCOPE-359 L4): the only hand-set lifecycle facts -- "not_placed" or "closed" -- set by the IT Admin with a reason. The stage
     # itself is never stored: services/it_lifecycle.py derives it from the source records on every read.
     lifecycle_override: Mapped[str | None] = mapped_column(String(20), nullable=True)
     lifecycle_override_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -227,7 +227,7 @@ class Enrollment(Base, TimestampMixin):
 
 
 class EnrollmentLifecycleHistory(Base):
-    """itc-031 (DEC-SCOPE-358 L6): append-only lifecycle transitions of an enrolment, written by `it_lifecycle.sync` when the derived stage
+    """itc-031 (DEC-SCOPE-359 L6): append-only lifecycle transitions of an enrolment, written by `it_lifecycle.sync` when the derived stage
     differs from the last row (`from_stage` NULL = the first row). `actor_user_id` NULL = the system. Never read back as the current stage."""
 
     __tablename__ = "enrollment_lifecycle_history"
@@ -2971,7 +2971,10 @@ PAYMENT_MODES = ("cash", "upi", "card", "bank_transfer", "cheque", "razorpay")
 
 class Payment(Base, TimestampMixin):
     __tablename__ = "payments"
-    __table_args__ = (CheckConstraint(_in("payment_mode", PAYMENT_MODES), name="ck_payments_payment_mode"),)
+    __table_args__ = (
+        CheckConstraint(_in("payment_mode", PAYMENT_MODES), name="ck_payments_payment_mode"),
+        Index("ix_payments_status_due_date", "status", "due_date"),  # itc-016 (0240): the daily fee-reminder sweep
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
     division: Mapped[str] = mapped_column(String(30), index=True)
@@ -3003,6 +3006,46 @@ class Payment(Base, TimestampMixin):
     @property
     def gross_amount(self) -> float:
         return float(self.amount) + float(self.discount_amount or 0)
+
+
+# itc-016 (DEC-SCOPE-358, migration 0240 repeats them): the fee-reminder schedule and what was sent. "Overdue" is derived (an owed fee
+# row whose due date is before today's IST date), never stored on the payment.
+FEE_REMINDER_KINDS = ("due_soon", "overdue")
+FEE_REMINDER_DEFAULTS = {"days_before": 3, "overdue_days": [1, 7, 14]}  # Q-16's recommended answer, NEEDS_CONFIRMATION
+
+
+class FeeReminderSetting(Base, TimestampMixin):
+    """itc-016 (F3): the IT Admin's schedule -- one row (`id = 1`); no row means `FEE_REMINDER_DEFAULTS`. `days_before` 0 and an empty
+    `overdue_days` switch their rules off."""
+
+    __tablename__ = "fee_reminder_settings"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_fee_reminder_settings_one_row"),
+        CheckConstraint("days_before BETWEEN 0 AND 30", name="ck_fee_reminder_settings_days_before"),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    days_before: Mapped[int] = mapped_column(Integer)
+    overdue_days: Mapped[list] = mapped_column(JSON, default=list)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class FeeReminderLog(Base):
+    """itc-016 (F5/F7): one row per reminder sent -- at most one per (installment, rule, IST day), so a rerun sends nothing twice."""
+
+    __tablename__ = "fee_reminder_log"
+    __table_args__ = (
+        UniqueConstraint("payment_id", "kind", "offset_days", "reminder_date", name="uq_fee_reminder_log_rule_day"),
+        CheckConstraint(_in("kind", FEE_REMINDER_KINDS), name="ck_fee_reminder_log_kind"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    payment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("payments.id"))
+    student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    kind: Mapped[str] = mapped_column(String(20))
+    offset_days: Mapped[int] = mapped_column(Integer)
+    reminder_date: Mapped[date] = mapped_column(Date)
+    due_date: Mapped[date] = mapped_column(Date)
+    counselor_notified: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Invoice(Base, TimestampMixin):

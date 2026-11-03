@@ -1,6 +1,6 @@
-// itc-031 (DEC-SCOPE-358): the derived IT student lifecycle -- GET /{counselor|admin}/it/students/{id}/lifecycle (the 360), PUT
+// itc-031 (DEC-SCOPE-359): the derived IT student lifecycle -- GET /{counselor|admin}/it/students/{id}/lifecycle (the 360), PUT
 // /admin/it/students/{id}/enrollments/{eid}/lifecycle-override (IT Admin: "not_placed" / "closed" with a reason, null clears). Labels
-// come from the API (itc-005 renames them there). API_CONTRACT §12JD.
+// come from the API (itc-005 renames them there). API_CONTRACT §12JE.
 
 export type LifecycleStage = { stage: string; stage_label: string };
 

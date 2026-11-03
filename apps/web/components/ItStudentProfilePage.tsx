@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
+import { FeeAccountCard, type FeeAccount } from "@/components/FeeAccountSummary";
 import ItLifecycleCard from "@/components/ItLifecycleCard";
 import ItStudentProfileForm from "@/components/ItStudentProfileForm";
 import PortalShell from "@/components/PortalShell";
@@ -74,6 +75,7 @@ export default async function ItStudentProfilePage({ portal, id }: { portal: key
         <div className="card">
           <ItStudentProfileForm initial={data} url={itStudentProfileUrl(portal, id)} enrollmentsUrl={itEnrollmentsUrl(portal, id)} />
         </div>
+        <StudentFeeCard enrollmentIds={data.enrollments.map((e) => e.id)} />
         <div style={{ marginTop: 16 }}>
           <StudentResumeCard url={studentResumesUrl(portal, id)} description="Upload a resume on the student's behalf. Each upload is a new version; earlier ones are kept." />
         </div>
@@ -83,7 +85,7 @@ export default async function ItStudentProfilePage({ portal, id }: { portal: key
   );
 }
 
-/** itc-031 (DEC-SCOPE-358): the derived lifecycle and its history; only the IT Admin's portal can set "Not placed" / "Closed". */
+/** itc-031 (DEC-SCOPE-359): the derived lifecycle and its history; only the IT Admin's portal can set "Not placed" / "Closed". */
 async function LifecycleSection({ portal, studentId }: { portal: keyof typeof PORTALS; studentId: string }) {
   let data: LifecycleResponse;
   try {
@@ -92,6 +94,28 @@ async function LifecycleSection({ portal, studentId }: { portal: keyof typeof PO
     return <div className="card" role="status" style={{ marginBottom: 16 }}>The lifecycle could not be loaded. Refresh the page to try again.</div>;
   }
   return <ItLifecycleCard initial={data} studentId={studentId} canOverride={portal === "admin"} />;
+}
+
+/** itc-016 (DEC-SCOPE-358 F7): each enrolment's fee account with its installments, overdue badges and reminders sent -- the itc-013 read
+ *  gate decides (the linked counselor, a `payments.view` holder in IT); a reader without access sees a plain note instead. */
+async function StudentFeeCard({ enrollmentIds }: { enrollmentIds: string[] }) {
+  let accounts: FeeAccount[];
+  try {
+    accounts = await Promise.all(enrollmentIds.map((id) => serverApi<FeeAccount>(`/api/v1/it/enrollments/${encodeURIComponent(id)}/fee-account`)));
+  } catch (e) {
+    const denied = e instanceof ApiError && e.status === 403;
+    return <div className="card" role="status" style={{ marginTop: 16 }}>{denied ? "You do not have access to fee accounts." : "The fee accounts could not be loaded. Refresh the page to try again."}</div>;
+  }
+  return (
+    <section className="card" aria-labelledby="student-fees-heading" style={{ marginTop: 16 }}>
+      <h3 id="student-fees-heading" style={{ fontSize: 18 }}>Fees and reminders</h3>
+      {accounts.length === 0 ? (
+        <p className="muted" style={{ margin: 0 }}>No enrolment yet, so no fee has been billed.</p>
+      ) : (
+        <div className="grid two">{accounts.map((a) => <FeeAccountCard key={a.enrollment_id} account={a} />)}</div>
+      )}
+    </section>
+  );
 }
 
 /** itc-027 (DEC-SCOPE-354 H7): where HR's resume review stands -- stage, owner, next action and screening date. Never HR's notes. */

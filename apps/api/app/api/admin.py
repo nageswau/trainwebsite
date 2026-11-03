@@ -1243,7 +1243,7 @@ async def enrollments(batch_id: UUID | None = None, user: User = Depends(ensure_
     if batch_id:
         stmt = stmt.where(Enrollment.batch_id == batch_id)
     rows = (await db.execute(stmt.order_by(Enrollment.created_at.desc()).limit(1000))).all()
-    lifecycle = await it_lifecycle.views_for(db, [e.id for e, _, _ in rows])  # itc-031 (DEC-SCOPE-358): the derived stage, batched
+    lifecycle = await it_lifecycle.views_for(db, [e.id for e, _, _ in rows])  # itc-031 (DEC-SCOPE-359): the derived stage, batched
     return [
         {
             "id": e.id,
@@ -1285,7 +1285,7 @@ async def update_enrollment(enrollment_id: UUID, payload: dict, user: User = Dep
     # back door to the same "silently proceed to active" outcome.
     if payload.get("status") == "active" and item.status == "rejected":
         raise HTTPException(409, "This enrolment was rejected and cannot be reactivated")
-    if "status" in payload and payload["status"] not in ENROLLMENT_STATUSES:  # itc-031 (DEC-SCOPE-358 L9): no longer free text
+    if "status" in payload and payload["status"] not in ENROLLMENT_STATUSES:  # itc-031 (DEC-SCOPE-359 L9): no longer free text
         raise RequestValidationError([{"type": "literal_error", "loc": ("body", "status"), "msg": f"Status must be one of: {', '.join(ENROLLMENT_STATUSES)}",
                                        "input": payload["status"]}])  # fmt: skip
     for key in ("status", "progress_percent", "slot_locked"):

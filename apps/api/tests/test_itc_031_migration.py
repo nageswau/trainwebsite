@@ -1,4 +1,4 @@
-"""itc-031 -- migration 0240_enrollment_lifecycle (DEC-SCOPE-358): the lifecycle history table, the enrolment override columns and the
+"""itc-031 -- migration 0241_enrollment_lifecycle (DEC-SCOPE-359): the lifecycle history table, the enrolment override columns and the
 enrolment status CHECK. Round trip in a throwaway database built from scratch (the upc-001 pattern). Plain tests: alembic/env.py calls
 asyncio.run()."""
 
@@ -15,11 +15,11 @@ from app.core.config import settings
 from app.models import ENROLLMENT_STATUSES, Enrollment, EnrollmentLifecycleHistory
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_itc_031_migration_0240", VERSIONS / "0240_enrollment_lifecycle.py")
+_spec = importlib.util.spec_from_file_location("_itc_031_migration_0241", VERSIONS / "0241_enrollment_lifecycle.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD = "0240_enrollment_lifecycle"
+HEAD = "0241_enrollment_lifecycle"
 BASE = _migration.down_revision
 TABLE = "SELECT to_regclass('enrollment_lifecycle_history') IS NOT NULL"
 COLUMNS = "SELECT column_name FROM information_schema.columns WHERE table_name = 'enrollments' AND column_name LIKE 'lifecycle_%' ORDER BY 1"

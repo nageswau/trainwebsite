@@ -173,7 +173,7 @@ async def sweep(db: AsyncSession, *, now: datetime) -> dict[str, int]:
         counts["stopped"] = result.rowcount
         await db.commit()
     logger.info("itc023_at_risk_done", extra={"extra_fields": {"at": now.isoformat(), **counts}})
-    try:  # itc-031 (DEC-SCOPE-358 L7): the lifecycle history catches up (flags just raised/cleared, start dates reached); never the counts
+    try:  # itc-031 (DEC-SCOPE-359 L7): the lifecycle history catches up (flags just raised/cleared, start dates reached); never the counts
         await it_lifecycle.sync_all(db)
     except Exception:
         await db.rollback()
