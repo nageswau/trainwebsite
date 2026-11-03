@@ -22,7 +22,7 @@ answers"; the calls below are the builder's, recorded as `DEC-SCOPE-362`, every 
 - **F3 (API path):** `/it/enrollments/{id}/…`, matching itc-013, rather than the backlog's `/accounts/…` (Q-17, the accounts route, is
   still open). The list is part of the fee account response (`adjustments`), so every reader of the account sees it.
 
-## Data (`fee_adjustments`, migration `0244_fee_adjustments`)
+## Data (`fee_adjustments`, migration `0244_fee_adjustments` on `0243_it_conversion`)
 | Column | Notes |
 |---|---|
 | id, enrollment_id (FK), created_at | |
@@ -32,7 +32,7 @@ answers"; the calls below are the builder's, recorded as `DEC-SCOPE-362`, every 
 | reason | required, ≤ 500, shown to the student |
 | payment_mode, reference | refund: mode required (offline modes, CHECK); reference optional |
 | payment_id, replacement_payment_id | reversal only; a partial unique index makes one reversal per payment |
-| document_no, file_url | credit note `CN-`, write-off `WO-`, refund `RF-` + year + hex; a reversal has none |
+| document_no | credit note `CN-`, write-off `WO-`, refund `RF-` + year + hex; a reversal has none |
 | approved_by_id | the recorder (Q-14) |
 
 Rows are never updated or deleted (no such endpoint). The grant `payments.refund` (new action `refund`) is seeded for `it_admin`.

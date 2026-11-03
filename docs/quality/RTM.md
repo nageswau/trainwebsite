@@ -1569,3 +1569,13 @@ half.
 | `itc-029-+` | After accounts records a payment, the counselor's 360 shows the new balance | `::test_a_recorded_payment_shows_on_the_counselors_next_read` |
 | `itc-029-−` | HR's 360 omits the fee section (Q-28) | `::test_hr_sees_only_its_sections_and_hr_resume_versions`, `::test_hr_without_the_attendance_grant_gets_no_attendance_figure`; `apps/web/tests/components/ItStudent360View.test.tsx`; e2e |
 | `itc-029-E` | A student with no enrolment yet | `::test_a_student_with_no_enrolment_yet`; `ItStudent360View.test.tsx`; e2e |
+| `itc-015` | Requirement: `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-015` → `DEC-SCOPE-362`; `API_CONTRACT.md` §12JH; RBAC §2.262; migration `0244_fee_adjustments` | Built |
+| `itc-015-AC1` | A refund increases credits/refunded and the balance reflects it | `apps/api/tests/test_itc_015_fee_adjustments.py::test_a_credit_note_then_a_refund_after_a_batch_change`, `::test_a_credit_note_lowers_the_owed_bills_latest_due_first_and_the_access_state_agrees`; e2e `itc-015-fee-adjustments.spec.ts` |
+| `itc-015-AC2` | Corrections never delete the original row | `::test_a_mistyped_payment_is_replaced_never_edited_or_deleted`, `::test_a_correction_is_refused_when_it_cannot_apply` |
+| `itc-015-AC3` | The audit shows old and new values | `::test_a_mistyped_payment_is_replaced_never_edited_or_deleted`, `::test_an_adjustment_is_audited_with_the_balance_before_and_after` |
+| `itc-015-+` | A partial refund of ₹5,000 after a batch change | `::test_a_credit_note_then_a_refund_after_a_batch_change`; e2e |
+| `itc-015-−` | Refunding more than the paid amount (the credit) returns 422 | `::test_an_invalid_adjustment_is_refused_and_changes_nothing`, `::test_a_refund_needs_a_credit_and_an_unbilled_enrolment_takes_no_adjustment` |
+| `itc-015-E` | A refund on a gateway payment (manual refund of the credit; no gateway correction); a refund after the certificate (not blocked) | `::test_a_correction_is_refused_when_it_cannot_apply` (gateway 409) |
+| `itc-015-RBAC` | `payments.refund` in IT only; document never another student's | `::test_adjusting_needs_the_payments_refund_grant_and_an_it_enrolment`, `::test_the_student_sees_their_refund_and_downloads_its_document` |
+| `itc-015-REV` | Refunds reduce IT revenue (Q-15) | `::test_a_refund_reduces_it_revenue_for_its_course`; `test_mgmt_005_auto_lines.py` |
+| `itc-015-UI` | Account shows refunded + adjustments with documents; admin forms; corrected payment explained | `apps/web/tests/components/itc015FeeAdjustments.test.tsx` |

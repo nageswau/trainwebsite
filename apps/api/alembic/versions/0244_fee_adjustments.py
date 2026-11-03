@@ -1,7 +1,7 @@
 """itc-015 -- the fee adjustments ledger (credit notes, write-offs, refunds, payment reversals) and the `payments.refund` grant.
 
 Revision ID: 0244_fee_adjustments
-Revises: 0241_enrollment_lifecycle
+Revises: 0243_it_conversion
 
 docs/superpowers/specs/2026-11-03-itc-015-fee-adjustments-design.md (DEC-SCOPE-362). One new table; no existing row changes. 0001 builds
 a fresh database from the current models, which already carry the table, so it is created only when missing (0222's idiom). KINDS /
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0244_fee_adjustments"
-down_revision = "0241_enrollment_lifecycle"
+down_revision = "0243_it_conversion"
 branch_labels = None
 depends_on = None
 

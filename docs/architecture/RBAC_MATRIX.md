@@ -3638,3 +3638,10 @@ counselor's lead 404 (tel-018 scope), an overseas counselor or any other role 40
 (GET): the student (own; another student's 404), the student's itc-003 IT counselor (unlinked 404), the IT Admin; PATCH `…/{item_id}`:
 the counselor or the IT Admin (the student 403). The welcome token is never returned; duplicate-email refusals name no account. Pinned
 by `apps/api/tests/test_itc_011_conversion.py`.
+
+### 2.262 Refunds, adjustments and payment correction *(added 2026-11-03 — `DEC-SCOPE-362`, itc-015)*
+
+New grant `payments.refund` (catalogue action `refund`), seeded for `it_admin` by migration 0244; super_admin holds it implicitly.
+Recording an adjustment or a correction needs it plus the IT division (or every division) — trainer, counselor, student and
+overseas_admin 403, anonymous 401. Reading an adjustment's document follows the itc-013 fee-account gate (another student's 404). No
+deletion or edit route exists. Pinned by `apps/api/tests/test_itc_015_fee_adjustments.py`.
