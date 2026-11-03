@@ -1,7 +1,7 @@
 """itc-033 -- the "phone calls" opt-out on notification preferences.
 
 Revision ID: 0239_call_preference
-Revises: 0236_it_at_risk
+Revises: 0237_hr_review_tasks
 
 DEC-SCOPE-357 C1. Two columns on `notification_preferences`: `calls_opt_out` (NOT NULL, default false -- every existing row and every user
 without a row reads as "calls allowed", so nothing changes on upgrade) and `calls_opted_out_at` (the consent evidence). 0001 builds a
@@ -11,7 +11,7 @@ fresh database from the current models, so each column is added only when missin
 from alembic import op
 
 revision = "0239_call_preference"
-down_revision = "0236_it_at_risk"
+down_revision = "0237_hr_review_tasks"
 branch_labels = None
 depends_on = None
 

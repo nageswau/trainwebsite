@@ -3588,6 +3588,15 @@ payer, or an admin of the payment's division (`super_admin` any); any other call
 caller's scope is not disclosed. Meeting links are never in the course payload (the Timetable's live-classes lock still gates them).
 Pinned by `apps/api/tests/test_itc_018_student_fee_summary.py`.
 
+### 2.254 HR resume-review tasks *(added 2026-11-03 — `DEC-SCOPE-354`, itc-027)*
+
+No grant change (role/division gates). `hr_team` (IT): reads and writes only the review tasks assigned to them (another task, or a
+student without one, is 404); the nehn-017 pool read is unchanged. `it_admin` (IT): lists every task, reassigns to an active HR user and
+sets the programme rules; reads the read-only card on any IT student. IT `counselor`: the read-only card of their itc-003 linked students
+(404 otherwise). `it_student`: only their own student-safe status. Every other role 403 on each route. Skill-gap notes, role preferences
+and the checklist are only in the owner's and IT Admin's task payload — never in counselor or student payloads or in any notification.
+Pinned by `apps/api/tests/test_itc_027_hr_reviews.py`.
+
 ### 2.255 Trainer dashboard widgets *(added 2026-11-03 — `DEC-SCOPE-355`, itc-024)*
 
 No grant change. `GET /portal/it/trainer/dashboard` stays `trainer` (IT) only (role/division gate; others 403). Every figure reads only
