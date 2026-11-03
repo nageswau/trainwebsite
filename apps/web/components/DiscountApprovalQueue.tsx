@@ -31,13 +31,14 @@ export default function DiscountApprovalQueue() {
   async function decide(item: DiscountRequest, verb: "approve" | "reject") {
     if (busy) return;
     const note = (notes[item.id] ?? "").trim();
-    if (verb === "reject" && !note) return setErrors({ ...errors, [item.id]: "Give a reason for rejecting." });
+    const showError = (message: string) => setErrors((current) => ({ ...current, [item.id]: message }));
+    if (verb === "reject" && !note) return showError("Give a reason for rejecting.");
     setBusy(item.id);
-    setErrors({ ...errors, [item.id]: "" });
+    showError("");
     setNotice("");
     const outcome = await sendJson(decideUrl(item.id, verb), "POST", note ? { note } : {});
     setBusy(null);
-    if (!outcome.ok) return setErrors({ ...errors, [item.id]: outcome.message });
+    if (!outcome.ok) return showError(outcome.message);
     setItems((current) => (current ?? []).filter((i) => i.id !== item.id));
     const name = item.student.full_name;
     setNotice(verb === "approve" ? `Discount approved for ${name}. The fee balance is updated.` : `Discount rejected for ${name}.`);
@@ -72,7 +73,7 @@ export default function DiscountApprovalQueue() {
                     <div className="field" style={{ marginBottom: 0, flex: "1 1 14rem" }}>
                       <label htmlFor={noteId}>Note for {name}</label>
                       <input id={noteId} type="text" maxLength={500} value={notes[i.id] ?? ""} disabled={busy === i.id}
-                        onChange={(e) => setNotes({ ...notes, [i.id]: e.target.value })} placeholder="Required to reject" />
+                        onChange={(e) => setNotes((current) => ({ ...current, [i.id]: e.target.value }))} placeholder="Required to reject" />
                     </div>
                     <button type="button" className="btn small" disabled={busy === i.id} aria-label={`Approve discount for ${name}`} onClick={() => decide(i, "approve")}>Approve</button>
                     <button type="button" className="btn secondary small" disabled={busy === i.id} aria-label={`Reject discount for ${name}`} onClick={() => decide(i, "reject")}>Reject</button>

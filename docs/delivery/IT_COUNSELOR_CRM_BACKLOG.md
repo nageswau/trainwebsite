@@ -470,6 +470,8 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** large. **Risk:** high.
 
 #### itc-014: Discount and waiver approval
+- **Status:** built as `DEC-SCOPE-363` (migration `0245_fee_discount_requests`, API §12JI, RBAC §2.263). Q-14 built with the
+  recommended answer (maker-checker; `discounts.approve`, default IT Admin; nehn-021's direct discount kept), `NEEDS_CONFIRMATION`.
 - **Business requirement:** §4 "discount/waiver approval"; §6 "Show approved fee amount and any approved discount".
 - **Existing behavior:** `discount_payment` (`admin.py:1237`) is applied directly by a `DISCOUNTS_ADD` holder, with a reason (nehn-021). There is no request-and-approve step.
 - **Expected behavior:** `NEEDS_CONFIRMATION` (Q-14). Either keep a direct grant-based discount (only labelling and the waiver type change), **or** add maker-checker: a counselor or accounts user requests, and an approver with `discounts.approve` approves. Only an approved discount changes payable.
