@@ -22,7 +22,7 @@ export type FeeAccount = {
   state: "not_billed" | "enrolled_pending_payment" | "partially_paid" | "fully_paid";
   // itc-018 (DEC-SCOPE-353): the oldest owed bill, null when nothing is owed; optional so an older response renders as before.
   next_due?: { amount: number; due_date: string | null } | null;
-  // itc-016 (DEC-SCOPE-357): the fee rows by due date, `overdue` derived by the API (IST), with the reminders sent; optional, as above.
+  // itc-016 (DEC-SCOPE-358): the fee rows by due date, `overdue` derived by the API (IST), with the reminders sent; optional, as above.
   installments?: FeeInstallment[];
 };
 

@@ -255,11 +255,14 @@ class NotificationPreferencesIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     whatsapp: StrictBool
     sms: StrictBool
+    # itc-033 (DEC-SCOPE-357 C2): optional so an older client's two-field body still works; omitted = unchanged
+    calls: StrictBool | None = None
 
 
 class NotificationPreferencesOut(BaseModel):
     whatsapp: bool
     sms: bool
+    calls: bool
     phone_valid: bool
 
 

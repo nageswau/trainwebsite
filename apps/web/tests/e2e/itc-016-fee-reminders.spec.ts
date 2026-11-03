@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Browser, type Page } from "@playwright/test";
 
-// itc-016 (DEC-SCOPE-357): an enrolled IT student's fee is split into a past-due installment and a later one; the student's fee summary
+// itc-016 (DEC-SCOPE-358): an enrolled IT student's fee is split into a past-due installment and a later one; the student's fee summary
 // badges the first Overdue (derived, IST) and the second Due, with no reminder yet (the 08:30 IST job sends them); the IT Admin sees the
 // same card on the student record and edits the reminder schedule on the Payments page (invalid input refused, saved value kept on
 // refresh, restored after). A fresh student per run, so it repeats on one database.

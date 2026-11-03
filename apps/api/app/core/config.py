@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     twilio_sms_from: str | None = None
     twilio_whatsapp_content_sid: str | None = None
     inbound_email_webhook_secret: str | None = None
+    # itc-033 (DEC-SCOPE-357 C5): a clamd daemon for resume uploads; unset = no scan ("where supported"). Set = fail closed.
+    clamav_host: str | None = None
+    clamav_port: int = 3310
+    clamav_timeout_seconds: float = 30.0
     # Real SMTP sending for School invite emails (Coordinator-issued Teacher/Principal/
     # Parent invites). Distinct from email_webhook_url above, which forwards a JSON payload
     # to an external notification service and is left in place for that architecture.

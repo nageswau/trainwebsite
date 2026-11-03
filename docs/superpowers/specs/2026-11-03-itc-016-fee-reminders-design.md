@@ -2,7 +2,7 @@
 
 **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-016 (classification `UNVERIFIED` PDF §6 "paid/unpaid/overdue status, and
 reminder history", §9 "Send reminders for upcoming/overdue installments"; owner-approved for build in waves by Q-01, 2026-11-01).
-**Decision:** `DEC-SCOPE-357`. **Dependencies:** itc-002 (merged, DEC-SCOPE-336), itc-003 (merged, DEC-SCOPE-338), itc-013 (merged,
+**Decision:** `DEC-SCOPE-358`. **Dependencies:** itc-002 (merged, DEC-SCOPE-336), itc-003 (merged, DEC-SCOPE-338), itc-013 (merged,
 DEC-SCOPE-346). Q-16 is open; built with the recommended answers below (owner: "proceed with recommended answers"), each
 `NEEDS_CONFIRMATION`.
 
@@ -10,7 +10,7 @@ DEC-SCOPE-346). Q-16 is open; built with the recommended answers below (owner: "
 
 | Class | Item |
 |---|---|
-| MUST CHANGE | `models.py` (+`FeeReminderSetting`, `FeeReminderLog`, payments `(status, due_date)` index); new migration `0238_fee_reminders`; new `services/fee_reminders.py` (settings, sweep); `services/fee_accounts.py` (+`installments` on each account, additive); `notifications/events.py` (+2 events); `worker.py` (`itc016-fee-reminders` beat); `api/fee_accounts.py` (+settings router) + `main.py`; FE `FeeAccountSummary.tsx` (installments + badge + history), `ItStudentProfilePage.tsx` (staff fee card), new `FeeReminderSettingsPanel.tsx`, `WorkflowPanel.tsx` (mount on IT Admin Payments) |
+| MUST CHANGE | `models.py` (+`FeeReminderSetting`, `FeeReminderLog`, payments `(status, due_date)` index); new migration `0240_fee_reminders`; new `services/fee_reminders.py` (settings, sweep); `services/fee_accounts.py` (+`installments` on each account, additive); `notifications/events.py` (+2 events); `worker.py` (`itc016-fee-reminders` beat); `api/fee_accounts.py` (+settings router) + `main.py`; FE `FeeAccountSummary.tsx` (installments + badge + history), `ItStudentProfilePage.tsx` (staff fee card), new `FeeReminderSettingsPanel.tsx`, `WorkflowPanel.tsx` (mount on IT Admin Payments) |
 | MAY CHANGE | `lib/` URL constant for the settings endpoint |
 | SHOULD NOT CHANGE | `Payment.status` values (no stored `overdue`); `student_access`; `accounts.py` dashboard's derived late; `record_payment`; `/payments/mine`; EMI endpoints; the itc-002 `notify` contract |
 | HIGH REGRESSION RISK | fee-account response consumers (itc-013/018 tests pin exact dicts — the new key is additive, tests that compare whole dicts must be checked); the event catalogue test (preview-safe text); the single alembic head (sibling itc-027 holds `0237`) |
@@ -56,11 +56,11 @@ Existing behaviour: nothing sets `status="overdue"`; installments are IT `enroll
 
 ## Plan (TDD, small tasks)
 
-1. RED `tests/test_itc_016_migration.py`, `tests/test_itc_016_fee_reminders.py` → migration `0238_fee_reminders` + models.
+1. RED `tests/test_itc_016_migration.py`, `tests/test_itc_016_fee_reminders.py` → migration `0240_fee_reminders` + models.
 2. Events, `services/fee_reminders.py` sweep + settings → GREEN AC1–AC6; worker task + beat.
 3. `fee_accounts.accounts` installments + history → AC7; settings router.
 4. FE (vitest RED/GREEN): `FeeAccountCard` installments, `FeeReminderSettingsPanel`, staff fee card on the record page.
-5. Playwright e2e; docs: DEC-SCOPE-357, API §12JC, RBAC §2.257, backlog status, RTM; graphify update.
+5. Playwright e2e; docs: DEC-SCOPE-358, API §12JD, RBAC §2.258, backlog status, RTM; graphify update.
 
 ## Phase 3 review notes
 

@@ -62,6 +62,12 @@ export default async function ItStudentProfilePage({ portal, id }: { portal: key
         <p><Link href={back}>← Back to {backLabel}</Link></p>
         <h1>Student record: {data.student.full_name}</h1>
         {data.student.student_code && <p className="muted">Student ID {data.student.student_code}</p>}
+        {/* itc-033 (DEC-SCOPE-357 C3): the student's own choice, set on their profile; staff can't change it */}
+        {data.student.calls_allowed === false && (
+          <p data-testid="calls-opt-out">
+            <span className="badge">No phone calls</span> The student has asked not to be called. Use email or in-app messages instead.
+          </p>
+        )}
         <StudentRiskCard studentId={data.student.id} />
         <div className="card">
           <ItStudentProfileForm initial={data} url={itStudentProfileUrl(portal, id)} enrollmentsUrl={itEnrollmentsUrl(portal, id)} />
@@ -76,7 +82,7 @@ export default async function ItStudentProfilePage({ portal, id }: { portal: key
   );
 }
 
-/** itc-016 (DEC-SCOPE-357 F7): each enrolment's fee account with its installments, overdue badges and reminders sent -- the itc-013 read
+/** itc-016 (DEC-SCOPE-358 F7): each enrolment's fee account with its installments, overdue badges and reminders sent -- the itc-013 read
  *  gate decides (the linked counselor, a `payments.view` holder in IT); a reader without access sees a plain note instead. */
 async function StudentFeeCard({ enrollmentIds }: { enrollmentIds: string[] }) {
   let accounts: FeeAccount[];

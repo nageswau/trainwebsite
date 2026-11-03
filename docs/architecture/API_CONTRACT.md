@@ -5241,9 +5241,22 @@ only (no shape change).
   read the same). 422 `"The batch filter applies to the trainer dashboard only"` — `batch` on any other role or section.
 - Panels (every portal payload): optional `empty` string, shown when `items` is empty.
 
-## 12JC. Overdue marking and fee reminders (itc-016) — addendum, 2026-11-03
+## 12JC. Call preference and resume malware scan (itc-033) — addendum, 2026-11-03
 
-`DEC-SCOPE-357`. Migration `0238_fee_reminders`. Additive.
+`DEC-SCOPE-357`. Migration `0239_call_preference`. Additive.
+
+- `GET /account/notification-preferences` — response gains `calls: bool` (true = phone calls allowed; default true).
+- `PUT /account/notification-preferences` — body `{whatsapp, sms, calls?}`; `calls` is an optional strict boolean (omitted = unchanged).
+  Other extra fields stay 422. Changing `calls` never needs a valid phone. Audit `notification_preference.update` before/after include
+  `calls`. The data-request export's `notification_preferences` gains `calls` and `calls_opted_out_at`.
+- `GET /counselor/it/students/{id}/profile`, `GET /admin/it/students/{id}/profile`, `GET /it/me/profile` — `student` gains
+  `calls_allowed: bool`.
+- `POST …/resumes` (itc-026, all portals) — with `CLAMAV_HOST` set: 422 `"The file failed a virus scan and was not uploaded"` (audit
+  `it.resume.scan_rejected`); 503 `"Virus scanning is unavailable; please try again later"` when the scanner gives no verdict. Nothing
+  is stored in either case. Unset: unchanged.
+## 12JD. Overdue marking and fee reminders (itc-016) — addendum, 2026-11-03
+
+`DEC-SCOPE-358`. Migration `0240_fee_reminders`. Additive.
 
 - `GET /it/enrollments/{id}/fee-account` and `GET /it/student/fee-accounts` (§12IR) — each account gains `installments: [{id,
   installment_no|null, amount, due_date|null, status: "pending"|"paid", overdue: bool, reminders: [{kind: "due_soon"|"overdue",

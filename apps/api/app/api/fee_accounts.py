@@ -19,7 +19,7 @@ from app.models import Enrollment, ItStudentCounselor, User
 from app.services import fee_accounts, fee_reminders, permissions
 
 router = APIRouter(prefix="/it", tags=["it-fee-accounts"])
-# itc-016 (DEC-SCOPE-357 F8): the fee-reminder schedule, IT Admin only. API_CONTRACT.md §12JC; RBAC_MATRIX.md §2.257.
+# itc-016 (DEC-SCOPE-358 F8): the fee-reminder schedule, IT Admin only. API_CONTRACT.md §12JD; RBAC_MATRIX.md §2.258.
 settings_router = APIRouter(prefix="/admin/it/fee-reminder-settings", tags=["it-fee-accounts"])
 
 NOT_FOUND = "Enrolment not found"

@@ -521,7 +521,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** high.
 
 #### itc-016: Overdue marking and fee reminders
-- **Status:** built as `DEC-SCOPE-357` (migration `0238_fee_reminders`, API §12JC, RBAC §2.257). Q-16 built with the recommended answers (3 days before; 1/7/14 after; derived overdue; IT Admin sets the schedule), `NEEDS_CONFIRMATION`; no holiday calendar (E).
+- **Status:** built as `DEC-SCOPE-358` (migration `0240_fee_reminders`, API §12JD, RBAC §2.258). Q-16 built with the recommended answers (3 days before; 1/7/14 after; derived overdue; IT Admin sets the schedule), `NEEDS_CONFIRMATION`; no holiday calendar (E).
 - **Business requirement:** §6 "paid/unpaid/overdue status, and reminder history"; §9 "Send reminders for upcoming/overdue installments".
 - **Existing behavior:** nothing sets `status="overdue"`. The accounts dashboard derives late from `due_date < today` (`accounts.py:98`). No reminder beat job and no reminder history exist.
 - **Expected behavior:** a daily beat job (`itc016-fee-reminders`, 08:30 IST):
@@ -1088,6 +1088,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **+/−/E:** per decision.
 - **Regression risks:** telecaller calling rules if call consent blocks calling.
 - **Complexity:** medium. **Risk:** medium.
+- **Status:** built as `DEC-SCOPE-357` (migration `0239_call_preference`, API §12JC, RBAC §2.257); design `docs/superpowers/specs/2026-11-03-itc-033-consent-retention-scan-design.md`. Calls opt-out on the profile (allowed by default), shown to the counselor and IT Admin; resume scan behind `CLAMAV_HOST` (fail closed); retention periods drafted in `docs/architecture/DATA_RETENTION_POLICY.md` (all `NEEDS_CONFIRMATION`, no purge job); lead do-not-call deferred.
 
 ---
 

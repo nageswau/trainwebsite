@@ -1,4 +1,4 @@
-"""itc-016 (DEC-SCOPE-357) -- overdue marking and fee reminders: the daily sweep (AC1-AC5), the IT Admin's schedule (AC6) and the
+"""itc-016 (DEC-SCOPE-358) -- overdue marking and fee reminders: the daily sweep (AC1-AC5), the IT Admin's schedule (AC6) and the
 installments with their reminder history on the itc-013 fee account (AC7). "Overdue" is derived (F1), never stored."""
 
 import datetime

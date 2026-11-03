@@ -8,7 +8,7 @@ beforeEach(() => {
   global.fetch = vi.fn();
 });
 
-const off = { whatsapp: false, sms: false, phone_valid: true };
+const off = { whatsapp: false, sms: false, calls: true, phone_valid: true };
 const save = () => fireEvent.click(screen.getByRole("button", { name: "Save notification settings" }));
 const ok = (body: object) => new Response(JSON.stringify(body), { status: 200 });
 
@@ -38,13 +38,13 @@ describe("NotificationPreferencesForm (ENH-014)", () => {
   });
 
   it("keeps a checked channel enabled so it can be turned off without a phone", () => {
-    render(<NotificationPreferencesForm initial={{ whatsapp: true, sms: false, phone_valid: false }} phone={null} />);
+    render(<NotificationPreferencesForm initial={{ whatsapp: true, sms: false, calls: true, phone_valid: false }} phone={null} />);
     expect(screen.getByRole("checkbox", { name: /^WhatsApp/ })).toBeEnabled();
     expect(screen.getByRole("checkbox", { name: /^SMS/ })).toBeDisabled();
   });
 
-  it("PUTs exactly the two booleans and announces success", async () => {
-    vi.mocked(global.fetch).mockResolvedValue(ok({ whatsapp: true, sms: false, phone_valid: true }));
+  it("PUTs exactly the three booleans and announces success", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(ok({ whatsapp: true, sms: false, calls: true, phone_valid: true }));
     render(<NotificationPreferencesForm initial={off} phone="+91 98765 43210" />);
     fireEvent.click(screen.getByRole("checkbox", { name: /^WhatsApp/ }));
     save();
@@ -52,7 +52,7 @@ describe("NotificationPreferencesForm (ENH-014)", () => {
     const [url, init] = vi.mocked(global.fetch).mock.calls[0];
     expect(url).toBe("/api/v1/account/notification-preferences");
     expect(init?.method).toBe("PUT");
-    expect(JSON.parse(init?.body as string)).toEqual({ whatsapp: true, sms: false });
+    expect(JSON.parse(init?.body as string)).toEqual({ whatsapp: true, sms: false, calls: true });
     await waitFor(() => expect(screen.getByRole("button", { name: "Save notification settings" })).toHaveFocus());
   });
 
@@ -107,7 +107,7 @@ describe("NotificationPreferencesForm (ENH-014)", () => {
   });
 
   it("keeps a saved-on channel enabled and focused while it is unchecked and re-checked without a valid phone", () => {
-    render(<NotificationPreferencesForm initial={{ whatsapp: true, sms: false, phone_valid: false }} phone={null} />);
+    render(<NotificationPreferencesForm initial={{ whatsapp: true, sms: false, calls: true, phone_valid: false }} phone={null} />);
     const whatsapp = screen.getByRole("checkbox", { name: /^WhatsApp/ });
     whatsapp.focus();
     fireEvent.click(whatsapp);

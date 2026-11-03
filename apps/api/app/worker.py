@@ -192,7 +192,7 @@ def flag_at_risk_students_task():
 
 @celery.task
 def send_fee_reminders_task():
-    """itc-016 (DEC-SCOPE-357 F6): daily at 08:30 IST via beat. Once per (installment, rule, IST day) (fee_reminder_log's unique key), so a
+    """itc-016 (DEC-SCOPE-358 F6): daily at 08:30 IST via beat. Once per (installment, rule, IST day) (fee_reminder_log's unique key), so a
     rerun or an overlapping run reminds nobody twice."""
     from app.services.fee_reminders import run_fee_reminders
 

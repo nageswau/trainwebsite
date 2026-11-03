@@ -68,7 +68,7 @@ describe("/account/profile page (ENH-007)", () => {
   });
 });
 
-const prefs = { whatsapp: true, sms: false, phone_valid: true };
+const prefs = { whatsapp: true, sms: false, calls: true, phone_valid: true };
 function byPath(overrides: { me?: unknown; prefs?: unknown | Error } = {}) {
   vi.mocked(serverApi).mockImplementation(async (path: string) => {
     if (path === "/api/v1/account/notification-preferences") {

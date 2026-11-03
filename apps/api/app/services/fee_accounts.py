@@ -14,7 +14,7 @@ in one grouped query (`balance_for`, fixed query count for list pages):
 `student_access` sums the same owed rows per student, so the account and the access state agree. Staff record an offline payment with
 `record_payment` (no commit): never more than the oldest owed bill, so an overpayment cannot be created; a part payment splits that bill.
 
-itc-016 (DEC-SCOPE-357): each account also lists its installments (the same rows) with a derived `overdue` and the reminders sent.
+itc-016 (DEC-SCOPE-358): each account also lists its installments (the same rows) with a derived `overdue` and the reminders sent.
 """
 
 import logging

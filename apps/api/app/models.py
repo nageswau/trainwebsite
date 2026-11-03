@@ -2946,7 +2946,7 @@ class Payment(Base, TimestampMixin):
     __tablename__ = "payments"
     __table_args__ = (
         CheckConstraint(_in("payment_mode", PAYMENT_MODES), name="ck_payments_payment_mode"),
-        Index("ix_payments_status_due_date", "status", "due_date"),  # itc-016 (0238): the daily fee-reminder sweep
+        Index("ix_payments_status_due_date", "status", "due_date"),  # itc-016 (0240): the daily fee-reminder sweep
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
@@ -2981,7 +2981,7 @@ class Payment(Base, TimestampMixin):
         return float(self.amount) + float(self.discount_amount or 0)
 
 
-# itc-016 (DEC-SCOPE-357, migration 0238 repeats them): the fee-reminder schedule and what was sent. "Overdue" is derived (an owed fee
+# itc-016 (DEC-SCOPE-358, migration 0240 repeats them): the fee-reminder schedule and what was sent. "Overdue" is derived (an owed fee
 # row whose due date is before today's IST date), never stored on the payment.
 FEE_REMINDER_KINDS = ("due_soon", "overdue")
 FEE_REMINDER_DEFAULTS = {"days_before": 3, "overdue_days": [1, 7, 14]}  # Q-16's recommended answer, NEEDS_CONFIRMATION
@@ -3725,6 +3725,9 @@ class NotificationPreference(Base, TimestampMixin):
     sms_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     whatsapp_opted_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sms_opted_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # itc-033 (DEC-SCOPE-357 C1): phone calls are allowed unless the user opts out (no row = allowed); the timestamp is the evidence
+    calls_opt_out: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    calls_opted_out_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class SupportTicket(Base, TimestampMixin):

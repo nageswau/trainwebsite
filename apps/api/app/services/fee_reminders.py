@@ -1,4 +1,4 @@
-"""itc-016 (DEC-SCOPE-357; backlog §itc-016, source §6/§9): the IT Admin's fee-reminder schedule and the daily reminder sweep.
+"""itc-016 (DEC-SCOPE-358; backlog §itc-016, source §6/§9): the IT Admin's fee-reminder schedule and the daily reminder sweep.
 
 - Schedule (F3): one `fee_reminder_settings` row (no row = `FEE_REMINDER_DEFAULTS`): remind `days_before` days before a due date (0 =
   off) and on each of `overdue_days` days after it (empty = off). A rule fires on the IST calendar day it names; a missed day is not caught

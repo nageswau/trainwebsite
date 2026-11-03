@@ -4,7 +4,7 @@ import { type FormEvent, useEffect, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
 
-// itc-016 (DEC-SCOPE-357 F3): the IT Admin's fee-reminder schedule. The daily 08:30 IST job reminds the student the given days before a
+// itc-016 (DEC-SCOPE-358 F3): the IT Admin's fee-reminder schedule. The daily 08:30 IST job reminds the student the given days before a
 // due date and on each given day after it (the linked counselor hears of overdue ones too). 0 / blank switches a rule off.
 export const FEE_REMINDER_SETTINGS_URL = "/api/v1/admin/it/fee-reminder-settings";
 type Schedule = { days_before: number; overdue_days: number[] };

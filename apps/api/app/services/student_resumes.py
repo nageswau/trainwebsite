@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.portfolio_certificates import HEADERS
 from app.models import STUDENT_RESUME_VISIBILITIES, AuditLog, StudentResume, StudentResumeSetting, User
-from app.services import hr_reviews, hr_students
+from app.services import hr_reviews, hr_students, malware_scan
 from app.services import it_student_profiles as profiles
 from app.services.audit_changes import audit_change
 from app.services.permissions import user_has_grant
@@ -32,6 +32,7 @@ EXTENSION = {PDF: "pdf", DOC: "doc", DOCX: "docx"}
 OLE2 = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
 STORAGE_PREFIX = "student-resumes"
 UPLOADED, DOWNLOADED, SETTINGS_UPDATED = "it.resume.upload", "it.resume.download", "it.resume.settings_update"
+SCAN_REJECTED = "it.resume.scan_rejected"  # itc-033 C5
 NOT_FOUND = "Resume version not found"
 ADMIN_ONLY = "Only the IT Admin can change the resume limit"
 
@@ -126,6 +127,24 @@ async def _checked(db: AsyncSession, file: UploadFile) -> tuple[int, str]:
     return size, content_type
 
 
+async def _scanned(db: AsyncSession, actor: User, student: User, file: UploadFile, size: int, content_type: str) -> None:
+    """itc-033 (DEC-SCOPE-357 C5): when a scanner is configured, nothing is stored until it says clean. Infected -> 422 with an audit row
+    (the signature name, never the file name); no verdict -> 503 (fail closed). No scanner configured -> no scan (itc-026 R2)."""
+    if not malware_scan.enabled():
+        return
+    try:
+        signature = await malware_scan.scan(file.file)
+    except malware_scan.ScanUnavailable:
+        raise HTTPException(503, "Virus scanning is unavailable; please try again later") from None
+    if signature is None:
+        return
+    db.add(AuditLog(user_id=actor.id, action=SCAN_REJECTED, entity_type="user", entity_id=str(student.id),
+                    metadata_json={"signature": signature, "content_type": content_type, "size_bytes": size, "role": actor.role}))  # fmt: skip
+    await db.commit()
+    logger.warning("student_resume_scan_rejected", extra={"extra_fields": {"actor_id": str(actor.id), "student_id": str(student.id)}})
+    raise HTTPException(422, "The file failed a virus scan and was not uploaded")
+
+
 def store(file: UploadFile, content_type: str) -> str:
     """A server-generated key (a random id, safe to log); the client never names a path."""
     key = f"{STORAGE_PREFIX}/{uuid4().hex}"
@@ -155,6 +174,7 @@ async def upload(db: AsyncSession, actor: User, student: User, file: UploadFile,
     if visibility not in STUDENT_RESUME_VISIBILITIES:
         raise HTTPException(422, "Visibility must be 'hr' or 'private'")
     size, content_type = await _checked(db, file)
+    await _scanned(db, actor, student, file, size, content_type)
     key = store(file, content_type)
     try:
         resume = StudentResume(

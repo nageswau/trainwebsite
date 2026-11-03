@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { FeeAccountCard, type FeeAccount } from "@/components/FeeAccountSummary";
 import FeeReminderSettingsPanel, { FEE_REMINDER_SETTINGS_URL } from "@/components/FeeReminderSettingsPanel";
 
-// itc-016 (DEC-SCOPE-357): each installment of the fee account carries a derived Overdue / Due / Paid badge and the reminders sent for
+// itc-016 (DEC-SCOPE-358): each installment of the fee account carries a derived Overdue / Due / Paid badge and the reminders sent for
 // it (AC8); the IT Admin edits the reminder schedule on the Payments page (F3).
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const ACCOUNT: FeeAccount = {

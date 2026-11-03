@@ -1,9 +1,9 @@
 """itc-016 -- the fee-reminder schedule, the reminder log and the sweep's payments index.
 
-Revision ID: 0238_fee_reminders
-Revises: 0237_hr_review_tasks
+Revision ID: 0240_fee_reminders
+Revises: 0239_call_preference
 
-docs/superpowers/specs/2026-11-03-itc-016-fee-reminders-design.md (DEC-SCOPE-357). Two new tables and one index on `payments`; no
+docs/superpowers/specs/2026-11-03-itc-016-fee-reminders-design.md (DEC-SCOPE-358). Two new tables and one index on `payments`; no
 existing row changes ("overdue" stays derived). 0001 builds a fresh database from the current models, which already carry them, so each
 step is guarded (0222's idiom). The downgrade drops the reminder history with the tables (it is a log, nothing references it).
 """
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0238_fee_reminders"
-down_revision = "0237_hr_review_tasks"
+revision = "0240_fee_reminders"
+down_revision = "0239_call_preference"
 branch_labels = None
 depends_on = None
 

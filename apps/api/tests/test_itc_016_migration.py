@@ -1,4 +1,4 @@
-"""itc-016 -- migration 0238_fee_reminders: chain, the CHECKs, the one-reminder-per-day unique key, the sweep index and a round trip, in a
+"""itc-016 -- migration 0240_fee_reminders: chain, the CHECKs, the one-reminder-per-day unique key, the sweep index and a round trip, in a
 throwaway database (the tel-001 pattern); a downgrade never runs against the shared test database."""
 
 import importlib.util
@@ -14,11 +14,11 @@ from app.core.config import settings
 from tests.test_tel_001_migration import _config, _sql
 
 VERSIONS = Path(__file__).resolve().parents[1] / "alembic" / "versions"
-_spec = importlib.util.spec_from_file_location("_itc_016_migration_0238", VERSIONS / "0238_fee_reminders.py")
+_spec = importlib.util.spec_from_file_location("_itc_016_migration_0240", VERSIONS / "0240_fee_reminders.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = _migration.down_revision, "0238_fee_reminders"
+BASE, HEAD = _migration.down_revision, "0240_fee_reminders"
 TABLES = "SELECT table_name FROM information_schema.tables WHERE table_name IN ('fee_reminder_log', 'fee_reminder_settings') ORDER BY 1"
 INDEX = "SELECT indexdef FROM pg_indexes WHERE indexname = 'ix_payments_status_due_date'"
 
@@ -37,7 +37,7 @@ def isolated_db():
     _sql(original, f'CREATE DATABASE "{name}"', autocommit=True)
     try:
         settings.database_url = url
-        command.upgrade(cfg, HEAD)  # 0001's create_all already holds today's shape: 0238 must be a no-op on top of it
+        command.upgrade(cfg, HEAD)  # 0001's create_all already holds today's shape: 0240 must be a no-op on top of it
         yield {"cfg": cfg, "url": url}
     finally:
         settings.database_url = original
