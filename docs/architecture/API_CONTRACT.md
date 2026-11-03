@@ -5384,3 +5384,19 @@ full_name} | null, decided_at, decision_note, own}` (`own`: the caller made it).
   amount, reason, payment_mode, reference, document_no, created_at}]`; `credits` now counts credit notes and write-offs. A corrected
   payment reads `status: "reversed"` in `/payments/mine`; a bill a credit covered whole reads `waived`.
 - `GET /management/ledger` (`include=auto`) — a new automatic `source: "fee_refund"` line (IT income, negative amount).
+
+## 12JM. IT counselor dashboard (itc-030) — addendum, 2026-11-03
+
+`DEC-SCOPE-367`. No migration. Additive (no existing contract changes; the portal payload of `/portal/it/counselor/dashboard` is
+unchanged).
+
+- `GET /counselor/it/dashboard?program=&batch=&from=&to=&stage=&owner=` — an IT counselor (their own book) or the IT Admin (every IT
+  counselor's; `owner` narrows to one). `Cache-Control: private, no-store`. 200 `{filters, options: {programs, batches (with program),
+  stages, owners (IT Admin only, else [])}, today, widgets: {assigned_leads, follow_ups (+overdue), pipeline {count, stages:[{stage,
+  label, count}]}, conversions, enrolled_students, outstanding_fees (+total), at_risk, pending_hr, ready_to_convert}}`; a list widget is
+  `{count, more, items: [{id, label, detail, date, overdue, href}]}` with at most 10 items and `count` the full count.
+  Refusals: anyone else 403 "Only an IT counselor or the IT Admin has this dashboard"; anonymous 401; 422 "Unknown filter value" (a
+  non-UUID or unknown course/batch, an unknown stage, a malformed date), "The start date must be on or before the end date", "The batch
+  is not in that course", "The owner filter is for the IT Admin" (a counselor sending `owner`), "Choose an IT counselor" (an owner
+  that is not an IT counselor).
+- `GET /portal/it/admin/counselor-dashboard` — IT Admin header-only section (the page's board reads the endpoint above).
