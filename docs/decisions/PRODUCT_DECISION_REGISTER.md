@@ -11278,3 +11278,24 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   shown, no contact details.
 - **Numbering:** migration `0248_accounts_grants`; API §12JN; RBAC §2.268.
 - **Feature ID authorized:** `itc-017`. **Status:** built on `worktree-itc-017`.
+
+### DEC-SCOPE-369 — Management IT reports and dashboard filters (`itc-032`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-032` (PDF §8 Management dashboard, §12 AC10; PDF classified
+  `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-01: all phases, built in waves). Dependencies itc-013, itc-017,
+  itc-023, itc-027, itc-031 (and itc-005) are merged. The owner said to proceed with the recommended answers, so R1–R6 below are **the
+  builder's calls (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-03-itc-032-management-it-reports-design.md`.
+- **Behaviour:** six read-only IT reports — lead funnel by course and source, conversions by course, revenue / collections / outstanding,
+  attendance and completion, placement outcomes, team activity — each with the same five filters (course, batch, owner, date range,
+  status), a written definition for every figure, totals that equal the sum of the groups and of the drill-down rows (AC1), and an
+  injection-safe CSV of the rows (audited `management.it_reports.export`, filters only).
+- **Builder's calls:** R1 two cohorts — IT leads (not merged) created in the range; IT enrolments (seat taken) enrolled in the range —
+  plus activity events at a time in the range; the funnel is the cohort's current-stage distribution. R2 one rule per filter: course
+  through the lead's product / the enrolment's batch; a batch narrows lead reports to its course; owner = lead owner / event actor /
+  the student's IT counselor; status = a lead stage on lead reports, the itc-031 lifecycle stage on enrolment reports (the other family →
+  422); range defaults to this IST month, at most 366 days (a financial year or a range across 31 March counts whole). R3 the figure
+  definitions in the design (Appendix B where it speaks). R4 operational reports: partner, super_admin, IT Admin; revenue: partner or an
+  itc-017 accounts reader; the accountant sees Revenue only. R5 CSV ≤ 10,000 rows through `_safe_cell`. R6 `/management/it-reports` and
+  `/it/admin/management-reports`. No student or lead names, emails or phones (mgmt-007 IR11 precedent).
+- **Numbering:** no migration; API §12JO; RBAC §2.269.
+- **Feature ID authorized:** `itc-032`. **Status:** built on `feature/itc-032`.

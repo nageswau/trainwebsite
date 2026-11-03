@@ -1081,6 +1081,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **+/−/E:** a date range spanning a fiscal year.
 - **Regression risks:** the `test_mgmt_*` tests.
 - **Complexity:** medium. **Risk:** medium.
+- **Status:** built as `DEC-SCOPE-369` (no migration, API §12JO, RBAC §2.269); design `docs/superpowers/specs/2026-11-03-itc-032-management-it-reports-design.md`. Six tabs over two cohorts (IT leads
+  created, IT enrolments enrolled in the range) plus team activity, the five filters by one rule each, definitions on the page, totals = Σ
+  groups = Σ rows, audited injection-safe CSV; the accountant reads Revenue only. R1–R6 calls `NEEDS_CONFIRMATION`.
 
 #### itc-033: Consent, retention and malware-scan decisions
 - **Business requirement:** §10 "Consent and communication preferences for calls, email, SMS, and WhatsApp"; "Backup and recovery process, retention rules"; "follow applicable Indian privacy and data-protection requirements" (DPDP Act 2023); §5 "scan uploads for malware where supported".
