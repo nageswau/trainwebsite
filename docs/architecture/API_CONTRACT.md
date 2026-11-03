@@ -5211,3 +5211,18 @@ a rollback sends nothing).
 - 422 `"Choose one of your batches"` — `batch` not a UUID, or not a batch the trainer teaches (another trainer's and a non-existent id
   read the same). 422 `"The batch filter applies to the trainer dashboard only"` — `batch` on any other role or section.
 - Panels (every portal payload): optional `empty` string, shown when `items` is empty.
+
+## 12JC. Overdue marking and fee reminders (itc-016) — addendum, 2026-11-03
+
+`DEC-SCOPE-357`. Migration `0238_fee_reminders`. Additive.
+
+- `GET /it/enrollments/{id}/fee-account` and `GET /it/student/fee-accounts` (§12IR) — each account gains `installments: [{id,
+  installment_no|null, amount, due_date|null, status: "pending"|"paid", overdue: bool, reminders: [{kind: "due_soon"|"overdue",
+  offset_days, sent_on}]}]`, the fee rows in `record_payment`'s order. `overdue` = pending and `due_date` before today's IST date.
+  `next_due` (§12IY) is unchanged (the first pending installment). Same readers and errors as §12IR.
+- `GET /admin/it/fee-reminder-settings` → `{days_before, overdue_days}` (no row = `{3, [1, 7, 14]}`). `PUT` with the same body
+  (both required): `days_before` 0–30 (0 = off), `overdue_days` ≤ 6 integers 1–90 (empty = off), de-duplicated and sorted in the
+  response; 422 otherwise. IT Admin (IT) only: 403 for every other role, 401 signed out. Audited `it.fee_reminders.settings_update`.
+- Beat `itc016-fee-reminders` (03:00 UTC = 08:30 IST) → notifications `it.fee.payment_due` / `it.fee.payment_overdue` (student,
+  `action_url` `/it/student/fees`) and `it.fee.student_overdue` (linked IT counselor, `action_url` the student record); entity
+  `payment`. No amount in any notice.

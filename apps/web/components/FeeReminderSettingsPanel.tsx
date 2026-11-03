@@ -20,9 +20,14 @@ function parseDays(text: string): number[] | null {
   return days.length <= 6 && days.every((d) => d >= 1 && d <= 90) ? days : null;
 }
 
+/** [1] -> "1 day", [1, 7, 14] -> "1, 7 and 14 days" (QA16-01). */
+function dayList(days: number[]) {
+  const list = days.length > 1 ? `${days.slice(0, -1).join(", ")} and ${days[days.length - 1]}` : String(days[0]);
+  return `${list} day${days.length === 1 && days[0] === 1 ? "" : "s"}`;
+}
+
 function summary(s: Schedule) {
-  const rules = [s.days_before ? `${s.days_before} day${s.days_before === 1 ? "" : "s"} before the due date` : null,
-    s.overdue_days.length ? `${s.overdue_days.join(", ")} day(s) after it` : null].filter(Boolean);  // prettier-ignore
+  const rules = [s.days_before ? `${dayList([s.days_before])} before the due date` : null, s.overdue_days.length ? `${dayList(s.overdue_days)} after it` : null].filter(Boolean);
   return rules.length ? `Now: ${rules.join(" and ")}.` : "Reminders are off.";
 }
 

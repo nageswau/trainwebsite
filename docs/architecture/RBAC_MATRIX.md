@@ -3593,3 +3593,10 @@ Pinned by `apps/api/tests/test_itc_018_student_fee_summary.py`.
 No grant change. `GET /portal/it/trainer/dashboard` stays `trainer` (IT) only (role/division gate; others 403). Every figure reads only
 batches with `trainer_id` = the caller; the `batch` filter accepts only those (another trainer's batch is a 422 indistinguishable
 from an unknown id). Pinned by `apps/api/tests/test_itc_024_trainer_dashboard.py`.
+
+### 2.257 Fee reminders *(added 2026-11-03 — `DEC-SCOPE-357`, itc-016)*
+
+No grant change. `GET/PUT /admin/it/fee-reminder-settings` are `it_admin` (IT) only (role/division gate; others 403). The reminder
+history rides the itc-013 fee-account read gate (§2.246): the student their own, the linked IT counselor, a `payments.view` holder in
+IT; another student's account stays 404. The daily job is a system task (no caller). Pinned by
+`apps/api/tests/test_itc_016_fee_reminders.py`.

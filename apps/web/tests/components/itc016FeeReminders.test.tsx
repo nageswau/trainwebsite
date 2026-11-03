@@ -63,6 +63,7 @@ describe("Fee reminder schedule (itc-016)", () => {
     expect(url).toBe(FEE_REMINDER_SETTINGS_URL);
     expect(JSON.parse(String(init?.body))).toEqual({ days_before: 5, overdue_days: [2, 10] });
     expect(screen.getByLabelText("Days after the due date")).toHaveValue("2, 10");
+    expect(screen.getByText("Now: 5 days before the due date and 2 and 10 days after it.")).toBeInTheDocument();
   });
 
   it("refuses bad values before sending", async () => {

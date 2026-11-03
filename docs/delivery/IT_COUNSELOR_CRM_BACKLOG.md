@@ -521,6 +521,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** high.
 
 #### itc-016: Overdue marking and fee reminders
+- **Status:** built as `DEC-SCOPE-357` (migration `0238_fee_reminders`, API §12JC, RBAC §2.257). Q-16 built with the recommended answers (3 days before; 1/7/14 after; derived overdue; IT Admin sets the schedule), `NEEDS_CONFIRMATION`; no holiday calendar (E).
 - **Business requirement:** §6 "paid/unpaid/overdue status, and reminder history"; §9 "Send reminders for upcoming/overdue installments".
 - **Existing behavior:** nothing sets `status="overdue"`. The accounts dashboard derives late from `due_date < today` (`accounts.py:98`). No reminder beat job and no reminder history exist.
 - **Expected behavior:** a daily beat job (`itc016-fee-reminders`, 08:30 IST):
