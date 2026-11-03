@@ -11257,3 +11257,24 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   enrolment. C6 Q-29 verified: the IT counselor nav has no overseas Tasks link (only the shared Management tasks page) — no change.
 - **Numbering:** no migration; API §12JM; RBAC §2.267 (365/366 left to in-flight itc-022/itc-017).
 - **Feature ID authorized:** `itc-030`. **Status:** built on `worktree-itc-030`.
+### DEC-SCOPE-368 — Accounts role, workspace and collection reports (`itc-017`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-017` (PDF §2 Accounts/Finance, §8 Accounts dashboard, §11 Accounts
+  workspace, §12 AC10; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-01: all phases, built in waves).
+  Dependencies itc-013 (`DEC-SCOPE-346`), itc-015 (`DEC-SCOPE-364`) and itc-016 (`DEC-SCOPE-358`) are merged. The owner said to proceed
+  with the recommended answers, so Q-17 and F1–F9 below are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-03-itc-017-accounts-workspace-design.md`.
+- **Behaviour:** an IT accounts workspace with five read-only reports over IT enrolment fees — collections by IST day / month / course,
+  outstanding per active enrolment (with the overdue part and a per-course summary), overdue installments (with reminders sent), the
+  receipts register and refunds & adjustments — each filtered by course, batch, date range and status, paginated, and exported as
+  injection-safe CSV (every export audited `it.accounts.export`, filters only). Recording payments, refunds and corrections stays on the
+  student's fee account (itc-013/015).
+- **Builder's calls:** F1 (Q-17) "Accounts" is the existing global `accountant`; migration seeds `payments.view`, `payments.add`,
+  `payments.refund` for it (not `discounts.*`). F2 (Q-17) routes `/it/admin/accounts` (IT Admin) and `/management/it-accounts` (finance
+  tier), both hidden without `payments.view`. F3 readers: a `payments.view` holder in IT / every division; anyone else 403. F4 a
+  collection is a paid/succeeded IT enrolment-fee row dated on the IST day of `paid_at`; a reversed payment is not one; refunds are not
+  netted. F5 outstanding = Σ positive `fee_accounts.balance_for` balances of `active` enrolments. F6 date range defaults to this IST month,
+  at most 366 days. F7 CSV up to 10,000 rows through `_safe_cell`. F8 index `ix_payments_paid_at`. F9 student names and Student IDs are
+  shown, no contact details.
+- **Numbering:** migration `0248_accounts_grants`; API §12JN; RBAC §2.268.
+- **Feature ID authorized:** `itc-017`. **Status:** built on `worktree-itc-017`.

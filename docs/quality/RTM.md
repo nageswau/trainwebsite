@@ -1593,3 +1593,9 @@ half.
 | `itc-030-ADMIN` | The IT Admin sees all counselors with an owner filter | `::test_the_it_admin_sees_every_counselor_and_narrows_by_owner`, `::test_an_owner_who_is_not_an_it_counselor_is_422`; e2e |
 | `itc-030-PERF` | Fixed query count | `::test_the_query_count_is_fixed_whatever_the_book` |
 | `itc-030-UI` | Board, filters (address), 422 fallback, error card, phone layout | `apps/web/tests/components/ItCounselorDashboard.test.tsx`, `PortalPage.counselorDashboard.test.tsx`; e2e |
+| `itc-017` | Requirement: `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-017` → `DEC-SCOPE-368`; `API_CONTRACT.md` §12JN; RBAC §2.268; migration `0248_accounts_grants` | Built |
+| `itc-017-AC1` | Collections by day equal the confirmed payments of that IST day | `apps/api/tests/test_itc_017_accounts.py::test_collections_by_day_are_the_confirmed_payments_of_each_ist_day`; e2e `itc-017-accounts.spec.ts` |
+| `itc-017-AC2` | Outstanding equals the sum of balances | `::test_outstanding_is_the_sum_of_positive_balances_of_active_enrolments` |
+| `itc-017-AC3` | Filters work (course, batch, dates, status) | `::test_filters_are_validated_with_plain_messages`, `::test_collections_by_month_and_by_course`, `::test_the_adjustments_list_shows_credit_notes_and_refunds_with_a_kind_filter`; `ItAccountsWorkspace.test.tsx` |
+| `itc-017-AC4` | The export is injection-safe | `::test_the_export_is_csv_injection_safe_and_audited` |
+| `itc-017-NEG` | A counselor opening the workspace gets 403 | `::test_anyone_without_it_payments_view_gets_403` |

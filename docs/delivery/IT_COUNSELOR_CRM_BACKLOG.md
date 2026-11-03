@@ -564,6 +564,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** low.
 
 #### itc-017: Accounts role, workspace and collection reports
+- **Status:** built as `DEC-SCOPE-368` (migration `0248_accounts_grants`, API §12JN, RBAC §2.268); design
+  `docs/superpowers/specs/2026-11-03-itc-017-accounts-workspace-design.md`. Q-17 built with the recommended answer (the global
+  `accountant` with default IT payment grants; routes `/it/admin/accounts` and `/management/it-accounts`), `NEEDS_CONFIRMATION`.
 - **Business requirement:** §2 Accounts/Finance; §8 Accounts dashboard; §11 Accounts workspace.
 - **Existing behavior:**
   - The `accountant` role exists (`rbac.py:64`) but has no default payment grants (a super admin must grant them).

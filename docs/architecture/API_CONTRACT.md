@@ -5400,3 +5400,19 @@ unchanged).
   is not in that course", "The owner filter is for the IT Admin" (a counselor sending `owner`), "Choose an IT counselor" (an owner
   that is not an IT counselor).
 - `GET /portal/it/admin/counselor-dashboard` — IT Admin header-only section (the page's board reads the endpoint above).
+## 12JN. IT accounts workspace reports (itc-017) — addendum, 2026-11-03
+
+`DEC-SCOPE-368`. Migration `0248_accounts_grants`. Additive; read-only.
+
+- `GET /it/accounts/reports/{report}` — `report` ∈ `collections | outstanding | overdue | receipts | adjustments` (else 404). Gate:
+  `payments.view` in the IT division or every division (it_admin, accountant, super_admin); anyone else 403 "You do not have access to
+  IT accounts". Query: `program_id?`, `batch_id?` (unknown 422 "Choose a course/batch from the list"; a batch outside the course 422),
+  `date_from?`/`date_to?` (IST days; default this month to today; from after to 422; over 366 days 422; used by collections, receipts,
+  adjustments), `group` (`day | month | course`, collections), `mode` (cash, upi, card, bank_transfer, cheque, razorpay; collections,
+  receipts), `kind` (credit_note, write_off, refund, reversal; adjustments), `state` (`enrolled_pending_payment | partially_paid |
+  overdue`; outstanding), `limit` 1–200 (default 50), `offset` ≥ 0. 200 `{report, items, total, limit, offset, totals, filters,
+  courses: [{id, title}], batches: [{id, name, program_id}]}` (+ `by_course` on outstanding). `totals` cover the whole filtered list:
+  collections `{payments, amount}`; outstanding `{enrolments, balance, overdue_amount}`; overdue `{installments, amount}`; receipts
+  `{receipts, amount}` (a reversed payment's receipt is listed, not summed); adjustments `{count, credit_note, write_off, refund, reversal}`.
+- `GET /it/accounts/reports/{report}/export` — same gate and filters; `text/csv` attachment `it-<report>-<IST date>.csv` with every
+  matching row (over 10,000 → 422). Text cells neutralise formula prefixes. Audited `it.accounts.export` `{report, filters, rows}`.

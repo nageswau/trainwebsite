@@ -3668,3 +3668,9 @@ No new grant. `GET /counselor/it/dashboard`: role `counselor` in division `it` r
 linked to them — the request names no lead or student, so there is nothing to tamper with; `owner` is 422 for them); `it_admin` in
 `it` reads every IT counselor's book and may narrow by `owner`. An overseas counselor, trainer, HR, student or any other role 403;
 anonymous 401. Read only, not audited. Pinned by `apps/api/tests/test_itc_030_it_counselor_dashboard.py`.
+### 2.268 IT accounts workspace *(added 2026-11-03 — `DEC-SCOPE-368`, itc-017)*
+
+The global `accountant` gains default grants `payments.view`, `payments.add`, `payments.refund` (migration 0248; a super admin may still
+remove them). The `/it/accounts/reports/*` routes need `payments.view` and the IT division or every division: it_admin, accountant and
+super_admin read; counselor, trainer, student and overseas_admin 403; anonymous 401. The accountant still never sees university
+commission (unchanged). Pinned by `apps/api/tests/test_itc_017_accounts.py` and `test_itc_017_migration.py`.
