@@ -2282,6 +2282,46 @@ class ItStudentCounselor(Base, TimestampMixin):
     assigned_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+class ItOnboardingTemplateItem(Base, TimestampMixin):
+    """itc-011 (C1, Q-09): one item of the IT onboarding checklist template; the active items, in `position` order, are copied into a new
+    enrolment's checklist at conversion. Seeded by migration 0243; never deleted (deactivate instead)."""
+
+    __tablename__ = "it_onboarding_template_items"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    label: Mapped[str] = mapped_column(String(200))
+    position: Mapped[int] = mapped_column(Integer)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+
+
+class ItOnboardingItem(Base, TimestampMixin):
+    """itc-011 (C1): one item of an enrolment's onboarding checklist -- a copy of a template item (a later template edit never changes it).
+    Ticked by the student's IT counselor or the IT Admin; `done_at` null = still to do."""
+
+    __tablename__ = "it_onboarding_items"
+    __table_args__ = (Index("ix_it_onboarding_items_enrollment", "enrollment_id", "position"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    enrollment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enrollments.id", ondelete="CASCADE"))
+    label: Mapped[str] = mapped_column(String(200))
+    position: Mapped[int] = mapped_column(Integer)
+    done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    done_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class ItConversion(Base, TimestampMixin):
+    """itc-011 (C8): one completed one-step IT conversion of a lead, keyed by the caller's `Idempotency-Key` -- a retry with the same key
+    on the same lead answers from this row and creates nothing."""
+
+    __tablename__ = "it_conversions"
+    __table_args__ = (UniqueConstraint("lead_id", "idempotency_key", name="uq_it_conversions_lead_key"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    lead_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enquiries.id"))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    student_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    enrollment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enrollments.id"))
+    created_account: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
 class ItStudentNote(Base, TimestampMixin):
     """itc-028 (DEC-SCOPE-351, N1): a staff note on an IT student (counselor, HR, trainer or IT Admin). Append-only; `internal` until its
     author or the IT Admin shares it (`services/it_student_notes.py`). Only `student` notes reach the student (GET /it/me/updates).

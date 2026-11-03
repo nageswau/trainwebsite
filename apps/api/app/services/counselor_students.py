@@ -119,16 +119,18 @@ async def _lock_counselor(db: AsyncSession, counselor_id: UUID) -> None:
     await db.execute(select(User.id).where(User.id == counselor_id).with_for_update())
 
 
-async def create_student(db: AsyncSession, counselor: User, payload: CounselorStudentCreate, *, registration_source: str = "counselor_walk_in") -> tuple[User, IssuedWelcome]:
+async def create_student(db: AsyncSession, counselor: User, payload: CounselorStudentCreate, *, registration_source: str = "counselor_walk_in",
+                         division: str = "overseas") -> tuple[User, IssuedWelcome]:
     """No commit (ccrm-008's lead conversion passes `lead_conversion`). The counselor's own row is locked first, so one counselor's creates run one at a time and the budget holds under
-    concurrency (lock order: counselor -> new user -> tokens, as ENH-003 Re-send)."""
+    concurrency (lock order: counselor -> new user -> tokens, as ENH-003 Re-send). itc-011: `division="it"` makes an IT student (the
+    itc-003 counselor link is the lead link's, so no overseas counselor row)."""
     counselor_id = counselor.id  # a plain value: a rollback below expires the ORM objects
     await _lock_counselor(db, counselor_id)
     await _enforce_budget(db, counselor_id)
     if await db.scalar(select(User.id).where(User.email == payload.email)):
         await _reject_existing_email(db, counselor_id)
     student = User(
-        email=payload.email, password_hash=unusable_password_hash(), full_name=payload.full_name, role="overseas_student", division="overseas",
+        email=payload.email, password_hash=unusable_password_hash(), full_name=payload.full_name, role=f"{division}_student", division=division,
         phone=payload.phone, active=True, email_verified=False, student_code=await unique_student_code(db, User.student_code, AgentStudent.student_code),
         profile={"registration_source": registration_source},
     )  # fmt: skip
@@ -137,8 +139,9 @@ async def create_student(db: AsyncSession, counselor: User, payload: CounselorSt
         await flush_unique_email(db)  # another request took the address since the check: rolled back, then the same audited 409
     except HTTPException:
         await _reject_existing_email(db, counselor_id)
-    db.add(UserRoleAssignment(user_id=student.id, division="overseas", role="overseas_student", is_active=True, assigned_by_user_id=counselor_id, approval_status="approved"))
-    db.add(OverseasStudentCounselor(student_user_id=student.id, counselor_user_id=counselor_id, assigned_by_user_id=counselor_id))
+    db.add(UserRoleAssignment(user_id=student.id, division=division, role=student.role, is_active=True, assigned_by_user_id=counselor_id, approval_status="approved"))
+    if division == "overseas":
+        db.add(OverseasStudentCounselor(student_user_id=student.id, counselor_user_id=counselor_id, assigned_by_user_id=counselor_id))
     issued = await issue_welcome_token(db, user=student, issued_by=counselor)
     db.add(AuditLog(user_id=counselor_id, action=CREATED, entity_type="user", entity_id=str(student.id), outcome="created", metadata_json={"student_code": student.student_code}))
     return student, issued

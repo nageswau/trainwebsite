@@ -387,6 +387,10 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** the email already belongs to an overseas student (Q-10); the lead has no email (phone-only accounts?); the fee is 0 (scholarship).
 - **Regression risks:** csc-002/ccrm-008 conversion and the tel-018 sync tests. `workflows.py` enrolment is a shared hub.
 - **Complexity:** large. **Risk:** high.
+- **Status:** built as `DEC-SCOPE-361` (migration `0243_it_conversion`, API §12JG, RBAC §2.261); design
+  `docs/superpowers/specs/2026-11-03-itc-011-it-one-step-conversion-design.md`. Q-09/Q-10 built with the recommended answers
+  (`NEEDS_CONFIRMATION`): a small IT onboarding template (5 seeded items, no editor yet) and a per-enrolment checklist; consent is not
+  skipped (the lead becomes Converted when the student accepts the agreement). The IT Admin converts from the leads table.
 
 ### Phase 2: Student and finance (PDF Phase 2)
 
@@ -942,6 +946,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 ### Phase 5: Views, lifecycle and reports (PDF Phase 5)
 
 #### itc-029: IT student 360 for counselor, HR and admin
+- **Status:** built as `DEC-SCOPE-360` (no migration, API §12JF, RBAC §2.260). One role-scoped read `/it/students/{id}/360`; Q-28 HR
+  omits fee, profile, lead, risk and notifications; trainers get no 360; progress/feedback use today's data until itc-022 — builder's
+  calls, `NEEDS_CONFIRMATION`.
 - **Business requirement:** §11 "Lead/student 360° profile: contact details, timeline, course, notes, documents, fee, attendance, progress, HR stage, notifications"; §6 counselor view; §12 AC4/AC6.
 - **Existing behavior:** the IT lead detail has a timeline and notes. `HrStudentPage` shows read-only training. There is no combined IT 360 (`counselor_student_360.py` is overseas-only).
 - **Expected behavior:** `/it/counselor/students/[id]` (and the same component for HR and admin, with per-role sections) shows:

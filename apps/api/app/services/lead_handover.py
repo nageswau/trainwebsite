@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lead_stages import CLOSED, MANUAL_BEFORE, NURTURE, ORDER, STAGES
-from app.models import LEAD_PRIORITIES, AuditLog, Batch, Enquiry, Enrollment, Notification, OverseasApplication, University, User, VisaCase
+from app.models import LEAD_PRIORITIES, AuditLog, Batch, Enquiry, Enrollment, ItConversion, Notification, OverseasApplication, University, User, VisaCase
 from app.notifications.dispatch import queue_deliveries
 from app.services import application_filters, bdm_leads, counselor_students, it_student_counselors, lead_appointments, lead_pipeline, telecaller_alerts
 from app.services.bdm_appointments import db_now, today_ist
@@ -126,6 +126,8 @@ def permissions(lead: Enquiry) -> dict:
         "stage": not closed and lead.status != "converted", "follow_up": not closed,
         # ccrm-008: one-step conversion to an overseas student (csc-002 is overseas only)
         "convert": not linked and lead.division == "overseas" and convertible_stage(lead.status),
+        # itc-011: one-step conversion to an IT student, enrolment, fee plan and onboarding checklist (the IT counselor's route)
+        "convert_it": not linked and lead.division == "it" and convertible_stage(lead.status),
         # ccrm-004 (LG7): calls, messages and meetings -- every one refuses a closed lead
         "activity": not closed,
     }
@@ -267,7 +269,17 @@ async def detail(db: AsyncSession, lead_id: UUID, filters: list) -> dict:
         raise HTTPException(404, lead_pipeline.LEAD_NOT_FOUND)
     lead = row[0]
     return {**bdm_leads.admin_out(row), "message": lead.message, "whatsapp_to": whatsapp_to(lead), **await next_action_out(db, lead),
-            "milestones": await milestones(db, lead), "permissions": permissions(lead)}
+            "milestones": await milestones(db, lead), "permissions": permissions(lead), "it_conversion": await it_conversion_out(db, lead)}
+
+
+async def it_conversion_out(db: AsyncSession, lead: Enquiry) -> dict | None:
+    """itc-011: the enrolment the lead's one-step IT conversion made for its still-linked student (its checklist is read from there)."""
+    if lead.division != "it" or lead.converted_user_id is None:
+        return None
+    stmt = (select(ItConversion.enrollment_id).where(ItConversion.lead_id == lead.id, ItConversion.student_user_id == lead.converted_user_id)
+            .order_by(ItConversion.created_at.desc()).limit(1))  # fmt: skip
+    enrollment_id = await db.scalar(stmt)
+    return {"enrollment_id": enrollment_id} if enrollment_id else None
 
 
 async def next_action_out(db: AsyncSession, lead: Enquiry) -> dict:

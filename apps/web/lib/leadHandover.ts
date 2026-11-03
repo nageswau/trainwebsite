@@ -16,8 +16,11 @@ export type CounselorLeadDetail = CounselorLead & {
   next_action: string | null; next_action_due: string | null; next_action_overdue: boolean;
   // ccrm-008 (DEC-SCOPE-252): `convert` = one-step conversion to a new overseas student (Qualified onwards, not linked)
   // ccrm-004 (DEC-SCOPE-259 LG7): `activity` = calls, messages and meetings may be logged (lead not closed); the wa.me number
-  permissions: { return: boolean; link: boolean; unlink: boolean; stage: boolean; follow_up: boolean; convert: boolean; activity: boolean };
+  // itc-011: `convert_it` = one-step conversion to an IT student, enrolment, fee plan and checklist (an IT lead, Qualified onwards, not linked)
+  permissions: { return: boolean; link: boolean; unlink: boolean; stage: boolean; follow_up: boolean; convert: boolean; activity: boolean; convert_it?: boolean };
   whatsapp_to: string | null;
+  // itc-011: the enrolment the lead's IT conversion made (its onboarding checklist is read from it); null otherwise
+  it_conversion?: { enrollment_id: string } | null;
 };
 export type StudentSuggestion = { id: string; full_name: string; email: string; phone: string | null; linked_elsewhere: boolean };
 

@@ -5288,3 +5288,46 @@ only (no shape change).
 - `GET /admin/enrollments` — each row gains `lifecycle: {stage, stage_label}`.
 - `PATCH /admin/enrollments/{id}` — `status` must be one of `pending_consent`, `active`, `rejected`, `withdrawn`, `dropped`, `completed`
   (422 otherwise; it was free text).
+## 12JF. IT student 360 (itc-029) — addendum, 2026-11-03
+
+`DEC-SCOPE-360`. No migration. Additive (two new read routes; two portal tables gain a column).
+
+- `GET /it/students/{id}/360` — `Cache-Control: private, no-store`. The IT `counselor` (itc-003 linked students), `hr_team` with
+  `student_progress.view` (the nehn-017 pool) and the `it_admin` (any IT student). Response `{student: {id, full_name, student_code,
+  active}, viewer: "counselor"|"admin"|"hr", sections: [...], ...one key per section in sections}`. Sections: `contact {email, phone,
+  counselor}`, `profile {city, qualification, emergency_contact_name, emergency_contact_relation, emergency_contact_phone, calls_allowed}`,
+  `lead {id, lead_code, stage, stage_label, owner, created_at, converted_at, href} | null`, `enrollments [{id, enrollment_code, program,
+  batch, trainer, status, start_date, end_date, delivery_mode, progress_percent, attendance_percent?, attendance_marked?}]`, `fee {accounts:
+  [itc-013 account], balance: number|null}`, `risk [{enrollment_id, batch, reasons, attendance_percent, assessment_percent,
+  consecutive_absences, raised_at}]`, `feedback [{kind, title, score, max_score, feedback (≤300 chars), by, at}]` (5 newest), `resumes
+  {items: [itc-026 version]}`, `hr_review {task}` (itc-027 staff view), `notes {items, total}` (5 newest, itc-028), `notifications [{id,
+  title, event_type, sent_at, read}]` (10 newest, never the body). HR's `sections` omit `profile`, `lead`, `fee`, `risk`, `notifications`
+  (the keys are absent); HR's `enrollments` carry the attendance keys only with `attendance.view`, and HR's `resumes` only `hr` versions.
+  Errors: 401 no session; 403 any other role (trainer included) or HR without `student_progress.view`; 404 a student out of scope, not an
+  IT student, or missing; 422 a malformed id. A fixed number of queries (≤ 22) whatever the number of enrolments.
+- `GET /it/students/{id}/360/lead-timeline?limit=20&offset=0` — the tel-015 timeline page of the IT lead the student was converted from
+  (`{items, total, limit, offset}`; empty when there is none). The counselor and the IT Admin (scope as above); HR 403.
+- `GET /portal/it/counselor/students` and `GET /portal/it/admin/students` — rows gain `open` (the 360 page path), column
+  `{key: "open", label: "", type: "student_360"}`.
+
+## 12JG. One-step IT conversion and the onboarding checklist (itc-011) — addendum, 2026-11-03
+
+`DEC-SCOPE-361`. Migration `0243_it_conversion`. Additive.
+
+- `GET /counselor/leads/{id}/convert-it` (owner IT counselor), `GET /admin/leads/{id}/convert-it` (IT Admin) — `{prefill: {full_name,
+  email, phone, fee (latest counseling fee_quoted or null), recommended_program_id, recommended_course}, batches: [{id, name, program_id,
+  program, fee, start_date, end_date, schedule, mode, available, recommended}] (open IT batches with a seat, recommended course first),
+  checklist: [label]}`.
+- `POST /counselor/leads/{id}/convert-it`, `POST /admin/leads/{id}/convert-it` — header `Idempotency-Key` (required, 1–120 of
+  `[A-Za-z0-9._:-]`, else 422). Body `{student: {full_name, email, phone?} | student_id, batch_id, fee (>= 0), installments?: [{amount >
+  0, due_date}] (max 12)}`; exactly one of `student` / `student_id` (422). 201 `{student, enrollment: {id, enrollment_code, status, course,
+  batch}, fee_account (§12IR shape), checklist: [{id, label, position, done, done_at}], lead (the counselor detail, or the admin row),
+  replayed: false, email_status?, expires_at?}` (`email_status` only for a new account). The same key again on that lead → 200, same
+  shape, `replayed: true`, nothing created. Refusals (nothing written): lead closed / linked / outside Qualified…Counselling Completed /
+  not IT → 409; batch missing 404, closed or full 409; installments not summing to the fee, given for a fee of 0, or due before today
+  (IST) → 422 on `installments`; a new account matching an active IT student by email or mobile → 409 `{code: "student_exists", message}`;
+  an email of any other account → 409 `"This email belongs to another account. Use a different email."`; mail budget 429 (csc-002).
+  The enrolment starts `pending_consent`; the lead moves to Application/Enrollment. Audit `lead.convert_it` (ids, counts).
+- `GET /counselor/leads/{id}` — gains `permissions.convert_it` and `it_conversion: {enrollment_id} | null`.
+- `GET /it/enrollments/{id}/onboarding` — `{enrollment_id, items: [{id, label, position, done, done_at}]}`. `PATCH
+  /it/enrollments/{id}/onboarding/{item_id}` — body `{done}`; returns the same body; unknown item 404; audit `it.onboarding.item_update`.

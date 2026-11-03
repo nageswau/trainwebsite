@@ -1,16 +1,18 @@
 "use client";
 
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, Fragment, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import AdminLeadFilters, { LEAD_FILTERS, type LeadFilter, type Organization } from "@/components/AdminLeadFilters";
 import { LeadStageControl, LeadStageHistory } from "@/components/AdminLeadStage";
 import BdmConfirm from "@/components/BdmConfirm";
+import ItConvertForm from "@/components/ItConvertForm";
 import LeadClosure from "@/components/LeadClosure";
 import { CREATED_FILTERS, RANGE_REVERSED, reversed, validDay } from "@/components/LeadCreatedRange";
 import LeadExport from "@/components/LeadExport";
 import LeadMergeForm from "@/components/LeadMergeForm";
 import { sendJson, sendRequest, type Page } from "@/lib/apiErrors";
+import { adminConvertUrl, CONVERTIBLE_STAGES } from "@/lib/itConversion";
 import { ASSIGNED_TO_COUNSELOR, assignedToCounselor, isClosed, stageLabel, type LeadClosureFields } from "@/lib/leadStages";
 import { pageOffset } from "@/lib/telecaller";
 import { SOURCE_LABEL, getPage } from "@/lib/telecallerCatalogue";
@@ -100,7 +102,7 @@ function LeadConversion({ row, onChanged, onMessage }: { row: AdminLeadRow; onCh
 // tel-003 (spec §5, T25): the API pages, filters and searches the list (no client-side cap); the filters, search and page live in the
 // URL (tel-002 QA-04), so refresh keeps the place and Back returns to the previous view. Each row shows the Lead ID and lead fields.
 // tel-004 (T25): the Status column is the pipeline stage with its history; "Change stage" offers only the valid moves.
-export default function AdminLeadManagementPanel() {
+export default function AdminLeadManagementPanel({ canConvertIt = false }: { canConvertIt?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -120,6 +122,7 @@ export default function AdminLeadManagementPanel() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [version, setVersion] = useState(0);
   const [message, setMessage] = useState<RowMessage | null>(null);
+  const [converting, setConverting] = useState<string | null>(null); // itc-011: the lead whose IT conversion form is open
   const seen = useRef(new Map<string, Organization>()); // the Organization filter's options: every organization shown so far
 
   useEffect(() => {
@@ -170,7 +173,7 @@ export default function AdminLeadManagementPanel() {
       ) : (
         <>
           <LeadExport url={exportUrl} total={data.total} />
-          <div className="table-scroll" style={{ marginTop: 12 }}> {/* QA17-03: the lead's name stays in view while the columns scroll */}
+          <div className="table-scroll" style={{ marginTop: 12, containerType: "inline-size" }}> {/* QA17-03: the lead's name stays in view while the columns scroll */}
             <table className="table">
               <thead>
                 <tr>
@@ -189,7 +192,8 @@ export default function AdminLeadManagementPanel() {
               </thead>
               <tbody>
                 {data.items.map((row) => (
-                  <tr key={row.id}>
+                  <Fragment key={row.id}>
+                  <tr>
                     <th scope="row">{row.name}</th>
                     <td style={{ whiteSpace: "nowrap" }}>{row.lead_code}</td>
                     <td>{row.product?.name ?? row.subject}</td>
@@ -209,6 +213,12 @@ export default function AdminLeadManagementPanel() {
                     </td>
                     <td>
                       <LeadConversion row={row} onChanged={replace} onMessage={setMessage} />
+                      {/* itc-011: the IT Admin's one-step conversion; the form opens in its own row below */}
+                      {canConvertIt && row.division === "it" && !row.converted_user && CONVERTIBLE_STAGES.includes(row.status) && converting !== row.id && (
+                        <div style={{ marginTop: 6 }}>
+                          <button type="button" className="btn small" aria-label={`Convert ${row.name} to an IT student`} onClick={() => setConverting(row.id)}>Convert to IT student</button>
+                        </div>
+                      )}
                     </td>
                     <td>
                       {/* itc-007: a merged lead is read only (the API refuses a reopen); an open lead can take a duplicate in */}
@@ -228,6 +238,22 @@ export default function AdminLeadManagementPanel() {
                       )}
                     </td>
                   </tr>
+                  {converting === row.id && (
+                    <tr>
+                      <td colSpan={11}>
+                        <div style={{ position: "sticky", left: 0, width: "min(36rem, calc(100cqw - 32px))" }}>
+                          <ItConvertForm url={adminConvertUrl(row.id)} defaultOpen onCancel={() => setConverting(null)}
+                            onConverted={(result) => {
+                              setConverting(null);
+                              if (isRow(result.lead)) replace(result.lead);
+                              const mail = result.email_status === undefined ? "" : result.email_status === "sent" ? " A set-password link was emailed." : " The set-password email was not delivered.";
+                              setMessage({ id: row.id, text: `Converted: ${result.student.full_name} is enrolled in ${result.enrollment.batch} (${result.enrollment.enrollment_code}).${mail}`, failed: false });
+                            }} />
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
