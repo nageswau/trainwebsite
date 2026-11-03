@@ -22,6 +22,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.identifiers import unique_student_code, uuid_reference
 from app.models import (
+    ENROLLMENT_STATUSES,
     AcademicYear,
     AgentCommission,
     AgentOrg,
@@ -84,6 +85,7 @@ from app.services import (
     bdm_lifecycle,
     course_skills,
     fee_accounts,
+    it_lifecycle,
     lead_appointments,
     lead_handover,
     lead_list,
@@ -1241,6 +1243,7 @@ async def enrollments(batch_id: UUID | None = None, user: User = Depends(ensure_
     if batch_id:
         stmt = stmt.where(Enrollment.batch_id == batch_id)
     rows = (await db.execute(stmt.order_by(Enrollment.created_at.desc()).limit(1000))).all()
+    lifecycle = await it_lifecycle.views_for(db, [e.id for e, _, _ in rows])  # itc-031 (DEC-SCOPE-358): the derived stage, batched
     return [
         {
             "id": e.id,
@@ -1254,6 +1257,7 @@ async def enrollments(batch_id: UUID | None = None, user: User = Depends(ensure_
             "status": e.status,
             "progress_percent": e.progress_percent,
             "slot_locked": e.slot_locked,
+            "lifecycle": lifecycle[e.id],
         }
         for e, student, batch in rows
     ]
@@ -1281,10 +1285,15 @@ async def update_enrollment(enrollment_id: UUID, payload: dict, user: User = Dep
     # back door to the same "silently proceed to active" outcome.
     if payload.get("status") == "active" and item.status == "rejected":
         raise HTTPException(409, "This enrolment was rejected and cannot be reactivated")
+    if "status" in payload and payload["status"] not in ENROLLMENT_STATUSES:  # itc-031 (DEC-SCOPE-358 L9): no longer free text
+        raise RequestValidationError([{"type": "literal_error", "loc": ("body", "status"), "msg": f"Status must be one of: {', '.join(ENROLLMENT_STATUSES)}",
+                                       "input": payload["status"]}])  # fmt: skip
     for key in ("status", "progress_percent", "slot_locked"):
         if key in payload:
             setattr(item, key, payload[key])
     db.add(AuditLog(user_id=user.id, action="enrollment.update", entity_type="enrollment", entity_id=str(item.id), metadata_json=payload))
+    await db.flush()
+    await it_lifecycle.sync(db, [item.id], actor=user, cause="enrolment")
     if moved and item.status != "rejected":  # itc-025 (DEC-SCOPE-348): the moved student and their counselor only; the record is the new batch
         student = await db.get(User, item.student_id)
         await batch_notices.notify_batch_change(db, item.batch_id, ["batch"], action_url=batch_notices.COURSE_URL, students=[student])
@@ -1305,6 +1314,8 @@ async def approve_enrollment(enrollment_id: UUID, user: User = Depends(ensure_ad
         raise HTTPException(409, "This enrolment was rejected and cannot be approved")
     item.status = "active"
     db.add(AuditLog(user_id=user.id, action="enrollment.approve", entity_type="enrollment", entity_id=str(item.id), metadata_json={}))
+    await db.flush()
+    await it_lifecycle.sync(db, [item.id], actor=user, cause="enrolment")
     await db.commit()
     return {"id": item.id, "status": item.status}
 
@@ -1319,6 +1330,8 @@ async def reject_enrollment(enrollment_id: UUID, payload: dict, user: User = Dep
         raise HTTPException(404, "Enrollment not found")
     item.status = "rejected"
     db.add(AuditLog(user_id=user.id, action="enrollment.reject", entity_type="enrollment", entity_id=str(item.id), metadata_json={"reason": payload.get("reason")}))
+    await db.flush()
+    await it_lifecycle.sync(db, [item.id], actor=user, cause="enrolment")
     await db.commit()
     return {"id": item.id, "status": item.status}
 

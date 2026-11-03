@@ -11084,3 +11084,27 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   (all `NEEDS_CONFIRMATION`), the backup checklist. **No purge job** until the periods have legal sign-off (`DEC-PRIV-001`).
 - **Numbering:** migration `0239_call_preference` (on itc-027's `0237_hr_review_tasks`); API §12JC; RBAC §2.257.
 - **Feature ID authorized:** `itc-033`. **Status:** built on `worktree-itc-033`.
+
+### DEC-SCOPE-358 — Unified IT student lifecycle status and history (`itc-031`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-031` (PDF §3 student lifecycle and "record who changed them and when"; PDF
+  classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-01: all phases, built in waves). Dependencies itc-013
+  (`DEC-SCOPE-346`), itc-023 (`DEC-SCOPE-352`) and itc-027 (`DEC-SCOPE-354`) are merged. The owner said to proceed with the recommended
+  answers, so Q-30 below is **the builder's call (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-03-itc-031-it-student-lifecycle-design.md`.
+- **Behaviour:** every IT enrolment has one lifecycle stage, worked out on each read from its source records (fee account, enrolment
+  status and start date, open at-risk flag, issued certificate, HR review, job applications), so no stored field can disagree with them.
+  Each fee / training / placement component is shown beside the stage. Transitions are written to `enrollment_lifecycle_history` with
+  actor, cause and time by the fee, gateway, enrolment, certificate, HR review and application writers, and by the daily at-risk sweep
+  for transitions no writer causes. The student record (counselor, IT Admin) shows a lifecycle card with the history; the student sees a
+  safe stage on their own record; `/admin/enrollments` carries the stage.
+- **Claude's calls (Q-30, `NEEDS_CONFIRMATION`):** L1 thirteen fixed stages (`enrolled`, `fee_pending`, `partially_paid`, `paid`,
+  `training_active`, `at_risk`, `completed`, `resume_submitted`, `hr_screening`, `interview`, `placed`, `not_placed`, `closed`). L2 training
+  starts on the effective start date (IST); placement belongs to the student's newest seated enrolment; HR `under_review` /
+  `changes_requested` / `screening` = HR screening, `interview_ready` / `completed` = Interview. L3 precedence: ended enrolment or
+  "Closed" → Closed; Placed; "Not placed"; then placement over training over fee. L4 only the IT Admin sets "Not placed" / "Closed", with a
+  reason; a joining record overrides "Not placed". L8 the student never sees "At risk" (shown as Training active) and no history. L9 the
+  enrolment status becomes a CHECK over the six values in use (added NOT VALID, validated when clean; the admin PATCH answers 422).
+  Dashboards and reports are itc-032; label renames are itc-005.
+- **Numbering:** migration `0240_enrollment_lifecycle` (on itc-033's `0239_call_preference`); API §12JD; RBAC §2.258.
+- **Feature ID authorized:** `itc-031`. **Status:** built on `worktree-itc-031`.

@@ -5254,3 +5254,23 @@ only (no shape change).
 - `POST …/resumes` (itc-026, all portals) — with `CLAMAV_HOST` set: 422 `"The file failed a virus scan and was not uploaded"` (audit
   `it.resume.scan_rejected`); 503 `"Virus scanning is unavailable; please try again later"` when the scanner gives no verdict. Nothing
   is stored in either case. Unset: unchanged.
+
+## 12JD. Unified IT student lifecycle (itc-031) — addendum, 2026-11-03
+
+`DEC-SCOPE-358`. Migration `0240_enrollment_lifecycle`. Additive except the admin enrolment PATCH status check.
+
+- `GET /counselor/it/students/{id}/lifecycle` (linked counselor), `GET /admin/it/students/{id}/lifecycle` (IT Admin) — `{enrollments:
+  [{enrollment_id, enrollment_code, program, batch, stage, stage_label, components: {fee, training, placement} (each `{stage,
+  stage_label}` or null), override: {stage, stage_label, reason} | null, history: [{from_stage, from_label, to_stage, to_label, cause,
+  actor, created_at}] (newest first, 50)}]}`. Stages: `enrolled`, `fee_pending`, `partially_paid`, `paid`, `training_active`, `at_risk`,
+  `completed`, `resume_submitted`, `hr_screening`, `interview`, `placed`, `not_placed`, `closed`. Causes: `enrolment`, `fee`, `certificate`,
+  `hr_review`, `placement`, `override`, `daily_check`; `actor` null = the system. Out of scope 404; another role 403.
+- `PUT /admin/it/students/{id}/enrollments/{enrollment_id}/lifecycle-override` (IT Admin) — body `{stage, reason?}`; `stage` is a stage
+  name or null (clears); `reason` 3–500 characters, required when setting. Only `not_placed` / `closed` are stored: `placed` → 409
+  `"Placed is set by a joining record, never by hand"`; any other stage → 409; `not_placed` on a placed student → 409. Returns the
+  lifecycle body. Audit `it.enrollment.lifecycle_override` (before/after).
+- `GET …/it/students/{id}/profile` (staff) and `GET /it/me/profile` — each enrolment gains `lifecycle: {stage, stage_label}`; the
+  student's own reads the safe subset (`at_risk` → `training_active`).
+- `GET /admin/enrollments` — each row gains `lifecycle: {stage, stage_label}`.
+- `PATCH /admin/enrollments/{id}` — `status` must be one of `pending_consent`, `active`, `rejected`, `withdrawn`, `dropped`, `completed`
+  (422 otherwise; it was free text).

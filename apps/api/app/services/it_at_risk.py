@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Attendance, Batch, Enrollment, ItRiskThreshold, ItStudentCounselor, Program, StudentRiskFlag, User
 from app.notifications.events import notify
 from app.schemas import ItRiskThresholdIn
-from app.services import training_progress
+from app.services import it_lifecycle, training_progress
 from app.services.audit_changes import audit_change
 
 logger = logging.getLogger(__name__)
@@ -173,6 +173,11 @@ async def sweep(db: AsyncSession, *, now: datetime) -> dict[str, int]:
         counts["stopped"] = result.rowcount
         await db.commit()
     logger.info("itc023_at_risk_done", extra={"extra_fields": {"at": now.isoformat(), **counts}})
+    try:  # itc-031 (DEC-SCOPE-358 L7): the lifecycle history catches up (flags just raised/cleared, start dates reached); never the counts
+        await it_lifecycle.sync_all(db)
+    except Exception:
+        await db.rollback()
+        logger.exception("itc031_lifecycle_catch_up_failed")
     return counts
 
 

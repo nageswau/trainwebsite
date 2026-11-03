@@ -16,7 +16,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.models import Enrollment, ItStudentCounselor, User
-from app.services import fee_accounts, permissions
+from app.services import fee_accounts, it_lifecycle, permissions
 
 router = APIRouter(prefix="/it", tags=["it-fee-accounts"])
 
@@ -82,6 +82,7 @@ async def record_payment(enrollment_id: str, payload: RecordPayment, user: User 
     if not _in_it(user):
         raise HTTPException(404, NOT_FOUND)
     paid = await fee_accounts.record_payment(db, user, enrollment, float(payload.amount), payload.payment_mode, payload.provider_reference or None)
+    await it_lifecycle.sync(db, [enrollment.id], actor=user, cause="fee")  # itc-031: e.g. Partially paid -> Paid
     await db.commit()
     return {
         "payment": {"id": paid.id, "amount": float(paid.amount), "status": paid.status, "payment_mode": paid.payment_mode, "provider_reference": paid.provider_reference},

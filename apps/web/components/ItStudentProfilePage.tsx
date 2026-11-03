@@ -2,12 +2,14 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
+import ItLifecycleCard from "@/components/ItLifecycleCard";
 import ItStudentProfileForm from "@/components/ItStudentProfileForm";
 import PortalShell from "@/components/PortalShell";
 import StudentResumeCard from "@/components/StudentResumeCard";
 import { ApiError, serverApi } from "@/lib/api";
 import { formatDay, staffReviewUrl, type StaffReview } from "@/lib/hrReviews";
 import { formatRiskDate, riskReasonLabels, studentRiskUrl, type RiskFlag } from "@/lib/itAtRisk";
+import { lifecycleUrl, type LifecycleResponse } from "@/lib/itLifecycle";
 import { itEnrollmentsUrl, itStudentProfileUrl, MY_IT_PROFILE_URL, type ItStudentProfileResponse } from "@/lib/itStudentProfile";
 import { PORTAL_NAV } from "@/lib/navigation";
 import { studentResumesUrl } from "@/lib/studentResumes";
@@ -67,6 +69,7 @@ export default async function ItStudentProfilePage({ portal, id }: { portal: key
             <span className="badge">No phone calls</span> The student has asked not to be called. Use email or in-app messages instead.
           </p>
         )}
+        <LifecycleSection portal={portal} studentId={data.student.id} />
         <StudentRiskCard studentId={data.student.id} />
         <div className="card">
           <ItStudentProfileForm initial={data} url={itStudentProfileUrl(portal, id)} enrollmentsUrl={itEnrollmentsUrl(portal, id)} />
@@ -78,6 +81,17 @@ export default async function ItStudentProfilePage({ portal, id }: { portal: key
       </div>
     </PortalShell>
   );
+}
+
+/** itc-031 (DEC-SCOPE-358): the derived lifecycle and its history; only the IT Admin's portal can set "Not placed" / "Closed". */
+async function LifecycleSection({ portal, studentId }: { portal: keyof typeof PORTALS; studentId: string }) {
+  let data: LifecycleResponse;
+  try {
+    data = await serverApi<LifecycleResponse>(lifecycleUrl(portal, studentId));
+  } catch {
+    return <div className="card" role="status" style={{ marginBottom: 16 }}>The lifecycle could not be loaded. Refresh the page to try again.</div>;
+  }
+  return <ItLifecycleCard initial={data} studentId={studentId} canOverride={portal === "admin"} />;
 }
 
 /** itc-027 (DEC-SCOPE-354 H7): where HR's resume review stands -- stage, owner, next action and screening date. Never HR's notes. */

@@ -5,6 +5,7 @@ import { FormEvent, useRef, useState } from "react";
 import LocalTime from "@/components/LocalTime";
 import { detailMessage, sendJson } from "@/lib/apiErrors";
 import { formatCalendarDate } from "@/lib/formatDate";
+import { stageTone } from "@/lib/itLifecycle";
 import {
   IT_DELIVERY_MODES, IT_PROFILE_FIELD_LABELS, toPatchBody, type ItEnrollment, type ItStudentProfile, type ItStudentProfileResponse,
 } from "@/lib/itStudentProfile";
@@ -96,12 +97,14 @@ export default function ItStudentProfileForm({ initial, url, enrollmentsUrl }: {
         ) : (
           <div className="table-wrap">
             <table className="table stack compact" aria-label="Enrolments">
-              <thead><tr><th scope="col">Programme</th><th scope="col">Batch</th><th scope="col">Start</th><th scope="col">End</th><th scope="col">Mode</th><th scope="col">Dates</th></tr></thead>
+              <thead><tr><th scope="col">Programme</th><th scope="col">Batch</th><th scope="col">Status</th><th scope="col">Start</th><th scope="col">End</th><th scope="col">Mode</th><th scope="col">Dates</th></tr></thead>
               <tbody>
                 {enrollments.map((e) => (
                   <tr key={e.id}>
                     <td data-label="Programme">{e.program}</td>
                     <td data-label="Batch">{e.batch}</td>
+                    {/* itc-031 (DEC-SCOPE-358): the derived stage; the student's own view never says "At risk" (the API's safe subset) */}
+                    <td data-label="Status">{e.lifecycle ? <span className={stageTone(e.lifecycle.stage)}>{e.lifecycle.stage_label}</span> : "-"}</td>
                     <td data-label="Start">{formatCalendarDate(e.start_date)}</td>
                     <td data-label="End">{formatCalendarDate(e.end_date)}</td>
                     <td data-label="Mode">{e.delivery_mode}</td>

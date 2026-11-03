@@ -3608,3 +3608,10 @@ from an unknown id). Pinned by `apps/api/tests/test_itc_024_trainer_dashboard.py
 No grant change. The call preference is self-only (any signed-in user, no id in the path; nobody sets another's). The IT student record
 shows it read-only to the routes that already read that record (the itc-003 counselor for linked students, the IT Admin). The resume
 scan adds no access path. Pinned by `apps/api/tests/test_itc_033_call_preference.py` and `test_itc_033_malware_scan.py`.
+
+### 2.258 IT student lifecycle *(added 2026-11-03 — `DEC-SCOPE-358`, itc-031)*
+
+No grant change. The lifecycle read uses the IT student record's scope (`it_student_profiles.staff_student`): the itc-003 counselor for
+linked students (others 404), the IT Admin for any IT student; every other role 403. Only the IT Admin sets or clears the hand-set
+"Not placed" / "Closed" (no counselor route). The student reads their own stage on `/it/me/profile` as the safe subset (no "At risk"
+wording, no history). Pinned by `apps/api/tests/test_itc_031_lifecycle_api.py`.
