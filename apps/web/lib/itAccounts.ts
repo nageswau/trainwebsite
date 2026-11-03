@@ -1,10 +1,10 @@
 // itc-017 (DEC-SCOPE-367): the IT accounts workspace -- five read-only reports over IT enrolment fees (API §12JM). The filters live in the
 // address (a GET form), so refresh, Back and a shared link keep the view; anything unknown in the address is dropped here.
 
-export const IT_ACCOUNTS_API = "/api/v1/it/accounts/reports";
+const IT_ACCOUNTS_API = "/api/v1/it/accounts/reports";
 export const IT_ADMIN_ACCOUNTS = "/it/admin/accounts";
 export const MANAGEMENT_IT_ACCOUNTS = "/management/it-accounts";
-export const ACCOUNTS_PAGE_SIZE = 50;
+const ACCOUNTS_PAGE_SIZE = 50;
 
 export type AccountsReport = "collections" | "outstanding" | "overdue" | "receipts" | "adjustments";
 export const ACCOUNTS_TABS: { key: AccountsReport; label: string; about: string }[] = [
@@ -71,7 +71,6 @@ export function accountsHref(basePath: string, report: AccountsReport, params: A
   return `${basePath}?${q}${offset > 0 ? `&offset=${offset}` : ""}`;
 }
 
-export type Choice = { id: string; title?: string; name?: string; program_id?: string };
 export type AccountsRow = Record<string, string | number | null>;
 export type AccountsPage = {
   report: AccountsReport; items: AccountsRow[]; total: number; limit: number; offset: number;
