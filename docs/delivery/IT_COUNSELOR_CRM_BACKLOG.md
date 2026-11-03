@@ -582,6 +582,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** medium.
 
 #### itc-018: Student portal fee summary and course details
+- **Status:** built as `DEC-SCOPE-353` (no migration, API §12IY, RBAC §2.253); design
+  `docs/superpowers/specs/2026-11-03-itc-018-student-fee-summary-design.md`. Next due, room-or-link source and the unchanged dashboard
+  tile are Claude's calls F1-F3, `NEEDS_CONFIRMATION`.
 - **Business requirement:** §6 student view; §8 Student portal; §11 Student portal; §12 AC7.
 - **Existing behavior:** `/it/student/fees` is a plain table plus `FeePaymentPanel` (Pay Now, receipt, EMI). Course shows the batch and schedule string. There is no total/paid/balance, start/end dates, mode or faculty.
 - **Expected behavior:** a fee summary card (total payable, paid, balance, next due) with receipts, plus course and batch details (dates, mode, room or link). The faculty and timetable cards come from itc-019/020.

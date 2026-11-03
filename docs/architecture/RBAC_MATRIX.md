@@ -3580,3 +3580,10 @@ positive control), and checks every notification of the student.
 No grant change. Thresholds: read and changed by `it_admin` (IT) only; any other role 403. Flags (`GET /it/at-risk`): `it_admin` (IT) any
 student; IT `counselor` only their itc-003 linked students; `trainer` only students of batches they teach; students and every other
 role 403. A reader outside the scope gets an empty list (no disclosure). Pinned by `apps/api/tests/test_itc_023_at_risk.py`.
+
+### 2.253 Student fee summary and course details *(added 2026-11-03 — `DEC-SCOPE-353`, itc-018)*
+
+No grant change. The IT student reads only their own fee accounts and course rows (unchanged scopes). A payment receipt is read by its
+payer, or an admin of the payment's division (`super_admin` any); any other caller now gets 404 (was 403), so a payment id outside the
+caller's scope is not disclosed. Meeting links are never in the course payload (the Timetable's live-classes lock still gates them).
+Pinned by `apps/api/tests/test_itc_018_student_fee_summary.py`.

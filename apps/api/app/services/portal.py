@@ -28,6 +28,7 @@ from app.models import (
     Attendance,
     AttendanceCorrection,
     Batch,
+    BatchTimetableSlot,
     Certificate,
     Company,
     ConsentRecord,
@@ -152,6 +153,37 @@ def _counselor_cells(application, counselors: dict) -> dict:
     }
 
 
+ONLINE_CLASS = "Online (join link in your Timetable)"
+
+
+async def _rooms_or_link(db: AsyncSession, batch_ids: list) -> dict:
+    """itc-018 (DEC-SCOPE-353 F2): where each batch's weekly classes happen -- its distinct rooms, then a pointer to the Timetable for an
+    online class. Never the meeting URL: the Timetable alone hands links out, behind the student's live-classes lock (itc-020)."""
+    if not batch_ids:
+        return {}
+    slots = (
+        await db.execute(
+            select(BatchTimetableSlot.batch_id, BatchTimetableSlot.mode, BatchTimetableSlot.room)
+            .where(BatchTimetableSlot.batch_id.in_(batch_ids))
+            .order_by(BatchTimetableSlot.weekday, BatchTimetableSlot.start_time)
+        )
+    ).all()
+    rooms: dict = {}
+    online: set = set()
+    for batch_id, mode, room in slots:
+        if mode == "online":
+            online.add(batch_id)
+        elif room and room not in rooms.setdefault(batch_id, []):
+            rooms[batch_id].append(room)
+    places = {}
+    for batch_id in {*rooms, *online}:
+        parts = [", ".join(rooms[batch_id])] if rooms.get(batch_id) else []
+        if batch_id in online:
+            parts.append(ONLINE_CLASS)
+        places[batch_id] = "; ".join(parts)
+    return places
+
+
 async def _it_student(db: AsyncSession, user: User, section: str):
     enrollments = (
         await db.execute(
@@ -211,6 +243,7 @@ async def _it_student(db: AsyncSession, user: User, section: str):
     if section == "course":
         trainer_ids = {b.trainer_id for _, b, _ in enrollments if b.trainer_id}
         trainers = dict((await db.execute(select(User.id, User.full_name).where(User.id.in_(trainer_ids)))).all()) if trainer_ids else {}
+        places = await _rooms_or_link(db, batch_ids)
         # "Available batches" (STU-001) and "Live classes" (STU-003) used to be dumped
         # here as unclickable text-panel strings -- both now have real interactive
         # components (BatchSlotPicker, LiveClassesPanel) rendered alongside this
@@ -220,12 +253,15 @@ async def _it_student(db: AsyncSession, user: User, section: str):
             "Course Enrolled",
             "Your fixed schedule, live classes, provider recordings, and progress.",
             # itc-019 (DEC-SCOPE-347): the batch's trainer by name; the My faculty card (GET /it/student/faculty) shows the profile.
-            (("enrollment_id", "Enrollment reference"), ("program", "Program"), ("batch", "Batch"), ("trainer", "Trainer"), ("schedule", "Schedule"), ("progress", "Progress"), ("status", "Status")),
+            # itc-018 (DEC-SCOPE-353): the enrolment's effective dates and mode (itc-012 override, else the batch's) and room or link.
+            (("enrollment_id", "Enrollment reference"), ("program", "Program"), ("batch", "Batch"), ("trainer", "Trainer"), ("schedule", "Schedule"),
+             ("start_date", "Starts"), ("end_date", "Ends"), ("mode", "Mode"), ("room_or_link", "Room or link"), ("progress", "Progress"), ("status", "Status")),
             (
                 {"batch_id": e.batch_id, "enrollment_id": e.enrollment_code, "program": p.title, "batch": b.name, "trainer": trainers.get(b.trainer_id, "Not assigned yet"),
-                 "schedule": b.schedule, "progress": f"{e.progress_percent}%", "status": e.status}
+                 "schedule": b.schedule, "start_date": e.start_date or b.start_date, "end_date": e.end_date or b.end_date, "mode": e.delivery_mode or b.mode,
+                 "room_or_link": places.get(b.id, "Not scheduled yet"), "progress": f"{e.progress_percent}%", "status": e.status}
                 for e, b, p in enrollments
-            ),
+            ),  # fmt: skip
         )
     if section == "attendance":
         rows = (
