@@ -7,7 +7,8 @@ import CounselorLeadsPanel from "@/components/CounselorLeadsPanel";
 // ccrm-012: the panel keeps its filters in the URL.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }), usePathname: () => "/overseas/counselor/leads", useSearchParams: () => new URLSearchParams() }));
 beforeEach(() => {
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [], total: 0, limit: 20, offset: 0 }), { status: 200 })));
+  // a fresh Response per call: the IT panel also reads the status labels (itc-005), and a body can be read only once
+  vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(JSON.stringify({ items: [], total: 0, limit: 20, offset: 0 }), { status: 200 }))));
 });
 afterEach(() => {
   cleanup();

@@ -10,7 +10,8 @@ import ProductOptions from "@/components/TelecallerProductOptions";
 import type { Page } from "@/lib/apiErrors";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import LocalTime from "@/components/LocalTime";
-import { ASSIGNED_TO_COUNSELOR, STAGES, assignedToCounselor } from "@/lib/leadStages";
+import { ASSIGNED_TO_COUNSELOR, assignedToCounselor } from "@/lib/leadStages";
+import { useStageCatalogue } from "@/lib/statusLabels";
 import { pageOffset } from "@/lib/telecaller";
 import { activeCampaigns, activeProducts, getPage, SOURCE_LABEL, type Campaign, type Product } from "@/lib/telecallerCatalogue";
 import {
@@ -59,6 +60,7 @@ export default function TelecallerLeadTable({ basePath, showTelecaller = false, 
   const [draft, setDraft] = useState(query);
   const [products, setProducts] = useState<Product[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const stages = useStageCatalogue(!!data?.items.some((lead) => lead.division === "it")); // itc-005: the IT team's words and order
   useEffect(() => setDraft(query), [query]);
 
   useEffect(() => {
@@ -118,7 +120,7 @@ export default function TelecallerLeadTable({ basePath, showTelecaller = false, 
         {query && <button type="button" className="btn secondary small" onClick={() => go({ q: "" })}>Clear search</button>}
       </form>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8 }}>
-        {select("status", "Stage", "All stages", STAGES.map(([key, label]) => <option key={key} value={key}>{label}</option>))}
+        {select("status", "Stage", "All stages", stages.stages.map(([key, label]) => <option key={key} value={key}>{label}</option>))}
         {select("priority", "Priority", "All priorities", PRIORITIES.map((p) => <option key={p.key} value={p.key}>{p.label}</option>))}
         {select("product_id", "Product", "All products", <ProductOptions products={products} />)}
         {select("campaign_id", "Campaign", "All campaigns", campaigns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>))}
@@ -168,7 +170,7 @@ export default function TelecallerLeadTable({ basePath, showTelecaller = false, 
                     <td style={{ whiteSpace: "nowrap" }}>{lead.phone ?? <span className="muted">—</span>}</td>
                     <td>{lead.product?.name ?? lead.subject}</td>
                     <td>
-                      {lead.status_label}
+                      {stages.label(lead.status, lead.division)}
                       {/* QA-01: handed over (D1); itc-004 N1: the PDF's derived "Assigned to Counselor" */}
                       {assignedToCounselor(lead) && <div className="muted" style={{ fontSize: 13 }}>{ASSIGNED_TO_COUNSELOR}</div>}
                     </td>

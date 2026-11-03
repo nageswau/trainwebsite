@@ -5331,3 +5331,20 @@ only (no shape change).
 - `GET /counselor/leads/{id}` — gains `permissions.convert_it` and `it_conversion: {enrollment_id} | null`.
 - `GET /it/enrollments/{id}/onboarding` — `{enrollment_id, items: [{id, label, position, done, done_at}]}`. `PATCH
   /it/enrollments/{id}/onboarding/{item_id}` — body `{done}`; returns the same body; unknown item 404; audit `it.onboarding.item_update`.
+
+## 12JH. IT status labels (itc-005) — addendum, 2026-11-03
+
+`DEC-SCOPE-362`. `Entry = {code, label, default_label, sort_order, enabled, can_disable}`; each list is ordered by `sort_order`, then the
+catalogue position (default order = (position + 1) × 10).
+- `GET /it/status-labels` — IT staff (division `it`, not a student) and super_admin; others 403, anonymous 401. Returns
+  `{lead: [Entry], lifecycle: [Entry]}`.
+- `GET /admin/it/status-labels` — the IT Admin only (403 otherwise). The same with `in_use` (IT leads in the stage / enrolments carrying
+  the override), `updated_at` and `updated_by {id, full_name} | null` per entry.
+- `PUT /admin/it/status-labels/{kind}/{code}` — the IT Admin only. `kind` ∈ `lead`, `lifecycle`. Body `{label (trimmed, 1–60),
+  sort_order (0–9999), enabled}`, all required, extra fields 422. Returns the admin Entry, 200 (idempotent; an unchanged save writes no
+  audit row). Unknown kind/code 404; a label another code of the kind uses (case-insensitive) 422 at `label`; turning off a state that
+  cannot be turned off 422 at `enabled`. Audit `it.status_label.update` (entity `it_status_label`, id `kind:code`, before/after).
+- Changed behaviour: `POST /telecaller/leads/{id}/stage`, `POST /counselor/leads/{id}/stage` and `PATCH /admin/leads/{id}` on an IT lead to a turned-off stage → 422 at
+  `to_stage` ("This status is turned off by the IT Admin"); `PUT /admin/it/students/{id}/enrollments/{eid}/lifecycle-override` to a
+  turned-off stage → 409 (clearing with `null` always allowed). Lifecycle `stage_label` / history labels and the IT 360 `lead.stage_label`
+  carry the configured words. Follow-up rows' `lead` gains `division` (additive).

@@ -26,6 +26,7 @@ import { counselorConvertUrl, type ConversionResult } from "@/lib/itConversion";
 import { counselorCounselingUrl } from "@/lib/leadCounseling";
 import { counselorLeadUrl, counselorMoveStage, type CounselorLeadDetail as Detail, type StudentSuggestion } from "@/lib/leadHandover";
 import { counselorTargets, stageLabel } from "@/lib/leadStages";
+import { useStageCatalogue } from "@/lib/statusLabels";
 import { SOURCE_LABEL } from "@/lib/telecallerCatalogue";
 import { counselorCallApi } from "@/lib/telecallerCalls";
 import { counselorFollowUpApi } from "@/lib/telecallerFollowUps";
@@ -322,6 +323,7 @@ function ConvertLeadForm({ lead, onConverted }: { lead: Detail; onConverted: (le
  *  API decide which actions show; the API decides every rule. */
 export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
   const [lead, setLead] = useState(initial);
+  const stages = useStageCatalogue(lead.division === "it"); // itc-005: the IT team's words
   const [returned, setReturned] = useState(false);
   const [activityVersion, setActivityVersion] = useState(0); // tel-015: a bump re-reads the timeline
   const [unlinking, setUnlinking] = useState(false);
@@ -374,7 +376,7 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
         <Link href={listHref} className="muted" style={{ fontSize: 13 }}>Back to my leads</Link>
         <div className="eyebrow" style={{ marginTop: 8 }}>{lead.lead_code}</div>
         <h2 style={{ margin: "4px 0" }}>{lead.name}</h2>
-        <p className="muted" style={{ margin: 0 }}>Stage: <strong>{lead.status_label}</strong></p>
+        <p className="muted" style={{ margin: 0 }}>Stage: <strong>{stages.label(lead.status, lead.division)}</strong></p>
         <LeadClosure lead={lead} />
         {/* QA-02/QA-03: one line for the stage and next-action results -- stays visible when a closing move removes the stage control */}
         <NoticeLine notice={leadNotice} />

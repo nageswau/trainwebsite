@@ -11170,3 +11170,23 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   Admin, not super_admin. C10 a non-convertible stage is 409.
 - **Numbering:** migration `0243_it_conversion` (on itc-031's `0241_enrollment_lifecycle`); API §12JG; RBAC §2.261.
 - **Feature ID authorized:** `itc-011`. **Status:** built on `worktree-itc-011`.
+
+### DEC-SCOPE-362 — Admin-configurable IT lead and student status labels (`itc-005`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-005` (PDF §3 "Statuses should be configurable by an administrator"; PDF
+  classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-01). Dependencies itc-004 (`DEC-SCOPE-338`) and itc-031
+  (`DEC-SCOPE-359`) are merged. The owner said to proceed with the recommended answers, so Q-05 below is **the builder's call
+  (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-03-itc-005-configurable-status-labels-design.md`.
+- **Behaviour:** the IT Admin renames, reorders and turns on/off the fixed IT lead stages (18) and lifecycle stages (13) on
+  `/it/admin/status-labels`; the state machines never change. Override rows only (`it_status_labels`, no row = the code default). Every
+  IT lead list, lead page, stage picker and filter and the lifecycle payloads (staff card, student profile, IT 360 lead card) show the
+  IT team's words; overseas keeps the defaults. A turned-off stage is not offered and the API refuses it (lead move 422 at `to_stage`,
+  lifecycle override 409); existing rows keep it and still show its label; filters still list it. Every save is audited
+  (`it.status_label.update`, before/after).
+- **Claude's calls (`NEEDS_CONFIRMATION`):** S1 (Q-05) labels/order/on-off of fixed states, not admin-defined states. S4 only states a
+  person chooses can be turned off (lead manual targets and closed outcomes except Follow-up; lifecycle Not placed / Closed). S5
+  turning off a state in use is allowed; the page shows the in-use count. S7 labels 1–60 chars, unique per kind (case-insensitive). S8
+  lead payloads keep the canonical `status_label` (API contracts and query counts unchanged); IT lead screens relabel from the
+  catalogue; CSV exports keep the canonical names. S10 read: IT staff and super_admin; write: the IT Admin only.
+- **Numbering:** migration `0244_it_status_labels` (on itc-011's `0243_it_conversion`); API §12JH; RBAC §2.262.
+- **Feature ID authorized:** `itc-005`. **Status:** built on `worktree-itc-005`.

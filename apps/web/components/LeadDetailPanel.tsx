@@ -20,6 +20,7 @@ import ProductOptions from "@/components/TelecallerProductOptions";
 import { isRequestBody, sendJson, sendRequest, type Page } from "@/lib/apiErrors";
 import LocalTime from "@/components/LocalTime";
 import { isClosed, stageLabel } from "@/lib/leadStages";
+import { useStageCatalogue } from "@/lib/statusLabels";
 import type { TimelineRow } from "@/lib/leadTimeline";
 import { SOURCE_LABEL, activeProducts, getPage, type Product } from "@/lib/telecallerCatalogue";
 import { SCRIPTS_URL, type Script } from "@/lib/telecallerContent";
@@ -157,6 +158,7 @@ function LeadScriptPanel({ product }: { product: { id: string; name: string } | 
  *  timeline (W1; tel-015: every event kind, `LeadTimeline`). `read_only` (handed over to a counselor) shows the lead without any control. */
 export default function LeadDetailPanel({ initial, timeline, canReopen }: { initial: TelecallerLeadDetail; timeline: Page<TimelineRow> | null; canReopen: boolean }) {
   const [lead, setLead] = useState(initial);
+  const stages = useStageCatalogue(lead.division === "it"); // itc-005: the IT team's words
   const [activityVersion, setActivityVersion] = useState(0); // tel-015: a bump re-reads the timeline
   const [priority, setPriority] = useState<Priority>(initial.priority);
   const [editing, setEditing] = useState(false);
@@ -217,7 +219,7 @@ export default function LeadDetailPanel({ initial, timeline, canReopen }: { init
       <div>
         <div className="eyebrow">{lead.lead_code}</div>
         <h2 style={{ margin: "4px 0" }}>{lead.name}</h2>
-        <p className="muted" style={{ margin: 0 }}>Stage: <strong>{lead.status_label}</strong> · Priority: <strong>{PRIORITY_LABEL[lead.priority] ?? lead.priority}</strong></p>
+        <p className="muted" style={{ margin: 0 }}>Stage: <strong>{stages.label(lead.status, lead.division)}</strong> · Priority: <strong>{PRIORITY_LABEL[lead.priority] ?? lead.priority}</strong></p>
         <LeadClosure lead={lead} />
         {/* itc-007: a merged lead is read only for everyone; its activity is on the lead it was merged into */}
         {lead.merged_at ? (

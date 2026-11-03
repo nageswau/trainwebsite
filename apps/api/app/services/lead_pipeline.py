@@ -41,6 +41,7 @@ from app.models import (
     TelecallerProfile,
     User,
 )
+from app.services import it_status_labels
 
 logger = logging.getLogger("app.leads")
 
@@ -198,6 +199,8 @@ async def person_move(db: AsyncSession, lead: Enquiry, actor: User, kind: Kind, 
         raise invalid("to_stage", STAGE_SYSTEM, to_stage)
     if current == "converted" or (to_stage in manual and current in ORDER and ORDER.index(current) >= MANUAL_BEFORE):  # Nurture: before it
         raise invalid("to_stage", STAGE_PAST, to_stage)
+    if lead.division == it_status_labels.TEAM and not await it_status_labels.is_enabled(db, "lead", to_stage):  # itc-005 S6
+        raise invalid("to_stage", it_status_labels.TURNED_OFF, to_stage)
     structured = closure is not None or to_stage == "duplicate"  # D6 spares only the loss reason of a call-logged close
     values, default_reason = await _resolve_closure(db, lead, to_stage, sent) if structured else ({}, None)
     reason = reason or default_reason
