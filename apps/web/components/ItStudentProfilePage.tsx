@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import { FeeAccountCard, type FeeAccount } from "@/components/FeeAccountSummary";
+import FeeDiscountRequests from "@/components/FeeDiscountRequests";
 import ItLifecycleCard from "@/components/ItLifecycleCard";
 import ItStudentProfileForm from "@/components/ItStudentProfileForm";
 import PortalShell from "@/components/PortalShell";
@@ -112,7 +113,15 @@ async function StudentFeeCard({ enrollmentIds }: { enrollmentIds: string[] }) {
       {accounts.length === 0 ? (
         <p className="muted" style={{ margin: 0 }}>No enrolment yet, so no fee has been billed.</p>
       ) : (
-        <div className="grid two">{accounts.map((a) => <FeeAccountCard key={a.enrollment_id} account={a} />)}</div>
+        <div className="grid two">
+          {accounts.map((a) => (
+            <div key={a.enrollment_id}>
+              <FeeAccountCard account={a} />
+              {/* itc-014 (DEC-SCOPE-363): ask for a discount or waiver; an approver decides it on the Payments page */}
+              {a.state !== "not_billed" && <FeeDiscountRequests enrollmentId={a.enrollment_id} balance={a.balance} currency={a.currency} />}
+            </div>
+          ))}
+        </div>
       )}
     </section>
   );

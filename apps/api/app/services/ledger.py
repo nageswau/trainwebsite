@@ -444,7 +444,7 @@ def lines():
         description=func.concat("Salaries · ", Department.name),
         created_at=SalaryMonthTotal.created_at,
     ).join(Department, Department.id == SalaryMonthTotal.department_id).where(salary_cost > 0)
-    refunds = _auto(  # itc-015 (DEC-SCOPE-363, Q-15): an IT fee refund is negative IT income on its IST day
+    refunds = _auto(  # itc-015 (DEC-SCOPE-364, Q-15): an IT fee refund is negative IT income on its IST day
         "fee_refund",
         id=FeeAdjustment.id,
         entry_date=ist_day(FeeAdjustment.created_at),

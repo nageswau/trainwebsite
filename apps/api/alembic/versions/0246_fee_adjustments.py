@@ -1,9 +1,9 @@
 """itc-015 -- the fee adjustments ledger (credit notes, write-offs, refunds, payment reversals) and the `payments.refund` grant.
 
-Revision ID: 0245_fee_adjustments
-Revises: 0244_it_status_labels
+Revision ID: 0246_fee_adjustments
+Revises: 0245_fee_discount_requests
 
-docs/superpowers/specs/2026-11-03-itc-015-fee-adjustments-design.md (DEC-SCOPE-363). One new table; no existing row changes. 0001 builds
+docs/superpowers/specs/2026-11-03-itc-015-fee-adjustments-design.md (DEC-SCOPE-364). One new table; no existing row changes. 0001 builds
 a fresh database from the current models, which already carry the table, so it is created only when missing (0222's idiom). KINDS /
 MODES are frozen copies of the model's tuples at this revision. The downgrade drops the table (a fresh ledger) and deletes only this grant.
 """
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0245_fee_adjustments"
-down_revision = "0244_it_status_labels"
+revision = "0246_fee_adjustments"
+down_revision = "0245_fee_discount_requests"
 branch_labels = None
 depends_on = None
 

@@ -1,4 +1,4 @@
-"""itc-015 (DEC-SCOPE-363) -- refunds, adjustments and payment correction on the itc-013 fee account: credit notes and write-offs lower
+"""itc-015 (DEC-SCOPE-364) -- refunds, adjustments and payment correction on the itc-013 fee account: credit notes and write-offs lower
 what is owed (`credits`), a refund pays a credit back out (`refunded`), a mistyped manual payment is replaced through a reversal that
 never edits or deletes the original row; every write is audited with old and new values; refunds reduce IT revenue (Q-15)."""
 

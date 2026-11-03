@@ -2,8 +2,8 @@
 itc-003) and a `payments.view` holder in IT; an offline payment recorded by a `payments.add` holder in IT. A record outside the caller's
 reach is 404; a role with no access at all is 403. API_CONTRACT.md §12IR; RBAC_MATRIX.md §2.246.
 
-itc-015 (DEC-SCOPE-363): credit notes, write-offs, refunds and payment corrections by a `payments.refund` holder in IT; an adjustment's
-document read through the same gate as the account. API_CONTRACT.md §12JI; RBAC_MATRIX.md §2.263."""
+itc-015 (DEC-SCOPE-364): credit notes, write-offs, refunds and payment corrections by a `payments.refund` holder in IT; an adjustment's
+document read through the same gate as the account. API_CONTRACT.md §12JJ; RBAC_MATRIX.md §2.264."""
 
 from decimal import Decimal
 from typing import Annotated, Literal

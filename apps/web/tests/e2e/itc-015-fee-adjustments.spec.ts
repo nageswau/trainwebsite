@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Browser, type Page } from "@playwright/test";
 
-// itc-015 (DEC-SCOPE-363): the IT Admin corrects a mistyped payment, then — once the fee is paid — records a credit note (a batch change)
+// itc-015 (DEC-SCOPE-364): the IT Admin corrects a mistyped payment, then — once the fee is paid — records a credit note (a batch change)
 // and refunds that credit; the student sees the refunded figure, the adjustments and downloads the refund receipt. A fresh student per run.
 
 const DEMO = "Demo@123";

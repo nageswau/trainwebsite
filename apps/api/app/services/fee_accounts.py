@@ -1,14 +1,15 @@
 """itc-013 (DEC-SCOPE-346) -- the per-enrolment fee account, computed from `Payment` (Q-13: no stored table, so it cannot drift).
 
-An enrolment's fee rows are its IT `enrollment_fee` payments that bill something (failed or cancelled attempts bill nothing). From them,
+An enrolment's fee rows are its IT `enrollment_fee` payments that bill something (failed or cancelled attempts bill nothing; a `waived`
+bill still counts, at 0). From them,
 in one grouped query (`balance_for`, fixed query count for list pages):
 
     course_fee = sum(amount + discount_amount)          the gross billed (+ what credits took off bills, itc-015)
-    discount_approved = sum(discount_amount)            nehn-021's discount
+    discount_approved = sum(discount_amount)            nehn-021's discount and itc-014's approved requests
     tax = 0                                             Q-12: GST is NEEDS_CONFIRMATION
     total_payable = course_fee - discount_approved + tax
     paid_confirmed = sum(amount) of paid/succeeded rows
-    credits = credit notes + write-offs                 itc-015 (DEC-SCOPE-363 F1)
+    credits = credit notes + write-offs                 itc-015 (DEC-SCOPE-364 F1)
     refunded = refunds                                  itc-015: a refund pays a credit back out
     balance = total_payable - paid_confirmed - credits + refunded
 
@@ -17,7 +18,7 @@ in one grouped query (`balance_for`, fixed query count for list pages):
 
 itc-016 (DEC-SCOPE-358): each account also lists its installments (the same rows) with a derived `overdue` and the reminders sent.
 
-itc-015 (DEC-SCOPE-363): a credit note or write-off lowers the owed bills (`services/fee_adjustments.py`); a bill it covers whole is
+itc-015 (DEC-SCOPE-364): a credit note or write-off lowers the owed bills (`services/fee_adjustments.py`); a bill it covers whole is
 `waived` (amount 0, still billed so its gross and discount count). A corrected payment is `reversed` and bills nothing.
 """
 
@@ -38,7 +39,7 @@ logger = logging.getLogger("app.fee_accounts")
 FEE_REFERENCES = ("enrollment_fee", "enrollment")  # the seed's legacy rows say `enrollment` (management_it_revenue)
 PAID = ("paid", "succeeded")
 OWED = ("pending", "overdue")
-WAIVED = "waived"  # itc-015: a bill a credit covered whole
+WAIVED = "waived"  # itc-014 / itc-015: a bill an approved discount or a credit brought to 0 -- still billed (its gross and discount count), never owed or payable
 CREDITS = ("credit_note", "write_off")  # itc-015: the adjustments that lower what is owed
 OFFLINE_MODES = ("cash", "upi", "card", "bank_transfer", "cheque")  # `razorpay` is set only by the gateway's confirmation
 MODE_LABELS = {"cash": "Cash", "upi": "UPI", "card": "Card", "bank_transfer": "Bank transfer", "cheque": "Cheque", "razorpay": "Razorpay"}

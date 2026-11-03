@@ -473,6 +473,8 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** large. **Risk:** high.
 
 #### itc-014: Discount and waiver approval
+- **Status:** built as `DEC-SCOPE-363` (migration `0245_fee_discount_requests`, API §12JI, RBAC §2.263). Q-14 built with the
+  recommended answer (maker-checker; `discounts.approve`, default IT Admin; nehn-021's direct discount kept), `NEEDS_CONFIRMATION`.
 - **Business requirement:** §4 "discount/waiver approval"; §6 "Show approved fee amount and any approved discount".
 - **Existing behavior:** `discount_payment` (`admin.py:1237`) is applied directly by a `DISCOUNTS_ADD` holder, with a reason (nehn-021). There is no request-and-approve step.
 - **Expected behavior:** `NEEDS_CONFIRMATION` (Q-14). Either keep a direct grant-based discount (only labelling and the waiver type change), **or** add maker-checker: a counselor or accounts user requests, and an approver with `discounts.approve` approves. Only an approved discount changes payable.
@@ -498,7 +500,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** medium.
 
 #### itc-015: Refunds, adjustments and payment correction
-- **Status:** built as `DEC-SCOPE-363` (migration `0245_fee_adjustments`, API §12JI, RBAC §2.263); design
+- **Status:** built as `DEC-SCOPE-364` (migration `0246_fee_adjustments`, API §12JJ, RBAC §2.264); design
   `docs/superpowers/specs/2026-11-03-itc-015-fee-adjustments-design.md`. Q-15 built with the recommended answers (manual refunds only;
   refunds reduce IT revenue) and Q-14 without maker-checker (the recorder approves), all `NEEDS_CONFIRMATION`.
 - **Business requirement:** §4 "refund/adjustment"; §6 "approved credits/refunds"; §2 Accounts "record payments and refunds".

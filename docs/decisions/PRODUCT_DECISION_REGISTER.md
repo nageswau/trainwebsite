@@ -11191,7 +11191,29 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0244_it_status_labels` (on itc-011's `0243_it_conversion`); API §12JH; RBAC §2.262.
 - **Feature ID authorized:** `itc-005`. **Status:** built on `worktree-itc-005`.
 
-### DEC-SCOPE-363 — Refunds, adjustments and payment correction on the IT fee account (`itc-015`)
+### DEC-SCOPE-363 — Discount and waiver approval: maker-checker for IT enrolment fees (`itc-014`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-014` (PDF §4 "discount/waiver approval", §6 "Show approved fee amount and
+  any approved discount"; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-01). Dependency itc-013
+  (`DEC-SCOPE-346`) is merged. The owner said to proceed with the recommended answers, so Q-14 and D1–D8 below are **the builder's calls
+  (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-03-itc-014-discount-approval-design.md`.
+- **Q-14 (builder's call):** maker-checker. A discount request never changes payable (AC1); only an approval by a `discounts.approve`
+  holder who is not the requester does (AC3: self-decision 403). The nehn-021 direct discount (`POST /admin/payments/{id}/discount`,
+  `discounts.add`, `DEC-SCOPE-309`) is unchanged for every division; whether to retire it for IT is `NEEDS_CONFIRMATION`.
+- **D1** table `fee_discount_requests` (enrolment, amount > 0, reason ≤ 500, status pending/approved/rejected, requester, decider,
+  decided_at, decision note); at most one pending request per enrolment (partial unique index; a second 409). **D2** requesters: the
+  student's itc-003 IT counselor, or a `discounts.add` holder in IT (or every division). **D3** new grant `discounts.approve`, default
+  IT Admin (migration seeds it; super_admin implicit), IT (or every division) only. **D4** amount ≤ the balance still owed (422; a full
+  waiver is allowed), re-checked under row locks at approval (a payment meanwhile → 409 naming what is still owed; the request stays
+  pending). **D5** an approval comes off the owed bills latest due first (the reverse of `record_payment`'s order) through the nehn-019
+  discount columns, reissuing each bill's invoice and clearing a stale checkout; a bill brought to 0 becomes `waived` (still billed, so
+  `course_fee` is unchanged; never owed or payable). **D6** audit (itc-001) `it.fee.discount_requested` / `_approved` (old and new
+  `discount_approved`, `total_payable`, `balance`; AC2) / `_rejected`. **D7** an approval runs the itc-031 lifecycle sync. **D8** no
+  notifications (none carry amounts).
+- **Numbering:** migration `0245_fee_discount_requests` (on itc-005's `0244_it_status_labels`); API §12JI; RBAC §2.263.
+- **Feature ID authorized:** `itc-014`. **Status:** built on `worktree-itc-014`.
+
+### DEC-SCOPE-364 — Refunds, adjustments and payment correction on the IT fee account (`itc-015`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-015` (PDF §4 "refund/adjustment", §6 "approved credits/refunds", §2
   Accounts "record payments and refunds"; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-01).
@@ -11207,10 +11229,10 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   correction's old and new amount, mode and reference).
 - **Claude's calls (`NEEDS_CONFIRMATION`):** C1 (Q-15) manual refunds only, no Razorpay refund API. C2 (Q-15) refunds reduce reported
   revenue: a `fee_refund` line of minus the amount in `ledger.lines()` and the IT revenue dashboard, on its IST day; credit notes move no
-  cash so do not. C3 (Q-14) no maker-checker yet: the recorder is the approver. C4 `credits` = credit notes + write-offs; a refund is a
+  cash so do not. C3 (Q-14) no maker-checker for adjustments: the recorder is the approver (itc-014's maker-checker covers discount requests only). C4 `credits` = credit notes + write-offs; a refund is a
   separate `refunded` figure (the backlog's "₹5,000 back after a batch change" = a credit note then a refund). C5 a correction may not
   exceed the reopened bill (record a second payment for more); a gateway payment is corrected by a credit note and a refund. C6 a
   corrected payment's revenue moves to the correction day. C7 the reason is shown to the student. C8 the path is `/it/enrollments/…`
   (Q-17, the accounts route, is open); the list rides the fee account response.
-- **Numbering:** migration `0245_fee_adjustments` (on itc-005's `0244_it_status_labels`); API §12JI; RBAC §2.263.
+- **Numbering:** migration `0246_fee_adjustments` (on itc-014's `0245_fee_discount_requests`); API §12JJ; RBAC §2.264.
 - **Feature ID authorized:** `itc-015`. **Status:** built on `worktree-itc-015`.

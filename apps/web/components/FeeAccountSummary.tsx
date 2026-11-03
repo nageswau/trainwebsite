@@ -25,7 +25,7 @@ export type FeeAccount = {
   next_due?: { amount: number; due_date: string | null } | null;
   // itc-016 (DEC-SCOPE-358): the fee rows by due date, `overdue` derived by the API (IST), with the reminders sent; optional, as above.
   installments?: FeeInstallment[];
-  // itc-015 (DEC-SCOPE-363): refunds paid back out of a credit, and every credit note / write-off / refund / correction; optional, as above.
+  // itc-015 (DEC-SCOPE-364): refunds paid back out of a credit, and every credit note / write-off / refund / correction; optional, as above.
   refunded?: number;
   adjustments?: FeeAdjustment[];
 };
@@ -140,7 +140,7 @@ const STATE_LABELS: Record<FeeAccount["state"], string> = {
   fully_paid: "Fully paid",
 };
 
-const money = (currency: string, value: number) => `${currency} ${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export const money = (currency: string, value: number) => `${currency} ${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export function FeeAccountCard({ account }: { account: FeeAccount }) {
   const rows: [string, number][] = [

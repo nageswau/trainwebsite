@@ -5349,9 +5349,26 @@ catalogue position (default order = (position + 1) × 10).
   turned-off stage → 409 (clearing with `null` always allowed). Lifecycle `stage_label` / history labels and the IT 360 `lead.stage_label`
   carry the configured words. Follow-up rows' `lead` gains `division` (additive).
 
-## 12JI. Refunds, adjustments and payment correction (itc-015) — addendum, 2026-11-03
+## 12JI. Discount and waiver approval (itc-014) — addendum, 2026-11-03
 
-`DEC-SCOPE-363`. Migration `0245_fee_adjustments`. Additive.
+`DEC-SCOPE-363`. Migration `0245_fee_discount_requests`. Additive. A request item is `{id, enrollment_id, enrollment_code, student: {id,
+full_name}, course, amount, reason, status: pending|approved|rejected, requested_by: {id, full_name}, created_at, decided_by: {id,
+full_name} | null, decided_at, decision_note, own}` (`own`: the caller made it).
+
+- `GET /it/enrollments/{id}/discount-requests` — the enrolment's requests, newest first.
+- `POST /it/enrollments/{id}/discount-requests` — body `{amount (> 0, 2 dp), reason (1–500)}` → 201 the request. Nothing owed → 409;
+  amount above the balance still owed → 422 naming it; a request already pending → 409. Audit `it.fee.discount_requested`.
+- `GET /it/discount-requests?status=pending|approved|rejected` (default `pending`, oldest first; decided newest first; at most 200) —
+  the approval queue.
+- `POST /it/discount-requests/{id}/approve` — body `{note? (≤ 500)}` → `{request, account}` (§12IR shape: `discount_approved`,
+  `total_payable` and `balance` lowered). The amount comes off the owed bills latest due first; a bill brought to 0 gets status `waived`
+  (a new `Payment.status` value, seen in `/payments/mine` and `/admin/payments`; never payable). Already decided → 409; more than is
+  now owed → 409 (the request stays pending). Audit `it.fee.discount_approved` with old/new figures.
+- `POST /it/discount-requests/{id}/reject` — body `{note (1–500)}` → `{request}`. Already decided → 409. Audit `it.fee.discount_rejected`.
+
+## 12JJ. Refunds, adjustments and payment correction (itc-015) — addendum, 2026-11-03
+
+`DEC-SCOPE-364`. Migration `0246_fee_adjustments`. Additive.
 
 - `POST /it/enrollments/{id}/adjustments` — `payments.refund`, IT division (or every division). Body `{kind: credit_note | write_off |
   refund, amount (> 0, 2 dp), reason (1–500), payment_mode? (cash, upi, card, bank_transfer, cheque; required for a refund, else 422
