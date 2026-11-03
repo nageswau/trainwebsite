@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-import { formatCalendarDate } from "@/lib/formatDate";
+import { detailMessage } from "@/lib/apiErrors";
+import { formatCalendarDate, formatDate } from "@/lib/formatDate";
 
 // itc-013 (DEC-SCOPE-346): an IT student's fee account per enrolment -- computed by the API from confirmed payments only, so a pending
 // online payment never lowers the balance. Tax is shown as the API sends it (0 until GST is confirmed, Q-12).
@@ -24,7 +25,70 @@ export type FeeAccount = {
   next_due?: { amount: number; due_date: string | null } | null;
   // itc-016 (DEC-SCOPE-358): the fee rows by due date, `overdue` derived by the API (IST), with the reminders sent; optional, as above.
   installments?: FeeInstallment[];
+  // itc-015 (DEC-SCOPE-362): refunds paid back out of a credit, and every credit note / write-off / refund / correction; optional, as above.
+  refunded?: number;
+  adjustments?: FeeAdjustment[];
 };
+
+export type FeeAdjustment = {
+  id: string;
+  kind: "credit_note" | "write_off" | "refund" | "reversal";
+  amount: number;
+  reason: string;
+  payment_mode: string | null;
+  reference: string | null;
+  document_no: string | null;
+  created_at: string;
+};
+
+const ADJUSTMENT_LABELS: Record<FeeAdjustment["kind"], string> = { credit_note: "Credit note", write_off: "Write-off", refund: "Refund", reversal: "Payment corrected" };
+const DOCUMENT_LABELS: Record<FeeAdjustment["kind"], string> = { credit_note: "credit note", write_off: "write-off", refund: "refund receipt", reversal: "" };
+const MODE_LABELS: Record<string, string> = { cash: "Cash", upi: "UPI", card: "Card", bank_transfer: "Bank transfer", cheque: "Cheque" };
+
+/** itc-015: the account's adjustments, oldest first; a credit note, write-off or refund downloads its document through a signed link. */
+function AdjustmentList({ currency, items }: { currency: string; items: FeeAdjustment[] }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<{ id: string; text: string } | null>(null);
+
+  async function download(item: FeeAdjustment) {
+    setBusy(item.id);
+    setError(null);
+    const response = await fetch(`/api/v1/it/fee-adjustments/${item.id}/document`);
+    const data = await response.json().catch(() => ({}));
+    setBusy(null);
+    if (!response.ok) {
+      setError({ id: item.id, text: detailMessage(data.detail, "The document could not be downloaded. Please try again.") });
+      return;
+    }
+    window.open(data.url, "_blank", "noreferrer");
+  }
+
+  return (
+    <>
+      <h5 style={{ margin: "14px 0 6px", fontSize: 14 }}>Credits and refunds</h5>
+      <ul aria-label="Credits and refunds" className="list-clean" style={{ display: "grid", gap: 8, margin: 0 }}>
+        {items.map((a) => (
+          <li key={a.id} style={{ fontSize: 13 }}>
+            <span style={{ display: "block" }}>{`${ADJUSTMENT_LABELS[a.kind]} · ${money(currency, a.amount)} · ${formatDate(a.created_at)}`}</span>
+            {a.payment_mode && (
+              <span className="muted" style={{ display: "block", overflowWrap: "anywhere" }}>
+                {[MODE_LABELS[a.payment_mode] ?? a.payment_mode, a.reference ? `Ref ${a.reference}` : null].filter(Boolean).join(" · ")}
+              </span>
+            )}
+            <span className="muted" style={{ display: "block", overflowWrap: "anywhere" }}>{a.reason}</span>
+            {a.document_no && (
+              <button type="button" className="btn small secondary" style={{ marginTop: 4 }} aria-label={`Download ${DOCUMENT_LABELS[a.kind]} ${a.document_no}`}
+                disabled={busy === a.id} onClick={() => download(a)}>
+                {busy === a.id ? "Preparing…" : `Download ${DOCUMENT_LABELS[a.kind]}`}
+              </button>
+            )}
+            {error?.id === a.id && <p className="form-error" role="alert" style={{ margin: "4px 0 0" }}>{error.text}</p>}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
 
 export type FeeReminder = { kind: "due_soon" | "overdue"; offset_days: number; sent_on: string };
 export type FeeInstallment = {
@@ -86,6 +150,7 @@ export function FeeAccountCard({ account }: { account: FeeAccount }) {
     ["Total payable", account.total_payable],
     ["Paid", account.paid_confirmed],
     ["Credits", account.credits],
+    ...(account.refunded !== undefined ? [["Refunded", account.refunded] as [string, number]] : []),
   ];
   const credit = account.balance < 0;
   return (
@@ -120,6 +185,7 @@ export function FeeAccountCard({ account }: { account: FeeAccount }) {
         </dl>
       )}
       {account.installments && account.installments.length > 0 && <InstallmentList currency={account.currency} items={account.installments} />}
+      {account.adjustments && account.adjustments.length > 0 && <AdjustmentList currency={account.currency} items={account.adjustments} />}
     </div>
   );
 }
