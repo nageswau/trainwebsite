@@ -521,6 +521,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** high.
 
 #### itc-016: Overdue marking and fee reminders
+- **Status:** built as `DEC-SCOPE-358` (migration `0240_fee_reminders`, API §12JD, RBAC §2.258). Q-16 built with the recommended answers (3 days before; 1/7/14 after; derived overdue; IT Admin sets the schedule), `NEEDS_CONFIRMATION`; no holiday calendar (E).
 - **Business requirement:** §6 "paid/unpaid/overdue status, and reminder history"; §9 "Send reminders for upcoming/overdue installments".
 - **Existing behavior:** nothing sets `status="overdue"`. The accounts dashboard derives late from `due_date < today` (`accounts.py:98`). No reminder beat job and no reminder history exist.
 - **Expected behavior:** a daily beat job (`itc016-fee-reminders`, 08:30 IST):
@@ -941,7 +942,7 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 ### Phase 5: Views, lifecycle and reports (PDF Phase 5)
 
 #### itc-029: IT student 360 for counselor, HR and admin
-- **Status:** built as `DEC-SCOPE-358` (no migration, API §12JD, RBAC §2.258). One role-scoped read `/it/students/{id}/360`; Q-28 HR
+- **Status:** built as `DEC-SCOPE-359` (no migration, API §12JE, RBAC §2.259). One role-scoped read `/it/students/{id}/360`; Q-28 HR
   omits fee, profile, lead, risk and notifications; trainers get no 360; progress/feedback use today's data until itc-022 — builder's
   calls, `NEEDS_CONFIRMATION`.
 - **Business requirement:** §11 "Lead/student 360° profile: contact details, timeline, course, notes, documents, fee, attendance, progress, HR stage, notifications"; §6 counselor view; §12 AC4/AC6.

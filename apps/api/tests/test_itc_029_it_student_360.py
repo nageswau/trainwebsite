@@ -1,4 +1,4 @@
-"""itc-029 (DEC-SCOPE-358) -- the IT student 360 for the IT counselor, HR and the IT Admin (spec docs/superpowers/specs/2026-11-03-itc-029-
+"""itc-029 (DEC-SCOPE-359) -- the IT student 360 for the IT counselor, HR and the IT Admin (spec docs/superpowers/specs/2026-11-03-itc-029-
 it-student-360-design.md). One role-scoped read, GET /it/students/{id}/360, with a per-role section allow-list (S3: HR's omits fee,
 profile, lead, risk and notifications); every section is read live from its own record (AC1); out of scope is 404 (AC2); a fixed number
 of queries whatever the number of enrolments (AC3)."""

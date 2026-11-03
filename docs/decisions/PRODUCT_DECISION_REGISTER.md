@@ -11084,8 +11084,29 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   (all `NEEDS_CONFIRMATION`), the backup checklist. **No purge job** until the periods have legal sign-off (`DEC-PRIV-001`).
 - **Numbering:** migration `0239_call_preference` (on itc-027's `0237_hr_review_tasks`); API §12JC; RBAC §2.257.
 - **Feature ID authorized:** `itc-033`. **Status:** built on `worktree-itc-033`.
+### DEC-SCOPE-358 — Overdue marking and fee reminders (`itc-016`)
 
-### DEC-SCOPE-358 — IT student 360 for counselor, HR and admin (`itc-029`)
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-016` (PDF §6 "paid/unpaid/overdue status, and reminder history", §9
+  "Send reminders for upcoming/overdue installments"). Scope approved by the owner 2026-11-01 (backlog Q-01: all phases, built in
+  waves). Dependencies itc-002 (`DEC-SCOPE-336`), itc-003 (`DEC-SCOPE-338`) and itc-013 (`DEC-SCOPE-346`) are merged. Design
+  `docs/superpowers/specs/2026-11-03-itc-016-fee-reminders-design.md`.
+- **Behaviour:** a daily job (08:30 IST) reminds an IT student of an enrolment-fee installment before it is due and on the chosen days
+  after it is overdue; the student's itc-003 counselor hears of overdue ones too. Every reminder is logged and shown, with an
+  Overdue / Due / Paid badge, on each installment of the fee account — the student's Fees page and a new "Fees and reminders" card on the
+  IT student record (IT Admin, linked counselor). The IT Admin sets the schedule on the Payments page.
+- **Claude's calls under "proceed with recommended answers" (Q-16, `NEEDS_CONFIRMATION`):** F1 "overdue" is derived (owed and due before
+  today's IST date), never stored — `student_access`, the accounts dashboard and `record_payment` are unchanged. F2 installments = the
+  itc-013 fee rows (an EMI installment counts when it bills the enrolment as `enrollment_fee`). F3 default schedule 3 days before and
+  1, 7, 14 days after (0 / empty = off; up to 6 days, 1–90); a rule fires only on the day it names — a missed day is not caught up;
+  holidays are ordinary days (no holiday calendar exists). F4 channels are itc-002's (in-app + email; WhatsApp/SMS only when opted in);
+  events `it.fee.payment_due` (existing), `it.fee.payment_overdue`, `it.fee.student_overdue` — fixed text, no amount (confirms the
+  itc-002 `it.fee.payment_due` row for this use). F5 one reminder per (installment, rule, IST day): unique key + a savepoint per
+  reminder, so reruns and overlapping runs send nothing twice and a failure sends nothing. F6 the schedule is IT Admin only; "accounts"
+  (a `payments.view` holder) reads the history through the itc-013 fee-account API (its own workspace is itc-017, Q-17).
+- **Numbering:** migration `0240_fee_reminders`; API §12JD; RBAC §2.258.
+- **Feature ID authorized:** `itc-016`. **Status:** built on `worktree-itc-016`.
+
+### DEC-SCOPE-359 — IT student 360 for counselor, HR and admin (`itc-029`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-029` (PDF §6 counselor view, §11 screen "Lead/student 360° profile",
   §12 AC4/AC6). Scope approved by the owner 2026-11-01 (backlog Q-01: all phases, built in waves). Dependencies itc-003
@@ -11100,5 +11121,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   S3 (Q-28) HR's 360 omits fee, the itc-012 profile, the lead, risk and notifications — HR's existing rules (nehn-017 "nothing financial",
   itc-012 C1, itc-023 R8). S4 notifications show title and event, never the body. S5 reading a 360 is not audited. S6 until itc-022,
   progress % is the trainer-entered figure and "trainer feedback" is graded assignment/assessment feedback.
-- **Numbering:** no migration; API §12JD; RBAC §2.258.
+- **Numbering:** no migration; API §12JE; RBAC §2.259.
 - **Feature ID authorized:** `itc-029`. **Status:** built on `worktree-itc-029`.

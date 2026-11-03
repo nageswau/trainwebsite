@@ -5254,10 +5254,24 @@ only (no shape change).
 - `POST …/resumes` (itc-026, all portals) — with `CLAMAV_HOST` set: 422 `"The file failed a virus scan and was not uploaded"` (audit
   `it.resume.scan_rejected`); 503 `"Virus scanning is unavailable; please try again later"` when the scanner gives no verdict. Nothing
   is stored in either case. Unset: unchanged.
+## 12JD. Overdue marking and fee reminders (itc-016) — addendum, 2026-11-03
 
-## 12JD. IT student 360 (itc-029) — addendum, 2026-11-03
+`DEC-SCOPE-358`. Migration `0240_fee_reminders`. Additive.
 
-`DEC-SCOPE-358`. No migration. Additive (two new read routes; two portal tables gain a column).
+- `GET /it/enrollments/{id}/fee-account` and `GET /it/student/fee-accounts` (§12IR) — each account gains `installments: [{id,
+  installment_no|null, amount, due_date|null, status: "pending"|"paid", overdue: bool, reminders: [{kind: "due_soon"|"overdue",
+  offset_days, sent_on}]}]`, the fee rows in `record_payment`'s order. `overdue` = pending and `due_date` before today's IST date.
+  `next_due` (§12IY) is unchanged (the first pending installment). Same readers and errors as §12IR.
+- `GET /admin/it/fee-reminder-settings` → `{days_before, overdue_days}` (no row = `{3, [1, 7, 14]}`). `PUT` with the same body
+  (both required): `days_before` 0–30 (0 = off), `overdue_days` ≤ 6 integers 1–90 (empty = off), de-duplicated and sorted in the
+  response; 422 otherwise. IT Admin (IT) only: 403 for every other role, 401 signed out. Audited `it.fee_reminders.settings_update`.
+- Beat `itc016-fee-reminders` (03:00 UTC = 08:30 IST) → notifications `it.fee.payment_due` / `it.fee.payment_overdue` (student,
+  `action_url` `/it/student/fees`) and `it.fee.student_overdue` (linked IT counselor, `action_url` the student record); entity
+  `payment`. No amount in any notice.
+
+## 12JE. IT student 360 (itc-029) — addendum, 2026-11-03
+
+`DEC-SCOPE-359`. No migration. Additive (two new read routes; two portal tables gain a column).
 
 - `GET /it/students/{id}/360` — `Cache-Control: private, no-store`. The IT `counselor` (itc-003 linked students), `hr_team` with
   `student_progress.view` (the nehn-017 pool) and the `it_admin` (any IT student). Response `{student: {id, full_name, student_code,

@@ -37,7 +37,7 @@ function Facts({ rows }: { rows: [string, ReactNode][] }) {
   );
 }
 
-/** itc-029 (DEC-SCOPE-358): the 360's sections in the spec's order. Each is rendered only when the API sent it (the per-role allow-list
+/** itc-029 (DEC-SCOPE-359): the 360's sections in the spec's order. Each is rendered only when the API sent it (the per-role allow-list
  *  lives on the server); every edit stays on its own page, linked from here. */
 export default function ItStudent360View({ portal, data }: { portal: Portal360; data: Student360 }) {
   const { student, contact, profile, lead, enrollments, fee, risk, feedback, resumes, hr_review: review, notes, notifications } = data;
