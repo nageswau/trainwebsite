@@ -6,6 +6,7 @@ import ItStudentProfileForm from "@/components/ItStudentProfileForm";
 import PortalShell from "@/components/PortalShell";
 import StudentResumeCard from "@/components/StudentResumeCard";
 import { ApiError, serverApi } from "@/lib/api";
+import { formatDay, staffReviewUrl, type StaffReview } from "@/lib/hrReviews";
 import { formatRiskDate, riskReasonLabels, studentRiskUrl, type RiskFlag } from "@/lib/itAtRisk";
 import { itEnrollmentsUrl, itStudentProfileUrl, MY_IT_PROFILE_URL, type ItStudentProfileResponse } from "@/lib/itStudentProfile";
 import { PORTAL_NAV } from "@/lib/navigation";
@@ -67,8 +68,38 @@ export default async function ItStudentProfilePage({ portal, id }: { portal: key
         <div style={{ marginTop: 16 }}>
           <StudentResumeCard url={studentResumesUrl(portal, id)} description="Upload a resume on the student's behalf. Each upload is a new version; earlier ones are kept." />
         </div>
+        <HrReviewStatusCard portal={portal} studentId={data.student.id} />
       </div>
     </PortalShell>
+  );
+}
+
+/** itc-027 (DEC-SCOPE-353 H7): where HR's resume review stands -- stage, owner, next action and screening date. Never HR's notes. */
+async function HrReviewStatusCard({ portal, studentId }: { portal: keyof typeof PORTALS; studentId: string }) {
+  let data: StaffReview;
+  try {
+    data = await serverApi<StaffReview>(staffReviewUrl(portal, studentId));
+  } catch {
+    return <div className="card" role="status" style={{ marginTop: 16 }}>The HR review could not be loaded. Refresh the page to try again.</div>;
+  }
+  const task = data.task;
+  return (
+    <section className="card" aria-labelledby="student-hr-review-heading" style={{ marginTop: 16 }}>
+      <h3 id="student-hr-review-heading" style={{ fontSize: 18, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        HR review {task && <span className="badge">{task.stage_label}</span>}
+      </h3>
+      {!task ? (
+        <p className="muted" style={{ margin: 0 }}>No HR review yet. One opens when a resume version is shared with HR.</p>
+      ) : (
+        <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "max-content 1fr", gap: "4px 16px" }}>
+          <dt>Owner</dt><dd style={{ margin: 0 }}>{task.owner?.full_name ?? "Not assigned yet"}</dd>
+          <dt>Next action</dt><dd style={{ margin: 0 }}>{task.next_action}</dd>
+          <dt>Screening date</dt><dd style={{ margin: 0 }}>{formatDay(task.screening_date)}</dd>
+          <dt>Resume version</dt><dd style={{ margin: 0 }}>{task.resume_version}</dd>
+          <dt>Last updated</dt><dd style={{ margin: 0 }}>{formatDay(task.updated_at)}</dd>
+        </dl>
+      )}
+    </section>
   );
 }
 

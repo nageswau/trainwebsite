@@ -12,7 +12,7 @@ from app.core.database import get_db
 from app.models import AuditLog, Certificate, ConsentRecord, DataSubjectRequest, Enrollment, NotificationPreference, Payment, User, UserRoleAssignment
 from app.notifications.phone import normalise_phone
 from app.schemas import NotificationPreferencesIn, NotificationPreferencesOut, PlacementPoolOptIn
-from app.services import placement_pool
+from app.services import hr_reviews, placement_pool
 from app.services.storage import storage
 
 router = APIRouter(prefix="/account", tags=["account"])
@@ -137,6 +137,7 @@ async def opt_in_placement_pool(payload: PlacementPoolOptIn, request: Request, u
 async def opt_out_placement_pool(request: Request, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     placement_pool.require_student(user)
     await placement_pool.opt_out(db, user, _client_ip(request))
+    await hr_reviews.close_for_withdrawal(db, user.id)  # itc-027 (DEC-SCOPE-353 H9): leaving placement closes the open resume review
     await db.commit()
     return await placement_pool.state(db, user)
 

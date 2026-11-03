@@ -3,6 +3,7 @@ import { Fragment } from "react";
 
 import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable";
 import HrDocumentDownload from "@/components/HrDocumentDownload";
+import HrReviewCard from "@/components/HrReviewCard";
 import PortalShell from "@/components/PortalShell";
 import StudentResumeCard from "@/components/StudentResumeCard";
 import { ApiError, serverApi } from "@/lib/api";
@@ -48,6 +49,8 @@ export default async function HrStudentPage({ id }: { id: string }) {
               {/* itc-028 (DEC-SCOPE-351): HR's notes on the student -- internal unless HR shares one with them */}
               <Link className="btn small secondary" href={`/it/hr/students/${encodeURIComponent(detail.student.id)}/notes`}>Notes</Link>
             </div>
+            {/* itc-027 (DEC-SCOPE-353): the resume review, when this HR user owns it */}
+            <HrReviewCard studentId={detail.student.id} />
             <div className="action-card">
               <h3>Courses</h3>
               {!detail.can.attendance && <p className="muted">Attendance: {WITHHELD}</p>}

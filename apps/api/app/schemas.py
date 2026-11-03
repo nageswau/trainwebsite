@@ -74,6 +74,7 @@ from app.models import (
     ENGLISH_TESTS,
     FEEDBACK_DECISIONS,
     GENDERS,
+    HR_REVIEW_OPEN_STAGES,
     INSTITUTION_TYPES,
     INTERVIEW_ROUNDS,
     INVESTMENT_STATUSES,
@@ -15019,3 +15020,40 @@ class StudentResumeSettingsIn(BaseModel):
 
     model_config = {"extra": "forbid"}
     max_mb: StrictInt = Field(ge=1, le=10)
+
+
+# itc-027 (DEC-SCOPE-353 H6): the review checklist's fixed keys (labels in the web client).
+HR_REVIEW_CHECKLIST = ("contact", "education", "skills", "projects", "formatting")
+
+
+class HrReviewPatch(BaseModel):
+    """itc-027 (H1/H6): the owner's save -- any subset; `withdrawn` is the system's, never set here. Only the keys sent are changed; a
+    stage or checklist can't be null. Text is trimmed and an empty one clears the field."""
+
+    model_config = {"extra": "forbid", "str_strip_whitespace": True}
+    stage: Literal[(*HR_REVIEW_OPEN_STAGES, "completed")] | None = None
+    screening_date: date | None = None
+    role_preferences: str | None = Field(None, max_length=300)
+    skill_gap_notes: str | None = Field(None, max_length=4000)
+    checklist: list[Literal[HR_REVIEW_CHECKLIST]] | None = Field(None, max_length=len(HR_REVIEW_CHECKLIST) * 2)
+
+    @field_validator("stage", "checklist")
+    @classmethod
+    def _not_null(cls, value):
+        if value is None:
+            raise ValueError("can't be empty")
+        return value
+
+
+class HrReviewOwnerIn(BaseModel):
+    """itc-027 (H5): the IT Admin's (re)assignment -- an active HR user."""
+
+    model_config = {"extra": "forbid"}
+    hr_user_id: UUID
+
+
+class HrAssignmentRuleIn(BaseModel):
+    """itc-027 (H3): a programme's HR reviewer; null removes the rule (the key is required)."""
+
+    model_config = {"extra": "forbid"}
+    hr_user_id: UUID | None
