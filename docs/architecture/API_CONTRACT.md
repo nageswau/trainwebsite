@@ -5254,3 +5254,25 @@ only (no shape change).
 - `POST …/resumes` (itc-026, all portals) — with `CLAMAV_HOST` set: 422 `"The file failed a virus scan and was not uploaded"` (audit
   `it.resume.scan_rejected`); 503 `"Virus scanning is unavailable; please try again later"` when the scanner gives no verdict. Nothing
   is stored in either case. Unset: unchanged.
+
+## 12JD. IT student 360 (itc-029) — addendum, 2026-11-03
+
+`DEC-SCOPE-358`. No migration. Additive (two new read routes; two portal tables gain a column).
+
+- `GET /it/students/{id}/360` — `Cache-Control: private, no-store`. The IT `counselor` (itc-003 linked students), `hr_team` with
+  `student_progress.view` (the nehn-017 pool) and the `it_admin` (any IT student). Response `{student: {id, full_name, student_code,
+  active}, viewer: "counselor"|"admin"|"hr", sections: [...], ...one key per section in sections}`. Sections: `contact {email, phone,
+  counselor}`, `profile {city, qualification, emergency_contact_name, emergency_contact_relation, emergency_contact_phone, calls_allowed}`,
+  `lead {id, lead_code, stage, stage_label, owner, created_at, converted_at, href} | null`, `enrollments [{id, enrollment_code, program,
+  batch, trainer, status, start_date, end_date, delivery_mode, progress_percent, attendance_percent?, attendance_marked?}]`, `fee {accounts:
+  [itc-013 account], balance: number|null}`, `risk [{enrollment_id, batch, reasons, attendance_percent, assessment_percent,
+  consecutive_absences, raised_at}]`, `feedback [{kind, title, score, max_score, feedback (≤300 chars), by, at}]` (5 newest), `resumes
+  {items: [itc-026 version]}`, `hr_review {task}` (itc-027 staff view), `notes {items, total}` (5 newest, itc-028), `notifications [{id,
+  title, event_type, sent_at, read}]` (10 newest, never the body). HR's `sections` omit `profile`, `lead`, `fee`, `risk`, `notifications`
+  (the keys are absent); HR's `enrollments` carry the attendance keys only with `attendance.view`, and HR's `resumes` only `hr` versions.
+  Errors: 401 no session; 403 any other role (trainer included) or HR without `student_progress.view`; 404 a student out of scope, not an
+  IT student, or missing; 422 a malformed id. A fixed number of queries (≤ 22) whatever the number of enrolments.
+- `GET /it/students/{id}/360/lead-timeline?limit=20&offset=0` — the tel-015 timeline page of the IT lead the student was converted from
+  (`{items, total, limit, offset}`; empty when there is none). The counselor and the IT Admin (scope as above); HR 403.
+- `GET /portal/it/counselor/students` and `GET /portal/it/admin/students` — rows gain `open` (the 360 page path), column
+  `{key: "open", label: "", type: "student_360"}`.

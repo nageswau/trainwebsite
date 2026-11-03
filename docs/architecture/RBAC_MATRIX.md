@@ -3608,3 +3608,12 @@ from an unknown id). Pinned by `apps/api/tests/test_itc_024_trainer_dashboard.py
 No grant change. The call preference is self-only (any signed-in user, no id in the path; nobody sets another's). The IT student record
 shows it read-only to the routes that already read that record (the itc-003 counselor for linked students, the IT Admin). The resume
 scan adds no access path. Pinned by `apps/api/tests/test_itc_033_call_preference.py` and `test_itc_033_malware_scan.py`.
+
+### 2.258 IT student 360 *(added 2026-11-03 — `DEC-SCOPE-358`, itc-029)*
+
+No grant change. One read route with a per-role section allow-list: IT `counselor` — their itc-003 linked students (404 otherwise), every
+section; `it_admin` (IT) — any IT student, every section; `hr_team` with `student_progress.view` — the nehn-017 placement pool (404
+outside it), only contact, courses (attendance % only with `attendance.view`), feedback, `hr`-visible resumes, HR stage and notes — never
+fee, the itc-012 profile/emergency contact, the lead, risk flags or notifications (Q-28, `NEEDS_CONFIRMATION`). `trainer`, students,
+overseas roles, `placement_team` and `super_admin` 403. The lead timeline route is the counselor's and the IT Admin's only. Pinned by
+`apps/api/tests/test_itc_029_it_student_360.py`.

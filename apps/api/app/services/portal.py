@@ -1743,10 +1743,12 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             if section == "students" and division == "it" and user.role == "it_admin":
                 # itc-003 (DEC-SCOPE-337): each IT student's counselor and the IT Admin's assign/change control (csc-005's, IT picker).
                 counselors = await it_student_counselors.counselors_of(db, [u.id for u in rows])
-                columns += [("counselor", "EduSphere counsellor"), ("assign", "", "assign_it_student_counselor"), ("profile", "", "student_profile"), ("notes", "", "student_notes")]
+                columns += [("counselor", "EduSphere counsellor"), ("assign", "", "assign_it_student_counselor"), ("open", "", "student_360"), ("profile", "", "student_profile"),
+                            ("notes", "", "student_notes")]
                 for row in table:
                     counselor = counselors.get(row["id"])
                     row |= {"counselor": counselor.full_name if counselor else "Not assigned", "counselor_id": str(counselor.id) if counselor else None, "assign": row["id"]}
+                    row["open"] = f"/it/admin/students/{row['id']}"  # itc-029: the student 360
                     row["profile"] = f"/it/admin/students/{row['id']}/profile"  # itc-012
                     row["notes"] = f"/it/admin/students/{row['id']}/notes"  # itc-028
             return _payload(section.title(), "Role-scoped user administration.", columns, table)
@@ -1949,9 +1951,9 @@ async def _it_counselor(db: AsyncSession, user: User, section: str):
             "IT students you are the counselor for.",
             # itc-012 (DEC-SCOPE-345): each row links the student's record (profile, emergency contact, enrolment dates)
             (("student_code", "Student ID"), ("name", "Name"), ("email", "Email"), ("phone", "Phone"), ("since", "Your student since"), ("fee_balance", "Fee balance"),
-             ("profile", "", "student_profile"), ("notes", "", "student_notes")),  # itc-028: and the student's notes
+             ("open", "", "student_360"), ("profile", "", "student_profile"), ("notes", "", "student_notes")),  # itc-028: notes; itc-029: the 360
             ({"id": s["id"], "student_code": s["student_code"], "name": s["full_name"], "email": s["email"], "phone": s["phone"], "since": today_ist(s["linked_since"]).isoformat(),
-              "fee_balance": _fee_balance(balances[s["id"]]), "profile": f"/it/counselor/students/{s['id']}/profile",
+              "fee_balance": _fee_balance(balances[s["id"]]), "open": f"/it/counselor/students/{s['id']}", "profile": f"/it/counselor/students/{s['id']}/profile",
               "notes": f"/it/counselor/students/{s['id']}/notes"} for s in mine["items"]),
         )  # fmt: skip
     if section == "appointments":  # tel-016 AP14: header only -- the page's panel reads /counselor/appointments

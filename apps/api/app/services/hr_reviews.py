@@ -295,7 +295,12 @@ async def save_rule(db: AsyncSession, admin: User, program_id: UUID, hr_user_id:
 # --- read-only views: counselor / IT Admin student record, and the student ------------------------------------------------------
 async def staff_view(db: AsyncSession, user: User, student_id: UUID, portal: str) -> dict:
     student = await profiles.staff_student(db, user, student_id, portal=portal)
-    task = await db.scalar(select(HrReviewTask).where(HrReviewTask.student_user_id == student.id))
+    return await staff_task(db, student.id)
+
+
+async def staff_task(db: AsyncSession, student_id: UUID) -> dict:
+    """The `_staff` view of the student's task (`{"task": None}` when there is none); the caller has applied its own scope (itc-029)."""
+    task = await db.scalar(select(HrReviewTask).where(HrReviewTask.student_user_id == student_id))
     if task is None:
         return {"task": None}
     return {"task": _staff(task, await db.get(User, task.owner_user_id) if task.owner_user_id else None)}

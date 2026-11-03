@@ -1557,3 +1557,10 @@ half.
 | `itc-027-AC5` | The student sees only the safe label | `::test_the_student_sees_action_required_and_never_internal_fields`; `apps/web/tests/components/itc027HrReviews.test.tsx`; e2e `itc-027-hr-reviews.spec.ts` |
 | `itc-027-−` | Another HR user 404; student/trainer 403; unlinked counselor 404 | `::test_another_hr_user_gets_404_and_a_student_or_trainer_gets_403`, `::test_an_unlinked_counselor_gets_404_and_the_student_feed_is_students_only` |
 | `itc-027-E` | Deactivated owner reassigned; withdrawal (rec-010 opt-out, placement profile) closes the task; invalid input 422 | `::test_the_admin_reassigns_a_deactivated_owners_task`, `::test_opting_out_of_the_placement_pool_closes_the_task`, `::test_placement_marking_the_student_withdrawn_closes_the_task`, `::test_invalid_review_input_is_422` |
+| `itc-029` | Requirement: `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-029` → `DEC-SCOPE-358`; `API_CONTRACT.md` §12JD; RBAC §2.258; no migration | Built |
+| `itc-029-AC1` | Every section reflects the source record right after an update (no cache) | `apps/api/tests/test_itc_029_it_student_360.py::test_a_recorded_payment_shows_on_the_counselors_next_read`, `::test_each_reader_opens_a_student_in_scope` (no-store); e2e `itc-029-it-student-360.spec.ts` (a note shows at once) |
+| `itc-029-AC2` | Out-of-scope requests return 404; other roles 403 | `::test_out_of_scope_is_404_and_other_roles_403`, `::test_hr_without_the_progress_grant_is_refused`; e2e `itc-029-it-student-360.spec.ts` |
+| `itc-029-AC3` | Query count ≤ N, independent of enrolments | `::test_the_query_count_is_fixed_whatever_the_enrolments` (≤ 22) |
+| `itc-029-+` | After accounts records a payment, the counselor's 360 shows the new balance | `::test_a_recorded_payment_shows_on_the_counselors_next_read` |
+| `itc-029-−` | HR's 360 omits the fee section (Q-28) | `::test_hr_sees_only_its_sections_and_hr_resume_versions`, `::test_hr_without_the_attendance_grant_gets_no_attendance_figure`; `apps/web/tests/components/ItStudent360View.test.tsx`; e2e |
+| `itc-029-E` | A student with no enrolment yet | `::test_a_student_with_no_enrolment_yet`; `ItStudent360View.test.tsx`; e2e |
