@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { FeeAccountCard } from "@/components/FeeAccountSummary";
 import LeadTimeline from "@/components/LeadTimeline";
 import LocalTime from "@/components/LocalTime";
+import RemediationPlans from "@/components/RemediationPlans";
 import { formatCalendarDate } from "@/lib/formatDate";
 import { riskReasonLabels } from "@/lib/itAtRisk";
 import { authorRole } from "@/lib/itStudentNotes";
@@ -125,6 +126,8 @@ export default function ItStudent360View({ portal, data }: { portal: Portal360; 
               ))}
             </ul>
           )}
+          {/* itc-022 (DEC-SCOPE-365 P9): the plans agreed for the student (the batch trainer or the IT Admin adds them) */}
+          <RemediationPlans studentId={student.id} />
         </Section>
       )}
 

@@ -9,6 +9,7 @@ import LiveSessionManagePanel from "./LiveSessionManagePanel";
 import QuestionImportPanel from "./QuestionImportPanel";
 import SupportTicketQueuePanel from "./SupportTicketQueuePanel";
 import TrainerProgressPanel from "./TrainerProgressPanel";
+import TrainerTopicsPanel from "./TrainerTopicsPanel";
 import { formatSize } from "@/lib/agentDocuments";
 import { type CertificateCriteria, criteriaSummary } from "@/lib/certificates";
 import { formatDate } from "@/lib/formatDate";
@@ -89,6 +90,7 @@ function Field({ controlId, label, full = false, children }: { controlId: string
 export default function TeacherWorkspaceActions({ section }: { section: string }) {
   const router = useRouter();
   const [context, setContext] = useState<TeacherContext>(emptyContext);
+  const [topicsVersion, setTopicsVersion] = useState(0); // itc-022: a topic tick can move the computed progress in the table
   const [corrections, setCorrections] = useState<Correction[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [trainerAssignments, setTrainerAssignments] = useState<TrainerAssignment[]>([]);
@@ -254,7 +256,7 @@ export default function TeacherWorkspaceActions({ section }: { section: string }
       <form className="form" onSubmit={event => { const form = new FormData(event.currentTarget); void submit(event, "/api/v1/workflows/it/trainer/assignments", "POST", { batch_id: form.get("batch"), title: form.get("title"), description: form.get("description"), due_date: form.get("due_date"), max_score: Number(form.get("max_score")), assignment_type: form.get("assignment_type") }, "Assignment created."); }}>
         <Field controlId="assignment-batch" label="Batch"><select name="batch" required><option value="">Select batch</option>{batchOptions}</select></Field>
         <Field controlId="assignment-title" label="Title"><input name="title" required /></Field>
-        <Field controlId="assignment-type" label="Work type"><select name="assignment_type"><option value="assignment">Assignment</option><option value="project">Project</option></select></Field>
+        <Field controlId="assignment-type" label="Work type"><select name="assignment_type"><option value="assignment">Assignment</option><option value="project">Project</option><option value="lab">Lab</option></select></Field>
         <Field controlId="assignment-due" label="Due date and time"><input name="due_date" type="datetime-local" required /></Field>
         <Field controlId="assignment-maximum-score" label="Maximum score"><input name="max_score" type="number" min="1" defaultValue="100" required /></Field>
         <Field controlId="assignment-description" label="Description" full><textarea name="description" /></Field>
@@ -285,7 +287,7 @@ export default function TeacherWorkspaceActions({ section }: { section: string }
             }, "Assignment updated.");
           }}>
             <Field controlId="assignment-edit-title" label="Title"><input name="title" defaultValue={current.title} required /></Field>
-            <Field controlId="assignment-edit-type" label="Work type"><select name="assignment_type" defaultValue={current.assignment_type}><option value="assignment">Assignment</option><option value="project">Project</option></select></Field>
+            <Field controlId="assignment-edit-type" label="Work type"><select name="assignment_type" defaultValue={current.assignment_type}><option value="assignment">Assignment</option><option value="project">Project</option><option value="lab">Lab</option></select></Field>
             <Field controlId="assignment-edit-due" label="Due date and time"><input name="due_date" type="datetime-local" defaultValue={current.due_date.slice(0, 16)} required /></Field>
             <Field controlId="assignment-edit-maximum-score" label="Maximum score"><input name="max_score" type="number" min="1" defaultValue={current.max_score} required /></Field>
             <Field controlId="assignment-edit-description" label="Description" full><textarea name="description" defaultValue={current.description} /></Field>
@@ -482,11 +484,14 @@ export default function TeacherWorkspaceActions({ section }: { section: string }
 
   if (section === "student-progress") content = <>
     {/* nehn-028: the per-student table first; it re-reads in place after a progress update (the context's percentages change). */}
-    <TrainerProgressPanel batches={context.batches} loading={loading && !context.batches.length} refreshKey={context.enrollments.map(item => `${item.id}:${item.progress_percent}`).join()} />
+    <TrainerProgressPanel batches={context.batches} loading={loading && !context.batches.length} refreshKey={`${context.enrollments.map(item => `${item.id}:${item.progress_percent}`).join()}#${topicsVersion}`} />
+    <TrainerTopicsPanel batches={context.batches} onChanged={() => setTopicsVersion(n => n + 1)} />
     <Card title="Update learner progress">
-      <form className="form" onSubmit={event => { const form = new FormData(event.currentTarget); const reference = String(form.get("enrollment")); void submit(event, `/api/v1/workflows/it/trainer/enrollments/${reference}/progress`, "PATCH", { progress_percent: Number(form.get("progress")) }, "Progress updated."); }}>
+      <form className="form" onSubmit={event => { const form = new FormData(event.currentTarget); const reference = String(form.get("enrollment")); void submit(event, `/api/v1/workflows/it/trainer/enrollments/${reference}/progress`, "PATCH", { progress_percent: Number(form.get("progress")), reason: String(form.get("reason") ?? "").trim() || undefined }, "Progress updated."); }}>
         <Field controlId="progress-enrollment" label="Learner and batch"><select name="enrollment" required><option value="">Select learner</option>{context.enrollments.map(item => <option key={item.id} value={item.id}>{item.student} · {item.batch} · {item.progress_percent}%</option>)}</select></Field>
         <Field controlId="progress-percent" label="Progress percent"><input name="progress" type="number" min="0" max="100" required /></Field>
+        {/* itc-022 (DEC-SCOPE-365 P5): where the course works progress out, the figure overrides it and needs a reason */}
+        <Field controlId="progress-reason" label="Reason (needed to override a worked-out figure)"><input name="reason" maxLength={500} /></Field>
         {!context.enrollments.length && <p id="progress-empty" className="muted">{loading ? "Loading active enrollments…" : "No active enrollment is assigned to this trainer."}</p>}
         <button className="btn" disabled={busy || loading || !context.enrollments.length} aria-describedby={!context.enrollments.length ? "progress-empty" : undefined}>Update progress</button>
       </form>

@@ -574,6 +574,9 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 .hr-student-table th[scope=row] a{color:var(--blue);text-decoration:underline;text-underline-offset:2px}.hr-student-table .nowrap{white-space:nowrap}/* nehn-017 QA17-03/05 */
 .trainer-progress-table th[scope=row],.hr-student-table th[scope=row]/* nehn-017 QA17-01/03 */{text-align:left;min-width:10rem;background:none;text-transform:none;letter-spacing:normal;font-size:13px;color:var(--ink)} /* QA28-02: a row header, not a column header */.trainer-progress-table .status{white-space:nowrap;display:inline-block}
 .trainer-progress-table tr.inactive{opacity:.6}.trainer-progress-details ul{margin:6px 0 10px;padding-left:18px}
+/* itc-022 QA-05: the details row spans the wide table; keep its content in view (pinned left, at most the screen) on phones and tablets */
+.trainer-progress-details [role=region]{position:sticky;left:0;max-width:min(100%,calc(100vw - 6rem))}
+@media(min-width:600px){.trainer-progress-details [role=region]{max-width:min(100%,calc(100vw - 8rem))}}
 /* nehn-016 QA16-01: the recruiter's training table keeps every column inside the candidate card on a desktop. */
 @media (min-width: 641px) { .candidate-training .table th, .candidate-training .table td { padding: 12px 10px; } }
 .material-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}.material-list li{padding:14px;display:grid;gap:8px}.material-list h4{margin:0;overflow-wrap:anywhere}.material-meta{margin:0;font-size:13px;overflow-wrap:anywhere}

@@ -18,7 +18,10 @@ const item = (id: string, student: string, eligible: boolean, recommendation: un
 });
 const json = (body: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(body), { status }));
 // nehn-028: the Student progress page also reads the batch progress table.
-const PROGRESS = { "GET /api/v1/workflows/it/batches/b1/progress": () => json({ rules: RULES, students: [] }) };
+const PROGRESS = {
+  "GET /api/v1/workflows/it/batches/b1/progress": () => json({ rules: RULES, students: [] }),
+  "GET /api/v1/it/batches/b1/topics": () => json({ batch_id: "b1", computed: false, modules: [] }), // itc-022: the Topics covered panel (no plan)
+};
 
 type Routes = Record<string, (init?: RequestInit) => Promise<Response>>;
 function stubFetch(routes: Routes) {

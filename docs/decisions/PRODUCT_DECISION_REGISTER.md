@@ -11237,6 +11237,31 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0246_fee_adjustments` (on itc-014's `0245_fee_discount_requests`); API §12JJ; RBAC §2.264.
 - **Feature ID authorized:** `itc-015`. **Status:** built on `worktree-itc-015`.
 
+### DEC-SCOPE-365 — Modules, labs, computed progress, trainer feedback and remediation (`itc-022`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-022` (PDF §4 "Training progress: module/topic, … practical/lab
+  completion, trainer feedback, overall progress %, risk flag, remediation plan", §6; PDF classified `UNVERIFIED`). Scope approved by
+  the owner 2026-11-01 (backlog Q-01). Dependencies itc-001 (`DEC-SCOPE-335`) and itc-028 (`DEC-SCOPE-351`) are merged; itc-023
+  (`DEC-SCOPE-352`) supplies the flag a plan links to. The owner said to proceed with the recommended answers, so Q-20 and the calls
+  below are **the builder's (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-03-itc-022-modules-progress-remediation-design.md`.
+- **Behaviour:** the IT Admin's **Progress Plans** page holds each programme's modules and topics and, optionally, weights for topics,
+  assignments (labs included) and assessments. With weights and at least one topic the overall progress % is worked out and written to
+  `enrollments.progress_percent` whenever a component moves, so certificates, reports and KPIs read it unchanged; a trainer can override
+  one student's figure with a reason (audited) and switch back. Trainers tick topics off for many students at once, set a work item's
+  type to **Lab**, and add remediation plans (actions, owner, due date, status) for actively enrolled students. Students see their
+  progress, topics and plans on the Course page; trainer feedback is itc-028's shared notes (Updates page).
+- **Claude's calls (`NEEDS_CONFIRMATION`):** P1 (Q-20 "migrate?") no data migration — "Copy from syllabus" fills the editor from the
+  PUB-025 manual syllabus or the curriculum lines; nothing changes on deploy. P2 one PUT replaces the plan; kept ids survive. P3 (Q-20
+  "weights") per programme, integers summing to 100; computed only with weights and ≥1 topic; a component with nothing in the batch drops
+  out and the rest are re-weighted; half-up whole percent. P4 materialised on the column, refreshed in the same transaction as each
+  change (topic ticks, plan saves, override clears, assignment/assessment create/edit, grading); only active, non-overridden seats.
+  P5 override = the existing PATCH with a required reason on computed programmes. P6 bulk completion is idempotent, active seats only.
+  P7 `lab` is an assignment type. P8 trainer feedback reuses itc-028 notes (no `trainer_feedback` table). P9 remediation plans: active
+  enrolment only (AC3), owner = batch trainer / IT counselor / IT Admin, closed is final, students see their own; no notification.
+  P10 the student's view on the Course page.
+- **Numbering:** migration `0249_it_training_progress`; API §12JK; RBAC §2.265.
+- **Feature ID authorized:** `itc-022`. **Status:** built on `worktree-itc-022`.
+
 ### DEC-SCOPE-367 — IT counselor dashboard and workspace (`itc-030`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-030` (PDF §8 IT Counselor dashboard, §11 Counselor workspace, §12 AC10;

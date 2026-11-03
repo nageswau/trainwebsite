@@ -5385,6 +5385,43 @@ full_name} | null, decided_at, decision_note, own}` (`own`: the caller made it).
   payment reads `status: "reversed"` in `/payments/mine`; a bill a credit covered whole reads `waived`.
 - `GET /management/ledger` (`include=auto`) — a new automatic `source: "fee_refund"` line (IT income, negative amount).
 
+## 12JK. Modules, labs, computed progress, remediation (itc-022) — addendum, 2026-11-03
+
+`DEC-SCOPE-365`. Migration `0249_it_training_progress`. Additive: existing payloads gain fields only.
+
+- `GET /admin/it/progress-plans` — IT Admin. 200 `[{program_id, program, active, modules, topics, weights|null, computed}]`.
+- `GET /admin/it/progress-plans/{program_id}` — IT Admin. 200 `{program_id, program, modules:[{id, title, topics:[{id, title}]}],
+  weights: {topics, assignments, assessments}|null, computed, copy_source:[{title, topics[]}]}`; 404 unknown programme.
+- `PUT /admin/it/progress-plans/{program_id}` `{modules:[{id?, title(1-200), topics:[{id?, title}] ≤50}] ≤30, weights|null}` — replaces
+  the plan (ids kept, missing ones deleted with their completions); refreshes the programme's batches. 200 = the GET body. 422 weights
+  not summing to 100 ("The weights must add up to 100"), an id from another programme, a blank title. Audited (`it.progress_plan.update`).
+- `GET /it/batches/{batch_id}/topics` — the batch trainer or IT Admin. 200 `{batch_id, computed, modules:[{id, title, topics:[{id, title,
+  completed_enrollment_ids[]}]}]}`; 403 another trainer / other roles; 404 unknown batch.
+- `PUT /it/batches/{batch_id}/topics/{topic_id}/completions` `{enrollment_ids[1..500], completed}` — idempotent bulk mark/unmark.
+  200 `{topic_id, completed_enrollment_ids}`; 404 topic not in the batch's programme; 422 "N of the selected students is/are not an
+  active student of this batch" (nothing written). Audited (`it.topic_completion.update`, counts only).
+- `PATCH /workflows/it/trainer/enrollments/{id}/progress` — body gains optional `reason` (≤500); response gains `override_reason`. On a
+  computed programme a reason is required (422 "Give a reason for overriding the computed progress") and the value becomes an override
+  (audited `enrollment.progress_override`). A manual programme is unchanged.
+- `DELETE /workflows/it/trainer/enrollments/{id}/progress/override` — the batch trainer or IT Admin; recomputes. 200 `{id,
+  progress_percent, override_reason: null}`.
+- `GET /workflows/it/batches/{id}/progress` — gains `progress_mode` (`computed|manual`) and per student `override_reason`,
+  `computed_percent`, `topics_completed`, `topics_total`, `labs_graded`, `labs_total`.
+- `POST/PATCH /workflows/it/trainer/assignments` — `assignment_type` accepts `lab`.
+- `GET /it/students/{student_id}/remediation-plans` — batch trainer (seated), linked IT counselor, IT Admin. 200 `{student, items:[{id,
+  actions, due_date, status, owner_name, batch, created_at, updated_at, enrollment_id, owner_user_id, risk_flag_id}], enrollments (where
+  the caller may add), owner_options, viewer_id}`; HR/others 403; out of scope 404.
+- `POST /it/enrollments/{enrollment_id}/remediation-plans` `{actions(1-2000), due_date, owner_user_id?}` — batch trainer or IT Admin.
+  201 the plan (linked to the open itc-023 flag). 422 not an active enrolment ("…only be created for an actively enrolled student"), a
+  past due date (IST), an owner who is not the batch trainer / the student's IT counselor / an IT Admin; 404 out of scope.
+- `PATCH /it/remediation-plans/{id}` `{actions?, due_date?, owner_user_id?, status?}` — batch trainer / IT Admin; the owner status only
+  (403 otherwise). 409 "This plan is closed" (completed/cancelled); 404 out of scope. Audited before/after.
+- `GET /it/me/progress` — IT student. 200 `{courses:[{enrollment_id, course, batch, status, progress_percent, mode
+  (computed|override|manual), weights, topics_completed, topics_total, labs_graded, labs_total, assignments_graded, assignments_total,
+  assessments_passed, assessments_total, modules:[{title, topics:[{title, completed}]}]}], remediation_plans:[{id, actions, due_date,
+  status, owner_name, batch, created_at, updated_at}]}`; other roles 403.
+- `GET /portal/it/admin/progress-plans` — IT Admin header-only section.
+
 ## 12JM. IT counselor dashboard (itc-030) — addendum, 2026-11-03
 
 `DEC-SCOPE-367`. No migration. Additive (no existing contract changes; the portal payload of `/portal/it/counselor/dashboard` is

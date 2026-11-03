@@ -219,6 +219,8 @@ class Enrollment(Base, TimestampMixin):
     # itself is never stored: services/it_lifecycle.py derives it from the source records on every read.
     lifecycle_override: Mapped[str | None] = mapped_column(String(20), nullable=True)
     lifecycle_override_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # itc-022 (DEC-SCOPE-365 P5): set = the trainer's `progress_percent` overrides the computed figure (services/it_progress.py)
+    progress_override_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     __table_args__ = (
         UniqueConstraint("student_id", "batch_id", name="uq_enrollment_student_batch"),
         CheckConstraint("status IN (" + ", ".join(f"'{s}'" for s in ENROLLMENT_STATUSES) + ")", name="ck_enrollments_status"),
@@ -557,6 +559,78 @@ class StudentRiskFlag(Base, TimestampMixin):
     raised_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     cleared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     clear_reason: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+
+class ItProgressFormula(Base, TimestampMixin):
+    """itc-022 (DEC-SCOPE-365 P3): one programme's computed-progress weights, summing to 100. No row = progress stays manual."""
+
+    __tablename__ = "it_progress_formulas"
+    __table_args__ = (
+        CheckConstraint(
+            "topics_weight BETWEEN 0 AND 100 AND assignments_weight BETWEEN 0 AND 100 AND assessments_weight BETWEEN 0 AND 100",
+            name="ck_it_progress_formulas_range",
+        ),
+        CheckConstraint("topics_weight + assignments_weight + assessments_weight = 100", name="ck_it_progress_formulas_sum"),
+    )
+    program_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("programs.id", ondelete="CASCADE"), primary_key=True)
+    topics_weight: Mapped[int] = mapped_column(Integer)
+    assignments_weight: Mapped[int] = mapped_column(Integer)
+    assessments_weight: Mapped[int] = mapped_column(Integer)
+    updated_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class ProgramModule(Base, TimestampMixin):
+    """itc-022 (P1): an ordered module of a programme's progress plan (the structured twin of the curriculum JSON)."""
+
+    __tablename__ = "program_modules"
+    __table_args__ = (Index("ix_program_modules_program_position", "program_id", "position"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    program_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("programs.id", ondelete="CASCADE"))
+    title: Mapped[str] = mapped_column(String(200))
+    position: Mapped[int] = mapped_column(Integer)
+
+
+class ProgramTopic(Base, TimestampMixin):
+    """itc-022 (P1): an ordered topic of a module; the unit a trainer marks complete per student."""
+
+    __tablename__ = "program_topics"
+    __table_args__ = (Index("ix_program_topics_module_position", "module_id", "position"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    module_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("program_modules.id", ondelete="CASCADE"))
+    title: Mapped[str] = mapped_column(String(200))
+    position: Mapped[int] = mapped_column(Integer)
+
+
+class TopicCompletion(Base):
+    """itc-022 (P6): one student's (enrolment's) completed topic. Unique per pair, so a repeated bulk mark is a no-op."""
+
+    __tablename__ = "topic_completions"
+    __table_args__ = (UniqueConstraint("topic_id", "enrollment_id", name="uq_topic_completions_topic_enrollment"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    topic_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("program_topics.id", ondelete="CASCADE"))
+    enrollment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enrollments.id", ondelete="CASCADE"), index=True)
+    completed_by_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+REMEDIATION_STATUSES = ("open", "in_progress", "completed", "cancelled")  # migration 0249 freezes a copy
+
+
+class RemediationPlan(Base, TimestampMixin):
+    """itc-022 (P9): actions agreed for a student who needs help, with an owner and a due date; linked to the open itc-023 flag at
+    creation when there is one. Only for an active enrolment (AC3)."""
+
+    __tablename__ = "remediation_plans"
+    __table_args__ = (CheckConstraint("status IN (" + ", ".join(f"'{s}'" for s in REMEDIATION_STATUSES) + ")", name="ck_remediation_plans_status"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    enrollment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enrollments.id", ondelete="CASCADE"), index=True)
+    student_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), index=True)
+    risk_flag_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("student_risk_flags.id", ondelete="SET NULL"), nullable=True)
+    actions: Mapped[str] = mapped_column(Text)
+    owner_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    due_date: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20), default="open", server_default="open")
+    created_by_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
 STUDENT_ACCESS_FEATURES = ("attendance", "assignments", "assessments", "resources", "live_classes", "questions", "feedback", "certificates")
