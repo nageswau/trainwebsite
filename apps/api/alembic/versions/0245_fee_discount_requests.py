@@ -1,7 +1,7 @@
 """itc-014 -- discount requests (maker-checker) and the `discounts.approve` grant for the IT Admin.
 
 Revision ID: 0245_fee_discount_requests
-Revises: 0243_it_conversion
+Revises: 0244_it_status_labels
 
 docs/superpowers/specs/2026-11-03-itc-014-discount-approval-design.md (DEC-SCOPE-363). One new table and one seeded grant; no existing
 row changes. 0001 builds a fresh database from the current models, which already carry the table, so the create is guarded (0222's
@@ -15,7 +15,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0245_fee_discount_requests"
-down_revision = "0243_it_conversion"
+down_revision = "0244_it_status_labels"
 branch_labels = None
 depends_on = None
 

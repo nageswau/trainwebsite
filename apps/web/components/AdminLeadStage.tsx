@@ -6,11 +6,12 @@ import LeadNotes from "@/components/LeadNotes";
 import LeadTimeline from "@/components/LeadTimeline";
 import { sendJson, type SendOutcome } from "@/lib/apiErrors";
 import {
-  LOST_REASONS_URL, isClosed, isLoss, needsReason, personTargets, stageLabel, type Closure, type LeadClosureFields, type LostReason,
+  LOST_REASONS_URL, isClosed, isLoss, needsReason, personTargets, type Closure, type LeadClosureFields, type LostReason,
 } from "@/lib/leadStages";
+import { useStageCatalogue } from "@/lib/statusLabels";
 import { getPage } from "@/lib/telecallerCatalogue";
 
-type Lead = { id: string; name: string; status: string };
+type Lead = { id: string; name: string; status: string; division?: string };
 type Message = { id: string; text: string; failed: boolean };
 
 /** ccrm-006 D8: the active lost reasons, read once the form needs them; a failure offers Retry. */
@@ -63,7 +64,10 @@ export function LeadStageControl({ lead, onChanged, onMessage, move = adminMove,
       opener.current?.focus();
     }
   }, [open]);
-  const targets = offered ?? personTargets(lead.status, canReopen);
+  // itc-005 (DEC-SCOPE-362 S6): an IT lead's picker uses the IT team's words and leaves out what the IT Admin turned off
+  const catalogue = useStageCatalogue(lead.division === "it");
+  const targets = (offered ?? personTargets(lead.status, canReopen)).filter((stage) => !catalogue.off.has(stage));
+  const stageLabel = (stage: string) => catalogue.label(stage, lead.division);
   if (targets.length === 0) return null;
 
   function close() {

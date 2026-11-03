@@ -13,7 +13,8 @@ import LeadExport from "@/components/LeadExport";
 import LeadMergeForm from "@/components/LeadMergeForm";
 import { sendJson, sendRequest, type Page } from "@/lib/apiErrors";
 import { adminConvertUrl, CONVERTIBLE_STAGES } from "@/lib/itConversion";
-import { ASSIGNED_TO_COUNSELOR, assignedToCounselor, isClosed, stageLabel, type LeadClosureFields } from "@/lib/leadStages";
+import { ASSIGNED_TO_COUNSELOR, assignedToCounselor, isClosed, type LeadClosureFields } from "@/lib/leadStages";
+import { useStageCatalogue } from "@/lib/statusLabels";
 import { pageOffset } from "@/lib/telecaller";
 import { SOURCE_LABEL, getPage } from "@/lib/telecallerCatalogue";
 
@@ -123,6 +124,7 @@ export default function AdminLeadManagementPanel({ canConvertIt = false }: { can
   const [version, setVersion] = useState(0);
   const [message, setMessage] = useState<RowMessage | null>(null);
   const [converting, setConverting] = useState<string | null>(null); // itc-011: the lead whose IT conversion form is open
+  const catalogue = useStageCatalogue(!!data?.items.some((row) => row.division === "it")); // itc-005: the IT team's words and order
   const seen = useRef(new Map<string, Organization>()); // the Organization filter's options: every organization shown so far
 
   useEffect(() => {
@@ -157,7 +159,7 @@ export default function AdminLeadManagementPanel({ canConvertIt = false }: { can
   return (
     <div className="action-card lead-management" aria-busy={requestUrl !== null && data === null && !loadFailed}>
       <h3>Manage leads</h3>
-      <AdminLeadFilters values={filters} query={query} organizations={organizations}
+      <AdminLeadFilters values={filters} query={query} organizations={organizations} stages={catalogue.stages}
         onChange={(key, value) => go({ [key]: value })} onSearch={(text) => go({ q: text })} />
       {requestUrl === null ? (
         <p className="form-error" role="status" style={{ marginTop: 12 }}>{RANGE_REVERSED}</p>
@@ -206,7 +208,7 @@ export default function AdminLeadManagementPanel({ canConvertIt = false }: { can
                     </td>
                     <td>{row.crm_sync_status === "failed" ? <span className="form-error">Failed</span> : row.crm_sync_status}</td>
                     <td>
-                      {stageLabel(row.status)}
+                      {catalogue.label(row.status, row.division)}
                       {assignedToCounselor(row) && <div className="muted" style={{ fontSize: 13 }}>{ASSIGNED_TO_COUNSELOR}</div>} {/* itc-004 N1 */}
                       <LeadClosure lead={row} />
                       <LeadStageHistory key={row.status} lead={row} />

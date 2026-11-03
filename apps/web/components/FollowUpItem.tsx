@@ -9,6 +9,7 @@ import { sendJson } from "@/lib/apiErrors";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { SAVE_FAILED, SESSION_ENDED, writeFailure } from "@/lib/bdmTasks";
 import { formatSchoolDateTime } from "@/lib/formatDate";
+import { useStageCatalogue } from "@/lib/statusLabels";
 import { outcomeLabel } from "@/lib/telecallerCalls";
 import { TELECALLER_FOLLOW_UP_API, isFollowUp, reasonLabel, type FollowUp, type FollowUpApi } from "@/lib/telecallerFollowUps";
 import { PRIORITY_LABEL } from "@/lib/telecallerLeads";
@@ -23,6 +24,7 @@ export default function FollowUpItem({ followUp: fu, card, leadBasePath, showTel
   onRefused: (message: string) => void;
 }) {
   const [mode, setMode] = useState<"view" | "edit" | "cancel">("view");
+  const stages = useStageCatalogue(fu.lead.division === "it"); // itc-005: the IT team's words
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [sessionEnded, setSessionEnded] = useState(false);
@@ -60,7 +62,7 @@ export default function FollowUpItem({ followUp: fu, card, leadBasePath, showTel
         <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: "4px 16px", margin: 0 }}>
           {([
             ["Interest", fu.lead.product?.name ?? "—"], ["Action", `${action} · ${when}`], ["Priority", PRIORITY_LABEL[fu.lead.priority] ?? fu.lead.priority],
-            ["Reason", reasonLabel(fu.reason)], ["Lead", `${fu.lead.lead_code} · ${fu.lead.status_label}`],
+            ["Reason", reasonLabel(fu.reason)], ["Lead", `${fu.lead.lead_code} · ${stages.label(fu.lead.status, fu.lead.division)}`],
             ["Last call", fu.lead.last_call ? `${outcomeLabel(fu.lead.last_call.outcome)} · ${formatSchoolDateTime(fu.lead.last_call.occurred_at, true)}` : "No calls yet"],
             ...(showTelecaller ? [["Telecaller", fu.lead.telecaller?.full_name ?? "Unassigned"]] : []),
           ] as [string, string][]).map(([term, value]) => (

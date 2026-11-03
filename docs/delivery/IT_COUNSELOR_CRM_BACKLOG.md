@@ -194,6 +194,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** overseas labels are unaffected.
 - **Regression risks:** every serializer that emits stage labels.
 - **Complexity:** medium (large if fully configurable). **Risk:** medium.
+- **Status:** built as `DEC-SCOPE-362` (migration `0244_it_status_labels`, API §12JH, RBAC §2.262); design
+  `docs/superpowers/specs/2026-11-03-itc-005-configurable-status-labels-design.md`. Q-05 builder default: labels, order and on/off of
+  the fixed states; turning off a state in use is allowed (in-use count shown). `NEEDS_CONFIRMATION`.
 
 #### itc-006: Auto-assign by source and workload
 - **Status:** built as `DEC-SCOPE-339` (migration `0224`, API §12IK, RBAC §2.240). Precedence fixed as source → product → city → team strategy (Q-06 recommended answer).

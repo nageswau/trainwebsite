@@ -7,7 +7,7 @@ import { useEffect, useId, useState } from "react";
 import ExportButtons from "@/components/ExportButtons";
 import LocalTime from "@/components/LocalTime";
 import { detailMessage, isPage, type Page } from "@/lib/apiErrors";
-import { STAGES } from "@/lib/leadStages";
+import { useStageCatalogue } from "@/lib/statusLabels";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { COUNSELOR_LEADS_URL, counselorLeadHref, type CounselorLead } from "@/lib/leadHandover";
 
@@ -21,6 +21,7 @@ type FilterKey = (typeof FILTER_KEYS)[number];
  *  ccrm-012 (DEC-SCOPE-246 QS7): Stage, Priority and lead-date filters, kept in the URL (a reload or a shared link keeps them). */
 export default function CounselorLeadsPanel({ division }: { division: "it" | "overseas" }) {
   const idp = useId();
+  const stages = useStageCatalogue(division === "it"); // itc-005: the IT team's words and order
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -79,7 +80,7 @@ export default function CounselorLeadsPanel({ division }: { division: "it" | "ov
                   <th scope="row"><Link href={counselorLeadHref(division, lead.id)} style={LINK_STYLE}>{lead.lead_code}</Link></th>
                   <td>{lead.name}</td>
                   <td>{lead.subject}</td>
-                  <td>{lead.status_label}</td>
+                  <td>{stages.label(lead.status, division)}</td>
                   <td>{lead.telecaller?.full_name ?? <span className="muted">Unassigned</span>}</td>
                   <td><LocalTime value={lead.created_at} /></td>
                 </tr>
@@ -116,7 +117,7 @@ export default function CounselorLeadsPanel({ division }: { division: "it" | "ov
           <label htmlFor={`${idp}-stage`}>Stage</label>
           <select id={`${idp}-stage`} value={filters.get("stage") ?? ""} onChange={(event) => filterBy("stage", event.target.value)}>
             <option value="">All</option>
-            {STAGES.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            {stages.stages.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
         </div>
         <div className="field">

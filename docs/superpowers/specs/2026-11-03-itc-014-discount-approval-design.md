@@ -12,7 +12,7 @@ division; its tests and the accountant's grant depend on it). Whether to retire 
 ## Decisions (D1–D8)
 | # | Decision |
 |---|---|
-| D1 | New table `fee_discount_requests` (`0245_fee_discount_requests`; itc-015 holds 0244): enrolment, amount (> 0), reason (1–500), status `pending/approved/rejected`, requester, decider, decided_at, decision_note (≤ 500). A partial unique index allows **one pending request per enrolment** (a second → 409). |
+| D1 | New table `fee_discount_requests` (`0245_fee_discount_requests`, on itc-005's `0244_it_status_labels`): enrolment, amount (> 0), reason (1–500), status `pending/approved/rejected`, requester, decider, decided_at, decision_note (≤ 500). A partial unique index allows **one pending request per enrolment** (a second → 409). |
 | D2 | **Who requests:** the IT counselor linked to the student (itc-003), or a `discounts.add` holder in IT (or every division). Others 403; another counselor's student 404. |
 | D3 | **Who approves/rejects:** the new grant `discounts.approve` (catalogue `discounts` gains `approve`), default IT Admin (0245 seeds it; super_admin implicit). The requester can never decide their own request → **403** (AC3). Must be in IT (or every division). |
 | D4 | **Amount:** rupees off the enrolment's **owed balance** (Σ owed rows). 0 < amount ≤ owed balance at request time (422 otherwise; a full waiver is allowed). Re-checked under row locks at approval (E: a payment may have arrived) → 409 naming the current owed balance. |

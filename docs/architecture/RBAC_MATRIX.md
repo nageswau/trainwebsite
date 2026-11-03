@@ -3639,6 +3639,13 @@ counselor's lead 404 (tel-018 scope), an overseas counselor or any other role 40
 the counselor or the IT Admin (the student 403). The welcome token is never returned; duplicate-email refusals name no account. Pinned
 by `apps/api/tests/test_itc_011_conversion.py`.
 
+### 2.262 IT status labels *(added 2026-11-03 — `DEC-SCOPE-362`, itc-005)*
+
+No grant change. `GET /it/status-labels`: every IT staff role (division `it`, not `it_student`) and super_admin; students, other divisions'
+roles 403. `GET /admin/it/status-labels` and `PUT /admin/it/status-labels/{kind}/{code}`: the IT Admin (`it_admin`, division `it`) only —
+super_admin and every other role 403. The page `/it/admin/status-labels` is in the IT Admin nav only. Pinned by
+`apps/api/tests/test_itc_005_status_labels.py`.
+
 ### 2.263 Discount and waiver approval *(added 2026-11-03 — `DEC-SCOPE-363`, itc-014)*
 
 New grant `discounts.approve` (catalogue `discounts`: add, approve), default IT Admin (migration `0245` seeds it); super_admin holds it
