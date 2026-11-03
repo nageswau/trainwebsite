@@ -164,7 +164,7 @@ describe("upc-007 university detail page", () => {
     serve("overseas_admin", true);
     let section = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) })).find((el) => el.type === UniversityCourses)!.props;
     expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/courses?include_inactive=true&limit=50`);
-    expect(section).toEqual({ universityId: ID, page: courses, options: courseOptions, canSetCommission: false }); // U2: no commission
+    expect(section).toEqual({ universityId: ID, page: courses, options: courseOptions, canSetCommission: false, canEditAgentCommission: true }); // U2: no commission; ccrm-051: overseas_admin edits the agent-Master commission
     vi.mocked(serverApi).mockReset();
     serve("partnership_manager", false);
     section = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) })).find((el) => el.type === UniversityCourses)!.props;
