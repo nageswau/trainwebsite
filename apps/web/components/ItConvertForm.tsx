@@ -139,7 +139,7 @@ export default function ItConvertForm({ url, suggestionsUrl, onConverted, defaul
             </p>
           ) : (
             <fieldset style={{ display: "grid", gap: 8, border: 0, padding: 0, margin: 0 }}>
-              <legend style={{ fontWeight: 600, padding: 0 }}>Student account</legend>
+              <legend style={{ fontWeight: 600, padding: 0 }}>New student&apos;s details</legend>
               {field("full_name", "Full name", "text", 160)}
               {field("email", "Email", "email", 255)}
               {field("phone", "Phone (optional)", "tel", 40)}

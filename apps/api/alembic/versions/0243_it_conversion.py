@@ -79,7 +79,6 @@ def upgrade() -> None:
             *_timestamps(),
             sa.UniqueConstraint("lead_id", "idempotency_key", name="uq_it_conversions_lead_key"),
         )
-        op.create_index("ix_it_conversions_enrollment_id", CONVERSIONS, ["enrollment_id"])
     empty = inspector is None or not op.get_bind().scalar(sa.text(f"SELECT EXISTS (SELECT 1 FROM {TEMPLATE})"))
     if empty:
         table = sa.table(TEMPLATE, sa.column("id", postgresql.UUID(as_uuid=True)), sa.column("label", sa.String), sa.column("position", sa.Integer))

@@ -2291,7 +2291,7 @@ class ItConversion(Base, TimestampMixin):
     idempotency_key: Mapped[str] = mapped_column(String(120))
     actor_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
     student_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
-    enrollment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enrollments.id"), index=True)
+    enrollment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enrollments.id"))
     created_account: Mapped[bool] = mapped_column(Boolean, default=False)
 
 

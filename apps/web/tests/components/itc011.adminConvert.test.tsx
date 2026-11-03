@@ -14,7 +14,7 @@ const row = (id: string, over: Record<string, unknown> = {}) => ({
 });
 const options = { prefill: { full_name: "Lead q1", email: "q1@example.com", phone: null, fee: null, recommended_program_id: null, recommended_course: null },
   batches: [{ id: "B1", name: "PY-DEC", program_id: "P1", program: "Python", fee: 45000, start_date: "2026-12-15", end_date: "2027-03-15", schedule: "Mon-Fri",
-    mode: null, available: 3, recommended: false }], checklist: ["Attend the batch orientation"] };  // prettier-ignore
+    mode: null, available: 3, recommended: false }], checklist: ["Attend the batch orientation"] };
 
 let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
@@ -24,7 +24,7 @@ beforeEach(() => {
     if (url === "/api/v1/admin/leads/q1/convert-it" && init?.method === "POST") {
       return Promise.resolve(res({ student: { id: "S1", full_name: "Lead q1", email: "q1@example.com", student_code: "ST1", setup: "pending_setup" },
         enrollment: { id: "E1", enrollment_code: "EDU-1", status: "pending_consent", course: "Python", batch: "PY-DEC" }, fee_account: {}, checklist: [],
-        replayed: false, email_status: "sent", lead: row("q1", { status: "application_enrollment", converted_user: { id: "S1", full_name: "Lead q1", email: "q1@example.com" } }) }, 201));  // prettier-ignore
+        replayed: false, email_status: "sent", lead: row("q1", { status: "application_enrollment", converted_user: { id: "S1", full_name: "Lead q1", email: "q1@example.com" } }) }, 201));
     }
     return Promise.resolve(res({ items: [], total: 0, limit: 50, offset: 0 }));
   });

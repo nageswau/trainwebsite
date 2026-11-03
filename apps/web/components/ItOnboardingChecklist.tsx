@@ -26,12 +26,17 @@ export default function ItOnboardingChecklist({ enrollmentId, canTick, initial }
   }, [initial, load]);
 
   async function tick(item: ChecklistItem, done: boolean) {
+    const before = items;
+    setItems((list) => list && list.map((i) => (i.id === item.id ? { ...i, done } : i))); // QA11-01: shown at once, undone on a refusal
     setBusyId(item.id);
     setNotice(null);
     const outcome = await sendJson(onboardingUrl(enrollmentId, item.id), "PATCH", { done });
     setBusyId(null);
     const next = outcome.ok ? (outcome.data as { items?: ChecklistItem[] }).items : undefined;
-    if (!outcome.ok || !Array.isArray(next)) return setNotice(outcome.ok ? "Unable to update the checklist." : outcome.message);
+    if (!outcome.ok || !Array.isArray(next)) {
+      setItems(before);
+      return setNotice(outcome.ok ? "Unable to update the checklist." : outcome.message);
+    }
     setItems(next);
   }
 

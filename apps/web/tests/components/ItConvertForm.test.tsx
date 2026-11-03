@@ -13,7 +13,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }), use
 const URL_ = "/api/v1/counselor/leads/L1/convert-it";
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const batch = (id: string, over = {}) => ({ id, name: `PY-${id}`, program_id: `P-${id}`, program: "Python Full Stack", fee: 50000, start_date: "2026-12-15",
-  end_date: "2027-03-15", schedule: "Mon-Fri", mode: "online", available: 5, recommended: false, ...over });  // prettier-ignore
+  end_date: "2027-03-15", schedule: "Mon-Fri", mode: "online", available: 5, recommended: false, ...over });
 const options = (over = {}) => ({
   prefill: { full_name: "Asha Rao", email: "asha@example.com", phone: "9876543210", fee: 45000, recommended_program_id: "P-B1", recommended_course: "Python Full Stack" },
   batches: [batch("B1", { recommended: true }), batch("B2", { program: "Data Science", fee: 60000 })],
@@ -111,7 +111,7 @@ describe("ItConvertForm", () => {
   it("offers the existing IT student on a duplicate and enrols them by id", async () => {
     reply[`POST ${URL_}`] = () => res({ detail: { code: "student_exists", message: "An IT student already has this email or mobile. Link the existing student instead." } }, 409);
     reply["GET /api/v1/counselor/leads/L1/link-suggestions"] = () => res({ items: [{ id: "S1", full_name: "Asha R", email: "asha@example.com", phone: null, linked_elsewhere: false },
-      { id: "S2", full_name: "Taken", email: "t@example.com", phone: null, linked_elsewhere: true }] });  // prettier-ignore
+      { id: "S2", full_name: "Taken", email: "t@example.com", phone: null, linked_elsewhere: true }] });
     await openForm({ suggestionsUrl: "/api/v1/counselor/leads/L1/link-suggestions" });
     fireEvent.click(screen.getByRole("button", { name: "Convert and enrol" }));
     expect(await screen.findByText(/An IT student already has this email/)).toBeInTheDocument();
@@ -172,6 +172,18 @@ describe("ItOnboardingChecklist", () => {
     expect(screen.getByText("1 of 2 done")).toBeInTheDocument();
     expect(JSON.parse(String(fetchMock.mock.calls.find(([, i]) => i?.method === "PATCH")![1].body))).toEqual({ done: true });
   });
+  it("shows the tick at once, before the API answers (QA11-01)", async () => {
+    let answer: (r: Response) => void = () => undefined;
+    reply["PATCH /api/v1/it/enrollments/E1/onboarding/I1"] = () => new Promise<Response>((resolve) => { answer = resolve; }) as unknown as Response;
+    render(<ItOnboardingChecklist enrollmentId="E1" canTick initial={items} />);
+    const box = screen.getByRole("checkbox", { name: "Set your password and sign in" });
+    fireEvent.click(box);
+    expect(box).toBeChecked();
+    answer(res({ enrollment_id: "E1", items: [{ ...items[0], done: true }, items[1]] }));
+    await waitFor(() => expect(screen.getByText("1 of 2 done")).toBeInTheDocument());
+    expect(box).toBeChecked();
+  });
+
   it("keeps the old state and says why when a tick is refused", async () => {
     reply["PATCH /api/v1/it/enrollments/E1/onboarding/I1"] = () => res({ detail: "Enrolment not found" }, 404);
     render(<ItOnboardingChecklist enrollmentId="E1" canTick initial={items} />);
@@ -206,7 +218,7 @@ describe("CounselorLeadDetail IT conversion", () => {
   it("converts and then shows the outcome, the student link and the checklist", async () => {
     reply[`POST ${URL_}`] = () => res(result({ lead: lead({ status: "application_enrollment", status_label: "Application/Enrollment",
       converted_user: { id: "S9", full_name: "Asha Rao", email: "asha@example.com" }, it_conversion: { enrollment_id: "E1" },
-      permissions: { return: false, link: false, unlink: true, stage: true, follow_up: true, convert: false, activity: true, convert_it: false } }) }), 201);  // prettier-ignore
+      permissions: { return: false, link: false, unlink: true, stage: true, follow_up: true, convert: false, activity: true, convert_it: false } }) }), 201);
     render(<CounselorLeadDetail initial={lead()} />);
     fireEvent.click(screen.getByRole("button", { name: "Convert to IT student" }));
     fireEvent.click(await screen.findByRole("button", { name: "Convert and enrol" }));
