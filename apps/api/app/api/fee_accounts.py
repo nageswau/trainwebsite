@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,9 +16,11 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.identifiers import uuid_reference
 from app.models import Enrollment, ItStudentCounselor, User
-from app.services import fee_accounts, permissions
+from app.services import fee_accounts, fee_reminders, permissions
 
 router = APIRouter(prefix="/it", tags=["it-fee-accounts"])
+# itc-016 (DEC-SCOPE-357 F8): the fee-reminder schedule, IT Admin only. API_CONTRACT.md §12JC; RBAC_MATRIX.md §2.257.
+settings_router = APIRouter(prefix="/admin/it/fee-reminder-settings", tags=["it-fee-accounts"])
 
 NOT_FOUND = "Enrolment not found"
 NO_ACCESS = "You do not have access to fee accounts"
@@ -73,6 +75,29 @@ async def my_fee_accounts(user: User = Depends(get_current_user), db: AsyncSessi
         raise HTTPException(403, "Only an IT student has fee accounts")
     enrollments = (await db.scalars(select(Enrollment).where(Enrollment.student_id == user.id).order_by(Enrollment.created_at.desc()))).all()
     return await fee_accounts.accounts(db, list(enrollments))
+
+
+class FeeReminderSettingsIn(BaseModel):
+    """itc-016 (F3): `days_before` 0 and an empty `overdue_days` switch their rules off; the days are de-duplicated and sorted."""
+
+    days_before: Annotated[int, Field(ge=0, le=30)]
+    overdue_days: Annotated[list[Annotated[int, Field(ge=1, le=90)]], Field(max_length=6)]
+
+    @field_validator("overdue_days")
+    @classmethod
+    def _distinct(cls, days: list[int]) -> list[int]:
+        return sorted(set(days))
+
+
+@settings_router.get("")
+async def fee_reminder_settings(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    fee_reminders.require_admin(user)
+    return await fee_reminders.schedule(db)
+
+
+@settings_router.put("")
+async def save_fee_reminder_settings(payload: FeeReminderSettingsIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await fee_reminders.save_schedule(db, user, payload.days_before, payload.overdue_days)
 
 
 @router.post("/enrollments/{enrollment_id}/payments", status_code=201)

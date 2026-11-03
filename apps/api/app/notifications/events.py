@@ -32,6 +32,9 @@ EVENTS: dict[str, Event] = {
     "it.followup.overdue": Event("lead_follow_up", "Follow-up overdue", "A follow-up is past its due time. Open EduSphere to act on it."),
     "it.fee.payment_received": Event("payment", "Payment received", "Your payment was received. Open EduSphere to view your receipt."),
     "it.fee.payment_due": Event("payment", "Fee payment due", "A fee payment is due. Open EduSphere for the details."),
+    # itc-016 (DEC-SCOPE-357 F4): the student's overdue reminder and the linked IT counselor's copy -- never an amount or a date
+    "it.fee.payment_overdue": Event("payment", "Fee payment overdue", "A fee payment is past its due date. Open EduSphere for the details."),
+    "it.fee.student_overdue": Event("payment", "Student's fee payment overdue", "A fee payment of your student is past its due date. Open EduSphere for the details."),
     "it.batch.changed": Event("batch", "Course or batch updated", "Your course, batch or timetable was updated. Open EduSphere to see what changed."),
     # itc-025 (DEC-SCOPE-348): the linked IT counselor's copy of a batch change of one or more of their students
     "it.batch.student_changed": Event("batch", "Student's batch updated", "The course, batch or timetable of your student was updated. Open EduSphere to see what changed."),
