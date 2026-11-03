@@ -1,10 +1,11 @@
 """itc-013 (DEC-SCOPE-346) -- the per-enrolment fee account, computed from `Payment` (Q-13: no stored table, so it cannot drift).
 
-An enrolment's fee rows are its IT `enrollment_fee` payments that bill something (failed or cancelled attempts bill nothing). From them,
+An enrolment's fee rows are its IT `enrollment_fee` payments that bill something (failed or cancelled attempts bill nothing; a `waived`
+bill still counts, at 0). From them,
 in one grouped query (`balance_for`, fixed query count for list pages):
 
     course_fee = sum(amount + discount_amount)          the gross billed
-    discount_approved = sum(discount_amount)            nehn-021's discount
+    discount_approved = sum(discount_amount)            nehn-021's discount and itc-014's approved requests
     tax = 0                                             Q-12: GST is NEEDS_CONFIRMATION
     total_payable = course_fee - discount_approved + tax
     paid_confirmed = sum(amount) of paid/succeeded rows
@@ -34,6 +35,7 @@ logger = logging.getLogger("app.fee_accounts")
 FEE_REFERENCES = ("enrollment_fee", "enrollment")  # the seed's legacy rows say `enrollment` (management_it_revenue)
 PAID = ("paid", "succeeded")
 OWED = ("pending", "overdue")
+WAIVED = "waived"  # itc-014: a bill an approved discount brought to 0 -- still billed (its gross and discount count), never owed or payable
 OFFLINE_MODES = ("cash", "upi", "card", "bank_transfer", "cheque")  # `razorpay` is set only by the gateway's confirmation
 MODE_LABELS = {"cash": "Cash", "upi": "UPI", "card": "Card", "bank_transfer": "Bank transfer", "cheque": "Cheque", "razorpay": "Razorpay"}
 NOTHING_OWED = "Nothing is owed on this enrolment"
@@ -46,7 +48,7 @@ def _fee_rows(enrollment_ids):
         Payment.division == "it",
         Payment.reference_type.in_(FEE_REFERENCES),
         Payment.reference_id.in_(enrollment_ids),
-        Payment.status.in_((*OWED, *PAID)),
+        Payment.status.in_((*OWED, *PAID, WAIVED)),
     )
 
 

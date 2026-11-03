@@ -3645,3 +3645,12 @@ No grant change. `GET /it/status-labels`: every IT staff role (division `it`, no
 roles 403. `GET /admin/it/status-labels` and `PUT /admin/it/status-labels/{kind}/{code}`: the IT Admin (`it_admin`, division `it`) only —
 super_admin and every other role 403. The page `/it/admin/status-labels` is in the IT Admin nav only. Pinned by
 `apps/api/tests/test_itc_005_status_labels.py`.
+
+### 2.263 Discount and waiver approval *(added 2026-11-03 — `DEC-SCOPE-363`, itc-014)*
+
+New grant `discounts.approve` (catalogue `discounts`: add, approve), default IT Admin (migration `0245` seeds it); super_admin holds it
+implicitly; grantable per role/user (nehn-005/007). Requesting (`POST /it/enrollments/{id}/discount-requests`): the student's itc-003 IT
+counselor (another counselor's student 404) or a `discounts.add` holder in IT or every division (another division 404); anyone else
+403. Reading an enrolment's requests: whoever reads its fee account (itc-013 §2.246), except the student (403). The queue, approve and
+reject: a `discounts.approve` holder in IT or every division (otherwise 403); **never on a request they made (403, separation of
+duties)**. Pinned by `apps/api/tests/test_itc_014_discount_approval.py`.

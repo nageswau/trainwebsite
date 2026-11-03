@@ -76,7 +76,7 @@ const STATE_LABELS: Record<FeeAccount["state"], string> = {
   fully_paid: "Fully paid",
 };
 
-const money = (currency: string, value: number) => `${currency} ${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export const money = (currency: string, value: number) => `${currency} ${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export function FeeAccountCard({ account }: { account: FeeAccount }) {
   const rows: [string, number][] = [
