@@ -37,7 +37,8 @@ function when(value: string): string {
     : new Date(`${value}T00:00:00Z`).toLocaleDateString("en-IN", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
 }
 
-function Section({ id, title, note, empty, href, data }: { id: string; title: string; note?: string; empty: string; href: string; data: CounselorDashboardSection }) {
+// itc-030 reuses it: without `href` (no list page takes the IT dashboard's filters) "more" says how many of how many are shown.
+export function Section({ id, title, note, empty, href, data }: { id: string; title: string; note?: string; empty: string; href?: string; data: CounselorDashboardSection }) {
   const headingId = `counselor-dashboard-${id}`;
   return (
     <section className="panel" aria-labelledby={headingId}>
@@ -61,7 +62,11 @@ function Section({ id, title, note, empty, href, data }: { id: string; title: st
       )}
       {data.more && (
         <p style={{ margin: "8px 0 0" }}>
-          <Link href={href} style={{ color: "var(--blue)" }}>View all {data.count.toLocaleString("en-IN")}</Link>
+          {href ? (
+            <Link href={href} style={{ color: "var(--blue)" }}>View all {data.count.toLocaleString("en-IN")}</Link>
+          ) : (
+            <span className="muted">{`Showing ${data.items.length} of ${data.count.toLocaleString("en-IN")}`}</span>
+          )}
         </p>
       )}
     </section>
