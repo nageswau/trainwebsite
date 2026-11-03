@@ -28,17 +28,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Batch, Certificate, Enrollment, EnrollmentLifecycleHistory, HrReviewTask, JobApplication, Program, StudentRiskFlag, User
 from app.schemas import IT_LIFECYCLE_STAGES, ItLifecycleOverrideIn
-from app.services import fee_accounts
+from app.services import fee_accounts, it_status_labels
 from app.services.audit_changes import audit_change
 
 logger = logging.getLogger("app.it_lifecycle")
 
 STAGES = IT_LIFECYCLE_STAGES
-LABELS = {
-    "enrolled": "Enrolled", "fee_pending": "Fee pending", "partially_paid": "Partially paid", "paid": "Paid", "training_active": "Training active",
-    "at_risk": "At risk", "completed": "Completed", "resume_submitted": "Resume submitted", "hr_screening": "HR screening", "interview": "Interview",
-    "placed": "Placed", "not_placed": "Not placed", "closed": "Closed",
-}  # fmt: skip
+LABELS = it_status_labels.LIFECYCLE_DEFAULTS  # itc-005 (DEC-SCOPE-362 S8): the defaults; the IT Admin's words come from it_status_labels.labels
 SAFE = {"at_risk": "training_active"}  # L8: the student never sees "At risk"
 OVERRIDABLE = ("not_placed", "closed")
 ENDED = ("rejected", "withdrawn", "dropped")
@@ -59,9 +55,9 @@ DERIVED_ONLY = "Only Not placed or Closed can be set by hand; every other stage 
 ALREADY_PLACED = "The student has a joining record, so the stage is Placed"
 
 
-def view(stage: str, *, safe: bool = False) -> dict:
+def view(stage: str, *, safe: bool = False, labels: dict[str, str] = LABELS) -> dict:
     stage = SAFE.get(stage, stage) if safe else stage
-    return {"stage": stage, "stage_label": LABELS[stage]}
+    return {"stage": stage, "stage_label": labels[stage]}
 
 
 def _stage(status: str, override: str | None, c: dict) -> str:
@@ -167,7 +163,9 @@ async def sync_all(db: AsyncSession, *, cause: str = "daily_check") -> int:
 # --- readers and the override -----------------------------------------------------------------------------------------------------
 async def views_for(db: AsyncSession, enrollment_ids: list[UUID], *, safe: bool = False) -> dict[UUID, dict]:
     """{enrolment id: {stage, stage_label}} for enrolment payloads (`safe` for the student's own)."""
-    return {eid: view(d["stage"], safe=safe) for eid, d in (await derive_many(db, enrollment_ids)).items()}
+    derived = await derive_many(db, enrollment_ids)
+    labels = await it_status_labels.labels(db, "lifecycle") if derived else LABELS
+    return {eid: view(d["stage"], safe=safe, labels=labels) for eid, d in derived.items()}
 
 
 async def staff_lifecycle(db: AsyncSession, student: User) -> dict:
@@ -180,6 +178,7 @@ async def staff_lifecycle(db: AsyncSession, student: User) -> dict:
     ).all()  # fmt: skip
     ids = [e.id for e, _, _ in rows]
     derived = await derive_many(db, ids)
+    labels = await it_status_labels.labels(db, "lifecycle")
     history: dict[UUID, list] = {eid: [] for eid in ids}
     h = EnrollmentLifecycleHistory
     if ids:
@@ -187,15 +186,15 @@ async def staff_lifecycle(db: AsyncSession, student: User) -> dict:
         for row, actor in (await db.execute(stmt)).all():
             if len(history[row.enrollment_id]) < HISTORY_LIMIT:
                 history[row.enrollment_id].append({
-                    "from_stage": row.from_stage, "from_label": LABELS.get(row.from_stage) if row.from_stage else None, "to_stage": row.to_stage,
-                    "to_label": LABELS.get(row.to_stage, row.to_stage), "cause": row.cause, "actor": actor, "created_at": row.created_at,
+                    "from_stage": row.from_stage, "from_label": labels.get(row.from_stage) if row.from_stage else None, "to_stage": row.to_stage,
+                    "to_label": labels.get(row.to_stage, row.to_stage), "cause": row.cause, "actor": actor, "created_at": row.created_at,
                 })  # fmt: skip
     return {
         "enrollments": [
             {
-                "enrollment_id": e.id, "enrollment_code": e.enrollment_code, "program": program, "batch": batch, **view(derived[e.id]["stage"]),
-                "components": {k: view(v) if v else None for k, v in derived[e.id]["components"].items()},
-                "override": {"stage": e.lifecycle_override, "stage_label": LABELS[e.lifecycle_override], "reason": e.lifecycle_override_reason} if e.lifecycle_override else None,
+                "enrollment_id": e.id, "enrollment_code": e.enrollment_code, "program": program, "batch": batch, **view(derived[e.id]["stage"], labels=labels),
+                "components": {k: view(v, labels=labels) if v else None for k, v in derived[e.id]["components"].items()},
+                "override": {"stage": e.lifecycle_override, "stage_label": labels[e.lifecycle_override], "reason": e.lifecycle_override_reason} if e.lifecycle_override else None,
                 "history": history[e.id],
             }
             for e, batch, program in rows
@@ -214,6 +213,8 @@ async def set_override(db: AsyncSession, actor: User, student: User, enrollment_
         raise HTTPException(409, PLACED_BY_JOINING)
     if target is not None and target not in OVERRIDABLE:
         raise HTTPException(409, DERIVED_ONLY)
+    if target is not None and not await it_status_labels.is_enabled(db, "lifecycle", target):
+        raise HTTPException(409, it_status_labels.TURNED_OFF)  # itc-005 S6: a turned-off override is not offered; clearing always is
     if target == "not_placed" and (await derive_many(db, [enrollment.id]))[enrollment.id]["components"]["placement"] == "placed":
         raise HTTPException(409, ALREADY_PLACED)
     before = {"lifecycle_override": enrollment.lifecycle_override, "lifecycle_override_reason": enrollment.lifecycle_override_reason}

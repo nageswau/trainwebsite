@@ -3185,6 +3185,29 @@ class LeadLostReason(Base, TimestampMixin):
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
 
 
+IT_STATUS_LABEL_MAX = 60
+
+
+class ItStatusLabel(Base, TimestampMixin):
+    """itc-005 (DEC-SCOPE-362 S1-S3): the IT team's override of one fixed status -- its label, order and (only for states a person
+    chooses, S4) whether it is offered. No row = the code default. `kind` is `lead` (lead_stages) or `lifecycle` (it_lifecycle)."""
+
+    __tablename__ = "it_status_labels"
+    __table_args__ = (
+        CheckConstraint("team = 'it'", name="ck_it_status_labels_team"),
+        CheckConstraint("kind IN ('lead', 'lifecycle')", name="ck_it_status_labels_kind"),
+        CheckConstraint(f"length(label) BETWEEN 1 AND {IT_STATUS_LABEL_MAX}", name="ck_it_status_labels_label"),
+        CheckConstraint("sort_order BETWEEN 0 AND 9999", name="ck_it_status_labels_sort_order"),
+    )
+    team: Mapped[str] = mapped_column(String(20), primary_key=True, default="it")
+    kind: Mapped[str] = mapped_column(String(20), primary_key=True)
+    code: Mapped[str] = mapped_column(String(40), primary_key=True)
+    label: Mapped[str] = mapped_column(String(IT_STATUS_LABEL_MAX))
+    sort_order: Mapped[int] = mapped_column(Integer)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
 class Enquiry(Base, TimestampMixin):
     """bdm-017 (DEC-SCOPE-072): a BDM-entered lead carries its organization and BDM (both NULL for website and manual enquiries);
     a division admin's explicit conversion links it to one student account (`uq_enquiries_converted_user`: one lead per user).

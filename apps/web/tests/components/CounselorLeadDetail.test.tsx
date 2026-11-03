@@ -295,7 +295,10 @@ describe("CounselorLeadsPanel", () => {
   });
 
   it("offers a retry when the list fails", async () => {
-    fetchMock.mockImplementationOnce(() => Promise.resolve(res({}, 500)));
+    const answer = fetchMock.getMockImplementation()!;
+    let failed = false; // itc-005: the IT panel also reads the status labels, so fail the list read itself, once
+    fetchMock.mockImplementation((url: string, init?: RequestInit) =>
+      !failed && url.startsWith("/api/v1/counselor/leads?") ? ((failed = true), Promise.resolve(res({}, 500))) : answer(url, init));
     render(<CounselorLeadsPanel division="it" />);
     fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
     expect(await screen.findByRole("link", { name: "LD-000042" })).toBeInTheDocument();

@@ -15112,3 +15112,12 @@ class HrAssignmentRuleIn(BaseModel):
 
     model_config = {"extra": "forbid"}
     hr_user_id: UUID | None
+
+
+class ItStatusLabelIn(BaseModel):
+    """itc-005 (DEC-SCOPE-362 S3/S7): the IT Admin's label, order and on/off for one fixed status -- every field required (a full replace)."""
+
+    model_config = {"extra": "forbid", "str_strip_whitespace": True}
+    label: str = Field(min_length=1, max_length=60)
+    sort_order: int = Field(ge=0, le=9999)
+    enabled: bool

@@ -21,12 +21,13 @@ const staff = (role: string, signal: AbortSignal): Promise<Staff[]> =>
 /** tel-003 (spec §5): the admin lead list's search and filters. Values come from and go to the URL (the panel owns that); the option
  *  lists are the catalogue (tel-002), the division's telecallers and (nehn-012) counselors (/admin/users is already division-scoped) and
  *  the organizations the panel has seen. A list that fails to load leaves just "All", so the other filters keep working. */
-export default function AdminLeadFilters({ values, query, organizations, onChange, onSearch }: {
+export default function AdminLeadFilters({ values, query, organizations, onChange, onSearch, stages = STAGES }: {
   values: Record<LeadFilter, string>;
   query: string;
   organizations: Organization[];
   onChange: (key: LeadFilter, value: string) => void;
   onSearch: (text: string) => void;
+  stages?: readonly (readonly [string, string])[]; // itc-005: the IT team's words and order on a list of IT leads
 }) {
   const [draft, setDraft] = useState(query);
   const [products, setProducts] = useState<Product[]>([]);
@@ -69,7 +70,7 @@ export default function AdminLeadFilters({ values, query, organizations, onChang
         {query && <button type="button" className="btn secondary small" onClick={() => onSearch("")}>Clear search</button>}
       </form>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8 }}>
-        {select("status", "Stage", "All stages", STAGES.map(([key, label]) => <option key={key} value={key}>{label}</option>))}
+        {select("status", "Stage", "All stages", stages.map(([key, label]) => <option key={key} value={key}>{label}</option>))}
         {select("source", "Source", "All sources", SOURCES.map((s) => <option key={s} value={s}>{SOURCE_LABEL[s]}</option>))}
         {select("product_id", "Product", "All products", <ProductOptions products={products} />)}
         {select("campaign_id", "Campaign", "All campaigns", campaigns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>))}

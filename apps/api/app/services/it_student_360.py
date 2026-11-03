@@ -13,7 +13,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.lead_stages import label as stage_label
 from app.models import (
     Assessment,
     AssessmentAttempt,
@@ -29,7 +28,7 @@ from app.models import (
     Submission,
     User,
 )  # fmt: skip
-from app.services import fee_accounts, hr_reviews, it_student_counselors, it_student_notes, lead_timeline, student_resumes
+from app.services import fee_accounts, hr_reviews, it_status_labels, it_student_counselors, it_student_notes, lead_timeline, student_resumes
 from app.services import training_progress as progress
 from app.services.permissions import user_has_grant
 
@@ -60,12 +59,13 @@ async def _lead(db: AsyncSession, student_id: UUID):
     return (await db.execute(stmt)).first()
 
 
-def _lead_out(row, user: User) -> dict | None:
+async def _lead_out(db: AsyncSession, row, user: User) -> dict | None:
     if row is None:
         return None
     lead, owner = row
+    labels = await it_status_labels.labels(db, "lead")  # itc-005 (DEC-SCOPE-362 S8): the IT team's words
     return {
-        "id": lead.id, "lead_code": lead.lead_code, "stage": lead.status, "stage_label": stage_label(lead.status), "owner": owner,
+        "id": lead.id, "lead_code": lead.lead_code, "stage": lead.status, "stage_label": labels.get(lead.status, lead.status), "owner": owner,
         "created_at": lead.created_at, "converted_at": lead.converted_at,
         "href": f"/it/counselor/leads/{lead.id}" if lead.owner_id == user.id else None,  # the counselor's lead page opens only their own
     }  # fmt: skip
@@ -174,7 +174,7 @@ async def read(db: AsyncSession, user: User, student_id: UUID) -> dict:
     }  # fmt: skip
     if not hr:
         out |= {
-            "profile": await _profile(db, student), "lead": _lead_out(await _lead(db, student.id), user), "fee": await _fee(db, enrollments),
+            "profile": await _profile(db, student), "lead": await _lead_out(db, await _lead(db, student.id), user), "fee": await _fee(db, enrollments),
             "risk": await _risk(db, student), "notifications": await _notifications(db, student),
         }  # fmt: skip
     return out
