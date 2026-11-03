@@ -5198,6 +5198,35 @@ a rollback sends nothing).
 - **Changed:** `GET /payments/{payment_id}/receipt` by a caller who neither owns the payment nor administers its division → `404
   "Payment not found"` (was `403 "Payment belongs to another user"`), the same answer as an unknown id.
 
+## 12IZ. HR resume-review task, assignment rules and HR workspace (itc-027) — addendum, 2026-11-03
+
+`DEC-SCOPE-354`. Migration `0237_hr_review_tasks`. New routes; §12IV upload and the rec-010 / placement-profile writes gain side effects
+only (no shape change).
+
+- Stage: `resume_received | under_review | changes_requested | screening | interview_ready | completed | withdrawn` (the last two closed).
+- Summary `{id, student: {id, full_name, student_code}, owner: {id, full_name, active} | null, stage, stage_label, resume_version,
+  screening_date (YYYY-MM-DD|null), assigned_at, closed_at, updated_at}`. Task = Summary + `{role_preferences, skill_gap_notes,
+  checklist: ("contact"|"education"|"skills"|"projects"|"formatting")[], history: [{from_stage, to_stage, reason
+  ("upload"|"manual"|"withdrawn"), actor (name|null), created_at}] (newest first, ≤50)}`.
+- `GET /hr/review-tasks?stage=&limit=1..100 (25)&offset=` (`hr_team`, IT) → `{items: Summary[], total, limit, offset, counts: {stage:
+  int}}` — the caller's own tasks; open stages unless `stage` is given; newest activity first.
+- `GET /hr/students/{student_id}/review` → Task; `PATCH` same path `{stage?, screening_date?, role_preferences? (≤300),
+  skill_gap_notes? (≤4000), checklist?}` (extra keys refused; `stage` and `checklist` not null; `withdrawn` not settable) → Task. 404 when
+  the caller does not own the student's task; 409 on a closed task; 422 invalid input. A stage change writes history and notifies.
+- `GET /admin/it/hr-review-tasks?stage=&unassigned=bool&limit=1..200&offset=` (`it_admin`, IT) → `{items: Summary[], total, limit,
+  offset}`; `unassigned=true` = no owner or a deactivated owner. `PUT /admin/it/hr-review-tasks/{task_id}/owner {hr_user_id}` → Summary;
+  404 unknown task, 422 not an active IT `hr_team` user.
+- `GET /admin/it/hr-assignment-rules` → `{programs: [{program_id, program, active, hr_user: {id, full_name, active} | null}], hr_users:
+  [{id, full_name}]}`; `PUT /admin/it/hr-assignment-rules/{program_id} {hr_user_id: uuid | null}` (null removes) → the programme row; 404
+  unknown programme, 422 not an active HR user.
+- `GET /counselor/it/students/{student_id}/hr-review` (linked IT counselor) and `GET /admin/it/students/{student_id}/hr-review`
+  (`it_admin`) → `{task: {stage, stage_label, owner: {full_name} | null, next_action, screening_date, resume_version, closed, updated_at}
+  | null}` (never notes, preferences or checklist); 404 outside scope, 403 other roles.
+- `GET /it/me/hr-review` (`it_student`) → `{status: {label (student-safe), action (text|null), updated_at} | null}`; 403 other roles.
+- Side effects: a §12IV upload with `visibility=hr` opens/updates/re-opens the task (H2) and sends `it.resume.uploaded` to the owner and
+  the linked counselor; rec-010 opt-out and `PUT /workflows/it/placement/profiles/{id}` with `withdrawn: true` close it. New notification
+  events `it.hr_review.updated` (counselor) and `it.hr_review.assigned` (new owner); `it.placement.updated` goes to the student on a move.
+
 ## 12JA. Trainer dashboard widgets and batch filter (itc-024) — addendum, 2026-11-03
 
 `DEC-SCOPE-355`. No migration. Additive.

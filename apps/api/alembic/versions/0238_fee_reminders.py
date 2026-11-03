@@ -1,7 +1,7 @@
 """itc-016 -- the fee-reminder schedule, the reminder log and the sweep's payments index.
 
 Revision ID: 0238_fee_reminders
-Revises: 0236_it_at_risk
+Revises: 0237_hr_review_tasks
 
 docs/superpowers/specs/2026-11-03-itc-016-fee-reminders-design.md (DEC-SCOPE-357). Two new tables and one index on `payments`; no
 existing row changes ("overdue" stays derived). 0001 builds a fresh database from the current models, which already carry them, so each
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0238_fee_reminders"
-down_revision = "0236_it_at_risk"
+down_revision = "0237_hr_review_tasks"
 branch_labels = None
 depends_on = None
 

@@ -906,6 +906,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** an HR user is deactivated with open tasks (reassign); a student withdraws from placement (rec-010 opt-out) → the task is closed.
 - **Regression risks:** the nehn-017 HR student access tests, `test_adm_007_placement` and the rec-010 pool logic.
 - **Complexity:** large. **Risk:** high.
+- **Status:** built as `DEC-SCOPE-354` (migration `0237_hr_review_tasks`, API §12IZ, RBAC §2.254). Q-24 programme rule → round-robin →
+  unassigned; Q-25 own seven stages with student-safe labels, one task per student re-opened by a new shared version; Q-26 assigned
+  only (the nehn-017 pool read unchanged); the IT Admin is the HR manager — all builder's calls, `NEEDS_CONFIRMATION`.
 
 #### itc-028: Internal vs student-visible notes and updates
 - **Business requirement:** §2 access rule; §10 "Field-level visibility for internal notes, HR screening comments, and student-facing messages"; §9 "respecting field-level visibility".

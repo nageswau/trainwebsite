@@ -11023,6 +11023,30 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** no migration; API §12IY; RBAC §2.253.
 - **Feature ID authorized:** `itc-018`. **Status:** built on `worktree-itc-018`.
 
+### DEC-SCOPE-354 — HR resume-review task, assignment rule, HR stages and HR workspace (`itc-027`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-027` (PDF §5 steps 2–6 and HR stages, §4 "HR / Placement", §3 step 10,
+  §8 HR dashboard, §11 HR workspace, §12 AC3/AC4). Scope approved by the owner 2026-11-01 (backlog Q-01: all phases, built in waves).
+  Dependencies itc-001 (`DEC-SCOPE-335`), itc-002 (`DEC-SCOPE-336`), itc-003 (`DEC-SCOPE-337`), itc-026 (`DEC-SCOPE-350`) and itc-028
+  (`DEC-SCOPE-351`) are merged. Design `docs/superpowers/specs/2026-11-03-itc-027-hr-resume-review-design.md`.
+- **Behaviour:** a resume version shared with HR (itc-026) opens the IT student's one HR review task — or updates its version, or
+  re-opens it — owned by the programme's HR reviewer, else the next active HR user in turn. The owner works it from a Review Queue and the
+  HR student page: stage, screening date, role preferences, a review checklist and internal skill-gap notes. The owner and the counselor
+  are notified of the upload; a stage move tells the student (preview-safe) and the counselor. The counselor's student record shows the
+  stage, owner, next action and screening date; the student's Placement Status shows only a student-safe label ("Action required: update
+  your resume"). The IT Admin's HR Reviews page reassigns tasks and sets the programme rules. Leaving placement closes the task.
+- **Claude's calls under "proceed with recommended answers" (Q-24/Q-25/Q-26, `NEEDS_CONFIRMATION`):** H1 (Q-25) seven own stages
+  (`resume_received`, `under_review`, `changes_requested`, `screening`, `interview_ready`, then closed `completed`/`withdrawn`), separate
+  from the placement/offer statuses, each with a student-safe label; the PDF itself is not in the repository, so the names are the
+  backlog's examples completed by the builder. H2 one task per student; a new shared version re-opens a closed task and moves
+  `changes_requested` back to `resume_received`; a private version or a student outside the HR population opens nothing. H3 (Q-24)
+  programme → HR user rule, else round-robin = least recently assigned active HR user, else unassigned; branch is not a dimension (IT
+  students have none). H4 (Q-26) HR works only tasks assigned to them (404 otherwise); nehn-017's pool read is unchanged. H5 the IT Admin
+  is the HR manager (no such role exists) and reassigns; a deactivated owner's task shows under "Needs an owner". H9 rec-010 opt-out and a
+  placement profile marked withdrawn close the task.
+- **Numbering:** migration `0237_hr_review_tasks`; API §12IZ; RBAC §2.254.
+- **Feature ID authorized:** `itc-027`. **Status:** built on `worktree-itc-027`.
+
 ### DEC-SCOPE-355 — Trainer dashboard widgets (`itc-024`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-024` (PDF §8 Faculty dashboard, §11 Faculty workspace; Appendix B).

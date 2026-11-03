@@ -2674,6 +2674,58 @@ class StudentResumeSetting(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
+# itc-027 (DEC-SCOPE-354 H1): the HR resume-review stages -- open first, then the two closed ones. Migration 0237 repeats them
+# (test_itc_027_migration). Labels (internal and student-safe) live in services/hr_reviews.py and the web client.
+HR_REVIEW_OPEN_STAGES = ("resume_received", "under_review", "changes_requested", "screening", "interview_ready")
+HR_REVIEW_STAGES = (*HR_REVIEW_OPEN_STAGES, "completed", "withdrawn")
+
+
+class HrReviewTask(Base, TimestampMixin):
+    """itc-027 (H2): the one HR review task of an IT student (unique student; a new shared resume version updates or re-opens it).
+    `closed_at` is set while the stage is `completed` or `withdrawn`. `skill_gap_notes` are internal: HR owner and IT Admin only."""
+
+    __tablename__ = "hr_review_tasks"
+    __table_args__ = (
+        UniqueConstraint("student_user_id", name="uq_hr_review_tasks_student"),
+        CheckConstraint(f"stage IN ({', '.join(repr(s) for s in HR_REVIEW_STAGES)})", name="ck_hr_review_tasks_stage"),
+        Index("ix_hr_review_tasks_owner_stage", "owner_user_id", "stage"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    student_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    stage: Mapped[str] = mapped_column(String(20), default="resume_received")
+    resume_version: Mapped[int] = mapped_column(Integer)
+    screening_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    role_preferences: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    skill_gap_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    checklist: Mapped[list] = mapped_column(JSON, default=list)
+    assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class HrReviewStageHistory(Base):
+    """itc-027 (H6): every stage change of a task -- `actor_user_id` NULL for the system (upload, withdrawal); `reason` a fixed token."""
+
+    __tablename__ = "hr_review_stage_history"
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    task_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("hr_review_tasks.id", ondelete="CASCADE"), index=True)
+    from_stage: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    to_stage: Mapped[str] = mapped_column(String(20))
+    actor_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    reason: Mapped[str] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class HrAssignmentRule(Base, TimestampMixin):
+    """itc-027 (H3): a programme's HR reviewer -- the first choice for a new task of a student enrolled in it."""
+
+    __tablename__ = "hr_assignment_rules"
+    program_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("programs.id", ondelete="CASCADE"), primary_key=True)
+    hr_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
 class VisaCase(Base, TimestampMixin):
     __tablename__ = "visa_cases"
     __table_args__ = (
