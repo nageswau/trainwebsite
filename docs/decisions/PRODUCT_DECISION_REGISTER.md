@@ -11063,3 +11063,24 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   not the trainer's is a 422 and the page falls back to all batches with the message.
 - **Numbering:** no migration; API §12JA; RBAC §2.255.
 - **Feature ID authorized:** `itc-024`. **Status:** built on `worktree-itc-024`.
+
+### DEC-SCOPE-357 — Call consent, resume malware scan and the retention policy (`itc-033`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-033` (PDF §10 consent / retention / DPDP, §5 "scan uploads for malware
+  where supported"; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-01: all phases, built in waves).
+  Dependency itc-026 merged (`DEC-SCOPE-350`, PR #424). The owner said to proceed with the recommended answers, so Q-23 and Q-31 below
+  are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-03-itc-033-consent-retention-scan-design.md`.
+- **C1 — Calls preference:** `notification_preferences.calls_opt_out` (default false) + `calls_opted_out_at`. Calls are allowed unless
+  the user opts out (no row = allowed), so existing service calls are not silently forbidden. No valid phone is needed to change it.
+- **C2 — API:** `/account/notification-preferences` (self-only) returns `calls`; the PUT body takes an optional `calls` (omitted =
+  unchanged, so a two-field body still works; extras still 422). The audit row's before/after and the data export include it.
+- **C3 — Who sees it:** the student's itc-003 counselor and the IT Admin see "No phone calls" on the IT student record (read-only).
+- **C4 — Leads unchanged:** a lead-level do-not-call block would change telecaller calling rules; deferred (`NEEDS_CONFIRMATION`). The
+  lead keeps ccrm-005 `contact_preference` / `marketing_opt_in`.
+- **C5 — Q-23 malware scan:** resume uploads (itc-026) are streamed to clamd (`INSTREAM`) before storage **only when `CLAMAV_HOST` is
+  set**; infected → 422 + audit `it.resume.scan_rejected` (signature, type, size, role; no file name); no verdict → 503 (fail closed).
+  Synchronous (≤10 MB), no quarantine state. The ClamAV container is a DEC-INFRA follow-up; other upload routes are not scanned.
+- **C6/C7 — Q-31 retention and backups:** `docs/architecture/DATA_RETENTION_POLICY.md` — categories, current hold rule, proposed periods
+  (all `NEEDS_CONFIRMATION`), the backup checklist. **No purge job** until the periods have legal sign-off (`DEC-PRIV-001`).
+- **Numbering:** migration `0239_call_preference` (on itc-027's `0237_hr_review_tasks`); API §12JC; RBAC §2.257.
+- **Feature ID authorized:** `itc-033`. **Status:** built on `worktree-itc-033`.

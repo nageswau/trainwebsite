@@ -57,6 +57,8 @@ test("keyboard only: tab to SMS, toggle with Space, save with Enter", async ({ p
     await sms.focus();
     await page.keyboard.press("Space");
     await expect(sms).toBeChecked();
+    await page.keyboard.press("Tab"); // itc-033: the "Phone calls" box sits between SMS and Save
+    await expect(page.getByRole("checkbox", { name: /^Phone calls from our team/ })).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(page.getByRole("button", { name: "Save notification settings" })).toBeFocused();
     await page.keyboard.press("Enter");

@@ -3682,6 +3682,9 @@ class NotificationPreference(Base, TimestampMixin):
     sms_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     whatsapp_opted_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sms_opted_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # itc-033 (DEC-SCOPE-357 C1): phone calls are allowed unless the user opts out (no row = allowed); the timestamp is the evidence
+    calls_opt_out: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    calls_opted_out_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class SupportTicket(Base, TimestampMixin):

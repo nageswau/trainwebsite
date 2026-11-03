@@ -23,7 +23,7 @@ async def test_defaults_are_off_and_phone_validity_is_reported(client, db_sessio
     await login(client, user.email)
     response = await client.get(URL)
     assert response.status_code == 200
-    assert response.json() == {"whatsapp": False, "sms": False, "phone_valid": True}
+    assert response.json() == {"whatsapp": False, "sms": False, "calls": True, "phone_valid": True}
 
 
 @pytest.mark.asyncio
@@ -44,7 +44,7 @@ async def test_turning_off_is_allowed_without_a_phone(client, db_session):
     await login(client, user.email)
     response = await client.put(URL, json={"whatsapp": True, "sms": False})  # WhatsApp unchanged, SMS off
     assert response.status_code == 200, response.text
-    assert response.json() == {"whatsapp": True, "sms": False, "phone_valid": False}
+    assert response.json() == {"whatsapp": True, "sms": False, "calls": True, "phone_valid": False}
 
 
 @pytest.mark.asyncio
@@ -52,7 +52,7 @@ async def test_opt_in_and_out_set_and_clear_timestamps_and_audit_once(client, db
     user = await make_user(db_session, phone="+91 98765 43210")
     await login(client, user.email)
     on = await client.put(URL, json={"whatsapp": True, "sms": False})
-    assert on.status_code == 200 and on.json() == {"whatsapp": True, "sms": False, "phone_valid": True}
+    assert on.status_code == 200 and on.json() == {"whatsapp": True, "sms": False, "calls": True, "phone_valid": True}
     pref = await db_session.get(NotificationPreference, user.id, populate_existing=True)
     first_opt_in = pref.whatsapp_opted_in_at
     assert first_opt_in is not None and pref.sms_opted_in_at is None
@@ -69,8 +69,8 @@ async def test_opt_in_and_out_set_and_clear_timestamps_and_audit_once(client, db
 
     audits = (await db_session.scalars(select(AuditLog).where(AuditLog.user_id == user.id, AuditLog.action == "notification_preference.update").order_by(AuditLog.created_at))).all()
     assert [a.metadata_json for a in audits] == [
-        {"before": {"whatsapp": False, "sms": False}, "after": {"whatsapp": True, "sms": False}, "consent_text": "enh014-v1"},
-        {"before": {"whatsapp": True, "sms": False}, "after": {"whatsapp": False, "sms": False}, "consent_text": "enh014-v1"},
+        {"before": {"whatsapp": False, "sms": False, "calls": True}, "after": {"whatsapp": True, "sms": False, "calls": True}, "consent_text": "enh014-v1"},
+        {"before": {"whatsapp": True, "sms": False, "calls": True}, "after": {"whatsapp": False, "sms": False, "calls": True}, "consent_text": "enh014-v1"},
     ]
     assert all("98765" not in str(a.metadata_json) for a in audits)
 

@@ -13,7 +13,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AuditLog, Batch, Enrollment, ItStudentCounselor, ItStudentProfile, Program, User
+from app.models import AuditLog, Batch, Enrollment, ItStudentCounselor, ItStudentProfile, NotificationPreference, Program, User
 from app.schemas import ItEnrollmentOverridePatch, ItStudentProfilePatch
 from app.services.audit_changes import audit_change
 
@@ -72,8 +72,10 @@ async def read(db: AsyncSession, student: User) -> dict:
             .execution_options(populate_existing=True)
         )
     ).all()  # fmt: skip
+    # itc-033 (DEC-SCOPE-357 C3): the student's own "phone calls" choice, read-only here (no row = allowed)
+    calls_opt_out = await db.scalar(select(NotificationPreference.calls_opt_out).where(NotificationPreference.user_id == student.id))
     return {
-        "student": {"id": student.id, "full_name": student.full_name, "student_code": student.student_code},
+        "student": {"id": student.id, "full_name": student.full_name, "student_code": student.student_code, "calls_allowed": not calls_opt_out},
         "profile": out,
         "enrollments": [_enrollment_out(*row) for row in rows],
     }

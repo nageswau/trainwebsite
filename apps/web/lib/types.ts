@@ -45,10 +45,11 @@ export type AgentReport = {
 };
 
 // ENH-014 (spec §5.1): GET/PUT /api/v1/account/notification-preferences.
-export type NotificationPreferences = { whatsapp: boolean; sms: boolean; phone_valid: boolean };
+// itc-033 (DEC-SCOPE-357): `calls` -- phone calls from our team are allowed (true) unless the user opts out
+export type NotificationPreferences = { whatsapp: boolean; sms: boolean; calls: boolean; phone_valid: boolean };
 export function isNotificationPreferences(value: unknown): value is NotificationPreferences {
   const v = value as Partial<NotificationPreferences> | null;
-  return !!v && typeof v.whatsapp === "boolean" && typeof v.sms === "boolean" && typeof v.phone_valid === "boolean";
+  return !!v && typeof v.whatsapp === "boolean" && typeof v.sms === "boolean" && typeof v.calls === "boolean" && typeof v.phone_valid === "boolean";
 }
 
 export type CareerPath = {id:string; division:string; slug:string; title:string; summary:string; skills:string[]; related_program_slugs:string[]; outcomes:string};

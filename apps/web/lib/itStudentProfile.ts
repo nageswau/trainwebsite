@@ -34,7 +34,7 @@ export type ItEnrollment = {
 };
 
 export type ItStudentProfileResponse = {
-  student: { id: string; full_name: string; student_code: string | null };
+  student: { id: string; full_name: string; student_code: string | null; calls_allowed?: boolean };
   profile: ItStudentProfile;
   enrollments: ItEnrollment[];
 };
