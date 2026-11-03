@@ -51,16 +51,18 @@ async def course(db) -> tuple[Program, TelProduct]:
     return program, product
 
 
-async def lead(db, product, *, owner=None, source="website", status="new", created=None, converted=None, converted_by=None, merged=False) -> Enquiry:
+async def lead(db, product, *, owner=None, source="website", status="new", created=None, converted=None, converted_by=None, merged_into=None) -> Enquiry:
     row = Enquiry(division="it", name="Hidden Name", email=f"{uuid.uuid4().hex[:8]}@example.com", subject="IT", message="-", source=source, status=status,
-                  owner_id=owner.id if owner else None, product_id=product.id if product else None, converted_at=converted,
-                  converted_by_user_id=converted_by.id if converted_by else None)  # fmt: skip
-    if merged:
-        row.status = "duplicate"
+                  owner_id=owner.id if owner else None, product_id=product.id if product else None)  # fmt: skip
+    if converted:  # ck_enquiries_conversion: the student, the time and the converter are recorded together
+        converted_by = converted_by or owner or await make_user(db, "counselor", "it")
+        row.converted_user_id, row.converted_at, row.converted_by_user_id = (await make_user(db, "it_student", "it")).id, converted, converted_by.id
+    if merged_into is not None:  # ccrm-006 / itc-007: a merged lead is closed as a duplicate of the surviving one
+        row.status, row.duplicate_of_id = "duplicate", merged_into.id
     db.add(row)
     await db.flush()
     row.created_at = created or at(10)
-    if merged:
+    if merged_into is not None:
         row.merged_at, row.merged_by_user_id = at(11), owner.id
     await db.commit()
     return row
@@ -177,13 +179,13 @@ async def test_each_family_offers_its_own_statuses_and_the_owner_list(client, db
 async def test_the_funnel_groups_the_cohort_by_course_and_source_and_ties_out(client, db_session):
     program, product = await course(db_session)
     owner = await make_user(db_session, "counselor", "it")
-    await lead(db_session, product, owner=owner, source="instagram", status="qualified")
+    survivor = await lead(db_session, product, owner=owner, source="instagram", status="qualified")
     await lead(db_session, product, owner=owner, source="instagram", status="converted", converted=at(12))
     await lead(db_session, product, owner=owner, source="website", status="lost")
     await lead(db_session, product, owner=owner, source="website", status="nurture")
     await lead(db_session, product, owner=owner, created=datetime.datetime(2026, 9, 30, 20, 0, tzinfo=UTC))  # 1 Oct 01:30 IST: in
     await lead(db_session, product, owner=owner, created=datetime.datetime(2026, 9, 30, 18, 0, tzinfo=UTC))  # 30 Sep 23:30 IST: out
-    await lead(db_session, product, owner=owner, merged=True)  # merged: never counted
+    await lead(db_session, product, owner=owner, merged_into=survivor)  # merged: never counted
     await as_role(client, db_session)
     body = (await client.get(url("funnel"), params={**OCT, "program_id": str(program.id)})).json()
     assert body["totals"] | {} == {**body["totals"], "leads": 5, "open": 2, "nurture": 1, "converted": 1, "closed": 1}
@@ -220,7 +222,7 @@ async def test_lead_reports_take_every_filter(client, db_session):
     await as_role(client, db_session)
     scope = {**OCT, "program_id": str(program.id)}
     for report in ("funnel", "conversions"):
-        get = lambda **p: client.get(url(report), params={**scope, **p})  # noqa: E731
+        get = lambda r=report, **p: client.get(url(r), params={**scope, **p})  # noqa: E731
         base = (await get()).json()["totals"]["leads"]
         assert base == 2
         assert (await client.get(url(report), params={**OCT, "batch_id": str(batch.id)})).json()["totals"]["leads"] == 2
@@ -238,10 +240,10 @@ async def test_team_activity_counts_calls_follow_ups_and_conversions_per_staff_m
     caller, counselor = await make_user(db_session, "telecaller", "it"), await make_user(db_session, "counselor", "it")
     row = await lead(db_session, product, owner=counselor, status="converted", converted=at(14), converted_by=counselor, created=at(2))
     other = await lead(db_session, product, owner=caller, status="contacted", created=at(2))
-    for lead_row, outcome, day in ((row, "connected", 4), (row, "busy", 5), (other, "connected", 6), (other, "connected", 1 + 30)):
-        when = at(day) if day <= 31 else datetime.datetime(2026, 11, 1, 10, tzinfo=IST)
+    calls = ((row, "interested", at(4)), (row, "busy", at(5)), (other, "interested", at(6)), (other, "interested", datetime.datetime(2026, 11, 1, 10, tzinfo=IST)))
+    for lead_row, outcome, when in calls:  # the last one is after the range
         db_session.add(LeadCall(lead_id=lead_row.id, caller_user_id=caller.id, occurred_at=when, duration_seconds=60, call_type="outgoing", outcome=outcome))
-    db_session.add(LeadFollowUp(lead_id=row.id, due_at=at(8), reason="call_back", status="done", created_by_user_id=counselor.id, completed_at=at(8),
+    db_session.add(LeadFollowUp(lead_id=row.id, due_at=at(8), reason="course_details", status="done", created_by_user_id=counselor.id, completed_at=at(8),
                                 completed_by_user_id=counselor.id))  # fmt: skip
     await db_session.commit()
     await as_role(client, db_session)
@@ -336,7 +338,7 @@ async def test_enrolment_reports_take_every_filter(client, db_session):
     await as_role(client, db_session)
     scope = {**OCT, "program_id": str(program.id)}
     for report in ("revenue", "training", "placement"):
-        get = lambda **p: client.get(url(report), params={**scope, **p})  # noqa: E731
+        get = lambda r=report, **p: client.get(url(r), params={**scope, **p})  # noqa: E731
         assert (await get()).json()["total"] == 2, report
         assert (await client.get(url(report), params={**OCT, "batch_id": str(batch.id)})).json()["total"] == 1, report
         assert (await get(owner_id=str(counselor.id))).json()["total"] == 1, report
