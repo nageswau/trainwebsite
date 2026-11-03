@@ -101,15 +101,16 @@ def receipt_lines(
     ]
 
 
-def generate_receipt_pdf(*, receipt_no: str, issued_on: date, lines: list[tuple[str, str]]) -> str:
+def generate_receipt_pdf(*, receipt_no: str, issued_on: date, lines: list[tuple[str, str]], title: str = "Receipt", kind: str = "Receipt") -> str:
     """nehn-019: the receipt is a label/value table of `receipt_lines` (drawString: literal text, no markup). Issued once, at payment,
-    and never regenerated (D4) -- it is the snapshot of that moment, so its balance is the balance just after this payment."""
+    and never regenerated (D4) -- it is the snapshot of that moment, so its balance is the balance just after this payment.
+    itc-015: the same layout titles a fee adjustment's credit note / write-off / refund receipt, stored under its own `kind`."""
     buffer = BytesIO()
     width, height = A4
     pdf = canvas.Canvas(buffer, pagesize=A4)
     pdf.setFillColor(HexColor("#071B38"))
     pdf.setFont("Helvetica-Bold", 26)
-    pdf.drawString(56, height - 90, "Receipt")
+    pdf.drawString(56, height - 90, title)
     pdf.setFillColor(HexColor("#61728A"))
     pdf.setFont("Helvetica", 12)
     pdf.drawString(56, height - 120, f"Issued: {issued_on.isoformat()}")
@@ -127,4 +128,4 @@ def generate_receipt_pdf(*, receipt_no: str, issued_on: date, lines: list[tuple[
     pdf.setFillColor(HexColor("#61728A"))
     pdf.drawString(56, 50, "EduSphere -- amounts shown in the currency charged; exact tax/region mapping is a documented open item.")
     pdf.save()
-    return _store("Receipt", receipt_no, buffer.getvalue())
+    return _store(kind, receipt_no, buffer.getvalue())

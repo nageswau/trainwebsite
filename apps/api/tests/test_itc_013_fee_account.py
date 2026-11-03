@@ -72,7 +72,7 @@ async def test_a_billed_enrolment_owes_its_whole_fee(db_session):
     _, enrollment = await enrolled(db_session)
     assert await figures(db_session, enrollment) == {
         "course_fee": 45000.0, "discount_approved": 0.0, "tax": 0.0, "total_payable": 45000.0, "paid_confirmed": 0.0, "credits": 0.0,
-        "balance": 45000.0, "state": "enrolled_pending_payment",
+        "refunded": 0.0, "balance": 45000.0, "state": "enrolled_pending_payment",  # itc-015 adds `refunded`
     }  # fmt: skip
 
 

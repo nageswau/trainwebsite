@@ -73,7 +73,7 @@ def test_the_catalogue_names_the_pilot_resources_and_known_actions():
     }  # nehn-030, nehn-008, nehn-009, nehn-018, nehn-016
     for resource in rbac.CATALOGUE.values():
         assert set(resource["actions"]) <= set(rbac.ACTIONS)
-    assert rbac.ACTIONS == ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage")  # nehn-031
+    assert rbac.ACTIONS == ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage", "refund")  # nehn-031; itc-015
 
 
 def test_roles_are_the_29_existing_roles():
@@ -210,7 +210,7 @@ async def test_catalogue_endpoint(client, db_session):
     assert body["actions"] == list(rbac.ACTIONS)
     assert {r["key"] for r in body["resources"]} == set(rbac.CATALOGUE)
     payments = next(r for r in body["resources"] if r["key"] == "payments")
-    assert payments["actions"] == ["view", "add"] and payments["label"]
+    assert payments["actions"] == ["view", "add", "refund"] and payments["label"]  # itc-015 adds refund
 
 
 @pytest.mark.asyncio

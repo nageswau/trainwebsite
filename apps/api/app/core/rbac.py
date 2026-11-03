@@ -72,9 +72,10 @@ ROLES: tuple[str, ...] = tuple(PERMISSIONS)
 # nehn-005 (DEC-SCOPE-281): the grant-based permission catalogue -- role x resource x action, held in `role_permissions` and checked by
 # `deps.require_permission`. It lists only resources whose routes are wired (P1); each later module slice adds its own resource. A key
 # is "<resource>.<action>"; anything not listed is denied.
-ACTIONS = ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage")  # nehn-031 adds override, configure
+ACTIONS = ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage", "refund")  # nehn-031 adds override, configure
 CATALOGUE: dict[str, dict] = {
-    "payments": {"label": "Payments", "actions": ("view", "add")},
+    # itc-015 (DEC-SCOPE-362): `refund` -- an IT enrolment's credit notes, write-offs, refunds and payment corrections (migration 0244).
+    "payments": {"label": "Payments", "actions": ("view", "add", "refund")},
     "discounts": {"label": "Payment discounts", "actions": ("add",)},
     "reports.telecaller": {"label": "Telecaller reports", "actions": ("view", "download")},
     # nehn-030: the coordinator portal's Certificates section; nehn-031 (DEC-SCOPE-297): issuing, the eligibility override, thresholds;
@@ -101,8 +102,8 @@ _TRAINING_REPORTS = ("reports.training.view", "reports.training.download")  # ne
 _PLACEMENT_REPORTS = ("reports.placement.view", "reports.placement.download")  # nehn-016 (migration 0212 seeds it); rows = opted-in students
 DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "it_admin": (
-        _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure", "student_access.configure") + _TRAINING_REPORTS + _PLACEMENT_REPORTS
-    ),  # nehn-031 W2 (0204); nehn-018 (0211); nehn-016 (0212)
+        _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure", "student_access.configure") + _TRAINING_REPORTS + _PLACEMENT_REPORTS + ("payments.refund",)
+    ),  # nehn-031 W2 (0204); nehn-018 (0211); nehn-016 (0212); itc-015 (0244)
     "trainer": _TRAINING_REPORTS,
     "placement_team": _PLACEMENT_REPORTS,
     "placement_manager": _PLACEMENT_REPORTS,
