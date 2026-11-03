@@ -37,6 +37,7 @@ export type StudentPlans = {
   items: RemediationPlan[];
   enrollments: { enrollment_id: string; batch: string }[];
   owner_options: { id: string; name: string; role: string }[];
+  viewer_id: string;
 };
 
 export type MyCourse = {

@@ -10,7 +10,7 @@ const NEXT: PlanStatus[] = ["open", "in_progress", "completed", "cancelled"];
 
 /** itc-022 (DEC-SCOPE-365 P9): one student's remediation plans. Readers (the batch trainer, the IT counselor, the IT Admin) see every plan;
  *  the batch trainer and the IT Admin add plans and edit them; a plan's owner may move its status. Closed plans are final. */
-export default function RemediationPlans({ studentId, viewerId, enrollmentId }: { studentId: string; viewerId?: string; enrollmentId?: string }) {
+export default function RemediationPlans({ studentId, enrollmentId }: { studentId: string; enrollmentId?: string }) {
   const [data, setData] = useState<StudentPlans | null>(null);
   const [failed, setFailed] = useState("");
   const [adding, setAdding] = useState(false);
@@ -38,6 +38,7 @@ export default function RemediationPlans({ studentId, viewerId, enrollmentId }: 
 
   const writable = data?.enrollments ?? [];
   const target = writable.find(e => e.enrollment_id === enrollmentId) ?? writable[0];
+  const viewerId = data?.viewer_id;
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,7 +68,7 @@ export default function RemediationPlans({ studentId, viewerId, enrollmentId }: 
     setReload(n => n + 1);
   }
 
-  const canMove = (plan: RemediationPlan) => !CLOSED.includes(plan.status) && (writable.length > 0 || (!!viewerId && plan.owner_user_id === viewerId));
+  const canMove = (plan: RemediationPlan) => !CLOSED.includes(plan.status) && (writable.length > 0 || plan.owner_user_id === viewerId);
   return (
     <section aria-labelledby={`${id}-title`} style={{ display: "grid", gap: 8 }}>
       <h4 id={`${id}-title`} style={{ margin: 0 }}>Remediation plans</h4>

@@ -98,3 +98,20 @@ up/down. Frontend vitest for the panels; Playwright e2e for admin plan → train
 1. Migration + models (RED: migration test). 2. Service: plan read/save + formula validation. 3. Compute + refresh + hooks in
 workflows. 4. Completions endpoints. 5. Override PATCH/DELETE. 6. Remediation. 7. Student `/it/me/progress`. 8. Batch progress
 additive fields. 9. FE admin editor, trainer panel, student card, 360, Lab option. 10. Docs (DEC, API, RBAC, RTM, backlog). 11. e2e.
+
+## Browser QA (2026-11-03, isolated stack: API :13122, web :18122)
+
+| ID | Sev | Role / page | Issue | Fix |
+|---|---|---|---|---|
+| QA-01 | Medium | IT Admin / Progress Plans | The topic input's label "Module 1 topic 1" was a substring of its Remove button's name — two controls with one accessible name | Remove button named "Remove topic 1 of module 1" |
+| QA-02 | Low | IT Admin / Progress Plans | Page title "Progress Plans" and card heading "Progress plans" repeated each other | Card heading "Plans by programme" |
+| QA-03 | Low | Trainer / remediation form | The Owner list showed the caller twice ("Me" and "Name (trainer)") | The API returns `viewer_id`; the caller is listed once, "(me)" |
+| QA-04 | Medium | Counselor (owner) / 360 | A plan's owner had no status buttons (the component did not know the reader) | Same `viewer_id`; the owner can move the status (verified in the browser) |
+| QA-05 | Medium | Trainer / Student Progress, phone and tablet | The details row spans the 874 px table, so remediation plans and their buttons ran off-screen | The details content is pinned left and capped to the screen width (measured: fits at 390, 820, 1366) |
+| QA-06 | Low | IT Admin / Progress Plans | Topic inputs were unstyled (outside `.field`) | Wrapped in `.field` (their labels are now visible too) |
+
+Verified without issue: weights ≠ 100 (client message and API 422), blank titles blocked, Cancel, Copy from syllabus, bulk tick with a
+double-click (one request's worth of rows: idempotent), override without a reason (the server's message is shown), override badge and
+"Use worked-out figure", past due date 422, student 403 on completions, anonymous 401, trainer/student on the admin page get the existing
+"Access unavailable" screen, the student card after refresh, the IT Admin's and the owner counselor's 360, no horizontal page overflow at
+390/820/1366, no console errors beyond the deliberate 4xx probes.

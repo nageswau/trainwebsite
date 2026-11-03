@@ -111,13 +111,14 @@ const PLANS = {
   items: [{ id: "r1", actions: "Two extra labs", due_date: "2026-11-10", status: "open", owner_name: "Tara Trainer", batch: "FSJ-Nov", owner_user_id: "u1", enrollment_id: "e1", risk_flag_id: "f1" }],
   enrollments: [{ enrollment_id: "e1", batch: "FSJ-Nov" }],
   owner_options: [{ id: "u1", name: "Tara Trainer", role: "trainer" }, { id: "c1", name: "Cora Counselor", role: "counselor" }],
+  viewer_id: "u1",
 };
 
 describe("RemediationPlans", () => {
   it("lists plans, moves a status and adds a plan with an owner", async () => {
     const fetchMock = vi.fn((url: string, init?: RequestInit) => (init?.method && init.method !== "GET" ? json({ id: "r2" }, init.method === "POST" ? 201 : 200) : json(PLANS)));
     vi.stubGlobal("fetch", fetchMock);
-    render(<RemediationPlans studentId="s1" viewerId="u1" />);
+    render(<RemediationPlans studentId="s1" />);
     expect(await screen.findByText("Two extra labs")).toBeTruthy();
     expect(screen.getByText(/from an at-risk flag/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: 'Mark plan "Two extra labs" in progress' }));
@@ -134,9 +135,20 @@ describe("RemediationPlans", () => {
     expect(JSON.parse(String(init?.body))).toEqual({ actions: "Weekly check-in", due_date: "2099-01-01", owner_user_id: "c1" });
   });
 
+  it("lets the plan's owner move its status from the server's viewer id, and lists the caller once (QA-03/QA-04)", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => json({ ...PLANS, enrollments: [], owner_options: [], viewer_id: "u1" })));
+    render(<RemediationPlans studentId="s1" />);
+    expect(await screen.findByRole("button", { name: 'Mark plan "Two extra labs" completed' })).toBeTruthy();
+    cleanup();
+    vi.stubGlobal("fetch", vi.fn(() => json({ ...PLANS, viewer_id: "u1" })));
+    render(<RemediationPlans studentId="s1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Add remediation plan" }));
+    expect(screen.getAllByRole("option").map(o => o.textContent)).toEqual(["Tara Trainer (me)", "Cora Counselor (counselor)"]);
+  });
+
   it("is read-only for a reader who cannot add plans and does not own them", async () => {
-    vi.stubGlobal("fetch", vi.fn(() => json({ ...PLANS, enrollments: [], owner_options: [] })));
-    render(<RemediationPlans studentId="s1" viewerId="someone-else" />);
+    vi.stubGlobal("fetch", vi.fn(() => json({ ...PLANS, enrollments: [], owner_options: [], viewer_id: "someone-else" })));
+    render(<RemediationPlans studentId="s1" />);
     expect(await screen.findByText("Two extra labs")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Add remediation plan" })).toBeNull();
     expect(screen.queryByRole("button", { name: /Mark plan/ })).toBeNull();

@@ -15,7 +15,7 @@ async function signIn(browser: Browser, email: string, landing: string): Promise
   return page;
 }
 
-type Course = { enrollment_id: string; course: string; progress_percent: number };
+type Course = { enrollment_id: string; course: string; batch: string; progress_percent: number };
 
 test("admin plan → trainer bulk tick → student sees computed progress", async ({ browser }) => {
   const errors: string[] = [];
@@ -42,7 +42,7 @@ test("admin plan → trainer bulk tick → student sees computed progress", asyn
     await admin.getByLabel("Work it out from these weights").check();
     await admin.getByLabel("Topics completed (%)").fill("90");
     await admin.getByRole("button", { name: "Save plan" }).click();
-    await expect(admin.getByRole("alert")).toContainText("must add up to 100");
+    await expect(admin.getByRole("alert").filter({ hasText: "must add up to 100" })).toBeVisible();
     await admin.getByLabel("Topics completed (%)").fill("100");
     await admin.getByLabel("Assignments and labs graded (%)").fill("0");
     await admin.getByLabel("Assessments passed (%)").fill("0");
@@ -53,8 +53,12 @@ test("admin plan → trainer bulk tick → student sees computed progress", asyn
     // 2. The trainer ticks "E2E OOP" for everyone in the batch at once.
     await trainer.goto("/it/trainer/student-progress");
     const topics = trainer.getByRole("region", { name: "Topics covered" });
-    await expect(topics.getByLabel("Topic")).toBeVisible();
-    await topics.getByLabel("Topic").selectOption({ label: "E2E OOP (0 done)" });
+    // the demo trainer may teach several batches: both panels open on the first, so pick the student's
+    await expect(trainer.locator("#progress-batch")).toBeVisible(); // the batches have loaded
+    await trainer.locator("#progress-batch").selectOption({ label: course.batch });
+    if (await topics.getByLabel("Batch").count()) await topics.getByLabel("Batch").selectOption({ label: course.batch }); // shown for 2+ batches only
+    await expect(topics.getByLabel("Topic", { exact: true })).toBeVisible();
+    await topics.getByLabel("Topic", { exact: true }).selectOption({ label: "E2E OOP (0 done)" });
     await topics.getByLabel(/Select all/).check();
     await topics.getByRole("button", { name: /Mark complete \(\d+\)/ }).click();
     await expect(topics.getByRole("status")).toContainText('"E2E OOP" marked complete');

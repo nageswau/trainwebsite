@@ -5410,7 +5410,7 @@ full_name} | null, decided_at, decision_note, own}` (`own`: the caller made it).
 - `POST/PATCH /workflows/it/trainer/assignments` — `assignment_type` accepts `lab`.
 - `GET /it/students/{student_id}/remediation-plans` — batch trainer (seated), linked IT counselor, IT Admin. 200 `{student, items:[{id,
   actions, due_date, status, owner_name, batch, created_at, updated_at, enrollment_id, owner_user_id, risk_flag_id}], enrollments (where
-  the caller may add), owner_options}`; HR/others 403; out of scope 404.
+  the caller may add), owner_options, viewer_id}`; HR/others 403; out of scope 404.
 - `POST /it/enrollments/{enrollment_id}/remediation-plans` `{actions(1-2000), due_date, owner_user_id?}` — batch trainer or IT Admin.
   201 the plan (linked to the open itc-023 flag). 422 not an active enrolment ("…only be created for an actively enrolled student"), a
   past due date (IST), an owner who is not the batch trainer / the student's IT counselor / an IT Admin; 404 out of scope.

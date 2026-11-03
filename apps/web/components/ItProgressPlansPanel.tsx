@@ -94,7 +94,7 @@ export default function ItProgressPlansPanel() {
   return (
     <section className="card" aria-labelledby={`${id}-title`} style={{ marginBottom: 16, display: "grid", gap: 12 }}>
       <div>
-        <h3 id={`${id}-title`} style={{ fontSize: 18, marginBottom: 6 }}>Progress plans</h3>
+        <h3 id={`${id}-title`} style={{ fontSize: 18, marginBottom: 6 }}>Plans by programme</h3>
         <p className="muted" style={{ margin: 0, fontSize: 14 }}>
           Break a programme into modules and topics that trainers tick off per student. Add weights to work out each student&apos;s overall
           progress from topics, assignments (labs included) and assessments; without weights trainers set the progress by hand.
@@ -150,11 +150,11 @@ export default function ItProgressPlansPanel() {
                 </div>
                 <ul style={{ display: "grid", gap: 6, margin: 0, paddingLeft: 16, listStyle: "none" }}>
                   {module.topics.map((topic, ti) => (
-                    <li key={topic.id ?? `new-${ti}`} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <li key={topic.id ?? `new-${ti}`} className="field" style={{ margin: 0, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                       <label className="sr-only" htmlFor={`${id}-m${mi}-t${ti}`}>Module {mi + 1} topic {ti + 1}</label>
                       <input id={`${id}-m${mi}-t${ti}`} required maxLength={200} placeholder="Topic" value={topic.title} style={{ flex: "1 1 14rem" }}
                         onChange={e => setModule(mi, { ...module, topics: module.topics.map((t, i) => (i === ti ? { ...t, title: e.target.value } : t)) })} />
-                      <button type="button" className="btn small ghost" onClick={() => setModule(mi, { ...module, topics: module.topics.filter((_, i) => i !== ti) })} aria-label={`Remove module ${mi + 1} topic ${ti + 1}`}>Remove</button>
+                      <button type="button" className="btn small ghost" onClick={() => setModule(mi, { ...module, topics: module.topics.filter((_, i) => i !== ti) })} aria-label={`Remove topic ${ti + 1} of module ${mi + 1}`}>Remove</button>
                     </li>
                   ))}
                   <li><button type="button" className="btn small secondary" onClick={() => setModule(mi, { ...module, topics: [...module.topics, { title: "" }] })}>Add topic</button></li>

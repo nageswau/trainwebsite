@@ -171,7 +171,7 @@ async def test_completion_rejects_inactive_students_and_other_trainers(client, d
     await _login(client, world["trainer"])
     response = await client.put(url, json={"enrollment_ids": [str(world["enrollment"].id), str(dropped.id)], "completed": True})
     assert response.status_code == 422 and "1 of the selected students is not an active student" in response.text
-    assert await db_session.scalar(select(TopicCompletion.id).where(TopicCompletion.topic_id == uuid.UUID(oop))) is None  # nothing half-done
+    assert await db_session.scalar(select(TopicCompletion.id).where(TopicCompletion.topic_id == oop)) is None  # nothing half-done
 
     stranger = await _user(db_session, "trainer", "Other Trainer")
     await _login(client, stranger)
@@ -303,6 +303,7 @@ async def test_plan_updates_owner_status_only_closed_final_and_reads_scoped(clie
     assert (await client.patch(plan_url, json={"status": "in_progress"})).json()["status"] == "in_progress"
     listing = (await client.get(f"/api/v1/it/students/{world['student'].id}/remediation-plans")).json()
     assert [p["status"] for p in listing["items"]] == ["in_progress"] and listing["enrollments"] == []  # the counselor reads, cannot create
+    assert listing["viewer_id"] == str(world["counselor"].id)  # QA-04: the page knows the reader owns the plan
 
     await _login(client, world["trainer"])
     assert (await client.patch(plan_url, json={"status": "completed"})).status_code == 200

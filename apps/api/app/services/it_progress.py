@@ -149,11 +149,12 @@ async def refresh(db: AsyncSession, batch_id: UUID) -> int:
     if batch is None or not await is_computed(db, batch):
         return 0
     seats = list(await db.scalars(select(Enrollment).where(Enrollment.batch_id == batch.id, Enrollment.status == "active", Enrollment.progress_override_reason.is_(None))))
+    figures = await components(db, batch, seats)
     changed = 0
-    for enrollment_id, figures in (await components(db, batch, seats)).items():
-        enrollment = next(e for e in seats if e.id == enrollment_id)
-        if figures["computed_percent"] is not None and enrollment.progress_percent != figures["computed_percent"]:
-            enrollment.progress_percent = figures["computed_percent"]
+    for enrollment in seats:
+        computed = figures[enrollment.id]["computed_percent"]
+        if computed is not None and enrollment.progress_percent != computed:
+            enrollment.progress_percent = computed
             changed += 1
     if changed:
         logger.info("it_progress_refreshed", extra={"extra_fields": {"batch_id": str(batch.id), "changed": changed}})
@@ -373,14 +374,14 @@ def _check_due(due: date) -> None:
 
 async def _editable(db: AsyncSession, user: User, plan_id: UUID) -> tuple[RemediationPlan, Enrollment, Batch]:
     """The plan for its batch's trainer, an IT Admin, or its owner; anyone else in a staff role gets the same 404 as a missing plan."""
+    if user.role not in ("trainer", "it_admin", "super_admin", "counselor") or (not _is_admin(user) and user.division != "it"):
+        raise HTTPException(403, BATCH_STAFF)
     row = (
         await db.execute(
             select(RemediationPlan, Enrollment, Batch).join(Enrollment, Enrollment.id == RemediationPlan.enrollment_id).join(Batch, Batch.id == Enrollment.batch_id)
             .where(RemediationPlan.id == plan_id).with_for_update(of=RemediationPlan)
         )
     ).first()  # fmt: skip
-    if user.role not in ("trainer", "it_admin", "super_admin", "counselor") or (not _is_admin(user) and user.division != "it"):
-        raise HTTPException(403, BATCH_STAFF)
     if row is None or not (_is_admin(user) or row[2].trainer_id == user.id or row[0].owner_user_id == user.id):
         raise HTTPException(404, PLAN_NOT_FOUND)
     return row[0], row[1], row[2]
@@ -422,6 +423,7 @@ async def student_plans(db: AsyncSession, user: User, student_id: UUID) -> dict:
         "items": await _plans(db, student.id, staff=True),
         "enrollments": creatable,
         "owner_options": await _owner_options(db, user, student.id) if creatable else [],
+        "viewer_id": user.id,  # QA-04: the page offers an owner the status buttons and names the caller "(me)"
     }
 
 
@@ -452,7 +454,7 @@ async def create_plan(db: AsyncSession, user: User, enrollment_id: UUID, payload
 async def update_plan(db: AsyncSession, user: User, plan_id: UUID, payload: RemediationPlanPatch) -> dict:
     plan, enrollment, batch = await _editable(db, user, plan_id)
     changes = payload.model_dump(exclude_unset=True)
-    if None in (changes.get(k, "") for k in ("actions", "due_date", "status")) or ("owner_user_id" in changes and changes["owner_user_id"] is None):
+    if None in changes.values():
         raise HTTPException(422, "A field cannot be cleared")
     if not (_is_admin(user) or batch.trainer_id == user.id) and set(changes) - {"status"}:
         raise HTTPException(403, "The plan's owner can change only its status")
