@@ -5416,3 +5416,20 @@ unchanged).
   `{receipts, amount}` (a reversed payment's receipt is listed, not summed); adjustments `{count, credit_note, write_off, refund, reversal}`.
 - `GET /it/accounts/reports/{report}/export` — same gate and filters; `text/csv` attachment `it-<report>-<IST date>.csv` with every
   matching row (over 10,000 → 422). Text cells neutralise formula prefixes. Audited `it.accounts.export` `{report, filters, rows}`.
+
+## 12JO. Management IT reports (itc-032) — addendum, 2026-11-03
+
+`DEC-SCOPE-369`. No migration. Additive; read-only.
+
+- `GET /management/it/reports` — 200 `{reports: [{key, label}]}`: the reports the caller may open, in tab order; none → 403.
+- `GET /management/it/reports/{report}` — `report` ∈ `funnel | conversions | revenue | training | placement | activity` (else 404).
+  Gate: operational reports — partner, super_admin, it_admin (IT); revenue — partner, or `payments.view` in IT / every division
+  (it_admin, accountant, super_admin); anyone else 403 "You do not have access to this IT report"; anonymous 401. Query: `program_id?`,
+  `batch_id?` (unknown 422 "Choose a course/batch from the list"; a batch outside the course 422), `owner_id?` (not a lead owner, caller,
+  converter, follow-up completer or IT counselor → 422 "Choose an owner from the list"), `date_from?`/`date_to?` (IST days; default this
+  month to today; from after to 422; over 366 days 422), `status?` (a lead stage on funnel/conversions/activity, an IT lifecycle stage on
+  revenue/training/placement; else 422 "Choose a status from the list"), `limit` 1–200 (50), `offset` ≥ 0. 200 `{report, totals, groups,
+  items, total, limit, offset, filters, definitions: [{key, label, definition}], options: {courses, batches, owners: [{id, name}],
+  statuses: [{value, label}]}}`. `totals` cover the whole filtered report and equal Σ `groups`; `total` is the drill-down row count.
+- `GET /management/it/reports/{report}/export` — same gate and filters; `text/csv` attachment `it-<report>-<IST date>.csv` with every
+  row (over 10,000 → 422). Text cells neutralise formula prefixes. Audited `management.it_reports.export` `{report, filters, rows}`.
