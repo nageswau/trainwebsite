@@ -5185,6 +5185,19 @@ a rollback sends nothing).
 - Notifications (itc-002 catalogue): `it.training.at_risk` (trainer, counselor), `it.training.check_in` (student), `it.training.back_on_track`
   (all three); entity = the enrolment; fixed text, no figures.
 
+## 12IY. Student portal fee summary and course details (itc-018) — addendum, 2026-11-03
+
+`DEC-SCOPE-353`. No migration. Additive except the receipt status code.
+
+- The fee account (§12IR: `GET /it/student/fee-accounts`, `GET /it/enrollments/{id}/fee-account`, the record-payment response's
+  `account`) gains `next_due: {amount, due_date (YYYY-MM-DD|null)} | null` — the oldest owed fee bill (pending/overdue, amount > 0) by
+  due date (nulls last), then age; null when fully paid, unbilled or only zero-amount bills are owed.
+- `GET /portal/it/student/course` rows gain `start_date`, `end_date` (YYYY-MM-DD), `mode` (each the enrolment's itc-012 override, else
+  the batch's) and `room_or_link` (text: the batch's distinct offline timetable rooms, `Online (join link in your Timetable)` for an
+  online slot, `Not scheduled yet` with no slots; never a URL). Columns `Starts`, `Ends`, `Mode`, `Room or link` are added; none removed.
+- **Changed:** `GET /payments/{payment_id}/receipt` by a caller who neither owns the payment nor administers its division → `404
+  "Payment not found"` (was `403 "Payment belongs to another user"`), the same answer as an unknown id.
+
 ## 12JA. Trainer dashboard widgets and batch filter (itc-024) — addendum, 2026-11-03
 
 `DEC-SCOPE-355`. No migration. Additive.

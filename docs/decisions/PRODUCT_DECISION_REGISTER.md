@@ -11005,6 +11005,24 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0236_it_at_risk`; API §12IX; RBAC §2.252.
 - **Feature ID authorized:** `itc-023`. **Status:** built on `worktree-itc-023`.
 
+### DEC-SCOPE-353 — Student portal fee summary and course details (`itc-018`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-018` (PDF §6 student view, §8/§11 Student portal, §12 AC7). Scope approved by
+  the owner 2026-11-01 (backlog Q-01: all phases, built in waves). Dependency itc-013 (`DEC-SCOPE-346`) is merged; itc-019
+  (`DEC-SCOPE-347`, My faculty) and itc-020 (`DEC-SCOPE-344`, Timetable) are merged and already on the student portal. Design
+  `docs/superpowers/specs/2026-11-03-itc-018-student-fee-summary-design.md`.
+- **Behaviour:** each fee account card on the IT student's Fees page (itc-013: total payable, paid, balance; receipts in the payment
+  list below) now names the **next amount due and its date**: the oldest owed bill, "Nothing due" once paid. The Course page's
+  enrolment table adds **Starts, Ends, Mode** (the enrolment's itc-012 override, else the batch's) and **Room or link**. A student
+  asking for another student's payment receipt gets **404** (was 403), the same answer as a missing payment.
+- **Claude's calls under "proceed with recommended answers" (`NEEDS_CONFIRMATION`):** F1 next due = the oldest owed (pending/overdue,
+  amount > 0) fee bill by due date, nulls last, then age (the order `record_payment` pays in); no overdue flag (the payment table shows
+  status). F2 Room or link comes from the batch's weekly timetable slots: distinct offline rooms, plus "Online (join link in your
+  Timetable)" for an online slot, "Not scheduled yet" with no slots; the meeting URL is never repeated here, so the Timetable's
+  live-classes lock stays the one gate on links. F3 the dashboard "Pending fee" tile is unchanged.
+- **Numbering:** no migration; API §12IY; RBAC §2.253.
+- **Feature ID authorized:** `itc-018`. **Status:** built on `worktree-itc-018`.
+
 ### DEC-SCOPE-355 — Trainer dashboard widgets (`itc-024`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-024` (PDF §8 Faculty dashboard, §11 Faculty workspace; Appendix B).

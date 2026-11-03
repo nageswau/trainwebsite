@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { formatCalendarDate } from "@/lib/formatDate";
+
 // itc-013 (DEC-SCOPE-346): an IT student's fee account per enrolment -- computed by the API from confirmed payments only, so a pending
 // online payment never lowers the balance. Tax is shown as the API sends it (0 until GST is confirmed, Q-12).
 export type FeeAccount = {
@@ -18,6 +20,8 @@ export type FeeAccount = {
   credits: number;
   balance: number;
   state: "not_billed" | "enrolled_pending_payment" | "partially_paid" | "fully_paid";
+  // itc-018 (DEC-SCOPE-353): the oldest owed bill, null when nothing is owed; optional so an older response renders as before.
+  next_due?: { amount: number; due_date: string | null } | null;
 };
 
 const STATE_LABELS: Record<FeeAccount["state"], string> = {
@@ -58,6 +62,16 @@ export function FeeAccountCard({ account }: { account: FeeAccount }) {
             <dt>{credit ? "Credit" : "Balance"}</dt>
             <dd>{money(account.currency, Math.abs(account.balance))}</dd>
           </div>
+          {account.next_due !== undefined && (
+            <div>
+              <dt>Next due</dt>
+              <dd>
+                {account.next_due
+                  ? `${money(account.currency, account.next_due.amount)} · ${account.next_due.due_date ? formatCalendarDate(account.next_due.due_date) : "no due date set"}`
+                  : "Nothing due"}
+              </dd>
+            </div>
+          )}
         </dl>
       )}
     </div>

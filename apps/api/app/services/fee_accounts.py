@@ -95,15 +95,33 @@ async def student_balances(db: AsyncSession, student_ids: list[UUID]) -> dict[UU
     return out
 
 
+async def _next_due(db: AsyncSession, enrollment_ids: list[UUID]) -> dict[UUID, dict]:
+    """itc-018 (DEC-SCOPE-353 F1): each enrolment's oldest owed bill, in `record_payment`'s order -- the next amount the student owes."""
+    stmt = (
+        select(Payment.reference_id, Payment.amount, Payment.due_date)
+        .where(*_fee_rows(enrollment_ids), Payment.status.in_(OWED), Payment.amount > 0)
+        .order_by(Payment.due_date.asc().nulls_last(), Payment.created_at, Payment.id)
+    )
+    out: dict = {}  # keyed by `reference_id`, never null here (filtered by `_fee_rows`)
+    for ref, amount, due_date in (await db.execute(stmt)).all():
+        out.setdefault(ref, {"amount": float(amount), "due_date": due_date})
+    return out
+
+
 async def accounts(db: AsyncSession, enrollments: list[Enrollment]) -> list[dict]:
-    """The full account (figures plus the course and batch names) of each enrolment."""
+    """The full account (figures, the course and batch names, the next amount due) of each enrolment, in three queries."""
     if not enrollments:
         return []
     ids = [e.id for e in enrollments]
     stmt = select(Enrollment.id, Program.title, Batch.name).join(Batch, Batch.id == Enrollment.batch_id).join(Program, Program.id == Batch.program_id).where(Enrollment.id.in_(ids))
     names = {eid: (course, batch) for eid, course, batch in (await db.execute(stmt)).all()}  # an enrolment always has a batch and course
     figures = await balance_for(db, ids)
-    return [{"enrollment_id": e.id, "enrollment_code": e.enrollment_code, "course": names[e.id][0], "batch": names[e.id][1], "currency": "INR", **figures[e.id]} for e in enrollments]
+    due = await _next_due(db, ids)
+    return [
+        {"enrollment_id": e.id, "enrollment_code": e.enrollment_code, "course": names[e.id][0], "batch": names[e.id][1], "currency": "INR", **figures[e.id],
+         "next_due": due.get(e.id)}
+        for e in enrollments
+    ]  # fmt: skip
 
 
 async def account(db: AsyncSession, enrollment: Enrollment) -> dict:
