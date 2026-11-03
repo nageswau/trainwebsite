@@ -582,6 +582,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** medium.
 
 #### itc-018: Student portal fee summary and course details
+- **Status:** built as `DEC-SCOPE-353` (no migration, API §12IY, RBAC §2.253); design
+  `docs/superpowers/specs/2026-11-03-itc-018-student-fee-summary-design.md`. Next due, room-or-link source and the unchanged dashboard
+  tile are Claude's calls F1-F3, `NEEDS_CONFIRMATION`.
 - **Business requirement:** §6 student view; §8 Student portal; §11 Student portal; §12 AC7.
 - **Existing behavior:** `/it/student/fees` is a plain table plus `FeePaymentPanel` (Pay Now, receipt, EMI). Course shows the batch and schedule string. There is no total/paid/balance, start/end dates, mode or faculty.
 - **Expected behavior:** a fee summary card (total payable, paid, balance, next due) with receipts, plus course and batch details (dates, mode, room or link). The faculty and timetable cards come from itc-019/020.
@@ -769,6 +772,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** medium.
 
 #### itc-024: Trainer dashboard and workspace widgets
+- **Status:** built as `DEC-SCOPE-355` (no migration, API §12JA, RBAC §2.255). Appendix B's attendance completion adopted with
+  "held" = started; today's classes, assessment completion and the whole-dashboard batch filter are Claude's calls under Q-21
+  (`NEEDS_CONFIRMATION`).
 - **Business requirement:** §8 Faculty; §11 Faculty workspace.
 - **Existing behavior:** `portal.py:448` shows batch count, assignments, upcoming sessions and pending reviews. Today's classes, attendance-completion %, assessment completion and at-risk count are missing.
 - **Expected behavior:** add those 4 widgets, filterable by batch.

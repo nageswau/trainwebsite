@@ -9,7 +9,7 @@ import { apiQuery, formatDay, HR_QUEUE_API, HR_QUEUE_PATH, HR_REVIEW_STAGES, isS
 import { PORTAL_NAV } from "@/lib/navigation";
 import type { User } from "@/lib/types";
 
-// itc-027 (DEC-SCOPE-353 H4): HR's review queue -- the resume reviews assigned to the signed-in HR user (open ones by default, or one
+// itc-027 (DEC-SCOPE-354 H4): HR's review queue -- the resume reviews assigned to the signed-in HR user (open ones by default, or one
 // stage), newest activity first, each linking to the HR student page where the review is worked. The API scopes it to the caller.
 export default async function HrReviewQueuePage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   let user: User;

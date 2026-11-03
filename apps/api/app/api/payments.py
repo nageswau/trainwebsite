@@ -221,10 +221,9 @@ async def download_invoice(payment_id: UUID, user: User = Depends(get_current_us
 @router.get("/{payment_id}/receipt")
 async def download_receipt(payment_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     item = await db.get(Payment, payment_id)
-    if not item:
+    # itc-018 (DEC-SCOPE-353 AC2): another user's payment is the same 404 as a missing one, so a payment id is never disclosed.
+    if not item or (item.user_id != user.id and not (user.role in ADMIN_ROLES and (user.role == "super_admin" or item.division == user.division))):
         raise HTTPException(404, "Payment not found")
-    if item.user_id != user.id and not (user.role in ADMIN_ROLES and (user.role == "super_admin" or item.division == user.division)):
-        raise HTTPException(403, "Payment belongs to another user")
     receipt = await db.scalar(select(Receipt).where(Receipt.payment_id == item.id))
     if not receipt:
         raise HTTPException(404, "Receipt not yet available -- payment has not completed")

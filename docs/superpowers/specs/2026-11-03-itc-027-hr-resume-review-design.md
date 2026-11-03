@@ -1,6 +1,6 @@
 # itc-027 — HR resume-review task, assignment rule, HR stages and HR workspace (design)
 
-`DEC-SCOPE-353`. Source: `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-027 (PDF §5 steps 2–6 and HR stages, §4 "HR / Placement",
+`DEC-SCOPE-354`. Source: `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` itc-027 (PDF §5 steps 2–6 and HR stages, §4 "HR / Placement",
 §3 step 10, §8 HR dashboard, §11 HR workspace, §12 AC3/AC4; PDF classified `UNVERIFIED`). Owner Q-01 (2026-11-01): all phases approved
 for build in waves. Dependencies itc-001 (#408), itc-002, itc-003, itc-026 (#424) and itc-028 (#423) are merged. The owner said to
 proceed with the recommended answers, so every call below marked H* is the builder's (`NEEDS_CONFIRMATION`). The source PDF is not in
@@ -50,7 +50,7 @@ sees only a student-safe label and, when HR asks for changes, the action to take
 - **H9 — withdrawal:** rec-010 opt-out and a placement-profile update that sets `withdrawn` close the open task as `withdrawn`
   (history, no notification); a later shared upload re-opens it.
 
-## API (§12IY)
+## API (§12IZ)
 
 - HR: `GET /hr/review-tasks?stage=&limit=&offset=` (own queue, newest activity first, paginated, `counts` per stage);
   `GET /hr/students/{id}/review` (full task); `PATCH /hr/students/{id}/review` `{stage?, screening_date?, role_preferences?,

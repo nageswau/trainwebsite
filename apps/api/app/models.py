@@ -2674,7 +2674,7 @@ class StudentResumeSetting(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
-# itc-027 (DEC-SCOPE-353 H1): the HR resume-review stages -- open first, then the two closed ones. Migration 0237 repeats them
+# itc-027 (DEC-SCOPE-354 H1): the HR resume-review stages -- open first, then the two closed ones. Migration 0237 repeats them
 # (test_itc_027_migration). Labels (internal and student-safe) live in services/hr_reviews.py and the web client.
 HR_REVIEW_OPEN_STAGES = ("resume_received", "under_review", "changes_requested", "screening", "interview_ready")
 HR_REVIEW_STAGES = (*HR_REVIEW_OPEN_STAGES, "completed", "withdrawn")

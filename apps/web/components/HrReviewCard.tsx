@@ -14,7 +14,7 @@ const toDraft = (t: HrReviewTask): Draft => ({
   stage: t.stage, screening_date: t.screening_date ?? "", role_preferences: t.role_preferences ?? "", skill_gap_notes: t.skill_gap_notes ?? "", checklist: t.checklist,
 });
 
-// itc-027 (DEC-SCOPE-353): the HR owner's review of one student, on the HR student page -- stage, screening date, role preferences,
+// itc-027 (DEC-SCOPE-354): the HR owner's review of one student, on the HR student page -- stage, screening date, role preferences,
 // the checklist and the internal skill-gap notes, saved together. The API answers 404 to anyone but the owner, so the card then says
 // the review is someone else's. A closed review is read-only until a new shared resume version re-opens it.
 export default function HrReviewCard({ studentId }: { studentId: string }) {

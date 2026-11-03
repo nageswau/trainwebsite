@@ -1,4 +1,4 @@
-"""itc-027 (DEC-SCOPE-353; backlog §itc-027, source §5 steps 2-6): the HR resume-review task of an IT student.
+"""itc-027 (DEC-SCOPE-354; backlog §itc-027, source §5 steps 2-6): the HR resume-review task of an IT student.
 
 - Opening (H2): a resume version shared with HR (itc-026 `visibility='hr'`) of a student in the nehn-017 HR population creates the
   student's one task, or updates its version; a closed task re-opens at `resume_received`, and so does `changes_requested` (the student

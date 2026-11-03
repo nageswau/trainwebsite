@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { formatDay, MY_REVIEW_API, type StudentReview } from "@/lib/hrReviews";
 
-// itc-027 (DEC-SCOPE-353 H7): the IT student's resume review on their Placement Status page -- the student-safe label, the action
+// itc-027 (DEC-SCOPE-354 H7): the IT student's resume review on their Placement Status page -- the student-safe label, the action
 // when HR asked for changes, and the date it last moved. The API sends nothing else (no internal stage, owner or notes).
 export default function StudentHrReviewCard() {
   const [data, setData] = useState<StudentReview | null>(null);

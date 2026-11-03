@@ -3,7 +3,7 @@
 Revision ID: 0237_hr_review_tasks
 Revises: 0236_it_at_risk
 
-DEC-SCOPE-353. Three new tables, nothing existing is altered: `hr_review_tasks` (one per IT student, unique; the queue index on
+DEC-SCOPE-354. Three new tables, nothing existing is altered: `hr_review_tasks` (one per IT student, unique; the queue index on
 `(owner_user_id, stage)`), `hr_review_stage_history` and `hr_assignment_rules` (one per programme). No task is created for resumes
 uploaded before this revision -- the next shared upload creates it. 0001 builds a fresh database from the current models, so every
 object is created only when missing. Downgrade drops all three.

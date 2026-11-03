@@ -1,5 +1,5 @@
-// itc-027 (DEC-SCOPE-353): the HR resume-review task -- types, labels and endpoints for HR's queue and task, the IT Admin's task list
-// and rules, the counselor / IT Admin read-only card and the student's safe status. The API decides who sees what (API_CONTRACT §12IY).
+// itc-027 (DEC-SCOPE-354): the HR resume-review task -- types, labels and endpoints for HR's queue and task, the IT Admin's task list
+// and rules, the counselor / IT Admin read-only card and the student's safe status. The API decides who sees what (API_CONTRACT §12IZ).
 
 export const HR_REVIEW_STAGES = ["resume_received", "under_review", "changes_requested", "screening", "interview_ready", "completed", "withdrawn"] as const;
 export type HrReviewStage = (typeof HR_REVIEW_STAGES)[number];

@@ -137,7 +137,7 @@ async def opt_in_placement_pool(payload: PlacementPoolOptIn, request: Request, u
 async def opt_out_placement_pool(request: Request, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     placement_pool.require_student(user)
     await placement_pool.opt_out(db, user, _client_ip(request))
-    await hr_reviews.close_for_withdrawal(db, user.id)  # itc-027 (DEC-SCOPE-353 H9): leaving placement closes the open resume review
+    await hr_reviews.close_for_withdrawal(db, user.id)  # itc-027 (DEC-SCOPE-354 H9): leaving placement closes the open resume review
     await db.commit()
     return await placement_pool.state(db, user)
 

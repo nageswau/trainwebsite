@@ -12,7 +12,7 @@ import {
 
 type Notice = { text: string; failed: boolean } | null;
 
-// itc-027 (DEC-SCOPE-353 H3/H5): the IT Admin's HR reviews -- every task (open by default; "needs an owner" = none or deactivated),
+// itc-027 (DEC-SCOPE-354 H3/H5): the IT Admin's HR reviews -- every task (open by default; "needs an owner" = none or deactivated),
 // reassignment to an active HR user, and the programme -> HR reviewer rules used for new tasks (no rule = round-robin).
 export default function AdminHrReviews() {
   const [rules, setRules] = useState<HrRules | null>(null);

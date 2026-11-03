@@ -1,7 +1,7 @@
-"""itc-027 (DEC-SCOPE-353) -- the HR resume-review task: HR's own queue and task (/hr/review-tasks, /hr/students/{id}/review), the IT
+"""itc-027 (DEC-SCOPE-354) -- the HR resume-review task: HR's own queue and task (/hr/review-tasks, /hr/students/{id}/review), the IT
 Admin's task list, reassignment and programme rules (/admin/it/hr-review-tasks, /admin/it/hr-assignment-rules), the read-only card on the
 counselor / IT Admin student record (/counselor|admin/it/students/{id}/hr-review) and the student's safe status (/it/me/hr-review).
-API_CONTRACT.md §12IY; RBAC_MATRIX.md §2.253."""
+API_CONTRACT.md §12IZ; RBAC_MATRIX.md §2.254."""
 
 from typing import Literal
 from uuid import UUID

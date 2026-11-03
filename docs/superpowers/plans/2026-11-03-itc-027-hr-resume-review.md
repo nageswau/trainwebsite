@@ -11,4 +11,4 @@ TDD per task: failing test first, then the code, then rerun the focused files.
 6. Withdrawal hooks (rec-010 opt-out, placement profile `withdrawn`), H9. Tests: AC7.
 7. Web: `lib/hrReviews.ts`, `HrReviewQueue`, `HrReviewCard`, `HrReviewStatusCard` (counselor/admin), `StudentHrReviewCard`,
    `AdminHrReviews` (+ rules panel), nav + routes. Vitest for the cards; Playwright e2e for upload → queue → stage → student label.
-8. Docs: DEC-SCOPE-353, API §12IY, RBAC §2.253, RTM, backlog status.
+8. Docs: DEC-SCOPE-354, API §12IZ, RBAC §2.254, RTM, backlog status.

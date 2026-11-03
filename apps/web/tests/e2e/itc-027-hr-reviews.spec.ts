@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, createAndActivate } from "./helpers/welcome";
 
-// itc-027 (DEC-SCOPE-353): a student shares a resume with HR, which opens one review; the IT Admin hands it to a (throwaway) HR user on
+// itc-027 (DEC-SCOPE-354): a student shares a resume with HR, which opens one review; the IT Admin hands it to a (throwaway) HR user on
 // the HR Reviews page; that HR user finds it in their Review Queue and asks for changes with internal notes; the counselor sees the stage,
 // owner and next action (never the notes) and the student sees only "Action required". Throwaway users, so no seeded link moves.
 

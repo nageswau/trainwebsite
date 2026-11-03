@@ -166,7 +166,7 @@ async def upload(db: AsyncSession, actor: User, student: User, file: UploadFile,
         db.add(AuditLog(user_id=actor.id, action=UPLOADED, entity_type="user", entity_id=str(student.id),
                         metadata_json={"version": resume.version, "content_type": content_type, "size_bytes": size, "visibility": visibility,
                                        "role": actor.role}))  # fmt: skip
-        if visibility == "hr":  # itc-027 (DEC-SCOPE-353 H2): a version shared with HR opens or updates the student's review task
+        if visibility == "hr":  # itc-027 (DEC-SCOPE-354 H2): a version shared with HR opens or updates the student's review task
             await db.flush()
             await hr_reviews.on_resume_shared(db, actor, student, resume.id, resume.version)
         await db.commit()

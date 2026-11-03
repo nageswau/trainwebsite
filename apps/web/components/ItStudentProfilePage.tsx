@@ -74,7 +74,7 @@ export default async function ItStudentProfilePage({ portal, id }: { portal: key
   );
 }
 
-/** itc-027 (DEC-SCOPE-353 H7): where HR's resume review stands -- stage, owner, next action and screening date. Never HR's notes. */
+/** itc-027 (DEC-SCOPE-354 H7): where HR's resume review stands -- stage, owner, next action and screening date. Never HR's notes. */
 async function HrReviewStatusCard({ portal, studentId }: { portal: keyof typeof PORTALS; studentId: string }) {
   let data: StaffReview;
   try {

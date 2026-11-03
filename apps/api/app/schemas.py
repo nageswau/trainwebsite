@@ -15022,7 +15022,7 @@ class StudentResumeSettingsIn(BaseModel):
     max_mb: StrictInt = Field(ge=1, le=10)
 
 
-# itc-027 (DEC-SCOPE-353 H6): the review checklist's fixed keys (labels in the web client).
+# itc-027 (DEC-SCOPE-354 H6): the review checklist's fixed keys (labels in the web client).
 HR_REVIEW_CHECKLIST = ("contact", "education", "skills", "projects", "formatting")
 
 

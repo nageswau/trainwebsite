@@ -1,9 +1,10 @@
 import logging
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
+from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -28,6 +29,7 @@ from app.models import (
     Attendance,
     AttendanceCorrection,
     Batch,
+    BatchTimetableSlot,
     Certificate,
     Company,
     ConsentRecord,
@@ -55,6 +57,7 @@ from app.models import (
     SchoolStaffAssignment,
     SchoolStudent,
     StudentDocument,
+    StudentRiskFlag,
     Submission,
     SupportTicket,
     University,
@@ -64,6 +67,7 @@ from app.models import (
 from app.services import application_filters, counselor_students, document_access, fee_accounts, hr_students, it_student_counselors, permissions, student_access, student_archive, student_profiles
 from app.services import application_outcomes as outcomes
 from app.services import applications as job_applications
+from app.services import batch_timetable as timetable
 from app.services import training_progress as progress
 from app.services.agent_applications import OFFER_COUNTED_STATUSES, WITHDRAWN, counts_as_offer, owned, stage_label, with_owner
 from app.services.agent_dashboard import headline_counts
@@ -152,6 +156,37 @@ def _counselor_cells(application, counselors: dict) -> dict:
     }
 
 
+ONLINE_CLASS = "Online (join link in your Timetable)"
+
+
+async def _rooms_or_link(db: AsyncSession, batch_ids: list) -> dict:
+    """itc-018 (DEC-SCOPE-353 F2): where each batch's weekly classes happen -- its distinct rooms, then a pointer to the Timetable for an
+    online class. Never the meeting URL: the Timetable alone hands links out, behind the student's live-classes lock (itc-020)."""
+    if not batch_ids:
+        return {}
+    slots = (
+        await db.execute(
+            select(BatchTimetableSlot.batch_id, BatchTimetableSlot.mode, BatchTimetableSlot.room)
+            .where(BatchTimetableSlot.batch_id.in_(batch_ids))
+            .order_by(BatchTimetableSlot.weekday, BatchTimetableSlot.start_time)
+        )
+    ).all()
+    rooms: dict = {}
+    online: set = set()
+    for batch_id, mode, room in slots:
+        if mode == "online":
+            online.add(batch_id)
+        elif room and room not in rooms.setdefault(batch_id, []):
+            rooms[batch_id].append(room)
+    places = {}
+    for batch_id in {*rooms, *online}:
+        parts = [", ".join(rooms[batch_id])] if rooms.get(batch_id) else []
+        if batch_id in online:
+            parts.append(ONLINE_CLASS)
+        places[batch_id] = "; ".join(parts)
+    return places
+
+
 async def _it_student(db: AsyncSession, user: User, section: str):
     enrollments = (
         await db.execute(
@@ -211,6 +246,7 @@ async def _it_student(db: AsyncSession, user: User, section: str):
     if section == "course":
         trainer_ids = {b.trainer_id for _, b, _ in enrollments if b.trainer_id}
         trainers = dict((await db.execute(select(User.id, User.full_name).where(User.id.in_(trainer_ids)))).all()) if trainer_ids else {}
+        places = await _rooms_or_link(db, batch_ids)
         # "Available batches" (STU-001) and "Live classes" (STU-003) used to be dumped
         # here as unclickable text-panel strings -- both now have real interactive
         # components (BatchSlotPicker, LiveClassesPanel) rendered alongside this
@@ -220,12 +256,15 @@ async def _it_student(db: AsyncSession, user: User, section: str):
             "Course Enrolled",
             "Your fixed schedule, live classes, provider recordings, and progress.",
             # itc-019 (DEC-SCOPE-347): the batch's trainer by name; the My faculty card (GET /it/student/faculty) shows the profile.
-            (("enrollment_id", "Enrollment reference"), ("program", "Program"), ("batch", "Batch"), ("trainer", "Trainer"), ("schedule", "Schedule"), ("progress", "Progress"), ("status", "Status")),
+            # itc-018 (DEC-SCOPE-353): the enrolment's effective dates and mode (itc-012 override, else the batch's) and room or link.
+            (("enrollment_id", "Enrollment reference"), ("program", "Program"), ("batch", "Batch"), ("trainer", "Trainer"), ("schedule", "Schedule"),
+             ("start_date", "Starts"), ("end_date", "Ends"), ("mode", "Mode"), ("room_or_link", "Room or link"), ("progress", "Progress"), ("status", "Status")),
             (
                 {"batch_id": e.batch_id, "enrollment_id": e.enrollment_code, "program": p.title, "batch": b.name, "trainer": trainers.get(b.trainer_id, "Not assigned yet"),
-                 "schedule": b.schedule, "progress": f"{e.progress_percent}%", "status": e.status}
+                 "schedule": b.schedule, "start_date": e.start_date or b.start_date, "end_date": e.end_date or b.end_date, "mode": e.delivery_mode or b.mode,
+                 "room_or_link": places.get(b.id, "Not scheduled yet"), "progress": f"{e.progress_percent}%", "status": e.status}
                 for e, b, p in enrollments
-            ),
+            ),  # fmt: skip
         )
     if section == "attendance":
         rows = (
@@ -459,7 +498,82 @@ async def _it_student(db: AsyncSession, user: User, section: str):
         )
 
 
-async def _trainer(db: AsyncSession, user: User, section: str):
+NOT_YOUR_BATCH = "Choose one of your batches"
+ATTEMPTED = ("submitted", "graded")
+
+
+def _completion(part: int, whole: int) -> str:
+    """itc-024: a completion tile -- "50% (1/2)", or "—" when there is nothing to complete yet (0/0 is not 0 %)."""
+    return f"{round(part * 100 / whole)}% ({part}/{whole})" if whole else "—"
+
+
+async def _trainer_dashboard(db: AsyncSession, user: User, batches: list[Batch], batch: str | None):
+    """itc-024 (DEC-SCOPE-355): the trainer's dashboard -- the TRN-001 tiles and batch table plus today's classes, attendance completion,
+    assessment completion and at-risk students, all narrowed to one of the trainer's own batches by `batch` (W5). Fixed query count."""
+    options = [{"value": str(b.id), "label": b.name} for b in batches]
+    chosen = None
+    if batch is not None:
+        try:
+            wanted = UUID(batch)
+        except ValueError:
+            raise HTTPException(422, NOT_YOUR_BATCH) from None
+        chosen = next((b for b in batches if b.id == wanted), None)
+        if chosen is None:  # another trainer's batch reads the same as one that does not exist
+            raise HTTPException(422, NOT_YOUR_BATCH)
+        batches = [chosen]
+    batch_ids = [b.id for b in batches]
+    now = datetime.now(UTC)
+    assignments = pending = sessions = at_risk = assessed = expected = 0
+    classes, marked = [], set()
+    if batch_ids:
+        assignments = await db.scalar(select(func.count()).select_from(Assignment).where(Assignment.batch_id.in_(batch_ids)))
+        pending = await db.scalar(select(func.count()).select_from(Submission).join(Assignment).where(Assignment.batch_id.in_(batch_ids), Submission.status.in_(["submitted", "resubmitted"])))
+        sessions = await db.scalar(select(func.count()).select_from(LiveSession).where(LiveSession.batch_id.in_(batch_ids), LiveSession.status == "scheduled"))
+        # W1: today's classes are the Timetable page's own (itc-020 slots + live sessions), cancelled ones left out.
+        today = now.astimezone(timetable.IST).date()
+        calendar = await timetable.occurrences(db, user, today, today, chosen.id if chosen else None)
+        classes = [c for c in calendar["items"] if c["status"] != "cancelled"]
+        if classes:  # W2b: attendance is stored per batch-day (itc-021 L4), so a class counts as marked when its batch marked that day
+            days = {c["date"] for c in classes}
+            marked = set((await db.execute(select(Attendance.batch_id, Attendance.session_date).where(Attendance.batch_id.in_(batch_ids), Attendance.session_date.in_(days)).distinct())).all())
+        # W3: active students x counted assessments already due, against those pairs with a submitted or graded attempt.
+        due = select(Assessment.id, Assessment.batch_id).where(Assessment.batch_id.in_(batch_ids), Assessment.status.in_(progress.COUNTED_ASSESSMENTS), Assessment.scheduled_at <= now).subquery()
+        pairs = select(Enrollment.student_id, due.c.id.label("assessment_id")).join(due, due.c.batch_id == Enrollment.batch_id).where(Enrollment.status == "active").subquery()
+        attempted = exists().where(AssessmentAttempt.assessment_id == pairs.c.assessment_id, AssessmentAttempt.student_id == pairs.c.student_id, AssessmentAttempt.status.in_(ATTEMPTED))
+        expected, assessed = (await db.execute(select(func.count(), func.count().filter(attempted)).select_from(pairs))).one()
+        # itc-023: the open flags -- the rows the dashboard's "Students at risk" list shows.
+        at_risk = await db.scalar(select(func.count()).select_from(StudentRiskFlag).where(StudentRiskFlag.batch_id.in_(batch_ids), StudentRiskFlag.cleared_at.is_(None)))
+    held = [c for c in classes if c["starts_at"] <= now]  # W2a: Appendix B counts classes *held* today
+    zones = {b.id: timetable._zone(b) for b in batches}
+
+    def line(c: dict) -> str:
+        zone = zones[c["batch_id"]]
+        times = c["starts_at"].astimezone(zone).strftime("%H:%M") + (f"–{c['ends_at'].astimezone(zone):%H:%M}" if c["ends_at"] else "")
+        state = "Not started" if c["starts_at"] > now else "Attendance marked" if (c["batch_id"], c["date"]) in marked else "Attendance not marked"
+        return " · ".join(part for part in (times, c["batch"], c["topic"], state) if part)
+
+    payload = _payload(
+        "Trainer Dashboard",
+        "Assigned batches, today's classes, learning work, live classes, and reviews.",
+        (("batch", "Batch"), ("schedule", "Schedule"), ("capacity", "Capacity"), ("status", "Status")),
+        ({"batch": b.name, "schedule": b.schedule, "capacity": b.capacity, "status": b.status} for b in batches),
+        (
+            {"label": "Assigned batches", "value": len(batches)},
+            {"label": "Assignments", "value": assignments or 0},
+            {"label": "Upcoming sessions", "value": sessions or 0},
+            {"label": "Pending reviews", "value": pending or 0},
+            {"label": "Today's classes", "value": len(classes)},
+            {"label": "Attendance completion", "value": _completion(sum((c["batch_id"], c["date"]) in marked for c in held), len(held))},
+            {"label": "Assessment completion", "value": _completion(assessed, expected)},
+            {"label": "At-risk students", "value": at_risk or 0},
+        ),
+        panels=({"title": "Today's classes", "items": [line(c) for c in classes], "empty": "No classes today"},),
+    )
+    payload["batch_filter"] = {"value": str(chosen.id) if chosen else None, "options": options}
+    return payload
+
+
+async def _trainer(db: AsyncSession, user: User, section: str, batch: str | None = None):
     batches = (await db.scalars(select(Batch).where(Batch.trainer_id == user.id).order_by(Batch.start_date.desc()))).all()
     batch_ids = [b.id for b in batches]
     if section == "profile":
@@ -469,25 +583,7 @@ async def _trainer(db: AsyncSession, user: User, section: str):
     if section == "notifications":  # itc-023 (DEC-SCOPE-352): header only -- PortalPage mounts the shared list (GET /workflows/notifications)
         return _payload("Notifications", "Your own notifications, including students of your batches who are at risk.")
     if section == "dashboard":
-        assignments =await db.scalar(select(func.count()).select_from(Assignment).where(Assignment.batch_id.in_(batch_ids))) if batch_ids else 0
-        pending = (
-            await db.scalar(select(func.count()).select_from(Submission).join(Assignment).where(Assignment.batch_id.in_(batch_ids), Submission.status.in_(["submitted", "resubmitted"])))
-            if batch_ids
-            else 0
-        )
-        sessions = await db.scalar(select(func.count()).select_from(LiveSession).where(LiveSession.batch_id.in_(batch_ids), LiveSession.status == "scheduled")) if batch_ids else 0
-        return _payload(
-            "Trainer Dashboard",
-            "Assigned batches, learning work, live classes, and reviews.",
-            (("batch", "Batch"), ("schedule", "Schedule"), ("capacity", "Capacity"), ("status", "Status")),
-            ({"batch": b.name, "schedule": b.schedule, "capacity": b.capacity, "status": b.status} for b in batches),
-            (
-                {"label": "Assigned batches", "value": len(batches)},
-                {"label": "Assignments", "value": assignments or 0},
-                {"label": "Upcoming sessions", "value": sessions or 0},
-                {"label": "Pending reviews", "value": pending or 0},
-            ),
-        )
+        return await _trainer_dashboard(db, user, batches, batch)
     if section == "attendance":
         rows = (
             await db.execute(
@@ -1493,7 +1589,7 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             return _payload("Notifications", "Your own notifications, including overdue follow-ups escalated to you.")
         if section == "at-risk" and user.role == "it_admin":  # itc-023 (DEC-SCOPE-352): header only -- the panels read /admin/it/risk-thresholds and /it/at-risk
             return _payload("At Risk", "Thresholds per programme, and the students the daily check flagged.")
-        if section == "hr-reviews" and user.role == "it_admin":  # itc-027 (DEC-SCOPE-353): header only -- the panels read /admin/it/hr-*
+        if section == "hr-reviews" and user.role == "it_admin":  # itc-027 (DEC-SCOPE-354): header only -- the panels read /admin/it/hr-*
             return _payload("HR Reviews", "Resume reviews by HR: reassign an owner, and choose each programme's HR reviewer.")
         if section == "reports" and user.role in {"it_admin", "super_admin"}:
             # RPT-001: `PORTAL_NAV["it/admin"]` lists "Reports" but no handler existed at
@@ -1921,11 +2017,11 @@ def _student_locks(result: dict | None, section: str, access: dict) -> dict | No
     return result | {"rows": [], "metrics": [], "actions": [], "panels": [], "locked": locked}
 
 
-async def section_payload(db: AsyncSession, user: User, section: str, *, filters: ApplicationFilters | None = None) -> dict | None:
+async def section_payload(db: AsyncSession, user: User, section: str, *, filters: ApplicationFilters | None = None, batch: str | None = None) -> dict | None:
     if user.role == "it_student":
         result = _student_locks(await _it_student(db, user, section), section, await student_access.summary(db, user))
     elif user.role == "trainer":
-        result = await _trainer(db, user, section)
+        result = await _trainer(db, user, section, batch)
     elif user.role == "overseas_student":
         result = await _overseas_student(db, user, section)
     elif user.role == "agent":

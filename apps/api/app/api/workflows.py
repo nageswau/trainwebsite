@@ -2353,7 +2353,7 @@ async def update_placement_profile(student_id: UUID, payload: dict, user: User =
         if key in allowed:
             setattr(item, key, value)
     await db.flush()
-    if item.withdrawn:  # itc-027 (DEC-SCOPE-353 H9): out of the HR population, so the open resume review closes
+    if item.withdrawn:  # itc-027 (DEC-SCOPE-354 H9): out of the HR population, so the open resume review closes
         await hr_reviews.close_for_withdrawal(db, student_id)
     await _audit(db, user, "placement.profile_update", "placement_profile", item.id, {"student_id": student_id, "withdrawn": item.withdrawn})
     await _notify_user(db, student, "Placement status updated", f"Your placement readiness status is {item.readiness_status}.", "/it/student/placement-status")

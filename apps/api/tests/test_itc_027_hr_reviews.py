@@ -1,4 +1,4 @@
-"""itc-027 (DEC-SCOPE-353) -- the HR resume-review task: one per IT student, opened by a resume version shared with HR (itc-026), owned
+"""itc-027 (DEC-SCOPE-354) -- the HR resume-review task: one per IT student, opened by a resume version shared with HR (itc-026), owned
 by the programme's HR reviewer or round-robin, worked through the HR stages by its owner only, read by the linked counselor (no internal
 fields) and by the student as a student-safe label; the IT Admin reassigns and keeps the rules; a withdrawal closes it."""
 
