@@ -148,6 +148,7 @@ from app.services import (
     document_access,
     hr_reviews,
     interviews,
+    it_enrollments,
     it_lifecycle,
     offers,
     permissions,
@@ -506,27 +507,10 @@ async def create_enrollment(payload: EnrollmentCreate, user: User = Depends(get_
     student = await db.get(User, student_id)
     if not student or student.role != "it_student" or student.division != "it":
         raise HTTPException(422, "Valid IT student is required")
-    batch = await db.scalar(select(Batch).where(Batch.id == payload.batch_id).with_for_update())
-    if not batch:
-        raise HTTPException(404, "Batch not found")
-    if not batch.enrollment_open or batch.status not in {"upcoming", "active"}:
-        raise HTTPException(409, "Enrollment is closed for this batch")
-    existing = await db.scalar(select(Enrollment).where(Enrollment.student_id == student.id, Enrollment.batch_id == batch.id))
-    if existing:
-        raise HTTPException(409, "Student is already enrolled in this batch")
-    count = await db.scalar(select(func.count()).select_from(Enrollment).where(Enrollment.batch_id == batch.id, Enrollment.status.in_(("active", "pending_consent")))) or 0
-    if count >= batch.capacity:
-        raise HTTPException(409, "This batch is full")
-    code = f"EDU-{date.today():%Y%m%d}-{secrets.token_hex(3).upper()}"
-    # DEC-WF-002: a booked slot is locked for the course duration -- this is never
-    # client-controlled (the base codebase's own EnrollmentCreate.slot_locked field let
-    # the caller set it; removed there, always True here).
-    # STU-009-AC02 / DATA_MODEL.md §3.4: status cannot reach "active" without a matching
-    # ConsentRecord -- the slot is locked immediately (counts toward capacity above), but
-    # the enrolment itself starts "pending_consent" until the student accepts the agreement.
-    item = Enrollment(student_id=student.id, batch_id=batch.id, enrollment_code=code, enrolled_on=date.today(), slot_locked=True, status="pending_consent", progress_percent=0)
-    db.add(item)
-    await db.flush()
+    # DEC-WF-002 (slot locked, never client-controlled) and STU-009-AC02 / DATA_MODEL.md §3.4 ("pending_consent" until the student
+    # accepts the agreement): itc-011 moved the checks and the insert to `it_enrollments.seat`, shared with the one-step conversion.
+    item, batch = await it_enrollments.seat(db, student, payload.batch_id)
+    code = item.enrollment_code
     await _audit(db, user, "enrollment.create", "enrollment", item.id, {"batch_id": batch.id, "student_id": student.id})
     # Enrolling never used to create anything a student actually owed -- `Program.fees`
     # was catalogue metadata only, and the "Fees" page is a plain read of the `Payment`

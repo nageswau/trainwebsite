@@ -5309,3 +5309,25 @@ only (no shape change).
   (`{items, total, limit, offset}`; empty when there is none). The counselor and the IT Admin (scope as above); HR 403.
 - `GET /portal/it/counselor/students` and `GET /portal/it/admin/students` — rows gain `open` (the 360 page path), column
   `{key: "open", label: "", type: "student_360"}`.
+
+## 12JG. One-step IT conversion and the onboarding checklist (itc-011) — addendum, 2026-11-03
+
+`DEC-SCOPE-361`. Migration `0243_it_conversion`. Additive.
+
+- `GET /counselor/leads/{id}/convert-it` (owner IT counselor), `GET /admin/leads/{id}/convert-it` (IT Admin) — `{prefill: {full_name,
+  email, phone, fee (latest counseling fee_quoted or null), recommended_program_id, recommended_course}, batches: [{id, name, program_id,
+  program, fee, start_date, end_date, schedule, mode, available, recommended}] (open IT batches with a seat, recommended course first),
+  checklist: [label]}`.
+- `POST /counselor/leads/{id}/convert-it`, `POST /admin/leads/{id}/convert-it` — header `Idempotency-Key` (required, 1–120 of
+  `[A-Za-z0-9._:-]`, else 422). Body `{student: {full_name, email, phone?} | student_id, batch_id, fee (>= 0), installments?: [{amount >
+  0, due_date}] (max 12)}`; exactly one of `student` / `student_id` (422). 201 `{student, enrollment: {id, enrollment_code, status, course,
+  batch}, fee_account (§12IR shape), checklist: [{id, label, position, done, done_at}], lead (the counselor detail, or the admin row),
+  replayed: false, email_status?, expires_at?}` (`email_status` only for a new account). The same key again on that lead → 200, same
+  shape, `replayed: true`, nothing created. Refusals (nothing written): lead closed / linked / outside Qualified…Counselling Completed /
+  not IT → 409; batch missing 404, closed or full 409; installments not summing to the fee, given for a fee of 0, or due before today
+  (IST) → 422 on `installments`; a new account matching an active IT student by email or mobile → 409 `{code: "student_exists", message}`;
+  an email of any other account → 409 `"This email belongs to another account. Use a different email."`; mail budget 429 (csc-002).
+  The enrolment starts `pending_consent`; the lead moves to Application/Enrollment. Audit `lead.convert_it` (ids, counts).
+- `GET /counselor/leads/{id}` — gains `permissions.convert_it` and `it_conversion: {enrollment_id} | null`.
+- `GET /it/enrollments/{id}/onboarding` — `{enrollment_id, items: [{id, label, position, done, done_at}]}`. `PATCH
+  /it/enrollments/{id}/onboarding/{item_id}` — body `{done}`; returns the same body; unknown item 404; audit `it.onboarding.item_update`.

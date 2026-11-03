@@ -387,6 +387,10 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **E:** the email already belongs to an overseas student (Q-10); the lead has no email (phone-only accounts?); the fee is 0 (scholarship).
 - **Regression risks:** csc-002/ccrm-008 conversion and the tel-018 sync tests. `workflows.py` enrolment is a shared hub.
 - **Complexity:** large. **Risk:** high.
+- **Status:** built as `DEC-SCOPE-361` (migration `0243_it_conversion`, API §12JG, RBAC §2.261); design
+  `docs/superpowers/specs/2026-11-03-itc-011-it-one-step-conversion-design.md`. Q-09/Q-10 built with the recommended answers
+  (`NEEDS_CONFIRMATION`): a small IT onboarding template (5 seeded items, no editor yet) and a per-enrolment checklist; consent is not
+  skipped (the lead becomes Converted when the student accepts the agreement). The IT Admin converts from the leads table.
 
 ### Phase 2: Student and finance (PDF Phase 2)
 

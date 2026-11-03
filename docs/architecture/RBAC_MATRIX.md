@@ -3629,3 +3629,12 @@ outside it), only contact, courses (attendance % only with `attendance.view`), f
 fee, the itc-012 profile/emergency contact, the lead, risk flags or notifications (Q-28, `NEEDS_CONFIRMATION`). `trainer`, students,
 overseas roles, `placement_team` and `super_admin` 403. The lead timeline route is the counselor's and the IT Admin's only. Pinned by
 `apps/api/tests/test_itc_029_it_student_360.py`.
+
+### 2.261 One-step IT conversion and the onboarding checklist *(added 2026-11-03 — `DEC-SCOPE-361`, itc-011)*
+
+No grant change. `/counselor/leads/{id}/convert-it` (GET options, POST convert): the lead's owner IT counselor only — another
+counselor's lead 404 (tel-018 scope), an overseas counselor or any other role 403. `/admin/leads/{id}/convert-it`: the IT Admin only
+(403 for every other role, super_admin included — csc-005 C13); a lead of another division 403. `/it/enrollments/{id}/onboarding`
+(GET): the student (own; another student's 404), the student's itc-003 IT counselor (unlinked 404), the IT Admin; PATCH `…/{item_id}`:
+the counselor or the IT Admin (the student 403). The welcome token is never returned; duplicate-email refusals name no account. Pinned
+by `apps/api/tests/test_itc_011_conversion.py`.

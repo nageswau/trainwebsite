@@ -2083,6 +2083,36 @@ class CounselorStudentCreate(BaseModel):
         return (value or "").strip() or None
 
 
+class ItConversionInstallment(BaseModel):
+    model_config = {"extra": "forbid"}
+    amount: Annotated[Decimal, Field(gt=0, max_digits=12, decimal_places=2)]
+    due_date: date
+
+
+class ItConversionIn(BaseModel):
+    """itc-011 (C3, C6, C7): a new account (`student`, csc-002's fields) or an existing active IT student (`student_id`) -- exactly one;
+    the batch; the fee (>= 0) and optional installments (sum and due dates are the service's checks)."""
+
+    model_config = {"extra": "forbid"}
+    student: CounselorStudentCreate | None = None
+    batch_id: UUID
+    fee: Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=2)]
+    installments: list[ItConversionInstallment] = Field(default_factory=list, max_length=12)
+    student_id: UUID | None = Field(None, validate_default=True)
+
+    @field_validator("student_id")
+    @classmethod
+    def one_student(cls, value: UUID | None, info) -> UUID | None:
+        if (value is None) == (info.data.get("student") is None):
+            raise ValueError("Send either a new student's details or an existing student, not both")
+        return value
+
+
+class ItOnboardingTick(BaseModel):
+    model_config = {"extra": "forbid"}
+    done: bool
+
+
 class CounselorStudentUpdate(CounselorStudentCreate):
     """csc-003 (DEC-SCOPE-228, W6): fixing a pending walk-in account -- create's fields and validators, each optional. Omitted =
     unchanged; name and email cannot be cleared (null is 422); phone null or blank clears it; nothing else can be supplied."""

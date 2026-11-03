@@ -7,6 +7,8 @@ import { LeadStageControl } from "@/components/AdminLeadStage";
 import BdmConfirm from "@/components/BdmConfirm";
 import LeadCalls from "@/components/LeadCalls";
 import LeadClosure from "@/components/LeadClosure";
+import ItConvertForm from "@/components/ItConvertForm";
+import ItOnboardingChecklist from "@/components/ItOnboardingChecklist";
 import LeadCounseling from "@/components/LeadCounseling";
 import LeadContactFields, { contactChanges, contactDraft, contactRows } from "@/components/LeadContactFields";
 import LeadFollowUps from "@/components/LeadFollowUps";
@@ -20,6 +22,7 @@ import LeadTimeline from "@/components/LeadTimeline";
 import { staffFailure } from "@/lib/agentStaff";
 import { isRequestBody, sendJson, sendRequest, type SendOutcome } from "@/lib/apiErrors";
 import { formatCalendarDate } from "@/lib/formatDate";
+import { counselorConvertUrl, type ConversionResult } from "@/lib/itConversion";
 import { counselorCounselingUrl } from "@/lib/leadCounseling";
 import { counselorLeadUrl, counselorMoveStage, type CounselorLeadDetail as Detail, type StudentSuggestion } from "@/lib/leadHandover";
 import { counselorTargets, stageLabel } from "@/lib/leadStages";
@@ -323,6 +326,7 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
   const [activityVersion, setActivityVersion] = useState(0); // tel-015: a bump re-reads the timeline
   const [unlinking, setUnlinking] = useState(false);
   const [converted, setConverted] = useState<Converted | null>(null); // ccrm-008: the account just created, for the mail outcome line
+  const [itConverted, setItConverted] = useState<ConversionResult | null>(null); // itc-011: the conversion just made, for its outcome line
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [leadNotice, setLeadNotice] = useState<Notice>(null);
@@ -432,12 +436,27 @@ export default function CounselorLeadDetail({ initial }: { initial: Detail }) {
                     <Link href={`/overseas/counselor/students/${encodeURIComponent(converted.id)}/profile`}>Open the student&apos;s profile</Link>
                   </p>
                 )}
+                {itConverted && itConverted.student.id === lead.converted_user.id && (
+                  <p className="form-message" role="status" style={{ margin: 0, fontSize: 13, overflowWrap: "anywhere" }}>
+                    {itConverted.email_status === undefined
+                      ? `${itConverted.student.full_name} is enrolled in ${itConverted.enrollment.batch} (${itConverted.enrollment.enrollment_code}).`
+                      : itConverted.email_status === "sent"
+                        ? `Student account created and enrolled in ${itConverted.enrollment.batch} (${itConverted.enrollment.enrollment_code}). A set-password link was emailed to ${itConverted.student.email}.`
+                        : `Student account created and enrolled in ${itConverted.enrollment.batch} (${itConverted.enrollment.enrollment_code}), but the set-password email was not delivered. The IT Admin can re-send it.`}{" "}
+                    <Link href={`/it/counselor/students/${encodeURIComponent(itConverted.student.id)}/profile`}>Open the student&apos;s profile</Link>
+                  </p>
+                )}
+                {lead.it_conversion && <ItOnboardingChecklist key={lead.it_conversion.enrollment_id} enrollmentId={lead.it_conversion.enrollment_id} canTick
+                  initial={itConverted?.enrollment.id === lead.it_conversion.enrollment_id ? itConverted.checklist : undefined} />}
               </div>
             ) : lead.permissions.link ? (
               <div style={{ display: "grid", gap: 10, marginTop: 6 }}>
                 {lead.permissions.convert ? (
                   <ConvertLeadForm lead={lead} onConverted={(next, student) => { setLead(next); setConverted(student); setNotice(null); reloadActivity(); }} />
-                ) : lead.division === "overseas" && (
+                ) : lead.permissions.convert_it ? (
+                  <ItConvertForm url={counselorConvertUrl(lead.id)} suggestionsUrl={counselorLeadUrl(lead.id, "/link-suggestions")}
+                    onConverted={(result) => { setLead(result.lead as unknown as Detail); setItConverted(result); setNotice(null); reloadActivity(); }} />
+                ) : (
                   <p className="muted" style={{ margin: 0, fontSize: 13 }}>Move the lead to Qualified to convert it to a new student.</p>
                 )}
                 <LinkStudentPanel lead={lead} onLinked={(outcome) => applied(outcome, "Student linked.")} />
