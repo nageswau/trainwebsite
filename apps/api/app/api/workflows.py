@@ -149,6 +149,7 @@ from app.services import (
     hr_reviews,
     interviews,
     it_enrollments,
+    it_lifecycle,
     offers,
     permissions,
     question_import,
