@@ -1584,3 +1584,9 @@ half.
 | `itc-015-RBAC` | `payments.refund` in IT only; document never another student's | `::test_adjusting_needs_the_payments_refund_grant_and_an_it_enrolment`, `::test_the_student_sees_their_refund_and_downloads_its_document` |
 | `itc-015-REV` | Refunds reduce IT revenue (Q-15) | `::test_a_refund_reduces_it_revenue_for_its_course`; `test_mgmt_005_auto_lines.py` |
 | `itc-015-UI` | Account shows refunded + adjustments with documents; admin forms; corrected payment explained | `apps/web/tests/components/itc015FeeAdjustments.test.tsx` |
+| `itc-017` | Requirement: `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-017` → `DEC-SCOPE-367`; `API_CONTRACT.md` §12JM; RBAC §2.267; migration `0248_accounts_grants` | Built |
+| `itc-017-AC1` | Collections by day equal the confirmed payments of that IST day | `apps/api/tests/test_itc_017_accounts.py::test_collections_by_day_are_the_confirmed_payments_of_each_ist_day`; e2e `itc-017-accounts.spec.ts` |
+| `itc-017-AC2` | Outstanding equals the sum of balances | `::test_outstanding_is_the_sum_of_positive_balances_of_active_enrolments` |
+| `itc-017-AC3` | Filters work (course, batch, dates, status) | `::test_filters_are_validated_with_plain_messages`, `::test_collections_by_month_and_by_course`, `::test_the_adjustments_list_shows_credit_notes_and_refunds_with_a_kind_filter`; `ItAccountsWorkspace.test.tsx` |
+| `itc-017-AC4` | The export is injection-safe | `::test_the_export_is_csv_injection_safe_and_audited` |
+| `itc-017-NEG` | A counselor opening the workspace gets 403 | `::test_anyone_without_it_payments_view_gets_403` |

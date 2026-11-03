@@ -3661,3 +3661,10 @@ New grant `payments.refund` (catalogue action `refund`), seeded for `it_admin` b
 Recording an adjustment or a correction needs it plus the IT division (or every division) — trainer, counselor, student and
 overseas_admin 403, anonymous 401. Reading an adjustment's document follows the itc-013 fee-account gate (another student's 404). No
 deletion or edit route exists. Pinned by `apps/api/tests/test_itc_015_fee_adjustments.py`.
+
+### 2.267 IT accounts workspace *(added 2026-11-03 — `DEC-SCOPE-367`, itc-017)*
+
+The global `accountant` gains default grants `payments.view`, `payments.add`, `payments.refund` (migration 0248; a super admin may still
+remove them). The `/it/accounts/reports/*` routes need `payments.view` and the IT division or every division: it_admin, accountant and
+super_admin read; counselor, trainer, student and overseas_admin 403; anonymous 401. The accountant still never sees university
+commission (unchanged). Pinned by `apps/api/tests/test_itc_017_accounts.py` and `test_itc_017_migration.py`.
