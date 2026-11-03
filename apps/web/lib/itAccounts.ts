@@ -1,4 +1,4 @@
-// itc-017 (DEC-SCOPE-367): the IT accounts workspace -- five read-only reports over IT enrolment fees (API §12JM). The filters live in the
+// itc-017 (DEC-SCOPE-368): the IT accounts workspace -- five read-only reports over IT enrolment fees (API §12JN). The filters live in the
 // address (a GET form), so refresh, Back and a shared link keep the view; anything unknown in the address is dropped here.
 
 const IT_ACCOUNTS_API = "/api/v1/it/accounts/reports";

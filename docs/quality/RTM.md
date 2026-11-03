@@ -1584,7 +1584,16 @@ half.
 | `itc-015-RBAC` | `payments.refund` in IT only; document never another student's | `::test_adjusting_needs_the_payments_refund_grant_and_an_it_enrolment`, `::test_the_student_sees_their_refund_and_downloads_its_document` |
 | `itc-015-REV` | Refunds reduce IT revenue (Q-15) | `::test_a_refund_reduces_it_revenue_for_its_course`; `test_mgmt_005_auto_lines.py` |
 | `itc-015-UI` | Account shows refunded + adjustments with documents; admin forms; corrected payment explained | `apps/web/tests/components/itc015FeeAdjustments.test.tsx` |
-| `itc-017` | Requirement: `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-017` → `DEC-SCOPE-367`; `API_CONTRACT.md` §12JM; RBAC §2.267; migration `0248_accounts_grants` | Built |
+| `itc-030` | Requirement: `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-030` → `DEC-SCOPE-367`; `API_CONTRACT.md` §12JM; RBAC §2.267; no migration | Built |
+| `itc-030-AC1` | Each widget's figure equals its drill-down list count | `apps/api/tests/test_itc_030_it_counselor_dashboard.py::test_lead_widgets_cover_only_the_counselors_own_open_unmerged_leads`, `::test_follow_ups_are_open_ones_due_today_or_overdue`, `::test_student_widgets_cover_the_linked_students`, `::test_a_long_list_shows_ten_and_the_full_count`; e2e `itc-030-it-counselor-dashboard.spec.ts` |
+| `itc-030-AC2` | Filters apply to every widget | `::test_course_and_batch_narrow_every_widget`, `::test_the_date_range_narrows_by_each_widgets_own_date`, `::test_the_stage_filter_narrows_the_lead_widgets_only`, `::test_a_bad_filter_is_422`; e2e (status filter in the address) |
+| `itc-030-+` | A counselor filters by batch and sees that batch's at-risk students | `::test_course_and_batch_narrow_every_widget` |
+| `itc-030-−` | An overseas counselor calling the IT dashboard gets 403 | `::test_anyone_but_an_it_counselor_or_the_it_admin_is_403`; e2e |
+| `itc-030-E` | A counselor with no students | `::test_a_counselor_with_nothing_gets_every_widget_empty`; e2e |
+| `itc-030-ADMIN` | The IT Admin sees all counselors with an owner filter | `::test_the_it_admin_sees_every_counselor_and_narrows_by_owner`, `::test_an_owner_who_is_not_an_it_counselor_is_422`; e2e |
+| `itc-030-PERF` | Fixed query count | `::test_the_query_count_is_fixed_whatever_the_book` |
+| `itc-030-UI` | Board, filters (address), 422 fallback, error card, phone layout | `apps/web/tests/components/ItCounselorDashboard.test.tsx`, `PortalPage.counselorDashboard.test.tsx`; e2e |
+| `itc-017` | Requirement: `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-017` → `DEC-SCOPE-368`; `API_CONTRACT.md` §12JN; RBAC §2.268; migration `0248_accounts_grants` | Built |
 | `itc-017-AC1` | Collections by day equal the confirmed payments of that IST day | `apps/api/tests/test_itc_017_accounts.py::test_collections_by_day_are_the_confirmed_payments_of_each_ist_day`; e2e `itc-017-accounts.spec.ts` |
 | `itc-017-AC2` | Outstanding equals the sum of balances | `::test_outstanding_is_the_sum_of_positive_balances_of_active_enrolments` |
 | `itc-017-AC3` | Filters work (course, batch, dates, status) | `::test_filters_are_validated_with_plain_messages`, `::test_collections_by_month_and_by_course`, `::test_the_adjustments_list_shows_credit_notes_and_refunds_with_a_kind_filter`; `ItAccountsWorkspace.test.tsx` |

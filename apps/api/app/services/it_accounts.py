@@ -1,4 +1,4 @@
-"""itc-017 (DEC-SCOPE-367) -- the IT accounts workspace's five read-only reports over IT enrolment fees. Spec:
+"""itc-017 (DEC-SCOPE-368) -- the IT accounts workspace's five read-only reports over IT enrolment fees. Spec:
 docs/superpowers/specs/2026-11-03-itc-017-accounts-workspace-design.md.
 
 Nothing is stored or copied: every figure is read from `Payment`, `Receipt`, `FeeAdjustment` and `FeeReminderLog`, and an enrolment's

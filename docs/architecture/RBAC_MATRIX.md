@@ -3662,7 +3662,13 @@ Recording an adjustment or a correction needs it plus the IT division (or every 
 overseas_admin 403, anonymous 401. Reading an adjustment's document follows the itc-013 fee-account gate (another student's 404). No
 deletion or edit route exists. Pinned by `apps/api/tests/test_itc_015_fee_adjustments.py`.
 
-### 2.267 IT accounts workspace *(added 2026-11-03 — `DEC-SCOPE-367`, itc-017)*
+### 2.267 IT counselor dashboard *(added 2026-11-03 — `DEC-SCOPE-367`, itc-030)*
+
+No new grant. `GET /counselor/it/dashboard`: role `counselor` in division `it` reads only their own book (leads they own, students
+linked to them — the request names no lead or student, so there is nothing to tamper with; `owner` is 422 for them); `it_admin` in
+`it` reads every IT counselor's book and may narrow by `owner`. An overseas counselor, trainer, HR, student or any other role 403;
+anonymous 401. Read only, not audited. Pinned by `apps/api/tests/test_itc_030_it_counselor_dashboard.py`.
+### 2.268 IT accounts workspace *(added 2026-11-03 — `DEC-SCOPE-368`, itc-017)*
 
 The global `accountant` gains default grants `payments.view`, `payments.add`, `payments.refund` (migration 0248; a super admin may still
 remove them). The `/it/accounts/reports/*` routes need `payments.view` and the IT division or every division: it_admin, accountant and

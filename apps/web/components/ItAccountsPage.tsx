@@ -9,7 +9,7 @@ import type { User } from "@/lib/types";
 
 const UNAVAILABLE = "IT accounts are unavailable right now. Please try again.";
 
-// itc-017 (DEC-SCOPE-367 F2): one body behind the IT Admin's /it/admin/accounts and the finance tier's /management/it-accounts. The API
+// itc-017 (DEC-SCOPE-368 F2): one body behind the IT Admin's /it/admin/accounts and the finance tier's /management/it-accounts. The API
 // decides who may read (a `payments.view` holder in IT; anyone else 403, shown as the access card); a 422 (bad filters) is shown above the
 // form. Each shell keeps its own sidebar; super_admin keeps theirs.
 export default async function ItAccountsPage({ shell, searchParams }: {

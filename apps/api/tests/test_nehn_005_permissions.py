@@ -20,7 +20,7 @@ DOWNLOAD_REFUSED = "You don't have permission to download telecaller reports"  #
 # The oracle: who passed each pilot route's inline role check before nehn-005 (admin.ensure_admin, telecaller_reports.REPORT_ROLES).
 OLD_ADMIN = {"super_admin", "it_admin", "overseas_admin"}
 OLD_REPORTS = {"telecaller_manager", "super_admin", "it_admin", "overseas_admin"}
-# itc-017 (DEC-SCOPE-367 F1, migration 0248): the accountant holds the payment grants by default -- not `discounts.add`.
+# itc-017 (DEC-SCOPE-368 F1, migration 0248): the accountant holds the payment grants by default -- not `discounts.add`.
 PAYMENT_HOLDERS = OLD_ADMIN | {"accountant"}
 DIVISION = {
     "it_admin": "it",

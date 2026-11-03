@@ -50,7 +50,7 @@ itc-015, itc-016); the workspace links to them rather than duplicating them.
 - **F8 — index:** `ix_payments_paid_at` on `payments(paid_at)` (backlog performance note).
 - **F9 — student names:** listed (the accounts staff already see them on Payments); no emails or phone numbers.
 
-## API (API_CONTRACT §12JM)
+## API (API_CONTRACT §12JN)
 - `GET /api/v1/it/accounts/reports/{report}` — JSON as above; unknown report 404.
 - `GET /api/v1/it/accounts/reports/{report}/export` — `text/csv`, `Content-Disposition: attachment; filename="it-<report>-<today>.csv"`.
 
@@ -72,7 +72,7 @@ so refresh, back and shared links keep the view; total tiles; a responsive `tabl
 2. `services/it_accounts.py` + `api/it_accounts.py`: access, filters, collections (AC1, E), outstanding (AC2), overdue, receipts,
    adjustments, export (AC4) — `tests/test_itc_017_accounts.py` first.
 3. Frontend: `lib/itAccounts.ts` (filters/URLs), `components/ItAccountsWorkspace.tsx`, two pages, nav entries; vitest.
-4. Playwright e2e `itc-017-accounts.spec.ts`; docs (DEC-SCOPE-367, API §12JM, RBAC §2.267, backlog status, RTM).
+4. Playwright e2e `itc-017-accounts.spec.ts`; docs (DEC-SCOPE-368, API §12JN, RBAC §2.268, backlog status, RTM).
 
 ## Regression risks
 nehn-005 / nehn-021 grant tests (the accountant's default set changes), the management nav tests, sibling migration-head tests.

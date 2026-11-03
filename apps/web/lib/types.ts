@@ -72,6 +72,20 @@ export type CounselorDashboardKey =
   | "pending_documents" | "not_ready" | "awaiting_decision" | "offers_due" | "visa" | "enrolment";
 export type CounselorDashboard = { today: string; window_days: number; follow_up_days: number; sections: Record<CounselorDashboardKey, CounselorDashboardSection> };
 
+// --- itc-030 IT counselor dashboard (DEC-SCOPE-367; API §12JM): each widget is its full count plus the first ten items ---
+export type ItCounselorFilterKey = "program" | "batch" | "from" | "to" | "stage" | "owner";
+export type ItCounselorOption = { value: string; label: string };
+export type ItCounselorWidgetKey =
+  | "assigned_leads" | "follow_ups" | "conversions" | "ready_to_convert" | "enrolled_students" | "outstanding_fees" | "at_risk" | "pending_hr";
+export type ItCounselorDashboard = {
+  filters: Record<ItCounselorFilterKey, string | null>;
+  options: { programs: ItCounselorOption[]; batches: (ItCounselorOption & { program: string })[]; stages: ItCounselorOption[]; owners: ItCounselorOption[] };
+  today: string;
+  widgets: Record<ItCounselorWidgetKey, CounselorDashboardSection & { overdue?: number; total?: number }> & {
+    pipeline: { count: number; stages: { stage: string; label: string; count: number }[] };
+  };
+};
+
 // --- AGN-018 agency dashboard (DEC-SCOPE-062; spec §5.3): one shape for Masters and staff, Master-only fields null for staff ---
 export type CurrencyTotal = { currency: string; count: number; amount: number };
 export type AgentBreakdown = { items: { label: string; count: number }[]; other: number };

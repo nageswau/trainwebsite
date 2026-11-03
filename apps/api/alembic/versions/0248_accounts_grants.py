@@ -3,7 +3,7 @@
 Revision ID: 0248_accounts_grants
 Revises: 0246_fee_adjustments
 
-docs/superpowers/specs/2026-11-03-itc-017-accounts-workspace-design.md (DEC-SCOPE-367 F1, F8). Seed only: SEED is a frozen copy of the new
+docs/superpowers/specs/2026-11-03-itc-017-accounts-workspace-design.md (DEC-SCOPE-368 F1, F8). Seed only: SEED is a frozen copy of the new
 `rbac.DEFAULT_GRANTS["accountant"]` keys at this revision. A row that is already there (a super admin granted it) is left alone; no
 existing row changes. The index is created only when missing (0001's create_all already builds it from the models). The downgrade removes
 the three accountant rows and the index; other roles' grants are untouched.

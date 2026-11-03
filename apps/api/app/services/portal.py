@@ -1593,6 +1593,8 @@ async def _operations(db: AsyncSession, user: User, section: str, *, filters: Ap
             return _payload("HR Reviews", "Resume reviews by HR: reassign an owner, and choose each programme's HR reviewer.")
         if section == "status-labels" and user.role == "it_admin":  # itc-005 (DEC-SCOPE-362): header only -- the panel reads /admin/it/status-labels
             return _payload("Status Labels", "The words, order and availability of the IT lead and student statuses.")
+        if section == "counselor-dashboard" and user.role == "it_admin":  # itc-030 (DEC-SCOPE-367): header only -- the board reads /counselor/it/dashboard
+            return _payload("Counselor Dashboard", "Every IT counselor's leads, follow-ups, conversions and students. Pick an owner to see one counselor's book.")
         if section == "reports" and user.role in {"it_admin", "super_admin"}:
             # RPT-001: `PORTAL_NAV["it/admin"]` lists "Reports" but no handler existed at
             # all -- confirmed directly, same 404 bug class `CNS-001`/`UNI-001` found for

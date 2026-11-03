@@ -1,5 +1,5 @@
-"""itc-017 (DEC-SCOPE-367) -- the IT accounts workspace's reports: read by a `payments.view` holder in IT or every division (the IT Admin,
-the accountant, super_admin); anyone else 403. Read-only; each CSV export is audited. API_CONTRACT.md §12JM; RBAC_MATRIX.md §2.267."""
+"""itc-017 (DEC-SCOPE-368) -- the IT accounts workspace's reports: read by a `payments.view` holder in IT or every division (the IT Admin,
+the accountant, super_admin); anyone else 403. Read-only; each CSV export is audited. API_CONTRACT.md §12JN; RBAC_MATRIX.md §2.268."""
 
 import csv
 import io

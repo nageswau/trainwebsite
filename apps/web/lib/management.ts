@@ -12,7 +12,7 @@ export type ManagementSnapshot = { as_of: string; kpis: ManagementKpi[] };
 
 export const MANAGEMENT_HOME = "/management";
 export const MANAGEMENT_PAYMENTS_NAV: NavItem = { label: "Payments", href: "/management/payments", resource: "payments" };
-// itc-017 (DEC-SCOPE-367 F2): the IT fee accounts workspace, grant-driven like Payments.
+// itc-017 (DEC-SCOPE-368 F2): the IT fee accounts workspace, grant-driven like Payments.
 export const MANAGEMENT_IT_ACCOUNTS_NAV: NavItem = { label: "IT fee accounts", href: "/management/it-accounts", resource: "payments" };
 export const MANAGEMENT_ROLE_LABEL: Record<string, string> ={ partner: "Partner", accountant: "Accountant", super_admin: "Super Administrator" };
 

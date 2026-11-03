@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Browser, type Page } from "@playwright/test";
 
-// itc-017 (DEC-SCOPE-367): a fresh IT student pays part of their fee; the IT Admin finds today's collection and the student's balance in
+// itc-017 (DEC-SCOPE-368): a fresh IT student pays part of their fee; the IT Admin finds today's collection and the student's balance in
 // Accounts (filtered by the course) and downloads the CSV; the accountant reads the same figures from the management sidebar; a counselor
 // is refused. A fresh student per run.
 

@@ -9,7 +9,7 @@ import {
 const EMPTY = "Nothing matches these filters.";
 const options = (labels: Record<string, string>) => Object.entries(labels).map(([value, label]) => ({ value, label }));
 
-// itc-017 (DEC-SCOPE-367): the IT accounts workspace -- a strip of report links (each report is its own address), a GET filter form (no
+// itc-017 (DEC-SCOPE-368): the IT accounts workspace -- a strip of report links (each report is its own address), a GET filter form (no
 // client JS), the totals of the whole filtered list, the page of rows and its CSV. `page` null + `error` = the read failed or the API
 // refused the filters (422 text shown above the form, which keeps the inputs). `studentLinks` (the IT Admin) links a row to the student
 // record; the accountant has no such page. On a phone the table stacks into labelled blocks (`.table.stack`).

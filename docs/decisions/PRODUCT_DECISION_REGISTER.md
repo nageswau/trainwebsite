@@ -11237,7 +11237,27 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0246_fee_adjustments` (on itc-014's `0245_fee_discount_requests`); API §12JJ; RBAC §2.264.
 - **Feature ID authorized:** `itc-015`. **Status:** built on `worktree-itc-015`.
 
-### DEC-SCOPE-367 — Accounts role, workspace and collection reports (`itc-017`)
+### DEC-SCOPE-367 — IT counselor dashboard and workspace (`itc-030`)
+
+- **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-030` (PDF §8 IT Counselor dashboard, §11 Counselor workspace, §12 AC10;
+  Appendix B "Pending HR actions"; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-01). Dependencies
+  itc-003, itc-010, itc-011, itc-013, itc-023 and itc-027 are merged. The owner said to proceed with the recommended answers, so the
+  calls below are **the builder's (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-03-itc-030-it-counselor-dashboard-design.md`.
+- **Behaviour:** `GET /counselor/it/dashboard` — nine live widgets over the caller's lead book (IT leads they own, never a merged one)
+  and student book (their itc-003 students): assigned leads, follow-ups due today and overdue, counseling pipeline by stage,
+  conversions, enrolled students, outstanding fees (Σ positive itc-013 balances of active enrolments), at-risk students (open itc-023
+  flags), pending HR actions, and ready to convert (Qualified … Counselling Completed; the lead page carries itc-011's Convert). Every
+  figure is the count of the very statement its list reads (AC1). Filters course, batch, from/to (IST), status and — IT Admin only —
+  owner apply to every widget by one rule each (AC2); a bad value is 422, never ignored. The IT counselor's dashboard leads with the
+  board (the tel-017 tiles and recent leads stay); the IT Admin gets a new **Counselor Dashboard** page over every counselor.
+- **Claude's calls (`NEEDS_CONFIRMATION`):** C1 a lead is not in a batch, so the batch filter narrows lead widgets to the batch's
+  course. C2 status is a lead stage and narrows only the lead widgets; the board says so (a student-lifecycle filter waits on itc-031
+  being queryable). C3 the date range applies to each widget's own date (created, due, converted, enrolled, raised, updated). C4
+  "Pending HR actions" = HR tasks in `changes_requested` (no itc-027 stage awaits the counselor). C5 "Enrolled" = an `active`
+  enrolment. C6 Q-29 verified: the IT counselor nav has no overseas Tasks link (only the shared Management tasks page) — no change.
+- **Numbering:** no migration; API §12JM; RBAC §2.267 (365/366 left to in-flight itc-022/itc-017).
+- **Feature ID authorized:** `itc-030`. **Status:** built on `worktree-itc-030`.
+### DEC-SCOPE-368 — Accounts role, workspace and collection reports (`itc-017`)
 
 - **Source:** `docs/delivery/IT_COUNSELOR_CRM_BACKLOG.md` `itc-017` (PDF §2 Accounts/Finance, §8 Accounts dashboard, §11 Accounts
   workspace, §12 AC10; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-01: all phases, built in waves).
@@ -11256,5 +11276,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   netted. F5 outstanding = Σ positive `fee_accounts.balance_for` balances of `active` enrolments. F6 date range defaults to this IST month,
   at most 366 days. F7 CSV up to 10,000 rows through `_safe_cell`. F8 index `ix_payments_paid_at`. F9 student names and Student IDs are
   shown, no contact details.
-- **Numbering:** migration `0248_accounts_grants`; API §12JM; RBAC §2.267.
+- **Numbering:** migration `0248_accounts_grants`; API §12JN; RBAC §2.268.
 - **Feature ID authorized:** `itc-017`. **Status:** built on `worktree-itc-017`.

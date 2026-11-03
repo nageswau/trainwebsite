@@ -1,4 +1,4 @@
-"""itc-017 (DEC-SCOPE-367) -- the IT accounts workspace: collections by IST day / month / course, outstanding per enrolment and per
+"""itc-017 (DEC-SCOPE-368) -- the IT accounts workspace: collections by IST day / month / course, outstanding per enrolment and per
 course, overdue installments, the receipts register and the refunds & adjustments list, each filtered by course, batch, date range and
 status, paginated and exported as injection-safe CSV. Read by a `payments.view` holder in IT (the IT Admin, the accountant -- Q-17,
 default grants seeded by migration 0248); anyone else 403."""
