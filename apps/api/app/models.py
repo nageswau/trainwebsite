@@ -3088,6 +3088,30 @@ class FeeReminderLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+FEE_DISCOUNT_STATUSES = ("pending", "approved", "rejected")
+
+
+class FeeDiscountRequest(Base, TimestampMixin):
+    """itc-014 (DEC-SCOPE-363, migration 0245 repeats it): an amount off an enrolment's owed fee, asked by one person and decided by
+    another (maker-checker). Only an approval changes the fee rows; at most one request per enrolment is pending."""
+
+    __tablename__ = "fee_discount_requests"
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="ck_fee_discount_requests_amount"),
+        CheckConstraint(_in("status", FEE_DISCOUNT_STATUSES), name="ck_fee_discount_requests_status"),
+        Index("uq_fee_discount_requests_one_pending", "enrollment_id", unique=True, postgresql_where=text("status = 'pending'")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    enrollment_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("enrollments.id"), index=True)
+    amount: Mapped[float] = mapped_column(Numeric(12, 2))
+    reason: Mapped[str] = mapped_column(String(500))
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    requested_by_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    decided_by_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decision_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
 class Invoice(Base, TimestampMixin):
     """DATA_MODEL.md #7.2, PRD-PAY-003: generated when a Payment is created (billed)."""
 

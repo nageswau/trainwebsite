@@ -75,7 +75,8 @@ ROLES: tuple[str, ...] = tuple(PERMISSIONS)
 ACTIONS = ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage")  # nehn-031 adds override, configure
 CATALOGUE: dict[str, dict] = {
     "payments": {"label": "Payments", "actions": ("view", "add")},
-    "discounts": {"label": "Payment discounts", "actions": ("add",)},
+    # itc-014 (DEC-SCOPE-363): `approve` -- decides another person's discount request (maker-checker); never one's own.
+    "discounts": {"label": "Payment discounts", "actions": ("add", "approve")},
     "reports.telecaller": {"label": "Telecaller reports", "actions": ("view", "download")},
     # nehn-030: the coordinator portal's Certificates section; nehn-031 (DEC-SCOPE-297): issuing, the eligibility override, thresholds;
     # nehn-032 (DEC-SCOPE-302 S6): `manage` -- the certificate signatures (no default holder: super_admin only until granted).
@@ -101,8 +102,8 @@ _TRAINING_REPORTS = ("reports.training.view", "reports.training.download")  # ne
 _PLACEMENT_REPORTS = ("reports.placement.view", "reports.placement.download")  # nehn-016 (migration 0212 seeds it); rows = opted-in students
 DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "it_admin": (
-        _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure", "student_access.configure") + _TRAINING_REPORTS + _PLACEMENT_REPORTS
-    ),  # nehn-031 W2 (0204); nehn-018 (0211); nehn-016 (0212)
+        _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure", "student_access.configure") + _TRAINING_REPORTS + _PLACEMENT_REPORTS + ("discounts.approve",)
+    ),  # nehn-031 W2 (0204); nehn-018 (0211); nehn-016 (0212); itc-014 (0245)
     "trainer": _TRAINING_REPORTS,
     "placement_team": _PLACEMENT_REPORTS,
     "placement_manager": _PLACEMENT_REPORTS,
