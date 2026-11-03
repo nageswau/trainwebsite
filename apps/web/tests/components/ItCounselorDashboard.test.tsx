@@ -66,6 +66,16 @@ describe("ItCounselorDashboardBoard", () => {
     expect(within(region(/^Counseling pipeline/)).getByText("Qualified")).toBeTruthy();
   });
 
+  it("shows each pipeline stage beside its count as a description list, no wide table (QA-01)", () => {
+    render(<ItCounselorDashboardBoard data={data({ pipeline: { count: 3, stages: [{ stage: "qualified", label: "Qualified", count: 3 }] } })} />);
+    const pipeline = region(/^Counseling pipeline/);
+    expect(pipeline.querySelector("table")).toBeNull();
+    const term = within(pipeline).getByText("Qualified");
+    expect(term.tagName).toBe("DT");
+    expect(term.nextElementSibling?.tagName).toBe("DD");
+    expect(term.nextElementSibling?.textContent).toBe("3");
+  });
+
   it("notes that the stage filter leaves the student widgets alone", () => {
     render(<ItCounselorDashboardBoard data={data({}, { stage: "qualified" })} />);
     expect(screen.getByText(/Status filters the lead widgets only/)).toBeTruthy();

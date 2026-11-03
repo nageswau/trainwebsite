@@ -990,6 +990,9 @@ Abbreviations: **FE** frontend, **BE** backend, **DB** database, **AC** acceptan
 - **Complexity:** medium. **Risk:** medium.
 
 #### itc-030: IT counselor dashboard and workspace
+- **Status:** built as `DEC-SCOPE-367` (no migration, API §12JM, RBAC §2.267); design
+  `docs/superpowers/specs/2026-11-03-itc-030-it-counselor-dashboard-design.md`. Q-29 verified: no Tasks-nav defect for IT (only the
+  shared Management tasks link). Batch on lead widgets = the batch's course; status narrows lead widgets only (`NEEDS_CONFIRMATION`).
 - **Business requirement:** §8 IT Counselor dashboard; §11 Counselor workspace; §12 AC10.
 - **Existing behavior:** `_it_counselor` (`portal.py:1788`) shows 2 counts and 5 latest leads. The Tasks nav item for IT may lead to a page the IT counselor cannot use (`counselor_tasks.py:55` is overseas-only; **verify**). There are no filters.
 - **Expected behavior:**

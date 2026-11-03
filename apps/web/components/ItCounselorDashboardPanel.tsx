@@ -58,14 +58,15 @@ export function ItCounselorDashboardBoard({ data }: { data: ItCounselorDashboard
           {pipeline.count === 0 ? (
             <p className="muted" style={{ margin: "8px 0 0" }}>No open leads.</p>
           ) : (
-            <table className="table" style={{ marginTop: 8, width: "100%" }}>
-              <caption className="visually-hidden">Open leads by stage</caption>
-              <tbody>
-                {pipeline.stages.map((s) => (
-                  <tr key={s.stage}><th scope="row" style={{ textAlign: "left", fontWeight: 400 }}>{s.label}</th><td style={{ textAlign: "right" }}>{s.count.toLocaleString("en-IN")}</td></tr>
-                ))}
-              </tbody>
-            </table>
+            // QA-01: a description list in the record-details grid -- the global `.table` minimum width hid the counts and overflowed phones
+            <dl className="record-details" aria-label="Open leads by stage" style={{ gridTemplateColumns: "1fr max-content" }}>
+              {pipeline.stages.map((s) => (
+                <div className="record-details-row" key={s.stage}>
+                  <dt style={{ fontWeight: 400 }}>{s.label}</dt>
+                  <dd style={{ margin: 0, fontWeight: 700, textAlign: "right" }}>{s.count.toLocaleString("en-IN")}</dd>
+                </div>
+              ))}
+            </dl>
           )}
         </section>
         {WIDGETS.map((w) => (

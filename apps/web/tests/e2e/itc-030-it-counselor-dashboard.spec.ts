@@ -15,7 +15,8 @@ async function signIn(page: Page, email: string, password: string, landing: stri
   await page.fill("#login-email", email);
   await page.fill("#login-password", password);
   await page.click("button:has-text('Sign in securely')");
-  await page.waitForURL(`**${landing}`);
+  await page.waitForURL((u) => !u.pathname.endsWith("/login"));
+  if (landing) await page.waitForURL(`**${landing}`);
 }
 
 const region = (page: Page, title: string, count: number) => page.getByRole("region", { name: new RegExp(`^${title} ${count}$`) });
@@ -29,11 +30,28 @@ test("an IT counselor's board counts their own work, filters by status, and the 
   const name = `Itc030 Counselor ${stamp}`;
   const email = `itc030-c-${stamp}@example.local`;
 
-  await signIn(page, "itadmin@edusphere.local", PASSWORD, "/it/admin/dashboard");
-  const created = await page.request.post("/api/v1/admin/users", { data: { role: "counselor", division: "it", full_name: name, email } });
-  expect(created.status()).toBe(201);
-  const counselor = await created.json();
+  // Super Admin sets up a telecaller (and their manager) and a fresh IT counselor (the itc-011 world).
+  await page.context().clearCookies();
+  await page.goto("/admin/login");
+  await page.fill("#login-email", "superadmin@edusphere.local");
+  await page.fill("#login-password", PASSWORD);
+  await page.click("button:has-text('Sign in securely')");
+  await page.waitForURL((u) => !u.pathname.endsWith("/login"));
+  const post = async (url: string, data: object) => {
+    const response = await page.request.post(url, { data });
+    expect(response.status(), await response.text()).toBe(201);
+    return response.json();
+  };
+  const manager = await post("/api/v1/admin/users", { role: "telecaller_manager", division: "global", full_name: `Itc030 Manager ${stamp}`, email: `itc030-m-${stamp}@example.local` });
+  const caller = await post("/api/v1/admin/users", {
+    role: "telecaller", full_name: `Itc030 Telecaller ${stamp}`, email: `itc030-t-${stamp}@example.local`,
+    telecaller_profile: { team: "it", employee_id: `I30-${stamp}`, reporting_manager_user_id: manager.id },
+  });
+  const counselor = await post("/api/v1/admin/users", { role: "counselor", division: "it", full_name: name, email });
+  const course = await post("/api/v1/telecaller/products", { group: "it", name: `Itc030 Course ${stamp}` });
+  await page.request.post("/api/v1/auth/logout");
   await activateWithToken(page.request, counselor.development_welcome_token, password);
+  await activateWithToken(page.request, caller.development_welcome_token, password);
 
   // A counselor with nothing: every widget is there, at 0 (E).
   await signIn(page, email, password, "/it/counselor/dashboard");
@@ -42,12 +60,15 @@ test("an IT counselor's board counts their own work, filters by status, and the 
   }
   await expect(page.getByText("Leads routed to you", { exact: true })).toBeVisible(); // tel-017's tiles stay
 
-  // Their walk-in lead with a follow-up later today.
-  const products = (await (await page.request.get("/api/v1/telecaller/products?group=it&active=true&limit=100")).json()).items;
+  // The telecaller hands them a lead; the counselor books a follow-up later today.
+  await signIn(page, caller.email, password, "");
   const phone = `7${String(Math.floor(Math.random() * 1e9)).padStart(9, "0")}`;
-  const lead = await page.request.post("/api/v1/counselor/walk-in-leads", { data: { name: `Itc030 Lead ${stamp}`, phone, product_id: products[0].id, source: "walk_in" } });
+  const lead = await page.request.post("/api/v1/telecaller/leads", { data: { name: `Itc030 Lead ${stamp}`, email: `itc030-l-${stamp}@example.local`, phone, product_id: course.id, source: "walk_in" } });
   expect(lead.status(), await lead.text()).toBe(201);
   const leadId = (await lead.json()).id;
+  const handed = await page.request.post(`/api/v1/telecaller/leads/${leadId}/handover`, { data: { counselor_id: counselor.id } });
+  expect(handed.status(), await handed.text()).toBe(200);
+  await signIn(page, email, password, "/it/counselor/dashboard");
   const fu = await page.request.post(`/api/v1/counselor/leads/${leadId}/follow-ups`, {
     data: { due_at: new Date(Date.now() + 2 * 60_000).toISOString(), reason: "counselor_call", next_action: "Call about the batch" },
   });
