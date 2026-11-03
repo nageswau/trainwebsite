@@ -82,9 +82,9 @@ function StatusRow({ kind, row, onSaved }: { kind: StatusKind; row: AdminStatusE
   // the toggle reloads the list; once this row comes back with its new state, put focus back on its button
   const toggleFocus = useRef(false);
   useEffect(() => {
-    if (toggleFocus.current) document.getElementById(id("toggle"))?.focus();
+    if (toggleFocus.current) document.getElementById(`status-toggle-${kind}-${row.code}`)?.focus();
     toggleFocus.current = false;
-  }, [row.enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [row.enabled, kind, row.code]);
 
   function close() {
     setEditing(false);
