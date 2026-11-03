@@ -24,7 +24,7 @@ from sqlalchemy.orm import aliased
 from app.models import HR_REVIEW_OPEN_STAGES, Batch, Enrollment, HrAssignmentRule, HrReviewStageHistory, HrReviewTask, ItStudentCounselor, Program, User
 from app.notifications.events import notify
 from app.schemas import HR_REVIEW_CHECKLIST, HrReviewPatch
-from app.services import hr_students
+from app.services import hr_students, it_lifecycle
 from app.services import it_student_profiles as profiles
 from app.services.audit_changes import audit_change
 
@@ -120,6 +120,7 @@ async def on_resume_shared(db: AsyncSession, actor: User, student: User, resume_
         owner = await _pick_owner(db, student.id)
         task.owner_user_id, task.assigned_at = (owner.id, now) if owner else (None, None)
     await db.flush()
+    await it_lifecycle.sync_students(db, [student.id], actor=actor, cause="hr_review")  # itc-031: Resume submitted
     counselor = await _counselor(db, student.id)
     await notify(db, [owner], "it.resume.uploaded", resume_id, action_url=f"/it/hr/students/{student.id}")
     await notify(db, [counselor if counselor and counselor.id != actor.id else None], "it.resume.uploaded", resume_id, action_url=f"/it/counselor/students/{student.id}/profile")
@@ -131,6 +132,8 @@ async def close_for_withdrawal(db: AsyncSession, student_id: UUID) -> None:
     task = await db.scalar(select(HrReviewTask).where(HrReviewTask.student_user_id == student_id, HrReviewTask.stage.in_(HR_REVIEW_OPEN_STAGES)).with_for_update())
     if task is not None:
         _move(db, task, "withdrawn", None, "withdrawn", datetime.now(UTC))
+        await db.flush()
+        await it_lifecycle.sync_students(db, [student_id], actor=None, cause="hr_review")  # itc-031
         logger.info("hr_review_withdrawn", extra={"extra_fields": {"task_id": str(task.id)}})
 
 
@@ -225,6 +228,8 @@ async def save(db: AsyncSession, hr: User, student_id: UUID, payload: HrReviewPa
         student = await db.get_one(User, task.student_user_id)
         await notify(db, [student], "it.placement.updated", student.id, action_url="/it/student/placement-status")
         await notify(db, [await _counselor(db, student.id)], "it.hr_review.updated", task.id, action_url=f"/it/counselor/students/{student.id}/profile")
+        await db.flush()
+        await it_lifecycle.sync_students(db, [student.id], actor=hr, cause="hr_review")  # itc-031
     await db.commit()
     await db.refresh(task)
     logger.info("hr_review_saved", extra={"extra_fields": {"task_id": str(task.id), "actor_id": str(hr.id), "stage": task.stage, "moved": moved}})

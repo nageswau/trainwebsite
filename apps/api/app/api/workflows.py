@@ -148,6 +148,7 @@ from app.services import (
     document_access,
     hr_reviews,
     interviews,
+    it_lifecycle,
     offers,
     permissions,
     question_import,
@@ -552,6 +553,7 @@ async def create_enrollment(payload: EnrollmentCreate, user: User = Depends(get_
         await db.flush()
         await _ensure_invoice(db, payment, student)
         await _audit(db, user, "payment.create", "payment", payment.id, {"amount": float(payment.amount), "division": payment.division, "auto_created_from": "enrollment"})
+    await it_lifecycle.sync(db, [item.id], actor=user, cause="enrolment")  # itc-031: the first history row
     await _notify_user(db, student, "Enrollment confirmed", f"You are enrolled in {batch.name} ({batch.schedule}). Your enrollment number is {code}. Review and accept the enrolment agreement to activate it.", "/it/student/course")
     await db.commit()
     await db.refresh(item)
@@ -591,6 +593,8 @@ async def accept_agreement(agreement_id: UUID, request: Request, user: User = De
     pending = (await db.scalars(select(Enrollment).where(Enrollment.student_id == user.id, Enrollment.status == "pending_consent"))).all()
     for enrollment in pending:
         enrollment.status = "active"
+    await db.flush()
+    await it_lifecycle.sync(db, [e.id for e in pending], actor=user, cause="enrolment")  # itc-031 (a started batch: Training active)
     await db.commit()
     return {"agreement_id": agreement.id, "accepted": True, "activated_enrollments": len(pending)}
 
@@ -1903,6 +1907,7 @@ async def _issue_certificate(db: AsyncSession, user: User, enrollment_id: UUID, 
     item.emailed_at = datetime.now(UTC)
     override_used = not criteria["eligible"]
     await _audit(db, user, "certificate.issue", "certificate", item.id, {"enrollment_id": enrollment.id, "override": override_used, "override_reason": override_reason if override_used else None})
+    await it_lifecycle.sync(db, [enrollment.id], actor=user, cause="certificate")  # itc-031: Completed
     await db.commit()
     await db.refresh(item)
     return item

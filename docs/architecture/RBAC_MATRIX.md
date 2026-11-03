@@ -3614,3 +3614,10 @@ No grant change. `GET/PUT /admin/it/fee-reminder-settings` are `it_admin` (IT) o
 history rides the itc-013 fee-account read gate (§2.246): the student their own, the linked IT counselor, a `payments.view` holder in
 IT; another student's account stays 404. The daily job is a system task (no caller). Pinned by
 `apps/api/tests/test_itc_016_fee_reminders.py`.
+
+### 2.259 IT student lifecycle *(added 2026-11-03 — `DEC-SCOPE-359`, itc-031)*
+
+No grant change. The lifecycle read uses the IT student record's scope (`it_student_profiles.staff_student`): the itc-003 counselor for
+linked students (others 404), the IT Admin for any IT student; every other role 403. Only the IT Admin sets or clears the hand-set
+"Not placed" / "Closed" (no counselor route). The student reads their own stage on `/it/me/profile` as the safe subset (no "At risk"
+wording, no history). Pinned by `apps/api/tests/test_itc_031_lifecycle_api.py`.
