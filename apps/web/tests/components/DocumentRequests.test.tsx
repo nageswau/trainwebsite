@@ -4,6 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import ApplicationChecklistPanel from "@/components/ApplicationChecklistPanel";
 import CounselorDocumentRequestsPanel from "@/components/CounselorDocumentRequestsPanel";
 import StudentDocumentRequestsPanel from "@/components/StudentDocumentRequestsPanel";
+import { todayInIndia } from "@/lib/documentRequests";
+
+// A due date the forms accept on any run day (they refuse a past date): a week ahead, in India time like the form.
+const DUE = todayInIndia(new Date(Date.now() + 7 * 86_400_000));
 
 // ccrm-020 (DEC-SCOPE-266): the counselor's requests on the student 360, the student's "Requested documents", and the checklist row's
 // "Request from student".
@@ -47,13 +51,13 @@ describe("CounselorDocumentRequestsPanel", () => {
 
     fireEvent.change(screen.getByLabelText("Document type"), { target: { value: "Other" } });
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "IELTS scorecard" } });
-    fireEvent.change(screen.getByLabelText("Due date"), { target: { value: "2026-11-01" } });
+    fireEvent.change(screen.getByLabelText("Due date"), { target: { value: DUE } });
     fireEvent.change(screen.getByLabelText("Application (optional)"), { target: { value: "a1" } });
     fireEvent.change(screen.getByLabelText("Note to the student (optional)"), { target: { value: "Academic, 6.5" } });
     fireEvent.click(screen.getByRole("button", { name: "Send request" }));
     await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) => url === STAFF && init?.method === "POST")).toBe(true));
     const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST")!;
-    expect(JSON.parse(String(post[1]!.body))).toEqual({ document_type: "Other", document_label: "IELTS scorecard", due_date: "2026-11-01", application_id: "a1", note: "Academic, 6.5" });
+    expect(JSON.parse(String(post[1]!.body))).toEqual({ document_type: "Other", document_label: "IELTS scorecard", due_date: DUE, application_id: "a1", note: "Academic, 6.5" });
     expect(await screen.findByText("Request sent to the student.")).toBeInTheDocument();
   });
 
@@ -128,17 +132,17 @@ describe("ApplicationChecklistPanel request from student", () => {
         requested = true;
         return json({ request: req() }, true, 201);
       }
-      return json(payload([requested ? item({ mark: "requested", status: "requested", status_label: "Requested", open_request: { id: "r1", due_date: "2026-11-01" } }) : item()]));
+      return json(payload([requested ? item({ mark: "requested", status: "requested", status_label: "Requested", open_request: { id: "r1", due_date: DUE } }) : item()]));
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<ApplicationChecklistPanel applicationId="a1" onChanged={vi.fn()} />);
     const row = (await screen.findByText("IELTS scorecard")).closest("li") as HTMLElement;
     fireEvent.click(within(row).getByRole("button", { name: "Request from student" }));
-    fireEvent.change(within(row).getByLabelText("Due date for IELTS scorecard"), { target: { value: "2026-11-01" } });
+    fireEvent.change(within(row).getByLabelText("Due date for IELTS scorecard"), { target: { value: DUE } });
     fireEvent.click(within(row).getByRole("button", { name: "Send request" }));
     await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) => url === STAFF && init?.method === "POST")).toBe(true));
     const post = fetchMock.mock.calls.find(([url, init]) => url === STAFF && init?.method === "POST")!;
-    expect(JSON.parse(String(post[1]!.body))).toEqual({ due_date: "2026-11-01", application_id: "a1", checklist_item_id: "i2" });
+    expect(JSON.parse(String(post[1]!.body))).toEqual({ due_date: DUE, application_id: "a1", checklist_item_id: "i2" });
     const after = (await screen.findByText(/Requested from the student · due/)).closest("li") as HTMLElement;
     expect(within(after).queryByRole("button", { name: "Request from student" })).toBeNull();
   });
