@@ -5775,3 +5775,19 @@ DEC-SCOPE-390. Additive; every route keeps rec-017's requirement scope (out of s
   location) flags the job's open applications and sends `it.requirement.review_needed`
   ("Applications to review: N. …", link `/recruiter/requirements/{id}`) to its owners but the editor. Responses unchanged.
 - Any application status move clears `needs_review_since`.
+
+## 12KJ. Candidate bulk import (hrc-013) — addendum, 2026-11-04
+
+DEC-SCOPE-391. Every route needs a candidate writer holding `candidates.import` (else **403**, anonymous **401**).
+`GET /api/v1/recruiter/candidate-imports/template` — the CSV header row (`no-store`). `POST /api/v1/recruiter/candidate-imports/preview`
+(multipart `file` .csv/.xlsx ≤ 1 MB ≤ 1,000 rows, `source_id`) — **200** `{total_rows, new_count, created_count (0), matched_count,
+error_count, rows: [{row_number, status: new|matched|error, name, candidate: {id, candidate_code, name}|null, same_as_row, reason}]}`;
+writes nothing. `POST /api/v1/recruiter/candidate-imports` (same form + required `Idempotency-Key`) — **201** the report `{id, file_name,
+source, uploaded_by, total_rows, created_count, matched_count, error_count, created_at, replayed, rows: [{row_number, status:
+created|matched|error, candidate, reason}]}`; the same key with the same file and source, or the same file and source under another key,
+replays (`replayed: true`); the key with another file or source **422**. Bad files: wrong type **415**, too large **413**, unknown /
+repeated / missing columns, non-UTF-8 CSV, no rows or too many rows **422** (one `detail` string listing every problem); an inactive
+source **422**; another import running past 5 s **409**. `GET /api/v1/recruiter/candidate-imports?limit&offset` — the caller's imports
+(placement manager and super_admin: all), newest first. `GET /api/v1/recruiter/candidate-imports/{id}` — the report; **404** outside
+that scope. `GET /api/v1/recruiter/candidate-imports/{id}/report.csv` — `row_number, status, candidate_code, name, reason`, every text
+cell formula-escaped.

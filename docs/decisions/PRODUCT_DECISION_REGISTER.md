@@ -11679,3 +11679,24 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   R9 confirm = the application writers (the status-move gate).
 - **Numbering:** migration `0267_application_review`; API §12KI; RBAC §2.284.
 - **Feature ID authorized:** `hrc-009`. **Status:** built on `worktree-hrc-009`.
+
+### DEC-SCOPE-391 — Candidate bulk import (`hrc-013`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-013` (PDF §5.1 "bulk import", §14 "failed imports", §16 "imports with
+  validation, duplicate detection, error reports and safe retry"; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01
+  (backlog Q-00). Dependencies hrc-010 (DEC-SCOPE-383) and hrc-014 (DEC-SCOPE-377) merged. The owner said to proceed with the recommended
+  answers, so Q-13 and I1–I12 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-013-candidate-bulk-import-design.md`.
+- **Behaviour:** a recruiter checks a CSV/XLSX file of candidates (a read-only preview: new, already a candidate, or an error per row),
+  then imports it with one chosen source. New people are created as by the manual form; a known mobile or email is matched and that
+  candidate is never changed; a repeat inside the file matches the earlier row. Each import is stored with a per-row report (no contact
+  data) and a formula-safe CSV export; a retry with the same key, or the same file again, replays the report and creates nothing.
+- **Builder's calls:** Q-13 reverses recruiter Q-32 (manual entry only) and caps a file at 1,000 rows and 1 MB. I1 `candidates.import`
+  defaults to `placement_team` and `placement_manager`; never a reader role. I3 no salary, education/employment rows, skills, status or
+  owner columns. I4 one source per file. I7 exact Q-07 keys; merged records lead to the survivor. I8 Idempotency-Key per uploader + file
+  SHA-256 replay; imports serialised by an advisory lock (409 after 5 s). I9 batch and row tables keep no name, mobile or email.
+  I11 history: own imports, all for placement managers and super_admin.
+- **Not built:** updating existing candidates from a file, salary/structured rows/skills/resumes in a file, background imports, the
+  data-quality dashboard (hrc-034 reads `candidate_import_rows`).
+- **Numbering:** migration `0268_candidate_imports`; API §12KJ; RBAC §2.285; grant `candidates.import` (declared by hrc-002).
+- **Feature ID authorized:** `hrc-013`. **Status:** built on `worktree-hrc-013`.
