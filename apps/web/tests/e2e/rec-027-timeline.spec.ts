@@ -68,6 +68,7 @@ test("timeline: a call then a follow-up read newest first on the company; a cand
   await page.locator("#cand-name").fill("E2E Rec027 Rahul");
   await page.locator("#cand-mobile").fill(`9${String(Date.now()).slice(-9)}`);
   await page.locator("#cand-source_id").selectOption({ index: 1 });
+  await page.locator("#cand-lawful_basis").selectOption("provided_for_placement"); // hrc-035 K1
   await page.getByRole("button", { name: "Add candidate" }).click();
   await page.waitForURL(/\/recruiter\/candidates\/[0-9a-f-]{36}/);
   const candidateTimeline = page.getByRole("region", { name: "Timeline" });

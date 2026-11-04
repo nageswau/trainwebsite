@@ -111,7 +111,8 @@ async def _create(db: AsyncSession, *, name: str, email: str, phone: str | None,
     db.add(candidate)
     await db.flush()
     if consent_version is not None:
-        db.add(CandidateConsent(candidate_id=candidate.id, user_id=None, action="opt_in", consent_version=consent_version, ip_address=ip))
+        db.add(CandidateConsent(candidate_id=candidate.id, user_id=None, action="opt_in", consent_version=consent_version, ip_address=ip,
+                                    source="website", lawful_basis="consent"))  # hrc-035 K1
     db.add(AuditLog(user_id=None, action="candidate.create", entity_type="candidates", entity_id=str(candidate.id), metadata_json={"via": "website"}))
     await duplicates.detect(db, candidate.id)  # hrc-014 D2: probable matches go to the review queue
     await routing.on_website_candidate(db, candidate)  # hrc-024 R7: a recruiter by rule, or the unassigned queue and an alert

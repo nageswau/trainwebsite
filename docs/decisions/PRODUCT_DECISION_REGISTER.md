@@ -11777,3 +11777,28 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   applications into job applications.
 - **Numbering:** migration `0271_application_record`; API §12KM. No new permission.
 - **Feature ID authorized:** `hrc-026`. **Status:** built on `worktree-hrc-026`.
+### DEC-SCOPE-396 — Candidate consent, retention, deletion and access revocation (`hrc-035`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-035` (PDF §2 consent, §15 "consent … retention/deletion workflows …
+  access revocation when staff leave or change roles"; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog
+  Q-00). Dependencies hrc-012 (`DEC-SCOPE-382`) and hrc-022 (`DEC-SCOPE-386`) merged. The retention periods (Q-31, shared with itc-033's
+  `DATA_RETENTION_POLICY.md`, `DEC-PRIV-001`) have no legal sign-off; the owner said to proceed with the recommended answers, so K1–K10 are
+  **the builder's calls (`NEEDS_CONFIRMATION`)** and the retention rule ships **off**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-035-candidate-privacy-design.md`.
+- **Behaviour:** every consent row records its source (student, portal, website, manual, import) and lawful basis (`consent` or
+  `provided_for_placement`, DPDP Act 2023 s.7(a)); recruiters choose the basis when adding or importing candidates and the candidate record
+  shows it. A portal candidate asks to have their data deleted from Privacy; the HR Manager (`candidates.erase`) declines with a reason the
+  candidate reads, or approves, which anonymises the candidate (contact details, profile rows, notes, resumes and documents and their files,
+  website applications, message bodies and audit before/after values) and closes the account; the record leaves every recruiter screen but
+  its applications still count in reports. An offer in progress holds the approval. Super admin may set a retention period (6–120 months
+  after the last activity); a daily job then anonymises inactive, unheld, non-student candidates in batches. Deactivating a user removes
+  them as placement-officer owner and collaborator of every candidate and ends the session of the candidate-access roles.
+- **Builder's calls:** K1 sources/bases; omitted basis = no row (older clients). K2 the latest basis on the detail. K3 the anonymiser
+  field list (placeholder email `anonymised-<id>@deleted.local` keeps `ck_candidates_contact`). K4 `pool_filter` excludes anonymised.
+  K5 hold = an `offer_pending`/`offer_received` offer; retention also skips open applications. K6 one open request per candidate, on
+  SEC-002's `data_subject_requests`; the IT-admin SEC-002 fulfil refuses a candidate subject (409). K7 `candidates.erase` (HR Manager
+  default). K8 one-row `candidate_retention_settings`, NULL = off, beat 02:00 IST. K9 history reason `reassign`, audit reason
+  `deactivated`; `session_version` +1 for placement_officer, placement_manager, hr_team, hr_manager. K10 not built: staff-initiated
+  anonymisation for candidates without a login, a candidate data export, a decision email, student retention.
+- **Numbering:** migration `0273_candidate_privacy`; API §12KO; RBAC §2.290.
+- **Feature ID authorized:** `hrc-035`. **Status:** built on `worktree-hrc-035`.

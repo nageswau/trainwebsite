@@ -35,6 +35,7 @@ test("screening: Rejected needs remarks, Hold flags, Shortlisted moves the statu
   await page.locator("#cand-name").fill(name);
   await page.locator("#cand-mobile").fill(`8${String(stamp).slice(-9)}`);
   await page.locator("#cand-source_id").selectOption({ index: 1 });
+  await page.locator("#cand-lawful_basis").selectOption("provided_for_placement"); // hrc-035 K1
   await page.getByRole("button", { name: "Add candidate" }).click();
   await page.waitForURL(/\/recruiter\/candidates\/[0-9a-f-]{36}/);
   const candidateId = page.url().split("/").pop() as string;

@@ -48,6 +48,7 @@ from app.services import candidate_duplicates as duplicates
 from app.services import candidate_merge, candidate_search, candidate_skills, compensation, course_skills, recruitment_history
 from app.services import candidate_ownership as ownership
 from app.services import candidate_previews as previews
+from app.services import candidate_privacy as privacy
 from app.services import candidate_profile as profile
 from app.services import candidates as svc
 from app.services import resume_extraction as extraction
@@ -164,6 +165,7 @@ async def search_candidates(
 async def create_candidate(payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Q-07: a known mobile or email is the 409 panel, before and (by the unique indexes) under a race."""
     svc.require_writer(user)
+    lawful_basis = privacy.basis(payload.pop("lawful_basis", None)) if isinstance(payload, dict) else None  # hrc-035 K1
     data = _body(CandidateCreate, payload).model_dump()
     stored = {kind: data.pop(kind) for kind in profile.ROWS}  # hrc-010 P1
     await svc.require_compensation(db, user, payload)
@@ -179,6 +181,7 @@ async def create_candidate(payload: dict = Body(...), user: User = Depends(get_c
         if values:
             await profile.replace(db, candidate.id, kind, values)
     ownership.on_create(db, user, candidate)  # hrc-012 O7
+    privacy.record_staff_basis(db, user, [candidate.id], "manual", lawful_basis)  # hrc-035 K1
     filled = {**data, **stored}
     svc.audit(db, user, "create", candidate, {"fields": sorted(k for k, v in filled.items() if v not in (None, []))})
     await duplicates.detect(db, candidate.id)  # hrc-014 D2: probable duplicates are queued, never blocked

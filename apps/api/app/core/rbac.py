@@ -82,7 +82,7 @@ ROLES: tuple[str, ...] = tuple(PERMISSIONS)
 # nehn-031 adds override, configure; hrc-002 (DEC-SCOPE-374 R4) adds the recruitment actions publish, export, import, merge, release.
 ACTIONS = (
     "view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage", "refund",
-    "publish", "export", "import", "merge", "release",
+    "publish", "export", "import", "merge", "release", "erase",
 )  # fmt: skip
 CATALOGUE: dict[str, dict] = {
     # itc-015 (DEC-SCOPE-364): `refund` -- an IT enrolment's credit notes, write-offs, refunds and payment corrections (migration 0246).
@@ -111,7 +111,8 @@ CATALOGUE: dict[str, dict] = {
     # holder (super_admin holds all); each owning item adds `require_permission` and its defaults: approve hrc-007, publish hrc-008,
     # export hrc-020, import hrc-013, merge hrc-014, release hrc-030.
     "jobs": {"label": "Vacancies (approval and publishing)", "actions": ("approve", "publish")},
-    "candidates": {"label": "Candidates (export, import, merge)", "actions": ("export", "import", "merge")},
+    # hrc-035 (DEC-SCOPE-396 K7): `erase` -- decides candidates' "delete my data" requests and reads the retention rule (migration 0273).
+    "candidates": {"label": "Candidates (export, import, merge, erase)", "actions": ("export", "import", "merge", "erase")},
     "results": {"label": "Interview results", "actions": ("release",)},
 }
 # The day-one grants, equal to the inline checks they replace (P3): admin.ensure_admin and telecaller_reports' REPORT_ROLES.
@@ -133,7 +134,8 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     # hrc-014 (migration 0256 seeds merge); hrc-008 (DEC-SCOPE-385 V4, migration 0262 seeds publish): who sees a vacancy
     "placement_manager": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.merge", "jobs.publish", "candidates.import"),
     # hrc-007 (DEC-SCOPE-380 A12; migration 0257 seeds it): the HR Manager is the vacancy approver.
-    "hr_manager": ("jobs.approve",),
+    # hrc-035 (DEC-SCOPE-396 K7; migration 0273 seeds it): the HR Manager decides candidate deletion requests.
+    "hr_manager": ("candidates.erase", "jobs.approve"),
     "overseas_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,
     "telecaller_manager": _TELECALLER_REPORTS,
     # nehn-030 (0201 seeds view); nehn-031 W3/W4 (0204 seeds issue, override): issuance is the coordinator's alone (DEC-ROLE-003).

@@ -112,7 +112,8 @@ async def _seed(db: AsyncSession, user: User, candidate: Candidate) -> int:
 
 
 def _record(db: AsyncSession, user: User, candidate: Candidate, action: str, ip: str | None, metadata: dict) -> None:
-    db.add(CandidateConsent(candidate_id=candidate.id, user_id=user.id, action=action, consent_version=CONSENT_VERSION, ip_address=ip))
+    db.add(CandidateConsent(candidate_id=candidate.id, user_id=user.id, action=action, consent_version=CONSENT_VERSION, ip_address=ip,
+                            source="student", lawful_basis="consent"))  # hrc-035 K1
     db.add(AuditLog(user_id=user.id, action=f"placement_pool.{action}", entity_type="candidates", entity_id=str(candidate.id), metadata_json=metadata))
     logger.info("placement_pool.%s user=%s candidate=%s", action, user.id, candidate.id)
 

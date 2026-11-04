@@ -23,6 +23,7 @@ from app.core.database import get_db
 from app.core.logging import get_logger
 from app.models import AuditLog, CandidateImportBatch, RecCandidateSource, User
 from app.services import candidate_import as imports
+from app.services import candidate_privacy as privacy
 from app.services import candidates as svc
 from app.services.recruiter import MANAGER_ROLE
 
@@ -78,6 +79,7 @@ async def _replay(db: AsyncSession, user: User, key: str, digest: str, source_id
 async def commit(
     file: UploadFile = File(...),
     source_id: UUID = Form(...),
+    lawful_basis: str | None = Form(None),  # hrc-035 (DEC-SCOPE-396 K1): optional for older clients; the import form requires it
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -85,6 +87,7 @@ async def commit(
     """I6: 201 with the per-row report; a bad file, key or source is 422 before any row (nothing is created)."""
     started = time.monotonic()
     await imports.require_importer(db, user)
+    lawful_basis = privacy.basis(lawful_basis or None)
     if not idempotency_key:
         raise HTTPException(422, "Idempotency-Key header is required")
     if not KEY_PATTERN.fullmatch(idempotency_key):
@@ -113,6 +116,8 @@ async def commit(
         if _lock_timed_out(exc):  # a person's row lock held past lock_timeout by a concurrent edit
             raise HTTPException(409, IN_PROGRESS) from exc
         raise
+    created = [UUID(r["candidate"]["id"]) for r in results if r["status"] == "created"]
+    privacy.record_staff_basis(db, user, created, "import", lawful_basis)  # hrc-035 K1: one row per created candidate
     await imports.store(db, batch, results)
     tally = {"created": batch.created_count, "matched": batch.matched_count, "error": batch.error_count}
     db.add(AuditLog(user_id=user.id, action="candidate.import", entity_type="candidate_import_batches", entity_id=str(batch.id),

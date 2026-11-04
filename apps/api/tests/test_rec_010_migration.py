@@ -32,7 +32,8 @@ def test_models_match_the_migration():
 
     assert _migration.CHECKS == CANDIDATE_CONSENT_CHECKS  # one source of truth for the CHECK text
     table = CandidateConsent.__table__
-    assert {c.name for c in table.columns} == {"id", "candidate_id", "user_id", "action", "consent_version", "ip_address", "created_at"}
+    assert {c.name for c in table.columns} == {"id", "candidate_id", "user_id", "action", "consent_version", "ip_address", "created_at",
+                                               "source", "lawful_basis"}  # hrc-035 (DEC-SCOPE-396 K1, migration 0273)  # fmt: skip
     names = {i.name for i in table.indexes} | {c.name for c in table.constraints}
     assert {"ix_candidate_consents_candidate", *CANDIDATE_CONSENT_CHECKS} <= names
 

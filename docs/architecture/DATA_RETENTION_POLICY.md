@@ -14,7 +14,8 @@ requirements"). That points to the Digital Personal Data Protection Act 2023, bu
 | A user can request an export or erasure of their data; an admin fulfils it | `/account/data-requests`, admin data-request fulfil | STU-010 |
 | Consent evidence: WhatsApp/SMS opt-in times (ENH-014) and the call opt-out time (itc-033) plus `notification_preference.update` audit rows | `notification_preferences`, `audit_logs` | `DEC-NOT-001`, `DEC-SCOPE-357` |
 | Resume versions are never deleted automatically; every download is audited | `student_resumes` | `DEC-SCOPE-350` R5/R7 |
-| No scheduled purge or anonymisation job exists | `app/worker.py` beat schedule | — |
+| No scheduled purge or anonymisation job runs by default. hrc-035 added a candidate anonymisation job that stays **off** until super_admin sets a period (6–120 months); students are never in it | `app/worker.py` beat schedule, `candidate_retention_settings` | `DEC-SCOPE-396` K8 |
+| A candidate's "delete my data" request is decided by the HR Manager; approval anonymises the candidate and deletes their files | `services/candidate_privacy.py` | `DEC-SCOPE-396` K3/K7 |
 
 ## 2. Proposed retention periods (all `NEEDS_CONFIRMATION`; not implemented)
 

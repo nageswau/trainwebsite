@@ -6457,6 +6457,12 @@ CANDIDATE_PROFILE_CHECKS = {
     "ck_candidates_preferred_contact": _in("preferred_contact", CANDIDATE_CONTACT_METHODS),
     "ck_candidates_relevant_experience": "relevant_experience_months IS NULL OR relevant_experience_months BETWEEN 0 AND 600",
 }
+# hrc-035 (DEC-SCOPE-396 K3): why a candidate was anonymised; migration 0273 repeats these checks (test_hrc_035_migration).
+CANDIDATE_ANONYMISED_REASONS = ("request", "retention")
+CANDIDATE_PRIVACY_CHECKS = {
+    "ck_candidates_anonymised": "(anonymised_at IS NULL) = (anonymised_reason IS NULL)",
+    "ck_candidates_anonymised_reason": _in("anonymised_reason", CANDIDATE_ANONYMISED_REASONS),
+}
 CANDIDATE_EMPLOYMENT_CHECKS = {
     "ck_candidate_employment_dates": "end_date IS NULL OR end_date >= start_date",
     "ck_candidate_employment_type": _in("employment_type", JOB_EMPLOYMENT_TYPES),
@@ -6470,7 +6476,8 @@ class Candidate(Base, TimestampMixin):
 
     __tablename__ = "candidates"
     __table_args__ = (
-        *(CheckConstraint(sql, name=name) for name, sql in (CANDIDATE_CHECKS | CANDIDATE_PACKAGE_CHECKS | CANDIDATE_MERGE_CHECKS | CANDIDATE_PROFILE_CHECKS).items()),
+        *(CheckConstraint(sql, name=name) for name, sql in (CANDIDATE_CHECKS | CANDIDATE_PACKAGE_CHECKS | CANDIDATE_MERGE_CHECKS | CANDIDATE_PROFILE_CHECKS
+                                                            | CANDIDATE_PRIVACY_CHECKS).items()),
         Index("uq_candidates_mobile", "mobile_normalized", unique=True, postgresql_where=text("mobile_normalized IS NOT NULL")),
         Index("uq_candidates_email", text("lower(email)"), unique=True, postgresql_where=text("email IS NOT NULL")),
         Index("ix_candidates_source_id", "source_id"),
@@ -6544,6 +6551,28 @@ class Candidate(Base, TimestampMixin):
     # pool-wide (O1); services/candidate_ownership decides who may change them.
     owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     placement_officer_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+    # hrc-035 (DEC-SCOPE-396 K3/K4): set once by the anonymiser; an anonymised candidate is outside `candidates.pool_filter()` for good.
+    anonymised_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    anonymised_reason: Mapped[str | None] = mapped_column(String(10), nullable=True)
+
+
+# hrc-035 (DEC-SCOPE-396 K8): one row (`id = 1`); `months` NULL = the retention rule is off (the default until legal sign-off).
+CANDIDATE_RETENTION_CHECKS = {
+    "ck_candidate_retention_settings_one_row": "id = 1",
+    "ck_candidate_retention_settings_months": "months IS NULL OR months BETWEEN 6 AND 120",
+}
+
+
+class CandidateRetentionSetting(Base, TimestampMixin):
+    """hrc-035 (K8): how many months after a candidate's last activity the daily sweep anonymises them, and its last run."""
+
+    __tablename__ = "candidate_retention_settings"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_RETENTION_CHECKS.items())
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    months: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_run_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class CandidateEducation(Base):
@@ -6995,6 +7024,13 @@ class CandidateDocument(Base):
 # rec-010 (DEC-SCOPE-138): migration 0123 repeats CANDIDATE_CONSENT_CHECKS (test_rec_010_migration asserts they stay identical).
 CANDIDATE_CONSENT_ACTIONS = ("opt_in", "opt_out")
 CANDIDATE_CONSENT_CHECKS = {"ck_candidate_consents_action": f"action IN ({', '.join(repr(v) for v in CANDIDATE_CONSENT_ACTIONS)})"}
+# hrc-035 (DEC-SCOPE-396 K1): where the record came from and the basis for holding it; migration 0273 repeats these checks.
+CANDIDATE_CONSENT_SOURCES = ("student", "portal", "website", "manual", "import")
+CANDIDATE_LAWFUL_BASES = ("consent", "provided_for_placement")
+CANDIDATE_CONSENT_BASIS_CHECKS = {
+    "ck_candidate_consents_source": _in("source", CANDIDATE_CONSENT_SOURCES),
+    "ck_candidate_consents_basis": _in("lawful_basis", CANDIDATE_LAWFUL_BASES),
+}
 
 
 class CandidateConsent(Base):
@@ -7003,7 +7039,7 @@ class CandidateConsent(Base):
 
     __tablename__ = "candidate_consents"
     __table_args__ = (
-        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_CONSENT_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in (CANDIDATE_CONSENT_CHECKS | CANDIDATE_CONSENT_BASIS_CHECKS).items()),
         Index("ix_candidate_consents_candidate", "candidate_id", "created_at"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -7014,6 +7050,8 @@ class CandidateConsent(Base):
     consent_version: Mapped[str] = mapped_column(String(20))
     ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    source: Mapped[str | None] = mapped_column(String(10), nullable=True)  # hrc-035 K1
+    lawful_basis: Mapped[str | None] = mapped_column(String(25), nullable=True)
 
 
 # rec-011 (DEC-SCOPE-137): EVID-018 S2-§3 levels (SK1), the six S2-§17 skill sources and the three statuses. Migration 0122 repeats

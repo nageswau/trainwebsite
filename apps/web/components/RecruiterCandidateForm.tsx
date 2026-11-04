@@ -10,7 +10,7 @@ import { sendJson } from "@/lib/apiErrors";
 import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
 import {
   AMOUNTS, CANDIDATES_PATH, CANDIDATES_URL, CHOICES, COMPENSATION_LABELS, COMPENSATION_VIEW, CONTACT_METHODS, DUPLICATE_CHECK_URL, EMPTY_FORM, FIELDS,
-  NEGOTIABLE, PERIOD_LABEL, STATUSES, STATUS_LABEL, candidateBody, candidateUrl, displayValue, formFromDetail, missingRequired, shownFields,
+  LAWFUL_BASES, NEGOTIABLE, PERIOD_LABEL, STATUSES, STATUS_LABEL, candidateBody, candidateUrl, displayValue, formFromDetail, missingRequired, shownFields,
   type CandidateDetail, type CandidateForm, type CandidateMatch,
 } from "@/lib/recruiterCandidates";
 import { EXCHANGE_RATES_URL, type ExchangeRate } from "@/lib/recruiterCatalogue";
@@ -73,6 +73,7 @@ export default function RecruiterCandidateForm({ initial, onSaved, onLatest, onC
   const [matches, setMatches] = useState<CandidateMatch[]>([]);
   const [notice, setNotice] = useState<Notice>(null);
   const [busy, setBusy] = useState(false);
+  const [basis, setBasis] = useState(""); // hrc-035 (DEC-SCOPE-396 K1): recorded once, when the candidate is added
   const [focusRequest, setFocusRequest] = useState(0);
   const sending = useRef(false); // a double click sends one request (state only updates after the handler)
   // hrc-001 H2: an edit follows what the API sent; a new candidate follows the grant (no salary inputs until it is known).
@@ -114,12 +115,12 @@ export default function RecruiterCandidateForm({ initial, onSaved, onLatest, onC
   async function submit(event: FormEvent) {
     event.preventDefault();
     setNotice(null);
-    const missing = missingRequired(values);
+    const missing = missingRequired(values) ?? (!initial && !basis ? "Choose why EduSphere may hold this candidate's details." : null);
     if (missing) return setNotice({ text: missing, failed: true });
     if (sending.current) return;
     sending.current = true;
     setBusy(true);
-    const body = initial ? { ...candidateBody(values, "edit", compensation), expected_updated_at: guard.token } : candidateBody(values, "create", compensation);
+    const body = initial ? { ...candidateBody(values, "edit", compensation), expected_updated_at: guard.token } : { ...candidateBody(values, "create", compensation), lawful_basis: basis };
     const outcome = await sendJson(initial ? candidateUrl(initial.id) : CANDIDATES_URL, initial ? "PATCH" : "POST", body);
     sending.current = false;
     setBusy(false);
@@ -170,6 +171,15 @@ export default function RecruiterCandidateForm({ initial, onSaved, onLatest, onC
               onChange={(e) => set("source_detail", e.target.value)} />
             <span id="cand-source_detail-hint" className="muted" style={{ fontSize: 13 }}>e.g. the course, college or referrer</span>
           </div>
+          {!editing && (
+            <div className="field">
+              <label htmlFor="cand-lawful_basis">Basis for holding the details *</label>
+              <select id="cand-lawful_basis" aria-required value={basis} disabled={busy} onChange={(e) => setBasis(e.target.value)}>
+                <option value="">Choose a basis</option>
+                {LAWFUL_BASES.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}
+              </select>
+            </div>
+          )}
           <div className="field">
             <label htmlFor="cand-status">Status</label>
             <select id="cand-status" value={values.status} disabled={busy} onChange={(e) => set("status", e.target.value)}>

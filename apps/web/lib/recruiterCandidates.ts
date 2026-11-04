@@ -116,6 +116,7 @@ export type CandidateDetail = CandidateItem & Package & {
   merged_into?: { id: string; candidate_code: string } | null; // hrc-014: the candidate this one was merged into
   // hrc-023 (DEC-SCOPE-389 W1/W9): the website visit's campaign and the public job applications linked to this candidate
   utm?: Record<string, string> | null; website_applications?: WebsiteApplication[];
+  consent?: CandidateConsent | null; // hrc-035 (DEC-SCOPE-396 K2): the latest recorded basis; null = none recorded
   // hrc-010 (optional: an older API answer has none of these)
   country?: string | null; state?: string | null; city?: string | null; preferred_contact?: string | null; email_verified_at?: string | null;
   relevant_experience_months?: number | null; tools?: string[]; languages?: string[]; preferred_roles?: string[]; work_modes?: string[];
@@ -226,6 +227,23 @@ export function candidateBody(form: CandidateForm, mode: "create" | "edit", comp
 }
 
 /** The form's own required check, so an incomplete form sends nothing. Null when complete. */
+// hrc-035 (DEC-SCOPE-396 K1/K2): why EduSphere may hold a candidate's details, and where the record came from.
+export const LAWFUL_BASES = [
+  { key: "provided_for_placement", label: "They shared their details for job placement" },
+  { key: "consent", label: "They agreed to be in the candidate pool" },
+] as const;
+const CONSENT_SOURCE_LABEL: Record<string, string> = {
+  student: "student opt-in", portal: "candidate portal", website: "website form", manual: "added by a recruiter", import: "file import",
+};
+export type CandidateConsent = { action: string; source: string | null; lawful_basis: string | null; consent_version: string; recorded_at: string };
+
+export function consentSummary(consent: CandidateConsent | null | undefined): string {
+  if (!consent) return "No basis recorded";
+  const basis = LAWFUL_BASES.find((b) => b.key === consent.lawful_basis)?.label ?? "Consent recorded";
+  const source = consent.source ? CONSENT_SOURCE_LABEL[consent.source] ?? consent.source : null;
+  return source ? `${basis} (${source})` : basis;
+}
+
 export function missingRequired(form: CandidateForm): string | null {
   const contact = !form.mobile.trim() && !form.email.trim();
   const fields = [!form.name.trim() && "name", !form.source_id && "source"].filter(Boolean) as string[];

@@ -12,7 +12,7 @@ import {
   IMPORT_COLUMNS, IMPORT_MAX_BYTES, IMPORT_MAX_ROWS, IMPORTS_URL, PREVIEW_URL, TEMPLATE_URL, previewCounts, reportCounts, reportCsvUrl,
   type CandidateRef, type ImportReport, type Preview,
 } from "@/lib/recruiterCandidateImport";
-import { CANDIDATES_PATH } from "@/lib/recruiterCandidates";
+import { CANDIDATES_PATH, LAWFUL_BASES } from "@/lib/recruiterCandidates";
 
 const FILE_ID = "candidate-import-file";
 const SOURCE_ID = "candidate-import-source";
@@ -20,8 +20,11 @@ const NETWORK_ERROR = "The connection dropped. Import again — the same file wo
 const PREVIEW_LABEL = { new: "New candidate", matched: "Already a candidate", error: "Error" } as const;
 const RESULT_LABEL = { created: "Added", matched: "Already a candidate", error: "Error" } as const;
 
-function precheck(file: File | undefined, source: string): string | null {
+const BASIS_ID = "candidate-import-basis";
+
+function precheck(file: File | undefined, source: string, basis: string): string | null {
   if (!file || !source) return "Choose the candidate source and a filled-in .csv or .xlsx file first.";
+  if (!basis) return "Choose why EduSphere may hold these candidates' details."; // hrc-035 (DEC-SCOPE-396 K1)
   if (!/\.(csv|xlsx)$/i.test(file.name)) return "Choose a .csv or .xlsx file.";
   if (file.size > IMPORT_MAX_BYTES) return "The file is larger than 1 MB.";
   return null;
@@ -98,6 +101,7 @@ export default function RecruiterCandidateImport() {
   const [sources, setSources] = useState<CatalogueValue[] | null>(null);
   const [sourcesFailed, setSourcesFailed] = useState(false);
   const [source, setSource] = useState("");
+  const [basis, setBasis] = useState(""); // hrc-035 K1: recorded on each candidate the import adds
   const [file, setFile] = useState<File | null>(null);
   const [key, setKey] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -114,9 +118,10 @@ export default function RecruiterCandidateImport() {
     return () => controller.abort();
   }, []);
 
-  function changed(next: { file?: File | null; source?: string }) {
+  function changed(next: { file?: File | null; source?: string; basis?: string }) {
     if (next.file !== undefined) setFile(next.file);
     if (next.source !== undefined) setSource(next.source);
+    if (next.basis !== undefined) setBasis(next.basis);
     setKey(newIdempotencyKey());
     setPreview(null);
     setError("");
@@ -136,6 +141,7 @@ export default function RecruiterCandidateImport() {
     const body = new FormData();
     body.append("file", file);
     body.append("source_id", source);
+    body.append("lawful_basis", basis);
     const outcome = await sendRequest(url, { method: "POST", headers, body });
     inFlight.current = false;
     setBusy("");
@@ -148,7 +154,7 @@ export default function RecruiterCandidateImport() {
 
   async function check(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const problem = precheck(file ?? undefined, source);
+    const problem = precheck(file ?? undefined, source, basis);
     if (problem) return setError(problem);
     setReport(null);
     const data = await send(PREVIEW_URL, "check");
@@ -187,6 +193,13 @@ export default function RecruiterCandidateImport() {
               {sources?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
             {sourcesFailed && <p className="form-error">Sources could not be loaded. Reload the page to try again.</p>}
+          </div>
+          <div className="field">
+            <label htmlFor={BASIS_ID}>Basis for holding the details</label>
+            <select id={BASIS_ID} value={basis} onChange={(e) => changed({ basis: e.target.value })} disabled={busy !== ""}>
+              <option value="">Choose a basis</option>
+              {LAWFUL_BASES.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}
+            </select>
           </div>
           <div className="field">
             <label htmlFor={FILE_ID}>Filled-in candidates file</label>
