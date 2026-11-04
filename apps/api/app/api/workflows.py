@@ -154,6 +154,7 @@ from app.services import (
     offers,
     permissions,
     question_import,
+    recruiter_companies,
     student_access,
     student_archive,
     student_document_requests,
@@ -2147,6 +2148,39 @@ async def open_jobs(user: User = Depends(get_current_user), db: AsyncSession = D
     ]
 
 
+# hrc-001 (DEC-SCOPE-371 H1): the legacy placement writes load their record through the /recruiter/* scope (out of scope = the same 404
+# as missing). it_admin keeps IT-wide access (Q-02); hr_team, which owns no records, no longer writes here.
+LEGACY_PLACEMENT_WRITERS = {"placement_team", "it_admin"}
+
+
+async def _legacy_job(db: AsyncSession, user: User, job_id: UUID) -> Job:
+    if user.role != "it_admin":
+        return await requirements.load_scoped(db, user, job_id, lock=True)
+    job = await db.scalar(select(Job).where(Job.id == job_id).with_for_update())
+    if not job:
+        raise HTTPException(404, "Job not found")
+    return job
+
+
+async def _legacy_application(db: AsyncSession, user: User, application_id: UUID) -> JobApplication:
+    if user.role != "it_admin":
+        return (await applications.load_scoped(db, user, application_id, lock=True))[0]
+    item = await db.scalar(select(JobApplication).where(JobApplication.id == application_id).with_for_update())
+    if not item:
+        raise HTTPException(404, "Job application not found")
+    return item
+
+
+async def _legacy_child(db: AsyncSession, user: User, model: type[Interview] | type[JobOffer], item_id: UUID, missing: str):
+    """An interview or offer through its application's scope: the application lock first, then the row's (the recruiter routes' order)."""
+    application_id = await db.scalar(select(model.application_id).where(model.id == item_id))
+    if application_id is None:
+        raise HTTPException(404, missing)
+    application = await _legacy_application(db, user, application_id)
+    item = await db.scalar(select(model).where(model.id == item_id).with_for_update().execution_options(populate_existing=True))
+    return item, application
+
+
 @router.get("/it/jobs")
 async def all_jobs(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     # ADM-008: HR Team's own "manages hiring requirements and shortlists" needs to pick
@@ -2195,19 +2229,24 @@ async def placement_candidates(q: str | None = None, user: User = Depends(get_cu
 
 @router.post("/it/jobs", status_code=201)
 async def create_job(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _require(user, {"placement_team", "hr_team", "it_admin"}, "it")
+    _require(user, LEGACY_PLACEMENT_WRITERS, "it")
+    owner = user.id if user.role == "placement_team" else None  # hrc-001 H1: a recruiter's requirement (and new company) is their own
     company_id = payload.get("company_id")
     if not company_id and payload.get("company_name"):
         company = await db.scalar(select(Company).where(Company.name == payload["company_name"]))
         if not company:
-            company = Company(name=payload["company_name"], website=payload.get("company_website"), partner_type="recruiter")
+            company = Company(name=payload["company_name"], website=payload.get("company_website"), partner_type="recruiter", assigned_recruiter_user_id=owner)
             db.add(company)
             await db.flush()
         company_id = company.id
     if not company_id:
         raise HTTPException(422, "A company reference or company name is required")
+    company_id = uuid_reference(company_id, "company reference")
+    if user.role != "it_admin":
+        await recruiter_companies.load_scoped(db, user, company_id)  # out of the caller's company scope = 404
     job = Job(
-        company_id=uuid_reference(company_id, "company reference"),
+        company_id=company_id,
+        assigned_recruiter_user_id=owner,
         title=payload["title"],
         location=payload.get("location", "Remote"),
         description=payload.get("description", ""),
@@ -2250,10 +2289,8 @@ async def apply_job(job_id: UUID, payload: dict, user: User = Depends(get_curren
 
 @router.patch("/it/jobs/{job_id}")
 async def update_job(job_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _require(user, {"placement_team", "hr_team", "it_admin"}, "it")
-    job = await db.get(Job, job_id)
-    if not job:
-        raise HTTPException(404, "Job not found")
+    _require(user, LEGACY_PLACEMENT_WRITERS, "it")
+    job = await _legacy_job(db, user, job_id)
     for key in {"title", "location", "description"}:
         if key in payload:
             setattr(job, key, payload[key])
@@ -2277,10 +2314,8 @@ async def update_job(job_id: UUID, payload: dict, user: User = Depends(get_curre
 
 @router.patch("/it/job-applications/{application_id}")
 async def update_job_application(application_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _require(user, {"placement_team", "hr_team", "it_admin"}, "it")
-    item = await db.scalar(select(JobApplication).where(JobApplication.id == application_id).with_for_update())
-    if not item:
-        raise HTTPException(404, "Job application not found")
+    _require(user, LEGACY_PLACEMENT_WRITERS, "it")
+    item = await _legacy_application(db, user, application_id)
     # rec-017 (A1/A2): a legacy word or a §12 key; the move is validated and kept in history. The same status stays a no-op 200.
     status = applications.from_legacy(payload.get("status") or "")
     if status is None:
@@ -2295,10 +2330,8 @@ async def update_job_application(application_id: UUID, payload: dict, user: User
 
 @router.post("/it/interviews", status_code=201)
 async def schedule_interview(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _require(user, {"placement_team", "hr_team", "it_admin"}, "it")
-    application = await db.get(JobApplication, uuid_reference(payload.get("application_id"), "job application reference"))
-    if not application:
-        raise HTTPException(404, "Application not found")
+    _require(user, LEGACY_PLACEMENT_WRITERS, "it")
+    application = await _legacy_application(db, user, uuid_reference(payload.get("application_id"), "job application reference"))
     # rec-020 (IV11): the code, the first event and the per-candidate clash (409) come from the service; no other new rule here.
     item = await interviews.insert(db, user, application, datetime.fromisoformat(payload["scheduled_at"]), mode=payload.get("mode", "Online"), meeting_url=payload.get("meeting_url"))
     applications.follow(db, user, application, "interview", "Interview scheduled")
@@ -2310,14 +2343,11 @@ async def schedule_interview(payload: dict, user: User = Depends(get_current_use
 
 @router.patch("/it/interviews/{interview_id}")
 async def update_interview(interview_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _require(user, {"placement_team", "hr_team", "it_admin"}, "it")
-    item = await db.scalar(select(Interview).where(Interview.id == interview_id).with_for_update())
-    if not item:
-        raise HTTPException(404, "Interview not found")
+    _require(user, LEGACY_PLACEMENT_WRITERS, "it")
+    item, application = await _legacy_child(db, user, Interview, interview_id, "Interview not found")
     for key in {"mode", "meeting_url", "result"}:
         if key in payload:
             setattr(item, key, payload[key])
-    application = await db.get(JobApplication, item.application_id)
     # rec-020 (IV11): a changed time is recorded as a reschedule; a known result also sets the status when the move is allowed.
     scheduled_at = datetime.fromisoformat(payload["scheduled_at"]) if payload.get("scheduled_at") else None
     await interviews.legacy_update(db, user, item, application, scheduled_at, payload.get("result"), await db_now(db))
@@ -2383,10 +2413,8 @@ async def update_placement_profile(student_id: UUID, payload: dict, user: User =
 
 @router.post("/it/offers", status_code=201)
 async def create_job_offer(payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _require(user, {"placement_team", "hr_team", "it_admin"}, "it")
-    application = await db.get(JobApplication, uuid_reference(payload.get("application_id"), "job application reference"))
-    if not application:
-        raise HTTPException(404, "Job application not found")
+    _require(user, LEGACY_PLACEMENT_WRITERS, "it")
+    application = await _legacy_application(db, user, uuid_reference(payload.get("application_id"), "job application reference"))
     # rec-022 OF9: through services/offers (the mapped status, the created history row, the 409 on a second offer, the student notice).
     status = offers.from_legacy(payload.get("status", "offered"))
     if status is None:
@@ -2405,17 +2433,14 @@ async def create_job_offer(payload: dict, user: User = Depends(get_current_user)
 
 @router.patch("/it/offers/{offer_id}")
 async def update_job_offer(offer_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    _require(user, {"placement_team", "hr_team", "it_admin"}, "it")
-    item = await db.get(JobOffer, offer_id)
-    if not item:
-        raise HTTPException(404, "Offer not found")
+    _require(user, LEGACY_PLACEMENT_WRITERS, "it")
+    item, application = await _legacy_child(db, user, JobOffer, offer_id, "Offer not found")
     for key in {"compensation", "currency", "letter_url"}:
         if key in payload:
             setattr(item, key, payload[key])
     if "joining_date" in payload:
         item.joining_date = date.fromisoformat(payload["joining_date"]) if payload["joining_date"] else None
     if "status" in payload:  # rec-022 OF9 / AC3: mapped, with history; accepted/joined still joins the application
-        application = await db.get(JobApplication, item.application_id)
         await offers.legacy_status(db, user, item, application, payload["status"])
     await _audit(db, user, "placement.offer_update", "job_offer", item.id, {k: v for k, v in payload.items() if k != "compensation"})
     await db.commit()

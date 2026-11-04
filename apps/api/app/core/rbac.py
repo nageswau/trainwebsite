@@ -94,6 +94,8 @@ CATALOGUE: dict[str, dict] = {
     "student_progress": {"label": "Student progress and completion", "actions": ("view", "download")},
     "attendance": {"label": "Student attendance", "actions": ("view", "download")},
     "student_documents": {"label": "Student documents (allowed types)", "actions": ("view", "download")},
+    # hrc-001 (DEC-SCOPE-371 H2): a candidate's current and expected salary -- shown, sent and searched on only with `view`.
+    "candidates.compensation": {"label": "Candidate compensation (salary)", "actions": ("view",)},
 }
 # The day-one grants, equal to the inline checks they replace (P3): admin.ensure_admin and telecaller_reports' REPORT_ROLES.
 # super_admin holds every key implicitly and never has rows (P5). Migration 0196 seeds a frozen copy.
@@ -108,8 +110,9 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     # itc-017 (DEC-SCOPE-368 F1, Q-17; migration 0248 seeds it): "Accounts" is the global accountant -- reads, records and refunds fees.
     "accountant": ("payments.view", "payments.add", "payments.refund"),
     "trainer": _TRAINING_REPORTS,
-    "placement_team": _PLACEMENT_REPORTS,
-    "placement_manager": _PLACEMENT_REPORTS,
+    # hrc-001 (DEC-SCOPE-371 H2, Q-03; migration 0250 seeds it): the recruiters and their managers see candidate compensation.
+    "placement_team": _PLACEMENT_REPORTS + ("candidates.compensation.view",),
+    "placement_manager": _PLACEMENT_REPORTS + ("candidates.compensation.view",),
     "overseas_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,
     "telecaller_manager": _TELECALLER_REPORTS,
     # nehn-030 (0201 seeds view); nehn-031 W3/W4 (0204 seeds issue, override): issuance is the coordinator's alone (DEC-ROLE-003).

@@ -72,6 +72,7 @@ def test_the_catalogue_names_the_pilot_resources_and_known_actions():
     assert set(rbac.CATALOGUE) == {
         "payments", "discounts", "reports.telecaller", "certificates", "field.financial", "reports.training", "student_access", "reports.placement",
         "student_progress", "attendance", "student_documents",  # nehn-017
+        "candidates.compensation",  # hrc-001
     }  # nehn-030, nehn-008, nehn-009, nehn-018, nehn-016
     for resource in rbac.CATALOGUE.values():
         assert set(resource["actions"]) <= set(rbac.ACTIONS)

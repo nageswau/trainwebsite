@@ -5485,3 +5485,23 @@ unchanged).
   token (a status move reads `status`, an archive `archive`; downloads are not changes); for the JD, the exact difference between the
   two versions (`file` for a new file). Nothing is written on a 409.
 - The interview shape gains `updated_at`. A requirement change that only touches its skills now moves the requirement's `updated_at`.
+
+## 12JQ. Recruitment access-control hardening (hrc-001) — addendum, 2026-11-04
+
+`DEC-SCOPE-371`. Migration `0250_compensation_grant` (seed only). **Breaking for out-of-scope callers** (behaviour narrowing; in-scope
+shapes unchanged except where noted).
+
+- `POST /workflows/it/jobs`, `PATCH /workflows/it/jobs/{id}`, `PATCH /workflows/it/job-applications/{id}`, `POST|PATCH
+  /workflows/it/interviews[/{id}]`, `POST|PATCH /workflows/it/offers[/{id}]`: 404 when the record (or the named company) is outside the
+  caller's `/recruiter/*` scope; 403 for `hr_team` and for a `placement_team` user without a recruiter profile. A `placement_team`
+  caller's new requirement (and a company it creates here) gets `assigned_recruiter_user_id` = the caller.
+- `GET|PATCH|POST /recruiter/candidates[/{id}][/archive|/restore]`: `current_salary` and `expected_salary` are omitted (not null) without
+  `candidates.compensation.view`; a create/update body carrying either key → 403 `Your role cannot view or change candidate salary`.
+- `POST /recruiter/candidates/search` and `GET /recruiter/pools/{id}/candidates`: cards omit `expected_salary` without the grant; a
+  search with `salary_min` or `salary_max` → 403.
+- `GET|PUT /recruiter/applications/{id}/screening`: `screening.expected_salary` omitted without the grant; a PUT that sends it → 403; one
+  that omits it keeps the stored value.
+- `GET /employer/interviews`: no `result`; `status` reads `completed` for `selected|rejected|on_hold`; new `status_label`.
+- `GET /portal/it/student/interview-schedule`: the `result` column is removed.
+- `GET /files/download?key=` and `GET /local-files/{key}`: 404 for `candidate-resumes/`, `career-resumes/`, `student-resumes/`,
+  `job-offers/`, `job-joinings/`, `recruiter-contracts/` (served by their own routes, unchanged).

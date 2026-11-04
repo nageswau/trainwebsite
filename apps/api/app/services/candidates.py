@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import CANDIDATE_CODE_SEQ, AuditLog, Candidate, CandidateResume, RecCandidateSource, User
 from app.notifications.phone import normalise_phone, wa_number
 from app.schemas import NO_CONTACT
+from app.services.permissions import user_has_grant
 from app.services.recruiter import MANAGER_ROLE, ROLE
 from app.services.storage import storage
 
@@ -47,6 +48,27 @@ def require_reader(user: User) -> None:
 def require_writer(user: User) -> None:
     if user.role not in WRITERS:
         raise HTTPException(403, "Your role cannot change candidates")
+
+
+# hrc-001 (DEC-SCOPE-371 H2): salary is shown, sent and searched on only with the grant; without it the keys are absent, not null.
+COMPENSATION = ("current_salary", "expected_salary")
+NO_COMPENSATION = "Your role cannot view or change candidate salary"
+
+
+async def sees_compensation(db: AsyncSession, user: User) -> bool:
+    return await user_has_grant(db, user, "candidates.compensation", "view")
+
+
+async def require_compensation(db: AsyncSession, user: User, sent) -> None:
+    """403 when the request carries a salary field (any value, null included) and the caller lacks the grant."""
+    if any(key in sent for key in COMPENSATION) and not await sees_compensation(db, user):
+        raise HTTPException(403, NO_COMPENSATION)
+
+
+def without_compensation(rows: list[dict]) -> None:
+    for row in rows:
+        for key in COMPENSATION:
+            row.pop(key, None)
 
 
 def pool_filter() -> list:
@@ -266,9 +288,10 @@ async def detail_out(db: AsyncSession, user: User, candidate: Candidate) -> dict
         )
     ).all()
     people = {u.id: u for u in (await db.scalars(select(User).where(User.id.in_(ids)))).all()} if ids else {}
+    hidden = () if await sees_compensation(db, user) else COMPENSATION
     return {
         **item_out(candidate, source),
-        **{field: getattr(candidate, field) for field in DETAIL_FIELDS},
+        **{field: getattr(candidate, field) for field in DETAIL_FIELDS if field not in hidden},
         "created_by": _person(people.get(candidate.created_by_user_id)),
         "updated_by": _person(people.get(candidate.updated_by_user_id)),
         "resumes": [

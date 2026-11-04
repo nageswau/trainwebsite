@@ -3,6 +3,7 @@ import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 
 import LocalTime from "@/components/LocalTime";
 import { sendJson } from "@/lib/apiErrors";
+import { COMPENSATION_VIEW } from "@/lib/recruiterCandidates";
 import {
   applicationUrl,
   isApplicationBody,
@@ -13,9 +14,10 @@ import {
   type ScreeningFields,
   type ScreeningRead,
 } from "@/lib/recruiterApplications";
+import { usePermissions } from "@/lib/usePermissions";
 
 // The form's own shape: the checkboxes stay booleans; everything else (numbers, the tri-state relocate) is a string until sent ("" = not given).
-type Draft = { [K in keyof ScreeningFields]: ScreeningFields[K] extends boolean ? boolean : string };
+type Draft = { [K in keyof ScreeningFields]-?: ScreeningFields[K] extends boolean ? boolean : string };
 const CHECKS = [
   ["qualification_verified", "Qualification verified"], ["experience_verified", "Experience verified"], ["skills_verified", "Skills verified"],
 ] as const;
@@ -37,13 +39,16 @@ function draftOf(s: Screening | null): Draft {
   };
 }
 
-function bodyOf(d: Draft): ScreeningFields {
-  return {
+/** hrc-001 H2: without the compensation grant no salary is sent (the API keeps the stored one). */
+function bodyOf(d: Draft, compensation: boolean): ScreeningFields {
+  const body: ScreeningFields = {
     qualification_verified: d.qualification_verified, experience_verified: d.experience_verified, skills_verified: d.skills_verified,
     expected_salary: num(d.expected_salary), notice_days: num(d.notice_days), location_preference: text(d.location_preference),
     communication_rating: num(d.communication_rating), technical_rating: num(d.technical_rating), availability: text(d.availability),
     willing_to_relocate: d.willing_to_relocate === "" ? null : d.willing_to_relocate === "yes", remarks: text(d.remarks), result: d.result,
   };
+  if (!compensation) delete body.expected_salary;
+  return body;
 }
 
 /** A reader's view: the saved answers as a list (salary is internal; this panel is recruiter-module only). */
@@ -52,7 +57,7 @@ function Summary({ screening, label }: { screening: Screening; label: string }) 
   const rows: [string, string][] = [
     ["Result", screening.result_label],
     ...CHECKS.map(([key, name]): [string, string] => [name, screening[key] ? "Yes" : "No"]),
-    ["Expected salary (per year)", screening.expected_salary === null ? "—" : money(screening.expected_salary)],
+    ...(screening.expected_salary === undefined ? [] : [["Expected salary (per year)", screening.expected_salary === null ? "—" : money(screening.expected_salary)] as [string, string]]),
     ["Notice period", screening.notice_days === null ? "—" : `${screening.notice_days} days`],
     ["Location preference", screening.location_preference ?? "—"],
     ["Communication skills", rating(screening.communication_rating)],
@@ -83,6 +88,7 @@ export default function RecruiterApplicationScreening({ applicationId, candidate
   const sending = useRef(false); // QA-01: a fast double click lands before `busy` re-renders the button disabled
   const id = useId();
   const label = `Screening of ${candidateName}`;
+  const compensation = !!usePermissions()?.includes(COMPENSATION_VIEW);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -116,7 +122,7 @@ export default function RecruiterApplicationScreening({ applicationId, candidate
     sending.current = true;
     setBusy(true);
     setFailure(null);
-    const outcome = await sendJson(applicationUrl(applicationId, "/screening"), "PUT", bodyOf(draft));
+    const outcome = await sendJson(applicationUrl(applicationId, "/screening"), "PUT", bodyOf(draft, compensation));
     sending.current = false;
     setBusy(false);
     if (outcome.ok && isApplicationBody(outcome.data)) onSaved(outcome.data.application);
@@ -136,10 +142,12 @@ export default function RecruiterApplicationScreening({ applicationId, candidate
         ))}
       </fieldset>
       <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-        <label htmlFor={`${id}-salary`} style={field}>
-          Expected salary (per year)
-          <input id={`${id}-salary`} type="number" inputMode="decimal" min={0} max={SCREENING_LIMITS.salaryMax} step="0.01" value={draft.expected_salary} onChange={(e) => set("expected_salary", e.target.value)} />
-        </label>
+        {compensation && (
+          <label htmlFor={`${id}-salary`} style={field}>
+            Expected salary (per year)
+            <input id={`${id}-salary`} type="number" inputMode="decimal" min={0} max={SCREENING_LIMITS.salaryMax} step="0.01" value={draft.expected_salary} onChange={(e) => set("expected_salary", e.target.value)} />
+          </label>
+        )}
         <label htmlFor={`${id}-notice`} style={field}>
           Notice period (days)
           <input id={`${id}-notice`} type="number" inputMode="numeric" min={0} max={SCREENING_LIMITS.noticeMax} step="1" value={draft.notice_days} onChange={(e) => set("notice_days", e.target.value)} />

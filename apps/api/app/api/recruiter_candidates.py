@@ -103,16 +103,22 @@ async def search_candidates(
     skills, the S2-§18 filters, the F1-F3 facets. Read only; the role check runs before the body is read."""
     svc.require_reader(user)
     body = _parse(CandidateSearch, payload, NOT_AN_OBJECT, CANDIDATE_SEARCH_LABELS)
+    sees = await svc.sees_compensation(db, user)
+    if not sees and (body.salary_min is not None or body.salary_max is not None):  # hrc-001 H2: a range would reveal the value
+        raise HTTPException(403, svc.NO_COMPENSATION)
     result = await candidate_search.search(db, body, limit=limit, offset=offset)
+    if not sees:
+        svc.without_compensation(result["items"])
     candidate_search.log(user, body, result["total"])
     return result
 
 
-@router.post("", response_model=CandidateDetail, status_code=201)
+@router.post("", response_model=CandidateDetail, response_model_exclude_unset=True, status_code=201)
 async def create_candidate(payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Q-07: a known mobile or email is the 409 panel, before and (by the unique indexes) under a race."""
     svc.require_writer(user)
     data = _body(CandidateCreate, payload).model_dump()
+    await svc.require_compensation(db, user, payload)
     await svc.active_source(db, data["source_id"])
     candidate = Candidate(**data, mobile_normalized=normalise_phone(data["mobile"]), created_by_user_id=user.id)  # email: lower-cased by the schema
     await svc.block_duplicates(db, candidate)
@@ -125,7 +131,7 @@ async def create_candidate(payload: dict = Body(...), user: User = Depends(get_c
     return await svc.detail_out(db, user, candidate)
 
 
-@router.get("/{candidate_id}", response_model=CandidateDetail)
+@router.get("/{candidate_id}", response_model=CandidateDetail, response_model_exclude_unset=True)
 async def get_candidate(candidate_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     svc.require_reader(user)
     return await svc.detail_out(db, user, await svc.load(db, candidate_id))
@@ -148,16 +154,17 @@ async def get_training(candidate_id: UUID, response: Response, user: User = Depe
     return await placement_reports.candidate_training(db, await svc.load(db, candidate_id))
 
 
-@router.patch("/{candidate_id}", response_model=CandidateDetail)
+@router.patch("/{candidate_id}", response_model=CandidateDetail, response_model_exclude_unset=True)
 async def update_candidate(candidate_id: UUID, payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Partial. Moving to another source needs an active one; keeping a since-deactivated source is allowed (the rec-002 rule)."""
     svc.require_writer(user)
     changes = _body(CandidateUpdate, payload).model_dump(exclude_unset=True)
     expected = changes.pop("expected_updated_at", None)
+    await svc.require_compensation(db, user, changes)
     candidate = await svc.load(db, candidate_id, lock=True)
 
-    async def current() -> dict:  # the 200 response's shape and fields (response_model), never more
-        return CandidateDetail.model_validate(await svc.detail_out(db, user, candidate)).model_dump()
+    async def current() -> dict:  # the 200 response's shape and fields (response_model), never more -- salary absent without the grant
+        return CandidateDetail.model_validate(await svc.detail_out(db, user, candidate)).model_dump(exclude_unset=True)
 
     await require_fresh(db, stored=candidate.updated_at, expected=expected, entity=("candidates", candidate.id), action_prefix="candidate.",
                         since=expected, current=current)
@@ -193,12 +200,12 @@ async def _set_archived(db: AsyncSession, user: User, candidate_id: UUID, archiv
     return await svc.detail_out(db, user, candidate)
 
 
-@router.post("/{candidate_id}/archive", response_model=CandidateDetail)
+@router.post("/{candidate_id}/archive", response_model=CandidateDetail, response_model_exclude_unset=True)
 async def archive_candidate(candidate_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return await _set_archived(db, user, candidate_id, True)
 
 
-@router.post("/{candidate_id}/restore", response_model=CandidateDetail)
+@router.post("/{candidate_id}/restore", response_model=CandidateDetail, response_model_exclude_unset=True)
 async def restore_candidate(candidate_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return await _set_archived(db, user, candidate_id, False)
 

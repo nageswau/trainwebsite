@@ -111,9 +111,14 @@ async def _overseas_document(db: AsyncSession, key: str) -> bool:
     return bool(await db.scalar(select(DocumentEvent.id).where(DocumentEvent.file_key.in_(shapes)).limit(1)))
 
 
+# hrc-001 (DEC-SCOPE-371 H4): recruitment documents, each served by its own authenticated, scope-checked and audited route.
+RECRUITMENT_PREFIXES = ("candidate-resumes/", "career-resumes/", "student-resumes/", "job-offers/", "job-joinings/", "recruiter-contracts/")
+
+
 async def _withheld(db: AsyncSession, key: str) -> bool:
-    """Keys only their own scope-checked routes hand out: KYC files (AGN-024) and overseas documents (ccrm-022 SD5)."""
-    return key.startswith("agent-kyc/") or await _overseas_document(db, key)
+    """Keys only their own scope-checked routes hand out: KYC files (AGN-024), overseas documents (ccrm-022 SD5) and recruitment
+    documents (hrc-001)."""
+    return key.startswith(("agent-kyc/", *RECRUITMENT_PREFIXES)) or await _overseas_document(db, key)
 
 
 @router.get("/download")

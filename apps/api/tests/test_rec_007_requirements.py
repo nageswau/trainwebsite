@@ -252,7 +252,7 @@ async def test_the_employer_api_keeps_its_words_and_writes_history_and_skills(cl
 
 @pytest.mark.asyncio
 async def test_the_workflows_patch_validates_statuses(client, db_session):
-    await as_role(client, db_session, "placement_team", "it")
+    await as_role(client, db_session, "it_admin", "it")  # hrc-001 H1: legacy writes are record-scoped; it_admin keeps IT-wide access
     company_name = f"Wf Co {_tag()}"
     created = (await client.post("/api/v1/workflows/it/jobs", json={"company_name": company_name, "title": "Ops", "skills": ["Linux"]})).json()
     assert created["status"] == "requirement_received"
@@ -291,7 +291,7 @@ async def test_status_changes_drive_the_company_stage(client, db_session):
 
 @pytest.mark.asyncio
 async def test_legacy_writers_drive_the_company_stage_too(client, db_session):
-    await as_role(client, db_session, "placement_team", "it")
+    await as_role(client, db_session, "it_admin", "it")  # hrc-001 H1: legacy writes are record-scoped; it_admin keeps IT-wide access
     name = f"Wf Stage Co {_tag()}"
     created = (await client.post("/api/v1/workflows/it/jobs", json={"company_name": name, "title": "Ops"})).json()
     company = await db_session.scalar(select(Company).where(Company.name == name))

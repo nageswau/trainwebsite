@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import RecruiterFindCandidates from "@/components/RecruiterFindCandidates";
+import { clearPermissions } from "@/lib/usePermissions";
 
 // rec-013 (spec §5): the search lives in the URL; the form edits a draft that Search or a facet pushes. hr_team (writes=false) gets no
 // Shortlist / Contact and never calls the recruiter catalogue.
@@ -29,13 +30,17 @@ const result = {
 };
 let fetchMock: ReturnType<typeof vi.fn>;
 let searchReply: () => Response;
+let granted: string[] | null;
 
 beforeEach(() => {
   query = "";
+  granted = null;
+  clearPermissions();
   push.mockReset();
   searchReply = () => res(result);
   fetchMock = vi.fn((url: string) => {
     if (url.startsWith("/api/v1/recruiter/catalogue/candidate-sources")) return Promise.resolve(res({ items: [], total: 0, limit: 100, offset: 0 }));
+    if (url === "/api/v1/auth/me/permissions") return Promise.resolve(granted ? res({ permissions: granted }) : res({}, 500));
     return Promise.resolve(searchReply());
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -48,6 +53,20 @@ afterEach(() => {
 const searchCalls = () => fetchMock.mock.calls.filter(([u]) => String(u).startsWith("/api/v1/recruiter/candidates/search"));
 
 describe("RecruiterFindCandidates", () => {
+  it("hrc-001: the salary filter needs the compensation grant, and a card without a salary has no salary row", async () => {
+    query = "all=java";
+    searchReply = () => res({ ...result, items: [{ ...card, expected_salary: undefined }] });
+    render(<RecruiterFindCandidates writes sourceFilter />);
+    const item = await screen.findByRole("listitem", { name: /Rahul Kumar/ });
+    expect(within(item).queryByText("Expected salary")).toBeNull();
+    expect(screen.queryByLabelText("Expected salary from (₹ lakhs a year)")).toBeNull();
+    cleanup();
+    granted = ["candidates.compensation.view"];
+    render(<RecruiterFindCandidates writes sourceFilter />);
+    expect(await screen.findByLabelText("Expected salary from (₹ lakhs a year)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Expected salary to (₹ lakhs a year)")).toBeInTheDocument();
+  });
+
   it("asks for a skill or resume words first and sends nothing", () => {
     render(<RecruiterFindCandidates writes sourceFilter />);
     expect(screen.getByText("Add a skill or a resume search to search every candidate in the pool.")).toBeInTheDocument();

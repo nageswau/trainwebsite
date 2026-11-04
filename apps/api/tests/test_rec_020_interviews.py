@@ -396,7 +396,7 @@ async def test_views_and_counts(client, db_session):
 @pytest.mark.asyncio
 async def test_legacy_staff_routes_get_a_code_history_and_the_clash(client, db_session):
     s = await _setup(client, db_session)
-    await as_role(client, db_session, "hr_team", "it")
+    await as_role(client, db_session, "it_admin", "it")  # hrc-001 H1: legacy writes are record-scoped; it_admin keeps IT-wide access
     when = "2031-03-01T10:00:00+00:00"
     created = await client.post("/api/v1/workflows/it/interviews", json={"application_id": s["application"]["id"], "scheduled_at": when})
     assert created.status_code == 201, created.text

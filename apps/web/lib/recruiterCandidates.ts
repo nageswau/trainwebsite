@@ -9,9 +9,12 @@ export type CandidateItem = {
   source: SourceRef; source_detail: string | null; status: CandidateStatus; archived: boolean; created_at: string;
 };
 export type CandidateResume = { version: number; file_name: string | null; content_type: string; size_bytes: number; uploaded_by: PersonRef | null; created_at: string };
+// hrc-001 (DEC-SCOPE-371 H2): salary is left out (not null) for a caller without this grant, who may not send it either.
+export const COMPENSATION_VIEW = "candidates.compensation.view";
+const SALARY_KEYS = new Set<string>(["current_salary", "expected_salary"]);
 export type CandidateDetail = CandidateItem & {
   mobile: string | null; email: string | null; qualification: string | null; college: string | null; passing_year: number | null;
-  current_company: string | null; current_salary: string | null; expected_salary: string | null; notice_days: number | null;
+  current_company: string | null; current_salary?: string | null; expected_salary?: string | null; notice_days: number | null;
   preferred_locations: string[]; linkedin: string | null; archived_at: string | null; created_by: PersonRef | null; updated_by: PersonRef | null;
   updated_at: string; resumes: CandidateResume[]; can_edit: boolean; whatsapp_to?: string | null; // rec-026: the wa.me number
 };
@@ -66,11 +69,15 @@ const INTEGERS = new Set<keyof CandidateForm>(["passing_year", "experience_month
 
 const places = (text: string) => text.split(",").map((p) => p.trim()).filter(Boolean);
 
+/** The form's inputs: without the compensation grant, no salary inputs. */
+export const formFields = (compensation: boolean) => (compensation ? FIELDS : FIELDS.filter((f) => !SALARY_KEYS.has(f.key)));
+
 /** The request body. Create sends only what is filled; edit sends every field, a cleared one as null (PATCH clears it). Salaries stay
- *  strings (the API takes decimals); the whole-number fields become numbers. */
-export function candidateBody(form: CandidateForm, mode: "create" | "edit"): Record<string, unknown> {
+ *  strings (the API takes decimals); the whole-number fields become numbers. Without the compensation grant no salary key is sent. */
+export function candidateBody(form: CandidateForm, mode: "create" | "edit", compensation = true): Record<string, unknown> {
   const body: Record<string, unknown> = {};
   for (const [key, raw] of Object.entries(form) as [keyof CandidateForm, string][]) {
+    if (!compensation && SALARY_KEYS.has(key)) continue;
     const text = raw.trim();
     const value = key === "preferred_locations" ? places(text) : !text ? null : INTEGERS.has(key) ? Number(text) : text;
     const empty = value === null || (Array.isArray(value) && value.length === 0);

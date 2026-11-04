@@ -8,10 +8,11 @@ import StaleRecordNotice from "@/components/StaleRecordNotice";
 import { sendJson } from "@/lib/apiErrors";
 import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
 import {
-  CANDIDATES_PATH, CANDIDATES_URL, DUPLICATE_CHECK_URL, EMPTY_FORM, FIELDS, STATUSES, STATUS_LABEL, candidateBody, candidateUrl, formFromDetail,
-  missingRequired, type CandidateDetail, type CandidateForm, type CandidateMatch,
+  CANDIDATES_PATH, CANDIDATES_URL, COMPENSATION_VIEW, DUPLICATE_CHECK_URL, EMPTY_FORM, FIELDS, STATUSES, STATUS_LABEL, candidateBody, candidateUrl,
+  formFields, formFromDetail, missingRequired, type CandidateDetail, type CandidateForm, type CandidateMatch,
 } from "@/lib/recruiterCandidates";
 import { useStaleGuard } from "@/lib/staleGuard";
+import { usePermissions } from "@/lib/usePermissions";
 
 // rec-009 (spec §6; AC1-AC3, Q-07): the candidate form -- create (then open the new candidate) or edit (in the detail page). Name, source
 // and a mobile or an email are required; the API decides everything else. A known person is shown in the duplicate panel, above the
@@ -62,6 +63,9 @@ export default function RecruiterCandidateForm({ initial, onSaved, onLatest, onC
   const [busy, setBusy] = useState(false);
   const [focusRequest, setFocusRequest] = useState(0);
   const sending = useRef(false); // a double click sends one request (state only updates after the handler)
+  // hrc-001 H2: an edit follows what the API sent; a new candidate follows the grant (no salary inputs until it is known).
+  const permissions = usePermissions(!editing);
+  const compensation = initial ? "expected_salary" in initial : !!permissions?.includes(COMPENSATION_VIEW);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -90,7 +94,7 @@ export default function RecruiterCandidateForm({ initial, onSaved, onLatest, onC
     if (sending.current) return;
     sending.current = true;
     setBusy(true);
-    const body = initial ? { ...candidateBody(values, "edit"), expected_updated_at: guard.token } : candidateBody(values, "create");
+    const body = initial ? { ...candidateBody(values, "edit", compensation), expected_updated_at: guard.token } : candidateBody(values, "create", compensation);
     const outcome = await sendJson(initial ? candidateUrl(initial.id) : CANDIDATES_URL, initial ? "PATCH" : "POST", body);
     sending.current = false;
     setBusy(false);
@@ -127,7 +131,7 @@ export default function RecruiterCandidateForm({ initial, onSaved, onLatest, onC
       <form onSubmit={submit} noValidate className="action-card" style={{ display: "grid", gap: 12 }}>
         <p className="muted" style={{ margin: 0, fontSize: 13 }}>* Required. Enter a mobile number or an email (or both).</p>
         <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))", alignItems: "start" }}>
-          {FIELDS.map(input)}
+          {formFields(compensation).map(input)}
           <div className="field">
             <label htmlFor="cand-source_id">Source *</label>
             <select id="cand-source_id" aria-required value={values.source_id} disabled={busy} onChange={(e) => set("source_id", e.target.value)}>

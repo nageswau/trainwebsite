@@ -439,8 +439,9 @@ async def _it_student(db: AsyncSession, user: User, section: str):
         return _payload(
             "Interview Schedule",
             "Mock and employer interview appointments.",
-            (("role", "Role"), ("company", "Company"), ("scheduled", "Scheduled"), ("mode", "Mode"), ("link", "Meeting"), ("result", "Result")),
-            ({"role": j.title, "company": c.name, "scheduled": i.scheduled_at, "mode": i.mode, "link": i.meeting_url, "result": i.result} for i, j, c in rows),
+            # hrc-001 (DEC-SCOPE-371 H3): no outcome column until hrc-030's release step.
+            (("role", "Role"), ("company", "Company"), ("scheduled", "Scheduled"), ("mode", "Mode"), ("link", "Meeting")),
+            ({"role": j.title, "company": c.name, "scheduled": i.scheduled_at, "mode": i.mode, "link": i.meeting_url} for i, j, c in rows),
         )
     if section == "placement-status":
         # rec-022 QA-04: the offers are the "My offers" card (GET /workflows/it/student/offers), with the letter; no text panel here.

@@ -10156,8 +10156,9 @@ class CandidateDetail(CandidateItem):
     college: str | None
     passing_year: int | None
     current_company: str | None
-    current_salary: Decimal | None
-    expected_salary: Decimal | None
+    # hrc-001 (DEC-SCOPE-371 H2): left out without `candidates.compensation.view` -- the routes answer with response_model_exclude_unset.
+    current_salary: Decimal | None = None
+    expected_salary: Decimal | None = None
     notice_days: int | None
     preferred_locations: list[str]
     linkedin: str | None

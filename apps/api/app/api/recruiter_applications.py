@@ -102,12 +102,13 @@ async def save_application_screening(application_id: UUID, payload: RecScreening
     application, _job = await svc.load_scoped(db, user, application_id, lock=True)
     svc.require_writer(user, application.id, "save_application_screening")
     sent = payload.model_dump()
+    await screening.keep_hidden_salary(db, user, application, sent, payload.model_fields_set)
     previous = await screening.save(db, user, application, sent)
     if previous:
         await svc.notify_student(db, application)
     await db.commit()
     svc.log("recruiter_application_screened", user, application, result=sent["result"], from_status=previous, to_status=application.status if previous else None)
-    return {"screening": await screening.screening_out(db, await screening.current(db, application.id)), "application": await _item(db, user, application)}
+    return {"screening": await screening.screening_out(db, user, await screening.current(db, application.id)), "application": await _item(db, user, application)}
 
 
 @router.get("/candidates/{candidate_id}/applications")

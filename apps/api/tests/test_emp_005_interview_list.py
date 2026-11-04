@@ -12,13 +12,15 @@ interview's outcome, including whether one had been cancelled/resulted by Placem
 via `PATCH /workflows/it/interviews/{id}` -- the data was never filtered out
 (`EMP-005-AC02`'s "remain visible, not deleted" already held), but it was invisible.
 Added the missing display; this file proves the backend property the UI now surfaces.
+
+hrc-001 (DEC-SCOPE-371 H3) supersedes the outcome part: until hrc-030's release step, the list carries the schedule status only --
+no legacy `result`, and a decided status reads as Completed. The interviews themselves still all remain visible.
 """
 
 import uuid
 from datetime import datetime
 
 import pytest
-from sqlalchemy import select
 
 from app.core.security import hash_password
 from app.models import Company, EmployerProfile, Interview, Job, User
@@ -75,7 +77,7 @@ async def test_a_cancelled_interview_remains_visible_in_the_employers_list(db_se
     assert response.status_code == 200
     rows = response.json()
     matching = next(row for row in rows if row["id"] == str(interview.id))
-    assert matching["result"] == "cancelled"
+    assert "result" not in matching  # hrc-001 H3: no outcome reaches the employer before release
 
 
 @pytest.mark.asyncio
@@ -96,7 +98,7 @@ async def test_interviews_with_no_result_yet_are_also_returned(db_session, clien
     response = await client.get("/api/v1/employer/interviews")
     assert response.status_code == 200
     matching = next(row for row in response.json() if row["id"] == str(interview.id))
-    assert matching["result"] is None
+    assert "result" not in matching and matching["status_label"] == "Scheduled"
 
 
 @pytest.mark.asyncio

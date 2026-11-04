@@ -56,6 +56,11 @@ MOVES = {  # IV3: target -> the statuses it may come from
 }
 AFTER_START = ("completed", "no_show", "selected", "rejected")  # AC2: only once the scheduled time has passed
 FINAL = ("selected", "rejected")
+
+
+def unreleased_status(status: str) -> str:
+    """hrc-001 (DEC-SCOPE-371 H3): until hrc-030 adds the release step, a decision reads as Completed outside the staff screens."""
+    return "completed" if status in (*FINAL, "on_hold") else status
 RESCHEDULABLE = (*OPEN, "on_hold", "no_show")
 DECIDING_ROUNDS = ("final_round", "client_round")  # IV8: only these rounds' Selected selects the application
 # rec-021 (DEC-SCOPE-175): FB2 -- first recorded on a Completed interview, then editable while the decision it led to stands

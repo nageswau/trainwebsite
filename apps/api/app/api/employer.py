@@ -330,7 +330,12 @@ async def list_employer_interviews(user: User = Depends(get_current_user), db: A
             .order_by(Interview.scheduled_at.desc())
         )
     ).all()
-    return [
-        {"id": interview.id, "code": interview.interview_code, "candidate": student.full_name, "job_title": job.title, "scheduled_at": interview.scheduled_at, "mode": interview.mode, "meeting_url": interview.meeting_url, "result": interview.result, "round": interview.round, "status": interview.status}
-        for interview, _application, student, job in rows
-    ]
+    # hrc-001 (DEC-SCOPE-371 H3): no outcome before release -- neither the legacy `result` nor a decided status.
+    out = []
+    for interview, _application, student, job in rows:
+        status = interviews.unreleased_status(interview.status)
+        out.append({
+            "id": interview.id, "code": interview.interview_code, "candidate": student.full_name, "job_title": job.title, "scheduled_at": interview.scheduled_at,
+            "mode": interview.mode, "meeting_url": interview.meeting_url, "round": interview.round, "status": status, "status_label": interviews.STATUS_LABELS[status],
+        })  # fmt: skip
+    return out

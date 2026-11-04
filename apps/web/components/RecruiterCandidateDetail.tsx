@@ -53,11 +53,13 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
   }
 
   const tel = telHref(candidate.mobile);
+  // hrc-001 (DEC-SCOPE-371 H2): the API leaves salary out without `candidates.compensation.view` -- no row then, not a blank one.
+  const salary = (label: string, value: string | null | undefined): [string, React.ReactNode][] => (value === undefined ? [] : [[label, money(value)]]);
   const rows: [string, React.ReactNode][] = [
     ["Mobile", tel ? <a href={tel}>{candidate.mobile}<span className="visually-hidden"> (call {candidate.name})</span></a> : candidate.mobile], ["Email", candidate.email], ["Location", candidate.location], ["Qualification", candidate.qualification],
     ["College", candidate.college], ["Passing year", candidate.passing_year], ["Total experience", experienceLabel(candidate.experience_months)],
-    ["Current company", candidate.current_company], ["Current salary (per year)", money(candidate.current_salary)],
-    ["Expected salary (per year)", money(candidate.expected_salary)], ["Notice period", candidate.notice_days === null ? null : `${candidate.notice_days} days`],
+    ["Current company", candidate.current_company], ...salary("Current salary (per year)", candidate.current_salary),
+    ...salary("Expected salary (per year)", candidate.expected_salary), ["Notice period", candidate.notice_days === null ? null : `${candidate.notice_days} days`],
     ["Preferred locations", candidate.preferred_locations.join(", ") || null], ["Preferred role", candidate.preferred_role],
     ["LinkedIn", candidate.linkedin && <a href={candidate.linkedin} target="_blank" rel="noopener noreferrer nofollow" style={{ overflowWrap: "anywhere" }}>{candidate.linkedin}</a>],
     ["Source", `${candidate.source.name}${candidate.source.active ? "" : " (inactive)"}`], ["Source detail", candidate.source_detail],

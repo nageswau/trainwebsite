@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import RecruiterApplicationScreening from "@/components/RecruiterApplicationScreening";
 import RecruiterRequirementCandidates from "@/components/RecruiterRequirementCandidates";
 import type { RecApplication, Screening, ScreeningRead } from "@/lib/recruiterApplications";
+import { COMPENSATION_VIEW } from "@/lib/recruiterCandidates";
+import { clearPermissions } from "@/lib/usePermissions";
 
 // rec-018 (spec §4; AC1, AC2): the screening form on an application -- loading / error, prefill, the full PUT body, Rejected needs
 // remarks (blocked before the request), the API's message shown as-is, the read-only summary -- and the board's Screening flag.
@@ -28,12 +30,16 @@ let read: ScreeningRead;
 let readStatus: number;
 let putReply: () => Response;
 let fetchMock: ReturnType<typeof vi.fn>;
+let granted: string[];
 beforeEach(() => {
+  granted = [COMPENSATION_VIEW];
+  clearPermissions();
   read = { screening: null, results: RESULTS, can_edit: true };
   readStatus = 200;
   putReply = () => res({ screening: saved({ result: "shortlisted", result_label: "Shortlisted" }), application: application({ status: "shortlisted", status_label: "Shortlisted", screening_result: { key: "shortlisted", label: "Shortlisted" } }) });
   fetchMock = vi.fn((url: string, init?: RequestInit) => {
     if (init?.method === "PUT") return Promise.resolve(putReply());
+    if (url === "/api/v1/auth/me/permissions") return Promise.resolve(res({ permissions: granted }));
     if (url.endsWith("/screening")) return Promise.resolve(res(read, readStatus));
     if (url.startsWith("/api/v1/recruiter/requirements/J1/candidates"))
       return Promise.resolve(res({ items: [application({ screening_result: { key: "need_more_info", label: "Need More Information" } })], statuses: [], can_add: false }));
@@ -58,7 +64,7 @@ describe("RecruiterApplicationScreening", () => {
     expect(screen.getByText("Loading screening…")).toBeTruthy();
     const form = await screen.findByRole("form", { name: "Screening of Rahul Kumar" });
     fireEvent.click(within(form).getByLabelText("Qualification verified"));
-    fireEvent.change(within(form).getByLabelText("Expected salary (per year)"), { target: { value: "650000" } });
+    fireEvent.change(await within(form).findByLabelText("Expected salary (per year)"), { target: { value: "650000" } });
     fireEvent.change(within(form).getByLabelText("Notice period (days)"), { target: { value: "30" } });
     fireEvent.change(within(form).getByLabelText("Communication skills"), { target: { value: "4" } });
     fireEvent.change(within(form).getByLabelText("Willing to relocate"), { target: { value: "yes" } });
@@ -81,7 +87,7 @@ describe("RecruiterApplicationScreening", () => {
     renderForm();
     const form = await screen.findByRole("form", { name: "Screening of Rahul Kumar" });
     expect((within(form).getByLabelText("Qualification verified") as HTMLInputElement).checked).toBe(true);
-    expect((within(form).getByLabelText("Expected salary (per year)") as HTMLInputElement).value).toBe("650000");
+    expect(((await within(form).findByLabelText("Expected salary (per year)")) as HTMLInputElement).value).toBe("650000");
     expect((within(form).getByLabelText("Result") as HTMLSelectElement).value).toBe("hold");
     expect((within(form).getByLabelText("Willing to relocate") as HTMLSelectElement).value).toBe("no");
     expect(screen.getByText(/Last saved by Riya Recruiter/)).toBeTruthy();
@@ -125,6 +131,28 @@ describe("RecruiterApplicationScreening", () => {
     expect(within(summary).getByText("Hold")).toBeTruthy();
     expect(within(summary).getByText("6,50,000")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Save screening" })).toBeNull();
+  });
+
+  it("hrc-001: without the compensation grant there is no salary input and none is sent", async () => {
+    granted = [];
+    renderForm();
+    const form = await screen.findByRole("form", { name: "Screening of Rahul Kumar" });
+    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => url === "/api/v1/auth/me/permissions")).toBe(true));
+    expect(within(form).queryByLabelText("Expected salary (per year)")).toBeNull();
+    fireEvent.change(within(form).getByLabelText("Result"), { target: { value: "hold" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save screening" }));
+    await vi.waitFor(() => expect(puts()).toHaveLength(1));
+    expect(puts()[0][1]).not.toHaveProperty("expected_salary");
+  });
+
+  it("hrc-001: a summary without the salary (left out by the API) has no salary row", async () => {
+    const screening: Partial<Screening> = saved();
+    delete screening.expected_salary;
+    read = { screening: screening as Screening, results: RESULTS, can_edit: false };
+    renderForm();
+    const summary = await screen.findByRole("list", { name: "Screening of Rahul Kumar" });
+    expect(within(summary).queryByText(/Expected salary/)).toBeNull();
+    expect(within(summary).getByText("Hold")).toBeTruthy();
   });
 
   it("says when a reader opens an unscreened application, and when the read fails", async () => {

@@ -133,16 +133,18 @@ async def test_job_requirements_portal_section_shows_the_closing_date(db_session
 
 
 @pytest.mark.asyncio
-async def test_hr_can_update_a_requirements_closing_date(db_session, client):
+async def test_hr_no_longer_updates_a_requirement(db_session, client):
+    """hrc-001 (DEC-SCOPE-371 H1): HR owns no requirement, so the legacy write it held was global; it is refused and nothing changes."""
     hr = await _create_staff(db_session)
     job = await _create_job(db_session)
+    before = job.closes_on
     await _login(client, hr.email)
 
     response = await client.patch(f"/api/v1/workflows/it/jobs/{job.id}", json={"closes_on": "2027-06-30"})
-    assert response.status_code == 200
+    assert response.status_code == 403
 
     await db_session.refresh(job)
-    assert job.closes_on == datetime.date(2027, 6, 30)
+    assert job.closes_on == before
 
 
 @pytest.mark.asyncio

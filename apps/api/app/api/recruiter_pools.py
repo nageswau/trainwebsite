@@ -17,6 +17,7 @@ from app.api.telecaller_catalogue import NOT_AN_OBJECT
 from app.core.database import get_db
 from app.models import TalentPool, User
 from app.schemas import TALENT_POOL_LABELS, TalentPoolCreate, TalentPoolUpdate, check_pool_rule
+from app.services import candidates
 from app.services import talent_pools as svc
 from app.services.telecaller import _parse
 from app.services.telecaller_catalogue import apply_changes, flush_unique
@@ -90,6 +91,8 @@ async def pool_candidates(pool_id: UUID, limit: int = LIMIT, offset: int = OFFSE
     pool = await svc.load(db, user, pool_id)
     terms = await svc.resolve(db, [pool])
     total, items = await svc.members(db, pool, terms, limit=limit, offset=offset)
+    if not await candidates.sees_compensation(db, user):  # hrc-001 H2
+        candidates.without_compensation(items)
     people = await svc.creators(db, [pool])
     return {
         "pool": svc.out(pool, total, terms, people),

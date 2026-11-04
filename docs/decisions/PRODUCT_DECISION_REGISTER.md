@@ -11346,3 +11346,21 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   `useStaleGuard`. S8 "Update requirement from JD" sends the requirement's token; a stale one refreshes the page with the summary.
 - **Numbering:** no migration; API §12JP; no RBAC change.
 - **Feature ID authorized:** `hrc-003`. **Status:** built on `worktree-hrc-003`.
+
+### DEC-SCOPE-371 — Recruitment access-control hardening (`hrc-001`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-001` (PDF §3, §10.2, §15; PDF classified `UNVERIFIED`). Scope approved by
+  the owner 2026-11-01 (backlog Q-00: all phases, hrc-001 first). No dependencies. The owner said to proceed with the recommended answers,
+  so H1–H6 below are **the builder's calls (`NEEDS_CONFIRMATION`)**; the owner's private findings were not available to the build, which
+  re-audited the code against the backlog's expected behaviour. Design `docs/superpowers/specs/2026-11-04-hrc-001-access-control-hardening-design.md`.
+- **Builder's calls:** H1 (Q-02) the legacy `/workflows/it/*` requirement, application, interview and offer writes keep their routes but
+  load records through the `/recruiter/*` scope (out of scope = 404); writers are `placement_team` (own/assigned, profile required),
+  `it_admin` (IT-wide) and `super_admin`; `hr_team` no longer writes there (403); a recruiter's new legacy requirement and new company are
+  assigned to them. H2 (Q-03) new grant `candidates.compensation.view`, default `placement_team` and `placement_manager`: without it
+  salary is absent from candidate detail, search and pool cards and the screening, and sending a salary or a salary range is 403 (the
+  screening keeps a stored salary). H3 until hrc-030's release, no legacy `result` and no decided interview status on student or employer
+  screens (a decision reads Completed) — **supersedes EMP-005's outcome display**. H4 `/files/download` and `/local-files` withhold the
+  recruitment key prefixes (each has its own audited route). H5 leak tests over the student, employer and public recruitment routes. H6
+  the UI hides the restricted inputs and columns.
+- **Numbering:** migration `0250_compensation_grant` (seed only); API §12JQ; RBAC §2.270.
+- **Feature ID authorized:** `hrc-001`. **Status:** built on `worktree-hrc-001`.
