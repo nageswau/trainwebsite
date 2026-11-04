@@ -9,16 +9,18 @@ from datetime import date, datetime, timedelta
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, literal_column, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
     JOB_APPROVAL_DEFAULTS,
     JOB_EMPLOYMENT_TYPES,
     JOB_OPEN_STATUSES,
+    JOB_PLACE_KEY_SQL,
     JOB_PRIORITIES,
     JOB_SHIFTS,
     JOB_STATUSES,
+    JOB_TITLE_KEY_SQL,
     JOB_WORK_MODES,
     AuditLog,
     Company,
@@ -28,6 +30,7 @@ from app.models import (
     JobSkill,
     JobStatusHistory,
     RecJobCategory,
+    RecLeadSource,
     RecruiterProfile,
     User,
 )
@@ -42,6 +45,8 @@ from app.services.recruiter_companies import person, ref
 logger = logging.getLogger("app.recruiter")
 
 NOT_FOUND = "Job requirement not found"
+HIRING_MANAGER_ROLE = "interviewer"  # hrc-005 V2: hrc-002's internal Hiring Manager/Interviewer
+MAX_DUPLICATE_MATCHES = 10
 EXPIRING_DAYS = 7  # J4 (Q-05)
 HIRED_APPLICATION_STATUSES = ("joined",)  # rec-017 A1: the legacy "hired" is Joined (workflows.update_job_offer follows an accepted offer there)
 STATUS_LABELS = {
@@ -346,14 +351,65 @@ def require_creator(user: User) -> None:
         raise HTTPException(403, "Your role cannot add job requirements")
 
 
-async def check_category(db: AsyncSession, values: dict, stored: Job | None) -> None:
-    """The job category must be active when it is set or changed (FOR SHARE); keeping a since-deactivated one is allowed."""
-    new = values.get("job_category_id")
-    if new is None or (stored is not None and stored.job_category_id == new):
-        return
-    row = await db.scalar(select(RecJobCategory).where(RecJobCategory.id == new).with_for_update(read=True))
-    if row is None or not row.active:
-        raise HTTPException(422, "Choose an active job category")
+# hrc-005 (V1/V2): the job category, the source and the hiring manager -- (column, row, the row's "active" test, the refusal)
+_REFERENCES = (
+    ("job_category_id", RecJobCategory, lambda row: row.active, "Choose an active job category"),
+    ("lead_source_id", RecLeadSource, lambda row: row.active, "Choose an active lead source"),
+    ("hiring_manager_user_id", User, lambda row: row.active and row.role == HIRING_MANAGER_ROLE, "Choose an active hiring manager"),
+)
+
+
+async def check_references(db: AsyncSession, values: dict, stored: Job | None) -> None:
+    """Each reference must be active when it is set or changed (FOR SHARE); keeping a since-deactivated one is allowed."""
+    for column, model, usable, refusal in _REFERENCES:
+        new = values.get(column)
+        if new is None or (stored is not None and getattr(stored, column) == new):
+            continue
+        row = await db.scalar(select(model).where(model.id == new).with_for_update(read=True))
+        if row is None or not usable(row):
+            raise HTTPException(422, refusal)
+
+
+# --- hrc-005 V3: location ----------------------------------------------------------------------------------------------------------
+def place_text(city: str | None, state: str | None, country: str | None) -> str:
+    return ", ".join(p for p in (city, state, country) if p)[:120]
+
+
+def settle_location(job: Job, previous_place: str | None = None) -> None:
+    """A blank location is the city, state and country; one that equalled the previous derived text follows them. Neither = 422."""
+    place = place_text(job.city, job.state, job.country)
+    if not job.location or (previous_place and job.location == previous_place):
+        job.location = place or job.location
+    if not job.location:
+        raise HTTPException(422, "Enter the job location or its city")
+
+
+# --- hrc-005 V4/V5: possible duplicates -----------------------------------------------------------------------------------------
+TITLE_KEY = literal_column(JOB_TITLE_KEY_SQL)
+PLACE_KEY = literal_column(JOB_PLACE_KEY_SQL)
+DUPLICATE_FIELDS = frozenset({"title", "city", "location", "requisition_reference"})
+
+
+def _key(text: str | None) -> str | None:
+    return " ".join(text.split()).lower() if text and text.strip() else None
+
+
+async def check_duplicates(db: AsyncSession, job: Job, reason: str | None, exclude_id: UUID | None = None) -> list[str]:
+    """Another live job of the same company with the same title and place, or the same requisition reference, is a 409
+    `possible_duplicate` unless a reason is given. The company is already in the caller's scope. Returns the overridden codes."""
+    same = [and_(TITLE_KEY == _key(job.title), PLACE_KEY == _key(job.city or job.location))]
+    if reference := _key(job.requisition_reference):
+        same.append(func.lower(func.btrim(Job.requisition_reference)) == reference)
+    conditions = [Job.company_id == job.company_id, Job.status.not_in(ENDED), or_(*same), *([Job.id != exclude_id] if exclude_id else [])]
+    total = await db.scalar(select(func.count()).select_from(Job).where(*conditions)) or 0
+    if not total:
+        return []
+    rows = (await db.scalars(select(Job).where(*conditions).order_by(Job.requirement_code).limit(MAX_DUPLICATE_MATCHES))).all()
+    if reason:
+        return [r.requirement_code for r in rows]
+    matches = [{"id": str(r.id), "code": r.requirement_code, "title": r.title, "location": r.location, "status_label": STATUS_LABELS[r.status],
+                "requisition_reference": r.requisition_reference} for r in rows]  # fmt: skip
+    raise HTTPException(409, {"message": "This may be a duplicate of a live job requirement", "code": "possible_duplicate", "matches": matches, "total": total})
 
 
 def check_ranges(job: Job) -> None:
@@ -424,9 +480,12 @@ async def requirement_out(db: AsyncSession, user: User, job: Job, *, refresh: bo
     company = await db.get(Company, job.company_id)
     skills = (await db.scalars(select(JobSkill).where(JobSkill.job_id == job.id).order_by(JobSkill.kind.desc(), JobSkill.position))).all()
     history = (await db.scalars(select(JobStatusHistory).where(JobStatusHistory.job_id == job.id).order_by(JobStatusHistory.created_at.desc(), JobStatusHistory.id))).all()
-    user_ids = {job.assigned_recruiter_user_id, job.created_by_user_id, job.submitted_by_user_id} | {h.changed_by_user_id for h in history}
+    user_ids = {job.assigned_recruiter_user_id, job.created_by_user_id, job.submitted_by_user_id, job.updated_by_user_id, job.hiring_manager_user_id} | {
+        h.changed_by_user_id for h in history
+    }
     people = {u.id: u for u in (await db.scalars(select(User).where(User.id.in_(user_ids - {None})))).all()}
     category = await db.get(RecJobCategory, job.job_category_id) if job.job_category_id else None
+    lead_source = await db.get(RecLeadSource, job.lead_source_id) if job.lead_source_id else None
     required = job.status in SUBMITTABLE and await approval_required(db, job)
     allowed = [s for s in TRANSITIONS[job.status] if not (required and s in _ACTIVE)]  # A7
     return {
@@ -443,6 +502,20 @@ async def requirement_out(db: AsyncSession, user: User, job: Job, *, refresh: bo
         "shift": job.shift,
         "employment_type": job.employment_type,
         "joining_requirement": job.joining_requirement,
+        # hrc-005 (V1): the §4.2 fields
+        "requisition_reference": job.requisition_reference,
+        "lead_source": ref(lead_source),
+        "certifications": job.certifications,
+        "country": job.country,
+        "state": job.state,
+        "city": job.city,
+        "relocation_required": job.relocation_required,
+        "travel_requirement": job.travel_requirement,
+        "salary_currency": job.salary_currency,
+        "salary_period": job.salary_period,
+        "benefits": job.benefits,
+        "hiring_manager": person(people.get(job.hiring_manager_user_id)),
+        "expected_joining_date": job.expected_joining_date,
         "skills": [
             {"id": s.id, "name": s.name, "kind": s.kind, "weight": s.weight, "skill_id": s.skill_id, "matched": s.skill_id is not None} for s in skills
         ],
@@ -469,6 +542,7 @@ async def requirement_out(db: AsyncSession, user: User, job: Job, *, refresh: bo
         ],
         "created_by": person(people.get(job.created_by_user_id)),
         "created_at": job.created_at,
+        "updated_by": person(people.get(job.updated_by_user_id)),  # hrc-005 V6
         "updated_at": job.updated_at,
     }
 
@@ -488,9 +562,10 @@ def catalogue() -> dict:
 async def audited_values(db: AsyncSession, job: Job, fields, *, skills: bool = False) -> dict:
     """hrc-004 B5: the values an edit's audit diff compares -- the category by name, and the skill lists as text when `skills`."""
     values = {k: getattr(job, k) for k in fields}
-    if "job_category_id" in values:
-        category_id = values.pop("job_category_id")
-        values["job_category"] = (await db.get(RecJobCategory, category_id)).name if category_id else None
+    for column, model, name in (("job_category_id", RecJobCategory, "name"), ("lead_source_id", RecLeadSource, "name"), ("hiring_manager_user_id", User, "full_name")):
+        if column in values:  # hrc-005: by name, like the category
+            row_id = values.pop(column)
+            values[column.removesuffix("_user_id").removesuffix("_id")] = getattr(await db.get(model, row_id), name) if row_id else None
     if skills:
         rows = (await db.scalars(select(JobSkill).where(JobSkill.job_id == job.id).order_by(JobSkill.position))).all()
         for kind in DEFAULT_WEIGHT:

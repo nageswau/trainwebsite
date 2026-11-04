@@ -941,6 +941,13 @@ JOB_FEE_CHECKS = {  # migration 0147 repeats these strings (test_rec_031_migrati
     "ck_jobs_fee_basis": _in("fee_basis", JOB_FEE_BASES),
     "ck_jobs_fee_value": "fee_value IS NULL OR (fee_value >= 0 AND (fee_basis <> 'percent_of_ctc' OR fee_value <= 100))",
 }
+JOB_PAY_CHECKS = {  # hrc-005 (DEC-SCOPE-381 V1): migration 0258 repeats these strings (test_hrc_005_migration)
+    "ck_jobs_salary_currency": "salary_currency IS NULL OR salary_currency ~ '^[A-Z]{3}$'",
+    "ck_jobs_salary_period": "salary_period IS NULL OR salary_period IN ('year', 'month')",
+}
+# hrc-005 V4: the duplicate check's keys, spelled exactly as ix_jobs_company_title_key so the planner can use it.
+JOB_TITLE_KEY_SQL = r"lower(regexp_replace(btrim(title), '\s+', ' ', 'g'))"
+JOB_PLACE_KEY_SQL = r"lower(regexp_replace(btrim(coalesce(city, location)), '\s+', ' ', 'g'))"
 
 
 class Job(Base, TimestampMixin):
@@ -951,11 +958,12 @@ class Job(Base, TimestampMixin):
     __tablename__ = "jobs"
     __table_args__ = (
         UniqueConstraint("requirement_code", name="uq_jobs_requirement_code"),
-        *(CheckConstraint(sql, name=name) for name, sql in {**JOB_CHECKS, **JOB_FEE_CHECKS}.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in {**JOB_CHECKS, **JOB_FEE_CHECKS, **JOB_PAY_CHECKS}.items()),
         CheckConstraint(JOB_SOURCE_CHECK, name="ck_jobs_source"),
         Index("ix_jobs_status", "status"),
         Index("ix_jobs_assigned_recruiter", "assigned_recruiter_user_id"),
         Index("ix_jobs_closes_on", "closes_on"),
+        Index("ix_jobs_company_title_key", "company_id", text(JOB_TITLE_KEY_SQL)),  # hrc-005 V4: the duplicate check
     )
     __mapper_args__ = {"eager_defaults": True}  # INSERT ... RETURNING requirement_code
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -989,6 +997,21 @@ class Job(Base, TimestampMixin):
     source: Mapped[str] = mapped_column(String(10), default="recruiter", server_default=text("'recruiter'"))
     submitted_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # hrc-005 (DEC-SCOPE-381 V1): the §4.2 fields; `location` stays the display string every reader uses (V3)
+    requisition_reference: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    lead_source_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_lead_sources.id"), nullable=True)
+    certifications: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    relocation_required: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    travel_requirement: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    salary_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)  # null = INR
+    salary_period: Mapped[str | None] = mapped_column(String(5), nullable=True)  # null = a year
+    benefits: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    hiring_manager_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    expected_joining_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     company = relationship("Company")
 
 
@@ -6279,7 +6302,7 @@ CANDIDATE_PACKAGE_CHECKS = {  # hrc-011 (DEC-SCOPE-375): migration 0251 repeats 
     "ck_candidates_minimum_salary": "minimum_salary IS NULL OR minimum_salary >= 0",
     "ck_candidates_salary_periods": "coalesce(current_salary_period, 'year') IN ('year', 'month') AND coalesce(expected_salary_period, 'year') IN ('year', 'month') AND coalesce(minimum_salary_period, 'year') IN ('year', 'month')",
 }
-CANDIDATE_MERGE_CHECKS = {  # hrc-014 (DEC-SCOPE-377 D8): migration 0256 repeats these strings; test_hrc_014_migration asserts they stay identical
+CANDIDATE_MERGE_CHECKS = {  # hrc-014 (DEC-SCOPE-377 D8): migration 0258 repeats these strings; test_hrc_014_migration asserts they stay identical
     "ck_candidates_merged": "(merged_into_id IS NULL) = (merged_at IS NULL) AND (merged_at IS NULL) = (merged_by_user_id IS NULL) AND (merged_into_id IS NULL OR archived_at IS NOT NULL)",
     "ck_candidates_merged_self": "merged_into_id IS NULL OR merged_into_id <> id",
 }

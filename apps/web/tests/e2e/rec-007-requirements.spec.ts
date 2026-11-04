@@ -32,7 +32,7 @@ test("a recruiter adds a job requirement from a company and moves its status", a
   await expect(page.getByText(company)).toBeVisible();
 
   await page.getByLabel("Job title (required)").fill(title);
-  await page.getByLabel("Job location (required)").fill("Hyderabad");
+  await page.getByLabel("Job location", { exact: true }).fill("Hyderabad");
   await page.getByLabel("Number of vacancies").fill("3");
   await page.getByLabel("Experience from (years)").fill("2");
   await page.getByLabel("Experience to (years)").fill("1");

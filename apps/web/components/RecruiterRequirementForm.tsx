@@ -12,11 +12,15 @@ import {
   FORM_FIELDS,
   type FormField,
   type FormValues,
+  hiringManagerSearch,
   isRequirementBody,
   label,
   monthsFromYears,
+  type PossibleDuplicate,
+  possibleDuplicate,
   type Requirement,
   requirementBody,
+  REQUIREMENTS_PATH,
   REQUIREMENTS_URL,
   type StatusCatalogue,
   valuesOf,
@@ -31,15 +35,24 @@ import { useLeaveGuard } from "@/lib/useLeaveGuard";
 const LEAVE_PROMPT = "You have unsaved changes to this requirement. Leave without saving?";
 type Text = { label: string; max: number; multiline?: boolean; type?: "date" | "number"; hint?: string; required?: boolean };
 const TEXT: Partial<Record<FormField, Text>> = {
+  requisition_reference: { label: "Requisition reference", max: 80, hint: "The client's own reference for this opening, if any" },
   title: { label: "Job title", max: 180, required: true },
   department: { label: "Department", max: 120 },
   vacancies: { label: "Number of vacancies", max: 5 },
   qualification: { label: "Qualification", max: 300 },
   experience_min_months: { label: "Experience from (years)", max: 5, hint: "For example 0 or 1.5" },
   experience_max_months: { label: "Experience to (years)", max: 5 },
-  salary_min: { label: "Salary from (₹ a year)", max: 13 },
-  salary_max: { label: "Salary to (₹ a year)", max: 13 },
-  location: { label: "Job location", max: 120, required: true },
+  certifications: { label: "Certifications", max: 1000, multiline: true, hint: "One per line" },
+  country: { label: "Country", max: 120 },
+  state: { label: "State", max: 120 },
+  city: { label: "City", max: 120 },
+  travel_requirement: { label: "Travel", max: 120, hint: "For example Up to 25%" },
+  salary_min: { label: "Salary from", max: 13 },
+  salary_max: { label: "Salary to", max: 13 },
+  salary_currency: { label: "Salary currency", max: 3, hint: "Three letters, for example INR or USD. Empty means INR." },
+  benefits: { label: "Benefits", max: 1000, multiline: true, hint: "One per line" },
+  expected_joining_date: { label: "Expected joining date", max: 10, type: "date" },
+  location: { label: "Job location", max: 120, hint: "Work address or area. Leave empty to use the city, state and country." },
   joining_requirement: { label: "Joining requirement", max: 300, hint: "For example Immediate, or within 30 days" },
   closes_on: { label: "Application deadline", max: 10, type: "date" },
   requirement_date: { label: "Requirement date", max: 10, type: "date", hint: "The day the requirement was received. Today if left empty." },
@@ -53,8 +66,16 @@ const SELECTS: Partial<Record<FormField, { label: string; vocabulary: string }>>
   employment_type: { label: "Employment type", vocabulary: "employment_type" },
   priority: { label: "Priority", vocabulary: "priority" },
 };
+// hrc-005: fixed choices the server owns too (relocation is a yes/no that may be left unstated; the pay period is hrc-011's)
+const CHOICES: Partial<Record<FormField, { label: string; options: { id: string; name: string }[] }>> = {
+  relocation_required: { label: "Relocation required", options: [{ id: "yes", name: "Yes" }, { id: "no", name: "No" }] },
+  salary_period: { label: "Pay period", options: [{ id: "year", name: "A year" }, { id: "month", name: "A month" }] },
+};
 const SKILL_FIELDS = new Set<string>(["required_skills", "preferred_skills"]);
-const FIELD_LABELS: Record<string, string> = { job_category_id: "Job category", skills: "Skills", status: "Status", assign: "Recruiter", weights: "Skill weights" };
+const FIELD_LABELS: Record<string, string> = {
+  job_category_id: "Job category", skills: "Skills", status: "Status", assign: "Recruiter", weights: "Skill weights", lead_source_id: "Lead source",
+  hiring_manager_user_id: "Hiring manager",
+};
 
 /** FastAPI's 422 list -> errors at the form's fields (a skill's item lands on its list); null when any item is about something else. */
 function fieldErrors(detail: unknown): Partial<Record<FormField, string>> | null {
@@ -102,6 +123,11 @@ export default function RecruiterRequirementForm({
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [categories, setCategories] = useState<CatalogueValue[]>([]);
+  const [sources, setSources] = useState<CatalogueValue[]>([]);
+  // hrc-005 (V5): the server's possible duplicates, and the reason that saves anyway
+  const [duplicate, setDuplicate] = useState<PossibleDuplicate | null>(null);
+  const [reason, setReason] = useState("");
+  const [reasonError, setReasonError] = useState<string | null>(null);
   const [vocabularies, setVocabularies] = useState<Record<string, string[]>>({});
   const [pickersFailed, setPickersFailed] = useState(false);
   const focus = useFocusAfterRender();
@@ -112,9 +138,14 @@ export default function RecruiterRequirementForm({
 
   useEffect(() => {
     const abort = new AbortController();
-    Promise.all([activeValues("job-categories", abort.signal), fetch(`${REQUIREMENTS_URL}/statuses`, { signal: abort.signal }).then((r) => (r.ok ? r.json() : Promise.reject(r)))])
-      .then(([c, catalogue]: [CatalogueValue[], StatusCatalogue]) => {
+    Promise.all([
+      activeValues("job-categories", abort.signal),
+      activeValues("lead-sources", abort.signal),
+      fetch(`${REQUIREMENTS_URL}/statuses`, { signal: abort.signal }).then((r) => (r.ok ? r.json() : Promise.reject(r))),
+    ])
+      .then(([c, s, catalogue]: [CatalogueValue[], CatalogueValue[], StatusCatalogue]) => {
         setCategories(c);
+        setSources(s);
         setVocabularies(catalogue.vocabularies);
       })
       .catch(() => !abort.signal.aborted && setPickersFailed(true));
@@ -132,7 +163,8 @@ export default function RecruiterRequirementForm({
     const found: Partial<Record<FormField | "company", string>> = {};
     if (mode === "create" && !companyPick) found.company = "Choose the company";
     if (!values.title.trim()) found.title = "Job title is required";
-    if (!values.location.trim()) found.location = "Job location is required";
+    if (![values.location, values.city, values.state, values.country].some((v) => v.trim())) found.location = "Enter the job location or its city";
+    if (values.salary_currency.trim() && !/^[A-Za-z]{3}$/.test(values.salary_currency.trim())) found.salary_currency = "Enter three letters, for example INR or USD";
     for (const key of ["experience_min_months", "experience_max_months"] as const) {
       if (Number.isNaN(monthsFromYears(values[key]))) found[key] = "Enter years as a number, for example 2 or 1.5";
     }
@@ -146,11 +178,19 @@ export default function RecruiterRequirementForm({
     return !first;
   }
 
-  async function save() {
+  /** `anyway`: re-send after the possible-duplicate panel, with the user's reason (hrc-005 V5); a plain save re-checks from scratch. */
+  async function save(anyway = false) {
     if (busy || !check()) return;
+    if (anyway && !reason.trim()) {
+      setReasonError("Give a reason to save anyway");
+      focus(`${idPrefix}-duplicate-reason`);
+      return;
+    }
+    if (!anyway) setDuplicate(null);
     const body = requirementBody(values, mode === "edit" ? opened : undefined);
     if (mode === "edit" && Object.keys(body).length === 0) return onSaved(requirement!, false);
     if (mode === "edit") body.expected_updated_at = guard.token;
+    if (anyway) body.duplicate_reason = reason.trim();
     if (mode === "create") {
       body.company_id = companyPick!.id;
       if (recruiter) body.assigned_recruiter_user_id = recruiter;
@@ -169,6 +209,13 @@ export default function RecruiterRequirementForm({
         return;
       }
       if (guard.caught({ ok: false, status: response.status, detail: data?.detail })) return;
+      const duplicates = response.status === 409 ? possibleDuplicate(data?.detail) : null;
+      if (duplicates) {
+        setDuplicate(duplicates);
+        setReasonError(null);
+        focus(`${idPrefix}-duplicate`);
+        return;
+      }
       const onFields = response.status === 422 ? fieldErrors(data?.detail) : null;
       if (onFields) {
         setErrors(onFields);
@@ -243,6 +290,7 @@ export default function RecruiterRequirementForm({
   }
 
   const vocabularyField = (key: FormField) => selectField(key, SELECTS[key]!.label, (vocabularies[SELECTS[key]!.vocabulary] ?? []).map((v) => ({ id: v, name: label(v) })));
+  const choiceField = (key: FormField) => selectField(key, CHOICES[key]!.label, CHOICES[key]!.options);
 
   return (
     <form
@@ -281,6 +329,13 @@ export default function RecruiterRequirementForm({
         </fieldset>
       )}
       <fieldset className="form-section">
+        <legend>Identification</legend>
+        <div className="form-grid">
+          {textField("requisition_reference")}
+          {selectField("lead_source_id", "Lead source", withCurrent(sources, requirement?.lead_source))}
+        </div>
+      </fieldset>
+      <fieldset className="form-section">
         <legend>Role</legend>
         <div className="form-grid">
           {textField("title")}
@@ -290,18 +345,49 @@ export default function RecruiterRequirementForm({
           {textField("qualification")}
           {textField("experience_min_months")}
           {textField("experience_max_months")}
-          {textField("salary_min")}
-          {textField("salary_max")}
+          {vocabularyField("employment_type")}
+          {vocabularyField("shift")}
+        </div>
+        {textField("certifications")}
+      </fieldset>
+      <fieldset className="form-section">
+        <legend>Location</legend>
+        <div className="form-grid">
+          {textField("country")}
+          {textField("state")}
+          {textField("city")}
+          {textField("location")}
+          {vocabularyField("work_mode")}
+          {choiceField("relocation_required")}
+          {textField("travel_requirement")}
         </div>
       </fieldset>
       <fieldset className="form-section">
-        <legend>Work</legend>
+        <legend>Compensation</legend>
         <div className="form-grid">
-          {textField("location")}
-          {vocabularyField("work_mode")}
-          {vocabularyField("shift")}
-          {vocabularyField("employment_type")}
+          {textField("salary_min")}
+          {textField("salary_max")}
+          {textField("salary_currency")}
+          {choiceField("salary_period")}
+        </div>
+        {textField("benefits")}
+      </fieldset>
+      <fieldset className="form-section">
+        <legend>Hiring plan</legend>
+        <div className="form-grid">
+          <div className="field">
+            <SearchableSelect
+              id={`${idPrefix}-hiring_manager_user_id`}
+              label="Hiring manager"
+              noun="manager"
+              search={hiringManagerSearch}
+              initial={requirement?.hiring_manager ? { id: requirement.hiring_manager.id, label: requirement.hiring_manager.full_name } : null}
+              onChange={(option) => set("hiring_manager_user_id", option?.id ?? "")}
+            />
+            {errorOf("hiring_manager_user_id")}
+          </div>
           {textField("joining_requirement")}
+          {textField("expected_joining_date")}
           {textField("closes_on")}
           {textField("requirement_date")}
           {vocabularyField("priority")}
@@ -315,11 +401,62 @@ export default function RecruiterRequirementForm({
       </fieldset>
       <StaleRecordNotice
         guard={guard}
-        labelOf={(key) => TEXT[key as FormField]?.label ?? SELECTS[key as FormField]?.label ?? FIELD_LABELS[key] ?? label(key)}
-        display={(key, value) => (key === "job_category_id" ? (withCurrent(categories, requirement?.job_category).find((c) => c.id === value)?.name ?? value) : SELECTS[key as FormField] && value ? label(value) : value)}
+        labelOf={(key) => TEXT[key as FormField]?.label ?? SELECTS[key as FormField]?.label ?? CHOICES[key as FormField]?.label ?? FIELD_LABELS[key] ?? label(key)}
+        display={(key, value) => {
+          if (key === "job_category_id") return withCurrent(categories, requirement?.job_category).find((c) => c.id === value)?.name ?? value;
+          if (key === "lead_source_id") return withCurrent(sources, requirement?.lead_source).find((c) => c.id === value)?.name ?? value;
+          if (CHOICES[key as FormField]) return CHOICES[key as FormField]!.options.find((o) => o.id === value)?.name ?? value;
+          return SELECTS[key as FormField] && value ? label(value) : value;
+        }}
         onReload={guard.reload}
         onReview={guard.reviewMine}
       />
+      {duplicate && (
+        <section className="action-card wide" id={`${idPrefix}-duplicate`} tabIndex={-1} aria-labelledby={`${idPrefix}-duplicate-title`}>
+          <h4 id={`${idPrefix}-duplicate-title`} style={{ margin: 0 }}>
+            Possible duplicate
+          </h4>
+          <p role="alert" style={{ margin: 0 }}>
+            {duplicate.message}. Check {duplicate.total === 1 ? "it" : `these ${duplicate.total}`} before saving.
+          </p>
+          <ul style={{ margin: 0, paddingLeft: 18, overflowWrap: "anywhere" }}>
+            {duplicate.matches.map((m) => (
+              <li key={m.id}>
+                <a href={`${REQUIREMENTS_PATH}/${m.id}`} target="_blank" rel="noreferrer">
+                  {m.code} (opens in a new tab)
+                </a>{" "}
+                {m.title} · {m.location} · {m.status_label}
+                {m.requisition_reference && <> · Ref {m.requisition_reference}</>}
+              </li>
+            ))}
+          </ul>
+          <div className="field">
+            <label htmlFor={`${idPrefix}-duplicate-reason`}>Why is this not a duplicate? (required to save anyway)</label>
+            <textarea
+              id={`${idPrefix}-duplicate-reason`}
+              rows={2}
+              maxLength={500}
+              value={reason}
+              aria-invalid={reasonError ? true : undefined}
+              aria-describedby={reasonError ? `${idPrefix}-duplicate-reason-error` : undefined}
+              onChange={(e) => setReason(e.target.value)}
+            />
+            {reasonError && (
+              <p className="form-error" id={`${idPrefix}-duplicate-reason-error`}>
+                {reasonError}
+              </p>
+            )}
+          </div>
+          <div className="actions">
+            <button type="button" className="btn small" disabled={busy} onClick={() => void save(true)}>
+              {busy ? "Saving…" : "Save anyway"}
+            </button>
+            <button type="button" className="btn secondary small" disabled={busy} onClick={() => { setDuplicate(null); focus(`${idPrefix}-save`); }}>
+              Go back
+            </button>
+          </div>
+        </section>
+      )}
       {failure && (
         <p className="form-error" role="alert" id={`${idPrefix}-failure`} tabIndex={-1}>
           {failure}

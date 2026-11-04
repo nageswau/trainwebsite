@@ -33,7 +33,7 @@ test("a stale requirement save is refused, reviewed and saved without losing the
   await a.getByRole("button", { name: "Edit", exact: true }).click();
   await b.goto(`/recruiter/requirements/${requirement.id}`);
   await b.getByRole("button", { name: "Edit", exact: true }).click();
-  await b.getByLabel("Job location (required)").fill("Chennai");
+  await b.getByLabel("Job location", { exact: true }).fill("Chennai");
   await b.getByRole("button", { name: "Save changes" }).click();
   await expect(b.getByText("Changes saved.")).toBeVisible();
 
@@ -47,7 +47,7 @@ test("a stale requirement save is refused, reviewed and saved without losing the
 
   await notice.getByRole("button", { name: "Review my changes" }).click();
   await expect(a.getByLabel("Job title (required)")).toHaveValue(`Senior Java Dev ${stamp}`);
-  await expect(a.getByLabel("Job location (required)")).toHaveValue("Chennai");
+  await expect(a.getByLabel("Job location", { exact: true })).toHaveValue("Chennai");
   await expect(a.getByRole("list", { name: "Your changes" })).toContainText(`Job title: yours “Senior Java Dev ${stamp}”, now on record “Java Dev ${stamp}”`);
   await a.getByRole("button", { name: "Save changes" }).click();
   await expect(a.getByText("Changes saved.")).toBeVisible();
