@@ -3743,3 +3743,12 @@ No new grant. Resume/document links and the documents list: the candidate reader
 opted-in candidate (no id in the request; another candidate's document 404). Every other role 403, anonymous 401. A signed link is the
 authorisation for its 300 s (D4). `/files/download` and `/local-files` 404 `candidate-documents/` and `candidate-previews/` keys. Pinned by
 `apps/api/tests/test_hrc_015_documents.py` and the rec-038 matrix rows.
+
+### 2.280 Candidate ownership *(added 2026-11-04 — `DEC-SCOPE-381`, hrc-012)*
+
+Reading is unchanged (pool-wide, §2.45 rec-009 readers). `PUT /recruiter/candidates/{id}/ownership`: the candidate's **primary recruiter**
+(`placement_team`), any `placement_manager` and `super_admin`; another recruiter, a collaborator and `hr_team` 403 (the writer check runs
+first, then ownership, before the body is read). `GET .../assignees`: candidate writers. `GET /recruiter/candidate-ownership-settings`:
+candidate readers; `PUT`: `placement_manager`, `super_admin`. `hr_manager`, `placement_officer` and `interviewer` stay refused (§2.275 R2);
+a placement officer only sees their "Your candidates" count on their own dashboard. Every other role 403, anonymous 401. Pinned by
+`apps/api/tests/test_hrc_012_ownership.py` and the rec-038 matrix rows.

@@ -20,7 +20,7 @@ export default function RecruiterTeamTable({ page }: { page: Page<RecruiterTeamM
           <thead>
             <tr>
               <th scope="col">Name</th><th scope="col">Employee ID</th><th scope="col">Email</th><th scope="col">Mobile</th><th scope="col">Status</th>
-              <th scope="col">Companies</th><th scope="col">Requirements</th><th scope="col">Open follow-ups</th><th scope="col">Actions</th>
+              <th scope="col">Companies</th><th scope="col">Requirements</th><th scope="col">Open follow-ups</th><th scope="col">Candidates</th><th scope="col">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -34,6 +34,7 @@ export default function RecruiterTeamTable({ page }: { page: Page<RecruiterTeamM
                 <td data-label="Companies">{r.work.companies}</td>
                 <td data-label="Requirements">{r.work.requirements}</td>
                 <td data-label="Open follow-ups">{r.work.follow_ups}</td>
+                <td data-label="Candidates">{r.work.candidates ?? 0}</td>
                 <td data-label="Actions"><RecruiterReassign row={r} /></td>
               </tr>
             ))}

@@ -96,6 +96,12 @@ ROWS = [
     R("get", "/recruiter/candidates/{candidates_cv}/documents/{candidates_document}/link", **allow(200, *READERS)),
     R("post", "/recruiter/candidates/{candidates_cv}/document-requests", {"document_type": "payslip"}, **allow(201, *WRITERS)),
     R("post", "/recruiter/candidates/{candidates_cv}/document-requests/{candidates_request}/cancel", **allow(200, *WRITERS)),
+    # hrc-012 (§2.280): the primary recruiter (`rec` owns the world's candidate) or any manager / super_admin changes ownership; another
+    # recruiter is refused. The pickers are for writers; the shared-ownership switch is read by readers and changed by managers.
+    R("put", "/recruiter/candidates/{candidate}/ownership", lambda w: {"placement_officer_user_id": w["officer_id"]}, **allow(200, "rec", "mgr", "mgr_out", "super")),
+    R("get", "/recruiter/candidates/assignees?kind=recruiter", **allow(200, *WRITERS)),
+    R("get", "/recruiter/candidate-ownership-settings", **allow(200, *READERS)),
+    R("put", "/recruiter/candidate-ownership-settings", {"shared_ownership": False}, **allow(200, "mgr", "mgr_out", "super")),
     # rec-013 / rec-014 Find Candidates (§2.77, §2.80): read only, hr_team included
     R("post", "/recruiter/candidates/search", {"all": ["Java"]}, **allow(200, *READERS)),
     # rec-036 the candidate journey (§2.105)

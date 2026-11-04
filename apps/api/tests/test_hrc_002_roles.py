@@ -97,7 +97,7 @@ async def test_placement_officer_dashboard_shows_the_shared_job_id(client, db_se
     await as_role(client, db_session, "placement_officer", "it")
     body = (await client.get(dashboard("placement_officer"))).json()
     assert body["title"] == "Placement Officer Dashboard"
-    assert [m["label"] for m in body["metrics"]] == ["Open requirements"]
+    assert [m["label"] for m in body["metrics"]] == ["Open requirements", "Your candidates"]  # hrc-012 (DEC-SCOPE-381 O3): a count, no candidate field
     assert any(r["job_id"] == job.requirement_code for r in body["rows"])
 
 

@@ -8104,6 +8104,7 @@ class RecruiterWork(BaseModel):
     companies: int
     requirements: int
     follow_ups: int
+    candidates: int = 0  # hrc-012 (DEC-SCOPE-381 O8): candidates the recruiter is primary recruiter of (archived included)
 
 
 class RecruiterTeamMemberRow(RecruiterTeamRow):
@@ -10184,6 +10185,7 @@ class CandidateItem(BaseModel):
     status: CandidateStatus
     archived: bool
     created_at: datetime
+    owner: RecPersonRef | None = None  # hrc-012 (DEC-SCOPE-381 O2): the primary recruiter; None = unassigned
 
 
 class CandidatePage(BaseModel):
@@ -10231,6 +10233,47 @@ class CandidateDetail(CandidateItem):
     can_edit: bool
     whatsapp_to: str | None = None  # rec-026 MS6: the wa.me number (E.164 digits), None when the mobile is unusable
     merged_into: CandidateRef | None = None  # hrc-014 (DEC-SCOPE-377 D8): the candidate this one was merged into
+    ownership: "CandidateOwnershipOut | None" = None  # hrc-012 (DEC-SCOPE-381)
+
+
+# --- hrc-012 (DEC-SCOPE-381): candidate ownership ------------------------------------------------------------------------------------
+MAX_COLLABORATORS = 10
+
+
+class CandidateOwnershipOut(BaseModel):
+    owner: RecPersonRef | None
+    placement_officer: RecPersonRef | None
+    collaborators: list[RecPersonRef]
+    shared_ownership: bool
+    can_assign: bool
+
+
+class CandidateOwnershipIn(BaseModel):
+    """Partial: a key sent as null clears it; `collaborator_user_ids` is the whole new list."""
+
+    model_config = ConfigDict(extra="forbid")
+    owner_user_id: UUID | None = None
+    placement_officer_user_id: UUID | None = None
+    collaborator_user_ids: Annotated[list[UUID], Field(max_length=MAX_COLLABORATORS)] = []
+
+
+CANDIDATE_OWNERSHIP_LABELS = {"owner_user_id": "Primary recruiter", "placement_officer_user_id": "Placement officer", "collaborator_user_ids": "Collaborators",
+                              "shared_ownership": "Shared ownership"}  # fmt: skip
+
+
+class CandidateOwnershipSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    shared_ownership: StrictBool
+
+
+class CandidateOwnershipSettingsOut(CandidateOwnershipSettings):
+    can_edit: bool
+
+
+class CandidateAssignee(BaseModel):
+    id: UUID
+    full_name: str
+    role: str
 
 
 # --- hrc-014 (DEC-SCOPE-377): duplicate review and merge ------------------------------------------------------------------------------

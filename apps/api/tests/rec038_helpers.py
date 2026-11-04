@@ -121,7 +121,7 @@ async def core(client, db) -> dict:
     contact = await add(db, CompanyContact(company_id=company.id, name=f"Anita {tag()}", email=f"{tag('k38-')}@example.com", mobile="+91 90000 11111",
                                            is_primary=True))  # fmt: skip
     requirement = await make_job(db, company, rec)
-    candidate = await make_candidate(db, rec)
+    candidate = await make_candidate(db, rec, owner_user_id=rec.id)  # hrc-012: the recruiter owns it
     application = await add(db, JobApplication(job_id=requirement.id, candidate_id=candidate.id, added_by_user_id=rec.id, status="sourced"))
     student_candidate = await candidate_for_student(db, users["student"])
     student_candidate.opted_in = True

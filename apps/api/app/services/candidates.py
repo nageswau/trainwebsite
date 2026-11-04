@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import CANDIDATE_CODE_SEQ, AuditLog, Candidate, CandidateResume, RecCandidateSource, User
 from app.notifications.phone import normalise_phone, wa_number
 from app.schemas import NO_CONTACT
+from app.services import candidate_ownership
 from app.services.permissions import user_has_grant
 from app.services.recruiter import MANAGER_ROLE, ROLE
 from app.services.storage import storage
@@ -361,6 +362,8 @@ async def detail_out(db: AsyncSession, user: User, candidate: Candidate) -> dict
         "can_edit": user.role in WRITERS,
         "whatsapp_to": wa_number(candidate.mobile),  # rec-026 MS6
         "merged_into": await merged_into(db, candidate),  # hrc-014 D8
+        "owner": (ownership := await candidate_ownership.ownership_out(db, user, candidate))["owner"],  # hrc-012 O2
+        "ownership": ownership,
     }
 
 

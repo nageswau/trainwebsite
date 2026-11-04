@@ -11461,3 +11461,22 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   (hrc-022). D12 `/files/download` and `/local-files` withhold `candidate-documents/` and `candidate-previews/`.
 - **Numbering:** migration `0255_candidate_documents`; API §12JX; RBAC §2.277.
 - **Feature ID authorized:** `hrc-015`. **Status:** built on `worktree-hrc-015`.
+
+### DEC-SCOPE-381 — Candidate ownership: primary recruiter, placement officer, collaborators (`hrc-012`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-012` (PDF §5 metadata, §6.2, §12; PDF classified `UNVERIFIED`). Scope
+  approved by the owner 2026-11-01 (backlog Q-00: all phases). Dependency hrc-002 (DEC-SCOPE-374) merged. The owner said to proceed with
+  the recommended answers, so Q-11 and O1–O10 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-012-candidate-ownership-design.md`.
+- **Builder's calls:** O1 visibility stays pool-wide (Q-11 recommended); ownership drives My candidates / Unassigned, notices and handover.
+  O2 one primary recruiter per candidate (`owner_user_id`, NULL = unassigned): an active `placement_team` user with a recruiter profile.
+  O3 an optional `placement_officer` owner; the officer's dashboard gains a "Your candidates" count (no candidate field). O4 collaborators
+  (active recruiters or placement officers, at most 10) only while the one-row `shared_ownership` setting is on (default off); removing
+  is always allowed. O5 the primary recruiter changes their own candidate; `placement_manager` and super_admin change any and the setting;
+  **"HR Manager reassigns" is not built** — `hr_manager` has no candidate access (DEC-SCOPE-374 R2), `NEEDS_CONFIRMATION` with hrc-025.
+  O6 append-only `candidate_assignment_history` + `candidate.assign` audit (names in `changes`). O7 a recruiter who adds a candidate owns
+  it. O8 rec-037's Team Reassign also moves the recruiter's candidates (archived too); deactivating a recruiter who owns a non-archived
+  candidate is refused (422). O9 migration backfill: owner = creator when the creator is `placement_team`. O10 `it.candidate.assigned`
+  notice to each new owner/officer/collaborator, never the actor. Merge (hrc-014) unchanged: the survivor keeps its owners.
+- **Numbering:** migration `0259_candidate_ownership`; API §12JZ; RBAC §2.280.
+- **Feature ID authorized:** `hrc-012`. **Status:** built on `worktree-hrc-012`.
