@@ -8,7 +8,7 @@ import {formatCalendarDate} from "@/lib/formatDate";
 
 export default async function Careers() {
   let jobs: any[] = [];
-  try { jobs = await publicApi<any[]>("/api/v1/public/jobs"); } catch {}
+  try { jobs = await publicApi<any[]>("/api/v1/public/jobs", {fresh: true}); } catch {} // hrc-008: never a cached (possibly now internal) job
   const items = jobs.map(job => ({
     id: String(job.id), searchText: `${job.title} ${job.company} ${job.location} ${(job.skills || []).join(" ")}`,
     filters: {company: job.company, location: job.location}, sortValues: {title: job.title, company: job.company, closes: job.closes_on},

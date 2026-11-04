@@ -3759,3 +3759,11 @@ first, then ownership, before the body is read). `GET .../assignees`: candidate 
 candidate readers; `PUT`: `placement_manager`, `super_admin`. `hr_manager`, `placement_officer` and `interviewer` stay refused (§2.275 R2);
 a placement officer only sees their "Your candidates" count on their own dashboard. Every other role 403, anonymous 401. Pinned by
 `apps/api/tests/test_hrc_012_ownership.py` and the rec-038 matrix rows.
+### 2.280 Vacancy visibility *(added 2026-11-04 — `DEC-SCOPE-383`, hrc-008)*
+
+`jobs.publish` gets its first default holder, `placement_manager` (migration 0260 seeds it; super_admin implicit; grantable to any role).
+A holder changes any job requirement's visibility (`PUT /recruiter/requirements/{id}/visibility`, no recruiter scope needed); recruiters,
+`hr_manager`, `placement_officer` and every other role 403, anonymous 401. Reading a visibility follows the requirement's readers. On the
+candidate side an anonymous visitor sees and applies to public jobs only, and an `it_student` to portal, public and their own talent pools'
+segment jobs; a job outside that is the same 404 as a missing one. Pinned by `apps/api/tests/test_hrc_008_visibility.py` and the rec-038
+matrix row.

@@ -935,6 +935,12 @@ JOB_CHECKS = {  # migration 0114 repeats these strings; test_rec_007_migration a
     "ck_jobs_salary": "(salary_min IS NULL OR salary_min >= 0) AND (salary_max IS NULL OR salary_max >= 0) AND (salary_min IS NULL OR salary_max IS NULL OR salary_min <= salary_max)",
 }
 JOB_SOURCE_CHECK = f"source IN ({', '.join(repr(v) for v in JOB_SOURCES)})"  # hrc-007; migration 0257 repeats it
+# hrc-008 (DEC-SCOPE-383 V1): who sees an open job -- staff only, the student/candidate portal, one talent pool's members, or everyone.
+# Migration 0260 repeats both checks (test_hrc_008_migration).
+JOB_VISIBILITIES = ("internal", "portal", "segment", "public")
+JOB_VISIBILITY_LABELS = {"internal": "Internal only", "portal": "Candidate portal", "segment": "Segment (talent pool)", "public": "Public website"}
+JOB_VISIBILITY_CHECK = f"visibility IN ({', '.join(repr(v) for v in JOB_VISIBILITIES)})"
+JOB_SEGMENT_POOL_CHECK = "(visibility = 'segment') = (segment_pool_id IS NOT NULL)"
 JOB_FEE_BASES = ("fixed", "percent_of_ctc")  # rec-031 (RV1): the per-requirement fee override, the rec-030 CT4 shape
 JOB_FEE_CHECKS = {  # migration 0147 repeats these strings (test_rec_031_migration)
     "ck_jobs_fee_pair": "(fee_basis IS NULL) = (fee_value IS NULL)",
@@ -960,7 +966,10 @@ class Job(Base, TimestampMixin):
         UniqueConstraint("requirement_code", name="uq_jobs_requirement_code"),
         *(CheckConstraint(sql, name=name) for name, sql in {**JOB_CHECKS, **JOB_FEE_CHECKS, **JOB_PAY_CHECKS}.items()),
         CheckConstraint(JOB_SOURCE_CHECK, name="ck_jobs_source"),
+        CheckConstraint(JOB_VISIBILITY_CHECK, name="ck_jobs_visibility"),
+        CheckConstraint(JOB_SEGMENT_POOL_CHECK, name="ck_jobs_segment_pool"),
         Index("ix_jobs_status", "status"),
+        Index("ix_jobs_status_visibility", "status", "visibility"),  # hrc-008: the public/portal listings
         Index("ix_jobs_assigned_recruiter", "assigned_recruiter_user_id"),
         Index("ix_jobs_closes_on", "closes_on"),
         Index("ix_jobs_company_title_key", "company_id", text(JOB_TITLE_KEY_SQL)),  # hrc-005 V4: the duplicate check
@@ -1012,6 +1021,9 @@ class Job(Base, TimestampMixin):
     hiring_manager_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     expected_joining_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    # hrc-008 (DEC-SCOPE-383 V1/V3): public by default, so no existing listing or create path changes; a segment names its talent pool
+    visibility: Mapped[str] = mapped_column(String(10), default="public", server_default=text("'public'"))
+    segment_pool_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("talent_pools.id", ondelete="RESTRICT"), nullable=True)
     company = relationship("Company")
 
 

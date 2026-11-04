@@ -5637,3 +5637,16 @@ shared_ownership, can_assign}`; `POST /recruiter/candidates` makes a recruiter c
 `POST /recruiter/manager/reassign` `moved` gain `candidates`; the reassign moves them and its 409 reads "no companies, requirements or
 candidates to reassign"; `PATCH /admin/users/{id}` `{active:false}` of a recruiter owning a non-archived candidate is 422; the placement
 officer dashboard gains the "Your candidates" metric. Notice `it.candidate.assigned`.
+
+## 12KB. Vacancy visibility (hrc-008) — addendum, 2026-11-04
+
+`DEC-SCOPE-383`. **New:** `PUT /api/v1/recruiter/requirements/{id}/visibility` `{visibility: "internal"|"portal"|"segment"|"public",
+segment_pool_id?}` (a segment needs an active talent pool, and only a segment names one) → `{requirement}` (the detail); the same values
+write nothing. Errors: 401; 403 "You cannot change who sees job requirements" (no `jobs.publish`; checked before the body); 404 (unknown
+job); 422 (bad body, "Choose an active talent pool"). **Changed (additive):** the requirement detail carries `visibility` `{key, label,
+segment_pool: {id, name, active} | null, can_change}` and every requirement row carries `visibility` (the key). **Changed (behaviour):**
+`GET /public/jobs` lists public jobs only and `POST /public/jobs/{id}/apply` answers 404 "Open job not found" for any other; for an
+`it_student`, `GET /workflows/it/jobs/open`, `POST /workflows/it/jobs/{id}/apply` and the portal's job-applications "Open jobs" panel cover
+portal, public and the student's segment jobs (staff callers of `/workflows/it/jobs/open` still see every open job); the employer job
+payload's `visible_to_students` is false for an internal job. Existing jobs are public (migration 0260), so nothing changes until a
+`jobs.publish` holder narrows a job.

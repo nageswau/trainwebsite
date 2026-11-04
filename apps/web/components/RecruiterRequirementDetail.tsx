@@ -13,6 +13,7 @@ import RecruiterRecordHistory from "@/components/RecruiterRecordHistory";
 import RecruiterRequirementRevenue from "@/components/RecruiterRequirementRevenue";
 import RecruiterShares from "@/components/RecruiterShares";
 import { ApprovalDecision, SubmitForApproval, SubmittedLine } from "@/components/RequirementApproval";
+import RequirementVisibility from "@/components/RequirementVisibility";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
@@ -294,6 +295,8 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
           )}
         </section>
       )}
+      {/* hrc-008: who sees the job -- shown to every reader, changed by a `jobs.publish` holder */}
+      {!showEditor && <RequirementVisibility requirement={r} onDone={changed} />}
       {p.can_change_status && !showEditor && <StatusChange requirement={r} onChanged={changed} />}
       {p.can_reassign && <Reassign requirement={r} onChanged={changed} />}
       <section className="action-card wide" aria-labelledby={`requirement-${r.id}-history`}>

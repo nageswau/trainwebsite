@@ -345,6 +345,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **E:** a candidate stops matching the segment after applying (the application stays).
 - **Regression risks:** the careers page, `test_emp_*`, the student job list and SEO pages.
 - **Complexity:** medium. **Risk:** medium.
+- **Status:** built as `DEC-SCOPE-383` (migration `0260_job_visibility`, API §12KB, RBAC §2.280); design
+  `docs/superpowers/specs/2026-11-04-hrc-008-vacancy-visibility-design.md`. Q-08 answered by the builder's calls V1-V8 (existing and new
+  jobs public; a segment is a talent pool; `jobs.publish` held by placement managers; `NEEDS_CONFIRMATION`).
 
 #### hrc-009: Eligibility-change review and vacancy-change notices
 - **Business requirement:** §4.3 "Significant changes to eligibility criteria should trigger a review of affected applications rather than silently disqualifying"; §12/§13 "Notify relevant owners when a vacancy changes".

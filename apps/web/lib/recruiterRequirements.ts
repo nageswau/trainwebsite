@@ -20,7 +20,7 @@ export type RequirementPermissions = { can_edit: boolean; can_change_status: boo
 export type CompanyRef = { id: string; code: string; name: string };
 export type RequirementRow = {
   id: string; code: string; title: string; company: CompanyRef; location: string; status: Status; status_label: string; phase: Phase;
-  phase_label: string; source: JobSource; priority: string | null;
+  phase_label: string; source: JobSource; visibility: Visibility; priority: string | null;
   vacancies: number | null; closes_on: string | null; requirement_date: string | null; deadline_state: "expiring" | "expired" | null;
   assigned_recruiter: Person | null; permissions: RequirementPermissions;
 };
@@ -37,6 +37,20 @@ export type Requirement = RequirementRow & {
   city: string | null; relocation_required: boolean | null; travel_requirement: string | null; salary_currency: string | null;
   salary_period: "year" | "month" | null; benefits: string | null; hiring_manager: Person | null; expected_joining_date: string | null;
   updated_by: Person | null;
+  visibility: VisibilityDetail; // hrc-008
+};
+/** hrc-008 (DEC-SCOPE-383 V1/V4): who sees the job; `can_change` = the caller holds `jobs.publish`. */
+export type Visibility = "internal" | "portal" | "segment" | "public";
+export type VisibilityDetail = { key: Visibility; label: string; segment_pool: Ref | null; can_change: boolean };
+export const VISIBILITY_OPTIONS: { key: Visibility; label: string }[] = [
+  { key: "public", label: "Public website" }, { key: "portal", label: "Candidate portal" },
+  { key: "segment", label: "Segment (talent pool)" }, { key: "internal", label: "Internal only" },
+];
+export const VISIBILITY_HINT: Record<Visibility, string> = {
+  public: "Listed on the careers page and in the student portal.",
+  portal: "Listed in the student portal only, not on the public careers page.",
+  segment: "Listed in the student portal only for members of one talent pool.",
+  internal: "Seen by staff only. Candidates cannot see or apply to it.",
 };
 /** hrc-007 (A6/A8): whether the job still needs approval, who sent it, and what the caller may do about it. */
 export type Approval = {
