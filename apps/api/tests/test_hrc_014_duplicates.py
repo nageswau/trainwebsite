@@ -244,7 +244,7 @@ async def test_ac1_every_child_record_moves_to_the_survivor(client, db_session):
     out = response.json()
     assert out["id"] == str(s.id) and out["victim_code"] == v.candidate_code and out["kept_applications"] == []
     assert out["moved"] == {"applications": 1, "share_items": 1, "calls": 1, "messages": 1, "consents": 0, "documents": 0, "document_requests": 0,
-                            "skills": 1, "resumes": 1}  # fmt: skip
+                            "skills": 1, "resumes": 1, "education": 0, "employment": 0, "certifications": 0}  # fmt: skip  # hrc-010 P12
     for model in (JobApplication, ProfileShareItem, RecruiterCall, RecruiterMessage, CandidateResume):
         assert await _count(db_session, model, v.id) == 0, model.__name__
     assert await _count(db_session, CandidateSkill, s.id) == 2 and await _count(db_session, CandidateSkill, v.id) == 1  # the shared skill stays

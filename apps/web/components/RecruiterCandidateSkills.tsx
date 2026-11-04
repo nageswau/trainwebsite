@@ -74,6 +74,11 @@ function SkillFormCard({ candidateId, editing, onCancel, onSaved }: {
           </select>
         </div>
       </div>
+      {/* hrc-010 (P7): the skills that matter most for this candidate */}
+      <label style={{ display: "inline-flex", gap: 6, alignItems: "center", fontWeight: 400 }}>
+        <input type="checkbox" checked={form.is_primary} onChange={(e) => setForm({ ...form, is_primary: e.target.checked })} disabled={busy} />
+        Primary skill
+      </label>
       {error && <p className="form-error" role="alert" style={{ margin: 0 }}>{error}</p>}
       <div className="actions">
         <button className="btn small" disabled={busy}>{busy ? "Saving…" : editing ? "Save" : "Add"}</button>
@@ -167,7 +172,7 @@ export default function RecruiterCandidateSkills({ candidateId }: { candidateId:
                 const row = (
                   <tr key={s.id}>
                     <td data-label="Name">
-                      {name}{s.skill.active ? "" : " (inactive)"}
+                      {name}{s.skill.active ? "" : " (inactive)"}{s.is_primary && <> <span className="badge">Primary</span></>}
                       <div className="muted" style={{ fontSize: 12, fontWeight: 400 }}>{s.category.name}</div>
                     </td>
                     <td data-label="Level">{LEVEL_LABEL[s.level] ?? s.level}</td>
