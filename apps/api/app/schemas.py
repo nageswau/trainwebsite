@@ -8104,7 +8104,7 @@ class RecruiterWork(BaseModel):
     companies: int
     requirements: int
     follow_ups: int
-    candidates: int = 0  # hrc-012 (DEC-SCOPE-381 O8): candidates the recruiter is primary recruiter of (archived included)
+    candidates: int = 0  # hrc-012 (DEC-SCOPE-382 O8): candidates the recruiter is primary recruiter of (archived included)
 
 
 class RecruiterTeamMemberRow(RecruiterTeamRow):
@@ -10185,7 +10185,7 @@ class CandidateItem(BaseModel):
     status: CandidateStatus
     archived: bool
     created_at: datetime
-    owner: RecPersonRef | None = None  # hrc-012 (DEC-SCOPE-381 O2): the primary recruiter; None = unassigned
+    owner: RecPersonRef | None = None  # hrc-012 (DEC-SCOPE-382 O2): the primary recruiter; None = unassigned
 
 
 class CandidatePage(BaseModel):
@@ -10233,10 +10233,10 @@ class CandidateDetail(CandidateItem):
     can_edit: bool
     whatsapp_to: str | None = None  # rec-026 MS6: the wa.me number (E.164 digits), None when the mobile is unusable
     merged_into: CandidateRef | None = None  # hrc-014 (DEC-SCOPE-377 D8): the candidate this one was merged into
-    ownership: "CandidateOwnershipOut | None" = None  # hrc-012 (DEC-SCOPE-381)
+    ownership: "CandidateOwnershipOut | None" = None  # hrc-012 (DEC-SCOPE-382)
 
 
-# --- hrc-012 (DEC-SCOPE-381): candidate ownership ------------------------------------------------------------------------------------
+# --- hrc-012 (DEC-SCOPE-382): candidate ownership ------------------------------------------------------------------------------------
 MAX_COLLABORATORS = 10
 
 
@@ -10320,12 +10320,18 @@ REC_REQUIREMENT_LABELS = {
     "requirements": "Requirements",
     # rec-018's screening (the same text rules)
     "location_preference": "Location preference", "availability": "Availability", "remarks": "Remarks",
+    # hrc-005 (DEC-SCOPE-381 V1)
+    "requisition_reference": "Requisition reference", "certifications": "Certifications", "country": "Country", "state": "State",
+    "city": "City", "travel_requirement": "Travel", "benefits": "Benefits", "duplicate_reason": "Reason",
 }
-REC_REQUIREMENT_MULTILINE = frozenset({"description", "note", "skills", "responsibilities", "requirements", "remarks"})
+REC_REQUIREMENT_MULTILINE = frozenset({"description", "note", "skills", "responsibilities", "requirements", "remarks", "certifications", "benefits"})
 REC_REQUIREMENT_FIELDS = (  # the `jobs` columns a create or edit may write; code, status, assignee and creator are server-owned
     "title", "location", "description", "department", "job_category_id", "vacancies", "qualification", "experience_min_months",
     "experience_max_months", "salary_min", "salary_max", "work_mode", "shift", "employment_type", "joining_requirement", "closes_on",
     "requirement_date", "priority",
+    # hrc-005 (V1)
+    "requisition_reference", "lead_source_id", "certifications", "country", "state", "city", "relocation_required", "travel_requirement",
+    "salary_currency", "salary_period", "benefits", "hiring_manager_user_id", "expected_joining_date",
 )
 
 
@@ -10350,14 +10356,15 @@ def _rec_required_text(value: str | None, info: ValidationInfo) -> str:
 
 
 RecRequirementTitle = Annotated[_rec_requirement_text_type(180), AfterValidator(_rec_required_text)]
-RecRequirementLocation = Annotated[_rec_requirement_text_type(120), AfterValidator(_rec_required_text)]
+# hrc-005 V3: blank = derived from the city, state and country in the service (which 422s when there is neither)
+RecRequirementLocation = _rec_requirement_text_type(120)
 RecSkillName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
 RecMonths = Annotated[int | None, Field(ge=0, le=600)]
 RecMoney = Annotated[Decimal | None, Field(ge=0, max_digits=12, decimal_places=2)]
 
 
 class RecRequirementUpdate(BaseModel):
-    """PATCH: omitted = unchanged, null = clear (title and location cannot be cleared). Sending `required_skills` / `preferred_skills`
+    """PATCH: omitted = unchanged, null = clear (the title cannot be cleared; a cleared location is derived from the city, state and country, hrc-005 V3). Sending `required_skills` / `preferred_skills`
     replaces that list; each name resolves through the Skills Master (J7). Min > max is a 422 here when both are sent, and in the
     service against the stored values."""
 
@@ -10383,6 +10390,21 @@ class RecRequirementUpdate(BaseModel):
     required_skills: list[RecSkillName] | None = Field(default=None, max_length=30)
     preferred_skills: list[RecSkillName] | None = Field(default=None, max_length=30)
     expected_updated_at: datetime | None = None  # hrc-003: the version the form showed; another one is 409 `record_changed`
+    # hrc-005 (DEC-SCOPE-381 V1)
+    requisition_reference: _rec_requirement_text_type(80) = None
+    lead_source_id: UUID | None = None
+    certifications: _rec_requirement_text_type(1000, multiline=True) = None
+    country: _rec_requirement_text_type(120) = None
+    state: _rec_requirement_text_type(120) = None
+    city: _rec_requirement_text_type(120) = None
+    relocation_required: bool | None = None
+    travel_requirement: _rec_requirement_text_type(120) = None
+    salary_currency: _currency("Salary currency") = None
+    salary_period: _period("Pay period") = None
+    benefits: _rec_requirement_text_type(1000, multiline=True) = None
+    hiring_manager_user_id: UUID | None = None
+    expected_joining_date: date | None = None
+    duplicate_reason: _rec_requirement_text_type(500, multiline=True) = None  # V5: saves despite a possible duplicate (audited)
 
     @model_validator(mode="after")
     def _ranges(self):
@@ -10396,7 +10418,6 @@ class RecRequirementUpdate(BaseModel):
 class RecRequirementCreate(RecRequirementUpdate):
     company_id: UUID
     title: RecRequirementTitle
-    location: RecRequirementLocation
     assigned_recruiter_user_id: UUID | None = None  # managers and super_admin only (services/recruiter_requirements)
 
 
@@ -10404,6 +10425,33 @@ class RecRequirementStatusChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: Literal[JOB_STATUSES]
     note: _rec_requirement_text_type(500, multiline=True) = None
+
+
+def _required_reason(value: str | None) -> str:
+    if value is None:
+        raise ValueError("A reason is required")
+    return value
+
+
+class RecRequirementApprovalNote(BaseModel):
+    """hrc-007 (DEC-SCOPE-380 A6/A8): submit and approve take an optional note."""
+
+    model_config = ConfigDict(extra="forbid")
+    note: _rec_requirement_text_type(500, multiline=True) = None
+
+
+class RecRequirementReject(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: Annotated[_rec_requirement_text_type(500, multiline=True), AfterValidator(_required_reason)]
+
+
+class JobApprovalSettingsUpdate(BaseModel):
+    """hrc-007 (A4): the sources sent are set; the others are kept."""
+
+    model_config = ConfigDict(extra="forbid")
+    employer: bool | None = None
+    recruiter: bool | None = None
+    legacy: bool | None = None
 
 
 class RecRequirementAssign(BaseModel):

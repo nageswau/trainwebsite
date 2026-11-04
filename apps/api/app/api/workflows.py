@@ -2251,15 +2251,20 @@ async def create_job(payload: dict, user: User = Depends(get_current_user), db: 
         location=payload.get("location", "Remote"),
         description=payload.get("description", ""),
         skills=[],
-        status="requirement_received",  # rec-007 J1: the legacy "open"; this staff route still publishes immediately
+        # rec-007 J1: the legacy "open"; this staff route publishes immediately -- hrc-007 (A6): unless legacy jobs need approval, when
+        # it starts as a draft and is submitted at once.
+        status="new" if (needs_approval := (await requirements.approval_settings(db))["legacy"]) else "requirement_received",
         closes_on=date.fromisoformat(payload["closes_on"]) if payload.get("closes_on") else None,
         requirement_date=requirements.ist_today(),
         created_by_user_id=user.id,
+        source="legacy",
     )
     db.add(job)
     await db.flush()
     await requirements.set_legacy_skills(db, job, payload.get("skills") or [])
     await requirements.record_created(db, user, job)
+    if needs_approval:
+        await requirements.submit(db, user, job)
     await _audit(db, user, "job.create", "job", job.id)
     await db.commit()
     await db.refresh(job)
@@ -2300,13 +2305,16 @@ async def update_job(job_id: UUID, payload: dict, user: User = Depends(get_curre
         # rec-007 (J3): a §6 status, or a legacy draft/open/closed word mapped onto one; the move is validated and kept in history.
         status = payload["status"]
         if status in requirements.LEGACY_WORDS:
-            status = requirements.legacy_target(job.status, status)
+            await requirements.legacy_move(db, user, job, status)  # hrc-007: "open" submits while approval applies
         elif status not in requirements.STATUS_LABELS:
             raise HTTPException(422, "Unknown requirement status")
-        if status:
+        elif status == "pending_approval":
+            await requirements.submit(db, user, job)
+        else:
             await requirements.change_status(db, user, job, status)
     if "closes_on" in payload:
         job.closes_on = date.fromisoformat(payload["closes_on"]) if payload["closes_on"] else None
+    job.updated_by_user_id = user.id  # hrc-005 V6: Last Updated By
     await _audit(db, user, "job.update", "job", job.id, payload)
     await db.commit()
     return {"id": job.id, "status": job.status}

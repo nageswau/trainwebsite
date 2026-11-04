@@ -12,7 +12,7 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 export function workText(work: RecruiterWork): string {
   const parts = [plural(work.companies, "company", "companies"), plural(work.requirements, "requirement"), plural(work.follow_ups, "open follow-up")];
-  if (work.candidates) parts.push(plural(work.candidates, "candidate")); // hrc-012 (DEC-SCOPE-381 O8): named only when there are some
+  if (work.candidates) parts.push(plural(work.candidates, "candidate")); // hrc-012 (DEC-SCOPE-382 O8): named only when there are some
   return `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
 }
 

@@ -246,6 +246,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **E:** legacy rows with free-text location.
 - **Regression risks:** the public job card and student job list read `location`.
 - **Complexity:** medium. **Risk:** low.
+- **Status:** built as `DEC-SCOPE-381` (migration `0258_vacancy_fields`, API §12JZ, no RBAC change); design
+  `docs/superpowers/specs/2026-11-04-hrc-005-vacancy-fields-duplicates-design.md`. Q-06 settled by the builder's calls V3/V5 (derived
+  location, no row migration; warn with an audited reason; `NEEDS_CONFIRMATION`).
 
 #### hrc-006: Vacancy co-ownership and assignment history
 - **Business requirement:** §4.1 "one or more recruiters and placement officers … with a primary owner"; §12 "Shared vacancy ownership … Preserve ownership and reassignment history".
@@ -311,6 +314,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **E:** an approval setting turned off while jobs are pending.
 - **Regression risks:** `test_emp_*` (employers publishing directly) and the rec-007 status tests.
 - **Complexity:** medium. **Risk:** medium.
+- **Status:** built as `DEC-SCOPE-380` (migration 0257, API §12JY, RBAC §2.278); design
+  `docs/superpowers/specs/2026-11-04-hrc-007-vacancy-approval-design.md`. Q-07 answered by the builder's calls A1-A12 (`NEEDS_CONFIRMATION`).
 
 #### hrc-008: Vacancy visibility (internal, portal, segment, public)
 - **Business requirement:** §4.2 Visibility; §4.3; §13 "publish to portal only when approved/open".
@@ -436,7 +441,7 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** medium.
 
 #### hrc-012: Candidate ownership (primary recruiter, placement officer, collaborators)
-- **Status (2026-11-04):** built — `DEC-SCOPE-381` (Q-11 answered by the builder's recommended call, pool-wide visibility,
+- **Status (2026-11-04):** built — `DEC-SCOPE-382` (Q-11 answered by the builder's recommended call, pool-wide visibility,
   `NEEDS_CONFIRMATION`; "HR Manager reassigns" not built because `hr_manager` has no candidate access); design
   `docs/superpowers/specs/2026-11-04-hrc-012-candidate-ownership-design.md`; migration `0259`.
 - **Business requirement:** §5 metadata "assigned recruiter, placement officer"; §6.2 "Avoid assigning one candidate to multiple owners unless shared ownership is explicitly configured … display the primary owner and any collaborators"; §12.

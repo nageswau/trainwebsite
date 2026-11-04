@@ -59,19 +59,21 @@ test("an interviewer is refused the candidate search and other portals", async (
   }
 });
 
-test("a super admin grants jobs.approve to the HR Manager on the permission screen", async ({ page }) => {
+// hrc-007 (DEC-SCOPE-380 A12) made jobs.approve the HR Manager's default, so the screen shows it held; switching it off is the change.
+test("a super admin configures jobs.approve for the HR Manager on the permission screen", async ({ page }) => {
   await signIn(page, "superadmin@edusphere.local", "global");
   try {
     await page.goto("/admin/permissions");
     await page.getByLabel("Role", { exact: true }).selectOption("hr_manager");
     const approve = page.getByRole("checkbox", { name: /Vacancies.*approve/i });
-    await expect(approve).not.toBeChecked();
-    await approve.check();
+    await expect(approve).toBeChecked();
+    await approve.uncheck();
     await page.getByRole("button", { name: "Save changes" }).click();
     await expect(page.getByText("Saved HR Manager: 1 change.")).toBeVisible();
     const stored = await (await page.request.get("/api/v1/admin/roles/hr_manager/permissions")).json();
-    expect(stored.permissions).toEqual(["jobs.approve"]);
+    expect(stored.permissions).toEqual([]);
   } finally {
-    expect((await page.request.put("/api/v1/admin/roles/hr_manager/permissions", { data: { permissions: [] } })).status()).toBe(200);
+    const restore = await page.request.put("/api/v1/admin/roles/hr_manager/permissions", { data: { permissions: ["jobs.approve"] } });
+    expect(restore.status()).toBe(200);
   }
 });

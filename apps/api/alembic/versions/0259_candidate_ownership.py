@@ -2,9 +2,9 @@
 `candidate_assignment_history` and the one-row `candidate_ownership_settings`.
 
 Revision ID: 0259_candidate_ownership
-Revises: 0256_candidate_duplicates
+Revises: 0258_vacancy_fields
 
-docs/superpowers/specs/2026-11-04-hrc-012-candidate-ownership-design.md (DEC-SCOPE-381). Nullable columns and three new tables; 0001 builds
+docs/superpowers/specs/2026-11-04-hrc-012-candidate-ownership-design.md (DEC-SCOPE-382). Nullable columns and three new tables; 0001 builds
 a fresh database from the current models, which already carry them, so each step runs only when missing (0251's idiom). Backfill (O9):
 when the owner column is added, a candidate created by a recruiter (`placement_team`) is owned by them; every other row stays unassigned.
 No history rows are invented. The checks are frozen copies of the models at this revision. The downgrade drops the tables and columns.
@@ -16,7 +16,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0259_candidate_ownership"
-down_revision = "0256_candidate_duplicates"
+down_revision = "0258_vacancy_fields"
 branch_labels = None
 depends_on = None
 

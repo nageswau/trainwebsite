@@ -252,7 +252,7 @@ async def update_candidate(candidate_id: UUID, payload: dict = Body(...), user: 
 
 @router.put("/{candidate_id}/ownership", response_model=CandidateDetail, response_model_exclude_unset=True)
 async def change_ownership(candidate_id: UUID, payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """hrc-012 (DEC-SCOPE-381 O2-O6): the primary recruiter, placement officer and collaborators. Partial; a no-op writes nothing. The
+    """hrc-012 (DEC-SCOPE-382 O2-O6): the primary recruiter, placement officer and collaborators. Partial; a no-op writes nothing. The
     primary recruiter changes their own candidate; a placement manager or super_admin any (403 before the body is read otherwise)."""
     svc.require_writer(user)
     candidate = await svc.load(db, candidate_id, lock=True)

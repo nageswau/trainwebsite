@@ -11381,6 +11381,23 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0251_candidate_compensation`; API §12JT; RBAC §2.273.
 - **Feature ID authorized:** `hrc-011`. **Status:** built on `worktree-hrc-011`.
 
+### DEC-SCOPE-380 — Vacancy approval workflow and the Filled status (`hrc-007`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-007` (PDF §4.2 Workflow, §4.3; PDF classified `UNVERIFIED`). Scope
+  approved by the owner 2026-11-01 (backlog Q-00). Dependencies hrc-002 (`DEC-SCOPE-374`) and hrc-004 (`DEC-SCOPE-376`) merged. The owner
+  said to proceed with the recommended answers, so A1–A12 are **the builder's calls (`NEEDS_CONFIRMATION`)** answering Q-07. Design
+  `docs/superpowers/specs/2026-11-04-hrc-007-vacancy-approval-design.md`.
+- **Builder's calls:** A1 statuses `pending_approval` and `filled` (13 internal; neither open). A2 seven display phases (Draft = New;
+  Open = Requirement Received…Selected; Filled = Joined, Filled). A3 `jobs.source` per create path, backfilled from the creation history.
+  A4 per-source approval setting, seeded employer on, recruiter and legacy off; super_admin changes it. A5 approval applies only to a job
+  never live. A6 submit from Draft / On Hold; the legacy "open" word submits. A7 no writer opens a job that still needs approval. A8
+  approve → Requirement Received, reject (reason required) → Draft; a `jobs.approve` holder, any job, never one's own (submitter, creator,
+  assigned recruiter). A9 queue `/recruiter/requirement-approvals` and page `/it/hr-manager/approvals`. A10 turning a setting off leaves
+  pending jobs pending. A11 Filled by hand or automatically when the joined count reaches the vacancies. A12 `hr_manager` is the first
+  default `jobs.approve` holder.
+- **Numbering:** migration `0257_job_approval`; API §12JY; RBAC §2.278.
+- **Feature ID authorized:** `hrc-007`. **Status:** built on `worktree-hrc-007`.
+
 ### DEC-SCOPE-376 — Before/after audit for recruitment records and the record History (`hrc-004`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-004` (PDF §4.3, §5.1, §10.2, §15, §17 QA #18; PDF classified
@@ -11462,7 +11479,26 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0255_candidate_documents`; API §12JX; RBAC §2.277.
 - **Feature ID authorized:** `hrc-015`. **Status:** built on `worktree-hrc-015`.
 
-### DEC-SCOPE-381 — Candidate ownership: primary recruiter, placement officer, collaborators (`hrc-012`)
+### DEC-SCOPE-381 — Vacancy fields completion and job duplicate detection (`hrc-005`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-005` (PDF §4.1 "unique Job ID. Detect likely duplicates by employer,
+  title, location and requisition reference", "Last Updated By"; §4.2 field groups; PDF classified `UNVERIFIED`). Scope approved by the
+  owner 2026-11-01 (backlog Q-00). Dependencies hrc-003 (DEC-SCOPE-370) and hrc-004 (DEC-SCOPE-376) merged. The owner said to proceed with
+  the recommended answers, so Q-06 and V1–V10 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-005-vacancy-fields-duplicates-design.md`.
+- **Behaviour:** a job requirement gains requisition reference, lead source (the recruiter lead-source list, `lead_source_id`; hrc-007's `source` is the create path), certifications, country/state/
+  city, relocation required, travel, salary currency and pay period, benefits, hiring manager (an active `interviewer` user) and expected
+  joining date, and shows "Last updated" by whom. A blank job location is derived from the city, state and country. Saving a requirement
+  that matches a live one of the same company (same title and city/location, or the same requisition reference) is a 409
+  `possible_duplicate`; the recruiter may save anyway with a reason, audited as `recruiter_requirement.duplicate_override`.
+- **Builder's calls:** V3/Q-06 location — `location` stays the display string every reader uses; existing rows are not migrated; a typed
+  location is never overwritten. V5/Q-06 warn with a reason, not block; no separate pre-check endpoint (the write itself answers 409, the
+  rec-003 company pattern). V2 hiring manager = hrc-002's `interviewer` role. V6 `updated_by_user_id` is set by recruiter edit/status/assign
+  and the employer and legacy job PATCH (not skill weights: a child table, so hrc-003's token stays put). V7 job pay follows the job's read
+  scope; history redacts currency, period and benefits. V9 employer and legacy forms unchanged (follow-up).
+- **Numbering:** migration `0258_vacancy_fields`; API §12JZ; no RBAC change.
+- **Feature ID authorized:** `hrc-005`. **Status:** built on `worktree-hrc-005`.
+### DEC-SCOPE-382 — Candidate ownership: primary recruiter, placement officer, collaborators (`hrc-012`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-012` (PDF §5 metadata, §6.2, §12; PDF classified `UNVERIFIED`). Scope
   approved by the owner 2026-11-01 (backlog Q-00: all phases). Dependency hrc-002 (DEC-SCOPE-374) merged. The owner said to proceed with
@@ -11478,5 +11514,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   it. O8 rec-037's Team Reassign also moves the recruiter's candidates (archived too); deactivating a recruiter who owns a non-archived
   candidate is refused (422). O9 migration backfill: owner = creator when the creator is `placement_team`. O10 `it.candidate.assigned`
   notice to each new owner/officer/collaborator, never the actor. Merge (hrc-014) unchanged: the survivor keeps its owners.
-- **Numbering:** migration `0259_candidate_ownership`; API §12JZ; RBAC §2.280.
+- **Numbering:** migration `0259_candidate_ownership`; API §12KA; RBAC §2.279.
 - **Feature ID authorized:** `hrc-012`. **Status:** built on `worktree-hrc-012`.

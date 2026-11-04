@@ -16,7 +16,9 @@ const PORTALS = [
 describe("hrc-002 recruitment role navigation", () => {
   it.each(PORTALS)("lands %s on its own dashboard, whose portal holds only that page", (role, segment, label) => {
     expect(dashboardPathFor({ role, division: "it" })).toBe(`/it/${segment}/dashboard`);
-    expect(PORTAL_NAV[`it/${segment}`]).toEqual([{ label: "Dashboard", href: `/it/${segment}/dashboard` }]);
+    // hrc-007 (DEC-SCOPE-380 A9) gave the HR Manager its approval queue
+    const extra = segment === "hr-manager" ? [{ label: "Approvals", href: "/it/hr-manager/approvals" }] : [];
+    expect(PORTAL_NAV[`it/${segment}`]).toEqual([{ label: "Dashboard", href: `/it/${segment}/dashboard` }, ...extra]);
     expect(roleLabel(role)).toBe(label);
   });
 

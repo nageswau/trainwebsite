@@ -9,7 +9,7 @@ export type CandidateItem = {
   source: SourceRef; source_detail: string | null; status: CandidateStatus; archived: boolean; created_at: string;
   owner?: OwnerRef | null; // hrc-012: the primary recruiter; null = unassigned
 };
-// hrc-012 (DEC-SCOPE-381): who owns a candidate. Visibility is unchanged -- ownership feeds "My candidates", notices and handover.
+// hrc-012 (DEC-SCOPE-382): who owns a candidate. Visibility is unchanged -- ownership feeds "My candidates", notices and handover.
 export type OwnerRef = { id: string; full_name: string; active: boolean };
 export type CandidateOwnership = {
   owner: OwnerRef | null; placement_officer: OwnerRef | null; collaborators: OwnerRef[]; shared_ownership: boolean; can_assign: boolean;

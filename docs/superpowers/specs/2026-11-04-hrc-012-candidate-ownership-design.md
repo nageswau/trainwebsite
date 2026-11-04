@@ -1,7 +1,7 @@
 # hrc-012 — Candidate ownership: primary recruiter, placement officer, collaborators (design)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` hrc-012 (PDF §5 metadata, §6.2, §12; PDF classified `UNVERIFIED`). Scope
-  approved by the owner 2026-11-01 (backlog Q-00). Dependency hrc-002 (`DEC-SCOPE-374`) is merged (#446). Decision `DEC-SCOPE-381`.
+  approved by the owner 2026-11-01 (backlog Q-00). Dependency hrc-002 (`DEC-SCOPE-374`) is merged (#446). Decision `DEC-SCOPE-382`.
 - **Open question Q-11** (pool-wide or owner-scoped visibility): the owner said to proceed with the recommended answers, so O1–O10 below
   are **the builder's calls (`NEEDS_CONFIRMATION`)**.
 
@@ -55,7 +55,7 @@ collaborator, never to the actor themselves.
 
 **Merge (hrc-014):** unchanged — the survivor keeps its own owners; the archived victim keeps its rows.
 
-## API (§12JZ)
+## API (§12KA)
 - `GET /recruiter/candidates?owner=me|unassigned` — `me` = I am primary owner, officer or collaborator. Each item gains `owner`
   `{id, full_name, active} | null`.
 - `GET /recruiter/candidates/{id}` gains `ownership`: `{owner, placement_officer, collaborators[], shared_ownership, can_assign}`.

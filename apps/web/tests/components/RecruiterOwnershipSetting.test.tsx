@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import RecruiterOwnershipSetting from "@/components/RecruiterOwnershipSetting";
 
-// hrc-012 (DEC-SCOPE-381 O4): the shared-ownership switch -- shown only to who may change it (managers, super_admin); saved at once.
+// hrc-012 (DEC-SCOPE-382 O4): the shared-ownership switch -- shown only to who may change it (managers, super_admin); saved at once.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 afterEach(() => {
   cleanup();

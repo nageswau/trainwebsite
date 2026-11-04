@@ -10,7 +10,7 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 const pick = (p: OwnerRef): PickOption => ({ id: p.id, label: p.full_name });
 
-// hrc-012 (DEC-SCOPE-381): the candidate's owners -- one primary recruiter (O2), a placement officer (O3) and collaborators (O4, shown
+// hrc-012 (DEC-SCOPE-382): the candidate's owners -- one primary recruiter (O2), a placement officer (O3) and collaborators (O4, shown
 // while shared ownership is on or some remain). Change ownership is offered to the primary recruiter and managers (`can_assign`); the API
 // re-checks every rule. Only changed keys are sent. The RecruiterReassign conventions: no dialog library, the group takes focus, Escape
 // cancels, an error takes focus.

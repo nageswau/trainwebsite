@@ -12,6 +12,7 @@ import RecruiterRequirementMatches from "@/components/RecruiterRequirementMatche
 import RecruiterRecordHistory from "@/components/RecruiterRecordHistory";
 import RecruiterRequirementRevenue from "@/components/RecruiterRequirementRevenue";
 import RecruiterShares from "@/components/RecruiterShares";
+import { ApprovalDecision, SubmitForApproval, SubmittedLine } from "@/components/RequirementApproval";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
@@ -198,27 +199,39 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
     focus(editId);
   };
 
+  const date = (value: string | null | undefined) => (value ? formatCalendarDate(value) : "—");
   const rows: [string, ReactNode][] = [
     ["Company", <Link key="company" href={`${COMPANIES_PATH}/${r.company.id}`} style={LINK_STYLE}>{r.company.name} ({r.company.code})</Link>],
+    ["Requisition reference", display(r.requisition_reference)],
+    ["Lead source", display(r.lead_source?.name)],
     ["Department", display(r.department)],
     ["Job category", display(r.job_category?.name)],
     ["Number of vacancies", r.vacancies == null ? "—" : `${r.vacancies}${r.joined_count ? ` (${r.joined_count} joined)` : ""}`],
     ["Qualification", display(r.qualification)],
     ["Experience", experienceText(r.experience_min_months, r.experience_max_months)],
-    ["Salary range", salaryText(r.salary_min, r.salary_max)],
+    ["Certifications", multiline(r.certifications ?? null)],
+    ["Salary range", salaryText(r.salary_min, r.salary_max, r.salary_currency, r.salary_period)],
+    ["Benefits", multiline(r.benefits ?? null)],
     ["Job location", display(r.location)],
+    ["City, state, country", display([r.city, r.state, r.country].filter(Boolean).join(", ") || null)],
     ["Work mode", label(r.work_mode)],
+    ["Relocation required", r.relocation_required == null ? "—" : r.relocation_required ? "Yes" : "No"],
+    ["Travel", display(r.travel_requirement)],
     ["Shift", label(r.shift)],
     ["Employment type", label(r.employment_type)],
+    ["Hiring manager", personName(r.hiring_manager ?? null, "—")],
     ["Joining requirement", display(r.joining_requirement)],
-    ["Application deadline", r.closes_on ? formatCalendarDate(r.closes_on) : "—"],
-    ["Requirement date", r.requirement_date ? formatCalendarDate(r.requirement_date) : "—"],
+    ["Expected joining date", date(r.expected_joining_date)],
+    ["Application deadline", date(r.closes_on)],
+    ["Requirement date", date(r.requirement_date)],
     ["Priority", label(r.priority)],
     ["Assigned recruiter", personName(r.assigned_recruiter)],
     ["Required skills", skillItems(r, "required")],
     ["Preferred skills", skillItems(r, "preferred")],
     ["Job description", multiline(r.description || null)],
     ["Added by", r.created_by ? <>{r.created_by.full_name} on <LocalTime value={r.created_at} /></> : "—"],
+    // hrc-005 (V6): §4.1 Last Updated By
+    ["Last updated", r.updated_by ? <>{r.updated_by.full_name} on <LocalTime value={r.updated_at} time /></> : <LocalTime value={r.updated_at} time />],
   ];
 
   return (
@@ -268,6 +281,19 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
         </section>
       )}
       <RecruiterRequirementJd requirement={r} initial={initialJd} onRequirementChanged={changed} />
+      {/* hrc-007: send for approval, or (an approver) decide; the pending state is shown to every reader */}
+      {r.approval.can_submit && !showEditor && <SubmitForApproval requirement={r} onDone={changed} />}
+      {r.status === "pending_approval" && (
+        <section className="action-card wide" aria-labelledby={`requirement-${r.id}-approval`}>
+          <h3 id={`requirement-${r.id}-approval`}>Approval</h3>
+          <SubmittedLine by={r.approval.submitted_by} at={r.approval.submitted_at} />
+          {r.approval.can_decide ? (
+            <ApprovalDecision requirementId={r.id} title={r.code} onDone={changed} />
+          ) : (
+            <p style={{ margin: 0 }}>Waiting for an approver. It cannot receive applications until it is approved.</p>
+          )}
+        </section>
+      )}
       {p.can_change_status && !showEditor && <StatusChange requirement={r} onChanged={changed} />}
       {p.can_reassign && <Reassign requirement={r} onChanged={changed} />}
       <section className="action-card wide" aria-labelledby={`requirement-${r.id}-history`}>

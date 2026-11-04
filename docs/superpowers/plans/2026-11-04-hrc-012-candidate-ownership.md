@@ -1,6 +1,6 @@
 # hrc-012 Candidate ownership — implementation plan
 
-Design: `docs/superpowers/specs/2026-11-04-hrc-012-candidate-ownership-design.md` (DEC-SCOPE-381, API §12JZ, RBAC §2.280, migration 0259).
+Design: `docs/superpowers/specs/2026-11-04-hrc-012-candidate-ownership-design.md` (DEC-SCOPE-382, API §12KA, RBAC §2.279, migration 0259).
 
 ## Tasks (TDD: red → green → refactor)
 1. **Tests (red)** `apps/api/tests/test_hrc_012_ownership.py`: create sets owner (recruiter) / unassigned (manager); list `owner=me|

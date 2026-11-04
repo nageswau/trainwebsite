@@ -7,7 +7,7 @@ import { OWNERSHIP_SETTINGS_URL } from "@/lib/recruiterCandidates";
 
 type Setting = { shared_ownership: boolean; can_edit: boolean };
 
-// hrc-012 (DEC-SCOPE-381 O4): the shared-ownership switch above the candidate list -- only for who may change it (placement managers,
+// hrc-012 (DEC-SCOPE-382 O4): the shared-ownership switch above the candidate list -- only for who may change it (placement managers,
 // super_admin); everyone else sees nothing. The box moves at once and goes back if the save fails (the mgmt-026 optimistic idiom).
 export default function RecruiterOwnershipSetting() {
   const [setting, setSetting] = useState<Setting | null>(null);

@@ -1,4 +1,4 @@
-"""hrc-012 (DEC-SCOPE-381, spec docs/superpowers/specs/2026-11-04-hrc-012-candidate-ownership-design.md): who owns a candidate -- one
+"""hrc-012 (DEC-SCOPE-382, spec docs/superpowers/specs/2026-11-04-hrc-012-candidate-ownership-design.md): who owns a candidate -- one
 primary recruiter (O2), a placement-officer owner (O3), collaborators while shared ownership is on (O4) -- who may change that (O5), the
 history (O6) and the rec-037 handover (O8). Visibility stays pool-wide (O1): nothing here narrows what a reader sees.
 

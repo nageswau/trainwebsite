@@ -1,4 +1,4 @@
-"""hrc-012 -- migration 0259_candidate_ownership (DEC-SCOPE-381): the chain, the frozen checks, the O9 backfill and the round trip in a
+"""hrc-012 -- migration 0259_candidate_ownership (DEC-SCOPE-382): the chain, the frozen checks, the O9 backfill and the round trip in a
 throwaway database (the hrc-011/014 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -17,11 +17,11 @@ _spec = importlib.util.spec_from_file_location("_hrc_012_migration_0259", VERSIO
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0259_candidate_ownership", "0256_candidate_duplicates"
+HEAD, BASE = "0259_candidate_ownership", "0258_vacancy_fields"
 TABLES = {"candidate_collaborators", "candidate_assignment_history", "candidate_ownership_settings"}
 
 
-def test_migration_chains_after_0256():
+def test_migration_chains_after_0258():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

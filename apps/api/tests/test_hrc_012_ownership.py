@@ -1,4 +1,4 @@
-"""hrc-012 (DEC-SCOPE-381, spec docs/superpowers/specs/2026-11-04-hrc-012-candidate-ownership-design.md): one primary recruiter (O2,
+"""hrc-012 (DEC-SCOPE-382, spec docs/superpowers/specs/2026-11-04-hrc-012-candidate-ownership-design.md): one primary recruiter (O2,
 AC1), a placement-officer owner (O3), collaborators only while shared ownership is on (O4, AC2), who may change them (O5), the history
 (O6, AC3), the owner on create (O7), the deactivated recruiter's candidates moving with rec-037's reassign (O8, AC4) and the notices (O10).
 Visibility stays pool-wide (O1)."""

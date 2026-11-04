@@ -3744,7 +3744,14 @@ opted-in candidate (no id in the request; another candidate's document 404). Eve
 authorisation for its 300 s (D4). `/files/download` and `/local-files` 404 `candidate-documents/` and `candidate-previews/` keys. Pinned by
 `apps/api/tests/test_hrc_015_documents.py` and the rec-038 matrix rows.
 
-### 2.280 Candidate ownership *(added 2026-11-04 — `DEC-SCOPE-381`, hrc-012)*
+### 2.278 Vacancy approval *(added 2026-11-04 — `DEC-SCOPE-380`, hrc-007)*
+
+`jobs.approve` gets its first default holder, `hr_manager` (migration 0257 seeds it; super_admin implicit; grantable to any role). A
+holder reads the approval queue and settings and approves or rejects any pending job requirement (no recruiter scope needed), never
+their own: the submitter, the creator or the assigned recruiter → 403 (separation of duties). Submitting stays with the requirement's
+writers (`can_edit`: the assigned recruiter, super_admin) and, through their legacy "open" word, the employer (own postings) and the
+legacy placement writers. Only super_admin changes which sources need approval. Pinned by `apps/api/tests/test_hrc_007_approval.py`.
+### 2.279 Candidate ownership *(added 2026-11-04 — `DEC-SCOPE-382`, hrc-012)*
 
 Reading is unchanged (pool-wide, §2.45 rec-009 readers). `PUT /recruiter/candidates/{id}/ownership`: the candidate's **primary recruiter**
 (`placement_team`), any `placement_manager` and `super_admin`; another recruiter, a collaborator and `hr_team` 403 (the writer check runs

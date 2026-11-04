@@ -43,7 +43,7 @@ async def work_counts(db: AsyncSession, user_ids: list[UUID]) -> dict[UUID | Non
     for key, stmt in queries.items():
         for uid, n in (await db.execute(stmt)).all():
             counts[uid][key] = n
-    for uid, n in (await candidate_ownership.owned_counts(db, user_ids)).items():  # hrc-012 (DEC-SCOPE-381 O8)
+    for uid, n in (await candidate_ownership.owned_counts(db, user_ids)).items():  # hrc-012 (DEC-SCOPE-382 O8)
         counts[uid]["candidates"] = n
     return counts
 
@@ -88,7 +88,7 @@ async def reassign(db: AsyncSession, actor: User, source: User, target_id: UUID)
 
     companies = (await db.scalars(locked(Company, Company.assigned_recruiter_user_id))).all()
     jobs = (await db.scalars(locked(Job, Job.assigned_recruiter_user_id))).all()
-    candidates = (await db.scalars(locked(Candidate, Candidate.owner_user_id))).all()  # hrc-012 (DEC-SCOPE-381 O8), archived too
+    candidates = (await db.scalars(locked(Candidate, Candidate.owner_user_id))).all()  # hrc-012 (DEC-SCOPE-382 O8), archived too
     if target_id == source.id:
         raise HTTPException(422, recruiter_companies.REASSIGN_INVALID)
     target = await recruiter_companies.locked_recruiter_target(db, actor, target_id)

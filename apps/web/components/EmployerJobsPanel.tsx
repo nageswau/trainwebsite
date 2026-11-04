@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
-type JobRow = { id: string; title: string; location: string; description: string; skills: string[]; status: string; status_label: string; requirement_code: string; closes_on: string | null; visible_to_students: boolean };
+type JobRow = { id: string; title: string; location: string; description: string; skills: string[]; status: string; requirement_status: string; status_label: string; requirement_code: string; closes_on: string | null; visible_to_students: boolean };
 
 function detailMessage(detail: unknown) {
   if (typeof detail === "string") return detail;
@@ -78,6 +78,8 @@ export default function EmployerJobsPanel() {
       setMessage({ id: jobId, text: detailMessage(data.detail), failed: true });
       return;
     }
+    // hrc-007 (DEC-SCOPE-380 A6): publishing may send the posting for approval instead of opening it
+    if (data.requirement_status === "pending_approval") setMessage({ id: jobId, text: "Sent for approval. Students see it once it is approved.", failed: false });
     load();
   }
 
@@ -122,12 +124,12 @@ export default function EmployerJobsPanel() {
         <div className="grid two">
           {jobs.map((job) => (
             <div className="card" key={job.id}>
-              <span className="badge">{job.visible_to_students ? "Visible to students" : job.status === "draft" ? "Draft" : job.status === "closed" ? "Closed" : "Expired"}</span>{" "}
+              <span className="badge">{job.visible_to_students ? "Visible to students" : job.requirement_status === "pending_approval" ? "Awaiting approval" : job.status === "draft" ? "Draft" : job.status === "closed" ? "Closed" : "Expired"}</span>{" "}
               {/* rec-007: the recruiter's progress on the posting (EVID-018 §6 status) */}
               <span className="badge" title={`Requirement ${job.requirement_code}`}>{job.status_label}</span>
               <h4 style={{ marginTop: 10 }}>{job.title}</h4>
               <p className="muted" style={{ fontSize: 13 }}>{job.location}{job.closes_on ? ` · Closes ${job.closes_on}` : ""}</p>
-              {job.status === "draft" && (
+              {job.status === "draft" && job.requirement_status !== "pending_approval" && (
                 <button className="btn small" disabled={busyId === job.id} onClick={() => setStatus(job.id, "open")}>
                   {busyId === job.id ? "Publishing…" : "Publish"}
                 </button>

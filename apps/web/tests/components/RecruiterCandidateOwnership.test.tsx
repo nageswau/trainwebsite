@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import RecruiterCandidateOwnership from "@/components/RecruiterCandidateOwnership";
 import type { CandidateOwnership } from "@/lib/recruiterCandidates";
 
-// hrc-012 (DEC-SCOPE-381): the Ownership card -- primary recruiter, placement officer and (when shared ownership is on, or some remain)
+// hrc-012 (DEC-SCOPE-382): the Ownership card -- primary recruiter, placement officer and (when shared ownership is on, or some remain)
 // collaborators; Change ownership for the primary recruiter and managers (`can_assign`). Only changed keys are sent.
 const asha = { id: "u1", full_name: "Asha", active: true };
 const ravi = { id: "u2", full_name: "Ravi", active: false };

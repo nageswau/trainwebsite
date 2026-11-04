@@ -2044,7 +2044,7 @@ async def _recruitment_role(db: AsyncSession, user: User, section: str):
     ).all()
     rows = [{"job_id": j.requirement_code, "role": j.title, "company": c.name, "location": j.location, "status": j.status.replace("_", " ").capitalize()} for j, c in jobs]
     if user.role == "placement_officer":
-        # hrc-012 (DEC-SCOPE-381 O3): how many active candidates name this officer -- a count only, still no candidate field
+        # hrc-012 (DEC-SCOPE-382 O3): how many active candidates name this officer -- a count only, still no candidate field
         owned = await db.scalar(select(func.count()).select_from(Candidate).where(Candidate.placement_officer_user_id == user.id, Candidate.archived_at.is_(None))) or 0
         return _payload("Placement Officer Dashboard", "Open requirements shared with the recruiters, by Job ID.", OPEN_REQUIREMENT_COLUMNS, rows,
                         ({"label": "Open requirements", "value": len(rows)}, {"label": "Your candidates", "value": owned}))  # fmt: skip

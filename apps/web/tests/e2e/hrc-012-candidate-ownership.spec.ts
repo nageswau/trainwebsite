@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// hrc-012 (DEC-SCOPE-381): a recruiter who adds a candidate owns it (O7) and finds it under My candidates; they hand it to another
+// hrc-012 (DEC-SCOPE-382): a recruiter who adds a candidate owns it (O7) and finds it under My candidates; they hand it to another
 // recruiter from the Ownership card (O2/O5), after which they can no longer change it and the new owner sees it as theirs. A placement
 // manager sets a placement officer, and the officer's dashboard counts it (O3). The Ownership card fits a phone.
 
