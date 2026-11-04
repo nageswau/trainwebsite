@@ -74,6 +74,13 @@ export function rowText(kind: RowKind, row: Record<string, unknown>): string {
   return ROW_KINDS[kind].columns.map((c) => (c.options ? labelOf(c.options, row[c.key] as string) : row[c.key])).filter((v) => v !== null && v !== undefined && v !== "").join(" · ");
 }
 
+/** QA-02: with no education rows, the legacy single fields (set by rec-012's resume apply or an old client) read as row 1. */
+export function educationRows(c: CandidateDetail): EducationRow[] {
+  if (c.education?.length) return c.education;
+  return c.qualification || c.college || c.passing_year
+    ? [{ degree: c.qualification, specialisation: null, institution: c.college, year: c.passing_year, grade: null }] : [];
+}
+
 export type CandidateDetail = CandidateItem & Package & {
   mobile: string | null; email: string | null; qualification: string | null; college: string | null; passing_year: number | null;
   current_company: string | null; notice_days: number | null;
@@ -212,7 +219,7 @@ export function formFromDetail(c: CandidateDetail): CandidateForm {
     preferred_roles: (c.preferred_roles?.length ? c.preferred_roles : c.preferred_role ? [c.preferred_role] : []).join(", "),
     ...Object.fromEntries(Object.keys(CHOICES).map((k) => [k, ((c[k as keyof typeof CHOICES] as string[] | undefined) ?? []).join(",")])),
     willing_to_relocate: c.willing_to_relocate === true ? "yes" : c.willing_to_relocate === false ? "no" : "",
-    ...Object.fromEntries(ROW_KEYS.map((kind) => [kind, JSON.stringify(((c[kind] ?? []) as Record<string, unknown>[]).map((row) =>
+    ...Object.fromEntries(ROW_KEYS.map((kind) => [kind, JSON.stringify(((kind === "education" ? educationRows(c) : c[kind] ?? []) as Record<string, unknown>[]).map((row) =>
       Object.fromEntries(ROW_KINDS[kind].columns.map(({ key }) => [key, text(row[key] as string | number | null)]))))])),
   };
 }

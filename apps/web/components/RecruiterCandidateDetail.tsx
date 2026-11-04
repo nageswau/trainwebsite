@@ -18,7 +18,7 @@ import RecruiterTimeline from "@/components/RecruiterTimeline";
 import { sendRequest } from "@/lib/apiErrors";
 import { telHref } from "@/lib/recruiterCalls";
 import {
-  AMOUNTS, CANDIDATES_PATH, CONTACT_METHODS, EMPLOYMENT_TYPES, ROW_KINDS, SHIFTS, STATUS_LABEL, WORK_MODES, candidateUrl, experienceLabel, labelOf, packageText,
+  AMOUNTS, CANDIDATES_PATH, CONTACT_METHODS, EMPLOYMENT_TYPES, ROW_KINDS, SHIFTS, STATUS_LABEL, WORK_MODES, candidateUrl, educationRows, experienceLabel, labelOf, packageText,
   rowText, type CandidateDetail, type Completeness, type RowKind,
 } from "@/lib/recruiterCandidates";
 
@@ -86,6 +86,7 @@ export default function RecruiterCandidateDetail({ initial, merged }: { initial:
   const list = (values: string[] | undefined, options?: readonly { key: string; label: string }[]) =>
     (values ?? []).map((v) => (options ? labelOf(options, v) : v)).join(", ") || null;
   const derived = (candidate.employment ?? []).length > 0; // hrc-010 P4: worked out from the jobs
+  const rowsOf = (kind: RowKind) => (kind === "education" ? educationRows(candidate) : candidate[kind] ?? []) as Record<string, unknown>[]; // QA-02
   const rows: [string, React.ReactNode][] = [
     ["Mobile", tel ? <a href={tel}>{candidate.mobile}<span className="visually-hidden"> (call {candidate.name})</span></a> : candidate.mobile],
     ["Email", candidate.email && <>{candidate.email}{candidate.email_verified_at ? <> <span className="badge">Verified</span></> : null}</>],
@@ -148,9 +149,9 @@ export default function RecruiterCandidateDetail({ initial, merged }: { initial:
           {(Object.keys(ROW_KINDS) as RowKind[]).map((kind) => (
             <div key={kind} style={{ marginTop: 16 }}>
               <h4 style={{ margin: "0 0 4px" }}>{ROW_KINDS[kind].legend}</h4>
-              {(candidate[kind] ?? []).length === 0 ? <p className="muted" style={{ margin: 0 }}>None recorded.</p> : (
+              {rowsOf(kind).length === 0 ? <p className="muted" style={{ margin: 0 }}>None recorded.</p> : (
                 <ul style={{ margin: 0, paddingLeft: 20 }}>
-                  {(candidate[kind] as Record<string, unknown>[]).map((row, i) => (
+                  {rowsOf(kind).map((row, i) => (
                     <li key={i} style={{ overflowWrap: "anywhere" }}>
                       {rowText(kind, row)}{kind === "employment" && row.end_date === null && <> <span className="badge">Current</span></>}
                     </li>

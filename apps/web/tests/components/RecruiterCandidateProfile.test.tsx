@@ -114,6 +114,20 @@ describe("hrc-010 candidate form", () => {
   });
 });
 
+describe("hrc-010 legacy education (QA-02: rec-012's resume apply and old clients set the single fields)", () => {
+  const legacy = { ...candidate, education: [], qualification: "B.Tech", college: "JNTU", passing_year: 2018 } as CandidateDetail;
+
+  it("shows the legacy qualification as the education line while there are no rows", () => {
+    render(<RecruiterCandidateDetail initial={legacy} />);
+    expect(screen.getByText("B.Tech · JNTU · 2018")).toBeInTheDocument();
+  });
+
+  it("pre-fills education row 1 from them in the edit form, so a save makes it a row", () => {
+    expect(JSON.parse(formFromDetail(legacy).education)).toEqual([{ degree: "B.Tech", specialisation: "", institution: "JNTU", year: "2018", grade: "" }]);
+    expect(JSON.parse(formFromDetail({ ...legacy, qualification: null, college: null, passing_year: null } as CandidateDetail).education)).toEqual([]);
+  });
+});
+
 describe("hrc-010 candidate detail", () => {
   it("shows the completeness meter, what is missing, the rows and the preferences", () => {
     render(<RecruiterCandidateDetail initial={candidate} />);
