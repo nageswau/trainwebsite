@@ -31,6 +31,7 @@ from app.models import (
     User,
 )
 from app.notifications.events import notify
+from app.schemas import ROUTING_VALUE
 from app.services import candidate_ownership as ownership
 from app.services.lead_distribution import next_in_turn
 from app.services.recruiter import MANAGER_ROLE
@@ -122,8 +123,10 @@ async def _choose(db: AsyncSession, candidate: Candidate) -> tuple[UUID | None, 
 async def route(db: AsyncSession, candidate: Candidate) -> UUID | None:
     """R8: assign the chosen recruiter (read FOR SHARE: a concurrent deactivation waits or is seen). Returns the owner, or None."""
     chosen, method, rule_id = await _choose(db, candidate)
-    recruiter = chosen and await db.scalar(select(User).where(User.id == chosen, *ownership.eligible("recruiter")).with_for_update(read=True))
-    if not recruiter:
+    if chosen is None:
+        return None
+    recruiter = await db.scalar(select(User).where(User.id == chosen, *ownership.eligible("recruiter")).with_for_update(read=True))
+    if recruiter is None:
         return None
     candidate.owner_user_id = recruiter.id
     ownership.record(db, None, candidate.id, "owner", None, recruiter.id, "route")
@@ -202,10 +205,12 @@ async def save_settings(db: AsyncSession, user: User, default_id: UUID | None, s
 
 async def add_rule(db: AsyncSession, user: User, body) -> dict:
     label = body.location
-    if body.kind == "source" and (label := await db.scalar(select(RecCandidateSource.name).where(RecCandidateSource.id == body.source_id))) is None:
-        raise HTTPException(422, "Choose a candidate source")
-    if body.kind == "skill_category" and (label := await db.scalar(select(SkillCategory.name).where(SkillCategory.id == body.skill_category_id))) is None:
-        raise HTTPException(422, "Choose a skill category")
+    if body.kind == "source":
+        label = await db.scalar(select(RecCandidateSource.name).where(RecCandidateSource.id == body.source_id))
+    elif body.kind == "skill_category":
+        label = await db.scalar(select(SkillCategory.name).where(SkillCategory.id == body.skill_category_id))
+    if label is None:
+        raise HTTPException(422, ROUTING_VALUE[body.kind][1])
     recruiter = await _recruiter(db, body.recruiter_user_id)
     rule = Rule(**body.model_dump(), created_by_user_id=user.id)
     try:

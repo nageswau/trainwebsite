@@ -92,6 +92,10 @@ describe("RecruiterRoutingPanel", () => {
     fireEvent.click(await screen.findByRole("option", { name: /Asha Recruiter/ }));
     fireEvent.click(screen.getByRole("button", { name: "Add rule" }));
     expect(await screen.findByText("This recruiter already has this rule")).toBeInTheDocument();
+
+    // QA-01: a new choice of rule type clears the last outcome
+    fireEvent.change(screen.getByLabelText("Rule type"), { target: { value: "source" } });
+    expect(screen.queryByText("This recruiter already has this rule")).not.toBeInTheDocument();
   });
 
   it("deletes a rule after confirming", async () => {

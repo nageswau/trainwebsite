@@ -102,7 +102,7 @@ function SettingsCard({ routing, onSaved }: { routing: Routing; onSaved: (r: Rou
         {STRATEGIES.map((s) => (
           <label key={s.key} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
             <input type="radio" name="strategy" value={s.key} checked={strategy === s.key} disabled={busy} onChange={() => setStrategy(s.key)} style={{ marginTop: 4 }} />
-            <span>{s.label}<span className="muted" style={{ display: "block", fontSize: 13 }}>{s.help}</span></span>
+            <span>{s.label}<span className="muted" style={{ display: "block", fontSize: 13, fontWeight: 400 }}>{s.help}</span></span>
           </label>
         ))}
       </fieldset>
@@ -204,7 +204,7 @@ function AddRule({ onAdded }: { onAdded: () => void }) {
       <h4 id="routing-add-title" style={{ margin: 0 }}>Add a rule</h4>
       <div className="field">
         <label htmlFor="routing-kind">Rule type</label>
-        <select id="routing-kind" value={kind} disabled={busy} onChange={(e) => { setKind(e.target.value as RoutingKind); setValue(""); }}>
+        <select id="routing-kind" value={kind} disabled={busy} onChange={(e) => { setKind(e.target.value as RoutingKind); setValue(""); setMessage(null); }}>
           {KINDS.map((k) => <option key={k.key} value={k.key}>{k.label}</option>)}
         </select>
         <span className="muted" style={{ fontSize: 13 }}>{help}</span>
