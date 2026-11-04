@@ -39,23 +39,39 @@ class StorageService:
             return {"provider": "s3", "key": key, "upload_url": url, "expires_in": 900}
         return {"provider": "local", "key": key, "upload_url": "/api/v1/files/local-upload", "expires_in": 900}
 
-    def presign_download(self, key: str) -> str:
-        """A short-lived link to one object. Locally it is a signed API route (PS2), never the public `/local-files` path."""
+    def presign_download(
+        self, key: str, *, filename: str | None = None, content_type: str | None = None, inline: bool = False, ttl: int | None = None
+    ) -> str:
+        """A short-lived link to one object. Locally it is a signed API route (PS2), never the public `/local-files` path.
+        hrc-015 (DEC-SCOPE-379 D4): optionally the file name, content type and disposition the link serves the object with (chosen by
+        the route that did the authorisation, never by the client), and a shorter life."""
         key = key.lstrip("/")
         if not self.bucket:
-            exp = datetime.now(UTC) + timedelta(seconds=DOWNLOAD_TTL_SECONDS)
-            token = jwt.encode({"sub": key, "type": DOWNLOAD_TOKEN_TYPE, "exp": exp}, settings.secret_key, algorithm=ALGORITHM)
+            claims = {"sub": key, "type": DOWNLOAD_TOKEN_TYPE, "exp": datetime.now(UTC) + timedelta(seconds=DOWNLOAD_TTL_SECONDS if ttl is None else ttl)}
+            if content_type:
+                claims |= {"fn": filename, "ct": content_type, "inline": inline}
+            token = jwt.encode(claims, settings.secret_key, algorithm=ALGORITHM)
             return f"/api/v1/files/signed/{token}"
-        return self._client().generate_presigned_url("get_object", Params={"Bucket": self.bucket, "Key": key}, ExpiresIn=DOWNLOAD_TTL_SECONDS)
+        params = {"Bucket": self.bucket, "Key": key}
+        if content_type:
+            disposition = "inline" if inline else "attachment"
+            params |= {"ResponseContentType": content_type, "ResponseContentDisposition": f'{disposition}; filename="{filename or "file"}"'}
+        return self._client().generate_presigned_url("get_object", Params=params, ExpiresIn=DOWNLOAD_TTL_SECONDS if ttl is None else ttl)
 
     @staticmethod
-    def signed_key(token: str) -> str | None:
-        """The key a `presign_download` token was issued for, or None when it is forged, expired or not a download token."""
+    def signed_claims(token: str) -> dict | None:
+        """A `presign_download` token's claims, or None when it is forged, expired or not a download token."""
         try:
             payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
         except jwt.PyJWTError:
             return None
-        return payload.get("sub") if payload.get("type") == DOWNLOAD_TOKEN_TYPE else None
+        return payload if payload.get("type") == DOWNLOAD_TOKEN_TYPE and payload.get("sub") else None
+
+    @classmethod
+    def signed_key(cls, token: str) -> str | None:
+        """The key a `presign_download` token was issued for, or None when it is forged, expired or not a download token."""
+        claims = cls.signed_claims(token)
+        return claims["sub"] if claims else None
 
     def write_bytes(self, key: str, data: bytes, content_type: str) -> None:
         if self.bucket:

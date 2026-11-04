@@ -46,7 +46,8 @@ test("a recruiter adds a candidate, is stopped on a duplicate, uploads a resume;
   await page.getByLabel("Upload resume").setInputFiles({ name: "rahul.pdf", mimeType: "application/pdf", buffer: PDF });
   await page.getByRole("button", { name: "Upload", exact: true }).click();
   await expect(page.getByText("Resume version 1 uploaded.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Version 1 — rahul.pdf" })).toBeVisible();
+  await expect(page.getByText("Version 1 — rahul.pdf")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Download resume version 1" })).toBeVisible(); // hrc-015: a signed link per click
   await expect(page.getByText("Current", { exact: true })).toBeVisible();
 
   // AC3 / Q-07: the same mobile in another format is blocked, and the panel opens the existing candidate.
@@ -77,6 +78,8 @@ test("a recruiter adds a candidate, is stopped on a duplicate, uploads a resume;
   await expect(page.getByRole("heading", { name, level: 2 })).toBeVisible();
   await expect(page.getByRole("button", { name: "Edit" })).toHaveCount(0);
   await expect(page.getByLabel("Upload resume")).toHaveCount(0);
-  const download = await page.request.get((await page.getByRole("link", { name: "Version 1 — rahul.pdf" }).getAttribute("href"))!);
+  await expect(page.getByRole("button", { name: "Download resume version 1" })).toBeVisible(); // hrc-015: HR downloads through a signed link
+  const link = await (await page.request.get(`/api/v1/recruiter/candidates/${page.url().split("/").pop()}/resume/1/link?mode=download`)).json();
+  const download = await page.request.get(link.url);
   expect(download.status()).toBe(200);
 });

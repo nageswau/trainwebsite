@@ -25,6 +25,7 @@ PATH_VALUES = {key: value for group in GROUPS for key, value in group.PATH_VALUE
 # RM1: every operation of the recruiter CRM -- `/recruiter/*`, the recruiter admin pickers (rec-001), the program skill tags (rec-036), the
 # student's pool consent (rec-010) and offers (rec-022), the employer's shared profiles and the public shared resume (rec-019).
 PREFIXES = ("/recruiter/", "/admin/recruiters", "/admin/placement-managers", "/admin/programs/skill-options", "/account/placement-pool",
+            "/account/candidate-documents",  # hrc-015
             "/employer/shared-profiles", "/workflows/it/student/offers", "/public/shared-resume/")  # fmt: skip
 EXACT = {"GET /admin/programs/{}/skills", "PUT /admin/programs/{}/skills"}
 

@@ -53,10 +53,16 @@ async def extract(db: AsyncSession, resume: CandidateResume) -> None:
     """Read the stored file and suggest, in a thread under TIMEOUT_SECONDS (the thread itself is bounded by the page and size caps), then
     store the text and the suggestions on the resume. A file that cannot be read is a 422 with the extractor's sentence."""
     terms = await _terms(db)
-    content_type = resume.content_type
+    content_type, key = resume.content_type, resume.storage_key
+    if content_type == candidates.DOC:  # hrc-015 (DEC-SCOPE-379 D5): a DOC is read through its PDF rendition
+        if resume.preview_status == "failed":
+            raise HTTPException(422, "This DOC resume can't be read. Upload it as PDF or DOCX, or add the details by hand.")
+        if resume.preview_status != "ready" or not resume.preview_key:
+            raise HTTPException(409, "This DOC resume is still being prepared. Try again in a moment.")
+        content_type, key = candidates.PDF, resume.preview_key
 
     def work() -> tuple[str, bool, dict]:
-        text, truncated = rx.read_text(candidates.read_file(resume), content_type)
+        text, truncated = rx.read_text(candidates.read_key(key), content_type)
         return text, truncated, rx.suggest(text, terms)
 
     try:

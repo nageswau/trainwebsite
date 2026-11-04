@@ -11416,3 +11416,29 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   `UserRoleAssignment` does not widen recruitment access (`User.role` decides). R7 no migration.
 - **Numbering:** no migration; API §12JV; RBAC §2.275.
 - **Feature ID authorized:** `hrc-002`. **Status:** built on `worktree-hrc-002`.
+
+### DEC-SCOPE-379 — Resume and document handling completion (`hrc-015`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-015` (PDF §5.1 "Upload, preview, download and replace resumes in PDF and
+  DOC/DOCX", §5 Documents, §11 Documents, §15 "controlled download links"; PDF classified `UNVERIFIED`). Scope approved by the owner
+  2026-11-01 (backlog Q-00: all phases). Dependency hrc-001 (DEC-SCOPE-371) merged. The owner said to proceed with the recommended answers,
+  so Q-15 and D1–D12 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-015-candidate-documents-design.md`.
+- **Behaviour:** resumes accept DOC (by bytes) besides PDF/DOCX; every resume version and candidate document has Preview (PDF/image inline;
+  DOC/DOCX through a converted PDF rendition) and Download, both through a 300-second signed link that is audited when issued. Staff upload
+  certificates and other documents, request a document type from a candidate (pending → received on the first upload against it, or
+  cancelled), and an IT student in the placement pool sees and fulfils their own requests from the student portal.
+- **Builder's calls:** D1 (Q-15) converter approved as recommended: headless LibreOffice Writer in the API image; the Celery worker converts
+  (own temp directory and profile, 60 s limit); missing converter or a broken/protected file → `failed` (download only). D2 DOC = OLE2 header
+  + a `WordDocument` stream name; resumes and documents only (the JD upload stays PDF/DOCX). D3 `preview_status`/`preview_key` on resumes
+  and documents; pending 409, failed 422; a pre-hrc-015 DOCX is queued on its first preview. D4 links live 300 s (S3 presigned or the
+  local `/files/signed` token, which now carries name, type and disposition); the old authenticated resume download stays for
+  compatibility. D5 DOC extraction reads the rendition (409 while pending, 422 if failed). D6 document types: certificate, education,
+  experience letter, relieving letter, payslip, ID proof, other (title required); PDF/DOC/DOCX/PNG/JPEG ≤ 5 MB; append-only. D7 one
+  pending request per type; the fulfilling upload must match its type and candidate. D8 the student routes take no id (own opted-in
+  candidate only; staff never named). D9 staff read = `candidates.READERS`, write = `candidates.WRITERS`, pool filter, archived 409. D10
+  audit actions `candidate.document_upload|document_request|document_request_cancel|document_link|resume_link`; logs carry ids only. D11
+  out of scope: malware scanning (shared open question with itc-033), deleting documents, overdue reminders, external-candidate portal
+  (hrc-022). D12 `/files/download` and `/local-files` withhold `candidate-documents/` and `candidate-previews/`.
+- **Numbering:** migration `0255_candidate_documents`; API §12JX; RBAC §2.277.
+- **Feature ID authorized:** `hrc-015`. **Status:** built on `worktree-hrc-015`.

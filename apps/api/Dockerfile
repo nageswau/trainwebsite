@@ -1,7 +1,8 @@
 FROM python:3.12-slim
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential curl && rm -rf /var/lib/apt/lists/*
+# hrc-015 (DEC-SCOPE-379 D1, Q-15): headless LibreOffice Writer converts DOC/DOCX resumes and documents to PDF previews (worker).
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential curl libreoffice-writer-nogui fonts-dejavu-core && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .

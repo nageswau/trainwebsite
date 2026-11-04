@@ -515,6 +515,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** large. **Risk:** high.
 
 #### hrc-015: Resume and document handling completion
+- **Status (2026-11-04):** built — `DEC-SCOPE-379` (Q-15 answered by the builder's recommended call: LibreOffice converter in the API
+  image, `NEEDS_CONFIRMATION`); design `docs/superpowers/specs/2026-11-04-hrc-015-candidate-documents-design.md`; migration `0255`.
 - **Business requirement:** §5.1 "Upload, preview, download and replace resumes in PDF and DOC/DOCX"; §5 Documents "certificates and requested documents"; §11 Documents; §15 "controlled download links".
 - **Existing behavior:**
   - Resumes are versioned, PDF/DOCX only (**no DOC**), with no preview.

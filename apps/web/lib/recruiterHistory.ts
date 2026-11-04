@@ -35,6 +35,9 @@ const ACTIONS: Record<string, string> = {
   "candidate.skill_update": "Skill edited",
   "candidate.skill_remove": "Skill removed",
   "candidate.skill_status": "Skill status changed",
+  "candidate.document_upload": "Document uploaded", // hrc-015
+  "candidate.document_request": "Document requested",
+  "candidate.document_request_cancel": "Document request cancelled",
 };
 
 /** A known action's words; any other as its last part, humanised (a new action never shows a raw key). */

@@ -282,6 +282,15 @@ def draft_monthly_review_task():
     return _run_with_fresh_pool(run_monthly_reviews)
 
 
+@celery.task
+def convert_candidate_preview_task(kind: str, row_id: str):
+    """hrc-015 (DEC-SCOPE-379 D1): a DOC/DOCX resume or candidate document's PDF preview. Idempotent (only a pending row converts)."""
+    import app.main  # noqa: F401 -- the models' import order, as the monthly review task does
+    from app.services.candidate_previews import convert
+
+    return _run_with_fresh_pool(lambda: convert(kind, row_id))
+
+
 celery.conf.beat_schedule = {
     "enh014-sweep-stale-deliveries": {"task": "app.worker.sweep_stale_deliveries_task", "schedule": 300.0},
     "agn017-daily-reminders": {"task": "app.worker.send_daily_reminders_task", "schedule": crontab(hour=2, minute=30)},  # UTC = 08:00 IST
