@@ -3794,3 +3794,11 @@ Notes and tasks follow the candidate rule (§2.45, R11): candidate readers (`pla
 and the assignee picker are the writers'. Every other role — `placement_officer`, `hr_manager`, `employer`, `candidate`, `it_student` —
 is 403, anonymous 401. Notes are internal: no candidate, student, employer, portal or public response carries them. No grant key is
 added. Pinned by `apps/api/tests/test_hrc_016_notes_tasks.py` and the rec-038 matrix rows.
+
+### 2.285 Candidate bulk import *(added 2026-11-04 — `DEC-SCOPE-391`, hrc-013)*
+
+`candidates.import` (declared by hrc-002, §2.275) now has default holders: `placement_team` and `placement_manager` (migration 0268
+seeds them; `super_admin` holds every key). The routes also require a candidate writer, so an `allow` override never lets `hr_team` or
+any other reader import; a `deny` override removes a recruiter's access to the template, preview, import, history and reports. History
+and reports are the uploader's own; a placement manager and super_admin see every import. Pinned by
+`apps/api/tests/test_hrc_013_import.py` and `apps/api/tests/test_hrc_002_roles.py`.

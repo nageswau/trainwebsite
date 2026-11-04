@@ -480,6 +480,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** medium.
 
 #### hrc-013: Candidate bulk import ⚠
+- **Status (2026-11-04):** built — `DEC-SCOPE-391` (Q-13 answered by the builder's recommended call: 1,000 rows and 1 MB per file, `NEEDS_CONFIRMATION`); design
+  `docs/superpowers/specs/2026-11-04-hrc-013-candidate-bulk-import-design.md`; migration `0268`; API §12KJ; RBAC §2.285.
 - **Business requirement:** §5.1 "bulk import"; §16 "imports with validation, duplicate detection, error reports and safe retry"; §14 data quality "failed imports".
 - **Existing behavior:** no candidate import exists. ⚠ The recruiter backlog's Q-32 chose manual entry only.
 - **Expected behavior:**

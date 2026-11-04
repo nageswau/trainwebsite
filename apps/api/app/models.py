@@ -6713,6 +6713,57 @@ class CandidateDuplicate(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# hrc-013 (DEC-SCOPE-391 I9): migration 0268 repeats these checks.
+CANDIDATE_IMPORT_ROW_STATUSES = ("created", "matched", "error")
+CANDIDATE_IMPORT_BATCH_CHECKS = {"ck_candidate_import_batches_counts": "created_count + matched_count + error_count = total_rows"}
+CANDIDATE_IMPORT_ROW_CHECKS = {
+    "ck_candidate_import_rows_status": "status IN ('created', 'matched', 'error')",
+    "ck_candidate_import_rows_outcome": "(status = 'error') = (candidate_id IS NULL) AND (status <> 'error' OR reason IS NOT NULL)",
+}
+
+
+class CandidateImportBatch(Base):
+    """hrc-013 (I8/I9): one committed candidate file. Only its hash, name, source and counts are kept -- never the file. The
+    Idempotency-Key is scoped to the uploader."""
+
+    __tablename__ = "candidate_import_batches"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_IMPORT_BATCH_CHECKS.items()),
+        UniqueConstraint("uploaded_by_user_id", "idempotency_key", name="uq_candidate_import_batches_key"),
+        Index("ix_candidate_import_batches_uploader", "uploaded_by_user_id", "created_at"),
+        Index("ix_candidate_import_batches_file", "uploaded_by_user_id", "file_sha256"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    source_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_candidate_sources.id", ondelete="RESTRICT"))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    file_sha256: Mapped[str] = mapped_column(String(64))
+    file_name: Mapped[str] = mapped_column(String(200))
+    total_rows: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    created_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    matched_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    error_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CandidateImportRow(Base):
+    """hrc-013 (I9): one row's outcome. No name, mobile or email: a created or matched row names its candidate (a match says why); an error row only its
+    file row number and reason. hrc-034 reads the error rows as "failed imports"."""
+
+    __tablename__ = "candidate_import_rows"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_IMPORT_ROW_CHECKS.items()),
+        UniqueConstraint("batch_id", "row_number", name="uq_candidate_import_rows_row"),
+        Index("ix_candidate_import_rows_candidate", "candidate_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidate_import_batches.id", ondelete="CASCADE"))
+    row_number: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(10))
+    candidate_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"), nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class RecFxRate(Base):
     """hrc-011 (DEC-SCOPE-375 C1, Q-10): the placement manager's manual exchange rate, rupees per one unit of the currency. INR is
     implicit (1) and never stored; no rate is seeded. Never deleted: a currency in use keeps its rate."""
