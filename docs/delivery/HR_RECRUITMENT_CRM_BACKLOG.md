@@ -246,6 +246,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **E:** legacy rows with free-text location.
 - **Regression risks:** the public job card and student job list read `location`.
 - **Complexity:** medium. **Risk:** low.
+- **Status:** built as `DEC-SCOPE-381` (migration `0258_vacancy_fields`, API §12JZ, no RBAC change); design
+  `docs/superpowers/specs/2026-11-04-hrc-005-vacancy-fields-duplicates-design.md`. Q-06 settled by the builder's calls V3/V5 (derived
+  location, no row migration; warn with an audited reason; `NEEDS_CONFIRMATION`).
 
 #### hrc-006: Vacancy co-ownership and assignment history
 - **Business requirement:** §4.1 "one or more recruiters and placement officers … with a primary owner"; §12 "Shared vacancy ownership … Preserve ownership and reassignment history".

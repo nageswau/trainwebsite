@@ -33,7 +33,7 @@ test("a requirement's history shows the title old → new and the salary as chan
   await expect(history(page).getByRole("listitem", { name: "Details edited" })).toHaveCount(0);
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByLabel("Job title (required)").fill(`Senior Java Dev ${stamp}`);
-  await page.getByLabel("Salary from (₹ a year)").fill("500000");
+  await page.getByLabel("Salary from", { exact: true }).fill("500000");
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Changes saved.")).toBeVisible();
 
