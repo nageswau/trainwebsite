@@ -3701,7 +3701,21 @@ offers}` writes: `placement_team` within the `/recruiter/*` record scope (404 ou
 IT-wide, `super_admin` all; `hr_team` 403. Students and employers never receive an interview `result` or a decided interview status.
 `/files/download` and `/local-files` 404 the recruitment prefixes for every role. Pinned by `apps/api/tests/test_hrc_001_access.py`.
 
-### 2.273 Recruitment roles *(added 2026-11-04 — `DEC-SCOPE-374`, hrc-002)*
+### 2.273 Candidate compensation and exchange rates *(added 2026-11-04 — `DEC-SCOPE-375`, hrc-011)*
+
+The new package fields (currency, pay period, minimum, negotiable, annual INR) follow `candidates.compensation.view` exactly like the
+salaries (§2.270): absent without it, 403 when sent. Exchange rates: read by the candidate readers (`placement_team`,
+`placement_manager`, `hr_team`, `super_admin`) — a rate is not compensation; written by `placement_manager` and `super_admin` only (others
+403, anonymous 401). Pinned by `apps/api/tests/test_hrc_011_compensation.py`.
+
+### 2.274 Recruitment record history *(added 2026-11-04 — `DEC-SCOPE-376`, hrc-004)*
+
+No new role or grant. A requirement's history is read by its readers (`placement_team` own, `placement_manager` team, `bdm` own
+companies, `super_admin`; out of scope 404, other roles 403); a candidate's by the candidate readers (`placement_team`,
+`placement_manager`, `hr_team`, `super_admin`; others 403); anonymous 401. Compensation and contact values are never stored, so a reader
+without `candidates.compensation.view` learns only that a salary field changed. Pinned by `apps/api/tests/test_hrc_004_audit_history.py`
+and the rec-038 matrix rows.
+### 2.275 Recruitment roles *(added 2026-11-04 — `DEC-SCOPE-374`, hrc-002)*
 
 New IT roles `hr_manager` (created by super_admin only), `placement_officer` and `interviewer` (created by `it_admin` or super_admin).
 None holds a catalogue grant by default or belongs to any recruiter/HR role set, so every `/recruiter/*`, legacy `/workflows/it/*`

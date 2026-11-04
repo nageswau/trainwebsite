@@ -13,6 +13,10 @@ export type AuditActor = { id: string; full_name: string; email: string; divisio
 // itc-001: each changed field as [old, new], or "changed" for a personal-data field whose values are never stored.
 export type AuditValue = string | number | boolean | null;
 export type AuditChanges = Record<string, readonly [AuditValue, AuditValue] | "changed">;
+const shownValue = (value: AuditValue) => (value === null || value === "" ? "(empty)" : String(value));
+/** One changed field's old → new, or "changed (value hidden)" for a field whose values are never stored (itc-001, hrc-004). */
+export const changeText = (change: AuditChanges[string]) =>
+  change === "changed" ? "changed (value hidden)" : `${shownValue(change[0])} → ${shownValue(change[1])}`;
 export type AuditRow = {
   id: string; user_id: string | null; actor: AuditActor | null; action: string; entity_type: string; entity_id: string | null; outcome: string;
   created_at: string; changes?: AuditChanges | null;

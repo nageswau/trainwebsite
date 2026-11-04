@@ -51,7 +51,12 @@ def require_writer(user: User) -> None:
 
 
 # hrc-001 (DEC-SCOPE-371 H2): salary is shown, sent and searched on only with the grant; without it the keys are absent, not null.
-COMPENSATION = ("current_salary", "expected_salary")
+COMPENSATION = (
+    "current_salary", "expected_salary",
+    # hrc-011 (DEC-SCOPE-375 C7): the package detail and the normalised figures follow the same grant
+    "current_salary_currency", "current_salary_period", "current_annual_inr", "expected_salary_currency", "expected_salary_period",
+    "expected_annual_inr", "minimum_salary", "minimum_salary_currency", "minimum_salary_period", "minimum_annual_inr", "salary_negotiable",
+)  # fmt: skip
 NO_COMPENSATION = "Your role cannot view or change candidate salary"
 
 
@@ -168,6 +173,16 @@ def apply_fields(candidate: Candidate, values: dict) -> list[str]:
     return sorted(changed)
 
 
+async def audited_values(db: AsyncSession, candidate: Candidate, fields) -> dict:
+    """hrc-004 B5: the values an edit's audit diff compares -- the source by name."""
+    values = {k: getattr(candidate, k) for k in fields}
+    values |= {k: ", ".join(map(str, v)) for k, v in values.items() if isinstance(v, list)}  # preferred locations as text
+    if "source_id" in values:
+        source_id = values.pop("source_id")
+        values["source"] = (await db.get(RecCandidateSource, source_id)).name if source_id else None
+    return values
+
+
 def audit(db: AsyncSession, user: User, action: str, candidate: Candidate, metadata: dict) -> None:
     db.add(AuditLog(user_id=user.id, action=f"candidate.{action}", entity_type="candidates", entity_id=str(candidate.id), metadata_json=metadata))
 
@@ -267,8 +282,7 @@ DETAIL_FIELDS = (
     "college",
     "passing_year",
     "current_company",
-    "current_salary",
-    "expected_salary",
+    *COMPENSATION,
     "notice_days",
     "preferred_locations",
     "linkedin",

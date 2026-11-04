@@ -95,9 +95,9 @@ async def reassign(db: AsyncSession, actor: User, source: User, target_id: UUID)
     for company in companies:
         recruiter_companies.record_assignment(db, actor, company, target.id)
         recruiter_companies.audit(db, actor, "assign", company.id, change)
-    for job in jobs:
+    for job in jobs:  # hrc-004 E: one row per job, with the recruiters by name
         job.assigned_recruiter_user_id = target.id
-        recruiter_requirements.audit(db, actor, "assign", job.id, change)
+        recruiter_requirements.audit(db, actor, "assign", job.id, {**change, "changes": {"recruiter": [source.full_name, target.full_name]}})
     return moved
 
 

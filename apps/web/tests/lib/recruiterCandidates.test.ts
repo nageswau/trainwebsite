@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { PORTAL_NAV, RECRUITER_MANAGER_NAV, RECRUITER_NAV, SUPER_ADMIN_NAV } from "@/lib/navigation";
-import { EMPTY_FORM, candidateBody, experienceLabel, FIELDS, formFields, formFromDetail, missingRequired, STATUS_LABEL, type CandidateDetail } from "@/lib/recruiterCandidates";
+import { EMPTY_FORM, candidateBody, experienceLabel, FIELDS, formFromDetail, missingRequired, packageText, STATUS_LABEL, type CandidateDetail } from "@/lib/recruiterCandidates";
 
 const filled = {
   ...EMPTY_FORM, name: " Rahul ", mobile: "98765 43210", email: "", source_id: "s1", passing_year: "2022", experience_months: "30",
@@ -12,6 +12,7 @@ describe("rec-009 candidate form mapping", () => {
   it("sends only the filled fields on create, numbers as numbers and the places as a list", () => {
     expect(candidateBody(filled, "create")).toEqual({
       name: "Rahul", mobile: "98765 43210", source_id: "s1", passing_year: 2022, experience_months: 30, current_salary: "450000",
+      current_salary_currency: "INR", current_salary_period: "year", // hrc-011: the currency and period go with their amount
       preferred_locations: ["Hyderabad", "Bengaluru"], linkedin: "https://linkedin.com/in/r", status: "available",
     });
   });
@@ -31,9 +32,7 @@ describe("rec-009 candidate form mapping", () => {
       expect(body).not.toHaveProperty("current_salary");
       expect(body).not.toHaveProperty("expected_salary");
     }
-    expect(formFields(false).map((f) => f.key)).not.toContain("current_salary");
-    expect(formFields(false)).toHaveLength(FIELDS.length - 2);
-    expect(formFields(true)).toBe(FIELDS);
+    expect(FIELDS.map((f) => f.key).filter((k) => k.includes("salary"))).toEqual([]); // hrc-011: the compensation group has its own inputs
   });
 
   it("names the missing required fields: name, source and a mobile or an email", () => {
@@ -52,6 +51,31 @@ describe("rec-009 candidate form mapping", () => {
     const form = formFromDetail(detail);
     expect(form).toMatchObject({ name: "R", mobile: "", email: "r@x.com", source_id: "s", status: "placed", passing_year: "2020",
       experience_months: "14", current_salary: "450000.00", preferred_locations: "Pune, Goa", location: "" });
+  });
+
+  it("hrc-011: sends each amount with its currency and period, Negotiable as true/false/null, and nothing for an empty amount", () => {
+    const form = { ...filled, current_salary: "50000", current_salary_period: "month", expected_salary: "4000", expected_salary_currency: "USD",
+      expected_salary_period: "month", minimum_salary: "", minimum_salary_currency: "USD", salary_negotiable: "yes" };
+    const created = candidateBody(form, "create");
+    expect(created).toMatchObject({ current_salary: "50000", current_salary_currency: "INR", current_salary_period: "month", expected_salary: "4000",
+      expected_salary_currency: "USD", expected_salary_period: "month", salary_negotiable: true });
+    expect(created).not.toHaveProperty("minimum_salary_currency");
+    const edited = candidateBody({ ...form, salary_negotiable: "" }, "edit");
+    expect(edited).toMatchObject({ minimum_salary: null, minimum_salary_currency: null, minimum_salary_period: null, salary_negotiable: null });
+    expect(candidateBody({ ...form, salary_negotiable: "no" }, "edit").salary_negotiable).toBe(false);
+  });
+
+  it("hrc-011: round-trips the package and shows the amount as entered, with its annual INR when it differs", () => {
+    const detail = { source: { id: "s" }, preferred_locations: [], current_salary: "50000.00", current_salary_currency: "INR", current_salary_period: "month",
+      current_annual_inr: "600000.00", expected_salary: "4000.00", expected_salary_currency: "USD", expected_salary_period: "month",
+      expected_annual_inr: "3996000.00", minimum_salary: "700000.00", minimum_salary_currency: "INR", minimum_salary_period: "year",
+      minimum_annual_inr: "700000.00", salary_negotiable: false } as unknown as CandidateDetail;
+    expect(formFromDetail(detail)).toMatchObject({ current_salary: "50000.00", current_salary_period: "month", expected_salary_currency: "USD", salary_negotiable: "no" });
+    expect(packageText(detail, "current")).toBe("₹50,000 per month (≈ ₹6,00,000 a year)");
+    expect(packageText(detail, "expected")).toBe("USD 4,000 per month (≈ ₹39,96,000 a year)");
+    expect(packageText(detail, "minimum")).toBe("₹7,00,000 per year");
+    expect(packageText({ ...detail, minimum_salary: null }, "minimum")).toBeNull();
+    expect(formFromDetail({ ...detail, minimum_salary: null, minimum_salary_currency: null, salary_negotiable: null })).toMatchObject({ minimum_salary: "", minimum_salary_currency: "INR", salary_negotiable: "" });
   });
 
   it("reads experience in years and months", () => {

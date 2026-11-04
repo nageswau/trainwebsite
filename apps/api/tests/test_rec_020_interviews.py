@@ -291,7 +291,7 @@ async def test_edit_changes_details_only_and_never_a_decided_interview(client, d
     assert (await client.patch(f"{INTERVIEWS}/{item['id']}", json={"scheduled_at": _at(9)})).status_code == 422
     assert (await client.patch(f"{INTERVIEWS}/{item['id']}", json={"round": None})).status_code == 422
     audit = await db_session.scalar(select(AuditLog).where(AuditLog.action == "recruiter_interview.update", AuditLog.entity_id == item["id"]))
-    assert audit.metadata_json == {"fields": ["interviewer", "round"]}
+    assert audit.metadata_json == {"fields": ["interviewer", "round"], "changes": {"interviewer": [None, "Ravi"], "round": ["hr_round", "manager_round"]}}  # hrc-004
     await _to_past(db_session, item["id"])
     await _move(client, item["id"], "completed")
     await _move(client, item["id"], "rejected")

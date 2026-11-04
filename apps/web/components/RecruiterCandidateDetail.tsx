@@ -11,15 +11,15 @@ import RecruiterCandidateTraining from "@/components/RecruiterCandidateTraining"
 import RecruiterCandidateResumes from "@/components/RecruiterCandidateResumes";
 import RecruiterCandidateSkills from "@/components/RecruiterCandidateSkills";
 import RecruiterMessages from "@/components/RecruiterMessages";
+import RecruiterRecordHistory from "@/components/RecruiterRecordHistory";
 import RecruiterTimeline from "@/components/RecruiterTimeline";
 import { sendRequest } from "@/lib/apiErrors";
 import { telHref } from "@/lib/recruiterCalls";
-import { STATUS_LABEL, candidateUrl, experienceLabel, type CandidateDetail } from "@/lib/recruiterCandidates";
+import { AMOUNTS, STATUS_LABEL, candidateUrl, experienceLabel, packageText, type CandidateDetail } from "@/lib/recruiterCandidates";
 
 // rec-009 (spec §6): one candidate -- the §8 profile, Edit (writers), Archive/Restore with a confirm, and the resume versions. hr_team reads
 // only (`can_edit` false). Skills (rec-011) sit above the resumes; Applications (rec-017), Calls (rec-025) and messages (rec-026) sit
 // under them; rec-027's Timeline closes the page (a call or message re-reads it).
-const money = (v: string | null) => (v === null ? null : Number(v).toLocaleString("en-IN", { maximumFractionDigits: 2 }));
 
 export default function RecruiterCandidateDetail({ initial }: { initial: CandidateDetail }) {
   const [candidate, setCandidate] = useState(initial);
@@ -53,13 +53,16 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
   }
 
   const tel = telHref(candidate.mobile);
-  // hrc-001 (DEC-SCOPE-371 H2): the API leaves salary out without `candidates.compensation.view` -- no row then, not a blank one.
-  const salary = (label: string, value: string | null | undefined): [string, React.ReactNode][] => (value === undefined ? [] : [[label, money(value)]]);
+  // hrc-001 (DEC-SCOPE-371 H2): the API leaves salary out without `candidates.compensation.view` -- no rows then, not blank ones.
+  // hrc-011: each amount as entered, with its yearly rupee figure when that reads differently; Negotiable on its own row.
+  const compensation: [string, React.ReactNode][] = candidate.expected_salary === undefined ? [] : [
+    ...AMOUNTS.map(({ key, label }) => [label, packageText(candidate, key)] as [string, React.ReactNode]),
+    ["Negotiable", candidate.salary_negotiable === true ? "Yes" : candidate.salary_negotiable === false ? "No" : null],
+  ];
   const rows: [string, React.ReactNode][] = [
     ["Mobile", tel ? <a href={tel}>{candidate.mobile}<span className="visually-hidden"> (call {candidate.name})</span></a> : candidate.mobile], ["Email", candidate.email], ["Location", candidate.location], ["Qualification", candidate.qualification],
     ["College", candidate.college], ["Passing year", candidate.passing_year], ["Total experience", experienceLabel(candidate.experience_months)],
-    ["Current company", candidate.current_company], ...salary("Current salary (per year)", candidate.current_salary),
-    ...salary("Expected salary (per year)", candidate.expected_salary), ["Notice period", candidate.notice_days === null ? null : `${candidate.notice_days} days`],
+    ["Current company", candidate.current_company], ...compensation, ["Notice period", candidate.notice_days === null ? null : `${candidate.notice_days} days`],
     ["Preferred locations", candidate.preferred_locations.join(", ") || null], ["Preferred role", candidate.preferred_role],
     ["LinkedIn", candidate.linkedin && <a href={candidate.linkedin} target="_blank" rel="noopener noreferrer nofollow" style={{ overflowWrap: "anywhere" }}>{candidate.linkedin}</a>],
     ["Source", `${candidate.source.name}${candidate.source.active ? "" : " (inactive)"}`], ["Source detail", candidate.source_detail],
@@ -121,6 +124,8 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
           source={{ kind: "candidate", party: { kind: "candidate", id: candidate.id, name: candidate.name, whatsappTo: candidate.whatsapp_to ?? null, email: candidate.email } }} />
       </div>
       <RecruiterTimeline party={{ kind: "candidate", id: candidate.id }} version={activity} />
+      {/* hrc-004: who changed what, old → new (contact and salary hidden); re-read after every save. */}
+      <RecruiterRecordHistory key={candidate.updated_at} url={candidateUrl(candidate.id, "/history")} />
     </div>
   );
 }

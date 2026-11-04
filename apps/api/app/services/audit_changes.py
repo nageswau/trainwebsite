@@ -26,14 +26,15 @@ def _json_value(value):
     return value.isoformat() if isinstance(value, date) else str(value)
 
 
-def changes(before: dict, after: dict) -> dict:
+def changes(before: dict, after: dict, *, redact: frozenset | set = frozenset()) -> dict:
     """`{field: [old, new]}` for each field whose value differs; `{}` when nothing changed. A field missing on one side, None and ""
-    are all the same empty value (QA-01: a form sends "" for an empty note)."""
+    are all the same empty value (QA-01: a form sends "" for an empty note). `redact` names extra fields recorded as "changed"
+    (hrc-004: a caller's compensation and contact fields)."""
     diff: dict = {}
     for field in dict.fromkeys([*before, *after]):
         old, new = before.get(field), after.get(field)
         if old != new and not (old in (None, "") and new in (None, "")):
-            diff[field] = "changed" if _is_pii(field) else [_json_value(old), _json_value(new)]
+            diff[field] = "changed" if _is_pii(field) or field in redact else [_json_value(old), _json_value(new)]
     return diff
 
 

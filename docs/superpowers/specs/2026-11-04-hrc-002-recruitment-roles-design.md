@@ -66,8 +66,8 @@ does not widen recruitment access (an interviewer with an extra `placement_team`
 must be refused), admin user creation (`allowed_by_division`), the web middleware's protected-path list, navigation tests.
 
 ## API / RBAC
-API §12JT: `GET /admin/permissions/catalogue` lists the new roles, resources and actions (additive); `/portal/it/{hr-manager|
-placement-officer|interviewer}/dashboard`; `POST /admin/users` accepts the roles. RBAC §2.273 records R1–R6.
+API §12JV: `GET /admin/permissions/catalogue` lists the new roles, resources and actions (additive); `/portal/it/{hr-manager|
+placement-officer|interviewer}/dashboard`; `POST /admin/users` accepts the roles. RBAC §2.275 records R1–R6.
 
 ## Plan (TDD, small tasks)
 1. API tests (red): role creation rules; each role's dashboard (and 403 on other roles' portals); catalogue keys; admin grants

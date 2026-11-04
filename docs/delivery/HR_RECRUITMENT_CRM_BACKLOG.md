@@ -208,6 +208,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **+/−/E:** a bulk reassignment produces one row per job.
 - **Regression risks:** audit-shape assertions in the rec-* tests.
 - **Complexity:** small. **Risk:** low.
+- **Status:** built as `DEC-SCOPE-376` (no migration, API §12JU, RBAC §2.274); design
+  `docs/superpowers/specs/2026-11-04-hrc-004-recruitment-audit-history-design.md`. `audit.view` vs "the record's read scope" settled by
+  the builder's call B1 (read scope; no new grant; `NEEDS_CONFIRMATION`).
 
 ### Phase 1: Core data (PDF Phase 1)
 
@@ -403,6 +406,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** large. **Risk:** medium.
 
 #### hrc-011: Candidate compensation model and normalisation
+- **Status (2026-11-04):** built — `DEC-SCOPE-375` (Q-10 answered by the builder's recommended calls: manual rate table, year/month,
+  `NEEDS_CONFIRMATION`); design `docs/superpowers/specs/2026-11-04-hrc-011-candidate-compensation-design.md`; migration `0251`.
 - **Business requirement:** §8.3 B "current CTC, expected CTC, minimum acceptable … currency/pay period … negotiability … normalise to annual INR while retaining the original … Unknown/Not Provided … restrict to authorised users".
 - **Existing behavior:** `current_salary` and `expected_salary` are Numeric and assumed to be ₹ per year. There is no minimum, currency, period or negotiability. NULL salaries drop out of range filters. Compensation visibility is tightened by hrc-001.
 - **Expected behavior:**
