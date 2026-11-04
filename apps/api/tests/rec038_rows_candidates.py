@@ -88,6 +88,8 @@ ROWS = [
     R("get", "/recruiter/requirement-approvals", **allow(200, "hr_mgr", "super")),
     R("get", "/recruiter/requirement-approvals/settings", **allow(200, "hr_mgr", "super")),
     R("put", "/recruiter/requirement-approvals/settings", {"legacy": False}, super=200),
+    # hrc-008 (DEC-SCOPE-385, §2.281): `jobs.publish` (placement managers by default, super_admin), division-wide like `jobs.approve`
+    R("put", "/recruiter/requirements/{requirement}/visibility", {"visibility": "portal"}, **allow(200, "mgr", "mgr_out", "super")),
     # rec-017 a requirement's candidates (§2.62): its readers list, the requirement's editors add
     R("get", "/recruiter/requirements/{requirement}/candidates", **REQ_READ),
     R("post", "/recruiter/requirements/{requirement}/candidates", lambda w: {"candidate_id": w["candidates_spare"]}, **allow(201, "rec", "super"), **OUT),

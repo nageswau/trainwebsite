@@ -151,6 +151,7 @@ from app.services import (
     it_enrollments,
     it_lifecycle,
     it_progress,
+    job_visibility,
     offers,
     permissions,
     question_import,
@@ -2138,9 +2139,11 @@ async def open_jobs(user: User = Depends(get_current_user), db: AsyncSession = D
     _require(user, {"it_student", "placement_team", "hr_team", "it_admin"}, "it")
     # EMP-002-AC02: a posting past its own closing date is not shown as open, even if
     # the Employer never explicitly closed it -- `status` alone was previously trusted.
+    # hrc-008 (V5): a student sees portal, public and their segments' jobs; internal staff see every job.
+    seen = [await job_visibility.student_filter(db, user)] if user.role == "it_student" else []
     rows = (
         await db.execute(
-            select(Job, Company).join(Company).where(Job.status.in_(JOB_OPEN_STATUSES), or_(Job.closes_on.is_(None), Job.closes_on >= date.today())).order_by(Job.created_at.desc())
+            select(Job, Company).join(Company).where(Job.status.in_(JOB_OPEN_STATUSES), or_(Job.closes_on.is_(None), Job.closes_on >= date.today()), *seen).order_by(Job.created_at.desc())
         )
     ).all()
     return [
@@ -2277,7 +2280,8 @@ async def apply_job(job_id: UUID, payload: dict, user: User = Depends(get_curren
     job = await db.get(Job, job_id)
     # EMP-002-AC02: a posting past its own closing date is not open, even if the
     # Employer never explicitly closed it -- applies here too, not just to the listing.
-    if not job or job.status not in JOB_OPEN_STATUSES or (job.closes_on and job.closes_on < date.today()):
+    # hrc-008 (V5): a job the student may not see is the same 404 as a missing one
+    if not job or job.status not in JOB_OPEN_STATUSES or (job.closes_on and job.closes_on < date.today()) or not await job_visibility.visible_to_student(db, user, job):
         raise HTTPException(404, "Open job not found")
     # rec-017 (R6, A4): the application belongs to the student's candidate (created or linked here, outside the pool until rec-010's
     # opt-in); "applied" is now Sourced.

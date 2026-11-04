@@ -85,6 +85,7 @@ from app.models import (
     JOB_PRIORITIES,
     JOB_SHIFTS,
     JOB_STATUSES,
+    JOB_VISIBILITIES,
     JOB_WORK_MODES,
     LEAD_APPOINTMENT_TYPE_LABELS,
     LEAD_CALL_MAX_SECONDS,
@@ -10612,6 +10613,20 @@ class RecRequirementApprovalNote(BaseModel):
 class RecRequirementReject(BaseModel):
     model_config = ConfigDict(extra="forbid")
     reason: Annotated[_rec_requirement_text_type(500, multiline=True), AfterValidator(_required_reason)]
+
+
+class RecRequirementVisibility(BaseModel):
+    """hrc-008 (DEC-SCOPE-385 V1/V7): who sees the job; a segment names its talent pool and nothing else does."""
+
+    model_config = ConfigDict(extra="forbid")
+    visibility: Literal[JOB_VISIBILITIES]
+    segment_pool_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def _pool_only_for_a_segment(self):
+        if (self.visibility == "segment") != (self.segment_pool_id is not None):
+            raise ValueError("Choose a talent pool for a segment, and only for a segment")
+        return self
 
 
 class JobApprovalSettingsUpdate(BaseModel):

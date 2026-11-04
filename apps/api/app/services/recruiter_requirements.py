@@ -21,6 +21,7 @@ from app.models import (
     JOB_SHIFTS,
     JOB_STATUSES,
     JOB_TITLE_KEY_SQL,
+    JOB_VISIBILITY_LABELS,
     JOB_WORK_MODES,
     AuditLog,
     Company,
@@ -33,6 +34,7 @@ from app.models import (
     RecJobCategory,
     RecLeadSource,
     RecruiterProfile,
+    TalentPool,
     User,
 )
 from app.services import company_pipeline
@@ -202,6 +204,25 @@ async def load_for_approver(db: AsyncSession, job_id: UUID) -> Job:
     if job is None:
         raise HTTPException(404, NOT_FOUND)
     return job
+
+
+async def set_visibility(db: AsyncSession, user: User, job: Job, visibility: str, pool_id: UUID | None) -> dict:
+    """hrc-008 (V7): the caller holds `jobs.publish` and locked the row. A segment's pool must be active (422). Returns the audited
+    {field: [before, after]} changes; the same values are no change (no audit, no updated_at bump)."""
+    pool = await db.scalar(select(TalentPool).where(TalentPool.id == pool_id, TalentPool.active.is_(True))) if pool_id else None
+    if pool_id and pool is None:
+        raise HTTPException(422, "Choose an active talent pool")
+    if (job.visibility, job.segment_pool_id) == (visibility, pool_id):
+        return {}
+    changes = {"visibility": [job.visibility, visibility]} if job.visibility != visibility else {}
+    if job.segment_pool_id != pool_id:
+        old = await db.get(TalentPool, job.segment_pool_id) if job.segment_pool_id else None
+        changes["segment_pool"] = [old.name if old else None, pool.name if pool else None]
+    job.visibility, job.segment_pool_id = visibility, pool_id
+    job.updated_at = func.now()  # hrc-003 S1: open editors see the change
+    job.updated_by_user_id = user.id
+    audit(db, user, "visibility", job.id, {"changes": changes})
+    return changes
 
 
 async def fill_when_complete(db: AsyncSession, user: User | None, job_id: UUID) -> None:
@@ -488,6 +509,7 @@ def row_out(user: User, job: Job, company: Company, recruiter: User | None) -> d
         "phase": PHASES[job.status],
         "phase_label": PHASE_LABELS[PHASES[job.status]],
         "source": job.source,
+        "visibility": job.visibility,  # hrc-008
         "priority": job.priority,
         "vacancies": job.vacancies,
         "closes_on": job.closes_on,
@@ -511,6 +533,7 @@ async def requirement_out(db: AsyncSession, user: User, job: Job, *, refresh: bo
     people = {u.id: u for u in (await db.scalars(select(User).where(User.id.in_(user_ids - {None})))).all()}
     category = await db.get(RecJobCategory, job.job_category_id) if job.job_category_id else None
     lead_source = await db.get(RecLeadSource, job.lead_source_id) if job.lead_source_id else None
+    segment_pool = await db.get(TalentPool, job.segment_pool_id) if job.segment_pool_id else None
     required = job.status in SUBMITTABLE and await approval_required(db, job)
     allowed = [s for s in TRANSITIONS[job.status] if not (required and s in _ACTIVE)]  # A7
     return {
@@ -553,6 +576,12 @@ async def requirement_out(db: AsyncSession, user: User, job: Job, *, refresh: bo
             "submitted_at": job.submitted_at,
             "can_submit": required and permissions(user, job)["can_edit"],
             "can_decide": job.status == "pending_approval" and not is_own(user, job) and await user_has_grant(db, user, "jobs", "approve"),
+        },
+        "visibility": {  # hrc-008 (V1, V4)
+            "key": job.visibility,
+            "label": JOB_VISIBILITY_LABELS[job.visibility],
+            "segment_pool": ref(segment_pool),
+            "can_change": await user_has_grant(db, user, "jobs", "publish"),
         },
         "status_history": [
             {

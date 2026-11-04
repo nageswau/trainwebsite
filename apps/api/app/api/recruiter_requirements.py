@@ -27,6 +27,7 @@ from app.schemas import (
     RecRequirementReject,
     RecRequirementStatusChange,
     RecRequirementUpdate,
+    RecRequirementVisibility,
     RecSkillWeights,
 )
 from app.services import applications, candidates, matching, recruitment_history
@@ -41,6 +42,7 @@ router = APIRouter(prefix="/recruiter/requirements", tags=["recruiter-requiremen
 approvals_router = APIRouter(prefix="/recruiter/requirement-approvals", tags=["recruiter-requirements"])
 NO_APPROVE = "You cannot approve job requirements"
 APPROVER = require_permission("jobs", "approve", NO_APPROVE)
+PUBLISHER = require_permission("jobs", "publish", "You cannot change who sees job requirements")  # hrc-008 (V4)
 Recruiter = aliased(User)
 ASSIGNED_INVALID = "assigned must be me, unassigned or a recruiter id"
 
@@ -268,6 +270,18 @@ async def approve_requirement(requirement_id: UUID, payload: RecRequirementAppro
 @router.post("/{requirement_id}/reject")
 async def reject_requirement(requirement_id: UUID, payload: RecRequirementReject, user: User = Depends(APPROVER), db: AsyncSession = Depends(get_db)):
     return await _decide(db, user, requirement_id, False, payload.reason)
+
+
+# --- hrc-008 (DEC-SCOPE-385 V7): who sees the job --------------------------------------------------------------------------------------
+@router.put("/{requirement_id}/visibility")
+async def change_requirement_visibility(requirement_id: UUID, payload: RecRequirementVisibility, user: User = Depends(PUBLISHER), db: AsyncSession = Depends(get_db)):
+    """Grant (the dependency, 403) -> exists (404, any job: the grant is division-wide like `jobs.approve`) -> an active pool (422)."""
+    job = await svc.load_for_approver(db, requirement_id)
+    changes = await svc.set_visibility(db, user, job, payload.visibility, payload.segment_pool_id)
+    await db.commit()
+    if changes:
+        svc.log("recruiter_requirement_visibility_changed", user, job.id, visibility=job.visibility)
+    return {"requirement": await svc.requirement_out(db, user, job)}
 
 
 @approvals_router.get("")

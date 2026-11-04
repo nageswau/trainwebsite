@@ -3769,3 +3769,12 @@ the role a scope only where the route opts in (`officers=True`), so applications
 legacy routes stay 403 for it (candidate access waits for hrc-012). Owners are managed by the primary owner, a placement manager in scope
 or super_admin (a collaborator, the BDM or an officer → 403); a non-assignee → 404. No grant key is added. Pinned by
 `apps/api/tests/test_hrc_006_co_ownership.py` and the rec-038 matrix rows.
+
+### 2.281 Vacancy visibility *(added 2026-11-04 — `DEC-SCOPE-385`, hrc-008)*
+
+`jobs.publish` gets its first default holder, `placement_manager` (migration 0262 seeds it; super_admin implicit; grantable to any role).
+A holder changes any job requirement's visibility (`PUT /recruiter/requirements/{id}/visibility`, no recruiter scope needed); recruiters,
+`hr_manager`, `placement_officer` and every other role 403, anonymous 401. Reading a visibility follows the requirement's readers. On the
+candidate side an anonymous visitor sees and applies to public jobs only, and an `it_student` to portal, public and their own talent pools'
+segment jobs; a job outside that is the same 404 as a missing one. Pinned by `apps/api/tests/test_hrc_008_visibility.py` and the rec-038
+matrix row.

@@ -126,7 +126,7 @@ def _job_out(job: Job) -> dict:
         # EMP-002-AC02: a posting past its own closing date is never shown to Students
         # as open, even if the Employer never explicitly closed it -- surfaced here too
         # so the Employer's own listing doesn't imply it's still visible when it isn't.
-        "visible_to_students": requirements.is_open(job, date.today()),
+        "visible_to_students": requirements.is_open(job, date.today()) and job.visibility != "internal",  # hrc-008 (V8)
     }
 
 

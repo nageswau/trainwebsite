@@ -23,7 +23,7 @@ const requirement = (over: Partial<Requirement> = {}) =>
     experience_min_months: null, experience_max_months: null, salary_min: null, salary_max: null, work_mode: null, shift: null, employment_type: null,
     joining_requirement: null, skills: [], joined_count: 0, allowed_statuses: [], status_history: [], created_by: null, created_at: "2026-11-01T00:00:00Z",
     updated_at: "2026-11-04T04:00:00Z", approval: { required: false, submitted_by: null, submitted_at: null, can_submit: false, can_decide: false },
-    owners: [officer, collaborator], ...over,
+    owners: [officer, collaborator], visibility: { key: "public", label: "Public website", segment_pool: null, can_change: false }, ...over,
   }) as Requirement;
 const change = (id: string, over: Partial<OwnerChange> = {}): OwnerChange => ({
   id, user: { id: "C1", full_name: "Kiran Collab", active: true }, role: "collaborator", role_label: "Collaborator", action: "added", reason: null,

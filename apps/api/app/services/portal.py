@@ -65,7 +65,19 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.services import application_filters, counselor_students, document_access, fee_accounts, hr_students, it_student_counselors, permissions, student_access, student_archive, student_profiles
+from app.services import (
+    application_filters,
+    counselor_students,
+    document_access,
+    fee_accounts,
+    hr_students,
+    it_student_counselors,
+    job_visibility,
+    permissions,
+    student_access,
+    student_archive,
+    student_profiles,
+)
 from app.services import application_outcomes as outcomes
 from app.services import applications as job_applications
 from app.services import batch_timetable as timetable
@@ -474,7 +486,8 @@ async def _it_student(db: AsyncSession, user: User, section: str):
                 .order_by(JobApplication.created_at.desc())
             )
         ).all()
-        open_jobs = (await db.execute(select(Job, Company).join(Company, Company.id == Job.company_id).where(Job.status.in_(JOB_OPEN_STATUSES)).order_by(Job.created_at.desc()).limit(100))).all()
+        seen = await job_visibility.student_filter(db, user)  # hrc-008 (V5); the student's own application rows above are never filtered (V6)
+        open_jobs = (await db.execute(select(Job, Company).join(Company, Company.id == Job.company_id).where(Job.status.in_(JOB_OPEN_STATUSES), seen).order_by(Job.created_at.desc()).limit(100))).all()
         return _payload(
             "Job Applications",
             "Applications, interviews, offers, and joining status.",

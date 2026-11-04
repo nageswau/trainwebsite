@@ -14,6 +14,7 @@ import RecruiterRequirementRevenue from "@/components/RecruiterRequirementRevenu
 import RecruiterShares from "@/components/RecruiterShares";
 import { ApprovalDecision, SubmitForApproval, SubmittedLine } from "@/components/RequirementApproval";
 import { OwnersCard, OwnershipHistory } from "@/components/RequirementOwners";
+import RequirementVisibility from "@/components/RequirementVisibility";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
 import { display, LINK_STYLE } from "@/lib/bdmOrganizations";
@@ -297,6 +298,8 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
           )}
         </section>
       )}
+      {/* hrc-008: who sees the job -- shown to every reader, changed by a `jobs.publish` holder */}
+      {!showEditor && <RequirementVisibility requirement={r} onDone={changed} />}
       {p.can_change_status && !showEditor && <StatusChange requirement={r} onChanged={changed} />}
       {p.can_reassign && <Reassign requirement={r} onChanged={changed} />}
       {/* hrc-006: the co-owners, and every ownership change (re-read when the primary or the owners change) */}
