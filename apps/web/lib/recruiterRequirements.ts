@@ -24,6 +24,11 @@ export type Requirement = RequirementRow & {
   experience_max_months: number | null; salary_min: string | null; salary_max: string | null; work_mode: string | null; shift: string | null;
   employment_type: string | null; joining_requirement: string | null; skills: RequirementSkill[]; joined_count: number;
   allowed_statuses: Option[]; status_history: StatusChange[]; created_by: Person | null; created_at: string; updated_at: string;
+  // hrc-005 (DEC-SCOPE-380 V1/V6): the §4.2 fields and Last Updated By
+  requisition_reference: string | null; source: Ref | null; certifications: string | null; country: string | null; state: string | null;
+  city: string | null; relocation_required: boolean | null; travel_requirement: string | null; salary_currency: string | null;
+  salary_period: "year" | "month" | null; benefits: string | null; hiring_manager: Person | null; expected_joining_date: string | null;
+  updated_by: Person | null;
 };
 export type StatusCatalogue = { statuses: (Option & { open: boolean; next: string[] })[]; vocabularies: Record<string, string[]>; expiring_days: number };
 
@@ -65,20 +70,34 @@ export function experienceText(min: number | null, max: number | null): string {
   return `${yearsFromMonths(min)}–${yearsFromMonths(max)} years`;
 }
 
-const rupees = (value: string) => `₹${Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
-
-export function salaryText(min: string | null, max: string | null): string {
+/** hrc-005: a null currency is rupees and a null period is a year (every row saved before the fields existed). */
+export function salaryText(min: string | null, max: string | null, currency?: string | null, period?: string | null): string {
   if (min == null && max == null) return "—";
-  if (min == null) return `Up to ${rupees(max!)} a year`;
-  if (max == null) return `From ${rupees(min)} a year`;
-  return `${rupees(min)} – ${rupees(max)} a year`;
+  const number = (value: string) => Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  const money = (value: string) => (!currency || currency === "INR" ? `₹${number(value)}` : `${currency} ${number(value)}`);
+  const per = period === "month" ? "a month" : "a year";
+  if (min == null) return `Up to ${money(max!)} ${per}`;
+  if (max == null) return `From ${money(min)} ${per}`;
+  return `${money(min)} – ${money(max)} ${per}`;
+}
+
+/** hrc-005 (V5): a live requirement the server thinks the new or edited one may duplicate. */
+export type DuplicateMatch = { id: string; code: string; title: string; location: string; status_label: string; requisition_reference: string | null };
+export type PossibleDuplicate = { code: "possible_duplicate"; message: string; matches: DuplicateMatch[]; total: number };
+
+/** The 409 `possible_duplicate` detail, or null for any other refusal. */
+export function possibleDuplicate(detail: unknown): PossibleDuplicate | null {
+  const d = detail as Partial<PossibleDuplicate> | null;
+  return !!d && typeof d === "object" && d.code === "possible_duplicate" && Array.isArray(d.matches) ? (d as PossibleDuplicate) : null;
 }
 
 /** The form's fields, in screen order (EVID-018 §6). Experience is in years here (sent as months); skills are one per comma or line. */
 export const FORM_FIELDS = [
-  "title", "department", "job_category_id", "vacancies", "qualification", "experience_min_months", "experience_max_months", "salary_min",
-  "salary_max", "location", "work_mode", "shift", "employment_type", "joining_requirement", "closes_on", "requirement_date", "priority",
-  "required_skills", "preferred_skills", "description",
+  "requisition_reference", "source_id", "title", "department", "job_category_id", "vacancies", "qualification", "experience_min_months",
+  "experience_max_months", "certifications", "country", "state", "city", "location", "work_mode", "relocation_required", "travel_requirement",
+  "salary_min", "salary_max", "salary_currency", "salary_period", "shift", "employment_type", "benefits", "hiring_manager_user_id",
+  "joining_requirement", "expected_joining_date", "closes_on", "requirement_date", "priority", "required_skills", "preferred_skills",
+  "description",
 ] as const;
 export type FormField = (typeof FORM_FIELDS)[number];
 export type FormValues = Record<FormField, string>;
@@ -94,6 +113,12 @@ export function valuesOf(r?: Requirement): FormValues {
     shift: text(r?.shift), employment_type: text(r?.employment_type), joining_requirement: text(r?.joining_requirement), closes_on: text(r?.closes_on),
     requirement_date: text(r?.requirement_date), priority: text(r?.priority), required_skills: skills("required"), preferred_skills: skills("preferred"),
     description: text(r?.description),
+    // hrc-005
+    requisition_reference: text(r?.requisition_reference), source_id: text(r?.source?.id), certifications: text(r?.certifications),
+    country: text(r?.country), state: text(r?.state), city: text(r?.city),
+    relocation_required: r?.relocation_required == null ? "" : r.relocation_required ? "yes" : "no", travel_requirement: text(r?.travel_requirement),
+    salary_currency: text(r?.salary_currency), salary_period: text(r?.salary_period), benefits: text(r?.benefits),
+    hiring_manager_user_id: text(r?.hiring_manager?.id), expected_joining_date: text(r?.expected_joining_date),
   };
 }
 
@@ -107,6 +132,8 @@ export function wire(key: FormField, value: string): unknown {
     return Number.isNaN(months) ? trimmed : months;
   }
   if (key === "vacancies" && /^\d+$/.test(trimmed)) return Number(trimmed);
+  if (key === "relocation_required") return trimmed === "yes";
+  if (key === "salary_currency") return trimmed.toUpperCase();
   return trimmed;
 }
 
@@ -129,4 +156,14 @@ export async function companySearch(q: string, signal: AbortSignal): Promise<Loo
   if (!response.ok) throw new Error(`Company search failed (${response.status})`);
   const page = (await response.json()) as { items: { id: string; code: string; name: string }[]; total: number };
   return { items: page.items.map((c) => ({ id: c.id, label: c.name, detail: c.code })), truncated: page.total > page.items.length };
+}
+
+/** hrc-005 (V2): the hiring-manager picker -- active internal interviewers, searched on the server. */
+export async function hiringManagerSearch(q: string, signal: AbortSignal): Promise<LookupPage> {
+  const query = new URLSearchParams({ limit: "20" });
+  if (q) query.set("q", q);
+  const response = await fetch(`${REQUIREMENTS_URL}/hiring-managers?${query}`, { signal });
+  if (!response.ok) throw new Error(`Hiring manager search failed (${response.status})`);
+  const page = (await response.json()) as { items: { id: string; full_name: string; email: string }[]; total: number };
+  return { items: page.items.map((u) => ({ id: u.id, label: u.full_name, detail: u.email })), truncated: page.total > page.items.length };
 }

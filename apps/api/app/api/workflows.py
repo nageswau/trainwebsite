@@ -2307,6 +2307,7 @@ async def update_job(job_id: UUID, payload: dict, user: User = Depends(get_curre
             await requirements.change_status(db, user, job, status)
     if "closes_on" in payload:
         job.closes_on = date.fromisoformat(payload["closes_on"]) if payload["closes_on"] else None
+    job.updated_by_user_id = user.id  # hrc-005 V6: Last Updated By
     await _audit(db, user, "job.update", "job", job.id, payload)
     await db.commit()
     return {"id": job.id, "status": job.status}

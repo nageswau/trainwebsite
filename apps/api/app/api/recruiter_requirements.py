@@ -50,6 +50,22 @@ async def requirement_statuses(user: User = Depends(get_current_user), db: Async
     return svc.catalogue()
 
 
+@router.get("/hiring-managers")
+async def hiring_managers(q: str | None = SEARCH, limit: int = Query(20, ge=1, le=50), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """hrc-005 (V2): the hiring-manager picker -- active internal interviewers, for the roles that write requirements."""
+    svc.require_creator(user)
+    filters = [User.role == svc.HIRING_MANAGER_ROLE, User.active.is_(True), *_matching(like_pattern(q), User.full_name, User.email)]
+    total = await db.scalar(select(func.count()).select_from(User).where(*filters))
+    rows = (await db.scalars(select(User).where(*filters).order_by(User.full_name, User.id).limit(limit))).all()
+    return {"items": [{"id": u.id, "full_name": u.full_name, "email": u.email} for u in rows], "total": total or 0}
+
+
+def _audit_override(db: AsyncSession, user: User, job: Job, codes: list[str], reason: str | None) -> None:
+    """hrc-005 (V5, AC3): saved despite possible duplicates -- the reason and the matches, in the write's transaction."""
+    if codes:
+        svc.audit(db, user, "duplicate_override", job.id, {"match_count": len(codes), "match_codes": codes, "reason": reason})
+
+
 @router.get("")
 async def list_requirements(
     q: str | None = SEARCH,
@@ -107,7 +123,7 @@ async def create_requirement(payload: RecRequirementCreate, user: User = Depends
     values = payload.model_dump(include=set(REC_REQUIREMENT_FIELDS))
     values["description"] = values["description"] or ""
     values["requirement_date"] = values["requirement_date"] or svc.ist_today()  # J4: the received date, today unless given
-    await svc.check_category(db, values, None)
+    await svc.check_references(db, values, None)
     assignee = user.id if user.role == ROLE else company.assigned_recruiter_user_id
     if user.role != ROLE and payload.assigned_recruiter_user_id:
         assignee = (await companies.locked_recruiter_target(db, user, payload.assigned_recruiter_user_id)).id
@@ -117,13 +133,17 @@ async def create_requirement(payload: RecRequirementCreate, user: User = Depends
         status="new",
         assigned_recruiter_user_id=assignee,
         created_by_user_id=user.id,
+        updated_by_user_id=user.id,
         skills=[],
     )
+    svc.settle_location(job)  # hrc-005 V3
+    overrides = await svc.check_duplicates(db, job, payload.duplicate_reason)  # V5: a 409 unless a reason is given
     db.add(job)
     await db.flush()
     await svc.set_skills(db, job, payload.required_skills or [], payload.preferred_skills or [])
     await svc.record_created(db, user, job)
     svc.audit(db, user, "create", job.id, {"code": job.requirement_code, "company_id": str(company.id), "fields": sorted(k for k, v in values.items() if v not in (None, ""))})
+    _audit_override(db, user, job, overrides, payload.duplicate_reason)
     await db.commit()
     svc.log("recruiter_requirement_created", user, job.id)
     return {"requirement": await svc.requirement_out(db, user, job)}
@@ -154,13 +174,20 @@ async def update_requirement(requirement_id: UUID, payload: RecRequirementUpdate
     changes = payload.model_dump(exclude_unset=True, include=set(REC_REQUIREMENT_FIELDS))
     if "description" in changes:
         changes["description"] = changes["description"] or ""
-    await svc.check_category(db, changes, job)
+    await svc.check_references(db, changes, job)
     changed = sorted(k for k, v in changes.items() if getattr(job, k) != v)
+    old_location, old_place = job.location, svc.place_text(job.city, job.state, job.country)
     fields = payload.model_fields_set
     skills_sent = "required_skills" in fields or "preferred_skills" in fields
     before = await svc.audited_values(db, job, changed, skills=skills_sent)  # hrc-004: the stored values, for the audit diff
     for key in changed:
         setattr(job, key, changes[key])
+    if {"location", "city", "state", "country"} & set(changed):  # hrc-005 V3: a derived location follows its parts; a typed one stays
+        svc.settle_location(job, None if "location" in changed else old_place)
+        if job.location != old_location and "location" not in changed:
+            before["location"] = old_location
+            changed.append("location")
+    overrides = await svc.check_duplicates(db, job, payload.duplicate_reason, job.id) if svc.DUPLICATE_FIELDS & set(changed) else []
     svc.check_ranges(job)
     if "vacancies" in changed:
         await svc.check_vacancies(db, job)
@@ -170,9 +197,11 @@ async def update_requirement(requirement_id: UUID, payload: RecRequirementUpdate
         changed.append("skills")
     if changed:
         job.updated_at = func.now()  # hrc-003 S1: a skills-only change (a child table) moves the token too
+        job.updated_by_user_id = user.id  # hrc-005 V6
         await db.flush()
         after = await svc.audited_values(db, job, [k for k in changed if k != "skills"], skills=skills_sent)
         svc.audit(db, user, "update", job.id, {"fields": changed, "changes": recruitment_history.diff(before, after)})
+        _audit_override(db, user, job, overrides, payload.duplicate_reason)
     await db.commit()
     if changed:
         svc.log("recruiter_requirement_updated", user, job.id, fields=changed)
@@ -185,6 +214,7 @@ async def change_requirement_status(requirement_id: UUID, payload: RecRequiremen
     job = await svc.load_scoped(db, user, requirement_id, lock=True)
     svc.require(user, job, "can_change_status", "status")
     previous = await svc.change_status(db, user, job, payload.status, payload.note)
+    job.updated_by_user_id = user.id
     svc.audit(db, user, "status", job.id, {"from": previous, "to": payload.status, "changes": {"status": [previous, payload.status]}})
     await db.commit()
     svc.log("recruiter_requirement_status_changed", user, job.id, from_status=previous, to_status=payload.status)
@@ -238,7 +268,7 @@ async def assign_requirement(requirement_id: UUID, payload: RecRequirementAssign
         raise HTTPException(409, "Already assigned to this recruiter")
     target = await companies.locked_recruiter_target(db, user, payload.recruiter_user_id)
     previous = job.assigned_recruiter_user_id
-    job.assigned_recruiter_user_id = target.id
+    job.assigned_recruiter_user_id, job.updated_by_user_id = target.id, user.id
     svc.audit(db, user, "assign", job.id, {"from_user_id": str(previous) if previous else None, "to_user_id": str(target.id),
                                            "changes": {"recruiter": [await svc.recruiter_name(db, previous), target.full_name]}})
     await db.commit()

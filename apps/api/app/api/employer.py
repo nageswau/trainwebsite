@@ -177,6 +177,8 @@ async def update_employer_job(job_id: UUID, payload: EmployerJobUpdate, user: Us
             await requirements.set_legacy_skills(db, job, value or [])
         else:
             setattr(job, key, value)
+    if changes:
+        job.updated_by_user_id = user.id  # hrc-005 V6: Last Updated By
     # `date` values aren't JSON-serializable directly -- the JSON column's own
     # serializer would fail at commit time otherwise.
     audit_changes = {k: (v.isoformat() if isinstance(v, date) else v) for k, v in changes.items()}

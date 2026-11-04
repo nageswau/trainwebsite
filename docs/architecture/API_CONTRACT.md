@@ -5566,3 +5566,20 @@ request of that type 409). `POST …/candidates/{id}/document-requests/{request_
 pool: `available: false` and empty lists; no cancelled requests; no staff names — `uploaded_by` is `"you"` | `"placement_team"`, no
 `requested_by`). `POST /api/v1/account/candidate-documents` (same multipart; not in the pool 409). `GET
 /api/v1/account/candidate-documents/{document_id}/link?mode=` (own documents only, else 404).
+
+## 12JY. Vacancy fields and possible duplicates (hrc-005) — addendum, 2026-11-04
+
+DEC-SCOPE-380. `POST /api/v1/recruiter/requirements` and `PATCH /api/v1/recruiter/requirements/{id}` accept, and every requirement body
+returns, `requisition_reference` (≤ 80), `source_id` (an active `rec_lead_sources` value; returned as `source: {id, name} | null`),
+`certifications` (≤ 1000, multi-line), `country`/`state`/`city` (≤ 120), `relocation_required` (bool | null), `travel_requirement`
+(≤ 120), `salary_currency` (three letters, upper-cased; null = INR), `salary_period` (`year` | `month`; null = a year), `benefits`
+(≤ 1000), `hiring_manager_user_id` (an active `interviewer`; returned as `hiring_manager: person | null`) and `expected_joining_date`.
+The body also returns `updated_by: person | null`. `location` is no longer required on create: blank is derived as "City, State,
+Country"; neither = 422 "Enter the job location or its city". Bad references are 422 ("Choose an active source" / "… hiring manager").
+**Possible duplicate:** create, and an edit that changes title, city, location or requisition reference, answer 409 `{detail: {code:
+"possible_duplicate", message, matches: [{id, code, title, location, status_label, requisition_reference}] (≤ 10), total}}` when another
+`closed`/`cancelled`-excluded job of the same company has the same normalised title and city (else location), or the same requisition
+reference. Re-send with `duplicate_reason` (≤ 500) to save; the audit row `recruiter_requirement.duplicate_override` keeps the reason and
+the matched codes. A stale `expected_updated_at` is still 409 `record_changed` first.
+`GET /api/v1/recruiter/requirements/hiring-managers?q=&limit=` (≤ 50) → `{items: [{id, full_name, email}], total}` — active interviewers;
+recruiter, placement manager and super_admin only (else 403).

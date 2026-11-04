@@ -11442,3 +11442,23 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   (hrc-022). D12 `/files/download` and `/local-files` withhold `candidate-documents/` and `candidate-previews/`.
 - **Numbering:** migration `0255_candidate_documents`; API §12JX; RBAC §2.277.
 - **Feature ID authorized:** `hrc-015`. **Status:** built on `worktree-hrc-015`.
+
+### DEC-SCOPE-380 — Vacancy fields completion and job duplicate detection (`hrc-005`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-005` (PDF §4.1 "unique Job ID. Detect likely duplicates by employer,
+  title, location and requisition reference", "Last Updated By"; §4.2 field groups; PDF classified `UNVERIFIED`). Scope approved by the
+  owner 2026-11-01 (backlog Q-00). Dependencies hrc-003 (DEC-SCOPE-370) and hrc-004 (DEC-SCOPE-376) merged. The owner said to proceed with
+  the recommended answers, so Q-06 and V1–V10 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-005-vacancy-fields-duplicates-design.md`.
+- **Behaviour:** a job requirement gains requisition reference, source (the recruiter lead-source list), certifications, country/state/
+  city, relocation required, travel, salary currency and pay period, benefits, hiring manager (an active `interviewer` user) and expected
+  joining date, and shows "Last updated" by whom. A blank job location is derived from the city, state and country. Saving a requirement
+  that matches a live one of the same company (same title and city/location, or the same requisition reference) is a 409
+  `possible_duplicate`; the recruiter may save anyway with a reason, audited as `recruiter_requirement.duplicate_override`.
+- **Builder's calls:** V3/Q-06 location — `location` stays the display string every reader uses; existing rows are not migrated; a typed
+  location is never overwritten. V5/Q-06 warn with a reason, not block; no separate pre-check endpoint (the write itself answers 409, the
+  rec-003 company pattern). V2 hiring manager = hrc-002's `interviewer` role. V6 `updated_by_user_id` is set by recruiter edit/status/assign
+  and the employer and legacy job PATCH (not skill weights: a child table, so hrc-003's token stays put). V7 job pay follows the job's read
+  scope; history redacts currency, period and benefits. V9 employer and legacy forms unchanged (follow-up).
+- **Numbering:** migration `0256_vacancy_fields`; API §12JY; no RBAC change.
+- **Feature ID authorized:** `hrc-005`. **Status:** built on `worktree-hrc-005`.
