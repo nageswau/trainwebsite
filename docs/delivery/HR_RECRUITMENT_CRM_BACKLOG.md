@@ -280,6 +280,10 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **E:** a primary owner removes themselves; the manager must pick a new primary first.
 - **Regression risks:** `test_rec_007/037/038` scope tests.
 - **Complexity:** medium. **Risk:** medium.
+- **Status:** built as `DEC-SCOPE-384` (migration `0261_job_assignments`, API §12KC, RBAC §2.280); design
+  `docs/superpowers/specs/2026-11-04-hrc-006-vacancy-co-ownership-design.md`. No open question; O1–O12 are the builder's calls
+  (`NEEDS_CONFIRMATION`) — notably the primary stays `jobs.assigned_recruiter_user_id`, and a placement officer co-owns the vacancy but
+  not its candidate pipeline until hrc-012.
 
 #### hrc-007: Vacancy approval workflow and Filled status
 - **Business requirement:** §4.2 Workflow "Draft, Pending Approval, Open, On Hold, Filled, Closed, Cancelled"; §4.3 "Pending Approval (if required) … Only approved, open vacancies should be available for new applications".

@@ -1025,6 +1025,53 @@ class JobApprovalSetting(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
+# hrc-006 (DEC-SCOPE-384 O1/O2): a requirement's owners besides its primary (`jobs.assigned_recruiter_user_id`), and every ownership
+# change. Migration 0261 repeats JOB_ASSIGNMENT_CHECKS (test_hrc_006_migration asserts they stay identical).
+JOB_ASSIGNMENT_ROLES = ("placement_officer", "collaborator")
+JOB_ASSIGNMENT_CHECKS = {
+    "ck_job_assignments_role": "role IN ('placement_officer', 'collaborator')",
+    "ck_job_assignment_history_role": "role IN ('primary', 'placement_officer', 'collaborator')",
+    "ck_job_assignment_history_action": "action IN ('added', 'removed')",
+    "ck_job_assignment_history_reason": "reason IS NULL OR reason IN ('reassign', 'deactivated', 'backfill')",
+}
+
+
+class JobAssignment(Base):
+    """hrc-006 (O1): a placement-officer owner (at most one per job) or a collaborator. One role per user per job; the primary is never here."""
+
+    __tablename__ = "job_assignments"
+    __table_args__ = (
+        CheckConstraint(JOB_ASSIGNMENT_CHECKS["ck_job_assignments_role"], name="ck_job_assignments_role"),
+        UniqueConstraint("job_id", "user_id", name="uq_job_assignments_job_user"),
+        Index("ix_job_assignments_user_job", "user_id", "job_id"),
+        Index("uq_job_assignments_officer", "job_id", unique=True, postgresql_where=text("role = 'placement_officer'")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id"))
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    role: Mapped[str] = mapped_column(String(20))
+    added_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class JobAssignmentHistory(Base):
+    """hrc-006 (O2): append-only. A primary change is two rows (removed, added); `changed_by_user_id` NULL = the system (0261's backfill)."""
+
+    __tablename__ = "job_assignment_history"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in JOB_ASSIGNMENT_CHECKS.items() if name.startswith("ck_job_assignment_history")),
+        Index("ix_job_assignment_history_job", "job_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id"))
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    role: Mapped[str] = mapped_column(String(20))
+    action: Mapped[str] = mapped_column(String(10))
+    reason: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    changed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class JobSkill(Base):
     """rec-007 (J7): one required or preferred skill of a requirement. `skill_id` NULL = free text that did not resolve against the
     Skills Master (the "flagged" skills); `name` is the text as entered (or the skill's name when it resolved)."""

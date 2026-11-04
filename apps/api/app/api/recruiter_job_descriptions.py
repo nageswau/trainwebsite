@@ -25,7 +25,7 @@ router = APIRouter(prefix="/recruiter/requirements", tags=["recruiter-job-descri
 
 @router.get("/{requirement_id}/jd")
 async def get_jd(requirement_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    job = await requirements.load_scoped(db, user, requirement_id)
+    job = await requirements.load_scoped(db, user, requirement_id, officers=True)
     return await svc.jd_out(db, user, job)
 
 
@@ -47,7 +47,7 @@ async def _require_fresh(db: AsyncSession, user: User, job: Job, previous: JobDe
 @router.post("/{requirement_id}/jd", status_code=201)
 async def create_jd(requirement_id: UUID, payload: RecJdCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """A new current version from the fields sent; the current version's file carries forward (JD4)."""
-    job = await requirements.load_scoped(db, user, requirement_id, lock=True)
+    job = await requirements.load_scoped(db, user, requirement_id, lock=True, officers=True)
     requirements.require(user, job, "can_edit", "jd")
     previous = await svc.current(db, job.id)
     await _require_fresh(db, user, job, previous, payload.expected_version)
@@ -66,11 +66,11 @@ async def create_jd(requirement_id: UUID, payload: RecJdCreate, user: User = Dep
 async def upload_jd(requirement_id: UUID, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """AC1: the file becomes a new current version of this requirement's JD, carrying the current fields forward (or the requirement's).
     Scope and permission are checked before a byte is read; the file is stored before the row lock and discarded if the write fails."""
-    requirements.require(user, await requirements.load_scoped(db, user, requirement_id), "can_edit", "jd")
+    requirements.require(user, await requirements.load_scoped(db, user, requirement_id, officers=True), "can_edit", "jd")
     data, content_type, file_name = await svc.read_file(file)
     key = svc.store(data, content_type)
     try:
-        job = await requirements.load_scoped(db, user, requirement_id, lock=True)
+        job = await requirements.load_scoped(db, user, requirement_id, lock=True, officers=True)
         requirements.require(user, job, "can_edit", "jd")
         stored = {"storage_key": key, "file_name": file_name, "content_type": content_type, "size_bytes": len(data)}
         previous = await svc.current(db, job.id)
@@ -89,7 +89,7 @@ async def upload_jd(requirement_id: UUID, file: UploadFile = File(...), user: Us
 @router.get("/{requirement_id}/jd/{version}/file")
 async def download_jd(requirement_id: UUID, version: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Readers of the requirement. The audit row is committed before any byte leaves; the file name is built from the JD number."""
-    job = await requirements.load_scoped(db, user, requirement_id)
+    job = await requirements.load_scoped(db, user, requirement_id, officers=True)
     jd = await db.scalar(select(JobDescription).where(JobDescription.job_id == job.id, JobDescription.version == version))
     if jd is None or jd.storage_key is None:
         raise HTTPException(404, "This JD version has no file")

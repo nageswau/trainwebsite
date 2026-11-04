@@ -11536,3 +11536,23 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   is not turned into a dateless job. P12 merge moves a row kind only when the survivor has none.
 - **Numbering:** migration `0260_candidate_profile`; API §12KB; no RBAC change.
 - **Feature ID authorized:** `hrc-010`. **Status:** built on `worktree-hrc-010`.
+
+### DEC-SCOPE-384 — Vacancy co-ownership and assignment history (`hrc-006`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-006` (PDF §4.1 "one or more recruiters and placement officers … with a
+  primary owner"; §12 "Shared vacancy ownership … Preserve ownership and reassignment history"; PDF classified `UNVERIFIED`). Scope approved
+  by the owner 2026-11-01 (backlog Q-00). Dependency hrc-002 (DEC-SCOPE-374, the `placement_officer` role) merged. No open question is
+  listed for hrc-006; the owner said to proceed with the recommended answers, so O1–O12 are **the builder's calls (`NEEDS_CONFIRMATION`)**.
+  Design `docs/superpowers/specs/2026-11-04-hrc-006-vacancy-co-ownership-design.md`.
+- **Behaviour:** a job requirement keeps one primary recruiter (`jobs.assigned_recruiter_user_id`) and gains at most one placement-officer
+  owner and any number of collaborators (active recruiters or placement officers) in `job_assignments`. Every assignee reads and edits the
+  requirement (list, detail, edit, status, submit, JD); a non-assignee gets 404. The primary owner, a placement manager in scope or
+  super_admin add and remove owners; the primary changes only by Reassign / the rec-037 bulk reassign. `job_assignment_history` keeps every
+  add, remove and primary change (create, reassign, deactivation) with actor and time; migration 0261 backfills the current primaries.
+  Deactivating a user removes their co-ownerships (the rec-037 rule still makes a manager reassign their primaries first).
+- **Builder's calls:** O1 the primary stays a single column (backlog asked for it in the table: two copies would drift). O4 a placement
+  officer gets a requirement scope only on the requirement and JD routes; every candidate-side route (applications, interviews, offers,
+  matches, shares, revenue) still refuses the role until hrc-012. O5 `can_view_candidates` hides those sections for them in the web. O6
+  the primary cannot remove themselves. O8 deactivation releases co-ownerships. Notifications are hrc-032's.
+- **Numbering:** migration `0261_job_assignments`; API §12KC; RBAC §2.280.
+- **Feature ID authorized:** `hrc-006`. **Status:** built on `worktree-hrc-006`.

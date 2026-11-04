@@ -16,7 +16,10 @@ export type Phase = "draft" | "pending_approval" | "open" | "on_hold" | "filled"
 export type JobSource = "recruiter" | "employer" | "legacy";
 export const SOURCE_LABEL: Record<JobSource, string> = { recruiter: "Recruiter", employer: "Employer", legacy: "Placement team" };
 export type Option = { key: string; label: string };
-export type RequirementPermissions = { can_edit: boolean; can_change_status: boolean; can_reassign: boolean; can_view_matches: boolean };
+export type RequirementPermissions = {
+  can_edit: boolean; can_change_status: boolean; can_reassign: boolean; can_view_matches: boolean;
+  can_manage_owners: boolean; can_view_candidates: boolean; // hrc-006 (DEC-SCOPE-384 O5)
+};
 export type CompanyRef = { id: string; code: string; name: string };
 export type RequirementRow = {
   id: string; code: string; title: string; company: CompanyRef; location: string; status: Status; status_label: string; phase: Phase;
@@ -37,7 +40,40 @@ export type Requirement = RequirementRow & {
   city: string | null; relocation_required: boolean | null; travel_requirement: string | null; salary_currency: string | null;
   salary_period: "year" | "month" | null; benefits: string | null; hiring_manager: Person | null; expected_joining_date: string | null;
   updated_by: Person | null;
+  owners: Owner[]; // hrc-006: besides the primary (`assigned_recruiter`)
 };
+/** hrc-006 (DEC-SCOPE-384 O1/O2): a co-owner, and one ownership change (a primary change is two: removed, then added). */
+export type OwnerRole = "placement_officer" | "collaborator";
+export type Owner = { user: Person & { email: string }; role: OwnerRole; role_label: string; added_by: Person | null; added_at: string };
+export type OwnerChange = {
+  id: string; user: Person; role: "primary" | OwnerRole; role_label: string; action: "added" | "removed";
+  reason: "reassign" | "deactivated" | "backfill" | null; changed_by: Person | null; created_at: string;
+};
+export type OwnerChangePage = { items: OwnerChange[]; total: number; limit: number; offset: number };
+export const OWNER_ROLE_OPTIONS: readonly { key: OwnerRole; label: string }[] = [
+  { key: "collaborator", label: "Collaborator" },
+  { key: "placement_officer", label: "Placement officer owner" },
+];
+const REASON_TEXT = { reassign: " (reassignment)", deactivated: " (user deactivated)", backfill: " (recorded before ownership history)" } as const;
+
+/** "Asha added Ravi as Collaborator" -- one history line, without the time. */
+export function ownerChangeText(c: OwnerChange): string {
+  const who = c.changed_by?.id === c.user.id ? "themselves" : c.user.full_name; // QA-01: "Rita added themselves", not "Rita added Rita"
+  return `${c.changed_by?.full_name ?? "The system"} ${c.action} ${who} as ${c.role_label}${c.reason ? REASON_TEXT[c.reason] : ""}`;
+}
+
+/** The owner picker: eligible people not already on the requirement, searched on the server. */
+export function ownerSearch(requirementId: string, role: OwnerRole) {
+  return async (q: string, signal: AbortSignal): Promise<LookupPage> => {
+    const query = new URLSearchParams({ role, limit: "20" });
+    if (q) query.set("q", q);
+    const response = await fetch(`${REQUIREMENTS_URL}/${encodeURIComponent(requirementId)}/assignment-options?${query}`, { signal });
+    if (!response.ok) throw new Error(`Owner search failed (${response.status})`);
+    const page = (await response.json()) as { items: { id: string; full_name: string; email: string; role: string }[]; total: number };
+    const kind = (r: string) => (r === "placement_officer" ? "Placement officer" : "Recruiter");
+    return { items: page.items.map((u) => ({ id: u.id, label: u.full_name, detail: `${kind(u.role)} · ${u.email}` })), truncated: page.total > page.items.length };
+  };
+}
 /** hrc-007 (A6/A8): whether the job still needs approval, who sent it, and what the caller may do about it. */
 export type Approval = {
   required: boolean; submitted_by: Person | null; submitted_at: string | null; can_submit: boolean; can_decide: boolean;

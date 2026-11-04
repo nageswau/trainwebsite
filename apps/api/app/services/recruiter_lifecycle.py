@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Candidate, Company, Job, RecruiterFollowUp, RecruiterProfile, User
-from app.services import candidate_ownership, recruiter_companies, recruiter_requirements
+from app.services import candidate_ownership, recruiter_companies, recruiter_requirements, requirement_owners
 from app.services.recruiter import ROLE
 
 logger = logging.getLogger("app.recruiter")
@@ -102,7 +102,7 @@ async def reassign(db: AsyncSession, actor: User, source: User, target_id: UUID)
         recruiter_companies.record_assignment(db, actor, company, target.id)
         recruiter_companies.audit(db, actor, "assign", company.id, change)
     for job in jobs:  # hrc-004 E: one row per job, with the recruiters by name
-        job.assigned_recruiter_user_id = target.id
+        await requirement_owners.set_primary(db, actor, job, target.id)  # hrc-006 (O7): history; a co-owning target gives up that role
         recruiter_requirements.audit(db, actor, "assign", job.id, {**change, "changes": {"recruiter": [source.full_name, target.full_name]}})
     return moved
 
