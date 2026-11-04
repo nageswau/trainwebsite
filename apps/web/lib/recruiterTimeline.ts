@@ -36,7 +36,7 @@ const OFFER_TITLE: Record<string, (row: RecTimelineRow) => string> = {
 };
 
 const TASK_VERB: Record<string, string> = { scheduled: "assigned", done: "done", cancelled: "cancelled" };
-const ASSIGNMENT_REASON: Record<string, string> = { create: "When the candidate was added", reassign: "Team reassignment" };
+const ASSIGNMENT_REASON: Record<string, string> = { create: "When the candidate was added", reassign: "Team reassignment", route: "Automatic routing" }; // hrc-024
 
 /** hrc-016: an ownership change (hrc-012's history) -- who held it before and who holds it now. */
 function assignmentTitle(row: RecTimelineRow): string {

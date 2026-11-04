@@ -17,6 +17,7 @@ from app.models import (
     CandidateDocument,
     CandidateDocumentRequest,
     CandidateResume,
+    CandidateRoutingRule,
     CandidateSkill,
     CandidateTask,
     Job,
@@ -142,6 +143,12 @@ ROWS = [
     R("get", "/recruiter/candidate-ownership-settings", **allow(200, *READERS)),
     R("put", "/recruiter/candidate-ownership-settings", {"shared_ownership": False}, **allow(200, "mgr", "mgr_out", "super")),
     # hrc-022 (DEC-SCOPE-386 C7, §2.282): the candidate self-service allow-list -- read like the ownership setting, changed by managers
+    # hrc-024 (DEC-SCOPE-393 R11, §2.287): candidate routing is the placement manager's and super_admin's alone
+    R("get", "/recruiter/candidate-routing", **allow(200, "mgr", "mgr_out", "super")),
+    R("put", "/recruiter/candidate-routing", {"default_recruiter_user_id": None, "strategy": "round_robin"}, **allow(200, "mgr", "mgr_out", "super")),
+    R("post", "/recruiter/candidate-routing/rules", lambda w: {"kind": "location", "location": tag("R38 City "), "recruiter_user_id": w["rec_id"]},
+      **allow(201, "mgr", "mgr_out", "super")),
+    R("delete", "/recruiter/candidate-routing/rules/{candidates_routing_rule}", **allow(204, "mgr", "mgr_out", "super")),
     R("get", "/recruiter/candidate-self-service-settings", **allow(200, *READERS)),
     R("put", "/recruiter/candidate-self-service-settings", {"fields": list(DEFAULT_FIELDS)}, **allow(200, "mgr", "mgr_out", "super")),
     # hrc-016 (§2.283): notes and tasks follow the candidate rule -- readers read, writers write; My tasks and the picker are writers'
@@ -223,9 +230,10 @@ async def build(client, db, w) -> None:
     # hrc-016: an open task on the world's candidate (each write cell runs on its own world, so complete and cancel both succeed)
     task = await add(db, CandidateTask(candidate_id=UUID(w["candidate"]), task_type="follow_up", title="Call back", due_at=func.now() + timedelta(days=1),
                                        assignee_user_id=rec.id, created_by_user_id=rec.id))  # fmt: skip
+    rule = await add(db, CandidateRoutingRule(kind="location", location=tag("R38 City "), recruiter_user_id=rec.id))  # hrc-024
     await db.commit()
     w.update({
-        "candidates_task": str(task.id),
+        "candidates_task": str(task.id), "candidates_routing_rule": str(rule.id),
         "candidates_source": str(source.id), "candidates_java": str(java.id), "candidates_spare": str(spare.id), "candidates_archived": str(archived.id),
         "candidates_cv": str(cv.id), "candidates_document": str(document.id), "candidates_request": str(request.id), "candidates_skill": str(skill.id), "candidates_job_skill": str(job_skill.id), "candidates_jd_version": str(jd.version),
         "candidates_pool": str(_POOL["id"]), "candidates_program": str(program.id), "candidates_co_owner": str(co_owner.id),

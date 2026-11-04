@@ -24,6 +24,7 @@ from app.notifications.phone import normalise_phone
 from app.schemas import CANDIDATE_FIELD_LABELS, CandidateUpdate
 from app.services import candidate_duplicates as duplicates
 from app.services import candidate_profile as profile
+from app.services import candidate_routing as routing
 from app.services import candidates as svc
 from app.services import recruitment_history, website_intake
 from app.services.mailer import send_generic_notification_email
@@ -223,6 +224,7 @@ async def link_candidate(db: AsyncSession, user: User, ip: str | None) -> Candid
     await db.flush()
     _consent(db, user, candidate, "opt_in", ip)
     await duplicates.detect(db, candidate.id)  # hrc-014 D2: as any new candidate
+    await routing.on_website_candidate(db, candidate)  # hrc-024 R7: routed like a website application
     return candidate
 
 
