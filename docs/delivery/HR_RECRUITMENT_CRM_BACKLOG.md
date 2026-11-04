@@ -569,6 +569,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** medium.
 
 #### hrc-016: Candidate notes, tasks and a complete timeline
+- **Status (2026-11-04):** built — `DEC-SCOPE-387` (Q-16 answered by the builder's recommended call: a new `candidate_tasks` table,
+  `NEEDS_CONFIRMATION`); design `docs/superpowers/specs/2026-11-04-hrc-016-candidate-notes-tasks-timeline-design.md`; migration `0264`;
+  API §12KF; RBAC §2.283.
 - **Business requirement:** §12 "Activity timeline: notes, calls, emails, assignments, screening, interviews and status changes"; "Task assignment … follow-ups, resume screening, interview coordination and employer feedback"; "Internal comments … private".
 - **Existing behavior:**
   - The timeline unions calls, messages, application/interview/offer events and shares. Notes, assignments, edits and screening are missing.

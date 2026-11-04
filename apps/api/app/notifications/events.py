@@ -53,6 +53,8 @@ EVENTS: dict[str, Event] = {
     "it.hr_review.assigned": Event("hr_review_task", "Resume review assigned", "A resume review was assigned to you. Open EduSphere to start it."),
     # hrc-012 (DEC-SCOPE-382 O10): a new primary recruiter, placement officer or collaborator -- never the candidate's name
     "it.candidate.assigned": Event("candidate", "Candidate assigned to you", "A candidate was assigned to you. Open EduSphere to view them."),
+    # hrc-016 (DEC-SCOPE-387 T7): a candidate task's new assignee -- never the candidate's name or the task's text
+    "it.candidate.task_assigned": Event("candidate_task", "Candidate task assigned to you", "A candidate task was assigned to you. Open EduSphere to see your tasks."),
 }
 
 # itc-025 (DEC-SCOPE-348): "a summary of what changed" from a FIXED vocabulary of field names -- never the values (dates, trainer names,

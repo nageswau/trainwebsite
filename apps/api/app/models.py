@@ -6600,6 +6600,63 @@ class UserVerificationToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# hrc-016 (DEC-SCOPE-387 T2/T3): candidate notes and tasks. Migration 0264 repeats CANDIDATE_NOTE_TASK_CHECKS (its test asserts identity).
+CANDIDATE_NOTE_MAX = 2000
+CANDIDATE_TASK_TYPES = ("follow_up", "resume_screening", "interview_coordination", "employer_feedback")
+CANDIDATE_NOTE_TASK_CHECKS = {
+    "ck_candidate_notes_body": f"char_length(body) BETWEEN 1 AND {CANDIDATE_NOTE_MAX}",
+    "ck_candidate_tasks_type": "task_type IN ('follow_up', 'resume_screening', 'interview_coordination', 'employer_feedback')",
+    "ck_candidate_tasks_status": "status IN ('open', 'done', 'cancelled')",
+    "ck_candidate_tasks_state": (
+        "(status = 'done') = (completed_at IS NOT NULL) AND (completed_at IS NULL) = (completed_by_user_id IS NULL) "
+        "AND (status = 'cancelled') = (cancelled_at IS NOT NULL) AND (cancelled_at IS NULL) = (cancelled_by_user_id IS NULL)"
+    ),
+}
+
+
+class CandidateNote(Base):
+    """hrc-016 (T2): a private note on a candidate. Append-only (no edit or delete); internal only -- no candidate, student, employer or
+    public route reads this table. Never logged; the audit row carries ids only."""
+
+    __tablename__ = "candidate_notes"
+    __table_args__ = (
+        CheckConstraint(CANDIDATE_NOTE_TASK_CHECKS["ck_candidate_notes_body"], name="ck_candidate_notes_body"),
+        Index("ix_candidate_notes_candidate_created", "candidate_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"))
+    author_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CandidateTask(Base, TimestampMixin):
+    """hrc-016 (T1/T3, Q-16): a task about a candidate, assigned to one team member, optionally about one of its applications or a
+    requirement. Not a rec-024 follow-up: those belong to a company's scope and have no assignee."""
+
+    __tablename__ = "candidate_tasks"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_NOTE_TASK_CHECKS.items() if name.startswith("ck_candidate_tasks_")),
+        Index("ix_candidate_tasks_candidate", "candidate_id", "status", "due_at"),
+        Index("ix_candidate_tasks_assignee_open", "assignee_user_id", "due_at", postgresql_where=text("status = 'open'")),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"))
+    application_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_applications.id", ondelete="RESTRICT"), nullable=True)
+    job_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id", ondelete="RESTRICT"), nullable=True)
+    task_type: Mapped[str] = mapped_column(String(32))
+    title: Mapped[str] = mapped_column(String(200))
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    assignee_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    status: Mapped[str] = mapped_column(String(16), default="open", server_default=text("'open'"))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+
+
 # hrc-014 (DEC-SCOPE-377 D1/D2/D9): one probable-duplicate pair, stored once (lower id first). Migration 0256 repeats the checks.
 CANDIDATE_DUPLICATE_SIGNALS = ("name_location_college", "phone_variant")
 CANDIDATE_DUPLICATE_STATUSES = ("open", "dismissed", "merged")

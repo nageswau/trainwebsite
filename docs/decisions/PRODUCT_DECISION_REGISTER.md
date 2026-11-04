@@ -11595,3 +11595,22 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   C10 no id in any portal URL. Not built: a recruiter "invite to portal" email (follow-up), website registration/UTM (hrc-023).
 - **Numbering:** migration `0263_candidate_portal`; API §12KE; RBAC §2.282.
 - **Feature ID authorized:** `hrc-022`. **Status:** built on `worktree-hrc-022`.
+
+### DEC-SCOPE-387 — Candidate notes, tasks and a complete timeline (`hrc-016`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-016` (PDF §12 "Activity timeline", "Task assignment", "Internal
+  comments"; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00). Dependency hrc-012 (DEC-SCOPE-382)
+  merged. The owner said to proceed with the recommended answers, so Q-16 and T1–T12 are **the builder's calls (`NEEDS_CONFIRMATION`)**.
+  Design `docs/superpowers/specs/2026-11-04-hrc-016-candidate-notes-tasks-timeline-design.md`.
+- **Behaviour:** private, append-only candidate notes (1–2000 characters) read by candidate readers and added by writers; candidate tasks
+  (follow-up, resume screening, interview coordination, employer feedback) with a title, due time, assignee and an optional application or
+  requirement, edited / completed / cancelled by any candidate writer; a "My tasks" list (Today / Overdue / Upcoming, IST); an
+  `it.candidate.task_assigned` notice to a new assignee (never the actor). The candidate timeline adds notes, tasks, ownership changes
+  (hrc-012 history), profile changes (create / edit with a field count / archive / restore / merge) and screening results.
+- **Builder's calls:** T1/Q-16 a new `candidate_tasks` table — `RecruiterFollowUp` belongs to a company's scope (rec-024 FU4) and has no
+  assignee. T2 notes are internal only: no candidate, student, employer, portal or public route reads the table (a structural test pins
+  it). T4 an assignee is an active recruiter with a profile, a placement manager or super_admin; a later-deactivated assignee shows
+  "(inactive)" and can be replaced, and does not block deactivation. T5 the pool rule (R11): every writer changes any task; `hr_team`
+  reads. T10 merge moves notes and tasks to the survivor. Reminders are the My tasks daily list (no new scheduled job).
+- **Numbering:** migration `0264_candidate_notes_tasks`; API §12KF; RBAC §2.283.
+- **Feature ID authorized:** `hrc-016`. **Status:** built on `worktree-hrc-016`.

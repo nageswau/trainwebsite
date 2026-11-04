@@ -71,7 +71,8 @@ test("timeline: a call then a follow-up read newest first on the company; a cand
   await page.getByRole("button", { name: "Add candidate" }).click();
   await page.waitForURL(/\/recruiter\/candidates\/[0-9a-f-]{36}/);
   const candidateTimeline = page.getByRole("region", { name: "Timeline" });
-  await expect(candidateTimeline.getByText("No activity yet.")).toBeVisible();
+  // hrc-016 (DEC-SCOPE-387 T9): a new candidate's timeline already records its creation
+  await expect(candidateTimeline.getByRole("list", { name: "Candidate timeline" })).toContainText("Candidate added");
   const candidateCalls = page.getByRole("region", { name: "Calls" });
   await candidateCalls.getByRole("button", { name: "Log call" }).click();
   const candidateForm = candidateCalls.getByRole("form", { name: "Log call" });
