@@ -6308,7 +6308,7 @@ CANDIDATE_MERGE_CHECKS = {  # hrc-014 (DEC-SCOPE-377 D8): migration 0258 repeats
 }
 # hrc-011 C2: the pay periods (Q-10) and how many of each make a year.
 SALARY_PERIODS = {"year": 1, "month": 12}
-# hrc-010 (DEC-SCOPE-382 P9): how the person likes to be reached; migration 0259 repeats these checks (test_hrc_010_migration).
+# hrc-010 (DEC-SCOPE-383 P9): how the person likes to be reached; migration 0260 repeats these checks (test_hrc_010_migration).
 CANDIDATE_CONTACT_METHODS = ("phone", "whatsapp", "email")
 CANDIDATE_PROFILE_CHECKS = {
     "ck_candidates_preferred_contact": _in("preferred_contact", CANDIDATE_CONTACT_METHODS),
@@ -6378,7 +6378,7 @@ class Candidate(Base, TimestampMixin):
     merged_into_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"), nullable=True)
     merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     merged_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
-    # hrc-010 (DEC-SCOPE-382): structured location (sets `location`, P5), contact preference and verification (P9), the skills extras
+    # hrc-010 (DEC-SCOPE-383): structured location (sets `location`, P5), contact preference and verification (P9), the skills extras
     # (P7) and the preferences (P8). The lists hold job-enum values (work modes, employment types, shifts) or short texts.
     country: Mapped[str | None] = mapped_column(String(80), nullable=True)
     state: Mapped[str | None] = mapped_column(String(80), nullable=True)
@@ -6394,6 +6394,10 @@ class Candidate(Base, TimestampMixin):
     shifts: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
     available_from: Mapped[date | None] = mapped_column(Date, nullable=True)
     willing_to_relocate: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # hrc-012 (DEC-SCOPE-382 O2/O3): the one primary recruiter (NULL = unassigned) and the placement-officer owner. Visibility stays
+    # pool-wide (O1); services/candidate_ownership decides who may change them.
+    owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+    placement_officer_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
 
 
 class CandidateEducation(Base):
@@ -6449,6 +6453,53 @@ class CandidateCertification(Base):
     issued_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     expires_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     credential_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+
+# hrc-012 (DEC-SCOPE-382 O4/O6): collaborators and the append-only assignment history. Migration 0259 repeats the checks.
+CANDIDATE_ASSIGNMENT_KINDS = ("owner", "placement_officer", "collaborator_added", "collaborator_removed")
+CANDIDATE_ASSIGNMENT_REASONS = ("create", "assign", "reassign")
+
+
+class CandidateCollaborator(Base):
+    """hrc-012 (O4): a recruiter or placement officer sharing a candidate with its primary recruiter -- added only while shared ownership
+    is switched on; removing one is always allowed."""
+
+    __tablename__ = "candidate_collaborators"
+    __table_args__ = (UniqueConstraint("candidate_id", "user_id", name="uq_candidate_collaborators_pair"), Index("ix_candidate_collaborators_user", "user_id"))
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="CASCADE"))
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    added_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CandidateAssignmentHistory(Base):
+    """hrc-012 (O6, AC3): one row per ownership change; `from_user_id` NULL = nobody before, `to_user_id` NULL = cleared/removed."""
+
+    __tablename__ = "candidate_assignment_history"
+    __table_args__ = (
+        CheckConstraint("kind IN ('owner', 'placement_officer', 'collaborator_added', 'collaborator_removed')", name="ck_candidate_assignment_history_kind"),
+        CheckConstraint("reason IN ('create', 'assign', 'reassign')", name="ck_candidate_assignment_history_reason"),
+        Index("ix_candidate_assignment_history_candidate", "candidate_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(String(24))
+    from_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    to_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    changed_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    reason: Mapped[str] = mapped_column(String(10))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CandidateOwnershipSetting(Base, TimestampMixin):
+    """hrc-012 (O4): one row (`id = 1`); no row means shared ownership is off."""
+
+    __tablename__ = "candidate_ownership_settings"
+    __table_args__ = (CheckConstraint("id = 1", name="ck_candidate_ownership_settings_one_row"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    shared_ownership: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
 # hrc-014 (DEC-SCOPE-377 D1/D2/D9): one probable-duplicate pair, stored once (lower id first). Migration 0256 repeats the checks.

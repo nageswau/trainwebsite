@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import CANDIDATE_CODE_SEQ, AuditLog, Candidate, CandidateResume, RecCandidateSource, User
 from app.notifications.phone import normalise_phone, wa_number
 from app.schemas import NO_CONTACT
-from app.services import candidate_profile
+from app.services import candidate_ownership, candidate_profile
 from app.services.permissions import user_has_grant
 from app.services.recruiter import MANAGER_ROLE, ROLE
 from app.services.storage import storage
@@ -332,7 +332,7 @@ DETAIL_FIELDS = (
     "linkedin",
     "archived_at",
     "updated_at",
-    # hrc-010 (DEC-SCOPE-382)
+    # hrc-010 (DEC-SCOPE-383)
     "country", "state", "city", "preferred_contact", "email_verified_at", "relevant_experience_months", "tools", "languages", "preferred_roles",
     "work_modes", "employment_types", "shifts", "available_from", "willing_to_relocate",
 )  # fmt: skip
@@ -370,6 +370,8 @@ async def detail_out(db: AsyncSession, user: User, candidate: Candidate) -> dict
         "can_edit": user.role in WRITERS,
         "whatsapp_to": wa_number(candidate.mobile),  # rec-026 MS6
         "merged_into": await merged_into(db, candidate),  # hrc-014 D8
+        "owner": (ownership := await candidate_ownership.ownership_out(db, user, candidate))["owner"],  # hrc-012 O2
+        "ownership": ownership,
     }
 
 

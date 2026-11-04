@@ -3,7 +3,7 @@
 **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-010` (PDF §5 field table, §8.3 C, Appendix B; PDF classified `UNVERIFIED`).
 Scope approved by the owner 2026-11-01 (backlog Q-00: all phases). Dependency `hrc-004` (DEC-SCOPE-376) is merged on `main`. The owner
 said to proceed with the recommended answers, so P1–P12 below are **the builder's calls (`NEEDS_CONFIRMATION`)**. Decision record:
-DEC-SCOPE-382.
+DEC-SCOPE-383.
 
 ## Intent
 A recruiter can record the whole §5 profile — every degree, every job, certifications, the skills that matter most, structured location,
@@ -56,7 +56,7 @@ of the new rows.
 - **P12 (merge, resume apply):** hrc-014's merge moves the victim's education / employment / certification rows only when the survivor has
   none of that kind, then re-derives. rec-012's resume apply re-derives after it sets fields (rows win).
 
-## Data (migration `0259_candidate_profile`)
+## Data (migration `0260_candidate_profile`)
 Candidate columns: `country`, `state`, `city` (≤80), `preferred_contact` (check), `email_verified_at`, `relevant_experience_months`,
 `tools`, `languages`, `preferred_roles`, `work_modes`, `employment_types`, `shifts` (JSON lists, default `[]`), `available_from`,
 `willing_to_relocate`. `candidate_skills.is_primary` (default false). Tables `candidate_education`, `candidate_employment`,

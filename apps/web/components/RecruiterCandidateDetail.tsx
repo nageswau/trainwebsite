@@ -8,6 +8,7 @@ import RecruiterCalls from "@/components/RecruiterCalls";
 import RecruiterCandidateApplications from "@/components/RecruiterCandidateApplications";
 import RecruiterCandidateForm from "@/components/RecruiterCandidateForm";
 import RecruiterCandidateJourney from "@/components/RecruiterCandidateJourney";
+import RecruiterCandidateOwnership from "@/components/RecruiterCandidateOwnership";
 import RecruiterCandidateTraining from "@/components/RecruiterCandidateTraining";
 import RecruiterCandidateDocuments from "@/components/RecruiterCandidateDocuments";
 import RecruiterCandidateResumes from "@/components/RecruiterCandidateResumes";
@@ -162,6 +163,10 @@ export default function RecruiterCandidateDetail({ initial, merged }: { initial:
           ))}
         </section>
       )}
+      {/* hrc-012: who owns the candidate; a change re-reads the whole record (Change history included) */}
+      {candidate.ownership && !candidate.merged_into && (
+        <RecruiterCandidateOwnership candidateId={candidate.id} ownership={candidate.ownership} onSaved={(saved) => { setCandidate(saved); touched(); }} />
+      )}
       {/* rec-011: re-keyed on archive/restore, so the card re-reads can_edit (an archived candidate's skills are read only). */}
       <RecruiterCandidateSkills key={`skills-${candidate.id}-${archived}-${skillsVersion}`} candidateId={candidate.id} />
       {/* rec-036: lead → IT student → trained → recruiter candidate → placed (read only). */}
@@ -183,7 +188,8 @@ export default function RecruiterCandidateDetail({ initial, merged }: { initial:
       </div>
       <RecruiterTimeline party={{ kind: "candidate", id: candidate.id }} version={activity} />
       {/* hrc-004: who changed what, old → new (contact and salary hidden); re-read after every save. */}
-      <RecruiterRecordHistory key={candidate.updated_at} url={candidateUrl(candidate.id, "/history")} />
+      {/* hrc-012 QA-01: `activity` too -- a collaborator-only ownership change leaves updated_at as it was */}
+      <RecruiterRecordHistory key={`${candidate.updated_at}-${activity}`} url={candidateUrl(candidate.id, "/history")} />
     </div>
   );
 }

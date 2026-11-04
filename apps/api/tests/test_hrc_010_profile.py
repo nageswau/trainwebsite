@@ -1,4 +1,4 @@
-"""hrc-010 (DEC-SCOPE-382, spec docs/superpowers/specs/2026-11-04-hrc-010-candidate-profile-design.md): the §5 profile -- education,
+"""hrc-010 (DEC-SCOPE-383, spec docs/superpowers/specs/2026-11-04-hrc-010-candidate-profile-design.md): the §5 profile -- education,
 employment and certification rows (P1-P3, P7), derived total experience (P4, Q-09), the legacy fields as mirrors (P5), the richer skills,
 preferences and contact (P7-P9) and the Appendix B completeness (P10)."""
 

@@ -7,7 +7,32 @@ export type SourceRef = { id: string; name: string; active: boolean };
 export type CandidateItem = {
   id: string; candidate_code: string; name: string; location: string | null; experience_months: number | null; preferred_role: string | null;
   source: SourceRef; source_detail: string | null; status: CandidateStatus; archived: boolean; created_at: string;
+  owner?: OwnerRef | null; // hrc-012: the primary recruiter; null = unassigned
 };
+// hrc-012 (DEC-SCOPE-382): who owns a candidate. Visibility is unchanged -- ownership feeds "My candidates", notices and handover.
+export type OwnerRef = { id: string; full_name: string; active: boolean };
+export type CandidateOwnership = {
+  owner: OwnerRef | null; placement_officer: OwnerRef | null; collaborators: OwnerRef[]; shared_ownership: boolean; can_assign: boolean;
+};
+export type AssigneeKind = "recruiter" | "officer" | "collaborator";
+export const OWNER_FILTERS = [{ key: "me", label: "My candidates" }, { key: "unassigned", label: "Unassigned" }] as const;
+export const OWNERSHIP_SETTINGS_URL = "/api/v1/recruiter/candidate-ownership-settings";
+export const ASSIGNEE_ROLE: Record<string, string> = { placement_team: "Recruiter", placement_officer: "Placement officer" };
+/** "Asha", "Asha (inactive)" or the fallback when nobody is set. */
+export const personLabel = (p: OwnerRef | null | undefined, none = "Unassigned") => (p ? `${p.full_name}${p.active ? "" : " (inactive)"}` : none);
+
+/** The ownership pickers' server search (SearchableSelect): active people who may be chosen, names and roles only. */
+export function assigneeSearch(kind: AssigneeKind, exclude: string[] = []) {
+  return async (q: string, signal: AbortSignal) => {
+    const query = new URLSearchParams({ kind });
+    if (q) query.set("q", q);
+    const response = await fetch(`${CANDIDATES_URL}/assignees?${query}`, { signal });
+    if (!response.ok) throw new Error(`Assignee search failed (${response.status})`);
+    const people = (await response.json()) as { id: string; full_name: string; role: string }[];
+    const items = people.filter((p) => !exclude.includes(p.id)).map((p) => ({ id: p.id, label: p.full_name, detail: ASSIGNEE_ROLE[p.role] ?? null }));
+    return { items, truncated: false };
+  };
+}
 export type CandidateResume = {
   version: number; file_name: string | null; content_type: string; size_bytes: number; uploaded_by: PersonRef | null; created_at: string;
   preview_status?: "pending" | "ready" | "failed" | null; // hrc-015: a DOC/DOCX's PDF rendition
@@ -31,7 +56,7 @@ export const COMPENSATION_LABELS: Record<string, string> = {
   ...Object.fromEntries(AMOUNTS.flatMap(({ key, label }) => [[`${key}_salary`, label], [`${key}_salary_currency`, `${label} currency`], [`${key}_salary_period`, `${label} pay period`]])),
   salary_negotiable: "Negotiable",
 };
-// hrc-010 (DEC-SCOPE-382): the §5 profile rows (a sent list replaces the whole set), the enums and the Appendix B completeness.
+// hrc-010 (DEC-SCOPE-383): the §5 profile rows (a sent list replaces the whole set), the enums and the Appendix B completeness.
 export type EducationRow = { degree: string | null; specialisation: string | null; institution: string | null; year: number | null; grade: string | null };
 export type EmploymentRow = { employer: string; designation: string | null; industry: string | null; employment_type: string | null; start_date: string; end_date: string | null };
 export type CertificationRow = { name: string; issuer: string | null; issued_on: string | null; expires_on: string | null; credential_id: string | null };
@@ -92,6 +117,7 @@ export type CandidateDetail = CandidateItem & Package & {
   relevant_experience_months?: number | null; tools?: string[]; languages?: string[]; preferred_roles?: string[]; work_modes?: string[];
   employment_types?: string[]; shifts?: string[]; available_from?: string | null; willing_to_relocate?: boolean | null;
   education?: EducationRow[]; employment?: EmploymentRow[]; certifications?: CertificationRow[]; is_fresher?: boolean | null; completeness?: Completeness | null;
+  ownership?: CandidateOwnership; // hrc-012
 };
 /** Q-07: one existing candidate of the duplicate panel -- never their mobile or email. */
 export type CandidateMatch = { id: string; candidate_code: string; name: string; source_name: string; status: CandidateStatus; archived: boolean; matched_on: ("mobile" | "email")[] };

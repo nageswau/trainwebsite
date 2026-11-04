@@ -8105,6 +8105,7 @@ class RecruiterWork(BaseModel):
     companies: int
     requirements: int
     follow_ups: int
+    candidates: int = 0  # hrc-012 (DEC-SCOPE-382 O8): candidates the recruiter is primary recruiter of (archived included)
 
 
 class RecruiterTeamMemberRow(RecruiterTeamRow):
@@ -9989,7 +9990,7 @@ CANDIDATE_FIELD_LABELS = {
     "expected_salary_currency": "Expected salary currency", "expected_salary_period": "Expected salary pay period",
     "minimum_salary": "Minimum acceptable salary", "minimum_salary_currency": "Minimum salary currency",
     "minimum_salary_period": "Minimum salary pay period", "salary_negotiable": "Negotiable",
-    # hrc-010 (DEC-SCOPE-382)
+    # hrc-010 (DEC-SCOPE-383)
     "country": "Country", "state": "State", "city": "City", "preferred_contact": "Preferred contact", "relevant_experience_months": "Relevant experience (months)",
     "tools": "Tools", "languages": "Languages", "preferred_roles": "Preferred roles", "work_modes": "Work modes", "employment_types": "Employment types",
     "shifts": "Shifts", "available_from": "Available from", "willing_to_relocate": "Willing to relocate", "education": "Education",
@@ -10115,7 +10116,7 @@ CandidateEmail = Annotated[str | None, AfterValidator(_candidate_email)]
 CandidateLinkedin = Annotated[_candidate_text("LinkedIn", 300), AfterValidator(_linkedin)]
 
 
-# --- hrc-010 (DEC-SCOPE-382 P1-P3, P7): the profile rows. A list replaces the whole set; a row's error names it ("Employment 2: ...").
+# --- hrc-010 (DEC-SCOPE-383 P1-P3, P7): the profile rows. A list replaces the whole set; a row's error names it ("Employment 2: ...").
 class CandidateEducationRow(BaseModel):
     model_config = ConfigDict(extra="forbid")
     degree: _candidate_text("Degree", 120) = None
@@ -10259,7 +10260,7 @@ class _CandidateFields(BaseModel):
     preferred_role: _candidate_text("Preferred role", 120) = None
     linkedin: CandidateLinkedin = None
     source_detail: _candidate_text("Source detail", 200) = None
-    # hrc-010 (DEC-SCOPE-382): P5 structured location, P9 contact, P7 skills extras, P8 preferences, P1 rows
+    # hrc-010 (DEC-SCOPE-383): P5 structured location, P9 contact, P7 skills extras, P8 preferences, P1 rows
     country: _candidate_text("Country", 80) = None
     state: _candidate_text("State", 80) = None
     city: _candidate_text("City", 80) = None
@@ -10333,6 +10334,7 @@ class CandidateItem(BaseModel):
     status: CandidateStatus
     archived: bool
     created_at: datetime
+    owner: RecPersonRef | None = None  # hrc-012 (DEC-SCOPE-382 O2): the primary recruiter; None = unassigned
 
 
 class CandidatePage(BaseModel):
@@ -10380,7 +10382,7 @@ class CandidateDetail(CandidateItem):
     can_edit: bool
     whatsapp_to: str | None = None  # rec-026 MS6: the wa.me number (E.164 digits), None when the mobile is unusable
     merged_into: CandidateRef | None = None  # hrc-014 (DEC-SCOPE-377 D8): the candidate this one was merged into
-    # hrc-010 (DEC-SCOPE-382)
+    # hrc-010 (DEC-SCOPE-383)
     country: str | None = None
     state: str | None = None
     city: str | None = None
@@ -10400,6 +10402,47 @@ class CandidateDetail(CandidateItem):
     certifications: list[dict] = []
     is_fresher: bool | None = None
     completeness: dict | None = None
+    ownership: "CandidateOwnershipOut | None" = None  # hrc-012 (DEC-SCOPE-382)
+
+
+# --- hrc-012 (DEC-SCOPE-382): candidate ownership ------------------------------------------------------------------------------------
+MAX_COLLABORATORS = 10
+
+
+class CandidateOwnershipOut(BaseModel):
+    owner: RecPersonRef | None
+    placement_officer: RecPersonRef | None
+    collaborators: list[RecPersonRef]
+    shared_ownership: bool
+    can_assign: bool
+
+
+class CandidateOwnershipIn(BaseModel):
+    """Partial: a key sent as null clears it; `collaborator_user_ids` is the whole new list."""
+
+    model_config = ConfigDict(extra="forbid")
+    owner_user_id: UUID | None = None
+    placement_officer_user_id: UUID | None = None
+    collaborator_user_ids: Annotated[list[UUID], Field(max_length=MAX_COLLABORATORS)] = []
+
+
+CANDIDATE_OWNERSHIP_LABELS = {"owner_user_id": "Primary recruiter", "placement_officer_user_id": "Placement officer", "collaborator_user_ids": "Collaborators",
+                              "shared_ownership": "Shared ownership"}  # fmt: skip
+
+
+class CandidateOwnershipSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    shared_ownership: StrictBool
+
+
+class CandidateOwnershipSettingsOut(CandidateOwnershipSettings):
+    can_edit: bool
+
+
+class CandidateAssignee(BaseModel):
+    id: UUID
+    full_name: str
+    role: str
 
 
 # --- hrc-014 (DEC-SCOPE-377): duplicate review and merge ------------------------------------------------------------------------------

@@ -11,7 +11,9 @@ import { plural } from "@/lib/telecaller";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 export function workText(work: RecruiterWork): string {
-  return `${plural(work.companies, "company", "companies")}, ${plural(work.requirements, "requirement")} and ${plural(work.follow_ups, "open follow-up")}`;
+  const parts = [plural(work.companies, "company", "companies"), plural(work.requirements, "requirement"), plural(work.follow_ups, "open follow-up")];
+  if (work.candidates) parts.push(plural(work.candidates, "candidate")); // hrc-012 (DEC-SCOPE-382 O8): named only when there are some
+  return `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
 }
 
 // rec-037 (DEC-SCOPE-177): a Team row's Reassign -- every company and requirement of this recruiter (open follow-ups ride with their
@@ -29,7 +31,7 @@ export default function RecruiterReassign({ row }: { row: RecruiterTeamMember })
   const id = (name: string) => `rec-reassign-${name}-${row.id}`;
   const search = useMemo(() => recruiterSearch(row.id), [row.id]); // active team-mates; the source itself is never a choice
   const { work } = row;
-  const hasWork = work.companies + work.requirements > 0;
+  const hasWork = work.companies + work.requirements + (work.candidates ?? 0) > 0; // hrc-012: owned candidates count too
 
   function start() {
     setNotice(null);
@@ -74,7 +76,7 @@ export default function RecruiterReassign({ row }: { row: RecruiterTeamMember })
           <p style={{ margin: 0 }}>{row.full_name} has {workText(work)}.</p>
           <SearchableSelect id={id("to")} label="Move everything to" noun="recruiter" required search={search} disabled={busy} onChange={setPicked} />
           <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-            Every company (archived ones too) and requirement moves; open follow-ups go with their company.
+            Every company (archived ones too), requirement and candidate they are primary recruiter of moves; open follow-ups go with their company.
           </p>
           <div className="actions">
             <button type="button" className="btn small" disabled={!picked || busy} onClick={() => void submit()}>{busy ? "Reassigning…" : "Reassign"}</button>

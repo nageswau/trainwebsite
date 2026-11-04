@@ -3751,3 +3751,11 @@ holder reads the approval queue and settings and approves or rejects any pending
 their own: the submitter, the creator or the assigned recruiter → 403 (separation of duties). Submitting stays with the requirement's
 writers (`can_edit`: the assigned recruiter, super_admin) and, through their legacy "open" word, the employer (own postings) and the
 legacy placement writers. Only super_admin changes which sources need approval. Pinned by `apps/api/tests/test_hrc_007_approval.py`.
+### 2.279 Candidate ownership *(added 2026-11-04 — `DEC-SCOPE-382`, hrc-012)*
+
+Reading is unchanged (pool-wide, §2.45 rec-009 readers). `PUT /recruiter/candidates/{id}/ownership`: the candidate's **primary recruiter**
+(`placement_team`), any `placement_manager` and `super_admin`; another recruiter, a collaborator and `hr_team` 403 (the writer check runs
+first, then ownership, before the body is read). `GET .../assignees`: candidate writers. `GET /recruiter/candidate-ownership-settings`:
+candidate readers; `PUT`: `placement_manager`, `super_admin`. `hr_manager`, `placement_officer` and `interviewer` stay refused (§2.275 R2);
+a placement officer only sees their "Your candidates" count on their own dashboard. Every other role 403, anonymous 401. Pinned by
+`apps/api/tests/test_hrc_012_ownership.py` and the rec-038 matrix rows.

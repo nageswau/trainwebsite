@@ -8,7 +8,7 @@ export type RecruiterMe = { id: string; full_name: string; email: string; phone:
 export type RecruiterTeamRow = { id: string; full_name: string; email: string; phone: string | null; active: boolean; employee_id: string | null };
 export type RecruiterAdminRow = RecruiterTeamRow & { reporting_manager: ManagerRef | null };
 /** rec-037 (RC15): what a reassignment would move -- companies (archived included), requirements, open follow-ups on those companies. */
-export type RecruiterWork = { companies: number; requirements: number; follow_ups: number };
+export type RecruiterWork = { companies: number; requirements: number; follow_ups: number; candidates?: number }; // hrc-012: candidates owned (primary recruiter)
 export type RecruiterTeamMember = RecruiterTeamRow & { work: RecruiterWork };
 export const RECRUITER_REASSIGN_URL = "/api/v1/recruiter/manager/reassign";
 

@@ -177,7 +177,7 @@ export default function RecruiterCandidateForm({ initial, onSaved, onLatest, onC
             </select>
           </div>
         </div>
-        {/* hrc-010 (DEC-SCOPE-382): the §5 sections */}
+        {/* hrc-010 (DEC-SCOPE-383): the §5 sections */}
         <fieldset className="form-grid" style={FIELDSET}>
           <legend style={LEGEND}>Location and contact</legend>
           {shownFields(values, "location").map(input)}

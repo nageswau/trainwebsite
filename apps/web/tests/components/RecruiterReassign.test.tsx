@@ -51,6 +51,12 @@ describe("RecruiterReassign (rec-037)", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
+  it("hrc-012: owned candidates alone are work to reassign, and they are counted", () => {
+    render(<RecruiterReassign row={{ ...row, work: { companies: 0, requirements: 0, follow_ups: 0, candidates: 2 } }} />);
+    fireEvent.click(screen.getByRole("button", { name: "Reassign Kiran's work" }));
+    expect(screen.getByRole("group", { name: "Reassign Kiran's work" })).toHaveTextContent("Kiran has 0 companies, 0 requirements, 0 open follow-ups and 2 candidates.");
+  });
+
   it("offers only other active team-mates, posts both ids and announces what moved", async () => {
     reassign = (body) => {
       expect(body).toEqual({ from_user_id: "r1", to_user_id: "r2" });

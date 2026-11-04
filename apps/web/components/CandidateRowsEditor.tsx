@@ -2,7 +2,7 @@
 
 import { ROW_KINDS, emptyRow, parseRows, type FormRow, type RowKind } from "@/lib/recruiterCandidates";
 
-// hrc-010 (DEC-SCOPE-382 P1): one editable list of profile rows -- education, employment or certifications. The value is the form's JSON
+// hrc-010 (DEC-SCOPE-383 P1): one editable list of profile rows -- education, employment or certifications. The value is the form's JSON
 // text (so the hrc-003 stale guard compares strings); Add puts an empty row last and focuses nothing else; each Remove is named by row.
 const FIELDSET = { display: "grid", gap: 8, border: "1px solid var(--border, #e5e7eb)", borderRadius: 8, padding: 12, margin: 0 } as const;
 const GRID = { display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(12rem, 1fr))", alignItems: "start" } as const;

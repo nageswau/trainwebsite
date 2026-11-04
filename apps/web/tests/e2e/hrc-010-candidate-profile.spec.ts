@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// hrc-010 (DEC-SCOPE-382): a recruiter completes a candidate's §5 profile -- a degree, two jobs (total experience is worked out from them),
+// hrc-010 (DEC-SCOPE-383): a recruiter completes a candidate's §5 profile -- a degree, two jobs (total experience is worked out from them),
 // location, preferences -- and sees the completeness meter move; an end date before the start is refused with the row named; HR reads
 // the profile without an Edit button; the form fits a phone. Seeded demo accounts; the candidate is created per run.
 async function signIn(page: Page, email: string, division = "it") {

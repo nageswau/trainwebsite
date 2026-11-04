@@ -38,6 +38,19 @@ describe("RecruiterCandidateList", () => {
     expect(await screen.findByRole("option", { name: "Edusphere students" })).toBeInTheDocument();
   });
 
+  it("hrc-012: shows the primary recruiter or Unassigned, and the Owner filter asks the API for my candidates", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(res({
+      items: [{ ...item, owner: { id: "u1", full_name: "Asha", active: true } }, { ...item, id: "c2", name: "Meena", owner: null }], total: 2, limit: 50, offset: 0,
+    })));
+    render(<RecruiterCandidateList sourceFilter={false} />);
+    const rows = await screen.findAllByRole("row");
+    expect(rows[1]).toHaveTextContent("Asha");
+    expect(rows[2]).toHaveTextContent("Unassigned");
+    expect(screen.getByRole("columnheader", { name: "Primary recruiter" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "My candidates" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Unassigned" })).toBeInTheDocument();
+  });
+
   it("has no source picker and never calls the catalogue for a read-only role", async () => {
     render(<RecruiterCandidateList sourceFilter={false} />);
     expect(await screen.findByRole("link", { name: "Rahul" })).toBeInTheDocument();

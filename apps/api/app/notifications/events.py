@@ -51,6 +51,8 @@ EVENTS: dict[str, Event] = {
     # student on a stage move; the counselor's copy of that move and the HR owner's (re)assignment are these two. Never a stage or note.
     "it.hr_review.updated": Event("hr_review_task", "HR review updated", "HR updated the resume review of your student. Open EduSphere to see it."),
     "it.hr_review.assigned": Event("hr_review_task", "Resume review assigned", "A resume review was assigned to you. Open EduSphere to start it."),
+    # hrc-012 (DEC-SCOPE-382 O10): a new primary recruiter, placement officer or collaborator -- never the candidate's name
+    "it.candidate.assigned": Event("candidate", "Candidate assigned to you", "A candidate was assigned to you. Open EduSphere to view them."),
 }
 
 # itc-025 (DEC-SCOPE-348): "a summary of what changed" from a FIXED vocabulary of field names -- never the values (dates, trainer names,
