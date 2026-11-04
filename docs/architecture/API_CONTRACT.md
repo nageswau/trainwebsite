@@ -5738,7 +5738,29 @@ Another role 403, anonymous 401, a candidate outside the pool 404.
   result, subject = requirement, context = company). Additive.
 - `POST /recruiter/candidates/{id}/merge` (hrc-014): `moved` gains `notes` and `tasks`.
 
-## 12KJ. Eligibility-change review (hrc-009) — addendum, 2026-11-04
+## 12KG. Skills taxonomy domains and a job skill's minimum level (hrc-017) — addendum, 2026-11-04
+
+`DEC-SCOPE-388`. **Changed (additive):** every skill category row (`GET/POST/PATCH /api/v1/recruiter/skill-categories`) carries `domain`
+(`"it"|"non_it"`); `POST` takes an optional `domain` (default `"it"`) and `PATCH` may change it (an explicit null or another value: 422,
+"Domain …"; a non-writer: 403). `GET /recruiter/skill-categories` and `GET /recruiter/skills` take `?domain=it|non_it` (422 otherwise; a
+skill matches through its primary category or a tag). Each item of `PUT /recruiter/requirements/{id}/skill-weights` may carry `min_level`
+(`"beginner"|"intermediate"|"advanced"|"expert"|null`; omitted = unchanged, null = any level); a level on a skill outside the Skills Master
+is a 422 "Only a skill in the Skills Master can have a minimum level"; the audit row gains `changes` `{"<skill> minimum level": [old, new]}`.
+The requirement detail's `skills[]` and the matches `criteria.skills[]` carry `min_level`. **Changed (behaviour):** in
+`GET /recruiter/requirements/{id}/matches` a skill with a minimum level counts only for a candidate holding it (or a related skill) at that
+level or above. No level is set by migration 0265, so nothing changes until a writer sets one.
+
+## 12KH. Website registration → candidate create/match (hrc-023) — addendum, 2026-11-04
+
+DEC-SCOPE-389. `POST /api/v1/public/jobs/{job_id}/apply` (public) keeps its body and **201** `{id, tracking_code, status}` and adds
+optional `consent_version` (a version other than the current `candidate-v1` 422), `utm` `{utm_source, utm_medium, utm_campaign,
+utm_term, utm_content}` (other keys dropped, values trimmed to 100) and the honeypot `website` (filled: the same 201, nothing stored).
+Fields over their column length, an invalid email or an unparseable phone 422. More than 10 applications from one client IP in an hour
+**429** with `Retry-After`. The application creates or matches (exact email) a candidate with source "Website"; the answer never says
+which. `POST /api/v1/candidate/register` (§12KE) adds optional `utm`. `GET /api/v1/recruiter/candidates/{id}` adds `utm` and
+`website_applications: [{job_title, tracking_code, status, created_at}]`; the merge preview/result `moved` adds `career_applications`.
+
+## 12KI. Eligibility-change review (hrc-009) — addendum, 2026-11-04
 
 DEC-SCOPE-390. Additive; every route keeps rec-017's requirement scope (out of scope = 404) and writer gate.
 - `GET /api/v1/recruiter/requirements/{id}/candidates?needs_review=true` → the review list (flagged applications only). Every response
@@ -5748,7 +5770,8 @@ DEC-SCOPE-390. Additive; every route keeps rec-017's requirement scope (out of s
 - `POST /api/v1/recruiter/applications/{id}/confirm-review` (no body) → `{application}` with `needs_review_since: null`, status unchanged;
   writers (`placement_team` on the requirement, `super_admin`); manager/BDM 403; not flagged 409 "This application does not need a
   review". Audit `recruiter_application.review_confirmed` (status and the flag's time).
-- `PATCH /recruiter/requirements/{id}`, `PATCH /employer/jobs/{id}`, `PATCH /workflows/it/jobs/{id}`: an eligibility change (required
-  skills, experience range, qualification, matched location) flags the job's open applications and sends `it.requirement.review_needed`
+- `PATCH /recruiter/requirements/{id}`, `PATCH /employer/jobs/{id}`, `PATCH /workflows/it/jobs/{id}`, `PUT /recruiter/requirements/{id}/
+  skill-weights`: an eligibility change (required skills with their hrc-017 minimum level, experience range, qualification, matched
+  location) flags the job's open applications and sends `it.requirement.review_needed`
   ("Applications to review: N. …", link `/recruiter/requirements/{id}`) to its owners but the editor. Responses unchanged.
 - Any application status move clears `needs_review_since`.

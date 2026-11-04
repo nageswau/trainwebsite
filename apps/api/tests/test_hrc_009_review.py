@@ -6,12 +6,12 @@ import uuid
 import pytest
 from sqlalchemy import select
 
-from app.models import AuditLog, JobApplication, Notification
+from app.models import AuditLog, JobApplication, JobSkill, Notification
 from app.notifications.events import notify
 from tests.rec001_helpers import login, make_pm, make_recruiter, make_user
 from tests.rec017_helpers import student_application
 from tests.test_emp_002_job_posting import _create_student, _register_employer
-from tests.test_rec_007_requirements import BASE, _company
+from tests.test_rec_007_requirements import BASE, _company, _skill
 from tests.test_rec_017_tracking import _candidate
 
 APPS = "/api/v1/recruiter/applications"
@@ -22,15 +22,19 @@ def _tag() -> str:
     return uuid.uuid4().hex[:8]
 
 
-async def _world(client, db, *, open_apps: bool = True) -> dict:
+async def _world(client, db, *, open_apps: bool = True, master: bool = False) -> dict:
     """The signed-in primary recruiter owns a requirement (one required skill, 12-36 months, B.Tech, Pune) with a collaborator and a
-    placement-officer owner; candidates `a` (Sourced) and `b` (Shortlisted) are open, `c` is Rejected."""
+    placement-officer owner; candidates `a` (Sourced) and `b` (Shortlisted) are open, `c` is Rejected. With `master`, both skills are in
+    the Skills Master (hrc-017: only those take a minimum level)."""
     manager = await make_pm(db)
     tag = _tag()
     primary = await make_recruiter(db, manager, name=f"Primary {tag}")
     mate = await make_recruiter(db, manager, name=f"Mate {tag}")
     officer = await make_user(db, "placement_officer", "it", name=f"Officer {tag}")
     company = await _company(db, primary)
+    if master:
+        await _skill(db, f"Py{tag}")
+        await _skill(db, f"Kube{tag}")
     await login(client, primary)
     response = await client.post(BASE, json={
         "company_id": str(company.id), "title": f"Review {tag}", "location": "Pune", "description": "Old text", "qualification": "B.Tech",
@@ -108,6 +112,22 @@ async def test_each_eligibility_criterion_flags(client, db_session, body):
     w = await _world(client, db_session)
     await _patch(client, w, body)
     assert (await _flags(db_session, w))["a"] == (True, "sourced")
+    assert await _notices(db_session, w) == _expected(w, 2)
+
+
+@pytest.mark.asyncio
+async def test_a_required_skill_minimum_level_flags_but_a_weight_or_preferred_level_does_not(client, db_session):
+    """hrc-017's minimum level decides who fits a required skill (R1); a weight only ranks, and a preferred skill never gates."""
+    w = await _world(client, db_session, master=True)
+    skills = {s.kind: str(s.id) for s in (await db_session.scalars(select(JobSkill).where(JobSkill.job_id == uuid.UUID(w["job"])))).all()}
+    url = f"{BASE}/{w['job']}/skill-weights"
+    for body in ({"id": skills["required"], "weight": 9}, {"id": skills["preferred"], "weight": 3, "min_level": "advanced"}):
+        response = await client.put(url, json={"weights": [body]})
+        assert response.status_code == 200, response.text
+    assert (await _flags(db_session, w))["a"] == (False, "sourced") and await _notices(db_session, w) == []
+    response = await client.put(url, json={"weights": [{"id": skills["required"], "weight": 9, "min_level": "advanced"}]})
+    assert response.status_code == 200, response.text
+    assert await _flags(db_session, w) == {"a": (True, "sourced"), "b": (True, "shortlisted"), "c": (False, "rejected")}
     assert await _notices(db_session, w) == _expected(w, 2)
 
 

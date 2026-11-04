@@ -1,8 +1,12 @@
 // rec-016 (DEC-SCOPE-157): matching candidates for a requirement and the weighted match score. The API decides every match, every
 // point and who may shortlist or edit weights (`can_shortlist`, `can_edit_weights`); the page only shows them.
+import { LEVELS, type SkillLevel } from "@/lib/recruiterCandidateSkills";
 import { REQUIREMENTS_URL } from "@/lib/recruiterRequirements";
 
-export type CriteriaSkill = { id: string; name: string; kind: "required" | "preferred"; weight: number; points: number; in_master: boolean };
+// hrc-017 (DEC-SCOPE-388 T5): `min_level` -- only a candidate at that level or above counts. Optional so older fixtures still compile.
+export type CriteriaSkill = {
+  id: string; name: string; kind: "required" | "preferred"; weight: number; points: number; in_master: boolean; min_level?: SkillLevel | null;
+};
 export type MatchCriteria = {
   skills: CriteriaSkill[];
   experience: { min_months: number | null; max_months: number | null; points: number } | null;
@@ -25,6 +29,12 @@ export const WEIGHT_MAX = 10;
 export const matchesUrl = (requirementId: string, offset = 0) =>
   `${REQUIREMENTS_URL}/${encodeURIComponent(requirementId)}/matches?limit=${MATCH_PAGE_SIZE}&offset=${offset}`;
 export const weightsUrl = (requirementId: string) => `${REQUIREMENTS_URL}/${encodeURIComponent(requirementId)}/skill-weights`;
+
+/** "Intermediate or above"; empty for any level. */
+export function minLevelText(level: SkillLevel | null | undefined): string {
+  const found = LEVELS.find((l) => l.key === level);
+  return found ? `${found.label} or above` : "";
+}
 
 export function isMatches(data: unknown): data is Matches {
   const d = data as Partial<Matches> | null;

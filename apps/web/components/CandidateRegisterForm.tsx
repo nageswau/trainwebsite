@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
 import { CONSENT_TEXT, CONSENT_VERSION, REGISTER_URL, RESEND_URL } from "@/lib/candidatePortal";
+import { captureUtm, readUtm } from "@/lib/utm";
 
 // hrc-022 (DEC-SCOPE-386 C2/C5): the external candidate's registration. The server answers the same whatever the email, so the success
 // state never says whether an account was created -- only "check your inbox", with a Resend link.
@@ -14,6 +15,11 @@ export default function CandidateRegisterForm() {
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [devToken, setDevToken] = useState<string | null>(null);
   const [resent, setResent] = useState("");
+  const [prefill, setPrefill] = useState(""); // hrc-023: "create a candidate account" after a job application carries ?email=
+  useEffect(() => {
+    captureUtm();
+    setPrefill(new URLSearchParams(window.location.search).get("email") ?? "");
+  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -25,6 +31,7 @@ export default function CandidateRegisterForm() {
     const email = String(form.get("email") || "").trim();
     const outcome = await sendJson(REGISTER_URL, "POST", {
       full_name: form.get("full_name"), email, phone: form.get("phone") || null, password: form.get("password"), consent_version: CONSENT_VERSION,
+      utm: readUtm(), // hrc-023 W2
     });
     setBusy(false);
     if (!outcome.ok) return setError((outcome.status ?? 0) >= 500 ? "We couldn't create your account. Please try again." : outcome.message);
@@ -60,7 +67,7 @@ export default function CandidateRegisterForm() {
   return (
     <form className="form" onSubmit={submit}>
       <div className="field"><label htmlFor="cand-name">Full name</label><input id="cand-name" name="full_name" autoComplete="name" required minLength={2} maxLength={160} /></div>
-      <div className="field"><label htmlFor="cand-email">Email</label><input id="cand-email" name="email" type="email" autoComplete="email" required maxLength={255} /></div>
+      <div className="field"><label htmlFor="cand-email">Email</label><input key={prefill} id="cand-email" name="email" type="email" autoComplete="email" required maxLength={255} defaultValue={prefill} /></div>
       <div className="field"><label htmlFor="cand-phone">Mobile (optional)</label><input id="cand-phone" name="phone" type="tel" autoComplete="tel" maxLength={40} /></div>
       <div className="form-grid">
         <div className="field"><label htmlFor="cand-password">Password</label><input id="cand-password" name="password" type="password" autoComplete="new-password" required minLength={10} maxLength={128} aria-describedby="cand-password-hint" /></div>

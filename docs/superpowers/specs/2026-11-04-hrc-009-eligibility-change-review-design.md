@@ -1,7 +1,7 @@
 # hrc-009 — Eligibility-change review and vacancy-change notices (design)
 
 - **Feature:** hrc-009 (`docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md`). **Decision:** `DEC-SCOPE-390` (builder's calls R1-R9 below,
-  `NEEDS_CONFIRMATION`). **Migration:** `0267_application_review`. **API:** §12KJ. **RBAC:** §2.286 (no new permission).
+  `NEEDS_CONFIRMATION`). **Migration:** `0267_application_review`. **API:** §12KI. **RBAC:** §2.284 (no new permission).
 - **Dependencies (merged):** hrc-004 (#445, before/after audit), hrc-006 (#453, job owners), itc-002 (#409, `notify()` event types).
 - **Source:** §4.3 "Significant changes to eligibility criteria should trigger a review of affected applications rather than silently
   disqualifying"; §12/§13 "Notify relevant owners when a vacancy changes".
@@ -19,7 +19,7 @@ flagged application (it stays where it is) or **move** it (any status change). N
 5. Nothing is rejected automatically: statuses are untouched by the flag.
 
 ## Builder's calls (DEC-SCOPE-390, NEEDS_CONFIRMATION)
-- **R1 eligibility** = what `matching.plan` uses plus qualification: the required skills (case-insensitive names), the experience range
+- **R1 eligibility** = what `matching.plan` uses plus qualification: the required skills (case-insensitive names, each with its hrc-017 minimum level), the experience range
   (min, max months), the qualification (trimmed, case-insensitive) and the location as matching sees it (`location` lower/trim; none when
   `work_mode` is remote). City/state/country edits count through the derived `location` (hrc-005 V3). Preferred skills, skill weights,
   certifications and every other field are not eligibility.
@@ -36,7 +36,7 @@ flagged application (it stays where it is) or **move** it (any status change). N
   vacancy's eligibility criteria changed. Open EduSphere to confirm or move them." `notify()` gains an optional `count` (an int, never
   free text) that fills `{count}`; events without the placeholder refuse it. Link: `/recruiter/requirements/{id}`.
 - **R7 hooked paths:** every job edit path — recruiter `PATCH /recruiter/requirements/{id}`, employer `PATCH /employer/jobs/{id}`, legacy
-  `PATCH /workflows/it/jobs/{id}` — snapshot eligibility before the change, flag after, same transaction.
+  `PATCH /workflows/it/jobs/{id}` and hrc-017's `PUT /recruiter/requirements/{id}/skill-weights` (a minimum level) — snapshot eligibility before the change, flag after, same transaction.
 - **R8 review list:** `GET /recruiter/requirements/{id}/candidates?needs_review=true` (same scope/404 as the list); every list response
   carries `needs_review_count`; every application item carries `needs_review_since`.
 - **R9 who confirms:** the application writers (`applications.WRITERS`: the requirement's recruiter, super_admin) — the same gate as a
@@ -66,4 +66,4 @@ flagged application (it stays where it is) or **move** it (any status change). N
 ## Plan (small tasks, TDD)
 1. Migration + model column; migration test. 2. `notify(count=)` + event; unit test. 3. `matching.eligibility` + `application_review`;
 service tests. 4. Hook the three edit paths; route tests. 5. Clear on status move; confirm route; list filter/count. 6. Web lib types +
-component; vitest. 7. e2e. 8. Docs: decision register, API §12KJ, RBAC §2.286, backlog status.
+component; vitest. 7. e2e. 8. Docs: decision register, API §12KI, RBAC §2.284, backlog status.

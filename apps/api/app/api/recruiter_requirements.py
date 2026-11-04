@@ -358,17 +358,26 @@ async def requirement_matches(
 
 @router.put("/{requirement_id}/skill-weights")
 async def set_skill_weights(requirement_id: UUID, payload: RecSkillWeights, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """rec-016 (M1): one transaction -- scope, row lock, `can_edit`, the changed weights and one audit row (ids only), one commit."""
+    """rec-016 (M1): one transaction -- scope, row lock, `can_edit`, the changed weights and one audit row (ids only), one commit.
+    hrc-017 (T6): an item may also set `min_level` (omitted = unchanged, null = any level) on a Skills-Master skill; the audit row then
+    carries the level diff by skill name."""
     job = await svc.load_scoped(db, user, requirement_id, lock=True)
     svc.require(user, job, "can_edit", "skill_weights")
     rows = {r.id: r for r in (await db.scalars(select(JobSkill).where(JobSkill.job_id == job.id))).all()}
     if any(w.id not in rows for w in payload.weights):
         raise HTTPException(422, "Choose skills of this requirement")
-    changed = sorted(str(w.id) for w in payload.weights if rows[w.id].weight != w.weight)
+    levels = {w.id: w.min_level for w in payload.weights if "min_level" in w.model_fields_set and rows[w.id].min_level != w.min_level}
+    if any(level and rows[i].skill_id is None for i, level in levels.items()):
+        raise HTTPException(422, "Only a skill in the Skills Master can have a minimum level")
+    changed = sorted(str(w.id) for w in payload.weights if rows[w.id].weight != w.weight or w.id in levels)
+    changes = {f"{rows[i].name} minimum level": [rows[i].min_level, level] for i, level in levels.items()}
+    eligible_before = await matching.eligibility(db, job)  # hrc-009 (R1/R7): a required skill's minimum level gates who fits
     for w in payload.weights:
         rows[w.id].weight = w.weight
+        rows[w.id].min_level = levels.get(w.id, rows[w.id].min_level)
     if changed:
-        svc.audit(db, user, "weights", job.id, {"skills": changed})
+        svc.audit(db, user, "weights", job.id, {"skills": changed, **({"changes": changes} if changes else {})})
+        await review.flag(db, user, job, eligible_before)
     await db.commit()
     if changed:
         svc.log("recruiter_requirement_weights_changed", user, job.id, skills=len(changed))

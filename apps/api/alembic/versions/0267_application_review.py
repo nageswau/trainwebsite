@@ -1,7 +1,7 @@
 """hrc-009 -- eligibility-change review: `job_applications.needs_review_since` and its partial index.
 
 Revision ID: 0267_application_review
-Revises: 0264_candidate_notes_tasks
+Revises: 0266_website_intake
 
 docs/superpowers/specs/2026-11-04-hrc-009-eligibility-change-review-design.md (DEC-SCOPE-390 R3). One nullable column, no backfill (no
 existing application needs a review). 0001 builds a fresh database from the current models, which already carry them, so each step runs
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0267_application_review"
-down_revision = "0264_candidate_notes_tasks"
+down_revision = "0266_website_intake"
 branch_labels = None
 depends_on = None
 

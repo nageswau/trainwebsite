@@ -1,11 +1,12 @@
 from datetime import UTC, date, datetime
 from typing import Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.client_ip import client_ip
 from app.core.config import settings
 from app.core.database import get_db
 from app.models import (
@@ -29,7 +30,7 @@ from app.models import (
     WebinarRegistration,
 )
 from app.schemas import CareerPathOut, CountryOut, EnquiryIn, ProgramOut, RealProjectOut, SocialProofOut, TestimonialOut, UniversityOut, WebinarRegistrationIn
-from app.services import job_visibility, lead_intake, program_media, social_proof, university_logos, upload_policy
+from app.services import candidate_portal, job_visibility, lead_intake, program_media, social_proof, university_logos, upload_policy, website_intake
 from app.services.partnership_universities import public_visible
 from app.services.storage import storage
 from app.worker import sync_enquiry_to_crm_task
@@ -391,9 +392,9 @@ async def gallery(division: str | None = None, db: AsyncSession = Depends(get_db
 
 
 @router.post("/jobs/{job_id}/apply", status_code=201)
-async def public_job_apply(job_id: UUID, payload: dict, db: AsyncSession = Depends(get_db)):
-    import secrets
-
+async def public_job_apply(job_id: UUID, payload: dict, request: Request, db: AsyncSession = Depends(get_db)):
+    """hrc-023 (DEC-SCOPE-389): the application also creates or matches the person's candidate (W3) with the visit's UTM (W1) and the
+    consent shown (W4). The answer is the same for a new and a known person (W7); a filled honeypot stores nothing (W6)."""
     job = await db.get(Job, job_id)
     # EMP-002-AC02: a posting past its own closing date is not open, even if the
     # Employer never explicitly closed it -- applies here too, not just to the listing.
@@ -403,20 +404,18 @@ async def public_job_apply(job_id: UUID, payload: dict, db: AsyncSession = Depen
     for required in ("full_name", "email", "resume_url"):
         if not payload.get(required):
             raise HTTPException(422, f"{required} is required")
-    code = "EDU-CAREER-" + secrets.token_hex(5).upper()
-    item = CareerApplication(
-        job_id=job_id,
-        full_name=payload["full_name"],
-        email=payload["email"].lower(),
-        phone=payload.get("phone"),
-        resume_url=payload["resume_url"],
-        cover_note=payload.get("cover_note"),
-        status="submitted",
-        tracking_code=code,
-    )
-    db.add(item)
+    fields = website_intake.clean_application(payload)
+    consent_version = payload.get("consent_version") or None
+    if consent_version is not None and consent_version != candidate_portal.CONSENT_VERSION:
+        raise HTTPException(422, "Please accept the current consent wording")
+    ip = client_ip(request)
+    if wait := await website_intake.apply_wait_seconds(db, ip):
+        raise HTTPException(429, website_intake.THROTTLED, headers={"Retry-After": str(wait)})
+    if payload.get("website"):  # W6: only a bot fills the hidden field -- the normal answer, nothing stored
+        website_intake.logger.warning("website_application_honeypot")
+        return {"id": uuid4(), "tracking_code": website_intake.tracking_code(), "status": "submitted"}
+    item = await website_intake.apply(db, job, fields, utm=website_intake.clean_utm(payload.get("utm")), consent_version=consent_version, ip=ip)
     await db.commit()
-    await db.refresh(item)
     return {"id": item.id, "tracking_code": item.tracking_code, "status": item.status}
 
 

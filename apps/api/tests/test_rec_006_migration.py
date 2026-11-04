@@ -66,7 +66,7 @@ def test_migration_chains_after_the_partnership_profiles_and_is_the_single_head(
 def test_models_match_the_migration():
     from app.models import Skill, SkillAlias, SkillCategory, SkillCategoryTag, SkillRelated
 
-    assert {c.name for c in SkillCategory.__table__.columns} == {"id", "name", "active", "sort_order", "created_at", "updated_at"}
+    assert {c.name for c in SkillCategory.__table__.columns} == {"id", "name", "active", "sort_order", "created_at", "updated_at", "domain"}  # + hrc-017
     assert {c.name for c in Skill.__table__.columns} == {"id", "name", "category_id", "active", "sort_order", "created_at", "updated_at"}
     assert {c.name for c in SkillAlias.__table__.columns} == {"id", "skill_id", "alias", "created_at"}
     assert {c.name for c in SkillCategoryTag.__table__.columns} == {"skill_id", "category_id"}

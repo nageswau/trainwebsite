@@ -24,6 +24,7 @@ from app.schemas import (
     SkillCategoryPage,
     SkillCategoryUpdate,
     SkillCreate,
+    SkillDomain,
     SkillMerge,
     SkillOut,
     SkillPage,
@@ -62,7 +63,7 @@ def _audit(db: AsyncSession, user: User, action: str, entity_type: str, entity_i
 
 
 def _category_out(category: SkillCategory) -> dict:
-    return {"id": category.id, "name": category.name, "active": category.active, "sort_order": category.sort_order}
+    return {"id": category.id, "name": category.name, "active": category.active, "sort_order": category.sort_order, "domain": category.domain}
 
 
 async def _locked(db: AsyncSession, model, row_id: UUID, noun: str):
@@ -79,12 +80,15 @@ async def _one_out(db: AsyncSession, skill: Skill, user: User) -> dict:
 # --- categories -----------------------------------------------------------------------------------------------------------------
 @router.get("/skill-categories", response_model=SkillCategoryPage)
 async def categories(
-    active: bool | None = None, q: str | None = SEARCH, limit: int = LIMIT, offset: int = OFFSET,
+    active: bool | None = None, q: str | None = SEARCH, domain: SkillDomain | None = None, limit: int = LIMIT, offset: int = OFFSET,
     user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
-    """The §2 order for the seed (sort order), then name."""
+    """The §2 order for the seed (sort order), then name. hrc-017 (T4): `domain` narrows to IT or non-IT categories."""
     require_reader(user)
-    stmt = select(SkillCategory).where(*active_filters(user, SkillCategory.active, active), *_matching(like_pattern(q), SkillCategory.name))
+    filters = [*active_filters(user, SkillCategory.active, active), *_matching(like_pattern(q), SkillCategory.name)]
+    if domain:
+        filters.append(SkillCategory.domain == domain)
+    stmt = select(SkillCategory).where(*filters)
     total = await db.scalar(select(func.count()).select_from(stmt.subquery()))
     rows = (await db.scalars(stmt.order_by(SkillCategory.sort_order, func.lower(SkillCategory.name), SkillCategory.id).limit(limit).offset(offset))).all()
     return {"items": [_category_out(c) for c in rows], "total": total or 0, "limit": limit, "offset": offset}
@@ -95,10 +99,10 @@ async def create_category(payload: dict = Body(...), user: User = Depends(get_cu
     require_writer(user)
     data = _body(SkillCategoryCreate, payload)
     last = await db.scalar(select(func.max(SkillCategory.sort_order)))
-    category = SkillCategory(name=data.name, sort_order=(last or 0) + 1, active=True)
+    category = SkillCategory(name=data.name, sort_order=(last or 0) + 1, active=True, domain=data.domain)
     db.add(category)
     await flush_unique(db, CATEGORY_NAME_INDEX, f"A category named “{data.name}” already exists")
-    _audit(db, user, "recruiter.skill_category_create", "skill_category", category.id, {"fields": ["name", "sort_order"]})
+    _audit(db, user, "recruiter.skill_category_create", "skill_category", category.id, {"fields": ["name", "sort_order", "domain"]})
     out = _category_out(category)
     await db.commit()
     return out
@@ -121,11 +125,11 @@ async def update_category(category_id: UUID, payload: dict = Body(...), user: Us
 # --- skills -----------------------------------------------------------------------------------------------------------------------
 @router.get("/skills", response_model=SkillPage)
 async def skills(
-    q: str | None = SEARCH, category_id: UUID | None = None, active: bool | None = None, limit: int = LIMIT, offset: int = OFFSET,
-    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
+    q: str | None = SEARCH, category_id: UUID | None = None, active: bool | None = None, domain: SkillDomain | None = None,
+    limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
     """`q` matches a name or an alias (EXISTS, so a skill with several matching aliases is listed once); `category_id` matches the
-    primary category or a tag. Ordered by name."""
+    primary category or a tag, and so does hrc-017's `domain` (T4). Ordered by name."""
     require_reader(user)
     filters = active_filters(user, Skill.active, active)
     pattern = like_pattern(q)
@@ -135,6 +139,10 @@ async def skills(
     if category_id:
         tagged = exists().where(SkillCategoryTag.skill_id == Skill.id, SkillCategoryTag.category_id == category_id)
         filters.append(or_(Skill.category_id == category_id, tagged))
+    if domain:
+        in_domain = select(SkillCategory.id).where(SkillCategory.domain == domain)
+        tagged = exists().where(SkillCategoryTag.skill_id == Skill.id, SkillCategoryTag.category_id.in_(in_domain))
+        filters.append(or_(Skill.category_id.in_(in_domain), tagged))
     stmt = select(Skill).where(*filters)
     total = await db.scalar(select(func.count()).select_from(stmt.subquery()))
     rows = (await db.scalars(stmt.order_by(func.lower(Skill.name), Skill.id).limit(limit).offset(offset))).all()

@@ -11615,6 +11615,49 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0264_candidate_notes_tasks`; API §12KF; RBAC §2.283.
 - **Feature ID authorized:** `hrc-016`. **Status:** built on `worktree-hrc-016`.
 
+### DEC-SCOPE-388 — Skills taxonomy: IT / non-IT domains and a job skill's minimum level (`hrc-017`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-017` (PDF §7.3 categories "IT, engineering, healthcare, pharmacy, finance,
+  sales, HR and non-IT"; §8 "category and proficiency"; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00:
+  all phases). No dependency. The owner said to proceed with the recommended answers, so Q-17 and T1–T9 are **the builder's calls
+  (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-04-hrc-017-skills-taxonomy-design.md`.
+- **Behaviour:** every Skills Master category has a domain, `it` or `non_it` (`skill_categories.domain`, existing rows `it`). Migration 0265
+  seeds six non-IT categories (Engineering, Healthcare, Pharmacy, Finance, Sales, Human Resources) with a starter skill list and three
+  aliases, insert-if-missing (an existing category or term is never overwritten; the IT seed is unchanged). Managers choose the domain when
+  adding a category and switch it with "Move to …"; `?domain=` filters the categories and skills lists (a skill counts through its primary
+  category or a tag). A requirement skill may require a minimum candidate level (`job_skills.min_level`: beginner < intermediate < advanced
+  < expert), set in the rec-016 "Adjust weights" form; matching counts the skill only for a candidate at that level or above, so a required
+  skill with a level is part of the hard filter.
+- **Builder's calls:** Q-17 the non-IT skill lists are a provisional starter set the owner edits in the Skills Master (no code change). T1
+  existing categories are IT. T3 the seed never renames or re-domains an existing row. T6 the level rides on `PUT …/skill-weights` (omitted =
+  unchanged, null = any level; a free-text skill cannot take one: 422) and is audited by skill name. T7 editing the skill lists keeps a kept
+  skill's level; legacy flat-list writers never touch it. Candidate search by category is hrc-019's.
+- **Numbering:** migration `0265_skill_taxonomy`; API §12KG; RBAC unchanged (no new grant: managers write categories, `can_edit` sets levels).
+- **Feature ID authorized:** `hrc-017`. **Status:** built on `worktree-hrc-017`.
+
+### DEC-SCOPE-389 — Website registration → candidate create/match (`hrc-023`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-023` (PDF §6.1 steps 1–5, §13, §17; PDF classified `UNVERIFIED`). Scope
+  approved by the owner 2026-11-01 (backlog Q-00). Dependencies hrc-022 (DEC-SCOPE-386), hrc-014 (DEC-SCOPE-377) and hrc-010
+  (DEC-SCOPE-383) merged. The owner said to proceed with the recommended answers, so Q-23/Q-25 and W1–W10 are **the builder's calls
+  (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-04-hrc-023-website-registration-intake-design.md`.
+- **Behaviour:** a public job application (`/it/careers`) creates — or matches by exact email — one candidate with source "Website", the
+  visit's UTM and the consent shown, and links the application to it; recruiters see the candidate (and its website applications) in
+  their list with no import. The registration form's UTM reaches the candidate hrc-022 creates on verification, now with source
+  "Website" ("Website registration").
+- **Builder's calls:** W1 the five standard UTM keys, first touch of the visit. W2 registration still creates the candidate only on
+  verification; a claimed recruiter record keeps its source. W3 an unverified application matches by email only (never phone) and
+  changes nothing on the matched record; a new candidate has no creator. W4 consent optional in the API (older clients), required by the
+  form; recorded on the application and, for a new candidate, as a `candidate_consents` row without a user. W5 an email advisory lock.
+  W6 a honeypot and 10 applications per IP per hour → 429; no CAPTCHA (Q-25, no provider). W7 the same answer for new and known people.
+  W8/Q-25 existing applications are linked by email, never turned into candidates. W9 the detail shows the campaign and website
+  applications. W10 merges move website applications. Q-23: a registrant whose email belongs to a student gets the hrc-022 answer
+  (nothing created); an applicant with a student's email gets a website candidate (the student's later opt-in leaves the email off).
+- **Not built:** routing (hrc-024), turning a website application into a staff application and its resume into a candidate resume
+  (hrc-026), CAPTCHA.
+- **Numbering:** migration `0266_website_intake`; API §12KH. No new permission.
+- **Feature ID authorized:** `hrc-023`. **Status:** built on `worktree-hrc-023`.
+
 ### DEC-SCOPE-390 — Eligibility-change review and vacancy-change notices (`hrc-009`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-009` (PDF §4.3 "Significant changes to eligibility criteria should
@@ -11627,11 +11670,12 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   the editor get one `it.requirement.review_needed` notice with the count; the recruiter sees a "Needs review" badge, a count and a
   review list, and either confirms an application (it stays where it is; audited) or moves it (any status change clears the flag).
   Nothing is rejected or moved automatically. A cosmetic edit, or a job with no open application, does nothing.
-- **Builder's calls:** R1 eligibility = required skills (case-insensitive names), experience range, qualification (trimmed,
+- **Builder's calls:** R1 eligibility = required skills (case-insensitive names, each with its hrc-017 minimum level — so a level set
+  through `PUT …/skill-weights` also flags), experience range, qualification (trimmed,
   case-insensitive) and the location as matching scores it (none when remote) — preferred skills, weights and other fields are not. R2
   open = `applications.OPEN`. R3 one bounded UPDATE per edit; an already-flagged application keeps its first time and is not recounted.
   R5 recipients = primary, placement-officer owner and collaborators (hrc-006) minus the editor. R6 `notify()` gains an optional
   whole-number `count` filling the event's single `{count}` slot (itc-002's preview-safe test narrowed to allow exactly that slot).
   R9 confirm = the application writers (the status-move gate).
-- **Numbering:** migration `0267_application_review`; API §12KJ; RBAC §2.286.
+- **Numbering:** migration `0267_application_review`; API §12KI; RBAC §2.284.
 - **Feature ID authorized:** `hrc-009`. **Status:** built on `worktree-hrc-009`.

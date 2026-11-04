@@ -61,10 +61,11 @@ def _place(job: Job) -> str:
 
 async def eligibility(db: AsyncSession, job: Job) -> tuple:
     """hrc-009 (DEC-SCOPE-390 R1): what decides who fits -- the required skills, the experience range, the qualification and the matched
-    location, case-insensitive. Two equal snapshots = no eligibility change (preferred skills and weights only rank)."""
-    required = await db.scalars(select(JobSkill.name).where(JobSkill.job_id == job.id, JobSkill.kind == "required"))
+    location, case-insensitive; a required skill counts with its hrc-017 minimum level. Two equal snapshots = no eligibility change
+    (preferred skills and weights only rank)."""
+    required = await db.execute(select(JobSkill.name, JobSkill.min_level).where(JobSkill.job_id == job.id, JobSkill.kind == "required"))
     return (
-        frozenset(name.strip().lower() for name in required.all()),
+        frozenset((name.strip().lower(), level) for name, level in required.all()),
         job.experience_min_months,
         job.experience_max_months,
         (job.qualification or "").strip().lower(),
@@ -81,7 +82,7 @@ async def plan(db: AsyncSession, job: Job) -> dict:
     skill_points, exp_points, loc_points = allocate([s.weight if s.skill_id else 0 for s in skills], experience=has_experience, location=has_location)
     criteria = {
         "skills": [
-            {"id": s.id, "name": s.name, "kind": s.kind, "weight": s.weight, "points": p, "in_master": s.skill_id is not None}
+            {"id": s.id, "name": s.name, "kind": s.kind, "weight": s.weight, "points": p, "in_master": s.skill_id is not None, "min_level": s.min_level}
             for s, p in zip(skills, skill_points, strict=True)
         ],
         "experience": {"min_months": job.experience_min_months, "max_months": job.experience_max_months, "points": exp_points} if has_experience else None,
@@ -92,7 +93,7 @@ async def plan(db: AsyncSession, job: Job) -> dict:
         return {"criteria": criteria, "items": [], "filter": []}
     related = await _related(db, {s.skill_id for s, _ in resolved})
     items = [
-        {"key": f"skill:{s.id}", "label": s.name, "kind": s.kind, "points": p, "flag": _has(related[s.skill_id], False)} for s, p in resolved
+        {"key": f"skill:{s.id}", "label": s.name, "kind": s.kind, "points": p, "flag": _has(related[s.skill_id], False, s.min_level)} for s, p in resolved
     ]
     required = [item["flag"] for item in items if item["kind"] == "required"]
     where = required or [or_(*(item["flag"] for item in items))]  # M4: every required skill, else at least one preferred one

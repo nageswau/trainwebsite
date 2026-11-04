@@ -43,7 +43,7 @@ ROWS = [
     # rec-017 -- an application's status and history (§2.62)
     R("get", "/recruiter/applications/{application}/history", **allow(200, *READ), **allow(404, *OUT)),
     R("post", "/recruiter/applications/{application}/status", {"status": "screened"}, **allow(200, *WRITE), **allow(404, *OUT)),
-    # hrc-009 (§2.286): the writers' confirm of an eligibility review; the matrix application is not flagged, so a writer gets the 409
+    # hrc-009 (§2.284): the writers' confirm of an eligibility review; the matrix application is not flagged, so a writer gets the 409
     R("post", "/recruiter/applications/{application}/confirm-review", **allow(409, *WRITE), **allow(404, *OUT)),
     # rec-018 -- screening (§2.75): the readers read, the writers save (the manager and BDM 403 after the scope check)
     R("get", "/recruiter/applications/{application}/screening", **allow(200, *READ), **allow(404, *OUT)),

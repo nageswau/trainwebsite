@@ -19,13 +19,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.security import hash_password
-from app.models import AuditLog, Candidate, CandidateConsent, CandidateSelfServiceSetting, RecCandidateSource, User, UserVerificationToken
+from app.models import AuditLog, Candidate, CandidateConsent, CandidateSelfServiceSetting, User, UserVerificationToken
 from app.notifications.phone import normalise_phone
 from app.schemas import CANDIDATE_FIELD_LABELS, CandidateUpdate
 from app.services import candidate_duplicates as duplicates
 from app.services import candidate_profile as profile
 from app.services import candidates as svc
-from app.services import recruitment_history
+from app.services import recruitment_history, website_intake
 from app.services.mailer import send_generic_notification_email
 from app.services.provisioning import DEV_TOKEN_ENVIRONMENTS
 from app.services.telecaller import _parse
@@ -34,7 +34,6 @@ logger = logging.getLogger("app.candidate_portal")
 
 ROLE = "candidate"
 DIVISION = "it"
-SOURCE = "Candidate portal"
 TOKEN_TTL = timedelta(hours=24)
 INVALID_TOKEN = "This link is invalid or has expired"
 NO_PROFILE = "Your candidate profile is not available -- contact the recruitment team"
@@ -141,7 +140,7 @@ async def register_wait_seconds(db: AsyncSession, ip: str) -> int:
     return _wait(list(newest), REGISTER_MAX_PER_IP, REGISTER_WINDOW)
 
 
-async def register(db: AsyncSession, *, full_name: str, email: str, phone: str | None, password: str, ip: str) -> Delivery | None:
+async def register(db: AsyncSession, *, full_name: str, email: str, phone: str | None, password: str, ip: str, utm: dict | None = None) -> Delivery | None:
     """C2: a new email creates an unverified candidate account; an unverified candidate's email re-sends its link (C5 cap); any other
     existing email does nothing. Every attempt is audited with the IP (the throttle key), so the answer never depends on the email."""
     if wait := await register_wait_seconds(db, ip):
@@ -151,7 +150,8 @@ async def register(db: AsyncSession, *, full_name: str, email: str, phone: str |
     delivery, outcome = None, "exists"
     if account is None:
         user = User(email=email, password_hash=hash_password(password), full_name=full_name, role=ROLE, division=DIVISION, phone=phone, active=True,
-                    email_verified=False, profile={"registration_source": "candidate_portal", "candidate_consent_version": CONSENT_VERSION})  # fmt: skip
+                    email_verified=False, profile={"registration_source": "candidate_portal", "candidate_consent_version": CONSENT_VERSION,
+                             **({"utm": utm} if utm else {})})  # fmt: skip
         try:
             async with db.begin_nested():  # a concurrent signup for the same email loses at the unique index: the same 202, nothing sent
                 db.add(user)
@@ -181,16 +181,6 @@ async def resend(db: AsyncSession, email: str) -> Delivery | None:
 
 
 # --- C3/C4 verification ------------------------------------------------------------------------------------------------------------
-async def _source_id(db: AsyncSession):
-    source_id = await db.scalar(select(RecCandidateSource.id).where(func.lower(RecCandidateSource.name) == SOURCE.lower()))
-    if source_id is None:
-        source = RecCandidateSource(name=SOURCE)
-        db.add(source)
-        await db.flush()
-        source_id = source.id
-    return source_id
-
-
 def _consent(db: AsyncSession, user: User, candidate: Candidate, action: str, ip: str | None) -> None:
     db.add(CandidateConsent(candidate_id=candidate.id, user_id=user.id, action=action, consent_version=CONSENT_VERSION, ip_address=ip))
     db.add(AuditLog(user_id=user.id, action=f"candidate_portal.{action}", entity_type="candidates", entity_id=str(candidate.id), metadata_json={}))
@@ -225,8 +215,10 @@ async def link_candidate(db: AsyncSession, user: User, ip: str | None) -> Candid
         logger.warning("candidate_portal_no_contact", extra={"extra_fields": {"user_id": str(user.id)}})
         return None
     candidate = Candidate(candidate_code=await svc.next_code(db), name=user.full_name[:160], email=email, email_verified_at=now if email else None,
-                          mobile=user.phone if mobile_key else None, mobile_normalized=mobile_key, preferred_locations=[], source_id=await _source_id(db),
-                          user_id=user.id, opted_in=True, created_by_user_id=user.id)  # fmt: skip
+                          mobile=user.phone if mobile_key else None, mobile_normalized=mobile_key, preferred_locations=[], source_id=await website_intake.source_id(db),
+                          user_id=user.id, opted_in=True, created_by_user_id=user.id,
+                          # hrc-023 W2: the website registration form is a Website source, with the visit's UTM kept at registration
+                          source_detail=website_intake.DETAIL_REGISTRATION, utm=website_intake.clean_utm((user.profile or {}).get("utm")))  # fmt: skip
     db.add(candidate)
     await db.flush()
     _consent(db, user, candidate, "opt_in", ip)
