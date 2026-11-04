@@ -3,7 +3,7 @@
 Revision ID: 0250_compensation_grant
 Revises: 0249_it_training_progress
 
-docs/superpowers/specs/2026-11-04-hrc-001-access-control-hardening-design.md (DEC-SCOPE-370 H2). Seed only, no schema change: SEED is a
+docs/superpowers/specs/2026-11-04-hrc-001-access-control-hardening-design.md (DEC-SCOPE-371 H2). Seed only, no schema change: SEED is a
 frozen copy of the new `rbac.DEFAULT_GRANTS` key at this revision. A row that is already there is left alone; no existing row changes.
 The downgrade removes the resource's grants and overrides (the key leaves the catalogue with it); other resources are untouched.
 """

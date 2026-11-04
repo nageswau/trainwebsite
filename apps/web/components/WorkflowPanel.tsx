@@ -455,7 +455,7 @@ function adminSpecs(user: User, section: string): ActionSpec[] {
 function specsFor(user: User, section: string): ActionSpec[] {
   if (["it_student", "overseas_student"].includes(user.role)) return studentSpecs(user, section);
   if (user.role === "trainer") return trainerSpecs(section);
-  // hrc-001 (DEC-SCOPE-370 H1): the legacy placement writes are the recruiter's (record-scoped); HR owns no requirement and gets none.
+  // hrc-001 (DEC-SCOPE-371 H1): the legacy placement writes are the recruiter's (record-scoped); HR owns no requirement and gets none.
   if (user.role === "placement_team") return placementSpecs(section);
   if (user.role === "agent") return agentSpecs(section);
   if (["partner", "accountant"].includes(user.role)) return section === "payments" ? [DISCOUNT_SPEC] : []; // nehn-021: discounts only

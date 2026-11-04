@@ -1,7 +1,7 @@
 # hrc-001 — Access-control hardening for recruitment data (design)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` hrc-001 (PDF §3, §10.2, §15; PDF classified `UNVERIFIED`). Scope approved by the
-  owner 2026-11-01 (backlog Q-00: all phases, hrc-001 first). Dependencies: none. Decision `DEC-SCOPE-370`.
+  owner 2026-11-01 (backlog Q-00: all phases, hrc-001 first). Dependencies: none. Decision `DEC-SCOPE-371`.
 - **Status of the open questions:** the owner said to proceed with the recommended answers, so H1–H6 below are **the builder's calls
   (`NEEDS_CONFIRMATION`)**. The owner's private findings were not available to this session; the rules below come from a fresh
   read-only audit of the as-built code against the backlog's expected behaviour. This document states the rules now enforced, not
@@ -60,4 +60,4 @@ candidate form, the screening form and the Find Candidates salary filter show th
 `test_rec_007/020/022` (legacy writers), `test_rec_009/013/018` (salary readers), the WorkflowPanel placement forms.
 
 ## API / RBAC
-API §12JP records the narrowing as a breaking change for out-of-scope callers. RBAC §2.270 adds the grant and the legacy writer rule.
+API §12JQ records the narrowing as a breaking change for out-of-scope callers. RBAC §2.270 adds the grant and the legacy writer rule.

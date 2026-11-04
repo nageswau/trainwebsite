@@ -9,7 +9,7 @@ export type CandidateItem = {
   source: SourceRef; source_detail: string | null; status: CandidateStatus; archived: boolean; created_at: string;
 };
 export type CandidateResume = { version: number; file_name: string | null; content_type: string; size_bytes: number; uploaded_by: PersonRef | null; created_at: string };
-// hrc-001 (DEC-SCOPE-370 H2): salary is left out (not null) for a caller without this grant, who may not send it either.
+// hrc-001 (DEC-SCOPE-371 H2): salary is left out (not null) for a caller without this grant, who may not send it either.
 export const COMPENSATION_VIEW = "candidates.compensation.view";
 const SALARY_KEYS = new Set<string>(["current_salary", "expected_salary"]);
 export type CandidateDetail = CandidateItem & {

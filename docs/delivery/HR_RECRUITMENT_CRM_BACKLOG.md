@@ -86,7 +86,7 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 ### Phase 0: Safety and foundations
 
 #### hrc-001: Access-control hardening for recruitment data (details held privately)
-- **Status (2026-11-04):** built — `DEC-SCOPE-370` (Q-02/Q-03 answered by the builder's recommended calls, `NEEDS_CONFIRMATION`); design
+- **Status (2026-11-04):** built — `DEC-SCOPE-371` (Q-02/Q-03 answered by the builder's recommended calls, `NEEDS_CONFIRMATION`); design
   `docs/superpowers/specs/2026-11-04-hrc-001-access-control-hardening-design.md`; seed migration `0250` (the grant needs default rows).
 - **Business requirement:** §3 "Restrict sensitive information … salary details, internal notes and final hiring decisions"; §10.2 "results hidden until release"; §15 "controlled download links", "keep internal notes … separate at the API/data layer".
 - **Existing behavior:** see §0.1. The specific findings, with file/line evidence, are held privately by the owner.
@@ -178,6 +178,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **E:** a background job touches `updated_at`. The background job must not bump `updated_at` for a non-user edit, or the guard compares a separate `version` column (Q-05).
 - **Regression risks:** every client of these PATCH endpoints (employer portal, legacy WorkflowPanel).
 - **Complexity:** medium. **Risk:** medium.
+- **Status:** built as `DEC-SCOPE-370` (no migration, API §12JP, no RBAC change); design
+  `docs/superpowers/specs/2026-11-04-hrc-003-concurrent-edit-protection-design.md`. Q-05 answered by the builder's calls S1/S2
+  (`updated_at`, optional first; `NEEDS_CONFIRMATION`).
 
 #### hrc-004: Before/after audit for recruitment records
 - **Business requirement:** §4.3 "Preserve material edit history"; §5.1 "audit history"; §10.2 "Preserve previous values"; §15 "prior/new values for material edits".

@@ -8,7 +8,7 @@ import LocalTime from "@/components/LocalTime";
 type JobOption = { id: string; title: string };
 type CandidateOption = { student_id: string; name: string };
 type ShortlistRow = { id: string; candidate: string; job_title: string; status: string; status_label: string };
-// hrc-001 (DEC-SCOPE-370 H3): no outcome reaches the employer before release -- the card shows the schedule status only.
+// hrc-001 (DEC-SCOPE-371 H3): no outcome reaches the employer before release -- the card shows the schedule status only.
 type InterviewRow = { id: string; candidate: string; job_title: string; scheduled_at: string; mode: string; status_label: string };
 
 function detailMessage(detail: unknown) {

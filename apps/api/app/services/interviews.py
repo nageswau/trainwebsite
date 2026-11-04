@@ -59,7 +59,7 @@ FINAL = ("selected", "rejected")
 
 
 def unreleased_status(status: str) -> str:
-    """hrc-001 (DEC-SCOPE-370 H3): until hrc-030 adds the release step, a decision reads as Completed outside the staff screens."""
+    """hrc-001 (DEC-SCOPE-371 H3): until hrc-030 adds the release step, a decision reads as Completed outside the staff screens."""
     return "completed" if status in (*FINAL, "on_hold") else status
 RESCHEDULABLE = (*OPEN, "on_hold", "no_show")
 DECIDING_ROUNDS = ("final_round", "client_round")  # IV8: only these rounds' Selected selects the application
@@ -190,7 +190,7 @@ async def update(db: AsyncSession, user: User, interview: Interview, job: Job, p
     """Only changed values count (no audit for none). Returns the changed field names."""
     if interview.status in FINAL:
         raise HTTPException(409, DECIDED)
-    changes = payload.model_dump(exclude_unset=True)
+    changes = payload.model_dump(exclude_unset=True, exclude={"expected_updated_at"})
     changed = sorted(key for key, value in changes.items() if getattr(interview, key) != value)
     if "contact_id" in changed:
         await _check_contact(db, job.company_id, changes["contact_id"], kept=interview.contact_id)
@@ -412,7 +412,7 @@ def _out(user: User, now: datetime, history: dict, feedback: dict, i: Interview,
     return {
         "id": i.id, "code": i.interview_code, "round": i.round, "round_label": round_label(i.round), "scheduled_at": i.scheduled_at, "mode": i.mode,
         "meeting_url": i.meeting_url, "interviewer": i.interviewer, "location": i.location, "status": i.status, "status_label": status_label(i.status),
-        "result": i.result,
+        "result": i.result, "updated_at": i.updated_at,  # hrc-003: the edit form's token
         "application": {"id": a.id, "status": a.status, "status_label": applications.label(a.status)},
         "candidate": {"id": c.id, "code": c.candidate_code, "name": c.name},
         "requirement": {"id": job.id, "code": job.requirement_code, "title": job.title},

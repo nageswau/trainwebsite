@@ -1,4 +1,4 @@
-"""hrc-001 -- migration 0250_compensation_grant (DEC-SCOPE-370 H2): the chain, the seed and the round trip, in a throwaway database
+"""hrc-001 -- migration 0250_compensation_grant (DEC-SCOPE-371 H2): the chain, the seed and the round trip, in a throwaway database
 (the ccrm-040 / nehn-008 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util

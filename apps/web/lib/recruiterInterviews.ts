@@ -42,7 +42,7 @@ export type RecInterview = {
   application: { id: string; status: string; status_label: string }; candidate: { id: string; code: string; name: string };
   requirement: { id: string; code: string; title: string }; company: { id: string; name: string }; contact: { id: string; name: string } | null;
   history: InterviewEvent[]; allowed_statuses: StatusOption[]; can_edit: boolean; can_reschedule: boolean;
-  feedback: InterviewFeedback | null; can_feedback: boolean;
+  feedback: InterviewFeedback | null; can_feedback: boolean; updated_at: string; // hrc-003: the edit form's token
 };
 export type Notices = { candidate: string; contact: string | null };
 export type ApplicationInterviews = { items: RecInterview[]; can_schedule: boolean };

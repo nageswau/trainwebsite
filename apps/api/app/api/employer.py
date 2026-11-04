@@ -330,7 +330,7 @@ async def list_employer_interviews(user: User = Depends(get_current_user), db: A
             .order_by(Interview.scheduled_at.desc())
         )
     ).all()
-    # hrc-001 (DEC-SCOPE-370 H3): no outcome before release -- neither the legacy `result` nor a decided status.
+    # hrc-001 (DEC-SCOPE-371 H3): no outcome before release -- neither the legacy `result` nor a decided status.
     out = []
     for interview, _application, student, job in rows:
         status = interviews.unreleased_status(interview.status)

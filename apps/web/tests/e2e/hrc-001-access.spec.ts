@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// hrc-001 (DEC-SCOPE-370): candidate compensation follows `candidates.compensation.view` (the recruiter holds it, HR does not), and HR is
+// hrc-001 (DEC-SCOPE-371): candidate compensation follows `candidates.compensation.view` (the recruiter holds it, HR does not), and HR is
 // offered no legacy placement write form. Seeded demo accounts; the candidate is created per run.
 async function signIn(page: Page, email: string) {
   expect((await page.request.post("/api/v1/auth/login", { data: { email, password: "Demo@123", division: "it" } })).ok()).toBeTruthy();

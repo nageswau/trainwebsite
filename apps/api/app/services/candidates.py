@@ -50,7 +50,7 @@ def require_writer(user: User) -> None:
         raise HTTPException(403, "Your role cannot change candidates")
 
 
-# hrc-001 (DEC-SCOPE-370 H2): salary is shown, sent and searched on only with the grant; without it the keys are absent, not null.
+# hrc-001 (DEC-SCOPE-371 H2): salary is shown, sent and searched on only with the grant; without it the keys are absent, not null.
 COMPENSATION = ("current_salary", "expected_salary")
 NO_COMPENSATION = "Your role cannot view or change candidate salary"
 

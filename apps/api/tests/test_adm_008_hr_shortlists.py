@@ -134,7 +134,7 @@ async def test_job_requirements_portal_section_shows_the_closing_date(db_session
 
 @pytest.mark.asyncio
 async def test_hr_no_longer_updates_a_requirement(db_session, client):
-    """hrc-001 (DEC-SCOPE-370 H1): HR owns no requirement, so the legacy write it held was global; it is refused and nothing changes."""
+    """hrc-001 (DEC-SCOPE-371 H1): HR owns no requirement, so the legacy write it held was global; it is refused and nothing changes."""
     hr = await _create_staff(db_session)
     job = await _create_job(db_session)
     before = job.closes_on

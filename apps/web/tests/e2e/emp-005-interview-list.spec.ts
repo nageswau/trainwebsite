@@ -75,7 +75,7 @@ test("Employer's interview list shows the schedule status and no unreleased outc
 
   await loginAsEmployer(page, email);
   await page.goto("/it/employer/dashboard");
-  // hrc-001 (DEC-SCOPE-370 H3): the recorded outcome is not released to the employer -- the interview stays listed, without it.
+  // hrc-001 (DEC-SCOPE-371 H3): the recorded outcome is not released to the employer -- the interview stays listed, without it.
   const decidedCard = page.locator(".grid.two .card", { hasText: name }).last();
   await expect(decidedCard).toBeVisible();
   await expect(decidedCard.getByText("cancelled")).toHaveCount(0);

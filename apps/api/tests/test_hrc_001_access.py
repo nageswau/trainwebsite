@@ -1,4 +1,4 @@
-"""hrc-001 (DEC-SCOPE-370, spec docs/superpowers/specs/2026-11-04-hrc-001-access-control-hardening-design.md): the legacy IT placement
+"""hrc-001 (DEC-SCOPE-371, spec docs/superpowers/specs/2026-11-04-hrc-001-access-control-hardening-design.md): the legacy IT placement
 writes use the recruiter record scope (H1), candidate compensation follows the `candidates.compensation.view` grant (H2), interview
 outcomes stay off student and employer screens (H3), recruitment documents leave only through their own routes (H4), and no student,
 employer or anonymous route returns feedback, screening, notes, compensation or an unreleased result (H5)."""

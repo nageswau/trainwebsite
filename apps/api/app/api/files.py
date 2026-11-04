@@ -111,7 +111,7 @@ async def _overseas_document(db: AsyncSession, key: str) -> bool:
     return bool(await db.scalar(select(DocumentEvent.id).where(DocumentEvent.file_key.in_(shapes)).limit(1)))
 
 
-# hrc-001 (DEC-SCOPE-370 H4): recruitment documents, each served by its own authenticated, scope-checked and audited route.
+# hrc-001 (DEC-SCOPE-371 H4): recruitment documents, each served by its own authenticated, scope-checked and audited route.
 RECRUITMENT_PREFIXES = ("candidate-resumes/", "career-resumes/", "student-resumes/", "job-offers/", "job-joinings/", "recruiter-contracts/")
 
 

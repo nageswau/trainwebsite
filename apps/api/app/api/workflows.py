@@ -2148,7 +2148,7 @@ async def open_jobs(user: User = Depends(get_current_user), db: AsyncSession = D
     ]
 
 
-# hrc-001 (DEC-SCOPE-370 H1): the legacy placement writes load their record through the /recruiter/* scope (out of scope = the same 404
+# hrc-001 (DEC-SCOPE-371 H1): the legacy placement writes load their record through the /recruiter/* scope (out of scope = the same 404
 # as missing). it_admin keeps IT-wide access (Q-02); hr_team, which owns no records, no longer writes here.
 LEGACY_PLACEMENT_WRITERS = {"placement_team", "it_admin"}
 

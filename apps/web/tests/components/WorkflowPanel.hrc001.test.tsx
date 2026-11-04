@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import WorkflowPanel from "@/components/WorkflowPanel";
 import type { User } from "@/lib/types";
 
-// hrc-001 (DEC-SCOPE-370 H1/H6, browser QA-01): HR owns no requirement, so the legacy placement write forms (which now answer 403) are
+// hrc-001 (DEC-SCOPE-371 H1/H6, browser QA-01): HR owns no requirement, so the legacy placement write forms (which now answer 403) are
 // not offered to it; the recruiter keeps them.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
 

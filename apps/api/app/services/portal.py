@@ -439,7 +439,7 @@ async def _it_student(db: AsyncSession, user: User, section: str):
         return _payload(
             "Interview Schedule",
             "Mock and employer interview appointments.",
-            # hrc-001 (DEC-SCOPE-370 H3): no outcome column until hrc-030's release step.
+            # hrc-001 (DEC-SCOPE-371 H3): no outcome column until hrc-030's release step.
             (("role", "Role"), ("company", "Company"), ("scheduled", "Scheduled"), ("mode", "Mode"), ("link", "Meeting")),
             ({"role": j.title, "company": c.name, "scheduled": i.scheduled_at, "mode": i.mode, "link": i.meeting_url} for i, j, c in rows),
         )

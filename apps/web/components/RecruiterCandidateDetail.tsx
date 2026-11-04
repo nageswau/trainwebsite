@@ -53,7 +53,7 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
   }
 
   const tel = telHref(candidate.mobile);
-  // hrc-001 (DEC-SCOPE-370 H2): the API leaves salary out without `candidates.compensation.view` -- no row then, not a blank one.
+  // hrc-001 (DEC-SCOPE-371 H2): the API leaves salary out without `candidates.compensation.view` -- no row then, not a blank one.
   const salary = (label: string, value: string | null | undefined): [string, React.ReactNode][] => (value === undefined ? [] : [[label, money(value)]]);
   const rows: [string, React.ReactNode][] = [
     ["Mobile", tel ? <a href={tel}>{candidate.mobile}<span className="visually-hidden"> (call {candidate.name})</span></a> : candidate.mobile], ["Email", candidate.email], ["Location", candidate.location], ["Qualification", candidate.qualification],
@@ -88,7 +88,7 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
       {notice && <p className={notice.failed ? "form-error" : "form-message"} role={notice.failed ? "alert" : "status"} style={{ margin: 0 }}>{notice.text}</p>}
       {archived && candidate.can_edit && <p className="muted" style={{ margin: 0 }}>Restore this candidate to edit them or upload a resume.</p>}
       {editing ? (
-        <RecruiterCandidateForm initial={candidate} onCancel={() => setEditing(false)}
+        <RecruiterCandidateForm initial={candidate} onCancel={() => setEditing(false)} onLatest={setCandidate}
           onSaved={(saved) => { setCandidate(saved); setEditing(false); setNotice({ text: "Changes saved.", failed: false }); }} />
       ) : (
         <section aria-labelledby="cand-profile-heading" className="action-card">

@@ -13,7 +13,7 @@ via `PATCH /workflows/it/interviews/{id}` -- the data was never filtered out
 (`EMP-005-AC02`'s "remain visible, not deleted" already held), but it was invisible.
 Added the missing display; this file proves the backend property the UI now surfaces.
 
-hrc-001 (DEC-SCOPE-370 H3) supersedes the outcome part: until hrc-030's release step, the list carries the schedule status only --
+hrc-001 (DEC-SCOPE-371 H3) supersedes the outcome part: until hrc-030's release step, the list carries the schedule status only --
 no legacy `result`, and a decided status reads as Completed. The interviews themselves still all remain visible.
 """
 
