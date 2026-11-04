@@ -280,6 +280,10 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **E:** a primary owner removes themselves; the manager must pick a new primary first.
 - **Regression risks:** `test_rec_007/037/038` scope tests.
 - **Complexity:** medium. **Risk:** medium.
+- **Status:** built as `DEC-SCOPE-384` (migration `0261_job_assignments`, API §12KC, RBAC §2.280); design
+  `docs/superpowers/specs/2026-11-04-hrc-006-vacancy-co-ownership-design.md`. No open question; O1–O12 are the builder's calls
+  (`NEEDS_CONFIRMATION`) — notably the primary stays `jobs.assigned_recruiter_user_id`, and a placement officer co-owns the vacancy but
+  not its candidate pipeline until hrc-012.
 
 #### hrc-007: Vacancy approval workflow and Filled status
 - **Business requirement:** §4.2 Workflow "Draft, Pending Approval, Open, On Hold, Filled, Closed, Cancelled"; §4.3 "Pending Approval (if required) … Only approved, open vacancies should be available for new applications".
@@ -345,7 +349,7 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **E:** a candidate stops matching the segment after applying (the application stays).
 - **Regression risks:** the careers page, `test_emp_*`, the student job list and SEO pages.
 - **Complexity:** medium. **Risk:** medium.
-- **Status:** built as `DEC-SCOPE-383` (migration `0260_job_visibility`, API §12KB, RBAC §2.280); design
+- **Status:** built as `DEC-SCOPE-385` (migration `0262_job_visibility`, API §12KD, RBAC §2.281); design
   `docs/superpowers/specs/2026-11-04-hrc-008-vacancy-visibility-design.md`. Q-08 answered by the builder's calls V1-V8 (existing and new
   jobs public; a segment is a talent pool; `jobs.publish` held by placement managers; `NEEDS_CONFIRMATION`).
 
@@ -378,6 +382,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** small. **Risk:** low.
 
 #### hrc-010: Candidate profile completion (education, experience, preferences, location, contact)
+- **Status (2026-11-04):** built — `DEC-SCOPE-383` (Q-09 answered by the builder's recommended call: experience derived from employment
+  history while it exists, `NEEDS_CONFIRMATION`); design `docs/superpowers/specs/2026-11-04-hrc-010-candidate-profile-design.md`; migration `0260`.
 - **Business requirement:** §5 field table; §8.3 C.
 - **Existing behavior:**
   - Education is `qualification`, `college` and `passing_year`. Experience is `experience_months` and `current_company`.

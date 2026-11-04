@@ -1,10 +1,10 @@
 """hrc-008 -- vacancy visibility: `jobs.visibility` (internal, portal, segment, public), `jobs.segment_pool_id`, the (status, visibility)
 index and the first `jobs.publish` holder.
 
-Revision ID: 0260_job_visibility
-Revises: 0259_candidate_ownership
+Revision ID: 0262_job_visibility
+Revises: 0261_job_assignments
 
-docs/superpowers/specs/2026-11-04-hrc-008-vacancy-visibility-design.md (DEC-SCOPE-383). 0001 builds a fresh database from the current
+docs/superpowers/specs/2026-11-04-hrc-008-vacancy-visibility-design.md (DEC-SCOPE-385). 0001 builds a fresh database from the current
 models, which already carry the columns, so each step runs only when missing (0257's idiom). The server default fills every existing job
 with `public` (V3: no current listing disappears). The constants are frozen copies of the models / rbac at this revision
 (test_hrc_008_migration). The downgrade drops what this revision added, including the grant.
@@ -15,8 +15,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0260_job_visibility"
-down_revision = "0259_candidate_ownership"
+revision = "0262_job_visibility"
+down_revision = "0261_job_assignments"
 branch_labels = None
 depends_on = None
 

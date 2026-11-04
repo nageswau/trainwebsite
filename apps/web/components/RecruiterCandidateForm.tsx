@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 
+import CandidateRowsEditor from "@/components/CandidateRowsEditor";
 import StaleRecordNotice from "@/components/StaleRecordNotice";
 import { sendJson } from "@/lib/apiErrors";
 import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
 import {
-  AMOUNTS, CANDIDATES_PATH, CANDIDATES_URL, COMPENSATION_LABELS, COMPENSATION_VIEW, DUPLICATE_CHECK_URL, EMPTY_FORM, FIELDS, NEGOTIABLE, PERIOD_LABEL,
-  STATUSES, STATUS_LABEL, candidateBody, candidateUrl, formFromDetail, missingRequired, type CandidateDetail, type CandidateForm, type CandidateMatch,
+  AMOUNTS, CANDIDATES_PATH, CANDIDATES_URL, CHOICES, COMPENSATION_LABELS, COMPENSATION_VIEW, CONTACT_METHODS, DUPLICATE_CHECK_URL, EMPTY_FORM, FIELDS,
+  NEGOTIABLE, PERIOD_LABEL, STATUSES, STATUS_LABEL, candidateBody, candidateUrl, displayValue, formFromDetail, missingRequired, shownFields,
+  type CandidateDetail, type CandidateForm, type CandidateMatch,
 } from "@/lib/recruiterCandidates";
 import { EXCHANGE_RATES_URL, type ExchangeRate } from "@/lib/recruiterCatalogue";
 import { useStaleGuard } from "@/lib/staleGuard";
@@ -19,7 +21,16 @@ import { usePermissions } from "@/lib/usePermissions";
 // and a mobile or an email are required; the API decides everything else. A known person is shown in the duplicate panel, above the
 // form so it is seen next to the mobile and email even on a phone (the tel-005 QA-05 placement).
 type Notice = { text: string; failed: boolean } | null;
-const LABELS: Record<string, string> = { source_id: "Source", source_detail: "Source detail", status: "Status", archive: "Archived", restore: "Restored", resume_upload: "Resume", resume_extract: "Resume details" };
+const LABELS: Record<string, string> = {
+  source_id: "Source", source_detail: "Source detail", status: "Status", archive: "Archived", restore: "Restored", resume_upload: "Resume", resume_extract: "Resume details",
+  // hrc-010
+  preferred_contact: "Preferred contact", willing_to_relocate: "Willing to relocate", work_modes: "Work modes", employment_types: "Employment types", shifts: "Shifts",
+  education: "Education", employment: "Employment history", certifications: "Certifications",
+};
+const CHOICE_LABEL: Record<keyof typeof CHOICES, string> = { work_modes: "Work modes", employment_types: "Employment types", shifts: "Shifts" };
+const GRID = { display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))", alignItems: "start" } as const;
+const FIELDSET = { ...GRID, border: "1px solid var(--border, #e5e7eb)", borderRadius: 8, padding: 12, margin: 0 } as const;
+const LEGEND = { fontWeight: 600, padding: "0 4px" } as const;
 type Props = {
   initial?: CandidateDetail; onSaved?: (c: CandidateDetail) => void; onCancel?: () => void;
   /** hrc-003: the latest candidate after a stale save was reloaded or reviewed, for the page behind the form. */
@@ -144,8 +155,8 @@ export default function RecruiterCandidateForm({ initial, onSaved, onLatest, onC
       {matches.length > 0 && <DuplicatePanel matches={matches} focusRequest={focusRequest} />}
       <form onSubmit={submit} noValidate className="action-card" style={{ display: "grid", gap: 12 }}>
         <p className="muted" style={{ margin: 0, fontSize: 13 }}>* Required. Enter a mobile number or an email (or both).</p>
-        <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))", alignItems: "start" }}>
-          {FIELDS.map(input)}
+        <div className="form-grid" style={GRID}>
+          {shownFields(values, "basic").map(input)}
           <div className="field">
             <label htmlFor="cand-source_id">Source *</label>
             <select id="cand-source_id" aria-required value={values.source_id} disabled={busy} onChange={(e) => set("source_id", e.target.value)}>
@@ -166,9 +177,61 @@ export default function RecruiterCandidateForm({ initial, onSaved, onLatest, onC
             </select>
           </div>
         </div>
+        {/* hrc-010 (DEC-SCOPE-383): the §5 sections */}
+        <fieldset className="form-grid" style={FIELDSET}>
+          <legend style={LEGEND}>Location and contact</legend>
+          {shownFields(values, "location").map(input)}
+          <div className="field">
+            <label htmlFor="cand-preferred_contact">Preferred contact</label>
+            <select id="cand-preferred_contact" value={values.preferred_contact} disabled={busy} aria-describedby="cand-preferred_contact-hint" onChange={(e) => set("preferred_contact", e.target.value)}>
+              <option value="">Not stated</option>
+              {CONTACT_METHODS.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
+            </select>
+            <span id="cand-preferred_contact-hint" className="muted" style={{ fontSize: 13 }}>
+              {initial?.email_verified_at ? "Email verified" : "Email not verified yet"}
+            </span>
+          </div>
+        </fieldset>
+        <CandidateRowsEditor kind="education" value={values.education} disabled={busy} onChange={(v) => set("education", v)} />
+        <CandidateRowsEditor kind="employment" value={values.employment} disabled={busy} onChange={(v) => set("employment", v)}>
+          <div className="form-grid" style={GRID}>{shownFields(values, "experience").map(input)}</div>
+          {!shownFields(values, "experience").some((f) => f.key === "experience_months") && (
+            <p className="muted" style={{ margin: 0, fontSize: 13 }}>Total experience and the current company are worked out from the jobs below (an overlap counts once).</p>
+          )}
+        </CandidateRowsEditor>
+        <CandidateRowsEditor kind="certifications" value={values.certifications} disabled={busy} onChange={(v) => set("certifications", v)}>
+          <div className="form-grid" style={GRID}>{shownFields(values, "skills").map(input)}</div>
+        </CandidateRowsEditor>
+        <fieldset className="form-grid" style={FIELDSET}>
+          <legend style={LEGEND}>Preferences</legend>
+          {shownFields(values, "preferences").map(input)}
+          <div className="field">
+            <label htmlFor="cand-willing_to_relocate">Willing to relocate</label>
+            <select id="cand-willing_to_relocate" value={values.willing_to_relocate} disabled={busy} onChange={(e) => set("willing_to_relocate", e.target.value)}>
+              {NEGOTIABLE.map((n) => <option key={n.key} value={n.key}>{n.label}</option>)}
+            </select>
+          </div>
+          {(Object.entries(CHOICES) as [keyof typeof CHOICES, readonly { key: string; label: string }[]][]).map(([key, options]) => (
+            <fieldset key={key} style={{ border: 0, padding: 0, margin: 0, display: "grid", gap: 4 }}>
+              <legend style={{ padding: 0, marginBottom: 4 }}>{CHOICE_LABEL[key]}</legend>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px" }}>
+                {options.map((o) => {
+                  const chosen = values[key].split(",").filter(Boolean);
+                  return (
+                    <label key={o.key} style={{ display: "inline-flex", gap: 4, alignItems: "center", fontWeight: 400 }}>
+                      <input type="checkbox" checked={chosen.includes(o.key)} disabled={busy}
+                        onChange={(e) => set(key, options.map((x) => x.key).filter((k) => (k === o.key ? e.target.checked : chosen.includes(k))).join(","))} />
+                      {o.label}
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+          ))}
+        </fieldset>
         {compensation && (
-          <fieldset className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))", alignItems: "start", border: "1px solid var(--border, #e5e7eb)", borderRadius: 8, padding: 12, margin: 0 }}>
-            <legend style={{ fontWeight: 600, padding: "0 4px" }}>Compensation</legend>
+          <fieldset className="form-grid" style={FIELDSET}>
+            <legend style={LEGEND}>Compensation</legend>
             <p className="muted" style={{ margin: 0, fontSize: 13, gridColumn: "1 / -1" }}>Enter each amount as the candidate states it. Leave it blank if not provided. Search compares the yearly rupee figure.</p>
             {AMOUNTS.map(({ key, label }) => (
               <div className="field" key={key}>
@@ -197,7 +260,7 @@ export default function RecruiterCandidateForm({ initial, onSaved, onLatest, onC
         <StaleRecordNotice
           guard={guard}
           labelOf={(key) => FIELDS.find((f) => f.key === key)?.label ?? COMPENSATION_LABELS[key] ?? LABELS[key] ?? key.replace(/_/g, " ")}
-          display={(key, value) => (key === "source_id" ? ([...kept, ...sources].find((s) => s.id === value)?.name ?? value) : key === "status" ? (STATUS_LABEL[value] ?? value) : value)}
+          display={(key, value) => (key === "source_id" ? ([...kept, ...sources].find((s) => s.id === value)?.name ?? value) : key === "status" ? (STATUS_LABEL[value] ?? value) : displayValue(key, value))}
           onReload={guard.reload}
           onReview={guard.reviewMine}
         />

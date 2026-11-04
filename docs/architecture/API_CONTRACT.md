@@ -5638,9 +5638,46 @@ shared_ownership, can_assign}`; `POST /recruiter/candidates` makes a recruiter c
 candidates to reassign"; `PATCH /admin/users/{id}` `{active:false}` of a recruiter owning a non-archived candidate is 422; the placement
 officer dashboard gains the "Your candidates" metric. Notice `it.candidate.assigned`.
 
-## 12KB. Vacancy visibility (hrc-008) — addendum, 2026-11-04
+## 12KB. Candidate profile completion (hrc-010) — addendum, 2026-11-04
 
-`DEC-SCOPE-383`. **New:** `PUT /api/v1/recruiter/requirements/{id}/visibility` `{visibility: "internal"|"portal"|"segment"|"public",
+DEC-SCOPE-383. `POST /api/v1/recruiter/candidates` and `PATCH /api/v1/recruiter/candidates/{id}` accept, and the candidate detail returns:
+`education: [{degree, specialisation, institution, year, grade}]` (≤ 10; a degree or an institution), `employment: [{employer,
+designation, industry, employment_type, start_date, end_date}]` (≤ 20; employer and start required; end null = current; no future dates;
+end before start = 422 "Employment N: the end date must be on or after the start date"), `certifications: [{name, issuer, issued_on,
+expires_on, credential_id}]` (≤ 20), `country`/`state`/`city` (≤ 80), `preferred_contact` (`phone` | `whatsapp` | `email` | null),
+`relevant_experience_months` (0–600), `tools`/`languages` (≤ 20 texts), `preferred_roles` (≤ 5), `work_modes`/`employment_types`/`shifts`
+(job enums), `available_from` (date), `willing_to_relocate` (bool | null). A sent list replaces the whole set; omitted = unchanged.
+The detail also returns `email_verified_at` (read only; sending it is 422), `is_fresher` (experience 0) and `completeness: {percent,
+items: [{key, label, weight, met}]}`. While employment rows exist `experience_months` and `current_company` are derived; education row 1
+sets `qualification`/`college`/`passing_year`; city/state/country set `location`; `preferred_roles[0]` sets `preferred_role` (an old
+client's `preferred_role` replaces the first role). A rows-only save is a new `updated_at` (hrc-003). Candidate skills add/PATCH accept
+`is_primary` (bool; null = 422) and skill items return it. The merge response's `moved` adds `education`, `employment`, `certifications`.
+
+## 12KC. Vacancy co-owners and ownership history (hrc-006) — addendum, 2026-11-04
+
+DEC-SCOPE-384. Every requirement body gains `owners: [{user: {id, full_name, active, email}, role: "placement_officer" | "collaborator",
+role_label, added_by: person, added_at}]` (the placement-officer owner first, then collaborators by name; the primary stays
+`assigned_recruiter`) and `permissions.can_manage_owners` / `permissions.can_view_candidates`. **Scope change:** a recruiter's and a
+placement manager's list and reads also cover requirements they (or their team) co-own; `placement_officer` is no longer 403 on
+`GET /recruiter/requirements`, `/statuses`, `/{id}`, `/{id}/history`, `PATCH /{id}`, `POST /{id}/status|submit` and the `/{id}/jd*`
+routes — it sees only the requirements it co-owns (others 404). Every other recruiter route still refuses it (403).
+- `POST /api/v1/recruiter/requirements/{id}/assignments` `{user_id, role: "placement_officer" | "collaborator"}` → 201 `{requirement}`.
+  403 unless the primary owner, a placement manager in scope or super_admin; 409 cancelled, "This person is the primary owner",
+  "Already an owner of this requirement", "This requirement already has a placement officer owner"; 422 an ineligible person (inactive,
+  wrong role, a recruiter without a profile) or `role: "primary"`. Audit `recruiter_requirement.owner_added`.
+- `DELETE /api/v1/recruiter/requirements/{id}/assignments/{user_id}` → 200 `{requirement}`; 409 "A placement manager must reassign the
+  primary owner first"; 404 not an owner. Audit `recruiter_requirement.owner_removed`.
+- `GET /api/v1/recruiter/requirements/{id}/assignment-options?role=&q=&limit=` (≤ 50) → `{items: [{id, full_name, email, role}], total}` —
+  eligible active people not already on it; owner managers only (else 403).
+- `GET /api/v1/recruiter/requirements/{id}/assignment-history?limit=&offset=` (≤ 100) → `{items: [{id, user, role: "primary" | …,
+  role_label, action: "added" | "removed", reason: null | "reassign" | "deactivated" | "backfill", changed_by: person | null, created_at}],
+  total, limit, offset}`, newest first, `Cache-Control: no-store`; the requirement's readers.
+`POST /{id}/assign` and `POST /recruiter/manager/reassign` now also write the primary's history (and drop the new primary's co-owner row);
+`PATCH /admin/users/{id}` with `active: false` removes the user's co-ownerships.
+
+## 12KD. Vacancy visibility (hrc-008) — addendum, 2026-11-04
+
+`DEC-SCOPE-385`. **New:** `PUT /api/v1/recruiter/requirements/{id}/visibility` `{visibility: "internal"|"portal"|"segment"|"public",
 segment_pool_id?}` (a segment needs an active talent pool, and only a segment names one) → `{requirement}` (the detail); the same values
 write nothing. Errors: 401; 403 "You cannot change who sees job requirements" (no `jobs.publish`; checked before the body); 404 (unknown
 job); 422 (bad body, "Choose an active talent pool"). **Changed (additive):** the requirement detail carries `visibility` `{key, label,
@@ -5648,5 +5685,5 @@ segment_pool: {id, name, active} | null, can_change}` and every requirement row 
 `GET /public/jobs` lists public jobs only and `POST /public/jobs/{id}/apply` answers 404 "Open job not found" for any other; for an
 `it_student`, `GET /workflows/it/jobs/open`, `POST /workflows/it/jobs/{id}/apply` and the portal's job-applications "Open jobs" panel cover
 portal, public and the student's segment jobs (staff callers of `/workflows/it/jobs/open` still see every open job); the employer job
-payload's `visible_to_students` is false for an internal job. Existing jobs are public (migration 0260), so nothing changes until a
+payload's `visible_to_students` is false for an internal job. Existing jobs are public (migration 0262), so nothing changes until a
 `jobs.publish` holder narrows a job.

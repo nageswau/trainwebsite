@@ -2,7 +2,7 @@
 
 **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-008` (PDF §4.2 Visibility, §4.3, §13; PDF classified `UNVERIFIED`).
 Dependency hrc-007 (`DEC-SCOPE-380`) is merged. The owner said to proceed with the recommended answers, so V1–V8 are **the builder's
-calls (`NEEDS_CONFIRMATION`)** answering Q-08. Decision `DEC-SCOPE-383`, migration `0260_job_visibility`, API §12KB, RBAC §2.280.
+calls (`NEEDS_CONFIRMATION`)** answering Q-08. Decision `DEC-SCOPE-385`, migration `0262_job_visibility`, API §12KD, RBAC §2.281.
 
 ## Builder's calls
 
@@ -11,7 +11,7 @@ calls (`NEEDS_CONFIRMATION`)** answering Q-08. Decision `DEC-SCOPE-383`, migrati
 | V1 | `jobs.visibility` is one of `internal`, `portal`, `segment`, `public`. A `segment` job names one talent pool (`segment_pool_id`, rec-015); no other job does (check constraint). |
 | V2 | A "candidate segment" is a **talent pool** (rec-015). A program cohort is not offered (no cohort is a candidate set today; `NEEDS_CONFIRMATION`). A pool's members are computed on read, so a student who stops matching stops seeing the job; an application already made stays (E). An inactive pool has no members. |
 | V3 | Q-08: every **existing** job and every **new** job defaults to `public` (server default), so no current listing disappears and no create path changes. A manager narrows it afterwards. |
-| V4 | Changing visibility needs `jobs.publish`. First default holder: `placement_manager` (migration 0260 seeds it; super_admin implicit; grantable to any role). A holder may change any job (a division-wide grant, like `jobs.approve`). |
+| V4 | Changing visibility needs `jobs.publish`. First default holder: `placement_manager` (migration 0262 seeds it; super_admin implicit; grantable to any role). A holder may change any job (a division-wide grant, like `jobs.approve`). |
 | V5 | Readers: `/public/jobs` and `POST /public/jobs/{id}/apply` → `public` only. The student surfaces (`/workflows/it/jobs/open` for `it_student`, `POST /workflows/it/jobs/{id}/apply`, the student portal's "Open jobs" panel) → `portal`, `public`, and `segment` when the student's candidate is a member. A job outside the caller's visibility is the same 404 as a missing one. Staff lists and dashboards are unchanged (internal staff see every job). |
 | V6 | Visibility never touches existing applications: the student's own application rows read through `job_applications` and stay visible (AC3). |
 | V7 | `PUT /recruiter/requirements/{id}/visibility` `{visibility, segment_pool_id?}` → the requirement detail. 403 without the grant (before the body is read), 404 unknown job, 422 a segment without an active pool or a pool on a non-segment job. Same values = no change (no audit). A change is one audit row `recruiter_requirement.visibility` with a `changes` diff (pool by name), bumps `updated_at`/`updated_by`. |

@@ -31,7 +31,7 @@ from app.models import (
     RecruiterMessage,
     User,
 )
-from app.services import candidate_duplicates, recruitment_history
+from app.services import candidate_duplicates, candidate_profile, recruitment_history
 from app.services import candidates as svc
 
 logger = logging.getLogger("app.candidates")
@@ -167,6 +167,18 @@ async def _cancel_clashing_requests(db: AsyncSession, actor: User, survivor: Can
     )
 
 
+async def _move_profile(db: AsyncSession, survivor: Candidate, victim: Candidate, chosen: list[str]) -> dict:
+    """hrc-010 (P12): each row kind the survivor has none of comes over whole (a mix of two people's histories is not guessed); then
+    the survivor's mirrors and derived experience follow its rows."""
+    have = await candidate_profile.rows(db, survivor.id)
+    moved = {}
+    for kind, model in candidate_profile.ROWS.items():
+        moved[kind] = 0 if have[kind] else (await db.execute(update(model).where(model.candidate_id == victim.id).values(candidate_id=survivor.id)
+                                                               .execution_options(synchronize_session=False))).rowcount  # fmt: skip
+    candidate_profile.sync(survivor, await candidate_profile.rows(db, survivor.id), set(chosen))
+    return moved
+
+
 async def merge(db: AsyncSession, actor: User, survivor_id: UUID, code: str, use_victim: list[str], reason: str | None) -> dict:
     """Find, lock, check, move. The route commits. Returns the route's body."""
     found = await _victim(db, code)
@@ -200,6 +212,7 @@ async def merge(db: AsyncSession, actor: User, survivor_id: UUID, code: str, use
     moved["skills"] = (await db.execute(update(CandidateSkill).where(CandidateSkill.candidate_id == victim.id, CandidateSkill.skill_id.not_in(survivor_skills))
                                         .values(candidate_id=survivor.id).execution_options(synchronize_session=False))).rowcount  # fmt: skip
     moved["resumes"] = await _move_resumes(db, survivor, victim)
+    moved |= await _move_profile(db, survivor, victim, chosen)
 
     now = datetime.now(UTC)
     victim.archived_at, victim.archived_by_user_id, victim.updated_by_user_id = now, actor.id, actor.id

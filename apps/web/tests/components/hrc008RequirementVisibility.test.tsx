@@ -5,7 +5,7 @@ import RequirementVisibility from "@/components/RequirementVisibility";
 import sitemap from "@/app/sitemap";
 import type { Requirement, VisibilityDetail } from "@/lib/recruiterRequirements";
 
-// hrc-008 (DEC-SCOPE-383 V1/V4/V7/V8): the requirement's Visibility card and the sitemap. The server decides the grant and validates the
+// hrc-008 (DEC-SCOPE-385 V1/V4/V7/V8): the requirement's Visibility card and the sitemap. The server decides the grant and validates the
 // pool; these check what is shown, what is sent and how the answer is shown.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const visibility = (over: Partial<VisibilityDetail> = {}): VisibilityDetail => ({ key: "public", label: "Public website", segment_pool: null, can_change: true, ...over });

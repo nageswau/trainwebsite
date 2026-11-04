@@ -4,14 +4,14 @@ import { PORTAL_NAV, RECRUITER_MANAGER_NAV, RECRUITER_NAV, SUPER_ADMIN_NAV } fro
 import { EMPTY_FORM, candidateBody, experienceLabel, FIELDS, formFromDetail, missingRequired, packageText, STATUS_LABEL, type CandidateDetail } from "@/lib/recruiterCandidates";
 
 const filled = {
-  ...EMPTY_FORM, name: " Rahul ", mobile: "98765 43210", email: "", source_id: "s1", passing_year: "2022", experience_months: "30",
+  ...EMPTY_FORM, name: " Rahul ", mobile: "98765 43210", email: "", source_id: "s1", experience_months: "30",
   current_salary: "450000", preferred_locations: "Hyderabad, Bengaluru ,, ", linkedin: " https://linkedin.com/in/r ",
 };
 
 describe("rec-009 candidate form mapping", () => {
   it("sends only the filled fields on create, numbers as numbers and the places as a list", () => {
     expect(candidateBody(filled, "create")).toEqual({
-      name: "Rahul", mobile: "98765 43210", source_id: "s1", passing_year: 2022, experience_months: 30, current_salary: "450000",
+      name: "Rahul", mobile: "98765 43210", source_id: "s1", experience_months: 30, current_salary: "450000",
       current_salary_currency: "INR", current_salary_period: "year", // hrc-011: the currency and period go with their amount
       preferred_locations: ["Hyderabad", "Bengaluru"], linkedin: "https://linkedin.com/in/r", status: "available",
     });
@@ -49,7 +49,7 @@ describe("rec-009 candidate form mapping", () => {
     const detail = { name: "R", mobile: null, email: "r@x.com", source: { id: "s", name: "LinkedIn", active: true }, status: "placed",
       passing_year: 2020, experience_months: 14, current_salary: "450000.00", preferred_locations: ["Pune", "Goa"] } as unknown as CandidateDetail;
     const form = formFromDetail(detail);
-    expect(form).toMatchObject({ name: "R", mobile: "", email: "r@x.com", source_id: "s", status: "placed", passing_year: "2020",
+    expect(form).toMatchObject({ name: "R", mobile: "", email: "r@x.com", source_id: "s", status: "placed",
       experience_months: "14", current_salary: "450000.00", preferred_locations: "Pune, Goa", location: "" });
   });
 

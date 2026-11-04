@@ -22,11 +22,11 @@ describe("recruiterCandidateSkills (rec-011)", () => {
 
   it("maps a form to a body: blanks are null, numbers are numbers, and an edit never sends the skill", () => {
     const form: SkillForm = { ...EMPTY_SKILL_FORM, skill: "Java", level: "advanced", experience_months: " 36 ", last_used_year: "", source: "certification" };
-    expect(toBody(form, true)).toEqual({ skill: "Java", level: "advanced", experience_months: 36, last_used_year: null, source: "certification" });
-    expect(toBody(form, false)).toEqual({ level: "advanced", experience_months: 36, last_used_year: null, source: "certification" });
+    expect(toBody(form, true)).toEqual({ skill: "Java", level: "advanced", experience_months: 36, last_used_year: null, source: "certification", is_primary: false });
+    expect(toBody(form, false)).toEqual({ level: "advanced", experience_months: 36, last_used_year: null, source: "certification", is_primary: false });
     expect(EMPTY_SKILL_FORM.source).toBe("resume");
     expect(formOf(candidateSkill({ experience_months: null, last_used_year: 2025 }))).toEqual({
-      skill: "Java", level: "advanced", experience_months: "", last_used_year: "2025", source: "resume",
+      skill: "Java", level: "advanced", experience_months: "", last_used_year: "2025", source: "resume", is_primary: false,
     });
   });
 });

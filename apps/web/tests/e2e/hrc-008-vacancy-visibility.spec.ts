@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Browser, type Page } from "@playwright/test";
 
-// hrc-008 (DEC-SCOPE-383): the Placement Manager (`jobs.publish`) sets who sees a job from its detail page. Internal hides it from the
+// hrc-008 (DEC-SCOPE-385): the Placement Manager (`jobs.publish`) sets who sees a job from its detail page. Internal hides it from the
 // careers page and the student portal (AC1); Public brings it back (+); the public apply route answers 404 for an internal job (-); a
 // recruiter without the grant is refused. A throwaway company and requirement per test; seeded demo staff accounts.
 const noSideScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);

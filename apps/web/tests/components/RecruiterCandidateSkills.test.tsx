@@ -80,7 +80,7 @@ describe("RecruiterCandidateSkills (rec-011)", () => {
     fireEvent.change(within(form).getByLabelText(/Source/), { target: { value: "course_completed" } });
     fireEvent.click(within(form).getByRole("button", { name: "Add" }));
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Added React."));
-    expect(sent("POST")).toEqual({ url: BASE, body: { skill: "React", level: "expert", experience_months: 24, last_used_year: null, source: "course_completed" } });
+    expect(sent("POST")).toEqual({ url: BASE, body: { skill: "React", level: "expert", experience_months: 24, last_used_year: null, source: "course_completed", is_primary: false } });
     expect(fetchMock.mock.calls.filter(([url, init]) => url === BASE && !(init as RequestInit | undefined)?.method)).toHaveLength(2);
   });
 
@@ -108,7 +108,7 @@ describe("RecruiterCandidateSkills (rec-011)", () => {
     fireEvent.change(within(form).getByLabelText(/Last used/), { target: { value: "" } });
     fireEvent.click(within(form).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Saved Java."));
-    expect(sent("PATCH")).toEqual({ url: `${BASE}/S1`, body: { level: "expert", experience_months: 36, last_used_year: null, source: "resume" } });
+    expect(sent("PATCH")).toEqual({ url: `${BASE}/S1`, body: { level: "expert", experience_months: 36, last_used_year: null, source: "resume", is_primary: false } });
   });
 
   it("changes the status and removes after a confirm", async () => {

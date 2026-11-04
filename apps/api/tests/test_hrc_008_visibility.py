@@ -1,4 +1,4 @@
-"""hrc-008 (DEC-SCOPE-383, spec docs/superpowers/specs/2026-11-04-hrc-008-vacancy-visibility-design.md): vacancy visibility -- who sees
+"""hrc-008 (DEC-SCOPE-385, spec docs/superpowers/specs/2026-11-04-hrc-008-vacancy-visibility-design.md): vacancy visibility -- who sees
 and applies to an open job (V5), the segment rule (V2), applications kept (V6) and the `jobs.publish` change route (V4, V7). The database
 is shared, so every test makes its own jobs, skills and pools and asserts only on them."""
 

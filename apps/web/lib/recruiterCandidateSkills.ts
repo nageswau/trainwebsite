@@ -11,9 +11,10 @@ export type CandidateSkill = {
   id: string; skill: SkillRef; category: { id: string; name: string }; level: SkillLevel; experience_months: number | null;
   last_used_year: number | null; source: SkillSource; status: SkillStatus; verified_by: PersonRef | null; verified_at: string | null;
   added_by: PersonRef | null; created_at: string; updated_at: string;
+  is_primary?: boolean; // hrc-010 (P7): primary vs secondary
 };
 export type CandidateSkillList = { items: CandidateSkill[]; can_edit: boolean };
-export type SkillForm = { skill: string; level: SkillLevel | ""; experience_months: string; last_used_year: string; source: SkillSource };
+export type SkillForm = { skill: string; level: SkillLevel | ""; experience_months: string; last_used_year: string; source: SkillSource; is_primary: boolean };
 
 export const candidateSkillsUrl = (candidateId: string, skillId?: string, suffix = "") =>
   `${CANDIDATES_URL}/${encodeURIComponent(candidateId)}/skills${skillId ? `/${encodeURIComponent(skillId)}` : ""}${suffix}`;
@@ -30,16 +31,17 @@ export const STATUS_LABEL: Record<SkillStatus, string> = { claimed: "Claimed", v
 export const LEVEL_LABEL: Record<string, string> = Object.fromEntries(LEVELS.map((l) => [l.key, l.label]));
 export const SOURCE_LABEL: Record<string, string> = Object.fromEntries(SOURCES.map((s) => [s.key, s.label]));
 
-export const EMPTY_SKILL_FORM: SkillForm = { skill: "", level: "", experience_months: "", last_used_year: "", source: "resume" };
+export const EMPTY_SKILL_FORM: SkillForm = { skill: "", level: "", experience_months: "", last_used_year: "", source: "resume", is_primary: false };
 
 export const formOf = (s: CandidateSkill): SkillForm => ({
   skill: s.skill.name, level: s.level, experience_months: s.experience_months?.toString() ?? "", last_used_year: s.last_used_year?.toString() ?? "", source: s.source,
+  is_primary: s.is_primary ?? false,
 });
 
 const whole = (value: string) => (value.trim() === "" ? null : Number(value.trim()));
 
 /** A blank number is null (clears it on an edit); an edit never sends the skill -- a different skill is a remove and an add. */
 export function toBody(form: SkillForm, adding: boolean): Record<string, unknown> {
-  const body = { level: form.level, experience_months: whole(form.experience_months), last_used_year: whole(form.last_used_year), source: form.source };
+  const body = { level: form.level, experience_months: whole(form.experience_months), last_used_year: whole(form.last_used_year), source: form.source, is_primary: form.is_primary };
   return adding ? { skill: form.skill, ...body } : body;
 }

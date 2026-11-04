@@ -13,6 +13,7 @@ import RecruiterRecordHistory from "@/components/RecruiterRecordHistory";
 import RecruiterRequirementRevenue from "@/components/RecruiterRequirementRevenue";
 import RecruiterShares from "@/components/RecruiterShares";
 import { ApprovalDecision, SubmitForApproval, SubmittedLine } from "@/components/RequirementApproval";
+import { OwnersCard, OwnershipHistory } from "@/components/RequirementOwners";
 import RequirementVisibility from "@/components/RequirementVisibility";
 import SearchableSelect from "@/components/SearchableSelect";
 import { sendJson } from "@/lib/apiErrors";
@@ -202,7 +203,9 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
 
   const date = (value: string | null | undefined) => (value ? formatCalendarDate(value) : "—");
   const rows: [string, ReactNode][] = [
-    ["Company", <Link key="company" href={`${COMPANIES_PATH}/${r.company.id}`} style={LINK_STYLE}>{r.company.name} ({r.company.code})</Link>],
+    ["Company", p.can_view_candidates
+      ? <Link key="company" href={`${COMPANIES_PATH}/${r.company.id}`} style={LINK_STYLE}>{r.company.name} ({r.company.code})</Link>
+      : `${r.company.name} (${r.company.code})`], // hrc-006: a placement officer has no company scope
     ["Requisition reference", display(r.requisition_reference)],
     ["Lead source", display(r.lead_source?.name)],
     ["Department", display(r.department)],
@@ -299,6 +302,9 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
       {!showEditor && <RequirementVisibility requirement={r} onDone={changed} />}
       {p.can_change_status && !showEditor && <StatusChange requirement={r} onChanged={changed} />}
       {p.can_reassign && <Reassign requirement={r} onChanged={changed} />}
+      {/* hrc-006: the co-owners, and every ownership change (re-read when the primary or the owners change) */}
+      <OwnersCard requirement={r} onChanged={changed} />
+      <OwnershipHistory key={[r.assigned_recruiter?.id, ...r.owners.map((o) => o.user.id)].join(",")} requirementId={r.id} />
       <section className="action-card wide" aria-labelledby={`requirement-${r.id}-history`}>
         <h3 id={`requirement-${r.id}-history`}>Status history</h3>
         <ul style={{ margin: 0, paddingLeft: 18 }}>
@@ -310,16 +316,21 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
           ))}
         </ul>
       </section>
-      {/* rec-017: after the requirement's own status controls and history, so its two "Change status" forms never sit side by side (QA-02). */}
-      <RecruiterRequirementCandidates requirementId={r.id} requirementLabel={r.title} companyId={r.company.id} refreshKey={shortlists + shares}
-        onShared={() => setShares((n) => n + 1)} />
-      {p.can_view_matches && (
-        <RecruiterRequirementMatches requirementId={r.id} requirementLabel={r.title} companyId={r.company.id} version={r.updated_at}
-          onRequirementChanged={setRequirement} onShortlisted={() => setShortlists((n) => n + 1)} onShared={() => setShares((n) => n + 1)} />
+      {/* rec-017: after the requirement's own status controls and history, so its two "Change status" forms never sit side by side (QA-02).
+          hrc-006 (O5): a placement officer co-owns the vacancy, not its candidates (hrc-012) -- none of these sections for them. */}
+      {p.can_view_candidates && (
+        <>
+          <RecruiterRequirementCandidates requirementId={r.id} requirementLabel={r.title} companyId={r.company.id} refreshKey={shortlists + shares}
+            onShared={() => setShares((n) => n + 1)} />
+          {p.can_view_matches && (
+            <RecruiterRequirementMatches requirementId={r.id} requirementLabel={r.title} companyId={r.company.id} version={r.updated_at}
+              onRequirementChanged={setRequirement} onShortlisted={() => setShortlists((n) => n + 1)} onShared={() => setShares((n) => n + 1)} />
+          )}
+          <RecruiterShares source={{ kind: "requirement", requirementId: r.id }} refreshKey={shares} />
+          {/* rec-031: the §23 revenue, for the roles that see it (RV10) */}
+          {showRevenue && <RecruiterRequirementRevenue requirementId={r.id} />}
+        </>
       )}
-      <RecruiterShares source={{ kind: "requirement", requirementId: r.id }} refreshKey={shares} />
-      {/* rec-031: the §23 revenue, for the roles that see it (RV10) */}
-      {showRevenue && <RecruiterRequirementRevenue requirementId={r.id} />}
       {/* hrc-004: who changed what, old → new; re-read after every save (the requirement's updated_at moves). */}
       <RecruiterRecordHistory key={r.updated_at} url={`${REQUIREMENTS_URL}/${encodeURIComponent(r.id)}/history`} />
     </>

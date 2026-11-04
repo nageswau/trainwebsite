@@ -11517,7 +11517,47 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0259_candidate_ownership`; API §12KA; RBAC §2.279.
 - **Feature ID authorized:** `hrc-012`. **Status:** built on `worktree-hrc-012`.
 
-### DEC-SCOPE-383 — Vacancy visibility: internal, candidate portal, segment, public (`hrc-008`)
+
+### DEC-SCOPE-383 — Candidate profile completion (`hrc-010`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-010` (PDF §5 field table, §8.3 C, Appendix B; PDF classified
+  `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00). Dependency hrc-004 (DEC-SCOPE-376) merged. The owner said to
+  proceed with the recommended answers, so Q-09 and P1–P12 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-010-candidate-profile-design.md`.
+- **Behaviour:** a candidate gains education rows (degree, specialisation, institution, year, marks/CGPA), employment rows (employer,
+  designation, industry, employment type, start, end or current), certification records, city/state/country, preferred contact, a
+  read-only `email_verified_at` (cleared when the email changes), relevant experience, tools, languages, primary skills, preferred roles,
+  work modes, employment types, shifts, availability date and relocation willingness, and an Appendix B completeness percentage.
+- **Builder's calls:** P1 each row list replaces its whole set on create/PATCH (no new routes, RBAC unchanged). P4/Q-09 total experience
+  is derived from the union of the employment periods while there are rows (a sent value is ignored); otherwise the manual figure stays.
+  P5 the legacy single fields mirror the rows (education row 1, the current job, the structured place, the first preferred role), so
+  search, matching and sharing are unchanged. P10 completeness weights 10/15/15/15/15/20/10, computed on read; whether salary is provided
+  is visible to every reader, never the amount. P11 backfill: education row 1 from qualification/college/passing year; `current_company`
+  is not turned into a dateless job. P12 merge moves a row kind only when the survivor has none.
+- **Numbering:** migration `0260_candidate_profile`; API §12KB; no RBAC change.
+- **Feature ID authorized:** `hrc-010`. **Status:** built on `worktree-hrc-010`.
+
+### DEC-SCOPE-384 — Vacancy co-ownership and assignment history (`hrc-006`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-006` (PDF §4.1 "one or more recruiters and placement officers … with a
+  primary owner"; §12 "Shared vacancy ownership … Preserve ownership and reassignment history"; PDF classified `UNVERIFIED`). Scope approved
+  by the owner 2026-11-01 (backlog Q-00). Dependency hrc-002 (DEC-SCOPE-374, the `placement_officer` role) merged. No open question is
+  listed for hrc-006; the owner said to proceed with the recommended answers, so O1–O12 are **the builder's calls (`NEEDS_CONFIRMATION`)**.
+  Design `docs/superpowers/specs/2026-11-04-hrc-006-vacancy-co-ownership-design.md`.
+- **Behaviour:** a job requirement keeps one primary recruiter (`jobs.assigned_recruiter_user_id`) and gains at most one placement-officer
+  owner and any number of collaborators (active recruiters or placement officers) in `job_assignments`. Every assignee reads and edits the
+  requirement (list, detail, edit, status, submit, JD); a non-assignee gets 404. The primary owner, a placement manager in scope or
+  super_admin add and remove owners; the primary changes only by Reassign / the rec-037 bulk reassign. `job_assignment_history` keeps every
+  add, remove and primary change (create, reassign, deactivation) with actor and time; migration 0261 backfills the current primaries.
+  Deactivating a user removes their co-ownerships (the rec-037 rule still makes a manager reassign their primaries first).
+- **Builder's calls:** O1 the primary stays a single column (backlog asked for it in the table: two copies would drift). O4 a placement
+  officer gets a requirement scope only on the requirement and JD routes; every candidate-side route (applications, interviews, offers,
+  matches, shares, revenue) still refuses the role until hrc-012. O5 `can_view_candidates` hides those sections for them in the web. O6
+  the primary cannot remove themselves. O8 deactivation releases co-ownerships. Notifications are hrc-032's.
+- **Numbering:** migration `0261_job_assignments`; API §12KC; RBAC §2.280.
+- **Feature ID authorized:** `hrc-006`. **Status:** built on `worktree-hrc-006`.
+
+### DEC-SCOPE-385 — Vacancy visibility: internal, candidate portal, segment, public (`hrc-008`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-008` (PDF §4.2 Visibility, §4.3, §13; PDF classified `UNVERIFIED`). Scope
   approved by the owner 2026-11-01 (backlog Q-00: all phases). Dependency hrc-007 (DEC-SCOPE-380) merged. The owner said to proceed with
@@ -11533,5 +11573,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   `recruiter_requirement.visibility` per change (pool by name). V8 the sitemap lists no job URLs; the employer's `visible_to_students` is
   false for an internal job; the careers page and the IT home page read the public job list uncached (browser QA-01: the 60 s page cache
   kept a just-hidden job listed).
-- **Numbering:** migration `0260_job_visibility`; API §12KB; RBAC §2.280.
+- **Numbering:** migration `0262_job_visibility`; API §12KD; RBAC §2.281.
 - **Feature ID authorized:** `hrc-008`. **Status:** built on `worktree-hrc-008`.

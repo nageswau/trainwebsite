@@ -16,13 +16,14 @@ from app.api.bdm import LIMIT, OFFSET, SEARCH, _matching
 from app.api.deps import get_current_user, require_permission
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
-from app.models import JOB_PRIORITIES, JOB_STATUSES, Company, Job, JobApprovalSetting, JobSkill, User
+from app.models import JOB_ASSIGNMENT_ROLES, JOB_PRIORITIES, JOB_STATUSES, Company, Job, JobApprovalSetting, JobSkill, User
 from app.schemas import (
     REC_REQUIREMENT_FIELDS,
     JobApprovalSettingsUpdate,
     RecRequirementApprovalNote,
     RecRequirementAssign,
     RecRequirementCreate,
+    RecRequirementOwnerAdd,
     RecRequirementReject,
     RecRequirementStatusChange,
     RecRequirementUpdate,
@@ -32,6 +33,7 @@ from app.schemas import (
 from app.services import applications, candidates, matching, recruitment_history
 from app.services import recruiter_companies as companies
 from app.services import recruiter_requirements as svc
+from app.services import requirement_owners as owners
 from app.services.recruiter import ROLE, recruiter_context
 from app.services.stale_guard import require_fresh
 
@@ -62,7 +64,7 @@ def _assigned(user: User, assigned: str | None) -> list:
 
 @router.get("/statuses")
 async def requirement_statuses(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    await svc.caller_scope(db, user)  # the same role gate as the list
+    await svc.caller_scope(db, user, officers=True)  # the same role gate as the list (hrc-006: a placement officer reads its own)
     return svc.catalogue()
 
 
@@ -97,7 +99,7 @@ async def list_requirements(
     db: AsyncSession = Depends(get_db),
 ):
     """Filters are ANDed with the caller's scope, so they can only narrow it. One query for the page (company + recruiter joined)."""
-    filters = await svc.caller_scope(db, user)
+    filters = await svc.caller_scope(db, user, officers=True)
     filters += _matching(like_pattern(q), Job.title, Job.requirement_code, Company.name)
     if status:
         filters.append(Job.status == status)
@@ -167,7 +169,7 @@ async def create_requirement(payload: RecRequirementCreate, user: User = Depends
 
 @router.get("/{requirement_id}")
 async def get_requirement(requirement_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    job = await svc.load_scoped(db, user, requirement_id)
+    job = await svc.load_scoped(db, user, requirement_id, officers=True)
     return {"requirement": await svc.requirement_out(db, user, job, refresh=False)}
 
 
@@ -175,7 +177,7 @@ async def get_requirement(requirement_id: UUID, user: User = Depends(get_current
 async def requirement_history(requirement_id: UUID, response: Response, limit: int = Query(20, ge=1, le=100), offset: int = OFFSET,
                               user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """hrc-004 (DEC-SCOPE-376 B1/B6): the requirement's and its JD's changes with before/after values, for its readers (scope = 404)."""
-    job = await svc.load_scoped(db, user, requirement_id)
+    job = await svc.load_scoped(db, user, requirement_id, officers=True)
     response.headers.update(NO_STORE)
     return await recruitment_history.history(db, "job", job.id, ("recruiter_requirement.", "job_description."), limit=limit, offset=offset)
 
@@ -183,7 +185,7 @@ async def requirement_history(requirement_id: UUID, response: Response, limit: i
 @router.patch("/{requirement_id}")
 async def update_requirement(requirement_id: UUID, payload: RecRequirementUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Only the fields sent; values equal to the stored ones are not changes (no audit, no updated_at bump)."""
-    job = await svc.load_scoped(db, user, requirement_id, lock=True)
+    job = await svc.load_scoped(db, user, requirement_id, lock=True, officers=True)
     svc.require(user, job, "can_edit", "update")
     await require_fresh(db, stored=job.updated_at, expected=payload.expected_updated_at, entity=("job", job.id), action_prefix="recruiter_requirement.",
                         since=payload.expected_updated_at, current=lambda: svc.requirement_out(db, user, job, refresh=False))
@@ -227,7 +229,7 @@ async def update_requirement(requirement_id: UUID, payload: RecRequirementUpdate
 @router.post("/{requirement_id}/status")
 async def change_requirement_status(requirement_id: UUID, payload: RecRequirementStatusChange, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """AC2: every move is a history row (actor, note) in the same transaction; a move not in the table is a 409."""
-    job = await svc.load_scoped(db, user, requirement_id, lock=True)
+    job = await svc.load_scoped(db, user, requirement_id, lock=True, officers=True)
     svc.require(user, job, "can_change_status", "status")
     previous = await svc.change_status(db, user, job, payload.status, payload.note)
     job.updated_by_user_id = user.id
@@ -241,7 +243,7 @@ async def change_requirement_status(requirement_id: UUID, payload: RecRequiremen
 @router.post("/{requirement_id}/submit")
 async def submit_requirement(requirement_id: UUID, payload: RecRequirementApprovalNote, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """A6: the requirement's writer sends a Draft / On Hold job for approval (409 when its source needs none)."""
-    job = await svc.load_scoped(db, user, requirement_id, lock=True)
+    job = await svc.load_scoped(db, user, requirement_id, lock=True, officers=True)
     svc.require(user, job, "can_edit", "submit")
     await svc.submit(db, user, job, payload.note)  # history + audit
     await db.commit()
@@ -270,7 +272,7 @@ async def reject_requirement(requirement_id: UUID, payload: RecRequirementReject
     return await _decide(db, user, requirement_id, False, payload.reason)
 
 
-# --- hrc-008 (DEC-SCOPE-383 V7): who sees the job --------------------------------------------------------------------------------------
+# --- hrc-008 (DEC-SCOPE-385 V7): who sees the job --------------------------------------------------------------------------------------
 @router.put("/{requirement_id}/visibility")
 async def change_requirement_visibility(requirement_id: UUID, payload: RecRequirementVisibility, user: User = Depends(PUBLISHER), db: AsyncSession = Depends(get_db)):
     """Grant (the dependency, 403) -> exists (404, any job: the grant is division-wide like `jobs.approve`) -> an active pool (422)."""
@@ -378,9 +380,55 @@ async def assign_requirement(requirement_id: UUID, payload: RecRequirementAssign
         raise HTTPException(409, "Already assigned to this recruiter")
     target = await companies.locked_recruiter_target(db, user, payload.recruiter_user_id)
     previous = job.assigned_recruiter_user_id
-    job.assigned_recruiter_user_id, job.updated_by_user_id = target.id, user.id
+    await owners.set_primary(db, user, job, target.id)  # hrc-006 (O7): history; a collaborator promoted gives up that role
+    job.updated_by_user_id = user.id
     svc.audit(db, user, "assign", job.id, {"from_user_id": str(previous) if previous else None, "to_user_id": str(target.id),
                                            "changes": {"recruiter": [await svc.recruiter_name(db, previous), target.full_name]}})
     await db.commit()
     svc.log("recruiter_requirement_assigned", user, job.id, to_user_id=str(target.id))
+    return {"requirement": await svc.requirement_out(db, user, job)}
+
+
+# --- hrc-006 (DEC-SCOPE-384 O3-O11): co-owners and the ownership history ---------------------------------------------------------
+@router.get("/{requirement_id}/assignment-options")
+async def assignment_options(requirement_id: UUID, role: Literal[JOB_ASSIGNMENT_ROLES], q: str | None = SEARCH, limit: int = Query(20, ge=1, le=50),
+                             user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):  # fmt: skip
+    """The owner picker, for those who manage the owners: eligible active people not already on the requirement."""
+    job = await svc.load_scoped(db, user, requirement_id, officers=True)
+    svc.require(user, job, "can_manage_owners", "assignment_options")
+    return await owners.options(db, job, role, _matching(like_pattern(q), User.full_name, User.email), limit)
+
+
+@router.get("/{requirement_id}/assignment-history")
+async def assignment_history(requirement_id: UUID, response: Response, limit: int = Query(20, ge=1, le=100), offset: int = OFFSET,
+                             user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):  # fmt: skip
+    """AC3: every add, remove and primary change with actor and time, newest first, for the requirement's readers."""
+    job = await svc.load_scoped(db, user, requirement_id, officers=True)
+    response.headers.update(NO_STORE)
+    return await owners.history(db, job.id, limit=limit, offset=offset)
+
+
+@router.post("/{requirement_id}/assignments", status_code=201)
+async def add_owner(requirement_id: UUID, payload: RecRequirementOwnerAdd, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """One transaction: scope, the job row lock, who may manage (403), cancelled (409), the target (O3), history and audit."""
+    job = await svc.load_scoped(db, user, requirement_id, lock=True, officers=True)
+    svc.require(user, job, "can_manage_owners", "assignment_add")
+    target = await owners.add(db, user, job, payload.user_id, payload.role)
+    job.updated_by_user_id = user.id
+    svc.audit(db, user, "owner_added", job.id, {"user_id": str(target.id), "role": payload.role, "changes": {owners.ROLE_LABELS[payload.role]: [None, target.full_name]}})
+    await db.commit()
+    svc.log("recruiter_requirement_owner_added", user, job.id, user_id=str(target.id), role=payload.role)
+    return {"requirement": await svc.requirement_out(db, user, job)}
+
+
+@router.delete("/{requirement_id}/assignments/{user_id}")
+async def remove_owner(requirement_id: UUID, user_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """O6: never the primary (409); someone not on the requirement is 404."""
+    job = await svc.load_scoped(db, user, requirement_id, lock=True, officers=True)
+    svc.require(user, job, "can_manage_owners", "assignment_remove")
+    target, role = await owners.remove(db, user, job, user_id)
+    job.updated_by_user_id = user.id
+    svc.audit(db, user, "owner_removed", job.id, {"user_id": str(user_id), "role": role, "changes": {owners.ROLE_LABELS[role]: [target.full_name, None]}})
+    await db.commit()
+    svc.log("recruiter_requirement_owner_removed", user, job.id, user_id=str(user_id), role=role)
     return {"requirement": await svc.requirement_out(db, user, job)}

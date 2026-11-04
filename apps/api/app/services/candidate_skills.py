@@ -151,6 +151,7 @@ async def items_out(db: AsyncSession, candidate_id: UUID, only: UUID | None = No
             "last_used_year": row.last_used_year,
             "source": row.source,
             "status": row.status,
+            "is_primary": row.is_primary,  # hrc-010 (P7)
             "verified_by": _person(verified_by),
             "verified_at": row.verified_at,
             "added_by": _person(added_by),

@@ -1,4 +1,4 @@
-"""hrc-008 (DEC-SCOPE-383 V5): which open jobs a public visitor or a student may see and apply to. Staff readers do not call this -- they
+"""hrc-008 (DEC-SCOPE-385 V5): which open jobs a public visitor or a student may see and apply to. Staff readers do not call this -- they
 see every job. A job outside the caller's visibility is answered exactly like a missing one (the readers' own 404).
 
 `segment` jobs reach the members of their talent pool, computed on read through the rec-015 rule (V2): one query for the student's

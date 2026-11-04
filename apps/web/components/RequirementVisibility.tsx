@@ -4,7 +4,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { sendJson } from "@/lib/apiErrors";
 import { isRequirementBody, type Requirement, REQUIREMENTS_URL, VISIBILITY_HINT, VISIBILITY_OPTIONS, type Visibility } from "@/lib/recruiterRequirements";
 
-// hrc-008 (DEC-SCOPE-383 V1/V4/V7): who sees this job. Every reader sees the current choice; a `jobs.publish` holder (`can_change`) gets
+// hrc-008 (DEC-SCOPE-385 V1/V4/V7): who sees this job. Every reader sees the current choice; a `jobs.publish` holder (`can_change`) gets
 // the form. The server validates the pool and the grant; this only sends and shows its answer.
 type Pool = { id: string; name: string };
 const POOLS_URL = "/api/v1/recruiter/pools"; // rec-015: active pools only, by name

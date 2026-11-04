@@ -1,4 +1,4 @@
-"""hrc-008 -- migration 0260_job_visibility (DEC-SCOPE-383): the chain, the frozen copies and the round trip, in a throwaway database
+"""hrc-008 -- migration 0262_job_visibility (DEC-SCOPE-385): the chain, the frozen copies and the round trip, in a throwaway database
 (the hrc-001 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -14,14 +14,14 @@ from app.core.config import settings
 from app.models import JOB_SEGMENT_POOL_CHECK, JOB_VISIBILITIES, JOB_VISIBILITY_CHECK
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_hrc_008_migration_0260", VERSIONS / "0260_job_visibility.py")
+_spec = importlib.util.spec_from_file_location("_hrc_008_migration_0262", VERSIONS / "0262_job_visibility.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0260_job_visibility", "0259_candidate_ownership"
+HEAD, BASE = "0262_job_visibility", "0261_job_assignments"
 
 
-def test_migration_chains_after_0259():
+def test_migration_chains_after_0261():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

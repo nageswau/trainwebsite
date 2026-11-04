@@ -28,6 +28,7 @@ from app.models import (
     Job,
     JobApplication,
     JobApprovalSetting,
+    JobAssignment,
     JobSkill,
     JobStatusHistory,
     RecJobCategory,
@@ -37,6 +38,7 @@ from app.models import (
     User,
 )
 from app.services import company_pipeline
+from app.services import requirement_owners as owners
 from app.services import skills as skills_master
 from app.services.bdm_appointments import IST
 from app.services.candidates import READERS as CANDIDATE_READERS
@@ -85,6 +87,7 @@ REFUSALS = {
     "can_edit": "Only the recruiter on this requirement can edit it",
     "can_change_status": "Only the recruiter on this requirement can change its status",
     "can_reassign": "Only a placement manager can reassign this requirement",
+    "can_manage_owners": "Only the primary owner or a placement manager can change the owners",
 }
 DEFAULT_WEIGHT = {"required": 2, "preferred": 1}
 LEGACY_WORDS = ("draft", "open", "closed")  # J3: what the employer and /workflows/it/jobs routes have always accepted
@@ -232,7 +235,9 @@ async def fill_when_complete(db: AsyncSession, user: User | None, job_id: UUID) 
 
 
 async def record_created(db: AsyncSession, user: User, job: Job, note: str = "Created") -> None:
+    """Every create path (recruiter, employer, legacy): the first status row and, hrc-006 (O2), the primary owner's history row."""
     db.add(JobStatusHistory(job_id=job.id, from_status=None, to_status=job.status, note=note, changed_by_user_id=user.id))
+    owners.record_primary(db, user, job)
     await drive_company_stage(db, user, job)
 
 
@@ -319,25 +324,31 @@ def _companies_of(*conditions):
     return select(Company.id).where(*conditions)
 
 
-async def caller_scope(db: AsyncSession, user: User) -> list:
-    """Read scope as SQL filters. Sub-selects only, so `FOR UPDATE` never locks a company or profile row."""
+async def caller_scope(db: AsyncSession, user: User, *, officers: bool = False) -> list:
+    """Read scope as SQL filters. Sub-selects only, so `FOR UPDATE` never locks a company or profile row. hrc-006 (O4): an assignee
+    (`job_assignments`) reads the job too; a placement officer has a scope only where the route opts in with `officers` (the requirement
+    and its JD), so every candidate-side caller of this function keeps refusing the role."""
     if user.role == ROLE:
         await recruiter_context(db, user)
-        return [or_(Job.assigned_recruiter_user_id == user.id, Job.company_id.in_(_companies_of(Company.assigned_recruiter_user_id == user.id)))]
+        mine = Company.assigned_recruiter_user_id == user.id
+        return [or_(Job.assigned_recruiter_user_id == user.id, Job.company_id.in_(_companies_of(mine)), Job.id.in_(owners.jobs_of(JobAssignment.user_id == user.id)))]
     if user.role == MANAGER_ROLE:
         team = select(RecruiterProfile.user_id).where(RecruiterProfile.reporting_manager_user_id == user.id)
         unassigned = and_(Job.assigned_recruiter_user_id.is_(None), Job.company_id.in_(_companies_of(Company.assigned_recruiter_user_id.is_(None))))
-        return [or_(Job.assigned_recruiter_user_id.in_(team), Job.company_id.in_(_companies_of(Company.assigned_recruiter_user_id.in_(team))), unassigned)]
+        return [or_(Job.assigned_recruiter_user_id.in_(team), Job.company_id.in_(_companies_of(Company.assigned_recruiter_user_id.in_(team))),
+                    Job.id.in_(owners.jobs_of(JobAssignment.user_id.in_(team))), unassigned)]  # fmt: skip
     if user.role == "super_admin":
         return []
     if user.role == "bdm":  # R10: the assigned BDM of the company reads
         return [Job.company_id.in_(_companies_of(Company.assigned_bdm_user_id == user.id))]
+    if officers and user.role == owners.OFFICER_ROLE:
+        return [Job.id.in_(owners.jobs_of(JobAssignment.user_id == user.id))]
     raise HTTPException(403, "Recruiter role required")
 
 
-async def load_scoped(db: AsyncSession, user: User, job_id: UUID, *, lock: bool = False) -> Job:
+async def load_scoped(db: AsyncSession, user: User, job_id: UUID, *, lock: bool = False, officers: bool = False) -> Job:
     """With `lock`, the row is locked by id first and scope is checked in a fresh statement (the rec-003 / bdm-025 rule)."""
-    stmt = select(Job).where(Job.id == job_id, *await caller_scope(db, user))
+    stmt = select(Job).where(Job.id == job_id, *await caller_scope(db, user, officers=officers))
     if lock:
         await db.execute(select(Job.id).where(Job.id == job_id).with_for_update())
         stmt = stmt.execution_options(populate_existing=True)
@@ -347,19 +358,33 @@ async def load_scoped(db: AsyncSession, user: User, job_id: UUID, *, lock: bool 
     return job
 
 
+WRITERS = (ROLE, owners.OFFICER_ROLE, "super_admin")  # hrc-006 (O5): in scope, a placement officer is an assignee
+
+
+def _manages_owners(user: User, job: Job) -> bool:
+    """hrc-006 (O5): the primary owner, a placement manager (in scope) or super_admin."""
+    return user.role in (MANAGER_ROLE, "super_admin") or user.id == job.assigned_recruiter_user_id
+
+
 def permissions(user: User, job: Job) -> dict[str, bool]:
-    writer = user.role in (ROLE, "super_admin")
+    writer = user.role in WRITERS
+    live = job.status != "cancelled"
     return {
-        "can_edit": writer and job.status != "cancelled",
+        "can_edit": writer and live,
         "can_change_status": writer and bool(TRANSITIONS[job.status]),
-        "can_reassign": user.role in (MANAGER_ROLE, "super_admin") and job.status != "cancelled",
+        "can_reassign": user.role in (MANAGER_ROLE, "super_admin") and live,
+        "can_manage_owners": _manages_owners(user, job) and live,
         "can_view_matches": user.role in CANDIDATE_READERS,  # rec-016 (M7): the assigned BDM reads the requirement, not the pool
+        "can_view_candidates": user.role != owners.OFFICER_ROLE,  # hrc-006 (O5): the officer's candidate access waits for hrc-012
     }
 
 
 def require(user: User, job: Job, action: str, route: str) -> None:
     """403 for the wrong role first (logged), then 409 for the wrong state."""
-    allowed = user.role in ((MANAGER_ROLE, "super_admin") if action == "can_reassign" else (ROLE, "super_admin"))
+    if action == "can_manage_owners":
+        allowed = _manages_owners(user, job)
+    else:
+        allowed = user.role in ((MANAGER_ROLE, "super_admin") if action == "can_reassign" else WRITERS)
     if not allowed:
         logger.warning("recruiter_requirement_write_refused", extra={"extra_fields": {"actor_id": str(user.id), "job_id": str(job.id), "route": route}})
         raise HTTPException(403, REFUSALS[action])
@@ -538,6 +563,7 @@ async def requirement_out(db: AsyncSession, user: User, job: Job, *, refresh: bo
         "salary_period": job.salary_period,
         "benefits": job.benefits,
         "hiring_manager": person(people.get(job.hiring_manager_user_id)),
+        "owners": await owners.owners_out(db, job.id),  # hrc-006 (O11): besides the primary (`assigned_recruiter`)
         "expected_joining_date": job.expected_joining_date,
         "skills": [
             {"id": s.id, "name": s.name, "kind": s.kind, "weight": s.weight, "skill_id": s.skill_id, "matched": s.skill_id is not None} for s in skills

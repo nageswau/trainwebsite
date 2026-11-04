@@ -18,7 +18,25 @@ import RecruiterRecordHistory from "@/components/RecruiterRecordHistory";
 import RecruiterTimeline from "@/components/RecruiterTimeline";
 import { sendRequest } from "@/lib/apiErrors";
 import { telHref } from "@/lib/recruiterCalls";
-import { AMOUNTS, CANDIDATES_PATH, STATUS_LABEL, candidateUrl, experienceLabel, packageText, type CandidateDetail } from "@/lib/recruiterCandidates";
+import {
+  AMOUNTS, CANDIDATES_PATH, CONTACT_METHODS, EMPLOYMENT_TYPES, ROW_KINDS, SHIFTS, STATUS_LABEL, WORK_MODES, candidateUrl, educationRows, experienceLabel, labelOf, packageText,
+  rowText, type CandidateDetail, type Completeness, type RowKind,
+} from "@/lib/recruiterCandidates";
+
+/** hrc-010 (P10): the Appendix B completeness as a meter, with what is still missing. */
+function CompletenessBar({ completeness }: { completeness: Completeness }) {
+  const missing = completeness.items.filter((i) => !i.met);
+  return (
+    <div style={{ display: "grid", gap: 4, marginBottom: 12 }}>
+      <span id="cand-completeness-label" style={{ fontWeight: 600 }}>Profile {completeness.percent}% complete</span>
+      <div role="meter" aria-labelledby="cand-completeness-label" aria-valuemin={0} aria-valuemax={100} aria-valuenow={completeness.percent}
+        style={{ height: 8, borderRadius: 4, background: "var(--border, #e5e7eb)", overflow: "hidden" }}>
+        <div style={{ width: `${completeness.percent}%`, height: "100%", background: "var(--primary, #2563eb)" }} />
+      </div>
+      {missing.length > 0 && <span className="muted" style={{ fontSize: 13 }}>Missing: {missing.map((i) => `${i.label} (${i.weight}%)`).join(", ")}</span>}
+    </div>
+  );
+}
 
 // rec-009 (spec §6): one candidate -- the §8 profile, Edit (writers), Archive/Restore with a confirm, and the resume versions. hr_team reads
 // only (`can_edit` false). Skills (rec-011) sit above the resumes; Applications (rec-017), Calls (rec-025) and messages (rec-026) sit
@@ -66,11 +84,23 @@ export default function RecruiterCandidateDetail({ initial, merged }: { initial:
     ...AMOUNTS.map(({ key, label }) => [label, packageText(candidate, key)] as [string, React.ReactNode]),
     ["Negotiable", candidate.salary_negotiable === true ? "Yes" : candidate.salary_negotiable === false ? "No" : null],
   ];
+  const list = (values: string[] | undefined, options?: readonly { key: string; label: string }[]) =>
+    (values ?? []).map((v) => (options ? labelOf(options, v) : v)).join(", ") || null;
+  const derived = (candidate.employment ?? []).length > 0; // hrc-010 P4: worked out from the jobs
+  const rowsOf = (kind: RowKind) => (kind === "education" ? educationRows(candidate) : candidate[kind] ?? []) as Record<string, unknown>[]; // QA-02
   const rows: [string, React.ReactNode][] = [
-    ["Mobile", tel ? <a href={tel}>{candidate.mobile}<span className="visually-hidden"> (call {candidate.name})</span></a> : candidate.mobile], ["Email", candidate.email], ["Location", candidate.location], ["Qualification", candidate.qualification],
-    ["College", candidate.college], ["Passing year", candidate.passing_year], ["Total experience", experienceLabel(candidate.experience_months)],
+    ["Mobile", tel ? <a href={tel}>{candidate.mobile}<span className="visually-hidden"> (call {candidate.name})</span></a> : candidate.mobile],
+    ["Email", candidate.email && <>{candidate.email}{candidate.email_verified_at ? <> <span className="badge">Verified</span></> : null}</>],
+    ["Preferred contact", labelOf(CONTACT_METHODS, candidate.preferred_contact) || null], ["Location", candidate.location],
+    ["Total experience", <>{experienceLabel(candidate.experience_months)}{derived && <span className="muted" style={{ fontSize: 13 }}> (from employment history)</span>}</>],
+    ["Relevant experience", candidate.relevant_experience_months == null ? null : experienceLabel(candidate.relevant_experience_months)],
     ["Current company", candidate.current_company], ...compensation, ["Notice period", candidate.notice_days === null ? null : `${candidate.notice_days} days`],
-    ["Preferred locations", candidate.preferred_locations.join(", ") || null], ["Preferred role", candidate.preferred_role],
+    ["Preferred roles", list(candidate.preferred_roles?.length ? candidate.preferred_roles : candidate.preferred_role ? [candidate.preferred_role] : [])],
+    ["Preferred locations", candidate.preferred_locations.join(", ") || null], ["Work modes", list(candidate.work_modes, WORK_MODES)],
+    ["Employment types", list(candidate.employment_types, EMPLOYMENT_TYPES)], ["Shifts", list(candidate.shifts, SHIFTS)],
+    ["Available from", candidate.available_from ? <LocalTime value={candidate.available_from} /> : null],
+    ["Willing to relocate", candidate.willing_to_relocate === true ? "Yes" : candidate.willing_to_relocate === false ? "No" : null],
+    ["Tools", list(candidate.tools)], ["Languages", list(candidate.languages)],
     ["LinkedIn", candidate.linkedin && <a href={candidate.linkedin} target="_blank" rel="noopener noreferrer nofollow" style={{ overflowWrap: "anywhere" }}>{candidate.linkedin}</a>],
     ["Source", `${candidate.source.name}${candidate.source.active ? "" : " (inactive)"}`], ["Source detail", candidate.source_detail],
     ["Added", <><LocalTime value={candidate.created_at} time />{candidate.created_by ? ` by ${candidate.created_by.full_name}` : ""}</>],
@@ -108,6 +138,7 @@ export default function RecruiterCandidateDetail({ initial, merged }: { initial:
       ) : (
         <section aria-labelledby="cand-profile-heading" className="action-card">
           <h3 id="cand-profile-heading" style={{ marginTop: 0 }}>Profile</h3>
+          {candidate.completeness && <CompletenessBar completeness={candidate.completeness} />}
           <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))", gap: "8px 16px", margin: 0 }}>
             {rows.map(([term, value]) => (
               <div key={term}>
@@ -116,6 +147,20 @@ export default function RecruiterCandidateDetail({ initial, merged }: { initial:
               </div>
             ))}
           </dl>
+          {(Object.keys(ROW_KINDS) as RowKind[]).map((kind) => (
+            <div key={kind} style={{ marginTop: 16 }}>
+              <h4 style={{ margin: "0 0 4px" }}>{ROW_KINDS[kind].legend}</h4>
+              {rowsOf(kind).length === 0 ? <p className="muted" style={{ margin: 0 }}>None recorded.</p> : (
+                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                  {rowsOf(kind).map((row, i) => (
+                    <li key={i} style={{ overflowWrap: "anywhere" }}>
+                      {rowText(kind, row)}{kind === "employment" && row.end_date === null && <> <span className="badge">Current</span></>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
         </section>
       )}
       {/* hrc-012: who owns the candidate; a change re-reads the whole record (Change history included) */}
