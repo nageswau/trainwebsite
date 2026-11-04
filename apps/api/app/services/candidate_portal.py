@@ -262,14 +262,13 @@ async def verify(db: AsyncSession, raw: str, ip: str | None) -> str:
     new_email = consumed.new_email
     if await _email_in_use(db, new_email, user):
         raise HTTPException(409, "That email address is already in use")
-    old_email, user.email, user.email_verified = user.email, new_email, True
+    user.email, user.email_verified = new_email, True
     candidate = await db.scalar(select(Candidate).where(Candidate.user_id == user.id).with_for_update())
     if candidate:
         before = {"email": candidate.email}
         candidate.email, candidate.email_verified_at, candidate.updated_by_user_id, candidate.updated_at = new_email, now, user.id, now
         svc.audit(db, user, "update", candidate, {"fields": ["email"], "changes": recruitment_history.diff(before, {"email": new_email}), "self_service": True})
-    db.add(AuditLog(user_id=user.id, action="candidate_portal.email_changed", entity_type="user", entity_id=str(user.id),
-                    metadata_json={"changed": bool(old_email != new_email)}))  # fmt: skip
+    db.add(AuditLog(user_id=user.id, action="candidate_portal.email_changed", entity_type="user", entity_id=str(user.id), metadata_json={}))
     return consumed.purpose
 
 
@@ -289,7 +288,7 @@ async def save_allow_list(db: AsyncSession, user: User, fields) -> list[str]:
     if row is None:
         row = CandidateSelfServiceSetting(id=1)
         db.add(row)
-    before = list(row.fields or DEFAULT_FIELDS) if row.fields is not None else list(DEFAULT_FIELDS)
+    before = row.fields if row.fields is not None else list(DEFAULT_FIELDS)
     row.fields, row.updated_by_user_id = chosen, user.id
     db.add(AuditLog(user_id=user.id, action="candidate.self_service_settings", entity_type="candidate_self_service_settings", entity_id="1",
                     metadata_json={"from": before, "to": chosen}))  # fmt: skip

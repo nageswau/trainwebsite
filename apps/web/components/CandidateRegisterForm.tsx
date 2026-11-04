@@ -58,7 +58,7 @@ export default function CandidateRegisterForm() {
   }
 
   return (
-    <form className="form" onSubmit={submit} noValidate={false}>
+    <form className="form" onSubmit={submit}>
       <div className="field"><label htmlFor="cand-name">Full name</label><input id="cand-name" name="full_name" autoComplete="name" required minLength={2} maxLength={160} /></div>
       <div className="field"><label htmlFor="cand-email">Email</label><input id="cand-email" name="email" type="email" autoComplete="email" required maxLength={255} /></div>
       <div className="field"><label htmlFor="cand-phone">Mobile (optional)</label><input id="cand-phone" name="phone" type="tel" autoComplete="tel" maxLength={40} /></div>
