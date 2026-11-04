@@ -6308,6 +6308,17 @@ CANDIDATE_MERGE_CHECKS = {  # hrc-014 (DEC-SCOPE-377 D8): migration 0258 repeats
 }
 # hrc-011 C2: the pay periods (Q-10) and how many of each make a year.
 SALARY_PERIODS = {"year": 1, "month": 12}
+# hrc-010 (DEC-SCOPE-383 P9): how the person likes to be reached; migration 0260 repeats these checks (test_hrc_010_migration).
+CANDIDATE_CONTACT_METHODS = ("phone", "whatsapp", "email")
+CANDIDATE_PROFILE_CHECKS = {
+    "ck_candidates_preferred_contact": _in("preferred_contact", CANDIDATE_CONTACT_METHODS),
+    "ck_candidates_relevant_experience": "relevant_experience_months IS NULL OR relevant_experience_months BETWEEN 0 AND 600",
+}
+CANDIDATE_EMPLOYMENT_CHECKS = {
+    "ck_candidate_employment_dates": "end_date IS NULL OR end_date >= start_date",
+    "ck_candidate_employment_type": _in("employment_type", JOB_EMPLOYMENT_TYPES),
+}
+CANDIDATE_CERTIFICATION_CHECKS = {"ck_candidate_certifications_dates": "expires_on IS NULL OR issued_on IS NULL OR expires_on >= issued_on"}
 
 
 class Candidate(Base, TimestampMixin):
@@ -6316,7 +6327,7 @@ class Candidate(Base, TimestampMixin):
 
     __tablename__ = "candidates"
     __table_args__ = (
-        *(CheckConstraint(sql, name=name) for name, sql in (CANDIDATE_CHECKS | CANDIDATE_PACKAGE_CHECKS | CANDIDATE_MERGE_CHECKS).items()),
+        *(CheckConstraint(sql, name=name) for name, sql in (CANDIDATE_CHECKS | CANDIDATE_PACKAGE_CHECKS | CANDIDATE_MERGE_CHECKS | CANDIDATE_PROFILE_CHECKS).items()),
         Index("uq_candidates_mobile", "mobile_normalized", unique=True, postgresql_where=text("mobile_normalized IS NOT NULL")),
         Index("uq_candidates_email", text("lower(email)"), unique=True, postgresql_where=text("email IS NOT NULL")),
         Index("ix_candidates_source_id", "source_id"),
@@ -6367,10 +6378,81 @@ class Candidate(Base, TimestampMixin):
     merged_into_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"), nullable=True)
     merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     merged_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    # hrc-010 (DEC-SCOPE-383): structured location (sets `location`, P5), contact preference and verification (P9), the skills extras
+    # (P7) and the preferences (P8). The lists hold job-enum values (work modes, employment types, shifts) or short texts.
+    country: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    preferred_contact: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    relevant_experience_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    tools: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    languages: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    preferred_roles: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    work_modes: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    employment_types: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    shifts: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    available_from: Mapped[date | None] = mapped_column(Date, nullable=True)
+    willing_to_relocate: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     # hrc-012 (DEC-SCOPE-382 O2/O3): the one primary recruiter (NULL = unassigned) and the placement-officer owner. Visibility stays
     # pool-wide (O1); services/candidate_ownership decides who may change them.
     owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     placement_officer_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+
+
+class CandidateEducation(Base):
+    """hrc-010 (P2): one degree, in the recruiter's order (`position`); row 1 sets qualification, college and passing year (P5)."""
+
+    __tablename__ = "candidate_education"
+    __table_args__ = (
+        CheckConstraint("year IS NULL OR year BETWEEN 1950 AND 2100", name="ck_candidate_education_year"),
+        Index("ix_candidate_education_candidate", "candidate_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"))
+    position: Mapped[int] = mapped_column(SmallInteger)
+    degree: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    specialisation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    institution: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    year: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    grade: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+
+class CandidateEmployment(Base):
+    """hrc-010 (P3/P4): one job; no end date = current. The union of the periods is the derived total experience."""
+
+    __tablename__ = "candidate_employment"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_EMPLOYMENT_CHECKS.items()),
+        Index("ix_candidate_employment_candidate", "candidate_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"))
+    position: Mapped[int] = mapped_column(SmallInteger)
+    employer: Mapped[str] = mapped_column(String(200))
+    designation: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    industry: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    employment_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+
+class CandidateCertification(Base):
+    """hrc-010 (P7): a certification record (the certificate file itself is an hrc-015 document)."""
+
+    __tablename__ = "candidate_certifications"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_CERTIFICATION_CHECKS.items()),
+        Index("ix_candidate_certifications_candidate", "candidate_id", "position"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"))
+    position: Mapped[int] = mapped_column(SmallInteger)
+    name: Mapped[str] = mapped_column(String(200))
+    issuer: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    issued_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    expires_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    credential_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
 
 # hrc-012 (DEC-SCOPE-382 O4/O6): collaborators and the append-only assignment history. Migration 0259 repeats the checks.
@@ -6619,6 +6701,7 @@ class CandidateSkill(Base, TimestampMixin):
     last_used_year: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     source: Mapped[str] = mapped_column(String(24), default="resume", server_default=text("'resume'"))
     status: Mapped[str] = mapped_column(String(12), default="claimed", server_default=text("'claimed'"))
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))  # hrc-010 (P7): primary vs secondary
     verified_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     added_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))

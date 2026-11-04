@@ -11516,3 +11516,23 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   notice to each new owner/officer/collaborator, never the actor. Merge (hrc-014) unchanged: the survivor keeps its owners.
 - **Numbering:** migration `0259_candidate_ownership`; API §12KA; RBAC §2.279.
 - **Feature ID authorized:** `hrc-012`. **Status:** built on `worktree-hrc-012`.
+
+
+### DEC-SCOPE-383 — Candidate profile completion (`hrc-010`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-010` (PDF §5 field table, §8.3 C, Appendix B; PDF classified
+  `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00). Dependency hrc-004 (DEC-SCOPE-376) merged. The owner said to
+  proceed with the recommended answers, so Q-09 and P1–P12 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-010-candidate-profile-design.md`.
+- **Behaviour:** a candidate gains education rows (degree, specialisation, institution, year, marks/CGPA), employment rows (employer,
+  designation, industry, employment type, start, end or current), certification records, city/state/country, preferred contact, a
+  read-only `email_verified_at` (cleared when the email changes), relevant experience, tools, languages, primary skills, preferred roles,
+  work modes, employment types, shifts, availability date and relocation willingness, and an Appendix B completeness percentage.
+- **Builder's calls:** P1 each row list replaces its whole set on create/PATCH (no new routes, RBAC unchanged). P4/Q-09 total experience
+  is derived from the union of the employment periods while there are rows (a sent value is ignored); otherwise the manual figure stays.
+  P5 the legacy single fields mirror the rows (education row 1, the current job, the structured place, the first preferred role), so
+  search, matching and sharing are unchanged. P10 completeness weights 10/15/15/15/15/20/10, computed on read; whether salary is provided
+  is visible to every reader, never the amount. P11 backfill: education row 1 from qualification/college/passing year; `current_company`
+  is not turned into a dateless job. P12 merge moves a row kind only when the survivor has none.
+- **Numbering:** migration `0260_candidate_profile`; API §12KB; no RBAC change.
+- **Feature ID authorized:** `hrc-010`. **Status:** built on `worktree-hrc-010`.

@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Candidate, CandidateResume, CandidateSkill, Skill, SkillAlias, SkillCategory, User
 from app.schemas import ResumeApply
-from app.services import candidate_skills, candidates
+from app.services import candidate_profile, candidate_skills, candidates
 from app.services import resume_extract as rx
 from app.services import skills as skills_master
 
@@ -131,6 +131,7 @@ async def apply(db: AsyncSession, user: User, candidate: Candidate, resume: Cand
         candidate_skills.audit(db, user, "add", candidate, row)
         added.append(row)
     changed = candidates.apply_fields(candidate, fields)
+    candidate_profile.sync(candidate, await candidate_profile.rows(db, candidate.id), set(fields))  # hrc-010 P12: the rows win
     if added or changed:
         candidate.updated_by_user_id = user.id
     candidates.audit(db, user, "resume_apply", candidate, {"version": resume.version, "skill_ids": [str(r.skill_id) for r in added], "fields": changed})

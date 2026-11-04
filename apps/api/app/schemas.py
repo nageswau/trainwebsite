@@ -52,6 +52,7 @@ from app.models import (
     BDM_MOU_STATUSES,
     BDM_STAFF_MAX,
     BDM_TARGET_MAX,
+    CANDIDATE_CONTACT_METHODS,
     CANDIDATE_SKILL_LEVELS,
     CANDIDATE_SKILL_SOURCES,
     CANDIDATE_SKILL_STATUSES,
@@ -9989,6 +9990,11 @@ CANDIDATE_FIELD_LABELS = {
     "expected_salary_currency": "Expected salary currency", "expected_salary_period": "Expected salary pay period",
     "minimum_salary": "Minimum acceptable salary", "minimum_salary_currency": "Minimum salary currency",
     "minimum_salary_period": "Minimum salary pay period", "salary_negotiable": "Negotiable",
+    # hrc-010 (DEC-SCOPE-383)
+    "country": "Country", "state": "State", "city": "City", "preferred_contact": "Preferred contact", "relevant_experience_months": "Relevant experience (months)",
+    "tools": "Tools", "languages": "Languages", "preferred_roles": "Preferred roles", "work_modes": "Work modes", "employment_types": "Employment types",
+    "shifts": "Shifts", "available_from": "Available from", "willing_to_relocate": "Willing to relocate", "education": "Education",
+    "employment": "Employment history", "certifications": "Certifications",
 }
 NO_CONTACT = "Enter a mobile number or an email"
 _LINKEDIN = re.compile(r"https?://\S+", re.IGNORECASE)
@@ -10110,6 +10116,122 @@ CandidateEmail = Annotated[str | None, AfterValidator(_candidate_email)]
 CandidateLinkedin = Annotated[_candidate_text("LinkedIn", 300), AfterValidator(_linkedin)]
 
 
+# --- hrc-010 (DEC-SCOPE-383 P1-P3, P7): the profile rows. A list replaces the whole set; a row's error names it ("Employment 2: ...").
+class CandidateEducationRow(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    degree: _candidate_text("Degree", 120) = None
+    specialisation: _candidate_text("Specialisation", 120) = None
+    institution: _candidate_text("Institution", 200) = None
+    year: _whole("Year", 1950, 2100) = None
+    grade: _candidate_text("Marks / CGPA", 20) = None
+
+    @model_validator(mode="after")
+    def _named(self):
+        if self.degree is None and self.institution is None:
+            raise ValueError("enter the degree or the institution")
+        return self
+
+
+class CandidateEmploymentRow(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    employer: _candidate_text("Employer", 200) = None
+    designation: _candidate_text("Designation", 120) = None
+    industry: _candidate_text("Industry", 120) = None
+    employment_type: Literal[JOB_EMPLOYMENT_TYPES] | None = None
+    start_date: date | None = None
+    end_date: date | None = None  # null = the current job
+
+    @model_validator(mode="after")
+    def _dates(self):
+        today = datetime.now(UTC).date()
+        if self.employer is None:
+            raise ValueError("enter the employer")
+        if self.start_date is None:
+            raise ValueError("enter the start date")
+        if self.start_date > today:
+            raise ValueError("the start date cannot be in the future")
+        if self.end_date is not None and self.end_date < self.start_date:
+            raise ValueError("the end date must be on or after the start date")  # AC5
+        if self.end_date is not None and self.end_date > today:
+            raise ValueError("the end date cannot be in the future (leave it empty for a current job)")
+        return self
+
+
+class CandidateCertificationRow(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: _candidate_text("Name", 200) = None
+    issuer: _candidate_text("Issuer", 200) = None
+    issued_on: date | None = None
+    expires_on: date | None = None
+    credential_id: _candidate_text("Credential ID", 100) = None
+
+    @model_validator(mode="after")
+    def _valid(self):
+        if self.name is None:
+            raise ValueError("enter the certification name")
+        if self.issued_on and self.expires_on and self.expires_on < self.issued_on:
+            raise ValueError("the expiry date must be on or after the issue date")
+        return self
+
+
+ROW_LABELS = {
+    "degree": "degree", "specialisation": "specialisation", "institution": "institution", "year": "year", "grade": "marks / CGPA",
+    "employer": "employer", "designation": "designation", "industry": "industry", "employment_type": "employment type", "start_date": "start date",
+    "end_date": "end date", "name": "name", "issuer": "issuer", "issued_on": "issue date", "expires_on": "expiry date", "credential_id": "credential ID",
+}  # fmt: skip
+
+
+def _rows(model: type[BaseModel], noun: str, plural: str, cap: int):
+    """A list of rows, validated one by one so the first error reads "<Noun> <n>: <sentence>"; returns plain dicts (the service's form)."""
+
+    def check(value):
+        if not isinstance(value, list):
+            raise ValueError(f"{noun} must be a list")
+        if len(value) > cap:
+            raise ValueError(f"Enter at most {cap} {plural}")
+        out = []
+        for index, raw in enumerate(value, start=1):
+            if not isinstance(raw, dict):
+                raise ValueError(f"{noun} {index} must be an object")
+            try:
+                out.append(model.model_validate(raw).model_dump())
+            except ValidationError as exc:
+                error = exc.errors()[0]
+                field = str(error["loc"][0]) if error["loc"] else ""
+                label = ROW_LABELS.get(field, field)
+                if error["type"] == "extra_forbidden":
+                    raise ValueError(f"{noun} {index}: unknown field {field}") from None
+                message = error["msg"].removeprefix("Value error, ") if error["type"] == "value_error" else f"enter a valid {label}"
+                raise ValueError(f"{noun} {index}: {message}") from None
+        return out
+
+    return Annotated[list[dict], BeforeValidator(check)]
+
+
+def _texts(label: str, cap: int, each: int):
+    """Up to `cap` short texts, blanks dropped and repeats (any case) removed, first spelling kept (the preferred-locations rule)."""
+
+    def check(value: list[str]) -> list[str]:
+        out: list[str] = []
+        for raw in value:
+            text = raw.strip()
+            if not text or text.lower() in {t.lower() for t in out}:
+                continue
+            if len(text) > each or _BDM_CONTROL.search(text):
+                raise ValueError(f"Each of the {label.lower()} must be at most {each} characters")
+            out.append(text)
+        if len(out) > cap:
+            raise ValueError(f"Enter at most {cap} {label.lower()}")
+        return out
+
+    return Annotated[list[StrictStr], AfterValidator(check)]
+
+
+def _choices(values: tuple[str, ...]):
+    """A set of enum values, kept in the enum's order (repeats collapse)."""
+    return Annotated[list[Literal[values]], AfterValidator(lambda v: [x for x in values if x in v])]
+
+
 class _CandidateFields(BaseModel):
     """The optional §8 fields, shared by create and edit; null or blank clears one."""
 
@@ -10138,6 +10260,23 @@ class _CandidateFields(BaseModel):
     preferred_role: _candidate_text("Preferred role", 120) = None
     linkedin: CandidateLinkedin = None
     source_detail: _candidate_text("Source detail", 200) = None
+    # hrc-010 (DEC-SCOPE-383): P5 structured location, P9 contact, P7 skills extras, P8 preferences, P1 rows
+    country: _candidate_text("Country", 80) = None
+    state: _candidate_text("State", 80) = None
+    city: _candidate_text("City", 80) = None
+    preferred_contact: Literal[CANDIDATE_CONTACT_METHODS] | None = None
+    relevant_experience_months: _whole("Relevant experience (months)", 0, 600) = None
+    tools: _texts("Tools", 20, 60) = Field(default_factory=list)
+    languages: _texts("Languages", 20, 60) = Field(default_factory=list)
+    preferred_roles: _texts("Preferred roles", 5, 120) = Field(default_factory=list)
+    work_modes: _choices(JOB_WORK_MODES) = Field(default_factory=list)
+    employment_types: _choices(JOB_EMPLOYMENT_TYPES) = Field(default_factory=list)
+    shifts: _choices(JOB_SHIFTS) = Field(default_factory=list)
+    available_from: date | None = None
+    willing_to_relocate: StrictBool | None = None
+    education: _rows(CandidateEducationRow, "Education", "education rows", 10) = Field(default_factory=list)
+    employment: _rows(CandidateEmploymentRow, "Employment", "employment rows", 20) = Field(default_factory=list)
+    certifications: _rows(CandidateCertificationRow, "Certification", "certifications", 20) = Field(default_factory=list)
 
 
 class CandidateCreate(_CandidateFields):
@@ -10160,6 +10299,16 @@ class CandidateUpdate(_CandidateFields):
     source_id: UUID = None
     status: CandidateStatus = None
     preferred_locations: Annotated[list[str], AfterValidator(_places)] = None
+    # hrc-010: an omitted list is unchanged; null is "required" like the other lists ([] clears)
+    tools: _texts("Tools", 20, 60) = None
+    languages: _texts("Languages", 20, 60) = None
+    preferred_roles: _texts("Preferred roles", 5, 120) = None
+    work_modes: _choices(JOB_WORK_MODES) = None
+    employment_types: _choices(JOB_EMPLOYMENT_TYPES) = None
+    shifts: _choices(JOB_SHIFTS) = None
+    education: _rows(CandidateEducationRow, "Education", "education rows", 10) = None
+    employment: _rows(CandidateEmploymentRow, "Employment", "employment rows", 20) = None
+    certifications: _rows(CandidateCertificationRow, "Certification", "certifications", 20) = None
     expected_updated_at: datetime | None = None  # hrc-003: the version the form showed; another one is 409 `record_changed`
 
 
@@ -10233,6 +10382,26 @@ class CandidateDetail(CandidateItem):
     can_edit: bool
     whatsapp_to: str | None = None  # rec-026 MS6: the wa.me number (E.164 digits), None when the mobile is unusable
     merged_into: CandidateRef | None = None  # hrc-014 (DEC-SCOPE-377 D8): the candidate this one was merged into
+    # hrc-010 (DEC-SCOPE-383)
+    country: str | None = None
+    state: str | None = None
+    city: str | None = None
+    preferred_contact: str | None = None
+    email_verified_at: datetime | None = None
+    relevant_experience_months: int | None = None
+    tools: list[str] = []
+    languages: list[str] = []
+    preferred_roles: list[str] = []
+    work_modes: list[str] = []
+    employment_types: list[str] = []
+    shifts: list[str] = []
+    available_from: date | None = None
+    willing_to_relocate: bool | None = None
+    education: list[dict] = []  # the stored rows as they are (a backfilled row is not re-validated on read)
+    employment: list[dict] = []
+    certifications: list[dict] = []
+    is_fresher: bool | None = None
+    completeness: dict | None = None
     ownership: "CandidateOwnershipOut | None" = None  # hrc-012 (DEC-SCOPE-382)
 
 
@@ -11038,6 +11207,7 @@ class CandidateSkillUpdate(BaseModel):
     experience_months: _whole("Experience (months)", 0, 600) = None
     last_used_year: Annotated[StrictInt | None, AfterValidator(_last_used)] = None
     source: Literal[CANDIDATE_SKILL_SOURCES] = None
+    is_primary: StrictBool = None  # hrc-010 (P7): primary vs secondary; a sent null fails the non-nullable type
 
 
 class CandidateSkillCreate(CandidateSkillUpdate):
@@ -11046,6 +11216,7 @@ class CandidateSkillCreate(CandidateSkillUpdate):
     skill: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
     level: Literal[CANDIDATE_SKILL_LEVELS]
     source: Literal[CANDIDATE_SKILL_SOURCES] = "resume"
+    is_primary: StrictBool = False
 
 
 class CandidateSkillStatusChange(BaseModel):

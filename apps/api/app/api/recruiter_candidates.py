@@ -48,6 +48,7 @@ from app.services import candidate_duplicates as duplicates
 from app.services import candidate_merge, candidate_search, candidate_skills, compensation, course_skills, recruitment_history
 from app.services import candidate_ownership as ownership
 from app.services import candidate_previews as previews
+from app.services import candidate_profile as profile
 from app.services import candidates as svc
 from app.services import resume_extraction as extraction
 from app.services.reports import placement as placement_reports
@@ -164,16 +165,22 @@ async def create_candidate(payload: dict = Body(...), user: User = Depends(get_c
     """Q-07: a known mobile or email is the 409 panel, before and (by the unique indexes) under a race."""
     svc.require_writer(user)
     data = _body(CandidateCreate, payload).model_dump()
+    stored = {kind: data.pop(kind) for kind in profile.ROWS}  # hrc-010 P1
     await svc.require_compensation(db, user, payload)
     await svc.active_source(db, data["source_id"])
     candidate = Candidate(**data, mobile_normalized=normalise_phone(data["mobile"]), created_by_user_id=user.id)  # email: lower-cased by the schema
+    profile.sync(candidate, stored, set(payload))  # hrc-010 P4/P5
     await compensation.normalise(db, candidate)  # hrc-011
     await svc.block_duplicates(db, candidate)
     candidate.candidate_code = await svc.next_code(db)
     db.add(candidate)
     await svc.flush_candidate(db, candidate)
+    for kind, values in stored.items():
+        if values:
+            await profile.replace(db, candidate.id, kind, values)
     ownership.on_create(db, user, candidate)  # hrc-012 O7
-    svc.audit(db, user, "create", candidate, {"fields": sorted(k for k, v in data.items() if v not in (None, []))})
+    filled = {**data, **stored}
+    svc.audit(db, user, "create", candidate, {"fields": sorted(k for k, v in filled.items() if v not in (None, []))})
     await duplicates.detect(db, candidate.id)  # hrc-014 D2: probable duplicates are queued, never blocked
     await db.commit()
     svc.log("candidate_created", user, candidate)
@@ -219,6 +226,7 @@ async def update_candidate(candidate_id: UUID, payload: dict = Body(...), user: 
     svc.require_writer(user)
     changes = _body(CandidateUpdate, payload).model_dump(exclude_unset=True)
     expected = changes.pop("expected_updated_at", None)
+    sent_rows = {kind: changes.pop(kind) for kind in profile.ROWS if kind in changes}  # hrc-010 P1: each sent list replaces its set
     await svc.require_compensation(db, user, changes)
     candidate = await svc.load(db, candidate_id, lock=True)
 
@@ -231,16 +239,30 @@ async def update_candidate(candidate_id: UUID, payload: dict = Body(...), user: 
         raise HTTPException(409, svc.ARCHIVED)
     if changes.get("source_id", candidate.source_id) != candidate.source_id:
         await svc.active_source(db, changes["source_id"])
-    before = await svc.audited_values(db, candidate, changes)  # hrc-004: the stored values, for the audit diff
-    fields = svc.apply_fields(candidate, changes)
-    if set(svc.COMPENSATION) & set(fields):  # hrc-011: the currency, period and annual INR follow the amounts
+    # hrc-004: the stored values, for the audit diff -- hrc-010: plus the rows sent and the mirrors they may move (P5)
+    audited = {*changes, *profile.DERIVED}
+    stored_before = await profile.rows(db, candidate.id)
+    stored = {**stored_before, **sent_rows}
+    before = await svc.audited_values(db, candidate, audited) | profile.audited(stored_before, sent_rows)
+    old_email = candidate.email
+    applied = svc.apply_fields(candidate, changes)
+    if candidate.email != old_email:
+        candidate.email_verified_at = None  # hrc-010 P9: a new address is unverified
+    profile.sync(candidate, stored, {*changes, *sent_rows}, stored_before)
+    if set(svc.COMPENSATION) & set(applied):  # hrc-011: the currency, period and annual INR follow the amounts
         await compensation.normalise(db, candidate)
-    if {"mobile", "email"} & set(fields):
+    if {"mobile", "email"} & set(applied):
         await svc.block_duplicates(db, candidate)
+    with db.no_autoflush:  # the candidate's own change reaches the unique indexes in flush_candidate (the friendly 409), not here
+        for kind, values in sent_rows.items():
+            if values != stored_before[kind]:
+                await profile.replace(db, candidate.id, kind, values)
+    changed = recruitment_history.diff(before, await svc.audited_values(db, candidate, audited) | profile.audited(stored, sent_rows))
+    fields = sorted((set(applied) - set(profile.DERIVED)) | set(changed))  # a mirror is listed only when it really moved
     if fields:
         candidate.updated_by_user_id = user.id
+        candidate.updated_at = datetime.now(UTC)  # hrc-003: a rows-only save is a new version too
         await svc.flush_candidate(db, candidate)
-        changed = recruitment_history.diff(before, await svc.audited_values(db, candidate, changes))
         svc.audit(db, user, "update", candidate, {"fields": fields, "changes": changed})
         if duplicates.WATCHED & set(fields):  # hrc-014 D2
             await duplicates.detect(db, candidate.id)

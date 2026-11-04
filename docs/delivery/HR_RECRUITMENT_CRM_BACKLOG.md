@@ -375,6 +375,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** small. **Risk:** low.
 
 #### hrc-010: Candidate profile completion (education, experience, preferences, location, contact)
+- **Status (2026-11-04):** built — `DEC-SCOPE-383` (Q-09 answered by the builder's recommended call: experience derived from employment
+  history while it exists, `NEEDS_CONFIRMATION`); design `docs/superpowers/specs/2026-11-04-hrc-010-candidate-profile-design.md`; migration `0260`.
 - **Business requirement:** §5 field table; §8.3 C.
 - **Existing behavior:**
   - Education is `qualification`, `college` and `passing_year`. Experience is `experience_months` and `current_company`.
