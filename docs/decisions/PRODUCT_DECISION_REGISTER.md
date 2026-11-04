@@ -11430,7 +11430,8 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   candidate writer, so it holds no default (`NEEDS_CONFIRMATION`); recruiters by override; needs a candidate-writer role too. D4 ten profile fields merge (pick or fill-empty); contact and compensation never move. D5 a
   victim with a student login is refused (merge the other way); two logins cannot merge. D6 same requirement: an open victim application
   blocks (409), a closed one stays on the archived victim. D7 applications (student_id follows), their share items, calls, messages,
-  consents, missing skills and every resume (renumbered by upload time) move. D8 victim archived with `merged_into_id`, never restored.
+  consents, hrc-015's documents and document requests (a clashing pending request is cancelled), missing skills and every resume
+  (renumbered by upload time) move. D8 victim archived with `merged_into_id`, never restored.
   D9 the victim's open queue rows close as merged; the survivor is re-checked. D10 `candidate.merge` + `candidate.merged_into` audits.
 - **Numbering:** migration `0256_candidate_duplicates`; API §12JW; RBAC §2.276.
 - **Feature ID authorized:** `hrc-014`. **Status:** built on `worktree-hrc-014`.

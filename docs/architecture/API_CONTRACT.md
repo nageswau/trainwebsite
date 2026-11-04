@@ -5555,7 +5555,8 @@ offset}`; item `{id, signals: ["name_location_college"|"phone_variant"], status,
 `POST .../{id}/dismiss` `{note?: ≤500}` → the pair (409 when not open, 404 unknown). `GET /api/v1/recruiter/candidates/{id}/merge?victim=CAN-…`
 → `{survivor, victim, fields, conflicts: [{application_id, job_id, job_title, status, blocking}], moved}`; `POST .../merge`
 `{victim_code, use_victim: [field], reason?: ≤500}` → `{id, victim_id, victim_code, moved: {applications, share_items, calls, messages,
-consents, skills, resumes}, kept_applications}`. Errors: 401; 403 (not a candidate writer or no `candidates.merge`); 404 (either side
+consents, documents, document_requests, skills, resumes}, kept_applications}` (hrc-015's documents and requests move too; a victim's
+pending request of a type the survivor is also waiting for is cancelled). Errors: 401; 403 (not a candidate writer or no `candidates.merge`); 404 (either side
 unknown or outside the pool); 422 (self, unknown field, bad body); 409 (archived/merged side, student login, open application on the same
 requirement, lost race). **Changed:** `CandidateDetail.merged_into` (`{id, candidate_code}` | null); `POST /candidates/{id}/restore` of a
 merged candidate is 409; create/edit queue probable duplicates (response unchanged). Reads are `Cache-Control: private, no-store`.
