@@ -5675,9 +5675,22 @@ routes — it sees only the requirements it co-owns (others 404). Every other re
 `POST /{id}/assign` and `POST /recruiter/manager/reassign` now also write the primary's history (and drop the new primary's co-owner row);
 `PATCH /admin/users/{id}` with `active: false` removes the user's co-ownerships.
 
-## 12KD. External candidate portal (hrc-022) — addendum, 2026-11-04
+## 12KD. Vacancy visibility (hrc-008) — addendum, 2026-11-04
 
-DEC-SCOPE-385. Public (no session), JSON only: `POST /api/v1/candidate/register` `{full_name (2–160), email, phone?, password (10–128),
+`DEC-SCOPE-385`. **New:** `PUT /api/v1/recruiter/requirements/{id}/visibility` `{visibility: "internal"|"portal"|"segment"|"public",
+segment_pool_id?}` (a segment needs an active talent pool, and only a segment names one) → `{requirement}` (the detail); the same values
+write nothing. Errors: 401; 403 "You cannot change who sees job requirements" (no `jobs.publish`; checked before the body); 404 (unknown
+job); 422 (bad body, "Choose an active talent pool"). **Changed (additive):** the requirement detail carries `visibility` `{key, label,
+segment_pool: {id, name, active} | null, can_change}` and every requirement row carries `visibility` (the key). **Changed (behaviour):**
+`GET /public/jobs` lists public jobs only and `POST /public/jobs/{id}/apply` answers 404 "Open job not found" for any other; for an
+`it_student`, `GET /workflows/it/jobs/open`, `POST /workflows/it/jobs/{id}/apply` and the portal's job-applications "Open jobs" panel cover
+portal, public and the student's segment jobs (staff callers of `/workflows/it/jobs/open` still see every open job); the employer job
+payload's `visible_to_students` is false for an internal job. Existing jobs are public (migration 0262), so nothing changes until a
+`jobs.publish` holder narrows a job.
+
+## 12KE. External candidate portal (hrc-022) — addendum, 2026-11-04
+
+DEC-SCOPE-386. Public (no session), JSON only: `POST /api/v1/candidate/register` `{full_name (2–160), email, phone?, password (10–128),
 consent_version}` → **202** `{accepted: true}` for every email (development adds `development_verification_token`); a wrong consent
 version or an invalid phone 422; more than 5 from one client IP in an hour **429** with `Retry-After`. `POST /candidate/resend-verification`
 `{email}` → 202 always (at most 3 links per account per 15 minutes; over it nothing is sent). `POST /candidate/verify-email` `{token}` →

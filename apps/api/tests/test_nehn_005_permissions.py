@@ -86,7 +86,7 @@ def test_the_catalogue_names_the_pilot_resources_and_known_actions():
 def test_roles_are_the_33_existing_roles():
     assert len(rbac.ROLES) == 33 and "super_admin" in rbac.ROLES and "coordinator" in rbac.ROLES  # nehn-030 added coordinator
     assert {"hr_manager", "placement_officer", "interviewer"} <= set(rbac.ROLES)  # hrc-002
-    assert "candidate" in rbac.ROLES  # hrc-022 (DEC-SCOPE-385 C1): the external candidate
+    assert "candidate" in rbac.ROLES  # hrc-022 (DEC-SCOPE-386 C1): the external candidate
 
 
 def test_the_default_grants_reproduce_the_old_inline_sets():

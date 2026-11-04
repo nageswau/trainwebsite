@@ -23,7 +23,7 @@ export type RequirementPermissions = {
 export type CompanyRef = { id: string; code: string; name: string };
 export type RequirementRow = {
   id: string; code: string; title: string; company: CompanyRef; location: string; status: Status; status_label: string; phase: Phase;
-  phase_label: string; source: JobSource; priority: string | null;
+  phase_label: string; source: JobSource; visibility: Visibility; priority: string | null;
   vacancies: number | null; closes_on: string | null; requirement_date: string | null; deadline_state: "expiring" | "expired" | null;
   assigned_recruiter: Person | null; permissions: RequirementPermissions;
 };
@@ -41,6 +41,20 @@ export type Requirement = RequirementRow & {
   salary_period: "year" | "month" | null; benefits: string | null; hiring_manager: Person | null; expected_joining_date: string | null;
   updated_by: Person | null;
   owners: Owner[]; // hrc-006: besides the primary (`assigned_recruiter`)
+  visibility: VisibilityDetail; // hrc-008
+};
+/** hrc-008 (DEC-SCOPE-385 V1/V4): who sees the job; `can_change` = the caller holds `jobs.publish`. */
+export type Visibility = "internal" | "portal" | "segment" | "public";
+export type VisibilityDetail = { key: Visibility; label: string; segment_pool: Ref | null; can_change: boolean };
+export const VISIBILITY_OPTIONS: { key: Visibility; label: string }[] = [
+  { key: "public", label: "Public website" }, { key: "portal", label: "Candidate portal" },
+  { key: "segment", label: "Segment (talent pool)" }, { key: "internal", label: "Internal only" },
+];
+export const VISIBILITY_HINT: Record<Visibility, string> = {
+  public: "Listed on the careers page and in the student portal.",
+  portal: "Listed in the student portal only, not on the public careers page.",
+  segment: "Listed in the student portal only for members of one talent pool.",
+  internal: "Seen by staff only. Candidates cannot see or apply to it.",
 };
 /** hrc-006 (DEC-SCOPE-384 O1/O2): a co-owner, and one ownership change (a primary change is two: removed, then added). */
 export type OwnerRole = "placement_officer" | "collaborator";

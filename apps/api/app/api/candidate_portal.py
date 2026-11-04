@@ -1,4 +1,4 @@
-"""hrc-022 (DEC-SCOPE-385): the external candidate's own routes. Registration, verification and resend are public and answer the same
+"""hrc-022 (DEC-SCOPE-386): the external candidate's own routes. Registration, verification and resend are public and answer the same
 whatever the email (C2/C5); every `/candidate/me*` route is the signed-in candidate's own record only (C10) -- no id is ever taken from
 the caller. The allow-list setting sits with the other recruiter candidate settings (C7). Each write is one transaction committed here;
 verification emails go out after it as a background task."""

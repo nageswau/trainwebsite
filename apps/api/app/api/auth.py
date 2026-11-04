@@ -114,7 +114,7 @@ async def login(payload: LoginRequest, response: Response, db: AsyncSession = De
         # bdm-001 QA-07: BDMs are split across portals by module, so name the right one. Only reached after the password matched.
         raise HTTPException(403, f"Use the correct EduSphere portal for this account: sign in at {PORTAL_SIGN_IN.get(user.division, '/')}")
     if user.role == "candidate" and not user.email_verified:
-        # hrc-022 (DEC-SCOPE-385 C6): an external candidate signs in only after verifying their email. After the password, like above.
+        # hrc-022 (DEC-SCOPE-386 C6): an external candidate signs in only after verifying their email. After the password, like above.
         raise HTTPException(403, UNVERIFIED_CANDIDATE)
     await _sync_role_assignment(db, user)
     _set_auth_cookies(response, user)

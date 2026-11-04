@@ -6,7 +6,7 @@ import { FormEvent, useState } from "react";
 import { sendJson } from "@/lib/apiErrors";
 import { CANDIDATE_PORTAL_HOME, RESEND_URL, VERIFY_URL } from "@/lib/candidatePortal";
 
-// hrc-022 (DEC-SCOPE-385 C3): the link verifies on a click, never on page load -- a mail scanner that opens the link must not use it up.
+// hrc-022 (DEC-SCOPE-386 C3): the link verifies on a click, never on page load -- a mail scanner that opens the link must not use it up.
 export default function CandidateVerifyEmail({ token }: { token: string }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string; purpose?: string } | null>(null);

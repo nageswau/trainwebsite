@@ -29,7 +29,7 @@ from app.models import (
     WebinarRegistration,
 )
 from app.schemas import CareerPathOut, CountryOut, EnquiryIn, ProgramOut, RealProjectOut, SocialProofOut, TestimonialOut, UniversityOut, WebinarRegistrationIn
-from app.services import lead_intake, program_media, social_proof, university_logos, upload_policy
+from app.services import job_visibility, lead_intake, program_media, social_proof, university_logos, upload_policy
 from app.services.partnership_universities import public_visible
 from app.services.storage import storage
 from app.worker import sync_enquiry_to_crm_task
@@ -256,10 +256,9 @@ async def overseas_courses(category: str | None = None, level: str | None = None
 @router.get("/jobs")
 async def jobs(db: AsyncSession = Depends(get_db)):
     # EMP-002-AC02: a posting past its own closing date is not shown as open, even if
-    # the Employer never explicitly closed it -- `status` alone was previously trusted.
-    rows = (
-        await db.execute(select(Job, Company).join(Company).where(Job.status.in_(JOB_OPEN_STATUSES), or_(Job.closes_on.is_(None), Job.closes_on >= date.today())).order_by(Job.created_at.desc()))
-    ).all()
+    # the Employer never explicitly closed it -- `status` alone was previously trusted. hrc-008 (V5): public jobs only.
+    open_now = (Job.status.in_(JOB_OPEN_STATUSES), or_(Job.closes_on.is_(None), Job.closes_on >= date.today()), job_visibility.public_filter())
+    rows = (await db.execute(select(Job, Company).join(Company).where(*open_now).order_by(Job.created_at.desc()))).all()
     return [{"id": j.id, "title": j.title, "company": c.name, "location": j.location, "skills": j.skills, "closes_on": j.closes_on} for j, c in rows]
 
 
@@ -398,7 +397,8 @@ async def public_job_apply(job_id: UUID, payload: dict, db: AsyncSession = Depen
     job = await db.get(Job, job_id)
     # EMP-002-AC02: a posting past its own closing date is not open, even if the
     # Employer never explicitly closed it -- applies here too, not just to the listing.
-    if not job or job.status not in JOB_OPEN_STATUSES or (job.closes_on and job.closes_on < date.today()):
+    # hrc-008 (V5): a job that is not public is the same 404 as a missing one
+    if not job or job.status not in JOB_OPEN_STATUSES or (job.closes_on and job.closes_on < date.today()) or job.visibility != "public":
         raise HTTPException(404, "Open job not found")
     for required in ("full_name", "email", "resume_url"):
         if not payload.get(required):

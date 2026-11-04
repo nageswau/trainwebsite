@@ -2,9 +2,9 @@
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-022` (PDF §5.1, §6.1 step 2, §11; PDF classified `UNVERIFIED`).
   Dependencies hrc-002 (DEC-SCOPE-374) and hrc-010 (DEC-SCOPE-383) are merged.
-- **Decision:** `DEC-SCOPE-385`. The owner said to proceed with the recommended answers, so Q-23, Q-24 and C1–C12 below are **the
+- **Decision:** `DEC-SCOPE-386`. The owner said to proceed with the recommended answers, so Q-23, Q-24 and C1–C12 below are **the
   builder's calls (`NEEDS_CONFIRMATION`)**.
-- **Numbering:** migration `0262_candidate_portal`; API §12KD; RBAC §2.281.
+- **Numbering:** migration `0263_candidate_portal`; API §12KE; RBAC §2.282.
 
 ## Intent
 
@@ -89,9 +89,9 @@ verifying the new address, and manage their pool consent.
 
 ## Plan (TDD, each step red → green)
 
-1. Migration 0262 + models (`UserVerificationToken`, `CandidateSelfServiceSetting`) + RBAC role; migration test.
+1. Migration 0263 + models (`UserVerificationToken`, `CandidateSelfServiceSetting`) + RBAC role; migration test.
 2. Service `services/candidate_portal.py` + router `api/candidate_portal.py`: register, verify, resend, login gate (auth.py).
 3. Profile read/patch with the allow-list; settings routes.
 4. Email change; privacy.
 5. Web: lib + pages + middleware + nav + settings card; vitest for the lib/forms; Playwright e2e.
-6. Docs: DEC-SCOPE-385, API §12KD, RBAC §2.281, RTM row, backlog status.
+6. Docs: DEC-SCOPE-386, API §12KE, RBAC §2.282, RTM row, backlog status.

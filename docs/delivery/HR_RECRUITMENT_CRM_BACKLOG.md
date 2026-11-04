@@ -349,6 +349,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **E:** a candidate stops matching the segment after applying (the application stays).
 - **Regression risks:** the careers page, `test_emp_*`, the student job list and SEO pages.
 - **Complexity:** medium. **Risk:** medium.
+- **Status:** built as `DEC-SCOPE-385` (migration `0262_job_visibility`, API §12KD, RBAC §2.281); design
+  `docs/superpowers/specs/2026-11-04-hrc-008-vacancy-visibility-design.md`. Q-08 answered by the builder's calls V1-V8 (existing and new
+  jobs public; a segment is a talent pool; `jobs.publish` held by placement managers; `NEEDS_CONFIRMATION`).
 
 #### hrc-009: Eligibility-change review and vacancy-change notices
 - **Business requirement:** §4.3 "Significant changes to eligibility criteria should trigger a review of affected applications rather than silently disqualifying"; §12/§13 "Notify relevant owners when a vacancy changes".
@@ -733,9 +736,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 ### Phase 3: Website integration (PDF Phase 3)
 
 #### hrc-022: External candidate portal identity and self-service
-- **Status (2026-11-04):** built — `DEC-SCOPE-385` (Q-23/Q-24 answered by the builder's recommended calls C1–C12, `NEEDS_CONFIRMATION`:
+- **Status (2026-11-04):** built — `DEC-SCOPE-386` (Q-23/Q-24 answered by the builder's recommended calls C1–C12, `NEEDS_CONFIRMATION`:
   a separate `candidate` role, no phone OTP until an SMS provider is chosen); design
-  `docs/superpowers/specs/2026-11-04-hrc-022-candidate-portal-identity-design.md`; migration `0262`. A recruiter invite email is a follow-up.
+  `docs/superpowers/specs/2026-11-04-hrc-022-candidate-portal-identity-design.md`; migration `0263`. A recruiter invite email is a follow-up.
 - **Business requirement:** §6.1 step 2 "Create a candidate portal account or activation invitation … associate with the unique Candidate ID"; §5.1 "Allow candidates to edit only fields enabled for self-service; verify critical contact changes"; §11 My Profile and Privacy.
 - **Existing behavior:** ⚠ external candidates have no login (the recruiter backlog said "Authentication impact: none"). `auth.register` creates only agent and student accounts. IT students have a portal and an opt-in.
 - **Expected behavior:**

@@ -1,9 +1,9 @@
 """hrc-022 -- external candidate portal identity: `user_verification_tokens` and the one-row `candidate_self_service_settings`.
 
-Revision ID: 0262_candidate_portal
-Revises: 0261_job_assignments
+Revision ID: 0263_candidate_portal
+Revises: 0262_job_visibility
 
-docs/superpowers/specs/2026-11-04-hrc-022-candidate-portal-identity-design.md (DEC-SCOPE-385). Two new tables; the `candidate` role is a
+docs/superpowers/specs/2026-11-04-hrc-022-candidate-portal-identity-design.md (DEC-SCOPE-386). Two new tables; the `candidate` role is a
 value of the free-text `users.role`, so no column changes. 0001 builds a fresh database from the current models, which already carry the
 tables, so each step runs only when missing (0251's idiom). The checks are frozen copies of the model's strings at this revision. No
 existing row is touched; the downgrade drops the two tables.
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0262_candidate_portal"
-down_revision = "0261_job_assignments"
+revision = "0263_candidate_portal"
+down_revision = "0262_job_visibility"
 branch_labels = None
 depends_on = None
 

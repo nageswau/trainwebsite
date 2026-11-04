@@ -11557,7 +11557,26 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0261_job_assignments`; API §12KC; RBAC §2.280.
 - **Feature ID authorized:** `hrc-006`. **Status:** built on `worktree-hrc-006`.
 
-### DEC-SCOPE-385 — External candidate portal identity and self-service (`hrc-022`)
+### DEC-SCOPE-385 — Vacancy visibility: internal, candidate portal, segment, public (`hrc-008`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-008` (PDF §4.2 Visibility, §4.3, §13; PDF classified `UNVERIFIED`). Scope
+  approved by the owner 2026-11-01 (backlog Q-00: all phases). Dependency hrc-007 (DEC-SCOPE-380) merged. The owner said to proceed with
+  the recommended answers, so Q-08 and V1–V8 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-008-vacancy-visibility-design.md`.
+- **Builder's calls:** V1 `jobs.visibility` = `internal` | `portal` | `segment` | `public`; a segment job names one talent pool
+  (`segment_pool_id`), no other job does. V2 a "candidate segment" is a rec-015 **talent pool** (members computed on read; an inactive pool
+  has none); a program cohort is not offered (`NEEDS_CONFIRMATION`). V3 (Q-08) every existing and every new job is `public` by default, so
+  no listing disappears and no create path changes. V4 changing it needs `jobs.publish`; first default holder `placement_manager`
+  (division-wide, any job, like `jobs.approve`); super_admin implicit. V5 `/public/jobs` and the public apply route: public only; the
+  student list, apply and portal "Open jobs" panel: portal, public and the student's segments; outside = the same 404 as missing; staff
+  lists unchanged. V6 existing applications are never hidden. V7 `PUT /recruiter/requirements/{id}/visibility`, one audit row
+  `recruiter_requirement.visibility` per change (pool by name). V8 the sitemap lists no job URLs; the employer's `visible_to_students` is
+  false for an internal job; the careers page and the IT home page read the public job list uncached (browser QA-01: the 60 s page cache
+  kept a just-hidden job listed).
+- **Numbering:** migration `0262_job_visibility`; API §12KD; RBAC §2.281.
+- **Feature ID authorized:** `hrc-008`. **Status:** built on `worktree-hrc-008`.
+
+### DEC-SCOPE-386 — External candidate portal identity and self-service (`hrc-022`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-022` (PDF §5.1, §6.1 step 2, §11; PDF classified `UNVERIFIED`). Scope
   approved by the owner 2026-11-01 (backlog Q-00). Dependencies hrc-002 (DEC-SCOPE-374) and hrc-010 (DEC-SCOPE-383) merged. The owner
@@ -11574,5 +11593,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   fields, default all but the name, changed by placement managers and super_admin. C8/Q-24 no SMS provider, so the mobile is not
   self-service. C9 email change needs the current password, 3 requests per 15 minutes → 429, an address in use is accepted silently.
   C10 no id in any portal URL. Not built: a recruiter "invite to portal" email (follow-up), website registration/UTM (hrc-023).
-- **Numbering:** migration `0262_candidate_portal`; API §12KD; RBAC §2.281.
+- **Numbering:** migration `0263_candidate_portal`; API §12KE; RBAC §2.282.
 - **Feature ID authorized:** `hrc-022`. **Status:** built on `worktree-hrc-022`.

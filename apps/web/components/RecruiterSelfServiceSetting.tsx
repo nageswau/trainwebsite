@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { sendJson } from "@/lib/apiErrors";
 import { labelOf, SELF_SERVICE_SETTINGS_URL, type FieldKey, type SelfServiceSettings } from "@/lib/candidatePortal";
 
-// hrc-022 (DEC-SCOPE-385 C7): which fields external candidates may edit in their portal -- shown only to who may change it (placement
+// hrc-022 (DEC-SCOPE-386 C7): which fields external candidates may edit in their portal -- shown only to who may change it (placement
 // managers, super_admin; the hrc-012 setting card idiom). Saved explicitly; the checkboxes keep their state if the save fails.
 export default function RecruiterSelfServiceSetting() {
   const [setting, setSetting] = useState<SelfServiceSettings | null>(null);

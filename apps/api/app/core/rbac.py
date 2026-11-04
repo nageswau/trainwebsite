@@ -69,7 +69,7 @@ PERMISSIONS: dict[str, set[str]] = {
     "hr_manager": {"it:recruitment:oversight"},
     "placement_officer": {"it:recruitment:officer"},
     "interviewer": {"it:recruitment:interviewer"},
-    # hrc-022 (DEC-SCOPE-385 C1): the external candidate -- their own candidate record only (`Candidate.user_id`), enforced in the routes.
+    # hrc-022 (DEC-SCOPE-386 C1): the external candidate -- their own candidate record only (`Candidate.user_id`), enforced in the routes.
     "candidate": {"it:candidate:self"},
 }
 
@@ -129,7 +129,8 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "trainer": _TRAINING_REPORTS,
     # hrc-001 (DEC-SCOPE-371 H2, Q-03; migration 0250 seeds it): the recruiters and their managers see candidate compensation.
     "placement_team": _PLACEMENT_REPORTS + ("candidates.compensation.view",),
-    "placement_manager": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.merge"),  # hrc-014 (migration 0256 seeds merge)
+    # hrc-014 (migration 0256 seeds merge); hrc-008 (DEC-SCOPE-385 V4, migration 0262 seeds publish): who sees a vacancy
+    "placement_manager": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.merge", "jobs.publish"),
     # hrc-007 (DEC-SCOPE-380 A12; migration 0257 seeds it): the HR Manager is the vacancy approver.
     "hr_manager": ("jobs.approve",),
     "overseas_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,

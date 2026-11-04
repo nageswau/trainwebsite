@@ -3,7 +3,7 @@ import Link from "next/link";
 import BrandLogoLink from "@/components/BrandLogoLink";
 import CandidateRegisterForm from "@/components/CandidateRegisterForm";
 
-// hrc-022 (DEC-SCOPE-385 C2): an external job seeker's own account. IT students keep their student portal.
+// hrc-022 (DEC-SCOPE-386 C2): an external job seeker's own account. IT students keep their student portal.
 export default function CandidateRegisterPage() {
   return (
     <div className="auth-form-wrap" style={{ minHeight: "100vh" }}>
