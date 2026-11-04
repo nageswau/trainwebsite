@@ -5,14 +5,13 @@ import { useCallback, useEffect, useState } from "react";
 import CandidateDocumentUploadForm from "@/components/CandidateDocumentUploadForm";
 import DocumentFileActions from "@/components/DocumentFileActions";
 import LocalTime from "@/components/LocalTime";
-import { type CandidateDocument, type DocumentsState, MY_DOCUMENTS_URL, REQUEST_STATUS_LABELS, documentTypeLabel } from "@/lib/candidateDocuments";
+import { type DocumentsState, MY_DOCUMENTS_URL, REQUEST_STATUS_LABELS, documentName, documentTypeLabel } from "@/lib/candidateDocuments";
 import { fileSize } from "@/lib/recruiterCandidates";
 
 // hrc-015 (DEC-SCOPE-379 D8): an IT student in the placement candidate pool sees the documents the placement team asked for, uploads
 // them (or a certificate of their own) and opens what they shared. Only ever the caller's own records; staff are never named.
 type MyDocuments = DocumentsState & { available: boolean };
 
-const nameOf = (d: CandidateDocument) => d.title || documentTypeLabel(d.document_type);
 
 export default function StudentCandidateDocumentsCard() {
   const [state, setState] = useState<MyDocuments | null>(null);
@@ -66,12 +65,12 @@ export default function StudentCandidateDocumentsCard() {
             <ul aria-label="Your documents" style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "grid", gap: 8 }}>
               {state.documents.map((d) => (
                 <li key={d.id} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "baseline" }}>
-                  <span style={{ fontWeight: 600, overflowWrap: "anywhere" }}>{nameOf(d)}</span>
+                  <span style={{ fontWeight: 600, overflowWrap: "anywhere" }}>{documentName(d)}</span>
                   <span className="muted" style={{ fontSize: 13, overflowWrap: "anywhere" }}>
                     {d.file_name ? `${d.file_name} · ` : ""}{fileSize(d.size_bytes)} · <LocalTime value={d.created_at} /> ·{" "}
                     {d.uploaded_by === "you" ? "Uploaded by you" : "Added by the placement team"}
                   </span>
-                  <DocumentFileActions linkUrl={`${MY_DOCUMENTS_URL}/${encodeURIComponent(d.id)}/link`} contentType={d.content_type} label={nameOf(d)} />
+                  <DocumentFileActions linkUrl={`${MY_DOCUMENTS_URL}/${encodeURIComponent(d.id)}/link`} contentType={d.content_type} label={documentName(d)} />
                 </li>
               ))}
             </ul>

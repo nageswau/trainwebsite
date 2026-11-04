@@ -53,11 +53,13 @@ def _sha256(stream) -> str:
     return digest.hexdigest()
 
 
-def _local_response(key: str, *, filename: str | None = None, media_type: str | None = None) -> FileResponse:
+def _local_response(key: str, *, filename: str | None = None, media_type: str | None = None, inline: bool = False) -> FileResponse:
     path = storage.local_file(key)
     if path is None:
         raise HTTPException(404, "Not found")
     media_type = media_type or mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    if inline and media_type in INLINE_TYPES:  # hrc-015 D3: a named preview, inert under nosniff
+        return FileResponse(path, media_type=media_type, filename=filename or path.name, content_disposition_type="inline", headers=NOSNIFF)
     if filename or media_type not in INLINE_TYPES:  # anything that could run in our origin (HTML, SVG…) is only ever a download
         return FileResponse(path, media_type=media_type, filename=filename or path.name, content_disposition_type="attachment", headers=NOSNIFF)
     return FileResponse(path, media_type=media_type, headers=NOSNIFF)
@@ -139,13 +141,8 @@ async def signed_download(token: str):
     claims = storage.signed_claims(token)
     if claims is None or storage.bucket:
         raise HTTPException(404, "Not found")
-    content_type = claims.get("ct")
-    if content_type and claims.get("inline") and content_type in INLINE_TYPES:  # hrc-015 D3: a preview, inert under nosniff
-        path = storage.local_file(claims["sub"])
-        if path is None:
-            raise HTTPException(404, "Not found")
-        return FileResponse(path, media_type=content_type, filename=claims.get("fn") or path.name, content_disposition_type="inline", headers=NOSNIFF)
-    return _local_response(claims["sub"], filename=claims.get("fn") if content_type else None, media_type=content_type)
+    content_type = claims.get("ct")  # hrc-015 D4: set only by routes that chose the name, type and disposition
+    return _local_response(claims["sub"], filename=claims.get("fn") if content_type else None, media_type=content_type, inline=bool(claims.get("inline")))
 
 
 @router.get("/{file_id}")

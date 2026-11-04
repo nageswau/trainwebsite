@@ -15,6 +15,8 @@ export const DOCUMENT_TYPES: { value: DocumentType; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 export const documentTypeLabel = (value: string) => DOCUMENT_TYPES.find((t) => t.value === value)?.label ?? value;
+/** A document's title, else its type label. */
+export const documentName = (d: { title: string | null; document_type: string }) => d.title || documentTypeLabel(d.document_type);
 
 export type CandidateDocument = {
   id: string; document_type: DocumentType; title: string | null; file_name: string | null; content_type: string; size_bytes: number;

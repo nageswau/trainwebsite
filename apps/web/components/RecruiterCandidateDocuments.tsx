@@ -8,7 +8,7 @@ import FormMessage, { type FormMessageState } from "@/components/FormMessage";
 import LocalTime from "@/components/LocalTime";
 import { sendRequest } from "@/lib/apiErrors";
 import {
-  type CandidateDocument, DOCUMENT_TYPES, type DocumentRequest, type DocumentsState, type DocumentType, REQUEST_STATUS_LABELS, documentTypeLabel,
+  type CandidateDocument, DOCUMENT_TYPES, type DocumentRequest, type DocumentsState, type DocumentType, REQUEST_STATUS_LABELS, documentName, documentTypeLabel,
 } from "@/lib/candidateDocuments";
 import { candidateUrl, fileSize } from "@/lib/recruiterCandidates";
 
@@ -17,7 +17,6 @@ import { candidateUrl, fileSize } from "@/lib/recruiterCandidates";
 // list, so the request's status always comes from the server.
 type Props = { candidateId: string; canEdit: boolean };
 
-export const documentName = (d: CandidateDocument) => d.title || documentTypeLabel(d.document_type);
 const uploaderName = (d: CandidateDocument) => (typeof d.uploaded_by === "object" && d.uploaded_by ? d.uploaded_by.full_name : null);
 
 export default function RecruiterCandidateDocuments({ candidateId, canEdit }: Props) {
