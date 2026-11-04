@@ -1,4 +1,4 @@
-"""hrc-007 -- migration 0256_job_approval (DEC-SCOPE-380): the chain, the frozen copies and the round trip, in a throwaway database
+"""hrc-007 -- migration 0257_job_approval (DEC-SCOPE-380): the chain, the frozen copies and the round trip, in a throwaway database
 (the hrc-001 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -14,14 +14,14 @@ from app.core.config import settings
 from app.models import JOB_APPROVAL_DEFAULTS, JOB_CHECKS, JOB_SOURCE_CHECK, JOB_SOURCES
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_hrc_007_migration_0256", VERSIONS / "0256_job_approval.py")
+_spec = importlib.util.spec_from_file_location("_hrc_007_migration_0257", VERSIONS / "0257_job_approval.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0256_job_approval", "0251_candidate_compensation"
+HEAD, BASE = "0257_job_approval", "0256_candidate_duplicates"
 
 
-def test_migration_chains_after_0251():
+def test_migration_chains_after_0256():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

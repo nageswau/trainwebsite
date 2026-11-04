@@ -1,8 +1,9 @@
 import json
 from datetime import UTC, datetime
+from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, Request, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +13,7 @@ from app.core.database import get_db
 from app.models import AuditLog, Certificate, ConsentRecord, DataSubjectRequest, Enrollment, NotificationPreference, Payment, User, UserRoleAssignment
 from app.notifications.phone import normalise_phone
 from app.schemas import NotificationPreferencesIn, NotificationPreferencesOut, PlacementPoolOptIn
-from app.services import hr_reviews, placement_pool
+from app.services import candidate_documents, candidates, hr_reviews, placement_pool
 from app.services.storage import storage
 
 router = APIRouter(prefix="/account", tags=["account"])
@@ -145,6 +146,59 @@ async def opt_in_placement_pool(payload: PlacementPoolOptIn, request: Request, u
     await placement_pool.opt_in(db, user, payload.consent_version, _client_ip(request))
     await db.commit()
     return await placement_pool.state(db, user)
+
+
+# --- hrc-015 (DEC-SCOPE-379 D8, API §12JX): the student's own candidate documents and requests. No candidate id: only the caller's own.
+NOT_IN_POOL = "Join the placement pool to share documents with the placement team"
+
+
+@router.get("/candidate-documents")
+async def get_candidate_documents(response: Response, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    placement_pool.require_student(user)
+    response.headers["Cache-Control"] = "private, no-store"
+    candidate = await candidate_documents.own_candidate(db, user)
+    if candidate is None:
+        return {"available": False, "requests": [], "documents": []}
+    return {"available": True, **await candidate_documents.listing(db, candidate, viewer=user)}
+
+
+@router.post("/candidate-documents", status_code=201)
+async def upload_candidate_document(
+    file: UploadFile = File(...),
+    document_type: str | None = Form(None),
+    title: str | None = Form(None),
+    request_id: str | None = Form(None),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    placement_pool.require_student(user)
+    if await candidate_documents.own_candidate(db, user) is None:
+        raise HTTPException(409, NOT_IN_POOL)
+
+    async def lock():
+        candidate = await candidate_documents.own_candidate(db, user, lock=True)
+        if candidate is None:  # left the pool meanwhile
+            raise HTTPException(409, NOT_IN_POOL)
+        return candidate
+
+    _, row = await candidate_documents.upload(db, user, file, (document_type, title, request_id), lock)
+    return candidate_documents.document_out(row, {}, viewer=user)
+
+
+@router.get("/candidate-documents/{document_id}/link")
+async def candidate_document_link(
+    document_id: UUID, response: Response, mode: Literal["download", "preview"] = Query("download"), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    placement_pool.require_student(user)
+    candidate = await candidate_documents.own_candidate(db, user)
+    if candidate is None:
+        raise HTTPException(404, candidate_documents.NOT_FOUND)
+    row = await candidate_documents.load_document(db, candidate, document_id)
+    out = await candidate_documents.link(db, "document", row, mode, f"{row.document_type}-{str(row.id)[:8]}")
+    candidates.audit(db, user, "document_link", candidate, {"document_id": str(row.id), "mode": mode, "role": user.role})
+    await db.commit()
+    response.headers["Cache-Control"] = "private, no-store"
+    return out
 
 
 @router.post("/placement-pool/opt-out")

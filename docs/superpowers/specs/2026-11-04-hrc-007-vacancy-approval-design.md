@@ -31,7 +31,7 @@ job it is. "Filled" closes a vacancy to new applications once every seat has a j
 
 Not built: notifications (hrc-032), visibility (hrc-008), a per-company approval rule.
 
-## Data (migration `0256_job_approval`)
+## Data (migration `0257_job_approval`)
 Guarded (0001 builds from current models). `jobs.source` (String(10) NOT NULL default `recruiter`, CHECK), `jobs.submitted_by_user_id`,
 `jobs.submitted_at`; table `job_approval_settings(source PK, required bool, updated_by_user_id, created_at, updated_at)` seeded; `ck_jobs_status`
 recreated with the 13 statuses (frozen copy); `role_permissions (hr_manager, jobs, approve)`. Downgrade maps `pending_approval`→`new`,
@@ -54,4 +54,4 @@ employer → HR Manager approval flow.
 2. Service: statuses, phases, source, approval rules, auto-fill; routes submit/approve/reject/queue/settings; legacy paths.
 3. Fix affected existing tests (rec-007, emp-*), only where they assert the old employer self-publish.
 4. Web: types + helpers, detail page Submit / Approve / Reject cards, employer panel pending state, HR Manager approvals page + nav.
-5. Docs: decision register, API_CONTRACT §12JY, RBAC_MATRIX §2.279, RTM, backlog status.
+5. Docs: decision register, API_CONTRACT §12JY, RBAC_MATRIX §2.278, RTM, backlog status.

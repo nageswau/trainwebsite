@@ -127,8 +127,8 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "trainer": _TRAINING_REPORTS,
     # hrc-001 (DEC-SCOPE-371 H2, Q-03; migration 0250 seeds it): the recruiters and their managers see candidate compensation.
     "placement_team": _PLACEMENT_REPORTS + ("candidates.compensation.view",),
-    "placement_manager": _PLACEMENT_REPORTS + ("candidates.compensation.view",),
-    # hrc-007 (DEC-SCOPE-380 A12; migration 0256 seeds it): the HR Manager is the vacancy approver.
+    "placement_manager": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.merge"),  # hrc-014 (migration 0256 seeds merge)
+    # hrc-007 (DEC-SCOPE-380 A12; migration 0257 seeds it): the HR Manager is the vacancy approver.
     "hr_manager": ("jobs.approve",),
     "overseas_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,
     "telecaller_manager": _TELECALLER_REPORTS,

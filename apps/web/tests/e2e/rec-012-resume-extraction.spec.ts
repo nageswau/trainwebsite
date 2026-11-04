@@ -100,6 +100,6 @@ test("a recruiter reviews a resume's extracted details and saves the chosen ones
   // EX10: HR reads the candidate but gets no review.
   await signIn(page, "hr@edusphere.local", "/it/hr/dashboard");
   await page.goto(`/recruiter/candidates/${candidate.id}`);
-  await expect(page.getByRole("region", { name: "Resume" }).getByRole("link", { name: /Version 1/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Resume" }).getByRole("button", { name: "Download resume version 1" })).toBeVisible(); // hrc-015
   await expect(page.getByRole("button", { name: "Review extracted details" })).toHaveCount(0);
 });

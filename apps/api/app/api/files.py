@@ -53,11 +53,13 @@ def _sha256(stream) -> str:
     return digest.hexdigest()
 
 
-def _local_response(key: str, *, filename: str | None = None, media_type: str | None = None) -> FileResponse:
+def _local_response(key: str, *, filename: str | None = None, media_type: str | None = None, inline: bool = False) -> FileResponse:
     path = storage.local_file(key)
     if path is None:
         raise HTTPException(404, "Not found")
     media_type = media_type or mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    if inline and media_type in INLINE_TYPES:  # hrc-015 D3: a named preview, inert under nosniff
+        return FileResponse(path, media_type=media_type, filename=filename or path.name, content_disposition_type="inline", headers=NOSNIFF)
     if filename or media_type not in INLINE_TYPES:  # anything that could run in our origin (HTML, SVG…) is only ever a download
         return FileResponse(path, media_type=media_type, filename=filename or path.name, content_disposition_type="attachment", headers=NOSNIFF)
     return FileResponse(path, media_type=media_type, headers=NOSNIFF)
@@ -112,7 +114,10 @@ async def _overseas_document(db: AsyncSession, key: str) -> bool:
 
 
 # hrc-001 (DEC-SCOPE-371 H4): recruitment documents, each served by its own authenticated, scope-checked and audited route.
-RECRUITMENT_PREFIXES = ("candidate-resumes/", "career-resumes/", "student-resumes/", "job-offers/", "job-joinings/", "recruiter-contracts/")
+RECRUITMENT_PREFIXES = (
+    "candidate-resumes/", "career-resumes/", "student-resumes/", "job-offers/", "job-joinings/", "recruiter-contracts/",
+    "candidate-documents/", "candidate-previews/",  # hrc-015 (DEC-SCOPE-379 D12)
+)  # fmt: skip
 
 
 async def _withheld(db: AsyncSession, key: str) -> bool:
@@ -133,10 +138,11 @@ async def download(key: str, user: User = Depends(get_current_user), db: AsyncSe
 @router.get("/signed/{token}")
 async def signed_download(token: str):
     """nehn-003 PS2: the local-mode equivalent of an S3 presigned URL -- the route that issued the token did the authorisation."""
-    key = storage.signed_key(token)
-    if key is None or storage.bucket:
+    claims = storage.signed_claims(token)
+    if claims is None or storage.bucket:
         raise HTTPException(404, "Not found")
-    return _local_response(key)
+    content_type = claims.get("ct")  # hrc-015 D4: set only by routes that chose the name, type and disposition
+    return _local_response(claims["sub"], filename=claims.get("fn") if content_type else None, media_type=content_type, inline=bool(claims.get("inline")))
 
 
 @router.get("/{file_id}")

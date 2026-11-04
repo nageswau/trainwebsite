@@ -146,7 +146,8 @@ def test_catalogue_holds_every_recruitment_key_with_no_default_holder():
     keys = rbac.all_keys()
     for key in (*RECRUITMENT_KEYS, "candidates.compensation.view"):
         assert key in keys, key
-    owned = {"hr_manager": {"jobs.approve"}}
+    # each owning item added its key's default holder, as R4 planned: hrc-007 (DEC-SCOPE-380 A12) jobs.approve, hrc-014 (DEC-SCOPE-377 D3) merge
+    owned = {"hr_manager": {"jobs.approve"}, "placement_manager": {"candidates.merge"}}
     for role, grants in rbac.DEFAULT_GRANTS.items():
         assert set(grants) & set(RECRUITMENT_KEYS) == owned.get(role, set()), role
     for role in NEW_ROLES:

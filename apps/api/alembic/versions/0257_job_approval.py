@@ -1,8 +1,8 @@
 """hrc-007 -- the vacancy approval workflow and the Filled status: job source and submission columns, the per-source approval settings,
 the 13-status check and the first `jobs.approve` holder.
 
-Revision ID: 0256_job_approval
-Revises: 0251_candidate_compensation
+Revision ID: 0257_job_approval
+Revises: 0256_candidate_duplicates
 
 docs/superpowers/specs/2026-11-04-hrc-007-vacancy-approval-design.md (DEC-SCOPE-380). 0001 builds a fresh database from the current
 models, which already carry the columns and table, so each step runs only when missing (0222's idiom); the status check is always
@@ -17,8 +17,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0256_job_approval"
-down_revision = "0251_candidate_compensation"
+revision = "0257_job_approval"
+down_revision = "0256_candidate_duplicates"
 branch_labels = None
 depends_on = None
 

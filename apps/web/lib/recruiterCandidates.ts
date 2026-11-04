@@ -8,7 +8,10 @@ export type CandidateItem = {
   id: string; candidate_code: string; name: string; location: string | null; experience_months: number | null; preferred_role: string | null;
   source: SourceRef; source_detail: string | null; status: CandidateStatus; archived: boolean; created_at: string;
 };
-export type CandidateResume = { version: number; file_name: string | null; content_type: string; size_bytes: number; uploaded_by: PersonRef | null; created_at: string };
+export type CandidateResume = {
+  version: number; file_name: string | null; content_type: string; size_bytes: number; uploaded_by: PersonRef | null; created_at: string;
+  preview_status?: "pending" | "ready" | "failed" | null; // hrc-015: a DOC/DOCX's PDF rendition
+};
 // hrc-001 (DEC-SCOPE-371 H2): salary is left out (not null) for a caller without this grant, who may not send it either.
 export const COMPENSATION_VIEW = "candidates.compensation.view";
 // hrc-011 (DEC-SCOPE-375): each amount keeps its currency and pay period beside the normalised annual INR the API works out.
@@ -33,6 +36,7 @@ export type CandidateDetail = CandidateItem & Package & {
   current_company: string | null; notice_days: number | null;
   preferred_locations: string[]; linkedin: string | null; archived_at: string | null; created_by: PersonRef | null; updated_by: PersonRef | null;
   updated_at: string; resumes: CandidateResume[]; can_edit: boolean; whatsapp_to?: string | null; // rec-026: the wa.me number
+  merged_into?: { id: string; candidate_code: string } | null; // hrc-014: the candidate this one was merged into
 };
 /** Q-07: one existing candidate of the duplicate panel -- never their mobile or email. */
 export type CandidateMatch = { id: string; candidate_code: string; name: string; source_name: string; status: CandidateStatus; archived: boolean; matched_on: ("mobile" | "email")[] };
@@ -42,7 +46,8 @@ export const CANDIDATES_PATH = "/recruiter/candidates";
 export const DUPLICATE_CHECK_URL = `${CANDIDATES_URL}/duplicate-check`;
 export const candidateUrl = (id: string, suffix = "") => `${CANDIDATES_URL}/${encodeURIComponent(id)}${suffix}`;
 export const resumeUrl = (id: string, version: number) => candidateUrl(id, `/resume/${version}`);
-export const RESUME_ACCEPT = ".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+export const resumeLinkUrl = (id: string, version: number) => candidateUrl(id, `/resume/${version}/link`); // hrc-015 D4
+export const RESUME_ACCEPT = ".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 export const RESUME_MAX_BYTES = 5 * 1024 * 1024;
 
 export const STATUSES: { key: CandidateStatus; label: string }[] = [

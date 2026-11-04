@@ -5546,9 +5546,45 @@ the record's own GET (requirement: out of scope 404, other roles 403; candidate:
   /admin/roles/{role}/permissions` accepts the new keys and roles.
 - `GET /auth/me/permissions`: `[]` for the new roles by default.
 
+
+## 12JW. Candidate duplicate review and merge (hrc-014) — addendum, 2026-11-04
+
+`DEC-SCOPE-377`. **New:** `GET /api/v1/recruiter/candidate-duplicates?status=open|dismissed|merged&limit&offset` → `{items, total, limit,
+offset}`; item `{id, signals: ["name_location_college"|"phone_variant"], status, created_at, decided_at, decided_by, candidate, other}`
+(sides `{id, candidate_code, name, location, college, status, archived}`, older first; no contact data). `POST .../scan` → `{created}`.
+`POST .../{id}/dismiss` `{note?: ≤500}` → the pair (409 when not open, 404 unknown). `GET /api/v1/recruiter/candidates/{id}/merge?victim=CAN-…`
+→ `{survivor, victim, fields, conflicts: [{application_id, job_id, job_title, status, blocking}], moved}`; `POST .../merge`
+`{victim_code, use_victim: [field], reason?: ≤500}` → `{id, victim_id, victim_code, moved: {applications, share_items, calls, messages,
+consents, documents, document_requests, skills, resumes}, kept_applications}` (hrc-015's documents and requests move too; a victim's
+pending request of a type the survivor is also waiting for is cancelled). Errors: 401; 403 (not a candidate writer or no `candidates.merge`); 404 (either side
+unknown or outside the pool); 422 (self, unknown field, bad body); 409 (archived/merged side, student login, open application on the same
+requirement, lost race). **Changed:** `CandidateDetail.merged_into` (`{id, candidate_code}` | null); `POST /candidates/{id}/restore` of a
+merged candidate is 409; create/edit queue probable duplicates (response unchanged). Reads are `Cache-Control: private, no-store`.
+
+## 12JX. Candidate documents, document requests and signed links (hrc-015) — addendum, 2026-11-04
+
+`DEC-SCOPE-379`. **Resume upload** (`PUT /api/v1/recruiter/candidates/{id}/resume`) also accepts DOC (`application/msword`, judged by the
+bytes; else 415 "Upload a PDF, DOC or DOCX file"). Resume entries in the candidate detail gain `preview_status` (`pending` | `ready` |
+`failed` | null; null for a PDF). **Links** (`Cache-Control: private, no-store`, audited, `{url, expires_in: 300}`):
+`GET …/candidates/{id}/resume/{version}/link?mode=download|preview` and `GET …/candidates/{id}/documents/{document_id}/link?mode=` (readers);
+preview of a DOC/DOCX whose rendition is pending → 409, failed → 422; an unknown mode → 422; another candidate's document → 404. The URL
+serves the file (download: attachment named `resume-CAN-…-vN.ext` / `<type>-CAN-…-<id8>.ext`; preview: inline PDF or image) and expires.
+`POST …/resume/{version}/extract` of a DOC reads its rendition (409 pending, 422 failed).
+**Documents:** `GET …/candidates/{id}/documents` → `{documents: [{id, document_type, title, file_name, content_type, size_bytes,
+preview_status, request_id, uploaded_by: {id, full_name}, created_at}], requests: [{id, document_type, note, due_date, status, created_at,
+received_at, cancelled_at, document_id, requested_by}]}` (readers; requests pending first). `POST …/candidates/{id}/documents` multipart
+`file`, `document_type`, `title?` (≤ 120; required for `other`), `request_id?` → 201 document (writers; PDF/DOC/DOCX/PNG/JPEG ≤ 5 MB else
+415/413; unknown type 422; a request that is not this candidate's 404, not pending 409, of another type 422; archived 409).
+`POST …/candidates/{id}/document-requests` `{document_type, note? (≤ 500), due_date? (not before today, IST)}` → 201 (writers; a pending
+request of that type 409). `POST …/candidates/{id}/document-requests/{request_id}/cancel` → 200 (writers; not pending 409).
+**The candidate's own** (IT student, else 403): `GET /api/v1/account/candidate-documents` → `{available, requests, documents}` (not in the
+pool: `available: false` and empty lists; no cancelled requests; no staff names — `uploaded_by` is `"you"` | `"placement_team"`, no
+`requested_by`). `POST /api/v1/account/candidate-documents` (same multipart; not in the pool 409). `GET
+/api/v1/account/candidate-documents/{document_id}/link?mode=` (own documents only, else 404).
+
 ## 12JY. Vacancy approval and the Filled status (hrc-007) — addendum, 2026-11-04
 
-`DEC-SCOPE-380`. Migration `0256_job_approval`. Design `docs/superpowers/specs/2026-11-04-hrc-007-vacancy-approval-design.md`.
+`DEC-SCOPE-380`. Migration `0257_job_approval`. Design `docs/superpowers/specs/2026-11-04-hrc-007-vacancy-approval-design.md`.
 
 - Requirement statuses gain `pending_approval` (Pending Approval) and `filled` (Filled); neither is open (no apply, not listed to
   students/public). `GET /recruiter/requirements/statuses` lists 13, each with `phase` / `phase_label` (Draft, Pending Approval, Open,

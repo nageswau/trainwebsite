@@ -11395,7 +11395,7 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   assigned recruiter). A9 queue `/recruiter/requirement-approvals` and page `/it/hr-manager/approvals`. A10 turning a setting off leaves
   pending jobs pending. A11 Filled by hand or automatically when the joined count reaches the vacancies. A12 `hr_manager` is the first
   default `jobs.approve` holder.
-- **Numbering:** migration `0256_job_approval`; API §12JY; RBAC §2.279.
+- **Numbering:** migration `0257_job_approval`; API §12JY; RBAC §2.278.
 - **Feature ID authorized:** `hrc-007`. **Status:** built on `worktree-hrc-007`.
 
 ### DEC-SCOPE-376 — Before/after audit for recruitment records and the record History (`hrc-004`)
@@ -11433,3 +11433,48 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   `UserRoleAssignment` does not widen recruitment access (`User.role` decides). R7 no migration.
 - **Numbering:** no migration; API §12JV; RBAC §2.275.
 - **Feature ID authorized:** `hrc-002`. **Status:** built on `worktree-hrc-002`.
+
+
+### DEC-SCOPE-377 — Candidate duplicate review and merge (`hrc-014`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-014` (PDF §5.1, §17 QA; PDF classified `UNVERIFIED`). Scope approved by
+  the owner 2026-11-01 (backlog Q-00: all phases). Dependency hrc-004 (DEC-SCOPE-376) merged. The owner said to proceed with the
+  recommended answers, so Q-14 and D1–D10 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-014-candidate-duplicate-merge-design.md`.
+- **Builder's calls:** D1 probable signals = same name + location + college, or the mobile's last ten digits equal while the stored
+  numbers differ; **name + DOB not built (no DOB field)**. D2 detected after create/edit and by a pool-wide scan; a dismissed pair never
+  returns. D3 grant `candidates.merge` (declared by hrc-002 DEC-SCOPE-374 R4), default `placement_manager`; hrc-002's `hr_manager` is not a
+  candidate writer, so it holds no default (`NEEDS_CONFIRMATION`); recruiters by override; needs a candidate-writer role too. D4 ten profile fields merge (pick or fill-empty); contact and compensation never move. D5 a
+  victim with a student login is refused (merge the other way); two logins cannot merge. D6 same requirement: an open victim application
+  blocks (409), a closed one stays on the archived victim. D7 applications (student_id follows), their share items, calls, messages,
+  consents, hrc-015's documents and document requests (a clashing pending request is cancelled), missing skills and every resume
+  (renumbered by upload time) move. D8 victim archived with `merged_into_id`, never restored.
+  D9 the victim's open queue rows close as merged; the survivor is re-checked. D10 `candidate.merge` + `candidate.merged_into` audits.
+- **Numbering:** migration `0256_candidate_duplicates`; API §12JW; RBAC §2.276.
+- **Feature ID authorized:** `hrc-014`. **Status:** built on `worktree-hrc-014`.
+
+### DEC-SCOPE-379 — Resume and document handling completion (`hrc-015`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-015` (PDF §5.1 "Upload, preview, download and replace resumes in PDF and
+  DOC/DOCX", §5 Documents, §11 Documents, §15 "controlled download links"; PDF classified `UNVERIFIED`). Scope approved by the owner
+  2026-11-01 (backlog Q-00: all phases). Dependency hrc-001 (DEC-SCOPE-371) merged. The owner said to proceed with the recommended answers,
+  so Q-15 and D1–D12 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-015-candidate-documents-design.md`.
+- **Behaviour:** resumes accept DOC (by bytes) besides PDF/DOCX; every resume version and candidate document has Preview (PDF/image inline;
+  DOC/DOCX through a converted PDF rendition) and Download, both through a 300-second signed link that is audited when issued. Staff upload
+  certificates and other documents, request a document type from a candidate (pending → received on the first upload against it, or
+  cancelled), and an IT student in the placement pool sees and fulfils their own requests from the student portal.
+- **Builder's calls:** D1 (Q-15) converter approved as recommended: headless LibreOffice Writer in the API image; the Celery worker converts
+  (own temp directory and profile, 60 s limit); missing converter or a broken/protected file → `failed` (download only). D2 DOC = OLE2 header
+  + a `WordDocument` stream name; resumes and documents only (the JD upload stays PDF/DOCX). D3 `preview_status`/`preview_key` on resumes
+  and documents; pending 409, failed 422; a pre-hrc-015 DOCX is queued on its first preview. D4 links live 300 s (S3 presigned or the
+  local `/files/signed` token, which now carries name, type and disposition); the old authenticated resume download stays for
+  compatibility. D5 DOC extraction reads the rendition (409 while pending, 422 if failed). D6 document types: certificate, education,
+  experience letter, relieving letter, payslip, ID proof, other (title required); PDF/DOC/DOCX/PNG/JPEG ≤ 5 MB; append-only. D7 one
+  pending request per type; the fulfilling upload must match its type and candidate. D8 the student routes take no id (own opted-in
+  candidate only; staff never named). D9 staff read = `candidates.READERS`, write = `candidates.WRITERS`, pool filter, archived 409. D10
+  audit actions `candidate.document_upload|document_request|document_request_cancel|document_link|resume_link`; logs carry ids only. D11
+  out of scope: malware scanning (shared open question with itc-033), deleting documents, overdue reminders, external-candidate portal
+  (hrc-022). D12 `/files/download` and `/local-files` withhold `candidate-documents/` and `candidate-previews/`.
+- **Numbering:** migration `0255_candidate_documents`; API §12JX; RBAC §2.277.
+- **Feature ID authorized:** `hrc-015`. **Status:** built on `worktree-hrc-015`.

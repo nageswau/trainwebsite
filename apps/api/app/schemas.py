@@ -10169,6 +10169,7 @@ class CandidateResumeOut(BaseModel):
     size_bytes: int
     uploaded_by: BdmPersonRef | None
     created_at: datetime
+    preview_status: Literal["pending", "ready", "failed"] | None = None  # hrc-015 (DEC-SCOPE-379 D3): DOC/DOCX renditions only
 
 
 class CandidateItem(BaseModel):
@@ -10190,6 +10191,11 @@ class CandidatePage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class CandidateRef(BaseModel):
+    id: UUID
+    candidate_code: str
 
 
 class CandidateDetail(CandidateItem):
@@ -10224,6 +10230,27 @@ class CandidateDetail(CandidateItem):
     resumes: list[CandidateResumeOut]
     can_edit: bool
     whatsapp_to: str | None = None  # rec-026 MS6: the wa.me number (E.164 digits), None when the mobile is unusable
+    merged_into: CandidateRef | None = None  # hrc-014 (DEC-SCOPE-377 D8): the candidate this one was merged into
+
+
+# --- hrc-014 (DEC-SCOPE-377): duplicate review and merge ------------------------------------------------------------------------------
+CandidateMergeField = Literal["name", "location", "qualification", "college", "passing_year", "experience_months", "current_company", "notice_days", "preferred_role", "linkedin"]  # candidate_merge.FIELDS
+CandidateDuplicateStatus = Literal["open", "dismissed", "merged"]
+
+
+class CandidateMergeBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    victim_code: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20)]
+    use_victim: list[CandidateMergeField] = []
+    reason: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=500)] = None
+
+
+class CandidateDuplicateDismiss(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    note: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=500)] = None
+
+
+CANDIDATE_MERGE_LABELS = {"victim_code": "Candidate to merge", "use_victim": "Fields to take", "reason": "Reason", "note": "Note"}
 
 
 # --- hrc-011 (DEC-SCOPE-375 C1): the manual exchange rate ------------------------------------------------------------------------------

@@ -12,7 +12,7 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 
-from app.models import CandidateResume, CandidateSkill, Job, JobSkill, Program, RecCandidateSource, Skill, TalentPool
+from app.models import CandidateDocument, CandidateDocumentRequest, CandidateResume, CandidateSkill, Job, JobSkill, Program, RecCandidateSource, Skill, TalentPool
 from app.services import candidates as candidate_svc
 from app.services import job_descriptions
 from tests.rec038_helpers import PDF, R, add, allow, make_candidate, tag
@@ -48,6 +48,10 @@ def _file(_w):
     return {}, {"file": ("r.pdf", PDF, "application/pdf")}
 
 
+def _document(_w):
+    return {"document_type": "certificate"}, {"file": ("c.pdf", PDF, "application/pdf")}
+
+
 ROWS = [
     # rec-007 job requirements (§2.55): the manager creates and assigns but never edits or moves the status
     R("get", "/recruiter/requirements/statuses", **allow(200, *REQ_SCOPE)),
@@ -59,7 +63,7 @@ ROWS = [
     R("patch", "/recruiter/requirements/{requirement}", {"location": "Bengaluru"}, **allow(200, "rec", "super"), **OUT),
     R("post", "/recruiter/requirements/{requirement}/assign", lambda w: {"recruiter_user_id": w["rec2_id"]}, **allow(200, "mgr", "super"), **OUT),
     R("post", "/recruiter/requirements/{requirement}/status", {"status": "shortlisting"}, **allow(200, "rec", "super"), **OUT),
-    # hrc-007 (DEC-SCOPE-380, §2.279): submit follows `can_edit` (the world's recruiter jobs need no approval: 409); approve / reject and the
+    # hrc-007 (DEC-SCOPE-380, §2.278): submit follows `can_edit` (the world's recruiter jobs need no approval: 409); approve / reject and the
     # queue need `jobs.approve` (the HR Manager by default, super_admin) -- the world's requirement is not pending (409); settings: super only
     R("post", "/recruiter/requirements/{requirement}/submit", {}, **allow(409, "rec", "super"), **OUT),
     R("post", "/recruiter/requirements/{requirement}/approve", {}, **allow(409, "hr_mgr", "super")),
@@ -93,6 +97,13 @@ ROWS = [
     # rec-012 resume extraction (§2.76): writers only (Extract writes the resume row)
     R("post", "/recruiter/candidates/{candidates_cv}/resume/{candidates_version}/extract", **allow(200, *WRITERS)),
     R("post", "/recruiter/candidates/{candidates_cv}/resume/{candidates_version}/apply", {"location": "Pune"}, **allow(200, *WRITERS)),
+    # hrc-015 (§2.277): signed links, documents and document requests -- readers read and get links, writers change
+    R("get", "/recruiter/candidates/{candidates_cv}/resume/{candidates_version}/link", **allow(200, *READERS)),
+    R("get", "/recruiter/candidates/{candidates_cv}/documents", **allow(200, *READERS)),
+    R("post", "/recruiter/candidates/{candidates_cv}/documents", form=_document, **allow(201, *WRITERS)),
+    R("get", "/recruiter/candidates/{candidates_cv}/documents/{candidates_document}/link", **allow(200, *READERS)),
+    R("post", "/recruiter/candidates/{candidates_cv}/document-requests", {"document_type": "payslip"}, **allow(201, *WRITERS)),
+    R("post", "/recruiter/candidates/{candidates_cv}/document-requests/{candidates_request}/cancel", **allow(200, *WRITERS)),
     # rec-013 / rec-014 Find Candidates (§2.77, §2.80): read only, hr_team included
     R("post", "/recruiter/candidates/search", {"all": ["Java"]}, **allow(200, *READERS)),
     # rec-036 the candidate journey (§2.105)
@@ -121,6 +132,10 @@ ROWS = [
     # hrc-011 (DEC-SCOPE-375) manual exchange rates: candidates.require_reader reads, recruiter.require_manager sets (the rate is global).
     R("get", "/recruiter/catalogue/exchange-rates", **allow(200, *READERS)),
     R("put", "/recruiter/catalogue/exchange-rates/{fx_currency}", {"inr_per_unit": "83.25"}, **allow(200, "mgr", "mgr_out", "super")),
+    # hrc-015 (§2.277): the student's own documents (the world's student is in the pool); another candidate's document is a 404
+    R("get", "/account/candidate-documents", student=200),
+    R("post", "/account/candidate-documents", form=_document, student=201),
+    R("get", "/account/candidate-documents/{candidates_document}/link", student=404),
 ]
 _POOL: dict[str, UUID] = {}
 PATH_VALUES = {"candidates_version": 1, "fx_currency": "USD"}  # the candidate's first (and only) resume version; a rate's currency
@@ -138,6 +153,9 @@ async def build(client, db, w) -> None:
     await add(db, CandidateResume(candidate_id=cv.id, version=1, storage_key=candidate_svc.store(RESUME, "application/pdf"), content_type="application/pdf",
                                   file_name="r.pdf", size_bytes=len(RESUME), uploaded_by_user_id=rec.id,
                                   extracted_text="", extraction_json={"skills": [], "truncated": False}))  # fmt: skip
+    document = await add(db, CandidateDocument(candidate_id=cv.id, document_type="certificate", storage_key=candidate_svc.store(PDF, "application/pdf", candidate_svc.DOCUMENT_PREFIX),
+                                               content_type="application/pdf", file_name="c.pdf", size_bytes=len(PDF), uploaded_by_user_id=rec.id))  # fmt: skip
+    request = await add(db, CandidateDocumentRequest(candidate_id=cv.id, document_type="education", status="pending", requested_by_user_id=rec.id))
     skill = await add(db, CandidateSkill(candidate_id=cv.id, skill_id=java.id, level="beginner", added_by_user_id=rec.id))
     job = await db.get(Job, UUID(w["requirement"]))
     job_skill = await add(db, JobSkill(job_id=job.id, name=tag("R38 Skill "), kind="required", weight=2, position=0))
@@ -151,6 +169,6 @@ async def build(client, db, w) -> None:
     await db.commit()
     w.update({
         "candidates_source": str(source.id), "candidates_java": str(java.id), "candidates_spare": str(spare.id), "candidates_archived": str(archived.id),
-        "candidates_cv": str(cv.id), "candidates_skill": str(skill.id), "candidates_job_skill": str(job_skill.id), "candidates_jd_version": str(jd.version),
+        "candidates_cv": str(cv.id), "candidates_document": str(document.id), "candidates_request": str(request.id), "candidates_skill": str(skill.id), "candidates_job_skill": str(job_skill.id), "candidates_jd_version": str(jd.version),
         "candidates_pool": str(_POOL["id"]), "candidates_program": str(program.id),
     })  # fmt: skip

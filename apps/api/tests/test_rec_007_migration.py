@@ -33,7 +33,7 @@ def test_migration_chains_after_0113():
 def test_models_match_the_migration():
     from app.models import JOB_CHECKS, Job, JobSkill, JobStatusHistory
 
-    # hrc-007 (DEC-SCOPE-380): 0256 replaced ck_jobs_status (test_hrc_007_migration pins that copy); 0114's others still match
+    # hrc-007 (DEC-SCOPE-380): 0257 replaced ck_jobs_status (test_hrc_007_migration pins that copy); 0114's others still match
     assert {k: v for k, v in _migration.CHECKS.items() if k != "ck_jobs_status"} == {k: v for k, v in JOB_CHECKS.items() if k != "ck_jobs_status"}
     table = Job.__table__
     assert {name for name, _, _ in _migration.COLUMNS} | {"requirement_code"} <= {c.name for c in table.columns}
