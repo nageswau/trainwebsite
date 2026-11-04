@@ -15,7 +15,8 @@ const requirement = (over: Partial<Requirement> = {}) =>
   ({
     id: "R1", code: "REQ-0001", title: "Java Dev", company: { id: "C1", code: "CO-1", name: "Acme" }, location: "Pune", status: "new", status_label: "New",
     phase: "draft", phase_label: "Draft", source: "recruiter", priority: null, vacancies: 2, closes_on: null, requirement_date: null, deadline_state: null,
-    assigned_recruiter: null, permissions: { can_edit: true, can_change_status: true, can_reassign: false, can_view_matches: false }, description: "Build APIs",
+    assigned_recruiter: null, permissions: { can_edit: true, can_change_status: true, can_reassign: false, can_view_matches: false, can_manage_owners: false,
+      can_view_candidates: true }, owners: [], description: "Build APIs", // hrc-006: the API's owners and permissions
     department: null, job_category: null, qualification: null, experience_min_months: null, experience_max_months: null, salary_min: null, salary_max: null,
     work_mode: null, shift: null, employment_type: null, joining_requirement: null, skills: [], joined_count: 0, allowed_statuses: [], status_history: [],
     created_by: null, created_at: "2026-11-01T00:00:00Z", updated_at: "2026-11-04T04:00:00Z", approval: approval(), ...over,

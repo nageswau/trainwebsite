@@ -12,7 +12,20 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 
-from app.models import CandidateDocument, CandidateDocumentRequest, CandidateResume, CandidateSkill, Job, JobSkill, Program, RecCandidateSource, Skill, TalentPool
+from app.models import (
+    CandidateDocument,
+    CandidateDocumentRequest,
+    CandidateResume,
+    CandidateSkill,
+    Job,
+    JobAssignment,
+    JobSkill,
+    Program,
+    RecCandidateSource,
+    Skill,
+    TalentPool,
+    User,
+)
 from app.services import candidates as candidate_svc
 from app.services import job_descriptions
 from tests.rec038_helpers import PDF, R, add, allow, make_candidate, tag
@@ -21,6 +34,10 @@ from tests.test_rec_012_resume_extract import SOURCE, _pdf
 REQ_SCOPE = ("rec", "rec_out", "mgr", "mgr_out", "super", "bdm", "bdm_out")  # rec-007 caller_scope roles (every one reads the lists)
 REQ_READ = {**allow(200, "rec", "mgr", "super", "bdm"), **allow(404, "rec_out", "mgr_out", "bdm_out")}  # the requirement's readers
 OUT = allow(404, "rec_out", "mgr_out", "bdm_out")  # a scoped role outside this requirement: 404 before the action check (RM4)
+# hrc-006 (DEC-SCOPE-384 O4): a placement officer has a requirement scope (the jobs it co-owns) on the requirement and JD routes only;
+# the world's officer co-owns nothing, so it lists none and every requirement there is 404. Every other route keeps refusing it (403).
+OWN = {**REQ_READ, **allow(404, "officer")}
+OWN_OUT = {**OUT, **allow(404, "officer")}
 READERS = ("rec", "rec_out", "mgr", "mgr_out", "super", "hr")  # rec-009 candidates.READERS (R11: the whole pool)
 WRITERS = ("rec", "rec_out", "mgr", "mgr_out", "super")  # rec-009 candidates.WRITERS; hr_team reads only
 POOL_WRITERS = ("mgr", "mgr_out", "super")  # rec-015 P6: division-global pools
@@ -54,18 +71,18 @@ def _document(_w):
 
 ROWS = [
     # rec-007 job requirements (§2.55): the manager creates and assigns but never edits or moves the status
-    R("get", "/recruiter/requirements/statuses", **allow(200, *REQ_SCOPE)),
-    R("get", "/recruiter/requirements", **allow(200, *REQ_SCOPE)),
+    R("get", "/recruiter/requirements/statuses", **allow(200, *REQ_SCOPE, "officer")),
+    R("get", "/recruiter/requirements", **allow(200, *REQ_SCOPE, "officer")),
     # rec_out / mgr_out: the world's company is outside their company scope (rec-003 load_scoped, 404 before the create)
     R("post", "/recruiter/requirements", _new_requirement, **allow(201, "rec", "mgr", "super"), rec_out=404, mgr_out=404),
-    R("get", "/recruiter/requirements/{requirement}", **REQ_READ),
-    R("get", "/recruiter/requirements/{requirement}/history", **REQ_READ),  # hrc-004 B1: the record's readers
-    R("patch", "/recruiter/requirements/{requirement}", {"location": "Bengaluru"}, **allow(200, "rec", "super"), **OUT),
+    R("get", "/recruiter/requirements/{requirement}", **OWN),
+    R("get", "/recruiter/requirements/{requirement}/history", **OWN),  # hrc-004 B1: the record's readers
+    R("patch", "/recruiter/requirements/{requirement}", {"location": "Bengaluru"}, **allow(200, "rec", "super"), **OWN_OUT),
     R("post", "/recruiter/requirements/{requirement}/assign", lambda w: {"recruiter_user_id": w["rec2_id"]}, **allow(200, "mgr", "super"), **OUT),
-    R("post", "/recruiter/requirements/{requirement}/status", {"status": "shortlisting"}, **allow(200, "rec", "super"), **OUT),
+    R("post", "/recruiter/requirements/{requirement}/status", {"status": "shortlisting"}, **allow(200, "rec", "super"), **OWN_OUT),
     # hrc-007 (DEC-SCOPE-380, §2.278): submit follows `can_edit` (the world's recruiter jobs need no approval: 409); approve / reject and the
     # queue need `jobs.approve` (the HR Manager by default, super_admin) -- the world's requirement is not pending (409); settings: super only
-    R("post", "/recruiter/requirements/{requirement}/submit", {}, **allow(409, "rec", "super"), **OUT),
+    R("post", "/recruiter/requirements/{requirement}/submit", {}, **allow(409, "rec", "super"), **OWN_OUT),
     R("post", "/recruiter/requirements/{requirement}/approve", {}, **allow(409, "hr_mgr", "super")),
     R("post", "/recruiter/requirements/{requirement}/reject", {"reason": "Not now"}, **allow(409, "hr_mgr", "super")),
     R("get", "/recruiter/requirement-approvals", **allow(200, "hr_mgr", "super")),
@@ -75,10 +92,16 @@ ROWS = [
     R("get", "/recruiter/requirements/{requirement}/candidates", **REQ_READ),
     R("post", "/recruiter/requirements/{requirement}/candidates", lambda w: {"candidate_id": w["candidates_spare"]}, **allow(201, "rec", "super"), **OUT),
     # rec-008 JD (§2.58): the requirement's scope; writes follow `can_edit`
-    R("get", "/recruiter/requirements/{requirement}/jd", **REQ_READ),
-    R("post", "/recruiter/requirements/{requirement}/jd", {"role": "Backend developer"}, **allow(201, "rec", "super"), **OUT),
-    R("put", "/recruiter/requirements/{requirement}/jd/file", form=_file, **allow(201, "rec", "super"), **OUT),
-    R("get", "/recruiter/requirements/{requirement}/jd/{candidates_jd_version}/file", **REQ_READ),
+    R("get", "/recruiter/requirements/{requirement}/jd", **OWN),
+    R("post", "/recruiter/requirements/{requirement}/jd", {"role": "Backend developer"}, **allow(201, "rec", "super"), **OWN_OUT),
+    R("put", "/recruiter/requirements/{requirement}/jd/file", form=_file, **allow(201, "rec", "super"), **OWN_OUT),
+    R("get", "/recruiter/requirements/{requirement}/jd/{candidates_jd_version}/file", **OWN),
+    # hrc-006 co-owners (§2.281): the history is the record's; the owners are managed by the primary (`rec`), the manager in scope and
+    # super_admin (the in-scope BDM 403). The world's requirement has a collaborator, `candidates_co_owner`, to remove.
+    R("get", "/recruiter/requirements/{requirement}/assignment-history", **OWN),
+    R("get", "/recruiter/requirements/{requirement}/assignment-options?role=collaborator", **allow(200, "rec", "mgr", "super"), **OWN_OUT),
+    R("post", "/recruiter/requirements/{requirement}/assignments", lambda w: {"user_id": w["rec2_id"], "role": "collaborator"}, **allow(201, "rec", "mgr", "super"), **OWN_OUT),
+    R("delete", "/recruiter/requirements/{requirement}/assignments/{candidates_co_owner}", **allow(200, "rec", "mgr", "super"), **OWN_OUT),
     # rec-016 matching (§2.83): candidate readers first (bdm 403), then the requirement scope (hr_team has none: 403)
     R("get", "/recruiter/requirements/{requirement}/matches", **allow(200, "rec", "mgr", "super"), rec_out=404, mgr_out=404),
     R("put", "/recruiter/requirements/{requirement}/skill-weights", _weights, **allow(200, "rec", "super"), **OUT),
@@ -161,6 +184,9 @@ async def build(client, db, w) -> None:
     job_skill = await add(db, JobSkill(job_id=job.id, name=tag("R38 Skill "), kind="required", weight=2, position=0))
     stored = {"storage_key": job_descriptions.store(PDF, "application/pdf"), "file_name": "jd.pdf", "content_type": "application/pdf", "size_bytes": len(PDF)}
     jd = await job_descriptions.add_version(db, rec, job, None, stored)
+    co_owner = await add(db, User(email=f"{tag('r38-co-')}@example.local", password_hash="!", full_name=f"Co-owner {tag()}", role="placement_officer",
+                                  division="it", active=True, email_verified=True))  # fmt: skip
+    await add(db, JobAssignment(job_id=job.id, user_id=co_owner.id, role="collaborator", added_by_user_id=rec.id))  # hrc-006
     if "id" not in _POOL:  # one pool per run: the pool list counts every active pool's members, so a pool per world makes it crawl
         _POOL["id"] = (await add(db, TalentPool(name=tag("R38 Pool "), all_terms=["Java"], any_terms=[], active=True, created_by_user_id=mgr.id,
                                                 updated_by_user_id=mgr.id))).id  # fmt: skip
@@ -170,5 +196,5 @@ async def build(client, db, w) -> None:
     w.update({
         "candidates_source": str(source.id), "candidates_java": str(java.id), "candidates_spare": str(spare.id), "candidates_archived": str(archived.id),
         "candidates_cv": str(cv.id), "candidates_document": str(document.id), "candidates_request": str(request.id), "candidates_skill": str(skill.id), "candidates_job_skill": str(job_skill.id), "candidates_jd_version": str(jd.version),
-        "candidates_pool": str(_POOL["id"]), "candidates_program": str(program.id),
+        "candidates_pool": str(_POOL["id"]), "candidates_program": str(program.id), "candidates_co_owner": str(co_owner.id),
     })  # fmt: skip

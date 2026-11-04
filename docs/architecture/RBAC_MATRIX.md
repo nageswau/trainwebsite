@@ -3751,3 +3751,13 @@ holder reads the approval queue and settings and approves or rejects any pending
 their own: the submitter, the creator or the assigned recruiter → 403 (separation of duties). Submitting stays with the requirement's
 writers (`can_edit`: the assigned recruiter, super_admin) and, through their legacy "open" word, the employer (own postings) and the
 legacy placement writers. Only super_admin changes which sources need approval. Pinned by `apps/api/tests/test_hrc_007_approval.py`.
+
+### 2.281 Vacancy co-ownership *(added 2026-11-04 — `DEC-SCOPE-384`, hrc-006)*
+
+A requirement's assignees (`job_assignments`: its placement-officer owner and collaborators) are in its read and write scope: a
+collaborating recruiter (any team) reads and edits it and works its candidate pipeline as the primary does; a placement manager's scope
+covers its team's collaborations. A `placement_officer` assignee reads and edits the requirement and its JD only — `caller_scope` gives
+the role a scope only where the route opts in (`officers=True`), so applications, interviews, offers, matches, shares, revenue and the
+legacy routes stay 403 for it (candidate access waits for hrc-012). Owners are managed by the primary owner, a placement manager in scope
+or super_admin (a collaborator, the BDM or an officer → 403); a non-assignee → 404. No grant key is added. Pinned by
+`apps/api/tests/test_hrc_006_co_ownership.py` and the rec-038 matrix rows.

@@ -99,6 +99,7 @@ from app.services import (
     partnership_lifecycle,
     program_media,
     recruiter_lifecycle,
+    requirement_owners,
     telecaller_lifecycle,
 )
 from app.services import bdm as bdm_rules
@@ -887,6 +888,8 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
         await recruiter_lifecycle.refuse_open_work_deactivation(db, item)
         # mgmt-001 (MG6): the company always keeps one active partner.
         await management_access.refuse_last_partner_deactivation(db, item)
+        # hrc-006 (DEC-SCOPE-384 O8): whoever is deactivated leaves the requirements they co-own (the primary was reassigned above).
+        await requirement_owners.release(db, user, item)
     # ADM-001-AC02: deactivating a trainer with active/upcoming assigned batches is
     # blocked unless explicitly confirmed -- never a silent operation that would strand
     # those batches without a trainer.

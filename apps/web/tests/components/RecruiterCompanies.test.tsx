@@ -68,6 +68,11 @@ describe("helpers", () => {
     expect(companyShell("placement_manager").roleLabel).toBe("Placement Manager");
     expect(companyShell("super_admin").roleLabel).toBe("Super Administrator");
     expect(companyShell("bdm").nav.map((x) => x.href)).toContain("/bdm/organizations"); // QA-04: the BDM keeps their own menu
+    // hrc-006 (O12): a placement officer keeps its own portal menu on the requirement pages
+    expect(companyShell("placement_officer")).toEqual({
+      nav: [{ label: "Dashboard", href: "/it/placement-officer/dashboard" }, { label: "Job requirements", href: "/recruiter/requirements" }],
+      roleLabel: "Placement Officer",
+    });
   });
 });
 
