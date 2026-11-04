@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { PORTAL_NAV, RECRUITER_MANAGER_NAV, RECRUITER_NAV, SUPER_ADMIN_NAV } from "@/lib/navigation";
-import { EMPTY_FORM, candidateBody, experienceLabel, formFromDetail, missingRequired, STATUS_LABEL, type CandidateDetail } from "@/lib/recruiterCandidates";
+import { EMPTY_FORM, candidateBody, experienceLabel, FIELDS, formFields, formFromDetail, missingRequired, STATUS_LABEL, type CandidateDetail } from "@/lib/recruiterCandidates";
 
 const filled = {
   ...EMPTY_FORM, name: " Rahul ", mobile: "98765 43210", email: "", source_id: "s1", passing_year: "2022", experience_months: "30",
@@ -23,6 +23,17 @@ describe("rec-009 candidate form mapping", () => {
     expect(body.email).toBeNull();
     expect(body.preferred_locations).toEqual(["Hyderabad", "Bengaluru"]);
     expect(Object.keys(body)).toHaveLength(Object.keys(EMPTY_FORM).length);
+  });
+
+  it("hrc-001: without the compensation grant no salary key is sent and there is no salary input", () => {
+    for (const mode of ["create", "edit"] as const) {
+      const body = candidateBody({ ...filled, expected_salary: "1" }, mode, false);
+      expect(body).not.toHaveProperty("current_salary");
+      expect(body).not.toHaveProperty("expected_salary");
+    }
+    expect(formFields(false).map((f) => f.key)).not.toContain("current_salary");
+    expect(formFields(false)).toHaveLength(FIELDS.length - 2);
+    expect(formFields(true)).toBe(FIELDS);
   });
 
   it("names the missing required fields: name, source and a mobile or an email", () => {

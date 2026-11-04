@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import SCREENING_RESULTS, ApplicationScreening, JobApplication, User
-from app.services import applications
+from app.services import applications, candidates
 
 AUDIT = "recruiter_application.screening"
 LABELS = {"shortlisted": "Shortlisted", "hold": "Hold", "rejected": "Rejected", "need_more_info": "Need More Information"}
@@ -44,19 +44,32 @@ async def current(db: AsyncSession, application_id) -> ApplicationScreening | No
     return await db.scalar(stmt)
 
 
-async def screening_out(db: AsyncSession, row: ApplicationScreening | None) -> dict | None:
+async def screening_out(db: AsyncSession, user: User, row: ApplicationScreening | None) -> dict | None:
+    """hrc-001 H2: `expected_salary` is left out without `candidates.compensation.view`."""
     if row is None:
         return None
     by = await db.get(User, row.screened_by_user_id)
     values = {f: getattr(row, f) for f in FIELDS}
-    if values["expected_salary"] is not None:
+    if not await candidates.sees_compensation(db, user):
+        del values["expected_salary"]
+    elif values["expected_salary"] is not None:
         values["expected_salary"] = float(values["expected_salary"])
     return {**values, "result_label": LABELS[row.result], "screened_by": {"id": by.id, "full_name": by.full_name}, "updated_at": row.updated_at}
 
 
+async def keep_hidden_salary(db: AsyncSession, user: User, application: JobApplication, sent: dict, fields_set: set[str]) -> None:
+    """hrc-001 H2: the form replaces the row, so a caller without the grant keeps the stored salary; sending one is a 403."""
+    if await candidates.sees_compensation(db, user):
+        return
+    if "expected_salary" in fields_set:
+        raise HTTPException(403, candidates.NO_COMPENSATION)
+    row = await current(db, application.id)
+    sent["expected_salary"] = row.expected_salary if row else None
+
+
 async def read(db: AsyncSession, user: User, application: JobApplication) -> dict:
     return {
-        "screening": await screening_out(db, await current(db, application.id)),
+        "screening": await screening_out(db, user, await current(db, application.id)),
         "results": [{"key": r, "label": LABELS[r]} for r in SCREENING_RESULTS],
         "can_edit": can_edit(user, application),
     }

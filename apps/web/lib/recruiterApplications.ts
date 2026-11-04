@@ -25,7 +25,7 @@ export type CandidateApplication = {
 // rec-018 (DEC-SCOPE-149): an application's screening. The API decides the status move (SC3), whether the viewer may edit (SC4/SC8)
 // and every range; the form only mirrors the ranges so the browser can say so before a 422.
 export type ScreeningFields = {
-  qualification_verified: boolean; experience_verified: boolean; skills_verified: boolean; expected_salary: number | null;
+  qualification_verified: boolean; experience_verified: boolean; skills_verified: boolean; expected_salary?: number | null; // hrc-001 H2: absent without candidates.compensation.view
   notice_days: number | null; location_preference: string | null; communication_rating: number | null; technical_rating: number | null;
   availability: string | null; willing_to_relocate: boolean | null; remarks: string | null; result: string;
 };

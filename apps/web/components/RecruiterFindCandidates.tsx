@@ -16,8 +16,9 @@ import {
   MAX_GROUPS, MAX_TERMS, OTHER_LOCATION, PAGE_SIZE, paramsOf, requirementSearch, salaryText, SEARCH_URL, searchBody, type SearchResult,
   type SearchState, searchText, stateOf, TEXT_MAX, unknownSkill,
 } from "@/lib/recruiterCandidateSearch";
-import { CANDIDATES_PATH, experienceLabel, STATUS_LABEL, STATUSES } from "@/lib/recruiterCandidates";
+import { CANDIDATES_PATH, COMPENSATION_VIEW, experienceLabel, STATUS_LABEL, STATUSES } from "@/lib/recruiterCandidates";
 import { STATUS_LABEL as SKILL_STATUS_LABEL } from "@/lib/recruiterCandidateSkills";
+import { usePermissions } from "@/lib/usePermissions";
 
 type Failure = { message: string; retry: boolean; term?: string; suggestions?: string[] } | null;
 type Shortlisted = Record<string, { busy?: boolean; text: string; failed?: boolean }>;
@@ -69,7 +70,8 @@ export function Card({ c, writes, requirement, shortlisted, onShortlist, matchNo
 }) {
   const role = [c.preferred_role, experienceLabel(c.experience_months) === "—" ? null : experienceLabel(c.experience_months)].filter(Boolean).join(" | ");
   const facts: [string, string][] = [
-    ["Location", c.location ?? "—"], ["Availability", availabilityOf(c.notice_days)], ["Expected salary", salaryText(c.expected_salary)],
+    ["Location", c.location ?? "—"], ["Availability", availabilityOf(c.notice_days)],
+    ...(c.expected_salary === undefined ? [] : [["Expected salary", salaryText(c.expected_salary)] as [string, string]]), // hrc-001 H2: left out without the grant
     ["Source", c.source_detail ? `${c.source.name} — ${c.source_detail}` : c.source.name], ["Status", STATUS_LABEL[c.status] ?? c.status],
   ];
   return (
@@ -148,6 +150,7 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
   const [version, setVersion] = useState(0);
   const [sources, setSources] = useState<CatalogueValue[]>([]);
   const [requirement, setRequirement] = useState<PickOption | null>(null);
+  const compensation = !!usePermissions()?.includes(COMPENSATION_VIEW); // hrc-001 H2: no salary filter without the grant
   const [shortlisted, setShortlisted] = useState<Shortlisted>({});
   const [selected, setSelected] = useState<Map<string, ShareCandidate>>(new Map()); // rec-019: kept across pages until shared
   const [sharing, setSharing] = useState<ShareCandidate[] | null>(null); // the selection when the dialog opened (QA-01)
@@ -299,14 +302,18 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
             <label htmlFor="find-qualification">Qualification</label>
             <input id="find-qualification" maxLength={120} placeholder="e.g. B.Tech" value={draft.qualification} onChange={(e) => set("qualification", e.target.value)} />
           </div>
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="find-sal-min">Expected salary from (₹ lakhs a year)</label>
-            <input id="find-sal-min" type="number" inputMode="decimal" min={0} step={0.5} value={draft.salMin} onChange={(e) => set("salMin", e.target.value)} />
-          </div>
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="find-sal-max">Expected salary to (₹ lakhs a year)</label>
-            <input id="find-sal-max" type="number" inputMode="decimal" min={0} step={0.5} value={draft.salMax} onChange={(e) => set("salMax", e.target.value)} />
-          </div>
+          {compensation && (
+            <>
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label htmlFor="find-sal-min">Expected salary from (₹ lakhs a year)</label>
+                <input id="find-sal-min" type="number" inputMode="decimal" min={0} step={0.5} value={draft.salMin} onChange={(e) => set("salMin", e.target.value)} />
+              </div>
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label htmlFor="find-sal-max">Expected salary to (₹ lakhs a year)</label>
+                <input id="find-sal-max" type="number" inputMode="decimal" min={0} step={0.5} value={draft.salMax} onChange={(e) => set("salMax", e.target.value)} />
+              </div>
+            </>
+          )}
           {sourceFilter && (
             <div className="field" style={{ marginBottom: 0 }}>
               <label htmlFor="find-source">Candidate source</label>

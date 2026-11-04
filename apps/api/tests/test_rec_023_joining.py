@@ -61,7 +61,7 @@ async def test_a_legacy_accepted_offer_is_marked_joined(client, db_session):
     student = await make_user(db_session, "it_student", "it")
     application = await student_application(db_session, s["job"].id, student, "interview")
     await db_session.commit()
-    await as_role(client, db_session, "placement_team", "it")
+    await as_role(client, db_session, "it_admin", "it")  # hrc-001 H1: legacy writes are record-scoped; it_admin keeps IT-wide access
     offer_id = (await client.post(WF, json={"application_id": str(application.id)})).json()["id"]
     assert (await client.patch(f"{WF}/{offer_id}", json={"status": "accepted"})).status_code == 200
     assert (await _fresh(db_session, JobOffer, offer_id)).joining_status == "joined"

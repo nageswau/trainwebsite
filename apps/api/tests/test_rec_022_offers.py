@@ -326,7 +326,7 @@ async def test_legacy_routes_map_words_write_history_and_keep_accepted_joined(cl
     student = await make_user(db_session, "it_student", "it")
     application = await student_application(db_session, s["job"].id, student, "interview")
     await db_session.commit()
-    await as_role(client, db_session, "placement_team", "it")
+    await as_role(client, db_session, "it_admin", "it")  # hrc-001 H1: legacy writes are record-scoped; it_admin keeps IT-wide access
     created = await client.post(WF, json={"application_id": str(application.id), "compensation": 500000, "letter_url": "https://x.example.com/l.pdf"})
     assert created.status_code == 201 and created.json()["status"] == "offer_received"
     assert await _app_status(db_session, application.id) == "selected"
