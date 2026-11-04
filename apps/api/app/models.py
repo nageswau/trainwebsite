@@ -6259,6 +6259,10 @@ CANDIDATE_PACKAGE_CHECKS = {  # hrc-011 (DEC-SCOPE-375): migration 0251 repeats 
     "ck_candidates_minimum_salary": "minimum_salary IS NULL OR minimum_salary >= 0",
     "ck_candidates_salary_periods": "coalesce(current_salary_period, 'year') IN ('year', 'month') AND coalesce(expected_salary_period, 'year') IN ('year', 'month') AND coalesce(minimum_salary_period, 'year') IN ('year', 'month')",
 }
+CANDIDATE_MERGE_CHECKS = {  # hrc-014 (DEC-SCOPE-377 D8): migration 0256 repeats these strings; test_hrc_014_migration asserts they stay identical
+    "ck_candidates_merged": "(merged_into_id IS NULL) = (merged_at IS NULL) AND (merged_at IS NULL) = (merged_by_user_id IS NULL) AND (merged_into_id IS NULL OR archived_at IS NOT NULL)",
+    "ck_candidates_merged_self": "merged_into_id IS NULL OR merged_into_id <> id",
+}
 # hrc-011 C2: the pay periods (Q-10) and how many of each make a year.
 SALARY_PERIODS = {"year": 1, "month": 12}
 
@@ -6269,7 +6273,7 @@ class Candidate(Base, TimestampMixin):
 
     __tablename__ = "candidates"
     __table_args__ = (
-        *(CheckConstraint(sql, name=name) for name, sql in (CANDIDATE_CHECKS | CANDIDATE_PACKAGE_CHECKS).items()),
+        *(CheckConstraint(sql, name=name) for name, sql in (CANDIDATE_CHECKS | CANDIDATE_PACKAGE_CHECKS | CANDIDATE_MERGE_CHECKS).items()),
         Index("uq_candidates_mobile", "mobile_normalized", unique=True, postgresql_where=text("mobile_normalized IS NOT NULL")),
         Index("uq_candidates_email", text("lower(email)"), unique=True, postgresql_where=text("email IS NOT NULL")),
         Index("ix_candidates_source_id", "source_id"),
@@ -6316,6 +6320,43 @@ class Candidate(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     archived_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    # hrc-014 (DEC-SCOPE-377 D8): a merged candidate is archived for good and names the candidate it was merged into.
+    merged_into_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"), nullable=True)
+    merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    merged_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+
+
+# hrc-014 (DEC-SCOPE-377 D1/D2/D9): one probable-duplicate pair, stored once (lower id first). Migration 0256 repeats the checks.
+CANDIDATE_DUPLICATE_SIGNALS = ("name_location_college", "phone_variant")
+CANDIDATE_DUPLICATE_STATUSES = ("open", "dismissed", "merged")
+CANDIDATE_DUPLICATE_CHECKS = {
+    "ck_candidate_duplicates_order": "candidate_id < other_id",
+    "ck_candidate_duplicates_status": "status IN ('open', 'dismissed', 'merged')",
+    "ck_candidate_duplicates_decided": "(status = 'open') = (decided_at IS NULL)",
+    "ck_candidate_duplicates_note": "note IS NULL OR char_length(note) <= 500",
+}
+
+
+class CandidateDuplicate(Base):
+    """hrc-014: a pair the detector (services/candidate_duplicates) thinks may be one person. `open` until someone dismisses it ("not the
+    same person", never queued again) or merges one into the other. Never deleted."""
+
+    __tablename__ = "candidate_duplicates"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_DUPLICATE_CHECKS.items()),
+        UniqueConstraint("candidate_id", "other_id", name="uq_candidate_duplicates_pair"),
+        Index("ix_candidate_duplicates_status", "status", "created_at"),
+        Index("ix_candidate_duplicates_other", "other_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"))
+    other_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"))
+    signals: Mapped[list] = mapped_column(JSON, default=list)
+    status: Mapped[str] = mapped_column(String(10), default="open", server_default=text("'open'"))
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class RecFxRate(Base):

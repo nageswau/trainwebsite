@@ -5546,6 +5546,21 @@ the record's own GET (requirement: out of scope 404, other roles 403; candidate:
   /admin/roles/{role}/permissions` accepts the new keys and roles.
 - `GET /auth/me/permissions`: `[]` for the new roles by default.
 
+
+## 12JW. Candidate duplicate review and merge (hrc-014) — addendum, 2026-11-04
+
+`DEC-SCOPE-377`. **New:** `GET /api/v1/recruiter/candidate-duplicates?status=open|dismissed|merged&limit&offset` → `{items, total, limit,
+offset}`; item `{id, signals: ["name_location_college"|"phone_variant"], status, created_at, decided_at, decided_by, candidate, other}`
+(sides `{id, candidate_code, name, location, college, status, archived}`, older first; no contact data). `POST .../scan` → `{created}`.
+`POST .../{id}/dismiss` `{note?: ≤500}` → the pair (409 when not open, 404 unknown). `GET /api/v1/recruiter/candidates/{id}/merge?victim=CAN-…`
+→ `{survivor, victim, fields, conflicts: [{application_id, job_id, job_title, status, blocking}], moved}`; `POST .../merge`
+`{victim_code, use_victim: [field], reason?: ≤500}` → `{id, victim_id, victim_code, moved: {applications, share_items, calls, messages,
+consents, documents, document_requests, skills, resumes}, kept_applications}` (hrc-015's documents and requests move too; a victim's
+pending request of a type the survivor is also waiting for is cancelled). Errors: 401; 403 (not a candidate writer or no `candidates.merge`); 404 (either side
+unknown or outside the pool); 422 (self, unknown field, bad body); 409 (archived/merged side, student login, open application on the same
+requirement, lost race). **Changed:** `CandidateDetail.merged_into` (`{id, candidate_code}` | null); `POST /candidates/{id}/restore` of a
+merged candidate is 409; create/edit queue probable duplicates (response unchanged). Reads are `Cache-Control: private, no-store`.
+
 ## 12JX. Candidate documents, document requests and signed links (hrc-015) — addendum, 2026-11-04
 
 `DEC-SCOPE-379`. **Resume upload** (`PUT /api/v1/recruiter/candidates/{id}/resume`) also accepts DOC (`application/msword`, judged by the

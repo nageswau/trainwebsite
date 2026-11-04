@@ -6,6 +6,8 @@ import PortalShell from "@/components/PortalShell";
 import RecruiterCandidateDetail from "@/components/RecruiterCandidateDetail";
 import RecruiterCandidateForm from "@/components/RecruiterCandidateForm";
 import RecruiterCandidateList from "@/components/RecruiterCandidateList";
+import RecruiterCandidateMerge from "@/components/RecruiterCandidateMerge";
+import RecruiterDuplicateQueue from "@/components/RecruiterDuplicateQueue";
 import RecruiterFindCandidates from "@/components/RecruiterFindCandidates";
 import RecruiterTalentPool from "@/components/RecruiterTalentPool";
 import RecruiterTalentPools from "@/components/RecruiterTalentPools";
@@ -13,6 +15,7 @@ import { ApiError, serverApi } from "@/lib/api";
 import { PORTAL_NAV, RECRUITER_MANAGER_NAV, RECRUITER_NAV, SUPER_ADMIN_NAV, type NavItem } from "@/lib/navigation";
 import { PLACEMENT_MANAGER_LABEL, RECRUITER_ROLE_LABEL } from "@/lib/recruiter";
 import { CANDIDATES_PATH, candidateUrl, type CandidateDetail } from "@/lib/recruiterCandidates";
+import { DUPLICATES_PATH } from "@/lib/recruiterDuplicates";
 import { POOLS_PATH } from "@/lib/recruiterPools";
 import type { User } from "@/lib/types";
 
@@ -136,8 +139,46 @@ export async function NewCandidatePage() {
   );
 }
 
+// hrc-014 (DEC-SCOPE-377): the duplicate-review queue and the merge screen -- candidate writers only; the API checks `candidates.merge`.
+const ReadOnly = ({ s }: { s: Shell }) => (
+  <Frame s={s}><Back /><div className="action-card"><h2>Read only</h2><p>Your role can view candidates but not review or merge duplicates.</p></div></Frame>
+);
+
+export async function DuplicateQueuePage() {
+  const s = await shell();
+  if (!("nav" in s)) return s;
+  if (!s.writes) return <ReadOnly s={s} />;
+  return (
+    <Frame s={s}>
+      <Back />
+      <div className="portal-title">
+        <div>
+          <div className="eyebrow">Candidate master</div>
+          <h2>Duplicate review</h2>
+          <p className="muted">Candidates who may be the same person: the same name, location and college, or the same mobile number written differently. Merge the duplicate into the record that stays, or mark the pair as different people.</p>
+        </div>
+      </div>
+      <RecruiterDuplicateQueue />
+    </Frame>
+  );
+}
+
+export async function CandidateMergePage({ id, victim }: { id: string; victim: string }) {
+  const s = await shell();
+  if (!("nav" in s)) return s;
+  if (!s.writes) return <ReadOnly s={s} />;
+  return (
+    <Frame s={s}>
+      <p style={{ margin: "0 0 12px" }}><Link href={DUPLICATES_PATH}>← Back to duplicate review</Link></p>
+      {victim ? <RecruiterCandidateMerge survivorId={id} victimCode={victim} /> : (
+        <div className="action-card"><h2>Nothing to merge</h2><p>Open this screen from the duplicate review list.</p></div>
+      )}
+    </Frame>
+  );
+}
+
 /** A 404 (unknown, or outside the pool) or a malformed id (422) is a plain "not found" -- it never says which. */
-export async function CandidateDetailPage({ id }: { id: string }) {
+export async function CandidateDetailPage({ id, merged }: { id: string; merged?: string }) {
   const s = await shell();
   if (!("nav" in s)) return s;
   let candidate: CandidateDetail | null = null;
@@ -149,7 +190,7 @@ export async function CandidateDetailPage({ id }: { id: string }) {
   return (
     <Frame s={s}>
       <Back />
-      {candidate ? <RecruiterCandidateDetail initial={candidate} /> : (
+      {candidate ? <RecruiterCandidateDetail initial={candidate} merged={merged} /> : (
         <div className="action-card">
           <h2>Candidate not found</h2>
           <p>This candidate does not exist.</p>
