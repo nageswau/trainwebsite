@@ -3,7 +3,7 @@ whatever the email (C2/C5); every `/candidate/me*` route is the signed-in candid
 the caller. The allow-list setting sits with the other recruiter candidate settings (C7). Each write is one transaction committed here;
 verification emails go out after it as a background task."""
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import CHANGE_PASSWORD_FAILED, _change_password_wait_seconds
@@ -16,6 +16,7 @@ from app.notifications.phone import normalise_phone
 from app.schemas import CandidatePortalConsent, CandidatePortalEmailChange, CandidatePortalRegistration, CandidatePortalResend, CandidatePortalToken
 from app.services import candidate_ownership as ownership
 from app.services import candidate_portal as portal
+from app.services import candidate_privacy as privacy
 from app.services import candidates as svc
 from app.services import website_intake
 
@@ -91,9 +92,14 @@ async def change_my_email(payload: CandidatePortalEmailChange, background: Backg
     return _send(background, delivery)
 
 
+async def _privacy(db: AsyncSession, user: User, candidate) -> dict:
+    """hrc-035 (DEC-SCOPE-396 K6): the consent view plus the latest deletion request (null = none)."""
+    return {**await portal.privacy_out(db, candidate), "erasure": privacy.request_out(await privacy.own_request(db, user))}
+
+
 @router.get("/me/privacy")
 async def my_privacy(user: User = Depends(_candidate), db: AsyncSession = Depends(get_db)):
-    return await portal.privacy_out(db, await portal.own(db, user))
+    return await _privacy(db, user, await portal.own(db, user))
 
 
 @router.put("/me/privacy")
@@ -102,7 +108,17 @@ async def save_my_privacy(payload: CandidatePortalConsent, request: Request, use
         raise HTTPException(422, WRONG_CONSENT)
     candidate = await portal.set_consent(db, user, payload.opted_in, client_ip(request))
     await db.commit()
-    return await portal.privacy_out(db, candidate)
+    return await _privacy(db, user, candidate)
+
+
+@router.post("/me/erasure-request")
+async def request_my_erasure(response: Response, user: User = Depends(_candidate), db: AsyncSession = Depends(get_db)):
+    """hrc-035 K6: the candidate's own "delete my data" request for the HR Manager -- 201 new, 200 the open one again (no id is taken)."""
+    candidate = await portal.own(db, user)
+    _, created = await privacy.request_erasure(db, user)
+    await db.commit()
+    response.status_code = 201 if created else 200
+    return await _privacy(db, user, candidate)
 
 
 @settings_router.get("")

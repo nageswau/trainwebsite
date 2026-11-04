@@ -83,6 +83,7 @@ from app.services import (
     audit_changes,
     batch_notices,
     bdm_lifecycle,
+    candidate_privacy,
     course_skills,
     fee_accounts,
     it_lifecycle,
@@ -890,6 +891,8 @@ async def update_user(user_id: UUID, payload: dict, user: User = Depends(ensure_
         await management_access.refuse_last_partner_deactivation(db, item)
         # hrc-006 (DEC-SCOPE-384 O8): whoever is deactivated leaves the requirements they co-own (the primary was reassigned above).
         await requirement_owners.release(db, user, item)
+        # hrc-035 (DEC-SCOPE-396 K9): and the candidates they own as placement officer or collaborate on; their session ends
+        await candidate_privacy.release_on_deactivation(db, user, item)
     # ADM-001-AC02: deactivating a trainer with active/upcoming assigned batches is
     # blocked unless explicitly confirmed -- never a silent operation that would strand
     # those batches without a trainer.
@@ -1625,6 +1628,8 @@ async def fulfil_data_request(request_id: UUID, payload: dict, user: User = Depe
     subject = await db.get(User, item.requesting_user_id)
     if user.role != "super_admin" and subject.division != user.division:
         raise HTTPException(403, "Cross-division data request")
+    if subject.role == candidate_privacy.PORTAL_ROLE:  # hrc-035 K6: this fulfil would leave the candidate record behind
+        raise HTTPException(409, "A candidate's deletion request is handled by the HR Manager (Data requests)")
     decision = payload.get("decision")
     if decision not in {"fulfil", "reject"}:
         raise HTTPException(422, "decision must be 'fulfil' or 'reject'")

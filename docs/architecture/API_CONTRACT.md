@@ -5808,3 +5808,20 @@ qualification?, location?, salary?: bool}`; omitted = unchanged; an unknown key 
 "Set … on the requirement before making it a hard filter"); the audit row's `changes` gains `{"Hard filter: <key>": [old, new]}`.
 **Changed (behaviour):** scores use the six weighted factors (rec-016's fixed experience and location points are gone), and an enabled
 hard filter excludes candidates who miss it or have not recorded the value.
+
+## 12KO. Candidate consent, retention, deletion and access revocation (hrc-035) — addendum, 2026-11-04
+
+`DEC-SCOPE-396`. **New:** `POST /api/v1/candidate/me/erasure-request` (role `candidate` only; no body) → the Privacy body; 201 for a new
+request, 200 when one is already open. `GET /api/v1/recruiter/candidate-data-requests?state=open|decided` (`candidates.erase`; others
+403) → `{"items": [{id, status: in_progress|rejected|fulfilled, requested_at, decided_at, rejection_reason, candidate: {id,
+candidate_code, name, email, anonymised} | null, open_applications, held}]}` — open oldest first, decided newest first (100).
+`POST /api/v1/recruiter/candidate-data-requests/{id}/decision` `{"decision": "approve"|"reject", "reason"?}` → one item; 404 unknown /
+not a candidate's; 409 already decided; 409 "This candidate has an offer in progress…" (held); 422 a reject without a reason or over 500
+characters; audit `candidate.erasure_approved|rejected` (ids and a file count only). `GET /api/v1/recruiter/candidate-retention`
+(`candidates.erase`) → `{months|null, range: [6, 120], due_now, last_run_at, last_run_count, can_edit}`; `PUT` `{"months": int|null}`
+super_admin only (403 otherwise; 422 outside 6–120), audit `candidate.retention_settings`. **Changed (additive):** `GET|PUT
+/candidate/me/privacy` gain `erasure` (`{status, requested_at, decided_at, rejection_reason}` | null); `POST /recruiter/candidates`
+takes an optional `lawful_basis` (`consent` | `provided_for_placement`; other values 422); `POST /recruiter/candidate-imports` takes
+an optional form field `lawful_basis`; `GET /recruiter/candidates/{id}` gains `consent` (`{action, source, lawful_basis,
+consent_version, recorded_at}` | null). **Changed (behaviour):** an anonymised candidate is 404 on every recruiter route and absent from
+lists (archived too); `PATCH /admin/data-requests/{id}` answers 409 for a `candidate` subject.

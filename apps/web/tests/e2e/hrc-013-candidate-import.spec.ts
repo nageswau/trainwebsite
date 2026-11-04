@@ -29,6 +29,7 @@ test("a candidate file is checked, imported once and safe to import again", asyn
   await page.getByRole("link", { name: "Import candidates" }).click();
   await expect(page.getByRole("heading", { name: "Import candidates", level: 2 })).toBeVisible();
   await page.getByLabel("Candidate source").selectOption(source.id);
+  await page.getByLabel("Basis for holding the details").selectOption("provided_for_placement"); // hrc-035 K1
   await page.getByLabel("Filled-in candidates file").setInputFiles(file);
   await page.getByRole("button", { name: "Check file" }).click();
 

@@ -10455,6 +10455,17 @@ class CandidateDetail(CandidateItem):
     is_fresher: bool | None = None
     completeness: dict | None = None
     ownership: "CandidateOwnershipOut | None" = None  # hrc-012 (DEC-SCOPE-382)
+    consent: "CandidateConsentOut | None" = None  # hrc-035 (DEC-SCOPE-396 K2): the latest recorded basis, null = none recorded
+
+
+class CandidateConsentOut(BaseModel):
+    """hrc-035 (K2)."""
+
+    action: str
+    source: str | None
+    lawful_basis: str | None
+    consent_version: str
+    recorded_at: datetime
 
 
 # --- hrc-012 (DEC-SCOPE-382): candidate ownership ------------------------------------------------------------------------------------

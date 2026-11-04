@@ -55,9 +55,14 @@ describe("RecruiterCandidateForm", () => {
     type(/^Source \*/, "s2");
     type(/^Source detail/, "Edusphere Python Full Stack Course");
     fireEvent.click(screen.getByRole("button", { name: "Add candidate" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Choose why EduSphere may hold this candidate's details."); // hrc-035 K1
+    expect(posts()).toHaveLength(0);
+    type(/^Basis for holding/, "provided_for_placement");
+    fireEvent.click(screen.getByRole("button", { name: "Add candidate" }));
     await waitFor(() => expect(push).toHaveBeenCalledWith("/recruiter/candidates/NEW1"));
     expect(JSON.parse(String(posts()[0][1].body))).toEqual({
       name: "Rahul", mobile: "98765 43210", source_id: "s2", source_detail: "Edusphere Python Full Stack Course", status: "available",
+      lawful_basis: "provided_for_placement",
     });
   });
 
@@ -67,6 +72,7 @@ describe("RecruiterCandidateForm", () => {
     type(/^Name/, "Rahul");
     type(/^Mobile/, "98765 43210");
     type(/^Source \*/, "s1");
+    type(/^Basis for holding/, "consent");
     fireEvent.click(screen.getByRole("button", { name: "Add candidate" }));
     const panel = await screen.findByRole("region", { name: /already a candidate/i });
     expect(within(panel).getByText(/CAN-000009/)).toBeInTheDocument();
@@ -99,6 +105,7 @@ describe("RecruiterCandidateForm", () => {
     type(/^Name/, "Rahul");
     type(/^Email/, "r@example.com");
     type(/^Source \*/, "s1");
+    type(/^Basis for holding/, "consent");
     const button = screen.getByRole("button", { name: "Add candidate" });
     fireEvent.click(button);
     fireEvent.click(button);

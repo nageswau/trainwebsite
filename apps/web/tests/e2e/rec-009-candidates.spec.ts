@@ -33,6 +33,7 @@ test("a recruiter adds a candidate, is stopped on a duplicate, uploads a resume;
   await page.getByLabel(/^Total experience/).fill("30");
   await page.getByLabel(/^Preferred role/).fill("Python Developer");
   await page.getByLabel("Source *").selectOption({ label: "Edusphere students" });
+  await page.getByLabel(/^Basis for holding/).selectOption("provided_for_placement"); // hrc-035 K1
   await page.getByLabel(/^Source detail/).fill("Edusphere Python Full Stack Course");
   await page.getByRole("button", { name: "Add candidate" }).click();
   await page.waitForURL(/\/recruiter\/candidates\/[0-9a-f-]{36}$/);
@@ -55,6 +56,7 @@ test("a recruiter adds a candidate, is stopped on a duplicate, uploads a resume;
   await page.getByLabel(/^Name/).fill(`Rahul again ${stamp}`);
   await page.getByLabel(/^Mobile/).fill(`+91 ${mobile.slice(0, 5)} ${mobile.slice(5)}`);
   await page.getByLabel("Source *").selectOption({ label: "Referral" });
+  await page.getByLabel(/^Basis for holding/).selectOption("provided_for_placement"); // hrc-035 K1
   await page.getByRole("button", { name: "Add candidate" }).click();
   const panel = page.getByRole("region", { name: /already a candidate/i });
   await expect(panel).toBeVisible();

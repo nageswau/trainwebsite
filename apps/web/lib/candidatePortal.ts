@@ -58,7 +58,10 @@ export type CandidateProfile = {
   editable: FieldKey[];
 };
 export type ConsentEntry = { action: "opt_in" | "opt_out"; consent_version: string; created_at: string };
-export type PrivacyState = { opted_in: boolean; consent: { version: string; text: string }; history: ConsentEntry[] };
+// hrc-035 (DEC-SCOPE-396 K6): the latest "delete my data" request; null = none asked for.
+export type ErasureRequest = { status: "in_progress" | "rejected" | "fulfilled"; requested_at: string; decided_at: string | null; rejection_reason: string | null };
+export type PrivacyState = { opted_in: boolean; consent: { version: string; text: string }; history: ConsentEntry[]; erasure?: ErasureRequest | null };
+export const ERASURE_URL = "/api/v1/candidate/me/erasure-request";
 export type SelfServiceSettings = { fields: FieldKey[]; available: FieldKey[]; can_edit: boolean };
 
 export function labelOf(key: string): string {

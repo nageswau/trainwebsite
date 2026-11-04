@@ -182,7 +182,8 @@ async def resend(db: AsyncSession, email: str) -> Delivery | None:
 
 # --- C3/C4 verification ------------------------------------------------------------------------------------------------------------
 def _consent(db: AsyncSession, user: User, candidate: Candidate, action: str, ip: str | None) -> None:
-    db.add(CandidateConsent(candidate_id=candidate.id, user_id=user.id, action=action, consent_version=CONSENT_VERSION, ip_address=ip))
+    db.add(CandidateConsent(candidate_id=candidate.id, user_id=user.id, action=action, consent_version=CONSENT_VERSION, ip_address=ip,
+                            source="portal", lawful_basis="consent"))  # hrc-035 K1
     db.add(AuditLog(user_id=user.id, action=f"candidate_portal.{action}", entity_type="candidates", entity_id=str(candidate.id), metadata_json={}))
 
 

@@ -3816,3 +3816,12 @@ Candidate readers (`placement_team`, `placement_manager`, `super_admin`, `hr_tea
 (`GET /recruiter/match-settings`); only `super_admin` changes them. Every other role is 403, anonymous 401. A requirement's hard filters
 ride on the rec-016 weights route (`can_edit`, §2.83). The salary explanation follows `candidates.compensation.view` (§2.270). No grant key
 is added. Pinned by `apps/api/tests/test_hrc_018_matching_engine.py` and the rec-038 matrix rows.
+
+### 2.290 Candidate data requests and retention *(added 2026-11-04 — `DEC-SCOPE-396`, hrc-035)*
+
+New grant key `candidates.erase`, held by default by `hr_manager` (migration 0273 seeds it; `super_admin` holds every key). Holders read
+and decide candidates' deletion requests and read the retention rule; only `super_admin` changes the period. Every other role is 403,
+anonymous 401. A candidate (`candidate` role) raises only their own request (no id in the route). The IT-admin SEC-002 fulfil no longer
+acts on a candidate subject. Deactivating a `placement_officer`, `placement_manager`, `hr_team` or `hr_manager` now increments their
+`session_version` and removes them as placement-officer owner and collaborator of every candidate. Pinned by
+`apps/api/tests/test_hrc_035_candidate_privacy.py` and the rec-038 matrix rows.

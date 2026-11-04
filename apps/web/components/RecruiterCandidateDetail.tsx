@@ -22,7 +22,7 @@ import { sendRequest } from "@/lib/apiErrors";
 import { telHref } from "@/lib/recruiterCalls";
 import {
   AMOUNTS, CANDIDATES_PATH, CONTACT_METHODS, EMPLOYMENT_TYPES, ROW_KINDS, SHIFTS, STATUS_LABEL, WORK_MODES, candidateUrl, educationRows, experienceLabel, labelOf, packageText,
-  rowText, type CandidateDetail, type Completeness, type RowKind,
+  consentSummary, rowText, type CandidateDetail, type Completeness, type RowKind,
 } from "@/lib/recruiterCandidates";
 
 /** hrc-010 (P10): the Appendix B completeness as a meter, with what is still missing. */
@@ -106,6 +106,7 @@ export default function RecruiterCandidateDetail({ initial, merged }: { initial:
     ["LinkedIn", candidate.linkedin && <a href={candidate.linkedin} target="_blank" rel="noopener noreferrer nofollow" style={{ overflowWrap: "anywhere" }}>{candidate.linkedin}</a>],
     ["Source", `${candidate.source.name}${candidate.source.active ? "" : " (inactive)"}`], ["Source detail", candidate.source_detail],
     ["Campaign", candidate.utm ? Object.entries(candidate.utm).map(([key, value]) => `${key.replace("utm_", "")}: ${value}`).join(" · ") : null], // hrc-023
+    ["Basis for holding", consentSummary(candidate.consent)], // hrc-035 (DEC-SCOPE-396 K2)
     ["Added", <><LocalTime value={candidate.created_at} time />{candidate.created_by ? ` by ${candidate.created_by.full_name}` : ""}</>],
     ["Last updated", <><LocalTime value={candidate.updated_at} time />{candidate.updated_by ? ` by ${candidate.updated_by.full_name}` : ""}</>],
   ];

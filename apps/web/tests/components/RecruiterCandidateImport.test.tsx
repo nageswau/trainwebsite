@@ -59,8 +59,9 @@ async function ready() {
   render(<RecruiterCandidateImport />);
   await screen.findByRole("option", { name: "Job fair" });
 }
-function choose(name = "people.csv", size = 10) {
+function choose(name = "people.csv", size = 10, basis = "provided_for_placement") {
   fireEvent.change(screen.getByLabelText("Candidate source"), { target: { value: "s2" } });
+  fireEvent.change(screen.getByLabelText("Basis for holding the details"), { target: { value: basis } }); // hrc-035 K1
   fireEvent.change(screen.getByLabelText(/Filled-in candidates file/), { target: { files: [new File(["x".repeat(size)], name, { type: "text/csv" })] } });
 }
 const check = () => fireEvent.click(screen.getByRole("button", { name: /Check file|Checking/ }));
@@ -83,6 +84,9 @@ describe("RecruiterCandidateImport", () => {
     choose("people.csv", 1024 * 1024 + 1);
     check();
     expect(await screen.findByText("The file is larger than 1 MB.")).toBeInTheDocument();
+    choose("people.csv", 10, "");
+    check();
+    expect(await screen.findByText("Choose why EduSphere may hold these candidates' details.")).toBeInTheDocument(); // hrc-035 K1
     expect(calls("/api/v1/recruiter/candidate-imports/preview")).toHaveLength(0);
   });
 
@@ -103,8 +107,9 @@ describe("RecruiterCandidateImport", () => {
     expect(screen.getByRole("link", { name: "CAN-000010" })).toHaveAttribute("href", "/recruiter/candidates/c10");
     const commit = calls("/api/v1/recruiter/candidate-imports");
     expect(commit).toHaveLength(1);
-    expect(keyOf(commit[0])).toBe("key-2"); // a new key whenever the source (key-1) or the file (key-2) changes
+    expect(keyOf(commit[0])).toBe("key-3"); // a new key whenever the source (key-1), the basis (key-2, hrc-035) or the file (key-3) changes
     expect(((commit[0][1] as RequestInit).body as FormData).get("source_id")).toBe("s2");
+    expect(((commit[0][1] as RequestInit).body as FormData).get("lawful_basis")).toBe("provided_for_placement"); // hrc-035 K1
   });
 
   it("retries a dropped import with the same key and a double click sends once", async () => {

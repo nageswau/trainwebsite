@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import CANDIDATE_CODE_SEQ, AuditLog, Candidate, CandidateResume, CareerApplication, Job, RecCandidateSource, User
 from app.notifications.phone import normalise_phone, wa_number
 from app.schemas import NO_CONTACT
-from app.services import candidate_ownership, candidate_profile
+from app.services import candidate_ownership, candidate_privacy, candidate_profile
 from app.services.permissions import user_has_grant
 from app.services.recruiter import MANAGER_ROLE, ROLE
 from app.services.storage import storage
@@ -84,7 +84,8 @@ def without_compensation(rows: list[dict]) -> None:
 
 def pool_filter() -> list:
     """External candidates (no login) and students who opted in (rec-010). Backfilled students who have not opted in never surface."""
-    return [or_(Candidate.user_id.is_(None), Candidate.opted_in.is_(True))]
+    # hrc-035 (DEC-SCOPE-396 K4): an anonymised candidate leaves every recruiter screen for good (reports count applications, not this)
+    return [or_(Candidate.user_id.is_(None), Candidate.opted_in.is_(True)), Candidate.anonymised_at.is_(None)]
 
 
 async def load(db: AsyncSession, candidate_id: UUID, *, lock: bool = False) -> Candidate:
@@ -374,6 +375,7 @@ async def detail_out(db: AsyncSession, user: User, candidate: Candidate) -> dict
         "website_applications": await website_applications(db, candidate),  # hrc-023 W9
         "owner": (ownership := await candidate_ownership.ownership_out(db, user, candidate))["owner"],  # hrc-012 O2
         "ownership": ownership,
+        "consent": await candidate_privacy.latest_consent(db, candidate.id),  # hrc-035 (DEC-SCOPE-396 K2)
     }
 
 

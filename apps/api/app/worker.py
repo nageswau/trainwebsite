@@ -200,6 +200,16 @@ def send_fee_reminders_task():
 
 
 @celery.task
+def candidate_retention_task():
+    """hrc-035 (DEC-SCOPE-396 K8): daily at 02:00 IST via beat. Does nothing until super_admin sets a retention period; an anonymised
+    candidate no longer matches, so a rerun or an overlapping run anonymises nobody twice."""
+    import app.main  # noqa: F401 -- mgmt-032: load the app's services first (circular imports under the worker)
+    from app.services.candidate_privacy import run_retention
+
+    return _run_with_fresh_pool(run_retention)
+
+
+@celery.task
 def send_partnership_alerts_task():
     """upc-015 (DEC-SCOPE-164 AL3): every IST hour via beat, acting from 09:00 IST. Idempotent per alert (notifications.dedupe_key), so the
     later runs of the day create nothing new and a worker restart during the day still sends that day's alerts."""
@@ -304,6 +314,7 @@ celery.conf.beat_schedule = {
     "itc009-escalations": {"task": "app.worker.escalate_overdue_follow_ups_task", "schedule": 900.0},
     "itc023-at-risk": {"task": "app.worker.flag_at_risk_students_task", "schedule": crontab(hour=1, minute=30)},  # UTC 01:30 = 07:00 IST
     "itc016-fee-reminders": {"task": "app.worker.send_fee_reminders_task", "schedule": crontab(hour=3, minute=0)},  # UTC 03:00 = 08:30 IST
+    "hrc035-candidate-retention": {"task": "app.worker.candidate_retention_task", "schedule": crontab(hour=20, minute=30)},  # UTC 20:30 = 02:00 IST
     "rec026-sweep-stale-recruiter-emails": {"task": "app.worker.sweep_stale_recruiter_emails_task", "schedule": 300.0},
     "upc012-sweep-stale-university-emails": {"task": "app.worker.sweep_stale_university_emails_task", "schedule": 300.0},
     "ccrm037-sweep-stale-student-emails": {"task": "app.worker.sweep_stale_student_emails_task", "schedule": 300.0},
