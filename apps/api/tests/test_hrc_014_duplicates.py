@@ -13,6 +13,8 @@ from app.models import (
     AuditLog,
     Candidate,
     CandidateConsent,
+    CandidateDocument,
+    CandidateDocumentRequest,
     CandidateDuplicate,
     CandidateResume,
     CandidateSkill,
@@ -241,7 +243,8 @@ async def test_ac1_every_child_record_moves_to_the_survivor(client, db_session):
     assert response.status_code == 200, response.text
     out = response.json()
     assert out["id"] == str(s.id) and out["victim_code"] == v.candidate_code and out["kept_applications"] == []
-    assert out["moved"] == {"applications": 1, "share_items": 1, "calls": 1, "messages": 1, "consents": 0, "skills": 1, "resumes": 1}
+    assert out["moved"] == {"applications": 1, "share_items": 1, "calls": 1, "messages": 1, "consents": 0, "documents": 0, "document_requests": 0,
+                            "skills": 1, "resumes": 1}  # fmt: skip
     for model in (JobApplication, ProfileShareItem, RecruiterCall, RecruiterMessage, CandidateResume):
         assert await _count(db_session, model, v.id) == 0, model.__name__
     assert await _count(db_session, CandidateSkill, s.id) == 2 and await _count(db_session, CandidateSkill, v.id) == 1  # the shared skill stays
@@ -254,6 +257,27 @@ async def test_ac1_every_child_record_moves_to_the_survivor(client, db_session):
     assert (survivor.college, survivor.location, survivor.current_company, survivor.experience_months) == ("NIT", "Pune", "Acme", 24)
     assert victim.merged_into_id == s.id and victim.archived_at is not None and victim.merged_by_user_id == manager.id
     assert victim.email is not None  # D4: contact stays on the victim
+
+
+async def test_hrc015_documents_and_requests_move_and_a_second_pending_request_is_cancelled(client, db_session):
+    """hrc-015's candidate documents move; one pending request per type (its partial unique index): the victim's duplicate is cancelled."""
+    manager, recruiter = await _team(db_session)
+    s, v, *_ = await _merge_world(db_session, recruiter)
+    mine = await add(db_session, CandidateDocumentRequest(candidate_id=s.id, document_type="payslip", status="pending", requested_by_user_id=recruiter.id))
+    clash = await add(db_session, CandidateDocumentRequest(candidate_id=v.id, document_type="payslip", status="pending", requested_by_user_id=recruiter.id))
+    other = await add(db_session, CandidateDocumentRequest(candidate_id=v.id, document_type="id_proof", status="pending", requested_by_user_id=recruiter.id))
+    document = await add(db_session, CandidateDocument(candidate_id=v.id, document_type="certificate", storage_key="candidate-documents/x",
+                                                         content_type="application/pdf", size_bytes=1, uploaded_by_user_id=recruiter.id))  # fmt: skip
+    await db_session.commit()
+    response = await _merge(client, manager, s.id, v.candidate_code)
+    assert response.status_code == 200, response.text
+    assert response.json()["moved"]["documents"] == 1 and response.json()["moved"]["document_requests"] == 2
+    rows = {r.id: r for r in await db_session.scalars(select(CandidateDocumentRequest).where(CandidateDocumentRequest.id.in_([mine.id, clash.id, other.id]))
+                                                      .execution_options(populate_existing=True))}  # fmt: skip
+    assert {r.candidate_id for r in rows.values()} == {s.id}
+    assert (rows[mine.id].status, rows[clash.id].status, rows[other.id].status) == ("pending", "cancelled", "pending")
+    assert rows[clash.id].cancelled_by_user_id == manager.id
+    assert (await db_session.get(CandidateDocument, document.id, populate_existing=True)).candidate_id == s.id
 
 
 async def test_ac3_the_merge_is_audited_on_both_records(client, db_session):

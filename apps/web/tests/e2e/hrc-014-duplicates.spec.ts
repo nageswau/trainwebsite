@@ -30,6 +30,12 @@ test("a probable duplicate is reviewed and merged into the older record", async 
   await page.getByRole("link", { name: "Duplicate Review" }).click();
   await expect(page.getByRole("heading", { name: "Duplicate review", level: 2 })).toBeVisible();
   const review = page.getByRole("link", { name: `Review and merge ${older.name} and ${newer.name}` });
+  await expect(page.getByRole("table")).toBeVisible();
+  // open pairs are oldest first and the shared database holds earlier runs' pairs: page on with Show more (browser QA-06)
+  while ((await review.count()) === 0 && (await page.getByRole("button", { name: "Show more" }).count()) > 0) {
+    await page.getByRole("button", { name: "Show more" }).click();
+    await expect(page.getByRole("button", { name: "Show more" }).or(review).first()).toBeVisible();
+  }
   await expect(review).toBeVisible();
   await expect(page.getByRole("row").filter({ has: review }).getByText("Same name, location and college")).toBeVisible();
   await review.click();

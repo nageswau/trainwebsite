@@ -491,7 +491,7 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 #### hrc-014: Candidate duplicate review and merge
 - **Status (2026-11-04):** built — `DEC-SCOPE-377` (Q-14 answered by the builder's recommended calls D1–D10, `NEEDS_CONFIRMATION`;
   name + DOB not built: no DOB field); design `docs/superpowers/specs/2026-11-04-hrc-014-candidate-duplicate-merge-design.md`; migration
-  `0252`; API §12JW; RBAC §2.276.
+  `0256`; API §12JW; RBAC §2.276.
 - **Business requirement:** §5.1 "Detect duplicates using verified email, phone and other matching signals; provide an authorised merge workflow"; §17 QA "Duplicate website registrations do not create uncontrolled duplicate profiles".
 - **Existing behavior:** an exact duplicate on mobile or email blocks the save (Q-07). There is no fuzzy matching, review queue or merge.
 - **Expected behavior:**
@@ -518,6 +518,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** large. **Risk:** high.
 
 #### hrc-015: Resume and document handling completion
+- **Status (2026-11-04):** built — `DEC-SCOPE-379` (Q-15 answered by the builder's recommended call: LibreOffice converter in the API
+  image, `NEEDS_CONFIRMATION`); design `docs/superpowers/specs/2026-11-04-hrc-015-candidate-documents-design.md`; migration `0255`.
 - **Business requirement:** §5.1 "Upload, preview, download and replace resumes in PDF and DOC/DOCX"; §5 Documents "certificates and requested documents"; §11 Documents; §15 "controlled download links".
 - **Existing behavior:**
   - Resumes are versioned, PDF/DOCX only (**no DOC**), with no preview.

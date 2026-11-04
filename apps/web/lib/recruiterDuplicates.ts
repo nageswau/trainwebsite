@@ -36,11 +36,11 @@ export type MergeSide = Record<MergeField, string | number | null> & {
   current_salary?: string | null; expected_salary?: string | null;
 };
 export type MergeConflict = { application_id: string; job_id: string; job_title: string; status: string; blocking: boolean };
-export type MergeMoved = Record<"applications" | "share_items" | "calls" | "messages" | "consents" | "skills" | "resumes", number>;
+export type MergeMoved = Record<"applications" | "share_items" | "calls" | "messages" | "consents" | "documents" | "document_requests" | "skills" | "resumes", number>;
 export type MergePreview = { survivor: MergeSide; victim: MergeSide; fields: MergeField[]; conflicts: MergeConflict[]; moved: MergeMoved };
 export const MOVED_LABEL: [keyof MergeMoved, string][] = [
   ["applications", "requirements"], ["share_items", "profile shares"], ["calls", "calls"], ["messages", "messages"],
-  ["skills", "skills"], ["resumes", "resumes"], ["consents", "consent records"],
+  ["skills", "skills"], ["resumes", "resumes"], ["documents", "documents"], ["document_requests", "document requests"], ["consents", "consent records"],
 ];
 
 export function isMergePreview(data: unknown): data is MergePreview {

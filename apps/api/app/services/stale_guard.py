@@ -36,6 +36,7 @@ async def require_fresh(
     query = select(AuditLog, User).outerjoin(User, User.id == AuditLog.user_id).where(
         AuditLog.entity_type == entity_type, AuditLog.entity_id == str(entity_id), AuditLog.action.startswith(action_prefix),
         ~AuditLog.action.endswith("download"),  # a read, not a change
+        ~AuditLog.action.endswith("_link"),  # hrc-015: a signed link issued is a read too
     )
     if since is not None:
         query = query.where(AuditLog.created_at > since)

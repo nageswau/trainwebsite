@@ -2,8 +2,8 @@
 lead-merge shape.
 
 Both are found inside the pool (anything else is a 404), locked FOR UPDATE in id order so two merges of a crossing pair serialise, and every
-rule is checked again on the locked rows. The victim's applications (with their profile-share items), calls, messages, consents, the skills
-the survivor lacks and every resume move to the survivor (one UPDATE per table); the chosen and the empty survivor fields take the victim's
+rule is checked again on the locked rows. The victim's applications (with their profile-share items), calls, messages, consents, hrc-015's
+documents and document requests, the skills the survivor lacks and every resume move to the survivor (one UPDATE per table); the chosen and the empty survivor fields take the victim's
 values; the victim is archived with `merged_into_id`. An application on a requirement both are on cannot move ((candidate, job) is unique):
 an open one blocks the merge (409), a closed one stays on the archived victim (D6). Contact and compensation never move (D4). One
 `candidate.merge` audit row on the survivor, one `candidate.merged_into` on the victim. Functions only; nothing here commits. Logs carry
@@ -20,6 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import (
     Candidate,
     CandidateConsent,
+    CandidateDocument,
+    CandidateDocumentRequest,
     CandidateResume,
     CandidateSkill,
     Job,
@@ -38,7 +40,11 @@ logger = logging.getLogger("app.candidates")
 FIELDS = ("name", "location", "qualification", "college", "passing_year", "experience_months", "current_company", "notice_days", "preferred_role", "linkedin")
 CLOSED = ("rejected", "withdrawn")  # an application in one of these may stay behind on the victim (D6)
 # Moved wholesale by `candidate_id`; applications, skills and resumes have their own rules below.
-MOVED = {"calls": RecruiterCall, "messages": RecruiterMessage, "consents": CandidateConsent}
+MOVED = {
+    "calls": RecruiterCall, "messages": RecruiterMessage, "consents": CandidateConsent,
+    # hrc-015: documents and document requests (a second pending request of a type is cancelled first, see `_cancel_clashing_requests`)
+    "documents": CandidateDocument, "document_requests": CandidateDocumentRequest,
+}  # fmt: skip
 
 MERGE_SELF = "A candidate cannot be merged into itself"
 SURVIVOR_ARCHIVED = "Restore {code} before merging into it"
@@ -148,6 +154,19 @@ async def _move_resumes(db: AsyncSession, survivor: Candidate, victim: Candidate
     return moved
 
 
+async def _cancel_clashing_requests(db: AsyncSession, actor: User, survivor: Candidate, victim: Candidate) -> None:
+    """hrc-015 allows one pending document request per type per candidate: where both are waiting for the same type, the victim's is
+    cancelled (kept as history) so the move keeps the survivor's."""
+    survivor_pending = select(CandidateDocumentRequest.document_type).where(CandidateDocumentRequest.candidate_id == survivor.id,
+                                                                           CandidateDocumentRequest.status == "pending")  # fmt: skip
+    await db.execute(
+        update(CandidateDocumentRequest)
+        .where(CandidateDocumentRequest.candidate_id == victim.id, CandidateDocumentRequest.status == "pending", CandidateDocumentRequest.document_type.in_(survivor_pending))
+        .values(status="cancelled", cancelled_at=datetime.now(UTC), cancelled_by_user_id=actor.id)
+        .execution_options(synchronize_session=False)
+    )
+
+
 async def merge(db: AsyncSession, actor: User, survivor_id: UUID, code: str, use_victim: list[str], reason: str | None) -> dict:
     """Find, lock, check, move. The route commits. Returns the route's body."""
     found = await _victim(db, code)
@@ -174,6 +193,7 @@ async def merge(db: AsyncSession, actor: User, survivor_id: UUID, code: str, use
         "applications": (await db.execute(update(JobApplication).where(JobApplication.candidate_id == victim.id, JobApplication.id.not_in(kept))
                                            .values(candidate_id=survivor.id, student_id=survivor.user_id).execution_options(synchronize_session=False))).rowcount,  # fmt: skip
     }
+    await _cancel_clashing_requests(db, actor, survivor, victim)
     for key, model in MOVED.items():
         result = await db.execute(update(model).where(model.candidate_id == victim.id).values(candidate_id=survivor.id).execution_options(synchronize_session=False))
         moved[key] = result.rowcount

@@ -75,6 +75,18 @@ describe("RecruiterDuplicateQueue", () => {
     expect(screen.getByRole("button", { name: "Merged" })).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("loads the next page with Show more (browser QA-06: past the first 50 pairs)", async () => {
+    const second = { ...pair, id: "P2", candidate: side("A2", "CAN-000003", "Ravi Kumar"), other: side("B2", "CAN-000004", "RAVI KUMAR") };
+    fetchMock.mockImplementation((url: string) => Promise.resolve(res(
+      url.includes("offset=1") ? { items: [second], total: 2, limit: 1, offset: 1 } : { items: [pair], total: 2, limit: 1, offset: 0 },
+    )));
+    render(<RecruiterDuplicateQueue />);
+    fireEvent.click(await screen.findByRole("button", { name: "Show more" }));
+    expect(await screen.findByRole("link", { name: "Ravi Kumar" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Meera Rao" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Show more" })).toBeNull();
+  });
+
   it("shows the API's refusal", async () => {
     listStatus = 403;
     render(<RecruiterDuplicateQueue />);
@@ -92,7 +104,7 @@ describe("RecruiterCandidateMerge", () => {
     survivor: mside({}),
     victim: mside({ id: "V1", candidate_code: "CAN-000002", email: "b@x.in", college: "NIT", location: "Pune" }),
     fields: ["name", "location", "qualification", "college", "passing_year", "experience_months", "current_company", "notice_days", "preferred_role", "linkedin"],
-    conflicts: [], moved: { applications: 2, share_items: 0, calls: 1, messages: 0, consents: 0, skills: 3, resumes: 1 },
+    conflicts: [], moved: { applications: 2, share_items: 0, calls: 1, messages: 0, consents: 0, documents: 2, document_requests: 0, skills: 3, resumes: 1 },
   };
   let current: unknown;
   let mergeStatus: number;
@@ -115,7 +127,7 @@ describe("RecruiterCandidateMerge", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Loading");
     await screen.findByRole("table", { name: "Compare the two candidates" });
     expect(screen.getByText("(filled from the duplicate)")).toBeInTheDocument(); // location
-    expect(screen.getByText(/Moves to CAN-000001: requirements: 2, calls: 1, skills: 3, resumes: 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Moves to CAN-000001: requirements: 2, calls: 1, skills: 3, resumes: 1, documents: 2\./)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: "Keep NIT for College" }));
     fireEvent.change(screen.getByLabelText("Reason (optional)"), { target: { value: " same person " } });
     fireEvent.click(screen.getByRole("button", { name: "Merge CAN-000002 into CAN-000001" }));

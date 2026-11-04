@@ -1,4 +1,4 @@
-"""hrc-014 -- migration 0252_candidate_duplicates (DEC-SCOPE-377): the chain, the frozen checks and grant, and the round trip in a
+"""hrc-014 -- migration 0256_candidate_duplicates (DEC-SCOPE-377): the chain, the frozen checks and grant, and the round trip in a
 throwaway database (the hrc-011 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -14,14 +14,14 @@ from app.core.config import settings
 from app.models import CANDIDATE_DUPLICATE_CHECKS, CANDIDATE_MERGE_CHECKS
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_hrc_014_migration_0252", VERSIONS / "0252_candidate_duplicates.py")
+_spec = importlib.util.spec_from_file_location("_hrc_014_migration_0256", VERSIONS / "0256_candidate_duplicates.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0252_candidate_duplicates", "0251_candidate_compensation"
+HEAD, BASE = "0256_candidate_duplicates", "0255_candidate_documents"
 
 
-def test_migration_chains_after_0251():
+def test_migration_chains_after_0255():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

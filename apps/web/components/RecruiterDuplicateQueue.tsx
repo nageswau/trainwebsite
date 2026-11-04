@@ -43,6 +43,20 @@ export default function RecruiterDuplicateQueue() {
   }, []);
   useEffect(() => { void load(status); }, [load, status]);
 
+  // browser QA-06: the next page, appended. The offset is what is shown -- a dismissed pair has left both the list and the server's set.
+  async function more() {
+    if (!pairs || sending.current) return;
+    sending.current = true;
+    setBusy(true);
+    const outcome = await sendRequest(`${DUPLICATES_URL}?${new URLSearchParams({ status, limit: String(LIMIT), offset: String(pairs.length) })}`, { method: "GET" });
+    sending.current = false;
+    setBusy(false);
+    if (!outcome.ok || !isPage<DuplicatePair>(outcome.data)) return setError(outcome.ok ? "Unable to load the duplicates." : outcome.message);
+    const seen = new Set(pairs.map((p) => p.id));
+    setPairs([...pairs, ...outcome.data.items.filter((p) => !seen.has(p.id))]);
+    setTotal(outcome.data.total);
+  }
+
   async function run(url: string, done: (data: Record<string, unknown>) => void) {
     if (sending.current) return;
     sending.current = true;
@@ -127,7 +141,12 @@ export default function RecruiterDuplicateQueue() {
               ))}
             </tbody>
           </table>
-          {total > pairs.length && <p className="muted" style={{ fontSize: 13 }}>Showing the first {pairs.length} of {total}. Review these to see more.</p>}
+          {total > pairs.length && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: 8 }}>
+              <span className="muted" style={{ fontSize: 13 }}>Showing {pairs.length} of {total}.</span>
+              <button type="button" className="btn secondary small" disabled={busy} onClick={() => void more()}>Show more</button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -127,7 +127,7 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "trainer": _TRAINING_REPORTS,
     # hrc-001 (DEC-SCOPE-371 H2, Q-03; migration 0250 seeds it): the recruiters and their managers see candidate compensation.
     "placement_team": _PLACEMENT_REPORTS + ("candidates.compensation.view",),
-    "placement_manager": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.merge"),  # hrc-014 (migration 0252 seeds merge)
+    "placement_manager": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.merge"),  # hrc-014 (migration 0256 seeds merge)
     "overseas_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,
     "telecaller_manager": _TELECALLER_REPORTS,
     # nehn-030 (0201 seeds view); nehn-031 W3/W4 (0204 seeds issue, override): issuance is the coordinator's alone (DEC-ROLE-003).

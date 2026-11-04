@@ -1,8 +1,8 @@
 """hrc-014 -- candidate duplicate review and merge: `candidates.merged_*`, the `candidate_duplicates` review queue, and the default
 `candidates.merge` grant (placement managers).
 
-Revision ID: 0252_candidate_duplicates
-Revises: 0251_candidate_compensation
+Revision ID: 0256_candidate_duplicates
+Revises: 0255_candidate_documents
 
 docs/superpowers/specs/2026-11-04-hrc-014-candidate-duplicate-merge-design.md (DEC-SCOPE-377). Nullable columns and one new table; 0001
 builds a fresh database from the current models, which already carry them, so each step runs only when missing (0251's idiom). No backfill:
@@ -15,8 +15,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0252_candidate_duplicates"
-down_revision = "0251_candidate_compensation"
+revision = "0256_candidate_duplicates"
+down_revision = "0255_candidate_documents"
 branch_labels = None
 depends_on = None
 

@@ -29,6 +29,7 @@ async def history(db: AsyncSession, entity_type: str, entity_id, prefixes: tuple
         AuditLog.entity_id == str(entity_id),
         or_(*(AuditLog.action.startswith(prefix) for prefix in prefixes)),
         ~AuditLog.action.endswith("download"),
+        ~AuditLog.action.endswith("_link"),  # hrc-015: a signed link issued is a read too
     )
     total = await db.scalar(select(func.count()).select_from(AuditLog).where(*where))
     rows = (await db.execute(

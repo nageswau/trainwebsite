@@ -69,7 +69,7 @@ export default function RecruiterCandidateMerge({ survivorId, victimCode }: { su
           <div className="eyebrow">Duplicate review</div>
           <h2 id={`${id}-heading`}>Merge {victim.candidate_code} into {survivor.candidate_code}</h2>
           <p className="muted" style={{ margin: 0 }}>
-            {survivor.candidate_code} stays. Requirements, profile shares, calls, messages, skills and resumes of {victim.candidate_code} move to it, and{" "}
+            {survivor.candidate_code} stays. Requirements, profile shares, calls, messages, skills, resumes and documents of {victim.candidate_code} move to it, and{" "}
             {victim.candidate_code} is archived as merged. Mobile, email and salary stay on each record.
           </p>
         </div>

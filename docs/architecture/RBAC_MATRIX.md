@@ -3728,9 +3728,18 @@ scope (Q-04 open). Pinned by `apps/api/tests/test_hrc_002_roles.py` and the rec-
 
 ### 2.276 Candidate duplicate review and merge *(added 2026-11-04 — `DEC-SCOPE-377`, hrc-014)*
 
-First default holder of hrc-002's `candidates.merge` key (§2.275): `placement_manager`, seeded by migration 0252 (hrc-002's `hr_manager` is not a
+First default holder of hrc-002's `candidates.merge` key (§2.275): `placement_manager`, seeded by migration 0256 (hrc-002's `hr_manager` is not a
 candidate-writer role, so it holds no default — `NEEDS_CONFIRMATION`);
 `super_admin` implicitly; a `placement_team` user only through an allow override. Queue, scan, dismiss, preview and merge need the grant
 **and** a candidate-writer role (`placement_team`, `placement_manager`, `super_admin`) — an override never lets `hr_team` write; anonymous
 401. Pinned by `apps/api/tests/test_hrc_014_duplicates.py::test_the_queue_and_merge_need_the_grant_and_a_writer_role` and
 `test_nehn_005_permissions.py`.
+
+### 2.277 Candidate documents, document requests and signed links *(added 2026-11-04 — `DEC-SCOPE-379`, hrc-015)*
+
+No new grant. Resume/document links and the documents list: the candidate readers (`placement_team`, `placement_manager`, `hr_team`,
+`super_admin`), within the candidate pool (404 outside). Uploading documents, requesting and cancelling: the candidate writers
+(`placement_team`, `placement_manager`, `super_admin`); `hr_team` 403. `/account/candidate-documents*`: `it_student` only, for their own
+opted-in candidate (no id in the request; another candidate's document 404). Every other role 403, anonymous 401. A signed link is the
+authorisation for its 300 s (D4). `/files/download` and `/local-files` 404 `candidate-documents/` and `candidate-previews/` keys. Pinned by
+`apps/api/tests/test_hrc_015_documents.py` and the rec-038 matrix rows.

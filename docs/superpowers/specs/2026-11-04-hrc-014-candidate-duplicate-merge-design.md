@@ -45,7 +45,7 @@ Non-goals: fuzzy/phonetic name matching, automatic merging, un-merge, merging st
 - **D10 Audit.** One `candidate.merge` row on the survivor (victim id/code, moved counts, kept applications, chosen fields, hrc-004
   field changes with contact/compensation redacted) and one `candidate.merged_into` row on the victim. Dismiss: `candidate.duplicate_dismiss`.
 
-## Data (migration 0252)
+## Data (migration 0256)
 
 - `candidates`: `merged_into_id` (FK candidates, nullable), `merged_at`, `merged_by_user_id`; CHECK: merged ⇒ archived and all three
   set together; no self-merge.

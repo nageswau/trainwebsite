@@ -6259,7 +6259,7 @@ CANDIDATE_PACKAGE_CHECKS = {  # hrc-011 (DEC-SCOPE-375): migration 0251 repeats 
     "ck_candidates_minimum_salary": "minimum_salary IS NULL OR minimum_salary >= 0",
     "ck_candidates_salary_periods": "coalesce(current_salary_period, 'year') IN ('year', 'month') AND coalesce(expected_salary_period, 'year') IN ('year', 'month') AND coalesce(minimum_salary_period, 'year') IN ('year', 'month')",
 }
-CANDIDATE_MERGE_CHECKS = {  # hrc-014 (DEC-SCOPE-377 D8): migration 0252 repeats these strings; test_hrc_014_migration asserts they stay identical
+CANDIDATE_MERGE_CHECKS = {  # hrc-014 (DEC-SCOPE-377 D8): migration 0256 repeats these strings; test_hrc_014_migration asserts they stay identical
     "ck_candidates_merged": "(merged_into_id IS NULL) = (merged_at IS NULL) AND (merged_at IS NULL) = (merged_by_user_id IS NULL) AND (merged_into_id IS NULL OR archived_at IS NOT NULL)",
     "ck_candidates_merged_self": "merged_into_id IS NULL OR merged_into_id <> id",
 }
@@ -6326,7 +6326,7 @@ class Candidate(Base, TimestampMixin):
     merged_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
 
 
-# hrc-014 (DEC-SCOPE-377 D1/D2/D9): one probable-duplicate pair, stored once (lower id first). Migration 0252 repeats the checks.
+# hrc-014 (DEC-SCOPE-377 D1/D2/D9): one probable-duplicate pair, stored once (lower id first). Migration 0256 repeats the checks.
 CANDIDATE_DUPLICATE_SIGNALS = ("name_location_college", "phone_variant")
 CANDIDATE_DUPLICATE_STATUSES = ("open", "dismissed", "merged")
 CANDIDATE_DUPLICATE_CHECKS = {
@@ -6402,6 +6402,71 @@ class CandidateResume(Base):
     search_vector: Mapped[str | None] = mapped_column(
         TSVECTOR, Computed(RESUME_SEARCH_VECTOR, persisted=True), nullable=True, deferred=True
     )
+    # hrc-015 (DEC-SCOPE-379 D3): a DOC/DOCX's converted PDF rendition -- null for a PDF, which previews itself.
+    preview_status: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    preview_key: Mapped[str | None] = mapped_column(String(300), nullable=True)
+
+
+# hrc-015 (DEC-SCOPE-379 D3/D6/D7): migration 0255 repeats CANDIDATE_DOCUMENT_CHECKS (test_hrc_015_migration asserts they stay identical).
+# Labels live in the web client.
+CANDIDATE_PREVIEW_STATUSES = ("pending", "ready", "failed")
+CANDIDATE_DOCUMENT_TYPES = ("certificate", "education", "experience_letter", "relieving_letter", "payslip", "id_proof", "other")
+CANDIDATE_DOCUMENT_REQUEST_STATUSES = ("pending", "received", "cancelled")
+CANDIDATE_DOCUMENT_CHECKS = {
+    "ck_candidate_documents_type": f"document_type IN ({', '.join(repr(v) for v in CANDIDATE_DOCUMENT_TYPES)})",
+    "ck_candidate_documents_preview": f"preview_status IS NULL OR preview_status IN ({', '.join(repr(v) for v in CANDIDATE_PREVIEW_STATUSES)})",
+}
+CANDIDATE_DOCUMENT_REQUEST_CHECKS = {
+    "ck_candidate_document_requests_type": f"document_type IN ({', '.join(repr(v) for v in CANDIDATE_DOCUMENT_TYPES)})",
+    "ck_candidate_document_requests_status": f"status IN ({', '.join(repr(v) for v in CANDIDATE_DOCUMENT_REQUEST_STATUSES)})",
+}
+
+
+class CandidateDocumentRequest(Base):
+    """hrc-015 (D7): staff ask a candidate for one document type. Pending until the first upload against it (received) or a staff
+    cancel. One pending request per type per candidate (partial unique index)."""
+
+    __tablename__ = "candidate_document_requests"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_DOCUMENT_REQUEST_CHECKS.items()),
+        Index("uq_candidate_document_requests_pending", "candidate_id", "document_type", unique=True, postgresql_where=text("status = 'pending'")),
+        Index("ix_candidate_document_requests_candidate", "candidate_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id"))
+    document_type: Mapped[str] = mapped_column(String(30))
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(10), default="pending")
+    requested_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class CandidateDocument(Base):
+    """hrc-015 (D6): a certificate or other document of a candidate, append-only. `request_id` is the request it fulfilled (unique)."""
+
+    __tablename__ = "candidate_documents"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_DOCUMENT_CHECKS.items()),
+        UniqueConstraint("request_id", name="uq_candidate_documents_request"),
+        Index("ix_candidate_documents_candidate", "candidate_id", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id"))
+    document_type: Mapped[str] = mapped_column(String(30))
+    title: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    storage_key: Mapped[str] = mapped_column(String(300))
+    content_type: Mapped[str] = mapped_column(String(120))
+    file_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    preview_status: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    preview_key: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    request_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidate_document_requests.id"), nullable=True)
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 # rec-010 (DEC-SCOPE-138): migration 0123 repeats CANDIDATE_CONSENT_CHECKS (test_rec_010_migration asserts they stay identical).
