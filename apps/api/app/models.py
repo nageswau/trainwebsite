@@ -6255,6 +6255,12 @@ CANDIDATE_CHECKS = {  # migration 0107 repeats these strings; test_rec_009_migra
     "ck_candidates_notice": "notice_days IS NULL OR notice_days BETWEEN 0 AND 365",
     "ck_candidates_salary": "(current_salary IS NULL OR current_salary >= 0) AND (expected_salary IS NULL OR expected_salary >= 0)",
 }
+CANDIDATE_PACKAGE_CHECKS = {  # hrc-011 (DEC-SCOPE-372): migration 0251 repeats these strings; test_hrc_011_migration asserts they stay identical
+    "ck_candidates_minimum_salary": "minimum_salary IS NULL OR minimum_salary >= 0",
+    "ck_candidates_salary_periods": "coalesce(current_salary_period, 'year') IN ('year', 'month') AND coalesce(expected_salary_period, 'year') IN ('year', 'month') AND coalesce(minimum_salary_period, 'year') IN ('year', 'month')",
+}
+# hrc-011 C2: the pay periods (Q-10) and how many of each make a year.
+SALARY_PERIODS = {"year": 1, "month": 12}
 
 
 class Candidate(Base, TimestampMixin):
@@ -6263,12 +6269,13 @@ class Candidate(Base, TimestampMixin):
 
     __tablename__ = "candidates"
     __table_args__ = (
-        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_CHECKS.items()),
+        *(CheckConstraint(sql, name=name) for name, sql in (CANDIDATE_CHECKS | CANDIDATE_PACKAGE_CHECKS).items()),
         Index("uq_candidates_mobile", "mobile_normalized", unique=True, postgresql_where=text("mobile_normalized IS NOT NULL")),
         Index("uq_candidates_email", text("lower(email)"), unique=True, postgresql_where=text("email IS NOT NULL")),
         Index("ix_candidates_source_id", "source_id"),
         Index("ix_candidates_status", "status"),
         Index("ix_candidates_created_at", "created_at"),
+        Index("ix_candidates_expected_annual_inr", "expected_annual_inr"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     candidate_code: Mapped[str] = mapped_column(String(12), unique=True)
@@ -6284,6 +6291,18 @@ class Candidate(Base, TimestampMixin):
     current_company: Mapped[str | None] = mapped_column(String(200), nullable=True)
     current_salary: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     expected_salary: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    # hrc-011 (DEC-SCOPE-372 C3/C8): each amount as entered (currency, pay period) and its normalised annual INR; null = not provided.
+    current_salary_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    current_salary_period: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    expected_salary_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    expected_salary_period: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    minimum_salary: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    minimum_salary_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    minimum_salary_period: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    salary_negotiable: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    current_annual_inr: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    expected_annual_inr: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    minimum_annual_inr: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
     notice_days: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     preferred_locations: Mapped[list] = mapped_column(JSON, default=list)
     preferred_role: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -6297,6 +6316,18 @@ class Candidate(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     archived_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class RecFxRate(Base):
+    """hrc-011 (DEC-SCOPE-372 C1, Q-10): the placement manager's manual exchange rate, rupees per one unit of the currency. INR is
+    implicit (1) and never stored; no rate is seeded. Never deleted: a currency in use keeps its rate."""
+
+    __tablename__ = "rec_fx_rates"
+    __table_args__ = (CheckConstraint("inr_per_unit > 0 AND inr_per_unit <= 10000", name="ck_rec_fx_rates_rate"),)
+    currency: Mapped[str] = mapped_column(String(3), primary_key=True)
+    inr_per_unit: Mapped[Decimal] = mapped_column(Numeric(12, 4))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
 # rec-014 (DEC-SCOPE-154): English stemming and stop words over the extracted text; scans ('') and unextracted (null) resumes are empty.

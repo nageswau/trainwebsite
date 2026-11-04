@@ -22,11 +22,16 @@ export const VALUE_TABS = {
   "job-categories": { label: "Job categories", noun: "job category", intro: "A requirement's job category, also used in reports." },
 } satisfies Record<string, Tab>;
 export type ValueKind = keyof typeof VALUE_TABS;
-export const TABS: Record<ValueKind | "campaigns", Tab> = {
+export const TABS: Record<ValueKind | "campaigns" | "exchange-rates", Tab> = {
   ...VALUE_TABS,
   campaigns: { label: "Campaigns", noun: "campaign", intro: "Each campaign names its lead source, for example LinkedIn → Q4 IT hiring push." },
+  // hrc-011 (DEC-SCOPE-372 C1): the manual rates that turn a candidate's non-INR pay into rupees a year
+  "exchange-rates": { label: "Exchange rates", noun: "exchange rate", intro: "Rupees per unit of each currency a candidate's pay may be quoted in. Saving a rate updates every candidate's yearly rupee figure in that currency." },
 };
-export const isTab = (kind: string): kind is ValueKind | "campaigns" => Object.hasOwn(TABS, kind);
+export const isTab = (kind: string): kind is keyof typeof TABS => Object.hasOwn(TABS, kind);
+
+export type ExchangeRate = { currency: string; inr_per_unit: string; updated_at: string; updated_by: { id: string; full_name: string } | null };
+export const EXCHANGE_RATES_URL = `${CATALOGUE_URL}/exchange-rates`;
 
 /** A picker's source: every active value of one list, page after page, in list order (the API orders them). */
 export const activeValues = (kind: ValueKind, signal?: AbortSignal) => readAll<CatalogueValue>(`${CATALOGUE_URL}/${kind}`, signal);

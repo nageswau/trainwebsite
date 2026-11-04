@@ -11,10 +11,26 @@ export type CandidateItem = {
 export type CandidateResume = { version: number; file_name: string | null; content_type: string; size_bytes: number; uploaded_by: PersonRef | null; created_at: string };
 // hrc-001 (DEC-SCOPE-371 H2): salary is left out (not null) for a caller without this grant, who may not send it either.
 export const COMPENSATION_VIEW = "candidates.compensation.view";
-const SALARY_KEYS = new Set<string>(["current_salary", "expected_salary"]);
-export type CandidateDetail = CandidateItem & {
+// hrc-011 (DEC-SCOPE-372): each amount keeps its currency and pay period beside the normalised annual INR the API works out.
+export type SalaryPeriod = "year" | "month";
+export const AMOUNTS = [
+  { key: "current", label: "Current salary" }, { key: "expected", label: "Expected salary" }, { key: "minimum", label: "Minimum acceptable salary" },
+] as const;
+type Amount = (typeof AMOUNTS)[number]["key"];
+type Package = { [K in Amount as `${K}_salary` | `${K}_annual_inr`]?: string | null } & { [K in Amount as `${K}_salary_currency`]?: string | null }
+  & { [K in Amount as `${K}_salary_period`]?: SalaryPeriod | null } & { salary_negotiable?: boolean | null };
+export const PERIOD_LABEL: Record<SalaryPeriod, string> = { year: "per year", month: "per month" };
+export const NEGOTIABLE = [{ key: "", label: "Not provided" }, { key: "yes", label: "Yes" }, { key: "no", label: "No" }] as const;
+type PackageForm = { [K in Amount as `${K}_salary` | `${K}_salary_currency` | `${K}_salary_period`]: string } & { salary_negotiable: string };
+const SALARY_KEYS = new Set<string>([...AMOUNTS.flatMap(({ key }) => [`${key}_salary`, `${key}_salary_currency`, `${key}_salary_period`]), "salary_negotiable"]);
+/** The stale-record notice's labels for the compensation keys. */
+export const COMPENSATION_LABELS: Record<string, string> = {
+  ...Object.fromEntries(AMOUNTS.flatMap(({ key, label }) => [[`${key}_salary`, label], [`${key}_salary_currency`, `${label} currency`], [`${key}_salary_period`, `${label} pay period`]])),
+  salary_negotiable: "Negotiable",
+};
+export type CandidateDetail = CandidateItem & Package & {
   mobile: string | null; email: string | null; qualification: string | null; college: string | null; passing_year: number | null;
-  current_company: string | null; current_salary?: string | null; expected_salary?: string | null; notice_days: number | null;
+  current_company: string | null; notice_days: number | null;
   preferred_locations: string[]; linkedin: string | null; archived_at: string | null; created_by: PersonRef | null; updated_by: PersonRef | null;
   updated_at: string; resumes: CandidateResume[]; can_edit: boolean; whatsapp_to?: string | null; // rec-026: the wa.me number
 };
@@ -47,39 +63,44 @@ export const FIELDS: Field[] = [
   { key: "passing_year", label: "Passing year", type: "number", min: 1950, numMax: 2100 },
   { key: "experience_months", label: "Total experience (months)", type: "number", min: 0, numMax: 600, hint: "e.g. 30 for 2 years 6 months; 0 for a fresher" },
   { key: "current_company", label: "Current company", type: "text", max: 200 },
-  { key: "current_salary", label: "Current salary (per year)", type: "number", min: 0 },
-  { key: "expected_salary", label: "Expected salary (per year)", type: "number", min: 0 },
   { key: "notice_days", label: "Notice period (days)", type: "number", min: 0, numMax: 365 },
   { key: "preferred_locations", label: "Preferred locations", type: "text", max: 900, hint: "Separate places with commas (up to 10)" },
   { key: "preferred_role", label: "Preferred role", type: "text", max: 120 },
   { key: "linkedin", label: "LinkedIn", type: "url", max: 300, hint: "https://www.linkedin.com/in/…" },
 ];
 
-export type CandidateForm = {
+export type CandidateForm = PackageForm & {
   name: string; mobile: string; email: string; location: string; qualification: string; college: string; passing_year: string;
-  experience_months: string; current_company: string; current_salary: string; expected_salary: string; notice_days: string;
+  experience_months: string; current_company: string; notice_days: string;
   preferred_locations: string; preferred_role: string; linkedin: string; source_id: string; source_detail: string; status: CandidateStatus;
 };
+const EMPTY_PACKAGE = {
+  ...Object.fromEntries(AMOUNTS.flatMap(({ key }) => [[`${key}_salary`, ""], [`${key}_salary_currency`, "INR"], [`${key}_salary_period`, "year"]])),
+  salary_negotiable: "",
+} as PackageForm;
 export const EMPTY_FORM: CandidateForm = {
   name: "", mobile: "", email: "", location: "", qualification: "", college: "", passing_year: "", experience_months: "", current_company: "",
-  current_salary: "", expected_salary: "", notice_days: "", preferred_locations: "", preferred_role: "", linkedin: "", source_id: "",
+  ...EMPTY_PACKAGE, notice_days: "", preferred_locations: "", preferred_role: "", linkedin: "", source_id: "",
   source_detail: "", status: "available",
 };
 const INTEGERS = new Set<keyof CandidateForm>(["passing_year", "experience_months", "notice_days"]);
 
 const places = (text: string) => text.split(",").map((p) => p.trim()).filter(Boolean);
 
-/** The form's inputs: without the compensation grant, no salary inputs. */
-export const formFields = (compensation: boolean) => (compensation ? FIELDS : FIELDS.filter((f) => !SALARY_KEYS.has(f.key)));
+/** hrc-011: a currency or pay period means nothing without its amount (the API clears them then), so it goes with the amount. */
+const amountOf = (key: string) => key.replace(/_(currency|period)$/, "");
 
 /** The request body. Create sends only what is filled; edit sends every field, a cleared one as null (PATCH clears it). Salaries stay
- *  strings (the API takes decimals); the whole-number fields become numbers. Without the compensation grant no salary key is sent. */
+ *  strings (the API takes decimals); the whole-number fields become numbers; Negotiable is true / false / null. Without the
+ *  compensation grant no compensation key is sent. */
 export function candidateBody(form: CandidateForm, mode: "create" | "edit", compensation = true): Record<string, unknown> {
   const body: Record<string, unknown> = {};
   for (const [key, raw] of Object.entries(form) as [keyof CandidateForm, string][]) {
     if (!compensation && SALARY_KEYS.has(key)) continue;
     const text = raw.trim();
-    const value = key === "preferred_locations" ? places(text) : !text ? null : INTEGERS.has(key) ? Number(text) : text;
+    const withoutAmount = SALARY_KEYS.has(key) && key !== "salary_negotiable" && !form[amountOf(key) as keyof CandidateForm].trim();
+    const value = key === "preferred_locations" ? places(text) : !text || withoutAmount ? null
+      : key === "salary_negotiable" ? text === "yes" : INTEGERS.has(key) ? Number(text) : text;
     const empty = value === null || (Array.isArray(value) && value.length === 0);
     if (mode === "create" && empty) continue;
     body[key] = value;
@@ -101,8 +122,26 @@ export function formFromDetail(c: CandidateDetail): CandidateForm {
   return {
     ...EMPTY_FORM,
     ...Object.fromEntries(FIELDS.map(({ key }) => [key, text(c[key as keyof CandidateDetail] as string | number | null)])),
+    ...Object.fromEntries(AMOUNTS.flatMap(({ key }) => [
+      [`${key}_salary`, text(c[`${key}_salary`])], [`${key}_salary_currency`, c[`${key}_salary_currency`] ?? "INR"], [`${key}_salary_period`, c[`${key}_salary_period`] ?? "year"],
+    ])),
+    salary_negotiable: c.salary_negotiable === true ? "yes" : c.salary_negotiable === false ? "no" : "",
     preferred_locations: (c.preferred_locations ?? []).join(", "), source_id: c.source.id, source_detail: text(c.source_detail), status: c.status,
   };
+}
+
+const inr = (v: string) => `₹${Number(v).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+
+/** hrc-011: an amount as entered ("₹50,000 per month", "USD 4,000 per month"), then its annual INR when that reads differently
+ *  ("≈ ₹6,00,000 a year"). Null when not provided. */
+export function packageText(c: CandidateDetail, amount: Amount): string | null {
+  const value = c[`${amount}_salary`];
+  if (value === null || value === undefined) return null;
+  const currency = c[`${amount}_salary_currency`] ?? "INR";
+  const period = c[`${amount}_salary_period`] ?? "year";
+  const entered = `${currency === "INR" ? inr(value) : `${currency} ${Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`} ${PERIOD_LABEL[period]}`;
+  const annual = c[`${amount}_annual_inr`];
+  return currency === "INR" && period === "year" || !annual ? entered : `${entered} (≈ ${inr(annual)} a year)`;
 }
 
 export function experienceLabel(months: number | null): string {

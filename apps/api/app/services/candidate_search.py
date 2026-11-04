@@ -126,9 +126,9 @@ def filters(body: CandidateSearch, terms: dict[str, dict]) -> list:
     if body.availability:
         out.append(or_(*(_between(Candidate.notice_days, low, high) for key, low, high in AVAILABILITY_BANDS if key in body.availability)))
     if body.salary_min is not None:
-        out.append(Candidate.expected_salary >= body.salary_min)
+        out.append(Candidate.expected_annual_inr >= body.salary_min)  # hrc-011 C6: the normalised figure
     if body.salary_max is not None:
-        out.append(Candidate.expected_salary <= body.salary_max)
+        out.append(Candidate.expected_annual_inr <= body.salary_max)
     if body.source_id:
         out.append(Candidate.source_id == body.source_id)
     if body.status:
@@ -195,6 +195,7 @@ async def page(db: AsyncSession, where: list, terms: dict[str, dict], limit: int
         {
             "id": c.id, "candidate_code": c.candidate_code, "name": c.name, "preferred_role": c.preferred_role, "current_company": c.current_company,
             "experience_months": c.experience_months, "location": c.location, "notice_days": c.notice_days, "expected_salary": c.expected_salary,
+            "expected_salary_currency": c.expected_salary_currency, "expected_salary_period": c.expected_salary_period, "expected_annual_inr": c.expected_annual_inr,
             "source": {"id": s.id, "name": s.name, "active": s.active}, "source_detail": c.source_detail, "status": c.status, "skills": skills[c.id],
             "snippet": None,
         }

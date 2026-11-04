@@ -6,6 +6,7 @@ import { accessDenied, accessUnavailable } from "@/components/AccessUnavailable"
 import PortalShell from "@/components/PortalShell";
 import RecruiterCampaignsPanel from "@/components/RecruiterCampaignsPanel";
 import RecruiterCatalogueValuesPanel from "@/components/RecruiterCatalogueValuesPanel";
+import RecruiterExchangeRatesPanel from "@/components/RecruiterExchangeRatesPanel";
 import { serverApi } from "@/lib/api";
 import { RECRUITER_MANAGER_NAV, SUPER_ADMIN_NAV } from "@/lib/navigation";
 import { PLACEMENT_MANAGER_LABEL } from "@/lib/recruiter";
@@ -33,7 +34,7 @@ export default async function RecruiterCataloguePage({ params }: { params: Promi
           <div>
             <div className="eyebrow">Catalogues</div>
             <h2>{tab.label}</h2>
-            <p className="muted">{tab.intro} Deactivate a value to hide it from pickers — records that already use it keep it.</p>
+            <p className="muted">{tab.intro}{kind === "exchange-rates" ? "" : " Deactivate a value to hide it from pickers — records that already use it keep it."}</p>
           </div>
         </div>
         <nav aria-label="Catalogues" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -47,7 +48,7 @@ export default async function RecruiterCataloguePage({ params }: { params: Promi
       <div className="portal-content action-center">
         <div className="action-grid">
           <Suspense fallback={<p className="muted" role="status">Loading…</p>}>
-            {kind === "campaigns" ? <RecruiterCampaignsPanel /> : <RecruiterCatalogueValuesPanel key={kind} kind={kind} />}
+            {kind === "campaigns" ? <RecruiterCampaignsPanel /> : kind === "exchange-rates" ? <RecruiterExchangeRatesPanel /> : <RecruiterCatalogueValuesPanel key={kind} kind={kind} />}
           </Suspense>
         </div>
       </div>

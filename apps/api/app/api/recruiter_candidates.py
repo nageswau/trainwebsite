@@ -35,7 +35,7 @@ from app.schemas import (
     CandidateUpdate,
     ResumeApply,
 )
-from app.services import candidate_search, candidate_skills, course_skills
+from app.services import candidate_search, candidate_skills, compensation, course_skills
 from app.services import candidates as svc
 from app.services import resume_extraction as extraction
 from app.services.reports import placement as placement_reports
@@ -121,6 +121,7 @@ async def create_candidate(payload: dict = Body(...), user: User = Depends(get_c
     await svc.require_compensation(db, user, payload)
     await svc.active_source(db, data["source_id"])
     candidate = Candidate(**data, mobile_normalized=normalise_phone(data["mobile"]), created_by_user_id=user.id)  # email: lower-cased by the schema
+    await compensation.normalise(db, candidate)  # hrc-011
     await svc.block_duplicates(db, candidate)
     candidate.candidate_code = await svc.next_code(db)
     db.add(candidate)
@@ -173,6 +174,8 @@ async def update_candidate(candidate_id: UUID, payload: dict = Body(...), user: 
     if changes.get("source_id", candidate.source_id) != candidate.source_id:
         await svc.active_source(db, changes["source_id"])
     fields = svc.apply_fields(candidate, changes)
+    if set(svc.COMPENSATION) & set(fields):  # hrc-011: the currency, period and annual INR follow the amounts
+        await compensation.normalise(db, candidate)
     if {"mobile", "email"} & set(fields):
         await svc.block_duplicates(db, candidate)
     if fields:

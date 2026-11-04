@@ -51,7 +51,12 @@ def require_writer(user: User) -> None:
 
 
 # hrc-001 (DEC-SCOPE-371 H2): salary is shown, sent and searched on only with the grant; without it the keys are absent, not null.
-COMPENSATION = ("current_salary", "expected_salary")
+COMPENSATION = (
+    "current_salary", "expected_salary",
+    # hrc-011 (DEC-SCOPE-372 C7): the package detail and the normalised figures follow the same grant
+    "current_salary_currency", "current_salary_period", "current_annual_inr", "expected_salary_currency", "expected_salary_period",
+    "expected_annual_inr", "minimum_salary", "minimum_salary_currency", "minimum_salary_period", "minimum_annual_inr", "salary_negotiable",
+)  # fmt: skip
 NO_COMPENSATION = "Your role cannot view or change candidate salary"
 
 
@@ -267,8 +272,7 @@ DETAIL_FIELDS = (
     "college",
     "passing_year",
     "current_company",
-    "current_salary",
-    "expected_salary",
+    *COMPENSATION,
     "notice_days",
     "preferred_locations",
     "linkedin",

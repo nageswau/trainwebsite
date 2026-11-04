@@ -4,6 +4,9 @@ active values (C3). The lists are global, so there is no row scope -- only the r
 Bodies are untyped dicts parsed by services/telecaller._parse, so a 422 is one sentence naming the field (the tel-002 idiom). The
 campaign routes are declared first so `campaigns` never reaches the generic `{kind}` routes."""
 
+import logging
+import re
+from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException
@@ -15,9 +18,11 @@ from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.api.telecaller_catalogue import NOT_AN_OBJECT, _locked, _page
 from app.core.database import get_db
-from app.models import RecCampaign, RecLeadSource, User
+from app.models import AuditLog, RecCampaign, RecFxRate, RecLeadSource, User
 from app.schemas import (
+    FX_RATE_LABELS,
     REC_CATALOGUE_FIELD_LABELS,
+    FxRateSet,
     RecCampaignCreate,
     RecCampaignOut,
     RecCampaignPage,
@@ -27,6 +32,7 @@ from app.schemas import (
     RecValuePage,
     RecValueUpdate,
 )
+from app.services import candidates, compensation
 from app.services.recruiter import require_manager
 from app.services.recruiter_catalogue import (
     CAMPAIGN_NAME_INDEX,
@@ -41,6 +47,7 @@ from app.services.telecaller import _parse
 from app.services.telecaller_catalogue import apply_changes, audit, flush_unique
 
 router = APIRouter(prefix="/recruiter/catalogue", tags=["recruiter-catalogue"])
+logger = logging.getLogger("app.recruiter_catalogue")
 CREATED = "recruiter.catalogue_create"
 UPDATED = "recruiter.catalogue_update"
 
@@ -108,6 +115,59 @@ async def update_campaign(campaign_id: UUID, payload: dict = Body(...), user: Us
     out = campaign_out(campaign, source)
     await db.commit()
     return out
+
+
+# --- hrc-011 (DEC-SCOPE-372 C1/C5): exchange rates -------------------------------------------------------------------------------
+def _rate_out(row: RecFxRate, people: dict) -> dict:
+    by = people.get(row.updated_by_user_id)
+    return {"currency": row.currency, "inr_per_unit": row.inr_per_unit, "updated_at": row.updated_at, "updated_by": {"id": by.id, "full_name": by.full_name} if by else None}
+
+
+async def _rates_out(db: AsyncSession, rows: list[RecFxRate]) -> list[dict]:
+    ids = {r.updated_by_user_id for r in rows} - {None}
+    people = {u.id: u for u in (await db.scalars(select(User).where(User.id.in_(ids)))).all()} if ids else {}
+    return [_rate_out(r, people) for r in rows]
+
+
+@router.get("/exchange-rates")
+async def exchange_rates(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Every rate, by currency (a handful). Candidate readers too: the candidate form offers INR plus these currencies."""
+    candidates.require_reader(user)
+    return {"items": await _rates_out(db, list((await db.scalars(select(RecFxRate).order_by(RecFxRate.currency))).all()))}
+
+
+@router.put("/exchange-rates/{currency}")
+async def set_exchange_rate(currency: str, payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Add or change one rate (idempotent), recompute every candidate amount in that currency, one audit row with the old and new rate."""
+    require_manager(user)
+    code = currency.strip().upper()
+    if not re.fullmatch(r"[A-Z]{3}", code):
+        raise HTTPException(422, "Currency must be a three-letter code such as USD")
+    if code == compensation.INR:
+        raise HTTPException(422, "INR is the base currency; it needs no rate")
+    rate = _parse(FxRateSet, payload, NOT_AN_OBJECT, FX_RATE_LABELS).inr_per_unit.quantize(Decimal("0.0001"))
+    row = await db.get(RecFxRate, code, with_for_update=True)
+    old = row.inr_per_unit if row else None
+    if row is None:
+        row = RecFxRate(currency=code, inr_per_unit=rate, updated_by_user_id=user.id)
+        db.add(row)
+    else:
+        row.inr_per_unit, row.updated_by_user_id = rate, user.id
+    await db.flush()
+    recomputed = await compensation.recompute(db, code, rate)
+    db.add(
+        AuditLog(
+            user_id=user.id,
+            action="recruiter.fx_rate_set",
+            entity_type="rec_fx_rates",
+            entity_id=code,
+            metadata_json={"old": None if old is None else f"{old:.4f}", "new": f"{rate:.4f}", "recomputed": recomputed},
+        )
+    )
+    await db.commit()
+    await db.refresh(row)
+    logger.info("fx_rate_set", extra={"extra_fields": {"actor_id": str(user.id), "currency": code, "recomputed": recomputed}})
+    return (await _rates_out(db, [row]))[0]
 
 
 # --- the six simple lists -------------------------------------------------------------------------------------------------------

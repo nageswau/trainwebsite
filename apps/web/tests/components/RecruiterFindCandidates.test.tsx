@@ -15,7 +15,7 @@ vi.mock("next/navigation", () => ({
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const card = {
   id: "c1", candidate_code: "CAN-000001", name: "Rahul Kumar", preferred_role: "Java Developer", current_company: "Acme", experience_months: 36,
-  location: "Hyderabad", notice_days: 0, expected_salary: "800000.00", source: { id: "s2", name: "Edusphere students", active: true },
+  location: "Hyderabad", notice_days: 0, expected_salary: "800000.00", expected_annual_inr: "800000.00", source: { id: "s2", name: "Edusphere students", active: true },
   source_detail: "Java Full Stack", status: "available",
   skills: [{ name: "Java", level: "advanced", status: "verified", matched: true }, { name: "SQL", level: "beginner", status: "claimed", matched: false }],
 };
@@ -55,7 +55,7 @@ const searchCalls = () => fetchMock.mock.calls.filter(([u]) => String(u).startsW
 describe("RecruiterFindCandidates", () => {
   it("hrc-001: the salary filter needs the compensation grant, and a card without a salary has no salary row", async () => {
     query = "all=java";
-    searchReply = () => res({ ...result, items: [{ ...card, expected_salary: undefined }] });
+    searchReply = () => res({ ...result, items: [{ ...card, expected_salary: undefined, expected_annual_inr: undefined }] });
     render(<RecruiterFindCandidates writes sourceFilter />);
     const item = await screen.findByRole("listitem", { name: /Rahul Kumar/ });
     expect(within(item).queryByText("Expected salary")).toBeNull();

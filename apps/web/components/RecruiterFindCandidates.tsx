@@ -71,7 +71,8 @@ export function Card({ c, writes, requirement, shortlisted, onShortlist, matchNo
   const role = [c.preferred_role, experienceLabel(c.experience_months) === "—" ? null : experienceLabel(c.experience_months)].filter(Boolean).join(" | ");
   const facts: [string, string][] = [
     ["Location", c.location ?? "—"], ["Availability", availabilityOf(c.notice_days)],
-    ...(c.expected_salary === undefined ? [] : [["Expected salary", salaryText(c.expected_salary)] as [string, string]]), // hrc-001 H2: left out without the grant
+    // hrc-001 H2: left out without the grant; hrc-011 C6: the yearly rupee figure the salary filter compares
+    ...(c.expected_salary === undefined ? [] : [["Expected salary", salaryText(c.expected_annual_inr ?? null)] as [string, string]]),
     ["Source", c.source_detail ? `${c.source.name} — ${c.source_detail}` : c.source.name], ["Status", STATUS_LABEL[c.status] ?? c.status],
   ];
   return (
