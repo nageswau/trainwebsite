@@ -40,8 +40,13 @@ export default function RecruiterCandidateResumes({ candidateId, resumes, canUpl
     setBusy(false);
     if (!outcome.ok) return setNotice({ text: outcome.message, failed: true });
     if (input.current) input.current.value = "";
-    setNotice({ text: `Resume version ${outcome.data.version} uploaded.`, failed: false });
-    setReviewing(Number(outcome.data.version));
+    if (outcome.data.content_type === "application/msword") {
+      // hrc-015 QA-01: a DOC is read through its PDF rendition, which the worker is still preparing -- offer the review later instead
+      setNotice({ text: `Resume version ${outcome.data.version} uploaded. Its preview and extracted details will be ready in a moment.`, failed: false });
+    } else {
+      setNotice({ text: `Resume version ${outcome.data.version} uploaded.`, failed: false });
+      setReviewing(Number(outcome.data.version));
+    }
     onUploaded();
   }
 

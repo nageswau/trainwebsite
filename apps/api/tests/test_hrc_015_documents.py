@@ -233,7 +233,8 @@ async def test_a_requested_document_shows_pending_then_received(client, db_sessi
     assert request["status"] == "pending" and request["due_date"] == due
     assert (await client.post(requests_url, json={"document_type": "education"})).status_code == 409  # one pending per type
     past = (datetime.date.today() - datetime.timedelta(days=3)).isoformat()
-    assert (await client.post(requests_url, json={"document_type": "payslip", "due_date": past})).status_code == 422
+    refused = await client.post(requests_url, json={"document_type": "payslip", "due_date": past})
+    assert refused.status_code == 422 and refused.json()["detail"] == "The due date must be today or later"  # QA-02
     docs_url = f"{BASE}/{candidate['id']}/documents"
     foreign = await _post_doc(client, f"{BASE}/{other['id']}/documents", PDF, document_type="education", request_id=request["id"])
     assert foreign.status_code == 404  # the request belongs to another candidate

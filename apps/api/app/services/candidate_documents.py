@@ -50,7 +50,7 @@ class DocumentRequestIn(BaseModel):
     @classmethod
     def _not_past(cls, value: date | None) -> date | None:
         if value is not None and value < datetime.now(UTC).astimezone(INDIA).date():
-            raise ValueError("must not be in the past")
+            raise ValueError("The due date must be today or later")
         return value
 
 
