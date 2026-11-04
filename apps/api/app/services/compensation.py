@@ -1,4 +1,4 @@
-"""hrc-011 (DEC-SCOPE-372, spec docs/superpowers/specs/2026-11-04-hrc-011-candidate-compensation-design.md): each candidate amount is
+"""hrc-011 (DEC-SCOPE-375, spec docs/superpowers/specs/2026-11-04-hrc-011-candidate-compensation-design.md): each candidate amount is
 kept as entered (amount, currency, pay period) beside its annual INR figure, which search and pools compare (C6).
 
 Functions only; nothing here commits -- the route owns the transaction."""

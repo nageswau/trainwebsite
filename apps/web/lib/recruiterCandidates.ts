@@ -11,7 +11,7 @@ export type CandidateItem = {
 export type CandidateResume = { version: number; file_name: string | null; content_type: string; size_bytes: number; uploaded_by: PersonRef | null; created_at: string };
 // hrc-001 (DEC-SCOPE-371 H2): salary is left out (not null) for a caller without this grant, who may not send it either.
 export const COMPENSATION_VIEW = "candidates.compensation.view";
-// hrc-011 (DEC-SCOPE-372): each amount keeps its currency and pay period beside the normalised annual INR the API works out.
+// hrc-011 (DEC-SCOPE-375): each amount keeps its currency and pay period beside the normalised annual INR the API works out.
 export type SalaryPeriod = "year" | "month";
 export const AMOUNTS = [
   { key: "current", label: "Current salary" }, { key: "expected", label: "Expected salary" }, { key: "minimum", label: "Minimum acceptable salary" },

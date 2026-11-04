@@ -1,4 +1,4 @@
-"""hrc-011 (DEC-SCOPE-372, spec docs/superpowers/specs/2026-11-04-hrc-011-candidate-compensation-design.md): each candidate amount keeps
+"""hrc-011 (DEC-SCOPE-375, spec docs/superpowers/specs/2026-11-04-hrc-011-candidate-compensation-design.md): each candidate amount keeps
 its original amount, currency and pay period (C3) beside a normalised annual INR figure (C8) that search and pools filter on (C6). Non-INR
 amounts use the placement manager's rate table (C1); a rate change recomputes (C5). The hrc-001 grant covers every new key (C7)."""
 

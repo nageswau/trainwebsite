@@ -20,7 +20,7 @@ async function salariedCandidate(page: Page) {
 test("the recruiter sees a candidate's salary and the salary filter; HR sees neither (H2)", async ({ page }) => {
   const id = await salariedCandidate(page);
   await page.goto(`/recruiter/candidates/${id}`);
-  await expect(page.getByText("Expected salary (per year)")).toBeVisible();
+  await expect(page.getByText("Expected salary", { exact: true })).toBeVisible(); // hrc-011: the label no longer carries the period
   await expect(page.getByText("8,34,567")).toBeVisible();
   await page.goto("/recruiter/find-candidates");
   await expect(page.getByLabel("Expected salary from (₹ lakhs a year)")).toBeVisible();
@@ -28,7 +28,7 @@ test("the recruiter sees a candidate's salary and the salary filter; HR sees nei
   await signIn(page, "hr@edusphere.local");
   await page.goto(`/recruiter/candidates/${id}`);
   await expect(page.getByRole("heading", { name: /HRC Salary/ })).toBeVisible();
-  await expect(page.getByText("Expected salary (per year)")).toHaveCount(0);
+  await expect(page.getByText("Expected salary", { exact: true })).toHaveCount(0);
   await expect(page.getByText("8,34,567")).toHaveCount(0);
   const detail = await (await page.request.get(`/api/v1/recruiter/candidates/${id}`)).json();
   expect(detail).not.toHaveProperty("expected_salary");

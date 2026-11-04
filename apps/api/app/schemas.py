@@ -9983,7 +9983,7 @@ CANDIDATE_FIELD_LABELS = {
     "current_salary": "Current salary", "expected_salary": "Expected salary", "notice_days": "Notice period (days)",
     "preferred_locations": "Preferred locations", "preferred_role": "Preferred role", "linkedin": "LinkedIn", "source_id": "Source",
     "source_detail": "Source detail", "status": "Status",
-    # hrc-011 (DEC-SCOPE-372)
+    # hrc-011 (DEC-SCOPE-375)
     "current_salary_currency": "Current salary currency", "current_salary_period": "Current salary pay period",
     "expected_salary_currency": "Expected salary currency", "expected_salary_period": "Expected salary pay period",
     "minimum_salary": "Minimum acceptable salary", "minimum_salary_currency": "Minimum salary currency",
@@ -10123,7 +10123,7 @@ class _CandidateFields(BaseModel):
     current_company: _candidate_text("Current company", 200) = None
     current_salary: _salary("Current salary") = None
     expected_salary: _salary("Expected salary") = None
-    # hrc-011 (DEC-SCOPE-372 C3/C4): an amount without a currency or period keeps the stored one, else INR per year
+    # hrc-011 (DEC-SCOPE-375 C3/C4): an amount without a currency or period keeps the stored one, else INR per year
     current_salary_currency: _currency("Current salary currency") = None
     current_salary_period: _period("Current salary pay period") = None
     expected_salary_currency: _currency("Expected salary currency") = None
@@ -10202,7 +10202,7 @@ class CandidateDetail(CandidateItem):
     # hrc-001 (DEC-SCOPE-371 H2): left out without `candidates.compensation.view` -- the routes answer with response_model_exclude_unset.
     current_salary: Decimal | None = None
     expected_salary: Decimal | None = None
-    # hrc-011 (DEC-SCOPE-372): the same rule -- left out without the grant
+    # hrc-011 (DEC-SCOPE-375): the same rule -- left out without the grant
     current_salary_currency: str | None = None
     current_salary_period: str | None = None
     current_annual_inr: Decimal | None = None
@@ -10226,7 +10226,7 @@ class CandidateDetail(CandidateItem):
     whatsapp_to: str | None = None  # rec-026 MS6: the wa.me number (E.164 digits), None when the mobile is unusable
 
 
-# --- hrc-011 (DEC-SCOPE-372 C1): the manual exchange rate ------------------------------------------------------------------------------
+# --- hrc-011 (DEC-SCOPE-375 C1): the manual exchange rate ------------------------------------------------------------------------------
 FX_RATE_LABELS = {"inr_per_unit": "Rupees per unit"}
 
 

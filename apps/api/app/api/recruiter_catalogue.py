@@ -117,7 +117,7 @@ async def update_campaign(campaign_id: UUID, payload: dict = Body(...), user: Us
     return out
 
 
-# --- hrc-011 (DEC-SCOPE-372 C1/C5): exchange rates -------------------------------------------------------------------------------
+# --- hrc-011 (DEC-SCOPE-375 C1/C5): exchange rates -------------------------------------------------------------------------------
 def _rate_out(row: RecFxRate, people: dict) -> dict:
     by = people.get(row.updated_by_user_id)
     return {"currency": row.currency, "inr_per_unit": row.inr_per_unit, "updated_at": row.updated_at, "updated_by": {"id": by.id, "full_name": by.full_name} if by else None}

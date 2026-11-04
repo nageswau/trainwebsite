@@ -10,7 +10,7 @@ import { toneClass, type Feedback } from "@/lib/welcomeLink";
 const FEEDBACK_ID = "fx-rate-feedback";
 const CURRENCY_ID = "fx-rate-currency";
 
-// hrc-011 (DEC-SCOPE-372 C1/C5): the manager's manual exchange rates -- one form that adds or changes a rate (the API recomputes every
+// hrc-011 (DEC-SCOPE-375 C1/C5): the manager's manual exchange rates -- one form that adds or changes a rate (the API recomputes every
 // candidate's yearly rupee figure in that currency), and the list with loading / error+Retry / empty states. Rates are never deleted.
 export default function RecruiterExchangeRatesPanel() {
   const [rates, setRates] = useState<ExchangeRate[] | null>(null);
@@ -95,7 +95,7 @@ export default function RecruiterExchangeRatesPanel() {
                   <tr key={r.currency}>
                     <td data-label="Currency"><strong>{r.currency}</strong></td>
                     <td data-label="Rupees for 1 unit">₹{Number(r.inr_per_unit).toLocaleString("en-IN", { maximumFractionDigits: 4 })}</td>
-                    <td data-label="Last changed"><LocalTime value={r.updated_at} time />{r.updated_by ? ` by ${r.updated_by.full_name}` : ""}</td>
+                    <td data-label="Last changed"><span>{/* QA-01: one value, so a stacked row keeps date and author together */}<LocalTime value={r.updated_at} time />{r.updated_by ? ` by ${r.updated_by.full_name}` : ""}</span></td>
                     <td><button type="button" className="btn secondary small" onClick={() => edit(r)} aria-label={`Change the ${r.currency} rate`}>Change</button></td>
                   </tr>
                 ))}

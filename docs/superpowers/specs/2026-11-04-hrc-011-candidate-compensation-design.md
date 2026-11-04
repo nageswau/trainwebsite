@@ -2,7 +2,7 @@
 
 **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-011` (PDF §8.3 B; PDF classified `UNVERIFIED`). Scope approved by the
 owner 2026-11-01 (backlog Q-00: all phases). Dependency `hrc-001` (DEC-SCOPE-371) is merged on `main`. The owner said to proceed with the
-recommended answers, so C1–C9 below are **the builder's calls (`NEEDS_CONFIRMATION`)**. Decision record: DEC-SCOPE-372.
+recommended answers, so C1–C9 below are **the builder's calls (`NEEDS_CONFIRMATION`)**. Decision record: DEC-SCOPE-375.
 
 ## Intent
 Recruiters record pay the way candidates actually state it, for example "₹50,000 a month now, expecting 8 LPA, won't go below 7, negotiable", or

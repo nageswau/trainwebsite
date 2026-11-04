@@ -47,7 +47,7 @@ def test_models_match_the_migration():
         "current_company",
         "current_salary",
         "expected_salary",
-        # hrc-011 (DEC-SCOPE-372, migration 0251)
+        # hrc-011 (DEC-SCOPE-375, migration 0251)
         *(f"{amount}_{part}" for amount in ("current", "expected", "minimum") for part in ("salary_currency", "salary_period", "annual_inr")),
         "minimum_salary",
         "salary_negotiable",

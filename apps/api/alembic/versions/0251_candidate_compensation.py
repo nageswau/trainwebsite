@@ -4,7 +4,7 @@ manual exchange-rate table.
 Revision ID: 0251_candidate_compensation
 Revises: 0250_compensation_grant
 
-docs/superpowers/specs/2026-11-04-hrc-011-candidate-compensation-design.md (DEC-SCOPE-372). Nullable columns and one new table; 0001 builds
+docs/superpowers/specs/2026-11-04-hrc-011-candidate-compensation-design.md (DEC-SCOPE-375). Nullable columns and one new table; 0001 builds
 a fresh database from the current models, which already carry them, so each step runs only when missing (0222's idiom). Backfill (C9):
 an existing amount was rupees a year, so it gets 'INR', 'year' and annual INR = the amount; nothing else changes. CHECKS is a frozen copy
 of the model's strings at this revision. The downgrade drops the new columns, index, checks and table; the original amounts are untouched.

@@ -1,4 +1,4 @@
-"""hrc-011 -- migration 0251_candidate_compensation (DEC-SCOPE-372): the chain, the frozen checks, the backfill (C9: an existing amount
+"""hrc-011 -- migration 0251_candidate_compensation (DEC-SCOPE-375): the chain, the frozen checks, the backfill (C9: an existing amount
 was rupees a year) and the round trip, in a throwaway database (the hrc-001 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util

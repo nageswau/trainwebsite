@@ -6,7 +6,7 @@ import RecruiterCandidateForm from "@/components/RecruiterCandidateForm";
 import RecruiterExchangeRatesPanel from "@/components/RecruiterExchangeRatesPanel";
 import type { CandidateDetail } from "@/lib/recruiterCandidates";
 
-// hrc-011 (DEC-SCOPE-372): the compensation group of the candidate form (with the grant), its display on the detail, and the manager's
+// hrc-011 (DEC-SCOPE-375): the compensation group of the candidate form (with the grant), its display on the detail, and the manager's
 // exchange-rate panel.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }), usePathname: () => "/", useSearchParams: () => new URLSearchParams() }));
 
@@ -81,6 +81,8 @@ describe("hrc-011 exchange-rate panel", () => {
   it("lists the rates, prefills Change and saves the rate upper-cased", async () => {
     render(<RecruiterExchangeRatesPanel />);
     expect(await screen.findByText("USD")).toBeInTheDocument();
+    // QA-01: the "Last changed" cell holds one value, so a stacked (phone) row keeps the date and the author together
+    expect(screen.getByText(/by Priya Manager/).closest("td")?.childNodes).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Change the USD rate" }));
     expect(screen.getByLabelText(/Rupees for 1 unit/)).toHaveValue(83.25);
     fireEvent.change(screen.getByLabelText(/Currency code/), { target: { value: "aed" } });

@@ -6255,7 +6255,7 @@ CANDIDATE_CHECKS = {  # migration 0107 repeats these strings; test_rec_009_migra
     "ck_candidates_notice": "notice_days IS NULL OR notice_days BETWEEN 0 AND 365",
     "ck_candidates_salary": "(current_salary IS NULL OR current_salary >= 0) AND (expected_salary IS NULL OR expected_salary >= 0)",
 }
-CANDIDATE_PACKAGE_CHECKS = {  # hrc-011 (DEC-SCOPE-372): migration 0251 repeats these strings; test_hrc_011_migration asserts they stay identical
+CANDIDATE_PACKAGE_CHECKS = {  # hrc-011 (DEC-SCOPE-375): migration 0251 repeats these strings; test_hrc_011_migration asserts they stay identical
     "ck_candidates_minimum_salary": "minimum_salary IS NULL OR minimum_salary >= 0",
     "ck_candidates_salary_periods": "coalesce(current_salary_period, 'year') IN ('year', 'month') AND coalesce(expected_salary_period, 'year') IN ('year', 'month') AND coalesce(minimum_salary_period, 'year') IN ('year', 'month')",
 }
@@ -6291,7 +6291,7 @@ class Candidate(Base, TimestampMixin):
     current_company: Mapped[str | None] = mapped_column(String(200), nullable=True)
     current_salary: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     expected_salary: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
-    # hrc-011 (DEC-SCOPE-372 C3/C8): each amount as entered (currency, pay period) and its normalised annual INR; null = not provided.
+    # hrc-011 (DEC-SCOPE-375 C3/C8): each amount as entered (currency, pay period) and its normalised annual INR; null = not provided.
     current_salary_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     current_salary_period: Mapped[str | None] = mapped_column(String(5), nullable=True)
     expected_salary_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
@@ -6319,7 +6319,7 @@ class Candidate(Base, TimestampMixin):
 
 
 class RecFxRate(Base):
-    """hrc-011 (DEC-SCOPE-372 C1, Q-10): the placement manager's manual exchange rate, rupees per one unit of the currency. INR is
+    """hrc-011 (DEC-SCOPE-375 C1, Q-10): the placement manager's manual exchange rate, rupees per one unit of the currency. INR is
     implicit (1) and never stored; no rate is seeded. Never deleted: a currency in use keeps its rate."""
 
     __tablename__ = "rec_fx_rates"

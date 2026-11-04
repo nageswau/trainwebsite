@@ -25,7 +25,7 @@ export type ValueKind = keyof typeof VALUE_TABS;
 export const TABS: Record<ValueKind | "campaigns" | "exchange-rates", Tab> = {
   ...VALUE_TABS,
   campaigns: { label: "Campaigns", noun: "campaign", intro: "Each campaign names its lead source, for example LinkedIn → Q4 IT hiring push." },
-  // hrc-011 (DEC-SCOPE-372 C1): the manual rates that turn a candidate's non-INR pay into rupees a year
+  // hrc-011 (DEC-SCOPE-375 C1): the manual rates that turn a candidate's non-INR pay into rupees a year
   "exchange-rates": { label: "Exchange rates", noun: "exchange rate", intro: "Rupees per unit of each currency a candidate's pay may be quoted in. Saving a rate updates every candidate's yearly rupee figure in that currency." },
 };
 export const isTab = (kind: string): kind is keyof typeof TABS => Object.hasOwn(TABS, kind);
