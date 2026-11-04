@@ -96,7 +96,7 @@ ROWS = [
     R("post", "/recruiter/requirements/{requirement}/jd", {"role": "Backend developer"}, **allow(201, "rec", "super"), **OWN_OUT),
     R("put", "/recruiter/requirements/{requirement}/jd/file", form=_file, **allow(201, "rec", "super"), **OWN_OUT),
     R("get", "/recruiter/requirements/{requirement}/jd/{candidates_jd_version}/file", **OWN),
-    # hrc-006 co-owners (§2.281): the history is the record's; the owners are managed by the primary (`rec`), the manager in scope and
+    # hrc-006 co-owners (§2.280): the history is the record's; the owners are managed by the primary (`rec`), the manager in scope and
     # super_admin (the in-scope BDM 403). The world's requirement has a collaborator, `candidates_co_owner`, to remove.
     R("get", "/recruiter/requirements/{requirement}/assignment-history", **OWN),
     R("get", "/recruiter/requirements/{requirement}/assignment-options?role=collaborator", **allow(200, "rec", "mgr", "super"), **OWN_OUT),
@@ -127,6 +127,12 @@ ROWS = [
     R("get", "/recruiter/candidates/{candidates_cv}/documents/{candidates_document}/link", **allow(200, *READERS)),
     R("post", "/recruiter/candidates/{candidates_cv}/document-requests", {"document_type": "payslip"}, **allow(201, *WRITERS)),
     R("post", "/recruiter/candidates/{candidates_cv}/document-requests/{candidates_request}/cancel", **allow(200, *WRITERS)),
+    # hrc-012 (§2.279): the primary recruiter (`rec` owns the world's candidate) or any manager / super_admin changes ownership; another
+    # recruiter is refused. The pickers are for writers; the shared-ownership switch is read by readers and changed by managers.
+    R("put", "/recruiter/candidates/{candidate}/ownership", lambda w: {"placement_officer_user_id": w["officer_id"]}, **allow(200, "rec", "mgr", "mgr_out", "super")),
+    R("get", "/recruiter/candidates/assignees?kind=recruiter", **allow(200, *WRITERS)),
+    R("get", "/recruiter/candidate-ownership-settings", **allow(200, *READERS)),
+    R("put", "/recruiter/candidate-ownership-settings", {"shared_ownership": False}, **allow(200, "mgr", "mgr_out", "super")),
     # rec-013 / rec-014 Find Candidates (§2.77, §2.80): read only, hr_team included
     R("post", "/recruiter/candidates/search", {"all": ["Java"]}, **allow(200, *READERS)),
     # rec-036 the candidate journey (§2.105)

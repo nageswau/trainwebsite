@@ -17,7 +17,7 @@ _spec = importlib.util.spec_from_file_location("_hrc_006_migration_0261", VERSIO
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0261_job_assignments", "0258_vacancy_fields"
+HEAD, BASE = "0261_job_assignments", "0260_candidate_profile"
 
 
 def test_migration_chains_after_its_base():

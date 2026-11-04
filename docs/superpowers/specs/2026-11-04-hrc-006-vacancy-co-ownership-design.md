@@ -114,4 +114,4 @@ longer refused the requirement list); the hrc-007 approval and hrc-005 detail ou
    `lib/recruiterRequirements.ts`, detail wiring, `companyShell`, `navigation.ts`, list page copy.
 6. e2e `hrc-006-co-ownership.spec.ts`: a manager adds a placement officer owner and a collaborator; the officer signs in, opens and edits
    the requirement; history shows the changes; mobile layout.
-7. Docs: decision register, API contract §12KC, RBAC §2.281, data model, backlog status.
+7. Docs: decision register, API contract §12KC, RBAC §2.280, data model, backlog status.

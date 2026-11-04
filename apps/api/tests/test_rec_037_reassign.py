@@ -132,7 +132,7 @@ async def test_manager_moves_companies_requirements_and_follow_ups_with_history_
     await _follow_up(db_session, live[0], a)
     await _follow_up(db_session, live[0], a, status="done")
     body = await _reassign(client, a, b.id)
-    assert body == {"from_user_id": str(a.id), "to_user_id": str(b.id), "moved": {"companies": 2, "requirements": 3, "follow_ups": 1}}
+    assert body == {"from_user_id": str(a.id), "to_user_id": str(b.id), "moved": {"companies": 2, "requirements": 3, "follow_ups": 1, "candidates": 0}}
     owners = (await db_session.execute(select(Company.assigned_recruiter_user_id).where(Company.id.in_(live + archived)))).scalars().all()
     assert set(owners) == {b.id}
     job_owner = select(Job.assigned_recruiter_user_id).where
@@ -152,7 +152,7 @@ async def test_manager_moves_companies_requirements_and_follow_ups_with_history_
     assert sorted(e for act, e, _ in audits if act == "recruiter_requirement.assign") == sorted(str(j) for j in mine)
     assert all(m["reason"] == "reassign" for act, _, m in audits if act.endswith(".assign"))
     [summary] = [m for act, e, m in audits if act == "recruiter.reassign" and e == str(a.id)]
-    assert summary == {"to_user_id": str(b.id), "moved": {"companies": 2, "requirements": 3, "follow_ups": 1}}
+    assert summary == {"to_user_id": str(b.id), "moved": {"companies": 2, "requirements": 3, "follow_ups": 1, "candidates": 0}}
 
 
 @pytest.mark.asyncio
@@ -216,7 +216,7 @@ async def test_source_outside_the_team_is_403_and_unknown_is_404(client, db_sess
 @pytest.mark.asyncio
 async def test_nothing_to_move_is_409(client, db_session):
     _, a, b = await _team(client, db_session)
-    assert (await _reassign(client, a, b.id, 409))["detail"] == "This recruiter has no companies or requirements to reassign"
+    assert (await _reassign(client, a, b.id, 409))["detail"] == "This recruiter has no companies, requirements or candidates to reassign"
 
 
 @pytest.mark.asyncio
@@ -250,5 +250,5 @@ async def test_team_rows_carry_each_recruiters_work(client, db_session):
     await _follow_up(db_session, ids[0], manager)
     await _follow_up(db_session, ids[1], manager, status="done")
     rows = {r["id"]: r for r in (await client.get(TEAM)).json()["items"]}
-    assert rows[str(a.id)]["work"] == {"companies": 3, "requirements": 1, "follow_ups": 1}
-    assert rows[str(b.id)]["work"] == {"companies": 0, "requirements": 0, "follow_ups": 0}
+    assert rows[str(a.id)]["work"] == {"companies": 3, "requirements": 1, "follow_ups": 1, "candidates": 0}
+    assert rows[str(b.id)]["work"] == {"companies": 0, "requirements": 0, "follow_ups": 0, "candidates": 0}

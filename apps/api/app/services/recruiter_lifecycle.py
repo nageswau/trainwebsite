@@ -12,15 +12,15 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Company, Job, RecruiterFollowUp, RecruiterProfile, User
-from app.services import recruiter_companies, recruiter_requirements, requirement_owners
+from app.models import Candidate, Company, Job, RecruiterFollowUp, RecruiterProfile, User
+from app.services import candidate_ownership, recruiter_companies, recruiter_requirements, requirement_owners
 from app.services.recruiter import ROLE
 
 logger = logging.getLogger("app.recruiter")
 
 NOT_FOUND = "Recruiter not found"
 NOT_IN_TEAM = "This recruiter is not in your team"
-NOTHING = "This recruiter has no companies or requirements to reassign"
+NOTHING = "This recruiter has no companies, requirements or candidates to reassign"
 
 
 def _plural(n: int, singular: str, plural: str | None = None) -> str:
@@ -29,7 +29,7 @@ def _plural(n: int, singular: str, plural: str | None = None) -> str:
 
 async def work_counts(db: AsyncSession, user_ids: list[UUID]) -> dict[UUID | None, dict[str, int]]:
     """RC15: what a reassignment would move -- three grouped queries for a whole page (the owner column is nullable, hence the key type)."""
-    counts: dict[UUID | None, dict[str, int]] = {uid: {"companies": 0, "requirements": 0, "follow_ups": 0} for uid in user_ids}
+    counts: dict[UUID | None, dict[str, int]] = {uid: {"companies": 0, "requirements": 0, "follow_ups": 0, "candidates": 0} for uid in user_ids}
     owner = Company.assigned_recruiter_user_id
     queries = {
         "companies": select(owner, func.count()).where(owner.in_(user_ids)).group_by(owner),
@@ -43,6 +43,8 @@ async def work_counts(db: AsyncSession, user_ids: list[UUID]) -> dict[UUID | Non
     for key, stmt in queries.items():
         for uid, n in (await db.execute(stmt)).all():
             counts[uid][key] = n
+    for uid, n in (await candidate_ownership.owned_counts(db, user_ids)).items():  # hrc-012 (DEC-SCOPE-382 O8)
+        counts[uid]["candidates"] = n
     return counts
 
 
@@ -59,6 +61,8 @@ async def refuse_open_work_deactivation(db: AsyncSession, user: User) -> None:
         parts.append(_plural(companies, "company", "companies"))
     if requirements:
         parts.append(_plural(requirements, "open requirement"))
+    if candidates := await candidate_ownership.open_owned_count(db, user.id):  # hrc-012 (O8): archived candidates do not block
+        parts.append(_plural(candidates, "candidate"))
     if parts:
         raise HTTPException(422, f"This recruiter has {' and '.join(parts)}. A placement manager must reassign them (Team page) before deactivation.")
     user.session_version += 1
@@ -84,13 +88,15 @@ async def reassign(db: AsyncSession, actor: User, source: User, target_id: UUID)
 
     companies = (await db.scalars(locked(Company, Company.assigned_recruiter_user_id))).all()
     jobs = (await db.scalars(locked(Job, Job.assigned_recruiter_user_id))).all()
+    candidates = (await db.scalars(locked(Candidate, Candidate.owner_user_id))).all()  # hrc-012 (DEC-SCOPE-382 O8), archived too
     if target_id == source.id:
         raise HTTPException(422, recruiter_companies.REASSIGN_INVALID)
     target = await recruiter_companies.locked_recruiter_target(db, actor, target_id)
-    if not companies and not jobs:
+    if not companies and not jobs and not candidates:
         raise HTTPException(409, NOTHING)
     follow_ups = (await work_counts(db, [source.id]))[source.id]["follow_ups"]  # counted before the move
-    moved = {"companies": len(companies), "requirements": len(jobs), "follow_ups": follow_ups}
+    moved = {"companies": len(companies), "requirements": len(jobs), "follow_ups": follow_ups, "candidates": len(candidates)}
+    await candidate_ownership.move_owned(db, actor, source, target, candidates)
     change = {"from_user_id": str(source.id), "to_user_id": str(target.id), "reason": "reassign"}
     for company in companies:
         recruiter_companies.record_assignment(db, actor, company, target.id)

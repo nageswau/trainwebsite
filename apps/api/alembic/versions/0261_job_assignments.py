@@ -1,7 +1,7 @@
 """hrc-006 -- vacancy co-ownership: job_assignments (the placement-officer owner and collaborators) and job_assignment_history.
 
 Revision ID: 0261_job_assignments
-Revises: 0258_vacancy_fields
+Revises: 0260_candidate_profile
 
 docs/superpowers/specs/2026-11-04-hrc-006-vacancy-co-ownership-design.md (DEC-SCOPE-384 O1/O2). Additive: no existing row changes. 0001
 builds a fresh database from the current models, which already carry the tables, so they are created only when missing (0222's idiom).
@@ -15,7 +15,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0261_job_assignments"
-down_revision = "0258_vacancy_fields"
+down_revision = "0260_candidate_profile"
 branch_labels = None
 depends_on = None
 

@@ -27,11 +27,16 @@ from app.notifications.phone import normalise_phone
 from app.schemas import (
     CANDIDATE_FIELD_LABELS,
     CANDIDATE_MERGE_LABELS,
+    CANDIDATE_OWNERSHIP_LABELS,
     CANDIDATE_SEARCH_LABELS,
     RESUME_APPLY_LABELS,
+    CandidateAssignee,
     CandidateCreate,
     CandidateDetail,
     CandidateMergeBody,
+    CandidateOwnershipIn,
+    CandidateOwnershipSettings,
+    CandidateOwnershipSettingsOut,
     CandidatePage,
     CandidateSearch,
     CandidateStatus,
@@ -41,7 +46,9 @@ from app.schemas import (
 from app.services import candidate_documents as documents
 from app.services import candidate_duplicates as duplicates
 from app.services import candidate_merge, candidate_search, candidate_skills, compensation, course_skills, recruitment_history
+from app.services import candidate_ownership as ownership
 from app.services import candidate_previews as previews
+from app.services import candidate_profile as profile
 from app.services import candidates as svc
 from app.services import resume_extraction as extraction
 from app.services.reports import placement as placement_reports
@@ -49,7 +56,25 @@ from app.services.stale_guard import require_fresh
 from app.services.telecaller import _parse
 
 router = APIRouter(prefix="/recruiter/candidates", tags=["recruiter-candidates"])
+settings_router = APIRouter(prefix="/recruiter/candidate-ownership-settings", tags=["recruiter-candidates"])  # hrc-012 (O4)
 PHONE_DIGITS = re.compile(r"[0-9]+")  # ASCII only, like notifications.phone
+
+
+@settings_router.get("", response_model=CandidateOwnershipSettingsOut)
+async def ownership_settings(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """hrc-012 (O4): whether collaborators may be added -- every candidate reader sees it; managers and super_admin may change it."""
+    svc.require_reader(user)
+    return {"shared_ownership": await ownership.shared_ownership(db), "can_edit": user.role in ownership.SETTING_EDITORS}
+
+
+@settings_router.put("", response_model=CandidateOwnershipSettingsOut)
+async def save_ownership_settings(payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if user.role not in ownership.SETTING_EDITORS:
+        raise HTTPException(403, "Only a placement manager can change candidate ownership settings")
+    body = _parse(CandidateOwnershipSettings, payload, NOT_AN_OBJECT, CANDIDATE_OWNERSHIP_LABELS)
+    await ownership.save_setting(db, user, body.shared_ownership)
+    await db.commit()
+    return {"shared_ownership": body.shared_ownership, "can_edit": True}
 
 
 def _body(model, payload):
@@ -62,15 +87,21 @@ async def list_candidates(
     source_id: UUID | None = None,
     status: CandidateStatus | None = None,
     archived: bool = False,
+    owner: Literal["me", "unassigned"] | None = None,
     limit: int = LIMIT,
     offset: int = OFFSET,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Newest first. `q` matches the name, code or email; a phone-shaped `q` (digits with + - ( ) . or spaces) also matches the mobile's
-    digits, so a name or code that holds digits never matches phone numbers (S2-§13: the source is on every row)."""
+    digits, so a name or code that holds digits never matches phone numbers (S2-§13: the source is on every row). hrc-012 (O1): `owner`
+    narrows to My candidates (primary recruiter, officer or collaborator) or the unassigned ones; each row names its primary recruiter."""
     svc.require_reader(user)
     filters = [*svc.pool_filter(), Candidate.archived_at.is_not(None) if archived else Candidate.archived_at.is_(None)]
+    if owner == "me":
+        filters.append(ownership.mine(user.id))
+    elif owner == "unassigned":
+        filters.append(Candidate.owner_user_id.is_(None))
     pattern = like_pattern(q)
     if pattern:
         digits = re.sub(r"[\s+().-]", "", q)
@@ -85,7 +116,9 @@ async def list_candidates(
     stmt = select(Candidate, RecCandidateSource).join(RecCandidateSource, RecCandidateSource.id == Candidate.source_id).where(*filters)
     total = await db.scalar(select(func.count()).select_from(stmt.subquery()))
     rows = (await db.execute(stmt.order_by(Candidate.created_at.desc(), Candidate.id.desc()).limit(limit).offset(offset))).all()
-    return {"items": [svc.item_out(c, s) for c, s in rows], "total": total or 0, "limit": limit, "offset": offset}
+    people = await ownership.owners(db, [c for c, _ in rows])
+    items = [{**svc.item_out(c, s), "owner": ownership.owner_out(people, c)} for c, s in rows]
+    return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
 
 
 @router.get("/duplicate-check")
@@ -99,6 +132,14 @@ async def duplicate_check(
     """The form's live panel (on blur); the create and the edit re-check. An unparseable mobile matches nothing."""
     svc.require_writer(user)
     return {"matches": await svc.find_matches(db, *svc.keys(mobile, email), exclude_id=exclude_id)}
+
+
+@router.get("/assignees", response_model=list[CandidateAssignee])
+async def assignees(kind: Literal["recruiter", "officer", "collaborator"], q: str | None = SEARCH, user: User = Depends(get_current_user),
+                    db: AsyncSession = Depends(get_db)):  # fmt: skip
+    """hrc-012 (O5): the ownership pickers -- active people who may be chosen (names and roles only), for the roles that can assign."""
+    svc.require_writer(user)
+    return await ownership.lookup(db, kind, like_pattern(q))
 
 
 @router.post("/search")
@@ -124,15 +165,22 @@ async def create_candidate(payload: dict = Body(...), user: User = Depends(get_c
     """Q-07: a known mobile or email is the 409 panel, before and (by the unique indexes) under a race."""
     svc.require_writer(user)
     data = _body(CandidateCreate, payload).model_dump()
+    stored = {kind: data.pop(kind) for kind in profile.ROWS}  # hrc-010 P1
     await svc.require_compensation(db, user, payload)
     await svc.active_source(db, data["source_id"])
     candidate = Candidate(**data, mobile_normalized=normalise_phone(data["mobile"]), created_by_user_id=user.id)  # email: lower-cased by the schema
+    profile.sync(candidate, stored, set(payload))  # hrc-010 P4/P5
     await compensation.normalise(db, candidate)  # hrc-011
     await svc.block_duplicates(db, candidate)
     candidate.candidate_code = await svc.next_code(db)
     db.add(candidate)
     await svc.flush_candidate(db, candidate)
-    svc.audit(db, user, "create", candidate, {"fields": sorted(k for k, v in data.items() if v not in (None, []))})
+    for kind, values in stored.items():
+        if values:
+            await profile.replace(db, candidate.id, kind, values)
+    ownership.on_create(db, user, candidate)  # hrc-012 O7
+    filled = {**data, **stored}
+    svc.audit(db, user, "create", candidate, {"fields": sorted(k for k, v in filled.items() if v not in (None, []))})
     await duplicates.detect(db, candidate.id)  # hrc-014 D2: probable duplicates are queued, never blocked
     await db.commit()
     svc.log("candidate_created", user, candidate)
@@ -178,6 +226,7 @@ async def update_candidate(candidate_id: UUID, payload: dict = Body(...), user: 
     svc.require_writer(user)
     changes = _body(CandidateUpdate, payload).model_dump(exclude_unset=True)
     expected = changes.pop("expected_updated_at", None)
+    sent_rows = {kind: changes.pop(kind) for kind in profile.ROWS if kind in changes}  # hrc-010 P1: each sent list replaces its set
     await svc.require_compensation(db, user, changes)
     candidate = await svc.load(db, candidate_id, lock=True)
 
@@ -190,22 +239,52 @@ async def update_candidate(candidate_id: UUID, payload: dict = Body(...), user: 
         raise HTTPException(409, svc.ARCHIVED)
     if changes.get("source_id", candidate.source_id) != candidate.source_id:
         await svc.active_source(db, changes["source_id"])
-    before = await svc.audited_values(db, candidate, changes)  # hrc-004: the stored values, for the audit diff
-    fields = svc.apply_fields(candidate, changes)
-    if set(svc.COMPENSATION) & set(fields):  # hrc-011: the currency, period and annual INR follow the amounts
+    # hrc-004: the stored values, for the audit diff -- hrc-010: plus the rows sent and the mirrors they may move (P5)
+    audited = {*changes, *profile.DERIVED}
+    stored_before = await profile.rows(db, candidate.id)
+    stored = {**stored_before, **sent_rows}
+    before = await svc.audited_values(db, candidate, audited) | profile.audited(stored_before, sent_rows)
+    old_email = candidate.email
+    applied = svc.apply_fields(candidate, changes)
+    if candidate.email != old_email:
+        candidate.email_verified_at = None  # hrc-010 P9: a new address is unverified
+    profile.sync(candidate, stored, {*changes, *sent_rows}, stored_before)
+    if set(svc.COMPENSATION) & set(applied):  # hrc-011: the currency, period and annual INR follow the amounts
         await compensation.normalise(db, candidate)
-    if {"mobile", "email"} & set(fields):
+    if {"mobile", "email"} & set(applied):
         await svc.block_duplicates(db, candidate)
+    with db.no_autoflush:  # the candidate's own change reaches the unique indexes in flush_candidate (the friendly 409), not here
+        for kind, values in sent_rows.items():
+            if values != stored_before[kind]:
+                await profile.replace(db, candidate.id, kind, values)
+    changed = recruitment_history.diff(before, await svc.audited_values(db, candidate, audited) | profile.audited(stored, sent_rows))
+    fields = sorted((set(applied) - set(profile.DERIVED)) | set(changed))  # a mirror is listed only when it really moved
     if fields:
         candidate.updated_by_user_id = user.id
+        candidate.updated_at = datetime.now(UTC)  # hrc-003: a rows-only save is a new version too
         await svc.flush_candidate(db, candidate)
-        changed = recruitment_history.diff(before, await svc.audited_values(db, candidate, changes))
         svc.audit(db, user, "update", candidate, {"fields": fields, "changes": changed})
         if duplicates.WATCHED & set(fields):  # hrc-014 D2
             await duplicates.detect(db, candidate.id)
     await db.commit()
     if fields:
         svc.log("candidate_updated", user, candidate, fields=fields)
+    return await svc.detail_out(db, user, candidate)
+
+
+@router.put("/{candidate_id}/ownership", response_model=CandidateDetail, response_model_exclude_unset=True)
+async def change_ownership(candidate_id: UUID, payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """hrc-012 (DEC-SCOPE-382 O2-O6): the primary recruiter, placement officer and collaborators. Partial; a no-op writes nothing. The
+    primary recruiter changes their own candidate; a placement manager or super_admin any (403 before the body is read otherwise)."""
+    svc.require_writer(user)
+    candidate = await svc.load(db, candidate_id, lock=True)
+    if not ownership.may_assign(user, candidate):
+        raise HTTPException(403, ownership.CANNOT_ASSIGN)
+    sent = _parse(CandidateOwnershipIn, payload, NOT_AN_OBJECT, CANDIDATE_OWNERSHIP_LABELS).model_dump(exclude_unset=True)
+    if candidate.archived_at is not None:
+        raise HTTPException(409, svc.ARCHIVED)
+    await ownership.change(db, user, candidate, sent)
+    await db.commit()
     return await svc.detail_out(db, user, candidate)
 
 
