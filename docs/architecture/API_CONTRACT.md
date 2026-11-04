@@ -5808,3 +5808,18 @@ qualification?, location?, salary?: bool}`; omitted = unchanged; an unknown key 
 "Set … on the requirement before making it a hard filter"); the audit row's `changes` gains `{"Hard filter: <key>": [old, new]}`.
 **Changed (behaviour):** scores use the six weighted factors (rec-016's fixed experience and location points are gone), and an enabled
 hard filter excludes candidates who miss it or have not recorded the value.
+
+## 12KM. Application record completion (hrc-026) — addendum, 2026-11-04
+
+`DEC-SCOPE-394`. **Changed (additive):** `GET /api/v1/recruiter/requirements/{id}/candidates` items, and the `application` in every
+recruiter application response, gain `code` (`JA-000001`), `source` (`portal|recruiter|employer|drive`), `source_label`, `owner`
+(`{id, full_name}` or null), `rejection_reason` and `rejection_reason_label` (null unless rejected); the list gains
+`rejection_reasons[]` (`{key, label}`) and each `statuses[]` entry gains `candidate_visible` and `candidate_label`.
+`GET /recruiter/applications/{id}/history` items gain `rejection_reason_label`. `GET /recruiter/candidates/{id}/applications` items gain
+`code`. `POST /api/v1/workflows/it/jobs/{id}/apply` → `{id, code, status}`. `GET /api/v1/portal/it/student/job-applications` gains the
+column `code` ("Application ID"); its `status` is the candidate-visible stage in the candidate's words. **Changed (behaviour):**
+`POST /recruiter/applications/{id}/status` takes optional `rejection_reason` (one of the eleven keys); a move to `rejected` without one is
+422 "Choose a rejection reason", `other` without a note is 422 "Add a note explaining the rejection reason", and a reason on any other
+move is 422. `PATCH /workflows/it/job-applications/{id}` applies the same rule through `rejection_reason` in its body. The audit row's
+metadata carries `rejection_reason`. A student's status notice is sent only when the candidate-visible stage changes (never for Profile
+Shared), and a portal apply sends an "Application received" notice with the code.

@@ -1206,7 +1206,28 @@ class JobDescription(Base):
 
 # rec-017 (DEC-SCOPE-136, A1): the §12 per-requirement statuses + withdrawn. Migration 0121 repeats them (test_rec_017_migration).
 APPLICATION_STATUSES = ("sourced", "screened", "shortlisted", "profile_shared", "interview", "selected", "joined", "rejected", "withdrawn")
-APPLICATION_CHECKS = {"ck_job_applications_status": "status IN (" + ", ".join(f"'{s}'" for s in APPLICATION_STATUSES) + ")"}
+# hrc-026 (DEC-SCOPE-394 A3/A5/A7): where an application came from, the structured rejection reasons, and the stage the candidate sees
+# (every status but the internal Profile Shared). Migration 0271 repeats them (test_hrc_026_migration). Labels live in services/applications.py.
+APPLICATION_SOURCES = ("portal", "recruiter", "employer", "drive")
+REJECTION_REASONS = (
+    "skills_mismatch", "experience_mismatch", "qualification_mismatch", "salary_mismatch", "location_mismatch", "screening_not_cleared",
+    "interview_not_cleared", "not_reachable", "client_rejected", "position_filled", "other",
+)
+CANDIDATE_VISIBLE_STATUSES = tuple(s for s in APPLICATION_STATUSES if s != "profile_shared")
+JOB_APPLICATION_CODE_SEQ = Sequence("job_application_code_seq", metadata=Base.metadata)
+JOB_APPLICATION_CODE_DEFAULT = "'JA-' || to_char(nextval('job_application_code_seq'), 'FM999999999000000')"
+def _visible_status(status: str | None) -> str:
+    """A row inserted directly (the seed, tests) starts the candidate's view at its own status when that is visible."""
+    return status if status in CANDIDATE_VISIBLE_STATUSES else "sourced"
+
+
+APPLICATION_CHECKS = {
+    "ck_job_applications_status": "status IN (" + ", ".join(f"'{s}'" for s in APPLICATION_STATUSES) + ")",
+    "ck_job_applications_source": "source IN (" + ", ".join(f"'{s}'" for s in APPLICATION_SOURCES) + ")",
+    "ck_job_applications_candidate_status": "candidate_status IN (" + ", ".join(f"'{s}'" for s in CANDIDATE_VISIBLE_STATUSES) + ")",
+    "ck_job_applications_rejection_reason": "rejection_reason IS NULL OR (status = 'rejected' AND rejection_reason IN ("
+    + ", ".join(f"'{r}'" for r in REJECTION_REASONS) + "))",
+}
 
 
 class JobApplication(Base, TimestampMixin):
@@ -1235,6 +1256,13 @@ class JobApplication(Base, TimestampMixin):
     # hrc-009 (DEC-SCOPE-390 R3/R4): set when the requirement's eligibility changed while the application was open; cleared by a status
     # move or a confirmed review. NULL = nothing to review.
     needs_review_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # hrc-026 (DEC-SCOPE-394): the database numbers every application (JA-000001); its source and owning recruiter; the last
+    # candidate-visible stage (what the portal and notices show); and the reason while it is rejected.
+    application_code: Mapped[str] = mapped_column(String(20), unique=True, server_default=text(JOB_APPLICATION_CODE_DEFAULT))
+    source: Mapped[str] = mapped_column(String(20), server_default=text("'recruiter'"))
+    owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    candidate_status: Mapped[str] = mapped_column(String(30), default=lambda ctx: _visible_status(ctx.get_current_parameters().get("status")), server_default=text("'sourced'"))
+    rejection_reason: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
 
 class JobApplicationStatusHistory(Base):
@@ -1250,6 +1278,7 @@ class JobApplicationStatusHistory(Base):
     note: Mapped[str | None] = mapped_column(String(500), nullable=True)
     changed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    rejection_reason: Mapped[str | None] = mapped_column(String(40), nullable=True)  # hrc-026 (A9): the reason of a move into Rejected
 
 
 # rec-020 (DEC-SCOPE-148, IV1/IV2): the EVID-018 §14 rounds and statuses, in source order. Migration 0133 repeats them

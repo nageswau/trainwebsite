@@ -491,8 +491,9 @@ async def _it_student(db: AsyncSession, user: User, section: str):
         return _payload(
             "Job Applications",
             "Applications, interviews, offers, and joining status.",
-            (("role", "Role"), ("company", "Company"), ("location", "Location"), ("status", "Status")),
-            ({"role": j.title, "company": c.name, "location": j.location, "status": job_applications.label(a.status)} for a, j, c in rows),
+            (("code", "Application ID"), ("role", "Role"), ("company", "Company"), ("location", "Location"), ("status", "Status")),
+            # hrc-026 (A4): the stage the candidate sees, in the candidate's words -- never an internal stage or a rejection reason
+            ({"code": a.application_code, "role": j.title, "company": c.name, "location": j.location, "status": job_applications.candidate_label(a.candidate_status)} for a, j, c in rows),
             panels=({"title": "Open jobs", "items": [f"Job reference {j.id}: {c.name} / {j.title} / {j.location}" for j, c in open_jobs]},),
         )
     if section == "downloads":

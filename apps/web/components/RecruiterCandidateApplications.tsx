@@ -49,7 +49,7 @@ export default function RecruiterCandidateApplications({ candidateId }: { candid
                 {a.in_scope ? <Link href={`${REQUIREMENTS_PATH}/${a.requirement.id}`} style={LINK_STYLE}>{a.requirement.title}</Link> : a.requirement.title}
               </div>
               <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-                {a.requirement.code} · requirement {a.requirement.status_label} · since <LocalTime value={a.stage_changed_at} time />
+                {a.code && <>{a.code} · </>}{a.requirement.code} · requirement {a.requirement.status_label} · since <LocalTime value={a.stage_changed_at} time />
               </p>
             </li>
           ))}

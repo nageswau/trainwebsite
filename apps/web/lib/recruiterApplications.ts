@@ -12,17 +12,24 @@ export type RecApplication = {
   stage_changed_at: string; created_at: string; allowed_statuses: StatusOption[];
   screening_result: StatusOption | null; // rec-018: the current screening's result (the board's flag)
   needs_review_since?: string | null; // hrc-009: set while an eligibility change waits for a confirm or a move
+  // hrc-026 (DEC-SCOPE-394): the Application ID, where it came from, the owning recruiter and the reason while rejected
+  code?: string; source?: string; source_label?: string; owner?: { id: string; full_name: string } | null;
+  rejection_reason?: string | null; rejection_reason_label?: string | null;
 };
 export type RequirementCandidates = {
   items: RecApplication[]; statuses: ApplicationStatus[]; can_add: boolean;
   needs_review_count?: number; // hrc-009: the requirement's flagged applications, whatever the filter
+  rejection_reasons?: StatusOption[]; // hrc-026 (A7): the required list for a move into Rejected
 };
 export type HistoryEntry = {
   from_status: string | null; from_label: string | null; to_status: string; to_label: string; note: string | null;
   changed_by: { id: string; full_name: string } | null; created_at: string;
+  rejection_reason_label?: string | null; // hrc-026 (A9)
 };
+export const REJECTED = "rejected";
+export const OTHER_REASON = "other";
 export type CandidateApplication = {
-  id: string; requirement: { id: string; code: string; title: string; status_label: string }; company: { id: string; name: string };
+  id: string; code?: string; requirement: { id: string; code: string; title: string; status_label: string }; company: { id: string; name: string };
   status: string; status_label: string; stage_changed_at: string; in_scope: boolean;
 };
 

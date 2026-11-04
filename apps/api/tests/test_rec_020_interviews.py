@@ -153,7 +153,7 @@ async def test_same_candidate_same_time_is_409_across_requirements(client, db_se
 @pytest.mark.asyncio
 async def test_a_closed_requirement_or_a_finished_application_cannot_be_scheduled(client, db_session):
     s = await _setup(client, db_session)
-    assert (await client.post(f"{APPS}/{s['application']['id']}/status", json={"status": "rejected"})).status_code == 200
+    assert (await client.post(f"{APPS}/{s['application']['id']}/status", json={"status": "rejected", "rejection_reason": "skills_mismatch"})).status_code == 200
     refused = await _schedule(client, s["application"]["id"])
     assert refused.status_code == 409 and "open application" in refused.json()["detail"]
     listed = (await client.get(f"{APPS}/{s['application']['id']}/interviews")).json()

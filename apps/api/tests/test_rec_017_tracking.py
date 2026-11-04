@@ -51,7 +51,8 @@ async def _add(client, job, candidate, **body):
 
 
 async def _move(client, application_id, status, note=None):
-    return await client.post(f"{APPS}/{application_id}/status", json={"status": status, **({"note": note} if note else {})})
+    reason = {"rejection_reason": "skills_mismatch"} if status == "rejected" else {}  # hrc-026 (AC3): a rejection names its reason
+    return await client.post(f"{APPS}/{application_id}/status", json={"status": status, **({"note": note} if note else {}), **reason})
 
 
 # --- the engine (A2) ------------------------------------------------------------------------------------------------------------------

@@ -119,6 +119,7 @@ from app.models import (
     RECRUITER_CONTRACT_STATUSES,
     RECRUITER_FOLLOW_UP_REASONS,
     RECRUITER_MEETING_TYPES,
+    REJECTION_REASONS,
     RELATIONSHIP_STRENGTHS,
     SALARY_PERIODS,
     SCORE_TYPES,
@@ -11004,6 +11005,7 @@ class RecApplicationStatusChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: Literal[APPLICATION_STATUSES]
     note: _rec_requirement_text_type(500, multiline=True) = None
+    rejection_reason: Literal[REJECTION_REASONS] | None = None  # hrc-026 (A7): required when status is rejected (services/applications)
 
 
 # --- rec-029 (DEC-SCOPE-178): campus recruitment drives (services/recruitment_drives) ----------------------------------------------------
