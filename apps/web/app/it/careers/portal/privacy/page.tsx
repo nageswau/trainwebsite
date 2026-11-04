@@ -5,7 +5,7 @@ import { serverApi } from "@/lib/api";
 import { CANDIDATE_NAV, PRIVACY_URL, type PrivacyState } from "@/lib/candidatePortal";
 import type { User } from "@/lib/types";
 
-// hrc-022 (DEC-SCOPE-384 C12): the candidate's consent and its history.
+// hrc-022 (DEC-SCOPE-385 C12): the candidate's consent and its history.
 export default async function CandidatePrivacyPage() {
   let user: User;
   let privacy: PrivacyState;

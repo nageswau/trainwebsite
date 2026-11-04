@@ -1,4 +1,4 @@
-"""hrc-022 (DEC-SCOPE-384, spec docs/superpowers/specs/2026-11-04-hrc-022-candidate-portal-identity-design.md): the external candidate's
+"""hrc-022 (DEC-SCOPE-385, spec docs/superpowers/specs/2026-11-04-hrc-022-candidate-portal-identity-design.md): the external candidate's
 own login -- registration (C2), email verification and the candidate link (C3/C4), resend (C5), the own profile with the allow-listed
 self-service fields (C7/C10/C11), the verified email change (C9) and the pool consent (C12).
 

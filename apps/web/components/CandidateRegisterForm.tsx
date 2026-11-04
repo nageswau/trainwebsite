@@ -6,7 +6,7 @@ import { FormEvent, useState } from "react";
 import { sendJson } from "@/lib/apiErrors";
 import { CONSENT_TEXT, CONSENT_VERSION, REGISTER_URL, RESEND_URL } from "@/lib/candidatePortal";
 
-// hrc-022 (DEC-SCOPE-384 C2/C5): the external candidate's registration. The server answers the same whatever the email, so the success
+// hrc-022 (DEC-SCOPE-385 C2/C5): the external candidate's registration. The server answers the same whatever the email, so the success
 // state never says whether an account was created -- only "check your inbox", with a Resend link.
 export default function CandidateRegisterForm() {
   const [busy, setBusy] = useState(false);

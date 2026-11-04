@@ -3760,7 +3760,17 @@ candidate readers; `PUT`: `placement_manager`, `super_admin`. `hr_manager`, `pla
 a placement officer only sees their "Your candidates" count on their own dashboard. Every other role 403, anonymous 401. Pinned by
 `apps/api/tests/test_hrc_012_ownership.py` and the rec-038 matrix rows.
 
-### 2.280 External candidate portal *(added 2026-11-04 — `DEC-SCOPE-384`, hrc-022)*
+### 2.280 Vacancy co-ownership *(added 2026-11-04 — `DEC-SCOPE-384`, hrc-006)*
+
+A requirement's assignees (`job_assignments`: its placement-officer owner and collaborators) are in its read and write scope: a
+collaborating recruiter (any team) reads and edits it and works its candidate pipeline as the primary does; a placement manager's scope
+covers its team's collaborations. A `placement_officer` assignee reads and edits the requirement and its JD only — `caller_scope` gives
+the role a scope only where the route opts in (`officers=True`), so applications, interviews, offers, matches, shares, revenue and the
+legacy routes stay 403 for it (candidate access waits for hrc-012). Owners are managed by the primary owner, a placement manager in scope
+or super_admin (a collaborator, the BDM or an officer → 403); a non-assignee → 404. No grant key is added. Pinned by
+`apps/api/tests/test_hrc_006_co_ownership.py` and the rec-038 matrix rows.
+
+### 2.281 External candidate portal *(added 2026-11-04 — `DEC-SCOPE-385`, hrc-022)*
 
 New role `candidate` (division `it`, bundle `it:candidate:self`), created only by `POST /candidate/register` -- never by an admin route
 or a profile key. `/candidate/me*`: the `candidate` role only, and only the record with `Candidate.user_id` = the caller (no id is

@@ -49,7 +49,7 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
   hr_manager: "/it/hr-manager/dashboard",
   placement_officer: "/it/placement-officer/dashboard",
   interviewer: "/it/interviewer/dashboard",
-  candidate: "/it/careers/portal/profile", // hrc-022 (DEC-SCOPE-384): the external candidate's own portal
+  candidate: "/it/careers/portal/profile", // hrc-022 (DEC-SCOPE-385): the external candidate's own portal
   employer: "/it/employer/dashboard",
   it_admin: "/it/admin/dashboard",
   overseas_student: "/overseas/student/dashboard",
@@ -293,7 +293,9 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
   // nehn-030 (DEC-SCOPE-293 C3): the IT coordinator's certificate portal.
   "it/coordinator": withResources(withTasks(["dashboard","certificates"].map(x=>({label:x.replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/coordinator/${x}`})))),
   // hrc-002 (DEC-SCOPE-374 R3): one dashboard each until later items (hrc-006/007/029) give these roles work.
-  ...Object.fromEntries(["placement-officer","interviewer"].map(x=>[`it/${x}`,[{label:"Dashboard",href:`/it/${x}/dashboard`}]])),
+  "it/interviewer": [{label:"Dashboard",href:"/it/interviewer/dashboard"}],
+  // hrc-006 (DEC-SCOPE-384 O12): the Placement Officer works the requirements it co-owns.
+  "it/placement-officer": [{label:"Dashboard",href:"/it/placement-officer/dashboard"},{label:"Job requirements",href:"/recruiter/requirements"}],
   // hrc-007 (DEC-SCOPE-380 A9): the HR Manager approves vacancies.
   "it/hr-manager": [{label:"Dashboard",href:"/it/hr-manager/dashboard"},{label:"Approvals",href:"/it/hr-manager/approvals"}],
   // bdm-001: "BDMs" is written out -- the generated label would read "Bdms".

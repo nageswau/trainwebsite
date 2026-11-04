@@ -10,6 +10,8 @@ import type { User } from "@/lib/types";
 
 const HEADING: Record<string, string> = { super_admin: "All job requirements", placement_manager: "Your team's job requirements", bdm: "Job requirements of your companies" };
 const INTRO: Record<string, string> = {
+  // hrc-006 (DEC-SCOPE-384 O4): only the requirements the officer co-owns
+  placement_officer: "Requirements you co-own as their placement officer owner or a collaborator. The primary owner or a placement manager adds you.",
   super_admin: "Every company's requirements, from every recruiter.",
   placement_manager: "Requirements your recruiters own, and new ones waiting for a recruiter.",
   bdm: "Requirements of the recruiter companies where you are the Assigned BDM. You can view them; the recruiter keeps them up to date.",

@@ -7,7 +7,7 @@ import CandidateVerifyEmail from "@/components/CandidateVerifyEmail";
 import RecruiterSelfServiceSetting from "@/components/RecruiterSelfServiceSetting";
 import type { CandidateProfile } from "@/lib/candidatePortal";
 
-// hrc-022 (DEC-SCOPE-384): registration (C2), the click-to-verify link (C3), the own profile with only the allow-listed inputs (C11)
+// hrc-022 (DEC-SCOPE-385): registration (C2), the click-to-verify link (C3), the own profile with only the allow-listed inputs (C11)
 // and the managers' allow-list card (C7).
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 afterEach(() => {

@@ -3,7 +3,7 @@ import Link from "next/link";
 import BrandLogoLink from "@/components/BrandLogoLink";
 import CandidateVerifyEmail from "@/components/CandidateVerifyEmail";
 
-// hrc-022 (DEC-SCOPE-384 C3): the link from a verification or email-change email. The token is used only when the person clicks.
+// hrc-022 (DEC-SCOPE-385 C3): the link from a verification or email-change email. The token is used only when the person clicks.
 export default async function CandidateVerifyEmailPage({ searchParams }: { searchParams: Promise<{ token?: string | string[] }> }) {
   const raw = (await searchParams).token;
   const token = typeof raw === "string" ? raw : "";

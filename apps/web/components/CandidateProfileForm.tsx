@@ -16,7 +16,7 @@ import {
 
 const SERVER_ERROR = "We couldn't save your changes. Please try again.";
 
-// hrc-022 (DEC-SCOPE-384 C10/C11): the candidate's own record. Only the allow-listed fields are inputs; the rest are shown read-only
+// hrc-022 (DEC-SCOPE-385 C10/C11): the candidate's own record. Only the allow-listed fields are inputs; the rest are shown read-only
 // with "ask your recruiter". The mobile is never self-service (C8); the email changes only through a link to the new address (C9).
 export default function CandidateProfileForm({ initial }: { initial: CandidateProfile }) {
   const [profile, setProfile] = useState(initial);

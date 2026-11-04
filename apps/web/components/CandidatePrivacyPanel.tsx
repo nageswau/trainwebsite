@@ -6,7 +6,7 @@ import LocalTime from "@/components/LocalTime";
 import { sendJson } from "@/lib/apiErrors";
 import { PRIVACY_URL, type PrivacyState } from "@/lib/candidatePortal";
 
-// hrc-022 (DEC-SCOPE-384 C12): the consent the candidate gave, its history, and leaving or re-joining the candidate pool (the rec-010
+// hrc-022 (DEC-SCOPE-385 C12): the consent the candidate gave, its history, and leaving or re-joining the candidate pool (the rec-010
 // idiom). Each change adds a consent record server-side.
 export default function CandidatePrivacyPanel({ initial }: { initial: PrivacyState }) {
   const [state, setState] = useState(initial);

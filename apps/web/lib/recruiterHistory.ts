@@ -24,6 +24,8 @@ const ACTIONS: Record<string, string> = {
   "recruiter_requirement.assign": "Recruiter changed",
   "recruiter_requirement.weights": "Skill weights changed",
   "recruiter_requirement.duplicate_override": "Saved despite a possible duplicate", // hrc-005
+  "recruiter_requirement.owner_added": "Owner added", // hrc-006
+  "recruiter_requirement.owner_removed": "Owner removed",
   "job_description.create": "JD version saved",
   "job_description.upload": "JD file uploaded",
   "candidate.create": "Created",

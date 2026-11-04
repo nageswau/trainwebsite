@@ -1,4 +1,4 @@
-"""hrc-022 (DEC-SCOPE-384, spec docs/superpowers/specs/2026-11-04-hrc-022-candidate-portal-identity-design.md): an external candidate
+"""hrc-022 (DEC-SCOPE-385, spec docs/superpowers/specs/2026-11-04-hrc-022-candidate-portal-identity-design.md): an external candidate
 registers, verifies and signs in (C2-C6, AC1), sees only their own record (C10, AC2), edits only the allow-listed fields (C7/C11, AC3),
 changes their email only through a verified link (C9, AC4), the throttles answer 429 (AC5) and the privacy consent (C12)."""
 

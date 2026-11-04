@@ -10628,6 +10628,14 @@ class RecRequirementAssign(BaseModel):
     recruiter_user_id: UUID
 
 
+class RecRequirementOwnerAdd(BaseModel):
+    """hrc-006 (DEC-SCOPE-384 O3): there is no "primary" here -- the primary changes only by reassignment, so a second one is a 422."""
+
+    model_config = ConfigDict(extra="forbid")
+    user_id: UUID
+    role: Literal["placement_officer", "collaborator"]
+
+
 # --- rec-016 (DEC-SCOPE-157 M1): a requirement skill's match weight; ids must be this requirement's skills (checked in the route) -----
 class RecSkillWeight(BaseModel):
     model_config = ConfigDict(extra="forbid")

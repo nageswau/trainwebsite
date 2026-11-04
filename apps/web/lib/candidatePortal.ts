@@ -1,6 +1,6 @@
 import type { NavItem } from "@/lib/navigation";
 
-// hrc-022 (DEC-SCOPE-384): the external candidate portal -- registration, verification, the own profile with the allow-listed
+// hrc-022 (DEC-SCOPE-385): the external candidate portal -- registration, verification, the own profile with the allow-listed
 // self-service fields (C7/C11), the verified email change (C9) and the pool consent (C12). The server decides everything; this file
 // only shapes forms.
 export const CANDIDATE_API = "/api/v1/candidate";

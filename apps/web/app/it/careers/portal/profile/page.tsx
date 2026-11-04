@@ -5,7 +5,7 @@ import { serverApi } from "@/lib/api";
 import { CANDIDATE_NAV, PROFILE_URL, type CandidateProfile } from "@/lib/candidatePortal";
 import type { User } from "@/lib/types";
 
-// hrc-022 (DEC-SCOPE-384 C10): the candidate's own profile. The API decides who reads it (a candidate; anyone else 403, shown as the
+// hrc-022 (DEC-SCOPE-385 C10): the candidate's own profile. The API decides who reads it (a candidate; anyone else 403, shown as the
 // access card) and whose record it is (always the caller's own).
 export default async function CandidateProfilePage() {
   let user: User;

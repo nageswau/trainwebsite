@@ -1654,10 +1654,10 @@ half.
 | `hrc-010-NEG` | End before start → 422 naming the row; other invalid rows 422; HR cannot write | `::test_invalid_profile_values_are_422`, `::test_hr_team_reads_but_cannot_write_the_profile`; e2e |
 | `hrc-010-COMPAT` | Legacy clients, stale guard and audit, merge, resume apply | `::test_legacy_clients_keep_working_without_rows`, `::test_a_rows_only_save_bumps_the_version_and_is_audited`, `::test_a_merge_moves_the_rows_when_the_survivor_has_none`; e2e `rec-012-resume-extraction.spec.ts` |
 | `hrc-010-MIG` | Migration 0260 chain, frozen checks, backfill, round trip | `apps/api/tests/test_hrc_010_migration.py` |
-| `hrc-022` | Requirement: `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-022` → `DEC-SCOPE-384`; `API_CONTRACT.md` §12KC; RBAC §2.280; migration 0261 | Builder's calls C1-C12, Q-23/Q-24 `NEEDS_CONFIRMATION` |
+| `hrc-022` | Requirement: `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-022` → `DEC-SCOPE-385`; `API_CONTRACT.md` §12KD; RBAC §2.281; migration 0262 | Builder's calls C1-C12, Q-23/Q-24 `NEEDS_CONFIRMATION` |
 | `hrc-022-AC1` | A candidate registers, verifies and logs in | `apps/api/tests/test_hrc_022_candidate_portal.py::test_register_verify_and_log_in`, `::test_verification_claims_the_recruiter_record_by_email_never_by_phone`; `CandidatePortal.test.tsx`; e2e `apps/web/tests/e2e/hrc-022-candidate-portal.spec.ts` |
 | `hrc-022-AC2` | They see only their own profile | `::test_each_candidate_sees_only_their_own_profile`; e2e |
 | `hrc-022-AC3` | They edit only the allow-listed fields | `::test_a_candidate_edits_only_allow_listed_fields`, `::test_the_allow_list_is_configured_by_managers`; `CandidatePortal.test.tsx`; e2e |
 | `hrc-022-AC4` | A changed email is verified before it replaces the old one | `::test_an_email_change_waits_for_the_new_address`, `::test_a_superseded_change_link_is_dead`, `::test_an_address_in_use_is_accepted_silently`; e2e |
 | `hrc-022-AC5` | Throttles return 429 | `::test_registration_is_throttled_per_network`, `::test_email_change_requests_are_throttled`, `::test_resend_is_enumeration_safe_and_capped` |
-| `hrc-022-MIG` | Migration 0261 chain, frozen checks, round trip | `apps/api/tests/test_hrc_022_migration.py` |
+| `hrc-022-MIG` | Migration 0262 chain, frozen checks, round trip | `apps/api/tests/test_hrc_022_migration.py` |

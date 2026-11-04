@@ -5653,9 +5653,31 @@ sets `qualification`/`college`/`passing_year`; city/state/country set `location`
 client's `preferred_role` replaces the first role). A rows-only save is a new `updated_at` (hrc-003). Candidate skills add/PATCH accept
 `is_primary` (bool; null = 422) and skill items return it. The merge response's `moved` adds `education`, `employment`, `certifications`.
 
-## 12KC. External candidate portal (hrc-022) — addendum, 2026-11-04
+## 12KC. Vacancy co-owners and ownership history (hrc-006) — addendum, 2026-11-04
 
-DEC-SCOPE-384. Public (no session), JSON only: `POST /api/v1/candidate/register` `{full_name (2–160), email, phone?, password (10–128),
+DEC-SCOPE-384. Every requirement body gains `owners: [{user: {id, full_name, active, email}, role: "placement_officer" | "collaborator",
+role_label, added_by: person, added_at}]` (the placement-officer owner first, then collaborators by name; the primary stays
+`assigned_recruiter`) and `permissions.can_manage_owners` / `permissions.can_view_candidates`. **Scope change:** a recruiter's and a
+placement manager's list and reads also cover requirements they (or their team) co-own; `placement_officer` is no longer 403 on
+`GET /recruiter/requirements`, `/statuses`, `/{id}`, `/{id}/history`, `PATCH /{id}`, `POST /{id}/status|submit` and the `/{id}/jd*`
+routes — it sees only the requirements it co-owns (others 404). Every other recruiter route still refuses it (403).
+- `POST /api/v1/recruiter/requirements/{id}/assignments` `{user_id, role: "placement_officer" | "collaborator"}` → 201 `{requirement}`.
+  403 unless the primary owner, a placement manager in scope or super_admin; 409 cancelled, "This person is the primary owner",
+  "Already an owner of this requirement", "This requirement already has a placement officer owner"; 422 an ineligible person (inactive,
+  wrong role, a recruiter without a profile) or `role: "primary"`. Audit `recruiter_requirement.owner_added`.
+- `DELETE /api/v1/recruiter/requirements/{id}/assignments/{user_id}` → 200 `{requirement}`; 409 "A placement manager must reassign the
+  primary owner first"; 404 not an owner. Audit `recruiter_requirement.owner_removed`.
+- `GET /api/v1/recruiter/requirements/{id}/assignment-options?role=&q=&limit=` (≤ 50) → `{items: [{id, full_name, email, role}], total}` —
+  eligible active people not already on it; owner managers only (else 403).
+- `GET /api/v1/recruiter/requirements/{id}/assignment-history?limit=&offset=` (≤ 100) → `{items: [{id, user, role: "primary" | …,
+  role_label, action: "added" | "removed", reason: null | "reassign" | "deactivated" | "backfill", changed_by: person | null, created_at}],
+  total, limit, offset}`, newest first, `Cache-Control: no-store`; the requirement's readers.
+`POST /{id}/assign` and `POST /recruiter/manager/reassign` now also write the primary's history (and drop the new primary's co-owner row);
+`PATCH /admin/users/{id}` with `active: false` removes the user's co-ownerships.
+
+## 12KD. External candidate portal (hrc-022) — addendum, 2026-11-04
+
+DEC-SCOPE-385. Public (no session), JSON only: `POST /api/v1/candidate/register` `{full_name (2–160), email, phone?, password (10–128),
 consent_version}` → **202** `{accepted: true}` for every email (development adds `development_verification_token`); a wrong consent
 version or an invalid phone 422; more than 5 from one client IP in an hour **429** with `Retry-After`. `POST /candidate/resend-verification`
 `{email}` → 202 always (at most 3 links per account per 15 minutes; over it nothing is sent). `POST /candidate/verify-email` `{token}` →

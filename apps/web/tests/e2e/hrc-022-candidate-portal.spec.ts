@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// hrc-022 (DEC-SCOPE-384): an external candidate registers from the careers page, verifies by the emailed link (development shows it),
+// hrc-022 (DEC-SCOPE-385): an external candidate registers from the careers page, verifies by the emailed link (development shows it),
 // is refused sign-in until verified, signs in, edits an allow-listed field (the name stays with the recruiter), changes their email only
 // through a link to the new address, and leaves the pool from Privacy. Each run gets its own client IP header, so the per-network
 // registration throttle (5 an hour) never trips a re-run.

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { dashboardPathFor } from "@/lib/navigation";
 import { middleware } from "@/middleware";
 
-// hrc-022 (DEC-SCOPE-384): an external candidate lands on their own portal; it is protected, the rest of /it/careers stays public.
+// hrc-022 (DEC-SCOPE-385): an external candidate lands on their own portal; it is protected, the rest of /it/careers stays public.
 describe("hrc-022 candidate portal navigation", () => {
   it("lands a candidate on their profile", () => {
     expect(dashboardPathFor({ role: "candidate", division: "it" })).toBe("/it/careers/portal/profile");

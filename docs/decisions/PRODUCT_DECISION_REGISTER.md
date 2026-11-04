@@ -11537,7 +11537,27 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0260_candidate_profile`; API §12KB; no RBAC change.
 - **Feature ID authorized:** `hrc-010`. **Status:** built on `worktree-hrc-010`.
 
-### DEC-SCOPE-384 — External candidate portal identity and self-service (`hrc-022`)
+### DEC-SCOPE-384 — Vacancy co-ownership and assignment history (`hrc-006`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-006` (PDF §4.1 "one or more recruiters and placement officers … with a
+  primary owner"; §12 "Shared vacancy ownership … Preserve ownership and reassignment history"; PDF classified `UNVERIFIED`). Scope approved
+  by the owner 2026-11-01 (backlog Q-00). Dependency hrc-002 (DEC-SCOPE-374, the `placement_officer` role) merged. No open question is
+  listed for hrc-006; the owner said to proceed with the recommended answers, so O1–O12 are **the builder's calls (`NEEDS_CONFIRMATION`)**.
+  Design `docs/superpowers/specs/2026-11-04-hrc-006-vacancy-co-ownership-design.md`.
+- **Behaviour:** a job requirement keeps one primary recruiter (`jobs.assigned_recruiter_user_id`) and gains at most one placement-officer
+  owner and any number of collaborators (active recruiters or placement officers) in `job_assignments`. Every assignee reads and edits the
+  requirement (list, detail, edit, status, submit, JD); a non-assignee gets 404. The primary owner, a placement manager in scope or
+  super_admin add and remove owners; the primary changes only by Reassign / the rec-037 bulk reassign. `job_assignment_history` keeps every
+  add, remove and primary change (create, reassign, deactivation) with actor and time; migration 0261 backfills the current primaries.
+  Deactivating a user removes their co-ownerships (the rec-037 rule still makes a manager reassign their primaries first).
+- **Builder's calls:** O1 the primary stays a single column (backlog asked for it in the table: two copies would drift). O4 a placement
+  officer gets a requirement scope only on the requirement and JD routes; every candidate-side route (applications, interviews, offers,
+  matches, shares, revenue) still refuses the role until hrc-012. O5 `can_view_candidates` hides those sections for them in the web. O6
+  the primary cannot remove themselves. O8 deactivation releases co-ownerships. Notifications are hrc-032's.
+- **Numbering:** migration `0261_job_assignments`; API §12KC; RBAC §2.280.
+- **Feature ID authorized:** `hrc-006`. **Status:** built on `worktree-hrc-006`.
+
+### DEC-SCOPE-385 — External candidate portal identity and self-service (`hrc-022`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-022` (PDF §5.1, §6.1 step 2, §11; PDF classified `UNVERIFIED`). Scope
   approved by the owner 2026-11-01 (backlog Q-00). Dependencies hrc-002 (DEC-SCOPE-374) and hrc-010 (DEC-SCOPE-383) merged. The owner
@@ -11554,5 +11574,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   fields, default all but the name, changed by placement managers and super_admin. C8/Q-24 no SMS provider, so the mobile is not
   self-service. C9 email change needs the current password, 3 requests per 15 minutes → 429, an address in use is accepted silently.
   C10 no id in any portal URL. Not built: a recruiter "invite to portal" email (follow-up), website registration/UTM (hrc-023).
-- **Numbering:** migration `0261_candidate_portal`; API §12KC; RBAC §2.280.
+- **Numbering:** migration `0262_candidate_portal`; API §12KD; RBAC §2.281.
 - **Feature ID authorized:** `hrc-022`. **Status:** built on `worktree-hrc-022`.
