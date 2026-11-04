@@ -14,6 +14,9 @@ ever checked `Job.status == "open"` -- a posting whose `closes_on` date had alre
 passed, but whose status the Employer never explicitly flipped, still showed (and was
 still applicable to) as open everywhere. Fixed all four call sites to also check
 `closes_on`.
+
+hrc-007 (DEC-SCOPE-380 A4) adds that gate: employer jobs now need a `jobs.approve` holder's approval by default. These tests cover the
+self-publish behaviour, which still holds with the employer approval setting off, so every test here runs with it off.
 """
 
 import datetime
@@ -23,6 +26,9 @@ import pytest
 
 from app.core.security import hash_password
 from app.models import Job, User
+from tests.hrc007_helpers import employer_self_publish  # noqa: F401 -- a fixture
+
+pytestmark = pytest.mark.usefixtures("employer_self_publish")
 
 
 def _register_payload(**overrides) -> dict:

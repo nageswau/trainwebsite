@@ -139,7 +139,8 @@ async def create_employer_job(payload: EmployerJobCreate, user: User = Depends(g
     # approval gate" precedent.
     _, company = await _own_profile(user, db)
     # rec-007 J2: "draft" is the §6 `new`; no recruiter acceptance is needed before the Employer publishes it.
-    job = Job(company_id=company.id, title=payload.title, location=payload.location, description=payload.description, skills=[], status="new", closes_on=payload.closes_on, requirement_date=requirements.ist_today())
+    # hrc-007 (DEC-SCOPE-380 A6): publishing it is a submission for approval while the employer approval setting is on.
+    job = Job(company_id=company.id, title=payload.title, location=payload.location, description=payload.description, skills=[], status="new", closes_on=payload.closes_on, requirement_date=requirements.ist_today(), source="employer")
     db.add(job)
     await db.flush()
     await requirements.set_legacy_skills(db, job, payload.skills)
@@ -170,9 +171,9 @@ async def update_employer_job(job_id: UUID, payload: EmployerJobUpdate, user: Us
         raise HTTPException(403, "Job is outside your own postings")
     changes = payload.model_dump(exclude_unset=True)
     for key, value in changes.items():
-        if key == "status":  # rec-007 J3: the legacy word maps onto a validated §6 move (with history), or is a no-op
-            if value and (target := requirements.legacy_target(job.status, value)):
-                await requirements.change_status(db, user, job, target, "Changed by the employer")
+        if key == "status":  # rec-007 J3: the legacy word maps onto a validated §6 move (with history), or is a no-op; hrc-007: or a submission
+            if value:
+                await requirements.legacy_move(db, user, job, value, "Changed by the employer")
         elif key == "skills":
             await requirements.set_legacy_skills(db, job, value or [])
         else:

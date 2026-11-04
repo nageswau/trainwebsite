@@ -291,7 +291,9 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
   // nehn-030 (DEC-SCOPE-293 C3): the IT coordinator's certificate portal.
   "it/coordinator": withResources(withTasks(["dashboard","certificates"].map(x=>({label:x.replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/coordinator/${x}`})))),
   // hrc-002 (DEC-SCOPE-374 R3): one dashboard each until later items (hrc-006/007/029) give these roles work.
-  ...Object.fromEntries(["hr-manager","placement-officer","interviewer"].map(x=>[`it/${x}`,[{label:"Dashboard",href:`/it/${x}/dashboard`}]])),
+  ...Object.fromEntries(["placement-officer","interviewer"].map(x=>[`it/${x}`,[{label:"Dashboard",href:`/it/${x}/dashboard`}]])),
+  // hrc-007 (DEC-SCOPE-380 A9): the HR Manager approves vacancies.
+  "it/hr-manager": [{label:"Dashboard",href:"/it/hr-manager/dashboard"},{label:"Approvals",href:"/it/hr-manager/approvals"}],
   // bdm-001: "BDMs" is written out -- the generated label would read "Bdms".
   // tel-017 (DEC-SCOPE-076 C1): an IT counselor works leads only; tel-016 added Appointments (lead bookings), tel-018 the student link,
   // itc-003 (DEC-SCOPE-337) Students (the IT students linked to the counselor).

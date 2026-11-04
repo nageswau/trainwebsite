@@ -59,6 +59,14 @@ ROWS = [
     R("patch", "/recruiter/requirements/{requirement}", {"location": "Bengaluru"}, **allow(200, "rec", "super"), **OUT),
     R("post", "/recruiter/requirements/{requirement}/assign", lambda w: {"recruiter_user_id": w["rec2_id"]}, **allow(200, "mgr", "super"), **OUT),
     R("post", "/recruiter/requirements/{requirement}/status", {"status": "shortlisting"}, **allow(200, "rec", "super"), **OUT),
+    # hrc-007 (DEC-SCOPE-380, §2.279): submit follows `can_edit` (the world's recruiter jobs need no approval: 409); approve / reject and the
+    # queue need `jobs.approve` (the HR Manager by default, super_admin) -- the world's requirement is not pending (409); settings: super only
+    R("post", "/recruiter/requirements/{requirement}/submit", {}, **allow(409, "rec", "super"), **OUT),
+    R("post", "/recruiter/requirements/{requirement}/approve", {}, **allow(409, "hr_mgr", "super")),
+    R("post", "/recruiter/requirements/{requirement}/reject", {"reason": "Not now"}, **allow(409, "hr_mgr", "super")),
+    R("get", "/recruiter/requirement-approvals", **allow(200, "hr_mgr", "super")),
+    R("get", "/recruiter/requirement-approvals/settings", **allow(200, "hr_mgr", "super")),
+    R("put", "/recruiter/requirement-approvals/settings", {"legacy": False}, super=200),
     # rec-017 a requirement's candidates (§2.62): its readers list, the requirement's editors add
     R("get", "/recruiter/requirements/{requirement}/candidates", **REQ_READ),
     R("post", "/recruiter/requirements/{requirement}/candidates", lambda w: {"candidate_id": w["candidates_spare"]}, **allow(201, "rec", "super"), **OUT),

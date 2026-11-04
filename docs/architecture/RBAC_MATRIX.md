@@ -3724,3 +3724,11 @@ dashboard (read-only vacancy facts and counts; nothing for the interviewer). New
 `candidates.export`, `candidates.import`, `candidates.merge`, `results.release`: no default holder (super_admin implicit), grantable
 now, enforced by their owning items. `User.role` decides; an extra `UserRoleAssignment` does not widen access. No branch/department
 scope (Q-04 open). Pinned by `apps/api/tests/test_hrc_002_roles.py` and the rec-038 matrix (`hr_mgr`, `officer`, `interviewer` columns).
+
+### 2.279 Vacancy approval *(added 2026-11-04 — `DEC-SCOPE-380`, hrc-007)*
+
+`jobs.approve` gets its first default holder, `hr_manager` (migration 0256 seeds it; super_admin implicit; grantable to any role). A
+holder reads the approval queue and settings and approves or rejects any pending job requirement (no recruiter scope needed), never
+their own: the submitter, the creator or the assigned recruiter → 403 (separation of duties). Submitting stays with the requirement's
+writers (`can_edit`: the assigned recruiter, super_admin) and, through their legacy "open" word, the employer (own postings) and the
+legacy placement writers. Only super_admin changes which sources need approval. Pinned by `apps/api/tests/test_hrc_007_approval.py`.

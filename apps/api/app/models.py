@@ -903,14 +903,18 @@ class EmployerProfile(Base, TimestampMixin):
 
 # rec-007 (DEC-SCOPE-129 J1): the 11 EVID-018 §6 requirement statuses. `JOB_OPEN_STATUSES` is what students see and can apply to
 # (while `closes_on` has not passed) -- every `status == "open"` reader uses it now.
+# hrc-007 (DEC-SCOPE-380 A1) adds `pending_approval` and `filled`; neither is open. Migration 0256 repeats ck_jobs_status (frozen copy).
 JOB_STATUSES = (
-    "new", "requirement_received", "sourcing", "shortlisting", "profiles_shared", "interviewing", "selected", "joined", "on_hold", "closed", "cancelled",
+    "new", "pending_approval", "requirement_received", "sourcing", "shortlisting", "profiles_shared", "interviewing", "selected", "joined", "filled",
+    "on_hold", "closed", "cancelled",
 )
 JOB_OPEN_STATUSES = ("requirement_received", "sourcing", "shortlisting", "profiles_shared", "interviewing")
 JOB_WORK_MODES = ("onsite", "remote", "hybrid")
 JOB_SHIFTS = ("day", "night", "rotational", "flexible")
 JOB_EMPLOYMENT_TYPES = ("full_time", "part_time", "contract", "internship", "temporary")
 JOB_PRIORITIES = ("high", "medium", "low")
+JOB_SOURCES = ("recruiter", "employer", "legacy")  # hrc-007 (A3): which create path made the job; its approval setting is per source
+JOB_APPROVAL_DEFAULTS = {"employer": True, "recruiter": False, "legacy": False}  # hrc-007 (A4); migration 0256 seeds a frozen copy
 REQUIREMENT_CODE_SEQ = Sequence("requirement_code_seq", maxvalue=999999, metadata=Base.metadata)
 
 
@@ -930,6 +934,7 @@ JOB_CHECKS = {  # migration 0114 repeats these strings; test_rec_007_migration a
     " AND (experience_min_months IS NULL OR experience_max_months IS NULL OR experience_min_months <= experience_max_months)",
     "ck_jobs_salary": "(salary_min IS NULL OR salary_min >= 0) AND (salary_max IS NULL OR salary_max >= 0) AND (salary_min IS NULL OR salary_max IS NULL OR salary_min <= salary_max)",
 }
+JOB_SOURCE_CHECK = f"source IN ({', '.join(repr(v) for v in JOB_SOURCES)})"  # hrc-007; migration 0256 repeats it
 JOB_FEE_BASES = ("fixed", "percent_of_ctc")  # rec-031 (RV1): the per-requirement fee override, the rec-030 CT4 shape
 JOB_FEE_CHECKS = {  # migration 0147 repeats these strings (test_rec_031_migration)
     "ck_jobs_fee_pair": "(fee_basis IS NULL) = (fee_value IS NULL)",
@@ -947,6 +952,7 @@ class Job(Base, TimestampMixin):
     __table_args__ = (
         UniqueConstraint("requirement_code", name="uq_jobs_requirement_code"),
         *(CheckConstraint(sql, name=name) for name, sql in {**JOB_CHECKS, **JOB_FEE_CHECKS}.items()),
+        CheckConstraint(JOB_SOURCE_CHECK, name="ck_jobs_source"),
         Index("ix_jobs_status", "status"),
         Index("ix_jobs_assigned_recruiter", "assigned_recruiter_user_id"),
         Index("ix_jobs_closes_on", "closes_on"),
@@ -979,7 +985,21 @@ class Job(Base, TimestampMixin):
     created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     fee_basis: Mapped[str | None] = mapped_column(String(20), nullable=True)  # rec-031 (RV1): overrides the contract's fee per hire
     fee_value: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    # hrc-007 (DEC-SCOPE-380 A3/A6): the create path, and who sent it for approval (the self-approval check reads it).
+    source: Mapped[str] = mapped_column(String(10), default="recruiter", server_default=text("'recruiter'"))
+    submitted_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     company = relationship("Company")
+
+
+class JobApprovalSetting(Base, TimestampMixin):
+    """hrc-007 (DEC-SCOPE-380 A4): whether a job from this source needs a `jobs.approve` holder's approval before it first opens. One row
+    per source, seeded by migration 0256; super_admin changes them."""
+
+    __tablename__ = "job_approval_settings"
+    source: Mapped[str] = mapped_column(String(10), primary_key=True)
+    required: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
 class JobSkill(Base):

@@ -18,7 +18,20 @@ async function registerEmployer(page: import("@playwright/test").Page) {
   expect(response.ok()).toBeTruthy();
 }
 
-test("a new posting starts as a draft, and publishing makes it visible to students (EMP-002-AC01)", async ({ page }) => {
+// hrc-007 (DEC-SCOPE-380 A4): Publish now sends an employer's posting for approval; the seeded HR Manager approves it through the API.
+async function publishAndApprove(page: import("@playwright/test").Page, browser: import("@playwright/test").Browser, posting: import("@playwright/test").Locator, title: string) {
+  await posting.getByRole("button", { name: "Publish" }).click();
+  await expect(posting.getByText("Awaiting approval")).toBeVisible();
+  const jobs = (await (await page.request.get("/api/v1/employer/jobs")).json()) as { id: string; title: string }[];
+  const job = jobs.find((j) => j.title === title)!;
+  const hr = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+  expect((await hr.request.post("/api/v1/auth/login", { data: { email: "hr.manager@edusphere.local", password: "Demo@123", division: "it" } })).ok()).toBeTruthy();
+  expect((await hr.request.post(`/api/v1/recruiter/requirements/${job.id}/approve`, { data: {} })).ok()).toBeTruthy();
+  await hr.close();
+  await page.reload();
+}
+
+test("a new posting starts as a draft, and publishing (once approved) makes it visible to students (EMP-002-AC01)", async ({ page, browser }) => {
   await registerEmployer(page);
   await page.goto("/it/employer/dashboard");
 
@@ -32,11 +45,11 @@ test("a new posting starts as a draft, and publishing makes it visible to studen
   await expect(posting).toBeVisible();
   await expect(posting.getByText("Draft")).toBeVisible();
 
-  await posting.getByRole("button", { name: "Publish" }).click();
+  await publishAndApprove(page, browser, posting, "E2E Backend Engineer");
   await expect(posting.getByText("Visible to students")).toBeVisible();
 });
 
-test("employer closes their own published posting and it stops showing as visible (EMP-002-AC02)", async ({ page }) => {
+test("employer closes their own published posting and it stops showing as visible (EMP-002-AC02)", async ({ page, browser }) => {
   await registerEmployer(page);
   await page.goto("/it/employer/dashboard");
 
@@ -46,10 +59,10 @@ test("employer closes their own published posting and it stops showing as visibl
   await expect(card.getByText("Job posted.")).toBeVisible();
 
   const posting = card.locator(".card", { hasText: "E2E Role To Close" });
-  await posting.getByRole("button", { name: "Publish" }).click();
+  await publishAndApprove(page, browser, posting, "E2E Role To Close");
   await expect(posting.getByText("Visible to students")).toBeVisible();
   await posting.getByRole("button", { name: "Close posting" }).click();
-  await expect(posting.getByText("Closed")).toBeVisible();
+  await expect(posting.locator(".badge").first()).toHaveText("Closed"); // the visibility badge (the status badge says Closed too)
 });
 
 test("employer dashboard requires an employer session", async ({ page }) => {

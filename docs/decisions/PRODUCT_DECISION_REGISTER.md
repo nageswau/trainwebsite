@@ -11381,6 +11381,23 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0251_candidate_compensation`; API §12JT; RBAC §2.273.
 - **Feature ID authorized:** `hrc-011`. **Status:** built on `worktree-hrc-011`.
 
+### DEC-SCOPE-380 — Vacancy approval workflow and the Filled status (`hrc-007`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-007` (PDF §4.2 Workflow, §4.3; PDF classified `UNVERIFIED`). Scope
+  approved by the owner 2026-11-01 (backlog Q-00). Dependencies hrc-002 (`DEC-SCOPE-374`) and hrc-004 (`DEC-SCOPE-376`) merged. The owner
+  said to proceed with the recommended answers, so A1–A12 are **the builder's calls (`NEEDS_CONFIRMATION`)** answering Q-07. Design
+  `docs/superpowers/specs/2026-11-04-hrc-007-vacancy-approval-design.md`.
+- **Builder's calls:** A1 statuses `pending_approval` and `filled` (13 internal; neither open). A2 seven display phases (Draft = New;
+  Open = Requirement Received…Selected; Filled = Joined, Filled). A3 `jobs.source` per create path, backfilled from the creation history.
+  A4 per-source approval setting, seeded employer on, recruiter and legacy off; super_admin changes it. A5 approval applies only to a job
+  never live. A6 submit from Draft / On Hold; the legacy "open" word submits. A7 no writer opens a job that still needs approval. A8
+  approve → Requirement Received, reject (reason required) → Draft; a `jobs.approve` holder, any job, never one's own (submitter, creator,
+  assigned recruiter). A9 queue `/recruiter/requirement-approvals` and page `/it/hr-manager/approvals`. A10 turning a setting off leaves
+  pending jobs pending. A11 Filled by hand or automatically when the joined count reaches the vacancies. A12 `hr_manager` is the first
+  default `jobs.approve` holder.
+- **Numbering:** migration `0256_job_approval`; API §12JY; RBAC §2.279.
+- **Feature ID authorized:** `hrc-007`. **Status:** built on `worktree-hrc-007`.
+
 ### DEC-SCOPE-376 — Before/after audit for recruitment records and the record History (`hrc-004`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-004` (PDF §4.3, §5.1, §10.2, §15, §17 QA #18; PDF classified

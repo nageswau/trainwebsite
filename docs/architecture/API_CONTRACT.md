@@ -5545,3 +5545,27 @@ the record's own GET (requirement: out of scope 404, other roles 403; candidate:
   `resources` gains `jobs` (approve, publish), `candidates` (export, import, merge), `results` (release). `PUT
   /admin/roles/{role}/permissions` accepts the new keys and roles.
 - `GET /auth/me/permissions`: `[]` for the new roles by default.
+
+## 12JY. Vacancy approval and the Filled status (hrc-007) — addendum, 2026-11-04
+
+`DEC-SCOPE-380`. Migration `0256_job_approval`. Design `docs/superpowers/specs/2026-11-04-hrc-007-vacancy-approval-design.md`.
+
+- Requirement statuses gain `pending_approval` (Pending Approval) and `filled` (Filled); neither is open (no apply, not listed to
+  students/public). `GET /recruiter/requirements/statuses` lists 13, each with `phase` / `phase_label` (Draft, Pending Approval, Open,
+  On Hold, Filled, Closed, Cancelled). Rows and details gain `phase`, `phase_label`, `source` (`recruiter` / `employer` / `legacy`); the
+  detail gains `approval {required, submitted_by, submitted_at, can_submit, can_decide}`. While approval applies, `allowed_statuses`
+  leaves out the open statuses and `POST …/{id}/status` into one is 409 ("needs approval").
+- `POST /recruiter/requirements/{id}/submit` `{note?}` — the requirement's writer (scope 404, role 403); Draft / On Hold → Pending
+  Approval when the source's setting is on and the job was never live; else 409. Audited `recruiter_requirement.submit`.
+- `POST …/{id}/approve` `{note?}` → Requirement Received; `POST …/{id}/reject` `{reason}` (required, 422 when blank) → New. `jobs.approve`
+  holder (403 `You cannot approve job requirements`), any job (404 if missing), 409 when not pending, 403 on one's own (submitter,
+  creator or assigned recruiter). History note `Approved: …` / `Rejected: …`; audited `approve` / `reject`.
+- `GET /recruiter/requirement-approvals?limit&offset` (`jobs.approve`, 403 otherwise): pending jobs, oldest submission first,
+  `{items, total, limit, offset}`; items = the list row + `description`, `submitted_by`, `submitted_at`, `can_decide`.
+- `GET /recruiter/requirement-approvals/settings` (`jobs.approve`): `{settings: {employer, recruiter, legacy}, can_edit}`; seeded
+  employer on, the rest off. `PUT …/settings` `{employer?, recruiter?, legacy?}` — super_admin only (403), unknown keys 422; audited
+  `recruiter_requirement.approval_settings`. Turning a source off leaves its pending jobs pending.
+- Legacy writers: `PATCH /employer/jobs/{id}` and `PATCH /workflows/it/jobs/{id}` `status: "open"` submit for approval while it applies
+  (the employer's `status` stays `draft`, `requirement_status` = `pending_approval`); Pending Approval reads `draft`, Filled `closed`.
+  `POST /workflows/it/jobs` starts as `pending_approval` (response `status`) while legacy approval is on.
+- An application becoming Joined fills the job (`filled`, note `All vacancies filled`) when the joined count reaches `vacancies`.

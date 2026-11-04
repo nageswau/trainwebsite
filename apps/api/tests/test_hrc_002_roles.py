@@ -137,18 +137,20 @@ async def test_new_roles_are_refused_candidate_search_and_hold_no_grants(client,
     assert (await client.get("/api/v1/recruiter/candidates")).status_code == 403
     assert (await client.get("/api/v1/hr/students")).status_code == 403
     me = await client.get("/api/v1/auth/me/permissions")
-    assert me.json() == {"role": role, "permissions": []}
+    assert me.json() == {"role": role, "permissions": list(rbac.DEFAULT_GRANTS.get(role, ()))}  # hrc-007: the HR Manager approves jobs
 
 
 # --- R4 / AC2: the recruitment grant keys ---------------------------------------------------------------------------------------
 def test_catalogue_holds_every_recruitment_key_with_no_default_holder():
+    """R4: no default holder until the owning item adds one -- hrc-007 (DEC-SCOPE-380 A12) made the HR Manager the `jobs.approve` holder."""
     keys = rbac.all_keys()
     for key in (*RECRUITMENT_KEYS, "candidates.compensation.view"):
         assert key in keys, key
+    owned = {"hr_manager": {"jobs.approve"}}
     for role, grants in rbac.DEFAULT_GRANTS.items():
-        assert not set(grants) & set(RECRUITMENT_KEYS), role
+        assert set(grants) & set(RECRUITMENT_KEYS) == owned.get(role, set()), role
     for role in NEW_ROLES:
-        assert role in rbac.ROLES and role not in rbac.DEFAULT_GRANTS
+        assert role in rbac.ROLES and set(rbac.DEFAULT_GRANTS.get(role, ())) == owned.get(role, set())
 
 
 @pytest.mark.asyncio
@@ -164,7 +166,7 @@ async def test_super_admin_grants_jobs_approve_to_hr_manager(client, db_session)
     await login(client, manager)
     assert (await client.get("/api/v1/auth/me/permissions")).json()["permissions"] == ["jobs.approve"]
     await as_role(client, db_session, "super_admin", "global")
-    await client.put("/api/v1/admin/roles/hr_manager/permissions", json={"permissions": []})  # the shared test DB is never truncated
+    await client.put("/api/v1/admin/roles/hr_manager/permissions", json={"permissions": list(rbac.DEFAULT_GRANTS["hr_manager"])})  # shared DB: restore
 
 
 # --- R6: a user holding two roles -----------------------------------------------------------------------------------------------

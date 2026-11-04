@@ -13,6 +13,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
+    JOB_APPROVAL_DEFAULTS,
     JOB_EMPLOYMENT_TYPES,
     JOB_OPEN_STATUSES,
     JOB_PRIORITIES,
@@ -23,6 +24,7 @@ from app.models import (
     Company,
     Job,
     JobApplication,
+    JobApprovalSetting,
     JobSkill,
     JobStatusHistory,
     RecJobCategory,
@@ -33,6 +35,7 @@ from app.services import company_pipeline
 from app.services import skills as skills_master
 from app.services.bdm_appointments import IST
 from app.services.candidates import READERS as CANDIDATE_READERS
+from app.services.permissions import user_has_grant
 from app.services.recruiter import MANAGER_ROLE, ROLE, recruiter_context
 from app.services.recruiter_companies import person, ref
 
@@ -42,20 +45,34 @@ NOT_FOUND = "Job requirement not found"
 EXPIRING_DAYS = 7  # J4 (Q-05)
 HIRED_APPLICATION_STATUSES = ("joined",)  # rec-017 A1: the legacy "hired" is Joined (workflows.update_job_offer follows an accepted offer there)
 STATUS_LABELS = {
-    "new": "New", "requirement_received": "Requirement Received", "sourcing": "Sourcing", "shortlisting": "Shortlisting",
-    "profiles_shared": "Profiles Shared", "interviewing": "Interviewing", "selected": "Selected", "joined": "Joined", "on_hold": "On Hold",
-    "closed": "Closed", "cancelled": "Cancelled",
+    "new": "New", "pending_approval": "Pending Approval", "requirement_received": "Requirement Received", "sourcing": "Sourcing",
+    "shortlisting": "Shortlisting", "profiles_shared": "Profiles Shared", "interviewing": "Interviewing", "selected": "Selected", "joined": "Joined",
+    "filled": "Filled", "on_hold": "On Hold", "closed": "Closed", "cancelled": "Cancelled",
 }
 _ACTIVE = (*JOB_OPEN_STATUSES, "selected")
 ENDED = ("closed", "cancelled")  # a requirement no longer live for the company stage (rec-005's `requirement_closed`)
-TRANSITIONS = {  # spec §2; nothing ever returns to `new`, and `cancelled` is terminal
+TRANSITIONS = {  # spec §2; only a rejection (hrc-007) returns to `new`, and `cancelled` is terminal
     "new": ("requirement_received", "on_hold", "closed", "cancelled"),
-    **{s: (*(a for a in _ACTIVE if a != s), *(("joined",) if s == "selected" else ()), "on_hold", "closed", "cancelled") for s in _ACTIVE},
-    "joined": ("closed",),
+    # hrc-007 (A6/A8): Pending Approval is entered by `submit` and left by `decide`; the owner's only move is to cancel.
+    "pending_approval": ("cancelled",),
+    **{s: (*(a for a in _ACTIVE if a != s), *(("joined",) if s == "selected" else ()), "filled", "on_hold", "closed", "cancelled") for s in _ACTIVE},
+    "joined": ("filled", "closed"),
+    "filled": ("requirement_received", "closed"),  # hrc-007 (A11): reopened when seats are added, or closed
     "on_hold": (*_ACTIVE, "closed", "cancelled"),
     "closed": ("requirement_received",),
     "cancelled": (),
 }
+# hrc-007 (DEC-SCOPE-380 A2, Q-07): the PDF's seven workflow phases over the 13 internal statuses.
+PHASE_LABELS = {
+    "draft": "Draft", "pending_approval": "Pending Approval", "open": "Open", "on_hold": "On Hold", "filled": "Filled", "closed": "Closed",
+    "cancelled": "Cancelled",
+}
+PHASES = {"new": "draft", **{s: "open" for s in _ACTIVE}, "joined": "filled", **{s: s for s in ("pending_approval", "filled", "on_hold", "closed", "cancelled")}}
+SUBMITTABLE = ("new", "on_hold")  # A6
+NEEDS_APPROVAL = "This requirement needs approval before it opens: submit it for approval"
+OWN_JOB = "You cannot approve or reject your own job requirement"
+NOT_PENDING = "This requirement is not pending approval"
+FILLED_NOTE = "All vacancies filled"
 VOCABULARIES = {"work_mode": JOB_WORK_MODES, "shift": JOB_SHIFTS, "employment_type": JOB_EMPLOYMENT_TYPES, "priority": JOB_PRIORITIES}
 REFUSALS = {
     "can_edit": "Only the recruiter on this requirement can edit it",
@@ -77,8 +94,8 @@ def ist_today() -> date:
 
 
 def legacy_word(status: str) -> str:
-    """The employer API's `status` (J3): draft / open / closed."""
-    if status in ("new", "on_hold"):
+    """The employer API's `status` (J3): draft / open / closed. hrc-007: Pending Approval is still a draft; Filled is closed."""
+    if status in ("new", "on_hold", "pending_approval"):
         return "draft"
     return "open" if status in JOB_OPEN_STATUSES else "closed"
 
@@ -86,9 +103,9 @@ def legacy_word(status: str) -> str:
 def legacy_target(current: str, word: str) -> str | None:
     """The §6 status a legacy draft/open/closed write means from `current`; None = already there (no change)."""
     if word == "draft":
-        return None if current in ("new", "on_hold") else "on_hold"
+        return None if current in ("new", "on_hold", "pending_approval") else "on_hold"
     if word == "open":
-        return None if current in JOB_OPEN_STATUSES else "requirement_received"
+        return None if current in (*JOB_OPEN_STATUSES, "pending_approval") else "requirement_received"
     return None if current in ("closed", "cancelled", "joined") else "closed"
 
 
@@ -100,13 +117,92 @@ def check_transition(current: str, target: str) -> None:
 
 
 async def change_status(db: AsyncSession, user: User | None, job: Job, target: str, note: str | None = None) -> str:
-    """Validated move + history row + the company stage; returns the previous status."""
+    """Validated move + history row + the company stage; returns the previous status. hrc-007 (A7): a job that still needs approval
+    cannot open by any writer."""
     check_transition(job.status, target)
+    if target in _ACTIVE and await approval_required(db, job):
+        raise HTTPException(409, NEEDS_APPROVAL)
+    return await _move(db, user, job, target, note)
+
+
+async def _move(db: AsyncSession, user: User | None, job: Job, target: str, note: str | None) -> str:
     previous = job.status
     db.add(JobStatusHistory(job_id=job.id, from_status=previous, to_status=target, note=note, changed_by_user_id=user.id if user else None))
     job.status = target
     await drive_company_stage(db, user, job)
     return previous
+
+
+async def legacy_move(db: AsyncSession, user: User, job: Job, word: str, note: str | None = None) -> None:
+    """The employer and /workflows/it/jobs draft/open/closed words (J3). hrc-007 (A6): "open" means submit while approval applies."""
+    target = legacy_target(job.status, word)
+    if target == "requirement_received" and job.status in SUBMITTABLE and await approval_required(db, job):
+        await submit(db, user, job, note)
+    elif target:
+        await change_status(db, user, job, target, note)
+
+
+# --- approval (hrc-007, DEC-SCOPE-380 A4-A10) ---------------------------------------------------------------------------------------
+async def approval_settings(db: AsyncSession) -> dict[str, bool]:
+    rows = dict((await db.execute(select(JobApprovalSetting.source, JobApprovalSetting.required))).all())
+    return {source: rows.get(source, default) for source, default in JOB_APPROVAL_DEFAULTS.items()}
+
+
+async def approval_required(db: AsyncSession, job: Job) -> bool:
+    """A5: the source's setting is on and the job has never been live (an approved job can pause and reopen without a second approval)."""
+    if not (await approval_settings(db))[job.source]:
+        return False
+    live = await db.scalar(select(JobStatusHistory.id).where(JobStatusHistory.job_id == job.id, JobStatusHistory.to_status.in_(_ACTIVE)).limit(1))
+    return live is None
+
+
+def _with_note(prefix: str, note: str | None) -> str:
+    return f"{prefix}: {note}" if note else prefix
+
+
+async def submit(db: AsyncSession, user: User, job: Job, note: str | None = None) -> str:
+    """A6: Draft / On Hold -> Pending Approval while approval applies; anything else is a 409."""
+    if job.status not in SUBMITTABLE or not await approval_required(db, job):
+        raise HTTPException(409, NOT_PENDING if job.status == "pending_approval" else "This requirement does not need approval")
+    job.submitted_by_user_id, job.submitted_at = user.id, func.now()
+    previous = await _move(db, user, job, "pending_approval", _with_note("Submitted for approval", note))
+    audit(db, user, "submit", job.id, {"from": previous, "to": job.status, "note": note, "changes": {"status": [previous, job.status]}})  # every path
+    return previous
+
+
+def is_own(user: User, job: Job) -> bool:
+    """A8: separation of duties -- the submitter, the creator and the assigned recruiter never decide."""
+    return user.id in {job.submitted_by_user_id, job.created_by_user_id, job.assigned_recruiter_user_id}
+
+
+async def decide(db: AsyncSession, user: User, job: Job, approve: bool, note: str | None) -> str:
+    """The caller holds `jobs.approve` and locked the row. Approve opens the job (rec-005's company stage follows); reject returns it to
+    Draft. Returns the previous status."""
+    if job.status != "pending_approval":
+        raise HTTPException(409, NOT_PENDING)
+    if is_own(user, job):
+        logger.warning("recruiter_requirement_self_approval_refused", extra={"extra_fields": {"actor_id": str(user.id), "job_id": str(job.id)}})
+        raise HTTPException(403, OWN_JOB)
+    if approve:
+        return await _move(db, user, job, "requirement_received", _with_note("Approved", note))
+    return await _move(db, user, job, "new", _with_note("Rejected", note))
+
+
+async def load_for_approver(db: AsyncSession, job_id: UUID) -> Job:
+    """An approver has no recruiter scope (the HR Manager): any job, locked; missing = 404."""
+    job = await db.scalar(select(Job).where(Job.id == job_id).with_for_update().execution_options(populate_existing=True))
+    if job is None:
+        raise HTTPException(404, NOT_FOUND)
+    return job
+
+
+async def fill_when_complete(db: AsyncSession, user: User | None, job_id: UUID) -> None:
+    """A11: an application just became Joined -- when the joined count reaches the vacancies the (locked) job is Filled."""
+    job = await db.scalar(select(Job).where(Job.id == job_id).with_for_update().execution_options(populate_existing=True))
+    if job is None or job.vacancies is None or job.status not in (*_ACTIVE, "joined") or await joined_count(db, job.id) < job.vacancies:
+        return
+    await _move(db, user, job, "filled", FILLED_NOTE)
+    logger.info("recruiter_requirement_filled", extra={"extra_fields": {"job_id": str(job.id)}})
 
 
 async def record_created(db: AsyncSession, user: User, job: Job, note: str = "Created") -> None:
@@ -308,6 +404,9 @@ def row_out(user: User, job: Job, company: Company, recruiter: User | None) -> d
         "location": job.location,
         "status": job.status,
         "status_label": STATUS_LABELS[job.status],
+        "phase": PHASES[job.status],
+        "phase_label": PHASE_LABELS[PHASES[job.status]],
+        "source": job.source,
         "priority": job.priority,
         "vacancies": job.vacancies,
         "closes_on": job.closes_on,
@@ -325,9 +424,11 @@ async def requirement_out(db: AsyncSession, user: User, job: Job, *, refresh: bo
     company = await db.get(Company, job.company_id)
     skills = (await db.scalars(select(JobSkill).where(JobSkill.job_id == job.id).order_by(JobSkill.kind.desc(), JobSkill.position))).all()
     history = (await db.scalars(select(JobStatusHistory).where(JobStatusHistory.job_id == job.id).order_by(JobStatusHistory.created_at.desc(), JobStatusHistory.id))).all()
-    user_ids = {job.assigned_recruiter_user_id, job.created_by_user_id} | {h.changed_by_user_id for h in history}
+    user_ids = {job.assigned_recruiter_user_id, job.created_by_user_id, job.submitted_by_user_id} | {h.changed_by_user_id for h in history}
     people = {u.id: u for u in (await db.scalars(select(User).where(User.id.in_(user_ids - {None})))).all()}
     category = await db.get(RecJobCategory, job.job_category_id) if job.job_category_id else None
+    required = job.status in SUBMITTABLE and await approval_required(db, job)
+    allowed = [s for s in TRANSITIONS[job.status] if not (required and s in _ACTIVE)]  # A7
     return {
         **row_out(user, job, company, people.get(job.assigned_recruiter_user_id)),
         "description": job.description,
@@ -346,7 +447,14 @@ async def requirement_out(db: AsyncSession, user: User, job: Job, *, refresh: bo
             {"id": s.id, "name": s.name, "kind": s.kind, "weight": s.weight, "skill_id": s.skill_id, "matched": s.skill_id is not None} for s in skills
         ],
         "joined_count": await joined_count(db, job.id),
-        "allowed_statuses": [{"key": s, "label": STATUS_LABELS[s]} for s in TRANSITIONS[job.status]],
+        "allowed_statuses": [{"key": s, "label": STATUS_LABELS[s]} for s in allowed],
+        "approval": {
+            "required": required,
+            "submitted_by": person(people.get(job.submitted_by_user_id)),
+            "submitted_at": job.submitted_at,
+            "can_submit": required and permissions(user, job)["can_edit"],
+            "can_decide": job.status == "pending_approval" and not is_own(user, job) and await user_has_grant(db, user, "jobs", "approve"),
+        },
         "status_history": [
             {
                 "from_status": h.from_status,
@@ -368,7 +476,10 @@ async def requirement_out(db: AsyncSession, user: User, job: Job, *, refresh: bo
 def catalogue() -> dict:
     """GET /statuses: everything the form needs, so the web never hard-codes the transitions."""
     return {
-        "statuses": [{"key": s, "label": STATUS_LABELS[s], "open": s in JOB_OPEN_STATUSES, "next": list(TRANSITIONS[s])} for s in JOB_STATUSES],
+        "statuses": [
+            {"key": s, "label": STATUS_LABELS[s], "open": s in JOB_OPEN_STATUSES, "next": list(TRANSITIONS[s]), "phase": PHASES[s], "phase_label": PHASE_LABELS[PHASES[s]]}
+            for s in JOB_STATUSES
+        ],
         "vocabularies": {k: list(v) for k, v in VOCABULARIES.items()},
         "expiring_days": EXPIRING_DAYS,
     }
@@ -394,6 +505,12 @@ async def recruiter_name(db: AsyncSession, user_id: UUID | None) -> str | None:
 def audit(db: AsyncSession, user: User, action: str, job_id: UUID, metadata: dict | None = None) -> None:
     """Same transaction as the write (fail closed); ids, field names and statuses -- hrc-004: plus `changes`, redacted values."""
     db.add(AuditLog(user_id=user.id, action=f"recruiter_requirement.{action}", entity_type="job", entity_id=str(job_id), metadata_json=metadata or {}))
+
+
+def audit_settings(db: AsyncSession, user: User, changes: dict) -> None:
+    """hrc-007 (A4): one row per settings save, {source: [before, after]}."""
+    db.add(AuditLog(user_id=user.id, action="recruiter_requirement.approval_settings", entity_type="job_approval_settings", entity_id="all",
+                    metadata_json={"changes": changes}))
 
 
 def log(event: str, user: User, job_id, **extra) -> None:
