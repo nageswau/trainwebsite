@@ -17,6 +17,7 @@ from app.schemas import CandidatePortalConsent, CandidatePortalEmailChange, Cand
 from app.services import candidate_ownership as ownership
 from app.services import candidate_portal as portal
 from app.services import candidates as svc
+from app.services import website_intake
 
 router = APIRouter(prefix="/candidate", tags=["candidate-portal"])
 settings_router = APIRouter(prefix="/recruiter/candidate-self-service-settings", tags=["recruiter-candidates"])
@@ -42,7 +43,8 @@ async def register(payload: CandidatePortalRegistration, request: Request, backg
         raise HTTPException(422, WRONG_CONSENT)
     if payload.phone and normalise_phone(payload.phone) is None:
         raise HTTPException(422, "Enter a valid mobile number")
-    delivery = await portal.register(db, full_name=payload.full_name, email=payload.email, phone=payload.phone, password=payload.password, ip=client_ip(request))
+    delivery = await portal.register(db, full_name=payload.full_name, email=payload.email, phone=payload.phone, password=payload.password, ip=client_ip(request),
+                                    utm=website_intake.clean_utm(payload.utm))  # hrc-023 W2
     await db.commit()
     return _send(background, delivery)
 

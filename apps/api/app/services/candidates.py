@@ -16,7 +16,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import CANDIDATE_CODE_SEQ, AuditLog, Candidate, CandidateResume, RecCandidateSource, User
+from app.models import CANDIDATE_CODE_SEQ, AuditLog, Candidate, CandidateResume, CareerApplication, Job, RecCandidateSource, User
 from app.notifications.phone import normalise_phone, wa_number
 from app.schemas import NO_CONTACT
 from app.services import candidate_ownership, candidate_profile
@@ -370,9 +370,22 @@ async def detail_out(db: AsyncSession, user: User, candidate: Candidate) -> dict
         "can_edit": user.role in WRITERS,
         "whatsapp_to": wa_number(candidate.mobile),  # rec-026 MS6
         "merged_into": await merged_into(db, candidate),  # hrc-014 D8
+        "utm": candidate.utm,  # hrc-023 W1
+        "website_applications": await website_applications(db, candidate),  # hrc-023 W9
         "owner": (ownership := await candidate_ownership.ownership_out(db, user, candidate))["owner"],  # hrc-012 O2
         "ownership": ownership,
     }
+
+
+async def website_applications(db: AsyncSession, candidate: Candidate) -> list[dict]:
+    """hrc-023 (DEC-SCOPE-387 W9): the candidate's public website applications, newest first -- never the cover note or contact details."""
+    rows = (
+        await db.execute(
+            select(CareerApplication, Job.title).join(Job, Job.id == CareerApplication.job_id)
+            .where(CareerApplication.candidate_id == candidate.id).order_by(CareerApplication.created_at.desc()).limit(20)
+        )
+    ).all()  # fmt: skip
+    return [{"job_title": title, "tracking_code": a.tracking_code, "status": a.status, "created_at": a.created_at} for a, title in rows]
 
 
 async def merged_into(db: AsyncSession, candidate: Candidate) -> dict | None:

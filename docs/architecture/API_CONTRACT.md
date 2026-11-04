@@ -5707,3 +5707,13 @@ an address in use: the same 202, nothing sent); wrong password 400 (counts towar
 than 3 requests in 15 minutes **429**. `GET /candidate/me/privacy` → `{opted_in, consent: {version, text}, history: [{action,
 consent_version, created_at}]}`; `PUT` `{opted_in, consent_version}` → the same. `GET /recruiter/candidate-self-service-settings` →
 `{fields, available, can_edit}` (candidate readers); `PUT {fields}` (placement_manager, super_admin; a field outside `available` 422).
+
+## 12KF. Website registration → candidate create/match (hrc-023) — addendum, 2026-11-04
+
+DEC-SCOPE-387. `POST /api/v1/public/jobs/{job_id}/apply` (public) keeps its body and **201** `{id, tracking_code, status}` and adds
+optional `consent_version` (a version other than the current `candidate-v1` 422), `utm` `{utm_source, utm_medium, utm_campaign,
+utm_term, utm_content}` (other keys dropped, values trimmed to 100) and the honeypot `website` (filled: the same 201, nothing stored).
+Fields over their column length, an invalid email or an unparseable phone 422. More than 10 applications from one client IP in an hour
+**429** with `Retry-After`. The application creates or matches (exact email) a candidate with source "Website"; the answer never says
+which. `POST /api/v1/candidate/register` (§12KE) adds optional `utm`. `GET /api/v1/recruiter/candidates/{id}` adds `utm` and
+`website_applications: [{job_title, tracking_code, status, created_at}]`; the merge preview/result `moved` adds `career_applications`.

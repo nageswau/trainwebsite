@@ -106,12 +106,16 @@ export function educationRows(c: CandidateDetail): EducationRow[] {
     ? [{ degree: c.qualification, specialisation: null, institution: c.college, year: c.passing_year, grade: null }] : [];
 }
 
+export type WebsiteApplication = { job_title: string; tracking_code: string; status: string; created_at: string };
+
 export type CandidateDetail = CandidateItem & Package & {
   mobile: string | null; email: string | null; qualification: string | null; college: string | null; passing_year: number | null;
   current_company: string | null; notice_days: number | null;
   preferred_locations: string[]; linkedin: string | null; archived_at: string | null; created_by: PersonRef | null; updated_by: PersonRef | null;
   updated_at: string; resumes: CandidateResume[]; can_edit: boolean; whatsapp_to?: string | null; // rec-026: the wa.me number
   merged_into?: { id: string; candidate_code: string } | null; // hrc-014: the candidate this one was merged into
+  // hrc-023 (DEC-SCOPE-387 W1/W9): the website visit's campaign and the public job applications linked to this candidate
+  utm?: Record<string, string> | null; website_applications?: WebsiteApplication[];
   // hrc-010 (optional: an older API answer has none of these)
   country?: string | null; state?: string | null; city?: string | null; preferred_contact?: string | null; email_verified_at?: string | null;
   relevant_experience_months?: number | null; tools?: string[]; languages?: string[]; preferred_roles?: string[]; work_modes?: string[];

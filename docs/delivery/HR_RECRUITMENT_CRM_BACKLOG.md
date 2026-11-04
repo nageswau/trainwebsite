@@ -772,6 +772,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** large. **Risk:** high.
 
 #### hrc-023: Website registration → candidate create/match ⚠
+- **Status (2026-11-04):** built — `DEC-SCOPE-387` (Q-23/Q-25 answered by the builder's recommended calls W1–W10, `NEEDS_CONFIRMATION`:
+  match by exact email only, a matched record is never changed, no CAPTCHA); design
+  `docs/superpowers/specs/2026-11-04-hrc-023-website-registration-intake-design.md`; migration `0264`.
 - **Business requirement:** §6.1 steps 1–5; §13 "Website registration"; §17 QA "Website registrations automatically create/match candidate records … duplicates".
 - **Existing behavior:** ⚠ `POST /public/jobs/{id}/apply` writes a `CareerApplication` that no staff screen reads (recruiter backlog Q-31: "no CareerApplication intake"). No UTM is captured.
 - **Expected behavior:**

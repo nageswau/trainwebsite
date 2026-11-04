@@ -5480,6 +5480,11 @@ class CareerApplication(Base, TimestampMixin):
     cover_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(30), default="submitted")
     tracking_code: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    # hrc-023 (DEC-SCOPE-387): the candidate the application created or matched (W3), the visit's UTM (W1) and the consent shown (W4)
+    candidate_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"), nullable=True, index=True)
+    utm: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    consent_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    consented_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class WebinarRegistration(Base, TimestampMixin):
@@ -6426,10 +6431,13 @@ class Candidate(Base, TimestampMixin):
     linkedin: Mapped[str | None] = mapped_column(String(300), nullable=True)
     source_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_candidate_sources.id"))
     source_detail: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # hrc-023 (DEC-SCOPE-387 W1): the website visit's UTM parameters (the five standard keys) for a candidate the website created
+    utm: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="available", server_default=text("'available'"))
     user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=True)
     opted_in: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
-    created_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    # hrc-023 (W3): empty for a candidate a public website job application created ("added by the website")
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     archived_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
@@ -6759,7 +6767,8 @@ class CandidateConsent(Base):
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     candidate_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"))
-    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    # hrc-023 (DEC-SCOPE-387 W4): empty when the consent was given on the public website job application form (no login)
+    user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     action: Mapped[str] = mapped_column(String(10))
     consent_version: Mapped[str] = mapped_column(String(20))
     ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)

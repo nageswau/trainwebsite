@@ -11595,3 +11595,26 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   C10 no id in any portal URL. Not built: a recruiter "invite to portal" email (follow-up), website registration/UTM (hrc-023).
 - **Numbering:** migration `0263_candidate_portal`; API §12KE; RBAC §2.282.
 - **Feature ID authorized:** `hrc-022`. **Status:** built on `worktree-hrc-022`.
+
+### DEC-SCOPE-387 — Website registration → candidate create/match (`hrc-023`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-023` (PDF §6.1 steps 1–5, §13, §17; PDF classified `UNVERIFIED`). Scope
+  approved by the owner 2026-11-01 (backlog Q-00). Dependencies hrc-022 (DEC-SCOPE-386), hrc-014 (DEC-SCOPE-377) and hrc-010
+  (DEC-SCOPE-383) merged. The owner said to proceed with the recommended answers, so Q-23/Q-25 and W1–W10 are **the builder's calls
+  (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-04-hrc-023-website-registration-intake-design.md`.
+- **Behaviour:** a public job application (`/it/careers`) creates — or matches by exact email — one candidate with source "Website", the
+  visit's UTM and the consent shown, and links the application to it; recruiters see the candidate (and its website applications) in
+  their list with no import. The registration form's UTM reaches the candidate hrc-022 creates on verification, now with source
+  "Website" ("Website registration").
+- **Builder's calls:** W1 the five standard UTM keys, first touch of the visit. W2 registration still creates the candidate only on
+  verification; a claimed recruiter record keeps its source. W3 an unverified application matches by email only (never phone) and
+  changes nothing on the matched record; a new candidate has no creator. W4 consent optional in the API (older clients), required by the
+  form; recorded on the application and, for a new candidate, as a `candidate_consents` row without a user. W5 an email advisory lock.
+  W6 a honeypot and 10 applications per IP per hour → 429; no CAPTCHA (Q-25, no provider). W7 the same answer for new and known people.
+  W8/Q-25 existing applications are linked by email, never turned into candidates. W9 the detail shows the campaign and website
+  applications. W10 merges move website applications. Q-23: a registrant whose email belongs to a student gets the hrc-022 answer
+  (nothing created); an applicant with a student's email gets a website candidate (the student's later opt-in leaves the email off).
+- **Not built:** routing (hrc-024), turning a website application into a staff application and its resume into a candidate resume
+  (hrc-026), CAPTCHA.
+- **Numbering:** migration `0264_website_intake`; API §12KF. No new permission.
+- **Feature ID authorized:** `hrc-023`. **Status:** built on `worktree-hrc-023`.
