@@ -158,7 +158,7 @@ async def get_training(candidate_id: UUID, response: Response, user: User = Depe
 @router.get("/{candidate_id}/history")
 async def candidate_history(candidate_id: UUID, response: Response, limit: int = Query(20, ge=1, le=100), offset: int = OFFSET,
                             user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """hrc-004 (DEC-SCOPE-372 B1/B6): the candidate's changes with before/after values (contact and salary redacted), for its readers."""
+    """hrc-004 (DEC-SCOPE-376 B1/B6): the candidate's changes with before/after values (contact and salary redacted), for its readers."""
     svc.require_reader(user)
     candidate = await svc.load(db, candidate_id)
     response.headers.update(NO_STORE)

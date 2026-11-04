@@ -5,7 +5,7 @@ import LocalTime from "@/components/LocalTime";
 import { type AuditChanges, changeText } from "@/lib/auditLog";
 import { actionLabel, type HistoryItem, historyPageUrl, humanise, isHistoryPage } from "@/lib/recruiterHistory";
 
-/** hrc-004 (DEC-SCOPE-372 B7): the record's Change history, newest first -- who changed what, from what to what, and when. Compensation
+/** hrc-004 (DEC-SCOPE-376 B7): the record's Change history, newest first -- who changed what, from what to what, and when. Compensation
  *  and contact values are never stored, so they read "changed (value hidden)". The page re-keys it after a save, so it re-reads. */
 export default function RecruiterRecordHistory({ url }: { url: string }) {
   const [items, setItems] = useState<HistoryItem[]>([]);

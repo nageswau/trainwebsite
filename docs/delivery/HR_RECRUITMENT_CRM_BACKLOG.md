@@ -206,6 +206,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **+/−/E:** a bulk reassignment produces one row per job.
 - **Regression risks:** audit-shape assertions in the rec-* tests.
 - **Complexity:** small. **Risk:** low.
+- **Status:** built as `DEC-SCOPE-376` (no migration, API §12JU, RBAC §2.274); design
+  `docs/superpowers/specs/2026-11-04-hrc-004-recruitment-audit-history-design.md`. `audit.view` vs "the record's read scope" settled by
+  the builder's call B1 (read scope; no new grant; `NEEDS_CONFIRMATION`).
 
 ### Phase 1: Core data (PDF Phase 1)
 

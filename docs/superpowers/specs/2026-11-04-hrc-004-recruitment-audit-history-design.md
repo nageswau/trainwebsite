@@ -2,7 +2,7 @@
 
 **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` §hrc-004 (DERIVED_WORKBOOK of the HR & Recruitment CRM PDF §4.3, §5.1,
 §10.2, §15, §17 QA #18). Dependency **itc-001** (`services/audit_changes.py`, DEC-SCOPE-335) is merged (PR #408).
-**Decision:** `DEC-SCOPE-372` (builder's calls B1–B8 below are `NEEDS_CONFIRMATION`; the owner asked the session to proceed with
+**Decision:** `DEC-SCOPE-376` (builder's calls B1–B8 below are `NEEDS_CONFIRMATION`; the owner asked the session to proceed with
 recommended answers).
 
 ## Intent
@@ -26,7 +26,8 @@ A recruiter, manager or HR Manager opening a job requirement or a candidate can 
   `GET /recruiter/applications/{id}/history` already exists as the application's *status* history and is left unchanged.
 - **B3 Backward compatibility.** Existing audit metadata keys (`fields`, `from`/`to`, ids) stay; `changes` is **added**. hrc-003's
   `require_fresh` reads `fields`, and the admin Audit log already renders `changes` (itc-001).
-- **B4 Redaction.** Recorded as `"changed"`: compensation (`salary_min`, `salary_max`, `current_salary`, `expected_salary`); contact
+- **B4 Redaction.** Recorded as `"changed"`: compensation (`salary`, `salary_min`, `salary_max` and every hrc-011
+  `candidates.COMPENSATION` field — amounts, currencies, periods, minimum, negotiable, annual INR); contact
   (`mobile`, `email`, `linkedin`, `meeting_url`, `contact_id`); free-text interview feedback (`strengths`, `weaknesses`,
   `recruiter_comments`, `company_feedback`); plus itc-001's own PII names (`phone`, `email`, `notes`, `remarks`, `reason`, `*_<those>`).
   Done with a new optional `redact=` keyword on `audit_changes.changes/audit_change` (default unchanged).
@@ -72,4 +73,4 @@ SHOULD NOT CHANGE: `stale_guard.py`, the AuditLog model/indexes, admin Audit log
 5. Web: `lib/recruiterHistory.ts` (URL, type guard, labels) + `RecruiterRecordHistory.tsx` — vitest (loading, error/retry, empty,
    values, "changed", show older); mount on both pages.
 6. Fix exact-shape assertions in affected rec-* tests; Playwright e2e (job title + salary edit → history).
-7. Docs: DEC-SCOPE-372, API contract §, RBAC note, RTM row.
+7. Docs: DEC-SCOPE-376, API contract §, RBAC note, RTM row.

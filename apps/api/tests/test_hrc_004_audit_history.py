@@ -1,4 +1,4 @@
-"""hrc-004 (DEC-SCOPE-372) -- before/after audit for recruitment records: the itc-001 diff at the Job, JD, Candidate, Application and
+"""hrc-004 (DEC-SCOPE-376) -- before/after audit for recruitment records: the itc-001 diff at the Job, JD, Candidate, Application and
 Interview write sites (compensation, contact and feedback text recorded as "changed"), and the job/candidate History reads (B1-B8)."""
 
 import uuid

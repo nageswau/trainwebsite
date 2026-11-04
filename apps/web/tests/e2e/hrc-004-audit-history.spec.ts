@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 
-// hrc-004 (DEC-SCOPE-372; AC1, AC2): a recruiter edits a requirement's title and salary, and a candidate's location and mobile -- each
+// hrc-004 (DEC-SCOPE-376; AC1, AC2): a recruiter edits a requirement's title and salary, and a candidate's location and mobile -- each
 // page's Change history then shows the title and location old → new, and the salary and mobile as "changed (value hidden)", never values.
 const RECRUITER = "placement@edusphere.local";
 const API = "/api/v1/recruiter";

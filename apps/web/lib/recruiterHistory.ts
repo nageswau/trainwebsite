@@ -1,4 +1,4 @@
-// hrc-004 (DEC-SCOPE-372 B6): a job requirement's or a candidate's change history -- GET /recruiter/{requirements|candidates}/{id}/history.
+// hrc-004 (DEC-SCOPE-376 B6): a job requirement's or a candidate's change history -- GET /recruiter/{requirements|candidates}/{id}/history.
 import type { AuditChanges } from "@/lib/auditLog";
 
 export const HISTORY_PAGE_SIZE = 20;

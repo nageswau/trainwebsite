@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import RecruiterRecordHistory from "@/components/RecruiterRecordHistory";
 import type { HistoryItem } from "@/lib/recruiterHistory";
 
-// hrc-004 (DEC-SCOPE-372 B6/B7): a job's or candidate's Change history -- old → new values, "changed (value hidden)" for compensation
+// hrc-004 (DEC-SCOPE-376 B6/B7): a job's or candidate's Change history -- old → new values, "changed (value hidden)" for compensation
 // and contact fields, older rows' field names, the loading / empty / error + Retry states, and "Show older".
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const item = (over: Partial<HistoryItem> = {}): HistoryItem => ({

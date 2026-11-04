@@ -1,4 +1,4 @@
-"""hrc-004 (DEC-SCOPE-372): before/after values in the recruitment audit rows, and a record's change history.
+"""hrc-004 (DEC-SCOPE-376): before/after values in the recruitment audit rows, and a record's change history.
 
 The write sites keep their audit metadata (`fields`, `from`/`to`, ids -- hrc-003's `require_fresh` reads `fields`) and add itc-001's
 `changes` diff from `diff()`. Compensation, contact and free-text feedback are recorded as "changed", never as values (B4)."""
