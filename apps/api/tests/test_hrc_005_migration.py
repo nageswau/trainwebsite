@@ -1,4 +1,4 @@
-"""hrc-005 -- migration 0256_vacancy_fields (DEC-SCOPE-380): the chain, the frozen checks and index key, and the round trip in a throwaway
+"""hrc-005 -- migration 0258_vacancy_fields (DEC-SCOPE-381): the chain, the frozen checks and index key, and the round trip in a throwaway
 database (the hrc-001 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,14 +13,14 @@ from app.core.config import settings
 from app.models import JOB_PAY_CHECKS, JOB_TITLE_KEY_SQL
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_hrc_005_migration_0256", VERSIONS / "0256_vacancy_fields.py")
+_spec = importlib.util.spec_from_file_location("_hrc_005_migration_0258", VERSIONS / "0258_vacancy_fields.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0256_vacancy_fields", "0255_candidate_documents"
+HEAD, BASE = "0258_vacancy_fields", "0257_job_approval"
 
 
-def test_migration_chains_after_0255():
+def test_migration_chains_after_0257():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

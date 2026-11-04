@@ -1,10 +1,10 @@
 """hrc-005 -- vacancy fields completion: requisition reference, source, certifications, country/state/city, relocation/travel, pay
 currency/period, benefits, hiring manager, expected joining date, last updated by; and the duplicate check's index.
 
-Revision ID: 0256_vacancy_fields
-Revises: 0255_candidate_documents
+Revision ID: 0258_vacancy_fields
+Revises: 0257_job_approval
 
-docs/superpowers/specs/2026-11-04-hrc-005-vacancy-fields-duplicates-design.md (DEC-SCOPE-380). Nullable columns only, no backfill (V3:
+docs/superpowers/specs/2026-11-04-hrc-005-vacancy-fields-duplicates-design.md (DEC-SCOPE-381). Nullable columns only, no backfill (V3:
 legacy free-text locations stay as they are). 0001 builds a fresh database from the current models, which already carry them, so each
 step runs only when missing (0222's idiom). CHECKS and TITLE_KEY are frozen copies of the model's strings at this revision.
 """
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0256_vacancy_fields"
-down_revision = "0255_candidate_documents"
+revision = "0258_vacancy_fields"
+down_revision = "0257_job_approval"
 branch_labels = None
 depends_on = None
 
@@ -24,14 +24,14 @@ CHECKS = {
 }
 TITLE_KEY = r"lower(regexp_replace(btrim(title), '\s+', ' ', 'g'))"
 INDEX = "ix_jobs_company_title_key"
-FOREIGN_KEYS = {"fk_jobs_source_id": ("source_id", "rec_lead_sources"), "fk_jobs_hiring_manager": ("hiring_manager_user_id", "users"),
+FOREIGN_KEYS = {"fk_jobs_lead_source_id": ("lead_source_id", "rec_lead_sources"), "fk_jobs_hiring_manager": ("hiring_manager_user_id", "users"),
                 "fk_jobs_updated_by": ("updated_by_user_id", "users")}  # fmt: skip
 
 
 def _columns() -> list[sa.Column]:
     return [
         sa.Column("requisition_reference", sa.String(80), nullable=True),
-        sa.Column("source_id", sa.Uuid(), nullable=True),
+        sa.Column("lead_source_id", sa.Uuid(), nullable=True),
         sa.Column("certifications", sa.String(1000), nullable=True),
         sa.Column("country", sa.String(120), nullable=True),
         sa.Column("state", sa.String(120), nullable=True),

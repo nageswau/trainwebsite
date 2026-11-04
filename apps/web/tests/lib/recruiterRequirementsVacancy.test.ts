@@ -2,17 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import { possibleDuplicate, type Requirement, requirementBody, salaryText, valuesOf } from "@/lib/recruiterRequirements";
 
-// hrc-005 (DEC-SCOPE-380): the §4.2 fields on the form's wire, the pay text and the 409 `possible_duplicate` parser.
+// hrc-005 (DEC-SCOPE-381): the §4.2 fields on the form's wire, the pay text and the 409 `possible_duplicate` parser.
 const base = {
   title: "Analyst", location: "Pune, MH, India", description: "", skills: [], city: "Pune", state: "MH", country: "India",
   relocation_required: false, salary_currency: "USD", salary_period: "month", hiring_manager: { id: "u9", full_name: "Hema" },
-  source: { id: "s1", name: "Referral" }, requisition_reference: "RQ-1", expected_joining_date: "2026-12-01",
+  lead_source: { id: "s1", name: "Referral" }, requisition_reference: "RQ-1", expected_joining_date: "2026-12-01",
 } as unknown as Requirement;
 
 describe("hrc-005 vacancy fields", () => {
   it("reads the new fields into the form and sends only the changed ones", () => {
     const values = valuesOf(base);
-    expect(values).toMatchObject({ city: "Pune", relocation_required: "no", salary_currency: "USD", hiring_manager_user_id: "u9", source_id: "s1" });
+    expect(values).toMatchObject({ city: "Pune", relocation_required: "no", salary_currency: "USD", hiring_manager_user_id: "u9", lead_source_id: "s1" });
     expect(requirementBody({ ...values, relocation_required: "yes" }, values)).toEqual({ relocation_required: true });
     expect(requirementBody({ ...values, relocation_required: "" }, values)).toEqual({ relocation_required: null });
     expect(requirementBody({ ...values, hiring_manager_user_id: "" }, values)).toEqual({ hiring_manager_user_id: null });

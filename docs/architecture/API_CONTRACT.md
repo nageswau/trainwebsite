@@ -5546,6 +5546,21 @@ the record's own GET (requirement: out of scope 404, other roles 403; candidate:
   /admin/roles/{role}/permissions` accepts the new keys and roles.
 - `GET /auth/me/permissions`: `[]` for the new roles by default.
 
+
+## 12JW. Candidate duplicate review and merge (hrc-014) — addendum, 2026-11-04
+
+`DEC-SCOPE-377`. **New:** `GET /api/v1/recruiter/candidate-duplicates?status=open|dismissed|merged&limit&offset` → `{items, total, limit,
+offset}`; item `{id, signals: ["name_location_college"|"phone_variant"], status, created_at, decided_at, decided_by, candidate, other}`
+(sides `{id, candidate_code, name, location, college, status, archived}`, older first; no contact data). `POST .../scan` → `{created}`.
+`POST .../{id}/dismiss` `{note?: ≤500}` → the pair (409 when not open, 404 unknown). `GET /api/v1/recruiter/candidates/{id}/merge?victim=CAN-…`
+→ `{survivor, victim, fields, conflicts: [{application_id, job_id, job_title, status, blocking}], moved}`; `POST .../merge`
+`{victim_code, use_victim: [field], reason?: ≤500}` → `{id, victim_id, victim_code, moved: {applications, share_items, calls, messages,
+consents, documents, document_requests, skills, resumes}, kept_applications}` (hrc-015's documents and requests move too; a victim's
+pending request of a type the survivor is also waiting for is cancelled). Errors: 401; 403 (not a candidate writer or no `candidates.merge`); 404 (either side
+unknown or outside the pool); 422 (self, unknown field, bad body); 409 (archived/merged side, student login, open application on the same
+requirement, lost race). **Changed:** `CandidateDetail.merged_into` (`{id, candidate_code}` | null); `POST /candidates/{id}/restore` of a
+merged candidate is 409; create/edit queue probable duplicates (response unchanged). Reads are `Cache-Control: private, no-store`.
+
 ## 12JX. Candidate documents, document requests and signed links (hrc-015) — addendum, 2026-11-04
 
 `DEC-SCOPE-379`. **Resume upload** (`PUT /api/v1/recruiter/candidates/{id}/resume`) also accepts DOC (`application/msword`, judged by the
@@ -5567,15 +5582,38 @@ pool: `available: false` and empty lists; no cancelled requests; no staff names 
 `requested_by`). `POST /api/v1/account/candidate-documents` (same multipart; not in the pool 409). `GET
 /api/v1/account/candidate-documents/{document_id}/link?mode=` (own documents only, else 404).
 
-## 12JY. Vacancy fields and possible duplicates (hrc-005) — addendum, 2026-11-04
+## 12JY. Vacancy approval and the Filled status (hrc-007) — addendum, 2026-11-04
 
-DEC-SCOPE-380. `POST /api/v1/recruiter/requirements` and `PATCH /api/v1/recruiter/requirements/{id}` accept, and every requirement body
-returns, `requisition_reference` (≤ 80), `source_id` (an active `rec_lead_sources` value; returned as `source: {id, name} | null`),
+`DEC-SCOPE-380`. Migration `0257_job_approval`. Design `docs/superpowers/specs/2026-11-04-hrc-007-vacancy-approval-design.md`.
+
+- Requirement statuses gain `pending_approval` (Pending Approval) and `filled` (Filled); neither is open (no apply, not listed to
+  students/public). `GET /recruiter/requirements/statuses` lists 13, each with `phase` / `phase_label` (Draft, Pending Approval, Open,
+  On Hold, Filled, Closed, Cancelled). Rows and details gain `phase`, `phase_label`, `source` (`recruiter` / `employer` / `legacy`); the
+  detail gains `approval {required, submitted_by, submitted_at, can_submit, can_decide}`. While approval applies, `allowed_statuses`
+  leaves out the open statuses and `POST …/{id}/status` into one is 409 ("needs approval").
+- `POST /recruiter/requirements/{id}/submit` `{note?}` — the requirement's writer (scope 404, role 403); Draft / On Hold → Pending
+  Approval when the source's setting is on and the job was never live; else 409. Audited `recruiter_requirement.submit`.
+- `POST …/{id}/approve` `{note?}` → Requirement Received; `POST …/{id}/reject` `{reason}` (required, 422 when blank) → New. `jobs.approve`
+  holder (403 `You cannot approve job requirements`), any job (404 if missing), 409 when not pending, 403 on one's own (submitter,
+  creator or assigned recruiter). History note `Approved: …` / `Rejected: …`; audited `approve` / `reject`.
+- `GET /recruiter/requirement-approvals?limit&offset` (`jobs.approve`, 403 otherwise): pending jobs, oldest submission first,
+  `{items, total, limit, offset}`; items = the list row + `description`, `submitted_by`, `submitted_at`, `can_decide`.
+- `GET /recruiter/requirement-approvals/settings` (`jobs.approve`): `{settings: {employer, recruiter, legacy}, can_edit}`; seeded
+  employer on, the rest off. `PUT …/settings` `{employer?, recruiter?, legacy?}` — super_admin only (403), unknown keys 422; audited
+  `recruiter_requirement.approval_settings`. Turning a source off leaves its pending jobs pending.
+- Legacy writers: `PATCH /employer/jobs/{id}` and `PATCH /workflows/it/jobs/{id}` `status: "open"` submit for approval while it applies
+  (the employer's `status` stays `draft`, `requirement_status` = `pending_approval`); Pending Approval reads `draft`, Filled `closed`.
+  `POST /workflows/it/jobs` starts as `pending_approval` (response `status`) while legacy approval is on.
+- An application becoming Joined fills the job (`filled`, note `All vacancies filled`) when the joined count reaches `vacancies`.
+## 12JZ. Vacancy fields and possible duplicates (hrc-005) — addendum, 2026-11-04
+
+DEC-SCOPE-381. `POST /api/v1/recruiter/requirements` and `PATCH /api/v1/recruiter/requirements/{id}` accept, and every requirement body
+returns, `requisition_reference` (≤ 80), `lead_source_id` (an active `rec_lead_sources` value; returned as `lead_source: {id, name} | null`; not hrc-007's create-path `source`),
 `certifications` (≤ 1000, multi-line), `country`/`state`/`city` (≤ 120), `relocation_required` (bool | null), `travel_requirement`
 (≤ 120), `salary_currency` (three letters, upper-cased; null = INR), `salary_period` (`year` | `month`; null = a year), `benefits`
 (≤ 1000), `hiring_manager_user_id` (an active `interviewer`; returned as `hiring_manager: person | null`) and `expected_joining_date`.
 The body also returns `updated_by: person | null`. `location` is no longer required on create: blank is derived as "City, State,
-Country"; neither = 422 "Enter the job location or its city". Bad references are 422 ("Choose an active source" / "… hiring manager").
+Country"; neither = 422 "Enter the job location or its city". Bad references are 422 ("Choose an active lead source" / "… hiring manager").
 **Possible duplicate:** create, and an edit that changes title, city, location or requisition reference, answer 409 `{detail: {code:
 "possible_duplicate", message, matches: [{id, code, title, location, status_label, requisition_reference}] (≤ 10), total}}` when another
 `closed`/`cancelled`-excluded job of the same company has the same normalised title and city (else location), or the same requisition

@@ -3,7 +3,7 @@
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-005` (PDF §4.1 "unique Job ID. Detect likely duplicates by employer,
   title, location and requisition reference", "Display … Last Updated By"; §4.2 field groups, Appendix A; PDF `UNVERIFIED`).
   Dependencies hrc-003 (stale guard) and hrc-004 (audit history) are merged.
-- **Decision:** `DEC-SCOPE-380`. The owner said to proceed with the recommended answers, so V1–V10 are **the builder's calls
+- **Decision:** `DEC-SCOPE-381`. The owner said to proceed with the recommended answers, so V1–V10 are **the builder's calls
   (`NEEDS_CONFIRMATION`)**, including Q-06.
 
 ## Intent
@@ -18,7 +18,7 @@ Non-goals: co-owners / placement-officer owner (hrc-006), approval and Filled (h
 
 ## Builder's calls
 
-- **V1 fields** (`jobs`, all nullable, migration `0256`): `requisition_reference` (80), `source_id` → `rec_lead_sources` (the existing
+- **V1 fields** (`jobs`, all nullable, migration `0258`): `requisition_reference` (80), `lead_source_id` → `rec_lead_sources` (named so beside hrc-007's create-path `source`) (the existing
   recruiter source catalogue; must be active when set or changed, the `check_category` rule), `certifications` (1000, multi-line),
   `country`/`state`/`city` (120 each, as on `companies`), `relocation_required` (bool; null = not stated), `travel_requirement` (120,
   free text such as "Up to 25%"), `salary_currency` (ISO-like three letters, hrc-011's validator; null = INR), `salary_period`
@@ -51,7 +51,7 @@ Non-goals: co-owners / placement-officer owner (hrc-006), approval and Filled (h
   shows every new field and "Last updated by".
 - **V9 other forms.** Employer and legacy create/edit keep their payloads (S6 precedent from hrc-003); a follow-up can add the fields
   there. They only set `updated_by_user_id`.
-- **V10 numbering.** DEC-SCOPE-380, API §12JY, migration 0256 (renumber at merge if main moved).
+- **V10 numbering.** DEC-SCOPE-381, API §12JZ, migration 0258 (renumbered after hrc-007/hrc-014 merged).
 
 ## Acceptance criteria
 

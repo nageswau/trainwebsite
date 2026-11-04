@@ -13,11 +13,21 @@ from sqlalchemy.orm import aliased
 
 from app.api.agent_reports import NO_STORE
 from app.api.bdm import LIMIT, OFFSET, SEARCH, _matching
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_permission
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
-from app.models import JOB_PRIORITIES, JOB_STATUSES, Company, Job, JobSkill, User
-from app.schemas import REC_REQUIREMENT_FIELDS, RecRequirementAssign, RecRequirementCreate, RecRequirementStatusChange, RecRequirementUpdate, RecSkillWeights
+from app.models import JOB_PRIORITIES, JOB_STATUSES, Company, Job, JobApprovalSetting, JobSkill, User
+from app.schemas import (
+    REC_REQUIREMENT_FIELDS,
+    JobApprovalSettingsUpdate,
+    RecRequirementApprovalNote,
+    RecRequirementAssign,
+    RecRequirementCreate,
+    RecRequirementReject,
+    RecRequirementStatusChange,
+    RecRequirementUpdate,
+    RecSkillWeights,
+)
 from app.services import applications, candidates, matching, recruitment_history
 from app.services import recruiter_companies as companies
 from app.services import recruiter_requirements as svc
@@ -25,6 +35,10 @@ from app.services.recruiter import ROLE, recruiter_context
 from app.services.stale_guard import require_fresh
 
 router = APIRouter(prefix="/recruiter/requirements", tags=["recruiter-requirements"])
+# hrc-007 (DEC-SCOPE-380 A9): the approval queue and the per-source settings, for `jobs.approve` holders.
+approvals_router = APIRouter(prefix="/recruiter/requirement-approvals", tags=["recruiter-requirements"])
+NO_APPROVE = "You cannot approve job requirements"
+APPROVER = require_permission("jobs", "approve", NO_APPROVE)
 Recruiter = aliased(User)
 ASSIGNED_INVALID = "assigned must be me, unassigned or a recruiter id"
 
@@ -219,6 +233,88 @@ async def change_requirement_status(requirement_id: UUID, payload: RecRequiremen
     await db.commit()
     svc.log("recruiter_requirement_status_changed", user, job.id, from_status=previous, to_status=payload.status)
     return {"requirement": await svc.requirement_out(db, user, job)}
+
+
+# --- hrc-007 (DEC-SCOPE-380): submit, approve, reject ------------------------------------------------------------------------------
+@router.post("/{requirement_id}/submit")
+async def submit_requirement(requirement_id: UUID, payload: RecRequirementApprovalNote, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """A6: the requirement's writer sends a Draft / On Hold job for approval (409 when its source needs none)."""
+    job = await svc.load_scoped(db, user, requirement_id, lock=True)
+    svc.require(user, job, "can_edit", "submit")
+    await svc.submit(db, user, job, payload.note)  # history + audit
+    await db.commit()
+    svc.log("recruiter_requirement_submitted", user, job.id)
+    return {"requirement": await svc.requirement_out(db, user, job)}
+
+
+async def _decide(db: AsyncSession, user: User, requirement_id: UUID, approve: bool, note: str | None) -> dict:
+    """A8: grant (the dependency, 403) -> exists (404) -> pending (409) -> not one's own (403); one transaction."""
+    job = await svc.load_for_approver(db, requirement_id)
+    previous = await svc.decide(db, user, job, approve, note)
+    action = "approve" if approve else "reject"
+    svc.audit(db, user, action, job.id, {"from": previous, "to": job.status, "note": note, "changes": {"status": [previous, job.status]}})
+    await db.commit()
+    svc.log(f"recruiter_requirement_{action}d", user, job.id)
+    return {"requirement": await svc.requirement_out(db, user, job)}
+
+
+@router.post("/{requirement_id}/approve")
+async def approve_requirement(requirement_id: UUID, payload: RecRequirementApprovalNote, user: User = Depends(APPROVER), db: AsyncSession = Depends(get_db)):
+    return await _decide(db, user, requirement_id, True, payload.note)
+
+
+@router.post("/{requirement_id}/reject")
+async def reject_requirement(requirement_id: UUID, payload: RecRequirementReject, user: User = Depends(APPROVER), db: AsyncSession = Depends(get_db)):
+    return await _decide(db, user, requirement_id, False, payload.reason)
+
+
+@approvals_router.get("")
+async def approval_queue(limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(APPROVER), db: AsyncSession = Depends(get_db)):
+    """A9: every pending job, oldest submission first; `can_decide` is false on the caller's own."""
+    pending = Job.status == "pending_approval"
+    total = await db.scalar(select(func.count()).select_from(Job).where(pending))
+    Submitter = aliased(User)
+    stmt = (
+        select(Job, Company, Recruiter, Submitter)
+        .join(Company, Company.id == Job.company_id)
+        .outerjoin(Recruiter, Recruiter.id == Job.assigned_recruiter_user_id)
+        .outerjoin(Submitter, Submitter.id == Job.submitted_by_user_id)
+        .where(pending)
+        .order_by(Job.submitted_at.asc().nulls_last(), Job.id)
+        .limit(limit)
+        .offset(offset)
+    )
+    items = [
+        {**svc.row_out(user, job, company, recruiter), "description": job.description, "submitted_by": companies.person(submitter),
+         "submitted_at": job.submitted_at, "can_decide": not svc.is_own(user, job)}
+        for job, company, recruiter, submitter in (await db.execute(stmt)).all()
+    ]
+    return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
+
+
+@approvals_router.get("/settings")
+async def approval_settings(user: User = Depends(APPROVER), db: AsyncSession = Depends(get_db)):
+    return {"settings": await svc.approval_settings(db), "can_edit": user.role == "super_admin"}
+
+
+@approvals_router.put("/settings")
+async def update_approval_settings(payload: JobApprovalSettingsUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """A4/A10: super_admin only. Turning a source off never opens its pending jobs."""
+    if user.role != "super_admin":
+        raise HTTPException(403, "Only a super admin can change the approval settings")
+    before = await svc.approval_settings(db)
+    sent = payload.model_dump(exclude_unset=True, exclude_none=True)
+    changed = {k: v for k, v in sent.items() if before[k] != v}
+    for source, required in changed.items():
+        row = await db.get(JobApprovalSetting, source, with_for_update=True)
+        if row is None:
+            db.add(JobApprovalSetting(source=source, required=required, updated_by_user_id=user.id))
+        else:
+            row.required, row.updated_by_user_id = required, user.id
+    if changed:
+        svc.audit_settings(db, user, {k: [before[k], v] for k, v in changed.items()})
+    await db.commit()
+    return {"settings": await svc.approval_settings(db), "can_edit": True}
 
 
 @router.get("/{requirement_id}/matches")

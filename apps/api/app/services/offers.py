@@ -112,8 +112,8 @@ async def _apply_status(db: AsyncSession, actor: User, offer: JobOffer, applicat
     elif target == "offer_received":
         await _notify_received(db, application)
     elif target == "accepted":
-        if legacy:
-            applications.follow(db, actor, application, "joined", "Offer accepted")
+        if legacy and applications.follow(db, actor, application, "joined", "Offer accepted"):
+            await requirements.fill_when_complete(db, actor, application.job_id)  # hrc-007 (A11)
         start_joining(offer, application)
     return previous
 
@@ -142,7 +142,8 @@ async def legacy_status(db: AsyncSession, user: User, offer: JobOffer, applicati
     if target != offer.status:
         await _apply_status(db, user, offer, application, target, None, legacy=True)
     elif target == "accepted":
-        applications.follow(db, user, application, "joined", "Offer accepted")
+        if applications.follow(db, user, application, "joined", "Offer accepted"):
+            await requirements.fill_when_complete(db, user, application.job_id)  # hrc-007 (A11)
         start_joining(offer, application)
 
 

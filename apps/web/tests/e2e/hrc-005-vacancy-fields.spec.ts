@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// hrc-005 (DEC-SCOPE-380, AC1-AC5): the seeded recruiter adds a requirement with the §4.2 fields (the location comes from the city,
+// hrc-005 (DEC-SCOPE-381, AC1-AC5): the seeded recruiter adds a requirement with the §4.2 fields (the location comes from the city,
 // state and country), sees them and "Last updated" on the detail page; a second one with the same title and city is flagged as a
 // possible duplicate, and is saved only with a reason, which the change history records.
 

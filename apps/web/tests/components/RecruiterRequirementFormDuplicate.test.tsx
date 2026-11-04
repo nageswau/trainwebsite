@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import RecruiterRequirementForm from "@/components/RecruiterRequirementForm";
 
-// hrc-005 (DEC-SCOPE-380 V5/V8, AC2-AC3): a 409 `possible_duplicate` shows the matches; "Save anyway" needs a reason and re-sends with
+// hrc-005 (DEC-SCOPE-381 V5/V8, AC2-AC3): a 409 `possible_duplicate` shows the matches; "Save anyway" needs a reason and re-sends with
 // it; "Go back" keeps the entry. The location is not required when a city is given (V3).
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const duplicate = {

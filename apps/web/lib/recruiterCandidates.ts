@@ -36,6 +36,7 @@ export type CandidateDetail = CandidateItem & Package & {
   current_company: string | null; notice_days: number | null;
   preferred_locations: string[]; linkedin: string | null; archived_at: string | null; created_by: PersonRef | null; updated_by: PersonRef | null;
   updated_at: string; resumes: CandidateResume[]; can_edit: boolean; whatsapp_to?: string | null; // rec-026: the wa.me number
+  merged_into?: { id: string; candidate_code: string } | null; // hrc-014: the candidate this one was merged into
 };
 /** Q-07: one existing candidate of the duplicate panel -- never their mobile or email. */
 export type CandidateMatch = { id: string; candidate_code: string; name: string; source_name: string; status: CandidateStatus; archived: boolean; matched_on: ("mobile" | "email")[] };

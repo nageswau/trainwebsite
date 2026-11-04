@@ -3,17 +3,24 @@
 import type { LookupPage } from "@/lib/lookups";
 import { COMPANIES_URL, type Person, type Ref } from "@/lib/recruiterCompanies";
 
+// hrc-007 (DEC-SCOPE-380 A1): Pending Approval and Filled.
 export type Status =
-  | "new" | "requirement_received" | "sourcing" | "shortlisting" | "profiles_shared" | "interviewing" | "selected" | "joined" | "on_hold" | "closed"
-  | "cancelled";
+  | "new" | "pending_approval" | "requirement_received" | "sourcing" | "shortlisting" | "profiles_shared" | "interviewing" | "selected" | "joined"
+  | "filled" | "on_hold" | "closed" | "cancelled";
 export const STATUS_KEYS: readonly Status[] = [
-  "new", "requirement_received", "sourcing", "shortlisting", "profiles_shared", "interviewing", "selected", "joined", "on_hold", "closed", "cancelled",
+  "new", "pending_approval", "requirement_received", "sourcing", "shortlisting", "profiles_shared", "interviewing", "selected", "joined", "filled",
+  "on_hold", "closed", "cancelled",
 ];
+/** hrc-007 (A2): the PDF's seven workflow phases; the API maps every status to one. */
+export type Phase = "draft" | "pending_approval" | "open" | "on_hold" | "filled" | "closed" | "cancelled";
+export type JobSource = "recruiter" | "employer" | "legacy";
+export const SOURCE_LABEL: Record<JobSource, string> = { recruiter: "Recruiter", employer: "Employer", legacy: "Placement team" };
 export type Option = { key: string; label: string };
 export type RequirementPermissions = { can_edit: boolean; can_change_status: boolean; can_reassign: boolean; can_view_matches: boolean };
 export type CompanyRef = { id: string; code: string; name: string };
 export type RequirementRow = {
-  id: string; code: string; title: string; company: CompanyRef; location: string; status: Status; status_label: string; priority: string | null;
+  id: string; code: string; title: string; company: CompanyRef; location: string; status: Status; status_label: string; phase: Phase;
+  phase_label: string; source: JobSource; priority: string | null;
   vacancies: number | null; closes_on: string | null; requirement_date: string | null; deadline_state: "expiring" | "expired" | null;
   assigned_recruiter: Person | null; permissions: RequirementPermissions;
 };
@@ -24,12 +31,20 @@ export type Requirement = RequirementRow & {
   experience_max_months: number | null; salary_min: string | null; salary_max: string | null; work_mode: string | null; shift: string | null;
   employment_type: string | null; joining_requirement: string | null; skills: RequirementSkill[]; joined_count: number;
   allowed_statuses: Option[]; status_history: StatusChange[]; created_by: Person | null; created_at: string; updated_at: string;
-  // hrc-005 (DEC-SCOPE-380 V1/V6): the §4.2 fields and Last Updated By
-  requisition_reference: string | null; source: Ref | null; certifications: string | null; country: string | null; state: string | null;
+  approval: Approval;
+  // hrc-005 (DEC-SCOPE-381 V1/V6): the §4.2 fields and Last Updated By
+  requisition_reference: string | null; lead_source: Ref | null; certifications: string | null; country: string | null; state: string | null;
   city: string | null; relocation_required: boolean | null; travel_requirement: string | null; salary_currency: string | null;
   salary_period: "year" | "month" | null; benefits: string | null; hiring_manager: Person | null; expected_joining_date: string | null;
   updated_by: Person | null;
 };
+/** hrc-007 (A6/A8): whether the job still needs approval, who sent it, and what the caller may do about it. */
+export type Approval = {
+  required: boolean; submitted_by: Person | null; submitted_at: string | null; can_submit: boolean; can_decide: boolean;
+};
+export type ApprovalRow = RequirementRow & { description: string; submitted_by: Person | null; submitted_at: string | null; can_decide: boolean };
+export type ApprovalSettings = { settings: Record<JobSource, boolean>; can_edit: boolean };
+export const APPROVALS_URL = "/api/v1/recruiter/requirement-approvals";
 export type StatusCatalogue = { statuses: (Option & { open: boolean; next: string[] })[]; vocabularies: Record<string, string[]>; expiring_days: number };
 
 export const REQUIREMENTS_URL = "/api/v1/recruiter/requirements";
@@ -93,7 +108,7 @@ export function possibleDuplicate(detail: unknown): PossibleDuplicate | null {
 
 /** The form's fields, in screen order (EVID-018 §6). Experience is in years here (sent as months); skills are one per comma or line. */
 export const FORM_FIELDS = [
-  "requisition_reference", "source_id", "title", "department", "job_category_id", "vacancies", "qualification", "experience_min_months",
+  "requisition_reference", "lead_source_id", "title", "department", "job_category_id", "vacancies", "qualification", "experience_min_months",
   "experience_max_months", "certifications", "country", "state", "city", "location", "work_mode", "relocation_required", "travel_requirement",
   "salary_min", "salary_max", "salary_currency", "salary_period", "shift", "employment_type", "benefits", "hiring_manager_user_id",
   "joining_requirement", "expected_joining_date", "closes_on", "requirement_date", "priority", "required_skills", "preferred_skills",
@@ -114,7 +129,7 @@ export function valuesOf(r?: Requirement): FormValues {
     requirement_date: text(r?.requirement_date), priority: text(r?.priority), required_skills: skills("required"), preferred_skills: skills("preferred"),
     description: text(r?.description),
     // hrc-005
-    requisition_reference: text(r?.requisition_reference), source_id: text(r?.source?.id), certifications: text(r?.certifications),
+    requisition_reference: text(r?.requisition_reference), lead_source_id: text(r?.lead_source?.id), certifications: text(r?.certifications),
     country: text(r?.country), state: text(r?.state), city: text(r?.city),
     relocation_required: r?.relocation_required == null ? "" : r.relocation_required ? "yes" : "no", travel_requirement: text(r?.travel_requirement),
     salary_currency: text(r?.salary_currency), salary_period: text(r?.salary_period), benefits: text(r?.benefits),

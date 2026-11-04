@@ -73,7 +73,7 @@ const CHOICES: Partial<Record<FormField, { label: string; options: { id: string;
 };
 const SKILL_FIELDS = new Set<string>(["required_skills", "preferred_skills"]);
 const FIELD_LABELS: Record<string, string> = {
-  job_category_id: "Job category", skills: "Skills", status: "Status", assign: "Recruiter", weights: "Skill weights", source_id: "Source",
+  job_category_id: "Job category", skills: "Skills", status: "Status", assign: "Recruiter", weights: "Skill weights", lead_source_id: "Lead source",
   hiring_manager_user_id: "Hiring manager",
 };
 
@@ -332,7 +332,7 @@ export default function RecruiterRequirementForm({
         <legend>Identification</legend>
         <div className="form-grid">
           {textField("requisition_reference")}
-          {selectField("source_id", "Source", withCurrent(sources, requirement?.source))}
+          {selectField("lead_source_id", "Lead source", withCurrent(sources, requirement?.lead_source))}
         </div>
       </fieldset>
       <fieldset className="form-section">
@@ -404,7 +404,7 @@ export default function RecruiterRequirementForm({
         labelOf={(key) => TEXT[key as FormField]?.label ?? SELECTS[key as FormField]?.label ?? CHOICES[key as FormField]?.label ?? FIELD_LABELS[key] ?? label(key)}
         display={(key, value) => {
           if (key === "job_category_id") return withCurrent(categories, requirement?.job_category).find((c) => c.id === value)?.name ?? value;
-          if (key === "source_id") return withCurrent(sources, requirement?.source).find((c) => c.id === value)?.name ?? value;
+          if (key === "lead_source_id") return withCurrent(sources, requirement?.lead_source).find((c) => c.id === value)?.name ?? value;
           if (CHOICES[key as FormField]) return CHOICES[key as FormField]!.options.find((o) => o.id === value)?.name ?? value;
           return SELECTS[key as FormField] && value ? label(value) : value;
         }}

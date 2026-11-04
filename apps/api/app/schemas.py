@@ -10193,6 +10193,11 @@ class CandidatePage(BaseModel):
     offset: int
 
 
+class CandidateRef(BaseModel):
+    id: UUID
+    candidate_code: str
+
+
 class CandidateDetail(CandidateItem):
     mobile: str | None
     email: str | None
@@ -10225,6 +10230,27 @@ class CandidateDetail(CandidateItem):
     resumes: list[CandidateResumeOut]
     can_edit: bool
     whatsapp_to: str | None = None  # rec-026 MS6: the wa.me number (E.164 digits), None when the mobile is unusable
+    merged_into: CandidateRef | None = None  # hrc-014 (DEC-SCOPE-377 D8): the candidate this one was merged into
+
+
+# --- hrc-014 (DEC-SCOPE-377): duplicate review and merge ------------------------------------------------------------------------------
+CandidateMergeField = Literal["name", "location", "qualification", "college", "passing_year", "experience_months", "current_company", "notice_days", "preferred_role", "linkedin"]  # candidate_merge.FIELDS
+CandidateDuplicateStatus = Literal["open", "dismissed", "merged"]
+
+
+class CandidateMergeBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    victim_code: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20)]
+    use_victim: list[CandidateMergeField] = []
+    reason: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=500)] = None
+
+
+class CandidateDuplicateDismiss(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    note: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=500)] = None
+
+
+CANDIDATE_MERGE_LABELS = {"victim_code": "Candidate to merge", "use_victim": "Fields to take", "reason": "Reason", "note": "Note"}
 
 
 # --- hrc-011 (DEC-SCOPE-375 C1): the manual exchange rate ------------------------------------------------------------------------------
@@ -10251,7 +10277,7 @@ REC_REQUIREMENT_LABELS = {
     "requirements": "Requirements",
     # rec-018's screening (the same text rules)
     "location_preference": "Location preference", "availability": "Availability", "remarks": "Remarks",
-    # hrc-005 (DEC-SCOPE-380 V1)
+    # hrc-005 (DEC-SCOPE-381 V1)
     "requisition_reference": "Requisition reference", "certifications": "Certifications", "country": "Country", "state": "State",
     "city": "City", "travel_requirement": "Travel", "benefits": "Benefits", "duplicate_reason": "Reason",
 }
@@ -10261,7 +10287,7 @@ REC_REQUIREMENT_FIELDS = (  # the `jobs` columns a create or edit may write; cod
     "experience_max_months", "salary_min", "salary_max", "work_mode", "shift", "employment_type", "joining_requirement", "closes_on",
     "requirement_date", "priority",
     # hrc-005 (V1)
-    "requisition_reference", "source_id", "certifications", "country", "state", "city", "relocation_required", "travel_requirement",
+    "requisition_reference", "lead_source_id", "certifications", "country", "state", "city", "relocation_required", "travel_requirement",
     "salary_currency", "salary_period", "benefits", "hiring_manager_user_id", "expected_joining_date",
 )
 
@@ -10321,9 +10347,9 @@ class RecRequirementUpdate(BaseModel):
     required_skills: list[RecSkillName] | None = Field(default=None, max_length=30)
     preferred_skills: list[RecSkillName] | None = Field(default=None, max_length=30)
     expected_updated_at: datetime | None = None  # hrc-003: the version the form showed; another one is 409 `record_changed`
-    # hrc-005 (DEC-SCOPE-380 V1)
+    # hrc-005 (DEC-SCOPE-381 V1)
     requisition_reference: _rec_requirement_text_type(80) = None
-    source_id: UUID | None = None
+    lead_source_id: UUID | None = None
     certifications: _rec_requirement_text_type(1000, multiline=True) = None
     country: _rec_requirement_text_type(120) = None
     state: _rec_requirement_text_type(120) = None
@@ -10356,6 +10382,33 @@ class RecRequirementStatusChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: Literal[JOB_STATUSES]
     note: _rec_requirement_text_type(500, multiline=True) = None
+
+
+def _required_reason(value: str | None) -> str:
+    if value is None:
+        raise ValueError("A reason is required")
+    return value
+
+
+class RecRequirementApprovalNote(BaseModel):
+    """hrc-007 (DEC-SCOPE-380 A6/A8): submit and approve take an optional note."""
+
+    model_config = ConfigDict(extra="forbid")
+    note: _rec_requirement_text_type(500, multiline=True) = None
+
+
+class RecRequirementReject(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: Annotated[_rec_requirement_text_type(500, multiline=True), AfterValidator(_required_reason)]
+
+
+class JobApprovalSettingsUpdate(BaseModel):
+    """hrc-007 (A4): the sources sent are set; the others are kept."""
+
+    model_config = ConfigDict(extra="forbid")
+    employer: bool | None = None
+    recruiter: bool | None = None
+    legacy: bool | None = None
 
 
 class RecRequirementAssign(BaseModel):

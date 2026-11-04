@@ -1,4 +1,4 @@
-"""hrc-005 (DEC-SCOPE-380) -- vacancy fields completion and job duplicate detection (AC1-AC7, V1-V9). Names are unique per test (the
+"""hrc-005 (DEC-SCOPE-381) -- vacancy fields completion and job duplicate detection (AC1-AC7, V1-V9). Names are unique per test (the
 database is shared and never truncated)."""
 
 import uuid
@@ -35,7 +35,7 @@ async def test_every_new_field_saves_and_reads_back(client, db_session):
     source = await _source(db_session)
     manager = await make_user(db_session, "interviewer", "it")
     body = {
-        "requisition_reference": f"RQ-{_tag()}", "source_id": str(source.id), "certifications": "AWS SAA\nCKA", "country": "India",
+        "requisition_reference": f"RQ-{_tag()}", "lead_source_id": str(source.id), "certifications": "AWS SAA\nCKA", "country": "India",
         "state": "Maharashtra", "city": "Pune", "relocation_required": True, "travel_requirement": "Up to 25%", "salary_currency": "usd",
         "salary_period": "month", "salary_min": "1000", "salary_max": "2000", "benefits": "Health cover\nMeals",
         "hiring_manager_user_id": str(manager.id), "expected_joining_date": str(ist_today() + timedelta(days=45)),
@@ -47,23 +47,23 @@ async def test_every_new_field_saves_and_reads_back(client, db_session):
                 "salary_period", "benefits", "expected_joining_date"):  # fmt: skip
         assert req[key] == body[key], key
     assert req["salary_currency"] == "USD"
-    assert req["source"]["id"] == str(source.id)
+    assert req["lead_source"]["id"] == str(source.id)
     assert req["hiring_manager"]["id"] == str(manager.id)
     assert req["updated_by"]["id"] == req["created_by"]["id"]
 
-    cleared = {k: None for k in ("requisition_reference", "source_id", "certifications", "relocation_required", "travel_requirement",
+    cleared = {k: None for k in ("requisition_reference", "lead_source_id", "certifications", "relocation_required", "travel_requirement",
                                  "salary_currency", "salary_period", "benefits", "hiring_manager_user_id", "expected_joining_date")}  # fmt: skip
     response = await client.patch(f"{BASE}/{req['id']}", json=cleared)
     assert response.status_code == 200, response.text
     out = response.json()["requirement"]
-    assert out["source"] is None and out["hiring_manager"] is None and out["requisition_reference"] is None and out["benefits"] is None
+    assert out["lead_source"] is None and out["hiring_manager"] is None and out["requisition_reference"] is None and out["benefits"] is None
 
 
 @pytest.mark.asyncio
 async def test_bad_values_are_422(client, db_session):
     _, recruiter, company = await _team(client, db_session)
     for body in ({"salary_currency": "rupees"}, {"salary_period": "hour"}, {"hiring_manager_user_id": str(recruiter.id)},
-                 {"source_id": str(uuid.uuid4())}):  # fmt: skip
+                 {"lead_source_id": str(uuid.uuid4())}):  # fmt: skip
         response = await _post(client, company, **body)
         assert response.status_code == 422, (body, response.text)
 
