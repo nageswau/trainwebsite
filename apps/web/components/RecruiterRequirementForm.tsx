@@ -79,6 +79,7 @@ export default function RecruiterRequirementForm({
   company,
   canChooseRecruiter = false,
   onSaved,
+  onLatest,
   onCancel,
 }: {
   mode: "create" | "edit";
@@ -89,9 +90,11 @@ export default function RecruiterRequirementForm({
   canChooseRecruiter?: boolean;
   onSaved: (r: Requirement, saved: boolean) => void;
   onCancel: () => void;
+  /** hrc-003: the latest requirement after a stale save was reloaded or reviewed, for the page behind the form. */
+  onLatest?: (r: Requirement) => void;
 }) {
   // hrc-003: the values and `updated_at` the form was opened with; a save refused as stale re-bases them (Reload / Review my changes).
-  const guard = useStaleGuard<Requirement, FormValues>(requirement, valuesOf, (r) => r?.updated_at ?? null);
+  const guard = useStaleGuard<Requirement, FormValues>(requirement, valuesOf, (r) => r?.updated_at ?? null, onLatest);
   const { values, setValues, opened } = guard;
   const [companyPick, setCompanyPick] = useState<PickOption | null>(company ?? null);
   const [recruiter, setRecruiter] = useState<string | null>(null);
@@ -314,8 +317,8 @@ export default function RecruiterRequirementForm({
         guard={guard}
         labelOf={(key) => TEXT[key as FormField]?.label ?? SELECTS[key as FormField]?.label ?? FIELD_LABELS[key] ?? label(key)}
         display={(key, value) => (key === "job_category_id" ? (withCurrent(categories, requirement?.job_category).find((c) => c.id === value)?.name ?? value) : SELECTS[key as FormField] && value ? label(value) : value)}
-        onReload={() => void guard.reload()}
-        onReview={() => void guard.reviewMine()}
+        onReload={guard.reload}
+        onReview={guard.reviewMine}
       />
       {failure && (
         <p className="form-error" role="alert" id={`${idPrefix}-failure`} tabIndex={-1}>

@@ -176,6 +176,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **E:** a background job touches `updated_at`. The background job must not bump `updated_at` for a non-user edit, or the guard compares a separate `version` column (Q-05).
 - **Regression risks:** every client of these PATCH endpoints (employer portal, legacy WorkflowPanel).
 - **Complexity:** medium. **Risk:** medium.
+- **Status:** built as `DEC-SCOPE-370` (no migration, API §12JP, no RBAC change); design
+  `docs/superpowers/specs/2026-11-04-hrc-003-concurrent-edit-protection-design.md`. Q-05 answered by the builder's calls S1/S2
+  (`updated_at`, optional first; `NEEDS_CONFIRMATION`).
 
 #### hrc-004: Before/after audit for recruitment records
 - **Business requirement:** §4.3 "Preserve material edit history"; §5.1 "audit history"; §10.2 "Preserve previous values"; §15 "prior/new values for material edits".

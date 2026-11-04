@@ -11324,3 +11324,25 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   `/it/admin/management-reports`. No student or lead names, emails or phones (mgmt-007 IR11 precedent).
 - **Numbering:** no migration; API §12JO; RBAC §2.269.
 - **Feature ID authorized:** `itc-032`. **Status:** built on `feature/itc-032`.
+
+### DEC-SCOPE-370 — Concurrent-edit protection, "changed since you opened it" (`hrc-003`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-003` (PDF §4.1 "Prevent silent overwriting … offer reload/reconcile",
+  §12 "Warn users if a record changed since they opened it", §17 QA #3; PDF classified `UNVERIFIED`). Scope approved by the owner
+  2026-11-01 (backlog Q-00: all phases, built in waves). No dependencies. The owner said to proceed with the recommended answers, so Q-05
+  and S1–S8 below are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-003-concurrent-edit-protection-design.md`.
+- **Behaviour:** the edit forms for a job requirement, its JD, a candidate and an interview send the version they opened; a save over a
+  newer version is refused with 409 `record_changed` (who, when, which fields, and the current record) and nothing is overwritten. The
+  form says "This record changed since you opened it (by X at T IST). Changed: …" and offers **Review my changes** (the user's edited
+  fields re-applied over the latest values, listed as yours / now on record, then saved by the user) or **Reload latest**. No automatic
+  merge.
+- **Builder's calls:** S1 (Q-05) the token is `updated_at` (timestamptz, microseconds; no version column, no migration); a skills-only
+  requirement change now moves it; a JD's token is its current version number (`expected_version`, 0 = none). S2 (Q-05) optional now
+  (absent = no check), required in a later step once every client sends it. S3 409 `{code, message, changed_by, changed_at,
+  changed_fields, current}`; `current` is the GET shape for the caller. S4 who/what/when from the record's own audit rows after the
+  token (downloads excluded); the JD diff is exact between versions. S5 scope 404 and role 403 come first. S6 scope: the four recruiter
+  CRM write routes; the legacy `/workflows/it/*` and employer job writes are unchanged (follow-up). S7 one shared `StaleRecordNotice` +
+  `useStaleGuard`. S8 "Update requirement from JD" sends the requirement's token; a stale one refreshes the page with the summary.
+- **Numbering:** no migration; API §12JP; no RBAC change.
+- **Feature ID authorized:** `hrc-003`. **Status:** built on `worktree-hrc-003`.

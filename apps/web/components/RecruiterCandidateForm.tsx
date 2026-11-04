@@ -18,7 +18,11 @@ import { useStaleGuard } from "@/lib/staleGuard";
 // form so it is seen next to the mobile and email even on a phone (the tel-005 QA-05 placement).
 type Notice = { text: string; failed: boolean } | null;
 const LABELS: Record<string, string> = { source_id: "Source", source_detail: "Source detail", status: "Status", archive: "Archived", restore: "Restored", resume_upload: "Resume", resume_extract: "Resume details" };
-type Props = { initial?: CandidateDetail; onSaved?: (c: CandidateDetail) => void; onCancel?: () => void };
+type Props = {
+  initial?: CandidateDetail; onSaved?: (c: CandidateDetail) => void; onCancel?: () => void;
+  /** hrc-003: the latest candidate after a stale save was reloaded or reviewed, for the page behind the form. */
+  onLatest?: (c: CandidateDetail) => void;
+};
 
 function DuplicatePanel({ matches, focusRequest }: { matches: CandidateMatch[]; focusRequest: number }) {
   const heading = useRef<HTMLHeadingElement>(null);
@@ -45,11 +49,11 @@ function DuplicatePanel({ matches, focusRequest }: { matches: CandidateMatch[]; 
   );
 }
 
-export default function RecruiterCandidateForm({ initial, onSaved, onCancel }: Props) {
+export default function RecruiterCandidateForm({ initial, onSaved, onLatest, onCancel }: Props) {
   const router = useRouter();
   const editing = !!initial;
   // hrc-003: an edit keeps the values and `updated_at` it opened with; a save refused as stale re-bases them (Reload / Review).
-  const guard = useStaleGuard<CandidateDetail, CandidateForm>(initial, (c) => (c ? formFromDetail(c) : EMPTY_FORM), (c) => c?.updated_at ?? null);
+  const guard = useStaleGuard<CandidateDetail, CandidateForm>(initial, (c) => (c ? formFromDetail(c) : EMPTY_FORM), (c) => c?.updated_at ?? null, onLatest);
   const { values, setValues } = guard;
   const [sources, setSources] = useState<CatalogueValue[]>([]);
   const [sourcesFailed, setSourcesFailed] = useState(false);
@@ -149,8 +153,8 @@ export default function RecruiterCandidateForm({ initial, onSaved, onCancel }: P
           guard={guard}
           labelOf={(key) => FIELDS.find((f) => f.key === key)?.label ?? LABELS[key] ?? key.replace(/_/g, " ")}
           display={(key, value) => (key === "source_id" ? ([...kept, ...sources].find((s) => s.id === value)?.name ?? value) : key === "status" ? (STATUS_LABEL[value] ?? value) : value)}
-          onReload={() => void guard.reload()}
-          onReview={() => void guard.reviewMine()}
+          onReload={guard.reload}
+          onReview={guard.reviewMine}
         />
         {notice && <p className={notice.failed ? "form-error" : "form-message"} role={notice.failed ? "alert" : "status"} style={{ margin: 0, fontSize: 13 }}>{notice.text}</p>}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>

@@ -25,6 +25,7 @@ const conflict = {
 let patches: Record<string, unknown>[];
 let replies: Response[];
 const onSaved = vi.fn();
+const onLatest = vi.fn();
 
 beforeEach(() => {
   patches = [];
@@ -51,7 +52,7 @@ const field = (label: RegExp) => screen.getByLabelText(label) as HTMLInputElemen
 describe("RecruiterCandidateForm — changed since you opened it", () => {
   it("sends the token; Review keeps the user's edit over the latest version and the resave carries the new token", async () => {
     replies = [res({ detail: conflict }, 409), res(candidate({ id: "C1", location: "Hyderabad" }))];
-    render(<RecruiterCandidateForm initial={candidate()} onSaved={onSaved} onCancel={vi.fn()} />);
+    render(<RecruiterCandidateForm initial={candidate()} onSaved={onSaved} onLatest={onLatest} onCancel={vi.fn()} />);
     await screen.findByRole("option", { name: "Referral" });
     fireEvent.change(field(/^Location/), { target: { value: "Hyderabad" } });
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
@@ -62,6 +63,7 @@ describe("RecruiterCandidateForm — changed since you opened it", () => {
     expect(onSaved).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Review my changes" }));
+    expect(onLatest).toHaveBeenCalledWith(conflict.current); // QA-02: the page behind the form shows the latest too
     expect(field(/^Location/).value).toBe("Hyderabad");
     expect(field(/^Current company/).value).toBe("Globex");
     expect(screen.getByRole("list", { name: "Your changes" })).toHaveTextContent("Location: yours “Hyderabad”, now on record “Pune”");

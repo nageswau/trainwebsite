@@ -5470,3 +5470,18 @@ unchanged).
   statuses: [{value, label}]}}`. `totals` cover the whole filtered report and equal Σ `groups`; `total` is the drill-down row count.
 - `GET /management/it/reports/{report}/export` — same gate and filters; `text/csv` attachment `it-<report>-<IST date>.csv` with every
   row (over 10,000 → 422). Text cells neutralise formula prefixes. Audited `management.it_reports.export` `{report, filters, rows}`.
+
+## 12JP. Concurrent-edit protection (hrc-003) — addendum, 2026-11-04
+
+`DEC-SCOPE-370`. No migration. Additive: a new optional body field on four writes; a request without it behaves as before.
+
+- `PATCH /recruiter/requirements/{id}`, `PATCH /recruiter/candidates/{id}`, `PATCH /recruiter/interviews/{id}` — optional
+  `expected_updated_at` (ISO timestamp; the `updated_at` the form was opened with, sent back unchanged; not a timestamp → 422).
+  `POST /recruiter/requirements/{id}/jd` — optional `expected_version` (int ≥ 0; the current JD version the form showed, 0 = none).
+- Order: scope 404 → role 403 → token → the existing rules. A different stored token → **409**
+  `detail = {code: "record_changed", message: "This record changed since you opened it", changed_by: {id, full_name} | null,
+  changed_at, changed_fields: [..], current}`. `current` is the record as that route's GET returns it to the caller (requirement detail,
+  candidate detail, interview, or the JD with its versions). `changed_fields` are field names from the record's audit rows after the
+  token (a status move reads `status`, an archive `archive`; downloads are not changes); for the JD, the exact difference between the
+  two versions (`file` for a new file). Nothing is written on a 409.
+- The interview shape gains `updated_at`. A requirement change that only touches its skills now moves the requirement's `updated_at`.

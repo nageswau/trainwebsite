@@ -24,6 +24,7 @@ const conflict = {
 let patches: Record<string, unknown>[];
 let replies: Response[];
 const onSaved = vi.fn();
+const onLatest = vi.fn();
 
 beforeEach(() => {
   patches = [];
@@ -43,7 +44,7 @@ const field = (label: RegExp) => screen.getByLabelText(label) as HTMLInputElemen
 describe("RecruiterInterviewForm — changed since you opened it", () => {
   it("sends the token, and Review keeps the user's edit over the latest details", async () => {
     replies = [res({ detail: conflict }, 409), res(interview({ interviewer: "Arun", location: "Office 2", updated_at: "T3" }))];
-    render(<RecruiterInterviewForm interview={interview()} contacts={[]} onSaved={onSaved} onCancel={vi.fn()} />);
+    render(<RecruiterInterviewForm interview={interview()} contacts={[]} onSaved={onSaved} onLatest={onLatest} onCancel={vi.fn()} />);
     fireEvent.change(field(/^Interviewer/), { target: { value: "Arun" } });
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
@@ -52,6 +53,7 @@ describe("RecruiterInterviewForm — changed since you opened it", () => {
     expect(patches[0]).toEqual({ interviewer: "Arun", expected_updated_at: "2026-11-04T04:00:00.111111+00:00" });
 
     fireEvent.click(screen.getByRole("button", { name: "Review my changes" }));
+    expect(onLatest).toHaveBeenCalledWith(conflict.current); // QA-03: the page behind the form shows the latest too
     expect(field(/^Interviewer/).value).toBe("Arun");
     expect(field(/^Location/).value).toBe("Office 2");
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));

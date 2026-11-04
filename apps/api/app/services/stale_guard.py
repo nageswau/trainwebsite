@@ -1,5 +1,5 @@
 """hrc-003 (DEC-SCOPE-370): "this record changed since you opened it". A form sends the token it was given (`updated_at`, or a JD's
-version number); an older one is a 409 `record_changed` telling the user who changed what and when, with the current record, so a
+version number); a different one is a 409 `record_changed` telling the user who changed what and when, with the current record, so a
 stale form never silently overwrites someone else's save. No token = no check (S2: optional until every client sends it).
 
 Callers check under the row lock they already hold, after scope and role, before any business rule (S5)."""

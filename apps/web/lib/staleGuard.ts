@@ -37,8 +37,11 @@ export function reapply<F extends Values>(latest: F, opened: F, mine: F): { valu
   return { values, review: edited.filter((key) => mine[key] !== latest[key]).map((key) => ({ key, yours: mine[key], now: latest[key], alsoChanged: latest[key] !== opened[key] })) };
 }
 
-/** The form's values plus the version they were opened from. `toValues`/`tokenOf` read a record (the prop, or a 409's `current`). */
-export function useStaleGuard<T, F extends Values>(record: T | undefined, toValues: (r: T | undefined) => F, tokenOf: (r: T | undefined) => StaleToken | null) {
+/** The form's values plus the version they were opened from. `toValues`/`tokenOf` read a record (the prop, or a 409's `current`);
+ *  `onLatest` hands the latest record to the page behind the form when the user reloads or reviews (so Cancel shows it too). */
+export function useStaleGuard<T, F extends Values>(
+  record: T | undefined, toValues: (r: T | undefined) => F, tokenOf: (r: T | undefined) => StaleToken | null, onLatest?: (r: T) => void,
+) {
   const [opened, setOpened] = useState(() => ({ values: toValues(record), token: tokenOf(record) }));
   const [values, setValues] = useState(opened.values);
   const [conflict, setConflict] = useState<StaleConflict<T> | null>(null);
@@ -49,7 +52,7 @@ export function useStaleGuard<T, F extends Values>(record: T | undefined, toValu
     setValues(next);
     setConflict(null);
     setReview(items);
-    return current;
+    onLatest?.(current);
   }
 
   return {
@@ -68,15 +71,13 @@ export function useStaleGuard<T, F extends Values>(record: T | undefined, toValu
       }
       return !!found;
     },
-    /** Reload: the latest record, the user's edits dropped. Returns the record. */
-    reload: (): T => rebase(conflict!.current, toValues(conflict!.current), null),
-    /** Review my changes: the latest record with the user's edits re-applied, listed for checking. Returns the record. */
-    reviewMine: (): T => {
+    /** Reload: the latest record, the user's edits dropped. */
+    reload: () => rebase(conflict!.current, toValues(conflict!.current), null),
+    /** Review my changes: the latest record with the user's edits re-applied, listed for checking. */
+    reviewMine: () => {
       const { values: next, review: items } = reapply(toValues(conflict!.current), opened.values, values);
-      return rebase(conflict!.current, next, items);
+      rebase(conflict!.current, next, items);
     },
-    /** A successful save starts a new editing session from the saved record. */
-    saved: (r: T) => rebase(r, toValues(r), null),
   };
 }
 

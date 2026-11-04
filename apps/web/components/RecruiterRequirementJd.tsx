@@ -42,7 +42,7 @@ function JdForm({ requirement, jd, onSaved, onLatest, onCancel }: {
   requirement: Requirement; jd: Jd; onSaved: (jd: Jd) => void; onLatest: (jd: Jd) => void; onCancel: () => void;
 }) {
   // hrc-003 (S1): the values and the current version number (0 = none) the form opened with; a stale save re-bases them.
-  const guard = useStaleGuard<Jd, JdValues>(jd, (j) => jdValues(j?.versions[0], requirement), (j) => j?.versions[0]?.version ?? 0);
+  const guard = useStaleGuard<Jd, JdValues>(jd, (j) => jdValues(j?.versions[0], requirement), (j) => j?.versions[0]?.version ?? 0, onLatest);
   const { values, setValues } = guard;
   const current = jd.versions[0];
   const [contacts, setContacts] = useState<ContactOption[] | null>(null);
@@ -113,8 +113,8 @@ function JdForm({ requirement, jd, onSaved, onLatest, onCancel }: {
         guard={guard}
         labelOf={(key) => JD_LABEL[key as keyof typeof JD_LABEL] ?? (key === "file" ? "JD file" : key)}
         display={(key, value) => (key === "contact_id" ? (options.find((c) => c.id === value)?.name ?? value) : value)}
-        onReload={() => onLatest(guard.reload())}
-        onReview={() => onLatest(guard.reviewMine())}
+        onReload={guard.reload}
+        onReview={guard.reviewMine}
       />
       {failure && (
         <p className="form-error" role="alert">

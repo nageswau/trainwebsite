@@ -25,10 +25,12 @@ const conflict = {
 let patches: Record<string, unknown>[];
 let replies: Response[];
 const onSaved = vi.fn();
+const onLatest = vi.fn();
 
 beforeEach(() => {
   patches = [];
   onSaved.mockReset();
+  onLatest.mockReset();
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string, init?: RequestInit) => {
@@ -72,10 +74,11 @@ describe("RecruiterRequirementForm — changed since you opened it", () => {
 
   it("Reload drops the user's edits and shows the latest version", async () => {
     replies = [res({ detail: conflict }, 409)];
-    render(<RecruiterRequirementForm mode="edit" requirement={requirement()} onSaved={onSaved} onCancel={vi.fn()} />);
+    render(<RecruiterRequirementForm mode="edit" requirement={requirement()} onSaved={onSaved} onLatest={onLatest} onCancel={vi.fn()} />);
     fireEvent.change(field(/^Job title/), { target: { value: "Senior Java Dev" } });
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     fireEvent.click(await screen.findByRole("button", { name: "Reload latest" }));
+    expect(onLatest).toHaveBeenCalledWith(conflict.current); // QA-01: the page behind the form shows the latest too
     expect(field(/^Job title/).value).toBe("Java Dev");
     expect(field(/^Job location/).value).toBe("Chennai");
     expect(screen.queryByRole("button", { name: "Review my changes" })).toBeNull();

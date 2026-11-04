@@ -278,10 +278,12 @@ function historyText(h: InterviewEvent): string {
 
 /** rec-020 (spec §4): one interview with its actions -- Change status, Reschedule and Edit -- offered only when the API allows them.
  *  `card` is the list form (the candidate and requirement first, linked); without it the item sits on its application. */
-export default function RecruiterInterviewItem({ interview: i, card = false, contacts = [], onChanged }: {
+export default function RecruiterInterviewItem({ interview: given, card = false, contacts = [], onChanged }: {
   interview: RecInterview; card?: boolean; contacts?: ContactOption[]; onChanged: (interview: RecInterview, notice: string, nextRound?: Round) => void;
 }) {
   const [mode, setMode] = useState<"view" | "status" | "reschedule" | "edit" | "feedback">("view");
+  const [latest, setLatest] = useState<RecInterview | null>(null); // hrc-003 QA-03: a stale edit's reload shows here until the list reloads
+  const i = latest && latest.updated_at > given.updated_at ? latest : given;
   const id = useId();
   const link = safeLink(i.meeting_url);
   const done = (text: string) => (next: RecInterview, notices?: Notices) => {
@@ -338,7 +340,7 @@ export default function RecruiterInterviewItem({ interview: i, card = false, con
       )}
       {mode === "status" && <StatusForm interview={i} onCancel={() => setMode("view")} onSaved={done("Status saved.")} />}
       {mode === "reschedule" && <RescheduleForm interview={i} onCancel={() => setMode("view")} onSaved={done("Interview rescheduled.")} />}
-      {mode === "edit" && <RecruiterInterviewForm interview={i} contacts={contacts} onCancel={() => setMode("view")} onSaved={done("Interview updated.")} />}
+      {mode === "edit" && <RecruiterInterviewForm interview={i} contacts={contacts} onCancel={() => setMode("view")} onSaved={done("Interview updated.")} onLatest={setLatest} />}
       {i.feedback && mode !== "feedback" && <FeedbackSummary code={i.code} feedback={i.feedback} />}
       {mode === "feedback" && <FeedbackForm interview={i} onCancel={() => setMode("view")} onSaved={feedbackSaved} />}
       {mode === "view" && (i.allowed_statuses.length > 0 || i.can_reschedule || i.can_edit || i.can_feedback) && (
