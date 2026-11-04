@@ -50,7 +50,7 @@ async def test_student_apply_creates_a_candidate_outside_the_pool_and_sources_th
     assert again.status_code == 409 and again.json()["detail"] == "Already applied"
     portal = await client.get("/api/v1/portal/it/student/job-applications")
     assert portal.status_code == 200, portal.text  # the student's own view shows the label
-    assert [r["status"] for r in portal.json()["rows"]] == ["Sourced"]
+    assert [r["status"] for r in portal.json()["rows"]] == ["Received"]  # hrc-026 (A3): the candidate's wording for Sourced
 
 
 @pytest.mark.asyncio

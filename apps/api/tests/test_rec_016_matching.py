@@ -223,7 +223,7 @@ async def test_status_on_this_requirement_is_shown_including_rejected(client, db
     fresh = await w.candidate(java)
     added = await client.post(f"{REQ}/{job.id}/candidates", json={"candidate_id": str(rejected.id), "status": "sourced"})
     assert added.status_code == 201, added.text
-    moved = await client.post(f"/api/v1/recruiter/applications/{added.json()['application']['id']}/status", json={"status": "rejected"})
+    moved = await client.post(f"/api/v1/recruiter/applications/{added.json()['application']['id']}/status", json={"status": "rejected", "rejection_reason": "skills_mismatch"})  # hrc-026 AC3
     assert moved.status_code == 200, moved.text
     body = _body(await _matches(client, job))
     assert _row(body, rejected)["application"]["status"] == "rejected" and _row(body, rejected)["application"]["status_label"] == "Rejected"

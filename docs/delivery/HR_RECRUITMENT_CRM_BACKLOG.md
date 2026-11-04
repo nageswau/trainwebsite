@@ -880,6 +880,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 ### Phase 4: Applications and interviews (PDF Phase 4)
 
 #### hrc-026: Application record completion
+- **Status:** built as `DEC-SCOPE-394` (migration `0271_application_record`, API §12KM, no RBAC change; Q-27/Q-28 answered by the
+  builder's recommended calls, `NEEDS_CONFIRMATION`); design `docs/superpowers/specs/2026-11-04-hrc-026-application-record-design.md`.
 - **Business requirement:** §9 stage table; §16 "unique IDs for … Application"; §17 QA "New applications appear … with a unique Application ID".
 - **Existing behavior:**
   - The application is identified by UUID only.

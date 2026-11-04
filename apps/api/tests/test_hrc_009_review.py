@@ -52,7 +52,7 @@ async def _world(client, db, *, open_apps: bool = True, master: bool = False) ->
             added = await client.post(f"{BASE}/{job['id']}/candidates", json={"candidate_id": str(candidate.id), "status": status})
             assert added.status_code == 201, added.text
             apps[key] = added.json()["application"]["id"]
-        moved = await client.post(f"{APPS}/{apps['c']}/status", json={"status": "rejected"})
+        moved = await client.post(f"{APPS}/{apps['c']}/status", json={"status": "rejected", "rejection_reason": "skills_mismatch"})  # hrc-026 AC3
         assert moved.status_code == 200, moved.text
     ids = {f"{k}_id": str(v.id) for k, v in (("primary", primary), ("mate", mate), ("officer", officer))}  # stable after expire_all()
     return {"manager": manager, "primary": primary, "mate": mate, "officer": officer, "job": job["id"], "apps": apps, "tag": tag, **ids}
@@ -192,7 +192,7 @@ async def test_confirm_clears_the_flag_without_a_move_and_is_audited(client, db_
 async def test_a_status_move_clears_the_flag(client, db_session):
     w = await _world(client, db_session)
     await _patch(client, w, {"qualification": "M.Tech"})
-    moved = await client.post(f"{APPS}/{w['apps']['b']}/status", json={"status": "rejected"})
+    moved = await client.post(f"{APPS}/{w['apps']['b']}/status", json={"status": "rejected", "rejection_reason": "skills_mismatch"})  # hrc-026 AC3
     assert moved.status_code == 200 and moved.json()["application"]["needs_review_since"] is None
     assert (await _flags(db_session, w))["b"] == (False, "rejected")
 

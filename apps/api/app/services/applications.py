@@ -14,7 +14,20 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import APPLICATION_STATUSES, AuditLog, Candidate, Company, Job, JobApplication, JobApplicationStatusHistory, Notification, RecCandidateSource, User
+from app.models import (
+    APPLICATION_STATUSES,
+    CANDIDATE_VISIBLE_STATUSES,
+    REJECTION_REASONS,
+    AuditLog,
+    Candidate,
+    Company,
+    Job,
+    JobApplication,
+    JobApplicationStatusHistory,
+    Notification,
+    RecCandidateSource,
+    User,
+)
 from app.notifications.dispatch import queue_deliveries
 from app.services import candidates, company_pipeline, it_lifecycle
 from app.services import recruiter_requirements as requirements
@@ -45,6 +58,19 @@ DUPLICATE = "This candidate is already on this requirement"
 JOINED_GATE = "Joined needs the candidate to be Selected (an offer) first"
 UNIQUE = "uq_job_applications_candidate_job"
 STUDENT_SOURCE = "Edusphere students"  # the source migration 0121 backfills students from
+# hrc-026 (DEC-SCOPE-394): the candidate's wording where the PDF's stage names differ (A3), sources (A5) and rejection reasons (A7).
+CANDIDATE_LABELS = {**{s: LABELS[s] for s in CANDIDATE_VISIBLE_STATUSES}, "sourced": "Received", "screened": "Screening"}
+SOURCE_LABELS = {"portal": "Candidate portal", "recruiter": "Recruiter", "employer": "Employer", "drive": "Campus drive"}
+REASON_LABELS = {
+    "skills_mismatch": "Skills do not match", "experience_mismatch": "Experience does not match", "qualification_mismatch": "Qualification does not match",
+    "salary_mismatch": "Salary expectations do not match", "location_mismatch": "Location or work mode does not match",
+    "screening_not_cleared": "Did not clear screening", "interview_not_cleared": "Did not clear the interview", "not_reachable": "Candidate not reachable",
+    "client_rejected": "Rejected by the client", "position_filled": "Position filled or closed", "other": "Other (see note)",
+}
+assert tuple(REASON_LABELS) == REJECTION_REASONS
+REASON_NEEDED = "Choose a rejection reason"
+OTHER_NEEDS_NOTE = "Add a note explaining the rejection reason"
+REASON_ONLY_ON_REJECT = "A rejection reason is only given when rejecting"
 
 
 def label(status: str) -> str:
@@ -64,19 +90,40 @@ def check_transition(current: str, target: str) -> None:
         raise HTTPException(409, JOINED_GATE if target == "joined" else f"An application cannot move from {label(current)} to {label(target)}")
 
 
-def _record(db: AsyncSession, actor: User | None, application: JobApplication, target: str, note: str | None) -> str:
+def candidate_label(status: str) -> str:
+    return CANDIDATE_LABELS.get(status, label(status))
+
+
+def check_reason(target: str, reason: str | None, note: str | None) -> None:
+    """hrc-026 (A7, AC3): every explicit move into Rejected names a listed reason; "other" also needs a note. 422s."""
+    if target != "rejected":
+        if reason is not None:
+            raise HTTPException(422, REASON_ONLY_ON_REJECT)
+        return
+    if not isinstance(reason, str) or reason not in REASON_LABELS:  # the legacy PATCH body is an untyped dict
+        raise HTTPException(422, REASON_NEEDED)
+    if reason == "other" and not (note or "").strip():
+        raise HTTPException(422, OTHER_NEEDS_NOTE)
+
+
+def _record(db: AsyncSession, actor: User | None, application: JobApplication, target: str, note: str | None, reason: str | None = None) -> str:
     previous = application.status
-    db.add(JobApplicationStatusHistory(application_id=application.id, from_status=previous, to_status=target, note=note, changed_by_user_id=actor.id if actor else None))
+    reason = reason if target == "rejected" else None
+    db.add(JobApplicationStatusHistory(application_id=application.id, from_status=previous, to_status=target, note=note, rejection_reason=reason, changed_by_user_id=actor.id if actor else None))
     application.status = target
+    application.rejection_reason = reason  # hrc-026 (A7): kept while rejected; a reopen clears it
+    if target in CANDIDATE_VISIBLE_STATUSES:  # hrc-026 (A4): an internal stage leaves the candidate's view where it was
+        application.candidate_status = target
     application.stage_changed_at = datetime.now(UTC)
     application.needs_review_since = None  # hrc-009 (R4): a move answers an eligibility review
     return previous
 
 
-async def change_status(db: AsyncSession, actor: User | None, application: JobApplication, target: str, note: str | None = None) -> str:
-    """Validated move + history; returns the previous status. The caller locked the row."""
+async def change_status(db: AsyncSession, actor: User | None, application: JobApplication, target: str, note: str | None = None, reason: str | None = None) -> str:
+    """Validated move + history; returns the previous status. The caller locked the row. A move into Rejected needs `reason` (hrc-026)."""
     check_transition(application.status, target)
-    previous = _record(db, actor, application, target, note)
+    check_reason(target, reason, note)
+    previous = _record(db, actor, application, target, note, reason)
     if target == "joined":  # hrc-007 (A11): the last seat joining fills the job
         await requirements.fill_when_complete(db, actor, application.job_id)
     if application.student_id is not None:  # itc-031: an EduSphere student's Interview / Placed stage
@@ -86,10 +133,11 @@ async def change_status(db: AsyncSession, actor: User | None, application: JobAp
 
 
 def follow(db: AsyncSession, actor: User | None, application: JobApplication, target: str, note: str | None = None) -> bool:
-    """A legacy side effect: move only when the move is allowed (A2). Returns whether it moved."""
+    """A legacy side effect: move only when the move is allowed (A2). Returns whether it moved. The only side effect into Rejected is an
+    interview result, so its reason is the interview's (hrc-026 A7)."""
     if target == application.status or target not in TRANSITIONS.get(application.status, ()):
         return False
-    _record(db, actor, application, target, note)
+    _record(db, actor, application, target, note, "interview_not_cleared")
     return True
 
 
@@ -143,14 +191,18 @@ async def create(db: AsyncSession, actor: User, job: Job, candidate: Candidate, 
     `candidates_sourcing` event on the company (forward only, so a company already further on never moves back)."""
     if await db.scalar(select(JobApplication.id).where(JobApplication.candidate_id == candidate.id, JobApplication.job_id == job.id)):
         raise HTTPException(409, DUPLICATE)
+    own = actor.id == candidate.user_id
     application = JobApplication(
         job_id=job.id,
         candidate_id=candidate.id,
         student_id=candidate.user_id,
-        status=status,
+        status=status,  # candidate_status follows from it (the column default: an internal stage starts the candidate's view at Received)
         resume_url=resume_url,
-        added_by_user_id=None if actor.id == candidate.user_id else actor.id,
+        added_by_user_id=None if own else actor.id,
         drive_id=drive_id,
+        # hrc-026 (A5/A6): where it came from, and the recruiter who owns it (the adding recruiter, else the requirement's)
+        source="drive" if drive_id else "portal" if own else "employer" if actor.role == "employer" else "recruiter",
+        owner_user_id=actor.id if actor.role == ROLE else job.assigned_recruiter_user_id,
     )
     db.add(application)
     try:
@@ -189,15 +241,32 @@ def require_writer(user: User, subject_id, route: str) -> None:
 
 
 # --- notifications, audit, output ---------------------------------------------------------------------------------------------------
-async def notify_student(db: AsyncSession, application: JobApplication) -> None:
-    """ENH-014's in-app row plus queued deliveries, as the legacy PATCH always sent; external candidates have no login."""
+async def _notify(db: AsyncSession, application: JobApplication, title: str, body: str) -> None:
     student = await db.get(User, application.student_id) if application.student_id else None
-    if student is None:
+    if student is None:  # external candidates have no login
         return
-    item = Notification(user_id=student.id, title="Job application updated", body=f"Your application status is now {label(application.status)}.", read=False, action_url="/it/student/job-applications")
+    item = Notification(user_id=student.id, title=title, body=body, read=False, action_url="/it/student/job-applications")
     db.add(item)
     await db.flush()
     await queue_deliveries(db, item, student)
+
+
+async def notify_student(db: AsyncSession, application: JobApplication, before: str) -> None:
+    """ENH-014's in-app row plus queued deliveries, as the legacy PATCH always sent -- hrc-026 (A4, AC2): only when the stage the candidate
+    sees changed (`before` = its `candidate_status` before the move), so an internal stage never notifies."""
+    if application.candidate_status != before:
+        await _notify(db, application, "Job application updated", f"Your application status is now {candidate_label(application.candidate_status)}.")
+
+
+async def send_receipt(db: AsyncSession, application: JobApplication, job: Job) -> None:
+    """hrc-026 (A8, AC4): the candidate applied themselves -- confirm it with the Application ID. Recruiter-added applications get none."""
+    company = await db.scalar(select(Company.name).where(Company.id == job.company_id))
+    await db.refresh(application, ["application_code"])
+    await _notify(db, application, "Application received", f"We received your application {application.application_code} for {job.title} at {company}.")
+
+
+def source_label(source: str) -> str:
+    return SOURCE_LABELS.get(source, source)
 
 
 def audit(db: AsyncSession, user: User, action: str, application: JobApplication, metadata: dict | None = None) -> None:
@@ -212,10 +281,16 @@ def allowed(application: JobApplication) -> list[dict]:
     return [{"key": s, "label": LABELS[s]} for s in TRANSITIONS.get(application.status, ())]
 
 
-def item_out(user: User, application: JobApplication, candidate: Candidate, screening_result: dict | None = None) -> dict:
-    """`screening_result` is rec-018's flag ({key, label} of the current screening), which the caller reads."""
+def item_out(user: User, application: JobApplication, candidate: Candidate, screening_result: dict | None = None, owner: User | None = None) -> dict:
+    """`screening_result` is rec-018's flag ({key, label} of the current screening), which the caller reads; `owner` the owning recruiter."""
     return {
         "id": application.id,
+        "code": application.application_code,  # hrc-026 (A1)
+        "source": application.source,
+        "source_label": source_label(application.source),
+        "owner": {"id": owner.id, "full_name": owner.full_name} if owner else None,
+        "rejection_reason": application.rejection_reason,
+        "rejection_reason_label": REASON_LABELS.get(application.rejection_reason) if application.rejection_reason else None,
         "job_id": application.job_id,
         "candidate": {"id": candidate.id, "code": candidate.candidate_code, "name": candidate.name},
         "status": application.status,
@@ -244,6 +319,7 @@ async def history_out(db: AsyncSession, application_id: UUID) -> list[dict]:
             "to_status": h.to_status,
             "to_label": label(h.to_status),
             "note": h.note,
+            "rejection_reason_label": REASON_LABELS.get(h.rejection_reason) if h.rejection_reason else None,  # hrc-026 (A9)
             "changed_by": {"id": u.id, "full_name": u.full_name} if u else None,
             "created_at": h.created_at,
         }
@@ -252,4 +328,12 @@ async def history_out(db: AsyncSession, application_id: UUID) -> list[dict]:
 
 
 def catalogue() -> list[dict]:
-    return [{"key": s, "label": LABELS[s], "initial": s in INITIAL} for s in APPLICATION_STATUSES]
+    """hrc-026 (A2/A3): each stage says whether the candidate sees it, and in which words."""
+    return [
+        {"key": s, "label": LABELS[s], "initial": s in INITIAL, "candidate_visible": s in CANDIDATE_VISIBLE_STATUSES, "candidate_label": CANDIDATE_LABELS.get(s)}
+        for s in APPLICATION_STATUSES
+    ]
+
+
+def reasons() -> list[dict]:
+    return [{"key": k, "label": v} for k, v in REASON_LABELS.items()]
