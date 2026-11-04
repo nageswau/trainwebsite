@@ -5687,3 +5687,15 @@ segment_pool: {id, name, active} | null, can_change}` and every requirement row 
 portal, public and the student's segment jobs (staff callers of `/workflows/it/jobs/open` still see every open job); the employer job
 payload's `visible_to_students` is false for an internal job. Existing jobs are public (migration 0262), so nothing changes until a
 `jobs.publish` holder narrows a job.
+
+## 12KE. Skills taxonomy domains and a job skill's minimum level (hrc-017) — addendum, 2026-11-04
+
+`DEC-SCOPE-386`. **Changed (additive):** every skill category row (`GET/POST/PATCH /api/v1/recruiter/skill-categories`) carries `domain`
+(`"it"|"non_it"`); `POST` takes an optional `domain` (default `"it"`) and `PATCH` may change it (an explicit null or another value: 422,
+"Domain …"; a non-writer: 403). `GET /recruiter/skill-categories` and `GET /recruiter/skills` take `?domain=it|non_it` (422 otherwise; a
+skill matches through its primary category or a tag). Each item of `PUT /recruiter/requirements/{id}/skill-weights` may carry `min_level`
+(`"beginner"|"intermediate"|"advanced"|"expert"|null`; omitted = unchanged, null = any level); a level on a skill outside the Skills Master
+is a 422 "Only a skill in the Skills Master can have a minimum level"; the audit row gains `changes` `{"<skill> minimum level": [old, new]}`.
+The requirement detail's `skills[]` and the matches `criteria.skills[]` carry `min_level`. **Changed (behaviour):** in
+`GET /recruiter/requirements/{id}/matches` a skill with a minimum level counts only for a candidate holding it (or a related skill) at that
+level or above. No level is set by migration 0263, so nothing changes until a writer sets one.

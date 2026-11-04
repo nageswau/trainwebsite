@@ -116,6 +116,8 @@ describe("Requirement skill minimum level (hrc-017)", () => {
     const python = screen.getByLabelText("Minimum level of Python (required)") as HTMLSelectElement;
     expect(python.value).toBe("intermediate");
     expect(screen.queryByLabelText("Minimum level of Weblogic (required)")).toBeNull();
+    // QA-01: a free-text skill's cell has no level select -- the grid must not stretch its weight input to the row height
+    expect((python.closest("div.field")!.parentElement as HTMLElement).style.alignItems).toBe("start");
     fireEvent.change(screen.getByLabelText("Minimum level of AWS (preferred)"), { target: { value: "advanced" } });
     fireEvent.click(screen.getByRole("button", { name: "Save weights" }));
     await waitFor(() => expect(sentBody(calls, "PUT")).toHaveLength(1));

@@ -32,8 +32,8 @@ function WeightsForm({ requirementId, skills, onSaved, onCancel }: {
     event.preventDefault();
     if (busy) return;
     const weights = skills.map((s) => {
-      const level = levels[s.id] || null;
-      return level === (s.min_level ?? null) ? { id: s.id, weight: Number(values[s.id]) } : { id: s.id, weight: Number(values[s.id]), min_level: level as SkillLevel | null };
+      const level = (levels[s.id] || null) as SkillLevel | null;
+      return { id: s.id, weight: Number(values[s.id]), ...(level !== (s.min_level ?? null) && { min_level: level }) };
     });
     if (weights.some((w) => !Number.isInteger(w.weight) || w.weight < WEIGHT_MIN || w.weight > WEIGHT_MAX)) return setFailure(WEIGHT_ERROR);
     setBusy(true);
@@ -50,7 +50,7 @@ function WeightsForm({ requirementId, skills, onSaved, onCancel }: {
         A higher weight makes a skill count for more of the score ({WEIGHT_MIN} = least, {WEIGHT_MAX} = most). A minimum level counts
         a candidate&apos;s skill only at that level or above.
       </p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(11rem, 1fr))", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(11rem, 1fr))", gap: 10, alignItems: "start" }}>
         {skills.map((s) => (
           <div key={s.id} className="field" style={{ marginBottom: 0 }}>
             <label htmlFor={`${id}-${s.id}`}>Weight of {s.name} ({s.kind})</label>

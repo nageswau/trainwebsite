@@ -11575,3 +11575,23 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   kept a just-hidden job listed).
 - **Numbering:** migration `0262_job_visibility`; API §12KD; RBAC §2.281.
 - **Feature ID authorized:** `hrc-008`. **Status:** built on `worktree-hrc-008`.
+
+### DEC-SCOPE-386 — Skills taxonomy: IT / non-IT domains and a job skill's minimum level (`hrc-017`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-017` (PDF §7.3 categories "IT, engineering, healthcare, pharmacy, finance,
+  sales, HR and non-IT"; §8 "category and proficiency"; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00:
+  all phases). No dependency. The owner said to proceed with the recommended answers, so Q-17 and T1–T9 are **the builder's calls
+  (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-04-hrc-017-skills-taxonomy-design.md`.
+- **Behaviour:** every Skills Master category has a domain, `it` or `non_it` (`skill_categories.domain`, existing rows `it`). Migration 0263
+  seeds six non-IT categories (Engineering, Healthcare, Pharmacy, Finance, Sales, Human Resources) with a starter skill list and three
+  aliases, insert-if-missing (an existing category or term is never overwritten; the IT seed is unchanged). Managers choose the domain when
+  adding a category and switch it with "Move to …"; `?domain=` filters the categories and skills lists (a skill counts through its primary
+  category or a tag). A requirement skill may require a minimum candidate level (`job_skills.min_level`: beginner < intermediate < advanced
+  < expert), set in the rec-016 "Adjust weights" form; matching counts the skill only for a candidate at that level or above, so a required
+  skill with a level is part of the hard filter.
+- **Builder's calls:** Q-17 the non-IT skill lists are a provisional starter set the owner edits in the Skills Master (no code change). T1
+  existing categories are IT. T3 the seed never renames or re-domains an existing row. T6 the level rides on `PUT …/skill-weights` (omitted =
+  unchanged, null = any level; a free-text skill cannot take one: 422) and is audited by skill name. T7 editing the skill lists keeps a kept
+  skill's level; legacy flat-list writers never touch it. Candidate search by category is hrc-019's.
+- **Numbering:** migration `0263_skill_taxonomy`; API §12KE; RBAC unchanged (no new grant: managers write categories, `can_edit` sets levels).
+- **Feature ID authorized:** `hrc-017`. **Status:** built on `worktree-hrc-017`.
