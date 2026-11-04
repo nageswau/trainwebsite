@@ -5652,3 +5652,23 @@ items: [{key, label, weight, met}]}`. While employment rows exist `experience_mo
 sets `qualification`/`college`/`passing_year`; city/state/country set `location`; `preferred_roles[0]` sets `preferred_role` (an old
 client's `preferred_role` replaces the first role). A rows-only save is a new `updated_at` (hrc-003). Candidate skills add/PATCH accept
 `is_primary` (bool; null = 422) and skill items return it. The merge response's `moved` adds `education`, `employment`, `certifications`.
+
+## 12KC. External candidate portal (hrc-022) — addendum, 2026-11-04
+
+DEC-SCOPE-384. Public (no session), JSON only: `POST /api/v1/candidate/register` `{full_name (2–160), email, phone?, password (10–128),
+consent_version}` → **202** `{accepted: true}` for every email (development adds `development_verification_token`); a wrong consent
+version or an invalid phone 422; more than 5 from one client IP in an hour **429** with `Retry-After`. `POST /candidate/resend-verification`
+`{email}` → 202 always (at most 3 links per account per 15 minutes; over it nothing is sent). `POST /candidate/verify-email` `{token}` →
+200 `{ok, purpose: "verify_email" | "email_change"}`; an unknown, used, superseded or expired token is one **400** "This link is invalid
+or has expired"; an email change whose address was taken meanwhile 409. `POST /auth/login` for an unverified candidate: **403** "Verify
+your email address first …" (after the password matched).
+Candidate only (`role=candidate`; others 403, anonymous 401), always the caller's own record: `GET /candidate/me` → `{candidate_code,
+name, email, email_verified, mobile, pending_email, fields: {name, city, state, country, linkedin, current_company, notice_days,
+preferred_roles, tools, languages, available_from, willing_to_relocate, preferred_contact}, editable: [...]}` (404 when no candidate is
+linked). `PATCH /candidate/me` takes those fields (recruiter validation and messages); any other key 422 "<Field> cannot be changed in
+the portal"; a field not allow-listed **403** "<Field> cannot be changed here -- ask your recruiter"; audited as `candidate.update` with
+`self_service: true` and old/new values. `POST /candidate/me/email` `{new_email, current_password}` → 202 (a link to the new address;
+an address in use: the same 202, nothing sent); wrong password 400 (counts toward the change-password lockout); same address 422; more
+than 3 requests in 15 minutes **429**. `GET /candidate/me/privacy` → `{opted_in, consent: {version, text}, history: [{action,
+consent_version, created_at}]}`; `PUT` `{opted_in, consent_version}` → the same. `GET /recruiter/candidate-self-service-settings` →
+`{fields, available, can_edit}` (candidate readers); `PUT {fields}` (placement_manager, super_admin; a field outside `available` 422).

@@ -49,6 +49,7 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
   hr_manager: "/it/hr-manager/dashboard",
   placement_officer: "/it/placement-officer/dashboard",
   interviewer: "/it/interviewer/dashboard",
+  candidate: "/it/careers/portal/profile", // hrc-022 (DEC-SCOPE-384): the external candidate's own portal
   employer: "/it/employer/dashboard",
   it_admin: "/it/admin/dashboard",
   overseas_student: "/overseas/student/dashboard",

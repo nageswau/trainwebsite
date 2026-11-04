@@ -15,6 +15,7 @@ from sqlalchemy import func, select
 from app.models import CandidateDocument, CandidateDocumentRequest, CandidateResume, CandidateSkill, Job, JobSkill, Program, RecCandidateSource, Skill, TalentPool
 from app.services import candidates as candidate_svc
 from app.services import job_descriptions
+from app.services.candidate_portal import DEFAULT_FIELDS
 from tests.rec038_helpers import PDF, R, add, allow, make_candidate, tag
 from tests.test_rec_012_resume_extract import SOURCE, _pdf
 
@@ -110,6 +111,9 @@ ROWS = [
     R("get", "/recruiter/candidates/assignees?kind=recruiter", **allow(200, *WRITERS)),
     R("get", "/recruiter/candidate-ownership-settings", **allow(200, *READERS)),
     R("put", "/recruiter/candidate-ownership-settings", {"shared_ownership": False}, **allow(200, "mgr", "mgr_out", "super")),
+    # hrc-022 (DEC-SCOPE-384 C7, §2.280): the candidate self-service allow-list -- read like the ownership setting, changed by managers
+    R("get", "/recruiter/candidate-self-service-settings", **allow(200, *READERS)),
+    R("put", "/recruiter/candidate-self-service-settings", {"fields": list(DEFAULT_FIELDS)}, **allow(200, "mgr", "mgr_out", "super")),
     # rec-013 / rec-014 Find Candidates (§2.77, §2.80): read only, hr_team included
     R("post", "/recruiter/candidates/search", {"all": ["Java"]}, **allow(200, *READERS)),
     # rec-036 the candidate journey (§2.105)

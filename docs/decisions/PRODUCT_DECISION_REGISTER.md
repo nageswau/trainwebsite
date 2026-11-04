@@ -11536,3 +11536,23 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   is not turned into a dateless job. P12 merge moves a row kind only when the survivor has none.
 - **Numbering:** migration `0260_candidate_profile`; API §12KB; no RBAC change.
 - **Feature ID authorized:** `hrc-010`. **Status:** built on `worktree-hrc-010`.
+
+### DEC-SCOPE-384 — External candidate portal identity and self-service (`hrc-022`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-022` (PDF §5.1, §6.1 step 2, §11; PDF classified `UNVERIFIED`). Scope
+  approved by the owner 2026-11-01 (backlog Q-00). Dependencies hrc-002 (DEC-SCOPE-374) and hrc-010 (DEC-SCOPE-383) merged. The owner
+  said to proceed with the recommended answers, so Q-23, Q-24 and C1–C12 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-022-candidate-portal-identity-design.md`.
+- **Behaviour:** an external job seeker registers at `/it/careers/register`, verifies their email by a 24-hour single-use link, signs in
+  at `/it/login` and lands on `/it/careers/portal/profile`. Verification links them to their candidate record (an unlinked recruiter
+  record with the same email is claimed; otherwise a new one, source "Candidate portal"), in the pool with a recorded consent. They see
+  only their own record, edit only the allow-listed fields, change their email only by confirming a link sent to the new address, and
+  can leave or re-join the pool (Privacy).
+- **Builder's calls:** C1/Q-23 a separate `candidate` role (division `it`); one email is one account (a student keeps the student
+  portal). C2 registration always answers 202; 5 per IP per hour → 429. C4 claiming by verified email only, never by phone. C5 resend
+  capped at 3 per 15 minutes silently. C6 unverified candidates cannot sign in (403 after the password). C7 allow-list universe of 13
+  fields, default all but the name, changed by placement managers and super_admin. C8/Q-24 no SMS provider, so the mobile is not
+  self-service. C9 email change needs the current password, 3 requests per 15 minutes → 429, an address in use is accepted silently.
+  C10 no id in any portal URL. Not built: a recruiter "invite to portal" email (follow-up), website registration/UTM (hrc-023).
+- **Numbering:** migration `0261_candidate_portal`; API §12KC; RBAC §2.280.
+- **Feature ID authorized:** `hrc-022`. **Status:** built on `worktree-hrc-022`.

@@ -586,3 +586,6 @@ fieldset.activity-direction legend { font-weight: 800; font-size: 13px; padding:
 .fee-account-figures{margin:12px 0 0;display:grid;gap:6px;font-size:14px}.fee-account-figures div{display:flex;justify-content:space-between;gap:12px}.fee-account-figures dt{color:var(--muted)}.fee-account-figures dd{margin:0;font-variant-numeric:tabular-nums;text-align:right}.fee-account-figures .fee-account-balance{border-top:1px solid var(--line);padding-top:8px;margin-top:4px;font-weight:800}.fee-account-figures .fee-account-balance dt{color:var(--ink)}
 /* itc-019 (DEC-SCOPE-347, QA19-04): links in a faculty card's contact list are underlined, not told apart by colour alone. */
 .faculty-contact a{color:var(--blue);text-decoration:underline;text-underline-offset:2px}
+/* hrc-022 (DEC-SCOPE-384): the candidate portal's label/value lists -- two columns on wide screens, one on phones. */
+.candidate-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 22px;margin:0}.candidate-facts dt{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}.candidate-facts dd{margin:2px 0 0;overflow-wrap:anywhere}
+@media(max-width:640px){.candidate-facts{grid-template-columns:1fr}}

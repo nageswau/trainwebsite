@@ -6502,6 +6502,45 @@ class CandidateOwnershipSetting(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
+class CandidateSelfServiceSetting(Base, TimestampMixin):
+    """hrc-022 (DEC-SCOPE-384 C7): one row (`id = 1`) -- the candidate fields an external candidate may edit in the portal. No row means
+    the default (services/candidate_portal.DEFAULT_FIELDS)."""
+
+    __tablename__ = "candidate_self_service_settings"
+    __table_args__ = (CheckConstraint("id = 1", name="ck_candidate_self_service_settings_one_row"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    fields: Mapped[list] = mapped_column(JSON, default=list)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+# hrc-022 (DEC-SCOPE-384 C3): migration 0261 repeats these strings; test_hrc_022_migration asserts they stay identical.
+USER_VERIFICATION_PURPOSES = ("verify_email", "email_change")
+USER_VERIFICATION_CHECKS = {
+    "ck_user_verification_tokens_purpose": f"purpose IN ({', '.join(repr(v) for v in USER_VERIFICATION_PURPOSES)})",
+    "ck_user_verification_tokens_new_email": "(purpose = 'email_change') = (new_email IS NOT NULL)",
+}
+
+
+class UserVerificationToken(Base):
+    """hrc-022 (C3): a single-use, hashed-at-rest link proving control of an email address -- the account's own (`verify_email`) or the
+    address it is changing to (`email_change`, which names it). Never the raw token."""
+
+    __tablename__ = "user_verification_tokens"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in USER_VERIFICATION_CHECKS.items()),
+        Index("ix_user_verification_tokens_user", "user_id", "purpose", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+    purpose: Mapped[str] = mapped_column(String(20))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    new_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 # hrc-014 (DEC-SCOPE-377 D1/D2/D9): one probable-duplicate pair, stored once (lower id first). Migration 0256 repeats the checks.
 CANDIDATE_DUPLICATE_SIGNALS = ("name_location_college", "phone_variant")
 CANDIDATE_DUPLICATE_STATUSES = ("open", "dismissed", "merged")
