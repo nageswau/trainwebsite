@@ -347,3 +347,16 @@ async def test_documents_are_stored_under_their_own_prefix(client, db_session, q
     made = (await _post_doc(client, f"{BASE}/{candidate['id']}/documents", PDF, document_type="certificate")).json()
     row = await db_session.scalar(select(CandidateDocument).where(CandidateDocument.id == uuid.UUID(made["id"])))
     assert row.storage_key.startswith("candidate-documents/") and "storage_key" not in made
+
+@pytest.mark.asyncio
+async def test_link_reads_stay_out_of_the_change_history(client, db_session, queued):
+    """hrc-004's history and hrc-003's stale guard skip reads: a link is a read like a download; document writes are changes."""
+    await as_recruiter(client, db_session)
+    candidate = await create(client, db_session)
+    await upload(client, candidate["id"], PDF)
+    await client.get(f"{BASE}/{candidate['id']}/resume/1/link", params={"mode": "download"})
+    made = (await _post_doc(client, f"{BASE}/{candidate['id']}/documents", PDF, document_type="certificate")).json()
+    await client.get(f"{BASE}/{candidate['id']}/documents/{made['id']}/link", params={"mode": "preview"})
+    actions = [i["action"] for i in (await client.get(f"{BASE}/{candidate['id']}/history")).json()["items"]]
+    assert "candidate.document_upload" in actions and "candidate.resume_upload" in actions
+    assert not [a for a in actions if a.endswith("_link")]
