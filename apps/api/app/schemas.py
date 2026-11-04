@@ -87,6 +87,7 @@ from app.models import (
     JOB_PRIORITIES,
     JOB_SHIFTS,
     JOB_STATUSES,
+    JOB_VISIBILITIES,
     JOB_WORK_MODES,
     LEAD_APPOINTMENT_TYPE_LABELS,
     LEAD_CALL_MAX_SECONDS,
@@ -9886,7 +9887,7 @@ class RecTimelinePage(BaseModel):
     offset: int
 
 
-# hrc-016 (DEC-SCOPE-385 T2/T3/T6): a private note and a candidate task. Author, status and stamps are server-owned (unknown fields here).
+# hrc-016 (DEC-SCOPE-387 T2/T3/T6): a private note and a candidate task. Author, status and stamps are server-owned (unknown fields here).
 CandidateNoteBody = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=CANDIDATE_NOTE_MAX)], BeforeValidator(_bdm_newlines)]
 CandidateTaskTitle = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 CandidateTaskNotes = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=CANDIDATE_NOTE_MAX)] | None, BeforeValidator(_bdm_newlines)]
@@ -10648,6 +10649,20 @@ class RecRequirementApprovalNote(BaseModel):
 class RecRequirementReject(BaseModel):
     model_config = ConfigDict(extra="forbid")
     reason: Annotated[_rec_requirement_text_type(500, multiline=True), AfterValidator(_required_reason)]
+
+
+class RecRequirementVisibility(BaseModel):
+    """hrc-008 (DEC-SCOPE-385 V1/V7): who sees the job; a segment names its talent pool and nothing else does."""
+
+    model_config = ConfigDict(extra="forbid")
+    visibility: Literal[JOB_VISIBILITIES]
+    segment_pool_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def _pool_only_for_a_segment(self):
+        if (self.visibility == "segment") != (self.segment_pool_id is not None):
+            raise ValueError("Choose a talent pool for a segment, and only for a segment")
+        return self
 
 
 class JobApprovalSettingsUpdate(BaseModel):
@@ -15600,3 +15615,44 @@ class RemediationPlanPatch(BaseModel):
         if not self.model_fields_set:
             raise ValueError("Nothing to change")
         return self
+
+
+# --- hrc-022 (DEC-SCOPE-384): the external candidate portal ----------------------------------------------------------------------
+_PORTAL_EMAIL = Field(pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$", max_length=255)
+
+
+def _lower_email(value: str) -> str:
+    return value.strip().lower()
+
+
+class CandidatePortalRegistration(BaseModel):
+    """C2. The consent version must be the one the form showed (checked by the route against the service's)."""
+
+    full_name: Annotated[str, AfterValidator(str.strip)] = Field(min_length=2, max_length=160)
+    email: Annotated[str, AfterValidator(_lower_email)] = _PORTAL_EMAIL
+    phone: str | None = Field(default=None, max_length=40)
+    password: str = Field(min_length=10, max_length=128)
+    consent_version: str = Field(max_length=20)
+
+    @field_validator("phone")
+    @classmethod
+    def _blank_phone_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
+
+
+class CandidatePortalToken(BaseModel):
+    token: str = Field(min_length=1, max_length=200)
+
+
+class CandidatePortalResend(BaseModel):
+    email: Annotated[str, AfterValidator(_lower_email)] = _PORTAL_EMAIL
+
+
+class CandidatePortalEmailChange(BaseModel):
+    new_email: Annotated[str, AfterValidator(_lower_email)] = _PORTAL_EMAIL
+    current_password: str = Field(min_length=1, max_length=128)
+
+
+class CandidatePortalConsent(BaseModel):
+    opted_in: StrictBool
+    consent_version: str = Field(max_length=20)

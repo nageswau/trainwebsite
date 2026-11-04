@@ -935,6 +935,12 @@ JOB_CHECKS = {  # migration 0114 repeats these strings; test_rec_007_migration a
     "ck_jobs_salary": "(salary_min IS NULL OR salary_min >= 0) AND (salary_max IS NULL OR salary_max >= 0) AND (salary_min IS NULL OR salary_max IS NULL OR salary_min <= salary_max)",
 }
 JOB_SOURCE_CHECK = f"source IN ({', '.join(repr(v) for v in JOB_SOURCES)})"  # hrc-007; migration 0257 repeats it
+# hrc-008 (DEC-SCOPE-385 V1): who sees an open job -- staff only, the student/candidate portal, one talent pool's members, or everyone.
+# Migration 0262 repeats both checks (test_hrc_008_migration).
+JOB_VISIBILITIES = ("internal", "portal", "segment", "public")
+JOB_VISIBILITY_LABELS = {"internal": "Internal only", "portal": "Candidate portal", "segment": "Segment (talent pool)", "public": "Public website"}
+JOB_VISIBILITY_CHECK = f"visibility IN ({', '.join(repr(v) for v in JOB_VISIBILITIES)})"
+JOB_SEGMENT_POOL_CHECK = "(visibility = 'segment') = (segment_pool_id IS NOT NULL)"
 JOB_FEE_BASES = ("fixed", "percent_of_ctc")  # rec-031 (RV1): the per-requirement fee override, the rec-030 CT4 shape
 JOB_FEE_CHECKS = {  # migration 0147 repeats these strings (test_rec_031_migration)
     "ck_jobs_fee_pair": "(fee_basis IS NULL) = (fee_value IS NULL)",
@@ -960,7 +966,10 @@ class Job(Base, TimestampMixin):
         UniqueConstraint("requirement_code", name="uq_jobs_requirement_code"),
         *(CheckConstraint(sql, name=name) for name, sql in {**JOB_CHECKS, **JOB_FEE_CHECKS, **JOB_PAY_CHECKS}.items()),
         CheckConstraint(JOB_SOURCE_CHECK, name="ck_jobs_source"),
+        CheckConstraint(JOB_VISIBILITY_CHECK, name="ck_jobs_visibility"),
+        CheckConstraint(JOB_SEGMENT_POOL_CHECK, name="ck_jobs_segment_pool"),
         Index("ix_jobs_status", "status"),
+        Index("ix_jobs_status_visibility", "status", "visibility"),  # hrc-008: the public/portal listings
         Index("ix_jobs_assigned_recruiter", "assigned_recruiter_user_id"),
         Index("ix_jobs_closes_on", "closes_on"),
         Index("ix_jobs_company_title_key", "company_id", text(JOB_TITLE_KEY_SQL)),  # hrc-005 V4: the duplicate check
@@ -1012,6 +1021,9 @@ class Job(Base, TimestampMixin):
     hiring_manager_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     expected_joining_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    # hrc-008 (DEC-SCOPE-385 V1/V3): public by default, so no existing listing or create path changes; a segment names its talent pool
+    visibility: Mapped[str] = mapped_column(String(10), default="public", server_default=text("'public'"))
+    segment_pool_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("talent_pools.id", ondelete="RESTRICT"), nullable=True)
     company = relationship("Company")
 
 
@@ -6549,7 +6561,46 @@ class CandidateOwnershipSetting(Base, TimestampMixin):
     updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
-# hrc-016 (DEC-SCOPE-385 T2/T3): candidate notes and tasks. Migration 0262 repeats CANDIDATE_NOTE_TASK_CHECKS (its test asserts identity).
+class CandidateSelfServiceSetting(Base, TimestampMixin):
+    """hrc-022 (DEC-SCOPE-386 C7): one row (`id = 1`) -- the candidate fields an external candidate may edit in the portal. No row means
+    the default (services/candidate_portal.DEFAULT_FIELDS)."""
+
+    __tablename__ = "candidate_self_service_settings"
+    __table_args__ = (CheckConstraint("id = 1", name="ck_candidate_self_service_settings_one_row"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    fields: Mapped[list] = mapped_column(JSON, default=list)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+# hrc-022 (DEC-SCOPE-386 C3): migration 0263 repeats these strings; test_hrc_022_migration asserts they stay identical.
+USER_VERIFICATION_PURPOSES = ("verify_email", "email_change")
+USER_VERIFICATION_CHECKS = {
+    "ck_user_verification_tokens_purpose": f"purpose IN ({', '.join(repr(v) for v in USER_VERIFICATION_PURPOSES)})",
+    "ck_user_verification_tokens_new_email": "(purpose = 'email_change') = (new_email IS NOT NULL)",
+}
+
+
+class UserVerificationToken(Base):
+    """hrc-022 (C3): a single-use, hashed-at-rest link proving control of an email address -- the account's own (`verify_email`) or the
+    address it is changing to (`email_change`, which names it). Never the raw token."""
+
+    __tablename__ = "user_verification_tokens"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in USER_VERIFICATION_CHECKS.items()),
+        Index("ix_user_verification_tokens_user", "user_id", "purpose", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+    purpose: Mapped[str] = mapped_column(String(20))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    new_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# hrc-016 (DEC-SCOPE-387 T2/T3): candidate notes and tasks. Migration 0264 repeats CANDIDATE_NOTE_TASK_CHECKS (its test asserts identity).
 CANDIDATE_NOTE_MAX = 2000
 CANDIDATE_TASK_TYPES = ("follow_up", "resume_screening", "interview_coordination", "employer_feedback")
 CANDIDATE_NOTE_TASK_CHECKS = {

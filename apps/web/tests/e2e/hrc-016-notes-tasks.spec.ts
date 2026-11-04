@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { E2E_PASSWORD, activateWithToken } from "./helpers/welcome";
 
-// hrc-016 (DEC-SCOPE-385): a recruiter writes a private note and hands a teammate a resume-screening task from the candidate page; both
+// hrc-016 (DEC-SCOPE-387): a recruiter writes a private note and hands a teammate a resume-screening task from the candidate page; both
 // show on the timeline (AC3). The teammate finds the task under My tasks (AC2) and marks it done, which the candidate's timeline then shows.
 // The cards fit a phone.
 

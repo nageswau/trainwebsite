@@ -30,6 +30,7 @@ from app.models import (
 )
 from app.services import candidates as candidate_svc
 from app.services import job_descriptions
+from app.services.candidate_portal import DEFAULT_FIELDS
 from tests.rec038_helpers import PDF, R, add, allow, make_candidate, now, tag
 from tests.test_rec_012_resume_extract import SOURCE, _pdf
 
@@ -90,6 +91,8 @@ ROWS = [
     R("get", "/recruiter/requirement-approvals", **allow(200, "hr_mgr", "super")),
     R("get", "/recruiter/requirement-approvals/settings", **allow(200, "hr_mgr", "super")),
     R("put", "/recruiter/requirement-approvals/settings", {"legacy": False}, super=200),
+    # hrc-008 (DEC-SCOPE-385, §2.281): `jobs.publish` (placement managers by default, super_admin), division-wide like `jobs.approve`
+    R("put", "/recruiter/requirements/{requirement}/visibility", {"visibility": "portal"}, **allow(200, "mgr", "mgr_out", "super")),
     # rec-017 a requirement's candidates (§2.62): its readers list, the requirement's editors add
     R("get", "/recruiter/requirements/{requirement}/candidates", **REQ_READ),
     R("post", "/recruiter/requirements/{requirement}/candidates", lambda w: {"candidate_id": w["candidates_spare"]}, **allow(201, "rec", "super"), **OUT),
@@ -135,7 +138,10 @@ ROWS = [
     R("get", "/recruiter/candidates/assignees?kind=recruiter", **allow(200, *WRITERS)),
     R("get", "/recruiter/candidate-ownership-settings", **allow(200, *READERS)),
     R("put", "/recruiter/candidate-ownership-settings", {"shared_ownership": False}, **allow(200, "mgr", "mgr_out", "super")),
-    # hrc-016 (§2.281): notes and tasks follow the candidate rule -- readers read, writers write; My tasks and the picker are writers'
+    # hrc-022 (DEC-SCOPE-386 C7, §2.282): the candidate self-service allow-list -- read like the ownership setting, changed by managers
+    R("get", "/recruiter/candidate-self-service-settings", **allow(200, *READERS)),
+    R("put", "/recruiter/candidate-self-service-settings", {"fields": list(DEFAULT_FIELDS)}, **allow(200, "mgr", "mgr_out", "super")),
+    # hrc-016 (§2.283): notes and tasks follow the candidate rule -- readers read, writers write; My tasks and the picker are writers'
     R("get", "/recruiter/candidates/{candidate}/notes", **allow(200, *READERS)),
     R("post", "/recruiter/candidates/{candidate}/notes", {"body": "Internal note"}, **allow(201, *WRITERS)),
     R("get", "/recruiter/candidates/{candidate}/tasks", **allow(200, *READERS)),

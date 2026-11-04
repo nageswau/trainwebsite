@@ -1,4 +1,4 @@
-// hrc-016 (DEC-SCOPE-385): a candidate's private notes and tasks, and "My tasks" -- types, labels and endpoints. The API decides who reads
+// hrc-016 (DEC-SCOPE-387): a candidate's private notes and tasks, and "My tasks" -- types, labels and endpoints. The API decides who reads
 // and writes (candidate readers / writers) and every rule (future due time, an active assignee, the candidate's own application); the UI
 // only offers what `can_change` allows.
 import { isPage, type Page } from "@/lib/apiErrors";

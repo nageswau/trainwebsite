@@ -2,7 +2,7 @@
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` hrc-016 (PDF §12 "Activity timeline", "Task assignment", "Internal comments";
   PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00). Dependency hrc-012 (`DEC-SCOPE-382`) is merged.
-  Decision `DEC-SCOPE-385`.
+  Decision `DEC-SCOPE-387`.
 - **Open question Q-16** (extend `RecruiterFollowUp` or a new table): the owner said to proceed with the recommended answers, so T1–T12
   below are **the builder's calls (`NEEDS_CONFIRMATION`)**.
 
@@ -59,9 +59,9 @@ Still one paginated `UNION ALL`, two queries. No field names or values beyond th
 
 **T11 — Candidate tasks on the candidate page.** `GET /recruiter/candidates/{id}/tasks` — open first by due, then closed newest first.
 
-**T12 — Numbering.** Migration `0262_candidate_notes_tasks`; API §12KD; RBAC §2.281 (no grant key: the candidate role rule).
+**T12 — Numbering.** Migration `0264_candidate_notes_tasks`; API §12KF; RBAC §2.283 (no grant key: the candidate role rule).
 
-## API (§12KD)
+## API (§12KF)
 - `GET /recruiter/candidates/{id}/notes?limit&offset` → `{items: [{id, body, author: person, created_at}], total, limit, offset}`, newest
   first, `Cache-Control: no-store`; readers.
 - `POST /recruiter/candidates/{id}/notes` `{body}` → 201 note; writers; archived 409.

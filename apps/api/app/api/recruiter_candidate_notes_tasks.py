@@ -1,4 +1,4 @@
-"""hrc-016 (DEC-SCOPE-385, API §12KD): a candidate's private notes and tasks, and the caller's "My tasks".
+"""hrc-016 (DEC-SCOPE-387, API §12KF): a candidate's private notes and tasks, and the caller's "My tasks".
 
 The candidate rule (rec-009 R11): candidate readers read, writers write, on any pool candidate; another role 403. Every write is one
 transaction -- role, the candidate lock (archived 409), the task lock and state, validation, change, audit, one commit here, then the log

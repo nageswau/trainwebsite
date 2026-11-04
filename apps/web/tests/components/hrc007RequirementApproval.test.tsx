@@ -19,7 +19,8 @@ const requirement = (over: Partial<Requirement> = {}) =>
       can_view_candidates: true }, owners: [], description: "Build APIs", // hrc-006: the API's owners and permissions
     department: null, job_category: null, qualification: null, experience_min_months: null, experience_max_months: null, salary_min: null, salary_max: null,
     work_mode: null, shift: null, employment_type: null, joining_requirement: null, skills: [], joined_count: 0, allowed_statuses: [], status_history: [],
-    created_by: null, created_at: "2026-11-01T00:00:00Z", updated_at: "2026-11-04T04:00:00Z", approval: approval(), ...over,
+    created_by: null, created_at: "2026-11-01T00:00:00Z", updated_at: "2026-11-04T04:00:00Z", approval: approval(),
+    visibility: { key: "public", label: "Public website", segment_pool: null, can_change: false }, ...over,
   }) as Requirement;
 const row = (over: Partial<ApprovalRow> = {}) =>
   ({ ...requirement({ status: "pending_approval", status_label: "Pending Approval", source: "employer" }), submitted_by: { id: "e1", full_name: "Emp Loyer" },

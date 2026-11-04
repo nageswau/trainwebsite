@@ -31,8 +31,9 @@ export async function serverApi<T>(path: string, init?: RequestInit): Promise<T>
   return res.json() as Promise<T>;
 }
 
-export async function publicApi<T>(path: string): Promise<T> {
-  const res = await fetch(`${internalBase}${path}`, { next: { revalidate: 60 } });
+/** `fresh` skips the 60 s cache: hrc-008 (QA-01) -- a job made internal must leave the public pages at once, not a minute later. */
+export async function publicApi<T>(path: string, { fresh = false } = {}): Promise<T> {
+  const res = await fetch(`${internalBase}${path}`, fresh ? { cache: "no-store" } : { next: { revalidate: 60 } });
   if (!res.ok) throw new Error(`API ${res.status}`);
   return res.json() as Promise<T>;
 }

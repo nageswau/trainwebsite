@@ -1,4 +1,4 @@
-"""hrc-016 (DEC-SCOPE-385, spec docs/superpowers/specs/2026-11-04-hrc-016-candidate-notes-tasks-timeline-design.md): private candidate
+"""hrc-016 (DEC-SCOPE-387, spec docs/superpowers/specs/2026-11-04-hrc-016-candidate-notes-tasks-timeline-design.md): private candidate
 notes (T2, AC1), assignable candidate tasks (T3-T7), "My tasks" (T8, AC2), the timeline's new kinds (T9, AC3) and merge (T10)."""
 
 import pathlib

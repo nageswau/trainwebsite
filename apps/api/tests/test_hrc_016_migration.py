@@ -1,4 +1,4 @@
-"""hrc-016 -- migration 0262_candidate_notes_tasks (DEC-SCOPE-385): the chain, the frozen checks and the round trip in a throwaway database
+"""hrc-016 -- migration 0264_candidate_notes_tasks (DEC-SCOPE-387): the chain, the frozen checks and the round trip in a throwaway database
 (the hrc-012 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,15 +13,15 @@ from app.core.config import settings
 from app.models import CANDIDATE_NOTE_TASK_CHECKS
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_hrc_016_migration_0262", VERSIONS / "0262_candidate_notes_tasks.py")
+_spec = importlib.util.spec_from_file_location("_hrc_016_migration_0264", VERSIONS / "0264_candidate_notes_tasks.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0262_candidate_notes_tasks", "0261_job_assignments"
+HEAD, BASE = "0264_candidate_notes_tasks", "0263_candidate_portal"
 TABLES = {"candidate_notes", "candidate_tasks"}
 
 
-def test_migration_chains_after_0261():
+def test_migration_chains_after_0263():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

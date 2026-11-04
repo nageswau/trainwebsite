@@ -1,9 +1,9 @@
 """hrc-016 -- candidate notes and candidate tasks.
 
-Revision ID: 0262_candidate_notes_tasks
-Revises: 0261_job_assignments
+Revision ID: 0264_candidate_notes_tasks
+Revises: 0263_candidate_portal
 
-docs/superpowers/specs/2026-11-04-hrc-016-candidate-notes-tasks-timeline-design.md (DEC-SCOPE-385 T1-T3). Additive: no existing row
+docs/superpowers/specs/2026-11-04-hrc-016-candidate-notes-tasks-timeline-design.md (DEC-SCOPE-387 T1-T3). Additive: no existing row
 changes. 0001 builds a fresh database from the current models, which already carry the tables, so they are created only when missing
 (0222's idiom). CHECKS is a frozen copy of the model's CANDIDATE_NOTE_TASK_CHECKS at this revision.
 """
@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0262_candidate_notes_tasks"
-down_revision = "0261_job_assignments"
+revision = "0264_candidate_notes_tasks"
+down_revision = "0263_candidate_portal"
 branch_labels = None
 depends_on = None
 
@@ -81,7 +81,7 @@ def downgrade() -> None:
     """Refuses while notes or tasks exist: they are not dropped silently."""
     recorded = "SELECT 1 FROM candidate_notes UNION ALL SELECT 1 FROM candidate_tasks LIMIT 1"
     if not op.get_context().as_sql and op.get_bind().execute(sa.text(recorded)).first():
-        raise RuntimeError("Cannot downgrade 0262: candidate notes or tasks exist (hrc-016)")
+        raise RuntimeError("Cannot downgrade 0264: candidate notes or tasks exist (hrc-016)")
     op.drop_index("ix_candidate_tasks_assignee_open", table_name="candidate_tasks")
     op.drop_index("ix_candidate_tasks_candidate", table_name="candidate_tasks")
     op.drop_table("candidate_tasks")
