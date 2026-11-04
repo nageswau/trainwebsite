@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { detailMessage } from "@/lib/apiErrors";
-import { formatCalendarDate, formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
+import { formatCalendarDate } from "@/lib/formatDate";
 
 // itc-013 (DEC-SCOPE-346): an IT student's fee account per enrolment -- computed by the API from confirmed payments only, so a pending
 // online payment never lowers the balance. Tax is shown as the API sends it (0 until GST is confirmed, Q-12).
@@ -69,7 +70,7 @@ function AdjustmentList({ currency, items }: { currency: string; items: FeeAdjus
       <ul aria-label="Credits and refunds" className="list-clean" style={{ display: "grid", gap: 8, margin: 0 }}>
         {items.map((a) => (
           <li key={a.id} style={{ fontSize: 13 }}>
-            <span style={{ display: "block" }}>{`${ADJUSTMENT_LABELS[a.kind]} · ${money(currency, a.amount)} · ${formatDate(a.created_at)}`}</span>
+            <span style={{ display: "block" }}>{`${ADJUSTMENT_LABELS[a.kind]} · ${money(currency, a.amount)} · `}<LocalTime value={a.created_at} /></span>
             {a.payment_mode && (
               <span className="muted" style={{ display: "block", overflowWrap: "anywhere" }}>
                 {[MODE_LABELS[a.payment_mode] ?? a.payment_mode, a.reference ? `Ref ${a.reference}` : null].filter(Boolean).join(" · ")}

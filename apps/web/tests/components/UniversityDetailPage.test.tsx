@@ -164,11 +164,12 @@ describe("upc-007 university detail page", () => {
     serve("overseas_admin", true);
     let section = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) })).find((el) => el.type === UniversityCourses)!.props;
     expect(serverApi).toHaveBeenCalledWith(`/api/v1/partnership/universities/${ID}/courses?include_inactive=true&limit=50`);
-    expect(section).toEqual({ universityId: ID, page: courses, options: courseOptions, canSetCommission: false }); // U2: no commission
+    // U2: no university commission; ccrm-051 (DEC-SCOPE-323): the overseas admin edits a course's agent-Master commission.
+    expect(section).toEqual({ universityId: ID, page: courses, options: courseOptions, canSetCommission: false, canEditAgentCommission: true });
     vi.mocked(serverApi).mockReset();
     serve("partnership_manager", false);
     section = elements(await UniversityPage({ params: Promise.resolve({ id: ID }) })).find((el) => el.type === UniversityCourses)!.props;
-    expect(section).toMatchObject({ options: null, canSetCommission: true });
+    expect(section).toMatchObject({ options: null, canSetCommission: true, canEditAgentCommission: false });
     expect(vi.mocked(serverApi).mock.calls.some(([p]) => String(p).includes("course-options"))).toBe(false);
   });
 

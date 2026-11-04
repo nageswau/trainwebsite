@@ -4,7 +4,7 @@ import { E2E_PASSWORD, createAndActivate } from "./helpers/welcome";
 
 // nehn-005 (DEC-SCOPE-281): the permission engine is API-only (the matrix UI is nehn-006). The existing pages keep working on the seed
 // grants, and a grant super_admin changes applies to an open session on its next request. Grants are role-wide, so a test changes them
-// only for a role no other spec relies on (accountant), or for as short a window as the browser check needs (telecaller_manager's
+// only for a role no other spec relies on and that holds no default grant (partner; itc-017 gave the accountant payment grants), or for as short a window as the browser check needs (telecaller_manager's
 // download), and always restores them.
 
 const SUPER = { email: "superadmin@edusphere.local", password: "Demo@123", division: "global" };
@@ -52,7 +52,7 @@ test("Payment Management works on the seed, and a grant change applies to an ope
   await create.getByRole("button", { name: "Create payment due" }).click();
   await expect(create.getByText("User not found")).toBeVisible();
 
-  // The seed: an IT admin holds the payment keys; an accountant holds none.
+  // The seed: an IT admin holds the payment keys; a partner holds none (no default grants).
   await page.request.post("/api/v1/auth/logout");
   await signIn(page, "it", "itadmin@edusphere.local", "Demo@123");
   expect((await (await page.request.get("/api/v1/auth/me/permissions")).json()).permissions).toContain("payments.view");
@@ -62,18 +62,18 @@ test("Payment Management works on the seed, and a grant change applies to an ope
   let email = "";
   await asSuper(page.request, async () => {
     email = (await createAndActivate(page.request, "/api/v1/admin/users", {
-      role: "accountant", division: "global", full_name: `E2E Grant Accountant ${stamp}`, email: `n005-a-${stamp}@example.local`,
+      role: "partner", division: "global", full_name: `E2E Grant Partner ${stamp}`, email: `n005-a-${stamp}@example.local`,
     })).email;
   });
   await signIn(page, "admin", email);
   expect((await page.request.get("/api/v1/admin/payments")).status()).toBe(403);
   const admin = await browser.newContext({ baseURL: test.info().project.use.baseURL });
   try {
-    await setGrants(admin.request, "accountant", ["payments.view"]);
+    await setGrants(admin.request, "partner", ["payments.view"]);
     expect((await page.request.get("/api/v1/admin/payments")).status()).toBe(200);
     expect((await (await page.request.get("/api/v1/auth/me/permissions")).json()).permissions).toEqual(["payments.view"]);
   } finally {
-    await setGrants(admin.request, "accountant", []);
+    await setGrants(admin.request, "partner", []);
     await admin.close();
   }
   const refused = await page.request.get("/api/v1/admin/payments");

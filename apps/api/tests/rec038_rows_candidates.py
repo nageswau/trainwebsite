@@ -110,9 +110,12 @@ ROWS = [
     R("get", "/account/placement-pool", student=200),
     R("post", "/account/placement-pool/opt-in", {"consent_version": "v1"}, student=200),
     R("post", "/account/placement-pool/opt-out", student=200),
+    # hrc-011 (DEC-SCOPE-375) manual exchange rates: candidates.require_reader reads, recruiter.require_manager sets (the rate is global).
+    R("get", "/recruiter/catalogue/exchange-rates", **allow(200, *READERS)),
+    R("put", "/recruiter/catalogue/exchange-rates/{fx_currency}", {"inr_per_unit": "83.25"}, **allow(200, "mgr", "mgr_out", "super")),
 ]
 _POOL: dict[str, UUID] = {}
-PATH_VALUES = {"candidates_version": 1}  # the candidate's first (and only) resume version
+PATH_VALUES = {"candidates_version": 1, "fx_currency": "USD"}  # the candidate's first (and only) resume version; a rate's currency
 
 
 async def build(client, db, w) -> None:

@@ -129,7 +129,9 @@ describe("CounselorWalkInStudents (csc-002)", () => {
     const row = (await screen.findByText("Walk-in 1")).closest("li") as HTMLElement;
     expect(within(row).getByText("Agency")).toBeInTheDocument();
     expect(within(row).getByText("2 applications")).toBeInTheDocument();
-    expect(within(row).getByText(/^Since /)).toBeInTheDocument();
+    // Date sweep: the timestamp renders through <LocalTime> (India time on first render), so "Since" and the date are separate nodes.
+    const since = within(row).getByText((_, el) => el?.tagName === "SPAN" && el.textContent === "Since 01 Oct 2026");
+    expect(since.querySelector("time")).toHaveAttribute("dateTime", "2026-10-01T09:00:00Z");
   });
 
   it("offers Edit and Resend only for a pending student linked to me", async () => {

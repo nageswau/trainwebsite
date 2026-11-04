@@ -5531,3 +5531,17 @@ the record's own GET (requirement: out of scope 404, other roles 403; candidate:
 `Cache-Control: private, no-store`. **Changed audit rows** (shape additive; no field removed): `recruiter_requirement.update|status|assign`
 (incl. rec-037 bulk reassignment, one row per job), `job_description.create|upload`, `candidate.update`, `recruiter_application.status`,
 `recruiter_interview.update|reschedule|status|feedback` add `metadata.changes`. Compensation, contact and feedback text are `"changed"`.
+## 12JV. Recruitment roles and grant keys (hrc-002) — addendum, 2026-11-04
+
+`DEC-SCOPE-374`. No migration. Additive.
+
+- `POST /admin/users`: accepts `role` `hr_manager`, `placement_officer`, `interviewer` with `division` `it` (another division → 422).
+  `hr_manager` by a super_admin only — anyone else → 403 `Only a Super Admin can create HR managers`.
+- `GET /portal/it/hr-manager/dashboard`, `/portal/it/placement-officer/dashboard`, `/portal/it/interviewer/dashboard`: the role's own
+  portal payload (403 for any other role, 404 for any other section). Rows `{job_id, role, company, location, status}` (open requirements;
+  HR Manager and Placement Officer); metrics `Open requirements` (+ `Applications`, `Interviews`, `Offers` for the HR Manager); the
+  Interviewer's payload has no rows or metrics.
+- `GET /admin/permissions/catalogue`: `roles` gains the three roles; `actions` gains `publish`, `export`, `import`, `merge`, `release`;
+  `resources` gains `jobs` (approve, publish), `candidates` (export, import, merge), `results` (release). `PUT
+  /admin/roles/{role}/permissions` accepts the new keys and roles.
+- `GET /auth/me/permissions`: `[]` for the new roles by default.

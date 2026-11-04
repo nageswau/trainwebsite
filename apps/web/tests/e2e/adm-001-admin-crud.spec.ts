@@ -94,7 +94,7 @@ test("IT Admin's Create user form only offers the IT division and IT roles (RAID
   expect(divisionOptions).toEqual(["Select", "it"]);
   // tel-017 (DEC-SCOPE-076): counselors are IT or Overseas.
   // nehn-030 (DEC-SCOPE-293): and the IT coordinator.
-  expect(roleOptions).toEqual(["Select", "it student", "trainer", "placement team", "hr team", "counselor", "coordinator", "it admin"]);
+  expect(roleOptions).toEqual(["Select", "it student", "trainer", "placement team", "hr team", "counselor", "coordinator", "placement officer", "interviewer", "it admin"]); // hrc-002: no hr manager (Super Admin only)
 });
 
 test("Overseas Admin's Create user form only offers the overseas division and overseas roles (RAID.md I-31)", async ({ page }) => {
@@ -126,7 +126,11 @@ test("Super Admin sees every division/role and can create another Super Admin th
   expect(divisionOptions).toEqual(["Select", "it", "overseas", "global"]);
   // bdm-001 (DEC-SCOPE-055 §6.1): the global division also offers BDM managers, who have no profile and use this generic form. tel-001: and telecaller managers.
   // tel-017: `counselor` is listed once, in its IT position.
-  expect(roleOptions).toEqual(["Select", "it student", "trainer", "placement team", "hr team", "counselor", "coordinator", "it admin", "overseas student", "university rep", "agent", "overseas admin", "super admin", "bdm manager", "telecaller manager"]);
+  expect(roleOptions).toEqual([
+    "Select", "it student", "trainer", "placement team", "hr team", "counselor", "coordinator", "placement officer", "interviewer", "it admin", "hr manager", // hrc-002
+    "overseas student", "university rep", "agent", "overseas admin",
+    "super admin", "bdm manager", "telecaller manager", "placement manager", "partnership head", "partner", "accountant", // rec-001, upc-001, mgmt-001
+  ]);
 
   const email = `e2e-second-super-admin-${Date.now()}@example.com`;
   await form.locator('input[name="full_name"]').fill("E2E Second Super Admin");
