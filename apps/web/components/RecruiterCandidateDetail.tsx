@@ -105,6 +105,7 @@ export default function RecruiterCandidateDetail({ initial, merged }: { initial:
     ["Tools", list(candidate.tools)], ["Languages", list(candidate.languages)],
     ["LinkedIn", candidate.linkedin && <a href={candidate.linkedin} target="_blank" rel="noopener noreferrer nofollow" style={{ overflowWrap: "anywhere" }}>{candidate.linkedin}</a>],
     ["Source", `${candidate.source.name}${candidate.source.active ? "" : " (inactive)"}`], ["Source detail", candidate.source_detail],
+    ["Campaign", candidate.utm ? Object.entries(candidate.utm).map(([key, value]) => `${key.replace("utm_", "")}: ${value}`).join(" · ") : null], // hrc-023
     ["Added", <><LocalTime value={candidate.created_at} time />{candidate.created_by ? ` by ${candidate.created_by.full_name}` : ""}</>],
     ["Last updated", <><LocalTime value={candidate.updated_at} time />{candidate.updated_by ? ` by ${candidate.updated_by.full_name}` : ""}</>],
   ];
@@ -149,6 +150,19 @@ export default function RecruiterCandidateDetail({ initial, merged }: { initial:
               </div>
             ))}
           </dl>
+          {/* hrc-023 (W9): public website applications linked to this candidate */}
+          {!!candidate.website_applications?.length && (
+            <div style={{ marginTop: 16 }}>
+              <h4 style={{ margin: "0 0 4px" }}>Website applications</h4>
+              <ul style={{ margin: 0, paddingLeft: 20 }}>
+                {candidate.website_applications.map((a) => (
+                  <li key={a.tracking_code} style={{ overflowWrap: "anywhere" }}>
+                    {a.job_title} · <LocalTime value={a.created_at} /> · <span className="muted">{a.tracking_code}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {(Object.keys(ROW_KINDS) as RowKind[]).map((kind) => (
             <div key={kind} style={{ marginTop: 16 }}>
               <h4 style={{ margin: "0 0 4px" }}>{ROW_KINDS[kind].legend}</h4>

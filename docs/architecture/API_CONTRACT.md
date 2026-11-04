@@ -5749,3 +5749,13 @@ is a 422 "Only a skill in the Skills Master can have a minimum level"; the audit
 The requirement detail's `skills[]` and the matches `criteria.skills[]` carry `min_level`. **Changed (behaviour):** in
 `GET /recruiter/requirements/{id}/matches` a skill with a minimum level counts only for a candidate holding it (or a related skill) at that
 level or above. No level is set by migration 0265, so nothing changes until a writer sets one.
+
+## 12KH. Website registration → candidate create/match (hrc-023) — addendum, 2026-11-04
+
+DEC-SCOPE-389. `POST /api/v1/public/jobs/{job_id}/apply` (public) keeps its body and **201** `{id, tracking_code, status}` and adds
+optional `consent_version` (a version other than the current `candidate-v1` 422), `utm` `{utm_source, utm_medium, utm_campaign,
+utm_term, utm_content}` (other keys dropped, values trimmed to 100) and the honeypot `website` (filled: the same 201, nothing stored).
+Fields over their column length, an invalid email or an unparseable phone 422. More than 10 applications from one client IP in an hour
+**429** with `Retry-After`. The application creates or matches (exact email) a candidate with source "Website"; the answer never says
+which. `POST /api/v1/candidate/register` (§12KE) adds optional `utm`. `GET /api/v1/recruiter/candidates/{id}` adds `utm` and
+`website_applications: [{job_title, tracking_code, status, created_at}]`; the merge preview/result `moved` adds `career_applications`.

@@ -10390,7 +10390,18 @@ class CandidateRef(BaseModel):
     candidate_code: str
 
 
+class CandidateWebsiteApplication(BaseModel):
+    """hrc-023 (DEC-SCOPE-389 W9): one public website job application linked to the candidate -- no cover note, no contact details."""
+
+    job_title: str
+    tracking_code: str
+    status: str
+    created_at: datetime
+
+
 class CandidateDetail(CandidateItem):
+    utm: dict[str, str] | None = None  # hrc-023 W1
+    website_applications: list[CandidateWebsiteApplication] = []  # hrc-023 W9
     mobile: str | None
     email: str | None
     qualification: str | None
@@ -15640,6 +15651,7 @@ class CandidatePortalRegistration(BaseModel):
     phone: str | None = Field(default=None, max_length=40)
     password: str = Field(min_length=10, max_length=128)
     consent_version: str = Field(max_length=20)
+    utm: dict | None = None  # hrc-023 (DEC-SCOPE-389 W1/W2): cleaned to the five standard keys by `website_intake.clean_utm`
 
     @field_validator("phone")
     @classmethod
