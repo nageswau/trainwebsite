@@ -17,6 +17,8 @@ afterEach(() => {
 
 const json = (body: unknown, ok = true, status = 200) => Promise.resolve({ ok, status, json: async () => body });
 const STAFF = "/api/v1/counselor/students/s1/document-requests";
+// A due date the form accepts on any run day: the input's `min` is today in India, so a fixed recent date stops passing once it is past.
+const FUTURE = "2099-11-01";
 const MINE = "/api/v1/overseas/me/document-requests";
 const req = (over: Record<string, unknown> = {}) => ({
   id: "r1", document_type: "Other", document_label: "IELTS scorecard", name: "IELTS scorecard", note: "Academic, 6.5", status: "open", due_date: "2026-11-01",
@@ -47,13 +49,13 @@ describe("CounselorDocumentRequestsPanel", () => {
 
     fireEvent.change(screen.getByLabelText("Document type"), { target: { value: "Other" } });
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "IELTS scorecard" } });
-    fireEvent.change(screen.getByLabelText("Due date"), { target: { value: "2026-11-01" } });
+    fireEvent.change(screen.getByLabelText("Due date"), { target: { value: FUTURE } });
     fireEvent.change(screen.getByLabelText("Application (optional)"), { target: { value: "a1" } });
     fireEvent.change(screen.getByLabelText("Note to the student (optional)"), { target: { value: "Academic, 6.5" } });
     fireEvent.click(screen.getByRole("button", { name: "Send request" }));
     await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) => url === STAFF && init?.method === "POST")).toBe(true));
     const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST")!;
-    expect(JSON.parse(String(post[1]!.body))).toEqual({ document_type: "Other", document_label: "IELTS scorecard", due_date: "2026-11-01", application_id: "a1", note: "Academic, 6.5" });
+    expect(JSON.parse(String(post[1]!.body))).toEqual({ document_type: "Other", document_label: "IELTS scorecard", due_date: FUTURE, application_id: "a1", note: "Academic, 6.5" });
     expect(await screen.findByText("Request sent to the student.")).toBeInTheDocument();
   });
 
@@ -134,11 +136,11 @@ describe("ApplicationChecklistPanel request from student", () => {
     render(<ApplicationChecklistPanel applicationId="a1" onChanged={vi.fn()} />);
     const row = (await screen.findByText("IELTS scorecard")).closest("li") as HTMLElement;
     fireEvent.click(within(row).getByRole("button", { name: "Request from student" }));
-    fireEvent.change(within(row).getByLabelText("Due date for IELTS scorecard"), { target: { value: "2026-11-01" } });
+    fireEvent.change(within(row).getByLabelText("Due date for IELTS scorecard"), { target: { value: FUTURE } });
     fireEvent.click(within(row).getByRole("button", { name: "Send request" }));
     await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) => url === STAFF && init?.method === "POST")).toBe(true));
     const post = fetchMock.mock.calls.find(([url, init]) => url === STAFF && init?.method === "POST")!;
-    expect(JSON.parse(String(post[1]!.body))).toEqual({ due_date: "2026-11-01", application_id: "a1", checklist_item_id: "i2" });
+    expect(JSON.parse(String(post[1]!.body))).toEqual({ due_date: FUTURE, application_id: "a1", checklist_item_id: "i2" });
     const after = (await screen.findByText(/Requested from the student · due/)).closest("li") as HTMLElement;
     expect(within(after).queryByRole("button", { name: "Request from student" })).toBeNull();
   });

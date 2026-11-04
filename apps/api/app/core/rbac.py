@@ -64,6 +64,11 @@ PERMISSIONS: dict[str, set[str]] = {
     "accountant": {"management:finance"},
     # nehn-030 (DEC-ROLE-003, DEC-SCOPE-293): the IT certificate coordinator; it reads certificates through the `certificates.view` grant.
     "coordinator": {"it:certificates:read"},
+    # hrc-002 (DEC-SCOPE-374 R1/R2): the PDF's HR Manager, Placement Officer and internal Interviewer. Least privilege: no catalogue grants
+    # by default and no member of any recruiter/HR role set, so each reads only its own read-only dashboard until later items widen it.
+    "hr_manager": {"it:recruitment:oversight"},
+    "placement_officer": {"it:recruitment:officer"},
+    "interviewer": {"it:recruitment:interviewer"},
 }
 
 
@@ -72,7 +77,11 @@ ROLES: tuple[str, ...] = tuple(PERMISSIONS)
 # nehn-005 (DEC-SCOPE-281): the grant-based permission catalogue -- role x resource x action, held in `role_permissions` and checked by
 # `deps.require_permission`. It lists only resources whose routes are wired (P1); each later module slice adds its own resource. A key
 # is "<resource>.<action>"; anything not listed is denied.
-ACTIONS = ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage", "refund", "merge")  # nehn-031 adds override, configure; hrc-014 merge
+# nehn-031 adds override, configure; hrc-002 (DEC-SCOPE-374 R4) adds the recruitment actions publish, export, import, merge, release.
+ACTIONS = (
+    "view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage", "refund",
+    "publish", "export", "import", "merge", "release",
+)  # fmt: skip
 CATALOGUE: dict[str, dict] = {
     # itc-015 (DEC-SCOPE-364): `refund` -- an IT enrolment's credit notes, write-offs, refunds and payment corrections (migration 0246).
     "payments": {"label": "Payments", "actions": ("view", "add", "refund")},
@@ -96,8 +105,12 @@ CATALOGUE: dict[str, dict] = {
     "student_documents": {"label": "Student documents (allowed types)", "actions": ("view", "download")},
     # hrc-001 (DEC-SCOPE-371 H2): a candidate's current and expected salary -- shown, sent and searched on only with `view`.
     "candidates.compensation": {"label": "Candidate compensation (salary)", "actions": ("view",)},
-    # hrc-014 (DEC-SCOPE-377 D3): the duplicate-review queue and merging one candidate into another.
-    "candidates": {"label": "Candidate duplicates and merge", "actions": ("merge",)},
+    # hrc-002 (DEC-SCOPE-374 R4, AC2): the recruitment actions, declared ahead of their routes so roles can be configured now. No default
+    # holder (super_admin holds all); each owning item adds `require_permission` and its defaults: approve hrc-007, publish hrc-008,
+    # export hrc-020, import hrc-013, merge hrc-014, release hrc-030.
+    "jobs": {"label": "Vacancies (approval and publishing)", "actions": ("approve", "publish")},
+    "candidates": {"label": "Candidates (export, import, merge)", "actions": ("export", "import", "merge")},
+    "results": {"label": "Interview results", "actions": ("release",)},
 }
 # The day-one grants, equal to the inline checks they replace (P3): admin.ensure_admin and telecaller_reports' REPORT_ROLES.
 # super_admin holds every key implicitly and never has rows (P5). Migration 0196 seeds a frozen copy.

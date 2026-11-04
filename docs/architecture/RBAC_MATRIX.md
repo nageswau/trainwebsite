@@ -3715,10 +3715,21 @@ companies, `super_admin`; out of scope 404, other roles 403); a candidate's by t
 `placement_manager`, `hr_team`, `super_admin`; others 403); anonymous 401. Compensation and contact values are never stored, so a reader
 without `candidates.compensation.view` learns only that a salary field changed. Pinned by `apps/api/tests/test_hrc_004_audit_history.py`
 and the rec-038 matrix rows.
+### 2.275 Recruitment roles *(added 2026-11-04 — `DEC-SCOPE-374`, hrc-002)*
 
-### 2.275 Candidate duplicate review and merge *(added 2026-11-04 — `DEC-SCOPE-377`, hrc-014)*
+New IT roles `hr_manager` (created by super_admin only), `placement_officer` and `interviewer` (created by `it_admin` or super_admin).
+None holds a catalogue grant by default or belongs to any recruiter/HR role set, so every `/recruiter/*`, legacy `/workflows/it/*`
+placement, `/hr/*` and other portal route is 403 to them; each opens only its own `/portal/it/{hr-manager|placement-officer|interviewer}`
+dashboard (read-only vacancy facts and counts; nothing for the interviewer). New catalogue keys `jobs.approve`, `jobs.publish`,
+`candidates.export`, `candidates.import`, `candidates.merge`, `results.release`: no default holder (super_admin implicit), grantable
+now, enforced by their owning items. `User.role` decides; an extra `UserRoleAssignment` does not widen access. No branch/department
+scope (Q-04 open). Pinned by `apps/api/tests/test_hrc_002_roles.py` and the rec-038 matrix (`hr_mgr`, `officer`, `interviewer` columns).
 
-New catalogue entry `candidates.merge` (resource `candidates`, new action `merge`), seeded for `placement_manager` (migration 0252);
+
+### 2.276 Candidate duplicate review and merge *(added 2026-11-04 — `DEC-SCOPE-377`, hrc-014)*
+
+First default holder of hrc-002's `candidates.merge` key (§2.275): `placement_manager`, seeded by migration 0252 (hrc-002's `hr_manager` is not a
+candidate-writer role, so it holds no default — `NEEDS_CONFIRMATION`);
 `super_admin` implicitly; a `placement_team` user only through an allow override. Queue, scan, dismiss, preview and merge need the grant
 **and** a candidate-writer role (`placement_team`, `placement_manager`, `super_admin`) — an override never lets `hr_team` write; anonymous
 401. Pinned by `apps/api/tests/test_hrc_014_duplicates.py::test_the_queue_and_merge_need_the_grant_and_a_writer_role` and

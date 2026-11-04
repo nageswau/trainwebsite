@@ -73,15 +73,19 @@ def test_the_catalogue_names_the_pilot_resources_and_known_actions():
         "payments", "discounts", "reports.telecaller", "certificates", "field.financial", "reports.training", "student_access", "reports.placement",
         "student_progress", "attendance", "student_documents",  # nehn-017
         "candidates.compensation",  # hrc-001
-        "candidates",  # hrc-014
+        "jobs", "candidates", "results",  # hrc-002
     }  # nehn-030, nehn-008, nehn-009, nehn-018, nehn-016
     for resource in rbac.CATALOGUE.values():
         assert set(resource["actions"]) <= set(rbac.ACTIONS)
-    assert rbac.ACTIONS == ("view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage", "refund", "merge")  # nehn-031; itc-015; hrc-014
+    assert rbac.ACTIONS == (
+        "view", "add", "edit", "delete", "download", "approve", "review", "issue", "override", "configure", "manage", "refund",  # nehn-031; itc-015
+        "publish", "export", "import", "merge", "release",  # hrc-002
+    )  # fmt: skip
 
 
-def test_roles_are_the_29_existing_roles():
-    assert len(rbac.ROLES) == 29 and "super_admin" in rbac.ROLES and "coordinator" in rbac.ROLES  # nehn-030 added coordinator
+def test_roles_are_the_32_existing_roles():
+    assert len(rbac.ROLES) == 32 and "super_admin" in rbac.ROLES and "coordinator" in rbac.ROLES  # nehn-030 added coordinator
+    assert {"hr_manager", "placement_officer", "interviewer"} <= set(rbac.ROLES)  # hrc-002
 
 
 def test_the_default_grants_reproduce_the_old_inline_sets():

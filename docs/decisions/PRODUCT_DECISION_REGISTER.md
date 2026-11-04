@@ -11398,6 +11398,25 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   B8 creates keep their field-name rows.
 - **Numbering:** no migration; API §12JU; RBAC §2.274.
 - **Feature ID authorized:** `hrc-004`. **Status:** built on `worktree-hrc-004`.
+### DEC-SCOPE-374 — Recruitment roles and configurable permission scope (`hrc-002`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-002` (PDF §3, §15; PDF classified `UNVERIFIED`). Scope approved by the
+  owner 2026-11-01 (backlog Q-00). Dependency `hrc-001` built (`DEC-SCOPE-371`). The owner said to proceed with the recommended answers,
+  so R1–R7 below are **the builder's calls (`NEEDS_CONFIRMATION`)** for Q-01 and Q-04. Design
+  `docs/superpowers/specs/2026-11-04-hrc-002-recruitment-roles-design.md`.
+- **Builder's calls:** R1 (Q-01) three new IT roles: `hr_manager` (a new role, not a relabelled `placement_manager`; created by a
+  super_admin only), `placement_officer` (separate from `placement_team`) and `interviewer` (internal; employers keep the `employer`
+  login), both created by `it_admin` or super_admin; `hr_team` and `placement_manager` unchanged. R2 least privilege: no default grants,
+  no member of any recruiter/HR role set — every recruiter CRM, legacy placement and HR route refuses them. R3 own read-only dashboards
+  under `/it/{hr-manager,placement-officer,interviewer}/dashboard`: the HR Manager sees open requirements and recruitment counts, the
+  Placement Officer the open requirements by Job ID, the Interviewer nothing yet. R4 grant keys `jobs.approve`, `jobs.publish`,
+  `candidates.export`, `candidates.import`, `candidates.merge`, `results.release` (with `candidates.compensation.view` from hrc-001), no
+  default holder, enforced by their owning items (hrc-007/008/020/013/014/030) — a deliberate exception to nehn-005 P1. R5 (Q-04) no
+  branch/department dimension: no branch list exists in evidence; client scope stays the company assignment; AC3 not built. R6 a second
+  `UserRoleAssignment` does not widen recruitment access (`User.role` decides). R7 no migration.
+- **Numbering:** no migration; API §12JV; RBAC §2.275.
+- **Feature ID authorized:** `hrc-002`. **Status:** built on `worktree-hrc-002`.
+
 
 ### DEC-SCOPE-377 — Candidate duplicate review and merge (`hrc-014`)
 
@@ -11407,11 +11426,11 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   `docs/superpowers/specs/2026-11-04-hrc-014-candidate-duplicate-merge-design.md`.
 - **Builder's calls:** D1 probable signals = same name + location + college, or the mobile's last ten digits equal while the stored
   numbers differ; **name + DOB not built (no DOB field)**. D2 detected after create/edit and by a pool-wide scan; a dismissed pair never
-  returns. D3 new grant `candidates.merge` (new action `merge`), default `placement_manager` (HR Manager until hrc-002), recruiters by
-  override; needs a candidate-writer role too. D4 ten profile fields merge (pick or fill-empty); contact and compensation never move. D5 a
+  returns. D3 grant `candidates.merge` (declared by hrc-002 DEC-SCOPE-374 R4), default `placement_manager`; hrc-002's `hr_manager` is not a
+  candidate writer, so it holds no default (`NEEDS_CONFIRMATION`); recruiters by override; needs a candidate-writer role too. D4 ten profile fields merge (pick or fill-empty); contact and compensation never move. D5 a
   victim with a student login is refused (merge the other way); two logins cannot merge. D6 same requirement: an open victim application
   blocks (409), a closed one stays on the archived victim. D7 applications (student_id follows), their share items, calls, messages,
   consents, missing skills and every resume (renumbered by upload time) move. D8 victim archived with `merged_into_id`, never restored.
   D9 the victim's open queue rows close as merged; the survivor is re-checked. D10 `candidate.merge` + `candidate.merged_into` audits.
-- **Numbering:** migration `0252_candidate_duplicates`; API §12JV; RBAC §2.275.
+- **Numbering:** migration `0252_candidate_duplicates`; API §12JW; RBAC §2.276.
 - **Feature ID authorized:** `hrc-014`. **Status:** built on `worktree-hrc-014`.

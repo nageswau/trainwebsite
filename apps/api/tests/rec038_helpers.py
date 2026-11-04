@@ -29,7 +29,9 @@ __all__ = ["PDF", "ROLES", "R", "Row", "add", "allow", "core", "headers", "make_
 
 # Who calls (RM2). `rec` owns the world's records and reports to `mgr`; `rec_out` / `mgr_out` are the same roles on another team; `bdm` is
 # the company's assigned BDM (R10) and `bdm_out` any other BDM; `employer` is the company's employer user; `student` an opted-in IT student.
-ROLES = ("rec", "rec_out", "mgr", "mgr_out", "super", "it_admin", "ovs_admin", "hr", "bdm", "bdm_out", "employer", "student", "anon")
+# hrc-002 (DEC-SCOPE-374 R2): the HR Manager, Placement Officer and Interviewer hold no recruiter route yet -- every cell refuses them.
+ROLES = ("rec", "rec_out", "mgr", "mgr_out", "super", "it_admin", "ovs_admin", "hr", "bdm", "bdm_out", "employer", "student", "hr_mgr", "officer",
+         "interviewer", "anon")  # fmt: skip
 PDF = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
 
 
@@ -112,6 +114,7 @@ async def core(client, db) -> dict:
         "rec": rec, "rec2": rec2, "rec_out": rec_out, "mgr": mgr, "mgr_out": mgr_out, "super": await _user(db, "super_admin", "global"),
         "it_admin": await _user(db, "it_admin", "it"), "ovs_admin": await _user(db, "overseas_admin", "overseas"), "hr": await _user(db, "hr_team", "it"),
         "bdm": bdm, "bdm_out": bdm_out, "employer": await _user(db, "employer", "it"), "student": await _user(db, "it_student", "it"),
+        "hr_mgr": await _user(db, "hr_manager", "it"), "officer": await _user(db, "placement_officer", "it"), "interviewer": await _user(db, "interviewer", "it"),
     }  # fmt: skip
     company = await add(db, Company(name=f"R38 Co {tag()}", assigned_recruiter_user_id=rec.id, assigned_bdm_user_id=bdm.id, created_by_user_id=rec.id))
     await add(db, EmployerProfile(user_id=users["employer"].id, company_id=company.id, registration_status=None))

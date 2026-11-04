@@ -45,6 +45,10 @@ export const ROLE_DASHBOARD_PATH: Record<string, string> = {
   placement_manager: "/recruiter/manager/team",
   hr_team: "/it/hr/dashboard",
   coordinator: "/it/coordinator/dashboard", // nehn-030 (DEC-SCOPE-293)
+  // hrc-002 (DEC-SCOPE-374 R3): the recruitment roles' own read-only dashboards.
+  hr_manager: "/it/hr-manager/dashboard",
+  placement_officer: "/it/placement-officer/dashboard",
+  interviewer: "/it/interviewer/dashboard",
   employer: "/it/employer/dashboard",
   it_admin: "/it/admin/dashboard",
   overseas_student: "/overseas/student/dashboard",
@@ -287,6 +291,8 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
   "it/hr": withResources(withTasks([...["dashboard","job-requirements","shortlists","candidates","interviews","students","reports"].map(x=>({label:x.replaceAll("-"," ").replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/hr/${x}`})),{label:"Review Queue",href:"/it/hr/queue"}/* itc-027 */,{label:"Report library",href:"/it/hr/report-library"},{label:"Candidate Master",href:"/recruiter/candidates"},{label:"Find Candidates",href:"/recruiter/find-candidates"},{label:"Talent Pools",href:"/recruiter/pools"}])), // rec-009 / rec-013 / rec-015: read only
   // nehn-030 (DEC-SCOPE-293 C3): the IT coordinator's certificate portal.
   "it/coordinator": withResources(withTasks(["dashboard","certificates"].map(x=>({label:x.replace(/\b\w/g,c=>c.toUpperCase()),href:`/it/coordinator/${x}`})))),
+  // hrc-002 (DEC-SCOPE-374 R3): one dashboard each until later items (hrc-006/007/029) give these roles work.
+  ...Object.fromEntries(["hr-manager","placement-officer","interviewer"].map(x=>[`it/${x}`,[{label:"Dashboard",href:`/it/${x}/dashboard`}]])),
   // bdm-001: "BDMs" is written out -- the generated label would read "Bdms".
   // tel-017 (DEC-SCOPE-076 C1): an IT counselor works leads only; tel-016 added Appointments (lead bookings), tel-018 the student link,
   // itc-003 (DEC-SCOPE-337) Students (the IT students linked to the counselor).

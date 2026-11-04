@@ -7,7 +7,7 @@ Revises: 0251_candidate_compensation
 docs/superpowers/specs/2026-11-04-hrc-014-candidate-duplicate-merge-design.md (DEC-SCOPE-377). Nullable columns and one new table; 0001
 builds a fresh database from the current models, which already carry them, so each step runs only when missing (0251's idiom). No backfill:
 existing pairs are found by the queue's "Check the whole pool" scan. The checks and SEED are frozen copies of the model / `rbac` at this
-revision. The downgrade drops the table, the columns and the grant (with its overrides); no candidate data changes.
+revision. The downgrade drops the table, the columns and the `candidates.merge` grant rows (with their overrides); no candidate data changes.
 """
 
 import sqlalchemy as sa
@@ -77,8 +77,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("DELETE FROM user_permission_overrides WHERE resource = 'candidates'")
-    op.execute("DELETE FROM role_permissions WHERE resource = 'candidates'")
+    # only `merge`: hrc-002 declared the same resource's export/import keys, which other items own
+    op.execute("DELETE FROM user_permission_overrides WHERE resource = 'candidates' AND action = 'merge'")
+    op.execute("DELETE FROM role_permissions WHERE resource = 'candidates' AND action = 'merge'")
     op.drop_table("candidate_duplicates")
     for name in MERGE_CHECKS:
         op.drop_constraint(name, "candidates", type_="check")

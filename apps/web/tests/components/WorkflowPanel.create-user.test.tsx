@@ -96,4 +96,20 @@ describe("WorkflowPanel Create user roles (tel-017)", () => {
     await waitFor(() => expect(screen.getByRole("heading", { name: "Create user" })).toBeInTheDocument());
     expect(roleValues().filter((v) => v === "counselor")).toHaveLength(1);
   });
+
+  // hrc-002 (DEC-SCOPE-374 R1, browser QA-01): the IT admin creates officers and interviewers; only the Super Admin an HR manager.
+  it("offers the IT admin the Placement Officer and Interviewer but not the HR Manager", async () => {
+    stubFetch(json({}, 201));
+    render(<WorkflowPanel user={itAdmin} section="users" />);
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Create user" })).toBeInTheDocument());
+    expect(roleValues()).toEqual(expect.arrayContaining(["placement_officer", "interviewer"]));
+    expect(roleValues()).not.toContain("hr_manager");
+  });
+
+  it("offers the Super Admin all three recruitment roles", async () => {
+    stubFetch(json({}, 201));
+    render(<WorkflowPanel user={{ ...itAdmin, role: "super_admin", division: "global" } as User} section="users" />);
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Create user" })).toBeInTheDocument());
+    expect(roleValues()).toEqual(expect.arrayContaining(["hr_manager", "placement_officer", "interviewer"]));
+  });
 });

@@ -22,8 +22,8 @@ Non-goals: fuzzy/phonetic name matching, automatic merging, un-merge, merging st
 - **D2 When detected.** After a candidate is created or edited (name, location, college or mobile changed), and on demand by a pool-wide
   "Check the whole pool" scan (finds pairs that existed before hrc-014). Only active (not archived), in-pool candidates pair up. A pair is
   stored once (`candidate_id < other_id`); a dismissed pair is never re-queued.
-- **D3 Grant.** New catalogue entry `candidates.merge` (resource `candidates`, new action `merge`). Default holder `placement_manager`
-  (the HR Manager until hrc-002); super_admin implicitly; a recruiter only through a per-user override ("authorised recruiters"). The
+- **D3 Grant.** `candidates.merge` (the key hrc-002 declared with no holder). Default holder `placement_manager`; hrc-002's
+  `hr_manager` is not a candidate-writer role, so it gets no default (`NEEDS_CONFIRMATION`); super_admin implicitly; a recruiter only through a per-user override ("authorised recruiters"). The
   queue, scan, dismiss, preview and merge all need the grant **and** a candidate-writer role.
 - **D4 Fields.** The merge form compares name, location, qualification, college, passing year, experience, current company, notice
   period, preferred role and LinkedIn. Each survivor field keeps its value unless the user picks the victim's; empty survivor fields fill
@@ -54,7 +54,7 @@ Non-goals: fuzzy/phonetic name matching, automatic merging, un-merge, merging st
 - Seed `candidates.merge` for `placement_manager` (frozen copy, `ON CONFLICT DO NOTHING`); downgrade removes the grant, overrides,
   table and columns.
 
-## API (§12JV)
+## API (§12JW)
 
 - `GET /recruiter/candidate-duplicates?status=open|dismissed|merged&limit&offset` — pairs, oldest first, both sides
   (id, code, name, location, college, status, archived), signals, decision. Pairs with an archived or out-of-pool side are hidden while open.
