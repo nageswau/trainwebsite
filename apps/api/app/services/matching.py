@@ -54,12 +54,30 @@ async def _related(db: AsyncSession, skill_ids: set[UUID]) -> dict[UUID, set[UUI
     return out
 
 
+def _place(job: Job) -> str:
+    """M1/Q-14: the location matching scores -- none for a remote job."""
+    return (job.location or "").strip() if job.work_mode != "remote" else ""
+
+
+async def eligibility(db: AsyncSession, job: Job) -> tuple:
+    """hrc-009 (DEC-SCOPE-390 R1): what decides who fits -- the required skills, the experience range, the qualification and the matched
+    location, case-insensitive. Two equal snapshots = no eligibility change (preferred skills and weights only rank)."""
+    required = await db.scalars(select(JobSkill.name).where(JobSkill.job_id == job.id, JobSkill.kind == "required"))
+    return (
+        frozenset(name.strip().lower() for name in required.all()),
+        job.experience_min_months,
+        job.experience_max_months,
+        (job.qualification or "").strip().lower(),
+        _place(job).lower(),
+    )
+
+
 async def plan(db: AsyncSession, job: Job) -> dict:
     """The criteria (what the page shows) and the scored items (key, label, kind, points, flag). No Skills-Master skill = no items."""
     skills = (await db.scalars(select(JobSkill).where(JobSkill.job_id == job.id).order_by(JobSkill.kind.desc(), JobSkill.position))).all()
     has_experience = job.experience_min_months is not None or job.experience_max_months is not None
-    place = (job.location or "").strip()
-    has_location = job.work_mode != "remote" and bool(place)
+    place = _place(job)
+    has_location = bool(place)
     skill_points, exp_points, loc_points = allocate([s.weight if s.skill_id else 0 for s in skills], experience=has_experience, location=has_location)
     criteria = {
         "skills": [

@@ -1181,6 +1181,7 @@ class JobApplication(Base, TimestampMixin):
         Index("ix_job_applications_job_status", "job_id", "status"),
         Index("ix_job_applications_candidate", "candidate_id"),
         Index("ix_job_applications_drive", "drive_id"),
+        Index("ix_job_applications_needs_review", "job_id", postgresql_where=text("needs_review_since IS NOT NULL")),  # hrc-009
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id"), index=True)
@@ -1192,6 +1193,9 @@ class JobApplication(Base, TimestampMixin):
     added_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     # rec-029 (DR3): the one campus drive the candidate came through, set when added through it and never changed.
     drive_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruitment_drives.id", ondelete="RESTRICT"), nullable=True)
+    # hrc-009 (DEC-SCOPE-390 R3/R4): set when the requirement's eligibility changed while the application was open; cleared by a status
+    # move or a confirmed review. NULL = nothing to review.
+    needs_review_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class JobApplicationStatusHistory(Base):

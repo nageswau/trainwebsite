@@ -3794,3 +3794,10 @@ Notes and tasks follow the candidate rule (§2.45, R11): candidate readers (`pla
 and the assignee picker are the writers'. Every other role — `placement_officer`, `hr_manager`, `employer`, `candidate`, `it_student` —
 is 403, anonymous 401. Notes are internal: no candidate, student, employer, portal or public response carries them. No grant key is
 added. Pinned by `apps/api/tests/test_hrc_016_notes_tasks.py` and the rec-038 matrix rows.
+
+### 2.286 Eligibility-change review *(added 2026-11-04 — `DEC-SCOPE-390`, hrc-009)*
+
+The review list and the `needs_review_count` follow the requirement's candidates list (§2.62): the requirement's recruiter, their manager,
+`super_admin` and the assigned BDM read; out of scope 404. Confirming a review is the status-move gate (`applications.WRITERS`: the
+requirement's recruiter and `super_admin`); the manager and the BDM 403, other roles 403, anonymous 401. The notice goes only to the
+vacancy's owners (hrc-006). No grant key is added. Pinned by `apps/api/tests/test_hrc_009_review.py` and the rec-038 matrix row.

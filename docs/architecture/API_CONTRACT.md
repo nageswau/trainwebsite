@@ -5737,3 +5737,18 @@ Another role 403, anonymous 401, a candidate outside the pool 404.
   `merged_into`, to_value = changed-field count, subject = the other candidate's code on a merge) and `screening` (to_value / to_label =
   result, subject = requirement, context = company). Additive.
 - `POST /recruiter/candidates/{id}/merge` (hrc-014): `moved` gains `notes` and `tasks`.
+
+## 12KJ. Eligibility-change review (hrc-009) — addendum, 2026-11-04
+
+DEC-SCOPE-390. Additive; every route keeps rec-017's requirement scope (out of scope = 404) and writer gate.
+- `GET /api/v1/recruiter/requirements/{id}/candidates?needs_review=true` → the review list (flagged applications only). Every response
+  of this route gains `needs_review_count` (the requirement's flagged applications, whatever the filter).
+- Every application item (`/candidates` list, `/applications/{id}/status`, `/screening`, `/confirm-review`) gains `needs_review_since`
+  (ISO time or null).
+- `POST /api/v1/recruiter/applications/{id}/confirm-review` (no body) → `{application}` with `needs_review_since: null`, status unchanged;
+  writers (`placement_team` on the requirement, `super_admin`); manager/BDM 403; not flagged 409 "This application does not need a
+  review". Audit `recruiter_application.review_confirmed` (status and the flag's time).
+- `PATCH /recruiter/requirements/{id}`, `PATCH /employer/jobs/{id}`, `PATCH /workflows/it/jobs/{id}`: an eligibility change (required
+  skills, experience range, qualification, matched location) flags the job's open applications and sends `it.requirement.review_needed`
+  ("Applications to review: N. …", link `/recruiter/requirements/{id}`) to its owners but the editor. Responses unchanged.
+- Any application status move clears `needs_review_since`.

@@ -69,6 +69,7 @@ def _record(db: AsyncSession, actor: User | None, application: JobApplication, t
     db.add(JobApplicationStatusHistory(application_id=application.id, from_status=previous, to_status=target, note=note, changed_by_user_id=actor.id if actor else None))
     application.status = target
     application.stage_changed_at = datetime.now(UTC)
+    application.needs_review_since = None  # hrc-009 (R4): a move answers an eligibility review
     return previous
 
 
@@ -223,6 +224,7 @@ def item_out(user: User, application: JobApplication, candidate: Candidate, scre
         "created_at": application.created_at,
         "allowed_statuses": allowed(application) if can_write(user) else [],
         "screening_result": screening_result,
+        "needs_review_since": application.needs_review_since,  # hrc-009 (R8)
     }
 
 
