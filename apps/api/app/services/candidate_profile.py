@@ -19,14 +19,9 @@ FIELDS = {
     "employment": ("employer", "designation", "industry", "employment_type", "start_date", "end_date"),
     "certifications": ("name", "issuer", "issued_on", "expires_on", "credential_id"),
 }
-# P5: the legacy fields each row kind (or the structured location / role list) sets; the audit diff compares them too.
-MIRRORS = {
-    "education": ("qualification", "college", "passing_year"),
-    "employment": ("experience_months", "current_company"),
-    "location": ("location",),
-    "roles": ("preferred_role", "preferred_roles"),
-}
-DERIVED = tuple(field for fields in MIRRORS.values() for field in fields)
+# P5: the legacy fields a row kind sets (cleared with it), and every field `sync` may move -- the audit diff compares those too.
+MIRRORS = {"education": ("qualification", "college", "passing_year"), "employment": ("experience_months", "current_company")}
+DERIVED = (*MIRRORS["education"], *MIRRORS["employment"], "location", "preferred_role", "preferred_roles")
 PLACE = ("city", "state", "country")
 DAYS_PER_MONTH = Decimal("365.25") / 12
 
@@ -69,7 +64,7 @@ def _cleared(kind: str, stored_before: dict, stored: dict, sent: set) -> bool:
     return kind in sent and stored_before[kind] and not stored[kind]
 
 
-def sync(candidate: Candidate, stored: dict, sent: set, stored_before: dict | None = None, today: date | None = None) -> None:
+def sync(candidate: Candidate, stored: dict, sent: set, stored_before: dict | None = None) -> None:
     """P4/P5: the mirrors follow their rows. With no rows, a legacy key keeps the value the request (or an old client) set."""
     stored_before = stored_before or stored
     if first := next(iter(stored["education"]), None):
@@ -79,7 +74,7 @@ def sync(candidate: Candidate, stored: dict, sent: set, stored_before: dict | No
             if field not in sent:
                 setattr(candidate, field, None)
     if jobs := stored["employment"]:
-        candidate.experience_months = experience_months([(j["start_date"], j["end_date"]) for j in jobs], today or datetime.now(UTC).date())
+        candidate.experience_months = experience_months([(j["start_date"], j["end_date"]) for j in jobs], datetime.now(UTC).date())
         candidate.current_company = next((j["employer"] for j in jobs if j["end_date"] is None), None)
     elif _cleared("employment", stored_before, stored, sent):
         for field in MIRRORS["employment"]:

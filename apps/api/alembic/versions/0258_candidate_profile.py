@@ -47,7 +47,7 @@ def _columns() -> list[sa.Column]:
     ]
 
 
-def _row(name: str, *columns: sa.Column, checks: dict[str, str] = {}) -> None:  # noqa: B006 -- read only
+def _row(name: str, checks: dict[str, str], *columns: sa.Column) -> None:
     op.create_table(
         name,
         sa.Column("id", sa.Uuid(), primary_key=True),
@@ -76,12 +76,12 @@ def upgrade() -> None:
     if "candidate_education" not in tables:
         _row(
             "candidate_education",
+            {"ck_candidate_education_year": "year IS NULL OR year BETWEEN 1950 AND 2100"},
             sa.Column("degree", sa.String(120), nullable=True),
             sa.Column("specialisation", sa.String(120), nullable=True),
             sa.Column("institution", sa.String(200), nullable=True),
             sa.Column("year", sa.SmallInteger(), nullable=True),
             sa.Column("grade", sa.String(20), nullable=True),
-            checks={"ck_candidate_education_year": "year IS NULL OR year BETWEEN 1950 AND 2100"},
         )
         # P11: the legacy single fields become education row 1.
         op.execute(
@@ -92,23 +92,23 @@ def upgrade() -> None:
     if "candidate_employment" not in tables:
         _row(
             "candidate_employment",
+            EMPLOYMENT_CHECKS,
             sa.Column("employer", sa.String(200), nullable=False),
             sa.Column("designation", sa.String(120), nullable=True),
             sa.Column("industry", sa.String(120), nullable=True),
             sa.Column("employment_type", sa.String(16), nullable=True),
             sa.Column("start_date", sa.Date(), nullable=False),
             sa.Column("end_date", sa.Date(), nullable=True),
-            checks=EMPLOYMENT_CHECKS,
         )
     if "candidate_certifications" not in tables:
         _row(
             "candidate_certifications",
+            CERTIFICATION_CHECKS,
             sa.Column("name", sa.String(200), nullable=False),
             sa.Column("issuer", sa.String(200), nullable=True),
             sa.Column("issued_on", sa.Date(), nullable=True),
             sa.Column("expires_on", sa.Date(), nullable=True),
             sa.Column("credential_id", sa.String(100), nullable=True),
-            checks=CERTIFICATION_CHECKS,
         )
     op.execute("UPDATE candidates SET preferred_roles = json_build_array(preferred_role) WHERE preferred_role IS NOT NULL AND preferred_roles::text = '[]'")
 
