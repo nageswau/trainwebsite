@@ -819,6 +819,10 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** large. **Risk:** high.
 
 #### hrc-024: Candidate routing rules and unassigned queue
+- **Status (2026-11-04):** built — `DEC-SCOPE-393` (R1–R12 are the builder's recommended calls, `NEEDS_CONFIRMATION`: routing order
+  default → source → skill category → location, branch not built because no branch exists on candidates or recruiters; only
+  website-created candidates are routed; the queue and manual assignment reuse hrc-012); design
+  `docs/superpowers/specs/2026-11-04-hrc-024-candidate-routing-design.md`; migration `0270`.
 - **Business requirement:** §6.1 steps 6–8; §6.2 "default recruiter"; §13 "No recruiter assigned → exception queue + alert HR Manager".
 - **Existing behavior:** no candidate routing. Round-robin exists for telecaller leads (`lead_distribution.py`).
 - **Expected behavior:**

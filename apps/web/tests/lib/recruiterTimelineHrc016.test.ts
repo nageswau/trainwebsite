@@ -27,6 +27,9 @@ describe("recruiterTimeline (hrc-016 T9)", () => {
       .toMatchObject({ title: "Placement officer: Ravi → None", meta: [] });
     expect(timelineEntry(row({ kind: "assignment", event: "collaborator_added", to_label: "Meera" })).title).toBe("Collaborator added: Meera");
     expect(timelineEntry(row({ kind: "assignment", event: "collaborator_removed", from_label: "Meera" })).title).toBe("Collaborator removed: Meera");
+    // hrc-024 (R8): a routed website candidate -- no actor (the system)
+    expect(timelineEntry(row({ kind: "assignment", event: "owner", from_label: "", to_label: "Asha", status: "route", actor: null })))
+      .toMatchObject({ title: "Primary recruiter: None → Asha", meta: ["Automatic routing"] });
   });
 
   it("reads profile changes", () => {

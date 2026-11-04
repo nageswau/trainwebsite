@@ -5809,6 +5809,22 @@ qualification?, location?, salary?: bool}`; omitted = unchanged; an unknown key 
 **Changed (behaviour):** scores use the six weighted factors (rec-016's fixed experience and location points are gone), and an enabled
 hard filter excludes candidates who miss it or have not recorded the value.
 
+## 12KL. Candidate routing rules and unassigned queue (hrc-024) — addendum, 2026-11-04
+
+`DEC-SCOPE-393`. **New** (placement managers and super_admin; every other role 403 "Only a placement manager can see or change candidate
+routing", anonymous 401): `GET /api/v1/recruiter/candidate-routing` → `{"default_recruiter": {id, full_name, active} | null, "strategy":
+"round_robin" | "least_workload", "rules": [{id, kind: "source" | "skill_category" | "location", value_id, value_label, recruiter: {id,
+full_name, active}, created_at}], "can_edit": true}` — rules in routing order (source, skill category, location; oldest first).
+`PUT /api/v1/recruiter/candidate-routing` `{"default_recruiter_user_id": uuid | null, "strategy": …}` (both required) → the same body; a
+default that is not an active recruiter is 422 "Choose an active recruiter"; audit `candidate.routing_settings`.
+`POST /api/v1/recruiter/candidate-routing/rules` `{"kind", "source_id" | "skill_category_id" | "location" (≤ 80, trimmed),
+"recruiter_user_id"}` → 201 one rule; the kind's value missing or unknown is 422 ("Choose a candidate source", "Choose a skill category",
+"Enter a location"), the other kinds' values are ignored, an inactive or non-recruiter is 422, the same kind/value/recruiter again is 409
+"This recruiter already has this rule"; audit `candidate.routing_rule_add`. `DELETE /api/v1/recruiter/candidate-routing/rules/{id}` → 204
+(404 "Routing rule not found"); audit `candidate.routing_rule_delete`. **Reused:** the queue is `GET /recruiter/candidates?owner=unassigned`
+and assignment is `PUT /recruiter/candidates/{id}/ownership` (§12KA). **Changed (behaviour):** `POST /public/jobs/{id}/apply` and the
+candidate portal's email verification route a candidate they create (no response change); the candidate timeline's `assignment` rows may
+have `status: "route"` and no actor. New notification event `it.candidate.unassigned` ("Candidate needs a recruiter").
 ## 12KM. Application record completion (hrc-026) — addendum, 2026-11-04
 
 `DEC-SCOPE-394`. **Changed (additive):** `GET /api/v1/recruiter/requirements/{id}/candidates` items, and the `application` in every

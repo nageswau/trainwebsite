@@ -2,7 +2,7 @@
 stage and a rejection reason; the status history keeps the reason.
 
 Revision ID: 0271_application_record
-Revises: 0269_match_engine
+Revises: 0270_candidate_routing
 
 docs/superpowers/specs/2026-11-04-hrc-026-application-record-design.md (DEC-SCOPE-394 A1/A4-A7/A9). 0001 builds a fresh database from the
 current models, which already carry these columns, so every step is guarded (0133's idiom). The backfill numbers existing applications in
@@ -18,7 +18,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0271_application_record"
-down_revision = "0269_match_engine"
+down_revision = "0270_candidate_routing"  # drafted on 0269_match_engine; hrc-024 merged 0270 first
 branch_labels = None
 depends_on = None
 

@@ -6603,7 +6603,7 @@ class CandidateCertification(Base):
 
 # hrc-012 (DEC-SCOPE-382 O4/O6): collaborators and the append-only assignment history. Migration 0259 repeats the checks.
 CANDIDATE_ASSIGNMENT_KINDS = ("owner", "placement_officer", "collaborator_added", "collaborator_removed")
-CANDIDATE_ASSIGNMENT_REASONS = ("create", "assign", "reassign")
+CANDIDATE_ASSIGNMENT_REASONS = ("create", "assign", "reassign", "route")  # hrc-024 (DEC-SCOPE-393 R8): `route`, migration 0270
 
 
 class CandidateCollaborator(Base):
@@ -6620,12 +6620,13 @@ class CandidateCollaborator(Base):
 
 
 class CandidateAssignmentHistory(Base):
-    """hrc-012 (O6, AC3): one row per ownership change; `from_user_id` NULL = nobody before, `to_user_id` NULL = cleared/removed."""
+    """hrc-012 (O6, AC3): one row per ownership change; `from_user_id` NULL = nobody before, `to_user_id` NULL = cleared/removed.
+    hrc-024 (R8): `changed_by_user_id` NULL = the system (reason `route`)."""
 
     __tablename__ = "candidate_assignment_history"
     __table_args__ = (
         CheckConstraint("kind IN ('owner', 'placement_officer', 'collaborator_added', 'collaborator_removed')", name="ck_candidate_assignment_history_kind"),
-        CheckConstraint("reason IN ('create', 'assign', 'reassign')", name="ck_candidate_assignment_history_reason"),
+        CheckConstraint(f"reason IN ({', '.join(repr(r) for r in CANDIDATE_ASSIGNMENT_REASONS)})", name="ck_candidate_assignment_history_reason"),
         Index("ix_candidate_assignment_history_candidate", "candidate_id", "created_at"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -6633,9 +6634,62 @@ class CandidateAssignmentHistory(Base):
     kind: Mapped[str] = mapped_column(String(24))
     from_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     to_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    changed_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    changed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     reason: Mapped[str] = mapped_column(String(10))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# hrc-024 (DEC-SCOPE-393, migration 0270): candidate routing -- rules by kind, one settings row and a round-robin cursor per rule group.
+CANDIDATE_ROUTING_KINDS = ("source", "skill_category", "location")  # R1: the routing order
+CANDIDATE_ROUTING_STRATEGIES = ("round_robin", "least_workload")
+CANDIDATE_ROUTING_RULE_CHECKS = {
+    "ck_candidate_routing_rules_kind": f"kind IN ({', '.join(repr(k) for k in CANDIDATE_ROUTING_KINDS)})",
+    "ck_candidate_routing_rules_value": (
+        "(kind = 'source') = (source_id IS NOT NULL) AND (kind = 'skill_category') = (skill_category_id IS NOT NULL)"
+        " AND (kind = 'location') = (location IS NOT NULL)"
+    ),
+}
+CANDIDATE_ROUTING_RULE_VALUE = "coalesce(source_id::text, skill_category_id::text, lower(location))"
+
+
+class CandidateRoutingRule(Base, TimestampMixin):
+    """hrc-024 (R2): a candidate whose source, skill category or location is the rule's value goes to its recruiter. Rules on one
+    (kind, value) form a group the strategy picks from. A rule is added or deleted, never edited."""
+
+    __tablename__ = "candidate_routing_rules"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_ROUTING_RULE_CHECKS.items()),
+        Index("uq_candidate_routing_rules_rule", "kind", text(CANDIDATE_ROUTING_RULE_VALUE), "recruiter_user_id", unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    kind: Mapped[str] = mapped_column(String(16))
+    source_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_candidate_sources.id"), nullable=True)
+    skill_category_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("skill_categories.id"), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    recruiter_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class CandidateRoutingSetting(Base, TimestampMixin):
+    """hrc-024 (R4/R6): the one settings row (id 1); no row = round robin and no default recruiter."""
+
+    __tablename__ = "candidate_routing_settings"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_candidate_routing_settings_one_row"),
+        CheckConstraint(f"strategy IN ({', '.join(repr(s) for s in CANDIDATE_ROUTING_STRATEGIES)})", name="ck_candidate_routing_settings_strategy"),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    default_recruiter_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    strategy: Mapped[str] = mapped_column(String(16), default="round_robin", server_default=text("'round_robin'"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class CandidateRoutingCursor(Base):
+    """hrc-024 (R6/R12): the last recruiter a rule group gave a candidate to; locked FOR UPDATE so concurrent intakes take turns."""
+
+    __tablename__ = "candidate_routing_cursors"
+    group_key: Mapped[str] = mapped_column(String(120), primary_key=True)
+    last_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
 class CandidateOwnershipSetting(Base, TimestampMixin):
