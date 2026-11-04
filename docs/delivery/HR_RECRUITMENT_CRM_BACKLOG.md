@@ -441,6 +441,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** medium.
 
 #### hrc-012: Candidate ownership (primary recruiter, placement officer, collaborators)
+- **Status (2026-11-04):** built — `DEC-SCOPE-382` (Q-11 answered by the builder's recommended call, pool-wide visibility,
+  `NEEDS_CONFIRMATION`; "HR Manager reassigns" not built because `hr_manager` has no candidate access); design
+  `docs/superpowers/specs/2026-11-04-hrc-012-candidate-ownership-design.md`; migration `0259`.
 - **Business requirement:** §5 metadata "assigned recruiter, placement officer"; §6.2 "Avoid assigning one candidate to multiple owners unless shared ownership is explicitly configured … display the primary owner and any collaborators"; §12.
 - **Existing behavior:** ⚠ candidates are **pool-wide** with no owner (R11, rec-009). There is nothing to reassign when a recruiter leaves.
 - **Expected behavior:** per Q-11:

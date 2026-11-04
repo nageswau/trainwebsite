@@ -7,7 +7,32 @@ export type SourceRef = { id: string; name: string; active: boolean };
 export type CandidateItem = {
   id: string; candidate_code: string; name: string; location: string | null; experience_months: number | null; preferred_role: string | null;
   source: SourceRef; source_detail: string | null; status: CandidateStatus; archived: boolean; created_at: string;
+  owner?: OwnerRef | null; // hrc-012: the primary recruiter; null = unassigned
 };
+// hrc-012 (DEC-SCOPE-382): who owns a candidate. Visibility is unchanged -- ownership feeds "My candidates", notices and handover.
+export type OwnerRef = { id: string; full_name: string; active: boolean };
+export type CandidateOwnership = {
+  owner: OwnerRef | null; placement_officer: OwnerRef | null; collaborators: OwnerRef[]; shared_ownership: boolean; can_assign: boolean;
+};
+export type AssigneeKind = "recruiter" | "officer" | "collaborator";
+export const OWNER_FILTERS = [{ key: "me", label: "My candidates" }, { key: "unassigned", label: "Unassigned" }] as const;
+export const OWNERSHIP_SETTINGS_URL = "/api/v1/recruiter/candidate-ownership-settings";
+export const ASSIGNEE_ROLE: Record<string, string> = { placement_team: "Recruiter", placement_officer: "Placement officer" };
+/** "Asha", "Asha (inactive)" or the fallback when nobody is set. */
+export const personLabel = (p: OwnerRef | null | undefined, none = "Unassigned") => (p ? `${p.full_name}${p.active ? "" : " (inactive)"}` : none);
+
+/** The ownership pickers' server search (SearchableSelect): active people who may be chosen, names and roles only. */
+export function assigneeSearch(kind: AssigneeKind, exclude: string[] = []) {
+  return async (q: string, signal: AbortSignal) => {
+    const query = new URLSearchParams({ kind });
+    if (q) query.set("q", q);
+    const response = await fetch(`${CANDIDATES_URL}/assignees?${query}`, { signal });
+    if (!response.ok) throw new Error(`Assignee search failed (${response.status})`);
+    const people = (await response.json()) as { id: string; full_name: string; role: string }[];
+    const items = people.filter((p) => !exclude.includes(p.id)).map((p) => ({ id: p.id, label: p.full_name, detail: ASSIGNEE_ROLE[p.role] ?? null }));
+    return { items, truncated: false };
+  };
+}
 export type CandidateResume = {
   version: number; file_name: string | null; content_type: string; size_bytes: number; uploaded_by: PersonRef | null; created_at: string;
   preview_status?: "pending" | "ready" | "failed" | null; // hrc-015: a DOC/DOCX's PDF rendition
@@ -37,6 +62,7 @@ export type CandidateDetail = CandidateItem & Package & {
   preferred_locations: string[]; linkedin: string | null; archived_at: string | null; created_by: PersonRef | null; updated_by: PersonRef | null;
   updated_at: string; resumes: CandidateResume[]; can_edit: boolean; whatsapp_to?: string | null; // rec-026: the wa.me number
   merged_into?: { id: string; candidate_code: string } | null; // hrc-014: the candidate this one was merged into
+  ownership?: CandidateOwnership; // hrc-012
 };
 /** Q-07: one existing candidate of the duplicate panel -- never their mobile or email. */
 export type CandidateMatch = { id: string; candidate_code: string; name: string; source_name: string; status: CandidateStatus; archived: boolean; matched_on: ("mobile" | "email")[] };

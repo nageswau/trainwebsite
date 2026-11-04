@@ -8,7 +8,7 @@ import type { Page } from "@/lib/apiErrors";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import LocalTime from "@/components/LocalTime";
 import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
-import { CANDIDATES_PATH, CANDIDATES_URL, STATUSES, STATUS_LABEL, experienceLabel, type CandidateItem } from "@/lib/recruiterCandidates";
+import { CANDIDATES_PATH, CANDIDATES_URL, OWNER_FILTERS, STATUSES, STATUS_LABEL, experienceLabel, personLabel, type CandidateItem } from "@/lib/recruiterCandidates";
 import { pageOffset } from "@/lib/telecaller";
 import { getPage } from "@/lib/telecallerCatalogue";
 
@@ -27,10 +27,11 @@ export default function RecruiterCandidateList({ sourceFilter }: { sourceFilter:
   const status = STATUSES.some((s) => s.key === params.get("status")) ? params.get("status")! : "";
   const sourceId = UUID.test(params.get("source_id") ?? "") ? params.get("source_id")! : "";
   const archived = params.get("archived") === "true";
+  const owner = OWNER_FILTERS.some((o) => o.key === params.get("owner")) ? params.get("owner")! : ""; // hrc-012
   const request = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
-  for (const [key, value] of Object.entries({ q: query, status, source_id: sourceId, archived: archived ? "true" : "" })) if (value) request.set(key, value);
+  for (const [key, value] of Object.entries({ q: query, status, source_id: sourceId, owner, archived: archived ? "true" : "" })) if (value) request.set(key, value);
   const requestUrl = `${CANDIDATES_URL}?${request}`;
-  const filtered = !!(query || status || sourceId);
+  const filtered = !!(query || status || sourceId || owner);
 
   const [data, setData] = useState<Page<CandidateItem> | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -91,6 +92,13 @@ export default function RecruiterCandidateList({ sourceFilter }: { sourceFilter:
             {STATUSES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
           </select>
         </div>
+        <div className="field" style={{ flex: "1 1 10rem" }}>
+          <label htmlFor="cand-filter-owner">Owner</label>
+          <select id="cand-filter-owner" value={owner} onChange={(e) => go({ owner: e.target.value })}>
+            <option value="">Everyone&apos;s candidates</option>
+            {OWNER_FILTERS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+          </select>
+        </div>
         <label style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 12 }}>
           <input type="checkbox" checked={archived} onChange={(e) => go({ archived: e.target.checked ? "true" : "" })} /> Show archived only
         </label>
@@ -119,6 +127,7 @@ export default function RecruiterCandidateList({ sourceFilter }: { sourceFilter:
                   <th scope="col">Experience</th>
                   <th scope="col">Location</th>
                   <th scope="col">Status</th>
+                  <th scope="col">Primary recruiter</th>
                   <th scope="col">Added</th>
                 </tr>
               </thead>
@@ -135,6 +144,7 @@ export default function RecruiterCandidateList({ sourceFilter }: { sourceFilter:
                     <td style={{ whiteSpace: "nowrap" }}>{experienceLabel(c.experience_months)}</td>
                     <td>{c.location ?? <span className="muted">—</span>}</td>
                     <td>{STATUS_LABEL[c.status] ?? c.status}{c.archived && <div className="muted" style={{ fontSize: 13 }}>Archived</div>}</td>
+                    <td>{c.owner ? personLabel(c.owner) : <span className="muted">Unassigned</span>}</td>
                     <td style={{ whiteSpace: "nowrap" }}><LocalTime value={c.created_at} /></td>
                   </tr>
                 ))}

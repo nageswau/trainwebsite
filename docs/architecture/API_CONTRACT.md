@@ -5621,3 +5621,19 @@ reference. Re-send with `duplicate_reason` (≤ 500) to save; the audit row `rec
 the matched codes. A stale `expected_updated_at` is still 409 `record_changed` first.
 `GET /api/v1/recruiter/requirements/hiring-managers?q=&limit=` (≤ 50) → `{items: [{id, full_name, email}], total}` — active interviewers;
 recruiter, placement manager and super_admin only (else 403).
+## 12KA. Candidate ownership (hrc-012) — addendum, 2026-11-04
+
+`DEC-SCOPE-382`. **New:** `PUT /api/v1/recruiter/candidates/{id}/ownership` `{owner_user_id?, placement_officer_user_id?,
+collaborator_user_ids?: [≤10]}` (partial; a key sent as null clears it — except the primary recruiter, which can be changed but not cleared;
+the collaborator list is the whole new list) → `CandidateDetail`; a no-op writes nothing. Errors: 401; 403 (not a candidate writer, or a
+recruiter who is not the primary recruiter); 404 (unknown / outside the pool); 409 (archived); 422 (bad body, "Choose an active
+recruiter" / "Choose an active placement officer" / "Choose active recruiters or placement officers", "A candidate keeps one primary
+recruiter", "Shared ownership is switched off", "The primary recruiter is already an owner"). `GET /api/v1/recruiter/candidates/assignees
+?kind=recruiter|officer|collaborator&q=` → `[{id, full_name, role}]` (≤20, active eligible people; candidate writers). `GET
+/api/v1/recruiter/candidate-ownership-settings` → `{shared_ownership, can_edit}` (candidate readers); `PUT` `{shared_ownership: bool}`
+(placement managers, super_admin; audited). **Changed (additive):** `GET /recruiter/candidates?owner=me|unassigned`; each item and the
+detail carry `owner` (`{id, full_name, active}` | null); the detail carries `ownership` `{owner, placement_officer, collaborators[],
+shared_ownership, can_assign}`; `POST /recruiter/candidates` makes a recruiter creator the owner; `GET /recruiter/manager/team` `work` and
+`POST /recruiter/manager/reassign` `moved` gain `candidates`; the reassign moves them and its 409 reads "no companies, requirements or
+candidates to reassign"; `PATCH /admin/users/{id}` `{active:false}` of a recruiter owning a non-archived candidate is 422; the placement
+officer dashboard gains the "Your candidates" metric. Notice `it.candidate.assigned`.

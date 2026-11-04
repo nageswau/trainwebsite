@@ -9,6 +9,7 @@ import RecruiterCandidateList from "@/components/RecruiterCandidateList";
 import RecruiterCandidateMerge from "@/components/RecruiterCandidateMerge";
 import RecruiterDuplicateQueue from "@/components/RecruiterDuplicateQueue";
 import RecruiterFindCandidates from "@/components/RecruiterFindCandidates";
+import RecruiterOwnershipSetting from "@/components/RecruiterOwnershipSetting";
 import RecruiterTalentPool from "@/components/RecruiterTalentPool";
 import RecruiterTalentPools from "@/components/RecruiterTalentPools";
 import { ApiError, serverApi } from "@/lib/api";
@@ -64,6 +65,7 @@ export async function CandidateListPage() {
         </div>
         {s.writes && <Link className="btn" href={`${CANDIDATES_PATH}/new`}>+ Add candidate</Link>}
       </div>
+      {s.writes && <RecruiterOwnershipSetting />}
       <Suspense fallback={<p className="muted" role="status">Loading candidates…</p>}>
         <RecruiterCandidateList sourceFilter={s.writes} />
       </Suspense>
