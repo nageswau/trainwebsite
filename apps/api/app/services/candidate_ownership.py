@@ -63,7 +63,7 @@ def mine(user_id: UUID):
     return or_(Candidate.owner_user_id == user_id, Candidate.placement_officer_user_id == user_id, collaborates)
 
 
-def _eligible(kind: str):
+def eligible(kind: str):
     return [User.active.is_(True), User.role.in_(KINDS[kind]), or_(User.role != ROLE, exists().where(RecruiterProfile.user_id == User.id))]
 
 
@@ -71,22 +71,24 @@ async def _locked_people(db: AsyncSession, ids: set[UUID], kind: str) -> dict[UU
     """FOR SHARE on every named user; any id that is not an active eligible person is one 422 (no probing which)."""
     if not ids:
         return {}
-    found = {u.id: u for u in (await db.scalars(select(User).where(User.id.in_(ids), *_eligible(kind)).order_by(User.id).with_for_update(read=True))).all()}
+    found = {u.id: u for u in (await db.scalars(select(User).where(User.id.in_(ids), *eligible(kind)).order_by(User.id).with_for_update(read=True))).all()}
     if set(found) != ids:
         raise HTTPException(422, INVALID[kind])
     return found
 
 
 async def lookup(db: AsyncSession, kind: str, pattern: str | None) -> list[dict]:
-    stmt = select(User.id, User.full_name, User.role).where(*_eligible(kind))
+    stmt = select(User.id, User.full_name, User.role).where(*eligible(kind))
     if pattern:
         stmt = stmt.where(User.full_name.ilike(pattern, escape="\\"))
     rows = (await db.execute(stmt.order_by(User.full_name, User.id).limit(LOOKUP_LIMIT))).all()
     return [{"id": i, "full_name": n, "role": r} for i, n, r in rows]
 
 
-def record(db: AsyncSession, actor: User, candidate_id: UUID, kind: str, from_id: UUID | None, to_id: UUID | None, reason: str) -> None:
-    db.add(CandidateAssignmentHistory(candidate_id=candidate_id, kind=kind, from_user_id=from_id, to_user_id=to_id, changed_by_user_id=actor.id, reason=reason))
+def record(db: AsyncSession, actor: User | None, candidate_id: UUID, kind: str, from_id: UUID | None, to_id: UUID | None, reason: str) -> None:
+    """No actor = the system (hrc-024's routing)."""
+    db.add(CandidateAssignmentHistory(candidate_id=candidate_id, kind=kind, from_user_id=from_id, to_user_id=to_id,
+                                      changed_by_user_id=actor.id if actor else None, reason=reason))  # fmt: skip
 
 
 def on_create(db: AsyncSession, actor: User, candidate: Candidate) -> None:

@@ -28,8 +28,11 @@ def test_migration_chains_after_0258():
 
 
 def test_checks_are_frozen_copies():
+    """hrc-024's 0270 revises the reason check (adds `route`); the kind check is still 0259's."""
+    from tests.test_hrc_024_migration import _migration as routing_migration
+
     model = {c.name: str(c.sqltext) for c in CandidateAssignmentHistory.__table__.constraints if c.name in _migration.HISTORY_CHECKS}
-    assert model == _migration.HISTORY_CHECKS
+    assert model == _migration.HISTORY_CHECKS | {routing_migration.REASON: routing_migration.NEW_REASONS}
 
 
 @pytest.fixture

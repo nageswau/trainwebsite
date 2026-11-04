@@ -3816,3 +3816,11 @@ Candidate readers (`placement_team`, `placement_manager`, `super_admin`, `hr_tea
 (`GET /recruiter/match-settings`); only `super_admin` changes them. Every other role is 403, anonymous 401. A requirement's hard filters
 ride on the rec-016 weights route (`can_edit`, §2.83). The salary explanation follows `candidates.compensation.view` (§2.270). No grant key
 is added. Pinned by `apps/api/tests/test_hrc_018_matching_engine.py` and the rec-038 matrix rows.
+
+### 2.287 Candidate routing *(added 2026-11-04 — `DEC-SCOPE-393`, hrc-024)*
+
+Only `placement_manager` and `super_admin` (hrc-012's candidate assigners, §2.279) read and change candidate routing
+(`/recruiter/candidate-routing`, its `/rules`); every other role — recruiters, `hr_manager` (no candidate access), `hr_team`, placement
+officers — is 403, anonymous 401. The unassigned queue and manual assignment keep hrc-012's rules (pool readers list; the assigners
+assign). The system routes as no user (history `changed_by` NULL, audit `user_id` NULL). No grant key is added. Pinned by
+`apps/api/tests/test_hrc_024_candidate_routing.py` and the rec-038 matrix rows.
