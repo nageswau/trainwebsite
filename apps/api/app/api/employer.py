@@ -23,7 +23,8 @@ from app.schemas import (
     EmployerShortlistCreate,
     UserOut,
 )
-from app.services import applications, candidates, interviews, placement_pool
+from app.services import application_review as review
+from app.services import applications, candidates, interviews, matching, placement_pool
 from app.services import profile_sharing as sharing
 from app.services import recruiter_requirements as requirements
 from app.services.bdm_appointments import db_now
@@ -170,6 +171,7 @@ async def update_employer_job(job_id: UUID, payload: EmployerJobUpdate, user: Us
     if job.company_id != company.id:
         raise HTTPException(403, "Job is outside your own postings")
     changes = payload.model_dump(exclude_unset=True)
+    eligible_before = await matching.eligibility(db, job)  # hrc-009 (R7)
     for key, value in changes.items():
         if key == "status":  # rec-007 J3: the legacy word maps onto a validated §6 move (with history), or is a no-op; hrc-007: or a submission
             if value:
@@ -180,6 +182,7 @@ async def update_employer_job(job_id: UUID, payload: EmployerJobUpdate, user: Us
             setattr(job, key, value)
     if changes:
         job.updated_by_user_id = user.id  # hrc-005 V6: Last Updated By
+        await review.flag(db, user, job, eligible_before)
     # `date` values aren't JSON-serializable directly -- the JSON column's own
     # serializer would fail at commit time otherwise.
     audit_changes = {k: (v.isoformat() if isinstance(v, date) else v) for k, v in changes.items()}

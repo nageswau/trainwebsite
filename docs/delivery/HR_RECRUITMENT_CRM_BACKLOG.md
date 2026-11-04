@@ -380,6 +380,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **+/−/E:** a job with 0 open applications produces no notice.
 - **Regression risks:** low.
 - **Complexity:** small. **Risk:** low.
+- **Status:** built as `DEC-SCOPE-390` (migration `0267_application_review`, API §12KI, RBAC §2.284); design
+  `docs/superpowers/specs/2026-11-04-hrc-009-eligibility-change-review-design.md`. Builder's calls R1-R9 (`NEEDS_CONFIRMATION`).
 
 #### hrc-010: Candidate profile completion (education, experience, preferences, location, contact)
 - **Status (2026-11-04):** built — `DEC-SCOPE-383` (Q-09 answered by the builder's recommended call: experience derived from employment

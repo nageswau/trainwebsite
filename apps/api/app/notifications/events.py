@@ -55,7 +55,10 @@ EVENTS: dict[str, Event] = {
     "it.candidate.assigned": Event("candidate", "Candidate assigned to you", "A candidate was assigned to you. Open EduSphere to view them."),
     # hrc-016 (DEC-SCOPE-387 T7): a candidate task's new assignee -- never the candidate's name or the task's text
     "it.candidate.task_assigned": Event("candidate_task", "Candidate task assigned to you", "A candidate task was assigned to you. Open EduSphere to see your tasks."),
+    # hrc-009 (DEC-SCOPE-390 R6): a vacancy's owners, when its eligibility changed under open applications -- only the count, never a name
+    "it.requirement.review_needed": Event("job", "Applications need review", "Applications to review: {count}. A vacancy's eligibility criteria changed. Open EduSphere to confirm or move them."),
 }
+COUNT = "{count}"
 
 # itc-025 (DEC-SCOPE-348): "a summary of what changed" from a FIXED vocabulary of field names -- never the values (dates, trainer names,
 # reasons), so the preview-safe rule above still holds.
@@ -72,17 +75,22 @@ CHANGE_LABELS: dict[str, str] = {
 }
 
 
-async def notify(db: AsyncSession, recipients: Iterable[User | None], event_type: str, entity_id: UUID | str, *, action_url: str | None = None, changes: Sequence[str] = ()) -> list[Notification]:
+async def notify(db: AsyncSession, recipients: Iterable[User | None], event_type: str, entity_id: UUID | str, *, action_url: str | None = None, changes: Sequence[str] = (), count: int | None = None) -> list[Notification]:
     """One in-app notice per recipient plus queued email and opted-in WhatsApp/SMS, published only when the caller's transaction
     commits (a rollback sends nothing). Missing and deactivated recipients are skipped, and a (recipient, event, record) already
     notified in this transaction is not notified again. Bulk: one insert per table and one preference query for the whole batch.
-    `changes` (itc-025) appends "Changed: <labels>." from `CHANGE_LABELS`; an unknown key is refused like an unknown event."""
+    `changes` (itc-025) appends "Changed: <labels>." from `CHANGE_LABELS`; an unknown key is refused like an unknown event.
+    `count` (hrc-009) fills the `{count}` of an event that has one, and is required there and refused elsewhere: a whole number is the
+    only variable text a notice can carry."""
     event = EVENTS.get(event_type)
     if event is None:
         raise ValueError(f"Unknown notification event: {event_type}")
     if unknown := [key for key in changes if key not in CHANGE_LABELS]:
         raise ValueError(f"Unknown change label: {unknown}")
-    body = f"{event.body} Changed: {', '.join(CHANGE_LABELS[key] for key in changes)}." if changes else event.body
+    if (COUNT in event.body) != isinstance(count, int):
+        raise ValueError(f"{event_type} takes a count" if COUNT in event.body else f"{event_type} takes no count")
+    body = event.body.replace(COUNT, str(count)) if count is not None else event.body
+    body = f"{body} Changed: {', '.join(CHANGE_LABELS[key] for key in changes)}." if changes else body
     entity = str(entity_id)
     seen: set = db.sync_session.info.setdefault(NOTIFIED_KEY, set())
     targets: list[User] = []

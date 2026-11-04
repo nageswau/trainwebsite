@@ -148,12 +148,35 @@ function StatusForm({ application, onChanged, onCancel }: { application: RecAppl
   );
 }
 
+/** hrc-009 (R4): keep a flagged application where it is; moving it is Change status. The API's refusal is shown as-is. */
+function ConfirmReview({ application, onConfirmed }: { application: RecApplication; onConfirmed: (a: RecApplication) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  async function confirm() {
+    setBusy(true);
+    setFailure(null);
+    const outcome = await sendJson(applicationUrl(application.id, "/confirm-review"), "POST", {});
+    setBusy(false);
+    if (outcome.ok && isApplicationBody(outcome.data)) onConfirmed(outcome.data.application);
+    else setFailure(outcome.ok ? "Unable to confirm the review." : outcome.message);
+  }
+  return (
+    <>
+      <button type="button" className="btn small" disabled={busy} onClick={confirm}>
+        {busy ? "Confirming…" : "Confirm review"}<span className="visually-hidden"> of {application.candidate.name}</span>
+      </button>
+      {failure && <p className="form-error" role="alert" style={{ margin: 0, flexBasis: "100%" }}>{failure}</p>}
+    </>
+  );
+}
+
 /** One candidate as a stacked item (the rec-025 Calls pattern), so the status and actions stay on screen at phone width (QA-03). */
 type Panel = "none" | "status" | "history" | "interviews" | "screening" | "offer";
 
-function ApplicationItem({ application, contacts, selected, onSelect, onChanged, onInterview, onScreened }: {
+function ApplicationItem({ application, contacts, selected, onSelect, onChanged, onInterview, onScreened, onConfirmed }: {
   application: RecApplication; contacts: ContactOption[]; selected: boolean | null; onSelect: (on: boolean) => void;
   onChanged: (a: RecApplication) => void; onInterview: (notice: string) => void; onScreened: (a: RecApplication) => void;
+  onConfirmed: (a: RecApplication) => void;
 }) {
   const [open, setOpen] = useState<Panel>("none");
   const toggle = (panel: Exclude<Panel, "none">) => setOpen((current) => (current === panel ? "none" : panel));
@@ -169,11 +192,15 @@ function ApplicationItem({ application, contacts, selected, onSelect, onChanged,
         </Link>
         <span className="badge">{application.status_label}</span>
         {application.screening_result && <span className="badge">Screening: {application.screening_result.label}</span>}
+        {application.needs_review_since && <span className="badge badge-pending">Needs review</span>}
       </div>
       <p className="muted" style={{ margin: 0, fontSize: 13 }}>
         {application.candidate.code} · since <LocalTime value={application.stage_changed_at} time />
       </p>
       <div className="actions" style={{ flexWrap: "wrap" }}>
+        {application.needs_review_since && application.allowed_statuses.length > 0 && (
+          <ConfirmReview application={application} onConfirmed={onConfirmed} />
+        )}
         {application.allowed_statuses.length > 0 && (
           <button type="button" className="btn secondary small" aria-expanded={open === "status"} onClick={() => toggle("status")}>
             Change status<span className="visually-hidden"> of {application.candidate.name}</span>
@@ -209,29 +236,31 @@ function ApplicationItem({ application, contacts, selected, onSelect, onChanged,
 /** rec-017 (spec §5): the requirement's candidates and each one's §12 status. Writers (the requirement's recruiter, super_admin) add
  *  pool candidates and move statuses; managers and the assigned BDM read. Every write re-reads the list. rec-020: each row opens its
  *  interviews; the company's active contacts (when the caller can read them) feed the interview form. */
-export default function RecruiterRequirementCandidates({ requirementId, requirementLabel = "this requirement", companyId, refreshKey = 0, onShared }: {
+export default function RecruiterRequirementCandidates({ requirementId, requirementLabel = "this requirement", companyId, refreshKey = 0, version, onShared }: {
   requirementId: string; requirementLabel?: string; companyId?: string; refreshKey?: number; onShared?: () => void;
+  version?: string; // hrc-009: the requirement's updated_at -- an edit may have flagged applications for review
 }) {
   const [data, setData] = useState<RequirementCandidates | null>(null);
   const [failed, setFailed] = useState(false);
-  const [version, setVersion] = useState(0);
+  const [reloads, setReloads] = useState(0);
   const [adding, setAdding] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const headingId = `${useId()}-candidates`;
-  const reload = () => setVersion((n) => n + 1);
+  const reload = () => setReloads((n) => n + 1);
   const [contacts, setContacts] = useState<ContactOption[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sharing, setSharing] = useState<ShareCandidate[] | null>(null); // the selection when the dialog opened (QA-01)
+  const [reviewOnly, setReviewOnly] = useState(false); // hrc-009 (R8): the review list
 
   useEffect(() => {
     const controller = new AbortController();
     setFailed(false);
-    fetch(requirementCandidatesUrl(requirementId), { signal: controller.signal })
+    fetch(`${requirementCandidatesUrl(requirementId)}${reviewOnly ? "?needs_review=true" : ""}`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((body) => (isRequirementCandidates(body) ? setData(body) : setFailed(true)))
       .catch(() => controller.signal.aborted || setFailed(true));
     return () => controller.abort();
-  }, [requirementId, version, refreshKey]); // refreshKey: rec-016's Shortlist added a candidate elsewhere on the page
+  }, [requirementId, reloads, refreshKey, version, reviewOnly]); // refreshKey: rec-016's Shortlist added a candidate elsewhere on the page
 
   const canWrite = !!data && (data.can_add || data.items.some((a) => a.allowed_statuses.length > 0));
   useEffect(() => {
@@ -259,7 +288,7 @@ export default function RecruiterRequirementCandidates({ requirementId, requirem
   return (
     <section className="action-card wide" aria-labelledby={headingId}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
-        <h3 id={headingId} style={{ margin: 0 }}>Candidates{data ? ` (${data.items.length})` : ""}</h3>
+        <h3 id={headingId} style={{ margin: 0 }}>{reviewOnly ? "Candidates needing review" : "Candidates"}{data ? ` (${data.items.length})` : ""}</h3>
         <div className="actions" style={{ flexWrap: "wrap", gap: 8 }}>
           {picked.length > 0 && !sharing && (
             <button type="button" className="btn small" onClick={() => { setSharing(picked.map((a) => a.candidate)); setNotice(null); }}>Share selected ({picked.length})</button>
@@ -272,6 +301,20 @@ export default function RecruiterRequirementCandidates({ requirementId, requirem
       <div role="status" aria-live="polite">
         {notice && <p className={notice.failed ? "form-error" : "form-message"} style={{ margin: "6px 0 0", fontSize: 13 }}>{notice.text}</p>}
       </div>
+      {!!data?.needs_review_count && (
+        <p className="form-message" style={{ margin: "6px 0 0", fontSize: 13 }}>
+          {data.needs_review_count === 1
+            ? "1 application needs review after an eligibility change. Confirm it or change its status."
+            : `${data.needs_review_count} applications need review after an eligibility change. Confirm each one or change its status.`}
+        </p>
+      )}
+      {(reviewOnly || !!data?.needs_review_count) && (
+        <div className="actions" style={{ marginTop: 6 }}>
+          <button type="button" className="btn secondary small" aria-pressed={reviewOnly} onClick={() => { setReviewOnly((on) => !on); setNotice(null); }}>
+            {reviewOnly ? "Show all candidates" : "Show only these"}
+          </button>
+        </div>
+      )}
       {sharing && (
         <RecruiterShareDialog requirement={{ id: requirementId, label: requirementLabel }} companyId={companyId}
           candidates={sharing} onClose={() => setSharing(null)}
@@ -289,14 +332,15 @@ export default function RecruiterRequirementCandidates({ requirementId, requirem
       ) : data === null ? (
         <p className="muted" role="status" style={{ fontSize: 13 }}>Loading candidates…</p>
       ) : data.items.length === 0 ? (
-        <p className="muted" style={{ fontSize: 13, margin: 0 }}>No candidates on this requirement yet.</p>
+        <p className="muted" style={{ fontSize: 13, margin: 0 }}>{reviewOnly ? "No applications need review." : "No candidates on this requirement yet."}</p>
       ) : (
         <ul aria-label="Candidates on this requirement" style={{ padding: 0, margin: "8px 0 0", display: "grid", gap: 8 }}>
           {data.items.map((application) => (
             <ApplicationItem key={application.id} application={application} contacts={contacts} onInterview={done}
               selected={shareable(application) ? selected.has(application.candidate.id) : null} onSelect={(on) => select(application.candidate.id, on)}
               onChanged={(a) => done(`${a.candidate.name} is now ${a.status_label}.`)}
-              onScreened={(a) => done(`Screening saved — ${a.candidate.name} is now ${a.status_label}.`)} />
+              onScreened={(a) => done(`Screening saved — ${a.candidate.name} is now ${a.status_label}.`)}
+              onConfirmed={(a) => done(`Review confirmed — ${a.candidate.name} stays ${a.status_label}.`)} />
           ))}
         </ul>
       )}

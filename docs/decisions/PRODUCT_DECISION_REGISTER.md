@@ -11657,3 +11657,25 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   (hrc-026), CAPTCHA.
 - **Numbering:** migration `0266_website_intake`; API §12KH. No new permission.
 - **Feature ID authorized:** `hrc-023`. **Status:** built on `worktree-hrc-023`.
+
+### DEC-SCOPE-390 — Eligibility-change review and vacancy-change notices (`hrc-009`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-009` (PDF §4.3 "Significant changes to eligibility criteria should
+  trigger a review of affected applications rather than silently disqualifying"; §12/§13 "Notify relevant owners when a vacancy changes";
+  PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00). Dependencies hrc-004 (DEC-SCOPE-376), hrc-006
+  (DEC-SCOPE-384) and itc-002 (DEC-SCOPE-336) merged. The owner said to proceed with the recommended answers, so R1–R9 are **the
+  builder's calls (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-04-hrc-009-eligibility-change-review-design.md`.
+- **Behaviour:** when a job's eligibility changes on any edit path (recruiter requirement, employer job, legacy `/workflows/it/jobs`), its
+  open applications (Sourced, Screened, Shortlisted, Profile Shared, Interview) get `needs_review_since`; the vacancy's owners other than
+  the editor get one `it.requirement.review_needed` notice with the count; the recruiter sees a "Needs review" badge, a count and a
+  review list, and either confirms an application (it stays where it is; audited) or moves it (any status change clears the flag).
+  Nothing is rejected or moved automatically. A cosmetic edit, or a job with no open application, does nothing.
+- **Builder's calls:** R1 eligibility = required skills (case-insensitive names, each with its hrc-017 minimum level — so a level set
+  through `PUT …/skill-weights` also flags), experience range, qualification (trimmed,
+  case-insensitive) and the location as matching scores it (none when remote) — preferred skills, weights and other fields are not. R2
+  open = `applications.OPEN`. R3 one bounded UPDATE per edit; an already-flagged application keeps its first time and is not recounted.
+  R5 recipients = primary, placement-officer owner and collaborators (hrc-006) minus the editor. R6 `notify()` gains an optional
+  whole-number `count` filling the event's single `{count}` slot (itc-002's preview-safe test narrowed to allow exactly that slot).
+  R9 confirm = the application writers (the status-move gate).
+- **Numbering:** migration `0267_application_review`; API §12KI; RBAC §2.284.
+- **Feature ID authorized:** `hrc-009`. **Status:** built on `worktree-hrc-009`.

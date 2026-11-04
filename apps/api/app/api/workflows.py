@@ -152,6 +152,7 @@ from app.services import (
     it_lifecycle,
     it_progress,
     job_visibility,
+    matching,
     offers,
     permissions,
     question_import,
@@ -163,6 +164,7 @@ from app.services import (
     visa_lifecycle,
 )
 from app.services import application_outcomes as outcomes
+from app.services import application_review as review
 from app.services import application_sub_status as sub_statuses
 from app.services import document_checklists as checklist_templates
 from app.services import recruiter_requirements as requirements
@@ -2300,6 +2302,7 @@ async def apply_job(job_id: UUID, payload: dict, user: User = Depends(get_curren
 async def update_job(job_id: UUID, payload: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require(user, LEGACY_PLACEMENT_WRITERS, "it")
     job = await _legacy_job(db, user, job_id)
+    eligible_before = await matching.eligibility(db, job)  # hrc-009 (R7)
     for key in {"title", "location", "description"}:
         if key in payload:
             setattr(job, key, payload[key])
@@ -2319,6 +2322,7 @@ async def update_job(job_id: UUID, payload: dict, user: User = Depends(get_curre
     if "closes_on" in payload:
         job.closes_on = date.fromisoformat(payload["closes_on"]) if payload["closes_on"] else None
     job.updated_by_user_id = user.id  # hrc-005 V6: Last Updated By
+    await review.flag(db, user, job, eligible_before)
     await _audit(db, user, "job.update", "job", job.id, payload)
     await db.commit()
     return {"id": job.id, "status": job.status}

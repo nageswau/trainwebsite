@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy import func, inspect, select
 
 from app.models import Notification, NotificationDelivery
-from app.notifications.events import EVENTS, notify
+from app.notifications.events import COUNT, EVENTS, notify
 from tests.enh014_helpers import make_user, set_prefs
 from tests.upc001_helpers import as_role, login
 
@@ -54,9 +54,9 @@ def test_catalogue_is_dotted_and_preview_safe():
     assert EVENTS, "catalogue is empty"
     for key, event in EVENTS.items():
         assert re.fullmatch(r"[a-z]+(\.[a-z_]+){2}", key), key
-        for text in (event.title, event.body):
+        for text in (event.title, event.body.replace(COUNT, "", 1)):  # hrc-009 (DEC-SCOPE-390 R6): at most one whole-number count slot
             assert not re.search(r"\d|₹|\$|%|rs\.?\s|inr", text, re.IGNORECASE), (key, text)
-            assert "{" not in text, (key, text)  # fixed text, no interpolation slots
+            assert "{" not in text, (key, text)  # fixed text, no other interpolation slots
         assert len(event.title) <= 180
 
 
