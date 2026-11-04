@@ -5505,3 +5505,18 @@ shapes unchanged except where noted).
 - `GET /portal/it/student/interview-schedule`: the `result` column is removed.
 - `GET /files/download?key=` and `GET /local-files/{key}`: 404 for `candidate-resumes/`, `career-resumes/`, `student-resumes/`,
   `job-offers/`, `job-joinings/`, `recruiter-contracts/` (served by their own routes, unchanged).
+
+## 12JT. Candidate compensation (hrc-011) — addendum, 2026-11-04
+
+`DEC-SCOPE-375`. **Candidate create / PATCH / detail** (`/api/v1/recruiter/candidates`) gain `current_salary_currency`,
+`current_salary_period`, `expected_salary_currency`, `expected_salary_period`, `minimum_salary`, `minimum_salary_currency`,
+`minimum_salary_period`, `salary_negotiable` (bool | null) and the read-only `current_annual_inr`, `expected_annual_inr`,
+`minimum_annual_inr`. Currency: three letters, upper-cased; not INR and no rate → 422 naming the currency. Period: `year` | `month`
+(else 422). An amount without currency/period keeps the stored one, else INR / year; a null amount clears its currency, period and annual
+figure. Sending an `*_annual_inr` key is 422 (unknown field). Without `candidates.compensation.view` every one of these keys is absent and
+sending one is 403 (§12JQ). **Search / pool cards** add `expected_salary_currency`, `expected_salary_period`, `expected_annual_inr` (same
+grant); `salary_min` / `salary_max` now compare `expected_annual_inr`.
+**Exchange rates:** `GET /api/v1/recruiter/catalogue/exchange-rates` → `{items: [{currency, inr_per_unit, updated_at, updated_by}]}` by
+currency (candidate readers). `PUT /api/v1/recruiter/catalogue/exchange-rates/{currency}` `{inr_per_unit}` (placement_manager,
+super_admin): idempotent upsert; 422 for INR, a code that is not three letters, or a rate outside (0, 10,000] / more than 4 decimals;
+recomputes the annual figure of every candidate amount in that currency; audit `recruiter.fx_rate_set` {old, new, recomputed}.

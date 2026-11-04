@@ -7,11 +7,11 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AuditLog, User
-from app.services import audit_changes
+from app.services import audit_changes, candidates
 
 # B4: on top of itc-001's personal-data names (phone, email, notes, remarks, reason and `*_<those>`).
 REDACTED = frozenset({
-    "salary", "salary_min", "salary_max", "current_salary", "expected_salary",  # compensation (a JD's free-text salary too)
+    "salary", "salary_min", "salary_max", *candidates.COMPENSATION,  # compensation (a JD's free-text salary; hrc-011's package detail)
     "mobile", "linkedin", "meeting_url", "contact_id",  # contact
     "strengths", "weaknesses", "recruiter_comments", "company_feedback",  # interview feedback text
 })

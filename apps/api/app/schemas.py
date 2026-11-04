@@ -116,6 +116,7 @@ from app.models import (
     RECRUITER_FOLLOW_UP_REASONS,
     RECRUITER_MEETING_TYPES,
     RELATIONSHIP_STRENGTHS,
+    SALARY_PERIODS,
     SCORE_TYPES,
     SCREENING_RESULTS,
     STUDY_MODES,
@@ -9982,6 +9983,11 @@ CANDIDATE_FIELD_LABELS = {
     "current_salary": "Current salary", "expected_salary": "Expected salary", "notice_days": "Notice period (days)",
     "preferred_locations": "Preferred locations", "preferred_role": "Preferred role", "linkedin": "LinkedIn", "source_id": "Source",
     "source_detail": "Source detail", "status": "Status",
+    # hrc-011 (DEC-SCOPE-375)
+    "current_salary_currency": "Current salary currency", "current_salary_period": "Current salary pay period",
+    "expected_salary_currency": "Expected salary currency", "expected_salary_period": "Expected salary pay period",
+    "minimum_salary": "Minimum acceptable salary", "minimum_salary_currency": "Minimum salary currency",
+    "minimum_salary_period": "Minimum salary pay period", "salary_negotiable": "Negotiable",
 }
 NO_CONTACT = "Enter a mobile number or an email"
 _LINKEDIN = re.compile(r"https?://\S+", re.IGNORECASE)
@@ -10069,6 +10075,34 @@ def _salary(label: str):
     return Annotated[Decimal | None, AfterValidator(check)]
 
 
+_CURRENCY = re.compile(r"[A-Z]{3}")
+
+
+def _currency(label: str):
+    """hrc-011: a three-letter code, upper-cased; whether it has a rate is the service's check (422 naming the currency)."""
+
+    def check(value: str | None) -> str | None:
+        value = (value or "").strip().upper()
+        if not value:
+            return None
+        if not _CURRENCY.fullmatch(value):
+            raise ValueError(f"{label} must be a three-letter code such as INR or USD")
+        return value
+
+    return Annotated[StrictStr | None, AfterValidator(check)]
+
+
+def _period(label: str):
+    """hrc-011 C2 (Q-10): per year or per month; hourly and the rest are not supported."""
+
+    def check(value: str | None) -> str | None:
+        if value is not None and value not in SALARY_PERIODS:
+            raise ValueError(f"{label} must be per year or per month")
+        return value
+
+    return Annotated[StrictStr | None, AfterValidator(check)]
+
+
 CandidateName = _tel_name(160)
 CandidateMobile = Annotated[_candidate_text("Mobile", 40), AfterValidator(_candidate_mobile)]
 CandidateEmail = Annotated[str | None, AfterValidator(_candidate_email)]
@@ -10089,6 +10123,15 @@ class _CandidateFields(BaseModel):
     current_company: _candidate_text("Current company", 200) = None
     current_salary: _salary("Current salary") = None
     expected_salary: _salary("Expected salary") = None
+    # hrc-011 (DEC-SCOPE-375 C3/C4): an amount without a currency or period keeps the stored one, else INR per year
+    current_salary_currency: _currency("Current salary currency") = None
+    current_salary_period: _period("Current salary pay period") = None
+    expected_salary_currency: _currency("Expected salary currency") = None
+    expected_salary_period: _period("Expected salary pay period") = None
+    minimum_salary: _salary("Minimum salary") = None
+    minimum_salary_currency: _currency("Minimum salary currency") = None
+    minimum_salary_period: _period("Minimum salary pay period") = None
+    salary_negotiable: StrictBool | None = None
     notice_days: _whole("Notice period (days)", 0, 365) = None
     preferred_locations: Annotated[list[str], AfterValidator(_places)] = Field(default_factory=list)
     preferred_role: _candidate_text("Preferred role", 120) = None
@@ -10159,6 +10202,18 @@ class CandidateDetail(CandidateItem):
     # hrc-001 (DEC-SCOPE-371 H2): left out without `candidates.compensation.view` -- the routes answer with response_model_exclude_unset.
     current_salary: Decimal | None = None
     expected_salary: Decimal | None = None
+    # hrc-011 (DEC-SCOPE-375): the same rule -- left out without the grant
+    current_salary_currency: str | None = None
+    current_salary_period: str | None = None
+    current_annual_inr: Decimal | None = None
+    expected_salary_currency: str | None = None
+    expected_salary_period: str | None = None
+    expected_annual_inr: Decimal | None = None
+    minimum_salary: Decimal | None = None
+    minimum_salary_currency: str | None = None
+    minimum_salary_period: str | None = None
+    minimum_annual_inr: Decimal | None = None
+    salary_negotiable: bool | None = None
     notice_days: int | None
     preferred_locations: list[str]
     linkedin: str | None
@@ -10169,6 +10224,21 @@ class CandidateDetail(CandidateItem):
     resumes: list[CandidateResumeOut]
     can_edit: bool
     whatsapp_to: str | None = None  # rec-026 MS6: the wa.me number (E.164 digits), None when the mobile is unusable
+
+
+# --- hrc-011 (DEC-SCOPE-375 C1): the manual exchange rate ------------------------------------------------------------------------------
+FX_RATE_LABELS = {"inr_per_unit": "Rupees per unit"}
+
+
+def _rate(value: Decimal) -> Decimal:
+    if not value.is_finite() or not Decimal(0) < value <= Decimal(10000) or value.as_tuple().exponent < -4:
+        raise ValueError("Rupees per unit must be more than 0 and at most 10,000 (at most 4 decimal places)")
+    return value
+
+
+class FxRateSet(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    inr_per_unit: Annotated[Decimal, AfterValidator(_rate)]
 
 
 # --- rec-007 (DEC-SCOPE-129): the Job Requirement ----------------------------------------------------------------------------------

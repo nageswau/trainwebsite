@@ -38,6 +38,8 @@ class World:
         return skill
 
     async def candidate(self, *skills, verified=(), user_id=None, opted_in=False, archived=False, **fields) -> Candidate:
+        if "expected_salary" in fields:  # hrc-011 C6: the salary filter compares the normalised figure (rupees a year, as the API stores it)
+            fields.setdefault("expected_annual_inr", fields["expected_salary"])
         candidate = Candidate(
             candidate_code=f"T{uuid.uuid4().hex[:11]}", name=fields.pop("name", f"Cand {uuid.uuid4().hex[:6]}"),
             email=f"c{uuid.uuid4().hex[:12]}@example.com", source_id=fields.pop("source_id", self.source_id), created_by_user_id=self.actor.id,

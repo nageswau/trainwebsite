@@ -42,6 +42,13 @@ def test_recruitment_redacts_compensation_contact_and_feedback_text():
     assert recruitment_history.diff({"location": "Pune"}, {"location": "Chennai"}) == {"location": ["Pune", "Chennai"]}
 
 
+def test_every_candidate_compensation_field_is_redacted():
+    """hrc-011's package detail (currency, period, minimum, negotiable, annual INR) follows the same rule as the amounts."""
+    from app.services.candidates import COMPENSATION
+    diff = recruitment_history.diff({f: "old" for f in COMPENSATION}, {f: "new" for f in COMPENSATION})
+    assert diff == {f: "changed" for f in COMPENSATION}
+
+
 # --- Job and JD write sites -----------------------------------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_a_job_edit_records_old_and_new_values_and_salary_as_changed(client, db_session):
