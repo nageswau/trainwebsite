@@ -5531,3 +5531,16 @@ the record's own GET (requirement: out of scope 404, other roles 403; candidate:
 `Cache-Control: private, no-store`. **Changed audit rows** (shape additive; no field removed): `recruiter_requirement.update|status|assign`
 (incl. rec-037 bulk reassignment, one row per job), `job_description.create|upload`, `candidate.update`, `recruiter_application.status`,
 `recruiter_interview.update|reschedule|status|feedback` add `metadata.changes`. Compensation, contact and feedback text are `"changed"`.
+
+## 12JV. Candidate duplicate review and merge (hrc-014) — addendum, 2026-11-04
+
+`DEC-SCOPE-377`. **New:** `GET /api/v1/recruiter/candidate-duplicates?status=open|dismissed|merged&limit&offset` → `{items, total, limit,
+offset}`; item `{id, signals: ["name_location_college"|"phone_variant"], status, created_at, decided_at, decided_by, candidate, other}`
+(sides `{id, candidate_code, name, location, college, status, archived}`, older first; no contact data). `POST .../scan` → `{created}`.
+`POST .../{id}/dismiss` `{note?: ≤500}` → the pair (409 when not open, 404 unknown). `GET /api/v1/recruiter/candidates/{id}/merge?victim=CAN-…`
+→ `{survivor, victim, fields, conflicts: [{application_id, job_id, job_title, status, blocking}], moved}`; `POST .../merge`
+`{victim_code, use_victim: [field], reason?: ≤500}` → `{id, victim_id, victim_code, moved: {applications, share_items, calls, messages,
+consents, skills, resumes}, kept_applications}`. Errors: 401; 403 (not a candidate writer or no `candidates.merge`); 404 (either side
+unknown or outside the pool); 422 (self, unknown field, bad body); 409 (archived/merged side, student login, open application on the same
+requirement, lost race). **Changed:** `CandidateDetail.merged_into` (`{id, candidate_code}` | null); `POST /candidates/{id}/restore` of a
+merged candidate is 409; create/edit queue probable duplicates (response unchanged). Reads are `Cache-Control: private, no-store`.

@@ -314,4 +314,11 @@ async def detail_out(db: AsyncSession, user: User, candidate: Candidate) -> dict
         ],
         "can_edit": user.role in WRITERS,
         "whatsapp_to": wa_number(candidate.mobile),  # rec-026 MS6
+        "merged_into": await merged_into(db, candidate),  # hrc-014 D8
     }
+
+
+async def merged_into(db: AsyncSession, candidate: Candidate) -> dict | None:
+    if candidate.merged_into_id is None:
+        return None
+    return {"id": candidate.merged_into_id, "candidate_code": await db.scalar(select(Candidate.candidate_code).where(Candidate.id == candidate.merged_into_id))}

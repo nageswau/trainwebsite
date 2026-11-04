@@ -12,6 +12,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, Response, UploadFile
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.agent_reports import NO_STORE
@@ -25,17 +26,20 @@ from app.models import Candidate, CandidateResume, RecCandidateSource, User
 from app.notifications.phone import normalise_phone
 from app.schemas import (
     CANDIDATE_FIELD_LABELS,
+    CANDIDATE_MERGE_LABELS,
     CANDIDATE_SEARCH_LABELS,
     RESUME_APPLY_LABELS,
     CandidateCreate,
     CandidateDetail,
+    CandidateMergeBody,
     CandidatePage,
     CandidateSearch,
     CandidateStatus,
     CandidateUpdate,
     ResumeApply,
 )
-from app.services import candidate_search, candidate_skills, compensation, course_skills, recruitment_history
+from app.services import candidate_duplicates as duplicates
+from app.services import candidate_merge, candidate_search, candidate_skills, compensation, course_skills, recruitment_history
 from app.services import candidates as svc
 from app.services import resume_extraction as extraction
 from app.services.reports import placement as placement_reports
@@ -127,6 +131,7 @@ async def create_candidate(payload: dict = Body(...), user: User = Depends(get_c
     db.add(candidate)
     await svc.flush_candidate(db, candidate)
     svc.audit(db, user, "create", candidate, {"fields": sorted(k for k, v in data.items() if v not in (None, []))})
+    await duplicates.detect(db, candidate.id)  # hrc-014 D2: probable duplicates are queued, never blocked
     await db.commit()
     svc.log("candidate_created", user, candidate)
     return await svc.detail_out(db, user, candidate)
@@ -194,6 +199,8 @@ async def update_candidate(candidate_id: UUID, payload: dict = Body(...), user: 
         await svc.flush_candidate(db, candidate)
         changed = recruitment_history.diff(before, await svc.audited_values(db, candidate, changes))
         svc.audit(db, user, "update", candidate, {"fields": fields, "changes": changed})
+        if duplicates.WATCHED & set(fields):  # hrc-014 D2
+            await duplicates.detect(db, candidate.id)
     await db.commit()
     if fields:
         svc.log("candidate_updated", user, candidate, fields=fields)
@@ -205,6 +212,8 @@ async def _set_archived(db: AsyncSession, user: User, candidate_id: UUID, archiv
     candidate = await svc.load(db, candidate_id, lock=True)
     if (candidate.archived_at is not None) == archive:
         raise HTTPException(409, "This candidate is already archived" if archive else "This candidate is not archived")
+    if candidate.merged_into_id is not None:  # hrc-014 D8: a merge is final
+        raise HTTPException(409, f"This candidate was merged into {(await svc.merged_into(db, candidate))['candidate_code']}")
     candidate.archived_at = datetime.now(UTC) if archive else None
     candidate.archived_by_user_id = user.id if archive else None
     candidate.updated_by_user_id = user.id
@@ -302,4 +311,28 @@ async def apply_resume(candidate_id: UUID, version: int, payload: dict = Body(..
     result = await extraction.apply(db, user, candidate, resume, body)
     await db.commit()
     svc.log("candidate_resume_applied", user, candidate, version=version, skills_added=result["skills_added"], fields=result["fields"])
+    return result
+
+
+# --- hrc-014: merge (DEC-SCOPE-377) -----------------------------------------------------------------------------------------------
+@router.get("/{candidate_id}/merge")
+async def merge_preview(candidate_id: UUID, response: Response, victim: Annotated[str, Query(min_length=1, max_length=20)],
+                        user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Both candidates side by side, what would move and the same-requirement conflicts. Read only."""
+    await duplicates.require_merger(db, user)
+    response.headers.update(NO_STORE)
+    return await candidate_merge.preview(db, user, candidate_id, victim)
+
+
+@router.post("/{candidate_id}/merge")
+async def merge_candidate(candidate_id: UUID, payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """The victim (by code) merges into this candidate, all or nothing; a lost race on a unique pair is a 409 to retry."""
+    await duplicates.require_merger(db, user)
+    body = _parse(CandidateMergeBody, payload, NOT_AN_OBJECT, CANDIDATE_MERGE_LABELS)
+    try:
+        result = await candidate_merge.merge(db, user, candidate_id, body.victim_code, body.use_victim, body.reason)
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, candidate_merge.RACE) from None
     return result

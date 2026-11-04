@@ -487,6 +487,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** low.
 
 #### hrc-014: Candidate duplicate review and merge
+- **Status (2026-11-04):** built — `DEC-SCOPE-377` (Q-14 answered by the builder's recommended calls D1–D10, `NEEDS_CONFIRMATION`;
+  name + DOB not built: no DOB field); design `docs/superpowers/specs/2026-11-04-hrc-014-candidate-duplicate-merge-design.md`; migration
+  `0252`; API §12JV; RBAC §2.275.
 - **Business requirement:** §5.1 "Detect duplicates using verified email, phone and other matching signals; provide an authorised merge workflow"; §17 QA "Duplicate website registrations do not create uncontrolled duplicate profiles".
 - **Existing behavior:** an exact duplicate on mobile or email blocks the save (Q-07). There is no fuzzy matching, review queue or merge.
 - **Expected behavior:**

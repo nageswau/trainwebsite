@@ -11398,3 +11398,20 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   B8 creates keep their field-name rows.
 - **Numbering:** no migration; API §12JU; RBAC §2.274.
 - **Feature ID authorized:** `hrc-004`. **Status:** built on `worktree-hrc-004`.
+
+### DEC-SCOPE-377 — Candidate duplicate review and merge (`hrc-014`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-014` (PDF §5.1, §17 QA; PDF classified `UNVERIFIED`). Scope approved by
+  the owner 2026-11-01 (backlog Q-00: all phases). Dependency hrc-004 (DEC-SCOPE-376) merged. The owner said to proceed with the
+  recommended answers, so Q-14 and D1–D10 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-014-candidate-duplicate-merge-design.md`.
+- **Builder's calls:** D1 probable signals = same name + location + college, or the mobile's last ten digits equal while the stored
+  numbers differ; **name + DOB not built (no DOB field)**. D2 detected after create/edit and by a pool-wide scan; a dismissed pair never
+  returns. D3 new grant `candidates.merge` (new action `merge`), default `placement_manager` (HR Manager until hrc-002), recruiters by
+  override; needs a candidate-writer role too. D4 ten profile fields merge (pick or fill-empty); contact and compensation never move. D5 a
+  victim with a student login is refused (merge the other way); two logins cannot merge. D6 same requirement: an open victim application
+  blocks (409), a closed one stays on the archived victim. D7 applications (student_id follows), their share items, calls, messages,
+  consents, missing skills and every resume (renumbered by upload time) move. D8 victim archived with `merged_into_id`, never restored.
+  D9 the victim's open queue rows close as merged; the survivor is re-checked. D10 `candidate.merge` + `candidate.merged_into` audits.
+- **Numbering:** migration `0252_candidate_duplicates`; API §12JV; RBAC §2.275.
+- **Feature ID authorized:** `hrc-014`. **Status:** built on `worktree-hrc-014`.

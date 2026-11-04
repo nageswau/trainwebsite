@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 import LocalTime from "@/components/LocalTime";
 import RecruiterCalls from "@/components/RecruiterCalls";
@@ -15,21 +16,25 @@ import RecruiterRecordHistory from "@/components/RecruiterRecordHistory";
 import RecruiterTimeline from "@/components/RecruiterTimeline";
 import { sendRequest } from "@/lib/apiErrors";
 import { telHref } from "@/lib/recruiterCalls";
-import { AMOUNTS, STATUS_LABEL, candidateUrl, experienceLabel, packageText, type CandidateDetail } from "@/lib/recruiterCandidates";
+import { AMOUNTS, CANDIDATES_PATH, STATUS_LABEL, candidateUrl, experienceLabel, packageText, type CandidateDetail } from "@/lib/recruiterCandidates";
 
 // rec-009 (spec §6): one candidate -- the §8 profile, Edit (writers), Archive/Restore with a confirm, and the resume versions. hr_team reads
 // only (`can_edit` false). Skills (rec-011) sit above the resumes; Applications (rec-017), Calls (rec-025) and messages (rec-026) sit
 // under them; rec-027's Timeline closes the page (a call or message re-reads it).
 
-export default function RecruiterCandidateDetail({ initial }: { initial: CandidateDetail }) {
+export default function RecruiterCandidateDetail({ initial, merged }: { initial: CandidateDetail; merged?: string }) {
   const [candidate, setCandidate] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(null);
+  // hrc-014: the merge screen lands here with the duplicate's code
+  const [notice, setNotice] = useState<{ text: string; failed: boolean } | null>(merged ? { text: `${merged} was merged into this candidate.`, failed: false } : null);
   const [skillsVersion, setSkillsVersion] = useState(0); // rec-012: Apply adds skills, so the Skills card re-reads
   const [activity, setActivity] = useState(0); // rec-027: a call or message re-reads the timeline
   const touched = () => setActivity((n) => n + 1);
   const sending = useRef(false);
+  useEffect(() => { // browser QA-02: the merge notice shows once -- a refresh must not repeat it
+    if (merged) window.history.replaceState(window.history.state, "", window.location.pathname);
+  }, [merged]);
   const archived = candidate.archived_at !== null;
   const canEdit = candidate.can_edit && !archived;
 
@@ -84,12 +89,17 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
         {candidate.can_edit && !editing && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {!archived && <button type="button" className="btn" onClick={() => { setNotice(null); setEditing(true); }}>Edit</button>}
-            <button type="button" className="btn secondary" onClick={() => void toggleArchive()} disabled={busy}>{archived ? "Restore" : "Archive"}</button>
+            {!candidate.merged_into && <button type="button" className="btn secondary" onClick={() => void toggleArchive()} disabled={busy}>{archived ? "Restore" : "Archive"}</button>}
           </div>
         )}
       </div>
       {notice && <p className={notice.failed ? "form-error" : "form-message"} role={notice.failed ? "alert" : "status"} style={{ margin: 0 }}>{notice.text}</p>}
-      {archived && candidate.can_edit && <p className="muted" style={{ margin: 0 }}>Restore this candidate to edit them or upload a resume.</p>}
+      {/* hrc-014 D8: a merged candidate is archived for good and points at the one it was merged into */}
+      {candidate.merged_into ? (
+        <p className="action-card" style={{ margin: 0 }}>
+          This candidate was merged into <Link href={`${CANDIDATES_PATH}/${encodeURIComponent(candidate.merged_into.id)}`}>{candidate.merged_into.candidate_code}</Link>. Work on that record instead.
+        </p>
+      ) : archived && candidate.can_edit && <p className="muted" style={{ margin: 0 }}>Restore this candidate to edit them or upload a resume.</p>}
       {editing ? (
         <RecruiterCandidateForm initial={candidate} onCancel={() => setEditing(false)} onLatest={setCandidate}
           onSaved={(saved) => { setCandidate(saved); setEditing(false); setNotice({ text: "Changes saved.", failed: false }); }} />

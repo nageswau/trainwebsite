@@ -3715,3 +3715,11 @@ companies, `super_admin`; out of scope 404, other roles 403); a candidate's by t
 `placement_manager`, `hr_team`, `super_admin`; others 403); anonymous 401. Compensation and contact values are never stored, so a reader
 without `candidates.compensation.view` learns only that a salary field changed. Pinned by `apps/api/tests/test_hrc_004_audit_history.py`
 and the rec-038 matrix rows.
+
+### 2.275 Candidate duplicate review and merge *(added 2026-11-04 — `DEC-SCOPE-377`, hrc-014)*
+
+New catalogue entry `candidates.merge` (resource `candidates`, new action `merge`), seeded for `placement_manager` (migration 0252);
+`super_admin` implicitly; a `placement_team` user only through an allow override. Queue, scan, dismiss, preview and merge need the grant
+**and** a candidate-writer role (`placement_team`, `placement_manager`, `super_admin`) — an override never lets `hr_team` write; anonymous
+401. Pinned by `apps/api/tests/test_hrc_014_duplicates.py::test_the_queue_and_merge_need_the_grant_and_a_writer_role` and
+`test_nehn_005_permissions.py`.
