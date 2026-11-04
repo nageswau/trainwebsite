@@ -1,4 +1,4 @@
-"""hrc-023 (DEC-SCOPE-387, spec docs/superpowers/specs/2026-11-04-hrc-023-website-registration-intake-design.md): the public website's
+"""hrc-023 (DEC-SCOPE-389, spec docs/superpowers/specs/2026-11-04-hrc-023-website-registration-intake-design.md): the public website's
 front door to the recruiter pool. A job application creates -- or matches by exact email -- one candidate with source Website and the
 visit's UTM (W1/W3), with the consent shown on the form (W4); the registration form's UTM reaches the candidate hrc-022 creates on
 verification (W2, `candidate_portal`).

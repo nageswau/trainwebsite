@@ -569,6 +569,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** medium.
 
 #### hrc-016: Candidate notes, tasks and a complete timeline
+- **Status (2026-11-04):** built — `DEC-SCOPE-387` (Q-16 answered by the builder's recommended call: a new `candidate_tasks` table,
+  `NEEDS_CONFIRMATION`); design `docs/superpowers/specs/2026-11-04-hrc-016-candidate-notes-tasks-timeline-design.md`; migration `0264`;
+  API §12KF; RBAC §2.283.
 - **Business requirement:** §12 "Activity timeline: notes, calls, emails, assignments, screening, interviews and status changes"; "Task assignment … follow-ups, resume screening, interview coordination and employer feedback"; "Internal comments … private".
 - **Existing behavior:**
   - The timeline unions calls, messages, application/interview/offer events and shares. Notes, assignments, edits and screening are missing.
@@ -622,6 +625,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **+/−/E:** an existing IT seed is unchanged.
 - **Regression risks:** rec-006 seed tests.
 - **Complexity:** small. **Risk:** low.
+- **Status:** built as `DEC-SCOPE-388` (migration `0265_skill_taxonomy`, API §12KG, RBAC unchanged); design
+  `docs/superpowers/specs/2026-11-04-hrc-017-skills-taxonomy-design.md`. Q-17 answered by the builder's calls T1-T9 (a provisional non-IT
+  starter list the owner edits in the Skills Master; the level is set in "Adjust weights"; `NEEDS_CONFIRMATION`).
 
 #### hrc-018: Configurable matching engine with explanations
 - **Business requirement:** §7.2 weights 40/20/15/10/10/5, admin-configurable, hard filters, plain-language explanation, "not a guarantee"; §13 "Candidate profile changed → refresh".
@@ -772,9 +778,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** large. **Risk:** high.
 
 #### hrc-023: Website registration → candidate create/match ⚠
-- **Status (2026-11-04):** built — `DEC-SCOPE-387` (Q-23/Q-25 answered by the builder's recommended calls W1–W10, `NEEDS_CONFIRMATION`:
+- **Status (2026-11-04):** built — `DEC-SCOPE-389` (Q-23/Q-25 answered by the builder's recommended calls W1–W10, `NEEDS_CONFIRMATION`:
   match by exact email only, a matched record is never changed, no CAPTCHA); design
-  `docs/superpowers/specs/2026-11-04-hrc-023-website-registration-intake-design.md`; migration `0264`.
+  `docs/superpowers/specs/2026-11-04-hrc-023-website-registration-intake-design.md`; migration `0266`.
 - **Business requirement:** §6.1 steps 1–5; §13 "Website registration"; §17 QA "Website registrations automatically create/match candidate records … duplicates".
 - **Existing behavior:** ⚠ `POST /public/jobs/{id}/apply` writes a `CareerApplication` that no staff screen reads (recruiter backlog Q-31: "no CareerApplication intake"). No UTM is captured.
 - **Expected behavior:**

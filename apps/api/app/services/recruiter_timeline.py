@@ -11,11 +11,15 @@ from uuid import UUID
 
 from sqlalchemy import String, case, cast, func, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app import recruiter_stages
 from app.models import (
     AuditLog,
     Candidate,
+    CandidateAssignmentHistory,
+    CandidateNote,
+    CandidateTask,
     Company,
     CompanyContact,
     CompanyStageHistory,
@@ -39,6 +43,7 @@ from app.models import (
     User,
 )
 from app.services import applications, interviews, offers, recruiter_contracts
+from app.services.application_screening import LABELS as SCREENING_LABELS
 from app.services.lead_timeline import _branch, _excerpt
 from app.services.recruiter_calls import OUTCOMES
 from app.services.recruiter_requirements import STATUS_LABELS as REQUIREMENT_LABELS
@@ -55,8 +60,13 @@ LABELS: dict[str, dict[str, str]] = {
     "offer": offers.STATUS_LABELS,
     "contract": recruiter_contracts.LABELS,
     "call": OUTCOMES,
+    "screening": SCREENING_LABELS,
 }
-STATUS_KINDS = ("stage", "requirement", "application", "interview", "offer", "contract")  # `to_label` is a status, not a person or contact
+STATUS_KINDS = ("stage", "requirement", "application", "interview", "offer", "contract", "screening")  # `to_label` is a status, not a person
+# hrc-016 (T9): an ownership change names a person on both sides -- `from_label` is the previous holder, not a catalogue label
+NAME_KINDS = ("assignment",)
+# hrc-016 (T9): the candidate's own audit rows that read as profile activity (ownership has its own history table, `assignment`)
+PROFILE_ACTIONS = tuple(f"candidate.{a}" for a in ("create", "update", "archive", "restore", "merge", "merged_into"))
 
 
 def _call_at(C):
@@ -216,6 +226,41 @@ def _candidate_sources(candidate_id: UUID) -> list:
         .join(J, J.id == PS.job_id)
         .join(Co, Co.id == PS.company_id)
         .where(PI.candidate_id == candidate_id, PI.responded_at.is_not(None)),
+        *_candidate_activity(candidate_id),
+    ]
+
+
+def _candidate_activity(candidate_id: UUID) -> list:
+    """hrc-016 (T9, AC3): notes, tasks, ownership changes, profile edits and screening. A task's type and a profile event are keys the web
+    labels; an edit carries only how many fields changed (never which values); a screening its result."""
+    N, T, H, AL, A, J, Co = CandidateNote, CandidateTask, CandidateAssignmentHistory, AuditLog, JobApplication, Job, Company
+    From, To, Assignee = aliased(User), aliased(User), aliased(User)
+    meta = AL.metadata_json
+    task = dict(from_value=T.task_type, subject=T.title, to_name=Assignee.full_name, rank=ACTIVITY)
+    fields = case((func.json_typeof(meta["fields"]) == "array", func.json_array_length(meta["fields"])))
+    return [
+        _branch(N.id, "note", N.created_at, actor=N.author_user_id, reason=_excerpt(N.body), rank=ACTIVITY).where(N.candidate_id == candidate_id),
+        _branch(T.id, "task", T.created_at, actor=T.created_by_user_id, event="scheduled", reason=_excerpt(T.notes), scheduled_for=T.due_at, **task)
+        .join(Assignee, Assignee.id == T.assignee_user_id)
+        .where(T.candidate_id == candidate_id),
+        _branch(T.id, "task", T.completed_at, actor=T.completed_by_user_id, event="done", **task)
+        .join(Assignee, Assignee.id == T.assignee_user_id)
+        .where(T.candidate_id == candidate_id, T.completed_at.is_not(None)),
+        _branch(T.id, "task", T.cancelled_at, actor=T.cancelled_by_user_id, event="cancelled", **task)
+        .join(Assignee, Assignee.id == T.assignee_user_id)
+        .where(T.candidate_id == candidate_id, T.cancelled_at.is_not(None)),
+        _branch(H.id, "assignment", H.created_at, actor=H.changed_by_user_id, event=H.kind, from_name=From.full_name, to_name=To.full_name, status=H.reason, rank=EFFECT)
+        .outerjoin(From, From.id == H.from_user_id)
+        .outerjoin(To, To.id == H.to_user_id)
+        .where(H.candidate_id == candidate_id),
+        _branch(AL.id, "profile", AL.created_at, actor=AL.user_id, event=func.replace(AL.action, "candidate.", ""), to_value=fields,
+                subject=func.coalesce(meta["victim_code"].as_string(), meta["survivor_code"].as_string()), rank=ACTIVITY)
+        .where(AL.entity_type == "candidates", AL.entity_id == str(candidate_id), AL.action.in_(PROFILE_ACTIONS)),
+        _branch(AL.id, "screening", AL.created_at, actor=AL.user_id, to_value=meta["result"].as_string(), subject=_requirement(J), from_name=Co.name, rank=ACTIVITY)
+        .join(A, cast(A.id, String) == AL.entity_id)
+        .join(J, J.id == A.job_id)
+        .join(Co, Co.id == J.company_id)
+        .where(AL.entity_type == "job_application", AL.action == "recruiter_application.screening", A.candidate_id == candidate_id),
     ]
 
 
@@ -242,13 +287,13 @@ async def _page(db: AsyncSession, sources: list, limit: int, offset: int) -> dic
             "actor": {"id": r.actor_id, "full_name": r.full_name} if r.actor_id else None,
             "event": r.event,
             "from_value": r.from_value,
-            "from_label": _label(r.kind, r.from_value),
+            "from_label": (r.from_name or "") if r.kind in NAME_KINDS else _label(r.kind, r.from_value),
             "to_value": r.to_value,
             "to_label": _label(r.kind, r.to_value) if r.kind in STATUS_KINDS else (r.to_name or ""),
             "subject": r.subject,
             "status": r.status,
             "reason": r.reason,
-            "context": r.from_name,
+            "context": None if r.kind in NAME_KINDS else r.from_name,
             "duration_seconds": r.duration_seconds,
             "scheduled_for": r.scheduled_for,
         }

@@ -27,7 +27,10 @@ export type RequirementRow = {
   vacancies: number | null; closes_on: string | null; requirement_date: string | null; deadline_state: "expiring" | "expired" | null;
   assigned_recruiter: Person | null; permissions: RequirementPermissions;
 };
-export type RequirementSkill = { id: string; name: string; kind: "required" | "preferred"; weight: number; skill_id: string | null; matched: boolean };
+export type RequirementSkill = {
+  id: string; name: string; kind: "required" | "preferred"; weight: number; skill_id: string | null; matched: boolean;
+  min_level?: "beginner" | "intermediate" | "advanced" | "expert" | null; // hrc-017 (T9)
+};
 export type StatusChange = { from_status: string | null; from_label: string | null; to_status: string; to_label: string; note: string | null; changed_by: Person | null; created_at: string };
 export type Requirement = RequirementRow & {
   description: string; department: string | null; job_category: Ref | null; qualification: string | null; experience_min_months: number | null;

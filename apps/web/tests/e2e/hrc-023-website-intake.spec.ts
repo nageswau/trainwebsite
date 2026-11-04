@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// hrc-023 (DEC-SCOPE-387): a visitor arrives from a campaign link, applies to a public job with a resume and the pool consent, and the
+// hrc-023 (DEC-SCOPE-389): a visitor arrives from a campaign link, applies to a public job with a resume and the pool consent, and the
 // placement manager finds the new candidate -- source Website, the campaign and the website application -- with no import (AC1, AC3,
 // AC4). A second application with the same email matches the same candidate (AC2). Each run gets its own client IP header, so the
 // per-network throttle (10 an hour) never trips a re-run.

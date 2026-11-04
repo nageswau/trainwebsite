@@ -22,8 +22,10 @@ from app.models import (
     CandidateConsent,
     CandidateDocument,
     CandidateDocumentRequest,
+    CandidateNote,
     CandidateResume,
     CandidateSkill,
+    CandidateTask,
     CareerApplication,
     Job,
     JobApplication,
@@ -45,6 +47,7 @@ MOVED = {
     "calls": RecruiterCall, "messages": RecruiterMessage, "consents": CandidateConsent,
     # hrc-015: documents and document requests (a second pending request of a type is cancelled first, see `_cancel_clashing_requests`)
     "documents": CandidateDocument, "document_requests": CandidateDocumentRequest,
+    "notes": CandidateNote, "tasks": CandidateTask,  # hrc-016 T10
     "career_applications": CareerApplication,  # hrc-023 (W10): the victim's public website applications
 }  # fmt: skip
 

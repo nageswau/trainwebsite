@@ -3786,3 +3786,11 @@ or a profile key. `/candidate/me*`: the `candidate` role only, and only the reco
 accepted); every staff role 403, anonymous 401. Registration, resend and verify are public. A candidate reaches no recruiter, student,
 employer or admin route (their bundle grants nothing else). `/recruiter/candidate-self-service-settings`: GET candidate readers (§2.45),
 PUT `placement_manager` and `super_admin` (the §2.279 setting editors). Pinned by `apps/api/tests/test_hrc_022_candidate_portal.py`.
+
+### 2.283 Candidate notes and tasks *(added 2026-11-04 — `DEC-SCOPE-387`, hrc-016)*
+
+Notes and tasks follow the candidate rule (§2.45, R11): candidate readers (`placement_team`, `placement_manager`, `super_admin`,
+`hr_team`) read a candidate's notes and tasks; writers (the first three) add notes and add, edit, complete and cancel any task. "My tasks"
+and the assignee picker are the writers'. Every other role — `placement_officer`, `hr_manager`, `employer`, `candidate`, `it_student` —
+is 403, anonymous 401. Notes are internal: no candidate, student, employer, portal or public response carries them. No grant key is
+added. Pinned by `apps/api/tests/test_hrc_016_notes_tasks.py` and the rec-038 matrix rows.

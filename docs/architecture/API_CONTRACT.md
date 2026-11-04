@@ -5708,9 +5708,51 @@ than 3 requests in 15 minutes **429**. `GET /candidate/me/privacy` → `{opted_i
 consent_version, created_at}]}`; `PUT` `{opted_in, consent_version}` → the same. `GET /recruiter/candidate-self-service-settings` →
 `{fields, available, can_edit}` (candidate readers); `PUT {fields}` (placement_manager, super_admin; a field outside `available` 422).
 
-## 12KF. Website registration → candidate create/match (hrc-023) — addendum, 2026-11-04
+## 12KF. Candidate notes, tasks and the complete timeline (hrc-016) — addendum, 2026-11-04
 
-DEC-SCOPE-387. `POST /api/v1/public/jobs/{job_id}/apply` (public) keeps its body and **201** `{id, tracking_code, status}` and adds
+DEC-SCOPE-387. Candidate readers = `placement_team`, `placement_manager`, `super_admin`, `hr_team`; writers = the first three (rec-009).
+Another role 403, anonymous 401, a candidate outside the pool 404.
+- `GET /api/v1/recruiter/candidates/{id}/notes?limit=&offset=` → `{items: [{id, body, author: {id, full_name}, created_at}], total, limit,
+  offset}`, newest first, `Cache-Control: private, no-store`; readers. The only route that serves a note's text.
+- `POST /api/v1/recruiter/candidates/{id}/notes` `{body}` (1–2000 after trimming) → 201 note; writers; archived/merged candidate 409
+  "Restore this candidate first". Append-only. Audit `candidate_note.create` (ids only).
+- `GET /api/v1/recruiter/candidates/{id}/tasks?limit=&offset=` → page of tasks, open by due time then closed newest first; readers.
+- `POST /api/v1/recruiter/candidates/{id}/tasks` `{task_type: follow_up | resume_screening | interview_coordination | employer_feedback,
+  title (1–200), notes?, due_at (aware; future, within 12 months), assignee_user_id, application_id?, job_id?}` → 201 task; writers.
+  422 "Choose an active recruiter or manager" (inactive, other role, unknown), "Choose an application of this candidate", "The application
+  is for another requirement", "Choose a requirement"; archived 409. Audit `candidate_task.create`; notice `it.candidate.task_assigned`.
+- `PATCH /api/v1/recruiter/candidate-tasks/{task_id}` (any of `task_type`, `title`, `notes`, `due_at`, `assignee_user_id`) → task; equal
+  values are no change. `POST …/complete`, `POST …/cancel` → task. Writers; done/cancelled 409; unknown 404. Audit
+  `candidate_task.update` (field names) / `.complete` / `.cancel`.
+- `GET /api/v1/recruiter/candidate-tasks?due=today|overdue|upcoming&limit=&offset=` → `{items, total, limit, offset, day, counts: {today,
+  overdue, upcoming}}`: the caller's own open tasks, oldest due first (IST days, the rec-024 rule). Writers; others 403 "Your role has no
+  candidate tasks".
+- `GET /api/v1/recruiter/candidate-tasks/assignees?q=` → `[{id, full_name, role}]` (≤ 20); writers.
+- Task body: `{id, task_type, title, notes, due_at, status, overdue, assignee: {id, full_name, active}, candidate: {id, candidate_code,
+  name}, application_id, requirement: {id, code, title} | null, created_by, created_at, completed_at, completed_by, cancelled_at,
+  cancelled_by, can_change}`.
+- `GET /recruiter/candidates/{id}/timeline` (rec-027) gains kinds `note` (reason = excerpt), `task` (event `scheduled` | `done` |
+  `cancelled`, from_value = type, subject = title, to_label = assignee, scheduled_for = due), `assignment` (event = hrc-012 history kind,
+  from_label / to_label = people, status = reason), `profile` (event `create` | `update` | `archive` | `restore` | `merge` |
+  `merged_into`, to_value = changed-field count, subject = the other candidate's code on a merge) and `screening` (to_value / to_label =
+  result, subject = requirement, context = company). Additive.
+- `POST /recruiter/candidates/{id}/merge` (hrc-014): `moved` gains `notes` and `tasks`.
+
+## 12KG. Skills taxonomy domains and a job skill's minimum level (hrc-017) — addendum, 2026-11-04
+
+`DEC-SCOPE-388`. **Changed (additive):** every skill category row (`GET/POST/PATCH /api/v1/recruiter/skill-categories`) carries `domain`
+(`"it"|"non_it"`); `POST` takes an optional `domain` (default `"it"`) and `PATCH` may change it (an explicit null or another value: 422,
+"Domain …"; a non-writer: 403). `GET /recruiter/skill-categories` and `GET /recruiter/skills` take `?domain=it|non_it` (422 otherwise; a
+skill matches through its primary category or a tag). Each item of `PUT /recruiter/requirements/{id}/skill-weights` may carry `min_level`
+(`"beginner"|"intermediate"|"advanced"|"expert"|null`; omitted = unchanged, null = any level); a level on a skill outside the Skills Master
+is a 422 "Only a skill in the Skills Master can have a minimum level"; the audit row gains `changes` `{"<skill> minimum level": [old, new]}`.
+The requirement detail's `skills[]` and the matches `criteria.skills[]` carry `min_level`. **Changed (behaviour):** in
+`GET /recruiter/requirements/{id}/matches` a skill with a minimum level counts only for a candidate holding it (or a related skill) at that
+level or above. No level is set by migration 0265, so nothing changes until a writer sets one.
+
+## 12KH. Website registration → candidate create/match (hrc-023) — addendum, 2026-11-04
+
+DEC-SCOPE-389. `POST /api/v1/public/jobs/{job_id}/apply` (public) keeps its body and **201** `{id, tracking_code, status}` and adds
 optional `consent_version` (a version other than the current `candidate-v1` 422), `utm` `{utm_source, utm_medium, utm_campaign,
 utm_term, utm_content}` (other keys dropped, values trimmed to 100) and the honeypot `website` (filled: the same 201, nothing stored).
 Fields over their column length, an invalid email or an unparseable phone 422. More than 10 applications from one client IP in an hour

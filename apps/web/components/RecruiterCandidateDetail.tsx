@@ -8,11 +8,13 @@ import RecruiterCalls from "@/components/RecruiterCalls";
 import RecruiterCandidateApplications from "@/components/RecruiterCandidateApplications";
 import RecruiterCandidateForm from "@/components/RecruiterCandidateForm";
 import RecruiterCandidateJourney from "@/components/RecruiterCandidateJourney";
+import RecruiterCandidateNotes from "@/components/RecruiterCandidateNotes";
 import RecruiterCandidateOwnership from "@/components/RecruiterCandidateOwnership";
 import RecruiterCandidateTraining from "@/components/RecruiterCandidateTraining";
 import RecruiterCandidateDocuments from "@/components/RecruiterCandidateDocuments";
 import RecruiterCandidateResumes from "@/components/RecruiterCandidateResumes";
 import RecruiterCandidateSkills from "@/components/RecruiterCandidateSkills";
+import RecruiterCandidateTasks from "@/components/RecruiterCandidateTasks";
 import RecruiterMessages from "@/components/RecruiterMessages";
 import RecruiterRecordHistory from "@/components/RecruiterRecordHistory";
 import RecruiterTimeline from "@/components/RecruiterTimeline";
@@ -200,6 +202,9 @@ export default function RecruiterCandidateDetail({ initial, merged }: { initial:
         <RecruiterMessages key={`messages-${candidate.id}-${archived}-${candidate.whatsapp_to}-${candidate.email}`} canWrite={canEdit} onChanged={touched}
           source={{ kind: "candidate", party: { kind: "candidate", id: candidate.id, name: candidate.name, whatsappTo: candidate.whatsapp_to ?? null, email: candidate.email } }} />
       </div>
+      {/* hrc-016: private notes and tasks (writers add on an active candidate); each write re-reads the timeline. Re-keyed on archive/restore. */}
+      <RecruiterCandidateNotes key={`notes-${candidate.id}-${archived}`} candidateId={candidate.id} canAdd={canEdit} onAdded={touched} />
+      <RecruiterCandidateTasks key={`tasks-${candidate.id}-${archived}`} candidateId={candidate.id} canAdd={canEdit} onChanged={touched} />
       <RecruiterTimeline party={{ kind: "candidate", id: candidate.id }} version={activity} />
       {/* hrc-004: who changed what, old → new (contact and salary hidden); re-read after every save. */}
       {/* hrc-012 QA-01: `activity` too -- a collaborator-only ownership change leaves updated_at as it was */}

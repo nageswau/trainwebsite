@@ -393,7 +393,7 @@ async def gallery(division: str | None = None, db: AsyncSession = Depends(get_db
 
 @router.post("/jobs/{job_id}/apply", status_code=201)
 async def public_job_apply(job_id: UUID, payload: dict, request: Request, db: AsyncSession = Depends(get_db)):
-    """hrc-023 (DEC-SCOPE-387): the application also creates or matches the person's candidate (W3) with the visit's UTM (W1) and the
+    """hrc-023 (DEC-SCOPE-389): the application also creates or matches the person's candidate (W3) with the visit's UTM (W1) and the
     consent shown (W4). The answer is the same for a new and a known person (W7); a filled honeypot stores nothing (W6)."""
     job = await db.get(Job, job_id)
     # EMP-002-AC02: a posting past its own closing date is not open, even if the

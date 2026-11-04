@@ -2,15 +2,17 @@
 import { useRef, useState } from "react";
 
 import { sendJson } from "@/lib/apiErrors";
-import { SKILL_CATEGORIES_URL, type SkillCategory } from "@/lib/recruiterSkills";
+import { DOMAIN_LABEL, SKILL_CATEGORIES_URL, type SkillCategory, type SkillDomain } from "@/lib/recruiterSkills";
 import { formText, statusLabel } from "@/lib/telecaller";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { toneClass, type Feedback } from "@/lib/welcomeLink";
 
 const FEEDBACK_ID = "skill-cat-feedback";
+const otherDomain = (c: SkillCategory): SkillDomain => (c.domain === "non_it" ? "it" : "non_it");
 
 // rec-006 (S2-§2 "admin should be able to add/edit"): the manager's category list -- add, rename inline (Esc cancels), deactivate and
-// reactivate. Categories are never deleted; a deactivated one stays on the skills that use it.
+// reactivate. Categories are never deleted; a deactivated one stays on the skills that use it. hrc-017 (T1, T9): each category is IT or
+// non-IT -- chosen when adding, switched with "Move to …".
 export default function RecruiterSkillCategories({ categories, onChanged }: { categories: SkillCategory[]; onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
@@ -34,8 +36,9 @@ export default function RecruiterSkillCategories({ categories, onChanged }: { ca
   async function create(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formEl = event.currentTarget;
-    const name = formText(new FormData(formEl), "name");
-    if (await write(SKILL_CATEGORIES_URL, "POST", { name }, `Added category ${name}.`)) formEl.reset();
+    const form = new FormData(formEl);
+    const name = formText(form, "name");
+    if (await write(SKILL_CATEGORIES_URL, "POST", { name, domain: formText(form, "domain") }, `Added category ${name}.`)) formEl.reset();
   }
 
   async function rename(event: React.FormEvent<HTMLFormElement>, category: SkillCategory) {
@@ -52,6 +55,13 @@ export default function RecruiterSkillCategories({ categories, onChanged }: { ca
           <label htmlFor="skill-cat-name">Category name (required)</label>
           <input id="skill-cat-name" name="name" required maxLength={80} disabled={busy} />
         </div>
+        <div className="field" style={{ flex: "0 1 160px", marginBottom: 0 }}>
+          <label htmlFor="skill-cat-domain">Domain of the new category</label>
+          <select id="skill-cat-domain" name="domain" defaultValue="it" disabled={busy}>
+            <option value="it">{DOMAIN_LABEL.it}</option>
+            <option value="non_it">{DOMAIN_LABEL.non_it}</option>
+          </select>
+        </div>
         <button className="btn" disabled={busy}>Add category</button>
       </form>
       <div id={FEEDBACK_ID} tabIndex={-1} className={feedback ? toneClass[feedback.tone] : undefined} role="status" aria-live="polite" style={{ margin: "8px 0", overflowWrap: "anywhere" }}>
@@ -59,12 +69,12 @@ export default function RecruiterSkillCategories({ categories, onChanged }: { ca
       </div>
       <div className="table-wrap" role="region" aria-label="Category list" tabIndex={0}>
         <table>
-          <thead><tr><th scope="col">Name</th><th scope="col">Status</th><th scope="col"><span className="visually-hidden">Actions</span></th></tr></thead>
+          <thead><tr><th scope="col">Name</th><th scope="col">Domain</th><th scope="col">Status</th><th scope="col"><span className="visually-hidden">Actions</span></th></tr></thead>
           <tbody>
             {categories.map((c) => (
               <tr key={c.id}>
                 {editing === c.id ? (
-                  <td colSpan={3}>
+                  <td colSpan={4}>
                     <form className="form" onSubmit={(e) => rename(e, c)} onKeyDown={(e) => { if (e.key === "Escape") { setEditing(null); focus(`skill-cat-edit-${c.id}`); } }}
                       style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
                       <div className="field" style={{ flex: "1 1 200px", marginBottom: 0 }}>
@@ -78,6 +88,7 @@ export default function RecruiterSkillCategories({ categories, onChanged }: { ca
                 ) : (
                   <>
                     <td data-label="Name">{c.name}</td>
+                    <td data-label="Domain">{DOMAIN_LABEL[c.domain ?? "it"]}</td>
                     <td data-label="Status"><span className="badge">{statusLabel(c.active)}</span></td>
                     <td data-label="Actions">
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -85,6 +96,10 @@ export default function RecruiterSkillCategories({ categories, onChanged }: { ca
                         <button type="button" className="btn secondary small" aria-label={`${c.active ? "Deactivate" : "Reactivate"} ${c.name}`} disabled={busy}
                           onClick={() => write(`${SKILL_CATEGORIES_URL}/${c.id}`, "PATCH", { active: !c.active }, `${c.active ? "Deactivated" : "Reactivated"} ${c.name}.`)}>
                           {c.active ? "Deactivate" : "Reactivate"}
+                        </button>
+                        <button type="button" className="btn secondary small" aria-label={`Move ${c.name} to ${DOMAIN_LABEL[otherDomain(c)]}`} disabled={busy}
+                          onClick={() => write(`${SKILL_CATEGORIES_URL}/${c.id}`, "PATCH", { domain: otherDomain(c) }, `Moved ${c.name} to ${DOMAIN_LABEL[otherDomain(c)]}.`)}>
+                          Move to {DOMAIN_LABEL[otherDomain(c)]}
                         </button>
                       </div>
                     </td>

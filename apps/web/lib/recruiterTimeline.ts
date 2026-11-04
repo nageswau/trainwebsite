@@ -3,13 +3,15 @@
 // keys labelled here with the labels their own sections use. Display only: the API decides who reads it and what it holds.
 import { EMAIL_TITLE, EXCERPT, duration, type TimelineEntry } from "@/lib/leadTimeline";
 import { candidateUrl } from "@/lib/recruiterCandidates";
+import { taskTypeLabel } from "@/lib/recruiterCandidateTasks";
 import { COMPANIES_URL } from "@/lib/recruiterCompanies";
 import { reasonLabel } from "@/lib/recruiterFollowUps";
 import { ROUNDS } from "@/lib/recruiterInterviews";
 import { meetingTypeLabel } from "@/lib/recruiterMeetings";
 import { CHANNELS, RESPONSES } from "@/lib/recruiterShares";
 
-type Kind = "stage" | "call" | "message" | "meeting" | "follow_up" | "requirement" | "share" | "share_response" | "contract" | "application" | "interview" | "offer";
+type Kind = "stage" | "call" | "message" | "meeting" | "follow_up" | "requirement" | "share" | "share_response" | "contract" | "application" | "interview" | "offer"
+  | "note" | "task" | "assignment" | "profile" | "screening"; // hrc-016 (T9): the candidate timeline's new kinds
 export type RecTimelineRow = {
   id: string; kind: Kind; at: string; actor: { id: string; full_name: string } | null; event: string | null; from_value: string; from_label: string;
   to_value: string; to_label: string; subject: string | null; status: string | null; reason: string | null; context: string | null;
@@ -32,6 +34,31 @@ const OFFER_TITLE: Record<string, (row: RecTimelineRow) => string> = {
   created: (r) => `Offer recorded (${r.to_label})`, status: (r) => `Offer: ${move(r)}`, revised: () => "Offer revised", letter: () => "Offer letter uploaded",
   joining: () => "Joining details updated", joined: () => "Joined", did_not_join: () => "Did not join", proof: () => "Joining proof uploaded",
 };
+
+const TASK_VERB: Record<string, string> = { scheduled: "assigned", done: "done", cancelled: "cancelled" };
+const ASSIGNMENT_REASON: Record<string, string> = { create: "When the candidate was added", reassign: "Team reassignment" };
+
+/** hrc-016: an ownership change (hrc-012's history) -- who held it before and who holds it now. */
+function assignmentTitle(row: RecTimelineRow): string {
+  if (row.event === "collaborator_added") return `Collaborator added: ${row.to_label}`;
+  if (row.event === "collaborator_removed") return `Collaborator removed: ${row.from_label}`;
+  const role = row.event === "placement_officer" ? "Placement officer" : "Primary recruiter";
+  return `${role}: ${row.from_label || "None"} → ${row.to_label || "None"}`;
+}
+
+/** hrc-016: the candidate's own record changes -- an edit says how many fields changed (the Change history card has the values). */
+function profileTitle(row: RecTimelineRow): string {
+  const n = Number(row.to_value);
+  switch (row.event) {
+    case "create": return "Candidate added";
+    case "update": return n > 0 ? `Profile edited (${n} field${n === 1 ? "" : "s"})` : "Profile edited";
+    case "archive": return "Candidate archived";
+    case "restore": return "Candidate restored";
+    case "merge": return `${row.subject ?? "A duplicate"} merged into this candidate`;
+    case "merged_into": return `Merged into ${row.subject ?? "another candidate"}`;
+    default: return "Profile changed";
+  }
+}
 
 function stageTitle(row: RecTimelineRow): string {
   if (row.event === "lost") return "Marked Lost";
@@ -99,6 +126,19 @@ export function timelineEntry(row: RecTimelineRow): TimelineEntry {
         when: row.scheduled_for ? { label: "For", value: row.scheduled_for } : null };
     case "offer":
       return { ...base, badge: "Offer", tone: row.event === "did_not_join" ? TONE.stop : TONE.owner, title: (OFFER_TITLE[row.event ?? ""] ?? (() => "Offer"))(row), meta: where };
+    case "note":
+      return { ...base, badge: "Note", tone: TONE.owner, title: "Note added" };
+    case "task":
+      return { ...base, badge: "Task", tone: row.event === "cancelled" ? TONE.stop : TONE.plan,
+        title: `Task ${TASK_VERB[row.event ?? ""] ?? row.event}: ${taskTypeLabel(row.from_value)}`,
+        meta: compact([row.subject, row.to_label && `Assigned to ${row.to_label}`]),
+        when: row.event === "scheduled" && row.scheduled_for ? { label: "Due", value: row.scheduled_for } : null };
+    case "assignment":
+      return { ...base, badge: "Ownership", tone: TONE.owner, title: assignmentTitle(row), meta: compact([ASSIGNMENT_REASON[row.status ?? ""]]) };
+    case "profile":
+      return { ...base, badge: "Profile", tone: row.event === "archive" ? TONE.stop : TONE.stage, title: profileTitle(row) };
+    case "screening":
+      return { ...base, badge: "Screening", tone: row.to_value === "rejected" ? TONE.stop : TONE.stage, title: `Screening: ${row.to_label}`, meta: where };
     default:
       return { ...base, badge: "Activity", tone: TONE.stage, title: String((row as { kind: string }).kind) };
   }

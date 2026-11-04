@@ -378,7 +378,7 @@ async def detail_out(db: AsyncSession, user: User, candidate: Candidate) -> dict
 
 
 async def website_applications(db: AsyncSession, candidate: Candidate) -> list[dict]:
-    """hrc-023 (DEC-SCOPE-387 W9): the candidate's public website applications, newest first -- never the cover note or contact details."""
+    """hrc-023 (DEC-SCOPE-389 W9): the candidate's public website applications, newest first -- never the cover note or contact details."""
     rows = (
         await db.execute(
             select(CareerApplication, Job.title).join(Job, Job.id == CareerApplication.job_id)

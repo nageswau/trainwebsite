@@ -38,7 +38,7 @@ test("manager maintains the Skills Master; recruiter reads it", async ({ page })
   await expect(page.getByText(`Created ${skill}.`)).toBeVisible();
 
   await page.getByLabel("Search skills or aliases").fill(skill);
-  await page.getByRole("button", { name: "Search" }).click();
+  await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.getByRole("button", { name: `Manage ${skill}` }).click();
   const detail = page.getByRole("region", { name: skill });
   await detail.getByLabel("New alias").fill(alias);
@@ -57,7 +57,7 @@ test("manager maintains the Skills Master; recruiter reads it", async ({ page })
 
   // AC2: the alias finds the skill.
   await page.getByLabel("Search skills or aliases").fill(alias.toLowerCase());
-  await page.getByRole("button", { name: "Search" }).click();
+  await page.getByRole("button", { name: "Search", exact: true }).click();
   await expect(page.getByRole("region", { name: "Skills" }).getByText(skill, { exact: true })).toBeVisible();
 
   await page.request.post("/api/v1/auth/logout");

@@ -7,7 +7,7 @@ import { sendJson } from "@/lib/apiErrors";
 import { CONSENT_TEXT, CONSENT_VERSION } from "@/lib/candidatePortal";
 import { readUtm } from "@/lib/utm";
 
-// hrc-023 (DEC-SCOPE-387): the public job application. The server creates or matches the applicant's candidate record (W3) with the
+// hrc-023 (DEC-SCOPE-389): the public job application. The server creates or matches the applicant's candidate record (W3) with the
 // visit's campaign (W1) and the consent shown here (W4); its answer is the same for a new and a known person, so this form never says
 // which. `website` is a honeypot (W6): hidden from people and assistive technology, so only a bot fills it.
 export default function CareerApply({ jobId, jobTitle }: { jobId: string; jobTitle: string }) {

@@ -1,4 +1,4 @@
-"""hrc-023 (DEC-SCOPE-387, spec docs/superpowers/specs/2026-11-04-hrc-023-website-registration-intake-design.md): a website job application
+"""hrc-023 (DEC-SCOPE-389, spec docs/superpowers/specs/2026-11-04-hrc-023-website-registration-intake-design.md): a website job application
 or registration creates -- or matches by exact email -- one candidate with source Website and the visit's UTM (W1-W3, AC1/AC2), records the
 consent (W4, AC3) and is visible to recruiters with no import (W9, AC4). Concurrency (W5), bot protection (W6) and merge (W10)."""
 

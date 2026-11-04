@@ -1,9 +1,9 @@
 """hrc-023 -- website registration -> candidate create/match: UTM, the application's candidate link and consent, nullable creators.
 
-Revision ID: 0264_website_intake
-Revises: 0263_candidate_portal
+Revision ID: 0266_website_intake
+Revises: 0265_skill_taxonomy
 
-docs/superpowers/specs/2026-11-04-hrc-023-website-registration-intake-design.md (DEC-SCOPE-387). Adds `candidates.utm`,
+docs/superpowers/specs/2026-11-04-hrc-023-website-registration-intake-design.md (DEC-SCOPE-389). Adds `candidates.utm`,
 `career_applications.candidate_id/utm/consent_version/consented_at`, and lets `candidates.created_by_user_id` and
 `candidate_consents.user_id` be empty (a public form has no user). 0001 builds a fresh database from the current models, which already
 carry the columns, so each step runs only when missing (0251's idiom). W8 / Q-25: existing career applications are LINKED to an
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0264_website_intake"
-down_revision = "0263_candidate_portal"
+revision = "0266_website_intake"
+down_revision = "0265_skill_taxonomy"
 branch_labels = None
 depends_on = None
 

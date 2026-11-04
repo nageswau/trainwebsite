@@ -2,9 +2,9 @@
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-023` (PDF §6.1 steps 1–5, §13 "Website registration", §17 QA; PDF
   classified `UNVERIFIED`). Dependencies hrc-022 (DEC-SCOPE-386), hrc-014 (DEC-SCOPE-377) and hrc-010 (DEC-SCOPE-383) are merged.
-- **Decision:** `DEC-SCOPE-387`. The owner said to proceed with the recommended answers, so Q-23/Q-25 and W1–W10 below are **the
+- **Decision:** `DEC-SCOPE-389`. The owner said to proceed with the recommended answers, so Q-23/Q-25 and W1–W10 below are **the
   builder's calls (`NEEDS_CONFIRMATION`)**.
-- **Numbering:** migration `0264_website_intake`; API §12KF. No new permission (no RBAC section).
+- **Numbering:** migration `0266_website_intake`; API §12KH. No new permission (no RBAC section).
 
 ## Intent
 
@@ -71,11 +71,11 @@ candidate list with no import.
 
 ## Plan (TDD, red → green)
 
-1. Migration 0264 + models + migration test.
+1. Migration 0266 + models + migration test.
 2. `services/website_intake.py` (UTM clean, match/create, consent) + the apply route (throttle, honeypot, consent, lengths); tests for
    AC1–AC3, W3, W5, W6, W7.
 3. Registration UTM + source Website on verification (candidate_portal); tests.
 4. Merge MOVED + detail_out website block; tests (AC4).
 5. Web: `lib/utm.ts`, `CareerApply` (consent, honeypot, busy, a11y, account link), register form UTM, detail card, merge label; vitest;
    Playwright e2e.
-6. Docs: DEC-SCOPE-387, API §12KF, RTM rows, backlog status.
+6. Docs: DEC-SCOPE-389, API §12KH, RTM rows, backlog status.

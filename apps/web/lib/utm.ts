@@ -1,4 +1,4 @@
-// hrc-023 (DEC-SCOPE-387 W1): the visit's campaign (UTM) parameters. The first page of the visit that carries any of the five standard
+// hrc-023 (DEC-SCOPE-389 W1): the visit's campaign (UTM) parameters. The first page of the visit that carries any of the five standard
 // keys wins (first touch) and is kept for the browser tab, so a visitor who lands on /it/careers?utm_source=x and then registers keeps
 // it. The server trims, caps and drops anything else; this file only collects.
 export const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"] as const;

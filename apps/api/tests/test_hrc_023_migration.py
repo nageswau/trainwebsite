@@ -1,4 +1,4 @@
-"""hrc-023 -- migration 0264_website_intake (DEC-SCOPE-387): the chain, the Q-25 link of existing career applications (W8) and the round
+"""hrc-023 -- migration 0266_website_intake (DEC-SCOPE-389): the chain, the Q-25 link of existing career applications (W8) and the round
 trip in a throwaway database (the hrc-022 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -12,16 +12,16 @@ from alembic import command
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_hrc_023_migration_0264", VERSIONS / "0264_website_intake.py")
+_spec = importlib.util.spec_from_file_location("_hrc_023_migration_0266", VERSIONS / "0266_website_intake.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0264_website_intake", "0263_candidate_portal"
+HEAD, BASE = "0266_website_intake", "0265_skill_taxonomy"
 NEW_COLUMNS = {("candidates", "utm"), ("career_applications", "candidate_id"), ("career_applications", "utm"),
                ("career_applications", "consent_version"), ("career_applications", "consented_at")}  # fmt: skip
 
 
-def test_migration_chains_after_0263():
+def test_migration_chains_after_0265():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

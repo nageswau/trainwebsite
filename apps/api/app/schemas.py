@@ -53,10 +53,12 @@ from app.models import (
     BDM_STAFF_MAX,
     BDM_TARGET_MAX,
     CANDIDATE_CONTACT_METHODS,
+    CANDIDATE_NOTE_MAX,
     CANDIDATE_SKILL_LEVELS,
     CANDIDATE_SKILL_SOURCES,
     CANDIDATE_SKILL_STATUSES,
     CANDIDATE_STATUSES,
+    CANDIDATE_TASK_TYPES,
     CAPITAL_ENTRY_KINDS,
     CONTACT_CHANNELS,
     CONTACT_PREFERENCES,
@@ -9440,8 +9442,9 @@ class CalendarEmployeesOut(BaseModel):
 # --- rec-006 (DEC-SCOPE-119): the recruiter Skills Master ------------------------------------------------------------------------
 SKILL_FIELD_LABELS = {
     "name": "Name", "alias": "Alias", "active": "Active", "category_id": "Category", "tag_category_ids": "Other categories", "skill_id": "Related skill",
-    "into_skill_id": "Merge into",
+    "into_skill_id": "Merge into", "domain": "Domain",
 }
+SkillDomain = Literal["it", "non_it"]  # hrc-017 (DEC-SCOPE-388 T1): models.SKILL_DOMAINS
 _SPACES = re.compile(r" +")
 
 
@@ -9494,6 +9497,7 @@ SkillTags = Annotated[list[SkillCategoryPick], AfterValidator(_distinct_tags)]
 class SkillCategoryCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: RecSkillName
+    domain: SkillDomain = "it"
 
 
 class SkillCategoryUpdate(BaseModel):
@@ -9502,6 +9506,7 @@ class SkillCategoryUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: RecSkillName = None
     active: StrictBool = None
+    domain: SkillDomain = None
 
 
 class SkillCreate(BaseModel):
@@ -9543,6 +9548,7 @@ class SkillCategoryOut(BaseModel):
     name: str
     active: bool
     sort_order: int
+    domain: str
 
 
 class SkillCategoryPage(BaseModel):
@@ -9861,7 +9867,8 @@ class RecTimelineRow(BaseModel):
     entry). `id` is the source row's id (a follow-up's scheduled / done / cancelled entries share it; `event` tells them apart)."""
 
     id: UUID
-    kind: Literal["stage", "call", "message", "meeting", "follow_up", "requirement", "share", "share_response", "contract", "application", "interview", "offer"]
+    kind: Literal["stage", "call", "message", "meeting", "follow_up", "requirement", "share", "share_response", "contract", "application", "interview", "offer",
+                  "note", "task", "assignment", "profile", "screening"]  # hrc-016 T9: the candidate timeline's new kinds
     at: datetime
     actor: LeadStageActor | None
     event: str | None
@@ -9882,6 +9889,39 @@ class RecTimelinePage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# hrc-016 (DEC-SCOPE-387 T2/T3/T6): a private note and a candidate task. Author, status and stamps are server-owned (unknown fields here).
+CandidateNoteBody = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=CANDIDATE_NOTE_MAX)], BeforeValidator(_bdm_newlines)]
+CandidateTaskTitle = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+CandidateTaskNotes = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=CANDIDATE_NOTE_MAX)] | None, BeforeValidator(_bdm_newlines)]
+
+
+class CandidateNoteIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    body: CandidateNoteBody
+
+
+class CandidateTaskCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    task_type: Literal[CANDIDATE_TASK_TYPES]
+    title: CandidateTaskTitle
+    notes: CandidateTaskNotes = None
+    due_at: AwareDatetime
+    assignee_user_id: UUID
+    application_id: UUID | None = None
+    job_id: UUID | None = None
+
+
+class CandidateTaskUpdate(BaseModel):
+    """Only the keys sent are considered; `notes: null` clears the notes. The links are fixed at creation."""
+
+    model_config = ConfigDict(extra="forbid")
+    task_type: Literal[CANDIDATE_TASK_TYPES] = None
+    title: CandidateTaskTitle = None
+    notes: CandidateTaskNotes = None
+    due_at: AwareDatetime = None
+    assignee_user_id: UUID = None
 
 
 class RecBoardStage(BaseModel):
@@ -10351,7 +10391,7 @@ class CandidateRef(BaseModel):
 
 
 class CandidateWebsiteApplication(BaseModel):
-    """hrc-023 (DEC-SCOPE-387 W9): one public website job application linked to the candidate -- no cover note, no contact details."""
+    """hrc-023 (DEC-SCOPE-389 W9): one public website job application linked to the candidate -- no cover note, no contact details."""
 
     job_title: str
     tracking_code: str
@@ -10664,9 +10704,12 @@ class RecRequirementOwnerAdd(BaseModel):
 
 # --- rec-016 (DEC-SCOPE-157 M1): a requirement skill's match weight; ids must be this requirement's skills (checked in the route) -----
 class RecSkillWeight(BaseModel):
+    """hrc-017 (T6): `min_level` omitted = unchanged, null = any level."""
+
     model_config = ConfigDict(extra="forbid")
     id: UUID
     weight: int = Field(ge=1, le=10)
+    min_level: Literal["beginner", "intermediate", "advanced", "expert"] | None = None
 
 
 class RecSkillWeights(BaseModel):
@@ -15608,7 +15651,7 @@ class CandidatePortalRegistration(BaseModel):
     phone: str | None = Field(default=None, max_length=40)
     password: str = Field(min_length=10, max_length=128)
     consent_version: str = Field(max_length=20)
-    utm: dict | None = None  # hrc-023 (DEC-SCOPE-387 W1/W2): cleaned to the five standard keys by `website_intake.clean_utm`
+    utm: dict | None = None  # hrc-023 (DEC-SCOPE-389 W1/W2): cleaned to the five standard keys by `website_intake.clean_utm`
 
     @field_validator("phone")
     @classmethod

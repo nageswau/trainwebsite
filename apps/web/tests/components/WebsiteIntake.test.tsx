@@ -6,7 +6,7 @@ import CareerApply from "@/components/CareerApply";
 import { MOVED_LABEL } from "@/lib/recruiterDuplicates";
 import { captureUtm, readUtm, utmFrom } from "@/lib/utm";
 
-// hrc-023 (DEC-SCOPE-387): the visit's campaign (W1), the job application with consent and honeypot (W4/W6), the registration's UTM
+// hrc-023 (DEC-SCOPE-389): the visit's campaign (W1), the job application with consent and honeypot (W4/W6), the registration's UTM
 // (W2) and the merge's "website applications" count (W10).
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 beforeEach(() => window.sessionStorage.clear());

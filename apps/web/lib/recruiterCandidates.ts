@@ -114,7 +114,7 @@ export type CandidateDetail = CandidateItem & Package & {
   preferred_locations: string[]; linkedin: string | null; archived_at: string | null; created_by: PersonRef | null; updated_by: PersonRef | null;
   updated_at: string; resumes: CandidateResume[]; can_edit: boolean; whatsapp_to?: string | null; // rec-026: the wa.me number
   merged_into?: { id: string; candidate_code: string } | null; // hrc-014: the candidate this one was merged into
-  // hrc-023 (DEC-SCOPE-387 W1/W9): the website visit's campaign and the public job applications linked to this candidate
+  // hrc-023 (DEC-SCOPE-389 W1/W9): the website visit's campaign and the public job applications linked to this candidate
   utm?: Record<string, string> | null; website_applications?: WebsiteApplication[];
   // hrc-010 (optional: an older API answer has none of these)
   country?: string | null; state?: string | null; city?: string | null; preferred_contact?: string | null; email_verified_at?: string | null;
