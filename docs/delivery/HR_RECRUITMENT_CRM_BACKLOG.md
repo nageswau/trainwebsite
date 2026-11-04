@@ -634,6 +634,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
   starter list the owner edits in the Skills Master; the level is set in "Adjust weights"; `NEEDS_CONFIRMATION`).
 
 #### hrc-018: Configurable matching engine with explanations
+- **Status (2026-11-04):** built — `DEC-SCOPE-392` (Q-18 answered by the builder's recommended call: replace the rec-016 constants, no
+  preset; factor names and E1–E12 `NEEDS_CONFIRMATION`); design `docs/superpowers/specs/2026-11-04-hrc-018-matching-engine-design.md`;
+  migration `0269_match_engine`; API §12KK; RBAC §2.286.
 - **Business requirement:** §7.2 weights 40/20/15/10/10/5, admin-configurable, hard filters, plain-language explanation, "not a guarantee"; §13 "Candidate profile changed → refresh".
 - **Existing behavior:** `matching.py` scores skills by per-job weights plus constants for experience and location. Qualification, role and salary/availability are not scored. The only hard filter is required skills. The explanation is a breakdown, not a sentence. Scores are computed live.
 - **Expected behavior:**

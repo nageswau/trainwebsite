@@ -113,7 +113,7 @@ async def test_a_preferred_skill_level_scores_only_at_that_level(client, db_sess
     await _weights(client, job, [{"id": str(rows[1].id), "weight": 2, "min_level": "advanced"}])
     item = _body(await _matches(client, job))["items"][0]
     assert item["id"] == str(low.id)  # still a match: the level is on a preferred skill, not a hard filter
-    assert [b["matched"] for b in item["breakdown"]] == [True, False]
+    assert [b["matched"] for b in item["breakdown"] if b["kind"] in ("required", "preferred")] == [True, False]  # hrc-018 adds a role item
 
 
 @pytest.mark.asyncio

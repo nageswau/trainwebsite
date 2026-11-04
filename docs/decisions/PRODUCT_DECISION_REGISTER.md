@@ -11700,3 +11700,32 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   data-quality dashboard (hrc-034 reads `candidate_import_rows`).
 - **Numbering:** migration `0268_candidate_imports`; API §12KJ; RBAC §2.285; grant `candidates.import` (declared by hrc-002).
 - **Feature ID authorized:** `hrc-013`. **Status:** built on `worktree-hrc-013`.
+
+### DEC-SCOPE-392 — Configurable matching engine with explanations (`hrc-018`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-018` (PDF §7.2 weights 40/20/15/10/10/5, admin-configurable, hard
+  filters, plain-language explanation, "not a guarantee"; §13 "candidate profile changed → refresh"; PDF classified `UNVERIFIED`). Scope
+  approved by the owner 2026-11-01 (backlog Q-00). Dependencies hrc-010 (DEC-SCOPE-383), hrc-011 (DEC-SCOPE-375) and hrc-017
+  (DEC-SCOPE-388) merged. The owner said to proceed with the recommended answers, so Q-18 and E1–E12 are **the builder's calls
+  (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-04-hrc-018-matching-engine-design.md`.
+- **Behaviour:** a requirement's match score is shared by six factors — Skills, Experience, Qualification, Location, Role, Salary &
+  availability — weighted 40/20/15/10/10/5 by default; super_admin changes the weights (whole numbers 0–100 that must add up to 100,
+  enforced by the database) on the requirements page. A factor the requirement has no details for is left out and the others share its
+  points, so a full match is still 100. Required skills still filter; each requirement may also make minimum experience, qualification,
+  location and maximum salary hard filters ("Adjust weights"), which also leave out a candidate who has not recorded the value. Every
+  match row explains each factor in a sentence ("Matches 4 of 5 required skills · 1 of 2 preferred (missing AWS)", "3 yrs relevant
+  (needs 2–5 yrs)", "Expected ₹8L within budget (up to ₹10L)") and the section shows a "not a guarantee" disclaimer. Scores stay live.
+- **Builder's calls:** E1 the factor names (the PDF gives the weights). E2 one `match_settings` row; no row = the defaults. E3 super_admin
+  edits, candidate readers read. E4 points over the applicable factors by largest remainder, then the skills share by `job_skills.weight`.
+  E5 experience uses relevant months when recorded; qualification = one of the candidate's degrees found in the job's text; role = the
+  preferred role(s) and the job title contain one another; salary & availability = expected annual INR ≤ the job's maximum in annual INR
+  and available by the expected joining date (each where the job has it). E6 four `jobs.match_hard_*` switches (default off), 422 without
+  the job value, audited with the weights. E7 `explanation[]`, `skills{}` and `disclaimer`. E8 without `candidates.compensation.view` the
+  salary line has no amounts. E9 the candidate audience (hrc-027) gets no salary line (no job salary is published today). E10 one pure
+  `evaluate`; SQL narrows by required skills, Python decides the rest. E11 / Q-18: rec-016's 10-point constants are replaced, no preset.
+  E12 `matching.jobs_for_candidate` runs the same rule candidate → jobs for hrc-027.
+- **Not built:** the candidate-facing recommendations (hrc-027), score caching (scoring is logged per read for measurement).
+- **With hrc-009 (`DEC-SCOPE-390`):** a hard filter decides who fits, so its eligibility snapshot also carries the switches that are on (and
+  the maximum salary while the salary filter is); turning a hard filter on or off flags the open applications for review.
+- **Numbering:** migration `0269_match_engine`; API §12KK; RBAC §2.286.
+- **Feature ID authorized:** `hrc-018`. **Status:** built on `worktree-hrc-018`.

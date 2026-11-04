@@ -10712,15 +10712,52 @@ class RecSkillWeight(BaseModel):
     min_level: Literal["beginner", "intermediate", "advanced", "expert"] | None = None
 
 
+class RecHardFilters(BaseModel):
+    """hrc-018 (DEC-SCOPE-392 E6): each switch omitted = unchanged."""
+
+    model_config = ConfigDict(extra="forbid")
+    experience: StrictBool | None = None
+    qualification: StrictBool | None = None
+    location: StrictBool | None = None
+    salary: StrictBool | None = None
+
+
 class RecSkillWeights(BaseModel):
     model_config = ConfigDict(extra="forbid")
     weights: list[RecSkillWeight] = Field(min_length=1, max_length=60)
+    hard_filters: RecHardFilters | None = None  # hrc-018 (E6)
 
     @model_validator(mode="after")
     def _distinct(self):
         if len({w.id for w in self.weights}) != len(self.weights):
             raise ValueError("Each skill can appear only once")
         return self
+
+
+_MatchWeight = Annotated[StrictInt, Field(ge=0, le=100)]
+
+
+class MatchFactorWeights(BaseModel):
+    """hrc-018 (DEC-SCOPE-392 E2; AC1): the six factor weights, whole numbers 0-100 that sum to exactly 100."""
+
+    model_config = ConfigDict(extra="forbid")
+    skills: _MatchWeight
+    experience: _MatchWeight
+    qualification: _MatchWeight
+    location: _MatchWeight
+    role: _MatchWeight
+    salary: _MatchWeight
+
+    @model_validator(mode="after")
+    def _total(self):
+        if sum(self.model_dump().values()) != 100:
+            raise ValueError("The weights must add up to 100")
+        return self
+
+
+class MatchSettingsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    weights: MatchFactorWeights
 
 
 # --- rec-008 (DEC-SCOPE-132 JD3): a JD version's fields; the company, number and version are server-owned ---------------------------

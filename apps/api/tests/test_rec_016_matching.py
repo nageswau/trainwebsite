@@ -15,33 +15,26 @@ from tests.rec001_helpers import as_role, login, make_pm, make_recruiter, make_u
 REQ = "/api/v1/recruiter/requirements"
 
 
-# --- the pure scoring function (M1, M2; AC1, AC2) -------------------------------------------------------------------------------------
-def test_allocate_the_source_example_gives_whole_points_that_total_100():
-    skills, experience, location = matching.allocate([30, 25, 15, 10, 10], experience=True, location=False)
-    assert skills == [30, 25, 15, 10, 10] and experience == 10 and location == 0
-    assert sum(skills) + experience + location == 100
+# --- the pure scoring function (M1, M2; AC1, AC2). hrc-018 (DEC-SCOPE-392 E4, E11): `allocate` now shares any total (the skills
+# factor's points) by weight; the fixed 10-point experience and location shares became admin-weighted factors. ------------------------
+def test_allocate_the_source_example_gives_whole_points():
+    assert matching.allocate([30, 25, 15, 10, 10], 90) == [30, 25, 15, 10, 10]
 
 
-@pytest.mark.parametrize(
-    ("weights", "experience", "location"),
-    [([2, 2, 2], True, True), ([1], False, False), ([3, 3, 3], False, True), ([2, 1, 1, 1, 1, 1, 1], True, False), ([10, 1], False, False)],
-)
-def test_allocate_always_totals_exactly_100(weights, experience, location):
-    skills, exp, loc = matching.allocate(weights, experience=experience, location=location)
-    assert all(isinstance(p, int) and p >= 0 for p in [*skills, exp, loc])
-    assert sum(skills) + exp + loc == 100
-    assert exp == (10 if experience else 0) and loc == (10 if location else 0)
+@pytest.mark.parametrize(("weights", "total"), [([2, 2, 2], 80), ([1], 40), ([3, 3, 3], 57), ([2, 1, 1, 1, 1, 1, 1], 71), ([10, 1], 100)])
+def test_allocate_always_totals_exactly_its_share(weights, total):
+    points = matching.allocate(weights, total)
+    assert all(isinstance(p, int) and p >= 0 for p in points) and sum(points) == total
 
 
 def test_allocate_largest_remainder_goes_to_the_earliest_on_a_tie():
-    assert matching.allocate([1, 1, 1], experience=False, location=False)[0] == [34, 33, 33]
-    assert matching.allocate([2, 2, 2], experience=True, location=True)[0] == [27, 27, 26]
+    assert matching.allocate([1, 1, 1]) == [34, 33, 33]
+    assert matching.allocate([2, 2, 2], 80) == [27, 27, 26]
 
 
 def test_allocate_a_zero_weight_skill_earns_nothing():
     """A skill not in the Skills Master is passed as weight 0 (M3)."""
-    skills, exp, _ = matching.allocate([2, 0, 2], experience=True, location=False)
-    assert skills == [45, 0, 45] and exp == 10
+    assert matching.allocate([2, 0, 2], 80) == [40, 0, 40]
 
 
 # --- fixtures ------------------------------------------------------------------------------------------------------------------------
@@ -125,7 +118,7 @@ async def test_the_source_java_requirement_ranks_rahul_first_and_a_full_match_sc
     java, spring, sql, micro, aws = [await w.skill(n) for n in ("Java", "Spring Boot", "SQL", "Microservices", "AWS")]
     job = await w.requirement(required=[(java, 3), (spring, 3), (sql, 2)], preferred=[(micro, 1), (aws, 1)],
                               experience_min_months=0, experience_max_months=36, work_mode="remote")
-    rahul = await w.candidate(java, spring, sql, micro, aws, name=f"Rahul {w.tag}", experience_months=24)
+    rahul = await w.candidate(java, spring, sql, micro, aws, name=f"Rahul {w.tag}", experience_months=24, preferred_role="Java Developer")
     priya = await w.candidate(java, spring, sql, name=f"Priya {w.tag}", experience_months=24)
     await w.candidate(java, spring, name=f"Arun {w.tag}", experience_months=24)  # lacks required SQL: filtered out (M4)
     body = _body(await _matches(client, job))
@@ -135,8 +128,8 @@ async def test_the_source_java_requirement_ranks_rahul_first_and_a_full_match_sc
     assert sum(b["points"] for b in top["breakdown"]) == top["score"]  # AC2
     assert sum(b["points"] for b in body["items"][1]["breakdown"]) == body["items"][1]["score"] < 100
     assert body["criteria"]["location"] is None  # remote: location does not apply (M6)
-    assert body["criteria"]["experience"]["points"] == 10
-    assert sum(s["points"] for s in body["criteria"]["skills"]) + 10 == 100
+    assert body["criteria"]["experience"]["points"] == 29  # hrc-018: 40/20/10 over skills, experience, role
+    assert sum(s["points"] for s in body["criteria"]["skills"]) + 29 + 14 == 100
     assert {"email", "mobile", "phone"}.isdisjoint(top)  # R8: no contact details on a match row
     assert body["reason"] is None and body["can_shortlist"] is True and body["can_edit_weights"] is True
 
@@ -149,11 +142,12 @@ async def test_breakdown_marks_each_item_and_sums_to_the_score(client, db_sessio
     candidate = await w.candidate(java, experience_months=6, location="Hyderabad")
     row = _row(_body(await _matches(client, job)), candidate)
     by_key = {b["key"]: b for b in row["breakdown"]}
-    assert by_key["experience"] == {"key": "experience", "label": "Experience", "kind": "experience", "points": 0, "max": 10, "matched": False}
-    assert by_key["location"]["matched"] is True and by_key["location"]["points"] == 10
+    # hrc-018: skills 50, experience 25, location 13, role 12 (40/20/10/10 over the four factors that apply)
+    assert by_key["experience"] == {"key": "experience", "label": "Experience", "kind": "experience", "points": 0, "max": 25, "matched": False}
+    assert by_key["location"]["matched"] is True and by_key["location"]["points"] == 13
     skills = [b for b in row["breakdown"] if b["kind"] in ("required", "preferred")]
-    assert [(b["label"], b["matched"], b["points"], b["max"]) for b in skills] == [(java.name, True, 40, 40), (aws.name, False, 0, 40)]
-    assert row["score"] == 50 == sum(b["points"] for b in row["breakdown"])
+    assert [(b["label"], b["matched"], b["points"], b["max"]) for b in skills] == [(java.name, True, 25, 25), (aws.name, False, 0, 25)]
+    assert row["score"] == 38 == sum(b["points"] for b in row["breakdown"])
 
 
 # --- which candidates appear (M3, M4, M8) -----------------------------------------------------------------------------------------------
@@ -163,7 +157,7 @@ async def test_a_related_skill_counts_and_a_skill_not_in_the_master_is_unused(cl
     core = await w.skill("CoreJ")
     java = await w.skill("Java", related=[core])
     job = await w.requirement(required=[(java, 2)], unresolved=["Weblogic"], work_mode="remote")
-    holder = await w.candidate(core)
+    holder = await w.candidate(core, preferred_role="Java Developer")
     body = _body(await _matches(client, job))
     row = _row(body, holder)
     assert row["score"] == 100  # the free-text skill neither filters nor costs points
@@ -180,7 +174,7 @@ async def test_with_only_preferred_skills_a_candidate_needs_one_of_them(client, 
     both = await w.candidate(aws, gcp)
     body = _body(await _matches(client, job))
     assert [item["id"] for item in body["items"]] == [str(both.id), str(one.id)]
-    assert [item["score"] for item in body["items"]] == [100, 50]
+    assert [item["score"] for item in body["items"]] == [80, 40]  # hrc-018: skills 80 + role 20 (no role recorded)
 
 
 @pytest.mark.asyncio
@@ -214,10 +208,10 @@ async def test_experience_and_location_fit(client, db_session):
     outside = await w.candidate(java, experience_months=30, location="Delhi")
     unknown = await w.candidate(java)
     body = _body(await _matches(client, job))
-    assert [_row(body, c)["score"] for c in (inside, outside, unknown)] == [100, 80, 80]
+    assert [_row(body, c)["score"] for c in (inside, outside, unknown)] == [88, 50, 50]  # hrc-018: skills 50, exp 25, location 13, role 12
     assert body["items"][0]["id"] == str(inside.id)
-    assert body["criteria"]["experience"] == {"min_months": 12, "max_months": 24, "points": 10}
-    assert body["criteria"]["location"] == {"value": "Pune", "points": 10}
+    assert body["criteria"]["experience"] == {"min_months": 12, "max_months": 24, "points": 25}
+    assert body["criteria"]["location"] == {"value": "Pune", "points": 13}
 
 
 @pytest.mark.asyncio
@@ -329,12 +323,12 @@ async def test_weights_change_the_score_and_are_audited(client, db_session):
     java, aws = await w.skill("Java"), await w.skill("AWS")
     job = await w.requirement(required=[(java, 2)], preferred=[(aws, 2)], work_mode="remote")
     candidate = await w.candidate(java)
-    assert _row(_body(await _matches(client, job)), candidate)["score"] == 50
+    assert _row(_body(await _matches(client, job)), candidate)["score"] == 40  # hrc-018: skills 80 (40 + 40) + role 20, no role
     java_row, aws_row = await _job_skills(db_session, job)
     response = await _weights(client, job, [{"id": str(java_row.id), "weight": 9}, {"id": str(aws_row.id), "weight": 1}])
     assert response.status_code == 200, response.text
     assert [s["weight"] for s in response.json()["requirement"]["skills"]] == [9, 1]
-    assert _row(_body(await _matches(client, job)), candidate)["score"] == 90
+    assert _row(_body(await _matches(client, job)), candidate)["score"] == 72
     audits = (await db_session.scalars(select(AuditLog).where(AuditLog.entity_id == str(job.id), AuditLog.action == "recruiter_requirement.weights"))).all()
     assert len(audits) == 1 and audits[0].metadata_json == {"skills": sorted([str(java_row.id), str(aws_row.id)])}
     again = await _weights(client, job, [{"id": str(java_row.id), "weight": 9}])  # unchanged: nothing written

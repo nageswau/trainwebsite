@@ -9,7 +9,8 @@ import { isApplicationBody, requirementCandidatesUrl } from "@/lib/recruiterAppl
 import { LEVELS, type SkillLevel } from "@/lib/recruiterCandidateSkills";
 import { CANDIDATES_PATH, experienceLabel } from "@/lib/recruiterCandidates";
 import {
-  type CriteriaSkill, isMatches, MATCH_PAGE_SIZE, type Matches, type MatchRow, matchesUrl, minLevelText, WEIGHT_MAX, WEIGHT_MIN, weightsUrl,
+  type CriteriaSkill, HARD_FILTER_LABEL, HARD_FILTER_NEEDS, HARD_FILTERS, type HardFilterKey, type HardFilters, isMatches, MATCH_PAGE_SIZE, type Matches,
+  type MatchRow, matchesUrl, minLevelText, WEIGHT_MAX, WEIGHT_MIN, weightsUrl,
 } from "@/lib/recruiterMatching";
 import { isRequirementBody, type Requirement } from "@/lib/recruiterRequirements";
 import { UNSHAREABLE } from "@/lib/recruiterShares";
@@ -18,12 +19,15 @@ import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 type Notice = { text: string; failed: boolean } | null;
 const WEIGHT_ERROR = `Each weight must be a whole number from ${WEIGHT_MIN} to ${WEIGHT_MAX}.`;
 /** M1: one number per requirement skill; the API re-checks every rule (ids, range, who may edit). hrc-017 (T6): a Skills Master skill
- *  also takes a minimum level; only a changed level is sent (omitted = unchanged). */
-function WeightsForm({ requirementId, skills, onSaved, onCancel }: {
-  requirementId: string; skills: CriteriaSkill[]; onSaved: (r: Requirement) => void; onCancel: () => void;
+ *  also takes a minimum level; only a changed level is sent (omitted = unchanged). hrc-018 (E6): the job's optional hard filters, each
+ *  offered only when the requirement has the value it compares with; only a changed switch is sent. */
+function WeightsForm({ requirementId, skills, hardFilters, onSaved, onCancel }: {
+  requirementId: string; skills: CriteriaSkill[]; hardFilters?: HardFilters; onSaved: (r: Requirement) => void; onCancel: () => void;
 }) {
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(skills.map((s) => [s.id, String(s.weight)])));
   const [levels, setLevels] = useState<Record<string, string>>(() => Object.fromEntries(skills.map((s) => [s.id, s.min_level ?? ""])));
+  const [hard, setHard] = useState<Partial<Record<HardFilterKey, boolean>>>(() =>
+    Object.fromEntries(HARD_FILTERS.map((k) => [k, hardFilters?.[k].on ?? false])));
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const id = useId();
@@ -36,9 +40,12 @@ function WeightsForm({ requirementId, skills, onSaved, onCancel }: {
       return { id: s.id, weight: Number(values[s.id]), ...(level !== (s.min_level ?? null) && { min_level: level }) };
     });
     if (weights.some((w) => !Number.isInteger(w.weight) || w.weight < WEIGHT_MIN || w.weight > WEIGHT_MAX)) return setFailure(WEIGHT_ERROR);
+    const switched = HARD_FILTERS.filter((k) => hardFilters && hard[k] !== hardFilters[k].on);
     setBusy(true);
     setFailure(null);
-    const outcome = await sendJson(weightsUrl(requirementId), "PUT", { weights });
+    const outcome = await sendJson(weightsUrl(requirementId), "PUT", {
+      weights, ...(switched.length > 0 && { hard_filters: Object.fromEntries(switched.map((k) => [k, hard[k]])) }),
+    });
     setBusy(false);
     if (outcome.ok && isRequirementBody(outcome.data)) onSaved(outcome.data.requirement);
     else setFailure(outcome.ok ? "Unable to save the weights." : outcome.message);
@@ -68,6 +75,25 @@ function WeightsForm({ requirementId, skills, onSaved, onCancel }: {
           </div>
         ))}
       </div>
+      {hardFilters && (
+        <fieldset style={{ border: 0, padding: 0, margin: 0, display: "grid", gap: 6 }}>
+          <legend style={{ fontWeight: 600, fontSize: 14 }}>Hard filters</legend>
+          <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+            Required skills always filter. A ticked filter also leaves out every candidate who misses it or has not recorded it.
+          </p>
+          {HARD_FILTERS.map((k) => {
+            const usable = hardFilters[k].available || hardFilters[k].on; // a filter already on can always be turned off
+            return (
+              <label key={k} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", fontSize: 14 }}>
+                <input type="checkbox" checked={!!hard[k]} disabled={busy || !usable} aria-describedby={usable ? undefined : `${id}-hard-${k}`}
+                  onChange={(e) => setHard((h) => ({ ...h, [k]: e.target.checked }))} />
+                {HARD_FILTER_LABEL[k]}
+                {!usable && <span id={`${id}-hard-${k}`} className="muted" style={{ fontSize: 12 }}>{HARD_FILTER_NEEDS[k]}</span>}
+              </label>
+            );
+          })}
+        </fieldset>
+      )}
       {failure && <p className="form-error" role="alert" style={{ margin: 0 }}>{failure}</p>}
       <div className="actions">
         <button type="submit" className="btn small" disabled={busy}>{busy ? "Saving…" : "Save weights"}</button>
@@ -79,9 +105,20 @@ function WeightsForm({ requirementId, skills, onSaved, onCancel }: {
 
 function criteriaText(m: Matches): string {
   const parts = m.criteria.skills.filter((s) => s.in_master).map((s) => `${s.name}${s.min_level ? ` (${minLevelText(s.min_level)})` : ""} ${s.points}`);
-  if (m.criteria.experience) parts.push(`Experience ${m.criteria.experience.points}`);
-  if (m.criteria.location) parts.push(`Location (${m.criteria.location.value}) ${m.criteria.location.points}`);
+  const location = m.criteria.location;
+  const others = m.criteria.factors?.filter((f) => f.applies && f.key !== "skills"); // hrc-018: every other factor that applies
+  if (others) parts.push(...others.map((f) => (f.key === "location" && location ? `Location (${location.value}) ${f.points}` : `${f.label} ${f.points}`)));
+  else {
+    if (m.criteria.experience) parts.push(`Experience ${m.criteria.experience.points}`);
+    if (location) parts.push(`Location (${location.value}) ${location.points}`);
+  }
   return parts.join(" · ");
+}
+
+/** hrc-018 (E6): the rule line under the criteria -- required skills, plus any optional hard filter that is on. */
+function filterText(m: Matches): string {
+  const on = HARD_FILTERS.filter((k) => m.criteria.hard_filters?.[k].on && m.criteria.hard_filters[k].available);
+  return `Candidates must have every required skill${on.length ? ` and meet: ${on.map((k) => HARD_FILTER_LABEL[k].toLowerCase()).join(", ")}` : ""}.`;
 }
 
 function MatchItem({ m, writes, canShortlist, busy, selected, onSelect, onShortlist }: {
@@ -100,13 +137,23 @@ function MatchItem({ m, writes, canShortlist, busy, selected, onSelect, onShortl
       </div>
       <p className="muted" style={{ margin: 0, fontSize: 13, overflowWrap: "anywhere" }}>{[m.candidate_code, facts].filter(Boolean).join(" · ")}</p>
       <ul aria-label={`Score breakdown for ${m.name}`} style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexWrap: "wrap", gap: 6 }}>
-        {m.breakdown.map((b) => (
+        {/* hrc-018 QA-02: the explanation below already scores each factor, so the chips keep only the per-skill detail */}
+        {m.breakdown.filter((b) => !m.explanation?.length || b.kind === "required" || b.kind === "preferred").map((b) => (
           <li key={b.key} className={b.matched ? "badge" : undefined}
             style={b.matched ? undefined : { border: "1px solid var(--line)", borderRadius: 99, padding: "4px 10px", fontSize: 12 }}>
             {b.label}: {b.points} of {b.max}<span className="visually-hidden"> ({b.matched ? "matched" : "missing"})</span>
           </li>
         ))}
       </ul>
+      {m.explanation && m.explanation.length > 0 && (
+        <ul aria-label={`Why ${m.name} matches`} style={{ margin: 0, paddingLeft: 18, fontSize: 13, display: "grid", gap: 2 }}>
+          {m.explanation.map((e) => (
+            <li key={e.key} style={{ overflowWrap: "anywhere" }}>
+              <strong>{e.label}</strong> <span className="muted">({e.points} of {e.max})</span> {e.text}
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="actions" style={{ flexWrap: "wrap", gap: 8 }}>
         <Link className="btn secondary small" href={profile} aria-label={`View profile of ${m.name}`}>View profile</Link>
         {writes && <Link className="btn secondary small" href={`${profile}#contact`} aria-label={`Contact ${m.name}`}>Contact</Link>}
@@ -192,7 +239,10 @@ export default function RecruiterRequirementMatches({ requirementId, requirement
         </div>
       </div>
       {data && !data.reason && (
-        <p className="muted" style={{ margin: 0, fontSize: 13 }}>Score out of 100: {criteriaText(data)}. Candidates must have every required skill.</p>
+        <>
+          <p className="muted" style={{ margin: 0, fontSize: 13 }}>Score out of 100: {criteriaText(data)}. {filterText(data)}</p>
+          {data.disclaimer && <p className="muted" style={{ margin: 0, fontSize: 12, fontStyle: "italic" }}>{data.disclaimer}</p>}
+        </>
       )}
       {unused.length > 0 && (
         <p className="muted" style={{ margin: 0, fontSize: 13 }}>
@@ -207,7 +257,7 @@ export default function RecruiterRequirementMatches({ requirementId, requirement
           onClose={() => setSharing(null)} onShared={() => { setSelected(new Map()); reload(); onShared?.(); }} />
       )}
       {editing && data && (
-        <WeightsForm requirementId={requirementId} skills={data.criteria.skills} onCancel={closeWeights}
+        <WeightsForm requirementId={requirementId} skills={data.criteria.skills} hardFilters={data.criteria.hard_filters} onCancel={closeWeights}
           onSaved={(r) => { closeWeights(); setNotice({ text: "Match weights saved.", failed: false }); onRequirementChanged?.(r); reload(); }} />
       )}
       {failed ? (

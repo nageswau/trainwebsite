@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import PortalShell from "@/components/PortalShell";
+import RecruiterMatchSettings from "@/components/RecruiterMatchSettings";
 import RecruiterRequirementsPanel from "@/components/RecruiterRequirementsPanel";
 import { serverApi } from "@/lib/api";
 import { companyShell, CREATOR_ROLES, RECRUITER_SIGN_IN } from "@/lib/recruiterCompanies";
@@ -37,6 +38,7 @@ export default async function RecruiterRequirementsPage() {
             <p className="muted">{INTRO[user.role] ?? "Requirements you own, and those of your companies. Each gets its code when you save it."}</p>
           </div>
         </div>
+        {user.role === "super_admin" && <RecruiterMatchSettings />}
         <Suspense fallback={<p className="muted" role="status">Loading job requirements…</p>}>
           <RecruiterRequirementsPanel canCreate={CREATOR_ROLES.includes(user.role)} isManager={user.role === "placement_manager" || user.role === "super_admin"} />
         </Suspense>

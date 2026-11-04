@@ -65,10 +65,10 @@ test("matching: Rahul ranks first at 100%, shortlist once, weights re-rank, the 
   await expect(rows.nth(0)).toContainText(n("Rahul"));
   await expect(rows.nth(0)).toContainText("100% match");
   await expect(rows.nth(1)).toContainText(n("Priya"));
-  await expect(rows.nth(1)).toContainText("60% match");
+  await expect(rows.nth(1)).toContainText("38% match"); // hrc-018: skills 50, experience 25, location 13, role 12 -- Priya has the 3 required skills only
   await expect(section).not.toContainText(n("Arun"));
   await expect(section.getByText(`Not used for matching (not in the Skills Master): ${n("Weblogic")}`)).toBeVisible();
-  await expect(rows.nth(1).getByRole("list", { name: `Score breakdown for ${n("Priya")}` })).toContainText("Location: 0 of 10");
+  await expect(rows.nth(1).getByRole("list", { name: `Why ${n("Priya")} matches` })).toContainText("Location (0 of 13)"); // hrc-018: factors moved to the explanation
 
   // AC3: Shortlist adds one application; the row then shows the status and the Candidates section lists it.
   await section.getByRole("button", { name: `Shortlist ${n("Rahul")}` }).click();
@@ -79,13 +79,13 @@ test("matching: Rahul ranks first at 100%, shortlist once, weights re-rank, the 
   await page.reload();
   await expect(page.getByRole("region", { name: /^Matching candidates/ }).getByRole("button", { name: `Shortlist ${n("Rahul")}` })).toHaveCount(0);
 
-  // M1: Java 2 -> 10 makes Java 50 of the 80 skill points; Priya (Java, Spring, SQL; out of range; Pune) = 50 + 10 + 10 = 70.
+  // M1: Java 2 -> 10 makes Java 32 of the 50 skill points (hrc-018); Priya (Java, Spring, SQL; out of range; Pune; no role) = 32 + 6 + 6 = 44.
   const matches = page.getByRole("region", { name: /^Matching candidates/ });
   await matches.getByRole("button", { name: "Adjust weights" }).click();
   await matches.getByLabel(`Weight of ${n("MJava")} (required)`).fill("10");
   await matches.getByRole("button", { name: "Save weights" }).click();
   await expect(page.getByText("Match weights saved.")).toBeVisible();
-  await expect(matches.getByRole("list", { name: "Matching candidates" })).toContainText("70% match");
+  await expect(matches.getByRole("list", { name: "Matching candidates" })).toContainText("44% match");
 
   // Phone width: the section never scrolls sideways.
   await page.setViewportSize({ width: 390, height: 844 });

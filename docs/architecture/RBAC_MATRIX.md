@@ -3809,3 +3809,10 @@ seeds them; `super_admin` holds every key). The routes also require a candidate 
 any other reader import; a `deny` override removes a recruiter's access to the template, preview, import, history and reports. History
 and reports are the uploader's own; a placement manager and super_admin see every import. Pinned by
 `apps/api/tests/test_hrc_013_import.py` and `apps/api/tests/test_hrc_002_roles.py`.
+
+### 2.286 Match factor weights *(added 2026-11-04 — `DEC-SCOPE-392`, hrc-018)*
+
+Candidate readers (`placement_team`, `placement_manager`, `super_admin`, `hr_team`) read the match factor weights
+(`GET /recruiter/match-settings`); only `super_admin` changes them. Every other role is 403, anonymous 401. A requirement's hard filters
+ride on the rec-016 weights route (`can_edit`, §2.83). The salary explanation follows `candidates.compensation.view` (§2.270). No grant key
+is added. Pinned by `apps/api/tests/test_hrc_018_matching_engine.py` and the rec-038 matrix rows.
