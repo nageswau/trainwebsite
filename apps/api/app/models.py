@@ -1084,6 +1084,11 @@ class JobAssignmentHistory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# hrc-017 (DEC-SCOPE-388 T5): rec-011's candidate levels, lowest first (SK1); migration 0265 repeats them (test_hrc_017_migration).
+JOB_SKILL_MIN_LEVELS = ("beginner", "intermediate", "advanced", "expert")
+JOB_SKILL_MIN_LEVEL_CHECK = f"min_level IS NULL OR min_level IN ({', '.join(repr(v) for v in JOB_SKILL_MIN_LEVELS)})"
+
+
 class JobSkill(Base):
     """rec-007 (J7): one required or preferred skill of a requirement. `skill_id` NULL = free text that did not resolve against the
     Skills Master (the "flagged" skills); `name` is the text as entered (or the skill's name when it resolved)."""
@@ -1092,6 +1097,7 @@ class JobSkill(Base):
     __table_args__ = (
         CheckConstraint("kind IN ('required', 'preferred')", name="ck_job_skills_kind"),
         CheckConstraint("weight BETWEEN 1 AND 10", name="ck_job_skills_weight"),
+        CheckConstraint(JOB_SKILL_MIN_LEVEL_CHECK, name="ck_job_skills_min_level"),
         Index("uq_job_skills_name", "job_id", text("lower(name)"), unique=True),
         Index("ix_job_skills_skill", "skill_id"),
     )
@@ -1102,6 +1108,8 @@ class JobSkill(Base):
     kind: Mapped[str] = mapped_column(String(10))
     weight: Mapped[int] = mapped_column(SmallInteger)
     position: Mapped[int] = mapped_column(SmallInteger)
+    # hrc-017 (DEC-SCOPE-388 T5): the lowest candidate level that counts for this skill; NULL = any level
+    min_level: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
 
 class JobStatusHistory(Base):
@@ -6292,16 +6300,23 @@ class PartnershipProfile(Base, TimestampMixin):
     reporting_head_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
 
 
+SKILL_DOMAINS = ("it", "non_it")  # hrc-017 (DEC-SCOPE-388 T1): the top-level grouping of a Skills Master category
+
+
 class SkillCategory(Base, TimestampMixin):
     """rec-006 (DEC-SCOPE-119, EVID-018 S2-§2): a Skills Master category. Never deleted: deactivating hides it from new picks while
     skills keep the link."""
 
     __tablename__ = "skill_categories"
-    __table_args__ = (Index("uq_skill_categories_name", text("lower(name)"), unique=True),)
+    __table_args__ = (
+        Index("uq_skill_categories_name", text("lower(name)"), unique=True),
+        CheckConstraint(f"domain IN ({', '.join(repr(v) for v in SKILL_DOMAINS)})", name="ck_skill_categories_domain"),
+    )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(80))
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    domain: Mapped[str] = mapped_column(String(10), default="it", server_default=text("'it'"))  # hrc-017 (T1)
 
 
 class Skill(Base, TimestampMixin):

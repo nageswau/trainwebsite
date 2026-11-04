@@ -5737,3 +5737,15 @@ Another role 403, anonymous 401, a candidate outside the pool 404.
   `merged_into`, to_value = changed-field count, subject = the other candidate's code on a merge) and `screening` (to_value / to_label =
   result, subject = requirement, context = company). Additive.
 - `POST /recruiter/candidates/{id}/merge` (hrc-014): `moved` gains `notes` and `tasks`.
+
+## 12KG. Skills taxonomy domains and a job skill's minimum level (hrc-017) — addendum, 2026-11-04
+
+`DEC-SCOPE-388`. **Changed (additive):** every skill category row (`GET/POST/PATCH /api/v1/recruiter/skill-categories`) carries `domain`
+(`"it"|"non_it"`); `POST` takes an optional `domain` (default `"it"`) and `PATCH` may change it (an explicit null or another value: 422,
+"Domain …"; a non-writer: 403). `GET /recruiter/skill-categories` and `GET /recruiter/skills` take `?domain=it|non_it` (422 otherwise; a
+skill matches through its primary category or a tag). Each item of `PUT /recruiter/requirements/{id}/skill-weights` may carry `min_level`
+(`"beginner"|"intermediate"|"advanced"|"expert"|null`; omitted = unchanged, null = any level); a level on a skill outside the Skills Master
+is a 422 "Only a skill in the Skills Master can have a minimum level"; the audit row gains `changes` `{"<skill> minimum level": [old, new]}`.
+The requirement detail's `skills[]` and the matches `criteria.skills[]` carry `min_level`. **Changed (behaviour):** in
+`GET /recruiter/requirements/{id}/matches` a skill with a minimum level counts only for a candidate holding it (or a related skill) at that
+level or above. No level is set by migration 0265, so nothing changes until a writer sets one.

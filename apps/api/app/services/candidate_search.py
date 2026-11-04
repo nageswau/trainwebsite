@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.api.lookups import _pattern as like_pattern
-from app.models import Candidate, CandidateResume, CandidateSkill, RecCandidateSource, Skill, SkillAlias, SkillRelated, User
+from app.models import CANDIDATE_SKILL_LEVELS, Candidate, CandidateResume, CandidateSkill, RecCandidateSource, Skill, SkillAlias, SkillRelated, User
 from app.schemas import CandidateSearch
 from app.services.candidates import pool_filter
 
@@ -104,10 +104,13 @@ async def resolve_terms(db: AsyncSession, body: CandidateSearch, *, strict: bool
     return out
 
 
-def _has(ids: set[UUID], verified_only: bool):
+def _has(ids: set[UUID], verified_only: bool, min_level: str | None = None):
+    """hrc-017 (T8): with `min_level`, only a holding at that level or above counts."""
     conditions = [CandidateSkill.candidate_id == Candidate.id, CandidateSkill.skill_id.in_(sorted(ids))]
     if verified_only:
         conditions.append(CandidateSkill.status != "claimed")
+    if min_level:
+        conditions.append(CandidateSkill.level.in_(CANDIDATE_SKILL_LEVELS[CANDIDATE_SKILL_LEVELS.index(min_level):]))
     return exists().where(*conditions)
 
 

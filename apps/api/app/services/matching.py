@@ -63,7 +63,7 @@ async def plan(db: AsyncSession, job: Job) -> dict:
     skill_points, exp_points, loc_points = allocate([s.weight if s.skill_id else 0 for s in skills], experience=has_experience, location=has_location)
     criteria = {
         "skills": [
-            {"id": s.id, "name": s.name, "kind": s.kind, "weight": s.weight, "points": p, "in_master": s.skill_id is not None}
+            {"id": s.id, "name": s.name, "kind": s.kind, "weight": s.weight, "points": p, "in_master": s.skill_id is not None, "min_level": s.min_level}
             for s, p in zip(skills, skill_points, strict=True)
         ],
         "experience": {"min_months": job.experience_min_months, "max_months": job.experience_max_months, "points": exp_points} if has_experience else None,
@@ -74,7 +74,7 @@ async def plan(db: AsyncSession, job: Job) -> dict:
         return {"criteria": criteria, "items": [], "filter": []}
     related = await _related(db, {s.skill_id for s, _ in resolved})
     items = [
-        {"key": f"skill:{s.id}", "label": s.name, "kind": s.kind, "points": p, "flag": _has(related[s.skill_id], False)} for s, p in resolved
+        {"key": f"skill:{s.id}", "label": s.name, "kind": s.kind, "points": p, "flag": _has(related[s.skill_id], False, s.min_level)} for s, p in resolved
     ]
     required = [item["flag"] for item in items if item["kind"] == "required"]
     where = required or [or_(*(item["flag"] for item in items))]  # M4: every required skill, else at least one preferred one

@@ -5,9 +5,13 @@ import type { LookupPage } from "@/lib/lookups";
 import { getPage } from "@/lib/telecallerCatalogue";
 
 export type SkillRef = { id: string; name: string; active: boolean };
-export type SkillCategory = SkillRef & { sort_order: number };
+// hrc-017 (DEC-SCOPE-388 T1): every category is IT or non-IT. Optional on the type so older fixtures still compile; the API always sends it.
+export type SkillDomain = "it" | "non_it";
+export const DOMAIN_LABEL: Record<SkillDomain, string> = { it: "IT", non_it: "Non-IT" };
+export const isDomain = (value: string): value is SkillDomain => value === "it" || value === "non_it";
+export type SkillCategory = SkillRef & { sort_order: number; domain?: SkillDomain };
 export type Skill = SkillRef & { category: SkillRef; tags: SkillRef[]; aliases: { id: string; alias: string }[]; related: SkillRef[] };
-export type SkillsState = { q: string; category: string; offset: number };
+export type SkillsState = { q: string; category: string; domain?: string; offset: number };
 
 export const SKILLS_URL = "/api/v1/recruiter/skills";
 export const SKILL_CATEGORIES_URL = "/api/v1/recruiter/skill-categories";
@@ -15,11 +19,12 @@ export const SKILLS_PAGE_SIZE = 50;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** A hand-edited `?category=` that is not an id is ignored rather than sent to the API as a 422 (QA-05). */
-export function skillsQuery({ q, category, offset }: SkillsState, limit: number): string {
+/** A hand-edited `?category=` that is not an id (or `?domain=` that is not IT / non-IT) is ignored rather than sent as a 422 (QA-05). */
+export function skillsQuery({ q, category, domain = "", offset }: SkillsState, limit: number): string {
   const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   if (q) query.set("q", q);
   if (UUID.test(category)) query.set("category_id", category);
+  if (isDomain(domain)) query.set("domain", domain);
   return query.toString();
 }
 

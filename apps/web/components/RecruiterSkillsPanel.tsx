@@ -7,7 +7,7 @@ import RecruiterSkillCategories from "@/components/RecruiterSkillCategories";
 import RecruiterSkillCategoryFields from "@/components/RecruiterSkillCategoryFields";
 import RecruiterSkillDetail from "@/components/RecruiterSkillDetail";
 import { sendJson, type Page } from "@/lib/apiErrors";
-import { allCategories, categoryLabel, SKILLS_PAGE_SIZE, SKILLS_URL, skillsQuery, type Skill, type SkillCategory } from "@/lib/recruiterSkills";
+import { allCategories, categoryLabel, DOMAIN_LABEL, SKILLS_PAGE_SIZE, SKILLS_URL, skillsQuery, type Skill, type SkillCategory } from "@/lib/recruiterSkills";
 import { formText, pageOffset, statusLabel } from "@/lib/telecaller";
 import { getPage } from "@/lib/telecallerCatalogue";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
@@ -16,8 +16,8 @@ import { toneClass, type Feedback } from "@/lib/welcomeLink";
 const FEEDBACK_ID = "skill-create-feedback";
 
 // rec-006 (DEC-SCOPE-119): the Skills Master. Recruiters (canEdit=false) read and search it; placement managers and super_admin also
-// manage categories, create skills and open a skill to edit it. The search, category filter and page live in the URL (?q=&category=
-// &offset=), so refresh keeps the place and Back returns to the previous view. The API decides who may write.
+// manage categories, create skills and open a skill to edit it. The search, category and domain (hrc-017) filters and page live in the
+// URL (?q=&category=&domain=&offset=), so refresh keeps the place and Back returns to the previous view. The API decides who may write.
 export default function RecruiterSkillsPanel({ canEdit }: { canEdit: boolean }) {
   const [data, setData] = useState<Page<Skill> | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -35,12 +35,14 @@ export default function RecruiterSkillsPanel({ canEdit }: { canEdit: boolean }) 
   const params = useSearchParams();
   const q = params.get("q") ?? "";
   const category = params.get("category") ?? "";
+  const domain = params.get("domain") ?? "";
   const offset = pageOffset(params.get("offset") ?? undefined);
 
-  function go(next: { q: string; category: string; offset: number }) {
+  function go(next: { q: string; category: string; domain?: string; offset: number }) {
     const query = new URLSearchParams();
     if (next.q) query.set("q", next.q);
     if (next.category) query.set("category", next.category);
+    if (next.domain) query.set("domain", next.domain);
     if (next.offset > 0) query.set("offset", String(next.offset));
     router.push(query.size ? `${pathname}?${query}` : pathname, { scroll: false });
   }
@@ -48,11 +50,11 @@ export default function RecruiterSkillsPanel({ canEdit }: { canEdit: boolean }) 
   useEffect(() => {
     const controller = new AbortController();
     setLoadFailed(false);
-    getPage<Skill>(`${SKILLS_URL}?${skillsQuery({ q, category, offset }, SKILLS_PAGE_SIZE)}`, controller.signal)
+    getPage<Skill>(`${SKILLS_URL}?${skillsQuery({ q, category, domain, offset }, SKILLS_PAGE_SIZE)}`, controller.signal)
       .then(setData)
       .catch(() => controller.signal.aborted || setLoadFailed(true));
     return () => controller.abort();
-  }, [q, category, offset, version]);
+  }, [q, category, domain, offset, version]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -86,7 +88,7 @@ export default function RecruiterSkillsPanel({ canEdit }: { canEdit: boolean }) 
   function search(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    go({ q: formText(form, "q"), category: formText(form, "category"), offset: 0 });
+    go({ q: formText(form, "q"), category: formText(form, "category"), domain: formText(form, "domain"), offset: 0 });
   }
 
   function close() {
@@ -95,7 +97,7 @@ export default function RecruiterSkillsPanel({ canEdit }: { canEdit: boolean }) 
     if (id) focus(`skill-manage-${id}`);
   }
 
-  const filtered = Boolean(q || category);
+  const filtered = Boolean(q || category || domain);
   return (
     <>
       {canEdit && <RecruiterSkillCategories categories={categories} onChanged={() => { setCategoryVersion((v) => v + 1); reload(); }} />}
@@ -121,7 +123,7 @@ export default function RecruiterSkillsPanel({ canEdit }: { canEdit: boolean }) 
       <div className="action-card wide telecaller-list" aria-busy={data === null && !loadFailed}>
         <h3>Skills</h3>
         {canEdit && <CreateJumpLink targetId="skill-new-name" label="Create skill" />}
-        <form key={`${q}|${category}|${categories.length}`} onSubmit={search} role="search" style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end", marginBottom: 8 }}>
+        <form key={`${q}|${category}|${domain}|${categories.length}`} onSubmit={search} role="search" style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end", marginBottom: 8 }}>
           <div className="field" style={{ flex: "1 1 200px", marginBottom: 0 }}>
             <label htmlFor="skill-q">Search skills or aliases</label>
             <input id="skill-q" name="q" type="search" defaultValue={q} maxLength={200} />
@@ -130,11 +132,23 @@ export default function RecruiterSkillsPanel({ canEdit }: { canEdit: boolean }) 
             <label htmlFor="skill-filter">Category</label>
             <select id="skill-filter" name="category" defaultValue={category}>
               <option value="">All categories</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}{c.active ? "" : " (inactive)"}</option>)}
+              {(["it", "non_it"] as const).map((d) => (
+                <optgroup key={d} label={DOMAIN_LABEL[d]}>
+                  {categories.filter((c) => (c.domain ?? "it") === d).map((c) => <option key={c.id} value={c.id}>{c.name}{c.active ? "" : " (inactive)"}</option>)}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+          <div className="field" style={{ flex: "0 1 140px", marginBottom: 0 }}>
+            <label htmlFor="skill-domain">Domain</label>
+            <select id="skill-domain" name="domain" defaultValue={domain}>
+              <option value="">All domains</option>
+              <option value="it">{DOMAIN_LABEL.it}</option>
+              <option value="non_it">{DOMAIN_LABEL.non_it}</option>
             </select>
           </div>
           <button className="btn secondary small">Search</button>
-          {filtered && <button type="button" className="btn secondary small" onClick={() => go({ q: "", category: "", offset: 0 })}>Clear</button>}
+          {filtered && <button type="button" className="btn secondary small" onClick={() => go({ q: "", category: "", domain: "", offset: 0 })}>Clear</button>}
         </form>
         {loadFailed ? (
           <>
@@ -176,8 +190,8 @@ export default function RecruiterSkillsPanel({ canEdit }: { canEdit: boolean }) 
             {data.total > SKILLS_PAGE_SIZE && (
               <nav aria-label="Skill pages" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
                 <span className="muted" style={{ fontSize: 13 }}>Showing {data.offset + 1}–{data.offset + data.items.length} of {data.total}</span>
-                <button type="button" className="btn secondary small" aria-label="Previous page" disabled={offset === 0} onClick={() => go({ q, category, offset: Math.max(0, offset - SKILLS_PAGE_SIZE) })}>Previous</button>
-                <button type="button" className="btn secondary small" aria-label="Next page" disabled={data.offset + data.items.length >= data.total} onClick={() => go({ q, category, offset: offset + SKILLS_PAGE_SIZE })}>Next</button>
+                <button type="button" className="btn secondary small" aria-label="Previous page" disabled={offset === 0} onClick={() => go({ q, category, domain, offset: Math.max(0, offset - SKILLS_PAGE_SIZE) })}>Previous</button>
+                <button type="button" className="btn secondary small" aria-label="Next page" disabled={data.offset + data.items.length >= data.total} onClick={() => go({ q, category, domain, offset: offset + SKILLS_PAGE_SIZE })}>Next</button>
               </nav>
             )}
           </>

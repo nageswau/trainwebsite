@@ -92,7 +92,7 @@ describe("RecruiterSkillsPanel (rec-006)", () => {
     fireEvent.change(screen.getByLabelText("Category name (required)"), { target: { value: "Testing" } });
     fireEvent.click(screen.getByRole("button", { name: "Add category" }));
     expect(await screen.findByText("Added category Testing.")).toBeInTheDocument();
-    expect(JSON.parse(String(writes(calls)[0].init!.body))).toEqual({ name: "Testing" });
+    expect(JSON.parse(String(writes(calls)[0].init!.body))).toEqual({ name: "Testing", domain: "it" }); // hrc-017: the domain select defaults to IT
   });
 
   it("creates a skill with a primary category and other categories, offering only active ones and never the primary as a tag", async () => {

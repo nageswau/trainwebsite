@@ -625,6 +625,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **+/−/E:** an existing IT seed is unchanged.
 - **Regression risks:** rec-006 seed tests.
 - **Complexity:** small. **Risk:** low.
+- **Status:** built as `DEC-SCOPE-388` (migration `0265_skill_taxonomy`, API §12KG, RBAC unchanged); design
+  `docs/superpowers/specs/2026-11-04-hrc-017-skills-taxonomy-design.md`. Q-17 answered by the builder's calls T1-T9 (a provisional non-IT
+  starter list the owner edits in the Skills Master; the level is set in "Adjust weights"; `NEEDS_CONFIRMATION`).
 
 #### hrc-018: Configurable matching engine with explanations
 - **Business requirement:** §7.2 weights 40/20/15/10/10/5, admin-configurable, hard filters, plain-language explanation, "not a guarantee"; §13 "Candidate profile changed → refresh".
