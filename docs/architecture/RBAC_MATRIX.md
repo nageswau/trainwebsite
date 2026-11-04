@@ -3707,3 +3707,11 @@ The new package fields (currency, pay period, minimum, negotiable, annual INR) f
 salaries (§2.270): absent without it, 403 when sent. Exchange rates: read by the candidate readers (`placement_team`,
 `placement_manager`, `hr_team`, `super_admin`) — a rate is not compensation; written by `placement_manager` and `super_admin` only (others
 403, anonymous 401). Pinned by `apps/api/tests/test_hrc_011_compensation.py`.
+
+### 2.274 Recruitment record history *(added 2026-11-04 — `DEC-SCOPE-376`, hrc-004)*
+
+No new role or grant. A requirement's history is read by its readers (`placement_team` own, `placement_manager` team, `bdm` own
+companies, `super_admin`; out of scope 404, other roles 403); a candidate's by the candidate readers (`placement_team`,
+`placement_manager`, `hr_team`, `super_admin`; others 403); anonymous 401. Compensation and contact values are never stored, so a reader
+without `candidates.compensation.view` learns only that a salary field changed. Pinned by `apps/api/tests/test_hrc_004_audit_history.py`
+and the rec-038 matrix rows.

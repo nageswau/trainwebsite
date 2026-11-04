@@ -11380,3 +11380,21 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   C9 `current_salary` / `expected_salary` keep their names (now "as entered"); existing values backfilled as INR per year.
 - **Numbering:** migration `0251_candidate_compensation`; API §12JT; RBAC §2.273.
 - **Feature ID authorized:** `hrc-011`. **Status:** built on `worktree-hrc-011`.
+
+### DEC-SCOPE-376 — Before/after audit for recruitment records and the record History (`hrc-004`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-004` (PDF §4.3, §5.1, §10.2, §15, §17 QA #18; PDF classified
+  `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00: all phases). Dependency itc-001 (DEC-SCOPE-335) merged. The owner
+  said to proceed with the recommended answers, so B1–B8 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-004-recruitment-audit-history-design.md`.
+- **Builder's calls:** B1 the History is read by exactly the record's readers (requirement scope / candidate readers) — no new
+  `audit.view` grant, so no seed migration (the backlog lists hrc-004 under "no migration"). B2 two routes (requirements, candidates);
+  application and interview rows gain values but no new route (`/applications/{id}/history` stays the status history). B3 existing audit
+  keys (`fields`, `from`/`to`, ids) stay and `changes` is added (hrc-003 reads `fields`). B4 recorded as `"changed"`: compensation
+  (`salary`, `salary_min`, `salary_max` and every hrc-011 `candidates.COMPENSATION` field), contact (`mobile`, `email`, `linkedin`,
+  `meeting_url`, `contact_id`), interview feedback text, plus itc-001's personal-data names. B5 job category, candidate source and
+  assigned recruiter stored by name; statuses as keys; list values as text. B6 History = the entity's own action prefixes, downloads
+  excluded, newest first, 20 a page (max 100), raw metadata never returned. B7 a "Change history" section (the pages have no tab strip).
+  B8 creates keep their field-name rows.
+- **Numbering:** no migration; API §12JU; RBAC §2.274.
+- **Feature ID authorized:** `hrc-004`. **Status:** built on `worktree-hrc-004`.

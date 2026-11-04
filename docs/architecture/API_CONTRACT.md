@@ -5520,3 +5520,14 @@ grant); `salary_min` / `salary_max` now compare `expected_annual_inr`.
 currency (candidate readers). `PUT /api/v1/recruiter/catalogue/exchange-rates/{currency}` `{inr_per_unit}` (placement_manager,
 super_admin): idempotent upsert; 422 for INR, a code that is not three letters, or a rate outside (0, 10,000] / more than 4 decimals;
 recomputes the annual figure of every candidate amount in that currency; audit `recruiter.fx_rate_set` {old, new, recomputed}.
+
+## 12JU. Recruitment record history (hrc-004) — addendum, 2026-11-04
+
+`DEC-SCOPE-376`. **New:** `GET /api/v1/recruiter/requirements/{id}/history` and `GET /api/v1/recruiter/candidates/{id}/history`
+(`?limit=1..100` default 20, `&offset`) → `{items, total, limit, offset}`, newest first; each item `{id, action, created_at,
+actor: {id, full_name} | null, changes: {field: [old, new] | "changed"} | null, fields: [name] | null}`. A requirement's rows are its
+`recruiter_requirement.*` and `job_description.*` audits; a candidate's its `candidate.*` audits; `*download` rows are excluded. Access =
+the record's own GET (requirement: out of scope 404, other roles 403; candidate: non-reader 403, unknown 404); anonymous 401;
+`Cache-Control: private, no-store`. **Changed audit rows** (shape additive; no field removed): `recruiter_requirement.update|status|assign`
+(incl. rec-037 bulk reassignment, one row per job), `job_description.create|upload`, `candidate.update`, `recruiter_application.status`,
+`recruiter_interview.update|reschedule|status|feedback` add `metadata.changes`. Compensation, contact and feedback text are `"changed"`.

@@ -173,6 +173,16 @@ def apply_fields(candidate: Candidate, values: dict) -> list[str]:
     return sorted(changed)
 
 
+async def audited_values(db: AsyncSession, candidate: Candidate, fields) -> dict:
+    """hrc-004 B5: the values an edit's audit diff compares -- the source by name."""
+    values = {k: getattr(candidate, k) for k in fields}
+    values |= {k: ", ".join(map(str, v)) for k, v in values.items() if isinstance(v, list)}  # preferred locations as text
+    if "source_id" in values:
+        source_id = values.pop("source_id")
+        values["source"] = (await db.get(RecCandidateSource, source_id)).name if source_id else None
+    return values
+
+
 def audit(db: AsyncSession, user: User, action: str, candidate: Candidate, metadata: dict) -> None:
     db.add(AuditLog(user_id=user.id, action=f"candidate.{action}", entity_type="candidates", entity_id=str(candidate.id), metadata_json=metadata))
 

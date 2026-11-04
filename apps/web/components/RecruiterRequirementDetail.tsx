@@ -9,6 +9,7 @@ import RecruiterRequirementForm from "@/components/RecruiterRequirementForm";
 import RecruiterRequirementCandidates from "@/components/RecruiterRequirementCandidates";
 import RecruiterRequirementJd from "@/components/RecruiterRequirementJd";
 import RecruiterRequirementMatches from "@/components/RecruiterRequirementMatches";
+import RecruiterRecordHistory from "@/components/RecruiterRecordHistory";
 import RecruiterRequirementRevenue from "@/components/RecruiterRequirementRevenue";
 import RecruiterShares from "@/components/RecruiterShares";
 import SearchableSelect from "@/components/SearchableSelect";
@@ -290,6 +291,8 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
       <RecruiterShares source={{ kind: "requirement", requirementId: r.id }} refreshKey={shares} />
       {/* rec-031: the §23 revenue, for the roles that see it (RV10) */}
       {showRevenue && <RecruiterRequirementRevenue requirementId={r.id} />}
+      {/* hrc-004: who changed what, old → new; re-read after every save (the requirement's updated_at moves). */}
+      <RecruiterRecordHistory key={r.updated_at} url={`${REQUIREMENTS_URL}/${encodeURIComponent(r.id)}/history`} />
     </>
   );
 }

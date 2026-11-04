@@ -14,9 +14,10 @@ from app.api.deps import get_current_user
 from app.api.portfolio_certificates import HEADERS
 from app.core.database import get_db
 from app.models import Job, JobDescription, User
-from app.schemas import RecJdCreate
+from app.schemas import REC_JD_FIELDS, RecJdCreate
 from app.services import job_descriptions as svc
 from app.services import recruiter_requirements as requirements
+from app.services import recruitment_history
 from app.services.stale_guard import require_fresh
 
 router = APIRouter(prefix="/recruiter/requirements", tags=["recruiter-job-descriptions"])
@@ -53,7 +54,9 @@ async def create_jd(requirement_id: UUID, payload: RecJdCreate, user: User = Dep
     await svc.check_contact(db, job, payload.contact_id, previous.contact_id if previous else None)
     values = payload.model_dump(exclude={"expected_version"})
     jd = await svc.add_version(db, user, job, values, None)
-    svc.audit(db, user, "create", job, {"version": jd.version, "jd_number": jd.jd_number, "fields": sorted(k for k, v in values.items() if v is not None)})
+    before = {k: getattr(previous, k) for k in REC_JD_FIELDS} if previous else {}  # hrc-004: this version against the one it replaces
+    svc.audit(db, user, "create", job, {"version": jd.version, "jd_number": jd.jd_number, "fields": sorted(k for k, v in values.items() if v is not None),
+                                        "changes": recruitment_history.diff(before, values)})
     await db.commit()
     svc.log("job_description_created", user, job, version=jd.version)
     return await svc.jd_out(db, user, job)
@@ -70,8 +73,10 @@ async def upload_jd(requirement_id: UUID, file: UploadFile = File(...), user: Us
         job = await requirements.load_scoped(db, user, requirement_id, lock=True)
         requirements.require(user, job, "can_edit", "jd")
         stored = {"storage_key": key, "file_name": file_name, "content_type": content_type, "size_bytes": len(data)}
+        previous = await svc.current(db, job.id)
         jd = await svc.add_version(db, user, job, None, stored)
-        svc.audit(db, user, "upload", job, {"version": jd.version, "jd_number": jd.jd_number, "content_type": content_type, "size_bytes": len(data)})
+        svc.audit(db, user, "upload", job, {"version": jd.version, "jd_number": jd.jd_number, "content_type": content_type, "size_bytes": len(data),
+                                            "changes": {"file": [previous.file_name if previous else None, file_name]}})
         await db.commit()
     except Exception:  # a refusal, a lost race on the version pair, or a failed commit: nothing references the stored file
         await db.rollback()

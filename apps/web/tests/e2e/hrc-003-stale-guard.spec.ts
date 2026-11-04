@@ -79,5 +79,6 @@ test("a stale candidate save offers Reload latest, which drops the edit", async 
   await expect(a.getByLabel(/^Current company/)).toHaveValue("Globex");
   await expect(a.getByRole("alert").filter({ hasText: "This record changed" })).toHaveCount(0);
   await a.getByRole("button", { name: "Cancel" }).click();
-  await expect(a.getByText("Globex")).toBeVisible(); // QA-02: the page behind the form shows the latest too
+  // QA-02: the page behind the form shows the latest too (the Profile card: hrc-004's Change history also names the value)
+  await expect(a.getByRole("region", { name: "Profile" }).getByText("Globex")).toBeVisible();
 });

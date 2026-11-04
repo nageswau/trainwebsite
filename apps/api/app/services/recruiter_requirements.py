@@ -374,8 +374,25 @@ def catalogue() -> dict:
     }
 
 
+async def audited_values(db: AsyncSession, job: Job, fields, *, skills: bool = False) -> dict:
+    """hrc-004 B5: the values an edit's audit diff compares -- the category by name, and the skill lists as text when `skills`."""
+    values = {k: getattr(job, k) for k in fields}
+    if "job_category_id" in values:
+        category_id = values.pop("job_category_id")
+        values["job_category"] = (await db.get(RecJobCategory, category_id)).name if category_id else None
+    if skills:
+        rows = (await db.scalars(select(JobSkill).where(JobSkill.job_id == job.id).order_by(JobSkill.position))).all()
+        for kind in DEFAULT_WEIGHT:
+            values[f"{kind}_skills"] = ", ".join(r.name for r in rows if r.kind == kind)
+    return values
+
+
+async def recruiter_name(db: AsyncSession, user_id: UUID | None) -> str | None:
+    return (await db.get(User, user_id)).full_name if user_id else None
+
+
 def audit(db: AsyncSession, user: User, action: str, job_id: UUID, metadata: dict | None = None) -> None:
-    """Same transaction as the write (fail closed); ids, field names and statuses only."""
+    """Same transaction as the write (fail closed); ids, field names and statuses -- hrc-004: plus `changes`, redacted values."""
     db.add(AuditLog(user_id=user.id, action=f"recruiter_requirement.{action}", entity_type="job", entity_id=str(job_id), metadata_json=metadata or {}))
 
 

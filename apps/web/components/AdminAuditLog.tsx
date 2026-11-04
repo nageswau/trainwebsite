@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import {
-  actorHistoryHref, AUDIT_DIVISIONS, AUDIT_PAGE_SIZE, auditHref, entityHistoryHref, type AuditChanges, type AuditFilters, type AuditRow, type AuditValue,
+  actorHistoryHref, AUDIT_DIVISIONS, AUDIT_PAGE_SIZE, auditHref, changeText, entityHistoryHref, type AuditChanges, type AuditFilters, type AuditRow,
 } from "@/lib/auditLog";
 import { formatDateTimeIn, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 
@@ -10,8 +10,6 @@ import { formatDateTimeIn, SCHOOL_TIME_ZONE } from "@/lib/formatDate";
 // the read failed or the filters were refused; the form stays so they can be corrected. An entity reference opens that entity's whole
 // history and an actor's name everything they did. Metadata is not shown (it may hold personal data); times are India time (IST).
 // itc-001: only the field diff is, in a native disclosure -- the API never stores a personal-data field's values ("changed").
-const shownValue = (value: AuditValue) => (value === null || value === "" ? "(empty)" : String(value));
-
 function Changes({ changes }: { changes: AuditChanges | null | undefined }) {
   const fields = Object.entries(changes ?? {});
   if (fields.length === 0) return <>—</>;
@@ -21,7 +19,7 @@ function Changes({ changes }: { changes: AuditChanges | null | undefined }) {
       <ul aria-label="Changed fields" style={{ margin: "6px 0 0", paddingLeft: 18 }}>
         {fields.map(([field, change]) => (
           <li key={field}>
-            {field}: {change === "changed" ? "changed (value hidden)" : `${shownValue(change[0])} → ${shownValue(change[1])}`}
+            {field}: {changeText(change)}
           </li>
         ))}
       </ul>
