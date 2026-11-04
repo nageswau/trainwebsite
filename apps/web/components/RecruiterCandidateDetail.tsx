@@ -8,6 +8,7 @@ import RecruiterCandidateApplications from "@/components/RecruiterCandidateAppli
 import RecruiterCandidateForm from "@/components/RecruiterCandidateForm";
 import RecruiterCandidateJourney from "@/components/RecruiterCandidateJourney";
 import RecruiterCandidateTraining from "@/components/RecruiterCandidateTraining";
+import RecruiterCandidateDocuments from "@/components/RecruiterCandidateDocuments";
 import RecruiterCandidateResumes from "@/components/RecruiterCandidateResumes";
 import RecruiterCandidateSkills from "@/components/RecruiterCandidateSkills";
 import RecruiterMessages from "@/components/RecruiterMessages";
@@ -113,6 +114,8 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
       {candidate.can_edit && <RecruiterCandidateTraining candidateId={candidate.id} />}
       <RecruiterCandidateResumes candidateId={candidate.id} resumes={candidate.resumes} canUpload={canEdit} current={candidate}
         onUploaded={() => void reload()} onApplied={() => { void reload(); setSkillsVersion((n) => n + 1); }} />
+      {/* hrc-015: certificates and requested documents (readers see them; writers request, cancel and upload). */}
+      <RecruiterCandidateDocuments candidateId={candidate.id} canEdit={canEdit} />
       <RecruiterCandidateApplications candidateId={candidate.id} />
       {/* rec-013: Find Candidates' Contact links here (#contact). */}
       <div id="contact" style={{ display: "grid", gap: 16, scrollMarginTop: 16 }}>

@@ -10169,6 +10169,7 @@ class CandidateResumeOut(BaseModel):
     size_bytes: int
     uploaded_by: BdmPersonRef | None
     created_at: datetime
+    preview_status: Literal["pending", "ready", "failed"] | None = None  # hrc-015 (DEC-SCOPE-379 D3): DOC/DOCX renditions only
 
 
 class CandidateItem(BaseModel):

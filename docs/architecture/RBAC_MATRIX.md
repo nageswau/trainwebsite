@@ -3707,3 +3707,12 @@ The new package fields (currency, pay period, minimum, negotiable, annual INR) f
 salaries (§2.270): absent without it, 403 when sent. Exchange rates: read by the candidate readers (`placement_team`,
 `placement_manager`, `hr_team`, `super_admin`) — a rate is not compensation; written by `placement_manager` and `super_admin` only (others
 403, anonymous 401). Pinned by `apps/api/tests/test_hrc_011_compensation.py`.
+
+### 2.277 Candidate documents, document requests and signed links *(added 2026-11-04 — `DEC-SCOPE-379`, hrc-015)*
+
+No new grant. Resume/document links and the documents list: the candidate readers (`placement_team`, `placement_manager`, `hr_team`,
+`super_admin`), within the candidate pool (404 outside). Uploading documents, requesting and cancelling: the candidate writers
+(`placement_team`, `placement_manager`, `super_admin`); `hr_team` 403. `/account/candidate-documents*`: `it_student` only, for their own
+opted-in candidate (no id in the request; another candidate's document 404). Every other role 403, anonymous 401. A signed link is the
+authorisation for its 300 s (D4). `/files/download` and `/local-files` 404 `candidate-documents/` and `candidate-previews/` keys. Pinned by
+`apps/api/tests/test_hrc_015_documents.py` and the rec-038 matrix rows.

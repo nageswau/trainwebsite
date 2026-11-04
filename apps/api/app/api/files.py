@@ -112,7 +112,10 @@ async def _overseas_document(db: AsyncSession, key: str) -> bool:
 
 
 # hrc-001 (DEC-SCOPE-371 H4): recruitment documents, each served by its own authenticated, scope-checked and audited route.
-RECRUITMENT_PREFIXES = ("candidate-resumes/", "career-resumes/", "student-resumes/", "job-offers/", "job-joinings/", "recruiter-contracts/")
+RECRUITMENT_PREFIXES = (
+    "candidate-resumes/", "career-resumes/", "student-resumes/", "job-offers/", "job-joinings/", "recruiter-contracts/",
+    "candidate-documents/", "candidate-previews/",  # hrc-015 (DEC-SCOPE-379 D12)
+)  # fmt: skip
 
 
 async def _withheld(db: AsyncSession, key: str) -> bool:
@@ -133,10 +136,16 @@ async def download(key: str, user: User = Depends(get_current_user), db: AsyncSe
 @router.get("/signed/{token}")
 async def signed_download(token: str):
     """nehn-003 PS2: the local-mode equivalent of an S3 presigned URL -- the route that issued the token did the authorisation."""
-    key = storage.signed_key(token)
-    if key is None or storage.bucket:
+    claims = storage.signed_claims(token)
+    if claims is None or storage.bucket:
         raise HTTPException(404, "Not found")
-    return _local_response(key)
+    content_type = claims.get("ct")
+    if content_type and claims.get("inline") and content_type in INLINE_TYPES:  # hrc-015 D3: a preview, inert under nosniff
+        path = storage.local_file(claims["sub"])
+        if path is None:
+            raise HTTPException(404, "Not found")
+        return FileResponse(path, media_type=content_type, filename=claims.get("fn") or path.name, content_disposition_type="inline", headers=NOSNIFF)
+    return _local_response(claims["sub"], filename=claims.get("fn") if content_type else None, media_type=content_type)
 
 
 @router.get("/{file_id}")

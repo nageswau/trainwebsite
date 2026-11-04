@@ -35,7 +35,12 @@ MATCH_LIMIT = 5
 # Q-09 (recommended default): PDF or DOCX, judged by the bytes, at most 5 MB (the /public/career-upload limit).
 PDF = "application/pdf"
 DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-EXTENSION = {PDF: "pdf", DOCX: "docx"}
+# hrc-015 (DEC-SCOPE-379 D2/D6): legacy Word DOC for resumes and documents; PNG/JPEG for documents only.
+DOC = "application/msword"
+PNG = "image/png"
+JPEG = "image/jpeg"
+EXTENSION = {PDF: "pdf", DOCX: "docx", DOC: "doc", PNG: "png", JPEG: "jpg"}
+RESUME_TYPES = frozenset({PDF, DOC, DOCX})
 MAX_RESUME_BYTES = 5 * 1024 * 1024
 STORAGE_PREFIX = "candidate-resumes"
 
@@ -193,31 +198,65 @@ def _is_docx(data: bytes) -> bool:
         return False
 
 
-async def read_pdf_or_docx(file: UploadFile, max_bytes: int, too_big: str) -> tuple[bytes, str, str | None]:
-    """The type is decided by the bytes, never by the name or the client's Content-Type. Returns (bytes, content type, display name).
-    Shared with rec-008's JD upload."""
+OLE2 = bytes.fromhex("D0CF11E0A1B11AE1")
+WORD_STREAM = "WordDocument".encode("utf-16-le")
+
+
+def _is_doc(data: bytes) -> bool:
+    """hrc-015 (D2): a Word 97-2003 file is an OLE2 compound file whose directory names a `WordDocument` stream (an XLS or PPT shares
+    the header, not the stream). The directory is only searched for the name; nothing is parsed or run."""
+    return data.startswith(OLE2) and WORD_STREAM in data
+
+
+def sniff(data: bytes) -> str | None:
+    """The content type by the bytes alone, or None."""
+    if data.startswith(b"%PDF-"):
+        return PDF
+    if _is_docx(data):
+        return DOCX
+    if _is_doc(data):
+        return DOC
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return PNG
+    if data.startswith(b"\xff\xd8\xff"):
+        return JPEG
+    return None
+
+
+async def read_upload(file: UploadFile, max_bytes: int, too_big: str, accepted: frozenset[str], refused: str) -> tuple[bytes, str, str | None]:
+    """The type is decided by the bytes, never by the name or the client's Content-Type. Returns (bytes, content type, display name)."""
     data = await file.read(max_bytes + 1)
     if not data:
         raise HTTPException(422, "The file is empty")
     if len(data) > max_bytes:
         raise HTTPException(413, too_big)
-    content_type = PDF if data.startswith(b"%PDF-") else DOCX if _is_docx(data) else None
-    if content_type is None:
-        raise HTTPException(415, "Upload a PDF or DOCX file")
+    content_type = sniff(data)
+    if content_type not in accepted:
+        raise HTTPException(415, refused)
     return data, content_type, Path(file.filename or "").name[:255] or None
 
 
+async def read_pdf_or_docx(file: UploadFile, max_bytes: int, too_big: str) -> tuple[bytes, str, str | None]:
+    """Shared with rec-008's JD upload, which stays PDF or DOCX."""
+    return await read_upload(file, max_bytes, too_big, frozenset({PDF, DOCX}), "Upload a PDF or DOCX file")
+
+
 async def read_resume(file: UploadFile) -> tuple[bytes, str, str | None]:
-    return await read_pdf_or_docx(file, MAX_RESUME_BYTES, "The resume must be at most 5 MB")
+    return await read_upload(file, MAX_RESUME_BYTES, "The resume must be at most 5 MB", RESUME_TYPES, "Upload a PDF, DOC or DOCX file")
 
 
 def _digest(key: str) -> str:
     return hashlib.sha256(key.encode()).hexdigest()[:16]
 
 
-def store(data: bytes, content_type: str) -> str:
+DOCUMENT_PREFIX = "candidate-documents"  # hrc-015 (D6)
+PREVIEW_PREFIX = "candidate-previews"  # hrc-015 (D3): converted PDF renditions
+OWN_PREFIXES = tuple(f"{p}/" for p in (STORAGE_PREFIX, DOCUMENT_PREFIX, PREVIEW_PREFIX))
+
+
+def store(data: bytes, content_type: str, prefix: str = STORAGE_PREFIX) -> str:
     """A server-generated key; the client never names a path. 500 (logged by key digest) when storage fails."""
-    key = f"{STORAGE_PREFIX}/{uuid4().hex}"
+    key = f"{prefix}/{uuid4().hex}"
     try:
         storage.write_bytes(key, data, content_type)
     except Exception:
@@ -228,7 +267,7 @@ def store(data: bytes, content_type: str) -> str:
 
 def discard(key: str) -> None:
     """Delete an object stored for a write that did not commit; only this module's keys. A failure leaves a logged orphan."""
-    if not key.startswith(f"{STORAGE_PREFIX}/"):
+    if not key.startswith(OWN_PREFIXES):
         return
     try:
         storage.delete(key)
@@ -236,12 +275,16 @@ def discard(key: str) -> None:
         logger.warning("candidate_resume_orphaned", extra={"extra_fields": {"key_digest": _digest(key)}})
 
 
-def read_file(resume: CandidateResume) -> bytes:
+def read_key(key: str) -> bytes:
     try:
-        return storage.read_bytes(resume.storage_key)
+        return storage.read_bytes(key)
     except FileNotFoundError:
-        logger.warning("candidate_resume_missing", extra={"extra_fields": {"key_digest": _digest(resume.storage_key)}})
+        logger.warning("candidate_resume_missing", extra={"extra_fields": {"key_digest": _digest(key)}})
         raise HTTPException(404, "Resume file not found") from None
+
+
+def read_file(resume: CandidateResume) -> bytes:
+    return read_key(resume.storage_key)
 
 
 # --- output ----------------------------------------------------------------------------------------------------------------------
@@ -299,7 +342,10 @@ async def detail_out(db: AsyncSession, user: User, candidate: Candidate) -> dict
         "created_by": _person(people.get(candidate.created_by_user_id)),
         "updated_by": _person(people.get(candidate.updated_by_user_id)),
         "resumes": [
-            {"version": r.version, "file_name": r.file_name, "content_type": r.content_type, "size_bytes": r.size_bytes, "uploaded_by": _person(uploader), "created_at": r.created_at}
+            {
+                "version": r.version, "file_name": r.file_name, "content_type": r.content_type, "size_bytes": r.size_bytes,
+                "uploaded_by": _person(uploader), "created_at": r.created_at, "preview_status": r.preview_status,
+            }  # fmt: skip
             for r, uploader in resumes
         ],
         "can_edit": user.role in WRITERS,
