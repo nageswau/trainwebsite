@@ -11364,3 +11364,22 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   the UI hides the restricted inputs and columns.
 - **Numbering:** migration `0250_compensation_grant` (seed only); API §12JQ; RBAC §2.270.
 - **Feature ID authorized:** `hrc-001`. **Status:** built on `worktree-hrc-001`.
+
+### DEC-SCOPE-374 — Recruitment roles and configurable permission scope (`hrc-002`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-002` (PDF §3, §15; PDF classified `UNVERIFIED`). Scope approved by the
+  owner 2026-11-01 (backlog Q-00). Dependency `hrc-001` built (`DEC-SCOPE-371`). The owner said to proceed with the recommended answers,
+  so R1–R7 below are **the builder's calls (`NEEDS_CONFIRMATION`)** for Q-01 and Q-04. Design
+  `docs/superpowers/specs/2026-11-04-hrc-002-recruitment-roles-design.md`.
+- **Builder's calls:** R1 (Q-01) three new IT roles: `hr_manager` (a new role, not a relabelled `placement_manager`; created by a
+  super_admin only), `placement_officer` (separate from `placement_team`) and `interviewer` (internal; employers keep the `employer`
+  login), both created by `it_admin` or super_admin; `hr_team` and `placement_manager` unchanged. R2 least privilege: no default grants,
+  no member of any recruiter/HR role set — every recruiter CRM, legacy placement and HR route refuses them. R3 own read-only dashboards
+  under `/it/{hr-manager,placement-officer,interviewer}/dashboard`: the HR Manager sees open requirements and recruitment counts, the
+  Placement Officer the open requirements by Job ID, the Interviewer nothing yet. R4 grant keys `jobs.approve`, `jobs.publish`,
+  `candidates.export`, `candidates.import`, `candidates.merge`, `results.release` (with `candidates.compensation.view` from hrc-001), no
+  default holder, enforced by their owning items (hrc-007/008/020/013/014/030) — a deliberate exception to nehn-005 P1. R5 (Q-04) no
+  branch/department dimension: no branch list exists in evidence; client scope stays the company assignment; AC3 not built. R6 a second
+  `UserRoleAssignment` does not widen recruitment access (`User.role` decides). R7 no migration.
+- **Numbering:** no migration; API §12JT; RBAC §2.273.
+- **Feature ID authorized:** `hrc-002`. **Status:** built on `worktree-hrc-002`.

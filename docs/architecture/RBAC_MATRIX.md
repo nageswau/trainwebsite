@@ -3700,3 +3700,13 @@ request carrying one (or a Find Candidates `salary_min` / `salary_max`) is 403. 
 offers}` writes: `placement_team` within the `/recruiter/*` record scope (404 outside, 403 without a recruiter profile), `it_admin`
 IT-wide, `super_admin` all; `hr_team` 403. Students and employers never receive an interview `result` or a decided interview status.
 `/files/download` and `/local-files` 404 the recruitment prefixes for every role. Pinned by `apps/api/tests/test_hrc_001_access.py`.
+
+### 2.273 Recruitment roles *(added 2026-11-04 — `DEC-SCOPE-374`, hrc-002)*
+
+New IT roles `hr_manager` (created by super_admin only), `placement_officer` and `interviewer` (created by `it_admin` or super_admin).
+None holds a catalogue grant by default or belongs to any recruiter/HR role set, so every `/recruiter/*`, legacy `/workflows/it/*`
+placement, `/hr/*` and other portal route is 403 to them; each opens only its own `/portal/it/{hr-manager|placement-officer|interviewer}`
+dashboard (read-only vacancy facts and counts; nothing for the interviewer). New catalogue keys `jobs.approve`, `jobs.publish`,
+`candidates.export`, `candidates.import`, `candidates.merge`, `results.release`: no default holder (super_admin implicit), grantable
+now, enforced by their owning items. `User.role` decides; an extra `UserRoleAssignment` does not widen access. No branch/department
+scope (Q-04 open). Pinned by `apps/api/tests/test_hrc_002_roles.py` and the rec-038 matrix (`hr_mgr`, `officer`, `interviewer` columns).

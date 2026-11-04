@@ -25,6 +25,10 @@ USERS = [
     ("placement@edusphere.local", "Kiran Placement", "placement_team", "it"),
     ("hr@edusphere.local", "Priya HR", "hr_team", "it"),
     ("coordinator@edusphere.local", "Nisha Coordinator", "coordinator", "it"),  # nehn-030: the IT certificate coordinator
+    # hrc-002 (DEC-SCOPE-374 R1): the recruitment roles.
+    ("hr.manager@edusphere.local", "Kavya HR Manager", "hr_manager", "it"),
+    ("placement.officer@edusphere.local", "Rohan Placement Officer", "placement_officer", "it"),
+    ("interviewer@edusphere.local", "Sanjay Interviewer", "interviewer", "it"),
     ("overseasadmin@edusphere.local", "Overseas Administrator", "overseas_admin", "overseas"),
     ("student.overseas@edusphere.local", "Ananya Sharma", "overseas_student", "overseas"),
     ("counselor@edusphere.local", "Ritika Counselor", "counselor", "overseas"),

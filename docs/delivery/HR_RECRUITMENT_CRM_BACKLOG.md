@@ -120,6 +120,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** medium (behaviour narrowing).
 
 #### hrc-002: Recruitment roles and configurable permission scope
+- **Status (2026-11-04):** built — `DEC-SCOPE-374` (Q-01/Q-04 answered by the builder's recommended calls, `NEEDS_CONFIRMATION`; no
+  branch/department scope, so AC3 is not built); design `docs/superpowers/specs/2026-11-04-hrc-002-recruitment-roles-design.md`; no migration.
 - **Business requirement:** §3 role table plus "Permissions must be configurable by role, department, branch, client and record ownership."
 - **Existing behavior:**
   - The roles are `placement_team` (= Recruiter), `placement_manager`, `hr_team` (blocked from the recruiter CRM, Q-28), `employer` and `super_admin`.

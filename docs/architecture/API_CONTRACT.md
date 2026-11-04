@@ -5505,3 +5505,18 @@ shapes unchanged except where noted).
 - `GET /portal/it/student/interview-schedule`: the `result` column is removed.
 - `GET /files/download?key=` and `GET /local-files/{key}`: 404 for `candidate-resumes/`, `career-resumes/`, `student-resumes/`,
   `job-offers/`, `job-joinings/`, `recruiter-contracts/` (served by their own routes, unchanged).
+
+## 12JT. Recruitment roles and grant keys (hrc-002) — addendum, 2026-11-04
+
+`DEC-SCOPE-374`. No migration. Additive.
+
+- `POST /admin/users`: accepts `role` `hr_manager`, `placement_officer`, `interviewer` with `division` `it` (another division → 422).
+  `hr_manager` by a super_admin only — anyone else → 403 `Only a Super Admin can create HR managers`.
+- `GET /portal/it/hr-manager/dashboard`, `/portal/it/placement-officer/dashboard`, `/portal/it/interviewer/dashboard`: the role's own
+  portal payload (403 for any other role, 404 for any other section). Rows `{job_id, role, company, location, status}` (open requirements;
+  HR Manager and Placement Officer); metrics `Open requirements` (+ `Applications`, `Interviews`, `Offers` for the HR Manager); the
+  Interviewer's payload has no rows or metrics.
+- `GET /admin/permissions/catalogue`: `roles` gains the three roles; `actions` gains `publish`, `export`, `import`, `merge`, `release`;
+  `resources` gains `jobs` (approve, publish), `candidates` (export, import, merge), `results` (release). `PUT
+  /admin/roles/{role}/permissions` accepts the new keys and roles.
+- `GET /auth/me/permissions`: `[]` for the new roles by default.

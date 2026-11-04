@@ -2026,6 +2026,40 @@ def _student_locks(result: dict | None, section: str, access: dict) -> dict | No
     return result | {"rows": [], "metrics": [], "actions": [], "panels": [], "locked": locked}
 
 
+OPEN_REQUIREMENT_COLUMNS = (("job_id", "Job ID"), ("role", "Role"), ("company", "Company"), ("location", "Location"), ("status", "Status"))
+
+
+async def _recruitment_role(db: AsyncSession, user: User, section: str):
+    """hrc-002 (DEC-SCOPE-374 R3): the HR Manager's, Placement Officer's and Interviewer's own read-only dashboards -- vacancy facts and
+    counts only (no candidate, salary, feedback or note field). Ownership (hrc-006/012) and interviewer assignment (hrc-029) widen them."""
+    if section != "dashboard":
+        return None
+    if user.role == "interviewer":
+        return _payload("Interviewer Dashboard", "No interviews are assigned to you yet.")
+    jobs = (
+        await db.execute(
+            select(Job, Company).join(Company, Company.id == Job.company_id).where(Job.status.in_(JOB_OPEN_STATUSES)).order_by(Job.created_at.desc())
+        )
+    ).all()
+    rows = [{"job_id": j.requirement_code, "role": j.title, "company": c.name, "location": j.location, "status": j.status.replace("_", " ").capitalize()} for j, c in jobs]
+    if user.role == "placement_officer":
+        return _payload("Placement Officer Dashboard", "Open requirements shared with the recruiters, by Job ID.", OPEN_REQUIREMENT_COLUMNS, rows,
+                        ({"label": "Open requirements", "value": len(rows)},))  # fmt: skip
+    applications, interviews, offers = [await db.scalar(select(func.count()).select_from(model)) or 0 for model in (JobApplication, Interview, JobOffer)]
+    return _payload(
+        "HR Manager Dashboard",
+        "Recruitment across every requirement, recruiter and placement officer.",
+        OPEN_REQUIREMENT_COLUMNS,
+        rows,
+        (
+            {"label": "Open requirements", "value": len(rows)},
+            {"label": "Applications", "value": applications},
+            {"label": "Interviews", "value": interviews},
+            {"label": "Offers", "value": offers},
+        ),
+    )
+
+
 async def section_payload(db: AsyncSession, user: User, section: str, *, filters: ApplicationFilters | None = None, batch: str | None = None) -> dict | None:
     if user.role == "it_student":
         result = _student_locks(await _it_student(db, user, section), section, await student_access.summary(db, user))
@@ -2039,6 +2073,8 @@ async def section_payload(db: AsyncSession, user: User, section: str, *, filters
         result = await _it_counselor(db, user, section)
     elif user.role == "coordinator":
         result = await _coordinator(db, user, section)
+    elif user.role in {"hr_manager", "placement_officer", "interviewer"}:
+        result = await _recruitment_role(db, user, section)
     else:
         result = await _operations(db, user, section, filters=filters)
     return result
