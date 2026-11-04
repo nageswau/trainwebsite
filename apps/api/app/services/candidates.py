@@ -65,11 +65,10 @@ async def require_compensation(db: AsyncSession, user: User, sent) -> None:
         raise HTTPException(403, NO_COMPENSATION)
 
 
-def without_compensation(rows: list[dict]) -> list[dict]:
+def without_compensation(rows: list[dict]) -> None:
     for row in rows:
         for key in COMPENSATION:
             row.pop(key, None)
-    return rows
 
 
 def pool_filter() -> list:

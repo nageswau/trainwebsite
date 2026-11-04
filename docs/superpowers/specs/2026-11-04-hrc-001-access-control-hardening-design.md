@@ -60,4 +60,4 @@ candidate form, the screening form and the Find Candidates salary filter show th
 `test_rec_007/020/022` (legacy writers), `test_rec_009/013/018` (salary readers), the WorkflowPanel placement forms.
 
 ## API / RBAC
-API §12JA records the narrowing as a breaking change for out-of-scope callers. RBAC §2.270 adds the grant and the legacy writer rule.
+API §12JP records the narrowing as a breaking change for out-of-scope callers. RBAC §2.270 adds the grant and the legacy writer rule.

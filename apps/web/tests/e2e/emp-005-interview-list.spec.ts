@@ -38,7 +38,7 @@ async function ensureSeededStudentIsAnAvailableCandidate(page: import("@playwrig
   return { name: student.full_name as string };
 }
 
-test("Employer's interview list shows an honest status before and after Placement Team records an outcome (EMP-005-AC01/AC02)", async ({ page }) => {
+test("Employer's interview list shows the schedule status and no unreleased outcome (EMP-005-AC01/AC02, hrc-001 H3)", async ({ page }) => {
   const { name } = await ensureSeededStudentIsAnAvailableCandidate(page);
   const { email } = await registerEmployer(page);
   await page.goto("/it/employer/dashboard");
@@ -64,7 +64,7 @@ test("Employer's interview list shows an honest status before and after Placemen
   await expect(shortlistedRow.getByText("Interview scheduled.")).toBeVisible();
 
   const interviewCard = page.locator(".grid.two .card", { hasText: name }).last();
-  await expect(interviewCard.getByText("Awaiting outcome")).toBeVisible();
+  await expect(interviewCard.getByText("Scheduled", { exact: true })).toBeVisible();
 
   const interviews = await (await page.request.get("/api/v1/employer/interviews")).json();
   const interview = interviews.find((row: { candidate: string }) => row.candidate === name);
@@ -75,8 +75,12 @@ test("Employer's interview list shows an honest status before and after Placemen
 
   await loginAsEmployer(page, email);
   await page.goto("/it/employer/dashboard");
-  const cancelledCard = page.locator(".grid.two .card", { hasText: name }).last();
-  await expect(cancelledCard.getByText("cancelled")).toBeVisible();
+  // hrc-001 (DEC-SCOPE-370 H3): the recorded outcome is not released to the employer -- the interview stays listed, without it.
+  const decidedCard = page.locator(".grid.two .card", { hasText: name }).last();
+  await expect(decidedCard).toBeVisible();
+  await expect(decidedCard.getByText("cancelled")).toHaveCount(0);
+  const after = await (await page.request.get("/api/v1/employer/interviews")).json();
+  expect(after.find((row: { id: string }) => row.id === interview.id)).not.toHaveProperty("result");
 });
 
 test("the interview list requires an employer session", async ({ page }) => {

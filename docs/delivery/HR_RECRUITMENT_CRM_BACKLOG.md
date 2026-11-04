@@ -86,6 +86,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 ### Phase 0: Safety and foundations
 
 #### hrc-001: Access-control hardening for recruitment data (details held privately)
+- **Status (2026-11-04):** built — `DEC-SCOPE-370` (Q-02/Q-03 answered by the builder's recommended calls, `NEEDS_CONFIRMATION`); design
+  `docs/superpowers/specs/2026-11-04-hrc-001-access-control-hardening-design.md`; seed migration `0250` (the grant needs default rows).
 - **Business requirement:** §3 "Restrict sensitive information … salary details, internal notes and final hiring decisions"; §10.2 "results hidden until release"; §15 "controlled download links", "keep internal notes … separate at the API/data layer".
 - **Existing behavior:** see §0.1. The specific findings, with file/line evidence, are held privately by the owner.
 - **Expected behavior:**

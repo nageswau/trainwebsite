@@ -3691,3 +3691,12 @@ tier (partner, super_admin) and the IT Admin; revenue by a partner or an itc-017
 it_admin, accountant, super_admin). The accountant is refused every operational report (403). Counselor, telecaller, trainer, student and
 overseas_admin 403 everywhere; anonymous 401. Rows carry no student or lead names or contact details; the accountant still never sees
 university commission (unchanged). Pinned by `apps/api/tests/test_itc_032_management_it_reports.py`.
+
+### 2.270 Recruitment access-control hardening *(added 2026-11-04 — `DEC-SCOPE-370`, hrc-001)*
+
+New grant `candidates.compensation.view` (default `placement_team`, `placement_manager`; super_admin implicit; an override applies).
+Without it a candidate's `current_salary` / `expected_salary` and a screening's `expected_salary` are absent from every response, and a
+request carrying one (or a Find Candidates `salary_min` / `salary_max`) is 403. Legacy `/workflows/it/{jobs,job-applications,interviews,
+offers}` writes: `placement_team` within the `/recruiter/*` record scope (404 outside, 403 without a recruiter profile), `it_admin`
+IT-wide, `super_admin` all; `hr_team` 403. Students and employers never receive an interview `result` or a decided interview status.
+`/files/download` and `/local-files` 404 the recruitment prefixes for every role. Pinned by `apps/api/tests/test_hrc_001_access.py`.
