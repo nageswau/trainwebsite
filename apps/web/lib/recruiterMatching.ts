@@ -7,7 +7,7 @@ import { REQUIREMENTS_URL } from "@/lib/recruiterRequirements";
 export type CriteriaSkill = {
   id: string; name: string; kind: "required" | "preferred"; weight: number; points: number; in_master: boolean; min_level?: SkillLevel | null;
 };
-// hrc-018 (DEC-SCOPE-390): six admin-weighted factors, optional per-job hard filters and a sentence per factor. The new keys are optional so
+// hrc-018 (DEC-SCOPE-392): six admin-weighted factors, optional per-job hard filters and a sentence per factor. The new keys are optional so
 // older fixtures still compile; the API always sends them.
 export const FACTORS = ["skills", "experience", "qualification", "location", "role", "salary"] as const;
 export type FactorKey = (typeof FACTORS)[number];

@@ -1024,7 +1024,7 @@ class Job(Base, TimestampMixin):
     # hrc-008 (DEC-SCOPE-385 V1/V3): public by default, so no existing listing or create path changes; a segment names its talent pool
     visibility: Mapped[str] = mapped_column(String(10), default="public", server_default=text("'public'"))
     segment_pool_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("talent_pools.id", ondelete="RESTRICT"), nullable=True)
-    # hrc-018 (DEC-SCOPE-390 E6): which of the job's own values also exclude a candidate from its matches (required skills always do)
+    # hrc-018 (DEC-SCOPE-392 E6): which of the job's own values also exclude a candidate from its matches (required skills always do)
     match_hard_experience: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     match_hard_qualification: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     match_hard_location: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
@@ -1032,7 +1032,7 @@ class Job(Base, TimestampMixin):
     company = relationship("Company")
 
 
-# hrc-018 (DEC-SCOPE-390 E1/E2): the six match factors in display order and the source's default weights; migration 0267 repeats them
+# hrc-018 (DEC-SCOPE-392 E1/E2): the six match factors in display order and the source's default weights; migration 0269 repeats them
 # (test_hrc_018_migration asserts they stay identical). The database enforces the sum (AC1).
 MATCH_FACTORS = ("skills", "experience", "qualification", "location", "role", "salary")
 MATCH_DEFAULT_WEIGHTS = (40, 20, 15, 10, 10, 5)
@@ -1220,6 +1220,7 @@ class JobApplication(Base, TimestampMixin):
         Index("ix_job_applications_job_status", "job_id", "status"),
         Index("ix_job_applications_candidate", "candidate_id"),
         Index("ix_job_applications_drive", "drive_id"),
+        Index("ix_job_applications_needs_review", "job_id", postgresql_where=text("needs_review_since IS NOT NULL")),  # hrc-009
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     job_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("jobs.id"), index=True)
@@ -1231,6 +1232,9 @@ class JobApplication(Base, TimestampMixin):
     added_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     # rec-029 (DR3): the one campus drive the candidate came through, set when added through it and never changed.
     drive_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruitment_drives.id", ondelete="RESTRICT"), nullable=True)
+    # hrc-009 (DEC-SCOPE-390 R3/R4): set when the requirement's eligibility changed while the application was open; cleared by a status
+    # move or a confirmed review. NULL = nothing to review.
+    needs_review_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class JobApplicationStatusHistory(Base):
@@ -6742,6 +6746,57 @@ class CandidateDuplicate(Base):
     decided_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# hrc-013 (DEC-SCOPE-391 I9): migration 0268 repeats these checks.
+CANDIDATE_IMPORT_ROW_STATUSES = ("created", "matched", "error")
+CANDIDATE_IMPORT_BATCH_CHECKS = {"ck_candidate_import_batches_counts": "created_count + matched_count + error_count = total_rows"}
+CANDIDATE_IMPORT_ROW_CHECKS = {
+    "ck_candidate_import_rows_status": "status IN ('created', 'matched', 'error')",
+    "ck_candidate_import_rows_outcome": "(status = 'error') = (candidate_id IS NULL) AND (status <> 'error' OR reason IS NOT NULL)",
+}
+
+
+class CandidateImportBatch(Base):
+    """hrc-013 (I8/I9): one committed candidate file. Only its hash, name, source and counts are kept -- never the file. The
+    Idempotency-Key is scoped to the uploader."""
+
+    __tablename__ = "candidate_import_batches"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_IMPORT_BATCH_CHECKS.items()),
+        UniqueConstraint("uploaded_by_user_id", "idempotency_key", name="uq_candidate_import_batches_key"),
+        Index("ix_candidate_import_batches_uploader", "uploaded_by_user_id", "created_at"),
+        Index("ix_candidate_import_batches_file", "uploaded_by_user_id", "file_sha256"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
+    source_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_candidate_sources.id", ondelete="RESTRICT"))
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    file_sha256: Mapped[str] = mapped_column(String(64))
+    file_name: Mapped[str] = mapped_column(String(200))
+    total_rows: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    created_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    matched_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    error_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CandidateImportRow(Base):
+    """hrc-013 (I9): one row's outcome. No name, mobile or email: a created or matched row names its candidate (a match says why); an error row only its
+    file row number and reason. hrc-034 reads the error rows as "failed imports"."""
+
+    __tablename__ = "candidate_import_rows"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_IMPORT_ROW_CHECKS.items()),
+        UniqueConstraint("batch_id", "row_number", name="uq_candidate_import_rows_row"),
+        Index("ix_candidate_import_rows_candidate", "candidate_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    batch_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidate_import_batches.id", ondelete="CASCADE"))
+    row_number: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(10))
+    candidate_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"), nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class RecFxRate(Base):

@@ -10713,7 +10713,7 @@ class RecSkillWeight(BaseModel):
 
 
 class RecHardFilters(BaseModel):
-    """hrc-018 (DEC-SCOPE-390 E6): each switch omitted = unchanged."""
+    """hrc-018 (DEC-SCOPE-392 E6): each switch omitted = unchanged."""
 
     model_config = ConfigDict(extra="forbid")
     experience: StrictBool | None = None
@@ -10738,7 +10738,7 @@ _MatchWeight = Annotated[StrictInt, Field(ge=0, le=100)]
 
 
 class MatchFactorWeights(BaseModel):
-    """hrc-018 (DEC-SCOPE-390 E2; AC1): the six factor weights, whole numbers 0-100 that sum to exactly 100."""
+    """hrc-018 (DEC-SCOPE-392 E2; AC1): the six factor weights, whole numbers 0-100 that sum to exactly 100."""
 
     model_config = ConfigDict(extra="forbid")
     skills: _MatchWeight

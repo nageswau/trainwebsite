@@ -3795,7 +3795,22 @@ and the assignee picker are the writers'. Every other role — `placement_office
 is 403, anonymous 401. Notes are internal: no candidate, student, employer, portal or public response carries them. No grant key is
 added. Pinned by `apps/api/tests/test_hrc_016_notes_tasks.py` and the rec-038 matrix rows.
 
-### 2.284 Match factor weights *(added 2026-11-04 — `DEC-SCOPE-390`, hrc-018)*
+### 2.284 Eligibility-change review *(added 2026-11-04 — `DEC-SCOPE-390`, hrc-009)*
+
+The review list and the `needs_review_count` follow the requirement's candidates list (§2.62): the requirement's recruiter, their manager,
+`super_admin` and the assigned BDM read; out of scope 404. Confirming a review is the status-move gate (`applications.WRITERS`: the
+requirement's recruiter and `super_admin`); the manager and the BDM 403, other roles 403, anonymous 401. The notice goes only to the
+vacancy's owners (hrc-006). No grant key is added. Pinned by `apps/api/tests/test_hrc_009_review.py` and the rec-038 matrix row.
+
+### 2.285 Candidate bulk import *(added 2026-11-04 — `DEC-SCOPE-391`, hrc-013)*
+
+`candidates.import` (declared by hrc-002, §2.275) now has default holders: `placement_team` and `placement_manager` (migration 0268
+seeds them; `super_admin` holds every key). The routes also require a candidate writer, so an `allow` override never lets `hr_team` or
+any other reader import; a `deny` override removes a recruiter's access to the template, preview, import, history and reports. History
+and reports are the uploader's own; a placement manager and super_admin see every import. Pinned by
+`apps/api/tests/test_hrc_013_import.py` and `apps/api/tests/test_hrc_002_roles.py`.
+
+### 2.286 Match factor weights *(added 2026-11-04 — `DEC-SCOPE-392`, hrc-018)*
 
 Candidate readers (`placement_team`, `placement_manager`, `super_admin`, `hr_team`) read the match factor weights
 (`GET /recruiter/match-settings`); only `super_admin` changes them. Every other role is 403, anonymous 401. A requirement's hard filters

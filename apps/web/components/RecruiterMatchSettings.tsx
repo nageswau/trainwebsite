@@ -5,7 +5,7 @@ import { type FormEvent, useEffect, useId, useState } from "react";
 import { sendJson } from "@/lib/apiErrors";
 import { FACTOR_LABEL, FACTORS, type FactorKey, type FactorWeights, isMatchSettings, MATCH_SETTINGS_URL, type MatchSettings } from "@/lib/recruiterMatching";
 
-// hrc-018 (DEC-SCOPE-390 E2/E3; AC1): the match factor weights -- shown only to who may change them (super_admin; the hrc-012/022 setting
+// hrc-018 (DEC-SCOPE-392 E2/E3; AC1): the match factor weights -- shown only to who may change them (super_admin; the hrc-012/022 setting
 // card idiom). The total must be exactly 100 before Save is offered; the API and the database re-check it.
 const toText = (w: FactorWeights) => Object.fromEntries(FACTORS.map((f) => [f, String(w[f])])) as Record<FactorKey, string>;
 const whole = (text: string) => /^\d{1,3}$/.test(text.trim()) && Number(text) <= 100;

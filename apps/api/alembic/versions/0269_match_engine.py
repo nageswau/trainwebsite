@@ -1,9 +1,9 @@
 """hrc-018 -- configurable matching engine: the admin factor weights and a job's optional hard filters.
 
-Revision ID: 0267_match_engine
-Revises: 0266_website_intake
+Revision ID: 0269_match_engine
+Revises: 0268_candidate_imports
 
-docs/superpowers/specs/2026-11-04-hrc-018-matching-engine-design.md (DEC-SCOPE-390 E2/E6). Adds the one-row `match_settings` table (six
+docs/superpowers/specs/2026-11-04-hrc-018-matching-engine-design.md (DEC-SCOPE-392 E2/E6). Adds the one-row `match_settings` table (six
 weights, each 0-100, summing to 100; no row = the defaults) and four `jobs.match_hard_*` switches, all false, so no existing ranking
 filters differently. 0001 builds a fresh database from the current models, so each step runs only when missing (0251's idiom). The
 downgrade drops both.
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0267_match_engine"
-down_revision = "0266_website_intake"
+revision = "0269_match_engine"
+down_revision = "0268_candidate_imports"
 branch_labels = None
 depends_on = None
 

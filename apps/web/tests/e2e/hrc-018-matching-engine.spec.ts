@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// hrc-018 (DEC-SCOPE-390; AC1-AC4): the super admin's match weights card (must total 100), then a requirement with all six factors:
+// hrc-018 (DEC-SCOPE-392; AC1-AC4): the super admin's match weights card (must total 100), then a requirement with all six factors:
 // Asha meets every one (100%) and each factor explains itself; Ravi has the required skill only. Making Location a hard filter drops
 // Ravi. The disclaimer shows; a recruiter has no weights card; nothing scrolls sideways on a phone. The weights go back to the defaults.
 

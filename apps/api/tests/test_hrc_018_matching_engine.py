@@ -1,4 +1,4 @@
-"""hrc-018 -- configurable matching engine with explanations (DEC-SCOPE-390 E1-E12; AC1-AC4). The rec-016 world builds every fixture
+"""hrc-018 -- configurable matching engine with explanations (DEC-SCOPE-392 E1-E12; AC1-AC4). The rec-016 world builds every fixture
 with unique skills, so only a test's own candidates can match its requirement."""
 
 import uuid
@@ -290,3 +290,20 @@ async def test_candidate_to_jobs_gives_the_same_score_and_hides_salary_from_the_
     staff_view = await matching.jobs_for_candidate(db_session, candidate, [fit], audience="staff")
     assert any(e["key"] == "salary" for e in staff_view[0]["explanation"])
     assert uuid.UUID(str(found[0]["job_id"]))
+
+
+# --- with hrc-009 (DEC-SCOPE-390 R1): a hard filter decides who fits, so switching one flags the open applications ------------------
+@pytest.mark.asyncio
+async def test_turning_a_hard_filter_on_flags_open_applications_for_review(client, db_session):
+    from tests.test_hrc_009_review import _flags
+    from tests.test_hrc_009_review import _world as review_world
+
+    w = await review_world(client, db_session, master=True)
+    rows = (await db_session.scalars(select(JobSkill).where(JobSkill.job_id == uuid.UUID(w["job"])))).all()
+    weights = [{"id": str(r.id), "weight": r.weight} for r in rows]
+    url = f"{REQ}/{w['job']}/skill-weights"
+    assert (await client.put(url, json={"weights": weights})).status_code == 200  # nothing changed: nothing flagged
+    assert (await _flags(db_session, w))["a"] == (False, "sourced")
+    saved = await client.put(url, json={"weights": weights, "hard_filters": {"location": True}})
+    assert saved.status_code == 200, saved.text
+    assert await _flags(db_session, w) == {"a": (True, "sourced"), "b": (True, "shortlisted"), "c": (False, "rejected")}

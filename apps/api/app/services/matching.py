@@ -1,4 +1,4 @@
-"""rec-016 (DEC-SCOPE-157) + hrc-018 (DEC-SCOPE-390 E1-E12, spec docs/superpowers/specs/2026-11-04-hrc-018-matching-engine-design.md):
+"""rec-016 (DEC-SCOPE-157) + hrc-018 (DEC-SCOPE-392 E1-E12, spec docs/superpowers/specs/2026-11-04-hrc-018-matching-engine-design.md):
 requirement <-> candidate matching, the weighted score and its plain-language explanation.
 
 `evaluate` is the pure rule, used both ways (job -> candidates for recruiters, candidate -> jobs for hrc-027): a job's spec and one
@@ -254,6 +254,28 @@ async def _related(db: AsyncSession, skill_ids: set[UUID]) -> dict[UUID, set[UUI
     return out
 
 
+def _place(job: Job) -> str:
+    """M1/Q-14: the location matching scores -- none for a remote job."""
+    return (job.location or "").strip() if job.work_mode != "remote" else ""
+
+
+async def eligibility(db: AsyncSession, job: Job) -> tuple:
+    """hrc-009 (DEC-SCOPE-390 R1): what decides who fits -- the required skills, the experience range, the qualification and the matched
+    location, case-insensitive; a required skill counts with its hrc-017 minimum level. hrc-018 (E6): plus which optional hard filters are
+    on, and the maximum salary while the salary filter is. Two equal snapshots = no eligibility change (preferred skills and weights only
+    rank)."""
+    required = await db.execute(select(JobSkill.name, JobSkill.min_level).where(JobSkill.job_id == job.id, JobSkill.kind == "required"))
+    return (
+        frozenset((name.strip().lower(), level) for name, level in required.all()),
+        job.experience_min_months,
+        job.experience_max_months,
+        (job.qualification or "").strip().lower(),
+        _place(job).lower(),
+        frozenset(k for k in HARD_FILTERS if getattr(job, f"match_hard_{k}")),
+        (job.salary_max, job.salary_currency, job.salary_period) if job.match_hard_salary else None,
+    )
+
+
 async def budget_of(db: AsyncSession, job: Job) -> Decimal | None:
     """The job's maximum salary in annual INR; None without one or without a rate for its currency (the factor then does not apply)."""
     if job.salary_max is None:
@@ -266,7 +288,7 @@ async def budget_of(db: AsyncSession, job: Job) -> Decimal | None:
 def available_filters(job: Job, budget: Decimal | None) -> dict[str, bool]:
     """E6: a hard filter can be on only when the job has the value it compares with."""
     return {"experience": job.experience_min_months is not None, "qualification": bool(_norm(job.qualification)),
-            "location": job.work_mode != "remote" and bool(_norm(job.location)), "salary": budget is not None}  # fmt: skip
+            "location": bool(_place(job)), "salary": budget is not None}  # fmt: skip
 
 
 async def spec(db: AsyncSession, job: Job) -> Spec:
@@ -274,7 +296,7 @@ async def spec(db: AsyncSession, job: Job) -> Spec:
     rows = (await db.scalars(select(JobSkill).where(JobSkill.job_id == job.id).order_by(JobSkill.kind.desc(), JobSkill.position))).all()
     budget = await budget_of(db, job)
     has_experience = job.experience_min_months is not None or job.experience_max_months is not None
-    place = (job.location or "").strip()
+    place = _place(job)
     available = available_filters(job, budget)
     applies = {"role"} | {k for k, on in (("skills", any(r.skill_id for r in rows)), ("experience", has_experience),
                                           ("qualification", available["qualification"]), ("location", available["location"]),

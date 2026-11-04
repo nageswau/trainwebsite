@@ -110,7 +110,7 @@ ROWS = [
     # rec-016 matching (§2.83): candidate readers first (bdm 403), then the requirement scope (hr_team has none: 403)
     R("get", "/recruiter/requirements/{requirement}/matches", **allow(200, "rec", "mgr", "super"), rec_out=404, mgr_out=404),
     R("put", "/recruiter/requirements/{requirement}/skill-weights", _weights, **allow(200, "rec", "super"), **OUT),
-    # hrc-018 (DEC-SCOPE-390 E3): candidate readers see the match factor weights; only super_admin changes them
+    # hrc-018 (DEC-SCOPE-392 E3): candidate readers see the match factor weights; only super_admin changes them
     R("get", "/recruiter/match-settings", **allow(200, *READERS)),
     R("put", "/recruiter/match-settings", {"weights": {"skills": 40, "experience": 20, "qualification": 15, "location": 10, "role": 10, "salary": 5}}, super=200),
     # rec-009 candidate master (§2.48): one pool (R11); hr_team reads and downloads, never writes or runs the duplicate check

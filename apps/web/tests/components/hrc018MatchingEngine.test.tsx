@@ -5,7 +5,7 @@ import RecruiterMatchSettings from "@/components/RecruiterMatchSettings";
 import RecruiterRequirementMatches from "@/components/RecruiterRequirementMatches";
 import type { Matches, MatchSettings } from "@/lib/recruiterMatching";
 
-// hrc-018 (DEC-SCOPE-390; AC1, AC3): the factor criteria, the disclaimer, each row's explanation, the hard filters in "Adjust weights",
+// hrc-018 (DEC-SCOPE-392; AC1, AC3): the factor criteria, the disclaimer, each row's explanation, the hard filters in "Adjust weights",
 // and the super_admin's match weights card (the total must be 100).
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const DEFAULTS = { skills: 40, experience: 20, qualification: 15, location: 10, role: 10, salary: 5 };

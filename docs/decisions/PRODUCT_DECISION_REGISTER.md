@@ -11658,7 +11658,50 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0266_website_intake`; API §12KH. No new permission.
 - **Feature ID authorized:** `hrc-023`. **Status:** built on `worktree-hrc-023`.
 
-### DEC-SCOPE-390 — Configurable matching engine with explanations (`hrc-018`)
+### DEC-SCOPE-390 — Eligibility-change review and vacancy-change notices (`hrc-009`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-009` (PDF §4.3 "Significant changes to eligibility criteria should
+  trigger a review of affected applications rather than silently disqualifying"; §12/§13 "Notify relevant owners when a vacancy changes";
+  PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00). Dependencies hrc-004 (DEC-SCOPE-376), hrc-006
+  (DEC-SCOPE-384) and itc-002 (DEC-SCOPE-336) merged. The owner said to proceed with the recommended answers, so R1–R9 are **the
+  builder's calls (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-04-hrc-009-eligibility-change-review-design.md`.
+- **Behaviour:** when a job's eligibility changes on any edit path (recruiter requirement, employer job, legacy `/workflows/it/jobs`), its
+  open applications (Sourced, Screened, Shortlisted, Profile Shared, Interview) get `needs_review_since`; the vacancy's owners other than
+  the editor get one `it.requirement.review_needed` notice with the count; the recruiter sees a "Needs review" badge, a count and a
+  review list, and either confirms an application (it stays where it is; audited) or moves it (any status change clears the flag).
+  Nothing is rejected or moved automatically. A cosmetic edit, or a job with no open application, does nothing.
+- **Builder's calls:** R1 eligibility = required skills (case-insensitive names, each with its hrc-017 minimum level — so a level set
+  through `PUT …/skill-weights` also flags), experience range, qualification (trimmed,
+  case-insensitive) and the location as matching scores it (none when remote) — preferred skills, weights and other fields are not. R2
+  open = `applications.OPEN`. R3 one bounded UPDATE per edit; an already-flagged application keeps its first time and is not recounted.
+  R5 recipients = primary, placement-officer owner and collaborators (hrc-006) minus the editor. R6 `notify()` gains an optional
+  whole-number `count` filling the event's single `{count}` slot (itc-002's preview-safe test narrowed to allow exactly that slot).
+  R9 confirm = the application writers (the status-move gate).
+- **Numbering:** migration `0267_application_review`; API §12KI; RBAC §2.284.
+- **Feature ID authorized:** `hrc-009`. **Status:** built on `worktree-hrc-009`.
+
+### DEC-SCOPE-391 — Candidate bulk import (`hrc-013`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-013` (PDF §5.1 "bulk import", §14 "failed imports", §16 "imports with
+  validation, duplicate detection, error reports and safe retry"; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01
+  (backlog Q-00). Dependencies hrc-010 (DEC-SCOPE-383) and hrc-014 (DEC-SCOPE-377) merged. The owner said to proceed with the recommended
+  answers, so Q-13 and I1–I12 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-013-candidate-bulk-import-design.md`.
+- **Behaviour:** a recruiter checks a CSV/XLSX file of candidates (a read-only preview: new, already a candidate, or an error per row),
+  then imports it with one chosen source. New people are created as by the manual form; a known mobile or email is matched and that
+  candidate is never changed; a repeat inside the file matches the earlier row. Each import is stored with a per-row report (no contact
+  data) and a formula-safe CSV export; a retry with the same key, or the same file again, replays the report and creates nothing.
+- **Builder's calls:** Q-13 reverses recruiter Q-32 (manual entry only) and caps a file at 1,000 rows and 1 MB. I1 `candidates.import`
+  defaults to `placement_team` and `placement_manager`; never a reader role. I3 no salary, education/employment rows, skills, status or
+  owner columns. I4 one source per file. I7 exact Q-07 keys; merged records lead to the survivor. I8 Idempotency-Key per uploader + file
+  SHA-256 replay; imports serialised by an advisory lock (409 after 5 s). I9 batch and row tables keep no name, mobile or email.
+  I11 history: own imports, all for placement managers and super_admin.
+- **Not built:** updating existing candidates from a file, salary/structured rows/skills/resumes in a file, background imports, the
+  data-quality dashboard (hrc-034 reads `candidate_import_rows`).
+- **Numbering:** migration `0268_candidate_imports`; API §12KJ; RBAC §2.285; grant `candidates.import` (declared by hrc-002).
+- **Feature ID authorized:** `hrc-013`. **Status:** built on `worktree-hrc-013`.
+
+### DEC-SCOPE-392 — Configurable matching engine with explanations (`hrc-018`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-018` (PDF §7.2 weights 40/20/15/10/10/5, admin-configurable, hard
   filters, plain-language explanation, "not a guarantee"; §13 "candidate profile changed → refresh"; PDF classified `UNVERIFIED`). Scope
@@ -11682,5 +11725,7 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   `evaluate`; SQL narrows by required skills, Python decides the rest. E11 / Q-18: rec-016's 10-point constants are replaced, no preset.
   E12 `matching.jobs_for_candidate` runs the same rule candidate → jobs for hrc-027.
 - **Not built:** the candidate-facing recommendations (hrc-027), score caching (scoring is logged per read for measurement).
-- **Numbering:** migration `0267_match_engine`; API §12KI; RBAC §2.284.
+- **With hrc-009 (`DEC-SCOPE-390`):** a hard filter decides who fits, so its eligibility snapshot also carries the switches that are on (and
+  the maximum salary while the salary filter is); turning a hard filter on or off flags the open applications for review.
+- **Numbering:** migration `0269_match_engine`; API §12KK; RBAC §2.286.
 - **Feature ID authorized:** `hrc-018`. **Status:** built on `worktree-hrc-018`.

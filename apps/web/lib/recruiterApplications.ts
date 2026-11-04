@@ -11,8 +11,12 @@ export type RecApplication = {
   id: string; job_id: string; candidate: { id: string; code: string; name: string }; status: string; status_label: string;
   stage_changed_at: string; created_at: string; allowed_statuses: StatusOption[];
   screening_result: StatusOption | null; // rec-018: the current screening's result (the board's flag)
+  needs_review_since?: string | null; // hrc-009: set while an eligibility change waits for a confirm or a move
 };
-export type RequirementCandidates = { items: RecApplication[]; statuses: ApplicationStatus[]; can_add: boolean };
+export type RequirementCandidates = {
+  items: RecApplication[]; statuses: ApplicationStatus[]; can_add: boolean;
+  needs_review_count?: number; // hrc-009: the requirement's flagged applications, whatever the filter
+};
 export type HistoryEntry = {
   from_status: string | null; from_label: string | null; to_status: string; to_label: string; note: string | null;
   changed_by: { id: string; full_name: string } | null; created_at: string;
@@ -35,7 +39,7 @@ export type ScreeningRead = { screening: Screening | null; results: StatusOption
 export const NOTE_MAX = 500;
 export const SCREENING_LIMITS = { salaryMax: 9_999_999_999.99, noticeMax: 365, location: 200, availability: 120, remarks: 2000 } as const;
 export const requirementCandidatesUrl = (requirementId: string) => `${REQUIREMENTS_URL}/${encodeURIComponent(requirementId)}/candidates`;
-export const applicationUrl = (id: string, suffix: "/status" | "/history" | "/screening") => `/api/v1/recruiter/applications/${encodeURIComponent(id)}${suffix}`;
+export const applicationUrl = (id: string, suffix: "/status" | "/history" | "/screening" | "/confirm-review") => `/api/v1/recruiter/applications/${encodeURIComponent(id)}${suffix}`;
 
 export function isScreeningRead(data: unknown): data is ScreeningRead {
   const d = data as Partial<ScreeningRead> | null;

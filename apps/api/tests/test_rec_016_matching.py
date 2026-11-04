@@ -15,7 +15,7 @@ from tests.rec001_helpers import as_role, login, make_pm, make_recruiter, make_u
 REQ = "/api/v1/recruiter/requirements"
 
 
-# --- the pure scoring function (M1, M2; AC1, AC2). hrc-018 (DEC-SCOPE-390 E4, E11): `allocate` now shares any total (the skills
+# --- the pure scoring function (M1, M2; AC1, AC2). hrc-018 (DEC-SCOPE-392 E4, E11): `allocate` now shares any total (the skills
 # factor's points) by weight; the fixed 10-point experience and location shares became admin-weighted factors. ------------------------
 def test_allocate_the_source_example_gives_whole_points():
     assert matching.allocate([30, 25, 15, 10, 10], 90) == [30, 25, 15, 10, 10]

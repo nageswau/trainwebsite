@@ -322,7 +322,7 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
           hrc-006 (O5): a placement officer co-owns the vacancy, not its candidates (hrc-012) -- none of these sections for them. */}
       {p.can_view_candidates && (
         <>
-          <RecruiterRequirementCandidates requirementId={r.id} requirementLabel={r.title} companyId={r.company.id} refreshKey={shortlists + shares}
+          <RecruiterRequirementCandidates requirementId={r.id} requirementLabel={r.title} companyId={r.company.id} refreshKey={shortlists + shares} version={r.updated_at}
             onShared={() => setShares((n) => n + 1)} />
           {p.can_view_matches && (
             <RecruiterRequirementMatches requirementId={r.id} requirementLabel={r.title} companyId={r.company.id} version={r.updated_at}

@@ -1,9 +1,9 @@
 # hrc-018 — Configurable matching engine with explanations (design + plan)
 
 - **Feature:** `hrc-018` (`docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md`), PDF §7.2 / §13 (PDF classified `UNVERIFIED`).
-- **Decision:** `DEC-SCOPE-390` (builder's calls E1–E12 below, all `NEEDS_CONFIRMATION`; the owner said to proceed with the recommended
+- **Decision:** `DEC-SCOPE-392` (builder's calls E1–E12 below, all `NEEDS_CONFIRMATION`; the owner said to proceed with the recommended
   answers). Dependencies hrc-010 (`DEC-SCOPE-383`), hrc-011 (`DEC-SCOPE-375`) and hrc-017 (`DEC-SCOPE-388`) are merged.
-- **Numbering:** migration `0267_match_engine`, API §12KI, RBAC §2.284.
+- **Numbering:** migration `0269_match_engine`, API §12KK, RBAC §2.286.
 
 ## Intent
 
@@ -49,7 +49,7 @@ Anti-goals: leaking salary to anyone who cannot see compensation; a score that d
 ## Plan (TDD, one slice at a time)
 
 1. Pure `allocate_factors` / `evaluate` unit tests → implement.
-2. Model + migration 0267 (table + four columns, guarded add/drop) + migration test.
+2. Model + migration 0269 (table + four columns, guarded add/drop) + migration test.
 3. Settings GET/PUT tests (roles, sum, audit) → routes.
 4. Matches: hard filters, new factors, explanation, disclaimer, compensation redaction tests → rewrite `matches`.
 5. `PUT skill-weights` hard_filters tests → implement.

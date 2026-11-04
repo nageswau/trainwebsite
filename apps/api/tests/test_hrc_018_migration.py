@@ -1,4 +1,4 @@
-"""hrc-018 -- migration 0267_match_engine (DEC-SCOPE-390 E2/E6; AC1). The round trip runs in a throwaway database built from scratch (the
+"""hrc-018 -- migration 0269_match_engine (DEC-SCOPE-392 E2/E6; AC1). The round trip runs in a throwaway database built from scratch (the
 rec-006 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -14,15 +14,15 @@ from app.core.config import settings
 from tests.test_hrc_017_migration import _config, _sql
 
 API_ROOT = Path(__file__).resolve().parents[1]
-_spec = importlib.util.spec_from_file_location("_hrc_018_migration_0267", API_ROOT / "alembic" / "versions" / "0267_match_engine.py")
+_spec = importlib.util.spec_from_file_location("_hrc_018_migration_0269", API_ROOT / "alembic" / "versions" / "0269_match_engine.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0266_website_intake", "0267_match_engine"
+BASE, HEAD = "0268_candidate_imports", "0269_match_engine"
 HARD = [f"match_hard_{k}" for k in ("experience", "qualification", "location", "salary")]
 
 
-def test_migration_chains_after_website_intake_and_is_the_single_head():
+def test_migration_chains_after_candidate_imports_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
 
