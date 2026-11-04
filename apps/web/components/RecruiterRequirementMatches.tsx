@@ -6,19 +6,24 @@ import RecruiterShareDialog, { type ShareCandidate } from "@/components/Recruite
 import { sendJson } from "@/lib/apiErrors";
 import { LINK_STYLE } from "@/lib/bdmOrganizations";
 import { isApplicationBody, requirementCandidatesUrl } from "@/lib/recruiterApplications";
+import { LEVELS, type SkillLevel } from "@/lib/recruiterCandidateSkills";
 import { CANDIDATES_PATH, experienceLabel } from "@/lib/recruiterCandidates";
-import { type CriteriaSkill, isMatches, MATCH_PAGE_SIZE, type Matches, type MatchRow, matchesUrl, WEIGHT_MAX, WEIGHT_MIN, weightsUrl } from "@/lib/recruiterMatching";
+import {
+  type CriteriaSkill, isMatches, MATCH_PAGE_SIZE, type Matches, type MatchRow, matchesUrl, minLevelText, WEIGHT_MAX, WEIGHT_MIN, weightsUrl,
+} from "@/lib/recruiterMatching";
 import { isRequirementBody, type Requirement } from "@/lib/recruiterRequirements";
 import { UNSHAREABLE } from "@/lib/recruiterShares";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 type Notice = { text: string; failed: boolean } | null;
 const WEIGHT_ERROR = `Each weight must be a whole number from ${WEIGHT_MIN} to ${WEIGHT_MAX}.`;
-/** M1: one number per requirement skill; the API re-checks every rule (ids, range, who may edit). */
+/** M1: one number per requirement skill; the API re-checks every rule (ids, range, who may edit). hrc-017 (T6): a Skills Master skill
+ *  also takes a minimum level; only a changed level is sent (omitted = unchanged). */
 function WeightsForm({ requirementId, skills, onSaved, onCancel }: {
   requirementId: string; skills: CriteriaSkill[]; onSaved: (r: Requirement) => void; onCancel: () => void;
 }) {
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(skills.map((s) => [s.id, String(s.weight)])));
+  const [levels, setLevels] = useState<Record<string, string>>(() => Object.fromEntries(skills.map((s) => [s.id, s.min_level ?? ""])));
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const id = useId();
@@ -26,7 +31,10 @@ function WeightsForm({ requirementId, skills, onSaved, onCancel }: {
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
-    const weights = skills.map((s) => ({ id: s.id, weight: Number(values[s.id]) }));
+    const weights = skills.map((s) => {
+      const level = levels[s.id] || null;
+      return level === (s.min_level ?? null) ? { id: s.id, weight: Number(values[s.id]) } : { id: s.id, weight: Number(values[s.id]), min_level: level as SkillLevel | null };
+    });
     if (weights.some((w) => !Number.isInteger(w.weight) || w.weight < WEIGHT_MIN || w.weight > WEIGHT_MAX)) return setFailure(WEIGHT_ERROR);
     setBusy(true);
     setFailure(null);
@@ -39,7 +47,8 @@ function WeightsForm({ requirementId, skills, onSaved, onCancel }: {
   return (
     <form onSubmit={submit} className="action-card" style={{ gap: 10 }} aria-label="Match weights" noValidate>
       <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-        A higher weight makes a skill count for more of the score ({WEIGHT_MIN} = least, {WEIGHT_MAX} = most).
+        A higher weight makes a skill count for more of the score ({WEIGHT_MIN} = least, {WEIGHT_MAX} = most). A minimum level counts
+        a candidate&apos;s skill only at that level or above.
       </p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(11rem, 1fr))", gap: 10 }}>
         {skills.map((s) => (
@@ -47,6 +56,15 @@ function WeightsForm({ requirementId, skills, onSaved, onCancel }: {
             <label htmlFor={`${id}-${s.id}`}>Weight of {s.name} ({s.kind})</label>
             <input id={`${id}-${s.id}`} type="number" inputMode="numeric" min={WEIGHT_MIN} max={WEIGHT_MAX} step={1} value={values[s.id]}
               onChange={(e) => setValues((v) => ({ ...v, [s.id]: e.target.value }))} />
+            {s.in_master && (
+              <>
+                <label htmlFor={`${id}-${s.id}-level`} style={{ marginTop: 6 }}>Minimum level of {s.name} ({s.kind})</label>
+                <select id={`${id}-${s.id}-level`} value={levels[s.id]} onChange={(e) => setLevels((v) => ({ ...v, [s.id]: e.target.value }))}>
+                  <option value="">Any level</option>
+                  {LEVELS.map((l) => <option key={l.key} value={l.key}>{l.label}</option>)}
+                </select>
+              </>
+            )}
           </div>
         ))}
       </div>
@@ -60,7 +78,7 @@ function WeightsForm({ requirementId, skills, onSaved, onCancel }: {
 }
 
 function criteriaText(m: Matches): string {
-  const parts = m.criteria.skills.filter((s) => s.in_master).map((s) => `${s.name} ${s.points}`);
+  const parts = m.criteria.skills.filter((s) => s.in_master).map((s) => `${s.name}${s.min_level ? ` (${minLevelText(s.min_level)})` : ""} ${s.points}`);
   if (m.criteria.experience) parts.push(`Experience ${m.criteria.experience.points}`);
   if (m.criteria.location) parts.push(`Location (${m.criteria.location.value}) ${m.criteria.location.points}`);
   return parts.join(" · ");

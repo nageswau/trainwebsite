@@ -566,7 +566,8 @@ async def requirement_out(db: AsyncSession, user: User, job: Job, *, refresh: bo
         "owners": await owners.owners_out(db, job.id),  # hrc-006 (O11): besides the primary (`assigned_recruiter`)
         "expected_joining_date": job.expected_joining_date,
         "skills": [
-            {"id": s.id, "name": s.name, "kind": s.kind, "weight": s.weight, "skill_id": s.skill_id, "matched": s.skill_id is not None} for s in skills
+            {"id": s.id, "name": s.name, "kind": s.kind, "weight": s.weight, "skill_id": s.skill_id, "matched": s.skill_id is not None, "min_level": s.min_level}
+            for s in skills
         ],
         "joined_count": await joined_count(db, job.id),
         "allowed_statuses": [{"key": s, "label": STATUS_LABELS[s]} for s in allowed],

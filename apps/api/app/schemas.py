@@ -9440,8 +9440,9 @@ class CalendarEmployeesOut(BaseModel):
 # --- rec-006 (DEC-SCOPE-119): the recruiter Skills Master ------------------------------------------------------------------------
 SKILL_FIELD_LABELS = {
     "name": "Name", "alias": "Alias", "active": "Active", "category_id": "Category", "tag_category_ids": "Other categories", "skill_id": "Related skill",
-    "into_skill_id": "Merge into",
+    "into_skill_id": "Merge into", "domain": "Domain",
 }
+SkillDomain = Literal["it", "non_it"]  # hrc-017 (DEC-SCOPE-386 T1): models.SKILL_DOMAINS
 _SPACES = re.compile(r" +")
 
 
@@ -9494,6 +9495,7 @@ SkillTags = Annotated[list[SkillCategoryPick], AfterValidator(_distinct_tags)]
 class SkillCategoryCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: RecSkillName
+    domain: SkillDomain = "it"
 
 
 class SkillCategoryUpdate(BaseModel):
@@ -9502,6 +9504,7 @@ class SkillCategoryUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: RecSkillName = None
     active: StrictBool = None
+    domain: SkillDomain = None
 
 
 class SkillCreate(BaseModel):
@@ -9543,6 +9546,7 @@ class SkillCategoryOut(BaseModel):
     name: str
     active: bool
     sort_order: int
+    domain: str
 
 
 class SkillCategoryPage(BaseModel):
@@ -10653,9 +10657,12 @@ class RecRequirementOwnerAdd(BaseModel):
 
 # --- rec-016 (DEC-SCOPE-157 M1): a requirement skill's match weight; ids must be this requirement's skills (checked in the route) -----
 class RecSkillWeight(BaseModel):
+    """hrc-017 (T6): `min_level` omitted = unchanged, null = any level."""
+
     model_config = ConfigDict(extra="forbid")
     id: UUID
     weight: int = Field(ge=1, le=10)
+    min_level: Literal["beginner", "intermediate", "advanced", "expert"] | None = None
 
 
 class RecSkillWeights(BaseModel):

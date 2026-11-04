@@ -22,6 +22,7 @@ import { formatCalendarDate } from "@/lib/formatDate";
 import type { PickOption } from "@/lib/lookups";
 import { COMPANIES_PATH, personName, recruiterSearch } from "@/lib/recruiterCompanies";
 import type { Jd } from "@/lib/recruiterJd";
+import { minLevelText } from "@/lib/recruiterMatching";
 import {
   DEADLINE_LABEL,
   experienceText,
@@ -160,6 +161,7 @@ function skillItems(requirement: Requirement, kind: "required" | "preferred"): R
       {items.map((s) => (
         <li key={s.id}>
           {s.name}
+          {s.min_level && <span className="muted"> · {minLevelText(s.min_level)}</span>}
           {!s.matched && (
             <>
               {" "}
