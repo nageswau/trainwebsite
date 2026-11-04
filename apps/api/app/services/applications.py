@@ -76,6 +76,8 @@ async def change_status(db: AsyncSession, actor: User | None, application: JobAp
     """Validated move + history; returns the previous status. The caller locked the row."""
     check_transition(application.status, target)
     previous = _record(db, actor, application, target, note)
+    if target == "joined":  # hrc-007 (A11): the last seat joining fills the job
+        await requirements.fill_when_complete(db, actor, application.job_id)
     if application.student_id is not None:  # itc-031: an EduSphere student's Interview / Placed stage
         await db.flush()
         await it_lifecycle.sync_students(db, [application.student_id], actor=actor, cause="placement")

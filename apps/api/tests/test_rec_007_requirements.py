@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from app.models import AuditLog, Company, CompanyStageHistory, Job, JobSkill, JobStatusHistory, RecJobCategory, Skill, SkillAlias, SkillCategory
 from app.services.recruiter_requirements import ist_today
+from tests.hrc007_helpers import employer_self_publish  # noqa: F401 -- a fixture
 from tests.rec001_helpers import as_role, login, make_pm, make_recruiter, make_user
 from tests.rec017_helpers import student_application
 from tests.test_emp_002_job_posting import _register_employer
@@ -148,7 +149,7 @@ async def test_each_status_change_is_kept_in_history_and_disallowed_moves_are_40
     assert (await client.patch(f"{BASE}/{req['id']}", json={"department": "QA"})).status_code == 409
     history = await _history(db_session, uuid.UUID(req["id"]))
     assert [h.to_status for h in history][-3:] == ["closed", "requirement_received", "cancelled"] and len(history) == 11
-    assert (await _set_status(client, req["id"], "filled")).status_code == 422
+    assert (await _set_status(client, req["id"], "hired_out")).status_code == 422
 
 
 @pytest.mark.asyncio
@@ -208,7 +209,7 @@ async def test_list_filters_and_deadline_states(client, db_session):
     assert (await client.get(f"{BASE}?q={soon['code']}")).json()["total"] == 1
     assert (await client.get(f"{BASE}?status=bogus")).status_code == 422
     statuses = (await client.get(f"{BASE}/statuses")).json()
-    assert len(statuses["statuses"]) == 11 and statuses["expiring_days"] == 7
+    assert len(statuses["statuses"]) == 13 and statuses["expiring_days"] == 7
 
 
 # --- students and the legacy shim (AC3, AC4) ------------------------------------------------------------------------------------
@@ -231,6 +232,7 @@ async def test_students_see_a_requirement_only_in_the_open_set(client, db_sessio
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("employer_self_publish")  # hrc-007: the self-publish words, with employer approval off
 async def test_the_employer_api_keeps_its_words_and_writes_history_and_skills(client, db_session):
     await _register_employer(client)
     tag = _tag()
@@ -257,7 +259,7 @@ async def test_the_workflows_patch_validates_statuses(client, db_session):
     created = (await client.post("/api/v1/workflows/it/jobs", json={"company_name": company_name, "title": "Ops", "skills": ["Linux"]})).json()
     assert created["status"] == "requirement_received"
     job_id = created["id"]
-    assert (await client.patch(f"/api/v1/workflows/it/jobs/{job_id}", json={"status": "filled"})).status_code == 422
+    assert (await client.patch(f"/api/v1/workflows/it/jobs/{job_id}", json={"status": "hired_out"})).status_code == 422
     assert (await client.patch(f"/api/v1/workflows/it/jobs/{job_id}", json={"status": "joined"})).status_code == 409
     assert (await client.patch(f"/api/v1/workflows/it/jobs/{job_id}", json={"status": "open"})).json()["status"] == "requirement_received"
     assert (await client.patch(f"/api/v1/workflows/it/jobs/{job_id}", json={"status": "closed"})).json()["status"] == "closed"
@@ -290,6 +292,7 @@ async def test_status_changes_drive_the_company_stage(client, db_session):
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("employer_self_publish")  # hrc-007: the employer publishes directly with approval off
 async def test_legacy_writers_drive_the_company_stage_too(client, db_session):
     await as_role(client, db_session, "it_admin", "it")  # hrc-001 H1: legacy writes are record-scoped; it_admin keeps IT-wide access
     name = f"Wf Stage Co {_tag()}"

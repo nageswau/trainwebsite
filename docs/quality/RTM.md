@@ -1632,3 +1632,12 @@ half.
 | `hrc-002-AC2` | Each listed action is controlled by a grant | `::test_catalogue_holds_every_recruitment_key_with_no_default_holder`, `::test_super_admin_grants_jobs_approve_to_hr_manager`; e2e (permission screen) |
 | `hrc-002-AC3` | Branch scoping | Not built — Q-04 `NEEDS_CONFIRMATION` (no branch list in evidence) |
 | `hrc-002-AUTHZ` | Least privilege; interviewer refused candidate search; HR Manager created by super_admin only; two roles do not widen | `::test_new_roles_are_refused_candidate_search_and_hold_no_grants`, `::test_only_a_super_admin_creates_an_hr_manager`, `::test_an_extra_role_assignment_does_not_widen_recruitment_access`, `::test_a_role_cannot_open_another_roles_portal`; `test_rec_038_matrix.py` (new role columns); `WorkflowPanel.create-user.test.tsx` |
+| `hrc-007` | Requirement: `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-007` → `DEC-SCOPE-380`; `API_CONTRACT.md` §12JY; RBAC §2.278; migration 0257 | Builder's calls A1-A12 `NEEDS_CONFIRMATION` |
+| `hrc-007-AC1` | A pending job cannot receive applications | `apps/api/tests/test_hrc_007_approval.py::test_employer_publish_waits_for_hr_manager_approval_then_opens`; e2e `apps/web/tests/e2e/hrc-007-vacancy-approval.spec.ts` |
+| `hrc-007-AC2` | An approved job opens (+ scenario: employer posts, HR Manager approves, visible) | same tests; e2e `emp-002-job-posting.spec.ts` |
+| `hrc-007-AC3` | A rejected job returns to draft with a reason | `::test_rejecting_returns_the_job_to_draft_with_the_reason`; `hrc007RequirementApproval.test.tsx`; e2e |
+| `hrc-007-AC4` | History is kept after closure | `::test_history_survives_closure_and_a_reopen_needs_no_second_approval` |
+| `hrc-007-NEG` | A recruiter approving their own job gets 403; no grant 403 | `::test_a_recruiter_approving_their_own_job_gets_403`, `::test_the_queue_and_decisions_need_the_approve_grant`; e2e |
+| `hrc-007-E` | Approval setting turned off while jobs are pending | `::test_turning_the_setting_off_leaves_pending_jobs_pending_and_decidable`, `::test_only_super_admin_changes_the_approval_settings` |
+| `hrc-007-FILLED` | Filled automatically when joins reach vacancies, or by hand | `::test_the_last_vacancy_joining_fills_the_job`, `::test_a_job_with_seats_left_is_not_filled_and_can_be_filled_by_hand` |
+| `hrc-007-MIG` | Migration 0257 chain, frozen copies, backfill, round trip | `apps/api/tests/test_hrc_007_migration.py` |

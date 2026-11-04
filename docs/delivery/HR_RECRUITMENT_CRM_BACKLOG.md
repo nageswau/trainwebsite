@@ -311,6 +311,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **E:** an approval setting turned off while jobs are pending.
 - **Regression risks:** `test_emp_*` (employers publishing directly) and the rec-007 status tests.
 - **Complexity:** medium. **Risk:** medium.
+- **Status:** built as `DEC-SCOPE-380` (migration 0257, API §12JY, RBAC §2.278); design
+  `docs/superpowers/specs/2026-11-04-hrc-007-vacancy-approval-design.md`. Q-07 answered by the builder's calls A1-A12 (`NEEDS_CONFIRMATION`).
 
 #### hrc-008: Vacancy visibility (internal, portal, segment, public)
 - **Business requirement:** §4.2 Visibility; §4.3; §13 "publish to portal only when approved/open".

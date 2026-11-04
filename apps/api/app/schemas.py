@@ -10363,6 +10363,33 @@ class RecRequirementStatusChange(BaseModel):
     note: _rec_requirement_text_type(500, multiline=True) = None
 
 
+def _required_reason(value: str | None) -> str:
+    if value is None:
+        raise ValueError("A reason is required")
+    return value
+
+
+class RecRequirementApprovalNote(BaseModel):
+    """hrc-007 (DEC-SCOPE-380 A6/A8): submit and approve take an optional note."""
+
+    model_config = ConfigDict(extra="forbid")
+    note: _rec_requirement_text_type(500, multiline=True) = None
+
+
+class RecRequirementReject(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: Annotated[_rec_requirement_text_type(500, multiline=True), AfterValidator(_required_reason)]
+
+
+class JobApprovalSettingsUpdate(BaseModel):
+    """hrc-007 (A4): the sources sent are set; the others are kept."""
+
+    model_config = ConfigDict(extra="forbid")
+    employer: bool | None = None
+    recruiter: bool | None = None
+    legacy: bool | None = None
+
+
 class RecRequirementAssign(BaseModel):
     model_config = ConfigDict(extra="forbid")
     recruiter_user_id: UUID

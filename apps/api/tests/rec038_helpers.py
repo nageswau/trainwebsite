@@ -29,7 +29,8 @@ __all__ = ["PDF", "ROLES", "R", "Row", "add", "allow", "core", "headers", "make_
 
 # Who calls (RM2). `rec` owns the world's records and reports to `mgr`; `rec_out` / `mgr_out` are the same roles on another team; `bdm` is
 # the company's assigned BDM (R10) and `bdm_out` any other BDM; `employer` is the company's employer user; `student` an opted-in IT student.
-# hrc-002 (DEC-SCOPE-374 R2): the HR Manager, Placement Officer and Interviewer hold no recruiter route yet -- every cell refuses them.
+# hrc-002 (DEC-SCOPE-374 R2): the HR Manager, Placement Officer and Interviewer hold no recruiter route -- every cell refuses them, except
+# hrc-007's (DEC-SCOPE-380) approval routes, which the HR Manager's default `jobs.approve` opens.
 ROLES = ("rec", "rec_out", "mgr", "mgr_out", "super", "it_admin", "ovs_admin", "hr", "bdm", "bdm_out", "employer", "student", "hr_mgr", "officer",
          "interviewer", "anon")  # fmt: skip
 PDF = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
