@@ -36,6 +36,7 @@ logger = logging.getLogger("app.auth")
 PHONE_ONLY_ROLES = {"telecaller": "Telecallers", "partnership_manager": "Partnership managers"}
 PORTAL_SIGN_IN = {"it": "/it/login", "overseas": "/overseas/login", "global": "/admin/login"}
 
+UNVERIFIED_CANDIDATE = "Verify your email address first -- use the link we emailed you, or request a new one."
 CHANGE_PASSWORD_FAILED = "auth.change_password_failed"
 # DEC-SCOPE-021: 5 wrong current passwords per user per 15 minutes, counted from the audit rows written on each failure.
 CHANGE_PASSWORD_MAX_FAILURES = 5
@@ -112,6 +113,9 @@ async def login(payload: LoginRequest, response: Response, db: AsyncSession = De
     if user.role != "super_admin" and payload.division != user.division:
         # bdm-001 QA-07: BDMs are split across portals by module, so name the right one. Only reached after the password matched.
         raise HTTPException(403, f"Use the correct EduSphere portal for this account: sign in at {PORTAL_SIGN_IN.get(user.division, '/')}")
+    if user.role == "candidate" and not user.email_verified:
+        # hrc-022 (DEC-SCOPE-386 C6): an external candidate signs in only after verifying their email. After the password, like above.
+        raise HTTPException(403, UNVERIFIED_CANDIDATE)
     await _sync_role_assignment(db, user)
     _set_auth_cookies(response, user)
     db.add(AuditLog(user_id=user.id, action="auth.login", entity_type="user", entity_id=str(user.id), metadata_json={"division": payload.division}))

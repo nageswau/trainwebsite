@@ -69,6 +69,8 @@ PERMISSIONS: dict[str, set[str]] = {
     "hr_manager": {"it:recruitment:oversight"},
     "placement_officer": {"it:recruitment:officer"},
     "interviewer": {"it:recruitment:interviewer"},
+    # hrc-022 (DEC-SCOPE-386 C1): the external candidate -- their own candidate record only (`Candidate.user_id`), enforced in the routes.
+    "candidate": {"it:candidate:self"},
 }
 
 

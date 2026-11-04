@@ -15579,3 +15579,44 @@ class RemediationPlanPatch(BaseModel):
         if not self.model_fields_set:
             raise ValueError("Nothing to change")
         return self
+
+
+# --- hrc-022 (DEC-SCOPE-384): the external candidate portal ----------------------------------------------------------------------
+_PORTAL_EMAIL = Field(pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$", max_length=255)
+
+
+def _lower_email(value: str) -> str:
+    return value.strip().lower()
+
+
+class CandidatePortalRegistration(BaseModel):
+    """C2. The consent version must be the one the form showed (checked by the route against the service's)."""
+
+    full_name: Annotated[str, AfterValidator(str.strip)] = Field(min_length=2, max_length=160)
+    email: Annotated[str, AfterValidator(_lower_email)] = _PORTAL_EMAIL
+    phone: str | None = Field(default=None, max_length=40)
+    password: str = Field(min_length=10, max_length=128)
+    consent_version: str = Field(max_length=20)
+
+    @field_validator("phone")
+    @classmethod
+    def _blank_phone_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
+
+
+class CandidatePortalToken(BaseModel):
+    token: str = Field(min_length=1, max_length=200)
+
+
+class CandidatePortalResend(BaseModel):
+    email: Annotated[str, AfterValidator(_lower_email)] = _PORTAL_EMAIL
+
+
+class CandidatePortalEmailChange(BaseModel):
+    new_email: Annotated[str, AfterValidator(_lower_email)] = _PORTAL_EMAIL
+    current_password: str = Field(min_length=1, max_length=128)
+
+
+class CandidatePortalConsent(BaseModel):
+    opted_in: StrictBool
+    consent_version: str = Field(max_length=20)

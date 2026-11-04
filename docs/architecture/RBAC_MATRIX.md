@@ -3778,3 +3778,11 @@ A holder changes any job requirement's visibility (`PUT /recruiter/requirements/
 candidate side an anonymous visitor sees and applies to public jobs only, and an `it_student` to portal, public and their own talent pools'
 segment jobs; a job outside that is the same 404 as a missing one. Pinned by `apps/api/tests/test_hrc_008_visibility.py` and the rec-038
 matrix row.
+
+### 2.282 External candidate portal *(added 2026-11-04 — `DEC-SCOPE-386`, hrc-022)*
+
+New role `candidate` (division `it`, bundle `it:candidate:self`), created only by `POST /candidate/register` -- never by an admin route
+or a profile key. `/candidate/me*`: the `candidate` role only, and only the record with `Candidate.user_id` = the caller (no id is
+accepted); every staff role 403, anonymous 401. Registration, resend and verify are public. A candidate reaches no recruiter, student,
+employer or admin route (their bundle grants nothing else). `/recruiter/candidate-self-service-settings`: GET candidate readers (§2.45),
+PUT `placement_manager` and `super_admin` (the §2.279 setting editors). Pinned by `apps/api/tests/test_hrc_022_candidate_portal.py`.
