@@ -83,9 +83,12 @@ test("register, verify, sign in, edit an allowed field, change email by link, le
   await page.getByRole("link", { name: "Back to my profile" }).click();
   await expect(page.getByText(newEmail).first()).toBeVisible();
 
+  // QA-01: the portal's own nav item is not a second "My profile"
+  await expect(page.getByRole("link", { name: "Candidate profile" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "My profile", exact: true })).toHaveCount(1);
   // C12: leave the pool
   await page.getByRole("link", { name: "Privacy" }).click();
-  await expect(page.getByText("In the candidate pool")).toBeVisible();
+  await expect(page.getByText("In the candidate pool", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Leave the candidate pool" }).click();
   await expect(page.getByRole("status").filter({ hasText: "You have left the candidate pool" })).toBeVisible();
   await expect(page.getByText("Left the pool")).toBeVisible();

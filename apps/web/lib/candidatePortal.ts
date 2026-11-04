@@ -14,7 +14,7 @@ export const SELF_SERVICE_SETTINGS_URL = "/api/v1/recruiter/candidate-self-servi
 export const CANDIDATE_PORTAL_HOME = "/it/careers/portal/profile";
 
 export const CANDIDATE_NAV: NavItem[] = [
-  { label: "My profile", href: CANDIDATE_PORTAL_HOME },
+  { label: "Candidate profile", href: CANDIDATE_PORTAL_HOME },
   { label: "Privacy", href: "/it/careers/portal/privacy" },
 ];
 
