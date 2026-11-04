@@ -5621,3 +5621,17 @@ reference. Re-send with `duplicate_reason` (≤ 500) to save; the audit row `rec
 the matched codes. A stale `expected_updated_at` is still 409 `record_changed` first.
 `GET /api/v1/recruiter/requirements/hiring-managers?q=&limit=` (≤ 50) → `{items: [{id, full_name, email}], total}` — active interviewers;
 recruiter, placement manager and super_admin only (else 403).
+## 12KA. Candidate profile completion (hrc-010) — addendum, 2026-11-04
+
+DEC-SCOPE-382. `POST /api/v1/recruiter/candidates` and `PATCH /api/v1/recruiter/candidates/{id}` accept, and the candidate detail returns:
+`education: [{degree, specialisation, institution, year, grade}]` (≤ 10; a degree or an institution), `employment: [{employer,
+designation, industry, employment_type, start_date, end_date}]` (≤ 20; employer and start required; end null = current; no future dates;
+end before start = 422 "Employment N: the end date must be on or after the start date"), `certifications: [{name, issuer, issued_on,
+expires_on, credential_id}]` (≤ 20), `country`/`state`/`city` (≤ 80), `preferred_contact` (`phone` | `whatsapp` | `email` | null),
+`relevant_experience_months` (0–600), `tools`/`languages` (≤ 20 texts), `preferred_roles` (≤ 5), `work_modes`/`employment_types`/`shifts`
+(job enums), `available_from` (date), `willing_to_relocate` (bool | null). A sent list replaces the whole set; omitted = unchanged.
+The detail also returns `email_verified_at` (read only; sending it is 422), `is_fresher` (experience 0) and `completeness: {percent,
+items: [{key, label, weight, met}]}`. While employment rows exist `experience_months` and `current_company` are derived; education row 1
+sets `qualification`/`college`/`passing_year`; city/state/country set `location`; `preferred_roles[0]` sets `preferred_role` (an old
+client's `preferred_role` replaces the first role). A rows-only save is a new `updated_at` (hrc-003). Candidate skills add/PATCH accept
+`is_primary` (bool; null = 422) and skill items return it. The merge response's `moved` adds `education`, `employment`, `certifications`.

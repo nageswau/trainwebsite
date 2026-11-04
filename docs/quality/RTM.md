@@ -1641,3 +1641,10 @@ half.
 | `hrc-007-E` | Approval setting turned off while jobs are pending | `::test_turning_the_setting_off_leaves_pending_jobs_pending_and_decidable`, `::test_only_super_admin_changes_the_approval_settings` |
 | `hrc-007-FILLED` | Filled automatically when joins reach vacancies, or by hand | `::test_the_last_vacancy_joining_fills_the_job`, `::test_a_job_with_seats_left_is_not_filled_and_can_be_filled_by_hand` |
 | `hrc-007-MIG` | Migration 0257 chain, frozen copies, backfill, round trip | `apps/api/tests/test_hrc_007_migration.py` |
+| `hrc-010` | Requirement: `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-010` → `DEC-SCOPE-382`; `API_CONTRACT.md` §12KA; no RBAC change; migration 0259 | Builder's calls P1-P12, Q-09 `NEEDS_CONFIRMATION` |
+| `hrc-010-AC1` | Every §5 field can be saved | `apps/api/tests/test_hrc_010_profile.py::test_every_section_5_field_can_be_saved`, `::test_create_takes_the_rows`, `::test_a_skill_can_be_primary`; `RecruiterCandidateProfile.test.tsx`; e2e `apps/web/tests/e2e/hrc-010-candidate-profile.spec.ts` |
+| `hrc-010-AC2` | Total experience = sum of non-overlapping employment periods (overlap once, current job to today) | `::test_total_experience_counts_an_overlap_once`, `::test_two_jobs_and_a_degree_derive_experience_and_the_legacy_fields`; e2e |
+| `hrc-010-AC3` | Completeness follows Appendix B | `::test_completeness_follows_appendix_b`; `RecruiterCandidateProfile.test.tsx` (meter); e2e |
+| `hrc-010-NEG` | End before start → 422 naming the row; other invalid rows 422; HR cannot write | `::test_invalid_profile_values_are_422`, `::test_hr_team_reads_but_cannot_write_the_profile`; e2e |
+| `hrc-010-COMPAT` | Legacy clients, stale guard and audit, merge, resume apply | `::test_legacy_clients_keep_working_without_rows`, `::test_a_rows_only_save_bumps_the_version_and_is_audited`, `::test_a_merge_moves_the_rows_when_the_survivor_has_none`; e2e `rec-012-resume-extraction.spec.ts` |
+| `hrc-010-MIG` | Migration 0259 chain, frozen checks, backfill, round trip | `apps/api/tests/test_hrc_010_migration.py` |

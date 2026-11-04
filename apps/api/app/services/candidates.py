@@ -332,7 +332,7 @@ DETAIL_FIELDS = (
     "linkedin",
     "archived_at",
     "updated_at",
-    # hrc-010 (DEC-SCOPE-381)
+    # hrc-010 (DEC-SCOPE-382)
     "country", "state", "city", "preferred_contact", "email_verified_at", "relevant_experience_months", "tools", "languages", "preferred_roles",
     "work_modes", "employment_types", "shifts", "available_from", "willing_to_relocate",
 )  # fmt: skip

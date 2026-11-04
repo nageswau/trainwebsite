@@ -1,4 +1,4 @@
-"""hrc-010 -- migration 0258_candidate_profile (DEC-SCOPE-381): the chain, the frozen checks, the P11 backfill (education row 1 from the
+"""hrc-010 -- migration 0259_candidate_profile (DEC-SCOPE-382): the chain, the frozen checks, the P11 backfill (education row 1 from the
 legacy fields, `preferred_roles` from the preferred role) and the round trip, in a throwaway database (the hrc-011 pattern)."""
 
 import importlib.util
@@ -13,14 +13,14 @@ from app.core.config import settings
 from app.models import CANDIDATE_CERTIFICATION_CHECKS, CANDIDATE_EMPLOYMENT_CHECKS, CANDIDATE_PROFILE_CHECKS
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_hrc_010_migration_0258", VERSIONS / "0258_candidate_profile.py")
+_spec = importlib.util.spec_from_file_location("_hrc_010_migration_0259", VERSIONS / "0259_candidate_profile.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0258_candidate_profile", "0257_job_approval"
+HEAD, BASE = "0259_candidate_profile", "0258_vacancy_fields"
 
 
-def test_migration_chains_after_0257():
+def test_migration_chains_after_0258():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert len(script.get_heads()) == 1 and HEAD in {r.revision for r in script.walk_revisions()}

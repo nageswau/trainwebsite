@@ -31,7 +31,7 @@ export const COMPENSATION_LABELS: Record<string, string> = {
   ...Object.fromEntries(AMOUNTS.flatMap(({ key, label }) => [[`${key}_salary`, label], [`${key}_salary_currency`, `${label} currency`], [`${key}_salary_period`, `${label} pay period`]])),
   salary_negotiable: "Negotiable",
 };
-// hrc-010 (DEC-SCOPE-381): the §5 profile rows (a sent list replaces the whole set), the enums and the Appendix B completeness.
+// hrc-010 (DEC-SCOPE-382): the §5 profile rows (a sent list replaces the whole set), the enums and the Appendix B completeness.
 export type EducationRow = { degree: string | null; specialisation: string | null; institution: string | null; year: number | null; grade: string | null };
 export type EmploymentRow = { employer: string; designation: string | null; industry: string | null; employment_type: string | null; start_date: string; end_date: string | null };
 export type CertificationRow = { name: string; issuer: string | null; issued_on: string | null; expires_on: string | null; credential_id: string | null };

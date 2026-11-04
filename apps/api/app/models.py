@@ -6308,7 +6308,7 @@ CANDIDATE_MERGE_CHECKS = {  # hrc-014 (DEC-SCOPE-377 D8): migration 0258 repeats
 }
 # hrc-011 C2: the pay periods (Q-10) and how many of each make a year.
 SALARY_PERIODS = {"year": 1, "month": 12}
-# hrc-010 (DEC-SCOPE-381 P9): how the person likes to be reached; migration 0258 repeats these checks (test_hrc_010_migration).
+# hrc-010 (DEC-SCOPE-382 P9): how the person likes to be reached; migration 0259 repeats these checks (test_hrc_010_migration).
 CANDIDATE_CONTACT_METHODS = ("phone", "whatsapp", "email")
 CANDIDATE_PROFILE_CHECKS = {
     "ck_candidates_preferred_contact": _in("preferred_contact", CANDIDATE_CONTACT_METHODS),
@@ -6378,7 +6378,7 @@ class Candidate(Base, TimestampMixin):
     merged_into_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("candidates.id", ondelete="RESTRICT"), nullable=True)
     merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     merged_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
-    # hrc-010 (DEC-SCOPE-381): structured location (sets `location`, P5), contact preference and verification (P9), the skills extras
+    # hrc-010 (DEC-SCOPE-382): structured location (sets `location`, P5), contact preference and verification (P9), the skills extras
     # (P7) and the preferences (P8). The lists hold job-enum values (work modes, employment types, shifts) or short texts.
     country: Mapped[str | None] = mapped_column(String(80), nullable=True)
     state: Mapped[str | None] = mapped_column(String(80), nullable=True)

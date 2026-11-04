@@ -5,7 +5,7 @@ import RecruiterCandidateDetail from "@/components/RecruiterCandidateDetail";
 import RecruiterCandidateForm from "@/components/RecruiterCandidateForm";
 import { EMPTY_FORM, candidateBody, displayValue, formFromDetail, type CandidateDetail } from "@/lib/recruiterCandidates";
 
-// hrc-010 (DEC-SCOPE-381): the §5 profile sections of the candidate form, the body they send, and the detail's rows and completeness.
+// hrc-010 (DEC-SCOPE-382): the §5 profile sections of the candidate form, the body they send, and the detail's rows and completeness.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }), usePathname: () => "/", useSearchParams: () => new URLSearchParams() }));
 vi.mock("@/components/RecruiterCandidateSkills", () => ({ default: () => null }));
 vi.mock("@/components/RecruiterCandidateJourney", () => ({ default: () => null }));

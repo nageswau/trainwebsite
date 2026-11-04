@@ -1,4 +1,4 @@
-"""hrc-010 (DEC-SCOPE-381, spec docs/superpowers/specs/2026-11-04-hrc-010-candidate-profile-design.md): the profile rows (education,
+"""hrc-010 (DEC-SCOPE-382, spec docs/superpowers/specs/2026-11-04-hrc-010-candidate-profile-design.md): the profile rows (education,
 employment, certifications), the derived total experience (P4, Q-09), the legacy single fields as mirrors of the rows (P5) and the
 Appendix B completeness (P10).
 

@@ -1,10 +1,10 @@
 """hrc-010 -- candidate profile completion: education, employment and certification rows, structured location, contact preference,
 skills extras and preferences.
 
-Revision ID: 0258_candidate_profile
-Revises: 0257_job_approval
+Revision ID: 0259_candidate_profile
+Revises: 0258_vacancy_fields
 
-docs/superpowers/specs/2026-11-04-hrc-010-candidate-profile-design.md (DEC-SCOPE-381). Nullable or defaulted columns and three new
+docs/superpowers/specs/2026-11-04-hrc-010-candidate-profile-design.md (DEC-SCOPE-382). Nullable or defaulted columns and three new
 tables; 0001 builds a fresh database from the current models, which already carry them, so each step runs only when missing (0251's
 idiom). Backfill (P11): a candidate with a qualification, college or passing year gets education row 1 from them, and a preferred role
 becomes `preferred_roles`; `current_company` is not turned into a dateless job. The CHECKS are frozen copies of the model's strings at
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0258_candidate_profile"
-down_revision = "0257_job_approval"
+revision = "0259_candidate_profile"
+down_revision = "0258_vacancy_fields"
 branch_labels = None
 depends_on = None
 
