@@ -86,7 +86,7 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
       {notice && <p className={notice.failed ? "form-error" : "form-message"} role={notice.failed ? "alert" : "status"} style={{ margin: 0 }}>{notice.text}</p>}
       {archived && candidate.can_edit && <p className="muted" style={{ margin: 0 }}>Restore this candidate to edit them or upload a resume.</p>}
       {editing ? (
-        <RecruiterCandidateForm initial={candidate} onCancel={() => setEditing(false)}
+        <RecruiterCandidateForm initial={candidate} onCancel={() => setEditing(false)} onLatest={setCandidate}
           onSaved={(saved) => { setCandidate(saved); setEditing(false); setNotice({ text: "Changes saved.", failed: false }); }} />
       ) : (
         <section aria-labelledby="cand-profile-heading" className="action-card">

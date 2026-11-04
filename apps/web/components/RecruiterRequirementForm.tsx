@@ -1,7 +1,8 @@
 "use client";
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import SearchableSelect from "@/components/SearchableSelect";
+import StaleRecordNotice from "@/components/StaleRecordNotice";
 import { detailMessage, NOT_COMPLETED } from "@/lib/apiErrors";
 import type { PickOption } from "@/lib/lookups";
 import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
@@ -10,6 +11,7 @@ import {
   companySearch,
   FORM_FIELDS,
   type FormField,
+  type FormValues,
   isRequirementBody,
   label,
   monthsFromYears,
@@ -19,6 +21,7 @@ import {
   type StatusCatalogue,
   valuesOf,
 } from "@/lib/recruiterRequirements";
+import { useStaleGuard } from "@/lib/staleGuard";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
 
@@ -51,6 +54,7 @@ const SELECTS: Partial<Record<FormField, { label: string; vocabulary: string }>>
   priority: { label: "Priority", vocabulary: "priority" },
 };
 const SKILL_FIELDS = new Set<string>(["required_skills", "preferred_skills"]);
+const FIELD_LABELS: Record<string, string> = { job_category_id: "Job category", skills: "Skills", status: "Status", assign: "Recruiter", weights: "Skill weights" };
 
 /** FastAPI's 422 list -> errors at the form's fields (a skill's item lands on its list); null when any item is about something else. */
 function fieldErrors(detail: unknown): Partial<Record<FormField, string>> | null {
@@ -75,6 +79,7 @@ export default function RecruiterRequirementForm({
   company,
   canChooseRecruiter = false,
   onSaved,
+  onLatest,
   onCancel,
 }: {
   mode: "create" | "edit";
@@ -85,9 +90,12 @@ export default function RecruiterRequirementForm({
   canChooseRecruiter?: boolean;
   onSaved: (r: Requirement, saved: boolean) => void;
   onCancel: () => void;
+  /** hrc-003: the latest requirement after a stale save was reloaded or reviewed, for the page behind the form. */
+  onLatest?: (r: Requirement) => void;
 }) {
-  const original = useRef(valuesOf(requirement));
-  const [values, setValues] = useState(original.current);
+  // hrc-003: the values and `updated_at` the form was opened with; a save refused as stale re-bases them (Reload / Review my changes).
+  const guard = useStaleGuard<Requirement, FormValues>(requirement, valuesOf, (r) => r?.updated_at ?? null, onLatest);
+  const { values, setValues, opened } = guard;
   const [companyPick, setCompanyPick] = useState<PickOption | null>(company ?? null);
   const [recruiter, setRecruiter] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<Record<FormField | "company", string>>>({});
@@ -98,7 +106,7 @@ export default function RecruiterRequirementForm({
   const [pickersFailed, setPickersFailed] = useState(false);
   const focus = useFocusAfterRender();
   const idPrefix = mode === "create" ? "requirement-new" : `requirement-${requirement?.id}`;
-  const dirty = FORM_FIELDS.some((k) => values[k] !== original.current[k]) || recruiter !== null || (mode === "create" && !company && companyPick !== null);
+  const dirty = FORM_FIELDS.some((k) => values[k] !== opened[k]) || recruiter !== null || (mode === "create" && !company && companyPick !== null);
   const searchRecruiters = useMemo(() => recruiterSearch(null), []);
   useLeaveGuard(dirty, LEAVE_PROMPT);
 
@@ -140,8 +148,9 @@ export default function RecruiterRequirementForm({
 
   async function save() {
     if (busy || !check()) return;
-    const body = requirementBody(values, mode === "edit" ? original.current : undefined);
+    const body = requirementBody(values, mode === "edit" ? opened : undefined);
     if (mode === "edit" && Object.keys(body).length === 0) return onSaved(requirement!, false);
+    if (mode === "edit") body.expected_updated_at = guard.token;
     if (mode === "create") {
       body.company_id = companyPick!.id;
       if (recruiter) body.assigned_recruiter_user_id = recruiter;
@@ -159,6 +168,7 @@ export default function RecruiterRequirementForm({
         onSaved(data.requirement, true);
         return;
       }
+      if (guard.caught({ ok: false, status: response.status, detail: data?.detail })) return;
       const onFields = response.status === 422 ? fieldErrors(data?.detail) : null;
       if (onFields) {
         setErrors(onFields);
@@ -303,6 +313,13 @@ export default function RecruiterRequirementForm({
         {textField("preferred_skills")}
         {textField("description")}
       </fieldset>
+      <StaleRecordNotice
+        guard={guard}
+        labelOf={(key) => TEXT[key as FormField]?.label ?? SELECTS[key as FormField]?.label ?? FIELD_LABELS[key] ?? label(key)}
+        display={(key, value) => (key === "job_category_id" ? (withCurrent(categories, requirement?.job_category).find((c) => c.id === value)?.name ?? value) : SELECTS[key as FormField] && value ? label(value) : value)}
+        onReload={guard.reload}
+        onReview={guard.reviewMine}
+      />
       {failure && (
         <p className="form-error" role="alert" id={`${idPrefix}-failure`} tabIndex={-1}>
           {failure}

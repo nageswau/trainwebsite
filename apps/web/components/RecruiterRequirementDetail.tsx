@@ -252,6 +252,7 @@ export default function RecruiterRequirementDetail({ initial, initialJd, created
           <RecruiterRequirementForm
             mode="edit"
             requirement={r}
+            onLatest={setRequirement}
             onSaved={(next, saved) => {
               changed(next, saved ? "Changes saved." : "No changes to save.");
               closeEditor();

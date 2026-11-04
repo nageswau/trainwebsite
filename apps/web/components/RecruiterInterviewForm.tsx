@@ -2,6 +2,7 @@
 import { type ChangeEvent, type FormEvent, useId, useRef, useState } from "react";
 
 import ReturnToLoginLink from "@/components/ReturnToLoginLink";
+import StaleRecordNotice from "@/components/StaleRecordNotice";
 import { sendJson, type SendOutcome } from "@/lib/apiErrors";
 import { istInputToIso, nowIstInput } from "@/lib/bdmAppointments";
 import { SAVE_FAILED, SESSION_ENDED, writeFailure } from "@/lib/bdmTasks";
@@ -9,24 +10,34 @@ import { fieldErrors } from "@/lib/bdmTravel";
 import { RECRUITER_SIGN_IN } from "@/lib/recruiterCompanies";
 import { interviewOf, INTERVIEWS_URL, interviewUrl, type Notices, type RecInterview, ROUNDS } from "@/lib/recruiterInterviews";
 import { MODES } from "@/lib/recruiterMeetings";
+import { useStaleGuard } from "@/lib/staleGuard";
 import { useLeaveGuard } from "@/lib/useLeaveGuard";
 
 export type ContactOption = { id: string; name: string };
 type Values = { round: string; start: string; mode: string; url: string; interviewer: string; location: string; contact_id: string };
+const LABELS: Record<string, string> = { round: "Round", mode: "Mode", url: "Meeting link", meeting_url: "Meeting link", interviewer: "Interviewer", location: "Location",
+  contact_id: "Company contact", status: "Status", reschedule: "Date and time", feedback: "Feedback" };
+/** The details as the API takes them (blank = null). */
+const details = (v: Values) => ({
+  round: v.round, mode: v.mode, meeting_url: v.url.trim() || null, interviewer: v.interviewer.trim() || null, location: v.location.trim() || null, contact_id: v.contact_id || null,
+});
 
 // rec-020 (spec §4; IV5, IV7): schedule an interview for one application, or edit the details of one (the time changes only through
 // Reschedule). The time is entered in IST. The contact comes from the requirement company's active contacts (a stored one since
 // deactivated stays listed). The API decides every rule; its 422s are placed on their fields and typed text is never cleared.
-export default function RecruiterInterviewForm({ applicationId, interview, draftRound, contacts, onSaved, onCancel }: {
+export default function RecruiterInterviewForm({ applicationId, interview, draftRound, contacts, onSaved, onLatest, onCancel }: {
   applicationId?: string; interview?: RecInterview; draftRound?: string; contacts: ContactOption[];
   onSaved: (interview: RecInterview, notices?: Notices) => void; onCancel: () => void;
+  /** hrc-003: the latest interview after a stale save was reloaded or reviewed, for the page behind the form. */
+  onLatest?: (interview: RecInterview) => void;
 }) {
   const id = useId();
-  const [start] = useState<Values>({
-    round: interview?.round ?? draftRound ?? "", start: "", mode: interview?.mode ?? "Online", url: interview?.meeting_url ?? "",
-    interviewer: interview?.interviewer ?? "", location: interview?.location ?? "", contact_id: interview?.contact?.id ?? "",
-  });
-  const [v, setV] = useState(start);
+  // hrc-003: an edit keeps the details and `updated_at` it opened with; a save refused as stale re-bases them (Reload / Review).
+  const guard = useStaleGuard<RecInterview, Values>(interview, (i) => ({
+    round: i?.round ?? draftRound ?? "", start: "", mode: i?.mode ?? "Online", url: i?.meeting_url ?? "",
+    interviewer: i?.interviewer ?? "", location: i?.location ?? "", contact_id: i?.contact?.id ?? "",
+  }), (i) => i?.updated_at ?? null, onLatest);
+  const { values: v, setValues: setV, opened: start } = guard;
   const [notify, setNotify] = useState(true);
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false); // QA-01: a fast double click runs submit twice before `busy` re-renders the button disabled
@@ -43,17 +54,10 @@ export default function RecruiterInterviewForm({ applicationId, interview, draft
   const error = (key: string) => errors[key] && <p id={`${fid(key)}-error`} className="form-error">{errors[key]}</p>;
 
   function send(): Promise<SendOutcome> | null {
-    const details = {
-      round: v.round, mode: v.mode, meeting_url: v.url.trim() || null, interviewer: v.interviewer.trim() || null,
-      location: v.location.trim() || null, contact_id: v.contact_id || null,
-    };
-    if (!interview) return sendJson(INTERVIEWS_URL, "POST", { application_id: applicationId, scheduled_at: istInputToIso(v.start), notify, ...details });
-    const stored: Record<string, unknown> = {
-      round: interview.round, mode: interview.mode, meeting_url: interview.meeting_url, interviewer: interview.interviewer,
-      location: interview.location, contact_id: interview.contact?.id ?? null,
-    };
-    const changes = Object.fromEntries(Object.entries(details).filter(([key, value]) => value !== stored[key]));
-    return Object.keys(changes).length ? sendJson(interviewUrl(interview.id), "PATCH", changes) : null;
+    if (!interview) return sendJson(INTERVIEWS_URL, "POST", { application_id: applicationId, scheduled_at: istInputToIso(v.start), notify, ...details(v) });
+    const opened: Record<string, unknown> = details(start);
+    const changes = Object.fromEntries(Object.entries(details(v)).filter(([key, value]) => value !== opened[key]));
+    return Object.keys(changes).length ? sendJson(interviewUrl(interview.id), "PATCH", { ...changes, expected_updated_at: guard.token }) : null;
   }
 
   async function submit(event: FormEvent) {
@@ -77,6 +81,7 @@ export default function RecruiterInterviewForm({ applicationId, interview, draft
       const saved = interviewOf(result.data);
       return saved ? onSaved(saved, (result.data as { notifications?: Notices }).notifications) : setFailure(SAVE_FAILED);
     }
+    if (guard.caught(result)) return;
     const placed = fieldErrors(result.detail);
     if (Object.keys(placed).length) return setErrors(placed);
     const kind = writeFailure(result.status);
@@ -140,6 +145,13 @@ export default function RecruiterInterviewForm({ applicationId, interview, draft
           Notify the candidate{v.contact_id ? " and the contact" : ""}
         </label>
       )}
+      <StaleRecordNotice
+        guard={guard}
+        labelOf={(key) => LABELS[key] ?? key.replace(/_/g, " ")}
+        display={(key, value) => (key === "round" ? (ROUNDS.find((r) => r.key === value)?.label ?? value) : key === "contact_id" ? (options.find((c) => c.id === value)?.name ?? value) : value)}
+        onReload={guard.reload}
+        onReview={guard.reviewMine}
+      />
       {failure && <p className="form-error" role="alert">{failure}</p>}
       {sessionEnded && (
         <div role="alert">

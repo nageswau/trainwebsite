@@ -4,6 +4,7 @@ import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "rea
 import BdmConfirm from "@/components/BdmConfirm";
 import { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import LocalTime from "@/components/LocalTime";
+import StaleRecordNotice from "@/components/StaleRecordNotice";
 import { sendJson, sendRequest } from "@/lib/apiErrors";
 import { display } from "@/lib/bdmOrganizations";
 import { formatCalendarDate } from "@/lib/formatDate";
@@ -27,6 +28,7 @@ import {
   requirementChangesFromJd,
 } from "@/lib/recruiterJd";
 import { isRequirementBody, type Requirement, REQUIREMENTS_URL } from "@/lib/recruiterRequirements";
+import { staleConflict, staleSummary, useStaleGuard } from "@/lib/staleGuard";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
 // rec-008 (DEC-SCOPE-132, spec §4): the requirement's JD -- the current version, create/edit (a new version), upload (a new version),
@@ -36,8 +38,13 @@ type Props = { requirement: Requirement; initial: Jd | null; onRequirementChange
 type ContactOption = { id: string; name: string };
 const clip = (s: string) => (s.length > 80 ? `${s.slice(0, 80)}…` : s); // long descriptions in the JD6 change list
 
-function JdForm({ requirement, current, onSaved, onCancel }: { requirement: Requirement; current?: JdVersion; onSaved: (jd: Jd) => void; onCancel: () => void }) {
-  const [values, setValues] = useState<JdValues>(() => jdValues(current, requirement));
+function JdForm({ requirement, jd, onSaved, onLatest, onCancel }: {
+  requirement: Requirement; jd: Jd; onSaved: (jd: Jd) => void; onLatest: (jd: Jd) => void; onCancel: () => void;
+}) {
+  // hrc-003 (S1): the values and the current version number (0 = none) the form opened with; a stale save re-bases them.
+  const guard = useStaleGuard<Jd, JdValues>(jd, (j) => jdValues(j?.versions[0], requirement), (j) => j?.versions[0]?.version ?? 0, onLatest);
+  const { values, setValues } = guard;
+  const current = jd.versions[0];
   const [contacts, setContacts] = useState<ContactOption[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -61,8 +68,9 @@ function JdForm({ requirement, current, onSaved, onCancel }: { requirement: Requ
     if (busy) return;
     setBusy(true);
     setFailure(null);
-    const outcome = await sendJson(jdUrl(requirement.id), "POST", jdBody(values));
+    const outcome = await sendJson(jdUrl(requirement.id), "POST", { ...jdBody(values), expected_version: guard.token });
     setBusy(false);
+    if (guard.caught(outcome)) return;
     if (outcome.ok && isJd(outcome.data)) onSaved(outcome.data);
     else setFailure(outcome.ok ? "Unable to save the JD." : outcome.message);
   }
@@ -101,6 +109,13 @@ function JdForm({ requirement, current, onSaved, onCancel }: { requirement: Requ
           </div>
         ))}
       </div>
+      <StaleRecordNotice
+        guard={guard}
+        labelOf={(key) => JD_LABEL[key as keyof typeof JD_LABEL] ?? (key === "file" ? "JD file" : key)}
+        display={(key, value) => (key === "contact_id" ? (options.find((c) => c.id === value)?.name ?? value) : value)}
+        onReload={guard.reload}
+        onReview={guard.reviewMine}
+      />
       {failure && (
         <p className="form-error" role="alert">
           {failure}
@@ -165,7 +180,7 @@ function JdUpload({ requirementId, hasJd, onUploaded }: { requirementId: string;
   );
 }
 
-function ApplyToRequirement({ requirement, current, onApplied }: { requirement: Requirement; current: JdVersion; onApplied: (next: Requirement) => void }) {
+function ApplyToRequirement({ requirement, current, onApplied }: { requirement: Requirement; current: JdVersion; onApplied: (next: Requirement, notice: string) => void }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -177,10 +192,12 @@ function ApplyToRequirement({ requirement, current, onApplied }: { requirement: 
   async function apply() {
     setBusy(true);
     setFailure(null);
-    const outcome = await sendJson(`${REQUIREMENTS_URL}/${requirement.id}`, "PATCH", patch);
+    const outcome = await sendJson(`${REQUIREMENTS_URL}/${requirement.id}`, "PATCH", { ...patch, expected_updated_at: requirement.updated_at });
     setBusy(false);
     setConfirming(false);
-    if (outcome.ok && isRequirementBody(outcome.data)) onApplied(outcome.data.requirement);
+    const stale = staleConflict<Requirement>(outcome); // hrc-003 S8: the page takes the latest requirement; the user checks and applies again
+    if (stale) onApplied(stale.current, `${staleSummary(stale)} It now shows the latest version: check the JD changes and apply again.`);
+    else if (outcome.ok && isRequirementBody(outcome.data)) onApplied(outcome.data.requirement, "Requirement updated from the JD.");
     else setFailure(outcome.ok ? "Unable to update the requirement." : outcome.message);
   }
 
@@ -299,7 +316,8 @@ export default function RecruiterRequirementJd({ requirement, initial, onRequire
           {editing && jd.can_edit ? (
             <JdForm
               requirement={r}
-              current={current}
+              jd={jd}
+              onLatest={setJd}
               onSaved={(next) => saved(next, `JD saved as version ${next.versions[0].version}.`)}
               onCancel={() => {
                 setEditing(false);
@@ -320,9 +338,7 @@ export default function RecruiterRequirementJd({ requirement, initial, onRequire
             <ApplyToRequirement
               requirement={r}
               current={current}
-              onApplied={(next) => {
-                onRequirementChanged(next, "Requirement updated from the JD.");
-              }}
+              onApplied={onRequirementChanged}
             />
           )}
           {jd.versions.length > 1 && (
