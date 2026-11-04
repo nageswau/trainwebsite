@@ -6,18 +6,19 @@ transaction -- scope, row lock, change, history/audit, one commit here. Lists ar
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from app.api.agent_reports import NO_STORE
 from app.api.bdm import LIMIT, OFFSET, SEARCH, _matching
 from app.api.deps import get_current_user
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
 from app.models import JOB_PRIORITIES, JOB_STATUSES, Company, Job, JobSkill, User
 from app.schemas import REC_REQUIREMENT_FIELDS, RecRequirementAssign, RecRequirementCreate, RecRequirementStatusChange, RecRequirementUpdate, RecSkillWeights
-from app.services import applications, candidates, matching
+from app.services import applications, candidates, matching, recruitment_history
 from app.services import recruiter_companies as companies
 from app.services import recruiter_requirements as svc
 from app.services.recruiter import ROLE, recruiter_context
@@ -134,6 +135,15 @@ async def get_requirement(requirement_id: UUID, user: User = Depends(get_current
     return {"requirement": await svc.requirement_out(db, user, job, refresh=False)}
 
 
+@router.get("/{requirement_id}/history")
+async def requirement_history(requirement_id: UUID, response: Response, limit: int = Query(20, ge=1, le=100), offset: int = OFFSET,
+                              user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """hrc-004 (DEC-SCOPE-372 B1/B6): the requirement's and its JD's changes with before/after values, for its readers (scope = 404)."""
+    job = await svc.load_scoped(db, user, requirement_id)
+    response.headers.update(NO_STORE)
+    return await recruitment_history.history(db, "job", job.id, ("recruiter_requirement.", "job_description."), limit=limit, offset=offset)
+
+
 @router.patch("/{requirement_id}")
 async def update_requirement(requirement_id: UUID, payload: RecRequirementUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Only the fields sent; values equal to the stored ones are not changes (no audit, no updated_at bump)."""
@@ -146,20 +156,23 @@ async def update_requirement(requirement_id: UUID, payload: RecRequirementUpdate
         changes["description"] = changes["description"] or ""
     await svc.check_category(db, changes, job)
     changed = sorted(k for k, v in changes.items() if getattr(job, k) != v)
+    fields = payload.model_fields_set
+    skills_sent = "required_skills" in fields or "preferred_skills" in fields
+    before = await svc.audited_values(db, job, changed, skills=skills_sent)  # hrc-004: the stored values, for the audit diff
     for key in changed:
         setattr(job, key, changes[key])
     svc.check_ranges(job)
     if "vacancies" in changed:
         await svc.check_vacancies(db, job)
-    fields = payload.model_fields_set
-    if ("required_skills" in fields or "preferred_skills" in fields) and await svc.set_skills(
+    if skills_sent and await svc.set_skills(
         db, job, payload.required_skills if "required_skills" in fields else None, payload.preferred_skills if "preferred_skills" in fields else None
     ):
         changed.append("skills")
     if changed:
         job.updated_at = func.now()  # hrc-003 S1: a skills-only change (a child table) moves the token too
         await db.flush()
-        svc.audit(db, user, "update", job.id, {"fields": changed})
+        after = await svc.audited_values(db, job, [k for k in changed if k != "skills"], skills=skills_sent)
+        svc.audit(db, user, "update", job.id, {"fields": changed, "changes": recruitment_history.diff(before, after)})
     await db.commit()
     if changed:
         svc.log("recruiter_requirement_updated", user, job.id, fields=changed)
@@ -172,7 +185,7 @@ async def change_requirement_status(requirement_id: UUID, payload: RecRequiremen
     job = await svc.load_scoped(db, user, requirement_id, lock=True)
     svc.require(user, job, "can_change_status", "status")
     previous = await svc.change_status(db, user, job, payload.status, payload.note)
-    svc.audit(db, user, "status", job.id, {"from": previous, "to": payload.status})
+    svc.audit(db, user, "status", job.id, {"from": previous, "to": payload.status, "changes": {"status": [previous, payload.status]}})
     await db.commit()
     svc.log("recruiter_requirement_status_changed", user, job.id, from_status=previous, to_status=payload.status)
     return {"requirement": await svc.requirement_out(db, user, job)}
@@ -226,7 +239,8 @@ async def assign_requirement(requirement_id: UUID, payload: RecRequirementAssign
     target = await companies.locked_recruiter_target(db, user, payload.recruiter_user_id)
     previous = job.assigned_recruiter_user_id
     job.assigned_recruiter_user_id = target.id
-    svc.audit(db, user, "assign", job.id, {"from_user_id": str(previous) if previous else None, "to_user_id": str(target.id)})
+    svc.audit(db, user, "assign", job.id, {"from_user_id": str(previous) if previous else None, "to_user_id": str(target.id),
+                                           "changes": {"recruiter": [await svc.recruiter_name(db, previous), target.full_name]}})
     await db.commit()
     svc.log("recruiter_requirement_assigned", user, job.id, to_user_id=str(target.id))
     return {"requirement": await svc.requirement_out(db, user, job)}

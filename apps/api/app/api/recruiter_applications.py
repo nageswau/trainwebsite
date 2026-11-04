@@ -77,7 +77,7 @@ async def change_application_status(application_id: UUID, payload: RecApplicatio
         raise HTTPException(409, joinings.USE_JOINING)  # rec-023 JN9: an offered candidate joins through the joining (actual date)
     previous = await svc.change_status(db, user, application, payload.status, payload.note)
     await svc.notify_student(db, application)
-    svc.audit(db, user, "status", application, {"from": previous, "to": payload.status})
+    svc.audit(db, user, "status", application, {"from": previous, "to": payload.status, "changes": {"status": [previous, payload.status]}})
     await db.commit()
     svc.log("recruiter_application_status_changed", user, application, from_status=previous, to_status=payload.status)
     return {"application": await _item(db, user, application)}

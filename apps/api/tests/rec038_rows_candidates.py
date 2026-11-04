@@ -55,6 +55,7 @@ ROWS = [
     # rec_out / mgr_out: the world's company is outside their company scope (rec-003 load_scoped, 404 before the create)
     R("post", "/recruiter/requirements", _new_requirement, **allow(201, "rec", "mgr", "super"), rec_out=404, mgr_out=404),
     R("get", "/recruiter/requirements/{requirement}", **REQ_READ),
+    R("get", "/recruiter/requirements/{requirement}/history", **REQ_READ),  # hrc-004 B1: the record's readers
     R("patch", "/recruiter/requirements/{requirement}", {"location": "Bengaluru"}, **allow(200, "rec", "super"), **OUT),
     R("post", "/recruiter/requirements/{requirement}/assign", lambda w: {"recruiter_user_id": w["rec2_id"]}, **allow(200, "mgr", "super"), **OUT),
     R("post", "/recruiter/requirements/{requirement}/status", {"status": "shortlisting"}, **allow(200, "rec", "super"), **OUT),
@@ -74,6 +75,7 @@ ROWS = [
     R("post", "/recruiter/candidates", _new_candidate, **allow(201, *WRITERS)),
     R("get", "/recruiter/candidates/duplicate-check?email=nobody@example.com", **allow(200, *WRITERS)),
     R("get", "/recruiter/candidates/{candidate}", **allow(200, *READERS)),
+    R("get", "/recruiter/candidates/{candidate}/history", **allow(200, *READERS)),  # hrc-004 B1
     R("patch", "/recruiter/candidates/{candidate}", {"location": "Pune"}, **allow(200, *WRITERS)),
     R("get", "/recruiter/candidates/{candidate}/applications", **allow(200, *READERS)),  # rec-017: every candidate reader sees every row
     R("post", "/recruiter/candidates/{candidates_spare}/archive", **allow(200, *WRITERS)),

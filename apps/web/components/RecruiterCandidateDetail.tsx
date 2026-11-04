@@ -11,6 +11,7 @@ import RecruiterCandidateTraining from "@/components/RecruiterCandidateTraining"
 import RecruiterCandidateResumes from "@/components/RecruiterCandidateResumes";
 import RecruiterCandidateSkills from "@/components/RecruiterCandidateSkills";
 import RecruiterMessages from "@/components/RecruiterMessages";
+import RecruiterRecordHistory from "@/components/RecruiterRecordHistory";
 import RecruiterTimeline from "@/components/RecruiterTimeline";
 import { sendRequest } from "@/lib/apiErrors";
 import { telHref } from "@/lib/recruiterCalls";
@@ -121,6 +122,8 @@ export default function RecruiterCandidateDetail({ initial }: { initial: Candida
           source={{ kind: "candidate", party: { kind: "candidate", id: candidate.id, name: candidate.name, whatsappTo: candidate.whatsapp_to ?? null, email: candidate.email } }} />
       </div>
       <RecruiterTimeline party={{ kind: "candidate", id: candidate.id }} version={activity} />
+      {/* hrc-004: who changed what, old → new (contact and salary hidden); re-read after every save. */}
+      <RecruiterRecordHistory key={candidate.updated_at} url={candidateUrl(candidate.id, "/history")} />
     </div>
   );
 }

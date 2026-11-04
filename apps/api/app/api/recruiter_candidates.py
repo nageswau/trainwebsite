@@ -35,7 +35,7 @@ from app.schemas import (
     CandidateUpdate,
     ResumeApply,
 )
-from app.services import candidate_search, candidate_skills, course_skills
+from app.services import candidate_search, candidate_skills, course_skills, recruitment_history
 from app.services import candidates as svc
 from app.services import resume_extraction as extraction
 from app.services.reports import placement as placement_reports
@@ -154,6 +154,16 @@ async def get_training(candidate_id: UUID, response: Response, user: User = Depe
     return await placement_reports.candidate_training(db, await svc.load(db, candidate_id))
 
 
+@router.get("/{candidate_id}/history")
+async def candidate_history(candidate_id: UUID, response: Response, limit: int = Query(20, ge=1, le=100), offset: int = OFFSET,
+                            user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """hrc-004 (DEC-SCOPE-372 B1/B6): the candidate's changes with before/after values (contact and salary redacted), for its readers."""
+    svc.require_reader(user)
+    candidate = await svc.load(db, candidate_id)
+    response.headers.update(NO_STORE)
+    return await recruitment_history.history(db, "candidates", candidate.id, ("candidate.",), limit=limit, offset=offset)
+
+
 @router.patch("/{candidate_id}", response_model=CandidateDetail, response_model_exclude_unset=True)
 async def update_candidate(candidate_id: UUID, payload: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Partial. Moving to another source needs an active one; keeping a since-deactivated source is allowed (the rec-002 rule)."""
@@ -172,13 +182,15 @@ async def update_candidate(candidate_id: UUID, payload: dict = Body(...), user: 
         raise HTTPException(409, svc.ARCHIVED)
     if changes.get("source_id", candidate.source_id) != candidate.source_id:
         await svc.active_source(db, changes["source_id"])
+    before = await svc.audited_values(db, candidate, changes)  # hrc-004: the stored values, for the audit diff
     fields = svc.apply_fields(candidate, changes)
     if {"mobile", "email"} & set(fields):
         await svc.block_duplicates(db, candidate)
     if fields:
         candidate.updated_by_user_id = user.id
         await svc.flush_candidate(db, candidate)
-        svc.audit(db, user, "update", candidate, {"fields": fields})
+        changed = recruitment_history.diff(before, await svc.audited_values(db, candidate, changes))
+        svc.audit(db, user, "update", candidate, {"fields": fields, "changes": changed})
     await db.commit()
     if fields:
         svc.log("candidate_updated", user, candidate, fields=fields)
