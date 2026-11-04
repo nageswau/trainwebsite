@@ -40,6 +40,8 @@ async def portal(
         "university": "university_rep",
         "agent": "agent",
         "super_admin": "super_admin",
+        "hr-manager": "hr_manager",  # hrc-002 (DEC-SCOPE-374 R3)
+        "placement-officer": "placement_officer",
     }.get(role, role)
     if user.role != "super_admin" and (user.division != division or user.role != route_role):
         raise HTTPException(403, "Role/division mismatch")

@@ -3708,6 +3708,23 @@ salaries (§2.270): absent without it, 403 when sent. Exchange rates: read by th
 `placement_manager`, `hr_team`, `super_admin`) — a rate is not compensation; written by `placement_manager` and `super_admin` only (others
 403, anonymous 401). Pinned by `apps/api/tests/test_hrc_011_compensation.py`.
 
+### 2.274 Recruitment record history *(added 2026-11-04 — `DEC-SCOPE-376`, hrc-004)*
+
+No new role or grant. A requirement's history is read by its readers (`placement_team` own, `placement_manager` team, `bdm` own
+companies, `super_admin`; out of scope 404, other roles 403); a candidate's by the candidate readers (`placement_team`,
+`placement_manager`, `hr_team`, `super_admin`; others 403); anonymous 401. Compensation and contact values are never stored, so a reader
+without `candidates.compensation.view` learns only that a salary field changed. Pinned by `apps/api/tests/test_hrc_004_audit_history.py`
+and the rec-038 matrix rows.
+### 2.275 Recruitment roles *(added 2026-11-04 — `DEC-SCOPE-374`, hrc-002)*
+
+New IT roles `hr_manager` (created by super_admin only), `placement_officer` and `interviewer` (created by `it_admin` or super_admin).
+None holds a catalogue grant by default or belongs to any recruiter/HR role set, so every `/recruiter/*`, legacy `/workflows/it/*`
+placement, `/hr/*` and other portal route is 403 to them; each opens only its own `/portal/it/{hr-manager|placement-officer|interviewer}`
+dashboard (read-only vacancy facts and counts; nothing for the interviewer). New catalogue keys `jobs.approve`, `jobs.publish`,
+`candidates.export`, `candidates.import`, `candidates.merge`, `results.release`: no default holder (super_admin implicit), grantable
+now, enforced by their owning items. `User.role` decides; an extra `UserRoleAssignment` does not widen access. No branch/department
+scope (Q-04 open). Pinned by `apps/api/tests/test_hrc_002_roles.py` and the rec-038 matrix (`hr_mgr`, `officer`, `interviewer` columns).
+
 ### 2.277 Candidate documents, document requests and signed links *(added 2026-11-04 — `DEC-SCOPE-379`, hrc-015)*
 
 No new grant. Resume/document links and the documents list: the candidate readers (`placement_team`, `placement_manager`, `hr_team`,

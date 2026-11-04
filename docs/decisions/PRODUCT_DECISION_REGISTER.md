@@ -11381,6 +11381,42 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0251_candidate_compensation`; API §12JT; RBAC §2.273.
 - **Feature ID authorized:** `hrc-011`. **Status:** built on `worktree-hrc-011`.
 
+### DEC-SCOPE-376 — Before/after audit for recruitment records and the record History (`hrc-004`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-004` (PDF §4.3, §5.1, §10.2, §15, §17 QA #18; PDF classified
+  `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00: all phases). Dependency itc-001 (DEC-SCOPE-335) merged. The owner
+  said to proceed with the recommended answers, so B1–B8 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-004-recruitment-audit-history-design.md`.
+- **Builder's calls:** B1 the History is read by exactly the record's readers (requirement scope / candidate readers) — no new
+  `audit.view` grant, so no seed migration (the backlog lists hrc-004 under "no migration"). B2 two routes (requirements, candidates);
+  application and interview rows gain values but no new route (`/applications/{id}/history` stays the status history). B3 existing audit
+  keys (`fields`, `from`/`to`, ids) stay and `changes` is added (hrc-003 reads `fields`). B4 recorded as `"changed"`: compensation
+  (`salary`, `salary_min`, `salary_max` and every hrc-011 `candidates.COMPENSATION` field), contact (`mobile`, `email`, `linkedin`,
+  `meeting_url`, `contact_id`), interview feedback text, plus itc-001's personal-data names. B5 job category, candidate source and
+  assigned recruiter stored by name; statuses as keys; list values as text. B6 History = the entity's own action prefixes, downloads
+  excluded, newest first, 20 a page (max 100), raw metadata never returned. B7 a "Change history" section (the pages have no tab strip).
+  B8 creates keep their field-name rows.
+- **Numbering:** no migration; API §12JU; RBAC §2.274.
+- **Feature ID authorized:** `hrc-004`. **Status:** built on `worktree-hrc-004`.
+### DEC-SCOPE-374 — Recruitment roles and configurable permission scope (`hrc-002`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-002` (PDF §3, §15; PDF classified `UNVERIFIED`). Scope approved by the
+  owner 2026-11-01 (backlog Q-00). Dependency `hrc-001` built (`DEC-SCOPE-371`). The owner said to proceed with the recommended answers,
+  so R1–R7 below are **the builder's calls (`NEEDS_CONFIRMATION`)** for Q-01 and Q-04. Design
+  `docs/superpowers/specs/2026-11-04-hrc-002-recruitment-roles-design.md`.
+- **Builder's calls:** R1 (Q-01) three new IT roles: `hr_manager` (a new role, not a relabelled `placement_manager`; created by a
+  super_admin only), `placement_officer` (separate from `placement_team`) and `interviewer` (internal; employers keep the `employer`
+  login), both created by `it_admin` or super_admin; `hr_team` and `placement_manager` unchanged. R2 least privilege: no default grants,
+  no member of any recruiter/HR role set — every recruiter CRM, legacy placement and HR route refuses them. R3 own read-only dashboards
+  under `/it/{hr-manager,placement-officer,interviewer}/dashboard`: the HR Manager sees open requirements and recruitment counts, the
+  Placement Officer the open requirements by Job ID, the Interviewer nothing yet. R4 grant keys `jobs.approve`, `jobs.publish`,
+  `candidates.export`, `candidates.import`, `candidates.merge`, `results.release` (with `candidates.compensation.view` from hrc-001), no
+  default holder, enforced by their owning items (hrc-007/008/020/013/014/030) — a deliberate exception to nehn-005 P1. R5 (Q-04) no
+  branch/department dimension: no branch list exists in evidence; client scope stays the company assignment; AC3 not built. R6 a second
+  `UserRoleAssignment` does not widen recruitment access (`User.role` decides). R7 no migration.
+- **Numbering:** no migration; API §12JV; RBAC §2.275.
+- **Feature ID authorized:** `hrc-002`. **Status:** built on `worktree-hrc-002`.
+
 ### DEC-SCOPE-379 — Resume and document handling completion (`hrc-015`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-015` (PDF §5.1 "Upload, preview, download and replace resumes in PDF and

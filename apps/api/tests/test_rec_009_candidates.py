@@ -305,7 +305,8 @@ async def test_patch_changes_only_what_is_sent_and_audits_field_names(client, db
     assert response.status_code == 200 and out["location"] == "Chennai" and out["notice_days"] == 15 and out["name"] == created["name"]
     assert out["updated_by"]["id"] == str(user.id)
     audit = await db_session.scalar(select(AuditLog).where(AuditLog.action == "candidate.update", AuditLog.entity_id == created["id"]).order_by(AuditLog.created_at.desc()))
-    assert audit.metadata_json == {"fields": ["location", "notice_days", "preferred_locations"]}
+    assert audit.metadata_json == {"fields": ["location", "notice_days", "preferred_locations"],  # hrc-004: plus the values
+                                   "changes": {"location": ["Pune", "Chennai"], "notice_days": [None, 15], "preferred_locations": ["", "Chennai"]}}
     assert created["email"] not in str(audit.metadata_json)
 
 

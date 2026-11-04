@@ -35,7 +35,7 @@ from app.models import (
 )
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import RecInterviewCreate, RecInterviewUpdate
-from app.services import applications, company_pipeline, mailer
+from app.services import applications, company_pipeline, mailer, recruitment_history
 from app.services import recruiter_requirements as requirements
 
 logger = logging.getLogger("app.recruiter")
@@ -194,10 +194,11 @@ async def update(db: AsyncSession, user: User, interview: Interview, job: Job, p
     changed = sorted(key for key, value in changes.items() if getattr(interview, key) != value)
     if "contact_id" in changed:
         await _check_contact(db, job.company_id, changes["contact_id"], kept=interview.contact_id)
+    before = {key: getattr(interview, key) for key in changed}
     for key in changed:
         setattr(interview, key, changes[key])
     if changed:
-        audit(db, user, "update", interview, {"fields": changed})
+        audit(db, user, "update", interview, {"fields": changed, "changes": recruitment_history.diff(before, {key: changes[key] for key in changed})})
     return changed
 
 
@@ -216,7 +217,8 @@ async def reschedule(db: AsyncSession, user: User | None, interview: Interview, 
     interview.scheduled_at, interview.status = when, "rescheduled"
     _event(db, interview, user, "rescheduled", from_status=previous, old=old, note=reason)
     if user is not None:
-        audit(db, user, "reschedule", interview, {"from_status": previous})
+        audit(db, user, "reschedule", interview, {"from_status": previous, "changes": recruitment_history.diff(
+            {"scheduled_at": old, "status": previous}, {"scheduled_at": when, "status": "rescheduled"})})
 
 
 def change_status(db: AsyncSession, user: User | None, interview: Interview, application: JobApplication, target: str, note: str | None, now: datetime) -> str:
@@ -233,7 +235,7 @@ def change_status(db: AsyncSession, user: User | None, interview: Interview, app
     if target == "rejected" or (target == "selected" and interview.round in DECIDING_ROUNDS):
         applications.follow(db, user, application, target, f"{label}: {status_label(target)}")
     if user is not None:
-        audit(db, user, "status", interview, {"from": previous, "to": target})
+        audit(db, user, "status", interview, {"from": previous, "to": target, "changes": {"status": [previous, target]}})
     return previous
 
 
@@ -273,6 +275,7 @@ async def save_feedback(db: AsyncSession, user: User, interview: Interview, appl
     decision = sent["final_decision"]
     previous = change_status(db, user, interview, application, decision, "Feedback", now) if decision and decision != interview.status else None
     changed = [f for f in FEEDBACK_FIELDS if row is None or getattr(row, f) != sent[f]]
+    before = {f: getattr(row, f) for f in FEEDBACK_FIELDS} if row is not None else {}  # hrc-004: feedback text is redacted
     if changed:
         if row is None:
             row = InterviewFeedback(interview_id=interview.id, recorded_by_user_id=user.id)
@@ -280,7 +283,8 @@ async def save_feedback(db: AsyncSession, user: User, interview: Interview, appl
         for field in FEEDBACK_FIELDS:
             setattr(row, field, sent[field])
         row.recorded_by_user_id = user.id  # updated_at: TimestampMixin's onupdate
-        audit(db, user, "feedback", interview, {"fields": sorted(changed), "final_decision": decision})
+        audit(db, user, "feedback", interview, {"fields": sorted(changed), "final_decision": decision,
+                                                "changes": recruitment_history.diff(before, {f: sent[f] for f in FEEDBACK_FIELDS})})
     return previous
 
 

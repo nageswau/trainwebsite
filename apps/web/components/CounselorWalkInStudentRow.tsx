@@ -4,7 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { staffFailure } from "@/lib/agentStaff";
-import { formatDate } from "@/lib/formatDate";
+import LocalTime from "@/components/LocalTime";
 import { sendJson } from "@/lib/apiErrors";
 
 export const WALK_IN_URL = "/api/v1/counselor/students";
@@ -93,7 +93,7 @@ export default function CounselorWalkInStudentRow({ student, onChanged }: { stud
         <span className="badge">{student.setup ? SETUP_LABEL[student.setup] : "Active"}</span>
         {student.source && <span className="badge">{SOURCE_LABEL[student.source]}</span>}
         {student.applications !== undefined && <span className="muted">{student.applications === 1 ? "1 application" : `${student.applications} applications`}</span>}
-        {student.linked_since && <span className="muted">Since {formatDate(student.linked_since)}</span>}
+        {student.linked_since && <span className="muted">Since <LocalTime value={student.linked_since} /></span>}
         {/* ccrm-009 (DEC-SCOPE-253): the student 360. */}
         <Link href={`/overseas/counselor/students/${encodeURIComponent(student.id)}`} aria-label={`Open ${student.full_name}`}>Open</Link>
         {/* ccrm-010 (DEC-SCOPE-241): the student's internal notes. */}

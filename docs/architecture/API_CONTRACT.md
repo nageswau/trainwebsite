@@ -5521,6 +5521,31 @@ currency (candidate readers). `PUT /api/v1/recruiter/catalogue/exchange-rates/{c
 super_admin): idempotent upsert; 422 for INR, a code that is not three letters, or a rate outside (0, 10,000] / more than 4 decimals;
 recomputes the annual figure of every candidate amount in that currency; audit `recruiter.fx_rate_set` {old, new, recomputed}.
 
+## 12JU. Recruitment record history (hrc-004) — addendum, 2026-11-04
+
+`DEC-SCOPE-376`. **New:** `GET /api/v1/recruiter/requirements/{id}/history` and `GET /api/v1/recruiter/candidates/{id}/history`
+(`?limit=1..100` default 20, `&offset`) → `{items, total, limit, offset}`, newest first; each item `{id, action, created_at,
+actor: {id, full_name} | null, changes: {field: [old, new] | "changed"} | null, fields: [name] | null}`. A requirement's rows are its
+`recruiter_requirement.*` and `job_description.*` audits; a candidate's its `candidate.*` audits; `*download` rows are excluded. Access =
+the record's own GET (requirement: out of scope 404, other roles 403; candidate: non-reader 403, unknown 404); anonymous 401;
+`Cache-Control: private, no-store`. **Changed audit rows** (shape additive; no field removed): `recruiter_requirement.update|status|assign`
+(incl. rec-037 bulk reassignment, one row per job), `job_description.create|upload`, `candidate.update`, `recruiter_application.status`,
+`recruiter_interview.update|reschedule|status|feedback` add `metadata.changes`. Compensation, contact and feedback text are `"changed"`.
+## 12JV. Recruitment roles and grant keys (hrc-002) — addendum, 2026-11-04
+
+`DEC-SCOPE-374`. No migration. Additive.
+
+- `POST /admin/users`: accepts `role` `hr_manager`, `placement_officer`, `interviewer` with `division` `it` (another division → 422).
+  `hr_manager` by a super_admin only — anyone else → 403 `Only a Super Admin can create HR managers`.
+- `GET /portal/it/hr-manager/dashboard`, `/portal/it/placement-officer/dashboard`, `/portal/it/interviewer/dashboard`: the role's own
+  portal payload (403 for any other role, 404 for any other section). Rows `{job_id, role, company, location, status}` (open requirements;
+  HR Manager and Placement Officer); metrics `Open requirements` (+ `Applications`, `Interviews`, `Offers` for the HR Manager); the
+  Interviewer's payload has no rows or metrics.
+- `GET /admin/permissions/catalogue`: `roles` gains the three roles; `actions` gains `publish`, `export`, `import`, `merge`, `release`;
+  `resources` gains `jobs` (approve, publish), `candidates` (export, import, merge), `results` (release). `PUT
+  /admin/roles/{role}/permissions` accepts the new keys and roles.
+- `GET /auth/me/permissions`: `[]` for the new roles by default.
+
 ## 12JX. Candidate documents, document requests and signed links (hrc-015) — addendum, 2026-11-04
 
 `DEC-SCOPE-379`. **Resume upload** (`PUT /api/v1/recruiter/candidates/{id}/resume`) also accepts DOC (`application/msword`, judged by the

@@ -59,6 +59,7 @@ ROWS = [
     # rec_out / mgr_out: the world's company is outside their company scope (rec-003 load_scoped, 404 before the create)
     R("post", "/recruiter/requirements", _new_requirement, **allow(201, "rec", "mgr", "super"), rec_out=404, mgr_out=404),
     R("get", "/recruiter/requirements/{requirement}", **REQ_READ),
+    R("get", "/recruiter/requirements/{requirement}/history", **REQ_READ),  # hrc-004 B1: the record's readers
     R("patch", "/recruiter/requirements/{requirement}", {"location": "Bengaluru"}, **allow(200, "rec", "super"), **OUT),
     R("post", "/recruiter/requirements/{requirement}/assign", lambda w: {"recruiter_user_id": w["rec2_id"]}, **allow(200, "mgr", "super"), **OUT),
     R("post", "/recruiter/requirements/{requirement}/status", {"status": "shortlisting"}, **allow(200, "rec", "super"), **OUT),
@@ -78,6 +79,7 @@ ROWS = [
     R("post", "/recruiter/candidates", _new_candidate, **allow(201, *WRITERS)),
     R("get", "/recruiter/candidates/duplicate-check?email=nobody@example.com", **allow(200, *WRITERS)),
     R("get", "/recruiter/candidates/{candidate}", **allow(200, *READERS)),
+    R("get", "/recruiter/candidates/{candidate}/history", **allow(200, *READERS)),  # hrc-004 B1
     R("patch", "/recruiter/candidates/{candidate}", {"location": "Pune"}, **allow(200, *WRITERS)),
     R("get", "/recruiter/candidates/{candidate}/applications", **allow(200, *READERS)),  # rec-017: every candidate reader sees every row
     R("post", "/recruiter/candidates/{candidates_spare}/archive", **allow(200, *WRITERS)),
@@ -119,13 +121,16 @@ ROWS = [
     R("get", "/account/placement-pool", student=200),
     R("post", "/account/placement-pool/opt-in", {"consent_version": "v1"}, student=200),
     R("post", "/account/placement-pool/opt-out", student=200),
+    # hrc-011 (DEC-SCOPE-375) manual exchange rates: candidates.require_reader reads, recruiter.require_manager sets (the rate is global).
+    R("get", "/recruiter/catalogue/exchange-rates", **allow(200, *READERS)),
+    R("put", "/recruiter/catalogue/exchange-rates/{fx_currency}", {"inr_per_unit": "83.25"}, **allow(200, "mgr", "mgr_out", "super")),
     # hrc-015 (§2.277): the student's own documents (the world's student is in the pool); another candidate's document is a 404
     R("get", "/account/candidate-documents", student=200),
     R("post", "/account/candidate-documents", form=_document, student=201),
     R("get", "/account/candidate-documents/{candidates_document}/link", student=404),
 ]
 _POOL: dict[str, UUID] = {}
-PATH_VALUES = {"candidates_version": 1}  # the candidate's first (and only) resume version
+PATH_VALUES = {"candidates_version": 1, "fx_currency": "USD"}  # the candidate's first (and only) resume version; a rate's currency
 
 
 async def build(client, db, w) -> None:

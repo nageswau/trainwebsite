@@ -738,12 +738,18 @@ async def create_user(payload: dict, user: User = Depends(ensure_admin), db: Asy
     # gate, so a division admin gets this 403 whatever division it sends.
     if role in management_access.NEW_ROLES and user.role != "super_admin":
         raise HTTPException(403, "Only a Super Admin can create partners and accountants")
+    # hrc-002 (DEC-SCOPE-374 R1): the HR Manager will approve vacancies and release results, so a division admin cannot mint one.
+    if role == "hr_manager" and user.role != "super_admin":
+        raise HTTPException(403, "Only a Super Admin can create HR managers")
     if user.role != "super_admin" and division != user.division:
         raise HTTPException(403, "Cannot create users in another division")
     _reject_supplied_password(payload, user, USERS_ROUTE, "password")
     allowed_by_division = {
         # tel-017 (DEC-SCOPE-076, T3): a counselor belongs to IT or Overseas.
-        "it": {"it_student", "trainer", "placement_team", "hr_team", "it_admin", "bdm", "telecaller", "counselor", "coordinator"},  # nehn-030
+        "it": {
+            "it_student", "trainer", "placement_team", "hr_team", "it_admin", "bdm", "telecaller", "counselor", "coordinator",  # nehn-030
+            "hr_manager", "placement_officer", "interviewer",  # hrc-002 (DEC-SCOPE-374 R1)
+        },  # fmt: skip
         "overseas": {"overseas_student", "counselor", "university_rep", "agent", "overseas_admin", "bdm", "telecaller", "partnership_manager"},
         "global": {"super_admin", "bdm_manager", "telecaller_manager", "placement_manager", "partnership_head", "partner", "accountant"},
     }

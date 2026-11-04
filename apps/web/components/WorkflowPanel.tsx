@@ -365,7 +365,7 @@ function overseasOperationsSpecs(role: string, section: string): ActionSpec[] {
 // (apps/api/app/api/admin.py) -- keeps the dropdown from ever offering a role the backend
 // would 422 on.
 const ROLES_BY_DIVISION: Record<string, string[]> = {
-  it: ["it_student", "trainer", "placement_team", "hr_team", "counselor", "coordinator", "it_admin"], // tel-017: counselors are IT or Overseas; nehn-030
+  it: ["it_student", "trainer", "placement_team", "hr_team", "counselor", "coordinator", "placement_officer", "interviewer", "it_admin"], // tel-017: counselors are IT or Overseas; nehn-030; hrc-002
   overseas: ["overseas_student", "counselor", "university_rep", "agent", "overseas_admin"],
   // bdm-001 / tel-001: managers have no profile, so this generic form creates them; a BDM or telecaller needs its own admin page
   // (profile required).
@@ -387,7 +387,8 @@ function createUserDivisionOptions(user: User) {
 
 function createUserRoleOptions(user: User) {
   // tel-017: `counselor` is in both IT and Overseas, so the Super Admin's combined list is de-duplicated.
-  const roles = user.role === "super_admin" ? [...new Set([...ROLES_BY_DIVISION.it, ...ROLES_BY_DIVISION.overseas, ...ROLES_BY_DIVISION.global])] : ROLES_BY_DIVISION[user.division] || [];
+  // hrc-002 (DEC-SCOPE-374 R1, QA-01): an HR manager is IT but created by a Super Admin only (the API 403s an IT admin), so only its list has it.
+  const roles = user.role === "super_admin" ? [...new Set([...ROLES_BY_DIVISION.it, "hr_manager", ...ROLES_BY_DIVISION.overseas, ...ROLES_BY_DIVISION.global])] : ROLES_BY_DIVISION[user.division] || [];
   return options(roles);
 }
 
