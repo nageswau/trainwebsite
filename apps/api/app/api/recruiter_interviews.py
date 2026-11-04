@@ -20,6 +20,7 @@ from app.schemas import RecInterviewCreate, RecInterviewFeedbackIn, RecInterview
 from app.services import applications
 from app.services import interviews as svc
 from app.services.bdm_appointments import db_now
+from app.services.stale_guard import require_fresh
 
 router = APIRouter(prefix="/recruiter", tags=["recruiter-interviews"])
 
@@ -72,6 +73,12 @@ async def schedule_interview(payload: RecInterviewCreate, user: User = Depends(g
 @router.patch("/interviews/{interview_id}")
 async def update_interview(interview_id: UUID, payload: RecInterviewUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     interview, _application, job = await svc.load_for_write(db, user, interview_id, "interview_update")
+
+    async def current() -> dict:
+        return await svc.one(db, user, interview_id, await db_now(db))
+
+    await require_fresh(db, stored=interview.updated_at, expected=payload.expected_updated_at, entity=("interview", interview.id),
+                        action_prefix="recruiter_interview.", since=payload.expected_updated_at, current=current)
     changed = await svc.update(db, user, interview, job, payload)
     await db.commit()
     if changed:

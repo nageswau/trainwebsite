@@ -10116,6 +10116,7 @@ class CandidateUpdate(_CandidateFields):
     source_id: UUID = None
     status: CandidateStatus = None
     preferred_locations: Annotated[list[str], AfterValidator(_places)] = None
+    expected_updated_at: datetime | None = None  # hrc-003: the version the form showed; another one is 409 `record_changed`
 
 
 class CandidateResumeOut(BaseModel):
@@ -10240,6 +10241,7 @@ class RecRequirementUpdate(BaseModel):
     priority: Literal[JOB_PRIORITIES] | None = None
     required_skills: list[RecSkillName] | None = Field(default=None, max_length=30)
     preferred_skills: list[RecSkillName] | None = Field(default=None, max_length=30)
+    expected_updated_at: datetime | None = None  # hrc-003: the version the form showed; another one is 409 `record_changed`
 
     @model_validator(mode="after")
     def _ranges(self):
@@ -10309,6 +10311,7 @@ class RecJdCreate(BaseModel):
     openings: Annotated[int | None, Field(ge=1, le=10000)] = None
     contact_id: UUID | None = None
     closing_date: date | None = None
+    expected_version: Annotated[int | None, Field(ge=0)] = None  # hrc-003: the current version the form showed (0 = none); another is 409
 
 # --- rec-024 (DEC-SCOPE-131, spec §3): recruiter follow-ups ----------------------------------------------------------------------
 REC_FOLLOW_UP_LABELS = {"notes": "Notes", "outcome": "Outcome"}
@@ -10698,6 +10701,7 @@ class RecInterviewUpdate(BaseModel):
     interviewer: _bdm_appt_optional(160) = None
     location: _bdm_appt_optional(200) = None
     contact_id: UUID | None = None
+    expected_updated_at: datetime | None = None  # hrc-003: the version the form showed; another one is 409 `record_changed`
 
     @model_validator(mode="after")
     def _required_stay_set(self):

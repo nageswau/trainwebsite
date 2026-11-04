@@ -13,10 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.api.portfolio_certificates import HEADERS
 from app.core.database import get_db
-from app.models import JobDescription, User
+from app.models import Job, JobDescription, User
 from app.schemas import RecJdCreate
 from app.services import job_descriptions as svc
 from app.services import recruiter_requirements as requirements
+from app.services.stale_guard import require_fresh
 
 router = APIRouter(prefix="/recruiter/requirements", tags=["recruiter-job-descriptions"])
 
@@ -27,14 +28,30 @@ async def get_jd(requirement_id: UUID, user: User = Depends(get_current_user), d
     return await svc.jd_out(db, user, job)
 
 
+async def _require_fresh(db: AsyncSession, user: User, job: Job, previous: JobDescription | None, expected: int | None) -> None:
+    """hrc-003 (S1): the token is the current version number the form showed (0 = none). The versions are kept, so the changed fields
+    are the exact difference between the version the form showed and the current one."""
+    stored = previous.version if previous else 0
+    if expected is None or expected == stored:
+        return
+    seen = await db.scalar(select(JobDescription).where(JobDescription.job_id == job.id, JobDescription.version == expected)) if expected else None
+    names = [f for f in RecJdCreate.model_fields if f != "expected_version"]
+    fields = [f for f in names if getattr(seen, f, None) != getattr(previous, f, None)]
+    if getattr(seen, "storage_key", None) != getattr(previous, "storage_key", None):
+        fields.append("file")
+    await require_fresh(db, stored=stored, expected=expected, entity=("job", job.id), action_prefix="job_description.",
+                        since=seen.created_at if seen else None, current=lambda: svc.jd_out(db, user, job), fields=fields)
+
+
 @router.post("/{requirement_id}/jd", status_code=201)
 async def create_jd(requirement_id: UUID, payload: RecJdCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """A new current version from the fields sent; the current version's file carries forward (JD4)."""
     job = await requirements.load_scoped(db, user, requirement_id, lock=True)
     requirements.require(user, job, "can_edit", "jd")
     previous = await svc.current(db, job.id)
+    await _require_fresh(db, user, job, previous, payload.expected_version)
     await svc.check_contact(db, job, payload.contact_id, previous.contact_id if previous else None)
-    values = payload.model_dump()
+    values = payload.model_dump(exclude={"expected_version"})
     jd = await svc.add_version(db, user, job, values, None)
     svc.audit(db, user, "create", job, {"version": jd.version, "jd_number": jd.jd_number, "fields": sorted(k for k, v in values.items() if v is not None)})
     await db.commit()

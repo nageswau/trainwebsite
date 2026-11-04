@@ -39,6 +39,7 @@ from app.services import candidate_search, candidate_skills, course_skills
 from app.services import candidates as svc
 from app.services import resume_extraction as extraction
 from app.services.reports import placement as placement_reports
+from app.services.stale_guard import require_fresh
 from app.services.telecaller import _parse
 
 router = APIRouter(prefix="/recruiter/candidates", tags=["recruiter-candidates"])
@@ -152,7 +153,14 @@ async def update_candidate(candidate_id: UUID, payload: dict = Body(...), user: 
     """Partial. Moving to another source needs an active one; keeping a since-deactivated source is allowed (the rec-002 rule)."""
     svc.require_writer(user)
     changes = _body(CandidateUpdate, payload).model_dump(exclude_unset=True)
+    expected = changes.pop("expected_updated_at", None)
     candidate = await svc.load(db, candidate_id, lock=True)
+
+    async def current() -> dict:  # the 200 response's shape and fields (response_model), never more
+        return CandidateDetail.model_validate(await svc.detail_out(db, user, candidate)).model_dump()
+
+    await require_fresh(db, stored=candidate.updated_at, expected=expected, entity=("candidates", candidate.id), action_prefix="candidate.",
+                        since=expected, current=current)
     if candidate.archived_at is not None:
         raise HTTPException(409, svc.ARCHIVED)
     if changes.get("source_id", candidate.source_id) != candidate.source_id:

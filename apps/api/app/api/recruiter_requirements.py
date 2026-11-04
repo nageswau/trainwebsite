@@ -21,6 +21,7 @@ from app.services import applications, candidates, matching
 from app.services import recruiter_companies as companies
 from app.services import recruiter_requirements as svc
 from app.services.recruiter import ROLE, recruiter_context
+from app.services.stale_guard import require_fresh
 
 router = APIRouter(prefix="/recruiter/requirements", tags=["recruiter-requirements"])
 Recruiter = aliased(User)
@@ -138,6 +139,8 @@ async def update_requirement(requirement_id: UUID, payload: RecRequirementUpdate
     """Only the fields sent; values equal to the stored ones are not changes (no audit, no updated_at bump)."""
     job = await svc.load_scoped(db, user, requirement_id, lock=True)
     svc.require(user, job, "can_edit", "update")
+    await require_fresh(db, stored=job.updated_at, expected=payload.expected_updated_at, entity=("job", job.id), action_prefix="recruiter_requirement.",
+                        since=payload.expected_updated_at, current=lambda: svc.requirement_out(db, user, job, refresh=False))
     changes = payload.model_dump(exclude_unset=True, include=set(REC_REQUIREMENT_FIELDS))
     if "description" in changes:
         changes["description"] = changes["description"] or ""
@@ -154,6 +157,7 @@ async def update_requirement(requirement_id: UUID, payload: RecRequirementUpdate
     ):
         changed.append("skills")
     if changed:
+        job.updated_at = func.now()  # hrc-003 S1: a skills-only change (a child table) moves the token too
         await db.flush()
         svc.audit(db, user, "update", job.id, {"fields": changed})
     await db.commit()

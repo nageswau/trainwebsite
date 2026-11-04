@@ -165,7 +165,7 @@ describe("RecruiterApplicationInterviews", () => {
     writeReply = () => res(recInterview({ interviewer: "Ravi" }));
     fireEvent.click(within(form).getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(writes()).toHaveLength(1));
-    expect(writes()[0]).toEqual(["/api/v1/recruiter/interviews/I1", "PATCH", { interviewer: "Ravi" }]);
+    expect(writes()[0]).toEqual(["/api/v1/recruiter/interviews/I1", "PATCH", { interviewer: "Ravi", expected_updated_at: "2026-10-09T05:30:00.123456+00:00" }]); // hrc-003: the token
   });
 
   it("hides every write for a read-only viewer and an application that cannot be scheduled", async () => {
