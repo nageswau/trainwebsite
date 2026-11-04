@@ -8,9 +8,10 @@ import StaleRecordNotice from "@/components/StaleRecordNotice";
 import { sendJson } from "@/lib/apiErrors";
 import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
 import {
-  CANDIDATES_PATH, CANDIDATES_URL, COMPENSATION_VIEW, DUPLICATE_CHECK_URL, EMPTY_FORM, FIELDS, STATUSES, STATUS_LABEL, candidateBody, candidateUrl,
-  formFields, formFromDetail, missingRequired, type CandidateDetail, type CandidateForm, type CandidateMatch,
+  AMOUNTS, CANDIDATES_PATH, CANDIDATES_URL, COMPENSATION_LABELS, COMPENSATION_VIEW, DUPLICATE_CHECK_URL, EMPTY_FORM, FIELDS, NEGOTIABLE, PERIOD_LABEL,
+  STATUSES, STATUS_LABEL, candidateBody, candidateUrl, formFromDetail, missingRequired, type CandidateDetail, type CandidateForm, type CandidateMatch,
 } from "@/lib/recruiterCandidates";
+import { EXCHANGE_RATES_URL, type ExchangeRate } from "@/lib/recruiterCatalogue";
 import { useStaleGuard } from "@/lib/staleGuard";
 import { usePermissions } from "@/lib/usePermissions";
 
@@ -73,6 +74,19 @@ export default function RecruiterCandidateForm({ initial, onSaved, onLatest, onC
     return () => controller.abort();
   }, []);
 
+  // hrc-011: INR plus every currency with a rate (and a stored one, so an edit never loses it). A failed read leaves INR only.
+  const [currencies, setCurrencies] = useState<string[]>([]);
+  useEffect(() => {
+    if (!compensation) return;
+    const controller = new AbortController();
+    fetch(EXCHANGE_RATES_URL, { signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { items?: ExchangeRate[] } | null) => setCurrencies((data?.items ?? []).map((r) => r.currency)))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [compensation]);
+  const currencyOptions = (selected: string) => [...new Set(["INR", ...currencies, selected].filter(Boolean))];
+
   const set = (key: keyof CandidateForm, value: string) => setValues((v) => ({ ...v, [key]: value }));
   // An edit keeps a source deactivated since it was chosen (the API allows keeping it); it is offered alongside the active ones.
   const kept = initial && !sources.some((s) => s.id === initial.source.id) ? [{ ...initial.source, sort_order: -1 }] : [];
@@ -117,7 +131,7 @@ export default function RecruiterCandidateForm({ initial, onSaved, onLatest, onC
     <div className="field" key={key}>
       <label htmlFor={`cand-${key}`}>{label}{key === "name" && " *"}</label>
       <input id={`cand-${key}`} type={type} value={values[key]} disabled={busy} maxLength={type === "number" ? undefined : max}
-        min={min} max={numMax} step={key.endsWith("salary") ? "0.01" : type === "number" ? 1 : undefined} inputMode={type === "number" ? "numeric" : undefined}
+        min={min} max={numMax} step={type === "number" ? 1 : undefined} inputMode={type === "number" ? "numeric" : undefined}
         aria-required={key === "name" || undefined} aria-describedby={hint ? `cand-${key}-hint` : undefined}
         onChange={(e) => set(key, e.target.value)} onBlur={key === "mobile" || key === "email" ? () => void checkDuplicates() : undefined} />
       {/* QA-04: the hint sits under the input, so the inputs of one row line up */}
@@ -131,7 +145,7 @@ export default function RecruiterCandidateForm({ initial, onSaved, onLatest, onC
       <form onSubmit={submit} noValidate className="action-card" style={{ display: "grid", gap: 12 }}>
         <p className="muted" style={{ margin: 0, fontSize: 13 }}>* Required. Enter a mobile number or an email (or both).</p>
         <div className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))", alignItems: "start" }}>
-          {formFields(compensation).map(input)}
+          {FIELDS.map(input)}
           <div className="field">
             <label htmlFor="cand-source_id">Source *</label>
             <select id="cand-source_id" aria-required value={values.source_id} disabled={busy} onChange={(e) => set("source_id", e.target.value)}>
@@ -152,10 +166,37 @@ export default function RecruiterCandidateForm({ initial, onSaved, onLatest, onC
             </select>
           </div>
         </div>
+        {compensation && (
+          <fieldset className="form-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))", alignItems: "start", border: "1px solid var(--border, #e5e7eb)", borderRadius: 8, padding: 12, margin: 0 }}>
+            <legend style={{ fontWeight: 600, padding: "0 4px" }}>Compensation</legend>
+            <p className="muted" style={{ margin: 0, fontSize: 13, gridColumn: "1 / -1" }}>Enter each amount as the candidate states it. Leave it blank if not provided. Search compares the yearly rupee figure.</p>
+            {AMOUNTS.map(({ key, label }) => (
+              <div className="field" key={key}>
+                <label htmlFor={`cand-${key}_salary`}>{label}</label>
+                <input id={`cand-${key}_salary`} type="number" min={0} step="0.01" inputMode="decimal" value={values[`${key}_salary`]} disabled={busy}
+                  onChange={(e) => set(`${key}_salary`, e.target.value)} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <select aria-label={`${label} currency`} value={values[`${key}_salary_currency`]} disabled={busy} onChange={(e) => set(`${key}_salary_currency`, e.target.value)} style={{ flex: "0 0 6rem" }}>
+                    {currencyOptions(values[`${key}_salary_currency`]).map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <select aria-label={`${label} pay period`} value={values[`${key}_salary_period`]} disabled={busy} onChange={(e) => set(`${key}_salary_period`, e.target.value)} style={{ flex: 1 }}>
+                    {Object.entries(PERIOD_LABEL).map(([k, text]) => <option key={k} value={k}>{text}</option>)}
+                  </select>
+                </div>
+              </div>
+            ))}
+            <div className="field">
+              <label htmlFor="cand-salary_negotiable">Negotiable</label>
+              <select id="cand-salary_negotiable" value={values.salary_negotiable} disabled={busy} onChange={(e) => set("salary_negotiable", e.target.value)}>
+                {NEGOTIABLE.map((n) => <option key={n.key} value={n.key}>{n.label}</option>)}
+              </select>
+            </div>
+          </fieldset>
+        )}
         {sourcesFailed && <p className="form-error" role="alert" style={{ margin: 0, fontSize: 13 }}>Unable to load the candidate sources. Reload the page to try again.</p>}
         <StaleRecordNotice
           guard={guard}
-          labelOf={(key) => FIELDS.find((f) => f.key === key)?.label ?? LABELS[key] ?? key.replace(/_/g, " ")}
+          labelOf={(key) => FIELDS.find((f) => f.key === key)?.label ?? COMPENSATION_LABELS[key] ?? LABELS[key] ?? key.replace(/_/g, " ")}
           display={(key, value) => (key === "source_id" ? ([...kept, ...sources].find((s) => s.id === value)?.name ?? value) : key === "status" ? (STATUS_LABEL[value] ?? value) : value)}
           onReload={guard.reload}
           onReview={guard.reviewMine}

@@ -11,7 +11,7 @@ export type CardSkill = { name: string; level: string; status: "claimed" | "veri
 export type SnippetSegment = { text: string; hit: boolean };
 export type CandidateCard = {
   id: string; candidate_code: string; name: string; preferred_role: string | null; current_company: string | null; experience_months: number | null;
-  location: string | null; notice_days: number | null; expected_salary?: string | null; source: SourceRef; source_detail: string | null;
+  location: string | null; notice_days: number | null; expected_salary?: string | null; expected_annual_inr?: string | null; source: SourceRef; source_detail: string | null;
   status: CandidateStatus; skills: CardSkill[]; snippet?: SnippetSegment[] | null;
 };
 export type Facet = { key: string; count: number };

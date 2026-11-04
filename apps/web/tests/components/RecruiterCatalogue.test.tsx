@@ -34,8 +34,8 @@ afterEach(() => {
 });
 
 describe("tabs", () => {
-  it("offers the six lists and campaigns, and nothing else", () => {
-    expect(Object.keys(TABS)).toEqual(["lead-sources", "candidate-sources", "industries", "company-sizes", "contact-roles", "job-categories", "campaigns"]);
+  it("offers the six lists, campaigns and (hrc-011) exchange rates, and nothing else", () => {
+    expect(Object.keys(TABS)).toEqual(["lead-sources", "candidate-sources", "industries", "company-sizes", "contact-roles", "job-categories", "campaigns", "exchange-rates"]);
     expect(isTab("campaigns") && isTab("industries")).toBe(true);
     expect(isTab("colours") || isTab("toString")).toBe(false);
   });

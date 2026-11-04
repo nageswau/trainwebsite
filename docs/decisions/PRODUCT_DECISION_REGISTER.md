@@ -11364,3 +11364,19 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   the UI hides the restricted inputs and columns.
 - **Numbering:** migration `0250_compensation_grant` (seed only); API §12JQ; RBAC §2.270.
 - **Feature ID authorized:** `hrc-001`. **Status:** built on `worktree-hrc-001`.
+
+### DEC-SCOPE-375 — Candidate compensation model and normalisation (`hrc-011`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-011` (PDF §8.3 B; PDF classified `UNVERIFIED`). Scope approved by the
+  owner 2026-11-01 (backlog Q-00: all phases). Dependency hrc-001 (DEC-SCOPE-371) merged. The owner said to proceed with the recommended
+  answers, so C1–C9 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-04-hrc-011-candidate-compensation-design.md`.
+- **Builder's calls:** C1 (Q-10) FX source = a manual `rec_fx_rates` table (rupees per unit, 0 < rate ≤ 10,000), set by placement
+  managers / super_admin under Catalogues → Exchange rates; INR implicit; no rate seeded; never deleted. C2 (Q-10) pay periods = year and
+  month only (hourly etc. 422). C3 current, expected and minimum each keep amount + currency + period; one `salary_negotiable` (null = not
+  provided). C4 an amount without currency/period keeps the stored one, else INR per year; clearing an amount clears them. C5 a rate change
+  recomputes every amount in that currency in the same transaction (candidate `updated_at` kept); candidate saves read the rate FOR SHARE.
+  C6 Find Candidates / pool `salary_min` / `salary_max` compare `expected_annual_inr`; cards carry it. C7 every new key follows the hrc-001
+  `candidates.compensation.view` grant (absent without it; sending one is 403). C8 annual INR = amount × periods × rate, half-up to 2 dp.
+  C9 `current_salary` / `expected_salary` keep their names (now "as entered"); existing values backfilled as INR per year.
+- **Numbering:** migration `0251_candidate_compensation`; API §12JT; RBAC §2.273.
+- **Feature ID authorized:** `hrc-011`. **Status:** built on `worktree-hrc-011`.

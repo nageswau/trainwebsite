@@ -3700,3 +3700,10 @@ request carrying one (or a Find Candidates `salary_min` / `salary_max`) is 403. 
 offers}` writes: `placement_team` within the `/recruiter/*` record scope (404 outside, 403 without a recruiter profile), `it_admin`
 IT-wide, `super_admin` all; `hr_team` 403. Students and employers never receive an interview `result` or a decided interview status.
 `/files/download` and `/local-files` 404 the recruitment prefixes for every role. Pinned by `apps/api/tests/test_hrc_001_access.py`.
+
+### 2.273 Candidate compensation and exchange rates *(added 2026-11-04 — `DEC-SCOPE-375`, hrc-011)*
+
+The new package fields (currency, pay period, minimum, negotiable, annual INR) follow `candidates.compensation.view` exactly like the
+salaries (§2.270): absent without it, 403 when sent. Exchange rates: read by the candidate readers (`placement_team`,
+`placement_manager`, `hr_team`, `super_admin`) — a rate is not compensation; written by `placement_manager` and `super_admin` only (others
+403, anonymous 401). Pinned by `apps/api/tests/test_hrc_011_compensation.py`.
