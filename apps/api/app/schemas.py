@@ -119,6 +119,7 @@ from app.models import (
     RECRUITER_CONTRACT_STATUSES,
     RECRUITER_FOLLOW_UP_REASONS,
     RECRUITER_MEETING_TYPES,
+    REJECTION_REASONS,
     RELATIONSHIP_STRENGTHS,
     SALARY_PERIODS,
     SCORE_TYPES,
@@ -10508,6 +10509,62 @@ class CandidateAssignee(BaseModel):
     role: str
 
 
+# --- hrc-024 (DEC-SCOPE-393): candidate routing ----------------------------------------------------------------------------------------
+CANDIDATE_ROUTING_LABELS = {"kind": "Rule type", "source_id": "Candidate source", "skill_category_id": "Skill category", "location": "Location",
+                            "recruiter_user_id": "Recruiter", "default_recruiter_user_id": "Default recruiter", "strategy": "Strategy"}  # fmt: skip
+ROUTING_VALUE = {"source": ("source_id", "Choose a candidate source"), "skill_category": ("skill_category_id", "Choose a skill category"),
+                 "location": ("location", "Enter a location")}  # fmt: skip
+
+
+class CandidateRoutingRuleIn(BaseModel):
+    """R2: the kind's value is required; the other kinds' values are dropped."""
+
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["source", "skill_category", "location"]
+    source_id: UUID | None = None
+    skill_category_id: UUID | None = None
+    location: Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] | None = None
+    recruiter_user_id: UUID
+
+    @model_validator(mode="after")
+    def _one_value(self):
+        field, message = ROUTING_VALUE[self.kind]
+        if not getattr(self, field):
+            raise ValueError(message)
+        for other, _ in ROUTING_VALUE.values():
+            if other != field:
+                setattr(self, other, None)
+        return self
+
+
+class CandidateRoutingSettingsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    default_recruiter_user_id: UUID | None
+    strategy: Literal["round_robin", "least_workload"]
+
+
+class RoutingPerson(BaseModel):
+    id: UUID
+    full_name: str
+    active: bool
+
+
+class CandidateRoutingRuleOut(BaseModel):
+    id: UUID
+    kind: str
+    value_id: UUID | None
+    value_label: str
+    recruiter: RoutingPerson
+    created_at: datetime
+
+
+class CandidateRoutingOut(BaseModel):
+    default_recruiter: RoutingPerson | None
+    strategy: str
+    rules: list[CandidateRoutingRuleOut]
+    can_edit: bool
+
+
 # --- hrc-014 (DEC-SCOPE-377): duplicate review and merge ------------------------------------------------------------------------------
 CandidateMergeField = Literal["name", "location", "qualification", "college", "passing_year", "experience_months", "current_company", "notice_days", "preferred_role", "linkedin"]  # candidate_merge.FIELDS
 CandidateDuplicateStatus = Literal["open", "dismissed", "merged"]
@@ -11015,6 +11072,7 @@ class RecApplicationStatusChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: Literal[APPLICATION_STATUSES]
     note: _rec_requirement_text_type(500, multiline=True) = None
+    rejection_reason: Literal[REJECTION_REASONS] | None = None  # hrc-026 (A7): required when status is rejected (services/applications)
 
 
 # --- rec-029 (DEC-SCOPE-178): campus recruitment drives (services/recruitment_drives) ----------------------------------------------------

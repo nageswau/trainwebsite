@@ -1206,7 +1206,28 @@ class JobDescription(Base):
 
 # rec-017 (DEC-SCOPE-136, A1): the §12 per-requirement statuses + withdrawn. Migration 0121 repeats them (test_rec_017_migration).
 APPLICATION_STATUSES = ("sourced", "screened", "shortlisted", "profile_shared", "interview", "selected", "joined", "rejected", "withdrawn")
-APPLICATION_CHECKS = {"ck_job_applications_status": "status IN (" + ", ".join(f"'{s}'" for s in APPLICATION_STATUSES) + ")"}
+# hrc-026 (DEC-SCOPE-394 A3/A5/A7): where an application came from, the structured rejection reasons, and the stage the candidate sees
+# (every status but the internal Profile Shared). Migration 0271 repeats them (test_hrc_026_migration). Labels live in services/applications.py.
+APPLICATION_SOURCES = ("portal", "recruiter", "employer", "drive")
+REJECTION_REASONS = (
+    "skills_mismatch", "experience_mismatch", "qualification_mismatch", "salary_mismatch", "location_mismatch", "screening_not_cleared",
+    "interview_not_cleared", "not_reachable", "client_rejected", "position_filled", "other",
+)
+CANDIDATE_VISIBLE_STATUSES = tuple(s for s in APPLICATION_STATUSES if s != "profile_shared")
+JOB_APPLICATION_CODE_SEQ = Sequence("job_application_code_seq", metadata=Base.metadata)
+JOB_APPLICATION_CODE_DEFAULT = "'JA-' || to_char(nextval('job_application_code_seq'), 'FM999999999000000')"
+def _visible_status(status: str | None) -> str:
+    """A row inserted directly (the seed, tests) starts the candidate's view at its own status when that is visible."""
+    return status if status in CANDIDATE_VISIBLE_STATUSES else "sourced"
+
+
+APPLICATION_CHECKS = {
+    "ck_job_applications_status": "status IN (" + ", ".join(f"'{s}'" for s in APPLICATION_STATUSES) + ")",
+    "ck_job_applications_source": "source IN (" + ", ".join(f"'{s}'" for s in APPLICATION_SOURCES) + ")",
+    "ck_job_applications_candidate_status": "candidate_status IN (" + ", ".join(f"'{s}'" for s in CANDIDATE_VISIBLE_STATUSES) + ")",
+    "ck_job_applications_rejection_reason": "rejection_reason IS NULL OR (status = 'rejected' AND rejection_reason IN ("
+    + ", ".join(f"'{r}'" for r in REJECTION_REASONS) + "))",
+}
 
 
 class JobApplication(Base, TimestampMixin):
@@ -1235,6 +1256,13 @@ class JobApplication(Base, TimestampMixin):
     # hrc-009 (DEC-SCOPE-390 R3/R4): set when the requirement's eligibility changed while the application was open; cleared by a status
     # move or a confirmed review. NULL = nothing to review.
     needs_review_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # hrc-026 (DEC-SCOPE-394): the database numbers every application (JA-000001); its source and owning recruiter; the last
+    # candidate-visible stage (what the portal and notices show); and the reason while it is rejected.
+    application_code: Mapped[str] = mapped_column(String(20), unique=True, server_default=text(JOB_APPLICATION_CODE_DEFAULT))
+    source: Mapped[str] = mapped_column(String(20), server_default=text("'recruiter'"))
+    owner_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    candidate_status: Mapped[str] = mapped_column(String(30), default=lambda ctx: _visible_status(ctx.get_current_parameters().get("status")), server_default=text("'sourced'"))
+    rejection_reason: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
 
 class JobApplicationStatusHistory(Base):
@@ -1250,6 +1278,7 @@ class JobApplicationStatusHistory(Base):
     note: Mapped[str | None] = mapped_column(String(500), nullable=True)
     changed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    rejection_reason: Mapped[str | None] = mapped_column(String(40), nullable=True)  # hrc-026 (A9): the reason of a move into Rejected
 
 
 # rec-020 (DEC-SCOPE-148, IV1/IV2): the EVID-018 §14 rounds and statuses, in source order. Migration 0133 repeats them
@@ -6603,7 +6632,7 @@ class CandidateCertification(Base):
 
 # hrc-012 (DEC-SCOPE-382 O4/O6): collaborators and the append-only assignment history. Migration 0259 repeats the checks.
 CANDIDATE_ASSIGNMENT_KINDS = ("owner", "placement_officer", "collaborator_added", "collaborator_removed")
-CANDIDATE_ASSIGNMENT_REASONS = ("create", "assign", "reassign")
+CANDIDATE_ASSIGNMENT_REASONS = ("create", "assign", "reassign", "route")  # hrc-024 (DEC-SCOPE-393 R8): `route`, migration 0270
 
 
 class CandidateCollaborator(Base):
@@ -6620,12 +6649,13 @@ class CandidateCollaborator(Base):
 
 
 class CandidateAssignmentHistory(Base):
-    """hrc-012 (O6, AC3): one row per ownership change; `from_user_id` NULL = nobody before, `to_user_id` NULL = cleared/removed."""
+    """hrc-012 (O6, AC3): one row per ownership change; `from_user_id` NULL = nobody before, `to_user_id` NULL = cleared/removed.
+    hrc-024 (R8): `changed_by_user_id` NULL = the system (reason `route`)."""
 
     __tablename__ = "candidate_assignment_history"
     __table_args__ = (
         CheckConstraint("kind IN ('owner', 'placement_officer', 'collaborator_added', 'collaborator_removed')", name="ck_candidate_assignment_history_kind"),
-        CheckConstraint("reason IN ('create', 'assign', 'reassign')", name="ck_candidate_assignment_history_reason"),
+        CheckConstraint(f"reason IN ({', '.join(repr(r) for r in CANDIDATE_ASSIGNMENT_REASONS)})", name="ck_candidate_assignment_history_reason"),
         Index("ix_candidate_assignment_history_candidate", "candidate_id", "created_at"),
     )
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -6633,9 +6663,62 @@ class CandidateAssignmentHistory(Base):
     kind: Mapped[str] = mapped_column(String(24))
     from_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     to_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    changed_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    changed_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
     reason: Mapped[str] = mapped_column(String(10))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# hrc-024 (DEC-SCOPE-393, migration 0270): candidate routing -- rules by kind, one settings row and a round-robin cursor per rule group.
+CANDIDATE_ROUTING_KINDS = ("source", "skill_category", "location")  # R1: the routing order
+CANDIDATE_ROUTING_STRATEGIES = ("round_robin", "least_workload")
+CANDIDATE_ROUTING_RULE_CHECKS = {
+    "ck_candidate_routing_rules_kind": f"kind IN ({', '.join(repr(k) for k in CANDIDATE_ROUTING_KINDS)})",
+    "ck_candidate_routing_rules_value": (
+        "(kind = 'source') = (source_id IS NOT NULL) AND (kind = 'skill_category') = (skill_category_id IS NOT NULL)"
+        " AND (kind = 'location') = (location IS NOT NULL)"
+    ),
+}
+CANDIDATE_ROUTING_RULE_VALUE = "coalesce(source_id::text, skill_category_id::text, lower(location))"
+
+
+class CandidateRoutingRule(Base, TimestampMixin):
+    """hrc-024 (R2): a candidate whose source, skill category or location is the rule's value goes to its recruiter. Rules on one
+    (kind, value) form a group the strategy picks from. A rule is added or deleted, never edited."""
+
+    __tablename__ = "candidate_routing_rules"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in CANDIDATE_ROUTING_RULE_CHECKS.items()),
+        Index("uq_candidate_routing_rules_rule", "kind", text(CANDIDATE_ROUTING_RULE_VALUE), "recruiter_user_id", unique=True),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    kind: Mapped[str] = mapped_column(String(16))
+    source_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("rec_candidate_sources.id"), nullable=True)
+    skill_category_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("skill_categories.id"), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    recruiter_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"))
+    created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class CandidateRoutingSetting(Base, TimestampMixin):
+    """hrc-024 (R4/R6): the one settings row (id 1); no row = round robin and no default recruiter."""
+
+    __tablename__ = "candidate_routing_settings"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_candidate_routing_settings_one_row"),
+        CheckConstraint(f"strategy IN ({', '.join(repr(s) for s in CANDIDATE_ROUTING_STRATEGIES)})", name="ck_candidate_routing_settings_strategy"),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    default_recruiter_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    strategy: Mapped[str] = mapped_column(String(16), default="round_robin", server_default=text("'round_robin'"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
+class CandidateRoutingCursor(Base):
+    """hrc-024 (R6/R12): the last recruiter a rule group gave a candidate to; locked FOR UPDATE so concurrent intakes take turns."""
+
+    __tablename__ = "candidate_routing_cursors"
+    group_key: Mapped[str] = mapped_column(String(120), primary_key=True)
+    last_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
 class CandidateOwnershipSetting(Base, TimestampMixin):

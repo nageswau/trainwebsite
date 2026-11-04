@@ -11730,6 +11730,53 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0269_match_engine`; API §12KK; RBAC §2.286.
 - **Feature ID authorized:** `hrc-018`. **Status:** built on `worktree-hrc-018`.
 
+### DEC-SCOPE-393 — Candidate routing rules and unassigned queue (`hrc-024`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-024` (PDF §6.1 steps 6–8, §6.2 "default recruiter", §13 "No recruiter
+  assigned → exception queue + alert HR Manager"; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00).
+  Dependencies hrc-012 (`DEC-SCOPE-382`), hrc-023 (`DEC-SCOPE-389`) and itc-002 (`DEC-SCOPE-336`) merged. The owner said to proceed with
+  the recommended answers, so R1–R12 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-024-candidate-routing-design.md`.
+- **Behaviour:** a candidate the website creates (a hrc-023 job application or a hrc-022 portal verification) gets a primary recruiter:
+  the default recruiter when one is set and active, else the first rule type that matches — candidate source, then skill category (any
+  of the candidate's skills, own or tagged category), then location (city, else location; exact, ignoring capitals). Several recruiters on
+  one rule value share it by round robin (default) or least workload (fewest open owned candidates; ties take turns). Inactive recruiters
+  are skipped. No match → the candidate stays unassigned (hrc-012's "Unassigned" filter is the queue; the ownership panel assigns) and every
+  active placement manager (linked to the queue) and HR manager (no link) gets `it.candidate.unassigned`. A routed assignment is hrc-012's:
+  history row (reason `route`, no actor = the system), `candidate.assign` audit row naming the method and rule, `it.candidate.assigned`.
+- **Builder's calls:** R1 order default → source → skill category → location; branch is not built (no branch exists on candidates or
+  recruiters). R2 rule = (kind, value, recruiter); the oldest matching rule's value is the group. R3 eligible = hrc-012's active recruiter
+  with a profile. R4 an inactive default recruiter → the rules. R6 one strategy setting. R7 only website-created candidates; matched,
+  claimed, recruiter-created and imported candidates are not routed; routing runs in a SAVEPOINT (an error leaves the candidate unassigned
+  and alerted). R9 `hr_manager` alerted without a link (no candidate screens). R10 queue and manual assignment reuse hrc-012. R11 placement
+  managers and super_admin read and change routing; rules are added and deleted, not edited. R12 per-group cursor FOR UPDATE, chosen
+  recruiter FOR SHARE; a duplicate rule is 409.
+- **Not built:** branch routing; re-routing when a profile changes later; the hrc-025 workspace; a shared lead/candidate distributor (the
+  candidate side reuses `lead_distribution.next_in_turn` only).
+- **Numbering:** migration `0270_candidate_routing`; API §12KL; RBAC §2.287.
+- **Feature ID authorized:** `hrc-024`. **Status:** built on `worktree-hrc-024`.
+### DEC-SCOPE-394 — Application record completion (`hrc-026`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-026` (PDF §9 stage table, §16 "unique IDs for … Application", §17 QA "New
+  applications appear … with a unique Application ID"; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00).
+  Dependency hrc-004 (DEC-SCOPE-376) merged. The owner said to proceed with the recommended answers, so Q-27, Q-28 and A1–A10 are **the
+  builder's calls (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-04-hrc-026-application-record-design.md`.
+- **Behaviour:** every job application has a database-numbered Application ID (`JA-000001`), a source (candidate portal, recruiter,
+  employer, campus drive) and an owning recruiter, shown on the requirement board; the candidate's Applications list and the student
+  portal show the ID. A move to Rejected needs a reason from a fixed list ("Other" also needs a note), kept on the row, in the history and
+  in the audit, and cleared on reopen; screening and interview rejections record their own reason. A candidate who applies from the
+  portal gets an "Application received" notice with the ID. Profile Shared is internal: it never notifies the candidate and the portal keeps
+  showing the last candidate-visible stage, in the candidate's words (Sourced → "Received", Screened → "Screening").
+- **Builder's calls:** Q-27 the `JA-` prefix (APP- is ccrm-011's). Q-28 no stored stage is added or renamed (no status CHECK change);
+  interview and offer stages stay derived from their records; no receipt for recruiter- or employer-added applications. A3 only Profile
+  Shared is internal. A4 a stored `candidate_status` (the last visible stage; a notice only when it changes). A5 the four sources, derived
+  in `applications.create`; website/import applications are not created by anything yet. A6 owner = the adding recruiter, else the
+  requirement's; no reassignment. A7 eleven reasons, required on every explicit move to Rejected (recruiter route and the legacy PATCH);
+  never shown to the candidate. A8 the receipt is an in-app notice plus the usual queued deliveries. A9 history and audit carry the reason.
+- **Not built:** owner reassignment, new stored stages, applications for external candidates (hrc-027), turning hrc-023's website
+  applications into job applications.
+- **Numbering:** migration `0271_application_record`; API §12KM. No new permission.
+- **Feature ID authorized:** `hrc-026`. **Status:** built on `worktree-hrc-026`.
 ### DEC-SCOPE-396 — Candidate consent, retention, deletion and access revocation (`hrc-035`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-035` (PDF §2 consent, §15 "consent … retention/deletion workflows …

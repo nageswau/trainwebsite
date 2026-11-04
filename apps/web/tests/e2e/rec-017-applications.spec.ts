@@ -28,6 +28,7 @@ async function changeStatus(page: Page, name: string, status: string) {
   await section.getByRole("button", { name: `Change status of ${name}` }).click();
   const form = section.getByRole("form", { name: `Change status of ${name}` });
   await form.getByLabel("New status").selectOption({ label: status });
+  if (status === "Rejected") await form.getByLabel("Rejection reason").selectOption({ label: "Skills do not match" }); // hrc-026 AC3
   await form.getByRole("button", { name: "Save status" }).click();
   return form;
 }

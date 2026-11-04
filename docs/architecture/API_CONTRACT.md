@@ -5809,6 +5809,36 @@ qualification?, location?, salary?: bool}`; omitted = unchanged; an unknown key 
 **Changed (behaviour):** scores use the six weighted factors (rec-016's fixed experience and location points are gone), and an enabled
 hard filter excludes candidates who miss it or have not recorded the value.
 
+## 12KL. Candidate routing rules and unassigned queue (hrc-024) — addendum, 2026-11-04
+
+`DEC-SCOPE-393`. **New** (placement managers and super_admin; every other role 403 "Only a placement manager can see or change candidate
+routing", anonymous 401): `GET /api/v1/recruiter/candidate-routing` → `{"default_recruiter": {id, full_name, active} | null, "strategy":
+"round_robin" | "least_workload", "rules": [{id, kind: "source" | "skill_category" | "location", value_id, value_label, recruiter: {id,
+full_name, active}, created_at}], "can_edit": true}` — rules in routing order (source, skill category, location; oldest first).
+`PUT /api/v1/recruiter/candidate-routing` `{"default_recruiter_user_id": uuid | null, "strategy": …}` (both required) → the same body; a
+default that is not an active recruiter is 422 "Choose an active recruiter"; audit `candidate.routing_settings`.
+`POST /api/v1/recruiter/candidate-routing/rules` `{"kind", "source_id" | "skill_category_id" | "location" (≤ 80, trimmed),
+"recruiter_user_id"}` → 201 one rule; the kind's value missing or unknown is 422 ("Choose a candidate source", "Choose a skill category",
+"Enter a location"), the other kinds' values are ignored, an inactive or non-recruiter is 422, the same kind/value/recruiter again is 409
+"This recruiter already has this rule"; audit `candidate.routing_rule_add`. `DELETE /api/v1/recruiter/candidate-routing/rules/{id}` → 204
+(404 "Routing rule not found"); audit `candidate.routing_rule_delete`. **Reused:** the queue is `GET /recruiter/candidates?owner=unassigned`
+and assignment is `PUT /recruiter/candidates/{id}/ownership` (§12KA). **Changed (behaviour):** `POST /public/jobs/{id}/apply` and the
+candidate portal's email verification route a candidate they create (no response change); the candidate timeline's `assignment` rows may
+have `status: "route"` and no actor. New notification event `it.candidate.unassigned` ("Candidate needs a recruiter").
+## 12KM. Application record completion (hrc-026) — addendum, 2026-11-04
+
+`DEC-SCOPE-394`. **Changed (additive):** `GET /api/v1/recruiter/requirements/{id}/candidates` items, and the `application` in every
+recruiter application response, gain `code` (`JA-000001`), `source` (`portal|recruiter|employer|drive`), `source_label`, `owner`
+(`{id, full_name}` or null), `rejection_reason` and `rejection_reason_label` (null unless rejected); the list gains
+`rejection_reasons[]` (`{key, label}`) and each `statuses[]` entry gains `candidate_visible` and `candidate_label`.
+`GET /recruiter/applications/{id}/history` items gain `rejection_reason_label`. `GET /recruiter/candidates/{id}/applications` items gain
+`code`. `POST /api/v1/workflows/it/jobs/{id}/apply` → `{id, code, status}`. `GET /api/v1/portal/it/student/job-applications` gains the
+column `code` ("Application ID"); its `status` is the candidate-visible stage in the candidate's words. **Changed (behaviour):**
+`POST /recruiter/applications/{id}/status` takes optional `rejection_reason` (one of the eleven keys); a move to `rejected` without one is
+422 "Choose a rejection reason", `other` without a note is 422 "Add a note explaining the rejection reason", and a reason on any other
+move is 422. `PATCH /workflows/it/job-applications/{id}` applies the same rule through `rejection_reason` in its body. The audit row's
+metadata carries `rejection_reason`. A student's status notice is sent only when the candidate-visible stage changes (never for Profile
+Shared), and a portal apply sends an "Application received" notice with the code.
 ## 12KO. Candidate consent, retention, deletion and access revocation (hrc-035) — addendum, 2026-11-04
 
 `DEC-SCOPE-396`. **New:** `POST /api/v1/candidate/me/erasure-request` (role `candidate` only; no body) → the Privacy body; 201 for a new

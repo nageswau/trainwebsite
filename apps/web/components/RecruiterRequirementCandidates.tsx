@@ -21,9 +21,12 @@ import {
   isHistory,
   isRequirementCandidates,
   NOTE_MAX,
+  OTHER_REASON,
   type RecApplication,
+  REJECTED,
   requirementCandidatesUrl,
   type RequirementCandidates,
+  type StatusOption,
 } from "@/lib/recruiterApplications";
 import { CANDIDATES_PATH } from "@/lib/recruiterCandidates";
 import { contactsOf, isContactList } from "@/lib/recruiterContacts";
@@ -32,11 +35,11 @@ import { UNSHAREABLE } from "@/lib/recruiterShares";
 type Notice = { text: string; failed: boolean } | null;
 const search = candidateSearch();
 
-function NoteField({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
+function NoteField({ id, value, onChange, required = false }: { id: string; value: string; onChange: (v: string) => void; required?: boolean }) {
   return (
     <label htmlFor={id} style={{ display: "grid", gap: 4 }}>
-      Note (optional)
-      <textarea id={id} rows={2} maxLength={NOTE_MAX} value={value} onChange={(e) => onChange(e.target.value)} />
+      {required ? "Note (required)" : "Note (optional)"}
+      <textarea id={id} rows={2} maxLength={NOTE_MAX} required={required} value={value} onChange={(e) => onChange(e.target.value)} />
     </label>
   );
 }
@@ -104,6 +107,7 @@ function History({ applicationId }: { applicationId: string }) {
       {items.map((h, i) => (
         <li key={`${h.created_at}-${i}`}>
           <LocalTime value={h.created_at} time />: {h.from_label ? `${h.from_label} → ${h.to_label}` : `Added as ${h.to_label}`}
+          {h.rejection_reason_label && <> ({h.rejection_reason_label})</>}
           {h.note && <> — <span style={{ overflowWrap: "anywhere" }}>{h.note}</span></>} <span className="muted">by {h.changed_by ? h.changed_by.full_name : "the system"}</span>
         </li>
       ))}
@@ -111,19 +115,28 @@ function History({ applicationId }: { applicationId: string }) {
   );
 }
 
-function StatusForm({ application, onChanged, onCancel }: { application: RecApplication; onChanged: (a: RecApplication) => void; onCancel: () => void }) {
+/** hrc-026 (A7, AC3): Rejected needs a reason from the API's list, and "Other" a note; the API enforces both (422 shown as-is). */
+function StatusForm({ application, reasons, onChanged, onCancel }: {
+  application: RecApplication; reasons: StatusOption[]; onChanged: (a: RecApplication) => void; onCancel: () => void;
+}) {
   const [status, setStatus] = useState("");
+  const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const id = useId();
+  const rejecting = status === REJECTED;
+  const noteRequired = rejecting && reason === OTHER_REASON;
+  const ready = !!status && (!rejecting || !!reason) && (!noteRequired || !!note.trim());
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!status || busy) return;
+    if (!ready || busy) return;
     setBusy(true);
     setFailure(null);
-    const outcome = await sendJson(applicationUrl(application.id, "/status"), "POST", { status, ...(note.trim() ? { note: note.trim() } : {}) });
+    const outcome = await sendJson(applicationUrl(application.id, "/status"), "POST", {
+      status, ...(note.trim() ? { note: note.trim() } : {}), ...(rejecting ? { rejection_reason: reason } : {}),
+    });
     setBusy(false);
     if (outcome.ok && isApplicationBody(outcome.data)) onChanged(outcome.data.application);
     else setFailure(outcome.ok ? "Unable to change the status." : outcome.message);
@@ -138,10 +151,19 @@ function StatusForm({ application, onChanged, onCancel }: { application: RecAppl
           {application.allowed_statuses.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
         </select>
       </label>
-      <NoteField id={`${id}-note`} value={note} onChange={setNote} />
+      {rejecting && (
+        <label htmlFor={`${id}-reason`} style={{ display: "grid", gap: 4 }}>
+          Rejection reason
+          <select id={`${id}-reason`} required value={reason} onChange={(e) => setReason(e.target.value)}>
+            <option value="">Choose a reason</option>
+            {reasons.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+          </select>
+        </label>
+      )}
+      <NoteField id={`${id}-note`} value={note} onChange={setNote} required={noteRequired} />
       {failure && <p className="form-error" role="alert" style={{ margin: 0 }}>{failure}</p>}
       <div className="actions">
-        <button type="submit" className="btn small" disabled={busy || !status}>{busy ? "Saving…" : "Save status"}</button>
+        <button type="submit" className="btn small" disabled={busy || !ready}>{busy ? "Saving…" : "Save status"}</button>
         <button type="button" className="btn secondary small" disabled={busy} onClick={onCancel}>Cancel</button>
       </div>
     </form>
@@ -173,8 +195,8 @@ function ConfirmReview({ application, onConfirmed }: { application: RecApplicati
 /** One candidate as a stacked item (the rec-025 Calls pattern), so the status and actions stay on screen at phone width (QA-03). */
 type Panel = "none" | "status" | "history" | "interviews" | "screening" | "offer";
 
-function ApplicationItem({ application, contacts, selected, onSelect, onChanged, onInterview, onScreened, onConfirmed }: {
-  application: RecApplication; contacts: ContactOption[]; selected: boolean | null; onSelect: (on: boolean) => void;
+function ApplicationItem({ application, reasons, contacts, selected, onSelect, onChanged, onInterview, onScreened, onConfirmed }: {
+  application: RecApplication; reasons: StatusOption[]; contacts: ContactOption[]; selected: boolean | null; onSelect: (on: boolean) => void;
   onChanged: (a: RecApplication) => void; onInterview: (notice: string) => void; onScreened: (a: RecApplication) => void;
   onConfirmed: (a: RecApplication) => void;
 }) {
@@ -194,9 +216,12 @@ function ApplicationItem({ application, contacts, selected, onSelect, onChanged,
         {application.screening_result && <span className="badge">Screening: {application.screening_result.label}</span>}
         {application.needs_review_since && <span className="badge badge-pending">Needs review</span>}
       </div>
-      <p className="muted" style={{ margin: 0, fontSize: 13 }}>
-        {application.candidate.code} · since <LocalTime value={application.stage_changed_at} time />
+      <p className="muted" style={{ margin: 0, fontSize: 13, overflowWrap: "anywhere" }}>
+        {application.code && <>{application.code} · </>}{application.candidate.code} · since <LocalTime value={application.stage_changed_at} time />
+        {application.source_label && <> · Source: {application.source_label}</>}
+        {application.owner && <> · Owner: {application.owner.full_name}</>}
       </p>
+      {application.rejection_reason_label && <p style={{ margin: 0, fontSize: 13 }}>Reason: {application.rejection_reason_label}</p>}
       <div className="actions" style={{ flexWrap: "wrap" }}>
         {application.needs_review_since && application.allowed_statuses.length > 0 && (
           <ConfirmReview application={application} onConfirmed={onConfirmed} />
@@ -219,7 +244,7 @@ function ApplicationItem({ application, contacts, selected, onSelect, onChanged,
           Offer<span className="visually-hidden"> of {application.candidate.name}</span>
         </button>
       </div>
-      {open === "status" && <StatusForm application={application} onCancel={() => setOpen("none")} onChanged={(next) => { setOpen("none"); onChanged(next); }} />}
+      {open === "status" && <StatusForm application={application} reasons={reasons} onCancel={() => setOpen("none")} onChanged={(next) => { setOpen("none"); onChanged(next); }} />}
       {open === "history" && <History applicationId={application.id} />}
       {open === "interviews" && (
         <RecruiterApplicationInterviews applicationId={application.id} candidateName={application.candidate.name} contacts={contacts} onChanged={onInterview} />
@@ -336,7 +361,7 @@ export default function RecruiterRequirementCandidates({ requirementId, requirem
       ) : (
         <ul aria-label="Candidates on this requirement" style={{ padding: 0, margin: "8px 0 0", display: "grid", gap: 8 }}>
           {data.items.map((application) => (
-            <ApplicationItem key={application.id} application={application} contacts={contacts} onInterview={done}
+            <ApplicationItem key={application.id} application={application} reasons={data.rejection_reasons ?? []} contacts={contacts} onInterview={done}
               selected={shareable(application) ? selected.has(application.candidate.id) : null} onSelect={(on) => select(application.candidate.id, on)}
               onChanged={(a) => done(`${a.candidate.name} is now ${a.status_label}.`)}
               onScreened={(a) => done(`Screening saved — ${a.candidate.name} is now ${a.status_label}.`)}

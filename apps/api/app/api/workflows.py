@@ -2292,10 +2292,11 @@ async def apply_job(job_id: UUID, payload: dict, user: User = Depends(get_curren
         raise HTTPException(409, "Already applied")
     resume_url = payload.get("resume_url") or user.profile.get("resume_url")
     item = await applications.create(db, user, job, candidate, "sourced", "Applied from the student portal", resume_url=resume_url)
+    await applications.send_receipt(db, item, job)  # hrc-026 (AC4)
     await _audit(db, user, "job.apply", "job_application", item.id, {"job_id": job_id})
     await db.commit()
     await db.refresh(item)
-    return {"id": item.id, "status": item.status}
+    return {"id": item.id, "code": item.application_code, "status": item.status}
 
 
 @router.patch("/it/jobs/{job_id}")
@@ -2336,10 +2337,12 @@ async def update_job_application(application_id: UUID, payload: dict, user: User
     status = applications.from_legacy(payload.get("status") or "")
     if status is None:
         raise HTTPException(422, "Invalid application status")
+    reason = payload.get("rejection_reason")  # hrc-026 (A7): required for a move into Rejected
     if status != item.status:
-        await applications.change_status(db, user, item, status)
-        await applications.notify_student(db, item)
-    await _audit(db, user, "job_application.update", "job_application", item.id, {"status": status})
+        seen = item.candidate_status
+        await applications.change_status(db, user, item, status, reason=reason)
+        await applications.notify_student(db, item, seen)
+    await _audit(db, user, "job_application.update", "job_application", item.id, {"status": status, **({"rejection_reason": reason} if reason else {})})
     await db.commit()
     return {"id": item.id, "status": item.status, "status_label": applications.label(item.status)}
 

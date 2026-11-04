@@ -10,6 +10,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
@@ -28,7 +29,8 @@ router = APIRouter(prefix="/recruiter", tags=["recruiter-applications"])
 async def _item(db: AsyncSession, user: User, application: JobApplication) -> dict:
     await db.refresh(application)
     result = await db.scalar(select(ApplicationScreening.result).where(ApplicationScreening.application_id == application.id))
-    return svc.item_out(user, application, await db.get(Candidate, application.candidate_id), screening.result_out(result))
+    owner = await db.get(User, application.owner_user_id) if application.owner_user_id else None
+    return svc.item_out(user, application, await db.get(Candidate, application.candidate_id), screening.result_out(result), owner)
 
 
 @router.get("/requirements/{requirement_id}/candidates")
@@ -40,7 +42,13 @@ async def list_requirement_candidates(
     db: AsyncSession = Depends(get_db),
 ):
     job = await requirements.load_scoped(db, user, requirement_id)
-    stmt = select(JobApplication, Candidate).join(Candidate, Candidate.id == JobApplication.candidate_id).where(JobApplication.job_id == job.id)
+    owner = aliased(User)  # hrc-026 (A6): the owning recruiter, shown on each row
+    stmt = (
+        select(JobApplication, Candidate, owner)
+        .join(Candidate, Candidate.id == JobApplication.candidate_id)
+        .outerjoin(owner, owner.id == JobApplication.owner_user_id)
+        .where(JobApplication.job_id == job.id)
+    )
     if status:
         stmt = stmt.where(JobApplication.status == status)
     if needs_review:  # hrc-009 (R8): the review list
@@ -48,8 +56,9 @@ async def list_requirement_candidates(
     stmt = stmt.add_columns(ApplicationScreening.result).outerjoin(ApplicationScreening, ApplicationScreening.application_id == JobApplication.id)
     rows = (await db.execute(stmt.order_by(JobApplication.stage_changed_at.desc(), JobApplication.id))).all()
     return {
-        "items": [svc.item_out(user, a, c, screening.result_out(result)) for a, c, result in rows],
+        "items": [svc.item_out(user, a, c, screening.result_out(result), o) for a, c, o, result in rows],
         "statuses": svc.catalogue(),
+        "rejection_reasons": svc.reasons(),  # hrc-026 (A7): the Rejected move's required list
         "can_add": svc.can_write(user) and job.status not in requirements.ENDED,
         "needs_review_count": await db.scalar(
             select(func.count()).where(JobApplication.job_id == job.id, JobApplication.needs_review_since.is_not(None))
@@ -82,11 +91,13 @@ async def change_application_status(application_id: UUID, payload: RecApplicatio
     svc.require_writer(user, application.id, "change_application_status")
     if payload.status == "joined" and await joinings.has_offer(db, application.id):
         raise HTTPException(409, joinings.USE_JOINING)  # rec-023 JN9: an offered candidate joins through the joining (actual date)
-    previous = await svc.change_status(db, user, application, payload.status, payload.note)
-    await svc.notify_student(db, application)
-    svc.audit(db, user, "status", application, {"from": previous, "to": payload.status, "changes": {"status": [previous, payload.status]}})
+    seen = application.candidate_status
+    previous = await svc.change_status(db, user, application, payload.status, payload.note, payload.rejection_reason)
+    await svc.notify_student(db, application, seen)
+    reason = {"rejection_reason": payload.rejection_reason} if payload.rejection_reason else {}
+    svc.audit(db, user, "status", application, {"from": previous, "to": payload.status, "changes": {"status": [previous, payload.status]}, **reason})
     await db.commit()
-    svc.log("recruiter_application_status_changed", user, application, from_status=previous, to_status=payload.status)
+    svc.log("recruiter_application_status_changed", user, application, from_status=previous, to_status=payload.status, **reason)
     return {"application": await _item(db, user, application)}
 
 
@@ -121,9 +132,10 @@ async def save_application_screening(application_id: UUID, payload: RecScreening
     svc.require_writer(user, application.id, "save_application_screening")
     sent = payload.model_dump()
     await screening.keep_hidden_salary(db, user, application, sent, payload.model_fields_set)
+    seen = application.candidate_status
     previous = await screening.save(db, user, application, sent)
     if previous:
-        await svc.notify_student(db, application)
+        await svc.notify_student(db, application, seen)
     await db.commit()
     svc.log("recruiter_application_screened", user, application, result=sent["result"], from_status=previous, to_status=application.status if previous else None)
     return {"screening": await screening.screening_out(db, user, await screening.current(db, application.id)), "application": await _item(db, user, application)}
@@ -156,6 +168,7 @@ async def candidate_applications(candidate_id: UUID, user: User = Depends(get_cu
         "items": [
             {
                 "id": a.id,
+                "code": a.application_code,  # hrc-026 (A1)
                 "requirement": {"id": job.id, "code": job.requirement_code, "title": job.title, "status_label": requirements.STATUS_LABELS[job.status]},
                 "company": {"id": company.id, "name": company.name},
                 "status": a.status,

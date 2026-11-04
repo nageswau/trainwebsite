@@ -18,10 +18,10 @@ _spec = importlib.util.spec_from_file_location("_hrc_035_migration_0273", API_RO
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0269_match_engine", "0273_candidate_privacy"
+BASE, HEAD = "0271_application_record", "0273_candidate_privacy"
 
 
-def test_migration_chains_after_the_match_engine_and_is_the_single_head():
+def test_migration_chains_after_the_application_record_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
 

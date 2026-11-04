@@ -1,7 +1,7 @@
 """hrc-035 -- candidate consent sources, the anonymised marker, the retention setting and the first `candidates.erase` holder.
 
 Revision ID: 0273_candidate_privacy
-Revises: 0269_match_engine
+Revises: 0271_application_record
 
 docs/superpowers/specs/2026-11-04-hrc-035-candidate-privacy-design.md (DEC-SCOPE-396). 0001 builds a fresh database from the current
 models, which already carry the columns and table, so each step runs only when missing (0222's idiom). Every constant here is a frozen
@@ -16,7 +16,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0273_candidate_privacy"
-down_revision = "0269_match_engine"
+down_revision = "0271_application_record"
 branch_labels = None
 depends_on = None
 

@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import AuditLog, Candidate, CandidateConsent, CareerApplication, Job, RecCandidateSource
 from app.notifications.phone import normalise_phone
 from app.services import candidate_duplicates as duplicates
+from app.services import candidate_routing as routing
 from app.services import candidates as svc
 
 logger = logging.getLogger("app.website_intake")
@@ -114,6 +115,7 @@ async def _create(db: AsyncSession, *, name: str, email: str, phone: str | None,
                                     source="website", lawful_basis="consent"))  # hrc-035 K1
     db.add(AuditLog(user_id=None, action="candidate.create", entity_type="candidates", entity_id=str(candidate.id), metadata_json={"via": "website"}))
     await duplicates.detect(db, candidate.id)  # hrc-014 D2: probable matches go to the review queue
+    await routing.on_website_candidate(db, candidate)  # hrc-024 R7: a recruiter by rule, or the unassigned queue and an alert
     return candidate
 
 

@@ -93,4 +93,5 @@ async def save(db: AsyncSession, user: User, application: JobApplication, sent: 
     target, origins = MOVES.get(sent["result"], (None, ()))
     if target is None or application.status not in origins:
         return None
-    return await applications.change_status(db, user, application, target, f"Screening: {LABELS[sent['result']]}")
+    reason = "screening_not_cleared" if target == "rejected" else None  # hrc-026 (A7)
+    return await applications.change_status(db, user, application, target, f"Screening: {LABELS[sent['result']]}", reason)
