@@ -5759,3 +5759,20 @@ Fields over their column length, an invalid email or an unparseable phone 422. M
 **429** with `Retry-After`. The application creates or matches (exact email) a candidate with source "Website"; the answer never says
 which. `POST /api/v1/candidate/register` (§12KE) adds optional `utm`. `GET /api/v1/recruiter/candidates/{id}` adds `utm` and
 `website_applications: [{job_title, tracking_code, status, created_at}]`; the merge preview/result `moved` adds `career_applications`.
+
+## 12KI. Configurable matching engine with explanations (hrc-018) — addendum, 2026-11-04
+
+`DEC-SCOPE-390`. **New:** `GET /api/v1/recruiter/match-settings` → `{"weights": {skills, experience, qualification, location, role,
+salary}, "defaults": {…}, "can_edit": bool}` for candidate readers (others 403). `PUT /api/v1/recruiter/match-settings`
+`{"weights": {…six whole numbers 0–100}}` → the same body; super_admin only (403 "Only a super admin can change the match weights"); a
+missing/extra factor, a fraction, a value outside 0–100 or a total other than 100 is 422; one audit row
+`recruiter_matching.weights` `{changes: {factor: [old, new]}}`. **Changed (additive):** `GET /recruiter/requirements/{id}/matches` —
+`criteria.factors[]` (`key, label, weight, applies, points`) and `criteria.hard_filters` (`{experience|qualification|location|salary:
+{on, available}}`); each item gains `explanation[]` (`key, label, text, points, max, matched`, one per applicable factor) and `skills`
+(`required_matched`, `required_missing`, `preferred_matched`, `preferred_missing`: names); the body gains `disclaimer`. `breakdown[]`
+keeps its shape and gains the kinds `qualification`, `role`, `salary`; a caller without `candidates.compensation.view` gets the salary
+text "Salary details are restricted". `PUT /recruiter/requirements/{id}/skill-weights` takes optional `hard_filters` (`{experience?,
+qualification?, location?, salary?: bool}`; omitted = unchanged; an unknown key is 422; turning one on without the job value is 422
+"Set … on the requirement before making it a hard filter"); the audit row's `changes` gains `{"Hard filter: <key>": [old, new]}`.
+**Changed (behaviour):** scores use the six weighted factors (rec-016's fixed experience and location points are gone), and an enabled
+hard filter excludes candidates who miss it or have not recorded the value.

@@ -1024,7 +1024,38 @@ class Job(Base, TimestampMixin):
     # hrc-008 (DEC-SCOPE-385 V1/V3): public by default, so no existing listing or create path changes; a segment names its talent pool
     visibility: Mapped[str] = mapped_column(String(10), default="public", server_default=text("'public'"))
     segment_pool_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("talent_pools.id", ondelete="RESTRICT"), nullable=True)
+    # hrc-018 (DEC-SCOPE-390 E6): which of the job's own values also exclude a candidate from its matches (required skills always do)
+    match_hard_experience: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    match_hard_qualification: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    match_hard_location: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    match_hard_salary: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     company = relationship("Company")
+
+
+# hrc-018 (DEC-SCOPE-390 E1/E2): the six match factors in display order and the source's default weights; migration 0267 repeats them
+# (test_hrc_018_migration asserts they stay identical). The database enforces the sum (AC1).
+MATCH_FACTORS = ("skills", "experience", "qualification", "location", "role", "salary")
+MATCH_DEFAULT_WEIGHTS = (40, 20, 15, 10, 10, 5)
+MATCH_SETTING_CHECKS = {
+    "ck_match_settings_one_row": "id = 1",
+    "ck_match_settings_range": " AND ".join(f"{f}_weight BETWEEN 0 AND 100" for f in MATCH_FACTORS),
+    "ck_match_settings_total": " + ".join(f"{f}_weight" for f in MATCH_FACTORS) + " = 100",
+}
+
+
+class MatchSetting(Base, TimestampMixin):
+    """hrc-018 (E2): one row (`id = 1`) of admin factor weights; no row means MATCH_DEFAULT_WEIGHTS."""
+
+    __tablename__ = "match_settings"
+    __table_args__ = tuple(CheckConstraint(sql, name=name) for name, sql in MATCH_SETTING_CHECKS.items())
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    skills_weight: Mapped[int] = mapped_column(SmallInteger)
+    experience_weight: Mapped[int] = mapped_column(SmallInteger)
+    qualification_weight: Mapped[int] = mapped_column(SmallInteger)
+    location_weight: Mapped[int] = mapped_column(SmallInteger)
+    role_weight: Mapped[int] = mapped_column(SmallInteger)
+    salary_weight: Mapped[int] = mapped_column(SmallInteger)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
 
 class JobApprovalSetting(Base, TimestampMixin):

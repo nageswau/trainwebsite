@@ -3794,3 +3794,10 @@ Notes and tasks follow the candidate rule (§2.45, R11): candidate readers (`pla
 and the assignee picker are the writers'. Every other role — `placement_officer`, `hr_manager`, `employer`, `candidate`, `it_student` —
 is 403, anonymous 401. Notes are internal: no candidate, student, employer, portal or public response carries them. No grant key is
 added. Pinned by `apps/api/tests/test_hrc_016_notes_tasks.py` and the rec-038 matrix rows.
+
+### 2.284 Match factor weights *(added 2026-11-04 — `DEC-SCOPE-390`, hrc-018)*
+
+Candidate readers (`placement_team`, `placement_manager`, `super_admin`, `hr_team`) read the match factor weights
+(`GET /recruiter/match-settings`); only `super_admin` changes them. Every other role is 403, anonymous 401. A requirement's hard filters
+ride on the rec-016 weights route (`can_edit`, §2.83). The salary explanation follows `candidates.compensation.view` (§2.270). No grant key
+is added. Pinned by `apps/api/tests/test_hrc_018_matching_engine.py` and the rec-038 matrix rows.

@@ -16,10 +16,11 @@ from app.api.bdm import LIMIT, OFFSET, SEARCH, _matching
 from app.api.deps import get_current_user, require_permission
 from app.api.lookups import _pattern as like_pattern
 from app.core.database import get_db
-from app.models import JOB_ASSIGNMENT_ROLES, JOB_PRIORITIES, JOB_STATUSES, Company, Job, JobApprovalSetting, JobSkill, User
+from app.models import JOB_ASSIGNMENT_ROLES, JOB_PRIORITIES, JOB_STATUSES, MATCH_FACTORS, AuditLog, Company, Job, JobApprovalSetting, JobSkill, MatchSetting, User
 from app.schemas import (
     REC_REQUIREMENT_FIELDS,
     JobApprovalSettingsUpdate,
+    MatchSettingsIn,
     RecRequirementApprovalNote,
     RecRequirementAssign,
     RecRequirementCreate,
@@ -40,6 +41,7 @@ from app.services.stale_guard import require_fresh
 router = APIRouter(prefix="/recruiter/requirements", tags=["recruiter-requirements"])
 # hrc-007 (DEC-SCOPE-380 A9): the approval queue and the per-source settings, for `jobs.approve` holders.
 approvals_router = APIRouter(prefix="/recruiter/requirement-approvals", tags=["recruiter-requirements"])
+match_settings_router = APIRouter(prefix="/recruiter/match-settings", tags=["recruiter-requirements"])  # hrc-018 (DEC-SCOPE-390 E3)
 NO_APPROVE = "You cannot approve job requirements"
 APPROVER = require_permission("jobs", "approve", NO_APPROVE)
 PUBLISHER = require_permission("jobs", "publish", "You cannot change who sees job requirements")  # hrc-008 (V4)
@@ -344,7 +346,7 @@ async def requirement_matches(
     """rec-016 (DEC-SCOPE-157 M7): candidate readers within the requirement's scope -- the role check first (403), then scope (404)."""
     candidates.require_reader(user)
     job = await svc.load_scoped(db, user, requirement_id)
-    result = await matching.matches(db, job, limit=limit, offset=offset)
+    result = await matching.matches(db, job, limit=limit, offset=offset, amounts=await candidates.sees_compensation(db, user))  # hrc-018 E8
     matching.log(user, job, result["total"])
     return {
         **result,
@@ -357,7 +359,8 @@ async def requirement_matches(
 async def set_skill_weights(requirement_id: UUID, payload: RecSkillWeights, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """rec-016 (M1): one transaction -- scope, row lock, `can_edit`, the changed weights and one audit row (ids only), one commit.
     hrc-017 (T6): an item may also set `min_level` (omitted = unchanged, null = any level) on a Skills-Master skill; the audit row then
-    carries the level diff by skill name."""
+    carries the level diff by skill name. hrc-018 (E6): `hard_filters` switches the job's optional hard filters (omitted = unchanged);
+    one needs the job value it compares with (422)."""
     job = await svc.load_scoped(db, user, requirement_id, lock=True)
     svc.require(user, job, "can_edit", "skill_weights")
     rows = {r.id: r for r in (await db.scalars(select(JobSkill).where(JobSkill.job_id == job.id))).all()}
@@ -368,14 +371,24 @@ async def set_skill_weights(requirement_id: UUID, payload: RecSkillWeights, user
         raise HTTPException(422, "Only a skill in the Skills Master can have a minimum level")
     changed = sorted(str(w.id) for w in payload.weights if rows[w.id].weight != w.weight or w.id in levels)
     changes = {f"{rows[i].name} minimum level": [rows[i].min_level, level] for i, level in levels.items()}
+    switches = {k: v for k, v in (payload.hard_filters.model_dump(exclude_none=True) if payload.hard_filters else {}).items()
+                if v != getattr(job, f"match_hard_{k}")}  # fmt: skip
+    if any(switches.values()):
+        available = matching.available_filters(job, await matching.budget_of(db, job))
+        missing = next((k for k, on in switches.items() if on and not available[k]), None)
+        if missing:
+            raise HTTPException(422, f"Set {matching.HARD_FILTER_NEEDS[missing]} on the requirement before making it a hard filter")
+    for key, on in switches.items():
+        changes[f"Hard filter: {key}"] = [getattr(job, f"match_hard_{key}"), on]
+        setattr(job, f"match_hard_{key}", on)
     for w in payload.weights:
         rows[w.id].weight = w.weight
         rows[w.id].min_level = levels.get(w.id, rows[w.id].min_level)
-    if changed:
+    if changed or changes:
         svc.audit(db, user, "weights", job.id, {"skills": changed, **({"changes": changes} if changes else {})})
     await db.commit()
-    if changed:
-        svc.log("recruiter_requirement_weights_changed", user, job.id, skills=len(changed))
+    if changed or changes:
+        svc.log("recruiter_requirement_weights_changed", user, job.id, skills=len(changed), hard_filters=len(switches))
     return {"requirement": await svc.requirement_out(db, user, job)}
 
 
@@ -439,3 +452,37 @@ async def remove_owner(requirement_id: UUID, user_id: UUID, user: User = Depends
     await db.commit()
     svc.log("recruiter_requirement_owner_removed", user, job.id, user_id=str(user_id), role=role)
     return {"requirement": await svc.requirement_out(db, user, job)}
+
+
+# --- hrc-018 (DEC-SCOPE-390 E2/E3; AC1): the admin match factor weights -----------------------------------------------------------
+async def _match_settings(db: AsyncSession, user: User) -> dict:
+    return {"weights": await matching.weights(db), "defaults": matching.DEFAULT_WEIGHTS, "can_edit": user.role == "super_admin"}
+
+
+@match_settings_router.get("")
+async def match_settings(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Every candidate reader sees the weights the scores use; `can_edit` says who may change them."""
+    candidates.require_reader(user)
+    return await _match_settings(db, user)
+
+
+@match_settings_router.put("")
+async def save_match_settings(payload: MatchSettingsIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """super_admin only. One row, locked; one audit row with the changed weights; the database re-checks the sum."""
+    if user.role != "super_admin":
+        raise HTTPException(403, "Only a super admin can change the match weights")
+    wanted = payload.weights.model_dump()
+    row = await db.get(MatchSetting, 1, with_for_update=True)
+    before = {f: getattr(row, f"{f}_weight") for f in MATCH_FACTORS} if row else dict(matching.DEFAULT_WEIGHTS)
+    if row is None:
+        row = MatchSetting(id=1)
+        db.add(row)
+    for factor, weight in wanted.items():
+        setattr(row, f"{factor}_weight", weight)
+    row.updated_by_user_id = user.id
+    changes = {f: [before[f], wanted[f]] for f in MATCH_FACTORS if before[f] != wanted[f]}
+    if changes:
+        db.add(AuditLog(user_id=user.id, action="recruiter_matching.weights", entity_type="match_settings", entity_id="all", metadata_json={"changes": changes}))
+    await db.commit()
+    matching.logger.info("match_weights_saved", extra={"extra_fields": {"actor_id": str(user.id), "changed": len(changes)}})
+    return await _match_settings(db, user)
