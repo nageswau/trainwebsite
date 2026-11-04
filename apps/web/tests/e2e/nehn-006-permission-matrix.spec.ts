@@ -5,7 +5,13 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 
 const SUPER = { email: "superadmin@edusphere.local", password: "Demo@123", division: "global" };
 const IT_ADMIN = { email: "itadmin@edusphere.local", password: "Demo@123" };
-const IT_ADMIN_SEED = ["certificates.configure", "discounts.add", "payments.add", "payments.view", "reports.telecaller.download", "reports.telecaller.view", "reports.training.download", "reports.training.view", "student_access.configure"]; // nehn-031 added certificates.configure; nehn-009 reports.training; nehn-018 student_access.configure
+// = rbac.DEFAULT_GRANTS["it_admin"]: nehn-031 added certificates.configure; nehn-009 reports.training; nehn-018 student_access.configure;
+// nehn-016 reports.placement; itc-014 discounts.approve; itc-015 payments.refund. A stale copy here wipes those keys on every restore.
+const IT_ADMIN_SEED = [
+  "certificates.configure", "discounts.add", "discounts.approve", "payments.add", "payments.refund", "payments.view", "reports.placement.download",
+  "reports.placement.view", "reports.telecaller.download", "reports.telecaller.view", "reports.training.download", "reports.training.view",
+  "student_access.configure",
+];
 const noSideScroll = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
 
 async function restoreItAdmin(request: APIRequestContext) {
@@ -104,7 +110,7 @@ test("AC2/AC4/AC7: the matrix is keyboard-operable, asks before leaving unsaved 
   await signIn(page, "admin", SUPER.email, SUPER.password);
   await openMatrix(page, "Coordinator");
   const table = page.getByRole("region", { name: "Permissions for Coordinator" });
-  await expect(table.getByRole("columnheader")).toHaveCount(12); // the resource + rbac.ACTIONS (nehn-031 added override, configure)
+  await expect(table.getByRole("columnheader")).toHaveCount(18); // the resource + rbac.ACTIONS (nehn-031 added override, configure; itc-015 refund; hrc-002 publish, export, import, merge, release)
   const certificates = page.getByRole("checkbox", { name: "Certificates: View" });
   await expect(certificates).toBeChecked();
   await certificates.focus();
