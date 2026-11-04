@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// hrc-017 (DEC-SCOPE-386; AC1, AC2): the placement manager sees the seeded non-IT Pharmacy category, adds a non-IT category, moves it to
+// hrc-017 (DEC-SCOPE-388; AC1, AC2): the placement manager sees the seeded non-IT Pharmacy category, adds a non-IT category, moves it to
 // IT and filters the skills by domain (kept in the URL across a refresh). The seeded recruiter sets "Python ≥ Intermediate" on a
 // requirement: the detail and the scoring line show it, a beginner leaves the matches while an advanced candidate stays, and the form
 // offers no level for a skill outside the Skills Master. Phone width has no horizontal scroll.

@@ -8,7 +8,7 @@ import { minLevelText, type Matches } from "@/lib/recruiterMatching";
 import type { Requirement } from "@/lib/recruiterRequirements";
 import { skillsQuery } from "@/lib/recruiterSkills";
 
-// hrc-017 (DEC-SCOPE-386 T4, T6, T9): category domains in the Skills Master, the domain filter, and a requirement skill's minimum level.
+// hrc-017 (DEC-SCOPE-388 T4, T6, T9): category domains in the Skills Master, the domain filter, and a requirement skill's minimum level.
 const nav = vi.hoisted(() => ({ params: new URLSearchParams(), push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: nav.push, refresh: vi.fn(), replace: vi.fn() }), usePathname: () => "/recruiter/manager/skills", useSearchParams: () => nav.params }));
 

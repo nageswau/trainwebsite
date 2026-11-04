@@ -53,10 +53,12 @@ from app.models import (
     BDM_STAFF_MAX,
     BDM_TARGET_MAX,
     CANDIDATE_CONTACT_METHODS,
+    CANDIDATE_NOTE_MAX,
     CANDIDATE_SKILL_LEVELS,
     CANDIDATE_SKILL_SOURCES,
     CANDIDATE_SKILL_STATUSES,
     CANDIDATE_STATUSES,
+    CANDIDATE_TASK_TYPES,
     CAPITAL_ENTRY_KINDS,
     CONTACT_CHANNELS,
     CONTACT_PREFERENCES,
@@ -9442,7 +9444,7 @@ SKILL_FIELD_LABELS = {
     "name": "Name", "alias": "Alias", "active": "Active", "category_id": "Category", "tag_category_ids": "Other categories", "skill_id": "Related skill",
     "into_skill_id": "Merge into", "domain": "Domain",
 }
-SkillDomain = Literal["it", "non_it"]  # hrc-017 (DEC-SCOPE-386 T1): models.SKILL_DOMAINS
+SkillDomain = Literal["it", "non_it"]  # hrc-017 (DEC-SCOPE-388 T1): models.SKILL_DOMAINS
 _SPACES = re.compile(r" +")
 
 
@@ -9865,7 +9867,8 @@ class RecTimelineRow(BaseModel):
     entry). `id` is the source row's id (a follow-up's scheduled / done / cancelled entries share it; `event` tells them apart)."""
 
     id: UUID
-    kind: Literal["stage", "call", "message", "meeting", "follow_up", "requirement", "share", "share_response", "contract", "application", "interview", "offer"]
+    kind: Literal["stage", "call", "message", "meeting", "follow_up", "requirement", "share", "share_response", "contract", "application", "interview", "offer",
+                  "note", "task", "assignment", "profile", "screening"]  # hrc-016 T9: the candidate timeline's new kinds
     at: datetime
     actor: LeadStageActor | None
     event: str | None
@@ -9886,6 +9889,39 @@ class RecTimelinePage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# hrc-016 (DEC-SCOPE-387 T2/T3/T6): a private note and a candidate task. Author, status and stamps are server-owned (unknown fields here).
+CandidateNoteBody = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=CANDIDATE_NOTE_MAX)], BeforeValidator(_bdm_newlines)]
+CandidateTaskTitle = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+CandidateTaskNotes = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=CANDIDATE_NOTE_MAX)] | None, BeforeValidator(_bdm_newlines)]
+
+
+class CandidateNoteIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    body: CandidateNoteBody
+
+
+class CandidateTaskCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    task_type: Literal[CANDIDATE_TASK_TYPES]
+    title: CandidateTaskTitle
+    notes: CandidateTaskNotes = None
+    due_at: AwareDatetime
+    assignee_user_id: UUID
+    application_id: UUID | None = None
+    job_id: UUID | None = None
+
+
+class CandidateTaskUpdate(BaseModel):
+    """Only the keys sent are considered; `notes: null` clears the notes. The links are fixed at creation."""
+
+    model_config = ConfigDict(extra="forbid")
+    task_type: Literal[CANDIDATE_TASK_TYPES] = None
+    title: CandidateTaskTitle = None
+    notes: CandidateTaskNotes = None
+    due_at: AwareDatetime = None
+    assignee_user_id: UUID = None
 
 
 class RecBoardStage(BaseModel):
@@ -15586,3 +15622,44 @@ class RemediationPlanPatch(BaseModel):
         if not self.model_fields_set:
             raise ValueError("Nothing to change")
         return self
+
+
+# --- hrc-022 (DEC-SCOPE-384): the external candidate portal ----------------------------------------------------------------------
+_PORTAL_EMAIL = Field(pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$", max_length=255)
+
+
+def _lower_email(value: str) -> str:
+    return value.strip().lower()
+
+
+class CandidatePortalRegistration(BaseModel):
+    """C2. The consent version must be the one the form showed (checked by the route against the service's)."""
+
+    full_name: Annotated[str, AfterValidator(str.strip)] = Field(min_length=2, max_length=160)
+    email: Annotated[str, AfterValidator(_lower_email)] = _PORTAL_EMAIL
+    phone: str | None = Field(default=None, max_length=40)
+    password: str = Field(min_length=10, max_length=128)
+    consent_version: str = Field(max_length=20)
+
+    @field_validator("phone")
+    @classmethod
+    def _blank_phone_is_none(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
+
+
+class CandidatePortalToken(BaseModel):
+    token: str = Field(min_length=1, max_length=200)
+
+
+class CandidatePortalResend(BaseModel):
+    email: Annotated[str, AfterValidator(_lower_email)] = _PORTAL_EMAIL
+
+
+class CandidatePortalEmailChange(BaseModel):
+    new_email: Annotated[str, AfterValidator(_lower_email)] = _PORTAL_EMAIL
+    current_password: str = Field(min_length=1, max_length=128)
+
+
+class CandidatePortalConsent(BaseModel):
+    opted_in: StrictBool
+    consent_version: str = Field(max_length=20)

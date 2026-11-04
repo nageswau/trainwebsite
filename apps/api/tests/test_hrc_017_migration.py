@@ -1,4 +1,4 @@
-"""hrc-017 -- migration 0263_skill_taxonomy (DEC-SCOPE-386 T1-T3, T5; AC1). Seed, idempotence and the round trip run in a throwaway
+"""hrc-017 -- migration 0265_skill_taxonomy (DEC-SCOPE-388 T1-T3, T5; AC1). Seed, idempotence and the round trip run in a throwaway
 database built from scratch (the rec-006 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import asyncio
@@ -17,11 +17,11 @@ from alembic import command
 from app.core.config import settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
-_spec = importlib.util.spec_from_file_location("_hrc_017_migration_0263", API_ROOT / "alembic" / "versions" / "0263_skill_taxonomy.py")
+_spec = importlib.util.spec_from_file_location("_hrc_017_migration_0265", API_ROOT / "alembic" / "versions" / "0265_skill_taxonomy.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-BASE, HEAD = "0262_job_visibility", "0263_skill_taxonomy"
+BASE, HEAD = "0264_candidate_notes_tasks", "0265_skill_taxonomy"
 IT_SEED = ["Programming", "Java Technologies", "Frontend", "Database", "Cloud/DevOps"]
 NON_IT = ["Engineering", "Healthcare", "Pharmacy", "Finance", "Sales", "Human Resources"]
 
@@ -45,7 +45,7 @@ def _sql(url: str, sql: str, params: dict | None = None, *, autocommit: bool = F
     return asyncio.run(_inner())
 
 
-def test_migration_chains_after_job_visibility_and_is_the_single_head():
+def test_migration_chains_after_candidate_notes_tasks_and_is_the_single_head():
     assert (_migration.revision, _migration.down_revision) == (HEAD, BASE)
     assert len(ScriptDirectory.from_config(_config()).get_heads()) == 1
 

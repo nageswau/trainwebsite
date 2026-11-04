@@ -569,6 +569,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** medium.
 
 #### hrc-016: Candidate notes, tasks and a complete timeline
+- **Status (2026-11-04):** built — `DEC-SCOPE-387` (Q-16 answered by the builder's recommended call: a new `candidate_tasks` table,
+  `NEEDS_CONFIRMATION`); design `docs/superpowers/specs/2026-11-04-hrc-016-candidate-notes-tasks-timeline-design.md`; migration `0264`;
+  API §12KF; RBAC §2.283.
 - **Business requirement:** §12 "Activity timeline: notes, calls, emails, assignments, screening, interviews and status changes"; "Task assignment … follow-ups, resume screening, interview coordination and employer feedback"; "Internal comments … private".
 - **Existing behavior:**
   - The timeline unions calls, messages, application/interview/offer events and shares. Notes, assignments, edits and screening are missing.
@@ -622,7 +625,7 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **+/−/E:** an existing IT seed is unchanged.
 - **Regression risks:** rec-006 seed tests.
 - **Complexity:** small. **Risk:** low.
-- **Status:** built as `DEC-SCOPE-386` (migration `0263_skill_taxonomy`, API §12KE, RBAC unchanged); design
+- **Status:** built as `DEC-SCOPE-388` (migration `0265_skill_taxonomy`, API §12KG, RBAC unchanged); design
   `docs/superpowers/specs/2026-11-04-hrc-017-skills-taxonomy-design.md`. Q-17 answered by the builder's calls T1-T9 (a provisional non-IT
   starter list the owner edits in the Skills Master; the level is set in "Adjust weights"; `NEEDS_CONFIRMATION`).
 
@@ -739,6 +742,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 ### Phase 3: Website integration (PDF Phase 3)
 
 #### hrc-022: External candidate portal identity and self-service
+- **Status (2026-11-04):** built — `DEC-SCOPE-386` (Q-23/Q-24 answered by the builder's recommended calls C1–C12, `NEEDS_CONFIRMATION`:
+  a separate `candidate` role, no phone OTP until an SMS provider is chosen); design
+  `docs/superpowers/specs/2026-11-04-hrc-022-candidate-portal-identity-design.md`; migration `0263`. A recruiter invite email is a follow-up.
 - **Business requirement:** §6.1 step 2 "Create a candidate portal account or activation invitation … associate with the unique Candidate ID"; §5.1 "Allow candidates to edit only fields enabled for self-service; verify critical contact changes"; §11 My Profile and Privacy.
 - **Existing behavior:** ⚠ external candidates have no login (the recruiter backlog said "Authentication impact: none"). `auth.register` creates only agent and student accounts. IT students have a portal and an opt-in.
 - **Expected behavior:**

@@ -3,7 +3,7 @@
 **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-017` (PDF §7.3 "IT, engineering, healthcare, pharmacy, finance, sales, HR
 and non-IT"; §8 "category and proficiency"; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00: all phases).
 No dependency. The owner said to proceed with the recommended answers, so Q-17 and T1–T9 are **the builder's calls
-(`NEEDS_CONFIRMATION`)**. Decision `DEC-SCOPE-386`, migration `0263_skill_taxonomy`, API §12KE. RBAC unchanged (no new grant).
+(`NEEDS_CONFIRMATION`)**. Decision `DEC-SCOPE-388`, migration `0265_skill_taxonomy`, API §12KG. RBAC unchanged (no new grant).
 
 ## Builder's calls
 
@@ -21,7 +21,7 @@ No dependency. The owner said to proceed with the recommended answers, so Q-17 a
 
 ## Design
 
-- **DB (0263):** `skill_categories.domain varchar(10) NOT NULL DEFAULT 'it'` + `ck_skill_categories_domain`; `job_skills.min_level
+- **DB (0265):** `skill_categories.domain varchar(10) NOT NULL DEFAULT 'it'` + `ck_skill_categories_domain`; `job_skills.min_level
   varchar(16) NULL` + `ck_job_skills_min_level`; the T2 seed. Guarded steps (0001 builds fresh databases from the models). Downgrade drops
   both columns and deletes the seeded non-IT skills, aliases and categories that nothing references (a referenced row stays).
 - **Service:** `candidate_search._has(ids, verified_only, levels=None)` gains the level set; `matching.plan` passes it. `skills.py` gains
@@ -46,8 +46,8 @@ the weights form vitest, e2e specs that pick "Programming" from the first 100 ca
 
 ## Tasks
 
-1. Migration 0263 + models + migration test (RED → GREEN).
+1. Migration 0265 + models + migration test (RED → GREEN).
 2. Categories domain: schemas, API in/out/filter, skills `?domain=` + tests.
 3. `min_level`: schemas, weights route, set_skills preservation, detail/criteria output, matching filter + tests.
 4. Web: types/clients, categories admin, skills panel filter, weights form, detail label + vitest.
-5. Docs: DEC-SCOPE-386, API §12KE, backlog status line; Playwright spec; browser QA.
+5. Docs: DEC-SCOPE-388, API §12KG, backlog status line; Playwright spec; browser QA.

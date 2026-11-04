@@ -3,7 +3,7 @@
 import { LEVELS, type SkillLevel } from "@/lib/recruiterCandidateSkills";
 import { REQUIREMENTS_URL } from "@/lib/recruiterRequirements";
 
-// hrc-017 (DEC-SCOPE-386 T5): `min_level` -- only a candidate at that level or above counts. Optional so older fixtures still compile.
+// hrc-017 (DEC-SCOPE-388 T5): `min_level` -- only a candidate at that level or above counts. Optional so older fixtures still compile.
 export type CriteriaSkill = {
   id: string; name: string; kind: "required" | "preferred"; weight: number; points: number; in_master: boolean; min_level?: SkillLevel | null;
 };

@@ -11576,13 +11576,52 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0262_job_visibility`; API §12KD; RBAC §2.281.
 - **Feature ID authorized:** `hrc-008`. **Status:** built on `worktree-hrc-008`.
 
-### DEC-SCOPE-386 — Skills taxonomy: IT / non-IT domains and a job skill's minimum level (`hrc-017`)
+### DEC-SCOPE-386 — External candidate portal identity and self-service (`hrc-022`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-022` (PDF §5.1, §6.1 step 2, §11; PDF classified `UNVERIFIED`). Scope
+  approved by the owner 2026-11-01 (backlog Q-00). Dependencies hrc-002 (DEC-SCOPE-374) and hrc-010 (DEC-SCOPE-383) merged. The owner
+  said to proceed with the recommended answers, so Q-23, Q-24 and C1–C12 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-04-hrc-022-candidate-portal-identity-design.md`.
+- **Behaviour:** an external job seeker registers at `/it/careers/register`, verifies their email by a 24-hour single-use link, signs in
+  at `/it/login` and lands on `/it/careers/portal/profile`. Verification links them to their candidate record (an unlinked recruiter
+  record with the same email is claimed; otherwise a new one, source "Candidate portal"), in the pool with a recorded consent. They see
+  only their own record, edit only the allow-listed fields, change their email only by confirming a link sent to the new address, and
+  can leave or re-join the pool (Privacy).
+- **Builder's calls:** C1/Q-23 a separate `candidate` role (division `it`); one email is one account (a student keeps the student
+  portal). C2 registration always answers 202; 5 per IP per hour → 429. C4 claiming by verified email only, never by phone. C5 resend
+  capped at 3 per 15 minutes silently. C6 unverified candidates cannot sign in (403 after the password). C7 allow-list universe of 13
+  fields, default all but the name, changed by placement managers and super_admin. C8/Q-24 no SMS provider, so the mobile is not
+  self-service. C9 email change needs the current password, 3 requests per 15 minutes → 429, an address in use is accepted silently.
+  C10 no id in any portal URL. Not built: a recruiter "invite to portal" email (follow-up), website registration/UTM (hrc-023).
+- **Numbering:** migration `0263_candidate_portal`; API §12KE; RBAC §2.282.
+- **Feature ID authorized:** `hrc-022`. **Status:** built on `worktree-hrc-022`.
+
+### DEC-SCOPE-387 — Candidate notes, tasks and a complete timeline (`hrc-016`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-016` (PDF §12 "Activity timeline", "Task assignment", "Internal
+  comments"; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00). Dependency hrc-012 (DEC-SCOPE-382)
+  merged. The owner said to proceed with the recommended answers, so Q-16 and T1–T12 are **the builder's calls (`NEEDS_CONFIRMATION`)**.
+  Design `docs/superpowers/specs/2026-11-04-hrc-016-candidate-notes-tasks-timeline-design.md`.
+- **Behaviour:** private, append-only candidate notes (1–2000 characters) read by candidate readers and added by writers; candidate tasks
+  (follow-up, resume screening, interview coordination, employer feedback) with a title, due time, assignee and an optional application or
+  requirement, edited / completed / cancelled by any candidate writer; a "My tasks" list (Today / Overdue / Upcoming, IST); an
+  `it.candidate.task_assigned` notice to a new assignee (never the actor). The candidate timeline adds notes, tasks, ownership changes
+  (hrc-012 history), profile changes (create / edit with a field count / archive / restore / merge) and screening results.
+- **Builder's calls:** T1/Q-16 a new `candidate_tasks` table — `RecruiterFollowUp` belongs to a company's scope (rec-024 FU4) and has no
+  assignee. T2 notes are internal only: no candidate, student, employer, portal or public route reads the table (a structural test pins
+  it). T4 an assignee is an active recruiter with a profile, a placement manager or super_admin; a later-deactivated assignee shows
+  "(inactive)" and can be replaced, and does not block deactivation. T5 the pool rule (R11): every writer changes any task; `hr_team`
+  reads. T10 merge moves notes and tasks to the survivor. Reminders are the My tasks daily list (no new scheduled job).
+- **Numbering:** migration `0264_candidate_notes_tasks`; API §12KF; RBAC §2.283.
+- **Feature ID authorized:** `hrc-016`. **Status:** built on `worktree-hrc-016`.
+
+### DEC-SCOPE-388 — Skills taxonomy: IT / non-IT domains and a job skill's minimum level (`hrc-017`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-017` (PDF §7.3 categories "IT, engineering, healthcare, pharmacy, finance,
   sales, HR and non-IT"; §8 "category and proficiency"; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00:
   all phases). No dependency. The owner said to proceed with the recommended answers, so Q-17 and T1–T9 are **the builder's calls
   (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-04-hrc-017-skills-taxonomy-design.md`.
-- **Behaviour:** every Skills Master category has a domain, `it` or `non_it` (`skill_categories.domain`, existing rows `it`). Migration 0263
+- **Behaviour:** every Skills Master category has a domain, `it` or `non_it` (`skill_categories.domain`, existing rows `it`). Migration 0265
   seeds six non-IT categories (Engineering, Healthcare, Pharmacy, Finance, Sales, Human Resources) with a starter skill list and three
   aliases, insert-if-missing (an existing category or term is never overwritten; the IT seed is unchanged). Managers choose the domain when
   adding a category and switch it with "Move to …"; `?domain=` filters the categories and skills lists (a skill counts through its primary
@@ -11593,5 +11632,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   existing categories are IT. T3 the seed never renames or re-domains an existing row. T6 the level rides on `PUT …/skill-weights` (omitted =
   unchanged, null = any level; a free-text skill cannot take one: 422) and is audited by skill name. T7 editing the skill lists keeps a kept
   skill's level; legacy flat-list writers never touch it. Candidate search by category is hrc-019's.
-- **Numbering:** migration `0263_skill_taxonomy`; API §12KE; RBAC unchanged (no new grant: managers write categories, `can_edit` sets levels).
+- **Numbering:** migration `0265_skill_taxonomy`; API §12KG; RBAC unchanged (no new grant: managers write categories, `can_edit` sets levels).
 - **Feature ID authorized:** `hrc-017`. **Status:** built on `worktree-hrc-017`.

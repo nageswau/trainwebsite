@@ -5,7 +5,7 @@ import type { LookupPage } from "@/lib/lookups";
 import { getPage } from "@/lib/telecallerCatalogue";
 
 export type SkillRef = { id: string; name: string; active: boolean };
-// hrc-017 (DEC-SCOPE-386 T1): every category is IT or non-IT. Optional on the type so older fixtures still compile; the API always sends it.
+// hrc-017 (DEC-SCOPE-388 T1): every category is IT or non-IT. Optional on the type so older fixtures still compile; the API always sends it.
 export type SkillDomain = "it" | "non_it";
 export const DOMAIN_LABEL: Record<SkillDomain, string> = { it: "IT", non_it: "Non-IT" };
 export const isDomain = (value: string): value is SkillDomain => value === "it" || value === "non_it";

@@ -1,9 +1,9 @@
 """hrc-017 -- the skills taxonomy: `skill_categories.domain` (IT / non-IT), `job_skills.min_level` and the non-IT category seed.
 
-Revision ID: 0263_skill_taxonomy
-Revises: 0262_job_visibility
+Revision ID: 0265_skill_taxonomy
+Revises: 0264_candidate_notes_tasks
 
-docs/superpowers/specs/2026-11-04-hrc-017-skills-taxonomy-design.md (DEC-SCOPE-386). 0001 builds a fresh database from the current
+docs/superpowers/specs/2026-11-04-hrc-017-skills-taxonomy-design.md (DEC-SCOPE-388). 0001 builds a fresh database from the current
 models, which already carry the columns, so each step runs only when missing (0262's idiom). The server default makes every existing
 category `it` (T1). The seed (T2, Q-17: a provisional list, NEEDS_CONFIRMATION) is 0104's insert-if-missing: an existing category is
 reused as it is, a skill whose name is already a skill or an alias is skipped, so it never overwrites a manager's edit (T3). The
@@ -17,8 +17,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0263_skill_taxonomy"
-down_revision = "0262_job_visibility"
+revision = "0265_skill_taxonomy"
+down_revision = "0264_candidate_notes_tasks"
 branch_labels = None
 depends_on = None
 

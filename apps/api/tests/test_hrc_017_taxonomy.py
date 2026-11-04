@@ -1,4 +1,4 @@
-"""hrc-017 (DEC-SCOPE-386 T1-T9): category domains, the domain filter, a job skill's minimum level and the matching rule it drives (AC2).
+"""hrc-017 (DEC-SCOPE-388 T1-T9): category domains, the domain filter, a job skill's minimum level and the matching rule it drives (AC2).
 The shared test database is never truncated: every test makes its own names (rec-016's World)."""
 
 import uuid

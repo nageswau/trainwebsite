@@ -8,6 +8,7 @@ even on a write it could not make; the action check (`require`, rec-007 §2.55) 
 The candidate pool has no ownership scope (R11): every recruiter and manager reads and writes any candidate, hr_team reads."""
 
 import random
+from datetime import timedelta
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -17,6 +18,7 @@ from app.models import (
     CandidateDocumentRequest,
     CandidateResume,
     CandidateSkill,
+    CandidateTask,
     Job,
     JobAssignment,
     JobSkill,
@@ -28,7 +30,8 @@ from app.models import (
 )
 from app.services import candidates as candidate_svc
 from app.services import job_descriptions
-from tests.rec038_helpers import PDF, R, add, allow, make_candidate, tag
+from app.services.candidate_portal import DEFAULT_FIELDS
+from tests.rec038_helpers import PDF, R, add, allow, make_candidate, now, tag
 from tests.test_rec_012_resume_extract import SOURCE, _pdf
 
 REQ_SCOPE = ("rec", "rec_out", "mgr", "mgr_out", "super", "bdm", "bdm_out")  # rec-007 caller_scope roles (every one reads the lists)
@@ -135,6 +138,20 @@ ROWS = [
     R("get", "/recruiter/candidates/assignees?kind=recruiter", **allow(200, *WRITERS)),
     R("get", "/recruiter/candidate-ownership-settings", **allow(200, *READERS)),
     R("put", "/recruiter/candidate-ownership-settings", {"shared_ownership": False}, **allow(200, "mgr", "mgr_out", "super")),
+    # hrc-022 (DEC-SCOPE-386 C7, §2.282): the candidate self-service allow-list -- read like the ownership setting, changed by managers
+    R("get", "/recruiter/candidate-self-service-settings", **allow(200, *READERS)),
+    R("put", "/recruiter/candidate-self-service-settings", {"fields": list(DEFAULT_FIELDS)}, **allow(200, "mgr", "mgr_out", "super")),
+    # hrc-016 (§2.283): notes and tasks follow the candidate rule -- readers read, writers write; My tasks and the picker are writers'
+    R("get", "/recruiter/candidates/{candidate}/notes", **allow(200, *READERS)),
+    R("post", "/recruiter/candidates/{candidate}/notes", {"body": "Internal note"}, **allow(201, *WRITERS)),
+    R("get", "/recruiter/candidates/{candidate}/tasks", **allow(200, *READERS)),
+    R("post", "/recruiter/candidates/{candidate}/tasks", lambda w: {"task_type": "follow_up", "title": "Call", "due_at": (now() + timedelta(days=1)).isoformat(),
+                                                          "assignee_user_id": w["rec_id"]}, **allow(201, *WRITERS)),  # fmt: skip
+    R("get", "/recruiter/candidate-tasks", **allow(200, *WRITERS)),
+    R("get", "/recruiter/candidate-tasks/assignees", **allow(200, *WRITERS)),
+    R("patch", "/recruiter/candidate-tasks/{candidates_task}", {"title": "Call again"}, **allow(200, *WRITERS)),
+    R("post", "/recruiter/candidate-tasks/{candidates_task}/complete", **allow(200, *WRITERS)),
+    R("post", "/recruiter/candidate-tasks/{candidates_task}/cancel", **allow(200, *WRITERS)),
     # rec-013 / rec-014 Find Candidates (§2.77, §2.80): read only, hr_team included
     R("post", "/recruiter/candidates/search", {"all": ["Java"]}, **allow(200, *READERS)),
     # rec-036 the candidate journey (§2.105)
@@ -200,8 +217,12 @@ async def build(client, db, w) -> None:
                                                 updated_by_user_id=mgr.id))).id  # fmt: skip
     program = await add(db, Program(slug=tag("r38-"), category="Software Development", title=f"R38 Program {tag()}", summary="", duration="8 weeks",
                                      eligibility="", fees=0, certification="Cert", curriculum=[], placement_assistance="", trainer_name="T", active=True))  # fmt: skip
+    # hrc-016: an open task on the world's candidate (each write cell runs on its own world, so complete and cancel both succeed)
+    task = await add(db, CandidateTask(candidate_id=UUID(w["candidate"]), task_type="follow_up", title="Call back", due_at=func.now() + timedelta(days=1),
+                                       assignee_user_id=rec.id, created_by_user_id=rec.id))  # fmt: skip
     await db.commit()
     w.update({
+        "candidates_task": str(task.id),
         "candidates_source": str(source.id), "candidates_java": str(java.id), "candidates_spare": str(spare.id), "candidates_archived": str(archived.id),
         "candidates_cv": str(cv.id), "candidates_document": str(document.id), "candidates_request": str(request.id), "candidates_skill": str(skill.id), "candidates_job_skill": str(job_skill.id), "candidates_jd_version": str(jd.version),
         "candidates_pool": str(_POOL["id"]), "candidates_program": str(program.id), "candidates_co_owner": str(co_owner.id),
