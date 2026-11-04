@@ -53,10 +53,12 @@ from app.models import (
     BDM_STAFF_MAX,
     BDM_TARGET_MAX,
     CANDIDATE_CONTACT_METHODS,
+    CANDIDATE_NOTE_MAX,
     CANDIDATE_SKILL_LEVELS,
     CANDIDATE_SKILL_SOURCES,
     CANDIDATE_SKILL_STATUSES,
     CANDIDATE_STATUSES,
+    CANDIDATE_TASK_TYPES,
     CAPITAL_ENTRY_KINDS,
     CONTACT_CHANNELS,
     CONTACT_PREFERENCES,
@@ -9860,7 +9862,8 @@ class RecTimelineRow(BaseModel):
     entry). `id` is the source row's id (a follow-up's scheduled / done / cancelled entries share it; `event` tells them apart)."""
 
     id: UUID
-    kind: Literal["stage", "call", "message", "meeting", "follow_up", "requirement", "share", "share_response", "contract", "application", "interview", "offer"]
+    kind: Literal["stage", "call", "message", "meeting", "follow_up", "requirement", "share", "share_response", "contract", "application", "interview", "offer",
+                  "note", "task", "assignment", "profile", "screening"]  # hrc-016 T9: the candidate timeline's new kinds
     at: datetime
     actor: LeadStageActor | None
     event: str | None
@@ -9881,6 +9884,39 @@ class RecTimelinePage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# hrc-016 (DEC-SCOPE-385 T2/T3/T6): a private note and a candidate task. Author, status and stamps are server-owned (unknown fields here).
+CandidateNoteBody = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=CANDIDATE_NOTE_MAX)], BeforeValidator(_bdm_newlines)]
+CandidateTaskTitle = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+CandidateTaskNotes = Annotated[Annotated[str, StringConstraints(strip_whitespace=True, max_length=CANDIDATE_NOTE_MAX)] | None, BeforeValidator(_bdm_newlines)]
+
+
+class CandidateNoteIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    body: CandidateNoteBody
+
+
+class CandidateTaskCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    task_type: Literal[CANDIDATE_TASK_TYPES]
+    title: CandidateTaskTitle
+    notes: CandidateTaskNotes = None
+    due_at: AwareDatetime
+    assignee_user_id: UUID
+    application_id: UUID | None = None
+    job_id: UUID | None = None
+
+
+class CandidateTaskUpdate(BaseModel):
+    """Only the keys sent are considered; `notes: null` clears the notes. The links are fixed at creation."""
+
+    model_config = ConfigDict(extra="forbid")
+    task_type: Literal[CANDIDATE_TASK_TYPES] = None
+    title: CandidateTaskTitle = None
+    notes: CandidateTaskNotes = None
+    due_at: AwareDatetime = None
+    assignee_user_id: UUID = None
 
 
 class RecBoardStage(BaseModel):

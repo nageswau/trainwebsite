@@ -166,6 +166,7 @@ export const RECRUITER_NAV: NavItem[] = [
   { label: "Pipeline", href: "/recruiter/pipeline" }, // rec-005
   { label: "Job Requirements", href: "/recruiter/requirements" }, // rec-007
   { label: "Follow-ups", href: "/recruiter/follow-ups" }, // rec-024
+  { label: "My Tasks", href: "/recruiter/tasks" }, // hrc-016: candidate tasks assigned to me
   { label: "Meetings", href: "/recruiter/meetings" }, // rec-028
   { label: "Interviews", href: "/recruiter/interviews" }, // rec-020
   { label: "Joinings", href: "/recruiter/joinings" }, // rec-023
@@ -189,6 +190,7 @@ export const RECRUITER_MANAGER_NAV: NavItem[] = [
   { label: "Pipeline", href: "/recruiter/pipeline" }, // rec-005: team + unassigned
   { label: "Job Requirements", href: "/recruiter/requirements" }, // rec-007: the team's requirements
   { label: "Follow-ups", href: "/recruiter/follow-ups" }, // rec-024: the team's lists, read only
+  { label: "My Tasks", href: "/recruiter/tasks" }, // hrc-016: candidate tasks assigned to me
   { label: "Meetings", href: "/recruiter/meetings" }, // rec-028: the team's meetings, read only
   { label: "Interviews", href: "/recruiter/interviews" }, // rec-020: the team's interviews, read only
   { label: "Joinings", href: "/recruiter/joinings" }, // rec-023: the team's joinings, read only
