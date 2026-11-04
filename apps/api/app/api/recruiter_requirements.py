@@ -30,6 +30,7 @@ from app.schemas import (
     RecRequirementVisibility,
     RecSkillWeights,
 )
+from app.services import application_review as review
 from app.services import applications, candidates, matching, recruitment_history
 from app.services import recruiter_companies as companies
 from app.services import recruiter_requirements as svc
@@ -198,6 +199,7 @@ async def update_requirement(requirement_id: UUID, payload: RecRequirementUpdate
     fields = payload.model_fields_set
     skills_sent = "required_skills" in fields or "preferred_skills" in fields
     before = await svc.audited_values(db, job, changed, skills=skills_sent)  # hrc-004: the stored values, for the audit diff
+    eligible_before = await matching.eligibility(db, job)  # hrc-009 (R7)
     for key in changed:
         setattr(job, key, changes[key])
     if {"location", "city", "state", "country"} & set(changed):  # hrc-005 V3: a derived location follows its parts; a typed one stays
@@ -220,6 +222,7 @@ async def update_requirement(requirement_id: UUID, payload: RecRequirementUpdate
         after = await svc.audited_values(db, job, [k for k in changed if k != "skills"], skills=skills_sent)
         svc.audit(db, user, "update", job.id, {"fields": changed, "changes": recruitment_history.diff(before, after)})
         _audit_override(db, user, job, overrides, payload.duplicate_reason)
+        await review.flag(db, user, job, eligible_before)
     await db.commit()
     if changed:
         svc.log("recruiter_requirement_updated", user, job.id, fields=changed)
@@ -368,11 +371,13 @@ async def set_skill_weights(requirement_id: UUID, payload: RecSkillWeights, user
         raise HTTPException(422, "Only a skill in the Skills Master can have a minimum level")
     changed = sorted(str(w.id) for w in payload.weights if rows[w.id].weight != w.weight or w.id in levels)
     changes = {f"{rows[i].name} minimum level": [rows[i].min_level, level] for i, level in levels.items()}
+    eligible_before = await matching.eligibility(db, job)  # hrc-009 (R1/R7): a required skill's minimum level gates who fits
     for w in payload.weights:
         rows[w.id].weight = w.weight
         rows[w.id].min_level = levels.get(w.id, rows[w.id].min_level)
     if changed:
         svc.audit(db, user, "weights", job.id, {"skills": changed, **({"changes": changes} if changes else {})})
+        await review.flag(db, user, job, eligible_before)
     await db.commit()
     if changed:
         svc.log("recruiter_requirement_weights_changed", user, job.id, skills=len(changed))

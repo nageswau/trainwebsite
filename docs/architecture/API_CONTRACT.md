@@ -5760,6 +5760,22 @@ Fields over their column length, an invalid email or an unparseable phone 422. M
 which. `POST /api/v1/candidate/register` (§12KE) adds optional `utm`. `GET /api/v1/recruiter/candidates/{id}` adds `utm` and
 `website_applications: [{job_title, tracking_code, status, created_at}]`; the merge preview/result `moved` adds `career_applications`.
 
+## 12KI. Eligibility-change review (hrc-009) — addendum, 2026-11-04
+
+DEC-SCOPE-390. Additive; every route keeps rec-017's requirement scope (out of scope = 404) and writer gate.
+- `GET /api/v1/recruiter/requirements/{id}/candidates?needs_review=true` → the review list (flagged applications only). Every response
+  of this route gains `needs_review_count` (the requirement's flagged applications, whatever the filter).
+- Every application item (`/candidates` list, `/applications/{id}/status`, `/screening`, `/confirm-review`) gains `needs_review_since`
+  (ISO time or null).
+- `POST /api/v1/recruiter/applications/{id}/confirm-review` (no body) → `{application}` with `needs_review_since: null`, status unchanged;
+  writers (`placement_team` on the requirement, `super_admin`); manager/BDM 403; not flagged 409 "This application does not need a
+  review". Audit `recruiter_application.review_confirmed` (status and the flag's time).
+- `PATCH /recruiter/requirements/{id}`, `PATCH /employer/jobs/{id}`, `PATCH /workflows/it/jobs/{id}`, `PUT /recruiter/requirements/{id}/
+  skill-weights`: an eligibility change (required skills with their hrc-017 minimum level, experience range, qualification, matched
+  location) flags the job's open applications and sends `it.requirement.review_needed`
+  ("Applications to review: N. …", link `/recruiter/requirements/{id}`) to its owners but the editor. Responses unchanged.
+- Any application status move clears `needs_review_since`.
+
 ## 12KJ. Candidate bulk import (hrc-013) — addendum, 2026-11-04
 
 DEC-SCOPE-391. Every route needs a candidate writer holding `candidates.import` (else **403**, anonymous **401**).

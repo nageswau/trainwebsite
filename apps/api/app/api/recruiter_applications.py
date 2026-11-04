@@ -8,13 +8,14 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models import APPLICATION_STATUSES, ApplicationScreening, Candidate, Company, Job, JobApplication, User
 from app.schemas import RecApplicationCreate, RecApplicationStatusChange, RecScreeningIn
+from app.services import application_review as review
 from app.services import application_screening as screening
 from app.services import applications as svc
 from app.services import candidates, joinings
@@ -34,6 +35,7 @@ async def _item(db: AsyncSession, user: User, application: JobApplication) -> di
 async def list_requirement_candidates(
     requirement_id: UUID,
     status: Literal[APPLICATION_STATUSES] | None = None,
+    needs_review: bool = False,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -41,12 +43,17 @@ async def list_requirement_candidates(
     stmt = select(JobApplication, Candidate).join(Candidate, Candidate.id == JobApplication.candidate_id).where(JobApplication.job_id == job.id)
     if status:
         stmt = stmt.where(JobApplication.status == status)
+    if needs_review:  # hrc-009 (R8): the review list
+        stmt = stmt.where(JobApplication.needs_review_since.is_not(None))
     stmt = stmt.add_columns(ApplicationScreening.result).outerjoin(ApplicationScreening, ApplicationScreening.application_id == JobApplication.id)
     rows = (await db.execute(stmt.order_by(JobApplication.stage_changed_at.desc(), JobApplication.id))).all()
     return {
         "items": [svc.item_out(user, a, c, screening.result_out(result)) for a, c, result in rows],
         "statuses": svc.catalogue(),
         "can_add": svc.can_write(user) and job.status not in requirements.ENDED,
+        "needs_review_count": await db.scalar(
+            select(func.count()).where(JobApplication.job_id == job.id, JobApplication.needs_review_since.is_not(None))
+        ),
     }
 
 
@@ -80,6 +87,17 @@ async def change_application_status(application_id: UUID, payload: RecApplicatio
     svc.audit(db, user, "status", application, {"from": previous, "to": payload.status, "changes": {"status": [previous, payload.status]}})
     await db.commit()
     svc.log("recruiter_application_status_changed", user, application, from_status=previous, to_status=payload.status)
+    return {"application": await _item(db, user, application)}
+
+
+@router.post("/applications/{application_id}/confirm-review")
+async def confirm_application_review(application_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """hrc-009 (R4/R9): keep a flagged application where it is after an eligibility change; 409 when it is not flagged."""
+    application, _job = await svc.load_scoped(db, user, application_id, lock=True)
+    svc.require_writer(user, application.id, "confirm_application_review")
+    review.confirm(db, user, application)
+    await db.commit()
+    svc.log("recruiter_application_review_confirmed", user, application)
     return {"application": await _item(db, user, application)}
 
 

@@ -2,7 +2,7 @@
 grant (recruiters and placement managers).
 
 Revision ID: 0268_candidate_imports
-Revises: 0266_website_intake
+Revises: 0267_application_review
 
 docs/superpowers/specs/2026-11-04-hrc-013-candidate-bulk-import-design.md (DEC-SCOPE-391). Two new tables; 0001 builds a fresh database
 from the current models, which already carry them, so each runs only when missing (0256's idiom). The checks and SEED are frozen copies of
@@ -16,7 +16,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0268_candidate_imports"
-down_revision = "0266_website_intake"
+down_revision = "0267_application_review"
 branch_labels = None
 depends_on = None
 
