@@ -2,7 +2,7 @@
 // API resolves every skill (aliases, related skills), applies the pool and decides who may search; nothing here filters for security.
 // rec-014 (DEC-SCOPE-154): the resume search text rides along as `q` <-> `text`; a card's snippet arrives as plain-text segments.
 import type { LookupPage } from "@/lib/lookups";
-import { CANDIDATES_URL, STATUSES, type CandidateStatus, type SourceRef } from "@/lib/recruiterCandidates";
+import { CANDIDATES_URL, engagementOf, STATUSES, type CandidateEngagement, type CandidateStatus, type SourceRef } from "@/lib/recruiterCandidates";
 import { REQUIREMENTS_URL, type RequirementRow } from "@/lib/recruiterRequirements";
 
 export type Band = "immediate" | "d15" | "d30" | "d31_59" | "d60_plus";
@@ -13,6 +13,7 @@ export type CandidateCard = {
   id: string; candidate_code: string; name: string; preferred_role: string | null; current_company: string | null; experience_months: number | null;
   location: string | null; notice_days: number | null; expected_salary?: string | null; expected_annual_inr?: string | null; source: SourceRef; source_detail: string | null;
   status: CandidateStatus; skills: CardSkill[]; snippet?: SnippetSegment[] | null;
+  engagement?: CandidateEngagement | null; // hrc-021
 };
 export type Facet = { key: string; count: number };
 export type SearchResult = {
@@ -23,7 +24,7 @@ export type SearchResult = {
 };
 export type SearchState = {
   text: string; all: string[]; any: string[][]; verified: boolean; expMin: string; expMax: string; location: string; availability: Band[]; qualification: string;
-  salMin: string; salMax: string; sourceId: string; status: string; offset: number;
+  salMin: string; salMax: string; sourceId: string; status: string; engagement: string; offset: number;
 };
 
 export const SEARCH_URL = `${CANDIDATES_URL}/search`;
@@ -46,7 +47,7 @@ const EXPERIENCE_YEARS: Record<ExperienceKey, [string, string]> = { y0_1: ["0", 
 
 export const EMPTY_SEARCH: SearchState = {
   text: "", all: [], any: [], verified: false, expMin: "", expMax: "", location: "", availability: [], qualification: "", salMin: "", salMax: "",
-  sourceId: "", status: "", offset: 0,
+  sourceId: "", status: "", engagement: "", offset: 0,
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -94,6 +95,7 @@ export function stateOf(params: URLSearchParams): SearchState {
     salMax: pick(params.get("sal_max"), LAKHS),
     sourceId: pick(params.get("source_id"), UUID),
     status: STATUSES.some((s) => s.key === params.get("status")) ? params.get("status")! : "",
+    engagement: engagementOf(params.get("engagement")), // hrc-021
     offset: Number.isInteger(offset) && offset > 0 ? offset : 0,
   };
 }
@@ -107,6 +109,7 @@ export function paramsOf(state: SearchState): URLSearchParams {
   const single: [string, string][] = [
     ["exp_min", state.expMin], ["exp_max", state.expMax], ["location", state.location], ["qualification", state.qualification],
     ["sal_min", state.salMin], ["sal_max", state.salMax], ["source_id", state.sourceId], ["status", state.status],
+    ["engagement", state.engagement],
   ];
   for (const [key, value] of single) if (value) params.set(key, value);
   state.availability.forEach((band) => params.append("avail", band));
@@ -134,6 +137,7 @@ export function searchBody(state: SearchState): Record<string, unknown> | null {
   if (state.salMax) body.salary_max = rupees(state.salMax);
   if (state.sourceId) body.source_id = state.sourceId;
   if (state.status) body.status = state.status;
+  if (state.engagement) body.engagement = state.engagement;
   return body;
 }
 

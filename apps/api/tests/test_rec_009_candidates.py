@@ -267,6 +267,7 @@ async def test_list_shows_the_source_and_filters(client, db_session):
         "archived",
         "created_at",
         "owner",  # hrc-012 (DEC-SCOPE-382 O2): the primary recruiter
+        "engagement",  # hrc-021 (DEC-SCOPE-397 E7): the derived engagement status
     }
     assert [i["id"] for i in (await client.get(BASE, params={"q": tag, "status": "placed"})).json()["items"]] == [b["id"]]
     by_source = await client.get(BASE, params={"q": tag, "source_id": a["source"]["id"]})
