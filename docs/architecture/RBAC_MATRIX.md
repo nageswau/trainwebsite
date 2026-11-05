@@ -3853,3 +3853,11 @@ override (a deny wins). The caller must also be a Find Candidates reader. Saved 
 grant: any reader keeps their own and sees shared ones; only the owner or `super_admin` changes or deletes one. Compensation stays behind
 `candidates.compensation:view` (filters refused, the salary column left out). Pinned by `apps/api/tests/test_hrc_020_export.py` and
 `apps/api/tests/test_hrc_020_saved_searches.py`.
+
+### 2.295 Website registrations list *(added 2026-11-05 — `DEC-SCOPE-402`, hrc-025)*
+
+No new grant key. `GET /recruiter/candidates/website-registrations` admits the candidate readers (`placement_team`, `placement_manager`,
+`super_admin`, `hr_team`) and `hr_manager`; every other role 403, anonymous 401. A `placement_team` caller reads only the candidates they
+own (primary recruiter, officer or collaborator) and the unassigned ones; the others read all. `hr_manager` still has no other candidate
+route: rows carry `can_open: false` and no contact details. Pinned by `apps/api/tests/test_hrc_025_website_registrations.py` and the rec-038
+matrix row.

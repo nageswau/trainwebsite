@@ -125,6 +125,7 @@ ROWS = [
     R("get", "/recruiter/candidates", **allow(200, *READERS)),
     R("post", "/recruiter/candidates", _new_candidate, **allow(201, *WRITERS)),
     R("get", "/recruiter/candidates/duplicate-check?email=nobody@example.com", **allow(200, *WRITERS)),
+    R("get", "/recruiter/candidates/website-registrations", **allow(200, *READERS, "hr_mgr")),  # hrc-025 N2: the HR Manager reads this list
     R("get", "/recruiter/candidates/{candidate}", **allow(200, *READERS)),
     R("get", "/recruiter/candidates/{candidate}/history", **allow(200, *READERS)),  # hrc-004 B1
     R("patch", "/recruiter/candidates/{candidate}", {"location": "Pune"}, **allow(200, *WRITERS)),

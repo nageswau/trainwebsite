@@ -19,7 +19,7 @@ describe("hrc-002 recruitment role navigation", () => {
     // hrc-007 (DEC-SCOPE-380 A9) gave the HR Manager its approval queue; hrc-006 (DEC-SCOPE-384 O12) the Placement Officer its requirements
     const EXTRA: Record<string, { label: string; href: string }[]> = {
       // hrc-035 (DEC-SCOPE-396 K7): and the candidate data requests
-      "hr-manager": [{ label: "Approvals", href: "/it/hr-manager/approvals" }, { label: "Data requests", href: "/it/hr-manager/data-requests" }],
+      "hr-manager": [{ label: "Approvals", href: "/it/hr-manager/approvals" }, { label: "Data requests", href: "/it/hr-manager/data-requests" }, { label: "Website registrations", href: "/recruiter/website-registrations" }], // hrc-025
       "placement-officer": [{ label: "Job requirements", href: "/recruiter/requirements" }],
     };
     const extra = EXTRA[segment] ?? [];
