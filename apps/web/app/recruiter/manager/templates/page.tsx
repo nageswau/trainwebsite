@@ -26,7 +26,7 @@ export default async function RecruiterManagerTemplatesPage() {
           <div>
             <div className="eyebrow">Recruiter CRM</div>
             <h2>Message templates</h2>
-            <p className="muted">Email, LinkedIn, WhatsApp and calling templates the team starts from. Approve recruiters' drafts to share them; edits keep every version. Archive a template to hide it — it is never deleted.</p>
+            <p className="muted">Email, LinkedIn, WhatsApp and calling templates the team starts from. Approve recruiters&rsquo; drafts to share them; edits keep every version. Archive a template to hide it — it is never deleted.</p>
           </div>
         </div>
         <Suspense fallback={<p className="muted" role="status">Loading templates…</p>}>

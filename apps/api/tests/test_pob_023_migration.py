@@ -18,7 +18,7 @@ _spec = importlib.util.spec_from_file_location("_pob_023_migration_0286", VERSIO
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0286_template_governance", "0283_company_business_context"
+HEAD, BASE = "0286_template_governance", "0284_interview_panel"
 T = "recruiter_message_templates"
 
 

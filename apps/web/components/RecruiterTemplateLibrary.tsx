@@ -262,14 +262,15 @@ export default function RecruiterTemplateLibrary({ approver }: { approver: boole
     event.preventDefault();
     if (inFlight.current) return;
     inFlight.current = true;
-    const body = { channel, ...formBody(new FormData(event.currentTarget), channel, true) };
+    const body: Record<string, unknown> = { channel, ...formBody(new FormData(event.currentTarget), channel, true) };
+    const name = String(body.name);
     setBusy(true);
     const outcome = await sendJson(TEMPLATES_URL, "POST", body);
     inFlight.current = false;
     setBusy(false);
     if (!outcome.ok) return setFeedback({ text: outcome.message, error: true });
     const shared = body.visibility !== "personal";
-    setFeedback({ text: shared && !approver ? `Created ${body.name} as a draft. The Team Lead approves it before the team can use it.` : `Created ${body.name}.`, error: false });
+    setFeedback({ text: shared && !approver ? `Created ${name} as a draft. The Team Lead approves it before the team can use it.` : `Created ${name}.`, error: false });
     setFormKey((k) => k + 1);
     setVersion((v) => v + 1);
   }
