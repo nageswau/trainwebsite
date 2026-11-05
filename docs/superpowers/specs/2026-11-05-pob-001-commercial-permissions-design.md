@@ -4,7 +4,7 @@
   terms and vendor commercials", §18 AC "Permissions prevent unauthorised users from accessing … commercial information"; source classified
   `UNVERIFIED`). The owner assigned pob-001 for build on 2026-11-05 and said to proceed with the recommended answers, so C1–C9 below are
   **the builder's calls (`NEEDS_CONFIRMATION`)** for Q-01. Dependency **hrc-002** is merged (`DEC-SCOPE-374`, PR #446). Decision
-  `DEC-SCOPE-401`.
+  `DEC-SCOPE-402`.
 
 ## Intent
 Client commercial terms (a contract's fee, payment terms and replacement policy, a requirement's fee override, and everything priced from
@@ -27,7 +27,7 @@ so no commercials). Recruitment Team Lead = `placement_manager` (team scope alre
 
 **C3 — Defaults keep today's behaviour (Q-01 "E").** `placement_team` and `placement_manager` hold `commercials.client.view` and
 `commercials.client.edit` by default, and `bdm` holds `commercials.client.view` (the assigned BDM reads the company's contract today,
-rec-030 R10; it never writes it and revenue stays refused by RV10) (migration `0276_commercial_grants` seeds them; `ON CONFLICT DO NOTHING`; downgrade removes the
+rec-030 R10; it never writes it and revenue stays refused by RV10) (migration `0278_commercial_grants` seeds them; `ON CONFLICT DO NOTHING`; downgrade removes the
 resource's grants and overrides). A super admin revokes per role (permission screen / `PUT /admin/roles/{role}/permissions`) or per user
 (nehn-007 deny override). `commercials.vendor.*` and `candidates.contact.view` have **no default holder** (super_admin holds all) until
 their owning items enforce them (hrc-002 R4 precedent).
@@ -83,4 +83,4 @@ rec-030/031/034 tests (fee fields — default grants keep them green), hrc-002 c
 route matrix (status codes unchanged for default roles), navigation tests (resource tag), web vitest fixtures for the contract/revenue cards.
 
 ## Numbering
-Migration `0276_commercial_grants` (siblings hold 0274/0275), `DEC-SCOPE-401`, API §12KT, RBAC §2.295 — re-checked at merge.
+Migration `0278_commercial_grants` (siblings hold 0274/0275), `DEC-SCOPE-402`, API §12KU, RBAC §2.295 — re-checked at merge.

@@ -25,6 +25,7 @@ from app.models import (
     JobSkill,
     Program,
     RecCandidateSource,
+    SavedCandidateSearch,
     Skill,
     TalentPool,
     User,
@@ -170,6 +171,14 @@ ROWS = [
     R("post", "/recruiter/candidate-tasks/{candidates_task}/cancel", **allow(200, *WRITERS)),
     # rec-013 / rec-014 Find Candidates (§2.77, §2.80): read only, hr_team included
     R("post", "/recruiter/candidates/search", {"all": ["Java"]}, **allow(200, *READERS)),
+    # hrc-020 (§2.294): saved searches for every reader; only the owner (rec) or super_admin changes the shared one, others 403. The
+    # export needs `candidates.export` (placement managers by default, super_admin implicitly).
+    R("get", "/recruiter/candidates/saved-searches", **allow(200, *READERS)),
+    R("post", "/recruiter/candidates/saved-searches", lambda w: {"name": tag("R38 Search "), "filters": {"all": ["Java"]}}, **allow(201, *READERS)),
+    R("patch", "/recruiter/candidates/saved-searches/{candidates_saved_search}", {"shared": True},
+      **{**allow(403, "rec_out", "mgr", "mgr_out", "hr"), **allow(200, "rec", "super")}),  # fmt: skip
+    R("delete", "/recruiter/candidates/saved-searches/{candidates_saved_search}", **{**allow(403, "rec_out", "mgr", "mgr_out", "hr"), **allow(204, "rec", "super")}),
+    R("post", "/recruiter/candidates/search/export?format=csv", {"all": ["Java"]}, **{**allow(403, "rec", "rec_out", "hr"), **allow(200, "mgr", "mgr_out", "super")}),
     # rec-036 the candidate journey (§2.105)
     R("get", "/recruiter/candidates/{candidate}/journey", **allow(200, *READERS)),
     # nehn-016 the candidate's training progress, read only (§2.223): the writers, never hr_team (nehn-017)
@@ -237,9 +246,10 @@ async def build(client, db, w) -> None:
     task = await add(db, CandidateTask(candidate_id=UUID(w["candidate"]), task_type="follow_up", title="Call back", due_at=func.now() + timedelta(days=1),
                                        assignee_user_id=rec.id, created_by_user_id=rec.id))  # fmt: skip
     rule = await add(db, CandidateRoutingRule(kind="location", location=tag("R38 City "), recruiter_user_id=rec.id))  # hrc-024
+    saved = await add(db, SavedCandidateSearch(owner_user_id=rec.id, name=tag("R38 Saved "), filters={"all": ["Java"]}, shared=True))  # hrc-020
     await db.commit()
     w.update({
-        "candidates_task": str(task.id), "candidates_routing_rule": str(rule.id),
+        "candidates_task": str(task.id), "candidates_routing_rule": str(rule.id), "candidates_saved_search": str(saved.id),
         "candidates_source": str(source.id), "candidates_java": str(java.id), "candidates_spare": str(spare.id), "candidates_archived": str(archived.id),
         "candidates_cv": str(cv.id), "candidates_document": str(document.id), "candidates_request": str(request.id), "candidates_skill": str(skill.id), "candidates_job_skill": str(job_skill.id), "candidates_jd_version": str(jd.version),
         "candidates_pool": str(_POOL["id"]), "candidates_program": str(program.id), "candidates_co_owner": str(co_owner.id),

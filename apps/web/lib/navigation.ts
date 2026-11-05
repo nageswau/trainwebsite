@@ -13,7 +13,7 @@ const PAGE_RESOURCE: Record<string, string> = {
   "/it/admin/telecaller-reports": "reports.telecaller", "/overseas/admin/telecaller-reports": "reports.telecaller",
   "/telecaller/manager/reports": "reports.telecaller", "/it/coordinator/certificates": "certificates",
   "/it/hr/students": "student_progress", // nehn-017
-  "/recruiter/receivables": "commercials.client", // pob-001 (DEC-SCOPE-401 C8)
+  "/recruiter/receivables": "commercials.client", // pob-001 (DEC-SCOPE-402 C8)
 };
 const withResources = (nav: NavItem[]): NavItem[] => nav.map((item) => (PAGE_RESOURCE[item.href] ? { ...item, resource: PAGE_RESOURCE[item.href] } : item));
 

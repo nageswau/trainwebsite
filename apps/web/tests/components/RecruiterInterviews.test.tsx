@@ -75,7 +75,9 @@ describe("RecruiterApplicationInterviews", () => {
     const [[url, method, body]] = writes();
     expect([url, method]).toEqual(["/api/v1/recruiter/interviews", "POST"]);
     expect(body).toEqual({ application_id: "A1", scheduled_at: "2030-01-15T11:00:00+05:30", notify: true, round: "technical_round", mode: "Online",
-      meeting_url: null, interviewer: null, location: null, contact_id: "K1" });
+      meeting_url: null, interviewer: null, location: null, contact_id: "K1",
+      // hrc-028 (I1): the new fields, blank by default
+      round_number: null, ends_at: null, time_zone: "Asia/Kolkata", platform: null, phone_details: null, instructions: null, documents_required: null });
   });
 
   it("sends one request when Schedule is clicked twice in a row (QA-01)", async () => {

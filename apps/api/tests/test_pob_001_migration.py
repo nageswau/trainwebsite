@@ -1,4 +1,4 @@
-"""pob-001 -- migration 0276_commercial_grants (DEC-SCOPE-401 C3): the chain, the seed and the round trip, in a throwaway database
+"""pob-001 -- migration 0278_commercial_grants (DEC-SCOPE-402 C3): the chain, the seed and the round trip, in a throwaway database
 (the hrc-001 0250 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,11 +13,11 @@ from app.core import rbac
 from app.core.config import settings
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_pob_001_migration_0276", VERSIONS / "0276_commercial_grants.py")
+_spec = importlib.util.spec_from_file_location("_pob_001_migration_0278", VERSIONS / "0278_commercial_grants.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0276_commercial_grants", "0273_candidate_privacy"
+HEAD, BASE = "0278_commercial_grants", "0277_saved_candidate_searches"
 WHERE = "resource IN ('commercials.client', 'commercials.vendor', 'candidates.contact')"
 
 

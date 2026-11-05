@@ -114,7 +114,7 @@ CATALOGUE: dict[str, dict] = {
     # hrc-035 (DEC-SCOPE-396 K7): `erase` -- decides candidates' "delete my data" requests and reads the retention rule (migration 0273).
     "candidates": {"label": "Candidates (export, import, merge, erase)", "actions": ("export", "import", "merge", "erase")},
     "results": {"label": "Interview results", "actions": ("release",)},
-    # pob-001 (DEC-SCOPE-401 C2/C4): client commercial terms -- a contract's fee, payment terms, replacement policy and documents, a
+    # pob-001 (DEC-SCOPE-402 C2/C4): client commercial terms -- a contract's fee, payment terms, replacement policy and documents, a
     # requirement's fee, and the revenue priced from them. `edit` counts only together with `view`.
     "commercials.client": {"label": "Client commercials (fees, terms, revenue)", "actions": ("view", "edit")},
     # Declared ahead of their routes (hrc-002 R4 precedent), no default holder: vendor commercials (pob-010/012) and candidate phone and
@@ -128,7 +128,7 @@ _PAYMENT_ADMIN = ("payments.view", "payments.add", "discounts.add")
 _TELECALLER_REPORTS = ("reports.telecaller.view", "reports.telecaller.download")
 _TRAINING_REPORTS = ("reports.training.view", "reports.training.download")  # nehn-009 (migration 0210 seeds it); a trainer's rows are own batches
 _PLACEMENT_REPORTS = ("reports.placement.view", "reports.placement.download")  # nehn-016 (migration 0212 seeds it); rows = opted-in students
-_CLIENT_COMMERCIALS = ("commercials.client.view", "commercials.client.edit")  # pob-001 (migration 0276 seeds it)
+_CLIENT_COMMERCIALS = ("commercials.client.view", "commercials.client.edit")  # pob-001 (migration 0278 seeds it)
 DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "it_admin": (
         _PAYMENT_ADMIN + _TELECALLER_REPORTS + ("certificates.configure", "student_access.configure") + _TRAINING_REPORTS + _PLACEMENT_REPORTS + ("discounts.approve", "payments.refund")
@@ -138,14 +138,17 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     "trainer": _TRAINING_REPORTS,
     # hrc-001 (DEC-SCOPE-371 H2, Q-03; migration 0250 seeds it): the recruiters and their managers see candidate compensation.
     # hrc-013 (DEC-SCOPE-391 I1, migration 0268 seeds it): recruiters and their managers import candidate files.
-    # pob-001 (DEC-SCOPE-401 C3, Q-01; migration 0276 seeds it): recruiters and their managers keep today's client commercials.
+    # pob-001 (DEC-SCOPE-402 C3, Q-01; migration 0278 seeds it): recruiters and their managers keep today's client commercials.
     "placement_team": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.import") + _CLIENT_COMMERCIALS,
     # hrc-014 (migration 0256 seeds merge); hrc-008 (DEC-SCOPE-385 V4, migration 0262 seeds publish): who sees a vacancy
-    "placement_manager": _PLACEMENT_REPORTS + ("candidates.compensation.view", "candidates.merge", "jobs.publish", "candidates.import") + _CLIENT_COMMERCIALS,
+    # hrc-020 (DEC-SCOPE-401 X12, migration 0277 seeds it): the Find Candidates export.
+    "placement_manager": _PLACEMENT_REPORTS
+    + ("candidates.compensation.view", "candidates.merge", "jobs.publish", "candidates.import", "candidates.export")
+    + _CLIENT_COMMERCIALS,
     # hrc-007 (DEC-SCOPE-380 A12; migration 0257 seeds it): the HR Manager is the vacancy approver.
     # hrc-035 (DEC-SCOPE-396 K7; migration 0273 seeds it): the HR Manager decides candidate deletion requests.
     "hr_manager": ("candidates.erase", "jobs.approve"),
-    # pob-001 (DEC-SCOPE-401 C3; migration 0276 seeds it): the assigned BDM keeps reading the company's contract terms (rec-030 R10).
+    # pob-001 (DEC-SCOPE-402 C3; migration 0278 seeds it): the assigned BDM keeps reading the company's contract terms (rec-030 R10).
     "bdm": ("commercials.client.view",),
     "overseas_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,
     "telecaller_manager": _TELECALLER_REPORTS,

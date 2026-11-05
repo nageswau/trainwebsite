@@ -4,8 +4,8 @@ Spec: `docs/superpowers/specs/2026-11-05-pob-001-commercial-permissions-design.m
 
 1. **Catalogue + defaults (C2/C3).** Test `test_pob_001_commercials.py::test_catalogue…` (keys, holders) → `core/rbac.py`.
    Update `test_hrc_002_roles` only if it pins the catalogue size/holders.
-2. **Migration 0276 (C3).** Test `test_pob_001_migration.py` (chain, frozen seed == DEFAULT_GRANTS holders, round trip) →
-   `alembic/versions/0276_commercial_grants.py`.
+2. **Migration 0278 (C3).** Test `test_pob_001_migration.py` (chain, frozen seed == DEFAULT_GRANTS holders, round trip) →
+   `alembic/versions/0278_commercial_grants.py`.
 3. **Grant helper (C4).** `recruiter_contracts.commercial_access(db, user) -> (view, edit)` via `permissions.user_has_grant`.
 4. **Contracts (C5).** Tests: recruiter with role grants revoked → GET has no fee/terms keys; `can_view_terms` false; PATCH fee 403; PATCH
    agreement_type 200; POST with fee 403; document download 403 / upload 403; per-user deny override hides for one recruiter only; default
@@ -21,4 +21,4 @@ Spec: `docs/superpowers/specs/2026-11-05-pob-001-commercial-permissions-design.m
    (`canSeeRevenue(role, permissions)`), the two detail pages, `RecruiterComparisonPanel.tsx`, `lib/navigation.ts`.
 8. **e2e** `pob-001-commercials.spec.ts`: super admin revokes `commercials.client.*` from `placement_team`; the recruiter sees no fee on
    the company page and no Revenue section; restore the defaults afterwards.
-9. **Docs:** decision register `DEC-SCOPE-401`, API §12KT, RBAC §2.295, RTM rows, backlog status line.
+9. **Docs:** decision register `DEC-SCOPE-402`, API §12KU, RBAC §2.295, RTM rows, backlog status line.

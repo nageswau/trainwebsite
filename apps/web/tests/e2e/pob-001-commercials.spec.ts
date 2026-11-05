@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// pob-001 (DEC-SCOPE-401): the seeded recruiter sees the contract fee and terms by default (C3); after a super admin denies them
+// pob-001 (DEC-SCOPE-402): the seeded recruiter sees the contract fee and terms by default (C3); after a super admin denies them
 // `commercials.client.view` (a nehn-007 per-user override) the company page shows no fee or terms, no Revenue section and no
 // Receivables menu item, and the receivables page says why (AC1). The override is cleared afterwards. Run with --workers=1.
 const RECRUITER = "placement@edusphere.local";

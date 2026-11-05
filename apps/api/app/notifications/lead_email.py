@@ -56,7 +56,7 @@ async def deliver_lead_email(message_id: UUID) -> str | None:
     return status
 
 
-async def _send(to_email: str | None, subject: str, body: str, sender_name: str, sender_email: str) -> tuple[str, str | None]:
+async def _send(to_email: str | None, subject: str, body: str, sender_name: str, sender_email: str, ics: str | None = None) -> tuple[str, str | None]:
     """("sent" | "retry" | "failed", error type). Transient: the connection, a timeout, an SMTP 4xx. Permanent: a 5xx, a refused recipient,
     a malformed address, SMTP unset since the request (E3) or the lead's address removed (E7)."""
     if not mailer.smtp_configured():
@@ -64,7 +64,7 @@ async def _send(to_email: str | None, subject: str, body: str, sender_name: str,
     if not to_email:
         return "failed", "no_address"
     try:
-        msg = mailer.lead_email_message(to_email=to_email, subject=subject, body=body, sender_name=sender_name, sender_email=sender_email)
+        msg = mailer.lead_email_message(to_email=to_email, subject=subject, body=body, sender_name=sender_name, sender_email=sender_email, ics=ics)
         await asyncio.to_thread(mailer._send_sync, msg)
     except mailer.EmailTransientError:  # ENH-032 / DEC-SCOPE-225: Zoho API 429/5xx/timeout/token refresh
         return "retry", "EmailTransientError"

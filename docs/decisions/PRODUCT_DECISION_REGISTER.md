@@ -11847,7 +11847,73 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** no migration; API §12KQ; RBAC §2.292.
 - **Feature ID authorized:** `hrc-027`. **Status:** built on `worktree-hrc-027`.
 
-### DEC-SCOPE-401 — Placement Officer role alignment and commercial-data permissions (`pob-001`)
+### DEC-SCOPE-399 — Advanced multi-filter resume search (`hrc-019`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-019` (PDF §8 filter groups, §8.1, §8.2/§8.3, §16, §17 QA #6–8; PDF
+  classified `UNVERIFIED` and not readable in the build session, so the §8.2/§8.3 D example wording comes from the backlog's "+" case).
+  Scope approved by the owner 2026-11-01 (backlog Q-00). Dependencies hrc-010, 011, 012, 017, 021 and 026 merged. Q-19 (deeper nesting)
+  and Q-20 (p95 target) were not answered; the owner said to proceed with the recommended answers, so S1–S14 are **the builder's calls
+  (`NEEDS_CONFIRMATION`)**. Design `docs/superpowers/specs/2026-11-05-hrc-019-advanced-candidate-search-design.md`.
+- **Behaviour:** Find Candidates gains the §8 filter groups — skills (nice-to-have skills, categories, minimum level, months on each
+  skill), education (degree, specialisation, institution, passing years, CGPA; one row must satisfy them all), experience (fresher,
+  relevant range, designation, industry, employment type), location (country, state, city, preferred location, relocation, work mode),
+  preferences (role, employment type), recruitment data (primary recruiter me/nobody, registration dates in IST), documents and
+  applications (resume yes/no, document types, application stages, interviewed) and package (current and minimum ranges beside the
+  expected one, and "include unknown salary") — a sort (relevance, most matching skills, experience, lowest expected salary, newest
+  registration, recent activity, profile completeness) and a per-card "why matched". The panel is grouped in collapsible sections, every
+  filter is in the URL, and each active filter is a chip that clears on its own.
+- **Builder's calls:** S1 one endpoint, additive fields, unknown key still 422. S2 Q-19: no deeper nesting. S3 nice-to-have skills never
+  filter (alone they list who holds one) and feed the match sort and "why matched"; a category alone is a search. S4/S5 same-row semantics
+  for education and employment; CGPA compares only a plain 0–10 number. S8 registration dates are IST days. S9 every package filter,
+  "unknown" and the package sort are 403 without `candidates.compensation:view`; unknown = keep candidates without the figure for each
+  applied range. S10 a fixed sort whitelist; activity = the latest profile update, application change, website application, call or
+  message; completeness = hrc-010's Appendix B weights in SQL. S11 `match` from the page's skill rows (no query). S12 Q-20: no p95
+  confirmed; the query count is unchanged and every sort stays inside rec-013's 2 s budget on 10k candidates. S13 validation. S14 the
+  numbers below. Talent-pool rules do not gain the new filters.
+- **Numbering:** migration `0275_candidate_search_indexes` (pg_trgm + indexes, no data change); API §12KR; no RBAC change.
+- **Feature ID authorized:** `hrc-019`. **Status:** built on `worktree-hrc-019`.
+### DEC-SCOPE-400 — Interview model completion, cancellation, link history and calendar (`hrc-028`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-028` (PDF §10.1 interview fields, §10.2 sync rules, §16 calendar, §17 QA
+  #13/#14; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00). Dependency hrc-004 (`DEC-SCOPE-376`)
+  merged. The owner said to proceed with the recommended answers, so I1–I10 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-05-hrc-028-interview-completion-design.md`.
+- **Behaviour:** an interview gains round number, end time, the candidate's time zone, platform, phone details, instructions and documents
+  to bring; a recruiter can cancel it with a required reason (status `cancelled`, final); a changed meeting link or location is kept, old
+  and new, on a staff-only `details` event while every candidate surface shows only the current link (none once cancelled). Schedule,
+  reschedule, a candidate-visible detail change and cancel notify the candidate (and the chosen contact) with an `.ics` invite (METHOD
+  REQUEST / CANCEL, one UID per interview, SEQUENCE moved on every later notice); times read in the candidate's zone with its UTC offset.
+- **Builder's calls:** I1 fields and limits (round number 1–20; end after the start, ≤ 12 h; any IANA zone, default Asia/Kolkata; five
+  platforms). I2 stored UTC, entered in IST, shown in the candidate's zone; a reschedule keeps the duration; the past stays 422. I3 cancel
+  from Scheduled/Confirmed/Rescheduled/On Hold only (else 409), a `status` event carries the reason, the application does not move, the
+  slot leaves the clash check, Closed lists it. I4 `details` events with old/new link and location; the audit keeps redacting the URL. I5
+  notices on schedule, reschedule, a visible PATCH change (`notify`, default true) and cancel; interviewers wait for hrc-029. I6 the invite
+  is built when queued (student: delivery context `interview_invite`; email rows: `recruiter_messages.calendar_ics`). I7 the student
+  portal shows round, role, company, time in zone, mode, the current link, details and "Cancelled — reason". I8 the recruiter form and item
+  gain the fields, the candidate's time, Cancel with a reason and the history lines. I9 AuthZ unchanged (rec-017 writers; out of scope 404).
+  I10 not built: auto-created meetings (Q-29), interviewer users, result release (hrc-030), a candidate-chosen zone on the profile.
+- **Numbering:** migration `0276_interview_completion`; API §12KS; RBAC §2.291.
+- **Feature ID authorized:** `hrc-028`. **Status:** built on `worktree-hrc-028`.
+
+### DEC-SCOPE-401 — Saved searches and restricted export (`hrc-020`)
+
+- **Evidence:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` hrc-020 (§8.1 "Save common searches and filter presets; restrict exports to
+  authorised users"; §15 "Record who … exported") — DERIVED_WORKBOOK. Classification: builder's recommended calls, `NEEDS_CONFIRMATION`.
+- **Decision:** personal and shared saved Find Candidates searches (the search body, sort included, validated by the search's own rules)
+  and a CSV / XLSX export of the current search for holders of `candidates.export`, audited with its filters and row count.
+- **Builder's calls:** X1 a `saved_candidate_searches` table, names unique per owner (case-insensitive). X2 the stored filters are the
+  canonical search body, so a load runs the same search (AC1). X3 Find Candidates readers only. X4 own + shared visible; only the owner or
+  super_admin changes/deletes; someone else's personal search is 404, a shared one 403 on write. X5 package filters/sort need the
+  compensation grant to save; a shared one read without it has them removed and named. X6 filters the search no longer declares are
+  ignored on read with a notice. X7 50 saved searches per owner. X8 export order: reader role → `candidates.export` → body → compensation
+  → ccrm-035's `crm_exports.export` (lock, throttle, cap, audit, commit). X9 Q-21: a 5,000-row cap (422 beyond). X10 columns: the card's
+  facts, never contact details; expected salary only with the compensation grant; formula-guarded cells. X11 one `crm.export` audit row
+  (entity `candidate_search`), logs without filter values. X12 default holder `placement_manager` (super_admin implicitly); the HR Manager
+  cannot read candidates (hrc-002), so it is not seeded.
+- **Numbering:** migration `0277_saved_candidate_searches`; API §12KT; RBAC §2.294.
+- **Feature ID authorized:** `hrc-020`. **Status:** built on `worktree-hrc-020`.
+
+### DEC-SCOPE-402 — Placement Officer role alignment and commercial-data permissions (`pob-001`)
 
 - **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-001` (doc header "Primary users", §17 role-based access for client
   terms and vendor commercials, §18 AC "Permissions prevent unauthorised users from accessing … commercial information"; source classified
@@ -11866,5 +11932,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   override needs edit on top of the manager role. C7 comparison `revenue_visible`. C8 web. C9 refusals logged without values.
 - **Not built:** vendor commercials (no vendor concept until pob-010); candidate phone/email hiding (pob-030's share gate); management
   finance screens unchanged (`can_view_finance`).
-- **Numbering:** migration `0276_commercial_grants`; API §12KT; RBAC §2.295.
+- **Numbering:** migration `0278_commercial_grants`; API §12KU; RBAC §2.295.
 - **Feature ID authorized:** `pob-001`. **Status:** built on `worktree-pob-001`.

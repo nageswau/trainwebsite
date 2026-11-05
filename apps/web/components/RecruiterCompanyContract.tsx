@@ -25,7 +25,7 @@ function steps(c: Contract): { key: string; label: string; state: Step }[] {
 const day = (value: string | null) => (value ? formatCalendarDate(value) : display(value));
 
 function details(c: Contract): [string, ReactNode][] {
-  // pob-001 (DEC-SCOPE-401 C5): without `commercials.client.view` the API leaves the terms out; so do the rows
+  // pob-001 (DEC-SCOPE-402 C5): without `commercials.client.view` the API leaves the terms out; so do the rows
   const terms: [string, ReactNode][] = c.permissions.can_view_terms
     ? [["Recruitment fee", feeText(c)], ["Payment terms", multiline(c.payment_terms ?? null)], ["Replacement policy", multiline(c.replacement_policy ?? null)]]
     : [];

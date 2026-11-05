@@ -3832,18 +3832,33 @@ anonymous 401. A candidate (`candidate` role) raises only their own request (no 
 acts on a candidate subject. Deactivating a `placement_officer`, `placement_manager`, `hr_team` or `hr_manager` now increments their
 `session_version` and removes them as placement-officer owner and collaborator of every candidate. Pinned by
 `apps/api/tests/test_hrc_035_candidate_privacy.py` and the rec-038 matrix rows.
+
+### 2.291 Interview cancel *(added 2026-11-05 — `DEC-SCOPE-400`, hrc-028)*
+
+`POST /recruiter/interviews/{id}/cancel` follows §2.74 exactly: rec-007's requirement scope through rec-017's `load_scoped`, so out of
+scope is 404 (the same as an unknown id); the writers (`placement_officer` on the requirement, `super_admin`) cancel; the manager and the
+assigned BDM read only (403); every other role 403, anonymous 401. No new grant key. Pinned by `apps/api/tests/test_hrc_028_interviews.py`
+and the rec-038 matrix row.
 ### 2.292 Candidate job recommendations *(added 2026-11-05 — `DEC-SCOPE-398`, hrc-027)*
 
 No new grant. `GET /candidate/jobs` and `POST /candidate/jobs/{id}/apply` admit only an `it_student` or a `candidate` (division `it`);
 every other role is 403, anonymous 401. Neither route takes a candidate id: the caller's own record only. A job outside hrc-008's student
 visibility (internal, another segment, closed, past its date) is the same 404 as a missing one on both apply routes. Pinned by
 `apps/api/tests/test_hrc_027_candidate_jobs.py`.
+### 2.294 Saved candidate searches and the candidate export *(added 2026-11-05 — `DEC-SCOPE-401`, hrc-020)*
 
-### 2.295 Client commercial terms *(added 2026-11-05 — `DEC-SCOPE-401`, pob-001)*
+`candidates.export` (declared by hrc-002) now has its route: `POST /recruiter/candidates/search/export`. Default holder `placement_manager`
+(migration 0277 seeds it; `super_admin` holds every key); recruiters, hr_team and others only through Roles & permissions or a user
+override (a deny wins). The caller must also be a Find Candidates reader. Saved searches (`/recruiter/candidates/saved-searches`) need no
+grant: any reader keeps their own and sees shared ones; only the owner or `super_admin` changes or deletes one. Compensation stays behind
+`candidates.compensation:view` (filters refused, the salary column left out). Pinned by `apps/api/tests/test_hrc_020_export.py` and
+`apps/api/tests/test_hrc_020_saved_searches.py`.
+
+### 2.295 Client commercial terms *(added 2026-11-05 — `DEC-SCOPE-402`, pob-001)*
 
 `commercials.client.view` reads a contract's fee, payment terms, replacement policy and documents, revenue, invoices, receivables and the
 comparison's revenue; `.edit` (only together with view) changes the terms, uploads the documents and (with the manager role) overrides a
-requirement's fee. Defaults (migration 0276): `placement_team` and `placement_manager` view + edit, `bdm` view; super_admin holds all.
+requirement's fee. Defaults (migration 0278): `placement_team` and `placement_manager` view + edit, `bdm` view; super_admin holds all.
 A super admin revokes per role or per user (nehn-007 deny). `commercials.vendor.*` and `candidates.contact.view` are declared with no
 holder until pob-010/012 and pob-030 enforce them. The rec-031 role gate (RV10) and every record scope are unchanged and run first. Pinned
 by `apps/api/tests/test_pob_001_commercials.py` and `test_pob_001_migration.py`.

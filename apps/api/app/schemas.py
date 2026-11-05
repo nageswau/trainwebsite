@@ -6,7 +6,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
 from uuid import UUID
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, available_timezones
 
 from pydantic import (
     AfterValidator,
@@ -53,6 +53,7 @@ from app.models import (
     BDM_STAFF_MAX,
     BDM_TARGET_MAX,
     CANDIDATE_CONTACT_METHODS,
+    CANDIDATE_DOCUMENT_TYPES,
     CANDIDATE_ENGAGEMENTS,
     CANDIDATE_NOTE_MAX,
     CANDIDATE_SKILL_LEVELS,
@@ -80,6 +81,7 @@ from app.models import (
     GENDERS,
     HR_REVIEW_OPEN_STAGES,
     INSTITUTION_TYPES,
+    INTERVIEW_PLATFORMS,
     INTERVIEW_ROUNDS,
     INVESTMENT_STATUSES,
     INVESTMENT_VERTICALS,
@@ -11225,6 +11227,27 @@ RecInterviewRound = Literal[INTERVIEW_ROUNDS]
 RecInterviewMove = Literal["confirmed", "completed", "no_show", "selected", "rejected", "on_hold"]  # IV3: never scheduled / rescheduled
 
 
+def _rec_time_zone(value: str) -> str:
+    """hrc-028 (I1): an IANA name the server knows -- never a path (ZoneInfo would read a file)."""
+    if value not in available_timezones():
+        raise ValueError("Choose a valid time zone")
+    return value
+
+
+# hrc-028 (DEC-SCOPE-400 I1): the interview's own fields; the end's relation to the start is checked in the service (and by a CHECK)
+RecInterviewTimeZone = Annotated[str, StringConstraints(strip_whitespace=True, max_length=64), AfterValidator(_rec_time_zone)]
+RecInterviewEnd = Annotated[AwareDatetime, AfterValidator(_bdm_appt_minute)] | None
+RecInterviewRoundNumber = Annotated[StrictInt, Field(ge=1, le=20)] | None
+RecInterviewPlatform = Literal[INTERVIEW_PLATFORMS] | None
+REC_INTERVIEW_LABELS = {"instructions": "Instructions", "documents_required": "Documents to bring", "reason": "Reason"}
+
+
+def _rec_interview_text(max_length: int, required: bool = False):
+    """Multi-line text (CRLF stored as LF before the length check); blank -> None, or 422 when required."""
+    check = AfterValidator(_trip_text(_BDM_MULTILINE_CONTROL, required, REC_INTERVIEW_LABELS))
+    return Annotated[Annotated[str, _trimmed(max_length)] | None, check, BeforeValidator(_bdm_newlines)]
+
+
 class RecInterviewCreate(BaseModel):
     """IV5 / IV7: the §14 fields. Code, status, creator and history are server-owned (unknown fields here); the time rules, the clash and
     the contact are checked in the service."""
@@ -11238,6 +11261,13 @@ class RecInterviewCreate(BaseModel):
     interviewer: _bdm_appt_optional(160) = None
     location: _bdm_appt_optional(200) = None
     contact_id: UUID | None = None
+    round_number: RecInterviewRoundNumber = None
+    ends_at: RecInterviewEnd = None
+    time_zone: RecInterviewTimeZone = "Asia/Kolkata"
+    platform: RecInterviewPlatform = None
+    phone_details: _bdm_appt_optional(200) = None
+    instructions: _rec_interview_text(2000) = None
+    documents_required: _rec_interview_text(1000) = None
     notify: StrictBool = True
 
 
@@ -11252,11 +11282,19 @@ class RecInterviewUpdate(BaseModel):
     interviewer: _bdm_appt_optional(160) = None
     location: _bdm_appt_optional(200) = None
     contact_id: UUID | None = None
+    round_number: RecInterviewRoundNumber = None
+    ends_at: RecInterviewEnd = None
+    time_zone: RecInterviewTimeZone | None = None
+    platform: RecInterviewPlatform = None
+    phone_details: _bdm_appt_optional(200) = None
+    instructions: _rec_interview_text(2000) = None
+    documents_required: _rec_interview_text(1000) = None
     expected_updated_at: datetime | None = None  # hrc-003: the version the form showed; another one is 409 `record_changed`
+    notify: StrictBool = True  # hrc-028 (I5): a change the candidate can see notifies them
 
     @model_validator(mode="after")
     def _required_stay_set(self):
-        for key in ("round", "mode"):
+        for key in ("round", "mode", "time_zone"):
             if key in self.model_fields_set and getattr(self, key) is None:
                 raise ValueError(f"{key.capitalize()} can't be removed")
         return self
@@ -11266,6 +11304,14 @@ class RecInterviewReschedule(BaseModel):
     model_config = ConfigDict(extra="forbid")
     scheduled_at: BdmApptStart
     reason: _bdm_appt_optional(500) = None
+    notify: StrictBool = True
+
+
+class RecInterviewCancel(BaseModel):
+    """hrc-028 (I3): the reason is required and shown to the candidate."""
+
+    model_config = ConfigDict(extra="forbid")
+    reason: _rec_interview_text(500, required=True)
     notify: StrictBool = True
 
 
@@ -11915,7 +11961,23 @@ CANDIDATE_SEARCH_LABELS = {
     "experience_max_months": "Maximum experience", "location": "Location", "availability": "Availability", "qualification": "Qualification",
     "salary_min": "Minimum salary", "salary_max": "Maximum salary", "source_id": "Candidate source", "status": "Status",
     "engagement": "Engagement", "text": "Resume search",
+    # hrc-019 (DEC-SCOPE-399 S3-S10)
+    "preferred": "Nice-to-have skills", "category_ids": "Skill categories", "min_level": "Minimum skill level",
+    "skill_min_months": "Experience on each skill", "degree": "Degree", "specialisation": "Specialisation", "institution": "Institution",
+    "passing_year_min": "Passing year from", "passing_year_max": "Passing year to", "cgpa_min": "Minimum CGPA", "cgpa_max": "Maximum CGPA",
+    "fresher": "Fresher", "relevant_min_months": "Minimum relevant experience", "relevant_max_months": "Maximum relevant experience",
+    "designation": "Designation", "industry": "Industry", "employment_types": "Employment type", "country": "Country", "state": "State",
+    "city": "City", "preferred_location": "Preferred location", "willing_to_relocate": "Willing to relocate", "work_modes": "Work mode",
+    "preferred_role": "Preferred role", "preferred_employment_types": "Preferred employment type", "owner": "Owner",
+    "registered_from": "Registered from", "registered_to": "Registered to", "has_resume": "Resume", "document_types": "Documents",
+    "application_statuses": "Application status", "interviewed": "Interviewed", "current_min": "Minimum current salary",
+    "current_max": "Maximum current salary", "minimum_min": "Minimum acceptable salary from", "minimum_max": "Minimum acceptable salary to",
+    "package_unknown": "Include unknown salary", "sort": "Sort",
 }
+# hrc-019 (S9/S10): the fields and the sort that reveal compensation -- 403 without `candidates.compensation:view`.
+CANDIDATE_SEARCH_PACKAGE_FIELDS = ("salary_min", "salary_max", "current_min", "current_max", "minimum_min", "minimum_max", "package_unknown")
+CANDIDATE_SEARCH_SORTS = ("relevance", "match", "experience", "package", "registered", "activity", "completeness")
+CANDIDATE_SEARCH_LIST_MAX = 10
 RESUME_SEARCH_MAX_CHARS = 200  # rec-014 FT4
 
 
@@ -11953,6 +12015,10 @@ class ProgramSkillsUpdate(BaseModel):
     skill_ids: list[UUID] = Field(max_length=60)
 
 
+SearchYear = Annotated[int | None, Field(ge=1950, le=2100)]  # hrc-019 S4
+SearchCgpa = Annotated[Decimal | None, Field(ge=0, le=10, max_digits=4, decimal_places=2)]
+
+
 class CandidateSearch(BaseModel):
     """`all` = every one of these skills (AND); each `any` group = at least one of its skills (OR), the groups ANDed with the rest."""
 
@@ -11971,15 +12037,111 @@ class CandidateSearch(BaseModel):
     status: CandidateStatus | None = None
     engagement: CandidateEngagementKey | None = None  # hrc-021 (DEC-SCOPE-397 E7)
     text: Annotated[StrictStr | None, AfterValidator(_resume_text)] = None  # rec-014: words in the current resume (websearch syntax)
+    # hrc-019 (DEC-SCOPE-399): S3 skills
+    preferred: Annotated[list[SearchTerm], Field(max_length=CANDIDATE_SEARCH_LIST_MAX)] = []
+    category_ids: Annotated[list[UUID], Field(max_length=CANDIDATE_SEARCH_LIST_MAX), AfterValidator(lambda v: list(dict.fromkeys(v)))] = []
+    min_level: Literal[CANDIDATE_SKILL_LEVELS] | None = None
+    skill_min_months: RecMonths = None
+    # S4 education (one row satisfies them all)
+    degree: SearchText = None
+    specialisation: SearchText = None
+    institution: SearchText = None
+    passing_year_min: SearchYear = None
+    passing_year_max: SearchYear = None
+    cgpa_min: SearchCgpa = None
+    cgpa_max: SearchCgpa = None
+    # S5 experience (designation, industry and employment type: one employment row)
+    fresher: StrictBool | None = None
+    relevant_min_months: RecMonths = None
+    relevant_max_months: RecMonths = None
+    designation: SearchText = None
+    industry: SearchText = None
+    employment_types: _choices(JOB_EMPLOYMENT_TYPES) = []
+    # S6 location / S7 preferences
+    country: SearchText = None
+    state: SearchText = None
+    city: SearchText = None
+    preferred_location: SearchText = None
+    willing_to_relocate: StrictBool | None = None
+    work_modes: _choices(JOB_WORK_MODES) = []
+    preferred_role: SearchText = None
+    preferred_employment_types: _choices(JOB_EMPLOYMENT_TYPES) = []
+    # S8 recruitment data, documents, applications
+    owner: Literal["me", "unassigned"] | None = None
+    registered_from: date | None = None
+    registered_to: date | None = None
+    has_resume: StrictBool | None = None
+    document_types: _choices(CANDIDATE_DOCUMENT_TYPES) = []
+    application_statuses: _choices(APPLICATION_STATUSES) = []
+    interviewed: StrictBool | None = None
+    # S9 package (normalised annual INR; grant only) and S10 sort
+    current_min: RecMoney = None
+    current_max: RecMoney = None
+    minimum_min: RecMoney = None
+    minimum_max: RecMoney = None
+    package_unknown: StrictBool = False
+    sort: Literal[CANDIDATE_SEARCH_SORTS] = "relevance"
 
     @model_validator(mode="after")
     def _limits(self):
-        terms = expression_terms(self.all, self.any)
-        if terms == 0 and self.text is None:
+        terms = expression_terms(self.all, self.any) + len(self.preferred)
+        if terms > CANDIDATE_SEARCH_MAX_TERMS:
+            raise ValueError(f"Search for at most {CANDIDATE_SEARCH_MAX_TERMS} skills at once")
+        if terms == 0 and self.text is None and not self.category_ids:
             raise ValueError("Add at least one skill or some resume search text")
         _experience_order(self.experience_min_months, self.experience_max_months)
-        if None not in (self.salary_min, self.salary_max) and self.salary_min > self.salary_max:
-            raise ValueError("The minimum salary cannot be above the maximum")
+        for low, high, message in (
+            (self.salary_min, self.salary_max, "The minimum salary cannot be above the maximum"),
+            (self.relevant_min_months, self.relevant_max_months, "The minimum relevant experience cannot be above the maximum"),
+            (self.passing_year_min, self.passing_year_max, "The first passing year cannot be after the last"),
+            (self.cgpa_min, self.cgpa_max, "The minimum CGPA cannot be above the maximum"),
+            (self.current_min, self.current_max, "The minimum current salary cannot be above the maximum"),
+            (self.minimum_min, self.minimum_max, "The lower minimum acceptable salary cannot be above the upper one"),
+            (self.registered_from, self.registered_to, "The registration from date cannot be after the to date"),
+        ):
+            if None not in (low, high) and low > high:
+                raise ValueError(message)
+        return self
+
+    def package(self) -> bool:
+        """S9: whether the body filters or sorts on compensation."""
+        return self.sort == "package" or any(getattr(self, f) not in (None, False) for f in CANDIDATE_SEARCH_PACKAGE_FIELDS)
+
+
+def _saved_search_name(value: str) -> str:
+    value = re.sub(r"\s+", " ", value).strip()
+    if not value:
+        raise ValueError("Give the saved search a name")
+    if len(value) > 80:
+        raise ValueError("A saved search name is at most 80 characters")
+    if _BDM_CONTROL.search(value):
+        raise ValueError("The name contains invalid characters")
+    return value
+
+
+SavedSearchName = Annotated[StrictStr, AfterValidator(_saved_search_name)]
+SAVED_SEARCH_LABELS = {"name": "Name", "filters": "Filters", "shared": "Shared"}
+
+
+class SavedSearchIn(BaseModel):
+    """hrc-020 (DEC-SCOPE-401 X1/X2): `filters` is a Find Candidates body, checked by `CandidateSearch` in the route (its own sentences)."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: SavedSearchName
+    filters: dict
+    shared: StrictBool = False
+
+
+class SavedSearchUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: SavedSearchName | None = None
+    filters: dict | None = None
+    shared: StrictBool | None = None
+
+    @model_validator(mode="after")
+    def _something(self):
+        if not self.model_fields_set or any(getattr(self, field) is None for field in self.model_fields_set):
+            raise ValueError("Send a name, filters or the shared flag")
         return self
 
 
@@ -12142,7 +12304,7 @@ class RecContractPermissions(BaseModel):
     can_edit: bool
     can_upload: bool
     can_renew: bool
-    can_view_terms: bool  # pob-001 (DEC-SCOPE-401 C5): `commercials.client.view`
+    can_view_terms: bool  # pob-001 (DEC-SCOPE-402 C5): `commercials.client.view`
     can_edit_terms: bool  # ... and `.edit`, on a contract the caller may change
 
 

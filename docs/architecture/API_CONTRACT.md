@@ -5877,9 +5877,65 @@ applied → 409 "Already applied"; a switched-on hard filter not met → 422 nam
 `POST /api/v1/workflows/it/jobs/{id}/apply` applies the same hard-filter gate (422). A portal candidate's application notices carry
 `action_url` `/it/careers/portal/jobs`.
 
-## 12KT. Commercial-data permissions (pob-001) — addendum, 2026-11-05
+## 12KR. Advanced multi-filter resume search (hrc-019) — addendum, 2026-11-05
 
-`DEC-SCOPE-401`. **Changed (additive):** `GET /api/v1/admin/permissions/catalogue` lists `commercials.client` (view, edit),
+`DEC-SCOPE-399`. **Changed (additive):** `POST /api/v1/recruiter/candidates/search` accepts these optional body fields (all default to
+"no filter"; labels in `CANDIDATE_SEARCH_LABELS`; an unknown key is still 422):
+`preferred` (≤ 10 skill terms, counted in the 20-term cap; never filters unless it is the only skill input), `category_ids` (≤ 10 ids),
+`min_level` (`beginner`…`expert`), `skill_min_months` (0–600); `degree`, `specialisation`, `institution` (contains, ≤ 120),
+`passing_year_min`/`_max` (1950–2100), `cgpa_min`/`_max` (0–10); `fresher` (bool), `relevant_min_months`/`_max`, `designation`,
+`industry`, `employment_types` (job employment types); `country`, `state`, `city`, `preferred_location`, `willing_to_relocate` (bool),
+`work_modes`; `preferred_role`, `preferred_employment_types`; `owner` (`me` | `unassigned`), `registered_from`/`_to` (`YYYY-MM-DD`, IST);
+`has_resume` (bool), `document_types`, `application_statuses`, `interviewed` (bool); `current_min`/`_max`, `minimum_min`/`_max` (annual
+INR), `package_unknown` (bool); `sort` (`relevance` default, `match`, `experience`, `package`, `registered`, `activity`, `completeness`).
+A search needs a skill term (`all`/`any`/`preferred`), a category or resume text. Inverted ranges are 422.
+**AuthZ:** any of `salary_min`, `salary_max`, `current_*`, `minimum_*`, `package_unknown: true` or `sort: "package"` without
+`candidates.compensation:view` is **403** before anything is read. **Response (additive):** each card gains `match`:
+`{required: [{term, skill, held}], preferred: [{term, skill, held}]}`. Talent-pool member cards are unchanged. No new endpoint or
+permission; migration `0275` adds indexes only.
+
+## 12KS. Interview completion, cancellation, link history and calendar (hrc-028) — addendum, 2026-11-05
+
+`DEC-SCOPE-400`, migration `0276_interview_completion`. **Changed (additive):** `POST /api/v1/recruiter/interviews` and
+`PATCH /recruiter/interviews/{id}` accept `round_number` (1–20), `ends_at` (after `scheduled_at`, ≤ 12 h later; else 422 on `ends_at`),
+`time_zone` (IANA name, default `Asia/Kolkata`; unknown 422; PATCH cannot clear it), `platform` (`google_meet`, `microsoft_teams`, `zoom`,
+`zoho_meeting`, `other`), `phone_details` (≤ 200), `instructions` (≤ 2000, multi-line), `documents_required` (≤ 1000, multi-line). PATCH
+also takes `notify` (default true): when a candidate-visible field changed, the candidate (and the contact) are notified and the reply is
+the interview plus `notifications`; otherwise the reply is unchanged. Every interview item gains those fields plus `local_when` (the time in
+the candidate's zone), `platform_label`, `cancel_reason` and `can_cancel`; `history` rows gain `old_meeting_url`, `new_meeting_url`,
+`old_location`, `new_location` (set on the new `details` event). A PATCH of a cancelled interview is 409. A reschedule moves `ends_at` with
+the start.
+
+**New:** `POST /api/v1/recruiter/interviews/{id}/cancel` `{reason (required, ≤ 500), notify (default true)}` → 200
+`{interview, notifications}`; status `cancelled` (label "Cancelled"); 409 unless Scheduled, Confirmed, Rescheduled or On Hold; 422 on a
+blank reason; 403 for readers, 404 out of scope. Cancelled interviews list under `view=closed`.
+
+Notices (schedule, reschedule, update, cancel) carry an iCalendar invite: the student's email delivery has context
+`{kind: "interview_invite", ics, method}`; a recruiter email row stores `calendar_ics`, attached as `invite.ics` by the worker.
+`GET /api/v1/portal/it/student/interview-schedule` rows are now `{id, title, round, role, company, when, mode, link, details, status}`
+(`link` null once cancelled; `status` "Cancelled — <reason>" for a cancel; decisions still read Completed).
+
+## 12KT. Saved candidate searches and the Find Candidates export (hrc-020) — addendum, 2026-11-05
+
+`DEC-SCOPE-401`. **New.** All under `/api/v1/recruiter/candidates`, for Find Candidates readers (recruiters, placement managers,
+super_admin, hr_team); other roles 403 before the body is read, anonymous 401.
+- `GET /saved-searches` → `{items: [{id, name, filters, ignored, shared, mine, can_edit, owner: {id, name}, updated_at}]}` — the caller's
+  own and every shared search (own first, by name). `filters` is a Find Candidates body (§12KR); `ignored` names keys the search no longer
+  declares and, without `candidates.compensation:view`, the package filters / package sort that were removed.
+- `POST /saved-searches` `{name (1–80), filters, shared?}` → **201** the row. `filters` is validated as a search body (its 422 sentences);
+  package filters or sort without the compensation grant 403; a duplicate name (per owner, case-insensitive) 409; more than 50 → 422.
+- `PATCH /saved-searches/{id}` `{name?, filters?, shared?}` (at least one) → 200 the row. `DELETE /saved-searches/{id}` → 204. Owner or
+  super_admin only: an invisible id is 404, a shared search of someone else 403.
+- `POST /search/export?format=csv|xlsx` with a search body → the file (`candidates.csv` / `.xlsx`, `Cache-Control: private, no-store`).
+  Needs `candidates.export` (403 "Your role cannot export candidates", checked before the body); package filters without the compensation
+  grant 403; more than 5,000 rows 422; more than 30 exports in 10 minutes 429 with `Retry-After`. Columns: Candidate ID, Name, Preferred
+  role, Current company, Experience (years), Location, Notice (days), Skills, Source, Status, Engagement, and Expected salary (₹ a year)
+  only with the compensation grant; never contact details. One audit row `crm.export` (`entity_type` `candidate_search`, `entity_id`
+  `find_candidates`, metadata `{format, filters, rows}`). Migration `0277` adds the table and seeds the grant.
+
+## 12KU. Commercial-data permissions (pob-001) — addendum, 2026-11-05
+
+`DEC-SCOPE-402`. **Changed (additive):** `GET /api/v1/admin/permissions/catalogue` lists `commercials.client` (view, edit),
 `commercials.vendor` (view, edit) and `candidates.contact` (view). Contract responses (`GET|POST|PATCH /recruiter/companies/{id}/contracts`,
 `PUT …/contracts/document`) leave out `fee_basis`, `fee_value`, `payment_terms` and `replacement_policy` without
 `commercials.client.view` (absent, not null); `permissions` gains `can_view_terms` and `can_edit_terms`, and the company's contracts gain

@@ -666,6 +666,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** medium.
 
 #### hrc-019: Advanced multi-filter resume search
+- **Status (2026-11-05):** built — `DEC-SCOPE-399` (Q-19/Q-20 answered by the builder's recommended calls S1–S14, `NEEDS_CONFIRMATION`:
+  no deeper nesting, no p95 confirmed); design `docs/superpowers/specs/2026-11-05-hrc-019-advanced-candidate-search-design.md`; migration
+  `0275_candidate_search_indexes`; API §12KR; no RBAC change.
 - **Business requirement:** §8 filter groups; §8.1 behaviour; §8.2 examples; §8.3 A–D; §16 pagination and indexing; §17 QA #6–8.
 - **Existing behavior:**
   - **Built:** skills all/any with aliases, verified-only, a qualification/location contains match, experience and expected-salary ranges, notice bands, status, source, resume text search, facets, clear/reset, and the empty state.
@@ -699,6 +702,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** large. **Risk:** medium.
 
 #### hrc-020: Saved searches and restricted export
+- **Status (2026-11-05):** built — `DEC-SCOPE-401` (Q-21 answered by the builder's recommended calls X1–X12, `NEEDS_CONFIRMATION`: a
+  5,000-row cap, placement managers hold `candidates.export` by default, no contact columns); design
+  `docs/superpowers/specs/2026-11-05-hrc-020-saved-searches-export-design.md`; migration `0277_saved_candidate_searches`; API §12KT; RBAC §2.294.
 - **Business requirement:** §8.1 "Save common searches and filter presets; restrict exports to authorised users"; §15 "Record who … exported".
 - **Existing behavior:** talent pools save rules. There is no general saved search and **no candidate export** (`crm_exports` audits other exports).
 - **Expected behavior:**
@@ -952,6 +958,8 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** medium. **Risk:** medium.
 
 #### hrc-028: Interview model completion, cancellation, link history and calendar
+- **Status:** built as `DEC-SCOPE-400` (migration `0276_interview_completion`, API §12KS, RBAC §2.291; builder's calls I1–I10,
+  `NEEDS_CONFIRMATION`); design `docs/superpowers/specs/2026-11-05-hrc-028-interview-completion-design.md`.
 - **Business requirement:** §10.1 fields; §10.2 sync rules; §16 calendar; §17 QA "Interview date, time, round and meeting link appear correctly … Rescheduling, cancellation and link replacement update the portal".
 - **Existing behavior:**
   - The model has INT code, application, round (as an enum), mode, interviewer (free text), scheduled_at, meeting URL, location, status and events.

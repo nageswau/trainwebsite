@@ -143,7 +143,7 @@ async def load_scoped_contract(db: AsyncSession, user: User, contract_id: UUID) 
 
 
 async def sees_commercials(db: AsyncSession, user: User) -> bool:
-    """pob-001 (DEC-SCOPE-401): `commercials.client.view` -- the user's own override, else their role (at most two indexed reads)."""
+    """pob-001 (DEC-SCOPE-402): `commercials.client.view` -- the user's own override, else their role (at most two indexed reads)."""
     return await permissions.user_has_grant(db, user, "commercials.client", "view")
 
 

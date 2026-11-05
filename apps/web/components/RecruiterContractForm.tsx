@@ -21,7 +21,7 @@ const fieldsOf = (c: Contract | null): ContractFields => ({
 // rec-030 (spec §4): start (contract = null, a first contract or a renewal) or edit the current contract. Required markers follow the
 // chosen status (Active needs both dates) -- fast feedback only; the server enforces every rule and its 422 lands on the field. An edit
 // sends only what changed, plus `from_status` with a status change and the version it showed. A 409 with a code goes to the section,
-// which reloads; an overlap (CT8) stays on the form. pob-001 (DEC-SCOPE-401 C5): without `terms` (`commercials.client.edit`) the fee
+// which reloads; an overlap (CT8) stays on the form. pob-001 (DEC-SCOPE-402 C5): without `terms` (`commercials.client.edit`) the fee
 // and terms inputs are not offered -- left empty and unchanged, they are never sent.
 export default function RecruiterContractForm({ companyId, contract, terms, onSaved, onCancel, onConflict }: {
   companyId: string; contract: Contract | null; terms: boolean; onSaved: (c: Contract) => void; onCancel: () => void; onConflict: (text: string) => void;

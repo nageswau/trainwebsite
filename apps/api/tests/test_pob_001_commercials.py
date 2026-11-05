@@ -1,4 +1,4 @@
-"""pob-001 -- client commercial terms behind `commercials.client.view` / `.edit` (DEC-SCOPE-401 C1-C9). The shared test database is never
+"""pob-001 -- client commercial terms behind `commercials.client.view` / `.edit` (DEC-SCOPE-402 C1-C9). The shared test database is never
 truncated and the role grants are shared, so every revocation here is a per-user deny override (nehn-007) on a user the test creates."""
 
 import uuid
