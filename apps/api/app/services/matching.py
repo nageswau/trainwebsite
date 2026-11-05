@@ -160,15 +160,33 @@ def _salary(spec: Spec, facts: dict, today: date, amounts: bool) -> tuple[bool, 
     return ok, " · ".join(parts), fits
 
 
-def evaluate(spec: Spec, facts: dict, *, today: date, amounts: bool = True, audience: str = "staff") -> dict | None:
-    """The pure rule (E4-E7, E9). `amounts=False` keeps salary figures out (E8); the candidate audience gets no salary line (E9)."""
+def skill_hits(spec: Spec, facts: dict) -> dict[UUID, bool]:
+    """Each scored job skill: does the candidate hold it (or a related skill) at its hrc-017 minimum level?"""
     held = facts["skills"]
 
     def has(s: dict) -> bool:
         levels = CANDIDATE_SKILL_LEVELS[CANDIDATE_SKILL_LEVELS.index(s["min_level"]):] if s["min_level"] else CANDIDATE_SKILL_LEVELS
         return any(held.get(i) in levels for i in s["accepted"])
 
-    hits = {s["id"]: has(s) for s in spec.skills}
+    return {s["id"]: has(s) for s in spec.skills}
+
+
+def hard_filter_gaps(spec: Spec, facts: dict) -> list[str]:
+    """E6: the job's switched-on hard filters the candidate does not meet, in HARD_FILTERS order; an unknown value fails. hrc-027 gates
+    applying on these (J7); required skills only rank."""
+    months = _months(facts)
+    failed = {
+        "experience": months is None or months < spec.experience[0] if spec.experience else False,
+        "qualification": not _qualification(facts, spec.qualification) if spec.qualification else False,
+        "location": not _located(facts, spec.location) if spec.location else False,
+        "salary": not (facts["expected_annual_inr"] is not None and facts["expected_annual_inr"] <= spec.budget) if spec.budget is not None else False,
+    }
+    return [k for k in HARD_FILTERS if k in spec.hard and failed[k]]
+
+
+def evaluate(spec: Spec, facts: dict, *, today: date, amounts: bool = True, audience: str = "staff") -> dict | None:
+    """The pure rule (E4-E7, E9). `amounts=False` keeps salary figures out (E8); the candidate audience gets no salary line (E9)."""
+    hits = skill_hits(spec, facts)
     required = [s for s in spec.skills if s["kind"] == "required"]
     preferred = [s for s in spec.skills if s["kind"] == "preferred"]
     if required and not all(hits[s["id"]] for s in required):
@@ -206,19 +224,11 @@ def evaluate(spec: Spec, facts: dict, *, today: date, amounts: bool = True, audi
     known_role = any(_norm(r) for r in facts["roles"])
     checks["role"] = (bool(role), f"Wants a {role} role" if role else "Preferred role differs from the job title" if known_role else
                       "Preferred role not recorded")  # fmt: skip
-    budget_fit = None
     if "salary" in spec.points:
-        ok, words, budget_fit = _salary(spec, facts, today, amounts)
+        ok, words, _fit = _salary(spec, facts, today, amounts)
         checks["salary"] = (ok, words)
 
-    # E6: the optional hard filters; an unknown value fails
-    if "experience" in spec.hard and (_months(facts) is None or _months(facts) < spec.experience[0]):
-        return None
-    if "qualification" in spec.hard and not checks["qualification"][0]:
-        return None
-    if "location" in spec.hard and not checks["location"][0]:
-        return None
-    if "salary" in spec.hard and not budget_fit:
+    if hard_filter_gaps(spec, facts):  # E6: the optional hard filters; an unknown value fails
         return None
 
     for key in MATCH_FACTORS[1:]:
