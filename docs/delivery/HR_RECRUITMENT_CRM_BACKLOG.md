@@ -702,6 +702,9 @@ Separately, and as a product behaviour rather than a defect: every open job is l
 - **Complexity:** large. **Risk:** medium.
 
 #### hrc-020: Saved searches and restricted export
+- **Status (2026-11-05):** built — `DEC-SCOPE-401` (Q-21 answered by the builder's recommended calls X1–X12, `NEEDS_CONFIRMATION`: a
+  5,000-row cap, placement managers hold `candidates.export` by default, no contact columns); design
+  `docs/superpowers/specs/2026-11-05-hrc-020-saved-searches-export-design.md`; migration `0277_saved_candidate_searches`; API §12KT; RBAC §2.294.
 - **Business requirement:** §8.1 "Save common searches and filter presets; restrict exports to authorised users"; §15 "Record who … exported".
 - **Existing behavior:** talent pools save rules. There is no general saved search and **no candidate export** (`crm_exports` audits other exports).
 - **Expected behavior:**

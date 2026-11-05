@@ -426,13 +426,19 @@ async def snippets(db: AsyncSession, candidate_ids: list[UUID], text: str) -> di
     return {candidate_id: _segments(headline) for candidate_id, headline in rows.all()}
 
 
-async def search(db: AsyncSession, body: CandidateSearch, *, limit: int, offset: int, user_id: UUID | None = None) -> dict:
+async def conditions_for(db: AsyncSession, body: CandidateSearch, user_id: UUID | None) -> tuple[dict[str, dict], list, str | None]:
+    """The resolved terms, the WHERE terms and the stop-words notice -- shared by the search and its export (hrc-020)."""
     terms = await resolve_terms(db, body)
-    where = filters(body, terms, user_id)
+    conditions = filters(body, terms, user_id)
     notice = None
     if body.text and not await db.scalar(select(func.numnode(_tsquery(body.text)))):
-        where.append(false())  # FT3: only stop words -- the same shape, nothing in it
+        conditions.append(false())  # FT3: only stop words -- the same shape, nothing in it
         notice = STOP_WORDS_NOTICE
+    return terms, conditions, notice
+
+
+async def search(db: AsyncSession, body: CandidateSearch, *, limit: int, offset: int, user_id: UUID | None = None) -> dict:
+    terms, where, notice = await conditions_for(db, body, user_id)
     total, facet_counts = await facets(db, where)
     items = await page(db, where, terms, limit, offset, body=body)
     if body.text and items:
@@ -456,3 +462,30 @@ def log(user: User, body: CandidateSearch, total: int) -> None:
         "candidate_search",
         extra={"user_id": str(user.id), "terms": len(body.all) + sum(len(g) for g in body.any), "groups": len(body.any), "text": body.text is not None, "total": total},
     )
+
+
+# hrc-020 (DEC-SCOPE-401 X10): the export's columns -- the card's facts, never contact details; the salary only with the grant.
+EXPORT_COLUMNS = (
+    ("candidate_code", "Candidate ID"), ("name", "Name"), ("preferred_role", "Preferred role"), ("current_company", "Current company"),
+    ("experience", "Experience (years)"), ("location", "Location"), ("notice_days", "Notice (days)"), ("skills", "Skills"), ("source", "Source"),
+    ("status", "Status"), ("engagement", "Engagement"),
+)  # fmt: skip
+SALARY_COLUMN = ("expected_annual_inr", "Expected salary (₹ a year)")
+
+
+def _export_row(card: dict) -> dict:
+    months, salary = card["experience_months"], card["expected_annual_inr"]
+    return {
+        **{key: card[key] for key in ("candidate_code", "name", "preferred_role", "current_company", "location", "notice_days")},
+        "experience": None if months is None else f"{round(months / 12, 1):g}", "skills": ", ".join(s["name"] for s in card["skills"]),
+        "source": card["source"]["name"], "status": card["status"].replace("_", " ").capitalize(),
+        "engagement": card["engagement"]["label"] if card["engagement"] else None, "expected_annual_inr": None if salary is None else int(salary),
+    }  # fmt: skip
+
+
+async def export_table(db: AsyncSession, body: CandidateSearch, *, user_id: UUID, cap: int, salary: bool) -> dict:
+    """X8-X10: up to `cap` + 1 rows (the caller refuses more than `cap`) in the search's own order, as a `tabular` table."""
+    terms, where, _ = await conditions_for(db, body, user_id)
+    cards = await page(db, where, terms, cap + 1, 0, body=body)
+    columns = EXPORT_COLUMNS + ((SALARY_COLUMN,) if salary else ())
+    return {"columns": [{"key": k, "label": label} for k, label in columns], "items": [_export_row(card) for card in cards], "totals": None}

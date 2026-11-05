@@ -12140,6 +12140,43 @@ class CandidateSearch(BaseModel):
         return self.sort == "package" or any(getattr(self, f) not in (None, False) for f in CANDIDATE_SEARCH_PACKAGE_FIELDS)
 
 
+def _saved_search_name(value: str) -> str:
+    value = re.sub(r"\s+", " ", value).strip()
+    if not value:
+        raise ValueError("Give the saved search a name")
+    if len(value) > 80:
+        raise ValueError("A saved search name is at most 80 characters")
+    if _BDM_CONTROL.search(value):
+        raise ValueError("The name contains invalid characters")
+    return value
+
+
+SavedSearchName = Annotated[StrictStr, AfterValidator(_saved_search_name)]
+SAVED_SEARCH_LABELS = {"name": "Name", "filters": "Filters", "shared": "Shared"}
+
+
+class SavedSearchIn(BaseModel):
+    """hrc-020 (DEC-SCOPE-401 X1/X2): `filters` is a Find Candidates body, checked by `CandidateSearch` in the route (its own sentences)."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: SavedSearchName
+    filters: dict
+    shared: StrictBool = False
+
+
+class SavedSearchUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: SavedSearchName | None = None
+    filters: dict | None = None
+    shared: StrictBool | None = None
+
+    @model_validator(mode="after")
+    def _something(self):
+        if not self.model_fields_set or any(getattr(self, field) is None for field in self.model_fields_set):
+            raise ValueError("Send a name, filters or the shared flag")
+        return self
+
+
 def expression_terms(all_terms: list, any_groups: list[list]) -> int:
     """rec-013 FS4's caps on a skill expression (also a rec-015 pool rule); returns its number of terms."""
     if len(any_groups) > CANDIDATE_SEARCH_MAX_GROUPS:
