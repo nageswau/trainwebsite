@@ -17,6 +17,7 @@ import BdmOrganizationReassign from "@/components/BdmOrganizationReassign";
 import BdmOrganizationSchoolActivity from "@/components/BdmOrganizationSchoolActivity";
 import BdmOrganizationTasks from "@/components/BdmOrganizationTasks";
 import BdmStageHistory from "@/components/BdmStageHistory";
+import CollegePlacement from "@/components/CollegePlacement";
 import { type Page, sendRequest } from "@/lib/apiErrors";
 import type { Activity } from "@/lib/bdmActivities";
 import type { AgentPerformance } from "@/lib/bdmAgentPerformance";
@@ -28,6 +29,7 @@ import type { SchoolActivity } from "@/lib/bdmSchoolActivity";
 import type { TaskPage } from "@/lib/bdmTasks";
 import { display, isOrganizationBody, LINK_STYLE, meetingText, type Organization, ORG_TYPE_LABEL, ORGS_URL, safeWebsite } from "@/lib/bdmOrganizations";
 import LocalTime from "@/components/LocalTime";
+import { hasPlacementProfile } from "@/lib/recruiterColleges";
 import { bdmUniversityPath } from "@/lib/universityView";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
@@ -243,6 +245,8 @@ export default function BdmOrganizationDetail({ initial, basePath, created = fal
         </section>
       )}
       <BdmOrganizationContacts organization={org} onChanged={changed} />
+      {/* pob-013 (DEC-SCOPE-410): the placement team's profile of a college; loads itself, edits for the assigned BDM */}
+      {hasPlacementProfile(org) && <CollegePlacement key={`${org.id}-${org.archived}`} orgId={org.id} onNotice={notify} />}
       {/* QA4-05: the stage history sits with the activity timeline, after Details and Contacts */}
       {stageHistory !== undefined && <BdmStageHistory orgId={org.id} initial={stageHistory} version={historyVersion} />}
       {activities !== undefined && ( // bdm-009: the BDM view logs (assigned and not archived = can_edit); the manager view reads
