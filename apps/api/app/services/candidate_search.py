@@ -337,7 +337,7 @@ def _sort(body: CandidateSearch | None, terms: dict[str, dict], text: str | None
     if key == "match":
         searched = _distinct([*body.all, *(t for g in body.any for t in g), *body.preferred])
         held = [case((_has(terms[t]["ids"], body.verified_only), 1), else_=0) for t in searched if terms[t]["ids"]]
-        return [sum(held[1:], held[0]).desc() if held else literal(0), *order]
+        return [sum(held, literal(0)).desc(), *order]
     first = {"experience": Candidate.experience_months.desc().nulls_last(), "package": Candidate.expected_annual_inr.asc().nulls_last(),
              "activity": last_activity().desc(), "completeness": completeness().desc()}.get(key)  # fmt: skip
     if first is not None:

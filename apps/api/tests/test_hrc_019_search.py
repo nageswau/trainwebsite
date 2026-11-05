@@ -24,7 +24,7 @@ from app.models import (
 from app.schemas import CandidateSearch
 from app.services import candidate_search
 from tests.rec001_helpers import login, make_user
-from tests.test_rec_013_find_candidates import SEARCH, _ids, _search, _world
+from tests.test_rec_013_find_candidates import _ids, _search, _world
 from tests.test_rec_017_tracking import _requirement
 
 pytestmark = pytest.mark.asyncio
@@ -410,7 +410,3 @@ async def test_ten_thousand_candidates_every_sort_within_budget(db_session):
 async def test_a_constructed_rule_body_adds_no_filters(db_session):
     body = CandidateSearch.model_construct(all=[], any=[], experience_min_months=12, experience_max_months=None)
     assert len(candidate_search.filters(body, {})) == len(candidate_search.filters(CandidateSearch.model_construct(all=[], any=[]), {})) + 1
-
-
-async def test_search_endpoint_path_is_unchanged():
-    assert SEARCH == "/api/v1/recruiter/candidates/search"

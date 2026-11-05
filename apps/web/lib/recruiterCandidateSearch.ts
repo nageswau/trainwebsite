@@ -62,7 +62,7 @@ export const EMPTY_SEARCH: SearchState = {
 
 // --- hrc-019 (S3-S10) --------------------------------------------------------------------------------------------------------------
 export const PREFERRED_MAX = 10;
-export const CATEGORIES_MAX = 10;
+export const LIST_MAX = 10; // the API's cap on each multi-value filter (categories, types, stages)
 export type FilterGroup = "skills" | "education" | "experience" | "location" | "preferences" | "package" | "recruitment" | "records";
 type Kind = "text" | "years" | "lakhs" | "year" | "cgpa" | "flag" | "yesno" | "multi" | "choice" | "date" | "category";
 type Option = { key: string; label: string };
@@ -146,7 +146,7 @@ function moreOf(params: URLSearchParams): Record<string, string[]> {
   const out: Record<string, string[]> = {};
   for (const spec of FILTERS) {
     const values = [...new Set(params.getAll(spec.param).map((v) => valid(spec, v)).filter(Boolean))];
-    const kept = many(spec) ? values.slice(0, CATEGORIES_MAX) : values.slice(0, 1);
+    const kept = many(spec) ? values.slice(0, LIST_MAX) : values.slice(0, 1);
     if (kept.length) out[spec.param] = kept;
   }
   return out;
