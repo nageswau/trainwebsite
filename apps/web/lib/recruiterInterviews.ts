@@ -78,7 +78,19 @@ export type RecInterview = {
   // hrc-028 (I1/I3): `local_when` is the start and end in the candidate's zone, as the notices and the portal show it
   round_number: number | null; ends_at: string | null; time_zone: string; local_when: string; platform: string | null; platform_label: string | null;
   phone_details: string | null; instructions: string | null; documents_required: string | null; cancel_reason: string | null; can_cancel: boolean;
+  // hrc-029 (DEC-SCOPE-405 V9): the panel, lead first, with each member's own feedback; optional so older fixtures stay valid
+  interviewers?: PanelMember[]; can_assign?: boolean;
 };
+// hrc-029 (V7): a panel member's own feedback, as the recruiter and the member read it
+export type PanelFeedback = {
+  attendance: "attended" | "no_show"; attendance_label: string; score: number | null; recommendation: string | null; recommendation_label: string | null;
+  notes: string | null; updated_at: string;
+};
+export type PanelKind = "internal" | "employer";
+export type PanelMember = { id: string; full_name: string; kind: PanelKind; kind_label: string; is_lead: boolean; feedback: PanelFeedback | null };
+export type InterviewerOption = { id: string; full_name: string; email: string; kind: PanelKind; kind_label: string };
+export const panelUrl = (id: string, part: "interviewers" | "interviewer-options") => `${INTERVIEWS_URL}/${encodeURIComponent(id)}/${part}`;
+export const PANEL_MAX = 10;
 export type Notices = { candidate: string; contact: string | null };
 export type ApplicationInterviews = { items: RecInterview[]; can_schedule: boolean };
 export type InterviewView = "upcoming" | "awaiting_update" | "on_hold" | "closed";
