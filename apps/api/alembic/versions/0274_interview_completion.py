@@ -4,7 +4,7 @@ sequence), the `cancelled` status, the `details` event with the old and new link
 Revision ID: 0274_interview_completion
 Revises: 0273_candidate_privacy
 
-docs/superpowers/specs/2026-11-05-hrc-028-interview-completion-design.md (DEC-SCOPE-399). 0001 builds a fresh database from the current
+docs/superpowers/specs/2026-11-05-hrc-028-interview-completion-design.md (DEC-SCOPE-400). 0001 builds a fresh database from the current
 models, which already carry the columns, so each column/check is added only when missing (0222's idiom); the status and event CHECKs
 always replace rec-020's (0133) copies. Every constant is a frozen copy of the models at this revision (test_hrc_028_migration). No
 backfill: every existing row keeps NULLs, `time_zone` defaults to Asia/Kolkata and `calendar_sequence` to 0. The downgrade restores

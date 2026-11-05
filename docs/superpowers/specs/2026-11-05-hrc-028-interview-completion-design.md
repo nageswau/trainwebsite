@@ -1,6 +1,6 @@
 # hrc-028 — Interview model completion, cancellation, link history and calendar (design)
 
-**Decision:** `DEC-SCOPE-399` (builder's calls, `NEEDS_CONFIRMATION`). **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` hrc-028
+**Decision:** `DEC-SCOPE-400` (builder's calls, `NEEDS_CONFIRMATION`). **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` hrc-028
 (PDF §10.1 interview fields, §10.2 sync rules, §16 calendar, §17 QA #13/#14; PDF classified `UNVERIFIED`). Scope approved by the owner
 2026-11-01 (backlog Q-00); the owner said to proceed with the recommended answers. Dependency hrc-004 (`DEC-SCOPE-376`) merged.
 
@@ -47,7 +47,7 @@ the times in their own time zone.
   a candidate-chosen time zone on the profile.
 
 ## Numbering
-Migration `0274_interview_completion` (after `0273_candidate_privacy`); API §12KR; RBAC §2.291.
+Migration `0274_interview_completion` (after `0273_candidate_privacy`); API §12KS; RBAC §2.291.
 
 ## Acceptance criteria
 1. After a link replacement the portal shows only the new link; the old one is kept on a `details` event.

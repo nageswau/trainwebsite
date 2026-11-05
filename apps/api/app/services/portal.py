@@ -121,7 +121,7 @@ _SETUP_LABEL = {"active": "Password set", "pending_setup": "Awaiting setup", "li
 
 
 def _student_interview(i: Interview, job: Job, company: Company) -> dict:
-    """hrc-028 (DEC-SCOPE-399 I7): one row of the student's interview schedule. `details` never carries a link."""
+    """hrc-028 (DEC-SCOPE-400 I7): one row of the student's interview schedule. `details` never carries a link."""
     cancelled = i.status == "cancelled"
     facts = (("Platform", interview_svc.PLATFORM_LABELS.get(i.platform or "")), ("Location", i.location), ("Phone", i.phone_details),
              ("Instructions", i.instructions), ("Documents to bring", i.documents_required))  # fmt: skip
@@ -467,7 +467,7 @@ async def _it_student(db: AsyncSession, user: User, section: str):
         return _payload(
             "Interview Schedule",
             "Mock and employer interview appointments.",
-            # hrc-001 (DEC-SCOPE-371 H3): a decision reads Completed until hrc-030's release step. hrc-028 (DEC-SCOPE-399 I7): the time in the
+            # hrc-001 (DEC-SCOPE-371 H3): a decision reads Completed until hrc-030's release step. hrc-028 (DEC-SCOPE-400 I7): the time in the
             # interview's zone, only the current link (none once cancelled -- old links live on staff-only events), the reason of a cancel.
             (("round", "Round"), ("role", "Role"), ("company", "Company"), ("when", "When"), ("mode", "Mode"), ("link", "Meeting", "link"),
              ("details", "Details"), ("status", "Status")),

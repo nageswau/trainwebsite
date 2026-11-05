@@ -70,7 +70,7 @@ async def _app_status(db, application_id) -> str:
 # --- the catalogue (IV1-IV3) --------------------------------------------------------------------------------------------------------
 def test_catalogue_matches_section_14():
     assert list(svc.ROUND_LABELS) == ["hr_round", "technical_round", "manager_round", "final_round", "client_round"]
-    # hrc-028 (DEC-SCOPE-399 I3) appends `cancelled`
+    # hrc-028 (DEC-SCOPE-400 I3) appends `cancelled`
     assert list(svc.STATUS_LABELS) == ["scheduled", "confirmed", "completed", "rescheduled", "no_show", "selected", "rejected", "on_hold", "cancelled"]
     assert svc.OPEN == ("scheduled", "confirmed", "rescheduled")
     assert svc.MOVES == {

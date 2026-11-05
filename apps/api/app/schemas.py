@@ -11233,7 +11233,7 @@ def _rec_time_zone(value: str) -> str:
     return value
 
 
-# hrc-028 (DEC-SCOPE-399 I1): the interview's own fields; the end's relation to the start is checked in the service (and by a CHECK)
+# hrc-028 (DEC-SCOPE-400 I1): the interview's own fields; the end's relation to the start is checked in the service (and by a CHECK)
 RecInterviewTimeZone = Annotated[str, StringConstraints(strip_whitespace=True, max_length=64), AfterValidator(_rec_time_zone)]
 RecInterviewEnd = Annotated[AwareDatetime, AfterValidator(_bdm_appt_minute)] | None
 RecInterviewRoundNumber = Annotated[StrictInt, Field(ge=1, le=20)] | None

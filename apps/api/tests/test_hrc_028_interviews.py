@@ -1,4 +1,4 @@
-"""hrc-028 -- interview completion (DEC-SCOPE-399 I1-I9; AC1-AC6): the new fields, the link/location history, cancel, the duration kept on a
+"""hrc-028 -- interview completion (DEC-SCOPE-400 I1-I9; AC1-AC6): the new fields, the link/location history, cancel, the duration kept on a
 reschedule, the notices with their calendar invite, the time zone and the student portal. The shared test database is never truncated, so
 every value is unique per test."""
 

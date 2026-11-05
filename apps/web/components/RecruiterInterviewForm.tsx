@@ -32,7 +32,7 @@ import { useLeaveGuard } from "@/lib/useLeaveGuard";
 export type ContactOption = { id: string; name: string };
 type Values = {
   round: string; start: string; mode: string; url: string; interviewer: string; location: string; contact_id: string;
-  // hrc-028 (DEC-SCOPE-399 I1)
+  // hrc-028 (DEC-SCOPE-400 I1)
   round_number: string; duration: string; time_zone: string; platform: string; phone: string; instructions: string; documents: string;
 };
 const LABELS: Record<string, string> = { round: "Round", mode: "Mode", url: "Meeting link", meeting_url: "Meeting link", interviewer: "Interviewer", location: "Location",

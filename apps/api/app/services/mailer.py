@@ -576,7 +576,7 @@ def lead_email_message(*, to_email: str, subject: str, body: str, sender_name: s
     msg["Reply-To"] = formataddr((sender_name, sender_email))
     msg.set_content(f"{body}\n\n--\nSent by {sender_name} via EduSphere.\n")
     msg.add_alternative(_lead_email_html(body=body, sender_name=sender_name), subtype="html")
-    if ics:  # hrc-028 (DEC-SCOPE-399 I6): a recruiter's interview notice carries its calendar invite
+    if ics:  # hrc-028 (DEC-SCOPE-400 I6): a recruiter's interview notice carries its calendar invite
         method = "CANCEL" if "\r\nMETHOD:CANCEL\r\n" in ics else "REQUEST"
         msg.add_attachment(ics.encode(), maintype="text", subtype="calendar", filename=INVITE_FILENAME, params={"method": method, "charset": "utf-8"})
     return msg
