@@ -6009,6 +6009,7 @@ payment_trigger, payment_trigger_label, payment_days, payment_terms: {value, inh
 `GET …/assignment-options` accepts `role=backup`. **Errors:** a terms field without effective edit → 403 "Your role cannot view or change
 client commercial terms"; a backup change by anyone but the primary, the backup or super_admin → 403; the primary as backup → 409; an
 ineligible backup or decision-maker, or a days/trigger mismatch → 422.
+
 ## 12LC. Interview result approval and release (hrc-030) — addendum, 2026-11-05
 
 `DEC-SCOPE-409`, migration `0287`. **New:**
@@ -6018,8 +6019,7 @@ ineligible backup or decision-maker, or a days/trigger mismatch → 422.
   null), released_at, interview {id, code, round, scheduled_at}, candidate {id, code, name}, requirement {id, code, title}, company {id,
   name}, decided_by {id, full_name}|null, decided_at, can_release` (false on the caller's own decision).
 - `POST /api/v1/recruiter/interview-results/{id}/release {candidate_message?: string ≤1000}` — holders; 404 unknown; 403 own decision; 409
-  already published (final). Blank/omitted message = the default text. 200 = the result (`id … released_at`, as above without the
-  joined objects). Notifies the candidate (in-app "Interview result" or a queued email).
+  already published (final). Blank/omitted message = the default text. 200 = the published queue item (as above). Notifies the candidate (in-app "Interview result" or a queued email).
 - `GET /api/v1/recruiter/interview-results/settings` — holders: `{auto_release, can_edit}`. `PUT` `{auto_release: bool}` — super_admin only
   (else 403); 422 for a non-boolean.
 - `GET /api/v1/candidate/results` — a candidate or IT student (else 403; 401 signed out): `{items: [{id, round, role, company, outcome,

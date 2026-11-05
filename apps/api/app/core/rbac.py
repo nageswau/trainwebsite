@@ -147,7 +147,8 @@ DEFAULT_GRANTS: dict[str, tuple[str, ...]] = {
     + _CLIENT_COMMERCIALS,
     # hrc-007 (DEC-SCOPE-380 A12; migration 0257 seeds it): the HR Manager is the vacancy approver.
     # hrc-035 (DEC-SCOPE-396 K7; migration 0273 seeds it): the HR Manager decides candidate deletion requests.
-    "hr_manager": ("candidates.erase", "jobs.approve"),
+    # hrc-030 (DEC-SCOPE-409 R5; migration 0287 seeds it): the HR Manager publishes interview results.
+    "hr_manager": ("candidates.erase", "jobs.approve", "results.release"),
     # pob-001 (DEC-SCOPE-403 C3; migration 0278 seeds it): the assigned BDM keeps reading the company's contract terms (rec-030 R10).
     "bdm": ("commercials.client.view",),
     "overseas_admin": _PAYMENT_ADMIN + _TELECALLER_REPORTS,

@@ -106,13 +106,15 @@ def check_reason(target: str, reason: str | None, note: str | None) -> None:
         raise HTTPException(422, OTHER_NEEDS_NOTE)
 
 
-def _record(db: AsyncSession, actor: User | None, application: JobApplication, target: str, note: str | None, reason: str | None = None) -> str:
+def _record(db: AsyncSession, actor: User | None, application: JobApplication, target: str, note: str | None, reason: str | None = None,
+            visible: bool = True) -> str:  # fmt: skip
     previous = application.status
     reason = reason if target == "rejected" else None
     db.add(JobApplicationStatusHistory(application_id=application.id, from_status=previous, to_status=target, note=note, rejection_reason=reason, changed_by_user_id=actor.id if actor else None))
     application.status = target
     application.rejection_reason = reason  # hrc-026 (A7): kept while rejected; a reopen clears it
-    if target in CANDIDATE_VISIBLE_STATUSES:  # hrc-026 (A4): an internal stage leaves the candidate's view where it was
+    # hrc-026 (A4): an internal stage leaves the candidate's view where it was; hrc-030 (R3): so does an interview result not yet released
+    if visible and target in CANDIDATE_VISIBLE_STATUSES:
         application.candidate_status = target
     application.stage_changed_at = datetime.now(UTC)
     application.needs_review_since = None  # hrc-009 (R4): a move answers an eligibility review
@@ -132,12 +134,12 @@ async def change_status(db: AsyncSession, actor: User | None, application: JobAp
     return previous
 
 
-def follow(db: AsyncSession, actor: User | None, application: JobApplication, target: str, note: str | None = None) -> bool:
+def follow(db: AsyncSession, actor: User | None, application: JobApplication, target: str, note: str | None = None, *, visible: bool = True) -> bool:
     """A legacy side effect: move only when the move is allowed (A2). Returns whether it moved. The only side effect into Rejected is an
-    interview result, so its reason is the interview's (hrc-026 A7)."""
+    interview result, so its reason is the interview's (hrc-026 A7). `visible=False` (hrc-030 R3) holds the candidate's view."""
     if target == application.status or target not in TRANSITIONS.get(application.status, ()):
         return False
-    _record(db, actor, application, target, note, "interview_not_cleared")
+    _record(db, actor, application, target, note, "interview_not_cleared", visible)
     return True
 
 

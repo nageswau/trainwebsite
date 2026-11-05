@@ -1529,6 +1529,52 @@ class InterviewPanelFeedback(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
 
 
+# hrc-030 (DEC-SCOPE-409 R1/R4): an interview decision as a result waiting for release, and the global release switch. Migration 0287
+# repeats INTERVIEW_RESULT_CHECKS (test_hrc_030_migration asserts they stay identical).
+RESULT_OUTCOMES = ("selected", "rejected")
+RESULT_STATES = ("pending_approval", "released")
+RESULT_RELEASE_MODES = ("auto", "approval")
+INTERVIEW_RESULT_CHECKS = {
+    "ck_interview_results_outcome": "outcome IN ('selected', 'rejected')",
+    "ck_interview_results_state": "state IN ('pending_approval', 'released')",
+    "ck_interview_results_release_mode": "release_mode IS NULL OR release_mode IN ('auto', 'approval')",
+    "ck_interview_results_message": "char_length(candidate_message) <= 1000",
+    "ck_interview_results_released": "(state = 'released') = (released_at IS NOT NULL AND released_by_user_id IS NOT NULL AND release_mode IS NOT NULL AND candidate_message IS NOT NULL)",
+}
+
+
+class InterviewResult(Base, TimestampMixin):
+    """hrc-030 (R1-R3): one decided interview's result. `is_final` marks the decision that decides the application. Until `released`, no
+    candidate or student surface shows it, and the application's `candidate_status` is held where it was."""
+
+    __tablename__ = "interview_results"
+    __table_args__ = (
+        *(CheckConstraint(sql, name=name) for name, sql in INTERVIEW_RESULT_CHECKS.items()),
+        Index("ix_interview_results_state", "state", "created_at"),
+        Index("ix_interview_results_application", "application_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    interview_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("interviews.id", ondelete="RESTRICT"), unique=True)
+    application_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("job_applications.id", ondelete="RESTRICT"))
+    outcome: Mapped[str] = mapped_column(String(10))
+    is_final: Mapped[bool] = mapped_column(Boolean)
+    state: Mapped[str] = mapped_column(String(20), default="pending_approval")
+    candidate_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    release_mode: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    decided_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    released_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ResultReleaseSetting(Base, TimestampMixin):
+    """hrc-030 (R4): the one global row (id 1, seeded by migration 0287) -- release automatically, or wait for a `results.release` holder."""
+
+    __tablename__ = "result_release_settings"
+    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    auto_release: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+
 class PlacementProfile(Base, TimestampMixin):
     __tablename__ = "placement_profiles"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)

@@ -3895,6 +3895,7 @@ A requirement's revisions are read by its readers (rec-007 scope; outside it 404
 `commercials.client.view` (§2.296). Writing the per-requirement terms needs effective `commercials.client.edit`. The backup owner is in
 the recruiter's scope (and a placement manager's team scope) and holds `can_manage_owners`, like the primary; the backup is changed by
 the primary, the backup or super_admin. No new grant. Pinned by `apps/api/tests/test_pob_002_requirement_revisions.py`.
+
 ### 2.302 Interview result approval and release *(added 2026-11-05 — `DEC-SCOPE-409`, hrc-030)*
 
 `results.release` (declared by hrc-002, §2.275 R4) now gates the result queue, the settings read and `release`; default holder

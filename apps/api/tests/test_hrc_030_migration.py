@@ -18,12 +18,12 @@ _spec = importlib.util.spec_from_file_location("_hrc_030_migration_0287", VERSIO
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0287_interview_results", "0284_interview_panel"
+HEAD, BASE = "0287_interview_results", "0285_job_revisions"
 TABLES = ("interview_results", "result_release_settings")
 GRANT = "SELECT 1 FROM role_permissions WHERE role = 'hr_manager' AND resource = 'results' AND action = 'release'"
 
 
-def test_migration_chains_after_0284_and_is_the_single_head():
+def test_migration_chains_after_0285_and_is_the_single_head():
     assert _migration.revision == HEAD and _migration.down_revision == BASE
     script = ScriptDirectory.from_config(_config())
     assert HEAD in {r.revision for r in script.walk_revisions()} and len(script.get_heads()) == 1

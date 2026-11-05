@@ -71,6 +71,7 @@ from app.services import (
     document_access,
     fee_accounts,
     hr_students,
+    interview_results,
     it_student_counselors,
     job_visibility,
     permissions,
@@ -120,8 +121,9 @@ _Reviewer = aliased(User)  # ccrm-021 S5: the document queue names who reviewed 
 _SETUP_LABEL = {"active": "Password set", "pending_setup": "Awaiting setup", "link_expired": "Link expired"}
 
 
-def _student_interview(i: Interview, job: Job, company: Company) -> dict:
-    """hrc-028 (DEC-SCOPE-400 I7): one row of the student's interview schedule. `details` never carries a link."""
+def _student_interview(i: Interview, job: Job, company: Company, released: str | None) -> dict:
+    """hrc-028 (DEC-SCOPE-400 I7): one row of the student's interview schedule. `details` never carries a link. hrc-030 (R9): a decision
+    reads Completed until its result is published (`released` = the published outcome label)."""
     cancelled = i.status == "cancelled"
     facts = (("Platform", interview_svc.PLATFORM_LABELS.get(i.platform or "")), ("Location", i.location), ("Phone", i.phone_details),
              ("Instructions", i.instructions), ("Documents to bring", i.documents_required))  # fmt: skip
@@ -130,7 +132,7 @@ def _student_interview(i: Interview, job: Job, company: Company) -> dict:
         "id": i.id, "title": f"meeting link for {job.title}",  # the link cell's accessible name ("Open meeting link for ...")
         "round": interview_svc.round_text(i), "role": job.title, "company": company.name, "when": interview_svc.local_when(i), "mode": i.mode,
         "link": None if cancelled else i.meeting_url, "details": " · ".join(f"{label}: {value}" for label, value in facts if value) or None,
-        "status": f"Cancelled — {i.cancel_reason}" if cancelled else interview_svc.status_label(status),
+        "status": f"Cancelled — {i.cancel_reason}" if cancelled else (released or interview_svc.status_label(status)),
     }
 
 
@@ -464,14 +466,15 @@ async def _it_student(db: AsyncSession, user: User, section: str):
                 .order_by(Interview.scheduled_at)
             )
         ).all()
+        released = await interview_results.released_outcomes(db, [i.id for i, _j, _c in rows])
         return _payload(
             "Interview Schedule",
             "Mock and employer interview appointments.",
-            # hrc-001 (DEC-SCOPE-371 H3): a decision reads Completed until hrc-030's release step. hrc-028 (DEC-SCOPE-400 I7): the time in the
-            # interview's zone, only the current link (none once cancelled -- old links live on staff-only events), the reason of a cancel.
+            # hrc-001 (DEC-SCOPE-371 H3) / hrc-030 (R9): a decision reads Completed until its result is published. hrc-028 (DEC-SCOPE-400 I7):
+            # the time in the interview's zone, only the current link (none once cancelled -- old links live on staff-only events), the reason.
             (("round", "Round"), ("role", "Role"), ("company", "Company"), ("when", "When"), ("mode", "Mode"), ("link", "Meeting", "link"),
              ("details", "Details"), ("status", "Status")),
-            (_student_interview(i, j, c) for i, j, c in rows),
+            (_student_interview(i, j, c, released.get(i.id)) for i, j, c in rows),
         )
     if section == "placement-status":
         # rec-022 QA-04: the offers are the "My offers" card (GET /workflows/it/student/offers), with the letter; no text panel here.

@@ -73,7 +73,7 @@ Default messages: Selected + final — "Congratulations! You have been selected 
 - Separate approve and publish actions: no evidence of a gap between them; one "Publish result" action is the approval.
 
 ## Numbering
-Migration `0287_interview_results` (after `0284_interview_panel`; pob-002/pob-023 hold 0285/0286 in flight); API §12LC; RBAC §2.302.
+Migration `0287_interview_results` (after `0285_job_revisions`, pob-002 merged; 0286 is left to pob-023 in flight); API §12LC; RBAC §2.302.
 
 ## Acceptance criteria
 1. With approval required, a decided result is invisible to the candidate (application stage, results, interview card, notifications,

@@ -17,7 +17,7 @@ from app.api.portfolio_certificates import EXTENSION, HEADERS
 from app.core.database import get_db
 from app.models import JobOffer, User
 from app.schemas import RecJoiningUpdate, RecOfferCreate, RecOfferStatusChange, RecOfferUpdate
-from app.services import applications, joinings
+from app.services import applications, interview_results, joinings
 from app.services import offers as svc
 from app.services.agent_documents import read_upload
 from app.services.bdm_appointments import db_now, today_ist
@@ -41,6 +41,7 @@ async def record_offer(application_id: UUID, payload: RecOfferCreate, user: User
     """OF4 / AC1. Not idempotent: a retry is the duplicate 409."""
     application, job = await applications.load_scoped(db, user, application_id, lock=True)
     applications.require_writer(user, application.id, "offer_create")
+    await interview_results.require_no_unreleased_final(db, application.id)  # hrc-030 (R8)
     offer = await svc.create(db, user, application, job, payload, await _today(db))
     await db.commit()
     svc.log("recruiter_offer_recorded", user, offer.id, application_id=str(application.id), status=offer.status)

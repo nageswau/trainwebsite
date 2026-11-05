@@ -12020,6 +12020,7 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
 - **Numbering:** migration `0285_job_revisions` (rechained after hrc-029's `0284_interview_panel`); API §12LA; RBAC §2.300 — renumbered
   from 405/12KX/2.298 at merge, which hrc-029 took.
 - **Feature ID authorized:** `pob-002`. **Status:** built on `worktree-pob-002`.
+
 ### DEC-SCOPE-409 — Result approval and release (`hrc-030`)
 
 - **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-030` (PDF §9 "publish only after release conditions"; §10.2 "Release

@@ -11564,6 +11564,19 @@ class InterviewPanelFeedbackIn(BaseModel):
         return value
 
 
+# --- hrc-030 (DEC-SCOPE-409 R4/R6): publishing an interview result and the release switch ----------------------------------------------
+class InterviewResultRelease(BaseModel):
+    """R6: the candidate-facing message; blank or omitted = the default text."""
+
+    model_config = ConfigDict(extra="forbid")
+    candidate_message: str | None = Field(default=None, max_length=1000)
+
+
+class InterviewResultSettingsIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    auto_release: StrictBool
+
+
 # --- rec-022 (DEC-SCOPE-155, spec §1/§3): offers ------------------------------------------------------------------------------------
 def _rec_offer_position(value: str | None) -> str:
     if value is None or len(value) < 2:
