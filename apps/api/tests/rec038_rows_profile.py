@@ -69,7 +69,7 @@ ROWS = [
     R("get", "/recruiter/companies/{company}/contacts", **READ_ONE),
     R("post", "/recruiter/companies/{company}/contacts", lambda w: {"name": tag("R38 Contact ")}, **allow(201, "rec", "super"), **EDIT),
     R("patch", "/recruiter/contacts/{contact}", lambda w: {"designation": tag("HR ")}, **allow(200, "rec", "super"), **EDIT),
-    # pob-005 D8 (§2.303): the duplicate check is a read of the company's scope
+    # pob-005 D8 (§2.304): the duplicate check is a read of the company's scope
     R("get", "/recruiter/companies/{company}/contacts/duplicates?mobile=9876543210", **READ_ONE),
     R("get", "/recruiter/pipeline", **allow(200, *SCOPED)),
 ]

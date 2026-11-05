@@ -1,5 +1,5 @@
 """pob-005 -- contact status, decision-maker, source/verification, Do Not Contact, replies, duplicates and the per-contact timeline
-(DEC-SCOPE-410 D1-D11). The shared test database is never truncated, so every value is unique per test."""
+(DEC-SCOPE-411 D1-D11). The shared test database is never truncated, so every value is unique per test."""
 
 import uuid
 from datetime import UTC, date, datetime, timedelta

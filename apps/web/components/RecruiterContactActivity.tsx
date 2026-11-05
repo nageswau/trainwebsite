@@ -11,7 +11,7 @@ import { getPage } from "@/lib/telecallerCatalogue";
 
 const FOLLOW_UP_STATE: Record<RecFollowUp["status"], string> = { open: "Open", done: "Done", cancelled: "Cancelled" };
 
-/** pob-005 (DEC-SCOPE-410 D10/D11): one contact's own activity -- their follow-ups and their timeline (calls, messages and replies,
+/** pob-005 (DEC-SCOPE-411 D10/D11): one contact's own activity -- their follow-ups and their timeline (calls, messages and replies,
  *  meetings, shares and status changes). Read only; the API scopes both lists to the company and checks the contact belongs to it. */
 export default function RecruiterContactActivity({ companyId, contactId, name, version }: { companyId: string; contactId: string; name: string; version: number }) {
   const [followUps, setFollowUps] = useState<Page<RecFollowUp> | null>(null);

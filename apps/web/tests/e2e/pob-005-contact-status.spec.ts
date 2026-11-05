@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// pob-005 (DEC-SCOPE-410): the seeded recruiter marks a decision-maker, sees a message move the contact to Contacted and a logged reply
+// pob-005 (DEC-SCOPE-411): the seeded recruiter marks a decision-maker, sees a message move the contact to Contacted and a logged reply
 // move them to Replied (AC1), the contact's own Activity, a duplicate warning across companies (AC3), and Do Not Contact refusing a send
 // (AC2) and dropping the person from the recipients; no sideways scroll on a phone.
 const RECRUITER = "placement@edusphere.local";

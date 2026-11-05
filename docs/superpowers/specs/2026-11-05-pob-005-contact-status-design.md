@@ -5,7 +5,7 @@
   the contact and the company", "reminders and tasks for each contact", duplicate prevention). Source classified `UNVERIFIED`; Q-00
   (owner, 2026-11-01) approved the backlog for build in waves. The owner assigned pob-005 on 2026-11-05 and said to proceed with recommended
   answers, so D1–D11 are **the builder's calls (`NEEDS_CONFIRMATION`)**. pob-005 has **no dependencies** (backlog §3.2). Decision
-  `DEC-SCOPE-410`.
+  `DEC-SCOPE-411`.
 
 ## Intent
 A Placement Officer working a company needs to know, per person: are they the decision-maker, where did we find them and when was that
@@ -98,5 +98,5 @@ UPDATE), rec-027 timeline (new `message_reply` rows only when a reply exists), r
 `Contact` and `MessagesSection` (optional props only).
 
 ## Numbering
-Migration `0288_contact_status` (siblings: pob-023 holds 0286, pob-013 may take 0287), `DEC-SCOPE-410`, API §12LD, RBAC §2.303 —
+Migration `0289_contact_status` (siblings: pob-023 holds 0286, pob-013 may take 0287), `DEC-SCOPE-411`, API §12LE, RBAC §2.304 —
 re-checked at merge.

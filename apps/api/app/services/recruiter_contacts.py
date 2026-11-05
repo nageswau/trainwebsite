@@ -28,7 +28,7 @@ async def require_of_company(db: AsyncSession, company_id: UUID, contact_id: UUI
         raise HTTPException(404, CONTACT_NOT_FOUND)
 
 
-# --- pob-005 (DEC-SCOPE-410 D8): duplicates warn, never refuse -------------------------------------------------------------------
+# --- pob-005 (DEC-SCOPE-411 D8): duplicates warn, never refuse -------------------------------------------------------------------
 MAX_DUPLICATE_MATCHES = 10
 
 

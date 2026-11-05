@@ -12021,7 +12021,27 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   from 405/12KX/2.298 at merge, which hrc-029 took.
 - **Feature ID authorized:** `pob-002`. **Status:** built on `worktree-pob-002`.
 
-### DEC-SCOPE-410 — Contact status, decision-maker, source/verification and per-contact timeline (`pob-005`)
+### DEC-SCOPE-410 — College/TPO placement profile on the BDM organisation and placement-team access (`pob-013`)
+
+- **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-013` (§6.1 institution profile, TPO contacts, placement profile,
+  status; §6.2 research/identify; §18 AC "Placement Officer can create and track TPO records for colleges and universities"; source
+  classified `UNVERIFIED`). The owner assigned pob-013 on 2026-11-05 and said to proceed with the recommended answers, so P1–P15 (answering
+  Q-10) are **the builder's calls (`NEEDS_CONFIRMATION`)**. Dependency pob-001 (`DEC-SCOPE-403`) merged. Design
+  `docs/superpowers/specs/2026-11-05-pob-013-college-placement-profile-design.md`.
+- **Behaviour:** the placement team opens "Colleges" from the recruiter menu, searches college-module colleges and universities by name,
+  course, graduating year and location, and keeps on each a placement profile — structured courses, graduating batches, a placement
+  calendar, the drive process and eligibility rules, TPO office details and preferred contact method, and an append-only TPO interaction
+  log — beside the BDM-owned record. The same section appears on the BDM organization page (the assigned BDM edits; managers read).
+- **Builder's calls:** P1 side tables, the organization row never written. P2 `bdm_type = college` and org_type college/university. P3
+  readers. P4 writers (`placement_team`, `super_admin`, assigned BDM; both managers read only). P5 profile PUT. P6 courses (unique, ≤ 100).
+  P7 batches (year 2000–2100, date in that year, ≤ 200). P8 calendar (seven kinds, ≤ 500). P9 interactions separate from `bdm_activities`
+  (BDM metrics unchanged). P10 two contact columns written only through the placement route. P11 search. P12 relationship stage shown read
+  only. P13 no MoU/commercial data; BDM routes unchanged. P14 drives listed read only. P15 `placement_officer` not granted.
+- **Not built / `NEEDS_CONFIRMATION`:** the §6.1 status-label mapping (the labels are not in the repository); `placement_officer` access;
+  editing a batch or calendar entry in place (remove and re-add); student data (pob-014); vacancy sharing and outcomes (pob-015).
+- **Numbering:** migration `0288_college_placement`; API §12LD; RBAC §2.303.
+- **Feature ID authorized:** `pob-013`. **Status:** built on `worktree-pob-013`.
+### DEC-SCOPE-411 — Contact status, decision-maker, source/verification and per-contact timeline (`pob-005`)
 
 - **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-005` (§3.2 "Record the contact's role, professional email, phone,
   LinkedIn URL, source and verification date"; §3.3 decision-maker, preferred contact method, contact status set, "timeline against both
@@ -12041,5 +12061,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   caller's scope are counted, never named. D9 (Q-05) a person who moves company is added again at the new company (the duplicate warning
   links the old record) and the old one deactivated; nothing moves. D10 the per-contact timeline and D11 follow-ups take `?contact_id=`.
 - **Not built:** a manager-only reopen of Do Not Contact (`NEEDS_CONFIRMATION`); inbound message capture; contact merge (pob-006).
-- **Numbering:** migration `0288_contact_status` (after `0285_job_revisions`); API §12LD; RBAC §2.303 — re-checked at merge.
+- **Numbering:** migration `0289_contact_status` (after `0285_job_revisions`); API §12LE; RBAC §2.304 — re-checked at merge.
 - **Feature ID authorized:** `pob-005`. **Status:** built on `worktree-pob-005`.

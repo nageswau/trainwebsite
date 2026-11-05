@@ -4,7 +4,7 @@ import { detailMessage } from "@/lib/apiErrors";
 import { COMPANIES_URL, type Ref } from "@/lib/recruiterCompanies";
 
 export type Channel = "call" | "whatsapp" | "email" | "linkedin";
-// pob-005 (DEC-SCOPE-410): "Follow-up due" is not a stored status -- the API derives `follow_up_due`.
+// pob-005 (DEC-SCOPE-411): "Follow-up due" is not a stored status -- the API derives `follow_up_due`.
 export type ContactStatus = "not_contacted" | "contacted" | "replied" | "meeting_scheduled" | "not_interested" | "do_not_contact";
 export type ContactSource = "linkedin" | "company_website" | "referral" | "job_portal" | "event" | "inbound" | "other";
 export type Contact = {

@@ -175,6 +175,7 @@ export const RECRUITER_NAV: NavItem[] = withResources([ // pob-001: Receivables 
   { label: "Joinings", href: "/recruiter/joinings" }, // rec-023
   { label: "Receivables", href: "/recruiter/receivables" }, // rec-031
   { label: "Campus Drives", href: "/recruiter/drives" }, // rec-029
+  { label: "Colleges", href: "/recruiter/colleges" }, // pob-013: college placement profiles (TPO records)
   { label: "My Performance", href: "/recruiter/performance" }, // rec-034: §25, their own row
   { label: "Report library", href: "/recruiter/report-library" }, // nehn-016: students completing soon, the placement report
   ...LEGACY_PLACEMENT.map((x) => ({ label: x.replaceAll("-", " ").replace(/\b\w/g, (c) => c.toUpperCase()), href: `/it/placement/${x}` })),
@@ -202,6 +203,7 @@ export const RECRUITER_MANAGER_NAV: NavItem[] = withResources([
   { label: "Joinings", href: "/recruiter/joinings" }, // rec-023: the team's joinings, read only
   { label: "Receivables", href: "/recruiter/receivables" }, // rec-031: the team's invoices (RV10: the manager records too)
   { label: "Campus Drives", href: "/recruiter/drives" }, // rec-029: the team's drives, read only
+  { label: "Colleges", href: "/recruiter/colleges" }, // pob-013: college placement profiles, read only
   { label: "Message templates", href: "/recruiter/manager/templates" }, // rec-026
   { label: "Report library", href: "/recruiter/manager/report-library" }, // nehn-016: students completing soon, the placement report
   MANAGEMENT_TASKS_NAV, // mgmt-028 (MT14)

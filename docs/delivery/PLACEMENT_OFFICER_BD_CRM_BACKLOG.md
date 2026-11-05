@@ -211,7 +211,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** medium.
 
 #### pob-005: Contact status, decision-maker, source/verification and per-contact timeline
-- **Status:** built (`DEC-SCOPE-410`, 2026-11-05); D1–D11 are the builder's calls (`NEEDS_CONFIRMATION`); Q-05 answered as "add at the new
+- **Status:** built (`DEC-SCOPE-411`, 2026-11-05); D1–D11 are the builder's calls (`NEEDS_CONFIRMATION`); Q-05 answered as "add at the new
   company, deactivate the old" (builder's call); duplicates warn and never refuse.
 - **Business requirement:** §3.2 "Record the contact's role, professional email, phone, LinkedIn URL, source and verification date"; §3.3 decision-maker, preferred contact method, contact status set, "timeline against both the contact and the company", "reminders and tasks for each contact", duplicate prevention.
 - **Existing behavior:** multiple contacts with a primary flag, designation, department, role catalogue, LinkedIn and notes. Preferred channel covers call, WhatsApp and email only. There is no decision-maker flag, source, verification date, status or per-contact timeline. There is no contact duplicate check (the index exists but is unused). Follow-ups optionally carry a contact.
@@ -470,6 +470,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** medium.
 
 #### pob-013: College/TPO profile on the BDM organisation and placement-officer access
+- **Status:** built (`DEC-SCOPE-410`, 2026-11-05); Q-10 answered by the builder's calls P1–P15 (`NEEDS_CONFIRMATION`); the §6.1 status-label mapping and `placement_officer` access remain open.
 - **Business requirement:** §6.1 institution profile, TPO contacts, placement profile, relationship, status; §6.2 research/identify; §18 AC "Placement Officer can create and track TPO records for colleges and universities".
 - **Existing behavior:**
   - Colleges are `BdmOrganization` (bdm_type college) with contacts (`placement_officer` role), MoUs, appointments, activities and trips.

@@ -6,7 +6,7 @@ import RecruiterMessages from "@/components/RecruiterMessages";
 import { type Contact, contactBody, contactValuesOf, duplicatesUrl } from "@/lib/recruiterContacts";
 import { timelineEntry, type RecTimelineRow } from "@/lib/recruiterTimeline";
 
-// pob-005 (DEC-SCOPE-410): contact status, decision-maker, source/verification, duplicates, the per-contact Activity and Log reply.
+// pob-005 (DEC-SCOPE-411): contact status, decision-maker, source/verification, duplicates, the per-contact Activity and Log reply.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn(), replace: vi.fn() }), usePathname: () => "/recruiter/companies" }));
 
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });

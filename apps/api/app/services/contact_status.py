@@ -1,4 +1,4 @@
-"""pob-005 (DEC-SCOPE-410 D3-D6): a company contact's outreach status -- the automatic forward moves the activity write paths call, the
+"""pob-005 (DEC-SCOPE-411 D3-D6): a company contact's outreach status -- the automatic forward moves the activity write paths call, the
 manual change, and the Do Not Contact refusal. Its own module because the call, message, meeting and share services all use it and
 `recruiter_contacts` already imports some of them. Functions only; nothing here commits -- the caller's transaction (which already holds
 the company lock) owns it."""

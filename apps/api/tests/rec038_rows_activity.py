@@ -10,6 +10,11 @@ from decimal import Decimal
 from uuid import UUID
 
 from app.models import (
+    BdmOrganization,
+    BdmOrganizationContact,
+    BdmOrgCourse,
+    BdmOrgPlacementBatch,
+    BdmOrgPlacementEvent,
     Company,
     CompanyDocument,
     DriveRequirement,
@@ -22,6 +27,7 @@ from app.models import (
     RecruiterMessageTemplate,
     RecruitmentDrive,
 )
+from app.services import bdm_organizations as orgs
 from app.services import recruiter_contracts as contracts
 from tests.rec038_helpers import PDF, R, add, allow, now, tag
 
@@ -35,6 +41,8 @@ TEMPLATE_WRITERS = ("mgr", "mgr_out", "super")  # MS3 / R13: the placement manag
 REVENUE = ("rec", "mgr", "super")  # rec-031 READERS with the requirement in scope; bdm 403 first (RV10)
 REVENUE_OUT = ("rec_out", "mgr_out")  # a revenue reader without the requirement in scope: 404
 METRICS = ("mgr", "mgr_out", "super", "it_admin")  # rec-033 PF1 / rec-035 MG1 (it_admin reads: recruiters are IT staff)
+COLLEGE_READERS = ("rec", "rec_out", "mgr", "mgr_out", "super", "bdm", "bdm_out")  # pob-013 P3 (both BDMs are of the college module)
+COLLEGE_WRITERS = ("rec", "rec_out", "super", "bdm")  # pob-013 P4: `bdm` is the college's assigned BDM
 
 PATH_VALUES = {"activity_kind": "contract"}
 _DOC: dict[str, str] = {}  # one stored PDF reused by every world's contract (only its key is per row)
@@ -88,7 +96,7 @@ ROWS = [
     # §2.61 / RM6: render is a template read -- the template readers' role first (the BDMs 403), then the contact's company scope (404)
     R("get", "/recruiter/messages/render?template_id={activity_template}&contact_id={contact}", **allow(200, "rec", "mgr", "super"), **allow(404, "rec_out", "mgr_out")),
     R("get", "/recruiter/companies/{company}/messages", **allow(200, *IN_SCOPE), **allow(404, *OUT)),
-    # pob-005 D7 (§2.303): a reply logged on a contact message -- the company's can_edit
+    # pob-005 D7 (§2.304): a reply logged on a contact message -- the company's can_edit
     R("post", "/recruiter/messages/{activity_message}/reply", {}, **allow(200, *EDITORS), **allow(404, *OUT)),
     R("get", "/recruiter/candidates/{candidate}/messages", **allow(200, *POOL_READERS)),
     # rec-027 timeline (§2.107): the company's by scope (hr 403), the candidate's by the pool (bdm 403)
@@ -139,7 +147,34 @@ ROWS = [
     R("get", "/recruiter/performance.xlsx", **allow(200, *METRICS)),  # nehn-004
     R("get", "/recruiter/performance/by-recruiter?recruiter={rec_id}", **allow(200, "rec", "mgr", "super"), rec_out=403, mgr_out=404),
     R("get", "/recruiter/management", **allow(200, *METRICS)),
+    # pob-013 college placement profiles (§2.303, P3/P4): every recruiter and manager reads every college, the BDMs of the college module
+    # read by bdm-002 scope; the placement team, super_admin and the assigned BDM write -- both managers and another BDM 403 after scope
+    R("get", "/recruiter/colleges", **allow(200, *COLLEGE_READERS)),
+    R("get", "/recruiter/colleges/{college}", **allow(200, *COLLEGE_READERS)),
+    R("put", "/recruiter/colleges/{college}/profile", lambda w: {"drive_process": f"Test then HR {tag()}"}, **allow(200, *COLLEGE_WRITERS)),
+    R("post", "/recruiter/colleges/{college}/courses", lambda w: {"course": f"B.Tech {tag()}"}, **allow(201, *COLLEGE_WRITERS)),
+    R("delete", "/recruiter/colleges/{college}/courses/{college_course}", **allow(200, *COLLEGE_WRITERS)),
+    R("post", "/recruiter/colleges/{college}/batches", {"pass_out_year": 2027}, **allow(201, *COLLEGE_WRITERS)),
+    R("delete", "/recruiter/colleges/{college}/batches/{college_batch}", **allow(200, *COLLEGE_WRITERS)),
+    R("post", "/recruiter/colleges/{college}/calendar", lambda w: {"title": "PPT", "kind": "pre_placement_talk", "starts_on": w["tomorrow"]}, **allow(201, *COLLEGE_WRITERS)),
+    R("delete", "/recruiter/colleges/{college}/calendar/{college_event}", **allow(200, *COLLEGE_WRITERS)),
+    R("post", "/recruiter/colleges/{college}/interactions", lambda w: {"channel": "meeting", "occurred_at": now().isoformat(), "summary": "Met the TPO"}, **allow(201, *COLLEGE_WRITERS)),
+    R("patch", "/recruiter/colleges/{college}/contacts/{college_contact}", lambda w: {"office_details": f"Block {tag()}"}, **allow(200, *COLLEGE_WRITERS)),
 ]
+
+
+async def _college(db, bdm) -> dict:
+    """pob-013: a college organization of `bdm` (the college module) with a TPO contact, a course without batches, a batch and an event."""
+    name, city = f"R38 College {tag()}", "Pune"
+    keys = orgs.org_keys(name, city)
+    org = await add(db, BdmOrganization(code=await orgs.next_code(db), org_type="college", bdm_type="college", name=name, name_key=keys[0], city=city,
+                                        city_key=keys[1], assigned_bdm_user_id=bdm.id, created_by_user_id=bdm.id))  # fmt: skip
+    contact = await add(db, BdmOrganizationContact(organization_id=org.id, name="Ms Iyer", role="placement_officer", is_primary=True))
+    course = await add(db, BdmOrgCourse(organization_id=org.id, course="MBA", course_key=f"|mba{tag()}"))
+    batch = await add(db, BdmOrgPlacementBatch(organization_id=org.id, pass_out_year=2027, created_by_user_id=bdm.id))
+    event = await add(db, BdmOrgPlacementEvent(organization_id=org.id, title="Drive", kind="campus_drive", starts_on=now().date(), created_by_user_id=bdm.id))
+    return {"college": str(org.id), "college_contact": str(contact.id), "college_course": str(course.id), "college_batch": str(batch.id),
+            "college_event": str(event.id)}  # fmt: skip
 
 
 async def build(client, db, w) -> None:
@@ -167,8 +202,10 @@ async def build(client, db, w) -> None:
                                              size_bytes=len(PDF), storage_key=_DOC["key"], uploaded_by_user_id=rec.id))  # fmt: skip
     invoice = await add(db, RecruiterInvoice(job_id=job_id, invoice_number=tag("INV-"), invoice_date=now().date() - timedelta(days=1),
                                              due_date=now().date() + timedelta(days=30), amount=Decimal("150000.00"), created_by_user_id=rec.id))  # fmt: skip
+    college = await _college(db, users["bdm"])
     await db.commit()
     w.update({
+        **college,
         "activity_fu": str(fu.id), "activity_call": str(call.id), "activity_template": str(template.id), "activity_meeting": str(meeting.id),
         "activity_drive": str(drive.id), "activity_contract_company": str(second.id), "activity_contract": str(contract.id), "activity_invoice": str(invoice.id),
         "activity_document": str(document.id), "activity_message": str(message.id),

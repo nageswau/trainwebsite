@@ -8,7 +8,7 @@ import { candidateMessagesUrl, companyMessagesUrl, MESSAGES_URL, recruiterTarget
 
 type Source = { kind: "company"; companyId: string } | { kind: "candidate"; party: Party };
 
-/** pob-005 (DEC-SCOPE-410 D7): record that a contact replied to this message -- moves them to Replied. Set once by the API. */
+/** pob-005 (DEC-SCOPE-411 D7): record that a contact replied to this message -- moves them to Replied. Set once by the API. */
 function LogReply({ message, done }: { message: MessageLine; done: (text: string) => void }) {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
