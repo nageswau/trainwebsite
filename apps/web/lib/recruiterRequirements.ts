@@ -207,8 +207,6 @@ export const FORM_FIELDS = [
   "interview_rounds", "screening_steps", "decision_maker_contact_id", "expected_tat_days", "payment_trigger", "payment_days", "payment_terms",
   "replacement_terms", "backup_owner_user_id",
 ] as const;
-/** pob-002: the per-requirement terms (sent only by a caller who may edit them -- the API 403s anyone else). */
-export const TERM_FIELDS = ["payment_trigger", "payment_days", "payment_terms", "replacement_terms"] as const;
 const LIST_FIELDS = new Set<string>(["interview_rounds", "screening_steps"]);
 const NUMBER_FIELDS = new Set<string>(["vacancies", "expected_tat_days", "payment_days"]);
 export type FormField = (typeof FORM_FIELDS)[number];

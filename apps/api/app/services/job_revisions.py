@@ -15,6 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Job, JobRevision, User
+from app.schemas import REC_REQUIREMENT_FIELDS
 from app.services import recruiter_requirements as requirements
 
 logger = logging.getLogger("app.recruiter")
@@ -38,7 +39,7 @@ LABELS = {
     "payment_terms": "Payment terms", "replacement_terms": "Replacement terms",
 }
 COMMERCIAL_KEYS = frozenset({"fee_basis", "fee_value", "payment_trigger", "payment_days", "payment_terms", "replacement_terms"})
-_COLUMNS = (*requirements.SNAPSHOT_COLUMNS, "fee_basis", "fee_value")
+_COLUMNS = (*REC_REQUIREMENT_FIELDS, "fee_basis", "fee_value")  # R4: every column a create or edit writes, and the rec-031 fee
 
 
 async def snapshot(db: AsyncSession, job: Job) -> dict:

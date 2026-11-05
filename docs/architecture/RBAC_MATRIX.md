@@ -3870,3 +3870,10 @@ requirement's fee. Defaults (migration 0278): `placement_team` and `placement_ma
 A super admin revokes per role or per user (nehn-007 deny). `commercials.vendor.*` and `candidates.contact.view` are declared with no
 holder until pob-010/012 and pob-030 enforce them. The rec-031 role gate (RV10) and every record scope are unchanged and run first. Pinned
 by `apps/api/tests/test_pob_001_commercials.py` and `test_pob_001_migration.py`.
+
+### 2.298 Requirement revisions and the backup owner *(added 2026-11-05 — `DEC-SCOPE-405`, pob-002)*
+
+A requirement's revisions are read by its readers (rec-007 scope; outside it 404); their commercial values and changed-field names need
+`commercials.client.view` (§2.296). Writing the per-requirement terms needs effective `commercials.client.edit`. The backup owner is in
+the recruiter's scope (and a placement manager's team scope) and holds `can_manage_owners`, like the primary; the backup is changed by
+the primary, the backup or super_admin. No new grant. Pinned by `apps/api/tests/test_pob_002_requirement_revisions.py`.

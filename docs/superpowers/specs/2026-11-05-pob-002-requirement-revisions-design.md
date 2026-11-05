@@ -83,7 +83,8 @@ The detail's `commercial_terms` block gives, for each term, `value` and `inherit
   - those names are dropped from `changed_fields` and `changes`.
 - A PATCH carrying any R7 field without effective edit (view + edit) is 403 "Your role cannot view or change client commercial terms",
   logged as `recruiter_commercials_refused`.
-- `permissions.can_edit_terms` is added (`can_edit` and effective edit).
+- `commercial_terms.can_edit` is added (`can_edit` and effective edit). It sits in the gated block rather than in `permissions`, because
+  without view there is nothing to edit.
 
 **R9 — Backup owner (Q-02: "always co-access").** `jobs.backup_owner_user_id`, an active recruiter (`placement_team` with a recruiter
 profile) other than the primary.
@@ -91,8 +92,10 @@ profile) other than the primary.
 - The backup holds the primary's owner rights, so `can_manage_owners` is true for them. AC3 ("owner access while the primary is
   inactive") holds because the access never depends on the primary. In practice the primary cannot be deactivated with open work anyway
   (rec-037).
-- **Who sets it:** set or cleared through the PATCH by those who manage owners (primary, backup, placement manager, super_admin). Anyone
-  else is 403; an ineligible person is 422; the primary is 409.
+- **Who sets it:** set or cleared through the PATCH by those who manage owners *and* edit requirement fields: the primary, the backup
+  and super_admin. A placement manager never edits requirement fields (rec-007 `WRITERS`, unchanged), so the PATCH 403s them; they move
+  the primary instead. Anyone else is 403; an ineligible person is 422; the primary is 409. The picker is
+  `GET …/assignment-options?role=backup`.
 - **Becoming primary:** if the backup becomes primary (`set_primary`: reassign or rec-037 bulk move), the backup is cleared.
 - **Deactivation:** a deactivated backup is cleared (`requirement_owners.release`), with an audit row each.
 - It is in the hrc-004 audit diff by name.

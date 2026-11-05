@@ -38,7 +38,7 @@ from app.models import (
     TalentPool,
     User,
 )
-from app.schemas import REC_REQUIREMENT_FIELDS, REC_REQUIREMENT_TERMS
+from app.schemas import REC_REQUIREMENT_TERMS
 from app.services import company_pipeline
 from app.services import recruiter_contracts as contracts
 from app.services import requirement_owners as owners
@@ -94,8 +94,6 @@ REFUSALS = {
 }
 DEFAULT_WEIGHT = {"required": 2, "preferred": 1}
 LEGACY_WORDS = ("draft", "open", "closed")  # J3: what the employer and /workflows/it/jobs routes have always accepted
-SNAPSHOT_COLUMNS = REC_REQUIREMENT_FIELDS  # pob-002 R4: the material `jobs` columns (with the skills and the fee) in a revision
-TERM_FIELDS = REC_REQUIREMENT_TERMS  # pob-002 R8
 
 
 # --- statuses and the legacy shim (J1-J3) -------------------------------------------------------------------------------------------
@@ -460,7 +458,7 @@ async def check_owner_fields(db: AsyncSession, user: User, values: dict, stored:
 
 async def require_terms_edit(db: AsyncSession, user: User, sent: set[str], route: str) -> None:
     """R8: sending any per-requirement term (any value, null included) needs pob-001's effective edit -- 403 otherwise."""
-    if sent & set(TERM_FIELDS):
+    if sent & set(REC_REQUIREMENT_TERMS):
         await contracts.require_terms(db, user, route, edit=True)
 
 
