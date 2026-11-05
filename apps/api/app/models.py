@@ -1284,14 +1284,21 @@ class JobApplicationStatusHistory(Base):
 # rec-020 (DEC-SCOPE-148, IV1/IV2): the EVID-018 §14 rounds and statuses, in source order. Migration 0133 repeats them
 # (test_rec_020_migration). Labels live in services/interviews.py and the web client.
 INTERVIEW_ROUNDS = ("hr_round", "technical_round", "manager_round", "final_round", "client_round")
-INTERVIEW_STATUSES = ("scheduled", "confirmed", "completed", "rescheduled", "no_show", "selected", "rejected", "on_hold")
-INTERVIEW_EVENTS = ("scheduled", "rescheduled", "status")
+# hrc-028 (DEC-SCOPE-398 I3/I4): `cancelled` with its reason, the `details` event (a link/location change); migration 0274 repeats them.
+INTERVIEW_STATUSES = ("scheduled", "confirmed", "completed", "rescheduled", "no_show", "selected", "rejected", "on_hold", "cancelled")
+INTERVIEW_EVENTS = ("scheduled", "rescheduled", "status", "details")
+INTERVIEW_PLATFORMS = ("google_meet", "microsoft_teams", "zoom", "zoho_meeting", "other")
 INTERVIEW_CODE_SEQ = Sequence("interview_code_seq", metadata=Base.metadata)
 # The database numbers every interview, whoever inserts it (legacy routes, employers, tests): INT-000001, growing past six digits.
 INTERVIEW_CODE_DEFAULT = "'INT-' || to_char(nextval('interview_code_seq'), 'FM999999999000000')"
 INTERVIEW_CHECKS = {
     "ck_interviews_status": "status IN (" + ", ".join(f"'{s}'" for s in INTERVIEW_STATUSES) + ")",
     "ck_interviews_round": "round IS NULL OR round IN (" + ", ".join(f"'{s}'" for s in INTERVIEW_ROUNDS) + ")",
+    # hrc-028 (I1/I3)
+    "ck_interviews_round_number": "round_number IS NULL OR round_number BETWEEN 1 AND 20",
+    "ck_interviews_platform": "platform IS NULL OR platform IN (" + ", ".join(f"'{s}'" for s in INTERVIEW_PLATFORMS) + ")",
+    "ck_interviews_ends_after_start": "ends_at IS NULL OR (ends_at > scheduled_at AND ends_at <= scheduled_at + interval '12 hours')",
+    "ck_interviews_cancel_reason": "(status = 'cancelled') = (cancel_reason IS NOT NULL)",
 }
 INTERVIEW_EVENT_CHECKS = {"ck_interview_events_event": "event IN (" + ", ".join(f"'{s}'" for s in INTERVIEW_EVENTS) + ")"}
 
@@ -1365,6 +1372,16 @@ class Interview(Base, TimestampMixin):
     location: Mapped[str | None] = mapped_column(String(200), nullable=True)
     contact_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("company_contacts.id", ondelete="RESTRICT"), nullable=True)
     created_by_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    # hrc-028 (DEC-SCOPE-398 I1): stored in UTC; `time_zone` is the zone the candidate reads the times in
+    round_number: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    time_zone: Mapped[str] = mapped_column(String(64), default="Asia/Kolkata", server_default=text("'Asia/Kolkata'"))
+    platform: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    phone_details: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    instructions: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    documents_required: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    calendar_sequence: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
 
 
 class InterviewFeedback(Base, TimestampMixin):
@@ -1406,6 +1423,11 @@ class InterviewEvent(Base):
     actor_user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # hrc-028 (I4): a `details` event keeps the replaced link/location -- staff history only, never a candidate surface
+    old_meeting_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    new_meeting_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    old_location: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    new_location: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class PlacementProfile(Base, TimestampMixin):
@@ -7269,6 +7291,7 @@ class RecruiterMessage(Base, TimestampMixin):
     delivery_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
     attempt_count: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    calendar_ics: Mapped[str | None] = mapped_column(Text, nullable=True)  # hrc-028 (I6): an interview invite, built when queued
 
 
 # upc-026 (DEC-SCOPE-139, spec §2): the §28 document centre. The 12 kinds in source order (DC1); the commission agreement is never

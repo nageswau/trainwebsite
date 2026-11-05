@@ -32,14 +32,15 @@ def test_migration_chains_and_there_is_a_single_head():
 def test_models_match_the_migration():
     from app.models import INTERVIEW_CHECKS, INTERVIEW_EVENT_CHECKS, INTERVIEW_ROUNDS, INTERVIEW_STATUSES, Interview, InterviewEvent
 
-    assert _migration.CHECKS == INTERVIEW_CHECKS
-    assert _migration.EVENT_CHECKS == INTERVIEW_EVENT_CHECKS
-    assert _migration.ROUNDS == INTERVIEW_ROUNDS and _migration.STATUSES == INTERVIEW_STATUSES
+    # hrc-028 (0274) adds `cancelled`, the `details` event and its own checks: 0133's copies are the rows before it
+    assert _migration.CHECKS["ck_interviews_round"] == INTERVIEW_CHECKS["ck_interviews_round"]
+    assert set(_migration.CHECKS) < set(INTERVIEW_CHECKS) and set(_migration.EVENT_CHECKS) == set(INTERVIEW_EVENT_CHECKS)
+    assert _migration.ROUNDS == INTERVIEW_ROUNDS and _migration.STATUSES == INTERVIEW_STATUSES[:-1] == ("scheduled", "confirmed", "completed", "rescheduled", "no_show", "selected", "rejected", "on_hold")
     table = Interview.__table__
     assert not table.c.interview_code.nullable and not table.c.status.nullable and table.c.round.nullable
     names = {i.name for t in (table, InterviewEvent.__table__) for i in t.indexes} | {c.name for t in (table, InterviewEvent.__table__) for c in t.constraints}
     assert set(INTERVIEW_CHECKS) | set(INTERVIEW_EVENT_CHECKS) | set(_migration.INDEXES) <= names
-    assert {c.name for c in InterviewEvent.__table__.columns} == {
+    assert {c.name for c in InterviewEvent.__table__.columns} >= {
         "id", "interview_id", "event", "from_status", "to_status", "old_scheduled_at", "new_scheduled_at", "note", "actor_user_id", "position", "created_at",
     }
 
