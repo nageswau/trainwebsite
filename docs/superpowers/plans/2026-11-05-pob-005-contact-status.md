@@ -3,9 +3,9 @@
 Design: `docs/superpowers/specs/2026-11-05-pob-005-contact-status-design.md` (`DEC-SCOPE-411`).
 
 ## Tasks (TDD: each test is written and seen failing first)
-1. **Model + migration 0289** — `company_contacts` columns (`is_decision_maker`, `source`, `verified_on`, `status`, `status_changed_at`),
+1. **Model + migration 0290** — `company_contacts` columns (`is_decision_maker`, `source`, `verified_on`, `status`, `status_changed_at`),
    widened channel CHECK, status/source CHECKs, `ix_company_contacts_email`; `recruiter_messages.replied_at`. Guarded (inspect before add),
-   backfilled status; downgrade drops them. Tests: `test_pob_005_migration.py`; narrow rec-004's frozen-check test to 0289's copy.
+   backfilled status; downgrade drops them. Tests: `test_pob_005_migration.py`; narrow rec-004's frozen-check test to 0290's copy.
 2. **Contact fields + manual status + duplicate check** — schemas (`RecContactIn/Update`: new fields, `confirm_duplicate`), service
    `recruiter_contacts.add/update/list_out` (+ `follow_up_due`), `check_duplicates`, `set_status`/`advance`. Tests:
    `test_pob_005_contacts.py`.

@@ -2376,7 +2376,7 @@ whatsapp / in_person / linkedin). **`bdm_org_placement_profiles`** (PK `organiza
 `starts_on`)). **`bdm_org_tpo_interactions`** (append-only: `id`, `organization_id`, `contact_id` → contacts SET NULL, `contact_name`
 snapshot, `channel` CHECK, `occurred_at`, `summary` text, `next_step` 500, `logged_by_user_id`, `created_at`; index (`organization_id`,
 `occurred_at`)). The `bdm_organizations` row is never written by pob-013. Every step is guarded; the downgrade drops what it added.
-## Contact status and decision-maker (`pob-005`, `DEC-SCOPE-411`; migration `0289_contact_status`, after `0285_job_revisions`)
+## Contact status and decision-maker (`pob-005`, `DEC-SCOPE-411`; migration `0290_contact_status`, after `0289_interview_results`)
 
 **`company_contacts`** gains `is_decision_maker` (bool, default false), `source` (varchar 32, CHECK `ck_company_contacts_source`),
 `verified_on` (date), `status` (varchar 24, not null, default `not_contacted`, CHECK `ck_company_contacts_status`) and `status_changed_at`

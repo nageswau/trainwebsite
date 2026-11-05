@@ -98,5 +98,5 @@ UPDATE), rec-027 timeline (new `message_reply` rows only when a reply exists), r
 `Contact` and `MessagesSection` (optional props only).
 
 ## Numbering
-Migration `0289_contact_status` (siblings: pob-023 holds 0286, pob-013 may take 0287), `DEC-SCOPE-411`, API §12LE, RBAC §2.304 —
+Migration `0290_contact_status` (after hrc-030's `0289_interview_results`; pob-013 took 0288 and DEC-SCOPE-410), `DEC-SCOPE-411`, API §12LE, RBAC §2.304 —
 re-checked at merge.

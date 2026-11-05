@@ -1,4 +1,4 @@
-"""pob-005 -- migration 0289_contact_status (DEC-SCOPE-411 D1-D7): the chain, the frozen catalogues, the status backfill from existing
+"""pob-005 -- migration 0290_contact_status (DEC-SCOPE-411 D1-D7): the chain, the frozen catalogues, the status backfill from existing
 activity and the round trip, in a throwaway database (the pob-003 0283 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util
@@ -13,11 +13,11 @@ from app.core.config import settings
 from app.models import COMPANY_CONTACT_CHECKS, COMPANY_CONTACT_SOURCES, COMPANY_CONTACT_STATUSES, CompanyContact
 from tests.test_upc_001_migration import VERSIONS, _config, _sql
 
-_spec = importlib.util.spec_from_file_location("_pob_005_migration_0289", VERSIONS / "0289_contact_status.py")
+_spec = importlib.util.spec_from_file_location("_pob_005_migration_0290", VERSIONS / "0290_contact_status.py")
 _migration = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_migration)
 
-HEAD, BASE = "0289_contact_status", "0288_college_placement"
+HEAD, BASE = "0290_contact_status", "0289_interview_results"
 COLUMNS = ("is_decision_maker", "source", "verified_on", "status", "status_changed_at")
 
 
@@ -56,7 +56,7 @@ def _columns(url, table) -> set[str]:
 
 def test_upgrade_backfills_status_and_downgrade_removes_everything(isolated_db):
     cfg, url = isolated_db["cfg"], isolated_db["url"]
-    # 0001 builds today's models, so drop what 0289 adds first: the guarded upgrade must add it back and backfill
+    # 0001 builds today's models, so drop what 0290 adds first: the guarded upgrade must add it back and backfill
     for column in COLUMNS:
         _sql(url, f"ALTER TABLE company_contacts DROP COLUMN IF EXISTS {column}")
     _sql(url, "ALTER TABLE recruiter_messages DROP COLUMN IF EXISTS replied_at")

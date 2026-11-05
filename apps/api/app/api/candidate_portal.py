@@ -18,7 +18,7 @@ from app.models import AuditLog, User
 from app.notifications.phone import normalise_phone
 from app.schemas import CandidatePortalConsent, CandidatePortalEmailChange, CandidatePortalRegistration, CandidatePortalResend, CandidatePortalToken
 from app.services import applications as job_applications
-from app.services import candidate_jobs, website_intake
+from app.services import candidate_jobs, interview_results, website_intake
 from app.services import candidate_ownership as ownership
 from app.services import candidate_portal as portal
 from app.services import candidate_privacy as privacy
@@ -149,6 +149,12 @@ async def apply_to_job(job_id: UUID, user: User = Depends(_job_seeker), db: Asyn
     item = await candidate_jobs.apply(db, user, job_id)
     await db.commit()
     return {"id": item.id, "code": item.application_code, "status_label": job_applications.candidate_label(item.candidate_status)}
+
+
+@router.get("/results")
+async def my_results(user: User = Depends(_job_seeker), db: AsyncSession = Depends(get_db)):
+    """hrc-030 (DEC-SCOPE-409 R9): the caller's own published interview results only; nothing unpublished."""
+    return {"items": await interview_results.mine(db, user)}
 
 
 @settings_router.get("")

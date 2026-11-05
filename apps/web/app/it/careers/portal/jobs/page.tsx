@@ -1,5 +1,6 @@
 import { accessUnavailable } from "@/components/AccessUnavailable";
 import CandidateJobsBoard from "@/components/CandidateJobsBoard";
+import MyResultsCard from "@/components/MyResultsCard";
 import PortalShell from "@/components/PortalShell";
 import { serverApi } from "@/lib/api";
 import { apiPath, type JobsPage, parseOffset, parseView } from "@/lib/candidateJobs";
@@ -29,6 +30,7 @@ export default async function CandidateJobsPage({ searchParams }: { searchParams
             <p className="muted">Open jobs you can apply to, with the ones that fit your profile first.</p>
           </div>
         </div>
+        <MyResultsCard />{/* hrc-030 (DEC-SCOPE-409 R9) */}
         <CandidateJobsBoard data={data} base={BASE} profileHref={CANDIDATE_PORTAL_HOME} />
       </div>
     </PortalShell>

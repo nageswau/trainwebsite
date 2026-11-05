@@ -1,7 +1,7 @@
 """pob-005 -- contact status, decision-maker, source/verification and logged replies (DEC-SCOPE-411 D1-D8).
 
-Revision ID: 0289_contact_status
-Revises: 0288_college_placement
+Revision ID: 0290_contact_status
+Revises: 0289_interview_results
 
 docs/superpowers/specs/2026-11-05-pob-005-contact-status-design.md. Additive: five `company_contacts` columns with their CHECKs, the
 LinkedIn preferred channel (the channel CHECK is widened), an email index for the duplicate check, and `recruiter_messages.replied_at`.
@@ -14,8 +14,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0289_contact_status"
-down_revision = "0288_college_placement"
+revision = "0290_contact_status"
+down_revision = "0289_interview_results"
 branch_labels = None
 depends_on = None
 

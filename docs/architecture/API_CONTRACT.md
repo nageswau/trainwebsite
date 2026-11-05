@@ -6038,6 +6038,28 @@ assigned_bdm_name, archived, permissions: {can_edit}, profile: {drive_process, e
 interactions[] (latest 50, newest first, with logged_by_name), interaction_total, drives[] (rec-029, ≤ 20: drive_code, drive_date, job_role,
 status)}`. No MoU, pipeline, assignment, phone/email of the organization or commercial field. `relationship_stage` is the bdm-004 stage
 label (the §6.1 status mapping is `NEEDS_CONFIRMATION`). The bdm-002 contact output is unchanged.
+
+## 12LC. Interview result approval and release (hrc-030) — addendum, 2026-11-05
+
+`DEC-SCOPE-409`, migration `0289`. **New:**
+- `GET /api/v1/recruiter/interview-results?state=pending_approval|released&limit&offset` — `results.release` holders (else 403). Page
+  `{items, total, limit, offset, counts: {pending_approval, released}}`; waiting oldest first, published newest first. Item: `id, outcome
+  (selected|rejected), outcome_label (Selected|Not selected), is_final, state, state_label, candidate_message, release_mode (auto|approval|
+  null), released_at, interview {id, code, round, scheduled_at}, candidate {id, code, name}, requirement {id, code, title}, company {id,
+  name}, decided_by {id, full_name}|null, decided_at, can_release` (false on the caller's own decision).
+- `POST /api/v1/recruiter/interview-results/{id}/release {candidate_message?: string ≤1000}` — holders; 404 unknown; 403 own decision; 409
+  already published (final). Blank/omitted message = the default text. 200 = the published queue item (as above). Notifies the candidate (in-app "Interview result" or a queued email).
+- `GET /api/v1/recruiter/interview-results/settings` — holders: `{auto_release, can_edit}`. `PUT` `{auto_release: bool}` — super_admin only
+  (else 403); 422 for a non-boolean.
+- `GET /api/v1/candidate/results` — a candidate or IT student (else 403; 401 signed out): `{items: [{id, round, role, company, outcome,
+  outcome_label, message, released_at}]}`, the caller's own released results only.
+
+**Changed (additive):** every recruiter interview read (`/recruiter/interviews*`, `/recruiter/applications/{id}/interviews`) gains
+`result_release` (the result object or null; the legacy `result` field is unchanged). `POST /recruiter/interviews/{id}/status` and `PUT
+…/feedback` into Selected/Rejected record the result. `POST /recruiter/applications/{id}/offer` and the legacy `POST /workflows/it/offers`
+answer 409 "Publish the interview result before making an offer" while the application's final result is unpublished. The student's
+interview schedule shows the published outcome; the student's job applications and the candidate's jobs show Selected/Rejected only after
+publishing.
 ## 12LE. Contact status, decision-maker, duplicates and per-contact timeline (pob-005) — addendum, 2026-11-05
 
 `DEC-SCOPE-411`. **Changed (additive):** `POST /recruiter/companies/{id}/contacts` and `PATCH /recruiter/contacts/{id}` accept

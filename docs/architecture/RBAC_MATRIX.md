@@ -3914,6 +3914,14 @@ widened, so every `/bdm/*` route (organization edit, contacts, MoU, appointments
 Out of scope 404 (including another module's university and, for the placement roles, an archived organization); archived 409 for
 writers. `placement_officer` (DEC-SCOPE-403 C1) is not granted — `NEEDS_CONFIRMATION`. Pinned by
 `apps/api/tests/test_pob_013_college_placement.py` and the rec-038 matrix rows (`rec038_rows_activity.py`).
+
+### 2.302 Interview result approval and release *(added 2026-11-05 — `DEC-SCOPE-409`, hrc-030)*
+
+`results.release` (declared by hrc-002, §2.275 R4) now gates the result queue, the settings read and `release`; default holder
+`hr_manager` (migration 0289 seeds it; super_admin holds every key). The queue is division-wide, as `jobs.approve` (§2.278). A holder can
+never publish a decision they recorded (403). Changing the auto-release switch is super_admin only. `GET /candidate/results` is the
+caller's own (a candidate or IT student; anyone else 403) — no id is taken from the caller. Recording a decision stays rec-017's writers'
+(§2.74). Pinned by `apps/api/tests/test_hrc_030_results.py`, `test_hrc_030_migration.py` and the rec-038 matrix rows.
 ### 2.304 Contact status, duplicates and replies *(added 2026-11-05 — `DEC-SCOPE-411`, pob-005)*
 
 A contact's new fields and status follow the company (rec-004 §2.51): readers see them, `can_edit` (the assigned recruiter, super_admin)
