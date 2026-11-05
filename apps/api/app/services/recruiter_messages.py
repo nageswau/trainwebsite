@@ -198,6 +198,7 @@ async def create(db: AsyncSession, user: User, payload: RecWhatsAppCreate | RecE
     )
     db.add(message)
     await db.flush()
+    await companies.refresh_last_contact(db, message.company_id)  # pob-003 D4
     audit(db, user, message.id, {"kind": kind, "party_id": str(party.id), "channel": message.channel, "template_id": str(template.id) if template else None})
     return message
 

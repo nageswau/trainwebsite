@@ -11,6 +11,7 @@ from uuid import UUID
 
 from app.models import (
     Company,
+    CompanyDocument,
     DriveRequirement,
     RecruiterCall,
     RecruiterContract,
@@ -44,6 +45,10 @@ def _soon(days: int = 1) -> str:
 
 def _upload(_w):
     return {}, {"file": ("signed.pdf", PDF, "application/pdf")}
+
+
+def _document(_w):
+    return {"kind": "company_profile"}, {"file": ("profile.pdf", PDF, "application/pdf")}
 
 
 def _meeting(_w) -> dict:
@@ -110,6 +115,10 @@ ROWS = [
     R("put", "/recruiter/companies/{activity_contract_company}/contracts/document?kind=mou", form=_upload, **allow(200, *EDITORS), **allow(404, *OUT)),
     R("get", "/recruiter/contracts/{activity_contract}/documents/{activity_kind}", **allow(200, *IN_SCOPE), **allow(404, *OUT)),
     R("get", "/recruiter/contracts/{activity_contract}/history", **allow(200, *IN_SCOPE), **allow(404, *OUT)),
+    # pob-003 company documents (§2.299): read in the company scope, upload by `can_edit`
+    R("get", "/recruiter/companies/{company}/documents", **allow(200, *IN_SCOPE), **allow(404, *OUT)),
+    R("post", "/recruiter/companies/{company}/documents", form=_document, **allow(201, *EDITORS), **allow(404, *OUT)),
+    R("get", "/recruiter/companies/documents/{activity_document}/download", **allow(200, *IN_SCOPE), **allow(404, *OUT)),
     # rec-031 revenue (§2.102): the role first (bdm 403), then the requirement's scope (404); the fee override is the manager's (RV10) --
     # `rec` reaches it in scope and gets 403, `rec_out` is out of scope first (404, as an unknown id)
     R("get", "/recruiter/companies/{company}/revenue", **allow(200, *REVENUE), **allow(404, *REVENUE_OUT)),
@@ -150,10 +159,13 @@ async def build(client, db, w) -> None:
     contract = await add(db, RecruiterContract(company_id=second.id, created_by_user_id=rec.id, contract_document_key=_DOC["key"],
                                                contract_document_content_type="application/pdf", contract_document_name="signed.pdf",
                                                contract_document_uploaded_at=now()))  # fmt: skip
+    document = await add(db, CompanyDocument(company_id=company_id, kind="company_profile", name="profile.pdf", content_type="application/pdf",
+                                             size_bytes=len(PDF), storage_key=_DOC["key"], uploaded_by_user_id=rec.id))  # fmt: skip
     invoice = await add(db, RecruiterInvoice(job_id=job_id, invoice_number=tag("INV-"), invoice_date=now().date() - timedelta(days=1),
                                              due_date=now().date() + timedelta(days=30), amount=Decimal("150000.00"), created_by_user_id=rec.id))  # fmt: skip
     await db.commit()
     w.update({
         "activity_fu": str(fu.id), "activity_call": str(call.id), "activity_template": str(template.id), "activity_meeting": str(meeting.id),
         "activity_drive": str(drive.id), "activity_contract_company": str(second.id), "activity_contract": str(contract.id), "activity_invoice": str(invoice.id),
+        "activity_document": str(document.id),
     })  # fmt: skip

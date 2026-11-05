@@ -314,6 +314,8 @@ async def record_outcome(db: AsyncSession, user: User, company: Company, meeting
     meeting.status, meeting.outcome, meeting.next_action = "completed", payload.outcome, payload.next_action
     meeting.completed_at, meeting.completed_by_user_id, meeting.follow_up_id = now, user.id, follow_up.id if follow_up else None
     _event(db, meeting.id, user, "completed")
+    await db.flush()
+    await companies.refresh_last_contact(db, meeting.company_id)  # pob-003 D4
     audit(db, user, "complete", meeting.id, {"with_next_action": follow_up is not None, "follow_up_id": str(follow_up.id) if follow_up else None})
 
 

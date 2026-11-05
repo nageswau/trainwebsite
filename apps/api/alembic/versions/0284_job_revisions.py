@@ -1,7 +1,7 @@
 """pob-002 -- requirement revisions (job_revisions), the hiring-process and per-requirement commercial columns, and the backup owner.
 
-Revision ID: 0281_job_revisions
-Revises: 0278_commercial_grants
+Revision ID: 0284_job_revisions
+Revises: 0283_company_business_context
 
 docs/superpowers/specs/2026-11-05-pob-002-requirement-revisions-design.md (DEC-SCOPE-405 R1/R6/R7/R9). Additive: nine nullable `jobs`
 columns and one new table; no existing row changes. 0001 builds a fresh database from the current models, which already carry them, so
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0281_job_revisions"
-down_revision = "0278_commercial_grants"
+revision = "0284_job_revisions"
+down_revision = "0283_company_business_context"
 branch_labels = None
 depends_on = None
 
@@ -78,7 +78,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Revisions are history: the downgrade refuses while any exist rather than dropping them silently."""
     if not op.get_context().as_sql and op.get_bind().execute(sa.text("SELECT 1 FROM job_revisions LIMIT 1")).first():
-        raise RuntimeError("Cannot downgrade 0281: requirement revisions exist (pob-002)")
+        raise RuntimeError("Cannot downgrade 0284: requirement revisions exist (pob-002)")
     op.drop_table("job_revisions")
     for name in JOB_CHECKS:
         op.execute(f"ALTER TABLE jobs DROP CONSTRAINT IF EXISTS {name}")

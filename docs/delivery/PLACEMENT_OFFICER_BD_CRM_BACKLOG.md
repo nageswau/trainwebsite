@@ -149,6 +149,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 ### Phase 1: Company BD and templates
 
 #### pob-003: Company business context, last contact and a document store
+- **Status:** built (`DEC-SCOPE-406`, 2026-11-05); D1–D9 are the builder's calls (`NEEDS_CONFIRMATION`).
 - **Business requirement:** §3.1 "Business context: products/services, departments hiring, likely skill demand, hiring locations and target roles"; "Relationship details: … last contact and next action"; "Documents: company profile, vendor onboarding form, recruitment agreement, job descriptions and meeting notes"; "branch locations".
 - **Existing behavior:**
   - Identity fields exist, but branches are a single free-text field.
