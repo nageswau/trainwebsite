@@ -11952,3 +11952,22 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   finance screens unchanged (`can_view_finance`).
 - **Numbering:** migration `0278_commercial_grants`; API §12KV; RBAC §2.296.
 - **Feature ID authorized:** `pob-001`. **Status:** built on `worktree-pob-001`.
+
+### DEC-SCOPE-406 — Company business context, last contact and a document store (`pob-003`)
+
+- **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-003` (§3.1 business context, relationship "last contact and next
+  action", documents, branch locations; source classified `UNVERIFIED`). The owner assigned pob-003 on 2026-11-05 and said to proceed with
+  the recommended answers, so D1–D9 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Dependency pob-001 (`DEC-SCOPE-403`) merged.
+  Design `docs/superpowers/specs/2026-11-05-pob-003-company-business-context-design.md`.
+- **Behaviour:** a company carries structured branch locations, products/services, departments hiring, likely skill demand (Skills
+  Master), hiring locations and target roles (company create/PATCH); `last_contacted_at` (latest call, message or completed meeting,
+  recomputed by every write path, indexed, list sort `last_contacted`); and a document store (company profile, vendor onboarding form,
+  recruitment agreement, job description, meeting notes) with an audit row per upload and download.
+- **Builder's calls:** D1 branches are a separate table; the legacy free-text `branches` is kept and relabelled "Branch notes". D2 lists of
+  ≤ 20 × 120, deduplicated case-insensitively. D3 a new skill must be active; a kept inactive one stays. D4 recomputed (not max-ed) from
+  the source rows, never bumping `updated_at`. D5 sort most recent first, never last. D6 append-only store, ≤ 200 per company, 20 uploads
+  per user per hour, optional meeting link (same company). D7 PDF/JPEG/PNG only. D8 agreements follow `commercials.client` (view to
+  download, effective edit to upload; listed regardless). D9 oversize answers 413 (not the draft's 422).
+- **Not built:** document delete/replace/versioning; DOCX uploads; BD relationship stages (pob-004).
+- **Numbering:** migration `0283_company_business_context`; API §12KZ; RBAC §2.299.
+- **Feature ID authorized:** `pob-003`. **Status:** built on `worktree-pob-003`.

@@ -99,7 +99,7 @@ describe("RecruiterCompaniesPanel", () => {
     await screen.findByRole("region", { name: "Companies" });
     expect(container.querySelector(".telecaller-list")).toBeTruthy();
     const labels = [...container.querySelectorAll("tbody td")].map((td) => td.getAttribute("data-label"));
-    expect(labels).toEqual(["Code", "Name", "City", "Priority", "Stage", "Lead source", "Industry", "Recruiter", "Next follow-up"]); // rec-005, rec-024
+    expect(labels).toEqual(["Code", "Name", "City", "Priority", "Stage", "Lead source", "Industry", "Recruiter", "Last contact", "Next follow-up"]); // rec-005, rec-024, pob-003
   });
 
   it("shows the empty state, and an error with Retry", async () => {
@@ -119,6 +119,17 @@ describe("RecruiterCompaniesPanel", () => {
     await screen.findByRole("region", { name: "Companies" });
     fireEvent.change(screen.getByLabelText("Priority"), { target: { value: "cold" } });
     expect(nav.push).toHaveBeenCalledWith("/recruiter/companies?priority=cold", { scroll: false });
+  });
+
+  it("sorts by last contact through the URL and shows the column (pob-003)", async () => {
+    nav.params = new URLSearchParams("sort=last_contacted");
+    const calls = serve((url) => (url.includes("/catalogue/") ? res(page([])) : res(page([{ ...row, last_contacted_at: null }]))));
+    render(<RecruiterCompaniesPanel canCreate />);
+    const table = await screen.findByRole("region", { name: "Companies" });
+    expect(within(table).getByRole("columnheader", { name: "Last contact" })).toBeTruthy();
+    expect(calls.find((c) => c.url.startsWith("/api/v1/recruiter/companies?"))!.url).toContain("sort=last_contacted");
+    fireEvent.change(screen.getByLabelText("Sort by"), { target: { value: "" } });
+    expect(nav.push).toHaveBeenCalledWith("/recruiter/companies", { scroll: false });
   });
 });
 

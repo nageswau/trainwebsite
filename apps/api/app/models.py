@@ -693,6 +693,7 @@ class Company(Base, TimestampMixin):
         Index("ix_companies_stage_recruiter", "stage", "assigned_recruiter_user_id"),  # rec-005: the pipeline board
         Index("ix_companies_assigned_bdm", "assigned_bdm_user_id"),
         Index("ix_companies_name_key", text(COMPANY_NAME_KEY_SQL)),  # the duplicate check (services/recruiter_companies.NAME_KEY)
+        Index("ix_companies_last_contacted", "last_contacted_at"),  # pob-003 D5: the list's "last contacted" sort
     )
     __mapper_args__ = {"eager_defaults": True}  # INSERT ... RETURNING company_code: no lazy load of the server default under asyncio
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -729,6 +730,13 @@ class Company(Base, TimestampMixin):
     stage_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     lost_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     lost_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # pob-003 (DEC-SCOPE-406 D2): business context. The lists are replaced whole by the PATCH; [] when unset.
+    products_services: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    departments_hiring: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    hiring_locations: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    target_roles: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    # pob-003 D4: the latest call / message / completed meeting -- recomputed by services/recruiter_companies.refresh_last_contact only.
+    last_contacted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class CompanyStageHistory(Base):
@@ -7607,6 +7615,55 @@ class RecruiterContractEvent(Base):
     changed: Mapped[list] = mapped_column(JSON, default=list)
     document_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
     position: Mapped[int] = mapped_column(BigInteger, Identity(always=False))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CompanyBranch(Base):
+    """pob-003 (DEC-SCOPE-406 D1): one structured branch location of a company, replaced as a set by the company PATCH (`position` keeps
+    the saved order). The legacy free-text `companies.branches` is a separate, unchanged field."""
+
+    __tablename__ = "company_branches"
+    __table_args__ = (Index("ix_company_branches_company", "company_id", "position"),)
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"))
+    position: Mapped[int] = mapped_column(Integer)
+    city: Mapped[str] = mapped_column(String(120))
+    state: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+
+class CompanySkillDemand(Base):
+    """pob-003 D3: a Skills Master skill the company is likely to hire for, in the saved order. Replaced as a set by the company PATCH."""
+
+    __tablename__ = "company_skill_demand"
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), primary_key=True)
+    skill_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("skills.id", ondelete="RESTRICT"), primary_key=True, index=True)
+    position: Mapped[int] = mapped_column(Integer)
+
+
+# pob-003 D6: the §3.1 document types, in source order; migration 0283 freezes a copy (test_pob_003_migration keeps them identical).
+COMPANY_DOCUMENT_KINDS = ("company_profile", "vendor_onboarding_form", "recruitment_agreement", "job_description", "meeting_notes")
+
+
+class CompanyDocument(Base):
+    """pob-003 D6: one file in a company's document store. Append-only. `storage_key` is server-generated and never returned or logged;
+    `name` is the uploaded file's display name only. `meeting_id` links meeting notes (or any file) to a meeting of the same company."""
+
+    __tablename__ = "company_documents"
+    __table_args__ = (
+        CheckConstraint(_in_list("kind", COMPANY_DOCUMENT_KINDS), name="ck_company_documents_kind"),
+        Index("ix_company_documents_company", "company_id", "created_at"),
+        Index("ix_company_documents_meeting", "meeting_id"),
+    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    company_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(40))
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    content_type: Mapped[str] = mapped_column(String(50))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    storage_key: Mapped[str] = mapped_column(String(200))
+    meeting_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("recruiter_meetings.id", ondelete="RESTRICT"), nullable=True)
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
