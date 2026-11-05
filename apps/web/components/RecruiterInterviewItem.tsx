@@ -293,6 +293,16 @@ function FeedbackSummary({ code, feedback: f }: { code: string; feedback: Interv
   );
 }
 
+/** The IST start and end; a same-day end reads as a time only ("12 Oct 2026, 11:00 – 11:45 IST", QA-01). */
+function whenText(start: string, end: string | null): string {
+  const from = formatSchoolDateTime(start, true);
+  if (!end) return from;
+  const to = formatSchoolDateTime(end, true);
+  const [fromDay] = from.split(", ");
+  const [toDay, toTime] = to.split(", ");
+  return fromDay === toDay ? `${from.replace(/ IST$/, "")} – ${toTime}` : `${from} – ${to}`;
+}
+
 function historyText(h: InterviewEvent): string {
   const by = h.actor ? ` by ${h.actor.full_name}` : "";
   const note = h.note ? ` — ${h.note}` : "";
@@ -324,7 +334,6 @@ export default function RecruiterInterviewItem({ interview: given, card = false,
   const cancelled = i.status === "cancelled";
   const link = cancelled ? null : safeLink(i.meeting_url); // hrc-028 (I4): no link once cancelled
   const round = i.round_label && i.round_number ? `${i.round_label} (round ${i.round_number})` : i.round_label;
-  const end = i.ends_at ? ` – ${formatSchoolDateTime(i.ends_at, true)}` : "";
   const done = (text: string) => (next: RecInterview, notices?: Notices) => {
     setMode("view");
     onChanged(next, [text, noticeText(notices)].filter(Boolean).join(" "));
@@ -336,7 +345,7 @@ export default function RecruiterInterviewItem({ interview: given, card = false,
   };
   const facts = [
     card && ["Requirement", `${i.requirement.title} · ${i.company.name}`],
-    ["When", `${formatSchoolDateTime(i.scheduled_at, true)}${end}`],
+    ["When", whenText(i.scheduled_at, i.ends_at)],
     i.time_zone !== IST_ZONE && ["Candidate's time", i.local_when], // hrc-028 (I2)
     ["Mode", i.mode],
     i.platform_label && ["Platform", i.platform_label],

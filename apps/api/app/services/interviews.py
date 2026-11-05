@@ -130,14 +130,14 @@ def round_text(interview: Interview) -> str:
 
 def local_when(interview: Interview) -> str:
     """hrc-028 (I2): the start and end in the candidate's zone with its UTC offset -- "12 Nov 2026, 10:00 AM – 11:00 AM Asia/Dubai (UTC+04:00)"."""
-    zone = ZoneInfo(interview.time_zone or "Asia/Kolkata")
+    zone = ZoneInfo(interview.time_zone) if interview.time_zone else IST
     start = interview.scheduled_at.astimezone(zone)
     text = f"{start:%d %b %Y, %I:%M %p}"
     if interview.ends_at is not None:
         end = interview.ends_at.astimezone(zone)
         text += f" – {end:%I:%M %p}" if end.date() == start.date() else f" – {end:%d %b %Y, %I:%M %p}"
     offset = start.strftime("%z")
-    return f"{text} {'IST' if zone.key == 'Asia/Kolkata' else zone.key} (UTC{offset[:3]}:{offset[3:]})"
+    return f"{text} {'IST' if zone == IST else zone.key} (UTC{offset[:3]}:{offset[3:]})"
 
 
 def status_label(key: str) -> str:

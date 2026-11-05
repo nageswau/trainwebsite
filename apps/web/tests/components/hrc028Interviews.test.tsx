@@ -54,6 +54,13 @@ describe("RecruiterInterviewItem (hrc-028)", () => {
     }
   });
 
+  it("shows a same-day end as a time only (QA-01)", () => {
+    item(recInterview({ ends_at: "2026-10-12T06:15:00Z" }));
+    const when = screen.getByText("When").nextElementSibling?.textContent ?? "";
+    expect(when.match(/12 Oct 2026/g)).toHaveLength(1);
+    expect(when).toMatch(/– 11:45/);
+  });
+
   it("cancels with a required reason and the notice choice", async () => {
     const onChanged = vi.fn();
     item(recInterview(), onChanged);
