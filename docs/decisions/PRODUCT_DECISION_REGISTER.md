@@ -11802,3 +11802,25 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   anonymisation for candidates without a login, a candidate data export, a decision email, student retention.
 - **Numbering:** migration `0273_candidate_privacy`; API §12KO; RBAC §2.290.
 - **Feature ID authorized:** `hrc-035`. **Status:** built on `worktree-hrc-035`.
+
+### DEC-SCOPE-397 — Candidate engagement status (`hrc-021`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-021` and Appendix B "Candidate engagement status" (PDF §8 statuses,
+  §6.2 filters; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00). Dependencies hrc-016
+  (`DEC-SCOPE-387`) and hrc-026 (`DEC-SCOPE-394`) merged. Q-22 (derived or stored) was not answered; the owner said to proceed with the
+  recommended answers, so E1–E10 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-05-hrc-021-candidate-engagement-status-design.md`.
+- **Behaviour:** every candidate carries a derived engagement status, computed in SQL from what already happened and never stored:
+  first match wins: Do not contact / Not interested (the stored status `do_not_contact` / `not_looking`, the manual flags, which beat
+  everything), Placed (an application joined or the stored status placed, and no open application), Active (an open application, or an
+  application change or website application in the last 30 days), Inactive (nothing of any kind in 90 days), Shortlisted (an application
+  now or ever shortlisted or later), Screened (a screening record or an application ever screened), Contacted (a logged call or message),
+  Uncontacted (a primary recruiter set), New. It shows as a chip on the candidate list and detail and on Find Candidates cards, and both
+  the list and the search filter by it. The stored status, its values and its filter are unchanged.
+- **Builder's calls:** E1 Q-22 option (a), derived, one SQL `CASE` in the same query (no new query, no migration). E2 the order above.
+  E3 the manual flags reuse the stored status; no separate manual Inactive. E4 calls and messages make a candidate Contacted, not Active.
+  E5 Placed until a new open application (the re-registration case). E6 Placed beats Inactive; Inactive beats the ladder. E7 additive
+  `engagement` on list items, detail and search cards; an unknown filter key is 422; talent-pool rules do not gain it. E8 windows on the
+  database clock. E9 AuthZ unchanged. E10 a stored column is the follow-up if the pool outgrows per-row evaluation.
+- **Numbering:** no migration; API §12KP; no RBAC change.
+- **Feature ID authorized:** `hrc-021`. **Status:** built on `worktree-hrc-021`.

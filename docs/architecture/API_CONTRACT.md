@@ -5855,3 +5855,12 @@ takes an optional `lawful_basis` (`consent` | `provided_for_placement`; other va
 an optional form field `lawful_basis`; `GET /recruiter/candidates/{id}` gains `consent` (`{action, source, lawful_basis,
 consent_version, recorded_at}` | null). **Changed (behaviour):** an anonymised candidate is 404 on every recruiter route and absent from
 lists (archived too); `PATCH /admin/data-requests/{id}` answers 409 for a `candidate` subject.
+
+## 12KP. Candidate engagement status (hrc-021) — addendum, 2026-11-05
+
+`DEC-SCOPE-397`. **Changed (additive):** `GET /api/v1/recruiter/candidates` items, `GET /recruiter/candidates/{id}` and the
+`POST /recruiter/candidates/search` cards (and so talent-pool member cards) gain `engagement`: `{key, label}` with `key` one of `new`,
+`uncontacted`, `contacted`, `screened`, `shortlisted`, `active`, `inactive`, `placed`, `not_interested`, `do_not_contact` — derived, read
+only, never accepted in a body. `GET /recruiter/candidates` takes an optional `engagement=<key>`; `POST /recruiter/candidates/search`
+takes an optional `engagement` key (label "Engagement"); any other value is 422. The stored `status` field and its filter are unchanged.
+No new endpoint, permission or migration.

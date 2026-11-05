@@ -53,6 +53,7 @@ from app.models import (
     BDM_STAFF_MAX,
     BDM_TARGET_MAX,
     CANDIDATE_CONTACT_METHODS,
+    CANDIDATE_ENGAGEMENTS,
     CANDIDATE_NOTE_MAX,
     CANDIDATE_SKILL_LEVELS,
     CANDIDATE_SKILL_SOURCES,
@@ -10021,6 +10022,14 @@ class RecBdmOptionPage(BaseModel):
 
 # --- rec-009 (DEC-SCOPE-122, spec §3/§5): the candidate master ------------------------------------------------------------------
 CandidateStatus = Literal[CANDIDATE_STATUSES]
+CandidateEngagementKey = Literal[CANDIDATE_ENGAGEMENTS]  # hrc-021 (DEC-SCOPE-397): derived, never written
+
+
+class CandidateEngagement(BaseModel):
+    key: CandidateEngagementKey
+    label: str
+
+
 CANDIDATE_FIELD_LABELS = {
     "name": "Name", "mobile": "Mobile", "email": "Email", "location": "Location", "qualification": "Qualification", "college": "College",
     "passing_year": "Passing year", "experience_months": "Total experience (months)", "current_company": "Current company",
@@ -10377,6 +10386,7 @@ class CandidateItem(BaseModel):
     archived: bool
     created_at: datetime
     owner: RecPersonRef | None = None  # hrc-012 (DEC-SCOPE-382 O2): the primary recruiter; None = unassigned
+    engagement: CandidateEngagement | None = None  # hrc-021 (DEC-SCOPE-397 E7): derived from activity, applications and the manual flags
 
 
 class CandidatePage(BaseModel):
@@ -11904,7 +11914,7 @@ CANDIDATE_SEARCH_LABELS = {
     "all": "Skills", "any": "Skills", "verified_only": "Verified only", "experience_min_months": "Minimum experience",
     "experience_max_months": "Maximum experience", "location": "Location", "availability": "Availability", "qualification": "Qualification",
     "salary_min": "Minimum salary", "salary_max": "Maximum salary", "source_id": "Candidate source", "status": "Status",
-    "text": "Resume search",
+    "engagement": "Engagement", "text": "Resume search",
 }
 RESUME_SEARCH_MAX_CHARS = 200  # rec-014 FT4
 
@@ -11959,6 +11969,7 @@ class CandidateSearch(BaseModel):
     salary_max: RecMoney = None
     source_id: UUID | None = None
     status: CandidateStatus | None = None
+    engagement: CandidateEngagementKey | None = None  # hrc-021 (DEC-SCOPE-397 E7)
     text: Annotated[StrictStr | None, AfterValidator(_resume_text)] = None  # rec-014: words in the current resume (websearch syntax)
 
     @model_validator(mode="after")

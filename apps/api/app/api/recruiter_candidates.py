@@ -33,6 +33,7 @@ from app.schemas import (
     CandidateAssignee,
     CandidateCreate,
     CandidateDetail,
+    CandidateEngagementKey,
     CandidateMergeBody,
     CandidateOwnershipIn,
     CandidateOwnershipSettings,
@@ -45,7 +46,7 @@ from app.schemas import (
 )
 from app.services import candidate_documents as documents
 from app.services import candidate_duplicates as duplicates
-from app.services import candidate_merge, candidate_search, candidate_skills, compensation, course_skills, recruitment_history
+from app.services import candidate_engagement, candidate_merge, candidate_search, candidate_skills, compensation, course_skills, recruitment_history
 from app.services import candidate_ownership as ownership
 from app.services import candidate_previews as previews
 from app.services import candidate_privacy as privacy
@@ -87,6 +88,7 @@ async def list_candidates(
     q: str | None = SEARCH,
     source_id: UUID | None = None,
     status: CandidateStatus | None = None,
+    engagement: CandidateEngagementKey | None = None,
     archived: bool = False,
     owner: Literal["me", "unassigned"] | None = None,
     limit: int = LIMIT,
@@ -114,11 +116,14 @@ async def list_candidates(
         filters.append(Candidate.source_id == source_id)
     if status:
         filters.append(Candidate.status == status)
+    if engagement:  # hrc-021 (DEC-SCOPE-397 E7): the derived status, one WHERE term
+        filters.append(candidate_engagement.expression() == engagement)
     stmt = select(Candidate, RecCandidateSource).join(RecCandidateSource, RecCandidateSource.id == Candidate.source_id).where(*filters)
     total = await db.scalar(select(func.count()).select_from(stmt.subquery()))
-    rows = (await db.execute(stmt.order_by(Candidate.created_at.desc(), Candidate.id.desc()).limit(limit).offset(offset))).all()
-    people = await ownership.owners(db, [c for c, _ in rows])
-    items = [{**svc.item_out(c, s), "owner": ownership.owner_out(people, c)} for c, s in rows]
+    page = stmt.add_columns(candidate_engagement.expression()).order_by(Candidate.created_at.desc(), Candidate.id.desc()).limit(limit).offset(offset)
+    rows = (await db.execute(page)).all()
+    people = await ownership.owners(db, [c for c, _, _ in rows])
+    items = [{**svc.item_out(c, s), "owner": ownership.owner_out(people, c), "engagement": candidate_engagement.out(e)} for c, s, e in rows]
     return {"items": items, "total": total or 0, "limit": limit, "offset": offset}
 
 
