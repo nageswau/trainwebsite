@@ -143,6 +143,7 @@ from app.services import (
     applications,
     appointment_invites,
     audit_changes,
+    candidate_jobs,
     counselor_students,
     course_skills,
     document_access,
@@ -2290,6 +2291,7 @@ async def apply_job(job_id: UUID, payload: dict, user: User = Depends(get_curren
     candidate = await applications.candidate_for_student(db, user)
     if await db.scalar(select(JobApplication.id).where(JobApplication.job_id == job_id, JobApplication.candidate_id == candidate.id)):
         raise HTTPException(409, "Already applied")
+    await candidate_jobs.check_eligible(db, job, candidate)  # hrc-027 (J8): the same gate as /candidate/jobs/{id}/apply
     resume_url = payload.get("resume_url") or user.profile.get("resume_url")
     item = await applications.create(db, user, job, candidate, "sourced", "Applied from the student portal", resume_url=resume_url)
     await applications.send_receipt(db, item, job)  # hrc-026 (AC4)
