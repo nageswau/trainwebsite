@@ -1774,3 +1774,4 @@ half.
 | `hrc-030-AC2` | Auto-release publishes immediately | `test_hrc_030_results.py::test_auto_release_publishes_immediately` |
 | `hrc-030-AC3` | Only the right candidate sees the result | `::test_only_the_right_candidate_sees_the_result`; e2e |
 | `hrc-030-AC4` | Only `results.release` holders read the queue and publish; own decision 403; second release 409; settings super_admin only | `::test_only_release_holders_read_the_queue_and_publish_and_never_their_own_decision`, `::test_the_setting_is_read_by_holders_and_changed_by_super_admin_only`; `test_hrc_030_migration.py`; rec-038 rows |
+| `hrc-030-QA` | QA-01 super admin menu link to Result approvals; QA-02 the queue pages past 50 | vitest `hrc030Results.test.tsx` ("Result approvals in the super admin menu", "ResultApprovalQueue paging") |

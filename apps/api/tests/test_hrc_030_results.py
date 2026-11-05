@@ -75,6 +75,17 @@ async def _hr_manager(db) -> User:
     return await make_user(db, "hr_manager", "it")
 
 
+async def _queue_row(client, interview_id) -> tuple[dict, dict]:
+    """The page's counts and this interview's row -- paged, since the shared database keeps older waiting results ahead of it."""
+    offset = 0
+    while True:
+        page = (await client.get(f"{RESULTS}?limit=100&offset={offset}")).json()
+        row = next((r for r in page["items"] if r["interview"]["id"] == interview_id), None)
+        if row is not None or offset + 100 >= page["total"]:
+            return page, row
+        offset += 100
+
+
 async def _release(client, result_id, message=None):
     return await client.post(f"{RESULTS}/{result_id}/release", json={} if message is None else {"candidate_message": message})
 
@@ -102,8 +113,7 @@ async def test_publishing_shows_the_result_to_the_candidate_once_and_is_final(cl
     item = await _decide(client, db_session, recruiter, application.id)
     approver = await _hr_manager(db_session)
     await login(client, approver)
-    queue = (await client.get(RESULTS)).json()
-    row = next(r for r in queue["items"] if r["interview"]["id"] == item["id"])
+    queue, row = await _queue_row(client, item["id"])
     assert row["can_release"] is True and row["state"] == "pending_approval" and "Congratulations" in row["candidate_message"]
     assert queue["counts"]["pending_approval"] >= 1
     message = "Well done -- the team will call you about joining."
@@ -174,7 +184,7 @@ async def test_only_release_holders_read_the_queue_and_publish_and_never_their_o
     admin = await make_user(db_session, "super_admin", "it")
     await login(client, admin)
     other = await _decide(client, db_session, admin, (await _student_setup(client, db_session))[2].id, decision="rejected")
-    own = next(r for r in (await client.get(f"{RESULTS}?limit=100")).json()["items"] if r["id"] == other["result_release"]["id"])
+    _, own = await _queue_row(client, other["id"])
     assert own["can_release"] is False
     assert (await _release(client, other["result_release"]["id"])).status_code == 403
     assert (await client.post(f"{RESULTS}/00000000-0000-0000-0000-000000000000/release", json={})).status_code == 404

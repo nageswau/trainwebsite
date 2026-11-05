@@ -5,7 +5,7 @@ import { type FormEvent, useState } from "react";
 import { sendJson } from "@/lib/apiErrors";
 import { formatSchoolDateTime } from "@/lib/formatDate";
 import {
-  MESSAGE_MAX, releaseUrl, type ResultQueue, type ResultRow, type ResultSettings, type ResultState, RESULTS_PATH, RESULTS_URL, STATES,
+  MESSAGE_MAX, PAGE_SIZE, pageHref, releaseUrl, type ResultQueue, type ResultRow, type ResultSettings, type ResultState, RESULTS_PATH, RESULTS_URL, STATES,
 } from "@/lib/interviewResults";
 
 // hrc-030 (DEC-SCOPE-409 R11/R13): the approver's results -- the ones waiting, oldest first, each with the message the candidate will read
@@ -131,7 +131,17 @@ export default function ResultApprovalQueue({ state, page, settings }: { state: 
             ))}
           </ul>
         )}
-        {page.total > page.items.length && <p className="muted">Showing {page.items.length} of {page.total}.</p>}
+        {page.total > page.items.length && (
+          <nav aria-label="Pages" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 12 }}>
+            <span className="muted">Showing {page.offset + 1}–{page.offset + page.items.length} of {page.total}.</span>
+            {page.offset > 0 && (
+              <Link className="btn small secondary" href={pageHref(state, Math.max(0, page.offset - PAGE_SIZE))}>Previous page</Link>
+            )}
+            {page.offset + page.items.length < page.total && (
+              <Link className="btn small secondary" href={pageHref(state, page.offset + PAGE_SIZE)}>Next page</Link>
+            )}
+          </nav>
+        )}
       </section>
       <Settings initial={settings} />
     </>

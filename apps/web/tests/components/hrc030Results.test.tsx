@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import MyResultsCard from "@/components/MyResultsCard";
 import RecruiterInterviewItem from "@/components/RecruiterInterviewItem";
 import ResultApprovalQueue from "@/components/ResultApprovalQueue";
-import type { InterviewResult, MyResult, ResultQueue, ResultRow } from "@/lib/interviewResults";
+import { type InterviewResult, type MyResult, parseOffset, queueUrl, type ResultQueue, type ResultRow } from "@/lib/interviewResults";
+import { SUPER_ADMIN_NAV } from "@/lib/navigation";
 import { recInterview } from "@/tests/helpers/recruiterInterviews";
 
 // hrc-030 (DEC-SCOPE-409 R9-R13): the candidate's published results, the approver's queue and the recruiter's view of the result.
@@ -126,5 +127,34 @@ describe("RecruiterInterviewItem result line (R10)", () => {
   it("shows nothing without a result", () => {
     render(<ul><RecruiterInterviewItem onChanged={vi.fn()} interview={recInterview()} /></ul>);
     expect(screen.queryByText(/Result for the candidate/)).toBeNull();
+  });
+});
+
+describe("ResultApprovalQueue paging (QA-02)", () => {
+  it("links the next and the previous page of a long list, keeping the tab", () => {
+    const page = { ...queue([row()]), total: 120, offset: 50 };
+    render(<ResultApprovalQueue state="pending_approval" page={page} settings={settings} />);
+    expect(screen.getByText("Showing 51–51 of 120.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Previous page" }).getAttribute("href")).toBe("/it/hr-manager/results?state=pending_approval&offset=0");
+    expect(screen.getByRole("link", { name: "Next page" }).getAttribute("href")).toBe("/it/hr-manager/results?state=pending_approval&offset=100");
+  });
+
+  it("shows no paging when everything fits", () => {
+    render(<ResultApprovalQueue state="pending_approval" page={queue([row()])} settings={settings} />);
+    expect(screen.queryByRole("link", { name: "Next page" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Previous page" })).toBeNull();
+  });
+
+  it("asks the API for the requested page", () => {
+    expect(queueUrl("released", 100)).toBe("/api/v1/recruiter/interview-results?state=released&limit=50&offset=100");
+    expect(parseOffset("abc")).toBe(0);
+    expect(parseOffset("-5")).toBe(0);
+    expect(parseOffset("150")).toBe(150);
+  });
+});
+
+describe("Result approvals in the super admin menu (QA-01)", () => {
+  it("links the page, where only a super admin can change the release setting", () => {
+    expect(SUPER_ADMIN_NAV).toContainEqual({ label: "Interview Result Approvals", href: "/it/hr-manager/results" });
   });
 });

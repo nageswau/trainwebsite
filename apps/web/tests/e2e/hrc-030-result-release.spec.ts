@@ -46,7 +46,8 @@ test("result release: a decision waits for approval, the HR Manager publishes it
 
   // The decision (API): schedule ahead, move it into the past (legacy reschedule), Completed, then Selected on the Final Round.
   await signIn(page, RECRUITER, "/recruiter/dashboard");
-  const ahead = new Date(Date.now() + 3 * 86_400_000).toISOString();
+  // +4 days: the seed gives this student an interview at seed time + 3 days, and the clash rule (IV6) compares to the minute
+  const ahead = new Date(Date.now() + 4 * 86_400_000).toISOString();
   const scheduled = await page.request.post("/api/v1/recruiter/interviews", { data: { application_id: applicationId, round: "final_round", scheduled_at: ahead, mode: "Online", notify: false } });
   expect(scheduled.status()).toBe(201);
   const interviewId = (await scheduled.json()).interview.id as string;

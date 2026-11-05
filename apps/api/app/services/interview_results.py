@@ -76,12 +76,11 @@ def take_emails(db: AsyncSession) -> list[UUID]:
 
 async def record(db: AsyncSession, user: User | None, interview: Interview, application: JobApplication, outcome: str, *, decides: bool, note: str) -> None:
     """R1/R3/R4: a decision is recorded as a result; when it `decides` the application, the application follows it (held from the
-    candidate unless auto-release is on, which publishes it in the same transaction). R12: one result per interview."""
+    candidate unless auto-release is on, which publishes it in the same transaction). One result per interview: a decided interview never
+    moves again (IV3), and `interview_id` is unique."""
     auto = user is not None and await auto_release(db)
     if decides:
         applications.follow(db, user, application, outcome, note, visible=auto)
-    if await db.scalar(select(InterviewResult.id).where(InterviewResult.interview_id == interview.id)) is not None:
-        return
     row = InterviewResult(interview_id=interview.id, application_id=application.id, outcome=outcome, is_final=decides, state="pending_approval",
                           decided_by_user_id=user.id if user else None)  # fmt: skip
     db.add(row)
@@ -138,18 +137,15 @@ async def require_no_unreleased_final(db: AsyncSession, application_id: UUID) ->
 
 
 # --- reads -------------------------------------------------------------------------------------------------------------------------
-Decider = User
-
-
 def _rows():
     return (
-        select(InterviewResult, Interview, JobApplication, Candidate, Job, Company, Decider)
+        select(InterviewResult, Interview, Candidate, Job, Company, User)
         .join(Interview, Interview.id == InterviewResult.interview_id)
         .join(JobApplication, JobApplication.id == InterviewResult.application_id)
         .join(Candidate, Candidate.id == JobApplication.candidate_id)
         .join(Job, Job.id == JobApplication.job_id)
         .join(Company, Company.id == Job.company_id)
-        .outerjoin(Decider, Decider.id == InterviewResult.decided_by_user_id)
+        .outerjoin(User, User.id == InterviewResult.decided_by_user_id)
     )
 
 
@@ -171,13 +167,13 @@ async def queue(db: AsyncSession, user: User, state: str, limit: int, offset: in
     order = (InterviewResult.created_at, InterviewResult.id) if state == "pending_approval" else (InterviewResult.released_at.desc(), InterviewResult.id)
     rows = (await db.execute(_rows().where(InterviewResult.state == state).order_by(*order).limit(limit).offset(offset))).all()
     counts = dict((await db.execute(select(InterviewResult.state, func.count()).group_by(InterviewResult.state))).all())
-    items = [_row_out(user, r, i, c, job, company, decider) for r, i, _a, c, job, company, decider in rows]
+    items = [_row_out(user, r, i, c, job, company, decider) for r, i, c, job, company, decider in rows]
     return {"items": items, "total": counts.get(state, 0), "limit": limit, "offset": offset,
             "counts": {s: counts.get(s, 0) for s in STATE_LABELS}}  # fmt: skip
 
 
 async def one(db: AsyncSession, user: User, result_id: UUID) -> dict:
-    r, i, _a, c, job, company, decider = (await db.execute(_rows().where(InterviewResult.id == result_id).execution_options(populate_existing=True))).one()
+    r, i, c, job, company, decider = (await db.execute(_rows().where(InterviewResult.id == result_id).execution_options(populate_existing=True))).one()
     return _row_out(user, r, i, c, job, company, decider)
 
 

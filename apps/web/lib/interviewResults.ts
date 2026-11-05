@@ -43,4 +43,11 @@ export function isMyResults(data: unknown): data is { items: MyResult[] } {
 }
 
 export const releaseUrl = (id: string) => `${RESULTS_URL}/${encodeURIComponent(id)}/release`;
-export const queueUrl = (state: ResultState) => `${RESULTS_URL}?state=${state}&limit=50`;
+export const PAGE_SIZE = 50;
+export const queueUrl = (state: ResultState, offset = 0) => `${RESULTS_URL}?state=${state}&limit=${PAGE_SIZE}&offset=${offset}`;
+/** QA-02: the page's `offset` query value -- a whole number, else the first page. */
+export const parseOffset = (value: unknown): number => {
+  const n = typeof value === "string" && /^\d+$/.test(value) ? Number(value) : 0;
+  return Number.isSafeInteger(n) ? n : 0;
+};
+export const pageHref = (state: ResultState, offset: number) => `${RESULTS_PATH}?state=${state}&offset=${offset}`;

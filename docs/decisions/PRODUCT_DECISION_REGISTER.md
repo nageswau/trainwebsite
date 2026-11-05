@@ -12046,5 +12046,7 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   routes. R12 no backfill. R13 web.
 - **Not built:** withdrawing a released result (Q-30); a per-job release setting; showing decisions on the employer list or the
   interviewer workspace (hrc-001 H3 still applies there); the full candidate-portal results section (hrc-031).
-- **Numbering:** migration `0287_interview_results`; API §12LC; RBAC §2.302.
+- **QA fixes:** QA-01 the super admin (the only setting editor) gets an "Interview Result Approvals" menu link; QA-02 the queue page pages
+  through `?offset=` (Previous / Next page) instead of stopping at the first 50.
+- **Numbering:** migration `0287_interview_results` (after `0285_job_revisions`); API §12LC; RBAC §2.302.
 - **Feature ID authorized:** `hrc-030`. **Status:** built on `worktree-hrc-030`.
