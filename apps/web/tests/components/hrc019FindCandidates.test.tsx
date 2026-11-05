@@ -116,6 +116,18 @@ describe("hrc-019 Find Candidates", () => {
     expect(screen.getByLabelText("Include unknown salary")).toBeInTheDocument();
   });
 
+  it("QA-01: a read-only role (hr_team cannot read the Skills Master) gets no category filter and no category request", async () => {
+    query = "all=java";
+    render(<RecruiterFindCandidates writes={false} sourceFilter={false} />);
+    await screen.findByRole("listitem", { name: /Rahul Kumar/ });
+    const skills = screen.getByText("More skill filters", { selector: "summary" }).closest("details")!;
+    skills.open = true;
+    fireEvent(skills, new Event("toggle"));
+    expect(await screen.findByLabelText("Minimum skill level")).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Skill category" })).toBeNull();
+    expect(fetchMock.mock.calls.some(([u]) => String(u).startsWith("/api/v1/recruiter/skill-categories"))).toBe(false);
+  });
+
   it("hides the package group without the grant", async () => {
     query = "all=java";
     render(<RecruiterFindCandidates writes sourceFilter />);

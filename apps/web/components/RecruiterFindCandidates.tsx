@@ -304,13 +304,14 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
   }, [sourceFilter]);
 
   useEffect(() => {
+    if (!sourceFilter) return; // QA-01: hr_team cannot read the Skills Master (the same roles the catalogue refuses), so no category filter
     const controller = new AbortController(); // a list that fails to load leaves the category filter empty, never the page broken
     fetch(`${SKILL_CATEGORIES_URL}?limit=100`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : null))
       .then((page: { items?: Category[] } | null) => setCategories(Array.isArray(page?.items) ? page.items.filter((c) => c && c.id && c.name) : []))
       .catch(() => undefined);
     return () => controller.abort();
-  }, []);
+  }, [sourceFilter]);
 
   function go(next: SearchState) {
     const query = paramsOf(next).toString();
@@ -358,7 +359,8 @@ export default function RecruiterFindCandidates({ writes, sourceFilter }: { writ
     else delete more[param];
     return { ...d, more };
   });
-  const fields = (group: FilterGroup) => FILTERS.filter((spec) => spec.group === group && (!spec.package || compensation)).map((spec) => (
+  const offered = (spec: FilterSpec) => (!spec.package || compensation) && (spec.kind !== "category" || sourceFilter);
+  const fields = (group: FilterGroup) => FILTERS.filter((spec) => spec.group === group && offered(spec)).map((spec) => (
     <FilterField key={spec.param} spec={spec} values={draft.more[spec.param] ?? []} categories={categories} onChange={(v) => setMore(spec.param, v)} />
   ));
   const applied = (group: FilterGroup, ...own: unknown[]) =>
