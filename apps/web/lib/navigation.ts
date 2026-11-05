@@ -304,7 +304,7 @@ export const PORTAL_NAV:Record<string,NavItem[]> = {
   // hrc-006 (DEC-SCOPE-384 O12): the Placement Officer works the requirements it co-owns.
   "it/placement-officer": [{label:"Dashboard",href:"/it/placement-officer/dashboard"},{label:"Job requirements",href:"/recruiter/requirements"}],
   // hrc-007 (DEC-SCOPE-380 A9): the HR Manager approves vacancies.
-  "it/hr-manager": [{label:"Dashboard",href:"/it/hr-manager/dashboard"},{label:"Approvals",href:"/it/hr-manager/approvals"},{label:"Data requests",href:"/it/hr-manager/data-requests"}/* hrc-035 */,{label:"Website registrations",href:"/recruiter/website-registrations"}/* hrc-025 */],
+  "it/hr-manager": [{label:"Dashboard",href:"/it/hr-manager/dashboard"},{label:"Approvals",href:"/it/hr-manager/approvals"},{label:"Result approvals",href:"/it/hr-manager/results"}/* hrc-030 */,{label:"Data requests",href:"/it/hr-manager/data-requests"}/* hrc-035 */,{label:"Website registrations",href:"/recruiter/website-registrations"}/* hrc-025 */],
   // bdm-001: "BDMs" is written out -- the generated label would read "Bdms".
   // tel-017 (DEC-SCOPE-076 C1): an IT counselor works leads only; tel-016 added Appointments (lead bookings), tel-018 the student link,
   // itc-003 (DEC-SCOPE-337) Students (the IT students linked to the counselor).

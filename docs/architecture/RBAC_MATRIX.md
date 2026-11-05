@@ -3888,3 +3888,11 @@ The business context is part of the company record: it is read in the rec-003 co
 the same scope (out of scope 404), uploaded by `can_edit`. A `recruitment_agreement` follows §2.296: download needs
 `commercials.client.view`, upload needs view + edit; its row (name, date, uploader) stays listed. Pinned by
 `apps/api/tests/test_pob_003_company_context.py`, `test_pob_003_company_documents.py` and the rec-038 matrix rows.
+
+### 2.302 Interview result approval and release *(added 2026-11-05 — `DEC-SCOPE-409`, hrc-030)*
+
+`results.release` (declared by hrc-002, §2.275 R4) now gates the result queue, the settings read and `release`; default holder
+`hr_manager` (migration 0287 seeds it; super_admin holds every key). The queue is division-wide, as `jobs.approve` (§2.278). A holder can
+never publish a decision they recorded (403). Changing the auto-release switch is super_admin only. `GET /candidate/results` is the
+caller's own (a candidate or IT student; anyone else 403) — no id is taken from the caller. Recording a decision stays rec-017's writers'
+(§2.74). Pinned by `apps/api/tests/test_hrc_030_results.py`, `test_hrc_030_migration.py` and the rec-038 matrix rows.

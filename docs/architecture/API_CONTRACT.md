@@ -5993,3 +5993,26 @@ documents` multipart `kind`, `file`, `meeting_id?` → 201 `{document}`: 403 wit
 PDF/JPEG/PNG by content, 429 + `Retry-After` past 20 uploads an hour. `GET /recruiter/companies/documents/{document_id}/download` → the
 bytes as an attachment named `<kind>-<company code>.<ext>` (`no-store`, `nosniff`, sandbox CSP); an agreement needs
 `commercials.client.view` (403). Out of scope = 404 everywhere. Audit `recruiter_company_document.uploaded|downloaded`.
+
+## 12LC. Interview result approval and release (hrc-030) — addendum, 2026-11-05
+
+`DEC-SCOPE-409`, migration `0287`. **New:**
+- `GET /api/v1/recruiter/interview-results?state=pending_approval|released&limit&offset` — `results.release` holders (else 403). Page
+  `{items, total, limit, offset, counts: {pending_approval, released}}`; waiting oldest first, published newest first. Item: `id, outcome
+  (selected|rejected), outcome_label (Selected|Not selected), is_final, state, state_label, candidate_message, release_mode (auto|approval|
+  null), released_at, interview {id, code, round, scheduled_at}, candidate {id, code, name}, requirement {id, code, title}, company {id,
+  name}, decided_by {id, full_name}|null, decided_at, can_release` (false on the caller's own decision).
+- `POST /api/v1/recruiter/interview-results/{id}/release {candidate_message?: string ≤1000}` — holders; 404 unknown; 403 own decision; 409
+  already published (final). Blank/omitted message = the default text. 200 = the result (`id … released_at`, as above without the
+  joined objects). Notifies the candidate (in-app "Interview result" or a queued email).
+- `GET /api/v1/recruiter/interview-results/settings` — holders: `{auto_release, can_edit}`. `PUT` `{auto_release: bool}` — super_admin only
+  (else 403); 422 for a non-boolean.
+- `GET /api/v1/candidate/results` — a candidate or IT student (else 403; 401 signed out): `{items: [{id, round, role, company, outcome,
+  outcome_label, message, released_at}]}`, the caller's own released results only.
+
+**Changed (additive):** every recruiter interview read (`/recruiter/interviews*`, `/recruiter/applications/{id}/interviews`) gains
+`result_release` (the result object or null; the legacy `result` field is unchanged). `POST /recruiter/interviews/{id}/status` and `PUT
+…/feedback` into Selected/Rejected record the result. `POST /recruiter/applications/{id}/offer` and the legacy `POST /workflows/it/offers`
+answer 409 "Publish the interview result before making an offer" while the application's final result is unpublished. The student's
+interview schedule shows the published outcome; the student's job applications and the candidate's jobs show Selected/Rejected only after
+publishing.

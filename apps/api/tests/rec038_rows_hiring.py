@@ -11,7 +11,7 @@ import secrets
 import uuid
 from datetime import timedelta
 
-from app.models import CandidateResume, Company, Interview, JobApplication, JobOffer, ProfileShare, ProfileShareItem, RecruiterMessage
+from app.models import CandidateResume, Company, Interview, InterviewResult, JobApplication, JobOffer, ProfileShare, ProfileShareItem, RecruiterMessage
 from app.services import candidates as candidate_svc
 from app.services import offers as offer_svc
 from app.services import profile_sharing
@@ -90,6 +90,11 @@ ROWS = [
     R("get", "/recruiter/offers/{hiring_accepted}/joining/proof", **allow(200, *READ), **allow(404, *OUT)),
     R("put", "/recruiter/offers/{hiring_accepted}/joining/proof", form=_pdf, **allow(200, *WRITE), **allow(404, *OUT)),
     R("get", "/recruiter/joinings", **allow(200, *LISTS)),
+    # hrc-030 (§2.302): the result queue and its release are `results.release`'s (hr_manager by default, super_admin); the switch is super_admin's
+    R("get", "/recruiter/interview-results", **allow(200, "hr_mgr", "super")),
+    R("get", "/recruiter/interview-results/settings", **allow(200, "hr_mgr", "super")),
+    R("put", "/recruiter/interview-results/settings", {"auto_release": False}, super=200),
+    R("post", "/recruiter/interview-results/{hiring_result}/release", {"candidate_message": "Thank you for your time."}, **allow(200, "hr_mgr", "super")),
 ]
 # fmt: on
 PATH_VALUES = {}
@@ -118,6 +123,11 @@ async def build(client, db, w) -> None:
     done = await add(db, Interview(application_id=interviewing.id, scheduled_at=now() - timedelta(hours=2), mode="Online", round="hr_round",
                                    status="completed", created_by_user_id=rec.id))  # fmt: skip
     selected = await application("selected")
+    rejected = await application("rejected")  # hrc-030: a Final Round decision waiting for release
+    decided = await add(db, Interview(application_id=rejected.id, scheduled_at=now() - timedelta(hours=3), mode="Online", round="final_round",
+                                      status="rejected", created_by_user_id=rec.id))  # fmt: skip
+    result = await add(db, InterviewResult(interview_id=decided.id, application_id=rejected.id, outcome="rejected", is_final=True, state="pending_approval",
+                                           candidate_message="Thank you for interviewing.", decided_by_user_id=rec.id))  # fmt: skip
     offered = await application("selected")
     offer = await add(db, JobOffer(application_id=offered.id, status="offer_received", position="Java Developer", offered_on=today, created_by_user_id=rec.id,
                                    **letter_fields))  # fmt: skip
@@ -144,6 +154,6 @@ async def build(client, db, w) -> None:
     await db.commit()
     w |= {
         "hiring_job": str(job.id), "hiring_app": str(interviewing.id), "hiring_interview": str(scheduled.id), "hiring_done": str(done.id),
-        "hiring_selected": str(selected.id), "hiring_offer": str(offer.id), "hiring_accepted": str(accepted.id),
+        "hiring_selected": str(selected.id), "hiring_result": str(result.id), "hiring_offer": str(offer.id), "hiring_accepted": str(accepted.id),
         "hiring_student_offer": str(student_offer.id), "hiring_share": str(portal.id), "hiring_share_item": str(item.id), "hiring_token": token,
     }  # fmt: skip
