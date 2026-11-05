@@ -5941,3 +5941,16 @@ primary first), skill_count, completeness (0–100), owner {id, full_name, activ
 next_follow_up_at, conversion (registered | applied | placed), contact_sla (met | pending | breached), duplicate_review, can_open}`. Only
 candidates with source Website, in the pool, not archived; newest first. No email or phone. Read only (no audit row). A `placement_team`
 caller gets their own and the unassigned ones; 403 for roles outside §2.295; 401 signed out.
+
+## 12KV. Commercial-data permissions (pob-001) — addendum, 2026-11-05
+
+`DEC-SCOPE-403`. **Changed (additive):** `GET /api/v1/admin/permissions/catalogue` lists `commercials.client` (view, edit),
+`commercials.vendor` (view, edit) and `candidates.contact` (view). Contract responses (`GET|POST|PATCH /recruiter/companies/{id}/contracts`,
+`PUT …/contracts/document`) leave out `fee_basis`, `fee_value`, `payment_terms` and `replacement_policy` without
+`commercials.client.view` (absent, not null); `permissions` gains `can_view_terms` and `can_edit_terms`, and the company's contracts gain
+top-level `can_view_terms` and `can_edit_terms`. `GET /recruiter/performance/by-recruiter` gains `revenue_visible`; without the grant
+`revenue` is absent from every row and the total. **Changed (behaviour):** a contract POST/PATCH carrying any terms field (null included)
+without effective edit → 403 "Your role cannot view or change client commercial terms"; the contract/MoU upload needs effective edit and
+the download needs view (403, after the scope's 404). Every rec-031 revenue route (`GET /recruiter/requirements/{id}/revenue`,
+`PUT …/fee`, `POST /recruiter/invoices`, `…/payments`, `…/cancel`, `GET /recruiter/companies/{id}/revenue`, `GET /recruiter/invoices`)
+→ 403 "Your role cannot view client commercials" without view; `PUT …/fee` also needs edit (403) and `permissions.can_set_fee` follows it.

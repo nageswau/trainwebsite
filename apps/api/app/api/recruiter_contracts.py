@@ -25,18 +25,20 @@ router = APIRouter(prefix="/recruiter", tags=["recruiter-contracts"])
 DocumentKind = Literal["contract", "mou"]
 
 
-@router.get("/companies/{company_id}/contracts", response_model=RecCompanyContracts)
+@router.get("/companies/{company_id}/contracts", response_model=RecCompanyContracts, response_model_exclude_unset=True)
 async def get_contracts(company_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     company = await companies.load_scoped(db, user, company_id)
     return await svc.company_contracts_out(db, user, company)
 
 
-@router.post("/companies/{company_id}/contracts", status_code=201, response_model=RecContractEnvelope)
+@router.post("/companies/{company_id}/contracts", status_code=201, response_model=RecContractEnvelope, response_model_exclude_unset=True)
 async def create_contract(company_id: UUID, payload: RecContractCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """A first contract, or a renewal once the current one reads Signed, Active or Expired (CT7): the old row stops being current and
     keeps its history. 409 `contract_exists` while one is in progress; the partial unique index is the backstop under the lock."""
     company = await companies.load_scoped(db, user, company_id, lock=True)
     companies.require(user, company, "can_edit", "contract_create")
+    if set(svc.TERMS) & payload.model_fields_set:  # pob-001 C5: any terms field sent, null included
+        await svc.require_terms(db, user, "contract_create", edit=True)
     on = svc.today()
     current = await svc.load_current(db, company, lock=True)
     previous = svc.effective_status(current, on) if current else None
@@ -66,7 +68,7 @@ async def create_contract(company_id: UUID, payload: RecContractCreate, user: Us
     return {"contract": await svc.contract_out(db, user, company, contract, on)}
 
 
-@router.patch("/companies/{company_id}/contracts", response_model=RecContractEnvelope)
+@router.patch("/companies/{company_id}/contracts", response_model=RecContractEnvelope, response_model_exclude_unset=True)
 async def change_contract(company_id: UUID, payload: RecContractUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """The fields and an optional status change. Nothing changed = nothing recorded."""
     company = await companies.load_scoped(db, user, company_id, lock=True)
@@ -76,6 +78,8 @@ async def change_contract(company_id: UUID, payload: RecContractUpdate, user: Us
     if contract is None:
         raise HTTPException(404, svc.NO_CONTRACT)
     sent = payload.model_dump(exclude_unset=True)
+    if set(svc.TERMS) & set(sent):  # pob-001 C5
+        await svc.require_terms(db, user, "contract_change", edit=True)
     status, from_status, expected = sent.pop("status", None), sent.pop("from_status", None), sent.pop("expected_updated_at", None)
     before = svc.effective_status(contract, on)
     if status is not None:
@@ -102,11 +106,12 @@ async def change_contract(company_id: UUID, payload: RecContractUpdate, user: Us
     return {"contract": await svc.contract_out(db, user, company, contract, on)}
 
 
-@router.put("/companies/{company_id}/contracts/document", response_model=RecContractEnvelope)
+@router.put("/companies/{company_id}/contracts/document", response_model=RecContractEnvelope, response_model_exclude_unset=True)
 async def upload_document(company_id: UUID, kind: DocumentKind, file: UploadFile = File(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Scope and role first, then the bytes (type by content, size cap, metadata stripped) before any lock, then the locked write. The new
     object is deleted when anything after storing it fails; a replaced object is kept (its key is in the event row, never returned)."""
     companies.require(user, await companies.load_scoped(db, user, company_id), "can_edit", "contract_document")
+    await svc.require_terms(db, user, "contract_document", edit=True)  # pob-001 C5: the documents are the signed terms
     data, content_type, name = await read_upload(file)
     company = await companies.load_scoped(db, user, company_id, lock=True)
     companies.require(user, company, "can_edit", "contract_document")
@@ -147,6 +152,7 @@ async def download_document(contract_id: UUID, kind: DocumentKind, user: User = 
     """In the company's read scope only (404 otherwise, as an unknown id). The audit row is committed before any byte leaves; the file
     name is built from the company code, never the uploaded name."""
     contract, company = await svc.load_scoped_contract(db, user, contract_id)
+    await svc.require_terms(db, user, "contract_document_download", edit=False)  # pob-001 C5 (after scope: out of scope stays 404)
     data, media_type = svc.read_document(contract, kind)
     filename = f"{kind}-{company.company_code}.{EXTENSION.get(media_type, 'bin')}"
     svc.audit(db, user, "document_downloaded", contract, {"kind": kind, "role": user.role})

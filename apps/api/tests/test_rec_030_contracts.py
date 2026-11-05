@@ -58,7 +58,7 @@ async def _setup(client, db):
 async def test_no_contract_yet_then_start_one_with_the_section_22_fields(client, db_session):
     _, recruiter, company = await _setup(client, db_session)
     empty = await client.get(c_url(company["id"]))
-    assert empty.status_code == 200 and empty.json() == {"current": None, "previous": [], "can_start": True}
+    assert empty.status_code == 200 and empty.json() == {"current": None, "previous": [], "can_start": True, "can_view_terms": True, "can_edit_terms": True}
     response = await _start(client, company["id"], status="proposal_sent", agreement_type="Permanent hiring", start_date="2026-04-01",
                             end_date="2027-03-31", fee_basis="percent_of_ctc", fee_value="8.33", payment_terms="30 days\nfrom joining",
                             replacement_policy="Free replacement within 90 days")
@@ -68,7 +68,7 @@ async def test_no_contract_yet_then_start_one_with_the_section_22_fields(client,
     assert c["agreement_type"] == "Permanent hiring" and c["start_date"] == "2026-04-01" and c["end_date"] == "2027-03-31"
     assert c["fee_basis"] == "percent_of_ctc" and c["fee_value"] == "8.33" and c["payment_terms"] == "30 days\nfrom joining"
     assert c["contract_document"] is None and c["mou_document"] is None and c["created_by"]["id"] == str(recruiter.id)
-    assert c["permissions"] == {"can_edit": True, "can_upload": True, "can_renew": False}
+    assert c["permissions"] == {"can_edit": True, "can_upload": True, "can_renew": False, "can_view_terms": True, "can_edit_terms": True}  # pob-001 C5
     read = (await client.get(c_url(company["id"]))).json()
     assert read["current"]["id"] == c["id"] and read["can_start"] is False
     assert (await _start(client, company["id"])).json()["detail"]["code"] == "contract_exists"
@@ -244,7 +244,7 @@ async def test_manager_and_bdm_read_but_cannot_write_and_others_get_404(client, 
         await login(client, reader)
         read = await client.get(c_url(company["id"]))
         assert read.status_code == 200 and read.json()["current"]["fee_value"] == "50000.00"
-        assert read.json()["current"]["permissions"] == {"can_edit": False, "can_upload": False, "can_renew": False} and read.json()["can_start"] is False
+        assert read.json()["current"]["permissions"] == {"can_edit": False, "can_upload": False, "can_renew": False, "can_view_terms": True, "can_edit_terms": False} and read.json()["can_start"] is False
         assert (await client.patch(c_url(company["id"]), json={"payment_terms": "x"})).status_code == 403
         assert (await _upload(client, company["id"])).status_code == 403
     await login(client, await make_user(db_session, "employer", "it"))

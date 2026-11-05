@@ -79,6 +79,14 @@ def require_reader(user: User) -> None:
         raise HTTPException(403, NOT_READER)
 
 
+NO_COMMERCIALS = "Your role cannot view client commercials"  # pob-001 C6
+
+
+async def require_commercials(db: AsyncSession, user: User, route: str) -> None:
+    """pob-001 (DEC-SCOPE-403 C6): every revenue route needs `commercials.client.view`, after the role gate (RV10)."""
+    await contracts.require_terms(db, user, route, edit=False, message=NO_COMMERCIALS)
+
+
 def require_fee_setter(user: User) -> None:
     if user.role not in FEE_SETTERS:
         logger.warning("recruiter_revenue_fee_refused", extra={"extra_fields": {"actor_id": str(user.id), "role": user.role}})
@@ -87,12 +95,14 @@ def require_fee_setter(user: User) -> None:
 
 async def load_job(db: AsyncSession, user: User, job_id: UUID, *, lock: bool = False) -> Job:
     require_reader(user)
+    await require_commercials(db, user, "revenue")
     return await requirements.load_scoped(db, user, job_id, lock=lock)
 
 
 async def load_invoice(db: AsyncSession, user: User, invoice_id: UUID, *, lock: bool = False) -> RecruiterInvoice:
     """With `lock`, the invoice row is locked by id first and scope is checked in a fresh statement (the rec-003 rule)."""
     require_reader(user)
+    await require_commercials(db, user, "invoice")
     stmt = select(RecruiterInvoice).join(Job, Job.id == RecruiterInvoice.job_id).where(RecruiterInvoice.id == invoice_id, *await requirements.caller_scope(db, user))
     if lock:
         await db.execute(select(RecruiterInvoice.id).where(RecruiterInvoice.id == invoice_id).with_for_update())
@@ -318,7 +328,7 @@ async def requirement_revenue(db: AsyncSession, user: User, job: Job) -> dict:
         "company": _company_ref(company),
         **figures_,
         "invoices": await invoices_out(db, user, rows, today),
-        "permissions": {"can_invoice": user.role in READERS, "can_set_fee": user.role in FEE_SETTERS},
+        "permissions": {"can_invoice": user.role in READERS, "can_set_fee": user.role in FEE_SETTERS and (await contracts.commercial_access(db, user))[1]},
     }
 
 

@@ -16,16 +16,19 @@ export default async function RecruiterCompanyPage({ params, searchParams }: { p
   const { id } = await params;
   const created = (await searchParams).created === "1";
   let user: User;
+  let permissions: string[] = [];
   let company: Company | null = null;
   let history: Page<StageEvent> | null = null;
   try {
-    const [me, read, events] = await Promise.allSettled([
+    const [me, read, events, grants] = await Promise.allSettled([
       serverApi<User>("/api/v1/auth/me"),
       serverApi<{ company: Company }>(`${COMPANIES_URL}/${encodeURIComponent(id)}`),
       serverApi<Page<StageEvent>>(historyUrl(encodeURIComponent(id))), // rec-005: a failure shows "Try again", never blocks the page
+      serverApi<{ permissions: string[] }>("/api/v1/auth/me/permissions"), // pob-001 C8: a failed read hides the revenue
     ]);
     if (me.status === "rejected") throw me.reason;
     user = me.value;
+    if (grants.status === "fulfilled") permissions = grants.value.permissions;
     if (read.status === "fulfilled") company = read.value.company;
     else if (!(read.reason instanceof ApiError && (read.reason.status === 404 || read.reason.status === 422))) throw read.reason;
     if (events.status === "fulfilled") history = events.value;
@@ -37,7 +40,7 @@ export default async function RecruiterCompanyPage({ params, searchParams }: { p
     <PortalShell nav={nav} roleLabel={roleLabel} userName={user.full_name}>
       <div className="portal-content">
         {company ? (
-          <RecruiterCompanyDetail initial={company} created={created} history={history} showRevenue={canSeeRevenue(user.role)} />
+          <RecruiterCompanyDetail initial={company} created={created} history={history} showRevenue={canSeeRevenue(user.role, permissions)} />
         ) : (
           <div className="action-card">
             <h2>Company not found</h2>

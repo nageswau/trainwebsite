@@ -29,10 +29,16 @@ export const COMPARISON_GROUPS = [
 export type ComparisonKey = (typeof COMPARISON_GROUPS)[number]["figures"][number]["key"];
 type CountKey = Exclude<ComparisonKey, "revenue">;
 
-export type ComparisonRow = { user_id: string | null; full_name: string; active: boolean; revenue: string } & Record<CountKey, number>;
+// pob-001 (DEC-SCOPE-403 C7): `revenue` is absent from every row without `commercials.client.view`; `revenue_visible` says so.
+export type ComparisonRow = { user_id: string | null; full_name: string; active: boolean; revenue?: string } & Record<CountKey, number>;
 export type Comparison = {
   date_from: string; date_to: string; recruiter: { id: string; full_name: string } | null; items: ComparisonRow[]; totals: ComparisonRow | null;
+  revenue_visible: boolean;
 };
+
+/** The metric groups shown: without revenue, the Recruitment group loses its Revenue column. */
+export const comparisonGroups = (revenueVisible: boolean) =>
+  COMPARISON_GROUPS.map((group) => ({ ...group, figures: group.figures.filter((f) => revenueVisible || f.key !== "revenue") }));
 
 export const COMPARISON_URL = "/api/v1/recruiter/performance/by-recruiter";
 export const COMPARISON_PATH = "/recruiter/performance";

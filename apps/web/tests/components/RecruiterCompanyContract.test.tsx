@@ -13,7 +13,7 @@ function contract(over: Partial<Contract> = {}): Contract {
     id: "K1", status: "proposal_sent", status_label: "Proposal Sent", status_changed_at: "2026-10-01T05:30:00Z", agreement_type: "Permanent hiring",
     start_date: "2026-04-01", end_date: "2027-03-31", expired_on: null, fee_basis: "fixed", fee_value: "50000.00", payment_terms: "30 days",
     replacement_policy: "90 days free replacement", contract_document: null, mou_document: null, is_current: true,
-    created_by: { id: "U1", full_name: "Priya Recruiter", active: true }, permissions: { can_edit: true, can_upload: true, can_renew: false },
+    created_by: { id: "U1", full_name: "Priya Recruiter", active: true }, permissions: { can_edit: true, can_upload: true, can_renew: false, can_view_terms: true, can_edit_terms: true },
     created_at: "2026-10-01T05:30:00Z", updated_at: "2026-10-01T05:30:00Z", ...over,
   };
 }
@@ -22,7 +22,7 @@ let read: () => Response;
 let write: () => Response;
 let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
-  read = () => res({ current: contract(), previous: [], can_start: false });
+  read = () => res({ current: contract(), previous: [], can_start: false, can_view_terms: true, can_edit_terms: true });
   write = () => res({ contract: contract({ status: "negotiation", status_label: "Negotiation" }) });
   fetchMock = vi.fn((url: string, init?: RequestInit) => {
     if (init?.method === "POST" || init?.method === "PATCH" || init?.method === "PUT") return Promise.resolve(write());
@@ -43,7 +43,7 @@ const sent = (method: string) => {
 
 describe("RecruiterCompanyContract (rec-030)", () => {
   it("shows no contract yet and starts one with the section 22 fields", async () => {
-    read = () => res({ current: null, previous: [], can_start: true });
+    read = () => res({ current: null, previous: [], can_start: true, can_view_terms: true, can_edit_terms: true });
     write = () => res({ contract: contract() }, 201);
     const onChanged = vi.fn();
     render(<RecruiterCompanyContract companyId="C1" onChanged={onChanged} />);
@@ -86,8 +86,8 @@ describe("RecruiterCompanyContract (rec-030)", () => {
     read = () => res({
       current: contract({ status: "expired", status_label: "Expired", expired_on: "2026-04-01", end_date: "2026-03-31",
         contract_document: { name: "signed.pdf", content_type: "application/pdf", uploaded_at: "2026-01-01T05:30:00Z" },
-        permissions: { can_edit: true, can_upload: true, can_renew: true } }),
-      previous: [contract({ id: "K0", status: "expired", status_label: "Expired", is_current: false, permissions: { can_edit: false, can_upload: false, can_renew: false } })],
+        permissions: { can_edit: true, can_upload: true, can_renew: true, can_view_terms: true, can_edit_terms: true } }),
+      previous: [contract({ id: "K0", status: "expired", status_label: "Expired", is_current: false, permissions: { can_edit: false, can_upload: false, can_renew: false, can_view_terms: true, can_edit_terms: false } })],
       can_start: true,
     });
     render(<RecruiterCompanyContract companyId="C1" onChanged={vi.fn()} />);
@@ -102,7 +102,7 @@ describe("RecruiterCompanyContract (rec-030)", () => {
   });
 
   it("is read only without permissions and shows a coded 409 after reloading", async () => {
-    read = () => res({ current: contract({ permissions: { can_edit: false, can_upload: false, can_renew: false } }), previous: [], can_start: false });
+    read = () => res({ current: contract({ permissions: { can_edit: false, can_upload: false, can_renew: false, can_view_terms: true, can_edit_terms: false } }), previous: [], can_start: false, can_view_terms: true, can_edit_terms: true });
     render(<RecruiterCompanyContract companyId="C1" onChanged={vi.fn()} />);
     await screen.findByRole("list", { name: "Contract statuses" });
     expect(screen.queryByRole("button", { name: "Edit contract" })).toBeNull();
@@ -115,7 +115,7 @@ describe("RecruiterCompanyContract (rec-030)", () => {
     read = () => res({ detail: "boom" }, 500);
     render(<RecruiterCompanyContract companyId="C1" onChanged={vi.fn()} />);
     expect(await screen.findByText("Unable to load the contract.")).toBeTruthy();
-    read = () => res({ current: null, previous: [], can_start: false });
+    read = () => res({ current: null, previous: [], can_start: false, can_view_terms: true, can_edit_terms: true });
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("No contract yet.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Start contract" })).toBeNull();
@@ -128,7 +128,7 @@ describe("RecruiterCompanyContract (rec-030)", () => {
   });
 
   it("QA-02: an overlapping renewal shows the server's message on the form", async () => {
-    read = () => res({ current: contract({ status: "signed", status_label: "Signed", permissions: { can_edit: true, can_upload: true, can_renew: true } }), previous: [], can_start: true });
+    read = () => res({ current: contract({ status: "signed", status_label: "Signed", permissions: { can_edit: true, can_upload: true, can_renew: true, can_view_terms: true, can_edit_terms: true } }), previous: [], can_start: true, can_view_terms: true, can_edit_terms: true });
     write = () => res({ detail: { message: "These dates overlap a previous contract of this company", code: "contract_overlap" } }, 409);
     render(<RecruiterCompanyContract companyId="C1" onChanged={vi.fn()} />);
     fireEvent.click(await screen.findByRole("button", { name: "Start renewal" }));

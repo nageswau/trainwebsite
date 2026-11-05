@@ -74,6 +74,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 ### Phase 0: Roles and requirement foundations
 
 #### pob-001: Placement Officer role alignment and commercial-data permissions
+- **Status:** built (`DEC-SCOPE-403`, 2026-11-05); Q-01 answered by the builder's calls C1–C9 (`NEEDS_CONFIRMATION`).
 - **Business requirement:** document header "Primary users: Placement Officer / BDM, Recruiter, HR Manager, Recruitment Team Lead, Super Admin"; §17 "role-based access for candidate contact details, resumes, salary data, client terms and vendor commercials"; §18 AC "Permissions prevent unauthorised users from accessing … commercial information".
 - **Existing behavior:**
   - `placement_team` does both BD and recruitment, and `placement_manager` has team scope.

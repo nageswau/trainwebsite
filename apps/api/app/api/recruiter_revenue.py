@@ -16,6 +16,7 @@ from app.core.database import get_db
 from app.models import RecruiterInvoice, RecruiterPayment, User
 from app.schemas import RecCompanyRevenue, RecFeeOverride, RecInvoiceCancel, RecInvoiceCreate, RecInvoiceEnvelope, RecInvoicePage, RecPaymentCreate, RecRequirementRevenue
 from app.services import recruiter_companies as companies
+from app.services import recruiter_contracts as contracts
 from app.services import recruiter_revenue as svc
 from app.services.recruiter_requirements import ist_today
 
@@ -32,6 +33,7 @@ async def set_fee(requirement_id: UUID, payload: RecFeeOverride, user: User = De
     """RV1: the requirement's own fee per hire, or both null to fall back to the contract. Nothing changed = nothing recorded."""
     job = await svc.load_job(db, user, requirement_id, lock=True)
     svc.require_fee_setter(user)
+    await contracts.require_terms(db, user, "fee_set", edit=True)  # pob-001 C6: on top of the manager role
     svc.check_fee(payload.fee_basis, payload.fee_value)
     before = {"basis": job.fee_basis, "value": str(svc.money(job.fee_value))} if job.fee_basis else None
     after = {"basis": payload.fee_basis, "value": str(svc.money(payload.fee_value))} if payload.fee_basis else None
@@ -110,6 +112,7 @@ async def cancel_invoice(invoice_id: UUID, payload: RecInvoiceCancel, user: User
 @router.get("/companies/{company_id}/revenue", response_model=RecCompanyRevenue)
 async def company_revenue(company_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     svc.require_reader(user)
+    await svc.require_commercials(db, user, "company_revenue")
     return await svc.company_revenue(db, user, await companies.load_scoped(db, user, company_id))
 
 
@@ -123,4 +126,5 @@ async def list_invoices(
     db: AsyncSession = Depends(get_db),
 ):
     svc.require_reader(user)
+    await svc.require_commercials(db, user, "invoices")
     return await svc.invoice_page(db, user, view, company_id, limit, offset)

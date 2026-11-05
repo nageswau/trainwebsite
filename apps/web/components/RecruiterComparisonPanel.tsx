@@ -1,19 +1,18 @@
 import Link from "next/link";
 
 import {
-  COMPARISON_GROUPS, COMPARISON_PATH, comparisonHref, type Comparison, type ComparisonKey, type ComparisonRow,
+  COMPARISON_GROUPS, COMPARISON_PATH, comparisonGroups, comparisonHref, type Comparison, type ComparisonKey, type ComparisonRow,
 } from "@/lib/recruiterComparison";
 import type { PerformanceParams } from "@/lib/recruiterPerformance";
 import { inr } from "@/lib/recruiterRevenue";
 
 const FIELD = { display: "grid", gap: 4 } as const;
-const FIGURES = COMPARISON_GROUPS.flatMap((group): readonly { key: ComparisonKey; label: string }[] => group.figures);
-
 const STARTS = new Set<ComparisonKey>(COMPARISON_GROUPS.map((group) => group.figures[0].key)); // QA34-03: each group's first column
 const start = (key: ComparisonKey) => (STARTS.has(key) ? "group-start" : undefined);
 
-const value = (row: ComparisonRow, key: ComparisonKey) => (key === "revenue" ? inr(row.revenue) : row[key].toLocaleString("en-IN"));
-const cells = (row: ComparisonRow) => FIGURES.map((f) => <td key={f.key} className={start(f.key)}>{value(row, f.key)}</td>);
+type Figure = { key: ComparisonKey; label: string };
+const value = (row: ComparisonRow, key: ComparisonKey) => (key === "revenue" ? inr(row.revenue ?? "0") : row[key].toLocaleString("en-IN"));
+const cells = (row: ComparisonRow, figures: readonly Figure[]) => figures.map((f) => <td key={f.key} className={start(f.key)}>{value(row, f.key)}</td>);
 
 // rec-034 (EVID-018 §25, DEC-SCOPE-183): the twelve business-development and recruitment figures per recruiter, side by side, with the
 // Total as the footer (BP4). A recruiter sees only their own row (`own`: no names to open, no Total). The period form is rec-033's plain
@@ -24,6 +23,8 @@ export default function RecruiterComparisonPanel({ data, error, params, today, o
   const from = data?.date_from ?? params.from ?? "";
   const to = data?.date_to ?? params.to ?? "";
   const narrowed = !own && data?.recruiter ? data.recruiter : null;
+  const groups = comparisonGroups(data?.revenue_visible ?? false); // pob-001 C7: no Revenue column without the grant
+  const figures = groups.flatMap((group): readonly Figure[] => group.figures);
   const title = own ? "Your figures" : narrowed ? `${narrowed.full_name}'s figures` : "Team figures";
   return (
     <section className="card" aria-labelledby="comparison-title" style={{ marginTop: 16 }}>
@@ -55,13 +56,13 @@ export default function RecruiterComparisonPanel({ data, error, params, today, o
             <thead>
               <tr>
                 <td />
-                {COMPARISON_GROUPS.map((group) => (
+                {groups.map((group) => (
                   <th key={group.label} scope="colgroup" colSpan={group.figures.length} className="group-start">{group.label}</th>
                 ))}
               </tr>
               <tr>
                 <th scope="col">Recruiter</th>
-                {FIGURES.map((f) => <th key={f.key} scope="col" className={start(f.key)}>{f.label}</th>)}
+                {figures.map((f) => <th key={f.key} scope="col" className={start(f.key)}>{f.label}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -71,7 +72,7 @@ export default function RecruiterComparisonPanel({ data, error, params, today, o
                     {own || narrowed || !row.user_id ? row.full_name : <Link href={comparisonHref(from, to, row.user_id)}>{row.full_name}</Link>}
                     {!row.active && <>{" "}<span className="badge">Inactive</span></>}
                   </th>
-                  {cells(row)}
+                  {cells(row, figures)}
                 </tr>
               ))}
             </tbody>
@@ -79,7 +80,7 @@ export default function RecruiterComparisonPanel({ data, error, params, today, o
               <tfoot>
                 <tr>
                   <th scope="row">Total</th>
-                  {cells(data.totals)}
+                  {cells(data.totals, figures)}
                 </tr>
               </tfoot>
             )}

@@ -3861,3 +3861,12 @@ No new grant key. `GET /recruiter/candidates/website-registrations` admits the c
 own (primary recruiter, officer or collaborator) and the unassigned ones; the others read all. `hr_manager` still has no other candidate
 route: rows carry `can_open: false` and no contact details. Pinned by `apps/api/tests/test_hrc_025_website_registrations.py` and the rec-038
 matrix row.
+
+### 2.296 Client commercial terms *(added 2026-11-05 — `DEC-SCOPE-403`, pob-001)*
+
+`commercials.client.view` reads a contract's fee, payment terms, replacement policy and documents, revenue, invoices, receivables and the
+comparison's revenue; `.edit` (only together with view) changes the terms, uploads the documents and (with the manager role) overrides a
+requirement's fee. Defaults (migration 0278): `placement_team` and `placement_manager` view + edit, `bdm` view; super_admin holds all.
+A super admin revokes per role or per user (nehn-007 deny). `commercials.vendor.*` and `candidates.contact.view` are declared with no
+holder until pob-010/012 and pob-030 enforce them. The rec-031 role gate (RV10) and every record scope are unchanged and run first. Pinned
+by `apps/api/tests/test_pob_001_commercials.py` and `test_pob_001_migration.py`.
