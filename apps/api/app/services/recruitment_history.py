@@ -14,6 +14,9 @@ REDACTED = frozenset({
     "salary", "salary_min", "salary_max", "salary_currency", "salary_period", "benefits", *candidates.COMPENSATION,  # hrc-005 V7: a job's pay  # compensation (a JD's free-text salary; hrc-011's package detail)
     "mobile", "linkedin", "meeting_url", "contact_id",  # contact
     "strengths", "weaknesses", "recruiter_comments", "company_feedback",  # interview feedback text
+    # pob-002 (DEC-SCOPE-407 R8/R12): the History card is read by every requirement reader, so client terms and the decision-maker are
+    # recorded as "changed" (their values live in the commercial-gated revisions)
+    "payment_trigger", "payment_days", "payment_terms", "replacement_terms", "decision_maker_contact",
 })
 
 

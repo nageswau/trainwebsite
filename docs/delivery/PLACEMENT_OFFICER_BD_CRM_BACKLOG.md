@@ -113,6 +113,7 @@ Key: **FE/BE/DB** = frontend/backend/database; **AC** = acceptance criteria; **+
 - **Complexity:** medium. **Risk:** medium.
 
 #### pob-002: Requirement versioning, hiring process and per-requirement commercials
+- **Status:** built (`DEC-SCOPE-407`, 2026-11-05); Q-02 answered "always co-access" by the builder's call R9 (`NEEDS_CONFIRMATION`); the vendor link waits for pob-010.
 - **Business requirement:** §7 "Revisions should be versioned rather than silently replacing the original details"; field groups "Hiring process", "Commercial terms", "Ownership: … backup owner and approval status", "vendor if applicable".
 - **Existing behavior:**
   - The `Job` PATCH overwrites columns in place, and the audit keeps field names only. Only the JD is versioned.

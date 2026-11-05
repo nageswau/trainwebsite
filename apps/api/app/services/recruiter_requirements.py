@@ -25,6 +25,7 @@ from app.models import (
     JOB_WORK_MODES,
     AuditLog,
     Company,
+    CompanyContact,
     Job,
     JobApplication,
     JobApprovalSetting,
@@ -37,7 +38,9 @@ from app.models import (
     TalentPool,
     User,
 )
+from app.schemas import REC_REQUIREMENT_TERMS
 from app.services import company_pipeline
+from app.services import recruiter_contracts as contracts
 from app.services import requirement_owners as owners
 from app.services import skills as skills_master
 from app.services.bdm_appointments import IST
@@ -331,12 +334,13 @@ async def caller_scope(db: AsyncSession, user: User, *, officers: bool = False) 
     if user.role == ROLE:
         await recruiter_context(db, user)
         mine = Company.assigned_recruiter_user_id == user.id
-        return [or_(Job.assigned_recruiter_user_id == user.id, Job.company_id.in_(_companies_of(mine)), Job.id.in_(owners.jobs_of(JobAssignment.user_id == user.id)))]
+        return [or_(Job.assigned_recruiter_user_id == user.id, Job.company_id.in_(_companies_of(mine)), Job.id.in_(owners.jobs_of(JobAssignment.user_id == user.id)),
+                    Job.backup_owner_user_id == user.id)]  # fmt: skip  # pob-002 R9: the backup owner
     if user.role == MANAGER_ROLE:
         team = select(RecruiterProfile.user_id).where(RecruiterProfile.reporting_manager_user_id == user.id)
         unassigned = and_(Job.assigned_recruiter_user_id.is_(None), Job.company_id.in_(_companies_of(Company.assigned_recruiter_user_id.is_(None))))
         return [or_(Job.assigned_recruiter_user_id.in_(team), Job.company_id.in_(_companies_of(Company.assigned_recruiter_user_id.in_(team))),
-                    Job.id.in_(owners.jobs_of(JobAssignment.user_id.in_(team))), unassigned)]  # fmt: skip
+                    Job.id.in_(owners.jobs_of(JobAssignment.user_id.in_(team))), Job.backup_owner_user_id.in_(team), unassigned)]  # fmt: skip
     if user.role == "super_admin":
         return []
     if user.role == "bdm":  # R10: the assigned BDM of the company reads
@@ -362,8 +366,8 @@ WRITERS = (ROLE, owners.OFFICER_ROLE, "super_admin")  # hrc-006 (O5): in scope, 
 
 
 def _manages_owners(user: User, job: Job) -> bool:
-    """hrc-006 (O5): the primary owner, a placement manager (in scope) or super_admin."""
-    return user.role in (MANAGER_ROLE, "super_admin") or user.id == job.assigned_recruiter_user_id
+    """hrc-006 (O5): the primary owner, a placement manager (in scope) or super_admin. pob-002 (R9, Q-02): the backup owner too, always."""
+    return user.role in (MANAGER_ROLE, "super_admin") or user.id in (job.assigned_recruiter_user_id, job.backup_owner_user_id)
 
 
 def permissions(user: User, job: Job) -> dict[str, bool]:
@@ -414,6 +418,75 @@ async def check_references(db: AsyncSession, values: dict, stored: Job | None) -
         row = await db.scalar(select(model).where(model.id == new).with_for_update(read=True))
         if row is None or not usable(row):
             raise HTTPException(422, refusal)
+
+
+# --- pob-002 (DEC-SCOPE-407 R6-R9): the decision-maker, the backup owner and the per-requirement terms --------------------------------
+DECISION_MAKER_INVALID = "Choose an active contact of this company as the decision-maker"
+BACKUP_INVALID = "Choose an active recruiter as the backup owner"
+BACKUP_IS_PRIMARY = "The primary owner cannot also be the backup owner"
+NO_BACKUP_RIGHT = "Only the primary owner, the backup owner or a placement manager can change the backup owner"
+PAYMENT_DAYS = "Enter the number of days only when payment is due a number of days after joining"
+TRIGGER_LABELS = {"on_joining": "On joining", "days_after_joining": "Days after joining", "on_invoice": "On invoice"}
+
+
+def _sent_change(values: dict, stored: Job | None, column: str) -> bool:
+    return column in values and (stored is None or getattr(stored, column) != values[column])
+
+
+async def check_owner_fields(db: AsyncSession, user: User, values: dict, stored: Job | None, company_id: UUID, primary_id: UUID | None) -> None:
+    """R6: a decision-maker set or changed is an active contact of the requirement's company (FOR SHARE); keeping one deactivated since is
+    allowed. R9: the backup owner is changed only by those who manage the owners (403), is never the primary (409) and is an active
+    recruiter with a profile (422)."""
+    if _sent_change(values, stored, "decision_maker_contact_id") and values["decision_maker_contact_id"] is not None:
+        contact = await db.scalar(select(CompanyContact).where(CompanyContact.id == values["decision_maker_contact_id"]).with_for_update(read=True))
+        if contact is None or contact.company_id != company_id or not contact.active:
+            raise HTTPException(422, DECISION_MAKER_INVALID)
+    if not _sent_change(values, stored, "backup_owner_user_id"):
+        return
+    if stored is not None and not _manages_owners(user, stored):
+        logger.warning("recruiter_requirement_write_refused", extra={"extra_fields": {"actor_id": str(user.id), "job_id": str(stored.id), "route": "backup_owner"}})
+        raise HTTPException(403, NO_BACKUP_RIGHT)
+    target = values["backup_owner_user_id"]
+    if target is None:
+        return
+    if target == primary_id:
+        raise HTTPException(409, BACKUP_IS_PRIMARY)
+    eligible = [User.id == target, User.active.is_(True), User.role == ROLE, User.id.in_(select(RecruiterProfile.user_id))]
+    if await db.scalar(select(User.id).where(*eligible).with_for_update(read=True)) is None:
+        raise HTTPException(422, BACKUP_INVALID)
+
+
+async def require_terms_edit(db: AsyncSession, user: User, sent: set[str], route: str) -> None:
+    """R8: sending any per-requirement term (any value, null included) needs pob-001's effective edit -- 403 otherwise."""
+    if sent & set(REC_REQUIREMENT_TERMS):
+        await contracts.require_terms(db, user, route, edit=True)
+
+
+def check_terms(job: Job) -> None:
+    """R7, on the merged values: the days go with (and only with) "N days after joining"."""
+    if (job.payment_trigger == "days_after_joining") != (job.payment_days is not None):
+        raise HTTPException(422, PAYMENT_DAYS)
+
+
+async def commercial_terms(db: AsyncSession, job: Job, company: Company) -> dict:
+    """R7: each term with `inherited` = taken from the company's current contract (the fee: the rec-031 override, else the contract)."""
+    contract = await contracts.load_current(db, company)
+    own_fee = job.fee_basis is not None
+    fee_basis, fee_value = (job.fee_basis, job.fee_value) if own_fee else ((contract.fee_basis, contract.fee_value) if contract else (None, None))
+    inherited = {"payment_terms": contract.payment_terms if contract else None, "replacement_terms": contract.replacement_policy if contract else None}
+
+    def term(key: str) -> dict:
+        own = getattr(job, key)
+        return {"value": own if own is not None else inherited[key], "inherited": own is None and inherited[key] is not None}
+
+    return {
+        "fee": {"basis": fee_basis, "value": str(fee_value) if fee_value is not None else None, "inherited": not own_fee and fee_basis is not None},  # exact, as rec-031
+        "payment_trigger": job.payment_trigger,
+        "payment_trigger_label": TRIGGER_LABELS.get(job.payment_trigger) if job.payment_trigger else None,
+        "payment_days": job.payment_days,
+        "payment_terms": term("payment_terms"),
+        "replacement_terms": term("replacement_terms"),
+    }
 
 
 # --- hrc-005 V3: location ----------------------------------------------------------------------------------------------------------
@@ -527,9 +600,10 @@ async def requirement_out(db: AsyncSession, user: User, job: Job, *, refresh: bo
     company = await db.get(Company, job.company_id)
     skills = (await db.scalars(select(JobSkill).where(JobSkill.job_id == job.id).order_by(JobSkill.kind.desc(), JobSkill.position))).all()
     history = (await db.scalars(select(JobStatusHistory).where(JobStatusHistory.job_id == job.id).order_by(JobStatusHistory.created_at.desc(), JobStatusHistory.id))).all()
-    user_ids = {job.assigned_recruiter_user_id, job.created_by_user_id, job.submitted_by_user_id, job.updated_by_user_id, job.hiring_manager_user_id} | {
-        h.changed_by_user_id for h in history
-    }
+    user_ids = {job.assigned_recruiter_user_id, job.created_by_user_id, job.submitted_by_user_id, job.updated_by_user_id, job.hiring_manager_user_id,
+                job.backup_owner_user_id} | {h.changed_by_user_id for h in history}  # fmt: skip
+    decision_maker = await db.get(CompanyContact, job.decision_maker_contact_id) if job.decision_maker_contact_id else None
+    view_terms, edit_terms = await contracts.commercial_access(db, user)  # pob-001 / pob-002 R8
     people = {u.id: u for u in (await db.scalars(select(User).where(User.id.in_(user_ids - {None})))).all()}
     category = await db.get(RecJobCategory, job.job_category_id) if job.job_category_id else None
     lead_source = await db.get(RecLeadSource, job.lead_source_id) if job.lead_source_id else None
@@ -564,7 +638,16 @@ async def requirement_out(db: AsyncSession, user: User, job: Job, *, refresh: bo
         "benefits": job.benefits,
         "hiring_manager": person(people.get(job.hiring_manager_user_id)),
         "owners": await owners.owners_out(db, job.id),  # hrc-006 (O11): besides the primary (`assigned_recruiter`)
+        "backup_owner": person(people.get(job.backup_owner_user_id)),  # pob-002 R9
         "expected_joining_date": job.expected_joining_date,
+        # pob-002 R6: the client's hiring process
+        "interview_rounds": job.interview_rounds or [],
+        "screening_steps": job.screening_steps or [],
+        "decision_maker": {"id": decision_maker.id, "name": decision_maker.name, "designation": decision_maker.designation, "active": decision_maker.active}
+        if decision_maker else None,
+        "expected_tat_days": job.expected_tat_days,
+        # pob-002 R7/R8: absent (not null) without commercials.client.view
+        **({"commercial_terms": {**await commercial_terms(db, job, company), "can_edit": edit_terms and permissions(user, job)["can_edit"]}} if view_terms else {}),
         "skills": [
             {"id": s.id, "name": s.name, "kind": s.kind, "weight": s.weight, "skill_id": s.skill_id, "matched": s.skill_id is not None, "min_level": s.min_level}
             for s in skills
@@ -618,10 +701,15 @@ def catalogue() -> dict:
 async def audited_values(db: AsyncSession, job: Job, fields, *, skills: bool = False) -> dict:
     """hrc-004 B5: the values an edit's audit diff compares -- the category by name, and the skill lists as text when `skills`."""
     values = {k: getattr(job, k) for k in fields}
-    for column, model, name in (("job_category_id", RecJobCategory, "name"), ("lead_source_id", RecLeadSource, "name"), ("hiring_manager_user_id", User, "full_name")):
+    references = (("job_category_id", RecJobCategory, "name"), ("lead_source_id", RecLeadSource, "name"), ("hiring_manager_user_id", User, "full_name"),
+                  ("decision_maker_contact_id", CompanyContact, "name"), ("backup_owner_user_id", User, "full_name"))  # fmt: skip  # pob-002
+    for column, model, name in references:
         if column in values:  # hrc-005: by name, like the category
             row_id = values.pop(column)
             values[column.removesuffix("_user_id").removesuffix("_id")] = getattr(await db.get(model, row_id), name) if row_id else None
+    for column in ("interview_rounds", "screening_steps"):  # pob-002 R6: an ordered list reads as one line
+        if column in values:
+            values[column] = "; ".join(values[column]) if values[column] else None
     if skills:
         rows = (await db.scalars(select(JobSkill).where(JobSkill.job_id == job.id).order_by(JobSkill.position))).all()
         for kind in DEFAULT_WEIGHT:

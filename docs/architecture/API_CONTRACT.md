@@ -5993,3 +5993,19 @@ documents` multipart `kind`, `file`, `meeting_id?` → 201 `{document}`: 403 wit
 PDF/JPEG/PNG by content, 429 + `Retry-After` past 20 uploads an hour. `GET /recruiter/companies/documents/{document_id}/download` → the
 bytes as an attachment named `<kind>-<company code>.<ext>` (`no-store`, `nosniff`, sandbox CSP); an agreement needs
 `commercials.client.view` (403). Out of scope = 404 everywhere. Audit `recruiter_company_document.uploaded|downloaded`.
+
+## 12LA. Requirement revisions, hiring process and per-requirement terms (pob-002) — addendum, 2026-11-05
+
+`DEC-SCOPE-407`. **New:** `GET /api/v1/recruiter/requirements/{id}/revisions?limit&offset` → `{items: [{revision, author, reason,
+created_at, changed_fields: [{field, label}]}], total, limit, offset}`, newest first; `GET …/revisions/{n}?compare_to=m` → `{revision,
+author, reason, created_at, compared_to, values: [{field, label, value}], changes: [{field, label, before, after}] | null}` (default
+compare n-1; none for revision 1). Both: the requirement's read scope (404), an unknown revision 404, `Cache-Control: private, no-store`;
+commercial fields are left out without `commercials.client.view`. **Changed (additive):** `POST|PATCH /recruiter/requirements` accept
+`interview_rounds`, `screening_steps` (≤10 × ≤120), `decision_maker_contact_id`, `expected_tat_days` (1–365), `payment_trigger`,
+`payment_days` (1–365, with and only with `days_after_joining`), `payment_terms`, `replacement_terms` (≤2000), `backup_owner_user_id`, and
+PATCH `revision_reason` (≤500). The requirement detail gains `backup_owner`, `interview_rounds`, `screening_steps`, `decision_maker`
+`{id, name, designation, active}`, `expected_tat_days` and, with the grant, `commercial_terms` `{fee: {basis, value, inherited},
+payment_trigger, payment_trigger_label, payment_days, payment_terms: {value, inherited}, replacement_terms: {value, inherited}, can_edit}`.
+`GET …/assignment-options` accepts `role=backup`. **Errors:** a terms field without effective edit → 403 "Your role cannot view or change
+client commercial terms"; a backup change by anyone but the primary, the backup or super_admin → 403; the primary as backup → 409; an
+ineligible backup or decision-maker, or a days/trigger mismatch → 422.

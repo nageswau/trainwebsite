@@ -45,7 +45,38 @@ export type Requirement = RequirementRow & {
   updated_by: Person | null;
   owners: Owner[]; // hrc-006: besides the primary (`assigned_recruiter`)
   visibility: VisibilityDetail; // hrc-008
+  // pob-002 (DEC-SCOPE-407 R6/R7/R9): the hiring process, the terms (absent without commercials.client.view) and the backup owner
+  backup_owner?: Person | null; interview_rounds?: string[]; screening_steps?: string[]; decision_maker?: DecisionMaker | null;
+  expected_tat_days?: number | null; commercial_terms?: CommercialTerms;
 };
+export type DecisionMaker = { id: string; name: string; designation: string | null; active: boolean };
+export type PaymentTrigger = "on_joining" | "days_after_joining" | "on_invoice";
+export const PAYMENT_TRIGGER_OPTIONS: { id: PaymentTrigger; name: string }[] = [
+  { id: "on_joining", name: "On joining" }, { id: "days_after_joining", name: "Days after joining" }, { id: "on_invoice", name: "On invoice" },
+];
+/** pob-002 R7: `inherited` = taken from the company's current contract. */
+export type InheritedTerm = { value: string | null; inherited: boolean };
+export type CommercialTerms = {
+  fee: { basis: string | null; value: string | null; inherited: boolean }; payment_trigger: PaymentTrigger | null; payment_trigger_label: string | null;
+  payment_days: number | null; payment_terms: InheritedTerm; replacement_terms: InheritedTerm; can_edit: boolean;
+};
+/** pob-002 R5: one revision in the list, and one revision read (its values and its changes against `compared_to`). */
+export type RevisionField = { field: string; label: string };
+export type RevisionItem = { revision: number; author: Person | null; reason: string | null; created_at: string; changed_fields: RevisionField[] };
+export type RevisionPage = { items: RevisionItem[]; total: number; limit: number; offset: number };
+export type RevisionValue = string | number | boolean | null;
+export type RevisionDetail = Omit<RevisionItem, "changed_fields"> & {
+  compared_to: number | null; values: (RevisionField & { value: RevisionValue })[];
+  changes: (RevisionField & { before: RevisionValue; after: RevisionValue })[] | null;
+};
+
+/** A revision's stored value as text: empty is a dash, a yes/no reads as Yes/No, a vocabulary key as its label. */
+export function revisionText(value: RevisionValue): string {
+  if (value == null || value === "") return "—";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "number") return String(value);
+  return VOCABULARY_LABEL[value] ?? PAYMENT_TRIGGER_OPTIONS.find((o) => o.id === value)?.name ?? value;
+}
 /** hrc-008 (DEC-SCOPE-385 V1/V4): who sees the job; `can_change` = the caller holds `jobs.publish`. */
 export type Visibility = "internal" | "portal" | "segment" | "public";
 export type VisibilityDetail = { key: Visibility; label: string; segment_pool: Ref | null; can_change: boolean };
@@ -80,7 +111,7 @@ export function ownerChangeText(c: OwnerChange): string {
 }
 
 /** The owner picker: eligible people not already on the requirement, searched on the server. */
-export function ownerSearch(requirementId: string, role: OwnerRole) {
+export function ownerSearch(requirementId: string, role: OwnerRole | "backup") { // pob-002: `backup` = active recruiters for the backup owner
   return async (q: string, signal: AbortSignal): Promise<LookupPage> => {
     const query = new URLSearchParams({ role, limit: "20" });
     if (q) query.set("q", q);
@@ -131,6 +162,12 @@ export function skillList(text: string): string[] {
     .filter((s) => s && !seen.has(s.toLowerCase()) && seen.add(s.toLowerCase()));
 }
 
+/** pob-002 (R6): interview rounds or screening steps, one per line, in order; none = null (clears). */
+export function stepList(text: string): string[] | null {
+  const steps = text.split("\n").map((s) => s.trim()).filter(Boolean);
+  return steps.length ? steps : null;
+}
+
 export function experienceText(min: number | null, max: number | null): string {
   if (min == null && max == null) return "—";
   if (min == null) return `Up to ${yearsFromMonths(max)} years`;
@@ -166,13 +203,19 @@ export const FORM_FIELDS = [
   "salary_min", "salary_max", "salary_currency", "salary_period", "shift", "employment_type", "benefits", "hiring_manager_user_id",
   "joining_requirement", "expected_joining_date", "closes_on", "requirement_date", "priority", "required_skills", "preferred_skills",
   "description",
+  // pob-002 (R6/R7/R9)
+  "interview_rounds", "screening_steps", "decision_maker_contact_id", "expected_tat_days", "payment_trigger", "payment_days", "payment_terms",
+  "replacement_terms", "backup_owner_user_id",
 ] as const;
+const LIST_FIELDS = new Set<string>(["interview_rounds", "screening_steps"]);
+const NUMBER_FIELDS = new Set<string>(["vacancies", "expected_tat_days", "payment_days"]);
 export type FormField = (typeof FORM_FIELDS)[number];
 export type FormValues = Record<FormField, string>;
 
 export function valuesOf(r?: Requirement): FormValues {
   const text = (v: string | number | null | undefined) => (v == null ? "" : String(v));
   const skills = (kind: string) => (r?.skills ?? []).filter((s) => s.kind === kind).map((s) => s.name).join(", ");
+  const terms = r?.commercial_terms;
   return {
     title: text(r?.title), department: text(r?.department), job_category_id: text(r?.job_category?.id), vacancies: text(r?.vacancies),
     qualification: text(r?.qualification), experience_min_months: yearsFromMonths(r?.experience_min_months ?? null),
@@ -187,19 +230,27 @@ export function valuesOf(r?: Requirement): FormValues {
     relocation_required: r?.relocation_required == null ? "" : r.relocation_required ? "yes" : "no", travel_requirement: text(r?.travel_requirement),
     salary_currency: text(r?.salary_currency), salary_period: text(r?.salary_period), benefits: text(r?.benefits),
     hiring_manager_user_id: text(r?.hiring_manager?.id), expected_joining_date: text(r?.expected_joining_date),
+    // pob-002: one round or step per line; a term the contract supplies is blank (the requirement's own value is what is edited)
+    interview_rounds: (r?.interview_rounds ?? []).join("\n"), screening_steps: (r?.screening_steps ?? []).join("\n"),
+    decision_maker_contact_id: text(r?.decision_maker?.id), expected_tat_days: text(r?.expected_tat_days),
+    payment_trigger: text(terms?.payment_trigger), payment_days: text(terms?.payment_days),
+    payment_terms: terms && !terms.payment_terms.inherited ? text(terms.payment_terms.value) : "",
+    replacement_terms: terms && !terms.replacement_terms.inherited ? text(terms.replacement_terms.value) : "",
+    backup_owner_user_id: text(r?.backup_owner?.id),
   };
 }
 
 /** A form value as the API expects it: blank is null (clears on edit); numbers when they are numbers (else the server's 422 names it). */
 export function wire(key: FormField, value: string): unknown {
   if (key === "required_skills" || key === "preferred_skills") return skillList(value);
+  if (LIST_FIELDS.has(key)) return stepList(value);
   const trimmed = value.trim();
   if (trimmed === "") return key === "description" ? "" : null;
   if (key === "experience_min_months" || key === "experience_max_months") {
     const months = monthsFromYears(trimmed);
     return Number.isNaN(months) ? trimmed : months;
   }
-  if (key === "vacancies" && /^\d+$/.test(trimmed)) return Number(trimmed);
+  if (NUMBER_FIELDS.has(key) && /^\d+$/.test(trimmed)) return Number(trimmed);
   if (key === "relocation_required") return trimmed === "yes";
   if (key === "salary_currency") return trimmed.toUpperCase();
   return trimmed;
