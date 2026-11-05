@@ -86,7 +86,7 @@ from app.models import (
     User,
     VisaCase,
 )
-from app.notifications.dispatch import queue_deliveries
+from app.notifications.dispatch import enqueue_recruiter_email, queue_deliveries
 from app.schemas import (
     AgentDocumentReview,
     AgentStudentCreate,
@@ -148,6 +148,7 @@ from app.services import (
     course_skills,
     document_access,
     hr_reviews,
+    interview_results,
     interviews,
     it_enrollments,
     it_lifecycle,
@@ -2371,11 +2372,18 @@ async def update_interview(interview_id: UUID, payload: dict, user: User = Depen
             setattr(item, key, payload[key])
     # rec-020 (IV11): a changed time is recorded as a reschedule; a known result also sets the status when the move is allowed.
     scheduled_at = datetime.fromisoformat(payload["scheduled_at"]) if payload.get("scheduled_at") else None
+    decided_before = item.status in interviews.FINAL
     await interviews.legacy_update(db, user, item, application, scheduled_at, payload.get("result"), await db_now(db))
     if application and item.result in {"selected", "rejected"}:  # rec-017 A2: a selected result now means Selected
-        applications.follow(db, user, application, item.result, f"Interview result: {item.result}")
+        note = f"Interview result: {item.result}"
+        if item.status == item.result and not decided_before:  # hrc-030 (R3): the move recorded a decision -- held until it is published
+            await interview_results.record(db, user, item, application, item.result, decides=True, note=note)
+        else:
+            applications.follow(db, user, application, item.result, note)
     await _audit(db, user, "interview.update", "interview", item.id, payload)
     await db.commit()
+    for message_id in interview_results.take_emails(db):
+        enqueue_recruiter_email(message_id)
     return {"id": item.id, "result": item.result, "status": item.status}
 
 
@@ -2441,6 +2449,7 @@ async def create_job_offer(payload: dict, user: User = Depends(get_current_user)
     if status is None:
         raise HTTPException(422, offers.UNKNOWN_STATUS)
     joining = date.fromisoformat(payload["joining_date"]) if payload.get("joining_date") else None
+    await interview_results.require_no_unreleased_final(db, application.id)  # hrc-030 (R8): an offer would reveal the selection
     applications.follow(db, user, application, "selected", "Offer recorded")
     item = await offers.insert(
         db, user, application, status,

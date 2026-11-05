@@ -2,6 +2,7 @@
 // decides scope, every rule (the moves, AC2's after-the-time gate, the clash) and what the viewer may do (`allowed_statuses`, `can_edit`,
 // `can_reschedule`, `can_schedule`); the UI only offers what it allows.
 import { isPage, type Page } from "@/lib/apiErrors";
+import type { InterviewResult } from "@/lib/interviewResults";
 
 /** EVID-018 §14 (L626-L634), in source order and wording. */
 export const ROUNDS = [
@@ -80,6 +81,8 @@ export type RecInterview = {
   phone_details: string | null; instructions: string | null; documents_required: string | null; cancel_reason: string | null; can_cancel: boolean;
   // hrc-029 (DEC-SCOPE-405 V9): the panel, lead first, with each member's own feedback; optional so older fixtures stay valid
   interviewers?: PanelMember[]; can_assign?: boolean;
+  // hrc-030 (DEC-SCOPE-409 R10): the decision as a result, and whether it has been published to the candidate
+  result_release?: InterviewResult | null;
 };
 // hrc-029 (V7): a panel member's own feedback, as the recruiter and the member read it
 export type PanelFeedback = {

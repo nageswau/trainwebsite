@@ -38,7 +38,7 @@ from app.models import (
 )
 from app.notifications.dispatch import queue_deliveries
 from app.schemas import RecInterviewCreate, RecInterviewUpdate
-from app.services import applications, calendar_ics, company_pipeline, mailer, recruiter_companies, recruitment_history
+from app.services import applications, calendar_ics, company_pipeline, interview_results, mailer, recruiter_companies, recruitment_history
 from app.services import recruiter_requirements as requirements
 
 logger = logging.getLogger("app.recruiter")
@@ -71,7 +71,7 @@ DEFAULT_LENGTH = timedelta(minutes=60)  # the invite's end when none is set
 
 
 def unreleased_status(status: str) -> str:
-    """hrc-001 (DEC-SCOPE-371 H3): until hrc-030 adds the release step, a decision reads as Completed outside the staff screens."""
+    """hrc-001 (DEC-SCOPE-371 H3): a decision reads as Completed outside the staff screens -- until hrc-030 publishes its result."""
     return "completed" if status in (*FINAL, "on_hold") else status
 RESCHEDULABLE = (*OPEN, "on_hold", "no_show")
 DECIDING_ROUNDS = ("final_round", "client_round")  # IV8: only these rounds' Selected selects the application
@@ -283,9 +283,10 @@ def cancel(db: AsyncSession, user: User, interview: Interview, reason: str) -> s
     return previous
 
 
-def change_status(db: AsyncSession, user: User | None, interview: Interview, application: JobApplication, target: str, note: str | None, now: datetime) -> str:
+async def change_status(db: AsyncSession, user: User | None, interview: Interview, application: JobApplication, target: str, note: str | None,
+                        now: datetime) -> str:  # fmt: skip
     """IV3 / AC2: the move (409), then the time (422). IV8: Rejected rejects the application; Selected selects it on a deciding round.
-    Returns the previous status."""
+    hrc-030 (R3): the decision is recorded as a result, held from the candidate until it is published. Returns the previous status."""
     if interview.status not in MOVES[target]:
         raise HTTPException(409, f"An interview cannot move from {status_label(interview.status)} to {status_label(target)}")
     if target in AFTER_START and interview.scheduled_at > now:
@@ -294,8 +295,9 @@ def change_status(db: AsyncSession, user: User | None, interview: Interview, app
     interview.status = target
     _event(db, interview, user, "status", from_status=previous, note=note)
     label = round_label(interview.round) or "Interview"
-    if target == "rejected" or (target == "selected" and interview.round in DECIDING_ROUNDS):
-        applications.follow(db, user, application, target, f"{label}: {status_label(target)}")
+    if target in FINAL:
+        decides = target == "rejected" or interview.round in DECIDING_ROUNDS
+        await interview_results.record(db, user, interview, application, target, decides=decides, note=f"{label}: {status_label(target)}")
     if user is not None:
         audit(db, user, "status", interview, {"from": previous, "to": target, "changes": {"status": [previous, target]}})
     return previous
@@ -335,7 +337,7 @@ async def save_feedback(db: AsyncSession, user: User, interview: Interview, appl
     if interview.status != "completed" and not (row is not None and interview.status in FEEDBACK_EDITABLE):
         raise HTTPException(409, NOT_COMPLETED)
     decision = sent["final_decision"]
-    previous = change_status(db, user, interview, application, decision, "Feedback", now) if decision and decision != interview.status else None
+    previous = await change_status(db, user, interview, application, decision, "Feedback", now) if decision and decision != interview.status else None
     changed = [f for f in FEEDBACK_FIELDS if row is None or getattr(row, f) != sent[f]]
     before = {f: getattr(row, f) for f in FEEDBACK_FIELDS} if row is not None else {}  # hrc-004: feedback text is redacted
     if changed:
@@ -530,8 +532,8 @@ async def _history(db: AsyncSession, ids: list[UUID]) -> dict[UUID, list]:
     return history
 
 
-def _out(user: User, now: datetime, history: dict, feedback: dict, panel: dict, i: Interview, a: JobApplication, c: Candidate, job: Job, company: Company,
-         contact) -> dict:
+def _out(user: User, now: datetime, history: dict, feedback: dict, panel: dict, results: dict, i: Interview, a: JobApplication, c: Candidate, job: Job,
+         company: Company, contact) -> dict:  # fmt: skip
     writer = applications.can_write(user)
     return {
         "id": i.id, "code": i.interview_code, "round": i.round, "round_label": round_label(i.round), "scheduled_at": i.scheduled_at, "mode": i.mode,
@@ -555,13 +557,14 @@ def _out(user: User, now: datetime, history: dict, feedback: dict, panel: dict, 
         "can_feedback": can_feedback(user, i.status, i.id in feedback),
         "interviewers": panel.get(i.id, []),  # hrc-029 (V9)
         "can_assign": writer and i.status not in CLOSED,
+        "result_release": interview_results.out(results.get(i.id), i, job, company),  # hrc-030 (R10)
     }
 
 
 async def _items(db: AsyncSession, user: User, now: datetime, rows) -> list[dict]:
     ids = [row[0].id for row in rows]
-    history, feedback, panel = await _history(db, ids), await _feedback(db, ids), await _panel(db, ids)
-    return [_out(user, now, history, feedback, panel, *row) for row in rows]
+    history, feedback, panel, results = await _history(db, ids), await _feedback(db, ids), await _panel(db, ids), await interview_results.for_interviews(db, ids)
+    return [_out(user, now, history, feedback, panel, results, *row) for row in rows]
 
 
 async def one(db: AsyncSession, user: User, interview_id: UUID, now: datetime) -> dict:

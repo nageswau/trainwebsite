@@ -12041,3 +12041,33 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   editing a batch or calendar entry in place (remove and re-add); student data (pob-014); vacancy sharing and outcomes (pob-015).
 - **Numbering:** migration `0288_college_placement`; API §12LD; RBAC §2.303.
 - **Feature ID authorized:** `pob-013`. **Status:** built on `worktree-pob-013`.
+
+### DEC-SCOPE-409 — Result approval and release (`hrc-030`)
+
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-030` (PDF §9 "publish only after release conditions"; §10.2 "Release
+  results automatically only if configured; otherwise require approval and a Publish Result action"; §13 "Feedback submitted → approval
+  queue; Result approved → publish + notify"; §17 QA; PDF classified `UNVERIFIED`). Scope approved by the owner 2026-11-01 (backlog Q-00);
+  the owner said to proceed with the recommended answers, so R1–R13 are **the builder's calls (`NEEDS_CONFIRMATION`)**, answering Q-30.
+  Dependencies hrc-002 (`DEC-SCOPE-374`), hrc-028 (`DEC-SCOPE-400`) and hrc-029 (`DEC-SCOPE-405`) merged. Design
+  `docs/superpowers/specs/2026-11-05-hrc-030-result-release-design.md`.
+- **Behaviour:** a Selected or Rejected interview decision (rec-020 status, rec-021 feedback, the legacy `/workflows/it/interviews` PATCH)
+  is recorded as an interview result. The application still moves for staff exactly as before, but the candidate's view of it
+  (`candidate_status`) is held until a `results.release` holder (the HR Manager by default) publishes the result from "Result approvals"
+  (`/it/hr-manager/results`) with a candidate-facing message — or at once when the global auto-release switch is on. Publishing moves the
+  candidate's view, shows the result in the candidate's "My results" card and interview schedule, and notifies the candidate once (the
+  message only, never feedback). Offers wait for the final result's release.
+- **Builder's calls:** R1 table `interview_results` (one per decided interview; `is_final` marks the decision that decides the application).
+  R2 no stored draft — recording the decision is the submission. R3 `applications.follow(..., visible=False)` holds the candidate's view;
+  On Hold is not a result. R4 one global switch `result_release_settings.auto_release` (default off = approval; super_admin changes it); a
+  per-job override is `NEEDS_CONFIRMATION`. R5 `results.release` default `hr_manager`; queue division-wide; never your own decision (403).
+  R6 release stores the message (default text when blank), audits without it, notifies once (in-app + deliveries, or a queued email for a
+  candidate without a login). R7 (Q-30) a released result cannot be withdrawn (409 on a second release). R8 an offer is 409 while the
+  final result is unreleased. R9 `GET /candidate/results` (candidate and IT student) — own released results only; the schedule shows the
+  released outcome. R10 recruiter interview reads gain `result_release` (the legacy `result` field is unchanged). R11 queue + settings
+  routes. R12 no backfill. R13 web.
+- **Not built:** withdrawing a released result (Q-30); a per-job release setting; showing decisions on the employer list or the
+  interviewer workspace (hrc-001 H3 still applies there); the full candidate-portal results section (hrc-031).
+- **QA fixes:** QA-01 the super admin (the only setting editor) gets an "Interview Result Approvals" menu link; QA-02 the queue page pages
+  through `?offset=` (Previous / Next page) instead of stopping at the first 50.
+- **Numbering:** migration `0289_interview_results` (after pob-013's `0288_college_placement`); API §12LC; RBAC §2.302.
+- **Feature ID authorized:** `hrc-030`. **Status:** built on `worktree-hrc-030`.
