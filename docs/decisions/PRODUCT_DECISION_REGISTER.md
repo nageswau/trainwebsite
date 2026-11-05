@@ -11912,8 +11912,26 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   cannot read candidates (hrc-002), so it is not seeded.
 - **Numbering:** migration `0277_saved_candidate_searches`; API §12KT; RBAC §2.294.
 - **Feature ID authorized:** `hrc-020`. **Status:** built on `worktree-hrc-020`.
+### DEC-SCOPE-402 — New Website Registrations workspace (`hrc-025`)
 
-### DEC-SCOPE-402 — Placement Officer role alignment and commercial-data permissions (`pob-001`)
+- **Source:** `docs/delivery/HR_RECRUITMENT_CRM_BACKLOG.md` `hrc-025` (PDF §6.2; PDF classified `UNVERIFIED`). Scope approved by the owner
+  2026-11-01 (backlog Q-00). Dependencies merged: hrc-024 (`DEC-SCOPE-393`), hrc-016 (`DEC-SCOPE-387`), hrc-021 (`DEC-SCOPE-397`). The owner
+  said to proceed with the recommended answers, so Q-26 and N1–N10 are **the builder's calls (`NEEDS_CONFIRMATION`)**. Design
+  `docs/superpowers/specs/2026-11-05-hrc-025-website-registrations-workspace-design.md`.
+- **Builder's calls:** N1 listed = pool candidates (not archived) whose source is **Website** (hrc-022/023); Q-26 (b) imported and
+  recruiter-added candidates are not shown; registered at = `created_at`, newest first. N2 a recruiter reads their own (hrc-012 "mine") and
+  the unassigned queue; `placement_manager`, `super_admin`, `hr_team` and `hr_manager` read all — `hr_manager` gains this read-only list
+  only (no contact details, no link to the candidate), resolving hrc-012 O5's "HR Manager sees all" for this screen. N3 one `view` filter:
+  unassigned, new, contacted, screened, active, inactive (hrc-021's derived engagement), duplicate_review (an open hrc-014 pair); unknown
+  422. N4 columns: name/code, registered, skills (3 + count), location, completeness (hrc-010/019), assignment, engagement, first contact,
+  next follow-up, conversion. N5 first contact is **derived** (earliest call or message; no column, no migration). N6 next follow-up = the
+  earliest open hrc-016 task. N7 conversion registered → applied → placed. N8 Q-26 (a) contact SLA **24 hours** (met / pending / breached,
+  database clock), breached rows badged. N9 read live per request. N10 nav entry for recruiters, managers, super_admin and the HR Manager.
+- **Not built:** a configurable SLA; assigning from the list (hrc-012's panel does it); an SLA filter or alert; hr_team nav entry.
+- **Numbering:** no migration; API §12KU; RBAC §2.295.
+- **Feature ID authorized:** `hrc-025`. **Status:** built on `worktree-hrc-025`.
+
+### DEC-SCOPE-403 — Placement Officer role alignment and commercial-data permissions (`pob-001`)
 
 - **Source:** `docs/delivery/PLACEMENT_OFFICER_BD_CRM_BACKLOG.md` `pob-001` (doc header "Primary users", §17 role-based access for client
   terms and vendor commercials, §18 AC "Permissions prevent unauthorised users from accessing … commercial information"; source classified
@@ -11932,5 +11950,5 @@ The recruiter requirements module still bars HR (Q-28) -- an open question for t
   override needs edit on top of the manager role. C7 comparison `revenue_visible`. C8 web. C9 refusals logged without values.
 - **Not built:** vendor commercials (no vendor concept until pob-010); candidate phone/email hiding (pob-030's share gate); management
   finance screens unchanged (`can_view_finance`).
-- **Numbering:** migration `0278_commercial_grants`; API §12KU; RBAC §2.295.
+- **Numbering:** migration `0278_commercial_grants`; API §12KV; RBAC §2.296.
 - **Feature ID authorized:** `pob-001`. **Status:** built on `worktree-pob-001`.

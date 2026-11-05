@@ -31,7 +31,7 @@ export type Contract = {
   end_date: string | null; expired_on: string | null; contract_document: ContractDocument | null; mou_document: ContractDocument | null;
   is_current: boolean; created_by: ContractPerson; permissions: ContractPermissions; created_at: string; updated_at: string;
 } & Partial<ContractTerms>;
-// pob-001 (DEC-SCOPE-402 C5): the terms are absent without `commercials.client.view`; `can_view_terms` / `can_edit_terms` say which.
+// pob-001 (DEC-SCOPE-403 C5): the terms are absent without `commercials.client.view`; `can_view_terms` / `can_edit_terms` say which.
 export type ContractTerms = { fee_basis: FeeBasis | null; fee_value: string | null; payment_terms: string | null; replacement_policy: string | null };
 export type ContractPermissions = { can_edit: boolean; can_upload: boolean; can_renew: boolean; can_view_terms: boolean; can_edit_terms: boolean };
 export type CompanyContracts = { current: Contract | null; previous: Contract[]; can_start: boolean; can_view_terms: boolean; can_edit_terms: boolean };

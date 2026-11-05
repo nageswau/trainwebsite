@@ -8,7 +8,7 @@ import type { Comparison, ComparisonRow } from "@/lib/recruiterComparison";
 import type { Contract } from "@/lib/recruiterContracts";
 import { canSeeRevenue } from "@/lib/recruiterRevenue";
 
-// pob-001 (DEC-SCOPE-402 C5/C7/C8): without `commercials.client.view` the API leaves the terms out; the screens drop their rows, inputs,
+// pob-001 (DEC-SCOPE-403 C5/C7/C8): without `commercials.client.view` the API leaves the terms out; the screens drop their rows, inputs,
 // downloads, the Revenue column and the Receivables menu item instead of showing blanks.
 const res = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const DOC = { name: "signed.pdf", content_type: "application/pdf", uploaded_at: "2026-10-01T05:30:00Z" };

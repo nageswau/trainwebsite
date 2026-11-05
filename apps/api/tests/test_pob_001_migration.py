@@ -1,4 +1,4 @@
-"""pob-001 -- migration 0278_commercial_grants (DEC-SCOPE-402 C3): the chain, the seed and the round trip, in a throwaway database
+"""pob-001 -- migration 0278_commercial_grants (DEC-SCOPE-403 C3): the chain, the seed and the round trip, in a throwaway database
 (the hrc-001 0250 pattern). Plain tests: alembic/env.py calls asyncio.run()."""
 
 import importlib.util

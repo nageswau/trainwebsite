@@ -21,4 +21,4 @@ Spec: `docs/superpowers/specs/2026-11-05-pob-001-commercial-permissions-design.m
    (`canSeeRevenue(role, permissions)`), the two detail pages, `RecruiterComparisonPanel.tsx`, `lib/navigation.ts`.
 8. **e2e** `pob-001-commercials.spec.ts`: super admin revokes `commercials.client.*` from `placement_team`; the recruiter sees no fee on
    the company page and no Revenue section; restore the defaults afterwards.
-9. **Docs:** decision register `DEC-SCOPE-402`, API §12KU, RBAC §2.295, RTM rows, backlog status line.
+9. **Docs:** decision register `DEC-SCOPE-403`, API §12KV, RBAC §2.296, RTM rows, backlog status line.

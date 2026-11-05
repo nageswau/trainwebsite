@@ -5932,10 +5932,19 @@ super_admin, hr_team); other roles 403 before the body is read, anonymous 401.
   role, Current company, Experience (years), Location, Notice (days), Skills, Source, Status, Engagement, and Expected salary (₹ a year)
   only with the compensation grant; never contact details. One audit row `crm.export` (`entity_type` `candidate_search`, `entity_id`
   `find_candidates`, metadata `{format, filters, rows}`). Migration `0277` adds the table and seeds the grant.
+## 12KU. New Website Registrations workspace (hrc-025) — addendum, 2026-11-05
 
-## 12KU. Commercial-data permissions (pob-001) — addendum, 2026-11-05
+`DEC-SCOPE-402`, no migration. **New:** `GET /api/v1/recruiter/candidates/website-registrations?view=&limit=&offset=` (declared before
+`/{candidate_id}`) → `{items, total, limit, offset, sla_hours}`. `view` ∈ `unassigned`, `new`, `contacted`, `screened`, `active`, `inactive`,
+`duplicate_review` (else 422); `limit` 1–100 (default 50). Each item: `{id, candidate_code, name, registered_at, location, skills[] (≤ 3,
+primary first), skill_count, completeness (0–100), owner {id, full_name, active} | null, engagement {key, label}, first_contact_at,
+next_follow_up_at, conversion (registered | applied | placed), contact_sla (met | pending | breached), duplicate_review, can_open}`. Only
+candidates with source Website, in the pool, not archived; newest first. No email or phone. Read only (no audit row). A `placement_team`
+caller gets their own and the unassigned ones; 403 for roles outside §2.295; 401 signed out.
 
-`DEC-SCOPE-402`. **Changed (additive):** `GET /api/v1/admin/permissions/catalogue` lists `commercials.client` (view, edit),
+## 12KV. Commercial-data permissions (pob-001) — addendum, 2026-11-05
+
+`DEC-SCOPE-403`. **Changed (additive):** `GET /api/v1/admin/permissions/catalogue` lists `commercials.client` (view, edit),
 `commercials.vendor` (view, edit) and `candidates.contact` (view). Contract responses (`GET|POST|PATCH /recruiter/companies/{id}/contracts`,
 `PUT …/contracts/document`) leave out `fee_basis`, `fee_value`, `payment_terms` and `replacement_policy` without
 `commercials.client.view` (absent, not null); `permissions` gains `can_view_terms` and `can_edit_terms`, and the company's contracts gain

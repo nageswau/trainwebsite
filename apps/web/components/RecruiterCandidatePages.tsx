@@ -14,6 +14,7 @@ import RecruiterOwnershipSetting from "@/components/RecruiterOwnershipSetting";
 import RecruiterSelfServiceSetting from "@/components/RecruiterSelfServiceSetting";
 import RecruiterTalentPool from "@/components/RecruiterTalentPool";
 import RecruiterTalentPools from "@/components/RecruiterTalentPools";
+import RecruiterWebsiteRegistrations from "@/components/RecruiterWebsiteRegistrations";
 import { ApiError, serverApi } from "@/lib/api";
 import { PORTAL_NAV, RECRUITER_MANAGER_NAV, RECRUITER_NAV, SUPER_ADMIN_NAV, type NavItem } from "@/lib/navigation";
 import { PLACEMENT_MANAGER_LABEL, RECRUITER_ROLE_LABEL } from "@/lib/recruiter";
@@ -34,14 +35,14 @@ const SHELLS: Record<string, { nav: NavItem[]; label: string; writes: boolean }>
 };
 type Shell = { nav: NavItem[]; label: string; writes: boolean; userName: string };
 
-async function shell(): Promise<Shell | React.ReactElement> {
+async function shell(extra: typeof SHELLS = {}): Promise<Shell | React.ReactElement> {
   let user: User;
   try {
     user = await serverApi<User>("/api/v1/auth/me");
   } catch (e) {
     return accessUnavailable(e, "/it/login");
   }
-  const found = SHELLS[user.role];
+  const found = { ...SHELLS, ...extra }[user.role];
   return found ? { ...found, userName: user.full_name } : accessDenied(user, "Your role cannot view candidates");
 }
 
@@ -77,6 +78,27 @@ export async function CandidateListPage() {
       {s.writes && <RecruiterSelfServiceSetting />}
       <Suspense fallback={<p className="muted" role="status">Loading candidates…</p>}>
         <RecruiterCandidateList sourceFilter={s.writes} />
+      </Suspense>
+    </Frame>
+  );
+}
+
+/** hrc-025 (DEC-SCOPE-402): the New Website Registrations workspace -- the candidate readers' shells plus the HR Manager's (N2: this list
+ *  only). The API decides what each reads (a recruiter: their own and the unassigned queue). */
+export async function WebsiteRegistrationsPage() {
+  const s = await shell({ hr_manager: { nav: PORTAL_NAV["it/hr-manager"], label: "HR Manager", writes: false } });
+  if (!("nav" in s)) return s;
+  return (
+    <Frame s={s}>
+      <div className="portal-title">
+        <div>
+          <div className="eyebrow">Recruitment</div>
+          <h2>New website registrations</h2>
+          <p className="muted">People who registered or applied on the website, newest first: who has them, first contact, next follow-up and conversion.</p>
+        </div>
+      </div>
+      <Suspense fallback={<p className="muted" role="status">Loading website registrations…</p>}>
+        <RecruiterWebsiteRegistrations />
       </Suspense>
     </Frame>
   );

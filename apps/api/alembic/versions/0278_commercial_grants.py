@@ -3,7 +3,7 @@
 Revision ID: 0278_commercial_grants
 Revises: 0277_saved_candidate_searches
 
-docs/superpowers/specs/2026-11-05-pob-001-commercial-permissions-design.md (DEC-SCOPE-402 C3). Seed only, no schema change: SEED is a
+docs/superpowers/specs/2026-11-05-pob-001-commercial-permissions-design.md (DEC-SCOPE-403 C3). Seed only, no schema change: SEED is a
 frozen copy of the new `rbac.DEFAULT_GRANTS` keys at this revision. A row that is already there is left alone; no existing row changes.
 The vendor and candidate-contact keys have no default holder, so nothing is seeded for them. The downgrade removes the three new resources'
 grants and overrides (the keys leave the catalogue with it); other resources are untouched.

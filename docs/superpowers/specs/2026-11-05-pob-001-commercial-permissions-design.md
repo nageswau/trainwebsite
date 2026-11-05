@@ -4,7 +4,7 @@
   terms and vendor commercials", §18 AC "Permissions prevent unauthorised users from accessing … commercial information"; source classified
   `UNVERIFIED`). The owner assigned pob-001 for build on 2026-11-05 and said to proceed with the recommended answers, so C1–C9 below are
   **the builder's calls (`NEEDS_CONFIRMATION`)** for Q-01. Dependency **hrc-002** is merged (`DEC-SCOPE-374`, PR #446). Decision
-  `DEC-SCOPE-402`.
+  `DEC-SCOPE-403`.
 
 ## Intent
 Client commercial terms (a contract's fee, payment terms and replacement policy, a requirement's fee override, and everything priced from
@@ -83,4 +83,4 @@ rec-030/031/034 tests (fee fields — default grants keep them green), hrc-002 c
 route matrix (status codes unchanged for default roles), navigation tests (resource tag), web vitest fixtures for the contract/revenue cards.
 
 ## Numbering
-Migration `0278_commercial_grants` (siblings hold 0274/0275), `DEC-SCOPE-402`, API §12KU, RBAC §2.295 — re-checked at merge.
+Migration `0278_commercial_grants` (siblings hold 0274/0275), `DEC-SCOPE-403`, API §12KV, RBAC §2.296 — re-checked at merge.

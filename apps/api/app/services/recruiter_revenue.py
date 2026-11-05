@@ -83,7 +83,7 @@ NO_COMMERCIALS = "Your role cannot view client commercials"  # pob-001 C6
 
 
 async def require_commercials(db: AsyncSession, user: User, route: str) -> None:
-    """pob-001 (DEC-SCOPE-402 C6): every revenue route needs `commercials.client.view`, after the role gate (RV10)."""
+    """pob-001 (DEC-SCOPE-403 C6): every revenue route needs `commercials.client.view`, after the role gate (RV10)."""
     await contracts.require_terms(db, user, route, edit=False, message=NO_COMMERCIALS)
 
 
