@@ -28,7 +28,7 @@ from app.models import (
     User,
 )
 from app.schemas import RecFollowUpCreate, RecMeetingCreate, RecMeetingOutcome, RecMeetingUpdate
-from app.services import company_pipeline
+from app.services import company_pipeline, contact_status
 from app.services import recruiter_companies as companies
 from app.services import recruiter_follow_ups as follow_ups
 from app.services.lead_follow_ups import DUE_FAR, DUE_PAST, HORIZON
@@ -203,6 +203,9 @@ async def check_people(db: AsyncSession, company_id: UUID, contact_id: UUID | No
             CompanyContact.id.in_(added), CompanyContact.company_id == company_id, CompanyContact.active))
         if found != len(added):
             raise field_error("participant_contact_ids", CONTACT_INVALID)
+    invited = added | ({contact_id} - kept_contacts if contact_id is not None else set())
+    if invited and await db.scalar(select(CompanyContact.id).where(CompanyContact.id.in_(invited), CompanyContact.status == "do_not_contact").limit(1)):
+        raise HTTPException(409, contact_status.DO_NOT_CONTACT)  # pob-005 D6
     added_users = users - kept_users
     if added_users:
         found = await db.scalar(select(func.count()).select_from(User).where(User.id.in_(added_users), User.role.in_(PEOPLE_ROLES), User.active))
@@ -238,6 +241,7 @@ async def create(db: AsyncSession, user: User, company: Company, payload: RecMee
     db.add(meeting)
     await db.flush()
     await _set_people(db, meeting.id, contacts, users, (set(), set()))
+    await contact_status.advance(db, user, contacts, "meeting_scheduled", "meeting")  # pob-005 D4
     _event(db, meeting.id, user, "scheduled", new=meeting.starts_at)
     moved = await company_pipeline.apply_event(db, company, "meeting_scheduled", user)
     audit(db, user, "create", meeting.id, {"company_id": str(company.id), "meeting_type": meeting.meeting_type, "mode": meeting.mode,
@@ -284,6 +288,7 @@ async def update(db: AsyncSession, user: User, company: Company, meeting: M, pay
         if key in changed:
             setattr(meeting, key, changes[key])
     await _set_people(db, meeting.id, contacts, users, stored)
+    await contact_status.advance(db, user, contacts - stored[0], "meeting_scheduled", "meeting")  # pob-005 D4: newly invited people
     if "starts_at" in changed:
         _event(db, meeting.id, user, "rescheduled", old=old_start, new=meeting.starts_at, reason=payload.reschedule_reason)
     if changed:

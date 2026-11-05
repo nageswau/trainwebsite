@@ -4,20 +4,60 @@ Functions only; nothing here commits -- the route owns the transaction. Scope an
 `load_scoped` and `can_edit`, C1), so a contact of a company outside the caller's scope is the same 404 as a missing one. Every write
 first locks the company row, which serialises primary changes; the partial unique index is the backstop."""
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Company, CompanyContact, RecContactRole, User
-from app.notifications.phone import wa_number
+from app.notifications.phone import normalise_phone, wa_number
 from app.schemas import REC_CONTACT_FIELDS, REC_CONTACT_MAX, RecContactIn
-from app.services import recruiter_calls, recruiter_messages
+from app.services import contact_status, recruiter_calls, recruiter_messages
 from app.services import recruiter_companies as companies
 from app.services.recruiter_follow_ups import contact_next
 
 CONTACT_NOT_FOUND = "Contact not found"
+
+
+async def require_of_company(db: AsyncSession, company_id: UUID, contact_id: UUID | None) -> None:
+    """pob-005 D10/D11: a per-contact filter must name one of this company's contacts (the caller already has the company in scope); any
+    other id is the same 404 as a missing one."""
+    if contact_id is not None and await db.scalar(select(CompanyContact.id).where(CompanyContact.id == contact_id, CompanyContact.company_id == company_id)) is None:
+        raise HTTPException(404, CONTACT_NOT_FOUND)
+
+
+# --- pob-005 (DEC-SCOPE-411 D8): duplicates warn, never refuse -------------------------------------------------------------------
+MAX_DUPLICATE_MATCHES = 10
+
+
+async def duplicates(db: AsyncSession, user: User, company: Company, mobile: str | None, email: str | None, exclude: UUID | None) -> dict:
+    """D8: other contacts with the same normalised mobile or lower-cased email, anywhere. Only those whose company is in the caller's scope
+    are described; the rest are only counted (no name, company or id leaves the caller's scope)."""
+    number = normalise_phone(mobile) if mobile else None
+    address = email.strip().lower() if email and email.strip() else None
+    conditions = []
+    if number:
+        conditions.append(CompanyContact.mobile_normalized == number)
+    if address:
+        conditions.append(CompanyContact.email == address)
+    if not conditions:
+        return {"matches": [], "others": 0}
+    where = [or_(*conditions), *([CompanyContact.id != exclude] if exclude else [])]
+    stmt = select(CompanyContact, Company).join(Company, Company.id == CompanyContact.company_id).where(*where)
+    scope = await companies.caller_scope(db, user)
+    visible = (await db.execute(stmt.where(*scope).order_by(CompanyContact.company_id != company.id, CompanyContact.position).limit(MAX_DUPLICATE_MATCHES))).all()
+    total = await db.scalar(select(func.count()).select_from(CompanyContact).where(*where)) or 0
+    in_scope = await db.scalar(select(func.count()).select_from(CompanyContact).join(Company, Company.id == CompanyContact.company_id).where(*where, *scope)) or 0
+    matches = [
+        {
+            "id": c.id, "name": c.name, "active": c.active, "company": {"id": co.id, "name": co.name}, "same_company": co.id == company.id,
+            "on": [k for k, hit in (("mobile", bool(number) and c.mobile_normalized == number), ("email", bool(address) and c.email == address)) if hit],
+        }
+        for c, co in visible
+    ]  # fmt: skip
+    return {"matches": matches, "others": total - in_scope}
 
 
 async def contacts_of(db: AsyncSession, company_id: UUID) -> list[CompanyContact]:
@@ -73,8 +113,11 @@ async def add(db: AsyncSession, user: User, company: Company, payload: RecContac
     await db.flush()
     if payload.is_primary or not any(c.is_primary for c in contacts):
         await set_primary(db, contacts, contact)
-    fields = sorted(k for k in REC_CONTACT_FIELDS if getattr(contact, k) is not None)
+    fields = sorted(k for k in REC_CONTACT_FIELDS if getattr(contact, k) not in (None, False))
     companies.audit(db, user, "contact_create", company.id, {"contact_id": str(contact.id), "fields": fields})
+    if payload.status != contact.status:  # pob-005 D5: a person added straight as e.g. Do not contact
+        contact_status.record(db, user, contact, payload.status, "manual")
+        await db.flush()
     return contact
 
 
@@ -82,6 +125,7 @@ async def update(db: AsyncSession, user: User, company: Company, contact: Compan
     """PATCH semantics (spec §1 C2): field changes, then active, then primary. Returns the changed field names (empty = nothing to do)."""
     primary = changes.pop("is_primary", None)
     active = changes.pop("active", None)
+    status = changes.pop("status", None)
     if primary is False and contact.is_primary:
         raise HTTPException(422, "Choose another primary contact instead")
     await check_role(db, changes.get("role_id"), contact.role_id)
@@ -106,6 +150,9 @@ async def update(db: AsyncSession, user: User, company: Company, contact: Compan
             raise HTTPException(409, "Reactivate this contact first")
         await set_primary(db, contacts, contact)
         changed.append("is_primary")
+    if status is not None and status != contact.status:  # pob-005 D5
+        contact_status.record(db, user, contact, status, "manual")
+        changed.append("status")
     if changed:
         await db.flush()
         companies.audit(db, user, "contact_update", company.id, {"contact_id": str(contact.id), "fields": sorted(changed)})
@@ -121,12 +168,15 @@ async def list_out(db: AsyncSession, user: User, company: Company) -> dict:
     next_due = await contact_next(db, company.id)
     last_call = await recruiter_calls.contact_last(db, company.id)
     last_message = await recruiter_messages.contact_last(db, company.id)
+    now = datetime.now(UTC)
     items = [
         {
             **{
                 k: getattr(c, k)
-                for k in ("id", "name", "designation", "department", "mobile", "email", "linkedin_url", "preferred_channel", "notes", "is_primary", "active", "created_at", "updated_at")
+                for k in ("id", "name", "designation", "department", "mobile", "email", "linkedin_url", "preferred_channel", "notes", "is_primary", "active", "created_at", "updated_at",
+                          "is_decision_maker", "source", "verified_on", "status", "status_changed_at")
             },
+            "follow_up_due": next_due.get(c.id) is not None and next_due[c.id] <= now,  # pob-005 D3: derived, never stored
             "role": companies.ref(roles.get(c.role_id)),
             # C6: the latest call (rec-025 CA7) or message (rec-026 MS10); rec-028 adds meetings
             "last_contacted_at": max((t for t in (last_call.get(c.id), last_message.get(c.id)) if t), default=None),

@@ -16,6 +16,7 @@ from app.core.database import get_db
 from app.models import User
 from app.schemas import BdmAppointmentReason, RecFollowUpComplete, RecFollowUpCreate, RecFollowUpUpdate
 from app.services import recruiter_companies as companies
+from app.services import recruiter_contacts as contacts
 from app.services import recruiter_follow_ups as svc
 from app.services.bdm_appointments import db_now
 from app.services.lead_follow_ups import check_due
@@ -37,9 +38,18 @@ async def list_follow_ups(
 
 
 @router.get("/companies/{company_id}/follow-ups")
-async def company_follow_ups(company_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def company_follow_ups(
+    company_id: UUID,
+    contact_id: UUID | None = None,
+    limit: int = LIMIT,
+    offset: int = OFFSET,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """pob-005 D11: `contact_id` lists only the follow-ups about one of this company's contacts (another company's contact is 404)."""
     await companies.load_scoped(db, user, company_id)
-    return await svc.company_page(db, user, company_id, await db_now(db), limit, offset)
+    await contacts.require_of_company(db, company_id, contact_id)
+    return await svc.company_page(db, user, company_id, await db_now(db), limit, offset, contact_id)
 
 
 @router.post("/companies/{company_id}/follow-ups", status_code=201)

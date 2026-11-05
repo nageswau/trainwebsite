@@ -3922,3 +3922,10 @@ writers. `placement_officer` (DEC-SCOPE-403 C1) is not granted — `NEEDS_CONFIR
 never publish a decision they recorded (403). Changing the auto-release switch is super_admin only. `GET /candidate/results` is the
 caller's own (a candidate or IT student; anyone else 403) — no id is taken from the caller. Recording a decision stays rec-017's writers'
 (§2.74). Pinned by `apps/api/tests/test_hrc_030_results.py`, `test_hrc_030_migration.py` and the rec-038 matrix rows.
+### 2.304 Contact status, duplicates and replies *(added 2026-11-05 — `DEC-SCOPE-411`, pob-005)*
+
+A contact's new fields and status follow the company (rec-004 §2.51): readers see them, `can_edit` (the assigned recruiter, super_admin)
+changes them. The duplicate check is a read of the company's scope, and names only contacts at companies in the caller's scope (others
+are counted). Logging a reply needs `can_edit` on the message's company (out of scope 404). The per-contact timeline and follow-ups are
+the company's readers'. Do Not Contact refuses outreach for every role. No new grant. Pinned by
+`apps/api/tests/test_pob_005_contact_status.py` and the rec-038 rows.

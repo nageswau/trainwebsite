@@ -8,7 +8,7 @@ is counted exactly. Functions only; nothing here commits. Logs and audit carry i
 subject or an address (MS9)."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import REC_EMAIL_KINDS, REC_WHATSAPP_KINDS, AuditLog, Candidate, Company, CompanyContact, RecruiterMessage, RecruiterMessageTemplate, User
 from app.notifications.phone import wa_number
 from app.schemas import RecEmailCreate, RecWhatsAppCreate
-from app.services import candidates, mailer
+from app.services import candidates, contact_status, mailer
 from app.services import recruiter_companies as companies
 from app.services.bdm_activities import day_range
 from app.services.bdm_appointments import today_ist
@@ -51,6 +51,11 @@ TEMPLATE_UNUSABLE = {"whatsapp": "Choose an active WhatsApp template", "email": 
 CAP_REACHED = f"You've sent {DAILY_CAP} WhatsApp messages today"
 EMAIL_CAP_REACHED = f"You've sent {EMAIL_DAILY_CAP} emails today"
 EMAIL_NOT_CONFIGURED = "Email is not set up. Ask an administrator to configure SMTP."
+# pob-005 D7: logging a reply
+MESSAGE_NOT_FOUND = "Message not found"
+REPLY_CONTACT_ONLY = "Only a message to a company contact can be marked as replied"
+REPLY_FUTURE = "The reply time can't be in the future"
+REPLY_BEFORE_SENT = "The reply can't be earlier than the message"
 
 RM = RecruiterMessage
 NOT_FAILED = ~and_(RM.channel == "email", RM.delivery_status == "failed")
@@ -171,6 +176,8 @@ async def create(db: AsyncSession, user: User, payload: RecWhatsAppCreate | RecE
     """The error order of spec §3: role and scope, the party lock, the right and state; SMTP unset 503; no number / address 409; the
     template 422; the cap 409 / 429. An email is stored `queued`; the route publishes it after the commit (MS7)."""
     company, contact, candidate = await load_party(db, user, payload.contact_id, payload.candidate_id, write=True)
+    if contact:
+        contact_status.refuse_do_not_contact(contact)  # pob-005 D6
     party, kind = (contact, "contact") if contact else (candidate, "candidate")
     is_email = isinstance(payload, RecEmailCreate)
     if is_email and not mailer.smtp_configured():
@@ -199,8 +206,42 @@ async def create(db: AsyncSession, user: User, payload: RecWhatsAppCreate | RecE
     db.add(message)
     await db.flush()
     await companies.refresh_last_contact(db, message.company_id)  # pob-003 D4
+    await contact_status.advance(db, user, [message.contact_id], "contacted", "message")  # pob-005 D4
     audit(db, user, message.id, {"kind": kind, "party_id": str(party.id), "channel": message.channel, "template_id": str(template.id) if template else None})
     return message
+
+
+async def log_reply(db: AsyncSession, user: User, message_id: UUID, replied_at: datetime | None, now: datetime) -> UUID:
+    """pob-005 D7: a reply the contact sent, recorded by hand on the message. Scope and write right are the contact's company's (404 / 403 /
+    409 archived); a candidate message is 422. Set once: a repeat changes nothing (no audit). Moves the contact to Replied (D4); a Do Not
+    Contact person's reply is still recorded."""
+    contact_id = await db.scalar(select(RM.contact_id).where(RM.id == message_id))
+    if contact_id is None:
+        if await db.scalar(select(RM.id).where(RM.id == message_id)) is None:
+            await companies.caller_scope(db, user)  # the role check (403) comes before "not found"
+            raise HTTPException(404, MESSAGE_NOT_FOUND)
+        raise HTTPException(422, REPLY_CONTACT_ONLY)
+    try:
+        company, contact, _ = await load_party(db, user, contact_id, None)
+    except HTTPException as exc:
+        if exc.status_code == 404:
+            raise HTTPException(404, MESSAGE_NOT_FOUND) from None
+        raise
+    await db.execute(select(Company.id).where(Company.id == company.id).with_for_update())
+    companies.require(user, company, "can_edit", "message_reply")
+    message = await db.scalar(select(RM).where(RM.id == message_id).with_for_update().execution_options(populate_existing=True))
+    if message.replied_at is not None:
+        return message.id
+    at = replied_at or now
+    if at > now + timedelta(minutes=1):
+        raise HTTPException(422, REPLY_FUTURE)
+    if at < message.sent_at:
+        raise HTTPException(422, REPLY_BEFORE_SENT)
+    message.replied_at = at
+    await db.flush()
+    await contact_status.advance(db, user, [contact.id], "replied", "reply")
+    db.add(AuditLog(user_id=user.id, action="recruiter_message.reply", entity_type="recruiter_message", entity_id=str(message.id), metadata_json={"contact_id": str(contact.id)}))
+    return message.id
 
 
 def _rows():
@@ -226,6 +267,7 @@ def out(message: RecruiterMessage, sender: User, contact: CompanyContact | None,
         "body": message.body,
         "delivery_status": message.delivery_status,
         "sent_at": message.sent_at,
+        "replied_at": message.replied_at,  # pob-005 D7
         "sender": {"id": sender.id, "full_name": sender.full_name},
     }
 

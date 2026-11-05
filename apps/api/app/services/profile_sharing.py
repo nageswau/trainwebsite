@@ -38,7 +38,7 @@ from app.models import (
 )
 from app.notifications.phone import wa_number
 from app.schemas import RecShareCreate
-from app.services import applications, candidates, company_pipeline, mailer, recruiter_companies
+from app.services import applications, candidates, company_pipeline, contact_status, mailer, recruiter_companies
 from app.services import recruiter_messages as messages
 from app.services import recruiter_requirements as requirements
 
@@ -164,6 +164,7 @@ async def _contact(db: AsyncSession, job: Job, payload: RecShareCreate) -> Compa
         raise HTTPException(422, CONTACT_UNUSABLE)
     if not contact.active:
         raise HTTPException(409, messages.CONTACT_INACTIVE)
+    contact_status.refuse_do_not_contact(contact)  # pob-005 D6
     return contact
 
 
@@ -285,6 +286,7 @@ async def create(db: AsyncSession, user: User, payload: RecShareCreate, now: dat
     )
     db.add(share)
     await db.flush()
+    await contact_status.advance(db, user, [share.contact_id], "contacted", "share")  # pob-005 D4
     note = f"Profile shared ({CHANNEL_LABELS[payload.channel]})"
     for candidate in people:
         application = existing.get(candidate.id)

@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import RECRUITER_CALL_OUTCOMES, AuditLog, Candidate, Company, CompanyContact, RecruiterCall, User
 from app.schemas import RecCallCreate, RecFollowUpCreate
-from app.services import candidates
+from app.services import candidates, contact_status
 from app.services import recruiter_companies as companies
 from app.services import recruiter_follow_ups as follow_ups
 from app.services.bdm_activities import day_range
@@ -134,6 +134,8 @@ async def create(db: AsyncSession, user: User, payload: RecCallCreate, now: date
         contact = await db.scalar(select(CompanyContact).where(CompanyContact.id == payload.contact_id).execution_options(populate_existing=True))
         if not contact.active:
             raise HTTPException(409, CONTACT_INACTIVE)
+        if payload.direction == "outgoing":  # pob-005 D6: they may still call us
+            contact_status.refuse_do_not_contact(contact)
     else:
         if payload.next_follow_up is not None:
             raise _invalid("next_follow_up", FOLLOW_UP_CANDIDATE, None)
@@ -150,6 +152,8 @@ async def create(db: AsyncSession, user: User, payload: RecCallCreate, now: date
     db.add(call)
     await db.flush()
     await companies.refresh_last_contact(db, call.company_id)  # pob-003 D4
+    reached = call.direction == "incoming" or call.outcome == "connected"  # pob-005 D4: a conversation (or they called us) is a reply
+    await contact_status.advance(db, user, [call.contact_id], "replied" if reached else "contacted", "call")
     follow_up = None
     if payload.next_follow_up is not None:
         body = RecFollowUpCreate(**payload.next_follow_up.model_dump(), contact_id=payload.contact_id)

@@ -4,10 +4,11 @@ import { type ReactNode, useCallback, useEffect, useState } from "react";
 import BdmConfirm from "@/components/BdmConfirm";
 import { DetailList, multiline } from "@/components/BdmOrganizationProfileDetails";
 import LocalTime from "@/components/LocalTime";
+import RecruiterContactActivity from "@/components/RecruiterContactActivity";
 import RecruiterContactFields from "@/components/RecruiterContactFields";
 import { sendJson } from "@/lib/apiErrors";
 import { display } from "@/lib/bdmOrganizations";
-import { formatSchoolDateTime } from "@/lib/formatDate";
+import { formatCalendarDate, formatSchoolDateTime } from "@/lib/formatDate";
 import { activeValues, type CatalogueValue } from "@/lib/recruiterCatalogue";
 import { telHref } from "@/lib/recruiterCalls";
 import { safeLink } from "@/lib/recruiterCompanies";
@@ -23,7 +24,11 @@ import {
   contactsOf,
   CONTACTS_URL,
   contactValuesOf,
+  type Duplicates,
+  duplicatesUrl,
   isContactList,
+  SOURCE_LABEL,
+  STATUS_LABEL,
 } from "@/lib/recruiterContacts";
 import { useFocusAfterRender } from "@/lib/useFocusAfterRender";
 
@@ -52,6 +57,9 @@ function details(c: Contact): [string, ReactNode][] {
       ),
     ],
     ["Preferred communication", c.preferred_channel && CHANNEL_LABEL[c.preferred_channel]],
+    ["Status", c.status && STATUS_LABEL[c.status]], // pob-005
+    ["Source", c.source && SOURCE_LABEL[c.source]],
+    ["Verified on", c.verified_on && formatCalendarDate(c.verified_on)], // QA-02: a calendar date, no time
     ["Last contacted", c.last_contacted_at ? <LocalTime value={c.last_contacted_at} time /> : "Not yet"],
     ["Next follow-up", c.next_follow_up_at ? formatSchoolDateTime(c.next_follow_up_at, true) : "None scheduled"], // rec-024 FU9
     ["Notes", c.notes && multiline(c.notes)],
@@ -59,24 +67,61 @@ function details(c: Contact): [string, ReactNode][] {
   return rows.filter(([, value]) => value);
 }
 
-/** Add (no `initial`) or edit one contact. Edit sends only what changed; blank clears. Field errors from the server land on their field. */
-function ContactEditor({ initial, roles, busy, onSave, onCancel }: { initial?: Contact; roles: CatalogueValue[]; busy: boolean; onSave: (body: Record<string, unknown>) => Promise<ContactErrors | null>; onCancel: () => void }) {
+/** pob-005 D8: who else has this mobile or email -- named when in the caller's scope, otherwise only counted. */
+function DuplicateWarning({ found, idPrefix }: { found: Duplicates; idPrefix: string }) {
+  return (
+    <div className="form-error" role="alert" id={`${idPrefix}-duplicates`} style={{ display: "grid", gap: 4 }}>
+      <strong>This mobile or email is already on file:</strong>
+      <ul style={{ margin: 0, paddingLeft: 18 }}>
+        {found.matches.map((m) => (
+          <li key={m.id}>
+            {m.name} at {m.same_company ? "this company" : m.company.name} ({m.on.join(" and ")}){m.active ? "" : ", inactive"}
+          </li>
+        ))}
+        {found.others > 0 && <li>{found.others} more at {found.others === 1 ? "a company" : "companies"} outside your list</li>}
+      </ul>
+      <span>Save anyway, or cancel to check first.</span>
+    </div>
+  );
+}
+
+/** Add (no `initial`) or edit one contact. Edit sends only what changed; blank clears. Field errors from the server land on their field.
+ *  pob-005 D8: a new or changed mobile / email is checked for duplicates first; a match asks before saving (it never blocks). */
+function ContactEditor({ companyId, initial, roles, busy, onSave, onCancel }: { companyId: string; initial?: Contact; roles: CatalogueValue[]; busy: boolean; onSave: (body: Record<string, unknown>) => Promise<ContactErrors | null>; onCancel: () => void }) {
   const [values, setValues] = useState(contactValuesOf(initial));
   const [errors, setErrors] = useState<ContactErrors>({});
+  const [duplicates, setDuplicates] = useState<Duplicates | null>(null);
+  const [checking, setChecking] = useState(false);
   const idPrefix = `contact-${initial?.id ?? "new"}`;
-  async function save() {
+  async function save(confirmed = false) {
     if (!values.name.trim()) return setErrors({ name: "Contact name is required" });
-    const found = await onSave(contactBody(values, initial ? contactValuesOf(initial) : undefined));
-    if (found) setErrors(found);
+    const original = initial ? contactValuesOf(initial) : undefined;
+    const body = contactBody(values, original);
+    const url = !confirmed && ("mobile" in body || "email" in body) ? duplicatesUrl(companyId, values, initial?.id) : null;
+    if (url) {
+      setChecking(true);
+      const found: Duplicates | null = await fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null); // the check is advisory
+      setChecking(false);
+      if (found && Array.isArray(found.matches) && (found.matches.length > 0 || found.others > 0)) return setDuplicates(found);
+    }
+    setDuplicates(null);
+    const fieldErrors = await onSave(body);
+    if (fieldErrors) setErrors(fieldErrors);
   }
+  const edit = (k: keyof typeof values, v: string) => {
+    setValues((prev) => ({ ...prev, [k]: v }));
+    if (k === "mobile" || k === "email") setDuplicates(null);
+  };
+  const working = busy || checking;
   return (
     <div className="form" role="group" aria-label={initial ? `Edit ${initial.name}` : "New contact"}>
-      <RecruiterContactFields idPrefix={idPrefix} fields={CONTACT_FIELDS} values={values} errors={errors} roles={roles} currentRole={initial?.role} onChange={(k, v) => setValues((prev) => ({ ...prev, [k]: v }))} autoFocusName />
+      <RecruiterContactFields idPrefix={idPrefix} fields={CONTACT_FIELDS} values={values} errors={errors} roles={roles} currentRole={initial?.role} onChange={edit} autoFocusName />
+      {duplicates && <DuplicateWarning found={duplicates} idPrefix={idPrefix} />}
       <div className="actions">
-        <button type="button" className="btn small" onClick={() => void save()} disabled={busy}>
-          {busy ? "Saving…" : "Save contact"}
+        <button type="button" className="btn small" onClick={() => void save(!!duplicates)} disabled={working} aria-describedby={duplicates ? `${idPrefix}-duplicates` : undefined}>
+          {working ? (checking ? "Checking…" : "Saving…") : duplicates ? "Save anyway" : "Save contact"}
         </button>
-        <button type="button" className="btn secondary small" onClick={onCancel} disabled={busy}>
+        <button type="button" className="btn secondary small" onClick={onCancel} disabled={working}>
           Cancel
         </button>
       </div>
@@ -90,6 +135,8 @@ export default function RecruiterCompanyContacts({ companyId }: { companyId: str
   const [roles, setRoles] = useState<CatalogueValue[]>([]);
   const [editing, setEditing] = useState<string | null>(null); // a contact id, "new", or null
   const [deactivating, setDeactivating] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(null); // pob-005: the contact whose Activity is shown
+  const [activityVersion, setActivityVersion] = useState(0); // a write (e.g. a status change) re-reads the open Activity
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -138,6 +185,7 @@ export default function RecruiterCompanyContacts({ companyId }: { companyId: str
     setBusy(false);
     if (outcome.ok && isContactList(outcome.data)) {
       setList(outcome.data as ContactList);
+      setActivityVersion((n) => n + 1);
       setEditing(null);
       setDeactivating(null);
       setNotice(text);
@@ -192,13 +240,27 @@ export default function RecruiterCompanyContacts({ companyId }: { companyId: str
               return (
                 <li key={c.id} className="card" style={{ padding: 14 }}>
                   {editing === c.id ? (
-                    <ContactEditor initial={c} roles={roles} busy={busy} onSave={(body) => write(`${CONTACTS_URL}/${c.id}`, "PATCH", body, "Contact updated.", editId)} onCancel={() => close(editId)} />
+                    <ContactEditor companyId={companyId} initial={c} roles={roles} busy={busy} onSave={(body) => write(`${CONTACTS_URL}/${c.id}`, "PATCH", body, "Contact updated.", editId)} onCancel={() => close(editId)} />
                   ) : (
                     <>
                       <p style={{ margin: 0, fontWeight: 800, overflowWrap: "anywhere" }}>
                         {c.name} {c.is_primary && <span className="badge">Primary</span>} {!c.active && <span className="badge">Inactive</span>}
+                        {c.is_decision_maker && <span className="badge">Decision-maker</span>} {c.follow_up_due && <span className="badge">Follow-up due</span>}
                       </p>
+                      {c.status === "do_not_contact" && (
+                        <p className="form-error" style={{ margin: "4px 0", fontSize: 13 }}>Do not contact: messages, outgoing calls, profile shares and meeting invites to {c.name} are blocked.</p>
+                      )}
                       <DetailList rows={details(c)} />
+                      <div className="actions" style={{ marginTop: 8 }}>
+                        <button type="button" className="btn secondary small" aria-expanded={open === c.id} aria-controls={`contact-${c.id}-activity`} onClick={() => setOpen(open === c.id ? null : c.id)}>
+                          {open === c.id ? "Hide activity" : "Activity"}<span className="visually-hidden"> {c.name}</span>
+                        </button>
+                      </div>
+                      {open === c.id && (
+                        <div id={`contact-${c.id}-activity`}>
+                          <RecruiterContactActivity companyId={companyId} contactId={c.id} name={c.name} version={activityVersion} />
+                        </div>
+                      )}
                       {canEdit && (
                         <div className="actions" style={{ marginTop: 8 }}>
                           <button id={editId} type="button" className="btn secondary small" onClick={() => setEditing(c.id)} disabled={busy}>
@@ -242,7 +304,7 @@ export default function RecruiterCompanyContacts({ companyId }: { companyId: str
           </ul>
           {canEdit &&
             (editing === "new" ? (
-              <ContactEditor roles={roles} busy={busy} onSave={(body) => write(url, "POST", body, "Contact added.", addId)} onCancel={() => close(addId)} />
+              <ContactEditor companyId={companyId} roles={roles} busy={busy} onSave={(body) => write(url, "POST", body, "Contact added.", addId)} onCancel={() => close(addId)} />
             ) : (
               <div style={{ marginTop: 12 }}>
                 <button id={addId} type="button" className="btn secondary small" onClick={() => setEditing("new")} disabled={busy || list.items.length >= MAX_CONTACTS}>

@@ -12,16 +12,26 @@ from app.models import User
 from app.schemas import RecTimelinePage
 from app.services import candidates
 from app.services import recruiter_companies as companies
+from app.services import recruiter_contacts as contacts
 from app.services import recruiter_timeline as svc
 
 router = APIRouter(prefix="/recruiter", tags=["recruiter-timeline"])
 
 
 @router.get("/companies/{company_id}/timeline", response_model=RecTimelinePage)
-async def company_timeline(company_id: UUID, limit: int = LIMIT, offset: int = OFFSET, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Whoever has the company in scope (the recruiter, their manager, super_admin, the assigned BDM); out of scope = 404."""
+async def company_timeline(
+    company_id: UUID,
+    contact_id: UUID | None = None,
+    limit: int = LIMIT,
+    offset: int = OFFSET,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Whoever has the company in scope (the recruiter, their manager, super_admin, the assigned BDM); out of scope = 404. pob-005 D10:
+    `contact_id` narrows it to one of this company's contacts (another company's contact is 404)."""
     company = await companies.load_scoped(db, user, company_id)
-    return await svc.company_page(db, company.id, limit, offset)
+    await contacts.require_of_company(db, company.id, contact_id)
+    return await svc.company_page(db, company.id, limit, offset, contact_id)
 
 
 @router.get("/candidates/{candidate_id}/timeline", response_model=RecTimelinePage)
